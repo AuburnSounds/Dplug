@@ -1,0 +1,24 @@
+{
+    "name": "dplug-examples",
+    "description": "dplug examples",
+    "homepage": "http://github.com/p0nce/dplug/",
+    "copyright": "none",
+    "license": "public domain",
+    "authors": [ "ponce" ],
+    "importPaths": [ "." ],
+    "targetType": "dynamicLibrary",
+    "targetPath": "./build",
+
+    "dependencies": 
+    {
+        "dplug": "~master"
+    },
+
+    "configurations": [
+        {
+            "name": "vst_test",
+            "targetName": "vst_test",
+            "sourceFiles": [ "vst_test/vst_test.res"]
+        }
+    ]
+}
