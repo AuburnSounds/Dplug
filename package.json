@@ -1,0 +1,18 @@
+{
+    "name": "dplug",
+    "description": "D audio toolkit.",
+    "homepage": "http://github.com/p0nce/dplug/",
+    "copyright": "Steinberg",
+    "license": "other",
+
+    "authors": [
+        "ponce"
+    ],
+
+    "importPaths": [
+        "."
+    ],
+
+    "dependencies": {       
+    }
+}
