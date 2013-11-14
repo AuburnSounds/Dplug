@@ -1,4 +1,4 @@
-module pan.vst.plugin;
+module dplug.vst.plugin;
 
 import dplug.vst.aeffectx;
 

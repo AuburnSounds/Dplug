@@ -12,7 +12,7 @@
 
 module dplug.vst.aeffectx;
 
-public import pan.vst.aeffect;
+public import dplug.vst.aeffect;
 
 align(8):
 
