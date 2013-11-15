@@ -30,9 +30,14 @@ public:
         _effect.DEPRECATED_ioRatio = 1.0;
         _effect.DEPRECATED_process = &processCallback;        
     }
+
+    VstIntPtr dispatcher(int opcode, int index, int value, void *ptr, float opt)
+    {
+        return 0;       
+    }
 }
 
-private void unrecoverableError()
+private void unrecoverableError() nothrow
 {
     debug
     {
@@ -43,7 +48,6 @@ private void unrecoverableError()
         // forget about the error since it doesn't seem a good idea
         // to crash in audio production
     }
-
 }
 
 // VST callbacks
@@ -55,7 +59,7 @@ extern(C) private nothrow
         try
         {
             VSTPlugin plugin = cast(VSTPlugin)effect.user;
-
+            return plugin.dispatcher(opcode, index, value, ptr, opt);
         }
         catch (Throwable e)
         {
@@ -64,7 +68,7 @@ extern(C) private nothrow
         return 0;
     }   
 
-    void* processCallback(AEffect *effect, float **inputs, float **outputs, int sampleFrames) 
+    void processCallback(AEffect *effect, float **inputs, float **outputs, int sampleFrames) 
     {
         try
         {
@@ -74,7 +78,6 @@ extern(C) private nothrow
         {
             unrecoverableError(); // should not throw in a callback
         }
-        return null;
     }
 
     void processReplacingCallback(AEffect *effect, float **inputs, float **outputs, int sampleFrames) 
@@ -107,6 +110,7 @@ extern(C) private nothrow
         try
         {
             VSTPlugin plugin = cast(VSTPlugin)effect.user;        
+            return 0.0f;
         }
         catch (Throwable e)
         {
