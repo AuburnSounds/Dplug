@@ -4,23 +4,14 @@ import std.traits;
 
 import dplug.dsp.funcs;
 
-/**
- * Smooth values exponentially with a 1-pole lowpass.
- * This is usually sufficient for most parameter smoothing.
- * The type T must support arithmetic operations (+, -, +=, * with a float).
- */
+/// Smooth values exponentially with a 1-pole lowpass.
+/// This is usually sufficient for most parameter smoothing.
+/// The type T must support arithmetic operations (+, -, +=, * with a float).
 struct ExpSmoother(T)
 {
 public:
-
-    /**
-     * Initialize the Smoother.
-     *
-     * @param initialValue first value of the value to be smoothed
-     * @param time the time constant of the smoother
-     * @param sampleRate the target sample rate
-     * @param threshold difference where we consider value and target are equal
-     */
+    /// time: the time constant of the smoother.
+    /// threshold: absolute difference below which we consider current value and target equal
     void init(T initialValue, double time, double samplerate, T threshold)
     {
         assert(isFinite(initialValue));
@@ -131,12 +122,7 @@ struct LinearSmoother(T)
 {
 public:
 
-    /**
-     * Initialize the LinearSmoother.
-     *
-     * @param initialValue first value of the value to be smoothed
-     * @param period time period between updates, in seconds
-     */
+    /// Initialize the LinearSmoother.
     void init(T initialValue, double periodSecs, double sampleRate)
     {
         _target = initialValue;
