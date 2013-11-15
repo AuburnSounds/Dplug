@@ -6,7 +6,8 @@
     "license": "other",
 
     "authors": [
-        "ponce"
+        "ponce",
+        "Sean M. Costello (Hilbert transformer)"
     ],
 
     "importPaths": [
