@@ -15,8 +15,7 @@ The rest of the repositery is public domain (Unlicense).
 ## Contents
 
 ### plugin/
-  * **uri.d** URI parsing (RFC 3986)
-  * **httpclient.d** HTTP client (RFC 2616)
+  * **iplug.d.d** base plugin interface, format agnostic
   * **dllmain.d** shared library entry point
 
 ### vst/
