@@ -6,10 +6,10 @@ Currently very alpha.
 
 ## License
 
-The VST SDK translation follow the original Steinberg VST license. 
-If using the VST wrapper, you must agree to this license.
+VST is a trademark of Steinberg Media Technologies GmbH. Please register the SDK via the 3rd party developper license on Steinberg site.
 
-The rest of the repositery is public domain (Unlicense).
+Before you code with dplug, you need to read and agree with the license for the original SDK by Steinberg. If you don't agree with the license, don't make plugins with dplug.
+
 
 
 ## Contents
