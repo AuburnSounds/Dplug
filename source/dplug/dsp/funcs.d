@@ -5,9 +5,15 @@ import std.math;
 immutable real TAU = PI * 2;
     
 /// Map linearly x from the range [a, b] to the range [c, d]
-T remap(T)(T value, T a, T b, T c, T d)
+T linmap(T)(T value, T a, T b, T c, T d)
 {
     return c + (d - c) * (value - a) / (b - a);
+}
+
+/// map [0..1] to [min..max] logarithmically
+T logmap(T)(T min, T max, T t) // min and max must be all > 0, t in [0..1]
+{
+    return min * exp(t * log(max / min));
 }
 
 /// Hermite interpolation.
@@ -21,11 +27,6 @@ T hermite(T)(T frac_pos, T xm1, T x0, T x1, T x2)
     return ((((a * frac_pos) - b_neg) * frac_pos + c) * frac_pos + x0);
 }
 
-/// map [0..1] to [min..max] logarithmically
-T logmap(T)(T min, T max, T t) // min and max must be all > 0, t in [0..1]
-{
-    return min * exp(t * log(max / min));
-}
    
 /// Convert from dB to float.
 T deciBelToFloat(T)(T dB)
@@ -39,14 +40,6 @@ T floatToDeciBel(T)(T x)
     return log(x) * (20 / cast(T)LN10);
 }
 
-/// Fletcher and Munson equal-loudness curve
-/// Reference: Xavier Serra thesis (1989).
-T equalLoudnessCurve(T)(T frequency)
-{
-    T x = cast(T)0.05 + 4000 / frequency;
-    return x * ( cast(T)10 ^^ x);
-}
-
 /// Is this integer odd?
 bool isOdd(T)(T i)
 {
@@ -57,6 +50,24 @@ bool isOdd(T)(T i)
 bool isEven(T)(T i)
 {
     return (i & 1) == 0;
+}
+
+double MIDIToFrequency(T)(int note)
+{
+    return 440 * pow(2.0, (note - 69.0) / 12.0);
+}
+
+double frequencyToMIDI(T)(double frequency)
+{
+    return 69.0 + 12 * log2(frequency / 440.0);
+}
+
+/// Fletcher and Munson equal-loudness curve
+/// Reference: Xavier Serra thesis (1989).
+T equalLoudnessCurve(T)(T frequency)
+{
+    T x = cast(T)0.05 + 4000 / frequency;
+    return x * ( cast(T)10 ^^ x);
 }
 
 /// Cardinal sine
@@ -77,16 +88,6 @@ double expDecayFactor(double time, double samplerate)
 {
     // 1 - exp(-time * sampleRate) would yield innacuracies
     return -expm1(-1.0 / (time * samplerate));
-}
-
-double MIDIToFrequency(T)(int note)
-{
-    return 440 * pow(2.0, (note - 69.0) / 12.0);
-}
-
-double frequencyToMIDI(T)(double frequency)
-{
-    return 69.0 + 12 * log2(frequency / 440.0);
 }
 
 /// Give back a phase between -PI and PI
