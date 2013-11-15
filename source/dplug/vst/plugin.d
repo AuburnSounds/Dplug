@@ -20,51 +20,100 @@ public:
         _effect.numPrograms = 0;
         _effect.version_ = 1;
         _effect.uniqueID = CCONST('N', 'o', 'E', 'f');
-        _effect.processReplacing = &vstd_processReplacing;
-        _effect.dispatcher = &vstd_dispacher;
+        _effect.processReplacing = &processReplacingCallback;
+        _effect.dispatcher = &dispatcherCallback;
         _effect.setParameter = &setParameterCallback;
         _effect.getParameter = &getParameterCallback;
         _effect.user = cast(void*)this;
 
         //deprecated
         _effect.DEPRECATED_ioRatio = 1.0;
-        _effect.DEPRECATED_process = null;
+        _effect.DEPRECATED_process = &processCallback;        
+    }
+}
+
+private void unrecoverableError()
+{
+    debug
+    {
+        assert(false); // crash the Host in debug mode
+    }
+    else
+    {
+        // forget about the error since it doesn't seem a good idea
+        // to crash in audio production
     }
 
 }
 
-
-
 // VST callbacks
 
-extern(C) nothrow
+extern(C) private nothrow
 {
-    VstIntPtr vstd_dispacher(AEffect *effect, int opcode, int index, int value, void *ptr, float opt) 
+    VstIntPtr dispatcherCallback(AEffect *effect, int opcode, int index, int value, void *ptr, float opt) 
     {
-        VSTPlugin plugin = cast(VSTPlugin)effect.user;
+        try
+        {
+            VSTPlugin plugin = cast(VSTPlugin)effect.user;
 
+        }
+        catch (Throwable e)
+        {
+            unrecoverableError(); // should not throw in a callback
+        }
         return 0;
     }   
 
-    void* vstd_process(AEffect *effect, float **inputs, float **outputs, int sampleFrames) 
+    void* processCallback(AEffect *effect, float **inputs, float **outputs, int sampleFrames) 
     {
-        VSTPlugin plugin = cast(VSTPlugin)effect.user;
+        try
+        {
+            VSTPlugin plugin = cast(VSTPlugin)effect.user;
+        }
+        catch (Throwable e)
+        {
+            unrecoverableError(); // should not throw in a callback
+        }
         return null;
     }
 
-    void vstd_processReplacing(AEffect *effect, float **inputs, float **outputs, int sampleFrames) 
+    void processReplacingCallback(AEffect *effect, float **inputs, float **outputs, int sampleFrames) 
     {
-        VSTPlugin plugin = cast(VSTPlugin)effect.user;
+        try
+        {
+            VSTPlugin plugin = cast(VSTPlugin)effect.user;
+        }
+        catch (Throwable e)
+        {
+            unrecoverableError(); // should not throw in a callback
+        }
     }
 
     void setParameterCallback(AEffect *effect, int index, float parameter) 
     {
-        VSTPlugin plugin = cast(VSTPlugin)effect.user;        
+        try
+        {
+            VSTPlugin plugin = cast(VSTPlugin)effect.user;        
+        }
+        catch (Throwable e)
+        {
+            unrecoverableError(); // should not throw in a callback
+        }
+        
     }
 
     float getParameterCallback(AEffect *effect, int index) 
     {
-        VSTPlugin plugin = cast(VSTPlugin)effect.user;        
-        return 0.0f;
+        try
+        {
+            VSTPlugin plugin = cast(VSTPlugin)effect.user;        
+        }
+        catch (Throwable e)
+        {
+            unrecoverableError(); // should not throw in a callback
+
+            // Still here? Return zero.
+            return 0.0f;
+        }
     }
 }
