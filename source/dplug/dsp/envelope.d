@@ -1,5 +1,7 @@
 module dplug.dsp.hilbert;
 
+//  Envelope followers
+
 
 /// Get the module of estimate of analytic signal.
 /// Phase response depends a lot on input signal, it's not great for bass but gets
@@ -96,12 +98,77 @@ public:
             _ynm1[j] = yn2;
             xn2 = yn2;
         }
-        *out1 = (T)yn2;
-        *out2 = (T)yn1;
+        *out1 = cast(T)yn2;
+        *out2 = cast(T)yn1;
     }
 
 private:
     double[12] _coef;
     double[12] _xnm1;
     double[12] _ynm1;
+}
+
+
+
+
+
+/// Teager Energy Operator.
+/// References: 
+/// - "Signal processing using the Teager Energy Operator and other nonlinear operators" Eivind Kvedalen (2003)
+/// - http://www.temple.edu/speech_lab/sundaram.PDF
+/// I don't really know how it can be used.
+struct Teager(T)
+{
+public:       
+    void init()
+    {
+        _xm1 = 0;
+        _xm2 = 0;
+    }
+
+    T next(T input)
+    {
+        T res = _xm1 * _xm1 - input * _xm2;
+        _xm2 = _xm1;
+        _xm1 = input;
+        return res;      
+    }
+
+private:
+    T _xm1;
+    T _xm2;
+}
+
+/// Teager estimator    
+/// Probably measure energy? Not awesome as an amplitude estimator.        
+struct TeagerAmplitude(T)
+{
+    void init()
+    {
+        _teager0.init();
+        _teager1.init();
+        _last = 0;
+    }
+
+    T next(T input)
+    {
+        T teager_Xn = _teager0.next(input);
+        T teager_Xn_m_Xnm1 = _teager1.next(input - _last);
+        _last = input;
+
+        T num = teager_Xn * teager_Xn * teager_Xn;
+        T denom = teager_Xn_m_Xnm1 * (4 * teager_Xn - teager_Xn_m_Xnm1);
+        if (abs(denom) < 1e-10)
+            return 0;
+        double inSqrt = num / denom;
+        if (inSqrt <= 0)
+            return 0;
+
+        return sqrt(inSqrt);
+    }
+
+private:
+    Teager!T _teager0;
+    Teager!T _teager1;
+    T _last;
 }
