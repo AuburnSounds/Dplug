@@ -64,4 +64,53 @@ private:
     double _counter;
     double _increment;
     WhiteNoise _noise;
-};
+}
+
+/// 1D perlin noise octave.
+/// Is useful to slightly move parameters over time.
+struct Perlin1D
+{
+public:
+    void init(double frequency, double samplerate)
+    {
+        _rng.seed(unpredictableSeed());
+        _current = 0.0f;
+        newGoal();
+        _phase = 0.0f;
+        _phaseInc = cast(float)(frequency / samplerate);
+    }
+
+    float next()
+    {
+        _phase += _phaseInc;
+        if (_phase > 1)
+        {
+            _current = _goal;
+            newGoal();
+            _phase -= 1;
+        }
+        float f = smootherstep(_phase);
+        return f * _goal + (1 - f) * _current;
+    }
+
+private:
+    static float smootherstep(float x)
+    {
+        return x * x * x * (x * (x * 6 - 15) + 10);
+    }
+
+    void newGoal()
+    {
+        _goal = 2 * (uniform(0.0f, 1.0f, _random) - 0.5f);
+    }
+
+    float _current;
+    float _phase;
+    float _phaseInc;
+    float _goal;
+    Random _random;
+
+    void _newGoal();
+
+    Xorshift32 _rng;
+}
