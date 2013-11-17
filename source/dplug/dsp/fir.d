@@ -7,7 +7,8 @@ import std.range;
 // - naive convolution
 
 // sinc impulse functions
-void generateLowpassImpulse(T)(T[] output, double cutoff, double samplerate)
+
+void genLowpassImpulse(T)(T[] output, double cutoff, double samplerate)
 {
     checkFilterParams(output.length, cutoff, samplerate);
     double cutoffNormalized = cutoff / samplerate;
@@ -22,9 +23,10 @@ void generateLowpassImpulse(T)(T[] output, double cutoff, double samplerate)
         else
             output[i] = sin(wc * x) / cast(double)x;
     }
+    normalizeImpulse(output);
 }
 
-void generateHighpassImpulse(T)(T[] output, double cutoff, double samplerate)
+void genHighpassImpulse(T)(T[] output, double cutoff, double samplerate)
 {
     checkFilterParams(output.length, cutoff, samplerate);
     double cutoffNormalized = cutoff / samplerate;
@@ -39,7 +41,43 @@ void generateHighpassImpulse(T)(T[] output, double cutoff, double samplerate)
         else
             output[i] = -sin(wc * x) / cast(double)x;
     }
+    normalizeImpulse(output);
 }
+/+
+void genHilbertTransformer(T)(Window::Type window, double samplerate, T* outImpulse, size_t size)
+{
+    ASSERT(isOdd(size));
+
+    size_t center = size / 2;
+
+    for (size_t i = 0; i < center; ++i)
+    {
+        double const x = (double)i - (double)center;
+        double const y = x * (double)GFM_PI / 2;
+        double const sine = sin(y);
+        T value = (T)(-sine*sine / y) * Window::eval(window, i, size);
+        outImpulse[i] = value;
+        outImpulse[size - 1 - i] = -value;
+    }
+    outImpulse[center] = 0;
+    normalizeImpulse(outImpulse, size);
+}
++/
+
+/// Normalize impulse response.
+/// Scale to make sum = 1.
+void normalizeImpulse(T)(T[] inoutImpulse)
+{
+    size_t size = inoutImpulse.length;
+    double sum = 0;
+    for (size_t i = 0; i < size; ++i)
+        sum[i] += inoutImpulse[i];
+
+    double invSum = 1 / sum;
+    for (size_t i = 0; i < size; ++i)
+        inoutImpulse[i] = cast(T)(inoutImpulse[i] * invSum);
+}
+
 
 private static void checkFilterParams(size_t length, double cutoff, double sampleRate)
 {
