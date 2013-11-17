@@ -52,6 +52,18 @@ bool isEven(T)(T i)
     return (i & 1) == 0;
 }
 
+/// Returns: x so that (1 << x) >= i
+int iFloorLog2(size_t i)
+{
+    int result = 0;
+    while (i > 1)
+    {
+        i = i / 2;
+        result = result + 1;
+    }
+    return result;
+}
+
 double MIDIToFrequency(T)(int note)
 {
     return 440 * pow(2.0, (note - 69.0) / 12.0);

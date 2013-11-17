@@ -9,5 +9,6 @@ public
            dplug.dsp.window,
            dplug.dsp.smoothing,
            dplug.dsp.envelope,
-           dplug.dsp.wavetable;
+           dplug.dsp.wavetable,
+           dplug.dsp.fft;
 }
