@@ -29,6 +29,31 @@ public
             x = x.init; // fill with 0 for floating-point numbers
             y = y.init;
         }
+
+        static if (order == 2)
+        {
+            T process(U)(T input, const(BiquadCoeff!T) coeff)
+            {
+                T x1 = state.x[0],
+                  x2 = state.x[1],
+                  y1 = state.y[0],
+                  y2 = state.y[1];
+
+                T a0 = coef[0],
+                  a1 = coef[1],
+                  a2 = coef[2],
+                  a3 = coef[3],
+                  a4 = coef[4];
+
+                double T = a0 * input + a1 * x1 + a2 * x2 - a3 * y1 - a4 * y2;
+
+                state.x[0] = x;
+                state.x[1] = x1;
+                state.y[0] = y;
+                state.y[1] = y1;
+                return y;
+            }
+        }
     }
 
 
