@@ -32,7 +32,7 @@ public
 
         static if (order == 2)
         {
-            T process(U)(T input, const(BiquadCoeff!T) coeff)
+            T next(U)(T input, const(BiquadCoeff!T) coeff)
             {
                 T x1 = state.x[0],
                   x2 = state.x[1],

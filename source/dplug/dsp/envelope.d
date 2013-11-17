@@ -1,7 +1,37 @@
 module dplug.dsp.envelope;
 
-//  Envelope followers
+import dplug.dsp.iir;
 
+// Various envelope followers
+
+
+/// Simple envelope follower, estimate amplitude.
+class EnvelopeFollower(T)
+{
+public:
+
+    // typical frequency would be is 10-30hz
+    void init(double cutoff, double sampleRate)
+    {
+        _coeff = lowpassFilterRBJ(cutoff, sampleRate);
+        _delay0.clear();
+        _delay1.clear();
+    }
+
+    // takes on sample, return mean amplitude
+    T next(T x)
+    {
+        T l = abs(x);
+        l = _delay0.next(l, _coeff);
+        l = _delay1.next(l, _coeff);
+        return l;
+    }
+
+private:
+    BiquadCoeff!T _coeff;
+    BiquadDelay!T _delay0;
+    BiquadDelay!T _delay1;
+}
 
 /// Get the module of estimate of analytic signal.
 /// Phase response depends a lot on input signal, it's not great for bass but gets
@@ -107,9 +137,6 @@ private:
     double[12] _xnm1;
     double[12] _ynm1;
 }
-
-
-
 
 
 /// Teager Energy Operator.
