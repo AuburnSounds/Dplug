@@ -2,6 +2,8 @@ module dplug.dsp.smoothing;
 
 import std.traits;
 
+import gfm.core.queue;
+
 import dplug.dsp.funcs;
 
 /// Smooth values exponentially with a 1-pole lowpass.
@@ -188,6 +190,7 @@ private:
 }
 
 /// Can be very useful when filtering values with outliers.
+/// For what it's meant to do, excellent phase response.
 struct MedianFilter(T, int N)
 {
     static assert(N >= 2, "N must be >= 2");
@@ -227,4 +230,71 @@ public:
 private:
     T _delay[N - 1];
     bool _first;
-};
+}
+
+
+/// Simple FIR to smooth things cheaply.
+/// I never succeeded in making it very useful, perhaps you need to cascade several.
+/// Introduces (samples - 1) / 2 latency.
+struct MeanFilter(T)
+{
+public:
+    /// Initialize mean filter with given number of samples.
+    void init(T initialValue, size_t samples, T maxExpectedValue)
+    {
+        _delay = new RingBuffer!long(samples);
+
+        _factor = cast(T)(2147483648.0 / maxExpectedValue);
+        _invNFactor = cast(T)1 / (_factor * samples);
+
+        // round to integer
+        long ivInt = toIntDomain(initialValue);
+
+        while(!_delay.isFull())
+            _delay.pushBack(ivInt);
+
+        _sum = samples * ivInt;
+    }
+
+    /// Initialize with with cutoff frequency and samplerate.
+    void init(T initialValue, double cutoffHz, double samplerate, T maxExpectedValue)
+    {
+        int nSamples = cast(int)(0.5 + samplerate / (2 * cutoffHz));
+
+        if (nSamples < 1)
+            nSamples = 1;
+
+        init(initialValue, nSamples, maxExpectedValue);
+    }
+
+    size_t latency() const
+    {
+        return _delay.size();
+    }
+
+    // process next sample
+    T next(T x)
+    {
+        // round to integer
+        long input = cast(long)(cast(T)0.5 + x * _factor);
+        _sum = _sum + input;
+        _sum = _sum - _delay.popFront();
+        _delay.pushBack(input);
+        return cast(T)_sum * _invNFactor;
+    }
+
+private:
+
+    long toIntDomain(T x)
+    {
+        return cast(long)(cast(T)0.5 + initialValue * _factor);
+    }
+
+    RingBuffer!long _delay;
+    long _sum; // should always be the sum of samples in delay
+    T _invNFactor;
+    T _factor;
+}
+
+
+
