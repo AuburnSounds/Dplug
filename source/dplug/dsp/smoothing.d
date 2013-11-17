@@ -115,7 +115,7 @@ private:
     T _maxAbsDiff;
 }
 
-/// Class to smooth values over time with a linear slope.
+/// Smooth values over time with a linear slope.
 /// This can be useful for some smoothing needs.
 /// Intermediate between fast phase and actual smoothing.
 struct LinearSmoother(T)
@@ -185,4 +185,46 @@ private:
     double _phase;
     bool _firstNextAfterInit;
     bool _done;
+}
+
+/// Can be very useful when filtering values with outliers.
+struct MedianFilter(T, int N)
+{
+    static assert(N >= 2, "N must be >= 2");
+    static assert(N % 2 == 1, "N must be odd");
+
+public:
+
+    void init()
+    {
+        _first = true;
+    }
+
+    T next(T input)
+    {
+        if (_first)
+        {
+            for (int i = 0; i < N - 1; ++i)
+                _delay[i] = input;
+            _first = false;
+        }
+
+        T arr[N];
+        arr[0] = input;
+        for (int i = 0; i < N - 1; ++i)
+            arr[i + 1] = _delay[i];
+        
+        arr.sort; // sort in place
+
+        T median = arr[N/2];
+
+        for (int i = N - 3; i >= 0; --i)
+            _delay[i + 1] = _delay[i];
+        _delay[0] = input;
+        return median;
+    }
+
+private:
+    T _delay[N - 1];
+    bool _first;
 };
