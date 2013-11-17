@@ -1,4 +1,4 @@
-module dplug.dsp.hilbert;
+module dplug.dsp.envelope;
 
 //  Envelope followers
 
