@@ -3,8 +3,6 @@ module dplug.dsp.noise;
 import std.random,
        std.math;
 
-import gfm.math.simplerng;
-
 /// Generates white noise.
 struct WhiteNoise
 {

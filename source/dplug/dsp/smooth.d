@@ -1,4 +1,4 @@
-module dplug.dsp.smoothing;
+module dplug.dsp.smooth;
 
 import std.traits;
 
