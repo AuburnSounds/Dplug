@@ -89,11 +89,6 @@ struct FFTAnalyzer
 {
     /// Initialize the FFTAnalyzer
     
-    void init()
-    {
-        
-    }
-
     size_t windowSize() const
     {
         return _windowSize;
@@ -111,7 +106,7 @@ struct FFTAnalyzer
     /// Basic overlap is achieved with windowSize = 2 * analysisPeriod
     /// if zeroPhaseWindowing = true, "zero phase" windowing is used
     /// (center of window is at first sample, zero-padding happen at center)
-    void setup(size_t windowSize, size_t fftSize, size_t analysisPeriod, WindowType windowType, bool zeroPhaseWindowing, bool correctWindowLoss)
+    void init(size_t windowSize, size_t fftSize, size_t analysisPeriod, WindowType windowType, bool zeroPhaseWindowing, bool correctWindowLoss)
     {
         _windowType = windowType;
         _zeroPhaseWindowing = zeroPhaseWindowing;
@@ -136,7 +131,7 @@ struct FFTAnalyzer
         _index = 0;
 
         _windowBuffer.length = _windowSize;
-        genWindow(_windowType, _windowBuffer[]);
+        generateWindow(_windowType, _windowBuffer[]);
 
         _windowGainCorrFactor = 0;
         for (size_t i = 0; i < _windowSize; ++i)

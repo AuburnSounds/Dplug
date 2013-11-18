@@ -10,7 +10,7 @@ enum WindowType
     BLACKMANN,
 }
 
-void genWindow(T)(WindowType type, T[] output)
+void generateWindow(T)(WindowType type, T[] output)
 {
     size_t N = output.length;
     for (size_t i = 0; i < N; ++i)

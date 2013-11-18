@@ -14,7 +14,7 @@ import dplug.dsp.fft;
 
 // sinc impulse functions
 
-void genLowpassImpulse(T)(T[] output, double cutoff, double samplerate)
+void generateLowpassImpulse(T)(T[] output, double cutoff, double samplerate)
 {
     checkFilterParams(output.length, cutoff, samplerate);
     double cutoffNormalized = cutoff / samplerate;
@@ -32,7 +32,7 @@ void genLowpassImpulse(T)(T[] output, double cutoff, double samplerate)
     normalizeImpulse(output);
 }
 
-void genHighpassImpulse(T)(T[] output, double cutoff, double samplerate)
+void generateHighpassImpulse(T)(T[] output, double cutoff, double samplerate)
 {
     checkFilterParams(output.length, cutoff, samplerate);
     double cutoffNormalized = cutoff / samplerate;
@@ -41,7 +41,7 @@ void genHighpassImpulse(T)(T[] output, double cutoff, double samplerate)
     size_t len = output.length;
     for (size_t i = 0; i < len; ++i)
     {
-        int x = frame - (cast(int)len / 2);
+        int x = i - (cast(int)len / 2);
         if (x == 0)
             output[i] = 1 - wc;
         else
@@ -50,7 +50,7 @@ void genHighpassImpulse(T)(T[] output, double cutoff, double samplerate)
     normalizeImpulse(output);
 }
 /+
-void genHilbertTransformer(T)(Window::Type window, double samplerate, T* outImpulse, size_t size)
+void generateHilbertTransformer(T)(Window::Type window, double samplerate, T* outImpulse, size_t size)
 {
     ASSERT(isOdd(size));
 
@@ -148,7 +148,9 @@ private static void checkFilterParams(size_t length, double cutoff, double sampl
 
 unittest
 {
-    double[256] impulse;
-    genLowpassImpulse(impulse[], 40.0, 44100.0);
-    minimumPhaseImpulse(impulse[]);
+    double[256] lp_impulse;
+    double[256] hp_impulse;
+    generateLowpassImpulse(lp_impulse[], 40.0, 44100.0);
+    generateHighpassImpulse(hp_impulse[], 40.0, 44100.0);
+    minimumPhaseImpulse(lp_impulse[]);
 }
