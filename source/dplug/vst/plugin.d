@@ -1,16 +1,48 @@
 module dplug.vst.plugin;
 
-import dplug.vst.aeffectx;
+import std.conv;
+
+import dplug.vst.aeffectx,
+       dplug.vst.host;
+
+
+/// Use this mixin template to create the VST entry point
+/// Example:
+///     mixin VSTEntryPoint!MyVstPlugin;
+mixin template VSTEntryPoint(alias VSTPluginClass, int uniqueID)
+{
+    enum size_t pluginSize =  __traits(classInstanceSize, VSTPluginClass);
+    __gshared ubyte[pluginSize] pluginBytes;
+
+    extern(C) private nothrow AEffect* VSTPluginMain(HostCallbackFunction hostCallback) 
+    {
+        if (hostCallback is null)
+            return null;
+
+        try
+        {
+            VSTPluginClass plugin = emplace!(VSTPluginClass)(pluginBytes[], hostCallback, uniqueID);
+        }
+        catch (Throwable e)
+        {
+            unrecoverableError(); // should not throw in a callback
+            return null;
+        }
+        return &plugin._effect;
+    }
+}
+
+
 
 class VSTPlugin 
 {
 public:
     AEffect _effect;
-    HostCallbackFunction _hostCallback;
+    VSTHost _host;
 
-    this(HostCallbackFunction hostCallback) 
+    this(HostCallbackFunction hostCallback, int uniqueID) 
     {
-        _hostCallback = hostCallback;
+        _host.init(hostCallback, &_effect);
 
         _effect.magic = kEffectMagic;
         _effect.flags = effFlagsCanReplacing;
@@ -19,7 +51,7 @@ public:
         _effect.numParams = 0;
         _effect.numPrograms = 0;
         _effect.version_ = 1;
-        _effect.uniqueID = CCONST('N', 'o', 'E', 'f');
+        _effect.uniqueID = uniqueID;
         _effect.processReplacing = &processReplacingCallback;
         _effect.dispatcher = &dispatcherCallback;
         _effect.setParameter = &setParameterCallback;
@@ -28,12 +60,12 @@ public:
 
         //deprecated
         _effect.DEPRECATED_ioRatio = 1.0;
-        _effect.DEPRECATED_process = &processCallback;        
+        _effect.DEPRECATED_process = &processCallback;
     }
 
     VstIntPtr dispatcher(int opcode, int index, int value, void *ptr, float opt)
     {
-        return 0;       
+        return 0; // TODO
     }
 }
 
