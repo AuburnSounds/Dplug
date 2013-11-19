@@ -11,8 +11,7 @@ import dplug.vst.aeffectx,
 ///     mixin VSTEntryPoint!MyVstPlugin;
 mixin template VSTEntryPoint(alias VSTPluginClass, int uniqueID)
 {
-    enum size_t pluginSize =  __traits(classInstanceSize, VSTPluginClass);
-    __gshared ubyte[pluginSize] pluginBytes;
+    __gshared VSTPluginClass plugin;
 
     extern(C) private nothrow AEffect* VSTPluginMain(HostCallbackFunction hostCallback) 
     {
@@ -21,7 +20,7 @@ mixin template VSTEntryPoint(alias VSTPluginClass, int uniqueID)
 
         try
         {
-            VSTPluginClass plugin = emplace!(VSTPluginClass)(pluginBytes[], hostCallback, uniqueID);
+            plugin = VSTPluginClass(hostCallback, uniqueID);
         }
         catch (Throwable e)
         {
@@ -34,7 +33,7 @@ mixin template VSTEntryPoint(alias VSTPluginClass, int uniqueID)
 
 
 
-class VSTPlugin 
+struct VSTPlugin 
 {
 public:
     AEffect _effect;
@@ -56,7 +55,7 @@ public:
         _effect.dispatcher = &dispatcherCallback;
         _effect.setParameter = &setParameterCallback;
         _effect.getParameter = &getParameterCallback;
-        _effect.user = cast(void*)this;
+        _effect.user = cast(void*)(&this);
 
         //deprecated
         _effect.DEPRECATED_ioRatio = 1.0;
@@ -69,7 +68,7 @@ public:
     }
 }
 
-private void unrecoverableError() nothrow
+void unrecoverableError() nothrow
 {
     debug
     {
@@ -90,7 +89,7 @@ extern(C) private nothrow
     {
         try
         {
-            VSTPlugin plugin = cast(VSTPlugin)effect.user;
+            auto plugin = cast(VSTPlugin*)effect.user;
             return plugin.dispatcher(opcode, index, value, ptr, opt);
         }
         catch (Throwable e)
@@ -104,7 +103,7 @@ extern(C) private nothrow
     {
         try
         {
-            VSTPlugin plugin = cast(VSTPlugin)effect.user;
+            auto plugin = cast(VSTPlugin*)effect.user;
         }
         catch (Throwable e)
         {
@@ -116,7 +115,7 @@ extern(C) private nothrow
     {
         try
         {
-            VSTPlugin plugin = cast(VSTPlugin)effect.user;
+            auto plugin = cast(VSTPlugin*)effect.user;
         }
         catch (Throwable e)
         {
@@ -128,20 +127,19 @@ extern(C) private nothrow
     {
         try
         {
-            VSTPlugin plugin = cast(VSTPlugin)effect.user;        
+            auto plugin = cast(VSTPlugin*)effect.user;        
         }
         catch (Throwable e)
         {
             unrecoverableError(); // should not throw in a callback
-        }
-        
+        }        
     }
 
     float getParameterCallback(AEffect *effect, int index) 
     {
         try
         {
-            VSTPlugin plugin = cast(VSTPlugin)effect.user;        
+            auto plugin = cast(VSTPlugin*)effect.user;        
             return 0.0f;
         }
         catch (Throwable e)
