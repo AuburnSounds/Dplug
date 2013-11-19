@@ -17,6 +17,7 @@ Before you code with dplug, you need to read and agree with the license for the 
 ### plugin/
   * **iplug.d.d** base plugin interface, format agnostic (not done yet)
   * **dllmain.d** shared library entry point
+  * **spinlock.d** a tiny synchronization object for UI <-> plugin interaction
 
 ### vst/
   * **aeffect.d** VST SDK translation of aeffect.h
