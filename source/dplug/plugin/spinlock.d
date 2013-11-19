@@ -5,10 +5,7 @@ module dplug.plugin.spinlock;
 /// audio thread and an UI thread.
 /// Not re-entrant.
 
-import core.atomic : cas;
-import std.cpuid;
-
-nothrow bool cas(T, V1, V2)(shared(T)* here, const shared(V1)* ifThis, shared(V2)* writeThis) if (is(T U : U*) && __traits(compiles, () { *here = writeThis; } )); 
+import core.atomic;
 
 struct Spinlock
 {
@@ -22,7 +19,7 @@ struct Spinlock
 
         shared int _state; // initialized to false => unlocked
         
-        void lock()
+        void lock() nothrow
         {
             while(!cas(&_state, UNLOCKED, LOCKED))
             {
@@ -32,7 +29,7 @@ struct Spinlock
             }
         }
 
-        void unlock()
+        void unlock() nothrow
         {
             atomicStore(_state, UNLOCKED);
         }
