@@ -30,27 +30,23 @@ double secondaryLobeAttenuationInDb(WindowType type)
     }
 }
 
-
-private
+double evalWindow(WindowType type, size_t n, size_t N)
 {
-    double evalWindow(WindowType type, size_t n, size_t N)
+    final switch(type)
     {
-        final switch(type)
-        {
-            case WindowType.RECT:
-                return 1.0;
+        case WindowType.RECT:
+            return 1.0;
 
-            case WindowType.HANN:
-                return 0.5 - 0.5 * cos((2 * PI * n) / (N - 1));
+        case WindowType.HANN:
+            return 0.5 - 0.5 * cos((2 * PI * n) / (N - 1));
 
-            case WindowType.HAMMING:
-                return 0.54 - 0.46 * cos((2 * PI * n) / (N - 1));
+        case WindowType.HAMMING:
+            return 0.54 - 0.46 * cos((2 * PI * n) / (N - 1));
 
-            case WindowType.BLACKMANN:
-                {
-                    double phi = (2 * PI * n) / (N - 1);
-                    return 0.42 - 0.5 * cos(phi) + 0.08 * cos(2 * phi);
-                }
-        }
+        case WindowType.BLACKMANN:
+            {
+                double phi = (2 * PI * n) / (N - 1);
+                return 0.42 - 0.5 * cos(phi) + 0.08 * cos(2 * phi);
+            }
     }
 }

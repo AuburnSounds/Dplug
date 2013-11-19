@@ -6,7 +6,9 @@ import std.range,
 
 import gfm.math.funcs;
 
-import dplug.dsp.fft;
+import dplug.dsp.funcs,
+       dplug.dsp.fft,
+       dplug.dsp.window;
 
 // TODO:
 // - bandstop/bandstop IR
@@ -49,26 +51,26 @@ void generateHighpassImpulse(T)(T[] output, double cutoff, double samplerate)
     }
     normalizeImpulse(output);
 }
-/+
-void generateHilbertTransformer(T)(Window::Type window, double samplerate, T* outImpulse, size_t size)
-{
-    ASSERT(isOdd(size));
 
+void generateHilbertTransformer(T)(T[] outImpulse, WindowType window, double samplerate)
+{
+    size_t size = outImpulse.length;
+    assert(isOdd(size));    
     size_t center = size / 2;
 
     for (size_t i = 0; i < center; ++i)
     {
-        double const x = (double)i - (double)center;
-        double const y = x * (double)GFM_PI / 2;
-        double const sine = sin(y);
-        T value = (T)(-sine*sine / y) * Window::eval(window, i, size);
+        double x = cast(double)i - cast(double)center;
+        double y = x * cast(double)PI / 2;
+        double sine = sin(y);
+        T value = cast(T)(-sine*sine / y) * evalWindow(window, i, size);
         outImpulse[i] = value;
         outImpulse[size - 1 - i] = -value;
     }
     outImpulse[center] = 0;
-    normalizeImpulse(outImpulse, size);
+    normalizeImpulse(outImpulse);
 }
-+/
+
 
 /// Normalize impulse response.
 /// Scale to make sum = 1.
@@ -84,21 +86,29 @@ void normalizeImpulse(T)(T[] inoutImpulse)
         inoutImpulse[i] = cast(T)(inoutImpulse[i] * invSum);
 }
 
-// From an impulse, computes a minimum-phase impulse
-// Courtesy of kasaudio, based on Aleksey Vaneev's algorithm
-// Warning: allocates memory.
-// See: http://www.kvraudio.com/forum/viewtopic.php?t=197881
-// TODO: does it preserve amplitude?
-// ALLOCATES!!!
-// UNTESTED!!!
+/// From an impulse, computes a minimum-phase impulse
+/// Courtesy of kasaudio, based on Aleksey Vaneev's algorithm
+/// Warning: allocates memory.
+/// See: http://www.kvraudio.com/forum/viewtopic.php?t=197881
+/// TODO: does it preserve amplitude?
+void minimumPhaseImpulse(T)(T[] inoutImpulse) // allocates
+{
+    size_t power = nextPowerOf2(inoutImpulse.length) + 3;
+    size_t fftSize = 1 << power;
+    auto kernel = new Complex!T[fftSize];
+    minimumPhaseImpulse(inoutImpulse, kernel[]);
+}
     
-void minimumPhaseImpulse(T)(T[] inoutImpulse)
+void minimumPhaseImpulse(T)(T[] inoutImpulse,  Complex!T[] tempStorage) // alloc free version
 {
     size_t size = inoutImpulse.length;
     alias size n;
     size_t power = nextPowerOf2(size) + 3;
     size_t fftSize = 1 << power;
     size_t halfFFTSize = fftSize / 2;
+
+    if (tempStorage.length < fftSize)
+        assert(false); // crash
 
     auto kernel = new Complex!T[fftSize];
 
@@ -153,4 +163,6 @@ unittest
     generateLowpassImpulse(lp_impulse[], 40.0, 44100.0);
     generateHighpassImpulse(hp_impulse[], 40.0, 44100.0);
     minimumPhaseImpulse(lp_impulse[]);
+
+    generateHilbertTransformer(lp_impulse[], WindowType.BLACKMANN, 44100.0);
 }
