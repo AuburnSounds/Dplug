@@ -20,7 +20,7 @@
             "targetName": "vst_test",
             "sourceFiles": [ 
                 "vst_test/vst_test.d", 
-                "vst_test/vst_test.res"
+                "vst_test/vst_test.def"
             ]
         }
     ]
