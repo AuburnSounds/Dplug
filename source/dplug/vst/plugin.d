@@ -1,6 +1,7 @@
 module dplug.vst.plugin;
 
-import core.stdc.stdlib;
+import core.stdc.stdlib,
+       core.stdc.string;
 
 import std.conv,
        std.typecons;
@@ -55,11 +56,14 @@ public:
     {
         _host.init(hostCallback, &_effect);
 
+        _effect = _effect.init;
+        
+
         _effect.magic = kEffectMagic;
         _effect.flags = effFlagsCanReplacing;
-        _effect.numInputs = 0;
-        _effect.numOutputs = 0;
-        _effect.numParams = 0;
+        _effect.numInputs = 2;
+        _effect.numOutputs = 2;
+        _effect.numParams = 3;
         _effect.numPrograms = 0;
         _effect.version_ = 1;
         _effect.uniqueID = uniqueID;
@@ -67,87 +71,142 @@ public:
         _effect.dispatcher = &dispatcherCallback;
         _effect.setParameter = &setParameterCallback;
         _effect.getParameter = &getParameterCallback;
-        _effect.user = cast(void*)(&this);
+        _effect.user = cast(void*)(this);
+        _effect.object = cast(void*)(this);
+        _effect.processDoubleReplacing = null;
 
         //deprecated
         _effect.DEPRECATED_ioRatio = 1.0;
         _effect.DEPRECATED_process = &processCallback;
     }
 
-    VstIntPtr dispatcher(int opcode, int index, int value, void *ptr, float opt)
+    final VstIntPtr dispatcher(int opcode, int index, int value, void *ptr, float opt)
     {
         switch(opcode)
         {
-            case effProcessEvents:
-                // TODO: process events
-
-                break;
-
-            case effCanBeAutomated:
-                // return 1 if param index can be automated
+            case effOpen:
+                onOpen();
                 return 0;
 
-            case effString2Parameter:
-            case DEPRECATED_effGetNumProgramCategories:
-            case effGetProgramNameIndexed:
-            case DEPRECATED_effCopyProgram:
-            case DEPRECATED_effConnectInput:
-            case DEPRECATED_effConnectOutput:
-            case effGetInputProperties:
-            case effGetOutputProperties:
-            case effGetPlugCategory:
-            case DEPRECATED_effGetCurrentPosition:
-            case DEPRECATED_effGetDestinationBuffer:
-            case effOfflineNotify:
-            case effOfflinePrepare:
-            case effOfflineRun:
-            case effProcessVarIo:
-            case effSetSpeakerArrangement:
-            case DEPRECATED_effSetBlockSizeAndSampleRate:
-            case effSetBypass:
-            case effGetEffectName:
-            case DEPRECATED_effGetErrorText:
-            case effGetVendorString:
-            case effGetProductString:
-            case effGetVendorVersion:
-            case effVendorSpecific:
-            case effCanDo:
-            case effGetTailSize:
-            case DEPRECATED_effIdle:
-            case DEPRECATED_effGetIcon:
-            case DEPRECATED_effSetViewPosition:
-            case effGetParameterProperties:
-            case DEPRECATED_effKeysRequired:
-            case effGetVstVersion:
+            case effClose:
+                onClose();
+                return 0;
 
-            case effEditKeyDown:
-            case effEditKeyUp:
-            case effSetEditKnobMode:
-            case effGetMidiProgramName:
-            case effGetCurrentMidiProgram:
-            case effGetMidiProgramCategory:
-            case effHasMidiProgramsChanged:
-            case effGetMidiKeyName:
-            case effBeginSetProgram:
-            case effEndSetProgram:
-            case effGetSpeakerArrangement:   
-            case effShellGetNextPlugin:      
-            case effStartProcess:
-            case effStopProcess:
-            case effSetTotalSampleToProcess:
-            case effSetPanLaw: 
-            case effBeginLoadBank:
-            case effBeginLoadProgram:
-            case effSetProcessPrecision:
-            case effGetNumMidiInputChannels:
-            case effGetNumMidiOutputChannels:
-            return 0; // unknown opcode
+            case effSetProgram:
+                // TODO
+                return 0;
+
+            case effGetProgram:
+                return 0; // TODO
+
+            case effSetProgramName:
+                return 0; // TODO
+
+            case effGetProgramName:  // max 23 chars
+            {
+                // currently always return ""
+                char* p = cast(char*)ptr;
+                *p = '\0';
+                return 0; // TODO
+            }
+
+            case effGetParamLabel:   // max 7 chars
+            case effGetParamDisplay:   // max 7 chars
+            case effGetParamName: // max 31 chars
+            {
+                // currently always return ""
+                char* p = cast(char*)ptr;
+                *p = '\0';
+                return 0; // TODO
+            }
+
+            case effSetSampleRate:
+                return 0; // TODO
+           
+            case effSetBlockSize:
+                return 0; // TODO, give the maximum number of frames used in processReplacing
+
+            case effMainsChanged:
+                return 0; // TODO, plugin should clear its state
+
+            case effEditGetRect:
+            case effEditOpen:
+            case effEditClose:
+            case DEPRECATED_effEditDraw: 
+            case DEPRECATED_effEditMouse: 
+            case DEPRECATED_effEditKey: 
+            case effEditIdle: 
+            case DEPRECATED_effEditTop: 
+            case DEPRECATED_effEditSleep: 
+            case DEPRECATED_effIdentify: 
+                return 0;
+
+            case effGetChunk:
+                return 0; // TODO
+
+            case effSetChunk:
+                return 0; // TODO
+
+            case effProcessEvents:
+                return 0; // TODO
+
+            case effCanBeAutomated:
+                return 1; // can always be automated
+
+            case effString2Parameter:
+                return 0; // TODO
+
+            case DEPRECATED_effGetNumProgramCategories:
+                return 1; // no real program categories
+
+            case effGetProgramNameIndexed:
+            {
+                // currently always return ""
+                char* p = cast(char*)ptr;
+                *p = '\0';
+                return 1; // TODO
+            }
+
+            case effProcessVarIo:
+                return 0;
+
+            case effGetPlugCategory:
+                return kPlugCategEffect; // effect
+
+            case effGetProductString:
+            {
+                char* p = cast(char*)ptr;
+                if (p !is null)
+                {
+                    strcpy(p, "lolg-plugin");
+                }
+                return 0;
+            }
+
+            case effCanDo:
+                return -1; // can't do anything
+
+            case effGetVstVersion:
+                return 2400; // version 2.4
 
         default:
             return 0; // unknown opcode
         }
 
         return 0; // TODO
+    }
+
+    protected
+    {
+        void onOpen()
+        {
+        }
+
+        void onClose()
+        {
+        }
+
+
     }
 }
 
@@ -172,7 +231,7 @@ extern(C) private nothrow
     {
         try
         {
-            auto plugin = cast(VSTPlugin*)effect.user;
+            auto plugin = cast(VSTPlugin)(effect.user);
             return plugin.dispatcher(opcode, index, value, ptr, opt);
         }
         catch (Throwable e)
@@ -186,7 +245,7 @@ extern(C) private nothrow
     {
         try
         {
-            auto plugin = cast(VSTPlugin*)effect.user;
+            auto plugin = cast(VSTPlugin)effect.user;
         }
         catch (Throwable e)
         {
@@ -198,7 +257,7 @@ extern(C) private nothrow
     {
         try
         {
-            auto plugin = cast(VSTPlugin*)effect.user;
+            auto plugin = cast(VSTPlugin)effect.user;
         }
         catch (Throwable e)
         {
@@ -210,7 +269,7 @@ extern(C) private nothrow
     {
         try
         {
-            auto plugin = cast(VSTPlugin*)effect.user;        
+            auto plugin = cast(VSTPlugin)effect.user;        
         }
         catch (Throwable e)
         {
