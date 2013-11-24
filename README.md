@@ -1,7 +1,7 @@
 # What's this?
 
 dplug is a library that allow the creation of audio plugins. 
-Additionally it comes with music DSP algorithms that are very to help you get up to speed with
+Additionally it comes with music DSP algorithms that might be useful for your next-generation MS converter plugin.
 Currently very alpha and unusable.
 
 ## Contents
