@@ -1,3 +1,4 @@
+// See licenses/UNLICENSE.txt
 module dplug.dsp.wavetable;
 
 import std.math;

@@ -1,3 +1,4 @@
+// See licenses/WDL_license.txt
 module dplug.plugin.spinlock;
 
 /// Intended to small delays only.

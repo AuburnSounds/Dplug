@@ -1,15 +1,4 @@
-//-------------------------------------------------------------------------------------------------------
-// VST Plug-Ins SDK
-// Version 2.4      $Date: 2006/06/20 12:43:42 $
-//
-// Category     : VST 2.x Interfaces
-// Filename     : aeffectx.h
-// Created by   : Steinberg Media Technologies
-// Description  : Definition of auxiliary structures, extensions from VST 1.0 to VST 2.4
-//
-// (c) 2006, Steinberg Media Technologies, All Rights Reserved
-//-------------------------------------------------------------------------------------------------------
-
+// See Steinberg VST license here: http://www.gersic.com/vstsdk/html/plug/intro.html#licence
 module dplug.vst.aeffectx;
 
 public import dplug.vst.aeffect;

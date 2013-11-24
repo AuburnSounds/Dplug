@@ -6,7 +6,7 @@ int uniqueID = CCONST('l', 'o', 'l', 'Z');
 
 __gshared VSTPluginClass plugin;
 
-extern (Windows) nothrow AEffect* VSTPluginMain(HostCallbackFunction hostCallback) 
+extern (C) nothrow AEffect* VSTPluginMain(HostCallbackFunction hostCallback) 
 {
     if (hostCallback is null)
         return null;

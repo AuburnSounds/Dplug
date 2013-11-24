@@ -1,15 +1,4 @@
-//-------------------------------------------------------------------------------------------------------
-// VST Plug-Ins SDK
-// Version 2.4      $Date: 2006/06/20 17:22:55 $
-//
-// Category     : VST 2.x Interfaces
-// Filename     : aeffect.d
-// Created by   : Steinberg Media Technologies
-// Description  : Definition of AEffect structure
-//
-// (c) 2006, Steinberg Media Technologies, All Rights Reserved
-//-------------------------------------------------------------------------------------------------------
-
+// See Steinberg VST license here: http://www.gersic.com/vstsdk/html/plug/intro.html#licence
 module dplug.vst.aeffect;
 
 //import core.stdc.stdio; // for strncpy

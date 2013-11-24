@@ -1,3 +1,4 @@
+// See licenses/UNLICENSE.txt
 module dplug.dsp.window;
 
 import std.math;

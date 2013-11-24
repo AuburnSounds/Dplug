@@ -1,3 +1,4 @@
+// See licenses/UNLICENSE.txt
 module dplug.dsp.smooth;
 
 import std.traits;

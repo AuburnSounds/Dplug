@@ -1,3 +1,4 @@
+// See licenses/UNLICENSE.txt
 module dplug.dsp.funcs;
 
 import std.math;
