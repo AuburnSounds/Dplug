@@ -15,15 +15,7 @@ public:
 
     float next()
     {
-        union float_uint
-        {
-            float f;
-            uint ui;
-        }
-        float_uint fu;
-        fu.ui = _rng.front;
-        _rng.popFront();
-        return fu.f - 3.0f; // 32-bits int to float conversion trick
+        return uniform(-1.0f, 1.0f, _rng);
     }
 
 private:
@@ -37,7 +29,7 @@ struct DemoNoise
 {
 public:
     enum int PERIOD = 30;
-    enum int SOUND_DURATION = 2;
+    enum int NOISE_DURATION = 2;
 
     void init(double samplerate)
     {
@@ -53,8 +45,8 @@ public:
         while (_counter >= PERIOD)
             _counter = _counter - PERIOD;
 
-        if (_counter > PERIOD - SOUND_DURATION)
-            return 1 + _noise.next() * 0.3 * sin(PI * (_counter - PERIOD + SOUND_DURATION) / SOUND_DURATION);
+        if (_counter > PERIOD - NOISE_DURATION)
+            return 1 + _noise.next() * 0.3 * sin(PI * (_counter - PERIOD + NOISE_DURATION) / NOISE_DURATION);
         else
             return 1;
     }
@@ -100,15 +92,13 @@ private:
 
     void newGoal()
     {
-        _goal = 2 * (uniform(0.0f, 1.0f, _random) - 0.5f);
+        _goal = 2 * (uniform(0.0f, 1.0f, _rng) - 0.5f);
     }
 
     float _current;
     float _phase;
     float _phaseInc;
     float _goal;
-    Random _random;
-
     void _newGoal();
 
     Xorshift32 _rng;
