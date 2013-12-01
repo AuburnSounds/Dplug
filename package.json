@@ -3,19 +3,41 @@
     "description": "D audio toolkit.",
     "homepage": "http://github.com/p0nce/dplug/",
     "copyright": "Steinberg",
-    "license": "other",
+    "license": "VST",
 
     "authors": [
         "ponce",
         "Sean M. Costello (Hilbert transformer)"
     ],
 
-    "importPaths": [
-        "source"
-    ],
-
     "dependencies": {
-	    "gfm:core": "~master",
-        "gfm:math": "~master"
-    }
+        "dplug:dsp": "~master",
+        "dplug:plugin": "~master",
+        "dplug:vst": "~master"
+    },
+
+    "subPackages": [
+        {
+            "name": "dsp",
+            "sourcePaths": [ "source/dplug/dsp" ],
+            "importPaths": [ "source/dplug/dsp" ],
+            "dependencies": {
+                "gfm:core": "~master",
+                "gfm:math": "~master"
+            }
+        },
+        {
+            "name": "plugin",
+            "sourcePaths": [ "source/dplug/plugin" ],
+            "importPaths": [ "source/dplug/plugin" ]
+        },
+        {
+            "name": "vst",
+            "sourcePaths": [ "source/dplug/vst" ],
+            "importPaths": [ "source/dplug/vst" ],
+            "dependencies": {
+                "dplug:plugin": "~master"
+            }
+        }
+    ]
 }
