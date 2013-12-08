@@ -14,6 +14,7 @@ Currently very alpha and unusable.
 ### vst/
   * **aeffect.d** VST SDK translation of aeffect.h
   * **aeffectx.d** VST SDK translation of aeffectx.h
+  * **vstfxstore.d** VST SDK translation of vstfxstore.h
   * **plugin.d** VST wrapper (not done yet)
 
 ### dsp/

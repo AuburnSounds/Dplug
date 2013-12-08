@@ -5,6 +5,7 @@ public
 {
     import dplug.vst.aeffect,
            dplug.vst.aeffectx,
+           dplug.vst.vstfxstore,
            dplug.vst.host,
            dplug.vst.plugin;
 }
