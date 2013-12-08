@@ -9,19 +9,19 @@ version = VST_2_4_EXTENSIONS; /// Version 2.4 extensions (01-01-2006)
 
 //-------------------------------------------------------------------------------------------------------
 /** Root chunk identifier for Programs (fxp) and Banks (fxb). */
-enum VstInt32 cMagic = 1265525571;  // 'CcnK'
+enum VstInt32 cMagic = CCONST('C', 'c', 'n', 'K');
 
 /** Regular Program (fxp) identifier. */
-enum VstInt32 fMagic = 1799583814;  // 'FxCk'
+enum VstInt32 fMagic = CCONST('F', 'x', 'C', 'k');
 
 /** Regular Bank (fxb) identifier. */
-enum VstInt32 bankMagic = 1799518278;  // 'FxBk'
+enum VstInt32 bankMagic = CCONST('F', 'x', 'B', 'k');
 
 /** Program (fxp) identifier for opaque chunk data. */
-enum VstInt32 chunkPresetMagic = 1749241926;  // 'FPCh'
+enum VstInt32 chunkPresetMagic = CCONST('F', 'P', 'C', 'h');
 
 /** Bank (fxb) identifier for opaque chunk data. */
-enum VstInt32 chunkBankMagic = 1749238342;  // 'FBCh'
+enum VstInt32 chunkBankMagic = CCONST('F', 'B', 'C', 'h');
 
 /*
     Note: The C data structures below are for illustration only. You can not read/write them directly.
