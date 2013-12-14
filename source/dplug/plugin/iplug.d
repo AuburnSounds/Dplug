@@ -10,6 +10,8 @@ enum API
     AUDIO_UNIT
 }
 
+
+
 abstract class IParameter
 {
     void setFromFloat(float x);
@@ -20,10 +22,8 @@ abstract class IParameter
 class IPlugin
 {
 public:
-    this()
-    {
-     //   buildParameter();
-    }
+    
+
 
     // get number of parameters
     size_t getParamCount();
@@ -35,3 +35,4 @@ protected:
 
 
 }
+

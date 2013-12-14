@@ -1,13 +1,12 @@
 // See licenses/WDL_license.txt
 module dplug.plugin.spinlock;
 
+import core.atomic;
+
 /// Intended to small delays only.
 /// Allows very fast synchronization between eg. a high priority 
 /// audio thread and an UI thread.
 /// Not re-entrant.
-
-import core.atomic;
-
 struct Spinlock
 {
     public
@@ -34,5 +33,29 @@ struct Spinlock
         {
             atomicStore(_state, UNLOCKED);
         }
+    }
+}
+
+/// A value protected by a spin-lock.
+/// Ensure concurrency but no order.
+struct Spinlocked(T)
+{
+    Spinlock spinlock;
+    T value;
+
+    void set(T newValue) nothrow
+    {
+        spinlock.lock();
+        scope(exit) spinlock.unlock();
+
+        value = newValue;
+    }
+
+    T get() nothrow
+    {
+        spinlock.lock();
+        T current = value;
+        spinlock.unlock();
+        return current;
     }
 }
