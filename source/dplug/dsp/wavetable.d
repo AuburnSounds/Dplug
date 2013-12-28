@@ -84,8 +84,8 @@ struct Wavetable
         float level = cast(float)log2(phaseIncrementSamples);
         int level0 = cast(int)floor(level);
         int level1 = level0 + 1;
-        level0 = clamp!int(level0, 0, _numTables - 1);
-        level1 = clamp!int(level1, 0, _numTables - 1);
+        level0 = clamp!int(level0, 0, cast(int)_numTables - 1);
+        level1 = clamp!int(level1, 0, cast(int)_numTables - 1);
 
         if (level1 == 0)
         {

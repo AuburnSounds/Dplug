@@ -26,7 +26,7 @@ void FFT(T)(Complex!T[] buffer, FFTDirection direction)
     int m = iFloorLog2(size);
 
     // do the bit reversal
-    int i2 = size / 2;
+    int i2 = cast(int)size / 2;
     int j = 0;
     for (int i = 0; i < size - 1; ++i)
     {
