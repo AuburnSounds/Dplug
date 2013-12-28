@@ -22,32 +22,7 @@ T mallocEmplace(T, Args...)(auto ref Args args)
 /// Example:
 ///     mixin VSTEntryPoint!MyVstPlugin;
 
-// BUG: Unfortunately, can't export this function from a mixin template.
-// Copy it by hand.
-/+
-mixin template VSTEntryPoint(alias VSTPluginClass, int uniqueID)
-{
-    __gshared VSTPluginClass plugin;
-
-    extern (Windows) nothrow AEffect* VSTPluginMain(HostCallbackFunction hostCallback) 
-    {
-        if (hostCallback is null)
-            return null;
-
-        try
-        {
-            plugin = mallocEmplace!(VSTPluginClass, HostCallbackFunction, int)(hostCallback, uniqueID);
-        }
-        catch (Throwable e)
-        {
-            unrecoverableError(); // should not throw in a callback
-            return null;
-        }
-        return &plugin._effect;
-    }
-}
-+/
-class VSTPlugin 
+class VSTPlugin
 {
 public:
     AEffect _effect;
@@ -81,8 +56,18 @@ public:
         _effect.DEPRECATED_process = &processCallback;
     }
 
-    final VstIntPtr dispatcher(int opcode, int index, int value, void *ptr, float opt)
+    /// VST opcode dispatcher
+    final VstIntPtr dispatcher(int opcode, int index, ptrdiff_t value, void *ptr, float opt)
     {
+        // Important message from Cockos:
+        // "Assume everything can (and WILL) run at the same time as your 
+        // process/processReplacing, except:
+        //   - effOpen/effClose
+        //   - effSetChunk -- while effGetChunk can run at the same time as audio 
+        //     (user saves project, or for automatic undo state tracking), effSetChunk 
+        //     is guaranteed to not run while audio is processing.
+        // So nearly everything else should be threadsafe."
+
         switch(opcode)
         {
             case effOpen:
