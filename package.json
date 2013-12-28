@@ -21,7 +21,7 @@
         {
             "name": "dsp",
             "sourcePaths": [ "source/dplug/dsp" ],
-            "importPaths": [ "source/dplug/dsp" ],
+            "importPaths": [ "source" ],
             "dependencies": {
                 "gfm:core": "~master",
                 "gfm:math": "~master"
@@ -30,12 +30,12 @@
         {
             "name": "plugin",
             "sourcePaths": [ "source/dplug/plugin" ],
-            "importPaths": [ "source/dplug/plugin" ]
+            "importPaths": [ "source" ]
         },
         {
             "name": "vst",
             "sourcePaths": [ "source/dplug/vst" ],
-            "importPaths": [ "source/dplug/vst" ],
+            "importPaths": [ "source" ],
             "dependencies": {
                 "dplug:plugin": "~master"
             }

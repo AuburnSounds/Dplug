@@ -178,8 +178,6 @@ public:
         default:
             return 0; // unknown opcode
         }
-
-        return 0; // TODO
     }
 
     protected

@@ -10,8 +10,6 @@ enum API
     AUDIO_UNIT
 }
 
-
-
 abstract class IParameter
 {
     void setFromFloat(float x);
@@ -19,12 +17,9 @@ abstract class IParameter
 }
 
 /// Plugin format wrappers inherit from this base class.
-class IPlugin
+abstract class IPlugin
 {
 public:
-    
-
-
     // get number of parameters
     size_t getParamCount();
 
@@ -32,7 +27,5 @@ public:
     IParameter getParam(size_t i);
 
 protected:
-
-
 }
 
