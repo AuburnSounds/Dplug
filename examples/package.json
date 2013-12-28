@@ -21,7 +21,9 @@
             "sourceFiles": [ 
                 "vst_test/vst_test.d", 
                 "vst_test/vst_test.def"
-            ]
+            ],
+
+            "mainSourceFile" : "vst_test/vst_test.d"
         }
     ]
 }
