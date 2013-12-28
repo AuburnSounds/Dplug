@@ -20,8 +20,8 @@
     "subPackages": [
         {
             "name": "dsp",
-            "sourcePaths": [ "source/dplug/dsp" ],
-            "importPaths": [ "source" ],
+            "sourcePaths": [ "dsp/dplug/dsp" ],
+            "importPaths": [ "dsp" ],
             "dependencies": {
                 "gfm:core": "~master",
                 "gfm:math": "~master"
@@ -29,13 +29,13 @@
         },
         {
             "name": "plugin",
-            "sourcePaths": [ "source/dplug/plugin" ],
-            "importPaths": [ "source" ]
+            "sourcePaths": [ "plugin/dplug/plugin" ],
+            "importPaths": [ "plugin" ]
         },
         {
             "name": "vst",
-            "sourcePaths": [ "source/dplug/vst" ],
-            "importPaths": [ "source" ],
+            "sourcePaths": [ "vst/dplug/vst" ],
+            "importPaths": [ "vst" ],
             "dependencies": {
                 "dplug:plugin": "~master"
             }
