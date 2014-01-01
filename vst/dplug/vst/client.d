@@ -9,8 +9,7 @@ import std.conv,
 
 import dplug.plugin.client;
 
-import dplug.vst.aeffectx,
-       dplug.vst.host;
+import dplug.vst.aeffectx;
 
 //T* emplace(T, Args...)(T* chunk, auto ref Args args)
 T mallocEmplace(T, Args...)(auto ref Args args)
@@ -41,6 +40,15 @@ public:
         _effect = _effect.init;
 
         _effect.magic = kEffectMagic;
+
+        int flags = effFlagsCanReplacing;
+
+        if ( client.getFlags() & Client.IsSynth )
+            flags |= effFlagsIsSynth;
+
+        if ( client.getFlags() & Client.HasGUI )
+            flags |= effFlagsHasEditor;
+
         _effect.flags = effFlagsCanReplacing;
         _effect.numInputs = 2;
         _effect.numOutputs = 2;
@@ -162,7 +170,11 @@ public:
                 return 0; // TODO
 
             case effCanBeAutomated:
+            {
+                if (!_client.isValidParamIndex(index))
+                    return 0;
                 return 1; // can always be automated
+            }
 
             case effString2Parameter:
                 return 0; // TODO
@@ -182,7 +194,20 @@ public:
                 return 0;
 
             case effGetPlugCategory:
-                return kPlugCategEffect; // effect
+                if ( _client.getFlags() & Client.IsSynth )
+                    return kPlugCategSynth;
+                else
+                    return kPlugCategEffect;
+
+            case effGetVendorString:
+                {
+                    char* p = cast(char*)ptr;
+                    if (p !is null)
+                    {
+                        strcpy(p, "myVendor");
+                    }
+                    return 0;
+                }
 
             case effGetProductString:
             {
@@ -195,7 +220,12 @@ public:
             }
 
             case effCanDo:
+            {
+                char* str = cast(char*)ptr;
+
                 return -1; // can't do anything
+
+            }
 
             case effGetVstVersion:
                 return 2400; // version 2.4

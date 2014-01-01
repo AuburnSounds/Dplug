@@ -5,6 +5,7 @@ import std.container;
 import core.stdc.string;
 import core.stdc.stdio;
 
+
 /// Holds a plugin client parameter description and value.
 class Parameter
 {
@@ -46,12 +47,21 @@ private:
     float _value;
 }
 
+
+
 /// Plugin interface, from the client point of view.
 /// Client wrappers owns one.
 /// User plugins derivate from this class.
 class Client
 {
 public:
+
+    alias Flags = int;
+    enum : Flags
+    {
+        IsSynth = 1,
+        HasGUI  = 2
+    }
 
     this()
     {
@@ -96,7 +106,10 @@ public:
     int getPluginVersion()
     {
         return 1000;
-    }    
+    }
+
+    /// Override to declare the plugin properties
+    abstract Flags getFlags();
 
 protected:
 

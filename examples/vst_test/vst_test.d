@@ -6,6 +6,11 @@ import dplug.vst;
 
 final class Distort : dplug.plugin.Client
 {
+    override Flags getFlags()
+    {
+        return 0; // Not a synth, no GUI
+    }
+
     override int getPluginID()
     {
         return CCONST('l', 'o', 'l', 'd');
