@@ -2,22 +2,25 @@
 module dplug.plugin.client;
 
 import std.container;
+import core.stdc.string;
+import core.stdc.stdio;
 
 /// Holds a plugin client parameter description and value.
-struct Parameter
+class Parameter
 {
 public:
-    this(string name, float initialValue = 0)
+    this(string name, string label, float defaultValue = 0)
     {
         _name = name;
+        _value = defaultValue;
     }
 
-    @property void value(float x) pure nothrow
+    @property void set(float x) pure nothrow
     {
         _value = x;
     }
 
-    @property float value() pure const nothrow
+    @property float get() pure const nothrow
     {
         return _value;
     }
@@ -27,14 +30,25 @@ public:
         return _name;
     }
 
+    string label() pure const nothrow
+    {
+        return _label;
+    }
+
+    void toStringN(char* buffer, size_t numBytes)
+    {
+        snprintf(buffer, numBytes, "%2.2f", _value);
+    }
+
 private:
-    string _name;
+    string _name;  // eg: "Gain", "Drive"
+    string _label; // eg: "sec", "dB", "%"
     float _value;
 }
 
 /// Generic plugin interface, from the client point of view.
 /// Client wrappers owns one, so no inheritance needed.
-struct Client
+class Client
 {
 public:
 
@@ -45,14 +59,24 @@ public:
     }
 
     /// Returns: Array of parameters.
-    ref Array!Parameter params()
+    Parameter[] params()
     {
         return _params;
     }
 
+    Parameter param(size_t index)
+    {
+        return _params[index];
+    }
+
+    bool isValidParamIndex(int index)
+    {
+        return index >= 0 && index < _params.length;
+    }
+
     void addParameter(Parameter param)
     {
-        _params.insertBack(param);
+        _params ~= param;
     }
 
     int uniqueID() pure const nothrow
@@ -66,7 +90,7 @@ public:
     }
 
 protected:
-    Array!Parameter _params;
+    Parameter[] _params;
     int _uniqueID; // VST specific
     uint _pluginVersion;
 }

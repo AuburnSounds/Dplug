@@ -20,6 +20,7 @@ T mallocEmplace(T, Args...)(auto ref Args args)
     return emplace!(T, Args)(p[0..len], args);
 }
 
+
 /// Use this mixin template to create the VST entry point
 /// Example:
 ///     mixin VSTEntryPoint!MyVstPlugin;
@@ -100,14 +101,34 @@ public:
                 return 0; // TODO
             }
 
-            case effGetParamLabel:   // max 7 chars
-            case effGetParamDisplay:   // max 7 chars
-            case effGetParamName: // max 31 chars
+            case effGetParamLabel:
             {
-                // currently always return ""
                 char* p = cast(char*)ptr;
-                *p = '\0';
-                return 0; // TODO
+                if (!_client.isValidParamIndex(index))
+                    *p = '\0';
+                else
+                    stringNCopy(p, 8, _client.param(index).label());
+                return 0;
+            }
+
+            case effGetParamDisplay:
+            {
+                char* p = cast(char*)ptr;
+                if (!_client.isValidParamIndex(index))
+                    *p = '\0';
+                else
+                    _client.param(index).toStringN(p, 8);
+                return 0;
+            }
+
+            case effGetParamName:
+            { 
+                char* p = cast(char*)ptr;
+                if (!_client.isValidParamIndex(index))
+                    *p = '\0';
+                else
+                    stringNCopy(p, 32, _client.param(index).name());
+                return 0;
             }
 
             case effSetSampleRate:
@@ -253,24 +274,37 @@ extern(C) private nothrow
         }
     }
 
-    void setParameterCallback(AEffect *effect, int index, float parameter) 
+    void setParameterCallback(AEffect *effect, int index, float parameter)
     {
         try
         {
             auto plugin = cast(VSTClient)effect.user;
+            Client client = plugin._client;
+
+            if (index < 0)
+                return;
+            if (index >= client.params().length)
+                return;
+
+            return client.params()[index].set(parameter);
         }
         catch (Throwable e)
         {
             unrecoverableError(); // should not throw in a callback
-        }        
+        }
     }
 
     float getParameterCallback(AEffect *effect, int index) 
     {
         try
         {
-            auto plugin = cast(VSTClient*)effect.user;
-            return 0.0f;
+            auto plugin = cast(VSTClient)(effect.user);
+            Client client = plugin._client;
+
+            if (!client.isValidParamIndex(index))
+                return 0.0f;
+
+            return client.param(index).get();
         }
         catch (Throwable e)
         {
@@ -280,4 +314,18 @@ extern(C) private nothrow
             return 0.0f;
         }
     }
+}
+
+// Copy source into dest.
+// dest must contain room for maxChars characters
+// A zero-byte character is then appended.
+private void stringNCopy(char* dest, size_t maxChars, string source)
+{
+    if (maxChars == 0)
+        return;
+
+    size_t max = maxChars < source.length ? maxChars - 1 : source.length;
+    for (int i = 0; i < max; ++i)
+        dest[i] = source[i];
+    dest[max] = '\0';
 }
