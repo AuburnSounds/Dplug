@@ -46,52 +46,75 @@ private:
     float _value;
 }
 
-/// Generic plugin interface, from the client point of view.
-/// Client wrappers owns one, so no inheritance needed.
+/// Plugin interface, from the client point of view.
+/// Client wrappers owns one.
+/// User plugins derivate from this class.
 class Client
 {
 public:
 
-    this(int uniqueID)
+    this()
     {
-        _uniqueID = uniqueID;
-        _pluginVersion = 1000; // 1.0.0.0 by default
+        buildParameters();
     }
 
     /// Returns: Array of parameters.
-    Parameter[] params()
+    final Parameter[] params()
     {
         return _params;
     }
 
-    Parameter param(size_t index)
+    /// Returns: The parameter indexed by index.
+    final Parameter param(size_t index)
     {
         return _params[index];
     }
 
-    bool isValidParamIndex(int index)
+    /// Returns: true if index is a valid parameter index.
+    final bool isValidParamIndex(int index)
     {
         return index >= 0 && index < _params.length;
     }
 
-    void addParameter(Parameter param)
+    /// Override this methods to implement a GUI.
+    void onOpenGUI()
+    {
+    }
+
+    /// ditto
+    void onCloseGUI()
+    {
+    }
+
+    /// Override this method to give a plugin ID.
+    /// While it seems no VST host use this ID as a unique
+    /// way to identify a plugin, common wisdom is to try to 
+    /// get a sufficiently random one to avoid conflicts.
+    abstract int getPluginID();
+
+    /// Returns: Plugin version in x.x.x.x decimal form.
+    int getPluginVersion()
+    {
+        return 1000;
+    }    
+
+protected:
+
+    /// Override this methods to implement parameter creation.
+    /// See_also: addParameter.
+    abstract void buildParameters();
+
+    final addParameter(Parameter param)
     {
         _params ~= param;
     }
 
-    int uniqueID() pure const nothrow
+
+    void ProcessAudio(float** inouts)
     {
-        return _uniqueID;
     }
 
-    int pluginVersion() pure const nothrow
-    {
-        return _pluginVersion;
-    }
-
-protected:
+private:
     Parameter[] _params;
-    int _uniqueID; // VST specific
-    uint _pluginVersion;
 }
 

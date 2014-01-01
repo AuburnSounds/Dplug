@@ -2,7 +2,7 @@
 
 dplug is a library that allow the creation of audio plugins. 
 Additionally it comes with music DSP algorithms that might be useful for your next-generation MS converter plugin.
-Currently very alpha and unusable.
+**Currently very alpha and unusable.**
 
 ## Contents
 
@@ -15,7 +15,7 @@ Currently very alpha and unusable.
   * **aeffect.d** VST SDK translation of aeffect.h.
   * **aeffectx.d** VST SDK translation of aeffectx.h.
   * **vstfxstore.d** VST SDK translation of vstfxstore.h.
-  * **plugin.d** VST wrapper (not done yet).
+  * **client.d** VST wrapper.
 
 ### dsp/
   * **funcs.d** useful audio DSP functions.

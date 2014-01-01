@@ -4,8 +4,23 @@ import dplug.plugin;
 import dplug.vst;
 
 
+final class Distort : dplug.plugin.Client
+{
+    override int getPluginID()
+    {
+        return CCONST('l', 'o', 'l', 'd');
+    }
+
+    override void buildParameters()
+    {
+        addParameter(new Parameter("input", "db"));
+        addParameter(new Parameter("drive", "%"));
+        addParameter(new Parameter("output", "db"));
+    }
+}
+
 __gshared VSTClient plugin;
-__gshared Client client;
+__gshared Distort client;
 
 extern (C) nothrow AEffect* VSTPluginMain(HostCallbackFunction hostCallback) 
 {
@@ -14,11 +29,9 @@ extern (C) nothrow AEffect* VSTPluginMain(HostCallbackFunction hostCallback)
 
     try
     {
-        auto client = new Client(CCONST('l', 'o', 'l', '!'));
-        client.addParameter(new Parameter("input", "dB"));
-        client.addParameter(new Parameter("drive", "%"));
-        client.addParameter(new Parameter("output", "dB"));
-        plugin = mallocEmplace!(VSTClient, Client, HostCallbackFunction)(client, hostCallback);
+        auto client = new Distort();
+
+        plugin = new VSTClient(client, hostCallback);
     }
     catch (Throwable e)
     {
