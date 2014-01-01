@@ -7,26 +7,26 @@ Currently very alpha and unusable.
 ## Contents
 
 ### plugin/
-  * **iplug.d.d** base plugin interface, format agnostic (not done yet)
-  * **dllmain.d** shared library entry point
-  * **spinlock.d** a tiny synchronization object for UI <-> plugin interaction
+  * **client.d.d** client plugin interface, use by client wrappers.
+  * **dllmain.d** shared library entry point.
+  * **spinlock.d** a tiny synchronization object for UI <-> plugin interaction.
 
 ### vst/
-  * **aeffect.d** VST SDK translation of aeffect.h
-  * **aeffectx.d** VST SDK translation of aeffectx.h
-  * **vstfxstore.d** VST SDK translation of vstfxstore.h
-  * **plugin.d** VST wrapper (not done yet)
+  * **aeffect.d** VST SDK translation of aeffect.h.
+  * **aeffectx.d** VST SDK translation of aeffectx.h.
+  * **vstfxstore.d** VST SDK translation of vstfxstore.h.
+  * **plugin.d** VST wrapper (not done yet).
 
 ### dsp/
-  * **funcs.d** useful audio DSP functions
-  * **fft.d** FFT and short term FFT analyzer with tunable overlap and zero-phase windowing
-  * **fir.d** dealing with impulses
-  * **wavetable.d** basic anti-aliased waveform generation through mipmapped wavetables
-  * **iir.d** biquad filters  
-  * **noise.d** white noise, demo noise, 1D perlin noise
-  * **smooth.d** different kinds of smoothers, including non-linear ones
-  * **envelope.d** power and amplitude estimators
-  * **window.d** typical windowing functions
+  * **funcs.d** useful audio DSP functions.
+  * **fft.d** FFT and short term FFT analyzer with tunable overlap and zero-phase windowing.
+  * **fir.d** dealing with impulses.
+  * **wavetable.d** basic anti-aliased waveform generation through mipmapped wavetables.
+  * **iir.d** biquad filters.
+  * **noise.d** white noise, demo noise, 1D perlin noise.
+  * **smooth.d** different kinds of smoothers, including non-linear ones.
+  * **envelope.d** power and amplitude estimators.
+  * **window.d** typical windowing functions.
 
 
 ## Licenses

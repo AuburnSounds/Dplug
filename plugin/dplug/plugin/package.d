@@ -3,6 +3,7 @@ module dplug.plugin;
 
 public
 {
-    import dplug.plugin.iplug,
+    import dplug.plugin.client,
+           dplug.plugin.spinlock,
            dplug.plugin.dllmain;
 }

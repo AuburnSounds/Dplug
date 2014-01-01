@@ -1,10 +1,10 @@
 import dplug.vst;
 
+import dplug.plugin;
+import dplug.vst;
 
-alias VSTPlugin VSTPluginClass;
-int uniqueID = CCONST('l', 'o', 'l', 'Z');
 
-__gshared VSTPluginClass plugin;
+__gshared VSTClient plugin;
 
 extern (C) nothrow AEffect* VSTPluginMain(HostCallbackFunction hostCallback) 
 {
@@ -13,7 +13,11 @@ extern (C) nothrow AEffect* VSTPluginMain(HostCallbackFunction hostCallback)
 
     try
     {
-        plugin = mallocEmplace!(VSTPlugin, HostCallbackFunction, int)(hostCallback, uniqueID);
+        auto client = Client(CCONST('l', 'o', 'l', '!'));
+        client.addParameter(Parameter("param0"));
+        client.addParameter(Parameter("test"));
+        client.addParameter(Parameter("test2"));
+        plugin = mallocEmplace!(VSTClient, Client, HostCallbackFunction)(client, hostCallback);
     }
     catch (Throwable e)
     {

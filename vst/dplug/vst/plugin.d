@@ -7,6 +7,8 @@ import core.stdc.stdlib,
 import std.conv,
        std.typecons;
 
+import dplug.plugin.client;
+
 import dplug.vst.aeffectx,
        dplug.vst.host;
 
@@ -22,27 +24,29 @@ T mallocEmplace(T, Args...)(auto ref Args args)
 /// Example:
 ///     mixin VSTEntryPoint!MyVstPlugin;
 
-class VSTPlugin
+/// VST client wrapper
+class VSTClient
 {
 public:
     AEffect _effect;
     VSTHost _host;
+    Client _client;
 
-    this(HostCallbackFunction hostCallback, int uniqueID) 
+    this(Client client, HostCallbackFunction hostCallback)
     {
         _host.init(hostCallback, &_effect);
+        _client = client; // copy
 
         _effect = _effect.init;
-        
 
         _effect.magic = kEffectMagic;
         _effect.flags = effFlagsCanReplacing;
         _effect.numInputs = 2;
         _effect.numOutputs = 2;
-        _effect.numParams = 3;
+        _effect.numParams = cast(int)(client.params().length);
         _effect.numPrograms = 0;
-        _effect.version_ = 1;
-        _effect.uniqueID = uniqueID;
+        _effect.version_ = client.pluginVersion();
+        _effect.uniqueID = client.uniqueID();
         _effect.processReplacing = &processReplacingCallback;
         _effect.dispatcher = &dispatcherCallback;
         _effect.setParameter = &setParameterCallback;
@@ -215,7 +219,7 @@ extern(C) private nothrow
     {
         try
         {
-            auto plugin = cast(VSTPlugin)(effect.user);
+            auto plugin = cast(VSTClient)(effect.user);
             return plugin.dispatcher(opcode, index, value, ptr, opt);
         }
         catch (Throwable e)
@@ -229,7 +233,7 @@ extern(C) private nothrow
     {
         try
         {
-            auto plugin = cast(VSTPlugin)effect.user;
+            auto plugin = cast(VSTClient)effect.user;
         }
         catch (Throwable e)
         {
@@ -241,7 +245,7 @@ extern(C) private nothrow
     {
         try
         {
-            auto plugin = cast(VSTPlugin)effect.user;
+            auto plugin = cast(VSTClient)effect.user;
         }
         catch (Throwable e)
         {
@@ -253,7 +257,7 @@ extern(C) private nothrow
     {
         try
         {
-            auto plugin = cast(VSTPlugin)effect.user;        
+            auto plugin = cast(VSTClient)effect.user;
         }
         catch (Throwable e)
         {
@@ -265,7 +269,7 @@ extern(C) private nothrow
     {
         try
         {
-            auto plugin = cast(VSTPlugin*)effect.user;        
+            auto plugin = cast(VSTClient*)effect.user;
             return 0.0f;
         }
         catch (Throwable e)
