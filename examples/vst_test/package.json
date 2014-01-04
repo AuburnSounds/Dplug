@@ -1,17 +1,17 @@
 {
-    "name": "dplug-examples",
-    "description": "dplug examples",
+    "name": "dplug-distort",
+    "description": "dplug-distort",
     "homepage": "http://github.com/p0nce/dplug/",
     "copyright": "none",
     "license": "public domain",
     "authors": [ "ponce" ],
     "importPaths": [ "." ],
     "targetType": "dynamicLibrary",
-    "mainSourceFile" : "vst_test.d",
+    "mainSourceFile" : "distort.d",
     
     "sourceFiles": [ 
-        "vst_test.d", 
-        "vst_test.def"
+        "distort.d", 
+        "distort.def"
     ],
 
     "dependencies": 
