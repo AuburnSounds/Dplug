@@ -69,6 +69,8 @@ public:
         _effect.DEPRECATED_process = &processCallback;
     }
 
+private:
+
     /// VST opcode dispatcher
     final VstIntPtr dispatcher(int opcode, int index, ptrdiff_t value, void *ptr, float opt)
     {
@@ -140,12 +142,26 @@ public:
             }
 
             case effSetSampleRate:
+          //      Reset();
                 return 0; // TODO
            
             case effSetBlockSize:
+           //     Reset();
                 return 0; // TODO, give the maximum number of frames used in processReplacing
 
             case effMainsChanged:
+                if (value == 0)
+                {
+                    // Audio processing was switched off.
+                    // The plugin must call flush its state because otherwise pending data 
+                    // would sound again when the effect is switched on next time.
+                  //  Reset();
+                }
+                else
+                {
+                    // Audio processing was switched on.
+
+                }
                 return 0; // TODO, plugin should clear its state
 
             case effEditGetRect:
@@ -222,9 +238,24 @@ public:
             case effCanDo:
             {
                 char* str = cast(char*)ptr;
+                if (str is null)
+                    return 0;
 
-                return -1; // can't do anything
+                if (strcmp(str, "receiveVstTimeInfo") == 0)
+                    return 1;
 
+                if (_client.isSynth())
+                {
+                    if (strcmp(str, "sendVstEvents") == 0)
+                        return 1;
+                    if (strcmp(str, "sendVstMidiEvents") == 0)
+                        return 1;
+                    if (strcmp(str, "receiveVstEvents") == 0)
+                        return 1;
+                    if (strcmp(str, "receiveVstMidiEvents") == 0)
+                        return 1;
+                }
+                return 0;
             }
 
             case effGetVstVersion:
@@ -233,19 +264,6 @@ public:
         default:
             return 0; // unknown opcode
         }
-    }
-
-    protected
-    {
-        void onOpen()
-        {
-        }
-
-        void onClose()
-        {
-        }
-
-
     }
 }
 
@@ -472,7 +490,6 @@ public:
         SHELL_CATEGORY,                       // 'shell' handling via uniqueID. If supported by the Host and the Plug-in has the category kPlugCategShell
         SEND_VST_MIDI_EVENT_FLAG_IS_REALTIME, // Host supports flags for VstMidiEvent.
         SUPPLY_IDLE                           // ???
-
     }
 
     bool canDo(HostCaps caps) nothrow
