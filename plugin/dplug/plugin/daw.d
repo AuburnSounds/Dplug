@@ -1,0 +1,97 @@
+// See licenses/WDL_license.txt
+module dplug.plugin.daw;
+
+import core.stdc.string;
+
+import std.string,
+       std.utf;
+
+enum DAW
+{
+    Unknown,
+    Reaper,
+    ProTools,
+    Cubase,
+    Nuendo,
+    Sonar,
+    Vegas,
+    FLStudio,
+    Samplitude,
+    AbletonLive,
+    Tracktion,
+    NTracks,
+    MelodyneStudio,
+    VSTScanner,
+    AULab,
+    Forte,
+    Chainer,
+    Audition,
+    Orion,
+    Bias,
+    SAWStudio,
+    Logic,
+    GarageBand,
+    DigitalPerformer,
+    Standalone,
+    AudioMulch,
+    StudioOne,
+    VST3TestHost,
+    Ardour
+    // These hosts don't report the host name:
+    // EnergyXT2
+    // MiniHost
+}
+
+private bool hasSubstring(const(char*) s, const(char*) sub) pure
+{
+    size_t len_s = strlen(s);
+    size_t len_sub = strlen(sub);
+    ptrdiff_t index;
+    try
+    {
+        index = indexOf(s[0..len_s], sub[0..len_sub], 0, CaseSensitive.no);
+    }
+    catch(UTFException e)
+    {
+        return false;
+    }
+
+    return index != -1;
+}
+
+
+DAW identifyDAW(const(char*) s) pure
+{
+    if (hasSubstring(s, "reaper")) return DAW.Reaper;
+    // TODO: see how to detect
+    //    Vegas
+    //    Tracktion
+    //    NTracks
+    //    Bias
+
+    if (hasSubstring(s, "cubase")) return DAW.Cubase;
+    if (hasSubstring(s, "reaper")) return DAW.Reaper;
+    if (hasSubstring(s, "nuendo")) return DAW.Nuendo;
+    if (hasSubstring(s, "cakewalk")) return DAW.Sonar;
+    if (hasSubstring(s, "samplitude")) return DAW.Samplitude;
+    if (hasSubstring(s, "fruity")) return DAW.FLStudio;
+    if (hasSubstring(s, "live")) return DAW.AbletonLive;
+    if (hasSubstring(s, "melodyne")) return DAW.MelodyneStudio;
+    if (hasSubstring(s, "vstmanlib")) return DAW.VSTScanner;
+    if (hasSubstring(s, "aulab")) return DAW.AULab;
+    if (hasSubstring(s, "garageband")) return DAW.GarageBand;
+    if (hasSubstring(s, "forte")) return DAW.Forte;
+    if (hasSubstring(s, "chainer")) return DAW.Chainer;
+    if (hasSubstring(s, "audition")) return DAW.Audition;
+    if (hasSubstring(s, "orion")) return DAW.Orion;
+    if (hasSubstring(s, "sawstudio")) return DAW.SAWStudio;
+    if (hasSubstring(s, "logic")) return DAW.Logic;
+    if (hasSubstring(s, "digital")) return DAW.DigitalPerformer;
+    if (hasSubstring(s, "audiomulch")) return DAW.AudioMulch;
+    if (hasSubstring(s, "presonus")) return DAW.StudioOne;
+    if (hasSubstring(s, "vst3plugintesthost")) return DAW.VST3TestHost;
+    if (hasSubstring(s, "protools")) return DAW.ProTools;
+    if (hasSubstring(s, "ardour")) return DAW.Ardour;
+    if (hasSubstring(s, "standalone")) return DAW.Standalone;
+    return DAW.Unknown;
+}

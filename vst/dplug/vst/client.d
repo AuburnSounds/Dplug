@@ -7,7 +7,8 @@ import core.stdc.stdlib,
 import std.conv,
        std.typecons;
 
-import dplug.plugin.client;
+import dplug.plugin.client,
+       dplug.plugin.daw;
 
 import dplug.vst.aeffectx;
 
@@ -86,11 +87,9 @@ private:
         switch(opcode)
         {
             case effOpen:
-                onOpen();
                 return 0;
 
             case effClose:
-                onClose();
                 return 0;
 
             case effSetProgram:
@@ -244,7 +243,7 @@ private:
                 if (strcmp(str, "receiveVstTimeInfo") == 0)
                     return 1;
 
-                if (_client.isSynth())
+                if (_client.getFlags() & Client.IsSynth)
                 {
                     if (strcmp(str, "sendVstEvents") == 0)
                         return 1;
@@ -389,10 +388,11 @@ struct VSTHostFromClientPOV
 {
 public:
 
-    void init(HostCallbackFunction hostCallback, AEffect* effect) pure nothrow
+    void init(HostCallbackFunction hostCallback, AEffect* effect)
     {
         _hostCallback = hostCallback;
         _effect = effect;
+        _daw = identifyDAW(productString());
     }
 
     /**
@@ -464,7 +464,6 @@ public:
         int res = cast(int)_hostCallback(_effect, audioMasterGetProductString, 0, 0, _productStringBuf.ptr, 0.0f);
         if (res == 1)
         {
-            //size_t len = strlen(_productStringBuf.ptr);
             return _productStringBuf.ptr;
         }
         else
@@ -508,6 +507,7 @@ private:
     char[65] _vendorStringBuf;
     char[96] _productStringBuf;
     int _vendorVersion;
+    DAW _daw;
 
     static const(char)* hostCapsString(HostCaps caps) pure nothrow
     {
