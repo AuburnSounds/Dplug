@@ -3,7 +3,7 @@ import dplug.vst;
 import dplug.plugin;
 import dplug.vst;
 
-/// Example stereo distortion plugin.
+/// Example mono/stereo distortion plugin.
 final class Distort : dplug.plugin.Client
 {
     override Flags getFlags()
@@ -21,6 +21,12 @@ final class Distort : dplug.plugin.Client
         addParameter(new Parameter("input", "db"));
         addParameter(new Parameter("drive", "%"));
         addParameter(new Parameter("output", "db"));
+    }
+
+    override void buildLegalIO()
+    {
+        addLegalIO(1, 1);
+        addLegalIO(2, 2);
     }
 
     /// Override to clear state state (eg: delay lines) and allocate buffers.

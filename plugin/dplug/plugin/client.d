@@ -65,7 +65,29 @@ public:
 
     this()
     {
+        buildLegalIO();
         buildParameters();
+
+        _maxInputs = 0;
+        _maxOutputs = 0;
+
+        foreach(legalIO; _legalIOs)
+        {
+            if (_maxInputs < legalIO.numInputs)
+                _maxInputs = legalIO.numInputs;
+            if (_maxOutputs < legalIO.numOuputs)
+                _maxOutputs = legalIO.numOuputs;
+        }
+    }
+
+    int maxInputs()
+    {
+        return _maxInputs;
+    }
+
+    int maxOutputs()
+    {
+        return _maxInputs;
     }
 
     /// Returns: Array of parameters.
@@ -84,6 +106,18 @@ public:
     final bool isValidParamIndex(int index)
     {
         return index >= 0 && index < _params.length;
+    }
+
+    /// Returns: true if index is a valid input index.
+    final bool isValidInputIndex(int index)
+    {
+        return index >= 0 && index < maxInputs();
+    }
+
+    /// Returns: true if index is a valid output index.
+    final bool isValidOutputIndex(int index)
+    {
+        return index >= 0 && index < maxOutputs();
     }
 
     /// Override this methods to implement a GUI.
@@ -124,12 +158,33 @@ protected:
     /// See_also: addParameter.
     abstract void buildParameters();
 
+    /// Adds a parameter.
     final addParameter(Parameter param)
     {
         _params ~= param;
     }
 
+    /// Override this method to tell which I/O are legal.
+    /// See_also: addLegalIO.
+    abstract void buildLegalIO();
+
+    /// Adds a legal I/O.
+    final addLegalIO(int numInputs, int numOutputs)
+    {
+        _legalIOs ~= LegalIO(numInputs, numOutputs);
+    }
+
 private:
     Parameter[] _params;
+
+    struct LegalIO
+    {
+        int numInputs;
+        int numOuputs;
+    }
+
+    LegalIO[] _legalIOs;
+
+    int _maxInputs, _maxOutputs; // maximum number of input/outputs
 }
 

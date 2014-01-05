@@ -2,7 +2,8 @@
 module dplug.vst.client;
 
 import core.stdc.stdlib,
-       core.stdc.string;
+       core.stdc.string,
+       core.stdc.stdio;
 
 import std.conv,
        std.typecons;
@@ -45,16 +46,19 @@ public:
         int flags = effFlagsCanReplacing;
 
         if ( client.getFlags() & Client.IsSynth )
+        {
             flags |= effFlagsIsSynth;
+            _host.wantEvents();
+        }
 
         if ( client.getFlags() & Client.HasGUI )
             flags |= effFlagsHasEditor;
 
         _effect.flags = effFlagsCanReplacing;
-        _effect.numInputs = 2;
-        _effect.numOutputs = 2;
+        _effect.numInputs = _client.maxInputs();
+        _effect.numOutputs = _client.maxOutputs();
         _effect.numParams = cast(int)(client.params().length);
-        _effect.numPrograms = 0;
+        _effect.numPrograms = 0; // TODO implement presets
         _effect.version_ = client.getPluginVersion();
         _effect.uniqueID = client.getPluginID();
         _effect.processReplacing = &processReplacingCallback;
@@ -256,10 +260,10 @@ private:
                 return 1;
             }
 
-            case DEPRECATED_effGetNumProgramCategories:
+            case DEPRECATED_effGetNumProgramCategories: // opcode 28
                 return 1; // no real program categories
 
-            case effGetProgramNameIndexed:
+            case effGetProgramNameIndexed: // opcode 29
             {
                 // currently always return ""
                 char* p = cast(char*)ptr;
@@ -267,7 +271,51 @@ private:
                 return 1; // TODO
             }
 
-            case effProcessVarIo:
+            case DEPRECATED_effCopyProgram: // opcode 30
+            case DEPRECATED_effConnectInput: // opcode 31
+            case DEPRECATED_effConnectOutput: // opcode 32
+                return 0;
+
+            case effGetInputProperties: // opcode 33
+            {
+                if (ptr == null)
+                    return 0;
+
+                if (!_client.isValidInputIndex(index))
+                    return 0;
+
+                VstPinProperties* pp = cast(VstPinProperties*) ptr;
+                pp.flags = kVstPinIsActive;
+                    
+                if ( (index % 2) == 0 && index < _client.maxInputs())
+                    pp.flags |= kVstPinIsStereo;
+
+                sprintf(pp.label.ptr, "Input %d", index);
+                return 1;
+            }
+
+            case effGetOutputProperties: // opcode 34
+            {
+                if (ptr == null)
+                    return 0;
+
+                if (!_client.isValidOutputIndex(index))
+                    return 0;
+
+                VstPinProperties* pp = cast(VstPinProperties*) ptr;
+                pp.flags = kVstPinIsActive;
+
+                if ( (index % 2) == 0 && index < _client.maxOutputs())
+                    pp.flags |= kVstPinIsStereo;
+
+                sprintf(pp.label.ptr, "Output %d", index);
+                return 1;
+            }
+
+            case effOfflineRun:
+                return 0;            
+
+            case effProcessVarIo: // opcode 41
                 return 0;
 
             case effGetPlugCategory:
