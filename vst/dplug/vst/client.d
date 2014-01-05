@@ -164,22 +164,46 @@ private:
             }
 
             case effMainsChanged:
-                if (value == 0)
                 {
-                  // Audio processing was switched off.
-                  // The plugin must call flush its state because otherwise pending data 
-                  // would sound again when the effect is switched on next time.
-                  _client.reset(_sampleRate, _maxFrames);
+                    if (value == 0)
+                    {
+                      // Audio processing was switched off.
+                      // The plugin must call flush its state because otherwise pending data 
+                      // would sound again when the effect is switched on next time.
+                      _client.reset(_sampleRate, _maxFrames);
+                    }
+                    else
+                    {
+                        // Audio processing was switched on.
+                    }
+                    return 0; // TODO, plugin should clear its state
                 }
-                else
-                {
-                    // Audio processing was switched on.
-                }
-                return 0; // TODO, plugin should clear its state
 
             case effEditGetRect:
+                return 0;
+
             case effEditOpen:
+                {
+                    if ( _client.getFlags() & Client.HasGUI )
+                    {
+                        _client.onOpenGUI();
+                        return 1;
+                    }
+                    else
+                        return 0;
+                }
+
             case effEditClose:
+                {
+                    if ( _client.getFlags() & Client.HasGUI )
+                    {
+                        _client.onCloseGUI();
+                        return 1;
+                    }
+                    else
+                        return 0;
+                }
+
             case DEPRECATED_effEditDraw: 
             case DEPRECATED_effEditMouse: 
             case DEPRECATED_effEditKey: 
