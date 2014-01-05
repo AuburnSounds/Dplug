@@ -111,6 +111,10 @@ public:
     /// Override to declare the plugin properties
     abstract Flags getFlags();
 
+    void reset(double sampleRate, size_t maxFrames)
+    {
+    }
+
 protected:
 
     /// Override this methods to implement parameter creation.
