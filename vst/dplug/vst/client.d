@@ -68,9 +68,17 @@ public:
         //deprecated
         _effect.DEPRECATED_ioRatio = 1.0;
         _effect.DEPRECATED_process = &processCallback;
+
+        // dummmy values
+        _sampleRate = 44100.0f;
+        _maxFrames = 128;
     }
 
 private:
+
+    float _sampleRate;
+    size_t _maxFrames;
+
 
     /// VST opcode dispatcher
     final VstIntPtr dispatcher(int opcode, int index, ptrdiff_t value, void *ptr, float opt)
@@ -141,25 +149,31 @@ private:
             }
 
             case effSetSampleRate:
-          //      Reset();
-                return 0; // TODO
+            {
+                _sampleRate = opt;
+                _client.reset(_sampleRate, _maxFrames);
+                return 0;
+            }
            
             case effSetBlockSize:
-           //     Reset();
-                return 0; // TODO, give the maximum number of frames used in processReplacing
+            {
+                if (value < 0) 
+                    value = 0;
+                _maxFrames = value;
+                return 0;
+            }
 
             case effMainsChanged:
                 if (value == 0)
                 {
-                    // Audio processing was switched off.
-                    // The plugin must call flush its state because otherwise pending data 
-                    // would sound again when the effect is switched on next time.
-                  //  Reset();
+                  // Audio processing was switched off.
+                  // The plugin must call flush its state because otherwise pending data 
+                  // would sound again when the effect is switched on next time.
+                  _client.reset(_sampleRate, _maxFrames);
                 }
                 else
                 {
                     // Audio processing was switched on.
-
                 }
                 return 0; // TODO, plugin should clear its state
 
