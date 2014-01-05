@@ -94,31 +94,31 @@ private:
 
         switch(opcode)
         {
-            case effOpen:
+            case effOpen: // opcode 0
                 return 0;
 
-            case effClose:
+            case effClose: // opcode 1
                 return 0;
 
-            case effSetProgram:
+            case effSetProgram: // opcode 2
                 // TODO
                 return 0;
 
-            case effGetProgram:
+            case effGetProgram: // opcode 3
                 return 0; // TODO
 
-            case effSetProgramName:
+            case effSetProgramName: // opcode 4
                 return 0; // TODO
 
-            case effGetProgramName:  // max 23 chars
+            case effGetProgramName: // opcode 5, 
             {
                 // currently always return ""
                 char* p = cast(char*)ptr;
-                *p = '\0';
-                return 0; // TODO
+                *p = '\0'; 
+                return 0; // TODO, max 23 chars
             }
 
-            case effGetParamLabel:
+            case effGetParamLabel: // opcode 6
             {
                 char* p = cast(char*)ptr;
                 if (!_client.isValidParamIndex(index))
@@ -128,7 +128,7 @@ private:
                 return 0;
             }
 
-            case effGetParamDisplay:
+            case effGetParamDisplay: // opcode 7
             {
                 char* p = cast(char*)ptr;
                 if (!_client.isValidParamIndex(index))
@@ -138,7 +138,7 @@ private:
                 return 0;
             }
 
-            case effGetParamName:
+            case effGetParamName: // opcode 8
             { 
                 char* p = cast(char*)ptr;
                 if (!_client.isValidParamIndex(index))
@@ -148,14 +148,19 @@ private:
                 return 0;
             }
 
-            case effSetSampleRate:
+            case DEPRECATED_effGetVu: // opcode 9
+            {
+                return 0;
+            }
+
+            case effSetSampleRate: // opcode 10
             {
                 _sampleRate = opt;
                 _client.reset(_sampleRate, _maxFrames);
                 return 0;
             }
            
-            case effSetBlockSize:
+            case effSetBlockSize: // opcode 11
             {
                 if (value < 0) 
                     value = 0;
@@ -163,7 +168,7 @@ private:
                 return 0;
             }
 
-            case effMainsChanged:
+            case effMainsChanged: // opcode 12
                 {
                     if (value == 0)
                     {
@@ -179,10 +184,11 @@ private:
                     return 0; // TODO, plugin should clear its state
                 }
 
-            case effEditGetRect:
+            case effEditGetRect: // opcode 13
+                // TODO
                 return 0;
 
-            case effEditOpen:
+            case effEditOpen: // opcode 14
                 {
                     if ( _client.getFlags() & Client.HasGUI )
                     {
@@ -193,7 +199,7 @@ private:
                         return 0;
                 }
 
-            case effEditClose:
+            case effEditClose: // opcode 15
                 {
                     if ( _client.getFlags() & Client.HasGUI )
                     {
@@ -204,33 +210,51 @@ private:
                         return 0;
                 }
 
-            case DEPRECATED_effEditDraw: 
-            case DEPRECATED_effEditMouse: 
-            case DEPRECATED_effEditKey: 
-            case effEditIdle: 
-            case DEPRECATED_effEditTop: 
-            case DEPRECATED_effEditSleep: 
-            case DEPRECATED_effIdentify: 
+            case DEPRECATED_effEditDraw: // opcode 16
+            case DEPRECATED_effEditMouse: // opcode 17
+            case DEPRECATED_effEditKey: // opcode 18
                 return 0;
 
-            case effGetChunk:
+            case effEditIdle: // opcode 19
+                return 0; // why would it be useful to do anything?
+
+            case DEPRECATED_effEditTop: // opcode 20, edit window has topped                
+                return 0;
+
+            case DEPRECATED_effEditSleep:  // opcode 21, edit window goes to background
+                return 0;
+
+            case DEPRECATED_effIdentify: // opcode 22
+                return CCONST ('N', 'v', 'E', 'f');
+
+            case effGetChunk: // opcode 23
                 return 0; // TODO
 
-            case effSetChunk:
+            case effSetChunk: // opcode 24
                 return 0; // TODO
 
-            case effProcessEvents:
+            case effProcessEvents: // opcode 25, "host usually call ProcessEvents just before calling ProcessReplacing"
                 return 0; // TODO
 
-            case effCanBeAutomated:
+            case effCanBeAutomated: // opcode 26
             {
                 if (!_client.isValidParamIndex(index))
                     return 0;
                 return 1; // can always be automated
             }
 
-            case effString2Parameter:
-                return 0; // TODO
+            case effString2Parameter: // opcode 27
+            {
+                if (!_client.isValidParamIndex(index))
+                    return 0;
+
+                if (ptr == null)
+                    return 0;
+
+                double v;
+                _client.param(index).set(atof(cast(char*)ptr));
+                return 1;
+            }
 
             case DEPRECATED_effGetNumProgramCategories:
                 return 1; // no real program categories
@@ -302,6 +326,26 @@ private:
             return 0; // unknown opcode
         }
     }
+
+    void process(float **inputs, float **outputs, int sampleFrames)
+    {
+        // TODO
+    }
+
+    void processReplacing(float **inputs, float **outputs, int sampleFrames)
+    {
+        // TODO
+    }
+
+    void processDouble(double **inputs, double **outputs, int sampleFrames)
+    {
+        // TODO
+    }
+
+    void processDoubleReplacing(double **inputs, double **outputs, int sampleFrames)
+    {
+        // TODO
+    }
 }
 
 void unrecoverableError() nothrow
@@ -340,6 +384,7 @@ extern(C) private nothrow
         try
         {
             auto plugin = cast(VSTClient)effect.user;
+            plugin.process(inputs, outputs, sampleFrames);
         }
         catch (Throwable e)
         {
@@ -352,6 +397,7 @@ extern(C) private nothrow
         try
         {
             auto plugin = cast(VSTClient)effect.user;
+            plugin.processReplacing(inputs, outputs, sampleFrames);
         }
         catch (Throwable e)
         {
@@ -371,7 +417,7 @@ extern(C) private nothrow
             if (index >= client.params().length)
                 return;
 
-            return client.params()[index].set(parameter);
+            return client.param(index).set(parameter);
         }
         catch (Throwable e)
         {

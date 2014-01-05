@@ -108,12 +108,15 @@ public:
         return 1000;
     }
 
-    /// Override to declare the plugin properties
+    /// Override to declare the plugin properties.
     abstract Flags getFlags();
 
-    void reset(double sampleRate, size_t maxFrames)
-    {
-    }
+    /// Override to clear state state (eg: delay lines) and allocate buffers.
+    abstract void reset(double sampleRate, size_t maxFrames);
+
+    /// Process some audio.
+    /// Override to make some noise.
+    abstract void processAudio(double **inputs, double **outputs, int frames);
 
 protected:
 
@@ -124,11 +127,6 @@ protected:
     final addParameter(Parameter param)
     {
         _params ~= param;
-    }
-
-
-    void ProcessAudio(float** inouts)
-    {
     }
 
 private:
