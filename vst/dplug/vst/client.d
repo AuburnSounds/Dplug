@@ -312,17 +312,40 @@ private:
                 return 1;
             }
 
-            case effOfflineRun:
-                return 0;            
-
-            case effProcessVarIo: // opcode 41
-                return 0;
-
-            case effGetPlugCategory:
+            case effGetPlugCategory: // opcode 35
                 if ( _client.getFlags() & Client.IsSynth )
                     return kPlugCategSynth;
                 else
                     return kPlugCategEffect;
+
+            case DEPRECATED_effGetCurrentPosition: // opcode 36
+            case DEPRECATED_effGetDestinationBuffer: // opcode 37
+                return 0;
+
+            case effOfflineNotify: // opcode 38
+            case effOfflinePrepare: // opcode 39
+            case effOfflineRun: // opcode 40
+                return 0;
+
+            case effProcessVarIo: // opcode 41
+                return 0;
+
+            case effSetSpeakerArrangement:
+            {
+                VstSpeakerArrangement* pInputArr = cast(VstSpeakerArrangement*) value;
+                VstSpeakerArrangement* pOutputArr = cast(VstSpeakerArrangement*) ptr;
+                if (pInputArr)
+                {
+                    int n = pInputArr.numChannels;
+                    // TODO
+                }
+                if (pOutputArr)
+                {
+                    int n = pOutputArr.numChannels;
+                    //TODO
+                }
+                return 1;
+            }
 
             case effGetVendorString:
                 {

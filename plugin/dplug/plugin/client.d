@@ -47,8 +47,6 @@ private:
     float _value;
 }
 
-
-
 /// Plugin interface, from the client point of view.
 /// Client wrappers owns one.
 /// User plugins derivate from this class.
