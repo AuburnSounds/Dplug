@@ -336,13 +336,16 @@ private:
                 VstSpeakerArrangement* pOutputArr = cast(VstSpeakerArrangement*) ptr;
                 if (pInputArr)
                 {
-                    int n = pInputArr.numChannels;
-                    // TODO
+                    bool success = _client.setNumUsedInputs(pInputArr.numChannels);
+                    if (!success)
+                        return 0;
                 }
+
                 if (pOutputArr)
                 {
-                    int n = pOutputArr.numChannels;
-                    //TODO
+                    bool success = _client.setNumUsedOutputs(pOutputArr.numChannels);
+                    if (!success)
+                        return 0;
                 }
                 return 1;
             }

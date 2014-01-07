@@ -47,6 +47,40 @@ private:
     float _value;
 }
 
+class InputPin
+{
+public:
+    this()
+    {
+        _isConnected = false;
+    }
+
+    bool isConnected() pure const nothrow
+    {
+        return _isConnected;
+    }
+
+private:
+    bool _isConnected;
+}
+
+class OutputPin
+{
+public:
+    this()
+    {
+        _isConnected = false;
+    }
+
+    bool isConnected() pure const nothrow
+    {
+        return _isConnected;
+    }
+
+private:
+    bool _isConnected;
+}
+
 /// Plugin interface, from the client point of view.
 /// Client wrappers owns one.
 /// User plugins derivate from this class.
@@ -76,6 +110,14 @@ public:
             if (_maxOutputs < legalIO.numOuputs)
                 _maxOutputs = legalIO.numOuputs;
         }
+
+        _inputPins.length = _maxInputs;
+        for (int i = 0; i < _maxInputs; ++i)
+            _inputPins[i] = new InputPin();
+
+        _outputPins.length = _maxOutputs;
+        for (int i = 0; i < _maxOutputs; ++i)
+            _outputPins[i] = new OutputPin();
     }
 
     int maxInputs()
@@ -118,6 +160,28 @@ public:
         return index >= 0 && index < maxOutputs();
     }
 
+    /// Sets the number of used input channels.
+    final bool setNumUsedInputs(int numInputs)
+    {
+        int max = maxInputs();
+        if (numInputs > max)
+            return false;
+        for (int i = 0; i < max; ++i)
+            _inputPins[i]._isConnected = (i < numInputs);
+        return true;
+    }
+
+    /// Sets the number of used output channels.
+    final bool setNumUsedOutputs(int numOutputs)
+    {
+        int max = maxOutputs();
+        if (numOutputs > max)
+            return false;
+        for (int i = 0; i < max; ++i)
+            _outputPins[i]._isConnected = (i < numOutputs);
+        return true;
+    }
+
     /// Override this methods to implement a GUI.
     void onOpenGUI()
     {
@@ -148,6 +212,9 @@ public:
 
     /// Process some audio.
     /// Override to make some noise.
+    /// In processAudio you are always guaranteed to get valid pointers
+    /// to all the channels the plugin requested.
+    /// Unconnected input pins are zeroed.
     abstract void processAudio(double **inputs, double **outputs, int frames);
 
 protected:
@@ -184,5 +251,8 @@ private:
     LegalIO[] _legalIOs;
 
     int _maxInputs, _maxOutputs; // maximum number of input/outputs
+
+    InputPin[] _inputPins;
+    OutputPin[] _outputPins;
 }
 
