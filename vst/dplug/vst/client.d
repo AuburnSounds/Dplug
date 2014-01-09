@@ -8,6 +8,8 @@ import core.stdc.stdlib,
 import std.conv,
        std.typecons;
 
+import gfm.core.alignedbuffer;
+
 import dplug.plugin.client,
        dplug.plugin.daw;
 
@@ -30,10 +32,9 @@ T mallocEmplace(T, Args...)(auto ref Args args)
 class VSTClient
 {
 public:
-    AEffect _effect;
-    VSTHostFromClientPOV _host;
-    Client _client;
 
+    AEffect _effect;
+    
     this(Client client, HostCallbackFunction hostCallback)
     {
         _host.init(hostCallback, &_effect);
@@ -54,9 +55,9 @@ public:
         if ( client.getFlags() & Client.HasGUI )
             flags |= effFlagsHasEditor;
 
-        _effect.flags = effFlagsCanReplacing;
-        _effect.numInputs = _client.maxInputs();
-        _effect.numOutputs = _client.maxOutputs();
+        _effect.flags = flags;
+        _maxInputs = _effect.numInputs = _client.maxInputs();
+        _maxOutputs = _effect.numOutputs = _client.maxOutputs();
         _effect.numParams = cast(int)(client.params().length);
         _effect.numPrograms = 0; // TODO implement presets
         _effect.version_ = client.getPluginVersion();
@@ -67,7 +68,7 @@ public:
         _effect.getParameter = &getParameterCallback;
         _effect.user = cast(void*)(this);
         _effect.object = cast(void*)(this);
-        _effect.processDoubleReplacing = null;
+        _effect.processDoubleReplacing = &processDoubleReplacingCallback;
 
         //deprecated
         _effect.DEPRECATED_ioRatio = 1.0;
@@ -76,12 +77,41 @@ public:
         // dummmy values
         _sampleRate = 44100.0f;
         _maxFrames = 128;
+        _usedInputs = 0;
+        _usedOutputs = 0;
+
+        // GUI thread can allocate
+        _inputScratchBuffer.length = _maxInputs;
+        _outputScratchBuffer.length = _maxOutputs;
+
+        for (int i = 0; i < _maxInputs; ++i)
+            _inputScratchBuffer[i] = new AlignedBuffer!double();
+
+        for (int i = 0; i < _maxOutputs; ++i)
+            _outputScratchBuffer[i] = new AlignedBuffer!double();
+
+        _inputPointers.length = _maxInputs;
+        _outputPointers.length = _maxOutputs;
+
+        resizeScratchBuffers();
     }
 
 private:
 
+    VSTHostFromClientPOV _host;
+    Client _client;
+    
     float _sampleRate;
     size_t _maxFrames;
+    int _maxInputs;
+    int _maxOutputs;
+    int _usedInputs;
+    int _usedOutputs;
+
+    AlignedBuffer!double[] _inputScratchBuffer; // input double buffer, one per possible input
+    AlignedBuffer!double[] _outputScratchBuffer; // input double buffer, one per output
+    double*[] _inputPointers;  // where processAudio will take its audio input, one per possible input
+    double*[] _outputPointers; // where processAudio will output audio, one per possible output   
 
 
     /// VST opcode dispatcher
@@ -169,6 +199,8 @@ private:
                 if (value < 0) 
                     value = 0;
                 _maxFrames = value;
+                resizeScratchBuffers();
+                clearScratchBuffers();
                 return 0;
             }
 
@@ -336,14 +368,16 @@ private:
                 VstSpeakerArrangement* pOutputArr = cast(VstSpeakerArrangement*) ptr;
                 if (pInputArr)
                 {
-                    bool success = _client.setNumUsedInputs(pInputArr.numChannels);
+                    _usedInputs = pInputArr.numChannels;
+                    bool success = _client.setNumUsedInputs(_usedInputs);
                     if (!success)
                         return 0;
                 }
 
                 if (pOutputArr)
                 {
-                    bool success = _client.setNumUsedOutputs(pOutputArr.numChannels);
+                    _usedOutputs = pOutputArr.numChannels;
+                    bool success = _client.setNumUsedOutputs(_usedOutputs);
                     if (!success)
                         return 0;
                 }
@@ -401,24 +435,89 @@ private:
         }
     }
 
+    //
+    // Processing buffers and callbacks
+    //
+
+    // Resize copy buffers according to maximum block size.
+    void resizeScratchBuffers()
+    {
+        for (int i = 0; i < _maxInputs; ++i)
+            _inputScratchBuffer[i].resize(_maxFrames);
+
+        for (int i = 0; i < _maxOutputs; ++i)
+            _outputScratchBuffer[i].resize(_maxFrames);
+    }   
+
+    void clearScratchBuffers()
+    {
+        for (int i = 0; i < _maxInputs; ++i)
+            memset(_inputScratchBuffer[i].ptr, 0, _maxFrames * double.sizeof);
+    }
+
+
     void process(float **inputs, float **outputs, int sampleFrames)
     {
-        // TODO
+        if (sampleFrames > _maxFrames)
+            assert(false); // simply crash the audio thread if buffer is above the maximum size
+
+        // existing inputs gets converted to double
+        // non-connected input is zero
+        for (int i = 0; i < _usedInputs; ++i)
+        {
+            float* source = inputs[i];
+            double* dest = _inputScratchBuffer[i].ptr;
+            for (int f = 0; f < sampleFrames; ++f)
+                dest[f] = source[f];
+
+            _inputPointers[i] = dest;
+        }
+
+        // TODO don't do this each time
+        for (int i = _usedInputs; i < _maxInputs; ++i)
+        {
+            double* dest = _inputScratchBuffer[i].ptr;
+            for (int f = 0; f < sampleFrames; ++f)
+                dest[f] = 0;
+            _inputPointers[i] = dest;
+        }
+
+        for (int i = 0; i < _maxOutputs; ++i)
+        {
+            _outputPointers[i] = _outputScratchBuffer[i].ptr;
+        }
+
+        _client.processAudio(_inputPointers.ptr, _outputPointers.ptr, sampleFrames);
+
+        for (int i = 0; i < _usedOutputs; ++i)
+        {
+            double* source = _outputScratchBuffer[i].ptr;
+            float* dest = outputs[i];
+            for (int f = 0; f < sampleFrames; ++f)
+                dest[f] += cast(float)source[f];
+        }
+        // accumulate data back to float output
     }
 
     void processReplacing(float **inputs, float **outputs, int sampleFrames)
     {
-        // TODO
-    }
+        if (sampleFrames > _maxFrames)
+            assert(false); // simply crash the audio thread if buffer is above the maximum size
 
-    void processDouble(double **inputs, double **outputs, int sampleFrames)
-    {
-        // TODO
+        // fill output buffers with zeros
+        for (int i = 0; i < _usedOutputs; ++i)
+        {
+            double* source = _outputScratchBuffer[i].ptr;
+            float* dest = outputs[i];
+            for (int f = 0; f < sampleFrames; ++f)
+                dest[f] = 0;
+        }
+        process(inputs, outputs, sampleFrames);
     }
 
     void processDoubleReplacing(double **inputs, double **outputs, int sampleFrames)
-    {
-        // TODO
+    {        
+        _client.processAudio(inputs, outputs, sampleFrames);
     }
 }
 
@@ -472,6 +571,19 @@ extern(C) private nothrow
         {
             auto plugin = cast(VSTClient)effect.user;
             plugin.processReplacing(inputs, outputs, sampleFrames);
+        }
+        catch (Throwable e)
+        {
+            unrecoverableError(); // should not throw in a callback
+        }
+    }
+
+    void processDoubleReplacingCallback(AEffect *effect, double **inputs, double **outputs, int sampleFrames) 
+    {
+        try
+        {
+            auto plugin = cast(VSTClient)effect.user;
+            plugin.processDoubleReplacing(inputs, outputs, sampleFrames);
         }
         catch (Throwable e)
         {
@@ -554,36 +666,36 @@ public:
     }
 
     /**
-    * Returns:
-    * 	  input latency in frames
-    */
+     * Returns:
+     * 	  Input latency in frames.
+     */
     int inputLatency() nothrow 
     {
         return cast(int)_hostCallback(_effect, audioMasterGetInputLatency, 0, 0, null, 0);
     }
 
     /**
-    * Returns:
-    * 	  output latency in frames
-    */
+     * Returns:
+     * 	  Output latency in frames.
+     */
     int outputLatency() nothrow 
     {
         return cast(int)_hostCallback(_effect, audioMasterGetOutputLatency, 0, 0, null, 0);
     }
 
     /**
-    * Deprecated: This call is deprecated, but was added to support older hosts (like MaxMSP).
-    * Plugins (VSTi2.0 thru VSTi2.3) call this to tell the host that the plugin is an instrument.
-    */
+     * Deprecated: This call is deprecated, but was added to support older hosts (like MaxMSP).
+     * Plugins (VSTi2.0 thru VSTi2.3) call this to tell the host that the plugin is an instrument.
+     */
     void wantEvents() nothrow
     {
         _hostCallback(_effect, DEPRECATED_audioMasterWantMidi, 0, 1, null, 0);
     }
 
     /**
-    * Returns:
-    *    current sampling rate of host.
-    */
+     * Returns:
+     *    Current sampling rate of host.
+     */
     float samplingRate() nothrow
     {
         float *f = cast(float *) _hostCallback(_effect, audioMasterGetSampleRate, 0, 0, null, 0);

@@ -30,7 +30,10 @@
         {
             "name": "plugin",
             "sourcePaths": [ "plugin/dplug/plugin" ],
-            "importPaths": [ "plugin" ]
+            "importPaths": [ "plugin" ],
+            "dependencies": {
+                "gfm:core": "~master"
+            }
         },
         {
             "name": "vst",
