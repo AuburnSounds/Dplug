@@ -40,7 +40,7 @@ public:
     {
         _messageQueue = new SpinlockedQueue!Message(256);
         _host.init(hostCallback, &_effect);
-        _client = client; // copy
+        _client = client;
 
         _effect = _effect.init;
 
@@ -120,10 +120,21 @@ private:
 
     // Lock-free message queue from opcode thread to audio thread.
     SpinlockedQueue!Message _messageQueue;
+    Spinlock _paramLock;
 
-    bool isValidParamIndex(int i) pure const nothrow
+    final bool isValidParamIndex(int i) pure const nothrow
     {
         return i >= 0 && i < _maxParams;
+    }
+
+    final bool isValidInputIndex(int index)
+    {
+        return index >= 0 && index < _maxInputs;
+    }
+
+    final bool isValidOutputIndex(int index)
+    {
+        return index >= 0 && index < _maxOutputs;
     }
 
     /// VST opcode dispatcher
@@ -170,7 +181,11 @@ private:
                 if (!isValidParamIndex(index))
                     *p = '\0';
                 else
+                {
+                    _paramLock.lock();
                     stringNCopy(p, 8, _client.param(index).label());
+                    _paramLock.unlock();
+                }
                 return 0;
             }
 
@@ -180,7 +195,11 @@ private:
                 if (!isValidParamIndex(index))
                     *p = '\0';
                 else
+                {
+                    _paramLock.lock();
                     _client.param(index).toStringN(p, 8);
+                    _paramLock.unlock();
+                }
                 return 0;
             }
 
@@ -190,7 +209,11 @@ private:
                 if (!isValidParamIndex(index))
                     *p = '\0';
                 else
+                {
+                    _paramLock.lock();
                     stringNCopy(p, 32, _client.param(index).name());
+                    _paramLock.unlock();
+                }
                 return 0;
             }
 
@@ -299,8 +322,12 @@ private:
                 if (ptr == null)
                     return 0;
 
-                double v;
+
+
+                double v;                
+                _paramLock.lock();
                 _client.param(index).set(atof(cast(char*)ptr));
+                _paramLock.unlock();
                 return 1;
             }
 
@@ -325,13 +352,13 @@ private:
                 if (ptr == null)
                     return 0;
 
-                if (!_client.isValidInputIndex(index))
+                if (!isValidInputIndex(index))
                     return 0;
 
                 VstPinProperties* pp = cast(VstPinProperties*) ptr;
                 pp.flags = kVstPinIsActive;
                     
-                if ( (index % 2) == 0 && index < _client.maxInputs())
+                if ( (index % 2) == 0 && index < _maxInputs)
                     pp.flags |= kVstPinIsStereo;
 
                 sprintf(pp.label.ptr, "Input %d", index);
@@ -343,13 +370,13 @@ private:
                 if (ptr == null)
                     return 0;
 
-                if (!_client.isValidOutputIndex(index))
+                if (!isValidOutputIndex(index))
                     return 0;
 
                 VstPinProperties* pp = cast(VstPinProperties*) ptr;
                 pp.flags = kVstPinIsActive;
 
-                if ( (index % 2) == 0 && index < _client.maxOutputs())
+                if ( (index % 2) == 0 && index < _maxOutputs)
                     pp.flags |= kVstPinIsStereo;
 
                 sprintf(pp.label.ptr, "Output %d", index);
@@ -643,7 +670,9 @@ extern(C) private nothrow
             if (!plugin.isValidParamIndex(index))
                 return;
 
-            return client.param(index).set(parameter);
+            plugin._paramLock.lock();
+            client.param(index).set(parameter);
+            plugin._paramLock.unlock();
         }
         catch (Throwable e)
         {
@@ -661,7 +690,11 @@ extern(C) private nothrow
             if (!plugin.isValidParamIndex(index))
                 return 0.0f;
 
-            return client.param(index).get();
+            float value;
+            plugin._paramLock.lock();
+            value = client.param(index).get();
+            plugin._paramLock.unlock();
+            return value;
         }
         catch (Throwable e)
         {
