@@ -1,9 +1,14 @@
 // See licenses/WDL_license.txt
+
+/// Base client implementation.
+
 module dplug.plugin.client;
 
 import std.container;
 import core.stdc.string;
 import core.stdc.stdio;
+
+
 
 
 /// Holds a plugin client parameter description and value.
@@ -82,8 +87,9 @@ private:
 }
 
 /// Plugin interface, from the client point of view.
-/// Client wrappers owns one.
+/// This client has no knowledge of thread-safety, it must be handled externally.
 /// User plugins derivate from this class.
+/// Plugin formats wrappers owns one dplug.plugin.Client as a member.
 class Client
 {
 public:
@@ -196,7 +202,7 @@ public:
     /// While it seems no VST host use this ID as a unique
     /// way to identify a plugin, common wisdom is to try to 
     /// get a sufficiently random one to avoid conflicts.
-    abstract int getPluginID();
+    abstract int getPluginID() pure const nothrow;
 
     /// Returns: Plugin version in x.x.x.x decimal form.
     int getPluginVersion()
@@ -205,7 +211,8 @@ public:
     }
 
     /// Override to declare the plugin properties.
-    abstract Flags getFlags();
+    /// Must always return the same value.
+    abstract Flags getFlags() pure const nothrow;
 
     /// Override to clear state state (eg: delay lines) and allocate buffers.
     abstract void reset(double sampleRate, size_t maxFrames);

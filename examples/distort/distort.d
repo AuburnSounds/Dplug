@@ -6,12 +6,12 @@ import dplug.vst;
 /// Example mono/stereo distortion plugin.
 final class Distort : dplug.plugin.Client
 {
-    override Flags getFlags()
+    override Flags getFlags() pure const nothrow
     {
         return 0; // Not a synth, no GUI
     }
 
-    override int getPluginID()
+    override int getPluginID() pure const nothrow
     {
         return CCONST('l', 'o', 'l', 'd');
     }

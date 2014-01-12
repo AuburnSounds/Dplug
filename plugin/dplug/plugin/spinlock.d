@@ -3,6 +3,8 @@ module dplug.plugin.spinlock;
 
 import core.atomic;
 
+import gfm.core;
+
 /// Intended to small delays only.
 /// Allows very fast synchronization between eg. a high priority 
 /// audio thread and an UI thread.
@@ -96,8 +98,9 @@ final class SpinlockedQueue(T)
             _lock = Spinlock();
         }
 
-        /// Pushes an item to the back, block if queue is full.
-        void pushBack(T x)
+        /// Pushes an item to the back, crash if queue is full!
+        /// Thus, never blocks.
+        void pushBack(T x) nothrow
         {
             _lock.lock();
             _queue.pushBack(x);
@@ -105,8 +108,8 @@ final class SpinlockedQueue(T)
         }
 
         /// Pops an item from the front, block if queue is empty.
-        /// Will crash if the queue is overloaded.
-        bool popFront(out T result)
+        /// Never blocks.
+        bool popFront(out T result) nothrow
         {
             bool hadItem;
             _lock.lock();
