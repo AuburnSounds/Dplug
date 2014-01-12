@@ -97,7 +97,7 @@ public:
         _inputPointers.length = _maxInputs;
         _outputPointers.length = _maxOutputs;
 
-        resizeScratchBuffers(_maxFrames);
+        _messageQueue.pushBack(Message(Message.Type.resetState, _maxFrames, 0, _sampleRate));
     }
 
 private:
