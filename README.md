@@ -2,20 +2,21 @@
 
 dplug is a library that allow the creation of audio plugins. 
 Additionally it comes with music DSP algorithms that might be useful for your next-generation MS converter plugin.
-**Currently very alpha and unusable.**
+**Currently only support VST 2.4 plugins without GUI.**
 
 ## Contents
 
 ### plugin/
-  * **client.d.d** client plugin interface, use by client wrappers.
+  * **client.d.d** client plugin interface, used by client wrappers.
   * **dllmain.d** shared library entry point.
-  * **spinlock.d** a tiny synchronization object for UI <-> plugin interaction.
+  * **spinlock.d** spinlock, spinlock protected value, spinlock protected queue.
+  * **daw.d** known plugin hosts.
 
 ### vst/
   * **aeffect.d** VST SDK translation of aeffect.h.
   * **aeffectx.d** VST SDK translation of aeffectx.h.
   * **vstfxstore.d** VST SDK translation of vstfxstore.h.
-  * **client.d** VST wrapper.
+  * **client.d** VST plugin client.
 
 ### dsp/
   * **funcs.d** useful audio DSP functions.
