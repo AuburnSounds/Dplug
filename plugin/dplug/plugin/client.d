@@ -41,7 +41,7 @@ public:
         return _label;
     }
 
-    void toStringN(char* buffer, size_t numBytes)
+    void toStringN(char* buffer, size_t numBytes) const nothrow
     {
         snprintf(buffer, numBytes, "%2.2f", _value);
     }
@@ -205,7 +205,7 @@ public:
     abstract int getPluginID() pure const nothrow;
 
     /// Returns: Plugin version in x.x.x.x decimal form.
-    int getPluginVersion()
+    int getPluginVersion() pure const nothrow
     {
         return 1000;
     }
@@ -215,6 +215,9 @@ public:
     abstract Flags getFlags() pure const nothrow;
 
     /// Override to clear state state (eg: delay lines) and allocate buffers.
+    /// Important: This will be called by the audio thread. 
+    ///            You should not use allocation in the managed heap in this callback.
+    ///            But you can use malloc.
     abstract void reset(double sampleRate, size_t maxFrames);
 
     /// Process some audio.
@@ -222,6 +225,8 @@ public:
     /// In processAudio you are always guaranteed to get valid pointers
     /// to all the channels the plugin requested.
     /// Unconnected input pins are zeroed.
+    /// Important: This will be called by the audio thread.
+    ///            You should not use allocation in this callback.
     abstract void processAudio(double **inputs, double **outputs, int frames);
 
 protected:
