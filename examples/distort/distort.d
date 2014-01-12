@@ -1,7 +1,7 @@
-import dplug.vst;
+import std.math;
 
-import dplug.plugin;
-import dplug.vst;
+import dplug.plugin,
+       dplug.vst;
 
 /// Example mono/stereo distortion plugin.
 final class Distort : dplug.plugin.Client
@@ -13,7 +13,7 @@ final class Distort : dplug.plugin.Client
 
     override int getPluginID() pure const nothrow
     {
-        return CCONST('l', 'o', 'l', 'd');
+        return CCONST('g', 'f', 'm', '0');
     }
 
     override void buildParameters()
@@ -26,20 +26,31 @@ final class Distort : dplug.plugin.Client
     override void buildLegalIO()
     {
         addLegalIO(1, 1);
+        addLegalIO(1, 2);
+        addLegalIO(2, 1);
         addLegalIO(2, 2);
     }
 
-    /// Override to clear state state (eg: delay lines) and allocate buffers.
     override void reset(double sampleRate, size_t maxFrames)
     {
     }
 
-    /// Process some audio.
-    /// Override to make some noise.
     override void processAudio(double **inputs, double **outputs, int frames)
     {
-        for (int i = 0; i < frames; ++i)
+        int numInputs = maxInputs();
+        int numOutputs = maxOutputs();
+
+        int minChan = numInputs > numOutputs ? numOutputs : numInputs;
+
+        for (int chan = 0; chan < minChan; ++chan)
+            for (int f = 0; f < frames; ++f)
+                outputs[chan][f] = tanh(inputs[chan][f]);
+
+        // fill with zero the remaining channels
+        for (int chan = 0; chan < minChan; ++chan)
         {
+            for (int f = 0; f < frames; ++f)
+                outputs[chan][f] = 0;
         }
     }
 }
