@@ -11,7 +11,8 @@ import std.conv,
 import gfm.core.alignedbuffer;
 
 import dplug.plugin.client,
-       dplug.plugin.daw;
+       dplug.plugin.daw,
+       dplug.plugin.spinlock;
 
 import dplug.vst.aeffectx;
 
@@ -37,6 +38,7 @@ public:
     
     this(Client client, HostCallbackFunction hostCallback)
     {
+        _messageQueue = new SpinlockedQueue!Message(256);
         _host.init(hostCallback, &_effect);
         _client = client; // copy
 
@@ -56,8 +58,10 @@ public:
             flags |= effFlagsHasEditor;
 
         _effect.flags = flags;
+        _maxParams = client.params().length;
         _maxInputs = _effect.numInputs = _client.maxInputs();
         _maxOutputs = _effect.numOutputs = _client.maxOutputs();
+        assert(_maxParams >= 0 && _maxInputs >= 0 && _maxOutputs >= 0);
         _effect.numParams = cast(int)(client.params().length);
         _effect.numPrograms = 0; // TODO implement presets
         _effect.version_ = client.getPluginVersion();
@@ -93,7 +97,7 @@ public:
         _inputPointers.length = _maxInputs;
         _outputPointers.length = _maxOutputs;
 
-        resizeScratchBuffers();
+        resizeScratchBuffers(_maxFrames);
     }
 
 private:
@@ -101,18 +105,26 @@ private:
     VSTHostFromClientPOV _host;
     Client _client;
     
-    float _sampleRate;
-    size_t _maxFrames;
+    float _sampleRate; // samplerate from opcode thread POV
+    size_t _maxFrames; // max frames from opcode thread POV
     int _maxInputs;
     int _maxOutputs;
-    int _usedInputs;
-    int _usedOutputs;
+    int _maxParams;
+    int _usedInputs;  // used inputs from opcode thread POV
+    int _usedOutputs; // used outputs from opcode thread POV
 
-    AlignedBuffer!double[] _inputScratchBuffer; // input double buffer, one per possible input
+    AlignedBuffer!double[] _inputScratchBuffer;  // input double buffer, one per possible input
     AlignedBuffer!double[] _outputScratchBuffer; // input double buffer, one per output
     double*[] _inputPointers;  // where processAudio will take its audio input, one per possible input
     double*[] _outputPointers; // where processAudio will output audio, one per possible output   
 
+    // Lock-free message queue from opcode thread to audio thread.
+    SpinlockedQueue!Message _messageQueue;
+
+    bool isValidParamIndex(int i) pure const nothrow
+    {
+        return i >= 0 && i < _maxParams;
+    }
 
     /// VST opcode dispatcher
     final VstIntPtr dispatcher(int opcode, int index, ptrdiff_t value, void *ptr, float opt)
@@ -155,7 +167,7 @@ private:
             case effGetParamLabel: // opcode 6
             {
                 char* p = cast(char*)ptr;
-                if (!_client.isValidParamIndex(index))
+                if (!isValidParamIndex(index))
                     *p = '\0';
                 else
                     stringNCopy(p, 8, _client.param(index).label());
@@ -165,7 +177,7 @@ private:
             case effGetParamDisplay: // opcode 7
             {
                 char* p = cast(char*)ptr;
-                if (!_client.isValidParamIndex(index))
+                if (!isValidParamIndex(index))
                     *p = '\0';
                 else
                     _client.param(index).toStringN(p, 8);
@@ -175,7 +187,7 @@ private:
             case effGetParamName: // opcode 8
             { 
                 char* p = cast(char*)ptr;
-                if (!_client.isValidParamIndex(index))
+                if (!isValidParamIndex(index))
                     *p = '\0';
                 else
                     stringNCopy(p, 32, _client.param(index).name());
@@ -190,17 +202,17 @@ private:
             case effSetSampleRate: // opcode 10
             {
                 _sampleRate = opt;
-                _client.reset(_sampleRate, _maxFrames);
+                _messageQueue.pushBack(Message(Message.Type.resetState, _maxFrames, 0, _sampleRate));
                 return 0;
             }
            
             case effSetBlockSize: // opcode 11
             {
                 if (value < 0) 
-                    value = 0;
+                    return 1;
+
                 _maxFrames = value;
-                resizeScratchBuffers();
-                clearScratchBuffers();
+                _messageQueue.pushBack(Message(Message.Type.resetState, _maxFrames, 0, _sampleRate));
                 return 0;
             }
 
@@ -211,7 +223,7 @@ private:
                       // Audio processing was switched off.
                       // The plugin must call flush its state because otherwise pending data 
                       // would sound again when the effect is switched on next time.
-                      _client.reset(_sampleRate, _maxFrames);
+                      _messageQueue.pushBack(Message(Message.Type.resetState, _maxFrames, 0, _sampleRate));
                     }
                     else
                     {
@@ -274,14 +286,14 @@ private:
 
             case effCanBeAutomated: // opcode 26
             {
-                if (!_client.isValidParamIndex(index))
+                if (!isValidParamIndex(index))
                     return 0;
                 return 1; // can always be automated
             }
 
             case effString2Parameter: // opcode 27
             {
-                if (!_client.isValidParamIndex(index))
+                if (!isValidParamIndex(index))
                     return 0;
 
                 if (ptr == null)
@@ -366,20 +378,20 @@ private:
             {
                 VstSpeakerArrangement* pInputArr = cast(VstSpeakerArrangement*) value;
                 VstSpeakerArrangement* pOutputArr = cast(VstSpeakerArrangement*) ptr;
-                if (pInputArr)
+                if (pInputArr !is null && pOutputArr !is null )
                 {
                     _usedInputs = pInputArr.numChannels;
-                    bool success = _client.setNumUsedInputs(_usedInputs);
-                    if (!success)
-                        return 0;
-                }
-
-                if (pOutputArr)
-                {
                     _usedOutputs = pOutputArr.numChannels;
-                    bool success = _client.setNumUsedOutputs(_usedOutputs);
-                    if (!success)
-                        return 0;
+
+                    // limit to possible I/O
+                    if (_usedInputs > _maxInputs)
+                        _usedInputs = _maxInputs;
+                    if (_usedOutputs > _maxOutputs)
+                        _usedOutputs = _maxOutputs;
+
+                    _messageQueue.pushBack(Message(Message.Type.changedIO,_usedInputs, _usedOutputs, 0.0f));
+
+                    return 0;
                 }
                 return 1;
             }
@@ -440,19 +452,45 @@ private:
     //
 
     // Resize copy buffers according to maximum block size.
-    void resizeScratchBuffers()
+    void resizeScratchBuffers(int nFrames)
     {
         for (int i = 0; i < _maxInputs; ++i)
-            _inputScratchBuffer[i].resize(_maxFrames);
+            _inputScratchBuffer[i].resize(nFrames);
 
         for (int i = 0; i < _maxOutputs; ++i)
-            _outputScratchBuffer[i].resize(_maxFrames);
+            _outputScratchBuffer[i].resize(nFrames);
     }   
 
-    void clearScratchBuffers()
+    void clearScratchBuffers(int nFrames)
     {
         for (int i = 0; i < _maxInputs; ++i)
-            memset(_inputScratchBuffer[i].ptr, 0, _maxFrames * double.sizeof);
+            memset(_inputScratchBuffer[i].ptr, 0, nFrames * double.sizeof);
+    }
+
+    void beforeProcess()
+    {
+        Message msg;
+        while(_messageQueue.popFront(msg))
+        {
+            final switch(msg.type)
+            {
+                case Message.Type.changedIO:
+                {
+                    bool success;
+                    success = _client.setNumUsedInputs(msg.iParam);
+                    assert(success);
+                    success = _client.setNumUsedOutputs(msg.iParam2);
+                    assert(success);
+                    break;
+                }
+
+                case Message.Type.resetState:
+                    resizeScratchBuffers(msg.iParam);
+                    clearScratchBuffers(msg.iParam);
+                    _client.reset(msg.fparam, msg.iParam);
+                    break;
+            }
+        }
     }
 
 
@@ -487,6 +525,7 @@ private:
             _outputPointers[i] = _outputScratchBuffer[i].ptr;
         }
 
+        beforeProcess();
         _client.processAudio(_inputPointers.ptr, _outputPointers.ptr, sampleFrames);
 
         for (int i = 0; i < _usedOutputs; ++i)
@@ -517,8 +556,11 @@ private:
 
     void processDoubleReplacing(double **inputs, double **outputs, int sampleFrames)
     {        
+        beforeProcess();
         _client.processAudio(inputs, outputs, sampleFrames);
     }
+
+    
 }
 
 void unrecoverableError() nothrow
@@ -598,9 +640,7 @@ extern(C) private nothrow
             auto plugin = cast(VSTClient)effect.user;
             Client client = plugin._client;
 
-            if (index < 0)
-                return;
-            if (index >= client.params().length)
+            if (!plugin.isValidParamIndex(index))
                 return;
 
             return client.param(index).set(parameter);
@@ -618,7 +658,7 @@ extern(C) private nothrow
             auto plugin = cast(VSTClient)(effect.user);
             Client client = plugin._client;
 
-            if (!client.isValidParamIndex(index))
+            if (!plugin.isValidParamIndex(index))
                 return 0.0f;
 
             return client.param(index).get();
@@ -804,5 +844,20 @@ private:
     }
 }
 
+private
+{
+    struct Message
+    {
+        enum Type
+        {
+            resetState, // reset plugin state, set samplerate and buffer size (samplerate = fParam, buffersize in frames = iParam)
+            changedIO,  // number of inputs/outputs changes (num. inputs = iParam, num. outputs = iParam2)
+        }
 
+        Type type;
+        int iParam;
+        int iParam2;
+        float fparam;
+    }
+}
 

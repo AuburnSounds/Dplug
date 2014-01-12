@@ -45,10 +45,10 @@ alias extern(C) nothrow void function(AEffect* effect, VstInt32 index, float par
 alias extern(C) nothrow float function(AEffect* effect, VstInt32 index) AEffectGetParameterProc;
 
 /** Four Character Constant (for AEffect->uniqueID) */
-int CCONST(int a, int b, int c, int d)
+int CCONST(int a, int b, int c, int d) pure nothrow
 {
     return (a << 24) | (b << 16) | (c << 8) | (d << 0);
- }
+}
 
 /** AEffect magic number */
 enum kEffectMagic = CCONST('V', 's', 't', 'P');
