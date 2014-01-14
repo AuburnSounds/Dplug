@@ -494,7 +494,7 @@ private:
             memset(_inputScratchBuffer[i].ptr, 0, nFrames * double.sizeof);
     }
 
-    void beforeProcess()
+    void processMessages()
     {
         Message msg;
         while(_messageQueue.popFront(msg))
@@ -523,6 +523,8 @@ private:
 
     void process(float **inputs, float **outputs, int sampleFrames)
     {
+        processMessages();
+
         if (sampleFrames > _maxFrames)
             assert(false); // simply crash the audio thread if buffer is above the maximum size
 
@@ -552,7 +554,6 @@ private:
             _outputPointers[i] = _outputScratchBuffer[i].ptr;
         }
 
-        beforeProcess();
         _client.processAudio(_inputPointers.ptr, _outputPointers.ptr, sampleFrames);
 
         for (int i = 0; i < _usedOutputs; ++i)
@@ -567,6 +568,8 @@ private:
 
     void processReplacing(float **inputs, float **outputs, int sampleFrames)
     {
+        processMessages();
+
         if (sampleFrames > _maxFrames)
             assert(false); // simply crash the audio thread if buffer is above the maximum size
 
@@ -583,7 +586,7 @@ private:
 
     void processDoubleReplacing(double **inputs, double **outputs, int sampleFrames)
     {        
-        beforeProcess();
+        processMessages();
         _client.processAudio(inputs, outputs, sampleFrames);
     }
 
@@ -594,7 +597,13 @@ void unrecoverableError() nothrow
 {
     debug
     {
-        assert(false); // crash the Host in debug mode
+        // break in debug mode
+        asm
+        {
+            int 3;
+        }
+
+        assert(false); // then crash
     }
     else
     {
