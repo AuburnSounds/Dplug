@@ -47,7 +47,7 @@ final class Distort : dplug.plugin.Client
                 outputs[chan][f] = tanh(inputs[chan][f]);
 
         // fill with zero the remaining channels
-        for (int chan = 0; chan < minChan; ++chan)
+        for (int chan = minChan; chan < numOutputs; ++chan)
         {
             for (int f = 0; f < frames; ++f)
                 outputs[chan][f] = 0;

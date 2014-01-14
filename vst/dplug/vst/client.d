@@ -81,8 +81,10 @@ public:
         // dummmy values
         _sampleRate = 44100.0f;
         _maxFrames = 128;
-        _usedInputs = 0;
-        _usedOutputs = 0;
+
+        // because effSetSpeakerArrangement might never come
+        _usedInputs = _maxInputs;
+        _usedOutputs = _maxOutputs;
 
         // GUI thread can allocate
         _inputScratchBuffer.length = _maxInputs;
