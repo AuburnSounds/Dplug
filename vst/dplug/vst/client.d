@@ -46,7 +46,7 @@ public:
 
         _effect.magic = kEffectMagic;
 
-        int flags = effFlagsCanReplacing;
+        int flags = effFlagsCanReplacing | effFlagsCanDoubleReplacing;
 
         if ( client.getFlags() & Client.IsSynth )
         {
@@ -522,13 +522,18 @@ private:
         }
     }
 
-
-    void process(float **inputs, float **outputs, int sampleFrames)
+    void preprocess(int sampleFrames)
     {
         processMessages();
 
         if (sampleFrames > _maxFrames)
-            assert(false); // simply crash the audio thread if buffer is above the maximum size
+            unrecoverableError(); // simply crash the audio thread if buffer is above the maximum size
+    }
+
+
+    void process(float **inputs, float **outputs, int sampleFrames)
+    {
+        preprocess(sampleFrames);        
 
         // existing inputs gets converted to double
         // non-connected input is zero
@@ -570,25 +575,48 @@ private:
 
     void processReplacing(float **inputs, float **outputs, int sampleFrames)
     {
-        processMessages();
+        preprocess(sampleFrames);
 
-        if (sampleFrames > _maxFrames)
-            assert(false); // simply crash the audio thread if buffer is above the maximum size
+        // existing inputs gets converted to double
+        // non-connected input is zero
+        for (int i = 0; i < _usedInputs; ++i)
+        {
+            float* source = inputs[i];
+            double* dest = _inputScratchBuffer[i].ptr;
+            for (int f = 0; f < sampleFrames; ++f)
+                dest[f] = source[f];
 
-        // fill output buffers with zeros
+            _inputPointers[i] = dest;
+        }
+
+        // TODO don't do this each time
+        for (int i = _usedInputs; i < _maxInputs; ++i)
+        {
+            double* dest = _inputScratchBuffer[i].ptr;
+            for (int f = 0; f < sampleFrames; ++f)
+                dest[f] = 0;
+            _inputPointers[i] = dest;
+        }
+
+        for (int i = 0; i < _maxOutputs; ++i)
+        {
+            _outputPointers[i] = _outputScratchBuffer[i].ptr;
+        }
+
+        _client.processAudio(_inputPointers.ptr, _outputPointers.ptr, sampleFrames);
+
         for (int i = 0; i < _usedOutputs; ++i)
         {
             double* source = _outputScratchBuffer[i].ptr;
             float* dest = outputs[i];
             for (int f = 0; f < sampleFrames; ++f)
-                dest[f] = 0;
+                dest[f] = cast(float)source[f];
         }
-        process(inputs, outputs, sampleFrames);
     }
 
     void processDoubleReplacing(double **inputs, double **outputs, int sampleFrames)
     {        
-        processMessages();
+        preprocess(sampleFrames);
         _client.processAudio(inputs, outputs, sampleFrames);
     }
 
