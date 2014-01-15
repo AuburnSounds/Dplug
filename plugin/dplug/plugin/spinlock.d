@@ -1,4 +1,4 @@
-// See licenses/WDL_license.txt
+// See licenses/UNLICENSE.txt
 module dplug.plugin.spinlock;
 
 import core.atomic;
@@ -60,15 +60,17 @@ struct Spinlocked(T)
     {
         spinlock.lock();
         scope(exit) spinlock.unlock();
-
         value = newValue;
     }
 
     T get() nothrow
     {
-        spinlock.lock();
-        T current = value;
-        spinlock.unlock();
+        T current;
+        {
+            spinlock.lock();
+            scope(exit) spinlock.unlock();
+            current = value;
+        }        
         return current;
     }
 }
@@ -103,25 +105,25 @@ final class SpinlockedQueue(T)
         void pushBack(T x) nothrow
         {
             _lock.lock();
+            scope(exit) _lock.unlock();
+
             _queue.pushBack(x);
-            _lock.unlock();
         }
 
         /// Pops an item from the front, block if queue is empty.
         /// Never blocks.
         bool popFront(out T result) nothrow
         {
-            bool hadItem;
             _lock.lock();
+            scope(exit) _lock.unlock();
+
             if (_queue.length() != 0)
             {
                 result = _queue.popFront();
-                hadItem = true;
+                return true;
             }
             else
-                hadItem = false;
-            _lock.unlock();
-            return hadItem;
+                return false;
         }
     }
 }
