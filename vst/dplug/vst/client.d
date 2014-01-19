@@ -93,6 +93,7 @@ public:
         _effect.setParameter = &setParameterCallback;
         _effect.getParameter = &getParameterCallback;
         _effect.user = cast(void*)(this);
+        _effect.initialDelay = _client.latencySamples();
         _effect.object = cast(void*)(this);
         _effect.processDoubleReplacing = &processDoubleReplacingCallback;
 

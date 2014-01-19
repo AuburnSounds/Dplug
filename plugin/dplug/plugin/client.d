@@ -220,6 +220,14 @@ public:
     ///            But you can use malloc.
     abstract void reset(double sampleRate, size_t maxFrames);
 
+    /// Override to set the plugin latency in samples.
+    /// Most of the time this is dependant on the sampling rate, but most host
+    /// don't support latency changes.
+    int latencySamples() pure const nothrow /// Returns: Plugin latency in samples.
+    {
+        return 0;
+    }
+
     /// Process some audio.
     /// Override to make some noise.
     /// In processAudio you are always guaranteed to get valid pointers
