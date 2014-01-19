@@ -22,6 +22,31 @@ T mallocEmplace(T, Args...)(auto ref Args args)
 }
 
 
+template VSTEntryPoint(alias ClientClass)
+{
+    const char[] VSTEntryPoint =
+        "__gshared VSTClient plugin;"
+        "__gshared " ~ ClientClass.stringof ~ " client;"
+
+        "extern (C) nothrow AEffect* VSTPluginMain(HostCallbackFunction hostCallback) "
+        "{"
+        "   if (hostCallback is null)"
+        "       return null;"
+        "   try"
+        "   {"
+        "       auto client = new " ~ ClientClass.stringof ~ "();"
+        "       plugin = new VSTClient(client, hostCallback);"
+        "   }"
+        "   catch (Throwable e)"
+        "   {"
+        "       unrecoverableError();" // should not throw in a callback
+        "       return null;"
+        "   }"
+        "   return &plugin._effect;"
+        "}";
+}
+
+
 ///
 ///
 ///                 VST client wrapper

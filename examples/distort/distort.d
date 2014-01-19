@@ -3,6 +3,8 @@ import std.math;
 import dplug.plugin,
        dplug.vst;
 
+mixin(VSTEntryPoint!Distort);
+
 /// Example mono/stereo distortion plugin.
 final class Distort : dplug.plugin.Client
 {
@@ -13,7 +15,7 @@ final class Distort : dplug.plugin.Client
 
     override int getPluginID() pure const nothrow
     {
-        return CCONST('g', 'f', 'm', '0');
+        return CCONST('g', 'f', 'm', '0'); // change this!
     }
 
     override void buildParameters()
@@ -33,6 +35,7 @@ final class Distort : dplug.plugin.Client
 
     override void reset(double sampleRate, size_t maxFrames)
     {
+        // Clear here any state and delay buffers you might have.
     }
 
     override void processAudio(double **inputs, double **outputs, int frames)
@@ -59,24 +62,4 @@ final class Distort : dplug.plugin.Client
     }
 }
 
-__gshared VSTClient plugin;
-__gshared Distort client;
-
-extern (C) nothrow AEffect* VSTPluginMain(HostCallbackFunction hostCallback) 
-{
-    if (hostCallback is null)
-        return null;
-
-    try
-    {
-        auto client = new Distort();
-        plugin = new VSTClient(client, hostCallback);
-    }
-    catch (Throwable e)
-    {
-        unrecoverableError(); // should not throw in a callback
-        return null;
-    }
-    return &plugin._effect;
-}
 
