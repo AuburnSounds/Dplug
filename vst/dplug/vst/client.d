@@ -321,7 +321,7 @@ private:
                 return 0;
 
             case DEPRECATED_effIdentify: // opcode 22
-                return CCONST ('N', 'v', 'E', 'f');
+                return CCONST('N', 'v', 'E', 'f');
 
             case effGetChunk: // opcode 23
                 return 0; // TODO
@@ -449,21 +449,21 @@ private:
             }
 
             case effGetVendorString:
+            {
+                char* p = cast(char*)ptr;
+                if (p !is null)
                 {
-                    char* p = cast(char*)ptr;
-                    if (p !is null)
-                    {
-                        strcpy(p, "myVendor");
-                    }
-                    return 0;
+                    stringNCopy(p, 64, _client.vendorName());
                 }
+                return 0;
+            }
 
             case effGetProductString:
             {
                 char* p = cast(char*)ptr;
                 if (p !is null)
                 {
-                    strcpy(p, "lolg-plugin");
+                    stringNCopy(p, 64, _client.productName());
                 }
                 return 0;
             }
@@ -801,49 +801,12 @@ public:
     }
 
     /**
-     * Returns:
-     * 	  Input latency in frames.
-     */
-    int inputLatency() nothrow 
-    {
-        return cast(int)_hostCallback(_effect, audioMasterGetInputLatency, 0, 0, null, 0);
-    }
-
-    /**
-     * Returns:
-     * 	  Output latency in frames.
-     */
-    int outputLatency() nothrow 
-    {
-        return cast(int)_hostCallback(_effect, audioMasterGetOutputLatency, 0, 0, null, 0);
-    }
-
-    /**
      * Deprecated: This call is deprecated, but was added to support older hosts (like MaxMSP).
      * Plugins (VSTi2.0 thru VSTi2.3) call this to tell the host that the plugin is an instrument.
      */
     void wantEvents() nothrow
     {
         _hostCallback(_effect, DEPRECATED_audioMasterWantMidi, 0, 1, null, 0);
-    }
-
-    /**
-     * Returns:
-     *    Current sampling rate of host.
-     */
-    float samplingRate() nothrow
-    {
-        float *f = cast(float *) _hostCallback(_effect, audioMasterGetSampleRate, 0, 0, null, 0);
-        return *f;
-    }
-
-    /**
-    * Returns:
-    *    current block size of host.
-    */
-    int blockSize() nothrow
-    {
-        return cast(int)_hostCallback(_effect, audioMasterGetBlockSize, 0, 0, null, 0.0f);
     }
 
     /// Request plugin window resize.
@@ -857,7 +820,6 @@ public:
         int res = cast(int)_hostCallback(_effect, audioMasterGetVendorString, 0, 0, _vendorStringBuf.ptr, 0.0f);
         if (res == 1)
         {
-            //size_t len = strlen(_vendorStringBuf.ptr);
             return _vendorStringBuf.ptr;
         }
         else

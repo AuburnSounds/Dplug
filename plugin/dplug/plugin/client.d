@@ -198,6 +198,18 @@ public:
     {
     }
 
+    /// Override and return your brand name.
+    string vendorName() pure const nothrow
+    {
+        return "Witty Audio LTD";
+    }
+
+    /// Override and return your product name.
+    string productName() pure const nothrow
+    {
+        return "Destructatorizer";
+    }
+
     /// Override this method to give a plugin ID.
     /// While it seems no VST host use this ID as a unique
     /// way to identify a plugin, common wisdom is to try to 
