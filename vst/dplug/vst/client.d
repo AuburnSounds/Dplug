@@ -5,9 +5,6 @@ import core.stdc.stdlib,
        core.stdc.string,
        core.stdc.stdio;
 
-import std.conv,
-       std.typecons;
-
 import gfm.core.alignedbuffer;
 
 import dplug.plugin.client,
