@@ -5,6 +5,8 @@
     "copyright": "Steinberg",
     "license": "VST",
 
+    "targetType": "none",
+
     "authors": [
         "ponce",
         "Andrej Mitrovic",
