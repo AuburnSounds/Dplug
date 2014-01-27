@@ -5,6 +5,7 @@ import core.atomic;
 
 import gfm.core;
 
+
 /// Intended to small delays only.
 /// Allows very fast synchronization between eg. a high priority 
 /// audio thread and an UI thread.
@@ -19,18 +20,13 @@ struct Spinlock
              LOCKED = 1
         }
 
-        shared int _state; // initialized to false => unlocked
+        shared int _state; // initialized to 0 => unlocked
         
         void lock() nothrow
         {
             while(!cas(&_state, UNLOCKED, LOCKED))
             {
-                //TODO: PAUSE instruction for GDC/LDC (for now it will fail to compile)
-                asm
-                {
-                    rep; nop; // PAUSE instruction, recommended by Intel in busy spin loops
-                }
-
+                cpuRelax();
             }
         }
 
@@ -48,6 +44,75 @@ struct Spinlock
         }
     }
 }
+
+/// Similar to $(D Spinlock) but allows for multiple simultaneous readers.
+struct RWSpinLock
+{
+    public
+    {
+    enum : int
+    {
+        UNLOCKED = 0,
+        WRITER = 1,
+        READER = 2
+    }
+
+        shared int _state; // initialized to 0 => unlocked
+
+        /// Acquires lock as a reader/writer.
+        void lockWriter() nothrow
+        {
+            int count = 0;
+            while (!tryLockWriter()) 
+            {
+                cpuRelax();
+            }
+        }
+
+        /// Returns: true if the spin-lock was locked for reads and writes.
+        bool tryLockWriter() nothrow
+        {
+            return cas(&_state, UNLOCKED, WRITER);
+        }
+
+        /// Unlocks the spinlock after a writer lock.
+        void unlockWriter() nothrow
+        {
+            atomicOp!"&="(_state, ~(WRITER));
+        }
+
+
+        /// Acquires lock as a reader.
+        void lockReader() nothrow
+        {
+            int count = 0;
+            while (!tryLockReader())
+            {
+                cpuRelax();
+            }
+        }
+
+        /// Returns: true if the spin-lock was locked for reads.
+        bool tryLockReader() nothrow
+        {
+            int sum = atomicOp!"+="(_state, READER);
+            if ((sum & WRITER) != 0)
+            {
+                atomicOp!"-="(_state, READER);
+                return false;
+            }
+            else
+                return true;
+        }
+
+        /// Unlocks the spinlock after a reader lock.
+        void unlockReader() nothrow
+        {
+            atomicOp!"-="(_state, READER);
+        }
+    }
+}
+
 
 /// A value protected by a spin-lock.
 /// Ensure concurrency but no order.
@@ -128,3 +193,15 @@ final class SpinlockedQueue(T)
     }
 }
 
+
+private
+{
+    // TODO: Check with LDC/GDC.
+    void cpuRelax() nothrow
+    {
+        asm
+        {
+            rep; nop; // PAUSE instruction, recommended by Intel in busy spin loops
+        }
+    }
+}
