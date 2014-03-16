@@ -3,6 +3,7 @@ module dplug.dsp.wav;
 
 import std.range,
        std.array,
+       std.file,
        std.string;
 
 /// Supports Microsoft WAV audio file format.
@@ -13,6 +14,12 @@ struct SoundFile
     int sampleRate;
     int numChannels;
     double[] data; // data layout: machine endianness, interleaved channels
+}
+
+SoundFile decodeWAVE(string filepath)
+{
+    auto bytes = cast(ubyte[]) std.file.read(filepath);
+    return decodeWAVE(bytes);
 }
 
 SoundFile decodeWAVE(R)(R input) if (isInputRange!R)
