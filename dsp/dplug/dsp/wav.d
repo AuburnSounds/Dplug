@@ -155,6 +155,8 @@ SoundFile decodeWAVE(R)(R input) if (isInputRange!R)
                         result.data[i] = s / 2147483648.0;
                     }
                 }
+                else
+                    throw new WAVException("Unsupported bit-depth for integer PCM data, should be 8, 16, 24 or 32 bits.");
             }
             else
                 assert(false); // should have been handled earlier, crash
