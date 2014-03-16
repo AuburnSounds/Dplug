@@ -171,7 +171,11 @@ SoundFile decodeWAVE(R)(R input) if (isInputRange!R)
             foundData = true;
 
         }
-        // ignore unrecognized chunks
+        else
+        {
+            // ignore unrecognized chunks
+            skipBytes(input, chunkSize);
+        }
     }
 
     if (!foundFmt)
