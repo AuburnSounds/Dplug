@@ -1,18 +1,146 @@
 // See licenses/UNLICENSE.txt
 module dplug.dsp.wav;
 
-import std.range;
+import std.range,
+       std.array,
+       std.string;
 
-/// WAVEform audio file format (ie. WAV files)
+/// Supports Microsoft WAV audio file format.
 
-double[][] decodeWAVE(R)(R input) if (isInputRange!R)
+
+struct SoundFile
 {
-    uint chunkId, chunkSize;
-    getChunkHeader(input, chunkId, chunkSize);
-    if (chunkId != RIFFChunkId!"RIFF")
-        throw new WAVException("Expected RIFF chunk.");
+    int sampleRate;
+    int numChannels;
+    double[] data; // data layout: machine endianness, interleaved channels
+}
 
-    return null;
+SoundFile decodeWAVE(R)(R input) if (isInputRange!R)
+{
+    // check RIFF header
+    {
+        uint chunkId, chunkSize;
+        getChunkHeader(input, chunkId, chunkSize);
+        if (chunkId != RIFFChunkId!"RIFF")
+            throw new WAVException("Expected RIFF chunk.");
+
+        if (chunkSize < 4)
+            throw new WAVException("RIFF chunk is too small to contains a format.");
+
+        if (popUintBE(input) !=  RIFFChunkId!"WAVE")
+            throw new WAVException("Expected WAVE format.");
+    }    
+
+    immutable int LinearPCM = 0x0001;
+    immutable int FloatingPointIEEE = 0x0003;
+    immutable int WAVE_FORMAT_EXTENSIBLE = 0xFFFE;
+
+    bool foundFmt = false;
+    bool foundData = false;
+
+    
+    int audioFormat;
+    int numChannels;
+    int sampleRate;
+    int byteRate;
+    int blockAlign;
+    int bitsPerSample;
+
+    SoundFile result;
+
+    // while chunk is not
+    while (!input.empty)
+    {
+        uint chunkId, chunkSize;
+        getChunkHeader(input, chunkId, chunkSize); 
+        if (chunkId == RIFFChunkId!"fmt ")
+        {
+            if (foundFmt)
+                throw new WAVException("Found several 'fmt ' chunks in RIFF file.");
+
+            foundFmt = true;
+
+            if (chunkSize < 16)
+                throw new WAVException("Expected at least 16 bytes in 'fmt ' chunk."); // found in real-world for the moment: 16 or 40 bytes
+
+            audioFormat = popUshortLE(input);            
+            if (audioFormat == WAVE_FORMAT_EXTENSIBLE)
+                throw new WAVException("No support for format WAVE_FORMAT_EXTENSIBLE yet.");
+            
+            if (audioFormat != LinearPCM && audioFormat != FloatingPointIEEE)
+                throw new WAVException(format("Unsupported audio format %s, only PCM and IEEE float are supported.", audioFormat));
+
+            numChannels = popUshortLE(input);
+
+            sampleRate = popUintLE(input);
+            if (sampleRate <= 0)
+                throw new WAVException(format("Unsupported sample-rate %s.", cast(uint)sampleRate)); // we do not support sample-rate higher than 2^31hz
+
+            uint bytesPerSec = popUintLE(input);
+            int bytesPerFrame = popUshortLE(input);
+            bitsPerSample = popUshortLE(input);
+
+            if (bitsPerSample != 8 && bitsPerSample != 16 && bitsPerSample != 24 && bitsPerSample != 32) 
+                throw new WAVException(format("Unsupported bitdepth %s.", cast(uint)bitsPerSample));
+
+            if (bytesPerFrame != (bitsPerSample / 8) * numChannels)
+                throw new WAVException("Invalid bytes-per-second, data might be corrupted.");
+
+            skipBytes(input, chunkSize - 16);
+        }
+        else if (chunkId == RIFFChunkId!"data")
+        {
+            if (foundData)
+                throw new WAVException("Found several 'data' chunks in RIFF file.");
+
+            if (!foundFmt)
+                throw new WAVException("'fmt ' chunk expected before the 'data' chunk.");
+
+            int bytePerSample = bitsPerSample / 8;
+            uint frameSize = numChannels * bytePerSample;
+            if (chunkSize % frameSize != 0)
+                throw new WAVException("Remaining bytes in 'data' chunk, inconsistent with audio data type.");
+
+            uint numFrames = chunkSize / frameSize;
+            uint numSamples = numFrames * numChannels;
+
+            result.data.length = numSamples;
+
+            if (audioFormat == FloatingPointIEEE)
+            {
+                if (bytePerSample == 4)
+                {
+                    for (uint i = 0; i < numSamples; ++i)
+                        result.data[i] = popFloatLE(input);                  
+                }
+                else if (bytePerSample == 4)
+                {
+                    for (uint i = 0; i < numSamples; ++i)
+                        result.data[i] = popDoubleLE(input);
+                }
+                else
+                    throw new WAVException("Unsupported bit-depth for floating point data, should be 32 or 64.");
+            }
+            else
+                throw new WAVException("Unsupported format.");
+
+            foundData = true;
+
+        }
+        // ignore unrecognized chunks
+    }
+
+    if (!foundFmt)
+        throw new WAVException("'fmt ' chunk not found.");
+
+    if (!foundData)
+        throw new WAVException("'data' chunk not found.");
+ 
+
+    result.numChannels = numChannels;
+    result.sampleRate = sampleRate;
+
+    return result;
 }
 
 
@@ -25,16 +153,22 @@ final class WAVException : Exception
     }
 }
 
-
-
-
 private
 {
     ubyte popByte(R)(ref R input) if (isInputRange!R)
     {
+        if (input.empty)
+            throw new WAVException("Expected a byte, but end-of-input found.");
+
         ubyte b = input.front;
         input.popFront();
         return b;
+    }
+
+    void skipBytes(R)(ref R input, int numBytes) if (isInputRange!R)
+    {
+        for (int i = 0; i < numBytes; ++i)
+            popByte(input);
     }
 
     uint popUintBE(R)(ref R input) if (isInputRange!R)
@@ -53,6 +187,50 @@ private
         ubyte b2 = popByte(input);
         ubyte b3 = popByte(input);
         return (b3 << 24) | (b2 << 16) | (b1 << 8) | b0;
+    }
+
+    ushort popUshortLE(R)(ref R input) if (isInputRange!R)
+    {
+        ubyte b0 = popByte(input);
+        ubyte b1 = popByte(input);
+        return (b1 << 8) | b0;
+    }
+
+    ulong popUlongLE(R)(ref R input) if (isInputRange!R)
+    {
+        ulong b0 = popByte(input);
+        ulong b1 = popByte(input);
+        ulong b2 = popByte(input);
+        ulong b3 = popByte(input);
+        ulong b4 = popByte(input);
+        ulong b5 = popByte(input);
+        ulong b6 = popByte(input);
+        ulong b7 = popByte(input);
+        return (b7 << 56) | (b6 << 48) | (b5 << 40) | (b4 << 32) | (b3 << 24) | (b2 << 16) | (b1 << 8) | b0;
+    }
+
+    float popFloatLE(R)(ref R input) if (isInputRange!R)
+    {
+        union float_uint
+        {
+            float f;
+            uint i;
+        }
+        float_uint fi;
+        fi.i = popUintLE(input);
+        return fi.f;
+    }
+
+    float popDoubleLE(R)(ref R input) if (isInputRange!R)
+    {
+        union double_ulong
+        {
+            double d;
+            ulong i;
+        }
+        double_ulong du;
+        du.i = popUlongLE(input);
+        return du.d;
     }
 
     // read RIFF chunk header
