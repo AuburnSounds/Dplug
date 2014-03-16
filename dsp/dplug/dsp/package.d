@@ -11,6 +11,5 @@ public
            dplug.dsp.smooth,
            dplug.dsp.envelope,
            dplug.dsp.wavetable,
-           dplug.dsp.wav,
            dplug.dsp.fft;
 }
