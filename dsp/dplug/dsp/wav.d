@@ -65,7 +65,7 @@ SoundFile decodeWAVE(R)(R input) if (isInputRange!R)
 
             audioFormat = popUshortLE(input);            
             if (audioFormat == WAVE_FORMAT_EXTENSIBLE)
-                throw new WAVException("No support for format WAVE_FORMAT_EXTENSIBLE yet.");
+                throw new WAVException("No support for format WAVE_FORMAT_EXTENSIBLE yet."); // Reference: http://msdn.microsoft.com/en-us/windows/hardware/gg463006.aspx
             
             if (audioFormat != LinearPCM && audioFormat != FloatingPointIEEE)
                 throw new WAVException(format("Unsupported audio format %s, only PCM and IEEE float are supported.", audioFormat));
@@ -121,8 +121,43 @@ SoundFile decodeWAVE(R)(R input) if (isInputRange!R)
                 else
                     throw new WAVException("Unsupported bit-depth for floating point data, should be 32 or 64.");
             }
+            else if (audioFormat == LinearPCM)
+            {
+                if (bytePerSample == 1)
+                {
+                    for (uint i = 0; i < numSamples; ++i)
+                    {
+                        ubyte b = popByte(input);
+                        result.data[i] = (b - 128) / 127.0;
+                    }
+                }
+                else if (bytePerSample == 2)
+                {
+                    for (uint i = 0; i < numSamples; ++i)
+                    {
+                        int s = popShortLE(input);
+                        result.data[i] = s / 32767.0;
+                    }
+                }
+                else if (bytePerSample == 3)
+                {
+                    for (uint i = 0; i < numSamples; ++i)
+                    {
+                        int s = pop24bitsLE(input);
+                        result.data[i] = s / 8388607.0;
+                    }
+                }
+                else if (bytePerSample == 4)
+                {
+                    for (uint i = 0; i < numSamples; ++i)
+                    {
+                        int s = popIntLE(input);
+                        result.data[i] = s / 2147483648.0;
+                    }
+                }
+            }
             else
-                throw new WAVException("Unsupported format.");
+                assert(false); // should have been handled earlier, crash
 
             foundData = true;
 
@@ -189,11 +224,29 @@ private
         return (b3 << 24) | (b2 << 16) | (b1 << 8) | b0;
     }
 
+    int popIntLE(R)(ref R input) if (isInputRange!R)
+    {
+        return cast(int)(popUintLE(input));
+    }
+
+    uint pop24bitsLE(R)(ref R input) if (isInputRange!R)
+    {
+        ubyte b0 = popByte(input);
+        ubyte b1 = popByte(input);
+        ubyte b2 = popByte(input);
+        return (b2 << 16) | (b1 << 8) | b0;
+    }
+
     ushort popUshortLE(R)(ref R input) if (isInputRange!R)
     {
         ubyte b0 = popByte(input);
         ubyte b1 = popByte(input);
         return (b1 << 8) | b0;
+    }
+
+    short popShortLE(R)(ref R input) if (isInputRange!R)
+    {
+        return cast(short)popUshortLE(input);
     }
 
     ulong popUlongLE(R)(ref R input) if (isInputRange!R)
