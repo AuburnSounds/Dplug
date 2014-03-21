@@ -28,6 +28,7 @@ Additionally it comes with music DSP algorithms that might be useful for your ne
   * **smooth.d** different kinds of smoothers, including non-linear ones.
   * **envelope.d** power and amplitude estimators.
   * **window.d** typical windowing functions.
+  * **goldrabiner.d** low-latency speech pitch estimation.
 
 
 ## Licenses

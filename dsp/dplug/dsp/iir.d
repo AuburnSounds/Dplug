@@ -33,26 +33,26 @@ public
 
         static if (order == 2)
         {
-            T next(U)(T input, const(BiquadCoeff!T) coeff)
+            T next(T)(T input, const(BiquadCoeff!T) coeff)
             {
-                T x1 = state.x[0],
-                  x2 = state.x[1],
-                  y1 = state.y[0],
-                  y2 = state.y[1];
+                T x1 = x[0],
+                  x2 = x[1],
+                  y1 = y[0],
+                  y2 = y[1];
 
-                T a0 = coef[0],
-                  a1 = coef[1],
-                  a2 = coef[2],
-                  a3 = coef[3],
-                  a4 = coef[4];
+                T a0 = coeff[0],
+                  a1 = coeff[1],
+                  a2 = coeff[2],
+                  a3 = coeff[3],
+                  a4 = coeff[4];
 
-                double T = a0 * input + a1 * x1 + a2 * x2 - a3 * y1 - a4 * y2;
+                T current = a0 * input + a1 * x1 + a2 * x2 - a3 * y1 - a4 * y2;
 
-                state.x[0] = x;
-                state.x[1] = x1;
-                state.y[0] = y;
-                state.y[1] = y1;
-                return y;
+                x[0] = input;
+                x[1] = x1;
+                y[0] = current;
+                y[1] = y1;
+                return current;
             }
         }
     }
@@ -66,12 +66,12 @@ public
     /// Type which hold the biquad coefficients.
     template BiquadCoeff(T)
     {
-        alias IIRCoeff!(T, 5) BiquadCoeff;
+        alias IIRCoeff!(5, T) BiquadCoeff;
     }
 
     template BiquadDelay(T)
     {
-        alias IIRDelay!(T, 2) BiquadDelay;
+        alias IIRDelay!(2, T) BiquadDelay;
     }
 
 
@@ -83,7 +83,7 @@ public
         return generateBiquad!T(BiquadType.LOW_PASS_FILTER, frequency, samplerate, 0, Q);
     }
 
-    BiquadCoeff!T highpassFilterRBJ(T)(double frequency, double samplerate, double  = SQRT1_2)
+    BiquadCoeff!T highpassFilterRBJ(T)(double frequency, double samplerate, double Q = SQRT1_2)
     {
         return generateBiquad!T(BiquadType.HIGH_PASS_FILTER, frequency, samplerate, 0, Q);
     }
@@ -129,7 +129,7 @@ private
     }
 
     // generates RBJ biquad coefficients
-    BiquadCoeff!T generateBiquad(T)(BiquadType type, double frequency, double samplerate, double gaindB, double Q, double v[5])
+    BiquadCoeff!T generateBiquad(T)(BiquadType type, double frequency, double samplerate, double gaindB, double Q)
     {
         // regardless of the output precision, always compute coefficients in double precision
 
@@ -147,7 +147,7 @@ private
 
         final switch(type)
         {
-        case LOW_PASS_FILTER:
+        case  BiquadType.LOW_PASS_FILTER:
             b0 = (1 - cos_w0) / 2;
             b1 = 1 - cos_w0;
             b2 = (1 - cos_w0) / 2;
@@ -156,7 +156,7 @@ private
             a2 = 1 - alpha;
             break;
 
-        case HIGH_PASS_FILTER:
+        case BiquadType.HIGH_PASS_FILTER:
             b0 = (1 + cos_w0) / 2;
             b1 = -(1 + cos_w0);
             b2 = (1 + cos_w0) / 2;
@@ -165,7 +165,7 @@ private
             a2 = 1 - alpha;
             break;
 
-        case BAND_PASS_FILTER:
+        case BiquadType.BAND_PASS_FILTER:
             b0 = alpha;
             b1 = 0;
             b2 = -alpha;
@@ -174,7 +174,7 @@ private
             a2 = 1 - alpha;
             break;
 
-        case NOTCH_FILTER:
+        case BiquadType.NOTCH_FILTER:
             b0 = 1;
             b1 = -2*cos_w0;
             b2 = 1;
@@ -183,7 +183,7 @@ private
             a2 = 1 - alpha;
             break;
 
-        case PEAK_FILTER:
+        case BiquadType.PEAK_FILTER:
             b0 = 1 + alpha * A;
             b1 = -2 * cos_w0;
             b2 = 1 - alpha * A;
@@ -192,7 +192,7 @@ private
             a2 = 1 - alpha / A;
             break;
 
-        case LOW_SHELF:
+        case BiquadType.LOW_SHELF:
             {
                 double ap1 = A + 1;
                 double am1 = A - 1;
@@ -206,7 +206,7 @@ private
             }
             break;
 
-        case HIGH_SHELF:
+        case BiquadType.HIGH_SHELF:
             {
                 double ap1 = A + 1;
                 double am1 = A - 1;
@@ -221,7 +221,13 @@ private
             break;
         }
 
-        return cast(BiquadCoeff!T)(BiquadCoeff!double(b0, b1, b2, a1, a2) / a0);
+        BiquadCoeff!T result;
+        result[0] = cast(T)(b0 / a0);
+        result[1] = cast(T)(b1 / a0);
+        result[2] = cast(T)(b2 / a0);
+        result[3] = cast(T)(a1 / a0);
+        result[4] = cast(T)(a2 / a0);
+        return result;
     }
 }
 
