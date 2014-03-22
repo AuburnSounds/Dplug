@@ -12,7 +12,7 @@ T linmap(T)(T value, T a, T b, T c, T d)
 }
 
 /// map [0..1] to [min..max] logarithmically
-T logmap(T)(T min, T max, T t) // min and max must be all > 0, t in [0..1]
+T logmap(T)(T t, T min, T max, ) // min and max must be all > 0, t in [0..1]
 {
     return min * exp(t * log(max / min));
 }
