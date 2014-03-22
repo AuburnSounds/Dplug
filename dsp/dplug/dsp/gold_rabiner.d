@@ -14,7 +14,7 @@ import dplug.dsp.funcs,
 /// - for voiced/unvoiced detection, implements 
 ///   "Notes on Buzz-Hiss Detection" from Bernard Gold (1964)
 /// 
-/// TODO: filter should track current frequency?
+/// TODO: should HP filter should track current frequency?
 struct GoldRabiner
 {      
 private:
@@ -145,6 +145,9 @@ private:
 
         for (int i = 0; i < 6; ++i)
             _PPE[i].initialize(samplerate);
+
+        _lastPositivePeakValue = 0;
+        _lastNegativePeakValue = 0;
 
         // 12 dB/oct low-pass
         _LPCoeffPitch = lowpassFilterRBJ!double(50.0, samplerate, cast(double)SQRT1_2);
