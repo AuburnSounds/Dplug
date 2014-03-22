@@ -13,11 +13,12 @@ void main(string[] args)
         return;
     }
 
-    Sound sound = decodeWAV(args[1]);
+    Sound input = decodeWAV(args[1]);
 
     GoldRabiner gold;
+    int sampleRate = input.sampleRate;
 
-    int N = sound.lengthInFrames();
+    int N = input.lengthInFrames();
 
     // flatten to mono
     float[] mono = new float[N];
@@ -25,14 +26,14 @@ void main(string[] args)
     for (int i = 0; i < N; ++i)
     {
         mono[i] = 0;
-        for (int j = 0; j < sound.numChannels; ++j)
+        for (int j = 0; j < input.numChannels; ++j)
         {
-            mono[i] += sound.data[i * sound.numChannels + j];
+            mono[i] += input.data[i * input.numChannels + j];
         }
-        mono[i] /= sound.numChannels;
+        mono[i] /= input.numChannels;
     }
 
-    gold.initialize(sound.sampleRate);
+    gold.initialize(sampleRate);
 
     float[] pitch = new float[N];
     float[] note = new float[N];
@@ -59,20 +60,16 @@ void main(string[] args)
         note[i] = linmap!float(midiNote, 0, 127, -1.0f, 1.0f, );
     }
 
-    sound.numChannels = 1;
-    sound.data = pitch;
-    sound.encodeWAV("pitch.wav");
-
-    sound.data = voicedness;
-    sound.encodeWAV("voicedness.wav");
+    Sound(sampleRate, 1, pitch).encodeWAV("pitch.wav");
+    Sound(sampleRate, 1, voicedness).encodeWAV("voicedness.wav");
 
     // Grossly resynthetize with a sawtooth
 
-    Wavetable saw;
-    saw.init(2048, WaveformType.SAWTOOTH);
+    Wavetable sawtooth;
+    sawtooth.init(2048, WaveformType.SAWTOOTH);
 
     WavetableOsc osc;
-    osc.init(&saw, sound.sampleRate);
+    osc.init(&sawtooth, sampleRate);
 
     float[] synthesized = new float[N];
 
@@ -85,7 +82,6 @@ void main(string[] args)
             synthesized[i] = voicedness[i] * osc.next(frequency / 2);
     }
 
-    sound.data = synthesized;
-    sound.encodeWAV("synthesized.wav");
+    Sound(sampleRate, 1, synthesized).encodeWAV("synthesized.wav");
 
 }

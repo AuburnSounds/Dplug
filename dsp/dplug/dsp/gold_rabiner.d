@@ -157,7 +157,7 @@ private:
         _LPPitchState.clear();
         _LPVoicedState.clear();
 
-        // 10 ms latency
+        // should have approx 10 ms latency
         return cast(int)(0.5 + 0.010 * samplerate);
     }
 
