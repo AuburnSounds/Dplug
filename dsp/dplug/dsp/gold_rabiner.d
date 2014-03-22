@@ -93,7 +93,7 @@ private:
         Descending
     }
 
-    State _ascending;
+    State _ascendingState;
     float _last;      
     float _lastPositivePeakValue;
     float _lastNegativePeakValue;
@@ -140,7 +140,7 @@ private:
         _LPState[0].clear();
         _LPState[1].clear();
         _LPState[2].clear();
-        _ascending = State.Initial;
+        _ascendingState = State.Initial;
         _last = 0; // whatever
 
         for (int i = 0; i < 6; ++i)
@@ -161,10 +161,9 @@ private:
         return cast(int)(0.5 + 0.010 * samplerate);
     }
 
-    // Process next incoming sample, should be a mono, monophonic signal
-    // return true if pitch and voicedness are returned
-    // return false in warm-up phase
-    // once warmed it won't return false again
+    /// Process next incoming sample. The input signal should be a mono-channel, monophonic signal.
+    /// Returns: true if pitch and voicedness have been returned.
+    ///          false in warm-up phase. Once warmed it won't return false again unless you call initialize() again.
     bool next(float input, float* outPitchPeriodSecs, float* outVoicedness)
     {
         // filter
@@ -179,8 +178,8 @@ private:
         input = cast(float)dinput;
 
 
-        bool isPositivePeak = (_ascending == State.Ascending) && input < _last;
-        bool isNegativePeak = (_ascending == State.Descending) && input > _last;
+        bool isPositivePeak = (_ascendingState == State.Ascending) && input < _last;
+        bool isNegativePeak = (_ascendingState == State.Descending) && input > _last;
 
         float M[6]; // M[0] = m1 in paper
         for (int i = 0; i < 6; ++i)
@@ -199,7 +198,7 @@ private:
             if (M[1] < 0) M[1] = 0;
             if (M[2] < 0) M[2] = 0;
             _lastPositivePeakValue = _last;
-            _ascending = State.Descending;
+            _ascendingState = State.Descending;
         }
         else if (isNegativePeak)
         {   
@@ -210,14 +209,14 @@ private:
             if (M[4] < 0) M[4] = 0;
             if (M[5] < 0) M[5] = 0;
             _lastNegativePeakValue = _last;
-            _ascending = State.Ascending;
+            _ascendingState = State.Ascending;
         }
-        else if (_ascending == State.Initial)
+        else if (_ascendingState == State.Initial)
         {
             if (input > _last)
-                _ascending = State.Ascending;
+                _ascendingState = State.Ascending;
             if (input < _last)
-                _ascending = State.Descending;
+                _ascendingState = State.Descending;
 
             // if equal, stay in initial state
         }
@@ -347,12 +346,12 @@ private:
         {
             if (_PPE[i]._numPulseUntilReady != 0)
             {
-                    allPPEReady = false;
+                allPPEReady = false;
                 break;
             }
         }
 
-        bool resultIsSignificant = _ascending != State.Initial && allPPEReady;
+        bool resultIsSignificant = _ascendingState != State.Initial && allPPEReady;
         return resultIsSignificant;
     }
         
