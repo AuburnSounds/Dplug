@@ -1,4 +1,4 @@
-module dplug.dsp.gold_rabiner;
+module dplug.dsp.goldrabiner;
 
 import std.math;
 

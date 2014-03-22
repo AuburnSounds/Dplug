@@ -11,6 +11,6 @@ public
            dplug.dsp.smooth,
            dplug.dsp.envelope,
            dplug.dsp.wavetable,
-           dplug.dsp.gold_rabiner,
+           dplug.dsp.goldrabiner,
            dplug.dsp.fft;
 }
