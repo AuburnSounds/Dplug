@@ -64,7 +64,6 @@ private:
             _lastPulseTime += _invSamplerate;
             _currentSignal = cast(float)(_currentSignal * (1.0 - _expFactor));
 
-            // TODO do we need pulses on ALL PPE to start?
             if (_lastPulseTime >= _blankTime && pulse > _currentSignal)
             {
                 // new pulse detected
