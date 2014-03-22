@@ -27,8 +27,11 @@ public
 
         void clear()
         {
-            x = x.init; // fill with 0 for floating-point numbers
-            y = y.init;
+            for (int i = 0; i < order; ++i)
+            {
+                x[i] = 0;
+                y[i] = 0;
+            }
         }
 
         static if (order == 2)
