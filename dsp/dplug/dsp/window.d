@@ -1,7 +1,8 @@
 // See licenses/UNLICENSE.txt
 module dplug.dsp.window;
 
-import std.math;
+import std.math,
+       std.traits;
 
 enum WindowType
 {
@@ -50,4 +51,16 @@ double evalWindow(WindowType type, size_t n, size_t N)
                 return 0.42 - 0.5 * cos(phi) + 0.08 * cos(2 * phi);
             }
     }
+}
+
+struct Window(T) if (isFloatingPoint!T)
+{
+    void initialize(WindowType type, int lengthInSamples)
+    {
+        data.length = lengthInSamples;
+        generateWindow!T(type, data[]);
+    }
+
+    T[] data;
+    alias data this;
 }
