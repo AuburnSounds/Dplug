@@ -83,16 +83,14 @@ void FFT(T)(Complex!T[] buffer, FFTDirection direction)
     }
 }
 
-/// From a signal, output short term FFT data.
+/// From a signal, output short term windowed data.
 /// Variable overlap.
 /// Introduces approximately windowSize/2 samples delay.
-struct FFTAnalyzer
+struct ShortTermAnalyzer
 {
-    /// Initialize the FFTAnalyzer
-    
-    size_t windowSize() const
+    size_t segmentSize() const
     {
-        return _windowSize;
+        return _segmentSize;
     }
 
     size_t analysisPeriod() const
@@ -101,60 +99,108 @@ struct FFTAnalyzer
     }
 
     /// To call at initialization and whenever samplerate changes.
-    /// windowSize = size of analysis window, expressed in samples
-    /// fftSize = size of FFT. Must be power-of-two and >= windowSize. Missing samples are zero-padded in time domain.
-    /// analysisPeriod = period of analysis results, allow to be more precise frequentially, expressed in samples
-    /// Basic overlap is achieved with windowSize = 2 * analysisPeriod
-    /// if zeroPhaseWindowing = true, "zero phase" windowing is used
-    /// (center of window is at first sample, zero-padding happen at center)
-    void init(size_t windowSize, size_t fftSize, size_t analysisPeriod, WindowType windowType, bool zeroPhaseWindowing, bool correctWindowLoss)
+    /// segmentSize = size of sound segments, expressed in samples.
+    /// analysisPeriod = period of analysis results, allow to be more precise frequentially, expressed in samples.    
+    void initialize(size_t segmentSize, size_t analysisPeriod)
     {
-        _windowType = windowType;
-        _zeroPhaseWindowing = zeroPhaseWindowing;
-        _correctWindowLoss = correctWindowLoss;
-
-        assert(isPowerOf2(fftSize));
-        assert(fftSize >= windowSize);
-
-        assert(windowSize != 1);
-        assert(analysisPeriod <= windowSize); // no support for zero overlap
+        assert(analysisPeriod <= segmentSize); // no support for zero overlap
 
         // 1-sized FFT support
         if (analysisPeriod == 0)
             analysisPeriod = 1;
 
-        _windowSize = windowSize;
-        _fftSize = fftSize;
+        _segmentSize = segmentSize;
         _analysisPeriod = analysisPeriod;
 
         // clear input delay
-        _audioBuffer.length = _windowSize;
+        _audioBuffer.length = _segmentSize;
         _index = 0;
-
-        _windowBuffer.length = _windowSize;
-        generateWindow(_windowType, _windowBuffer[]);
-
-        _windowGainCorrFactor = 0;
-        for (size_t i = 0; i < _windowSize; ++i)
-            _windowGainCorrFactor += _windowBuffer[i];
-        _windowGainCorrFactor = _windowSize / _windowGainCorrFactor;
-
-        if (_correctWindowLoss)
-        {
-            for (size_t i = 0; i < _windowSize; ++i)
-                _windowBuffer[i] *= _windowGainCorrFactor;
-        }
-
     }
 
-    // Process one sample, eventually return the result of short-term FFT
-    // in a given Buffer
-    bool feed(float x, Complex!float[] fftData)
+    // Push one sample, eventually call the delegate to process a segment.
+    bool feed(float x, scope void delegate(float[] segment) processSegment)
     {
         _audioBuffer[_index] = x;
         _index = _index + 1;
-        if (_index >= _windowSize)
+        if (_index >= _segmentSize)
         {
+            // process segment
+            processSegment(_audioBuffer[0.._segmentSize]);
+
+            // rotate buffer
+            {
+                size_t samplesToDrop = _analysisPeriod;
+                assert(0 < samplesToDrop && samplesToDrop <= _segmentSize);
+                size_t remainingSamples = _segmentSize - samplesToDrop;
+
+                // TODO: use ring buffer instead of copy?
+                memmove(_audioBuffer.ptr, _audioBuffer.ptr + samplesToDrop, float.sizeof * remainingSamples);
+                _index = remainingSamples;
+
+            }
+            return true;
+        }
+        else 
+            return false;
+    }
+
+
+private:
+    float[] _audioBuffer;    
+    size_t _segmentSize;     // in samples
+    size_t _analysisPeriod; // in samples
+    size_t _index;
+}
+
+/// From a signal, output short term FFT data.
+/// Variable overlap.
+/// Introduces approximately windowSize/2 samples delay.
+struct FFTAnalyzer
+{
+public:
+
+    /// To call at initialization and whenever samplerate changes.
+    /// windowSize = size of window, expressed in samples
+    /// fftSize = size of FFT. Must be power-of-two and >= windowSize. Missing samples are zero-padded in time domain.
+    /// analysisPeriod = period of analysis results, allow to be more precise frequentially, expressed in samples.
+    /// Basic overlap is achieved with windowSize = 2 * analysisPeriod
+    /// if zeroPhaseWindowing = true, "zero phase" windowing is used
+    /// (center of window is at first sample, zero-padding happen at center)
+    void initialize(size_t windowSize, size_t fftSize, size_t analysisPeriod, WindowType windowType, bool zeroPhaseWindowing, bool correctWindowLoss)
+    {
+        assert(isPowerOf2(fftSize));
+        assert(fftSize >= windowSize);
+
+        _zeroPhaseWindowing = zeroPhaseWindowing;
+        
+        _fftSize = fftSize;
+
+        _window.initialize(windowType, windowSize);
+        _windowSize = windowSize;
+        _windowBuffer.length = _windowSize;
+        generateWindow(windowType, _windowBuffer[]);
+
+        _analyzer.initialize(windowSize, analysisPeriod);
+    }
+
+    
+private:
+    ShortTermAnalyzer _analyzer;
+    float[] _windowBuffer;
+    bool _zeroPhaseWindowing;
+    size_t _fftSize;        // in samples
+
+    Window!float _window;
+    size_t _windowSize;     // in samples
+    
+
+    bool feed(float x, Complex!float[] fftData)
+    {    
+        void processSegment(float[] segment)
+        {
+            int windowSize = _windowSize;
+            assert(segment.length == _windowSize);
+
             fftData.length = _fftSize;
 
             if (_zeroPhaseWindowing)
@@ -170,14 +216,14 @@ struct FFTAnalyzer
                 size_t center = (_windowSize - 1) / 2; // position of center bin
                 size_t nLeft = _windowSize - center;
                 for (size_t i = 0; i < nLeft; ++i)
-                    fftData[i] = _audioBuffer[center + i] * _windowBuffer[center + i];
+                    fftData[i] = segment[center + i] * _window[center + i];
 
                 size_t nPadding = _fftSize - _windowSize;
                 for (size_t i = 0; i < nPadding; ++i)
                     fftData[nLeft + i] = 0.0f;
 
                 for (size_t i = 0; i < center; ++i)
-                    fftData[nLeft + nPadding + i] = _audioBuffer[i] * _windowBuffer[i];
+                    fftData[nLeft + nPadding + i] = segment[i] * _window[i];
             }
             else
             {
@@ -191,7 +237,7 @@ struct FFTAnalyzer
 
                 // fill FFT buffer and multiply by window
                 for (size_t i = 0; i < _windowSize; ++i)
-                    fftData[i] = _audioBuffer[i] * _windowBuffer[i];
+                    fftData[i] = segment[i] * _windowBuffer[i];
 
                 // zero-padding
                 for (size_t i = _windowSize; i < _fftSize; ++i)
@@ -200,41 +246,8 @@ struct FFTAnalyzer
 
             // perform forward FFT on this slice
             FFT!float(fftData[0.._fftSize], FFTDirection.FORWARD);
-
-            // rotate buffer
-            {
-                size_t samplesToDrop = _analysisPeriod;
-                assert(0 < samplesToDrop && samplesToDrop <= _windowSize);
-                size_t remainingSamples = _windowSize - samplesToDrop;
-
-                // TODO: use ring buffer instead of copy
-                memmove(_audioBuffer.ptr, _audioBuffer.ptr + samplesToDrop, float.sizeof * remainingSamples);
-                _index = remainingSamples;
-
-            }
-            return true;
         }
-        else
-        {
-            return false;
-        }
+
+        return _analyzer.feed(x, &processSegment); // TODO: not sure this doesn't allocate
     }
-
-private:
-    float[] _audioBuffer;
-    float[] _windowBuffer;
-
-    size_t _fftSize;        // in samples
-    size_t _windowSize;     // in samples
-    size_t _analysisPeriod; // in samples
-
-    WindowType _windowType;
-    bool _zeroPhaseWindowing;
-
-    size_t _index;
-
-    // should we multiply by _windowGainCorrFactor?
-    bool _correctWindowLoss;
-    // the factor by which to multiply transformed data to get in range results
-    float _windowGainCorrFactor; 
 }
