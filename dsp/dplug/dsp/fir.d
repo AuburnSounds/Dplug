@@ -9,6 +9,7 @@ import gfm.math.funcs;
 
 import dplug.dsp.funcs,
        dplug.dsp.fft,
+       dplug.dsp.delayline,
        dplug.dsp.window;
 
 // TODO:
@@ -166,4 +167,31 @@ unittest
     minimumPhaseImpulse(lp_impulse[]);
 
     generateHilbertTransformer(lp_impulse[], WindowType.BLACKMANN, 44100.0);
+}
+
+
+// Composed of a delay-line, and an inpulse.
+struct FIR(T)
+{
+    Delayline!T delayline;
+    T[] impulse;
+
+    /// Initializes the FIR filter. It's up to you to fill the impulse with something worthwhile.
+    void initialize(int sizeOfFilter, int sizeOfImpulse)
+    {
+        delayline.initialize(sizeOfFilter);
+        delayline.fillWith(0);
+        impulse[] = T.nan;
+        impulse.length = sizeOfImpulse;
+    }
+
+    /// Returns: Filtered input sample, naive convolution.
+    T next(T input)
+    {
+        delayline.feed(input);
+        int sum = 0;
+        for (int i = 0; i < cast(int)impulse.length; ++i)
+            sum += impulse[i] * delayline.sampleFull(i);
+        return sum;
+    }
 }
