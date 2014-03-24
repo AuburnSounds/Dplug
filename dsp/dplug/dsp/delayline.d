@@ -14,6 +14,7 @@ public:
     {
         _index = _indexMask;
         resize(count);
+        fillWith(0);
     }
 
     /// Resize the delay line. Can delay up to count samples.
@@ -69,6 +70,11 @@ public:
         T x1  = _data[(iPart + 1) & _indexMask];
         T x2  = _data[(iPart + 2) & _indexMask];
         return hermite!float(fPart, xm1, x0, x1, x2);
+    }
+
+    void fillWith(T value)
+    {
+        _data[] = value;
     }
     
 private:
