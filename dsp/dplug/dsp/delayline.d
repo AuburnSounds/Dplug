@@ -12,7 +12,7 @@ public:
     /// Initialize the delay line. Can delay up to count samples.
     void intialize(int count)
     {
-        _index = 0;
+        _index = _indexMask;
         resize(count);
     }
 
@@ -29,22 +29,22 @@ public:
 
     void feed(T x)
     {
-        _data[_index] = x;
         _index = (_index + 1) & _indexMask;
+        _data[_index] = x;
     }
 
     /// Samples the delay-line at integer points.
-    /// Delay 1 points to the last entered sample with feed().
+    /// Delay 0 = last entered sample with feed().
     T sampleFull(int delay)
     {
-        assert(delay >= 1);
+        assert(delay >= 0);
         return _data[(_index - delay) & _indexMask];
     }
 
     /// Samples the delay-line with linear interpolation.
     T sampleLinear(float delay)
     {
-        assert(delay > 1);
+        assert(delay > 0);
         float sampleLoc = (_index - delay) + 2 * _data.length;
         assert(sampleLoc >= 1);
         int iPart = cast(int)(sampleLoc);
@@ -57,7 +57,7 @@ public:
     /// Samples the delay-line with a 3rd order polynomial.
     T sampleHermite(float delay)
     {
-        assert(delay > 2);
+        assert(delay > 1);
         float sampleLoc = (_index - delay) + 2 * _data.length;
         assert(sampleLoc >= 1);
         int iPart = cast(int)(sampleLoc);
