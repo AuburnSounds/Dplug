@@ -4,18 +4,21 @@ module dplug.dsp.noise;
 import std.random,
        std.math;
 
-/// Generates white noise.
+import gfm.math.simplerng;
+
+/// Generates white gaussian noise.
 struct WhiteNoise
 {
 public:    
     void init()
     {
         _rng.seed(unpredictableSeed());
+        _mustGenerate = true;
     }
 
     float next()
     {
-        return uniform(-1.0f, 1.0f, _rng);
+        return randNormal!Xorshift32(_rng, 0.0, 1.0);
     }
 
 private:
