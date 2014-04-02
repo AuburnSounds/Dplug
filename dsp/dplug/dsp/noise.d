@@ -13,7 +13,6 @@ public:
     void init()
     {
         _rng.seed(unpredictableSeed());
-        _mustGenerate = true;
     }
 
     float next()
