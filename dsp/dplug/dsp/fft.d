@@ -177,8 +177,6 @@ public:
 
         _window.initialize(windowType, windowSize);
         _windowSize = windowSize;
-        _windowBuffer.length = _windowSize;
-        generateWindow(windowType, _windowBuffer[]);
 
         _analyzer.initialize(windowSize, analysisPeriod);
     }
@@ -186,7 +184,6 @@ public:
     
 private:
     ShortTermAnalyzer _analyzer;
-    float[] _windowBuffer;
     bool _zeroPhaseWindowing;
     size_t _fftSize;        // in samples
 
@@ -237,7 +234,7 @@ private:
 
                 // fill FFT buffer and multiply by window
                 for (size_t i = 0; i < _windowSize; ++i)
-                    fftData[i] = segment[i] * _windowBuffer[i];
+                    fftData[i] = segment[i] * _window[i];
 
                 // zero-padding
                 for (size_t i = _windowSize; i < _fftSize; ++i)
