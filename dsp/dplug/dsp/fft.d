@@ -152,6 +152,79 @@ private:
     size_t _index;
 }
 
+
+/// From short term windowed data, output the summed signal.
+/// Segments can be irregular and have different size.
+struct ShortTermReconstruction
+{
+    /// maxSimultSegments is the maximum number of simulatneously summed samples.
+    /// maxSegmentLength in samples
+    void initialize(size_t maxSimultSegments, size_t maxSegmentLength)
+    {
+        _maxSimultSegments = maxSimultSegments;
+        _desc.length = maxSimultSegments;
+        for (int i = 0; i < _maxSimultSegments; ++i)
+        {
+            _desc[i].playOffset = 0;
+            _desc[i].length = 0;
+            _desc[i].buffer.length = maxSegmentLength;
+        }
+    }
+
+    // Copy segment to a free slot, and start its summing.
+    // The first sample of this segment will be played at next() call.
+    void startSegment(float[] newSegment)
+    {
+        assert(newSegment.length <= _maxSegmentLength);
+        
+        for (int i = 0; i < _maxSimultSegments; ++i)
+        {
+            if (!_desc[i].active())
+            {
+                size_t len = newSegment.length;
+                _desc[i].playOffset = 0;
+                _desc[i].length = len;
+                _desc[i].buffer[0..len] = newSegment[]; // copy segment
+                return;
+            }
+        }
+
+        assert(false);
+    }
+
+    // Get next sample, update segment statuses.
+    float next()
+    {
+        float sum = 0;
+        foreach(ref desc; _desc)
+        {
+            if (desc.playOffset < desc.length)
+            {
+                sum += desc.buffer[desc.playOffset];
+                desc.playOffset += 1;
+            }
+        }
+        return sum;
+    }
+
+private:
+
+    struct SegmentDesc
+    {
+        size_t playOffset; // offset in this segment
+        size_t length; // length in this segment
+        float[] buffer; // 0..length => data for this segment
+
+        bool active() pure const nothrow
+        {
+            return playOffset >= length;
+        }
+    }
+    size_t _maxSimultSegments;
+    size_t _maxSegmentLength;
+    SegmentDesc[] _desc;
+}
+
 /// From a signal, output short term FFT data.
 /// Variable overlap.
 /// Introduces approximately windowSize/2 samples delay.
