@@ -146,7 +146,7 @@ struct ShortTermAnalyzer
 
 
 private:
-    float[] _audioBuffer;    
+    float[] _audioBuffer;
     size_t _segmentSize;     // in samples
     size_t _analysisPeriod; // in samples
     size_t _index;
@@ -161,6 +161,7 @@ struct ShortTermReconstruction
     /// maxSegmentLength in samples
     void initialize(size_t maxSimultSegments, size_t maxSegmentLength)
     {
+        _maxSegmentLength = maxSegmentLength;
         _maxSimultSegments = maxSimultSegments;
         _desc.length = maxSimultSegments;
         for (int i = 0; i < _maxSimultSegments; ++i)
@@ -189,7 +190,7 @@ struct ShortTermReconstruction
             }
         }
 
-        assert(false);
+        assert(false); // maxSimultSegments too small, or usage error
     }
 
     // Get next sample, update segment statuses.
@@ -217,7 +218,7 @@ private:
 
         bool active() pure const nothrow
         {
-            return playOffset >= length;
+            return playOffset < length;
         }
     }
     size_t _maxSimultSegments;
