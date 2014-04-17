@@ -255,16 +255,6 @@ public:
         _analyzer.initialize(windowSize, analysisPeriod);
     }
 
-    
-private:
-    ShortTermAnalyzer _analyzer;
-    bool _zeroPhaseWindowing;
-    size_t _fftSize;        // in samples
-
-    Window!float _window;
-    size_t _windowSize;     // in samples
-    
-
     bool feed(float x, Complex!float[] fftData)
     {    
         void processSegment(float[] segment)
@@ -321,4 +311,12 @@ private:
 
         return _analyzer.feed(x, &processSegment); // TODO: not sure this doesn't allocate
     }
+
+private:
+    ShortTermAnalyzer _analyzer;
+    bool _zeroPhaseWindowing;
+    size_t _fftSize;        // in samples
+
+    Window!float _window;
+    size_t _windowSize;     // in samples
 }

@@ -10,7 +10,7 @@ import gfm.math.simplerng;
 struct WhiteNoise
 {
 public:    
-    void init()
+    void initialize()
     {
         _rng.seed(unpredictableSeed());
     }
@@ -33,9 +33,9 @@ public:
     enum int PERIOD = 30;
     enum int NOISE_DURATION = 2;
 
-    void init(double samplerate)
+    void initialize(double samplerate)
     {
-        _noise.init();
+        _noise.initialize();
         _increment = 1.0 / samplerate;
         _counter = 0;
     }
