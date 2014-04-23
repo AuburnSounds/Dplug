@@ -66,10 +66,10 @@ void main(string[] args)
     // Grossly resynthetize with a sawtooth
 
     Wavetable sawtooth;
-    sawtooth.init(2048, WaveformType.SAWTOOTH);
+    sawtooth.initialize(2048, WaveformType.SAWTOOTH);
 
     WavetableOsc osc;
-    osc.init(&sawtooth, sampleRate);
+    osc.initialize(&sawtooth, sampleRate);
 
     float[] synthesized = new float[N];
 

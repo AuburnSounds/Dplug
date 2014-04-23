@@ -12,7 +12,7 @@ class EnvelopeFollower(T)
 public:
 
     // typical frequency would be is 10-30hz
-    void init(double cutoff, double sampleRate)
+    void initialize(double cutoff, double sampleRate)
     {
         _coeff = lowpassFilterRBJ(cutoff, sampleRate);
         _delay0.clear();
@@ -40,14 +40,14 @@ private:
 struct AnalyticSignal(T)
 {
 public:
-    void init(double samplerate)
+    void initialize(double samplerate)
     {
-        _hilbert.init(samplerate);
+        _hilbert.initialize(samplerate);
     }
 
     T next(T input)
     {
-        double outSine, outCosine;
+        T outSine, outCosine;
         _hilbert.next(input, &outCosine, &outSine);
         return sqrt(input * input + outSine * outSine);
     }
@@ -74,7 +74,7 @@ private:
 struct HilbertTransformer(T)
 {
 public:
-    void init(double samplerate)
+    void initialize(double samplerate)
     {
         // pole values taken from Bernie Hutchins, "Musical Engineer's Handbook"
         static immutable double poles[12] = 
@@ -89,7 +89,7 @@ public:
         for (int j = 0; j < 12; ++j) 
         {  
             const double polefreq = poles[j] * 15.0;
-            const double rc = 1.0 / (2.0 * GFM_PI * polefreq);
+            const double rc = 1.0 / (2.0 * PI * polefreq);
             const double alpha = 1.0 / rc;
             const double beta = (1.0 - (alpha * 0.5 * onedsr)) / (1.0 + (alpha * 0.5 * onedsr));
             _xnm1[j] = 0;
@@ -148,7 +148,7 @@ private:
 struct Teager(T)
 {
 public:       
-    void init()
+    void initialize()
     {
         _xm1 = 0;
         _xm2 = 0;
@@ -171,10 +171,10 @@ private:
 /// Probably measure energy? Not awesome as an amplitude estimator.        
 struct TeagerAmplitude(T)
 {
-    void init()
+    void initialize()
     {
-        _teager0.init();
-        _teager1.init();
+        _teager0.initialize();
+        _teager1.initialize();
         _last = 0;
     }
 

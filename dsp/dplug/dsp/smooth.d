@@ -15,7 +15,7 @@ struct ExpSmoother(T)
 public:
     /// time: the time constant of the smoother.
     /// threshold: absolute difference below which we consider current value and target equal
-    void init(T initialValue, double time, double samplerate, T threshold)
+    void initialize(T initialValue, double time, double samplerate, T threshold)
     {
         assert(isFinite(initialValue));
         _target = _current = cast(T)(initialValue);
@@ -96,7 +96,7 @@ public:
 
     /// Initialize the AbsSmoother.
     /// maxAbsDiff: maximum difference between filtered consecutive samples
-    void init(T initialValue, T maxAbsDiff)
+    void initialize(T initialValue, T maxAbsDiff)
     {
         assert(isFinite(initialValue));
         _current = initialValue;
@@ -126,7 +126,7 @@ struct LinearSmoother(T)
 public:
 
     /// Initialize the LinearSmoother.
-    void init(T initialValue, double periodSecs, double sampleRate)
+    void initialize(T initialValue, double periodSecs, double sampleRate)
     {
         _target = initialValue;
         _current = initialValue;
@@ -199,7 +199,7 @@ struct MedianFilter(T, int N)
 
 public:
 
-    void init()
+    void initialize()
     {
         _first = true;
     }
@@ -241,7 +241,7 @@ struct MeanFilter(T)
 {
 public:
     /// Initialize mean filter with given number of samples.
-    void init(T initialValue, size_t samples, T maxExpectedValue)
+    void initialize(T initialValue, size_t samples, T maxExpectedValue)
     {
         _delay = new RingBuffer!long(samples);
 
@@ -258,14 +258,14 @@ public:
     }
 
     /// Initialize with with cutoff frequency and samplerate.
-    void init(T initialValue, double cutoffHz, double samplerate, T maxExpectedValue)
+    void initialize(T initialValue, double cutoffHz, double samplerate, T maxExpectedValue)
     {
         int nSamples = cast(int)(0.5 + samplerate / (2 * cutoffHz));
 
         if (nSamples < 1)
             nSamples = 1;
 
-        init(initialValue, nSamples, maxExpectedValue);
+        initialize(initialValue, nSamples, maxExpectedValue);
     }
 
     size_t latency() const

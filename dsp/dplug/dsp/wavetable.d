@@ -12,7 +12,7 @@ import dplug.dsp.funcs;
 /// TODO: resync method
 struct SineGenerator(T)
 {
-    void init(T initPhase, T frequency, T samplerate)
+    void initialize(T initPhase, T frequency, T samplerate)
     {
         T w = frequency * 2 * PI / samplerate;
         _b1 = 2 * cos(w);
@@ -47,7 +47,7 @@ enum WaveformType
 /// TODO: only integer phase
 struct Wavetable
 {
-    void init(size_t largestSize, WaveformType waveform)
+    void initialize(size_t largestSize, WaveformType waveform)
     {
         resize(largestSize);
         generate(waveform);  // regenerate tables
@@ -215,7 +215,7 @@ private:
 struct WavetableOsc
 {
 public:
-    void init(Wavetable* wavetable, double samplerate)
+    void initialize(Wavetable* wavetable, double samplerate)
     {
         _wavetable = wavetable;
         _samplerate = samplerate;
