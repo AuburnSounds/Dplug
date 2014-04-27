@@ -2,6 +2,7 @@
 module dplug.dsp.smooth;
 
 import std.traits;
+import std.math;
 
 import gfm.core.queue;
 
