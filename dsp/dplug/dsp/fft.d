@@ -83,10 +83,9 @@ void FFT(T)(Complex!T[] buffer, FFTDirection direction)
     }
 }
 
-/// From a signal, output short term windowed data.
-/// Variable overlap.
+/// From a signal, output chunks of dertermined size, with optional overlap.
 /// Introduces approximately windowSize/2 samples delay.
-struct ShortTermAnalyzer
+struct Segmenter(T)
 {
     size_t segmentSize() const
     {
@@ -113,19 +112,20 @@ struct ShortTermAnalyzer
         _analysisPeriod = analysisPeriod;
 
         // clear input delay
-        _audioBuffer.length = _segmentSize;
+        _buffer.length = _segmentSize;
         _index = 0;
     }
 
     // Push one sample, eventually call the delegate to process a segment.
-    bool feed(float x, scope void delegate(float[] segment) processSegment)
+    bool feed(T x, scope void delegate(T[] segment) processSegment = null)
     {
-        _audioBuffer[_index] = x;
+        _buffer[_index] = x;
         _index = _index + 1;
         if (_index >= _segmentSize)
         {
-            // process segment
-            processSegment(_audioBuffer[0.._segmentSize]);
+            // process segment (optional)
+            if (processSegment !is null)
+                processSegment(_buffer[0.._segmentSize]);
 
             // rotate buffer
             {
@@ -134,7 +134,7 @@ struct ShortTermAnalyzer
                 size_t remainingSamples = _segmentSize - samplesToDrop;
 
                 // TODO: use ring buffer instead of copy?
-                memmove(_audioBuffer.ptr, _audioBuffer.ptr + samplesToDrop, float.sizeof * remainingSamples);
+                memmove(_buffer.ptr, _buffer.ptr + samplesToDrop, T.sizeof * remainingSamples);
                 _index = remainingSamples;
 
             }
@@ -144,9 +144,14 @@ struct ShortTermAnalyzer
             return false;
     }
 
+    /// Returns: Internal buffer.
+    T[] buffer()
+    {
+        return _buffer;
+    }
 
 private:
-    float[] _audioBuffer;
+    T[] _buffer;
     size_t _segmentSize;     // in samples
     size_t _analysisPeriod; // in samples
     size_t _index;
@@ -252,7 +257,7 @@ public:
         _window.initialize(windowType, windowSize);
         _windowSize = windowSize;
 
-        _analyzer.initialize(windowSize, analysisPeriod);
+        _segmenter.initialize(windowSize, analysisPeriod);
     }
 
     bool feed(float x, Complex!float[] fftData)
@@ -309,11 +314,11 @@ public:
             FFT!float(fftData[0.._fftSize], FFTDirection.FORWARD);
         }
 
-        return _analyzer.feed(x, &processSegment); // TODO: not sure this doesn't allocate
+        return _segmenter.feed(x, &processSegment); // TODO: not sure this doesn't allocate
     }
 
 private:
-    ShortTermAnalyzer _analyzer;
+    Segmenter!float _segmenter;
     bool _zeroPhaseWindowing;
     size_t _fftSize;        // in samples
 
