@@ -271,7 +271,7 @@ public:
 
     size_t latency() const
     {
-        return _delay.size();
+        return _delay.length();
     }
 
     // process next sample
@@ -289,7 +289,7 @@ private:
 
     long toIntDomain(T x)
     {
-        return cast(long)(cast(T)0.5 + initialValue * _factor);
+        return cast(long)(cast(T)0.5 + x * _factor);
     }
 
     RingBuffer!long _delay;
