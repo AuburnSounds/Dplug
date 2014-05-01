@@ -16,20 +16,22 @@ struct ExpSmoother(T)
 public:
     /// time: the time constant of the smoother.
     /// threshold: absolute difference below which we consider current value and target equal
-    void initialize(T initialValue, double time, double samplerate, T threshold)
+    void initialize(T initialValue, double timeAttack, double timeRelease, double samplerate, T threshold)
     {
         assert(isFinite(initialValue));
         _target = _current = cast(T)(initialValue);
-        setTimeParams(time, samplerate);
+        setTimeParams(timeAttack, timeRelease, samplerate);
         _done = true;
         _threshold = threshold;
     }
 
     /// To call if samplerate changed, while preserving the current value.
-    void setTimeParams(double time, double samplerate)
+    void setTimeParams(double timeAttack, double timeRelease, double samplerate)
     {
-        _expFactor = cast(T)(expDecayFactor(time, samplerate));
-        assert(isFinite(_expFactor));
+        _expFactorAttack = cast(T)(expDecayFactor(timeAttack, samplerate));
+        _expFactorRelease = cast(T)(expDecayFactor(timeRelease, samplerate));
+        assert(isFinite(_expFactorAttack));
+        assert(isFinite(_expFactorRelease));
     }
 
     /// Advance smoothing and return the next smoothed sample with respect
@@ -50,7 +52,8 @@ public:
             }
             else
             {
-                double temp = _current + diff * _expFactor;
+                double expFactor = (diff > 0) ? _expFactorAttack : _expFactorRelease;
+                double temp = _current + diff * expFactor;
                 T newCurrent = cast(T)(temp);
 
                 // is this evolving?
@@ -82,7 +85,8 @@ public:
 private:
     T _target;
     T _current;
-    T _expFactor;
+    T _expFactorAttack;
+    T _expFactorRelease;
     T _threshold;
     bool _done;
 }
