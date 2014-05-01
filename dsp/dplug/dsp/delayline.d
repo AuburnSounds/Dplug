@@ -10,7 +10,7 @@ struct Delayline(T)
 public:
     
     /// Initialize the delay line. Can delay up to count samples.
-    void intialize(int count)
+    void initialize(int count)
     {
         _index = _indexMask;
         resize(count);
