@@ -1,8 +1,5 @@
 module dplug.simd.sse2;
 
-import core.simd;
-
-
 
 uint _MM_SHUFFLE(uint z, uint y, uint x, uint w)
 {
@@ -15,6 +12,8 @@ uint _MM_SHUFFLE(uint z, uint y, uint x, uint w)
 // Note: How to do _mm_movemask_ps?
 version(D_SIMD)
 {
+    public import core.simd;
+
     @safe pure nothrow:
 
     // Keep those in Intel website order for easier dealing with missing intrinsics
@@ -278,7 +277,8 @@ version(D_SIMD)
     {
         return __simd(XMM.PADDB, a, b);
     }
-
-
-
+}
+else
+{
+   static assert(false, "Should implement intrinsics for this compiler. If you use DMD, try going 64-bits.");
 }
