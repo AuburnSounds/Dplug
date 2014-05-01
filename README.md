@@ -30,6 +30,10 @@ Additionally it comes with music DSP algorithms that might be useful for your ne
   * **window.d** typical windowing functions.
   * **goldrabiner.d** low-latency speech pitch estimation.
 
+### simd/
+  * Defines SIMD operations with names proposed by Intel at https://software.intel.com/sites/landingpage/IntrinsicsGuide/
+  * This allow to write SIMD intrinsics much like in C++
+
 
 ## Licenses
 

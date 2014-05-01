@@ -45,5 +45,13 @@
                 "dplug:plugin": "~master"
             }
         }
+        {
+            "name": "simd",
+            "sourcePaths": [ "simd/dplug/simd" ],
+            "importPaths": [ "simd" ],
+            "dependencies": {
+                "dplug:plugin": "~master"
+            }
+        }
     ]
 }
