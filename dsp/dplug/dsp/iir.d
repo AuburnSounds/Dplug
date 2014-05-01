@@ -22,6 +22,8 @@ public
     {
         alias Vector!(T, order) delay_t;
 
+        alias IIRCoeff!(order * 2 + 1, T) coeff_t; // TODO: be more general...
+
         delay_t x;
         delay_t y;
 
@@ -36,7 +38,7 @@ public
 
         static if (order == 2)
         {
-            T next(T)(T input, const(BiquadCoeff!T) coeff)
+            T next(T)(T input, const(coeff_t) coeff)
             {
                 T x1 = x[0],
                   x2 = x[1],
