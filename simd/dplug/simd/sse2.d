@@ -15,12 +15,18 @@ uint _MM_SHUFFLE(uint z, uint y, uint x, uint w)
 // Note: How to do _mm_movemask_ps?
 version(D_SIMD)
 {
-pure:
+    @safe pure nothrow:
+
+    // Keep those in Intel website order for easier dealing with missing intrinsics
+
+    //
+    // SSE1
+    //
 
     float4 _mm_add_ss (float4 a, float4 b)
-{
-    return __simd(XMM.ADDSS, a, b);    
-}
+    {
+        return __simd(XMM.ADDSS, a, b);    
+    }
 
     float4 _mm_add_ps (float4 a, float4 b)
     {
@@ -74,6 +80,37 @@ pure:
     {
         return __simd(XMM.DIVSS, a, b);
     }
+
+    float4 _mm_load_ps(const float* mem_addr)
+    {
+        // TODO: should be slow, find a way to use movaps
+        return _mm_set1_ps(mem_addr[3], mem_addr[2], mem_addr[1], mem_addr[0]);
+    }
+
+    float4 _mm_load_ps1(const float* mem_addr)
+    {
+        return _mm_set1_ps(*mem_addr);
+    }
+
+    float4 _mm_load_ss(const float* mem_addr)
+    {
+        return _mm_set_ss(*mem_addr);
+    }
+
+    alias _mm_load1_ps = _mm_load_ps1;
+
+    float4 _mm_loadr_ps(const float* mem_addr)
+    {
+        // TODO: should be slow, find a way to use movaps
+        return _mm_set1_ps(mem_addr[0], mem_addr[1], mem_addr[2], mem_addr[3]);
+    }
+
+    float4 _mm_loadu_ps(const float* mem_addr)
+    {
+        // TODO: should be slow, find a way to use movups
+        return _mm_set1_ps(mem_addr[3], mem_addr[2], mem_addr[1], mem_addr[0]);
+    }
+
 
     float4 _mm_max_ps(float4 a, float4 b)
     {
@@ -180,41 +217,68 @@ pure:
 
     float4 _mm_shuffle_ps(float4 a, float4 b, uint imm)
     {
-        return  __simd(XMM.SHUFPS, a, b, imm);
+        return __simd(XMM.SHUFPS, a, b, imm);
     }
 
     float4 _mm_sqrt_ps(float4 a)
     {
-        return  __simd(XMM.SQRTPS, a);
+        return __simd(XMM.SQRTPS, a);
     }
 
     float4 _mm_sqrt_ss(float4 a)
     {
-        return  __simd(XMM.SQRTSS, a);
+        return __simd(XMM.SQRTSS, a);
     }
 
     float4 _mm_sub_ps(float4 a, float4 b)
     {
-        return  __simd(XMM.SUBPS, a, b);
+        return __simd(XMM.SUBPS, a, b);
     }
 
     float4 _mm_sub_ss(float4 a, float4 b)
     {
-        return  __simd(XMM.SUBSS, a, b);
+        return __simd(XMM.SUBSS, a, b);
     }
 
     float4 _mm_unpackhi_ps(float4 a, float4 b)
     {
-        return  __simd(XMM.UNPCKHPS, a, b);
+        return __simd(XMM.UNPCKHPS, a, b);
     }
 
     float4 _mm_unpacklo_ps(float4 a, float4 b)
     {
-        return  __simd(XMM.UNPCKLPS, a, b);
+        return __simd(XMM.UNPCKLPS, a, b);
     }
 
     float4 _mm_xor_ps(float4 a, float4 b)
     {
-        return  __simd(XMM.XORPS, a, b);
+        return __simd(XMM.XORPS, a, b);
     }
+
+    //
+    // SSE2
+    //
+
+    short8 _mm_add_epi16(short8 a, short8 b)
+    {
+        return __simd(XMM.PADDW, a, b);
+    }
+
+    int4 _mm_add_epi32(int4 a, int4 b)
+    {
+        return __simd(XMM.PADDD, a, b);
+    }
+
+    long2 _mm_add_epi64(long2 a, long2 b)
+    {
+        return __simd(XMM.PADDQ, a, b);
+    }
+
+    byte16 _mm_add_epi8(byte16 a, byte16 b)
+    {
+        return __simd(XMM.PADDB, a, b);
+    }
+
+
+
 }
