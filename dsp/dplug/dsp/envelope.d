@@ -159,7 +159,12 @@ public:
         T res = _xm1 * _xm1 - input * _xm2;
         _xm2 = _xm1;
         _xm1 = input;
-        return res;      
+        return res;
+    }
+
+    int latency() pure const nothrow
+    {
+        return 1;
     }
 
 private:
@@ -167,8 +172,8 @@ private:
     T _xm2;
 }
 
-/// Teager estimator    
-/// Probably measure energy? Not awesome as an amplitude estimator.        
+/// Teager estimator
+/// Probably measure energy? Not awesome as an amplitude estimator.
 struct TeagerAmplitude(T)
 {
     void initialize()
