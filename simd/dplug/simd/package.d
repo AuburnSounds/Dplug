@@ -3,6 +3,5 @@ module dplug.simd;
 
 public
 {
-    import dplug.simd.sse1,
-           dplug.simd.sse2;
+    import dplug.simd.sse2;
 }
