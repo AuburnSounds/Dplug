@@ -16,7 +16,8 @@
     "dependencies": {
         "dplug:dsp": "~master",
         "dplug:plugin": "~master",
-        "dplug:vst": "~master"
+        "dplug:vst": "~master",
+        "dplug:simd": "~master"
     },
 
     "subPackages": [
@@ -44,7 +45,7 @@
             "dependencies": {
                 "dplug:plugin": "~master"
             }
-        }
+        },
         {
             "name": "simd",
             "sourcePaths": [ "simd/dplug/simd" ],
