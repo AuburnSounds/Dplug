@@ -2,19 +2,20 @@
 module dplug.dsp.envelope;
 
 import dplug.dsp.iir;
+import dplug.dsp.smooth;
 
 // Various envelope followers
 
 
 /// Simple envelope follower, estimate amplitude.
-class EnvelopeFollower(T)
+struct EnvelopeFollower(T)
 {
 public:
 
     // typical frequency would be is 10-30hz
-    void initialize(double cutoff, double sampleRate)
+    void initialize(double cutoffInHz, double samplerate)
     {
-        _coeff = lowpassFilterRBJ(cutoff, sampleRate);
+        _coeff = lowpassFilterRBJ(cutoffInHz, samplerate);
         _delay0.clear();
         _delay1.clear();
     }
@@ -34,13 +35,31 @@ private:
     BiquadDelay!T _delay1;
 }
 
+struct AttackReleaseFollower(T)
+{
+public:
+
+    void initialize(double samplerate, float timeAttack, float timeRelease)
+    {
+        _expSmoother.initialize(0, timeAttack, timeRelease, samplerate, T.epsilon);
+    }
+
+    T next(T input)
+    {
+        return _expSmoother.next(abs(input));
+    }
+
+private:
+    ExpSmoother!T _expSmoother;
+}
+
 /// Get the module of estimate of analytic signal.
 /// Phase response depends a lot on input signal, it's not great for bass but gets
 /// better in medium frequencies.
 struct AnalyticSignal(T)
 {
 public:
-    void initialize(double samplerate)
+    void initialize(T cutoffInHz, T samplerate)
     {
         _hilbert.initialize(samplerate);
     }
