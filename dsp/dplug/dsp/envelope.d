@@ -164,21 +164,22 @@ private:
 /// - "Signal processing using the Teager Energy Operator and other nonlinear operators" Eivind Kvedalen (2003)
 /// - http://www.temple.edu/speech_lab/sundaram.PDF
 /// I don't really know how it can be used.
-struct Teager(T)
+struct Teager
 {
-public:       
-    void initialize()
+public:
+    void initialize(double samplerate)
     {
         _xm1 = 0;
         _xm2 = 0;
+        _samplerateSquared = samplerate * samplerate;
     }
 
-    T next(T input)
+    double next(double input)
     {
-        T res = _xm1 * _xm1 - input * _xm2;
+        double res = _xm1 * _xm1 - input * _xm2;
         _xm2 = _xm1;
         _xm1 = input;
-        return res;
+        return res * _samplerateSquared;
     }
 
     int latency() pure const nothrow
@@ -187,8 +188,9 @@ public:
     }
 
 private:
-    T _xm1;
-    T _xm2;
+    double _xm1;
+    double _xm2;
+    double _samplerateSquared;
 }
 
 /// Teager estimator
