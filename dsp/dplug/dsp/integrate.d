@@ -25,11 +25,11 @@ template isIntegrator(I)
         double t, dt;
         s = s + d * dt;
         derivative_t delegate(state_t input) evaluate;
-        state_t newState = integr.integrate(s, t, dt, evaluate);        
+        state_t newState = integr.integrate(s, dt, evaluate);
     }()));
 }
 
-// Explicit eurler integrator.
+// Explicit euler integrator.
 struct ExplicitEuler(State)
 {
     alias state_t = State;
