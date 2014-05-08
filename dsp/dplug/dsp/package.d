@@ -13,5 +13,6 @@ public
            dplug.dsp.wavetable,
            dplug.dsp.goldrabiner,
            dplug.dsp.fft,
-           dplug.dsp.delayline;
+           dplug.dsp.delayline,
+           dplug.dsp.integrate;
 }
