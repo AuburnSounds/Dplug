@@ -41,6 +41,21 @@ struct ExplicitEuler(State)
     }
 }
 
+// Runge-Kutta order 2 integrator.
+struct RungeKutta2(State)
+{
+    alias state_t = State;
+    alias derivative_t = State;
+
+    State integrate(State current, double dt, derivative_t delegate(State input) evaluate)
+    {
+        derivative_t a = evaluate(current);
+        derivative_t b = evaluate(current + (dt * 0.5) * a);
+        derivative_t filteredDerivative = (a + b) / 2;
+        return current + dt * filteredDerivative;
+    }
+}
+
 
 // Runge-Kutta order 4 integrator.
 struct RungeKutta4(State)
