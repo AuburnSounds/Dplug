@@ -15,6 +15,7 @@ import dplug.dsp.funcs,
 ///   "Notes on Buzz-Hiss Detection" from Bernard Gold (1964)
 /// 
 /// TODO: should HP filter should track current frequency?
+///       "Digital Processing of Speech Signal" bu Rabiner & Shaffer recommends two-stage median filtering
 struct GoldRabiner
 {      
 private:
