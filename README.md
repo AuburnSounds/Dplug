@@ -31,12 +31,6 @@ Additionally it comes with music DSP algorithms that might be useful for your ne
   * **goldrabiner.d** low-latency speech pitch estimation.
   * **delayline.d** interpolated delay-line.
 
-### simd/
-  * Defines SIMD operations with names proposed by Intel at https://software.intel.com/sites/landingpage/IntrinsicsGuide/
-  * This allow to write SIMD intrinsics much like in C++
-  * Not usable yet.
-
-
 ## Licenses
 
 dplug has 3 different licenses depending on the part you need.

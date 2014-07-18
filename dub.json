@@ -14,10 +14,10 @@
     ],
 
     "dependencies": {
-        "dplug:dsp": "~master",
-        "dplug:plugin": "~master",
-        "dplug:vst": "~master",
-        "dplug:simd": "~master"
+        "dplug:dsp": "*",
+        "dplug:plugin": "*",
+        "dplug:vst": "*",
+        "dplug:simd": "*"
     },
 
     "subPackages": [
@@ -26,8 +26,8 @@
             "sourcePaths": [ "dsp/dplug/dsp" ],
             "importPaths": [ "dsp" ],
             "dependencies": {
-                "gfm:core": "~master",
-                "gfm:math": "~master"
+                "gfm:core": "==1.1.6",
+                "gfm:math": "==1.1.6"
             }
         },
         {
@@ -35,7 +35,7 @@
             "sourcePaths": [ "plugin/dplug/plugin" ],
             "importPaths": [ "plugin" ],
             "dependencies": {
-                "gfm:core": "~master"
+                "gfm:core": "==1.1.6"
             }
         },
         {
@@ -43,15 +43,7 @@
             "sourcePaths": [ "vst/dplug/vst" ],
             "importPaths": [ "vst" ],
             "dependencies": {
-                "dplug:plugin": "~master"
-            }
-        },
-        {
-            "name": "simd",
-            "sourcePaths": [ "simd/dplug/simd" ],
-            "importPaths": [ "simd" ],
-            "dependencies": {
-                "dplug:plugin": "~master"
+                "dplug:plugin": "*"
             }
         }
     ]
