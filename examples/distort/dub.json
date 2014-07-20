@@ -17,6 +17,6 @@
 
     "dependencies": 
     {
-        "dplug:vst": "~master"
+        "dplug:vst": "==0.0.1",
     }
 }

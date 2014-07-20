@@ -1,21 +1,12 @@
 {
     "name": "pitch_detect",
-    "homepage": "http://github.com/p0nce/dplug/",
-    "copyright": "none",
-    "license": "public domain",
-    "authors": [ "ponce" ],
     "importPaths": [ "." ],
     "sourcePaths": [ "." ],
     "targetType": "executable",
-    "mainSourceFile" : "pitch_detect.d",
-    
-    "sourceFiles": [ 
-        "./pitch_detect.d", 
-    ],
 
     "dependencies": 
     {
-        "dplug:dsp": "~master",
-        "wave-d": "~master"
+        "dplug:dsp": "==0.0.1",
+        "wave-d": "==1.0.1"
     }
 }
