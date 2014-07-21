@@ -16,8 +16,7 @@
     "dependencies": {
         "dplug:dsp": "*",
         "dplug:plugin": "*",
-        "dplug:vst": "*",
-        "dplug:simd": "*"
+        "dplug:vst": "*"
     },
 
     "subPackages": [

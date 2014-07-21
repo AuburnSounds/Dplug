@@ -6,7 +6,7 @@
 
     "dependencies": 
     {
-        "dplug:dsp": "==0.0.1",
+        "dplug:dsp": "==0.0.2",
         "wave-d": "==1.0.1"
     }
 }

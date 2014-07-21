@@ -17,6 +17,6 @@
 
     "dependencies": 
     {
-        "dplug:vst": "==0.0.1",
+        "dplug:vst": "==0.0.2",
     }
 }
