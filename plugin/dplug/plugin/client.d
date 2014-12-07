@@ -96,13 +96,13 @@ public:
     }
 
     /// Returns: Array of parameters.
-    final Parameter[] params()
+    final Parameter[] params() nothrow @nogc
     {
         return _params;
     }
 
     /// Returns: The parameter indexed by index.
-    final Parameter param(size_t index)
+    final Parameter param(size_t index) nothrow @nogc
     {
         return _params[index];
     }

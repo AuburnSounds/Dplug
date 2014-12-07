@@ -145,7 +145,6 @@ private:
 
     // Lock-free message queue from opcode thread to audio thread.
     SpinlockedQueue!Message _messageQueue;
-    Spinlock _paramLock;
 
     final bool isValidParamIndex(int i) pure const nothrow
     {
@@ -207,9 +206,7 @@ private:
                     *p = '\0';
                 else
                 {
-                    _paramLock.lock();
                     stringNCopy(p, 8, _client.param(index).label());
-                    _paramLock.unlock();
                 }
                 return 0;
             }
@@ -221,9 +218,7 @@ private:
                     *p = '\0';
                 else
                 {
-                    _paramLock.lock();
-                    _client.param(index).toStringN(p, 8);
-                    _paramLock.unlock();
+                    _client.param(index).toDisplayN(p, 8);
                 }
                 return 0;
             }
@@ -235,9 +230,7 @@ private:
                     *p = '\0';
                 else
                 {
-                    _paramLock.lock();
                     stringNCopy(p, 32, _client.param(index).name());
-                    _paramLock.unlock();
                 }
                 return 0;
             }
@@ -348,9 +341,7 @@ private:
                     return 0;
 
                 double v;
-                _paramLock.lock();
                 _client.param(index).setFromHost(atof(cast(char*)ptr));
-                _paramLock.unlock();
                 return 1;
             }
 
@@ -737,9 +728,7 @@ extern(C) private nothrow
             if (!plugin.isValidParamIndex(index))
                 return;
 
-            plugin._paramLock.lock();
             client.param(index).setFromHost(parameter);
-            plugin._paramLock.unlock();
         }
         catch (Throwable e)
         {
@@ -758,9 +747,7 @@ extern(C) private nothrow
                 return 0.0f;
 
             float value;
-            plugin._paramLock.lock();
             value = client.param(index).getForHost();
-            plugin._paramLock.unlock();
             return value;
         }
         catch (Throwable e)

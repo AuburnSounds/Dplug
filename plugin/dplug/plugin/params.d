@@ -4,15 +4,10 @@ import std.math;
 
 import core.stdc.stdio;
 
+import dplug.plugin.spinlock;
+
 class Parameter
 {
-protected:
-    this(string name, string label)
-    {
-        _name = name;
-        _label = label;
-    }
-
 public:
 
     string name() pure const nothrow @nogc
@@ -26,17 +21,48 @@ public:
     }
 
     // From a normalized float, set the parameter value.
-    abstract void setFromHost(float hostValue) nothrow;
+    void setFromHost(float hostValue) nothrow
+    {
+        _valueSpinlock.lock();
+        scope(exit) _valueSpinlock.unlock();
+        setNormalized(hostValue);
+    }
 
     // Returns: A normalized float, represents the parameter value.
-    abstract float getForHost() nothrow;
+    float getForHost() nothrow
+    {
+        _valueSpinlock.lock();
+        scope(exit) _valueSpinlock.unlock();
+        return getNormalized();
+    }
+
+    void toDisplayN(char* buffer, size_t numBytes) nothrow
+    {
+        _valueSpinlock.lock();
+        scope(exit) _valueSpinlock.unlock();
+        toStringN(buffer, numBytes);
+    }
+
+protected:
+    this(string name, string label)
+    {
+        _name = name;
+        _label = label;
+    }
+
+    // From a normalized float, set the parameter value.
+    abstract void setNormalized(float hostValue) nothrow;
+
+    // Returns: A normalized float, represents the parameter value.
+    abstract float getNormalized() nothrow;
 
     // Display parameter (without label)
-    abstract void toStringN(char* buffer, size_t numBytes) const nothrow;
+    abstract void toStringN(char* buffer, size_t numBytes) nothrow;    
 
 private:
     string _name;
     string _label;
+    Spinlock _valueSpinlock;
 }
 
 
@@ -50,20 +76,22 @@ public:
         _value = defaultValue;
     }
 
-    override void setFromHost(float hostValue)
+    override void setNormalized(float hostValue)
     {
+        _valueSpinlock.lock();
         if (hostValue < 0.5f)
             _value = false;
         else
             _value = true;
+        _valueSpinlock.unlock();
     }
 
-    override float getForHost() nothrow
+    override float getNormalized() nothrow
     {
         return _value ? 1.0f : 0.0f;
     }
 
-    override void toStringN(char* buffer, size_t numBytes) const nothrow
+    override void toStringN(char* buffer, size_t numBytes) nothrow
     {
         if (_value)
             snprintf(buffer, numBytes, "true");
@@ -71,7 +99,7 @@ public:
             snprintf(buffer, numBytes, "false");
     }
 
-    bool get() pure const nothrow @nogc
+    bool value() pure const nothrow @nogc
     {
         return _value;
     }
@@ -93,23 +121,23 @@ public:
         _max = max;
     }
 
-    override void setFromHost(float hostValue)
+    override void setNormalized(float hostValue)
     {
         _value = clamp!float(_min + (_max - _min) * hostValue, _min, _max);
     }
 
-    override float getForHost() nothrow
+    override float getNormalized() nothrow
     {
         float normalized = clamp!float( (_value - _min) / (_max - _min), 0.0f, 1.0f);        
         return normalized;
     }
 
-    override void toStringN(char* buffer, size_t numBytes) const nothrow
+    override void toStringN(char* buffer, size_t numBytes) nothrow
     {
         snprintf(buffer, numBytes, "%2.2f", _value);
     }
 
-    float get() pure const nothrow @nogc
+    float value() pure const nothrow @nogc
     {
         return _value;
     }
@@ -133,24 +161,24 @@ public:
         _max = max;
     }
 
-    override void setFromHost(float hostValue)
+    override void setNormalized(float hostValue)
     {
         int rounded = cast(int)lround( _min + (_max - _min) * hostValue );
         _value = clamp!int(rounded, _min, _max);
     }
 
-    override float getForHost() nothrow
+    override float getNormalized() nothrow
     {
         float normalized = clamp!float( (cast(float)_value - _min) / (_max - _min), 0.0f, 1.0f);        
         return normalized;
     }
 
-    override void toStringN(char* buffer, size_t numBytes) const nothrow
+    override void toStringN(char* buffer, size_t numBytes) nothrow
     {
         snprintf(buffer, numBytes, "%d", _value);
     }
 
-    int get() pure const nothrow @nogc
+    int value() pure const nothrow @nogc
     {
         return _value;
     }

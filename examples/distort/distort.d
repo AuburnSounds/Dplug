@@ -21,9 +21,9 @@ final class Distort : dplug.plugin.Client
 
     override void buildParameters()
     {
-        addParameter(new FloatParameter("input", "db", 0.0f, 1.0f, 0.5f));
-        addParameter(new FloatParameter("drive", "%", 1.0f, 3.0f, 1.0f));
-        addParameter(new FloatParameter("output", "db", 0.0f, 1.0f, 0.5f));
+        addParameter(new FloatParameter("input", "db", 0.0f, 2.0f, 1.0f));
+        addParameter(new FloatParameter("drive", "%", 1.0f, 2.0f, 1.0f));
+        addParameter(new FloatParameter("output", "db", 0.0f, 1.0f, 0.9f));
     }
 
     override void buildLegalIO()
@@ -46,12 +46,16 @@ final class Distort : dplug.plugin.Client
 
         int minChan = numInputs > numOutputs ? numOutputs : numInputs;
 
+        float inputGain = (cast(FloatParameter)param(0)).value();        
+        float drive = (cast(FloatParameter)param(1)).value();
+        float outputGain = (cast(FloatParameter)param(2)).value();
+
         for (int chan = 0; chan < minChan; ++chan)
             for (int f = 0; f < frames; ++f)
             {
-                double input = 2.0 * inputs[chan][f];
-                double distorted = tanh(input);
-                outputs[chan][f] = distorted;
+                double input = inputGain * 2.0 * inputs[chan][f];
+                double distorted = tanh(input * drive) / drive;
+                outputs[chan][f] = outputGain * distorted;
             }
 
         // fill with zero the remaining channels
