@@ -4,6 +4,7 @@ module dplug.plugin;
 public
 {
     import dplug.plugin.client,
+           dplug.plugin.params,
            dplug.plugin.spinlock,
            dplug.plugin.alignedbuffer,
            dplug.plugin.daw,

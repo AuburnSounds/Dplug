@@ -347,11 +347,9 @@ private:
                 if (ptr == null)
                     return 0;
 
-
-
                 double v;
                 _paramLock.lock();
-                _client.param(index).set(atof(cast(char*)ptr));
+                _client.param(index).setFromHost(atof(cast(char*)ptr));
                 _paramLock.unlock();
                 return 1;
             }
@@ -740,7 +738,7 @@ extern(C) private nothrow
                 return;
 
             plugin._paramLock.lock();
-            client.param(index).set(parameter);
+            client.param(index).setFromHost(parameter);
             plugin._paramLock.unlock();
         }
         catch (Throwable e)
@@ -761,7 +759,7 @@ extern(C) private nothrow
 
             float value;
             plugin._paramLock.lock();
-            value = client.param(index).get();
+            value = client.param(index).getForHost();
             plugin._paramLock.unlock();
             return value;
         }

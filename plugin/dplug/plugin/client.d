@@ -8,49 +8,8 @@ import std.container;
 import core.stdc.string;
 import core.stdc.stdio;
 
+import dplug.plugin.params;
 
-
-
-/// Holds a plugin client parameter description and value.
-class Parameter
-{
-public:
-    this(string name, string label, float defaultValue = 0)
-    {
-        _name = name;
-        _value = defaultValue;
-    }
-
-    @property void set(float x) pure nothrow
-    {
-        _value = x;
-    }
-
-    @property float get() pure const nothrow
-    {
-        return _value;
-    }
-
-    string name() pure const nothrow
-    {
-        return _name;
-    }
-
-    string label() pure const nothrow
-    {
-        return _label;
-    }
-
-    void toStringN(char* buffer, size_t numBytes) const nothrow
-    {
-        snprintf(buffer, numBytes, "%2.2f", _value);
-    }
-
-private:
-    string _name;  // eg: "Gain", "Drive"
-    string _label; // eg: "sec", "dB", "%"
-    float _value;
-}
 
 class InputPin
 {

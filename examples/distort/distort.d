@@ -21,9 +21,9 @@ final class Distort : dplug.plugin.Client
 
     override void buildParameters()
     {
-        addParameter(new Parameter("input", "db"));
-        addParameter(new Parameter("drive", "%"));
-        addParameter(new Parameter("output", "db"));
+        addParameter(new FloatParameter("input", "db", 0.0f, 1.0f, 0.5f));
+        addParameter(new FloatParameter("drive", "%", 1.0f, 3.0f, 1.0f));
+        addParameter(new FloatParameter("output", "db", 0.0f, 1.0f, 0.5f));
     }
 
     override void buildLegalIO()
