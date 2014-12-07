@@ -26,11 +26,10 @@ version(Windows)
                         break;
 
                     case DLL_THREAD_ATTACH:
-                        dll_thread_attach(true, true);
+                        // Do nothing. The client is responsible for attaching threads to the D runtime.
                         break;
 
                     case DLL_THREAD_DETACH:
-                        dll_thread_detach(true, true);
                         break;
 
                     default:

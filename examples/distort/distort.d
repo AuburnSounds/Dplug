@@ -39,7 +39,7 @@ final class Distort : dplug.plugin.Client
         // Clear here any state and delay buffers you might have.
     }
 
-    override void processAudio(double **inputs, double **outputs, int frames)
+    override void processAudio(double **inputs, double **outputs, int frames) nothrow @nogc
     {
         int numInputs = maxInputs();
         int numOutputs = maxOutputs();

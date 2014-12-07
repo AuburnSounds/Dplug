@@ -22,7 +22,7 @@ struct Spinlock
 
         shared int _state; // initialized to 0 => unlocked
         
-        void lock() nothrow
+        void lock() nothrow @nogc
         {
             while(!cas(&_state, UNLOCKED, LOCKED))
             {
@@ -31,12 +31,12 @@ struct Spinlock
         }
 
         /// Returns: true if the spin-lock was locked.
-        bool tryLock() nothrow
+        bool tryLock() nothrow @nogc
         {
             return cas(&_state, UNLOCKED, LOCKED);
         }
 
-        void unlock() nothrow
+        void unlock() nothrow @nogc
         {
             // TODO: on x86, we don't necessarily need an atomic op if 
             // _state is on a DWORD address
@@ -60,7 +60,7 @@ struct RWSpinLock
         shared int _state; // initialized to 0 => unlocked
 
         /// Acquires lock as a reader/writer.
-        void lockWriter() nothrow
+        void lockWriter() nothrow @nogc
         {
             int count = 0;
             while (!tryLockWriter()) 
@@ -70,20 +70,20 @@ struct RWSpinLock
         }
 
         /// Returns: true if the spin-lock was locked for reads and writes.
-        bool tryLockWriter() nothrow
+        bool tryLockWriter() nothrow @nogc
         {
             return cas(&_state, UNLOCKED, WRITER);
         }
 
         /// Unlocks the spinlock after a writer lock.
-        void unlockWriter() nothrow
+        void unlockWriter() nothrow @nogc
         {
             atomicOp!"&="(_state, ~(WRITER));
         }
 
 
         /// Acquires lock as a reader.
-        void lockReader() nothrow
+        void lockReader() nothrow @nogc
         {
             int count = 0;
             while (!tryLockReader())
@@ -93,7 +93,7 @@ struct RWSpinLock
         }
 
         /// Returns: true if the spin-lock was locked for reads.
-        bool tryLockReader() nothrow
+        bool tryLockReader() nothrow @nogc
         {
             int sum = atomicOp!"+="(_state, READER);
             if ((sum & WRITER) != 0)
@@ -106,7 +106,7 @@ struct RWSpinLock
         }
 
         /// Unlocks the spinlock after a reader lock.
-        void unlockReader() nothrow
+        void unlockReader() nothrow @nogc
         {
             atomicOp!"-="(_state, READER);
         }
@@ -121,14 +121,14 @@ struct Spinlocked(T)
     Spinlock spinlock;
     T value;
 
-    void set(T newValue) nothrow
+    void set(T newValue) nothrow @nogc
     {
         spinlock.lock();
         scope(exit) spinlock.unlock();
         value = newValue;
     }
 
-    T get() nothrow
+    T get() nothrow @nogc
     {
         T current;
         {
@@ -167,7 +167,7 @@ final class SpinlockedQueue(T)
 
         /// Pushes an item to the back, crash if queue is full!
         /// Thus, never blocks.
-        void pushBack(T x) nothrow
+        void pushBack(T x) nothrow @nogc
         {
             _lock.lock();
             scope(exit) _lock.unlock();
@@ -177,7 +177,7 @@ final class SpinlockedQueue(T)
 
         /// Pops an item from the front, block if queue is empty.
         /// Never blocks.
-        bool popFront(out T result) nothrow
+        bool popFront(out T result) nothrow @nogc
         {
             _lock.lock();
             scope(exit) _lock.unlock();
@@ -197,7 +197,7 @@ final class SpinlockedQueue(T)
 private
 {
     // TODO: Check with LDC/GDC.
-    void cpuRelax() nothrow
+    void cpuRelax() nothrow @nogc
     {
         asm
         {

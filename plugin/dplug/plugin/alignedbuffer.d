@@ -11,7 +11,7 @@ final class AlignedBuffer(T)
     public
     {
         /// Creates an empty aligned buffer.
-        this(int alignment = 64) nothrow
+        this(int alignment = 64) nothrow @nogc
         {
             _size = 0;
             _allocated = 0;
@@ -20,26 +20,26 @@ final class AlignedBuffer(T)
         }
 
         /// Creates an aligned buffer with given size.
-        this(size_t initialSize) nothrow
+        this(size_t initialSize) nothrow @nogc
         {
             this();
             resize(initialSize);
         }
 
         /// Creates an aligned buffer by copy.
-        this(AlignedBuffer other)
+        this(AlignedBuffer other) nothrow @nogc
         {
             this();
             resize(other.length());
             memcpy(_data, other._data, _size * T.sizeof);
         }
 
-        ~this()
+        ~this() nothrow @nogc
         {
             close();
         }
 
-        void close()
+        void close() nothrow @nogc
         {
             if (_data !is null)
             {
@@ -50,13 +50,13 @@ final class AlignedBuffer(T)
         }
 
         /// Returns: Length of buffer in elements.
-        size_t length() pure const nothrow
+        size_t length() pure const nothrow @nogc
         {
             return _size;
         }
 
         /// Resizes a buffer to hold $(D askedSize) elements.
-        void resize(size_t askedSize) nothrow
+        void resize(size_t askedSize) nothrow @nogc
         {
             // grow only
             if (_allocated < askedSize)
@@ -69,7 +69,7 @@ final class AlignedBuffer(T)
         }
 
         /// Append an element to this buffer.
-        void pushBack(T x) nothrow
+        void pushBack(T x) nothrow @nogc
         {
             size_t i = _size;
             resize(_size + 1);
@@ -77,7 +77,7 @@ final class AlignedBuffer(T)
         }
 
         /// Appends another buffer to this buffer.
-        void pushBack(AlignedBuffer other) nothrow
+        void pushBack(AlignedBuffer other) nothrow @nogc
         {
             size_t oldSize = _size;
             resize(_size + other._size);
@@ -85,28 +85,28 @@ final class AlignedBuffer(T)
         }
 
         /// Retuns: Raw pointer to data.
-        @property inout(T)* ptr() inout nothrow
+        @property inout(T)* ptr() inout nothrow @nogc
         {
             return _data;
         }
 
-        T opIndex(size_t i) pure nothrow
+        T opIndex(size_t i) pure nothrow @nogc
         {
             return _data[i];
         }
 
-        T opIndexAssign(T x, size_t i) nothrow
+        T opIndexAssign(T x, size_t i) nothrow @nogc
         {
             return _data[i] = x;
         }
 
-        void clear() nothrow
+        void clear() nothrow @nogc
         {
             _size = 0;
         }
 
         /// Fills the buffer with the same value.
-        void fill(T x)
+        void fill(T x) nothrow @nogc
         {
             _data[0.._size] = x;
         }

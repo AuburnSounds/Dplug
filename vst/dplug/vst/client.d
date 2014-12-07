@@ -3,6 +3,7 @@ module dplug.vst.client;
 
 import core.stdc.stdlib,
        core.stdc.string,
+       core.thread,
        core.stdc.stdio;
 
 import dplug.plugin.client,
@@ -26,13 +27,13 @@ template VSTEntryPoint(alias ClientClass)
     const char[] VSTEntryPoint =
         "__gshared VSTClient plugin;"
         "__gshared " ~ ClientClass.stringof ~ " client;"
-
         "extern (C) nothrow AEffect* VSTPluginMain(HostCallbackFunction hostCallback) "
         "{"
         "   if (hostCallback is null)"
         "       return null;"
         "   try"
         "   {"
+        "       thread_attachThis();" // Attach VSTPluginMain thread to runtime
         "       auto client = new " ~ ClientClass.stringof ~ "();"
         "       plugin = new VSTClient(client, hostCallback);"
         "   }"
@@ -503,7 +504,7 @@ private:
     //
 
     // Resize copy buffers according to maximum block size.
-    void resizeScratchBuffers(int nFrames)
+    void resizeScratchBuffers(int nFrames) nothrow @nogc
     {
         for (int i = 0; i < _maxInputs; ++i)
             _inputScratchBuffer[i].resize(nFrames);
@@ -512,13 +513,13 @@ private:
             _outputScratchBuffer[i].resize(nFrames);
     }
 
-    void clearScratchBuffers(int nFrames)
+    void clearScratchBuffers(int nFrames) nothrow @nogc
     {
         for (int i = 0; i < _maxInputs; ++i)
             memset(_inputScratchBuffer[i].ptr, 0, nFrames * double.sizeof);
     }
 
-    void processMessages()
+    void processMessages() nothrow @nogc
     {
         Message msg;
         while(_messageQueue.popFront(msg))
@@ -544,7 +545,7 @@ private:
         }
     }
 
-    void preprocess(int sampleFrames)
+    void preprocess(int sampleFrames) nothrow @nogc
     {
         processMessages();
 
@@ -553,7 +554,7 @@ private:
     }
 
 
-    void process(float **inputs, float **outputs, int sampleFrames)
+    void process(float **inputs, float **outputs, int sampleFrames) nothrow @nogc
     {
         preprocess(sampleFrames);
 
@@ -595,7 +596,7 @@ private:
         // accumulate data back to float output
     }
 
-    void processReplacing(float **inputs, float **outputs, int sampleFrames)
+    void processReplacing(float **inputs, float **outputs, int sampleFrames) nothrow @nogc
     {
         preprocess(sampleFrames);
 
@@ -636,7 +637,7 @@ private:
         }
     }
 
-    void processDoubleReplacing(double **inputs, double **outputs, int sampleFrames)
+    void processDoubleReplacing(double **inputs, double **outputs, int sampleFrames) nothrow @nogc
     {
         preprocess(sampleFrames);
         _client.processAudio(inputs, outputs, sampleFrames);
@@ -645,7 +646,7 @@ private:
 
 }
 
-void unrecoverableError() nothrow
+void unrecoverableError() nothrow @nogc
 {
     debug
     {
@@ -668,10 +669,14 @@ void unrecoverableError() nothrow
 
 extern(C) private nothrow
 {
-    VstIntPtr dispatcherCallback(AEffect *effect, int opcode, int index, int value, void *ptr, float opt)
+    VstIntPtr dispatcherCallback(AEffect *effect, int opcode, int index, int value, void *ptr, float opt) nothrow
     {
+        // Register this thread to the D runtime if unknown.
+        
         try
         {
+            thread_attachThis();
+
             auto plugin = cast(VSTClient)(effect.user);
             return plugin.dispatcher(opcode, index, value, ptr, opt);
         }
@@ -682,7 +687,7 @@ extern(C) private nothrow
         return 0;
     }
 
-    void processCallback(AEffect *effect, float **inputs, float **outputs, int sampleFrames)
+    void processCallback(AEffect *effect, float **inputs, float **outputs, int sampleFrames) nothrow @nogc
     {
         try
         {
@@ -695,7 +700,7 @@ extern(C) private nothrow
         }
     }
 
-    void processReplacingCallback(AEffect *effect, float **inputs, float **outputs, int sampleFrames)
+    void processReplacingCallback(AEffect *effect, float **inputs, float **outputs, int sampleFrames) nothrow @nogc
     {
         try
         {
@@ -708,7 +713,7 @@ extern(C) private nothrow
         }
     }
 
-    void processDoubleReplacingCallback(AEffect *effect, double **inputs, double **outputs, int sampleFrames)
+    void processDoubleReplacingCallback(AEffect *effect, double **inputs, double **outputs, int sampleFrames) nothrow @nogc
     {
         try
         {
@@ -723,8 +728,11 @@ extern(C) private nothrow
 
     void setParameterCallback(AEffect *effect, int index, float parameter)
     {
+        // Register this thread to the D runtime if unknown.
         try
         {
+            thread_attachThis();
+
             auto plugin = cast(VSTClient)effect.user;
             Client client = plugin._client;
 

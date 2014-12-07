@@ -126,12 +126,12 @@ public:
             _outputPins[i] = new OutputPin();
     }
 
-    int maxInputs()
+    int maxInputs() pure const nothrow @nogc
     {
         return _maxInputs;
     }
 
-    int maxOutputs()
+    int maxOutputs() pure const nothrow @nogc
     {
         return _maxInputs;
     }
@@ -149,25 +149,25 @@ public:
     }
 
     /// Returns: true if index is a valid parameter index.
-    final bool isValidParamIndex(int index)
+    final bool isValidParamIndex(int index) nothrow @nogc
     {
         return index >= 0 && index < _params.length;
     }
 
     /// Returns: true if index is a valid input index.
-    final bool isValidInputIndex(int index)
+    final bool isValidInputIndex(int index) nothrow @nogc
     {
         return index >= 0 && index < maxInputs();
     }
 
     /// Returns: true if index is a valid output index.
-    final bool isValidOutputIndex(int index)
+    final bool isValidOutputIndex(int index) nothrow @nogc
     {
         return index >= 0 && index < maxOutputs();
     }
 
     /// Sets the number of used input channels.
-    final bool setNumUsedInputs(int numInputs)
+    final bool setNumUsedInputs(int numInputs) nothrow @nogc
     {
         int max = maxInputs();
         if (numInputs > max)
@@ -178,7 +178,7 @@ public:
     }
 
     /// Sets the number of used output channels.
-    final bool setNumUsedOutputs(int numOutputs)
+    final bool setNumUsedOutputs(int numOutputs) nothrow @nogc
     {
         int max = maxOutputs();
         if (numOutputs > max)
@@ -228,9 +228,9 @@ public:
 
     /// Override to clear state state (eg: delay lines) and allocate buffers.
     /// Important: This will be called by the audio thread. 
-    ///            You should not use allocation in the managed heap in this callback.
+    ///            You should not use the GC in this callback.
     ///            But you can use malloc.
-    abstract void reset(double sampleRate, size_t maxFrames);
+    abstract void reset(double sampleRate, size_t maxFrames) nothrow @nogc;
 
     /// Override to set the plugin latency in samples.
     /// Most of the time this is dependant on the sampling rate, but most host
@@ -245,9 +245,9 @@ public:
     /// In processAudio you are always guaranteed to get valid pointers
     /// to all the channels the plugin requested.
     /// Unconnected input pins are zeroed.
-    /// Important: This will be called by the audio thread.
-    ///            You should not use allocation in this callback.
-    abstract void processAudio(double **inputs, double **outputs, int frames);
+    /// Important: This will be called by the audio thread. 
+    ///            You should not use the GC in this callback.
+    abstract void processAudio(double **inputs, double **outputs, int frames) nothrow @nogc;
 
 protected:
 
