@@ -25,8 +25,8 @@
             "sourcePaths": [ "dsp/dplug/dsp" ],
             "importPaths": [ "dsp" ],
             "dependencies": {
-                "gfm:core": "==1.1.6",
-                "gfm:math": "==1.1.6"
+                "gfm:core": "~>2.0",
+                "gfm:math": "~>2.0"
             }
         },
         {
@@ -34,7 +34,7 @@
             "sourcePaths": [ "plugin/dplug/plugin" ],
             "importPaths": [ "plugin" ],
             "dependencies": {
-                "gfm:core": "==1.1.6"
+                "gfm:core": "~>2.0",
             }
         },
         {

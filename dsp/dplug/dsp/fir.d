@@ -57,7 +57,7 @@ void generateHighpassImpulse(T)(T[] output, double cutoff, double samplerate)
 void generateHilbertTransformer(T)(T[] outImpulse, WindowType window, double samplerate)
 {
     size_t size = outImpulse.length;
-    assert(isOdd(size));    
+    assert(isOdd(size));
     size_t center = size / 2;
 
     for (size_t i = 0; i < center; ++i)
@@ -95,18 +95,17 @@ void normalizeImpulse(T)(T[] inoutImpulse)
 /// TODO: does it preserve amplitude?
 void minimumPhaseImpulse(T)(T[] inoutImpulse) // allocates
 {
-    size_t power = nextPowerOf2(inoutImpulse.length) + 3;
-    size_t fftSize = 1 << power;
+    size_t fftSize = nextPowerOf2(inoutImpulse.length);
     auto kernel = new Complex!T[fftSize];
     minimumPhaseImpulse(inoutImpulse, kernel[]);
 }
-    
+
 void minimumPhaseImpulse(T)(T[] inoutImpulse,  Complex!T[] tempStorage) // alloc free version
 {
     size_t size = inoutImpulse.length;
     alias size n;
-    size_t power = nextPowerOf2(size) + 3;
-    size_t fftSize = 1 << power;
+    size_t fftSize = nextPowerOf2(inoutImpulse.length);
+    assert(fftSize >= n);
     size_t halfFFTSize = fftSize / 2;
 
     if (tempStorage.length < fftSize)
@@ -126,7 +125,7 @@ void minimumPhaseImpulse(T)(T[] inoutImpulse,  Complex!T[] tempStorage) // alloc
         kernel[i] = log(abs(kernel[i]));
 
     FFT!T(kernel[], FFTDirection.REVERSE);
-        
+
     for (size_t i = 1; i < halfFFTSize; ++i)
         kernel[i] *= 2;
 
@@ -144,7 +143,7 @@ void minimumPhaseImpulse(T)(T[] inoutImpulse,  Complex!T[] tempStorage) // alloc
         inoutImpulse[i] = kernel[i].re;
 }
 
-private Complex!T complexExp(T)(Complex!T z) 
+private Complex!T complexExp(T)(Complex!T z)
 {
     T mag = exp(z.re);
     return Complex!T(mag * cos(z.re), mag * sin(z.im));
@@ -154,7 +153,7 @@ private Complex!T complexExp(T)(Complex!T z)
 private static void checkFilterParams(size_t length, double cutoff, double sampleRate)
 {
     assert((length & 1) == 0, "FIR impulse length must be odd");
-    assert(cutoff * 2 >= sampleRate, "2x the cutoff exceed sampling rate, Nyquist disapproving");
+    assert(cutoff * 2 < sampleRate, "2x the cutoff exceed sampling rate, Nyquist disapproving");
 }
 
 
@@ -166,7 +165,7 @@ unittest
     generateHighpassImpulse(hp_impulse[], 40.0, 44100.0);
     minimumPhaseImpulse(lp_impulse[]);
 
-    generateHilbertTransformer(lp_impulse[], WindowType.BLACKMANN, 44100.0);
+    generateHilbertTransformer(lp_impulse[0..$-1], WindowType.BLACKMANN, 44100.0);
 }
 
 

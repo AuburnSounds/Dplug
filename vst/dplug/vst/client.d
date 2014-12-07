@@ -5,10 +5,9 @@ import core.stdc.stdlib,
        core.stdc.string,
        core.stdc.stdio;
 
-import gfm.core.alignedbuffer;
-
 import dplug.plugin.client,
        dplug.plugin.daw,
+       dplug.plugin.alignedbuffer,
        dplug.plugin.spinlock;
 
 import dplug.vst.aeffectx;
@@ -57,7 +56,7 @@ class VSTClient
 public:
 
     AEffect _effect;
-    
+
     this(Client client, HostCallbackFunction hostCallback)
     {
         _messageQueue = new SpinlockedQueue!Message(256);
@@ -129,7 +128,7 @@ private:
 
     VSTHostFromClientPOV _host;
     Client _client;
-    
+
     float _sampleRate; // samplerate from opcode thread POV
     size_t _maxFrames; // max frames from opcode thread POV
     int _maxInputs;
@@ -141,7 +140,7 @@ private:
     AlignedBuffer!double[] _inputScratchBuffer;  // input double buffer, one per possible input
     AlignedBuffer!double[] _outputScratchBuffer; // input double buffer, one per output
     double*[] _inputPointers;  // where processAudio will take its audio input, one per possible input
-    double*[] _outputPointers; // where processAudio will output audio, one per possible output   
+    double*[] _outputPointers; // where processAudio will output audio, one per possible output
 
     // Lock-free message queue from opcode thread to audio thread.
     SpinlockedQueue!Message _messageQueue;
@@ -166,11 +165,11 @@ private:
     final VstIntPtr dispatcher(int opcode, int index, ptrdiff_t value, void *ptr, float opt)
     {
         // Important message from Cockos:
-        // "Assume everything can (and WILL) run at the same time as your 
+        // "Assume everything can (and WILL) run at the same time as your
         // process/processReplacing, except:
         //   - effOpen/effClose
-        //   - effSetChunk -- while effGetChunk can run at the same time as audio 
-        //     (user saves project, or for automatic undo state tracking), effSetChunk 
+        //   - effSetChunk -- while effGetChunk can run at the same time as audio
+        //     (user saves project, or for automatic undo state tracking), effSetChunk
         //     is guaranteed to not run while audio is processing.
         // So nearly everything else should be threadsafe."
 
@@ -192,11 +191,11 @@ private:
             case effSetProgramName: // opcode 4
                 return 0; // TODO
 
-            case effGetProgramName: // opcode 5, 
+            case effGetProgramName: // opcode 5,
             {
                 // currently always return ""
                 char* p = cast(char*)ptr;
-                *p = '\0'; 
+                *p = '\0';
                 return 0; // TODO, max 23 chars
             }
 
@@ -229,7 +228,7 @@ private:
             }
 
             case effGetParamName: // opcode 8
-            { 
+            {
                 char* p = cast(char*)ptr;
                 if (!isValidParamIndex(index))
                     *p = '\0';
@@ -253,10 +252,10 @@ private:
                 _messageQueue.pushBack(Message(Message.Type.resetState, _maxFrames, 0, _sampleRate));
                 return 0;
             }
-           
+
             case effSetBlockSize: // opcode 11
             {
-                if (value < 0) 
+                if (value < 0)
                     return 1;
 
                 _maxFrames = value;
@@ -269,7 +268,7 @@ private:
                     if (value == 0)
                     {
                       // Audio processing was switched off.
-                      // The plugin must call flush its state because otherwise pending data 
+                      // The plugin must call flush its state because otherwise pending data
                       // would sound again when the effect is switched on next time.
                       _messageQueue.pushBack(Message(Message.Type.resetState, _maxFrames, 0, _sampleRate));
                     }
@@ -314,7 +313,7 @@ private:
             case effEditIdle: // opcode 19
                 return 0; // why would it be useful to do anything?
 
-            case DEPRECATED_effEditTop: // opcode 20, edit window has topped                
+            case DEPRECATED_effEditTop: // opcode 20, edit window has topped
                 return 0;
 
             case DEPRECATED_effEditSleep:  // opcode 21, edit window goes to background
@@ -349,7 +348,7 @@ private:
 
 
 
-                double v;                
+                double v;
                 _paramLock.lock();
                 _client.param(index).set(atof(cast(char*)ptr));
                 _paramLock.unlock();
@@ -382,7 +381,7 @@ private:
 
                 VstPinProperties* pp = cast(VstPinProperties*) ptr;
                 pp.flags = kVstPinIsActive;
-                    
+
                 if ( (index % 2) == 0 && index < _maxInputs)
                     pp.flags |= kVstPinIsStereo;
 
@@ -511,7 +510,7 @@ private:
 
         for (int i = 0; i < _maxOutputs; ++i)
             _outputScratchBuffer[i].resize(nFrames);
-    }   
+    }
 
     void clearScratchBuffers(int nFrames)
     {
@@ -556,7 +555,7 @@ private:
 
     void process(float **inputs, float **outputs, int sampleFrames)
     {
-        preprocess(sampleFrames);        
+        preprocess(sampleFrames);
 
         // existing inputs gets converted to double
         // non-connected input is zero
@@ -638,12 +637,12 @@ private:
     }
 
     void processDoubleReplacing(double **inputs, double **outputs, int sampleFrames)
-    {        
+    {
         preprocess(sampleFrames);
         _client.processAudio(inputs, outputs, sampleFrames);
     }
 
-    
+
 }
 
 void unrecoverableError() nothrow
@@ -669,7 +668,7 @@ void unrecoverableError() nothrow
 
 extern(C) private nothrow
 {
-    VstIntPtr dispatcherCallback(AEffect *effect, int opcode, int index, int value, void *ptr, float opt) 
+    VstIntPtr dispatcherCallback(AEffect *effect, int opcode, int index, int value, void *ptr, float opt)
     {
         try
         {
@@ -681,9 +680,9 @@ extern(C) private nothrow
             unrecoverableError(); // should not throw in a callback
         }
         return 0;
-    }   
+    }
 
-    void processCallback(AEffect *effect, float **inputs, float **outputs, int sampleFrames) 
+    void processCallback(AEffect *effect, float **inputs, float **outputs, int sampleFrames)
     {
         try
         {
@@ -696,7 +695,7 @@ extern(C) private nothrow
         }
     }
 
-    void processReplacingCallback(AEffect *effect, float **inputs, float **outputs, int sampleFrames) 
+    void processReplacingCallback(AEffect *effect, float **inputs, float **outputs, int sampleFrames)
     {
         try
         {
@@ -709,7 +708,7 @@ extern(C) private nothrow
         }
     }
 
-    void processDoubleReplacingCallback(AEffect *effect, double **inputs, double **outputs, int sampleFrames) 
+    void processDoubleReplacingCallback(AEffect *effect, double **inputs, double **outputs, int sampleFrames)
     {
         try
         {
@@ -742,7 +741,7 @@ extern(C) private nothrow
         }
     }
 
-    float getParameterCallback(AEffect *effect, int index) 
+    float getParameterCallback(AEffect *effect, int index)
     {
         try
         {
