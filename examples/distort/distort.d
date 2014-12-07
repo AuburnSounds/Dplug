@@ -3,6 +3,7 @@ import std.math;
 import dplug.plugin,
        dplug.vst;
 
+mixin(DLLEntryPoint!());
 mixin(VSTEntryPoint!Distort);
 
 /// Example mono/stereo distortion plugin.
