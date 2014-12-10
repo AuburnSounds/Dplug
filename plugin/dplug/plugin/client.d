@@ -9,6 +9,7 @@ import core.stdc.string;
 import core.stdc.stdio;
 
 import dplug.plugin.params;
+import dplug.plugin.gui;
 
 
 class InputPin
@@ -56,8 +57,8 @@ public:
     alias Flags = int;
     enum : Flags
     {
-        IsSynth = 1,
-        HasGUI  = 2
+        isSynth = 1,
+        hasGUI  = 2
     }
 
     this()
@@ -83,6 +84,8 @@ public:
         _outputPins.length = _maxOutputs;
         for (int i = 0; i < _maxOutputs; ++i)
             _outputPins[i] = new OutputPin();
+
+        _gui = new NullGUI(this);
     }
 
     int maxInputs() pure const nothrow @nogc
@@ -148,13 +151,15 @@ public:
     }
 
     /// Override this methods to implement a GUI.
-    void onOpenGUI()
+    final void openGUI(void* parentInfo)
     {
+        _gui.open(parentInfo);
     }
 
     /// ditto
-    void onCloseGUI()
+    final void closeGUI()
     {
+        _gui.close();
     }
 
     /// Override and return your brand name.
@@ -171,7 +176,7 @@ public:
 
     /// Override this method to give a plugin ID.
     /// While it seems no VST host use this ID as a unique
-    /// way to identify a plugin, common wisdom is to try to 
+    /// way to identify a plugin, common wisdom is to try to
     /// get a sufficiently random one to avoid conflicts.
     abstract int getPluginID() pure const nothrow;
 
@@ -186,7 +191,7 @@ public:
     abstract Flags getFlags() pure const nothrow;
 
     /// Override to clear state state (eg: delay lines) and allocate buffers.
-    /// Important: This will be called by the audio thread. 
+    /// Important: This will be called by the audio thread.
     ///            You should not use the GC in this callback.
     ///            But you can use malloc.
     abstract void reset(double sampleRate, size_t maxFrames) nothrow @nogc;
@@ -204,7 +209,7 @@ public:
     /// In processAudio you are always guaranteed to get valid pointers
     /// to all the channels the plugin requested.
     /// Unconnected input pins are zeroed.
-    /// Important: This will be called by the audio thread. 
+    /// Important: This will be called by the audio thread.
     ///            You should not use the GC in this callback.
     abstract void processAudio(double **inputs, double **outputs, int frames) nothrow @nogc;
 
@@ -229,6 +234,8 @@ protected:
     {
         _legalIOs ~= LegalIO(numInputs, numOutputs);
     }
+
+    PluginGUI _gui;
 
 private:
     Parameter[] _params;

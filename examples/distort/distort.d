@@ -1,6 +1,7 @@
 import std.math;
 
 import dplug.plugin,
+       dplug.gui,
        dplug.vst;
 
 mixin(DLLEntryPoint!());
@@ -9,9 +10,14 @@ mixin(VSTEntryPoint!Distort);
 /// Example mono/stereo distortion plugin.
 final class Distort : dplug.plugin.Client
 {
+    this()
+    {
+        _gui = new SDLPluginGUI(this);
+    }
+
     override Flags getFlags() pure const nothrow
     {
-        return 0; // Not a synth, no GUI
+        return hasGUI; // Not a synth, but has a GUI
     }
 
     override int getPluginID() pure const nothrow
@@ -66,5 +72,6 @@ final class Distort : dplug.plugin.Client
         }
     }
 }
+
 
 

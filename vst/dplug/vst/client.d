@@ -70,13 +70,13 @@ public:
 
         int flags = effFlagsCanReplacing | effFlagsCanDoubleReplacing;
 
-        if ( client.getFlags() & Client.IsSynth )
+        if ( client.getFlags() & Client.isSynth )
         {
             flags |= effFlagsIsSynth;
             _host.wantEvents();
         }
 
-        if ( client.getFlags() & Client.HasGUI )
+        if ( client.getFlags() & Client.hasGUI )
             flags |= effFlagsHasEditor;
 
         _effect.flags = flags;
@@ -279,9 +279,9 @@ private:
 
             case effEditOpen: // opcode 14
                 {
-                    if ( _client.getFlags() & Client.HasGUI )
+                    if ( _client.getFlags() & Client.hasGUI )
                     {
-                        _client.onOpenGUI();
+                        _client.openGUI(ptr);
                         return 1;
                     }
                     else
@@ -290,9 +290,9 @@ private:
 
             case effEditClose: // opcode 15
                 {
-                    if ( _client.getFlags() & Client.HasGUI )
+                    if ( _client.getFlags() & Client.hasGUI )
                     {
-                        _client.onCloseGUI();
+                        _client.closeGUI();
                         return 1;
                     }
                     else
@@ -398,7 +398,7 @@ private:
             }
 
             case effGetPlugCategory: // opcode 35
-                if ( _client.getFlags() & Client.IsSynth )
+                if ( _client.getFlags() & Client.isSynth )
                     return kPlugCategSynth;
                 else
                     return kPlugCategEffect;
@@ -466,7 +466,7 @@ private:
                 if (strcmp(str, "receiveVstTimeInfo") == 0)
                     return 1;
 
-                if (_client.getFlags() & Client.IsSynth)
+                if (_client.getFlags() & Client.isSynth)
                 {
                     if (strcmp(str, "sendVstEvents") == 0)
                         return 1;

@@ -16,7 +16,8 @@
     "dependencies": {
         "dplug:dsp": "*",
         "dplug:plugin": "*",
-        "dplug:vst": "*"
+        "dplug:vst": "*",
+        "dplug:gui": "*",
     },
 
     "subPackages": [
@@ -25,8 +26,8 @@
             "sourcePaths": [ "dsp/dplug/dsp" ],
             "importPaths": [ "dsp" ],
             "dependencies": {
-                "gfm:core": "~>2.0",
-                "gfm:math": "~>2.0"
+                "gfm:core": "~master",
+                "gfm:math": "~master"
             }
         },
         {
@@ -34,13 +35,21 @@
             "sourcePaths": [ "plugin/dplug/plugin" ],
             "importPaths": [ "plugin" ],
             "dependencies": {
-                "gfm:core": "~>2.0",
+                "gfm:core": "~master",
             }
         },
         {
             "name": "vst",
             "sourcePaths": [ "vst/dplug/vst" ],
             "importPaths": [ "vst" ],
+            "dependencies": {
+                "dplug:plugin": "*"
+            }
+        },
+        {
+            "name": "gui",
+            "sourcePaths": [ "gui/dplug/gui" ],
+            "importPaths": [ "gui" ],
             "dependencies": {
                 "dplug:plugin": "*"
             }

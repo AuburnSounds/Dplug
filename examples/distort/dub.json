@@ -13,6 +13,7 @@
     "dependencies":
     {
         "dplug:vst": { "path": "../.." },
-        "dplug:plugin": { "path": "../.." }
+        "dplug:plugin": { "path": "../.." },
+        "dplug:gui": { "path": "../.." }
     }
 }
