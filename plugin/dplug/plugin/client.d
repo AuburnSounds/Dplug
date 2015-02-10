@@ -9,7 +9,7 @@ import core.stdc.string;
 import core.stdc.stdio;
 
 import dplug.plugin.params;
-import dplug.plugin.gui;
+import dplug.plugin.graphics;
 
 
 class InputPin

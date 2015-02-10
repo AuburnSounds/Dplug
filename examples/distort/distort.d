@@ -1,7 +1,6 @@
 import std.math;
 
 import dplug.plugin,
-       dplug.gui,
        dplug.vst;
 
 mixin(DLLEntryPoint!());
@@ -12,7 +11,6 @@ final class Distort : dplug.plugin.Client
 {
     this()
     {
-        _gui = new SDLPluginGUI(this);
     }
 
     override Flags getFlags() pure const nothrow
