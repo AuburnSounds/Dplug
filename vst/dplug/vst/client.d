@@ -640,7 +640,7 @@ void unrecoverableError() nothrow @nogc
     debug
     {
         // break in debug mode
-        asm
+        asm nothrow @nogc
         {
             int 3;
         }
@@ -661,7 +661,7 @@ extern(C) private nothrow
     VstIntPtr dispatcherCallback(AEffect *effect, int opcode, int index, int value, void *ptr, float opt) nothrow
     {
         // Register this thread to the D runtime if unknown.
-        
+
         try
         {
             thread_attachThis();

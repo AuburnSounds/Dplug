@@ -7,21 +7,21 @@ import gfm.core;
 
 
 /// Intended to small delays only.
-/// Allows very fast synchronization between eg. a high priority 
+/// Allows very fast synchronization between eg. a high priority
 /// audio thread and an UI thread.
 /// Not re-entrant.
 struct Spinlock
 {
     public
     {
-        enum : int 
+        enum : int
         {
              UNLOCKED = 0,
              LOCKED = 1
         }
 
         shared int _state; // initialized to 0 => unlocked
-        
+
         void lock() nothrow @nogc
         {
             while(!cas(&_state, UNLOCKED, LOCKED))
@@ -38,7 +38,7 @@ struct Spinlock
 
         void unlock() nothrow @nogc
         {
-            // TODO: on x86, we don't necessarily need an atomic op if 
+            // TODO: on x86, we don't necessarily need an atomic op if
             // _state is on a DWORD address
             atomicStore(_state, UNLOCKED);
         }
@@ -63,7 +63,7 @@ struct RWSpinLock
         void lockWriter() nothrow @nogc
         {
             int count = 0;
-            while (!tryLockWriter()) 
+            while (!tryLockWriter())
             {
                 cpuRelax();
             }
@@ -135,7 +135,7 @@ struct Spinlocked(T)
             spinlock.lock();
             scope(exit) spinlock.unlock();
             current = value;
-        }        
+        }
         return current;
     }
 }
@@ -199,7 +199,7 @@ private
     // TODO: Check with LDC/GDC.
     void cpuRelax() nothrow @nogc
     {
-        asm
+        asm nothrow @nogc
         {
             rep; nop; // PAUSE instruction, recommended by Intel in busy spin loops
         }

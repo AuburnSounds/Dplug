@@ -85,7 +85,7 @@ public:
         for (int i = 0; i < _maxOutputs; ++i)
             _outputPins[i] = new OutputPin();
 
-        _gui = new NullGUI(this);
+        _graphics = new NullGraphics(this);
     }
 
     int maxInputs() pure const nothrow @nogc
@@ -153,13 +153,13 @@ public:
     /// Override this methods to implement a GUI.
     final void openGUI(void* parentInfo)
     {
-        _gui.open(parentInfo);
+        _graphics.open(parentInfo);
     }
 
     /// ditto
     final void closeGUI()
     {
-        _gui.close();
+        _graphics.close();
     }
 
     /// Override and return your brand name.
@@ -235,7 +235,7 @@ protected:
         _legalIOs ~= LegalIO(numInputs, numOutputs);
     }
 
-    PluginGUI _gui;
+    Graphics _graphics;
 
 private:
     Parameter[] _params;

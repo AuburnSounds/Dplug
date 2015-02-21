@@ -9,24 +9,26 @@ public:
     this(HWND parentWindow)
     {
         _wndClass.style = CS_DBLCLKS | CS_HREDRAW | CS_VREDRAW;
-        _wndClass.lpfnWndProc = wndProc;
+        _wndClass.lpfnWndProc = &wndProc;
         _wndClass.cbClsExtra = 0;
         _wndClass.cbWndExtra = 0;
-        _wndClass.hInstance = GetModuleHandle(NULL); // TODO: should be the HINSTANCE given by DLL main!
-        _wndClass.hIcon = 0;
-        _wndClass.hCursor = LoadCursor(NULL, IDC_ARROW);
-        _wndClass.hbrBackground = 0;
+        _wndClass.hInstance = GetModuleHandleA(null); // TODO: should be the HINSTANCE given by DLL main!
+        _wndClass.hIcon = null;
+        _wndClass.hCursor = LoadCursorA(null, IDC_ARROW);
+        _wndClass.hbrBackground = null;
         _wndClass.lpszMenuName = null;
         _wndClass.lpszClassName = "dplugClass";
 
-        if (!RegisterClass(&wc))
-            throw Exception("Couldn't register Win32 class");
+        if (!RegisterClassA(&_wndClass))
+            throw new Exception("Couldn't register Win32 class");
 
-        _hwnd = CreateWindow("dplugClass", "dplug", WS_CHILD | WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT, 800, 600,
-                             parentWindow, 0, mHInstance, cast(void*)this);
+        _hwnd = CreateWindowA("dplugClass", "dplug", WS_CHILD | WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT, 800, 600,
+                             parentWindow, null,
+                             GetModuleHandleA(null),  // TODO: is it correct?
+                             cast(void*)this);
 
-        if (_hwnd == NULL)
-            throw Exception("Couldn't create a Win32 window");
+        if (_hwnd ==  null)
+            throw new Exception("Couldn't create a Win32 window");
     }
 
     ~this()
@@ -36,12 +38,12 @@ public:
 
     void close()
     {
-        if (_hwnd != 0)
+        if (_hwnd != null)
         {
             DestroyWindow(_hwnd);
-            _hwnd = 0;
+            _hwnd = null;
         }
-        UnregisterClass("dplugClass", GetModuleHandle(NULL)); // TODO: should be the HINSTANCE given by DLL main!
+        //UnregisterClassA("dplugClass", GetModuleHandle(NULL)); // TODO: should be the HINSTANCE given by DLL main!
     }
 
 private:
@@ -49,11 +51,11 @@ private:
     WNDCLASSA _wndClass;
 }
 
-extern(Windows)
+extern(Windows) nothrow
 {
     LRESULT wndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     {
-        return DefWindowProc(hWnd, msg, wParam, lParam);
+        return DefWindowProcA(hwnd, uMsg, wParam, lParam);
     }
 }
 

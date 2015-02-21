@@ -80,7 +80,7 @@ public:
         _target = newTarget;
         if (_target != _current)
             _done = false;
-    }    
+    }
 
 private:
     T _target;
@@ -218,11 +218,11 @@ public:
             _first = false;
         }
 
-        T arr[N];
+        T[N] arr;
         arr[0] = input;
         for (int i = 0; i < N - 1; ++i)
             arr[i + 1] = _delay[i];
-        
+
         arr.sort; // sort in place
 
         T median = arr[N/2];
@@ -234,7 +234,7 @@ public:
     }
 
 private:
-    T _delay[N - 1];
+    T[N - 1] _delay;
     bool _first;
 }
 

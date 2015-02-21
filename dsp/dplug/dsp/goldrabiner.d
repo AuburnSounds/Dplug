@@ -9,20 +9,20 @@ import dplug.dsp.funcs,
 
 
 /// Monophonic voice pitch detector.
-/// - for pitch detection, implements 
-///   "Parallel Processing Techniques for Estimating Pitch Periods of Speech in the Time Domain" from Gold & Rabiner (1969)    // 
-/// - for voiced/unvoiced detection, implements 
+/// - for pitch detection, implements
+///   "Parallel Processing Techniques for Estimating Pitch Periods of Speech in the Time Domain" from Gold & Rabiner (1969)    //
+/// - for voiced/unvoiced detection, implements
 ///   "Notes on Buzz-Hiss Detection" from Bernard Gold (1964)
-/// 
+///
 /// TODO: should HP filter should track current frequency?
 ///       "Digital Processing of Speech Signal" bu Rabiner & Shaffer recommends two-stage median filtering
 struct GoldRabiner
-{      
+{
 private:
 
     // Pitch Period Estimator
     struct PPE
-    {            
+    {
         float _pitchPeriod; // estimated
         float _currentPitchPeriodSecs;
         float _lastPulseTime; // time since last pulse detected
@@ -56,7 +56,7 @@ private:
                 clampedPitchPeriod = 0.010f;
             float rundownTime = _currentPitchPeriodSecs * 1.438848920f; /// 0.695f;
             _expFactor = expDecayFactor(rundownTime, _samplerate);//(float)expFactor(rundownTime, _samplerate);
-            _blankTime = 0.4f * _currentPitchPeriodSecs;       
+            _blankTime = 0.4f * _currentPitchPeriodSecs;
         }
 
         bool next(float pulse)
@@ -74,7 +74,7 @@ private:
 
                 _currentPitchPeriodSecs = _lastPulseTime;
                 _lastPulseTime = 0;
-                recomputePitchDependentParameters();   
+                recomputePitchDependentParameters();
 
                 // decrement counter
                 if (_numPulseUntilReady > 0)
@@ -94,7 +94,7 @@ private:
     }
 
     State _ascendingState;
-    float _last;      
+    float _last;
     float _lastPositivePeakValue;
     float _lastNegativePeakValue;
 
@@ -104,18 +104,18 @@ private:
     float _lastVoicedness;
     float _minPitchPeriod;
 
-        
+
 
     // filter
     BiquadCoeff!double _HPCoeff;
-    BiquadDelay!double _HPState[2];
+    BiquadDelay!double[2] _HPState;
     BiquadCoeff!double _LPCoeff;
-    BiquadDelay!double _LPState[3];
+    BiquadDelay!double[3] _LPState;
 
     // out filters
     BiquadDelay!double _LPPitchState;
     BiquadCoeff!double _LPCoeffPitch;
-    BiquadDelay!double _LPVoicedState;        
+    BiquadDelay!double _LPVoicedState;
     BiquadCoeff!double _LPCoeffVoiced;
 
     PPE[6] _PPE;
@@ -181,7 +181,7 @@ private:
         bool isPositivePeak = (_ascendingState == State.Ascending) && input < _last;
         bool isNegativePeak = (_ascendingState == State.Descending) && input > _last;
 
-        float M[6]; // M[0] = m1 in paper
+        float[6] M; // M[0] = m1 in paper
         for (int i = 0; i < 6; ++i)
             M[i] = 0;
 
@@ -191,7 +191,7 @@ private:
         if (isPositivePeak)
         {
             //ASSERT(x >= 0);
-            M[0] = _last; // height of peak. 
+            M[0] = _last; // height of peak.
             M[1] = _last - _lastNegativePeakValue;
             M[2] = _last - _lastPositivePeakValue;
             if (M[0] < 0) M[0] = 0;
@@ -201,7 +201,7 @@ private:
             _ascendingState = State.Descending;
         }
         else if (isNegativePeak)
-        {   
+        {
             M[3] = -_last; // height of peak
             M[4] = -_last - _lastPositivePeakValue;
             M[5] = -_last - _lastPositivePeakValue;
@@ -234,7 +234,7 @@ private:
         // at least one pulse was detected, compute pitch
         if (pulseDetected)
         {
-            float mat[6][6];
+            float[6][6] mat;
             for (int i = 0; i < 6; ++i)
             {
                 float p0 = _PPE[i]._currentPitchPeriodSecs;
@@ -247,9 +247,9 @@ private:
                 mat[4][i] = pm1 + pm2;
                 mat[5][i] = p0 + pm1 + pm2;
             }
-                
 
-            static immutable int[4][4] COINCIDENCE_WINDOW = 
+
+            static immutable int[4][4] COINCIDENCE_WINDOW =
             [
                 [ 1, 2, 3, 4 ],
                 [ 2, 4, 6, 8 ],
@@ -257,11 +257,11 @@ private:
                 [ 8, 16, 24, 32 ],
             ];
 
-            static immutable int BIAS[4] = [ 1, 2, 5, 7 ];
+            static immutable int[4] BIAS = [ 1, 2, 5, 7 ];
 
             // find maximum number of coincidence
 
-            float bestResult[6];
+            float[6] bestResult;
 
             for (int i = 0; i < 6; ++i)
             {
@@ -273,7 +273,7 @@ private:
                     coincidenceLine = 1;
                 else if (coincidenceLine < 12.7)
                     coincidenceLine = 2;
-                else 
+                else
                     coincidenceLine = 3;
 
                 bestResult[i] = -1000;
@@ -297,7 +297,7 @@ private:
                         }
                     }
                     bestResult[i] = bestResult[i] > biasedResult ? bestResult[i] : biasedResult;
-                }  
+                }
             }
 
             float choosenResult = -1000.0f;
@@ -307,14 +307,14 @@ private:
                 if (bestResult[i] > choosenResult)
                 {
                     choosenResult = bestResult[i];
-                    choosenIndex = i;                        
+                    choosenIndex = i;
                 }
             }
 
             _lastPitchPeriodEstimateSecs = _PPE[choosenIndex]._currentPitchPeriodSecs;
             const int unvoicedValue = 4; // measured on two inputs, my voice and sistah
             const int voicedValue = 7;
-            
+
             float clamped = choosenResult;
             if (clamped < 4.0f) clamped = 4.0f;
             if (clamped > 7.0f) clamped = 7.0f;
@@ -330,16 +330,16 @@ private:
 
         double filteredVoiced = _lastVoicedness;
         filteredVoiced = _LPVoicedState.next!double(filteredVoiced, _LPCoeffVoiced);
-            
-            
+
+
         // avoid low-pass ripple that cause negative periods!
         if (filteredPitch < _minPitchPeriod)
             filteredPitch = _minPitchPeriod;
-            
-            
+
+
         *outPitchPeriodSecs = filteredPitch;
         *outVoicedness = clamp!float(filteredVoiced, 0.0f, 1.0f);
-            
+
         // don't test 4 and 5
         bool allPPEReady = true;
         for (int i = 0; i < 4; ++i)
@@ -354,5 +354,5 @@ private:
         bool resultIsSignificant = _ascendingState != State.Initial && allPPEReady;
         return resultIsSignificant;
     }
-        
+
 }

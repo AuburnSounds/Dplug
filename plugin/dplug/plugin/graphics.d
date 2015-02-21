@@ -16,3 +16,23 @@ class Graphics
 protected:
     Client _client;
 }
+
+///
+class NullGraphics : Graphics
+{
+    this(Client client)
+    {
+        super(client);
+    }
+
+    override void open(void* parentInfo)
+    {
+    }
+
+    override void close()
+    {
+    }
+
+protected:
+    Client _client;
+}

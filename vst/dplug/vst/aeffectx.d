@@ -44,7 +44,7 @@ struct VstEvents
 {
     VstInt32 numEvents;     ///< number of Events in array
     VstIntPtr reserved;     ///< zero (Reserved for future use)
-    VstEvent* events[2];    ///< event pointer array, variable size
+    VstEvent*[2] events;    ///< event pointer array, variable size
 }
 
 /// MIDI Event (to be casted from VstEvent).
@@ -56,7 +56,7 @@ struct VstMidiEvent
     VstInt32 flags;         ///< @see VstMidiEventFlags
     VstInt32 noteLength;    ///< (in sample frames) of entire note, if available, else 0
     VstInt32 noteOffset;    ///< offset (in sample frames) into note from note start if available, else 0
-    char midiData[4];       ///< 1 to 3 MIDI bytes; midiData[3] is reserved (zero)
+    char[4] midiData;       ///< 1 to 3 MIDI bytes; midiData[3] is reserved (zero)
     char detune;            ///< -64 to +63 cents; for scales other than 'well-tempered' ('microtuning')
     char noteOffVelocity;   ///< Note Off Velocity [0, 127]
     char reserved1;         ///< zero (Reserved for future use)
@@ -87,12 +87,12 @@ struct VstMidiSysexEvent
 // VstTimeInfo
 //-------------------------------------------------------------------------------------------------------
 //-------------------------------------------------------------------------------------------------------
-/** VstTimeInfo requested via #audioMasterGetTime.  @see AudioEffectX::getTimeInfo 
+/** VstTimeInfo requested via #audioMasterGetTime.  @see AudioEffectX::getTimeInfo
 
 \note VstTimeInfo::samplePos :Current Position. It must always be valid, and should not cost a lot to ask for. The sample position is ahead of the time displayed to the user. In sequencer stop mode, its value does not change. A 32 bit integer is too small for sample positions, and it's a double to make it easier to convert between ppq and samples.
 \note VstTimeInfo::ppqPos : At tempo 120, 1 quarter makes 1/2 second, so 2.0 ppq translates to 48000 samples at 48kHz sample rate.
 .25 ppq is one sixteenth note then. if you need something like 480ppq, you simply multiply ppq by that scaler.
-\note VstTimeInfo::barStartPos : Say we're at bars/beats readout 3.3.3. That's 2 bars + 2 q + 2 sixteenth, makes 2 * 4 + 2 + .25 = 10.25 ppq. at tempo 120, that's 10.25 * .5 = 5.125 seconds, times 48000 = 246000 samples (if my calculator servers me well :-). 
+\note VstTimeInfo::barStartPos : Say we're at bars/beats readout 3.3.3. That's 2 bars + 2 q + 2 sixteenth, makes 2 * 4 + 2 + .25 = 10.25 ppq. at tempo 120, that's 10.25 * .5 = 5.125 seconds, times 48000 = 246000 samples (if my calculator servers me well :-).
 \note VstTimeInfo::samplesToNextClock : MIDI Clock Resolution (24 per Quarter Note), can be negative the distance to the next midi clock (24 ppq, pulses per quarter) in samples. unless samplePos falls precicely on a midi clock, this will either be negative such that the previous MIDI clock is addressed, or positive when referencing the following (future) MIDI clock.
 */
 //-------------------------------------------------------------------------------------------------------
@@ -209,7 +209,7 @@ enum : AudioMasterOpcodesX
     audioMasterIOChanged,           ///< [return value]: 1 if supported  @see AudioEffectX::ioChanged
 
     DEPRECATED_audioMasterNeedIdle,   ///< \deprecated deprecated in VST 2.4
-    
+
     audioMasterSizeWindow,          ///< [index]: new width [value]: new height [return value]: 1 if supported  @see AudioEffectX::sizeWindow
     audioMasterGetSampleRate,       ///< [return value]: current sample rate  @see AudioEffectX::updateSampleRate
     audioMasterGetBlockSize,        ///< [return value]: current block size  @see AudioEffectX::updateBlockSize
@@ -236,9 +236,9 @@ enum : AudioMasterOpcodesX
     audioMasterGetProductString,        ///< [ptr]: char buffer for vendor string, limited to #kVstMaxProductStrLen  @see AudioEffectX::getHostProductString
     audioMasterGetVendorVersion,        ///< [return value]: vendor-specific version  @see AudioEffectX::getHostVendorVersion
     audioMasterVendorSpecific,          ///< no definition, vendor specific handling  @see AudioEffectX::hostVendorSpecific
-    
+
     DEPRECATED_audioMasterSetIcon,        ///< \deprecated deprecated in VST 2.4
-    
+
     audioMasterCanDo,                   ///< [ptr]: "can do" string [return value]: 1 for supported
     audioMasterGetLanguage,             ///< [return value]: language code  @see VstHostLanguage
 
@@ -246,14 +246,14 @@ enum : AudioMasterOpcodesX
     DEPRECATED_audioMasterCloseWindow,    ///< \deprecated deprecated in VST 2.4
 
     audioMasterGetDirectory,            ///< [return value]: FSSpec on MAC, else char*  @see AudioEffectX::getDirectory
-    audioMasterUpdateDisplay,           ///< no arguments   
+    audioMasterUpdateDisplay,           ///< no arguments
     audioMasterBeginEdit,               ///< [index]: parameter index  @see AudioEffectX::beginEdit
     audioMasterEndEdit,                 ///< [index]: parameter index  @see AudioEffectX::endEdit
     audioMasterOpenFileSelector,        ///< [ptr]: VstFileSelect* [return value]: 1 if supported  @see AudioEffectX::openFileSelector
     audioMasterCloseFileSelector,       ///< [ptr]: VstFileSelect*  @see AudioEffectX::closeFileSelector
-    
+
     DEPRECATED_audioMasterEditFile,       ///< \deprecated deprecated in VST 2.4
-    
+
     DEPRECATED_audioMasterGetChunkFile,   ///< \deprecated deprecated in VST 2.4 [ptr]: char[2048] or sizeof (FSSpec) [return value]: 1 if supported  @see AudioEffectX::getChunkFile
 
     DEPRECATED_audioMasterGetInputSpeakerArrangement  ///< \deprecated deprecated in VST 2.4
@@ -262,7 +262,7 @@ enum : AudioMasterOpcodesX
 //-------------------------------------------------------------------------------------------------------
 /** VST 2.x dispatcher Opcodes (Host to Plug-in). Extension of #AEffectOpcodes */
 //-------------------------------------------------------------------------------------------------------
-alias int AEffectXOpcodes; 
+alias int AEffectXOpcodes;
 enum : AEffectXOpcodes
 {
 //-------------------------------------------------------------------------------------------------------
@@ -274,11 +274,11 @@ enum : AEffectXOpcodes
     , DEPRECATED_effGetNumProgramCategories   ///< \deprecated deprecated in VST 2.4
 
     , effGetProgramNameIndexed              ///< [index]: program index [ptr]: buffer for program name, limited to #kVstMaxProgNameLen [return value]: true for success  @see AudioEffectX::getProgramNameIndexed
-    
+
     , DEPRECATED_effCopyProgram   ///< \deprecated deprecated in VST 2.4
     , DEPRECATED_effConnectInput  ///< \deprecated deprecated in VST 2.4
     , DEPRECATED_effConnectOutput ///< \deprecated deprecated in VST 2.4
-    
+
     , effGetInputProperties                 ///< [index]: input index [ptr]: #VstPinProperties* [return value]: 1 if supported  @see AudioEffectX::getInputProperties
     , effGetOutputProperties                ///< [index]: output index [ptr]: #VstPinProperties* [return value]: 1 if supported  @see AudioEffectX::getOutputProperties
     , effGetPlugCategory                    ///< [return value]: category  @see VstPlugCategory @see AudioEffectX::getPlugCategory
@@ -327,7 +327,7 @@ enum : AEffectXOpcodes
     , effGetMidiProgramCategory             ///< [index]: MIDI channel [ptr]: #MidiProgramCategory* [return value]: number of used categories, 0 if unsupported  @see AudioEffectX::getMidiProgramCategory
     , effHasMidiProgramsChanged             ///< [index]: MIDI channel [return value]: 1 if the #MidiProgramName(s) or #MidiKeyName(s) have changed  @see AudioEffectX::hasMidiProgramsChanged
     , effGetMidiKeyName                     ///< [index]: MIDI channel [ptr]: #MidiKeyName* [return value]: true if supported, false otherwise  @see AudioEffectX::getMidiKeyName
-    
+
     , effBeginSetProgram                    ///< no arguments  @see AudioEffectX::beginSetProgram
     , effEndSetProgram                      ///< no arguments  @see AudioEffectX::endSetProgram
 
@@ -339,7 +339,7 @@ enum : AEffectXOpcodes
     , effStopProcess                        ///< no arguments  @see AudioEffectX::stopProcess
     , effSetTotalSampleToProcess            ///< [value]: number of samples to process, offline only!  @see AudioEffectX::setTotalSampleToProcess
     , effSetPanLaw                          ///< [value]: pan law [opt]: gain  @see VstPanLawType @see AudioEffectX::setPanLaw
-    
+
     , effBeginLoadBank                      ///< [ptr]: #VstPatchChunkInfo* [return value]: -1: bank can't be loaded, 1: bank can be loaded, 0: unsupported  @see AudioEffectX::beginLoadBank
     , effBeginLoadProgram                   ///< [ptr]: #VstPatchChunkInfo* [return value]: -1: prog can't be loaded, 1: prog can be loaded, 0: unsupported  @see AudioEffectX::beginLoadProgram
 
@@ -368,13 +368,13 @@ struct VstParameterProperties
     float stepFloat;            ///< float step
     float smallStepFloat;       ///< small float step
     float largeStepFloat;       ///< large float step
-    char label[kVstMaxLabelLen];///< parameter label
+    char[kVstMaxLabelLen] label;///< parameter label
     VstInt32 flags;             ///< @see VstParameterFlags
     VstInt32 minInteger;        ///< integer minimum
     VstInt32 maxInteger;        ///< integer maximum
     VstInt32 stepInteger;       ///< integer step
     VstInt32 largeStepInteger;  ///< large integer step
-    char shortLabel[kVstMaxShortLabelLen];  ///< short label, recommended: 6 + delimiter
+    char[kVstMaxShortLabelLen] shortLabel;  ///< short label, recommended: 6 + delimiter
 
     // The following are for remote controller display purposes.
     // Note that the kVstParameterSupportsDisplayIndex flag must be set.
@@ -393,9 +393,9 @@ struct VstParameterProperties
     VstInt16 category;          ///< 0: no category, else group index + 1
     VstInt16 numParametersInCategory;           ///< number of parameters in category
     VstInt16 reserved;          ///< zero
-    char categoryLabel[kVstMaxCategLabelLen];   ///< category label, e.g. "Osc 1" 
+    char[kVstMaxCategLabelLen] categoryLabel;   ///< category label, e.g. "Osc 1"
 
-    char future[16];            ///< reserved for future use
+    char[16] future;            ///< reserved for future use
 //-------------------------------------------------------------------------------------------------------
 }
 
@@ -422,12 +422,12 @@ enum : VstParameterFlags
 struct VstPinProperties
 {
 //-------------------------------------------------------------------------------------------------------
-    char label[kVstMaxLabelLen];    ///< pin name
+    char[kVstMaxLabelLen] label;    ///< pin name
     VstInt32 flags;                 ///< @see VstPinPropertiesFlags
     VstInt32 arrangementType;       ///< @see VstSpeakerArrangementType
-    char shortLabel[kVstMaxShortLabelLen];  ///< short name (recommended: 6 + delimiter)
+    char[kVstMaxShortLabelLen] shortLabel;  ///< short name (recommended: 6 + delimiter)
 
-    char future[48];                ///< reserved for future use
+    char[48] future;                ///< reserved for future use
 //-------------------------------------------------------------------------------------------------------
 }
 
@@ -474,11 +474,11 @@ enum : VstPlugCategory
 //-------------------------------------------------------------------------------------------------------
 /** MIDI Program Description. */
 //-------------------------------------------------------------------------------------------------------
-struct MidiProgramName 
+struct MidiProgramName
 {
 //-------------------------------------------------------------------------------------------------------
     VstInt32 thisProgramIndex;      ///< 0 or greater: fill struct for this program index
-    char name[kVstMaxNameLen];      ///< program name
+    char[kVstMaxNameLen] name;      ///< program name
     char midiProgram;               ///< -1:off, 0-127
     char midiBankMsb;               ///< -1:off, 0-127
     char midiBankLsb;               ///< -1:off, 0-127
@@ -502,11 +502,11 @@ enum : VstMidiProgramNameFlags
 //-------------------------------------------------------------------------------------------------------
 /** MIDI Program Category. */
 //-------------------------------------------------------------------------------------------------------
-struct MidiProgramCategory 
+struct MidiProgramCategory
 {
 //-------------------------------------------------------------------------------------------------------
     VstInt32 thisCategoryIndex;     ///< 0 or greater:  fill struct for this category index.
-    char name[kVstMaxNameLen];      ///< name
+    char[kVstMaxNameLen] name;      ///< name
     VstInt32 parentCategoryIndex;   ///< -1:no parent category
     VstInt32 flags;                 ///< reserved, none defined yet, zero.
 //-------------------------------------------------------------------------------------------------------
@@ -515,12 +515,12 @@ struct MidiProgramCategory
 //-------------------------------------------------------------------------------------------------------
 /** MIDI Key Description. */
 //-------------------------------------------------------------------------------------------------------
-struct MidiKeyName 
+struct MidiKeyName
 {
 //-------------------------------------------------------------------------------------------------------
     VstInt32 thisProgramIndex;      ///< 0 or greater:  fill struct for this program index.
     VstInt32 thisKeyNumber;         ///< 0 - 127. fill struct for this key number.
-    char keyName[kVstMaxNameLen];   ///< key name, empty means regular key names
+    char[kVstMaxNameLen] keyName;   ///< key name, empty means regular key names
     VstInt32 reserved;              ///< zero
     VstInt32 flags;                 ///< reserved, none defined yet, zero.
 //-------------------------------------------------------------------------------------------------------
@@ -546,10 +546,10 @@ struct VstSpeakerProperties
     float elevation;    ///< unit: rad, range: -PI/2...PI/2, exception: 10.f for LFE channel
     float radius;       ///< unit: meter, exception: 0.f for LFE channel
     float reserved;     ///< zero (reserved for future use)
-    char name[kVstMaxNameLen];  ///< for new setups, new names should be given (L/R/C... won't do)
+    char[kVstMaxNameLen] name;  ///< for new setups, new names should be given (L/R/C... won't do)
     VstInt32 type;      ///< @see VstSpeakerType
 
-    char future[28];    ///< reserved for future use
+    char[28] future;    ///< reserved for future use
 //-------------------------------------------------------------------------------------------------------
 }
 
@@ -557,11 +557,11 @@ struct VstSpeakerProperties
 /** Speaker Arrangement. */
 //-------------------------------------------------------------------------------------------------------
 struct VstSpeakerArrangement
-{   
+{
 //-------------------------------------------------------------------------------------------------------
     VstInt32 type;                      ///< e.g. #kSpeakerArr51 for 5.1  @see VstSpeakerArrangementType
     VstInt32 numChannels;               ///< number of channels in this speaker arrangement
-    VstSpeakerProperties speakers[8];   ///< variable sized speaker array
+    VstSpeakerProperties[8] speakers;   ///< variable sized speaker array
 //-------------------------------------------------------------------------------------------------------
 }
 
@@ -606,18 +606,18 @@ alias int VstUserSpeakerType;
 enum : VstUserSpeakerType
 {
 //-------------------------------------------------------------------------------------------------------
-    kSpeakerU32 = -32,  
-    kSpeakerU31,            
-    kSpeakerU30,            
-    kSpeakerU29,            
-    kSpeakerU28,            
-    kSpeakerU27,            
-    kSpeakerU26,            
-    kSpeakerU25,            
-    kSpeakerU24,            
-    kSpeakerU23,            
-    kSpeakerU22,            
-    kSpeakerU21,            
+    kSpeakerU32 = -32,
+    kSpeakerU31,
+    kSpeakerU30,
+    kSpeakerU29,
+    kSpeakerU28,
+    kSpeakerU27,
+    kSpeakerU26,
+    kSpeakerU25,
+    kSpeakerU24,
+    kSpeakerU23,
+    kSpeakerU22,
+    kSpeakerU21,
     kSpeakerU20,            ///< == #kSpeakerLfe2
     kSpeakerU19,            ///< == #kSpeakerTrr
     kSpeakerU18,            ///< == #kSpeakerTrc
@@ -664,20 +664,20 @@ enum : VstSpeakerArrangementType
     kSpeakerArr40Music,         ///< L R Ls  Rs (Quadro)
     kSpeakerArr41Cine,          ///< L R C   Lfe S (LCRS+Lfe)
     kSpeakerArr41Music,         ///< L R Lfe Ls Rs (Quadro+Lfe)
-    kSpeakerArr50,              ///< L R C Ls  Rs 
+    kSpeakerArr50,              ///< L R C Ls  Rs
     kSpeakerArr51,              ///< L R C Lfe Ls Rs
     kSpeakerArr60Cine,          ///< L R C   Ls  Rs Cs
-    kSpeakerArr60Music,         ///< L R Ls  Rs  Sl Sr 
+    kSpeakerArr60Music,         ///< L R Ls  Rs  Sl Sr
     kSpeakerArr61Cine,          ///< L R C   Lfe Ls Rs Cs
-    kSpeakerArr61Music,         ///< L R Lfe Ls  Rs Sl Sr 
-    kSpeakerArr70Cine,          ///< L R C Ls  Rs Lc Rc 
+    kSpeakerArr61Music,         ///< L R Lfe Ls  Rs Sl Sr
+    kSpeakerArr70Cine,          ///< L R C Ls  Rs Lc Rc
     kSpeakerArr70Music,         ///< L R C Ls  Rs Sl Sr
     kSpeakerArr71Cine,          ///< L R C Lfe Ls Rs Lc Rc
     kSpeakerArr71Music,         ///< L R C Lfe Ls Rs Sl Sr
     kSpeakerArr80Cine,          ///< L R C Ls  Rs Lc Rc Cs
     kSpeakerArr80Music,         ///< L R C Ls  Rs Cs Sl Sr
     kSpeakerArr81Cine,          ///< L R C Lfe Ls Rs Lc Rc Cs
-    kSpeakerArr81Music,         ///< L R C Lfe Ls Rs Cs Sl Sr 
+    kSpeakerArr81Music,         ///< L R C Lfe Ls Rs Cs Sl Sr
     kSpeakerArr102,             ///< L R C Lfe Ls Rs Tfl Tfc Tfr Trl Trr Lfe2
     kNumSpeakerArr
 //-------------------------------------------------------------------------------------------------------
@@ -692,7 +692,7 @@ enum : VstSpeakerArrangementType
 struct VstOfflineTask
 {
 //-------------------------------------------------------------------------------------------------------
-    char processName[96];           ///< set by plug-in
+    char[96] processName;           ///< set by plug-in
 
     // audio access
     double readPosition;            ///< set by plug-in/Host
@@ -720,19 +720,19 @@ struct VstOfflineTask
     VstInt32 numDestinationChannels;///< set by Host or plug-in
     VstInt32 sourceFormat;          ///< set by Host
     VstInt32 destinationFormat;     ///< set by plug-in
-    char outputText[512];           ///< set by plug-in or Host
+    char[512] outputText;           ///< set by plug-in or Host
 
     // progress notification
     double progress;                ///< set by plug-in
     VstInt32 progressMode;          ///< Reserved for future use
-    char progressText[100];         ///< set by plug-in
+    char[100] progressText;         ///< set by plug-in
 
     VstInt32 flags;                 ///< set by Host and plug-in; see enum #VstOfflineTaskFlags
     VstInt32 returnValue;           ///< Reserved for future use
     void* hostOwned;                ///< set by Host
     void* plugOwned;                ///< set by plug-in
 
-    char future[1024];              ///< Reserved for future use
+    char[1024] future;              ///< Reserved for future use
 //-------------------------------------------------------------------------------------------------------
 }
 
@@ -782,7 +782,7 @@ struct VstAudioFile
     VstInt32 flags;                 ///< see enum #VstAudioFileFlags
     void* hostOwned;                ///< any data private to Host
     void* plugOwned;                ///< any data private to plug-in
-    char name[kVstMaxFileNameLen];  ///< file title
+    char[kVstMaxFileNameLen] name;  ///< file title
     VstInt32 uniqueId;              ///< uniquely identify a file during a session
     double sampleRate;              ///< file sample rate
     VstInt32 numChannels;           ///< number of channels (1 for mono, 2 for stereo...)
@@ -801,7 +801,7 @@ struct VstAudioFile
     VstInt32 ticksPerBlackNote;     ///< resolution
     VstInt32 smpteFrameRate;        ///< SMPTE rate (set as in #VstTimeInfo)
 
-    char future[64];                ///< Reserved for future use
+    char[64] future;                ///< Reserved for future use
 //-------------------------------------------------------------------------------------------------------
 }
 
@@ -833,7 +833,7 @@ struct VstAudioFileMarker
 {
 //-------------------------------------------------------------------------------------------------------
     double position;        ///< marker position
-    char name[32];          ///< marker name
+    char[32] name;          ///< marker name
     VstInt32 type;          ///< marker type
     VstInt32 id;            ///< marker identifier
     VstInt32 reserved;      ///< reserved for future use
@@ -850,7 +850,7 @@ struct VstAudioFileMarker
 struct DEPRECATED_VstWindow
 {
 //-------------------------------------------------------------------------------------------------------
-    char title[128];
+    char[128] title;
     VstInt16 xPos;
     VstInt16 yPos;
     VstInt16 width;
@@ -860,7 +860,7 @@ struct DEPRECATED_VstWindow
     void* userHandle;
     void* winHandle;
 
-    char future[104];
+    char[104] future;
 //-------------------------------------------------------------------------------------------------------
 }
 
@@ -880,61 +880,61 @@ struct VstKeyCode
 /** Platform-independent definition of Virtual Keys (used in #VstKeyCode). */
 //-------------------------------------------------------------------------------------------------------
 alias int VstVirtualKey;
-enum : VstVirtualKey 
+enum : VstVirtualKey
 {
 //-------------------------------------------------------------------------------------------------------
-    VKEY_BACK = 1, 
-    VKEY_TAB, 
-    VKEY_CLEAR, 
-    VKEY_RETURN, 
-    VKEY_PAUSE, 
-    VKEY_ESCAPE, 
-    VKEY_SPACE, 
-    VKEY_NEXT, 
-    VKEY_END, 
-    VKEY_HOME, 
-    VKEY_LEFT, 
-    VKEY_UP, 
-    VKEY_RIGHT, 
-    VKEY_DOWN, 
-    VKEY_PAGEUP, 
-    VKEY_PAGEDOWN, 
-    VKEY_SELECT, 
-    VKEY_PRINT, 
-    VKEY_ENTER, 
-    VKEY_SNAPSHOT, 
-    VKEY_INSERT, 
-    VKEY_DELETE, 
-    VKEY_HELP, 
-    VKEY_NUMPAD0, 
-    VKEY_NUMPAD1, 
-    VKEY_NUMPAD2, 
-    VKEY_NUMPAD3, 
-    VKEY_NUMPAD4, 
-    VKEY_NUMPAD5, 
-    VKEY_NUMPAD6, 
-    VKEY_NUMPAD7, 
-    VKEY_NUMPAD8, 
-    VKEY_NUMPAD9, 
-    VKEY_MULTIPLY, 
-    VKEY_ADD, 
-    VKEY_SEPARATOR, 
-    VKEY_SUBTRACT, 
-    VKEY_DECIMAL, 
-    VKEY_DIVIDE, 
-    VKEY_F1, 
-    VKEY_F2, 
-    VKEY_F3, 
-    VKEY_F4, 
-    VKEY_F5, 
-    VKEY_F6, 
-    VKEY_F7, 
-    VKEY_F8, 
-    VKEY_F9, 
-    VKEY_F10, 
-    VKEY_F11, 
-    VKEY_F12, 
-    VKEY_NUMLOCK, 
+    VKEY_BACK = 1,
+    VKEY_TAB,
+    VKEY_CLEAR,
+    VKEY_RETURN,
+    VKEY_PAUSE,
+    VKEY_ESCAPE,
+    VKEY_SPACE,
+    VKEY_NEXT,
+    VKEY_END,
+    VKEY_HOME,
+    VKEY_LEFT,
+    VKEY_UP,
+    VKEY_RIGHT,
+    VKEY_DOWN,
+    VKEY_PAGEUP,
+    VKEY_PAGEDOWN,
+    VKEY_SELECT,
+    VKEY_PRINT,
+    VKEY_ENTER,
+    VKEY_SNAPSHOT,
+    VKEY_INSERT,
+    VKEY_DELETE,
+    VKEY_HELP,
+    VKEY_NUMPAD0,
+    VKEY_NUMPAD1,
+    VKEY_NUMPAD2,
+    VKEY_NUMPAD3,
+    VKEY_NUMPAD4,
+    VKEY_NUMPAD5,
+    VKEY_NUMPAD6,
+    VKEY_NUMPAD7,
+    VKEY_NUMPAD8,
+    VKEY_NUMPAD9,
+    VKEY_MULTIPLY,
+    VKEY_ADD,
+    VKEY_SEPARATOR,
+    VKEY_SUBTRACT,
+    VKEY_DECIMAL,
+    VKEY_DIVIDE,
+    VKEY_F1,
+    VKEY_F2,
+    VKEY_F3,
+    VKEY_F4,
+    VKEY_F5,
+    VKEY_F6,
+    VKEY_F7,
+    VKEY_F8,
+    VKEY_F9,
+    VKEY_F10,
+    VKEY_F11,
+    VKEY_F12,
+    VKEY_NUMLOCK,
     VKEY_SCROLL,
     VKEY_SHIFT,
     VKEY_CONTROL,
@@ -963,12 +963,12 @@ enum : VstModifierKey
 struct VstFileType
 {
 //-------------------------------------------------------------------------------------------------------
-    char name[128];             ///< display name
-    char macType[8];            ///< MacOS type
-    char dosType[8];            ///< Windows file extension
-    char unixType[8];           ///< Unix file extension
-    char mimeType1[128];        ///< MIME type
-    char mimeType2[128];        ///< additional MIME type
+    char[128] name;             ///< display name
+    char[8] macType;            ///< MacOS type
+    char[8] dosType;            ///< Windows file extension
+    char[8] unixType;           ///< Unix file extension
+    char[128] mimeType1;        ///< MIME type
+    char[128] mimeType2;        ///< additional MIME type
 
     this(const char* _name = null, const char* _macType = null, const char* _dosType = null,
          const char* _unixType = null, const char* _mimeType1 = null, const char* _mimeType2 = null)
@@ -994,7 +994,7 @@ struct VstFileSelect
     VstInt32 macCreator;        ///< optional: 0 = no creator
     VstInt32 nbFileTypes;       ///< number of fileTypes
     VstFileType* fileTypes;     ///< list of fileTypes  @see VstFileType
-    char title[1024];           ///< text to display in file selector's title
+    char[1024] title;           ///< text to display in file selector's title
     char* initialPath;          ///< initial path
     char* returnPath;           ///< use with #kVstFileLoad and #kVstDirectorySelect. null: Host allocates memory, plug-in must call #closeOpenFileSelector!
     VstInt32 sizeReturnPath;    ///< size of allocated memory for return paths
@@ -1002,7 +1002,7 @@ struct VstFileSelect
     VstInt32 nbReturnPath;      ///< number of selected paths
     VstIntPtr reserved;         ///< reserved for Host application
 
-    char future[116];           ///< reserved for future use
+    char[116] future;           ///< reserved for future use
 //-------------------------------------------------------------------------------------------------------
 }
 
@@ -1042,7 +1042,7 @@ struct VstPatchChunkInfo
     VstInt32 pluginVersion;     ///< Plug-in Version
     VstInt32 numElements;       ///< Number of Programs (Bank) or Parameters (Program)
 
-    char future[48];            ///< Reserved for future use
+    char[48] future;            ///< Reserved for future use
 //-------------------------------------------------------------------------------------------------------
 }
 
