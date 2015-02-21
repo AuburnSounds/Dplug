@@ -199,9 +199,11 @@ private
     // TODO: Check with LDC/GDC.
     void cpuRelax() nothrow @nogc
     {
-        asm nothrow @nogc
-        {
-            rep; nop; // PAUSE instruction, recommended by Intel in busy spin loops
-        }
+        // PAUSE instruction, recommended by Intel in busy spin loops
+
+        static if( __VERSION__ >= 2067 )
+            mixin("asm nothrow @nogc { rep; nop; }");
+        else
+            mixin("asm { rep; nop; }");
     }
 }
