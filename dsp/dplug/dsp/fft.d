@@ -164,7 +164,7 @@ struct ShortTermReconstruction
 {
     /// maxSimultSegments is the maximum number of simulatneously summed samples.
     /// maxSegmentLength in samples
-    void initialize(size_t maxSimultSegments, size_t maxSegmentLength)
+    void initialize(int maxSimultSegments, int maxSegmentLength)
     {
         _maxSegmentLength = maxSegmentLength;
         _maxSimultSegments = maxSimultSegments;
@@ -187,7 +187,7 @@ struct ShortTermReconstruction
         {
             if (!_desc[i].active())
             {
-                size_t len = newSegment.length;
+                int len = cast(int)(newSegment.length);
                 _desc[i].playOffset = 0;
                 _desc[i].length = len;
                 _desc[i].buffer[0..len] = newSegment[]; // copy segment
@@ -217,8 +217,8 @@ private:
 
     struct SegmentDesc
     {
-        size_t playOffset; // offset in this segment
-        size_t length; // length in this segment
+        int playOffset; // offset in this segment
+        int length; // length in this segment
         float[] buffer; // 0..length => data for this segment
 
         bool active() pure const nothrow
@@ -226,8 +226,8 @@ private:
             return playOffset < length;
         }
     }
-    size_t _maxSimultSegments;
-    size_t _maxSegmentLength;
+    int _maxSimultSegments;
+    int _maxSegmentLength;
     SegmentDesc[] _desc;
 }
 
@@ -245,7 +245,7 @@ public:
     /// Basic overlap is achieved with windowSize = 2 * analysisPeriod
     /// if zeroPhaseWindowing = true, "zero phase" windowing is used
     /// (center of window is at first sample, zero-padding happen at center)
-    void initialize(size_t windowSize, size_t fftSize, size_t analysisPeriod, WindowType windowType, bool zeroPhaseWindowing, bool correctWindowLoss)
+    void initialize(int windowSize, int fftSize, int analysisPeriod, WindowType windowType, bool zeroPhaseWindowing, bool correctWindowLoss)
     {
         assert(isPowerOf2(fftSize));
         assert(fftSize >= windowSize);
@@ -279,16 +279,16 @@ public:
                 //   \                 /
                 //    \               /
                 //     \_____________/____
-                size_t center = (_windowSize - 1) / 2; // position of center bin
-                size_t nLeft = _windowSize - center;
-                for (size_t i = 0; i < nLeft; ++i)
+                int center = (_windowSize - 1) / 2; // position of center bin
+                int nLeft = _windowSize - center;
+                for (int i = 0; i < nLeft; ++i)
                     fftData[i] = segment[center + i] * _window[center + i];
 
-                size_t nPadding = _fftSize - _windowSize;
-                for (size_t i = 0; i < nPadding; ++i)
+                int nPadding = _fftSize - _windowSize;
+                for (int i = 0; i < nPadding; ++i)
                     fftData[nLeft + i] = 0.0f;
 
-                for (size_t i = 0; i < center; ++i)
+                for (int i = 0; i < center; ++i)
                     fftData[nLeft + nPadding + i] = segment[i] * _window[i];
             }
             else
@@ -302,11 +302,11 @@ public:
                 //_/         \____________
 
                 // fill FFT buffer and multiply by window
-                for (size_t i = 0; i < _windowSize; ++i)
+                for (int i = 0; i < _windowSize; ++i)
                     fftData[i] = segment[i] * _window[i];
 
                 // zero-padding
-                for (size_t i = _windowSize; i < _fftSize; ++i)
+                for (int i = _windowSize; i < _fftSize; ++i)
                     fftData[i] = 0.0f;
             }
 
@@ -320,8 +320,8 @@ public:
 private:
     Segmenter!float _segmenter;
     bool _zeroPhaseWindowing;
-    size_t _fftSize;        // in samples
+    int _fftSize;        // in samples
 
     Window!float _window;
-    size_t _windowSize;     // in samples
+    int _windowSize;     // in samples
 }

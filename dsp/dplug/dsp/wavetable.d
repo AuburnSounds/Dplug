@@ -47,7 +47,7 @@ enum WaveformType
 /// TODO: only integer phase
 struct Wavetable
 {
-    void initialize(size_t largestSize, WaveformType waveform)
+    void initialize(int largestSize, WaveformType waveform)
     {
         resize(largestSize);
         generate(waveform);  // regenerate tables
@@ -110,26 +110,26 @@ struct Wavetable
     }
 
     // mimaps levels range from 0 to numMipmaps() - 1
-    size_t numMipmaps() const
+    int numMipmaps() const
     {
         return _numTables;
     }
 
-    size_t sizeOfMipmap(size_t level) const
+    int sizeOfMipmap(int level) const
     {
         return _largestSize >> level;
     }
 
-    float* mipmapData(size_t level)
+    float* mipmapData(int level)
     {
         return _mipmapData[level];
     }
 
 private:
 
-    size_t _largestSize;
-    size_t _mast;
-    size_t _numTables;
+    int _largestSize;
+    int _mast;
+    int _numTables;
 
     float*[] _mipmapData;
     float[] _wholeBuffer;
@@ -143,13 +143,13 @@ private:
         return cosF0 * cosF0;
     }
 
-    void resize(size_t largestSize)
+    void resize(int largestSize)
     {
         assert(isPowerOf2(largestSize));
 
         _largestSize = largestSize;
         // compute size for all mipmaps
-        size_t sizeNeeded = 0;
+        int sizeNeeded = 0;
         _numTables = 0;
         int sizeOfTable = largestSize;
         while (sizeOfTable > 0)
@@ -164,8 +164,8 @@ private:
         // fill table pointers
         {
             _mipmapData.length = _numTables;
-            size_t cumulated = 0;
-            for (size_t level = 0; level < _numTables; ++level)
+            int cumulated = 0;
+            for (int level = 0; level < _numTables; ++level)
             {
                 _mipmapData[level] = &_wholeBuffer[cumulated];
                 cumulated += _largestSize >> level;
@@ -176,12 +176,12 @@ private:
     // fill all table with waveform
     void generate(WaveformType waveform)
     {
-        for (size_t level = 0; level < _numTables; ++level)
+        for (int level = 0; level < _numTables; ++level)
         {
-            size_t size = sizeOfMipmap(level);
+            int size = sizeOfMipmap(level);
             float* data = mipmapData(level);
 
-            for (size_t t = 0; t < size; ++t)
+            for (int t = 0; t < size; ++t)
             {
                 data[t] = 0;
             }
@@ -195,7 +195,7 @@ private:
                     double normalizedFrequency = (1 + h) / cast(double)(numHarmonics - 1);
                     double amplitude = getWaveHarmonicAmplitude(waveform, h + 1) * rolloffHarmonic(normalizedFrequency);
 
-                    for (size_t t = 0; t < size; ++t)
+                    for (int t = 0; t < size; ++t)
                     {
                         double x = sin( cast(double)t * TAU * (h + 1) / cast(double)size ) * amplitude;
                         data[t] += cast(float)x;
@@ -203,7 +203,7 @@ private:
                 }
             }
 
-            for (size_t t = 0; t < size; ++t)
+            for (int t = 0; t < size; ++t)
             {
                 assert(isFinite(data[t]));
             }

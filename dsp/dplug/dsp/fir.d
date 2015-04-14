@@ -24,10 +24,10 @@ void generateLowpassImpulse(T)(T[] output, double cutoff, double samplerate)
     double cutoffNormalized = cutoff / samplerate;
     double wc = cutoffNormalized * 2.0 * PI;
 
-    size_t len = output.length;
-    for (size_t i = 0; i < len; ++i)
+    int len = cast(int)(output.length);
+    for (int i = 0; i < len; ++i)
     {
-        int x = i - (cast(int)len / 2);
+        int x = i - (len / 2);
         if (x == 0)
             output[i] = wc;
         else
@@ -42,10 +42,10 @@ void generateHighpassImpulse(T)(T[] output, double cutoff, double samplerate)
     double cutoffNormalized = cutoff / samplerate;
     double wc = cutoffNormalized * 2.0 * PI;
 
-    size_t len = output.length;
-    for (size_t i = 0; i < len; ++i)
+    int len = cast(int)(output.length);
+    for (int i = 0; i < len; ++i)
     {
-        int x = i - (cast(int)len / 2);
+        int x = i - (len / 2);
         if (x == 0)
             output[i] = 1 - wc;
         else
@@ -56,11 +56,11 @@ void generateHighpassImpulse(T)(T[] output, double cutoff, double samplerate)
 
 void generateHilbertTransformer(T)(T[] outImpulse, WindowType window, double samplerate)
 {
-    size_t size = outImpulse.length;
+    int size = cast(int)(outImpulse.length);
     assert(isOdd(size));
-    size_t center = size / 2;
+    int center = size / 2;
 
-    for (size_t i = 0; i < center; ++i)
+    for (int i = 0; i < center; ++i)
     {
         double x = cast(double)i - cast(double)center;
         double y = x * cast(double)PI / 2;
@@ -78,13 +78,13 @@ void generateHilbertTransformer(T)(T[] outImpulse, WindowType window, double sam
 /// Scale to make sum = 1.
 void normalizeImpulse(T)(T[] inoutImpulse)
 {
-    size_t size = inoutImpulse.length;
+    int size = cast(int)(inoutImpulse.length);
     double sum = 0;
-    for (size_t i = 0; i < size; ++i)
+    for (int i = 0; i < size; ++i)
         sum += inoutImpulse[i];
 
     double invSum = 1 / sum;
-    for (size_t i = 0; i < size; ++i)
+    for (int i = 0; i < size; ++i)
         inoutImpulse[i] = cast(T)(inoutImpulse[i] * invSum);
 }
 
@@ -95,51 +95,51 @@ void normalizeImpulse(T)(T[] inoutImpulse)
 /// TODO: does it preserve amplitude?
 void minimumPhaseImpulse(T)(T[] inoutImpulse) // allocates
 {
-    size_t fftSize = nextPowerOf2(inoutImpulse.length);
+    int fftSize = cast(int)(nextPowerOf2(inoutImpulse.length));
     auto kernel = new Complex!T[fftSize];
     minimumPhaseImpulse(inoutImpulse, kernel[]);
 }
 
 void minimumPhaseImpulse(T)(T[] inoutImpulse,  Complex!T[] tempStorage) // alloc free version
 {
-    size_t size = inoutImpulse.length;
+    int size = cast(int)(inoutImpulse.length);
     alias size n;
-    size_t fftSize = nextPowerOf2(inoutImpulse.length);
+    int fftSize = cast(int)( nextPowerOf2(inoutImpulse.length) );
     assert(fftSize >= n);
-    size_t halfFFTSize = fftSize / 2;
+    int halfFFTSize = fftSize / 2;
 
     if (tempStorage.length < fftSize)
         assert(false); // crash
 
     auto kernel = new Complex!T[fftSize];
 
-    for (size_t i = 0; i < n; ++i)
+    for (int i = 0; i < n; ++i)
         kernel[i] = inoutImpulse[i];
 
-    for (size_t i = n; i < fftSize; ++i)
+    for (int i = n; i < fftSize; ++i)
         kernel[i] = 0;
 
     FFT!T(kernel[], FFTDirection.FORWARD);
 
-    for (size_t i = 0; i < fftSize; ++i)
+    for (int i = 0; i < fftSize; ++i)
         kernel[i] = log(abs(kernel[i]));
 
     FFT!T(kernel[], FFTDirection.REVERSE);
 
-    for (size_t i = 1; i < halfFFTSize; ++i)
+    for (int i = 1; i < halfFFTSize; ++i)
         kernel[i] *= 2;
 
-    for (size_t i = halfFFTSize + 1; i < halfFFTSize; ++i)
+    for (int i = halfFFTSize + 1; i < halfFFTSize; ++i)
         kernel[i] = 0;
 
     FFT!T(kernel[], FFTDirection.FORWARD);
 
-    for (size_t i = 0; i < fftSize; ++i)
+    for (int i = 0; i < fftSize; ++i)
         kernel[i] = complexExp(kernel[i]);
 
     FFT!T(kernel[], FFTDirection.REVERSE);
 
-    for (size_t i = 0; i < size; ++i)
+    for (int i = 0; i < size; ++i)
         inoutImpulse[i] = kernel[i].re;
 }
 
