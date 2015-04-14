@@ -1,8 +1,11 @@
-# What's this?
+# dplug [![Build Status](https://travis-ci.org/p0nce/dplug.png?branch=master)](https://travis-ci.org/p0nce/dplug)
 
 dplug is a library that allow the creation of audio plugins. 
 Additionally it comes with music DSP algorithms that might be useful for your next-generation MS converter plugin.
 **Currently only support VST 2.4 plugins without GUI.**
+
+**Tested compilers:** ![dmd-2.067](https://img.shields.io/badge/DMD-2.067-brightgreen.svg) ![dmd-2.066.1](https://img.shields.io/badge/DMD-2.066.1-brightgreen.svg) ![DMD-2.065.0](https://img.shields.io/badge/DMD-2.065.0-red.svg) ![LDC-0.15.1](https://img.shields.io/badge/LDC-0.15.1-brightgreen.svg) ![LDC-0.14.0](https://img.shields.io/badge/LDC-0.14.0-red.svg) ![GDC-4.9.0](https://img.shields.io/badge/GDC-4.9.0-red.svg)
+
 
 ## Contents
 
