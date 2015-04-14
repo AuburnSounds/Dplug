@@ -54,7 +54,8 @@
             "importPaths-windows": [ "platforms/windows" ],
 
             "dependencies": {
-                "dplug:plugin": "*"
+                "dplug:plugin": "*",
+		        "ae-graphics": "~>0.0"
             }
         }
     ]
