@@ -54,5 +54,6 @@ If you don't agree with the license, don't make plugins with dplug.
 
 ### Audio DSP algorithms
 
-Files in the dsp/ folder falls under the Unlicense license (public domain).
-You can do whatever you want with it.
+Files in the dsp/ folder falls under the Boost 1.0 license.
+Before you use it, you need to agree with https://github.com/p0nce/dplug/licenses/Boost_1.0.txt
+

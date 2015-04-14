@@ -631,8 +631,18 @@ private:
         preprocess(sampleFrames);
         _client.processAudio(inputs, outputs, sampleFrames);
     }
+}
 
-
+void debugBreak() nothrow @nogc
+{
+    static if( __VERSION__ >= 2067 )
+    {
+        mixin("asm nothrow @nogc { int 3; }");
+    }
+    else
+    {
+        mixin("asm { int 3; }");
+    }
 }
 
 void unrecoverableError() nothrow @nogc
@@ -640,10 +650,7 @@ void unrecoverableError() nothrow @nogc
     debug
     {
         // break in debug mode
-        asm nothrow @nogc
-        {
-            int 3;
-        }
+        debugBreak();
 
         assert(false); // then crash
     }

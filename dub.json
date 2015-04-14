@@ -8,7 +8,7 @@
     "targetType": "none",
 
     "authors": [
-        "ponce",
+        "Guillaume Piolat",
         "Andrej Mitrovic",
         "Sean M. Costello (Hilbert transformer)"
     ],
@@ -26,8 +26,8 @@
             "sourcePaths": [ "dsp/dplug/dsp" ],
             "importPaths": [ "dsp" ],
             "dependencies": {
-                "gfm:core": "~master",
-                "gfm:math": "~master"
+                "gfm:core": "~>2.0",
+                "gfm:math": "~>2.0"
             }
         },
         {
@@ -35,7 +35,7 @@
             "sourcePaths": [ "plugin/dplug/plugin" ],
             "importPaths": [ "plugin" ],
             "dependencies": {
-                "gfm:core": "~master",
+                "gfm:core": "~>2.0",
             }
         },
         {
