@@ -38,7 +38,7 @@ final class Distort : dplug.plugin.Client
         addLegalIO(2, 2);
     }
 
-    override void reset(double sampleRate, size_t maxFrames)
+    override void reset(double sampleRate, int maxFrames)
     {
         // Clear here any state and delay buffers you might have.
     }
