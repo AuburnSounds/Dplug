@@ -92,6 +92,7 @@ version(Windows)
 
             int mSec = 30; // refresh at 60 hz 
             SetTimer(_hwnd, TIMER_ID, mSec, null);
+            SetFocus(_hwnd);
         }
 
         ~this()
@@ -141,19 +142,6 @@ version(Windows)
 
         LRESULT windowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         {
-            if (uMsg == WM_CREATE)
-            {
-                /*int mSec = 30; // refresh at 60 hz 
-                SetTimer(hwnd, TIMER_ID, mSec, null);
-
-                SetFocus(hwnd);
-                */
-                writeln("WM_CREATE");
-                return 0;
-            }
-
-        //    writeln("ho");
-
             switch (uMsg)
             {
                 case WM_KEYDOWN:
@@ -189,11 +177,9 @@ version(Windows)
 
                 case WM_TIMER:
                 {
-                    writeln("WM_TIMER");
                     if (wParam == TIMER_ID)
                     {
-                       // writeln("hey");
-                        
+                        InvalidateRgn(_hwnd, null, FALSE);
                     }
                     return 0;
 
@@ -234,10 +220,7 @@ version(Windows)
                 SetDIBitsToDevice(_windowDC, 0, 0, _width, _height, 0, 0, 0, _height, _buffer, cast(BITMAPINFO *)&bmi, DIB_RGB_COLORS);
             }
 
-			EndPaint(_hwnd, &paintStruct);
-			
-			// invalidate to schedule a paint
-			InvalidateRgn(_hwnd, null, false);
+            EndPaint(_hwnd, &paintStruct);
         }
 
         override void waitEventAndDispatch()
@@ -289,7 +272,6 @@ version(Windows)
             import std.stdio;
             try
             {
-//                writeln("he");
                 Win32Window window = cast(Win32Window)( cast(void*)(GetWindowLongPtrA(hwnd, GWLP_USERDATA)) );
 
                 if (window !is null)
