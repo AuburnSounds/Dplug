@@ -1,7 +1,5 @@
 module dplug.gui.windowlistener;
 
-import ae.utils.graphics;
-
 enum Key
 {
     space,
@@ -22,10 +20,20 @@ enum Key
     enter
 };
 
+struct WindowFrameBuffer
+{
+    ubyte* pixels;  // RGBA data, height x scanlines with contiguous pixels
+    int width;      // width of image
+    int height;     // height of image
+    int byteStride; // offset between scanlines, in bytes
+}
+
 interface IWindowListener
 {
     void onKeyDown(Key key);
     void onKeyUp(Key up);
-    void onDraw(Image!RGBA* image);
+
+    // an image you have to draw to, or return that nothing has changed
+    void onDraw(WindowFrameBuffer wfb, out bool needRedraw); // TODO: return just a region!
 }
 

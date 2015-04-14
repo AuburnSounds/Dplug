@@ -85,11 +85,7 @@ version(Windows)
                 }
             }
 
-            _compatibleDC = CreateCompatibleDC(_windowDC);
-
             _listener = listener;
-
-            _buffer = Image!RGBA(64, 64);
 
             // Sets this as user data
             SetWindowLongPtrA(_hwnd, GWLP_USERDATA, cast(LONG_PTR)( cast(void*)this ));
@@ -119,19 +115,15 @@ version(Windows)
             // only do something if the client size has changed
             if (newWidth != _width || newHeight != _height)
             {
-                // renew compatible bitmap
-                if (_compatibleBitmap != null)
+                // Extends buffer
+                if (_buffer != null)
                 {
-                    DeleteObject(_compatibleBitmap);
-                    _compatibleBitmap = null;
+                    VirtualFree(_buffer, 0, MEM_RELEASE);
+                    _buffer = null;
                 }
 
-                _compatibleBitmap = CreateCompatibleBitmap(_windowDC, newWidth, newHeight);
-                SelectObject(_compatibleDC, _compatibleBitmap);
-                
-                // Extends buffer
-                _buffer.size(newWidth, newHeight);
-                
+                size_t sizeNeeded = byteStride(newWidth) * newHeight;
+                _buffer = cast(ubyte*) VirtualAlloc(null, sizeNeeded, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
                 _width = newWidth;
                 _height = newHeight;
             }
@@ -141,8 +133,7 @@ version(Windows)
         {
             if (_hwnd != null)
             {
-                DeleteDC(_compatibleDC);
-                DestroyWindow(_hwnd);
+               DestroyWindow(_hwnd);
                 _hwnd = null;
             }
             UnregisterClassA("dplug_window", GetModuleHandle(null)); // TODO: should be the HINSTANCE given by DLL main!
@@ -173,9 +164,13 @@ version(Windows)
                 case WM_PAINT:
                 {
                     updateBufferSizeIfNeeded();
-                    _listener.onDraw(&_buffer);
-                    swapBuffers();
-                    //writeln("WM_PAINT");
+                    WindowFrameBuffer wfb = WindowFrameBuffer(_buffer, _width, _height, byteStride(_width));
+
+                    bool needRedraw;
+                    _listener.onDraw(wfb, needRedraw);
+
+                    if (needRedraw)
+                        swapBuffers();
                     return 0;
                 }
 
@@ -216,33 +211,28 @@ version(Windows)
         // Implements IWindow
         void swapBuffers()
         {   
-            // TODO use BITMAPV4HEADER to swap R and B
-
-            // Copy the content of _buffer into _compatibleBitmap, that line does the conversion
-            BITMAPINFO bi = BITMAPINFO.init;
-            with(bi.bmiHeader)
-            {
-                biSize = BITMAPINFOHEADER.sizeof;
-                biWidth = _width;
-                biHeight = _height;
-                biPlanes = 1;
-                biBitCount = 32;
-                biCompression = BI_RGB;
-                biSizeImage = _width * _height * 4;
-            }
-
-            if (0 == SetDIBits(_compatibleDC, _compatibleBitmap, 0, _height, _buffer.pixels.ptr, &bi, DIB_RGB_COLORS))
-            {
-                DWORD err = GetLastError();
-                throw new Exception(format("SetDIBits failed (error %s)", err));
-            }   
-
             PAINTSTRUCT paintStruct;
             HDC hdc = BeginPaint(_hwnd, &paintStruct);
-            assert(hdc == _windowDC); // since we are CS_OWNDC            
+            assert(hdc == _windowDC); // since we are CS_OWNDC         
 
-            // Blit pixels from compatible DC to DC
-            BitBlt(_windowDC, 0, 0, _width, _height, _compatibleDC, 0, 0, SRCCOPY);
+            BITMAPV4HEADER bmi = BITMAPV4HEADER.init; // fill with zeroes
+            with (bmi)
+            {
+                bV4Size          = BITMAPV4HEADER.sizeof;
+                bV4Width         = _width;
+                bV4Height        = -_height;
+                bV4Planes        = 1;
+                bV4V4Compression = 3; /* BI_BITFIELDS; */
+                bV4XPelsPerMeter = 72;
+                bV4YPelsPerMeter = 72;
+                bV4BitCount      = 32;    
+                bV4SizeImage     = byteStride(_width) * _height;
+                bV4RedMask       = 255<<0;
+                bV4GreenMask     = 255<<8;
+                bV4BlueMask      = 255<<16;
+                bV4AlphaMask     = 255<<24;
+                SetDIBitsToDevice(_windowDC, 0, 0, _width, _height, 0, 0, 0, _height, _buffer, cast(BITMAPINFO *)&bmi, DIB_RGB_COLORS);
+            }
 
 			EndPaint(_hwnd, &paintStruct);
 			
@@ -270,15 +260,24 @@ version(Windows)
 
         HWND _hwnd;
         HDC _windowDC;
-        HDC _compatibleDC;
-        HBITMAP _compatibleBitmap = null;
 
         WNDCLASSW _wndClass;
         IWindowListener _listener;
-        Image!RGBA _buffer;
+        
+        // The framebuffer. This should point into commited virtual memory for faster (maybe) upload to device                
+        ubyte* _buffer = null; 
+
         bool _terminated = false;
         int _width = 0;
         int _height = 0;        
+    }
+    
+    // given a width, how long in bytes should scanlines be
+    int byteStride(int width)
+    {        
+        enum alignment = 32;
+        int widthInBytes = width * 4;
+        return (widthInBytes + (alignment - 1)) & ~(alignment-1);
     }
 
     enum wstring windowClassName = "Dplug window\0"w;
@@ -313,23 +312,25 @@ version(Windows)
     {
         class MockListener : IWindowListener
         {
-
             override void onKeyDown(Key key)
             {
             }
             override void onKeyUp(Key up)
             {
             }
-            override void onDraw(Image!RGBA* image)
-            {
-                //DWORD count = GetTickCount();
-                for (int j = 0; j < image.h; ++j)
-                    for (int i = 0; i < image.w; ++i)
-                    {
-                        image.pixels[i + j * image.w] = RGBA(255, 128, 0, 255);
-                    }
 
-                //image.pixels[] = RGBA(255, 128, 0, 255);
+            override void onDraw(WindowFrameBuffer wfb, out bool needRedraw)
+            {
+                for (int j = 0; j < wfb.height; ++j)
+                    for (int i = 0; i < wfb.width; ++i)
+                    {
+                        int offset = i * 4 + j * wfb.byteStride;
+                        wfb.pixels[offset] = i & 255;
+                        wfb.pixels[offset+1] = j & 255;
+                        wfb.pixels[offset+2] = 0;
+                        wfb.pixels[offset+ 3] = 255;
+                    }
+                needRedraw = true;
             }
         }
                 
