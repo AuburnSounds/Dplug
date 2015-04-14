@@ -105,7 +105,7 @@ public:
     }
 
     /// Returns: The parameter indexed by index.
-    final Parameter param(size_t index) nothrow @nogc
+    final Parameter param(int index) nothrow @nogc
     {
         return _params[index];
     }
@@ -194,7 +194,7 @@ public:
     /// Important: This will be called by the audio thread.
     ///            You should not use the GC in this callback.
     ///            But you can use malloc.
-    abstract void reset(double sampleRate, size_t maxFrames) nothrow @nogc;
+    abstract void reset(double sampleRate, int maxFrames) nothrow @nogc;
 
     /// Override to set the plugin latency in samples.
     /// Most of the time this is dependant on the sampling rate, but most host

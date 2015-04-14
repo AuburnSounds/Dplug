@@ -56,7 +56,7 @@ struct Wavetable
     float lookupLinear(uint phaseIntPart, float phaseFractional, int level)
     {
         float* mipmap0 = mipmapData(level);
-        size_t mask = sizeOfMipmap(level) - 1;
+        int mask = sizeOfMipmap(level) - 1;
         float a = mipmap0[ phaseIntPart & mask  ];
         float b = mipmap0[ ( 1 + phaseIntPart ) & mask ];
         return a * (1 - phaseFractional) + phaseFractional * b;
@@ -65,7 +65,7 @@ struct Wavetable
     float lookupCatmullRom(uint phaseIntPart, float phaseFractional, int level)
     {
         float* mipmap0 = mipmapData(level);
-        size_t mask = sizeOfMipmap(level) - 1;
+        int mask = sizeOfMipmap(level) - 1;
         float p0 = mipmap0[ (phaseIntPart - 1) & mask  ];
         float p1 = mipmap0[ phaseIntPart & mask  ];
         float p2 = mipmap0[ ( 1 + phaseIntPart ) & mask ];

@@ -21,7 +21,7 @@ enum FFTDirection
 /// Perform in-place FFT.
 void FFT(T)(Complex!T[] buffer, FFTDirection direction)
 {
-    size_t size = buffer.length;
+    int size = cast(int)(buffer.length);
     assert(isPowerOf2(size));
     int m = iFloorLog2(size);
 
@@ -87,12 +87,12 @@ void FFT(T)(Complex!T[] buffer, FFTDirection direction)
 /// Introduces approximately windowSize/2 samples delay.
 struct Segmenter(T)
 {
-    size_t segmentSize() const
+    int segmentSize() pure const nothrow @nogc
     {
         return _segmentSize;
     }
 
-    size_t analysisPeriod() const
+    int analysisPeriod() pure const nothrow @nogc
     {
         return _analysisPeriod;
     }
@@ -100,7 +100,7 @@ struct Segmenter(T)
     /// To call at initialization and whenever samplerate changes.
     /// segmentSize = size of sound segments, expressed in samples.
     /// analysisPeriod = period of analysis results, allow to be more precise frequentially, expressed in samples.    
-    void initialize(size_t segmentSize, size_t analysisPeriod)
+    void initialize(int segmentSize, int analysisPeriod)
     {
         assert(analysisPeriod <= segmentSize); // no support for zero overlap
 
@@ -129,9 +129,9 @@ struct Segmenter(T)
 
             // rotate buffer
             {
-                size_t samplesToDrop = _analysisPeriod;
+                int samplesToDrop = _analysisPeriod;
                 assert(0 < samplesToDrop && samplesToDrop <= _segmentSize);
-                size_t remainingSamples = _segmentSize - samplesToDrop;
+                int remainingSamples = _segmentSize - samplesToDrop;
 
                 // TODO: use ring buffer instead of copy?
                 memmove(_buffer.ptr, _buffer.ptr + samplesToDrop, T.sizeof * remainingSamples);
@@ -152,9 +152,9 @@ struct Segmenter(T)
 
 private:
     T[] _buffer;
-    size_t _segmentSize;     // in samples
-    size_t _analysisPeriod; // in samples
-    size_t _index;
+    int _segmentSize;     // in samples
+    int _analysisPeriod; // in samples
+    int _index;
 }
 
 

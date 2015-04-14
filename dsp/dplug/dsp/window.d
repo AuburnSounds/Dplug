@@ -14,8 +14,8 @@ enum WindowType
 
 void generateWindow(T)(WindowType type, T[] output)
 {
-    size_t N = output.length;
-    for (size_t i = 0; i < N; ++i)
+    int N = cast(int)(output.length);
+    for (int i = 0; i < N; ++i)
     {
         output[i] = cast(T)(evalWindow(type, i, N));
     }
@@ -32,7 +32,7 @@ double secondaryLobeAttenuationInDb(WindowType type)
     }
 }
 
-double evalWindow(WindowType type, size_t n, size_t N)
+double evalWindow(WindowType type, int n, int N)
 {
     final switch(type)
     {

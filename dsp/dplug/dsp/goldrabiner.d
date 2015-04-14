@@ -266,7 +266,7 @@ private:
             for (int i = 0; i < 6; ++i)
             {
                 float candidate = mat[0][i];
-                size_t coincidenceLine;
+                int coincidenceLine;
                 if (candidate < 0.0031)
                     coincidenceLine = 0;
                 else if (candidate < 0.0063)

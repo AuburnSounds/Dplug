@@ -246,7 +246,7 @@ struct MeanFilter(T)
 {
 public:
     /// Initialize mean filter with given number of samples.
-    void initialize(T initialValue, size_t samples, T maxExpectedValue)
+    void initialize(T initialValue, int samples, T maxExpectedValue)
     {
         _delay = new RingBuffer!long(samples);
 
@@ -273,9 +273,9 @@ public:
         initialize(initialValue, nSamples, maxExpectedValue);
     }
 
-    size_t latency() const
+    int latency() const
     {
-        return _delay.length();
+        return cast(int)(_delay.length());
     }
 
     // process next sample

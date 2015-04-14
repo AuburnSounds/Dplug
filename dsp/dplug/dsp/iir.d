@@ -11,7 +11,7 @@ public
 
     /// Represent IIR coefficients as small vectors.
     /// This makes easy to smooth them over time.
-    template IIRCoeff(size_t N, T)
+    template IIRCoeff(int N, T)
     {
         alias Vector!(T, N) IIRCoeff;
     }

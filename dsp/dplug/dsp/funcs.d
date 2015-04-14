@@ -54,8 +54,9 @@ bool isEven(T)(T i)
 }
 
 /// Returns: x so that (1 << x) >= i
-int iFloorLog2(size_t i)
+int iFloorLog2(int i)
 {
+    assert(i >= 1);
     int result = 0;
     while (i > 1)
     {

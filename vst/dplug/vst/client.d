@@ -80,7 +80,7 @@ public:
             flags |= effFlagsHasEditor;
 
         _effect.flags = flags;
-        _maxParams = client.params().length;
+        _maxParams = cast(int)(client.params().length);
         _maxInputs = _effect.numInputs = _client.maxInputs();
         _maxOutputs = _effect.numOutputs = _client.maxOutputs();
         assert(_maxParams >= 0 && _maxInputs >= 0 && _maxOutputs >= 0);
@@ -131,7 +131,7 @@ private:
     Client _client;
 
     float _sampleRate; // samplerate from opcode thread POV
-    size_t _maxFrames; // max frames from opcode thread POV
+    int _maxFrames; // max frames from opcode thread POV
     int _maxInputs;
     int _maxOutputs;
     int _maxParams;
@@ -252,7 +252,7 @@ private:
                 if (value < 0)
                     return 1;
 
-                _maxFrames = value;
+                _maxFrames = cast(int)value;
                 _messageQueue.pushBack(Message(Message.Type.resetState, _maxFrames, 0, _sampleRate));
                 return 0;
             }
@@ -665,7 +665,7 @@ void unrecoverableError() nothrow @nogc
 
 extern(C) private nothrow
 {
-    VstIntPtr dispatcherCallback(AEffect *effect, int opcode, int index, int value, void *ptr, float opt) nothrow
+    VstIntPtr dispatcherCallback(AEffect *effect, int opcode, int index, ptrdiff_t value, void *ptr, float opt) nothrow
     {
         // Register this thread to the D runtime if unknown.
 
