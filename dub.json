@@ -53,6 +53,7 @@
             "sourcePaths-windows": [ "platforms/windows" ],
             "importPaths-windows": [ "platforms/windows" ],
 
+            "libs-windows": ["gdi32", "user32"],
             "dependencies": {
                 "dplug:plugin": "*",
 		        "ae-graphics": "~>0.0"

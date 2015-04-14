@@ -4,9 +4,9 @@ import ae.utils.graphics;
 
 interface IWindow
 {
-    // must be called prior drawing
-    Image!RGBA* getRGBABuffer();
+    // To put in your message loop
+    void waitEventAndDispatch();
 
-    // release the buffer and swap buffers
-    void swapBuffers();
+    // If exit was requested
+    bool terminated();
 }
