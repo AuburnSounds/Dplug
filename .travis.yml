@@ -1,0 +1,12 @@
+language: d
+
+d:
+ - dmd-2.067.0
+ - dmd-2.066.1
+ - ldc-0.15.1
+
+script:
+  - dub test dplug:dsp
+  - dub test dplug:gui
+  - dub test dplug:plugin
+  - dub test dplug:vst
