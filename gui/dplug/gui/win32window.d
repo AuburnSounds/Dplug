@@ -201,22 +201,20 @@ version(Windows)
             HDC hdc = BeginPaint(_hwnd, &paintStruct);
             assert(hdc == _windowDC); // since we are CS_OWNDC         
 
-            BITMAPV4HEADER bmi = BITMAPV4HEADER.init; // fill with zeroes
+            // TODO swap R & B
+
+            BITMAPINFOHEADER bmi = BITMAPINFOHEADER.init; // fill with zeroes
             with (bmi)
             {
-                bV4Size          = BITMAPV4HEADER.sizeof;
-                bV4Width         = _width;
-                bV4Height        = -_height;
-                bV4Planes        = 1;
-                bV4V4Compression = 3; /* BI_BITFIELDS; */
-                bV4XPelsPerMeter = 72;
-                bV4YPelsPerMeter = 72;
-                bV4BitCount      = 32;    
-                bV4SizeImage     = byteStride(_width) * _height;
-                bV4RedMask       = 255<<0;
-                bV4GreenMask     = 255<<8;
-                bV4BlueMask      = 255<<16;
-                bV4AlphaMask     = 255<<24;
+                biSize          = BITMAPINFOHEADER.sizeof;
+                biWidth         = _width;
+                biHeight        = -_height;
+                biPlanes        = 1;
+                biCompression = BI_RGB;
+                biXPelsPerMeter = 72;
+                biYPelsPerMeter = 72;
+                biBitCount      = 32;    
+                biSizeImage     = byteStride(_width) * _height;
                 SetDIBitsToDevice(_windowDC, 0, 0, _width, _height, 0, 0, 0, _height, _buffer, cast(BITMAPINFO *)&bmi, DIB_RGB_COLORS);
             }
 
@@ -292,7 +290,8 @@ version(Windows)
 
     unittest
     {
-        int first = 0;
+        DWORD initial = GetTickCount();
+
         class MockListener : IWindowListener
         {
             override void onKeyDown(Key key)
@@ -304,14 +303,15 @@ version(Windows)
 
             override void onDraw(WindowFrameBuffer wfb, out bool needRedraw)
             {
-                if (first++ == 0)
+                DWORD current = GetTickCount();
+                int disp = (current - initial) / 10;
 
                 for (int j = 0; j < wfb.height; ++j)
                     for (int i = 0; i < wfb.width; ++i)
                     {
                         int offset = i * 4 + j * wfb.byteStride;
-                        wfb.pixels[offset] = i & 255;
-                        wfb.pixels[offset+1] = j & 255;
+                        wfb.pixels[offset] = (i+disp*2) & 255;
+                        wfb.pixels[offset+1] = (j+disp) & 255;
                         wfb.pixels[offset+2] = 0;
                         wfb.pixels[offset+ 3] = 255;
                     }
