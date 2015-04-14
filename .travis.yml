@@ -6,12 +6,8 @@ d:
  - ldc-0.15.1
 
 script:
-  - dub test --arch=x86 dplug:dsp
-  - dub test --arch=x86 dplug:gui
-  - dub test --arch=x86 dplug:plugin
-  - dub test --arch=x86 dplug:vst
-  - dub test --arch=x86_64 dplug:dsp
-  - dub test --arch=x86_64 dplug:gui
-  - dub test --arch=x86_64 dplug:plugin
-  - dub test --arch=x86_64 dplug:vst
+  - dub test dplug:dsp
+  - dub test dplug:gui
+  - dub test dplug:plugin
+  - dub test dplug:vst
 
