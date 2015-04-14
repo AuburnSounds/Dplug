@@ -50,6 +50,9 @@
             "name": "gui",
             "sourcePaths": [ "gui/dplug/gui" ],
             "importPaths": [ "gui" ],
+            "sourcePaths-windows": [ "platforms/windows" ],
+            "importPaths-windows": [ "platforms/windows" ],
+
             "dependencies": {
                 "dplug:plugin": "*"
             }
