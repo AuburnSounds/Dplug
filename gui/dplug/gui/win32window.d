@@ -310,6 +310,7 @@ version(Windows)
 
     unittest
     {
+        int first = 0;
         class MockListener : IWindowListener
         {
             override void onKeyDown(Key key)
@@ -321,6 +322,8 @@ version(Windows)
 
             override void onDraw(WindowFrameBuffer wfb, out bool needRedraw)
             {
+                if (first++ == 0)
+
                 for (int j = 0; j < wfb.height; ++j)
                     for (int i = 0; i < wfb.width; ++i)
                     {
