@@ -13,9 +13,15 @@ final class Distort : dplug.plugin.Client
     {
     }
 
-    override Flags getFlags() pure const nothrow
+    override bool isSynth() pure const nothrow
     {
-        return hasGUI; // Not a synth, but has a GUI
+        return false;
+    }
+
+    override Graphics createGraphics()
+    {
+        import dplug.gui.graphics;
+        return new GUIGraphics(this);
     }
 
     override int getPluginID() pure const nothrow

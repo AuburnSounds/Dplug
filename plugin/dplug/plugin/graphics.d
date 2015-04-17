@@ -10,14 +10,14 @@ class Graphics
         _client = client;
     }
 
-    abstract void open(void* parentInfo);
-    abstract void close();
+    abstract void openUI(void* parentInfo);
+    abstract void closeUI();
 
 protected:
     Client _client;
 }
 
-///
+/// Default Graphics object, does nothing
 class NullGraphics : Graphics
 {
     this(Client client)
@@ -25,11 +25,11 @@ class NullGraphics : Graphics
         super(client);
     }
 
-    override void open(void* parentInfo)
+    override void openUI(void* parentInfo)
     {
     }
 
-    override void close()
+    override void closeUI()
     {
     }
 

@@ -140,6 +140,11 @@ version(Windows)
             UnregisterClassA("dplug_window", GetModuleHandle(null)); // TODO: should be the HINSTANCE given by DLL main!
         }
 
+        override void terminate()
+        {
+            close();
+        }
+
         LRESULT windowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         {
             switch (uMsg)

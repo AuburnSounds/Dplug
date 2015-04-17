@@ -54,13 +54,6 @@ class Client
 {
 public:
 
-    alias Flags = int;
-    enum : Flags
-    {
-        isSynth = 1,
-        hasGUI  = 2
-    }
-
     this()
     {
         buildLegalIO();
@@ -85,15 +78,15 @@ public:
         for (int i = 0; i < _maxOutputs; ++i)
             _outputPins[i] = new OutputPin();
 
-        _graphics = new NullGraphics(this);
+        _graphics = createGraphics();
     }
 
-    int maxInputs() pure const nothrow @nogc
+    final int maxInputs() pure const nothrow @nogc
     {
         return _maxInputs;
     }
 
-    int maxOutputs() pure const nothrow @nogc
+    final int maxOutputs() pure const nothrow @nogc
     {
         return _maxInputs;
     }
@@ -153,13 +146,13 @@ public:
     /// Override this methods to implement a GUI.
     final void openGUI(void* parentInfo)
     {
-        _graphics.open(parentInfo);
+        _graphics.openUI(parentInfo);
     }
 
     /// ditto
     final void closeGUI()
     {
-        _graphics.close();
+        _graphics.closeUI();
     }
 
     /// Override and return your brand name.
@@ -186,9 +179,19 @@ public:
         return 1000;
     }
 
-    /// Override to declare the plugin properties.
-    /// Must always return the same value.
-    abstract Flags getFlags() pure const nothrow;
+    /// Override to choose whether the plugin is a synth.
+    abstract bool isSynth() pure const nothrow;
+    
+    /// Override and return something else to make a plugin with UI.
+    Graphics createGraphics()
+    {
+        return new NullGraphics(this);
+    }
+
+    final bool hasGUI()
+    {
+        return cast(NullGraphics)_graphics is null;        
+    }
 
     /// Override to clear state state (eg: delay lines) and allocate buffers.
     /// Important: This will be called by the audio thread.
