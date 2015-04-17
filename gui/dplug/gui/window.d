@@ -57,14 +57,14 @@ interface IWindowListener
 
 
 // Factory function
-IWindow createWindow(void* parentInfo, IWindowListener listener)
+IWindow createWindow(void* parentInfo, IWindowListener listener, int width, int height)
 {
     version(Windows)
     {
         import win32.windef;
         import dplug.gui.win32window;
         HWND parent = cast(HWND)parentInfo;
-        return new Win32Window(parent, listener);
+        return new Win32Window(parent, listener, width, height);
     }
     else
         return null;

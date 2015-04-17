@@ -5,8 +5,7 @@ import std.process,
 
 import ae.utils.graphics;
 
-import dplug.gui.window,
-       dplug.gui.windowlistener;
+import dplug.gui.window;
 
 import std.stdio;
 
@@ -24,7 +23,7 @@ version(Windows)
     class Win32Window : IWindow
     {
     public:
-        this(HWND parentWindow, IWindowListener listener)
+        this(HWND parentWindow, IWindowListener listener, int width, int height)
         {
             _wndClass.style = CS_DBLCLKS | CS_OWNDC;
             _wndClass.lpfnWndProc = &windowProcCallback;
@@ -40,7 +39,11 @@ version(Windows)
             if (!RegisterClassW(&_wndClass))
                 throw new Exception("Couldn't register Win32 class");
 
-            _hwnd = CreateWindowW(cast(wchar*)windowClassName.ptr, null, /*WS_CHILD | */ WS_VISIBLE | WS_POPUP, CW_USEDEFAULT, CW_USEDEFAULT, 800, 600,
+            DWORD flags = WS_VISIBLE;
+            if (parentWindow != null)
+                flags |= WS_CHILD;
+
+            _hwnd = CreateWindowW(cast(wchar*)windowClassName.ptr, null, flags, CW_USEDEFAULT, CW_USEDEFAULT, width, height,
                                  parentWindow, null,
                                  GetModuleHandleA(null),  // TODO: is it correct?
                                  cast(void*)this);

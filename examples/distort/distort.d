@@ -21,7 +21,7 @@ final class Distort : dplug.plugin.Client
     override Graphics createGraphics()
     {
         import dplug.gui.graphics;
-        return new GUIGraphics(this);
+        return new GUIGraphics(this, 640, 480);
     }
 
     override int getPluginID() pure const nothrow

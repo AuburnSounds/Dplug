@@ -9,19 +9,22 @@ import dplug.gui.window;
 
 class GUIGraphics : Graphics, IWindowListener
 {
-    this(Client client)
+    this(Client client, int width, int height)
     {
         super(client);
 
-        _window = null;     
+        _window = null;
+        _askedWidth = width;
+        _askedHeight = height;
     }
 
     // Graphics implementation
 
+
     override void openUI(void* parentInfo)
     {
-        // create window (TODO: cache it)
-        _window = createWindow(parentInfo, this);
+        // create window (TODO: cache it?)
+        _window = createWindow(parentInfo, this, _askedWidth, _askedHeight);
     }
 
     override void closeUI()
@@ -62,4 +65,6 @@ class GUIGraphics : Graphics, IWindowListener
 protected:
     Client _client;
     IWindow _window;
+    int _askedWidth = 0;
+    int _askedHeight = 0;
 }
