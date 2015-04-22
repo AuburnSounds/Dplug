@@ -22,6 +22,15 @@ enum Key
     enter
 };
 
+enum MouseButton
+{
+    left,
+    right,
+    middle,
+    x1,
+    x2
+}
+
 // Giving commands to a window
 interface IWindow
 {
@@ -38,6 +47,11 @@ interface IWindow
 // Receiving commands from a window
 interface IWindowListener
 {
+    void onMouseClick(int x, int y, MouseButton mb, bool isDoubleClick);
+    void onMouseRelease(int x, int y, MouseButton mb);
+    void onMouseWheel(int x, int y, int wheelDeltaX, int wheelDeltaY);
+    void onMouseMove(int x, int y, int dx, int dy);
+
     void onKeyDown(Key key);
     void onKeyUp(Key up);
 
