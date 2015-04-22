@@ -25,6 +25,7 @@ class GUIGraphics : Graphics, IWindowListener
         // The UI is independent of the Window, and is reused
         _uiContext = new UIContext(new UIRenderer, null);
         _mainPanel = new UIElement(_uiContext);
+        _mainPanel.backgroundColor = RGBA(140, 140, 140, 255); // plugin is grey by default
     }
 
     // Graphics implementation
@@ -79,16 +80,7 @@ class GUIGraphics : Graphics, IWindowListener
     void onDraw(ImageRef!RGBA wfb, out bool needRedraw)
     {
         _uiContext.renderer.setFrameBuffer(wfb);
-        int disp = 0;
-
-        for (int j = 0; j < wfb.h; ++j)
-        {
-            RGBA[] scanline = wfb.scanline(j);
-            for (int i = 0; i < wfb.w; ++i)
-            {
-                scanline[i] = RGBA( (i+disp*2) & 255, (j+disp) & 255, 0, 255);
-            }
-        }
+        _mainPanel.render();
         needRedraw = true;
     }
 
