@@ -1,5 +1,6 @@
 module dplug.gui.toolkit.renderer;
 
+import gfm.math;
 import ae.utils.graphics;
 import dplug.gui.window;
 
@@ -23,26 +24,33 @@ public:
 
     void fillRect(int x, int y, int width, int height)
     {
-        // TODO
+        viewport().fillRect(x, y, x + width, y + height, _currentColor);
     }
 
     void drawRect(int x, int y, int width, int height)
     {
-        // TODO
+        viewport().rect(x, y, x + width, y + height, _currentColor);
     }
 
     void copy(Image!RGBA image, int x, int y)
     {
-        // TODO
+        image.blitTo(viewport(), x, y);
+    }
+
+    auto viewport()
+    {
+        return _fb.crop(_viewportRect.min.x, _viewportRect.min.y, _viewportRect.max.x, _viewportRect.max.y);
     }
 
     void setViewport(int x, int y, int width, int height)
     {
-        // TODO
+        _viewportRect = box2i(x, y, x + width, y + height);
     }
 
 private:
     ImageRef!RGBA _fb;
+    ImageRef!RGBA _viewport;
+    box2i _viewportRect;
     RGBA _currentColor;
 
 }
