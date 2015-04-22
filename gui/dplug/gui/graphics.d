@@ -1,9 +1,12 @@
 module dplug.gui.graphics;
 
+import ae.utils.graphics;
 import dplug.plugin.client;
 import dplug.plugin.graphics;
 
 import dplug.gui.window;
+import dplug.gui.toolkit.context;
+import dplug.gui.toolkit.renderer;
 
 // This is the interface between a plugin client and a IWindow.
 
@@ -16,6 +19,8 @@ class GUIGraphics : Graphics, IWindowListener
         _window = null;
         _askedWidth = width;
         _askedHeight = height;
+
+        _uiContext = new UIContext(new UIRenderer, null);
     }
 
     // Graphics implementation
@@ -44,19 +49,16 @@ class GUIGraphics : Graphics, IWindowListener
     }
 
     // an image you have to draw to, or return that nothing has changed
-    void onDraw(WindowFrameBuffer wfb, out bool needRedraw)
-    {    
+    void onDraw(ImageRef!RGBA wfb, out bool needRedraw)
+    {
         int disp = 0;
 
-        for (int j = 0; j < wfb.height; ++j)
+        for (int j = 0; j < wfb.h; ++j)
         {
-            for (int i = 0; i < wfb.width; ++i)
+            RGBA[] scanline = wfb.scanline(j);
+            for (int i = 0; i < wfb.w; ++i)
             {
-                int offset = i * 4 + j * wfb.byteStride;
-                wfb.pixels[offset] = (i+disp*2) & 255;
-                wfb.pixels[offset+1] = (j+disp) & 255;
-                wfb.pixels[offset+2] = 0;
-                wfb.pixels[offset+ 3] = 255;
+                scanline[i] = RGBA( (i+disp*2) & 255, (j+disp) & 255, 0, 255);
             }
         }
         needRedraw = true;
@@ -64,6 +66,7 @@ class GUIGraphics : Graphics, IWindowListener
 
 protected:
     Client _client;
+    UIContext _uiContext;
     IWindow _window;
     int _askedWidth = 0;
     int _askedHeight = 0;

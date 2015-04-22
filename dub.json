@@ -56,7 +56,9 @@
             "libs-windows": ["gdi32", "user32"],
             "dependencies": {
                 "dplug:plugin": "*",
-		        "ae-graphics": "~>0.0"
+		        "ae-graphics": "~>0.0",
+                "gfm:math": "~>2.0",
+                "gfm:image": "~>2.0"
             }
         }
     ]

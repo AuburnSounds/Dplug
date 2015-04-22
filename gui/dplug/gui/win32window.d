@@ -160,7 +160,11 @@ version(Windows)
                 case WM_PAINT:
                 {
                     updateBufferSizeIfNeeded();
-                    WindowFrameBuffer wfb = WindowFrameBuffer(_buffer, _width, _height, byteStride(_width));
+                    ImageRef!RGBA wfb;
+                    wfb.w = _width;
+                    wfb.h = _height;
+                    wfb.pitch = byteStride(_width);
+                    wfb.pixels = cast(RGBA*)_buffer;
 
                     bool needRedraw;
                     _listener.onDraw(wfb, needRedraw);
