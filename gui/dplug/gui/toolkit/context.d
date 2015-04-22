@@ -13,6 +13,9 @@ import dplug.gui.toolkit.element;
 import dplug.gui.toolkit.renderer;
 
 
+// TODO: fix non-locality of fonts and graphics, and remove that "context" which is 
+//       kind of a global
+
 class UIContext
 {
 public:

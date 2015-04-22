@@ -8,6 +8,7 @@ import dplug.gui.toolkit.stb_truetype;
 import dplug.gui.toolkit.renderer;
 
 // TODO: use color
+// TODO: support variable width instead of the 'A' hack
 final class Font
 {
 public:

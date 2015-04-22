@@ -11,18 +11,19 @@ import std.stdio;
 
 version(Windows)
 {
+    import std.uuid;
+
     import win32.w32api;
     import win32.winuser;
     import win32.winbase;
     import win32.windef;
-    import win32.wingdi;
-    //import core.sys.windows.windows;
+    import win32.wingdi;    
 
-    //public import win32.core;
 
     class Win32Window : IWindow
     {
-    public:
+    public:       
+
         this(HWND parentWindow, IWindowListener listener, int width, int height)
         {
             _wndClass.style = CS_DBLCLKS | CS_OWNDC;
@@ -34,16 +35,23 @@ version(Windows)
             _wndClass.hCursor = LoadCursorA(null, IDC_ARROW);
             _wndClass.hbrBackground = null;
             _wndClass.lpszMenuName = null;
-            _wndClass.lpszClassName = cast(wchar*)windowClassName.ptr;
+
+            // Generate an actually unique class name
+            string uuid = randomUUID().toString();
+            _className = "dplug_" ~ to!wstring(uuid) ~ "\0"; // add a terminator since toStringz for wstring doesn't seem to exist
+            _wndClass.lpszClassName = _className.ptr;
 
             if (!RegisterClassW(&_wndClass))
-                throw new Exception("Couldn't register Win32 class");
+            {
+                DWORD err = GetLastError();
+                throw new Exception(format("Couldn't register Win32 class (error %s)", err));
+            }
 
             DWORD flags = WS_VISIBLE;
             if (parentWindow != null)
                 flags |= WS_CHILD;
 
-            _hwnd = CreateWindowW(cast(wchar*)windowClassName.ptr, null, flags, CW_USEDEFAULT, CW_USEDEFAULT, width, height,
+            _hwnd = CreateWindowW(_className.ptr, null, flags, CW_USEDEFAULT, CW_USEDEFAULT, width, height,
                                  parentWindow, null,
                                  GetModuleHandleA(null),  // TODO: is it correct?
                                  cast(void*)this);
@@ -140,7 +148,9 @@ version(Windows)
                DestroyWindow(_hwnd);
                 _hwnd = null;
             }
-            UnregisterClassA("dplug_window", GetModuleHandle(null)); // TODO: should be the HINSTANCE given by DLL main!
+
+            // Unregister the window class, which was unique
+            UnregisterClassA("dplug_window", GetModuleHandle(null)); // TODO: here should be the HINSTANCE given by DLL main!            
         }
 
         override void terminate()
@@ -255,7 +265,9 @@ version(Windows)
         HDC _windowDC;
 
         WNDCLASSW _wndClass;
-        IWindowListener _listener;
+        wstring _className;
+
+        IWindowListener _listener;        
         
         // The framebuffer. This should point into commited virtual memory for faster (maybe) upload to device                
         ubyte* _buffer = null; 
@@ -272,9 +284,7 @@ version(Windows)
         int widthInBytes = width * 4;
         return (widthInBytes + (alignment - 1)) & ~(alignment-1);
     }
-
-    enum wstring windowClassName = "Dplug window\0"w;
-
+    
     extern(Windows) nothrow
     {
         LRESULT windowProcCallback(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)

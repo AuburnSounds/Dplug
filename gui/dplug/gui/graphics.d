@@ -8,8 +8,10 @@ import dplug.gui.window;
 import dplug.gui.toolkit.context;
 import dplug.gui.toolkit.renderer;
 import dplug.gui.toolkit.element;
-// This is the interface between a plugin client and a IWindow.
 
+// This is the interface between a plugin client and a IWindow.
+// GUIGraphics is a bridge between a plugin client and a IWindow
+// It also dispatch window events to the _mainPanel root UI element (you shall add to it to create an UI).
 class GUIGraphics : Graphics, IWindowListener
 {
     this(Client client, int width, int height)
@@ -20,9 +22,9 @@ class GUIGraphics : Graphics, IWindowListener
         _askedWidth = width;
         _askedHeight = height;
 
+        // The UI is independent of the Window, and is reused
         _uiContext = new UIContext(new UIRenderer, null);
-
-        _mainPanel = new 
+        _mainPanel = new UIElement(_uiContext);
     }
 
     // Graphics implementation
@@ -30,8 +32,9 @@ class GUIGraphics : Graphics, IWindowListener
 
     override void openUI(void* parentInfo)
     {
-        // create window (TODO: cache it?)
+        // create window (TODO: cache this? Might not be useful)
         _window = createWindow(parentInfo, this, _askedWidth, _askedHeight);
+        _mainPanel.reflow(box2i(0, 0, _askedWidth, _askedHeight));        
     }
 
     override void closeUI()
@@ -62,12 +65,12 @@ class GUIGraphics : Graphics, IWindowListener
         _mainPanel.mouseMove(x, y, dx, dy);
     }
 
-    override void onKeyDown(Key key)
+    override void onKeyDown(int x, int y, Key key)
     {
         // TODO: support key events in UI elements
     }
 
-    override void onKeyUp(Key up)
+    override void onKeyUp(int x, int y, Key up)
     {
         // TODO: support key events in UI elements
     }
@@ -75,6 +78,7 @@ class GUIGraphics : Graphics, IWindowListener
     // an image you have to draw to, or return that nothing has changed
     void onDraw(ImageRef!RGBA wfb, out bool needRedraw)
     {
+        _uiContext.renderer.setFrameBuffer(wfb);
         int disp = 0;
 
         for (int j = 0; j < wfb.h; ++j)

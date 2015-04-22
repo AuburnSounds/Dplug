@@ -37,6 +37,11 @@ public:
         image.blitTo(viewport(), x, y);
     }
 
+    auto pixels()
+    {
+        return _fb;
+    }
+
     auto viewport()
     {
         return _fb.crop(_viewportRect.min.x, _viewportRect.min.y, _viewportRect.max.x, _viewportRect.max.y);

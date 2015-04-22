@@ -9,7 +9,6 @@ public import dplug.gui.toolkit.font;
 class UIElement
 {
 public:
-
     this(UIContext context)
     {
         _context = context;
@@ -27,6 +26,8 @@ public:
             return;
 
         setViewportToElement();
+        if (_backgroundColor.a != 0)
+            _context.renderer.viewport.fill(_backgroundColor);
         preRender(_context.renderer);
         foreach(ref child; children)
             child.render();
@@ -225,6 +226,16 @@ public:
         _visible = visible;
     }
 
+    final RGBA backgroundColor()
+    {
+        return _backgroundColor;
+    }
+
+    final RGBA backgroundColor(RGBA color)
+    {
+        return _backgroundColor = color;
+    }
+
 protected:
 
     /// Render this element before children.
@@ -243,6 +254,8 @@ protected:
 
     box2i _position;
 
+    RGBA _backgroundColor = RGBA(128, 128, 128, 0); // transparent by default
+
     UIElement[] _children;
 
     bool _visible = true;
@@ -256,6 +269,11 @@ protected:
     final bool isDragged() pure const nothrow
     {
         return _context.dragged is this;
+    }
+
+    final UIRenderer renderer()
+    {
+        return _context.renderer;
     }
 
 
