@@ -17,12 +17,12 @@ version(Windows)
     import win32.winuser;
     import win32.winbase;
     import win32.windef;
-    import win32.wingdi;    
+    import win32.wingdi;
 
 
     class Win32Window : IWindow
     {
-    public:       
+    public:
 
         this(HWND parentWindow, IWindowListener listener, int width, int height)
         {
@@ -101,7 +101,7 @@ version(Windows)
             // Sets this as user data
             SetWindowLongPtrA(_hwnd, GWLP_USERDATA, cast(LONG_PTR)( cast(void*)this ));
 
-            int mSec = 30; // refresh at 60 hz 
+            int mSec = 30; // refresh at 60 hz
             SetTimer(_hwnd, TIMER_ID, mSec, null);
             SetFocus(_hwnd);
         }
@@ -150,7 +150,7 @@ version(Windows)
             }
 
             // Unregister the window class, which was unique
-            UnregisterClassA("dplug_window", GetModuleHandle(null)); // TODO: here should be the HINSTANCE given by DLL main!            
+            UnregisterClassA("dplug_window", GetModuleHandle(null)); // TODO: here should be the HINSTANCE given by DLL main!
         }
 
         override void terminate()
@@ -163,9 +163,64 @@ version(Windows)
             switch (uMsg)
             {
                 case WM_KEYDOWN:
+                case WM_KEYUP:
                 {
-                    return 0;
+                    Key key = vkToKey(wParam);
+                    if (uMsg == WM_KEYDOWN)
+                        _listener.onKeyDown(_mouseX, _mouseY, key);
+                    else
+                        _listener.onKeyUp(_mouseX, _mouseY, key);
+
+                    if (key == Key.unsupported)
+                        goto default;
+                    else
+                        return 0;
                 }
+
+                case WM_MOUSEMOVE:
+                    {
+                        int newMouseX = ( cast(int)lParam ) & 0xffff;
+                        int newMouseY = ( cast(int)lParam ) >> 16;
+                        int dx = newMouseX - _mouseX;
+                        int dy = newMouseY - _mouseY;
+                        _listener.onMouseMove(newMouseX, newMouseY, dx, dy);
+                        _mouseX = newMouseX;
+                        _mouseY = newMouseY;
+                        return 0;
+                    }
+
+                case WM_RBUTTONUP:
+                    _listener.onMouseRelease(_mouseX, _mouseY, MouseButton.right);
+                    return 0;
+                case WM_LBUTTONUP:
+                    _listener.onMouseRelease(_mouseX, _mouseY, MouseButton.left);
+                    return 0;
+                case WM_MBUTTONUP:
+                    _listener.onMouseRelease(_mouseX, _mouseY, MouseButton.middle);
+                    return 0;
+
+                case WM_RBUTTONDOWN:
+                case WM_RBUTTONDBLCLK:
+                    _listener.onMouseClick(_mouseX, _mouseY, MouseButton.right, uMsg == WM_RBUTTONDBLCLK);
+                    return 0;
+
+                case WM_LBUTTONDOWN:
+                case WM_LBUTTONDBLCLK:
+                    _listener.onMouseClick(_mouseX, _mouseY, MouseButton.left, uMsg == WM_LBUTTONDBLCLK);
+                    return 0;
+
+                case WM_MBUTTONDOWN:
+                case WM_MBUTTONDBLCLK:
+                    _listener.onMouseClick(_mouseX, _mouseY, MouseButton.middle, uMsg == WM_MBUTTONDBLCLK);
+                    return 0;
+
+                // X1/X2 buttons
+                case WM_XBUTTONDOWN:
+                case WM_XBUTTONDBLCLK:
+                    auto mb = (wParam >> 16) == 1 ? MouseButton.x1 : MouseButton.x2;
+                    _listener.onMouseClick(_mouseX, _mouseY, mb, uMsg == WM_XBUTTONDBLCLK);
+                    return 0;
+
 
                 case WM_PAINT:
                 {
@@ -188,7 +243,7 @@ version(Windows)
                 {
 					DestroyWindow(hwnd);
                     return 0;
-                }                
+                }
 
                 case WM_DESTROY:
                 {
@@ -218,10 +273,10 @@ version(Windows)
 
         // Implements IWindow
         void swapBuffers()
-        {   
+        {
             PAINTSTRUCT paintStruct;
             HDC hdc = BeginPaint(_hwnd, &paintStruct);
-            assert(hdc == _windowDC); // since we are CS_OWNDC         
+            assert(hdc == _windowDC); // since we are CS_OWNDC
 
             // TODO swap R & B
 
@@ -235,7 +290,7 @@ version(Windows)
                 biCompression = BI_RGB;
                 biXPelsPerMeter = 72;
                 biYPelsPerMeter = 72;
-                biBitCount      = 32;    
+                biBitCount      = 32;
                 biSizeImage     = byteStride(_width) * _height;
                 SetDIBitsToDevice(_windowDC, 0, 0, _width, _height, 0, 0, 0, _height, _buffer, cast(BITMAPINFO *)&bmi, DIB_RGB_COLORS);
             }
@@ -250,7 +305,7 @@ version(Windows)
             if (ret == -1)
                 throw new Exception("Error while in GetMessage");
             TranslateMessage(&msg);
-            DispatchMessageW(&msg);            
+            DispatchMessageW(&msg);
         }
 
         override bool terminated()
@@ -267,24 +322,27 @@ version(Windows)
         WNDCLASSW _wndClass;
         wstring _className;
 
-        IWindowListener _listener;        
-        
-        // The framebuffer. This should point into commited virtual memory for faster (maybe) upload to device                
-        ubyte* _buffer = null; 
+        IWindowListener _listener;
+
+        // The framebuffer. This should point into commited virtual memory for faster (maybe) upload to device
+        ubyte* _buffer = null;
 
         bool _terminated = false;
         int _width = 0;
-        int _height = 0;        
+        int _height = 0;
+
+        int _mouseX = 0;
+        int _mouseY = 0;
     }
-    
+
     // given a width, how long in bytes should scanlines be
     int byteStride(int width)
-    {        
+    {
         enum alignment = 32;
         int widthInBytes = width * 4;
         return (widthInBytes + (alignment - 1)) & ~(alignment-1);
     }
-    
+
     extern(Windows) nothrow
     {
         LRESULT windowProcCallback(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -340,15 +398,41 @@ version(Windows)
                 needRedraw = true;
             }
         }
-                
+
 
         IWindow window = new Win32Window(null, new MockListener());
-        
+
         import core.thread;
 
         while (!window.terminated())
         {
             window.waitEventAndDispatch();
+        }
+    }
+
+    private Key vkToKey(WPARAM vk) pure nothrow @nogc
+    {
+        switch (vk)
+        {
+            case VK_SPACE: return Key.space;
+            
+            case VK_UP: return Key.upArrow;
+            case VK_DOWN: return Key.downArrow;
+            case VK_LEFT: return Key.leftArrow;
+            case VK_RIGHT: return Key.rightArrow;
+
+            case VK_NUMPAD0: return Key.digit0;
+            case VK_NUMPAD1: return Key.digit1;
+            case VK_NUMPAD2: return Key.digit2;
+            case VK_NUMPAD3: return Key.digit3;
+            case VK_NUMPAD4: return Key.digit4;
+            case VK_NUMPAD5: return Key.digit5;
+            case VK_NUMPAD6: return Key.digit6;
+            case VK_NUMPAD7: return Key.digit7;
+            case VK_NUMPAD8: return Key.digit8;
+            case VK_NUMPAD9: return Key.digit9;
+            case VK_RETURN: return Key.enter;
+            default: return Key.unsupported;
         }
     }
 }

@@ -19,7 +19,8 @@ enum Key
     digit7,
     digit8,
     digit9,
-    enter
+    enter,
+    unsupported // special value, means "other"
 };
 
 enum MouseButton

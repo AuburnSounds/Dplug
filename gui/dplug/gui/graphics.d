@@ -30,7 +30,6 @@ class GUIGraphics : Graphics, IWindowListener
 
     // Graphics implementation
 
-
     override void openUI(void* parentInfo)
     {
         // create window (TODO: cache this? Might not be useful)
