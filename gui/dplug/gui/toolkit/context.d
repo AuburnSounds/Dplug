@@ -36,11 +36,17 @@ public:
 
     UIRenderer renderer;
     Font font;
+    UIElement focused = null; // last clicked element
     UIElement dragged = null; // current dragged element
 
     Image!RGBA image(string name)
     {
         return _images[name];
+    }
+
+    void setFocused(UIElement focused)
+    {
+        this.focused = focused;
     }
 
     void beginDragging(UIElement element)

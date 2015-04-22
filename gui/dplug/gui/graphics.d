@@ -67,13 +67,22 @@ class GUIGraphics : Graphics, IWindowListener
 
     override void onKeyDown(Key key)
     {
-        // TODO: send to last clicked element
+        // Sends the event to the last clicked element first
+        if (_uiContext.focused !is null)
+            if (_uiContext.focused.onKeyDown(key))
+                return;
+
+        // else to all Elements
         _mainPanel.keyDown(key);
     }
 
     override void onKeyUp(Key key)
     {
-        // TODO: send to last clicked element
+        // Sends the event to the last clicked element first
+        if (_uiContext.focused !is null)
+            if (_uiContext.focused.onKeyUp(key))
+                return;
+        // else to all Elements
         _mainPanel.keyUp(key);
     }
 

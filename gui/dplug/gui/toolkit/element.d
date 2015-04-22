@@ -156,6 +156,7 @@ public:
             if(onMousePreClick(x - _position.min.x, y - _position.min.y, button, isDoubleClick))
             {
                 _context.beginDragging(this);
+                _context.setFocused(this);
                 return true;
             }
         }
@@ -171,6 +172,7 @@ public:
             if(onMousePostClick(x - _position.min.x, y - _position.min.y, button, isDoubleClick))
             {
                 _context.beginDragging(this);
+                _context.setFocused(this);
                 return true;
             }
         }
@@ -229,23 +231,31 @@ public:
     }
 
     // to be called at top-level when a key is pressed
-    final void keyDown(Key key)
+    final bool keyDown(Key key)
     {
-        if (!onKeyDown(key))
+        if (onKeyDown(key))
+            return true;
+
+        foreach(child; _children)
         {
-            if (_parent !is null)
-                parent.keyDown(key);
+            if (child.keyDown(key))
+                return true;
         }
+        return false;
     }
 
     // to be called at top-level when a key is released
-    final void keyUp(Key key)
+    final bool keyUp(Key key)
     {
-        if (!onKeyUp(key))
+        if (onKeyUp(key))
+            return true;
+
+        foreach(child; _children)
         {
-            if (_parent !is null)
-                parent.keyDown(key);
+            if (child.keyUp(key))
+                return true;
         }
+        return false;
     }
 
     final UIContext context()
@@ -313,6 +323,11 @@ protected:
     final bool isDragged() pure const nothrow
     {
         return _context.dragged is this;
+    }
+
+    final bool isFocused() pure const nothrow
+    {
+        return _context.focused is this;
     }
 
     final UIRenderer renderer()
