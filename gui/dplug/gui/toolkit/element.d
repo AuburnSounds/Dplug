@@ -2,6 +2,7 @@ module dplug.gui.toolkit.element;
 
 public import gfm.math;
 public import ae.utils.graphics;
+public import dplug.gui.types;
 public import dplug.gui.toolkit.context;
 public import dplug.gui.toolkit.renderer;
 public import dplug.gui.toolkit.font;
@@ -75,8 +76,10 @@ public:
         return _children[n];
     }
 
+    // The addChild method is mandatory
     final void addChild(UIElement element)
     {
+        element._parent = this;
         _children ~= element;
     }
 
@@ -131,6 +134,20 @@ public:
     {
     }
 
+    // Called when a key is pressed. This event bubbles down-up until being processed.
+    // Return true if treating the message.
+    bool onKeyDown(Key key)
+    {
+        return false;
+    }
+
+    // Called when a key is pressed. This event bubbles down-up until being processed.
+    // Return true if treating the message.
+    bool onKeyUp(Key key)
+    {
+        return false;
+    }
+
     // to be called at top-level when the mouse clicked
     bool mouseClick(int x, int y, int button, bool isDoubleClick)
     {
@@ -161,13 +178,13 @@ public:
         return false;
     }
 
-    // to be called when the mouse is released
+    // to be called at top-level when the mouse is released
     final void mouseRelease(int x, int y, int button)
     {
         _context.stopDragging();
     }
 
-    // to be called when the mouse clicked
+    // to be called at top-level when the mouse wheeled
     final bool mouseWheel(int x, int y, int wheelDeltaX, int wheelDeltaY)
     {
         foreach(child; _children)
@@ -211,6 +228,26 @@ public:
         }
     }
 
+    // to be called at top-level when a key is pressed
+    final void keyDown(Key key)
+    {
+        if (!onKeyDown(key))
+        {
+            if (_parent !is null)
+                parent.keyDown(key);
+        }
+    }
+
+    // to be called at top-level when a key is released
+    final void keyUp(Key key)
+    {
+        if (!onKeyUp(key))
+        {
+            if (_parent !is null)
+                parent.keyDown(key);
+        }
+    }
+
     final UIContext context()
     {
         return _context;
@@ -236,6 +273,11 @@ public:
         return _backgroundColor = color;
     }
 
+    final UIElement parent()
+    {
+        return _parent;
+    }
+
 protected:
 
     /// Render this element before children.
@@ -251,6 +293,8 @@ protected:
     {
         // defaults to nothing
     }
+
+    UIElement _parent = null;
 
     box2i _position;
 

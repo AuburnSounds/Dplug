@@ -32,14 +32,14 @@ class GUIGraphics : Graphics, IWindowListener
 
     override void openUI(void* parentInfo)
     {
-        // create window (TODO: cache this? Might not be useful)
+        // We create this window each time.
         _window = createWindow(parentInfo, this, _askedWidth, _askedHeight);
         _mainPanel.reflow(box2i(0, 0, _askedWidth, _askedHeight));        
     }
 
     override void closeUI()
     {
-        // release window
+        // Destroy window.
         _window.terminate();
     }
 
@@ -65,14 +65,16 @@ class GUIGraphics : Graphics, IWindowListener
         _mainPanel.mouseMove(x, y, dx, dy);
     }
 
-    override void onKeyDown(int x, int y, Key key)
+    override void onKeyDown(Key key)
     {
-        // TODO: support key events in UI elements
+        // TODO: send to last clicked element
+        _mainPanel.keyDown(key);
     }
 
-    override void onKeyUp(int x, int y, Key up)
+    override void onKeyUp(Key key)
     {
-        // TODO: support key events in UI elements
+        // TODO: send to last clicked element
+        _mainPanel.keyUp(key);
     }
 
     // an image you have to draw to, or return that nothing has changed

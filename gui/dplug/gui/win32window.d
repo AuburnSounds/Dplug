@@ -5,6 +5,7 @@ import std.process,
 
 import ae.utils.graphics;
 
+import dplug.gui.types;
 import dplug.gui.window;
 
 import std.stdio;
@@ -18,6 +19,8 @@ version(Windows)
     import win32.winbase;
     import win32.windef;
     import win32.wingdi;
+
+    // TODO: the whole buffer content is uploaded regularly instead of having a concept of dirty widgets
 
 
     class Win32Window : IWindow
@@ -167,12 +170,16 @@ version(Windows)
                 {
                     Key key = vkToKey(wParam);
                     if (uMsg == WM_KEYDOWN)
-                        _listener.onKeyDown(_mouseX, _mouseY, key);
+                        _listener.onKeyDown(key);
                     else
-                        _listener.onKeyUp(_mouseX, _mouseY, key);
+                        _listener.onKeyUp(key);
 
                     if (key == Key.unsupported)
-                        goto default;
+                    {
+                        HWND rootHWnd = GetAncestor(hwnd, GA_ROOT);
+                        SendMessage(rootHWnd, uMsg, wParam, lParam);
+                        return DefWindowProc(hwnd, uMsg, wParam, lParam);
+                    }
                     else
                         return 0;
                 }
@@ -368,6 +375,7 @@ version(Windows)
         }
     }
 
+/+
     unittest
     {
         DWORD initial = GetTickCount();
@@ -409,13 +417,14 @@ version(Windows)
             window.waitEventAndDispatch();
         }
     }
+    +/
 
     private Key vkToKey(WPARAM vk) pure nothrow @nogc
     {
         switch (vk)
         {
             case VK_SPACE: return Key.space;
-            
+
             case VK_UP: return Key.upArrow;
             case VK_DOWN: return Key.downArrow;
             case VK_LEFT: return Key.leftArrow;

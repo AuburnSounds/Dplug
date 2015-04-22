@@ -2,35 +2,7 @@ module dplug.gui.window;
 
 import ae.utils.graphics;
 
-enum Key
-{
-    space,
-    upArrow,
-    downArrow,
-    leftArrow,
-    rightArrow,
-    digit0,
-    digit1,
-    digit2,
-    digit3,
-    digit4,
-    digit5,
-    digit6,
-    digit7,
-    digit8,
-    digit9,
-    enter,
-    unsupported // special value, means "other"
-};
-
-enum MouseButton
-{
-    left,
-    right,
-    middle,
-    x1,
-    x2
-}
+import dplug.gui.types;
 
 // Giving commands to a window
 interface IWindow
@@ -61,10 +33,10 @@ interface IWindowListener
     void onMouseMove(int x, int y, int dx, int dy);
 
     // Called on keyboard press
-    void onKeyDown(int x, int y, Key key);
+    void onKeyDown(Key key);
 
     // Called on keyboard release
-    void onKeyUp(int x, int y, Key up);
+    void onKeyUp(Key up);
 
     // An image you have to draw to, or return that nothing has changed
     void onDraw(ImageRef!RGBA wfb, out bool needRedraw); // TODO: return just a region to save uploading bits
