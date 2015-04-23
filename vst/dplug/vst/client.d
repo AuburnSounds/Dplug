@@ -72,7 +72,7 @@ public:
             _host.wantEvents();
         }
 
-        if ( client.hasGUI )
+        if ( client.hasGUI() )
             flags |= effFlagsHasEditor;
 
         _effect.flags = flags;
@@ -277,12 +277,12 @@ private:
                     {
                         _editRect.top = 0;
                         _editRect.left = 0;
-                        _editRect.right = _client.getGUIWidth();
-                        _editRect.bottom = _client.getGUIHeight();
+                        _editRect.right = cast(short)(_client.graphics().getGUIWidth());
+                        _editRect.bottom = cast(short)(_client.graphics().getGUIHeight());
                         *cast(ERect**)(ptr) = &_editRect;
                         return cast(VstIntPtr)(&_editRect);
                     }
-                    ptr = 0; // from IPlug, not sure why it's there
+                    ptr = null; // from IPlug, not sure why it's there
                     return 0;
                 }
 
@@ -349,8 +349,9 @@ private:
                 if (ptr == null)
                     return 0;
 
-                double v;
-                _client.param(index).setFromHost(atof(cast(char*)ptr));
+                double v = atof(cast(char*)ptr);
+
+                _client.setParameterFromHost(v);
                 return 1;
             }
 
@@ -744,7 +745,7 @@ extern(C) private nothrow
             if (!plugin.isValidParamIndex(index))
                 return;
 
-            client.param(index).setFromHost(parameter);
+            client.setParameterFromHost(index, parameter);
         }
         catch (Throwable e)
         {

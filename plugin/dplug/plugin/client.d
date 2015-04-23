@@ -155,6 +155,17 @@ public:
         _graphics.closeUI();
     }
 
+    // This should be called only by a client implementation
+    void setParameterFromHost(int index, float value)
+    {
+        if (hasGUI())
+        {
+            // TODO warn the GUI
+        }
+
+        param(index).setFromHost(value);
+    }
+
     /// Override and return your brand name.
     string vendorName() pure const nothrow
     {
@@ -192,6 +203,12 @@ public:
     {
         return cast(NullGraphics)_graphics is null;        
     }
+
+    final Graphics graphics()
+    { 
+        return _graphics;
+    }
+
 
     /// Override to clear state state (eg: delay lines) and allocate buffers.
     /// Important: This will be called by the audio thread.

@@ -12,6 +12,8 @@ class Graphics
 
     abstract void openUI(void* parentInfo);
     abstract void closeUI();
+    abstract int getGUIWidth();
+    abstract int getGUIHeight();
 
 protected:
     Client _client;
@@ -31,6 +33,16 @@ class NullGraphics : Graphics
 
     override void closeUI()
     {
+    }
+
+    override int getGUIWidth()
+    {
+        return 0;
+    }
+
+    override int getGUIHeight()
+    {
+        return 0;
     }
 
 protected:

@@ -43,6 +43,16 @@ class GUIGraphics : Graphics, IWindowListener
         _window.terminate();
     }
 
+    override int getGUIWidth()
+    {
+        return _askedWidth;
+    }
+
+    override int getGUIHeight()
+    {
+        return _askedHeight;
+    }
+
     // IWindowListener
 
     override bool onMouseClick(int x, int y, MouseButton mb, bool isDoubleClick)
