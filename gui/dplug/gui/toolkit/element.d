@@ -36,7 +36,9 @@ public:
         postRender(_context.renderer);
     }
 
-    /// Meant to be overriden for custom behaviour.
+    /// Meant to be overriden almost everytime for custom behaviour.
+    /// Default behaviour is to span the whole area.
+    /// Any layout algorithm is up to you.
     void reflow(box2i availableSpace)
     {
         // default: span the entire available area, and do the same for children
@@ -46,19 +48,24 @@ public:
             child.reflow(availableSpace);
     }
 
+    /// Returns: Position of the element, that will be used for rendering. This 
+    /// position is reset when calling reflow.
     final box2i position()
     {
         return _position;
     }
 
+    /// Forces the position of the element. It is typically used in the parent 
+    /// reflow() method
+    final box2i position(box2i p)
+    {
+        return _position = p;
+    }
+
+    /// Returns: Children of this element.
     final ref UIElement[] children()
     {
         return _children;
-    }
-
-    final Font font()
-    {
-        return _context.font;
     }
 
     final int charWidth() pure const nothrow

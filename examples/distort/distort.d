@@ -21,7 +21,7 @@ final class Distort : dplug.plugin.Client
 
     override IGraphics createGraphics()
     {
-        return new DistortGUI;
+        return new DistortGUI(this);
     }
 
     override int getPluginID() pure const nothrow
@@ -70,15 +70,45 @@ final class Distort : dplug.plugin.Client
 
         // fill with zero the remaining channels
         for (int chan = minChan; chan < numOutputs; ++chan)
-        {
-            for (int f = 0; f < frames; ++f)
-                outputs[chan][f] = 0;
-        }
+            outputs[chan][0..frames] = 0; // D has array slices assignments and operations
     }
 }
 
 class DistortGUI : GUIGraphics
 {
+    Distort _client;
 
+    UIKnob inputKnob;
+    UIKnob driveKnob;
+    UIKnob outputKnob;
+
+    this(Distort client)
+    {
+        _client = client;
+        super(800, 600); // initial size
+        
+        inputKnob = new UIKnob(context());
+        driveKnob = new UIKnob(context());
+        outputKnob = new UIKnob(context());
+        addChild(inputKnob);
+        addChild(driveKnob);
+        addChild(outputKnob);
+    }
+
+    override void reflow(box2i availableSpace)
+    {
+        _position = availableSpace;
+
+        // force position of knobs
+        inputKnob.position = box2i(0, 0, 50, 50);
+        driveKnob.position = box2i(100, 100, 150, 150);
+        outputKnob.position = box2i(0, 100, 50, 150);
+    }
+    
+    override void preRender(UIRenderer renderer)
+    {
+        auto c = RGBA(80, 80, 80, 255);
+        renderer.pixels.fill(c);
+    }
 }
 
