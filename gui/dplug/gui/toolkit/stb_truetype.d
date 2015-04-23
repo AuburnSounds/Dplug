@@ -1,4 +1,4 @@
-/// D translation of stb_truetype v0.7
+/// D translation of stb_truetype v0.7 by Sean Barrett
 /// More information on http://nothings.org/stb/stb_truetype.h
 /// Removed:
 /// - texture baking API

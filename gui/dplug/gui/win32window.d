@@ -176,6 +176,7 @@ version(Windows)
 
                     if (key == Key.unsupported)
                     {
+                        // key is passed to the parent window
                         HWND rootHWnd = GetAncestor(hwnd, GA_ROOT);
                         SendMessage(rootHWnd, uMsg, wParam, lParam);
                         return DefWindowProc(hwnd, uMsg, wParam, lParam);
@@ -196,38 +197,65 @@ version(Windows)
                         return 0;
                     }
 
-                case WM_RBUTTONUP:
-                    _listener.onMouseRelease(_mouseX, _mouseY, MouseButton.right);
-                    return 0;
-                case WM_LBUTTONUP:
-                    _listener.onMouseRelease(_mouseX, _mouseY, MouseButton.left);
-                    return 0;
-                case WM_MBUTTONUP:
-                    _listener.onMouseRelease(_mouseX, _mouseY, MouseButton.middle);
-                    return 0;
-
                 case WM_RBUTTONDOWN:
                 case WM_RBUTTONDBLCLK:
-                    _listener.onMouseClick(_mouseX, _mouseY, MouseButton.right, uMsg == WM_RBUTTONDBLCLK);
-                    return 0;
+                {
+                    if (mouseClick(_mouseX, _mouseY, MouseButton.right, uMsg == WM_RBUTTONDBLCLK))
+                        return 0; // handled
+                    goto default;
+                }
 
                 case WM_LBUTTONDOWN:
                 case WM_LBUTTONDBLCLK:
-                    _listener.onMouseClick(_mouseX, _mouseY, MouseButton.left, uMsg == WM_LBUTTONDBLCLK);
-                    return 0;
+                {
+                    if (mouseClick(_mouseX, _mouseY, MouseButton.left, uMsg == WM_LBUTTONDBLCLK))
+                        return 0; // handled
+                    goto default;
+                }
 
                 case WM_MBUTTONDOWN:
                 case WM_MBUTTONDBLCLK:
-                    _listener.onMouseClick(_mouseX, _mouseY, MouseButton.middle, uMsg == WM_MBUTTONDBLCLK);
-                    return 0;
+                {
+                    if (mouseClick(_mouseX, _mouseY, MouseButton.middle, uMsg == WM_MBUTTONDBLCLK))
+                        return 0; // handled
+                    goto default;
+                }
 
                 // X1/X2 buttons
                 case WM_XBUTTONDOWN:
                 case WM_XBUTTONDBLCLK:
+                {
                     auto mb = (wParam >> 16) == 1 ? MouseButton.x1 : MouseButton.x2;
-                    _listener.onMouseClick(_mouseX, _mouseY, mb, uMsg == WM_XBUTTONDBLCLK);
-                    return 0;
+                    if (mouseClick(_mouseX, _mouseY, mb, uMsg == WM_XBUTTONDBLCLK))
+                        return 0;
+                    goto default;
+                }
 
+                case WM_RBUTTONUP:
+                    if (mouseRelease(_mouseX, _mouseY, MouseButton.right))
+                        return 0;
+                    goto default;
+
+                case WM_LBUTTONUP:
+                    if (mouseRelease(_mouseX, _mouseY, MouseButton.left))
+                        return 0;
+                    goto default;
+                case WM_MBUTTONUP:
+                    if (mouseRelease(_mouseX, _mouseY, MouseButton.middle))
+                        return 0;
+                    goto default;
+
+                case WM_XBUTTONUP:
+                {
+                    auto mb = (wParam >> 16) == 1 ? MouseButton.x1 : MouseButton.x2;
+                    if (mouseRelease(_mouseX, _mouseY, mb))
+                        return 0;
+                    goto default;
+                }
+
+                case WM_CAPTURECHANGED:
+                    _listener.onMouseCaptureCancelled();
+                    goto default;
 
                 case WM_PAINT:
                 {
@@ -340,6 +368,25 @@ version(Windows)
 
         int _mouseX = 0;
         int _mouseY = 0;
+
+        /// Propagates mouse events.
+        /// Returns: true if event handled.
+        bool mouseClick(int mouseX, int mouseY, MouseButton mb, bool isDoubleClick)
+        {
+            SetFocus(_hwnd);   // get keyboard focus
+            SetCapture(_hwnd); // start mouse capture
+            _listener.onMouseClick(mouseX, mouseY, mb, isDoubleClick);
+            return true; // TODO: onMouseClick should return true of false
+        }
+
+        /// ditto
+        bool mouseRelease(int mouseX, int mouseY, MouseButton mb)
+        {
+            ReleaseCapture();
+            _listener.onMouseRelease(mouseX, mouseY, mb);
+            return true; // TODO: onMouseRelease should return true of false
+        }
+
     }
 
     // given a width, how long in bytes should scanlines be

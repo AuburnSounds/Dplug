@@ -13,9 +13,10 @@ import dplug.gui.toolkit.element;
 import dplug.gui.toolkit.renderer;
 
 
-// TODO: fix non-locality of fonts and graphics, and remove that "context" which is 
-//       kind of a global
-
+/// UIContext contains the "globals" of the UI
+/// - current focused element
+/// - current dragged element
+/// - images and fonts...
 class UIContext
 {
 public:
@@ -66,9 +67,6 @@ public:
         {
             dragged.onStopDrag();
             dragged = null;
-
-            // TODO find equivalent
-            // SDL_CaptureMouse(SDL_FALSE);
         }
     }
 

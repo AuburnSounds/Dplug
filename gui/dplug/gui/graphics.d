@@ -94,6 +94,12 @@ class GUIGraphics : Graphics, IWindowListener
         needRedraw = true;
     }
 
+    void onMouseCaptureCancelled()
+    {
+        // Stop an eventual drag operation
+        _uiContext.stopDragging();
+    }
+
 protected:
     Client _client;
     UIContext _uiContext;

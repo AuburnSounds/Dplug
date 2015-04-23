@@ -40,6 +40,9 @@ interface IWindowListener
 
     // An image you have to draw to, or return that nothing has changed
     void onDraw(ImageRef!RGBA wfb, out bool needRedraw); // TODO: return just a region to save uploading bits
+
+    // Called whenever mouse capture was canceled (ALT + TAB, SetForegroundWindow...)
+    void onMouseCaptureCancelled();
 }
 
 
