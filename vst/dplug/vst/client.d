@@ -349,9 +349,9 @@ private:
                 if (ptr == null)
                     return 0;
 
-                double v = atof(cast(char*)ptr);
+                double parsed = atof(cast(char*)ptr);
 
-                _client.setParameterFromHost(v);
+                _client.setParameterFromHost(index, parsed);
                 return 1;
             }
 

@@ -3,30 +3,17 @@ module dplug.plugin.graphics;
 import dplug.plugin.client;
 
 /// Plugin GUI
-class Graphics
+interface IGraphics
 {
-    this(Client client)
-    {
-        _client = client;
-    }
-
     abstract void openUI(void* parentInfo);
     abstract void closeUI();
     abstract int getGUIWidth();
     abstract int getGUIHeight();
-
-protected:
-    Client _client;
 }
 
 /// Default Graphics object, does nothing
-class NullGraphics : Graphics
+class NullGraphics : IGraphics
 {
-    this(Client client)
-    {
-        super(client);
-    }
-
     override void openUI(void* parentInfo)
     {
     }
@@ -44,7 +31,4 @@ class NullGraphics : Graphics
     {
         return 0;
     }
-
-protected:
-    Client _client;
 }

@@ -194,9 +194,9 @@ public:
     abstract bool isSynth() pure const nothrow;
     
     /// Override and return something else to make a plugin with UI.
-    Graphics createGraphics()
+    IGraphics createGraphics()
     {
-        return new NullGraphics(this);
+        return new NullGraphics();
     }
 
     final bool hasGUI()
@@ -204,7 +204,7 @@ public:
         return cast(NullGraphics)_graphics is null;        
     }
 
-    final Graphics graphics()
+    final IGraphics graphics()
     { 
         return _graphics;
     }
@@ -255,7 +255,7 @@ protected:
         _legalIOs ~= LegalIO(numInputs, numOutputs);
     }
 
-    Graphics _graphics;
+    IGraphics _graphics;
 
 private:
     Parameter[] _params;

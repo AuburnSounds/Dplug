@@ -1,7 +1,8 @@
 import std.math;
 
 import dplug.plugin,
-       dplug.vst;
+       dplug.vst,
+       dplug.gui;
 
 mixin(DLLEntryPoint!());
 mixin(VSTEntryPoint!Distort);
@@ -18,11 +19,9 @@ final class Distort : dplug.plugin.Client
         return false;
     }
 
-    override Graphics createGraphics()
+    override IGraphics createGraphics()
     {
-        import dplug.gui.graphics;
-        auto graphics = new GUIGraphics(this, 640, 480);
-        return graphics;
+        return new DistortGUI;
     }
 
     override int getPluginID() pure const nothrow
@@ -78,5 +77,8 @@ final class Distort : dplug.plugin.Client
     }
 }
 
+class DistortGUI : GUIGraphics
+{
 
+}
 
