@@ -11,7 +11,7 @@ import dplug.gui.toolkit.element;
 
 // This is the interface between a plugin client and a IWindow.
 // GUIGraphics is a bridge between a plugin client and a IWindow
-// It also dispatch window events to the _mainPanel root UI element (you shall add to it to create an UI).
+// It also dispatch window events to the _mainElement root UI element (you shall add to it to create an UI).
 class GUIGraphics : Graphics, IWindowListener
 {
     this(Client client, int width, int height)
@@ -24,8 +24,8 @@ class GUIGraphics : Graphics, IWindowListener
 
         // The UI is independent of the Window, and is reused
         _uiContext = new UIContext(new UIRenderer, null);
-        _mainPanel = new UIElement(_uiContext);
-        _mainPanel.backgroundColor = RGBA(140, 140, 140, 255); // plugin is grey by default
+        _mainElement = new UIElement(_uiContext);
+        _mainElement.backgroundColor = RGBA(140, 140, 140, 255); // plugin is grey by default
     }
 
     // Graphics implementation
@@ -34,7 +34,7 @@ class GUIGraphics : Graphics, IWindowListener
     {
         // We create this window each time.
         _window = createWindow(parentInfo, this, _askedWidth, _askedHeight);
-        _mainPanel.reflow(box2i(0, 0, _askedWidth, _askedHeight));        
+        _mainElement.reflow(box2i(0, 0, _askedWidth, _askedHeight));        
     }
 
     override void closeUI()
@@ -45,52 +45,53 @@ class GUIGraphics : Graphics, IWindowListener
 
     // IWindowListener
 
-    override void onMouseClick(int x, int y, MouseButton mb, bool isDoubleClick)
+    override bool onMouseClick(int x, int y, MouseButton mb, bool isDoubleClick)
     {
-        _mainPanel.mouseClick(x, y, mb, isDoubleClick);
+        return _mainElement.mouseClick(x, y, mb, isDoubleClick);
     }
 
-    override void onMouseRelease(int x, int y, MouseButton mb)
+    override bool onMouseRelease(int x, int y, MouseButton mb)
     {
-        _mainPanel.mouseRelease(x, y, mb);
+        _mainElement.mouseRelease(x, y, mb);
+        return true;
     }
 
-    override void onMouseWheel(int x, int y, int wheelDeltaX, int wheelDeltaY)
+    override bool onMouseWheel(int x, int y, int wheelDeltaX, int wheelDeltaY)
     {
-        _mainPanel.mouseWheel(x, y, wheelDeltaX, wheelDeltaY);
+        return _mainElement.mouseWheel(x, y, wheelDeltaX, wheelDeltaY);
     }
 
     override void onMouseMove(int x, int y, int dx, int dy)
     {
-        _mainPanel.mouseMove(x, y, dx, dy);
+        _mainElement.mouseMove(x, y, dx, dy);
     }
 
-    override void onKeyDown(Key key)
+    override bool onKeyDown(Key key)
     {
         // Sends the event to the last clicked element first
         if (_uiContext.focused !is null)
             if (_uiContext.focused.onKeyDown(key))
-                return;
+                return true;
 
         // else to all Elements
-        _mainPanel.keyDown(key);
+        return _mainElement.keyDown(key);
     }
 
-    override void onKeyUp(Key key)
+    override bool onKeyUp(Key key)
     {
         // Sends the event to the last clicked element first
         if (_uiContext.focused !is null)
             if (_uiContext.focused.onKeyUp(key))
-                return;
+                return true;
         // else to all Elements
-        _mainPanel.keyUp(key);
+        return _mainElement.keyUp(key);
     }
 
     // an image you have to draw to, or return that nothing has changed
     void onDraw(ImageRef!RGBA wfb, out bool needRedraw)
     {
         _uiContext.renderer.setFrameBuffer(wfb);
-        _mainPanel.render();
+        _mainElement.render();
         needRedraw = true;
     }
 
@@ -103,8 +104,14 @@ class GUIGraphics : Graphics, IWindowListener
 protected:
     Client _client;
     UIContext _uiContext;
-    UIElement _mainPanel;
+
+    // The main element is the root element of the UIElement 
+    // hierarchy and spans the whole window
+    UIElement _mainElement;
+
+    // An interface to the underlying window
     IWindow _window;
+
     int _askedWidth = 0;
     int _askedHeight = 0;
 }

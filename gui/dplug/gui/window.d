@@ -20,23 +20,28 @@ interface IWindow
 // Receiving commands from a window
 interface IWindowListener
 {
-    // Called on mouse click
-    void onMouseClick(int x, int y, MouseButton mb, bool isDoubleClick);
+    // Called on mouse click.
+    // Returns: true if the event was handled.
+    bool onMouseClick(int x, int y, MouseButton mb, bool isDoubleClick);
 
     // Called on mouse button release
-    void onMouseRelease(int x, int y, MouseButton mb);
+    // Returns: true if the event was handled.
+    bool onMouseRelease(int x, int y, MouseButton mb);
 
     // Called on mouse wheel movement
-    void onMouseWheel(int x, int y, int wheelDeltaX, int wheelDeltaY);
+    // Returns: true if the event was handled.
+    bool onMouseWheel(int x, int y, int wheelDeltaX, int wheelDeltaY);
 
     // Called on mouse movement (might not be within the window)
     void onMouseMove(int x, int y, int dx, int dy);
 
-    // Called on keyboard press
-    void onKeyDown(Key key);
+    // Called on keyboard press.
+    // Returns: true if the event was handled.
+    bool onKeyDown(Key key);
 
-    // Called on keyboard release
-    void onKeyUp(Key up);
+    // Called on keyboard release.
+    // Returns: true if the event was handled.
+    bool onKeyUp(Key up);
 
     // An image you have to draw to, or return that nothing has changed
     void onDraw(ImageRef!RGBA wfb, out bool needRedraw); // TODO: return just a region to save uploading bits

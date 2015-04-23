@@ -38,8 +38,6 @@ struct Spinlock
 
         void unlock() nothrow @nogc
         {
-            // TODO: on x86, we don't necessarily need an atomic op if
-            // _state is on a DWORD address
             atomicStore(_state, UNLOCKED);
         }
     }
@@ -196,7 +194,6 @@ final class SpinlockedQueue(T)
 
 private
 {
-    // TODO: Check with LDC/GDC.
     void cpuRelax() nothrow @nogc
     {
         // PAUSE instruction, recommended by Intel in busy spin loops

@@ -47,11 +47,7 @@ template VSTEntryPoint(alias ClientClass)
 }
 
 
-///
-///
-///                 VST client wrapper
-///
-///
+/// VST client wrapper
 class VSTClient
 {
 public:
@@ -137,6 +133,8 @@ private:
     int _maxParams;
     int _usedInputs;  // used inputs from opcode thread POV
     int _usedOutputs; // used outputs from opcode thread POV
+
+    ERect _editRect;  // structure holding the UI size
 
     AlignedBuffer!double[] _inputScratchBuffer;  // input double buffer, one per possible input
     AlignedBuffer!double[] _outputScratchBuffer; // input double buffer, one per output
@@ -274,8 +272,19 @@ private:
                 }
 
             case effEditGetRect: // opcode 13
-                // TODO
-                return 0;
+                {
+                    if ( _client.hasGUI() )
+                    {
+                        _editRect.top = 0;
+                        _editRect.left = 0;
+                        _editRect.right = _client.getGUIWidth();
+                        _editRect.bottom = _client.getGUIHeight();
+                        *cast(ERect**)(ptr) = &_editRect;
+                        return cast(VstIntPtr)(&_editRect);
+                    }
+                    ptr = 0; // from IPlug, not sure why it's there
+                    return 0;
+                }
 
             case effEditOpen: // opcode 14
                 {

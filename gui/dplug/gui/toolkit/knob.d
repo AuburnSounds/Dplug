@@ -6,7 +6,7 @@ class UIKnob : UIElement
 {
 public:    
 
-    this(UIContext context, dstring label)
+    this(UIContext context, string label)
     {
         super(context);
         _label = label;
@@ -27,5 +27,5 @@ public:
     }
 
 private:
-    dstring _label;
+    string _label;
 }
