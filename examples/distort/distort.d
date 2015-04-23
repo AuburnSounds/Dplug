@@ -87,19 +87,19 @@ class DistortGUI : GUIGraphics
         _client = client;
         super(800, 600); // initial size
         
-        inputKnob = new UIKnob(context());
-        driveKnob = new UIKnob(context());
-        outputKnob = new UIKnob(context());
-        addChild(inputKnob);
-        addChild(driveKnob);
-        addChild(outputKnob);
+        addChild(inputKnob = new UIKnob(context()));
+        addChild(driveKnob = new UIKnob(context()));
+        addChild(outputKnob = new UIKnob(context()));
     }
 
     override void reflow(box2i availableSpace)
     {
         _position = availableSpace;
 
-        // force position of knobs
+        // For complex UI hierarchy or a variable dimension UI, you would be supposed to 
+        // put a layout algorithm here and implement reflow (ie. pass the right availableSpace
+        // to children). But for simplicity purpose and for the sake of fixed size UI, forcing 
+        // positions is completely acceptable.
         inputKnob.position = box2i(0, 0, 50, 50);
         driveKnob.position = box2i(100, 100, 150, 150);
         outputKnob.position = box2i(0, 100, 50, 150);
