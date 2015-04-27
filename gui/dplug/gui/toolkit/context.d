@@ -10,7 +10,6 @@ import gfm.image.stb_image;
 
 import dplug.gui.toolkit.font;
 import dplug.gui.toolkit.element;
-import dplug.gui.toolkit.renderer;
 
 
 /// UIContext contains the "globals" of the UI
@@ -20,9 +19,8 @@ import dplug.gui.toolkit.renderer;
 class UIContext
 {
 public:
-    this(UIRenderer renderer_, Font font_)
+    this(Font font_)
     {
-        renderer = renderer_;
         font = font_;
     }
 
@@ -35,7 +33,6 @@ public:
         _images[name] = loadImage(data);
     }
 
-    UIRenderer renderer;
     Font font;
     UIElement focused = null; // last clicked element
     UIElement dragged = null; // current dragged element

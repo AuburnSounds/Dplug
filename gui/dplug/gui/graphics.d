@@ -6,7 +6,6 @@ import dplug.plugin.graphics;
 
 import dplug.gui.window;
 import dplug.gui.toolkit.context;
-import dplug.gui.toolkit.renderer;
 import dplug.gui.toolkit.element;
 
 // A GUIGraphics is the interface between a plugin client and a IWindow.
@@ -17,7 +16,7 @@ class GUIGraphics : UIElement, IGraphics
 {
     this(int initialWidth, int initialHeight)
     {
-        _uiContext = new UIContext(new UIRenderer, null);
+        _uiContext = new UIContext(null);
         super(_uiContext);
 
         _windowListener = new WindowListener();
@@ -102,8 +101,7 @@ class GUIGraphics : UIElement, IGraphics
         // an image you have to draw to, or return that nothing has changed
         void onDraw(ImageRef!RGBA wfb, out bool needRedraw)
         {
-            _uiContext.renderer.setFrameBuffer(wfb);
-            render();
+            render(wfb);
             needRedraw = true;
         }
 

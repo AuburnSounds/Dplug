@@ -1,30 +1,22 @@
-module dplug.gui.toolkit.knob;
+module dplug.gui.toolkit.slider;
 
 import dplug.gui.toolkit.element;
 
-class UIKnob : UIElement
+class UISlider : UIElement
 {
 public:
 
-    this(UIContext context)
+    this(UIContext context, bool snapOnIntegerPosition)
     {
         super(context);
+
+        _snapOnIntegerPosition = snapOnIntegerPosition;
+
+        backgroundColor = RGBA(28, 32, 38, 255);
     }
 
     override void preRender(ImageRef!RGBA surface)
     {
-        auto c = RGBA(x++ & 255, 80, 80, 255);
-
-        if (isMouseOver())
-            c = RGBA(100, 100, 120, 255);
-
-        /*if (isFocused())
-            c = RGBA(150, 80, 80, 255);
-        if (isDragged())
-            c = RGBA(150, 150, 80, 255);
-*/
-
-        surface.fillRect(_position.min.x, _position.max.x, _position.width, _position.height, c);
     }
 
     // Called when mouse drag this Element.
@@ -40,6 +32,7 @@ public:
     }
 
 private:
-    string _label;
-    int x = 0;
+    
+
+    bool _snapOnIntegerPosition;
 }

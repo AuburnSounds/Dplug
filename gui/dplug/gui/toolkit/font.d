@@ -4,18 +4,15 @@ import std.conv;
 
 import ae.utils.graphics;
 
-import dplug.gui.toolkit.stb_truetype;
-import dplug.gui.toolkit.renderer;
+import gfm.image.stb_truetype;
 
 // TODO: use color
 // TODO: support variable width instead of the 'A' hack
 final class Font
 {
 public:
-    this(UIRenderer renderer, string fontface, int ptSize)
+    this(string fontface, int ptSize)
     {
-        _renderer = renderer;  
-
         _fontData = cast(ubyte[])(std.file.read(fontface));
         if (0 == stbtt_InitFont(&_font, _fontData.ptr, stbtt_GetFontOffsetForIndex(_fontData.ptr, 0)))
             throw new Exception("Coudln't load font " ~ fontface);
@@ -130,7 +127,7 @@ public:
         foreach(dchar ch; s)
         {
             Image!RGBA tex = getCharTexture(ch);
-            _renderer.copy(tex, x, y);
+            //_renderer.copy(tex, x, y);
             x += tex.w;
         }
     }
@@ -138,7 +135,7 @@ public:
     void renderChar(dchar ch, int x, int y)
     {
         Image!RGBA tex = getCharTexture(ch);
-        _renderer.copy(tex, x, y);
+        //_renderer.copy(tex, x, y);
     }
 
 
@@ -146,7 +143,6 @@ private:
 
     int _r, _g, _b, _a;
 
-    UIRenderer _renderer;
     stbtt_fontinfo _font;    
     ubyte[] _fontData;
     int _fontAscent, _fontDescent, _fontLineGap;

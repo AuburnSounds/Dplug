@@ -4,7 +4,6 @@ public import gfm.math;
 public import ae.utils.graphics;
 public import dplug.gui.types;
 public import dplug.gui.toolkit.context;
-public import dplug.gui.toolkit.renderer;
 public import dplug.gui.toolkit.font;
 
 class UIElement
@@ -21,19 +20,19 @@ public:
             child.close();
     }
 
-    final void render()
+    final void render(ImageRef!RGBA surface)
     {
         if (!_visible)
             return;
 
-        setViewportToElement();
+        auto viewport =  surface.crop(_position.min.x, _position.min.y, _position.max.x, _position.max.y);
+
         if (_backgroundColor.a != 0)
-            _context.renderer.viewport.fill(_backgroundColor);
-        preRender(_context.renderer);
+            viewport.fill(_backgroundColor);
+        preRender(surface);
         foreach(ref child; children)
-            child.render();
-        setViewportToElement();
-        postRender(_context.renderer);
+            child.render(surface);
+        postRender(surface);
     }
 
     /// Meant to be overriden almost everytime for custom behaviour.
@@ -299,14 +298,14 @@ protected:
 
     /// Render this element before children.
     /// Meant to be overriden.
-    void preRender(UIRenderer renderer)
+    void preRender(ImageRef!RGBA surface)
     {
        // defaults to nothing        
     }
 
     /// Render this element after children elements.
     /// Meant to be overriden.
-    void postRender(UIRenderer renderer)
+    void postRender(ImageRef!RGBA surface)
     {
         // defaults to nothing
     }
@@ -337,19 +336,8 @@ protected:
         return _context.focused is this;
     }
 
-    final UIRenderer renderer()
-    {
-        return _context.renderer;
-    }
-
-
 private:
     UIContext _context;
 
-    bool _mouseOver = false;
-
-    final void setViewportToElement()
-    {
-        _context.renderer.setViewport(_position.min.x, _position.min.y, _position.width, _position.height);
-    }    
+    bool _mouseOver = false;    
 }

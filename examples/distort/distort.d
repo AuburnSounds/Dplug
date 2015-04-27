@@ -105,10 +105,10 @@ class DistortGUI : GUIGraphics
         outputKnob.position = box2i(0, 100, 50, 150);
     }
     
-    override void preRender(UIRenderer renderer)
+    override void preRender(ImageRef!RGBA surface)
     {
         auto c = RGBA(80, 80, 80, 255);
-        renderer.pixels.fill(c);
+        surface.fill(c);
     }
 }
 
