@@ -86,6 +86,10 @@ class DistortGUI : GUIGraphics
     {
         _client = client;
         super(800, 600); // initial size
+
+        // Font data is bundled as a static array
+        auto fontData = import("VeraBd.ttf");
+        context.addFont("Vera Bold", cast(ubyte[])fontData);
         
         addChild(inputKnob = new UIKnob(context()));
         addChild(driveKnob = new UIKnob(context()));
@@ -107,8 +111,14 @@ class DistortGUI : GUIGraphics
     
     override void preRender(ImageRef!RGBA surface)
     {
-        auto c = RGBA(80, 80, 80, 255);
+        auto c = RGBA(80, 40, 20, 255);
         surface.fill(c);
+
+        auto font = context.font("Vera Bold");
+            
+        font.color = RGBA(128, 128, 255, 255);
+        font.size = 11;
+        font.fillText(surface, "Hello!", 400, 300);
     }
 }
 

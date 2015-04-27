@@ -16,7 +16,7 @@ class GUIGraphics : UIElement, IGraphics
 {
     this(int initialWidth, int initialHeight)
     {
-        _uiContext = new UIContext(null);
+        _uiContext = new UIContext();
         super(_uiContext);
 
         _windowListener = new WindowListener();

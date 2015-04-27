@@ -4,6 +4,7 @@
     "importPaths": [ "." ],
     "sourcePaths": [ "." ],
     "targetType": "dynamicLibrary",
+    "stringImportPaths": ["fonts"],
 
     "sourceFiles": [
         "./distort.d",
@@ -15,6 +16,6 @@
         "dplug:dsp": { "path": "../.." },
         "dplug:vst": { "path": "../.." },
         "dplug:plugin": { "path": "../.." },
-        "dplug:gui": { "path": "../.." }
+        "dplug:gui": { "path": "../.." },
     }
 }

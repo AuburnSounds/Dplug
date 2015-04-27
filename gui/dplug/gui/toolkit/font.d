@@ -11,14 +11,16 @@ import gfm.image.stb_truetype;
 final class Font
 {
 public:
-    this(string fontface, int pxSize)
+
+    /// Loads a TTF file.
+    /// fontData should be the content of that file.
+    this(ubyte[] fontData)
     {
-        _fontData = cast(ubyte[])(std.file.read(fontface));
+        _fontData = fontData;
         if (0 == stbtt_InitFont(&_font, _fontData.ptr, stbtt_GetFontOffsetForIndex(_fontData.ptr, 0)))
-            throw new Exception("Coudln't load font " ~ fontface);
+            throw new Exception("Coudln't load font");
 
         stbtt_GetFontVMetrics(&_font, &_fontAscent, &_fontDescent, &_fontLineGap);
-        _initialized = true;
 
         // defaults
         _currentColor = RGBA(255, 255, 255, 255);
@@ -27,17 +29,17 @@ public:
 
     ~this()
     {
-        close();
+        // nothing to be done
     }
 
-    /// Returns: Current font-size, in pixels.
-    float fontSize() pure const nothrow @nogc
+    /// Returns: Current font size, in pixels.
+    float size() pure const nothrow @nogc
     {
         return _currentFontSizePx;
     }
 
-    /// Sets current font-size, in pixels.
-    float fontSize(float fontSizePx) pure nothrow @nogc
+    /// Sets current font size, in pixels.
+    float size(float fontSizePx) pure nothrow @nogc
     {
         return _currentFontSizePx = fontSizePx;
     }
@@ -54,15 +56,7 @@ public:
         return _currentColor = c;
     }
 
-    void close()
-    {
-        if (_initialized)
-        {
-            _initialized = false;
-        }
-    }
-
-
+    
     /+
 
     Image!RGBA makeCharTexture(dchar ch)
@@ -118,16 +112,16 @@ public:
         void extendArea(int numCh, dchar ch, box2i position, float scale, float xShift, float yShift)
         {
             if (numCh == 0)
-                area = box2i(x0, y0, x1, y1);
+                area = position;
             else 
                 area = area.expand(position.min).expand(position.max);
         }
-        iterateCharacterPositions(s, _currentFontSizePx, &extendArea);
+        iterateCharacterPositions!StringType(s, _currentFontSizePx, &extendArea);
         return area;
     }
 
     /// Draw text centered on a point.
-    void fillText(StringType)(RefImage!RGBA surface, StringType s, int x, int y)
+    void fillText(StringType)(ImageRef!RGBA surface, StringType s, int x, int y) 
     {
         box2i area = measureText(s);
         vec2i offset = vec2i(x, y) - area.center; // TODO support other alignment modes
@@ -138,29 +132,29 @@ public:
 
             // make room in temp buffer
             int w = position.width;
-            int h = position.geight;
+            int h = position.height;
             int stride = w;
             _greyscaleBuffer.size(w, h);
 
-            ubyte* targetPixels = &surface.pixels[offsetPos.x, offsetPos.y];
-            stbtt_MakeCodepointBitmapSubpixel(_font, _greyscaleBuffer.pixels, w, h, stride, scale, scale, xShift, yShift, ch);
+            ubyte* greybuf = cast(ubyte*)(_greyscaleBuffer.pixels.ptr);
+            stbtt_MakeCodepointBitmapSubpixel(&_font, greybuf, w, h, stride, scale, scale, xShift, yShift, ch);
 
-            auto outsurf = surface.crop(offsetPos.x, offsetPos.y, w, h);
+            auto outsurf = surface.crop(offsetPos.x, offsetPos.y, offsetPos.x + w,  offsetPos.y + h);
             int croppedWidth = outsurf.w;
 
             for (int y = 0; y < outsurf.h; ++y)
             {
-                RGBA[] scanline = surface.scanline(y);
-                L8[] inscan = outsurf.scanline(y);
+                RGBA[] scanline = outsurf.scanline(y);
+                L8[] inscan = _greyscaleBuffer.scanline(y);
                 for (int x = 0; x < croppedWidth; ++x)
                 {
                     RGBA finalColor = _currentColor;
-                    finalColor.a = ( (_currentColor.a * inscan[x] + 128) / 255 );
+                    finalColor.a = ( (_currentColor.a * inscan[x].l + 128) / 255 );
                     scanline[x] = RGBA.blend(scanline[x], finalColor);
                 }
             }            
         }
-        iterateCharacterPositions(s, _currentFontSizePx, &drawCharacter);
+        iterateCharacterPositions!StringType(s, _currentFontSizePx, &drawCharacter);
     }
 
 private:
@@ -170,19 +164,17 @@ private:
     float _currentFontSizePx; /// Current selected font-size (expressed in pixels)
 
     stbtt_fontinfo _font;    
-    ubyte[] _fontData;
+    const(ubyte)[] _fontData;
     int _fontAscent, _fontDescent, _fontLineGap;
-
-    bool _initialized;
 
     /// Iterates on character and call the deledate with their subpixel position
     /// Only support one line of text.
     /// Use kerning.
     /// No hinting.
     void iterateCharacterPositions(StringType)(StringType text, float fontSizePx, 
-                                               scope void delegate(dchar ch, box2i position, float scale, float xShift, float yShift) doSomethingWithPosition)
+                                               scope void delegate(int numCh, dchar ch, box2i position, float scale, float xShift, float yShift) doSomethingWithPosition)
     {
-        float scale = stbtt_ScaleForPixelHeight(_font, fontSizePx);
+        float scale = stbtt_ScaleForPixelHeight(&_font, fontSizePx);
         float xpos = 0.0f;
 
         float lastxpos = 0;
@@ -192,17 +184,17 @@ private:
         foreach(int numCh, dchar ch; text)
         {
             if (numCh > 0)
-                xpos += scale * stbtt_GetCodepointKernAdvance(&font, lastCh, ch);
+                xpos += scale * stbtt_GetCodepointKernAdvance(&_font, lastCh, ch);
 
             int advance,lsb,x0,y0,x1,y1;
             int ixpos = cast(int) floor(xpos);
             float xShift = xpos - floor(xpos);
             float yShift = 0;
 
-            stbtt_GetCodepointHMetrics(_font, ch, &advance, &lsb);
-            stbtt_GetCodepointBitmapBoxSubpixel(&font, ch, scale, scale, xShift, yShift, &x0, &y0, &x1, &y1);
+            stbtt_GetCodepointHMetrics(&_font, ch, &advance, &lsb);
+            stbtt_GetCodepointBitmapBoxSubpixel(&_font, ch, scale, scale, xShift, yShift, &x0, &y0, &x1, &y1);
             box2i position = box2i(x0 + ixpos, y0, x1 + ixpos, y1);
-            doSomethingWithPosition(ch, position, scale, xShift, yShift); 
+            doSomethingWithPosition(numCh, ch, position, scale, xShift, yShift); 
             xpos += (advance * scale);
             lastCh = ch;
         }

@@ -19,18 +19,18 @@ import dplug.gui.toolkit.element;
 class UIContext
 {
 public:
-    this(Font font_)
-    {
-        font = font_;
-    }
-
-    void close()
+    this()
     {
     }
 
-    void addFont(string name, immutable(ubyte[]) data)
+    ~this()
     {
+        // neither images or fonts need clean-up, nothing to be done
+    }
 
+    void addFont(string name, ubyte[] data)
+    {
+        _fonts[name] = loadFont(data);
     }
 
     void addImage(string name, immutable(ubyte[]) data)
@@ -38,13 +38,19 @@ public:
         _images[name] = loadImage(data);
     }
 
-    Font font;
     UIElement focused = null; // last clicked element
     UIElement dragged = null; // current dragged element
 
+    /// Retrieves an image from its name
     Image!RGBA image(string name)
     {
         return _images[name];
+    }
+
+    /// Retrieves a font from its name
+    Font font(string name)
+    {
+        return _fonts[name];
     }
 
     void setFocused(UIElement focused)
@@ -74,8 +80,9 @@ public:
 
 private:
     Image!RGBA[string] _images;
+    Font[string] _fonts;
 
-    Image!RGBA loadImage(immutable(ubyte[]) imageData)
+    Image!RGBA loadImage(const(ubyte[]) imageData)
     {
         void[] data = cast(void[])imageData;
         int width, height, components;
@@ -83,6 +90,7 @@ private:
         scope(exit) stbi_image_free(decoded);
 
         // stb_image guarantees that ouput will always have 4 components when asked
+        // Fortunately they are already RGBA
 
         // allocates result
         Image!RGBA loaded = Image!RGBA(width, height);
@@ -90,6 +98,11 @@ private:
         // copy pixels (here they are contiguous in each case)
         memcpy(loaded.pixels.ptr, decoded, width * height * 4);
         return loaded; // this use GC to give up ownership...
+    }
+
+    Font loadFont(ubyte[] fontData)
+    {
+        return new Font(fontData);
     }
 }
 

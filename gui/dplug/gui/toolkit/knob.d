@@ -13,7 +13,7 @@ public:
 
     override void preRender(ImageRef!RGBA surface)
     {
-        auto c = RGBA(x++ & 255, 80, 80, 255);
+        auto c = RGBA(80, 80, 80, 255);
 
         if (isMouseOver())
             c = RGBA(100, 100, 120, 255);
