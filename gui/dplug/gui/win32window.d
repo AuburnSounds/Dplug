@@ -3,6 +3,8 @@ module dplug.gui.win32window;
 import std.process,
        std.string;
 
+import gfm.math;
+
 import ae.utils.graphics;
 
 import dplug.gui.types;
@@ -267,10 +269,8 @@ version(Windows)
                     wfb.pixels = cast(RGBA*)_buffer;
 
                     bool needRedraw;
-                    _listener.onDraw(wfb, needRedraw);
-
-                    if (needRedraw)
-                        swapBuffers();
+                    box2i areaToRedraw = _listener.onDraw(wfb);
+                    swapBuffers(wfb, areaToRedraw);
                     return 0;
                 }
 
@@ -306,14 +306,17 @@ version(Windows)
             }
         }
 
-        // Implements IWindow
-        void swapBuffers()
+        void swapBuffers(ImageRef!RGBA wfb, box2i areaToRedraw)
         {
+            if (areaToRedraw.width() <= 0 || areaToRedraw.height() <= 0)
+                return; // nothing to redraw
+
+            // Swap red and blue to have BGRA layout
+            swapRB(wfb, areaToRedraw);
+
             PAINTSTRUCT paintStruct;
             HDC hdc = BeginPaint(_hwnd, &paintStruct);
-            assert(hdc == _windowDC); // since we are CS_OWNDC
-
-            // TODO swap R & B
+            assert(hdc == _windowDC); // since we are CS_OWNDC            
 
             BITMAPINFOHEADER bmi = BITMAPINFOHEADER.init; // fill with zeroes
             with (bmi)
@@ -327,12 +330,17 @@ version(Windows)
                 biYPelsPerMeter = 72;
                 biBitCount      = 32;
                 biSizeImage     = byteStride(_width) * _height;
-                SetDIBitsToDevice(_windowDC, 0, 0, _width, _height, 0, 0, 0, _height, _buffer, cast(BITMAPINFO *)&bmi, DIB_RGB_COLORS);
+                SetDIBitsToDevice(_windowDC, areaToRedraw.min.x, areaToRedraw.min.y, areaToRedraw.width, areaToRedraw.height, 
+                                  areaToRedraw.min.x, areaToRedraw.min.y, 0, _height, _buffer, cast(BITMAPINFO *)&bmi, DIB_RGB_COLORS);
             }
 
             EndPaint(_hwnd, &paintStruct);
+
+            // Swap red and blue to have RGBA layout again
+            swapRB(wfb, areaToRedraw);
         }
 
+        // Implements IWindow
         override void waitEventAndDispatch()
         {
             MSG msg;
@@ -385,14 +393,27 @@ version(Windows)
             ReleaseCapture();
             _listener.onMouseRelease(mouseX, mouseY, mb);
             return true; // TODO: onMouseRelease should return true of false
-        }
+        }       
 
+        static void swapRB(ImageRef!RGBA surface, box2i areaToRedraw)
+        {
+            for (int y = areaToRedraw.min.y; y < areaToRedraw.max.y; ++y)
+            {
+                RGBA[] scan = surface.scanline(y);
+                for (int x = areaToRedraw.min.x; x < areaToRedraw.max.x; ++x)
+                {
+                    ubyte temp = scan[x].r;
+                     scan[x].r = scan[x].b;
+                     scan[x].b = temp;
+                }
+            }
+        }        
     }
 
     // given a width, how long in bytes should scanlines be
     int byteStride(int width)
     {
-        enum alignment = 32;
+        enum alignment = 4;
         int widthInBytes = width * 4;
         return (widthInBytes + (alignment - 1)) & ~(alignment-1);
     }

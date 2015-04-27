@@ -99,10 +99,12 @@ class GUIGraphics : UIElement, IGraphics
         }
 
         // an image you have to draw to, or return that nothing has changed
-        void onDraw(ImageRef!RGBA wfb, out bool needRedraw)
+        box2i onDraw(ImageRef!RGBA wfb)
         {
             render(wfb);
-            needRedraw = true;
+
+            // TODO: implement a mechanism for dirty areas
+            return box2i(0, 0, wfb.w, wfb.h);
         }
 
         void onMouseCaptureCancelled()

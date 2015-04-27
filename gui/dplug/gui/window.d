@@ -1,5 +1,7 @@
 module dplug.gui.window;
 
+import gfm.math;
+
 import ae.utils.graphics;
 
 import dplug.gui.types;
@@ -43,8 +45,9 @@ interface IWindowListener
     // Returns: true if the event was handled.
     bool onKeyUp(Key up);
 
-    // An image you have to draw to, or return that nothing has changed
-    void onDraw(ImageRef!RGBA wfb, out bool needRedraw); // TODO: return just a region to save uploading bits
+    /// An image you have to draw to, or return that nothing has changed
+    /// Returns: the area that should be updated
+    box2i onDraw(ImageRef!RGBA wfb);
 
     // Called whenever mouse capture was canceled (ALT + TAB, SetForegroundWindow...)
     void onMouseCaptureCancelled();
