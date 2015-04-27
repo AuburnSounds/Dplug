@@ -110,12 +110,77 @@ public:
     }
     +/
 
+
+    /// Returns: Where a line of text will be drawn if starting at position (0, 0).
+    box2i measureText(StringType)(StringType s)
+    {
+        box2i area;
+        void extendArea(int numCh, dchar ch, box2i position, float scale, float xShift, float yShift)
+        {
+            if (numCh == 0)
+                area = box2i(x0, y0, x1, y1);
+            else 
+                area = area.expand(position.min).expand(position.max);
+        }
+        iterateCharacterPositions(s, _currentFontSizePx, &extendArea);
+        return area;
+    }
+
+    /// Draw text centered on a point.
+    void fillText(StringType)(RefImage!RGBA surface, StringType s, int x, int y)
+    {
+        box2i area = measureText(s);
+        vec2i offset = vec2i(x, y) - area.center; // TODO support other alignment modes
+
+        void drawCharacter(int numCh, dchar ch, box2i position, float scale, float xShift, float yShift)
+        {
+            vec2i offsetPos = position.min + offset;
+
+            // make room in temp buffer
+            int w = position.width;
+            int h = position.geight;
+            int stride = w;
+            _greyscaleBuffer.size(w, h);
+
+            ubyte* targetPixels = &surface.pixels[offsetPos.x, offsetPos.y];
+            stbtt_MakeCodepointBitmapSubpixel(_font, _greyscaleBuffer.pixels, w, h, stride, scale, scale, xShift, yShift, ch);
+
+            auto outsurf = surface.crop(offsetPos.x, offsetPos.y, w, h);
+            int croppedWidth = outsurf.w;
+
+            for (int y = 0; y < outsurf.h; ++y)
+            {
+                RGBA[] scanline = surface.scanline(y);
+                L8[] inscan = outsurf.scanline(y);
+                for (int x = 0; x < croppedWidth; ++x)
+                {
+                    RGBA finalColor = _currentColor;
+                    finalColor.a = ( (_currentColor.a * inscan[x] + 128) / 255 );
+                    scanline[x] = RGBA.blend(scanline[x], finalColor);
+                }
+            }            
+        }
+        iterateCharacterPositions(s, _currentFontSizePx, &drawCharacter);
+    }
+
+private:
+
+    RGBA _currentColor; /// Current selected color for draw operations.
+
+    float _currentFontSizePx; /// Current selected font-size (expressed in pixels)
+
+    stbtt_fontinfo _font;    
+    ubyte[] _fontData;
+    int _fontAscent, _fontDescent, _fontLineGap;
+
+    bool _initialized;
+
     /// Iterates on character and call the deledate with their subpixel position
     /// Only support one line of text.
     /// Use kerning.
     /// No hinting.
     void iterateCharacterPositions(StringType)(StringType text, float fontSizePx, 
-        scope void delegate(dchar ch, box2i position, float scale, float xShift, float yShift) doSomethingWithPosition)
+                                               scope void delegate(dchar ch, box2i position, float scale, float xShift, float yShift) doSomethingWithPosition)
     {
         float scale = stbtt_ScaleForPixelHeight(_font, fontSizePx);
         float xpos = 0.0f;
@@ -143,49 +208,8 @@ public:
         }
     }
 
-    /// Returns: Where a line of text will be drawn if starting at position (0, 0).
-    box2i measureText(StringType)(StringType s)
-    {
-        box2i area;
-        void extendArea(int numCh, dchar ch, box2i position, float scale, float xShift, float yShift)
-        {
-            if (numCh == 0)
-                area = box2i(x0, y0, x1, y1);
-            else 
-                area = area.expand(position.min).expand(position.max);
-        }
-        iterateCharacterPositions(s, _currentFontSizePx, &extendArea);
-        return area;
-    }
-
-    /// Draw text centered on a point.
-    void fillText(StringType)(RefImage!RGBA surface, StringType s, int x, int y)
-    {
-        box2i area = measureText(s);
-        vec2i offset = vec2i(x, y) - area.center; // TODO support other alignment modes
-
-        void drawCharacter(int numCh, dchar ch, box2i position, float scale, float xShift, float yShift)
-        {
-            vec2i offsetPos = position.min + offset;
-
-            ubyte* targetPixels = &surface.pixels[offsetPos.x, offsetPos.y];
-            stbtt_MakeCodepointBitmapSubpixel(_font, targetPixels, position.width.w, position.width.h, surface.stride, 
-                                              scale, scale, xShift, yShift, ch);
-            
-        }
-        iterateCharacterPositions(s, _currentFontSizePx, &drawCharacter);
-    }
-
-private:
-
-    RGBA _currentColor; /// Current selected color for draw operations.
-
-    float _currentFontSizePx; /// Current selected font-size (expressed in pixels)
-
-    stbtt_fontinfo _font;    
-    ubyte[] _fontData;
-    int _fontAscent, _fontDescent, _fontLineGap;
-
-    bool _initialized;
+    // temp-buffer before blending somewhere else
+    // TODO: make it a cache instead
+    Image!L8 _greyscaleBuffer;
 }
 
