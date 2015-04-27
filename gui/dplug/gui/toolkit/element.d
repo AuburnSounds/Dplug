@@ -67,16 +67,6 @@ public:
         return _children;
     }
 
-    final int charWidth() pure const nothrow
-    {
-        return _context.font.charWidth();
-    }
-
-    final int charHeight() pure const nothrow
-    {
-        return _context.font.charHeight();
-    }
-
     final UIElement child(int n)
     {
         return _children[n];

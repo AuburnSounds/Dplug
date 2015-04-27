@@ -4,39 +4,54 @@ import std.conv;
 
 import ae.utils.graphics;
 
+import gfm.math;
 import gfm.image.stb_truetype;
 
-// TODO: use color
-// TODO: support variable width instead of the 'A' hack
+
 final class Font
 {
 public:
-    this(string fontface, int ptSize)
+    this(string fontface, int pxSize)
     {
         _fontData = cast(ubyte[])(std.file.read(fontface));
         if (0 == stbtt_InitFont(&_font, _fontData.ptr, stbtt_GetFontOffsetForIndex(_fontData.ptr, 0)))
             throw new Exception("Coudln't load font " ~ fontface);
 
-        _scaleFactor = stbtt_ScaleForPixelHeight(&_font, ptSize);
-
         stbtt_GetFontVMetrics(&_font, &_fontAscent, &_fontDescent, &_fontLineGap);
-
-        int ax;
-        stbtt_GetCodepointHMetrics(&_font, 'A', &ax, null);
-        _charWidth = cast(int)(0.5 + (ax * _scaleFactor));        
-        _charHeight = cast(int)(0.5 + (_fontAscent - _fontDescent + _fontLineGap) * _scaleFactor);
-
         _initialized = true;
 
-        _r = 255;
-        _g = 255;
-        _b = 255;
-        _a = 255;
+        // defaults
+        _currentColor = RGBA(255, 255, 255, 255);
+        _currentFontSizePx = 16;
     }
 
     ~this()
     {
         close();
+    }
+
+    /// Returns: Current font-size, in pixels.
+    float fontSize() pure const nothrow @nogc
+    {
+        return _currentFontSizePx;
+    }
+
+    /// Sets current font-size, in pixels.
+    float fontSize(float fontSizePx) pure nothrow @nogc
+    {
+        return _currentFontSizePx = fontSizePx;
+    }
+
+    /// Returns: current color.
+    RGBA color() pure const nothrow @nogc
+    {
+        return _currentColor;
+    }
+
+    /// Sets the font-size. Fast and constant-time.
+    RGBA color(RGBA c) pure nothrow @nogc
+    {
+        return _currentColor = c;
     }
 
     void close()
@@ -47,18 +62,8 @@ public:
         }
     }
 
-    Image!RGBA getCharTexture(dchar ch)
-    {
-        if (ch == 0)
-            ch = 0xFFFD;
-        
-        if (! (ch in _glyphCache))
-        {
-            _glyphCache[ch] = makeCharTexture(ch);
-        }
 
-        return _glyphCache[ch];
-    }
+    /+
 
     Image!RGBA makeCharTexture(dchar ch)
     {
@@ -103,53 +108,84 @@ public:
         stbtt_FreeBitmap(glyphBitmap);
         return surface;
     }
+    +/
 
-    int charWidth() pure const nothrow
+    /// Iterates on character and call the deledate with their subpixel position
+    /// Only support one line of text.
+    /// Use kerning.
+    /// No hinting.
+    void iterateCharacterPositions(StringType)(StringType text, float fontSizePx, 
+        scope void delegate(dchar ch, box2i position, float scale, float xShift, float yShift) doSomethingWithPosition)
     {
-        return _charWidth;
-    }
+        float scale = stbtt_ScaleForPixelHeight(_font, fontSizePx);
+        float xpos = 0.0f;
 
-    int charHeight() pure const nothrow
-    {
-        return _charHeight;
-    }
-
-    void setColor(int r, int g, int b, int a = 255)
-    {
-        _r = r;
-        _g = g;
-        _b = b;
-        _a = a;
-    }
-
-    void renderString(StringType)(StringType s, int x, int y)
-    {
-        foreach(dchar ch; s)
+        float lastxpos = 0;
+        dchar lastCh;
+        int maxHeight = 0;
+        box2i area;
+        foreach(int numCh, dchar ch; text)
         {
-            Image!RGBA tex = getCharTexture(ch);
-            //_renderer.copy(tex, x, y);
-            x += tex.w;
+            if (numCh > 0)
+                xpos += scale * stbtt_GetCodepointKernAdvance(&font, lastCh, ch);
+
+            int advance,lsb,x0,y0,x1,y1;
+            int ixpos = cast(int) floor(xpos);
+            float xShift = xpos - floor(xpos);
+            float yShift = 0;
+
+            stbtt_GetCodepointHMetrics(_font, ch, &advance, &lsb);
+            stbtt_GetCodepointBitmapBoxSubpixel(&font, ch, scale, scale, xShift, yShift, &x0, &y0, &x1, &y1);
+            box2i position = box2i(x0 + ixpos, y0, x1 + ixpos, y1);
+            doSomethingWithPosition(ch, position, scale, xShift, yShift); 
+            xpos += (advance * scale);
+            lastCh = ch;
         }
     }
 
-    void renderChar(dchar ch, int x, int y)
+    /// Returns: Where a line of text will be drawn if starting at position (0, 0).
+    box2i measureText(StringType)(StringType s)
     {
-        Image!RGBA tex = getCharTexture(ch);
-        //_renderer.copy(tex, x, y);
+        box2i area;
+        void extendArea(int numCh, dchar ch, box2i position, float scale, float xShift, float yShift)
+        {
+            if (numCh == 0)
+                area = box2i(x0, y0, x1, y1);
+            else 
+                area = area.expand(position.min).expand(position.max);
+        }
+        iterateCharacterPositions(s, _currentFontSizePx, &extendArea);
+        return area;
     }
 
+    /// Draw text centered on a point.
+    void fillText(StringType)(RefImage!RGBA surface, StringType s, int x, int y)
+    {
+        box2i area = measureText(s);
+        vec2i offset = vec2i(x, y) - area.center; // TODO support other alignment modes
+
+        void drawCharacter(int numCh, dchar ch, box2i position, float scale, float xShift, float yShift)
+        {
+            vec2i offsetPos = position.min + offset;
+
+            ubyte* targetPixels = &surface.pixels[offsetPos.x, offsetPos.y];
+            stbtt_MakeCodepointBitmapSubpixel(_font, targetPixels, position.width.w, position.width.h, surface.stride, 
+                                              scale, scale, xShift, yShift, ch);
+            
+        }
+        iterateCharacterPositions(s, _currentFontSizePx, &drawCharacter);
+    }
 
 private:
 
-    int _r, _g, _b, _a;
+    RGBA _currentColor; /// Current selected color for draw operations.
+
+    float _currentFontSizePx; /// Current selected font-size (expressed in pixels)
 
     stbtt_fontinfo _font;    
     ubyte[] _fontData;
     int _fontAscent, _fontDescent, _fontLineGap;
 
-    Image!RGBA[dchar] _glyphCache;
-    int _charWidth;
-    int _charHeight;
-    float _scaleFactor;
     bool _initialized;
 }
+

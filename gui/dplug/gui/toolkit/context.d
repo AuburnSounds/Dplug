@@ -28,6 +28,11 @@ public:
     {
     }
 
+    void addFont(string name, immutable(ubyte[]) data)
+    {
+
+    }
+
     void addImage(string name, immutable(ubyte[]) data)
     {
         _images[name] = loadImage(data);
