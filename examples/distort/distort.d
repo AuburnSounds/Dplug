@@ -85,7 +85,7 @@ class DistortGUI : GUIGraphics
     this(Distort client)
     {
         _client = client;
-        super(800, 600); // initial size
+        super(801, 601); // initial size
 
         // Font data is bundled as a static array
         auto fontData = import("VeraBd.ttf");

@@ -276,7 +276,7 @@ version(Windows)
 
                 case WM_CLOSE:
                 {
-					DestroyWindow(hwnd);
+                    DestroyWindow(hwnd);
                     return 0;
                 }
 
@@ -316,7 +316,7 @@ version(Windows)
 
             PAINTSTRUCT paintStruct;
             HDC hdc = BeginPaint(_hwnd, &paintStruct);
-            assert(hdc == _windowDC); // since we are CS_OWNDC            
+            assert(hdc == _windowDC); // since we are CS_OWNDC
 
             BITMAPINFOHEADER bmi = BITMAPINFOHEADER.init; // fill with zeroes
             with (bmi)
@@ -331,7 +331,7 @@ version(Windows)
                 biBitCount      = 32;
                 biSizeImage     = byteStride(_width) * _height;
                 SetDIBitsToDevice(_windowDC, areaToRedraw.min.x, areaToRedraw.min.y, areaToRedraw.width, areaToRedraw.height, 
-                                  areaToRedraw.min.x, areaToRedraw.min.y, 0, _height, _buffer, cast(BITMAPINFO *)&bmi, DIB_RGB_COLORS);
+                                  areaToRedraw.min.x, -areaToRedraw.min.y - areaToRedraw.height + _height, 0, _height, _buffer, cast(BITMAPINFO *)&bmi, DIB_RGB_COLORS);
             }
 
             EndPaint(_hwnd, &paintStruct);
@@ -393,7 +393,7 @@ version(Windows)
             ReleaseCapture();
             _listener.onMouseRelease(mouseX, mouseY, mb);
             return true; // TODO: onMouseRelease should return true of false
-        }       
+        }
 
         static void swapRB(ImageRef!RGBA surface, box2i areaToRedraw)
         {
@@ -407,7 +407,7 @@ version(Windows)
                      scan[x].b = temp;
                 }
             }
-        }        
+        }
     }
 
     // given a width, how long in bytes should scanlines be
