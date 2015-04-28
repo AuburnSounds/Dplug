@@ -1,6 +1,7 @@
 module dplug.gui.toolkit.font;
 
 import std.conv;
+import std.math;
 
 import ae.utils.graphics;
 
@@ -133,11 +134,8 @@ public:
             // make room in temp buffer
             int w = position.width;
             int h = position.height;
-            int stride = w;
-            _greyscaleBuffer.size(w, h);
 
-            ubyte* greybuf = cast(ubyte*)(_greyscaleBuffer.pixels.ptr);
-            stbtt_MakeCodepointBitmapSubpixel(&_font, greybuf, w, h, stride, scale, scale, xShift, yShift, ch);
+            Image!L8 coverageBuffer = getGlyphCoverage(ch, scale, w, h, xShift, yShift);
 
             auto outsurf = surface.crop(offsetPos.x, offsetPos.y, offsetPos.x + w,  offsetPos.y + h);
             int croppedWidth = outsurf.w;
@@ -145,7 +143,7 @@ public:
             for (int y = 0; y < outsurf.h; ++y)
             {
                 RGBA[] scanline = outsurf.scanline(y);
-                L8[] inscan = _greyscaleBuffer.scanline(y);
+                L8[] inscan = coverageBuffer.scanline(y);
                 for (int x = 0; x < croppedWidth; ++x)
                 {
                     RGBA finalColor = _currentColor;
@@ -191,6 +189,12 @@ private:
             float xShift = xpos - floor(xpos);
             float yShift = 0;
 
+            // Rround position sub-pixel to 1/4th of pixels, to make more use of the glyph cache.
+            // That means for a codepoint at a particular size, up to 16 different glyph can potentially
+            // exist in the cache.
+            xShift = cast(int)(round(4 * xShift)) / 4.0f;
+            yShift = cast(int)(round(4 * yShift)) / 4.0f;
+
             stbtt_GetCodepointHMetrics(&_font, ch, &advance, &lsb);
             stbtt_GetCodepointBitmapBoxSubpixel(&_font, ch, scale, scale, xShift, yShift, &x0, &y0, &x1, &y1);
             box2i position = box2i(x0 + ixpos, y0, x1 + ixpos, y1);
@@ -200,8 +204,33 @@ private:
         }
     }
 
-    // temp-buffer before blending somewhere else
-    // TODO: make it a cache instead
-    Image!L8 _greyscaleBuffer;
+    // Glyph cache
+    Image!L8[GlyphKey] _glyphCache;
+
+    Image!L8 getGlyphCoverage(dchar codepoint, float scale, int w, int h, float xShift, float yShift)
+    {
+        GlyphKey key = GlyphKey(codepoint, scale, xShift, yShift);
+
+        Image!L8* found = key in _glyphCache;
+
+        if (found)
+            return *found;
+        else
+        {
+            int stride = w;
+            _glyphCache[key] = Image!L8(w, h);
+            ubyte* buf = cast(ubyte*)(_glyphCache[key].pixels.ptr);
+            stbtt_MakeCodepointBitmapSubpixel(&_font, buf, w, h, stride, scale, scale, xShift, yShift, codepoint);
+            return _glyphCache[key];
+        }
+    }
+}
+
+struct GlyphKey
+{
+    dchar codepoint;
+    float scale;
+    float xShift;
+    float yShift;
 }
 
