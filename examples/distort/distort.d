@@ -1,5 +1,7 @@
 import std.math;
 
+import std.math;
+
 import dplug.plugin,
        dplug.vst,
        dplug.gui;
@@ -108,17 +110,34 @@ class DistortGUI : GUIGraphics
         driveKnob.position = box2i(100, 100, 150, 150);
         outputKnob.position = box2i(0, 100, 50, 150);
     }
-    
+
+    float time = 0;
+  
     override void preRender(ImageRef!RGBA surface)
-    {
+    { 
         auto c = RGBA(80, 40, 20, 255);
         surface.fill(c);
 
         auto font = context.font("Vera Bold");
+
+        time += 0.001;
             
         font.color = RGBA(128, 128, 255, 255);
         font.size = 11;
-        font.fillText(surface, "Hello!", 400, 300);
+        int x = 1;
+        for (int i = 0; i < 100; ++i)
+        {
+            x = x * 69069;
+
+            float angle = (x & 511) / 512.0f + time;
+            float radius = ((x>>9) & 511) / 2;
+            float xp = cos(angle) * radius;
+            float yp = sin(angle) * radius;
+
+            font.fillText(surface, "Hello!", 400+xp, 300+yp);
+        }
+
+
     }
 }
 

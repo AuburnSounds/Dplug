@@ -57,57 +57,8 @@ public:
         return _currentColor = c;
     }
 
-    
-    /+
-
-    Image!RGBA makeCharTexture(dchar ch)
-    {
-        // Generate glyph coverage
-        int width, height;
-        int xoff, yoff;
-        ubyte* glyphBitmap = stbtt_GetCodepointBitmap(&_font, _scaleFactor, _scaleFactor, ch , &width, &height, &xoff, &yoff);
-
-        // Copy to a SDL surface
-        uint Rmask = 0x00ff0000;
-        uint Gmask = 0x0000ff00;
-        uint Bmask = 0x000000ff;
-        uint Amask = 0xff000000;
-
-        auto surface = Image!RGBA(_charWidth, _charHeight); // allocates
-        
-        {
-            // fill with transparent white
-            surface.fill(RGBA(255, 255, 255, 0));
-
-            for (int i = 0; i < height; ++i)
-            {
-                RGBA[] scanline = surface.scanline(i);
-                for (int j = 0; j < width; ++j)
-                {
-                    ubyte source = glyphBitmap[j + i * width];
-                    int destX = j + xoff;
-                    int destY = i + yoff + cast(int)(0.5 + _fontAscent * _scaleFactor);
-
-                    if (destX >= 0 && destX < _charWidth)
-                    {
-                        if (destY >= 0 && destY < _charHeight)
-                        {
-                            scanline[j].a = source; // fully white, but eventually transparent
-                        }
-                    }
-                }
-            }
-        }
-
-        // Free glyph coverage
-        stbtt_FreeBitmap(glyphBitmap);
-        return surface;
-    }
-    +/
-
-
     /// Returns: Where a line of text will be drawn if starting at position (fractionalPosX, fractionalPosY).
-    box2i measureText(StringType)(StringType s, float fractionalPosX, float fractionalPosY)
+    box2i measureText(StringType)(StringType s)
     {
         box2i area;
         void extendArea(int numCh, dchar ch, box2i position, float scale, float xShift, float yShift)
@@ -117,7 +68,11 @@ public:
             else 
                 area = area.expand(position.min).expand(position.max);
         }
-        iterateCharacterPositions!StringType(s, _currentFontSizePx, fractionalPosX, fractionalPosY, &extendArea);
+
+        // Note: when measuring the size of the text, we do not account for sub-pixel shifts
+        // this is because it would make the size of the text vary which does movement jitter
+        // for moving text
+        iterateCharacterPositions!StringType(s, _currentFontSizePx, 0, 0, &extendArea);
         return area;
     }
 
@@ -130,9 +85,8 @@ public:
         float fractionalPosX = positionx - ipositionx;
         float fractionalPosY = positiony - ipositiony;
 
-
-        box2i area = measureText(s, fractionalPosX, fractionalPosY);
-        vec2i offset = vec2i(ipositionx, ipositiony);// - area.center; // TODO support other alignment modes
+        box2i area = measureText(s);
+        vec2i offset = vec2i(ipositionx, ipositiony) - area.center; // TODO: support other alignment modes
 
         void drawCharacter(int numCh, dchar ch, box2i position, float scale, float xShift, float yShift)
         {
