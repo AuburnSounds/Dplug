@@ -106,8 +106,8 @@ public:
     +/
 
 
-    /// Returns: Where a line of text will be drawn if starting at position (0, 0).
-    box2i measureText(StringType)(StringType s)
+    /// Returns: Where a line of text will be drawn if starting at position (fractionalPosX, fractionalPosY).
+    box2i measureText(StringType)(StringType s, float fractionalPosX, float fractionalPosY)
     {
         box2i area;
         void extendArea(int numCh, dchar ch, box2i position, float scale, float xShift, float yShift)
@@ -117,15 +117,22 @@ public:
             else 
                 area = area.expand(position.min).expand(position.max);
         }
-        iterateCharacterPositions!StringType(s, _currentFontSizePx, &extendArea);
+        iterateCharacterPositions!StringType(s, _currentFontSizePx, fractionalPosX, fractionalPosY, &extendArea);
         return area;
     }
 
     /// Draw text centered on a point.
-    void fillText(StringType)(ImageRef!RGBA surface, StringType s, int x, int y) 
+    void fillText(StringType)(ImageRef!RGBA surface, StringType s, float positionx, float positiony) 
     {
-        box2i area = measureText(s);
-        vec2i offset = vec2i(x, y) - area.center; // TODO support other alignment modes
+        // Decompose in fractional and integer position
+        int ipositionx = cast(int)floor(positionx);
+        int ipositiony = cast(int)floor(positiony);
+        float fractionalPosX = positionx - ipositionx;
+        float fractionalPosY = positiony - ipositiony;
+
+
+        box2i area = measureText(s, fractionalPosX, fractionalPosY);
+        vec2i offset = vec2i(ipositionx, ipositiony);// - area.center; // TODO support other alignment modes
 
         void drawCharacter(int numCh, dchar ch, box2i position, float scale, float xShift, float yShift)
         {
@@ -152,7 +159,7 @@ public:
                 }
             }            
         }
-        iterateCharacterPositions!StringType(s, _currentFontSizePx, &drawCharacter);
+        iterateCharacterPositions!StringType(s, _currentFontSizePx, fractionalPosX, fractionalPosY, &drawCharacter);
     }
 
 private:
@@ -169,11 +176,14 @@ private:
     /// Only support one line of text.
     /// Use kerning.
     /// No hinting.
-    void iterateCharacterPositions(StringType)(StringType text, float fontSizePx, 
+    void iterateCharacterPositions(StringType)(StringType text, float fontSizePx, float fractionalPosX, float fractionalPosY,
                                                scope void delegate(int numCh, dchar ch, box2i position, float scale, float xShift, float yShift) doSomethingWithPosition)
     {
+        assert(0 <= fractionalPosX && fractionalPosX <= 1.0f);
+        assert(0 <= fractionalPosY && fractionalPosY <= 1.0f);
         float scale = stbtt_ScaleForPixelHeight(&_font, fontSizePx);
-        float xpos = 0.0f;
+        float xpos = fractionalPosX;
+        float ypos = fractionalPosY;
 
         float lastxpos = 0;
         dchar lastCh;
@@ -185,19 +195,24 @@ private:
                 xpos += scale * stbtt_GetCodepointKernAdvance(&_font, lastCh, ch);
 
             int advance,lsb,x0,y0,x1,y1;
-            int ixpos = cast(int) floor(xpos);
-            float xShift = xpos - floor(xpos);
-            float yShift = 0;
 
-            // Rround position sub-pixel to 1/4th of pixels, to make more use of the glyph cache.
+            int ixpos = cast(int) floor(xpos);
+            int iypos = cast(int) floor(ypos);
+
+
+            float xShift = xpos - floor(xpos);
+            float yShift = ypos - floor(ypos);
+
+            // Round position sub-pixel to 1/4th of pixels, to make more use of the glyph cache.
             // That means for a codepoint at a particular size, up to 16 different glyph can potentially
             // exist in the cache.
-            xShift = cast(int)(round(4 * xShift)) / 4.0f;
-            yShift = cast(int)(round(4 * yShift)) / 4.0f;
+            float roundDivide = 8.0f;
+            xShift = cast(int)(round(roundDivide * xShift)) / roundDivide;
+            yShift = cast(int)(round(roundDivide * yShift)) / roundDivide;
 
             stbtt_GetCodepointHMetrics(&_font, ch, &advance, &lsb);
             stbtt_GetCodepointBitmapBoxSubpixel(&_font, ch, scale, scale, xShift, yShift, &x0, &y0, &x1, &y1);
-            box2i position = box2i(x0 + ixpos, y0, x1 + ixpos, y1);
+            box2i position = box2i(x0 + ixpos, y0 + iypos, x1 + ixpos, y1 + iypos);
             doSomethingWithPosition(numCh, ch, position, scale, xShift, yShift); 
             xpos += (advance * scale);
             lastCh = ch;
