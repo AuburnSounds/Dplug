@@ -144,7 +144,7 @@ struct Spinlocked(T)
 /// Should work way better with low contention.
 ///
 /// Important: Will crash if the queue is overloaded!
-///            ie. if the producer produced faster than the producer consumes.
+///            ie. if the producer produced faster than the consumer consumes.
 ///            In the lack of a lock-free allocator there is not much more we can do.
 final class SpinlockedQueue(T)
 {
