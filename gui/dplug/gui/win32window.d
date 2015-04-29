@@ -440,50 +440,6 @@ version(Windows)
         }
     }
 
-/+
-    unittest
-    {
-        DWORD initial = GetTickCount();
-
-        class MockListener : IWindowListener
-        {
-            override void onKeyDown(Key key)
-            {
-            }
-            override void onKeyUp(Key up)
-            {
-            }
-
-            override void onDraw(WindowFrameBuffer wfb, out bool needRedraw)
-            {
-                DWORD current = GetTickCount();
-                int disp = (current - initial) / 10;
-
-                for (int j = 0; j < wfb.height; ++j)
-                    for (int i = 0; i < wfb.width; ++i)
-                    {
-                        int offset = i * 4 + j * wfb.byteStride;
-                        wfb.pixels[offset] = (i+disp*2) & 255;
-                        wfb.pixels[offset+1] = (j+disp) & 255;
-                        wfb.pixels[offset+2] = 0;
-                        wfb.pixels[offset+ 3] = 255;
-                    }
-                needRedraw = true;
-            }
-        }
-
-
-        IWindow window = new Win32Window(null, new MockListener());
-
-        import core.thread;
-
-        while (!window.terminated())
-        {
-            window.waitEventAndDispatch();
-        }
-    }
-    +/
-
     private Key vkToKey(WPARAM vk) pure nothrow @nogc
     {
         switch (vk)
