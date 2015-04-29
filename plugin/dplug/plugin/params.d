@@ -48,6 +48,18 @@ protected:
     {
         _name = name;
         _label = label;
+
+        _valueSpinlock = Spinlock(false);
+    }
+
+    ~this()
+    {
+        close();
+    }
+
+    void close()
+    {
+        _valueSpinlock.close();
     }
 
     // From a normalized float, set the parameter value.
