@@ -26,8 +26,8 @@
             "sourcePaths": [ "dsp/dplug/dsp" ],
             "importPaths": [ "dsp" ],
             "dependencies": {
-                "gfm:core": "~>2.1",
-                "gfm:math": "~>2.1"
+                "gfm:core": "~>2.2",
+                "gfm:math": "~>2.2"
             }
         },
         {
@@ -35,7 +35,7 @@
             "sourcePaths": [ "plugin/dplug/plugin" ],
             "importPaths": [ "plugin" ],
             "dependencies": {
-                "gfm:core": "~>2.1",
+                "gfm:core": "~>2.2",
             }
         },
         {
@@ -57,8 +57,8 @@
             "dependencies": {
                 "dplug:plugin": "*",
 		        "ae-graphics": "~>0.0",
-                "gfm:math": "~>2.1",
-                "gfm:image": "~>2.1"
+                "gfm:math": "~>2.2",
+                "gfm:image": "~>2.2"
             }
         }
     ]

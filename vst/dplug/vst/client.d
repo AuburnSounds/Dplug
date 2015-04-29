@@ -6,12 +6,16 @@ import core.stdc.stdlib,
        core.thread,
        core.stdc.stdio;
 
+import gfm.core;
+
 import dplug.plugin.client,
        dplug.plugin.daw,
        dplug.plugin.alignedbuffer,
        dplug.plugin.spinlock;
 
 import dplug.vst.aeffectx;
+
+version = InterlockedMessageQueue;
 
 //T* emplace(T, Args...)(T* chunk, auto ref Args args)
 T mallocEmplace(T, Args...)(auto ref Args args)
@@ -56,7 +60,12 @@ public:
 
     this(Client client, HostCallbackFunction hostCallback)
     {
-        _messageQueue = new SpinlockedQueue!Message(256);
+        int queueSize = 256;
+        version(InterlockedMessageQueue)
+            _messageQueue = new LockedQueue!Message(queueSize);
+        else
+            _messageQueue = new SpinlockedQueue!Message(queueSize);
+
         _host.init(hostCallback, &_effect);
         _client = client;
 
@@ -141,8 +150,12 @@ private:
     double*[] _inputPointers;  // where processAudio will take its audio input, one per possible input
     double*[] _outputPointers; // where processAudio will output audio, one per possible output
 
-    // Lock-free message queue from opcode thread to audio thread.
-    SpinlockedQueue!Message _messageQueue;
+    version(InterlockedMessageQueue)
+        // Inter-locked message queue from opcode thread to audio thread
+        LockedQueue!Message _messageQueue;
+    else
+        // Lock-free message queue from opcode thread to audio thread.
+        SpinlockedQueue!Message _messageQueue;
 
     final bool isValidParamIndex(int i) pure const nothrow
     {
@@ -518,10 +531,20 @@ private:
             memset(_inputScratchBuffer[i].ptr, 0, nFrames * double.sizeof);
     }
 
-    void processMessages() nothrow @nogc
+
+
+    void processMessages() /* nothrow @nogc */
     {
+        bool popMessage(out Message msg)
+        {
+            version(InterlockedMessageQueue)
+                return _messageQueue.tryPopFront(msg);
+            else
+                return _messageQueue.popFront(msg);
+        }
+
         Message msg;
-        while(_messageQueue.popFront(msg))
+        while(popMessage(msg))
         {
             final switch(msg.type)
             {
@@ -546,7 +569,10 @@ private:
 
     void preprocess(int sampleFrames) nothrow @nogc
     {
-        processMessages();
+        // bypass @nogc because semaphore and mutexes functions are not @nogc
+        alias bypassNogc = void delegate() @nogc nothrow;        
+        bypassNogc proc = cast(bypassNogc)&processMessages;
+        proc();
 
         if (sampleFrames > _maxFrames)
             unrecoverableError(); // simply crash the audio thread if buffer is above the maximum size
@@ -640,18 +666,6 @@ private:
     {
         preprocess(sampleFrames);
         _client.processAudio(inputs, outputs, sampleFrames);
-    }
-}
-
-void debugBreak() nothrow @nogc
-{
-    static if( __VERSION__ >= 2067 )
-    {
-        mixin("asm nothrow @nogc { int 3; }");
-    }
-    else
-    {
-        mixin("asm { int 3; }");
     }
 }
 
