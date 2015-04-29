@@ -152,10 +152,10 @@ version(Windows)
             {
                DestroyWindow(_hwnd);
                 _hwnd = null;
-            }
 
-            // Unregister the window class, which was unique
-            UnregisterClassA("dplug_window", GetModuleHandle(null)); // TODO: here should be the HINSTANCE given by DLL main!
+                // Unregister the window class, which was unique
+                UnregisterClassW(_wndClass.lpszClassName, GetModuleHandle(null)); // TODO: here should be the HINSTANCE given by DLL main!
+            }
         }
 
         override void terminate()
@@ -279,16 +279,10 @@ version(Windows)
 
                 case WM_CLOSE:
                 {
-                    DestroyWindow(hwnd);
+                    close();
                     return 0;
                 }
 
-                case WM_DESTROY:
-                {
-                    //KillTimer(hwnd, TIMER_ID);
-                    PostQuitMessage(0);
-                    return 0;
-                }
 
                 case WM_TIMER:
                 {
