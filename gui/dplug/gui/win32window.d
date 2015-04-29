@@ -1,5 +1,7 @@
 module dplug.gui.win32window;
 
+import core.thread;
+
 import std.process,
        std.string;
 
@@ -9,8 +11,6 @@ import ae.utils.graphics;
 
 import dplug.gui.types;
 import dplug.gui.window;
-
-import std.stdio;
 
 version(Windows)
 {
@@ -165,6 +165,9 @@ version(Windows)
 
         LRESULT windowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         {
+            // because DispatchMesage is called by host
+            thread_attachThis();
+
             switch (uMsg)
             {
                 case WM_KEYDOWN:
