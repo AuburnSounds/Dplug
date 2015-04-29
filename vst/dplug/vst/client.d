@@ -43,6 +43,7 @@ template VSTEntryPoint(alias ClientClass)
         "   }"
         "   catch (Throwable e)"
         "   {"
+        "       moreInfoForDebug(e);"
         "       unrecoverableError();" // should not throw in a callback
         "       return null;"
         "   }"
@@ -669,6 +670,17 @@ private:
     }
 }
 
+void moreInfoForDebug(Throwable e) nothrow @nogc
+{
+    debug
+    {
+        string msg = e.msg;
+        string file = e.file;
+        int line = e.line;
+        debugBreak();
+    }
+}
+
 void unrecoverableError() nothrow @nogc
 {
     debug
@@ -702,6 +714,7 @@ extern(C) private nothrow
         }
         catch (Throwable e)
         {
+            moreInfoForDebug(e);
             unrecoverableError(); // should not throw in a callback
         }
         return 0;
@@ -716,6 +729,7 @@ extern(C) private nothrow
         }
         catch (Throwable e)
         {
+            moreInfoForDebug(e);
             unrecoverableError(); // should not throw in a callback
         }
     }
@@ -729,6 +743,7 @@ extern(C) private nothrow
         }
         catch (Throwable e)
         {
+            moreInfoForDebug(e);
             unrecoverableError(); // should not throw in a callback
         }
     }
@@ -742,6 +757,7 @@ extern(C) private nothrow
         }
         catch (Throwable e)
         {
+            moreInfoForDebug(e);
             unrecoverableError(); // should not throw in a callback
         }
     }
@@ -763,6 +779,7 @@ extern(C) private nothrow
         }
         catch (Throwable e)
         {
+            moreInfoForDebug(e);
             unrecoverableError(); // should not throw in a callback
         }
     }
@@ -771,6 +788,8 @@ extern(C) private nothrow
     {
         try
         {
+            thread_attachThis();
+
             auto plugin = cast(VSTClient)(effect.user);
             Client client = plugin._client;
 
@@ -783,6 +802,7 @@ extern(C) private nothrow
         }
         catch (Throwable e)
         {
+            moreInfoForDebug(e);
             unrecoverableError(); // should not throw in a callback
 
             // Still here? Return zero.
