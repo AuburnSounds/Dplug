@@ -1,6 +1,8 @@
 // See Steinberg VST license here: http://www.gersic.com/vstsdk/html/plug/intro.html#licence
 module dplug.vst.client;
 
+import core.memory;
+
 import core.stdc.stdlib,
        core.stdc.string,
        core.thread,
@@ -17,20 +19,9 @@ import dplug.vst.aeffectx;
 
 version = InterlockedMessageQueue;
 
-//T* emplace(T, Args...)(T* chunk, auto ref Args args)
-T mallocEmplace(T, Args...)(auto ref Args args)
-{
-    size_t len = __traits(classInstanceSize, T);
-    void* p = cast(void*)malloc(len);
-    return emplace!(T, Args)(p[0..len], args);
-}
-
-
 template VSTEntryPoint(alias ClientClass)
 {
     const char[] VSTEntryPoint =
-        "__gshared VSTClient plugin;"
-        "__gshared " ~ ClientClass.stringof ~ " client;"
         "extern (C) nothrow AEffect* VSTPluginMain(HostCallbackFunction hostCallback) "
         "{"
         "   if (hostCallback is null)"
@@ -39,7 +30,11 @@ template VSTEntryPoint(alias ClientClass)
         "   {"
         "       thread_attachThis();" // Attach VSTPluginMain thread to runtime
         "       auto client = new " ~ ClientClass.stringof ~ "();"
-        "       plugin = new VSTClient(client, hostCallback);"
+        "       import gfm.core;"
+                // malloc'd else the GC would not register roots for some reason!
+                // TODO: when will this be freed?
+        "       VSTClient plugin = mallocEmplace!VSTClient(client, hostCallback);" 
+        "       return &plugin._effect;"
         "   }"
         "   catch (Throwable e)"
         "   {"
@@ -47,7 +42,6 @@ template VSTEntryPoint(alias ClientClass)
         "       unrecoverableError();" // should not throw in a callback
         "       return null;"
         "   }"
-        "   return &plugin._effect;"
         "}";
 }
 
