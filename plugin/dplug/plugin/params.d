@@ -28,6 +28,8 @@ public:
         setNormalized(hostValue);
     }
 
+    alias setFromGUI = setFromHost; // identical for now
+
     // Returns: A normalized float, represents the parameter value.
     float getForHost() nothrow
     {

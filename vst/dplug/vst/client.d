@@ -61,8 +61,9 @@ public:
         else
             _messageQueue = new SpinlockedQueue!Message(queueSize);
 
-        _host.init(hostCallback, &_effect);
+        _host = new VSTHostFromClientPOV(hostCallback, &_effect);
         _client = client;
+        _client.setHostCommand(_host);
 
         _effect = _effect.init;
 
@@ -821,16 +822,14 @@ private void stringNCopy(char* dest, size_t maxChars, string source)
 
 
 
-///
-///
-///          Access to VST host from client perspective.
-///
-///
-struct VSTHostFromClientPOV
+
+/// Access to VST host from the VST client perspective.
+/// The IHostCommand subset is accessible from the plugin client with no knowledge of the format
+class VSTHostFromClientPOV : IHostCommand
 {
 public:
 
-    void init(HostCallbackFunction hostCallback, AEffect* effect)
+    this(HostCallbackFunction hostCallback, AEffect* effect)
     {
         _hostCallback = hostCallback;
         _effect = effect;
@@ -847,9 +846,24 @@ public:
     }
 
     /// Request plugin window resize.
-    bool requestResize(int width, int height) nothrow
+    override bool requestResize(int width, int height) nothrow
     {
         return (_hostCallback(_effect, audioMasterSizeWindow, width, height, null, 0.0f) != 0);
+    }
+
+    override void beginParamEdit(int paramIndex)
+    {
+        _hostCallback(_effect, audioMasterBeginEdit, paramIndex, 0, null, 0.0f);
+    }
+
+    override void paramAutomate(int paramIndex, float value)
+    {
+        _hostCallback(_effect, audioMasterAutomate, paramIndex, 0, null, value);
+    }
+
+    override void endParamEdit(int paramIndex)
+    {
+        _hostCallback(_effect, audioMasterEndEdit, paramIndex, 0, null, 0.0f);
     }
 
     const(char)* vendorString() nothrow

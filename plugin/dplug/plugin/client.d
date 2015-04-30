@@ -46,6 +46,19 @@ private:
     bool _isConnected;
 }
 
+
+/// A plugin client can send commands to the host.
+/// This interface is injected after the client creation though.
+interface IHostCommand
+{
+    void beginParamEdit(int paramIndex);
+    void paramAutomate(int paramIndex, float value);
+    void endParamEdit(int paramIndex);
+    bool requestResize(int width, int height);
+}
+
+
+
 /// Plugin interface, from the client point of view.
 /// This client has no knowledge of thread-safety, it must be handled externally.
 /// User plugins derivate from this class.
@@ -166,6 +179,12 @@ public:
         param(index).setFromHost(value);
     }
 
+    void setParameterFromGUI(int index, float value)
+    {
+        param(index).setFromGUI(value);
+        _hostCommand.paramAutomate(index, value);
+    }
+
     /// Override and return your brand name.
     string vendorName() pure const nothrow
     {
@@ -204,9 +223,16 @@ public:
         return cast(NullGraphics)_graphics is null;        
     }
 
+    // Getter for the IGraphics interface
     final IGraphics graphics()
     { 
         return _graphics;
+    }
+
+    // Getter for the IHostCommand interface
+    final IHostCommand hostCommand()
+    {
+        return _hostCommand;
     }
 
 
@@ -233,6 +259,12 @@ public:
     ///            You should not use the GC in this callback.
     abstract void processAudio(double **inputs, double **outputs, int frames) nothrow @nogc;
 
+    // for plugin client implementations only
+    final void setHostCommand(IHostCommand hostCommand)
+    {
+        _hostCommand = hostCommand;
+    }
+
 protected:
 
     /// Override this methods to implement parameter creation.
@@ -256,6 +288,8 @@ protected:
     }
 
     IGraphics _graphics;
+
+    IHostCommand _hostCommand;
 
 private:
     Parameter[] _params;

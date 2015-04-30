@@ -41,8 +41,6 @@ public:
         _font.size = 16;
         _font.color = RGBA(220, 220, 220, 255);
         _font.fillText(surface, _label, _position.center.x, _position.max.y + 20);
-
-
     }
 
     override bool onMousePreClick(int x, int y, int button, bool isDoubleClick)
@@ -54,14 +52,16 @@ public:
     override void onMouseDrag(int x, int y, int dx, int dy)
     {
         _value = clamp(_value - dy * 0.003f, 0.0f, 1.0f);
+        onValueChanged();
     }
 
+    // override to set the parameter host-side
+    void onValueChanged()
+    {
+    }
 
-
-private:
+protected:
     string _label;
     Font _font;
-    int x = 0;
-
     float _value; // between 0 and 1
 }

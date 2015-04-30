@@ -78,6 +78,7 @@ final class Distort : dplug.plugin.Client
 
 class DistortGUI : GUIGraphics
 {
+    public:
     Distort _client;
 
     UIKnob inputKnob;
@@ -94,9 +95,55 @@ class DistortGUI : GUIGraphics
         // Font data is bundled as a static array
         _font = new Font(cast(ubyte[])( import("VeraBd.ttf") ));
 
-        addChild(inputKnob = new UIKnob(context(), _font, "input"));
-        addChild(driveKnob = new UIKnob(context(), _font, "drive"));
-        addChild(outputKnob = new UIKnob(context(), _font, "output"));
+        addChild(inputKnob = new class UIKnob
+                 {
+                     this()
+                     {
+                         super(this.outer.context(), this.outer._font, "input");
+                     }
+
+                     override void onValueChanged()
+                     {
+                         auto hostCommand = this.outer._client.hostCommand;
+                         int paramIndex = 0;
+                         hostCommand.beginParamEdit(paramIndex);
+                         hostCommand.paramAutomate(paramIndex, _value);
+                         hostCommand.endParamEdit(paramIndex);
+                     }
+                 });                
+
+        addChild(driveKnob = new class UIKnob
+                 {
+                     this()
+                     {
+                         super(this.outer.context(), this.outer._font, "drive");
+                     }
+
+                     override void onValueChanged()
+                     {
+                         auto hostCommand = this.outer._client.hostCommand;
+                         int paramIndex = 1;
+                         hostCommand.beginParamEdit(paramIndex);
+                         hostCommand.paramAutomate(paramIndex, _value);
+                         hostCommand.endParamEdit(paramIndex);
+                     }
+                 });                
+        addChild(outputKnob = new class UIKnob
+                 {
+                     this()
+                     {
+                         super(this.outer.context(), this.outer._font, "output");
+                     }
+
+                     override void onValueChanged()
+                     {
+                         auto hostCommand = this.outer._client.hostCommand;
+                         int paramIndex = 2;
+                         hostCommand.beginParamEdit(paramIndex);
+                         hostCommand.paramAutomate(paramIndex, _value);
+                         hostCommand.endParamEdit(paramIndex);
+                     }
+                 });                
     }
 
     override void reflow(box2i availableSpace)
