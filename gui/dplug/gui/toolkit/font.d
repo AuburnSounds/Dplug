@@ -98,7 +98,12 @@ public:
 
             Image!L8 coverageBuffer = getGlyphCoverage(ch, scale, w, h, xShift, yShift);
 
-            auto outsurf = surface.crop(offsetPos.x, offsetPos.y, offsetPos.x + w,  offsetPos.y + h);
+            // follows the cropping limitations of crop()
+            int cropX0 = clamp!int(offsetPos.x, 0, surface.w);
+            int cropY0 = clamp!int(offsetPos.y, 0, surface.h);
+            int cropX1 = clamp!int(offsetPos.x + w, 0, surface.w);
+            int cropY1 = clamp!int(offsetPos.y + h, 0, surface.h);
+            auto outsurf = surface.crop(cropX0, cropY0, cropX1, cropY1);
             int croppedWidth = outsurf.w;
 
             for (int y = 0; y < outsurf.h; ++y)

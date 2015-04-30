@@ -6,9 +6,11 @@ class UIKnob : UIElement
 {
 public:
 
-    this(UIContext context)
+    this(UIContext context, Font font, string label)
     {
         super(context);
+        _label = label;
+        _font = font;
     }
 
     override void preRender(ImageRef!RGBA surface)
@@ -18,13 +20,13 @@ public:
         if (isMouseOver())
             c = RGBA(100, 100, 120, 255);
 
-        /*if (isFocused())
-            c = RGBA(150, 80, 80, 255);
         if (isDragged())
             c = RGBA(150, 150, 80, 255);
-*/
 
-        surface.fillRect(_position.min.x, _position.max.x, _position.width, _position.height, c);
+        surface.fillRect(_position.min.x, _position.min.y, _position.max.x, _position.max.y, c);
+        _font.size = 16;
+        _font.color = RGBA(220, 220, 220, 255);
+        _font.fillText(surface, _label, _position.center.x, _position.max.y + 20);
     }
 
     // Called when mouse drag this Element.
@@ -41,5 +43,6 @@ public:
 
 private:
     string _label;
+    Font _font;
     int x = 0;
 }

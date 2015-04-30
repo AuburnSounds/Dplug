@@ -84,18 +84,19 @@ class DistortGUI : GUIGraphics
     UIKnob driveKnob;
     UIKnob outputKnob;
 
+    Font _font;
+
     this(Distort client)
     {
         _client = client;
-        super(801, 601); // initial size
+        super(800, 600); // initial size
 
         // Font data is bundled as a static array
-        auto fontData = import("VeraBd.ttf");
-        context.addFont("Vera Bold", cast(ubyte[])fontData);
-        
-        addChild(inputKnob = new UIKnob(context()));
-        addChild(driveKnob = new UIKnob(context()));
-        addChild(outputKnob = new UIKnob(context()));
+        _font = new Font(cast(ubyte[])( import("VeraBd.ttf") ));
+
+        addChild(inputKnob = new UIKnob(context(), _font, "input"));
+        addChild(driveKnob = new UIKnob(context(), _font, "drive"));
+        addChild(outputKnob = new UIKnob(context(), _font, "output"));
     }
 
     override void reflow(box2i availableSpace)
@@ -106,9 +107,16 @@ class DistortGUI : GUIGraphics
         // put a layout algorithm here and implement reflow (ie. pass the right availableSpace
         // to children). But for simplicity purpose and for the sake of fixed size UI, forcing 
         // positions is completely acceptable.
-        inputKnob.position = box2i(0, 0, 50, 50);
-        driveKnob.position = box2i(100, 100, 150, 150);
-        outputKnob.position = box2i(0, 100, 50, 150);
+        int x = 100;
+        int y = 100;
+        int w = 100;
+        int h = 100;
+        int margin = 60;
+        inputKnob.position = box2i(x, y, x + w, y + h);
+        x += w + margin;
+        driveKnob.position = box2i(x, y, x + w, y + h);
+        x += w + margin;
+        outputKnob.position = box2i(x, y, x + w, y + h);
     }
 
     float time = 0;
@@ -117,27 +125,6 @@ class DistortGUI : GUIGraphics
     { 
         auto c = RGBA(80, 40, 20, 255);
         surface.fill(c);
-
-        auto font = context.font("Vera Bold");
-
-        time += 0.001;
-            
-        font.color = RGBA(128, 128, 255, 255);
-        font.size = 11;
-        int x = 1;
-        for (int i = 0; i < 10; ++i)
-        {
-            x = x * 69069;
-
-            float angle = (x & 511) / 512.0f + time;
-            float radius = ((x>>9) & 511) / 2;
-            float xp = cos(angle) * radius;
-            float yp = sin(angle) * radius;
-
-            font.fillText(surface, "Hello !", 400+xp, 300+yp);
-        }
-
-
     }
 }
 
