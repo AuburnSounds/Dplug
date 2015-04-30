@@ -25,11 +25,10 @@ public:
         if (isDragged())
             c = RGBA(150, 150, 80, 255);
 
-
         int centerx = _position.center.x;
         int centery = _position.center.y;
         int radius = _position.width / 2;
-        int radius2 = radius / 2;
+        int radius2 = 0;
         float angle = (_value - 0.5f) * 4.0f;
         float posEdgeX = centerx + sin(angle) * radius;
         float posEdgeY = centery - cos(angle) * radius;
@@ -46,17 +45,18 @@ public:
 
     }
 
-    // Called when mouse drag this Element.
-    override void onMouseDrag(int x, int y, int dx, int dy)
+    override bool onMousePreClick(int x, int y, int button, bool isDoubleClick)
     {
-        _value = _value + dy * 0.001f;
+        return true;
     }
 
     // Called when mouse drag this Element.
-    override void onMouseMove(int x, int y, int dx, int dy)
+    override void onMouseDrag(int x, int y, int dx, int dy)
     {
-        int a = 1;
+        _value = clamp(_value - dy * 0.003f, 0.0f, 1.0f);
     }
+
+
 
 private:
     string _label;
