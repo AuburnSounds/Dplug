@@ -670,7 +670,7 @@ void moreInfoForDebug(Throwable e) nothrow @nogc
     {
         string msg = e.msg;
         string file = e.file;
-        int line = e.line;
+        size_t line = e.line;
         debugBreak();
     }
 }

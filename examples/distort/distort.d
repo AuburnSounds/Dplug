@@ -125,7 +125,7 @@ class DistortGUI : GUIGraphics
         font.color = RGBA(128, 128, 255, 255);
         font.size = 11;
         int x = 1;
-        for (int i = 0; i < 100; ++i)
+        for (int i = 0; i < 10; ++i)
         {
             x = x * 69069;
 
@@ -134,7 +134,7 @@ class DistortGUI : GUIGraphics
             float xp = cos(angle) * radius;
             float yp = sin(angle) * radius;
 
-            font.fillText(surface, "Hello!", 400+xp, 300+yp);
+            font.fillText(surface, "Hello !", 400+xp, 300+yp);
         }
 
 
