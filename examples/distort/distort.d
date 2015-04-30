@@ -104,13 +104,11 @@ class DistortGUI : GUIGraphics
 
                      override void onValueChanged()
                      {
-                         auto hostCommand = this.outer._client.hostCommand;
+                         auto client = this.outer._client;
                          int paramIndex = 0;
-                         hostCommand.beginParamEdit(paramIndex);
-                         hostCommand.paramAutomate(paramIndex, _value);
-                         hostCommand.endParamEdit(paramIndex);
+                         client.setParameterFromGUI(paramIndex, _value);
                      }
-                 });                
+                 });
 
         addChild(driveKnob = new class UIKnob
                  {
@@ -121,13 +119,11 @@ class DistortGUI : GUIGraphics
 
                      override void onValueChanged()
                      {
-                         auto hostCommand = this.outer._client.hostCommand;
+                         auto client = this.outer._client;
                          int paramIndex = 1;
-                         hostCommand.beginParamEdit(paramIndex);
-                         hostCommand.paramAutomate(paramIndex, _value);
-                         hostCommand.endParamEdit(paramIndex);
+                         client.setParameterFromGUI(paramIndex, _value);
                      }
-                 });                
+                 });
         addChild(outputKnob = new class UIKnob
                  {
                      this()
@@ -137,13 +133,11 @@ class DistortGUI : GUIGraphics
 
                      override void onValueChanged()
                      {
-                         auto hostCommand = this.outer._client.hostCommand;
+                         auto client = this.outer._client;
                          int paramIndex = 2;
-                         hostCommand.beginParamEdit(paramIndex);
-                         hostCommand.paramAutomate(paramIndex, _value);
-                         hostCommand.endParamEdit(paramIndex);
+                         client.setParameterFromGUI(paramIndex, _value);
                      }
-                 });                
+                 });
     }
 
     override void reflow(box2i availableSpace)
