@@ -101,9 +101,13 @@ class GUIGraphics : UIElement, IGraphics
         // an image you have to draw to, or return that nothing has changed
         box2i onDraw(ImageRef!RGBA wfb)
         {
-            render(wfb);
+            // Get sorted draw list
+            UIElement[] elemsToDraw = getDrawList();
 
-            // TODO: implement a mechanism for dirty areas
+            foreach(elem; elemsToDraw)
+                elem.render(wfb);
+
+            // TODO: extract the dirty areas from draw-list
             return box2i(0, 0, wfb.w, wfb.h);
         }
 

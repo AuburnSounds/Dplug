@@ -15,7 +15,7 @@ public:
         _value = 0.5f;
     }
 
-    override void preRender(ImageRef!RGBA surface)
+    override void onDraw(ImageRef!RGBA surface)
     {
         auto c = RGBA(80, 80, 80, 255);
 
@@ -35,7 +35,7 @@ public:
         float posEdgeX2 = centerx + sin(angle) * radius2;
         float posEdgeY2 = centery - cos(angle) * radius2;
 
-        surface.softCircle(centerx, centery, radius - 1, radius, c);
+        surface.softCircle(centerx, centery, radius - 2, radius, c);
         surface.aaLine(posEdgeX, posEdgeY, posEdgeX2, posEdgeY2, RGBA(0,0, 0, 0));
 
         _font.size = 16;
@@ -45,12 +45,14 @@ public:
 
     override bool onMousePreClick(int x, int y, int button, bool isDoubleClick)
     {
-        return true;
+        setDirty();
+        return true; // to initiate dragging
     }
 
     // Called when mouse drag this Element.
     override void onMouseDrag(int x, int y, int dx, int dy)
     {
+        setDirty();
         _value = clamp(_value - dy * 0.003f, 0.0f, 1.0f);
         onValueChanged();
     }
@@ -58,6 +60,27 @@ public:
     // override to set the parameter host-side
     void onValueChanged()
     {
+    }
+
+    // For lazy updates
+    override void onBeginDrag()
+    {
+        setDirty();
+    }
+
+    override  void onStopDrag()
+    {
+        setDirty();
+    }
+
+    override void onMouseEnter()
+    {
+        setDirty();
+    }
+
+    override void onMouseExit()
+    {
+        setDirty();
     }
 
 protected:

@@ -11,11 +11,9 @@ public:
         super(context);
 
         _snapOnIntegerPosition = snapOnIntegerPosition;
-
-        backgroundColor = RGBA(28, 32, 38, 255);
     }
 
-    override void preRender(ImageRef!RGBA surface)
+    override void onDraw(ImageRef!RGBA surface)
     {
     }
 

@@ -1,5 +1,7 @@
 module dplug.gui.toolkit.element;
 
+import std.algorithm;
+
 public import gfm.math;
 public import ae.utils.graphics;
 public import dplug.gui.types;
@@ -20,19 +22,11 @@ public:
             child.close();
     }
 
+    /// Returns: true if was drawn, ie. the buffers have changed.
+    /// This method is called for each item in the drawlist that was visible and dirty.
     final void render(ImageRef!RGBA surface)
     {
-        if (!_visible)
-            return;
-
-        auto viewport =  surface.crop(_position.min.x, _position.min.y, _position.max.x, _position.max.y);
-
-        if (_backgroundColor.a != 0)
-            viewport.fill(_backgroundColor);
-        preRender(surface);
-        foreach(ref child; children)
-            child.render(surface);
-        postRender(surface);
+        onDraw(surface);
     }
 
     /// Meant to be overriden almost everytime for custom behaviour.
@@ -240,6 +234,8 @@ public:
         return false;
     }
 
+
+
     // to be called at top-level when a key is released
     final bool keyUp(Key key)
     {
@@ -269,47 +265,34 @@ public:
         _visible = visible;
     }
 
-    final RGBA backgroundColor()
+    final int zOrder()
     {
-        return _backgroundColor;
+        return _zOrder;
     }
 
-    final RGBA backgroundColor(RGBA color)
+    final void setZOrder(int zOrder)
     {
-        return _backgroundColor = color;
+        _zOrder = zOrder;
     }
 
+    final void setDirty(bool dirty = true)
+    {
+        _dirty = true;
+    }
+
+    /// Returns: Whether the element should drawn at next redraw event.
+    /// You can override this function if you want a child update to trigger
+    /// a parent update too.
+    bool isDirty()
+    {
+        return _dirty;
+    }
+
+    /// Returns: Parent element. `null` if detached or root element.
     final UIElement parent()
     {
         return _parent;
     }
-
-protected:
-
-    /// Render this element before children.
-    /// Meant to be overriden.
-    void preRender(ImageRef!RGBA surface)
-    {
-       // defaults to nothing        
-    }
-
-    /// Render this element after children elements.
-    /// Meant to be overriden.
-    void postRender(ImageRef!RGBA surface)
-    {
-        // defaults to nothing
-    }
-
-    UIElement _parent = null;
-
-    box2i _position;
-
-    RGBA _backgroundColor = RGBA(128, 128, 128, 0); // transparent by default
-
-    UIElement[] _children;
-
-    bool _visible = true;
-
 
     final bool isMouseOver() pure const nothrow
     {
@@ -325,6 +308,61 @@ protected:
     {
         return _context.focused is this;
     }
+
+    /*
+    final box2i boundingBox() pure const nothrow
+    {
+        return _position;
+    }*/
+
+    /// Returns the list of Elements that should be drawn, in order.
+    /// TODO: reuse draw list
+    UIElement[] getDrawList()
+    {
+        UIElement[] list;
+        if (isVisible())
+        {
+            if (isDirty())
+            {
+                list ~= this;
+                _dirty = false; // clear dirty state, user code is responsible for calling render()
+            }
+
+            foreach(child; _children)
+                list = list ~ child.getDrawList();
+
+            // Sort by ascending z-order (high z-order gets drawn last)
+            // This sort must be stable to avoid messing with tree natural order.
+            sort!("a.zOrder() < b.zOrder()", SwapStrategy.stable)(list);
+        }
+        return list;
+    }
+
+protected:
+
+    void onDraw(ImageRef!RGBA surface)
+    {
+       // defaults to nothing
+    }
+
+
+    UIElement _parent = null;
+
+    /// Position is the graphical extent
+    /// An Element is not allowed though to draw further than its _position.
+    box2i _position;
+
+    /// Whether this element should be drawn
+    bool _dirty = true;
+
+    UIElement[] _children;
+
+    /// If _visible is false, neither the Element nor its children are drawn.
+    bool _visible = true;
+
+    /// By default, every Element have the same z-order
+    /// Because the sort is stable, tree traversal order is the default order (depth first).
+    int _zOrder = 0;
 
 private:
     UIContext _context;

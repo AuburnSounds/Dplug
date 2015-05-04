@@ -162,10 +162,9 @@ class DistortGUI : GUIGraphics
 
     float time = 0;
   
-    override void preRender(ImageRef!RGBA surface)
+    override void onDraw(ImageRef!RGBA surface)
     { 
-        auto c = RGBA(80, 40, 20, 255);
-        surface.fill(c);
+        
     }
 }
 
