@@ -11,6 +11,20 @@ struct BoxList
     box2i[] boxes;
     alias boxes this; // subtype of box
 
+    /// Returns: Bounding boxes of all bounding boxes.
+    box2i boundingBox() pure const nothrow @nogc
+    {
+        if (boxes.length == 0)
+            return box2i(0, 0, 0, 0);
+        else
+        {
+            // Computes union of all boxes
+            box2i unionBox = boxes[0];
+            for(int i = 1; i < cast(int)boxes.length; ++i)
+                unionBox = unionBox.expand(boxes[i]);
+            return unionBox;
+        }
+    }
 
     // change the list of boxes so that the coverage is the same but none overlaps
     // also filters out empty/invalid boxes
@@ -110,4 +124,6 @@ unittest
 
     auto bb = bl.removeOverlappingAreas();
     assert(bb == [ box2i(2, 2, 6, 6), box2i(0, 0, 4, 2), box2i(0, 2, 2, 4) ] );
+
+    assert(bl.boundingBox() == box2i(0, 0, 6, 6));
 }
