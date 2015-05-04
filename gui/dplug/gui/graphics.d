@@ -5,13 +5,14 @@ import dplug.plugin.client;
 import dplug.plugin.graphics;
 
 import dplug.gui.window;
+import dplug.gui.boxlist;
 import dplug.gui.toolkit.context;
 import dplug.gui.toolkit.element;
 
 // A GUIGraphics is the interface between a plugin client and a IWindow.
 // It is also an UIElement and the root element of the plugin UI hierarchy.
 // You have to derive it to have a GUI.
-// It dispatch window events to the GUI hierarchy.
+// It dispatches window events to the GUI hierarchy.
 class GUIGraphics : UIElement, IGraphics
 {
     this(int initialWidth, int initialHeight)
@@ -23,7 +24,7 @@ class GUIGraphics : UIElement, IGraphics
 
         _window = null;
         _askedWidth = initialWidth;
-        _askedHeight = initialHeight;        
+        _askedHeight = initialHeight;       
     }
 
     // Graphics implementation
@@ -104,11 +105,21 @@ class GUIGraphics : UIElement, IGraphics
             // Get sorted draw list
             UIElement[] elemsToDraw = getDrawList();
 
+            // Get areas to update
+            _areasToUpdate.length = 0;
+            foreach(elem; elemsToDraw)
+                _areasToUpdate ~= elem.position();
+
+            // Split boxes to avoid overdraw
+            _areasToUpdate.boxes = _areasToUpdate.removeOverlappingAreas();
+
             foreach(elem; elemsToDraw)
                 elem.render(wfb);
 
-            // TODO: extract the dirty areas from draw-list
-            return box2i(0, 0, wfb.w, wfb.h);
+            // Extract the dirty areas from draw-list
+            // Currently lowering this to a single rectangle
+            box2i rectToUpdate = _areasToUpdate.boundingBox();
+            return rectToUpdate;
         }
 
         void onMouseCaptureCancelled()
@@ -126,6 +137,8 @@ protected:
 
     // An interface to the underlying window
     IWindow _window;
+
+    BoxList _areasToUpdate;
 
     int _askedWidth = 0;
     int _askedHeight = 0;

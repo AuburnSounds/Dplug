@@ -29,6 +29,7 @@ struct BoxList
     // change the list of boxes so that the coverage is the same but none overlaps
     // also filters out empty/invalid boxes
     // TODO: something better than O(n^2)
+    //       in-place to avoid reallocating an array
     box2i[] removeOverlappingAreas()
     {
         // every box push in this list are non-intersecting
