@@ -14,6 +14,7 @@
     ],
 
     "dependencies": {
+        "dplug:audio": "*",
         "dplug:dsp": "*",
         "dplug:plugin": "*",
         "dplug:vst": "*",
@@ -21,6 +22,11 @@
     },
 
     "subPackages": [
+        {
+            "name": "audio",
+            "sourcePaths": [ "audio/dplug/audio" ],
+            "importPaths": [ "audio" ]
+        },
         {
             "name": "dsp",
             "sourcePaths": [ "dsp/dplug/dsp" ],
