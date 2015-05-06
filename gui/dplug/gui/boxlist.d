@@ -31,6 +31,14 @@ struct BoxList
     // TODO: something better than O(n^2)
     //       in-place to avoid reallocating an array
     box2i[] removeOverlappingAreas()
+    out (result)
+    {
+        // ensure no overlap
+        for(int i = 0; i < cast(int)(result.length); ++i)
+             for(int j = i + 1; j < cast(int)(result.length); ++j)
+                 assert(result[i].intersection(result[j]).empty());
+    }
+    body
     {
         // every box push in this list are non-intersecting
         box2i[] filtered;
@@ -58,9 +66,11 @@ struct BoxList
                 if (doesIntersect)
                 {
 
-                    // case 1: A contains B, B is simply removed, no intersection considered
+                    // case 1: A contains B, B is removed from the array, and no intersection considered
                     if (A.contains(B))
                     {
+                        boxes = boxes.remove(j);
+                        j = j - 1;
                         continue;
                     }
 
