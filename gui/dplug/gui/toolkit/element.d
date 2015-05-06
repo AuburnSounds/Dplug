@@ -35,7 +35,7 @@ public:
     void reflow(box2i availableSpace)
     {
         // default: span the entire available area, and do the same for children
-        _position = availableSpace;
+        _position = _dirtyRect = availableSpace;
 
         foreach(ref child; children)
             child.reflow(availableSpace);
@@ -52,6 +52,9 @@ public:
     /// reflow() method
     final box2i position(box2i p)
     {
+        // also mark all dirty
+        _dirtyRect = p;
+
         return _position = p;
     }
 
@@ -275,17 +278,45 @@ public:
         _zOrder = zOrder;
     }
 
-    final void setDirty(bool dirty = true)
+    final void clearDirty()
     {
-        _dirty = true;
+        _dirtyRect = box2i(0, 0, 0, 0);
+
+        foreach(child; _children)
+            child.clearDirty();
     }
 
-    /// Returns: Whether the element should drawn at next redraw event.
-    /// You can override this function if you want a child update to trigger
-    /// a parent update too.
-    bool isDirty()
+    final void setDirty()
     {
-        return _dirty;
+        setDirty(_position);
+    }
+
+    final void setDirty(box2i rect)
+    {
+        box2i inter = _position.intersection(rect);
+        if (_dirtyRect.empty())
+        {
+            assert(inter.isSorted());
+            _dirtyRect = inter;
+        }
+        else
+        {
+            assert(_dirtyRect.isSorted());
+            _dirtyRect = _dirtyRect.expand(inter);
+            assert(_dirtyRect.isSorted());
+        }
+
+        assert(_dirtyRect.empty() || _position.contains(_dirtyRect));
+
+        foreach(child; _children)
+            child.setDirty(rect); 
+    }
+
+    /// Returns: dirty area. Supposed to be empty or inside position.
+    box2i dirtyRect() pure const nothrow @nogc
+    {
+        assert(_dirtyRect.isSorted());
+        return _dirtyRect;
     }
 
     /// Returns: Parent element. `null` if detached or root element.
@@ -309,12 +340,6 @@ public:
         return _context.focused is this;
     }
 
-    /*
-    final box2i boundingBox() pure const nothrow
-    {
-        return _position;
-    }*/
-
     /// Returns the list of Elements that should be drawn, in order.
     /// TODO: reuse draw list
     UIElement[] getDrawList()
@@ -322,11 +347,11 @@ public:
         UIElement[] list;
         if (isVisible())
         {
-            if (isDirty())
-            {
+            assert(dirtyRect.isSorted);
+
+            // if the dirty rect isn't empty
+            if (!dirtyRect().empty())
                 list ~= this;
-                _dirty = false; // clear dirty state, user code is responsible for calling render()
-            }
 
             foreach(child; _children)
                 list = list ~ child.getDrawList();
@@ -340,9 +365,21 @@ public:
 
 protected:
 
+    /// Draw method. You should redraw the area there.
+    /// For better efficiency, you may only redraw the part in _dirtyRect.
     void onDraw(ImageRef!RGBA surface)
     {
-       // defaults to nothing
+        // defaults to filling with a grey pattern
+        RGBA darkGrey = RGBA(100, 100, 100, 100);
+        RGBA lighterGrey = RGBA(150, 150, 150, 150);
+
+        for (int y = _dirtyRect.min.y; y < _dirtyRect.max.y; ++y)
+        {
+            for (int x = _dirtyRect.min.x; x < _dirtyRect.max.x; ++x)
+            {
+                surface[x, y] = ( (x >> 3) ^  (y >> 3) ) & 1 ? darkGrey : lighterGrey;
+            }
+        }
     }
 
 
@@ -352,8 +389,8 @@ protected:
     /// An Element is not allowed though to draw further than its _position.
     box2i _position;
 
-    /// Whether this element should be drawn
-    bool _dirty = true;
+    /// The fraction of position that is to be redrawn.
+    box2i _dirtyRect;
 
     UIElement[] _children;
 

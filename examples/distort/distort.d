@@ -161,10 +161,10 @@ class DistortGUI : GUIGraphics
     }
 
     float time = 0;
-  
+  /*
     override void onDraw(ImageRef!RGBA surface)
     { 
         
-    }
+    }*/
 }
 

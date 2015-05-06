@@ -99,16 +99,38 @@ class GUIGraphics : UIElement, IGraphics
             return keyUp(key);
         }
 
-        // an image you have to draw to, or return that nothing has changed
-        box2i[] onDraw(ImageRef!RGBA wfb)
+        override void markRectangleDirty(box2i dirtyRect)
         {
+            setDirty(dirtyRect);
+        }
+
+        override box2i getDirtyRectangle()
+        {
+            // TODO: cache for areas to update to share with onDraw?
+
             // Get sorted draw list
             UIElement[] elemsToDraw = getDrawList();
 
             // Get areas to update
             _areasToUpdate.length = 0;
             foreach(elem; elemsToDraw)
-                _areasToUpdate ~= elem.position();
+                _areasToUpdate ~= elem.dirtyRect();
+
+            return _areasToUpdate.boundingBox();
+        }
+
+        // an image you have to draw to, or return that nothing has changed
+        override box2i[] onDraw(ImageRef!RGBA wfb)
+        {
+            // TODO: cache for areas to update to share with getDirtyRectangle?
+
+            // Get sorted draw list
+            UIElement[] elemsToDraw = getDrawList();
+
+            // Get areas to update
+            _areasToUpdate.length = 0;
+            foreach(elem; elemsToDraw)
+                _areasToUpdate ~= elem.dirtyRect();
 
             // Split boxes to avoid overdraw
             _areasToUpdate.boxes = _areasToUpdate.removeOverlappingAreas();
@@ -116,11 +138,21 @@ class GUIGraphics : UIElement, IGraphics
             foreach(elem; elemsToDraw)
                 elem.render(wfb);
 
+            /*foreach(box; _areasToUpdate)
+            {
+                RGBA red = RGBA(255, 0, 0, 255);
+                wfb.rect(box.min.x, box.min.y, box.max.x, box.max.y, red);
+            }*/
+
+            // Clear dirty state in the whole GUI since after this draw everything 
+            // will be up-to-date.
+            clearDirty();
+
             // Return non-overlapping areas to update
             return _areasToUpdate.boxes[];
         }
 
-        void onMouseCaptureCancelled()
+        override void onMouseCaptureCancelled()
         {
             // Stop an eventual drag operation
             _uiContext.stopDragging();

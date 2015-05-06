@@ -53,7 +53,7 @@ struct BoxList
                 box2i B = boxes[j];
 
                 box2i C = A.intersection(B);
-                bool doesIntersect =  C.isSorted() && C.volume() != 0;
+                bool doesIntersect =  C.isSorted() && (!C.empty());
 
                 if (doesIntersect)
                 {
@@ -87,15 +87,16 @@ struct BoxList
                         box2i D = box2i(A.min.x, A.min.y, A.max.x, C.min.y);
                         box2i E = box2i(A.min.x, C.min.y, C.min.x, C.max.y);
                         box2i F = box2i(C.max.x, C.min.y, A.max.x, C.max.y);
-                        box2i G = box2i(A.min.x, C.max.y, A.max.x, A.max.y);                        
+                        box2i G = box2i(A.min.x, C.max.y, A.max.x, A.max.y);    
 
-                        if (D.volume() > 0)
+
+                        if (!D.empty)
                             boxes ~= D;
-                        if (E.volume() > 0)
+                        if (!E.empty)
                             boxes ~= E;
-                        if (F.volume() > 0)
+                        if (!F.empty)
                             boxes ~= F;
-                        if (G.volume() > 0)
+                        if (!G.empty)
                             boxes ~= G;
 
                         // no need to search for other intersection in A, since its parts have

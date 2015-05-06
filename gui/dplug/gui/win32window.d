@@ -264,16 +264,24 @@ version(Windows)
 
                 case WM_PAINT:
                 {
-                    updateBufferSizeIfNeeded();
-                    ImageRef!RGBA wfb;
-                    wfb.w = _width;
-                    wfb.h = _height;
-                    wfb.pitch = byteStride(_width);
-                    wfb.pixels = cast(RGBA*)_buffer;
+                    RECT r;
+                    if (GetUpdateRect(hwnd, &r, FALSE))
+                    {
+                        updateBufferSizeIfNeeded();
 
-                    bool needRedraw;
-                    box2i[] areasToRedraw = _listener.onDraw(wfb);
-                    swapBuffers(wfb, areasToRedraw);
+                        // support window resize/move from under another
+                        _listener.markRectangleDirty(box2i(r.left, r.top, r.right, r.bottom));
+
+                        ImageRef!RGBA wfb;
+                        wfb.w = _width;
+                        wfb.h = _height;
+                        wfb.pitch = byteStride(_width);
+                        wfb.pixels = cast(RGBA*)_buffer;
+
+                        bool needRedraw;
+                        box2i[] areasToRedraw = _listener.onDraw(wfb);
+                        swapBuffers(wfb, areasToRedraw);
+                    }
                     return 0;
                 }
 
@@ -283,19 +291,32 @@ version(Windows)
                     return 0;
                 }
 
-
                 case WM_TIMER:
                 {
                     if (wParam == TIMER_ID)
                     {
-                        InvalidateRgn(_hwnd, null, FALSE);
+                        box2i dirtyRect = _listener.getDirtyRectangle();
+                        if (!dirtyRect.empty())
+                        {
+                            RECT r;
+                            r.left = dirtyRect.min.x;
+                            r.top = dirtyRect.min.y;
+                            r.right = dirtyRect.max.x;
+                            r.bottom = dirtyRect.max.y;
+                            InvalidateRect(hwnd, &r, FALSE);
+                            UpdateWindow(hwnd);
+                        }
                     }
                     return 0;
 
                 case WM_SIZE:
                     _width = LOWORD(lParam);
                     _height = HIWORD(lParam);
-                    return 0;
+                    return DefWindowProcA(hwnd, uMsg, wParam, lParam);
+
+                case WM_MOVE:
+                    //_listener.onMarkEverythingDirty();
+                    return DefWindowProcA(hwnd, uMsg, wParam, lParam);
 
                 default:
                     return DefWindowProcA(hwnd, uMsg, wParam, lParam);
