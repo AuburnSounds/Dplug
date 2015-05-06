@@ -138,12 +138,6 @@ class GUIGraphics : UIElement, IGraphics
             foreach(elem; elemsToDraw)
                 elem.render(wfb);
 
-            /*foreach(box; _areasToUpdate)
-            {
-                RGBA red = RGBA(255, 0, 0, 255);
-                wfb.rect(box.min.x, box.min.y, box.max.x, box.max.y, red);
-            }*/
-
             // Clear dirty state in the whole GUI since after this draw everything 
             // will be up-to-date.
             clearDirty();
