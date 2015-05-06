@@ -272,8 +272,8 @@ version(Windows)
                     wfb.pixels = cast(RGBA*)_buffer;
 
                     bool needRedraw;
-                    box2i areaToRedraw = _listener.onDraw(wfb);
-                    swapBuffers(wfb, areaToRedraw);
+                    box2i[] areasToRedraw = _listener.onDraw(wfb);
+                    swapBuffers(wfb, areasToRedraw);
                     return 0;
                 }
 
@@ -303,38 +303,43 @@ version(Windows)
             }
         }
 
-        void swapBuffers(ImageRef!RGBA wfb, box2i areaToRedraw)
+        void swapBuffers(ImageRef!RGBA wfb, box2i[] areasToRedraw)
         {
-            if (areaToRedraw.width() <= 0 || areaToRedraw.height() <= 0)
-                return; // nothing to redraw
-
             // Swap red and blue to have BGRA layout
-            swapRB(wfb, areaToRedraw);
+            foreach(box2i area; areasToRedraw)
+                swapRB(wfb, area);
 
             PAINTSTRUCT paintStruct;
             HDC hdc = BeginPaint(_hwnd, &paintStruct);
             assert(hdc == _windowDC); // since we are CS_OWNDC
 
-            BITMAPINFOHEADER bmi = BITMAPINFOHEADER.init; // fill with zeroes
-            with (bmi)
+            foreach(box2i area; areasToRedraw)
             {
-                biSize          = BITMAPINFOHEADER.sizeof;
-                biWidth         = _width;
-                biHeight        = -_height;
-                biPlanes        = 1;
-                biCompression = BI_RGB;
-                biXPelsPerMeter = 72;
-                biYPelsPerMeter = 72;
-                biBitCount      = 32;
-                biSizeImage     = byteStride(_width) * _height;
-                SetDIBitsToDevice(_windowDC, areaToRedraw.min.x, areaToRedraw.min.y, areaToRedraw.width, areaToRedraw.height, 
-                                  areaToRedraw.min.x, -areaToRedraw.min.y - areaToRedraw.height + _height, 0, _height, _buffer, cast(BITMAPINFO *)&bmi, DIB_RGB_COLORS);
+                if (area.width() <= 0 || area.height() <= 0)
+                    continue; // nothing to update
+                
+                BITMAPINFOHEADER bmi = BITMAPINFOHEADER.init; // fill with zeroes
+                with (bmi)
+                {
+                    biSize          = BITMAPINFOHEADER.sizeof;
+                    biWidth         = _width;
+                    biHeight        = -_height;
+                    biPlanes        = 1;
+                    biCompression = BI_RGB;
+                    biXPelsPerMeter = 72;
+                    biYPelsPerMeter = 72;
+                    biBitCount      = 32;
+                    biSizeImage     = byteStride(_width) * _height;
+                    SetDIBitsToDevice(_windowDC, area.min.x, area.min.y, area.width, area.height, 
+                                      area.min.x, -area.min.y - area.height + _height, 0, _height, _buffer, cast(BITMAPINFO *)&bmi, DIB_RGB_COLORS);
+                }
             }
 
             EndPaint(_hwnd, &paintStruct);
 
             // Swap red and blue to have RGBA layout again
-            swapRB(wfb, areaToRedraw);
+            foreach(box2i area; areasToRedraw)
+                swapRB(wfb, area);
         }
 
         // Implements IWindow

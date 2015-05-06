@@ -100,7 +100,7 @@ class GUIGraphics : UIElement, IGraphics
         }
 
         // an image you have to draw to, or return that nothing has changed
-        box2i onDraw(ImageRef!RGBA wfb)
+        box2i[] onDraw(ImageRef!RGBA wfb)
         {
             // Get sorted draw list
             UIElement[] elemsToDraw = getDrawList();
@@ -116,10 +116,8 @@ class GUIGraphics : UIElement, IGraphics
             foreach(elem; elemsToDraw)
                 elem.render(wfb);
 
-            // Extract the dirty areas from draw-list
-            // Currently lowering this to a single rectangle
-            box2i rectToUpdate = _areasToUpdate.boundingBox();
-            return rectToUpdate;
+            // Return non-overlapping areas to update
+            return _areasToUpdate.boxes[];
         }
 
         void onMouseCaptureCancelled()
