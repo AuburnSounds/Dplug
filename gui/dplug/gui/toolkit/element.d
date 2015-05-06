@@ -24,9 +24,9 @@ public:
 
     /// Returns: true if was drawn, ie. the buffers have changed.
     /// This method is called for each item in the drawlist that was visible and dirty.
-    final void render(ImageRef!RGBA surface)
+    final void render(ImageRef!RGBA diffuseMap, ImageRef!S16 depthMap)
     {
-        onDraw(surface);
+        onDraw(diffuseMap, depthMap);
     }
 
     /// Meant to be overriden almost everytime for custom behaviour.
@@ -367,7 +367,7 @@ protected:
 
     /// Draw method. You should redraw the area there.
     /// For better efficiency, you may only redraw the part in _dirtyRect.
-    void onDraw(ImageRef!RGBA surface)
+    void onDraw(ImageRef!RGBA diffuseMap, ImageRef!S16 depthMap)
     {
         // defaults to filling with a grey pattern
         RGBA darkGrey = RGBA(100, 100, 100, 100);
@@ -377,7 +377,8 @@ protected:
         {
             for (int x = _dirtyRect.min.x; x < _dirtyRect.max.x; ++x)
             {
-                surface[x, y] = ( (x >> 3) ^  (y >> 3) ) & 1 ? darkGrey : lighterGrey;
+                diffuseMap[x, y] = ( (x >> 3) ^  (y >> 3) ) & 1 ? darkGrey : lighterGrey;
+                depthMap[x, y] = S16(0);
             }
         }
     }

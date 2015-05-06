@@ -45,9 +45,14 @@ interface IWindowListener
     /// Returns: true if the event was handled.
     bool onKeyUp(Key up);
 
-    /// An image you have to draw to, or return that nothing has changed
+    /// An image you have to draw to, or return that nothing has changed.
+    /// The size of this image is given before-hand by onResized.
     /// Returns: the non-overlapping rectangles area that should be updated
     box2i[] onDraw(ImageRef!RGBA wfb);
+
+    /// The drawing area size has changed.    
+    /// Always called at least once before onDraw.
+    void onResized(int width, int height);
 
     /// Returns: Minimal rectangle that contains dirty UIELement in UI.
     ///          Empty box if nothing to update.

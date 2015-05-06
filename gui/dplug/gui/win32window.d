@@ -143,6 +143,8 @@ version(Windows)
                 _buffer = cast(ubyte*) VirtualAlloc(null, sizeNeeded, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
                 _width = newWidth;
                 _height = newHeight;
+
+                _listener.onResized(_width, _height);
             }
         }
 
@@ -312,10 +314,6 @@ version(Windows)
                 case WM_SIZE:
                     _width = LOWORD(lParam);
                     _height = HIWORD(lParam);
-                    return DefWindowProcA(hwnd, uMsg, wParam, lParam);
-
-                case WM_MOVE:
-                    //_listener.onMarkEverythingDirty();
                     return DefWindowProcA(hwnd, uMsg, wParam, lParam);
 
                 default:

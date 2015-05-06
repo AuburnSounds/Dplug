@@ -15,7 +15,7 @@ public:
         _value = 0.5f;
     }
 
-    override void onDraw(ImageRef!RGBA surface)
+    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!S16 depthMap)
     {
         auto c = RGBA(80, 80, 80, 255);
 
@@ -35,12 +35,14 @@ public:
         float posEdgeX2 = centerx + sin(angle) * radius2;
         float posEdgeY2 = centery - cos(angle) * radius2;
 
-        surface.softCircle(centerx, centery, radius - 2, radius, c);
-        surface.aaLine(posEdgeX, posEdgeY, posEdgeX2, posEdgeY2, RGBA(0,0, 0, 0));
+        diffuseMap.softCircle(centerx, centery, radius - 2, radius, c);
 
-        _font.size = 16;
+        depthMap.softCircle(centerx, centery, radius - 2, radius, S16(32000));
+        depthMap.aaLine(posEdgeX, posEdgeY, posEdgeX2, posEdgeY2, S16(0));
+
+/*        _font.size = 16;
         _font.color = RGBA(220, 220, 220, 255);
-        _font.fillText(surface, _label, _position.center.x, _position.max.y + 20);
+        _font.fillText(surface, _label, _position.center.x, _position.max.y + 20);*/
     }
 
     override bool onMousePreClick(int x, int y, int button, bool isDoubleClick)

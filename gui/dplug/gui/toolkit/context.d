@@ -17,6 +17,8 @@ class UIContext
 public:
     this()
     {
+        // create a dummy black skybox
+        skybox.size(1024, 1024);
     }
 
     ~this()
@@ -26,6 +28,7 @@ public:
 
     UIElement focused = null; // last clicked element
     UIElement dragged = null; // current dragged element
+    Image!RGBA skybox;
 
     void setFocused(UIElement focused)
     {
