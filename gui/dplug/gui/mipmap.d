@@ -8,9 +8,9 @@ import gfm.math;
 /// Mipmapped images.
 /// Supports non power-of-two textures.
 /// Size of the i+1-th mipmap is { (width)/2, (height)/2 }
-struct Mipmap(COLOR)
+struct Mipmap
 {
-    Image!COLOR[] levels;
+    Image!RGBA[] levels;
 
     /// Set number of levels and size
     /// maxLevel = 0 => only one image
@@ -27,11 +27,63 @@ struct Mipmap(COLOR)
         }
     }
 
+    /// Interpolated a color.  Integer level, spatial linear interpolation.
+    /// x and y are in base level coordinates (top-left pixel is on (0.5, 0.5) coordinates).
+    /// Clamped to borders.
+    vec3f linearSample(int level, float x, float y)
+    {
+        Image!RGBA* image = &levels[level];
+        
+        float divider = 1.0f / (1 << level);
+        x *= divider;
+        y *= divider;
+
+        float maxX = image.w - 1.001f; // avoids an edge case with truncation
+        float maxY = image.h - 1.001f;
+
+        if (x < 0)
+            x = 0;
+        if (y < 0)
+            y = 0;
+        if (x > maxX)
+            x = maxX;
+        if (y > maxY)
+            y = maxY;
+
+        int ix = cast(int)x;
+        int iy = cast(int)y;
+        float fx = x - ix;
+        float fxm1 = 1 - fx;
+        float fy = y - iy;
+        float fym1 = 1 - fx;
+
+        RGBA[] L0 = image.scanline(iy);
+        RGBA[] L1 = image.scanline(iy + 1);
+
+        RGBA A = L0.ptr[ix];
+        RGBA B = L0.ptr[ix + 1];
+        RGBA C = L1.ptr[ix];
+        RGBA D = L1.ptr[ix + 1];
+
+        float rup = A.r * fxm1 + B.r * fx;
+        float rdown = C.r * fxm1 + D.r * fx;
+        float r = (A.r * fxm1 + B.r * fx) * fym1 + (C.r * fxm1 + D.r * fx) * fy;
+
+        float gup = A.g * fxm1 + B.g * fx;
+        float gdown = C.g * fxm1 + D.g * fx;
+        float g = (A.g * fxm1 + B.g * fx) * fym1 + (C.g * fxm1 + D.g * fx) * fy;
+
+        float bup = A.b * fxm1 + B.b * fx;
+        float bdown = C.b * fxm1 + D.b * fx;
+        float b = (A.b * fxm1 + B.b * fx) * fym1 + (C.b * fxm1 + D.b * fx) * fy;
+
+        return vec3f(r, g, b);
+    }
+
     /// Regenerates the uppser levels based on changes in the provided rectangle.
     /// Uses a flat 2x2 filter
     void generateMipmaps(box2i updateRect)
     {
-
         // Computes impact of updating the area box on next level
         static box2i impactOnNextLevel(box2i area, int currentLevelWidth, int currentLevelHeight)
         {
@@ -48,24 +100,24 @@ struct Mipmap(COLOR)
 
         for (int i = 1; i < cast(int)levels.length; ++i)
         {
-            ImageRef!COLOR thisLevel = levels[i].toRef();
-            ImageRef!COLOR previousLevel = levels[i - 1].toRef();
+            Image!RGBA* thisLevel = &levels[i];
+            Image!RGBA* previousLevel = &levels[i - 1];
 
             updateRect = impactOnNextLevel(updateRect, previousLevel.w, previousLevel.h);
 
             for (int y = updateRect.min.y; y < updateRect.max.y; ++y)
             {
-                COLOR[] L0 = previousLevel.scanline(y * 2);
-                COLOR[] L1 = previousLevel.scanline(y * 2 + 1);
-                COLOR[] dest = thisLevel.scanline(y);
+                RGBA[] L0 = previousLevel.scanline(y * 2);
+                RGBA[] L1 = previousLevel.scanline(y * 2 + 1);
+                RGBA[] dest = thisLevel.scanline(y);
 
                 for (int x = updateRect.min.x; x < updateRect.max.x; ++x)
                 {
-                    COLOR A = L0.ptr[2 * x];
-                    COLOR B = L0.ptr[2 * x + 1];
-                    COLOR C = L1.ptr[2 * x];
-                    COLOR D = L1.ptr[2 * x + 1];                      
-                    dest.ptr[x] = COLOR.op!q{(a + b + c + d + 2) >> 2}(A, B, C, D);
+                    RGBA A = L0.ptr[2 * x];
+                    RGBA B = L0.ptr[2 * x + 1];
+                    RGBA C = L1.ptr[2 * x];
+                    RGBA D = L1.ptr[2 * x + 1];                      
+                    dest.ptr[x] = RGBA.op!q{(a + b + c + d + 2) >> 2}(A, B, C, D);
                 }
             }
         }
@@ -80,3 +132,4 @@ unittest
     Mipmap!S16 b;
     b.size(16, 17, 333);    
 }
+

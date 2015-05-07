@@ -192,8 +192,8 @@ protected:
     int _askedWidth = 0;
     int _askedHeight = 0;
 
-    Mipmap!RGBA _diffuseMap;
-    Mipmap!RGBA _depthMap;
+    Mipmap _diffuseMap;
+    Mipmap _depthMap;
 
     // compose lighting effects
     // takes output image and non-overlapping areas as input

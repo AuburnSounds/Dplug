@@ -18,13 +18,13 @@ public:
     override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap)
     {
         auto c = RGBA(193, 180, 176, 255);
-/*
+
         if (isMouseOver())
-            c = RGBA(100, 100, 120, 255);
+            c = RGBA(213, 200, 196, 255);
 
         if (isDragged())
-            c = RGBA(150, 150, 80, 255);
-*/
+            c = RGBA(233, 220, 216, 255);
+
         int centerx = _position.center.x;
         int centery = _position.center.y;
         int radius = _position.width / 2;
