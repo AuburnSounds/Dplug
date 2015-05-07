@@ -2,7 +2,7 @@
 
 dplug is a library for creating audio plugins.
 Additionally it comes with music DSP algorithms that might be useful for your next-generation MS converter plugin.
-**Currently only support VST 2.4 plugins without GUI.**
+**Currently only support VST 2.x plugins on Windows.**
 
 **Tested compilers:** ![dmd-2.067](https://img.shields.io/badge/DMD-2.067-brightgreen.svg) ![dmd-2.066.1](https://img.shields.io/badge/DMD-2.066.1-brightgreen.svg) ![DMD-2.065.0](https://img.shields.io/badge/DMD-2.065.0-red.svg) ![LDC-0.15.1](https://img.shields.io/badge/LDC-0.15.1-brightgreen.svg) ![LDC-0.14.0](https://img.shields.io/badge/LDC-0.14.0-red.svg) ![GDC-4.9.0](https://img.shields.io/badge/GDC-4.9.0-red.svg)
 
@@ -48,10 +48,10 @@ So before you wrap audio plugins with dplug, you need to agree with https://gith
 
 Files in the vst/ folder falls under the Steinberg VST license.
 
-VST is a trademark of Steinberg Media Technologies GmbH. 
+VST is a trademark of Steinberg Media Technologies GmbH.
 Please register the SDK via the 3rd party developper license on Steinberg site.
 
-Before you make VST plugins with dplug, you need to read and agree with the license for the original SDK by Steinberg. 
+Before you make VST plugins with dplug, you need to read and agree with the license for the original SDK by Steinberg.
 A copy is available here: http://www.gersic.com/vstsdk/html/plug/intro.html#licence
 If you don't agree with the license, don't make plugins with dplug.
 
