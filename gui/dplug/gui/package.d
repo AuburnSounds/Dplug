@@ -7,6 +7,7 @@ public
     import dplug.gui.win32window;
     import dplug.gui.graphics;
     import dplug.gui.boxlist;
+    import dplug.gui.mipmap;
 
     // This imports all the widgets
     import dplug.gui.toolkit;

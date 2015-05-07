@@ -5,6 +5,7 @@ import dplug.plugin.client;
 import dplug.plugin.graphics;
 
 import dplug.gui.window;
+import dplug.gui.mipmap;
 import dplug.gui.boxlist;
 import dplug.gui.toolkit.context;
 import dplug.gui.toolkit.element;
@@ -126,8 +127,8 @@ class GUIGraphics : UIElement, IGraphics
 
             reflow(box2i(0, 0, _askedWidth, _askedHeight));
 
-            _diffuseMap.size(width, height);
-            _depthMap.size(width, height);
+            _diffuseMap.size(4, width, height);
+            _depthMap.size(4, width, height);
         }
 
         // an image you have to draw to, or return that nothing has changed
@@ -146,19 +147,28 @@ class GUIGraphics : UIElement, IGraphics
             // Split boxes to avoid overdraw
             _areasToUpdate.boxes = _areasToUpdate.removeOverlappingAreas();
 
-            // Render required areas in diffuse and depth maps
+            // Render required areas in diffuse and depth maps, base level
             foreach(elem; elemsToDraw)
-                elem.render(_diffuseMap.toRef(), _depthMap.toRef());
+                elem.render(_diffuseMap.levels[0].toRef(), _depthMap.levels[0].toRef());
+
+            box2i[] areas = _areasToUpdate.boxes[];
+
+            // Recompute mipmaps in updated areas
+            foreach(area; areas)
+            {
+                _diffuseMap.generateMipmaps(area);
+                _depthMap.generateMipmaps(area);
+            }
 
             // Clear dirty state in the whole GUI since after this draw everything 
             // will be up-to-date.
             clearDirty();
 
             // Composite GUI
-            compositeGUI(wfb, _areasToUpdate.boxes[]);
+            compositeGUI(wfb, areas);
 
-            // Return non-overlapping areas to update
-            return _areasToUpdate.boxes[];
+            // Return non-overlapping areas to update on screen
+            return areas;
         }
 
         override void onMouseCaptureCancelled()
@@ -182,40 +192,20 @@ protected:
     int _askedWidth = 0;
     int _askedHeight = 0;
 
-    Image!RGBA _diffuseMap;
-    Image!S16 _depthMap;
+    Mipmap!RGBA _diffuseMap;
+    Mipmap!S16 _depthMap;
 
     // compose lighting effects
     // takes output image and non-overlapping areas as input
     void compositeGUI(ImageRef!RGBA wfb, box2i[] areas)
     {
         ImageRef!RGBA skybox = context().skybox.toRef();
-
+/*
         alias diffuse = _diffuseMap;
         alias depth = _depthMap;
-        int w = diffuse.w;
-        int h = diffuse.h;
-
-        float clampedDepth(int i, int j)
-        {
-            i = clamp(i, 0, w - 1);
-            j = clamp(j, 0, h - 1);
-            return depth[i, j].l;
-        }
-
-        float filteredDepth(int i, int j)
-        {
-            float N = clampedDepth(i, j);
-            float A = clampedDepth(i-1, j);
-            float B = clampedDepth(i+1, j);
-            float C = clampedDepth(i, j+1);
-            float D = clampedDepth(i, j-1);
-            float E = clampedDepth(i-1, j-1);
-            float F = clampedDepth(i+1, j-1);
-            float G = clampedDepth(i-1, j+1);
-            float H = clampedDepth(i+1, j+1);
-            return (N + A + B + C + D + E + F + G + H) / 9.0f;
-        }
+*/        
+        int w = _diffuseMap.levels[0].w;
+        int h = _diffuseMap.levels[0].h;
 
         foreach(area; areas)
         {
@@ -228,7 +218,7 @@ protected:
 
                 S16[][5] depth_scan = void;
                 for (int l = 0; l < 5; ++l)
-                    depth_scan[l] = _depthMap.scanline(line_index[l]);
+                    depth_scan[l] = _depthMap.levels[0].scanline(line_index[l]);
 
 
                 for (int i = area.min.x; i < area.max.x; ++i)
@@ -262,7 +252,7 @@ protected:
 
                     
 
-                    RGBA imaterialDiffuse = diffuse[i, j];  
+                    RGBA imaterialDiffuse = _diffuseMap.levels[0][i, j];  
                     vec3f materialDiffuse = vec3f(imaterialDiffuse.r / 255.0f, imaterialDiffuse.g / 255.0f, imaterialDiffuse.b / 255.0f);
 
 
@@ -283,8 +273,8 @@ protected:
                         for (int l = -bleedWidth; l <= bleedWidth; ++l)
                         {
                             int y = clamp(j + l, 0, h - 1);
-                            S16[] scanDepth = _depthMap.scanline(y);
-                            RGBA[] scanDiffuse = _diffuseMap.scanline(y);
+                            S16[] scanDepth = _depthMap.levels[0].scanline(y);
+                            RGBA[] scanDiffuse = _diffuseMap.levels[0].scanline(y);
 
                             // repeat AO for borders
                         
@@ -302,8 +292,9 @@ protected:
 
                                 vec3f diffuseC = vec3f(diffuseRGBA.r / 255.0f, diffuseRGBA.g / 255.0f, diffuseRGBA.b / 255.0f);
 
-                                colorBleed += (depth[x, y].l /  32767.0f) * diffuseC;
+                                colorBleed += (_depthMap.levels[0][x, y].l /  32767.0f) * diffuseC;
                             }
+
                         }
                         enum float totalWeight = (7 * 2 + 1) * (7 * 2 + 1) * 32767.0f * 255.0f;
                         enum float one_on_totalWeight = 1.0f / totalWeight;
@@ -322,9 +313,9 @@ protected:
                     {
                         int x = clamp(i + l, 0, w - 1);
                         int y = clamp(j - l, 0, h - 1);
-                        float z = depth[i, j].l / 128.0f + l;
+                        float z = _depthMap.levels[0][i, j].l / 128.0f + l;
 
-                        float diff = z - depth[x, y].l / 128.0f;
+                        float diff = z - _depthMap.levels[0][x, y].l / 128.0f;
 
                         lightPassed += smoothStep!float(-40.0f, 20.0f, diff) * weight;
                         totalWeight += weight;
