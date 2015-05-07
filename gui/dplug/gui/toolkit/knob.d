@@ -31,7 +31,7 @@ public:
         int radius2 = 0;
         float angle = (_value - 0.5f) * 4.0f;
         int depthRadius = max(radius - 20, 0);
-        int depthRadius2 = max(radius - 35, 0);
+        int depthRadius2 = max(radius - 20, 0);
 
         float posEdgeX = centerx + sin(angle) * depthRadius2;
         float posEdgeY = centery - cos(angle) * depthRadius2;
@@ -41,7 +41,14 @@ public:
 
         
         depthMap.softCircle(centerx, centery, depthRadius, radius, RGBA(255, 128, 0, 0));
-        //depthMap.softCircle(posEdgeX, posEdgeY, 0, 15, S16(0));
+
+        for (int i = 0; i < 7; ++i)
+        {
+            float disp = i * 2 * PI / 7.0f;
+            float x = centerx + sin(angle + disp) * (radius - 10);
+            float y = centery - cos(angle + disp) * (radius - 10);
+            depthMap.softCircle(x, y, 5, 7, RGBA(200, 128, 0, 0));
+        }
 
         diffuseMap.softCircle(posEdgeX, posEdgeY, 0, 15, c);
         //depthMap.aaLine(posEdgeX, posEdgeY, posEdgeX2, posEdgeY2, S16(0));
