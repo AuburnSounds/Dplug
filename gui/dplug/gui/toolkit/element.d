@@ -375,10 +375,12 @@ protected:
 
         for (int y = _dirtyRect.min.y; y < _dirtyRect.max.y; ++y)
         {
+            S16[] depthScan = depthMap.scanline(y);
+            RGBA[] diffuseScan = diffuseMap.scanline(y);
             for (int x = _dirtyRect.min.x; x < _dirtyRect.max.x; ++x)
             {
-                diffuseMap[x, y] = ( (x >> 3) ^  (y >> 3) ) & 1 ? darkGrey : lighterGrey;
-                depthMap[x, y] = S16(0);
+                diffuseScan.ptr[x] = ( (x >> 3) ^  (y >> 3) ) & 1 ? darkGrey : lighterGrey;
+                depthScan.ptr[x] = S16(0);
             }
         }
     }

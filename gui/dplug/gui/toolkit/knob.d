@@ -30,15 +30,21 @@ public:
         int radius = _position.width / 2;
         int radius2 = 0;
         float angle = (_value - 0.5f) * 4.0f;
-        float posEdgeX = centerx + sin(angle) * radius;
-        float posEdgeY = centery - cos(angle) * radius;
-        float posEdgeX2 = centerx + sin(angle) * radius2;
-        float posEdgeY2 = centery - cos(angle) * radius2;
+        int depthRadius = max(radius - 20, 0);
+        int depthRadius2 = max(radius - 35, 0);
 
-        diffuseMap.softCircle(centerx, centery, radius - 2, radius, c);
+        float posEdgeX = centerx + sin(angle) * depthRadius2;
+        float posEdgeY = centery - cos(angle) * depthRadius2;
 
-        depthMap.softCircle(centerx, centery, radius - 2, radius, S16(32000));
-        depthMap.aaLine(posEdgeX, posEdgeY, posEdgeX2, posEdgeY2, S16(0));
+        
+        diffuseMap.softCircle(centerx, centery, depthRadius, radius, c);
+
+        
+        depthMap.softCircle(centerx, centery, depthRadius, radius, S16(32000));
+        depthMap.softCircle(posEdgeX, posEdgeY, 0, 15, S16(0));
+
+        diffuseMap.softCircle(posEdgeX, posEdgeY, 0, 15, c);
+        //depthMap.aaLine(posEdgeX, posEdgeY, posEdgeX2, posEdgeY2, S16(0));
 
 /*        _font.size = 16;
         _font.color = RGBA(220, 220, 220, 255);

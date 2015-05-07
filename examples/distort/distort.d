@@ -161,10 +161,19 @@ class DistortGUI : GUIGraphics
     }
 
     float time = 0;
-  /*
-    override void onDraw(ImageRef!RGBA surface)
-    { 
-        
-    }*/
+
+    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!S16 depthMap)
+    {
+        for (int y = _dirtyRect.min.y; y < _dirtyRect.max.y; ++y)
+        {
+            S16[] depthScan = depthMap.scanline(y);
+            RGBA[] diffuseScan = diffuseMap.scanline(y);
+            for (int x = _dirtyRect.min.x; x < _dirtyRect.max.x; ++x)
+            {
+                diffuseScan.ptr[x] = RGBA(239, 229, 213, 255);
+                depthScan.ptr[x].l = 0;
+            }
+        }
+    }
 }
 
