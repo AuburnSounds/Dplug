@@ -219,18 +219,48 @@ protected:
 
         foreach(area; areas)
         {
-            for (int j = area.min.y; area.max.y; ++j)
+            for (int j = area.min.y; j < area.max.y; ++j)
             {
-                for (int i = area.min.x; area.max.x; ++i)
+                // clamp to existing lines
+                int[5] line_index = void;
+                for (int l = 0; l < 5; ++l)
+                    line_index[l] = clamp(j - 2 + l, 0, h - 1);
+
+                S16[][5] depth_scan = void;
+                for (int l = 0; l < 5; ++l)
+                    depth_scan[l] = _depthMap.scanline(line_index[l]);
+
+
+                for (int i = area.min.x; i < area.max.x; ++i)
                 {
-                    vec3f getNormal(int i, int j)
+                    // clamp to existing columns
+                    int[5] col_index = void;
+                    for (int k = 0; k < 5; ++k)
+                        col_index[k] = clamp(i - 2 + k, 0, w - 1);
+
+                    // Get depth for a 5x5 patch
+                    short[5][5] depthPatch = void;
+                    for (int l = 0; l < 5; ++l)
                     {
-                        float sx = filteredDepth(i + 1, j) - filteredDepth(i - 1, j);
-                        float sy = filteredDepth(i, j + 1) - filteredDepth(i, j - 1);
-                        return vec3f(-sx, sy, 64 * 64).normalized;
+                        for (int k = 0; k < 5; ++k)
+                        {
+                            depthPatch.ptr[l].ptr[k] = depth_scan.ptr[l].ptr[col_index[k]].l;
+                        }
                     }
 
-                    vec3f normal = getNormal(i, j);
+                    // compute normal
+                    float sx = depthPatch[1][0] + depthPatch[1][1] + depthPatch[2][0] + depthPatch[2][1] + depthPatch[3][0] + depthPatch[3][1]
+                             - ( depthPatch[1][3] + depthPatch[1][4] + depthPatch[2][3] + depthPatch[2][4] + depthPatch[3][3] + depthPatch[3][4] );
+
+                    float sy = depthPatch[3][1] + depthPatch[4][1] + depthPatch[3][2] + depthPatch[4][2] + depthPatch[3][3] + depthPatch[4][3]
+                             - ( depthPatch[0][1] + depthPatch[1][1] + depthPatch[0][2] + depthPatch[1][2] + depthPatch[0][3] + depthPatch[1][3] );
+
+                    enum float sz = 4096.0f * 9.0f;
+
+                    vec3f normal = vec3f(sx, sy, sz).normalized;
+
+
+                    
 
                     RGBA imaterialDiffuse = diffuse[i, j];  
                     vec3f materialDiffuse = vec3f(imaterialDiffuse.r / 255.0f, imaterialDiffuse.g / 255.0f, imaterialDiffuse.b / 255.0f);
@@ -241,30 +271,52 @@ protected:
 
                     // Combined color bleed and ambient occlusion!
                     // TODO: accelerate this with mipmaps
-                    int bleedWidth = 7;
+                    
                     vec3f colorBleed = 0;
-                    float totalWeight = 0;
-                    for (int k = -bleedWidth; k <= bleedWidth; ++k)
+                    
+                    {
+                        int bleedWidth = 7;
+                        int redAccum = 0;
+                        int greenAccum = 0;
+                        int blueAccum = 0;
+
                         for (int l = -bleedWidth; l <= bleedWidth; ++l)
                         {
-                            int x = clamp(i + l, 0, w - 1);
-                            int y = clamp(j + k, 0, h - 1);
-                            float weight = 1.0f;// / (std.math.abs(k) + std.math.abs(l) + 1);
+                            int y = clamp(j + l, 0, h - 1);
+                            S16[] scanDepth = _depthMap.scanline(y);
+                            RGBA[] scanDiffuse = _diffuseMap.scanline(y);
 
-                            RGBA diffuseRGBA = diffuse[x, y];  
-                            vec3f diffuseC = vec3f(diffuseRGBA.r / 255.0f, diffuseRGBA.g / 255.0f, diffuseRGBA.b / 255.0f);
+                            // repeat AO for borders
+                        
 
-                            colorBleed += (weight * depth[x, y].l /  32767.0f) * diffuseC;
-                            totalWeight += weight;
+                            for (int k = -bleedWidth; k <= bleedWidth; ++k)                        
+                            {
+                                int x = clamp(i + k, 0, w - 1);                            
+
+                                RGBA diffuseRGBA = scanDiffuse.ptr[x];  
+                                int depthSample = scanDepth.ptr[x].l;
+
+                                redAccum += diffuseRGBA.r * depthSample;
+                                greenAccum += diffuseRGBA.g * depthSample;
+                                blueAccum += diffuseRGBA.b * depthSample;
+
+                                vec3f diffuseC = vec3f(diffuseRGBA.r / 255.0f, diffuseRGBA.g / 255.0f, diffuseRGBA.b / 255.0f);
+
+                                colorBleed += (depth[x, y].l /  32767.0f) * diffuseC;
+                            }
                         }
+                        enum float totalWeight = (7 * 2 + 1) * (7 * 2 + 1) * 32767.0f * 255.0f;
+                        enum float one_on_totalWeight = 1.0f / totalWeight;
 
-                    colorBleed = colorBleed / totalWeight;
+                        colorBleed = vec3f(redAccum * one_on_totalWeight, greenAccum * one_on_totalWeight, blueAccum * one_on_totalWeight);
+                    }
+                    
 
                     // cast shadows
 
                     int samples = 10;
                     float lightPassed = 0.0f;
-                    totalWeight = 0.0f;
+                    float totalWeight = 0.0f;
                     float weight = 1.0f;
                     for (int l = 1; l <= samples; ++l)
                     {
