@@ -53,9 +53,10 @@ struct Mipmap
         int ix = cast(int)x;
         int iy = cast(int)y;
         float fx = x - ix;
+
         float fxm1 = 1 - fx;
         float fy = y - iy;
-        float fym1 = 1 - fx;
+        float fym1 = 1 - fy;
 
         RGBA[] L0 = image.scanline(iy);
         RGBA[] L1 = image.scanline(iy + 1);

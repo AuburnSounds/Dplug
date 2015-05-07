@@ -48,6 +48,7 @@ public:
             float x = centerx + sin(angle + disp) * (radius - 10);
             float y = centery - cos(angle + disp) * (radius - 10);
             depthMap.softCircle(x, y, 5, 7, RGBA(200, 128, 0, 0));
+            diffuseMap.softCircle(x, y, 5, 7, RGBA(255, 128, 128, 255));
         }
 
         diffuseMap.softCircle(posEdgeX, posEdgeY, 0, 15, c);

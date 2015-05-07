@@ -249,55 +249,14 @@ protected:
 
                     vec3f normal = vec3f(sx, sy, sz).normalized;
 
-
-                    
-
                     RGBA imaterialDiffuse = _diffuseMap.levels[0][i, j];  
                     vec3f materialDiffuse = vec3f(imaterialDiffuse.r / 255.0f, imaterialDiffuse.g / 255.0f, imaterialDiffuse.b / 255.0f);
-
-
 
                     vec3f color = vec3f(0.0f);
 
                     // Combined color bleed and ambient occlusion!
-                    // TODO: accelerate this with mipmaps
-                    
-                    vec3f colorBleed = 0;
-                    
-                    {
-                        int bleedWidth = 7;
-                        int redAccum = 0;
-                        int greenAccum = 0;
-                        int blueAccum = 0;
-
-                        for (int l = -bleedWidth; l <= bleedWidth; ++l)
-                        {
-                            int y = clamp(j + l, 0, h - 1);
-                            RGBA[] scanDepth = _depthMap.levels[0].scanline(y);
-                            RGBA[] scanDiffuse = _diffuseMap.levels[0].scanline(y);
-
-                            // repeat AO for borders
-                        
-
-                            for (int k = -bleedWidth; k <= bleedWidth; ++k)                        
-                            {
-                                int x = clamp(i + k, 0, w - 1);                            
-
-                                RGBA diffuseRGBA = scanDiffuse.ptr[x];  
-                                int depthSample = scanDepth.ptr[x].r;
-
-                                redAccum += diffuseRGBA.r * depthSample;
-                                greenAccum += diffuseRGBA.g * depthSample;
-                                blueAccum += diffuseRGBA.b * depthSample;
-                            }
-
-                        }
-                        enum float totalWeight = (7 * 2 + 1) * (7 * 2 + 1) * 255.0f * 255.0f;
-                        enum float one_on_totalWeight = 1.0f / totalWeight;
-
-                        colorBleed = vec3f(redAccum * one_on_totalWeight, greenAccum * one_on_totalWeight, blueAccum * one_on_totalWeight);
-                    }
-                    
+                    vec3f avgDepthHere = _depthMap.linearSample(3, i + 0.5f, j + 0.5f) / 255.0f;
+                    vec3f colorBleed = avgDepthHere.r * _diffuseMap.linearSample(3, i + 0.5f, j + 0.5f) / 255.0f;
 
                     // cast shadows
 
