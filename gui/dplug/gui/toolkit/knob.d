@@ -15,16 +15,16 @@ public:
         _value = 0.5f;
     }
 
-    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!S16 depthMap)
+    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap)
     {
-        auto c = RGBA(80, 80, 80, 255);
-
+        auto c = RGBA(193, 180, 176, 255);
+/*
         if (isMouseOver())
             c = RGBA(100, 100, 120, 255);
 
         if (isDragged())
             c = RGBA(150, 150, 80, 255);
-
+*/
         int centerx = _position.center.x;
         int centery = _position.center.y;
         int radius = _position.width / 2;
@@ -37,11 +37,11 @@ public:
         float posEdgeY = centery - cos(angle) * depthRadius2;
 
         
-        diffuseMap.softCircle(centerx, centery, depthRadius, radius, c);
+        diffuseMap.softCircle(centerx, centery, radius - 2, radius, c);
 
         
-        depthMap.softCircle(centerx, centery, depthRadius, radius, S16(32000));
-        depthMap.softCircle(posEdgeX, posEdgeY, 0, 15, S16(0));
+        depthMap.softCircle(centerx, centery, depthRadius, radius, RGBA(255, 128, 0, 0));
+        //depthMap.softCircle(posEdgeX, posEdgeY, 0, 15, S16(0));
 
         diffuseMap.softCircle(posEdgeX, posEdgeY, 0, 15, c);
         //depthMap.aaLine(posEdgeX, posEdgeY, posEdgeX2, posEdgeY2, S16(0));

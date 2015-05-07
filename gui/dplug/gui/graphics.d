@@ -193,7 +193,7 @@ protected:
     int _askedHeight = 0;
 
     Mipmap!RGBA _diffuseMap;
-    Mipmap!S16 _depthMap;
+    Mipmap!RGBA _depthMap;
 
     // compose lighting effects
     // takes output image and non-overlapping areas as input
@@ -216,7 +216,7 @@ protected:
                 for (int l = 0; l < 5; ++l)
                     line_index[l] = clamp(j - 2 + l, 0, h - 1);
 
-                S16[][5] depth_scan = void;
+                RGBA[][5] depth_scan = void;
                 for (int l = 0; l < 5; ++l)
                     depth_scan[l] = _depthMap.levels[0].scanline(line_index[l]);
 
@@ -229,12 +229,12 @@ protected:
                         col_index[k] = clamp(i - 2 + k, 0, w - 1);
 
                     // Get depth for a 5x5 patch
-                    short[5][5] depthPatch = void;
+                    ubyte[5][5] depthPatch = void;
                     for (int l = 0; l < 5; ++l)
                     {
                         for (int k = 0; k < 5; ++k)
                         {
-                            depthPatch.ptr[l].ptr[k] = depth_scan.ptr[l].ptr[col_index[k]].l;
+                            depthPatch.ptr[l].ptr[k] = depth_scan.ptr[l].ptr[col_index[k]].r;
                         }
                     }
 
@@ -245,7 +245,7 @@ protected:
                     float sy = depthPatch[3][1] + depthPatch[4][1] + depthPatch[3][2] + depthPatch[4][2] + depthPatch[3][3] + depthPatch[4][3]
                              - ( depthPatch[0][1] + depthPatch[1][1] + depthPatch[0][2] + depthPatch[1][2] + depthPatch[0][3] + depthPatch[1][3] );
 
-                    enum float sz = 4096.0f * 9.0f;
+                    enum float sz = 16.0f * 9.0f;
 
                     vec3f normal = vec3f(sx, sy, sz).normalized;
 
@@ -273,7 +273,7 @@ protected:
                         for (int l = -bleedWidth; l <= bleedWidth; ++l)
                         {
                             int y = clamp(j + l, 0, h - 1);
-                            S16[] scanDepth = _depthMap.levels[0].scanline(y);
+                            RGBA[] scanDepth = _depthMap.levels[0].scanline(y);
                             RGBA[] scanDiffuse = _diffuseMap.levels[0].scanline(y);
 
                             // repeat AO for borders
@@ -284,19 +284,15 @@ protected:
                                 int x = clamp(i + k, 0, w - 1);                            
 
                                 RGBA diffuseRGBA = scanDiffuse.ptr[x];  
-                                int depthSample = scanDepth.ptr[x].l;
+                                int depthSample = scanDepth.ptr[x].r;
 
                                 redAccum += diffuseRGBA.r * depthSample;
                                 greenAccum += diffuseRGBA.g * depthSample;
                                 blueAccum += diffuseRGBA.b * depthSample;
-
-                                vec3f diffuseC = vec3f(diffuseRGBA.r / 255.0f, diffuseRGBA.g / 255.0f, diffuseRGBA.b / 255.0f);
-
-                                colorBleed += (_depthMap.levels[0][x, y].l /  32767.0f) * diffuseC;
                             }
 
                         }
-                        enum float totalWeight = (7 * 2 + 1) * (7 * 2 + 1) * 32767.0f * 255.0f;
+                        enum float totalWeight = (7 * 2 + 1) * (7 * 2 + 1) * 255.0f * 255.0f;
                         enum float one_on_totalWeight = 1.0f / totalWeight;
 
                         colorBleed = vec3f(redAccum * one_on_totalWeight, greenAccum * one_on_totalWeight, blueAccum * one_on_totalWeight);
@@ -313,9 +309,9 @@ protected:
                     {
                         int x = clamp(i + l, 0, w - 1);
                         int y = clamp(j - l, 0, h - 1);
-                        float z = _depthMap.levels[0][i, j].l / 128.0f + l;
+                        float z = _depthMap.levels[0][i, j].r + l;
 
-                        float diff = z - _depthMap.levels[0][x, y].l / 128.0f;
+                        float diff = z - _depthMap.levels[0][x, y].r;
 
                         lightPassed += smoothStep!float(-40.0f, 20.0f, diff) * weight;
                         totalWeight += weight;
@@ -365,6 +361,15 @@ protected:
 
                     // Show normals
                     //color = vec3f(0.5f) + normal * 0.5f;
+
+                    // Show depth
+                    {
+                        //float depthColor = depthPatch[2][2] / 255.0f;
+                        //color = vec3f(depthColor);
+                    }
+
+                    // Show diffuse
+                    //color = materialDiffuse;
 
                     // Show AO
                     // color = vec3f(occluded, occluded, occluded);

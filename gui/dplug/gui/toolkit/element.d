@@ -24,7 +24,7 @@ public:
 
     /// Returns: true if was drawn, ie. the buffers have changed.
     /// This method is called for each item in the drawlist that was visible and dirty.
-    final void render(ImageRef!RGBA diffuseMap, ImageRef!S16 depthMap)
+    final void render(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap)
     {
         onDraw(diffuseMap, depthMap);
     }
@@ -367,7 +367,7 @@ protected:
 
     /// Draw method. You should redraw the area there.
     /// For better efficiency, you may only redraw the part in _dirtyRect.
-    void onDraw(ImageRef!RGBA diffuseMap, ImageRef!S16 depthMap)
+    void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap)
     {
         // defaults to filling with a grey pattern
         RGBA darkGrey = RGBA(100, 100, 100, 100);
@@ -375,12 +375,14 @@ protected:
 
         for (int y = _dirtyRect.min.y; y < _dirtyRect.max.y; ++y)
         {
-            S16[] depthScan = depthMap.scanline(y);
+            RGBA[] depthScan = depthMap.scanline(y);
             RGBA[] diffuseScan = diffuseMap.scanline(y);
             for (int x = _dirtyRect.min.x; x < _dirtyRect.max.x; ++x)
             {
                 diffuseScan.ptr[x] = ( (x >> 3) ^  (y >> 3) ) & 1 ? darkGrey : lighterGrey;
-                depthScan.ptr[x] = S16(0);
+                ubyte depth = 58;
+                ubyte shininess = 128;
+                depthScan.ptr[x] = RGBA(depth, shininess, 0, 0);
             }
         }
     }

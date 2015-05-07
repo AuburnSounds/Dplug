@@ -13,7 +13,7 @@ public:
         _snapOnIntegerPosition = snapOnIntegerPosition;
     }
 
-    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!S16 depthMap)
+    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap)
     {
     }
 
