@@ -1,5 +1,7 @@
 module dplug.audio.audio;
 
+import std.traits;
+
 /// An Audio is any type which provides:
 /// - readable audio samples
 /// - a number of channels
@@ -7,57 +9,88 @@ module dplug.audio.audio;
 enum isAudio(T) = 
 
     // number of samples (ie. length of audio)
+    // Can be a runtime or compile-time value.
     is(typeof(T.init.numSamples) : size_t) && 
     
     // number of channels (mono = 1, stereo = 2, etc...)
-    is(typeof(T.init.numChannels) : size_t) && 
+    // Can be a runtime or compile-time value.
+    is(typeof(T.init.numChannels) : int) && 
 
-    // get audio data (first index is channel, second one is time)
+    // Get audio data (first index is channel, second one is time)
     is(typeof(T.init.sample(0, 0)));
 
-/// Returns the sample type of the specified buffer.
-alias SampleType(T) = typeof(T.sample(0, 0));
+/// Returns the sample type of the specified Audio.
+alias SampleType(T) = typeof(T.init.sample(0, 0));
 
 /// Optionally, an Audio can provide write access to samples.
 enum isWritableAudio(T) = isAudio!T &&
-	is(typeof(T.init.sample(0, 0) = SampleType!T.init));
+    is(typeof(T.init.sample(0, 0) = SampleType!T.init));
+
 
 /// Optionally, an Audio can provide direct sample access with a 
 /// .channel(index) method.
-enum isDirectAudio(T) =	isAudio!T &&
-	is(typeof(T.init.channel(0)) : SampleType!T[]);
+enum isDirectAudio(T) =	isWritableAudio!T &&
+    is(Unqual!(typeof(T.init.channel(0))) : SampleType!T[]);
 
 
-/// Make builtin arrays fulfill the isWritableAudio trait.
-@property size_t numSamples(T)(T[] slice)
+/// Make builtin slices fulfill the isDirectAudio trait.
+struct DynamicAudio(T)
 {
-    return slice.length;
+    T[] data;
+    alias data this; // DynamicAudio is a subtype of T[]
+
+    @property size_t numSamples()
+    {
+        return data.length;
+    }
+
+    ref T sample(int channel, size_t n)
+    {
+        assert(channel == 0);
+        return data[n];
+    }
+
+    T[] channel(int channel)
+    {
+    	assert(channel == 0);
+    	return data;
+    }
+
+    enum int numChannels = 1;
 }
 
-@property size_t numChannels(T)(T[] slice)
+static assert(isDirectAudio!(DynamicAudio!float));
+static assert(isDirectAudio!(DynamicAudio!double));
+static assert(isDirectAudio!(DynamicAudio!real));
+
+
+/// Make static arrays fulfill the isDirectAudio trait.
+struct StaticAudio(T, size_t N)
 {
-    return 1;
+	T[N] data;
+	alias data this;
+
+	enum size_t numSamples = data.length;
+	enum int numChannels = 1;
+
+	ref T sample(int channel, size_t n)
+	{
+		assert(channel == 0);
+		return data[n];
+	}
+
+	T[] channel(int channel)
+	{
+		assert(channel == 0);
+		return data[0..$];
+	}
 }
 
-ref T sample(T)(T[] slice, size_t channel, size_t n)
-{
-	assert(channel == 0);
-	return slice[n];
-}
+static assert(isDirectAudio!(StaticAudio!(float, 4)));
+static assert(isDirectAudio!(StaticAudio!(double, 5)));
+static assert(isDirectAudio!(StaticAudio!(real, 6)));
 
-T[] channel(T)(T[] slice, size_t channel)
-{
-	assert(channel == 0);
-	return slice;
-}
 
-static assert(isAudio!(float[]));
-static assert(isAudio!(double[]));
-static assert(isAudio!(real[]));
-
-static assert(isWritableAudio!(float[]));
-static assert(isWritableAudio!(double[]));
-static assert(isWritableAudio!(real[]));
 
 
 /+
