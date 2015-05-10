@@ -4,7 +4,7 @@
     "importPaths": [ "." ],
     "sourcePaths": [ "." ],
     "targetType": "dynamicLibrary",
-    "stringImportPaths": ["fonts"],
+    "stringImportPaths": ["fonts", "gfx"],
 
     "sourceFiles": [
         "./distort.d",

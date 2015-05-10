@@ -94,6 +94,7 @@ class DistortGUI : GUIGraphics
 
         // Font data is bundled as a static array
         _font = new Font(cast(ubyte[])( import("VeraBd.ttf") ));
+        context.setSkybox( loadImage(cast(ubyte[])(import("skybox.png"))) );
 
         addChild(inputKnob = new class UIKnob
                  {
@@ -171,7 +172,7 @@ class DistortGUI : GUIGraphics
             for (int x = _dirtyRect.min.x; x < _dirtyRect.max.x; ++x)
             {
                 diffuseScan.ptr[x] = RGBA(239, 229, 213, 255);
-                depthScan.ptr[x] = RGBA(58, 128, 0, 0);
+                depthScan.ptr[x] = RGBA(58, 64, 0, 0);
             }
         }
     }

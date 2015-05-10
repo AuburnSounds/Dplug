@@ -17,21 +17,40 @@ struct Mipmap
     /// maxLevel = 1 => one image + one 2x downsampled mipmap
     void size(int maxLevel, int w, int h)
     {
-        levels.length = maxLevel + 1;
+        levels.length = 0;
 
         for (int level = 0; level <= maxLevel; ++level)
         {
+            if (w == 0 || h == 0)
+                break;
+            levels.length = levels.length + 1;
             levels[level].size(w, h);
             w  = (w + 0) >> 1;
             h  = (h + 0) >> 1;
         }
     }
 
-    /// Interpolated a color.  Integer level, spatial linear interpolation.
+    /// Interpolates a color between mipmap levels.  Floating-point level, spatial linear interpolation.
+    /// x and y are in base level coordinates (top-left pixel is on (0.5, 0.5) coordinates).
+    /// Clamped to borders.
+    vec3f linearMipmapSample(float level, float x, float y)
+    {
+        int ilevel = cast(int)level;
+        float flevel = level - ilevel;
+        return linearSample(ilevel, x, y) * (1 - flevel) + linearSample(ilevel + 1, x, y) * flevel;
+    }
+
+    /// Interpolates a color.  Integer level, spatial linear interpolation.
     /// x and y are in base level coordinates (top-left pixel is on (0.5, 0.5) coordinates).
     /// Clamped to borders.
     vec3f linearSample(int level, float x, float y)
     {
+        if (level < 0)
+            level = 0;
+        int numLevels = cast(int)levels.length;
+        if (level >= numLevels)
+            level = numLevels - 1;
+
         Image!RGBA* image = &levels[level];
         
         float divider = 1.0f / (1 << level);
@@ -54,17 +73,24 @@ struct Mipmap
         int iy = cast(int)y;
         float fx = x - ix;
 
+        int ixp1 = ix + 1;
+        if (ixp1 >= image.w)
+            ixp1 = image.w - 1;
+        int iyp1 = iy + 1;
+        if (iyp1 >= image.h)
+            iyp1 = image.h - 1;
+
         float fxm1 = 1 - fx;
         float fy = y - iy;
         float fym1 = 1 - fy;
 
         RGBA[] L0 = image.scanline(iy);
-        RGBA[] L1 = image.scanline(iy + 1);
+        RGBA[] L1 = image.scanline(iyp1);
 
         RGBA A = L0.ptr[ix];
-        RGBA B = L0.ptr[ix + 1];
+        RGBA B = L0.ptr[ixp1];
         RGBA C = L1.ptr[ix];
-        RGBA D = L1.ptr[ix + 1];
+        RGBA D = L1.ptr[ixp1];
 
         float rup = A.r * fxm1 + B.r * fx;
         float rdown = C.r * fxm1 + D.r * fx;
@@ -81,7 +107,22 @@ struct Mipmap
         return vec3f(r, g, b);
     }
 
-    /// Regenerates the uppser levels based on changes in the provided rectangle.
+    void generateMipmaps()
+    {
+        generateMipmaps( box2i(0, 0, width(), height()) );
+    }
+
+    int width() pure const nothrow @nogc
+    {
+        return levels[0].w;
+    }
+
+    int height() pure const nothrow @nogc
+    {
+        return levels[0].h;
+    }
+
+    /// Regenerates the upper levels based on changes in the provided rectangle.
     /// Uses a flat 2x2 filter
     void generateMipmaps(box2i updateRect)
     {

@@ -1,5 +1,7 @@
 module dplug.gui.graphics;
 
+import std.math;
+
 import ae.utils.graphics;
 import dplug.plugin.client;
 import dplug.plugin.graphics;
@@ -199,7 +201,7 @@ protected:
     // takes output image and non-overlapping areas as input
     void compositeGUI(ImageRef!RGBA wfb, box2i[] areas)
     {
-        ImageRef!RGBA skybox = context().skybox.toRef();
+        Mipmap* skybox = &context.skybox;
 /*
         alias diffuse = _diffuseMap;
         alias depth = _depthMap;
@@ -234,7 +236,8 @@ protected:
                     {
                         for (int k = 0; k < 5; ++k)
                         {
-                            depthPatch.ptr[l].ptr[k] = depth_scan.ptr[l].ptr[col_index[k]].r;
+                            ubyte depthSample = depth_scan.ptr[l].ptr[col_index[k]].r;
+                            depthPatch.ptr[l].ptr[k] = depthSample;
                         }
                     }
 
@@ -253,6 +256,11 @@ protected:
                     vec3f materialDiffuse = vec3f(imaterialDiffuse.r / 255.0f, imaterialDiffuse.g / 255.0f, imaterialDiffuse.b / 255.0f);
 
                     vec3f color = vec3f(0.0f);
+                    vec3f toEye = vec3f(cast(float)i / cast(float)w - 0.5f,
+                                        cast(float)j / cast(float)h - 0.5f,
+                                        1.0f).normalized;
+
+                    float shininess = depth_scan[2].ptr[i].g / 255.0f;
 
                     // Combined color bleed and ambient occlusion!
                     vec3f avgDepthHere = _depthMap.linearSample(3, i + 0.5f, j + 0.5f) / 255.0f;
@@ -280,42 +288,54 @@ protected:
                     vec3f keylightColor = vec3f(0.54f, 0.50f, 0.46f)* 0.7f;
                     color += materialDiffuse * keylightColor * lightPassed;
 
+                    vec3f light2Dir = vec3f(0.0f, 1.0f, 0.1f).normalized;
+                    vec3f light2Color = vec3f(0.378f, 0.35f, 0.322f);
 
                     // secundary light
-                    vec3f light2Color = vec3f(0.54f, 0.5f, 0.46f) * 0.7;
-                    vec3f light2Dir = vec3f(0.0f, 1.0f, 0.1f).normalized;
-                    vec3f eyeDir = vec3f(0.0f, 0f, 1.0f).normalized;
-                    float diffuseFactor = dot(normal, light2Dir);
-
-                    if (diffuseFactor > 0)
-                        color += materialDiffuse * light2Color * diffuseFactor;
-
-                    // specular
-                    vec3f toEye = vec3f(0, 0, 1.0f);
-                    vec3f lightReflect = (reflect(light2Dir, normal).normalized);
-                    float specularFactor = dot(toEye, lightReflect);
-                    if (specularFactor > 0)
                     {
-                        specularFactor = specularFactor ^^ 4.0f;
-                        color += materialDiffuse * light2Color * specularFactor * 2;
+                        
+                        float diffuseFactor = dot(normal, light2Dir);
+
+                        if (diffuseFactor > 0)
+                            color += materialDiffuse * light2Color * diffuseFactor;
                     }
 
-                    // skybox reflection
-                    vec3f pureReflection = (reflect(toEye, normal).normalized);
+                    // specular reflection
+                    {
+                        vec3f lightReflect = reflect(light2Dir, normal);
+                        float specularFactor = dot(toEye, lightReflect);
+                        if (specularFactor > 0)
+                        {
+                            specularFactor = specularFactor * specularFactor;
+                            specularFactor = specularFactor * specularFactor;
+                            color += materialDiffuse * light2Color * specularFactor * 2 * shininess;
+                        }
+                    }
 
-                    int skyx = cast(int)(0.5 + ((0.5 + pureReflection.x *0.5) * (skybox.w - 1)));
-                    int skyy = cast(int)(0.5 + ((0.5 + pureReflection.y *0.5) * (skybox.h - 1)));
+                    // skybox reflection (use the same shininess as specular)
+                    {
+                        vec3f pureReflection = reflect(toEye, normal);
 
-                    RGBA skyC = skybox[skyx, skyy];  
-                    vec3f skyColor = vec3f(skyC.r / 255.0f, skyC.g / 255.0f, skyC.b / 255.0f);
+                        float skyx = 0.5f + ((0.5f + pureReflection.x *0.5f) * (skybox.width - 1));
+                        float skyy = 0.5f + ((0.5f + pureReflection.y *0.5f) * (skybox.height - 1));
 
-                    color += 0.15f * skyColor;
+                        float depthDX =  (depthPatch[3][2] - depthPatch[1][2]) * 0.5f;
+                        float depthDY =  (depthPatch[2][3] - depthPatch[2][1]) * 0.5f;
+                        float depthDerivSqr = depthDX * depthDX + depthDY * depthDY;
+                        float indexDeriv = depthDerivSqr * skybox.width;
+
+                        // cooking here
+                        // log2 scaling + threshold tuned by hand
+                        float mipLevel = 0.5f * log2(1.0f + indexDeriv * 0.5f); //TODO tune this
+
+                        vec3f skyColor = skybox.linearMipmapSample(mipLevel, skyx, skyy) / 255.0f;
+                        color += shininess * 0.3f * skyColor;
+                    }
 
 
                     // Add ambient component
                     vec3f ambientLight = vec3f(0.3f, 0.3f, 0.3f);
                     vec3f materialAmbient = materialDiffuse;
-                    //color = vec3f(0.0f);
                     color += colorBleed * ambientLight;
 
                     // Show normals

@@ -4,6 +4,7 @@ import std.file;
 
 import gfm.math;
 
+import dplug.gui.mipmap;
 import dplug.gui.toolkit.font;
 import dplug.gui.toolkit.element;
 
@@ -18,7 +19,7 @@ public:
     this()
     {
         // create a dummy black skybox
-        skybox.size(1024, 1024);
+        skybox.size(10, 1024, 1024);
     }
 
     ~this()
@@ -28,7 +29,14 @@ public:
 
     UIElement focused = null; // last clicked element
     UIElement dragged = null; // current dragged element
-    Image!RGBA skybox;
+    Mipmap skybox;
+
+    void setSkybox(Image!RGBA image)
+    {
+        skybox.size(10, image.w, image.h);
+        skybox.levels[0] = image;
+        skybox.generateMipmaps();
+    }
 
     void setFocused(UIElement focused)
     {

@@ -40,14 +40,18 @@ public:
         diffuseMap.softCircle(centerx, centery, radius - 2, radius, c);
 
         
-        depthMap.softCircle(centerx, centery, depthRadius, radius, RGBA(255, 128, 0, 0));
+        ubyte shininess = 200;
+        depthMap.softCircle(centerx, centery, depthRadius, radius, RGBA(255, shininess, 0, 0));
+
+        depthMap.softCircle(centerx, centery, 2, depthRadius, RGBA(150, shininess, 0, 0));
+
 
         for (int i = 0; i < 7; ++i)
         {
             float disp = i * 2 * PI / 7.0f;
             float x = centerx + sin(angle + disp) * (radius - 10);
             float y = centery - cos(angle + disp) * (radius - 10);
-            depthMap.softCircle(x, y, 5, 7, RGBA(200, 128, 0, 0));
+            depthMap.softCircle(x, y, 5, 7, RGBA(100, 255, 0, 0));
             diffuseMap.softCircle(x, y, 5, 7, RGBA(255, 128, 128, 255));
         }
 

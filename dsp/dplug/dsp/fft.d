@@ -83,7 +83,7 @@ void FFT(T)(Complex!T[] buffer, FFTDirection direction)
     }
 }
 
-/// From a signal, output chunks of dertermined size, with optional overlap.
+/// From a signal, output chunks of determined size, with optional overlap.
 /// Introduces approximately windowSize/2 samples delay.
 struct Segmenter(T)
 {

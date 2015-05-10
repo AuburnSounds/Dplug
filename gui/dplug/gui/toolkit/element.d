@@ -381,7 +381,7 @@ protected:
             {
                 diffuseScan.ptr[x] = ( (x >> 3) ^  (y >> 3) ) & 1 ? darkGrey : lighterGrey;
                 ubyte depth = 58;
-                ubyte shininess = 128;
+                ubyte shininess = 64;
                 depthScan.ptr[x] = RGBA(depth, shininess, 0, 0);
             }
         }
