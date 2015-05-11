@@ -32,3 +32,4 @@ Image!RGBA loadImage(const(ubyte[]) imageData)
     memcpy(loaded.pixels.ptr, decoded, width * height * 4);
     return loaded; // this uses the GC to give up ownership
 }
+

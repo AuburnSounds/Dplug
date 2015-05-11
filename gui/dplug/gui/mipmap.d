@@ -52,7 +52,7 @@ struct Mipmap
             level = numLevels - 1;
 
         Image!RGBA* image = &levels[level];
-        
+
         float divider = 1.0f / (1 << level);
         x *= divider;
         y *= divider;
@@ -158,7 +158,7 @@ struct Mipmap
                     RGBA A = L0.ptr[2 * x];
                     RGBA B = L0.ptr[2 * x + 1];
                     RGBA C = L1.ptr[2 * x];
-                    RGBA D = L1.ptr[2 * x + 1];                      
+                    RGBA D = L1.ptr[2 * x + 1];
                     dest.ptr[x] = RGBA.op!q{(a + b + c + d + 2) >> 2}(A, B, C, D);
                 }
             }
@@ -168,10 +168,10 @@ struct Mipmap
 
 unittest
 {
-    Mipmap!RGBA a;
+    Mipmap a;
     a.size(4, 256, 256);
 
-    Mipmap!S16 b;
-    b.size(16, 17, 333);    
+    Mipmap b;
+    b.size(16, 17, 333);
 }
 
