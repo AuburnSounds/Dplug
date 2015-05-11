@@ -170,7 +170,7 @@ struct GlyphKey
 /// Draw text centered on a point on a DirectView.
 
 void fillText(V, StringType)(auto ref V surface, Font font, StringType s, float positionx, float positiony)
-    if (isDirectView!V && is(ViewColor!V == RGBA))
+    if (isWritableView!V && is(ViewColor!V == RGBA))
 {
     // Decompose in fractional and integer position
     int ipositionx = cast(int)floor(positionx);
@@ -201,13 +201,20 @@ void fillText(V, StringType)(auto ref V surface, Font font, StringType s, float 
 
         for (int y = 0; y < outsurf.h; ++y)
         {
-            RGBA[] scanline = outsurf.scanline(y);
+            static if (isDirectView!V)
+                RGBA[] outscan = outsurf.scanline(y);
+
             L8[] inscan = coverageBuffer.scanline(y);
             for (int x = 0; x < croppedWidth; ++x)
             {
                 RGBA finalColor = font._currentColor;
                 finalColor.a = ( (font._currentColor.a * inscan[x].l + 128) / 255 );
-                scanline[x] = RGBA.blend(scanline[x], finalColor);
+
+                static if (isDirectView!V)
+                    outscan.ptr[x] = RGBA.blend(outscan.ptr[x], finalColor);
+                else
+                    outsurf[x, y] = RGBA.blend(outsurf[x, y], finalColor);
+
             }
         }            
     }
