@@ -2,22 +2,36 @@ module dplug.gui.toolkit.knob;
 
 import std.math;
 import dplug.gui.toolkit.element;
+import dplug.plugin.params;
 
 class UIKnob : UIElement
 {
 public:
 
-    this(UIContext context, Font font, string label)
+    this(UIContext context, FloatParameter param)
     {
         super(context);
-        _label = label;
-        _font = font;
-        _value = 0.5f;
+        _param = param;
+        _sensivity = 0.25f;
+    }
+
+    /// Returns: sensivity.
+    float sensivity()
+    {
+        return _sensivity;
+    }
+
+    /// Sets sensivity.
+    float sensivity(float sensivity)
+    {
+        return _sensivity = sensivity;
     }
 
     override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap)
     {
         auto c = RGBA(193, 180, 176, 255);
+
+        float normalizedValue = _param.getNormalized();
 
         if (isMouseOver())
             c = RGBA(213, 200, 196, 255);
@@ -29,7 +43,7 @@ public:
 
         int centerx = _position.center.x;
         int centery = _position.center.y;
-        float angle = (_value - 0.5f) * 4.8f;
+        float angle = (normalizedValue - 0.5f) * 4.8f;
         int depthRadius = max(radius * 3 / 5, 0);
         int depthRadius2 = max(radius * 3 / 5, 0);
 
@@ -40,9 +54,7 @@ public:
         
         ubyte shininess = 200;
         depthMap.softCircle(centerx, centery, depthRadius, radius, RGBA(255, shininess, 0, 0));
-
-        depthMap.softCircle(centerx, centery, 1, depthRadius, RGBA(150, shininess, 0, 0));
-
+        depthMap.softCircle(centerx, centery, 0, depthRadius, RGBA(150, shininess, 0, 0));
 
         for (int i = 0; i < 7; ++i)
         {
@@ -53,16 +65,11 @@ public:
             int smallRadius = radius * 5 / 60;
             int largerRadius = radius * 7 / 60;
 
-            depthMap.softCircle(x, y, smallRadius, largezrRadius, RGBA(100, 255, 0, 0));
-            diffuseMap.softCircle(x, y, smallRadius, largezrRadius, RGBA(255, 180, 128, 255));
+            depthMap.softCircle(x, y, smallRadius, largerRadius, RGBA(100, 255, 0, 0));
+            diffuseMap.softCircle(x, y, smallRadius, largerRadius, RGBA(255, 180, 128, 255));
         }
 
         diffuseMap.softCircle(posEdgeX, posEdgeY, 0, 15, c);
-        //depthMap.aaLine(posEdgeX, posEdgeY, posEdgeX2, posEdgeY2, S16(0));
-
-/*        _font.size = 16;
-        _font.color = RGBA(220, 220, 220, 255);
-        _font.fillText(surface, _label, _position.center.x, _position.max.y + 20);*/
     }
 
     override bool onMousePreClick(int x, int y, int button, bool isDoubleClick)
@@ -75,13 +82,12 @@ public:
     override void onMouseDrag(int x, int y, int dx, int dy)
     {
         setDirty();
-        _value = clamp(_value - dy * 0.003f, 0.0f, 1.0f);
-        onValueChanged();
-    }
+        float displacementInHeight = cast(float)(dy) / _position.height;
+        float extent = _param.maxValue() - _param.minValue();
 
-    // override to set the parameter host-side
-    void onValueChanged()
-    {
+        // TODO: this will break with log params
+        float currentValue = _param.value;
+        _param.setFromGUI(currentValue - displacementInHeight * _sensivity * extent);
     }
 
     // For lazy updates
@@ -106,7 +112,11 @@ public:
     }
 
 protected:
-    string _label;
-    Font _font;
-    float _value; // between 0 and 1
+
+    /// The parameter this knob is linked with.
+    FloatParameter _param;
+
+    /// Sensivity: given a mouse movement in 100th of the height of the knob, 
+    /// how much should the normalized parameter change.
+    float _sensivity;
 }

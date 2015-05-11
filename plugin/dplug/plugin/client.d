@@ -179,12 +179,6 @@ public:
         param(index).setFromHost(value);
     }
 
-    void setParameterFromGUI(int index, float value)
-    {
-        param(index).setFromGUI(value);
-        _hostCommand.paramAutomate(index, value);
-    }
-
     /// Override and return your brand name.
     string vendorName() pure const nothrow
     {

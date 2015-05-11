@@ -33,9 +33,9 @@ final class Distort : dplug.plugin.Client
 
     override void buildParameters()
     {
-        addParameter(new FloatParameter("input", "db", 0.0f, 2.0f, 1.0f));
-        addParameter(new FloatParameter("drive", "%", 1.0f, 2.0f, 1.0f));
-        addParameter(new FloatParameter("output", "db", 0.0f, 1.0f, 0.9f));
+        addParameter(new FloatParameter(this, 0, "input", "db", 0.0f, 2.0f, 1.0f));
+        addParameter(new FloatParameter(this, 1, "drive", "%", 1.0f, 2.0f, 1.0f));
+        addParameter(new FloatParameter(this, 2, "output", "db", 0.0f, 1.0f, 0.9f));
     }
 
     override void buildLegalIO()
@@ -96,49 +96,9 @@ class DistortGUI : GUIGraphics
         _font = new Font(cast(ubyte[])( import("VeraBd.ttf") ));
         context.setSkybox( loadImage(cast(ubyte[])(import("skybox.png"))) );
 
-        addChild(inputKnob = new class UIKnob
-                 {
-                     this()
-                     {
-                         super(this.outer.context(), this.outer._font, "input");
-                     }
-
-                     override void onValueChanged()
-                     {
-                         auto client = this.outer._client;
-                         int paramIndex = 0;
-                         client.setParameterFromGUI(paramIndex, _value);
-                     }
-                 });
-
-        addChild(driveKnob = new class UIKnob
-                 {
-                     this()
-                     {
-                         super(this.outer.context(), this.outer._font, "drive");
-                     }
-
-                     override void onValueChanged()
-                     {
-                         auto client = this.outer._client;
-                         int paramIndex = 1;
-                         client.setParameterFromGUI(paramIndex, _value);
-                     }
-                 });
-        addChild(outputKnob = new class UIKnob
-                 {
-                     this()
-                     {
-                         super(this.outer.context(), this.outer._font, "output");
-                     }
-
-                     override void onValueChanged()
-                     {
-                         auto client = this.outer._client;
-                         int paramIndex = 2;
-                         client.setParameterFromGUI(paramIndex, _value);
-                     }
-                 });
+        addChild(inputKnob = new UIKnob(context(), cast(FloatParameter) _client.param(0)));
+        addChild(driveKnob = new UIKnob(context(), cast(FloatParameter) _client.param(1)));
+        addChild(outputKnob = new UIKnob(context(), cast(FloatParameter) _client.param(2)));
     }
 
     override void reflow(box2i availableSpace)

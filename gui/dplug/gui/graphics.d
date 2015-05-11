@@ -349,7 +349,7 @@ protected:
                         float indexDeriv = depthDerivSqr * skybox.width;
 
                         // cooking here
-                        // log2 scaling + threshold tuned by hand
+                        // log2 scaling + threshold
                         float mipLevel = 0.5f * log2(1.0f + indexDeriv * 0.5f); //TODO tune this
 
                         vec3f skyColor = skybox.linearMipmapSample(mipLevel, skyx, skyy) / 255.0f;
