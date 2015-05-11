@@ -9,6 +9,9 @@ import gfm.math;
 import gfm.image.stb_truetype;
 
 
+
+
+
 final class Font
 {
 public:
@@ -74,52 +77,7 @@ public:
         // for moving text
         iterateCharacterPositions!StringType(s, _currentFontSizePx, 0, 0, &extendArea);
         return area;
-    }
-
-    /// Draw text centered on a point.
-    void fillText(StringType)(ImageRef!RGBA surface, StringType s, float positionx, float positiony) 
-    {
-        // Decompose in fractional and integer position
-        int ipositionx = cast(int)floor(positionx);
-        int ipositiony = cast(int)floor(positiony);
-        float fractionalPosX = positionx - ipositionx;
-        float fractionalPosY = positiony - ipositiony;
-
-        box2i area = measureText(s);
-        vec2i offset = vec2i(ipositionx, ipositiony) - area.center; // TODO: support other alignment modes
-
-        void drawCharacter(int numCh, dchar ch, box2i position, float scale, float xShift, float yShift)
-        {
-            vec2i offsetPos = position.min + offset;
-
-            // make room in temp buffer
-            int w = position.width;
-            int h = position.height;
-
-            Image!L8 coverageBuffer = getGlyphCoverage(ch, scale, w, h, xShift, yShift);
-
-            // follows the cropping limitations of crop()
-            int cropX0 = clamp!int(offsetPos.x, 0, surface.w);
-            int cropY0 = clamp!int(offsetPos.y, 0, surface.h);
-            int cropX1 = clamp!int(offsetPos.x + w, 0, surface.w);
-            int cropY1 = clamp!int(offsetPos.y + h, 0, surface.h);
-            auto outsurf = surface.crop(cropX0, cropY0, cropX1, cropY1);
-            int croppedWidth = outsurf.w;
-
-            for (int y = 0; y < outsurf.h; ++y)
-            {
-                RGBA[] scanline = outsurf.scanline(y);
-                L8[] inscan = coverageBuffer.scanline(y);
-                for (int x = 0; x < croppedWidth; ++x)
-                {
-                    RGBA finalColor = _currentColor;
-                    finalColor.a = ( (_currentColor.a * inscan[x].l + 128) / 255 );
-                    scanline[x] = RGBA.blend(scanline[x], finalColor);
-                }
-            }            
-        }
-        iterateCharacterPositions!StringType(s, _currentFontSizePx, fractionalPosX, fractionalPosY, &drawCharacter);
-    }
+    }    
 
 private:
 
@@ -208,3 +166,50 @@ struct GlyphKey
     float yShift;
 }
 
+
+/// Draw text centered on a point on a DirectView.
+
+void fillText(V, StringType)(auto ref V surface, Font font, StringType s, float positionx, float positiony)
+    if (isDirectView!V && is(ViewColor!V == RGBA))
+{
+    // Decompose in fractional and integer position
+    int ipositionx = cast(int)floor(positionx);
+    int ipositiony = cast(int)floor(positiony);
+    float fractionalPosX = positionx - ipositionx;
+    float fractionalPosY = positiony - ipositiony;
+
+    box2i area = font.measureText(s);
+    vec2i offset = vec2i(ipositionx, ipositiony) - area.center; // TODO: support other alignment modes
+
+    void drawCharacter(int numCh, dchar ch, box2i position, float scale, float xShift, float yShift)
+    {
+        vec2i offsetPos = position.min + offset;
+
+        // make room in temp buffer
+        int w = position.width;
+        int h = position.height;
+
+        Image!L8 coverageBuffer = font.getGlyphCoverage(ch, scale, w, h, xShift, yShift);
+
+        // follows the cropping limitations of crop()
+        int cropX0 = clamp!int(offsetPos.x, 0, surface.w);
+        int cropY0 = clamp!int(offsetPos.y, 0, surface.h);
+        int cropX1 = clamp!int(offsetPos.x + w, 0, surface.w);
+        int cropY1 = clamp!int(offsetPos.y + h, 0, surface.h);
+        auto outsurf = surface.crop(cropX0, cropY0, cropX1, cropY1);
+        int croppedWidth = outsurf.w;
+
+        for (int y = 0; y < outsurf.h; ++y)
+        {
+            RGBA[] scanline = outsurf.scanline(y);
+            L8[] inscan = coverageBuffer.scanline(y);
+            for (int x = 0; x < croppedWidth; ++x)
+            {
+                RGBA finalColor = font._currentColor;
+                finalColor.a = ( (font._currentColor.a * inscan[x].l + 128) / 255 );
+                scanline[x] = RGBA.blend(scanline[x], finalColor);
+            }
+        }            
+    }
+    font.iterateCharacterPositions!StringType(s, font._currentFontSizePx, fractionalPosX, fractionalPosY, &drawCharacter);
+}
