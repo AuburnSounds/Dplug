@@ -1,7 +1,5 @@
 import std.math;
 
-import std.math;
-
 import dplug.plugin,
        dplug.vst,
        dplug.gui;
@@ -58,7 +56,7 @@ final class Distort : dplug.plugin.Client
 
         int minChan = numInputs > numOutputs ? numOutputs : numInputs;
 
-        float inputGain = (cast(FloatParameter)param(0)).value();        
+        float inputGain = (cast(FloatParameter)param(0)).value();
         float drive = (cast(FloatParameter)param(1)).value();
         float outputGain = (cast(FloatParameter)param(2)).value();
 
@@ -105,9 +103,9 @@ class DistortGUI : GUIGraphics
     {
         _position = availableSpace;
 
-        // For complex UI hierarchy or a variable dimension UI, you would be supposed to 
+        // For complex UI hierarchy or a variable dimension UI, you would be supposed to
         // put a layout algorithm here and implement reflow (ie. pass the right availableSpace
-        // to children). But for simplicity purpose and for the sake of fixed size UI, forcing 
+        // to children). But for simplicity purpose and for the sake of fixed size UI, forcing
         // positions is completely acceptable.
         int x = 100;
         int y = 100;
@@ -136,7 +134,7 @@ class DistortGUI : GUIGraphics
 
         _font.size = 20;
         _font.color = RGBA(0, 0, 0, 255);
-        
+
         diffuseMap.fillText(_font, "Input", 150, 230);
         diffuseMap.fillText(_font, "Drive", 310, 230);
         diffuseMap.fillText(_font, "Output", 470, 230);
