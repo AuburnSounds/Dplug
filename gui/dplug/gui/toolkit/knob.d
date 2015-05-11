@@ -43,7 +43,7 @@ public:
         ubyte shininess = 200;
         depthMap.softCircle(centerx, centery, depthRadius, radius, RGBA(255, shininess, 0, 0));
 
-        depthMap.softCircle(centerx, centery, 2, depthRadius, RGBA(150, shininess, 0, 0));
+        depthMap.softCircle(centerx, centery, 1, depthRadius, RGBA(150, shininess, 0, 0));
 
 
         for (int i = 0; i < 7; ++i)
