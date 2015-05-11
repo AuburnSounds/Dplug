@@ -143,20 +143,41 @@ class GUIGraphics : UIElement, IGraphics
 
             // Get areas to update
             _areasToUpdate.length = 0;
+            _areasToRender.length = 0;
             foreach(elem; elemsToDraw)
+            {
                 _areasToUpdate ~= elem.dirtyRect();
 
+
+                static final box2i extendDirtyRect(box2i rect, int w, int h)
+                {
+                    // shadow casting => 10 pixels influence on bottom left
+                    // color-bleed => 7 pixels influence in every direction
+                    int xmin = rect.min.x - 10;
+                    int ymin = rect.min.y - 7;
+                    int xmax = rect.max.x + 7;
+                    int ymax = rect.max.y + 10;
+                    if (xmin < 0) xmin = 0;
+                    if (ymin < 0) ymin = 0;
+                    if (xmax > w) xmax = w;
+                    if (ymax > h) ymax = h;
+                    return box2i(xmin, ymin, xmax, ymax);
+                }
+
+                _areasToRender ~= extendDirtyRect(elem.dirtyRect, wfb.w, wfb.h);
+            }
+
             // Split boxes to avoid overdraw
+            // Note: this is done separately for update areas and render areas
             _areasToUpdate.boxes = _areasToUpdate.removeOverlappingAreas();
+            _areasToRender.boxes = _areasToRender.removeOverlappingAreas();
 
             // Render required areas in diffuse and depth maps, base level
             foreach(elem; elemsToDraw)
                 elem.render(_diffuseMap.levels[0].toRef(), _depthMap.levels[0].toRef());
 
-            box2i[] areas = _areasToUpdate.boxes[];
-
             // Recompute mipmaps in updated areas
-            foreach(area; areas)
+            foreach(area; _areasToUpdate.boxes)
             {
                 _diffuseMap.generateMipmaps(area);
                 _depthMap.generateMipmaps(area);
@@ -167,10 +188,10 @@ class GUIGraphics : UIElement, IGraphics
             clearDirty();
 
             // Composite GUI
-            compositeGUI(wfb, areas);
+            compositeGUI(wfb, _areasToRender.boxes);
 
             // Return non-overlapping areas to update on screen
-            return areas;
+            return _areasToRender.boxes;
         }
 
         override void onMouseCaptureCancelled()
@@ -189,7 +210,11 @@ protected:
     // An interface to the underlying window
     IWindow _window;
 
+    // The list of areas whose diffuse/depth data have been changed 
     BoxList _areasToUpdate;
+
+    // The list of areas that must be effectively updated (slithly larger than _areasToUpdate)
+    BoxList _areasToRender;
 
     int _askedWidth = 0;
     int _askedHeight = 0;
@@ -202,10 +227,7 @@ protected:
     void compositeGUI(ImageRef!RGBA wfb, box2i[] areas)
     {
         Mipmap* skybox = &context.skybox;
-/*
-        alias diffuse = _diffuseMap;
-        alias depth = _depthMap;
-*/        
+
         int w = _diffuseMap.levels[0].w;
         int h = _diffuseMap.levels[0].h;
 
@@ -366,7 +388,7 @@ protected:
                     wfb[i, j] = finalColor;
 
                 }
-            }
+            }            
         }
     }
 }

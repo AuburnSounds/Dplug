@@ -305,7 +305,7 @@ version(Windows)
                             r.top = dirtyRect.min.y;
                             r.right = dirtyRect.max.x;
                             r.bottom = dirtyRect.max.y;
-                            InvalidateRect(hwnd, &r, FALSE);
+                            InvalidateRect(hwnd, &r, FALSE); // TODO: be more precise with invalidated region?
                             UpdateWindow(hwnd);
                         }
                     }
