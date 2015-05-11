@@ -319,6 +319,13 @@ public:
         return _dirtyRect;
     }
 
+    /// Given an ImageRef!RGBA, return this view cropped to the dirty rectangle.
+    /// This is useful to redraw part of an UIElement only if necessary.
+    auto dirtyView(ImageRef!RGBA surface)
+    {
+        return surface.crop(_dirtyRect.min.x, _dirtyRect.min.y, _dirtyRect.max.x, _dirtyRect.max.y);
+    }
+
     /// Returns: Parent element. `null` if detached or root element.
     final UIElement parent()
     {

@@ -235,6 +235,8 @@ protected:
         {
             for (int j = area.min.y; j < area.max.y; ++j)
             {
+                RGBA[] wfb_scan = wfb.scanline(j);
+
                 // clamp to existing lines
                 int[5] line_index = void;
                 for (int l = 0; l < 5; ++l)
@@ -384,9 +386,9 @@ protected:
                     int g = cast(int)(0.5 + color.y * 255);
                     int b = cast(int)(0.5 + color.z * 255);
 
+                    // write composited color
                     RGBA finalColor = RGBA(cast(ubyte)r, cast(ubyte)g, cast(ubyte)b, 255);
-                    wfb[i, j] = finalColor;
-
+                    wfb_scan.ptr[i] = finalColor;
                 }
             }            
         }

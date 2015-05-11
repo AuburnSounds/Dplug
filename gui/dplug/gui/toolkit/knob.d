@@ -25,20 +25,18 @@ public:
         if (isDragged())
             c = RGBA(233, 220, 216, 255);
 
+        int radius = min(_position.width / 2, _position.height / 2);
+
         int centerx = _position.center.x;
         int centery = _position.center.y;
-        int radius = _position.width / 2;
-        int radius2 = 0;
-        float angle = (_value - 0.5f) * 4.0f;
-        int depthRadius = max(radius - 20, 0);
-        int depthRadius2 = max(radius - 20, 0);
+        float angle = (_value - 0.5f) * 4.8f;
+        int depthRadius = max(radius * 3 / 5, 0);
+        int depthRadius2 = max(radius * 3 / 5, 0);
 
         float posEdgeX = centerx + sin(angle) * depthRadius2;
         float posEdgeY = centery - cos(angle) * depthRadius2;
-
         
-        diffuseMap.softCircle(centerx, centery, radius - 2, radius, c);
-
+        diffuseMap.softCircle(centerx, centery, radius - 1, radius, c);
         
         ubyte shininess = 200;
         depthMap.softCircle(centerx, centery, depthRadius, radius, RGBA(255, shininess, 0, 0));
@@ -49,10 +47,14 @@ public:
         for (int i = 0; i < 7; ++i)
         {
             float disp = i * 2 * PI / 7.0f;
-            float x = centerx + sin(angle + disp) * (radius - 10);
-            float y = centery - cos(angle + disp) * (radius - 10);
-            depthMap.softCircle(x, y, 5, 7, RGBA(100, 255, 0, 0));
-            diffuseMap.softCircle(x, y, 5, 7, RGBA(255, 128, 128, 255));
+            float x = centerx + sin(angle + disp) * (radius * 4 / 5);
+            float y = centery - cos(angle + disp) * (radius * 4 / 5);
+
+            int smallRadius = radius * 5 / 60;
+            int largerRadius = radius * 7 / 60;
+
+            depthMap.softCircle(x, y, smallRadius, largezrRadius, RGBA(100, 255, 0, 0));
+            diffuseMap.softCircle(x, y, smallRadius, largezrRadius, RGBA(255, 180, 128, 255));
         }
 
         diffuseMap.softCircle(posEdgeX, posEdgeY, 0, 15, c);

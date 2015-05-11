@@ -156,7 +156,7 @@ class DistortGUI : GUIGraphics
         int margin = 60;
         inputKnob.position = box2i(x, y, x + w, y + h);
         x += w + margin;
-        driveKnob.position = box2i(x, y, x + w, y + h);
+        driveKnob.position = box2i(x - 10, y - 20, x + w + 10, y + h);
         x += w + margin;
         outputKnob.position = box2i(x, y, x + w, y + h);
     }
@@ -165,16 +165,33 @@ class DistortGUI : GUIGraphics
 
     override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap)
     {
-        for (int y = _dirtyRect.min.y; y < _dirtyRect.max.y; ++y)
-        {
-            RGBA[] depthScan = depthMap.scanline(y);
-            RGBA[] diffuseScan = diffuseMap.scanline(y);
-            for (int x = _dirtyRect.min.x; x < _dirtyRect.max.x; ++x)
-            {
-                diffuseScan.ptr[x] = RGBA(239, 229, 213, 255);
-                depthScan.ptr[x] = RGBA(58, 64, 0, 0);
-            }
-        }
+        auto croppedDiffuse = dirtyView(diffuseMap);
+        auto croppedDepth = dirtyView(depthMap);
+
+        // fill with clear color
+        croppedDiffuse.fill(RGBA(239, 229, 213, 255));
+
+        // fill with clear depth + shininess
+        croppedDepth.fill(RGBA(58, 64, 0, 0));
+
+        _font.size = 20;
+        _font.color = RGBA(0, 0, 0, 255);
+        
+        diffuseMap.fillText(_font, "Input", 150, 230);
+        diffuseMap.fillText(_font, "Drive", 310, 230);
+        diffuseMap.fillText(_font, "Output", 470, 230);
+
+        // Decorations
+        auto hole = RGBA(32, 32, 0, 0);
+        depthMap.fillRect(0, 0, 50, 330, hole);
+        depthMap.fillRect(570, 0, 620, 330, hole);
+        diffuseMap.fillRect(0, 0, 50, 330, RGBA(150, 140, 140));
+        diffuseMap.fillRect(570, 0, 620, 330, RGBA(150, 140, 140));
+
+        depthMap.softCircle(25, 25, 1, 7, RGBA(100, 255, 0, 0));
+        depthMap.softCircle(25, 330-25, 1, 7, RGBA(100, 255, 0, 0));
+        depthMap.softCircle(620-25, 330-25, 1, 7, RGBA(100, 255, 0, 0));
+        depthMap.softCircle(620-25, 25, 1, 7, RGBA(100, 255, 0, 0));
     }
 }
 
