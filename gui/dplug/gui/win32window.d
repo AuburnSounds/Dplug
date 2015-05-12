@@ -271,8 +271,13 @@ version(Windows)
                     {
                         updateBufferSizeIfNeeded();
 
-                        // support window resize/move from under another
-                        _listener.markRectangleDirty(box2i(r.left, r.top, r.right, r.bottom));
+                        auto rect = box2i(r.left, r.top, r.right, r.bottom);
+                        rect = _listener.extendsDirtyRect(rect, _width, _height);
+
+                        // Support window resize/move from under another.
+                        // This creates overdraw for regular dirtied controls though.
+                        // Life is unfair.
+                        _listener.markRectangleDirty(rect);
 
                         ImageRef!RGBA wfb;
                         wfb.w = _width;
@@ -305,7 +310,7 @@ version(Windows)
                             r.top = dirtyRect.min.y;
                             r.right = dirtyRect.max.x;
                             r.bottom = dirtyRect.max.y;
-                            InvalidateRect(hwnd, &r, FALSE); // TODO: be more precise with invalidated region?
+                            InvalidateRect(hwnd, &r, FALSE); // TODO: be more precise with invalidated regions?
                             UpdateWindow(hwnd);
                         }
                     }

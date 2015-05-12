@@ -133,7 +133,21 @@ class GUIGraphics : UIElement, IGraphics
             _depthMap.size(4, width, height);
         }
 
-        // an image you have to draw to, or return that nothing has changed
+        override box2i extendsDirtyRect(box2i rect, int width, int height)
+        {
+            // shadow casting => 10 pixels influence on bottom left
+            // color-bleed => 7 pixels influence in every direction
+            int xmin = rect.min.x - 10;
+            int ymin = rect.min.y - 7;
+            int xmax = rect.max.x + 7;
+            int ymax = rect.max.y + 10;
+            if (xmin < 0) xmin = 0;
+            if (ymin < 0) ymin = 0;
+            if (xmax > width) xmax = width;
+            if (ymax > height) ymax = height;
+            return box2i(xmin, ymin, xmax, ymax);
+        }
+
         override box2i[] onDraw(ImageRef!RGBA wfb)
         {
             // TODO: cache for areas to update to share with getDirtyRectangle?
@@ -148,23 +162,8 @@ class GUIGraphics : UIElement, IGraphics
             {
                 _areasToUpdate ~= elem.dirtyRect();
 
-
-                static final box2i extendDirtyRect(box2i rect, int w, int h)
-                {
-                    // shadow casting => 10 pixels influence on bottom left
-                    // color-bleed => 7 pixels influence in every direction
-                    int xmin = rect.min.x - 10;
-                    int ymin = rect.min.y - 7;
-                    int xmax = rect.max.x + 7;
-                    int ymax = rect.max.y + 10;
-                    if (xmin < 0) xmin = 0;
-                    if (ymin < 0) ymin = 0;
-                    if (xmax > w) xmax = w;
-                    if (ymax > h) ymax = h;
-                    return box2i(xmin, ymin, xmax, ymax);
-                }
-
-                _areasToRender ~= extendDirtyRect(elem.dirtyRect, wfb.w, wfb.h);
+                // TODO: Not sure if this is needed anymore to have separate render areas now that the dirtied part is extended
+                _areasToRender ~= extendsDirtyRect(elem.dirtyRect, wfb.w, wfb.h); 
             }
 
             // Split boxes to avoid overdraw
