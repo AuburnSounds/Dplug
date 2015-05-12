@@ -1,5 +1,5 @@
 {
-    "name": "dplug-distort",
+    "name": "distort",
     "license": "public domain",
     "importPaths": [ "." ],
     "sourcePaths": [ "." ],
