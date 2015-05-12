@@ -32,6 +32,7 @@ public:
     /// Meant to be overriden almost everytime for custom behaviour.
     /// Default behaviour is to span the whole area.
     /// Any layout algorithm is up to you.
+    /// Children elements don't need to be inside their parent.
     void reflow(box2i availableSpace)
     {
         // default: span the entire available area, and do the same for children
@@ -374,6 +375,7 @@ protected:
 
     /// Draw method. You should redraw the area there.
     /// For better efficiency, you may only redraw the part in _dirtyRect.
+    /// Warning: `onDraw` must only draw in the _position rectangle.
     void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap)
     {
         // defaults to filling with a grey pattern
