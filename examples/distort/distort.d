@@ -1,5 +1,7 @@
 import std.math;
 
+import gfm.image;
+
 import dplug.plugin,
        dplug.vst,
        dplug.gui;
