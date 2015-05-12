@@ -107,19 +107,23 @@ struct Mipmap
         return vec3f(r, g, b);
     }
 
-    void generateMipmaps()
-    {
-        generateMipmaps( box2i(0, 0, width(), height()) );
-    }
-
+    /// Returns: Width of the base level.
     int width() pure const nothrow @nogc
     {
         return levels[0].w;
     }
 
+    /// Returns: Height of the base level.
     int height() pure const nothrow @nogc
     {
         return levels[0].h;
+    }
+
+    /// Regenerates the whole upper levels.
+    /// Uses a flat 2x2 filter
+    void generateMipmaps()
+    {
+        generateMipmaps( box2i(0, 0, width(), height()) );
     }
 
     /// Regenerates the upper levels based on changes in the provided rectangle.
