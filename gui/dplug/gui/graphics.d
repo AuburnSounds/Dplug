@@ -296,8 +296,8 @@ protected:
 
                     vec3f normal = vec3f(sx, sy, sz).normalized;
 
-                    RGBA imaterialDiffuse = _diffuseMap.levels[0][i, j];  
-                    vec3f materialDiffuse = vec3f(imaterialDiffuse.r * div255, imaterialDiffuse.g * div255, imaterialDiffuse.b * div255);
+                    RGBA ibaseColor = _diffuseMap.levels[0][i, j];  
+                    vec3f baseColor = vec3f(ibaseColor.r * div255, ibaseColor.g * div255, ibaseColor.b * div255);
 
                     vec3f color = vec3f(0.0f);
                     vec3f toEye = vec3f(cast(float)i / cast(float)w - 0.5f,
@@ -332,7 +332,7 @@ protected:
 
                         float lightPassed = lighted1 * lighted2 * lighted3 * lighted4;
 
-                        color += materialDiffuse * light1Color * lightPassed;
+                        color += baseColor * light1Color * lightPassed;
                     }
 
                     // secundary light
@@ -341,7 +341,7 @@ protected:
                         float diffuseFactor = dot(normal, light2Dir);
 
                         if (diffuseFactor > 0)
-                            color += materialDiffuse * light2Color * diffuseFactor;
+                            color += baseColor * light2Color * diffuseFactor;
                     }
 
                     // specular reflection
@@ -352,7 +352,7 @@ protected:
                         {
                             specularFactor = specularFactor * specularFactor;
                             specularFactor = specularFactor * specularFactor;
-                            color += materialDiffuse * light2Color * specularFactor * 2 * shininess;
+                            color += baseColor * light2Color * specularFactor * 2 * shininess;
                         }
                     }
 
@@ -373,7 +373,7 @@ protected:
                         float mipLevel = 0.5f * log2(1.0f + indexDeriv * 0.5f); //TODO tune this
 
                         vec3f skyColor = skybox.linearMipmapSample(mipLevel, skyx, skyy) * div255;
-                        color += shininess * 0.3f * skyColor;
+                        //color += shininess * 0.3f * skyColor;
                     }
 
 
@@ -387,7 +387,7 @@ protected:
                     float occluded = linearStep!(-90.0f, 90.0f)(depthPatch[2][2] - avgDepthHere);
 
                     //vec3f colorBleed = avgDepthHere.r * _diffuseMap.linearSample(3, i + 0.5f, j + 0.5f) * div255;
-                    color += vec3f(occluded * ambientLight);
+                    color += vec3f(occluded * ambientLight) * baseColor;
 
                     // Show normals
                     //color = vec3f(0.5f) + normal * 0.5f;
