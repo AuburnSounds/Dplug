@@ -33,7 +33,7 @@ struct Mipmap
     /// Interpolates a color between mipmap levels.  Floating-point level, spatial linear interpolation.
     /// x and y are in base level coordinates (top-left pixel is on (0.5, 0.5) coordinates).
     /// Clamped to borders.
-    vec3f linearMipmapSample(float level, float x, float y)
+    vec4f linearMipmapSample(float level, float x, float y)
     {
         int ilevel = cast(int)level;
         float flevel = level - ilevel;
@@ -43,7 +43,7 @@ struct Mipmap
     /// Interpolates a color.  Integer level, spatial linear interpolation.
     /// x and y are in base level coordinates (top-left pixel is on (0.5, 0.5) coordinates).
     /// Clamped to borders.
-    vec3f linearSample(int level, float x, float y)
+    vec4f linearSample(int level, float x, float y)
     {
         if (level < 0)
             level = 0;
@@ -105,7 +105,11 @@ struct Mipmap
         float bdown = C.b * fxm1 + D.b * fx;
         float b = (A.b * fxm1 + B.b * fx) * fym1 + (C.b * fxm1 + D.b * fx) * fy;
 
-        return vec3f(r, g, b);
+        float aup = A.a * fxm1 + B.a * fx;
+        float adown = C.a * fxm1 + D.a * fx;
+        float a = (A.a * fxm1 + B.a * fx) * fym1 + (C.a * fxm1 + D.a * fx) * fy;
+
+        return vec4f(r, g, b, a);
     }
 
     /// Returns: Width of the base level.

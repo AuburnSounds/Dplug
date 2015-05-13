@@ -372,8 +372,8 @@ protected:
                         // log2 scaling + threshold
                         float mipLevel = 0.5f * log2(1.0f + indexDeriv * 0.5f); //TODO tune this
 
-                        vec3f skyColor = skybox.linearMipmapSample(mipLevel, skyx, skyy) * div255;
-                        //color += shininess * 0.3f * skyColor;
+                        vec4f skyColor = skybox.linearMipmapSample(mipLevel, skyx, skyy) * div255;
+                        color += shininess * 0.3f * skyColor.rgb;
                     }
 
 
@@ -389,6 +389,15 @@ protected:
                     //vec3f colorBleed = avgDepthHere.r * _diffuseMap.linearSample(3, i + 0.5f, j + 0.5f) * div255;
                     color += vec3f(occluded * ambientLight) * baseColor;
 
+                    // Add light emitted by neighbours
+                    vec4f avgColor = _diffuseMap.linearSample(2, i + 0.5f, j + 0.5f) * 0.33f
+                                   + _diffuseMap.linearSample(3, i + 0.5f, j + 0.5f) * 0.33f
+                                   + _diffuseMap.linearSample(4, i + 0.5f, j + 0.5f) * 0.33f;
+
+
+                    color += avgColor.rgb * (avgColor.a * div255 * div255 * 1.5f);//baseColor * avgColor.rgb * avgColor.a * (div255 * div255);
+
+                    
                     // Show normals
                     //color = vec3f(0.5f) + normal * 0.5f;
 
@@ -399,10 +408,7 @@ protected:
                     }
 
                     // Show diffuse
-                    //color = materialDiffuse;
-
-                    // Show AO
-                    // color = vec3f(occluded, occluded, occluded);
+                    //color = baseColor;
 
                     color.x = clamp(color.x, 0.0f, 1.0f);
                     color.y = clamp(color.y, 0.0f, 1.0f);

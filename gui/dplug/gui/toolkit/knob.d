@@ -29,15 +29,10 @@ public:
 
     override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap)
     {
-        auto c = RGBA(193, 180, 176, 50);
+        auto c = RGBA(193, 180, 176, 0);
 
         float normalizedValue = _param.getNormalized();
 
-        if (isMouseOver())
-            c = RGBA(213, 200, 196, 255);
-
-        if (isDragged())
-            c = RGBA(233, 220, 216, 255);
 
         // We'll draw entireyl in the largest centered square in _position.
         box2i subSquare;
@@ -82,8 +77,14 @@ public:
             float smallRadius = radius * 5 / 60;
             float largerRadius = radius * 7 / 60;
 
+            ubyte emissive = 15;
+            if (isMouseOver())
+                emissive = 128;
+            if (isDragged())
+                emissive = 255;
+
             depthMap.softCircle(x, y, smallRadius, largerRadius, RGBA(100, 255, 0, 0));
-            diffuseMap.softCircle(x, y, smallRadius, largerRadius, RGBA(255, 180, 128, 255));
+            diffuseMap.softCircle(x, y, smallRadius, largerRadius, RGBA(255, 180, 128, emissive));
         }
 
         diffuseMap.softCircle(posEdgeX, posEdgeY, 0, 15, c);

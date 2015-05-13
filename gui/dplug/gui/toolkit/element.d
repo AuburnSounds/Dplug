@@ -380,8 +380,8 @@ protected:
     void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap)
     {
         // defaults to filling with a grey pattern
-        RGBA darkGrey = RGBA(100, 100, 100, 100);
-        RGBA lighterGrey = RGBA(150, 150, 150, 150);
+        RGBA darkGrey = RGBA(100, 100, 100, 0);
+        RGBA lighterGrey = RGBA(150, 150, 150, 0);
 
         for (int y = _dirtyRect.min.y; y < _dirtyRect.max.y; ++y)
         {

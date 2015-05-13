@@ -199,6 +199,8 @@ void fillText(V, StringType)(auto ref V surface, Font font, StringType s, float 
         auto outsurf = surface.crop(cropX0, cropY0, cropX1, cropY1);
         int croppedWidth = outsurf.w;
 
+        RGBA fontColor = font._currentColor;
+
         for (int y = 0; y < outsurf.h; ++y)
         {
             static if (isDirectView!V)
@@ -207,16 +209,29 @@ void fillText(V, StringType)(auto ref V surface, Font font, StringType s, float 
             L8[] inscan = coverageBuffer.scanline(y);
             for (int x = 0; x < croppedWidth; ++x)
             {
-                RGBA finalColor = font._currentColor;
-                finalColor.a = ( (font._currentColor.a * inscan[x].l + 128) / 255 );
+                static void blendFont(ref RGBA bg, RGBA fontColor, int alpha)
+                {
+                    int alpha2 = 255 - alpha;
+                    bg.r = cast(ubyte)( (bg.r * alpha2 + fontColor.r * alpha + 128) >> 8 );
+                    bg.g = cast(ubyte)( (bg.g * alpha2 + fontColor.g * alpha + 128) >> 8 );
+                    bg.b = cast(ubyte)( (bg.b * alpha2 + fontColor.b * alpha + 128) >> 8 );
+                    bg.a = fontColor.a;
+                }
+
+                /*RGBA finalColor = font._currentColor;
+                finalColor.a = inscan[x].l;*/
 
                 static if (isDirectView!V)
-                    outscan.ptr[x] = RGBA.blend(outscan.ptr[x], finalColor);
+                {
+                    blendFont(outscan.ptr[x], fontColor, inscan.ptr[x].l);
+                }
                 else
-                    outsurf[x, y] = RGBA.blend(outsurf[x, y], finalColor);
-
+                {
+                    blendFont(outscan.ptr[x], fontColor, inscan.ptr[x].l);
+                }
             }
         }            
     }
     font.iterateCharacterPositions!StringType(s, font._currentFontSizePx, fractionalPosX, fractionalPosY, &drawCharacter);
 }
+
