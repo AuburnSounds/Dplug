@@ -116,7 +116,7 @@ class DistortGUI : GUIGraphics
         int margin = 60;
         inputKnob.position = box2i(x, y, x + w, y + h);
         x += w + margin;
-        driveKnob.position = box2i(x - 10, y - 20, x + w + 10, y + h);
+        driveKnob.position = box2i(x - 10, y, x + w + 10, y + h + 20);
         x += w + margin;
         outputKnob.position = box2i(x, y, x + w, y + h);
     }
@@ -137,9 +137,9 @@ class DistortGUI : GUIGraphics
         _font.size = 20;
         _font.color = RGBA(0, 0, 0, 255);
 
-        diffuseMap.fillText(_font, "Input", 150, 230);
-        diffuseMap.fillText(_font, "Drive", 310, 230);
-        diffuseMap.fillText(_font, "Output", 470, 230);
+        diffuseMap.fillText(_font, "Input", 150, 70);
+        diffuseMap.fillText(_font, "Drive", 310, 70);
+        diffuseMap.fillText(_font, "Output", 470, 70);
 
         // Decorations
         auto hole = RGBA(32, 32, 0, 0);

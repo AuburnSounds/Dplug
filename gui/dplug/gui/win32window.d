@@ -106,7 +106,7 @@ version(Windows)
             // Sets this as user data
             SetWindowLongPtrA(_hwnd, GWLP_USERDATA, cast(LONG_PTR)( cast(void*)this ));
 
-            int mSec = 30; // refresh at 60 hz
+            int mSec = 15; // refresh at 60 hz if possible
             SetTimer(_hwnd, TIMER_ID, mSec, null);
             SetFocus(_hwnd);
         }

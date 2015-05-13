@@ -24,7 +24,7 @@ public:
 
     ~this()
     {
-        // neither images or fonts need clean-up, nothing to be done
+        // neither image or fonts need clean-up, nothing to be done
     }
 
     UIElement focused = null; // last clicked element

@@ -18,6 +18,18 @@ import dplug.gui.toolkit.element;
 // It dispatches window events to the GUI hierarchy.
 class GUIGraphics : UIElement, IGraphics
 {
+    // light 1 used for key lighting and shadows
+    // always coming from top-right
+    vec3f light1Color;
+
+    // light 2 used for things using the normal
+    vec3f light2Dir;
+    vec3f light2Color;
+
+    vec3f ambientLight;
+    
+
+
     this(int initialWidth, int initialHeight)
     {
         _uiContext = new UIContext();
@@ -27,7 +39,13 @@ class GUIGraphics : UIElement, IGraphics
 
         _window = null;
         _askedWidth = initialWidth;
-        _askedHeight = initialHeight;       
+        _askedHeight = initialHeight;     
+
+        // defaults
+        light1Color = vec3f(0.54f, 0.50f, 0.46f) * 0.4f;
+        light2Dir = vec3f(0.0f, 1.0f, 0.1f).normalized;
+        light2Color = vec3f(0.378f, 0.35f, 0.322f);
+        ambientLight = vec3f(0.3f);
     }
 
     // Graphics implementation
@@ -135,12 +153,12 @@ class GUIGraphics : UIElement, IGraphics
 
         override box2i extendsDirtyRect(box2i rect, int width, int height)
         {
-            // shadow casting => 10 pixels influence on bottom left
+            // shadow casting => 15 pixels influence on bottom left
             // color-bleed => 7 pixels influence in every direction
-            int xmin = rect.min.x - 10;
+            int xmin = rect.min.x - 15;
             int ymin = rect.min.y - 7;
             int xmax = rect.max.x + 7;
-            int ymax = rect.max.y + 10;
+            int ymax = rect.max.y + 15;
             if (xmin < 0) xmin = 0;
             if (ymin < 0) ymin = 0;
             if (xmax > width) xmax = width;
@@ -230,6 +248,9 @@ protected:
         int w = _diffuseMap.levels[0].w;
         int h = _diffuseMap.levels[0].h;
 
+        float div255 = 1 / 255.0f;
+
+
         foreach(area; areas)
         {
             for (int j = area.min.y; j < area.max.y; ++j)
@@ -276,7 +297,7 @@ protected:
                     vec3f normal = vec3f(sx, sy, sz).normalized;
 
                     RGBA imaterialDiffuse = _diffuseMap.levels[0][i, j];  
-                    vec3f materialDiffuse = vec3f(imaterialDiffuse.r / 255.0f, imaterialDiffuse.g / 255.0f, imaterialDiffuse.b / 255.0f);
+                    vec3f materialDiffuse = vec3f(imaterialDiffuse.r * div255, imaterialDiffuse.g * div255, imaterialDiffuse.b * div255);
 
                     vec3f color = vec3f(0.0f);
                     vec3f toEye = vec3f(cast(float)i / cast(float)w - 0.5f,
@@ -285,34 +306,48 @@ protected:
 
                     float shininess = depth_scan[2].ptr[i].g / 255.0f;
 
-                    // Combined color bleed and ambient occlusion!
-                    vec3f avgDepthHere = _depthMap.linearSample(3, i + 0.5f, j + 0.5f) / 255.0f;
-                    vec3f colorBleed = avgDepthHere.r * _diffuseMap.linearSample(3, i + 0.5f, j + 0.5f) / 255.0f;
-
-                    // cast shadows
-
-                    int samples = 10;
-                    float lightPassed = 0.0f;
-                    float totalWeight = 0.0f;
-                    float weight = 1.0f;
-                    for (int l = 1; l <= samples; ++l)
+                    // cast shadows, ie. enlight what isn't in shadows
                     {
-                        int x = clamp(i + l, 0, w - 1);
-                        int y = clamp(j - l, 0, h - 1);
-                        float z = _depthMap.levels[0][i, j].r + l;
+                        int depthHere = depthPatch[2][2];
 
-                        float diff = z - _depthMap.levels[0][x, y].r;
+                        // cause smoothStep wasn't needed
+                        static float linearStep(float a, float b)(float t) pure nothrow @nogc 
+                        {
+                            if (t <= a)
+                                return 0.0f;
+                            else if (t >= b)
+                                return 1.0f;
+                            else
+                            {
+                                enum float divider = 1.0f / (b - a);
+                                return (t - a) * divider;
+                            }
+                        }
 
-                        lightPassed += smoothStep!float(-40.0f, 20.0f, diff) * weight;
-                        totalWeight += weight;
-                        weight *= 0.78f;
+                        // sample at position + (1, -1)
+                        float depth1 = _depthMap.linearSample(0, i + 1.5f, j - 0.5f).r;
+                        float diff1 = depthHere + 1 - depth1;
+                        float lighted1 = linearStep!(-10.0f, 3.0f)(diff1);
+
+                        // sample at position + (3, -3)
+                        float depth2 = _depthMap.linearSample(1, i + 3.5f, j - 2.5f).r;
+                        float diff2 = depthHere + 3 - depth2;
+                        float lighted2 = linearStep!(-20.0f, 7.2f)(diff2);
+
+                        // sample at position + (7, -7)
+                        float depth3 = _depthMap.linearSample(2, i + 7.5f, j -6.5f).r;
+                        float diff3 = depthHere + 7 - depth3;
+                        float lighted3 = linearStep!(-40.0f, 15.0f)(diff3);
+
+                        // sample at position + (15, -15)
+                        float depth4 = _depthMap.linearSample(3, i + 15.5f, j -14.5f).r;
+                        float diff4 = depthHere + 15 - depth3;
+                        float lighted4 = linearStep!(-80.0f, 30.0f)(diff4);
+
+                        float lightPassed = lighted1 * lighted2 * lighted3 * lighted4;
+
+                        color += materialDiffuse * light1Color * lightPassed;
                     }
-                    lightPassed /= totalWeight;
-                    vec3f keylightColor = vec3f(0.54f, 0.50f, 0.46f)* 0.7f;
-                    color += materialDiffuse * keylightColor * lightPassed;
-
-                    vec3f light2Dir = vec3f(0.0f, 1.0f, 0.1f).normalized;
-                    vec3f light2Color = vec3f(0.378f, 0.35f, 0.322f);
 
                     // secundary light
                     {
@@ -351,14 +386,17 @@ protected:
                         // log2 scaling + threshold
                         float mipLevel = 0.5f * log2(1.0f + indexDeriv * 0.5f); //TODO tune this
 
-                        vec3f skyColor = skybox.linearMipmapSample(mipLevel, skyx, skyy) / 255.0f;
+                        vec3f skyColor = skybox.linearMipmapSample(mipLevel, skyx, skyy) * div255;
                         color += shininess * 0.3f * skyColor;
                     }
 
 
-                    // Add ambient component
-                    vec3f ambientLight = vec3f(0.3f, 0.3f, 0.3f);
-                    vec3f materialAmbient = materialDiffuse;
+                    // Add ambient component                    
+                    
+                    // Combined color bleed and ambient occlusion!
+                    vec3f avgDepthHere = _depthMap.linearSample(3, i + 0.5f, j + 0.5f).r * div255;
+
+                    vec3f colorBleed = avgDepthHere.r * _diffuseMap.linearSample(3, i + 0.5f, j + 0.5f) * div255;
                     color += colorBleed * ambientLight;
 
                     // Show normals
@@ -387,6 +425,7 @@ protected:
 
                     // write composited color
                     RGBA finalColor = RGBA(cast(ubyte)r, cast(ubyte)g, cast(ubyte)b, 255);
+
                     wfb_scan.ptr[i] = finalColor;
                 }
             }            

@@ -145,6 +145,15 @@ public:
     // to be called at top-level when the mouse clicked
     bool mouseClick(int x, int y, int button, bool isDoubleClick)
     {
+        // Test children that are displayed above this element first
+        foreach(child; _children)
+        {
+            if (child.zOrder >= zOrder)
+                if (child.mouseClick(x, y, button, isDoubleClick))
+                    return true;
+        }
+
+        // Test for collision with this element
         if (_position.contains(vec2i(x, y)))
         {
             if(onMousePreClick(x - _position.min.x, y - _position.min.y, button, isDoubleClick))
@@ -154,21 +163,13 @@ public:
                 return true;
             }
         }
-
+        
+        // Test children that are displayed below this element last
         foreach(child; _children)
         {
-            if (child.mouseClick(x, y, button, isDoubleClick))
-                return true;
-        }
-
-        if (_position.contains(vec2i(x, y)))
-        {
-            if(onMousePostClick(x - _position.min.x, y - _position.min.y, button, isDoubleClick))
-            {
-                _context.beginDragging(this);
-                _context.setFocused(this);
-                return true;
-            }
+            if (child.zOrder < zOrder)
+                if (child.mouseClick(x, y, button, isDoubleClick))
+                    return true;
         }
 
         return false;
