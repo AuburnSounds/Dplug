@@ -26,7 +26,7 @@ class GUIGraphics : UIElement, IGraphics
     vec3f light2Dir;
     vec3f light2Color;
 
-    vec3f ambientLight;
+    float ambientLight;
     
 
 
@@ -45,7 +45,7 @@ class GUIGraphics : UIElement, IGraphics
         light1Color = vec3f(0.54f, 0.50f, 0.46f) * 0.4f;
         light2Dir = vec3f(0.0f, 1.0f, 0.1f).normalized;
         light2Color = vec3f(0.378f, 0.35f, 0.322f);
-        ambientLight = vec3f(0.3f);
+        ambientLight = 0.3f;
     }
 
     // Graphics implementation
@@ -310,20 +310,6 @@ protected:
                     {
                         int depthHere = depthPatch[2][2];
 
-                        // cause smoothStep wasn't needed
-                        static float linearStep(float a, float b)(float t) pure nothrow @nogc 
-                        {
-                            if (t <= a)
-                                return 0.0f;
-                            else if (t >= b)
-                                return 1.0f;
-                            else
-                            {
-                                enum float divider = 1.0f / (b - a);
-                                return (t - a) * divider;
-                            }
-                        }
-
                         // sample at position + (1, -1)
                         float depth1 = _depthMap.linearSample(0, i + 1.5f, j - 0.5f).r;
                         float diff1 = depthHere + 1 - depth1;
@@ -394,10 +380,14 @@ protected:
                     // Add ambient component                    
                     
                     // Combined color bleed and ambient occlusion!
-                    vec3f avgDepthHere = _depthMap.linearSample(3, i + 0.5f, j + 0.5f).r * div255;
+                    float avgDepthHere = _depthMap.linearSample(2, i + 0.5f, j + 0.5f).r * 0.33f
+                                       + _depthMap.linearSample(3, i + 0.5f, j + 0.5f).r * 0.33f
+                                       + _depthMap.linearSample(4, i + 0.5f, j + 0.5f).r * 0.33f;
 
-                    vec3f colorBleed = avgDepthHere.r * _diffuseMap.linearSample(3, i + 0.5f, j + 0.5f) * div255;
-                    color += colorBleed * ambientLight;
+                    float occluded = linearStep!(-90.0f, 90.0f)(depthPatch[2][2] - avgDepthHere);
+
+                    //vec3f colorBleed = avgDepthHere.r * _diffuseMap.linearSample(3, i + 0.5f, j + 0.5f) * div255;
+                    color += vec3f(occluded * ambientLight);
 
                     // Show normals
                     //color = vec3f(0.5f) + normal * 0.5f;
@@ -430,5 +420,21 @@ protected:
                 }
             }            
         }
+    }
+}
+
+private:
+
+// cause smoothStep wasn't needed
+float linearStep(float a, float b)(float t) pure nothrow @nogc 
+{
+    if (t <= a)
+        return 0.0f;
+    else if (t >= b)
+        return 1.0f;
+    else
+    {
+        enum float divider = 1.0f / (b - a);
+        return (t - a) * divider;
     }
 }
