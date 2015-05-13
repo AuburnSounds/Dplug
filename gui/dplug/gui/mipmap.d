@@ -54,8 +54,9 @@ struct Mipmap
         Image!RGBA* image = &levels[level];
 
         float divider = 1.0f / (1 << level);
-        x *= divider;
-        y *= divider;
+        float offset = 1 << (level - 1);
+        x = (x - offset) * divider;
+        y = (y - offset) * divider;
 
         float maxX = image.w - 1.001f; // avoids an edge case with truncation
         float maxY = image.h - 1.001f;
