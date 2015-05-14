@@ -363,39 +363,49 @@ protected:
                         float skyx = 0.5f + ((0.5f + pureReflection.x *0.5f) * (skybox.width - 1));
                         float skyy = 0.5f + ((0.5f + pureReflection.y *0.5f) * (skybox.height - 1));
 
-                        float depthDX =  (depthPatch[3][2] - depthPatch[1][2]) * 0.5f;
-                        float depthDY =  (depthPatch[2][3] - depthPatch[2][1]) * 0.5f;
+                        // 2nd order derivatives
+                        float depthDX = depthPatch[3][1] + depthPatch[3][2] + depthPatch[3][3]
+                                      + depthPatch[1][1] + depthPatch[1][2] + depthPatch[1][3]
+                                      - 2 * (depthPatch[2][1] + depthPatch[2][2] + depthPatch[2][3]);
+
+                        float depthDY = depthPatch[1][3] + depthPatch[2][3] + depthPatch[3][3]
+                                      + depthPatch[1][1] + depthPatch[2][1] + depthPatch[3][1]
+                                      - 2 * (depthPatch[1][2] + depthPatch[2][2] + depthPatch[3][2]);
+
                         float depthDerivSqr = depthDX * depthDX + depthDY * depthDY;
-                        float indexDeriv = depthDerivSqr * skybox.width;
+                        float indexDeriv = depthDerivSqr * skybox.width * skybox.height;
 
                         // cooking here
                         // log2 scaling + threshold
-                        float mipLevel = 0.5f * log2(1.0f + indexDeriv * 0.5f); //TODO tune this
+                        float mipLevel = 0.5f * log2(1.0f + indexDeriv * 0.00001f);
 
                         vec4f skyColor = skybox.linearMipmapSample(mipLevel, skyx, skyy) * div255;
                         color += shininess * 0.3f * skyColor.rgb;
                     }
 
 
-                    // Add ambient component                    
+                    // Add ambient component
                     
-                    // Combined color bleed and ambient occlusion!
-                    float avgDepthHere = _depthMap.linearSample(2, i + 0.5f, j + 0.5f).r * 0.33f
-                                       + _depthMap.linearSample(3, i + 0.5f, j + 0.5f).r * 0.33f
-                                       + _depthMap.linearSample(4, i + 0.5f, j + 0.5f).r * 0.33f;
+                    {
+                        float avgDepthHere = _depthMap.linearSample(2, i + 0.5f, j + 0.5f).r * 0.33f
+                                           + _depthMap.linearSample(3, i + 0.5f, j + 0.5f).r * 0.33f
+                                           + _depthMap.linearSample(4, i + 0.5f, j + 0.5f).r * 0.33f;
 
-                    float occluded = linearStep!(-90.0f, 90.0f)(depthPatch[2][2] - avgDepthHere);
+                        float occluded = linearStep!(-90.0f, 90.0f)(depthPatch[2][2] - avgDepthHere);
 
-                    //vec3f colorBleed = avgDepthHere.r * _diffuseMap.linearSample(3, i + 0.5f, j + 0.5f) * div255;
-                    color += vec3f(occluded * ambientLight) * baseColor;
+                        //vec3f colorBleed = avgDepthHere.r * _diffuseMap.linearSample(3, i + 0.5f, j + 0.5f) * div255;
+                        color += vec3f(occluded * ambientLight) * baseColor;
+                    }
 
                     // Add light emitted by neighbours
-                    vec4f avgColor = _diffuseMap.linearSample(1, i + 0.5f, j + 0.5f) * 0.2f
-                                   + _diffuseMap.linearSample(2, i + 0.5f, j + 0.5f) * 0.3f
-                                   + _diffuseMap.linearSample(3, i + 0.5f, j + 0.5f) * 0.25f
-                                   + _diffuseMap.linearSample(4, i + 0.5f, j + 0.5f) * 0.15f;
+                    {
+                        vec4f avgColor = _diffuseMap.linearSample(1, i + 0.5f, j + 0.5f) * 0.2f
+                                       + _diffuseMap.linearSample(2, i + 0.5f, j + 0.5f) * 0.3f
+                                       + _diffuseMap.linearSample(3, i + 0.5f, j + 0.5f) * 0.25f
+                                       + _diffuseMap.linearSample(4, i + 0.5f, j + 0.5f) * 0.15f;
 
-                    color += avgColor.rgb * (avgColor.a * div255 * div255 * 1.5f);//baseColor * avgColor.rgb * avgColor.a * (div255 * div255);
+                        color += avgColor.rgb * (avgColor.a * div255 * div255 * 1.5f);//baseColor * avgColor.rgb * avgColor.a * (div255 * div255);
+                    }
 
                     
                     // Show normals
