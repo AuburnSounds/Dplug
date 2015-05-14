@@ -12,8 +12,8 @@ struct Mipmap
 {
     enum Quality
     {
-        box,       // simple 2x2 filter, creates phase problems with NPOT
-        polyphase, // From the "NPOT2 Mipmap Creation" paper from NVIDIA
+        box,       // simple 2x2 filter, creates phase problems with NPOT. For higher levels, automatically uses cubic.
+        polyphase, // From the "NPOT2 Mipmap Creation" paper from NVIDIA. Not useful.
         cubic      // Very smooth kernel [1 2 1] x [1 2 1]
     }
 

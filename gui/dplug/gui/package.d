@@ -8,6 +8,7 @@ public
     import dplug.gui.graphics;
     import dplug.gui.boxlist;
     import dplug.gui.mipmap;
+    import dplug.gui.drawex;
 
     // This imports all the widgets
     import dplug.gui.toolkit;
