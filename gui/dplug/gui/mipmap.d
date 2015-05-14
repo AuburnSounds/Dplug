@@ -14,6 +14,7 @@ struct Mipmap
     {
         box,       // simple 2x2 filter, creates phase problems with NPOT
         polyphase, // From the "NPOT2 Mipmap Creation" paper from NVIDIA
+        cubic      // Very smooth kernel [1 2 1] x [1 2 1]
     }
 
     Image!RGBA[] levels;
@@ -132,7 +133,7 @@ struct Mipmap
 
     /// Regenerates the whole upper levels.
     /// Uses a flat 2x2 filter
-    void generateMipmaps(Quality quality)
+    void generateMipmaps(Quality quality) nothrow @nogc
     {
         generateMipmaps(quality, box2i(0, 0, width(), height()) );
     }
@@ -140,19 +141,25 @@ struct Mipmap
     /// Regenerates the upper levels based on changes in the provided rectangle.
     /// Uses a flat 2x2 filter
     /// updateRect expressed in level 0 coordinates
-    void generateMipmaps(Quality quality, box2i updateRect)
+    void generateMipmaps(Quality quality, box2i updateRect) nothrow @nogc
     {
         for (int i = 1; i < cast(int)levels.length; ++i)
         {
             Image!RGBA* previousLevel = &levels[i - 1];
+
+            // Force cubic filter past a level else it makes ugly looking mipmaps
+            if (i >= 3 && quality == Quality.box)
+                quality = Quality.cubic;
+
             updateRect = impactOnNextLevel(quality, updateRect, previousLevel.w, previousLevel.h);
+
             generateLevel(i, quality, updateRect);
         }
     }
 
     /// Regenerates one level
     /// updateRect expressed in level i-th coordinates
-    void generateLevel(int level, Quality quality, box2i updateRect) @nogc
+    void generateLevel(int level, Quality quality, box2i updateRect) nothrow @nogc
     {
         assert(level > 0);
         Image!RGBA* thisLevel = &levels[level];
@@ -252,42 +259,94 @@ struct Mipmap
                     }
                 }
                 break;
+
+            case cubic:
+                for (int y = updateRect.min.y; y < updateRect.max.y; ++y)
+                {
+                    RGBA[] LM1 = previousLevel.scanline(max(y * 2 - 1, 0));
+                    RGBA[] L0 = previousLevel.scanline(y * 2);
+                    RGBA[] L1 = previousLevel.scanline(y * 2 + 1);
+                    RGBA[] L2 = previousLevel.scanline(min(y * 2 + 2, previousLevel.h - 1));
+                    RGBA[] dest = thisLevel.scanline(y);
+
+                    for (int x = updateRect.min.x; x < updateRect.max.x; ++x)
+                    {
+                        // A B C D
+                        // E F G H
+                        // I J K L
+                        // M N O P
+
+                        int x2m1 = max(0, 2 * x - 1);
+                        int x2p0 = 2 * x;
+                        int x2p1 = 2 * x + 1;
+                        int x2p2 = min(2 * x + 2, previousLevel.w - 1);
+
+                        auto A = LM1.ptr[x2m1];
+                        auto B = LM1.ptr[x2p0];
+                        auto C = LM1.ptr[x2p1];
+                        auto D = LM1.ptr[x2p2];
+
+                        auto E = L0.ptr[x2m1];
+                        auto F = L0.ptr[x2p0];
+                        auto G = L0.ptr[x2p1];
+                        auto H = L0.ptr[x2p2];
+
+                        auto I = L1.ptr[x2m1];
+                        auto J = L1.ptr[x2p0];
+                        auto K = L1.ptr[x2p1];
+                        auto L = L1.ptr[x2p2];
+
+                        auto M = L2.ptr[x2m1];
+                        auto N = L2.ptr[x2p0];
+                        auto O = L2.ptr[x2p1];
+                        auto P = L2.ptr[x2p2];
+
+                        // Apply filter
+                        // 1 3 3 1
+                        // 3 9 9 3
+                        // 3 9 9 3
+                        // 1 3 3 1
+
+                        RGBA line0 = RGBA.op!q{(a + d + 3 * (b + c) + 4) >> 3}(A, B, C, D);
+                        RGBA line1 = RGBA.op!q{(a + d + 3 * (b + c) + 4) >> 3}(E, F, G, H);
+                        RGBA line2 = RGBA.op!q{(a + d + 3 * (b + c) + 4) >> 3}(I, J, K, L);
+                        RGBA line3 = RGBA.op!q{(a + d + 3 * (b + c) + 4) >> 3}(M, N, O, P);
+                        dest.ptr[x] = RGBA.op!q{(a + d + 3 * (b + c) + 4) >> 3}(line0, line1, line2, line3);
+                    }
+                }
+                break;
         }
     }
 
 
 private:
     /// Computes impact of updating the area box on next level
-    static box2i impactOnNextLevel(Quality quality, box2i area, int currentLevelWidth, int currentLevelHeight)
+    static box2i impactOnNextLevel(Quality quality, box2i area, int currentLevelWidth, int currentLevelHeight) pure nothrow @nogc
     {
+        box2i maxArea = box2i(0, 0, currentLevelWidth / 2, currentLevelHeight / 2);
+
         final switch(quality) with (Quality)
         {
         case box:
             int xmin = area.min.x / 2;
             int ymin = area.min.y / 2;
             int xmax = (area.max.x + 1) / 2;
-            if (xmax >  currentLevelWidth / 2)
-                xmax = currentLevelWidth / 2;
             int ymax = (area.max.y + 1) / 2;
-            if (ymax >  currentLevelHeight / 2)
-                ymax = currentLevelHeight / 2;
-            return box2i(xmin, ymin, xmax, ymax);
+            return box2i(xmin, ymin, xmax, ymax).intersection(maxArea);
 
         case polyphase:
-
             int xmin = (area.min.x - 1) / 2;
             int ymin = (area.min.y - 1) / 2;
-            if (xmin < 0)
-                xmin = 0;
-            if (ymin < 0)
-                ymin = 0;
             int xmax = (area.max.x + 1) / 2;
-            if (xmax >  currentLevelWidth / 2)
-                xmax = currentLevelWidth / 2;
             int ymax = (area.max.y + 1) / 2;
-            if (ymax >  currentLevelHeight / 2)
-                ymax = currentLevelHeight / 2;
-            return box2i(xmin, ymin, xmax, ymax);
+            return box2i(xmin, ymin, xmax, ymax).intersection(maxArea);
+
+        case cubic:
+            int xmin = (area.min.x - 1) / 2;
+            int ymin = (area.min.y - 1) / 2;
+            int xmax = (area.max.x + 2) / 2;
+            int ymax = (area.max.y + 2) / 2;
+            return box2i(xmin, ymin, xmax, ymax).intersection(maxArea);
         }
     }
 }

@@ -390,10 +390,10 @@ protected:
                     color += vec3f(occluded * ambientLight) * baseColor;
 
                     // Add light emitted by neighbours
-                    vec4f avgColor = _diffuseMap.linearSample(2, i + 0.5f, j + 0.5f) * 0.33f
-                                   + _diffuseMap.linearSample(3, i + 0.5f, j + 0.5f) * 0.33f
-                                   + _diffuseMap.linearSample(4, i + 0.5f, j + 0.5f) * 0.33f;
-
+                    vec4f avgColor = _diffuseMap.linearSample(1, i + 0.5f, j + 0.5f) * 0.2f
+                                   + _diffuseMap.linearSample(2, i + 0.5f, j + 0.5f) * 0.3f
+                                   + _diffuseMap.linearSample(3, i + 0.5f, j + 0.5f) * 0.25f
+                                   + _diffuseMap.linearSample(4, i + 0.5f, j + 0.5f) * 0.15f;
 
                     color += avgColor.rgb * (avgColor.a * div255 * div255 * 1.5f);//baseColor * avgColor.rgb * avgColor.a * (div255 * div255);
 
