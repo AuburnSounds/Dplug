@@ -40,17 +40,18 @@ struct Mipmap
     /// Interpolates a color between mipmap levels.  Floating-point level, spatial linear interpolation.
     /// x and y are in base level coordinates (top-left pixel is on (0.5, 0.5) coordinates).
     /// Clamped to borders.
-    vec4f linearMipmapSample(float level, float x, float y)
+    vec4f linearMipmapSample(bool premultiplied = false)(float level, float x, float y)
     {
         int ilevel = cast(int)level;
         float flevel = level - ilevel;
-        return linearSample(ilevel, x, y) * (1 - flevel) + linearSample(ilevel + 1, x, y) * flevel;
+        return linearSample!premultiplied(ilevel, x, y) * (1 - flevel) + linearSample!premultiplied(ilevel + 1, x, y) * flevel;
     }
+
 
     /// Interpolates a color.  Integer level, spatial linear interpolation.
     /// x and y are in base level coordinates (top-left pixel is on (0.5, 0.5) coordinates).
     /// Clamped to borders.
-    vec4f linearSample(int level, float x, float y)
+    vec4f linearSample(bool premultiplied = false)(int level, float x, float y)
     {
         if (level < 0)
             level = 0;
@@ -104,6 +105,19 @@ struct Mipmap
         RGBA B = L0.ptr[ixp1];
         RGBA C = L1.ptr[ix];
         RGBA D = L1.ptr[ixp1];
+
+        static RGBA premultiply(RGBA color)
+        {
+            return RGBA( (color.r * color.a + 128) >> 8, (color.g * color.a + 128) >> 8, (color.b * color.a + 128) >> 8, color.a );
+        }
+
+        static if (premultiplied)
+        {
+            A = premultiply(A);
+            B = premultiply(B);
+            C = premultiply(C);
+            D = premultiply(D);
+        }
 
         float rup = A.r * fxm1 + B.r * fx;
         float rdown = C.r * fxm1 + D.r * fx;

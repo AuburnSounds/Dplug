@@ -399,12 +399,27 @@ protected:
 
                     // Add light emitted by neighbours
                     {
-                        vec4f avgColor = _diffuseMap.linearSample(1, i + 0.5f, j + 0.5f) * 0.2f
-                                       + _diffuseMap.linearSample(2, i + 0.5f, j + 0.5f) * 0.3f
-                                       + _diffuseMap.linearSample(3, i + 0.5f, j + 0.5f) * 0.25f
-                                       + _diffuseMap.linearSample(4, i + 0.5f, j + 0.5f) * 0.15f;
+                        float ic = i + 0.5f;
+                        float jc = j + 0.5f;
+                        vec4f colorLevel1 = _diffuseMap.linearSample!true(1, ic, jc);
+                        vec4f colorLevel2 = _diffuseMap.linearSample!true(2, ic, jc);
+                        vec4f colorLevel3 = _diffuseMap.linearSample!true(3, ic, jc);
+                        vec4f colorLevel4 = _diffuseMap.linearSample!true(4, ic, jc);
 
-                        color += avgColor.rgb * (avgColor.a * div255 * div255 * 1.5f);//baseColor * avgColor.rgb * avgColor.a * (div255 * div255);
+                        vec3f emitted = colorLevel1.rgb * 0.2f;
+                        emitted += colorLevel2.rgb * 0.3f;
+                        emitted += colorLevel3.rgb * 0.25f;
+                        emitted += colorLevel4.rgb * 0.15f;
+
+                        emitted *= (div255 * 1.7f);
+
+                        vec3f saturate(vec3f input, float amount)
+                        {
+                            float grey = emitted.r + emitted.g + emitted.b;
+                            return emitted * (1 + amount) - grey * amount;
+                        }
+
+                        color += saturate(emitted, 0.25f);
                     }
 
                     
