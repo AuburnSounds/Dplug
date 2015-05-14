@@ -61,7 +61,7 @@ struct Mipmap
         Image!RGBA* image = &levels[level];
 
 
-        static immutable float factors[14] = [ 1.0f, 0.5f, 0.25f, 0.125f, 
+        static immutable float[14] factors = [ 1.0f, 0.5f, 0.25f, 0.125f, 
                                                0.0625f, 0.03125f, 0.015625f, 0.0078125f, 
                                                0.00390625f, 0.001953125f, 0.0009765625f, 0.00048828125f,
                                                0.000244140625f, 0.0001220703125f];
