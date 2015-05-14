@@ -196,8 +196,8 @@ class GUIGraphics : UIElement, IGraphics
             // Recompute mipmaps in updated areas
             foreach(area; _areasToUpdate.boxes)
             {
-                _diffuseMap.generateMipmaps(area);
-                _depthMap.generateMipmaps(area);
+                _diffuseMap.generateMipmaps(Mipmap.Quality.box, area);
+                _depthMap.generateMipmaps(Mipmap.Quality.box, area);
             }
 
             // Clear dirty state in the whole GUI since after this draw everything 

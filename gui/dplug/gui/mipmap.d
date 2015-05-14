@@ -10,6 +10,12 @@ import gfm.math;
 /// Size of the i+1-th mipmap is { (width)/2, (height)/2 }
 struct Mipmap
 {
+    enum Quality
+    {
+        box,       // simple 2x2 filter, creates phase problems with NPOT
+        polyphase, // From the "NPOT2 Mipmap Creation" paper from NVIDIA
+    }
+
     Image!RGBA[] levels;
 
     /// Set number of levels and size
@@ -126,18 +132,137 @@ struct Mipmap
 
     /// Regenerates the whole upper levels.
     /// Uses a flat 2x2 filter
-    void generateMipmaps()
+    void generateMipmaps(Quality quality)
     {
-        generateMipmaps( box2i(0, 0, width(), height()) );
+        generateMipmaps(quality, box2i(0, 0, width(), height()) );
     }
 
     /// Regenerates the upper levels based on changes in the provided rectangle.
     /// Uses a flat 2x2 filter
-    void generateMipmaps(box2i updateRect)
+    /// updateRect expressed in level 0 coordinates
+    void generateMipmaps(Quality quality, box2i updateRect)
     {
-        // Computes impact of updating the area box on next level
-        static box2i impactOnNextLevel(box2i area, int currentLevelWidth, int currentLevelHeight)
+        for (int i = 1; i < cast(int)levels.length; ++i)
         {
+            Image!RGBA* previousLevel = &levels[i - 1];
+            updateRect = impactOnNextLevel(quality, updateRect, previousLevel.w, previousLevel.h);
+            generateLevel(i, quality, updateRect);
+        }
+    }
+
+    /// Regenerates one level
+    /// updateRect expressed in level i-th coordinates
+    void generateLevel(int level, Quality quality, box2i updateRect) @nogc
+    {
+        assert(level > 0);
+        Image!RGBA* thisLevel = &levels[level];
+        Image!RGBA* previousLevel = &levels[level - 1];
+
+        final switch (quality) with (Quality)
+        {
+            case box:
+                for (int y = updateRect.min.y; y < updateRect.max.y; ++y)
+                {
+                    RGBA[] L0 = previousLevel.scanline(y * 2);
+                    RGBA[] L1 = previousLevel.scanline(y * 2 + 1);
+                    RGBA[] dest = thisLevel.scanline(y);
+
+                    for (int x = updateRect.min.x; x < updateRect.max.x; ++x)
+                    {
+                        // A B
+                        // C D
+                        RGBA A = L0.ptr[2 * x];
+                        RGBA B = L0.ptr[2 * x + 1];
+                        RGBA C = L1.ptr[2 * x];
+                        RGBA D = L1.ptr[2 * x + 1];
+                        dest.ptr[x] = RGBA.op!q{(a + b + c + d + 2) >> 2}(A, B, C, D);
+                    }
+                }
+                break;
+
+            case polyphase:
+    
+                int ny = thisLevel.h;
+                int nx = thisLevel.w;
+                int dividerx = (2 * nx + 1);
+                int dividery = (2 * ny + 1);
+                float invDivider = 1.0f / (cast(float)dividerx * dividery);
+
+                for (int y = updateRect.min.y; y < updateRect.max.y; ++y)
+                {
+                    RGBA[] L0 = previousLevel.scanline(y * 2);
+                    RGBA[] L1 = previousLevel.scanline(y * 2 + 1);
+                    RGBA[] L2 = previousLevel.scanline(min(y * 2 + 2, previousLevel.h - 1));
+                    RGBA[] dest = thisLevel.scanline(y);
+
+
+                    int w0y = (ny - y);
+                    int w1y = ny;
+                    int w2y = 1 + y;
+
+                    for (int x = updateRect.min.x; x < updateRect.max.x; ++x)
+                    {
+                        // A B C
+                        // D E F
+                        // G H I
+
+                        int x2p0 = 2 * x;
+                        int x2p1 = 2 * x + 1;
+                        int x2p2 = min(2 * x + 2, previousLevel.w - 1);
+
+                        RGBA A = L0.ptr[x2p0];
+                        RGBA B = L0.ptr[x2p1];
+                        RGBA C = L0.ptr[x2p2];
+
+                        RGBA D = L1.ptr[x2p0];
+                        RGBA E = L1.ptr[x2p1];
+                        RGBA F = L1.ptr[x2p2];
+
+                        RGBA G = L2.ptr[x2p0];
+                        RGBA H = L2.ptr[x2p1];
+                        RGBA I = L2.ptr[x2p2];
+
+                        // filter horizontally first
+                        int w0x = (nx - x);
+                        int w1x = nx;
+                        int w2x = 1 + x;
+
+                        float rL0 = A.r * w0x + B.r * w1x + C.r * w2x;
+                        float gL0 = A.g * w0x + B.g * w1x + C.g * w2x;
+                        float bL0 = A.b * w0x + B.b * w1x + C.b * w2x;
+                        float aL0 = A.a * w0x + B.a * w1x + C.a * w2x;
+
+                        float rL1 = D.r * w0x + E.r * w1x + F.r * w2x;
+                        float gL1 = D.g * w0x + E.g * w1x + F.g * w2x;
+                        float bL1 = D.b * w0x + E.b * w1x + F.b * w2x;
+                        float aL1 = D.a * w0x + E.a * w1x + F.a * w2x;
+
+                        float rL2 = G.r * w0x + H.r * w1x + I.r * w2x;
+                        float gL2 = G.g * w0x + H.g * w1x + I.g * w2x;
+                        float bL2 = G.b * w0x + H.b * w1x + I.b * w2x;
+                        float aL2 = G.a * w0x + H.a * w1x + I.a * w2x;
+
+                        float r = (rL0 * w0y + rL1 * w1y + rL2 * w2y) * invDivider;
+                        float g = (gL0 * w0y + gL1 * w1y + gL2 * w2y) * invDivider;
+                        float b = (bL0 * w0y + bL1 * w1y + bL2 * w2y) * invDivider;
+                        float a = (aL0 * w0y + aL1 * w1y + aL2 * w2y) * invDivider;
+
+                        // then filter vertically
+                        dest.ptr[x] = RGBA(cast(ubyte)(r + 0.5f), cast(ubyte)(g + 0.5f), cast(ubyte)(b + 0.5f), cast(ubyte)(a + 0.5f));
+                    }
+                }
+                break;
+        }
+    }
+
+
+private:
+    /// Computes impact of updating the area box on next level
+    static box2i impactOnNextLevel(Quality quality, box2i area, int currentLevelWidth, int currentLevelHeight)
+    {
+        final switch(quality) with (Quality)
+        {
+        case box:
             int xmin = area.min.x / 2;
             int ymin = area.min.y / 2;
             int xmax = (area.max.x + 1) / 2;
@@ -147,30 +272,22 @@ struct Mipmap
             if (ymax >  currentLevelHeight / 2)
                 ymax = currentLevelHeight / 2;
             return box2i(xmin, ymin, xmax, ymax);
-        }
 
-        for (int i = 1; i < cast(int)levels.length; ++i)
-        {
-            Image!RGBA* thisLevel = &levels[i];
-            Image!RGBA* previousLevel = &levels[i - 1];
+        case polyphase:
 
-            updateRect = impactOnNextLevel(updateRect, previousLevel.w, previousLevel.h);
-
-            for (int y = updateRect.min.y; y < updateRect.max.y; ++y)
-            {
-                RGBA[] L0 = previousLevel.scanline(y * 2);
-                RGBA[] L1 = previousLevel.scanline(y * 2 + 1);
-                RGBA[] dest = thisLevel.scanline(y);
-
-                for (int x = updateRect.min.x; x < updateRect.max.x; ++x)
-                {
-                    RGBA A = L0.ptr[2 * x];
-                    RGBA B = L0.ptr[2 * x + 1];
-                    RGBA C = L1.ptr[2 * x];
-                    RGBA D = L1.ptr[2 * x + 1];
-                    dest.ptr[x] = RGBA.op!q{(a + b + c + d + 2) >> 2}(A, B, C, D);
-                }
-            }
+            int xmin = (area.min.x - 1) / 2;
+            int ymin = (area.min.y - 1) / 2;
+            if (xmin < 0)
+                xmin = 0;
+            if (ymin < 0)
+                ymin = 0;
+            int xmax = (area.max.x + 1) / 2;
+            if (xmax >  currentLevelWidth / 2)
+                xmax = currentLevelWidth / 2;
+            int ymax = (area.max.y + 1) / 2;
+            if (ymax >  currentLevelHeight / 2)
+                ymax = currentLevelHeight / 2;
+            return box2i(xmin, ymin, xmax, ymax);
         }
     }
 }

@@ -35,7 +35,7 @@ public:
     {
         skybox.size(10, image.w, image.h);
         skybox.levels[0] = image;
-        skybox.generateMipmaps();
+        skybox.generateMipmaps(Mipmap.Quality.box);
     }
 
     void setFocused(UIElement focused)
