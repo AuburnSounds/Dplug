@@ -158,8 +158,8 @@ class GUIGraphics : UIElement, IGraphics
             // shadow casting => 15 pixels influence on bottom left
             // color-bleed => 7 pixels influence in every direction
             int xmin = rect.min.x - 15;
-            int ymin = rect.min.y - 7;
-            int xmax = rect.max.x + 7;
+            int ymin = rect.min.y - 10;
+            int xmax = rect.max.x + 10;
             int ymax = rect.max.y + 15;
             if (xmin < 0) xmin = 0;
             if (ymin < 0) ymin = 0;

@@ -305,6 +305,8 @@ version(Windows)
                         box2i dirtyRect = _listener.getDirtyRectangle();
                         if (!dirtyRect.empty())
                         {
+                            dirtyRect = _listener.extendsDirtyRect(dirtyRect, _width, _height);
+
                             RECT r;
                             r.left = dirtyRect.min.x;
                             r.top = dirtyRect.min.y;

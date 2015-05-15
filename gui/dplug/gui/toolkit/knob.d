@@ -32,6 +32,10 @@ public:
     {
         auto c = RGBA(193, 180, 176, 0);
 
+
+        if (isMouseOver || isDragged)
+            c.a = 20;
+
         float normalizedValue = _param.getNormalized();
 
 
