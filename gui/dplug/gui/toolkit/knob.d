@@ -53,7 +53,7 @@ public:
         float centerx = (subSquare.min.x + subSquare.max.x - 1) * 0.5f;
         float centery = (subSquare.min.y + subSquare.max.y - 1) * 0.5f;
 
-        float knobRadius = radius * 0.75f;
+        float knobRadius = radius * 0.8f;
 
         float a1 = PI * 3/4;
         float a2 = a1 + PI * 1.5f * normalizedValue;
@@ -63,16 +63,12 @@ public:
         diffuseMap.aaFillSector(cast(int)centerx, cast(int)centery, radius * 0.83, radius * 0.97, a1, a2, trailColor);
 
 
-        depthMap.aaFillSector(cast(int)centerx, cast(int)centery, radius * 0.6f, radius * 1.0, PI * 3/4 - 0.1f, PI * 9/4 + 0.1f, RGBA(30, 0, 0, 0));
-
-            //void fillSector(V, COLOR)(auto ref V v, int x, int y, int r0, int r1, real a0, real a1, COLOR c)
+        depthMap.aaFillSector(cast(int)centerx, cast(int)centery, radius * 0.8f, radius * 1.0, PI * 3/4 - 0.04f, PI * 9/4 + 0.04f, RGBA(30, 0, 0, 0));
 
 
         //
         // Draw knob
         //
-        
-
 
         float angle = (normalizedValue - 0.5f) * 4.8f;
         float depthRadius = max(knobRadius * 3.0f / 5.0f, 0);

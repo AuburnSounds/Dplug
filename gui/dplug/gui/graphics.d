@@ -22,6 +22,7 @@ class GUIGraphics : UIElement, IGraphics
     // always coming from top-right
     vec3f light1Color;
 
+
     // light 2 used for things using the normal
     vec3f light2Dir;
     vec3f light2Color;
@@ -43,6 +44,7 @@ class GUIGraphics : UIElement, IGraphics
 
         // defaults
         light1Color = vec3f(0.54f, 0.50f, 0.46f) * 0.4f;
+
         light2Dir = vec3f(0.0f, 1.0f, 0.1f).normalized;
         light2Color = vec3f(0.378f, 0.35f, 0.322f);
         ambientLight = 0.3f;
@@ -308,31 +310,44 @@ protected:
 
                     // cast shadows, ie. enlight what isn't in shadows
                     {
+                        enum float fallOff = 0.78f;
+
+                        int samples = 11;
+
+                        static immutable float[11] weights = 
+                        [
+                            1.0f,
+                            fallOff,
+                            fallOff ^^ 2,
+                            fallOff ^^ 3,
+                            fallOff ^^ 4,
+                            fallOff ^^ 5,
+                            fallOff ^^ 6,
+                            fallOff ^^ 7,
+                            fallOff ^^ 8,
+                            fallOff ^^ 9,
+                            fallOff ^^ 10
+                        ];
+
+                        enum float totalWeights = (1.0f - (fallOff ^^ 11)) / (1.0f - fallOff) - 1;
+                        enum float invTotalWeights = 1 / totalWeights;
+                        
+                        float lightPassed = 0.0f;
+
                         int depthHere = depthPatch[2][2];
-
-                        // sample at position + (1, -1)
-                        float depth1 = _depthMap.linearSample(0, i + 1.5f, j - 0.5f).r;
-                        float diff1 = depthHere + 1 - depth1;
-                        float lighted1 = linearStep!(-10.0f, 3.0f)(diff1);
-
-                        // sample at position + (3, -3)
-                        float depth2 = _depthMap.linearSample(1, i + 3.5f, j - 2.5f).r;
-                        float diff2 = depthHere + 3 - depth2;
-                        float lighted2 = linearStep!(-20.0f, 7.2f)(diff2);
-
-                        // sample at position + (7, -7)
-                        float depth3 = _depthMap.linearSample(2, i + 7.5f, j -6.5f).r;
-                        float diff3 = depthHere + 7 - depth3;
-                        float lighted3 = linearStep!(-40.0f, 15.0f)(diff3);
-
-                        // sample at position + (15, -15)
-                        float depth4 = _depthMap.linearSample(3, i + 15.5f, j -14.5f).r;
-                        float diff4 = depthHere + 15 - depth3;
-                        float lighted4 = linearStep!(-80.0f, 30.0f)(diff4);
-
-                        float lightPassed = lighted1 * lighted2 * lighted3 * lighted4;
-
-                        color += baseColor * light1Color * lightPassed;
+                        for (int l = 1; l < samples; ++l)
+                        {
+                            int x = i + l;
+                            if (x >= w)
+                                x = w - 1;
+                            int y = j - l;
+                            if (y < 0)
+                                y = 0;
+                            int z = depthHere + l;
+                            int diff = z - _depthMap.levels[0][x, y].r;
+                            lightPassed += linearStep!(-60.0f, 0.0f)(diff) * weights[l];
+                        }
+                        color += baseColor * light1Color * (lightPassed * invTotalWeights);
                     }
 
                     // secundary light
@@ -401,7 +416,10 @@ protected:
                     {
                         float ic = i + 0.5f;
                         float jc = j + 0.5f;
-                        vec4f colorLevel1 = _diffuseMap.linearSample!true(1, ic, jc);
+
+                        // Get alpha-premultiplied, avoids some white highlights
+                        // Maybe we could solve the white highlights by having the whole mipmap premultiplied
+                        vec4f colorLevel1 = _diffuseMap.linearSample!true(1, ic, jc); 
                         vec4f colorLevel2 = _diffuseMap.linearSample!true(2, ic, jc);
                         vec4f colorLevel3 = _diffuseMap.linearSample!true(3, ic, jc);
                         vec4f colorLevel4 = _diffuseMap.linearSample!true(4, ic, jc);
@@ -419,10 +437,10 @@ protected:
                             return emitted * (1 + amount) - grey * amount;
                         }
 
-                        color += saturate(emitted, 0.25f);
+                        color += saturate(emitted, 0.25f); // saturate the highlights because white highlights
                     }
 
-                    
+                  
                     // Show normals
                     //color = vec3f(0.5f) + normal * 0.5f;
 
