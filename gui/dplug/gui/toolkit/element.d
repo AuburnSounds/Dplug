@@ -254,27 +254,27 @@ public:
         return _context;
     }
 
-    final bool isVisible()
+    final bool isVisible() pure const nothrow @nogc
     {
         return _visible;
     }
 
-    final void setVisible(bool visible)
+    final void setVisible(bool visible) pure nothrow @nogc
     {
         _visible = visible;
     }
 
-    final int zOrder()
+    final int zOrder() pure const nothrow @nogc
     {
         return _zOrder;
     }
 
-    final void setZOrder(int zOrder)
+    final void setZOrder(int zOrder) pure nothrow @nogc
     {
         _zOrder = zOrder;
     }
 
-    final void clearDirty()
+    final void clearDirty() nothrow @nogc
     {
         _dirtyRect = box2i(0, 0, 0, 0);
 
@@ -282,12 +282,12 @@ public:
             child.clearDirty();
     }
 
-    final void setDirty()
+    final void setDirty() nothrow @nogc
     {
         setDirty(_position);
     }
 
-    final void setDirty(box2i rect)
+    final void setDirty(box2i rect) nothrow @nogc
     {
         box2i inter = _position.intersection(rect);
         if (_dirtyRect.empty())

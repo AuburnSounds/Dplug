@@ -23,9 +23,12 @@ public:
     // From a normalized float, set the parameter value.
     void setFromHost(float hostValue) nothrow
     {
-        _valueSpinlock.lock();
-        scope(exit) _valueSpinlock.unlock();
-        setNormalized(hostValue);
+        {
+            _valueSpinlock.lock();
+            scope(exit) _valueSpinlock.unlock();
+            setNormalized(hostValue);
+        }
+        notifyListeners();
     }
 
     // Returns: A normalized float, represents the parameter value.
@@ -41,6 +44,23 @@ public:
         _valueSpinlock.lock();
         scope(exit) _valueSpinlock.unlock();
         toStringN(buffer, numBytes);
+    }
+
+    /// Adds a parameter listener.
+    void addListener(IParameterListener listener)
+    {
+        _listeners ~= listener;
+    }
+
+    void removeListener(IParameterListener listener)
+    {
+        static auto removeElement(IParameterListener[] haystack, IParameterListener needle)
+        {
+            import std.algorithm;
+            auto index = haystack.countUntil(needle);
+            return (index != -1) ? haystack.remove(index) : haystack;
+        }
+        _listeners = removeElement(_listeners, listener);
     }
 
 protected:
@@ -74,7 +94,13 @@ protected:
     abstract float getNormalized() nothrow;
 
     /// Display parameter (without label).
-    abstract void toStringN(char* buffer, size_t numBytes) nothrow;    
+    abstract void toStringN(char* buffer, size_t numBytes) nothrow;
+
+    void notifyListeners() nothrow @nogc
+    {
+        foreach(listener; _listeners)
+            listener.onParameterChanged(this);
+    }
 
 private:
     Client _client; /// backlink to parameter holder
@@ -82,6 +108,14 @@ private:
     string _name;
     string _label;
     Spinlock _valueSpinlock; /// Spinlock that protects the value.
+    IParameterListener[] _listeners;
+}
+
+/// Parameter listeners are called whenever a parameter is changed from the host POV.
+/// Intended making GUI controls call `setDirty()` and move with automation.
+interface IParameterListener
+{
+    void onParameterChanged(Parameter sender) nothrow @nogc;
 }
 
 
@@ -149,6 +183,7 @@ public:
         }
         // TODO: is there any race here?
         _client.hostCommand().paramAutomate(_index, getNormalized());
+        notifyListeners();
     }
 
     override void setNormalized(float hostValue)

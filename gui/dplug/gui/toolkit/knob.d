@@ -5,7 +5,7 @@ import dplug.gui.toolkit.element;
 import dplug.gui.drawex;
 import dplug.plugin.params;
 
-class UIKnob : UIElement
+class UIKnob : UIElement, IParameterListener
 {
 public:
 
@@ -14,6 +14,13 @@ public:
         super(context);
         _param = param;
         _sensivity = 0.25f;
+
+        _param.addListener(this);
+    }
+
+    override void close()
+    {
+        _param.removeListener(this);
     }
 
     /// Returns: sensivity.
@@ -125,14 +132,12 @@ public:
             _param.setFromGUI(_param.defaultValue());
         }
 
-        setDirty();
         return true; // to initiate dragging
     }
 
     // Called when mouse drag this Element.
     override void onMouseDrag(int x, int y, int dx, int dy, MouseState mstate)
     {
-        setDirty();
         float displacementInHeight = cast(float)(dy) / _position.height;
         float extent = _param.maxValue() - _param.minValue();
 
@@ -162,6 +167,11 @@ public:
     }
 
     override void onMouseExit()
+    {
+        setDirty();
+    }
+
+    override void onParameterChanged(Parameter sender) nothrow @nogc
     {
         setDirty();
     }
