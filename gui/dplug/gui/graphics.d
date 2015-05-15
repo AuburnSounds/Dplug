@@ -294,7 +294,7 @@ protected:
                     float sy = depthPatch[3][1] + depthPatch[4][1] + depthPatch[3][2] + depthPatch[4][2] + depthPatch[3][3] + depthPatch[4][3]
                              - ( depthPatch[0][1] + depthPatch[1][1] + depthPatch[0][2] + depthPatch[1][2] + depthPatch[0][3] + depthPatch[1][3] );
 
-                    enum float normalDepth = 130.0f; // this factor basically tweak normals to make the UI flatter or not
+                    enum float sz = 130.0f; // this factor basically tweak normals to make the UI flatter or not
 
                     vec3f normal = vec3f(sx, sy, sz).normalized;
 
@@ -335,17 +335,17 @@ protected:
                         float lightPassed = 0.0f;
 
                         int depthHere = depthPatch[2][2];
-                        for (int l = 1; l < samples; ++l)
+                        for (int sample = 1; sample < samples; ++sample)
                         {
-                            int x = i + l;
+                            int x = i + sample;
                             if (x >= w)
                                 x = w - 1;
-                            int y = j - l;
+                            int y = j - sample;
                             if (y < 0)
                                 y = 0;
-                            int z = depthHere + l;
+                            int z = depthHere + sample;
                             int diff = z - _depthMap.levels[0][x, y].r;
-                            lightPassed += linearStep!(-60.0f, 0.0f)(diff) * weights[l];
+                            lightPassed += ctLinearStep!(-60.0f, 0.0f)(diff) * weights[sample];
                         }
                         color += baseColor * light1Color * (lightPassed * invTotalWeights);
                     }
@@ -406,7 +406,7 @@ protected:
                                            + _depthMap.linearSample(3, i + 0.5f, j + 0.5f).r * 0.33f
                                            + _depthMap.linearSample(4, i + 0.5f, j + 0.5f).r * 0.33f;
 
-                        float occluded = linearStep!(-90.0f, 90.0f)(depthPatch[2][2] - avgDepthHere);
+                        float occluded = ctLinearStep!(-90.0f, 90.0f)(depthPatch[2][2] - avgDepthHere);
 
                         //vec3f colorBleed = avgDepthHere.r * _diffuseMap.linearSample(3, i + 0.5f, j + 0.5f) * div255;
                         color += vec3f(occluded * ambientLight) * baseColor;
@@ -475,7 +475,7 @@ protected:
 private:
 
 // cause smoothStep wasn't needed
-float linearStep(float a, float b)(float t) pure nothrow @nogc 
+float ctLinearStep(float a, float b)(float t) pure nothrow @nogc 
 {
     if (t <= a)
         return 0.0f;
@@ -484,6 +484,20 @@ float linearStep(float a, float b)(float t) pure nothrow @nogc
     else
     {
         enum float divider = 1.0f / (b - a);
+        return (t - a) * divider;
+    }
+}
+
+// cause smoothStep wasn't needed
+float linearStep(float a, float b, float t) pure nothrow @nogc 
+{
+    if (t <= a)
+        return 0.0f;
+    else if (t >= b)
+        return 1.0f;
+    else
+    {
+        float divider = 1.0f / (b - a);
         return (t - a) * divider;
     }
 }
