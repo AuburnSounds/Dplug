@@ -24,18 +24,18 @@ interface IWindowListener
 {
     /// Called on mouse click.
     /// Returns: true if the event was handled.
-    bool onMouseClick(int x, int y, MouseButton mb, bool isDoubleClick);
+    bool onMouseClick(int x, int y, MouseButton mb, bool isDoubleClick, MouseState mstate);
 
     /// Called on mouse button release
     /// Returns: true if the event was handled.
-    bool onMouseRelease(int x, int y, MouseButton mb);
+    bool onMouseRelease(int x, int y, MouseButton mb, MouseState mstate);
 
     /// Called on mouse wheel movement
     /// Returns: true if the event was handled.
-    bool onMouseWheel(int x, int y, int wheelDeltaX, int wheelDeltaY);
+    bool onMouseWheel(int x, int y, int wheelDeltaX, int wheelDeltaY, MouseState mstate);
 
     /// Called on mouse movement (might not be within the window)
-    void onMouseMove(int x, int y, int dx, int dy);
+    void onMouseMove(int x, int y, int dx, int dy, MouseState mstate);
 
     /// Called on keyboard press.
     /// Returns: true if the event was handled.

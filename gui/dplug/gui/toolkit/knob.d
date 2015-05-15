@@ -117,22 +117,32 @@ public:
         }        
     }
 
-    override bool onMousePreClick(int x, int y, int button, bool isDoubleClick)
+    override bool onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
     {
+        // double-click => set to default
+        if (isDoubleClick)
+        {
+            _param.setFromGUI(_param.defaultValue());
+        }
+
         setDirty();
         return true; // to initiate dragging
     }
 
     // Called when mouse drag this Element.
-    override void onMouseDrag(int x, int y, int dx, int dy)
+    override void onMouseDrag(int x, int y, int dx, int dy, MouseState mstate)
     {
         setDirty();
         float displacementInHeight = cast(float)(dy) / _position.height;
         float extent = _param.maxValue() - _param.minValue();
 
+        float modifier = 1.0f;
+        if (mstate.shiftPressed || mstate.ctrlPressed)
+            modifier *= 0.1f;
+
         // TODO: this will break with log params
         float currentValue = _param.value;
-        _param.setFromGUI(currentValue - displacementInHeight * _sensivity * extent);
+        _param.setFromGUI(currentValue - displacementInHeight * modifier * _sensivity * extent);
     }
 
     // For lazy updates

@@ -4,6 +4,7 @@ import std.algorithm;
 
 public import gfm.math;
 public import ae.utils.graphics;
+public import dplug.gui.window;
 public import dplug.gui.types;
 public import dplug.gui.toolkit.context;
 public import dplug.gui.toolkit.font;
@@ -78,28 +79,21 @@ public:
     }
 
     // This function is meant to be overriden.
-    // It should return true if the click is handled.
-    bool onMousePostClick(int x, int y, int button, bool isDoubleClick)
-    {
-        return false;
-    }
-
-    // This function is meant to be overriden.
     // Happens _before_ checking for children collisions.
-    bool onMousePreClick(int x, int y, int button, bool isDoubleClick)
+    bool onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
     {
         return false;
     }
 
     // This function is meant to be overriden.
     // It should return true if the wheel is handled.
-    bool onMouseWheel(int x, int y, int wheelDeltaX, int wheelDeltaY)
+    bool onMouseWheel(int x, int y, int wheelDeltaX, int wheelDeltaY, MouseState mstate)
     {
         return false;
     }
 
     // Called when mouse move over this Element.
-    void onMouseMove(int x, int y, int dx, int dy)
+    void onMouseMove(int x, int y, int dx, int dy, MouseState mstate)
     {
     }
 
@@ -109,7 +103,7 @@ public:
     }
 
     // Called when mouse drag this Element.
-    void onMouseDrag(int x, int y, int dx, int dy)
+    void onMouseDrag(int x, int y, int dx, int dy, MouseState mstate)
     {
     }
 
@@ -143,20 +137,20 @@ public:
     }
 
     // to be called at top-level when the mouse clicked
-    bool mouseClick(int x, int y, int button, bool isDoubleClick)
+    bool mouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
     {
         // Test children that are displayed above this element first
         foreach(child; _children)
         {
             if (child.zOrder >= zOrder)
-                if (child.mouseClick(x, y, button, isDoubleClick))
+                if (child.mouseClick(x, y, button, isDoubleClick, mstate))
                     return true;
         }
 
         // Test for collision with this element
         if (_position.contains(vec2i(x, y)))
         {
-            if(onMousePreClick(x - _position.min.x, y - _position.min.y, button, isDoubleClick))
+            if(onMouseClick(x - _position.min.x, y - _position.min.y, button, isDoubleClick, mstate))
             {
                 _context.beginDragging(this);
                 _context.setFocused(this);
@@ -168,7 +162,7 @@ public:
         foreach(child; _children)
         {
             if (child.zOrder < zOrder)
-                if (child.mouseClick(x, y, button, isDoubleClick))
+                if (child.mouseClick(x, y, button, isDoubleClick, mstate))
                     return true;
         }
 
@@ -176,23 +170,23 @@ public:
     }
 
     // to be called at top-level when the mouse is released
-    final void mouseRelease(int x, int y, int button)
+    final void mouseRelease(int x, int y, int button, MouseState mstate)
     {
         _context.stopDragging();
     }
 
     // to be called at top-level when the mouse wheeled
-    final bool mouseWheel(int x, int y, int wheelDeltaX, int wheelDeltaY)
+    final bool mouseWheel(int x, int y, int wheelDeltaX, int wheelDeltaY, MouseState mstate)
     {
         foreach(child; _children)
         {
-            if (child.mouseWheel(x, y, wheelDeltaX, wheelDeltaY))
+            if (child.mouseWheel(x, y, wheelDeltaX, wheelDeltaY, mstate))
                 return true;
         }
 
         if (_position.contains(vec2i(x, y)))
         {
-            if (onMouseWheel(x - _position.min.x, y - _position.min.y, wheelDeltaX, wheelDeltaY))
+            if (onMouseWheel(x - _position.min.x, y - _position.min.y, wheelDeltaX, wheelDeltaY, mstate))
                 return true;
         }
 
@@ -200,21 +194,21 @@ public:
     }
 
     // to be called when the mouse moved
-    final void mouseMove(int x, int y, int dx, int dy)
+    final void mouseMove(int x, int y, int dx, int dy, MouseState mstate)
     {
         if (isDragged)
-            onMouseDrag(x, y, dx, dy);
+            onMouseDrag(x, y, dx, dy, mstate);
 
         foreach(child; _children)
         {
-            child.mouseMove(x, y, dx, dy);
+            child.mouseMove(x, y, dx, dy, mstate);
         }
 
         if (_position.contains(vec2i(x, y)))
         {
             if (!_mouseOver)
                 onMouseEnter();
-            onMouseMove(x - _position.min.x, y - _position.min.y, dx, dy);
+            onMouseMove(x - _position.min.x, y - _position.min.y, dx, dy, mstate);
             _mouseOver = true;
         }
         else

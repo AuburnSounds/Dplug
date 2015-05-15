@@ -80,25 +80,25 @@ class GUIGraphics : UIElement, IGraphics
     // UIElement and IWindowListener methods :|
     class WindowListener : IWindowListener
     {
-        override bool onMouseClick(int x, int y, MouseButton mb, bool isDoubleClick)
+        override bool onMouseClick(int x, int y, MouseButton mb, bool isDoubleClick, MouseState mstate)
         {
-            return this.outer.mouseClick(x, y, mb, isDoubleClick);
+            return this.outer.mouseClick(x, y, mb, isDoubleClick, mstate);
         }
 
-        override bool onMouseRelease(int x, int y, MouseButton mb)
+        override bool onMouseRelease(int x, int y, MouseButton mb, MouseState mstate)
         {
-            this.outer.mouseRelease(x, y, mb);
+            this.outer.mouseRelease(x, y, mb, mstate);
             return true;
         }
 
-        override bool onMouseWheel(int x, int y, int wheelDeltaX, int wheelDeltaY)
+        override bool onMouseWheel(int x, int y, int wheelDeltaX, int wheelDeltaY, MouseState mstate)
         {
-            return this.outer.mouseWheel(x, y, wheelDeltaX, wheelDeltaY);
+            return this.outer.mouseWheel(x, y, wheelDeltaX, wheelDeltaY, mstate);
         }
 
-        override void onMouseMove(int x, int y, int dx, int dy)
+        override void onMouseMove(int x, int y, int dx, int dy, MouseState mstate)
         {
-            this.outer.mouseMove(x, y, dx, dy);
+            this.outer.mouseMove(x, y, dx, dy, mstate);
         }
 
         override bool onKeyDown(Key key)

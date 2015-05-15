@@ -31,3 +31,15 @@ enum MouseButton
     x1,
     x2
 }
+
+struct MouseState
+{
+    bool leftButtonDown;
+    bool rightButtonDown;
+    bool middleButtonDown;
+    bool x1ButtonDown;
+    bool x2ButtonDown;
+    bool ctrlPressed;
+    bool shiftPressed;
+    bool altPressed;
+}

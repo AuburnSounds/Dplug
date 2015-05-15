@@ -198,7 +198,7 @@ version(Windows)
                         int newMouseY = ( cast(int)lParam ) >> 16;
                         int dx = newMouseX - _mouseX;
                         int dy = newMouseY - _mouseY;
-                        _listener.onMouseMove(newMouseX, newMouseY, dx, dy);
+                        _listener.onMouseMove(newMouseX, newMouseY, dx, dy, getMouseState(wParam));
                         _mouseX = newMouseX;
                         _mouseY = newMouseY;
                         return 0;
@@ -207,7 +207,7 @@ version(Windows)
                 case WM_RBUTTONDOWN:
                 case WM_RBUTTONDBLCLK:
                 {
-                    if (mouseClick(_mouseX, _mouseY, MouseButton.right, uMsg == WM_RBUTTONDBLCLK))
+                    if (mouseClick(_mouseX, _mouseY, MouseButton.right, uMsg == WM_RBUTTONDBLCLK, wParam))
                         return 0; // handled
                     goto default;
                 }
@@ -215,7 +215,7 @@ version(Windows)
                 case WM_LBUTTONDOWN:
                 case WM_LBUTTONDBLCLK:
                 {
-                    if (mouseClick(_mouseX, _mouseY, MouseButton.left, uMsg == WM_LBUTTONDBLCLK))
+                    if (mouseClick(_mouseX, _mouseY, MouseButton.left, uMsg == WM_LBUTTONDBLCLK, wParam))
                         return 0; // handled
                     goto default;
                 }
@@ -223,7 +223,7 @@ version(Windows)
                 case WM_MBUTTONDOWN:
                 case WM_MBUTTONDBLCLK:
                 {
-                    if (mouseClick(_mouseX, _mouseY, MouseButton.middle, uMsg == WM_MBUTTONDBLCLK))
+                    if (mouseClick(_mouseX, _mouseY, MouseButton.middle, uMsg == WM_MBUTTONDBLCLK, wParam))
                         return 0; // handled
                     goto default;
                 }
@@ -233,29 +233,29 @@ version(Windows)
                 case WM_XBUTTONDBLCLK:
                 {
                     auto mb = (wParam >> 16) == 1 ? MouseButton.x1 : MouseButton.x2;
-                    if (mouseClick(_mouseX, _mouseY, mb, uMsg == WM_XBUTTONDBLCLK))
+                    if (mouseClick(_mouseX, _mouseY, mb, uMsg == WM_XBUTTONDBLCLK, wParam))
                         return 0;
                     goto default;
                 }
 
                 case WM_RBUTTONUP:
-                    if (mouseRelease(_mouseX, _mouseY, MouseButton.right))
+                    if (mouseRelease(_mouseX, _mouseY, MouseButton.right, wParam))
                         return 0;
                     goto default;
 
                 case WM_LBUTTONUP:
-                    if (mouseRelease(_mouseX, _mouseY, MouseButton.left))
+                    if (mouseRelease(_mouseX, _mouseY, MouseButton.left, wParam))
                         return 0;
                     goto default;
                 case WM_MBUTTONUP:
-                    if (mouseRelease(_mouseX, _mouseY, MouseButton.middle))
+                    if (mouseRelease(_mouseX, _mouseY, MouseButton.middle, wParam))
                         return 0;
                     goto default;
 
                 case WM_XBUTTONUP:
                 {
                     auto mb = (wParam >> 16) == 1 ? MouseButton.x1 : MouseButton.x2;
-                    if (mouseRelease(_mouseX, _mouseY, mb))
+                    if (mouseRelease(_mouseX, _mouseY, mb, wParam))
                         return 0;
                     goto default;
                 }
@@ -407,19 +407,19 @@ version(Windows)
 
         /// Propagates mouse events.
         /// Returns: true if event handled.
-        bool mouseClick(int mouseX, int mouseY, MouseButton mb, bool isDoubleClick)
+        bool mouseClick(int mouseX, int mouseY, MouseButton mb, bool isDoubleClick, WPARAM wParam)
         {
             SetFocus(_hwnd);   // get keyboard focus
             SetCapture(_hwnd); // start mouse capture
-            _listener.onMouseClick(mouseX, mouseY, mb, isDoubleClick);
+            _listener.onMouseClick(mouseX, mouseY, mb, isDoubleClick, getMouseState(wParam));
             return true; // TODO: onMouseClick should return true of false
         }
 
         /// ditto
-        bool mouseRelease(int mouseX, int mouseY, MouseButton mb)
+        bool mouseRelease(int mouseX, int mouseY, MouseButton mb, WPARAM wParam)
         {
             ReleaseCapture();
-            _listener.onMouseRelease(mouseX, mouseY, mb);
+            _listener.onMouseRelease(mouseX, mouseY, mb, getMouseState(wParam));
             return true; // TODO: onMouseRelease should return true of false
         }
 
@@ -471,7 +471,7 @@ version(Windows)
         }
     }
 
-    private Key vkToKey(WPARAM vk) pure nothrow @nogc
+    Key vkToKey(WPARAM vk) pure nothrow @nogc
     {
         switch (vk)
         {
@@ -495,5 +495,17 @@ version(Windows)
             case VK_RETURN: return Key.enter;
             default: return Key.unsupported;
         }
+    }
+
+    static MouseState getMouseState(WPARAM wParam)
+    {
+        return MouseState( (wParam & MK_LBUTTON) != 0,
+                           (wParam & MK_RBUTTON) != 0,
+                           (wParam & MK_MBUTTON) != 0,
+                           (wParam & MK_XBUTTON1) != 0,
+                           (wParam & MK_XBUTTON2) != 0,
+                           (wParam & MK_CONTROL) != 0,
+                           (wParam & MK_SHIFT) != 0,
+                           GetKeyState(VK_MENU) < 0 );
     }
 }
