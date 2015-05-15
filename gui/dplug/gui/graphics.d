@@ -241,8 +241,9 @@ protected:
     Mipmap _diffuseMap;
     Mipmap _depthMap;
 
-    // compose lighting effects
+    // Compose lighting effects from depth and diffuse into a result.
     // takes output image and non-overlapping areas as input
+    // Don't like this rendering? Feel free to override this method.
     void compositeGUI(ImageRef!RGBA wfb, box2i[] areas)
     {
         Mipmap* skybox = &context.skybox;
