@@ -294,7 +294,7 @@ protected:
                     float sy = depthPatch[3][1] + depthPatch[4][1] + depthPatch[3][2] + depthPatch[4][2] + depthPatch[3][3] + depthPatch[4][3]
                              - ( depthPatch[0][1] + depthPatch[1][1] + depthPatch[0][2] + depthPatch[1][2] + depthPatch[0][3] + depthPatch[1][3] );
 
-                    enum float sz = 16.0f * 9.0f;
+                    enum float normalDepth = 130.0f; // this factor basically tweak normals to make the UI flatter or not
 
                     vec3f normal = vec3f(sx, sy, sz).normalized;
 
