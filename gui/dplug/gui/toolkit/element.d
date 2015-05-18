@@ -39,7 +39,7 @@ public:
 
         // Crop the diffuse and depth to the _position
         // This is because drawing outside of _position is disallowed
-        // TODO: support _position out of bounds?
+        // TODO: support out-of-bounds _position ?
         ImageRef!RGBA diffuseMapCropped = diffuseMap.cropImageRef(_position);
         ImageRef!RGBA depthMapCropped = depthMap.cropImageRef(_position);
 

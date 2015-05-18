@@ -171,11 +171,6 @@ public:
     // This should be called only by a client implementation
     void setParameterFromHost(int index, float value)
     {
-        if (hasGUI())
-        {
-            // TODO warn the GUI
-        }
-
         param(index).setFromHost(value);
     }
 

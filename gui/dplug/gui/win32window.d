@@ -11,7 +11,6 @@ import ae.utils.graphics;
 
 import dplug.gui.types;
 import dplug.gui.window;
-
 version(Windows)
 {
     import std.uuid;
@@ -22,8 +21,16 @@ version(Windows)
     import win32.windef;
     import win32.wingdi;
 
-    // TODO: the whole buffer content is uploaded regularly instead of having a concept of dirty widgets
 
+    import dplug.plugin.dllmain: gModuleHandle;
+
+    HINSTANCE getModuleHandle()
+    {
+        if (gModuleHandle !is null)
+            return cast(HINSTANCE) gModuleHandle;
+        else
+            return GetModuleHandleA(null);
+    }
 
     class Win32Window : IWindow
     {
@@ -35,7 +42,7 @@ version(Windows)
             _wndClass.lpfnWndProc = &windowProcCallback;
             _wndClass.cbClsExtra = 0;
             _wndClass.cbWndExtra = 0;
-            _wndClass.hInstance = GetModuleHandleA(null); // TODO: should be the HINSTANCE given by DLL main!
+            _wndClass.hInstance = getModuleHandle();
             _wndClass.hIcon = null;
             _wndClass.hCursor = LoadCursorA(null, IDC_ARROW);
             _wndClass.hbrBackground = null;
@@ -58,7 +65,7 @@ version(Windows)
 
             _hwnd = CreateWindowW(_className.ptr, null, flags, CW_USEDEFAULT, CW_USEDEFAULT, width, height,
                                  parentWindow, null,
-                                 GetModuleHandleA(null),  // TODO: is it correct?
+                                 getModuleHandle(),
                                  cast(void*)this);
 
             if (_hwnd is null)
@@ -156,7 +163,7 @@ version(Windows)
                 _hwnd = null;
 
                 // Unregister the window class, which was unique
-                UnregisterClassW(_wndClass.lpszClassName, GetModuleHandle(null)); // TODO: here should be the HINSTANCE given by DLL main!
+                UnregisterClassW(_wndClass.lpszClassName, getModuleHandle());
             }
         }
 

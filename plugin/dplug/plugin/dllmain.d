@@ -1,6 +1,10 @@
 // See licenses/WDL_license.txt
 module dplug.plugin.dllmain;
 
+
+__gshared void* gModuleHandle = null;
+
+
 version(Windows)
 {
     template DLLEntryPoint()
@@ -9,15 +13,13 @@ version(Windows)
             import std.c.windows.windows;
             import core.sys.windows.dll;
 
-            __gshared HINSTANCE g_hInst;
-
             extern (Windows)
                 BOOL DllMain(HINSTANCE hInstance, ULONG ulReason, LPVOID pvReserved)
             {
                 switch (ulReason)
                 {
                     case DLL_PROCESS_ATTACH:
-                        g_hInst = hInstance;
+                        gModuleHandle = cast(void*)hInstance;
                         dll_process_attach(hInstance, true);
                         break;
 

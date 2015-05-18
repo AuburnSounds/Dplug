@@ -277,7 +277,7 @@ private:
                     {
                         // Audio processing was switched on.
                     }
-                    return 0; // TODO, plugin should clear its state
+                    return 0;
                 }
 
             case effEditGetRect: // opcode 13
