@@ -73,7 +73,8 @@ public:
         auto croppedDiffuse = diffuseMap.crop(dirtyRect);
         _font.size = _textSize;
         _font.color = _textColor;
-        croppedDiffuse.fillText(_font, _text, croppedDiffuse.w * 0.5f, croppedDiffuse.h * 0.5f);
+        vec2f positionInDirty = vec2f(diffuseMap.w * 0.5f, diffuseMap.h * 0.5f) - dirtyRect.min;
+        croppedDiffuse.fillText(_font, _text, positionInDirty.x, positionInDirty.y);
     }
 
 protected:

@@ -37,7 +37,13 @@ public:
         dirtyRect = _dirtyRect;
         _dirtyRectMutex.unlock();
 
-        onDraw(diffuseMap, depthMap, dirtyRect);
+        // Crop the diffuse and depth to the _position
+        // This is because drawing outside of _position is disallowed
+        // TODO: support _position out of bounds?
+        ImageRef!RGBA diffuseMapCropped = diffuseMap.cropImageRef(_position);
+        ImageRef!RGBA depthMapCropped = depthMap.cropImageRef(_position);
+
+        onDraw(diffuseMapCropped, depthMapCropped, dirtyRect.translate(-_position.min) );
     }
 
     /// Meant to be overriden almost everytime for custom behaviour.
@@ -379,8 +385,9 @@ protected:
 
     /// Draw method. You should redraw the area there.
     /// For better efficiency, you may only redraw the part in _dirtyRect.
-    /// Warning: `onDraw` must only draw in the _position rectangle.
-    ///          _dirtyRect should not be used instead of dirtyRect for threading reasons.
+    /// diffuseMap and depthMap are made to span _position exactly, 
+    /// so you can draw in the area (0 .. _position.width, 0 .. _position.height)
+    /// Warning: _dirtyRect should not be used instead of dirtyRect for threading reasons.
     void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap, box2i dirtyRect)
     {
         // defaults to filling with a grey pattern

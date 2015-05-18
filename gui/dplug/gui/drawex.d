@@ -15,6 +15,19 @@ auto crop(V)(auto ref V src, box2i b) if (isView!V)
     return ae.utils.graphics.view.crop(src, b.min.x, b.min.y, b.max.x, b.max.y);
 }
 
+/// Crop an ImageRef and get an ImageRef instead of a Voldemort type.
+/// This also avoid adding offset to coordinates.
+ImageRef!COLOR cropImageRef(COLOR)(ImageRef!COLOR src, box2i rect)
+{
+    ImageRef!COLOR result;
+    result.w = rect.width;
+    result.h = rect.height;
+    result.pitch = src.pitch;
+    RGBA[] scan = src.scanline(rect.min.y);
+    result.pixels = &scan[rect.min.x];
+    return result;
+}
+
 /// Rough anti-aliased fillsector
 void aaFillSector(V, COLOR)(auto ref V v, float x, float y, float r0, float r1, float a0, float a1, COLOR c)
 if (isWritableView!V && is(COLOR : ViewColor!V))

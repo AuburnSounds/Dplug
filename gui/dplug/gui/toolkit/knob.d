@@ -51,14 +51,14 @@ public:
         if (_position.width > _position.height)
         {
             int offset = (_position.width - _position.height) / 2;
-            int minX = _position.min.x + offset;
-            subSquare = box2i(minX, _position.min.y, minX + _position.height, _position.max.y);
+            int minX = offset;
+            subSquare = box2i(minX, 0, minX + _position.height, _position.height);
         }
         else
         {
             int offset = (_position.height - _position.width) / 2;
-            int minY = _position.min.y  + offset;
-            subSquare = box2i(_position.min.x, minY, _position.max.x, minY + _position.width);
+            int minY = offset;
+            subSquare = box2i(0, minY, _position.width, minY + _position.width);
         }
         float radius = subSquare.width * 0.5f;
         float centerx = (subSquare.min.x + subSquare.max.x - 1) * 0.5f;
