@@ -153,11 +153,13 @@ public:
     // For lazy updates
     override void onBeginDrag()
     {
+        _param.beginParamEdit();
         setDirty();
     }
 
     override  void onStopDrag()
     {
+        _param.endParamEdit();
         setDirty();
     }
 

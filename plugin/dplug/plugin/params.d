@@ -55,6 +55,16 @@ public:
         _listeners = removeElement(_listeners, listener);
     }
 
+    void beginParamEdit()
+    {
+        _client.hostCommand().beginParamEdit(_index);
+    }
+
+    void endParamEdit()
+    {
+        _client.hostCommand().endParamEdit(_index);
+    }
+
 protected:
 
     this(Client client, int index, string name, string label)
