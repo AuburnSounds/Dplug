@@ -5,7 +5,7 @@ import std.math;
 import core.stdc.stdio;
 
 import dplug.plugin.client;
-import dplug.plugin.spinlock;
+import dplug.plugin.unchecked_sync;
 
 class Parameter
 {
@@ -23,26 +23,18 @@ public:
     // From a normalized float, set the parameter value.
     void setFromHost(float hostValue) nothrow
     {
-        {
-            _valueSpinlock.lock();
-            scope(exit) _valueSpinlock.unlock();
-            setNormalized(hostValue);
-        }
+        setNormalized(hostValue);
         notifyListeners();
     }
 
     // Returns: A normalized float, represents the parameter value.
     float getForHost() nothrow
     {
-        _valueSpinlock.lock();
-        scope(exit) _valueSpinlock.unlock();
         return getNormalized();
     }
 
     void toDisplayN(char* buffer, size_t numBytes) nothrow
     {
-        _valueSpinlock.lock();
-        scope(exit) _valueSpinlock.unlock();
         toStringN(buffer, numBytes);
     }
 
@@ -72,7 +64,8 @@ protected:
         _label = label;
         _index = index;
 
-        _valueSpinlock = Spinlock(false);
+        _valueMutex = new UncheckedMutex();
+
     }
 
     ~this()
@@ -82,16 +75,16 @@ protected:
 
     void close()
     {
-        _valueSpinlock.close();
+        _valueMutex.close();
     }
 
     /// From a normalized float, set the parameter value.
     /// No guarantee at all that getNormalized will return the same,
     /// because this value is rounded to fit.
-    abstract void setNormalized(float hostValue) nothrow;
+    abstract void setNormalized(float hostValue) nothrow @nogc;
 
     /// Returns: A normalized float, representing the parameter value.
-    abstract float getNormalized() nothrow;
+    abstract float getNormalized() nothrow @nogc;
 
     /// Display parameter (without label).
     abstract void toStringN(char* buffer, size_t numBytes) nothrow;
@@ -107,8 +100,9 @@ private:
     int _index;
     string _name;
     string _label;
-    Spinlock _valueSpinlock; /// Spinlock that protects the value.
     IParameterListener[] _listeners;
+
+    UncheckedMutex _valueMutex;
 }
 
 /// Parameter listeners are called whenever a parameter is changed from the host POV.
@@ -129,22 +123,32 @@ public:
         _value = defaultValue;
     }
 
-    override void setNormalized(float hostValue)
+    override void setNormalized(float hostValue) nothrow @nogc
     {
+        _valueMutex.lock();
         if (hostValue < 0.5f)
             _value = false;
         else
             _value = true;
+        _valueMutex.unlock();
     }
 
-    override float getNormalized() nothrow
+    override float getNormalized() nothrow @nogc
     {
-        return _value ? 1.0f : 0.0f;
+        _valueMutex.lock();
+        float result = _value ? 1.0f : 0.0f;
+        _valueMutex.unlock();
+        return result;
     }
 
-    override void toStringN(char* buffer, size_t numBytes) nothrow
+    override void toStringN(char* buffer, size_t numBytes) nothrow @nogc
     {
-        if (_value)
+        bool v;
+        _valueMutex.lock();
+        v = _value;
+        _valueMutex.unlock();
+
+        if (v)
             snprintf(buffer, numBytes, "true");
         else
             snprintf(buffer, numBytes, "false");
@@ -176,34 +180,40 @@ public:
         if (value > _max)
             value = _max;
 
-        {
-            _valueSpinlock.lock();
-            scope(exit) _valueSpinlock.unlock();
-            _value = value;
-        }
-        // TODO: is there any race here?
-        _client.hostCommand().paramAutomate(_index, getNormalized());
+        float normalized;
+
+        _valueMutex.lock();
+        _value = value;
+        normalized = getNormalized();
+        _valueMutex.unlock();
+
+        _client.hostCommand().paramAutomate(_index, normalized);
         notifyListeners();
     }
 
-    override void setNormalized(float hostValue)
+    override void setNormalized(float hostValue) nothrow @nogc
     {
-        _value = clamp!float(_min + (_max - _min) * hostValue, _min, _max);
+        float v = clamp!float(_min + (_max - _min) * hostValue, _min, _max);
+        _valueMutex.lock();
+        _value = v;
+        _valueMutex.unlock();
     }
 
-    override float getNormalized() nothrow
+    override float getNormalized() nothrow @nogc
     {
-        float normalized = clamp!float( (_value - _min) / (_max - _min), 0.0f, 1.0f);        
+        float normalized = clamp!float( (value() - _min) / (_max - _min), 0.0f, 1.0f);        
         return normalized;
     }
 
-    override void toStringN(char* buffer, size_t numBytes) nothrow
+    override void toStringN(char* buffer, size_t numBytes) nothrow @nogc
     {
-        snprintf(buffer, numBytes, "%2.2f", _value);
+        snprintf(buffer, numBytes, "%2.2f", value());
     }
 
-    float value() pure const nothrow @nogc
+    float value() nothrow @nogc 
     {
+        _valueMutex.lock();
+        scope(exit) _valueMutex.unlock();
         return _value;
     }
 
@@ -245,22 +255,36 @@ public:
     override void setNormalized(float hostValue)
     {
         int rounded = cast(int)lround( _min + (_max - _min) * hostValue );
+
+        _valueMutex.lock();
         _value = clamp!int(rounded, _min, _max);
+        _valueMutex.unlock();
     }
 
     override float getNormalized() nothrow
     {
-        float normalized = clamp!float( (cast(float)_value - _min) / (_max - _min), 0.0f, 1.0f);        
+        int v;
+        _valueMutex.lock();
+        v = _value;
+        _valueMutex.unlock();
+
+        float normalized = clamp!float( (cast(float)v - _min) / (_max - _min), 0.0f, 1.0f);
         return normalized;
     }
 
     override void toStringN(char* buffer, size_t numBytes) nothrow
     {
-        snprintf(buffer, numBytes, "%d", _value);
+        int v;
+        _valueMutex.lock();
+        v = _value;
+        _valueMutex.unlock();
+        snprintf(buffer, numBytes, "%d", v);
     }
 
-    int value() pure const nothrow @nogc
+    int value() nothrow @nogc
     {
+        _valueMutex.lock();
+        scope(exit) _valueMutex.unlock();
         return _value;
     }
 
