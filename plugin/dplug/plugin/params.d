@@ -186,8 +186,11 @@ public:
         _value = value;        
         _valueMutex.unlock();
 
-        // race here on _value, because spinlocks aren't reentrant we had to move this line
-        // out of the mutex
+        // Important
+        // There is a race here on _value, because spinlocks aren't reentrant we had to move this line
+        // out of the mutex.
+        // That said, the potential for harm seems reduced (receiving a setParameter between _value assignment and getNormalized).
+
         normalized = getNormalized();
 
         _client.hostCommand().paramAutomate(_index, normalized);
