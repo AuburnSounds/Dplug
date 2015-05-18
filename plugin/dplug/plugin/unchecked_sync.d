@@ -17,116 +17,164 @@
 /// Created because of pressing needs of nothrow @nogc synchronization
 module dplug.plugin.unchecked_sync;
 
-version( Windows )
+version = implementedWithSpinlock; // work-around because pthread POSIX function aren't @nogc nothrow :(
+
+version (implementedWithSpinlock)
 {
-    private import core.sys.windows.windows;
-}
-else version( Posix )
-{
-    private import core.sys.posix.pthread;
+    import dplug.plugin.spinlock;
+
+    final class UncheckedMutex
+    {
+    public:
+        this() nothrow @nogc
+        {
+            _lock.initialize();
+        }
+
+        ~this() nothrow @nogc
+        {
+            close();       
+        }
+
+        void close() nothrow @nogc
+        {
+           _lock.close();
+        }
+
+        void lock() nothrow @nogc
+        {
+            _lock.lock();
+        }
+
+        void unlock() nothrow @nogc
+        {
+            _lock.unlock();
+        }
+
+        bool tryLock() nothrow @nogc
+        {
+            return _lock.tryLock();
+        }
+
+
+    private:
+        Spinlock _lock;
+    }
 }
 else
 {
-    static assert(false, "Platform not supported");
-}
 
-final class UncheckedMutex : Object.Monitor
-{
-    this() nothrow @nogc
-    {
-        version( Windows )
-        {
-            InitializeCriticalSection( &m_hndl );
-        }
-        else version( Posix )
-        {
-            pthread_mutexattr_t attr = void;
-            pthread_mutexattr_init( &attr );
-            pthread_mutexattr_settype( &attr, PTHREAD_MUTEX_RECURSIVE );
-            pthread_mutex_init( &m_hndl, &attr );
-        }
-        m_initialized = true;
-    }
-
-    ~this() nothrow @nogc
-    {
-        close();       
-    }
-
-    void close() nothrow @nogc
-    {
-        if (m_initialized)
-        {
-            m_initialized = false;
-            version( Windows )
-            {
-                DeleteCriticalSection( &m_hndl );
-            }
-            else version( Posix )
-            {
-                pthread_mutex_destroy( &m_hndl );
-            }
-        }
-    }
-
-    /// Lock mutex
-    final void lock() nothrow @nogc
-    {
-        version( Windows )
-        {
-            EnterCriticalSection( &m_hndl );
-        }
-        else version( Posix )
-        {
-            pthread_mutex_lock( &m_hndl );
-        }
-    }
-
-    // undocumented function for internal use
-    final void unlock() nothrow @nogc
-    {
-        version( Windows )
-        {
-            LeaveCriticalSection( &m_hndl );
-        }
-        else version( Posix )
-        {
-            pthread_mutex_unlock( &m_hndl );
-        }
-    }
-
-    bool tryLock()
-    {
-        version( Windows )
-        {
-            return TryEnterCriticalSection( &m_hndl ) != 0;
-        }
-        else version( Posix )
-        {
-            return pthread_mutex_trylock( &m_hndl ) == 0;
-        }
-    }
-
-
-private:
     version( Windows )
     {
-        CRITICAL_SECTION    m_hndl;
+        private import core.sys.windows.windows;
     }
     else version( Posix )
     {
-        pthread_mutex_t     m_hndl;
+        private import core.sys.posix.pthread;
+    }
+    else
+    {
+        static assert(false, "Platform not supported");
     }
 
-    bool                    m_initialized;
-
-
-package:
-    version( Posix )
+    final class UncheckedMutex
     {
-        pthread_mutex_t* handleAddr()
+        this() nothrow @nogc
         {
-            return &m_hndl;
+            version( Windows )
+            {
+                InitializeCriticalSection( &m_hndl );
+            }
+            else version( Posix )
+            {
+                pthread_mutexattr_t attr = void;
+                pthread_mutexattr_init( &attr );
+                pthread_mutexattr_settype( &attr, PTHREAD_MUTEX_RECURSIVE );
+                pthread_mutex_init( &m_hndl, &attr );
+            }
+            m_initialized = true;
+        }
+
+        ~this() nothrow @nogc
+        {
+            close();       
+        }
+
+        void close() nothrow @nogc
+        {
+            if (m_initialized)
+            {
+                m_initialized = false;
+                version( Windows )
+                {
+                    DeleteCriticalSection( &m_hndl );
+                }
+                else version( Posix )
+                {
+                    pthread_mutex_destroy( &m_hndl );
+                }
+            }
+        }
+
+        /// Lock mutex
+        final void lock() nothrow @nogc
+        {
+            version( Windows )
+            {
+                EnterCriticalSection( &m_hndl );
+            }
+            else version( Posix )
+            {
+                pthread_mutex_lock( &m_hndl );
+            }
+        }
+
+        // undocumented function for internal use
+        final void unlock() nothrow @nogc
+        {
+            version( Windows )
+            {
+                LeaveCriticalSection( &m_hndl );
+            }
+            else version( Posix )
+            {
+                pthread_mutex_unlock( &m_hndl );
+            }
+        }
+
+        bool tryLock()
+        {
+            version( Windows )
+            {
+                return TryEnterCriticalSection( &m_hndl ) != 0;
+            }
+            else version( Posix )
+            {
+                return pthread_mutex_trylock( &m_hndl ) == 0;
+            }
+        }
+
+
+    private:
+        version( Windows )
+        {
+            CRITICAL_SECTION    m_hndl;
+        }
+        else version( Posix )
+        {
+            pthread_mutex_t     m_hndl;
+        }
+
+        bool                    m_initialized;
+
+
+    package:
+        version( Posix )
+        {
+            pthread_mutex_t* handleAddr()
+            {
+                return &m_hndl;
+            }
         }
     }
 }

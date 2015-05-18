@@ -22,18 +22,24 @@ struct Spinlock
              LOCKED = 1
         }
 
-        this(bool locked = false)
+        void initialize() nothrow @nogc
         {
-            _state = cast(shared(int)*) alignedMalloc(int.sizeof, 4);
-            *_state = locked ? LOCKED : UNLOCKED;
+            if (_state == null)
+            {
+                _state = cast(shared(int)*) alignedMalloc(int.sizeof, 4);
+                assert(_state != null);
+                *_state = UNLOCKED;
+            }
         }
 
-        ~this()
+        @disable this(this);
+
+        ~this() nothrow @nogc
         {
             close();
         }
 
-        void close()
+        void close() nothrow @nogc
         {
             if (_state != null)
             {
@@ -86,7 +92,7 @@ final class SpinlockedQueue(T)
         this(size_t capacity)
         {
             _queue = new FixedSizeQueue!T(capacity);
-            _lock = Spinlock(false);
+            _lock.initialize();
         }
 
         ~this()

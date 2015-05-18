@@ -25,6 +25,7 @@ if (isWritableView!V && is(COLOR : ViewColor!V))
 		a1 += TAU;
 
 	foreach (py; y0..y1+1)
+    {
 		foreach (px; x0..x1+1)
 		{
 			float dx = px-x;
@@ -54,4 +55,5 @@ if (isWritableView!V && is(COLOR : ViewColor!V))
 			    }
             }
 		}
+    }
 }

@@ -183,9 +183,12 @@ public:
         float normalized;
 
         _valueMutex.lock();
-        _value = value;
-        normalized = getNormalized();
+        _value = value;        
         _valueMutex.unlock();
+
+        // race here on _value, because spinlocks aren't reentrant we had to move this line
+        // out of the mutex
+        normalized = getNormalized();
 
         _client.hostCommand().paramAutomate(_index, normalized);
         notifyListeners();
