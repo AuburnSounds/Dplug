@@ -339,6 +339,17 @@ private:
                 return CCONST('N', 'v', 'E', 'f');
 
             case effGetChunk: // opcode 23
+                {
+                    ubyte** ppData = cast(ubyte**) ptr;
+                    bool wantBank = (idx == 0);
+                    if (ppData)
+                    {
+                        return 0; // TODO
+                    }
+                    return 0;
+                }
+
+
                 return 0; // TODO
 
             case effSetChunk: // opcode 24
