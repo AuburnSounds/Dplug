@@ -12,6 +12,7 @@ import gfm.core;
 
 import dplug.plugin.client,
        dplug.plugin.daw,
+       dplug.plugin.fpcontrol,
        dplug.plugin.alignedbuffer,
        dplug.plugin.spinlock;
 
@@ -704,6 +705,9 @@ extern(C) private nothrow
         {
             thread_attachThis();
 
+            FPControl fpctrl;
+            fpctrl.initialize();
+
             auto plugin = cast(VSTClient)(effect.user);
             return plugin.dispatcher(opcode, index, value, ptr, opt);
         }
@@ -719,6 +723,9 @@ extern(C) private nothrow
     {
         try
         {
+            FPControl fpctrl;
+            fpctrl.initialize();
+
             auto plugin = cast(VSTClient)effect.user;
             plugin.process(inputs, outputs, sampleFrames);
         }
@@ -733,6 +740,9 @@ extern(C) private nothrow
     {
         try
         {
+            FPControl fpctrl;
+            fpctrl.initialize();
+
             auto plugin = cast(VSTClient)effect.user;
             plugin.processReplacing(inputs, outputs, sampleFrames);
         }
@@ -747,6 +757,9 @@ extern(C) private nothrow
     {
         try
         {
+            FPControl fpctrl;
+            fpctrl.initialize();
+
             auto plugin = cast(VSTClient)effect.user;
             plugin.processDoubleReplacing(inputs, outputs, sampleFrames);
         }
@@ -763,6 +776,9 @@ extern(C) private nothrow
         try
         {
             thread_attachThis();
+
+            FPControl fpctrl;
+            fpctrl.initialize();
 
             auto plugin = cast(VSTClient)effect.user;
             Client client = plugin._client;
@@ -784,6 +800,9 @@ extern(C) private nothrow
         try
         {
             thread_attachThis();
+
+            FPControl fpctrl;
+            fpctrl.initialize();
 
             auto plugin = cast(VSTClient)(effect.user);
             Client client = plugin._client;

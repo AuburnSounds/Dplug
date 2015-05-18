@@ -8,6 +8,7 @@ public
            dplug.plugin.spinlock,
            dplug.plugin.alignedbuffer,
            dplug.plugin.daw,
+           dplug.plugin.fpcontrol,
            dplug.plugin.graphics,
            dplug.plugin.dllmain;
 }
