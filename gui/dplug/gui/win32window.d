@@ -418,16 +418,14 @@ version(Windows)
         {
             SetFocus(_hwnd);   // get keyboard focus
             SetCapture(_hwnd); // start mouse capture
-            _listener.onMouseClick(mouseX, mouseY, mb, isDoubleClick, getMouseState(wParam));
-            return true; // TODO: onMouseClick should return true of false
+            return _listener.onMouseClick(mouseX, mouseY, mb, isDoubleClick, getMouseState(wParam));
         }
 
         /// ditto
         bool mouseRelease(int mouseX, int mouseY, MouseButton mb, WPARAM wParam)
         {
             ReleaseCapture();
-            _listener.onMouseRelease(mouseX, mouseY, mb, getMouseState(wParam));
-            return true; // TODO: onMouseRelease should return true of false
+            return _listener.onMouseRelease(mouseX, mouseY, mb, getMouseState(wParam));
         }
 
         static void swapRB(ImageRef!RGBA surface, box2i areaToRedraw)

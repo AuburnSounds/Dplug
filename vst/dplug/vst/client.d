@@ -591,7 +591,7 @@ private:
             _inputPointers[i] = dest;
         }
 
-        // TODO don't do this each time
+        // TODO don't do this each time, maintain a zero'ed buffer
         for (int i = _usedInputs; i < _maxInputs; ++i)
         {
             double* dest = _inputScratchBuffer[i].ptr;
@@ -633,7 +633,7 @@ private:
             _inputPointers[i] = dest;
         }
 
-        // TODO don't do this each time
+        // TODO don't do this each time and maintain a zeroed buffer
         for (int i = _usedInputs; i < _maxInputs; ++i)
         {
             double* dest = _inputScratchBuffer[i].ptr;
