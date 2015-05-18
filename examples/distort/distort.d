@@ -129,8 +129,8 @@ class DistortGUI : GUIGraphics
 
     override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap, box2i dirtyRect)
     {
-        auto croppedDiffuse = dirtyView(diffuseMap);
-        auto croppedDepth = dirtyView(depthMap);
+        auto croppedDiffuse = diffuseMap.crop(dirtyRect);
+        auto croppedDepth = depthMap.crop(dirtyRect);
 
         // fill with clear color
         croppedDiffuse.fill(RGBA(239, 229, 213, 0));

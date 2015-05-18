@@ -1,8 +1,11 @@
 module dplug.gui.mipmap;
 
+import std.algorithm;
+
 import ae.utils.graphics;
 
-import gfm.math;
+import gfm.math.vector;
+import gfm.math.box;
 
 
 /// Mipmapped images.

@@ -82,8 +82,8 @@ public:
         //
 
         float angle = (normalizedValue - 0.5f) * 4.8f;
-        float depthRadius = max(knobRadius * 3.0f / 5.0f, 0);
-        float depthRadius2 = max(knobRadius * 3.0f / 5.0f, 0);
+        float depthRadius = std.algorithm.max(knobRadius * 3.0f / 5.0f, 0);
+        float depthRadius2 = std.algorithm.max(knobRadius * 3.0f / 5.0f, 0);
 
         float posEdgeX = centerx + sin(angle) * depthRadius2;
         float posEdgeY = centery - cos(angle) * depthRadius2;

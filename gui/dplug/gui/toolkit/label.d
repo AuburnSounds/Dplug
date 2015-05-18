@@ -70,7 +70,7 @@ public:
 
     override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap, box2i dirtyRect)
     {
-        auto croppedDiffuse = dirtyView(diffuseMap);        
+        auto croppedDiffuse = diffuseMap.crop(dirtyRect);
         _font.size = _textSize;
         _font.color = _textColor;
         croppedDiffuse.fillText(_font, _text, croppedDiffuse.w * 0.5f, croppedDiffuse.h * 0.5f);

@@ -5,6 +5,7 @@ import std.algorithm;
 public import gfm.math;
 public import ae.utils.graphics;
 public import dplug.gui.window;
+public import dplug.gui.drawex;
 public import dplug.gui.types;
 public import dplug.gui.toolkit.context;
 public import dplug.gui.toolkit.font;
@@ -328,15 +329,6 @@ public:
         scope(exit) _dirtyRectMutex.unlock();
         assert(_dirtyRect.isSorted());
         return _dirtyRect;
-    }
-
-    /// Given an ImageRef!RGBA, return this view cropped to the dirty rectangle.
-    /// This is useful to redraw part of an UIElement only if necessary.
-    auto dirtyView(ImageRef!RGBA surface)
-    {
-        _dirtyRectMutex.lock();
-        scope(exit) _dirtyRectMutex.unlock();
-        return surface.crop(_dirtyRect.min.x, _dirtyRect.min.y, _dirtyRect.max.x, _dirtyRect.max.y);
     }
 
     /// Returns: Parent element. `null` if detached or root element.

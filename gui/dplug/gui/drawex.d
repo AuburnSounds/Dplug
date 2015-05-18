@@ -5,9 +5,17 @@ module dplug.gui.drawex;
 
 import std.algorithm;
 import std.math;
-
+import gfm.math;
 import ae.utils.graphics;
 
+
+/// Crop a view from a box2i
+auto crop(V)(auto ref V src, box2i b) if (isView!V)
+{
+    return ae.utils.graphics.view.crop(src, b.min.x, b.min.y, b.max.x, b.max.y);
+}
+
+/// Rough anti-aliased fillsector
 void aaFillSector(V, COLOR)(auto ref V v, float x, float y, float r0, float r1, float a0, float a1, COLOR c)
 if (isWritableView!V && is(COLOR : ViewColor!V))
 {
@@ -17,7 +25,7 @@ if (isWritableView!V && is(COLOR : ViewColor!V))
     int y0 = cast(int)floor(y - r1 - 1);
     int y1 = cast(int)ceil(y + r1 + 1);
 
-    float r0s = max(0, r0 - 1) ^^ 2;
+    float r0s = std.algorithm.max(0, r0 - 1) ^^ 2;
     float r1s = (r1 + 1) * (r1 + 1);
 
 
