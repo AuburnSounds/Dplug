@@ -17,7 +17,7 @@ public:
         _backgroundColor = backgroundColor;
     }
 
-    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap)
+    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap, box2i dirtyRect)
     {
         auto croppedDiffuse = dirtyView(diffuseMap);        
         auto croppedDepth = dirtyView(depthMap);        

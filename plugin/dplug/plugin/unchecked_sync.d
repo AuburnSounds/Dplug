@@ -45,21 +45,8 @@ final class UncheckedMutex : Object.Monitor
             pthread_mutexattr_settype( &attr, PTHREAD_MUTEX_RECURSIVE );
             pthread_mutex_init( &m_hndl, &attr );
         }
-        m_proxy.link = this;
-        this.__monitor = &m_proxy;
+        m_initialized = true;
     }
-
-    this( Object o ) nothrow @nogc
-    in
-    {
-        assert( o.__monitor is null );
-    }
-    body
-    {
-        this();
-        o.__monitor = &m_proxy;
-    }
-
 
     ~this() nothrow @nogc
     {
@@ -68,15 +55,18 @@ final class UncheckedMutex : Object.Monitor
 
     void close() nothrow @nogc
     {
-        version( Windows )
+        if (m_initialized)
         {
-            DeleteCriticalSection( &m_hndl );
+            m_initialized = false;
+            version( Windows )
+            {
+                DeleteCriticalSection( &m_hndl );
+            }
+            else version( Posix )
+            {
+                pthread_mutex_destroy( &m_hndl );
+            }
         }
-        else version( Posix )
-        {
-            pthread_mutex_destroy( &m_hndl );
-        }
-        this.__monitor = null;
     }
 
     /// Lock mutex
@@ -128,12 +118,7 @@ private:
         pthread_mutex_t     m_hndl;
     }
 
-    struct MonitorProxy
-    {
-        Object.Monitor link;
-    }
-
-    MonitorProxy            m_proxy;
+    bool                    m_initialized;
 
 
 package:
@@ -146,3 +131,42 @@ package:
     }
 }
 
+final class SyncValue(T)
+{
+    this() nothrow @nogc
+    {
+    }
+
+    this(T value) nothrow @nogc
+    {
+        _value = value;
+    }
+
+    ~this() nothrow @nogc
+    {
+        close();
+    }
+
+    void close() nothrow @nogc
+    {
+        mutex.close();
+    }
+
+    void set(T newValue) nothrow @nogc
+    {
+        _mutex.lock();
+        scope(exit) _mutex.unlock();
+        _value = newValue;
+    }
+
+    T get() nothrow @nogc
+    {
+        _mutex.lock();
+        scope(exit) _mutex.unlock();
+        return _value;
+    }
+
+private:
+    UncheckedMutex mutex;
+    T _value = T.init;
+}

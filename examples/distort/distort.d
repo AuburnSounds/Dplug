@@ -104,7 +104,11 @@ class DistortGUI : GUIGraphics
     override void reflow(box2i availableSpace)
     {
         _position = availableSpace;
-
+/*
+        _dirtyRectMutex.lock();
+        _dirtyRect = availableSpace;
+        _dirtyRectMutex.unlock();
+*/
         // For complex UI hierarchy or a variable dimension UI, you would be supposed to
         // put a layout algorithm here and implement reflow (ie. pass the right availableSpace
         // to children). But for simplicity purpose and for the sake of fixed size UI, forcing
@@ -123,7 +127,7 @@ class DistortGUI : GUIGraphics
 
     float time = 0;
 
-    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap)
+    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap, box2i dirtyRect)
     {
         auto croppedDiffuse = dirtyView(diffuseMap);
         auto croppedDepth = dirtyView(depthMap);

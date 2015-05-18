@@ -8,6 +8,7 @@ public import dplug.gui.window;
 public import dplug.gui.types;
 public import dplug.gui.toolkit.context;
 public import dplug.gui.toolkit.font;
+public import dplug.plugin.unchecked_sync;
 
 class UIElement
 {
@@ -15,19 +16,27 @@ public:
     this(UIContext context)
     {
         _context = context;
+
+        _dirtyRectMutex = new UncheckedMutex();
     }
 
     void close()
     {
         foreach(child; children)
             child.close();
+        _dirtyRectMutex.close();
     }
 
     /// Returns: true if was drawn, ie. the buffers have changed.
     /// This method is called for each item in the drawlist that was visible and dirty.
     final void render(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap)
     {
-        onDraw(diffuseMap, depthMap);
+        box2i dirtyRect = void;
+        _dirtyRectMutex.lock();
+        dirtyRect = _dirtyRect;
+        _dirtyRectMutex.unlock();
+
+        onDraw(diffuseMap, depthMap, dirtyRect);
     }
 
     /// Meant to be overriden almost everytime for custom behaviour.
@@ -37,7 +46,11 @@ public:
     void reflow(box2i availableSpace)
     {
         // default: span the entire available area, and do the same for children
-        _position = _dirtyRect = availableSpace;
+        _position = availableSpace;
+
+        _dirtyRectMutex.lock();
+        _dirtyRect = availableSpace;
+        _dirtyRectMutex.unlock();
 
         foreach(ref child; children)
             child.reflow(availableSpace);
@@ -55,7 +68,9 @@ public:
     final box2i position(box2i p)
     {
         // also mark all dirty
+        _dirtyRectMutex.lock();
         _dirtyRect = p;
+        _dirtyRectMutex.unlock();
 
         return _position = p;
     }
@@ -276,7 +291,9 @@ public:
 
     final void clearDirty() nothrow @nogc
     {
+        _dirtyRectMutex.lock();
         _dirtyRect = box2i(0, 0, 0, 0);
+        _dirtyRectMutex.unlock();
 
         foreach(child; _children)
             child.clearDirty();
@@ -290,27 +307,25 @@ public:
     final void setDirty(box2i rect) nothrow @nogc
     {
         box2i inter = _position.intersection(rect);
-        if (_dirtyRect.empty())
+
         {
-            assert(inter.isSorted());
-            _dirtyRect = inter;
-        }
-        else
-        {
+            _dirtyRectMutex.lock();
+            scope(exit) _dirtyRectMutex.unlock();
             assert(_dirtyRect.isSorted());
             _dirtyRect = _dirtyRect.expand(inter);
             assert(_dirtyRect.isSorted());
+            assert(_dirtyRect.empty() || _position.contains(_dirtyRect));
         }
-
-        assert(_dirtyRect.empty() || _position.contains(_dirtyRect));
 
         foreach(child; _children)
             child.setDirty(rect); 
     }
 
     /// Returns: dirty area. Supposed to be empty or inside position.
-    box2i dirtyRect() pure const nothrow @nogc
+    box2i getDirtyRect() nothrow @nogc
     {
+        _dirtyRectMutex.lock();
+        scope(exit) _dirtyRectMutex.unlock();
         assert(_dirtyRect.isSorted());
         return _dirtyRect;
     }
@@ -319,6 +334,8 @@ public:
     /// This is useful to redraw part of an UIElement only if necessary.
     auto dirtyView(ImageRef!RGBA surface)
     {
+        _dirtyRectMutex.lock();
+        scope(exit) _dirtyRectMutex.unlock();
         return surface.crop(_dirtyRect.min.x, _dirtyRect.min.y, _dirtyRect.max.x, _dirtyRect.max.y);
     }
 
@@ -350,10 +367,10 @@ public:
         UIElement[] list;
         if (isVisible())
         {
-            assert(dirtyRect.isSorted);
+            box2i dirty = getDirtyRect();
 
-            // if the dirty rect isn't empty
-            if (!dirtyRect().empty())
+            // if the dirty rect isn't empty, add this to the draw list
+            if (!dirty.empty())
                 list ~= this;
 
             foreach(child; _children)
@@ -371,17 +388,18 @@ protected:
     /// Draw method. You should redraw the area there.
     /// For better efficiency, you may only redraw the part in _dirtyRect.
     /// Warning: `onDraw` must only draw in the _position rectangle.
-    void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap)
+    ///          _dirtyRect should not be used instead of dirtyRect for threading reasons.
+    void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap, box2i dirtyRect)
     {
         // defaults to filling with a grey pattern
         RGBA darkGrey = RGBA(100, 100, 100, 0);
         RGBA lighterGrey = RGBA(150, 150, 150, 0);
 
-        for (int y = _dirtyRect.min.y; y < _dirtyRect.max.y; ++y)
+        for (int y = dirtyRect.min.y; y < dirtyRect.max.y; ++y)
         {
             RGBA[] depthScan = depthMap.scanline(y);
             RGBA[] diffuseScan = diffuseMap.scanline(y);
-            for (int x = _dirtyRect.min.x; x < _dirtyRect.max.x; ++x)
+            for (int x = dirtyRect.min.x; x < dirtyRect.max.x; ++x)
             {
                 diffuseScan.ptr[x] = ( (x >> 3) ^  (y >> 3) ) & 1 ? darkGrey : lighterGrey;
                 ubyte depth = 58;
@@ -401,6 +419,9 @@ protected:
     /// The fraction of position that is to be redrawn.
     box2i _dirtyRect;
 
+    /// This is protected by a mutex, because it is sometimes updated from the host.
+    UncheckedMutex _dirtyRectMutex;
+
     UIElement[] _children;
 
     /// If _visible is false, neither the Element nor its children are drawn.
@@ -413,5 +434,5 @@ protected:
 private:
     UIContext _context;
 
-    bool _mouseOver = false;    
+    bool _mouseOver = false;        
 }

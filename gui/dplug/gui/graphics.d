@@ -137,7 +137,7 @@ class GUIGraphics : UIElement, IGraphics
             // Get areas to update
             _areasToUpdate.length = 0;
             foreach(elem; elemsToDraw)
-                _areasToUpdate ~= elem.dirtyRect();
+                _areasToUpdate ~= elem.getDirtyRect();
 
             return _areasToUpdate.boundingBox();
         }
@@ -180,10 +180,11 @@ class GUIGraphics : UIElement, IGraphics
             _areasToRender.length = 0;
             foreach(elem; elemsToDraw)
             {
-                _areasToUpdate ~= elem.dirtyRect();
+                box2i dirty = elem.getDirtyRect();
+                _areasToUpdate ~= dirty;
 
                 // TODO: Not sure if this is needed anymore to have separate render areas now that the dirtied part is extended
-                _areasToRender ~= extendsDirtyRect(elem.dirtyRect, wfb.w, wfb.h); 
+                _areasToRender ~= extendsDirtyRect(dirty, wfb.w, wfb.h); 
             }
 
             // Split boxes to avoid overdraw

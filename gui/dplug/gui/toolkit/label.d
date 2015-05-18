@@ -68,7 +68,7 @@ public:
         return _textColor = textColor_;
     }
 
-    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap)
+    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap, box2i dirtyRect)
     {
         auto croppedDiffuse = dirtyView(diffuseMap);        
         _font.size = _textSize;

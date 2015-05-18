@@ -261,7 +261,7 @@ public:
         _valueMutex.unlock();
     }
 
-    override float getNormalized() nothrow
+    override float getNormalized() nothrow @nogc
     {
         int v;
         _valueMutex.lock();
@@ -272,7 +272,7 @@ public:
         return normalized;
     }
 
-    override void toStringN(char* buffer, size_t numBytes) nothrow
+    override void toStringN(char* buffer, size_t numBytes) nothrow @nogc
     {
         int v;
         _valueMutex.lock();
