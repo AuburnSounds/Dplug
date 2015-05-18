@@ -121,6 +121,8 @@ public:
         for (int i = 0; i < _maxOutputs; ++i)
             _outputScratchBuffer[i] = new AlignedBuffer!double();
 
+        _zeroesBuffer = new AlignedBuffer!double();
+
         _inputPointers.length = _maxInputs;
         _outputPointers.length = _maxOutputs;
 
@@ -144,6 +146,7 @@ private:
 
     AlignedBuffer!double[] _inputScratchBuffer;  // input double buffer, one per possible input
     AlignedBuffer!double[] _outputScratchBuffer; // input double buffer, one per output
+    AlignedBuffer!double   _zeroesBuffer;        // used for disconnected inputs
     double*[] _inputPointers;  // where processAudio will take its audio input, one per possible input
     double*[] _outputPointers; // where processAudio will output audio, one per possible output
 
@@ -520,14 +523,10 @@ private:
 
         for (int i = 0; i < _maxOutputs; ++i)
             _outputScratchBuffer[i].resize(nFrames);
-    }
 
-    void clearScratchBuffers(int nFrames) nothrow @nogc
-    {
-        for (int i = 0; i < _maxInputs; ++i)
-            memset(_inputScratchBuffer[i].ptr, 0, nFrames * double.sizeof);
+        _zeroesBuffer.resize(nFrames);
+        _zeroesBuffer.fill(0.0);
     }
-
 
 
     void processMessages() /* nothrow @nogc */
@@ -557,7 +556,6 @@ private:
 
                 case Message.Type.resetState:
                     resizeScratchBuffers(msg.iParam);
-                    clearScratchBuffers(msg.iParam);
                     _client.reset(msg.fparam, msg.iParam);
                     break;
             }
@@ -592,14 +590,9 @@ private:
             _inputPointers[i] = dest;
         }
 
-        // TODO don't do this each time, maintain a zero'ed buffer
+        // Unused input channels point to an array of zeroes
         for (int i = _usedInputs; i < _maxInputs; ++i)
-        {
-            double* dest = _inputScratchBuffer[i].ptr;
-            for (int f = 0; f < sampleFrames; ++f)
-                dest[f] = 0;
-            _inputPointers[i] = dest;
-        }
+            _inputPointers[i] = _zeroesBuffer.ptr;
 
         for (int i = 0; i < _maxOutputs; ++i)
         {
@@ -634,14 +627,9 @@ private:
             _inputPointers[i] = dest;
         }
 
-        // TODO don't do this each time and maintain a zeroed buffer
+        // Unused input channels point to an array of zeroes
         for (int i = _usedInputs; i < _maxInputs; ++i)
-        {
-            double* dest = _inputScratchBuffer[i].ptr;
-            for (int f = 0; f < sampleFrames; ++f)
-                dest[f] = 0;
-            _inputPointers[i] = dest;
-        }
+            _inputPointers[i] = _zeroesBuffer.ptr;
 
         for (int i = 0; i < _maxOutputs; ++i)
         {

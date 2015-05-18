@@ -246,7 +246,7 @@ public:
     /// Unconnected input pins are zeroed.
     /// Important: This will be called by the audio thread.
     ///            You should not use the GC in this callback.
-    abstract void processAudio(double **inputs, double **outputs, int frames) nothrow @nogc;
+    abstract void processAudio(const(double*)* inputs, double **outputs, int frames) nothrow @nogc;
 
     // for plugin client implementations only
     final void setHostCommand(IHostCommand hostCommand)
