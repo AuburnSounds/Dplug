@@ -229,7 +229,7 @@ public:
     /// Important: This will be called by the audio thread.
     ///            You should not use the GC in this callback.
     ///            But you can use malloc.
-    abstract void reset(double sampleRate, int maxFrames) nothrow @nogc;
+    abstract void reset(double sampleRate, int maxFrames, int numInputs, int numOutputs) nothrow @nogc;
 
     /// Override to set the plugin latency in samples.
     /// Most of the time this is dependant on the sampling rate, but most host
@@ -246,7 +246,10 @@ public:
     /// Unconnected input pins are zeroed.
     /// Important: This will be called by the audio thread.
     ///            You should not use the GC in this callback.
-    abstract void processAudio(const(double*)* inputs, double **outputs, int frames) nothrow @nogc;
+    ///
+    /// Number of frames are guaranteed to be less or equal to what the last reset() call said.
+    /// Number of inputs and outputs are guaranteed to be exactly what the last reset() call said.
+    abstract void processAudio(const(double*)[] inputs, double*[]outputs, int frames) nothrow @nogc;
 
     // for plugin client implementations only
     final void setHostCommand(IHostCommand hostCommand)

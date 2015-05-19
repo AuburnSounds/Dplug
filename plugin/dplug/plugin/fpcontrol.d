@@ -42,25 +42,23 @@ struct FPControl
 
 version(X86)
 {
+    version(D_InlineAsm_X86)
+        version = InlineX86Asm;
+    else version(D_InlineAsm_X86_64)
+        version = InlineX86Asm;
+
+
     /// Get SSE control register
     uint getSSEControlState() @trusted nothrow @nogc
     {
-        version (D_InlineAsm_X86)
+        version (InlineX86Asm)
         {
             uint controlWord;
-            asm nothrow @nogc
-            {
-                stmxcsr controlWord;
-            }
-            return controlWord;
-        }
-        else version (D_InlineAsm_X86_64)
-        {
-            uint controlWord;
-            asm nothrow @nogc
-            {
-                stmxcsr controlWord;
-            }
+            static if( __VERSION__ >= 2067 )
+                mixin("asm nothrow @nogc { stmxcsr controlWord; }");
+            else
+                mixin("asm { stmxcsr controlWord; }");
+            
             return controlWord;
         }
         else
@@ -70,19 +68,12 @@ version(X86)
     /// Sets SSE control register
     void setSSEControlState(uint controlWord) @trusted nothrow @nogc
     {
-        version (D_InlineAsm_X86)
+        version (InlineX86Asm)
         {
-            asm nothrow @nogc
-            {
-                ldmxcsr controlWord;
-            }
-        }
-        else version (D_InlineAsm_X86_64)
-        {
-            asm nothrow @nogc
-            {
-                ldmxcsr controlWord;
-            }
+            static if( __VERSION__ >= 2067 )
+                mixin("asm nothrow @nogc { ldmxcsr controlWord; }");
+            else
+                mixin("asm { ldmxcsr controlWord; }");
         }
         else
             assert(0, "Not yet supported");

@@ -46,15 +46,15 @@ final class Distort : dplug.plugin.Client
         addLegalIO(2, 2);
     }
 
-    override void reset(double sampleRate, int maxFrames)
+    override void reset(double sampleRate, int maxFrames, int numInputs, int numOutputs) nothrow @nogc
     {
         // Clear here any state and delay buffers you might have.
     }
 
-    override void processAudio(const(double*)* inputs, double **outputs, int frames) nothrow @nogc
+    override void processAudio(const(double*)[] inputs, double*[]outputs, int frames) nothrow @nogc
     {
-        int numInputs = maxInputs();
-        int numOutputs = maxOutputs();
+        int numInputs = cast(int)inputs.length;
+        int numOutputs = cast(int)outputs.length;
 
         int minChan = numInputs > numOutputs ? numOutputs : numInputs;
 

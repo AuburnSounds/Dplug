@@ -126,7 +126,7 @@ public:
         _inputPointers.length = _maxInputs;
         _outputPointers.length = _maxOutputs;
 
-        _messageQueue.pushBack(Message(Message.Type.resetState, _maxFrames, 0, _sampleRate));
+        _messageQueue.pushBack(Message(Message.Type.resetState, _maxFrames, _sampleRate, _usedInputs, _usedOutputs));
     }
 
 private:
@@ -254,7 +254,7 @@ private:
             case effSetSampleRate: // opcode 10
             {
                 _sampleRate = opt;
-                _messageQueue.pushBack(Message(Message.Type.resetState, _maxFrames, 0, _sampleRate));
+                _messageQueue.pushBack(Message(Message.Type.resetState, _maxFrames, _sampleRate, _usedInputs, _usedOutputs));
                 return 0;
             }
 
@@ -264,7 +264,7 @@ private:
                     return 1;
 
                 _maxFrames = cast(int)value;
-                _messageQueue.pushBack(Message(Message.Type.resetState, _maxFrames, 0, _sampleRate));
+                _messageQueue.pushBack(Message(Message.Type.resetState, _maxFrames, _sampleRate, _usedInputs, _usedOutputs));
                 return 0;
             }
 
@@ -275,7 +275,7 @@ private:
                       // Audio processing was switched off.
                       // The plugin must call flush its state because otherwise pending data
                       // would sound again when the effect is switched on next time.
-                      _messageQueue.pushBack(Message(Message.Type.resetState, _maxFrames, 0, _sampleRate));
+                      _messageQueue.pushBack(Message(Message.Type.resetState, _maxFrames, _sampleRate, _usedInputs, _usedOutputs));
                     }
                     else
                     {
@@ -341,16 +341,13 @@ private:
             case effGetChunk: // opcode 23
                 {
                     ubyte** ppData = cast(ubyte**) ptr;
-                    bool wantBank = (idx == 0);
+                    bool wantBank = (index == 0);
                     if (ppData)
                     {
                         return 0; // TODO
                     }
                     return 0;
                 }
-
-
-                return 0; // TODO
 
             case effSetChunk: // opcode 24
                 return 0; // TODO
@@ -464,7 +461,7 @@ private:
                     if (_usedOutputs > _maxOutputs)
                         _usedOutputs = _maxOutputs;
 
-                    _messageQueue.pushBack(Message(Message.Type.changedIO,_usedInputs, _usedOutputs, 0.0f));
+                    _messageQueue.pushBack(Message(Message.Type.changedIO, _maxFrames, _sampleRate, _usedInputs, _usedOutputs));
 
                     return 0;
                 }
@@ -553,21 +550,24 @@ private:
         Message msg;
         while(popMessage(msg))
         {
-            final switch(msg.type)
+            final switch(msg.type) with (Message.Type)
             {
-                case Message.Type.changedIO:
+                case changedIO:
                 {
                     bool success;
-                    success = _client.setNumUsedInputs(msg.iParam);
+                    success = _client.setNumUsedInputs(msg.usedInputs);
                     assert(success);
-                    success = _client.setNumUsedOutputs(msg.iParam2);
+                    success = _client.setNumUsedOutputs(msg.usedOutputs);
                     assert(success);
-                    break;
+
+                    goto case resetState;
+
+                    // intentional fallthrough
                 }
 
-                case Message.Type.resetState:
-                    resizeScratchBuffers(msg.iParam);
-                    _client.reset(msg.fparam, msg.iParam);
+                case resetState:
+                    resizeScratchBuffers(msg.maxFrames);
+                    _client.reset(msg.samplerate, msg.maxFrames, msg.usedInputs, msg.usedOutputs);
                     break;
             }
         }
@@ -610,7 +610,7 @@ private:
             _outputPointers[i] = _outputScratchBuffer[i].ptr;
         }
 
-        _client.processAudio(_inputPointers.ptr, _outputPointers.ptr, sampleFrames);
+        _client.processAudio(_inputPointers[0.._usedInputs], _outputPointers[0.._usedOutputs], sampleFrames);
 
         for (int i = 0; i < _usedOutputs; ++i)
         {
@@ -647,7 +647,7 @@ private:
             _outputPointers[i] = _outputScratchBuffer[i].ptr;
         }
 
-        _client.processAudio(_inputPointers.ptr, _outputPointers.ptr, sampleFrames);
+        _client.processAudio(_inputPointers[0.._usedInputs], _outputPointers[0.._usedOutputs], sampleFrames);
 
         for (int i = 0; i < _usedOutputs; ++i)
         {
@@ -661,7 +661,7 @@ private:
     void processDoubleReplacing(double **inputs, double **outputs, int sampleFrames) nothrow @nogc
     {
         preprocess(sampleFrames);
-        _client.processAudio(inputs, outputs, sampleFrames);
+        _client.processAudio(inputs[0.._usedInputs], outputs[0.._usedOutputs], sampleFrames);
     }
 }
 
@@ -981,9 +981,10 @@ private
         }
 
         Type type;
-        int iParam;
-        int iParam2;
-        float fparam;
+        int maxFrames;
+        float samplerate;
+        int usedInputs;
+        int usedOutputs;
     }
 }
 
