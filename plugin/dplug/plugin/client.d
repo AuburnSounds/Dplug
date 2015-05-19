@@ -72,6 +72,9 @@ public:
     {
         buildLegalIO();
         buildParameters();
+
+        // Create presets
+        _presetBank = new PresetBank(this);
         buildPresets();
 
         _maxInputs = 0;
@@ -113,9 +116,9 @@ public:
     }
 
     /// Returns: Array of presets.
-    final Preset[] presets() nothrow @nogc
+    final PresetBank presetBank() nothrow @nogc
     {
-        return _presets;
+        return _presetBank;
     }
 
     /// Returns: The parameter indexed by index.
@@ -281,14 +284,9 @@ protected:
     /// See_also: addPreset.
     void buildPresets()
     {
-        addPreset(makeDefaultPreset());
+        presetBank.addPreset(makeDefaultPreset());
     }
 
-    /// Adds a preset.
-    final void addPreset(Preset preset)
-    {
-        _presets ~= preset;
-    }
 
     /// Returns a new default preset.
     final Preset makeDefaultPreset()
@@ -317,7 +315,7 @@ protected:
 private:
     Parameter[] _params;
 
-    Preset[] _presets;
+    PresetBank _presetBank;
 
     struct LegalIO
     {

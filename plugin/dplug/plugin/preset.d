@@ -12,36 +12,72 @@ public:
         _normalizedParams = normalizedParams;
     }
 
+    string name()
+    {
+        return _name;
+    }
+
+    string name(string newName)
+    {
+        return _name = newName;
+    }
+
 private:
     string _name;
     float[] _normalizedParams;
 }
-/*
+
 /// A preset bank is a collection of presets
 class PresetBank
 {
 public:
-    this(Client client, int numPresets)
+
+    // Extends an array or Preset
+    Preset[] presets;
+    alias presets this;
+
+
+    // Initially empty
+    this(Client client)
     {
         _client = client;
-        for (int i = 0; i < numPresets; ++i)
-            _presets[i] = new Preset(client, i);
+        _current = 0;
     }
 
     void addPreset(Preset preset)
     {
-        _presets ~= preset;
+        presets ~= preset;
     }
 
     Preset preset(int i)
     {
-        return _presets[i];
+        return presets[i];
+    }
+
+    int numPresets()
+    {
+        return cast(int)presets.length;
+    }
+
+    int currentPresetIndex() @nogc nothrow
+    {
+        return _current;
+    }
+
+    Preset currentPreset()
+    {
+        int ind = currentPresetIndex();
+        if (!isValidPresetIndex(ind))
+            return null;
+        return presets[ind];
+    }
+
+    bool isValidPresetIndex(int index)
+    {
+        return index >= 0 && index < numPresets();
     }
 
 private:
     Client _client;
-    Preset[] _presets;
-
-
+    int _current; // should this be only in VST client?
 }
-*/

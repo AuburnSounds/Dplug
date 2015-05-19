@@ -12,6 +12,7 @@ import gfm.core;
 
 import dplug.plugin.client,
        dplug.plugin.daw,
+       dplug.plugin.preset,
        dplug.plugin.fpcontrol,
        dplug.plugin.alignedbuffer,
        dplug.plugin.spinlock;
@@ -87,7 +88,7 @@ public:
         _maxOutputs = _effect.numOutputs = _client.maxOutputs();
         assert(_maxParams >= 0 && _maxInputs >= 0 && _maxOutputs >= 0);
         _effect.numParams = cast(int)(client.params().length);
-        _effect.numPrograms = cast(int)(client.presets().length);
+        _effect.numPrograms = cast(int)(client.presetBank().numPresets());
         _effect.version_ = client.getPluginVersion();
         _effect.uniqueID = client.getPluginID();
         _effect.processReplacing = &processReplacingCallback;
@@ -200,14 +201,31 @@ private:
                 return 0; // TODO
 
             case effSetProgramName: // opcode 4
-                return 0; // TODO
+            {
+                char* p = cast(char*)ptr;
+                int len = strlen(p);
+                PresetBank bank = _client.presetBank();
+                Preset current = bank.currentPreset();
+                if (current !is null)
+                {
+                    current.name = p[0..len].idup;
+                }
+                return 0;
+            }
 
             case effGetProgramName: // opcode 5,
             {
-                // currently always return ""
                 char* p = cast(char*)ptr;
-                *p = '\0';
-                return 0; // TODO, max 23 chars
+                if (p !is null)
+                {
+                    PresetBank bank = _client.presetBank();
+                    Preset current = bank.currentPreset();
+                    if (current !is null)
+                    {
+                        stringNCopy(p, 24, current.name());
+                    }
+                }
+                return 0;
             }
 
             case effGetParamLabel: // opcode 6
@@ -381,10 +399,18 @@ private:
 
             case effGetProgramNameIndexed: // opcode 29
             {
-                // currently always return ""
                 char* p = cast(char*)ptr;
-                *p = '\0';
-                return 1; // TODO
+                if (p !is null)
+                {
+                    PresetBank bank = _client.presetBank();
+                    if (!bank.isValidPresetIndex(index))
+                        return 0;
+                    string name = bank[index].name();
+                    stringNCopy(p, 24, name);
+                    return (name.length > 0) ? 1 : 0;
+                }
+                else
+                    return 0;
             }
 
             case DEPRECATED_effCopyProgram: // opcode 30
