@@ -194,11 +194,16 @@ private:
                 return 0;
 
             case effSetProgram: // opcode 2
-                // TODO
+            {
+                int presetIndex = cast(int)value;
+                PresetBank bank = _client.presetBank();
+                if (bank.isValidPresetIndex(presetIndex))
+                    bank.loadPresetFromHost(presetIndex);
                 return 0;
+            }
 
             case effGetProgram: // opcode 3
-                return 0; // TODO
+                return _client.presetBank.currentPresetIndex();
 
             case effSetProgramName: // opcode 4
             {

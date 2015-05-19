@@ -22,6 +22,13 @@ public:
         return _name = newName;
     }
 
+    void loadFromHost(Client client)
+    {
+        auto params = client.params();
+        foreach(int i, param; params)
+            param.setFromHost(_normalizedParams[i]);
+    }
+
 private:
     string _name;
     float[] _normalizedParams;
@@ -75,6 +82,12 @@ public:
     bool isValidPresetIndex(int index)
     {
         return index >= 0 && index < numPresets();
+    }
+
+    void loadPresetFromHost(int index)
+    {
+        presets[index].loadFromHost(_client);
+        _current = index;
     }
 
 private:
