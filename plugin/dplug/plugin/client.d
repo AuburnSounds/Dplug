@@ -58,6 +58,14 @@ interface IHostCommand
     bool requestResize(int width, int height);
 }
 
+/// Desscribe the version of plugin.
+struct PluginVersion
+{
+    int majorVersion;
+    int minorVersion;
+    int patchVersion;
+}
+
 
 
 /// Plugin interface, from the client point of view.

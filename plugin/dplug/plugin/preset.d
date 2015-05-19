@@ -8,6 +8,15 @@ import binrange;
 import dplug.plugin.client;
 
 
+// I can see no reason why dplug shouldn't be able to maintain 
+// backward-compatibility with older version in the future.
+// However, never say never.
+// This number will be incremented for backward-incompatible changes.
+enum int DPLUG_SERIALIZATION_MAJOR_VERSION = 0; 
+
+// This number will be incremented for backward-compatible change.
+enum int DPLUG_SERIALIZATION_MINOR_VERSION = 0; 
+
 /// A preset is a slot in a plugin preset list
 class Preset
 {
@@ -38,18 +47,27 @@ public:
     void serializeBinary(O)(auto ref O output) if (isOutputRange!O)
     {
         foreach(np; _normalizedParams)
+            output.writeLE!int(cast(int)_name.length);        
+        foreach(i; 0..name.length)
+            output.writeLE!ubyte(_name[i]);
+
+        foreach(np; _normalizedParams)
             output.writeLE!float(np);
     }
 
     void deserializeBinary(O)(float defaultValue, auto ref O input) if (isInputRange!O)
     {
+        _name = "";
+        int nameLength = input.popLE!int();
+        _name.length = nameLength;
+        foreach(i; 0..nameLength)
+            _name[i] = input.popLE!ubyte();
+
         foreach(ref np; _normalizedParams)
         {
-            float f = popLE!float(input);
+            float f = input.popLE!float();
             if (isValidNormalizedParam(f))
-            {
                 np = f;                
-            }
             else
             {
                 // In case of error, silently fallback on the default value.
@@ -125,6 +143,23 @@ public:
         _current = index;
     }
 
+    /// Allocate and fill a preset chunk
+    ubyte[] getPresetChunk()
+    {
+        return null;
+    }
+
+    /// Allocate and fill a bank chunk
+    ubyte[] getBankChunk()
+    {
+        return null;
+    }
+    
+
+private:
+    Client _client;
+    int _current; // should this be only in VST client?
+
     void serializeBinary(O)(auto ref O output) if (isOutputRange!O)
     {
         foreach(preset; presets)
@@ -140,7 +175,15 @@ public:
         }
     }
 
-private:
-    Client _client;
-    int _current; // should this be only in VST client?
+    void writeChunkheader(O)(auto ref O output) if (isOutputRange!O)
+    {
+        // write magic number
+        enum uint DPLUG_MAGIC = 0xB20BA92;
+        output.writeBE!uint(DPLUG_MAGIC);
+        output.writeLE!int(DPLUG_SERIALIZATION_MAJOR_VERSION);
+        output.writeLE!int(DPLUG_SERIALIZATION_MINOR_VERSION);
+
+        // write plugin version
+        output.writeLE!int(_client.getPluginVersion());
+    }
 }

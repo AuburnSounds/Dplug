@@ -47,7 +47,6 @@ template VSTEntryPoint(alias ClientClass)
         "}";
 }
 
-
 /// VST client wrapper
 class VSTClient
 {
