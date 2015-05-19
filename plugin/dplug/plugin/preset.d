@@ -1,6 +1,12 @@
 module dplug.plugin.preset;
 
+import std.range;
+import std.math;
+
+import binrange;
+
 import dplug.plugin.client;
+
 
 /// A preset is a slot in a plugin preset list
 class Preset
@@ -27,6 +33,35 @@ public:
         auto params = client.params();
         foreach(int i, param; params)
             param.setFromHost(_normalizedParams[i]);
+    }
+
+    void serializeBinary(O)(auto ref O output) if (isOutputRange!O)
+    {
+        foreach(np; _normalizedParams)
+            output.writeLE!float(np);
+    }
+
+    void deserializeBinary(O)(float defaultValue, auto ref O input) if (isInputRange!O)
+    {
+        foreach(ref np; _normalizedParams)
+        {
+            float f = popLE!float(input);
+            if (isValidNormalizedParam(f))
+            {
+                np = f;                
+            }
+            else
+            {
+                // In case of error, silently fallback on the default value.
+                // TODO: is this a good idea?
+                np = defaultValue;
+            }
+        }
+    }
+
+    static bool isValidNormalizedParam(float f)
+    {
+        return (isFinite(f) && f >= 0 && f <= 1);
     }
 
 private:
@@ -88,6 +123,21 @@ public:
     {
         presets[index].loadFromHost(_client);
         _current = index;
+    }
+
+    void serializeBinary(O)(auto ref O output) if (isOutputRange!O)
+    {
+        foreach(preset; presets)
+            preset.serializeBinary(output);
+    }
+
+    void deserializeBinary(O)(auto ref O input) if (isInputRange!O)
+    {
+        foreach(int i, preset; presets)
+        {
+            float defaultValue = _client.param(i).getNormalizedDefault();
+            preset.deserializeBinary(input);
+        }
     }
 
 private:

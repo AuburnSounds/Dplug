@@ -42,7 +42,7 @@
             "importPaths": [ "plugin" ],
             "dependencies": {
                 "gfm:core": "~>2.3",
-                "binrange": "~>0.0"
+                "binrange": "~>1.0"
             }
         },
         {
