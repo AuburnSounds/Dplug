@@ -65,6 +65,9 @@ public:
         _client.hostCommand().endParamEdit(_index);
     }
 
+    /// Returns: A normalized float, representing the default parameter value.
+    abstract float getNormalizedDefault() nothrow @nogc;
+
 protected:
 
     this(Client client, int index, string name, string label)
@@ -131,6 +134,7 @@ public:
     {
         super(client, index, name, "");
         _value = defaultValue;
+        _defaultValue = defaultValue;
     }
 
     override void setNormalized(float hostValue) nothrow @nogc
@@ -151,6 +155,11 @@ public:
         return result;
     }
 
+    override float getNormalizedDefault() nothrow @nogc
+    {
+        return _defaultValue ? 1.0f : 0.0f;
+    }
+
     override void toStringN(char* buffer, size_t numBytes) nothrow @nogc
     {
         bool v;
@@ -166,6 +175,7 @@ public:
 
 private:
     bool _value;
+    bool _defaultValue;
 }
 
 /// A float parameter
@@ -217,7 +227,13 @@ public:
 
     override float getNormalized() nothrow @nogc
     {
-        float normalized = clamp!float( (value() - _min) / (_max - _min), 0.0f, 1.0f);        
+        float normalized = clamp!float( (value() - _min) / (_max - _min), 0.0f, 1.0f);
+        return normalized;
+    }
+
+    override float getNormalizedDefault() nothrow @nogc
+    {
+        float normalized = clamp!float( (_defaultValue - _min) / (_max - _min), 0.0f, 1.0f);
         return normalized;
     }
 

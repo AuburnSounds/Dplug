@@ -9,6 +9,7 @@ import core.stdc.string;
 import core.stdc.stdio;
 
 import dplug.plugin.params;
+import dplug.plugin.preset;
 import dplug.plugin.graphics;
 
 
@@ -71,6 +72,7 @@ public:
     {
         buildLegalIO();
         buildParameters();
+        buildPresets();
 
         _maxInputs = 0;
         _maxOutputs = 0;
@@ -108,6 +110,12 @@ public:
     final Parameter[] params() nothrow @nogc
     {
         return _params;
+    }
+
+    /// Returns: Array of presets.
+    final Preset[] presets() nothrow @nogc
+    {
+        return _presets;
     }
 
     /// Returns: The parameter indexed by index.
@@ -269,6 +277,29 @@ protected:
         _params ~= param;
     }
 
+    /// Override this methods to load/fill presets.
+    /// See_also: addPreset.
+    void buildPresets()
+    {
+        addPreset(makeDefaultPreset());
+    }
+
+    /// Adds a preset.
+    final void addPreset(Preset preset)
+    {
+        _presets ~= preset;
+    }
+
+    /// Returns a new default preset.
+    final Preset makeDefaultPreset()
+    {
+        float[] values;
+        values.length = _params.length;
+        foreach(param; _params)
+            values ~= param.getNormalizedDefault();
+        return new Preset("Default", values);
+    }
+
     /// Override this method to tell which I/O are legal.
     /// See_also: addLegalIO.
     abstract void buildLegalIO();
@@ -285,6 +316,8 @@ protected:
 
 private:
     Parameter[] _params;
+
+    Preset[] _presets;
 
     struct LegalIO
     {

@@ -87,7 +87,7 @@ public:
         _maxOutputs = _effect.numOutputs = _client.maxOutputs();
         assert(_maxParams >= 0 && _maxInputs >= 0 && _maxOutputs >= 0);
         _effect.numParams = cast(int)(client.params().length);
-        _effect.numPrograms = 0; // TODO implement presets
+        _effect.numPrograms = cast(int)(client.presets().length);
         _effect.version_ = client.getPluginVersion();
         _effect.uniqueID = client.getPluginID();
         _effect.processReplacing = &processReplacingCallback;
@@ -560,9 +560,7 @@ private:
                     success = _client.setNumUsedOutputs(msg.usedOutputs);
                     assert(success);
 
-                    goto case resetState;
-
-                    // intentional fallthrough
+                    goto case resetState; // chaning the number of channels probably need to reset state too
                 }
 
                 case resetState:

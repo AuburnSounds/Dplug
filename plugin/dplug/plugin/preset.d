@@ -6,20 +6,17 @@ import dplug.plugin.client;
 class Preset
 {
 public:
-    this(Client client, int index)
+    this(string name, float[] normalizedParams)
     {
-        _client = client;
-        _index = index;
+        _name = name;
+        _normalizedParams = normalizedParams;
     }
 
 private:
-    bool _initialized = false;
-    Client _client;
-    int _index;
-    string name;
-    float[] normalizedParams;
+    string _name;
+    float[] _normalizedParams;
 }
-
+/*
 /// A preset bank is a collection of presets
 class PresetBank
 {
@@ -29,6 +26,11 @@ public:
         _client = client;
         for (int i = 0; i < numPresets; ++i)
             _presets[i] = new Preset(client, i);
+    }
+
+    void addPreset(Preset preset)
+    {
+        _presets ~= preset;
     }
 
     Preset preset(int i)
@@ -42,3 +44,4 @@ private:
 
 
 }
+*/

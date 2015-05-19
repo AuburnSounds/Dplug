@@ -38,6 +38,13 @@ final class Distort : dplug.plugin.Client
         addParameter(new FloatParameter(this, 2, "output", "db", 0.0f, 1.0f, 0.9f));
     }
 
+    /*
+    override void buildPresets()
+    {
+
+    }
+    */
+
     override void buildLegalIO()
     {
         addLegalIO(1, 1);
