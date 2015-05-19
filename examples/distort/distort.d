@@ -38,6 +38,15 @@ final class Distort : dplug.plugin.Client
         addParameter(new FloatParameter(this, 2, "output", "db", 0.0f, 1.0f, 0.9f));
     }
 
+    // This override is optional, the default implementation will 
+    // have one default preset.
+    override void buildPresets()
+    {
+        presetBank.addPreset(makeDefaultPreset());
+        presetBank.addPreset(new Preset("Silence", [0.0f, 0.0f, 0.0f]));
+        presetBank.addPreset(new Preset("Full-on", [1.0f, 1.0f, 0.4f]));
+    }
+
     override void buildLegalIO()
     {
         addLegalIO(1, 1);

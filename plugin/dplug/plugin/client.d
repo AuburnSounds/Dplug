@@ -292,7 +292,6 @@ protected:
     final Preset makeDefaultPreset()
     {
         float[] values;
-        values.length = _params.length;
         foreach(param; _params)
             values ~= param.getNormalizedDefault();
         return new Preset("Default", values);
