@@ -10,6 +10,7 @@ import core.stdc.stdio;
 
 import dplug.plugin.params;
 import dplug.plugin.preset;
+import dplug.plugin.midi;
 import dplug.plugin.graphics;
 
 
@@ -257,6 +258,14 @@ public:
         return 0;
     }
 
+    /// Process incoming MIDI messages.
+    /// This is called before processAudio for each message.
+    /// Override to do somthing with them;
+    void processMidiMsg(MidiMessage message) nothrow @nogc
+    {
+        // Default behaviour: do nothing.
+    }
+
     /// Process some audio.
     /// Override to make some noise.
     /// In processAudio you are always guaranteed to get valid pointers
@@ -273,6 +282,16 @@ public:
     final void setHostCommand(IHostCommand hostCommand)
     {
         _hostCommand = hostCommand;
+    }
+
+
+    /// Returns a new default preset.
+    final Preset makeDefaultPreset()
+    {
+        float[] values;
+        foreach(param; _params)
+            values ~= param.getNormalizedDefault();
+        return new Preset("Default", values);
     }
 
 protected:
@@ -294,14 +313,6 @@ protected:
         presetBank.addPreset(makeDefaultPreset());
     }
 
-    /// Returns a new default preset.
-    final Preset makeDefaultPreset()
-    {
-        float[] values;
-        foreach(param; _params)
-            values ~= param.getNormalizedDefault();
-        return new Preset("Default", values);
-    }
 
     /// Override this method to tell which I/O are legal.
     /// See_also: addLegalIO.

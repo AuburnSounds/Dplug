@@ -13,6 +13,7 @@ import gfm.core;
 import dplug.plugin.client,
        dplug.plugin.daw,
        dplug.plugin.preset,
+       dplug.plugin.midi,
        dplug.plugin.fpcontrol,
        dplug.plugin.alignedbuffer,
        dplug.plugin.spinlock;
@@ -126,7 +127,7 @@ public:
         _inputPointers.length = _maxInputs;
         _outputPointers.length = _maxOutputs;
 
-        _messageQueue.pushBack(Message(Message.Type.resetState, _maxFrames, _sampleRate, _usedInputs, _usedOutputs));
+        _messageQueue.pushBack(makeResetStateMessage(Message.Type.resetState));
     }
 
 private:
@@ -174,6 +175,17 @@ private:
     final bool isValidOutputIndex(int index)
     {
         return index >= 0 && index < _maxOutputs;
+    }
+
+    Message makeResetStateMessage(Message.Type type)
+    {
+        Message msg;
+        msg.type = type;
+        msg.maxFrames = _maxFrames;
+        msg.samplerate = _sampleRate;
+        msg.usedInputs = _usedInputs;
+        msg.usedOutputs = _usedOutputs;
+        return msg;
     }
 
     /// VST opcode dispatcher
@@ -280,7 +292,7 @@ private:
             case effSetSampleRate: // opcode 10
             {
                 _sampleRate = opt;
-                _messageQueue.pushBack(Message(Message.Type.resetState, _maxFrames, _sampleRate, _usedInputs, _usedOutputs));
+                _messageQueue.pushBack(makeResetStateMessage(Message.Type.resetState));
                 return 0;
             }
 
@@ -290,7 +302,7 @@ private:
                     return 1;
 
                 _maxFrames = cast(int)value;
-                _messageQueue.pushBack(Message(Message.Type.resetState, _maxFrames, _sampleRate, _usedInputs, _usedOutputs));
+                _messageQueue.pushBack(makeResetStateMessage(Message.Type.resetState));
                 return 0;
             }
 
@@ -301,7 +313,7 @@ private:
                       // Audio processing was switched off.
                       // The plugin must call flush its state because otherwise pending data
                       // would sound again when the effect is switched on next time.
-                      _messageQueue.pushBack(Message(Message.Type.resetState, _maxFrames, _sampleRate, _usedInputs, _usedOutputs));
+                      _messageQueue.pushBack(makeResetStateMessage(Message.Type.resetState));
                     }
                     else
                     {
@@ -392,7 +404,7 @@ private:
                 if (!ptr)
                     return 0;
 
-                bool isBank = (index== 0);
+                bool isBank = (index == 0);
                 ubyte[] chunk = (cast(ubyte*)ptr)[0..value];
                 auto presetBank = _client.presetBank();
                 try
@@ -414,17 +426,30 @@ private:
             }
 
             case effProcessEvents: // opcode 25, "host usually call ProcessEvents just before calling ProcessReplacing"
-                VstEvents* pEvents = (VstEvents*) ptr;
-                if (pEvents && pEvents->events)
+                VstEvents* pEvents = cast(VstEvents*) ptr;
+                if (pEvents != null/* && pEvents.events != 0*/)
                 {
-                    for (int i = 0; i < pEvents->numEvents; ++i)
+                    for (int i = 0; i < pEvents.numEvents; ++i)
                     {
-                        VstEvent* pEvent = pEvents->events[i];
+                        VstEvent* pEvent = pEvents.events[i];
                         if (pEvent)
                         {
-                            if (pEvent->type == kVstMidiType)
+                            if (pEvent.type == kVstMidiType)
                             {
-                                VstMidiEvent* pME = (VstMidiEvent*) pEvent;
+                                VstMidiEvent* pME = cast(VstMidiEvent*) pEvent;
+                                
+                                // enqueue midi message to be processed by the audio thread (why not)
+                                // TODO: who should process these messages anyway?
+                                MidiMessage midi;
+                                midi.deltaFrames = pME.deltaFrames;
+                                midi.detune = pME.detune;
+                                foreach(k; 0..4)
+                                    midi.data[k] = cast(ubyte)(pME.midiData[k]);
+                                _messageQueue.pushBack(makeMIDIMessage(midi));                                
+                            }
+                            else
+                            {
+                                // TODO handle sysex
                             }
                         }
                     }
@@ -546,7 +571,7 @@ private:
                     if (_usedOutputs > _maxOutputs)
                         _usedOutputs = _maxOutputs;
 
-                    _messageQueue.pushBack(Message(Message.Type.changedIO, _maxFrames, _sampleRate, _usedInputs, _usedOutputs));
+                    _messageQueue.pushBack(makeResetStateMessage(Message.Type.changedIO));
 
                     return 0;
                 }
@@ -652,6 +677,9 @@ private:
                     resizeScratchBuffers(msg.maxFrames);
                     _client.reset(msg.samplerate, msg.maxFrames, msg.usedInputs, msg.usedOutputs);
                     break;
+
+                case midi:
+                    _client.processMidiMsg(msg.midiMessage);
             }
         }
     }
@@ -775,8 +803,9 @@ void unrecoverableError() nothrow @nogc
     }
 }
 
+//
 // VST callbacks
-
+//
 extern(C) private nothrow
 {
     VstIntPtr dispatcherCallback(AEffect *effect, int opcode, int index, ptrdiff_t value, void *ptr, float opt) nothrow
@@ -801,10 +830,13 @@ extern(C) private nothrow
         return 0;
     }
 
+    // VST callback for DEPRECATED_process
     void processCallback(AEffect *effect, float **inputs, float **outputs, int sampleFrames) nothrow @nogc
     {
         try
         {
+            // Thread isn't registered there, to make the whole callback GC free.
+
             FPControl fpctrl;
             fpctrl.initialize();
 
@@ -818,10 +850,13 @@ extern(C) private nothrow
         }
     }
 
+    // VST callback for processReplacing
     void processReplacingCallback(AEffect *effect, float **inputs, float **outputs, int sampleFrames) nothrow @nogc
     {
         try
         {
+            // Thread isn't registered there, to make the whole callback GC free.
+
             FPControl fpctrl;
             fpctrl.initialize();
 
@@ -835,10 +870,13 @@ extern(C) private nothrow
         }
     }
 
+    // VST callback for processDoubleReplacing
     void processDoubleReplacingCallback(AEffect *effect, double **inputs, double **outputs, int sampleFrames) nothrow @nogc
     {
         try
         {
+            // Thread isn't registered there, to make the whole callback GC free.
+
             FPControl fpctrl;
             fpctrl.initialize();
 
@@ -852,12 +890,12 @@ extern(C) private nothrow
         }
     }
 
+    // VST callback for setParameter
     void setParameterCallback(AEffect *effect, int index, float parameter)
     {
-        // Register this thread to the D runtime if unknown.
         try
         {
-            thread_attachThis();
+            thread_attachThis(); // Register this thread to the D runtime if unknown.
 
             FPControl fpctrl;
             fpctrl.initialize();
@@ -877,11 +915,12 @@ extern(C) private nothrow
         }
     }
 
+    // VST callback for getParameter
     float getParameterCallback(AEffect *effect, int index)
     {
         try
         {
-            thread_attachThis();
+            thread_attachThis(); // Register this thread to the D runtime if unknown.
 
             FPControl fpctrl;
             fpctrl.initialize();
@@ -1061,6 +1100,16 @@ private
         {
             resetState, // reset plugin state, set samplerate and buffer size (samplerate = fParam, buffersize in frames = iParam)
             changedIO,  // number of inputs/outputs changes (num. inputs = iParam, num. outputs = iParam2)
+            midi
+        }
+
+        this(Type type_, int maxFrames_, float samplerate_, int usedInputs_, int usedOutputs_)
+        {
+            type = type_;
+            maxFrames = maxFrames_;
+            samplerate = samplerate_;
+            usedInputs = usedInputs_;
+            usedOutputs = usedOutputs_;
         }
 
         Type type;
@@ -1068,6 +1117,17 @@ private
         float samplerate;
         int usedInputs;
         int usedOutputs;
+        MidiMessage midiMessage;
+    }
+
+
+
+    Message makeMIDIMessage(MidiMessage midiMessage)
+    {
+        Message msg;
+        msg.type = Message.Type.midi;
+        msg.midiMessage = midiMessage;
+        return msg;
     }
 }
 
