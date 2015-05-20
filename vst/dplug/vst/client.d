@@ -414,7 +414,23 @@ private:
             }
 
             case effProcessEvents: // opcode 25, "host usually call ProcessEvents just before calling ProcessReplacing"
-                return 0; // TODO
+                VstEvents* pEvents = (VstEvents*) ptr;
+                if (pEvents && pEvents->events)
+                {
+                    for (int i = 0; i < pEvents->numEvents; ++i)
+                    {
+                        VstEvent* pEvent = pEvents->events[i];
+                        if (pEvent)
+                        {
+                            if (pEvent->type == kVstMidiType)
+                            {
+                                VstMidiEvent* pME = (VstMidiEvent*) pEvent;
+                            }
+                        }
+                    }
+                    return 1;
+                }
+                return 0;
 
             case effCanBeAutomated: // opcode 26
             {

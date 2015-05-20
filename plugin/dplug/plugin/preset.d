@@ -10,13 +10,14 @@ import binrange;
 import dplug.plugin.client;
 
 
-// I can see no reason why dplug shouldn't be able to maintain 
-// backward-compatibility with older version in the future.
-// However, never say never.
-// This number will be incremented for backward-incompatible changes.
+/// I can see no reason why dplug shouldn't be able to maintain 
+/// backward-compatibility with older versions in the future.
+/// However, never say never.
+/// This number will be incremented for every backward-incompatible change.
 enum int DPLUG_SERIALIZATION_MAJOR_VERSION = 0; 
 
-// This number will be incremented for backward-compatible change.
+/// This number will be incremented for every backward-compatible change
+/// that is significant enough to bump a version number
 enum int DPLUG_SERIALIZATION_MINOR_VERSION = 0; 
 
 /// A preset is a slot in a plugin preset list
@@ -226,11 +227,11 @@ private:
             throw new Exception("Can not load, magic number didn't match");
 
         // nothing to check with minor version
-        uint dplugMajor = input.popLE!int();
+        int dplugMajor = input.popLE!int();
         if (dplugMajor > DPLUG_SERIALIZATION_MAJOR_VERSION)
             throw new Exception("Can not load chunk done with a newer, incompatible dplug library");
 
-        uint dplugMinor = input.popLE!int();
+        int dplugMinor = input.popLE!int();
         // nothing to check with minor version
 
         // TODO: how to handle breaking binary compatibility here?
