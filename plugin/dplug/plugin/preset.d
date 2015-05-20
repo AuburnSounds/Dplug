@@ -3,6 +3,7 @@ module dplug.plugin.preset;
 import std.range;
 import std.math;
 import std.array;
+import std.algorithm;
 
 import binrange;
 
@@ -48,7 +49,7 @@ public:
     void serializeBinary(O)(auto ref O output) if (isOutputRange!(O, ubyte))
     {
         foreach(np; _normalizedParams)
-            output.writeLE!int(cast(int)_name.length);        
+            output.writeLE!int(cast(int)_name.length);
         foreach(i; 0..name.length)
             output.writeLE!ubyte(_name[i]);
 
@@ -56,25 +57,21 @@ public:
             output.writeLE!float(np);
     }
 
-    void deserializeBinary(O)(float defaultValue, auto ref O input) if (isInputRange!O)
+    void unserializeBinary(ref ubyte[] input)
     {
         _name = "";
         int nameLength = input.popLE!int();
-        _name.length = nameLength;
+        _name.reserve(nameLength);
         foreach(i; 0..nameLength)
-            _name[i] = input.popLE!ubyte();
+            _name ~= input.popLE!ubyte();
 
         foreach(ref np; _normalizedParams)
         {
             float f = input.popLE!float();
             if (isValidNormalizedParam(f))
-                np = f;                
+                np = f;
             else
-            {
-                // In case of error, silently fallback on the default value.
-                // TODO: is this a good idea?
-                np = defaultValue;
-            }
+                throw new Exception("Couln't unserialize preset: an invalid float parameter was parsed");
         }
     }
 
@@ -167,6 +164,28 @@ public:
         return null;
     }    
 
+    /// Parse a preset chunk and set parameters.
+    /// May throw an Exception.
+    void loadPresetChunk(int index, ubyte[] chunk)
+    {
+        checkChunkHeader(chunk);
+        presets[index].unserializeBinary(chunk);
+    }
+
+    /// Parse a bank chunk and set parameters.
+    /// May throw an Exception.
+    void loadBankChunk(ubyte[] chunk)
+    {
+        checkChunkHeader(chunk);
+
+        int numPresets = chunk.popLE!int();
+
+        // TODO: is there a way to have a dynamic number of presets in VST?
+        numPresets = min(numPresets, presets.length);
+        foreach(preset; presets[0..numPresets])
+            preset.unserializeBinary(chunk);
+    }
+
 private:
     Client _client;
     int _current; // should this be only in VST client?
@@ -177,7 +196,7 @@ private:
             preset.serializeBinary(output);
     }
 
-    void deserializeBinary(O)(auto ref O input) if (isInputRange!O)
+    void unserializeBinary(I)(auto ref I input) if (isInputRange!O)
     {
         foreach(int i, preset; presets)
         {
@@ -186,15 +205,35 @@ private:
         }
     }
 
+    enum uint DPLUG_MAGIC = 0xB20BA92;
+
     void writeChunkHeader(O)(auto ref O output) if (isOutputRange!(O, ubyte))
     {
-        // write magic number
-        enum uint DPLUG_MAGIC = 0xB20BA92;
+        // write magic number and dplug version information (not the tag version)
         output.writeBE!uint(DPLUG_MAGIC);
         output.writeLE!int(DPLUG_SERIALIZATION_MAJOR_VERSION);
         output.writeLE!int(DPLUG_SERIALIZATION_MINOR_VERSION);
 
         // write plugin version
         output.writeLE!int(_client.getPluginVersion());
+    }
+
+    void checkChunkHeader(ref ubyte[] input)
+    {
+        // nothing to check with minor version
+        uint magic = input.popBE!uint();
+        if (magic !=  DPLUG_MAGIC)
+            throw new Exception("Can not load, magic number didn't match");
+
+        // nothing to check with minor version
+        uint dplugMajor = input.popLE!int();
+        if (dplugMajor > DPLUG_SERIALIZATION_MAJOR_VERSION)
+            throw new Exception("Can not load chunk done with a newer, incompatible dplug library");
+
+        uint dplugMinor = input.popLE!int();
+        // nothing to check with minor version
+
+        // TODO: how to handle breaking binary compatibility here?
+        int pluginVersion = input.popLE!int();
     }
 }

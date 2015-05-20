@@ -388,7 +388,30 @@ private:
             }
 
             case effSetChunk: // opcode 24
-                return 0; // TODO
+            {
+                if (!ptr)
+                    return 0;
+
+                bool isBank = (index== 0);
+                ubyte[] chunk = (cast(ubyte*)ptr)[0..value];
+                auto presetBank = _client.presetBank();
+                try
+                {
+                    if (isBank)
+                        presetBank.loadBankChunk(chunk);
+                    else
+                    {
+                        presetBank.loadPresetChunk(presetBank.currentPresetIndex(), chunk);
+                        presetBank.loadPresetFromHost(presetBank.currentPresetIndex());
+                    }
+                    return 1; // success
+                }
+                catch(Exception e)
+                {
+                    // Chunk didn't parse
+                    return 0;
+                }
+            }
 
             case effProcessEvents: // opcode 25, "host usually call ProcessEvents just before calling ProcessReplacing"
                 return 0; // TODO
