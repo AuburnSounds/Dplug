@@ -2,6 +2,7 @@ module dplug.plugin.preset;
 
 import std.range;
 import std.math;
+import std.array;
 
 import binrange;
 
@@ -44,7 +45,7 @@ public:
             param.setFromHost(_normalizedParams[i]);
     }
 
-    void serializeBinary(O)(auto ref O output) if (isOutputRange!O)
+    void serializeBinary(O)(auto ref O output) if (isOutputRange!(O, ubyte))
     {
         foreach(np; _normalizedParams)
             output.writeLE!int(cast(int)_name.length);        
@@ -143,18 +144,28 @@ public:
         _current = index;
     }
 
-    /// Allocate and fill a preset chunk
-    ubyte[] getPresetChunk()
+    /// Allocates and fill a preset chunk
+    ubyte[] getPresetChunk(int index)
     {
-        return null;
+        auto chunk = appender!(ubyte[])();
+        writeChunkHeader(chunk);
+        presets[index].serializeBinary(chunk);
+        return chunk.data;
     }
 
     /// Allocate and fill a bank chunk
     ubyte[] getBankChunk()
     {
+        auto chunk = appender!(ubyte[])();
+        writeChunkHeader(chunk);
+
+        // write number of presets
+        chunk.writeLE!int(cast(int)(presets.length));
+
+        foreach(int i, preset; presets)
+            preset.serializeBinary(chunk);
         return null;
-    }
-    
+    }    
 
 private:
     Client _client;
@@ -175,7 +186,7 @@ private:
         }
     }
 
-    void writeChunkheader(O)(auto ref O output) if (isOutputRange!O)
+    void writeChunkHeader(O)(auto ref O output) if (isOutputRange!(O, ubyte))
     {
         // write magic number
         enum uint DPLUG_MAGIC = 0xB20BA92;

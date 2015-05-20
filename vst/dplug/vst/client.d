@@ -70,7 +70,7 @@ public:
 
         _effect.magic = kEffectMagic;
 
-        int flags = effFlagsCanReplacing | effFlagsCanDoubleReplacing;
+        int flags = effFlagsCanReplacing | effFlagsCanDoubleReplacing | effFlagsProgramChunks;
 
         if ( client.isSynth() )
         {
@@ -149,6 +149,10 @@ private:
     AlignedBuffer!double   _zeroesBuffer;        // used for disconnected inputs
     double*[] _inputPointers;  // where processAudio will take its audio input, one per possible input
     double*[] _outputPointers; // where processAudio will output audio, one per possible output
+
+    // stores the last asked preset/bank chunk
+    ubyte[] _lastPresetChunk = null;
+    ubyte[] _lastBankChunk = null;
 
     version(InterlockedMessageQueue)
         // Inter-locked message queue from opcode thread to audio thread
@@ -361,15 +365,27 @@ private:
                 return CCONST('N', 'v', 'E', 'f');
 
             case effGetChunk: // opcode 23
+            {
+                ubyte** ppData = cast(ubyte**) ptr;
+                bool wantBank = (index == 0);
+                if (ppData)
                 {
-                    ubyte** ppData = cast(ubyte**) ptr;
-                    bool wantBank = (index == 0);
-                    if (ppData)
+                    auto presetBank = _client.presetBank();
+                    if (wantBank)
                     {
-                        return 0; // TODO
+                        _lastBankChunk = presetBank.getBankChunk();
+                        *ppData = _lastBankChunk.ptr;
+                        return cast(int)_lastBankChunk.length;
                     }
-                    return 0;
+                    else
+                    {
+                        _lastPresetChunk = presetBank.getPresetChunk(presetBank.currentPresetIndex());
+                        *ppData = _lastPresetChunk.ptr;
+                        return cast(int)_lastPresetChunk.length;
+                    }
                 }
+                return 0;
+            }
 
             case effSetChunk: // opcode 24
                 return 0; // TODO

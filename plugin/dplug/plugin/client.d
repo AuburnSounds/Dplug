@@ -243,7 +243,6 @@ public:
         return _hostCommand;
     }
 
-
     /// Override to clear state state (eg: delay lines) and allocate buffers.
     /// Important: This will be called by the audio thread.
     ///            You should not use the GC in this callback.
@@ -294,7 +293,6 @@ protected:
     {
         presetBank.addPreset(makeDefaultPreset());
     }
-
 
     /// Returns a new default preset.
     final Preset makeDefaultPreset()
