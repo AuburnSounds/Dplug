@@ -836,6 +836,7 @@ extern(C) private nothrow
         try
         {
             // Thread isn't registered there, to make the whole callback GC free.
+            // TODO: what if the thread is already registered?
 
             FPControl fpctrl;
             fpctrl.initialize();
@@ -856,6 +857,7 @@ extern(C) private nothrow
         try
         {
             // Thread isn't registered there, to make the whole callback GC free.
+            // TODO: what if the thread is already registered?
 
             FPControl fpctrl;
             fpctrl.initialize();
@@ -876,6 +878,7 @@ extern(C) private nothrow
         try
         {
             // Thread isn't registered there, to make the whole callback GC free.
+            // TODO: what if the thread is already registered?
 
             FPControl fpctrl;
             fpctrl.initialize();
