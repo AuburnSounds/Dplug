@@ -36,7 +36,7 @@ template VSTEntryPoint(alias ClientClass)
         "       import gfm.core;"
                 // malloc'd else the GC would not register roots for some reason!
                 // TODO: when will this be freed?
-        "       VSTClient plugin = mallocEmplace!VSTClient(client, hostCallback);" 
+        "       VSTClient plugin = mallocEmplace!VSTClient(client, hostCallback);"
         "       return &plugin._effect;"
         "   }"
         "   catch (Throwable e)"
@@ -223,7 +223,7 @@ private:
             case effSetProgramName: // opcode 4
             {
                 char* p = cast(char*)ptr;
-                int len = strlen(p);
+                int len = cast(int)strlen(p);
                 PresetBank bank = _client.presetBank();
                 Preset current = bank.currentPreset();
                 if (current !is null)
@@ -437,7 +437,7 @@ private:
                             if (pEvent.type == kVstMidiType)
                             {
                                 VstMidiEvent* pME = cast(VstMidiEvent*) pEvent;
-                                
+
                                 // enqueue midi message to be processed by the audio thread (why not)
                                 // TODO: who should process these messages anyway?
                                 MidiMessage midi;
@@ -445,7 +445,7 @@ private:
                                 midi.detune = pME.detune;
                                 foreach(k; 0..4)
                                     midi.data[k] = cast(ubyte)(pME.midiData[k]);
-                                _messageQueue.pushBack(makeMIDIMessage(midi));                                
+                                _messageQueue.pushBack(makeMIDIMessage(midi));
                             }
                             else
                             {
@@ -687,7 +687,7 @@ private:
     void preprocess(int sampleFrames) nothrow @nogc
     {
         // bypass @nogc because semaphore and mutexes functions are not @nogc
-        alias bypassNogc = void delegate() @nogc nothrow;        
+        alias bypassNogc = void delegate() @nogc nothrow;
         bypassNogc proc = cast(bypassNogc)&processMessages;
         proc();
 
