@@ -133,6 +133,14 @@ final class SpinlockedQueue(T)
     }
 }
 
+version( D_InlineAsm_X86 )
+{
+    version = AsmX86;
+}
+else version( D_InlineAsm_X86_64 )
+{
+    version = AsmX86;
+}
 
 private
 {
@@ -140,9 +148,16 @@ private
     {
         // PAUSE instruction, recommended by Intel in busy spin loops
 
-        static if( __VERSION__ >= 2067 )
-            mixin("asm nothrow @nogc { rep; nop; }");
+        version( AsmX86 )
+        {
+            static if( __VERSION__ >= 2067 )
+                mixin("asm nothrow @nogc { rep; nop; }");
+            else
+                mixin("asm { rep; nop; }");
+        }
         else
-            mixin("asm { rep; nop; }");
+        {
+            // TODO: implement cpuRelax for GDC
+        }
     }
 }
