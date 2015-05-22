@@ -5,8 +5,7 @@ d:
  - dmd-2.066.1
  - ldc-0.15.1
  - gdc-4.9.2
- - gdc
-
+ 
 script:
   - dub test --compiler=${DC} dplug:dsp
   - dub test --compiler=${DC} dplug:gui
