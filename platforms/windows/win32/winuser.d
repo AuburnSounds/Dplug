@@ -8,7 +8,7 @@
 *                       Placed into public domain                       *
 \***********************************************************************/
 module win32.winuser;
-pragma(lib, "user32");
+//pragma(lib, "user32");
 
 // Conversion Notes:
 // The following macros were for win16 only, and are not included in this file:

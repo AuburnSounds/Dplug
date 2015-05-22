@@ -8,7 +8,7 @@
 *                       Placed into public domain                       *
 \***********************************************************************/
 module win32.winbase;
-pragma(lib, "kernel32");
+//pragma(lib, "kernel32");
 
 /**
 Translation Notes:
