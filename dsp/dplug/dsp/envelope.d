@@ -59,7 +59,7 @@ private:
 struct AnalyticSignal(T)
 {
 public:
-    void initialize(T cutoffInHz, T samplerate)
+    void initialize(T samplerate)
     {
         _hilbert.initialize(samplerate);
     }
