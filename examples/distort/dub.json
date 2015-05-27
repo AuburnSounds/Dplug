@@ -7,7 +7,6 @@
     "stringImportPaths": ["fonts", "gfx"],
 
     "sourceFiles": [
-        "./distort.d",
         "./distort.def"
     ],
 
