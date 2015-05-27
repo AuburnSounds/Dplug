@@ -10,8 +10,6 @@
         "./distort.def"
     ],
 
-    "buildOptions": [ "noBoundsCheck" ],
-
     "dependencies":
     {
         "dplug:dsp": { "path": "../.." },
