@@ -15,7 +15,7 @@ public:
     // typical frequency would be is 10-30hz
     void initialize(double cutoffInHz, double samplerate)
     {
-        _coeff = lowpassFilterRBJ(cutoffInHz, samplerate);
+        _coeff = lowpassFilterRBJ!double(cutoffInHz, samplerate);
         _delay0.clear();
         _delay1.clear();
     }
