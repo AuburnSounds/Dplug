@@ -223,6 +223,13 @@ public:
         _phaseFractional = 0;
     }
 
+    /// Allows dirty resync
+    void resetPhase()
+    {
+        _phaseIntPart = 0;
+        _phaseFractional = 0;
+    }
+
     float next(float frequency)
     {
         float phaseIncrementSamples = cast(float)(2 * _wavetable.sizeOfMipmap(0) * frequency /  (_samplerate));
