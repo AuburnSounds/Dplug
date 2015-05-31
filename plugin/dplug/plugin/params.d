@@ -21,14 +21,14 @@ public:
     }
 
     // From a normalized float, set the parameter value.
-    void setFromHost(float hostValue) nothrow
+    void setFromHost(float hostValue) nothrow @nogc
     {
         setNormalized(hostValue);
         notifyListeners();
     }
 
     // Returns: A normalized float, represents the parameter value.
-    float getForHost() nothrow
+    float getForHost() nothrow @nogc
     {
         return getNormalized();
     }

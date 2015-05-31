@@ -189,7 +189,7 @@ public:
     }
 
     // This should be called only by a client implementation
-    void setParameterFromHost(int index, float value)
+    void setParameterFromHost(int index, float value) nothrow @nogc
     {
         param(index).setFromHost(value);
     }

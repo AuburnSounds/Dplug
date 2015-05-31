@@ -162,17 +162,17 @@ private:
         // Lock-free message queue from opcode thread to audio thread.
         SpinlockedQueue!Message _messageQueue;
 
-    final bool isValidParamIndex(int i) pure const nothrow
+    final bool isValidParamIndex(int i) pure const nothrow @nogc
     {
         return i >= 0 && i < _maxParams;
     }
 
-    final bool isValidInputIndex(int index)
+    final bool isValidInputIndex(int index) pure const nothrow @nogc
     {
         return index >= 0 && index < _maxInputs;
     }
 
-    final bool isValidOutputIndex(int index)
+    final bool isValidOutputIndex(int index) pure const nothrow @nogc
     {
         return index >= 0 && index < _maxOutputs;
     }
@@ -894,12 +894,10 @@ extern(C) private nothrow
     }
 
     // VST callback for setParameter
-    void setParameterCallback(AEffect *effect, int index, float parameter)
+    void setParameterCallback(AEffect *effect, int index, float parameter) nothrow @nogc
     {
         try
         {
-            thread_attachThis(); // Register this thread to the D runtime if unknown.
-
             FPControl fpctrl;
             fpctrl.initialize();
 
@@ -919,12 +917,10 @@ extern(C) private nothrow
     }
 
     // VST callback for getParameter
-    float getParameterCallback(AEffect *effect, int index)
+    float getParameterCallback(AEffect *effect, int index) nothrow @nogc
     {
         try
         {
-            thread_attachThis(); // Register this thread to the D runtime if unknown.
-
             FPControl fpctrl;
             fpctrl.initialize();
 
