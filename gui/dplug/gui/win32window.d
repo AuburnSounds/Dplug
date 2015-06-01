@@ -184,9 +184,15 @@ version(Windows)
                 {
                     Key key = vkToKey(wParam);
                     if (uMsg == WM_KEYDOWN)
-                        _listener.onKeyDown(key);
+                    {
+                        if (_listener.onKeyDown(key))
+                            sendRepaintIfUIDirty(); // do not wait for the timer
+                    }
                     else
-                        _listener.onKeyUp(key);
+                    {
+                        if (_listener.onKeyUp(key))
+                            sendRepaintIfUIDirty(); // do not wait for the timer
+                    }
 
                     if (key == Key.unsupported)
                     {
@@ -208,6 +214,7 @@ version(Windows)
                         _listener.onMouseMove(newMouseX, newMouseY, dx, dy, getMouseState(wParam));
                         _mouseX = newMouseX;
                         _mouseY = newMouseY;
+                        sendRepaintIfUIDirty();
                         return 0;
                     }
 
@@ -302,21 +309,7 @@ version(Windows)
                 case WM_TIMER:
                 {
                     if (wParam == TIMER_ID)
-                    {
-                        box2i dirtyRect = _listener.getDirtyRectangle();
-                        if (!dirtyRect.empty())
-                        {
-                            dirtyRect = _listener.extendsDirtyRect(dirtyRect, _width, _height);
-
-                            RECT r;
-                            r.left = dirtyRect.min.x;
-                            r.top = dirtyRect.min.y;
-                            r.right = dirtyRect.max.x;
-                            r.bottom = dirtyRect.max.y;
-                            InvalidateRect(hwnd, &r, FALSE); // TODO: be more precise with invalidated regions?
-                            UpdateWindow(hwnd);
-                        }
-                    }
+                        sendRepaintIfUIDirty();
                     return 0;
 
                 case WM_SIZE:
@@ -412,14 +405,20 @@ version(Windows)
         {
             SetFocus(_hwnd);   // get keyboard focus
             SetCapture(_hwnd); // start mouse capture
-            return _listener.onMouseClick(mouseX, mouseY, mb, isDoubleClick, getMouseState(wParam));
+            bool consumed = _listener.onMouseClick(mouseX, mouseY, mb, isDoubleClick, getMouseState(wParam));
+            if (consumed)
+                sendRepaintIfUIDirty(); // do not wait for the timer
+            return consumed;
         }
 
         /// ditto
         bool mouseRelease(int mouseX, int mouseY, MouseButton mb, WPARAM wParam)
         {
             ReleaseCapture();
-            return _listener.onMouseRelease(mouseX, mouseY, mb, getMouseState(wParam));
+            bool consumed = _listener.onMouseRelease(mouseX, mouseY, mb, getMouseState(wParam));
+            if (consumed)
+                sendRepaintIfUIDirty(); // do not wait for the timer
+            return consumed;
         }
 
         static void swapRB(ImageRef!RGBA surface, box2i areaToRedraw)
@@ -433,6 +432,25 @@ version(Windows)
                      scan[x].r = scan[x].b;
                      scan[x].b = temp;
                 }
+            }
+        }
+
+        /// Provokes a WM_PAINT if some UI element is dirty.
+        /// TODO: this function should be as fast as possible
+        void sendRepaintIfUIDirty()
+        {
+            box2i dirtyRect = _listener.getDirtyRectangle();
+            if (!dirtyRect.empty())
+            {
+                dirtyRect = _listener.extendsDirtyRect(dirtyRect, _width, _height);
+
+                RECT r;
+                r.left = dirtyRect.min.x;
+                r.top = dirtyRect.min.y;
+                r.right = dirtyRect.max.x;
+                r.bottom = dirtyRect.max.y;
+                InvalidateRect(_hwnd, &r, FALSE); // TODO: be more precise with invalidated regions?
+                UpdateWindow(_hwnd);
             }
         }
     }

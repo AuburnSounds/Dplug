@@ -251,8 +251,6 @@ public:
         return false;
     }
 
-
-
     // to be called at top-level when a key is released
     final bool keyUp(Key key)
     {
