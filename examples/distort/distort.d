@@ -132,6 +132,8 @@ class DistortGUI : GUIGraphics
         driveKnob.position = box2i(x - 10, y, x + w + 10, y + h + 20);
         x += w + margin;
         outputKnob.position = box2i(x, y, x + w, y + h);
+
+        setDirty(); // mark the whole UI dirty
     }
 
     float time = 0;

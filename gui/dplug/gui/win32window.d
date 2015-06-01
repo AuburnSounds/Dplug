@@ -278,22 +278,16 @@ version(Windows)
                     {
                         updateBufferSizeIfNeeded();
 
-                        auto rect = box2i(r.left, r.top, r.right, r.bottom);
-                        rect = _listener.extendsDirtyRect(rect, _width, _height);
-
-                        // Support window resize/move from under another.
-                        // This creates overdraw for regular dirtied controls though.
-                        // Life is unfair.
-                        _listener.markRectangleDirty(rect);
-
                         ImageRef!RGBA wfb;
                         wfb.w = _width;
                         wfb.h = _height;
                         wfb.pitch = byteStride(_width);
                         wfb.pixels = cast(RGBA*)_buffer;
 
-                        bool needRedraw;
-                        box2i[] areasToRedraw = _listener.onDraw(wfb);
+                        _listener.onDraw(wfb);
+
+                        box2i areaToRedraw = box2i(r.left, r.top, r.right, r.bottom);
+                        box2i[] areasToRedraw = (&areaToRedraw)[0..1];
                         swapBuffers(wfb, areasToRedraw);
                     }
                     return 0;

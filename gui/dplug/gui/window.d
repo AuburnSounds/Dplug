@@ -47,8 +47,7 @@ interface IWindowListener
 
     /// An image you have to draw to, or return that nothing has changed.
     /// The size of this image is given before-hand by onResized.
-    /// Returns: the non-overlapping rectangles area that should be updated
-    box2i[] onDraw(ImageRef!RGBA wfb);
+    void onDraw(ImageRef!RGBA wfb);
 
     /// The drawing area size has changed.    
     /// Always called at least once before onDraw.

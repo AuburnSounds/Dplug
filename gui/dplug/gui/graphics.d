@@ -168,7 +168,9 @@ class GUIGraphics : UIElement, IGraphics
             return box2i(xmin, ymin, xmax, ymax);
         }
 
-        override box2i[] onDraw(ImageRef!RGBA wfb)
+        // Redraw dirtied controls in depth and diffuse maps.
+        // Update composited cache.
+        override void onDraw(ImageRef!RGBA wfb)
         {
             // TODO: cache for areas to update to share with getDirtyRectangle?
 
@@ -182,8 +184,6 @@ class GUIGraphics : UIElement, IGraphics
             {
                 box2i dirty = elem.getDirtyRect();
                 _areasToUpdate ~= dirty;
-
-                // TODO: Not sure if this is needed anymore to have separate render areas now that the dirtied part is extended
                 _areasToRender ~= extendsDirtyRect(dirty, wfb.w, wfb.h); 
             }
 
@@ -209,9 +209,6 @@ class GUIGraphics : UIElement, IGraphics
 
             // Composite GUI
             compositeGUI(wfb, _areasToRender.boxes);
-
-            // Return non-overlapping areas to update on screen
-            return _areasToRender.boxes;
         }
 
         override void onMouseCaptureCancelled()
@@ -233,7 +230,7 @@ protected:
     // The list of areas whose diffuse/depth data have been changed 
     BoxList _areasToUpdate;
 
-    // The list of areas that must be effectively updated (slithly larger than _areasToUpdate)
+    // The list of areas that must be effectively updated in the composite buffer (slithly larger than _areasToUpdate)
     BoxList _areasToRender;
 
     int _askedWidth = 0;

@@ -55,10 +55,6 @@ public:
         // default: span the entire available area, and do the same for children
         _position = availableSpace;
 
-        _dirtyRectMutex.lock();
-        _dirtyRect = availableSpace;
-        _dirtyRectMutex.unlock();
-
         foreach(ref child; children)
             child.reflow(availableSpace);
     }
@@ -306,26 +302,16 @@ public:
             child.clearDirty();
     }
 
+    /// Mark this element dirty and all elements in the same position.
     final void setDirty() nothrow @nogc
     {
         setDirty(_position);
     }
 
+    /// Mark all elements in an area dirty.
     final void setDirty(box2i rect) nothrow @nogc
     {
-        box2i inter = _position.intersection(rect);
-
-        {
-            _dirtyRectMutex.lock();
-            scope(exit) _dirtyRectMutex.unlock();
-            assert(_dirtyRect.isSorted());
-            _dirtyRect = _dirtyRect.expand(inter);
-            assert(_dirtyRect.isSorted());
-            assert(_dirtyRect.empty() || _position.contains(_dirtyRect));
-        }
-
-        foreach(child; _children)
-            child.setDirty(rect); 
+        topLevelParent().setDirtyRecursive(rect);        
     }
 
     /// Returns: dirty area. Supposed to be empty or inside position.
@@ -338,9 +324,18 @@ public:
     }
 
     /// Returns: Parent element. `null` if detached or root element.
-    final UIElement parent()
+    final UIElement parent() pure nothrow @nogc
     {
         return _parent;
+    }
+
+    /// Returns: Top-level parent. `null` if detached or root element.
+    final UIElement topLevelParent() pure nothrow @nogc
+    {
+        if (_parent is null) 
+            return this;
+        else
+            return _parent.topLevelParent();
     }
 
     final bool isMouseOver() pure const nothrow
@@ -433,5 +428,24 @@ protected:
 private:
     UIContext _context;
 
-    bool _mouseOver = false;        
+    bool _mouseOver = false;
+
+    /// Sets an area dirty and all its children.
+    /// Because nothing is guaranteed about what will be drawn in the onDraw method, we have
+    /// no choice but to dirty the whole stack of elements in this rectangle.
+    final void setDirtyRecursive(box2i rect) nothrow @nogc
+    {
+        box2i inter = _position.intersection(rect);
+        {
+            _dirtyRectMutex.lock();
+            scope(exit) _dirtyRectMutex.unlock();
+            assert(_dirtyRect.isSorted());
+            _dirtyRect = _dirtyRect.expand(inter);
+            assert(_dirtyRect.isSorted());
+            assert(_dirtyRect.empty() || _position.contains(_dirtyRect));
+        }
+
+        foreach(child; _children)
+            child.setDirtyRecursive(rect); 
+    }
 }
