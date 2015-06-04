@@ -113,7 +113,7 @@ private:
 /// See_also: http://musicdsp.org/showArchiveComment.php?ArchiveID=244
 struct PinkNoise
 {
-    void init(double frequency, double samplerate) nothrow @nogc
+    void initialize() nothrow @nogc
     {
         _rng.seed(nogc_unpredictableSeed());
         contrib[] = 0;
@@ -122,7 +122,7 @@ struct PinkNoise
     }
 
     int[5] contrib; // stage contributions
-    short  accum;      // combined generators
+    int accum;      // combined generators
     Xorshift32 _rng;
 
     float next() nothrow @nogc
@@ -141,7 +141,7 @@ struct PinkNoise
                 break;
             }
         }
-        return (accum >> 16) / 32767.0f;
+        return accum / 32768.0f;
     }
 
 private:
