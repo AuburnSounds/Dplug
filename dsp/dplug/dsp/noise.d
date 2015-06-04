@@ -9,7 +9,7 @@ import gfm.math.simplerng;
 /// Generates white gaussian noise.
 struct WhiteNoise
 {
-public:    
+public:
     void initialize()
     {
         _rng.seed(unpredictableSeed());
@@ -40,7 +40,7 @@ public:
         _counter = 0;
     }
 
-    /// Return the next 
+    /// Return the next
     double next()
     {
         _counter += _increment;
@@ -105,3 +105,48 @@ private:
 
     Xorshift32 _rng;
 }
+
+/// Pink noise class using the autocorrelated generator method.
+/// Method proposed and described by Larry Trammell "the RidgeRat" --
+/// see http://home.earthlink.net/~ltrammell/tech/newpink.htm
+/// There are no restrictions.
+/// See_also: http://musicdsp.org/showArchiveComment.php?ArchiveID=244
+struct PinkNoise
+{
+    void init(double frequency, double samplerate) nothrow @nogc
+    {
+        _rng.seed(unpredictableSeed());
+        contrib[] = 0;
+        accum = 0;
+
+    }
+
+    int[5] contrib; // stage contributions
+    short  accum;      // combined generators
+    Xorshift32 _rng;
+
+    float next() nothrow @nogc
+    {
+        short int  randu = _rng.uniform(0, 32768);
+        short int  randv = _rng.uniform(-32768, 32768); // [-32768,32767]
+
+        // Structured block, at most one update is performed
+        for (int n = 0; n < 5; ++n)
+        {
+            if (randu < pPSUM[n])
+            {
+                accum -= contrib[n];
+                contrib[n] = randv * pA[n];
+                accum += contrib[n];
+                break;
+            }
+        }
+        return (accum >> 16) / 32767.0f;
+    }
+
+private:
+
+    static immutable int pA[5] = [ 14055, 12759, 10733, 12273, 15716 ];
+    static immutable int pPSUM[5] = [ 22347, 27917, 29523, 29942, 30007 ];
+}
+
