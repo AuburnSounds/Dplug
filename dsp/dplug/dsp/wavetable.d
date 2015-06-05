@@ -53,6 +53,14 @@ struct Wavetable
         generate(waveform);  // regenerate tables
     }
 
+    ~this()
+    {
+        _mipmapData.reallocBuffer(0);
+        _wholeBuffer.reallocBuffer(0);
+    }
+
+    @disable this(this);
+
     float lookupLinear(uint phaseIntPart, float phaseFractional, int level) nothrow @nogc
     {
         float* mipmap0 = mipmapData(level);
@@ -172,14 +180,6 @@ private:
             }
         }
     }
-
-    ~this()
-    {
-        _mipmapData.reallocBuffer(0);
-        _wholeBuffer.reallocBuffer(0);
-    }
-
-    @disable this(this);
 
     // fill all table with waveform
     void generate(WaveformType waveform) nothrow @nogc
