@@ -10,25 +10,32 @@ struct Delayline(T)
 public:
     
     /// Initialize the delay line. Can delay up to count samples.
-    void initialize(int count)
+    void initialize(int count) nothrow @nogc
     {
         _index = _indexMask;
         resize(count);
         fillWith(0);
     }
 
+    ~this() nothrow @nogc
+    {
+        _data.reallocBuffer(0);
+    }
+
+    @disable this(this);
+
     /// Resize the delay line. Can delay up to count samples.
-    void resize(int count)
+    void resize(int count) nothrow @nogc
     {
         if (count <= 0)
             assert(false);
 
         int toAllocate = nextPowerOf2(count);
-        _data.length = toAllocate;
+        _data.reallocBuffer(toAllocate);
         _indexMask = toAllocate - 1;
     }
 
-    void feed(T x)
+    void feed(T x) nothrow @nogc
     {
         _index = (_index + 1) & _indexMask;
         _data[_index] = x;
@@ -36,14 +43,14 @@ public:
 
     /// Samples the delay-line at integer points.
     /// Delay 0 = last entered sample with feed().
-    T sampleFull(int delay)
+    T sampleFull(int delay) nothrow @nogc
     {
         assert(delay >= 0);
         return _data[(_index - delay) & _indexMask];
     }
 
     /// Samples the delay-line with linear interpolation.
-    T sampleLinear(float delay)
+    T sampleLinear(float delay) nothrow @nogc
     {
         assert(delay > 0);
         float sampleLoc = (_index - delay) + 2 * _data.length;
@@ -56,7 +63,7 @@ public:
     }
 
     /// Samples the delay-line with a 3rd order polynomial.
-    T sampleHermite(float delay)
+    T sampleHermite(float delay) nothrow @nogc
     {
         assert(delay > 1);
         float sampleLoc = (_index - delay) + 2 * _data.length;
@@ -72,7 +79,7 @@ public:
         return hermite!float(fPart, xm1, x0, x1, x2);
     }
 
-    void fillWith(T value)
+    void fillWith(T value) nothrow @nogc
     {
         _data[] = value;
     }

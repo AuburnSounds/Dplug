@@ -24,7 +24,7 @@ template isIntegrator(I)
         derivative_t d;
         double t, dt;
         s = s + d * dt;
-        derivative_t delegate(state_t input) evaluate;
+        derivative_t delegate(state_t input) nothrow @nogc evaluate;
         state_t newState = integr.integrate(s, dt, evaluate);
     }()));
 }
@@ -35,7 +35,7 @@ struct ExplicitEuler(State)
     alias state_t = State;
     alias derivative_t = State;
 
-    State integrate(State current, double dt, derivative_t delegate(State input) evaluate)
+    State integrate(State current, double dt, scope derivative_t delegate(State input) nothrow @nogc evaluate) nothrow @nogc
     {
         return current + dt * integrate(current);
     }
@@ -47,7 +47,7 @@ struct RungeKutta2(State)
     alias state_t = State;
     alias derivative_t = State;
 
-    State integrate(State current, double dt, derivative_t delegate(State input) evaluate)
+    State integrate(State current, double dt, scope derivative_t delegate(State input) nothrow @nogc evaluate) nothrow @nogc
     {
         derivative_t a = evaluate(current);
         derivative_t b = evaluate(current + (dt * 0.5) * a);
@@ -63,7 +63,7 @@ struct RungeKutta4(State)
     alias state_t = State;
     alias derivative_t = State;
 
-    State integrate(State current, double dt, derivative_t delegate(State input) evaluate)
+    State integrate(State current, double dt, scope derivative_t delegate(State input) nothrow @nogc evaluate) nothrow @nogc
     {
         derivative_t a = evaluate(current);
         derivative_t b = evaluate(current + (dt * 0.5) * a);

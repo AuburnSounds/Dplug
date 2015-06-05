@@ -34,7 +34,7 @@ private:
         float[2] _lastPitchPeriodSecs; // two previous pitch period estimates (smoothed)
         int _numPulseUntilReady;
 
-        void initialize(double samplerate)
+        void initialize(double samplerate) nothrow @nogc
         {
             _currentPitchPeriodSecs = 0.007f; // 0.7 ms at start
             _lastPitchPeriodSecs[0] = 0.007f;
@@ -47,7 +47,7 @@ private:
             recomputePitchDependentParameters();
         }
 
-        void recomputePitchDependentParameters()
+        void recomputePitchDependentParameters() nothrow @nogc
         {
             float clampedPitchPeriod = _pitchPeriod;
             if (clampedPitchPeriod < 0.004f)
@@ -59,7 +59,7 @@ private:
             _blankTime = 0.4f * _currentPitchPeriodSecs;
         }
 
-        bool next(float pulse)
+        bool next(float pulse) nothrow @nogc
         {
             assert(pulse >= 0);
             _lastPulseTime += _invSamplerate;
@@ -123,7 +123,7 @@ private:
     public:
 
         // return approximate latency in samples
-    int initialize(double samplerate)
+    int initialize(double samplerate) nothrow @nogc
     {
         _last = 0;
         _lastPitchPeriodEstimateSecs = 0.007f;
@@ -164,7 +164,7 @@ private:
     /// Process next incoming sample. The input signal should be a mono-channel, monophonic signal.
     /// Returns: true if pitch and voicedness have been returned.
     ///          false in warm-up phase. Once warmed it won't return false again unless you call initialize() again.
-    bool next(float input, float* outPitchPeriodSecs, float* outVoicedness)
+    bool next(float input, float* outPitchPeriodSecs, float* outVoicedness) nothrow @nogc
     {
         // filter
         double dinput = input;

@@ -13,7 +13,7 @@ struct EnvelopeFollower(T)
 public:
 
     // typical frequency would be is 10-30hz
-    void initialize(double cutoffInHz, double samplerate)
+    void initialize(double cutoffInHz, double samplerate) nothrow @nogc
     {
         _coeff = lowpassFilterRBJ!double(cutoffInHz, samplerate);
         _delay0.clear();
@@ -21,7 +21,7 @@ public:
     }
 
     // takes on sample, return mean amplitude
-    T next(T x)
+    T next(T x) nothrow @nogc
     {
         T l = abs(x);
         l = _delay0.next(l, _coeff);
@@ -39,12 +39,12 @@ struct AttackReleaseFollower(T)
 {
 public:
 
-    void initialize(double samplerate, float timeAttack, float timeRelease)
+    void initialize(double samplerate, float timeAttack, float timeRelease) nothrow @nogc
     {
         _expSmoother.initialize(0, timeAttack, timeRelease, samplerate, T.epsilon);
     }
 
-    T next(T input)
+    T next(T input) nothrow @nogc
     {
         return _expSmoother.next(abs(input));
     }
@@ -59,12 +59,12 @@ private:
 struct AnalyticSignal(T)
 {
 public:
-    void initialize(T samplerate)
+    void initialize(T samplerate) nothrow @nogc
     {
         _hilbert.initialize(samplerate);
     }
 
-    T next(T input)
+    T next(T input) nothrow @nogc
     {
         T outSine, outCosine;
         _hilbert.next(input, &outCosine, &outSine);
@@ -93,7 +93,7 @@ private:
 struct HilbertTransformer(T)
 {
 public:
-    void initialize(double samplerate)
+    void initialize(double samplerate) nothrow @nogc
     {
         // pole values taken from Bernie Hutchins, "Musical Engineer's Handbook"
         static immutable double[12] poles =
@@ -117,7 +117,7 @@ public:
         }
     }
 
-    void next (T input, T* out1, T* out2)
+    void next (T input, T* out1, T* out2) nothrow @nogc
     {
         double yn1, yn2;
         double xn1 = input;
@@ -161,14 +161,16 @@ private:
 struct RMSEnvelope(T)
 {
 public:
-    void initialize(double samplerate)
-    {
-       // TODO
+    void initialize(double samplerate) nothrow @nogc
+    {        
+        // TODO
+        assert(false);        
     }
 
-    T next(T input)
+    T next(T input) nothrow @nogc
     {
         // TODO
+        assert(false);
     }
 
 private:

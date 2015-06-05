@@ -16,7 +16,7 @@ struct ExpSmoother(T)
 public:
     /// time: the time constant of the smoother.
     /// threshold: absolute difference below which we consider current value and target equal
-    void initialize(T initialValue, double timeAttack, double timeRelease, double samplerate, T threshold)
+    void initialize(T initialValue, double timeAttack, double timeRelease, double samplerate, T threshold) nothrow @nogc
     {
         assert(isFinite(initialValue));
         _target = _current = cast(T)(initialValue);
@@ -26,7 +26,7 @@ public:
     }
 
     /// To call if samplerate changed, while preserving the current value.
-    void setTimeParams(double timeAttack, double timeRelease, double samplerate)
+    void setTimeParams(double timeAttack, double timeRelease, double samplerate) nothrow @nogc
     {
         _expFactorAttack = cast(T)(expDecayFactor(timeAttack, samplerate));
         _expFactorRelease = cast(T)(expDecayFactor(timeRelease, samplerate));
@@ -36,7 +36,7 @@ public:
 
     /// Advance smoothing and return the next smoothed sample with respect
     /// to tau time and samplerate.
-    T next()
+    T next() nothrow @nogc
     {
         if (_done)
         {
@@ -67,14 +67,14 @@ public:
     }
 
     /// Set the target value and return the next sample.
-    T next(T x)
+    T next(T x) nothrow @nogc
     {
         go(x);
         return next();
     }
 
     /// Set a new target for the smoothed value.
-    void go(T newTarget)
+    void go(T newTarget) nothrow @nogc
     {
         assert(isFinite(newTarget));
         _target = newTarget;
@@ -101,14 +101,14 @@ public:
 
     /// Initialize the AbsSmoother.
     /// maxAbsDiff: maximum difference between filtered consecutive samples
-    void initialize(T initialValue, T maxAbsDiff)
+    void initialize(T initialValue, T maxAbsDiff) nothrow @nogc
     {
         assert(isFinite(initialValue));
         _current = initialValue;
         _maxAbsDiff = maxAbsDiff;
     }
 
-    T next(T input)
+    T next(T input) nothrow @nogc
     {
        T absDiff = abs(input - _current);
        if (absDiff <= _maxAbsDiff)
@@ -131,7 +131,7 @@ struct LinearSmoother(T)
 public:
 
     /// Initialize the LinearSmoother.
-    void initialize(T initialValue, double periodSecs, double sampleRate)
+    void initialize(T initialValue, double periodSecs, double sampleRate) nothrow @nogc
     {
         _target = initialValue;
         _current = initialValue;
@@ -144,21 +144,21 @@ public:
     }
 
     /// To call when samplerate changes, while preserving the current state.
-    void setSamplerate(double samplerate)
+    void setSamplerate(double samplerate) nothrow @nogc
     {
         _samplerateInv = 1 / samplerate;
         _current = _target;
     }
 
     /// Set a new target for the smoothed value.
-    void go(T newTarget)
+    void go(T newTarget) nothrow @nogc
     {
         _target = newTarget;
         _done = false;
     }
 
     /// Advance smoothing and return the next smoothed sample.
-    T next()
+    T next() nothrow @nogc
     {
         if (!_done)
         {
@@ -177,7 +177,7 @@ public:
     }
 
     /// Set the target value and return the next sample.
-    T next(T x)
+    T next(T x) nothrow @nogc
     {
         go(x);
         return next();
@@ -204,12 +204,12 @@ struct MedianFilter(T, int N)
 
 public:
 
-    void initialize()
+    void initialize() nothrow @nogc
     {
         _first = true;
     }
 
-    T next(T input)
+    T next(T input) nothrow @nogc
     {
         if (_first)
         {
@@ -246,7 +246,7 @@ struct MeanFilter(T)
 {
 public:
     /// Initialize mean filter with given number of samples.
-    void initialize(T initialValue, int samples, T maxExpectedValue)
+    void initialize(T initialValue, int samples, T maxExpectedValue) nothrow @nogc
     {
         _delay = new RingBuffer!long(samples);
 
@@ -263,7 +263,7 @@ public:
     }
 
     /// Initialize with with cutoff frequency and samplerate.
-    void initialize(T initialValue, double cutoffHz, double samplerate, T maxExpectedValue)
+    void initialize(T initialValue, double cutoffHz, double samplerate, T maxExpectedValue) nothrow @nogc
     {
         int nSamples = cast(int)(0.5 + samplerate / (2 * cutoffHz));
 
@@ -273,13 +273,13 @@ public:
         initialize(initialValue, nSamples, maxExpectedValue);
     }
 
-    int latency() const
+    int latency() const nothrow @nogc
     {
         return cast(int)(_delay.length());
     }
 
     // process next sample
-    T next(T x)
+    T next(T x) nothrow @nogc
     {
         // round to integer
         long input = cast(long)(cast(T)0.5 + x * _factor);
@@ -291,7 +291,7 @@ public:
 
 private:
 
-    long toIntDomain(T x)
+    long toIntDomain(T x) pure const nothrow @nogc
     {
         return cast(long)(cast(T)0.5 + x * _factor);
     }

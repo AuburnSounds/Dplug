@@ -12,7 +12,7 @@ import dplug.dsp.funcs;
 /// TODO: resync method
 struct SineGenerator(T)
 {
-    void initialize(T initPhase, T frequency, T samplerate)
+    void initialize(T initPhase, T frequency, T samplerate) nothrow @nogc
     {
         T w = frequency * 2 * PI / samplerate;
         _b1 = 2 * cos(w);
@@ -20,7 +20,7 @@ struct SineGenerator(T)
         _y2 = sin(initPhase - 2 * w);
     }
 
-    T next()
+    T next() nothrow @nogc
     {
         T y0 = _b1 * _y1 - _y2;
         _y2 = _y1;
@@ -47,13 +47,13 @@ enum WaveformType
 /// TODO: only integer phase
 struct Wavetable
 {
-    void initialize(int largestSize, WaveformType waveform)
+    void initialize(int largestSize, WaveformType waveform) nothrow @nogc
     {
         resize(largestSize);
         generate(waveform);  // regenerate tables
     }
 
-    float lookupLinear(uint phaseIntPart, float phaseFractional, int level)
+    float lookupLinear(uint phaseIntPart, float phaseFractional, int level) nothrow @nogc
     {
         float* mipmap0 = mipmapData(level);
         int mask = sizeOfMipmap(level) - 1;
@@ -62,7 +62,7 @@ struct Wavetable
         return a * (1 - phaseFractional) + phaseFractional * b;
     }
 
-    float lookupCatmullRom(uint phaseIntPart, float phaseFractional, int level)
+    float lookupCatmullRom(uint phaseIntPart, float phaseFractional, int level) nothrow @nogc
     {
         float* mipmap0 = mipmapData(level);
         int mask = sizeOfMipmap(level) - 1;
@@ -78,7 +78,7 @@ struct Wavetable
                         + (-p0 + 3 * p1 - 3 * p2 + p3) * t * t * t);
     }
 
-    float lookupCatmullRomMipmap(uint phaseIntPart, float phaseFractional, float phaseIncrementSamples)
+    float lookupCatmullRomMipmap(uint phaseIntPart, float phaseFractional, float phaseIncrementSamples) nothrow @nogc
     {
 
         float level = cast(float)log2(phaseIncrementSamples);
@@ -110,17 +110,17 @@ struct Wavetable
     }
 
     // mimaps levels range from 0 to numMipmaps() - 1
-    int numMipmaps() const
+    int numMipmaps() const nothrow @nogc
     {
         return _numTables;
     }
 
-    int sizeOfMipmap(int level) const
+    int sizeOfMipmap(int level) const nothrow @nogc
     {
         return _largestSize >> level;
     }
 
-    float* mipmapData(int level)
+    float* mipmapData(int level) nothrow @nogc
     {
         return _mipmapData[level];
     }
@@ -137,13 +137,13 @@ private:
     /// Defines the harmonic rolloff, critical to avoid aliasing around the last mipmap
     /// This is very arbitrary and ultimately power of two mipmaps are maybe not sufficient
     /// to have less aliasing.
-    double rolloffHarmonic(double normalizedFrequency) // between 0 and 1
+    static double rolloffHarmonic(double normalizedFrequency) pure nothrow @nogc // between 0 and 1
     {
         double cosF0 = cos(normalizedFrequency * PI);
         return cosF0 * cosF0;
     }
 
-    void resize(int largestSize)
+    void resize(int largestSize) nothrow @nogc
     {
         assert(isPowerOf2(largestSize));
 
@@ -159,11 +159,11 @@ private:
             _numTables += 1;
         }
             
-        _wholeBuffer.length = sizeNeeded;
+        _wholeBuffer.reallocBuffer(sizeNeeded);
 
         // fill table pointers
         {
-            _mipmapData.length = _numTables;
+            _mipmapData.reallocBuffer(_numTables);
             int cumulated = 0;
             for (int level = 0; level < _numTables; ++level)
             {
@@ -173,8 +173,16 @@ private:
         }
     }
 
+    ~this()
+    {
+        _mipmapData.reallocBuffer(0);
+        _wholeBuffer.reallocBuffer(0);
+    }
+
+    @disable this(this);
+
     // fill all table with waveform
-    void generate(WaveformType waveform)
+    void generate(WaveformType waveform) nothrow @nogc
     {
         for (int level = 0; level < _numTables; ++level)
         {
@@ -215,7 +223,7 @@ private:
 struct WavetableOsc
 {
 public:
-    void initialize(Wavetable* wavetable, double samplerate)
+    void initialize(Wavetable* wavetable, double samplerate) nothrow @nogc
     {
         _wavetable = wavetable;
         _samplerate = samplerate;
@@ -224,13 +232,13 @@ public:
     }
 
     /// Allows dirty resync
-    void resetPhase()
+    void resetPhase() nothrow @nogc
     {
         _phaseIntPart = 0;
         _phaseFractional = 0;
     }
 
-    float next(float frequency)
+    float next(float frequency) nothrow @nogc
     {
         float phaseIncrementSamples = cast(float)(2 * _wavetable.sizeOfMipmap(0) * frequency /  (_samplerate));
         assert(phaseIncrementSamples >= 0);
@@ -267,7 +275,7 @@ private:
 
 private:
 
-double getWaveHarmonicAmplitude(WaveformType waveform, int n)
+double getWaveHarmonicAmplitude(WaveformType waveform, int n) nothrow @nogc
 {
     assert(n > 0);
     final switch(waveform)

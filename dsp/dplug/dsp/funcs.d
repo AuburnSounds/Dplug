@@ -148,3 +148,23 @@ unittest
     double[] d = [4, 5, 6];
     computeRMS(d);
 }
+
+
+/// Use throughout dplug:dsp to avoid reliance on GC.
+/// This works like alignedRealloc except with slices as input.
+/// 
+/// Params:
+///    buffer Existing allocated buffer. Can be null. Input slice length is not considered.
+///    length desired slice length
+///
+void reallocBuffer(T)(ref T[] buffer, size_t length, int alignment = 16) nothrow @nogc
+{
+    import gfm.core.memory : alignedRealloc;
+
+    T* pointer = cast(T*) alignedRealloc(buffer.ptr, T.sizeof * length, alignment);
+    if (pointer is null)
+        buffer = null;
+    else
+        buffer = pointer[0..length];
+}
+

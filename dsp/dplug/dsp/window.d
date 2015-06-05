@@ -4,7 +4,7 @@ module dplug.dsp.window;
 import std.math,
        std.traits;
 
-import gfm.core.memory;
+import dplug.dsp.funcs;
 
 enum WindowType
 {
@@ -60,18 +60,18 @@ struct Window(T) if (isFloatingPoint!T)
     void initialize(WindowType type, int lengthInSamples) nothrow @nogc
     {
         _lengthInSamples = lengthInSamples;
-        generateWindow!T(type, _window[0..lengthInSamples]);
-        _window = cast(T*) alignedRealloc(_window, T.sizeof * lengthInSamples, 16);
+        generateWindow!T(type, _window);
+        _window.reallocBuffer(lengthInSamples);
     }
 
     ~this() nothrow @nogc
     {
-        _window = cast(T*) alignedRealloc(_window, 0, 16);
+        _window.reallocBuffer(0);
     }
 
- //   @disable this(this);
+    @disable this(this);
 
-    T* _window = null;
+    T[] _window = null;
     int _lengthInSamples;
     alias _window this;
 }

@@ -19,7 +19,7 @@ enum FFTDirection
 }
     
 /// Perform in-place FFT.
-void FFT(T)(Complex!T[] buffer, FFTDirection direction)
+void FFT(T)(Complex!T[] buffer, FFTDirection direction) nothrow @nogc
 {
     int size = cast(int)(buffer.length);
     assert(isPowerOf2(size));
@@ -100,7 +100,7 @@ struct Segmenter(T)
     /// To call at initialization and whenever samplerate changes.
     /// segmentSize = size of sound segments, expressed in samples.
     /// analysisPeriod = period of analysis results, allow to be more precise frequentially, expressed in samples.    
-    void initialize(int segmentSize, int analysisPeriod)
+    void initialize(int segmentSize, int analysisPeriod) nothrow @nogc
     {
         assert(analysisPeriod <= segmentSize); // no support for zero overlap
 
@@ -112,12 +112,20 @@ struct Segmenter(T)
         _analysisPeriod = analysisPeriod;
 
         // clear input delay
-        _buffer.length = _segmentSize;
+        _buffer.reallocBuffer(_segmentSize);
+        _buffer[] = 0;
         _index = 0;
     }
 
+    ~this()
+    {
+        _buffer.reallocBuffer(0);
+    }
+
+    @disable this(this);
+
     // Push one sample, eventually call the delegate to process a segment.
-    bool feed(T x, scope void delegate(T[] segment) processSegment = null)
+    bool feed(T x, scope void delegate(T[] segment) nothrow @nogc processSegment = null) nothrow @nogc
     {
         _buffer[_index] = x;
         _index = _index + 1;
@@ -145,7 +153,7 @@ struct Segmenter(T)
     }
 
     /// Returns: Internal buffer.
-    T[] buffer()
+    T[] buffer() nothrow @nogc
     {
         return _buffer;
     }
@@ -164,22 +172,34 @@ struct ShortTermReconstruction
 {
     /// maxSimultSegments is the maximum number of simulatneously summed samples.
     /// maxSegmentLength in samples
-    void initialize(int maxSimultSegments, int maxSegmentLength)
+    void initialize(int maxSimultSegments, int maxSegmentLength) nothrow @nogc
     {
         _maxSegmentLength = maxSegmentLength;
         _maxSimultSegments = maxSimultSegments;
-        _desc.length = maxSimultSegments;
+        _desc.reallocBuffer(maxSimultSegments);
         for (int i = 0; i < _maxSimultSegments; ++i)
         {
             _desc[i].playOffset = 0;
             _desc[i].length = 0;
-            _desc[i].buffer.length = maxSegmentLength;
-        }
+
+            _desc[i].buffer.reallocBuffer(maxSegmentLength);
+            //reallocBuffer(_desc[i].buffer, maxSegmentLength);
+        } //) 
     }
+
+    ~this() nothrow @nogc
+    {
+        if (_desc !is null)
+            for (int i = 0; i < _maxSimultSegments; ++i)
+                _desc[i].buffer.reallocBuffer(0);
+        _desc.reallocBuffer(0);
+    }
+
+    @disable this(this);
 
     // Copy segment to a free slot, and start its summing.
     // The first sample of this segment will be played at next() call.
-    void startSegment(float[] newSegment)
+    void startSegment(float[] newSegment) nothrow @nogc
     {
         assert(newSegment.length <= _maxSegmentLength);
         
@@ -199,7 +219,7 @@ struct ShortTermReconstruction
     }
 
     // Get next sample, update segment statuses.
-    float next()
+    float next() nothrow @nogc
     {
         float sum = 0;
         foreach(ref desc; _desc)
@@ -221,7 +241,7 @@ private:
         int length; // length in this segment
         float[] buffer; // 0..length => data for this segment
 
-        bool active() pure const nothrow
+        bool active() pure const nothrow @nogc
         {
             return playOffset < length;
         }
@@ -245,7 +265,7 @@ public:
     /// Basic overlap is achieved with windowSize = 2 * analysisPeriod
     /// if zeroPhaseWindowing = true, "zero phase" windowing is used
     /// (center of window is at first sample, zero-padding happen at center)
-    void initialize(int windowSize, int fftSize, int analysisPeriod, WindowType windowType, bool zeroPhaseWindowing, bool correctWindowLoss)
+    void initialize(int windowSize, int fftSize, int analysisPeriod, WindowType windowType, bool zeroPhaseWindowing, bool correctWindowLoss) nothrow @nogc
     {
         assert(isPowerOf2(fftSize));
         assert(fftSize >= windowSize);
@@ -260,14 +280,15 @@ public:
         _segmenter.initialize(windowSize, analysisPeriod);
     }
 
-    bool feed(float x, Complex!float[] fftData)
+    bool feed(float x, Complex!float[] fftData) nothrow @nogc
     {    
-        void processSegment(float[] segment)
+        void processSegment(float[] segment) nothrow @nogc
         {
             int windowSize = _windowSize;
             assert(segment.length == _windowSize);
 
-            fftData.length = _fftSize;
+            // TODO: this assume fftData was allocated with alignedAlloc, looks like a problem
+            fftData.reallocBuffer(_fftSize); 
 
             if (_zeroPhaseWindowing)
             {

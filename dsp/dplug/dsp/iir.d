@@ -27,7 +27,7 @@ public
         delay_t x;
         delay_t y;
 
-        void clear()
+        void clear() nothrow @nogc
         {
             for (int i = 0; i < order; ++i)
             {
@@ -38,7 +38,7 @@ public
 
         static if (order == 2)
         {
-            T next(T)(T input, const(coeff_t) coeff)
+            T next(T)(T input, const(coeff_t) coeff) nothrow @nogc
             {
                 T x1 = x[0],
                   x2 = x[1],
@@ -83,38 +83,38 @@ public
     // Cookbook formulae for audio EQ biquad filter coefficients
     // by Robert Bristow-Johnson 
 
-    BiquadCoeff!T lowpassFilterRBJ(T)(double frequency, double samplerate, double Q = SQRT1_2)
+    BiquadCoeff!T lowpassFilterRBJ(T)(double frequency, double samplerate, double Q = SQRT1_2) nothrow @nogc
     {
         return generateBiquad!T(BiquadType.LOW_PASS_FILTER, frequency, samplerate, 0, Q);
     }
 
-    BiquadCoeff!T highpassFilterRBJ(T)(double frequency, double samplerate, double Q = SQRT1_2)
+    BiquadCoeff!T highpassFilterRBJ(T)(double frequency, double samplerate, double Q = SQRT1_2) nothrow @nogc
     {
         return generateBiquad!T(BiquadType.HIGH_PASS_FILTER, frequency, samplerate, 0, Q);
     }
 
-    BiquadCoeff!T bandpassFilterRBJ(T)(double frequency, double samplerate, double Q = SQRT1_2)
+    BiquadCoeff!T bandpassFilterRBJ(T)(double frequency, double samplerate, double Q = SQRT1_2) nothrow @nogc
     {
         return generateBiquad!T(BiquadType.BAND_PASS_FILTER, frequency, samplerate, 0, Q);
     }
 
-    BiquadCoeff!T notchFilterRBJ(T)(double frequency, double samplerate, double Q = SQRT1_2)
+    BiquadCoeff!T notchFilterRBJ(T)(double frequency, double samplerate, double Q = SQRT1_2) nothrow @nogc
     {
         return generateBiquad!T(BiquadType.NOTCH_FILTER, frequency, samplerate, 0, Q);
     }
 
-    BiquadCoeff!T peakFilterRBJ(T)(double frequency, double samplerate, double gain, double Q = SQRT1_2)
+    BiquadCoeff!T peakFilterRBJ(T)(double frequency, double samplerate, double gain, double Q = SQRT1_2) nothrow @nogc
     {
         return generateBiquad!T(BiquadType.PEAK_FILTER, frequency, samplerate, gain, Q);
     }
 
     // Initialize with no-op filter
-    BiquadCoeff!T bypassFilter(T)()
+    BiquadCoeff!T bypassFilter(T)() nothrow @nogc
     {
         return BiquadCoeff!T(1, 0, 0, 0, 0);
     }
 
-    BiquadCoeff!T zeroFilter(T)()
+    BiquadCoeff!T zeroFilter(T)() nothrow @nogc
     {
         return BiquadCoeff!T(0, 0, 0, 0, 0);
     }
@@ -134,7 +134,7 @@ private
     }
 
     // generates RBJ biquad coefficients
-    BiquadCoeff!T generateBiquad(T)(BiquadType type, double frequency, double samplerate, double gaindB, double Q)
+    BiquadCoeff!T generateBiquad(T)(BiquadType type, double frequency, double samplerate, double gaindB, double Q) nothrow @nogc
     {
         // regardless of the output precision, always compute coefficients in double precision
 

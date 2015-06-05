@@ -18,7 +18,7 @@ import dplug.dsp.funcs,
 
 // sinc impulse functions
 
-void generateLowpassImpulse(T)(T[] output, double cutoff, double samplerate)
+void generateLowpassImpulse(T)(T[] output, double cutoff, double samplerate) nothrow @nogc
 {
     checkFilterParams(output.length, cutoff, samplerate);
     double cutoffNormalized = cutoff / samplerate;
@@ -36,7 +36,7 @@ void generateLowpassImpulse(T)(T[] output, double cutoff, double samplerate)
     normalizeImpulse(output);
 }
 
-void generateHighpassImpulse(T)(T[] output, double cutoff, double samplerate)
+void generateHighpassImpulse(T)(T[] output, double cutoff, double samplerate) nothrow @nogc
 {
     checkFilterParams(output.length, cutoff, samplerate);
     double cutoffNormalized = cutoff / samplerate;
@@ -54,7 +54,7 @@ void generateHighpassImpulse(T)(T[] output, double cutoff, double samplerate)
     normalizeImpulse(output);
 }
 
-void generateHilbertTransformer(T)(T[] outImpulse, WindowType window, double samplerate)
+void generateHilbertTransformer(T)(T[] outImpulse, WindowType window, double samplerate) nothrow @nogc
 {
     int size = cast(int)(outImpulse.length);
     assert(isOdd(size));
@@ -76,7 +76,7 @@ void generateHilbertTransformer(T)(T[] outImpulse, WindowType window, double sam
 
 /// Normalize impulse response.
 /// Scale to make sum = 1.
-void normalizeImpulse(T)(T[] inoutImpulse)
+void normalizeImpulse(T)(T[] inoutImpulse) nothrow @nogc
 {
     int size = cast(int)(inoutImpulse.length);
     double sum = 0;
@@ -93,14 +93,14 @@ void normalizeImpulse(T)(T[] inoutImpulse)
 /// Warning: allocates memory.
 /// See: http://www.kvraudio.com/forum/viewtopic.php?t=197881
 /// TODO: does it preserve amplitude?
-void minimumPhaseImpulse(T)(T[] inoutImpulse) // allocates
+void minimumPhaseImpulse(T)(T[] inoutImpulse) nothrow @nogc
 {
     int fftSize = cast(int)(nextPowerOf2(inoutImpulse.length));
     auto kernel = new Complex!T[fftSize];
     minimumPhaseImpulse(inoutImpulse, kernel[]);
 }
 
-void minimumPhaseImpulse(T)(T[] inoutImpulse,  Complex!T[] tempStorage) // alloc free version
+void minimumPhaseImpulse(T)(T[] inoutImpulse,  Complex!T[] tempStorage) nothrow @nogc // alloc free version
 {
     int size = cast(int)(inoutImpulse.length);
     alias size n;
@@ -143,14 +143,14 @@ void minimumPhaseImpulse(T)(T[] inoutImpulse,  Complex!T[] tempStorage) // alloc
         inoutImpulse[i] = kernel[i].re;
 }
 
-private Complex!T complexExp(T)(Complex!T z)
+private Complex!T complexExp(T)(Complex!T z) nothrow @nogc
 {
     T mag = exp(z.re);
     return Complex!T(mag * cos(z.re), mag * sin(z.im));
 }
 
 
-private static void checkFilterParams(size_t length, double cutoff, double sampleRate)
+private static void checkFilterParams(size_t length, double cutoff, double sampleRate) nothrow @nogc
 {
     assert((length & 1) == 0, "FIR impulse length must be odd");
     assert(cutoff * 2 < sampleRate, "2x the cutoff exceed sampling rate, Nyquist disapproving");
@@ -176,7 +176,7 @@ struct FIR(T)
     T[] impulse;
 
     /// Initializes the FIR filter. It's up to you to fill the impulse with something worthwhile.
-    void initialize(int sizeOfFilter, int sizeOfImpulse)
+    void initialize(int sizeOfFilter, int sizeOfImpulse) nothrow @nogc
     {
         delayline.initialize(sizeOfFilter);
         delayline.fillWith(0);
@@ -185,7 +185,7 @@ struct FIR(T)
     }
 
     /// Returns: Filtered input sample, naive convolution.
-    T next(T input)
+    T next(T input) nothrow @nogc
     {
         delayline.feed(input);
         int sum = 0;
