@@ -90,16 +90,8 @@ void normalizeImpulse(T)(T[] inoutImpulse) nothrow @nogc
 
 /// From an impulse, computes a minimum-phase impulse
 /// Courtesy of kasaudio, based on Aleksey Vaneev's algorithm
-/// Warning: allocates memory.
 /// See: http://www.kvraudio.com/forum/viewtopic.php?t=197881
 /// TODO: does it preserve amplitude?
-void minimumPhaseImpulse(T)(T[] inoutImpulse) nothrow @nogc
-{
-    int fftSize = cast(int)(nextPowerOf2(inoutImpulse.length));
-    auto kernel = new Complex!T[fftSize];
-    minimumPhaseImpulse(inoutImpulse, kernel[]);
-}
-
 void minimumPhaseImpulse(T)(T[] inoutImpulse,  Complex!T[] tempStorage) nothrow @nogc // alloc free version
 {
     int size = cast(int)(inoutImpulse.length);
@@ -111,7 +103,7 @@ void minimumPhaseImpulse(T)(T[] inoutImpulse,  Complex!T[] tempStorage) nothrow 
     if (tempStorage.length < fftSize)
         assert(false); // crash
 
-    auto kernel = new Complex!T[fftSize];
+    auto kernel = tempStorage;
 
     for (int i = 0; i < n; ++i)
         kernel[i] = inoutImpulse[i];
@@ -161,9 +153,13 @@ unittest
 {
     double[256] lp_impulse;
     double[256] hp_impulse;
+
     generateLowpassImpulse(lp_impulse[], 40.0, 44100.0);
     generateHighpassImpulse(hp_impulse[], 40.0, 44100.0);
-    minimumPhaseImpulse(lp_impulse[]);
+
+    int fftSize = cast(int)( nextPowerOf2(lp_impulse.length) );
+    Complex!double[] tempStorage = new Complex!double[fftSize];
+    minimumPhaseImpulse(lp_impulse[], tempStorage);
 
     generateHilbertTransformer(lp_impulse[0..$-1], WindowType.BLACKMANN, 44100.0);
 }
