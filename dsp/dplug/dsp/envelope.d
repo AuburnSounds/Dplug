@@ -7,7 +7,7 @@ import dplug.dsp.smooth;
 // Various envelope followers
 
 
-/// Simple envelope follower, estimate amplitude.
+/// Simple envelope follower, filters the envelope with 24db/oct lowpass.
 struct EnvelopeFollower(T)
 {
 public:
@@ -158,3 +158,21 @@ private:
     double[12] _ynm1;
 }
 
+struct RMSEnvelope(T)
+{
+public:
+    void initialize(double samplerate)
+    {
+       // TODO
+    }
+
+    T next(T input)
+    {
+        // TODO
+    }
+
+private:
+
+
+
+}
