@@ -4,6 +4,8 @@ module dplug.dsp.window;
 import std.math,
        std.traits;
 
+import gfm.core.memory;
+
 enum WindowType
 {
     RECT,
@@ -12,7 +14,7 @@ enum WindowType
     BLACKMANN,
 }
 
-void generateWindow(T)(WindowType type, T[] output)
+void generateWindow(T)(WindowType type, T[] output) pure nothrow @nogc
 {
     int N = cast(int)(output.length);
     for (int i = 0; i < N; ++i)
@@ -21,7 +23,7 @@ void generateWindow(T)(WindowType type, T[] output)
     }
 }
 
-double secondaryLobeAttenuationInDb(WindowType type)
+double secondaryLobeAttenuationInDb(WindowType type) pure nothrow @nogc
 {
     final switch(type)
     {
@@ -32,7 +34,7 @@ double secondaryLobeAttenuationInDb(WindowType type)
     }
 }
 
-double evalWindow(WindowType type, int n, int N)
+double evalWindow(WindowType type, int n, int N) pure nothrow @nogc
 {
     final switch(type)
     {
@@ -55,12 +57,21 @@ double evalWindow(WindowType type, int n, int N)
 
 struct Window(T) if (isFloatingPoint!T)
 {
-    void initialize(WindowType type, int lengthInSamples)
+    void initialize(WindowType type, int lengthInSamples) nothrow @nogc
     {
-        data.length = lengthInSamples;
-        generateWindow!T(type, data[]);
+        _lengthInSamples = lengthInSamples;
+        generateWindow!T(type, _window[0..lengthInSamples]);
+        _window = cast(T*) alignedRealloc(_window, T.sizeof * lengthInSamples, 16);
     }
 
-    T[] data;
-    alias data this;
+    ~this() nothrow @nogc
+    {
+        _window = cast(T*) alignedRealloc(_window, 0, 16);
+    }
+
+ //   @disable this(this);
+
+    T* _window = null;
+    int _lengthInSamples;
+    alias _window this;
 }
