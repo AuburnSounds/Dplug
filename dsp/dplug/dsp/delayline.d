@@ -12,6 +12,7 @@ public:
     /// Initialize the delay line. Can delay up to count samples.
     void initialize(int count) nothrow @nogc
     {
+        _count = count;
         _index = _indexMask;
         resize(count);
         fillWith(0);
@@ -27,18 +28,30 @@ public:
     /// Resize the delay line. Can delay up to count samples.
     void resize(int count) nothrow @nogc
     {
-        if (count <= 0)
+        if (count < 0)
             assert(false);
+
+        if (count == 0)
+            count = 1; // Support delay-line of length 0
 
         int toAllocate = nextPowerOf2(count);
         _data.reallocBuffer(toAllocate);
         _indexMask = toAllocate - 1;
     }
 
-    void feed(T x) nothrow @nogc
+    /// Combined feed + sampleFull.
+    /// Uses the delay line as a fixed delay of count samples.
+    T next(T incoming) nothrow @nogc
+    {
+        feed(incoming);
+        return sampleFull(_count);
+    }
+
+    /// Adds a new sample at end of delay.
+    void feed(T incoming) nothrow @nogc
     {
         _index = (_index + 1) & _indexMask;
-        _data[_index] = x;
+        _data[_index] = incoming;
     }
 
     /// Samples the delay-line at integer points.
@@ -88,4 +101,12 @@ private:
     T[] _data;
     int _index;
     int _indexMask;
+    int _count;
+}
+
+unittest
+{
+    Delayline!float line;
+    line.initialize(0); // should be possible
+    assert(line.next(1) == 1);
 }
