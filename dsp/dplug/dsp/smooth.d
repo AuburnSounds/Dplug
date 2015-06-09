@@ -1,6 +1,7 @@
 // See licenses/UNLICENSE.txt
 module dplug.dsp.smooth;
 
+import std.algorithm;
 import std.traits;
 import std.math;
 
@@ -209,7 +210,8 @@ public:
         _first = true;
     }
 
-    T next(T input) nothrow @nogc
+    // TODO: make it nothrow @nogc
+    T next(T input)
     {
         if (_first)
         {
@@ -223,7 +225,7 @@ public:
         for (int i = 0; i < N - 1; ++i)
             arr[i + 1] = _delay[i];
 
-        arr.sort; // sort in place
+        sort(arr[]); // sort in place
 
         T median = arr[N/2];
 
@@ -236,6 +238,11 @@ public:
 private:
     T[N - 1] _delay;
     bool _first;
+}
+
+unittest
+{
+    MedianFilter!(float, 3) medianfilter;
 }
 
 
