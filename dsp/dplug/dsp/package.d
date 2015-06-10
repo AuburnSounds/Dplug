@@ -11,7 +11,6 @@ public
            dplug.dsp.smooth,
            dplug.dsp.envelope,
            dplug.dsp.wavetable,
-           dplug.dsp.goldrabiner,
            dplug.dsp.fft,
            dplug.dsp.delayline,
            dplug.dsp.integrate;
