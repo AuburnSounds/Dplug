@@ -188,6 +188,7 @@ struct FIR(T)
     {
         _impulse.reallocBuffer(0);
         _tempBuffer.reallocBuffer(0);
+        _windowBuffer.reallocBuffer(0);
     }
 
     @disable this(this);
@@ -216,11 +217,22 @@ struct FIR(T)
         minimumPhaseImpulse(_impulse, _tempBuffer);
     }
 
+    void applyWindow(WindowType windowType) nothrow @nogc
+    {
+        _windowBuffer.reallocBuffer(_impulse.length);
+        generateWindow(windowType, _windowBuffer);
+        foreach(int i; 0.._impulse.length)
+        {
+            _impulse[i] *= _windowBuffer[i];
+        }
+    }
+
 private:
     T[] _impulse;
 
     Delayline!T _delayline;
-    Complex!double[] _tempBuffer;    
+    Complex!double[] _tempBuffer;
+    T[] _windowBuffer;
 }
 
 unittest
