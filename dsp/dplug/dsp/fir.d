@@ -179,7 +179,7 @@ struct FIR(T)
     {
         assert(sizeOfImpulse > 0);
         _delayline.initialize(sizeOfImpulse);
-        _delayline.fillWith(0);        
+        _delayline.fillWith(0);
         _impulse.reallocBuffer(sizeOfImpulse);
         _impulse[] = T.nan;
     }
@@ -221,7 +221,7 @@ struct FIR(T)
     {
         _windowBuffer.reallocBuffer(_impulse.length);
         generateWindow(windowType, _windowBuffer);
-        foreach(int i; 0.._impulse.length)
+        foreach(i; 0.._impulse.length)
         {
             _impulse[i] *= _windowBuffer[i];
         }
