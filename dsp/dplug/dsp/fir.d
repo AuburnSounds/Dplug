@@ -241,4 +241,5 @@ unittest
     fir.initialize(32);
     generateLowpassImpulse(fir.impulse(), 40.0, 44100.0);
     fir.makeMinimumPhase();
+    fir.applyWindow(WindowType.HANN);
 }
