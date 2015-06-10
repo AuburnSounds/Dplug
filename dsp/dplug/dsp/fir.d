@@ -88,16 +88,23 @@ void normalizeImpulse(T)(T[] inoutImpulse) nothrow @nogc
         inoutImpulse[i] = cast(T)(inoutImpulse[i] * invSum);
 }
 
+/// Returns: Length of temporary buffer needed for `minimumPhaseImpulse`.
+int tempBufferSizeForMinPhase(T)(T[] inputImpulse) nothrow @nogc
+{
+    return cast(int)( nextPowerOf2(inputImpulse.length) );
+}
+
 /// From an impulse, computes a minimum-phase impulse
 /// Courtesy of kasaudio, based on Aleksey Vaneev's algorithm
 /// See: http://www.kvraudio.com/forum/viewtopic.php?t=197881
 /// TODO: does it preserve amplitude?
 void minimumPhaseImpulse(T)(T[] inoutImpulse,  Complex!T[] tempStorage) nothrow @nogc // alloc free version
 {
-    int size = cast(int)(inoutImpulse.length);
-    alias size n;
+    assert(tempStorage.length >= tempBufferSizeForMinPhase(inoutImpulse));
+
+    int N = cast(int)(inoutImpulse.length);
     int fftSize = cast(int)( nextPowerOf2(inoutImpulse.length) );
-    assert(fftSize >= n);
+    assert(fftSize >= N);
     int halfFFTSize = fftSize / 2;
 
     if (tempStorage.length < fftSize)
@@ -105,10 +112,10 @@ void minimumPhaseImpulse(T)(T[] inoutImpulse,  Complex!T[] tempStorage) nothrow 
 
     auto kernel = tempStorage;
 
-    for (int i = 0; i < n; ++i)
+    for (int i = 0; i < N; ++i)
         kernel[i] = inoutImpulse[i];
 
-    for (int i = n; i < fftSize; ++i)
+    for (int i = N; i < fftSize; ++i)
         kernel[i] = 0;
 
     FFT!T(kernel[], FFTDirection.FORWARD);
@@ -131,7 +138,7 @@ void minimumPhaseImpulse(T)(T[] inoutImpulse,  Complex!T[] tempStorage) nothrow 
 
     FFT!T(kernel[], FFTDirection.REVERSE);
 
-    for (int i = 0; i < size; ++i)
+    for (int i = 0; i < N; ++i)
         inoutImpulse[i] = kernel[i].re;
 }
 
@@ -144,7 +151,7 @@ private Complex!T complexExp(T)(Complex!T z) nothrow @nogc
 
 private static void checkFilterParams(size_t length, double cutoff, double sampleRate) nothrow @nogc
 {
-    assert((length & 1) == 0, "FIR impulse length must be odd");
+    assert((length & 1) == 0, "FIR impulse length must be even");
     assert(cutoff * 2 < sampleRate, "2x the cutoff exceed sampling rate, Nyquist disapproving");
 }
 
@@ -157,8 +164,7 @@ unittest
     generateLowpassImpulse(lp_impulse[], 40.0, 44100.0);
     generateHighpassImpulse(hp_impulse[], 40.0, 44100.0);
 
-    int fftSize = cast(int)( nextPowerOf2(lp_impulse.length) );
-    Complex!double[] tempStorage = new Complex!double[fftSize];
+    Complex!double[] tempStorage = new Complex!double[tempBufferSizeForMinPhase(lp_impulse[])];
     minimumPhaseImpulse(lp_impulse[], tempStorage);
 
     generateHilbertTransformer(lp_impulse[0..$-1], WindowType.BLACKMANN, 44100.0);
@@ -168,25 +174,59 @@ unittest
 // Composed of a delay-line, and an inpulse.
 struct FIR(T)
 {
-    Delayline!T delayline;
-    T[] impulse;
-
     /// Initializes the FIR filter. It's up to you to fill the impulse with something worthwhile.
-    void initialize(int sizeOfFilter, int sizeOfImpulse) nothrow @nogc
+    void initialize(int sizeOfImpulse) nothrow @nogc
     {
-        delayline.initialize(sizeOfFilter);
-        delayline.fillWith(0);
-        impulse[] = T.nan;
-        impulse.length = sizeOfImpulse;
+        assert(sizeOfImpulse > 0);
+        _delayline.initialize(sizeOfImpulse);
+        _delayline.fillWith(0);        
+        _impulse.reallocBuffer(sizeOfImpulse);
+        _impulse[] = T.nan;
     }
+
+    ~this() nothrow @nogc
+    {
+        _impulse.reallocBuffer(0);
+        _tempBuffer.reallocBuffer(0);
+    }
+
+    @disable this(this);
 
     /// Returns: Filtered input sample, naive convolution.
     T next(T input) nothrow @nogc
     {
-        delayline.feed(input);
-        int sum = 0;
-        for (int i = 0; i < cast(int)impulse.length; ++i)
-            sum += impulse[i] * delayline.sampleFull(i);
+        _delayline.feed(input);
+        T sum = 0;
+        int N = cast(int)impulse.length;
+        for (int i = 0; i < N; ++i)
+            sum += _impulse.ptr[i] * _delayline.sampleFull(i);
         return sum;
     }
+
+    /// Returns: Impulse response. If you write it, you can call makeMinimumPhase() next.
+    inout(T)[] impulse() inout nothrow @nogc
+    {
+        return _impulse;
+    }
+
+    void makeMinimumPhase() nothrow @nogc
+    {
+        int sizeOfTemp = tempBufferSizeForMinPhase(_impulse);
+        _tempBuffer.reallocBuffer(sizeOfTemp);
+        minimumPhaseImpulse(_impulse, _tempBuffer);
+    }
+
+private:
+    T[] _impulse;
+
+    Delayline!T _delayline;
+    Complex!double[] _tempBuffer;    
+}
+
+unittest
+{
+    FIR!double fir;
+    fir.initialize(32);
+    generateLowpassImpulse(fir.impulse(), 40.0, 44100.0);
+    fir.makeMinimumPhase();
 }
