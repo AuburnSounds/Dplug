@@ -89,8 +89,8 @@ void horizontalSlope(V, COLOR)(auto ref V v, box2i rect, COLOR c0, COLOR c1)
     int y1 = rect.max.y;
     foreach (px; x0..x1)
     { 
-        ubyte alpha = cast(ubyte)( 0.5f + (px - x0) / cast(float)(x1 - x0) );  // Not being generic here
-        COLOR c = COLOR.op!q{.blend(a, b, c)}(c0, c1, alpha);
+        ubyte alpha = cast(ubyte)( 0.5f + 255.0f * (px - x0) / cast(float)(x1 - x0) );  // Not being generic here
+        COLOR c = COLOR.op!q{.blend(a, b, c)}(c1, c0, alpha); // warning .blend is confusing, c1 comes first
         vline(v, px, y0, y1, c);
     }
 }
@@ -104,8 +104,8 @@ if (isWritableView!V && is(COLOR : ViewColor!V))
     int y1 = rect.max.y;
     foreach (py; y0..y1)
     { 
-        ubyte alpha = cast(ubyte)( 0.5f + (py - y0) / cast(float)(y1 - y0) );  // Not being generic here
-        COLOR c = COLOR.op!q{.blend(a, b, c)}(c0, c1, alpha);
+        ubyte alpha = cast(ubyte)( 0.5f + 255.0f * (py - y0) / cast(float)(y1 - y0) );  // Not being generic here
+        COLOR c = COLOR.op!q{.blend(a, b, c)}(c1, c0, alpha); // warning .blend is confusing, c1 comes first
         hline(v, x0, x1, py, c);
     }
 }

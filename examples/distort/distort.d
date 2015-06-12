@@ -145,7 +145,7 @@ class DistortGUI : GUIGraphics
         x += w + margin;
         outputKnob.position = box2i(x, y, x + w, y + h);
 
-        onOffSwitch.position = box2i(50 + 60, _position.height - 100, 50 + 60 + 40, _position.height - 60);
+        onOffSwitch.position = box2i(90, _position.height - 80, 115, _position.height - 40);
 
         setDirty(); // mark the whole UI dirty
     }

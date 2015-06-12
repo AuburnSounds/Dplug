@@ -23,32 +23,47 @@ public:
 
     override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap, box2i dirtyRect)
     {
-        bool isOn = _param.value();
-
-
-        int emissive = isOn ? 192 : 0;
-        if (isMouseOver || isDragged)
-            emissive += 63;
-
-        emissive = 0;
-
-        auto diffuseColor = RGBA(255, 0, 0, cast(ubyte)emissive);
-
-        auto croppedDiffuse = diffuseMap.crop(dirtyRect);
+        // dig a hole
+        RGBA bgDepth = RGBA(0, 200, 0, 0);
         auto croppedDepth = depthMap.crop(dirtyRect);
+        croppedDepth.fill(bgDepth);
 
+        // The switch is in a subrect
+
+        int width = _position.width;
+        int height = _position.height;
+        float border = 0.1f;
+        box2i switchRect = 
+            box2i ( cast(int)(0.5f + width * border),
+                    cast(int)(0.5f + height * border),
+                    cast(int)(0.5f + width * (1-border)),
+                    cast(int)(0.5f + height * (1-border)) );
+        
+
+        bool isOn = _param.value();
+        int emissive = isOn ? 170 : 64;
+        if (isMouseOver || isDragged)
+            emissive += 50;
+        ubyte red = 160;
+        ubyte green = 64;
+        ubyte blue = 64;
+        auto diffuseColor = RGBA(red, green, blue, cast(ubyte)emissive);
+
+        auto croppedDiffuse = diffuseMap.crop(switchRect);        
         croppedDiffuse.fill(diffuseColor);
 
-        RGBA colorLow = RGBA(0, 0, 0, 255);
-        RGBA colorHigh = RGBA(255, 0, 0, 255);
-
-        box2i rect = box2i(0, 0, _position.width, _position.height);
+        ubyte shininess = 100;
+        RGBA colorLow = RGBA(0, shininess, 0, 0);
+        RGBA colorHigh = RGBA(120, shininess, 0, 0);        
 
         if (isOn)
-            verticalSlope(depthMap, rect, colorLow, colorHigh);
+        {
+            verticalSlope(depthMap, switchRect, colorLow, colorHigh);
+        }
         else
-            verticalSlope(depthMap, rect, colorHigh, colorLow);
-
+        {
+            verticalSlope(depthMap, switchRect, colorHigh, colorLow);
+        }
     }
 
     override bool onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
