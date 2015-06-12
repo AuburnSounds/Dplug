@@ -130,9 +130,9 @@ interface IParameterListener
 class BoolParameter : Parameter
 {
 public:
-    this(Client client, int index, string name, bool defaultValue = false)
+    this(Client client, int index, string name, string label, bool defaultValue)
     {
-        super(client, index, name, "");
+        super(client, index, name, label);
         _value = defaultValue;
         _defaultValue = defaultValue;
     }
@@ -171,6 +171,35 @@ public:
             snprintf(buffer, numBytes, "true");
         else
             snprintf(buffer, numBytes, "false");
+    }
+
+    void setFromGUI(bool value)
+    {
+        _valueMutex.lock();
+        _value = value;        
+        _valueMutex.unlock();
+
+        // Important
+        // There is a race here on _value, because spinlocks aren't reentrant we had to move this line
+        // out of the mutex.
+        // That said, the potential for harm seems reduced (receiving a setParameter between _value assignment and getNormalized).
+
+        float normalized = getNormalized();
+
+        _client.hostCommand().paramAutomate(_index, normalized);
+        notifyListeners();
+    }
+
+    bool value() nothrow @nogc 
+    {
+        _valueMutex.lock();
+        scope(exit) _valueMutex.unlock();
+        return _value;
+    }
+
+    bool defaultValue() pure const nothrow @nogc
+    {
+        return _defaultValue;
     }
 
 private:

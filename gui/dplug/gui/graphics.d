@@ -12,6 +12,12 @@ import dplug.gui.boxlist;
 import dplug.gui.toolkit.context;
 import dplug.gui.toolkit.element;
 
+/// In the whole package:
+/// The diffuse maps contains:
+///   RGBA = red/green/blue/emissiveness
+/// The depth maps contains:
+///   RGBA = depth / shininess
+
 // A GUIGraphics is the interface between a plugin client and a IWindow.
 // It is also an UIElement and the root element of the plugin UI hierarchy.
 // You have to derive it to have a GUI.

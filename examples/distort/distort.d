@@ -36,6 +36,7 @@ final class Distort : dplug.plugin.Client
         addParameter(new FloatParameter(this, 0, "input", "db", 0.0f, 2.0f, 1.0f));
         addParameter(new FloatParameter(this, 1, "drive", "%", 1.0f, 2.0f, 1.0f));
         addParameter(new FloatParameter(this, 2, "output", "db", 0.0f, 1.0f, 0.9f));
+        addParameter(new BoolParameter(this, 3, "on/off", "", true));
     }
 
     // This override is optional, the default implementation will 
@@ -43,8 +44,8 @@ final class Distort : dplug.plugin.Client
     override void buildPresets()
     {
         presetBank.addPreset(makeDefaultPreset());
-        presetBank.addPreset(new Preset("Silence", [0.0f, 0.0f, 0.0f]));
-        presetBank.addPreset(new Preset("Full-on", [1.0f, 1.0f, 0.4f]));
+        presetBank.addPreset(new Preset("Silence", [0.0f, 0.0f, 0.0f, 1.0f]));
+        presetBank.addPreset(new Preset("Full-on", [1.0f, 1.0f, 0.4f, 1.0f]));
     }
 
     override void buildLegalIO()
@@ -71,13 +72,26 @@ final class Distort : dplug.plugin.Client
         float drive = (cast(FloatParameter)param(1)).value();
         float outputGain = (cast(FloatParameter)param(2)).value();
 
-        for (int chan = 0; chan < minChan; ++chan)
-            for (int f = 0; f < frames; ++f)
+        bool enabled = (cast(BoolParameter)param(3)).value();
+
+        if (enabled)
+        {
+            for (int chan = 0; chan < minChan; ++chan)
             {
-                double input = inputGain * 2.0 * inputs[chan][f];
-                double distorted = tanh(input * drive) / drive;
-                outputs[chan][f] = outputGain * distorted;
+                for (int f = 0; f < frames; ++f)
+                {
+                    double input = inputGain * 2.0 * inputs[chan][f];
+                    double distorted = tanh(input * drive) / drive;
+                    outputs[chan][f] = outputGain * distorted;
+                }
             }
+        }
+        else
+        {
+            // Bypass mode
+            for (int chan = 0; chan < minChan; ++chan)
+                outputs[chan][0..frames] = inputs[chan][0..frames];
+        } 
 
         // fill with zero the remaining channels
         for (int chan = minChan; chan < numOutputs; ++chan)
@@ -93,6 +107,7 @@ class DistortGUI : GUIGraphics
     UIKnob inputKnob;
     UIKnob driveKnob;
     UIKnob outputKnob;
+    UIOnOffSwitch onOffSwitch;
 
     Font _font;
 
@@ -108,6 +123,7 @@ class DistortGUI : GUIGraphics
         addChild(inputKnob = new UIKnob(context(), cast(FloatParameter) _client.param(0)));
         addChild(driveKnob = new UIKnob(context(), cast(FloatParameter) _client.param(1)));
         addChild(outputKnob = new UIKnob(context(), cast(FloatParameter) _client.param(2)));
+        addChild(onOffSwitch = new UIOnOffSwitch(context(), cast(BoolParameter) _client.param(3)));
     }
 
     override void reflow(box2i availableSpace)
@@ -128,6 +144,8 @@ class DistortGUI : GUIGraphics
         driveKnob.position = box2i(x - 10, y, x + w + 10, y + h + 20);
         x += w + margin;
         outputKnob.position = box2i(x, y, x + w, y + h);
+
+        onOffSwitch.position = box2i(50 + 60, _position.height - 100, 50 + 60 + 40, _position.height - 60);
 
         setDirty(); // mark the whole UI dirty
     }

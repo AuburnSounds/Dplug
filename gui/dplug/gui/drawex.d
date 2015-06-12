@@ -78,3 +78,34 @@ if (isWritableView!V && is(COLOR : ViewColor!V))
 		}
     }
 }
+
+/// Fill rectangle while interpolating a color horiontally
+void horizontalSlope(V, COLOR)(auto ref V v, box2i rect, COLOR c0, COLOR c1)
+    if (isWritableView!V && is(COLOR : ViewColor!V))
+{
+    int x0 = rect.min.x;
+    int y0 = rect.min.y;
+    int x1 = rect.max.x;
+    int y1 = rect.max.y;
+    foreach (px; x0..x1)
+    { 
+        ubyte alpha = cast(ubyte)( 0.5f + (px - x0) / cast(float)(x1 - x0) );  // Not being generic here
+        COLOR c = COLOR.op!q{.blend(a, b, c)}(c0, c1, alpha);
+        vline(v, px, y0, y1, c);
+    }
+}
+
+void verticalSlope(V, COLOR)(auto ref V v, box2i rect, COLOR c0, COLOR c1)
+if (isWritableView!V && is(COLOR : ViewColor!V))
+{
+    int x0 = rect.min.x;
+    int y0 = rect.min.y;
+    int x1 = rect.max.x;
+    int y1 = rect.max.y;
+    foreach (py; y0..y1)
+    { 
+        ubyte alpha = cast(ubyte)( 0.5f + (py - y0) / cast(float)(y1 - y0) );  // Not being generic here
+        COLOR c = COLOR.op!q{.blend(a, b, c)}(c0, c1, alpha);
+        hline(v, x0, x1, py, c);
+    }
+}
