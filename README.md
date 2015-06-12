@@ -11,30 +11,31 @@ Additionally it comes with music DSP algorithms that might be useful for your ne
 
 ## Contents
 
-### plugin/
-  * **client.d.d** client plugin interface, used by client wrappers.
-  * **dllmain.d** shared library entry point.
-  * **spinlock.d** spinlock, spinlock protected value, spinlock protected queue.
-  * **daw.d** known plugin hosts.
+### dplug:plugin
+  * Abstract plugin client interface. Currently implemented once for VST
 
-### vst/
-  * **aeffect.d** VST SDK translation of aeffect.h.
-  * **aeffectx.d** VST SDK translation of aeffectx.h.
-  * **vstfxstore.d** VST SDK translation of vstfxstore.h.
-  * **client.d** VST plugin client.
+### dplug:vst
+  * VST SDK D bindings
+  * VST plugin client
 
-### dsp/
-  * **funcs.d** useful audio DSP functions.
-  * **fft.d** FFT and short term FFT analyzer with tunable overlap and zero-phase windowing.
-  * **fir.d** dealing with impulses.
-  * **wavetable.d** basic anti-aliased waveform generation through mipmapped wavetables.
-  * **iir.d** biquad filters.
-  * **noise.d** white noise, demo noise, 1D perlin noise.
-  * **smooth.d** different kinds of smoothers, including non-linear ones.
-  * **envelope.d** power and amplitude estimators.
-  * **window.d** typical windowing functions.
-  * **goldrabiner.d** low-latency speech pitch estimation.
-  * **delayline.d** interpolated delay-line.
+### dplug:dsp
+  * The basics for audio signal processing:
+    - FFT and windowing function (include STFT with tunable overlap and zero-phase windowing)
+    - FIR and IIR biquads
+    - mipmapped wavetables
+    - noise generation
+    - various kinds of smoothers and envelopes
+    - delay-line
+
+### dplug:gui
+   * For plugins that have an UI.
+   * Toolkit including common widgets
+   * Deferred renderer for real-time procedural UI (lazy updates)
+
+### Examples
+   * An example distortion VST plugin
+   * A program that resample x2 through FFT padding
+
 
 ## Licenses
 
