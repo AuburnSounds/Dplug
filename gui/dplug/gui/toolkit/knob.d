@@ -68,13 +68,20 @@ public:
 
         float a1 = PI * 3/4;
         float a2 = a1 + PI * 1.5f * normalizedValue;
-        RGBA trailColor = (isMouseOver() || isDragged()) ? RGBA(160, 64, 64, 192) : RGBA(160, 64, 64, 64);
+        float a3 = a1 + PI * 1.5f;
 
 
-        diffuseMap.aaFillSector(cast(int)centerx, cast(int)centery, radius * 0.83, radius * 0.97, a1, a2, trailColor);
+        RGBA trailColorLit = RGBA(230, 80, 43, 128);
+        RGBA trailColorUnlit = RGBA(150, 40, 20, 16);
+
+        diffuseMap.aaFillSector(cast(int)centerx, cast(int)centery, radius * 0.83f, radius * 0.97f, a1, a2, trailColorLit);
+        diffuseMap.aaFillSector(cast(int)centerx, cast(int)centery, radius * 0.83f, radius * 0.97f, a2, a3, trailColorUnlit);
 
 
         depthMap.aaFillSector(cast(int)centerx, cast(int)centery, radius * 0.8f, radius * 1.0, PI * 3/4 - 0.04f, PI * 9/4 + 0.04f, RGBA(30, 0, 0, 0));
+
+
+//        depthMap.crop(deeperHole).fill(RGBA(0, 64, 0, 0));
 
 
         //

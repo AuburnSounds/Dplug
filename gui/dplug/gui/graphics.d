@@ -365,6 +365,7 @@ protected:
                     }
 
                     // specular reflection
+                    if (shininess != 0)
                     {
                         vec3f lightReflect = reflect(light2Dir, normal);
                         float specularFactor = dot(toEye, lightReflect);
@@ -377,6 +378,7 @@ protected:
                     }
 
                     // skybox reflection (use the same shininess as specular)
+                    if (shininess != 0)
                     {
                         vec3f pureReflection = reflect(toEye, normal);
 

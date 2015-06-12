@@ -104,9 +104,9 @@ class DistortGUI : GUIGraphics
     public:
     Distort _client;
 
-    UIKnob inputKnob;
+    UISlider inputSlider;
     UIKnob driveKnob;
-    UIKnob outputKnob;
+    UISlider outputSlider;
     UIOnOffSwitch onOffSwitch;
 
     Font _font;
@@ -120,9 +120,9 @@ class DistortGUI : GUIGraphics
         _font = new Font(cast(ubyte[])( import("VeraBd.ttf") ));
         context.setSkybox( loadImage(cast(ubyte[])(import("skybox.png"))) );
 
-        addChild(inputKnob = new UIKnob(context(), cast(FloatParameter) _client.param(0)));
+        addChild(inputSlider = new UISlider(context(), cast(FloatParameter) _client.param(0)));
         addChild(driveKnob = new UIKnob(context(), cast(FloatParameter) _client.param(1)));
-        addChild(outputKnob = new UIKnob(context(), cast(FloatParameter) _client.param(2)));
+        addChild(outputSlider = new UISlider(context(), cast(FloatParameter) _client.param(2)));
         addChild(onOffSwitch = new UIOnOffSwitch(context(), cast(BoolParameter) _client.param(3)));
     }
 
@@ -134,18 +134,12 @@ class DistortGUI : GUIGraphics
         // put a layout algorithm here and implement reflow (ie. pass the right availableSpace
         // to children). But for simplicity purpose and for the sake of fixed size UI, forcing
         // positions is completely acceptable.
-        int x = 100;
-        int y = 100;
-        int w = 100;
-        int h = 100;
-        int margin = 60;
-        inputKnob.position = box2i(x, y, x + w, y + h);
-        x += w + margin;
-        driveKnob.position = box2i(x - 10, y, x + w + 10, y + h + 20);
-        x += w + margin;
-        outputKnob.position = box2i(x, y, x + w, y + h);
+        inputSlider.position = box2i(135, 100, 165, 230).translate(vec2i(60, 0));
+        driveKnob.position = box2i(250, 105, 250 + 120, 105 + 120).translate(vec2i(30, 0));
+        outputSlider.position = box2i(455, 100, 485, 230);
+        
 
-        onOffSwitch.position = box2i(90, _position.height - 80, 115, _position.height - 40);
+        onOffSwitch.position = box2i(110, 145, 140, 185);
 
         setDirty(); // mark the whole UI dirty
     }
@@ -163,12 +157,16 @@ class DistortGUI : GUIGraphics
         // fill with clear depth + shininess
         croppedDepth.fill(RGBA(58, 64, 0, 0));
 
-        _font.size = 20;
+        _font.size = 19;
         _font.color = RGBA(0, 0, 0, 0);
 
-        diffuseMap.fillText(_font, "Input", 150, 70);
-        diffuseMap.fillText(_font, "Drive", 310, 70);
+        diffuseMap.fillText(_font, "Input", 210, 70);
+        diffuseMap.fillText(_font, "Drive", 340, 70);
         diffuseMap.fillText(_font, "Output", 470, 70);
+
+        _font.size = 14;
+        diffuseMap.fillText(_font, "ON", 125, 123);
+        diffuseMap.fillText(_font, "OFF", 125, 210);
 
         // Decorations
         auto hole = RGBA(32, 32, 0, 0);

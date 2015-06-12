@@ -111,6 +111,11 @@ struct Mipmap
 
         static RGBA premultiply(RGBA color)
         {
+            if (color.a == 0)
+            {
+                return RGBA(0, 0, 0, 0);
+            }
+
             return RGBA( (color.r * color.a + 128) >> 8, (color.g * color.a + 128) >> 8, (color.b * color.a + 128) >> 8, color.a );
         }
 

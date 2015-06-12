@@ -41,12 +41,13 @@ public:
         
 
         bool isOn = _param.value();
-        int emissive = isOn ? 170 : 64;
+        int emissive = isOn ? 128 : 0;
         if (isMouseOver || isDragged)
             emissive += 50;
-        ubyte red = 160;
-        ubyte green = 64;
-        ubyte blue = 64;
+        ubyte red = 230;
+        ubyte green = 80;
+        ubyte blue = 43;
+
         auto diffuseColor = RGBA(red, green, blue, cast(ubyte)emissive);
 
         auto croppedDiffuse = diffuseMap.crop(switchRect);        

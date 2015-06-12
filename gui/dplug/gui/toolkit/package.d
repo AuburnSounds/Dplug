@@ -10,6 +10,7 @@ public import dplug.gui.toolkit.knob;
 public import dplug.gui.toolkit.label;
 public import dplug.gui.toolkit.panel;
 public import dplug.gui.toolkit.onoffswitch;
+public import dplug.gui.toolkit.slider;
 
 
 
