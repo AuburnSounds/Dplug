@@ -39,27 +39,29 @@ Additionally it comes with music DSP algorithms that might be useful for your ne
 
 ## Licenses
 
-dplug has 3 different licenses depending on the part you need.
+dplug has three different licenses depending on the part you need. 
+If making an audio plugin, you would typically need all three.
 
-### Plugin wrapper
+### dplug:plugin
 
 Plugin wrapping is heavily inspired by the IPlug library (best represented here: https://github.com/olilarkin/wdl-ol).
 Files in the plugin/ folder falls under the Cockos WDL license.
-So before you wrap audio plugins with dplug, you need to agree with https://github.com/p0nce/dplug/licenses/WDL_license.txt
+So before you wrap audio plugins with dplug, you need to agree with the following license: 
+https://github.com/p0nce/dplug/blob/master/licenses/WDL_license.txt
 
-### VST interface
+### dplug:vst
 
-Files in the vst/ folder falls under the Steinberg VST license.
+This sub-package falls under the Steinberg VST license.
 
 VST is a trademark of Steinberg Media Technologies GmbH.
 Please register the SDK via the 3rd party developper license on Steinberg site.
 
-Before you make VST plugins with dplug, you need to read and agree with the license for the original SDK by Steinberg.
-A copy is available here: http://www.gersic.com/vstsdk/html/plug/intro.html#licence
+Before you make VST plugins with dplug, you need to read and agree with the license for the VST3 SDK by Steinberg.
 If you don't agree with the license, don't make plugins with dplug.
+Find the VST3 SDK there: http://www.steinberg.net/en/company/developers.html
 
-### Audio DSP algorithms
+### dplug:gui, dplug:dsp
 
-Files in the dsp/ folder falls under the Boost 1.0 license.
+These sub-packages fall under the Boost 1.0 license.
 Before you use it, you need to agree with https://github.com/p0nce/dplug/licenses/Boost_1.0.txt
 
