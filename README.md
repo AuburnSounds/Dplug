@@ -13,35 +13,35 @@ Additionally it comes with music DSP algorithms that might be useful for your ne
 ## Contents
 
 ### dplug:plugin
-  * Abstract plugin client interface. Currently implemented once for VST
+  * Abstract plugin client interface. Currently implemented once for VST.
 
 ### dplug:vst
   * VST SDK D bindings
   * VST plugin client
 
 ### dplug:dsp
-  * The basics for audio signal processing:
-    - FFT and windowing function (include STFT with tunable overlap and zero-phase windowing)
-    - FIR and IIR biquads
-    - mipmapped wavetables
-    - noise generation
+  * Basic support for audio processing:
+    - FFT and windowing functions (include STFT with tunable overlap and zero-phase windowing)
+    - FIR and RJB biquads (no higher order IIR sorry)
+    - mipmapped wavetables for antialiased oscillators
+    - noise generation including white/pink/demo noise
     - various kinds of smoothers and envelopes
-    - delay-line
+    - delay-line and interpolation
 
 ### dplug:gui
-   * For plugins that have an UI.
-   * Toolkit including common widgets
-   * Deferred renderer for real-time procedural UI (lazy updates)
+   * Needed for plugins that do have an UI
+   * Toolkit includes common widgets (knob/slider/switch)
+   * Deferred renderer for a fully procedural UI (updates are lazy)
 
 ### Examples
-   * An example distortion VST plugin
-   * A program that resample x2 through FFT padding
+   * Mandatory example: distortion VST plugin
+   * Resampling x2 through FFT zero-padding
 
 
 ## Licenses
 
 dplug has three different licenses depending on the part you need. 
-If making an audio plugin, you would typically need all three.
+For an audio plugin, you would typically need all three.
 
 ### dplug:plugin
 
