@@ -8,6 +8,7 @@ Additionally it comes with music DSP algorithms that might be useful for your ne
 
 **Tested compilers:** ![dmd-2.067.1](https://img.shields.io/badge/DMD-2.067.1-brightgreen.svg) ![dmd-2.066.1](https://img.shields.io/badge/DMD-2.066.1-brightgreen.svg) ![LDC-0.15.1](https://img.shields.io/badge/LDC-0.15.1-brightgreen.svg) ![GDC-4.9.2](https://img.shields.io/badge/GDC-4.9.2-brightgreen.svg)
 
+![Mandatory distortion example](screenshot.jpg "Mandatory distortion example")
 
 ## Contents
 
@@ -48,6 +49,8 @@ Plugin wrapping is heavily inspired by the IPlug library (best represented here:
 Files in the plugin/ folder falls under the Cockos WDL license.
 So before you wrap audio plugins with dplug, you need to agree with the following license: 
 https://github.com/p0nce/dplug/blob/master/licenses/WDL_license.txt
+
+A significant difference compared to IPlug/WDL wrapper is that no global plugin lock is ever taken.
 
 ### dplug:vst
 
