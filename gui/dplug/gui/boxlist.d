@@ -5,10 +5,11 @@
 */
 module dplug.gui.boxlist;
 
+// Operations on list of boxes
+
 import std.algorithm;
 
 import gfm.math;
-
 
 /// Returns: Bounding boxes of all bounding boxes.
 box2i boundingBox(box2i[] boxes) pure nothrow @nogc
@@ -109,16 +110,15 @@ void removeOverlappingAreas(box2i[] boxes, ref box2i[] filtered)
 
 unittest
 {
-    BoxList bl;
-
-    bl.boxes = [
+    box2i[] bl = [
         box2i(0, 0, 4, 4),
         box2i(2, 2, 6, 6),
         box2i(1, 1, 2, 2)
     ];
     import std.stdio;
 
-    auto bb = bl.removeOverlappingAreas();
+    box2i[] bb;
+    removeOverlappingAreas(bl, bb);
     assert(bb == [ box2i(2, 2, 6, 6), box2i(0, 0, 4, 2), box2i(0, 2, 2, 4) ] );
 
     assert(bl.boundingBox() == box2i(0, 0, 6, 6));

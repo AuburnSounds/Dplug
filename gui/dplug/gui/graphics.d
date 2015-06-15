@@ -285,7 +285,7 @@ protected:
         _areasToRenderNonOverlappingTiled.length = 0;
         tileAreas(_areasToRenderNonOverlapping, tileWidth, tileHeight,_areasToRenderNonOverlappingTiled);
 
-        int numAreas = _areasToRenderNonOverlappingTiled.length;
+        int numAreas = cast(int)_areasToRenderNonOverlappingTiled.length;
         _areasToRenderNonOverlappingTiled.keepAtLeastThatSize();
 
         foreach(i; _taskPool.parallel(numAreas.iota))
