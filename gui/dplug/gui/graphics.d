@@ -314,11 +314,30 @@ protected:
         foreach(i; _taskPool.parallel(2.iota))
         {
             Mipmap* mipmap = i == 0 ? &_diffuseMap : &_depthMap;
-            foreach(level; 1 .. mipmap.numLevels())
+            if (i == 0)
             {
-                foreach(ref area; _updateRectScratch[i])
-                {                        
-                    area = mipmap.generateNextLevel(Mipmap.Quality.box, area, level);
+                // diffuse
+                foreach(level; 1 .. mipmap.numLevels())
+                {
+                    // TODO: a cubicAlphaCov mipmap mode
+                    auto quality = Mipmap.Quality.boxAlphaCov;
+                    foreach(ref area; _updateRectScratch[i])
+                    {                        
+                        area = mipmap.generateNextLevel(quality, area, level);
+                    }
+                }
+            }
+            else
+            {
+                // depth
+
+                foreach(level; 1 .. mipmap.numLevels())
+                {
+                    auto quality = level >= 3 ? Mipmap.Quality.cubic : Mipmap.Quality.box;
+                    foreach(ref area; _updateRectScratch[i])
+                    {
+                        area = mipmap.generateNextLevel(quality, area, level);
+                    }
                 }
             }
         }
@@ -510,19 +529,7 @@ protected:
 
                     emitted *= (div255 * 1.7f);
 
-                    vec3f saturate(vec3f input, float amount)
-                    {
-                        float grey = emitted.r + emitted.g + emitted.b;
-                        return emitted * (1 + amount) - grey * amount;
-                    }
-
-                    // This is a hack to avoid having white highlights for emissive materials.
-                    // The problem is that the emissive color for higher mipmap levels is averaged.
-                    // This saturates the color to avoid a grey color.
-                    // The real fix would be to divide the color by emissive when doing mipmaps.
-                    emitted = saturate(emitted, 0.25f); 
-
-                    color += emitted;
+                    color = emitted;
                 }
 
 

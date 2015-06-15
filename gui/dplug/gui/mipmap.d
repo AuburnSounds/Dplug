@@ -20,9 +20,11 @@ struct Mipmap
 {
     enum Quality
     {
-        box,       // simple 2x2 filter, creates phase problems with NPOT. For higher levels, automatically uses cubic.
-        polyphase, // From the "NPOT2 Mipmap Creation" paper from NVIDIA. Not useful.
-        cubic      // Very smooth kernel [1 2 1] x [1 2 1]
+        box,          // simple 2x2 filter, creates phase problems with NPOT. For higher levels, automatically uses cubic.
+        boxAlphaCov,  // ditto but alpha is used as weight
+        polyphase,    // From the "NPOT2 Mipmap Creation" paper from NVIDIA. Not useful.
+        cubic,        // Very smooth kernel [1 2 1] x [1 2 1]
+        cubicAlphaCov // ditto but alpha is used as weight
     }
 
     Image!RGBA[] levels;
@@ -176,7 +178,13 @@ struct Mipmap
     {
         box2i updateRect = box2i(0, 0, width(), height());
         for (int level = 1; level < numLevels(); ++level)
+        {
+            // HACK: Force cubic filter past a level else it makes ugly looking mipmaps
+            if (level >= 3 && quality == Quality.box)
+                quality = Quality.cubic;
+
             updateRect = generateNextLevel(quality, updateRect, level);
+        }
     }
 
     /// Regenerates a single mipmap level based on changes in the provided rectangle (expressed in level 0 coordinates).
@@ -186,11 +194,6 @@ struct Mipmap
     box2i generateNextLevel(Quality quality, box2i updateRectPreviousLevel, int level) nothrow @nogc
     {
         Image!RGBA* previousLevel = &levels[level - 1];
-
-        // HACK: Force cubic filter past a level else it makes ugly looking mipmaps
-        if (level >= 3 && quality == Quality.box)
-            quality = Quality.cubic;
-
         box2i updateRect = impactOnNextLevel(quality, updateRectPreviousLevel, previousLevel.w, previousLevel.h);
         generateLevel(level, quality, updateRect);
         return updateRect;
@@ -222,6 +225,49 @@ struct Mipmap
                         RGBA C = L1.ptr[2 * x];
                         RGBA D = L1.ptr[2 * x + 1];
                         dest.ptr[x] = RGBA.op!q{(a + b + c + d + 2) >> 2}(A, B, C, D);
+                    }
+                }
+                break;
+            
+            case boxAlphaCov:
+                for (int y = updateRect.min.y; y < updateRect.max.y; ++y)
+                {
+                    RGBA[] L0 = previousLevel.scanline(y * 2);
+                    RGBA[] L1 = previousLevel.scanline(y * 2 + 1);
+                    RGBA[] dest = thisLevel.scanline(y);
+
+                    for (int x = updateRect.min.x; x < updateRect.max.x; ++x)
+                    {
+                        // A B
+                        // C D
+                        RGBA A = L0.ptr[2 * x];
+                        RGBA B = L0.ptr[2 * x + 1];
+                        RGBA C = L1.ptr[2 * x];
+                        RGBA D = L1.ptr[2 * x + 1];
+
+                        int alphaA = A.a;
+                        int alphaB = B.a;
+                        int alphaC = C.a;
+                        int alphaD = D.a;
+                        int sum = alphaA + alphaB + alphaC + alphaD;
+                        if (sum == 0)
+                        {
+                            dest.ptr[x] = A;
+                        }
+                        else
+                        {
+                            int destAlpha = cast(ubyte)( (alphaA + alphaB + alphaC + alphaD + 2) >> 2 );
+                            int red =   (A.r * alphaA + B.r * alphaB + C.r * alphaC + D.r * alphaD);
+                            int green = (A.g * alphaA + B.g * alphaB + C.g * alphaC + D.g * alphaD);
+                            int blue =  (A.b * alphaA + B.b* alphaB + C.b * alphaC + D.b * alphaD);
+                            int offset = sum >> 1;
+
+                            RGBA finalColor = RGBA( cast(ubyte)( (red + offset) / sum),
+                                                    cast(ubyte)( (green + offset) / sum),
+                                                    cast(ubyte)( (blue + offset) / sum),
+                                                    cast(ubyte)destAlpha );
+                            dest.ptr[x] = finalColor;
+                        }
                     }
                 }
                 break;
@@ -299,6 +345,10 @@ struct Mipmap
                 }
                 break;
 
+            case cubicAlphaCov:
+                // TODO
+
+
             case cubic:
                 for (int y = updateRect.min.y; y < updateRect.max.y; ++y)
                 {
@@ -367,6 +417,7 @@ private:
         final switch(quality) with (Quality)
         {
         case box:
+        case boxAlphaCov:
             int xmin = area.min.x / 2;
             int ymin = area.min.y / 2;
             int xmax = (area.max.x + 1) / 2;
@@ -381,6 +432,7 @@ private:
             return box2i(xmin, ymin, xmax, ymax).intersection(maxArea);
 
         case cubic:
+        case cubicAlphaCov:
             int xmin = (area.min.x - 1) / 2;
             int ymin = (area.min.y - 1) / 2;
             int xmax = (area.max.x + 2) / 2;
