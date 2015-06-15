@@ -192,7 +192,7 @@ class GUIGraphics : UIElement, IGraphics
             clearDirty();
 
             // Composite GUI
-            compositeGUI(wfb, _areasToRenderNonOverlapping);
+            compositeGUI(wfb);
         }
 
         override void onMouseCaptureCancelled()
@@ -276,11 +276,19 @@ protected:
     /// Compose lighting effects from depth and diffuse into a result.
     /// takes output image and non-overlapping areas as input
     /// Useful multithreading code.
-    void compositeGUI(ImageRef!RGBA wfb, box2i[] areas)
+    void compositeGUI(ImageRef!RGBA wfb)
     {
-        foreach(i; areas.length.iota.parallel)
+        enum tileWidth = 32; // TODO tune this
+        enum tileHeight = 32;
+
+        _areasToRenderNonOverlappingTiled.length = 0;
+        tileAreas(_areasToRenderNonOverlapping, tileWidth, tileHeight,_areasToRenderNonOverlappingTiled);
+
+        int numAreas = _areasToRenderNonOverlappingTiled.length;
+
+        foreach(i; _taskPool.parallel(numAreas.iota))
         {
-            compositeTile(wfb, areas[i]);
+            compositeTile(wfb, _areasToRenderNonOverlappingTiled[i]);
         }
     }
 
@@ -447,7 +455,6 @@ protected:
 
                     float occluded = ctLinearStep!(-90.0f, 90.0f)(depthPatch[2][2] - avgDepthHere);
 
-                    //vec3f colorBleed = avgDepthHere.r * _diffuseMap.linearSample(3, i + 0.5f, j + 0.5f) * div255;
                     color += vec3f(occluded * ambientLight) * baseColor;
                 }
 
@@ -476,7 +483,13 @@ protected:
                         return emitted * (1 + amount) - grey * amount;
                     }
 
-                    color += saturate(emitted, 0.25f); // saturate the highlights because white highlights
+                    // This is a hack to avoid having white highlights for emissive materials.
+                    // The problem is that the emissive color for higher mipmap levels is averaged.
+                    // This saturates the color to avoid a grey color.
+                    // The real fix would be to divide the color by emissive when doing mipmaps.
+                    emitted = saturate(emitted, 0.25f); 
+
+                    color += emitted;
                 }
 
 

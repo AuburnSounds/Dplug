@@ -123,3 +123,31 @@ unittest
 
     assert(bl.boundingBox() == box2i(0, 0, 6, 6));
 }
+
+
+// Split each boxes in smaller boxes.
+void tileAreas(in box2i[] areas, int maxWidth, int maxHeight, ref box2i[] splitted) nothrow
+{
+    foreach(area; areas)
+    {
+        assert(!area.empty);
+        int nWidth = (area.width + maxWidth - 1) / maxWidth;
+        int nHeight = (area.height + maxHeight - 1) / maxHeight;
+
+        foreach (int j; 0..nHeight)
+        {
+            int y0 = maxHeight * j;
+            int y1 = std.algorithm.min(y0 + maxHeight, area.height);
+
+            foreach (int i; 0..nWidth) 
+            {
+                int x0 = maxWidth * i;                
+                int x1 = std.algorithm.min(x0 + maxWidth, area.width);               
+
+                box2i b = box2i(x0, y0, x1, y1).translate(area.min);
+                assert(area.contains(b));
+                splitted ~= b;
+            }
+        }        
+    }
+}
