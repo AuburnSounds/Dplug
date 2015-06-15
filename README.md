@@ -42,17 +42,9 @@ Additionally it comes with music DSP algorithms that might be useful for your ne
 
 dplug has three different licenses depending on the part you need. 
 For an audio plugin, you would typically need all three.
+I recommend that you check individual source files for license information.
 
-### dplug:plugin
-
-Plugin wrapping is heavily inspired by the IPlug library (best represented here: https://github.com/olilarkin/wdl-ol).
-Files in the plugin/ folder falls under the Cockos WDL license.
-So before you wrap audio plugins with dplug, you need to agree with the following license: 
-https://github.com/p0nce/dplug/blob/master/licenses/WDL_license.txt
-
-A significant difference compared to IPlug/WDL wrapper is that no global plugin lock is ever taken.
-
-### dplug:vst
+### VST SDK translation
 
 This sub-package falls under the Steinberg VST license.
 
@@ -63,8 +55,22 @@ Before you make VST plugins with dplug, you need to read and agree with the lice
 If you don't agree with the license, don't make plugins with dplug.
 Find the VST3 SDK there: http://www.steinberg.net/en/company/developers.html
 
-### dplug:gui, dplug:dsp
+### Plugin format wrapping
 
-These sub-packages fall under the Boost 1.0 license.
-Before you use it, you need to agree with https://github.com/p0nce/dplug/licenses/Boost_1.0.txt
+Plugin wrapping is heavily inspired by the WDL library (best represented here: https://github.com/olilarkin/wdl-ol).
+
+Some files falls under the Cockos WDL license.
+
+However dplug is not a translation of WDL.
+For example a significant difference compared to WDL is that no mutex lock is ever taken in the audio callback.
+
+Important contributors to WDL include:
+- Cockos: http://www.cockos.com/
+- Oliver Larkin: http://www.olilarkin.co.uk/
+
+
+
+### Misc
+
+Other source files fall under the Boost 1.0 license.
 

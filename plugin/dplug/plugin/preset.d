@@ -1,3 +1,8 @@
+/**
+ * Copyright: Copyright Auburn Sounds 2015 and later.
+ * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
+ * Authors:   Guillaume Piolat
+ */
 module dplug.plugin.preset;
 
 import std.range;
@@ -10,15 +15,15 @@ import binrange;
 import dplug.plugin.client;
 
 
-/// I can see no reason why dplug shouldn't be able to maintain 
+/// I can see no reason why dplug shouldn't be able to maintain
 /// backward-compatibility with older versions in the future.
 /// However, never say never.
 /// This number will be incremented for every backward-incompatible change.
-enum int DPLUG_SERIALIZATION_MAJOR_VERSION = 0; 
+enum int DPLUG_SERIALIZATION_MAJOR_VERSION = 0;
 
 /// This number will be incremented for every backward-compatible change
 /// that is significant enough to bump a version number
-enum int DPLUG_SERIALIZATION_MINOR_VERSION = 0; 
+enum int DPLUG_SERIALIZATION_MINOR_VERSION = 0;
 
 /// A preset is a slot in a plugin preset list
 class Preset
@@ -163,7 +168,7 @@ public:
         foreach(int i, preset; presets)
             preset.serializeBinary(chunk);
         return null;
-    }    
+    }
 
     /// Parse a preset chunk and set parameters.
     /// May throw an Exception.

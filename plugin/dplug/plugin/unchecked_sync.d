@@ -13,6 +13,7 @@
  *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
+ /// Modified to make it @nogc
 
 /// Created because of pressing needs of nothrow @nogc synchronization
 module dplug.plugin.unchecked_sync;
@@ -33,7 +34,7 @@ version (implementedWithSpinlock)
 
         ~this() nothrow @nogc
         {
-            close();       
+            close();
         }
 
         void close() nothrow @nogc
@@ -97,7 +98,7 @@ else
 
         ~this() nothrow @nogc
         {
-            close();       
+            close();
         }
 
         void close() nothrow @nogc

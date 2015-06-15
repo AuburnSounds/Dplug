@@ -1,4 +1,8 @@
-// See Steinberg VST license here: http://www.gersic.com/vstsdk/html/plug/intro.html#licence
+/**
+* Copyright: Steinberg.
+* License:   To use this file you MUST agree with the Steinberg VST license included in the VST SDK.
+* Authors:   D translation by Guillaume Piolat.
+*/
 module dplug.vst.aeffectx;
 
 public import dplug.vst.aeffect;

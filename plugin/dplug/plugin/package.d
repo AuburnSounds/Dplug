@@ -1,4 +1,4 @@
-// See licenses/WDL_license.txt
+// See licenses in individual files.
 module dplug.plugin;
 
 public

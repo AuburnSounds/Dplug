@@ -1,3 +1,8 @@
+/**
+ * Copyright: Copyright Auburn Sounds 2015 and later.
+ * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
+ * Authors:   Guillaume Piolat
+ */
 module dplug.plugin.fpcontrol;
 
 import core.cpuid;
@@ -26,7 +31,7 @@ struct FPControl
     {
         version(X86)
         {
-            // restore SSE2 LDMXCSR and STMXCSR load and write the MXCSR 
+            // restore SSE2 LDMXCSR and STMXCSR load and write the MXCSR
             setSSEControlState(sseState);
         }
     }
@@ -58,7 +63,7 @@ version(X86)
                 mixin("asm nothrow @nogc { stmxcsr controlWord; }");
             else
                 mixin("asm { stmxcsr controlWord; }");
-            
+
             return controlWord;
         }
         else

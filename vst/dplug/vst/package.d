@@ -1,4 +1,4 @@
-// See Steinberg VST license here: http://www.gersic.com/vstsdk/html/plug/intro.html#licence
+// See individual files for license information.
 module dplug.vst;
 
 public
