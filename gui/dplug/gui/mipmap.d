@@ -209,187 +209,187 @@ struct Mipmap
 
         final switch (quality) with (Quality)
         {
-            case box:
-                for (int y = updateRect.min.y; y < updateRect.max.y; ++y)
-                {
-                    RGBA[] L0 = previousLevel.scanline(y * 2);
-                    RGBA[] L1 = previousLevel.scanline(y * 2 + 1);
-                    RGBA[] dest = thisLevel.scanline(y);
+        case box:
+            for (int y = updateRect.min.y; y < updateRect.max.y; ++y)
+            {
+                RGBA[] L0 = previousLevel.scanline(y * 2);
+                RGBA[] L1 = previousLevel.scanline(y * 2 + 1);
+                RGBA[] dest = thisLevel.scanline(y);
 
-                    for (int x = updateRect.min.x; x < updateRect.max.x; ++x)
-                    {
-                        // A B
-                        // C D
-                        RGBA A = L0.ptr[2 * x];
-                        RGBA B = L0.ptr[2 * x + 1];
-                        RGBA C = L1.ptr[2 * x];
-                        RGBA D = L1.ptr[2 * x + 1];
-                        dest.ptr[x] = RGBA.op!q{(a + b + c + d + 2) >> 2}(A, B, C, D);
-                    }
+                for (int x = updateRect.min.x; x < updateRect.max.x; ++x)
+                {
+                    // A B
+                    // C D
+                    RGBA A = L0.ptr[2 * x];
+                    RGBA B = L0.ptr[2 * x + 1];
+                    RGBA C = L1.ptr[2 * x];
+                    RGBA D = L1.ptr[2 * x + 1];
+                    dest.ptr[x] = RGBA.op!q{(a + b + c + d + 2) >> 2}(A, B, C, D);
                 }
-                break;
+            }
+            break;
             
-            case boxAlphaCov:
-                for (int y = updateRect.min.y; y < updateRect.max.y; ++y)
+        case boxAlphaCov:
+            for (int y = updateRect.min.y; y < updateRect.max.y; ++y)
+            {
+                RGBA[] L0 = previousLevel.scanline(y * 2);
+                RGBA[] L1 = previousLevel.scanline(y * 2 + 1);
+                RGBA[] dest = thisLevel.scanline(y);
+
+                for (int x = updateRect.min.x; x < updateRect.max.x; ++x)
                 {
-                    RGBA[] L0 = previousLevel.scanline(y * 2);
-                    RGBA[] L1 = previousLevel.scanline(y * 2 + 1);
-                    RGBA[] dest = thisLevel.scanline(y);
+                    // A B
+                    // C D
+                    RGBA A = L0.ptr[2 * x];
+                    RGBA B = L0.ptr[2 * x + 1];
+                    RGBA C = L1.ptr[2 * x];
+                    RGBA D = L1.ptr[2 * x + 1];
 
-                    for (int x = updateRect.min.x; x < updateRect.max.x; ++x)
+                    int alphaA = A.a;
+                    int alphaB = B.a;
+                    int alphaC = C.a;
+                    int alphaD = D.a;
+                    int sum = alphaA + alphaB + alphaC + alphaD;
+                    if (sum == 0)
                     {
-                        // A B
-                        // C D
-                        RGBA A = L0.ptr[2 * x];
-                        RGBA B = L0.ptr[2 * x + 1];
-                        RGBA C = L1.ptr[2 * x];
-                        RGBA D = L1.ptr[2 * x + 1];
+                        dest.ptr[x] = A;
+                    }
+                    else
+                    {
+                        int destAlpha = cast(ubyte)( (alphaA + alphaB + alphaC + alphaD + 2) >> 2 );
+                        int red =   (A.r * alphaA + B.r * alphaB + C.r * alphaC + D.r * alphaD);
+                        int green = (A.g * alphaA + B.g * alphaB + C.g * alphaC + D.g * alphaD);
+                        int blue =  (A.b * alphaA + B.b* alphaB + C.b * alphaC + D.b * alphaD);
+                        int offset = sum >> 1;
 
-                        int alphaA = A.a;
-                        int alphaB = B.a;
-                        int alphaC = C.a;
-                        int alphaD = D.a;
-                        int sum = alphaA + alphaB + alphaC + alphaD;
-                        if (sum == 0)
-                        {
-                            dest.ptr[x] = A;
-                        }
-                        else
-                        {
-                            int destAlpha = cast(ubyte)( (alphaA + alphaB + alphaC + alphaD + 2) >> 2 );
-                            int red =   (A.r * alphaA + B.r * alphaB + C.r * alphaC + D.r * alphaD);
-                            int green = (A.g * alphaA + B.g * alphaB + C.g * alphaC + D.g * alphaD);
-                            int blue =  (A.b * alphaA + B.b* alphaB + C.b * alphaC + D.b * alphaD);
-                            int offset = sum >> 1;
-
-                            RGBA finalColor = RGBA( cast(ubyte)( (red + offset) / sum),
-                                                    cast(ubyte)( (green + offset) / sum),
-                                                    cast(ubyte)( (blue + offset) / sum),
-                                                    cast(ubyte)destAlpha );
-                            dest.ptr[x] = finalColor;
-                        }
+                        RGBA finalColor = RGBA( cast(ubyte)( (red + offset) / sum),
+                                                cast(ubyte)( (green + offset) / sum),
+                                                cast(ubyte)( (blue + offset) / sum),
+                                                cast(ubyte)destAlpha );
+                        dest.ptr[x] = finalColor;
                     }
                 }
-                break;
+            }
+            break;
 
-            case polyphase:
+        case polyphase:
     
-                int ny = thisLevel.h;
-                int nx = thisLevel.w;
-                int dividerx = (2 * nx + 1);
-                int dividery = (2 * ny + 1);
-                float invDivider = 1.0f / (cast(float)dividerx * dividery);
+            int ny = thisLevel.h;
+            int nx = thisLevel.w;
+            int dividerx = (2 * nx + 1);
+            int dividery = (2 * ny + 1);
+            float invDivider = 1.0f / (cast(float)dividerx * dividery);
 
-                for (int y = updateRect.min.y; y < updateRect.max.y; ++y)
+            for (int y = updateRect.min.y; y < updateRect.max.y; ++y)
+            {
+                RGBA[] L0 = previousLevel.scanline(y * 2);
+                RGBA[] L1 = previousLevel.scanline(y * 2 + 1);
+                RGBA[] L2 = previousLevel.scanline(min(y * 2 + 2, previousLevel.h - 1));
+                RGBA[] dest = thisLevel.scanline(y);
+
+
+                int w0y = (ny - y);
+                int w1y = ny;
+                int w2y = 1 + y;
+
+                for (int x = updateRect.min.x; x < updateRect.max.x; ++x)
                 {
-                    RGBA[] L0 = previousLevel.scanline(y * 2);
-                    RGBA[] L1 = previousLevel.scanline(y * 2 + 1);
-                    RGBA[] L2 = previousLevel.scanline(min(y * 2 + 2, previousLevel.h - 1));
-                    RGBA[] dest = thisLevel.scanline(y);
+                    // A B C
+                    // D E F
+                    // G H I
 
+                    int x2p0 = 2 * x;
+                    int x2p1 = 2 * x + 1;
+                    int x2p2 = min(2 * x + 2, previousLevel.w - 1);
 
-                    int w0y = (ny - y);
-                    int w1y = ny;
-                    int w2y = 1 + y;
+                    RGBA A = L0.ptr[x2p0];
+                    RGBA B = L0.ptr[x2p1];
+                    RGBA C = L0.ptr[x2p2];
 
-                    for (int x = updateRect.min.x; x < updateRect.max.x; ++x)
-                    {
-                        // A B C
-                        // D E F
-                        // G H I
+                    RGBA D = L1.ptr[x2p0];
+                    RGBA E = L1.ptr[x2p1];
+                    RGBA F = L1.ptr[x2p2];
 
-                        int x2p0 = 2 * x;
-                        int x2p1 = 2 * x + 1;
-                        int x2p2 = min(2 * x + 2, previousLevel.w - 1);
+                    RGBA G = L2.ptr[x2p0];
+                    RGBA H = L2.ptr[x2p1];
+                    RGBA I = L2.ptr[x2p2];
 
-                        RGBA A = L0.ptr[x2p0];
-                        RGBA B = L0.ptr[x2p1];
-                        RGBA C = L0.ptr[x2p2];
+                    // filter horizontally first
+                    int w0x = (nx - x);
+                    int w1x = nx;
+                    int w2x = 1 + x;
 
-                        RGBA D = L1.ptr[x2p0];
-                        RGBA E = L1.ptr[x2p1];
-                        RGBA F = L1.ptr[x2p2];
+                    float rL0 = A.r * w0x + B.r * w1x + C.r * w2x;
+                    float gL0 = A.g * w0x + B.g * w1x + C.g * w2x;
+                    float bL0 = A.b * w0x + B.b * w1x + C.b * w2x;
+                    float aL0 = A.a * w0x + B.a * w1x + C.a * w2x;
 
-                        RGBA G = L2.ptr[x2p0];
-                        RGBA H = L2.ptr[x2p1];
-                        RGBA I = L2.ptr[x2p2];
+                    float rL1 = D.r * w0x + E.r * w1x + F.r * w2x;
+                    float gL1 = D.g * w0x + E.g * w1x + F.g * w2x;
+                    float bL1 = D.b * w0x + E.b * w1x + F.b * w2x;
+                    float aL1 = D.a * w0x + E.a * w1x + F.a * w2x;
 
-                        // filter horizontally first
-                        int w0x = (nx - x);
-                        int w1x = nx;
-                        int w2x = 1 + x;
+                    float rL2 = G.r * w0x + H.r * w1x + I.r * w2x;
+                    float gL2 = G.g * w0x + H.g * w1x + I.g * w2x;
+                    float bL2 = G.b * w0x + H.b * w1x + I.b * w2x;
+                    float aL2 = G.a * w0x + H.a * w1x + I.a * w2x;
 
-                        float rL0 = A.r * w0x + B.r * w1x + C.r * w2x;
-                        float gL0 = A.g * w0x + B.g * w1x + C.g * w2x;
-                        float bL0 = A.b * w0x + B.b * w1x + C.b * w2x;
-                        float aL0 = A.a * w0x + B.a * w1x + C.a * w2x;
+                    float r = (rL0 * w0y + rL1 * w1y + rL2 * w2y) * invDivider;
+                    float g = (gL0 * w0y + gL1 * w1y + gL2 * w2y) * invDivider;
+                    float b = (bL0 * w0y + bL1 * w1y + bL2 * w2y) * invDivider;
+                    float a = (aL0 * w0y + aL1 * w1y + aL2 * w2y) * invDivider;
 
-                        float rL1 = D.r * w0x + E.r * w1x + F.r * w2x;
-                        float gL1 = D.g * w0x + E.g * w1x + F.g * w2x;
-                        float bL1 = D.b * w0x + E.b * w1x + F.b * w2x;
-                        float aL1 = D.a * w0x + E.a * w1x + F.a * w2x;
-
-                        float rL2 = G.r * w0x + H.r * w1x + I.r * w2x;
-                        float gL2 = G.g * w0x + H.g * w1x + I.g * w2x;
-                        float bL2 = G.b * w0x + H.b * w1x + I.b * w2x;
-                        float aL2 = G.a * w0x + H.a * w1x + I.a * w2x;
-
-                        float r = (rL0 * w0y + rL1 * w1y + rL2 * w2y) * invDivider;
-                        float g = (gL0 * w0y + gL1 * w1y + gL2 * w2y) * invDivider;
-                        float b = (bL0 * w0y + bL1 * w1y + bL2 * w2y) * invDivider;
-                        float a = (aL0 * w0y + aL1 * w1y + aL2 * w2y) * invDivider;
-
-                        // then filter vertically
-                        dest.ptr[x] = RGBA(cast(ubyte)(r + 0.5f), cast(ubyte)(g + 0.5f), cast(ubyte)(b + 0.5f), cast(ubyte)(a + 0.5f));
-                    }
+                    // then filter vertically
+                    dest.ptr[x] = RGBA(cast(ubyte)(r + 0.5f), cast(ubyte)(g + 0.5f), cast(ubyte)(b + 0.5f), cast(ubyte)(a + 0.5f));
                 }
-                break;
+            }
+            break;
 
-            case cubicAlphaCov:
-                // TODO
+        case cubic:
+        case cubicAlphaCov:
+            for (int y = updateRect.min.y; y < updateRect.max.y; ++y)
+            {
+                RGBA[] LM1 = previousLevel.scanline(max(y * 2 - 1, 0));
+                RGBA[] L0 = previousLevel.scanline(y * 2);
+                RGBA[] L1 = previousLevel.scanline(y * 2 + 1);
+                RGBA[] L2 = previousLevel.scanline(min(y * 2 + 2, previousLevel.h - 1));
+                RGBA[] dest = thisLevel.scanline(y);
 
-
-            case cubic:
-                for (int y = updateRect.min.y; y < updateRect.max.y; ++y)
+                for (int x = updateRect.min.x; x < updateRect.max.x; ++x)
                 {
-                    RGBA[] LM1 = previousLevel.scanline(max(y * 2 - 1, 0));
-                    RGBA[] L0 = previousLevel.scanline(y * 2);
-                    RGBA[] L1 = previousLevel.scanline(y * 2 + 1);
-                    RGBA[] L2 = previousLevel.scanline(min(y * 2 + 2, previousLevel.h - 1));
-                    RGBA[] dest = thisLevel.scanline(y);
+                    // A B C D
+                    // E F G H
+                    // I J K L
+                    // M N O P
 
-                    for (int x = updateRect.min.x; x < updateRect.max.x; ++x)
+                    int x2m1 = max(0, 2 * x - 1);
+                    int x2p0 = 2 * x;
+                    int x2p1 = 2 * x + 1;
+                    int x2p2 = min(2 * x + 2, previousLevel.w - 1);
+
+                    auto A = LM1.ptr[x2m1];
+                    auto B = LM1.ptr[x2p0];
+                    auto C = LM1.ptr[x2p1];
+                    auto D = LM1.ptr[x2p2];
+
+                    auto E = L0.ptr[x2m1];
+                    auto F = L0.ptr[x2p0];
+                    auto G = L0.ptr[x2p1];
+                    auto H = L0.ptr[x2p2];
+
+                    auto I = L1.ptr[x2m1];
+                    auto J = L1.ptr[x2p0];
+                    auto K = L1.ptr[x2p1];
+                    auto L = L1.ptr[x2p2];
+
+                    auto M = L2.ptr[x2m1];
+                    auto N = L2.ptr[x2p0];
+                    auto O = L2.ptr[x2p1];
+                    auto P = L2.ptr[x2p2];
+
+
+                    if (quality == Quality.cubic)
                     {
-                        // A B C D
-                        // E F G H
-                        // I J K L
-                        // M N O P
-
-                        int x2m1 = max(0, 2 * x - 1);
-                        int x2p0 = 2 * x;
-                        int x2p1 = 2 * x + 1;
-                        int x2p2 = min(2 * x + 2, previousLevel.w - 1);
-
-                        auto A = LM1.ptr[x2m1];
-                        auto B = LM1.ptr[x2p0];
-                        auto C = LM1.ptr[x2p1];
-                        auto D = LM1.ptr[x2p2];
-
-                        auto E = L0.ptr[x2m1];
-                        auto F = L0.ptr[x2p0];
-                        auto G = L0.ptr[x2p1];
-                        auto H = L0.ptr[x2p2];
-
-                        auto I = L1.ptr[x2m1];
-                        auto J = L1.ptr[x2p0];
-                        auto K = L1.ptr[x2p1];
-                        auto L = L1.ptr[x2p2];
-
-                        auto M = L2.ptr[x2m1];
-                        auto N = L2.ptr[x2p0];
-                        auto O = L2.ptr[x2p1];
-                        auto P = L2.ptr[x2p2];
-
                         // Apply filter
                         // 1 3 3 1
                         // 3 9 9 3
@@ -402,8 +402,49 @@ struct Mipmap
                         RGBA line3 = RGBA.op!q{(a + d + 3 * (b + c) + 4) >> 3}(M, N, O, P);
                         dest.ptr[x] = RGBA.op!q{(a + d + 3 * (b + c) + 4) >> 3}(line0, line1, line2, line3);
                     }
+                    else
+                    {
+                        // Apply filter + alpha weighting
+                        // 1 3 3 1
+                        // 3 9 9 3 multiplied by alpha are the filter
+                        // 3 9 9 3
+                        // 1 3 3 1
+
+                        // Perform the [1 3 3 1] kernel + alpha weighing
+                        static RGBA merge4(RGBA a, RGBA b, RGBA c, RGBA d) nothrow @nogc
+                        {
+                            int alphaA = a.a;
+                            int alphaB = b.a * 3;
+                            int alphaC = c.a * 3;
+                            int alphaD = d.a;
+                            int sum = alphaA + alphaB + alphaC + alphaD;
+                            if (sum == 0)
+                            {
+                                return a; // return any since alpha is zero, it won't count
+                            }
+                            else
+                            {
+                                ubyte destAlpha = cast(ubyte)( (sum + 4) >> 3 );
+                                int red =   (a.r * alphaA + b.r * alphaB + c.r * alphaC + d.r * alphaD);
+                                int green = (a.g * alphaA + b.g * alphaB + c.g * alphaC + d.g * alphaD);
+                                int blue =  (a.b * alphaA + b.b* alphaB + c.b * alphaC + d.b * alphaD);
+                                int offset = sum >> 1;
+
+                                return RGBA( cast(ubyte)( (red + offset) / sum),
+                                             cast(ubyte)( (green + offset) / sum),
+                                             cast(ubyte)( (blue + offset) / sum),
+                                             destAlpha );
+                            }
+                        }
+
+                        RGBA line0 = merge4(A, B, C, D);
+                        RGBA line1 = merge4(E, F, G, H);
+                        RGBA line2 = merge4(I, J, K, L);
+                        RGBA line3 = merge4(M, N, O, P);
+                        dest.ptr[x] = merge4(line0, line1, line2, line3);
+                    }
                 }
-                break;
+            }
         }
     }
 

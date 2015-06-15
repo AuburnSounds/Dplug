@@ -160,7 +160,7 @@ class GUIGraphics : UIElement, IGraphics
 
             reflow(box2i(0, 0, _askedWidth, _askedHeight));
 
-            _diffuseMap.size(4, width, height);
+            _diffuseMap.size(5, width, height);
             _depthMap.size(4, width, height);
         }
 
@@ -262,10 +262,11 @@ protected:
     {
         // shadow casting => 15 pixels influence on bottom left
         // color-bleed => 7 pixels influence in every direction
-        int xmin = rect.min.x - 15;
-        int ymin = rect.min.y - 10;
-        int xmax = rect.max.x + 10;
-        int ymax = rect.max.y + 15;
+        int xmin = rect.min.x - 17;
+        int ymin = rect.min.y - 17;
+        int xmax = rect.max.x + 17;
+        int ymax = rect.max.y + 17;
+
         if (xmin < 0) xmin = 0;
         if (ymin < 0) ymin = 0;
         if (xmax > width) xmax = width;
@@ -319,8 +320,7 @@ protected:
                 // diffuse
                 foreach(level; 1 .. mipmap.numLevels())
                 {
-                    // TODO: a cubicAlphaCov mipmap mode
-                    auto quality = Mipmap.Quality.boxAlphaCov;
+                    auto quality = level >= 2 ? Mipmap.Quality.cubicAlphaCov : Mipmap.Quality.boxAlphaCov;
                     foreach(ref area; _updateRectScratch[i])
                     {                        
                         area = mipmap.generateNextLevel(quality, area, level);
@@ -520,14 +520,15 @@ protected:
                     vec4f colorLevel2 = _diffuseMap.linearSample!true(2, ic, jc);
                     vec4f colorLevel3 = _diffuseMap.linearSample!true(3, ic, jc);
                     vec4f colorLevel4 = _diffuseMap.linearSample!true(4, ic, jc);
-                    vec4f colorLevel5 = _diffuseMap.linearSample!true(4, ic, jc);
+                    vec4f colorLevel5 = _diffuseMap.linearSample!true(5, ic, jc);
 
                     vec3f emitted = colorLevel1.rgb * 0.2f;
                     emitted += colorLevel2.rgb * 0.3f;
                     emitted += colorLevel3.rgb * 0.25f;
                     emitted += colorLevel4.rgb * 0.15f;
+                    emitted += colorLevel5.rgb * 0.15f;
 
-                    emitted *= (div255 * 1.7f);
+                    emitted *= (div255 * 1.5f);
 
                     color += emitted;
                 }
