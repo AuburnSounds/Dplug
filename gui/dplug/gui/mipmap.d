@@ -27,6 +27,8 @@ struct Mipmap
 
     Image!RGBA[] levels;
 
+    @disable this(this);
+
     /// Set number of levels and size
     /// maxLevel = 0 => only one image
     /// maxLevel = 1 => one image + one 2x downsampled mipmap
@@ -163,30 +165,35 @@ struct Mipmap
         return levels[0].h;
     }
 
-    /// Regenerates the whole upper levels.
-    /// Uses a flat 2x2 filter
-    void generateMipmaps(Quality quality) nothrow @nogc
+    /// Returns: Number of levels. The maximum level is numLevels() - 1.
+    int numLevels() pure const nothrow @nogc
     {
-        generateMipmaps(quality, box2i(0, 0, width(), height()) );
+        return cast(int)levels.length;
     }
 
-    /// Regenerates the upper levels based on changes in the provided rectangle.
-    /// Uses a flat 2x2 filter
-    /// updateRect expressed in level 0 coordinates
-    void generateMipmaps(Quality quality, box2i updateRect) nothrow @nogc
+    /// Regenerates the whole upper levels.
+    void generateMipmaps(Quality quality) nothrow @nogc
     {
-        for (int i = 1; i < cast(int)levels.length; ++i)
-        {
-            Image!RGBA* previousLevel = &levels[i - 1];
+        box2i updateRect = box2i(0, 0, width(), height());
+        for (int level = 1; level < numLevels(); ++level)
+            updateRect = generateNextLevel(quality, updateRect, level);
+    }
 
-            // Force cubic filter past a level else it makes ugly looking mipmaps
-            if (i >= 3 && quality == Quality.box)
-                quality = Quality.cubic;
+    /// Regenerates a single mipmap level based on changes in the provided rectangle (expressed in level 0 coordinates).
+    /// updateRect expressed in level 0 coordinates
+    /// In general if you have several subparts of mipmaps to update, make sure a level is fully completed
+    /// before computing the next one.
+    box2i generateNextLevel(Quality quality, box2i updateRectPreviousLevel, int level) nothrow @nogc
+    {
+        Image!RGBA* previousLevel = &levels[level - 1];
 
-            updateRect = impactOnNextLevel(quality, updateRect, previousLevel.w, previousLevel.h);
+        // HACK: Force cubic filter past a level else it makes ugly looking mipmaps
+        if (level >= 3 && quality == Quality.box)
+            quality = Quality.cubic;
 
-            generateLevel(i, quality, updateRect);
-        }
+        box2i updateRect = impactOnNextLevel(quality, updateRectPreviousLevel, previousLevel.w, previousLevel.h);
+        generateLevel(level, quality, updateRect);
+        return updateRect;
     }
 
     /// Regenerates one level

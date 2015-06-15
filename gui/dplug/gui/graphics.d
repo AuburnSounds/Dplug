@@ -182,13 +182,7 @@ class GUIGraphics : UIElement, IGraphics
             _areasToUpdateNonOverlapping.keepAtLeastThatSize();
             _areasToRenderNonOverlapping.keepAtLeastThatSize();
 
-
-            // Recompute mipmaps in updated areas
-            foreach(area; _areasToUpdateNonOverlapping)
-            {
-                _diffuseMap.generateMipmaps(Mipmap.Quality.box, area);
-                _depthMap.generateMipmaps(Mipmap.Quality.box, area);
-            }
+            regenerateMipmaps();
 
             // Clear dirty state in the whole GUI since after this draw everything 
             // will be up-to-date.
@@ -223,12 +217,12 @@ protected:
     Mipmap _diffuseMap;
     Mipmap _depthMap;
 
-    // The list of areas whose diffuse/depth data have been changed.
-    box2i[] _areasToUpdate;
-    box2i[] _areasToUpdateNonOverlapping;
 
-    // The list of areas that must be effectively updated in the composite buffer (sligthly larger than _areasToUpdate).
-    box2i[] _areasToRender;
+    box2i[] _areasToUpdate;                    // The list of areas whose diffuse/depth data have been changed.
+    box2i[] _areasToUpdateNonOverlapping;      // same list, but reorganized to avoid overlap
+    box2i[][2] _updateRectScratch;             // Same, but temporary variable for mipmap generation
+
+    box2i[] _areasToRender;                    // The list of areas that must be effectively updated in the composite buffer (sligthly larger than _areasToUpdate).
     box2i[] _areasToRenderNonOverlapping;      // same list, but reorganized to avoid overlap
     box2i[] _areasToRenderNonOverlappingTiled; // same list, but separated in smaller tiles
     
@@ -285,7 +279,7 @@ protected:
     void compositeGUI(ImageRef!RGBA wfb)
     {
         // Quick subjective testing indicates than somewhere between 16x16 and 32x32 have best performance
-        enum tileWidth = 32; 
+        enum tileWidth = 32;
         enum tileHeight = 32;
 
         _areasToRenderNonOverlappingTiled.length = 0;
@@ -297,6 +291,36 @@ protected:
         foreach(i; _taskPool.parallel(numAreas.iota))
         {
             compositeTile(wfb, _areasToRenderNonOverlappingTiled[i]);
+        }
+    }
+
+    /// Compose lighting effects from depth and diffuse into a result.
+    /// takes output image and non-overlapping areas as input
+    /// Useful multithreading code.
+    void regenerateMipmaps()
+    {
+        int numAreas = cast(int)_areasToUpdateNonOverlapping.length;
+
+        // Fill update rect buffer with the content of _areasToUpdateNonOverlapping
+        for (int i = 0; i < 2; ++i)
+        {
+            _updateRectScratch[i].length = numAreas;
+            _updateRectScratch[i][] = _areasToUpdateNonOverlapping[];
+            _updateRectScratch[i].keepAtLeastThatSize();
+        }
+
+        // We can't use tiled parallelism here because there is overdraw beyond level 0
+        // So instead what we do is using up to 2 threads.
+        foreach(i; _taskPool.parallel(2.iota))
+        {
+            Mipmap* mipmap = i == 0 ? &_diffuseMap : &_depthMap;
+            foreach(level; 1 .. mipmap.numLevels())
+            {
+                foreach(ref area; _updateRectScratch[i])
+                {                        
+                    area = mipmap.generateNextLevel(Mipmap.Quality.box, area, level);
+                }
+            }
         }
     }
 
@@ -477,6 +501,7 @@ protected:
                     vec4f colorLevel2 = _diffuseMap.linearSample!true(2, ic, jc);
                     vec4f colorLevel3 = _diffuseMap.linearSample!true(3, ic, jc);
                     vec4f colorLevel4 = _diffuseMap.linearSample!true(4, ic, jc);
+                    vec4f colorLevel5 = _diffuseMap.linearSample!true(4, ic, jc);
 
                     vec3f emitted = colorLevel1.rgb * 0.2f;
                     emitted += colorLevel2.rgb * 0.3f;
