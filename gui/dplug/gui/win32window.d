@@ -436,14 +436,12 @@ version(Windows)
             box2i dirtyRect = _listener.getDirtyRectangle();
             if (!dirtyRect.empty())
             {
-                dirtyRect = _listener.extendsDirtyRect(dirtyRect, _width, _height);
-
                 RECT r;
                 r.left = dirtyRect.min.x;
                 r.top = dirtyRect.min.y;
                 r.right = dirtyRect.max.x;
                 r.bottom = dirtyRect.max.y;
-                InvalidateRect(_hwnd, &r, FALSE); // TODO: be more precise with invalidated regions?
+                InvalidateRect(_hwnd, &r, FALSE); // TODO: invalidate rects one by one
                 UpdateWindow(_hwnd);
             }
         }

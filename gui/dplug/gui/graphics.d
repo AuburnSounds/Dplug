@@ -147,9 +147,10 @@ class GUIGraphics : UIElement, IGraphics
             setDirty(dirtyRect);
         }
 
+        /// Returns areas affected by updates.
         override box2i getDirtyRectangle()
         {
-            return _areasToUpdate.boundingBox();
+            return _areasToRender.boundingBox();
         }
 
         override void onResized(int width, int height)
@@ -163,11 +164,6 @@ class GUIGraphics : UIElement, IGraphics
             _depthMap.size(4, width, height);
         }
 
-        override box2i extendsDirtyRect(box2i rect, int width, int height)
-        {
-            return this.outer.extendsDirtyRect(rect, width, height);
-        }
-
         // Redraw dirtied controls in depth and diffuse maps.
         // Update composited cache.
         override void onDraw(ImageRef!RGBA wfb)
@@ -176,8 +172,16 @@ class GUIGraphics : UIElement, IGraphics
             foreach(elem; _elemsToDraw)
                 elem.render(_diffuseMap.levels[0].toRef(), _depthMap.levels[0].toRef());
 
+
+            // Split boxes to avoid overlapped work
+            // Note: this is done separately for update areas and render areas
+            _areasToUpdateNonOverlapping.length = 0;
+            _areasToRenderNonOverlapping.length = 0;
+            removeOverlappingAreas(_areasToUpdate, _areasToUpdateNonOverlapping);
+            removeOverlappingAreas(_areasToRender, _areasToRenderNonOverlapping);
+
             // Recompute mipmaps in updated areas
-            foreach(area; _areasToUpdate.boxes)
+            foreach(area; _areasToUpdateNonOverlapping)
             {
                 _diffuseMap.generateMipmaps(Mipmap.Quality.box, area);
                 _depthMap.generateMipmaps(Mipmap.Quality.box, area);
@@ -188,7 +192,7 @@ class GUIGraphics : UIElement, IGraphics
             clearDirty();
 
             // Composite GUI
-            compositeGUI(wfb, _areasToRender.boxes);
+            compositeGUI(wfb, _areasToRenderNonOverlapping);
         }
 
         override void onMouseCaptureCancelled()
@@ -217,9 +221,14 @@ protected:
     Mipmap _depthMap;
 
     // The list of areas whose diffuse/depth data have been changed.
-    BoxList _areasToUpdate;
-    // The list of areas that must be effectively updated in the composite buffer (slithly larger than _areasToUpdate).
-    BoxList _areasToRender;
+    box2i[] _areasToUpdate;
+    box2i[] _areasToUpdateNonOverlapping;
+
+    // The list of areas that must be effectively updated in the composite buffer (sligthly larger than _areasToUpdate).
+    box2i[] _areasToRender;
+    box2i[] _areasToRenderNonOverlapping;      // same list, but reorganized to avoid overlap
+    box2i[] _areasToRenderNonOverlappingTiled; // same list, but separated in smaller tiles
+    
     // The list of UIElement to draw
     UIElement[] _elemsToDraw;
 
@@ -240,15 +249,13 @@ protected:
         foreach(elem; _elemsToDraw)
         {
             box2i dirty = elem.getDirtyRect();
-            _areasToUpdate ~= dirty;
-            _areasToRender ~= extendsDirtyRect(dirty, widthOfWindow, heightOfWindow); 
+            if (!dirty.empty)
+            {
+                _areasToUpdate ~= dirty;
+                _areasToRender ~= extendsDirtyRect(dirty, widthOfWindow, heightOfWindow); 
+            }
         }
 
-        // Split boxes to avoid overlapped work
-        // Note: this is done separately for update areas and render areas
-        // TODO: do this in-place
-        _areasToUpdate.boxes = _areasToUpdate.removeOverlappingAreas();
-        _areasToRender.boxes = _areasToRender.removeOverlappingAreas();
     }
 
     box2i extendsDirtyRect(box2i rect, int width, int height)
@@ -277,7 +284,7 @@ protected:
         }
     }
 
-    // Don't like this rendering? Feel free to override this method.
+    /// Don't like this rendering? Feel free to override this method.
     void compositeTile(ImageRef!RGBA wfb, box2i area)
     {
         Mipmap* skybox = &context.skybox;

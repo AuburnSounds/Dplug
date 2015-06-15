@@ -70,10 +70,6 @@ interface IWindowListener
     /// recomputeDirtyAreas() MUST have been called before.
     box2i getDirtyRectangle();
 
-    /// Returns: Actual influence of a display change in the specified rect.
-    /// This is to account for shadows and various filters across pixels.
-    box2i extendsDirtyRect(box2i rect, int width, int height);
-
     /// Mark parts of the UI dirty to influence what onDraw will do.
     void markRectangleDirty(box2i dirtyRect);
 

@@ -9,122 +9,101 @@ import std.algorithm;
 
 import gfm.math;
 
-/// A boxlist is a collection of box2i, used in culling algorithms.
 
-struct BoxList
+/// Returns: Bounding boxes of all bounding boxes.
+box2i boundingBox(box2i[] boxes) pure nothrow @nogc
 {
-    box2i[] boxes;
-    alias boxes this; // subtype of box
-
-    /// Returns: Bounding boxes of all bounding boxes.
-    box2i boundingBox() pure const nothrow @nogc
+    if (boxes.length == 0)
+        return box2i(0, 0, 0, 0);
+    else
     {
-        if (boxes.length == 0)
-            return box2i(0, 0, 0, 0);
-        else
-        {
-            // Computes union of all boxes
-            box2i unionBox = boxes[0];
-            for(int i = 1; i < cast(int)boxes.length; ++i)
-                unionBox = unionBox.expand(boxes[i]);
-            return unionBox;
-        }
+        // Computes union of all boxes
+        box2i unionBox = boxes[0];
+        for(int i = 1; i < cast(int)boxes.length; ++i)
+            unionBox = unionBox.expand(boxes[i]);
+        return unionBox;
     }
+}
 
-    // change the list of boxes so that the coverage is the same but none overlaps
-    // also filters out empty/invalid boxes
-    // TODO: something better than O(n^2)
-    //       in-place to avoid reallocating an array
-    box2i[] removeOverlappingAreas()
-    out (result)
+// Change the list of boxes so that the coverage is the same but none overlaps
+// Every box pushed in filtered are non-intersecting.
+// TODO: something better than O(n^2)
+void removeOverlappingAreas(box2i[] boxes, ref box2i[] filtered)
+{
+    for(int i = 0; i < cast(int)(boxes.length); ++i)
     {
-        // ensure no overlap
-        for(int i = 0; i < cast(int)(result.length); ++i)
-             for(int j = i + 1; j < cast(int)(result.length); ++j)
-                 assert(result[i].intersection(result[j]).empty());
-    }
-    body
-    {
-        // every box push in this list are non-intersecting
-        box2i[] filtered;
+        box2i A = boxes[i];
 
-        for(int i = 0; i < cast(int)(boxes.length); ++i)
-        {
-            box2i A = boxes[i];
+        assert(A.isSorted());
 
-            assert(A.isSorted());
+        // empty boxes aren't kept
+        if (A.volume() <= 0)
+            continue;
 
-            // empty boxes aren't kept
-            if (A.volume() <= 0)
-                continue;
+        bool foundIntersection = false;
 
-            bool foundIntersection = false;
+        // test A against all other rectangles, if it pass, it is pushed
+        for(int j = i + 1; j < cast(int)(boxes.length); ++j)
+        {                
+            box2i B = boxes[j];
 
-            // test A against all other rectangles, if it pass, it is pushed
-            for(int j = i + 1; j < cast(int)(boxes.length); ++j)
-            {                
-                box2i B = boxes[j];
+            box2i C = A.intersection(B);
+            bool doesIntersect =  C.isSorted() && (!C.empty());
 
-                box2i C = A.intersection(B);
-                bool doesIntersect =  C.isSorted() && (!C.empty());
-
-                if (doesIntersect)
+            if (doesIntersect)
+            {
+                // case 1: A contains B, B is removed from the array, and no intersection considered
+                if (A.contains(B))
                 {
+                    boxes = boxes.remove(j); // TODO: remove this allocation
+                    j = j - 1;
+                    continue;
+                }
 
-                    // case 1: A contains B, B is removed from the array, and no intersection considered
-                    if (A.contains(B))
-                    {
-                        boxes = boxes.remove(j);
-                        j = j - 1;
-                        continue;
-                    }
+                foundIntersection = true; // A will not be pushed as is
 
-                    foundIntersection = true; // A will not be pushed as is
+                if (B.contains(A))
+                {
+                    break; // nothing from A is kept
+                }
+                else 
+                {
+                    // Make 4 boxes that are A without C (C is contained in A)
+                    // Some may be empty though since C touch at least one edge of A
 
-                    if (B.contains(A))
-                    {
-                        break; // nothing from A is kept
-                    }
-                    else 
-                    {
-                        // Make 4 boxes that are A without C (C is contained in A)
-                        // Some may be empty though since C touch at least one edge of A
+                    // General case
+                    // +---------+               +---------+ 
+                    // |    A    |               |    D    |
+                    // |  +---+  |   After split +--+---+--+
+                    // |  | C |  |        =>     | E|   |F |   At least one of D, E, F or G is empty
+                    // |  +---+  |               +--+---+--+
+                    // |         |               |    G    |
+                    // +---------+               +---------+
 
-                        // General case
-                        // +---------+               +---------+ 
-                        // |    A    |               |    D    |
-                        // |  +---+  |   After split +--+---+--+
-                        // |  | C |  |        =>     | E|   |F |   At least one of D, E, F or G is empty
-                        // |  +---+  |               +--+---+--+
-                        // |         |               |    G    |
-                        // +---------+               +---------+
-
-                        box2i D = box2i(A.min.x, A.min.y, A.max.x, C.min.y);
-                        box2i E = box2i(A.min.x, C.min.y, C.min.x, C.max.y);
-                        box2i F = box2i(C.max.x, C.min.y, A.max.x, C.max.y);
-                        box2i G = box2i(A.min.x, C.max.y, A.max.x, A.max.y);    
+                    box2i D = box2i(A.min.x, A.min.y, A.max.x, C.min.y);
+                    box2i E = box2i(A.min.x, C.min.y, C.min.x, C.max.y);
+                    box2i F = box2i(C.max.x, C.min.y, A.max.x, C.max.y);
+                    box2i G = box2i(A.min.x, C.max.y, A.max.x, A.max.y);    
 
 
-                        if (!D.empty)
-                            boxes ~= D;
-                        if (!E.empty)
-                            boxes ~= E;
-                        if (!F.empty)
-                            boxes ~= F;
-                        if (!G.empty)
-                            boxes ~= G;
+                    if (!D.empty)
+                        boxes ~= D;
+                    if (!E.empty)
+                        boxes ~= E;
+                    if (!F.empty)
+                        boxes ~= F;
+                    if (!G.empty)
+                        boxes ~= G;
 
-                        // no need to search for other intersection in A, since its parts have
-                        // been pushed
-                        break;
-                    }
+                    // no need to search for other intersection in A, since its parts have
+                    // been pushed
+                    break;
                 }
             }
+        }
 
-            if (!foundIntersection)
-                filtered ~= A;
-        }    
-        return filtered;
+        if (!foundIntersection)
+            filtered ~= A;
     }
 }
 
