@@ -179,6 +179,9 @@ class GUIGraphics : UIElement, IGraphics
             _areasToRenderNonOverlapping.length = 0;
             removeOverlappingAreas(_areasToUpdate, _areasToUpdateNonOverlapping);
             removeOverlappingAreas(_areasToRender, _areasToRenderNonOverlapping);
+            _areasToUpdateNonOverlapping.keepAtLeastThatSize();
+            _areasToRenderNonOverlapping.keepAtLeastThatSize();
+
 
             // Recompute mipmaps in updated areas
             foreach(area; _areasToUpdateNonOverlapping)
@@ -242,6 +245,7 @@ protected:
         // recompute draw list
         _elemsToDraw.length = 0;
         getDrawList(_elemsToDraw);
+        _elemsToDraw.keepAtLeastThatSize();
 
         // Get areas to update
         _areasToUpdate.length = 0;
@@ -255,6 +259,8 @@ protected:
                 _areasToRender ~= extendsDirtyRect(dirty, widthOfWindow, heightOfWindow); 
             }
         }
+        _areasToUpdate.keepAtLeastThatSize();
+        _areasToRender.keepAtLeastThatSize();
 
     }
 
@@ -278,13 +284,15 @@ protected:
     /// Useful multithreading code.
     void compositeGUI(ImageRef!RGBA wfb)
     {
-        enum tileWidth = 32; // TODO tune this
+        // Quick subjective testing indicates than somewhere between 16x16 and 32x32 have best performance
+        enum tileWidth = 32; 
         enum tileHeight = 32;
 
         _areasToRenderNonOverlappingTiled.length = 0;
         tileAreas(_areasToRenderNonOverlapping, tileWidth, tileHeight,_areasToRenderNonOverlappingTiled);
 
         int numAreas = _areasToRenderNonOverlappingTiled.length;
+        _areasToRenderNonOverlappingTiled.keepAtLeastThatSize();
 
         foreach(i; _taskPool.parallel(numAreas.iota))
         {
@@ -551,4 +559,12 @@ float linearStep(float a, float b, float t) pure nothrow @nogc
         float divider = 1.0f / (b - a);
         return (t - a) * divider;
     }
+}
+
+void keepAtLeastThatSize(T)(ref T[] slice)
+{
+    auto capacity = slice.capacity;
+    auto length = slice.length;
+    if (capacity < length)
+        slice.reserve(length); // should not reallocate
 }

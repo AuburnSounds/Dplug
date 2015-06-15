@@ -16,6 +16,11 @@ public import dplug.gui.toolkit.context;
 public import dplug.gui.toolkit.font;
 public import dplug.plugin.unchecked_sync;
 
+/// Base class of the UI widget hierarchy.
+///
+/// Bugs: a bunch of stuff in that class is intended specifically for the root element, 
+///       there is probably a batter design to find
+
 class UIElement
 {
 public:
