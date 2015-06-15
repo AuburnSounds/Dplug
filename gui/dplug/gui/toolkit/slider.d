@@ -95,7 +95,7 @@ public:
 
             ubyte shininess = 255;
 
-            diffuseMap.crop(handleRect).fill(RGBA(255, 255, 225, emissive));
+            diffuseMap.crop(handleRect).fill(RGBA(230, 230, 230, emissive));
 
             auto c0 = RGBA(58, shininess, 0, 0);
             auto c1 = RGBA(255, shininess, 0, 0);
