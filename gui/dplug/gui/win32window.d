@@ -107,10 +107,11 @@ version(Windows)
             close();
         }
 
-        void updateBufferSizeIfNeeded()
+        /// Returns: true if window size changed.
+        bool updateSizeIfNeeded()
         {
             RECT winsize;
-			BOOL res = GetClientRect(_hwnd, &winsize);
+            BOOL res = GetClientRect(_hwnd, &winsize);
             if (res == 0)
             {
                 DWORD err = GetLastError();
@@ -136,7 +137,10 @@ version(Windows)
                 _height = newHeight;
 
                 _listener.onResized(_width, _height);
+                return true;
             }
+            else
+                return false;
         }
 
         void close()
@@ -267,7 +271,12 @@ version(Windows)
                     RECT r;
                     if (GetUpdateRect(hwnd, &r, FALSE))
                     {
-                        updateBufferSizeIfNeeded();
+                        bool sizeChanged = updateSizeIfNeeded();
+
+                        // Recompute dirty areas if window size changed
+                        if (sizeChanged)
+                            _listener.recomputeDirtyAreas();
+
 
                         ImageRef!RGBA wfb;
                         wfb.w = _width;
@@ -423,6 +432,7 @@ version(Windows)
         /// TODO: this function should be as fast as possible
         void sendRepaintIfUIDirty()
         {
+            _listener.recomputeDirtyAreas();
             box2i dirtyRect = _listener.getDirtyRectangle();
             if (!dirtyRect.empty())
             {

@@ -52,14 +52,22 @@ interface IWindowListener
 
     /// An image you have to draw to, or return that nothing has changed.
     /// The size of this image is given before-hand by onResized.
+    /// recomputeDirtyAreas() MUST have been called before.
     void onDraw(ImageRef!RGBA wfb);
 
     /// The drawing area size has changed.    
     /// Always called at least once before onDraw.
     void onResized(int width, int height);
 
-    /// Returns: Minimal rectangle that contains dirty UIELement in UI.
+    /// Recompute internally what needs be done for the next onDraw.
+    /// This function MUST be called before calling `onDraw` and `getDirtyRectangle`.
+    /// This method exists to allow the Window to recompute these draw lists less.
+    /// And because cache invalidation was easier on user code than internally in the UI.
+    void recomputeDirtyAreas();
+
+    /// Returns: Minimal rectangle that contains dirty UIELement in UI + their graphical extent.
     ///          Empty box if nothing to update.
+    /// recomputeDirtyAreas() MUST have been called before.
     box2i getDirtyRectangle();
 
     /// Returns: Actual influence of a display change in the specified rect.

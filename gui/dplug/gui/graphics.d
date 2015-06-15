@@ -6,6 +6,8 @@
 module dplug.gui.graphics;
 
 import std.math;
+import std.range;
+import std.parallelism;
 
 import ae.utils.graphics;
 import dplug.plugin.client;
@@ -59,6 +61,8 @@ class GUIGraphics : UIElement, IGraphics
         light2Dir = vec3f(0.0f, 1.0f, 0.1f).normalized;
         light2Color = vec3f(0.378f, 0.35f, 0.322f);
         ambientLight = 0.3f;
+
+        _taskPool = new TaskPool();
     }
 
     // Graphics implementation
@@ -112,6 +116,11 @@ class GUIGraphics : UIElement, IGraphics
             this.outer.mouseMove(x, y, dx, dy, mstate);
         }
 
+        override void recomputeDirtyAreas()
+        {
+            return this.outer.recomputeDirtyAreas();
+        }
+
         override bool onKeyDown(Key key)
         {
             // Sends the event to the last clicked element first
@@ -140,16 +149,6 @@ class GUIGraphics : UIElement, IGraphics
 
         override box2i getDirtyRectangle()
         {
-            // TODO: cache for areas to update to share with onDraw?
-
-            // Get sorted draw list
-            UIElement[] elemsToDraw = getDrawList();
-
-            // Get areas to update
-            _areasToUpdate.length = 0;
-            foreach(elem; elemsToDraw)
-                _areasToUpdate ~= elem.getDirtyRect();
-
             return _areasToUpdate.boundingBox();
         }
 
@@ -166,45 +165,15 @@ class GUIGraphics : UIElement, IGraphics
 
         override box2i extendsDirtyRect(box2i rect, int width, int height)
         {
-            // shadow casting => 15 pixels influence on bottom left
-            // color-bleed => 7 pixels influence in every direction
-            int xmin = rect.min.x - 15;
-            int ymin = rect.min.y - 10;
-            int xmax = rect.max.x + 10;
-            int ymax = rect.max.y + 15;
-            if (xmin < 0) xmin = 0;
-            if (ymin < 0) ymin = 0;
-            if (xmax > width) xmax = width;
-            if (ymax > height) ymax = height;
-            return box2i(xmin, ymin, xmax, ymax);
+            return this.outer.extendsDirtyRect(rect, width, height);
         }
 
         // Redraw dirtied controls in depth and diffuse maps.
         // Update composited cache.
         override void onDraw(ImageRef!RGBA wfb)
         {
-            // TODO: cache for areas to update to share with getDirtyRectangle?
-
-            // Get sorted draw list
-            UIElement[] elemsToDraw = getDrawList();
-
-            // Get areas to update
-            _areasToUpdate.length = 0;
-            _areasToRender.length = 0;
-            foreach(elem; elemsToDraw)
-            {
-                box2i dirty = elem.getDirtyRect();
-                _areasToUpdate ~= dirty;
-                _areasToRender ~= extendsDirtyRect(dirty, wfb.w, wfb.h); 
-            }
-
-            // Split boxes to avoid overdraw
-            // Note: this is done separately for update areas and render areas
-            _areasToUpdate.boxes = _areasToUpdate.removeOverlappingAreas();
-            _areasToRender.boxes = _areasToRender.removeOverlappingAreas();
-
             // Render required areas in diffuse and depth maps, base level
-            foreach(elem; elemsToDraw)
+            foreach(elem; _elemsToDraw)
                 elem.render(_diffuseMap.levels[0].toRef(), _depthMap.levels[0].toRef());
 
             // Recompute mipmaps in updated areas
@@ -238,11 +207,8 @@ protected:
     // An interface to the underlying window
     IWindow _window;
 
-    // The list of areas whose diffuse/depth data have been changed 
-    BoxList _areasToUpdate;
-
-    // The list of areas that must be effectively updated in the composite buffer (slithly larger than _areasToUpdate)
-    BoxList _areasToRender;
+    // Task pool for multi-threaded image work
+    TaskPool _taskPool; 
 
     int _askedWidth = 0;
     int _askedHeight = 0;
@@ -250,18 +216,68 @@ protected:
     Mipmap _diffuseMap;
     Mipmap _depthMap;
 
+    // The list of areas whose diffuse/depth data have been changed.
+    BoxList _areasToUpdate;
+    // The list of areas that must be effectively updated in the composite buffer (slithly larger than _areasToUpdate).
+    BoxList _areasToRender;
+    // The list of UIElement to draw
+    UIElement[] _elemsToDraw;
 
-    // Compose lighting effects from depth and diffuse into a result.
-    // takes output image and non-overlapping areas as input
-    // Don't like this rendering? Feel free to override this method.
+
+    // Fills _areasToUpdate and _areasToRender
+    void recomputeDirtyAreas()
+    {
+        int widthOfWindow = _askedWidth;
+        int heightOfWindow = _askedHeight;
+
+        // recompute draw list
+        _elemsToDraw.length = 0;
+        getDrawList(_elemsToDraw);
+
+        // Get areas to update
+        _areasToUpdate.length = 0;
+        _areasToRender.length = 0;
+        foreach(elem; _elemsToDraw)
+        {
+            box2i dirty = elem.getDirtyRect();
+            _areasToUpdate ~= dirty;
+            _areasToRender ~= extendsDirtyRect(dirty, widthOfWindow, heightOfWindow); 
+        }
+
+        // Split boxes to avoid overlapped work
+        // Note: this is done separately for update areas and render areas
+        // TODO: do this in-place
+        _areasToUpdate.boxes = _areasToUpdate.removeOverlappingAreas();
+        _areasToRender.boxes = _areasToRender.removeOverlappingAreas();
+    }
+
+    box2i extendsDirtyRect(box2i rect, int width, int height)
+    {
+        // shadow casting => 15 pixels influence on bottom left
+        // color-bleed => 7 pixels influence in every direction
+        int xmin = rect.min.x - 15;
+        int ymin = rect.min.y - 10;
+        int xmax = rect.max.x + 10;
+        int ymax = rect.max.y + 15;
+        if (xmin < 0) xmin = 0;
+        if (ymin < 0) ymin = 0;
+        if (xmax > width) xmax = width;
+        if (ymax > height) ymax = height;
+        return box2i(xmin, ymin, xmax, ymax);
+    }
+
+    /// Compose lighting effects from depth and diffuse into a result.
+    /// takes output image and non-overlapping areas as input
+    /// Useful multithreading code.
     void compositeGUI(ImageRef!RGBA wfb, box2i[] areas)
     {
-        foreach(area; areas)
+        foreach(i; areas.length.iota.parallel)
         {
-            compositeTile(wfb, area);
+            compositeTile(wfb, areas[i]);
         }
     }
 
+    // Don't like this rendering? Feel free to override this method.
     void compositeTile(ImageRef!RGBA wfb, box2i area)
     {
         Mipmap* skybox = &context.skybox;

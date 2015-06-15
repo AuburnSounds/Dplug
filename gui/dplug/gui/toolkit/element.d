@@ -356,11 +356,11 @@ public:
         return _context.focused is this;
     }
 
-    /// Returns the list of Elements that should be drawn, in order.
-    /// TODO: reuse draw list
-    UIElement[] getDrawList()
+    /// Appends the Elements that should be drawn, in order.
+    /// The slice is reused to take advantage of .capacity
+    /// You should empty it before calling this function.
+    void getDrawList(ref UIElement[] list)
     {
-        UIElement[] list;
         if (isVisible())
         {
             box2i dirty = getDirtyRect();
@@ -370,13 +370,12 @@ public:
                 list ~= this;
 
             foreach(child; _children)
-                list = list ~ child.getDrawList();
+                child.getDrawList(list);
 
             // Sort by ascending z-order (high z-order gets drawn last)
             // This sort must be stable to avoid messing with tree natural order.
             sort!("a.zOrder() < b.zOrder()", SwapStrategy.stable)(list);
         }
-        return list;
     }
 
 protected:
