@@ -51,10 +51,6 @@ public:
     void beginDragging(UIElement element)
     {
         stopDragging();
-
-        // Uncomment this once SDL_CaptureMouse is in Derelict
-        // SDL_CaptureMouse(SDL_TRUE);
-
         dragged = element;
         dragged.onBeginDrag();
     }
