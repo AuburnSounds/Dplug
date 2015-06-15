@@ -529,7 +529,7 @@ protected:
 
                     emitted *= (div255 * 1.7f);
 
-                    color = emitted;
+                    color += emitted;
                 }
 
 
