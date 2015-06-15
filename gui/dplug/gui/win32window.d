@@ -64,7 +64,7 @@ version(Windows)
             _wndClass.hbrBackground = null;
             _wndClass.lpszMenuName = null;
 
-            // Generate an actually unique class name
+            // Generates an unique class name
             string uuid = randomUUID().toString();
             _className = "dplug_" ~ to!wstring(uuid) ~ "\0"; // add a terminator since toStringz for wstring doesn't seem to exist
             _wndClass.lpszClassName = _className.ptr;
@@ -91,38 +91,6 @@ version(Windows)
             }
 
             _windowDC = GetDC(_hwnd);
-
-            bool forcePixelFormat24bpp = false;
-
-            if (forcePixelFormat24bpp)
-            {
-                // Finds a suitable pixel format for RGBA layout
-                PIXELFORMATDESCRIPTOR pfd = PIXELFORMATDESCRIPTOR.init; // fill with zeroes since PIXELFORMATDESCRIPTOR is only integers
-                pfd.nSize = pfd.sizeof;
-                pfd.nVersion = 1;
-                pfd.dwFlags = PFD_SUPPORT_GDI | PFD_DRAW_TO_WINDOW;
-                pfd.iPixelType = PFD_TYPE_RGBA;
-                pfd.cColorBits = 24;
-                pfd.cAlphaBits = 8;
-                pfd.cAccumBits = 0;
-                pfd.cDepthBits = 0;
-                pfd.cStencilBits = 0;
-                pfd.cAuxBuffers = 0;
-                pfd.iLayerType = 0; /* PFD_MAIN_PLANE */
-
-                int indexOfBestPFD = ChoosePixelFormat(_windowDC, &pfd);
-                if (indexOfBestPFD == 0)
-                {
-                    DWORD err = GetLastError();
-                    throw new Exception(format("Couldn't find a suitable pixel format (error %s)", err));
-                }
-
-                if(TRUE != SetPixelFormat(_windowDC, indexOfBestPFD, &pfd))
-                {
-                    DWORD err = GetLastError();
-                    throw new Exception(format("SetPixelFormat failed (error %s)", err));
-                }
-            }
 
             _listener = listener;
 
