@@ -15,6 +15,7 @@ public import dplug.gui.types;
 public import dplug.gui.toolkit.context;
 public import dplug.gui.toolkit.font;
 public import dplug.plugin.unchecked_sync;
+public import dplug.plugin.alignedbuffer;
 import dplug.dsp.funcs;
 
 /// Base class of the UI widget hierarchy.
@@ -30,6 +31,7 @@ public:
         _context = context;
 
         _dirtyRectMutex = new UncheckedMutex();
+        _dirtyRects = new AlignedBuffer!box2i(4);
 
     }
 
@@ -38,8 +40,7 @@ public:
         foreach(child; children)
             child.close();
         _dirtyRectMutex.close();
-
-        _dirtyRects.reallocBuffer(0);
+        _dirtyRects.close();
     }
 
     /// Returns: true if was drawn, ie. the buffers have changed.
@@ -323,8 +324,7 @@ public:
     final void clearDirty()
     {
         _dirtyRectMutex.lock();
-        reallocBuffer(_dirtyRects, 0); // TODO do not malloc/free
-        _dirtyRects.length = 0;
+        _dirtyRects.clear(); // TODO do not malloc/free
         _dirtyRectMutex.unlock();
 
         foreach(child; _children)
@@ -448,7 +448,7 @@ protected:
     box2i _position;
 
     /// The possibly overlapping areas that need updating.
-    box2i[] _dirtyRects;
+    AlignedBuffer!box2i _dirtyRects;
 
     /// This is protected by a mutex, because it is sometimes updated from the host.
     UncheckedMutex _dirtyRectMutex;
@@ -481,9 +481,27 @@ private:
             _dirtyRectMutex.lock();
             scope(exit) _dirtyRectMutex.unlock();
 
-            // TODO: check for duplicated area and only push difference
-            _dirtyRects.reallocBuffer(_dirtyRects.length + 1);
-            _dirtyRects[$-1] = inter;
+            bool processed = false;
+
+            for (int i = 0; i < _dirtyRects.length; ++i)
+            {
+                box2i other = _dirtyRects[i];
+                if (other.contains(inter))
+                {
+                    processed = true; // do not push if contained in existing rect
+                    break;
+                }
+                else if (inter.contains(other)) // remove rect that it contains
+                {
+                    _dirtyRects[i] = _dirtyRects.popBack();
+                    i--;
+                }
+
+                // TODO: partial intersection? Or we have overdraw
+            }
+
+            if (!processed)
+                _dirtyRects.pushBack(inter);
         }
 
         foreach(child; _children)

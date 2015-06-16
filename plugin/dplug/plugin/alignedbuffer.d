@@ -73,6 +73,14 @@ final class AlignedBuffer(T)
             _size = askedSize;
         }
 
+        /// Pop last element
+        T popBack() nothrow @nogc
+        {
+            assert(_size > 0);
+            _size = _size - 1;
+            return _data[_size];
+        }
+
         /// Append an element to this buffer.
         void pushBack(T x) nothrow @nogc
         {
