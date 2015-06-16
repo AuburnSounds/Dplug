@@ -274,8 +274,9 @@ version(Windows)
                         bool sizeChanged = updateSizeIfNeeded();
 
                         // Recompute dirty areas if window size changed
-                        if (sizeChanged)
-                            _listener.recomputeDirtyAreas();
+
+                        // TODO: avoid this when we can
+                        _listener.recomputeDirtyAreas();
 
 
                         ImageRef!RGBA wfb;

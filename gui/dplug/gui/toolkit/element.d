@@ -47,6 +47,8 @@ public:
         dirtyRect = _dirtyRect;
         _dirtyRectMutex.unlock();
 
+        assert(!dirtyRect.empty());
+
         // Crop the diffuse and depth to the _position
         // This is because drawing outside of _position is disallowed
         // TODO: support out-of-bounds _position ?
