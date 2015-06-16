@@ -323,6 +323,7 @@ public:
     final void clearDirty()
     {
         _dirtyRectMutex.lock();
+        reallocBuffer(_dirtyRects, 0); // TODO do not malloc/free
         _dirtyRects.length = 0;
         _dirtyRectMutex.unlock();
 
@@ -342,28 +343,10 @@ public:
         topLevelParent().setDirtyRecursive(rect);
     }
 
-    /// Returns: dirty area. Supposed to be empty or inside position.
-  /*  final box2i[] getDirtyRects() nothrow @nogc
-    {
-        box2i[] result;
-        {
-            _dirtyRectMutex.lock();
-            scope(exit) _dirtyRectMutex.unlock();
-            foreach(rect; _dirtyRects)
-            {
-                assert(rect.isSorted());
-                result ~= rect;
-            }
-        }
-        return result;
-    }*/
-
     /// Returns: true if any dirty area.
     final bool isDirty() nothrow @nogc
     {
-        _dirtyRectMutex.lock();
-        scope(exit) _dirtyRectMutex.unlock();
-        return _dirtyRects.length != 0;
+        return DirtyRectsRange(this).length != 0;
     }
 
     /// Returns: Parent element. `null` if detached or root element.
@@ -495,14 +478,9 @@ private:
         assert(_position.isSorted());
         if (!inter.empty)
         {
-            
             _dirtyRectMutex.lock();
             scope(exit) _dirtyRectMutex.unlock();
-            assert(rect.isSorted());
 
-            foreach(dirtyRect; _dirtyRects)
-                assert(dirtyRect.isSorted);
-            
             // TODO: check for duplicated area and only push difference
             _dirtyRects.reallocBuffer(_dirtyRects.length + 1);
             _dirtyRects[$-1] = inter;
@@ -532,6 +510,11 @@ struct DirtyRectsRange
     }
 
     @disable this(this);
+
+    @property int length() pure nothrow @nogc
+    {
+        return cast(int)(_element._dirtyRects.length) - index;
+    }
 
     @property empty() nothrow @nogc
     {
