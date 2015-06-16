@@ -15,6 +15,7 @@ public import dplug.gui.types;
 public import dplug.gui.toolkit.context;
 public import dplug.gui.toolkit.font;
 public import dplug.plugin.unchecked_sync;
+import dplug.dsp.funcs;
 
 /// Base class of the UI widget hierarchy.
 ///
@@ -29,6 +30,7 @@ public:
         _context = context;
 
         _dirtyRectMutex = new UncheckedMutex();
+
     }
 
     void close()
@@ -36,26 +38,32 @@ public:
         foreach(child; children)
             child.close();
         _dirtyRectMutex.close();
+
+        _dirtyRects.reallocBuffer(0);
     }
 
     /// Returns: true if was drawn, ie. the buffers have changed.
     /// This method is called for each item in the drawlist that was visible and dirty.
     final void render(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap)
     {
-        box2i dirtyRect = void;
-        _dirtyRectMutex.lock();
-        dirtyRect = _dirtyRect;
-        _dirtyRectMutex.unlock();
+        box2i[] dirtyRects;
+        {
+            foreach(rect; DirtyRectsRange(this))
+                dirtyRects ~= rect;
+        }
 
-        assert(!dirtyRect.empty());
+        if (dirtyRects.length == 0)
+            return;
 
         // Crop the diffuse and depth to the _position
         // This is because drawing outside of _position is disallowed
-        // TODO: support out-of-bounds _position ?
         ImageRef!RGBA diffuseMapCropped = diffuseMap.cropImageRef(_position);
         ImageRef!RGBA depthMapCropped = depthMap.cropImageRef(_position);
 
-        onDraw(diffuseMapCropped, depthMapCropped, dirtyRect.translate(-_position.min) );
+        foreach(ref rect; dirtyRects)
+            rect = rect.translate(-_position.min);
+
+        onDraw(diffuseMapCropped, depthMapCropped, dirtyRects);
     }
 
     /// Meant to be overriden almost everytime for custom behaviour.
@@ -82,11 +90,6 @@ public:
     /// reflow() method
     final box2i position(box2i p)
     {
-        // also mark all dirty
-        _dirtyRectMutex.lock();
-        _dirtyRect = p;
-        _dirtyRectMutex.unlock();
-
         return _position = p;
     }
 
@@ -317,10 +320,10 @@ public:
         _zOrder = zOrder;
     }
 
-    final void clearDirty() nothrow @nogc
+    final void clearDirty()
     {
         _dirtyRectMutex.lock();
-        _dirtyRect = box2i(0, 0, 0, 0);
+        _dirtyRects.length = 0;
         _dirtyRectMutex.unlock();
 
         foreach(child; _children)
@@ -340,12 +343,27 @@ public:
     }
 
     /// Returns: dirty area. Supposed to be empty or inside position.
-    final box2i getDirtyRect() nothrow @nogc
+  /*  final box2i[] getDirtyRects() nothrow @nogc
+    {
+        box2i[] result;
+        {
+            _dirtyRectMutex.lock();
+            scope(exit) _dirtyRectMutex.unlock();
+            foreach(rect; _dirtyRects)
+            {
+                assert(rect.isSorted());
+                result ~= rect;
+            }
+        }
+        return result;
+    }*/
+
+    /// Returns: true if any dirty area.
+    final bool isDirty() nothrow @nogc
     {
         _dirtyRectMutex.lock();
         scope(exit) _dirtyRectMutex.unlock();
-        assert(_dirtyRect.isSorted());
-        return _dirtyRect;
+        return _dirtyRects.length != 0;
     }
 
     /// Returns: Parent element. `null` if detached or root element.
@@ -385,10 +403,8 @@ public:
     {
         if (isVisible())
         {
-            box2i dirty = getDirtyRect();
-
             // if the dirty rect isn't empty, add this to the draw list
-            if (!dirty.empty())
+            if (isDirty())
                 list ~= this;
 
             foreach(child; _children)
@@ -398,7 +414,7 @@ public:
             // This sort must be stable to avoid messing with tree natural order.
             sort!("a.zOrder() < b.zOrder()", SwapStrategy.stable)(list);
         }
-    }
+    }   
 
 protected:
 
@@ -407,22 +423,25 @@ protected:
     /// diffuseMap and depthMap are made to span _position exactly, 
     /// so you can draw in the area (0 .. _position.width, 0 .. _position.height)
     /// Warning: _dirtyRect should not be used instead of dirtyRect for threading reasons.
-    void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap, box2i dirtyRect)
+    void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap, box2i[] dirtyRects)
     {
         // defaults to filling with a grey pattern
         RGBA darkGrey = RGBA(100, 100, 100, 0);
         RGBA lighterGrey = RGBA(150, 150, 150, 0);
 
-        for (int y = dirtyRect.min.y; y < dirtyRect.max.y; ++y)
+        foreach(dirtyRect; dirtyRects)
         {
-            RGBA[] depthScan = depthMap.scanline(y);
-            RGBA[] diffuseScan = diffuseMap.scanline(y);
-            for (int x = dirtyRect.min.x; x < dirtyRect.max.x; ++x)
+            for (int y = dirtyRect.min.y; y < dirtyRect.max.y; ++y)
             {
-                diffuseScan.ptr[x] = ( (x >> 3) ^  (y >> 3) ) & 1 ? darkGrey : lighterGrey;
-                ubyte depth = 58;
-                ubyte shininess = 64;
-                depthScan.ptr[x] = RGBA(depth, shininess, 0, 0);
+                RGBA[] depthScan = depthMap.scanline(y);
+                RGBA[] diffuseScan = diffuseMap.scanline(y);
+                for (int x = dirtyRect.min.x; x < dirtyRect.max.x; ++x)
+                {
+                    diffuseScan.ptr[x] = ( (x >> 3) ^  (y >> 3) ) & 1 ? darkGrey : lighterGrey;
+                    ubyte depth = 58;
+                    ubyte shininess = 64;
+                    depthScan.ptr[x] = RGBA(depth, shininess, 0, 0);
+                }
             }
         }
     }
@@ -445,8 +464,8 @@ protected:
     /// An Element is not allowed though to draw further than its _position.
     box2i _position;
 
-    /// The fraction of position that is to be redrawn.
-    box2i _dirtyRect;
+    /// The possibly overlapping areas that need updating.
+    box2i[] _dirtyRects;
 
     /// This is protected by a mutex, because it is sometimes updated from the host.
     UncheckedMutex _dirtyRectMutex;
@@ -471,16 +490,61 @@ private:
     final void setDirtyRecursive(box2i rect) nothrow @nogc
     {
         box2i inter = _position.intersection(rect);
+        assert(inter.isSorted());
+        assert(rect.isSorted());
+        assert(_position.isSorted());
+        if (!inter.empty)
         {
+            
             _dirtyRectMutex.lock();
             scope(exit) _dirtyRectMutex.unlock();
-            assert(_dirtyRect.isSorted());
-            _dirtyRect = _dirtyRect.expand(inter);
-            assert(_dirtyRect.isSorted());
-            assert(_dirtyRect.empty() || _position.contains(_dirtyRect));
+            assert(rect.isSorted());
+
+            foreach(dirtyRect; _dirtyRects)
+                assert(dirtyRect.isSorted);
+            
+            // TODO: check for duplicated area and only push difference
+            _dirtyRects.reallocBuffer(_dirtyRects.length + 1);
+            _dirtyRects[$-1] = inter;
         }
 
         foreach(child; _children)
             child.setDirtyRecursive(rect); 
+    }
+}
+
+
+// Iterates over dirty rectangle while holding the dirty lock
+struct DirtyRectsRange
+{
+    int index = 0;
+    UIElement _element;
+
+    this(UIElement element) nothrow @nogc
+    {
+        _element = element;
+        _element._dirtyRectMutex.lock();
+    }
+
+    ~this() nothrow @nogc
+    {
+        _element._dirtyRectMutex.unlock();
+    }
+
+    @disable this(this);
+
+    @property empty() nothrow @nogc
+    {
+        return index >= _element._dirtyRects.length;
+    }
+
+    @property box2i front() nothrow @nogc
+    {
+        return _element._dirtyRects[index];
+    }    
+
+    void popFront() nothrow @nogc
+    {
+        index++;
     }
 }

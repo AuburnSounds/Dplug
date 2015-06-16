@@ -73,13 +73,18 @@ public:
         return _textColor = textColor_;
     }
 
-    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap, box2i dirtyRect)
+    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap, box2i[] dirtyRects)
     {
-        auto croppedDiffuse = diffuseMap.crop(dirtyRect);
         _font.size = _textSize;
         _font.color = _textColor;
-        vec2f positionInDirty = vec2f(diffuseMap.w * 0.5f, diffuseMap.h * 0.5f) - dirtyRect.min;
-        croppedDiffuse.fillText(_font, _text, positionInDirty.x, positionInDirty.y);
+
+        // only draw text which in dirty areas
+        foreach(dirtyRect; dirtyRects)
+        {
+            auto croppedDiffuse = diffuseMap.crop(dirtyRect);
+            vec2f positionInDirty = vec2f(diffuseMap.w * 0.5f, diffuseMap.h * 0.5f) - dirtyRect.min;
+            croppedDiffuse.fillText(_font, _text, positionInDirty.x, positionInDirty.y);
+        }
     }
 
 protected:

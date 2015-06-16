@@ -40,7 +40,7 @@ public:
         return _sensivity = sensivity;
     }
 
-    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap, box2i dirtyRect)
+    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap, box2i[] dirtyRects)
     {
         // dig a metal hole
       //  depthMap.crop(dirtyRect).fill(RGBA(0, 64, 0, 0));

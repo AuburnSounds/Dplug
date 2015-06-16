@@ -26,12 +26,11 @@ public:
         _param.removeListener(this);
     }
 
-    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap, box2i dirtyRect)
+    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap, box2i[] dirtyRects)
     {
         // dig a hole
         RGBA bgDepth = RGBA(0, 200, 0, 0);
-        auto croppedDepth = depthMap.crop(dirtyRect);
-        croppedDepth.fill(bgDepth);
+        depthMap.fill(bgDepth);
 
         // The switch is in a subrect
 

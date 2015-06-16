@@ -160,16 +160,17 @@ class DistortGUI : GUIGraphics
         setDirty(); // mark the whole UI dirty
     }
 
-    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap, box2i dirtyRect)
+    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap, box2i[] dirtyRects)
     {
-        auto croppedDiffuse = diffuseMap.crop(dirtyRect);
-        auto croppedDepth = depthMap.crop(dirtyRect);
-
-        // fill with clear color
-        croppedDiffuse.fill(RGBA(239, 229, 213, 0)); // for rendering efficiency, avoid emissive background
-
-        // fill with clear depth + shininess
-        croppedDepth.fill(RGBA(58, 64, 0, 0));
+        foreach(dirtyRect; dirtyRects)
+        {
+            auto croppedDiffuse = diffuseMap.crop(dirtyRect);
+            auto croppedDepth = depthMap.crop(dirtyRect);
+            // fill with clear color
+            croppedDiffuse.fill(RGBA(239, 229, 213, 0)); // for rendering efficiency, avoid emissive background
+            // fill with clear depth + shininess
+            croppedDepth.fill(RGBA(58, 64, 0, 0));
+        }
 
         _font.size = 19;
         _font.color = RGBA(0, 0, 0, 0);

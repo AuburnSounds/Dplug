@@ -22,16 +22,19 @@ public:
         _backgroundColor = backgroundColor;
     }
 
-    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap, box2i dirtyRect)
+    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap, box2i[] dirtyRects)
     {
-        auto croppedDiffuse = diffuseMap.crop(dirtyRect);
-        auto croppedDepth = depthMap.crop(dirtyRect);
+        foreach(dirtyRect; dirtyRects)
+        {
+            auto croppedDiffuse = diffuseMap.crop(dirtyRect);
+            auto croppedDepth = depthMap.crop(dirtyRect);
 
-        // fill with clear color
-        croppedDiffuse.fill(_backgroundColor);
+            // fill with clear color
+            croppedDiffuse.fill(_backgroundColor);
 
-        // fill with clear depth + shininess
-        croppedDepth.fill(RGBA(_depth, _shininess, 0, 0));        
+            // fill with clear depth + shininess
+            croppedDepth.fill(RGBA(_depth, _shininess, 0, 0));
+        }
     }
 
 protected:

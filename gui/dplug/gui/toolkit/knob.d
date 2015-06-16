@@ -40,7 +40,7 @@ public:
         return _sensivity = sensivity;
     }
 
-    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap, box2i dirtyRect)
+    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap, box2i[] dirtyRects)
     {
         auto c = RGBA(193, 180, 176, 0);
 

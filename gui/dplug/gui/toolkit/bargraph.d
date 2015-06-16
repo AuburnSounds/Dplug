@@ -59,7 +59,7 @@ public:
         setValues(d);
     }
 
-    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap, box2i dirtyRect)
+    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap, box2i[] dirtyRects)
     {
         depthMap.fill(RGBA(59, 200, 0, 0));
         diffuseMap.fill(RGBA(64, 64, 64, 0));      

@@ -250,9 +250,10 @@ protected:
         _areasToRender.length = 0;
         foreach(elem; _elemsToDraw)
         {
-            box2i dirty = elem.getDirtyRect();
-            if (!dirty.empty)
+            foreach(dirty; DirtyRectsRange(elem)) 
             {
+                assert(dirty.isSorted);
+                assert(!dirty.empty);
                 _areasToUpdate ~= dirty;
                 _areasToRender ~= extendsDirtyRect(dirty, widthOfWindow, heightOfWindow); 
             }
