@@ -113,6 +113,8 @@ class DistortGUI : GUIGraphics
     UIKnob driveKnob;
     UISlider outputSlider;
     UIOnOffSwitch onOffSwitch;
+    UIBargraph inputBargraph;
+    UIBargraph outputBargraph;
 
     Font _font;
 
@@ -129,6 +131,12 @@ class DistortGUI : GUIGraphics
         addChild(driveKnob = new UIKnob(context(), cast(FloatParameter) _client.param(1)));
         addChild(outputSlider = new UISlider(context(), cast(FloatParameter) _client.param(2)));
         addChild(onOffSwitch = new UIOnOffSwitch(context(), cast(BoolParameter) _client.param(3)));
+
+        addChild(inputBargraph = new UIBargraph(context(), 2));
+        addChild(outputBargraph = new UIBargraph(context(), 2));
+
+        inputBargraph.setValues([1.0f, 0.5f]);
+        outputBargraph.setValues([0.7f, 0.0f]);
     }
 
     override void reflow(box2i availableSpace)
@@ -139,13 +147,16 @@ class DistortGUI : GUIGraphics
         // put a layout algorithm here and implement reflow (ie. pass the right availableSpace
         // to children). But for simplicity purpose and for the sake of fixed size UI, forcing
         // positions is completely acceptable.
-        inputSlider.position = box2i(135, 100, 165, 230).translate(vec2i(60, 0));
+        inputSlider.position = box2i(135, 100, 165, 230).translate(vec2i(40, 0));
         driveKnob.position = box2i(250, 105, 250 + 120, 105 + 120).translate(vec2i(30, 0));
-        outputSlider.position = box2i(455, 100, 485, 230);
+        outputSlider.position = box2i(455, 100, 485, 230).translate(vec2i(-20, 0));
         
 
         onOffSwitch.position = box2i(110, 145, 140, 185);
 
+        inputBargraph.position = inputSlider.position.translate(vec2i(30, 0));
+        outputBargraph.position = outputSlider.position.translate(vec2i(30, 0));
+        
         setDirty(); // mark the whole UI dirty
     }
 
