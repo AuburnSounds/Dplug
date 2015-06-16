@@ -87,9 +87,9 @@ public:
                     shininess = 255;*/
 
                 RGBA color = _leds[i].diffuse;
-                color.r = (color.r * 255 + shininess) / 512;
-                color.g = (color.g * 255 + shininess) / 512;
-                color.b = (color.b * 255 + shininess) / 512;
+                color.r = (color.r * (255 + shininess) + 255) / 510;
+                color.g = (color.g * (255 + shininess) + 255) / 510;
+                color.b = (color.b * (255 + shininess) + 255) / 510;
                 color.a = shininess;
                 diffuseMap.aaFillRect(x0, y0, x1, y1, color);
 

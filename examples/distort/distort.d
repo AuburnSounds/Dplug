@@ -168,7 +168,7 @@ class DistortGUI : GUIGraphics
         auto croppedDepth = depthMap.crop(dirtyRect);
 
         // fill with clear color
-        croppedDiffuse.fill(RGBA(239, 229, 213, 0));
+        croppedDiffuse.fill(RGBA(239, 229, 213, 0)); // for rendering efficiency, avoid emissive background
 
         // fill with clear depth + shininess
         croppedDepth.fill(RGBA(58, 64, 0, 0));
