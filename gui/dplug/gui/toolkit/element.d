@@ -59,7 +59,7 @@ public:
     }
 
     /// Meant to be overriden almost everytime for custom behaviour.
-    /// Default behaviour is to span the whole area.
+    /// Default behaviour is to span the whole area and reflow children.
     /// Any layout algorithm is up to you.
     /// Children elements don't need to be inside their parent.
     void reflow(box2i availableSpace)
@@ -115,6 +115,7 @@ public:
         return false;
     }
 
+    // Mouse wheel was turned. 
     // This function is meant to be overriden.
     // It should return true if the wheel is handled.
     bool onMouseWheel(int x, int y, int wheelDeltaX, int wheelDeltaY, MouseState mstate)
@@ -123,31 +124,37 @@ public:
     }
 
     // Called when mouse move over this Element.
+    // This function is meant to be overriden.
     void onMouseMove(int x, int y, int dx, int dy, MouseState mstate)
     {
     }
 
     // Called when clicked with left/middle/right button
+    // This function is meant to be overriden.
     void onBeginDrag()
     {
     }
 
     // Called when mouse drag this Element.
+    // This function is meant to be overriden.
     void onMouseDrag(int x, int y, int dx, int dy, MouseState mstate)
     {
     }
 
-    // Called once drag is finished
+    // Called once drag is finished.
+    // This function is meant to be overriden.
     void onStopDrag()
     {
     }
 
     // Called when mouse enter this Element.
+    // This function is meant to be overriden.
     void onMouseEnter()
     {
     }
 
     // Called when mouse enter this Element.
+    // This function is meant to be overriden.
     void onMouseExit()
     {
     }
@@ -167,7 +174,7 @@ public:
     }
 
     // to be called at top-level when the mouse clicked
-    bool mouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
+    final bool mouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
     {
         // Test children that are displayed above this element first
         foreach(child; _children)
@@ -277,6 +284,14 @@ public:
         return false;
     }
 
+    // To be called at top-level periodically.
+    void animate(double dt, double time)
+    {
+        onAnimate(dt, time);
+        foreach(child; _children)
+            child.animate(dt, time);
+    }
+
     final UIContext context()
     {
         return _context;
@@ -321,11 +336,11 @@ public:
     /// Mark all elements in an area dirty.
     final void setDirty(box2i rect) nothrow @nogc
     {
-        topLevelParent().setDirtyRecursive(rect);        
+        topLevelParent().setDirtyRecursive(rect);
     }
 
     /// Returns: dirty area. Supposed to be empty or inside position.
-    box2i getDirtyRect() nothrow @nogc
+    final box2i getDirtyRect() nothrow @nogc
     {
         _dirtyRectMutex.lock();
         scope(exit) _dirtyRectMutex.unlock();
@@ -366,7 +381,7 @@ public:
     /// Appends the Elements that should be drawn, in order.
     /// The slice is reused to take advantage of .capacity
     /// You should empty it before calling this function.
-    void getDrawList(ref UIElement[] list)
+    final void getDrawList(ref UIElement[] list)
     {
         if (isVisible())
         {
@@ -412,7 +427,18 @@ protected:
         }
     }
 
+    /// Called periodically.
+    /// Override this to create animations.
+    /// Using setDirty there allows to redraw an element continuously (like a meter or an animated object).
+    /// Warning: Summing `dt` will not lead to a time that increase like `time`.
+    ///          `time` can go backwards if the window was reopen.
+    ///          `time` is guaranteed to increase as fast as system time but is not synced to audio time.
+    void onAnimate(double dt, double time)
+    {
+    }
 
+    /// Parent element.
+    /// Following this chain gets to the root element.
     UIElement _parent = null;
 
     /// Position is the graphical extent

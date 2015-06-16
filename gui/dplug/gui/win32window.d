@@ -100,6 +100,10 @@ version(Windows)
             int mSec = 15; // refresh at 60 hz if possible
             SetTimer(_hwnd, TIMER_ID, mSec, null);
             SetFocus(_hwnd);
+
+            // Get reference time
+            _timeAtCreationInMs = GetTickCount();
+            _lastMeasturedTimeInMs = _timeAtCreationInMs;
         }
 
         ~this()
@@ -303,7 +307,15 @@ version(Windows)
                 case WM_TIMER:
                 {
                     if (wParam == TIMER_ID)
+                    {
+                        DWORD now = GetTickCount(); 
+                        _lastMeasturedTimeInMs = _timeAtCreationInMs;
+                        double dt = (now - _lastMeasturedTimeInMs) * 0.001;
+                        double time = (now - _timeAtCreationInMs) * 0.001; // hopefully no plug-in will be open more than 49 days
+                        _lastMeasturedTimeInMs = now;
+                        _listener.onAnimate(dt, time);
                         sendRepaintIfUIDirty();
+                    }
                     return 0;
 
                 case WM_SIZE:
@@ -380,6 +392,9 @@ version(Windows)
 
         WNDCLASSW _wndClass;
         wstring _className;
+
+        DWORD _timeAtCreationInMs;
+        DWORD _lastMeasturedTimeInMs;
 
         IWindowListener _listener;
 

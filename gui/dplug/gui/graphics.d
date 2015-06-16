@@ -197,8 +197,12 @@ class GUIGraphics : UIElement, IGraphics
             // Stop an eventual drag operation
             _uiContext.stopDragging();
         }
-    }
 
+        override void onAnimate(double dt, double time)
+        {
+            this.outer.animate(dt, time);
+        }
+    }
 
 protected:
     UIContext _uiContext;

@@ -47,6 +47,18 @@ public:
         _valueMutex.close();        
     }
 
+    override void onAnimate(double dt, double time)
+    {
+        int numChannels = cast(int)_values.length;
+        float[] d = new float[numChannels];
+
+        foreach(i; 0..numChannels)
+        {
+            d[i] = 0.5 + 0.5 * sin(i + time);
+        }
+        setValues(d);
+    }
+
     override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap, box2i dirtyRect)
     {
         depthMap.fill(RGBA(59, 200, 0, 0));
@@ -63,10 +75,11 @@ public:
         float heightPerLed = available.height / cast(float)numLeds;
         float widthPerLed = available.width / cast(float)numChannels;
 
-        float tolerance = 1.0f / numLeds;
+        float tolerance = 0.3f / numLeds;
 
         foreach(channel; 0..numChannels)
         {
+            float value = getValue(channel);
             foreach(i; 0..numLeds)
             {
                 float x0 = available.min.x + widthPerLed * (channel + 0.15f);
@@ -79,12 +92,7 @@ public:
                 float ratio = 1 - i / cast(float)(numLeds - 1);
 
 
-                ubyte shininess = cast(ubyte)(0.5f + 255.0f * (1 - smoothStep(_values[channel] - tolerance, _values[channel] + tolerance, ratio)));
-
-           /*     if (ratio > _values[channel])
-                    shininess = 0;
-                else 
-                    shininess = 255;*/
+                ubyte shininess = cast(ubyte)(0.5f + 255.0f * (1 - smoothStep(value - tolerance, value + tolerance, ratio)));
 
                 RGBA color = _leds[i].diffuse;
                 color.r = (color.r * (255 + shininess) + 255) / 510;
@@ -106,6 +114,13 @@ public:
             _values[] = values[]; // slice copy
         }
         setDirty();
+    }
+
+    float getValue(int channel) nothrow @nogc
+    {
+        _valueMutex.lock();
+        scope(exit) _valueMutex.unlock();
+        return _values[channel];
     }
 
 protected:

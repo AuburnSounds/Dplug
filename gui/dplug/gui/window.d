@@ -75,6 +75,10 @@ interface IWindowListener
 
     /// Called whenever mouse capture was canceled (ALT + TAB, SetForegroundWindow...)
     void onMouseCaptureCancelled();
+
+    /// Must be called periodically (ideally 60 times per second but this is not mandatory).
+    /// `time` must refer to the window creation time.
+    void onAnimate(double dt, double time);
 }
 
 

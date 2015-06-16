@@ -160,8 +160,6 @@ class DistortGUI : GUIGraphics
         setDirty(); // mark the whole UI dirty
     }
 
-    float time = 0;
-
     override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap, box2i dirtyRect)
     {
         auto croppedDiffuse = diffuseMap.crop(dirtyRect);
