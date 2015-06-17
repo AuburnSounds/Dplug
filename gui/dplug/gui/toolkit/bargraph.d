@@ -71,7 +71,7 @@ public:
         float heightPerLed = available.height / cast(float)numLeds;
         float widthPerLed = available.width / cast(float)numChannels;
 
-        float tolerance = 0.3f / numLeds;
+        float tolerance = 1.0f / numLeds;
 
         foreach(channel; 0..numChannels)
         {
@@ -88,7 +88,7 @@ public:
                 float ratio = 1 - i / cast(float)(numLeds - 1);
 
 
-                ubyte shininess = cast(ubyte)(0.5f + 255.0f * (1 - smoothStep(value - tolerance, value + tolerance, ratio)));
+                ubyte shininess = cast(ubyte)(0.5f + 255.0f * (1 - smoothStep(value - tolerance, value, ratio)));
 
                 RGBA color = _leds[i].diffuse;
                 color.r = (color.r * (255 + shininess) + 255) / 510;
