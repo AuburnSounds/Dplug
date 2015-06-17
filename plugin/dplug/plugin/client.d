@@ -259,15 +259,14 @@ public:
         return _hostCommand;
     }
 
-    /// Override to clear state state (eg: delay lines) and allocate buffers.
+    /// Override to clear state (eg: resize and clear delay lines) and allocate buffers.
     /// Important: This will be called by the audio thread.
-    ///            You should not use the GC in this callback.
-    ///            But you can use malloc.
+    ///            So you should not use the GC in this callback.
     abstract void reset(double sampleRate, int maxFrames, int numInputs, int numOutputs) nothrow @nogc;
 
     /// Override to set the plugin latency in samples.
-    /// Most of the time this is dependant on the sampling rate, but most host
-    /// don't support latency changes.
+    /// Unfortunately most of the time latency is dependent on the sampling rate and frequency, 
+    /// but most hosts don't support latency changes.
     int latencySamples() pure const nothrow /// Returns: Plugin latency in samples.
     {
         return 0;
@@ -311,7 +310,7 @@ public:
 
 protected:
 
-    /// Override this methods to implement parameter creation.
+    /// Override this method to implement parameter creation.
     /// See_also: addParameter.
     abstract void buildParameters();
 
