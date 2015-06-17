@@ -159,9 +159,14 @@ private
             else
                 mixin("asm { rep; nop; }");
         }
+        else version(GNU)
+        {
+            import gcc.builtins;
+             __builtin_ia32_pause();
+        }
         else
         {
-            // TODO: implement cpuRelax for GDC
+            static assert(false, "no cpuRelax for this compiler");
         }
     }
 }
