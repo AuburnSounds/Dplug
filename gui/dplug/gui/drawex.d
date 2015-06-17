@@ -37,7 +37,7 @@ ImageRef!COLOR cropImageRef(COLOR)(ImageRef!COLOR src, box2i rect)
 void aaFillSector(V, COLOR)(auto ref V v, float x, float y, float r0, float r1, float a0, float a1, COLOR c)
 if (isWritableView!V && is(COLOR : ViewColor!V))
 {
-	int x0 = cast(int)floor(x - r1 - 1);
+    int x0 = cast(int)floor(x - r1 - 1);
     int x1 = cast(int)ceil(x + r1 + 1);
 
     int y0 = cast(int)floor(y - r1 - 1);
@@ -47,29 +47,29 @@ if (isWritableView!V && is(COLOR : ViewColor!V))
     float r1s = (r1 + 1) * (r1 + 1);
 
 
-	if (a0 > a1)
-		a1 += TAU;
+    if (a0 > a1)
+        a1 += TAU;
 
-	foreach (py; y0..y1+1)
+    foreach (py; y0..y1+1)
     {
-		foreach (px; x0..x1+1)
-		{
-			float dx = px-x;
-			float dy = py-y;
+        foreach (px; x0..x1+1)
+        {
+            float dx = px-x;
+            float dy = py-y;
             float rsq = dx * dx + dy * dy;
 
             if(r0s <= rsq && rsq <= r1s)
             {
-			    float rs = sqrt(rsq);
-			    if (r0 <= rs && rs < r1)
-			    {
+                float rs = sqrt(rsq);
+                if (r0 <= rs && rs < r1)
+                {
                     float alpha = 1.0f;
                     if (r0 + 1 > rs)
                         alpha = rs - r0;
                     if (rs + 1 > r1)
                         alpha = r1 - rs;                
 
-				    float a = atan2(dy, dx);
+                    float a = atan2(dy, dx);
                     bool inSector = (a0 <= a && a <= a1);
                     a += TAU;
                     bool inSector2 = (a0 <= a && a <= a1);
@@ -78,9 +78,9 @@ if (isWritableView!V && is(COLOR : ViewColor!V))
                         auto p = v.pixelPtr(px, py);
                         *p = COLOR.op!q{.blend(a, b, c)}(c, *p, cast(ubyte)(0.5f + alpha * 255.0f));
                     }
-			    }
+                }
             }
-		}
+        }
     }
 }
 
