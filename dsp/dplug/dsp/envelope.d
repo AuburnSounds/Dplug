@@ -162,23 +162,31 @@ private:
     double[12] _ynm1;
 }
 
-struct RMSEnvelope(T)
+/// Sliding RMS computation
+/// To use for coarse grained levels for visual display.
+struct CoarseRMS(T)
 {
 public:
-    void initialize(double samplerate) nothrow @nogc
+    void initialize(double sampleRate) nothrow @nogc
     {        
+        // In Reaper, default RMS window is 500 ms
+        _envelope.initialize(20, sampleRate);
         // TODO
-        assert(false);        
+        _last = 0;
     }
 
-    T next(T input) nothrow @nogc
+    /// Process a chunk of samples and return a value in dB (could be -infinity)
+    void feed(T input) nothrow @nogc
     {
-        // TODO
-        assert(false);
+        _last = _envelope.next(input * input);
+    }
+
+    T RMS() nothrow @nogc
+    {
+        return sqrt(_last);
     }
 
 private:
-
-
-
+    EnvelopeFollower!T _envelope;
+    T _last;
 }

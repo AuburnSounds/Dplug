@@ -9,6 +9,7 @@ import std.math;
 import dplug.gui.toolkit.element;
 //import dplug.gui.drawex;
 import dplug.plugin.unchecked_sync;
+import dplug.dsp.funcs;
 
 // Vertical bargraphs made of LEDs
 class UIBargraph : UIElement
@@ -20,12 +21,18 @@ public:
         RGBA diffuse;
     }
 
-    this(UIContext context, int numChannels, int redLeds = 3, int orangeLeds = 3, int yellowLeds = 3, int greenLeds = 9)
+    /// Creates a new bargraph.
+    /// [minValue .. maxValue] is the interval of values that will span [0..1] once remapped.
+    this(UIContext context, int numChannels, float minValue, float maxValue,
+         int redLeds = 3, int orangeLeds = 3, int yellowLeds = 3, int greenLeds = 9)
     {
         super(context);
 
         _values.length = numChannels;
         _values[] = 0;
+
+        _minValue = minValue;
+        _maxValue = maxValue;
 
         foreach (i; 0..redLeds)
             _leds ~= LED(RGBA(255, 32, 0, 255));
@@ -44,20 +51,9 @@ public:
 
     override void close()
     {
-        _valueMutex.close();        
+        _valueMutex.close();
     }
 
-    override void onAnimate(double dt, double time)
-    {
-        int numChannels = cast(int)_values.length;
-        float[] d = new float[numChannels];
-
-        foreach(i; 0..numChannels)
-        {
-            d[i] = 0.5 + 0.5 * sin(i + time);
-        }
-        setValues(d);
-    }
 
     override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap, box2i[] dirtyRects)
     {
@@ -111,7 +107,13 @@ public:
             _valueMutex.lock();
             scope(exit) _valueMutex.unlock();
             assert(values.length == _values.length);
-            _values[] = values[]; // slice copy
+
+            // remap all values
+            foreach(i; 0..values.length)
+            {
+                _values[i] = linmap!float(values[i], _minValue, _maxValue, 0, 1);
+                _values[i] = clamp!float(_values[i], 0, 1);
+            }
         }
         setDirty();
     }
@@ -128,4 +130,6 @@ protected:
 
     UncheckedMutex _valueMutex;
     float[] _values;
+    float _minValue;
+    float _maxValue;
 }

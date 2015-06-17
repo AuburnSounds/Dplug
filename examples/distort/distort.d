@@ -9,6 +9,7 @@ import gfm.image;
 
 import dplug.plugin,
        dplug.vst,
+       dplug.dsp,
        dplug.gui;
 
 mixin(DLLEntryPoint!());
@@ -17,6 +18,8 @@ mixin(VSTEntryPoint!Distort);
 /// Example mono/stereo distortion plugin.
 final class Distort : dplug.plugin.Client
 {
+public:
+
     this()
     {
     }
@@ -64,6 +67,12 @@ final class Distort : dplug.plugin.Client
     override void reset(double sampleRate, int maxFrames, int numInputs, int numOutputs) nothrow @nogc
     {
         // Clear here any state and delay buffers you might have.
+
+        foreach(channel; 0..2)
+        {
+            _inputRMS[channel].initialize(sampleRate);
+            _outputRMS[channel].initialize(sampleRate);
+        }
     }
 
     override void processAudio(const(double*)[] inputs, double*[]outputs, int frames) nothrow @nogc
@@ -79,15 +88,26 @@ final class Distort : dplug.plugin.Client
 
         bool enabled = (cast(BoolParameter)param(3)).value();
 
+        float[2] RMS = 0;
+
         if (enabled)
         {
             for (int chan = 0; chan < minChan; ++chan)
             {
                 for (int f = 0; f < frames; ++f)
                 {
-                    double input = inputGain * 2.0 * inputs[chan][f];
-                    double distorted = tanh(input * drive) / drive;
-                    outputs[chan][f] = outputGain * distorted;
+                    double inputSample = inputGain * 2.0 * inputs[chan][f];
+
+                    // Feed the input RMS computation
+                    _inputRMS[chan].feed(inputSample);
+
+                    // Distort signal
+                    double distorted = tanh(inputSample * drive) / drive;
+                    double outputSample = outputGain * distorted;
+                    outputs[chan][f] = outputSample;
+
+                    // Feed the output RMS computation
+                    _outputRMS[chan].feed(outputSample);
                 }
             }
         }
@@ -101,12 +121,28 @@ final class Distort : dplug.plugin.Client
         // fill with zero the remaining channels
         for (int chan = minChan; chan < numOutputs; ++chan)
             outputs[chan][0..frames] = 0; // D has array slices assignments and operations
+
+        // Update RMS meters from the audio callback
+        DistortGUI gui = cast(DistortGUI) graphics();
+        float[2] inputLevels;
+        inputLevels[0] = floatToDeciBel(_inputRMS[0].RMS());
+        inputLevels[1] = minChan >= 1 ? floatToDeciBel(_inputRMS[1].RMS()) : inputLevels[0];
+        gui.inputBargraph.setValues(inputLevels);
+
+        float[2] outputLevels;
+        outputLevels[0] = floatToDeciBel(_outputRMS[0].RMS());
+        outputLevels[1] = minChan >= 1 ? floatToDeciBel(_outputRMS[1].RMS()) : outputLevels[0];
+        gui.outputBargraph.setValues(outputLevels);
     }
+
+private:
+    CoarseRMS!float[2] _inputRMS;
+    CoarseRMS!float[2] _outputRMS;
 }
 
 class DistortGUI : GUIGraphics
 {
-    public:
+public:
     Distort _client;
 
     UISlider inputSlider;
@@ -132,8 +168,8 @@ class DistortGUI : GUIGraphics
         addChild(outputSlider = new UISlider(context(), cast(FloatParameter) _client.param(2)));
         addChild(onOffSwitch = new UIOnOffSwitch(context(), cast(BoolParameter) _client.param(3)));
 
-        addChild(inputBargraph = new UIBargraph(context(), 2));
-        addChild(outputBargraph = new UIBargraph(context(), 2));
+        addChild(inputBargraph = new UIBargraph(context(), 2, -80.0f, 6.0f));
+        addChild(outputBargraph = new UIBargraph(context(), 2, -80.0f, 6.0f));
 
         inputBargraph.setValues([1.0f, 0.5f]);
         outputBargraph.setValues([0.7f, 0.0f]);

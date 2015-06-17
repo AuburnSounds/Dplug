@@ -248,7 +248,7 @@ public:
     }
 
     // Getter for the IGraphics interface
-    final IGraphics graphics()
+    final IGraphics graphics() nothrow @nogc
     {
         return _graphics;
     }
