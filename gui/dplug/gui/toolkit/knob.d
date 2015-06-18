@@ -100,12 +100,12 @@ public:
         float posEdgeX = centerx + sin(angle) * depthRadius2;
         float posEdgeY = centery - cos(angle) * depthRadius2;
         
-        diffuseMap.softCircle(centerx, centery, knobRadius - 1, knobRadius, c);
+        diffuseMap.softCircleFloat(centerx, centery, knobRadius - 1, knobRadius, c);
         
         ubyte shininess = 200;
-        depthMap.softCircle(centerx, centery, depthRadius, knobRadius, RGBA(255, shininess, 0, 0));
-        depthMap.softCircle(centerx, centery, 0, depthRadius, RGBA(150, shininess, 0, 0));
 
+        depthMap.softCircleFloat(centerx, centery, depthRadius, knobRadius, RGBA(255, shininess, 0, 0));
+        depthMap.softCircleFloat(centerx, centery, 0, depthRadius, RGBA(150, shininess, 0, 0));
 
 
         // LEDs
@@ -131,8 +131,8 @@ public:
             
             RGBA color = RGBA(255, green, 128, emissive);
 
-            depthMap.softCircle(x, y, smallRadius, largerRadius, RGBA(100, 255, 0, 0));
-            diffuseMap.softCircle(x, y, smallRadius, largerRadius, color);
+            depthMap.softCircleFloat(x, y, smallRadius, largerRadius, RGBA(100, 255, 0, 0));
+            diffuseMap.softCircleFloat(x, y, smallRadius, largerRadius, color);
         }        
     }
 

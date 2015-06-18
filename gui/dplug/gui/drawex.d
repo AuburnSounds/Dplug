@@ -10,6 +10,8 @@ module dplug.gui.drawex;
 
 import std.algorithm;
 import std.math;
+import std.traits;
+
 import gfm.math;
 import ae.utils.graphics;
 
@@ -112,5 +114,47 @@ if (isWritableView!V && is(COLOR : ViewColor!V))
         ubyte alpha = cast(ubyte)( 0.5f + 255.0f * (py - y0) / cast(float)(y1 - y0) );  // Not being generic here
         COLOR c = COLOR.op!q{.blend(a, b, c)}(c1, c0, alpha); // warning .blend is confusing, c1 comes first
         hline(v, x0, x1, py, c);
+    }
+}
+
+// Rewritten because of weird codegen bugs
+void softCircleFloat(T, V, COLOR)(auto ref V v, T x, T y, T r1, T r2, COLOR color)
+if (isWritableView!V && isNumeric!T && is(COLOR : ViewColor!V))
+{
+    assert(r1 <= r2);
+    int x1 = cast(int)(x-r2-1); if (x1<0) x1=0;
+    int y1 = cast(int)(y-r2-1); if (y1<0) y1=0;
+    int x2 = cast(int)(x+r2+1); if (x2>v.w) x2 = v.w;
+    int y2 = cast(int)(y+r2+1); if (y2>v.h) y2 = v.h;
+
+    auto r1s = r1*r1;
+    auto r2s = r2*r2;
+    
+    float fx = x;
+    float fy = y;
+
+    float fr1s = r1s;
+    float fr2s = r2s;
+
+    float fr21 = fr2s - fr1s;
+
+    for (int cy=y1;cy<y2;cy++)
+    {
+        auto row = v.scanline(cy);
+        for (int cx=x1;cx<x2;cx++)
+        {
+            float frs = (fx - cx)*(fx - cx) + (fy - cy)*(fy - cy); // >> COLOR.channelBits
+
+            if (frs<fr1s)
+                row[cx] = color;
+            else
+            {
+                if (frs<fr2s)
+                {
+                    float alpha = (frs-fr1s) / fr21;
+                    row[cx] = COLOR.op!q{.blend(a, b, c)}(color, row[cx], cast(ubyte)(0.5f + 255.0f * (1-alpha)));
+                }
+            }
+        }
     }
 }
