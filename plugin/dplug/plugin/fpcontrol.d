@@ -8,6 +8,11 @@ module dplug.plugin.fpcontrol;
 import core.cpuid;
 import std.math;
 
+version(X86)
+    version = isX86;
+version(X86_64)
+    version = isX86;
+
 /// This struct ensures that floating point is save/restored and set consistently in plugin callbacks.
 struct FPControl
 {
@@ -20,7 +25,7 @@ struct FPControl
         // force round to nearest
         fpctrl.rounding(FloatingPointControl.roundToNearest);
 
-        version(X86)
+        version(isX86)
         {
             sseState = getSSEControlState();
             setSSEControlState(0x9fff); // Flush denormals to zero + Denormals Are Zeros + all exception masked
@@ -29,7 +34,7 @@ struct FPControl
 
     ~this() @nogc
     {
-        version(X86)
+        version(isX86)
         {
             // restore SSE2 LDMXCSR and STMXCSR load and write the MXCSR
             setSSEControlState(sseState);
@@ -38,14 +43,14 @@ struct FPControl
 
     FloatingPointControl fpctrl; // handles save/restore
 
-    version(X86)
+    version(isX86)
     {
         uint sseState;
     }
 }
 
 
-version(X86)
+version(isX86)
 {
     version(D_InlineAsm_X86)
         version = InlineX86Asm;
