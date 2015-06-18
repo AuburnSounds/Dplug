@@ -64,10 +64,14 @@
             "dependencies": {
                 "dplug:plugin": "*",
                 "dplug:dsp": "*",
-		        "ae-graphics": "~>0.0",
+                "ae-graphics": "~>0.0",
                 "gfm:math": "~>2.3",
                 "gfm:image": "~>2.3"
-            }
+            },
+
+            "buildRequirements": [
+                "disallowOptimization"
+            ]
         }
     ]
 }
