@@ -143,7 +143,7 @@ if (isWritableView!V && isNumeric!T && is(COLOR : ViewColor!V))
         auto row = v.scanline(cy);
         for (int cx=x1;cx<x2;cx++)
         {
-            float frs = (fx - cx)*(fx - cx) + (fy - cy)*(fy - cy); // >> COLOR.channelBits
+            float frs = (fx - cx)*(fx - cx) + (fy - cy)*(fy - cy);
 
             if (frs<fr1s)
                 row[cx] = color;
