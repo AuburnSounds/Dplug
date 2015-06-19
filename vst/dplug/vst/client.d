@@ -672,8 +672,18 @@ private:
                 return _messageQueue.popFront(msg);
         }
 
+        // Race condition here.
+        // Being a tryPop, there is a tiny chance that we miss a message from the queue.
+        // Thankfully it isn't that bad:
+        // - we are going to read it next buffer
+        // - not clearing the state for a buffer does no harm
+        // - plugin is initialized first with the maximum amount of input and outputs 
+        //   so missing such a message isn't that bad: the audio callback will have some outputs that are untouched
+        // We could avoid that race with truly interlocked, but that exposes us to GC pauses 
+        // (a third thread might start a collect while the UI thread takes the queue lock) which is another unlikely race condition.
+
         Message msg;
-        while(popMessage(msg))
+        while(popMessage(msg)) // <- here
         {
             final switch(msg.type) with (Message.Type)
             {
@@ -848,11 +858,13 @@ extern(C) private nothrow
     // VST callback for DEPRECATED_process
     void processCallback(AEffect *effect, float **inputs, float **outputs, int sampleFrames) nothrow @nogc
     {
+        // GC pauses might happen in some circumstances.
+        // If the thread calling this callback is a registered thread (has also called the opcode dispatcher),
+        // then this thread could be paused by an other thread collecting.
+        // We assume that in that case, avoiding pauses in the audio thread wasn't a primary concern of the host.
+
         try
         {
-            // Thread isn't registered there, to make the whole callback GC free.
-            // TODO: what if the thread is already registered?
-
             FPControl fpctrl;
             fpctrl.initialize();
 
@@ -869,11 +881,13 @@ extern(C) private nothrow
     // VST callback for processReplacing
     void processReplacingCallback(AEffect *effect, float **inputs, float **outputs, int sampleFrames) nothrow @nogc
     {
+        // GC pauses might happen in some circumstances.
+        // If the thread calling this callback is a registered thread (has also called the opcode dispatcher),
+        // then this thread could be paused by an other thread collecting.
+        // We assume that in that case, avoiding pauses in the audio thread wasn't a primary concern of the host.
+
         try
         {
-            // Thread isn't registered there, to make the whole callback GC free.
-            // TODO: what if the thread is already registered?
-
             FPControl fpctrl;
             fpctrl.initialize();
 
@@ -890,11 +904,13 @@ extern(C) private nothrow
     // VST callback for processDoubleReplacing
     void processDoubleReplacingCallback(AEffect *effect, double **inputs, double **outputs, int sampleFrames) nothrow @nogc
     {
+        // GC pauses might happen in some circumstances.
+        // If the thread calling this callback is a registered thread (has also called the opcode dispatcher),
+        // then this thread could be paused by an other thread collecting.
+        // We assume that in that case, avoiding pauses in the audio thread wasn't a primary concern of the host.
+
         try
         {
-            // Thread isn't registered there, to make the whole callback GC free.
-            // TODO: what if the thread is already registered?
-
             FPControl fpctrl;
             fpctrl.initialize();
 
@@ -911,6 +927,11 @@ extern(C) private nothrow
     // VST callback for setParameter
     void setParameterCallback(AEffect *effect, int index, float parameter) nothrow @nogc
     {
+        // GC pauses might happen in some circumstances.
+        // If the thread calling this callback is a registered thread (has also called the opcode dispatcher),
+        // then this thread could be paused by an other thread collecting.
+        // We assume that in that case, avoiding pauses in the audio thread wasn't a primary concern of the host.
+
         try
         {
             FPControl fpctrl;
@@ -934,6 +955,11 @@ extern(C) private nothrow
     // VST callback for getParameter
     float getParameterCallback(AEffect *effect, int index) nothrow @nogc
     {
+        // GC pauses might happen in some circumstances.
+        // If the thread calling this callback is a registered thread (has also called the opcode dispatcher),
+        // then this thread could be paused by an other thread collecting.
+        // We assume that in that case, avoiding pauses in the audio thread wasn't a primary concern of the host.
+
         try
         {
             FPControl fpctrl;
