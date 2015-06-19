@@ -158,3 +158,51 @@ if (isWritableView!V && isNumeric!T && is(COLOR : ViewColor!V))
         }
     }
 }
+
+void aaFillRectFloat(bool CHECKED=true, V, COLOR)(auto ref V v, float x1, float y1, float x2, float y2, COLOR color) 
+    if (isWritableView!V && is(COLOR : ViewColor!V))
+{
+    import ae.utils.math;
+    sort2(x1, x2);
+    sort2(y1, y2);
+
+    int ix1 = cast(int)(floor(x1));
+    int iy1 = cast(int)(floor(y1));
+    int ix2 = cast(int)(floor(x2));
+    int iy2 = cast(int)(floor(y2));
+    float fx1 = x1 - ix1;
+    float fy1 = y1 - iy1;
+    float fx2 = x2 - ix2;
+    float fy2 = y2 - iy2;
+
+    static ubyte toAlpha(float fraction) pure nothrow @nogc
+    {
+        return cast(ubyte)(cast(int)(0.5f + 255.0f * fraction));
+    }
+
+    v.aaPutPixelFloat!CHECKED(ix1, iy1, color, toAlpha( (1-fx1) * (1-fy1) ));
+    v.hline!CHECKED(ix1+1, ix2, iy1, color, toAlpha(1 - fy1));
+    v.aaPutPixelFloat!CHECKED(ix2, iy1, color, toAlpha( fx2 * (1-fy1) ));
+
+    v.vline!CHECKED(ix1, iy1+1, iy2, color, toAlpha(1 - fx1));
+    v.vline!CHECKED(ix2, iy1+1, iy2, color, toAlpha(fx2));
+
+    v.aaPutPixelFloat!CHECKED(ix1, iy2, color, toAlpha( (1-fx1) * fy2 ));
+    v.hline!CHECKED(ix1+1, ix2, iy2, color,  toAlpha(fy2));
+    v.aaPutPixelFloat!CHECKED(ix2, iy2, color, toAlpha( fx2 * fy2 ));
+
+    v.fillRect!CHECKED(ix1+1, iy1+1, ix2, iy2, color);
+}
+
+template aaPutPixelFloat(bool CHECKED=true)
+{
+    void aaPutPixelFloat(V, COLOR)(auto ref V v, int x, int y, COLOR color, ubyte alpha)
+    {
+        static if (CHECKED)
+            if (x<0 || x>=v.w || y<0 || y>=v.h)
+                return;
+
+        COLOR* p = v.pixelPtr(x, y);
+        *p = COLOR.op!q{.blend(a, b, c)}(color, *p, alpha);
+    }
+}

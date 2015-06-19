@@ -68,25 +68,25 @@ public:
 
         box2f available = box2f(border, border, width - border, height - border);
 
-        float heightPerLed = available.height / cast(float)numLeds;
-        float widthPerLed = available.width / cast(float)numChannels;
+        float heightPerLed = cast(float)(available.height) / cast(float)numLeds;
+        float widthPerLed = cast(float)(available.width) / cast(float)numChannels;
 
         float tolerance = 1.0f / numLeds;
 
         foreach(channel; 0..numChannels)
         {
             float value = getValue(channel);
+            float x0 = border + widthPerLed * (channel + 0.15f);
+            float x1 = x0 + widthPerLed * 0.7f;
+
             foreach(i; 0..numLeds)
             {
-                float x0 = available.min.x + widthPerLed * (channel + 0.15f);
-                float x1 = x0 + widthPerLed * 0.7f;
-                float y0 = available.min.y + heightPerLed * (i + 0.1f);
+                float y0 = border + heightPerLed * (i + 0.1f);
                 float y1 = y0 + heightPerLed * 0.8f;
 
-                depthMap.aaFillRect(x0, y0, x1, y1, RGBA(60, 255, 0, 0));
+                depthMap.aaFillRectFloat!true(x0, y0, x1, y1, RGBA(60, 255, 0, 0));
 
                 float ratio = 1 - i / cast(float)(numLeds - 1);
-
 
                 ubyte shininess = cast(ubyte)(0.5f + 255.0f * (1 - smoothStep(value - tolerance, value, ratio)));
 
@@ -95,7 +95,7 @@ public:
                 color.g = (color.g * (255 + shininess) + 255) / 510;
                 color.b = (color.b * (255 + shininess) + 255) / 510;
                 color.a = shininess;
-                diffuseMap.aaFillRect(x0, y0, x1, y1, color);
+                diffuseMap.aaFillRectFloat!true(x0, y0, x1, y1, color);
 
             }
         }
