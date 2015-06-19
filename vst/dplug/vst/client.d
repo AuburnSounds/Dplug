@@ -676,11 +676,12 @@ private:
         // Being a tryPop, there is a tiny chance that we miss a message from the queue.
         // Thankfully it isn't that bad:
         // - we are going to read it next buffer
-        // - not clearing the state for a buffer does no harm
+        // - not clearing the state for a buffer duration does no harm
         // - plugin is initialized first with the maximum amount of input and outputs 
         //   so missing such a message isn't that bad: the audio callback will have some outputs that are untouched
-        // We could avoid that race with truly interlocked, but that exposes us to GC pauses 
+        // We could avoid that race with a blocking pop, but that exposes us to GC pauses 
         // (a third thread might start a collect while the UI thread takes the queue lock) which is another unlikely race condition.
+        // Perhaps it's the one to favor, I don't know.
 
         Message msg;
         while(popMessage(msg)) // <- here
