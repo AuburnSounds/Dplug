@@ -84,7 +84,7 @@ public:
                 float y0 = border + heightPerLed * (i + 0.1f);
                 float y1 = y0 + heightPerLed * 0.8f;
 
-                depthMap.aaFillRectFloat!true(x0, y0, x1, y1, RGBA(60, 255, 0, 0));
+                depthMap.aaFillRectFloat!false(x0, y0, x1, y1, RGBA(60, 255, 0, 0));
 
                 float ratio = 1 - i / cast(float)(numLeds - 1);
 
@@ -95,7 +95,7 @@ public:
                 color.g = (color.g * (255 + shininess) + 255) / 510;
                 color.b = (color.b * (255 + shininess) + 255) / 510;
                 color.a = shininess;
-                diffuseMap.aaFillRectFloat!true(x0, y0, x1, y1, color);
+                diffuseMap.aaFillRectFloat!false(x0, y0, x1, y1, color);
 
             }
         }
