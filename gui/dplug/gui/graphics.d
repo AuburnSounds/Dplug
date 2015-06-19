@@ -265,12 +265,14 @@ protected:
 
     box2i extendsDirtyRect(box2i rect, int width, int height)
     {
-        // shadow casting => 15 pixels influence on bottom left
-        // color-bleed => 7 pixels influence in every direction
-        int xmin = rect.min.x - 17;
-        int ymin = rect.min.y - 17;
-        int xmax = rect.max.x + 17;
-        int ymax = rect.max.y + 17;
+        // Tuned by hand on very shiny light sources.
+        // Too high and processing becomes very expensive. 
+        // Too little and the ligth decay doesn't feel natural.
+
+        int xmin = rect.min.x - 30;
+        int ymin = rect.min.y - 30;
+        int xmax = rect.max.x + 30;
+        int ymax = rect.max.y + 30;
 
         if (xmin < 0) xmin = 0;
         if (ymin < 0) ymin = 0;
@@ -531,7 +533,7 @@ protected:
                     emitted += colorLevel2.rgb * 0.3f;
                     emitted += colorLevel3.rgb * 0.25f;
                     emitted += colorLevel4.rgb * 0.15f;
-                    emitted += colorLevel5.rgb * 0.15f;
+                    emitted += colorLevel5.rgb * 0.10f;
 
                     emitted *= (div255 * 1.5f);
 
