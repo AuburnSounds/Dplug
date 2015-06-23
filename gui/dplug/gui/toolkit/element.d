@@ -12,6 +12,7 @@ public import ae.utils.graphics;
 public import dplug.gui.window;
 public import dplug.gui.drawex;
 public import dplug.gui.types;
+public import dplug.gui.boxlist;
 public import dplug.gui.toolkit.context;
 public import dplug.gui.toolkit.font;
 public import dplug.plugin.unchecked_sync;
@@ -502,7 +503,9 @@ private:
 
             if (!processed)
                 _dirtyRects.pushBack(inter);
-        }
+
+            assert(haveNoOverlap(_dirtyRects[]));
+        }       
 
         foreach(child; _children)
             child.setDirtyRecursive(rect); 
