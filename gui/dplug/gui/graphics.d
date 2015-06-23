@@ -168,10 +168,7 @@ class GUIGraphics : UIElement, IGraphics
         // Update composited cache.
         override void onDraw(ImageRef!RGBA wfb)
         {
-            // Render required areas in diffuse and depth maps, base level
-            foreach(elem; _elemsToDraw)
-                elem.render(_diffuseMap.levels[0].toRef(), _depthMap.levels[0].toRef());
-
+            renderElements();
 
             // Split boxes to avoid overlapped work
             // Note: this is done separately for update areas and render areas
@@ -279,6 +276,59 @@ protected:
         if (xmax > width) xmax = width;
         if (ymax > height) ymax = height;
         return box2i(xmin, ymin, xmax, ymax);
+    }
+
+    /// Redraw UIElements in the _elemsToDraw list
+    void renderElements()
+    {
+        enum bool parallelDraw = true;
+
+        static if (parallelDraw)
+        {
+            int drawn = 0;
+            int maxParallelElements = 8;
+            int N = cast(int)_elemsToDraw.length;
+
+            while(drawn < N)
+            {
+                int canBeDrawn = 1; // at least one can be drawn without collision
+
+                // Search max number of parallelizable draws until the end of the list or a collision is found
+                bool foundIntersection = false;
+                for ( ; (canBeDrawn < maxParallelElements) && (drawn + canBeDrawn < N); ++canBeDrawn)
+                {
+                    box2i candidate = _elemsToDraw[drawn + canBeDrawn].position;
+
+                    for (int j = 0; j < canBeDrawn; ++j)
+                    {
+                        if (_elemsToDraw[drawn + j].position.intersects(candidate))
+                        {
+                            foundIntersection = true;
+                            break;
+                        }
+                    }
+                    if (foundIntersection)
+                        break;
+                }
+
+                assert(canBeDrawn >= 1 && canBeDrawn <= maxParallelElements);
+
+
+                // Draw a number of UIElement in parallel
+                foreach(i; _taskPool.parallel(canBeDrawn.iota))
+                    _elemsToDraw[drawn + i].render(_diffuseMap.levels[0].toRef(), _depthMap.levels[0].toRef());                   
+
+                drawn += canBeDrawn;
+                assert(drawn <= N);
+            }
+            assert(drawn == N);
+        }
+        else
+        {
+            // Render required areas in diffuse and depth maps, base level
+            foreach(elem; _elemsToDraw)
+                elem.render(_diffuseMap.levels[0].toRef(), _depthMap.levels[0].toRef());
+        }
     }
 
     /// Compose lighting effects from depth and diffuse into a result.
