@@ -401,7 +401,7 @@ protected:
 
                 vec3f normal = vec3f(sx, sy, sz).normalized;
 
-                RGBA ibaseColor = _diffuseMap.levels[0][i, j];  
+                RGBA ibaseColor = _diffuseMap.levels[0][i, j];
                 vec3f baseColor = vec3f(ibaseColor.r * div255, ibaseColor.g * div255, ibaseColor.b * div255);
 
                 vec3f color = vec3f(0.0f);
@@ -558,9 +558,9 @@ protected:
                 color.z = clamp(color.z, 0.0f, 1.0f);
 
 
-                int r = cast(int)(0.5 + color.x * 255);
-                int g = cast(int)(0.5 + color.y * 255);
-                int b = cast(int)(0.5 + color.z * 255);
+                int r = cast(int)(0.5f + color.x * 255.0f);
+                int g = cast(int)(0.5f + color.y * 255.0f);
+                int b = cast(int)(0.5f + color.z * 255.0f);
 
                 // write composited color
                 RGBA finalColor = RGBA(cast(ubyte)r, cast(ubyte)g, cast(ubyte)b, 255);

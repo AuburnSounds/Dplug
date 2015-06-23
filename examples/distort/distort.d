@@ -149,10 +149,9 @@ public:
     UIKnob driveKnob;
     UISlider outputSlider;
     UIOnOffSwitch onOffSwitch;
-    UIBargraph inputBargraph;
-    UIBargraph outputBargraph;
-
+    UIBargraph inputBargraph, outputBargraph;
     UILabel inputLabel, driveLabel, outputLabel, onLabel, offLabel;
+    UIPanel leftPanel, rightPanel;
 
     Font _font;
 
@@ -165,6 +164,7 @@ public:
         _font = new Font(cast(ubyte[])( import("VeraBd.ttf") ));
         context.setSkybox( loadImage(cast(ubyte[])(import("skybox.png"))) );
 
+        // Buils the UI hierarchy
         addChild(inputSlider = new UISlider(context(), cast(FloatParameter) _client.param(0)));
         addChild(driveKnob = new UIKnob(context(), cast(FloatParameter) _client.param(1)));
         addChild(outputSlider = new UISlider(context(), cast(FloatParameter) _client.param(2)));
@@ -193,6 +193,9 @@ public:
         offLabel.textSize = 14;
         offLabel.textColor = RGBA(0, 0, 0, 0);
 
+        addChild(leftPanel = new UIPanel(context(), RGBA(150, 140, 140, 0), 32, 32));
+        addChild(rightPanel = new UIPanel(context(), RGBA(150, 140, 140, 0), 32, 32));
+
         inputBargraph.setValues([1.0f, 0.5f]);
         outputBargraph.setValues([0.7f, 0.0f]);
     }
@@ -219,12 +222,18 @@ public:
         outputLabel.setCenterAndResize(470, 70);
         onLabel.setCenterAndResize(125, 123);
         offLabel.setCenterAndResize(125, 210);
-        
+
+        leftPanel.position = box2i(0, 0, 50, 330);
+        rightPanel.position = box2i(570, 0, 620, 330);
+
         setDirty(); // mark the whole UI dirty
     }
 
     override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap, box2i[] dirtyRects)
     {
+        // In onDraw, you are supposed to only update diffuseMap and depthMap in the dirtyRects areas.
+        // This rules can be broken when sufficiently far from another UIElement.
+
         foreach(dirtyRect; dirtyRects)
         {
             auto croppedDiffuse = diffuseMap.crop(dirtyRect);
@@ -235,17 +244,11 @@ public:
             croppedDepth.fill(RGBA(58, 64, 0, 0));
         }
 
-        // Decorations
-        auto hole = RGBA(32, 32, 0, 0);
-        depthMap.fillRect(0, 0, 50, 330, hole);
-        depthMap.fillRect(570, 0, 620, 330, hole);
-        diffuseMap.fillRect(0, 0, 50, 330, RGBA(150, 140, 140, 0));
-        diffuseMap.fillRect(570, 0, 620, 330, RGBA(150, 140, 140, 0));
-
+        /*
         depthMap.softCircle(25, 25, 1, 7, RGBA(100, 255, 0, 0));
         depthMap.softCircle(25, 330-25, 1, 7, RGBA(100, 255, 0, 0));
         depthMap.softCircle(620-25, 330-25, 1, 7, RGBA(100, 255, 0, 0));
-        depthMap.softCircle(620-25, 25, 1, 7, RGBA(100, 255, 0, 0));
+        depthMap.softCircle(620-25, 25, 1, 7, RGBA(100, 255, 0, 0));*/
     }
 }
 
