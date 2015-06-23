@@ -60,6 +60,9 @@ final class AlignedBuffer(T)
             return _size;
         }
 
+        /// Returns: Length of buffer in elements.
+        alias opDollar = length;
+
         /// Resizes a buffer to hold $(D askedSize) elements.
         void resize(size_t askedSize) nothrow @nogc
         {
