@@ -283,6 +283,9 @@ protected:
     {
         enum bool parallelDraw = true;
 
+        auto diffuseRef = _diffuseMap.levels[0].toRef();
+        auto depthRef = _depthMap.levels[0].toRef();
+
         static if (parallelDraw)
         {
             int drawn = 0;
@@ -313,10 +316,12 @@ protected:
 
                 assert(canBeDrawn >= 1 && canBeDrawn <= maxParallelElements);
 
-
-                // Draw a number of UIElement in parallel
-                foreach(i; _taskPool.parallel(canBeDrawn.iota))
-                    _elemsToDraw[drawn + i].render(_diffuseMap.levels[0].toRef(), _depthMap.levels[0].toRef());                   
+                // Draw a number of UIElement in parallel, don't use other threads if only one element
+                if (canBeDrawn == 1)
+                    _elemsToDraw[drawn].render(diffuseRef, depthRef);
+                else
+                    foreach(i; _taskPool.parallel(canBeDrawn.iota))
+                        _elemsToDraw[drawn + i].render(diffuseRef, depthRef);
 
                 drawn += canBeDrawn;
                 assert(drawn <= N);
@@ -327,7 +332,7 @@ protected:
         {
             // Render required areas in diffuse and depth maps, base level
             foreach(elem; _elemsToDraw)
-                elem.render(_diffuseMap.levels[0].toRef(), _depthMap.levels[0].toRef());
+                elem.render(diffuseRef, depthRef);
         }
     }
 
