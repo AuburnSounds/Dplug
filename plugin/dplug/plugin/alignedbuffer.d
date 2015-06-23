@@ -121,6 +121,18 @@ final class AlignedBuffer(T)
             _size = 0;
         }
 
+        /// Returns: Whole content of the array in one slice.
+        inout(T)[] opSlice() inout nothrow @nogc
+        {
+            return opSlice(0, length());
+        }
+
+        /// Returns: A slice of the array.
+        inout(T)[] opSlice(size_t i1, size_t i2) inout nothrow @nogc
+        {
+            return _data[i1 .. i2];
+        }
+
         /// Fills the buffer with the same value.
         void fill(T x) nothrow @nogc
         {
