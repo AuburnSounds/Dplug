@@ -26,6 +26,26 @@ box2i boundingBox(box2i[] boxes) pure nothrow @nogc
     }
 }
 
+
+/// Make 4 boxes that are A without C (C is contained in A)
+/// Some may be empty though since C touch at least one edge of A
+
+/// General case
+/// +---------+               +---------+ 
+/// |    A    |               |    D    |
+/// |  +---+  |   After split +--+---+--+
+/// |  | C |  |        =>     | E|   |F |   At least one of D, E, F or G is empty
+/// |  +---+  |               +--+---+--+
+/// |         |               |    G    |
+/// +---------+               +---------+
+void boxSubtraction(in box2i A, in box2i C, out box2i D, out box2i E, out box2i F, out box2i G) pure nothrow @nogc
+{
+    D = box2i(A.min.x, A.min.y, A.max.x, C.min.y);
+    E = box2i(A.min.x, C.min.y, C.min.x, C.max.y);
+    F = box2i(C.max.x, C.min.y, A.max.x, C.max.y);
+    G = box2i(A.min.x, C.max.y, A.max.x, A.max.y); 
+}
+
 // Change the list of boxes so that the coverage is the same but none overlaps
 // Every box pushed in filtered are non-intersecting.
 // TODO: something better than O(n^2)
@@ -69,23 +89,9 @@ void removeOverlappingAreas(box2i[] boxes, ref box2i[] filtered)
                 }
                 else 
                 {
-                    // Make 4 boxes that are A without C (C is contained in A)
-                    // Some may be empty though since C touch at least one edge of A
-
-                    // General case
-                    // +---------+               +---------+ 
-                    // |    A    |               |    D    |
-                    // |  +---+  |   After split +--+---+--+
-                    // |  | C |  |        =>     | E|   |F |   At least one of D, E, F or G is empty
-                    // |  +---+  |               +--+---+--+
-                    // |         |               |    G    |
-                    // +---------+               +---------+
-
-                    box2i D = box2i(A.min.x, A.min.y, A.max.x, C.min.y);
-                    box2i E = box2i(A.min.x, C.min.y, C.min.x, C.max.y);
-                    box2i F = box2i(C.max.x, C.min.y, A.max.x, C.max.y);
-                    box2i G = box2i(A.min.x, C.max.y, A.max.x, A.max.y);    
-
+                    // computes A without C
+                    box2i D, E, F, G;
+                    boxSubtraction(A, C, D, E, F, G);
 
                     if (!D.empty)
                         boxes ~= D;

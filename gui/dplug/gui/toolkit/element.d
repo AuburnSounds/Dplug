@@ -473,10 +473,13 @@ private:
     /// no choice but to dirty the whole stack of elements in this rectangle.
     final void setDirtyRecursive(box2i rect) nothrow @nogc
     {
+        // inter is the rectangle trying to be inserted
         box2i inter = _position.intersection(rect);
+
         assert(inter.isSorted());
         assert(rect.isSorted());
         assert(_position.isSorted());
+
         if (!inter.empty)
         {
             _dirtyRectMutex.lock();
@@ -494,11 +497,32 @@ private:
                 }
                 else if (inter.contains(other)) // remove rect that it contains
                 {
+                    // remove other from list
                     _dirtyRects[i] = _dirtyRects.popBack();
                     i--;
                 }
+                else
+                {
+                    box2i common = other.intersection(other);
+                    if (!common.empty())
+                    {
+                        // compute other without common
+                        box2i D, E, F, G;
+                        boxSubtraction(other, common, D, E, F, G);  
 
-                // TODO: partial intersection? Or we have overdraw
+                        // remove other from list
+                        _dirtyRects[i] = _dirtyRects.popBack();
+                        i--;
+
+                        // push the sub parts at the end of the list
+                        // this is guaranteed to be non-overlapping since the list was non-overlapping before
+                        if (!D.empty) _dirtyRects.pushBack(D);
+                        if (!E.empty) _dirtyRects.pushBack(E);
+                        if (!F.empty) _dirtyRects.pushBack(F);
+                        if (!G.empty) _dirtyRects.pushBack(G);
+                    }
+                    // else no intersection problem with this rectangle
+                }
             }
 
             if (!processed)
