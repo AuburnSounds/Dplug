@@ -152,6 +152,8 @@ public:
     UIBargraph inputBargraph;
     UIBargraph outputBargraph;
 
+    UILabel inputLabel, driveLabel, outputLabel, onLabel, offLabel;
+
     Font _font;
 
     this(Distort client)
@@ -171,6 +173,26 @@ public:
         addChild(inputBargraph = new UIBargraph(context(), 2, -80.0f, 6.0f));
         addChild(outputBargraph = new UIBargraph(context(), 2, -80.0f, 6.0f));
 
+        addChild(inputLabel = new UILabel(context(), _font, "Input"));
+        inputLabel.textSize = 19;
+        inputLabel.textColor = RGBA(0, 0, 0, 0);
+
+        addChild(driveLabel = new UILabel(context(), _font, "Drive"));
+        driveLabel.textSize = 19;
+        driveLabel.textColor = RGBA(0, 0, 0, 0);
+
+        addChild(outputLabel = new UILabel(context(), _font, "Output"));
+        outputLabel.textSize = 19;
+        outputLabel.textColor = RGBA(0, 0, 0, 0);
+
+        addChild(onLabel = new UILabel(context(), _font, "ON"));
+        onLabel.textSize = 14;
+        onLabel.textColor = RGBA(0, 0, 0, 0);
+
+        addChild(offLabel = new UILabel(context(), _font, "OFF"));
+        offLabel.textSize = 14;
+        offLabel.textColor = RGBA(0, 0, 0, 0);
+
         inputBargraph.setValues([1.0f, 0.5f]);
         outputBargraph.setValues([0.7f, 0.0f]);
     }
@@ -185,13 +207,18 @@ public:
         // positions is completely acceptable.
         inputSlider.position = box2i(135, 100, 165, 230).translate(vec2i(40, 0));
         driveKnob.position = box2i(250, 105, 250 + 120, 105 + 120).translate(vec2i(30, 0));
-        outputSlider.position = box2i(455, 100, 485, 230).translate(vec2i(-20, 0));
-        
+        outputSlider.position = box2i(455, 100, 485, 230).translate(vec2i(-20, 0));        
 
         onOffSwitch.position = box2i(110, 145, 140, 185);
 
         inputBargraph.position = inputSlider.position.translate(vec2i(30, 0));
         outputBargraph.position = outputSlider.position.translate(vec2i(30, 0));
+
+        inputLabel.setCenterAndResize(210, 70);
+        driveLabel.setCenterAndResize(340, 70);
+        outputLabel.setCenterAndResize(470, 70);
+        onLabel.setCenterAndResize(125, 123);
+        offLabel.setCenterAndResize(125, 210);
         
         setDirty(); // mark the whole UI dirty
     }
@@ -207,17 +234,6 @@ public:
             // fill with clear depth + shininess
             croppedDepth.fill(RGBA(58, 64, 0, 0));
         }
-
-        _font.size = 19;
-        _font.color = RGBA(0, 0, 0, 0);
-
-        diffuseMap.fillText(_font, "Input", 210, 70);
-        diffuseMap.fillText(_font, "Drive", 340, 70);
-        diffuseMap.fillText(_font, "Output", 470, 70);
-
-        _font.size = 14;
-        diffuseMap.fillText(_font, "ON", 125, 123);
-        diffuseMap.fillText(_font, "OFF", 125, 210);
 
         // Decorations
         auto hole = RGBA(32, 32, 0, 0);

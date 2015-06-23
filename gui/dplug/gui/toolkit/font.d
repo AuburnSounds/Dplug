@@ -65,7 +65,7 @@ public:
         return _currentColor = c;
     }
 
-    /// Returns: Where a line of text will be drawn if starting at position (fractionalPosX, fractionalPosY).
+    /// Returns: Where a line of text will be drawn if starting at position (0, 0).
     box2i measureText(StringType)(StringType s)
     {
         box2i area;
@@ -171,7 +171,6 @@ struct GlyphKey
     float yShift;
 }
 
-
 /// Draw text centered on a point on a DirectView.
 
 void fillText(V, StringType)(auto ref V surface, Font font, StringType s, float positionx, float positiony)
@@ -184,6 +183,9 @@ void fillText(V, StringType)(auto ref V surface, Font font, StringType s, float 
     float fractionalPosY = positiony - ipositiony;
 
     box2i area = font.measureText(s);
+
+    // TODO: early exit if out of scope
+
     vec2i offset = vec2i(ipositionx, ipositiony) - area.center; // TODO: support other alignment modes
 
     void drawCharacter(int numCh, dchar ch, box2i position, float scale, float xShift, float yShift)
@@ -235,7 +237,7 @@ void fillText(V, StringType)(auto ref V surface, Font font, StringType s, float 
                     blendFont(outscan.ptr[x], fontColor, inscan.ptr[x].l);
                 }
             }
-        }            
+        }
     }
     font.iterateCharacterPositions!StringType(s, font._currentFontSizePx, fractionalPosX, fractionalPosY, &drawCharacter);
 }

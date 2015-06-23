@@ -87,6 +87,19 @@ public:
         }
     }
 
+    // Sets _position and resize automatically to adjust with text size and content. 
+    void setCenterAndResize(int x, int y)
+    {
+        _font.size = _textSize;
+        _font.color = _textColor;
+        box2i textDimensions = _font.measureText(_text);
+        int bx = x - textDimensions.width/2 - 1;
+        int by = y - textDimensions.height/2 - 1;
+        int w = textDimensions.width/2 + 1;
+        int h = textDimensions.height/2 + 1;
+        _position = box2i(bx, by, x + w, y + h);
+    }
+
 protected:
 
     /// The font used for text.
