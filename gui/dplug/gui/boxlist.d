@@ -151,3 +151,28 @@ void tileAreas(in box2i[] areas, int maxWidth, int maxHeight, ref box2i[] splitt
         }        
     }
 }
+
+/// For debug purpose.
+/// Returns: true if none of the boxes overlap.
+bool haveNoOverlap(in box2i[] areas) nothrow @nogc
+{
+    int N = cast(int)areas.length;
+
+    // check every pair of boxes for overlap, inneficient
+    for (int i = 0; i < N; ++i)
+    {
+        assert(areas[i].isSorted());
+        for (int j = i + 1; j < N; ++j)
+        {
+            if (areas[i].intersects(areas[j]))
+                return false;
+        }
+    }
+    return true;
+}
+
+unittest
+{
+    assert(haveNoOverlap([ box2i( 0, 0, 1, 1), box2i(1, 1, 2, 2) ]));
+    assert(!haveNoOverlap([ box2i( 0, 0, 1, 1), box2i(0, 0, 2, 1) ]));
+}
