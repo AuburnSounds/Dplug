@@ -560,15 +560,17 @@ protected:
 
 
                 // Add ambient component
-
                 {
-                    float avgDepthHere = _depthMap.linearSample(2, i + 0.5f, j + 0.5f).r * 0.33f
+                    float avgDepthHere = 
+                         _depthMap.linearSample(2, i + 0.5f, j + 0.5f).r * 0.33f
                         + _depthMap.linearSample(3, i + 0.5f, j + 0.5f).r * 0.33f
                         + _depthMap.linearSample(4, i + 0.5f, j + 0.5f).r * 0.33f;
 
-                    float occluded = ctLinearStep!(-90.0f, 90.0f)(depthPatch[2][2] - avgDepthHere);
+                    float occluded = ctLinearStep!(-90.0f, 0.0f)(depthPatch[2][2] - avgDepthHere);
 
-                    color += vec3f(occluded * ambientLight) * baseColor;
+                    vec3f ambientComponent = vec3f(occluded * ambientLight) * baseColor;
+
+                    color += ambientComponent;
                 }
 
                 // Add light emitted by neighbours
