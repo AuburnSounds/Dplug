@@ -75,24 +75,19 @@ public:
 
     override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap, box2i[] dirtyRects)
     {
-        _font.size = _textSize;
-        _font.color = _textColor;
-
         // only draw text which in dirty areas
         foreach(dirtyRect; dirtyRects)
         {
             auto croppedDiffuse = diffuseMap.crop(dirtyRect);
             vec2f positionInDirty = vec2f(diffuseMap.w * 0.5f, diffuseMap.h * 0.5f) - dirtyRect.min;
-            croppedDiffuse.fillText(_font, _text, positionInDirty.x, positionInDirty.y);
+            croppedDiffuse.fillText(_font, _text, _textSize, _textColor, positionInDirty.x, positionInDirty.y);
         }
     }
 
     // Sets _position and resize automatically to adjust with text size and content. 
     void setCenterAndResize(int x, int y)
     {
-        _font.size = _textSize;
-        _font.color = _textColor;
-        box2i textDimensions = _font.measureText(_text);
+        box2i textDimensions = _font.measureText(_text, _textSize);
         int bx = x - textDimensions.width/2 - 1;
         int by = y - textDimensions.height/2 - 1;
         int w = textDimensions.width/2 + 1;

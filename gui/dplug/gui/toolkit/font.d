@@ -30,10 +30,6 @@ public:
             throw new Exception("Coudln't load font");
 
         stbtt_GetFontVMetrics(&_font, &_fontAscent, &_fontDescent, &_fontLineGap);
-
-        // defaults
-        _currentColor = RGBA(255, 255, 255, 255);
-        _currentFontSizePx = 16;
     }
 
     ~this()
@@ -41,32 +37,8 @@ public:
         // nothing to be done
     }
 
-    /// Returns: Current font size, in pixels.
-    float size() pure const nothrow @nogc
-    {
-        return _currentFontSizePx;
-    }
-
-    /// Sets current font size, in pixels.
-    float size(float fontSizePx) pure nothrow @nogc
-    {
-        return _currentFontSizePx = fontSizePx;
-    }
-
-    /// Returns: current color.
-    RGBA color() pure const nothrow @nogc
-    {
-        return _currentColor;
-    }
-
-    /// Sets the font-size. Fast and constant-time.
-    RGBA color(RGBA c) pure nothrow @nogc
-    {
-        return _currentColor = c;
-    }
-
     /// Returns: Where a line of text will be drawn if starting at position (0, 0).
-    box2i measureText(StringType)(StringType s)
+    box2i measureText(StringType)(StringType s, float fontSizePx)
     {
         box2i area;
         void extendArea(int numCh, dchar ch, box2i position, float scale, float xShift, float yShift)
@@ -80,15 +52,11 @@ public:
         // Note: when measuring the size of the text, we do not account for sub-pixel shifts
         // this is because it would make the size of the text vary which does movement jitter
         // for moving text
-        iterateCharacterPositions!StringType(s, _currentFontSizePx, 0, 0, &extendArea);
+        iterateCharacterPositions!StringType(s, fontSizePx, 0, 0, &extendArea);
         return area;
     }    
 
 private:
-
-    RGBA _currentColor; /// Current selected color for draw operations.
-
-    float _currentFontSizePx; /// Current selected font-size (expressed in pixels)
 
     stbtt_fontinfo _font;    
     const(ubyte)[] _fontData;
@@ -99,7 +67,7 @@ private:
     /// Use kerning.
     /// No hinting.
     void iterateCharacterPositions(StringType)(StringType text, float fontSizePx, float fractionalPosX, float fractionalPosY,
-                                               scope void delegate(int numCh, dchar ch, box2i position, float scale, float xShift, float yShift) doSomethingWithPosition)
+        scope void delegate(int numCh, dchar ch, box2i position, float scale, float xShift, float yShift) doSomethingWithPosition)
     {
         assert(0 <= fractionalPosX && fractionalPosX <= 1.0f);
         assert(0 <= fractionalPosY && fractionalPosY <= 1.0f);
@@ -146,19 +114,22 @@ private:
 
     Image!L8 getGlyphCoverage(dchar codepoint, float scale, int w, int h, float xShift, float yShift)
     {
-        GlyphKey key = GlyphKey(codepoint, scale, xShift, yShift);
-
-        Image!L8* found = key in _glyphCache;
-
-        if (found)
-            return *found;
-        else
+        synchronized(this)
         {
-            int stride = w;
-            _glyphCache[key] = Image!L8(w, h);
-            ubyte* buf = cast(ubyte*)(_glyphCache[key].pixels.ptr);
-            stbtt_MakeCodepointBitmapSubpixel(&_font, buf, w, h, stride, scale, scale, xShift, yShift, codepoint);
-            return _glyphCache[key];
+            GlyphKey key = GlyphKey(codepoint, scale, xShift, yShift);
+
+            Image!L8* found = key in _glyphCache;
+
+            if (found)
+                return *found;
+            else
+            {
+                int stride = w;
+                _glyphCache[key] = Image!L8(w, h);
+                ubyte* buf = cast(ubyte*)(_glyphCache[key].pixels.ptr);
+                stbtt_MakeCodepointBitmapSubpixel(&_font, buf, w, h, stride, scale, scale, xShift, yShift, codepoint);
+                return _glyphCache[key];
+            }
         }
     }
 }
@@ -173,7 +144,8 @@ struct GlyphKey
 
 /// Draw text centered on a point on a DirectView.
 
-void fillText(V, StringType)(auto ref V surface, Font font, StringType s, float positionx, float positiony)
+void fillText(V, StringType)(auto ref V surface, Font font, StringType s, float fontSizePx, 
+                             RGBA textColor, float positionx, float positiony)
     if (isWritableView!V && is(ViewColor!V == RGBA))
 {
     // Decompose in fractional and integer position
@@ -182,7 +154,7 @@ void fillText(V, StringType)(auto ref V surface, Font font, StringType s, float 
     float fractionalPosX = positionx - ipositionx;
     float fractionalPosY = positiony - ipositiony;
 
-    box2i area = font.measureText(s);
+    box2i area = font.measureText(s, fontSizePx);
 
     // TODO: early exit if out of scope
 
@@ -206,7 +178,7 @@ void fillText(V, StringType)(auto ref V surface, Font font, StringType s, float 
         auto outsurf = surface.crop(cropX0, cropY0, cropX1, cropY1);
         int croppedWidth = outsurf.w;
 
-        RGBA fontColor = font._currentColor;
+        RGBA fontColor = textColor;
 
         for (int y = 0; y < outsurf.h; ++y)
         {
@@ -239,6 +211,6 @@ void fillText(V, StringType)(auto ref V surface, Font font, StringType s, float 
             }
         }
     }
-    font.iterateCharacterPositions!StringType(s, font._currentFontSizePx, fractionalPosX, fractionalPosY, &drawCharacter);
+    font.iterateCharacterPositions!StringType(s, fontSizePx, fractionalPosX, fractionalPosY, &drawCharacter);
 }
 
