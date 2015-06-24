@@ -464,7 +464,7 @@ protected:
                                     cast(float)j / cast(float)h - 0.5f,
                                     1.0f).normalized;
 
-                float shininess = depth_scan[2].ptr[i].g / 255.0f;
+                float shininess = depth_scan[2].ptr[i].g * div255;
 
                 float occluded;
 
@@ -546,7 +546,7 @@ protected:
                     {
                         specularFactor = specularFactor * specularFactor;
                         specularFactor = specularFactor * specularFactor;
-                        color += baseColor * light2Color * specularFactor * 2 * shininess;
+                        color += baseColor * light2Color * (specularFactor * 4.0f * shininess);
                     }
                 }
 
