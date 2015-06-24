@@ -466,6 +466,23 @@ protected:
 
                 float shininess = depth_scan[2].ptr[i].g / 255.0f;
 
+                float occluded;
+
+                // Add ambient component
+                {
+                    float avgDepthHere = 
+                        _depthMap.linearSample(1, i + 0.5f, j + 0.5f).r * 0.25f
+                        + _depthMap.linearSample(2, i + 0.5f, j + 0.5f).r * 0.25f
+                        + _depthMap.linearSample(3, i + 0.5f, j + 0.5f).r * 0.25f
+                        + _depthMap.linearSample(4, i + 0.5f, j + 0.5f).r * 0.25f;
+
+                    occluded = ctLinearStep!(-90.0f, 0.0f)(depthPatch[2][2] - avgDepthHere);
+
+                    vec3f ambientComponent = vec3f(occluded * ambientLight) * baseColor;
+
+                    color += ambientComponent;
+                }
+
                 // cast shadows, ie. enlight what isn't in shadows
                 {
                     enum float fallOff = 0.78f;
@@ -559,19 +576,7 @@ protected:
                 }
 
 
-                // Add ambient component
-                {
-                    float avgDepthHere = 
-                         _depthMap.linearSample(2, i + 0.5f, j + 0.5f).r * 0.33f
-                        + _depthMap.linearSample(3, i + 0.5f, j + 0.5f).r * 0.33f
-                        + _depthMap.linearSample(4, i + 0.5f, j + 0.5f).r * 0.33f;
 
-                    float occluded = ctLinearStep!(-90.0f, 0.0f)(depthPatch[2][2] - avgDepthHere);
-
-                    vec3f ambientComponent = vec3f(occluded * ambientLight) * baseColor;
-
-                    color += ambientComponent;
-                }
 
                 // Add light emitted by neighbours
                 {
