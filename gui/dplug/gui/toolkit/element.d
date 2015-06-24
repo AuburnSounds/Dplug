@@ -14,7 +14,7 @@ public import dplug.gui.drawex;
 public import dplug.gui.types;
 public import dplug.gui.boxlist;
 public import dplug.gui.toolkit.context;
-public import dplug.gui.toolkit.font;
+public import dplug.quarantine.font;
 public import dplug.plugin.unchecked_sync;
 public import dplug.plugin.alignedbuffer;
 import dplug.dsp.funcs;
