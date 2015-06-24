@@ -470,11 +470,14 @@ protected:
 
                 // Add ambient component
                 {
+                    float px = i + 0.5f;
+                    float py = j + 0.5f;
+
                     float avgDepthHere = 
-                        _depthMap.linearSample(1, i + 0.5f, j + 0.5f).r * 0.25f
-                        + _depthMap.linearSample(2, i + 0.5f, j + 0.5f).r * 0.25f
-                        + _depthMap.linearSample(3, i + 0.5f, j + 0.5f).r * 0.25f
-                        + _depthMap.linearSample(4, i + 0.5f, j + 0.5f).r * 0.25f;
+                      ( _depthMap.linearSampleRed(1, px, py)
+                        + _depthMap.linearSampleRed(2, px, py)
+                        + _depthMap.linearSampleRed(3, px, py)
+                        + _depthMap.linearSampleRed(4, px, py) ) * 0.25f;
 
                     occluded = ctLinearStep!(-90.0f, 0.0f)(depthPatch[2][2] - avgDepthHere);
 
@@ -520,7 +523,7 @@ protected:
                             y = 0;
                         int z = depthHere + sample;
                         int diff = z - _depthMap.levels[0][x, y].r;
-                        lightPassed += ctLinearStep!(-60.0f, 0.0f)(diff) * weights[sample];
+                        lightPassed += ctLinearStep!(-60.0f, 0.0f)(diff) * weights.ptr[sample];
                     }
                     color += baseColor * light1Color * (lightPassed * invTotalWeights);
                 }
@@ -569,14 +572,11 @@ protected:
 
                     // cooking here
                     // log2 scaling + threshold
-                    float mipLevel = 0.5f * log2(1.0f + indexDeriv * 0.00001f);
+                    float mipLevel = 0.5f * fastlog2(1.0f + indexDeriv * 0.00001f);
 
                     vec4f skyColor = skybox.linearMipmapSample(mipLevel, skyx, skyy) * div255;
                     color += shininess * 0.3f * skyColor.rgb;
                 }
-
-
-
 
                 // Add light emitted by neighbours
                 {
@@ -601,7 +601,6 @@ protected:
 
                     color += emitted;
                 }
-
 
                 // Show normals
                 //color = vec3f(0.5f) + normal * 0.5f;
@@ -669,4 +668,79 @@ void keepAtLeastThatSize(T)(ref T[] slice)
     auto length = slice.length;
     if (capacity < length)
         slice.reserve(length); // should not reallocate
+}
+
+// log2 approximation by Laurent de Soras
+// http://www.flipcode.com/archives/Fast_log_Function.shtml
+float fastlog2(float val)
+{
+    union fi_t
+    {
+        int i;
+        float f;
+    }
+
+    fi_t fi;
+    fi.f = val;
+    int x = fi.i;
+    int log_2 = ((x >> 23) & 255) - 128;
+    x = x & ~(255 << 23);
+    x += 127 << 23;
+    fi.i = x;
+    return fi.f + log_2;
+}
+
+
+/// Special look-up for depth-only lookup
+float linearSampleRed(bool premultiplied = false)(ref Mipmap mipmap, int level, float x, float y)
+{
+    Image!RGBA* image = &mipmap.levels[level];
+
+    static immutable float[14] factors = [ 1.0f, 0.5f, 0.25f, 0.125f, 
+    0.0625f, 0.03125f, 0.015625f, 0.0078125f, 
+    0.00390625f, 0.001953125f, 0.0009765625f, 0.00048828125f,
+    0.000244140625f, 0.0001220703125f];
+
+    float divider = factors[level];
+    x = x * divider - 0.5f;
+    y = y * divider - 0.5f;
+
+    float maxX = image.w - 1.001f; // avoids an edge case with truncation
+    float maxY = image.h - 1.001f;
+
+    if (x < 0)
+        x = 0;
+    if (y < 0)
+        y = 0;
+    if (x > maxX)
+        x = maxX;
+    if (y > maxY)
+        y = maxY;
+
+    int ix = cast(int)x;
+    int iy = cast(int)y;
+    float fx = x - ix;
+
+    int ixp1 = ix + 1;
+    if (ixp1 >= image.w)
+        ixp1 = image.w - 1;
+    int iyp1 = iy + 1;
+    if (iyp1 >= image.h)
+        iyp1 = image.h - 1;
+
+    float fxm1 = 1 - fx;
+    float fy = y - iy;
+    float fym1 = 1 - fy;
+
+    RGBA[] L0 = image.scanline(iy);
+    RGBA[] L1 = image.scanline(iyp1);
+
+    float A = L0.ptr[ix].r;
+    float B = L0.ptr[ixp1].r;
+    float C = L1.ptr[ix].r;
+    float D = L1.ptr[ixp1].r;
+
+    float r = (A * fxm1 + B * fx) * fym1 + (C * fxm1 + D * fx) * fy;
+
+    return r;
 }
