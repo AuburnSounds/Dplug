@@ -10,7 +10,7 @@ import std.file;
 import gfm.math;
 
 import dplug.gui.mipmap;
-import dplug.gui.toolkit.font;
+import dplug.quarantine.font;
 import dplug.gui.toolkit.element;
 
 

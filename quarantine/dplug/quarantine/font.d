@@ -3,7 +3,7 @@
 * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 * Authors:   Guillaume Piolat
 */
-module dplug.gui.toolkit.font;
+module dplug.quarantine.font;
 
 import std.conv;
 import std.math;
@@ -14,6 +14,7 @@ import gfm.math;
 import gfm.image.stb_truetype;
 
 
+// Put in quarantine to avoid https://issues.dlang.org/show_bug.cgi?id=14480
 
 
 
@@ -176,6 +177,7 @@ void fillText(V, StringType)(auto ref V surface, Font font, StringType s, float 
         int cropX1 = clamp!int(offsetPos.x + w, 0, surface.w);
         int cropY1 = clamp!int(offsetPos.y + h, 0, surface.h);
         auto outsurf = surface.crop(cropX0, cropY0, cropX1, cropY1);
+
         int croppedWidth = outsurf.w;
 
         RGBA fontColor = textColor;
@@ -188,25 +190,13 @@ void fillText(V, StringType)(auto ref V surface, Font font, StringType s, float 
             L8[] inscan = coverageBuffer.scanline(y);
             for (int x = 0; x < croppedWidth; ++x)
             {
-                static void blendFont(ref RGBA bg, RGBA fontColor, int alpha)
-                {
-                    int alpha2 = 255 - alpha;
-                    bg.r = cast(ubyte)( (bg.r * alpha2 + fontColor.r * alpha + 128) >> 8 );
-                    bg.g = cast(ubyte)( (bg.g * alpha2 + fontColor.g * alpha + 128) >> 8 );
-                    bg.b = cast(ubyte)( (bg.b * alpha2 + fontColor.b * alpha + 128) >> 8 );
-                    bg.a = fontColor.a;
-                }
-
-                /*RGBA finalColor = font._currentColor;
-                finalColor.a = inscan[x].l;*/
-
                 static if (isDirectView!V)
                 {
-                    blendFont(outscan.ptr[x], fontColor, inscan.ptr[x].l);
+                    blendFontPixel(outscan.ptr[x], fontColor, inscan.ptr[x].l);
                 }
                 else
                 {
-                    blendFont(outscan.ptr[x], fontColor, inscan.ptr[x].l);
+                    blendFontPixel(outscan.ptr[x], fontColor, inscan.ptr[x].l);
                 }
             }
         }
@@ -214,3 +204,14 @@ void fillText(V, StringType)(auto ref V surface, Font font, StringType s, float 
     font.iterateCharacterPositions!StringType(s, fontSizePx, fractionalPosX, fractionalPosY, &drawCharacter);
 }
 
+
+private void blendFontPixel(ref RGBA bg, RGBA fontColor, int alpha)
+{
+
+    int alpha2 = 255 - alpha;
+    int red =   (bg.r * alpha2 + fontColor.r * alpha + 128) >> 8;
+    int green = (bg.g * alpha2 + fontColor.g * alpha + 128) >> 8;
+    int blue =  (bg.b * alpha2 + fontColor.b * alpha + 128) >> 8;
+
+    bg = RGBA(cast(ubyte)red, cast(ubyte)green, cast(ubyte)blue, fontColor.a);
+}
