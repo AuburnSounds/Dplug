@@ -7,7 +7,8 @@ import std.math;
 
 import gfm.image;
 
-import dplug.plugin,
+import dplug.core,
+       dplug.plugin,
        dplug.vst,
        dplug.dsp,
        dplug.gui;

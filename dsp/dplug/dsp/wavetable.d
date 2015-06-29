@@ -7,9 +7,8 @@ module dplug.dsp.wavetable;
 
 import std.math;
 
-import gfm.math.funcs;
-
-import dplug.dsp.funcs;
+import dplug.core;
+import gfm.math;
 
 /// Generate a sine.
 /// It turns out it's very stable, stable enough for table generation at least.

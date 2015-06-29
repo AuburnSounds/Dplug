@@ -12,7 +12,7 @@ import std.math;
 
 import gfm.math.funcs;
 
-import dplug.dsp.funcs,
+import dplug.core,
        dplug.dsp.window;
 
 

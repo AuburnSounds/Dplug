@@ -1,14 +1,9 @@
-/**
-* Copyright: Copyright Auburn Sounds 2015 and later.
-* License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
-* Authors:   Guillaume Piolat
-*/
-module dplug.dsp.funcs;
+module dplug.core;
 
 import std.math;
 
 immutable real TAU = PI * 2;
-    
+
 /// Map linearly x from the range [a, b] to the range [c, d]
 T linmap(T)(T value, T a, T b, T c, T d) pure nothrow @nogc 
 {
@@ -33,7 +28,7 @@ T hermite(T)(T frac_pos, T xm1, T x0, T x1, T x2) pure nothrow @nogc
     return ((((a * frac_pos) - b_neg) * frac_pos + c) * frac_pos + x0);
 }
 
-   
+
 /// Convert from dB to float.
 T deciBelToFloat(T)(T dB) pure nothrow @nogc
 {

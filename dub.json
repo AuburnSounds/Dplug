@@ -14,7 +14,7 @@
     ],
 
     "dependencies": {
-        "dplug:audio": "*",
+        "dplug:core": "*",
         "dplug:dsp": "*",
         "dplug:plugin": "*",
         "dplug:vst": "*",
@@ -23,16 +23,19 @@
 
     "subPackages": [
         {
-            "name": "audio",
-            "sourcePaths": [ "audio/dplug/audio" ],
-            "importPaths": [ "audio" ]
+            "name": "core",
+            "sourcePaths": [ "core/dplug/core" ],
+            "importPaths": [ "core" ],
+            "dependencies": {
+                "gfm:core": "~>2.3"
+            }
         },
         {
             "name": "dsp",
             "sourcePaths": [ "dsp/dplug/dsp" ],
             "importPaths": [ "dsp" ],
             "dependencies": {
-                "gfm:core": "~>2.3",
+                "dplug:core": "*",
                 "gfm:math": "~>2.3"
             }
         },
@@ -76,7 +79,7 @@
             "libs-windows": ["gdi32", "user32"],
             "dependencies": {
                 "dplug:plugin": "*",
-                "dplug:dsp": "*",
+                "dplug:core": "*",
                 "dplug:quarantine": "*",
                 "ae-graphics": "~>0.0",
                 "gfm:math": "~>2.3",

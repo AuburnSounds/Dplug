@@ -17,7 +17,6 @@ public import dplug.gui.toolkit.context;
 public import dplug.quarantine.font;
 public import dplug.plugin.unchecked_sync;
 public import dplug.plugin.alignedbuffer;
-import dplug.dsp.funcs;
 
 /// Base class of the UI widget hierarchy.
 ///

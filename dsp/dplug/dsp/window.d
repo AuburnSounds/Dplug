@@ -8,7 +8,7 @@ module dplug.dsp.window;
 import std.math,
        std.traits;
 
-import dplug.dsp.funcs;
+import dplug.core;
 
 enum WindowType
 {
