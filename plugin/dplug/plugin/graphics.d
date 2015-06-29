@@ -6,11 +6,12 @@
 module dplug.plugin.graphics;
 
 import dplug.plugin.client;
+import dplug.plugin.daw;
 
 /// Plugin GUI
 interface IGraphics
 {
-    abstract void openUI(void* parentInfo);
+    abstract void openUI(void* parentInfo, DAW daw);
     abstract void closeUI();
     abstract int getGUIWidth();
     abstract int getGUIHeight();
@@ -19,7 +20,7 @@ interface IGraphics
 /// Default Graphics object, does nothing
 class NullGraphics : IGraphics
 {
-    override void openUI(void* parentInfo)
+    override void openUI(void* parentInfo, DAW daw)
     {
     }
 
