@@ -11,7 +11,7 @@ import std.range,
 
 import gfm.math.funcs;
 
-import dplug.dsp.funcs,
+import dplug.core,
        dplug.dsp.fft,
        dplug.dsp.delayline,
        dplug.dsp.window;

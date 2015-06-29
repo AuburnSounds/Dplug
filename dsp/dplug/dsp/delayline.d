@@ -7,7 +7,7 @@ module dplug.dsp.delayline;
 
 import gfm.math.funcs;
 
-import dplug.dsp.funcs;
+import dplug.core;
 
 /// Allow to sample signal back in time.
 struct Delayline(T)
