@@ -20,8 +20,11 @@ interface IWindow
     // If exit was requested
     bool terminated();
 
-    // request exit
+    // Requests exit
     void terminate();
+
+    // Requests that the whole area is repainted, not just the invalidated area.
+    void enableFullRedrawWorkaround();
 }
 
 // Receiving commands from a window

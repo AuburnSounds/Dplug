@@ -10,8 +10,10 @@ import std.range;
 import std.parallelism;
 
 import ae.utils.graphics;
+
 import dplug.plugin.client;
 import dplug.plugin.graphics;
+import dplug.plugin.daw;
 
 import dplug.gui.window;
 import dplug.gui.mipmap;
@@ -67,10 +69,16 @@ class GUIGraphics : UIElement, IGraphics
 
     // Graphics implementation
 
-    override void openUI(void* parentInfo)
+    override void openUI(void* parentInfo, DAW daw)
     {
         // We create this window each time.
         _window = createWindow(parentInfo, _windowListener, _askedWidth, _askedHeight);
+
+        // Bridged plugins in FLStudio have strange invalidated areas.
+        // https://github.com/p0nce/dplug/issues/43
+        if (daw == DAW.FLStudio)
+            _window.enableFullRedrawWorkaround();
+
         reflow(box2i(0, 0, _askedWidth, _askedHeight));
     }
 

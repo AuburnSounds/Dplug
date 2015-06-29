@@ -1047,6 +1047,11 @@ public:
         _hostCallback(_effect, audioMasterEndEdit, paramIndex, 0, null, 0.0f);
     }
 
+    override DAW getDAW() pure const nothrow @nogc
+    {
+        return _daw;
+    }
+
     const(char)* vendorString() nothrow
     {
         int res = cast(int)_hostCallback(_effect, audioMasterGetVendorString, 0, 0, _vendorStringBuf.ptr, 0.0f);
@@ -1097,8 +1102,7 @@ public:
 
         // note: const is casted away here
         return _hostCallback(_effect, audioMasterCanDo, 0, 0, cast(void*)capsString, 0.0f) == 1;
-    }
-
+    }    
 
 private:
     AEffect* _effect;

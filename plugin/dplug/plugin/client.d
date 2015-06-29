@@ -27,6 +27,7 @@ import dplug.plugin.params;
 import dplug.plugin.preset;
 import dplug.plugin.midi;
 import dplug.plugin.graphics;
+import dplug.plugin.daw;
 
 
 class InputPin
@@ -72,6 +73,7 @@ interface IHostCommand
     void paramAutomate(int paramIndex, float value);
     void endParamEdit(int paramIndex);
     bool requestResize(int width, int height);
+    DAW getDAW() pure const nothrow @nogc;
 }
 
 /// Desscribe the version of plugin.
@@ -194,7 +196,8 @@ public:
     /// Override this methods to implement a GUI.
     final void openGUI(void* parentInfo)
     {
-        _graphics.openUI(parentInfo);
+        assert(_hostCommand !is null);
+        _graphics.openUI(parentInfo, _hostCommand.getDAW());
     }
 
     /// ditto
