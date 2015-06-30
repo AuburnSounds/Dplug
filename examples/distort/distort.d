@@ -226,8 +226,6 @@ public:
 
         leftPanel.position = box2i(0, 0, 50, 330);
         rightPanel.position = box2i(570, 0, 620, 330);
-
-        setDirty(); // mark the whole UI dirty
     }
 
     override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap, box2i[] dirtyRects)

@@ -94,6 +94,9 @@ class GUIGraphics : UIElement, IGraphics
             _window.enableFullRedrawWorkaround();
 
         reflow(box2i(0, 0, _askedWidth, _askedHeight));
+
+        // Sets the whole UI dirty
+        setDirty();
     }
 
     override void closeUI()
