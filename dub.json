@@ -44,7 +44,7 @@
             "sourcePaths": [ "plugin/dplug/plugin" ],
             "importPaths": [ "plugin" ],
             "dependencies": {
-                "gfm:core": "~>2.3",
+                "dplug:core": "*",
                 "binrange": "~>1.0"
             }
         },

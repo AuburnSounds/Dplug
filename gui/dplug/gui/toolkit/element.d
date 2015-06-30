@@ -15,8 +15,8 @@ public import dplug.gui.types;
 public import dplug.gui.boxlist;
 public import dplug.gui.toolkit.context;
 public import dplug.quarantine.font;
-public import dplug.plugin.unchecked_sync;
-public import dplug.plugin.alignedbuffer;
+public import dplug.core.unchecked_sync;
+public import dplug.core.alignedbuffer;
 
 /// Base class of the UI widget hierarchy.
 ///
@@ -29,42 +29,45 @@ public:
     this(UIContext context)
     {
         _context = context;
-
-        _dirtyRectMutex = new UncheckedMutex();
-        _dirtyRects = new AlignedBuffer!box2i(4);
-
     }
 
     void close()
     {
         foreach(child; children)
             child.close();
-        _dirtyRectMutex.close();
-        _dirtyRects.close();
     }
 
     /// Returns: true if was drawn, ie. the buffers have changed.
     /// This method is called for each item in the drawlist that was visible and dirty.
-    final void render(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap)
+    final void render(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap, in box2i[] areasToUpdate)
     {
-        box2i[] dirtyRects;
+        // List of disjointed dirty rectangles intersecting with _position
+        // A nice thing with intersection is that a disjointed set of rectangles
+        // stays disjointed.
+        box2i[] localDirtyRects;
         {
-            foreach(rect; DirtyRectsRange(this))
-                dirtyRects ~= rect;
+            foreach(rect; areasToUpdate)
+            {
+                box2i inter = rect.intersection(_position);
+
+                if (!inter.empty) // don't consider empty rectangles
+                {
+                    // Express the dirty rect in local coordinates for simplicity
+                    // TODO: amortize this allocation else we have big problems
+                    localDirtyRects ~= inter.translate(-_position.min);
+                }
+            }
         }
 
-        if (dirtyRects.length == 0)
-            return;
+        if (localDirtyRects.length == 0)
+            return; // nothing to draw here
 
         // Crop the diffuse and depth to the _position
-        // This is because drawing outside of _position is disallowed
+        // This is because drawing outside of _position is disallowed by design
+        // Don't even try!
         ImageRef!RGBA diffuseMapCropped = diffuseMap.cropImageRef(_position);
         ImageRef!RGBA depthMapCropped = depthMap.cropImageRef(_position);
-
-        foreach(ref rect; dirtyRects)
-            rect = rect.translate(-_position.min);
-
-        onDraw(diffuseMapCropped, depthMapCropped, dirtyRects);
+        onDraw(diffuseMapCropped, depthMapCropped, localDirtyRects);
     }
 
     /// Meant to be overriden almost everytime for custom behaviour.
@@ -321,15 +324,6 @@ public:
         _zOrder = zOrder;
     }
 
-    final void clearDirty()
-    {
-        _dirtyRectMutex.lock();
-        _dirtyRects.clear(); // TODO do not malloc/free
-        _dirtyRectMutex.unlock();
-
-        foreach(child; _children)
-            child.clearDirty();
-    }
 
     /// Mark this element dirty and all elements in the same position.
     final void setDirty() nothrow @nogc
@@ -340,13 +334,7 @@ public:
     /// Mark all elements in an area dirty.
     final void setDirty(box2i rect) nothrow @nogc
     {
-        topLevelParent().setDirtyRecursive(rect);
-    }
-
-    /// Returns: true if any dirty area.
-    final bool isDirty() nothrow @nogc
-    {
-        return DirtyRectsRange(this).length != 0;
+        _context.dirtyList.addRect(rect);
     }
 
     /// Returns: Parent element. `null` if detached or root element.
@@ -364,17 +352,17 @@ public:
             return _parent.topLevelParent();
     }
 
-    final bool isMouseOver() pure const nothrow
+    final bool isMouseOver() pure const nothrow @nogc
     {
         return _mouseOver;
     }
 
-    final bool isDragged() pure const nothrow
+    final bool isDragged() pure const nothrow @nogc
     {
         return _context.dragged is this;
     }
 
-    final bool isFocused() pure const nothrow
+    final bool isFocused() pure const nothrow @nogc
     {
         return _context.focused is this;
     }
@@ -382,20 +370,15 @@ public:
     /// Appends the Elements that should be drawn, in order.
     /// The slice is reused to take advantage of .capacity
     /// You should empty it before calling this function.
+    /// Everything visible get into the draw list, but that doesn't mean they
+    /// will get drawn if they don't overlap with a dirty area.    
     final void getDrawList(ref UIElement[] list)
     {
         if (isVisible())
         {
-            // if the dirty rect isn't empty, add this to the draw list
-            if (isDirty())
-                list ~= this;
-
+            list ~= this;
             foreach(child; _children)
                 child.getDrawList(list);
-
-            // Sort by ascending z-order (high z-order gets drawn last)
-            // This sort must be stable to avoid messing with tree natural order.
-            sort!("a.zOrder() < b.zOrder()", SwapStrategy.stable)(list);
         }
     }   
 
@@ -405,7 +388,6 @@ protected:
     /// For better efficiency, you may only redraw the part in _dirtyRect.
     /// diffuseMap and depthMap are made to span _position exactly, 
     /// so you can draw in the area (0 .. _position.width, 0 .. _position.height)
-    /// Warning: _dirtyRect should not be used instead of dirtyRect for threading reasons.
     void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap, box2i[] dirtyRects)
     {
         // defaults to filling with a grey pattern
@@ -447,12 +429,6 @@ protected:
     /// An Element is not allowed though to draw further than its _position.
     box2i _position;
 
-    /// The possibly overlapping areas that need updating.
-    AlignedBuffer!box2i _dirtyRects;
-
-    /// This is protected by a mutex, because it is sometimes updated from the host.
-    UncheckedMutex _dirtyRectMutex;
-
     UIElement[] _children;
 
     /// If _visible is false, neither the Element nor its children are drawn.
@@ -466,112 +442,7 @@ private:
     UIContext _context;
 
     bool _mouseOver = false;
-
-    /// Sets an area dirty and all its children.
-    /// Because nothing is guaranteed about what will be drawn in the onDraw method, we have
-    /// no choice but to dirty the whole stack of elements in this rectangle.
-    final void setDirtyRecursive(box2i rect) nothrow @nogc
-    {
-        // inter is the rectangle trying to be inserted
-        box2i inter = _position.intersection(rect);
-
-        assert(inter.isSorted());
-        assert(rect.isSorted());
-        assert(_position.isSorted());
-
-        if (!inter.empty)
-        {
-            _dirtyRectMutex.lock();
-            scope(exit) _dirtyRectMutex.unlock();
-
-            bool processed = false;
-
-            for (int i = 0; i < _dirtyRects.length; ++i)
-            {
-                box2i other = _dirtyRects[i];
-                if (other.contains(inter))
-                {
-                    processed = true; // do not push if contained in existing rect
-                    break;
-                }
-                else if (inter.contains(other)) // remove rect that it contains
-                {
-                    // remove other from list
-                    _dirtyRects[i] = _dirtyRects.popBack();
-                    i--;
-                }
-                else
-                {
-                    box2i common = other.intersection(other);
-                    if (!common.empty())
-                    {
-                        // compute other without common
-                        box2i D, E, F, G;
-                        boxSubtraction(other, common, D, E, F, G);  
-
-                        // remove other from list
-                        _dirtyRects[i] = _dirtyRects.popBack();
-                        i--;
-
-                        // push the sub parts at the end of the list
-                        // this is guaranteed to be non-overlapping since the list was non-overlapping before
-                        if (!D.empty) _dirtyRects.pushBack(D);
-                        if (!E.empty) _dirtyRects.pushBack(E);
-                        if (!F.empty) _dirtyRects.pushBack(F);
-                        if (!G.empty) _dirtyRects.pushBack(G);
-                    }
-                    // else no intersection problem with this rectangle
-                }
-            }
-
-            if (!processed)
-                _dirtyRects.pushBack(inter);
-
-            assert(haveNoOverlap(_dirtyRects[]));
-        }       
-
-        foreach(child; _children)
-            child.setDirtyRecursive(rect); 
-    }
 }
 
 
-// Iterates over dirty rectangle while holding the dirty lock
-struct DirtyRectsRange
-{
-    int index = 0;
-    UIElement _element;
 
-    this(UIElement element) nothrow @nogc
-    {
-        _element = element;
-        _element._dirtyRectMutex.lock();
-    }
-
-    ~this() nothrow @nogc
-    {
-        _element._dirtyRectMutex.unlock();
-    }
-
-    @disable this(this);
-
-    @property int length() pure nothrow @nogc
-    {
-        return cast(int)(_element._dirtyRects.length) - index;
-    }
-
-    @property empty() nothrow @nogc
-    {
-        return index >= _element._dirtyRects.length;
-    }
-
-    @property box2i front() nothrow @nogc
-    {
-        return _element._dirtyRects[index];
-    }    
-
-    void popFront() nothrow @nogc
-    {
-        index++;
-    }
-}

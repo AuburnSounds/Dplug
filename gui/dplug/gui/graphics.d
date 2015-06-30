@@ -8,6 +8,7 @@ module dplug.gui.graphics;
 import std.math;
 import std.range;
 import std.parallelism;
+import std.algorithm;
 
 import ae.utils.graphics;
 
@@ -20,6 +21,7 @@ import dplug.gui.mipmap;
 import dplug.gui.boxlist;
 import dplug.gui.toolkit.context;
 import dplug.gui.toolkit.element;
+import dplug.gui.toolkit.dirtylist;
 
 /// In the whole package:
 /// The diffuse maps contains:
@@ -65,6 +67,18 @@ class GUIGraphics : UIElement, IGraphics
         ambientLight = 0.3f;
 
         _taskPool = new TaskPool();
+    }
+
+    ~this()
+    {
+        close();
+    }
+
+    override void close()
+    {
+        // TODO make sure this is actually called
+        super.close();
+        _uiContext.close();
     }
 
     // Graphics implementation
@@ -177,6 +191,9 @@ class GUIGraphics : UIElement, IGraphics
         override void onDraw(ImageRef!RGBA wfb)
         {
             renderElements();
+           
+            // Clear dirty state of the whole UI: everything is up to date
+            context().dirtyList.clearDirty();
 
             // Split boxes to avoid overlapped work
             // Note: this is done separately for update areas and render areas
@@ -187,11 +204,7 @@ class GUIGraphics : UIElement, IGraphics
             _areasToUpdateNonOverlapping.keepAtLeastThatSize();
             _areasToRenderNonOverlapping.keepAtLeastThatSize();
 
-            regenerateMipmaps();
-
-            // Clear dirty state in the whole GUI since after this draw everything 
-            // will be up-to-date.
-            clearDirty();
+            regenerateMipmaps();            
 
             // Composite GUI
             compositeGUI(wfb);
@@ -226,9 +239,14 @@ protected:
     Mipmap _diffuseMap;
     Mipmap _depthMap;
 
+    // The list of areas whose diffuse/depth data have been changed.
+    // TODO: remove, already in Context
+    box2i[] _areasToUpdate;                        
 
-    box2i[] _areasToUpdate;                    // The list of areas whose diffuse/depth data have been changed.
-    box2i[] _areasToUpdateNonOverlapping;      // same list, but reorganized to avoid overlap
+    // same list, but reorganized to avoid overlap 
+    // TODO: remove, shouldn't have overlap
+    box2i[] _areasToUpdateNonOverlapping;      
+
     box2i[][2] _updateRectScratch;             // Same, but temporary variable for mipmap generation
 
     box2i[] _areasToRender;                    // The list of areas that must be effectively updated in the composite buffer (sligthly larger than _areasToUpdate).
@@ -245,23 +263,16 @@ protected:
         int widthOfWindow = _askedWidth;
         int heightOfWindow = _askedHeight;
 
-        // recompute draw list
-        _elemsToDraw.length = 0;
-        getDrawList(_elemsToDraw);
-        _elemsToDraw.keepAtLeastThatSize();
-
         // Get areas to update
         _areasToUpdate.length = 0;
         _areasToRender.length = 0;
-        foreach(elem; _elemsToDraw)
+        
+        foreach(dirty; DirtyRectsRange(context.dirtyList)) 
         {
-            foreach(dirty; DirtyRectsRange(elem)) 
-            {
-                assert(dirty.isSorted);
-                assert(!dirty.empty);
-                _areasToUpdate ~= dirty;
-                _areasToRender ~= extendsDirtyRect(dirty, widthOfWindow, heightOfWindow); 
-            }
+            assert(dirty.isSorted);
+            assert(!dirty.empty);
+            _areasToUpdate ~= dirty;
+            _areasToRender ~= extendsDirtyRect(dirty, widthOfWindow, heightOfWindow); 
         }
         _areasToUpdate.keepAtLeastThatSize();
         _areasToRender.keepAtLeastThatSize();
@@ -286,9 +297,18 @@ protected:
         return box2i(xmin, ymin, xmax, ymax);
     }
 
-    /// Redraw UIElements in the _elemsToDraw list
+    /// Redraw UIElements
     void renderElements()
     {
+        // recompute draw list
+        _elemsToDraw.length = 0;
+        getDrawList(_elemsToDraw);
+        _elemsToDraw.keepAtLeastThatSize();
+
+        // Sort by ascending z-order (high z-order gets drawn last)
+        // This sort must be stable to avoid messing with tree natural order.
+        sort!("a.zOrder() < b.zOrder()", SwapStrategy.stable)(_elemsToDraw);
+
         enum bool parallelDraw = true;
 
         auto diffuseRef = _diffuseMap.levels[0].toRef();
@@ -326,10 +346,10 @@ protected:
 
                 // Draw a number of UIElement in parallel, don't use other threads if only one element
                 if (canBeDrawn == 1)
-                    _elemsToDraw[drawn].render(diffuseRef, depthRef);
+                    _elemsToDraw[drawn].render(diffuseRef, depthRef, _areasToUpdate);
                 else
                     foreach(i; _taskPool.parallel(canBeDrawn.iota))
-                        _elemsToDraw[drawn + i].render(diffuseRef, depthRef);
+                        _elemsToDraw[drawn + i].render(diffuseRef, depthRef, _areasToUpdate);
 
                 drawn += canBeDrawn;
                 assert(drawn <= N);
@@ -428,7 +448,7 @@ protected:
             // clamp to existing lines
             int[5] line_index = void;
             for (int l = 0; l < 5; ++l)
-                line_index[l] = clamp(j - 2 + l, 0, h - 1);
+                line_index[l] = gfm.math.clamp(j - 2 + l, 0, h - 1);
 
             RGBA[][5] depth_scan = void;
             for (int l = 0; l < 5; ++l)
@@ -440,7 +460,7 @@ protected:
                 // clamp to existing columns
                 int[5] col_index = void;
                 for (int k = 0; k < 5; ++k)
-                    col_index[k] = clamp(i - 2 + k, 0, w - 1);
+                    col_index[k] = gfm.math.clamp(i - 2 + k, 0, w - 1);
 
                 // Get depth for a 5x5 patch
                 ubyte[5][5] depthPatch = void;
@@ -622,9 +642,9 @@ protected:
                 // Show diffuse
                 //color = baseColor;
 
-                color.x = clamp(color.x, 0.0f, 1.0f);
-                color.y = clamp(color.y, 0.0f, 1.0f);
-                color.z = clamp(color.z, 0.0f, 1.0f);
+                color.x = gfm.math.clamp(color.x, 0.0f, 1.0f);
+                color.y = gfm.math.clamp(color.y, 0.0f, 1.0f);
+                color.z = gfm.math.clamp(color.z, 0.0f, 1.0f);
 
 
                 int r = cast(int)(0.5f + color.x * 255.0f);

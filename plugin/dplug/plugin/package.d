@@ -6,8 +6,6 @@ public
     import dplug.plugin.client,
            dplug.plugin.params,
            dplug.plugin.preset,
-           dplug.plugin.spinlock,
-           dplug.plugin.alignedbuffer,
            dplug.plugin.daw,
            dplug.plugin.midi,
            dplug.plugin.fpcontrol,

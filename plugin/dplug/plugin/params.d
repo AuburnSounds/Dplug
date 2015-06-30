@@ -16,12 +16,14 @@ Permission is granted to anyone to use this software for any purpose, including 
 */
 module dplug.plugin.params;
 
-import std.math;
-
 import core.stdc.stdio;
 
+import std.math;
+
+import dplug.core.unchecked_sync;
+
 import dplug.plugin.client;
-import dplug.plugin.unchecked_sync;
+
 
 class Parameter
 {

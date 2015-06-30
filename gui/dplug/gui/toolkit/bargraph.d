@@ -7,8 +7,7 @@ module dplug.gui.toolkit.bargraph;
 
 import std.math;
 import dplug.gui.toolkit.element;
-//import dplug.gui.drawex;
-import dplug.plugin.unchecked_sync;
+import dplug.core.unchecked_sync;
 import dplug.core;
 
 // Vertical bargraphs made of LEDs

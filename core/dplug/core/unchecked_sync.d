@@ -16,13 +16,13 @@
  /// Modified to make it @nogc
 
 /// Created because of pressing needs of nothrow @nogc synchronization
-module dplug.plugin.unchecked_sync;
+module dplug.core.unchecked_sync;
 
 version = implementedWithSpinlock; // work-around because pthread POSIX function aren't @nogc nothrow :(
 
 version (implementedWithSpinlock)
 {
-    import dplug.plugin.spinlock;
+    import dplug.core.spinlock;
 
     final class UncheckedMutex
     {
