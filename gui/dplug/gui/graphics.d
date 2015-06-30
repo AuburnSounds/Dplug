@@ -194,9 +194,6 @@ class GUIGraphics : UIElement, IGraphics
         override void onDraw(ImageRef!RGBA wfb)
         {
             renderElements();
-           
-            // Clear dirty state of the whole UI: everything is up to date
-            context().dirtyList.clearDirty();
 
             // Split boxes to avoid overlapped work
             // Note: this is done separately for update areas and render areas
@@ -207,7 +204,7 @@ class GUIGraphics : UIElement, IGraphics
             _areasToUpdateNonOverlapping.keepAtLeastThatSize();
             _areasToRenderNonOverlapping.keepAtLeastThatSize();
 
-            regenerateMipmaps();            
+            regenerateMipmaps();
 
             // Composite GUI
             compositeGUI(wfb);
@@ -263,22 +260,22 @@ protected:
     // Fills _areasToUpdate and _areasToRender
     void recomputeDirtyAreas()
     {
-        int widthOfWindow = _askedWidth;
-        int heightOfWindow = _askedHeight;
-
         // Get areas to update
         _areasToUpdate.length = 0;
         _areasToRender.length = 0;
+
+        // TODO: reuse a buffer
+        box2i[] dirtyRects = context().dirtyList.pullAllRectangles();
         
-        foreach(dirty; DirtyRectsRange(context.dirtyList)) 
+        foreach(dirtyRect; dirtyRects) 
         {
-            assert(dirty.isSorted);
-            assert(!dirty.empty);
-            _areasToUpdate ~= dirty;
-            _areasToRender ~= extendsDirtyRect(dirty, widthOfWindow, heightOfWindow); 
+            assert(dirtyRect.isSorted);
+            assert(!dirtyRect.empty);
+            _areasToUpdate ~= dirtyRect;
+            _areasToRender ~= extendsDirtyRect(dirtyRect, _askedWidth, _askedHeight); 
         }
         _areasToUpdate.keepAtLeastThatSize();
-        _areasToRender.keepAtLeastThatSize();
+        _areasToRender.keepAtLeastThatSize(); // TODO: replace with AlignedBuffer
 
     }
 

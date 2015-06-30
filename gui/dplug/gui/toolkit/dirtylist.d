@@ -33,7 +33,18 @@ public:
         _dirtyRects.close();
     }
 
-    void clearDirty()
+    /// Returns: Array of rectangles in the list, remove them from the list.
+    /// Needed to avoid races in repainting.
+    box2i[] pullAllRectangles() nothrow
+    {
+        box2i[] result;
+        _dirtyRectMutex.lock();
+        result = _dirtyRects[].dup;
+        _dirtyRectMutex.unlock();
+        return result;
+    }
+
+    void clearDirty() nothrow @nogc
     {
         _dirtyRectMutex.lock();
         _dirtyRects.clear(); // TODO do not malloc/free here? Or don't use spinlocks
@@ -107,42 +118,3 @@ private:
 }
 
 
-// Iterates over dirty rectangle while holding the dirty lock
-struct DirtyRectsRange
-{
-    int index = 0;
-    DirtyRectList _list;
-
-    this(DirtyRectList list) nothrow @nogc
-    {
-        _list = list;
-        _list._dirtyRectMutex.lock();
-    }
-
-    ~this() nothrow @nogc
-    {
-        _list._dirtyRectMutex.unlock();
-    }
-
-    @disable this(this);
-
-    @property int length() pure nothrow @nogc
-    {
-        return cast(int)(_list._dirtyRects.length) - index;
-    }
-
-    @property empty() nothrow @nogc
-    {
-        return index >= _list._dirtyRects.length;
-    }
-
-    @property box2i front() nothrow @nogc
-    {
-        return _list._dirtyRects[index];
-    }    
-
-    void popFront() nothrow @nogc
-    {
-        index++;
-    }
-}
