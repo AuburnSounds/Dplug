@@ -277,15 +277,24 @@ version(Windows)
 
                 case WM_PAINT:
                 {
+                    _listener.recomputeDirtyAreas();
+                    box2i dirtyRect = _listener.getDirtyRectangle();
+
+                    box2i updateRect;
                     RECT r;
                     if (GetUpdateRect(hwnd, &r, FALSE))
+                        updateRect = box2i(r.left, r.top, r.right, r.bottom);
+                    else
+                        updateRect = box2i(0, 0, 0, 0);
+
+
                     {
                         bool sizeChanged = updateSizeIfNeeded();
 
                         // Recompute dirty areas if window size changed
 
                         // TODO: avoid this when we can
-                        _listener.recomputeDirtyAreas();
+                        
 
 
                         ImageRef!RGBA wfb;
@@ -467,6 +476,7 @@ version(Windows)
                 r.top = dirtyRect.min.y;
                 r.right = dirtyRect.max.x;
                 r.bottom = dirtyRect.max.y;
+                // TODO: maybe use RedrawWindow instead
                 InvalidateRect(_hwnd, &r, FALSE); // TODO: invalidate rects one by one
                 UpdateWindow(_hwnd);
             }
