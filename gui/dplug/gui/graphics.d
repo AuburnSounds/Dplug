@@ -67,6 +67,17 @@ class GUIGraphics : UIElement, IGraphics
         ambientLight = 0.3f;
 
         _taskPool = new TaskPool();
+
+        _areasToUpdate = new AlignedBuffer!box2i;
+
+        _updateRectScratch[0] = new AlignedBuffer!box2i;
+        _updateRectScratch[1] = new AlignedBuffer!box2i;
+
+        _areasToRender = new AlignedBuffer!box2i;
+        _areasToRenderNonOverlapping = new AlignedBuffer!box2i;
+        _areasToRenderNonOverlappingTiled = new AlignedBuffer!box2i;
+        
+        _elemsToDraw = new AlignedBuffer!UIElement;
     }
 
     ~this()
@@ -79,6 +90,14 @@ class GUIGraphics : UIElement, IGraphics
         // TODO make sure this is actually called
         super.close();
         _uiContext.close();
+
+        _areasToUpdate.close();
+        _updateRectScratch[0].close();
+        _updateRectScratch[1].close();
+        _areasToRender.close();
+        _areasToRenderNonOverlapping.close();
+        _areasToRenderNonOverlappingTiled.close();
+        _elemsToDraw.close();
     }
 
     // Graphics implementation
@@ -167,15 +186,10 @@ class GUIGraphics : UIElement, IGraphics
             return keyUp(key);
         }
 
-        override void markRectangleDirty(box2i dirtyRect)
-        {
-            setDirty(dirtyRect);
-        }
-
         /// Returns areas affected by updates.
-        override box2i getDirtyRectangle()
+        override box2i getDirtyRectangle() nothrow @nogc
         {
-            return _areasToRender.boundingBox();
+            return _areasToRender[].boundingBox();
         }
 
         override void onResized(int width, int height)
@@ -197,9 +211,8 @@ class GUIGraphics : UIElement, IGraphics
 
             // Split boxes to avoid overlapped work
             // Note: this is done separately for update areas and render areas
-            _areasToRenderNonOverlapping.length = 0;
-            removeOverlappingAreas(_areasToRender, _areasToRenderNonOverlapping);
-            _areasToRenderNonOverlapping.keepAtLeastThatSize();
+            _areasToRenderNonOverlapping.clear();
+            removeOverlappingAreas(_areasToRender[], _areasToRenderNonOverlapping);
 
             regenerateMipmaps();
 
@@ -237,38 +250,43 @@ protected:
     Mipmap _depthMap;
 
     // The list of areas whose diffuse/depth data have been changed.
-    box2i[] _areasToUpdate;
+    AlignedBuffer!box2i _areasToUpdate;
 
-    box2i[][2] _updateRectScratch;             // Same, but temporary variable for mipmap generation
+    // Same, but temporary variable for mipmap generation
+    AlignedBuffer!box2i[2] _updateRectScratch;             
 
-    box2i[] _areasToRender;                    // The list of areas that must be effectively updated in the composite buffer (sligthly larger than _areasToUpdate).
-    box2i[] _areasToRenderNonOverlapping;      // same list, but reorganized to avoid overlap
-    box2i[] _areasToRenderNonOverlappingTiled; // same list, but separated in smaller tiles
+    // The list of areas that must be effectively updated in the composite buffer
+    // (sligthly larger than _areasToUpdate).
+    AlignedBuffer!box2i _areasToRender;           
+
+    // same list, but reorganized to avoid overlap
+    AlignedBuffer!box2i _areasToRenderNonOverlapping;      
+
+    // same list, but separated in smaller tiles
+    AlignedBuffer!box2i _areasToRenderNonOverlappingTiled; 
     
     // The list of UIElement to draw
-    UIElement[] _elemsToDraw;
+    // Note: AlignedBuffer memory isn't scanned, 
+    //       but this doesn't matter since UIElement are the UI hierarchy anyway.
+    AlignedBuffer!UIElement _elemsToDraw;
 
 
     // Fills _areasToUpdate and _areasToRender
     void recomputeDirtyAreas()
     {
         // Get areas to update
-        _areasToUpdate.length = 0;
-        _areasToRender.length = 0;
+        _areasToUpdate.clear();
+        _areasToRender.clear();
 
         // TODO: reuse a buffer
-        box2i[] dirtyRects = context().dirtyList.pullAllRectangles();
+        context().dirtyList.pullAllRectangles(_areasToUpdate);
         
-        foreach(dirtyRect; dirtyRects) 
+        foreach(dirtyRect; _areasToUpdate) 
         {
             assert(dirtyRect.isSorted);
             assert(!dirtyRect.empty);
-            _areasToUpdate ~= dirtyRect;
-            _areasToRender ~= extendsDirtyRect(dirtyRect, _askedWidth, _askedHeight); 
+            _areasToRender.pushBack( extendsDirtyRect(dirtyRect, _askedWidth, _askedHeight) ); 
         }
-        _areasToUpdate.keepAtLeastThatSize();
-        _areasToRender.keepAtLeastThatSize(); // TODO: replace with AlignedBuffer
-
     }
 
     box2i extendsDirtyRect(box2i rect, int width, int height)

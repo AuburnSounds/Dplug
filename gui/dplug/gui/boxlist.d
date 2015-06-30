@@ -11,6 +11,8 @@ import std.algorithm;
 
 import gfm.math;
 
+import dplug.core.alignedbuffer;
+
 /// Returns: Bounding boxes of all bounding boxes.
 box2i boundingBox(box2i[] boxes) pure nothrow @nogc
 {
@@ -49,7 +51,7 @@ void boxSubtraction(in box2i A, in box2i C, out box2i D, out box2i E, out box2i 
 // Change the list of boxes so that the coverage is the same but none overlaps
 // Every box pushed in filtered are non-intersecting.
 // TODO: something better than O(n^2)
-void removeOverlappingAreas(box2i[] boxes, ref box2i[] filtered)
+void removeOverlappingAreas(box2i[] boxes, AlignedBuffer!box2i filtered)
 {
     for(int i = 0; i < cast(int)(boxes.length); ++i)
     {
@@ -110,7 +112,7 @@ void removeOverlappingAreas(box2i[] boxes, ref box2i[] filtered)
         }
 
         if (!foundIntersection)
-            filtered ~= A;
+            filtered.pushBack(A);
     }
 }
 

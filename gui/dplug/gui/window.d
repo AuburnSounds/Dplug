@@ -73,9 +73,6 @@ interface IWindowListener
     /// recomputeDirtyAreas() MUST have been called before.
     box2i getDirtyRectangle();
 
-    /// Mark parts of the UI dirty to influence what onDraw will do.
-    void markRectangleDirty(box2i dirtyRect);
-
     /// Called whenever mouse capture was canceled (ALT + TAB, SetForegroundWindow...)
     void onMouseCaptureCancelled();
 

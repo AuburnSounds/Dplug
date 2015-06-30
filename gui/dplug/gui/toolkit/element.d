@@ -372,11 +372,11 @@ public:
     /// You should empty it before calling this function.
     /// Everything visible get into the draw list, but that doesn't mean they
     /// will get drawn if they don't overlap with a dirty area.    
-    final void getDrawList(ref UIElement[] list)
+    final void getDrawList(AlignedBuffer!UIElement list)
     {
         if (isVisible())
         {
-            list ~= this;
+            list.pushBack(this);
             foreach(child; _children)
                 child.getDrawList(list);
         }

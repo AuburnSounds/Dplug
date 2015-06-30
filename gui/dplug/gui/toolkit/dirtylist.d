@@ -35,13 +35,15 @@ public:
 
     /// Returns: Array of rectangles in the list, remove them from the list.
     /// Needed to avoid races in repainting.
-    box2i[] pullAllRectangles() nothrow
+    void pullAllRectangles(AlignedBuffer!box2i result) nothrow
     {
-        box2i[] result;
         _dirtyRectMutex.lock();
-        result = _dirtyRects[].dup;
-        _dirtyRectMutex.unlock();
-        return result;
+        scope(exit) _dirtyRectMutex.unlock();
+
+        foreach(rect; _dirtyRects[])
+            result.pushBack(rect);
+
+        _dirtyRects.clear();
     }
 
     void clearDirty() nothrow @nogc
