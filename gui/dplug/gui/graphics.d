@@ -197,11 +197,8 @@ class GUIGraphics : UIElement, IGraphics
 
             // Split boxes to avoid overlapped work
             // Note: this is done separately for update areas and render areas
-            _areasToUpdateNonOverlapping.length = 0;
             _areasToRenderNonOverlapping.length = 0;
-            removeOverlappingAreas(_areasToUpdate, _areasToUpdateNonOverlapping);
             removeOverlappingAreas(_areasToRender, _areasToRenderNonOverlapping);
-            _areasToUpdateNonOverlapping.keepAtLeastThatSize();
             _areasToRenderNonOverlapping.keepAtLeastThatSize();
 
             regenerateMipmaps();
@@ -240,12 +237,7 @@ protected:
     Mipmap _depthMap;
 
     // The list of areas whose diffuse/depth data have been changed.
-    // TODO: remove, already in Context
-    box2i[] _areasToUpdate;                        
-
-    // same list, but reorganized to avoid overlap 
-    // TODO: remove, shouldn't have overlap
-    box2i[] _areasToUpdateNonOverlapping;      
+    box2i[] _areasToUpdate;
 
     box2i[][2] _updateRectScratch;             // Same, but temporary variable for mipmap generation
 
@@ -390,13 +382,13 @@ protected:
     /// Useful multithreading code.
     void regenerateMipmaps()
     {
-        int numAreas = cast(int)_areasToUpdateNonOverlapping.length;
+        int numAreas = cast(int)_areasToUpdate.length;
 
         // Fill update rect buffer with the content of _areasToUpdateNonOverlapping
         for (int i = 0; i < 2; ++i)
         {
             _updateRectScratch[i].length = numAreas;
-            _updateRectScratch[i][] = _areasToUpdateNonOverlapping[];
+            _updateRectScratch[i][] = _areasToUpdate[];
             _updateRectScratch[i].keepAtLeastThatSize();
         }
 
