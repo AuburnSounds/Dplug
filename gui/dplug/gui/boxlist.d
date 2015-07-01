@@ -33,7 +33,7 @@ box2i boundingBox(box2i[] boxes) pure nothrow @nogc
 /// Some may be empty though since C touch at least one edge of A
 
 /// General case
-/// +---------+               +---------+ 
+/// +---------+               +---------+
 /// |    A    |               |    D    |
 /// |  +---+  |   After split +--+---+--+
 /// |  | C |  |        =>     | E|   |F |   At least one of D, E, F or G is empty
@@ -45,7 +45,7 @@ void boxSubtraction(in box2i A, in box2i C, out box2i D, out box2i E, out box2i 
     D = box2i(A.min.x, A.min.y, A.max.x, C.min.y);
     E = box2i(A.min.x, C.min.y, C.min.x, C.max.y);
     F = box2i(C.max.x, C.min.y, A.max.x, C.max.y);
-    G = box2i(A.min.x, C.max.y, A.max.x, A.max.y); 
+    G = box2i(A.min.x, C.max.y, A.max.x, A.max.y);
 }
 
 // Change the list of boxes so that the coverage is the same but none overlaps
@@ -67,7 +67,7 @@ void removeOverlappingAreas(box2i[] boxes, AlignedBuffer!box2i filtered)
 
         // test A against all other rectangles, if it pass, it is pushed
         for(int j = i + 1; j < cast(int)(boxes.length); ++j)
-        {                
+        {
             box2i B = boxes[j];
 
             box2i C = A.intersection(B);
@@ -89,7 +89,7 @@ void removeOverlappingAreas(box2i[] boxes, AlignedBuffer!box2i filtered)
                 {
                     break; // nothing from A is kept
                 }
-                else 
+                else
                 {
                     // computes A without C
                     box2i D, E, F, G;
@@ -134,7 +134,7 @@ unittest
 
 
 // Split each boxes in smaller boxes.
-void tileAreas(in box2i[] areas, int maxWidth, int maxHeight, ref box2i[] splitted) nothrow
+void tileAreas(in box2i[] areas, int maxWidth, int maxHeight, AlignedBuffer!box2i splitted) nothrow
 {
     foreach(area; areas)
     {
@@ -147,16 +147,16 @@ void tileAreas(in box2i[] areas, int maxWidth, int maxHeight, ref box2i[] splitt
             int y0 = maxHeight * j;
             int y1 = std.algorithm.min(y0 + maxHeight, area.height);
 
-            foreach (int i; 0..nWidth) 
+            foreach (int i; 0..nWidth)
             {
-                int x0 = maxWidth * i;                
-                int x1 = std.algorithm.min(x0 + maxWidth, area.width);               
+                int x0 = maxWidth * i;
+                int x1 = std.algorithm.min(x0 + maxWidth, area.width);
 
                 box2i b = box2i(x0, y0, x1, y1).translate(area.min);
                 assert(area.contains(b));
-                splitted ~= b;
+                splitted.pushBack(b);
             }
-        }        
+        }
     }
 }
 

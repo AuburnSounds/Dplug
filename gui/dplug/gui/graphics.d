@@ -45,7 +45,7 @@ class GUIGraphics : UIElement, IGraphics
     vec3f light2Color;
 
     float ambientLight;
-    
+
 
 
     this(int initialWidth, int initialHeight)
@@ -57,7 +57,7 @@ class GUIGraphics : UIElement, IGraphics
 
         _window = null;
         _askedWidth = initialWidth;
-        _askedHeight = initialHeight;     
+        _askedHeight = initialHeight;
 
         // defaults
         light1Color = vec3f(0.54f, 0.50f, 0.46f) * 0.4f;
@@ -76,7 +76,7 @@ class GUIGraphics : UIElement, IGraphics
         _areasToRender = new AlignedBuffer!box2i;
         _areasToRenderNonOverlapping = new AlignedBuffer!box2i;
         _areasToRenderNonOverlappingTiled = new AlignedBuffer!box2i;
-        
+
         _elemsToDraw = new AlignedBuffer!UIElement;
     }
 
@@ -135,7 +135,7 @@ class GUIGraphics : UIElement, IGraphics
     }
 
 
-    // This nested class is only here to avoid name conflicts between 
+    // This nested class is only here to avoid name conflicts between
     // UIElement and IWindowListener methods :|
     class WindowListener : IWindowListener
     {
@@ -241,7 +241,7 @@ protected:
     IWindow _window;
 
     // Task pool for multi-threaded image work
-    TaskPool _taskPool; 
+    TaskPool _taskPool;
 
     int _askedWidth = 0;
     int _askedHeight = 0;
@@ -253,20 +253,20 @@ protected:
     AlignedBuffer!box2i _areasToUpdate;
 
     // Same, but temporary variable for mipmap generation
-    AlignedBuffer!box2i[2] _updateRectScratch;             
+    AlignedBuffer!box2i[2] _updateRectScratch;
 
     // The list of areas that must be effectively updated in the composite buffer
     // (sligthly larger than _areasToUpdate).
-    AlignedBuffer!box2i _areasToRender;           
+    AlignedBuffer!box2i _areasToRender;
 
     // same list, but reorganized to avoid overlap
-    AlignedBuffer!box2i _areasToRenderNonOverlapping;      
+    AlignedBuffer!box2i _areasToRenderNonOverlapping;
 
     // same list, but separated in smaller tiles
-    AlignedBuffer!box2i _areasToRenderNonOverlappingTiled; 
-    
+    AlignedBuffer!box2i _areasToRenderNonOverlappingTiled;
+
     // The list of UIElement to draw
-    // Note: AlignedBuffer memory isn't scanned, 
+    // Note: AlignedBuffer memory isn't scanned,
     //       but this doesn't matter since UIElement are the UI hierarchy anyway.
     AlignedBuffer!UIElement _elemsToDraw;
 
@@ -280,19 +280,19 @@ protected:
 
         // TODO: reuse a buffer
         context().dirtyList.pullAllRectangles(_areasToUpdate);
-        
-        foreach(dirtyRect; _areasToUpdate) 
+
+        foreach(dirtyRect; _areasToUpdate)
         {
             assert(dirtyRect.isSorted);
             assert(!dirtyRect.empty);
-            _areasToRender.pushBack( extendsDirtyRect(dirtyRect, _askedWidth, _askedHeight) ); 
+            _areasToRender.pushBack( extendsDirtyRect(dirtyRect, _askedWidth, _askedHeight) );
         }
     }
 
     box2i extendsDirtyRect(box2i rect, int width, int height)
     {
         // Tuned by hand on very shiny light sources.
-        // Too high and processing becomes very expensive. 
+        // Too high and processing becomes very expensive.
         // Too little and the ligth decay doesn't feel natural.
 
         int xmin = rect.min.x - 30;
@@ -311,13 +311,12 @@ protected:
     void renderElements()
     {
         // recompute draw list
-        _elemsToDraw.length = 0;
+        _elemsToDraw.clear();
         getDrawList(_elemsToDraw);
-        _elemsToDraw.keepAtLeastThatSize();
 
         // Sort by ascending z-order (high z-order gets drawn last)
         // This sort must be stable to avoid messing with tree natural order.
-        sort!("a.zOrder() < b.zOrder()", SwapStrategy.stable)(_elemsToDraw);
+        sort!("a.zOrder() < b.zOrder()", SwapStrategy.stable)(_elemsToDraw[]);
 
         enum bool parallelDraw = true;
 
@@ -356,10 +355,10 @@ protected:
 
                 // Draw a number of UIElement in parallel, don't use other threads if only one element
                 if (canBeDrawn == 1)
-                    _elemsToDraw[drawn].render(diffuseRef, depthRef, _areasToUpdate);
+                    _elemsToDraw[drawn].render(diffuseRef, depthRef, _areasToUpdate[]);
                 else
                     foreach(i; _taskPool.parallel(canBeDrawn.iota))
-                        _elemsToDraw[drawn + i].render(diffuseRef, depthRef, _areasToUpdate);
+                        _elemsToDraw[drawn + i].render(diffuseRef, depthRef, _areasToUpdate[]);
 
                 drawn += canBeDrawn;
                 assert(drawn <= N);
@@ -383,11 +382,10 @@ protected:
         enum tileWidth = 32;
         enum tileHeight = 32;
 
-        _areasToRenderNonOverlappingTiled.length = 0;
-        tileAreas(_areasToRenderNonOverlapping, tileWidth, tileHeight,_areasToRenderNonOverlappingTiled);
+        _areasToRenderNonOverlappingTiled.clear();
+        tileAreas(_areasToRenderNonOverlapping[], tileWidth, tileHeight,_areasToRenderNonOverlappingTiled);
 
         int numAreas = cast(int)_areasToRenderNonOverlappingTiled.length;
-        _areasToRenderNonOverlappingTiled.keepAtLeastThatSize();
 
         foreach(i; _taskPool.parallel(numAreas.iota))
         {
@@ -405,9 +403,8 @@ protected:
         // Fill update rect buffer with the content of _areasToUpdateNonOverlapping
         for (int i = 0; i < 2; ++i)
         {
-            _updateRectScratch[i].length = numAreas;
-            _updateRectScratch[i][] = _areasToUpdate[];
-            _updateRectScratch[i].keepAtLeastThatSize();
+            _updateRectScratch[i].clear();
+            _updateRectScratch[i].pushBack(_areasToUpdate[]);
         }
 
         // We can't use tiled parallelism here because there is overdraw beyond level 0
@@ -422,7 +419,7 @@ protected:
                 {
                     auto quality = level >= 2 ? Mipmap.Quality.cubicAlphaCov : Mipmap.Quality.boxAlphaCov;
                     foreach(ref area; _updateRectScratch[i])
-                    {                        
+                    {
                         area = mipmap.generateNextLevel(quality, area, level);
                     }
                 }
@@ -511,7 +508,7 @@ protected:
                     float px = i + 0.5f;
                     float py = j + 0.5f;
 
-                    float avgDepthHere = 
+                    float avgDepthHere =
                       ( _depthMap.linearSampleRed(1, px, py)
                         + _depthMap.linearSampleRed(2, px, py)
                         + _depthMap.linearSampleRed(3, px, py)
@@ -530,7 +527,7 @@ protected:
 
                     int samples = 11;
 
-                    static immutable float[11] weights = 
+                    static immutable float[11] weights =
                     [
                         1.0f,
                         fallOff,
@@ -623,7 +620,7 @@ protected:
 
                     // Get alpha-premultiplied, avoids some white highlights
                     // Maybe we could solve the white highlights by having the whole mipmap premultiplied
-                    vec4f colorLevel1 = _diffuseMap.linearSample!true(1, ic, jc); 
+                    vec4f colorLevel1 = _diffuseMap.linearSample!true(1, ic, jc);
                     vec4f colorLevel2 = _diffuseMap.linearSample!true(2, ic, jc);
                     vec4f colorLevel3 = _diffuseMap.linearSample!true(3, ic, jc);
                     vec4f colorLevel4 = _diffuseMap.linearSample!true(4, ic, jc);
@@ -673,7 +670,7 @@ protected:
 private:
 
 // cause smoothStep wasn't needed
-float ctLinearStep(float a, float b)(float t) pure nothrow @nogc 
+float ctLinearStep(float a, float b)(float t) pure nothrow @nogc
 {
     if (t <= a)
         return 0.0f;
@@ -687,7 +684,7 @@ float ctLinearStep(float a, float b)(float t) pure nothrow @nogc
 }
 
 // cause smoothStep wasn't needed
-float linearStep(float a, float b, float t) pure nothrow @nogc 
+float linearStep(float a, float b, float t) pure nothrow @nogc
 {
     if (t <= a)
         return 0.0f;
@@ -698,14 +695,6 @@ float linearStep(float a, float b, float t) pure nothrow @nogc
         float divider = 1.0f / (b - a);
         return (t - a) * divider;
     }
-}
-
-void keepAtLeastThatSize(T)(ref T[] slice)
-{
-    auto capacity = slice.capacity;
-    auto length = slice.length;
-    if (capacity < length)
-        slice.reserve(length); // should not reallocate
 }
 
 // log2 approximation by Laurent de Soras
@@ -734,8 +723,8 @@ float linearSampleRed(bool premultiplied = false)(ref Mipmap mipmap, int level, 
 {
     Image!RGBA* image = &mipmap.levels[level];
 
-    static immutable float[14] factors = [ 1.0f, 0.5f, 0.25f, 0.125f, 
-    0.0625f, 0.03125f, 0.015625f, 0.0078125f, 
+    static immutable float[14] factors = [ 1.0f, 0.5f, 0.25f, 0.125f,
+    0.0625f, 0.03125f, 0.015625f, 0.0078125f,
     0.00390625f, 0.001953125f, 0.0009765625f, 0.00048828125f,
     0.000244140625f, 0.0001220703125f];
 
