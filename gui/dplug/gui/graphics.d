@@ -278,7 +278,6 @@ protected:
         _areasToUpdate.clear();
         _areasToRender.clear();
 
-        // TODO: reuse a buffer
         context().dirtyList.pullAllRectangles(_areasToUpdate);
 
         foreach(dirtyRect; _areasToUpdate)
