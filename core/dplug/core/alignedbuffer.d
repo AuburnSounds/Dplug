@@ -69,9 +69,9 @@ final class AlignedBuffer(T)
             // grow only
             if (_allocated < askedSize)
             {
-                size_t numBytes = askedSize * T.sizeof;
+                size_t numBytes = askedSize * 2 * T.sizeof; // gives 2x what is asked to make room for growth
                 _data = cast(T*)(alignedRealloc(_data, numBytes, _alignment));
-                _allocated = askedSize;
+                _allocated = askedSize * 2;
             }
             _size = askedSize;
         }
@@ -125,7 +125,10 @@ final class AlignedBuffer(T)
             return _data[i] = x;
         }
 
-        void clear() nothrow @nogc
+        deprecated alias clear = clearContents;
+
+        /// Sets size to zero.
+        void clearContents() nothrow @nogc
         {
             _size = 0;
         }
