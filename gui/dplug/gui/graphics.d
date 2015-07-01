@@ -205,7 +205,7 @@ class GUIGraphics : UIElement, IGraphics
 
         // Redraw dirtied controls in depth and diffuse maps.
         // Update composited cache.
-        override void onDraw(ImageRef!RGBA wfb)
+        override void onDraw(ImageRef!RGBA wfb, bool swapRB)
         {
             renderElements();
 
@@ -217,7 +217,7 @@ class GUIGraphics : UIElement, IGraphics
             regenerateMipmaps();
 
             // Composite GUI
-            compositeGUI(wfb);
+            compositeGUI(wfb, swapRB);
         }
 
         override void onMouseCaptureCancelled()
@@ -376,7 +376,7 @@ protected:
     /// Compose lighting effects from depth and diffuse into a result.
     /// takes output image and non-overlapping areas as input
     /// Useful multithreading code.
-    void compositeGUI(ImageRef!RGBA wfb)
+    void compositeGUI(ImageRef!RGBA wfb, bool swapRB)
     {
         // Quick subjective testing indicates than somewhere between 16x16 and 32x32 have best performance
         enum tileWidth = 32;
@@ -392,12 +392,12 @@ protected:
         if (parallelCompositing)
         {
             foreach(i; _taskPool.parallel(numAreas.iota))
-                compositeTile(wfb, _areasToRenderNonOverlappingTiled[i]);
+                compositeTile(wfb, swapRB, _areasToRenderNonOverlappingTiled[i]);
         }
         else
         {
             foreach(i; 0..numAreas)
-                compositeTile(wfb, _areasToRenderNonOverlappingTiled[i]);
+                compositeTile(wfb, swapRB, _areasToRenderNonOverlappingTiled[i]);
         }
     }
 
@@ -449,7 +449,7 @@ protected:
     }
 
     /// Don't like this rendering? Feel free to override this method.
-    void compositeTile(ImageRef!RGBA wfb, box2i area)
+    void compositeTile(ImageRef!RGBA wfb, bool swapRB, box2i area)
     {
         Mipmap* skybox = &context.skybox;
         int w = _diffuseMap.levels[0].w;
@@ -665,6 +665,13 @@ protected:
                 int r = cast(int)(0.5f + color.x * 255.0f);
                 int g = cast(int)(0.5f + color.y * 255.0f);
                 int b = cast(int)(0.5f + color.z * 255.0f);
+
+                if (swapRB)
+                {
+                    int temp = r;
+                    r = b;
+                    b = r;
+                }
 
                 // write composited color
                 RGBA finalColor = RGBA(cast(ubyte)r, cast(ubyte)g, cast(ubyte)b, 255);

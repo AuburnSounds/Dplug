@@ -291,7 +291,9 @@ version(Windows)
                         wfb.pitch = byteStride(_width);
                         wfb.pixels = cast(RGBA*)_buffer;
 
-                        _listener.onDraw(wfb);
+                        // For efficiency purpose, render in BGRA for Windows
+                        bool swapRB = true;
+                        _listener.onDraw(wfb, swapRB);
 
                         box2i areaToRedraw = box2i(r.left, r.top, r.right, r.bottom);
                         if (_enableFullRedrawWorkaround)
@@ -336,10 +338,6 @@ version(Windows)
 
         void swapBuffers(ImageRef!RGBA wfb, box2i[] areasToRedraw)
         {
-            // Swap red and blue to have BGRA layout
-            foreach(box2i area; areasToRedraw)
-                swapRB(wfb, area);
-
             PAINTSTRUCT paintStruct;
             HDC hdc = BeginPaint(_hwnd, &paintStruct);
             assert(hdc == _windowDC); // since we are CS_OWNDC
@@ -367,10 +365,6 @@ version(Windows)
             }
 
             EndPaint(_hwnd, &paintStruct);
-
-            // Swap red and blue to have RGBA layout again
-            foreach(box2i area; areasToRedraw)
-                swapRB(wfb, area);
         }
 
         // Implements IWindow
