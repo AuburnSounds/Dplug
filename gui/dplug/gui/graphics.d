@@ -670,7 +670,7 @@ protected:
                 {
                     int temp = r;
                     r = b;
-                    b = r;
+                    b = temp;
                 }
 
                 // write composited color
