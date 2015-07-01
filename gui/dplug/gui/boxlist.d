@@ -124,10 +124,12 @@ unittest
         box2i(1, 1, 2, 2)
     ];
     import std.stdio;
+    import dplug.core.alignedbuffer;
 
-    box2i[] bb;
-    removeOverlappingAreas(bl, bb);
-    assert(bb == [ box2i(2, 2, 6, 6), box2i(0, 0, 4, 2), box2i(0, 2, 2, 4) ] );
+    auto ab = new AlignedBuffer!box2i();
+
+    removeOverlappingAreas(bl, ab);
+    assert(ab[] == [ box2i(2, 2, 6, 6), box2i(0, 0, 4, 2), box2i(0, 2, 2, 4) ] );
 
     assert(bl.boundingBox() == box2i(0, 0, 6, 6));
 }
