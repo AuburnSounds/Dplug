@@ -29,12 +29,16 @@ public:
     this(UIContext context)
     {
         _context = context;
+
+        localRectsBuf = new AlignedBuffer!box2i(1);
     }
 
     void close()
     {
         foreach(child; children)
             child.close();
+
+        localRectsBuf.close();
     }
 
     /// Returns: true if was drawn, ie. the buffers have changed.
@@ -44,7 +48,7 @@ public:
         // List of disjointed dirty rectangles intersecting with _position
         // A nice thing with intersection is that a disjointed set of rectangles
         // stays disjointed.
-        box2i[] localDirtyRects;
+        localRectsBuf.clearContents();
         {
             foreach(rect; areasToUpdate)
             {
@@ -54,12 +58,12 @@ public:
                 {
                     // Express the dirty rect in local coordinates for simplicity
                     // TODO: amortize this allocation else we have big problems
-                    localDirtyRects ~= inter.translate(-_position.min);
+                    localRectsBuf.pushBack( inter.translate(-_position.min) );
                 }
             }
         }
 
-        if (localDirtyRects.length == 0)
+        if (localRectsBuf.length == 0)
             return; // nothing to draw here
 
         // Crop the diffuse and depth to the _position
@@ -67,7 +71,7 @@ public:
         // Don't even try!
         ImageRef!RGBA diffuseMapCropped = diffuseMap.cropImageRef(_position);
         ImageRef!RGBA depthMapCropped = depthMap.cropImageRef(_position);
-        onDraw(diffuseMapCropped, depthMapCropped, localDirtyRects);
+        onDraw(diffuseMapCropped, depthMapCropped, localRectsBuf[]);
     }
 
     /// Meant to be overriden almost everytime for custom behaviour.
@@ -440,6 +444,8 @@ protected:
 
 private:
     UIContext _context;
+
+    AlignedBuffer!box2i localRectsBuf;
 
     bool _mouseOver = false;
 }
