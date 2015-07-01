@@ -211,7 +211,7 @@ class GUIGraphics : UIElement, IGraphics
 
             // Split boxes to avoid overlapped work
             // Note: this is done separately for update areas and render areas
-            _areasToRenderNonOverlapping.clear();
+            _areasToRenderNonOverlapping.clearContents();
             removeOverlappingAreas(_areasToRender[], _areasToRenderNonOverlapping);
 
             regenerateMipmaps();
@@ -275,8 +275,8 @@ protected:
     void recomputeDirtyAreas()
     {
         // Get areas to update
-        _areasToUpdate.clear();
-        _areasToRender.clear();
+        _areasToUpdate.clearContents();
+        _areasToRender.clearContents();
 
         context().dirtyList.pullAllRectangles(_areasToUpdate);
 
@@ -310,12 +310,13 @@ protected:
     void renderElements()
     {
         // recompute draw list
-        _elemsToDraw.clear();
+        _elemsToDraw.clearContents();
         getDrawList(_elemsToDraw);
 
         // Sort by ascending z-order (high z-order gets drawn last)
         // This sort must be stable to avoid messing with tree natural order.
-        sort!("a.zOrder() < b.zOrder()", SwapStrategy.stable)(_elemsToDraw[]);
+        auto elemsToSort = _elemsToDraw[];
+        sort!("a.zOrder() < b.zOrder()", SwapStrategy.stable)(elemsToSort);
 
         enum bool parallelDraw = true;
 
@@ -368,7 +369,7 @@ protected:
         {
             // Render required areas in diffuse and depth maps, base level
             foreach(elem; _elemsToDraw)
-                elem.render(diffuseRef, depthRef);
+                elem.render(diffuseRef, depthRef, _areasToUpdate[]);
         }
     }
 
@@ -381,14 +382,22 @@ protected:
         enum tileWidth = 32;
         enum tileHeight = 32;
 
-        _areasToRenderNonOverlappingTiled.clear();
+        _areasToRenderNonOverlappingTiled.clearContents();
         tileAreas(_areasToRenderNonOverlapping[], tileWidth, tileHeight,_areasToRenderNonOverlappingTiled);
 
         int numAreas = cast(int)_areasToRenderNonOverlappingTiled.length;
 
-        foreach(i; _taskPool.parallel(numAreas.iota))
+        bool parallelCompositing = true;
+
+        if (parallelCompositing)
         {
-            compositeTile(wfb, _areasToRenderNonOverlappingTiled[i]);
+            foreach(i; _taskPool.parallel(numAreas.iota))
+                compositeTile(wfb, _areasToRenderNonOverlappingTiled[i]);
+        }
+        else
+        {
+            foreach(i; 0..numAreas)
+                compositeTile(wfb, _areasToRenderNonOverlappingTiled[i]);
         }
     }
 
@@ -402,7 +411,7 @@ protected:
         // Fill update rect buffer with the content of _areasToUpdateNonOverlapping
         for (int i = 0; i < 2; ++i)
         {
-            _updateRectScratch[i].clear();
+            _updateRectScratch[i].clearContents();
             _updateRectScratch[i].pushBack(_areasToUpdate[]);
         }
 

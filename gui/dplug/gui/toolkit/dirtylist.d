@@ -43,14 +43,7 @@ public:
         foreach(rect; _dirtyRects[])
             result.pushBack(rect);
 
-        _dirtyRects.clear();
-    }
-
-    void clearDirty() nothrow @nogc
-    {
-        _dirtyRectMutex.lock();
-        _dirtyRects.clear(); // TODO do not malloc/free here? Or don't use spinlocks
-        _dirtyRectMutex.unlock();
+        _dirtyRects.clearContents();
     }
 
     /// Add a rect while keeping the no overlap invariant
