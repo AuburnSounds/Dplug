@@ -33,9 +33,16 @@ public:
         _dirtyRects.close();
     }
 
+    bool isEmpty() nothrow @nogc
+    {
+        _dirtyRectMutex.lock();
+        scope(exit) _dirtyRectMutex.unlock();
+        return _dirtyRects.length == 0;
+    }
+
     /// Returns: Array of rectangles in the list, remove them from the list.
     /// Needed to avoid races in repainting.
-    void pullAllRectangles(AlignedBuffer!box2i result) nothrow
+    void pullAllRectangles(AlignedBuffer!box2i result) nothrow @nogc
     {
         _dirtyRectMutex.lock();
         scope(exit) _dirtyRectMutex.unlock();

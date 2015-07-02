@@ -303,7 +303,7 @@ public:
             child.animate(dt, time);
     }
 
-    final UIContext context()
+    final UIContext context() nothrow @nogc
     {
         return _context;
     }

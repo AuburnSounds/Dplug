@@ -27,6 +27,10 @@ import ae.utils.graphics;
 
 import dplug.gui.types;
 import dplug.gui.window;
+
+
+enum invalidateAll = false;
+
 version(Windows)
 {
     import std.uuid;
@@ -282,7 +286,10 @@ version(Windows)
                     {
                         bool sizeChanged = updateSizeIfNeeded();
 
-                        // Recompute dirty areas if window size changed
+                        // TODO: check resize work
+
+                        static if (invalidateAll)
+                            _listener.recomputeDirtyAreas();
 
 
                         ImageRef!RGBA wfb;
@@ -449,18 +456,41 @@ version(Windows)
         /// TODO: this function should be as fast as possible
         void sendRepaintIfUIDirty()
         {
-            _listener.recomputeDirtyAreas();
-            box2i dirtyRect = _listener.getDirtyRectangle();
-            if (!dirtyRect.empty())
+            static if (invalidateAll)
             {
-                RECT r;
-                r.left = dirtyRect.min.x;
-                r.top = dirtyRect.min.y;
-                r.right = dirtyRect.max.x;
-                r.bottom = dirtyRect.max.y;
-                // TODO: maybe use RedrawWindow instead
-                InvalidateRect(_hwnd, &r, FALSE); // TODO: invalidate rects one by one
-                UpdateWindow(_hwnd);
+                if (_listener.isUIDirty())
+                {
+                    // Invalidate the whole window
+                    RECT r;
+                    r.left = 0;
+                    r.top = 0;
+                    r.right = _width;
+                    r.bottom = _height;
+                    // TODO: maybe use RedrawWindow instead
+                    InvalidateRect(_hwnd, &r, FALSE); // TODO: invalidate rects one by one
+                   // UpdateWindow(_hwnd);
+
+                    _haveAlreadySentRepaint = true;
+                }
+                
+            }
+            else
+            {
+                _listener.recomputeDirtyAreas();
+                box2i dirtyRect = _listener.getDirtyRectangle();
+                if (!dirtyRect.empty())
+                {
+                    RECT r;
+                    r.left = dirtyRect.min.x;
+                    r.top = dirtyRect.min.y;
+                    r.right = dirtyRect.max.x;
+                    r.bottom = dirtyRect.max.y;
+                    // TODO: maybe use RedrawWindow instead
+                    InvalidateRect(_hwnd, &r, FALSE); // TODO: invalidate rects one by one
+                  //  UpdateWindow(_hwnd);
+
+                    _haveAlreadySentRepaint = true;
+                }
             }
         }
     }

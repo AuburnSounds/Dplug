@@ -165,6 +165,11 @@ class GUIGraphics : UIElement, IGraphics
             return this.outer.recomputeDirtyAreas();
         }
 
+        override bool isUIDirty()
+        {
+            return this.outer.isUIDirty();
+        }
+
         override bool onKeyDown(Key key)
         {
             // Sends the event to the last clicked element first
@@ -270,6 +275,12 @@ protected:
     //       but this doesn't matter since UIElement are the UI hierarchy anyway.
     AlignedBuffer!UIElement _elemsToDraw;
 
+
+    bool isUIDirty() nothrow @nogc
+    {
+        bool dirtyListEmpty = context().dirtyList.isEmpty();
+        return !dirtyListEmpty;
+    }
 
     // Fills _areasToUpdate and _areasToRender
     void recomputeDirtyAreas()
