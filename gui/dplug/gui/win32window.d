@@ -52,7 +52,7 @@ version(Windows)
             return GetModuleHandleA(null);
     }
 
-    class Win32Window : IWindow
+    final class Win32Window : IWindow
     {
     public:
 
@@ -93,8 +93,6 @@ version(Windows)
                 DWORD err = GetLastError();
                 throw new Exception(format("Couldn't create a Win32 window (error %s)", err));
             }
-
-            _windowDC = GetDC(_hwnd);
 
             _listener = listener;
 
@@ -347,7 +345,6 @@ version(Windows)
         {
             PAINTSTRUCT paintStruct;
             HDC hdc = BeginPaint(_hwnd, &paintStruct);
-            assert(hdc == _windowDC); // since we are CS_OWNDC
 
             foreach(box2i area; areasToRedraw)
             {
@@ -390,11 +387,15 @@ version(Windows)
             return _terminated;
         }
 
+        final void debugOutput(string s)
+        {
+            OutputDebugStringA(toStringz(s));
+        }
+
     private:
         enum TIMER_ID = 144;
 
         HWND _hwnd;
-        HDC _windowDC;
 
         WNDCLASSW _wndClass;
         wstring _className;

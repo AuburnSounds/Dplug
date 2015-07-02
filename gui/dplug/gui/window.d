@@ -25,6 +25,9 @@ interface IWindow
 
     // Requests that the whole area is repainted, not just the invalidated area.
     void enableFullRedrawWorkaround();
+
+    // Debug-purpose: display debug string
+    void debugOutput(string s);
 }
 
 // Receiving commands from a window
