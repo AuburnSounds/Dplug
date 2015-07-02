@@ -70,12 +70,13 @@ public:
                 box2i other = _dirtyRects[i];
                 if (other.contains(rect))
                 {
-                    processed = true; // do not push if contained in existing rect
+                    // If the rectangle candidate is inside an element of the list, discard it.
+                    processed = true;
                     break;
                 }
                 else if (rect.contains(other)) // remove rect that it contains
                 {
-                    // remove other from list
+                    // If the rectangle candidate contains an element of the list, this element need to go.
                     _dirtyRects[i] = _dirtyRects.popBack();
                     i--;
                 }
@@ -99,8 +100,9 @@ public:
                         if (!F.empty) _dirtyRects.pushBack(F);
                         if (!G.empty) _dirtyRects.pushBack(G);
                     }
-                    // else no intersection problem with this rectangle
+                    // else no intersection problem, the candidate rectangle will be pushed normally in the list
                 }
+
             }
 
             if (!processed)

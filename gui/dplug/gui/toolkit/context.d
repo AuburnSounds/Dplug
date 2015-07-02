@@ -45,8 +45,13 @@ public:
         }
     }
 
-    UIElement focused = null; // last clicked element
-    UIElement dragged = null; // current dragged element
+    /// Last clicked element.
+    UIElement focused = null; 
+
+    /// Currently dragged element.
+    UIElement dragged = null;
+
+    /// UI global image used for environment reflections.
     Mipmap skybox;
 
     // This is the global UI list of rectangles that need updating.

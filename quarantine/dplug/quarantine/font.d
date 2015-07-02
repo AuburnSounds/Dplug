@@ -63,7 +63,7 @@ private:
     const(ubyte)[] _fontData;
     int _fontAscent, _fontDescent, _fontLineGap;
 
-    /// Iterates on character and call the deledate with their subpixel position
+    /// Iterates on character and call the delegate with their subpixel position
     /// Only support one line of text.
     /// Use kerning.
     /// No hinting.

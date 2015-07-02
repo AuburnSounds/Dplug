@@ -108,11 +108,6 @@ version(Windows)
             _lastMeasturedTimeInMs = _timeAtCreationInMs;
         }
 
-        override void enableFullRedrawWorkaround()
-        {
-            _enableFullRedrawWorkaround = true;
-        }
-
         ~this()
         {
             close();
@@ -301,9 +296,7 @@ version(Windows)
                         _listener.onDraw(wfb, swapRB);
 
                         box2i areaToRedraw = box2i(r.left, r.top, r.right, r.bottom);
-                        if (_enableFullRedrawWorkaround)
-                            areaToRedraw = box2i(0, 0, _width, _height);
-
+                        
                         box2i[] areasToRedraw = (&areaToRedraw)[0..1];
                         swapBuffers(wfb, areasToRedraw);
                     }
@@ -404,8 +397,6 @@ version(Windows)
         DWORD _lastMeasturedTimeInMs;
 
         IWindowListener _listener;
-
-        bool _enableFullRedrawWorkaround = false;
 
         // The framebuffer. This should point into commited virtual memory for faster (maybe) upload to device
         ubyte* _buffer = null;

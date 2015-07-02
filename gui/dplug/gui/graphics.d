@@ -109,11 +109,6 @@ class GUIGraphics : UIElement, IGraphics
 
         _uiContext.debugOutput = &_window.debugOutput;
 
-        // Bridged plugins in FLStudio have strange invalidated areas.
-        // https://github.com/p0nce/dplug/issues/43
-        if (daw == DAW.FLStudio)
-            _window.enableFullRedrawWorkaround();
-
         reflow(box2i(0, 0, _askedWidth, _askedHeight));
 
         // Sets the whole UI dirty
