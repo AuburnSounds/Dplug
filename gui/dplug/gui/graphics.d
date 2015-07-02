@@ -107,6 +107,8 @@ class GUIGraphics : UIElement, IGraphics
         // We create this window each time.
         _window = createWindow(parentInfo, _windowListener, _askedWidth, _askedHeight);
 
+        _uiContext.debugOutput = &_window.debugOutput;
+
         // Bridged plugins in FLStudio have strange invalidated areas.
         // https://github.com/p0nce/dplug/issues/43
         if (daw == DAW.FLStudio)

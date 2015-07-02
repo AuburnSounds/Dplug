@@ -13,6 +13,7 @@ import dplug.gui.mipmap;
 import dplug.quarantine.font;
 import dplug.gui.toolkit.element;
 import dplug.gui.toolkit.dirtylist;
+import dplug.gui.window;
 
 
 /// UIContext contains the "globals" of the UI
@@ -82,6 +83,8 @@ public:
             dragged = null;
         }
     }
+
+    void delegate(string message) debugOutput;
 }
 
 

@@ -389,7 +389,7 @@ version(Windows)
 
         final void debugOutput(string s)
         {
-            OutputDebugStringA(toStringz(s));
+            OutputDebugStringA(toStringz(s ~ "\n"));
         }
 
     private:
