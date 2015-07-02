@@ -81,7 +81,7 @@ public:
                 }
                 else
                 {
-                    box2i common = other.intersection(other);
+                    box2i common = other.intersection(rect);
                     if (!common.empty())
                     {
                         // compute other without common
