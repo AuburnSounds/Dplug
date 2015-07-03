@@ -334,7 +334,7 @@ protected:
     }
 
     // Fills _areasToUpdate and _areasToRender
-    void recomputeDirtyAreas()
+    void recomputeDirtyAreas() nothrow @nogc
     {
         // Get areas to update
         _areasToRender.clearContents();
@@ -349,7 +349,7 @@ protected:
         }
     }
 
-    box2i extendsDirtyRect(box2i rect, int width, int height)
+    box2i extendsDirtyRect(box2i rect, int width, int height) nothrow @nogc
     {
         // Tuned by hand on very shiny light sources.
         // Too high and processing becomes very expensive.
