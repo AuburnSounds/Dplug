@@ -515,6 +515,8 @@ protected:
         Mipmap* skybox = &context.skybox;
         int w = _diffuseMap.levels[0].w;
         int h = _diffuseMap.levels[0].h;
+        float invW = 1.0f / w;
+        float invH = 1.0f / h;
         float div255 = 1 / 255.0f;
 
         for (int j = area.min.y; j < area.max.y; ++j)
@@ -558,15 +560,15 @@ protected:
 
                 enum float sz = 130.0f; // this factor basically tweak normals to make the UI flatter or not
 
-                vec3f normal = vec3f(sx, sy, sz).normalized;
+                vec3f normal = vec3f(sx, sy, sz);
+                normal.normalize();
 
                 RGBA ibaseColor = _diffuseMap.levels[0][i, j];
                 vec3f baseColor = vec3f(ibaseColor.r * div255, ibaseColor.g * div255, ibaseColor.b * div255);
 
                 vec3f color = vec3f(0.0f);
-                vec3f toEye = vec3f(cast(float)i / cast(float)w - 0.5f,
-                                    cast(float)j / cast(float)h - 0.5f,
-                                    1.0f).normalized;
+                vec3f toEye = vec3f(i * invW - 0.5f, j * invH - 0.5f, 1.0f);
+                toEye.normalize();
 
                 float shininess = depth_scan[2].ptr[i].g * div255;
 
