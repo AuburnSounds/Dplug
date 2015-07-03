@@ -149,16 +149,22 @@ class GUIGraphics : UIElement, IGraphics
         {
             uint now = _window.getTimeMs();
             int timeDiff = cast(int)(now - _lastTime);
-            sum += timeDiff;
+
+            if (times > 0)
+                sum += timeDiff; // first sample is considered
+
             times++;
-            string msg = _title ~ to!string(timeDiff) ~ " ms";
-            _window.debugOutput(msg);
+            //string msg = _title ~ to!string(timeDiff) ~ " ms";
+            //_window.debugOutput(msg);
         }
 
         void displayMean()
         {
-            string msg = _title ~ to!string(sum / times) ~ " ms mean";
-            _window.debugOutput(msg);
+            if (times > 1)
+            {
+                string msg = _title ~ to!string(sum / (times - 1)) ~ " ms mean";
+                _window.debugOutput(msg);
+            }
         }
 
         string _title;
@@ -432,7 +438,7 @@ protected:
     void compositeGUI(ImageRef!RGBA wfb, bool swapRB)
     {
         // Quick subjective testing indicates than somewhere between 16x16 and 32x32 have best performance
-        enum tileWidth = 32;
+        enum tileWidth = 64;
         enum tileHeight = 32;
 
         _areasToRenderNonOverlappingTiled.clearContents();
