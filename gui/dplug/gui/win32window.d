@@ -103,8 +103,14 @@ version(Windows)
             SetTimer(_hwnd, TIMER_ID, mSec, null);
             SetFocus(_hwnd);
 
+            // Get performance counter frequency
+            LARGE_INTEGER performanceFrequency;
+            BOOL res = QueryPerformanceFrequency(&performanceFrequency);
+            assert(res != 0); // since XP it is always supported
+            _performanceCounterDivider = performanceFrequency.QuadPart;
+
             // Get reference time
-            _timeAtCreationInMs = GetTickCount();
+            _timeAtCreationInMs = getTimeMs();
             _lastMeasturedTimeInMs = _timeAtCreationInMs;
         }
 
@@ -313,7 +319,7 @@ version(Windows)
                 {
                     if (wParam == TIMER_ID)
                     {
-                        DWORD now = GetTickCount(); 
+                        uint now = getTimeMs(); 
                         _lastMeasturedTimeInMs = _timeAtCreationInMs;
                         double dt = (now - _lastMeasturedTimeInMs) * 0.001;
                         double time = (now - _timeAtCreationInMs) * 0.001; // hopefully no plug-in will be open more than 49 days
@@ -380,9 +386,18 @@ version(Windows)
             return _terminated;
         }
 
-        final void debugOutput(string s)
+        override void debugOutput(string s)
         {
             OutputDebugStringA(toStringz(s ~ "\n"));
+        }
+
+        override uint getTimeMs()
+        {
+            LARGE_INTEGER perfCounter;
+            BOOL err = QueryPerformanceCounter(&perfCounter);
+            assert(err != 0); // always supported since XP
+            double time = (perfCounter.QuadPart * 1000 + (_performanceCounterDivider >> 1)) / cast(double)_performanceCounterDivider;
+            return cast(uint)(time);
         }
 
     private:
@@ -393,8 +408,9 @@ version(Windows)
         WNDCLASSW _wndClass;
         wstring _className;
 
-        DWORD _timeAtCreationInMs;
-        DWORD _lastMeasturedTimeInMs;
+        long _performanceCounterDivider;
+        uint _timeAtCreationInMs;
+        uint _lastMeasturedTimeInMs;
 
         IWindowListener _listener;
 
@@ -456,7 +472,7 @@ version(Windows)
                     RECT r = RECT(0, 0, _width, _height);
                     // TODO: maybe use RedrawWindow instead
                     InvalidateRect(_hwnd, &r, FALSE); // TODO: invalidate rects one by one
-                   // UpdateWindow(_hwnd);
+                    //UpdateWindow(_hwnd);
 
                     _haveAlreadySentRepaint = true;
                 }
@@ -471,7 +487,7 @@ version(Windows)
                     RECT r = RECT(dirtyRect.min.x, dirtyRect.min.y, dirtyRect.max.x, dirtyRect.max.y);
                     // TODO: maybe use RedrawWindow instead
                     InvalidateRect(_hwnd, &r, FALSE); // TODO: invalidate rects one by one
-                  //  UpdateWindow(_hwnd);
+                    UpdateWindow(_hwnd);
 
                }
             }

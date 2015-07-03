@@ -78,6 +78,8 @@ class GUIGraphics : UIElement, IGraphics
         _areasToRenderNonOverlappingTiled = new AlignedBuffer!box2i;
 
         _elemsToDraw = new AlignedBuffer!UIElement;
+
+        _compositingWatch = new StopWatch("Compositing = ");
     }
 
     ~this()
@@ -129,6 +131,40 @@ class GUIGraphics : UIElement, IGraphics
     override int getGUIHeight()
     {
         return _askedHeight;
+    }
+
+    class StopWatch
+    {
+        this(string title)
+        {
+            _title = title;
+        }
+
+        void start()
+        {
+            _lastTime = _window.getTimeMs();
+        }
+
+        void stop()
+        {
+            uint now = _window.getTimeMs();
+            int timeDiff = cast(int)(now - _lastTime);
+            sum += timeDiff;
+            times++;
+            string msg = _title ~ to!string(timeDiff) ~ " ms";
+            _window.debugOutput(msg);
+        }
+
+        void displayMean()
+        {
+            string msg = _title ~ to!string(sum / times) ~ " ms mean";
+            _window.debugOutput(msg);
+        }
+
+        string _title;
+        uint _lastTime;
+        double sum = 0;
+        int times = 0;
     }
 
 
@@ -219,7 +255,14 @@ class GUIGraphics : UIElement, IGraphics
             regenerateMipmaps();
 
             // Composite GUI
+            // Most of the cost of rendering is here
+            _compositingWatch.start();
             compositeGUI(wfb, swapRB);
+            _compositingWatch.stop();
+            _compositingWatch.displayMean();
+
+            // only then is the list of rectangles to update cleared
+            _areasToUpdate.clearContents();
         }
 
         override void onMouseCaptureCancelled()
@@ -273,6 +316,9 @@ protected:
     AlignedBuffer!UIElement _elemsToDraw;
 
 
+    StopWatch _compositingWatch;
+
+
     bool isUIDirty() nothrow @nogc
     {
         bool dirtyListEmpty = context().dirtyList.isEmpty();
@@ -283,7 +329,6 @@ protected:
     void recomputeDirtyAreas()
     {
         // Get areas to update
-        _areasToUpdate.clearContents();
         _areasToRender.clearContents();
 
         context().dirtyList.pullAllRectangles(_areasToUpdate);
@@ -794,3 +839,5 @@ float linearSampleRed(bool premultiplied = false)(ref Mipmap mipmap, int level, 
 
     return r;
 }
+
+

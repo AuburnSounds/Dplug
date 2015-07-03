@@ -25,6 +25,9 @@ interface IWindow
 
     // Debug-purpose: display debug string
     void debugOutput(string s);
+
+    // Profile-purpose: get time in milliseconds.
+    uint getTimeMs();
 }
 
 // Receiving commands from a window
