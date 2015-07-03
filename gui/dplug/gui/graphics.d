@@ -145,13 +145,15 @@ class GUIGraphics : UIElement, IGraphics
             _lastTime = _window.getTimeMs();
         }
 
+        enum WARMUP = 10;
+
         void stop()
         {
             uint now = _window.getTimeMs();
             int timeDiff = cast(int)(now - _lastTime);
 
-            if (times > 0)
-                sum += timeDiff; // first sample is considered
+            if (times >= WARMUP)
+                sum += timeDiff; // first samples are discarded
 
             times++;
             //string msg = _title ~ to!string(timeDiff) ~ " ms";
@@ -160,9 +162,9 @@ class GUIGraphics : UIElement, IGraphics
 
         void displayMean()
         {
-            if (times > 1)
+            if (times > WARMUP)
             {
-                string msg = _title ~ to!string(sum / (times - 1)) ~ " ms mean";
+                string msg = _title ~ to!string(sum / (times - WARMUP)) ~ " ms mean";
                 _window.debugOutput(msg);
             }
         }
