@@ -29,8 +29,6 @@ import dplug.gui.types;
 import dplug.gui.window;
 
 
-enum invalidateAll = false;
-
 version(Windows)
 {
     import std.uuid;
@@ -287,10 +285,6 @@ version(Windows)
 
                         // TODO: check resize work
 
-                        static if (invalidateAll)
-                            _listener.recomputeDirtyAreas();
-
-
                         ImageRef!RGBA wfb;
                         wfb.w = _width;
                         wfb.h = _height;
@@ -444,52 +438,21 @@ version(Windows)
             if (consumed)
                 sendRepaintIfUIDirty(); // do not wait for the timer
             return consumed;
-        }
-
-        static void swapRB(ImageRef!RGBA surface, box2i areaToRedraw)
-        {
-            for (int y = areaToRedraw.min.y; y < areaToRedraw.max.y; ++y)
-            {
-                RGBA[] scan = surface.scanline(y);
-                for (int x = areaToRedraw.min.x; x < areaToRedraw.max.x; ++x)
-                {
-                    ubyte temp = scan[x].r;
-                     scan[x].r = scan[x].b;
-                     scan[x].b = temp;
-                }
-            }
-        }
+        }        
 
         /// Provokes a WM_PAINT if some UI element is dirty.
         /// TODO: this function should be as fast as possible
         void sendRepaintIfUIDirty()
-        {
-            static if (invalidateAll)
+        {            
+            _listener.recomputeDirtyAreas();
+            box2i dirtyRect = _listener.getDirtyRectangle();
+            if (!dirtyRect.empty())
             {
-                if (_listener.isUIDirty())
-                {
-                    // Invalidate the whole window
-                    RECT r = RECT(0, 0, _width, _height);
-                    // TODO: maybe use RedrawWindow instead
-                    InvalidateRect(_hwnd, &r, FALSE); // TODO: invalidate rects one by one
-                    //UpdateWindow(_hwnd);
+                RECT r = RECT(dirtyRect.min.x, dirtyRect.min.y, dirtyRect.max.x, dirtyRect.max.y);
+                // TODO: maybe use RedrawWindow instead
+                InvalidateRect(_hwnd, &r, FALSE); // TODO: invalidate rects one by one
+                UpdateWindow(_hwnd);
 
-                    _haveAlreadySentRepaint = true;
-                }
-                
-            }
-            else
-            {
-                _listener.recomputeDirtyAreas();
-                box2i dirtyRect = _listener.getDirtyRectangle();
-                if (!dirtyRect.empty())
-                {
-                    RECT r = RECT(dirtyRect.min.x, dirtyRect.min.y, dirtyRect.max.x, dirtyRect.max.y);
-                    // TODO: maybe use RedrawWindow instead
-                    InvalidateRect(_hwnd, &r, FALSE); // TODO: invalidate rects one by one
-                    UpdateWindow(_hwnd);
-
-               }
             }
         }
     }
