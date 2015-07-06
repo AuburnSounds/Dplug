@@ -299,7 +299,10 @@ protected:
     int _askedWidth = 0;
     int _askedHeight = 0;
 
+    // Diffuse color values for the whole UI.
     Mipmap _diffuseMap;
+
+    // Depth values for the whole UI.
     Mipmap _depthMap;
 
     // The list of areas whose diffuse/depth data have been changed.
@@ -697,15 +700,15 @@ protected:
                     vec4f colorLevel4 = _diffuseMap.linearSample!true(4, ic, jc);
                     vec4f colorLevel5 = _diffuseMap.linearSample!true(5, ic, jc);
 
-                    vec3f emitted = colorLevel1.rgb * 0.2f;
-                    emitted += colorLevel2.rgb * 0.3f;
-                    emitted += colorLevel3.rgb * 0.25f;
-                    emitted += colorLevel4.rgb * 0.15f;
-                    emitted += colorLevel5.rgb * 0.10f;
+                    vec4f emitted = colorLevel1 * 0.2f;
+                    emitted += colorLevel2 * 0.3f;
+                    emitted += colorLevel3 * 0.25f;
+                    emitted += colorLevel4 * 0.15f;
+                    emitted += colorLevel5 * 0.10f;
 
                     emitted *= (div255 * 1.5f);
 
-                    color += emitted;
+                    color += emitted.rgb;
                 }
 
                 // Show normals
