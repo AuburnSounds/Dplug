@@ -138,9 +138,9 @@ struct Mipmap
 
         float inv255 = 1 / 255.0f;
 
-        version( Asm_X86 )
+        version( AsmX86 )
         {
-            vec4f result;
+            vec4f asmResult;
 
             asm
             {
@@ -171,20 +171,16 @@ struct Mipmap
                 cmp ECX, 0;
                 jz not_premultiplied;
 
-                    movaps XMM5, XMM0;
-                    pshufd XMM5, XMM5, 0; // A.a A.a A.a A.a
-                    mulps XMM0, XMM5;
+                    pshufd XMM4, XMM0, 0xff; // A.a A.a A.a A.a
+                    mulps XMM0, XMM4;
 
-                    movaps XMM5, XMM1;
-                    pshufd XMM5, XMM5, 0; // B.a B.a B.a B.a
+                    pshufd XMM5, XMM1, 0xff; // B.a B.a B.a B.a
                     mulps XMM1, XMM5;
 
-                    movaps XMM5, XMM2;
-                    pshufd XMM5, XMM5, 0; // C.a C.a C.a C.a
-                    mulps XMM2, XMM5;
+                    pshufd XMM4, XMM2, 0xff; // C.a C.a C.a C.a
+                    mulps XMM2, XMM4;
 
-                    movaps XMM5, XMM3;
-                    pshufd XMM5, XMM5, 0; // D.a D.a D.a D.a
+                    pshufd XMM5, XMM3, 0xff; // D.a D.a D.a D.a
                     mulps XMM3, XMM5;
 
                     movss XMM4, inv255;
@@ -220,9 +216,33 @@ struct Mipmap
 
                 addps XMM0, XMM2;
 
-                movups result, XMM0;
+                movups asmResult, XMM0;
             }
 
+            // Uncomment to check
+/*
+            vec4f vA = vec4f(A.r, A.g, A.b, A.a);
+            vec4f vB = vec4f(B.r, B.g, B.b, B.a);
+            vec4f vC = vec4f(C.r, C.g, C.b, C.a);
+            vec4f vD = vec4f(D.r, D.g, D.b, D.a);
+
+            static if (premultiplied)
+            {
+                vA *= vec4f(vA.a * inv255);
+                vB *= vec4f(vB.a * inv255);
+                vC *= vec4f(vC.a * inv255);
+                vD *= vec4f(vD.a * inv255);
+            }
+
+            vec4f up = vA * fxm1 + vB * fx;
+            vec4f down = vC * fxm1 + vD * fx;
+            vec4f dResult = up * fym1 + down * fy;
+
+            if (dResult.distanceTo(result) < 1.0f)
+                debugBreak();
+*/
+
+            vec4f result = asmResult;
             return result;
         }
         else
