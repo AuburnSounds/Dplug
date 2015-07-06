@@ -9,8 +9,20 @@ import std.algorithm;
 
 import ae.utils.graphics;
 
+import gfm.core;
 import gfm.math.vector;
 import gfm.math.box;
+
+
+
+version( D_InlineAsm_X86 )
+{
+    version = AsmX86;
+}
+else version( D_InlineAsm_X86_64 )
+{
+    version = AsmX86;
+}
 
 
 /// Mipmapped images.
@@ -56,7 +68,13 @@ struct Mipmap
     {
         int ilevel = cast(int)level;
         float flevel = level - ilevel;
-        return linearSample!premultiplied(ilevel, x, y) * (1 - flevel) + linearSample!premultiplied(ilevel + 1, x, y) * flevel;
+        vec4f levelN = linearSample!premultiplied(ilevel, x, y);
+        if (flevel == 0)
+            return levelN;
+
+        vec4f levelNp1 = linearSample!premultiplied(ilevel + 1, x, y);
+
+        return levelN * (1 - flevel) + levelNp1 * flevel;
     }
 
 
@@ -118,41 +136,118 @@ struct Mipmap
         RGBA C = L1.ptr[ix];
         RGBA D = L1.ptr[ixp1];
 
-        static RGBA premultiply(RGBA color)
+        float inv255 = 1 / 255.0f;
+
+        version( Asm_X86 )
         {
-            if (color.a == 0)
+            vec4f result;
+
+            asm
             {
-                return RGBA(0, 0, 0, 0);
+                movd XMM0, A;
+                movd XMM1, B;
+                movd XMM2, C;
+                movd XMM3, D;
+                pxor XMM4, XMM4;
+
+                punpcklbw XMM0, XMM4;
+                punpcklbw XMM1, XMM4;
+                punpcklbw XMM2, XMM4;
+                punpcklbw XMM3, XMM4;
+      
+                punpcklwd XMM0, XMM4;
+                punpcklwd XMM1, XMM4;
+                punpcklwd XMM2, XMM4;
+                punpcklwd XMM3, XMM4;
+
+                mov ECX, premultiplied;
+
+                cvtdq2ps XMM0, XMM0;
+                cvtdq2ps XMM1, XMM1;
+
+                cvtdq2ps XMM2, XMM2;
+                cvtdq2ps XMM3, XMM3;
+
+                cmp ECX, 0;
+                jz not_premultiplied;
+
+                    movaps XMM5, XMM0;
+                    pshufd XMM5, XMM5, 0; // A.a A.a A.a A.a
+                    mulps XMM0, XMM5;
+
+                    movaps XMM5, XMM1;
+                    pshufd XMM5, XMM5, 0; // B.a B.a B.a B.a
+                    mulps XMM1, XMM5;
+
+                    movaps XMM5, XMM2;
+                    pshufd XMM5, XMM5, 0; // C.a C.a C.a C.a
+                    mulps XMM2, XMM5;
+
+                    movaps XMM5, XMM3;
+                    pshufd XMM5, XMM5, 0; // D.a D.a D.a D.a
+                    mulps XMM3, XMM5;
+
+                    movss XMM4, inv255;
+                    pshufd XMM4, XMM4, 0;
+
+                    mulps XMM0, XMM4;
+                    mulps XMM1, XMM4;
+                    mulps XMM2, XMM4;
+                    mulps XMM3, XMM4;
+
+                not_premultiplied:
+
+                movss XMM4, fxm1;
+                pshufd XMM4, XMM4, 0;
+                movss XMM5, fx;
+                pshufd XMM5, XMM5, 0;
+
+                mulps XMM0, XMM4;
+                mulps XMM1, XMM5;
+                mulps XMM2, XMM4;
+                mulps XMM3, XMM5;
+
+                movss XMM4, fym1;
+                pshufd XMM4, XMM4, 0;
+                movss XMM5, fy;
+                pshufd XMM5, XMM5, 0;
+
+                addps XMM0, XMM1;
+                addps XMM2, XMM3;
+
+                mulps XMM0, XMM4;
+                mulps XMM2, XMM5;
+
+                addps XMM0, XMM2;
+
+                movups result, XMM0;
             }
 
-            return RGBA( (color.r * color.a + 128) >> 8, (color.g * color.a + 128) >> 8, (color.b * color.a + 128) >> 8, color.a );
+            return result;
         }
-
-        static if (premultiplied)
+        else
         {
-            A = premultiply(A);
-            B = premultiply(B);
-            C = premultiply(C);
-            D = premultiply(D);
+            vec4f vA = vec4f(A.r, A.g, A.b, A.a);
+            vec4f vB = vec4f(B.r, B.g, B.b, B.a);
+            vec4f vC = vec4f(C.r, C.g, C.b, C.a);
+            vec4f vD = vec4f(D.r, D.g, D.b, D.a);
+
+            static if (premultiplied)
+            {
+                vA *= vec4f(vA.a * inv255);
+                vB *= vec4f(vB.a * inv255);
+                vC *= vec4f(vC.a * inv255);
+                vD *= vec4f(vD.a * inv255);
+            }
+
+            vec4f up = vA * fxm1 + vB * fx;
+            vec4f down = vC * fxm1 + vD * fx;
+            vec4f dResult = up * fym1 + down * fy;
+
+          //  assert(dResult.distanceTo(asmResult) < 1.0f);
+
+            return dResult;
         }
-
-        float rup = A.r * fxm1 + B.r * fx;
-        float rdown = C.r * fxm1 + D.r * fx;
-        float r = (A.r * fxm1 + B.r * fx) * fym1 + (C.r * fxm1 + D.r * fx) * fy;
-
-        float gup = A.g * fxm1 + B.g * fx;
-        float gdown = C.g * fxm1 + D.g * fx;
-        float g = (A.g * fxm1 + B.g * fx) * fym1 + (C.g * fxm1 + D.g * fx) * fy;
-
-        float bup = A.b * fxm1 + B.b * fx;
-        float bdown = C.b * fxm1 + D.b * fx;
-        float b = (A.b * fxm1 + B.b * fx) * fym1 + (C.b * fxm1 + D.b * fx) * fy;
-
-        float aup = A.a * fxm1 + B.a * fx;
-        float adown = C.a * fxm1 + D.a * fx;
-        float a = (A.a * fxm1 + B.a * fx) * fym1 + (C.a * fxm1 + D.a * fx) * fy;
-
-        return vec4f(r, g, b, a);
     }
 
     /// Returns: Width of the base level.
