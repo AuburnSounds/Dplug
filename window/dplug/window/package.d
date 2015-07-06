@@ -5,5 +5,6 @@
 */
 module dplug.window;
 
+public import gfm.math;
 public import dplug.window.window;
 public import dplug.window.win32window;

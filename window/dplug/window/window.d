@@ -27,6 +27,7 @@ enum Key
     digit8,
     digit9,
     enter,
+    escape,
     unsupported // special value, means "other"
 };
 

@@ -45,6 +45,8 @@ version(Windows)
 
     HINSTANCE getModuleHandle()
     {
+        // TODO: what impact on portability?
+
         /*
         if (gModuleHandle !is null)
             return cast(HINSTANCE) gModuleHandle;
@@ -549,6 +551,7 @@ version(Windows)
             case VK_NUMPAD8: return Key.digit8;
             case VK_NUMPAD9: return Key.digit9;
             case VK_RETURN: return Key.enter;
+            case VK_ESCAPE: return Key.escape;                
             default: return Key.unsupported;
         }
     }
