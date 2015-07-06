@@ -14,7 +14,7 @@ Permission is granted to anyone to use this software for any purpose, including 
 1. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
 1. This notice may not be removed or altered from any source distribution.
 */
-module dplug.gui.win32window;
+module dplug.window.win32window;
 
 import core.thread;
 
@@ -25,8 +25,7 @@ import gfm.math;
 
 import ae.utils.graphics;
 
-import dplug.gui.types;
-import dplug.gui.window;
+import dplug.window.window;
 
 
 enum invalidateAll = false;
@@ -42,13 +41,14 @@ version(Windows)
     import win32.wingdi;
 
 
-    import dplug.plugin.dllmain: gModuleHandle;
+    //import dplug.plugin.dllmain: gModuleHandle;
 
     HINSTANCE getModuleHandle()
     {
+        /*
         if (gModuleHandle !is null)
             return cast(HINSTANCE) gModuleHandle;
-        else
+        else*/
             return GetModuleHandleA(null);
     }
 

@@ -3,10 +3,10 @@
 * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 * Authors:   Guillaume Piolat
 */
-module dplug.gui.toolkit.panel;
+module dplug.gui.panel;
 
 import std.math;
-import dplug.gui.toolkit.element;
+import dplug.gui.element;
 import dplug.plugin.params;
 
 /// Extends an UIElement with a background color, depth and shininess.

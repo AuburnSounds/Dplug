@@ -16,12 +16,13 @@ import dplug.plugin.client;
 import dplug.plugin.graphics;
 import dplug.plugin.daw;
 
-import dplug.gui.window;
+import dplug.window.window;
+
 import dplug.gui.mipmap;
 import dplug.gui.boxlist;
-import dplug.gui.toolkit.context;
-import dplug.gui.toolkit.element;
-import dplug.gui.toolkit.dirtylist;
+import dplug.gui.context;
+import dplug.gui.element;
+import dplug.gui.dirtylist;
 
 /// In the whole package:
 /// The diffuse maps contains:

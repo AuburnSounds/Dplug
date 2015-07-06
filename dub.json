@@ -70,15 +70,27 @@
             ]
         },
         {
-            "name": "gui",
-            "sourcePaths": [ "gui/dplug/gui" ],
-            "importPaths": [ "gui" ],
+            "name": "window",
+            "sourcePaths": [ "window/dplug/window" ],
+            "importPaths": [ "window" ],
             "sourcePaths-windows": [ "platforms/windows" ],
             "importPaths-windows": [ "platforms/windows" ],
 
             "libs-windows": ["gdi32", "user32"],
+
+            "dependencies": {
+                "ae-graphics": "~>0.0",
+                "gfm:math": "~>2.3"
+            }
+        },
+        {
+            "name": "gui",
+            "sourcePaths": [ "gui/dplug/gui" ],
+            "importPaths": [ "gui" ],
+
             "dependencies": {
                 "dplug:plugin": "*",
+                "dplug:window": "*",
                 "dplug:core": "*",
                 "dplug:quarantine": "*",
                 "ae-graphics": "~>0.0",
