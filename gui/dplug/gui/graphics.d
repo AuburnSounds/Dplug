@@ -390,7 +390,7 @@ protected:
         static if (parallelDraw)
         {
             int drawn = 0;
-            int maxParallelElements = 8;
+            int maxParallelElements = 32;
             int N = cast(int)_elemsToDraw.length;
 
             while(drawn < N)
