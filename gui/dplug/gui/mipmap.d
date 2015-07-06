@@ -9,7 +9,6 @@ import std.algorithm;
 
 import ae.utils.graphics;
 
-import gfm.core;
 import gfm.math.vector;
 import gfm.math.box;
 
@@ -237,6 +236,8 @@ struct Mipmap
             vec4f up = vA * fxm1 + vB * fx;
             vec4f down = vC * fxm1 + vD * fx;
             vec4f dResult = up * fym1 + down * fy;
+
+            import gfm.core;
 
             if (dResult.distanceTo(result) < 1.0f)
                 debugBreak();
