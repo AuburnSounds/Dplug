@@ -14,6 +14,7 @@ import gfm.core;
 /// Allows very fast synchronization between eg. a high priority
 /// audio thread and an UI thread.
 /// Not re-entrant.
+/// Because of Adjacent Cache-line Prefetching 128 bytes are allocated.
 struct Spinlock
 {
     public
@@ -26,11 +27,15 @@ struct Spinlock
              LOCKED = 1
         }
 
+        enum int sizeOfCacheline = 64;
+
         void initialize() nothrow @nogc
         {
             if (_state == null)
             {
-                _state = cast(shared(int)*) alignedMalloc(int.sizeof, 4);
+                // Allocates two full cache-lines.
+                // Purely speculative optimization, it is suppposed to reduce false-sharing.
+                _state = cast(shared(int)*) alignedMalloc(2 * sizeOfCacheline, sizeOfCacheline);
                 assert(_state != null);
                 *_state = UNLOCKED;
             }

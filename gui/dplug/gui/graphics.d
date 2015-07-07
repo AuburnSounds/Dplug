@@ -148,7 +148,7 @@ class GUIGraphics : UIElement, IGraphics
             _lastTime = _window.getTimeMs();
         }
 
-        enum WARMUP = 10;
+        enum WARMUP = 30;
 
         void stop()
         {
