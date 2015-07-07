@@ -1,0 +1,11 @@
+{
+    "name": "just_windowing",
+    "importPaths": [ "." ],
+    "sourcePaths": [ "." ],
+    "targetType": "executable",
+
+    "dependencies":
+    {
+        "dplug:window": { "path": "../.." }
+    }
+}

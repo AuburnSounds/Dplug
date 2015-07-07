@@ -14,7 +14,7 @@ Permission is granted to anyone to use this software for any purpose, including 
 1. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
 1. This notice may not be removed or altered from any source distribution.
 */
-module dplug.gui.win32window;
+module dplug.window.win32window;
 
 import core.thread;
 
@@ -25,8 +25,7 @@ import gfm.math;
 
 import ae.utils.graphics;
 
-import dplug.gui.types;
-import dplug.gui.window;
+import dplug.window.window;
 
 
 version(Windows)
@@ -40,13 +39,16 @@ version(Windows)
     import win32.wingdi;
 
 
-    import dplug.plugin.dllmain: gModuleHandle;
+    //import dplug.plugin.dllmain: gModuleHandle;
 
     HINSTANCE getModuleHandle()
     {
+        // TODO: what impact on portability?
+
+        /*
         if (gModuleHandle !is null)
             return cast(HINSTANCE) gModuleHandle;
-        else
+        else*/
             return GetModuleHandleA(null);
     }
 
@@ -512,6 +514,7 @@ version(Windows)
             case VK_NUMPAD8: return Key.digit8;
             case VK_NUMPAD9: return Key.digit9;
             case VK_RETURN: return Key.enter;
+            case VK_ESCAPE: return Key.escape;                
             default: return Key.unsupported;
         }
     }

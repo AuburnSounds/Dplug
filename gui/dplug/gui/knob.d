@@ -3,10 +3,10 @@
 * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 * Authors:   Guillaume Piolat
 */
-module dplug.gui.toolkit.knob;
+module dplug.gui.knob;
 
 import std.math;
-import dplug.gui.toolkit.element;
+import dplug.gui.element;
 import dplug.gui.drawex;
 import dplug.plugin.params;
 
@@ -104,7 +104,7 @@ public:
         
         ubyte shininess = 200;
 
-        depthMap.softCircleFloat(centerx, centery, depthRadius, knobRadius, RGBA(255, shininess, 0, 0));
+        depthMap.softCircleFloat!1.5f(centerx, centery, depthRadius, knobRadius, RGBA(255, shininess, 0, 0));
         depthMap.softCircleFloat(centerx, centery, 0, depthRadius, RGBA(150, shininess, 0, 0));
 
 
@@ -131,7 +131,7 @@ public:
             
             RGBA color = RGBA(255, green, 128, emissive);
 
-            depthMap.softCircleFloat(x, y, smallRadius, largerRadius, RGBA(100, 255, 0, 0));
+            depthMap.softCircleFloat!2.0f(x, y, 0, largerRadius, RGBA(100, 255, 0, 0));
             diffuseMap.softCircleFloat(x, y, smallRadius, largerRadius, color);
         }        
     }

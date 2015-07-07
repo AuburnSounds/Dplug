@@ -3,10 +3,10 @@
 * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 * Authors:   Guillaume Piolat
 */
-module dplug.gui.toolkit.bargraph;
+module dplug.gui.bargraph;
 
 import std.math;
-import dplug.gui.toolkit.element;
+import dplug.gui.element;
 import dplug.core.unchecked_sync;
 import dplug.core;
 

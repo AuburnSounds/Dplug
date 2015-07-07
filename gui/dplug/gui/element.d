@@ -3,20 +3,25 @@
 * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 * Authors:   Guillaume Piolat
 */
-module dplug.gui.toolkit.element;
+module dplug.gui.element;
 
 import std.algorithm;
 
 public import gfm.math;
+
 public import ae.utils.graphics;
-public import dplug.gui.window;
-public import dplug.gui.drawex;
-public import dplug.gui.types;
-public import dplug.gui.boxlist;
-public import dplug.gui.toolkit.context;
-public import dplug.quarantine.font;
+
+public import dplug.window.window;
+
 public import dplug.core.unchecked_sync;
 public import dplug.core.alignedbuffer;
+
+public import dplug.quarantine.font;
+
+public import dplug.gui.drawex;
+public import dplug.gui.boxlist;
+public import dplug.gui.context;
+
 
 /// Base class of the UI widget hierarchy.
 ///

@@ -3,14 +3,99 @@
 * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 * Authors:   Guillaume Piolat
 */
-module dplug.gui.toolkit.dirtylist;
+module dplug.gui.context;
+
+import std.file;
 
 import gfm.math;
 
 import dplug.core.alignedbuffer;
 import dplug.core.unchecked_sync;
 
+import dplug.window.window;
+
+import dplug.quarantine.font;
+
+import dplug.gui.mipmap;
+import dplug.gui.element;
 import dplug.gui.boxlist;
+
+
+/// UIContext contains the "globals" of the UI
+/// - current focused element
+/// - current dragged element
+/// - images and fonts...
+class UIContext
+{
+public:
+    this()
+    {
+        // create a dummy black skybox
+        skybox.size(10, 1024, 1024);
+
+        dirtyList = new DirtyRectList();
+    }
+
+    ~this()
+    {
+        close();
+    }
+
+    void close()
+    {
+        if (dirtyList !is null)
+        {
+            dirtyList.close();
+            dirtyList = null;
+        }
+    }
+
+    /// Last clicked element.
+    UIElement focused = null; 
+
+    /// Currently dragged element.
+    UIElement dragged = null;
+
+    /// UI global image used for environment reflections.
+    Mipmap skybox;
+
+    // This is the global UI list of rectangles that need updating.
+    // This used to be a list of rectangles per UIElement,
+    // but this wasn't workable because of too many races and
+    // inefficiencies.
+    DirtyRectList dirtyList; 
+    
+
+    void setSkybox(Image!RGBA image)
+    {
+        skybox.size(10, image.w, image.h);
+        skybox.levels[0] = image;
+        skybox.generateMipmaps(Mipmap.Quality.box);
+    }
+
+    void setFocused(UIElement focused)
+    {
+        this.focused = focused;
+    }
+
+    void beginDragging(UIElement element)
+    {
+        stopDragging();
+        dragged = element;
+        dragged.onBeginDrag();
+    }
+
+    void stopDragging()
+    {
+        if (dragged !is null)
+        {
+            dragged.onStopDrag();
+            dragged = null;
+        }
+    }
+
+    void delegate(string message) debugOutput;
+}
 
 final class DirtyRectList
 {
@@ -120,5 +205,4 @@ private:
     /// This is protected by a mutex, because it is sometimes updated from the host.
     UncheckedMutex _dirtyRectMutex;
 }
-
 
