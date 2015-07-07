@@ -25,6 +25,7 @@ import dplug.gui.boxlist;
 import dplug.gui.context;
 import dplug.gui.element;
 import dplug.gui.dirtylist;
+import dplug.gui.materials;
 
 /// In the whole package:
 /// The diffuse maps contains:
@@ -68,7 +69,7 @@ class GUIGraphics : UIElement, IGraphics
 
         light2Dir = vec3f(0.0f, 1.0f, 0.1f).normalized;
         light2Color = vec3f(0.378f, 0.35f, 0.322f);
-        ambientLight = 0.3f;
+        ambientLight = 0.15f;
 
         _taskPool = new TaskPool();
 
