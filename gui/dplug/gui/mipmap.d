@@ -62,7 +62,7 @@ struct Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
     /// Interpolates a color between mipmap levels.  Floating-point level, spatial linear interpolation.
     /// x and y are in base level coordinates (top-left pixel is on (0.5, 0.5) coordinates).
     /// Clamped to borders.
-    vec4f linearMipmapSample(bool premultiplied = false)(float level, float x, float y)
+    auto linearMipmapSample(bool premultiplied = false)(float level, float x, float y)
     {
         int ilevel = cast(int)level;
         float flevel = level - ilevel;
@@ -70,7 +70,7 @@ struct Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
         if (flevel == 0)
             return levelN;
 
-        vec4f levelNp1 = linearSample!premultiplied(ilevel + 1, x, y);
+        auto levelNp1 = linearSample!premultiplied(ilevel + 1, x, y);
 
         return levelN * (1 - flevel) + levelNp1 * flevel;
     }
@@ -79,7 +79,7 @@ struct Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
     /// Interpolates a color.  Integer level, spatial linear interpolation.
     /// x and y are in base level coordinates (top-left pixel is on (0.5, 0.5) coordinates).
     /// Clamped to borders.
-    vec4f linearSample(bool premultiplied = false)(int level, float x, float y)
+    auto linearSample(bool premultiplied = false)(int level, float x, float y)
     {
         if (level < 0)
             level = 0;
@@ -87,7 +87,7 @@ struct Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
         if (level >= numLevels)
             level = numLevels - 1;
 
-        Image!RGBA* image = &levels[level];
+        Image!COLOR* image = &levels[level];
 
 
         static immutable float[14] factors = [ 1.0f, 0.5f, 0.25f, 0.125f, 
@@ -126,147 +126,156 @@ struct Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
         float fy = y - iy;
         float fym1 = 1 - fy;
 
-        RGBA[] L0 = image.scanline(iy);
-        RGBA[] L1 = image.scanline(iyp1);
+        COLOR[] L0 = image.scanline(iy);
+        COLOR[] L1 = image.scanline(iyp1);
 
-        RGBA A = L0.ptr[ix];
-        RGBA B = L0.ptr[ixp1];
-        RGBA C = L1.ptr[ix];
-        RGBA D = L1.ptr[ixp1];
+        COLOR A = L0.ptr[ix];
+        COLOR B = L0.ptr[ixp1];
+        COLOR C = L1.ptr[ix];
+        COLOR D = L1.ptr[ixp1];
 
-        float inv255 = 1 / 255.0f;
-
-        version( AsmX86 )
+        static if (is(COLOR == RGBA))
         {
-            vec4f asmResult;
+            float inv255 = 1 / 255.0f;
 
-            asm
+            version( AsmX86 )
             {
-                movd XMM0, A;
-                movd XMM1, B;
-                movd XMM2, C;
-                movd XMM3, D;
-                pxor XMM4, XMM4;
+                vec4f asmResult;
 
-                punpcklbw XMM0, XMM4;
-                punpcklbw XMM1, XMM4;
-                punpcklbw XMM2, XMM4;
-                punpcklbw XMM3, XMM4;
+                asm
+                {
+                    movd XMM0, A;
+                    movd XMM1, B;
+                    movd XMM2, C;
+                    movd XMM3, D;
+                    pxor XMM4, XMM4;
+
+                    punpcklbw XMM0, XMM4;
+                    punpcklbw XMM1, XMM4;
+                    punpcklbw XMM2, XMM4;
+                    punpcklbw XMM3, XMM4;
       
-                punpcklwd XMM0, XMM4;
-                punpcklwd XMM1, XMM4;
-                punpcklwd XMM2, XMM4;
-                punpcklwd XMM3, XMM4;
+                    punpcklwd XMM0, XMM4;
+                    punpcklwd XMM1, XMM4;
+                    punpcklwd XMM2, XMM4;
+                    punpcklwd XMM3, XMM4;
 
-                mov ECX, premultiplied;
+                    mov ECX, premultiplied;
 
-                cvtdq2ps XMM0, XMM0;
-                cvtdq2ps XMM1, XMM1;
+                    cvtdq2ps XMM0, XMM0;
+                    cvtdq2ps XMM1, XMM1;
 
-                cvtdq2ps XMM2, XMM2;
-                cvtdq2ps XMM3, XMM3;
+                    cvtdq2ps XMM2, XMM2;
+                    cvtdq2ps XMM3, XMM3;
 
-                cmp ECX, 0;
-                jz not_premultiplied;
+                    cmp ECX, 0;
+                    jz not_premultiplied;
 
-                    pshufd XMM4, XMM0, 0xff; // A.a A.a A.a A.a
+                        pshufd XMM4, XMM0, 0xff; // A.a A.a A.a A.a
+                        mulps XMM0, XMM4;
+
+                        pshufd XMM5, XMM1, 0xff; // B.a B.a B.a B.a
+                        mulps XMM1, XMM5;
+
+                        pshufd XMM4, XMM2, 0xff; // C.a C.a C.a C.a
+                        mulps XMM2, XMM4;
+
+                        pshufd XMM5, XMM3, 0xff; // D.a D.a D.a D.a
+                        mulps XMM3, XMM5;
+
+                        movss XMM4, inv255;
+                        pshufd XMM4, XMM4, 0;
+
+                        mulps XMM0, XMM4;
+                        mulps XMM1, XMM4;
+                        mulps XMM2, XMM4;
+                        mulps XMM3, XMM4;
+
+                    not_premultiplied:
+
+                    movss XMM4, fxm1;
+                    pshufd XMM4, XMM4, 0;
+                    movss XMM5, fx;
+                    pshufd XMM5, XMM5, 0;
+
                     mulps XMM0, XMM4;
-
-                    pshufd XMM5, XMM1, 0xff; // B.a B.a B.a B.a
                     mulps XMM1, XMM5;
-
-                    pshufd XMM4, XMM2, 0xff; // C.a C.a C.a C.a
                     mulps XMM2, XMM4;
-
-                    pshufd XMM5, XMM3, 0xff; // D.a D.a D.a D.a
                     mulps XMM3, XMM5;
 
-                    movss XMM4, inv255;
+                    movss XMM4, fym1;
                     pshufd XMM4, XMM4, 0;
+                    movss XMM5, fy;
+                    pshufd XMM5, XMM5, 0;
+
+                    addps XMM0, XMM1;
+                    addps XMM2, XMM3;
 
                     mulps XMM0, XMM4;
-                    mulps XMM1, XMM4;
-                    mulps XMM2, XMM4;
-                    mulps XMM3, XMM4;
+                    mulps XMM2, XMM5;
 
-                not_premultiplied:
+                    addps XMM0, XMM2;
 
-                movss XMM4, fxm1;
-                pshufd XMM4, XMM4, 0;
-                movss XMM5, fx;
-                pshufd XMM5, XMM5, 0;
+                    movups asmResult, XMM0;
+                }
 
-                mulps XMM0, XMM4;
-                mulps XMM1, XMM5;
-                mulps XMM2, XMM4;
-                mulps XMM3, XMM5;
+                // Uncomment to check
+    /*
+                vec4f vA = vec4f(A.r, A.g, A.b, A.a);
+                vec4f vB = vec4f(B.r, B.g, B.b, B.a);
+                vec4f vC = vec4f(C.r, C.g, C.b, C.a);
+                vec4f vD = vec4f(D.r, D.g, D.b, D.a);
 
-                movss XMM4, fym1;
-                pshufd XMM4, XMM4, 0;
-                movss XMM5, fy;
-                pshufd XMM5, XMM5, 0;
+                static if (premultiplied)
+                {
+                    vA *= vec4f(vA.a * inv255);
+                    vB *= vec4f(vB.a * inv255);
+                    vC *= vec4f(vC.a * inv255);
+                    vD *= vec4f(vD.a * inv255);
+                }
 
-                addps XMM0, XMM1;
-                addps XMM2, XMM3;
+                vec4f up = vA * fxm1 + vB * fx;
+                vec4f down = vC * fxm1 + vD * fx;
+                vec4f dResult = up * fym1 + down * fy;
 
-                mulps XMM0, XMM4;
-                mulps XMM2, XMM5;
+                import gfm.core;
 
-                addps XMM0, XMM2;
+                if (dResult.distanceTo(result) < 1.0f)
+                    debugBreak();
+    */
 
-                movups asmResult, XMM0;
+                vec4f result = asmResult;
+                return result;
             }
-
-            // Uncomment to check
-/*
-            vec4f vA = vec4f(A.r, A.g, A.b, A.a);
-            vec4f vB = vec4f(B.r, B.g, B.b, B.a);
-            vec4f vC = vec4f(C.r, C.g, C.b, C.a);
-            vec4f vD = vec4f(D.r, D.g, D.b, D.a);
-
-            static if (premultiplied)
+            else
             {
-                vA *= vec4f(vA.a * inv255);
-                vB *= vec4f(vB.a * inv255);
-                vC *= vec4f(vC.a * inv255);
-                vD *= vec4f(vD.a * inv255);
+                vec4f vA = vec4f(A.r, A.g, A.b, A.a);
+                vec4f vB = vec4f(B.r, B.g, B.b, B.a);
+                vec4f vC = vec4f(C.r, C.g, C.b, C.a);
+                vec4f vD = vec4f(D.r, D.g, D.b, D.a);
+
+                static if (premultiplied)
+                {
+                    vA *= vec4f(vA.a * inv255);
+                    vB *= vec4f(vB.a * inv255);
+                    vC *= vec4f(vC.a * inv255);
+                    vD *= vec4f(vD.a * inv255);
+                }
+
+                vec4f up = vA * fxm1 + vB * fx;
+                vec4f down = vC * fxm1 + vD * fx;
+                vec4f dResult = up * fym1 + down * fy;
+
+              //  assert(dResult.distanceTo(asmResult) < 1.0f);
+
+                return dResult;
             }
-
-            vec4f up = vA * fxm1 + vB * fx;
-            vec4f down = vC * fxm1 + vD * fx;
-            vec4f dResult = up * fym1 + down * fy;
-
-            import gfm.core;
-
-            if (dResult.distanceTo(result) < 1.0f)
-                debugBreak();
-*/
-
-            vec4f result = asmResult;
-            return result;
         }
         else
         {
-            vec4f vA = vec4f(A.r, A.g, A.b, A.a);
-            vec4f vB = vec4f(B.r, B.g, B.b, B.a);
-            vec4f vC = vec4f(C.r, C.g, C.b, C.a);
-            vec4f vD = vec4f(D.r, D.g, D.b, D.a);
-
-            static if (premultiplied)
-            {
-                vA *= vec4f(vA.a * inv255);
-                vB *= vec4f(vB.a * inv255);
-                vC *= vec4f(vC.a * inv255);
-                vD *= vec4f(vD.a * inv255);
-            }
-
-            vec4f up = vA * fxm1 + vB * fx;
-            vec4f down = vC * fxm1 + vD * fx;
-            vec4f dResult = up * fym1 + down * fy;
-
-          //  assert(dResult.distanceTo(asmResult) < 1.0f);
-
-            return dResult;
+            float up = A.l * fxm1 + B.l * fx;
+            float down = C.l * fxm1 + D.l * fx;
+            return up * fym1 + down * fy;
         }
     }
 
