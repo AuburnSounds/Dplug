@@ -12,6 +12,8 @@ import std.algorithm;
 
 import ae.utils.graphics;
 
+import dplug.core.funcs;
+
 import dplug.plugin.client;
 import dplug.plugin.graphics;
 import dplug.plugin.daw;
@@ -584,16 +586,14 @@ protected:
                     float py = j + 0.5f;
 
                     float avgDepthHere =
-                      ( _depthMap.linearSampleRed(1, px, py)
-                        + _depthMap.linearSampleRed(2, px, py)
-                        + _depthMap.linearSampleRed(3, px, py)
-                        + _depthMap.linearSampleRed(4, px, py) ) * 0.25f;
+                      ( _depthMap.linearSample(1, px, py).r
+                        + _depthMap.linearSample(2, px, py).r
+                        + _depthMap.linearSample(3, px, py).r
+                        + _depthMap.linearSample(4, px, py).r ) * 0.25f;
 
                     occluded = ctLinearStep!(-90.0f, 0.0f)(depthPatch[2][2] - avgDepthHere);
 
-                    vec3f ambientComponent = vec3f(occluded * ambientLight) * baseColor;
-
-                    color += ambientComponent;
+                    color += baseColor * (occluded * ambientLight);
                 }
 
                 // cast shadows, ie. enlight what isn't in shadows
@@ -684,8 +684,8 @@ protected:
                     // log2 scaling + threshold
                     float mipLevel = 0.5f * fastlog2(1.0f + indexDeriv * 0.00001f);
 
-                    vec4f skyColor = skybox.linearMipmapSample(mipLevel, skyx, skyy) * div255;
-                    color += shininess * 0.3f * skyColor.rgb;
+                    vec3f skyColor = skybox.linearMipmapSample(mipLevel, skyx, skyy).rgb * (div255 * shininess * 0.3f);
+                    color += skyColor;
                 }
 
                 // Add light emitted by neighbours
@@ -729,9 +729,9 @@ protected:
                 color.z = gfm.math.clamp(color.z, 0.0f, 1.0f);
 
 
-                int r = cast(int)(0.5f + color.x * 255.0f);
-                int g = cast(int)(0.5f + color.y * 255.0f);
-                int b = cast(int)(0.5f + color.z * 255.0f);
+                int r = cast(int)(color.x * 255.99f);
+                int g = cast(int)(color.y * 255.99f);
+                int b = cast(int)(color.z * 255.99f);
 
                 if (swapRB)
                 {
@@ -760,7 +760,7 @@ float ctLinearStep(float a, float b)(float t) pure nothrow @nogc
         return 1.0f;
     else
     {
-        enum float divider = 1.0f / (b - a);
+        static immutable divider = 1.0f / (b - a);
         return (t - a) * divider;
     }
 }
@@ -797,61 +797,6 @@ float fastlog2(float val)
     x += 127 << 23;
     fi.i = x;
     return fi.f + log_2;
-}
-
-
-/// Special look-up for depth-only lookup
-float linearSampleRed(bool premultiplied = false)(ref Mipmap mipmap, int level, float x, float y)
-{
-    Image!RGBA* image = &mipmap.levels[level];
-
-    static immutable float[14] factors = [ 1.0f, 0.5f, 0.25f, 0.125f,
-    0.0625f, 0.03125f, 0.015625f, 0.0078125f,
-    0.00390625f, 0.001953125f, 0.0009765625f, 0.00048828125f,
-    0.000244140625f, 0.0001220703125f];
-
-    float divider = factors[level];
-    x = x * divider - 0.5f;
-    y = y * divider - 0.5f;
-
-    float maxX = image.w - 1.001f; // avoids an edge case with truncation
-    float maxY = image.h - 1.001f;
-
-    if (x < 0)
-        x = 0;
-    if (y < 0)
-        y = 0;
-    if (x > maxX)
-        x = maxX;
-    if (y > maxY)
-        y = maxY;
-
-    int ix = cast(int)x;
-    int iy = cast(int)y;
-    float fx = x - ix;
-
-    int ixp1 = ix + 1;
-    if (ixp1 >= image.w)
-        ixp1 = image.w - 1;
-    int iyp1 = iy + 1;
-    if (iyp1 >= image.h)
-        iyp1 = image.h - 1;
-
-    float fxm1 = 1 - fx;
-    float fy = y - iy;
-    float fym1 = 1 - fy;
-
-    RGBA[] L0 = image.scanline(iy);
-    RGBA[] L1 = image.scanline(iyp1);
-
-    float A = L0.ptr[ix].r;
-    float B = L0.ptr[ixp1].r;
-    float C = L1.ptr[ix].r;
-    float D = L1.ptr[ixp1].r;
-
-    float r = (A * fxm1 + B * fx) * fym1 + (C * fxm1 + D * fx) * fy;
-
-    return r;
 }
 
 
