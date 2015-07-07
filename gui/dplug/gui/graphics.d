@@ -518,6 +518,12 @@ protected:
     /// Don't like this rendering? Feel free to override this method.
     void compositeTile(ImageRef!RGBA wfb, bool swapRB, box2i area)
     {
+        int[5] line_index = void;
+        ubyte[5][5] depthPatch = void;
+        int[5] col_index = void;
+        RGBA*[5] depth_scan = void;
+
+
         Mipmap* skybox = &context.skybox;
         int w = _diffuseMap.levels[0].w;
         int h = _diffuseMap.levels[0].h;
@@ -530,11 +536,11 @@ protected:
             RGBA* wfb_scan = wfb.scanline(j).ptr;
 
             // clamp to existing lines
-            int[5] line_index = void;
+            
             for (int l = 0; l < 5; ++l)
                 line_index[l] = gfm.math.clamp(j - 2 + l, 0, h - 1);
 
-            RGBA*[5] depth_scan = void;
+            
             for (int l = 0; l < 5; ++l)
                 depth_scan[l] = _depthMap.levels[0].scanline(line_index[l]).ptr;
 
@@ -542,12 +548,12 @@ protected:
             for (int i = area.min.x; i < area.max.x; ++i)
             {
                 // clamp to existing columns
-                int[5] col_index = void;
+                
                 for (int k = 0; k < 5; ++k)
                     col_index[k] = gfm.math.clamp(i - 2 + k, 0, w - 1);
 
                 // Get depth for a 5x5 patch
-                ubyte[5][5] depthPatch = void;
+                
                 for (int l = 0; l < 5; ++l)
                 {
                     for (int k = 0; k < 5; ++k)
@@ -570,7 +576,7 @@ protected:
                 normal.normalize();
 
                 RGBA ibaseColor = _diffuseMap.levels[0][i, j];
-                vec3f baseColor = vec3f(ibaseColor.r * div255, ibaseColor.g * div255, ibaseColor.b * div255);
+                vec3f baseColor = vec3f(ibaseColor.r, ibaseColor.g, ibaseColor.b) * div255;
 
                 vec3f color = vec3f(0.0f);
                 vec3f toEye = vec3f(i * invW - 0.5f, j * invH - 0.5f, 1.0f);
