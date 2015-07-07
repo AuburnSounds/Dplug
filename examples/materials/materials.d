@@ -69,7 +69,7 @@ public:
     this(MaterialsPlugin client)
     {
         _client = client;
-        super(1024, 256); // initial size
+        super(1024, 512); // initial size
 
         context.setSkybox( loadImage(cast(ubyte[])(import("skybox.png"))) );        
     }
@@ -83,9 +83,9 @@ public:
     {
         // Always redraw everything       
         
-        materialMap.fill(RGBA(defaultRoughness, defaultMetalnessDielectric, defaultSpecular, defaultPhysical));
+        materialMap.fill(RGBA(128, defaultMetalnessMetal, defaultSpecular, defaultPhysical));
         depthMap.fill(L16(defaultDepth));
-        diffuseMap.fill(RGBA(128, 128, 128, 0));
+        diffuseMap.fill(RGBA(186, 186, 186, 0));
 
         void makeBall(float x, float y, ubyte roughness, Material material)
         {
@@ -93,8 +93,8 @@ public:
 
       //      diffuse = RGBA(255, 128, 128, 0);
 
-            ubyte metalness = /* (y == 150) ? 255 : 0;*/material.metalness;
-            ubyte specular = 128;
+            ubyte metalness = material.metalness;
+            ubyte specular = material.specular;
             ubyte physical = 255;
 
             roughness = cast(ubyte)(linmap!float(x, 50, 950, 0, 255));
@@ -128,6 +128,23 @@ public:
         makeBall(850, 150, 0, Material.titanium);
         makeBall(950, 150, 0, Material.wornAsphalt);
 
+        void makeRect(int x1, int y1, int x2, int y2, ushort depth0, ushort depth1,ubyte roughness, Material material)
+        {
+            RGBA diffuse = RGBA(material.albedo.r, material.albedo.g, material.albedo.b, 0);
+
+            diffuseMap.fillRect(x1, y1, x2, y2, diffuse);
+
+            ubyte metalness = material.metalness;
+            ubyte specular = material.specular;
+            ubyte physical = 255;
+            materialMap.fillRect(x1, y1, x2, y2,  RGBA(roughness, metalness, specular, physical));
+            depthMap.verticalSlope(box2i(x1, y1, x2, y2), L16(depth0), L16(depth1));
+        }
+
+        for (int i = 0; i < 10; ++i)
+        {
+            makeRect(i * 90, 250, i * 90 + 70, 270 + i * 20, 0, 65535, 128, Material.iron);
+        }
     }
 }
 

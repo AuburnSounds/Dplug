@@ -68,7 +68,7 @@ public:
 
     void setSkybox(Image!RGBA image)
     {
-        skybox.size(10, image.w, image.h);
+        skybox.size(12, image.w, image.h); // up to 8k skybox
         skybox.levels[0] = image;
         skybox.generateMipmaps(Mipmap!RGBA.Quality.box);
     }

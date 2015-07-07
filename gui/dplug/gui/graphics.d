@@ -602,22 +602,22 @@ protected:
                 float specular  = materialHere.b * div255;
                 float physical  = materialHere.a * div255;
 
-                float occluded;
-/+
+                float cavity;
+
                 // Add ambient component
                 {
                     float px = i + 0.5f;
                     float py = j + 0.5f;
 
                     float avgDepthHere =
-                      ( _depthMap.linearSample(1, px, py).r
-                        + _depthMap.linearSample(2, px, py).r
-                        + _depthMap.linearSample(3, px, py).r
-                        + _depthMap.linearSample(4, px, py).r ) * 0.25f;
+                      ( _depthMap.linearSample(1, px, py)
+                        + _depthMap.linearSample(2, px, py)
+                        + _depthMap.linearSample(3, px, py)
+                        + _depthMap.linearSample(4, px, py) ) * 0.25f;
 
-                    occluded = ctLinearStep!(-90.0f * 256.0f, 0.0f)(depthPatch[2][2] - avgDepthHere);
+                    cavity = ctLinearStep!(-90.0f * 256.0f, 0.0f)(depthPatch[2][2] - avgDepthHere);
 
-                    color += baseColor * (occluded * ambientLight);
+                    color += baseColor * (cavity * ambientLight);
                 }
 
                 // cast shadows, ie. enlight what isn't in shadows
@@ -656,26 +656,17 @@ protected:
                         if (y < 0)
                             y = 0;
                         int z = depthHere + sample;
-                        int diff = z - _depthMap.levels[0][x, y].r;
+                        int diff = z - _depthMap.levels[0][x, y].l;
                         lightPassed += ctLinearStep!(-60.0f * 256.0f, 0.0f)(diff) * weights.ptr[sample];
                     }
                     color += baseColor * light1Color * (lightPassed * invTotalWeights);
                 }
-+/
+
                 // secundary light
                 {   
                     float diffuseFactor = 0.5f + 0.5f * dot(normal, light2Dir);// + roughness;
 
-                    diffuseFactor = linmap!float(diffuseFactor, 0.24f - roughness * 0.5f, 1, 0, 1.0f);
-
-
-                    //float exponent = linmap!float(roughness, 0, 2, 0.5f);
-                        /* 100 / (1 + roughness * 199f);/*- 0.8f * exp( (1-roughness) * 5.5f)*/ 
-
-                    //diffuseFactor = (diffuseFactor ^^ exponent);
-
-                    // remap according to roughness
-                    //diffuseFactor = linmap!float(diffuseFactor, 0.6f - roughness * 1.6f, 1, 0, 1);
+                    diffuseFactor = /*cavity * */ linmap!float(diffuseFactor, 0.24f - roughness * 0.5f, 1, 0, 1.0f);
 
                     if (diffuseFactor > 0)
                         color += baseColor * light2Color * diffuseFactor;
@@ -690,15 +681,15 @@ protected:
                     {
                         float exponent = 0.8f * exp( (1-roughness) * 5.5f);
                         specularFactor = specularFactor ^^ exponent;
-                        float roughFactor = 10 * (1.0f - roughness);/// (1 - metalness);
-                        specularFactor = specularFactor * roughFactor;
+                        float roughFactor = 10 * (1.0f - roughness) * (1 - metalness * 0.5f);
+                        specularFactor = /* cavity * */ specularFactor * roughFactor;
                         if (specularFactor != 0)
                             color += baseColor * light2Color * (specularFactor * specular);
                     }
                 }
 
                 // skybox reflection (use the same shininess as specular)
-       /+         if (metalness != 0)
+                if (metalness != 0)
                 {
                     vec3f pureReflection = reflect(toEye, normal);
 
@@ -722,11 +713,11 @@ protected:
 
                     // cooking here
                     // log2 scaling + threshold
-                    float mipLevel = 0.5f * fastlog2(1.0f + indexDeriv * 0.00001f);
+                    float mipLevel = 0.5f * fastlog2(1.0f + indexDeriv * 0.00001f) + 6 * roughness;
 
                     vec3f skyColor = skybox.linearMipmapSample(mipLevel, skyx, skyy).rgb * (div255 * metalness * 0.3f);
                     color += skyColor * baseColor;
-                }+/
+                }
 
                 // Add light emitted by neighbours
                 {
@@ -764,12 +755,12 @@ protected:
                 // Show diffuse
                 //color = baseColor;
 
-              //  color = toEye;
+                //  color = toEye;
+                //color = vec3f(cavity);
 
                 color.x = gfm.math.clamp(color.x, 0.0f, 1.0f);
                 color.y = gfm.math.clamp(color.y, 0.0f, 1.0f);
                 color.z = gfm.math.clamp(color.z, 0.0f, 1.0f);
-
 
                 int r = cast(int)(color.x * 255.99f);
                 int g = cast(int)(color.y * 255.99f);
