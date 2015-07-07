@@ -66,11 +66,13 @@ int iFloorLog2(int i) pure nothrow @nogc
     return result;
 }
 
+/// Mapping from MIDI notes to frequency
 double MIDIToFrequency(T)(int note) pure nothrow @nogc
 {
     return 440 * pow(2.0, (note - 69.0) / 12.0);
 }
 
+/// Mapping from frequency to MIDI notes
 double frequencyToMIDI(T)(double frequency) pure nothrow @nogc
 {
     return 69.0 + 12 * log2(frequency / 440.0);
