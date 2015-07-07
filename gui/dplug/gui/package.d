@@ -16,12 +16,11 @@ public import dplug.gui.panel;
 public import dplug.gui.onoffswitch;
 public import dplug.gui.slider;
 public import dplug.gui.bargraph;
-
 public import dplug.gui.graphics;
 public import dplug.gui.boxlist;
 public import dplug.gui.dirtylist;
 public import dplug.gui.drawex;
 public import dplug.gui.mipmap;
-
+public import dplug.gui.materials;
 
 

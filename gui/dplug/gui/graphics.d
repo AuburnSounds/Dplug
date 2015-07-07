@@ -588,7 +588,9 @@ protected:
                 vec3f toEye = vec3f(i * invW - 0.5f, j * invH - 0.5f, 1.0f);
                 toEye.normalize();
 
-                float shininess = depth_scan[2][i].g * div255;
+                float metalness = depth_scan[2][i].g * div255;
+                float roughness = depth_scan[2][i].b * div255;
+                float specular =  depth_scan[2][i].a * div255;
 
                 float occluded;
 
@@ -660,20 +662,21 @@ protected:
                 }
 
                 // specular reflection
-                if (shininess != 0)
+                if (specular != 0)
                 {
                     vec3f lightReflect = reflect(light2Dir, normal);
                     float specularFactor = dot(toEye, lightReflect);
                     if (specularFactor > 0)
                     {
-                        specularFactor = specularFactor * specularFactor;
-                        specularFactor = specularFactor * specularFactor;
-                        color += baseColor * light2Color * (specularFactor * 4.0f * shininess);
+                        float exponent = 0.8f * exp( (1-roughness) * 5.5f);
+                        specularFactor = specularFactor ^^ exponent;
+                        specularFactor = specularFactor * 10 * (1 - roughness) * (1 - roughness) * (1 - metalness);
+                        color += baseColor * light2Color * (specularFactor * specular);
                     }
                 }
 
                 // skybox reflection (use the same shininess as specular)
-                if (shininess != 0)
+                if (metalness != 0)
                 {
                     vec3f pureReflection = reflect(toEye, normal);
 
@@ -696,7 +699,7 @@ protected:
                     // log2 scaling + threshold
                     float mipLevel = 0.5f * fastlog2(1.0f + indexDeriv * 0.00001f);
 
-                    vec3f skyColor = skybox.linearMipmapSample(mipLevel, skyx, skyy).rgb * (div255 * shininess * 0.3f);
+                    vec3f skyColor = skybox.linearMipmapSample(mipLevel, skyx, skyy).rgb * (div255 * metalness * 0.3f);
                     color += skyColor;
                 }
 
