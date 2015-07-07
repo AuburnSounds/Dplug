@@ -118,7 +118,7 @@ if (isWritableView!V && is(COLOR : ViewColor!V))
 }
 
 // Rewritten because of weird codegen bugs
-void softCircleFloat(T, V, COLOR)(auto ref V v, T x, T y, T r1, T r2, COLOR color)
+void softCircleFloat(float curvature = 1.0f, T, V, COLOR)(auto ref V v, T x, T y, T r1, T r2, COLOR color)
 if (isWritableView!V && isNumeric!T && is(COLOR : ViewColor!V))
 {
     assert(r1 <= r2);
@@ -152,6 +152,8 @@ if (isWritableView!V && isNumeric!T && is(COLOR : ViewColor!V))
                 if (frs<fr2s)
                 {
                     float alpha = (frs-fr1s) / fr21;
+                    static if (curvature != 1.0f)
+                        alpha = alpha ^^ curvature;
                     row[cx] = COLOR.op!q{.blend(a, b, c)}(color, row[cx], cast(ubyte)(0.5f + 255.0f * (1-alpha)));
                 }
             }
