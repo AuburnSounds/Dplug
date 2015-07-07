@@ -79,28 +79,31 @@ public:
         _position = availableSpace;
     }
 
-    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap, box2i[] dirtyRects)
+    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects)
     {
-        // Always redraw everything
-
+        // Always redraw everything       
         
-        
-        depthMap.fill(RGBA(5, 5, 5, 128));
+        materialMap.fill(RGBA(defaultRoughness, defaultMetalnessDielectric, defaultSpecular, defaultPhysical));
+        depthMap.fill(L16(defaultDepth));
         diffuseMap.fill(RGBA(128, 128, 128, 0));
 
         void makeBall(float x, float y, ubyte roughness, Material material)
         {
             RGBA diffuse = RGBA(material.albedo.r, material.albedo.g, material.albedo.b, 0);
 
-            diffuse = RGBA(255, 128, 128, 0);
+      //      diffuse = RGBA(255, 128, 128, 0);
 
-            ubyte metalness = 0;//material.metalness;
+            ubyte metalness = /* (y == 150) ? 255 : 0;*/material.metalness;
             ubyte specular = 128;
+            ubyte physical = 255;
 
             roughness = cast(ubyte)(linmap!float(x, 50, 950, 0, 255));
 
-            depthMap.softCircleFloat!2.0f(x, y, 0, 40, RGBA(255, metalness, roughness, specular));
-            diffuseMap.softCircleFloat!2.0f(x, y, 0, 40, diffuse);            
+            depthMap.softCircleFloat!1.0f(x, y, 0, 40, L16(65535));
+            
+            diffuseMap.softCircleFloat(x, y, 38, 40, diffuse);            
+            materialMap.softCircleFloat(x, y, 38, 40, RGBA(roughness, metalness, specular, physical));
+            
         }
 
         makeBall( 50, 50, 0, Material.aluminum);
@@ -118,6 +121,12 @@ public:
         makeBall(250, 150, 0, Material.silver);
         makeBall(350, 150, 0, Material.titanium);
         makeBall(450, 150, 0, Material.wornAsphalt);
+
+        makeBall(550, 150, 0, Material.oceanIce);
+        makeBall(650, 150, 0, Material.platinum);
+        makeBall(750, 150, 0, Material.silver);
+        makeBall(850, 150, 0, Material.titanium);
+        makeBall(950, 150, 0, Material.wornAsphalt);
 
     }
 }

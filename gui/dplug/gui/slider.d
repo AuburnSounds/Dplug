@@ -40,7 +40,7 @@ public:
         return _sensivity = sensivity;
     }
 
-    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap, box2i[] dirtyRects)
+    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects)
     {
         // dig a metal hole
       //  depthMap.crop(dirtyRect).fill(RGBA(0, 64, 0, 0));
@@ -84,7 +84,7 @@ public:
             
             diffuseMap.crop(deeperHoleBlack).fill(RGBA(150, 40, 20, 16));
             diffuseMap.crop(deeperHoleLit).fill(RGBA(230, 80, 43, 128));
-            depthMap.crop(deeperHole).fill(RGBA(0, 64, 0, 0));
+            depthMap.crop(deeperHole).fill(L16(0));
         }
 
         // Paint handle of slider
@@ -97,9 +97,9 @@ public:
 
             diffuseMap.crop(handleRect).fill(RGBA(230, 230, 230, emissive));
 
-            auto c0 = RGBA(58, shininess, 0, 0);
-            auto c1 = RGBA(255, shininess, 0, 0);
-            auto c2 = RGBA(200, shininess, 0, 0);
+            auto c0 = L16(58);
+            auto c1 = L16(255);
+            auto c2 = L16(200);
 
             int h0 = handleRect.min.y;
             int h1 = (handleRect.min.y * 3 + handleRect.max.y + 2) / 4;

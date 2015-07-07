@@ -40,7 +40,7 @@ public:
         return _sensivity = sensivity;
     }
 
-    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap, box2i[] dirtyRects)
+    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects)
     {
         auto c = RGBA(193, 180, 176, 0);
 
@@ -83,7 +83,7 @@ public:
         diffuseMap.aaFillSector(cast(int)centerx, cast(int)centery, radius * 0.83f, radius * 0.97f, a2, a3, trailColorUnlit);
 
 
-        depthMap.aaFillSector(cast(int)centerx, cast(int)centery, radius * 0.8f, radius * 1.0, PI * 3/4 - 0.04f, PI * 9/4 + 0.04f, RGBA(30, 0, 0, 0));
+        depthMap.aaFillSector(cast(int)centerx, cast(int)centery, radius * 0.8f, radius * 1.0, PI * 3/4 - 0.04f, PI * 9/4 + 0.04f, L16(30 * 256));
 
 
 //        depthMap.crop(deeperHole).fill(RGBA(0, 64, 0, 0));
@@ -104,8 +104,8 @@ public:
         
         ubyte shininess = 200;
 
-        depthMap.softCircleFloat!1.5f(centerx, centery, depthRadius, knobRadius, RGBA(255, shininess, 0, 0));
-        depthMap.softCircleFloat(centerx, centery, 0, depthRadius, RGBA(150, shininess, 0, 0));
+        depthMap.softCircleFloat!1.5f(centerx, centery, depthRadius, knobRadius, L16(65535));
+        depthMap.softCircleFloat(centerx, centery, 0, depthRadius, L16(150 * 256));
 
 
         // LEDs
@@ -131,7 +131,7 @@ public:
             
             RGBA color = RGBA(255, green, 128, emissive);
 
-            depthMap.softCircleFloat!2.0f(x, y, 0, largerRadius, RGBA(100, 255, 0, 0));
+            depthMap.softCircleFloat!2.0f(x, y, 0, largerRadius, L16(100 * 256));
             diffuseMap.softCircleFloat(x, y, smallRadius, largerRadius, color);
         }        
     }

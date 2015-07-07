@@ -28,9 +28,18 @@ struct Material
         titanium =    Material(RGB(138, 127, 114), 255),
         cobalt   =    Material(RGB(169, 170, 162), 255),
         platinum =    Material(RGB(171, 162, 218), 255),
-        charcoal =    Material(RGB(  5,   5,   5),   0), 
-        wornAsphalt = Material(RGB( 20,  20,  20),   0), 
-        desertSand =  Material(RGB( 92,  92,  92),   0), 
-        oceanIce =    Material(RGB(142, 142, 142),   0), 
-        freshSnow =   Material(RGB(207, 207, 207),   0); 
+        charcoal =    Material(RGB( 50,  50,  50),  10), 
+        wornAsphalt = Material(RGB( 70,  70,  70),  10), 
+        desertSand =  Material(RGB( 92,  92,  92),  10), 
+        oceanIce =    Material(RGB(142, 142, 142),  10), 
+        freshSnow =   Material(RGB(207, 207, 207),  10); 
 }
+
+// Sets of recommended values
+
+enum ushort defaultDepth = 15000;
+enum ushort defaultRoughness = 128;
+enum ushort defaultSpecular = 128; // because everything is shiny
+enum ushort defaultPhysical = 255;
+enum ushort defaultMetalnessDielectric = 10; // ~ 0.04
+enum ushort defaultMetalnessMetal = 255;

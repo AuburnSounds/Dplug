@@ -26,11 +26,10 @@ public:
         _param.removeListener(this);
     }
 
-    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap, box2i[] dirtyRects)
+    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects)
     {
         // dig a hole
-        RGBA bgDepth = RGBA(0, 200, 0, 0);
-        depthMap.fill(bgDepth);
+        depthMap.fill(L16(0));
 
         // The switch is in a subrect
 
@@ -58,8 +57,8 @@ public:
         croppedDiffuse.fill(diffuseColor);
 
         ubyte shininess = 100;
-        RGBA colorLow = RGBA(0, shininess, 0, 0);
-        RGBA colorHigh = RGBA(120, shininess, 0, 0);        
+        L16 colorLow = L16(0);
+        L16 colorHigh = L16(120);
 
         if (isOn)
         {

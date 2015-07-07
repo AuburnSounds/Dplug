@@ -54,9 +54,10 @@ public:
     }
 
 
-    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap, box2i[] dirtyRects)
+    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects)
     {
-        depthMap.fill(RGBA(59, 200, 0, 0));
+        // TODO fill material map
+        depthMap.fill(L16(59));
         diffuseMap.fill(RGBA(64, 64, 64, 0));
 
         int numLeds = cast(int)_leds.length;
@@ -83,7 +84,7 @@ public:
                 float y0 = border + heightPerLed * (i + 0.1f);
                 float y1 = y0 + heightPerLed * 0.8f;
 
-                depthMap.aaFillRectFloat!false(x0, y0, x1, y1, RGBA(60, 255, 0, 0));
+                depthMap.aaFillRectFloat!false(x0, y0, x1, y1, L16(60));
 
                 float ratio = 1 - i / cast(float)(numLeds - 1);
 

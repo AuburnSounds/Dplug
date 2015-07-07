@@ -29,8 +29,9 @@ import dplug.gui.dirtylist;
 /// In the whole package:
 /// The diffuse maps contains:
 ///   RGBA = red/green/blue/emissiveness
-/// The depth maps contains:
-///   RGBA = depth / shininess
+/// The depth maps contains depth.
+/// The material map contains:
+///   RGBA = roughness / metalness / specular / physical (allows to bypass PBR)
 
 // A GUIGraphics is the interface between a plugin client and a IWindow.
 // It is also an UIElement and the root element of the plugin UI hierarchy.
@@ -250,6 +251,7 @@ class GUIGraphics : UIElement, IGraphics
 
             _diffuseMap.size(5, width, height);
             _depthMap.size(4, width, height);
+            _materialMap.size(0, width, height);
         }
 
         // Redraw dirtied controls in depth and diffuse maps.
@@ -303,10 +305,13 @@ protected:
     int _askedHeight = 0;
 
     // Diffuse color values for the whole UI.
-    Mipmap _diffuseMap;
+    Mipmap!RGBA _diffuseMap;
 
     // Depth values for the whole UI.
-    Mipmap _depthMap;
+    Mipmap!L16 _depthMap;
+
+    // Depth values for the whole UI.
+    Mipmap!RGBA _materialMap;
 
     // The list of areas whose diffuse/depth data have been changed.
     AlignedBuffer!box2i _areasToUpdate;
@@ -389,6 +394,7 @@ protected:
 
         auto diffuseRef = _diffuseMap.levels[0].toRef();
         auto depthRef = _depthMap.levels[0].toRef();
+        auto materialRef = _materialMap.levels[0].toRef();
 
         static if (parallelDraw)
         {
@@ -422,10 +428,10 @@ protected:
 
                 // Draw a number of UIElement in parallel, don't use other threads if only one element
                 if (canBeDrawn == 1)
-                    _elemsToDraw[drawn].render(diffuseRef, depthRef, _areasToUpdate[]);
+                    _elemsToDraw[drawn].render(diffuseRef, depthRef, materialRef, _areasToUpdate[]);
                 else
                     foreach(i; _taskPool.parallel(canBeDrawn.iota))
-                        _elemsToDraw[drawn + i].render(diffuseRef, depthRef, _areasToUpdate[]);
+                        _elemsToDraw[drawn + i].render(diffuseRef, depthRef, materialRef,  _areasToUpdate[]);
 
                 drawn += canBeDrawn;
                 assert(drawn <= N);
@@ -486,13 +492,13 @@ protected:
         // So instead what we do is using up to 2 threads.
         foreach(i; _taskPool.parallel(2.iota))
         {
-            Mipmap* mipmap = i == 0 ? &_diffuseMap : &_depthMap;
             if (i == 0)
             {
                 // diffuse
+                Mipmap!RGBA* mipmap = &_diffuseMap;
                 foreach(level; 1 .. mipmap.numLevels())
                 {
-                    auto quality = level >= 2 ? Mipmap.Quality.cubicAlphaCov : Mipmap.Quality.boxAlphaCov;
+                    auto quality = level >= 2 ? Mipmap!RGBA.Quality.cubicAlphaCov : Mipmap!RGBA.Quality.boxAlphaCov;
                     foreach(ref area; _updateRectScratch[i])
                     {
                         area = mipmap.generateNextLevel(quality, area, level);
@@ -502,10 +508,10 @@ protected:
             else
             {
                 // depth
-
+                Mipmap!L16* mipmap = &_depthMap;
                 foreach(level; 1 .. mipmap.numLevels())
                 {
-                    auto quality = level >= 3 ? Mipmap.Quality.cubic : Mipmap.Quality.box;
+                    auto quality = level >= 3 ? Mipmap!L16.Quality.cubic : Mipmap!L16.Quality.box;
                     foreach(ref area; _updateRectScratch[i])
                     {
                         area = mipmap.generateNextLevel(quality, area, level);
@@ -519,12 +525,11 @@ protected:
     void compositeTile(ImageRef!RGBA wfb, bool swapRB, box2i area)
     {
         int[5] line_index = void;
-        ubyte[5][5] depthPatch = void;
+        ushort[5][5] depthPatch = void;
         int[5] col_index = void;
-        RGBA*[5] depth_scan = void;
+        L16*[5] depth_scan = void;
 
-
-        Mipmap* skybox = &context.skybox;
+        Mipmap!RGBA* skybox = &context.skybox;
         int w = _diffuseMap.levels[0].w;
         int h = _diffuseMap.levels[0].h;
         float invW = 1.0f / w;
@@ -544,6 +549,7 @@ protected:
             for (int l = 0; l < 5; ++l)
                 depth_scan[l] = _depthMap.levels[0].scanline(line_index[l]).ptr;
 
+            RGBA* materialScan = _materialMap.levels[0].scanline(j).ptr;
 
             for (int i = area.min.x; i < area.max.x; ++i)
             {
@@ -558,7 +564,7 @@ protected:
                 {
                     for (int k = 0; k < 5; ++k)
                     {
-                        ubyte depthSample = depth_scan.ptr[l][col_index[k]].r;
+                        ushort depthSample = depth_scan.ptr[l][col_index[k]].l;
                         depthPatch.ptr[l].ptr[k] = depthSample;
                     }
                 }
@@ -576,7 +582,7 @@ protected:
                        - ( depthPatch[0][1]     + depthPatch[0][2] * 2 + depthPatch[0][3]
                          + depthPatch[1][1] * 2 + depthPatch[1][2] * 4 + depthPatch[1][3] * 2);
 
-                enum float sz = 260.0f; // this factor basically tweak normals to make the UI flatter or not
+                enum float sz = 260.0f * 257.0f; // this factor basically tweak normals to make the UI flatter or not
 
                 vec3f normal = vec3f(sx, sy, sz);
                 normal.normalize();
@@ -585,15 +591,19 @@ protected:
                 vec3f baseColor = vec3f(ibaseColor.r, ibaseColor.g, ibaseColor.b) * div255;
 
                 vec3f color = vec3f(0.0f);
-                vec3f toEye = vec3f(i * invW - 0.5f, j * invH - 0.5f, 1.0f);
+                vec3f toEye = vec3f(0.5f - i * invW/* - 0.5f*/, j * invH - 0.5f, 1.0f);
                 toEye.normalize();
 
-                float metalness = depth_scan[2][i].g * div255;
-                float roughness = depth_scan[2][i].b * div255;
-                float specular =  depth_scan[2][i].a * div255;
+
+                RGBA materialHere = materialScan[i];
+
+                float roughness = materialHere.r * div255;
+                float metalness = materialHere.g * div255;
+                float specular  = materialHere.b * div255;
+                float physical  = materialHere.a * div255;
 
                 float occluded;
-
+/+
                 // Add ambient component
                 {
                     float px = i + 0.5f;
@@ -605,7 +615,7 @@ protected:
                         + _depthMap.linearSample(3, px, py).r
                         + _depthMap.linearSample(4, px, py).r ) * 0.25f;
 
-                    occluded = ctLinearStep!(-90.0f, 0.0f)(depthPatch[2][2] - avgDepthHere);
+                    occluded = ctLinearStep!(-90.0f * 256.0f, 0.0f)(depthPatch[2][2] - avgDepthHere);
 
                     color += baseColor * (occluded * ambientLight);
                 }
@@ -647,15 +657,25 @@ protected:
                             y = 0;
                         int z = depthHere + sample;
                         int diff = z - _depthMap.levels[0][x, y].r;
-                        lightPassed += ctLinearStep!(-60.0f, 0.0f)(diff) * weights.ptr[sample];
+                        lightPassed += ctLinearStep!(-60.0f * 256.0f, 0.0f)(diff) * weights.ptr[sample];
                     }
                     color += baseColor * light1Color * (lightPassed * invTotalWeights);
                 }
-
++/
                 // secundary light
-                {
+                {   
+                    float diffuseFactor = 0.5f + 0.5f * dot(normal, light2Dir);// + roughness;
 
-                    float diffuseFactor = dot(normal, light2Dir);
+                    diffuseFactor = linmap!float(diffuseFactor, 0.24f - roughness * 0.5f, 1, 0, 1.0f);
+
+
+                    //float exponent = linmap!float(roughness, 0, 2, 0.5f);
+                        /* 100 / (1 + roughness * 199f);/*- 0.8f * exp( (1-roughness) * 5.5f)*/ 
+
+                    //diffuseFactor = (diffuseFactor ^^ exponent);
+
+                    // remap according to roughness
+                    //diffuseFactor = linmap!float(diffuseFactor, 0.6f - roughness * 1.6f, 1, 0, 1);
 
                     if (diffuseFactor > 0)
                         color += baseColor * light2Color * diffuseFactor;
@@ -664,19 +684,21 @@ protected:
                 // specular reflection
                 if (specular != 0)
                 {
-                    vec3f lightReflect = reflect(light2Dir, normal);
+                    vec3f lightReflect = reflect(-light2Dir, normal);
                     float specularFactor = dot(toEye, lightReflect);
                     if (specularFactor > 0)
                     {
                         float exponent = 0.8f * exp( (1-roughness) * 5.5f);
                         specularFactor = specularFactor ^^ exponent;
-                        specularFactor = specularFactor * 10 * (1 - roughness) * (1 - roughness) * (1 - metalness);
-                        color += baseColor * light2Color * (specularFactor * specular);
+                        float roughFactor = 10 * (1.0f - roughness);/// (1 - metalness);
+                        specularFactor = specularFactor * roughFactor;
+                        if (specularFactor != 0)
+                            color += baseColor * light2Color * (specularFactor * specular);
                     }
                 }
 
                 // skybox reflection (use the same shininess as specular)
-                if (metalness != 0)
+       /+         if (metalness != 0)
                 {
                     vec3f pureReflection = reflect(toEye, normal);
 
@@ -692,6 +714,9 @@ protected:
                         + depthPatch[1][1] + depthPatch[2][1] + depthPatch[3][1]
                         - 2 * (depthPatch[1][2] + depthPatch[2][2] + depthPatch[3][2]);
 
+                    depthDX *= (1 / 256.0f);
+                    depthDY *= (1 / 256.0f);
+
                     float depthDerivSqr = depthDX * depthDX + depthDY * depthDY;
                     float indexDeriv = depthDerivSqr * skybox.width * skybox.height;
 
@@ -700,8 +725,8 @@ protected:
                     float mipLevel = 0.5f * fastlog2(1.0f + indexDeriv * 0.00001f);
 
                     vec3f skyColor = skybox.linearMipmapSample(mipLevel, skyx, skyy).rgb * (div255 * metalness * 0.3f);
-                    color += skyColor;
-                }
+                    color += skyColor * baseColor;
+                }+/
 
                 // Add light emitted by neighbours
                 {
@@ -728,16 +753,18 @@ protected:
                 }
 
                 // Show normals
-                //color = vec3f(0.5f) + normal * 0.5f;
+               // color = normal;//vec3f(0.5f) + normal * 0.5f;
 
                 // Show depth
                 {
-                    //float depthColor = depthPatch[2][2] / 255.0f;
-                    //color = vec3f(depthColor);
+                //    float depthColor = depthPatch[2][2] / 65535.0f;
+                //    color = vec3f(depthColor);
                 }
 
                 // Show diffuse
                 //color = baseColor;
+
+              //  color = toEye;
 
                 color.x = gfm.math.clamp(color.x, 0.0f, 1.0f);
                 color.y = gfm.math.clamp(color.y, 0.0f, 1.0f);

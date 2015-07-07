@@ -30,7 +30,7 @@ ImageRef!COLOR cropImageRef(COLOR)(ImageRef!COLOR src, box2i rect)
     result.w = rect.width;
     result.h = rect.height;
     result.pitch = src.pitch;
-    RGBA[] scan = src.scanline(rect.min.y);
+    COLOR[] scan = src.scanline(rect.min.y);
     result.pixels = &scan[rect.min.x];
     return result;
 }
@@ -39,6 +39,8 @@ ImageRef!COLOR cropImageRef(COLOR)(ImageRef!COLOR src, box2i rect)
 void aaFillSector(V, COLOR)(auto ref V v, float x, float y, float r0, float r1, float a0, float a1, COLOR c)
 if (isWritableView!V && is(COLOR : ViewColor!V))
 {
+    alias ChannelType = COLOR.ChannelType;
+
     int x0 = cast(int)floor(x - r1 - 1);
     int x1 = cast(int)ceil(x + r1 + 1);
 
@@ -78,7 +80,7 @@ if (isWritableView!V && is(COLOR : ViewColor!V))
                     if( inSector || inSector2 )
                     {
                         auto p = v.pixelPtr(px, py);
-                        *p = COLOR.op!q{.blend(a, b, c)}(c, *p, cast(ubyte)(0.5f + alpha * 255.0f));
+                        *p = COLOR.op!q{.blend(a, b, c)}(c, *p, cast(ChannelType)(0.5f + alpha * ChannelType.max));
                     }
                 }
             }
@@ -90,13 +92,14 @@ if (isWritableView!V && is(COLOR : ViewColor!V))
 void horizontalSlope(V, COLOR)(auto ref V v, box2i rect, COLOR c0, COLOR c1)
     if (isWritableView!V && is(COLOR : ViewColor!V))
 {
+    alias ChannelType = COLOR.ChannelType;
     int x0 = rect.min.x;
     int y0 = rect.min.y;
     int x1 = rect.max.x;
     int y1 = rect.max.y;
     foreach (px; x0..x1)
     { 
-        ubyte alpha = cast(ubyte)( 0.5f + 255.0f * (px - x0) / cast(float)(x1 - x0) );  // Not being generic here
+        ubyte alpha = cast(ChannelType)( 0.5f + ChannelType.max * (px - x0) / cast(float)(x1 - x0) );  // Not being generic here
         COLOR c = COLOR.op!q{.blend(a, b, c)}(c1, c0, alpha); // warning .blend is confusing, c1 comes first
         vline(v, px, y0, y1, c);
     }
@@ -105,13 +108,14 @@ void horizontalSlope(V, COLOR)(auto ref V v, box2i rect, COLOR c0, COLOR c1)
 void verticalSlope(V, COLOR)(auto ref V v, box2i rect, COLOR c0, COLOR c1)
 if (isWritableView!V && is(COLOR : ViewColor!V))
 {
+    alias ChannelType = COLOR.ChannelType;
     int x0 = rect.min.x;
     int y0 = rect.min.y;
     int x1 = rect.max.x;
     int y1 = rect.max.y;
     foreach (py; y0..y1)
     { 
-        ubyte alpha = cast(ubyte)( 0.5f + 255.0f * (py - y0) / cast(float)(y1 - y0) );  // Not being generic here
+        ChannelType alpha = cast(ChannelType)( 0.5f + ChannelType.max * (py - y0) / cast(float)(y1 - y0) );  // Not being generic here
         COLOR c = COLOR.op!q{.blend(a, b, c)}(c1, c0, alpha); // warning .blend is confusing, c1 comes first
         hline(v, x0, x1, py, c);
     }
@@ -121,6 +125,7 @@ if (isWritableView!V && is(COLOR : ViewColor!V))
 void softCircleFloat(float curvature = 1.0f, T, V, COLOR)(auto ref V v, T x, T y, T r1, T r2, COLOR color)
 if (isWritableView!V && isNumeric!T && is(COLOR : ViewColor!V))
 {
+    alias ChannelType = COLOR.ChannelType;
     assert(r1 <= r2);
     int x1 = cast(int)(x-r2-1); if (x1<0) x1=0;
     int y1 = cast(int)(y-r2-1); if (y1<0) y1=0;
@@ -154,7 +159,7 @@ if (isWritableView!V && isNumeric!T && is(COLOR : ViewColor!V))
                     float alpha = (frs-fr1s) / fr21;
                     static if (curvature != 1.0f)
                         alpha = alpha ^^ curvature;
-                    row[cx] = COLOR.op!q{.blend(a, b, c)}(color, row[cx], cast(ubyte)(0.5f + 255.0f * (1-alpha)));
+                    row[cx] = COLOR.op!q{.blend(a, b, c)}(color, row[cx], cast(ChannelType)(0.5f + ChannelType.max * (1-alpha)));
                 }
             }
         }
@@ -164,6 +169,7 @@ if (isWritableView!V && isNumeric!T && is(COLOR : ViewColor!V))
 void aaFillRectFloat(bool CHECKED=true, V, COLOR)(auto ref V v, float x1, float y1, float x2, float y2, COLOR color) 
     if (isWritableView!V && is(COLOR : ViewColor!V))
 {
+    alias ChannelType = COLOR.ChannelType;
     import ae.utils.math;
     sort2(x1, x2);
     sort2(y1, y2);
@@ -177,9 +183,9 @@ void aaFillRectFloat(bool CHECKED=true, V, COLOR)(auto ref V v, float x1, float 
     float fx2 = x2 - ix2;
     float fy2 = y2 - iy2;
 
-    static ubyte toAlpha(float fraction) pure nothrow @nogc
+    static ChannelType toAlpha(float fraction) pure nothrow @nogc
     {
-        return cast(ubyte)(cast(int)(0.5f + 255.0f * fraction));
+        return cast(ChannelType)(cast(int)(0.5f + ChannelType.max * fraction));
     }
 
     v.aaPutPixelFloat!CHECKED(ix1, iy1, color, toAlpha( (1-fx1) * (1-fy1) ));
@@ -196,9 +202,10 @@ void aaFillRectFloat(bool CHECKED=true, V, COLOR)(auto ref V v, float x1, float 
     v.fillRect!CHECKED(ix1+1, iy1+1, ix2, iy2, color);
 }
 
-template aaPutPixelFloat(bool CHECKED=true)
-{
-    void aaPutPixelFloat(V, COLOR)(auto ref V v, int x, int y, COLOR color, ubyte alpha)
+/*template aaPutPixelFloat()
+{*/
+    void aaPutPixelFloat(bool CHECKED=true, V, COLOR, A)(auto ref V v, int x, int y, COLOR color, A alpha)
+        if (is(COLOR.ChannelType == A))
     {
         static if (CHECKED)
             if (x<0 || x>=v.w || y<0 || y>=v.h)
@@ -207,4 +214,4 @@ template aaPutPixelFloat(bool CHECKED=true)
         COLOR* p = v.pixelPtr(x, y);
         *p = COLOR.op!q{.blend(a, b, c)}(color, *p, alpha);
     }
-}
+//}

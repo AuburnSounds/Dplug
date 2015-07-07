@@ -73,7 +73,7 @@ public:
         return _textColor = textColor_;
     }
 
-    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap, box2i[] dirtyRects)
+    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects)
     {
         // only draw text which in dirty areas
         foreach(dirtyRect; dirtyRects)

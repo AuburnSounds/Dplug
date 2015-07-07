@@ -22,7 +22,7 @@ public:
         _backgroundColor = backgroundColor;
     }
 
-    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap, box2i[] dirtyRects)
+    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects)
     {
         foreach(dirtyRect; dirtyRects)
         {
@@ -32,8 +32,8 @@ public:
             // fill with clear color
             croppedDiffuse.fill(_backgroundColor);
 
-            // fill with clear depth + shininess
-            croppedDepth.fill(RGBA(_depth, _shininess, 0, 0));
+            // fill with clear depth
+            croppedDepth.fill(L16(_depth));
         }
     }
 

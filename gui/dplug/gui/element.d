@@ -21,6 +21,7 @@ public import dplug.quarantine.font;
 public import dplug.gui.drawex;
 public import dplug.gui.boxlist;
 public import dplug.gui.context;
+public import dplug.gui.materials;
 
 
 /// Base class of the UI widget hierarchy.
@@ -48,7 +49,7 @@ public:
 
     /// Returns: true if was drawn, ie. the buffers have changed.
     /// This method is called for each item in the drawlist that was visible and dirty.
-    final void render(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap, in box2i[] areasToUpdate)
+    final void render(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, in box2i[] areasToUpdate)
     {
         // List of disjointed dirty rectangles intersecting with _position
         // A nice thing with intersection is that a disjointed set of rectangles
@@ -75,8 +76,9 @@ public:
         // This is because drawing outside of _position is disallowed by design
         // Don't even try!
         ImageRef!RGBA diffuseMapCropped = diffuseMap.cropImageRef(_position);
-        ImageRef!RGBA depthMapCropped = depthMap.cropImageRef(_position);
-        onDraw(diffuseMapCropped, depthMapCropped, localRectsBuf[]);
+        ImageRef!L16 depthMapCropped = depthMap.cropImageRef(_position);
+        ImageRef!RGBA materialMapCropped = materialMap.cropImageRef(_position);
+        onDraw(diffuseMapCropped, depthMapCropped, materialMapCropped, localRectsBuf[]);
     }
 
     /// Meant to be overriden almost everytime for custom behaviour.
@@ -397,7 +399,7 @@ protected:
     /// For better efficiency, you may only redraw the part in _dirtyRect.
     /// diffuseMap and depthMap are made to span _position exactly, 
     /// so you can draw in the area (0 .. _position.width, 0 .. _position.height)
-    void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap, box2i[] dirtyRects)
+    void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects)
     {
         // defaults to filling with a grey pattern
         RGBA darkGrey = RGBA(100, 100, 100, 0);
@@ -407,14 +409,14 @@ protected:
         {
             for (int y = dirtyRect.min.y; y < dirtyRect.max.y; ++y)
             {
-                RGBA[] depthScan = depthMap.scanline(y);
+                L16[] depthScan = depthMap.scanline(y);
                 RGBA[] diffuseScan = diffuseMap.scanline(y);
+                RGBA[] materialScan = materialMap.scanline(y);
                 for (int x = dirtyRect.min.x; x < dirtyRect.max.x; ++x)
                 {
                     diffuseScan.ptr[x] = ( (x >> 3) ^  (y >> 3) ) & 1 ? darkGrey : lighterGrey;
-                    ubyte depth = 58;
-                    ubyte shininess = 64;
-                    depthScan.ptr[x] = RGBA(depth, shininess, 0, 0);
+                    depthScan.ptr[x] = L16(defaultDepth);
+                    materialScan.ptr[x] = RGBA(defaultRoughness,defaultMetalnessDielectric, defaultSpecular, defaultPhysical);
                 }
             }
         }

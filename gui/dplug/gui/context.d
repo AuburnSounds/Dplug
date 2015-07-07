@@ -57,7 +57,7 @@ public:
     UIElement dragged = null;
 
     /// UI global image used for environment reflections.
-    Mipmap skybox;
+    Mipmap!RGBA skybox;
 
     // This is the global UI list of rectangles that need updating.
     // This used to be a list of rectangles per UIElement,
@@ -70,7 +70,7 @@ public:
     {
         skybox.size(10, image.w, image.h);
         skybox.levels[0] = image;
-        skybox.generateMipmaps(Mipmap.Quality.box);
+        skybox.generateMipmaps(Mipmap!RGBA.Quality.box);
     }
 
     void setFocused(UIElement focused)
