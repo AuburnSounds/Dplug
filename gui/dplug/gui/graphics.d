@@ -527,16 +527,16 @@ protected:
 
         for (int j = area.min.y; j < area.max.y; ++j)
         {
-            RGBA[] wfb_scan = wfb.scanline(j);
+            RGBA* wfb_scan = wfb.scanline(j).ptr;
 
             // clamp to existing lines
             int[5] line_index = void;
             for (int l = 0; l < 5; ++l)
                 line_index[l] = gfm.math.clamp(j - 2 + l, 0, h - 1);
 
-            RGBA[][5] depth_scan = void;
+            RGBA*[5] depth_scan = void;
             for (int l = 0; l < 5; ++l)
-                depth_scan[l] = _depthMap.levels[0].scanline(line_index[l]);
+                depth_scan[l] = _depthMap.levels[0].scanline(line_index[l]).ptr;
 
 
             for (int i = area.min.x; i < area.max.x; ++i)
@@ -552,7 +552,7 @@ protected:
                 {
                     for (int k = 0; k < 5; ++k)
                     {
-                        ubyte depthSample = depth_scan.ptr[l].ptr[col_index[k]].r;
+                        ubyte depthSample = depth_scan.ptr[l][col_index[k]].r;
                         depthPatch.ptr[l].ptr[k] = depthSample;
                     }
                 }
@@ -576,7 +576,7 @@ protected:
                 vec3f toEye = vec3f(i * invW - 0.5f, j * invH - 0.5f, 1.0f);
                 toEye.normalize();
 
-                float shininess = depth_scan[2].ptr[i].g * div255;
+                float shininess = depth_scan[2][i].g * div255;
 
                 float occluded;
 
@@ -743,7 +743,7 @@ protected:
                 // write composited color
                 RGBA finalColor = RGBA(cast(ubyte)r, cast(ubyte)g, cast(ubyte)b, 255);
 
-                wfb_scan.ptr[i] = finalColor;
+                wfb_scan[i] = finalColor;
             }
         }
     }
