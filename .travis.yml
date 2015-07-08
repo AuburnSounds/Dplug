@@ -7,8 +7,11 @@ d:
  - gdc-4.9.2
  
 script:
+  - dub test --compiler=${DC} dplug:core
   - dub test --compiler=${DC} dplug:dsp
   - dub test --compiler=${DC} dplug:gui
   - dub test --compiler=${DC} dplug:plugin
   - dub test --compiler=${DC} dplug:vst
+  - dub test --compiler=${DC} dplug:quarantine
+  - dub test --compiler=${DC} dplug:window
 
