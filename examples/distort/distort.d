@@ -247,7 +247,7 @@ public:
             croppedDepth.fill(L16(defaultDepth)); // default depth is approximately ~22% of the possible height, but you can choose any other value
 
             // fill with bgMat
-            croppedMaterial.fill(bgMat.material(128));
+            croppedMaterial.fill(bgMat.material(160));
         }
 
         /*

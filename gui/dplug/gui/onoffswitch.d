@@ -44,7 +44,7 @@ public:
         
 
         bool isOn = _param.value();
-        int emissive = isOn ? 128 : 0;
+        int emissive = isOn ? 205 : 0;
         if (isMouseOver || isDragged)
             emissive += 50;
         ubyte red = 230;

@@ -69,9 +69,9 @@ public:
             box2i holeBlack = box2i(holeRect.min.x, holeRect.min.y, holeRect.max.x, std.algorithm.max(holeRect.min.y, posY - 1));
             box2i holeLit = box2i(holeRect.min.x, std.algorithm.min(holeRect.max.y, posY + handleHeight), holeRect.max.x, holeRect.max.y);
             
-            diffuseMap.crop(holeBlack).fill(RGBA(150, 40, 20, 16));
-            diffuseMap.crop(holeLit).fill(RGBA(230, 80, 43, 128));
-            depthMap.crop(holeRect).fill(L16(0));
+            diffuseMap.crop(holeBlack).fill(RGBA(150, 40, 20, 8));
+            diffuseMap.crop(holeLit).fill(RGBA(230, 80, 43, 192));
+            depthMap.crop(holeRect).fill(L16(30000));
         }
 
         // Paint handle of slider

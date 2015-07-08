@@ -42,12 +42,6 @@ public:
 
     override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects)
     {
-        auto c = RGBA(193, 180, 176, 0);
-
-
-        if (isMouseOver || isDragged)
-            c.a = 20;
-
         float normalizedValue = _param.getNormalized();
 
 
@@ -69,29 +63,26 @@ public:
         float centerx = (subSquare.min.x + subSquare.max.x - 1) * 0.5f;
         float centery = (subSquare.min.y + subSquare.max.y - 1) * 0.5f;
 
-        float knobRadius = radius * 0.8f;
+        float knobRadius = radius * 0.75f;
 
         float a1 = PI * 3/4;
         float a2 = a1 + PI * 1.5f * normalizedValue;
         float a3 = a1 + PI * 1.5f;
 
 
-        RGBA trailColorLit = RGBA(230, 80, 43, 128);
-        RGBA trailColorUnlit = RGBA(150, 40, 20, 16);
+        RGBA trailColorLit = RGBA(230, 80, 43, 192);
+        RGBA trailColorUnlit = RGBA(150, 40, 20, 8);
 
         diffuseMap.aaFillSector(cast(int)centerx, cast(int)centery, radius * 0.83f, radius * 0.97f, a1, a2, trailColorLit);
         diffuseMap.aaFillSector(cast(int)centerx, cast(int)centery, radius * 0.83f, radius * 0.97f, a2, a3, trailColorUnlit);
 
 
-        depthMap.aaFillSector(cast(int)centerx, cast(int)centery, radius * 0.8f, radius * 1.0, PI * 3/4 - 0.04f, PI * 9/4 + 0.04f, L16(30 * 256));
-
-
-//        depthMap.crop(deeperHole).fill(RGBA(0, 64, 0, 0));
-
 
         //
         // Draw knob
         //
+
+        Material matKnob = Material.silver;
 
         float angle = (normalizedValue - 0.5f) * 4.8f;
         float depthRadius = std.algorithm.max(knobRadius * 3.0f / 5.0f, 0);
@@ -100,12 +91,12 @@ public:
         float posEdgeX = centerx + sin(angle) * depthRadius2;
         float posEdgeY = centery - cos(angle) * depthRadius2;
         
-        diffuseMap.softCircleFloat(centerx, centery, knobRadius - 1, knobRadius, c);
+        diffuseMap.softCircleFloat(centerx, centery, knobRadius - 1, knobRadius, matKnob.diffuse( (isMouseOver || isDragged) ? 20 : 0 ));
         
-        ubyte shininess = 200;
-
-        depthMap.softCircleFloat!1.5f(centerx, centery, depthRadius, knobRadius, L16(65535));
+        depthMap.softCircleFloat(centerx, centery, depthRadius, knobRadius, L16(65535));
         depthMap.softCircleFloat(centerx, centery, 0, depthRadius, L16(150 * 256));
+
+        materialMap.softCircleFloat(centerx, centery, depthRadius - 1, depthRadius, matKnob.material(0));
 
 
         // LEDs
@@ -118,21 +109,15 @@ public:
             float smallRadius = knobRadius * 5 / 60;
             float largerRadius = knobRadius * 7 / 60;
 
-            ubyte emissive = 15;
-            ubyte green = 128;
-            if (isMouseOver())
-                emissive = 128;
+            ubyte emissive = 30;            
             if (isDragged())
-            {
-                if (i == 0)
-                    green = 255;
                 emissive = 255;
-            }
             
-            RGBA color = RGBA(255, green, 128, emissive);
+            auto ledColor = RGBA(255, 128, 192, emissive);
 
-            depthMap.softCircleFloat!2.0f(x, y, 0, largerRadius, L16(100 * 256));
-            diffuseMap.softCircleFloat(x, y, smallRadius, largerRadius, color);
+            depthMap.softCircleFloat!2.0f(x, y, 0, largerRadius, L16(25000));
+            diffuseMap.softCircleFloat(x, y, smallRadius, largerRadius, ledColor);
+            materialMap.softCircleFloat(x, y, smallRadius, largerRadius, RGBA(0, 128, defaultSpecular, defaultPhysical));
         }        
     }
 

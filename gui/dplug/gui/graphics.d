@@ -592,7 +592,7 @@ protected:
                 vec3f baseColor = vec3f(ibaseColor.r, ibaseColor.g, ibaseColor.b) * div255;
 
                 vec3f color = vec3f(0.0f);
-                vec3f toEye = vec3f(0.5f - i * invW/* - 0.5f*/, j * invH - 0.5f, 1.0f);
+                vec3f toEye = vec3f(0.5f - i * invW, j * invH - 0.5f, 1.0f);
                 toEye.normalize();
 
 
@@ -716,7 +716,7 @@ protected:
                     // log2 scaling + threshold
                     float mipLevel = 0.5f * fastlog2(1.0f + indexDeriv * 0.00001f) + 6 * roughness;
 
-                    vec3f skyColor = skybox.linearMipmapSample(mipLevel, skyx, skyy).rgb * (div255 * metalness * 0.3f);
+                    vec3f skyColor = skybox.linearMipmapSample(mipLevel, skyx, skyy).rgb * (div255 * metalness * 0.4f);
                     color += skyColor * baseColor;
                 }
 
