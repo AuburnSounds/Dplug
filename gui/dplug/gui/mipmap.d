@@ -90,8 +90,8 @@ struct Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
         Image!COLOR* image = &levels[level];
 
 
-        static immutable float[14] factors = [ 1.0f, 0.5f, 0.25f, 0.125f, 
-                                               0.0625f, 0.03125f, 0.015625f, 0.0078125f, 
+        static immutable float[14] factors = [ 1.0f, 0.5f, 0.25f, 0.125f,
+                                               0.0625f, 0.03125f, 0.015625f, 0.0078125f,
                                                0.00390625f, 0.001953125f, 0.0009765625f, 0.00048828125f,
                                                0.000244140625f, 0.0001220703125f];
 
@@ -154,7 +154,7 @@ struct Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
                     punpcklbw XMM1, XMM4;
                     punpcklbw XMM2, XMM4;
                     punpcklbw XMM3, XMM4;
-      
+
                     punpcklwd XMM0, XMM4;
                     punpcklwd XMM1, XMM4;
                     punpcklwd XMM2, XMM4;
@@ -352,7 +352,7 @@ struct Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
                     }
                 }
                 break;
-            
+
         case boxAlphaCov:
 
             static if (is(COLOR == RGBA))
@@ -401,7 +401,7 @@ struct Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
             }
             else
                 assert(false);
-            
+
 
         case cubic:
         case cubicAlphaCov:
@@ -541,10 +541,10 @@ private:
 
 unittest
 {
-    Mipmap a;
+    Mipmap!RGBA a;
     a.size(4, 256, 256);
 
-    Mipmap b;
+    Mipmap!L16 b;
     b.size(16, 17, 333);
 }
 
