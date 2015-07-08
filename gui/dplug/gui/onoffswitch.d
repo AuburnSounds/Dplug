@@ -53,12 +53,12 @@ public:
 
         auto diffuseColor = RGBA(red, green, blue, cast(ubyte)emissive);
 
-        auto croppedDiffuse = diffuseMap.crop(switchRect);        
+        auto croppedDiffuse = diffuseMap.crop(switchRect);
         croppedDiffuse.fill(diffuseColor);
 
         ubyte shininess = 100;
         L16 colorLow = L16(0);
-        L16 colorHigh = L16(120);
+        L16 colorHigh = L16(120 * 256);
 
         if (isOn)
         {
@@ -68,6 +68,9 @@ public:
         {
             verticalSlope(depthMap, switchRect, colorHigh, colorLow);
         }
+
+        Material mat = Material.silver;
+        materialMap.crop(switchRect).fill(RGBA(192, 10, 128, 255));
     }
 
     override bool onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)

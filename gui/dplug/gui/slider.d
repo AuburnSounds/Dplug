@@ -42,27 +42,14 @@ public:
 
     override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects)
     {
-        // dig a metal hole
-      //  depthMap.crop(dirtyRect).fill(RGBA(0, 64, 0, 0));
-      //  diffuseMap.crop(dirtyRect).fill(RGBA(64, 64, 64, 0));
 
-        // dig a thinner hole
-
-        // The switch is in a subrect
 
         int width = _position.width;
         int height = _position.height;
 
-        box2i deeperHole = 
-            box2i ( cast(int)(0.5f + width * 0.35f),
-                    2,
-                   cast(int)(0.5f + width * (1-0.35f)),
-                    height - 2 );
+        // The switch is in a subrect
 
-        
-        
-
-       
+        box2i holeRect =  box2i ( cast(int)(0.5f + width * 0.35f), 2, cast(int)(0.5f + width * (1-0.35f)), height - 2 );
 
         float value = _param.getNormalized();
 
@@ -79,12 +66,12 @@ public:
 
         // Paint deeper hole
         {
-            box2i deeperHoleBlack = box2i(deeperHole.min.x, deeperHole.min.y, deeperHole.max.x, std.algorithm.max(deeperHole.min.y, posY - 1));
-            box2i deeperHoleLit = box2i(deeperHole.min.x, std.algorithm.min(deeperHole.max.y, posY + handleHeight), deeperHole.max.x, deeperHole.max.y);
+            box2i holeBlack = box2i(holeRect.min.x, holeRect.min.y, holeRect.max.x, std.algorithm.max(holeRect.min.y, posY - 1));
+            box2i holeLit = box2i(holeRect.min.x, std.algorithm.min(holeRect.max.y, posY + handleHeight), holeRect.max.x, holeRect.max.y);
             
-            diffuseMap.crop(deeperHoleBlack).fill(RGBA(150, 40, 20, 16));
-            diffuseMap.crop(deeperHoleLit).fill(RGBA(230, 80, 43, 128));
-            depthMap.crop(deeperHole).fill(L16(0));
+            diffuseMap.crop(holeBlack).fill(RGBA(150, 40, 20, 16));
+            diffuseMap.crop(holeLit).fill(RGBA(230, 80, 43, 128));
+            depthMap.crop(holeRect).fill(L16(0));
         }
 
         // Paint handle of slider
@@ -93,13 +80,13 @@ public:
             if (isDragged || isMouseOver)
                 emissive = 64;
 
-            ubyte shininess = 255;
+            Material handleMat = Material.silver;
 
-            diffuseMap.crop(handleRect).fill(RGBA(230, 230, 230, emissive));
+            diffuseMap.crop(handleRect).fill(handleMat.diffuse(emissive));
 
-            auto c0 = L16(58);
-            auto c1 = L16(255);
-            auto c2 = L16(200);
+            auto c0 = L16(15000);
+            auto c1 = L16(65535);
+            auto c2 = L16(51400);
 
             int h0 = handleRect.min.y;
             int h1 = (handleRect.min.y * 3 + handleRect.max.y + 2) / 4;
@@ -112,7 +99,7 @@ public:
             verticalSlope(depthMap, box2i(handleRect.min.x, h2, handleRect.max.x, h3), c2, c1);
             verticalSlope(depthMap, box2i(handleRect.min.x, h3, handleRect.max.x, h4), c1, c0);
 
-            
+            materialMap.crop(handleRect).fill(handleMat.material(0));
         }
     }
 

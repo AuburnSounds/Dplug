@@ -211,7 +211,7 @@ public:
         // positions is completely acceptable.
         inputSlider.position = box2i(135, 100, 165, 230).translate(vec2i(40, 0));
         driveKnob.position = box2i(250, 105, 250 + 120, 105 + 120).translate(vec2i(30, 0));
-        outputSlider.position = box2i(455, 100, 485, 230).translate(vec2i(-20, 0));        
+        outputSlider.position = box2i(455, 100, 485, 230).translate(vec2i(-20, 0));
 
         onOffSwitch.position = box2i(110, 145, 140, 185);
 
@@ -228,19 +228,26 @@ public:
         rightPanel.position = box2i(570, 0, 620, 330);
     }
 
-    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!RGBA depthMap, box2i[] dirtyRects)
+    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects)
     {
         // In onDraw, you are supposed to only update diffuseMap and depthMap in the dirtyRects areas.
         // This rules can be broken when sufficiently far from another UIElement.
+
+        Material bgMat = Material.aluminum;
 
         foreach(dirtyRect; dirtyRects)
         {
             auto croppedDiffuse = diffuseMap.crop(dirtyRect);
             auto croppedDepth = depthMap.crop(dirtyRect);
+            auto croppedMaterial = materialMap.crop(dirtyRect);
             // fill with clear color
-            croppedDiffuse.fill(RGBA(239, 229, 213, 0)); // for rendering efficiency, avoid emissive background
-            // fill with clear depth + shininess
-            croppedDepth.fill(RGBA(58, 64, 0, 0));
+            croppedDiffuse.fill(bgMat.diffuse(0)); // for rendering efficiency, avoid emissive background
+
+            // fill with clear depth
+            croppedDepth.fill(L16(defaultDepth)); // default depth is approximately ~22% of the possible height, but you can choose any other value
+
+            // fill with bgMat
+            croppedMaterial.fill(bgMat.material(128));
         }
 
         /*

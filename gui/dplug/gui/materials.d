@@ -16,6 +16,20 @@ struct Material
     ubyte metalness;
     ubyte specular;
 
+    /// Return a RGBA suitable to fit into the diffuse map
+    /// emissive must be provided since it isn't a material feature
+    RGBA diffuse(ubyte emissive) pure const nothrow @nogc
+    {
+        return RGBA(albedo.r, albedo.g, albedo.b, emissive);
+    }
+
+    /// Return a RGBA suitable to fit into the material map
+    /// roughness and physical must be provided since they aren't material features
+    RGBA material(ubyte roughness, ubyte physical = 255) pure const nothrow @nogc
+    {
+        return RGBA(roughness, metalness, specular, physical);
+    }
+
     // Pre-defined materials
     static Material
         iron     =    Material(RGB(143, 145, 148), 255, 128),
