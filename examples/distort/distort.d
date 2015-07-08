@@ -175,23 +175,23 @@ public:
         addChild(outputBargraph = new UIBargraph(context(), 2, -80.0f, 6.0f));
 
         addChild(inputLabel = new UILabel(context(), _font, "Input"));
-        inputLabel.textSize = 19;
+        inputLabel.textSize = 17;
         inputLabel.textColor = RGBA(0, 0, 0, 0);
 
         addChild(driveLabel = new UILabel(context(), _font, "Drive"));
-        driveLabel.textSize = 19;
+        driveLabel.textSize = 17;
         driveLabel.textColor = RGBA(0, 0, 0, 0);
 
         addChild(outputLabel = new UILabel(context(), _font, "Output"));
-        outputLabel.textSize = 19;
+        outputLabel.textSize = 17;
         outputLabel.textColor = RGBA(0, 0, 0, 0);
 
         addChild(onLabel = new UILabel(context(), _font, "ON"));
-        onLabel.textSize = 14;
+        onLabel.textSize = 13;
         onLabel.textColor = RGBA(0, 0, 0, 0);
 
         addChild(offLabel = new UILabel(context(), _font, "OFF"));
-        offLabel.textSize = 14;
+        offLabel.textSize = 13;
         offLabel.textColor = RGBA(0, 0, 0, 0);
 
         addChild(leftPanel = new UIPanel(context(), RGBA(150, 140, 140, 0), 32, 32));
@@ -219,7 +219,7 @@ public:
         outputBargraph.position = outputSlider.position.translate(vec2i(30, 0));
 
         inputLabel.setCenterAndResize(210, 70);
-        driveLabel.setCenterAndResize(340, 70);
+        driveLabel.setCenterAndResize(340, 65);
         outputLabel.setCenterAndResize(470, 70);
         onLabel.setCenterAndResize(125, 123);
         offLabel.setCenterAndResize(125, 210);

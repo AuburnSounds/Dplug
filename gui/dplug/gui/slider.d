@@ -49,7 +49,7 @@ public:
 
         // The switch is in a subrect
 
-        box2i holeRect =  box2i ( cast(int)(0.5f + width * 0.35f), 2, cast(int)(0.5f + width * (1-0.35f)), height - 2 );
+        box2i holeRect =  box2i ( cast(int)(0.5f + width * 0.4f), 2, cast(int)(0.5f + width * (1-0.4f)), height - 2 );
 
         float value = _param.getNormalized();
 

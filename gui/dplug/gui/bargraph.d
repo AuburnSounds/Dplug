@@ -23,7 +23,7 @@ public:
     /// Creates a new bargraph.
     /// [minValue .. maxValue] is the interval of values that will span [0..1] once remapped.
     this(UIContext context, int numChannels, float minValue, float maxValue,
-         int redLeds = 3, int orangeLeds = 3, int yellowLeds = 3, int greenLeds = 9)
+         int redLeds = 0, int orangeLeds = 3, int yellowLeds = 0, int magentaLeds = 9)
     {
         super(context);
 
@@ -42,8 +42,8 @@ public:
         foreach (i; 0..yellowLeds)
             _leds ~= LED(RGBA(255, 255, 64, 255));
 
-        foreach (i; 0..greenLeds)
-            _leds ~= LED(RGBA(32, 255, 16, 255));
+        foreach (i; 0..magentaLeds)
+            _leds ~= LED(RGBA(226, 120, 249, 255));
 
          _valueMutex = new UncheckedMutex();
     }
@@ -56,9 +56,12 @@ public:
 
     override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects)
     {
+        Material matHole = Material.chromium;
+
         // TODO fill material map
-        depthMap.fill(L16(59));
-        diffuseMap.fill(RGBA(64, 64, 64, 0));
+        //depthMap.fill(L16(15500));
+    //    diffuseMap.fill(Material.freshSnow.diffuse(20));
+        //materialMap.fill(matHole.material(200));
 
         int numLeds = cast(int)_leds.length;
         int numChannels = cast(int)_values.length;
@@ -84,11 +87,11 @@ public:
                 float y0 = border + heightPerLed * (i + 0.1f);
                 float y1 = y0 + heightPerLed * 0.8f;
 
-                depthMap.aaFillRectFloat!false(x0, y0, x1, y1, L16(60));
+                depthMap.aaFillRectFloat!false(x0, y0, x1, y1, L16(16000));
 
                 float ratio = 1 - i / cast(float)(numLeds - 1);
 
-                ubyte shininess = cast(ubyte)(0.5f + 255.0f * (1 - smoothStep(value - tolerance, value, ratio)));
+                ubyte shininess = cast(ubyte)(0.5f + 160.0f * (1 - smoothStep(value - tolerance, value, ratio)));
 
                 RGBA color = _leds[i].diffuse;
                 color.r = (color.r * (255 + shininess) + 255) / 510;
@@ -96,6 +99,8 @@ public:
                 color.b = (color.b * (255 + shininess) + 255) / 510;
                 color.a = shininess;
                 diffuseMap.aaFillRectFloat!false(x0, y0, x1, y1, color);
+
+                materialMap.aaFillRectFloat!false(x0, y0, x1, y1, RGBA(0, 128, 255, 255));
 
             }
         }

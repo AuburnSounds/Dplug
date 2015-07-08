@@ -73,8 +73,8 @@ public:
         RGBA trailColorLit = RGBA(230, 80, 43, 192);
         RGBA trailColorUnlit = RGBA(150, 40, 20, 8);
 
-        diffuseMap.aaFillSector(cast(int)centerx, cast(int)centery, radius * 0.83f, radius * 0.97f, a1, a2, trailColorLit);
-        diffuseMap.aaFillSector(cast(int)centerx, cast(int)centery, radius * 0.83f, radius * 0.97f, a2, a3, trailColorUnlit);
+        diffuseMap.aaFillSector(cast(int)centerx, cast(int)centery, radius * 0.85f, radius * 0.97f, a1, a2, trailColorLit);
+        diffuseMap.aaFillSector(cast(int)centerx, cast(int)centery, radius * 0.85f, radius * 0.97f, a2, a3, trailColorUnlit);
 
 
 
@@ -106,18 +106,20 @@ public:
             float x = centerx + sin(angle + disp) * (knobRadius * 4 / 5);
             float y = centery - cos(angle + disp) * (knobRadius * 4 / 5);
 
-            float smallRadius = knobRadius * 5 / 60;
-            float largerRadius = knobRadius * 7 / 60;
+            float smallRadius = knobRadius * 5 / 55;
+            float largerRadius = knobRadius * 7 / 55;
 
-            ubyte emissive = 30;            
+            ubyte emissive = 40;
             if (isDragged())
                 emissive = 255;
             
-            auto ledColor = RGBA(255, 128, 192, emissive);
+            auto ledColor = RGBA(255, 140, 220, emissive);
 
-            depthMap.softCircleFloat!2.0f(x, y, 0, largerRadius, L16(25000));
-            diffuseMap.softCircleFloat(x, y, smallRadius, largerRadius, ledColor);
-            materialMap.softCircleFloat(x, y, smallRadius, largerRadius, RGBA(0, 128, defaultSpecular, defaultPhysical));
+//            depthMap.softCircleFloat!2.0f(x, y, largerRadius, largerRadius * 2.0f, L16(20000));
+
+            depthMap.softCircleFloat/*!2.0f*/(x, y, 0, largerRadius, L16(65000));
+            diffuseMap.softCircleFloat(x, y, 0, largerRadius, ledColor);
+            materialMap.softCircleFloat(x, y, smallRadius, largerRadius, RGBA(128, 128, 255, defaultPhysical));
         }        
     }
 
