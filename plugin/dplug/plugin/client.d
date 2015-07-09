@@ -289,7 +289,7 @@ public:
 
     /// Process incoming MIDI messages.
     /// This is called before processAudio for each message.
-    /// Override to do somthing with them;
+    /// Override to do something with them;
     /// TODO: this does not currently work with the buffer split.
     void processMidiMsg(MidiMessage message) nothrow @nogc
     {
@@ -306,6 +306,7 @@ public:
     ///
     /// Number of frames are guaranteed to be less or equal to what the last reset() call said.
     /// Number of inputs and outputs are guaranteed to be exactly what the last reset() call said.
+    /// Warning: Do not modify the pointers!
     abstract void processAudio(const(double*)[] inputs, double*[]outputs, int frames) nothrow @nogc;
 
     // for plugin client implementations only

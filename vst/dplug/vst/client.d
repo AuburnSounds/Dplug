@@ -725,6 +725,13 @@ private:
     }
 
 
+    void sendAudioToClient(const(double*)[] inputs, double*[]outputs, int frames)
+    {
+        // TODO implement splitting
+        _client.processAudio(inputs, outputs, frames);
+    }
+
+
     void process(float **inputs, float **outputs, int sampleFrames) nothrow @nogc
     {
         preprocess(sampleFrames);
@@ -750,7 +757,7 @@ private:
             _outputPointers[i] = _outputScratchBuffer[i].ptr;
         }
 
-        _client.processAudio(_inputPointers[0.._usedInputs], _outputPointers[0.._usedOutputs], sampleFrames);
+        sendAudioToClient(_inputPointers[0.._usedInputs], _outputPointers[0.._usedOutputs], sampleFrames);
 
         for (int i = 0; i < _usedOutputs; ++i)
         {
@@ -787,7 +794,7 @@ private:
             _outputPointers[i] = _outputScratchBuffer[i].ptr;
         }
 
-        _client.processAudio(_inputPointers[0.._usedInputs], _outputPointers[0.._usedOutputs], sampleFrames);
+        sendAudioToClient(_inputPointers[0.._usedInputs], _outputPointers[0.._usedOutputs], sampleFrames);
 
         for (int i = 0; i < _usedOutputs; ++i)
         {
@@ -801,7 +808,7 @@ private:
     void processDoubleReplacing(double **inputs, double **outputs, int sampleFrames) nothrow @nogc
     {
         preprocess(sampleFrames);
-        _client.processAudio(inputs[0.._usedInputs], outputs[0.._usedOutputs], sampleFrames);
+        sendAudioToClient(inputs[0.._usedInputs], outputs[0.._usedOutputs], sampleFrames);
     }
 }
 
