@@ -104,6 +104,15 @@ public
         return BiquadCoeff!T( cast(T)(t2 - 1), 0, 0, cast(T)(t2) );
     }
 
+    /// Allpass interpolator
+    /// https://ccrma.stanford.edu/~jos/pasp/First_Order_Allpass_Interpolation.html
+    BiquadCoeff!T allpassInterpolator(T)(double fractionalDelay)
+    {
+        assert(fractionalDelay >= 0 && fractionalDelay <= 1);
+        double eta = (1 - fractionalDelay) / (1 + fractionalDelay);
+        return BiquadCoeff!T( eta, 1, 0, eta, 0);
+    }
+
     // Cookbook formulae for audio EQ biquad filter coefficients
     // by Robert Bristow-Johnson 
 
