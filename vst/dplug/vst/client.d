@@ -146,20 +146,6 @@ public:
         _outputPointers.length = _maxOutputs;
 
         _messageQueue.pushBack(makeResetStateMessage(Message.Type.resetState));
-
-/*
-        import std.stdio;
-
-        string hostVendor = fromStringz(_host.vendorString()).idup;
-        string hostProduct = fromStringz(_host.productString()).idup;
-
-        {
-            auto f = std.stdio.File (`C:\Users\ponce\Desktop\logging.txt`, "a");
-
-
-            f.writeln("hostVendor = ", hostVendor);
-            f.writeln("hostProduct = ", hostProduct);
-        }*/
     }
 
 private:
