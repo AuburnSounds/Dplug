@@ -690,7 +690,7 @@ private:
         // Perhaps it's the one to favor, I don't know.
 
         Message msg;
-        while(popMessage(msg)) // <- here
+        while(popMessage(msg)) // <- here, we have a problem: https://github.com/p0nce/dplug/issues/45
         {
             final switch(msg.type) with (Message.Type)
             {
@@ -707,7 +707,14 @@ private:
 
                 case resetState:
                     resizeScratchBuffers(msg.maxFrames);
-                    _client.reset(msg.samplerate, msg.maxFrames, msg.usedInputs, msg.usedOutputs);
+
+                    // The client need not be aware of the actual size of the buffers, 
+                    // if it works on sliced buffers.
+                    int maxFrameFromClientPOV = msg.maxFrames;
+                    if (_maxFramesInProcess != 0 && _maxFramesInProcess < maxFrameFromClientPOV)
+                        maxFrameFromClientPOV = _maxFramesInProcess;
+
+                    _client.reset(msg.samplerate, maxFrameFromClientPOV, msg.usedInputs, msg.usedOutputs);
                     break;
 
                 case midi:

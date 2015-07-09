@@ -76,6 +76,8 @@ public:
     {
         // Clear here any state and delay buffers you might have.
 
+        assert(maxFrames <= 128); // guaranteed by audio buffer splitting
+
         foreach(channel; 0..2)
         {
             _inputRMS[channel].initialize(sampleRate);
@@ -85,6 +87,8 @@ public:
 
     override void processAudio(const(double*)[] inputs, double*[]outputs, int frames) nothrow @nogc
     {
+        assert(frames <= 128); // guaranteed by audio buffer splitting
+
         int numInputs = cast(int)inputs.length;
         int numOutputs = cast(int)outputs.length;
 
