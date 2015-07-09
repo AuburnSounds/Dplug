@@ -104,14 +104,29 @@ public
         return BiquadCoeff!T( cast(T)(t2 - 1), 0, 0, cast(T)(t2) );
     }
 
-    /// Allpass interpolator
+    /// Allpass interpolator.
     /// https://ccrma.stanford.edu/~jos/pasp/First_Order_Allpass_Interpolation.html
-    /// It is recommended to usethe range [0.5 .. 1.5] for best phase results.
-    BiquadCoeff!T allpassInterpolator(T)(double fractionalDelay)
+    /// http://users.spa.aalto.fi/vpv/publications/vesan_vaitos/ch3_pt3_allpass.pdf
+    /// It is recommended to use the range [0.5 .. 1.5] for best phase results.
+    /// Also known as Thiran filter.
+    BiquadCoeff!T allpassThiran1stOrder(T)(double fractionalDelay)
     {
         assert(fractionalDelay >= 0);
         double eta = (1 - fractionalDelay) / (1 + fractionalDelay);
         return BiquadCoeff!T( eta, 1, 0, eta, 0);
+    }
+
+
+    /// Same but 2nd order.
+    /// http://users.spa.aalto.fi/vpv/publications/vesan_vaitos/ch3_pt3_allpass.pdf
+    BiquadCoeff!T allpassThiran2ndOrder(T)(double fractionalDelay)
+    {
+        assert(fractionalDelay >= 0);
+        double a1 = 2 * (2 - fractionalDelay) / (1 + fractionalDelay);
+        double a2 = (fractionalDelay - 1) * (fractionalDelay - 2) 
+                                          /
+                    (fractionalDelay + 1) * (fractionalDelay + 2);
+        return BiquadCoeff!T( a1, 1, a2, a1, a2);
     }
 
     // Cookbook formulae for audio EQ biquad filter coefficients
@@ -272,8 +287,9 @@ private
 
 unittest
 {
-    BiquadCoeff!float = lowpassFilter1Pole!float(1400.0, 44100.0);
-    BiquadCoeff!double = highpassFilter1Pole!float(1400.0, 44100.0);
-
-    BiquadCoeff!double = lowpassFilterRBJ!double(1400.0, 44100.0, 0.6);
+    auto a = lowpassFilter1Pole!float(1400.0, 44100.0);
+    auto b = highpassFilter1Pole!float(1400.0, 44100.0);
+    auto c = lowpassFilterRBJ!double(1400.0, 44100.0, 0.6);
+    auto d = allpassThiran1stOrder!double(0.5);
+    auto e = allpassThiran2ndOrder!double(0.6);
 }
