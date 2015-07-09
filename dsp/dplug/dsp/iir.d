@@ -84,6 +84,26 @@ public
     }
 
 
+    // 1-pole low-pass filter
+    BiquadCoeff!T lowpassFilter1Pole(T)(double frequency, double samplerate) nothrow @nogc
+    {
+        double w0 = 0.5 * frequency / samplerate;
+        double t0 = w0 * 0.5;
+        double t1 = 2 - cos(t0 * PI);
+        double t2 = (1 - 2 * t0) * (1 - 2 * t0);
+        return BiquadCoeff!T( cast(T)(1 - t2), 0, 0, cast(T)(-t2) );
+    }
+
+    // 1-pole high-pass filter
+    BiquadCoeff!T highpassFilter1Pole(T)(double frequency, double samplerate) nothrow @nogc
+    {
+        double w0 = 0.5 * frequency / samplerate;
+        double t0 = w0 * 0.5;
+        double t1 = 2 + cos(t0 * PI);
+        double t2 = (2 * t0) * (2 * t0);
+        return BiquadCoeff!T( cast(T)(t2 - 1), 0, 0, cast(T)(t2) );
+    }
+
     // Cookbook formulae for audio EQ biquad filter coefficients
     // by Robert Bristow-Johnson 
 
@@ -240,3 +260,10 @@ private
     }
 }
 
+unittest
+{
+    BiquadCoeff!float = lowpassFilter1Pole!float(1400.0, 44100.0);
+    BiquadCoeff!double = highpassFilter1Pole!float(1400.0, 44100.0);
+
+    BiquadCoeff!double = lowpassFilterRBJ!double(1400.0, 44100.0, 0.6);
+}
