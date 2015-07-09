@@ -282,7 +282,7 @@ public:
     /// - keeps memory usage low and reuse it
     /// - allow faster-than-buffer-size parameter changes
     /// Returns: Maximum number of samples
-    int maxFramesInProcess() pure const nothrow
+    int maxFramesInProcess() pure const nothrow @nogc
     {
         return 0; // default returns 0 which means "do not split"
     }

@@ -126,6 +126,8 @@ public:
         _sampleRate = 44100.0f;
         _maxFrames = 128;
 
+        _maxFramesInProcess = _client.maxFramesInProcess();
+
         // because effSetSpeakerArrangement might never come
         _usedInputs = _maxInputs;
         _usedOutputs = _maxOutputs;
@@ -155,6 +157,7 @@ private:
 
     float _sampleRate; // samplerate from opcode thread POV
     int _maxFrames; // max frames from opcode thread POV
+    int _maxFramesInProcess; // max frames supported by the plugin, buffers will be splitted to follow this.
     int _maxInputs;
     int _maxOutputs;
     int _maxParams;
@@ -725,10 +728,30 @@ private:
     }
 
 
-    void sendAudioToClient(const(double*)[] inputs, double*[]outputs, int frames)
+    // Send audio to plugin's processAudio, and optionally slice the buffers too.
+    void sendAudioToClient(double*[] inputs, double*[]outputs, int frames) nothrow @nogc
     {
-        // TODO implement splitting
-        _client.processAudio(inputs, outputs, frames);
+        if (_maxFramesInProcess == 0)
+            _client.processAudio(inputs, outputs, frames);
+        else
+        {
+            while (frames > 0)
+            {
+                // Note: the last slice will be smaller than the others
+                int sliceLength = std.algorithm.min(_maxFramesInProcess, frames);
+
+                // offset all buffer pointers
+                foreach(ref p; inputs)
+                    p += sliceLength;
+                foreach(ref p; outputs)
+                    p += sliceLength;
+
+                _client.processAudio(inputs, outputs, sliceLength);
+
+                frames -= sliceLength;
+            }     
+            assert(frames == 0);
+        }
     }
 
 
