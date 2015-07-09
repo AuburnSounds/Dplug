@@ -106,9 +106,10 @@ public
 
     /// Allpass interpolator
     /// https://ccrma.stanford.edu/~jos/pasp/First_Order_Allpass_Interpolation.html
+    /// It is recommended to usethe range [0.5 .. 1.5] for best phase results.
     BiquadCoeff!T allpassInterpolator(T)(double fractionalDelay)
     {
-        assert(fractionalDelay >= 0 && fractionalDelay <= 1);
+        assert(fractionalDelay >= 0);
         double eta = (1 - fractionalDelay) / (1 + fractionalDelay);
         return BiquadCoeff!T( eta, 1, 0, eta, 0);
     }
