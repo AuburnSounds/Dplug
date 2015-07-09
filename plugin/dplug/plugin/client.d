@@ -275,9 +275,22 @@ public:
         return 0;
     }
 
+    /// Override to declare the maximum number of samples to accept 
+    /// If greater, the audio buffers will be splitted up.
+    /// This splitting have several benefits:
+    /// - help allocating temporary audio buffers on the stack
+    /// - keeps memory usage low and reuse it
+    /// - allow faster-than-buffer-size parameter changes
+    /// Returns: Maximum number of samples
+    int maxFramesInProcess() pure const nothrow
+    {
+        return 0; // default returns 0 which means "do not split"
+    }
+
     /// Process incoming MIDI messages.
     /// This is called before processAudio for each message.
     /// Override to do somthing with them;
+    /// TODO: this does not currently work with the buffer split.
     void processMidiMsg(MidiMessage message) nothrow @nogc
     {
         // Default behaviour: do nothing.

@@ -57,6 +57,14 @@ public:
         presetBank.addPreset(new Preset("Full-on", [1.0f, 1.0f, 0.4f, 1.0f]));
     }
 
+
+    // This override is also optional. It allows to split audio buffers in order to never 
+    // exceed some amount of frames at once.
+    override int maxFramesInProcess()
+    {
+        return 128;
+    }
+
     override void buildLegalIO()
     {
         addLegalIO(1, 1);
