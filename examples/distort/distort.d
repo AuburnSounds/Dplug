@@ -111,7 +111,7 @@ public:
                     double inputSample = inputGain * 2.0 * inputs[chan][f];
 
                     // Feed the input RMS computation
-                    _inputRMS[chan].feed(inputSample);
+                    _inputRMS[chan].nextSample(inputSample);
 
                     // Distort signal
                     double distorted = tanh(inputSample * drive) / drive;
@@ -119,7 +119,7 @@ public:
                     outputs[chan][f] = outputSample;
 
                     // Feed the output RMS computation
-                    _outputRMS[chan].feed(outputSample);
+                    _outputRMS[chan].nextSample(outputSample);
                 }
             }
         }

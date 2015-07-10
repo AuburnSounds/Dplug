@@ -37,7 +37,7 @@ public
 
         static if (order == 2)
         {
-            T next(T)(T input, const(coeff_t) coeff) nothrow @nogc
+            T nextSample(T)(T input, const(coeff_t) coeff) nothrow @nogc
             {
                 T x1 = x[0],
                   x2 = x[1],
@@ -57,6 +57,35 @@ public
                 y[0] = current;
                 y[1] = y1;
                 return current;
+            }
+
+            void nextBuffer(T)(T[] input, T[] output, const(coeff_t) coeff) nothrow @nogc
+            {
+                T x0 = x[0],
+                  x1 = x[1],
+                  y0 = y[0],
+                  y1 = y[1];
+
+                T a0 = coeff[0],
+                  a1 = coeff[1],
+                  a2 = coeff[2],
+                  a3 = coeff[3],
+                  a4 = coeff[4];
+
+                for(int i = 0; i < cast(int)input.length; ++i)
+                {
+                    T current = a0 * input[i] + a1 * x0 + a2 * x1 - a3 * y0 - a4 * y1;
+                    x1 = x0;
+                    x0 = input[i];
+                    y1 = y0;
+                    y0 = current;
+                    output[i] = current;
+                }
+
+                x[0] = x0;
+                x[1] = x1;
+                y[0] = y0;
+                y[1] = y1;
             }
         }
     }

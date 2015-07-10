@@ -5,6 +5,8 @@
 */
 module dplug.dsp.envelope;
 
+import std.traits;
+
 import dplug.dsp.iir;
 import dplug.dsp.smooth;
 
@@ -12,25 +14,38 @@ import dplug.dsp.smooth;
 
 
 /// Simple envelope follower, filters the envelope with 24db/oct lowpass.
-struct EnvelopeFollower(T)
+struct EnvelopeFollower(T) if (isFloatingPoint!T)
 {
 public:
 
     // typical frequency would be is 10-30hz
-    void initialize(double cutoffInHz, double samplerate) nothrow @nogc
+    void initialize(float cutoffInHz, float samplerate) nothrow @nogc
     {
         _coeff = lowpassFilterRBJ!double(cutoffInHz, samplerate);
+    }
+
+    void clearState() nothrow @nogc
+    {
         _delay0.clearState();
         _delay1.clearState();
     }
 
     // takes on sample, return mean amplitude
-    T next(T x) nothrow @nogc
+    T nextSample(T x) nothrow @nogc
     {
         T l = abs(x);
-        l = _delay0.next(l, _coeff);
-        l = _delay1.next(l, _coeff);
+        l = _delay0.nextSample(l, _coeff);
+        l = _delay1.nextSample(l, _coeff);
         return l;
+    }
+
+    void nextBuffer(T[] input, T[] output) nothrow @nogc
+    {
+        for(int i = 0; i < cast(int)(input.length); ++i)
+            output[i] = abs(input[i]);
+
+        _delay0.nextBuffer(output, output, _coeff);
+        _delay1.nextBuffer(output, output, _coeff);
     }
 
 private:
@@ -39,36 +54,32 @@ private:
     BiquadDelay!T _delay1;
 }
 
-struct AttackReleaseFollower(T)
+unittest
 {
-public:
-
-    void initialize(double samplerate, float timeAttack, float timeRelease) nothrow @nogc
-    {
-        _expSmoother.initialize(0, timeAttack, timeRelease, samplerate, T.epsilon);
-    }
-
-    T next(T input) nothrow @nogc
-    {
-        return _expSmoother.next(abs(input));
-    }
-
-private:
-    ExpSmoother!T _expSmoother;
+    EnvelopeFollower!float a;
+    EnvelopeFollower!float b;
 }
+
+deprecated alias AttackReleaseFollower(T) = ExpSmoother!T;
 
 /// Get the module of estimate of analytic signal.
 /// Phase response depends a lot on input signal, it's not great for bass but gets
 /// better in medium frequencies.
-struct AnalyticSignal(T)
+struct AnalyticSignal(T) if (isFloatingPoint!T)
 {
 public:
     void initialize(T samplerate) nothrow @nogc
     {
         _hilbert.initialize(samplerate);
+        clearState();
     }
 
-    T next(T input) nothrow @nogc
+    void clearState() nothrow @nogc
+    {
+        _hilbert.clearState();
+    }
+
+    T nextSample(T input) nothrow @nogc
     {
         T outSine, outCosine;
         _hilbert.next(input, &outCosine, &outSine);
@@ -77,6 +88,12 @@ public:
 
 private:
     HilbertTransformer!T _hilbert;
+}
+
+unittest
+{
+    AnalyticSignal!float a;
+    AnalyticSignal!float b;
 }
 
 
@@ -94,10 +111,10 @@ private:
 */
 
 /// Estimate amplitude.
-struct HilbertTransformer(T)
+struct HilbertTransformer(T) if (isFloatingPoint!T)
 {
 public:
-    void initialize(double samplerate) nothrow @nogc
+    void initialize(float sampleRate) nothrow @nogc
     {
         // pole values taken from Bernie Hutchins, "Musical Engineer's Handbook"
         static immutable double[12] poles =
@@ -106,7 +123,7 @@ public:
             1.2524, 5.5671, 22.3423, 89.6271, 364.7914, 2770.1114
         ];
 
-        double onedsr = 1.0 / samplerate;
+        float onedsr = 1 / samplerate;
 
         // calculate coefficients for allpass filters, based on sampling rate
         for (int j = 0; j < 12; ++j)
@@ -114,14 +131,23 @@ public:
             const double polefreq = poles[j] * 15.0;
             const double rc = 1.0 / (2.0 * PI * polefreq);
             const double alpha = 1.0 / rc;
-            const double beta = (1.0 - (alpha * 0.5 * onedsr)) / (1.0 + (alpha * 0.5 * onedsr));
+            const double beta = (1.0 - (alpha * 0.5 * onedsr)) / (1.0 + (alpha * 0.5 * onedsr));            
+            _coef[j] = -beta;
+        }
+
+        clearState();
+    }
+
+    void clearState() nothrow @nogc
+    {
+        for (int j = 0; j < 12; ++j)
+        {
             _xnm1[j] = 0;
             _ynm1[j] = 0;
-            _coef[j] = -beta;
         }
     }
 
-    void next (T input, T* out1, T* out2) nothrow @nogc
+    void nextSample(T input, out T out1, out T out2) nothrow @nogc
     {
         double yn1, yn2;
         double xn1 = input;
@@ -152,8 +178,16 @@ public:
             _ynm1[j] = yn2;
             xn2 = yn2;
         }
-        *out1 = cast(T)yn2;
-        *out2 = cast(T)yn1;
+        out1 = cast(T)yn2;
+        out2 = cast(T)yn1;
+    }
+
+    void nextBuffer(T[] input, T[] output1, T[] output2) nothrow @nogc
+    {
+        for (int i = 0; j < cast(int)(input.length); ++i)
+        {
+            nextSample(input[i], output1[i], output2[i]);
+        }
     }
 
 private:
@@ -162,9 +196,15 @@ private:
     double[12] _ynm1;
 }
 
+unittest
+{
+    HilbertTransformer!float a;
+    HilbertTransformer!double b;
+}
+
 /// Sliding RMS computation
 /// To use for coarse grained levels for visual display.
-struct CoarseRMS(T)
+struct CoarseRMS(T) if (isFloatingPoint!T)
 {
 public:
     void initialize(double sampleRate) nothrow @nogc
@@ -172,13 +212,31 @@ public:
         // In Reaper, default RMS window is 500 ms
         _envelope.initialize(20, sampleRate);
         // TODO
+
+        clearState();
+    }
+
+    void clearState()
+    {
         _last = 0;
+        _envelope.clearState();
     }
 
     /// Process a chunk of samples and return a value in dB (could be -infinity)
-    void feed(T input) nothrow @nogc
+    void nextSample(T input) nothrow @nogc
     {
-        _last = _envelope.next(input * input);
+        _last = _envelope.nextSample(input * input);
+    }
+
+    void nextBuffer(T[] input) nothrow @nogc
+    {
+        if (input.length == 0)
+            return;
+
+        for (int i = 0; i < cast(int)(input.length) - 1; ++i)
+            _envelope.nextSample(input[i] * input[i]);
+
+        _last = _envelope.nextSample(input[$-1] * input[$-1]);
     }
 
     T RMS() nothrow @nogc
@@ -189,4 +247,10 @@ public:
 private:
     EnvelopeFollower!T _envelope;
     T _last;
+}
+
+unittest
+{
+    CoarseRMS!float a;
+    CoarseRMS!double b;
 }
