@@ -67,11 +67,6 @@ public
     }
 
 
-
-    // --- Biquads ---
-    // Biquads (order 2 IIR) are useful since linearly interpolate their coefficients is stable.
-    // So they are used a lot in audio-dsp.
-
     /// Type which hold the biquad coefficients.
     template BiquadCoeff(T)
     {
@@ -130,7 +125,7 @@ public
     }
 
     // Cookbook formulae for audio EQ biquad filter coefficients
-    // by Robert Bristow-Johnson 
+    // by Robert Bristow-Johnson
 
     BiquadCoeff!T lowpassFilterRBJ(T)(double frequency, double samplerate, double Q = SQRT1_2) nothrow @nogc
     {
