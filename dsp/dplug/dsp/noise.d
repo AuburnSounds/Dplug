@@ -6,12 +6,14 @@
 module dplug.dsp.noise;
 
 import std.random,
+       std.traits,
        std.math;
 
 import gfm.core.memory;
+import gfm.math.simplerng;
 
 /// Generates white gaussian noise.
-struct WhiteNoise
+struct WhiteNoise(T) if (isFloatingPoint!T)
 {
 public:
     void initialize() nothrow @nogc
@@ -19,33 +21,49 @@ public:
         _rng.seed(nogc_unpredictableSeed());
     }
 
-    float next() nothrow @nogc
+    T nextSample() nothrow @nogc
     {
-        return randNormal!Xorshift32(_rng, 0.0f, 1.0f);
+        return randNormal!Xorshift32(_rng, cast(T)0, cast(T)1);
+    }
+
+    void nextBuffer(T[] output) nothrow @nogc
+    {
+        foreach(ref sample; output)
+            sample = nextSample();
     }
 
 private:
     Xorshift32 _rng;
 }
 
+unittest
+{
+    WhiteNoise!float a;
+    WhiteNoise!double b;
+}
+
 
 /// Makes a periodic noise for plugins demos.
 /// Simply multiply you signal to footprint by the next() sample.
-struct DemoNoise
+struct DemoNoise(T) if (isFloatingPoint!T)
 {
 public:
     enum int PERIOD = 30;
     enum int NOISE_DURATION = 2;
 
-    void initialize(double samplerate) nothrow @nogc
+    void initialize(float sampleRate) nothrow @nogc
     {
         _noise.initialize();
-        _increment = 1.0 / samplerate;
+        _increment = 1.0 / sampleRate;
         _counter = 0;
     }
 
-    /// Return the next
-    double next() nothrow @nogc
+    void clearState() nothrow @nogc
+    {
+        _counter = 0;
+    }
+
+    T nextSample() nothrow @nogc
     {
         _counter += _increment;
         while (_counter >= PERIOD)
@@ -57,27 +75,44 @@ public:
             return 1;
     }
 
+    void nextBuffer(T[] output) nothrow @nogc
+    {
+        foreach(ref sample; output)
+            sample = nextSample();
+    }
+
 private:
-    double _counter;
-    double _increment;
+    float _counter;
+    float _increment;
     WhiteNoise _noise;
+}
+
+unittest
+{
+    DemoNoise!float a;
+    DemoNoise!double b;
 }
 
 /// 1D perlin noise octave.
 /// Is useful to slightly move parameters over time.
-struct Perlin1D
+struct Perlin1D(T) if (isFloatingPoint!T)
 {
 public:
-    void init(double frequency, double samplerate) nothrow @nogc
+    void initialize(double frequency, double samplerate) nothrow @nogc
     {
         _rng.seed(nogc_unpredictableSeed());
-        _current = 0.0f;
-        newGoal();
-        _phase = 0.0f;
+        clearState();        
         _phaseInc = cast(float)(frequency / samplerate);
     }
 
-    float next() nothrow @nogc
+    void clearState() nothrow @nogc
+    {
+        _current = 0.0f;
+        newGoal();
+        _phase = 0.0f;
+    }
+
+    T nextSample() nothrow @nogc
     {
         _phase += _phaseInc;
         if (_phase > 1)
@@ -86,12 +121,18 @@ public:
             newGoal();
             _phase -= 1;
         }
-        float f = smootherstep(_phase);
+        float f = smootherstep!float(_phase);
         return f * _goal + (1 - f) * _current;
     }
 
+    void nextBuffer(T[] output) nothrow @nogc
+    {
+        foreach(ref sample; output)
+            sample = nextSample();
+    }
+
 private:
-    static float smootherstep(float x) nothrow @nogc
+    static T smootherstep(T)(T x) nothrow @nogc
     {
         return x * x * x * (x * (x * 6 - 15) + 10);
     }
@@ -110,26 +151,33 @@ private:
     Xorshift32 _rng;
 }
 
+unittest
+{
+    Perlin1D!float a;
+    Perlin1D!double b;
+}
+
 /// Pink noise class using the autocorrelated generator method.
 /// Method proposed and described by Larry Trammell "the RidgeRat" --
 /// see http://home.earthlink.net/~ltrammell/tech/newpink.htm
 /// There are no restrictions.
 /// See_also: http://musicdsp.org/showArchiveComment.php?ArchiveID=244
-struct PinkNoise
+struct PinkNoise(T) if (isFloatingPoint!T)
 {
+public:
     void initialize() nothrow @nogc
     {
         _rng.seed(nogc_unpredictableSeed());
-        contrib[] = 0;
-        accum = 0;
-
+        clearState();
     }
 
-    int[5] contrib; // stage contributions
-    int accum;      // combined generators
-    Xorshift32 _rng;
+    void clearState() nothrow @nogc
+    {
+        contrib[] = 0;
+        accum = 0;
+    }
 
-    float next() nothrow @nogc
+    float nextSample() nothrow @nogc
     {
         int randu = nogc_uniform_int(0, 32768, _rng);
         int  randv = nogc_uniform_int(-32768, 32768, _rng); // [-32768,32767]
@@ -148,10 +196,26 @@ struct PinkNoise
         return accum / 32768.0f;
     }
 
+    void nextBuffer(T[] output) nothrow @nogc
+    {
+        foreach(ref sample; output)
+            sample = nextSample();
+    }
+
 private:
+
+    int[5] _contrib; // stage contributions
+    int _accum;      // combined generators
+    Xorshift32 _rng;
 
     static immutable int[5] pA = [ 14055, 12759, 10733, 12273, 15716 ];
     static immutable int[5] pPSUM = [ 22347, 27917, 29523, 29942, 30007 ];
+}
+
+unittest
+{
+    PinkNoise!float a;
+    PinkNoise!double b;
 }
 
 private

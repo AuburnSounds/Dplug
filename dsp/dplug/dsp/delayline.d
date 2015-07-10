@@ -15,12 +15,14 @@ struct Delayline(T)
 public:
     
     /// Initialize the delay line. Can delay up to count samples.
-    void initialize(int count) nothrow @nogc
+    void initialize(int numSamples) nothrow @nogc
     {
-        _count = count;
-        _index = _indexMask;
-        resize(count);
-        fillWith(0);
+        resize(numSamples);        
+    }
+
+    void clearState() nothrow @nogc
+    {
+        _data[] = 0;
     }
 
     ~this() nothrow @nogc
@@ -31,35 +33,54 @@ public:
     @disable this(this);
 
     /// Resize the delay line. Can delay up to count samples.
-    void resize(int count) nothrow @nogc
+    /// The state is cleared.
+    void resize(int numSamples) nothrow @nogc
     {
-        if (count < 0)
+        if (numSamples < 0)
             assert(false);
 
-        if (count == 0)
-            count = 1; // Support delay-line of length 0
+        if (numSamples == 0)
+            numSamples = 1; // Support delay-line of length 0
 
-        int toAllocate = nextPowerOf2(count);
+        int toAllocate = nextPowerOf2(numSamples);
         _data.reallocBuffer(toAllocate);
         _indexMask = toAllocate - 1;
+        _numSamples = numSamples;
+        clearState();
     }
 
     /// Combined feed + sampleFull.
     /// Uses the delay line as a fixed delay of count samples.
-    T next(T incoming) nothrow @nogc
+    T nextSample(T incoming) nothrow @nogc
     {
-        feed(incoming);
-        return sampleFull(_count);
+        feedSample(incoming);
+        return sampleFull(_numSamples);
+    }
+
+    /// Combined feed + sampleFull.
+    /// Uses the delay line as a fixed delay of count samples.
+    void nextBuffer(T[] input, T[] output) nothrow @nogc
+    {
+        assert(input.length == output.length);
+        for(int i = 0; i < cast(int)(input.length); ++i)
+            output[i] = nextSample(input[i]);
     }
 
     /// Adds a new sample at end of delay.
-    void feed(T incoming) nothrow @nogc
+    void feedSample(T incoming) nothrow @nogc
     {
         _index = (_index + 1) & _indexMask;
         _data[_index] = incoming;
     }
 
-    /// Samples the delay-line at integer points.
+    /// Adds several samples at end of delay.
+    void feedBuffer(T[] incoming) nothrow @nogc
+    {
+        foreach(sample; incoming)
+            feedSample(sample);
+    }
+
+    /// Random access sampling of the delay-line at integer points.
     /// Delay 0 = last entered sample with feed().
     T sampleFull(int delay) nothrow @nogc
     {
@@ -67,7 +88,7 @@ public:
         return _data[(_index - delay) & _indexMask];
     }
 
-    /// Samples the delay-line with linear interpolation.
+    /// Random access sampling of the delay-line with linear interpolation.
     T sampleLinear(float delay) nothrow @nogc
     {
         assert(delay > 0);
@@ -80,7 +101,7 @@ public:
         return lerp(x0, x1, fPart);
     }
 
-    /// Samples the delay-line with a 3rd order polynomial.
+    /// Random access sampling of the delay-line with a 3rd order polynomial.
     T sampleHermite(float delay) nothrow @nogc
     {
         assert(delay > 1);
@@ -94,24 +115,21 @@ public:
         T x0  = _data[ iPart      & _indexMask];
         T x1  = _data[(iPart + 1) & _indexMask];
         T x2  = _data[(iPart + 2) & _indexMask];
-        return hermite!float(fPart, xm1, x0, x1, x2);
-    }
-
-    void fillWith(T value) nothrow @nogc
-    {
-        _data[] = value;
+        return hermite!T(fPart, xm1, x0, x1, x2);
     }
     
 private:
     T[] _data;
     int _index;
     int _indexMask;
-    int _count;
+    int _numSamples;
 }
 
 unittest
 {
     Delayline!float line;
     line.initialize(0); // should be possible
-    assert(line.next(1) == 1);
+    assert(line.nextSample(1) == 1);
+
+    Delayline!double line2;
 }

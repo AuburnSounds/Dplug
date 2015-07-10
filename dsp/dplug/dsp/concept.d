@@ -2,8 +2,9 @@ module dplug.dsp.concept;
 
 
 /// Abstraction for time-invariant processors like most audio processing.
-
-/// Primitive functions to transition towards for audio processors:
+///
+/// Before making an actual concept existing, here are the primitive functions
+/// to write for audio processors (currently transitionning):
 /// 
 /// initialize() nothrow @nogc
 ///     Defined if this audio processor need initialization.
@@ -25,13 +26,7 @@ module dplug.dsp.concept;
 ///     Should not allocate.
 ///
 /// @disable this(this);
-///     Post-blit must be disabled.
+///     Post-blit must be disabledif the processor owns something.
 ///
-/// All these functions must be nothrow @nogc.
-
-import std.traits;
-
-
-
-
-hasMember(
+/// All processors should be structs.
+///
