@@ -20,8 +20,8 @@ public:
     void initialize(double cutoffInHz, double samplerate) nothrow @nogc
     {
         _coeff = lowpassFilterRBJ!double(cutoffInHz, samplerate);
-        _delay0.clear();
-        _delay1.clear();
+        _delay0.clearState();
+        _delay1.clearState();
     }
 
     // takes on sample, return mean amplitude

@@ -13,25 +13,18 @@ public import gfm.math.vector;
 public
 {
 
-    /// Represent IIR coefficients as small vectors.
-    /// This makes easy to smooth them over time.
-    template IIRCoeff(T, int N) if (isFloatingPoint!T)
-    {
-        alias Vector!(T, N) IIRCoeff;
-    }
-
     /// Maintain state for a filtering operation.
     /// To use an IIR filter you need an IIRDelay + one IIRCoeff.
-    struct IIRDelay(int order, T)
+    struct IIRDelay(T, int order)
     {
         alias Vector!(T, order) delay_t;
 
-        alias IIRCoeff!(order * 2 + 1, T) coeff_t; // TODO: be more general
+        alias Vector!(T, order * 2 + 1) coeff_t; // TODO: be more general
 
         delay_t x;
         delay_t y;
 
-        void clear() nothrow @nogc
+        void clearState() nothrow @nogc
         {
             for (int i = 0; i < order; ++i)
             {
@@ -39,6 +32,8 @@ public
                 y[i] = 0;
             }
         }
+
+        deprecated alias clear = clearState;
 
         static if (order == 2)
         {
@@ -70,7 +65,7 @@ public
     /// Type which hold the biquad coefficients.
     template BiquadCoeff(T)
     {
-        alias IIRCoeff!(T, 5) BiquadCoeff;
+        alias Vector!(T, 5) BiquadCoeff;
     }
 
     template BiquadDelay(T)
