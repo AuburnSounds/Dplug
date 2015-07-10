@@ -5,8 +5,8 @@
 */
 module dplug.dsp.iir;
 
+import std.traits;
 public import std.math;
-
 public import gfm.math.vector;
 
 
@@ -15,7 +15,7 @@ public
 
     /// Represent IIR coefficients as small vectors.
     /// This makes easy to smooth them over time.
-    template IIRCoeff(int N, T)
+    template IIRCoeff(T, int N) if (isFloatingPoint!T)
     {
         alias Vector!(T, N) IIRCoeff;
     }
@@ -26,7 +26,7 @@ public
     {
         alias Vector!(T, order) delay_t;
 
-        alias IIRCoeff!(order * 2 + 1, T) coeff_t; // TODO: be more general...
+        alias IIRCoeff!(order * 2 + 1, T) coeff_t; // TODO: be more general
 
         delay_t x;
         delay_t y;
@@ -70,12 +70,12 @@ public
     /// Type which hold the biquad coefficients.
     template BiquadCoeff(T)
     {
-        alias IIRCoeff!(5, T) BiquadCoeff;
+        alias IIRCoeff!(T, 5) BiquadCoeff;
     }
 
     template BiquadDelay(T)
     {
-        alias IIRDelay!(2, T) BiquadDelay;
+        alias IIRDelay!(T, 2) BiquadDelay;
     }
 
 
@@ -86,7 +86,14 @@ public
         double t0 = w0 * 0.5;
         double t1 = 2 - cos(t0 * PI);
         double t2 = (1 - 2 * t0) * (1 - 2 * t0);
-        return BiquadCoeff!T( cast(T)(1 - t2), 0, 0, cast(T)(-t2) );
+
+        BiquadCoeff!T result;
+        result[0] = cast(T)(1 - t2);
+        result[1] = 0;
+        result[2] = 0;
+        result[3] = cast(T)(-t2);
+        result[4] = 0;
+        return result;
     }
 
     // 1-pole high-pass filter
@@ -96,7 +103,14 @@ public
         double t0 = w0 * 0.5;
         double t1 = 2 + cos(t0 * PI);
         double t2 = (2 * t0) * (2 * t0);
-        return BiquadCoeff!T( cast(T)(t2 - 1), 0, 0, cast(T)(t2) );
+
+        BiquadCoeff!T result;
+        result[0] = cast(T)(t2 - 1);
+        result[1] = 0;
+        result[2] = 0;
+        result[3] = cast(T)(t2);
+        result[4] = 0;
+        return result;
     }
 
     /// Allpass interpolator.
@@ -104,24 +118,38 @@ public
     /// http://users.spa.aalto.fi/vpv/publications/vesan_vaitos/ch3_pt3_allpass.pdf
     /// It is recommended to use the range [0.5 .. 1.5] for best phase results.
     /// Also known as Thiran filter.
-    BiquadCoeff!T allpassThiran1stOrder(T)(double fractionalDelay)
+    BiquadCoeff!T allpassThiran1stOrder(T)(double fractionalDelay) nothrow @nogc
     {
         assert(fractionalDelay >= 0);
         double eta = (1 - fractionalDelay) / (1 + fractionalDelay);
-        return BiquadCoeff!T( eta, 1, 0, eta, 0);
+
+        BiquadCoeff!T result;
+        result[0] = cast(T)(eta);
+        result[1] = 1;
+        result[2] = 0;
+        result[3] = cast(T)(eta);
+        result[4] = 0;
+        return result;
     }
 
 
     /// Same but 2nd order.
     /// http://users.spa.aalto.fi/vpv/publications/vesan_vaitos/ch3_pt3_allpass.pdf
-    BiquadCoeff!T allpassThiran2ndOrder(T)(double fractionalDelay)
+    BiquadCoeff!T allpassThiran2ndOrder(T)(double fractionalDelay) nothrow @nogc
     {
         assert(fractionalDelay >= 0);
         double a1 = 2 * (2 - fractionalDelay) / (1 + fractionalDelay);
         double a2 = (fractionalDelay - 1) * (fractionalDelay - 2) 
                                           /
                     (fractionalDelay + 1) * (fractionalDelay + 2);
-        return BiquadCoeff!T( a1, 1, a2, a1, a2);
+
+        BiquadCoeff!T result;
+        result[0] = cast(T)(a1);
+        result[1] = 1;
+        result[2] = cast(T)(a2);
+        result[3] = cast(T)(a1);
+        result[4] = cast(T)(a2);
+        return result;
     }
 
     // Cookbook formulae for audio EQ biquad filter coefficients
@@ -155,12 +183,24 @@ public
     // Initialize with no-op filter
     BiquadCoeff!T bypassFilter(T)() nothrow @nogc
     {
-        return BiquadCoeff!T(1, 0, 0, 0, 0);
+        BiquadCoeff!T result;
+        result[0] = 1;
+        result[1] = 0;
+        result[2] = 0;
+        result[3] = 0;
+        result[4] = 0;
+        return result;
     }
 
     BiquadCoeff!T zeroFilter(T)() nothrow @nogc
     {
-        return BiquadCoeff!T(0, 0, 0, 0, 0);
+        BiquadCoeff!T result;
+        result[0] = 0;
+        result[1] = 0;
+        result[2] = 0;
+        result[3] = 0;
+        result[4] = 0;
+        return result;
     }
 }
 
@@ -284,7 +324,13 @@ unittest
 {
     auto a = lowpassFilter1Pole!float(1400.0, 44100.0);
     auto b = highpassFilter1Pole!float(1400.0, 44100.0);
-    auto c = lowpassFilterRBJ!double(1400.0, 44100.0, 0.6);
-    auto d = allpassThiran1stOrder!double(0.5);
-    auto e = allpassThiran2ndOrder!double(0.6);
+    auto c = allpassThiran1stOrder!double(0.5);
+    auto d = allpassThiran2ndOrder!double(0.6);
+    auto e = lowpassFilterRBJ!double(1400.0, 44100.0, 0.6);
+    auto f = highpassFilterRBJ!double(1400.0, 44100.0);
+    auto g = bandpassFilterRBJ!float(10000.0, 44100.0);
+    auto h = notchFilterRBJ!real(3000.0, 44100.0);
+    auto i = peakFilterRBJ!real(3000.0, 44100.0, 6, 0.5);
+    auto j = bypassFilter!float();
+    auto k = zeroFilter!float();
 }
