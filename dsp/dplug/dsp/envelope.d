@@ -82,8 +82,15 @@ public:
     T nextSample(T input) nothrow @nogc
     {
         T outSine, outCosine;
-        _hilbert.next(input, &outCosine, &outSine);
+        _hilbert.nextSample(input, outCosine, outSine);
         return sqrt(input * input + outSine * outSine);
+    }
+
+    void nextBuffer(T[] input, T[] output) nothrow @nogc
+    {
+        // TODO: allocate one buffer on stack and use nextBuffer routines
+        for (int i = 0; i < cast(int)input.length; ++i)
+            output[i] = nextSample(input[i]);
     }
 
 private:
@@ -123,7 +130,7 @@ public:
             1.2524, 5.5671, 22.3423, 89.6271, 364.7914, 2770.1114
         ];
 
-        float onedsr = 1 / samplerate;
+        float onedsr = 1 / sampleRate;
 
         // calculate coefficients for allpass filters, based on sampling rate
         for (int j = 0; j < 12; ++j)
@@ -131,7 +138,7 @@ public:
             const double polefreq = poles[j] * 15.0;
             const double rc = 1.0 / (2.0 * PI * polefreq);
             const double alpha = 1.0 / rc;
-            const double beta = (1.0 - (alpha * 0.5 * onedsr)) / (1.0 + (alpha * 0.5 * onedsr));            
+            const double beta = (1.0 - (alpha * 0.5 * onedsr)) / (1.0 + (alpha * 0.5 * onedsr));
             _coef[j] = -beta;
         }
 
@@ -184,7 +191,7 @@ public:
 
     void nextBuffer(T[] input, T[] output1, T[] output2) nothrow @nogc
     {
-        for (int i = 0; j < cast(int)(input.length); ++i)
+        for (int i = 0; i < cast(int)(input.length); ++i)
         {
             nextSample(input[i], output1[i], output2[i]);
         }
@@ -208,7 +215,7 @@ struct CoarseRMS(T) if (isFloatingPoint!T)
 {
 public:
     void initialize(double sampleRate) nothrow @nogc
-    {        
+    {
         // In Reaper, default RMS window is 500 ms
         _envelope.initialize(20, sampleRate);
         // TODO

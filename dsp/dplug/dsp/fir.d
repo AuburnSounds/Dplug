@@ -183,9 +183,15 @@ struct FIR(T)
     {
         assert(sizeOfImpulse > 0);
         _delayline.initialize(sizeOfImpulse);
-        _delayline.fillWith(0);
+        clearState();        
         _impulse.reallocBuffer(sizeOfImpulse);
         _impulse[] = T.nan;
+        clearState();
+    }
+
+    void clearState() nothrow @nogc
+    {
+    	_delayline.clearState();
     }
 
     ~this() nothrow @nogc
@@ -198,9 +204,9 @@ struct FIR(T)
     @disable this(this);
 
     /// Returns: Filtered input sample, naive convolution.
-    T next(T input) nothrow @nogc
+    T nextSample(T input) nothrow @nogc
     {
-        _delayline.feed(input);
+        _delayline.feedSample(input);
         T sum = 0;
         int N = cast(int)impulse.length;
         for (int i = 0; i < N; ++i)

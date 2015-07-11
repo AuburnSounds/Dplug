@@ -122,12 +122,12 @@ public:
     {
         _period = periodSecs;
         _periodInv = 1 / periodSecs;
-        _samplerateInv = 1 / samplerate;
+        _sampleRateInv = 1 / sampleRate;
         clearState(initialValue);
     }
 
     /// Advance smoothing and return the next smoothed sample.
-    T clearState(T initialValue) nothrow @nogc
+    void clearState(T initialValue) nothrow @nogc
     {
         _current = initialValue;
         _phase = 0;
@@ -137,14 +137,15 @@ public:
     /// Set the target value and return the next sample.
     T nextSample(T input) nothrow @nogc
     {
-        _phase += _samplerateInv;
+        _phase += _sampleRateInv;
         if (_firstNextAfterInit || _phase > _period)
         {
             _phase -= _period;
-            _increment = (_target - _current) * (_samplerateInv * _periodInv);
+            _increment = (input - _current) * (_sampleRateInv * _periodInv);
             _firstNextAfterInit = false;
         }
         _current += _increment;
+        return _current;
     }
 
     void nextBuffer(T[] input, T[] output) nothrow @nogc
@@ -158,7 +159,7 @@ private:
     T _increment;
     float _period;
     float _periodInv;
-    float _samplerateInv;
+    float _sampleRateInv;
     float _phase;
     bool _firstNextAfterInit;
 }
@@ -189,7 +190,7 @@ public:
     }
 
     // TODO: make it nothrow @nogc
-    T nextSample(T input) nothrow @nogc
+    T nextSample(T input) /* nothrow @nogc */
     {
         if (_first)
         {
@@ -203,7 +204,7 @@ public:
         for (int i = 0; i < N - 1; ++i)
             arr[i + 1] = _delay[i];
 
-        sort(arr[]); // sort in place
+        sort(arr[]); // sort in place, is not nothrow @nogc
 
         T median = arr[N/2];
 
@@ -213,7 +214,7 @@ public:
         return median;
     }
 
-    void nextBuffer(T[] input, T[] output) nothrow @nogc
+    void nextBuffer(T[] input, T[] output)
     {
         for (int i = 0; i < cast(int)(input.length); ++i)
             output[i] = nextSample(input[i]);
@@ -226,8 +227,8 @@ private:
 
 unittest
 {
-    MedianFilter!(float, 3) medianfilter;
-    MedianFilter!(double, 5) medianfilter;
+    MedianFilter!(float, 3) a;
+    MedianFilter!(double, 5) b;
 }
 
 
@@ -239,18 +240,18 @@ struct MeanFilter(T) if (isFloatingPoint!T)
 {
 public:
     /// Initialize mean filter with given number of samples.
-    void initialize(T initialValue, int samples, T maxExpectedValue) nothrow @nogc
+    void initialize(T initialValue, int samples, T maxExpectedValue)
     {
         _delay = new RingBuffer!long(samples);
 
         _factor = cast(T)(2147483648.0 / maxExpectedValue);
         _invNFactor = cast(T)1 / (_factor * samples);
 
-        clearState();
+        clearState(initialValue);
     }
 
     /// Initialize with with cutoff frequency and samplerate.
-    void initialize(T initialValue, double cutoffHz, double samplerate, T maxExpectedValue) nothrow @nogc
+    void initialize(T initialValue, double cutoffHz, double samplerate, T maxExpectedValue)
     {
         int nSamples = cast(int)(0.5 + samplerate / (2 * cutoffHz));
 
@@ -260,7 +261,7 @@ public:
         initialize(initialValue, nSamples, maxExpectedValue);
     }
 
-    void clearState(T initialValue) nothrow @nogc
+    void clearState(T initialValue)
     {
         // round to integer
         long ivInt = toIntDomain(initialValue);
@@ -268,10 +269,10 @@ public:
         while(!_delay.isFull())
             _delay.pushBack(ivInt);
 
-        _sum = samples * ivInt;
+        _sum = cast(int)(_delay.length) * ivInt;
     }
 
-    int latency() const nothrow @nogc
+    int latency() const
     {
         return cast(int)(_delay.length());
     }

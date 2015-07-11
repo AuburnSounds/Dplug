@@ -70,7 +70,7 @@ public:
             _counter = _counter - PERIOD;
 
         if (_counter > PERIOD - NOISE_DURATION)
-            return 1 + _noise.next() * 0.3 * sin(PI * (_counter - PERIOD + NOISE_DURATION) / NOISE_DURATION);
+            return 1 + _noise.nextSample() * 0.3 * sin(PI * (_counter - PERIOD + NOISE_DURATION) / NOISE_DURATION);
         else
             return 1;
     }
@@ -84,7 +84,7 @@ public:
 private:
     float _counter;
     float _increment;
-    WhiteNoise _noise;
+    WhiteNoise!T _noise;
 }
 
 unittest
@@ -173,8 +173,8 @@ public:
 
     void clearState() nothrow @nogc
     {
-        contrib[] = 0;
-        accum = 0;
+        _contrib[] = 0;
+        _accum = 0;
     }
 
     float nextSample() nothrow @nogc
@@ -187,13 +187,13 @@ public:
         {
             if (randu < pPSUM[n])
             {
-                accum -= contrib[n];
-                contrib[n] = randv * pA[n];
-                accum += contrib[n];
+                _accum -= _contrib[n];
+                _contrib[n] = randv * pA[n];
+                _accum += _contrib[n];
                 break;
             }
         }
-        return accum / 32768.0f;
+        return _accum / 32768.0f;
     }
 
     void nextBuffer(T[] output) nothrow @nogc
