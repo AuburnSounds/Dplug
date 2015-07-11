@@ -326,7 +326,7 @@ public:
     {
         super(client, index, name, label);
         _name = name;
-        _value = clamp!int(defaultValue, min, max);
+        _value = _defaultValue = clamp!int(defaultValue, min, max);
         _min = min;
         _max = max;
     }
@@ -351,6 +351,12 @@ public:
         return normalized;
     }
 
+    override float getNormalizedDefault() nothrow @nogc
+    {
+        float normalized = clamp!float( (_defaultValue - _min) / (_max - _min), 0.0f, 1.0f);
+        return normalized;
+    }
+
     override void toStringN(char* buffer, size_t numBytes) nothrow @nogc
     {
         int v;
@@ -371,6 +377,7 @@ private:
     int _value;
     int _min;
     int _max;
+    int _defaultValue;
 }
 
 private
