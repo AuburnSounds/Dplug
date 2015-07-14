@@ -5,6 +5,8 @@
 */
 module dplug.dsp.delayline;
 
+import std.traits;
+
 import gfm.math.funcs;
 
 import dplug.core;
@@ -53,8 +55,9 @@ public:
     /// Uses the delay line as a fixed delay of count samples.
     T nextSample(T incoming) nothrow @nogc
     {
+        T result = sampleFull(_numSamples - 1);
         feedSample(incoming);
-        return sampleFull(_numSamples);
+        return result;
     }
 
     /// Combined feed + sampleFull.
@@ -88,34 +91,37 @@ public:
         return _data[(_index - delay) & _indexMask];
     }
 
-    /// Random access sampling of the delay-line with linear interpolation.
-    T sampleLinear(float delay) nothrow @nogc
+    static if(isFloatingPoint!T)
     {
-        assert(delay > 0);
-        float sampleLoc = (_index - delay) + 2 * _data.length;
-        assert(sampleLoc >= 1);
-        int iPart = cast(int)(sampleLoc);
-        float fPart = cast(float)(sampleLoc - iPart);
-        T x0  = _data[iPart       & _indexMask];
-        T x1  = _data[(iPart + 1) & _indexMask];
-        return lerp(x0, x1, fPart);
-    }
+        /// Random access sampling of the delay-line with linear interpolation.
+        T sampleLinear(float delay) nothrow @nogc
+        {
+            assert(delay > 0);
+            float sampleLoc = (_index - delay) + 2 * _data.length;
+            assert(sampleLoc >= 1);
+            int iPart = cast(int)(sampleLoc);
+            float fPart = cast(float)(sampleLoc - iPart);
+            T x0  = _data[iPart       & _indexMask];
+            T x1  = _data[(iPart + 1) & _indexMask];
+            return lerp(x0, x1, fPart);
+        }
 
-    /// Random access sampling of the delay-line with a 3rd order polynomial.
-    T sampleHermite(float delay) nothrow @nogc
-    {
-        assert(delay > 1);
-        float sampleLoc = (_index - delay) + 2 * _data.length;
-        assert(sampleLoc >= 1);
-        int iPart = cast(int)(sampleLoc);
-        float fPart = cast(float)(sampleLoc - iPart);
-        assert(fPart >= 0.0f);
-        assert(fPart <= 1.0f);
-        T xm1 = _data[(iPart - 1) & _indexMask];
-        T x0  = _data[ iPart      & _indexMask];
-        T x1  = _data[(iPart + 1) & _indexMask];
-        T x2  = _data[(iPart + 2) & _indexMask];
-        return hermite!T(fPart, xm1, x0, x1, x2);
+        /// Random access sampling of the delay-line with a 3rd order polynomial.
+        T sampleHermite(float delay) nothrow @nogc
+        {
+            assert(delay > 1);
+            float sampleLoc = (_index - delay) + 2 * _data.length;
+            assert(sampleLoc >= 1);
+            int iPart = cast(int)(sampleLoc);
+            float fPart = cast(float)(sampleLoc - iPart);
+            assert(fPart >= 0.0f);
+            assert(fPart <= 1.0f);
+            T xm1 = _data[(iPart - 1) & _indexMask];
+            T x0  = _data[ iPart      & _indexMask];
+            T x1  = _data[(iPart + 1) & _indexMask];
+            T x2  = _data[(iPart + 2) & _indexMask];
+            return hermite!T(fPart, xm1, x0, x1, x2);
+        }
     }
     
 private:
@@ -132,4 +138,10 @@ unittest
     assert(line.nextSample(1) == 1);
 
     Delayline!double line2;
+
+    Delayline!int line3;
+    line3.initialize(2);
+    assert(line3.nextSample(1) == 0);
+    assert(line3.nextSample(2) == 0);
+    assert(line3.nextSample(3) == 1);
 }
