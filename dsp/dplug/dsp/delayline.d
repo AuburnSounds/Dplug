@@ -41,10 +41,10 @@ public:
         if (numSamples < 0)
             assert(false);
 
-        if (numSamples == 0)
-            numSamples = 1; // Support delay-line of length 0
+        // Over-allocate to support POW2 delaylines.
+        // This wastes memory but allows delay-line of length 0 without tests.
 
-        int toAllocate = nextPowerOf2(numSamples);
+        int toAllocate = nextPowerOf2(numSamples + 1); 
         _data.reallocBuffer(toAllocate);
         _indexMask = toAllocate - 1;
         _numSamples = numSamples;
@@ -54,17 +54,15 @@ public:
     /// Combined feed + sampleFull.
     /// Uses the delay line as a fixed delay of count samples.
     T nextSample(T incoming) nothrow @nogc
-    {
-        T result = sampleFull(_numSamples - 1);
+    {        
         feedSample(incoming);
-        return result;
+        return sampleFull(_numSamples);
     }
 
     /// Combined feed + sampleFull.
     /// Uses the delay line as a fixed delay of count samples.
     void nextBuffer(T[] input, T[] output) nothrow @nogc
     {
-        assert(input.length == output.length);
         for(int i = 0; i < cast(int)(input.length); ++i)
             output[i] = nextSample(input[i]);
     }
@@ -135,6 +133,8 @@ unittest
 {
     Delayline!float line;
     line.initialize(0); // should be possible
+    import std.stdio;
+    writeln(line.nextSample(1));
     assert(line.nextSample(1) == 1);
 
     Delayline!double line2;
