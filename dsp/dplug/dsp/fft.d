@@ -297,8 +297,7 @@ public:
             int windowSize = _windowSize;
             assert(segment.length == _windowSize);
 
-            // TODO: this assume fftData was allocated with alignedAlloc, looks like a problem
-            fftData.reallocBuffer(_fftSize); 
+            float scaleFactor = _scaleFactor;
 
             if (_zeroPhaseWindowing)
             {
