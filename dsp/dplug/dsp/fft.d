@@ -185,7 +185,7 @@ struct ShortTermReconstruction
         {
             _desc[i].playOffset = 0;
             _desc[i].length = 0;
-
+            _desc[i].buffer = null;
             _desc[i].buffer.reallocBuffer(maxSegmentLength);
             //reallocBuffer(_desc[i].buffer, maxSegmentLength);
         } //) 
