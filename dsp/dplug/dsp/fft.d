@@ -269,7 +269,7 @@ public:
     /// Basic overlap is achieved with windowSize = 2 * analysisPeriod
     /// if zeroPhaseWindowing = true, "zero phase" windowing is used
     /// (center of window is at first sample, zero-padding happen at center)
-    void initialize(int windowSize, int fftSize, int analysisPeriod, WindowType windowType, bool zeroPhaseWindowing, bool correctWindowLoss) nothrow @nogc
+    void initialize(int windowSize, int fftSize, int analysisPeriod, WindowType windowType, bool zeroPhaseWindowing) nothrow @nogc
     {
         assert(isPowerOf2(fftSize));
         assert(fftSize >= windowSize);
