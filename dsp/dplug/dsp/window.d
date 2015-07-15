@@ -73,6 +73,14 @@ struct Window(T) if (isFloatingPoint!T)
         _window.reallocBuffer(0);
     }
 
+    double sumOfWindowSamples() pure const nothrow @nogc
+    {
+        double result = 0;
+        foreach(windowValue; _window)
+            result += windowValue;
+        return result;
+    }
+
     @disable this(this);
 
     T[] _window = null;
