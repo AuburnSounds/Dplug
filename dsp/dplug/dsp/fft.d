@@ -281,6 +281,12 @@ public:
         _window.initialize(windowType, windowSize);
         _windowSize = windowSize;
 
+        // account for window shape
+        _scaleFactor = fftSize / _window.sumOfWindowSamples();
+
+        // account for overlap
+        _scaleFactor *= cast(float)(analysisPeriod) / windowSize;
+
         _segmenter.initialize(windowSize, analysisPeriod);
     }
 
@@ -307,14 +313,14 @@ public:
                 int center = (_windowSize - 1) / 2; // position of center bin
                 int nLeft = _windowSize - center;
                 for (int i = 0; i < nLeft; ++i)
-                    fftData[i] = segment[center + i] * _window[center + i];
+                    fftData[i] = segment[center + i] * _window[center + i] * scaleFactor;
 
                 int nPadding = _fftSize - _windowSize;
                 for (int i = 0; i < nPadding; ++i)
                     fftData[nLeft + i] = 0.0f;
 
                 for (int i = 0; i < center; ++i)
-                    fftData[nLeft + nPadding + i] = segment[i] * _window[i];
+                    fftData[nLeft + nPadding + i] = segment[i] * _window[i] * scaleFactor;
             }
             else
             {
@@ -328,7 +334,7 @@ public:
 
                 // fill FFT buffer and multiply by window
                 for (int i = 0; i < _windowSize; ++i)
-                    fftData[i] = segment[i] * _window[i];
+                    fftData[i] = segment[i] * _window[i] * scaleFactor;
 
                 // zero-padding
                 for (int i = _windowSize; i < _fftSize; ++i)
@@ -349,4 +355,6 @@ private:
 
     Window!float _window;
     int _windowSize;     // in samples
+
+    float _scaleFactor; // account to the shape of the windowing function
 }
