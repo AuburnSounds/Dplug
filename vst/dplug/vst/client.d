@@ -742,18 +742,20 @@ private:
             _client.processAudio(inputs, outputs, frames);
         else
         {
+            // Slice audio in smaller parts
             while (frames > 0)
             {
                 // Note: the last slice will be smaller than the others
                 int sliceLength = std.algorithm.min(_maxFramesInProcess, frames);
 
-                // offset all buffer pointers
-                foreach(ref p; inputs)
-                    p += sliceLength;
-                foreach(ref p; outputs)
-                    p += sliceLength;
-
                 _client.processAudio(inputs, outputs, sliceLength);
+
+                // offset all buffer pointers
+                for (int i = 0; i < cast(int)inputs.length; ++i)
+                    inputs[i] = inputs[i] + sliceLength;
+
+                for (int i = 0; i < cast(int)outputs.length; ++i)
+                    outputs[i] = outputs[i] + sliceLength;
 
                 frames -= sliceLength;
             }     
@@ -838,7 +840,14 @@ private:
     void processDoubleReplacing(double **inputs, double **outputs, int sampleFrames) nothrow @nogc
     {
         preprocess(sampleFrames);
-        sendAudioToClient(inputs[0.._usedInputs], outputs[0.._usedOutputs], sampleFrames);
+
+        // Not sure if the hosts would support an overwriting of these pointers, so copy them
+        for (int i = 0; i < _usedInputs; ++i)
+            _inputPointers[i] = inputs[i];
+        for (int i = 0; i < _usedOutputs; ++i)
+            _outputPointers[i] = outputs[i];
+
+        sendAudioToClient(_inputPointers[0.._usedInputs], _outputPointers[0.._usedOutputs], sampleFrames);
     }
 }
 
