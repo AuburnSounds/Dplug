@@ -40,12 +40,15 @@ public:
         return CCONST('g', 'f', 'm', '0'); // change this!
     }
 
-    override void buildParameters()
+    // This is an optional overload, default is zero parameter.
+    override Parameter[] buildParameters()
     {
-        addParameter(new FloatParameter(this, 0, "input", "db", 0.0f, 2.0f, 1.0f));
-        addParameter(new FloatParameter(this, 1, "drive", "%", 1.0f, 2.0f, 1.0f));
-        addParameter(new FloatParameter(this, 2, "output", "db", 0.0f, 1.0f, 0.9f));
-        addParameter(new BoolParameter(this, 3, "on/off", "", true));
+        return [
+            new FloatParameter(this, 0, "input", "db", 0.0f, 2.0f, 1.0f),
+            new FloatParameter(this, 1, "drive", "%", 1.0f, 2.0f, 1.0f),
+            new FloatParameter(this, 2, "output", "db", 0.0f, 1.0f, 0.9f),
+            new BoolParameter(this, 3, "on/off", "", true)
+        ];
     }
 
     // This override is optional, the default implementation will 

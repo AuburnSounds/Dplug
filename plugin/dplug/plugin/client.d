@@ -97,7 +97,7 @@ public:
     this()
     {
         buildLegalIO();
-        buildParameters();
+        _params = buildParameters();
 
         // Create presets
         _presetBank = new PresetBank(this);
@@ -328,13 +328,10 @@ public:
 protected:
 
     /// Override this method to implement parameter creation.
-    /// See_also: addParameter.
-    abstract void buildParameters();
-
-    /// Adds a parameter.
-    final addParameter(Parameter param)
+    /// This is an optional overload, default implementation declare no parameters.
+    Parameter[] buildParameters()
     {
-        _params ~= param;
+        return [];
     }
 
     /// Override this methods to load/fill presets.

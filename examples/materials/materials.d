@@ -41,10 +41,6 @@ public:
         return CCONST('g', 'f', 'm', '1'); // change this!
     }
 
-    override void buildParameters()
-    {        
-    }
-
     override void buildLegalIO()
     {
         addLegalIO(1, 1);
