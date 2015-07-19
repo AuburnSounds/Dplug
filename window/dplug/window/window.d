@@ -141,6 +141,11 @@ IWindow createWindow(void* parentInfo, IWindowListener listener, int width, int 
         HWND parent = cast(HWND)parentInfo;
         return new Win32Window(parent, listener, width, height);
     }
+    else version(linux)
+    {
+        import dplug.window.x11window;
+        return new X11Window(parentInfo, listener, width, height);
+    }
     else
         return null;
 }
