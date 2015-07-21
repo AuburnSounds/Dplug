@@ -27,18 +27,15 @@ import core.stdc.stdlib,
 
 import gfm.core;
 
-import dplug.core.alignedbuffer,
-       dplug.core.spinlock;
+import dplug.core.alignedbuffer;
 
 import dplug.plugin.client,
        dplug.plugin.daw,
        dplug.plugin.preset,
        dplug.plugin.midi,
-       dplug.plugin.fpcontrol;       
+       dplug.plugin.fpcontrol;
 
 import dplug.vst.aeffectx;
-
-version = InterlockedMessageQueue;
 
 template VSTEntryPoint(alias ClientClass)
 {
@@ -76,10 +73,7 @@ public:
     this(Client client, HostCallbackFunction hostCallback)
     {
         int queueSize = 256;
-        version(InterlockedMessageQueue)
-            _messageQueue = new LockedQueue!Message(queueSize);
-        else
-            _messageQueue = new SpinlockedQueue!Message(queueSize);
+        _messageQueue = new LockedQueue!Message(queueSize);
 
         _host = new VSTHostFromClientPOV(hostCallback, &_effect);
         _client = client;
@@ -150,6 +144,16 @@ public:
         _messageQueue.pushBack(makeResetStateMessage(Message.Type.resetState));
     }
 
+    ~this()
+    {
+        close();
+    }
+
+    void close()
+    {
+        // TODO proper clean-up
+    }
+
 private:
 
     VSTHostFromClientPOV _host;
@@ -176,12 +180,8 @@ private:
     ubyte[] _lastPresetChunk = null;
     ubyte[] _lastBankChunk = null;
 
-    version(InterlockedMessageQueue)
-        // Inter-locked message queue from opcode thread to audio thread
-        LockedQueue!Message _messageQueue;
-    else
-        // Lock-free message queue from opcode thread to audio thread.
-        SpinlockedQueue!Message _messageQueue;
+    // Inter-locked message queue from opcode thread to audio thread
+    LockedQueue!Message _messageQueue;
 
     final bool isValidParamIndex(int i) pure const nothrow @nogc
     {
@@ -672,10 +672,7 @@ private:
     {
         bool popMessage(out Message msg)
         {
-            version(InterlockedMessageQueue)
-                return _messageQueue.tryPopFront(msg);
-            else
-                return _messageQueue.popFront(msg);
+            return _messageQueue.tryPopFront(msg);
         }
 
         // Race condition here.
