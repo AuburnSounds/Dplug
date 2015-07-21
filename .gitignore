@@ -1,0 +1,6 @@
+.dub
+*.swp
+dub.selections.json
+*.sublime-project
+*.sublime-workspace
+*.a
