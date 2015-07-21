@@ -670,9 +670,11 @@ private:
 
     void processMessages() /* nothrow @nogc */
     {
-        bool popMessage(out Message msg)
+        bool tryPopMessage(out Message msg)
         {
-            return _messageQueue.tryPopFront(msg);
+            // Tiny change here that the other thread is currently paused by GC, that would make us wait.
+            // What would cause the GC to run? A third thread allocating. That makes it a bit unlikely in my opinion.
+            return _messageQueue.tryPopFront(msg); 
         }
 
         // Race condition here.
@@ -681,13 +683,12 @@ private:
         // - we are going to read it next buffer
         // - not clearing the state for a buffer duration does no harm
         // - plugin is initialized first with the maximum amount of input and outputs 
-        //   so missing such a message isn't that bad: the audio callback will have some outputs that are untouched
-        // We could avoid that race with a blocking pop, but that exposes us to GC pauses 
+        //   so missing such a message isn't that bad: the audio callback will have some outputs that are untouched        
         // (a third thread might start a collect while the UI thread takes the queue lock) which is another unlikely race condition.
         // Perhaps it's the one to favor, I don't know.
 
         Message msg;
-        while(popMessage(msg)) // <- here, we have a problem: https://github.com/p0nce/dplug/issues/45
+        while(tryPopMessage(msg)) // <- here, we have a problem: https://github.com/p0nce/dplug/issues/45
         {
             final switch(msg.type) with (Message.Type)
             {
