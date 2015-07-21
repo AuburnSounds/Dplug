@@ -19,7 +19,7 @@
 /// Created because of pressing needs of nothrow @nogc synchronization
 module dplug.core.unchecked_sync;
 
-import gfm.core.queue;
+import gfm.core;
 
 version( Windows )
 {
@@ -44,10 +44,14 @@ final class UncheckedMutex
         }
         else version( Posix )
         {
-            pthread_mutexattr_t attr = void;
-            pthread_mutexattr_init( &attr );
-            pthread_mutexattr_settype( &attr, PTHREAD_MUTEX_RECURSIVE );
-            pthread_mutex_init( &m_hndl, &attr );
+            assumeNothrowNoGC( 
+                (pthread_mutex_t* handle)
+                { 
+                    pthread_mutexattr_t attr = void;
+                    pthread_mutexattr_init( &attr );
+                    pthread_mutexattr_settype( &attr, PTHREAD_MUTEX_RECURSIVE );
+                    pthread_mutex_init( handle, &attr );
+                })(&m_hndl);
         }
         m_initialized = true;
     }
@@ -68,7 +72,11 @@ final class UncheckedMutex
             }
             else version( Posix )
             {
-                pthread_mutex_destroy( &m_hndl );
+                assumeNothrowNoGC( 
+                    (pthread_mutex_t* handle)
+                    { 
+                        pthread_mutex_destroy(handle); 
+                    })(&m_hndl);
             }
         }
     }
@@ -82,7 +90,11 @@ final class UncheckedMutex
         }
         else version( Posix )
         {
-            pthread_mutex_lock( &m_hndl );
+            assumeNothrowNoGC( 
+                (pthread_mutex_t* handle)
+                { 
+                    pthread_mutex_lock(handle);
+                })(&m_hndl);
         }
     }
 
@@ -95,7 +107,11 @@ final class UncheckedMutex
         }
         else version( Posix )
         {
-            pthread_mutex_unlock( &m_hndl );
+            assumeNothrowNoGC( 
+                (pthread_mutex_t* handle)
+                { 
+                    pthread_mutex_unlock(handle);
+                })(&m_hndl);
         }
     }
 
@@ -107,7 +123,12 @@ final class UncheckedMutex
         }
         else version( Posix )
         {
-            return pthread_mutex_trylock( &m_hndl ) == 0;
+            int result = assumeNothrowNoGC( 
+                (pthread_mutex_t* handle)
+                { 
+                    return pthread_mutex_trylock(handle);
+                })(&m_hndl);
+            return result == 0;
         }
     }
 
