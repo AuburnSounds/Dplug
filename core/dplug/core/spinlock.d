@@ -7,15 +7,14 @@ module dplug.core.spinlock;
 
 import core.atomic;
 
-import gfm.core;
-
+import gfm.core.memory;
 
 /// Intended to small delays only.
 /// Allows very fast synchronization between eg. a high priority
 /// audio thread and an UI thread.
 /// Not re-entrant.
 /// Because of Adjacent Cache-line Prefetching 128 bytes are allocated.
-struct Spinlock
+deprecated("Are you sure you want a Spinlock over an UncheckedMutex?") struct Spinlock
 {
     public
     {
@@ -74,70 +73,6 @@ struct Spinlock
         void unlock() nothrow @nogc
         {
             atomicStore(*_state, UNLOCKED);
-        }
-    }
-}
-
-
-
-/// Queue with spinlocks for inter-thread communication.
-/// Support multiple writers, multiple readers.
-/// Should work way better with low contention.
-///
-/// Important: Will crash if the queue is overloaded!
-///            ie. if the producer produced faster than the consumer consumes.
-///            In the lack of a lock-free allocator there is not much more we can do.
-final class SpinlockedQueue(T)
-{
-    private
-    {
-        FixedSizeQueue!T _queue;
-        Spinlock _lock;
-    }
-
-    public
-    {
-        /// Creates a new spin-locked queue with fixed capacity.
-        this(size_t capacity)
-        {
-            _queue = new FixedSizeQueue!T(capacity);
-            _lock.initialize();
-        }
-
-        ~this()
-        {
-            close();
-        }
-
-        void close()
-        {
-            _lock.close();
-        }
-
-        /// Pushes an item to the back, crash if queue is full!
-        /// Thus, never blocks.
-        void pushBack(T x) nothrow @nogc
-        {
-            _lock.lock();
-            scope(exit) _lock.unlock();
-
-            _queue.pushBack(x);
-        }
-
-        /// Pops an item from the front, block if queue is empty.
-        /// Never blocks.
-        bool popFront(out T result) nothrow @nogc
-        {
-            _lock.lock();
-            scope(exit) _lock.unlock();
-
-            if (_queue.length() != 0)
-            {
-                result = _queue.popFront();
-                return true;
-            }
-            else
-                return false;
         }
     }
 }

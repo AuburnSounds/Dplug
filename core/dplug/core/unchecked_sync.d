@@ -14,11 +14,14 @@
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
  /// Modified to make it @nogc
+ /// Added a synchronized ring buffer.
 
 /// Created because of pressing needs of nothrow @nogc synchronization
 module dplug.core.unchecked_sync;
 
-version = implementedWithSpinlock; // work-around because pthread POSIX function aren't @nogc nothrow :(
+import gfm.core.queue;
+
+//version = implementedWithSpinlock; // work-around because pthread POSIX function aren't @nogc nothrow :(
 
 version (implementedWithSpinlock)
 {
@@ -56,7 +59,6 @@ version (implementedWithSpinlock)
         {
             return _lock.tryLock();
         }
-
 
     private:
         Spinlock _lock;
@@ -218,4 +220,70 @@ final class SyncValue(T)
 private:
     UncheckedMutex mutex;
     T _value = T.init;
+}
+
+
+/// Queue with inter-thread communication.
+/// Support multiple writers, multiple readers.
+///
+/// Important: Will crash if the queue is overloaded!
+///            ie. if the producer produced faster than the consumer consumes.
+final class SyncedQueue(T)
+{
+    private
+    {
+        FixedSizeQueue!T _queue;
+        UncheckedMutex _lock;
+    }
+
+    public
+    {
+        /// Creates a new spin-locked queue with fixed capacity.
+        this(size_t capacity)
+        {
+            _queue = new FixedSizeQueue!T(capacity);
+            _lock = new UncheckedMutex();
+        }
+
+        ~this()
+        {
+            close();
+        }
+
+        void close()
+        {
+            _lock.close();
+        }
+
+        /// Pushes an item to the back, crash if queue is full!
+        /// Thus, never blocks.
+        void pushBack(T x) nothrow @nogc
+        {
+            _lock.lock();
+            scope(exit) _lock.unlock();
+
+            _queue.pushBack(x);
+        }
+
+        /// Pops an item from the front, block if queue is empty.
+        /// Never blocks.
+        bool popFront(out T result) nothrow @nogc
+        {
+            _lock.lock();
+            scope(exit) _lock.unlock();
+
+            if (_queue.length() != 0)
+            {
+                result = _queue.popFront();
+                return true;
+            }
+            else
+                return false;
+        }
+    }
+}
+
+unittest
+{
+    SyncedQueue!int queue;
 }
