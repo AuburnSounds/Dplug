@@ -14,181 +14,42 @@
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
  /// Modified to make it @nogc
+ /// Added a synchronized ring buffer.
 
 /// Created because of pressing needs of nothrow @nogc synchronization
 module dplug.core.unchecked_sync;
 
-version = implementedWithSpinlock; // work-around because pthread POSIX function aren't @nogc nothrow :(
+import gfm.core.queue;
 
-version (implementedWithSpinlock)
+version( Windows )
 {
-    import dplug.core.spinlock;
-
-    final class UncheckedMutex
-    {
-    public:
-        this() nothrow @nogc
-        {
-            _lock.initialize();
-        }
-
-        ~this() nothrow @nogc
-        {
-            close();
-        }
-
-        void close() nothrow @nogc
-        {
-           _lock.close();
-        }
-
-        void lock() nothrow @nogc
-        {
-            _lock.lock();
-        }
-
-        void unlock() nothrow @nogc
-        {
-            _lock.unlock();
-        }
-
-        bool tryLock() nothrow @nogc
-        {
-            return _lock.tryLock();
-        }
-
-
-    private:
-        Spinlock _lock;
-    }
+    private import core.sys.windows.windows;
+}
+else version( Posix )
+{
+    private import core.sys.posix.pthread;
 }
 else
 {
-
-    version( Windows )
-    {
-        private import core.sys.windows.windows;
-    }
-    else version( Posix )
-    {
-        private import core.sys.posix.pthread;
-    }
-    else
-    {
-        static assert(false, "Platform not supported");
-    }
-
-    final class UncheckedMutex
-    {
-        this() nothrow @nogc
-        {
-            version( Windows )
-            {
-                InitializeCriticalSection( &m_hndl );
-            }
-            else version( Posix )
-            {
-                pthread_mutexattr_t attr = void;
-                pthread_mutexattr_init( &attr );
-                pthread_mutexattr_settype( &attr, PTHREAD_MUTEX_RECURSIVE );
-                pthread_mutex_init( &m_hndl, &attr );
-            }
-            m_initialized = true;
-        }
-
-        ~this() nothrow @nogc
-        {
-            close();
-        }
-
-        void close() nothrow @nogc
-        {
-            if (m_initialized)
-            {
-                m_initialized = false;
-                version( Windows )
-                {
-                    DeleteCriticalSection( &m_hndl );
-                }
-                else version( Posix )
-                {
-                    pthread_mutex_destroy( &m_hndl );
-                }
-            }
-        }
-
-        /// Lock mutex
-        final void lock() nothrow @nogc
-        {
-            version( Windows )
-            {
-                EnterCriticalSection( &m_hndl );
-            }
-            else version( Posix )
-            {
-                pthread_mutex_lock( &m_hndl );
-            }
-        }
-
-        // undocumented function for internal use
-        final void unlock() nothrow @nogc
-        {
-            version( Windows )
-            {
-                LeaveCriticalSection( &m_hndl );
-            }
-            else version( Posix )
-            {
-                pthread_mutex_unlock( &m_hndl );
-            }
-        }
-
-        bool tryLock()
-        {
-            version( Windows )
-            {
-                return TryEnterCriticalSection( &m_hndl ) != 0;
-            }
-            else version( Posix )
-            {
-                return pthread_mutex_trylock( &m_hndl ) == 0;
-            }
-        }
-
-
-    private:
-        version( Windows )
-        {
-            CRITICAL_SECTION    m_hndl;
-        }
-        else version( Posix )
-        {
-            pthread_mutex_t     m_hndl;
-        }
-
-        bool                    m_initialized;
-
-
-    package:
-        version( Posix )
-        {
-            pthread_mutex_t* handleAddr()
-            {
-                return &m_hndl;
-            }
-        }
-    }
+    static assert(false, "Platform not supported");
 }
 
-final class SyncValue(T)
+final class UncheckedMutex
 {
     this() nothrow @nogc
     {
-    }
-
-    this(T value) nothrow @nogc
-    {
-        _value = value;
+        version( Windows )
+        {
+            InitializeCriticalSection( &m_hndl );
+        }
+        else version( Posix )
+        {
+            pthread_mutexattr_t attr = void;
+            pthread_mutexattr_init( &attr );
+            pthread_mutexattr_settype( &attr, PTHREAD_MUTEX_RECURSIVE );
+            pthread_mutex_init( &m_hndl, &attr );
+        }
+        m_initialized = true;
     }
 
     ~this() nothrow @nogc
@@ -198,24 +59,78 @@ final class SyncValue(T)
 
     void close() nothrow @nogc
     {
-        mutex.close();
+        if (m_initialized)
+        {
+            m_initialized = false;
+            version( Windows )
+            {
+                DeleteCriticalSection( &m_hndl );
+            }
+            else version( Posix )
+            {
+                pthread_mutex_destroy( &m_hndl );
+            }
+        }
     }
 
-    void set(T newValue) nothrow @nogc
+    /// Lock mutex
+    final void lock() nothrow @nogc
     {
-        _mutex.lock();
-        scope(exit) _mutex.unlock();
-        _value = newValue;
+        version( Windows )
+        {
+            EnterCriticalSection( &m_hndl );
+        }
+        else version( Posix )
+        {
+            pthread_mutex_lock( &m_hndl );
+        }
     }
 
-    T get() nothrow @nogc
+    // undocumented function for internal use
+    final void unlock() nothrow @nogc
     {
-        _mutex.lock();
-        scope(exit) _mutex.unlock();
-        return _value;
+        version( Windows )
+        {
+            LeaveCriticalSection( &m_hndl );
+        }
+        else version( Posix )
+        {
+            pthread_mutex_unlock( &m_hndl );
+        }
     }
+
+    bool tryLock()
+    {
+        version( Windows )
+        {
+            return TryEnterCriticalSection( &m_hndl ) != 0;
+        }
+        else version( Posix )
+        {
+            return pthread_mutex_trylock( &m_hndl ) == 0;
+        }
+    }
+
 
 private:
-    UncheckedMutex mutex;
-    T _value = T.init;
+    version( Windows )
+    {
+        CRITICAL_SECTION    m_hndl;
+    }
+    else version( Posix )
+    {
+        pthread_mutex_t     m_hndl;
+    }
+
+    bool                    m_initialized;
+
+
+package:
+    version( Posix )
+    {
+        pthread_mutex_t* handleAddr()
+        {
+            return &m_hndl;
+        }
+    }
 }
