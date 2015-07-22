@@ -101,7 +101,7 @@ interface IWindowListener
     /// The size of this image is given before-hand by onResized.
     /// recomputeDirtyAreas() MUST have been called before.
     /// `swapRB` is true when it is expected rendering will swap red and blue channel.
-    void onDraw(ImageRef!RGBA wfb, bool swapRB);
+    void onDraw(ImageRef!RGB wfb, bool swapRB);
 
     /// The drawing area size has changed.    
     /// Always called at least once before onDraw.

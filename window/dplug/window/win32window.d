@@ -56,6 +56,8 @@ version(Windows)
     {
     public:
 
+        alias ImageRefRGB = ImageRef!(ae.utils.graphics.color.RGB);
+
         this(HWND parentWindow, IWindowListener listener, int width, int height)
         {
             _wndClass.style = CS_DBLCLKS | CS_OWNDC;
@@ -285,13 +287,13 @@ version(Windows)
                     {
                         bool sizeChanged = updateSizeIfNeeded();
 
-                        // TODO: check resize work
+                        // TODO: check if resize work
 
-                        ImageRef!RGBA wfb;
+                        ImageRefRGB wfb;
                         wfb.w = _width;
                         wfb.h = _height;
                         wfb.pitch = byteStride(_width);
-                        wfb.pixels = cast(RGBA*)_buffer;
+                        wfb.pixels = cast(ae.utils.graphics.color.RGB*)_buffer;
 
                         // For efficiency purpose, render in BGRA for Windows
                         bool swapRB = true;
@@ -336,7 +338,7 @@ version(Windows)
             }
         }
 
-        void swapBuffers(ImageRef!RGBA wfb, box2i[] areasToRedraw)
+        void swapBuffers(ImageRefRGB wfb, box2i[] areasToRedraw)
         {
             PAINTSTRUCT paintStruct;
             HDC hdc = BeginPaint(_hwnd, &paintStruct);
@@ -356,7 +358,7 @@ version(Windows)
                     biCompression = BI_RGB;
                     biXPelsPerMeter = 72;
                     biYPelsPerMeter = 72;
-                    biBitCount      = 32;
+                    biBitCount      = 24;
                     biSizeImage     = byteStride(_width) * _height;
                     SetDIBitsToDevice(hdc, area.min.x, area.min.y, area.width, area.height, 
                                       area.min.x, -area.min.y - area.height + _height, 0, _height, _buffer, cast(BITMAPINFO *)&bmi, DIB_RGB_COLORS);
@@ -463,7 +465,7 @@ version(Windows)
     int byteStride(int width)
     {
         enum alignment = 4;
-        int widthInBytes = width * 4;
+        int widthInBytes = width * 3;
         return (widthInBytes + (alignment - 1)) & ~(alignment-1);
     }
 
@@ -514,7 +516,7 @@ version(Windows)
             case VK_NUMPAD8: return Key.digit8;
             case VK_NUMPAD9: return Key.digit9;
             case VK_RETURN: return Key.enter;
-            case VK_ESCAPE: return Key.escape;                
+            case VK_ESCAPE: return Key.escape;
             default: return Key.unsupported;
         }
     }
