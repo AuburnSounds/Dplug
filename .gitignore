@@ -4,5 +4,12 @@ dub.selections.json
 *.sublime-project
 *.sublime-workspace
 *.a
-examples/just_windowing/just_windowing
 __test__library__
+*.lib
+*.exe
+*.visualdproj
+*.dll
+*.sln
+*.suo
+*.so
+examples/just_windowing/just_windowing
