@@ -41,13 +41,13 @@ class App : IWindowListener
     }
 
 
-    void onDraw(ImageRef!RGBA wfb, bool swapRB)
+    void onDraw(ImageRef!RGB wfb, bool swapRB)
     {
         writeln("onDraw");
         if (swapRB)
-            wfb.fill(RGBA(0, 0, 255, 255));
+            wfb.fill(RGB(0, 0, 255));
         else
-            wfb.fill(RGBA(255, 0, 0, 255));
+            wfb.fill(RGB(255, 0, 0));
     }
 
     void onResized(int width, int height)

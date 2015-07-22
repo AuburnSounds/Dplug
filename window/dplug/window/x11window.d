@@ -1,12 +1,33 @@
-/**
-* Copyright: Copyright Auburn Sounds 2015 and later.
-* License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
-* Authors:   Guillaume Piolat
-*/
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2014 Devisualization (Richard Andrew Cattermole)
+ * Copyright (c) 2015 Auburn Sounds (Guillaume Piolat)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 module dplug.window.x11window;
 
 import core.stdc.config;
 import core.stdc.stdlib;
+
+import std.algorithm;
 
 import ae.utils.graphics;
 
@@ -18,6 +39,8 @@ import dplug.window.window;
 private enum debugX11Window = true;   
 static if (debugX11Window)
     import std.stdio;
+
+version = SimpleWindow;    
 
 
 version(linux)
@@ -55,6 +78,7 @@ version(linux)
         int _windowDepth;
         int _screenNumber;
         GC _pixmapGC;
+        GC _gc;
         XImage* _bufferImage;
 
         XEvent _event;        
@@ -89,46 +113,31 @@ version(linux)
                 y = 0;                
             }
 
-            c_long eventMask = 
-                KeyPressMask |
-                KeyReleaseMask |
-      /*          ButtonPressMask,
-                ButtonReleaseMask,
-                EnterWindowMask,
-                LeaveWindowMask,
-                PointerMotionMask,
-                PointerMotionHintMask,
-                Button1MotionMask,
-                Button2MotionMask,
-                Button3MotionMask,
-                Button4MotionMask,
-                Button5MotionMask,
-                ButtonMotionMask,
-                KeymapStateMask, */
-                ExposureMask |
-/*                VisibilityChangeMask,
-                StructureNotifyMask,
-                ResizeRedirectMask,
-                SubstructureNotifyMask,
-                SubstructureRedirectMask,
-                FocusChangeMask,
-                PropertyChangeMask,
-                ColormapChangeMask,
-                OwnerGrabButtonMask*/
-                0 ;
-            
-
             auto black = BlackPixel(_display, _screenNumber);
+            auto white = WhitePixel(_display, _screenNumber);
 
-            _window = XCreateWindow(_display, 
-                                    parent, 
-                                    x, y, width, height, 
-                                    1, // border_width
-                                    CopyFromParent, // force a 32-bit window
-                                    InputOutput,
-                                    cast(Visual*)CopyFromParent,
-                                    0, // valuemask
-                                    null);
+            version(SimpleWindow)
+            {
+                _window = XCreateSimpleWindow(_display, parent, x, y, width, height, 1, black, white);
+            }
+            else
+            {
+                XSetWindowAttributes attribOrigin;
+                attribOrigin.override_redirect = False;
+                attribOrigin.background_pixmap = None;
+                attribOrigin.border_pixel = black;
+                attribOrigin.background_pixel = black;
+//CWColormap
+                _window = XCreateWindow(_display, 
+                                        parent, 
+                                        x, y, width, height, 
+                                        0, // border_width
+                                        CopyFromParent,                       
+                                        InputOutput,
+                                        cast(Visual*)CopyFromParent,
+                                        CWOverrideRedirect | CWBackPixel | CWBorderPixel | CWBackPixmap, // valuemask
+                                        &attribOrigin);
+            }
 
             // cache window depth and visual
             XWindowAttributes attrib;
@@ -137,17 +146,48 @@ version(linux)
             _windowDepth = attrib.depth;
 
             static if (debugX11Window)
-                writefln("Create a window with depth %s", _windowDepth);
+                writefln("Created a window with depth %s", _windowDepth);
 
+            _pixmap = XCreatePixmap(_display, _window, width, height, 24);
+            _gc = DefaultGC(_display, _screenNumber);
+
+            XSetForeground(_display, _gc, white);
+            XFillRectangle(_display, _pixmap, _gc, 0, 0, width, height);
+            XSetForeground(_display, _gc, black);
+
+            // Set non resizeable
+            {
+                XSizeHints hints;
+                hints.min_width = width;
+                hints.min_height = height;
+                hints.max_width = width;
+                hints.max_height = height;
+                hints.flags = PMaxSize | PMinSize;
+                XSetWMNormalHints(_display, _window, &hints);
+            }
+
+            c_long eventMask = 
+                ExposureMask |
+                KeyPressMask |
+                KeyReleaseMask |
+                PropertyChangeMask |
+                FocusChangeMask |
+                StructureNotifyMask |
+                PointerMotionMask |
+                ButtonPressMask |
+                ButtonReleaseMask;
             XSelectInput(_display, _window, eventMask);
             XMapWindow(_display, _window);
+
+            _width = width;
+            _height = height;
             
-            XFlush(_display); // Flush all pending requests to the X server.
+        //    XFlush(_display); // Flush all pending requests to the X server.
 
             _initialized = true;
 
-            static if (debugX11Window)
-                XSynchronize(_display, true);
+          //  static if (debugX11Window)
+          //      XSynchronize(_display, true);
         }
 
         ~this()
@@ -160,7 +200,7 @@ version(linux)
             if (_initialized)
             {
                 _initialized = false;
-                XFreeGC(_display, _pixmapGC);
+                //XFreeGC(_display, _pixmapGC);
                 XFreePixmap(_display, _pixmap);
                 XDestroyImage(_bufferImage);                
                 XDestroyWindow(_display, _window);
@@ -219,6 +259,15 @@ version(linux)
                     handleXKeyEvent(&event.xkey, true);
                     break;
 
+                case ConfigureNotify:
+                    handleXConfigureEvent(&event.xconfigure);
+                    break;
+
+                case DestroyNotify:
+                    writeln("DestroyNotify");
+                    close();
+                    break;
+
                 default:
                   // ignore
             }
@@ -226,6 +275,9 @@ version(linux)
 
         void handleXKeyEvent(XKeyEvent* event, bool release)
         {
+            if (event.window != _window)
+                return;
+
             if (release)
                 _listener.onKeyUp(translateToKey(event));
             else   
@@ -262,23 +314,36 @@ version(linux)
             }
         }
 
+        void handleXConfigureEvent(XConfigureEvent* event)
+        {
+            if (event.window != _window)
+                return;
+
+            int newWidth = event.width;
+            int newHeight = event.height;
+
+            updateSizeIfNeeded(newWidth, newHeight);
+        }
+
         void handleXExposeEvent(XExposeEvent* event)
         {
-            // Get window size
-            updateSizeIfNeeded();
+            if (event.window != _window)
+                return;
 
-            ImageRef!RGBA wfb;
+            ImageRef!RGB wfb;
             wfb.w = _width;
             wfb.h = _height;
             wfb.pitch = byteStride(_width);
-            wfb.pixels = cast(RGBA*)_buffer;
+            wfb.pixels = cast(RGB*)_buffer;
 
             bool swapRB = false;
             _listener.onDraw(wfb, swapRB);
 
+            XCopyArea(_display, _pixmap, _window, _gc, event.x, event.y, event.width, event.height, event.x, event.y);
+/*
             box2i areaToRedraw = box2i(0, 0, _width, _height);                        
             box2i[] areasToRedraw = (&areaToRedraw)[0..1];
-            swapBuffers(wfb, areasToRedraw);
+            swapBuffers(wfb, areasToRedraw);*/
         }
 
         // given a width, how long in bytes should scanlines be
@@ -291,44 +356,63 @@ version(linux)
         import std.stdio;
 
         /// Returns: true if window size changed.
-        bool updateSizeIfNeeded()
+        bool updateSizeIfNeeded(int newWidth, int newHeight)
         {
-            XWindowAttributes attrib;
-            getWindowAttributes(&attrib);
-
-            int newWidth = attrib.width;
-            int newHeight = attrib.height;
-
             // only do something if the client size has changed
             if (newWidth != _width || newHeight != _height)
             {
                 // Extends buffer
                 if (_buffer != null)
                 {                    
-                    XFreeGC(_display, _pixmapGC);
+                    //XFreeGC(_display, _pixmapGC);
                     XFreePixmap(_display, _pixmap);
                     XDestroyImage(_bufferImage); // calls free on _buffer
 
                     _buffer = null;
                 }
 
-                size_t sizeNeeded = byteStride(newWidth) * newHeight;
-                _buffer = cast(ubyte*) malloc(sizeNeeded);                
+//                size_t sizeNeeded = byteStride(newWidth) * newHeight;
+//                _buffer = cast(ubyte*) malloc(sizeNeeded);
+
+                // resize the internal pixmap
+                auto newPixmap = XCreatePixmap(_display, _window, newWidth, newHeight, 24);            
+                XFillRectangle(_display, newPixmap, _gc, 0, 0, newWidth, newHeight);
+                XCopyArea(_display, _pixmap, newPixmap, _gc, 0, 0, std.algorithm.min(newWidth, _width), std.algorithm.min(newHeight, _height), 0, 0);
+                XFreePixmap(_display, _pixmap);
+                _pixmap = newPixmap;
+
+
+/*
+                _pixmap = XCreatePixmap(_display, _window, newWidth, newHeight, 24); 
+
 
                 _bufferImage = XCreateImage(_display, 
-                                            cast(Visual*) CopyFromParent,
-                                            32, 
+                    cast(Visual*)&_pixmap, 
+                    24, 
+                    XYPixmap, 
+                    0, 
+                    cast(char*)_buffer, 
+                    newWidth, 
+                    newHeight,
+                    32, byteStride(newWidth));
+*/
+
+             /*   _bufferImage = XCreateImage(_display, 
+                                            attrib.visual, // cast(Visual*) CopyFromParent,
+                                            24, 
                                             ZPixmap, 
                                             0,  // offset
                                             cast(char*)_buffer, 
                                             newWidth, 
                                             newHeight, 
                                             scanLineAlignment * 8,
-                                            byteStride(newWidth));
+                                            byteStride(newWidth));*/
 
-                _pixmap = XCreatePixmap(_display, XDefaultRootWindow(_display), newWidth, newHeight, 32);
+
+                //assert(_bufferImage !is null);
+                //   _pixmap = XCreatePixmap(_display, XDefaultRootWindow(_display), newWidth, newHeight, 24);
                 XGCValues gcvalues;
-                _pixmapGC = XCreateGC(_display, _pixmap, 0, &gcvalues);  // create a Graphic Context for the pixmap specifically
+                //   _pixmapGC = XCreateGC(_display, _pixmap, 0, &gcvalues);  // create a Graphic Context for the pixmap specifically
 
                 _width = newWidth;
                 _height = newHeight;
@@ -339,16 +423,27 @@ version(linux)
                 return false;
         }
 
-        void swapBuffers(ImageRef!RGBA wfb, box2i[] areasToRedraw)
+        void swapBuffers(ImageRef!RGB wfb, box2i[] areasToRedraw)
         {         
-            _buffer[0..wfb.w*wfb.h] = 0x7f;
             foreach(box2i area; areasToRedraw)
             {
                 int x = area.min.x;
                 int y = area.min.y;        
 
                 writeln(">1");
-                XPutImage(_display, _window, _pixmapGC, _bufferImage, x, y, x, y, area.width, area.height);
+
+                //_bufferImage
+                //XPutImage(_display, _pixmap, _pixmapGC, _bufferImage, x, y, x, y, area.width, area.height);
+
+                writeln(_display);
+                writeln(_window);
+                writeln(_bufferImage);
+                
+                XPutImage(_display, _window, DefaultGC(_display, 0), _bufferImage, 
+                          0, 0, 0, 0, _width, _height);
+                writeln(">2");
+                XSetWindowBackgroundPixmap(_display, _window, _pixmap);
+                //XPutImage(_display, _window, DefaultGC(_display, _screenNumber), _bufferImage, x, y, x, y, area.width, area.height);
                 writeln(">2");
             }
             XSync(_display, False);           
