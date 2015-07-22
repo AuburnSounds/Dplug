@@ -27,6 +27,10 @@ version(linux)
     import x11.Xlib;
     import x11.keysymdef;
 
+    // Important reads: 
+    // http://stackoverflow.com/questions/10492275/how-to-upload-32-bit-image-to-server-side-pixmap
+    // http://stackoverflow.com/questions/3645632/how-to-create-a-window-with-a-bit-depth-of-32
+
     final class X11Window : IWindow
     {
     private:             
@@ -46,9 +50,11 @@ version(linux)
         Display* _display;
         Screen* _screen;  
         Visual* _visual;
+        Pixmap _pixmap;
+
         int _windowDepth;
         int _screenNumber;
-        GC _gc;
+        GC _pixmapGC;
         XImage* _bufferImage;
 
         XEvent _event;        
@@ -136,8 +142,6 @@ version(linux)
             XSelectInput(_display, _window, eventMask);
             XMapWindow(_display, _window);
             
-            _gc = XCreateGC(_display, _window, 0, null);  // create the Graphics Context
-
             XFlush(_display); // Flush all pending requests to the X server.
 
             _initialized = true;
@@ -156,7 +160,8 @@ version(linux)
             if (_initialized)
             {
                 _initialized = false;
-                XFreeGC(_display, _gc);
+                XFreeGC(_display, _pixmapGC);
+                XFreePixmap(_display, _pixmap);
                 XDestroyImage(_bufferImage);                
                 XDestroyWindow(_display, _window);
                 XCloseDisplay(_display); 
@@ -279,9 +284,11 @@ version(linux)
         // given a width, how long in bytes should scanlines be
         int byteStride(int width)
         {
-            int widthInBytes = width * 3;
+            int widthInBytes = width * 4;
             return (widthInBytes + (scanLineAlignment - 1)) & ~(scanLineAlignment-1);
         }
+
+        import std.stdio;
 
         /// Returns: true if window size changed.
         bool updateSizeIfNeeded()
@@ -297,10 +304,11 @@ version(linux)
             {
                 // Extends buffer
                 if (_buffer != null)
-                {
-                    // calls free on _buffer
-                    XDestroyImage(_bufferImage);
-                    //free(_buffer);
+                {                    
+                    XFreeGC(_display, _pixmapGC);
+                    XFreePixmap(_display, _pixmap);
+                    XDestroyImage(_bufferImage); // calls free on _buffer
+
                     _buffer = null;
                 }
 
@@ -308,19 +316,23 @@ version(linux)
                 _buffer = cast(ubyte*) malloc(sizeNeeded);                
 
                 _bufferImage = XCreateImage(_display, 
-                                            attrib.visual,
-                                            24, 
+                                            cast(Visual*) CopyFromParent,
+                                            32, 
                                             ZPixmap, 
                                             0,  // offset
                                             cast(char*)_buffer, 
-                                            _width, 
-                                            _height, 
+                                            newWidth, 
+                                            newHeight, 
                                             scanLineAlignment * 8,
                                             byteStride(newWidth));
+
+                _pixmap = XCreatePixmap(_display, XDefaultRootWindow(_display), newWidth, newHeight, 32);
+                XGCValues gcvalues;
+                _pixmapGC = XCreateGC(_display, _pixmap, 0, &gcvalues);  // create a Graphic Context for the pixmap specifically
+
                 _width = newWidth;
                 _height = newHeight;
                 _listener.onResized(_width, _height);
-
                 return true;
             }
             else
@@ -335,12 +347,9 @@ version(linux)
                 int x = area.min.x;
                 int y = area.min.y;        
 
-          /*      for (int j = 0; j < area.height; ++j)
-                    for (int i = 0; j < area.width; ++i)
-                        XPutPixel(_bufferImage, i, j, i * 456051547 * j* 4564651 + 40);
-*/
-
-                XPutImage(_display, _window, _gc, _bufferImage, x, y, x, y, area.width, area.height);
+                writeln(">1");
+                XPutImage(_display, _window, _pixmapGC, _bufferImage, x, y, x, y, area.width, area.height);
+                writeln(">2");
             }
             XSync(_display, False);           
         }
