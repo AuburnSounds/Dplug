@@ -361,54 +361,53 @@ version(linux)
                 throw new Exception("XGetWindowAttributes failed");
         }
     }
-}
 
-
-private
-{
-
-    extern(C) int x11ErrorHandler(Display* display, XErrorEvent* errorEvent) nothrow
+    private
     {
-        try
-        {
-            import std.stdio;
-            writefln("Received X11 Error:");
-            writefln(" - error_code = %s", errorCodeString(errorEvent.error_code));
-            writefln(" - request_code = %s", errorEvent.request_code);
-            writefln(" - minor_code = %s", errorEvent.minor_code);
-            writefln(" - serial = %s", errorEvent.serial);
-        }
-        catch(Exception e)
-        {
-            // Not supposed to happen
-        }
-        return 0;
-    }
 
-    string errorCodeString(ubyte error_code)
-    {
-        switch(error_code)
+        extern(C) int x11ErrorHandler(Display* display, XErrorEvent* errorEvent) nothrow
         {
-            case XErrorCode.Success: return "Success";
-            case XErrorCode.BadRequest: return "BadRequest";
-            case XErrorCode.BadValue: return "BadValue";
-            case XErrorCode.BadWindow: return "BadWindow";
-            case XErrorCode.BadPixmap: return "BadPixmap";
-            case XErrorCode.BadAtom: return "BadAtom";
-            case XErrorCode.BadCursor: return "BadCursor";
-            case XErrorCode.BadFont: return "BadFont";
-            case XErrorCode.BadMatch: return "BadMatch";
-            case XErrorCode.BadDrawable: return "BadDrawable";
-            case XErrorCode.BadAccess: return "BadAccess";
-            case XErrorCode.BadAlloc: return "BadAlloc";
-            case XErrorCode.BadColor: return "BadColor";
-            case XErrorCode.BadGC: return "BadGC";
-            case XErrorCode.BadIDChoice: return "BadIDChoice";
-            case XErrorCode.BadName: return "BadName";
-            case XErrorCode.BadLength: return "BadLength";
-            case XErrorCode.BadImplementation: return "BadImplementation";
-            default:
-                return "Unknown error_code";
+            try
+            {
+                import std.stdio;
+                writefln("Received X11 Error:");
+                writefln(" - error_code = %s", errorCodeString(errorEvent.error_code));
+                writefln(" - request_code = %s", errorEvent.request_code);
+                writefln(" - minor_code = %s", errorEvent.minor_code);
+                writefln(" - serial = %s", errorEvent.serial);
+            }
+            catch(Exception e)
+            {
+                // Not supposed to happen
+            }
+            return 0;
+        }
+
+        string errorCodeString(ubyte error_code)
+        {
+            switch(error_code)
+            {
+                case XErrorCode.Success: return "Success";
+                case XErrorCode.BadRequest: return "BadRequest";
+                case XErrorCode.BadValue: return "BadValue";
+                case XErrorCode.BadWindow: return "BadWindow";
+                case XErrorCode.BadPixmap: return "BadPixmap";
+                case XErrorCode.BadAtom: return "BadAtom";
+                case XErrorCode.BadCursor: return "BadCursor";
+                case XErrorCode.BadFont: return "BadFont";
+                case XErrorCode.BadMatch: return "BadMatch";
+                case XErrorCode.BadDrawable: return "BadDrawable";
+                case XErrorCode.BadAccess: return "BadAccess";
+                case XErrorCode.BadAlloc: return "BadAlloc";
+                case XErrorCode.BadColor: return "BadColor";
+                case XErrorCode.BadGC: return "BadGC";
+                case XErrorCode.BadIDChoice: return "BadIDChoice";
+                case XErrorCode.BadName: return "BadName";
+                case XErrorCode.BadLength: return "BadLength";
+                case XErrorCode.BadImplementation: return "BadImplementation";
+                default:
+                    return "Unknown error_code";
+            }
         }
     }
 }
