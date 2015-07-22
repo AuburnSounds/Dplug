@@ -6,6 +6,7 @@
 module dplug.window.x11window;
 
 import core.stdc.config;
+import core.stdc.stdlib;
 
 import ae.utils.graphics;
 
@@ -25,12 +26,24 @@ version(linux)
     {
     private:
         bool _terminated = false;
-        Display* _display;
-        Window _window;    
-        int _screenNumber;
-        Screen* _screen;    
+        bool _initialized = false;
+        
         IWindowListener _listener;
+        
+        int _width = 0;
+        int _height = 0;
+        ubyte* _buffer = null;
+
+        Window _window;    
+        Display* _display;
+        Screen* _screen;  
+        int _screenNumber;
+        GC _gc;
+        XImage* _bufferImage;
+
         XEvent _event;
+
+        enum scanLineAlignment = 4;
 
     public:
 
@@ -93,6 +106,14 @@ version(linux)
             _window = XCreateSimpleWindow(_display, parent, x, y, width, height, 1, black, black);
             XSelectInput(_display, _window, eventMask);
             XMapWindow(_display, _window);
+            
+            _gc = XCreateGC(_display, _window, 0, null);  // create the Graphics Context
+
+            XFlush(_display); // Flush all pending requests to the X server.
+
+            _initialized = true;
+
+            XSynchronize(_display, true);
         }
 
         ~this()
@@ -102,7 +123,14 @@ version(linux)
 
         void close()
         {
-            XCloseDisplay(_display);
+            if (_initialized)
+            {
+                _initialized = false;
+                XDestroyImage(_bufferImage);
+                XFreeGC(_display, _gc);
+                XDestroyWindow(_display, _window);
+                XCloseDisplay(_display); 
+            }
         }
         
         override void terminate()
@@ -198,7 +226,85 @@ version(linux)
 
         void handleXExposeEvent(XExposeEvent* event)
         {
-            XFillRectangle(_display, _window, DefaultGC(_display, _screenNumber), 20, 20, 10, 10);
+            // Get window size
+            updateSizeIfNeeded();
+
+            ImageRef!RGBA wfb;
+            wfb.w = _width;
+            wfb.h = _height;
+            wfb.pitch = byteStride(_width);
+            wfb.pixels = cast(RGBA*)_buffer;
+
+            bool swapRB = false;
+            _listener.onDraw(wfb, swapRB);
+
+            box2i areaToRedraw = box2i(0, 0, _width, _height);                        
+            box2i[] areasToRedraw = (&areaToRedraw)[0..1];
+            swapBuffers(wfb, areasToRedraw);
+        }
+
+        // given a width, how long in bytes should scanlines be
+        int byteStride(int width)
+        {
+            int widthInBytes = width * 4;
+            return (widthInBytes + (scanLineAlignment - 1)) & ~(scanLineAlignment-1);
+        }
+
+        /// Returns: true if window size changed.
+        bool updateSizeIfNeeded()
+        {
+            XWindowAttributes attrib;
+            Status status = XGetWindowAttributes(_display, _window, &attrib);
+            if (status == 0)
+                throw new Exception("XGetWindowAttributes failed");
+
+            int newWidth = attrib.width;
+            int newHeight = attrib.height;
+
+            // only do something if the client size has changed
+            if (newWidth != _width || newHeight != _height)
+            {
+                // Extends buffer
+                if (_buffer != null)
+                {
+                    // calls free on _buffer
+                    XDestroyImage(_bufferImage);
+                    //free(_buffer);
+                    _buffer = null;
+                }
+
+                size_t sizeNeeded = byteStride(newWidth) * newHeight;
+                _buffer = cast(ubyte*) malloc(sizeNeeded);                
+
+                _bufferImage = XCreateImage(_display, 
+                                            attrib.visual,
+                                            32, 
+                                            ZPixmap, 
+                                            0,  // offset
+                                            cast(char*)_buffer, 
+                                            _width, 
+                                            _height, 
+                                            scanLineAlignment * 8,
+                                            byteStride(newWidth));
+                _width = newWidth;
+                _height = newHeight;
+                _listener.onResized(_width, _height);
+
+                return true;
+            }
+            else
+                return false;
+        }
+
+        void swapBuffers(ImageRef!RGBA wfb, box2i[] areasToRedraw)
+        {         
+            foreach(box2i area; areasToRedraw)
+            {
+                int x = area.min.x;
+                int y = area.min.y;                
+                XPutImage(_display, _window, _gc, _bufferImage, x, y, x, y, area.width, area.height);
+            }
+            XSync(_display, False);           
         }
     }
 }
@@ -224,23 +330,6 @@ interface IWindowListener
     /// Called on mouse movement (might not be within the window)
     void onMouseMove(int x, int y, int dx, int dy, MouseState mstate);
 
-    /// Called on keyboard press.
-    /// Returns: true if the event was handled.
-    bool onKeyDown(Key key);
-
-    /// Called on keyboard release.
-    /// Returns: true if the event was handled.
-    bool onKeyUp(Key up);
-
-    /// An image you have to draw to, or return that nothing has changed.
-    /// The size of this image is given before-hand by onResized.
-    /// recomputeDirtyAreas() MUST have been called before.
-    /// `swapRB` is true when it is expected rendering will swap red and blue channel.
-    void onDraw(ImageRef!RGBA wfb, bool swapRB);
-
-    /// The drawing area size has changed.    
-    /// Always called at least once before onDraw.
-    void onResized(int width, int height);
 
     /// Recompute internally what needs be done for the next onDraw.
     /// This function MUST be called before calling `onDraw` and `getDirtyRectangle`.

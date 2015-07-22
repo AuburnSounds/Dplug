@@ -4,3 +4,5 @@ dub.selections.json
 *.sublime-project
 *.sublime-workspace
 *.a
+examples/just_windowing/just_windowing
+__test__library__
