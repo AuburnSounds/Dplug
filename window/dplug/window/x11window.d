@@ -26,11 +26,13 @@ version(linux)
         Display* _display;
         Window _window;    
         int _screen;    
+        IWindowListener _listener;
 
     public:
 
         this(void* parentWindow, IWindowListener listener, int width, int height)
         {
+            _listener = listener;
             _display = XOpenDisplay(null);
             if (_display is null)
                 throw new Exception("Cannot open display");
@@ -57,7 +59,6 @@ version(linux)
         {
             close();
         }
-
         
         // Implements IWindow
         override void waitEventAndDispatch()
@@ -84,12 +85,11 @@ version(linux)
         }
 
         override uint getTimeMs()
-        {
-            // TODO
-            return 0;
+        {            
+            import core.sys.posix.time;
+            timespec time;
+            clock_gettime(CLOCK_REALTIME, &time);
+            return cast(uint)(time.tv_sec * 1000 + time.tv_nsec / 1_000_000);
         }
     }
-
-    
-
 }
