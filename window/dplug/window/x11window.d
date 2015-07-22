@@ -15,6 +15,11 @@ import gfm.math;
 import dplug.window.window;
 
 
+private enum debugX11Window = true;   
+static if (debugX11Window)
+    import std.stdio;
+
+
 version(linux)
 {
     import x11.X;
@@ -24,7 +29,10 @@ version(linux)
 
     final class X11Window : IWindow
     {
-    private:
+    private:             
+
+        enum scanLineAlignment = 4; // could be 1, 2 or 4
+
         bool _terminated = false;
         bool _initialized = false;
         
@@ -37,18 +45,21 @@ version(linux)
         Window _window;    
         Display* _display;
         Screen* _screen;  
+        Visual* _visual;
+        int _windowDepth;
         int _screenNumber;
         GC _gc;
         XImage* _bufferImage;
 
-        XEvent _event;
-
-        enum scanLineAlignment = 4;
+        XEvent _event;        
 
     public:
 
         this(void* parentWindow, IWindowListener listener, int width, int height)
         {
+            static if (debugX11Window)
+                XSetErrorHandler(&x11ErrorHandler);
+
             _listener = listener;
             _display = XOpenDisplay(null);
             if (_display is null)
@@ -61,15 +72,15 @@ version(linux)
             int x, y;
             if (parentWindow is null)
             {
-                x = 0;
-                y = 0;
+                x = (WidthOfScreen(_screen) - width) / 2;
+                y = (HeightOfScreen(_screen) - height) / 2;                
                 parent = RootWindow(_display, _screenNumber);
             }
             else
             {
                 parent = cast(Window)(parentWindow);
-                x = (WidthOfScreen(_screen) - width) / 2;
-                y = (HeightOfScreen(_screen) - height) / 2;
+                x = 0;
+                y = 0;                
             }
 
             c_long eventMask = 
@@ -103,7 +114,25 @@ version(linux)
 
             auto black = BlackPixel(_display, _screenNumber);
 
-            _window = XCreateSimpleWindow(_display, parent, x, y, width, height, 1, black, black);
+            _window = XCreateWindow(_display, 
+                                    parent, 
+                                    x, y, width, height, 
+                                    1, // border_width
+                                    CopyFromParent, // force a 32-bit window
+                                    InputOutput,
+                                    cast(Visual*)CopyFromParent,
+                                    0, // valuemask
+                                    null);
+
+            // cache window depth and visual
+            XWindowAttributes attrib;
+            getWindowAttributes(&attrib);
+            _visual = attrib.visual;
+            _windowDepth = attrib.depth;
+
+            static if (debugX11Window)
+                writefln("Create a window with depth %s", _windowDepth);
+
             XSelectInput(_display, _window, eventMask);
             XMapWindow(_display, _window);
             
@@ -113,7 +142,8 @@ version(linux)
 
             _initialized = true;
 
-            XSynchronize(_display, true);
+            static if (debugX11Window)
+                XSynchronize(_display, true);
         }
 
         ~this()
@@ -126,8 +156,8 @@ version(linux)
             if (_initialized)
             {
                 _initialized = false;
-                XDestroyImage(_bufferImage);
                 XFreeGC(_display, _gc);
+                XDestroyImage(_bufferImage);                
                 XDestroyWindow(_display, _window);
                 XCloseDisplay(_display); 
             }
@@ -141,8 +171,11 @@ version(linux)
         // Implements IWindow
         override void waitEventAndDispatch()
         {
-            XNextEvent(_display, &_event);
-            dispatchEvent(&_event);
+            while (XPending(_display))
+            {
+                XNextEvent(_display, &_event);
+                dispatchEvent(&_event);
+            }
         }
 
         override bool terminated()
@@ -246,7 +279,7 @@ version(linux)
         // given a width, how long in bytes should scanlines be
         int byteStride(int width)
         {
-            int widthInBytes = width * 4;
+            int widthInBytes = width * 3;
             return (widthInBytes + (scanLineAlignment - 1)) & ~(scanLineAlignment-1);
         }
 
@@ -254,9 +287,7 @@ version(linux)
         bool updateSizeIfNeeded()
         {
             XWindowAttributes attrib;
-            Status status = XGetWindowAttributes(_display, _window, &attrib);
-            if (status == 0)
-                throw new Exception("XGetWindowAttributes failed");
+            getWindowAttributes(&attrib);
 
             int newWidth = attrib.width;
             int newHeight = attrib.height;
@@ -278,7 +309,7 @@ version(linux)
 
                 _bufferImage = XCreateImage(_display, 
                                             attrib.visual,
-                                            32, 
+                                            24, 
                                             ZPixmap, 
                                             0,  // offset
                                             cast(char*)_buffer, 
@@ -298,13 +329,77 @@ version(linux)
 
         void swapBuffers(ImageRef!RGBA wfb, box2i[] areasToRedraw)
         {         
+            _buffer[0..wfb.w*wfb.h] = 0x7f;
             foreach(box2i area; areasToRedraw)
             {
                 int x = area.min.x;
-                int y = area.min.y;                
+                int y = area.min.y;        
+
+          /*      for (int j = 0; j < area.height; ++j)
+                    for (int i = 0; j < area.width; ++i)
+                        XPutPixel(_bufferImage, i, j, i * 456051547 * j* 4564651 + 40);
+*/
+
                 XPutImage(_display, _window, _gc, _bufferImage, x, y, x, y, area.width, area.height);
             }
             XSync(_display, False);           
+        }
+
+        void getWindowAttributes(XWindowAttributes* attrib)
+        {
+            Status status = XGetWindowAttributes(_display, _window, attrib);
+            if (status == 0)
+                throw new Exception("XGetWindowAttributes failed");
+        }
+    }
+}
+
+
+private
+{
+
+    extern(C) int x11ErrorHandler(Display* display, XErrorEvent* errorEvent) nothrow
+    {
+        try
+        {
+            import std.stdio;
+            writefln("Received X11 Error:");
+            writefln(" - error_code = %s", errorCodeString(errorEvent.error_code));
+            writefln(" - request_code = %s", errorEvent.request_code);
+            writefln(" - minor_code = %s", errorEvent.minor_code);
+            writefln(" - serial = %s", errorEvent.serial);
+        }
+        catch(Exception e)
+        {
+            // Not supposed to happen
+        }
+        return 0;
+    }
+
+    string errorCodeString(ubyte error_code)
+    {
+        switch(error_code)
+        {
+            case XErrorCode.Success: return "Success";
+            case XErrorCode.BadRequest: return "BadRequest";
+            case XErrorCode.BadValue: return "BadValue";
+            case XErrorCode.BadWindow: return "BadWindow";
+            case XErrorCode.BadPixmap: return "BadPixmap";
+            case XErrorCode.BadAtom: return "BadAtom";
+            case XErrorCode.BadCursor: return "BadCursor";
+            case XErrorCode.BadFont: return "BadFont";
+            case XErrorCode.BadMatch: return "BadMatch";
+            case XErrorCode.BadDrawable: return "BadDrawable";
+            case XErrorCode.BadAccess: return "BadAccess";
+            case XErrorCode.BadAlloc: return "BadAlloc";
+            case XErrorCode.BadColor: return "BadColor";
+            case XErrorCode.BadGC: return "BadGC";
+            case XErrorCode.BadIDChoice: return "BadIDChoice";
+            case XErrorCode.BadName: return "BadName";
+            case XErrorCode.BadLength: return "BadLength";
+            case XErrorCode.BadImplementation: return "BadImplementation";
+            default:
+                return "Unknown error_code";
         }
     }
 }
@@ -341,9 +436,6 @@ interface IWindowListener
     ///          Empty box if nothing to update.
     /// recomputeDirtyAreas() MUST have been called before.
     box2i getDirtyRectangle();
-
-    /// Returns: true if a control must be redrawn.
-    bool isUIDirty();
 
     /// Called whenever mouse capture was canceled (ALT + TAB, SetForegroundWindow...)
     void onMouseCaptureCancelled();

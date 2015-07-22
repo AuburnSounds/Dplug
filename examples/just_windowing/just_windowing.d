@@ -4,6 +4,7 @@
 * Authors:   Guillaume Piolat
 */
 import std.typecons;
+import std.stdio;
 
 import ae.utils.graphics;
 import dplug.window;
@@ -42,6 +43,7 @@ class App : IWindowListener
 
     void onDraw(ImageRef!RGBA wfb, bool swapRB)
     {
+        writeln("onDraw");
         if (swapRB)
             wfb.fill(RGBA(0, 0, 255, 255));
         else
@@ -100,6 +102,7 @@ class App : IWindowListener
 
     override bool onKeyDown(Key key)
     {
+        writeln("onKeyDown");
         if (key == Key.escape)
         {
             window.terminate();
@@ -110,6 +113,7 @@ class App : IWindowListener
 
     override bool onKeyUp(Key up)
     {
+        writeln("onKeyUp");
         return false;
     }
 }
