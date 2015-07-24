@@ -1,27 +1,8 @@
-/*
- * The MIT License (MIT)
- *
- * Copyright (c) 2014 Devisualization (Richard Andrew Cattermole)
- * Copyright (c) 2015 Auburn Sounds (Guillaume Piolat)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
+/**
+* Copyright: Copyright Auburn Sounds 2015 and later.
+* License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
+* Authors:   Guillaume Piolat
+*/
 module dplug.window.x11window;
 
 import core.stdc.config;
@@ -127,7 +108,7 @@ version(linux)
                 attribOrigin.background_pixmap = None;
                 attribOrigin.border_pixel = black;
                 attribOrigin.background_pixel = black;
-//CWColormap
+
                 _window = XCreateWindow(_display, 
                                         parent, 
                                         x, y, width, height, 
@@ -179,8 +160,8 @@ version(linux)
             XSelectInput(_display, _window, eventMask);
             XMapWindow(_display, _window);
 
-            _width = width;
-            _height = height;
+            _width = 0;//width;
+            _height = 0;//height;
             
         //    XFlush(_display); // Flush all pending requests to the X server.
 
@@ -200,7 +181,7 @@ version(linux)
             if (_initialized)
             {
                 _initialized = false;
-                //XFreeGC(_display, _pixmapGC);
+                XFreeGC(_display, _pixmapGC);
                 XFreePixmap(_display, _pixmap);
                 XDestroyImage(_bufferImage);                
                 XDestroyWindow(_display, _window);
@@ -315,7 +296,7 @@ version(linux)
         }
 
         void handleXConfigureEvent(XConfigureEvent* event)
-        {
+        {            
             if (event.window != _window)
                 return;
 
@@ -336,14 +317,13 @@ version(linux)
             wfb.pitch = byteStride(_width);
             wfb.pixels = cast(RGB*)_buffer;
 
+            writefln("w = %s h = %s pitch = %s", wfb.w, wfb.h, wfb.pitch);
+
             bool swapRB = false;
             _listener.onDraw(wfb, swapRB);
 
-            XCopyArea(_display, _pixmap, _window, _gc, event.x, event.y, event.width, event.height, event.x, event.y);
-/*
-            box2i areaToRedraw = box2i(0, 0, _width, _height);                        
-            box2i[] areasToRedraw = (&areaToRedraw)[0..1];
-            swapBuffers(wfb, areasToRedraw);*/
+            box2i areaToRedraw = box2i(event.x, event.y, event.width, event.height);
+            swapBuffers(wfb, areaToRedraw);
         }
 
         // given a width, how long in bytes should scanlines be
@@ -364,41 +344,21 @@ version(linux)
                 // Extends buffer
                 if (_buffer != null)
                 {                    
-                    //XFreeGC(_display, _pixmapGC);
+                    XFreeGC(_display, _pixmapGC);
                     XFreePixmap(_display, _pixmap);
                     XDestroyImage(_bufferImage); // calls free on _buffer
 
                     _buffer = null;
                 }
 
-//                size_t sizeNeeded = byteStride(newWidth) * newHeight;
-//                _buffer = cast(ubyte*) malloc(sizeNeeded);
+                size_t sizeNeeded = byteStride(newWidth) * newHeight;
+                 _buffer = cast(ubyte*) malloc(sizeNeeded);
 
                 // resize the internal pixmap
-                auto newPixmap = XCreatePixmap(_display, _window, newWidth, newHeight, 24);            
-                XFillRectangle(_display, newPixmap, _gc, 0, 0, newWidth, newHeight);
-                XCopyArea(_display, _pixmap, newPixmap, _gc, 0, 0, std.algorithm.min(newWidth, _width), std.algorithm.min(newHeight, _height), 0, 0);
-                XFreePixmap(_display, _pixmap);
-                _pixmap = newPixmap;
-
-
-/*
-                _pixmap = XCreatePixmap(_display, _window, newWidth, newHeight, 24); 
-
-
+                _pixmap = XCreatePixmap(_display, _window, newWidth, newHeight, 24);            
+              
                 _bufferImage = XCreateImage(_display, 
-                    cast(Visual*)&_pixmap, 
-                    24, 
-                    XYPixmap, 
-                    0, 
-                    cast(char*)_buffer, 
-                    newWidth, 
-                    newHeight,
-                    32, byteStride(newWidth));
-*/
-
-             /*   _bufferImage = XCreateImage(_display, 
-                                            attrib.visual, // cast(Visual*) CopyFromParent,
+                                            cast(Visual*) CopyFromParent,
                                             24, 
                                             ZPixmap, 
                                             0,  // offset
@@ -406,13 +366,9 @@ version(linux)
                                             newWidth, 
                                             newHeight, 
                                             scanLineAlignment * 8,
-                                            byteStride(newWidth));*/
+                                            byteStride(newWidth));
 
-
-                //assert(_bufferImage !is null);
-                //   _pixmap = XCreatePixmap(_display, XDefaultRootWindow(_display), newWidth, newHeight, 24);
-                XGCValues gcvalues;
-                //   _pixmapGC = XCreateGC(_display, _pixmap, 0, &gcvalues);  // create a Graphic Context for the pixmap specifically
+                _pixmapGC = XCreateGC(_display, _pixmap, 0, null); // create a Graphic Context for the pixmap specifically
 
                 _width = newWidth;
                 _height = newHeight;
@@ -423,29 +379,18 @@ version(linux)
                 return false;
         }
 
-        void swapBuffers(ImageRef!RGB wfb, box2i[] areasToRedraw)
-        {         
-            foreach(box2i area; areasToRedraw)
-            {
-                int x = area.min.x;
-                int y = area.min.y;        
+        void swapBuffers(ImageRef!RGB wfb, box2i area)
+        {   
+            int x = area.min.x;
+            int y = area.min.y;
+            int w = area.width;
+            int h = area.height;
 
-                writeln(">1");
+            XPutImage(_display, _pixmap, _pixmapGC, _bufferImage, x, y, x, y, w, h);
 
-                //_bufferImage
-                //XPutImage(_display, _pixmap, _pixmapGC, _bufferImage, x, y, x, y, area.width, area.height);
+            // copy pixmap to window
+            XCopyArea(_display, _pixmap, _window,_gc, x, y, w, h, x, y);
 
-                writeln(_display);
-                writeln(_window);
-                writeln(_bufferImage);
-                
-                XPutImage(_display, _window, DefaultGC(_display, 0), _bufferImage, 
-                          0, 0, 0, 0, _width, _height);
-                writeln(">2");
-                XSetWindowBackgroundPixmap(_display, _window, _pixmap);
-                //XPutImage(_display, _window, DefaultGC(_display, _screenNumber), _bufferImage, x, y, x, y, area.width, area.height);
-                writeln(">2");
-            }
             XSync(_display, False);           
         }
 

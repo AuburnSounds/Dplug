@@ -43,7 +43,6 @@ class App : IWindowListener
 
     void onDraw(ImageRef!RGB wfb, bool swapRB)
     {
-        writeln("onDraw");
         if (swapRB)
             wfb.fill(RGB(0, 0, 255));
         else
