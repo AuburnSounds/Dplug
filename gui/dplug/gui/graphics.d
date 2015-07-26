@@ -257,7 +257,7 @@ class GUIGraphics : UIElement, IGraphics
 
         // Redraw dirtied controls in depth and diffuse maps.
         // Update composited cache.
-        override void onDraw(ImageRef!RGB wfb, bool swapRB)
+        override void onDraw(ImageRef!RGBA wfb, bool swapRB)
         {
             renderElements();
 
@@ -450,7 +450,7 @@ protected:
     /// Compose lighting effects from depth and diffuse into a result.
     /// takes output image and non-overlapping areas as input
     /// Useful multithreading code.
-    void compositeGUI(ImageRef!RGB wfb, bool swapRB)
+    void compositeGUI(ImageRef!RGBA wfb, bool swapRB)
     {
         // Quick subjective testing indicates than somewhere between 16x16 and 32x32 have best performance
         enum tileWidth = 64;
@@ -523,7 +523,7 @@ protected:
     }
 
     /// Don't like this rendering? Feel free to override this method.
-    void compositeTile(ImageRef!RGB wfb, bool swapRB, box2i area)
+    void compositeTile(ImageRef!RGBA wfb, bool swapRB, box2i area)
     {
         int[5] line_index = void;
         ushort[5][5] depthPatch = void;
@@ -539,7 +539,7 @@ protected:
 
         for (int j = area.min.y; j < area.max.y; ++j)
         {
-            RGB* wfb_scan = wfb.scanline(j).ptr;
+            RGBA* wfb_scan = wfb.scanline(j).ptr;
 
             // clamp to existing lines
             
@@ -775,7 +775,7 @@ protected:
                 }
 
                 // write composited color
-                RGB finalColor = RGB(cast(ubyte)r, cast(ubyte)g, cast(ubyte)b);
+                RGBA finalColor = RGBA(cast(ubyte)r, cast(ubyte)g, cast(ubyte)b, 255);
 
                 wfb_scan[i] = finalColor;
             }
