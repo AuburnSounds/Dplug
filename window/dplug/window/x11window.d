@@ -240,6 +240,14 @@ version(linux)
                     handleXKeyEvent(&event.xkey, true);
                     break;
 
+                case ButtonPress:
+                    handleXButtonEvent(&event.xbutton, false);
+                    break;
+
+                case ButtonRelease:
+                    handleXButtonEvent(&event.xbutton, true);
+                    break;
+
                 case ConfigureNotify:
                     handleXConfigureEvent(&event.xconfigure);
                     break;
@@ -248,6 +256,16 @@ version(linux)
                     writeln("DestroyNotify");
                     close();
                     break;
+
+/+
+    
+
+    /// Called on mouse wheel movement
+    /// Returns: true if the event was handled.
+    bool onMouseWheel(int x, int y, int wheelDeltaX, int wheelDeltaY, MouseState mstate);
+
+    /// Called on mouse movement (might not be within the window)
+    void onMouseMove(int x, int y, int dx, int dy, MouseState mstate);+/
 
                 default:
                   // ignore
@@ -293,6 +311,51 @@ version(linux)
                 default:
                     return Key.unsupported;
             }
+        }
+
+        void handleXButtonEvent(XButtonEvent* event, bool release)
+        {
+            if (event.window != _window)
+                return;
+
+            if (event.button < 1 || event.button > 5)
+                return; // unknown mouse button
+
+            MouseButton mb = toMouseButton(event.button);
+            MouseState mstate = toMouseState(event.button);
+
+            if (release)
+                _listener.onMouseRelease(event.x, event.y, mb, mstate);
+            else
+                _listener.onMouseClick(event.x, event.y, mb, false, mstate);
+        }
+
+        static MouseButton toMouseButton(uint xbutton)
+        {
+            switch(xbutton)
+            { 
+                case Button1: return MouseButton.left;
+                case Button2: return MouseButton.right;
+                case Button3: return MouseButton.middle;
+                case Button4: return MouseButton.x1;
+                case Button5: return MouseButton.x2;
+                default:
+                    return MouseButton.left;
+            }
+        }
+
+        static MouseState toMouseState(uint state)
+        {
+            MouseState result;
+            if (state & Button1Mask) result.leftButtonDown = true;
+            if (state & Button2Mask) result.rightButtonDown = true;
+            if (state & Button3Mask) result.middleButtonDown = true;
+            if (state & Button4Mask) result.x1ButtonDown = true;
+            if (state & Button5Mask) result.x2ButtonDown = true;
+
+            // TODO alt, ctrl, shift
+
+            return result;
         }
 
         void handleXConfigureEvent(XConfigureEvent* event)
@@ -456,20 +519,7 @@ version(linux)
 // Receiving commands from a window
 interface IWindowListener
 {
-    /// Called on mouse click.
-    /// Returns: true if the event was handled.
-    bool onMouseClick(int x, int y, MouseButton mb, bool isDoubleClick, MouseState mstate);
 
-    /// Called on mouse button release
-    /// Returns: true if the event was handled.
-    bool onMouseRelease(int x, int y, MouseButton mb, MouseState mstate);
-
-    /// Called on mouse wheel movement
-    /// Returns: true if the event was handled.
-    bool onMouseWheel(int x, int y, int wheelDeltaX, int wheelDeltaY, MouseState mstate);
-
-    /// Called on mouse movement (might not be within the window)
-    void onMouseMove(int x, int y, int dx, int dy, MouseState mstate);
 
 
     /// Recompute internally what needs be done for the next onDraw.

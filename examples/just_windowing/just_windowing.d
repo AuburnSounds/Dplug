@@ -82,11 +82,13 @@ class App : IWindowListener
 
     override bool onMouseClick(int x, int y, MouseButton mb, bool isDoubleClick, MouseState mstate)
     {
+        writefln("onMouseClick(%s, %s, %s, %s)", x, y, mb, isDoubleClick);
         return false;
     }
 
     override bool onMouseRelease(int x, int y, MouseButton mb, MouseState mstate)
     {
+        writefln("onMouseRelease(%s, %s, %s)", x, y, mb);
         return false;
     }
 
@@ -97,10 +99,12 @@ class App : IWindowListener
 
     override void onMouseMove(int x, int y, int dx, int dy, MouseState mstate)
     {
+        writefln("onMouseMove(%s, %s, %s, %s)", x, y, dx, dy);
     }
 
     override bool onKeyDown(Key key)
     {
+        writeln("onKeyDown");
         if (key == Key.escape)
         {
             window.terminate();
@@ -111,6 +115,7 @@ class App : IWindowListener
 
     override bool onKeyUp(Key up)
     {
+        writeln("onKeyUp");
         return false;
     }
 }
