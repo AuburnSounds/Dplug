@@ -46,6 +46,7 @@ template VSTEntryPoint(alias ClientClass)
         "       return null;"
         "   try"
         "   {"
+        "       import core.thread;"
         "       thread_attachThis();" // Attach VSTPluginMain thread to runtime
         "       auto client = new " ~ ClientClass.stringof ~ "();"
         "       import gfm.core;"

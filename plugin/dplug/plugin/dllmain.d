@@ -62,5 +62,6 @@ else
 {
      template DLLEntryPoint()
      {
+        const char[] DLLEntryPoint = "";
      }
 }

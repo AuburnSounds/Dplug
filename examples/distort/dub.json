@@ -6,7 +6,7 @@
     "targetType": "dynamicLibrary",
     "stringImportPaths": ["fonts", "gfx"],
 
-    "sourceFiles": [
+    "sourceFiles-windows": [
         "./distort.def"
     ],
 
