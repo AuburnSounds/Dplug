@@ -41,12 +41,12 @@ class App : IWindowListener
     }
 
 
-    void onDraw(ImageRef!RGB wfb, bool swapRB)
+    void onDraw(ImageRef!RGBA wfb, bool swapRB)
     {
         if (swapRB)
-            wfb.fill(RGB(0, 0, 255));
+            wfb.fill(RGBA(0, 128, 255, 255));
         else
-            wfb.fill(RGB(255, 0, 0));
+            wfb.fill(RGBA(255, 128, 0, 255));
     }
 
     void onResized(int width, int height)
@@ -101,7 +101,6 @@ class App : IWindowListener
 
     override bool onKeyDown(Key key)
     {
-        writeln("onKeyDown");
         if (key == Key.escape)
         {
             window.terminate();
@@ -112,7 +111,6 @@ class App : IWindowListener
 
     override bool onKeyUp(Key up)
     {
-        writeln("onKeyUp");
         return false;
     }
 }

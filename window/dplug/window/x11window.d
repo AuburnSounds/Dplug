@@ -311,15 +311,13 @@ version(linux)
             if (event.window != _window)
                 return;
 
-            ImageRef!RGB wfb;
+            ImageRef!RGBA wfb;
             wfb.w = _width;
             wfb.h = _height;
             wfb.pitch = byteStride(_width);
-            wfb.pixels = cast(RGB*)_buffer;
+            wfb.pixels = cast(RGBA*)_buffer;
 
-            writefln("w = %s h = %s pitch = %s", wfb.w, wfb.h, wfb.pitch);
-
-            bool swapRB = false;
+            bool swapRB = true;
             _listener.onDraw(wfb, swapRB);
 
             box2i areaToRedraw = box2i(event.x, event.y, event.width, event.height);
@@ -379,7 +377,7 @@ version(linux)
                 return false;
         }
 
-        void swapBuffers(ImageRef!RGB wfb, box2i area)
+        void swapBuffers(ImageRef!RGBA wfb, box2i area)
         {   
             int x = area.min.x;
             int y = area.min.y;
