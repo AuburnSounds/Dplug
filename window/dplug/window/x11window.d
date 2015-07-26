@@ -50,6 +50,10 @@ version(linux)
         int _height = 0;
         ubyte* _buffer = null;
 
+        bool _firstMotionEvent = true;
+        int _lastMouseX;
+        int _lastMouseY;
+
         Window _window;    
         Display* _display;
         Screen* _screen;  
@@ -252,8 +256,11 @@ version(linux)
                     handleXConfigureEvent(&event.xconfigure);
                     break;
 
+                case MotionNotify:
+                    handleXMotionEvent(&event.xmotion);
+                    break;
+
                 case DestroyNotify:
-                    writeln("DestroyNotify");
                     close();
                     break;
 
@@ -264,8 +271,8 @@ version(linux)
     /// Returns: true if the event was handled.
     bool onMouseWheel(int x, int y, int wheelDeltaX, int wheelDeltaY, MouseState mstate);
 
-    /// Called on mouse movement (might not be within the window)
-    void onMouseMove(int x, int y, int dx, int dy, MouseState mstate);+/
+    
+    +/
 
                 default:
                   // ignore
@@ -322,7 +329,7 @@ version(linux)
                 return; // unknown mouse button
 
             MouseButton mb = toMouseButton(event.button);
-            MouseState mstate = toMouseState(event.button);
+            MouseState mstate = toMouseState(event.state);
 
             if (release)
                 _listener.onMouseRelease(event.x, event.y, mb, mstate);
@@ -356,6 +363,25 @@ version(linux)
             // TODO alt, ctrl, shift
 
             return result;
+        }
+
+        void handleXMotionEvent(XMotionEvent* event)
+        {
+            if (event.window != _window)
+                return;
+
+            if (_firstMotionEvent)
+            {
+                _firstMotionEvent = false;
+                _lastMouseX = event.x;
+                _lastMouseY = event.y;
+            }
+
+            MouseState mstate = toMouseState(event.state);
+            _listener.onMouseMove(event.x, event.y, event.x - _lastMouseX, event.y - _lastMouseY, mstate);     
+
+            _lastMouseX = event.x;
+            _lastMouseY = event.y;
         }
 
         void handleXConfigureEvent(XConfigureEvent* event)
