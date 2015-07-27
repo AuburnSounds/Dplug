@@ -9,20 +9,48 @@ import dplug.window.window;
 
 
 version(darwin)
-{
+{    
     import derelict.cocoa;
+
+//    import core.sys.osx.mach.port;
+//    import core.sys.osx.mach.semaphore;
+
+    // clock declarations
+    extern(C) nothrow @nogc
+    {
+        ulong mach_absolute_time();
+        void absolutetime_to_nanoseconds(ulong abstime, ulong *result);
+    }
 
     final class CocoaWindow : IWindow
     {
     private:   
-        IWindowListener _listener;          
-        
+        IWindowListener _listener;
+        NSApplication _application;
+        NSWindow _window;        
+        bool _terminated = false;
 
     public:
 
         this(void* parentWindow, IWindowListener listener, int width, int height)
         {
             _listener = listener;         
+
+            DerelictCocoa.load();
+
+            _application = NSApplication.sharedApplication;
+            if (parentWindow is null)
+                _application.setActivationPolicy(NSApplicationActivationPolicyRegular);
+
+            _window = NSWindow.alloc();
+            _window.initWithContentRect(NSMakeRect(0, 0, width, height), 0/*NSBorderlessWindowMask*/, NSBackingStoreBuffered, NO);
+            _window.makeKeyAndOrderFront();
+
+            if (parentWindow is null)
+            {
+                _application.activateIgnoringOtherApps(YES);
+                _application.run();
+            }
         }
 
         ~this()
@@ -31,12 +59,12 @@ version(darwin)
         }
 
         void close()
-        {
-            
+        {            
         }
         
         override void terminate()
         {
+            _terminated = true;
             close();
         }
         
@@ -48,7 +76,7 @@ version(darwin)
 
         override bool terminated()
         {
-            return false;            
+            return _terminated;            
         }
 
         override void debugOutput(string s)
@@ -58,8 +86,13 @@ version(darwin)
         }
 
         override uint getTimeMs()
-        {            
-            return 0;
+        {
+            return 0; // TODO
+            /*
+            ulong nano = void;
+            absolutetime_to_nanoseconds(mach_absolute_time(), &nano);
+            return cast(uint)(nano / 1_000_000);
+            */
         }
     }
 }
