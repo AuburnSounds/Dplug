@@ -146,6 +146,13 @@ IWindow createWindow(void* parentInfo, IWindowListener listener, int width, int 
         import dplug.window.x11window;
         return new X11Window(parentInfo, listener, width, height);
     }
+    else version(darwin)
+    {
+        import dplug.window.cocoawindow;
+        return new CocoaWindow(parentInfo, listener, width, height);
+    }
     else
-        return null;
+    {
+        static assert(false, "Unsupported OS.");
+    }
 }
