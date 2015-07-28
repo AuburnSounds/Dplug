@@ -94,6 +94,7 @@ class App : IWindowListener
 
     override bool onMouseWheel(int x, int y, int wheelDeltaX, int wheelDeltaY, MouseState mstate)
     {
+        writefln("onMouseWheel(%s, %s, %s, %s)", x, y, wheelDeltaX, wheelDeltaY);
         return false;
     }
 
