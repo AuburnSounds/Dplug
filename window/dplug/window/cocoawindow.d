@@ -33,6 +33,10 @@ version(darwin)
         int _lastMouseX, _lastMouseY;
         bool _firstMouseMove = true;
 
+        int _width;
+        int _height;
+
+
     public:
 
         this(void* parentWindow, IWindowListener listener, int width, int height)
@@ -56,6 +60,9 @@ version(darwin)
                 _application.activateIgnoringOtherApps(YES);
                 _application.run();
             }*/
+
+            _width = width;
+            _height = height;
         }
 
         ~this()
@@ -173,6 +180,7 @@ version(darwin)
             NSPoint location = _window.mouseLocationOutsideOfEventStream();
             mouseX = cast(int)(0.5f + location.x);
             mouseY = cast(int)(0.5f + location.y);
+            mouseY = _height - mouseY;
         }
 
         MouseState getMouseState(NSEvent event)
