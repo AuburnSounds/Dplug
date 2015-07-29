@@ -65,3 +65,17 @@ else
         const char[] DLLEntryPoint = "";
      }
 }
+
+version(linux)
+{
+    import core.runtime;
+    shared static this()
+    {        
+        Runtime.initialize();
+    }
+
+    shared static ~this()
+    {
+        Runtime.terminate();
+    }
+}
