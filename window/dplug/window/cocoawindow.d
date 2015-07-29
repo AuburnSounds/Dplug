@@ -27,7 +27,7 @@ version(darwin)
     private:   
         IWindowListener _listener;
         NSApplication _application;
-        NSWindow _window;        
+        DPlugCustomWindow _window;        
         bool _terminated = false;
 
         int _lastMouseX, _lastMouseY;
@@ -35,6 +35,7 @@ version(darwin)
 
         int _width;
         int _height;
+
 
 
     public:
@@ -49,7 +50,9 @@ version(darwin)
             if (parentWindow is null)
                 _application.setActivationPolicy(NSApplicationActivationPolicyRegular);
 
-            _window = NSWindow.alloc();
+            DPlugCustomWindow.registerSubclass();
+
+            _window = DPlugCustomWindow.alloc();
             _window.initWithContentRect(NSMakeRect(0, 0, width, height), 0/*NSBorderlessWindowMask*/, NSBackingStoreBuffered, NO);
             _window.makeKeyAndOrderFront();
 
@@ -277,4 +280,54 @@ version(darwin)
                 _listener.onKeyUp(key);
         }
     }
+}
+
+class DPlugCustomWindow : NSWindow
+{
+public:
+    this(id id_)
+    {
+        super(id_);
+    }
+
+    mixin NSObjectTemplate!(DPlugCustomWindow, "DPlugCustomWindow");
+
+private:
+
+    static bool classRegistered = false;
+
+    static void registerSubclass()
+    {
+        if (classRegistered)
+            return;
+
+        Class clazz;
+        clazz = objc_allocateClassPair(cast(Class) lazyClass!"NSWindow", "DPlugCustomWindow", 0);
+        class_addMethod(clazz, sel!"keyDown:", cast(IMP) &keyDown, "v@:@");
+        class_addMethod(clazz, sel!"keyUp:", cast(IMP) &keyUp, "v@:@");
+        class_addMethod(clazz, sel!"acceptsFirstResponder", cast(IMP) &acceptsFirstResponder, "b@:");
+        objc_registerClassPair(clazz);
+
+        classRegistered = true;
+    }
+
+    extern(C) void keyDown(id eventId)
+    {
+        import std.stdio;
+        //writeln("keyDown");
+    }
+
+    extern(C) void keyUp(id eventId)
+    {
+        import std.stdio;
+//        writeln("keyUp");
+    }   
+
+    extern(C) bool acceptsFirstResponder()
+    {
+    //    import std.stdio;
+     //   writeln("acceptsFirstResponder");
+        return YES;
+    }
+
 }

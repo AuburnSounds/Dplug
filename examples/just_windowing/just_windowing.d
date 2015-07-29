@@ -8,15 +8,24 @@ import std.stdio;
 
 import ae.utils.graphics;
 import dplug.window;
+import derelict.cocoa;
 
 
 // Stand-alone program to test windowing alone.
 
 void main(string[] args)
 {
+    auto NSApp = NSApplication.sharedApplication;
+
+    NSApp.setActivationPolicy(NSApplicationActivationPolicyRegular);
+    NSApp.activateIgnoringOtherApps(YES);
+    NSApp.run();
+    
     auto app = scoped!App();
 
-    app.mainloop();
+    
+
+    //app.mainloop();
     
 }
 
