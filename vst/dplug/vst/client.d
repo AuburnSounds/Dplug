@@ -40,7 +40,16 @@ import dplug.vst.aeffectx;
 template VSTEntryPoint(alias ClientClass)
 {
     const char[] VSTEntryPoint =
-        "extern (C) nothrow AEffect* VSTPluginMain(HostCallbackFunction hostCallback) "
+        "extern(C) nothrow AEffect* VSTPluginMain(HostCallbackFunction hostCallback) "
+        "{"
+        "    return VSTEntryPoint(hostCallback);"
+        "}"
+        // has been found useful to have "main" for linux VST
+        "extern(C) nothrow AEffect* main(HostCallbackFunction hostCallback) "
+        "{"
+        "    return VSTEntryPoint(hostCallback);"
+        "}"
+        "nothrow AEffect* VSTEntryPoint(HostCallbackFunction hostCallback) "
         "{"
         "   if (hostCallback is null)"
         "       return null;"

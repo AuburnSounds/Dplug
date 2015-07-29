@@ -230,6 +230,9 @@ version(linux)
 
         void dispatchEvent(XEvent* event)
         {
+            if (event.xexpose.window == None)
+                return;
+
             switch (event.type)
             {
                 case Expose: 
