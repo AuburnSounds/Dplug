@@ -8,7 +8,7 @@ module dplug.window.cocoawindow;
 import dplug.window.window;
 
 
-version(darwin)
+version(OSX)
 {    
     import derelict.cocoa;
 
@@ -280,54 +280,54 @@ version(darwin)
                 _listener.onKeyUp(key);
         }
     }
-}
 
-class DPlugCustomWindow : NSWindow
-{
-public:
-    this(id id_)
+    class DPlugCustomWindow : NSWindow
     {
-        super(id_);
+    public:
+        this(id id_)
+        {
+            super(id_);
+        }
+
+        mixin NSObjectTemplate!(DPlugCustomWindow, "DPlugCustomWindow");
+
+    private:
+
+        static bool classRegistered = false;
+
+        static void registerSubclass()
+        {
+            if (classRegistered)
+                return;
+
+            Class clazz;
+            clazz = objc_allocateClassPair(cast(Class) lazyClass!"NSWindow", "DPlugCustomWindow", 0);
+            class_addMethod(clazz, sel!"keyDown:", cast(IMP) &keyDown, "v@:@");
+            class_addMethod(clazz, sel!"keyUp:", cast(IMP) &keyUp, "v@:@");
+            class_addMethod(clazz, sel!"acceptsFirstResponder", cast(IMP) &acceptsFirstResponder, "b@:");
+            objc_registerClassPair(clazz);
+
+            classRegistered = true;
+        }
+
+        extern(C) void keyDown(id eventId)
+        {
+            import std.stdio;
+            //writeln("keyDown");
+        }
+
+        extern(C) void keyUp(id eventId)
+        {
+            import std.stdio;
+    //        writeln("keyUp");
+        }   
+
+        extern(C) bool acceptsFirstResponder()
+        {
+        //    import std.stdio;
+         //   writeln("acceptsFirstResponder");
+            return YES;
+        }
+
     }
-
-    mixin NSObjectTemplate!(DPlugCustomWindow, "DPlugCustomWindow");
-
-private:
-
-    static bool classRegistered = false;
-
-    static void registerSubclass()
-    {
-        if (classRegistered)
-            return;
-
-        Class clazz;
-        clazz = objc_allocateClassPair(cast(Class) lazyClass!"NSWindow", "DPlugCustomWindow", 0);
-        class_addMethod(clazz, sel!"keyDown:", cast(IMP) &keyDown, "v@:@");
-        class_addMethod(clazz, sel!"keyUp:", cast(IMP) &keyUp, "v@:@");
-        class_addMethod(clazz, sel!"acceptsFirstResponder", cast(IMP) &acceptsFirstResponder, "b@:");
-        objc_registerClassPair(clazz);
-
-        classRegistered = true;
-    }
-
-    extern(C) void keyDown(id eventId)
-    {
-        import std.stdio;
-        //writeln("keyDown");
-    }
-
-    extern(C) void keyUp(id eventId)
-    {
-        import std.stdio;
-//        writeln("keyUp");
-    }   
-
-    extern(C) bool acceptsFirstResponder()
-    {
-    //    import std.stdio;
-     //   writeln("acceptsFirstResponder");
-        return YES;
-    }
-
 }
