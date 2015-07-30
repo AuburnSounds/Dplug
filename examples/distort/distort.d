@@ -32,7 +32,12 @@ public:
 
     override IGraphics createGraphics()
     {
-        return new DistortGUI(this);
+        version(OSX) // still testing this platform
+            return null;
+        else version(linux) // still testing this platform
+            return null;
+        else version(Windows)
+            return new DistortGUI(this);
     }
 
     override int getPluginID() pure const nothrow
