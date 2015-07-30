@@ -58,24 +58,41 @@ version(Windows)
         };
     }
 }
-else
+else version(linux)
 {
-     template DLLEntryPoint()
-     {
-        const char[] DLLEntryPoint = "";
-     }
-}
-
-version(linux)
-{
-    import core.runtime;
-    shared static this()
-    {        
-        Runtime.initialize();
-    }
-
-    shared static ~this()
+    template DLLEntryPoint()
     {
-        Runtime.terminate();
+        const char[] DLLEntryPoint = `
+            import core.runtime;
+            shared static this()
+            {        
+                Runtime.initialize();
+            }
+
+            shared static ~this()
+            {
+                Runtime.terminate();
+            }
+        `;
     }
 }
+else version(OSX)
+{
+    template DLLEntryPoint()
+    {
+        const char[] DLLEntryPoint = `
+            import core.runtime;
+            shared static this()
+            {        
+                Runtime.initialize();
+            }
+
+            shared static ~this()
+            {
+                Runtime.terminate();
+            }
+        `;
+    }
+}
+else
+    static assert(false, "OS unsupported");
