@@ -33,9 +33,9 @@ public:
     override IGraphics createGraphics()
     {
         version(OSX) // still testing this platform
-            return null;
+            return new NullGraphics();
         else version(linux) // still testing this platform
-            return null;
+            return new NullGraphics();
         else version(Windows)
             return new DistortGUI(this);
     }
@@ -144,15 +144,18 @@ public:
 
         // Update RMS meters from the audio callback
         DistortGUI gui = cast(DistortGUI) graphics();
-        float[2] inputLevels;
-        inputLevels[0] = floatToDeciBel(_inputRMS[0].RMS());
-        inputLevels[1] = minChan >= 1 ? floatToDeciBel(_inputRMS[1].RMS()) : inputLevels[0];
-        gui.inputBargraph.setValues(inputLevels);
+        if (gui !is null)
+        {
+            float[2] inputLevels;
+            inputLevels[0] = floatToDeciBel(_inputRMS[0].RMS());
+            inputLevels[1] = minChan >= 1 ? floatToDeciBel(_inputRMS[1].RMS()) : inputLevels[0];
+            gui.inputBargraph.setValues(inputLevels);
 
-        float[2] outputLevels;
-        outputLevels[0] = floatToDeciBel(_outputRMS[0].RMS());
-        outputLevels[1] = minChan >= 1 ? floatToDeciBel(_outputRMS[1].RMS()) : outputLevels[0];
-        gui.outputBargraph.setValues(outputLevels);
+            float[2] outputLevels;
+            outputLevels[0] = floatToDeciBel(_outputRMS[0].RMS());
+            outputLevels[1] = minChan >= 1 ? floatToDeciBel(_outputRMS[1].RMS()) : outputLevels[0];
+            gui.outputBargraph.setValues(outputLevels);
+        }
     }
 
 private:

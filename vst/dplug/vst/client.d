@@ -55,7 +55,9 @@ template VSTEntryPoint(alias ClientClass)
         "       return null;"
         "   try"
         "   {"
-        "       import core.thread;"
+        "       import core.thread;"                
+        "       import core.runtime;" // TODO: is it necessary?        
+        "       Runtime.initialize();" // In OSX runtime might not be initialized (safe to call several times)
         "       thread_attachThis();" // Attach VSTPluginMain thread to runtime
         "       auto client = new " ~ ClientClass.stringof ~ "();"
         "       import gfm.core;"
