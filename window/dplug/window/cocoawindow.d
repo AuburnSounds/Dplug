@@ -26,8 +26,8 @@ version(OSX)
     {
     private:   
         IWindowListener _listener;
-        NSApplication _application;
-        DPlugCustomWindow _window;        
+        DPlugCustomView _view;
+
         bool _terminated = false;
 
         int _lastMouseX, _lastMouseY;
@@ -46,23 +46,14 @@ version(OSX)
 
             DerelictCocoa.load();
 
-            _application = NSApplication.sharedApplication;
-            if (parentWindow is null)
-                _application.setActivationPolicy(NSApplicationActivationPolicyRegular);
+            NSView parentView = new NSView(cast(id)parentWindow);
+            DPlugCustomView.registerSubclass();
 
-            DPlugCustomWindow.registerSubclass();
+            _view = DPlugCustomView.alloc();
+            _view._window = this;
+            _view.initialize(this, width, height);
 
-            _window = DPlugCustomWindow.alloc();
-            _window.initWithContentRect(NSMakeRect(0, 0, width, height), 0/*NSBorderlessWindowMask*/, NSBackingStoreBuffered, NO);
-            _window.makeKeyAndOrderFront();
-
-            _window.setAcceptsMouseMovedEvents(true);
-
-        /*    if (parentWindow is null)
-            {
-                _application.activateIgnoringOtherApps(YES);
-                _application.run();
-            }*/
+            parentView.addSubview(_view);
 
             _width = width;
             _height = height;
@@ -74,7 +65,13 @@ version(OSX)
         }
 
         void close()
-        {            
+        {
+            if (_view is null)
+            {
+                _view.removeFromSuperview();
+                _view.release();
+                _view = null;
+            }
         }
         
         override void terminate()
@@ -86,8 +83,7 @@ version(OSX)
         // Implements IWindow
         override void waitEventAndDispatch()
         {
-            NSEvent event = _window.nextEventMatchingMask(NSAnyEventMask);
-            dispatchEvent(event);
+            assert(false); // not implemented in Cocoa, since we don't have a NSWindow
         }
 
         override bool terminated()
@@ -113,7 +109,7 @@ version(OSX)
 
     private:
 
-        void dispatchEvent(NSEvent event)
+ /+       void dispatchEvent(NSEvent event)
         {
             import std.stdio;
             switch(event.type())
@@ -176,9 +172,9 @@ version(OSX)
                     break;
                 default:            
             }
-        }
+        }+/
 
-        void getMouseLocation(NSEvent event, out int mouseX, out int mouseY)
+ /+       void getMouseLocation(NSEvent event, out int mouseX, out int mouseY)
         {
             NSPoint location = _window.mouseLocationOutsideOfEventStream();
             mouseX = cast(int)(0.5f + location.x);
@@ -278,22 +274,34 @@ version(OSX)
                 _listener.onKeyDown(key);
             else
                 _listener.onKeyUp(key);
-        }
-    }
+        }+/
+    }    
 
-    class DPlugCustomWindow : NSWindow
+    class DPlugCustomView : NSView
     {
-    public:
         this(id id_)
         {
             super(id_);
         }
 
-        mixin NSObjectTemplate!(DPlugCustomWindow, "DPlugCustomWindow");
+        mixin NSObjectTemplate!(DPlugCustomView, "DPlugCustomView");
 
     private:
 
+        CocoaWindow _window;
+
         static bool classRegistered = false;
+
+        void initialize(CocoaWindow window, int width, int height)        
+        {
+            this._window = window;
+
+            NSRect r = NSRect(NSPoint(0, 0), NSSize(width, height));
+            initWithFrame(r);
+
+            // mTimer = [NSTimer timerWithTimeInterval:sec target:self selector:@selector(onTimer:) userInfo:nil repeats:YES];
+            // [[NSRunLoop currentRunLoop] addTimer: mTimer forMode: (NSString*) kCFRunLoopCommonModes];
+        }
 
         static void registerSubclass()
         {
@@ -301,33 +309,57 @@ version(OSX)
                 return;
 
             Class clazz;
-            clazz = objc_allocateClassPair(cast(Class) lazyClass!"NSWindow", "DPlugCustomWindow", 0);
-            class_addMethod(clazz, sel!"keyDown:", cast(IMP) &keyDown, "v@:@");
-            class_addMethod(clazz, sel!"keyUp:", cast(IMP) &keyUp, "v@:@");
+            clazz = objc_allocateClassPair(cast(Class) lazyClass!"NSWindow", "DPlugCustomView", 0);
+         //   class_addMethod(clazz, sel!"keyDown:", cast(IMP) &keyDown, "v@:@");
+         //   class_addMethod(clazz, sel!"keyUp:", cast(IMP) &keyUp, "v@:@");
             class_addMethod(clazz, sel!"acceptsFirstResponder", cast(IMP) &acceptsFirstResponder, "b@:");
+            class_addMethod(clazz, sel!"isOpaque", cast(IMP) &isOpaque, "b@:");
+            class_addMethod(clazz, sel!"acceptsFirstMouse", cast(IMP) &isOpaque, "b@:@");
+            class_addMethod(clazz, sel!"viewDidMoveToWindow", cast(IMP) &isOpaque, "v@:");
+            class_addMethod(clazz, sel!"drawRect", cast(IMP) &drawRect, "v@:" ~ encode!NSRect);
+            class_addMethod(clazz, sel!"onTimer", cast(IMP) &drawRect, "v@:@");
+
             objc_registerClassPair(clazz);
 
             classRegistered = true;
         }
 
-        extern(C) void keyDown(id eventId)
-        {
-            import std.stdio;
-            //writeln("keyDown");
-        }
-
-        extern(C) void keyUp(id eventId)
-        {
-            import std.stdio;
-    //        writeln("keyUp");
-        }   
-
         extern(C) bool acceptsFirstResponder()
         {
-        //    import std.stdio;
-         //   writeln("acceptsFirstResponder");
             return YES;
         }
 
+        extern(C) bool isOpaque()
+        {
+            return _window is null ? NO : YES;
+        }
+
+        extern(C) bool isOpaque(id pEvent)
+        {
+            return YES;
+        }
+
+        extern(C) void viewDidMoveToWindow()
+        {
+            NSWindow parentWindow = window();
+            parentWindow.makeFirstResponder(this);
+            parentWindow.setAcceptsMouseMovedEvents(true);
+        }
+
+        extern(C) void drawRect(NSRect rect)
+        {
+            if (_window !is null)
+            {
+                // TODO
+            }
+        }
+
+        extern(C) void onTimer(id timer)
+        {
+            if (_window !is null)
+            {
+                // TODO
+            }
+        }
     }
 }

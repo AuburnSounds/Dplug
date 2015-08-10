@@ -33,7 +33,7 @@ public:
     override IGraphics createGraphics()
     {
         version(OSX) // still testing this platform
-            return new NullGraphics();
+            return new DistortGUI(this); // still in flux
         else version(linux) // still testing this platform
             return new NullGraphics();
         else version(Windows)
