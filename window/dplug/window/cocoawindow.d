@@ -45,12 +45,12 @@ version(OSX)
             _listener = listener;         
 
             DerelictCocoa.load();
+            NSApplicationLoad(); // to use Cocoa in Carbon applications
 
             NSView parentView = new NSView(cast(id)parentWindow);
             DPlugCustomView.registerSubclass();
 
             _view = DPlugCustomView.alloc();
-            _view._window = this;
             _view.initialize(this, width, height);
 
             parentView.addSubview(_view);
@@ -94,7 +94,7 @@ version(OSX)
         override void debugOutput(string s)
         {
             import std.stdio;
-            writeln(s); // TODO: something better
+            writeln(s); // TODO: call NSLog better
         }
 
         override uint getTimeMs()
@@ -243,7 +243,7 @@ version(OSX)
 
             _lastMouseX = mouseX;
             _lastMouseY = mouseY;
-        }
+        }+/
 
         void handleKeyEvent(NSEvent event, bool released)
         {
@@ -274,7 +274,7 @@ version(OSX)
                 _listener.onKeyDown(key);
             else
                 _listener.onKeyUp(key);
-        }+/
+        }
     }    
 
     class DPlugCustomView : NSView
@@ -309,9 +309,9 @@ version(OSX)
                 return;
 
             Class clazz;
-            clazz = objc_allocateClassPair(cast(Class) lazyClass!"NSWindow", "DPlugCustomView", 0);
-         //   class_addMethod(clazz, sel!"keyDown:", cast(IMP) &keyDown, "v@:@");
-         //   class_addMethod(clazz, sel!"keyUp:", cast(IMP) &keyUp, "v@:@");
+            clazz = objc_allocateClassPair(cast(Class) lazyClass!"NSView", "DPlugCustomView", 0);
+            class_addMethod(clazz, sel!"keyDown:", cast(IMP) &keyDown, "v@:@");
+            class_addMethod(clazz, sel!"keyUp:", cast(IMP) &keyUp, "v@:@");
             class_addMethod(clazz, sel!"acceptsFirstResponder", cast(IMP) &acceptsFirstResponder, "b@:");
             class_addMethod(clazz, sel!"isOpaque", cast(IMP) &isOpaque, "b@:");
             class_addMethod(clazz, sel!"acceptsFirstMouse", cast(IMP) &isOpaque, "b@:@");
@@ -350,7 +350,16 @@ version(OSX)
         {
             if (_window !is null)
             {
-                // TODO
+                NSGraphicsContext nsContext = NSGraphicsContext.currentContext();
+                CIContext ciContext = nsContext.getCIContext();
+
+                //CIImage image
+
+                //ciContext.drawImage()
+
+
+                ciContext.release();
+                nsContext.release();
             }
         }
 
@@ -360,6 +369,16 @@ version(OSX)
             {
                 // TODO
             }
+        }
+
+        extern(C) void keyDown(id event)
+        {
+            _window.handleKeyEvent(new NSEvent(event), false);
+        }
+
+        extern(C) void keyUp(id event)
+        {
+            _window.handleKeyEvent(new NSEvent(event), true);
         }
     }
 }
