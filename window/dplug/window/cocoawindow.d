@@ -5,8 +5,10 @@
 */
 module dplug.window.cocoawindow;
 
+import core.stdc.stdlib;
+import ae.utils.graphics;
+import gfm.math;
 import dplug.window.window;
-
 
 version(OSX)
 {    
@@ -35,6 +37,8 @@ version(OSX)
 
         int _width;
         int _height;
+
+        ubyte* _buffer;
 
 
 
@@ -93,8 +97,11 @@ version(OSX)
 
         override void debugOutput(string s)
         {
-            import std.stdio;
-            writeln(s); // TODO: call NSLog better
+            NSString message = NSString.stringWith(s);
+            scope(exit) message.release();
+            NSString format = NSString.stringWith("%@"); // TODO cache this
+            scope(exit) format.release();
+            NSLog(format._id, message._id);
         }
 
         override uint getTimeMs()
@@ -275,6 +282,68 @@ version(OSX)
             else
                 _listener.onKeyUp(key);
         }
+
+        enum scanLineAlignment = 4; // could be anything
+
+        // given a width, how long in bytes should scanlines be
+        int byteStride(int width)
+        {
+            int widthInBytes = width * 4;
+            return (widthInBytes + (scanLineAlignment - 1)) & ~(scanLineAlignment-1);
+        }
+
+        void drawRect(NSRect rect)
+        {            
+            NSGraphicsContext nsContext = NSGraphicsContext.currentContext();
+            scope(exit) nsContext.release();
+
+            CIContext ciContext = nsContext.getCIContext();
+            scope(exit) ciContext.release();
+
+            updateSizeIfNeeded(_width, _height); // TODO support resize
+
+            // draw buffers
+            ImageRef!RGBA wfb;
+            wfb.w = _width;
+            wfb.h = _height;
+            wfb.pitch = byteStride(_width);
+            wfb.pixels = cast(RGBA*)_buffer;
+            _listener.onDraw(wfb, false);
+
+            size_t sizeInBytes = byteStride(_width) * _height * 4;
+            NSData imageData = NSData.dataWithBytesNoCopy(_buffer, sizeInBytes, false);
+            scope(exit) imageData.release();
+
+            CIImage image = CIImage.imageWithBitmapData(imageData, byteStride(_width), 
+                                                        CGSize(_width, _height), 23, null);//kCIFormatARGB8, null);
+            scope(exit) image.release();
+
+            ciContext.drawImage(image, rect, rect);
+        }
+
+        /// Returns: true if window size changed.
+        bool updateSizeIfNeeded(int newWidth, int newHeight)
+        {
+            // only do something if the client size has changed
+            if (newWidth != _width || newHeight != _height)
+            {
+                // Extends buffer
+                if (_buffer != null)
+                {
+                    free(_buffer);
+                    _buffer = null;
+                }
+
+                size_t sizeNeeded = byteStride(newWidth) * newHeight;
+                 _buffer = cast(ubyte*) malloc(sizeNeeded);                
+                _width = newWidth;
+                _height = newHeight;
+                _listener.onResized(_width, _height);
+                return true;
+            }
+            else
+                return false;
+        }
     }    
 
     class DPlugCustomView : NSView
@@ -289,6 +358,7 @@ version(OSX)
     private:
 
         CocoaWindow _window;
+        NSTimer _timer;
 
         static bool classRegistered = false;
 
@@ -299,8 +369,14 @@ version(OSX)
             NSRect r = NSRect(NSPoint(0, 0), NSSize(width, height));
             initWithFrame(r);
 
-            // mTimer = [NSTimer timerWithTimeInterval:sec target:self selector:@selector(onTimer:) userInfo:nil repeats:YES];
-            // [[NSRunLoop currentRunLoop] addTimer: mTimer forMode: (NSString*) kCFRunLoopCommonModes];
+            _timer = NSTimer.timerWithTimeInterval(1 / 60.0, this, sel!"onTimer:", null, true);
+            if (_timer is null)
+                window.debugOutput("_timer is null");
+
+            if (NSRunLoopCommonModes is null)
+                window.debugOutput("NSRunLoopCommonModes is null");
+
+            NSRunLoop.currentRunLoop().addTimer(_timer, NSRunLoopCommonModes);
         }
 
         static void registerSubclass()
@@ -350,24 +426,20 @@ version(OSX)
         {
             if (_window !is null)
             {
-                NSGraphicsContext nsContext = NSGraphicsContext.currentContext();
-                CIContext ciContext = nsContext.getCIContext();
-
-                //CIImage image
-
-                //ciContext.drawImage()
-
-
-                ciContext.release();
-                nsContext.release();
+                _window.drawRect(rect);
             }
         }
 
         extern(C) void onTimer(id timer)
-        {
+        {            
             if (_window !is null)
             {
-                // TODO
+                // TODO call listener.onAnimate
+
+                _window._listener.recomputeDirtyAreas();
+                box2i dirtyRect = _window._listener.getDirtyRectangle();
+                NSRect r = NSMakeRect(dirtyRect.min.x, dirtyRect.min.y, dirtyRect.width, dirtyRect.height);
+                this.setNeedsDisplayInRect(r);
             }
         }
 
