@@ -366,7 +366,7 @@ version(OSX)
     private:
 
         CocoaWindow _window;
-        NSTimer _timer;
+        NSTimer _timer = null;
 
         static bool classRegistered = false;
 
@@ -380,15 +380,8 @@ version(OSX)
             NSRect r = NSRect(NSPoint(0, 0), NSSize(width, height));
             initWithFrame(r);
 
-            //_timer = NSTimer.timerWithTimeInterval(1 / 60.0, this, sel!"onTimer:", null, true);
-
-            if (NSRunLoopCommonModes is null)
-                window.debugOutput("NSRunLoopCommonModes is null");
-
-            if (NSDefaultRunLoopMode is null)
-                window.debugOutput("NSDefaultRunLoopMode is null");
-
-       //     NSRunLoop.currentRunLoop().addTimer(_timer, NSRunLoopCommonModes);
+            _timer = NSTimer.timerWithTimeInterval(1 / 60.0, this, sel!"onTimer:", null, true);
+            NSRunLoop.currentRunLoop().addTimer(_timer, NSRunLoopCommonModes);                
         }
 
         static void registerSubclass()
@@ -402,10 +395,10 @@ version(OSX)
             ok = ok && class_addMethod(clazz, sel!"keyUp:", cast(IMP) &keyUp, "v@:@");
             ok = ok && class_addMethod(clazz, sel!"acceptsFirstResponder", cast(IMP) &acceptsFirstResponder, "b@:");
             ok = ok && class_addMethod(clazz, sel!"isOpaque", cast(IMP) &isOpaque, "b@:");
-            ok = ok && class_addMethod(clazz, sel!"acceptsFirstMouse", cast(IMP) &acceptsFirstMouse, "b@:@");
+            ok = ok && class_addMethod(clazz, sel!"acceptsFirstMouse:", cast(IMP) &acceptsFirstMouse, "b@:@");
             ok = ok && class_addMethod(clazz, sel!"viewDidMoveToWindow", cast(IMP) &viewDidMoveToWindow, "v@:");
-            ok = ok && class_addMethod(clazz, sel!"drawRect", cast(IMP) &drawRect, "v@:" ~ encode!NSRect);
-            ok = ok && class_addMethod(clazz, sel!"onTimer", cast(IMP) &onTimer, "v@:@");
+            ok = ok && class_addMethod(clazz, sel!"drawRect:", cast(IMP) &drawRect, "v@:" ~ encode!NSRect);
+            ok = ok && class_addMethod(clazz, sel!"onTimer:", cast(IMP) &onTimer, "v@:@");
 
             // very important: add an instance variable for the this pointer so that the D object can be
             // retrieved from an id
@@ -425,7 +418,6 @@ version(OSX)
             if (_timer !is null)
             {
                 _timer.invalidate();
-                //_timer.release();
                 _timer = null;
             }
         }
