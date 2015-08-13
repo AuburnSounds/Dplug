@@ -7,6 +7,7 @@ module dplug.window.cocoawindow;
 
 import core.stdc.stdlib;
 import ae.utils.graphics;
+import gfm.core;
 import gfm.math;
 import dplug.window.window;
 
@@ -28,7 +29,7 @@ version(OSX)
     {
     private:   
         IWindowListener _listener;
-        DPlugCustomView _view;
+        DPlugCustomView _view = null;
 
         bool _terminated = false;
 
@@ -38,7 +39,7 @@ version(OSX)
         int _width;
         int _height;
 
-        ubyte* _buffer;
+        ubyte* _buffer = null;
 
 
 
@@ -46,9 +47,11 @@ version(OSX)
 
         this(void* parentWindow, IWindowListener listener, int width, int height)
         {
+
             _listener = listener;         
 
             DerelictCocoa.load();
+
             NSApplicationLoad(); // to use Cocoa in Carbon applications
 
             NSView parentView = new NSView(cast(id)parentWindow);
@@ -70,11 +73,14 @@ version(OSX)
 
         void close()
         {
-            if (_view is null)
+            if (_view !is null)
             {
+                debugOutput(">close view");
+                _view.killTimer();
                 _view.removeFromSuperview();
-                _view.release();
+                //_view.release();
                 _view = null;
+                debugOutput("<close view");
             }
         }
         
@@ -98,9 +104,9 @@ version(OSX)
         override void debugOutput(string s)
         {
             NSString message = NSString.stringWith(s);
-            scope(exit) message.release();
+            //scope(exit) message.release();
             NSString format = NSString.stringWith("%@"); // TODO cache this
-            scope(exit) format.release();
+            //scope(exit) format.release();
             NSLog(format._id, message._id);
         }
 
@@ -293,7 +299,9 @@ version(OSX)
         }
 
         void drawRect(NSRect rect)
-        {            
+        {       
+            debugOutput("drawRect");
+            /*         
             NSGraphicsContext nsContext = NSGraphicsContext.currentContext();
             scope(exit) nsContext.release();
 
@@ -318,7 +326,7 @@ version(OSX)
                                                         CGSize(_width, _height), 23, null);//kCIFormatARGB8, null);
             scope(exit) image.release();
 
-            ciContext.drawImage(image, rect, rect);
+            ciContext.drawImage(image, rect, rect);*/
         }
 
         /// Returns: true if window size changed.
@@ -364,19 +372,23 @@ version(OSX)
 
         void initialize(CocoaWindow window, int width, int height)        
         {
+            void* thisPointer = cast(void*)this;
+            object_setInstanceVariable(_id, "this", thisPointer);
+
             this._window = window;
 
             NSRect r = NSRect(NSPoint(0, 0), NSSize(width, height));
             initWithFrame(r);
 
-            _timer = NSTimer.timerWithTimeInterval(1 / 60.0, this, sel!"onTimer:", null, true);
-            if (_timer is null)
-                window.debugOutput("_timer is null");
+            //_timer = NSTimer.timerWithTimeInterval(1 / 60.0, this, sel!"onTimer:", null, true);
 
             if (NSRunLoopCommonModes is null)
                 window.debugOutput("NSRunLoopCommonModes is null");
 
-            NSRunLoop.currentRunLoop().addTimer(_timer, NSRunLoopCommonModes);
+            if (NSDefaultRunLoopMode is null)
+                window.debugOutput("NSDefaultRunLoopMode is null");
+
+       //     NSRunLoop.currentRunLoop().addTimer(_timer, NSRunLoopCommonModes);
         }
 
         static void registerSubclass()
@@ -386,71 +398,116 @@ version(OSX)
 
             Class clazz;
             clazz = objc_allocateClassPair(cast(Class) lazyClass!"NSView", "DPlugCustomView", 0);
-            class_addMethod(clazz, sel!"keyDown:", cast(IMP) &keyDown, "v@:@");
-            class_addMethod(clazz, sel!"keyUp:", cast(IMP) &keyUp, "v@:@");
-            class_addMethod(clazz, sel!"acceptsFirstResponder", cast(IMP) &acceptsFirstResponder, "b@:");
-            class_addMethod(clazz, sel!"isOpaque", cast(IMP) &isOpaque, "b@:");
-            class_addMethod(clazz, sel!"acceptsFirstMouse", cast(IMP) &isOpaque, "b@:@");
-            class_addMethod(clazz, sel!"viewDidMoveToWindow", cast(IMP) &isOpaque, "v@:");
-            class_addMethod(clazz, sel!"drawRect", cast(IMP) &drawRect, "v@:" ~ encode!NSRect);
-            class_addMethod(clazz, sel!"onTimer", cast(IMP) &drawRect, "v@:@");
+            bool ok = class_addMethod(clazz, sel!"keyDown:", cast(IMP) &keyDown, "v@:@");
+            ok = ok && class_addMethod(clazz, sel!"keyUp:", cast(IMP) &keyUp, "v@:@");
+            ok = ok && class_addMethod(clazz, sel!"acceptsFirstResponder", cast(IMP) &acceptsFirstResponder, "b@:");
+            ok = ok && class_addMethod(clazz, sel!"isOpaque", cast(IMP) &isOpaque, "b@:");
+            ok = ok && class_addMethod(clazz, sel!"acceptsFirstMouse", cast(IMP) &acceptsFirstMouse, "b@:@");
+            ok = ok && class_addMethod(clazz, sel!"viewDidMoveToWindow", cast(IMP) &viewDidMoveToWindow, "v@:");
+            ok = ok && class_addMethod(clazz, sel!"drawRect", cast(IMP) &drawRect, "v@:" ~ encode!NSRect);
+            ok = ok && class_addMethod(clazz, sel!"onTimer", cast(IMP) &onTimer, "v@:@");
+
+            // very important: add an instance variable for the this pointer so that the D object can be
+            // retrieved from an id
+            ok = ok && class_addIvar(clazz, "this", (void*).sizeof, (void*).sizeof == 4 ? 2 : 3, "^v");
+            assert(ok);
 
             objc_registerClassPair(clazz);
 
             classRegistered = true;
         }
 
-        extern(C) bool acceptsFirstResponder()
+
+
+        void killTimer()
+        {
+            _window.debugOutput("killTimer");
+            if (_timer !is null)
+            {
+                _timer.invalidate();
+                //_timer.release();
+                _timer = null;
+            }
+        }
+    }
+
+
+    DPlugCustomView getInstance(id anId)
+    {
+        // strange thins: object_getInstanceVariable definition is odd (void**) 
+        // and only works for pointer-sized values says SO
+        void* thisPointer = null;
+        Ivar var = object_getInstanceVariable(anId, "this", &thisPointer); 
+        assert(var !is null);
+        assert(thisPointer !is null);
+        return cast(DPlugCustomView)thisPointer;
+    }
+
+    // Overriden function gets called with an id, instead of the self pointer.
+
+    extern(C)
+    {
+        void keyDown(id self, id event)
+        {
+            DPlugCustomView view = getInstance(self);
+            if (view._window !is null)
+            {
+                view._window.debugOutput("keyDown");
+                view._window.handleKeyEvent(new NSEvent(event), false);
+            }
+        }
+
+        void keyUp(id self, id event)
+        {
+            DPlugCustomView view = getInstance(self);
+            if (view._window !is null)
+            {
+                view._window.debugOutput("keyUp");
+                view._window.handleKeyEvent(new NSEvent(event), true);
+            }
+        }
+
+        bool acceptsFirstResponder(id self)
         {
             return YES;
         }
 
-        extern(C) bool isOpaque()
-        {
-            return _window is null ? NO : YES;
-        }
-
-        extern(C) bool isOpaque(id pEvent)
+        bool acceptsFirstMouse(id self, id pEvent)
         {
             return YES;
         }
 
-        extern(C) void viewDidMoveToWindow()
+        bool isOpaque(id self)
         {
-            NSWindow parentWindow = window();
-            parentWindow.makeFirstResponder(this);
+            //DPlugCustomView view = getInstance(self);
+            return YES;//view._window is null ? NO : YES;
+        }
+
+        void viewDidMoveToWindow(id self)
+        {            
+            DPlugCustomView view = getInstance(self);
+            NSWindow parentWindow = view.window();
+            parentWindow.makeFirstResponder(view);
             parentWindow.setAcceptsMouseMovedEvents(true);
         }
 
-        extern(C) void drawRect(NSRect rect)
+        void drawRect(id self, NSRect rect)
         {
-            if (_window !is null)
-            {
-                _window.drawRect(rect);
-            }
+            DPlugCustomView view = getInstance(self);
+            view._window.drawRect(rect);            
         }
 
-        extern(C) void onTimer(id timer)
-        {            
-            if (_window !is null)
-            {
-                // TODO call listener.onAnimate
-
-                _window._listener.recomputeDirtyAreas();
-                box2i dirtyRect = _window._listener.getDirtyRectangle();
-                NSRect r = NSMakeRect(dirtyRect.min.x, dirtyRect.min.y, dirtyRect.width, dirtyRect.height);
-                this.setNeedsDisplayInRect(r);
-            }
-        }
-
-        extern(C) void keyDown(id event)
+        void onTimer(id self, id timer)
         {
-            _window.handleKeyEvent(new NSEvent(event), false);
-        }
+            DPlugCustomView view = getInstance(self);
+            view._window.debugOutput("onTimer");
 
-        extern(C) void keyUp(id event)
-        {
-            _window.handleKeyEvent(new NSEvent(event), true);
+            // TODO call listener.onAnimate
+
+            view._window._listener.recomputeDirtyAreas();
+            box2i dirtyRect = view._window._listener.getDirtyRectangle();
+            NSRect r = NSMakeRect(dirtyRect.min.x, dirtyRect.min.y, dirtyRect.width, dirtyRect.height);
+            view.setNeedsDisplayInRect(r);
         }
     }
 }

@@ -72,7 +72,8 @@
 
             "dependencies": {
                 "ae-graphics": "~>0.0",
-                "gfm:math": "~>2.3"
+                "gfm:math": "~>2.3",
+                "gfm:core": "~>2.3"
             },
 
             "dependencies-linux": {
