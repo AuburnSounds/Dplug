@@ -294,8 +294,7 @@ version(Windows)
                         wfb.pixels = cast(RGBA*)_buffer;
 
                         // For efficiency purpose, render in BGRA for Windows
-                        bool swapRB = true;
-                        _listener.onDraw(wfb, swapRB);
+                        _listener.onDraw(wfb, WindowPixelFormat.BGRA8);
 
                         box2i areaToRedraw = box2i(r.left, r.top, r.right, r.bottom);
                         

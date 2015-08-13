@@ -409,8 +409,7 @@ version(linux)
             wfb.pitch = byteStride(_width);
             wfb.pixels = cast(RGBA*)_buffer;
 
-            bool swapRB = true;
-            _listener.onDraw(wfb, swapRB);
+            _listener.onDraw(wfb, WindowPixelFormat.BGRA8);
 
             box2i areaToRedraw = box2i(event.x, event.y, event.width, event.height);
             swapBuffers(wfb, areaToRedraw);

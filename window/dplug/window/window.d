@@ -71,6 +71,12 @@ interface IWindow
     uint getTimeMs();
 }
 
+enum WindowPixelFormat
+{
+    BGRA8,
+    ARGB8
+}
+
 // Receiving commands from a window
 interface IWindowListener
 {
@@ -101,7 +107,7 @@ interface IWindowListener
     /// The size of this image is given before-hand by onResized.
     /// recomputeDirtyAreas() MUST have been called before.
     /// `swapRB` is true when it is expected rendering will swap red and blue channel.
-    void onDraw(ImageRef!RGBA wfb, bool swapRB);
+    void onDraw(ImageRef!RGBA wfb, WindowPixelFormat pf);
 
     /// The drawing area size has changed.    
     /// Always called at least once before onDraw.

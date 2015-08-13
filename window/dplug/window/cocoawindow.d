@@ -36,8 +36,11 @@ version(OSX)
         int _lastMouseX, _lastMouseY;
         bool _firstMouseMove = true;
 
-        int _width;
-        int _height;
+        int _askedWidth;
+        int _askedHeight; // TODO: remove in favor of asking the NSView its size
+
+        int _currentWidth;
+        int _currentHeight;
 
         ubyte* _buffer = null;
 
@@ -62,8 +65,11 @@ version(OSX)
 
             parentView.addSubview(_view);
 
-            _width = width;
-            _height = height;
+            _askedWidth = width;
+            _askedHeight = height;
+
+            _currentWidth = 0;
+            _currentHeight = 0;
         }
 
         ~this()
@@ -301,39 +307,39 @@ version(OSX)
         void drawRect(NSRect rect)
         {       
             debugOutput("drawRect");
-            /*         
+       
             NSGraphicsContext nsContext = NSGraphicsContext.currentContext();
-            scope(exit) nsContext.release();
 
             CIContext ciContext = nsContext.getCIContext();
-            scope(exit) ciContext.release();
 
-            updateSizeIfNeeded(_width, _height); // TODO support resize
+            // TODO get current with and size from NSView
+
+            updateSizeIfNeeded(_askedWidth, _askedHeight); // TODO support resize
 
             // draw buffers
             ImageRef!RGBA wfb;
-            wfb.w = _width;
-            wfb.h = _height;
-            wfb.pitch = byteStride(_width);
+            wfb.w = _currentWidth;
+            wfb.h = _currentHeight;
+            wfb.pitch = byteStride(_currentWidth);
             wfb.pixels = cast(RGBA*)_buffer;
-            _listener.onDraw(wfb, false);
+            _listener.onDraw(wfb, WindowPixelFormat.ARGB8);
 
-            size_t sizeInBytes = byteStride(_width) * _height * 4;
+            size_t sizeInBytes = byteStride(_currentWidth) * _currentHeight * 4;
             NSData imageData = NSData.dataWithBytesNoCopy(_buffer, sizeInBytes, false);
-            scope(exit) imageData.release();
+            //scope(exit) imageData.release();
 
-            CIImage image = CIImage.imageWithBitmapData(imageData, byteStride(_width), 
-                                                        CGSize(_width, _height), 23, null);//kCIFormatARGB8, null);
-            scope(exit) image.release();
+            CIImage image = CIImage.imageWithBitmapData(imageData, byteStride(_currentWidth), 
+                                                        CGSize(_currentWidth, _currentHeight), kCIFormatARGB8, null);
+            //scope(exit) image.release();
 
-            ciContext.drawImage(image, rect, rect);*/
+            ciContext.drawImage(image, rect, rect);
         }
 
         /// Returns: true if window size changed.
         bool updateSizeIfNeeded(int newWidth, int newHeight)
         {
             // only do something if the client size has changed
-            if (newWidth != _width || newHeight != _height)
+            if (newWidth != _currentWidth || newHeight != _currentHeight)
             {
                 // Extends buffer
                 if (_buffer != null)
@@ -344,9 +350,9 @@ version(OSX)
 
                 size_t sizeNeeded = byteStride(newWidth) * newHeight;
                  _buffer = cast(ubyte*) malloc(sizeNeeded);                
-                _width = newWidth;
-                _height = newHeight;
-                _listener.onResized(_width, _height);
+                _currentWidth = newWidth;
+                _currentHeight = newHeight;
+                _listener.onResized(_currentWidth, _currentHeight);
                 return true;
             }
             else
@@ -410,8 +416,6 @@ version(OSX)
             classRegistered = true;
         }
 
-
-
         void killTimer()
         {
             _window.debugOutput("killTimer");
@@ -422,7 +426,6 @@ version(OSX)
             }
         }
     }
-
 
     DPlugCustomView getInstance(id anId)
     {
@@ -498,8 +501,11 @@ version(OSX)
 
             view._window._listener.recomputeDirtyAreas();
             box2i dirtyRect = view._window._listener.getDirtyRectangle();
-            NSRect r = NSMakeRect(dirtyRect.min.x, dirtyRect.min.y, dirtyRect.width, dirtyRect.height);
-            view.setNeedsDisplayInRect(r);
+            if (!dirtyRect.empty())
+            {
+                NSRect r = NSMakeRect(dirtyRect.min.x, dirtyRect.min.y, dirtyRect.width, dirtyRect.height);
+                view.setNeedsDisplayInRect(r);
+            }
         }
     }
 }

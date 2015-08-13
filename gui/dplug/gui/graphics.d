@@ -257,7 +257,7 @@ class GUIGraphics : UIElement, IGraphics
 
         // Redraw dirtied controls in depth and diffuse maps.
         // Update composited cache.
-        override void onDraw(ImageRef!RGBA wfb, bool swapRB)
+        override void onDraw(ImageRef!RGBA wfb, WindowPixelFormat pf)
         {
             renderElements();
 
@@ -271,7 +271,7 @@ class GUIGraphics : UIElement, IGraphics
             // Composite GUI
             // Most of the cost of rendering is here
             _compositingWatch.start();
-            compositeGUI(wfb, swapRB);
+            compositeGUI(wfb, pf);
             _compositingWatch.stop();
             _compositingWatch.displayMean();
 
@@ -450,7 +450,7 @@ protected:
     /// Compose lighting effects from depth and diffuse into a result.
     /// takes output image and non-overlapping areas as input
     /// Useful multithreading code.
-    void compositeGUI(ImageRef!RGBA wfb, bool swapRB)
+    void compositeGUI(ImageRef!RGBA wfb, WindowPixelFormat pf)
     {
         // Quick subjective testing indicates than somewhere between 16x16 and 32x32 have best performance
         enum tileWidth = 64;
@@ -466,12 +466,12 @@ protected:
         if (parallelCompositing)
         {
             foreach(i; _taskPool.parallel(numAreas.iota))
-                compositeTile(wfb, swapRB, _areasToRenderNonOverlappingTiled[i]);
+                compositeTile(wfb, pf, _areasToRenderNonOverlappingTiled[i]);
         }
         else
         {
             foreach(i; 0..numAreas)
-                compositeTile(wfb, swapRB, _areasToRenderNonOverlappingTiled[i]);
+                compositeTile(wfb, pf, _areasToRenderNonOverlappingTiled[i]);
         }
     }
 
@@ -523,7 +523,7 @@ protected:
     }
 
     /// Don't like this rendering? Feel free to override this method.
-    void compositeTile(ImageRef!RGBA wfb, bool swapRB, box2i area)
+    void compositeTile(ImageRef!RGBA wfb, WindowPixelFormat pf, box2i area)
     {
         int[5] line_index = void;
         ushort[5][5] depthPatch = void;
@@ -765,18 +765,21 @@ protected:
 
                 int r = cast(int)(color.x * 255.99f);
                 int g = cast(int)(color.y * 255.99f);
-                int b = cast(int)(color.z * 255.99f);
+                int b = cast(int)(color.z * 255.99f);                
 
-                if (swapRB)
+                RGBA finalColor = void;
+
+                final switch (pf) with (WindowPixelFormat)
                 {
-                    int temp = r;
-                    r = b;
-                    b = temp;
+                    case ARGB8: 
+                        finalColor = RGBA(255, cast(ubyte)r, cast(ubyte)g, cast(ubyte)b); 
+                        break;
+                    case BGRA8: 
+                        finalColor = RGBA(cast(ubyte)b, cast(ubyte)g, cast(ubyte)r, 255);
+                        break;
                 }
 
                 // write composited color
-                RGBA finalColor = RGBA(cast(ubyte)r, cast(ubyte)g, cast(ubyte)b, 255);
-
                 wfb_scan[i] = finalColor;
             }
         }
