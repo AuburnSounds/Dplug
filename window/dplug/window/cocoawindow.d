@@ -394,33 +394,29 @@ version(OSX)
 
             Class clazz;
             clazz = objc_allocateClassPair(cast(Class) lazyClass!"NSView", "DPlugCustomView", 0);
-            bool ok = class_addMethod(clazz, sel!"keyDown:", cast(IMP) &keyDown, "v@:@");
-            ok = ok && class_addMethod(clazz, sel!"keyUp:", cast(IMP) &keyUp, "v@:@");
-
-            ok = ok && class_addMethod(clazz, sel!"mouseDown:", cast(IMP) &mouseDown, "v@:@");
-            ok = ok && class_addMethod(clazz, sel!"mouseUp:", cast(IMP) &mouseUp, "v@:@");
-            ok = ok && class_addMethod(clazz, sel!"rightMouseDown:", cast(IMP) &rightMouseDown, "v@:@");
-            ok = ok && class_addMethod(clazz, sel!"rightMouseUp:", cast(IMP) &rightMouseUp, "v@:@");
-            ok = ok && class_addMethod(clazz, sel!"otherMouseDown:", cast(IMP) &otherMouseDown, "v@:@");
-            ok = ok && class_addMethod(clazz, sel!"otherMouseUp:", cast(IMP) &otherMouseUp, "v@:@");
-
-            ok = ok && class_addMethod(clazz, sel!"mouseMoved:", cast(IMP) &mouseMoved, "v@:@");
-            ok = ok && class_addMethod(clazz, sel!"mouseDragged:", cast(IMP) &mouseDragged, "v@:@");
-            ok = ok && class_addMethod(clazz, sel!"rightMouseDragged:", cast(IMP) &rightMouseDragged, "v@:@");
-            ok = ok && class_addMethod(clazz, sel!"otherMouseDragged:", cast(IMP) &otherMouseDragged, "v@:@");
-
-            ok = ok && class_addMethod(clazz, sel!"acceptsFirstResponder", cast(IMP) &acceptsFirstResponder, "b@:");
-            ok = ok && class_addMethod(clazz, sel!"isOpaque", cast(IMP) &isOpaque, "b@:");
-            ok = ok && class_addMethod(clazz, sel!"acceptsFirstMouse:", cast(IMP) &acceptsFirstMouse, "b@:@");
-            ok = ok && class_addMethod(clazz, sel!"viewDidMoveToWindow", cast(IMP) &viewDidMoveToWindow, "v@:");
-            ok = ok && class_addMethod(clazz, sel!"drawRect:", cast(IMP) &drawRect, "v@:" ~ encode!NSRect);
-            ok = ok && class_addMethod(clazz, sel!"onTimer:", cast(IMP) &onTimer, "v@:@");
+            class_addMethod(clazz, sel!"keyDown:", cast(IMP) &keyDown, "v@:@");
+            class_addMethod(clazz, sel!"keyUp:", cast(IMP) &keyUp, "v@:@");
+            class_addMethod(clazz, sel!"mouseDown:", cast(IMP) &mouseDown, "v@:@");
+            class_addMethod(clazz, sel!"mouseUp:", cast(IMP) &mouseUp, "v@:@");
+            class_addMethod(clazz, sel!"rightMouseDown:", cast(IMP) &rightMouseDown, "v@:@");
+            class_addMethod(clazz, sel!"rightMouseUp:", cast(IMP) &rightMouseUp, "v@:@");
+            class_addMethod(clazz, sel!"otherMouseDown:", cast(IMP) &otherMouseDown, "v@:@");
+            class_addMethod(clazz, sel!"otherMouseUp:", cast(IMP) &otherMouseUp, "v@:@");
+            class_addMethod(clazz, sel!"mouseMoved:", cast(IMP) &mouseMoved, "v@:@");
+            class_addMethod(clazz, sel!"mouseDragged:", cast(IMP) &mouseDragged, "v@:@");
+            class_addMethod(clazz, sel!"rightMouseDragged:", cast(IMP) &rightMouseDragged, "v@:@");
+            class_addMethod(clazz, sel!"otherMouseDragged:", cast(IMP) &otherMouseDragged, "v@:@");
+            class_addMethod(clazz, sel!"acceptsFirstResponder", cast(IMP) &acceptsFirstResponder, "b@:");
+            class_addMethod(clazz, sel!"isOpaque", cast(IMP) &isOpaque, "b@:");
+            class_addMethod(clazz, sel!"acceptsFirstMouse:", cast(IMP) &acceptsFirstMouse, "b@:@");
+            class_addMethod(clazz, sel!"viewDidMoveToWindow", cast(IMP) &viewDidMoveToWindow, "v@:");
+            class_addMethod(clazz, sel!"drawRect:", cast(IMP) &drawRect, "v@:" ~ encode!NSRect);
+            class_addMethod(clazz, sel!"onTimer:", cast(IMP) &onTimer, "v@:@");
 
             // very important: add an instance variable for the this pointer so that the D object can be
             // retrieved from an id
-            ok = ok && class_addIvar(clazz, "this", (void*).sizeof, (void*).sizeof == 4 ? 2 : 3, "^v");
-            assert(ok);
-
+            class_addIvar(clazz, "this", (void*).sizeof, (void*).sizeof == 4 ? 2 : 3, "^v");
+            
             objc_registerClassPair(clazz);
 
             classRegistered = true;
@@ -448,57 +444,57 @@ version(OSX)
     }
 
     vec2i getMouseXY(NSView view, NSEvent event, int windowHeight)
-    {
+    {   
         NSPoint pt = event.locationInWindow();
-        NSRect rect = NSRect(pt, NSSize(0, 0));
-        rect = view.convertRect(rect, null);
+        pt = view.convertPoint(pt, null);
 
-        int px = cast(int)(rect.origin.x) - 2;
-        int py = windowHeight - cast(int)(rect.origin.y) - 3;
+        int px = cast(int)(pt.x) - 2;
+        int py = windowHeight - cast(int)(pt.y) - 3;
         return vec2i(px, py);
     }    
 
     // Overridden function gets called with an id, instead of the self pointer.
-
+    // So we have to get back the D class object address.
+    // Big thanks to Mike Ash (@macdev)
     extern(C)
     {
-        void keyDown(id self, id event)
+        void keyDown(id self, SEL selector, id event)
         {
             DPlugCustomView view = getInstance(self);
             view._window.handleKeyEvent(new NSEvent(event), false);
         }
 
-        void keyUp(id self, id event)
+        void keyUp(id self, SEL selector, id event)
         {
             DPlugCustomView view = getInstance(self);
             view._window.handleKeyEvent(new NSEvent(event), true);
         }
 
-        void mouseDown(id self, id event)
+        void mouseDown(id self, SEL selector, id event)
         {
             DPlugCustomView view = getInstance(self);
             view._window.handleMouseClicks(new NSEvent(event), MouseButton.left, false);
         }
 
-        void mouseUp(id self, id event)
+        void mouseUp(id self, SEL selector, id event)
         {
             DPlugCustomView view = getInstance(self);
             view._window.handleMouseClicks(new NSEvent(event), MouseButton.left, true);
         }
 
-        void rightMouseDown(id self, id event)
+        void rightMouseDown(id self, SEL selector, id event)
         {
             DPlugCustomView view = getInstance(self);
             view._window.handleMouseClicks(new NSEvent(event), MouseButton.right, false);
         }
 
-        void rightMouseUp(id self, id event)
+        void rightMouseUp(id self, SEL selector, id event)
         {
             DPlugCustomView view = getInstance(self);
             view._window.handleMouseClicks(new NSEvent(event), MouseButton.right, true);
         }       
 
-        void otherMouseDown(id self, id event)
+        void otherMouseDown(id self, SEL selector, id event)
         {
             DPlugCustomView view = getInstance(self);
             auto nsEvent = new NSEvent(event);
@@ -506,7 +502,7 @@ version(OSX)
                 view._window.handleMouseClicks(nsEvent, MouseButton.middle, false);
         }
 
-        void otherMouseUp(id self, id event)
+        void otherMouseUp(id self, SEL selector, id event)
         {
             DPlugCustomView view = getInstance(self);
             auto nsEvent = new NSEvent(event);
@@ -514,47 +510,47 @@ version(OSX)
                 view._window.handleMouseClicks(nsEvent, MouseButton.middle, true);
         }
 
-        void mouseMoved(id self, id event)
+        void mouseMoved(id self, SEL selector, id event)
         {
             DPlugCustomView view = getInstance(self);
             view._window.handleMouseMove(new NSEvent(event));
         }
 
-        void mouseDragged(id self, id event)
+        void mouseDragged(id self, SEL selector, id event)
         {
             DPlugCustomView view = getInstance(self);
             view._window.handleMouseMove(new NSEvent(event));
         }
 
-        void rightMouseDragged(id self, id event)
+        void rightMouseDragged(id self, SEL selector, id event)
         {
             DPlugCustomView view = getInstance(self);
             view._window.handleMouseMove(new NSEvent(event));
         }
 
-        void otherMouseDragged(id self, id event)
+        void otherMouseDragged(id self, SEL selector, id event)
         {
             DPlugCustomView view = getInstance(self);
             view._window.handleMouseMove(new NSEvent(event));
         }
 
-        bool acceptsFirstResponder(id self)
+        bool acceptsFirstResponder(id self, SEL selector)
         {
             return YES;
         }
 
-        bool acceptsFirstMouse(id self, id pEvent)
+        bool acceptsFirstMouse(id self, SEL selector, id pEvent)
         {
             return YES;
         }
 
-        bool isOpaque(id self)
+        bool isOpaque(id self, SEL selector)
         {
             //DPlugCustomView view = getInstance(self);
             return YES;//view._window is null ? NO : YES;
         }
 
-        void viewDidMoveToWindow(id self)
+        void viewDidMoveToWindow(id self, SEL selector)
         {
             DPlugCustomView view = getInstance(self);
             NSWindow parentWindow = view.window();
@@ -565,13 +561,13 @@ version(OSX)
             }
         }
 
-        void drawRect(id self, NSRect rect)
+        void drawRect(id self, SEL selector, NSRect rect)
         {
             DPlugCustomView view = getInstance(self);
             view._window.drawRect(rect);            
         }
 
-        void onTimer(id self, id timer)
+        void onTimer(id self, SEL selector, id timer)
         {
             DPlugCustomView view = getInstance(self);
             
