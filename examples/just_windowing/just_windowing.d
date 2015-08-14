@@ -15,18 +15,8 @@ import derelict.cocoa;
 
 void main(string[] args)
 {
-    auto NSApp = NSApplication.sharedApplication;
-
-    NSApp.setActivationPolicy(NSApplicationActivationPolicyRegular);
-    NSApp.activateIgnoringOtherApps(YES);
-    NSApp.run();
-    
     auto app = scoped!App();
-
-    
-
-    //app.mainloop();
-    
+    app.mainloop();    
 }
 
 
@@ -49,13 +39,9 @@ class App : IWindowListener
         }
     }
 
-
-    void onDraw(ImageRef!RGBA wfb, bool swapRB)
+    void onDraw(ImageRef!RGBA wfb, WindowPixelFormat swapRB)
     {
-        if (swapRB)
-            wfb.fill(RGBA(0, 128, 255, 255));
-        else
-            wfb.fill(RGBA(255, 128, 0, 255));
+        wfb.fill(RGBA(255, 255, 128, 0));
     }
 
     void onResized(int width, int height)
