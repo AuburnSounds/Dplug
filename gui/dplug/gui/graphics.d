@@ -273,7 +273,7 @@ class GUIGraphics : UIElement, IGraphics
             _compositingWatch.start();
             compositeGUI(wfb, pf);
             _compositingWatch.stop();
-            _compositingWatch.displayMean();
+            //_compositingWatch.displayMean();
 
             // only then is the list of rectangles to update cleared
             _areasToUpdate.clearContents();

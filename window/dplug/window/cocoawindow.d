@@ -6,9 +6,16 @@
 module dplug.window.cocoawindow;
 
 import core.stdc.stdlib;
+import std.string;
+import std.stdio;
+
 import ae.utils.graphics;
+
 import gfm.core;
 import gfm.math;
+
+
+
 import dplug.window.window;
 
 version(OSX)
@@ -29,6 +36,12 @@ version(OSX)
     {
     private:   
         IWindowListener _listener;
+
+        // Stays null in the case of a plugin, but exists for a stand-alone program
+        // For testing purpose.
+        NSWindow _cocoaWindow = null; 
+        NSApplication _cocoaApplication;
+
         DPlugCustomView _view = null;
 
         bool _terminated = false;
@@ -44,20 +57,34 @@ version(OSX)
 
         ubyte* _buffer = null;
 
-
-
     public:
 
         this(void* parentWindow, IWindowListener listener, int width, int height)
         {
-
             _listener = listener;         
 
             DerelictCocoa.load();
-
             NSApplicationLoad(); // to use Cocoa in Carbon applications
+            bool parentViewExists = parentWindow !is null;
+            NSView parentView;
+            if (!parentViewExists)
+            {
+                // create a NSWindow to hold our NSView
+                _cocoaApplication = NSApplication.sharedApplication;
+                _cocoaApplication.setActivationPolicy(NSApplicationActivationPolicyRegular);
 
-            NSView parentView = new NSView(cast(id)parentWindow);
+                NSWindow window = NSWindow.alloc();
+                window.initWithContentRect(NSMakeRect(100, 100, width, height), 
+                                           NSBorderlessWindowMask, NSBackingStoreBuffered, NO);
+                window.makeKeyAndOrderFront();
+
+                parentView = window.contentView();
+
+                _cocoaApplication.activateIgnoringOtherApps(YES);                
+            }
+            else
+                parentView = new NSView(cast(id)parentWindow);
+
             DPlugCustomView.registerSubclass();
 
             _view = DPlugCustomView.alloc();
@@ -68,8 +95,12 @@ version(OSX)
             _askedWidth = width;
             _askedHeight = height;
 
+
             _currentWidth = 0;
             _currentHeight = 0;
+
+            if (_cocoaApplication)
+                _cocoaApplication.run();
         }
 
         ~this()
@@ -81,12 +112,10 @@ version(OSX)
         {
             if (_view !is null)
             {
-                debugOutput(">close view");
                 _view.killTimer();
                 _view.removeFromSuperview();
                 //_view.release();
                 _view = null;
-                debugOutput("<close view");
             }
         }
         
@@ -133,37 +162,6 @@ version(OSX)
             import std.stdio;
             switch(event.type())
             {
-                case NSLeftMouseDown: 
-                    handleMouseClicks(event, MouseButton.left, false);
-                    break;
-
-                case NSLeftMouseUp: 
-                    handleMouseClicks(event, MouseButton.left, true);
-                    break;
-
-                case NSRightMouseDown: 
-                    handleMouseClicks(event, MouseButton.right, false);
-                    break;
-
-                case NSRightMouseUp: 
-                    handleMouseClicks(event, MouseButton.right, true);
-                    break;   
-
-                case NSOtherMouseDown: 
-                    {
-                        int buttonNumber = event.buttonNumber;
-                        if (buttonNumber == 2)
-                            handleMouseClicks(event, MouseButton.middle, false);
-                    }
-                    break;
-
-                case NSOtherMouseUp:
-                    {
-                        int buttonNumber = event.buttonNumber;
-                        if (buttonNumber == 2)
-                            handleMouseClicks(event, MouseButton.middle, true);
-                    }
-                    break;
 
                 case NSScrollWheel: 
                     handleMouseWheel(event);
@@ -191,16 +189,8 @@ version(OSX)
                     break;
                 default:            
             }
-        }+/
-
- /+       void getMouseLocation(NSEvent event, out int mouseX, out int mouseY)
-        {
-            NSPoint location = _window.mouseLocationOutsideOfEventStream();
-            mouseX = cast(int)(0.5f + location.x);
-            mouseY = cast(int)(0.5f + location.y);
-            mouseY = _height - mouseY;
         }
-
++/
         MouseState getMouseState(NSEvent event)
         {
             // not working
@@ -221,47 +211,16 @@ version(OSX)
             return state;
         }
 
-        void handleMouseWheel(NSEvent event)
+/+        void handleMouseWheel(NSEvent event)
         {
             int deltaX = cast(int)(0.5 + 10 * event.deltaX);
             int deltaY = cast(int)(0.5 + 10 * event.deltaY);
             int mouseX, mouseY;
             getMouseLocation(event, mouseX, mouseY);            
             _listener.onMouseWheel(mouseX, mouseY, deltaX, deltaY, getMouseState(event));
-        }
+        } 
 
-        void handleMouseClicks(NSEvent event, MouseButton mb, bool released)
-        {
-            int mouseX, mouseY;
-            getMouseLocation(event, mouseX, mouseY);            
-            
-            if (released)
-                _listener.onMouseRelease(mouseX, mouseY, mb, getMouseState(event));
-            else
-            {
-                int clickCount = event.clickCount();
-                bool isDoubleClick = clickCount >= 2;
-                _listener.onMouseClick(mouseX, mouseY, mb, isDoubleClick, getMouseState(event));
-            }
-        }
-
-        void handleMouseMove(NSEvent event)
-        {
-            import std.stdio;
-            int mouseX, mouseY;
-            getMouseLocation(event, mouseX, mouseY);
-
-            if (_firstMouseMove)
-            {
-                _firstMouseMove = false;
-                _lastMouseX = mouseX;
-                _lastMouseY = mouseY;
-            }
-
-            _listener.onMouseMove(mouseX, mouseY, mouseX - _lastMouseX, mouseY - _lastMouseY, getMouseState(event));
-
-            _lastMouseX = mouseX;
-            _lastMouseY = mouseY;
+   _lastMouseY = mouseY;
         }+/
 
         void handleKeyEvent(NSEvent event, bool released)
@@ -295,6 +254,44 @@ version(OSX)
                 _listener.onKeyUp(key);
         }
 
+        void handleMouseMove(NSEvent event)
+        {
+            vec2i mousePos = getMouseXY(_view, event, _askedHeight);
+
+            debugOutput(format("Mouse moved to %s,%s", mousePos.x,mousePos.y));
+
+            if (_firstMouseMove)
+            {
+                _firstMouseMove = false;
+                _lastMouseX = mousePos.x;
+                _lastMouseY = mousePos.y;
+            }
+
+            _listener.onMouseMove(mousePos.x, mousePos.y, mousePos.x - _lastMouseX, mousePos.y - _lastMouseY, 
+                getMouseState(event));
+
+            _lastMouseX = mousePos.x;
+            _lastMouseY = mousePos.y;
+        }
+         
+
+        void handleMouseClicks(NSEvent event, MouseButton mb, bool released)
+        {
+            vec2i mousePos = getMouseXY(_view, event, _askedHeight);
+            
+            if (released)
+                _listener.onMouseRelease(mousePos.x, mousePos.y, mb, getMouseState(event));
+            else
+            {
+                debugOutput(format("Mouse clicked button %s at %s,%s", mb, mousePos.x, mousePos.y));
+
+                // TODO double-click support that doesn't crash
+                //int clickCount = event.clickCount();
+                //bool isDoubleClick = clickCount >= 2;
+                _listener.onMouseClick(mousePos.x, mousePos.y, mb, false, getMouseState(event));
+            }
+        }
+
         enum scanLineAlignment = 4; // could be anything
 
         // given a width, how long in bytes should scanlines be
@@ -306,7 +303,7 @@ version(OSX)
 
         void drawRect(NSRect rect)
         {       
-            debugOutput("drawRect");
+            //debugOutput("drawRect");
        
             NSGraphicsContext nsContext = NSGraphicsContext.currentContext();
 
@@ -399,6 +396,19 @@ version(OSX)
             clazz = objc_allocateClassPair(cast(Class) lazyClass!"NSView", "DPlugCustomView", 0);
             bool ok = class_addMethod(clazz, sel!"keyDown:", cast(IMP) &keyDown, "v@:@");
             ok = ok && class_addMethod(clazz, sel!"keyUp:", cast(IMP) &keyUp, "v@:@");
+
+            ok = ok && class_addMethod(clazz, sel!"mouseDown:", cast(IMP) &mouseDown, "v@:@");
+            ok = ok && class_addMethod(clazz, sel!"mouseUp:", cast(IMP) &mouseUp, "v@:@");
+            ok = ok && class_addMethod(clazz, sel!"rightMouseDown:", cast(IMP) &rightMouseDown, "v@:@");
+            ok = ok && class_addMethod(clazz, sel!"rightMouseUp:", cast(IMP) &rightMouseUp, "v@:@");
+            ok = ok && class_addMethod(clazz, sel!"otherMouseDown:", cast(IMP) &otherMouseDown, "v@:@");
+            ok = ok && class_addMethod(clazz, sel!"otherMouseUp:", cast(IMP) &otherMouseUp, "v@:@");
+
+            ok = ok && class_addMethod(clazz, sel!"mouseMoved:", cast(IMP) &mouseMoved, "v@:@");
+            ok = ok && class_addMethod(clazz, sel!"mouseDragged:", cast(IMP) &mouseDragged, "v@:@");
+            ok = ok && class_addMethod(clazz, sel!"rightMouseDragged:", cast(IMP) &rightMouseDragged, "v@:@");
+            ok = ok && class_addMethod(clazz, sel!"otherMouseDragged:", cast(IMP) &otherMouseDragged, "v@:@");
+
             ok = ok && class_addMethod(clazz, sel!"acceptsFirstResponder", cast(IMP) &acceptsFirstResponder, "b@:");
             ok = ok && class_addMethod(clazz, sel!"isOpaque", cast(IMP) &isOpaque, "b@:");
             ok = ok && class_addMethod(clazz, sel!"acceptsFirstMouse:", cast(IMP) &acceptsFirstMouse, "b@:@");
@@ -418,7 +428,6 @@ version(OSX)
 
         void killTimer()
         {
-            _window.debugOutput("killTimer");
             if (_timer !is null)
             {
                 _timer.invalidate();
@@ -429,7 +438,7 @@ version(OSX)
 
     DPlugCustomView getInstance(id anId)
     {
-        // strange thins: object_getInstanceVariable definition is odd (void**) 
+        // strange thing: object_getInstanceVariable definition is odd (void**) 
         // and only works for pointer-sized values says SO
         void* thisPointer = null;
         Ivar var = object_getInstanceVariable(anId, "this", &thisPointer); 
@@ -438,28 +447,95 @@ version(OSX)
         return cast(DPlugCustomView)thisPointer;
     }
 
-    // Overriden function gets called with an id, instead of the self pointer.
+    vec2i getMouseXY(NSView view, NSEvent event, int windowHeight)
+    {
+        NSPoint pt = event.locationInWindow();
+        NSRect rect = NSRect(pt, NSSize(0, 0));
+        rect = view.convertRect(rect, null);
+
+        int px = cast(int)(rect.origin.x) - 2;
+        int py = windowHeight - cast(int)(rect.origin.y) - 3;
+        return vec2i(px, py);
+    }    
+
+    // Overridden function gets called with an id, instead of the self pointer.
 
     extern(C)
     {
         void keyDown(id self, id event)
         {
             DPlugCustomView view = getInstance(self);
-            if (view._window !is null)
-            {
-                view._window.debugOutput("keyDown");
-                view._window.handleKeyEvent(new NSEvent(event), false);
-            }
+            view._window.handleKeyEvent(new NSEvent(event), false);
         }
 
         void keyUp(id self, id event)
         {
             DPlugCustomView view = getInstance(self);
-            if (view._window !is null)
-            {
-                view._window.debugOutput("keyUp");
-                view._window.handleKeyEvent(new NSEvent(event), true);
-            }
+            view._window.handleKeyEvent(new NSEvent(event), true);
+        }
+
+        void mouseDown(id self, id event)
+        {
+            DPlugCustomView view = getInstance(self);
+            view._window.handleMouseClicks(new NSEvent(event), MouseButton.left, false);
+        }
+
+        void mouseUp(id self, id event)
+        {
+            DPlugCustomView view = getInstance(self);
+            view._window.handleMouseClicks(new NSEvent(event), MouseButton.left, true);
+        }
+
+        void rightMouseDown(id self, id event)
+        {
+            DPlugCustomView view = getInstance(self);
+            view._window.handleMouseClicks(new NSEvent(event), MouseButton.right, false);
+        }
+
+        void rightMouseUp(id self, id event)
+        {
+            DPlugCustomView view = getInstance(self);
+            view._window.handleMouseClicks(new NSEvent(event), MouseButton.right, true);
+        }       
+
+        void otherMouseDown(id self, id event)
+        {
+            DPlugCustomView view = getInstance(self);
+            auto nsEvent = new NSEvent(event);
+            if (nsEvent.buttonNumber == 2)
+                view._window.handleMouseClicks(nsEvent, MouseButton.middle, false);
+        }
+
+        void otherMouseUp(id self, id event)
+        {
+            DPlugCustomView view = getInstance(self);
+            auto nsEvent = new NSEvent(event);
+            if (nsEvent.buttonNumber == 2)
+                view._window.handleMouseClicks(nsEvent, MouseButton.middle, true);
+        }
+
+        void mouseMoved(id self, id event)
+        {
+            DPlugCustomView view = getInstance(self);
+            view._window.handleMouseMove(new NSEvent(event));
+        }
+
+        void mouseDragged(id self, id event)
+        {
+            DPlugCustomView view = getInstance(self);
+            view._window.handleMouseMove(new NSEvent(event));
+        }
+
+        void rightMouseDragged(id self, id event)
+        {
+            DPlugCustomView view = getInstance(self);
+            view._window.handleMouseMove(new NSEvent(event));
+        }
+
+        void otherMouseDragged(id self, id event)
+        {
+            DPlugCustomView view = getInstance(self);
+            view._window.handleMouseMove(new NSEvent(event));
         }
 
         bool acceptsFirstResponder(id self)
@@ -479,11 +555,14 @@ version(OSX)
         }
 
         void viewDidMoveToWindow(id self)
-        {            
+        {
             DPlugCustomView view = getInstance(self);
             NSWindow parentWindow = view.window();
-            parentWindow.makeFirstResponder(view);
-            parentWindow.setAcceptsMouseMovedEvents(true);
+            if (parentWindow)
+            {
+                parentWindow.makeFirstResponder(view);            
+                parentWindow.setAcceptsMouseMovedEvents(true);
+            }
         }
 
         void drawRect(id self, NSRect rect)
@@ -495,10 +574,11 @@ version(OSX)
         void onTimer(id self, id timer)
         {
             DPlugCustomView view = getInstance(self);
-            view._window.debugOutput("onTimer");
-
+            
             // TODO call listener.onAnimate
-
+            assert(view._window !is null);
+            assert(view._window._listener !is null);
+            
             view._window._listener.recomputeDirtyAreas();
             box2i dirtyRect = view._window._listener.getDirtyRectangle();
             if (!dirtyRect.empty())
