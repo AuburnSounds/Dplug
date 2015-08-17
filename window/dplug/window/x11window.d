@@ -24,7 +24,7 @@ static if (debugX11Window)
 version = SimpleWindow;
 
 
-version(none) //(linux)
+version(linux)
 {
     import x11.X;
     import x11.Xutil;
