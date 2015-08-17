@@ -542,11 +542,11 @@ protected:
             RGBA* wfb_scan = wfb.scanline(j).ptr;
 
             // clamp to existing lines
-            
+
             for (int l = 0; l < 5; ++l)
                 line_index[l] = gfm.math.clamp(j - 2 + l, 0, h - 1);
 
-            
+
             for (int l = 0; l < 5; ++l)
                 depth_scan[l] = _depthMap.levels[0].scanline(line_index[l]).ptr;
 
@@ -555,12 +555,12 @@ protected:
             for (int i = area.min.x; i < area.max.x; ++i)
             {
                 // clamp to existing columns
-                
+
                 for (int k = 0; k < 5; ++k)
                     col_index[k] = gfm.math.clamp(i - 2 + k, 0, w - 1);
 
                 // Get depth for a 5x5 patch
-                
+
                 for (int l = 0; l < 5; ++l)
                 {
                     for (int k = 0; k < 5; ++k)
@@ -574,8 +574,8 @@ protected:
                 float sx = depthPatch[1][0]     + depthPatch[1][1] * 2
                          + depthPatch[2][0] * 2 + depthPatch[2][1] * 4
                          + depthPatch[3][0]     + depthPatch[3][1] * 2
-                       - ( depthPatch[1][3] * 2 + depthPatch[1][4] 
-                         + depthPatch[2][3] * 4 + depthPatch[2][4] * 2 
+                       - ( depthPatch[1][3] * 2 + depthPatch[1][4]
+                         + depthPatch[2][3] * 4 + depthPatch[2][4] * 2
                          + depthPatch[3][3] * 2 + depthPatch[3][4] );
 
                 float sy = depthPatch[3][1] * 2 + depthPatch[3][2] * 4 + depthPatch[3][3] * 2
@@ -664,7 +664,7 @@ protected:
                 }
 
                 // secundary light
-                {   
+                {
                     float diffuseFactor = 0.5f + 0.5f * dot(normal, light2Dir);// + roughness;
 
                     diffuseFactor = /*cavity * */ linmap!float(diffuseFactor, 0.24f - roughness * 0.5f, 1, 0, 1.0f);
@@ -765,16 +765,16 @@ protected:
 
                 int r = cast(int)(color.x * 255.99f);
                 int g = cast(int)(color.y * 255.99f);
-                int b = cast(int)(color.z * 255.99f);                
+                int b = cast(int)(color.z * 255.99f);
 
                 RGBA finalColor = void;
 
                 final switch (pf) with (WindowPixelFormat)
                 {
-                    case ARGB8: 
-                        finalColor = RGBA(255, cast(ubyte)r, cast(ubyte)g, cast(ubyte)b); 
+                    case ARGB8:
+                        finalColor = RGBA(255, cast(ubyte)r, cast(ubyte)g, cast(ubyte)b);
                         break;
-                    case BGRA8: 
+                    case BGRA8:
                         finalColor = RGBA(cast(ubyte)b, cast(ubyte)g, cast(ubyte)r, 255);
                         break;
                 }

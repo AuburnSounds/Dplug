@@ -154,12 +154,7 @@ version(OSX)
 
         override uint getTimeMs()
         {
-            return 0; // TODO
-            /*
-            ulong nano = void;
-            absolutetime_to_nanoseconds(mach_absolute_time(), &nano);
-            return cast(uint)(nano / 1_000_000);
-            */
+            return cast(uint)(NSDate.timeIntervalSinceReferenceDate() * 1000.0);
         }
 
     private:
@@ -289,9 +284,9 @@ version(OSX)
             else
             {
                 // TODO double-click support that doesn't crash
-                //int clickCount = event.clickCount();
-                //bool isDoubleClick = clickCount >= 2;
-                _listener.onMouseClick(mousePos.x, mousePos.y, mb, false, getMouseState(event));
+                int clickCount = event.clickCount();
+                bool isDoubleClick = clickCount >= 2;
+                _listener.onMouseClick(mousePos.x, mousePos.y, mb, isDoubleClick, getMouseState(event));
             }
         }
 

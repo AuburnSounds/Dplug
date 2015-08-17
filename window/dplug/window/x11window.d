@@ -17,35 +17,35 @@ import gfm.math;
 import dplug.window.window;
 
 
-private enum debugX11Window = true;   
+private enum debugX11Window = true;
 static if (debugX11Window)
     import std.stdio;
 
-version = SimpleWindow;    
+version = SimpleWindow;
 
 
-version(linux)
+version(none) //(linux)
 {
     import x11.X;
     import x11.Xutil;
     import x11.Xlib;
     import x11.keysymdef;
 
-    // Important reads: 
+    // Important reads:
     // http://stackoverflow.com/questions/10492275/how-to-upload-32-bit-image-to-server-side-pixmap
     // http://stackoverflow.com/questions/3645632/how-to-create-a-window-with-a-bit-depth-of-32
 
     final class X11Window : IWindow
     {
-    private:             
+    private:
 
         enum scanLineAlignment = 4; // could be 1, 2 or 4
 
         bool _terminated = false;
         bool _initialized = false;
-        
+
         IWindowListener _listener;
-        
+
         int _width = 0;
         int _height = 0;
         ubyte* _buffer = null;
@@ -54,9 +54,9 @@ version(linux)
         int _lastMouseX;
         int _lastMouseY;
 
-        Window _window;    
+        Window _window;
         Display* _display;
-        Screen* _screen;  
+        Screen* _screen;
         Visual* _visual;
         Pixmap _pixmap;
 
@@ -66,7 +66,7 @@ version(linux)
         GC _gc;
         XImage* _bufferImage;
 
-        XEvent _event;        
+        XEvent _event;
 
     public:
 
@@ -88,14 +88,14 @@ version(linux)
             if (parentWindow is null)
             {
                 x = (WidthOfScreen(_screen) - width) / 2;
-                y = (HeightOfScreen(_screen) - height) / 2;                
+                y = (HeightOfScreen(_screen) - height) / 2;
                 parent = RootWindow(_display, _screenNumber);
             }
             else
             {
                 parent = cast(Window)(parentWindow);
                 x = 0;
-                y = 0;                
+                y = 0;
             }
 
             auto black = BlackPixel(_display, _screenNumber);
@@ -113,11 +113,11 @@ version(linux)
                 attribOrigin.border_pixel = black;
                 attribOrigin.background_pixel = black;
 
-                _window = XCreateWindow(_display, 
-                                        parent, 
-                                        x, y, width, height, 
+                _window = XCreateWindow(_display,
+                                        parent,
+                                        x, y, width, height,
                                         0, // border_width
-                                        CopyFromParent,                       
+                                        CopyFromParent,
                                         InputOutput,
                                         cast(Visual*)CopyFromParent,
                                         CWOverrideRedirect | CWBackPixel | CWBorderPixel | CWBackPixmap, // valuemask
@@ -151,7 +151,7 @@ version(linux)
                 XSetWMNormalHints(_display, _window, &hints);
             }
 
-            c_long eventMask = 
+            c_long eventMask =
                 ExposureMask |
                 KeyPressMask |
                 KeyReleaseMask |
@@ -166,7 +166,7 @@ version(linux)
 
             _width = 0;//width;
             _height = 0;//height;
-            
+
         //    XFlush(_display); // Flush all pending requests to the X server.
 
             _initialized = true;
@@ -187,17 +187,17 @@ version(linux)
                 _initialized = false;
                 XFreeGC(_display, _pixmapGC);
                 XFreePixmap(_display, _pixmap);
-                XDestroyImage(_bufferImage);                
+                XDestroyImage(_bufferImage);
                 XDestroyWindow(_display, _window);
-                XCloseDisplay(_display); 
+                XCloseDisplay(_display);
             }
         }
-        
+
         override void terminate()
         {
             close();
         }
-        
+
         // Implements IWindow
         override void waitEventAndDispatch()
         {
@@ -220,7 +220,7 @@ version(linux)
         }
 
         override uint getTimeMs()
-        {            
+        {
             import core.sys.posix.time;
             timespec time;
             clock_gettime(CLOCK_REALTIME, &time);
@@ -235,15 +235,15 @@ version(linux)
 
             switch (event.type)
             {
-                case Expose: 
+                case Expose:
                     handleXExposeEvent(&event.xexpose);
                     break;
 
-                case KeyPress: 
+                case KeyPress:
                     handleXKeyEvent(&event.xkey, false);
                     break;
 
-                case KeyRelease: 
+                case KeyRelease:
                     handleXKeyEvent(&event.xkey, true);
                     break;
 
@@ -268,13 +268,13 @@ version(linux)
                     break;
 
 /+
-    
+
 
     /// Called on mouse wheel movement
     /// Returns: true if the event was handled.
     bool onMouseWheel(int x, int y, int wheelDeltaX, int wheelDeltaY, MouseState mstate);
 
-    
+
     +/
 
                 default:
@@ -289,9 +289,9 @@ version(linux)
 
             if (release)
                 _listener.onKeyUp(translateToKey(event));
-            else   
-                _listener.onKeyDown(translateToKey(event));          
-        }      
+            else
+                _listener.onKeyDown(translateToKey(event));
+        }
 
         Key translateToKey(XKeyEvent* event)
         {
@@ -343,7 +343,7 @@ version(linux)
         static MouseButton toMouseButton(uint xbutton)
         {
             switch(xbutton)
-            { 
+            {
                 case Button1: return MouseButton.left;
                 case Button2: return MouseButton.right;
                 case Button3: return MouseButton.middle;
@@ -381,14 +381,14 @@ version(linux)
             }
 
             MouseState mstate = toMouseState(event.state);
-            _listener.onMouseMove(event.x, event.y, event.x - _lastMouseX, event.y - _lastMouseY, mstate);     
+            _listener.onMouseMove(event.x, event.y, event.x - _lastMouseX, event.y - _lastMouseY, mstate);
 
             _lastMouseX = event.x;
             _lastMouseY = event.y;
         }
 
         void handleXConfigureEvent(XConfigureEvent* event)
-        {            
+        {
             if (event.window != _window)
                 return;
 
@@ -432,7 +432,7 @@ version(linux)
             {
                 // Extends buffer
                 if (_buffer != null)
-                {                    
+                {
                     XFreeGC(_display, _pixmapGC);
                     XFreePixmap(_display, _pixmap);
                     XDestroyImage(_bufferImage); // calls free on _buffer
@@ -444,16 +444,16 @@ version(linux)
                  _buffer = cast(ubyte*) malloc(sizeNeeded);
 
                 // resize the internal pixmap
-                _pixmap = XCreatePixmap(_display, _window, newWidth, newHeight, 24);            
-              
-                _bufferImage = XCreateImage(_display, 
+                _pixmap = XCreatePixmap(_display, _window, newWidth, newHeight, 24);
+
+                _bufferImage = XCreateImage(_display,
                                             cast(Visual*) CopyFromParent,
-                                            24, 
-                                            ZPixmap, 
+                                            24,
+                                            ZPixmap,
                                             0,  // offset
-                                            cast(char*)_buffer, 
-                                            newWidth, 
-                                            newHeight, 
+                                            cast(char*)_buffer,
+                                            newWidth,
+                                            newHeight,
                                             scanLineAlignment * 8,
                                             byteStride(newWidth));
 
@@ -469,7 +469,7 @@ version(linux)
         }
 
         void swapBuffers(ImageRef!RGBA wfb, box2i area)
-        {   
+        {
             int x = area.min.x;
             int y = area.min.y;
             int w = area.width;
@@ -480,7 +480,7 @@ version(linux)
             // copy pixmap to window
             XCopyArea(_display, _pixmap, _window,_gc, x, y, w, h, x, y);
 
-            XSync(_display, False);           
+            XSync(_display, False);
         }
 
         void getWindowAttributes(XWindowAttributes* attrib)
