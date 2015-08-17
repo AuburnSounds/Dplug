@@ -213,17 +213,13 @@ version(OSX)
             return state;
         }
 
-/+        void handleMouseWheel(NSEvent event)
+        void handleMouseWheel(NSEvent event)
         {
             int deltaX = cast(int)(0.5 + 10 * event.deltaX);
             int deltaY = cast(int)(0.5 + 10 * event.deltaY);
-            int mouseX, mouseY;
-            getMouseLocation(event, mouseX, mouseY);
-            _listener.onMouseWheel(mouseX, mouseY, deltaX, deltaY, getMouseState(event));
+            vec2i mousePos = getMouseXY(_view, event, _askedHeight);
+            _listener.onMouseWheel(mousePos.x, mousePos.y, deltaX, deltaY, getMouseState(event));
         }
-
-   _lastMouseY = mouseY;
-        }+/
 
         void handleKeyEvent(NSEvent event, bool released)
         {
@@ -393,6 +389,7 @@ version(OSX)
 
             Class clazz;
             clazz = objc_allocateClassPair(cast(Class) lazyClass!"NSView", "DPlugCustomView", 0);
+
             class_addMethod(clazz, sel!"keyDown:", cast(IMP) &keyDown, "v@:@");
             class_addMethod(clazz, sel!"keyUp:", cast(IMP) &keyUp, "v@:@");
             class_addMethod(clazz, sel!"mouseDown:", cast(IMP) &mouseDown, "v@:@");
@@ -411,6 +408,9 @@ version(OSX)
             class_addMethod(clazz, sel!"viewDidMoveToWindow", cast(IMP) &viewDidMoveToWindow, "v@:");
             class_addMethod(clazz, sel!"drawRect:", cast(IMP) &drawRect, "v@:" ~ encode!NSRect);
             class_addMethod(clazz, sel!"onTimer:", cast(IMP) &onTimer, "v@:@");
+
+            // This ~ is to avoid a strange DMD ICE. Didn't succeed in isolating it.
+            class_addMethod(clazz, sel!("scroll" ~ "Wheel:") , cast(IMP) &scrollWheel, "v@:@");
 
             // very important: add an instance variable for the this pointer so that the D object can be
             // retrieved from an id
@@ -513,6 +513,12 @@ version(OSX)
         {
             DPlugCustomView view = getInstance(self);
             view._window.handleMouseMove(NSEvent(event));
+        }
+
+        void scrollWheel(id self, SEL selector, id event)
+        {
+            DPlugCustomView view = getInstance(self);
+            view._window.handleMouseWheel(NSEvent(event));
         }
 
         bool acceptsFirstResponder(id self, SEL selector)
