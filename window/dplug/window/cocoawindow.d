@@ -42,6 +42,10 @@ version(OSX)
         NSWindow _cocoaWindow = null;
         NSApplication _cocoaApplication;
 
+        NSColorSpace _nsColorSpace;
+        CGColorSpaceRef _cgColorSpaceRef;
+        NSData _imageData;
+
         DPlugCustomView _view = null;
 
         bool _terminated = false;
@@ -95,9 +99,12 @@ version(OSX)
             _askedWidth = width;
             _askedHeight = height;
 
-
             _currentWidth = 0;
             _currentHeight = 0;
+
+            _nsColorSpace = NSColorSpace.sRGBColorSpace();
+            // hopefully not null else the colors will be brighter
+            _cgColorSpaceRef = _nsColorSpace.CGColorSpace();
 
             if (_cocoaApplication)
                 _cocoaApplication.run();
@@ -258,8 +265,6 @@ version(OSX)
         {
             vec2i mousePos = getMouseXY(_view, event, _askedHeight);
 
-            debugOutput(format("Mouse moved to %s,%s", mousePos.x,mousePos.y));
-
             if (_firstMouseMove)
             {
                 _firstMouseMove = false;
@@ -283,8 +288,6 @@ version(OSX)
                 _listener.onMouseRelease(mousePos.x, mousePos.y, mb, getMouseState(event));
             else
             {
-                debugOutput(format("Mouse clicked button %s at %s,%s", mb, mousePos.x, mousePos.y));
-
                 // TODO double-click support that doesn't crash
                 //int clickCount = event.clickCount();
                 //bool isDoubleClick = clickCount >= 2;
@@ -303,8 +306,6 @@ version(OSX)
 
         void drawRect(NSRect rect)
         {
-            //debugOutput("drawRect");
-
             NSGraphicsContext nsContext = NSGraphicsContext.currentContext();
 
             CIContext ciContext = nsContext.getCIContext();
@@ -321,12 +322,15 @@ version(OSX)
             wfb.pixels = cast(RGBA*)_buffer;
             _listener.onDraw(wfb, WindowPixelFormat.ARGB8);
 
-            size_t sizeInBytes = byteStride(_currentWidth) * _currentHeight * 4;
-            NSData imageData = NSData.dataWithBytesNoCopy(_buffer, sizeInBytes, false);
-            //scope(exit) imageData.release();
 
-            CIImage image = CIImage.imageWithBitmapData(imageData, byteStride(_currentWidth),
-                                                        CGSize(_currentWidth, _currentHeight), kCIFormatARGB8, null);
+            size_t sizeNeeded = byteStride(_currentWidth) * _currentHeight;
+            _imageData = NSData.dataWithBytesNoCopy(_buffer, sizeNeeded, false);
+
+            CIImage image = CIImage.imageWithBitmapData(_imageData,
+                                                        byteStride(_currentWidth),
+                                                        CGSize(_currentWidth, _currentHeight),
+                                                        kCIFormatARGB8,
+                                                        _cgColorSpaceRef);
             //scope(exit) image.release();
 
             ciContext.drawImage(image, rect, rect);
@@ -336,7 +340,7 @@ version(OSX)
         bool updateSizeIfNeeded(int newWidth, int newHeight)
         {
             // only do something if the client size has changed
-            if (newWidth != _currentWidth || newHeight != _currentHeight)
+            if ( (newWidth != _currentWidth) || (newHeight != _currentHeight) )
             {
                 // Extends buffer
                 if (_buffer != null)
@@ -373,6 +377,8 @@ version(OSX)
 
         void initialize(CocoaWindow window, int width, int height)
         {
+            // Warning: taking this address is fishy since DPlugCustomView is a struct and thus could be copied
+            // we rely on the fact it won't :|
             void* thisPointer = cast(void*)(&this);
             object_setInstanceVariable(_id, "this", thisPointer);
 
@@ -401,9 +407,9 @@ version(OSX)
             class_addMethod(clazz, sel!"otherMouseDown:", cast(IMP) &otherMouseDown, "v@:@");
             class_addMethod(clazz, sel!"otherMouseUp:", cast(IMP) &otherMouseUp, "v@:@");
             class_addMethod(clazz, sel!"mouseMoved:", cast(IMP) &mouseMoved, "v@:@");
-            class_addMethod(clazz, sel!"mouseDragged:", cast(IMP) &mouseDragged, "v@:@");
-            class_addMethod(clazz, sel!"rightMouseDragged:", cast(IMP) &rightMouseDragged, "v@:@");
-            class_addMethod(clazz, sel!"otherMouseDragged:", cast(IMP) &otherMouseDragged, "v@:@");
+            class_addMethod(clazz, sel!"mouseDragged:", cast(IMP) &mouseMoved, "v@:@");
+            class_addMethod(clazz, sel!"rightMouseDragged:", cast(IMP) &mouseMoved, "v@:@");
+            class_addMethod(clazz, sel!"otherMouseDragged:", cast(IMP) &mouseMoved, "v@:@");
             class_addMethod(clazz, sel!"acceptsFirstResponder", cast(IMP) &acceptsFirstResponder, "b@:");
             class_addMethod(clazz, sel!"isOpaque", cast(IMP) &isOpaque, "b@:");
             class_addMethod(clazz, sel!"acceptsFirstMouse:", cast(IMP) &acceptsFirstMouse, "b@:@");
@@ -509,24 +515,6 @@ version(OSX)
         }
 
         void mouseMoved(id self, SEL selector, id event)
-        {
-            DPlugCustomView view = getInstance(self);
-            view._window.handleMouseMove(NSEvent(event));
-        }
-
-        void mouseDragged(id self, SEL selector, id event)
-        {
-            DPlugCustomView view = getInstance(self);
-            view._window.handleMouseMove(NSEvent(event));
-        }
-
-        void rightMouseDragged(id self, SEL selector, id event)
-        {
-            DPlugCustomView view = getInstance(self);
-            view._window.handleMouseMove(NSEvent(event));
-        }
-
-        void otherMouseDragged(id self, SEL selector, id event)
         {
             DPlugCustomView view = getInstance(self);
             view._window.handleMouseMove(NSEvent(event));
