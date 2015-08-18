@@ -45,6 +45,7 @@ version(OSX)
         NSColorSpace _nsColorSpace;
         CGColorSpaceRef _cgColorSpaceRef;
         NSData _imageData;
+        NSString _logFormatStr;
 
         DPlugCustomView _view = null;
 
@@ -53,13 +54,13 @@ version(OSX)
         int _lastMouseX, _lastMouseY;
         bool _firstMouseMove = true;
 
-        int _askedWidth;
-        int _askedHeight; // TODO: remove in favor of asking the NSView its size
-
-        int _currentWidth;
-        int _currentHeight;
+        int _width;
+        int _height;
 
         ubyte* _buffer = null;
+
+        uint _timeAtCreationInMs;
+        uint _lastMeasturedTimeInMs;
 
     public:
 
@@ -96,15 +97,17 @@ version(OSX)
 
             parentView.addSubview(_view);
 
-            _askedWidth = width;
-            _askedHeight = height;
-
-            _currentWidth = 0;
-            _currentHeight = 0;
+            _width = 0;
+            _height = 0;
 
             _nsColorSpace = NSColorSpace.sRGBColorSpace();
             // hopefully not null else the colors will be brighter
             _cgColorSpaceRef = _nsColorSpace.CGColorSpace();
+
+            _logFormatStr = NSString.stringWith("%@");
+
+            _timeAtCreationInMs = getTimeMs();
+            _lastMeasturedTimeInMs = _timeAtCreationInMs;
 
             if (_cocoaApplication)
                 _cocoaApplication.run();
@@ -147,9 +150,8 @@ version(OSX)
         {
             NSString message = NSString.stringWith(s);
             //scope(exit) message.release();
-            NSString format = NSString.stringWith("%@"); // TODO cache this
-            //scope(exit) format.release();
-            NSLog(format._id, message._id);
+
+            NSLog(_logFormatStr._id, message._id);
         }
 
         override uint getTimeMs()
@@ -159,52 +161,18 @@ version(OSX)
 
     private:
 
- /+       void dispatchEvent(NSEvent event)
-        {
-            import std.stdio;
-            switch(event.type())
-            {
-
-                case NSScrollWheel:
-                    handleMouseWheel(event);
-                    break;
-
-                case NSMouseMoved:
-                case NSLeftMouseDragged:
-                case NSRightMouseDragged:
-                case NSOtherMouseDragged:
-                    handleMouseMove(event);
-                    break;
-
-                case NSKeyDown:
-                    handleKeyEvent(event, false);
-                    break;
-
-                case NSKeyUp:
-                    handleKeyEvent(event, true);
-                    break;
-
-                case NSFlagsChanged:
-                    break;
-
-                case NSPeriodic:
-                    break;
-                default:
-            }
-        }
-+/
         MouseState getMouseState(NSEvent event)
         {
             // not working
             MouseState state;
-           /* uint pressedMouseButtons = event.pressedMouseButtons();
+           uint pressedMouseButtons = event.pressedMouseButtons();
             if (pressedMouseButtons & 1)
                 state.leftButtonDown = true;
             if (pressedMouseButtons & 2)
                 state.rightButtonDown = true;
             if (pressedMouseButtons & 4)
                 state.middleButtonDown = true;
-*/
+
             // TODO
             //bool ctrlPressed;
             //bool shiftPressed;
@@ -217,7 +185,7 @@ version(OSX)
         {
             int deltaX = cast(int)(0.5 + 10 * event.deltaX);
             int deltaY = cast(int)(0.5 + 10 * event.deltaY);
-            vec2i mousePos = getMouseXY(_view, event, _askedHeight);
+            vec2i mousePos = getMouseXY(_view, event, _height);
             _listener.onMouseWheel(mousePos.x, mousePos.y, deltaX, deltaY, getMouseState(event));
         }
 
@@ -254,7 +222,7 @@ version(OSX)
 
         void handleMouseMove(NSEvent event)
         {
-            vec2i mousePos = getMouseXY(_view, event, _askedHeight);
+            vec2i mousePos = getMouseXY(_view, event, _height);
 
             if (_firstMouseMove)
             {
@@ -270,16 +238,14 @@ version(OSX)
             _lastMouseY = mousePos.y;
         }
 
-
         void handleMouseClicks(NSEvent event, MouseButton mb, bool released)
         {
-            vec2i mousePos = getMouseXY(_view, event, _askedHeight);
+            vec2i mousePos = getMouseXY(_view, event, _height);
 
             if (released)
                 _listener.onMouseRelease(mousePos.x, mousePos.y, mb, getMouseState(event));
             else
             {
-                // TODO double-click support that doesn't crash
                 int clickCount = event.clickCount();
                 bool isDoubleClick = clickCount >= 2;
                 _listener.onMouseClick(mousePos.x, mousePos.y, mb, isDoubleClick, getMouseState(event));
@@ -301,29 +267,31 @@ version(OSX)
 
             CIContext ciContext = nsContext.getCIContext();
 
-            // TODO get current with and size from NSView
-
-            updateSizeIfNeeded(_askedWidth, _askedHeight); // TODO support resize
+            // update internal buffers in case of startup/resize
+            {
+                NSRect boundsRect = _view.bounds();
+                int width = cast(int)(boundsRect.size.width);   // truncating down the dimensions of bounds
+                int height = cast(int)(boundsRect.size.height);
+                updateSizeIfNeeded(width, height);
+            }
 
             // draw buffers
             ImageRef!RGBA wfb;
-            wfb.w = _currentWidth;
-            wfb.h = _currentHeight;
-            wfb.pitch = byteStride(_currentWidth);
+            wfb.w = _width;
+            wfb.h = _height;
+            wfb.pitch = byteStride(_width);
             wfb.pixels = cast(RGBA*)_buffer;
             _listener.onDraw(wfb, WindowPixelFormat.ARGB8);
 
 
-            size_t sizeNeeded = byteStride(_currentWidth) * _currentHeight;
+            size_t sizeNeeded = byteStride(_width) * _height;
             _imageData = NSData.dataWithBytesNoCopy(_buffer, sizeNeeded, false);
 
             CIImage image = CIImage.imageWithBitmapData(_imageData,
-                                                        byteStride(_currentWidth),
-                                                        CGSize(_currentWidth, _currentHeight),
+                                                        byteStride(_width),
+                                                        CGSize(_width, _height),
                                                         kCIFormatARGB8,
                                                         _cgColorSpaceRef);
-            //scope(exit) image.release();
-
             ciContext.drawImage(image, rect, rect);
         }
 
@@ -331,7 +299,7 @@ version(OSX)
         bool updateSizeIfNeeded(int newWidth, int newHeight)
         {
             // only do something if the client size has changed
-            if ( (newWidth != _currentWidth) || (newHeight != _currentHeight) )
+            if ( (newWidth != _width) || (newHeight != _height) )
             {
                 // Extends buffer
                 if (_buffer != null)
@@ -342,13 +310,23 @@ version(OSX)
 
                 size_t sizeNeeded = byteStride(newWidth) * newHeight;
                  _buffer = cast(ubyte*) malloc(sizeNeeded);
-                _currentWidth = newWidth;
-                _currentHeight = newHeight;
-                _listener.onResized(_currentWidth, _currentHeight);
+                _width = newWidth;
+                _height = newHeight;
+                _listener.onResized(_width, _height);
                 return true;
             }
             else
                 return false;
+        }
+
+        void doAnimation()
+        {
+            uint now = getTimeMs();
+            _lastMeasturedTimeInMs = _timeAtCreationInMs;
+            double dt = (now - _lastMeasturedTimeInMs) * 0.001;
+            double time = (now - _timeAtCreationInMs) * 0.001; // hopefully no plug-in will be open more than 49 days
+            _lastMeasturedTimeInMs = now;
+            _listener.onAnimate(dt, time);
         }
     }
 
@@ -570,8 +548,7 @@ version(OSX)
 
         bool isOpaque(id self, SEL selector)
         {
-            //DPlugCustomView view = getInstance(self);
-            return YES;//view._window is null ? NO : YES;
+            return YES;
         }
 
         void viewDidMoveToWindow(id self, SEL selector)
@@ -595,9 +572,8 @@ version(OSX)
         {
             DPlugCustomView view = getInstance(self);
 
-            // TODO call listener.onAnimate
-            assert(view._window !is null);
-            assert(view._window._listener !is null);
+            // Deal with animation
+            view._window.doAnimation();
 
             view._window._listener.recomputeDirtyAreas();
             box2i dirtyRect = view._window._listener.getDirtyRectangle();
