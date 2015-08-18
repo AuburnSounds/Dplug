@@ -444,11 +444,48 @@ version(OSX)
 
     vec2i getMouseXY(NSView view, NSEvent event, int windowHeight)
     {
-        NSPoint pt = event.locationInWindow();
-        pt = view.convertPoint(pt, NSView(null));
+        NSPoint mouseLocation;
 
-        int px = cast(int)(pt.x) - 2;
-        int py = windowHeight - cast(int)(pt.y) - 3;
+        // UGLY UGLY HACK: get mouse position through ivar to workaround LDC problem with 32-bit
+        // for function returning NSPoint
+        bool itWorked = false;
+        version(X86) // not necessary in 64-bit (TODO: remove someday)
+        {
+            CGFloat mx, my;
+            Ivar var = object_getInstanceVariable(event._id, "_location", cast(void**)&mx);
+            if (var)
+            {
+                // Because object_getInstanceVariable is fucked up and only ever return pointer-sized variables
+                // we somehow managed to find a way to the other part of the NSPoint
+                var.ivar_offset += size_t.sizeof;
+                Ivar var2 = object_getInstanceVariable(event._id, "_location", cast(void**)&my);
+                var.ivar_offset -= size_t.sizeof;
+                mouseLocation = NSPoint(mx, my);
+                if (var != null && var2 != null)
+                    itWorked = true;
+            }
+        }
+
+        if (!itWorked) // use regular call in case all failed
+        {
+
+            mouseLocation = event.locationInWindow();
+        }
+
+
+        version(X86) // another workaround for 32-bit LDC
+        {
+            NSRect rect = NSMakeRect(mouseLocation.x, mouseLocation.y, 0, 0);
+            rect = view.convertRect(rect, NSView(null));
+            mouseLocation = rect.origin;
+        }
+        else
+        {
+            mouseLocation = view.convertPoint(mouseLocation, NSView(null));
+        }
+
+        int px = cast(int)(mouseLocation.x) - 2;
+        int py = windowHeight - cast(int)(mouseLocation.y) - 3;
         return vec2i(px, py);
     }
 
