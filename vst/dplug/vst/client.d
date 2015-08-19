@@ -45,9 +45,9 @@ template VSTEntryPoint(alias ClientClass)
         "    return VSTEntryPoint(hostCallback);"
         "}"
         // has been found useful to have "main" for linux VST
-        "extern(C) nothrow AEffect* main(HostCallbackFunction hostCallback) "
+        "extern(C) nothrow int main(HostCallbackFunction hostCallback) "
         "{"
-        "    return VSTEntryPoint(hostCallback);"
+        "    return cast(int)( VSTEntryPoint(hostCallback) );"
         "}"
         "nothrow AEffect* VSTEntryPoint(HostCallbackFunction hostCallback) "
         "{"
@@ -611,12 +611,24 @@ private:
                 return 1;
             }
 
+            case effGetEffectName:
+            {
+                char* p = cast(char*)ptr;
+                if (p !is null)
+                {
+                    stringNCopy(p, 64, _client.effectName());
+                    return 1;
+                }
+                return 0;
+            }
+
             case effGetVendorString:
             {
                 char* p = cast(char*)ptr;
                 if (p !is null)
                 {
                     stringNCopy(p, 64, _client.vendorName());
+                    return 1;
                 }
                 return 0;
             }
@@ -627,6 +639,7 @@ private:
                 if (p !is null)
                 {
                     stringNCopy(p, 64, _client.productName());
+                    return 1;
                 }
                 return 0;
             }

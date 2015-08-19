@@ -271,12 +271,6 @@ public:
             // fill with bgMat
             croppedMaterial.fill(bgMat.material(160));
         }
-
-        /*
-        depthMap.softCircle(25, 25, 1, 7, RGBA(100, 255, 0, 0));
-        depthMap.softCircle(25, 330-25, 1, 7, RGBA(100, 255, 0, 0));
-        depthMap.softCircle(620-25, 330-25, 1, 7, RGBA(100, 255, 0, 0));
-        depthMap.softCircle(620-25, 25, 1, 7, RGBA(100, 255, 0, 0));*/
     }
 }
 

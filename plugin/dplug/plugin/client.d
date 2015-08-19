@@ -218,6 +218,12 @@ public:
         return "Witty Audio LTD";
     }
 
+    /// Override and return your effect name.
+    string effectName() pure const nothrow
+    {
+        return "Destructatorizer";
+    }
+
     /// Override and return your product name.
     string productName() pure const nothrow
     {
@@ -268,14 +274,14 @@ public:
     abstract void reset(double sampleRate, int maxFrames, int numInputs, int numOutputs) nothrow @nogc;
 
     /// Override to set the plugin latency in samples.
-    /// Unfortunately most of the time latency is dependent on the sampling rate and frequency, 
+    /// Unfortunately most of the time latency is dependent on the sampling rate and frequency,
     /// but most hosts don't support latency changes.
     int latencySamples() pure const nothrow /// Returns: Plugin latency in samples.
     {
         return 0;
     }
 
-    /// Override to declare the maximum number of samples to accept 
+    /// Override to declare the maximum number of samples to accept
     /// If greater, the audio buffers will be splitted up.
     /// This splitting have several benefits:
     /// - help allocating temporary audio buffers on the stack
