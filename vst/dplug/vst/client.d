@@ -55,8 +55,8 @@ template VSTEntryPoint(alias ClientClass)
         "       return null;"
         "   try"
         "   {"
-        "       import core.thread;"                
-        "       import core.runtime;" // TODO: is it necessary?        
+        "       import core.thread;"
+        "       import core.runtime;" // TODO: is it necessary?
         "       Runtime.initialize();" // In OSX runtime might not be initialized (safe to call several times)
         "       thread_attachThis();" // Attach VSTPluginMain thread to runtime
         "       auto client = new " ~ ClientClass.stringof ~ "();"
@@ -651,6 +651,11 @@ private:
                     if (strcmp(str, "receiveVstMidiEvents") == 0)
                         return 1;
                 }
+
+                // Needed to have a Cocoa view in effEditOpen for 32-bit plugins in Reaper
+                if (strcmp(str, "hasCockosViewAsConfig") == 0)
+                        return 1;
+
                 return 0;
             }
 
@@ -686,7 +691,7 @@ private:
         {
             // Tiny change here that the other thread is currently paused by GC, that would make us wait.
             // What would cause the GC to run? A third thread allocating. That makes it a bit unlikely in my opinion.
-            return _messageQueue.tryPopFront(msg); 
+            return _messageQueue.tryPopFront(msg);
         }
 
         // Race condition here.
@@ -694,8 +699,8 @@ private:
         // Thankfully it isn't that bad:
         // - we are going to read it next buffer
         // - not clearing the state for a buffer duration does no harm
-        // - plugin is initialized first with the maximum amount of input and outputs 
-        //   so missing such a message isn't that bad: the audio callback will have some outputs that are untouched        
+        // - plugin is initialized first with the maximum amount of input and outputs
+        //   so missing such a message isn't that bad: the audio callback will have some outputs that are untouched
         // (a third thread might start a collect while the UI thread takes the queue lock) which is another unlikely race condition.
         // Perhaps it's the one to favor, I don't know.
 
@@ -718,7 +723,7 @@ private:
                 case resetState:
                     resizeScratchBuffers(msg.maxFrames);
 
-                    // The client need not be aware of the actual size of the buffers, 
+                    // The client need not be aware of the actual size of the buffers,
                     // if it works on sliced buffers.
                     int maxFrameFromClientPOV = msg.maxFrames;
                     if (_maxFramesInProcess != 0 && _maxFramesInProcess < maxFrameFromClientPOV)
@@ -768,7 +773,7 @@ private:
                     outputs[i] = outputs[i] + sliceLength;
 
                 frames -= sliceLength;
-            }     
+            }
             assert(frames == 0);
         }
     }
@@ -1161,7 +1166,7 @@ public:
 
         // note: const is casted away here
         return _hostCallback(_effect, audioMasterCanDo, 0, 0, cast(void*)capsString, 0.0f) == 1;
-    }    
+    }
 
 private:
     AEffect* _effect;

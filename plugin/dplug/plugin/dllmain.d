@@ -65,7 +65,7 @@ else version(linux)
         const char[] DLLEntryPoint = `
             import core.runtime;
             shared static this()
-            {        
+            {
                 Runtime.initialize();
             }
 
@@ -80,12 +80,10 @@ else version(OSX)
 {
     template DLLEntryPoint()
     {
-        const char[] DLLEntryPoint = ``;
-        /+
         const char[] DLLEntryPoint = `
             import core.runtime;
             shared static this()
-            {        
+            {
                 Runtime.initialize();
             }
 
@@ -93,7 +91,7 @@ else version(OSX)
             {
                 Runtime.terminate();
             }
-        `;+/
+        `;
     }
 }
 else
