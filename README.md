@@ -60,7 +60,7 @@ Plugin wrapping is heavily inspired by the WDL library (best represented here: h
 Some files falls under the Cockos WDL license.
 
 However dplug is not a translation of WDL.
-For example a significant difference compared to WDL is that no mutex lock is ever taken in the audio callback.
+For example a significant difference compared to WDL is that there is no plugin-wide mutex lock.
 
 Important contributors to WDL include:
 - Cockos: http://www.cockos.com/

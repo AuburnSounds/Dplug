@@ -56,7 +56,7 @@ public:
         ];
     }
 
-    // This override is optional, the default implementation will 
+    // This override is optional, the default implementation will
     // have one default preset.
     override void buildPresets()
     {
@@ -65,7 +65,7 @@ public:
         presetBank.addPreset(new Preset("Full-on", [1.0f, 1.0f, 0.4f, 1.0f]));
     }
 
-    // This override is also optional. It allows to split audio buffers in order to never 
+    // This override is also optional. It allows to split audio buffers in order to never
     // exceed some amount of frames at once.
     override int maxFramesInProcess() pure const nothrow @nogc
     {
@@ -136,7 +136,7 @@ public:
             // Bypass mode
             for (int chan = 0; chan < minChan; ++chan)
                 outputs[chan][0..frames] = inputs[chan][0..frames];
-        } 
+        }
 
         // fill with zero the remaining channels
         for (int chan = minChan; chan < numOutputs; ++chan)
