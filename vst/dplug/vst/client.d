@@ -616,7 +616,7 @@ private:
                 char* p = cast(char*)ptr;
                 if (p !is null)
                 {
-                    stringNCopy(p, 64, _client.effectName());
+                    stringNCopy(p, 32, _client.effectName());
                     return 1;
                 }
                 return 0;
