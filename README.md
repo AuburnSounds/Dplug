@@ -4,9 +4,7 @@
 
 dplug is a library for creating audio plugins.
 Additionally it comes with music DSP algorithms that might be useful for your next-generation MS converter plugin.
-**Currently support VST 2.x plugins on Windows and VST 2.x without GUI on OS X.**
-
-**Tested compilers:** ![dmd-2.067.1](https://img.shields.io/badge/DMD-2.067.1-brightgreen.svg) ![dmd-2.066.1](https://img.shields.io/badge/DMD-2.066.1-brightgreen.svg) ![LDC-0.15.1](https://img.shields.io/badge/LDC-0.15.1-brightgreen.svg) ![GDC-4.9.2](https://img.shields.io/badge/GDC-4.9.2-brightgreen.svg)
+**Currently support VST 2.x plugins on Windows and Mac OS X.**
 
 ![Mandatory distortion example](screenshot.jpg "Mandatory distortion example")
 
@@ -40,7 +38,7 @@ Additionally it comes with music DSP algorithms that might be useful for your ne
 
 ## Licenses
 
-dplug has three different licenses depending on the part you need. 
+dplug has three different licenses depending on the part you need.
 For an audio plugin, you would typically need all three.
 I recommend that you check individual source files for license information.
 
