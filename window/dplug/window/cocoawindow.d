@@ -61,6 +61,7 @@ version(OSX)
 
         uint _timeAtCreationInMs;
         uint _lastMeasturedTimeInMs;
+        bool _dirtyAreasAreNotYetComputed;
 
     public:
 
@@ -108,6 +109,8 @@ version(OSX)
 
             _timeAtCreationInMs = getTimeMs();
             _lastMeasturedTimeInMs = _timeAtCreationInMs;
+
+            _dirtyAreasAreNotYetComputed = true;
 
             if (_cocoaApplication)
                 _cocoaApplication.run();
@@ -275,6 +278,15 @@ version(OSX)
                 updateSizeIfNeeded(width, height);
             }
 
+            // The first drawRect callback occurs before the timer triggers.
+            // But because recomputeDirtyAreas() wasn't called before there is nothing to draw.
+            // Hence, do it.
+            if (_dirtyAreasAreNotYetComputed)
+            {
+                _dirtyAreasAreNotYetComputed = false;
+                _listener.recomputeDirtyAreas();
+            }
+
             // draw buffers
             ImageRef!RGBA wfb;
             wfb.w = _width;
@@ -292,6 +304,7 @@ version(OSX)
                                                         CGSize(_width, _height),
                                                         kCIFormatARGB8,
                                                         _cgColorSpaceRef);
+
             ciContext.drawImage(image, rect, rect);
         }
 
@@ -576,6 +589,8 @@ version(OSX)
             view._window.doAnimation();
 
             view._window._listener.recomputeDirtyAreas();
+            view._window._dirtyAreasAreNotYetComputed = false;
+
             box2i dirtyRect = view._window._listener.getDirtyRectangle();
             if (!dirtyRect.empty())
             {
