@@ -320,7 +320,7 @@ version(Windows)
                         double time = (now - _timeAtCreationInMs) * 0.001; // hopefully no plug-in will be open more than 49 days
                         _lastMeasturedTimeInMs = now;
                         _listener.onAnimate(dt, time);
-                        setNeedsDisplayInRect();
+                        sendRepaintIfUIDirty();
                     }
                     return 0;
 
