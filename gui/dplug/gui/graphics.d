@@ -128,14 +128,12 @@ class GUIGraphics : UIElement, IGraphics
         _window.terminate();
     }
 
-    override int getGUIWidth()
+    override int[2] getGUISize()
     {
-        return _askedWidth;
-    }
-
-    override int getGUIHeight()
-    {
-        return _askedHeight;
+        int[2] result;
+        result[0] = _askedWidth;
+        result[1] = _askedHeight;
+        return result;
     }
 
     class StopWatch

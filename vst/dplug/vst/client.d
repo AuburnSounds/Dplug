@@ -363,10 +363,11 @@ private:
                 {
                     if ( _client.hasGUI() )
                     {
+                        int[2] size = _client.getGUISize();
                         _editRect.top = 0;
                         _editRect.left = 0;
-                        _editRect.right = cast(short)(_client.graphics().getGUIWidth());
-                        _editRect.bottom = cast(short)(_client.graphics().getGUIHeight());
+                        _editRect.right = cast(short)(size[0]);
+                        _editRect.bottom = cast(short)(size[1]);
                         *cast(ERect**)(ptr) = &_editRect;
                         return cast(VstIntPtr)(&_editRect);
                     }

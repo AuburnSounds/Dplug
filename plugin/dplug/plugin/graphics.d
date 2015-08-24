@@ -13,8 +13,7 @@ interface IGraphics
 {
     abstract void openUI(void* parentInfo, DAW daw);
     abstract void closeUI();
-    abstract int getGUIWidth();
-    abstract int getGUIHeight();
+    abstract int[2] getGUISize();
 }
 
 /// Default Graphics object, does nothing
@@ -28,13 +27,11 @@ class NullGraphics : IGraphics
     {
     }
 
-    override int getGUIWidth()
+    override int[2] getGUISize()
     {
-        return 0;
-    }
-
-    override int getGUIHeight()
-    {
-        return 0;
+        int[2] result;
+        result[0] = 0;
+        result[1] = 0;
+        return result;
     }
 }

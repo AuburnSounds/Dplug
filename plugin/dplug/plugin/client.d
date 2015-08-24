@@ -19,9 +19,10 @@ Permission is granted to anyone to use this software for any purpose, including 
 
 module dplug.plugin.client;
 
-import std.container;
 import core.stdc.string;
 import core.stdc.stdio;
+
+import std.container;
 
 import dplug.core.funcs;
 import dplug.plugin.params;
@@ -212,10 +213,14 @@ public:
     /// Override this methods to implement a GUI.
     final void openGUI(void* parentInfo)
     {
-        // First GUI opening create the graphics object
-        if ( (_graphics is null) && hasGUI())
-            _graphics = createGraphics();
+        createGraphicsLazily();
         _graphics.openUI(parentInfo, _hostCommand.getDAW());
+    }
+
+    final int[2] getGUISize()
+    {
+        createGraphicsLazily();
+        return _graphics.getGUISize();
     }
 
     /// ditto
@@ -239,7 +244,6 @@ public:
     // Getter for the IGraphics interface
     final IGraphics graphics() nothrow @nogc
     {
-        assert(_graphics !is null);
         return _graphics;
     }
 
@@ -403,5 +407,12 @@ private:
 
     InputPin[] _inputPins;
     OutputPin[] _outputPins;
+
+    final createGraphicsLazily()
+    {
+        // First GUI opening create the graphics object
+        if ( (_graphics is null) && hasGUI())
+            _graphics = createGraphics();
+    }
 }
 
