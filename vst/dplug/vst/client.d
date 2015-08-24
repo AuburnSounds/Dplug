@@ -56,8 +56,6 @@ template VSTEntryPoint(alias ClientClass)
         "   try"
         "   {"
         "       import core.thread;"
-        "       import core.runtime;" // TODO: is it necessary?
-        "       Runtime.initialize();" // In OSX runtime might not be initialized (safe to call several times)
         "       thread_attachThis();" // Attach VSTPluginMain thread to runtime
         "       auto client = new " ~ ClientClass.stringof ~ "();"
         "       import gfm.core;"
@@ -87,21 +85,13 @@ public:
         int queueSize = 256;
         _messageQueue = new LockedQueue!Message(queueSize);
 
-        _host = new VSTHostFromClientPOV(hostCallback, &_effect);
         _client = client;
-        _client.setHostCommand(_host);
 
         _effect = _effect.init;
 
         _effect.magic = kEffectMagic;
 
         int flags = effFlagsCanReplacing | effFlagsCanDoubleReplacing | effFlagsProgramChunks;
-
-        if ( client.isSynth() )
-        {
-            flags |= effFlagsIsSynth;
-            _host.wantEvents();
-        }
 
         if ( client.hasGUI() )
             flags |= effFlagsHasEditor;
@@ -154,6 +144,16 @@ public:
         _outputPointers.length = _maxOutputs;
 
         _messageQueue.pushBack(makeResetStateMessage(Message.Type.resetState));
+
+        // Create host callback wrapper
+        _host = new VSTHostFromClientPOV(hostCallback, &_effect);
+        client.setHostCommand(_host);
+
+        if ( client.isSynth() )
+        {
+            flags |= effFlagsIsSynth;
+            _host.wantEvents();
+        }
     }
 
     ~this()
