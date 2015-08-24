@@ -28,6 +28,7 @@ import core.stdc.stdlib,
 import gfm.core;
 
 import dplug.core.alignedbuffer;
+import dplug.core.funcs;
 
 import dplug.plugin.client,
        dplug.plugin.daw,
@@ -55,10 +56,13 @@ template VSTEntryPoint(alias ClientClass)
         "       return null;"
         "   try"
         "   {"
+        "       import gfm.core;"
+        "       import core.runtime;"
         "       import core.thread;"
+        "       version(OSX) Runtime.initialize();" // Must occur here for OSX, but not for Windows
         "       thread_attachThis();" // Attach VSTPluginMain thread to runtime
         "       auto client = new " ~ ClientClass.stringof ~ "();"
-        "       import gfm.core;"
+
                 // malloc'd else the GC would not register roots for some reason!
                 // TODO: when will this be freed?
         "       VSTClient plugin = mallocEmplace!VSTClient(client, hostCallback);"
@@ -1091,7 +1095,7 @@ public:
     {
         _hostCallback = hostCallback;
         _effect = effect;
-        _daw = identifyDAW(productString());
+      //  _daw = identifyDAW(productString());
     }
 
     /**
@@ -1124,9 +1128,9 @@ public:
         _hostCallback(_effect, audioMasterEndEdit, paramIndex, 0, null, 0.0f);
     }
 
-    override DAW getDAW() pure const nothrow @nogc
+    override DAW getDAW()
     {
-        return _daw;
+        return identifyDAW(productString());
     }
 
     const(char)* vendorString() nothrow
@@ -1187,7 +1191,7 @@ private:
     char[65] _vendorStringBuf;
     char[96] _productStringBuf;
     int _vendorVersion;
-    DAW _daw;
+    //DAW _daw;
 
     static const(char)* hostCapsString(HostCaps caps) pure nothrow
     {

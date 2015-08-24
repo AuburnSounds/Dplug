@@ -80,18 +80,7 @@ else version(OSX)
 {
     template DLLEntryPoint()
     {
-        const char[] DLLEntryPoint = `
-            import core.runtime;
-            shared static this()
-            {
-                Runtime.initialize();
-            }
-
-            shared static ~this()
-            {
-                Runtime.terminate();
-            }
-        `;
+        const char[] DLLEntryPoint = "";
     }
 }
 else

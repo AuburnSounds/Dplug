@@ -4,15 +4,21 @@ import std.math;
 
 immutable real TAU = PI * 2;
 
+/** Four Character Constant (for AEffect->uniqueID) */
+int CCONST(int a, int b, int c, int d) pure nothrow
+{
+    return (a << 24) | (b << 16) | (c << 8) | (d << 0);
+}
+
 /// Map linearly x from the range [a, b] to the range [c, d]
-T linmap(T)(T value, T a, T b, T c, T d) pure nothrow @nogc 
+T linmap(T)(T value, T a, T b, T c, T d) pure nothrow @nogc
 {
     return c + (d - c) * (value - a) / (b - a);
 }
 
 /// map [0..1] to [min..max] logarithmically
 /// min and max must be all > 0, t in [0..1]
-T logmap(T)(T t, T min, T max, ) pure nothrow @nogc 
+T logmap(T)(T t, T min, T max, ) pure nothrow @nogc
 {
     return min * exp(t * log(max / min));
 }
@@ -153,7 +159,7 @@ unittest
 
 /// Use throughout dplug:dsp to avoid reliance on GC.
 /// This works like alignedRealloc except with slices as input.
-/// 
+///
 /// Params:
 ///    buffer Existing allocated buffer. Can be null. Input slice length is not considered.
 ///    length desired slice length

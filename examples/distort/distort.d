@@ -25,11 +25,6 @@ public:
     {
     }
 
-    override bool isSynth() pure const nothrow
-    {
-        return false;
-    }
-
     override IGraphics createGraphics()
     {
         version(OSX) // still testing this platform
@@ -40,9 +35,18 @@ public:
             return new DistortGUI(this);
     }
 
-    override int getPluginID() pure const nothrow
+    override PluginInfo buildPluginInfo()
     {
-        return CCONST('g', 'f', 'm', '0'); // change this!
+        // change all of these!
+        PluginInfo info;
+        info.isSynth = false;
+        info.hasGUI = true;
+        info.pluginID = CCONST('g', 'f', 'm', '0');
+        info.productName = "Destructatorizer";
+        info.effectName = "Destructatorizer";
+        info.vendorName = "Distort Audio Ltd.";
+        info.pluginVersion = 1000;
+        return info;
     }
 
     // This is an optional overload, default is zero parameter.

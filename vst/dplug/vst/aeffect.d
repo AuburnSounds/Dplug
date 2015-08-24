@@ -8,6 +8,8 @@ module dplug.vst.aeffect;
 //import core.stdc.stdio; // for strncpy
 import core.stdc.string; // for strncpy
 
+import dplug.core;
+
 /** Define SDK Version (you can generate different versions (from 2.0 to 2.4) of this SDK by unsetting the unwanted extensions). */
 
 version = VST_2_1_EXTENSIONS; /// Version 2.1 extensions (08-06-2000)
@@ -28,7 +30,7 @@ else
     enum kVstVersion = 2;
 
 /** Define for 64 Bit Platform. */
-static if((void*).sizeof == 8) 
+static if((void*).sizeof == 8)
 {
     version = VST_64BIT_PLATFORM;
 }
@@ -48,12 +50,6 @@ alias extern(C) nothrow void function(AEffect* effect, double** inputs, double**
 alias extern(C) nothrow void function(AEffect* effect, VstInt32 index, float parameter) AEffectSetParameterProc;
 alias extern(C) nothrow float function(AEffect* effect, VstInt32 index) AEffectGetParameterProc;
 
-/** Four Character Constant (for AEffect->uniqueID) */
-int CCONST(int a, int b, int c, int d) pure nothrow
-{
-    return (a << 24) | (b << 16) | (c << 8) | (d << 0);
-}
-
 /** AEffect magic number */
 enum kEffectMagic = CCONST('V', 's', 't', 'P');
 
@@ -64,10 +60,10 @@ align(8) struct AEffect
 
     /** Host to Plug-in dispatcher @see AudioEffect::dispatcher */
     AEffectDispatcherProc dispatcher;
-    
+
     /** \deprecated Accumulating process mode is deprecated in VST 2.4! Use AEffect::processReplacing instead! */
     AEffectProcessProc DEPRECATED_process;
-    
+
     /** Set new value of automatable parameter @see AudioEffect::setParameter */
     AEffectSetParameterProc setParameter;
 
@@ -80,12 +76,12 @@ align(8) struct AEffect
     VstInt32 numOutputs;    ///< number of audio outputs
 
     VstInt32 flags;         ///< @see VstAEffectFlags
-    
+
     VstIntPtr resvd1;       ///< reserved for Host, must be 0
     VstIntPtr resvd2;       ///< reserved for Host, must be 0
-    
+
     VstInt32 initialDelay;  ///< for algorithms which need input in the first place (Group delay or latency in Samples). This value should be initialized in a resume state.
-    
+
     VstInt32 DEPRECATED_realQualities;    ///< \deprecated unused member
     VstInt32 DEPRECATED_offQualities;     ///< \deprecated unused member
     float    DEPRECATED_ioRatio;          ///< \deprecated unused member
@@ -103,7 +99,7 @@ align(8) struct AEffect
     {
         /** Process double-precision audio samples in replacing mode @see AudioEffect::processDoubleReplacing */
         AEffectProcessDoubleProc processDoubleReplacing;
-        
+
         char[56] future;        ///< reserved for future use (please zero)
     }
     else
@@ -149,11 +145,11 @@ enum : AEffectOpcodes
     effGetProgram,      ///< [return value]: current program number  @see AudioEffect::getProgram
     effSetProgramName,  ///< [ptr]: char* with new program name, limited to #kVstMaxProgNameLen  @see AudioEffect::setProgramName
     effGetProgramName,  ///< [ptr]: char buffer for current program name, limited to #kVstMaxProgNameLen  @see AudioEffect::getProgramName
-    
+
     effGetParamLabel,   ///< [ptr]: char buffer for parameter label, limited to #kVstMaxParamStrLen  @see AudioEffect::getParameterLabel
     effGetParamDisplay, ///< [ptr]: char buffer for parameter display, limited to #kVstMaxParamStrLen  @see AudioEffect::getParameterDisplay
     effGetParamName,    ///< [ptr]: char buffer for parameter name, limited to #kVstMaxParamStrLen  @see AudioEffect::getParameterName
-    
+
     DEPRECATED_effGetVu,  ///< \deprecated deprecated in VST 2.4
 
     effSetSampleRate,   ///< [opt]: new sample rate for audio processing  @see AudioEffect::setSampleRate
@@ -169,15 +165,15 @@ enum : AEffectOpcodes
     DEPRECATED_effEditKey,    ///< \deprecated deprecated in VST 2.4
 
     effEditIdle,        ///< no arguments @see AEffEditor::idle
-    
+
     DEPRECATED_effEditTop,    ///< \deprecated deprecated in VST 2.4
     DEPRECATED_effEditSleep,  ///< \deprecated deprecated in VST 2.4
     DEPRECATED_effIdentify,   ///< \deprecated deprecated in VST 2.4
-    
+
     effGetChunk,        ///< [ptr]: void** for chunk data address [index]: 0 for bank, 1 for program  @see AudioEffect::getChunk
     effSetChunk,        ///< [ptr]: chunk data [value]: byte size [index]: 0 for bank, 1 for program  @see AudioEffect::setChunk
- 
-    effNumOpcodes       
+
+    effNumOpcodes
 }
 
 /// Basic dispatcher Opcodes (Plug-in to Host)

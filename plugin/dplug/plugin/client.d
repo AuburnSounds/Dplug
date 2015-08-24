@@ -23,6 +23,7 @@ import std.container;
 import core.stdc.string;
 import core.stdc.stdio;
 
+import dplug.core.funcs;
 import dplug.plugin.params;
 import dplug.plugin.preset;
 import dplug.plugin.midi;
@@ -73,10 +74,10 @@ interface IHostCommand
     void paramAutomate(int paramIndex, float value);
     void endParamEdit(int paramIndex);
     bool requestResize(int width, int height);
-    DAW getDAW() pure const nothrow @nogc;
+    DAW getDAW();
 }
 
-/// Desscribe the version of plugin.
+/// Describe the version of plugin.
 struct PluginVersion
 {
     int majorVersion;
@@ -84,6 +85,24 @@ struct PluginVersion
     int patchVersion;
 }
 
+// Statically known features of the plugin.
+// There is some default for explanation purpose, but you really ought to override them all.
+struct PluginInfo
+{
+    string vendorName = "Witty Audio Ltd.";
+    string effectName = "Destructatorizer";
+    string productName = "Destructatorizer";
+    bool hasGUI = false;
+    bool isSynth = false;
+
+    /// While it seems no VST host use this ID as a unique
+    /// way to identify a plugin, common wisdom is to try to
+    /// get a sufficiently random one to avoid conflicts.
+    int pluginID = CCONST('g', 'f', 'm', '0');
+
+    // Plugin version in x.x.x.x decimal form.
+    int pluginVersion = 1000;
+}
 
 
 /// Plugin interface, from the client point of view.
@@ -96,16 +115,16 @@ public:
 
     this()
     {
+        _info = buildPluginInfo();
+
         buildLegalIO();
         _params = buildParameters();
-
         // Create presets
         _presetBank = new PresetBank(this);
         buildPresets();
 
         _maxInputs = 0;
         _maxOutputs = 0;
-
         foreach(legalIO; _legalIOs)
         {
             if (_maxInputs < legalIO.numInputs)
@@ -113,7 +132,6 @@ public:
             if (_maxOutputs < legalIO.numOuputs)
                 _maxOutputs = legalIO.numOuputs;
         }
-
         _inputPins.length = _maxInputs;
         for (int i = 0; i < _maxInputs; ++i)
             _inputPins[i] = new InputPin();
@@ -121,8 +139,6 @@ public:
         _outputPins.length = _maxOutputs;
         for (int i = 0; i < _maxOutputs; ++i)
             _outputPins[i] = new OutputPin();
-
-        _graphics = createGraphics();
     }
 
     final int maxInputs() pure const nothrow @nogc
@@ -196,7 +212,9 @@ public:
     /// Override this methods to implement a GUI.
     final void openGUI(void* parentInfo)
     {
-        assert(_hostCommand !is null);
+        // First GUI opening create the graphics object
+        if ( (_graphics is null) && hasGUI())
+            _graphics = createGraphics();
         _graphics.openUI(parentInfo, _hostCommand.getDAW());
     }
 
@@ -212,53 +230,16 @@ public:
         param(index).setFromHost(value);
     }
 
-    /// Override and return your brand name.
-    string vendorName() pure const nothrow
-    {
-        return "Witty Audio LTD";
-    }
-
-    /// Override and return your effect name.
-    string effectName() pure const nothrow
-    {
-        return "Destructatorizer";
-    }
-
-    /// Override and return your product name.
-    string productName() pure const nothrow
-    {
-        return "Destructatorizer";
-    }
-
-    /// Override this method to give a plugin ID.
-    /// While it seems no VST host use this ID as a unique
-    /// way to identify a plugin, common wisdom is to try to
-    /// get a sufficiently random one to avoid conflicts.
-    abstract int getPluginID() pure const nothrow;
-
-    /// Returns: Plugin version in x.x.x.x decimal form.
-    int getPluginVersion() pure const nothrow
-    {
-        return 1000;
-    }
-
-    /// Override to choose whether the plugin is a synth.
-    abstract bool isSynth() pure const nothrow;
-
     /// Override and return something else to make a plugin with UI.
     IGraphics createGraphics()
     {
         return new NullGraphics();
     }
 
-    final bool hasGUI()
-    {
-        return cast(NullGraphics)_graphics is null;
-    }
-
     // Getter for the IGraphics interface
     final IGraphics graphics() nothrow @nogc
     {
+        assert(_graphics !is null);
         return _graphics;
     }
 
@@ -321,7 +302,6 @@ public:
         _hostCommand = hostCommand;
     }
 
-
     /// Returns a new default preset.
     final Preset makeDefaultPreset()
     {
@@ -329,6 +309,45 @@ public:
         foreach(param; _params)
             values ~= param.getNormalizedDefault();
         return new Preset("Default", values);
+    }
+
+    // Getters for fields in _info
+
+    final bool hasGUI() pure const nothrow @nogc
+    {
+        return _info.hasGUI;
+    }
+
+    final bool isSynth() pure const nothrow @nogc
+    {
+        return _info.isSynth;
+    }
+
+    final string effectName() pure const nothrow @nogc
+    {
+        return _info.effectName;
+    }
+
+    final string vendorName() pure const nothrow @nogc
+    {
+        return _info.vendorName;
+    }
+
+    final string productName() pure const nothrow @nogc
+    {
+        return _info.productName;
+    }
+
+    /// Returns: Plugin version in x.x.x.x decimal form.
+    final int getPluginVersion() pure const nothrow @nogc
+    {
+        return _info.pluginVersion;
+    }
+
+    /// Returns: Plugin ID.
+    final int getPluginID() pure const nothrow @nogc
+    {
+        return _info.pluginID;
     }
 
 protected:
@@ -347,6 +366,9 @@ protected:
         presetBank.addPreset(makeDefaultPreset());
     }
 
+    /// Override this method to tell what plugin you are.
+    /// Mandatory override, fill the fields with care.
+    abstract PluginInfo buildPluginInfo();
 
     /// Override this method to tell which I/O are legal.
     /// See_also: addLegalIO.
@@ -361,6 +383,8 @@ protected:
     IGraphics _graphics;
 
     IHostCommand _hostCommand;
+
+    PluginInfo _info;
 
 private:
     Parameter[] _params;
