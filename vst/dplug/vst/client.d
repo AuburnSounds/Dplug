@@ -160,14 +160,9 @@ public:
         }
     }
 
-    ~this()
-    {
-        close();
-    }
-
     void close()
     {
-        // TODO proper clean-up
+        _client.close();
     }
 
 private:
@@ -236,13 +231,13 @@ private:
         //     (user saves project, or for automatic undo state tracking), effSetChunk
         //     is guaranteed to not run while audio is processing.
         // So nearly everything else should be threadsafe."
-
         switch(opcode)
         {
             case effOpen: // opcode 0
                 return 0;
 
             case effClose: // opcode 1
+                close(); // free all resources except this and the runtime
                 return 0;
 
             case effSetProgram: // opcode 2
@@ -918,7 +913,13 @@ extern(C) private nothrow
 {
     VstIntPtr dispatcherCallback(AEffect *effect, int opcode, int index, ptrdiff_t value, void *ptr, float opt) nothrow
     {
-        // Register this thread to the D runtime if unknown.
+         // Register this thread to the D runtime if unknown.
+
+        bool terminated = false;
+        VstIntPtr result = 0;
+
+        printf(">dispatcherCallback\n");
+        scope(exit) printf("<dispatcherCallback\n");
 
         try
         {
@@ -928,19 +929,35 @@ extern(C) private nothrow
             fpctrl.initialize();
 
             auto plugin = cast(VSTClient)(effect.user);
-            return plugin.dispatcher(opcode, index, value, ptr, opt);
+            result = plugin.dispatcher(opcode, index, value, ptr, opt);
+            if (opcode == effClose)
+            {
+                destroyFree(plugin);
+                terminated = true;
+            }
         }
         catch (Throwable e)
         {
             moreInfoForDebug(e);
             unrecoverableError(); // should not throw in a callback
         }
-        return 0;
+
+        /*if (terminated)
+        {
+            assumeNothrow( ()
+                {
+                    thread_detachThis();
+                    import core.runtime;
+                    Runtime.terminate();
+                })();
+        }*/
+        return result;
     }
 
     // VST callback for DEPRECATED_process
     void processCallback(AEffect *effect, float **inputs, float **outputs, int sampleFrames) nothrow @nogc
     {
+
         // GC pauses might happen in some circumstances.
         // If the thread calling this callback is a registered thread (has also called the opcode dispatcher),
         // then this thread could be paused by an other thread collecting.
@@ -964,6 +981,7 @@ extern(C) private nothrow
     // VST callback for processReplacing
     void processReplacingCallback(AEffect *effect, float **inputs, float **outputs, int sampleFrames) nothrow @nogc
     {
+
         // GC pauses might happen in some circumstances.
         // If the thread calling this callback is a registered thread (has also called the opcode dispatcher),
         // then this thread could be paused by an other thread collecting.
@@ -987,6 +1005,7 @@ extern(C) private nothrow
     // VST callback for processDoubleReplacing
     void processDoubleReplacingCallback(AEffect *effect, double **inputs, double **outputs, int sampleFrames) nothrow @nogc
     {
+
         // GC pauses might happen in some circumstances.
         // If the thread calling this callback is a registered thread (has also called the opcode dispatcher),
         // then this thread could be paused by an other thread collecting.
@@ -1010,6 +1029,7 @@ extern(C) private nothrow
     // VST callback for setParameter
     void setParameterCallback(AEffect *effect, int index, float parameter) nothrow @nogc
     {
+
         // GC pauses might happen in some circumstances.
         // If the thread calling this callback is a registered thread (has also called the opcode dispatcher),
         // then this thread could be paused by an other thread collecting.

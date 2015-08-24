@@ -5,8 +5,6 @@
 */
 module dplug.gui.font;
 
-import core.sync.mutex;
-
 import std.conv;
 import std.math;
 
@@ -14,6 +12,8 @@ import ae.utils.graphics;
 
 import gfm.math;
 import gfm.image.stb_truetype;
+
+import dplug.core.unchecked_sync;
 
 
 // Put in quarantine to avoid https://issues.dlang.org/show_bug.cgi?id=14480
@@ -34,12 +34,12 @@ public:
 
         stbtt_GetFontVMetrics(&_font, &_fontAscent, &_fontDescent, &_fontLineGap);
 
-        _mutex = new Mutex();
+        _mutex = new UncheckedMutex();
     }
 
-    ~this()
+    void close()
     {
-        // nothing to be done
+        _mutex.close();
     }
 
     /// Returns: Where a line of text will be drawn if starting at position (0, 0).
@@ -50,7 +50,7 @@ public:
         {
             if (numCh == 0)
                 area = position;
-            else 
+            else
                 area = area.expand(position.min).expand(position.max);
         }
 
@@ -59,11 +59,11 @@ public:
         // for moving text
         iterateCharacterPositions!StringType(s, fontSizePx, 0, 0, &extendArea);
         return area;
-    }    
+    }
 
 private:
 
-    stbtt_fontinfo _font;    
+    stbtt_fontinfo _font;
     const(ubyte)[] _fontData;
     int _fontAscent, _fontDescent, _fontLineGap;
 
@@ -108,7 +108,7 @@ private:
             stbtt_GetCodepointHMetrics(&_font, ch, &advance, &lsb);
             stbtt_GetCodepointBitmapBoxSubpixel(&_font, ch, scale, scale, xShift, yShift, &x0, &y0, &x1, &y1);
             box2i position = box2i(x0 + ixpos, y0 + iypos, x1 + ixpos, y1 + iypos);
-            doSomethingWithPosition(numCh, ch, position, scale, xShift, yShift); 
+            doSomethingWithPosition(numCh, ch, position, scale, xShift, yShift);
             xpos += (advance * scale);
             lastCh = ch;
         }
@@ -116,7 +116,7 @@ private:
 
     // Glyph cache
     Image!L8[GlyphKey] _glyphCache;
-    Mutex _mutex;
+    UncheckedMutex _mutex;
 
     Image!L8 getGlyphCoverage(dchar codepoint, float scale, int w, int h, float xShift, float yShift)
     {
@@ -149,7 +149,7 @@ struct GlyphKey
 
 /// Draw text centered on a point on a DirectView.
 
-void fillText(V, StringType)(auto ref V surface, Font font, StringType s, float fontSizePx, 
+void fillText(V, StringType)(auto ref V surface, Font font, StringType s, float fontSizePx,
                              RGBA textColor, float positionx, float positiony)
     if (isWritableView!V && is(ViewColor!V == RGBA))
 {

@@ -227,6 +227,12 @@ public:
         outputBargraph.setValues([0.7f, 0.0f]);
     }
 
+    override void close()
+    {
+        _font.close();
+        super.close();
+    }
+
     override void reflow(box2i availableSpace)
     {
         _position = availableSpace;

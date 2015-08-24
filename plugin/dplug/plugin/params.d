@@ -86,6 +86,11 @@ public:
     /// Returns: A normalized float, representing the default parameter value.
     abstract float getNormalizedDefault() nothrow @nogc;
 
+    void close()
+    {
+        _valueMutex.close();
+    }
+
 protected:
 
     this(Client client, int index, string name, string label)
@@ -94,19 +99,11 @@ protected:
         _name = name;
         _label = label;
         _index = index;
-
         _valueMutex = new UncheckedMutex();
-
     }
 
     ~this()
     {
-        close();
-    }
-
-    void close()
-    {
-        _valueMutex.close();
     }
 
     /// From a normalized float, set the parameter value.

@@ -89,12 +89,10 @@ class GUIGraphics : UIElement, IGraphics
 
     ~this()
     {
-        close();
     }
 
     override void close()
     {
-        // TODO make sure this is actually called
         super.close();
         _uiContext.close();
 

@@ -44,9 +44,9 @@ final class UncheckedMutex
         }
         else version( Posix )
         {
-            assumeNothrowNoGC( 
+            assumeNothrowNoGC(
                 (pthread_mutex_t* handle)
-                { 
+                {
                     pthread_mutexattr_t attr = void;
                     pthread_mutexattr_init( &attr );
                     pthread_mutexattr_settype( &attr, PTHREAD_MUTEX_RECURSIVE );
@@ -58,7 +58,6 @@ final class UncheckedMutex
 
     ~this() nothrow @nogc
     {
-        close();
     }
 
     void close() nothrow @nogc
@@ -72,10 +71,10 @@ final class UncheckedMutex
             }
             else version( Posix )
             {
-                assumeNothrowNoGC( 
+                assumeNothrowNoGC(
                     (pthread_mutex_t* handle)
-                    { 
-                        pthread_mutex_destroy(handle); 
+                    {
+                        pthread_mutex_destroy(handle);
                     })(&m_hndl);
             }
         }
@@ -90,9 +89,9 @@ final class UncheckedMutex
         }
         else version( Posix )
         {
-            assumeNothrowNoGC( 
+            assumeNothrowNoGC(
                 (pthread_mutex_t* handle)
-                { 
+                {
                     pthread_mutex_lock(handle);
                 })(&m_hndl);
         }
@@ -107,9 +106,9 @@ final class UncheckedMutex
         }
         else version( Posix )
         {
-            assumeNothrowNoGC( 
+            assumeNothrowNoGC(
                 (pthread_mutex_t* handle)
-                { 
+                {
                     pthread_mutex_unlock(handle);
                 })(&m_hndl);
         }
@@ -123,9 +122,9 @@ final class UncheckedMutex
         }
         else version( Posix )
         {
-            int result = assumeNothrowNoGC( 
+            int result = assumeNothrowNoGC(
                 (pthread_mutex_t* handle)
-                { 
+                {
                     return pthread_mutex_trylock(handle);
                 })(&m_hndl);
             return result == 0;

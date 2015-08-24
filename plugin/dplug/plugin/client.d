@@ -142,6 +142,17 @@ public:
             _outputPins[i] = new OutputPin();
     }
 
+    void close()
+    {
+        // close graphics
+        if (_graphics !is null)
+            _graphics.close();
+
+        // close parameters
+        foreach(p; _params)
+            p.close();
+    }
+
     final int maxInputs() pure const nothrow @nogc
     {
         return _maxInputs;

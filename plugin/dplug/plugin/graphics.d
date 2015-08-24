@@ -14,6 +14,7 @@ interface IGraphics
     abstract void openUI(void* parentInfo, DAW daw);
     abstract void closeUI();
     abstract int[2] getGUISize();
+    abstract void close(); // free resources
 }
 
 /// Default Graphics object, does nothing
@@ -33,5 +34,9 @@ class NullGraphics : IGraphics
         result[0] = 0;
         result[1] = 0;
         return result;
+    }
+
+    override void close()
+    {
     }
 }
