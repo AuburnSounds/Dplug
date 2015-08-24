@@ -3,7 +3,9 @@
 * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 * Authors:   Guillaume Piolat
 */
-module dplug.quarantine.font;
+module dplug.gui.font;
+
+import core.sync.mutex;
 
 import std.conv;
 import std.math;
@@ -31,6 +33,8 @@ public:
             throw new Exception("Coudln't load font");
 
         stbtt_GetFontVMetrics(&_font, &_fontAscent, &_fontDescent, &_fontLineGap);
+
+        _mutex = new Mutex();
     }
 
     ~this()
@@ -112,10 +116,10 @@ private:
 
     // Glyph cache
     Image!L8[GlyphKey] _glyphCache;
+    Mutex _mutex;
 
     Image!L8 getGlyphCoverage(dchar codepoint, float scale, int w, int h, float xShift, float yShift)
     {
-        synchronized(this)
         {
             GlyphKey key = GlyphKey(codepoint, scale, xShift, yShift);
 
@@ -149,6 +153,9 @@ void fillText(V, StringType)(auto ref V surface, Font font, StringType s, float 
                              RGBA textColor, float positionx, float positiony)
     if (isWritableView!V && is(ViewColor!V == RGBA))
 {
+    font._mutex.lock();
+    scope(exit) font._mutex.unlock();
+
     // Decompose in fractional and integer position
     int ipositionx = cast(int)floor(positionx);
     int ipositiony = cast(int)floor(positiony);

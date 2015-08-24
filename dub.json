@@ -49,19 +49,6 @@
             }
         },
         {
-            "name": "quarantine",
-            "sourcePaths": [ "quarantine/dplug/quarantine" ],
-            "importPaths": [ "quarantine" ],
-            "dependencies": {
-                "gfm:math": "~>2.3",
-                "gfm:image": "~>2.3"
-            },
-
-            "buildRequirements": [
-                "disallowOptimization"
-            ]
-        },
-        {
             "name": "window",
             "sourcePaths": [ "window/dplug/window" ],
             "importPaths": [ "window" ],
@@ -74,10 +61,6 @@
                 "ae-graphics": "~>0.0",
                 "gfm:math": "~>2.3",
                 "gfm:core": "~>2.3"
-            },
-
-            "dependencies-linux": {
-                "x11": "~>1.0"
             },
 
             "dependencies-osx": {
@@ -93,7 +76,6 @@
                 "dplug:plugin": "*",
                 "dplug:window": "*",
                 "dplug:core": "*",
-                "dplug:quarantine": "*",
                 "ae-graphics": "~>0.0",
                 "gfm:math": "~>2.3",
                 "gfm:image": "~>2.3"

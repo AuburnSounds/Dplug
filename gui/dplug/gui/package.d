@@ -22,5 +22,6 @@ public import dplug.gui.dirtylist;
 public import dplug.gui.drawex;
 public import dplug.gui.mipmap;
 public import dplug.gui.materials;
+public import dplug.gui.font;
 
 

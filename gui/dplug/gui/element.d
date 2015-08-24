@@ -16,8 +16,7 @@ public import dplug.window.window;
 public import dplug.core.unchecked_sync;
 public import dplug.core.alignedbuffer;
 
-public import dplug.quarantine.font;
-
+public import dplug.gui.font;
 public import dplug.gui.drawex;
 public import dplug.gui.boxlist;
 public import dplug.gui.context;
