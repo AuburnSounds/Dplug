@@ -175,12 +175,8 @@ version(linux)
           //      XSynchronize(_display, true);
         }
 
-        ~this()
-        {
-            close();
-        }
 
-        void close()
+        override void close()
         {
             if (_initialized)
             {
@@ -191,11 +187,6 @@ version(linux)
                 XDestroyWindow(_display, _window);
                 XCloseDisplay(_display);
             }
-        }
-
-        override void terminate()
-        {
-            close();
         }
 
         // Implements IWindow

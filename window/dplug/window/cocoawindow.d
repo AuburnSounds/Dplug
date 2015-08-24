@@ -116,26 +116,18 @@ version(OSX)
                 _cocoaApplication.run();
         }
 
-        ~this()
-        {
-            close();
-        }
 
-        void close()
+
+        override void close()
         {
             if (_view)
             {
+                _terminated = true;
                 _view.killTimer();
                 _view.removeFromSuperview();
                 //_view.release();
                 _view = DPlugCustomView(null);
             }
-        }
-
-        override void terminate()
-        {
-            _terminated = true;
-            close();
         }
 
         // Implements IWindow

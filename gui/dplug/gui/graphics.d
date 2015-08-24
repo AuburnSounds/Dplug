@@ -95,7 +95,7 @@ class GUIGraphics : UIElement, IGraphics
     {
         super.close();
         _uiContext.close();
-
+        _window.close();
         _areasToUpdate.close();
         _updateRectScratch[0].close();
         _updateRectScratch[1].close();
@@ -123,7 +123,7 @@ class GUIGraphics : UIElement, IGraphics
     override void closeUI()
     {
         // Destroy window.
-        _window.terminate();
+        _window.close();
     }
 
     override int[2] getGUISize()

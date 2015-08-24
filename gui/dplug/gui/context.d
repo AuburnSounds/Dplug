@@ -37,7 +37,6 @@ public:
 
     ~this()
     {
-        close();
     }
 
     void close()
@@ -108,7 +107,6 @@ public:
 
     ~this()
     {
-        close();
     }
 
     void close()

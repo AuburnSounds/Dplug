@@ -114,10 +114,7 @@ version(Windows)
             _lastMeasturedTimeInMs = _timeAtCreationInMs;
         }
 
-        ~this()
-        {
-            close();
-        }
+
 
         /// Returns: true if window size changed.
         bool updateSizeIfNeeded()
@@ -155,7 +152,7 @@ version(Windows)
                 return false;
         }
 
-        void close()
+        override void close()
         {
             if (_hwnd != null)
             {
@@ -165,11 +162,6 @@ version(Windows)
                 // Unregister the window class, which was unique
                 UnregisterClassW(_wndClass.lpszClassName, getModuleHandle());
             }
-        }
-
-        override void terminate()
-        {
-            close();
         }
 
         LRESULT windowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)

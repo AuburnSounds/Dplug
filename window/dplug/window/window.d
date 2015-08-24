@@ -61,8 +61,8 @@ interface IWindow
     // If exit was requested
     bool terminated();
 
-    // Requests exit
-    void terminate();
+    // Free resources
+    void close();
 
     // Debug-purpose: display debug string
     void debugOutput(string s);

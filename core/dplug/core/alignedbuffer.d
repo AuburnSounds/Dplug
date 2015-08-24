@@ -41,7 +41,6 @@ final class AlignedBuffer(T)
 
         ~this() nothrow @nogc
         {
-            close();
         }
 
         void close() nothrow @nogc

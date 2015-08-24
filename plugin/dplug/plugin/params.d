@@ -102,10 +102,6 @@ protected:
         _valueMutex = new UncheckedMutex();
     }
 
-    ~this()
-    {
-    }
-
     /// From a normalized float, set the parameter value.
     /// No guarantee at all that getNormalized will return the same,
     /// because this value is rounded to fit.
