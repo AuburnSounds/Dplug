@@ -913,13 +913,9 @@ extern(C) private nothrow
 {
     VstIntPtr dispatcherCallback(AEffect *effect, int opcode, int index, ptrdiff_t value, void *ptr, float opt) nothrow
     {
-         // Register this thread to the D runtime if unknown.
-
+        // Register this thread to the D runtime if unknown.
         bool terminated = false;
         VstIntPtr result = 0;
-
-        printf(">dispatcherCallback\n");
-        scope(exit) printf("<dispatcherCallback\n");
 
         try
         {
@@ -946,7 +942,6 @@ extern(C) private nothrow
         {
             assumeNothrow( ()
                 {
-                    thread_detachThis();
                     import core.runtime;
                     Runtime.terminate();
                 })();
@@ -1116,7 +1111,6 @@ public:
     {
         _hostCallback = hostCallback;
         _effect = effect;
-      //  _daw = identifyDAW(productString());
     }
 
     /**
@@ -1212,7 +1206,6 @@ private:
     char[65] _vendorStringBuf;
     char[96] _productStringBuf;
     int _vendorVersion;
-    //DAW _daw;
 
     static const(char)* hostCapsString(HostCaps caps) pure nothrow
     {
@@ -1266,8 +1259,6 @@ private
         int usedOutputs;
         MidiMessage midiMessage;
     }
-
-
 
     Message makeMIDIMessage(MidiMessage midiMessage)
     {
