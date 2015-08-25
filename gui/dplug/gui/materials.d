@@ -31,7 +31,7 @@ struct Material
     }
 
     // Pre-defined materials
-    static Material
+    static immutable Material
         iron     =    Material(RGB(143, 145, 148), 255, 128),
         silver   =    Material(RGB(248, 245, 233), 255, 128),
         aluminum =    Material(RGB(233, 235, 236), 255, 128),
@@ -42,11 +42,11 @@ struct Material
         titanium =    Material(RGB(138, 127, 114), 255, 128),
         cobalt   =    Material(RGB(169, 170, 162), 255, 128),
         platinum =    Material(RGB(171, 162, 218), 255, 128),
-        charcoal =    Material(RGB( 50,  50,  50),  defaultMetalnessDielectric, 64), 
-        wornAsphalt = Material(RGB( 70,  70,  70),  defaultMetalnessDielectric, 64), 
-        desertSand =  Material(RGB( 92,  92,  92),  defaultMetalnessDielectric, 64), 
-        oceanIce =    Material(RGB(142, 142, 142),  defaultMetalnessDielectric, 57), 
-        freshSnow =   Material(RGB(255, 255, 255),  defaultMetalnessDielectric, 50); 
+        charcoal =    Material(RGB( 50,  50,  50),  defaultMetalnessDielectric, 64),
+        wornAsphalt = Material(RGB( 70,  70,  70),  defaultMetalnessDielectric, 64),
+        desertSand =  Material(RGB( 92,  92,  92),  defaultMetalnessDielectric, 64),
+        oceanIce =    Material(RGB(142, 142, 142),  defaultMetalnessDielectric, 57),
+        freshSnow =   Material(RGB(255, 255, 255),  defaultMetalnessDielectric, 50);
 }
 
 // Sets of recommended values
