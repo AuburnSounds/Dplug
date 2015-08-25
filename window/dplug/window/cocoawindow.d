@@ -333,6 +333,27 @@ version(OSX)
             _lastMeasturedTimeInMs = now;
             _listener.onAnimate(dt, time);
         }
+
+        void onTimer()
+        {
+            // Deal with animation
+            doAnimation();
+
+            _listener.recomputeDirtyAreas();
+            _dirtyAreasAreNotYetComputed = false;
+            box2i dirtyRect = _listener.getDirtyRectangle();
+            if (!dirtyRect.empty())
+            {
+
+                NSRect boundsRect = _view.bounds();
+                int height = cast(int)(boundsRect.size.height);
+                NSRect r = NSMakeRect(dirtyRect.min.x,
+                                      height - dirtyRect.min.y - dirtyRect.height,
+                                      dirtyRect.width,
+                                      dirtyRect.height);
+                _view.setNeedsDisplayInRect(r);
+            }
+        }
     }
 
     struct DPlugCustomView
@@ -576,19 +597,7 @@ version(OSX)
         void onTimer(id self, SEL selector, id timer)
         {
             DPlugCustomView view = getInstance(self);
-
-            // Deal with animation
-            view._window.doAnimation();
-
-            view._window._listener.recomputeDirtyAreas();
-            view._window._dirtyAreasAreNotYetComputed = false;
-
-            box2i dirtyRect = view._window._listener.getDirtyRectangle();
-            if (!dirtyRect.empty())
-            {
-                NSRect r = NSMakeRect(dirtyRect.min.x, dirtyRect.min.y, dirtyRect.width, dirtyRect.height);
-                view.setNeedsDisplayInRect(r);
-            }
+            view._window.onTimer();
         }
     }
 }
