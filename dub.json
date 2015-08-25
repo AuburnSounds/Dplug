@@ -65,7 +65,11 @@
 
             "dependencies-osx": {
                 "derelict-cocoa": "~>0.0"
-            }            
+            },
+
+            "dependencies-linux": {
+                "x11": "~>1.0"
+            }
         },
         {
             "name": "gui",
