@@ -27,12 +27,7 @@ public:
 
     override IGraphics createGraphics()
     {
-        version(OSX) // still testing this platform
-            return new DistortGUI(this); // still in flux
-        else version(linux) // still testing this platform
-            return new NullGraphics();
-        else version(Windows)
-            return new DistortGUI(this);
+        return new DistortGUI(this); // still in flux
     }
 
     override PluginInfo buildPluginInfo()

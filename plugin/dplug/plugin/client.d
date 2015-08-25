@@ -246,10 +246,10 @@ public:
         param(index).setFromHost(value);
     }
 
-    /// Override and return something else to make a plugin with UI.
+    /// Override if you create a plugin with UI.
     IGraphics createGraphics()
     {
-        return new NullGraphics();
+        return null;
     }
 
     // Getter for the IGraphics interface
@@ -423,7 +423,10 @@ private:
     {
         // First GUI opening create the graphics object
         if ( (_graphics is null) && hasGUI())
+        {
             _graphics = createGraphics();
+            assert(_graphics !is null); // don't forget to override the createGraphics method
+        }
     }
 }
 

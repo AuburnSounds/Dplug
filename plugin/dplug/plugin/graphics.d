@@ -17,26 +17,3 @@ interface IGraphics
     abstract void close(); // free resources
 }
 
-/// Default Graphics object, does nothing
-class NullGraphics : IGraphics
-{
-    override void openUI(void* parentInfo, DAW daw)
-    {
-    }
-
-    override void closeUI()
-    {
-    }
-
-    override int[2] getGUISize()
-    {
-        int[2] result;
-        result[0] = 0;
-        result[1] = 0;
-        return result;
-    }
-
-    override void close()
-    {
-    }
-}

@@ -46,9 +46,9 @@ template VSTEntryPoint(alias ClientClass)
         "    return VSTEntryPoint(hostCallback);"
         "}"
         // has been found useful to have "main" for linux VST
-        "extern(C) nothrow int main(HostCallbackFunction hostCallback) "
+        "extern(C) nothrow AEffect* main_macho(HostCallbackFunction hostCallback) "
         "{"
-        "    return cast(int)( VSTEntryPoint(hostCallback) );"
+        "    return VSTEntryPoint(hostCallback);"
         "}"
         "nothrow AEffect* VSTEntryPoint(HostCallbackFunction hostCallback) "
         "{"
@@ -366,7 +366,7 @@ private:
                         *cast(ERect**)(ptr) = &_editRect;
                         return cast(VstIntPtr)(&_editRect);
                     }
-                    ptr = null; // from IPlug, not sure why it's there
+                    ptr = null;
                     return 0;
                 }
 
