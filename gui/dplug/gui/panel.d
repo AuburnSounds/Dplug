@@ -14,11 +14,11 @@ class UIPanel : UIElement
 {
 public:
 
-    this(UIContext context, RGBA backgroundColor, ubyte depth, ubyte shininess)
+    this(UIContext context, RGBA backgroundColor, RGBA material, L16 depth)
     {
         super(context);
         _depth = depth;
-        _shininess = shininess;
+        _material = material;
         _backgroundColor = backgroundColor;
     }
 
@@ -26,19 +26,19 @@ public:
     {
         foreach(dirtyRect; dirtyRects)
         {
-            auto croppedDiffuse = diffuseMap.crop(dirtyRect);
-            auto croppedDepth = depthMap.crop(dirtyRect);
+            // fill diffuse map
+            diffuseMap.crop(dirtyRect).fill(_backgroundColor);
 
-            // fill with clear color
-            croppedDiffuse.fill(_backgroundColor);
+            // fill material map
+            materialMap.crop(dirtyRect).fill(_material);
 
-            // fill with clear depth
-            croppedDepth.fill(L16(_depth));
+            // fill depth map
+            depthMap.crop(dirtyRect).fill(_depth);
         }
     }
 
 protected:
-    ubyte _depth;
-    ubyte _shininess;
+    L16 _depth;
     RGBA _backgroundColor;
+    RGBA _material;
 }
