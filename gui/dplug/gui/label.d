@@ -75,7 +75,7 @@ public:
 
     override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects)
     {
-        // only draw text which in dirty areas
+        // only draw text which is in dirty areas
         foreach(dirtyRect; dirtyRects)
         {
             auto croppedDiffuse = diffuseMap.crop(dirtyRect);
@@ -100,13 +100,12 @@ protected:
     /// The font used for text.
     Font _font;
 
-    /// Sensivity: given a mouse movement in 100th of the height of the knob, 
-    /// how much should the normalized parameter change.
+    /// Text to draw
     string _text;
 
     /// Size of displayed text.
-    float _textSize;
+    float _textSize = 16.0f;
 
     /// Diffuse color of displayed text.
-    RGBA _textColor;
+    RGBA _textColor = RGBA(0, 0, 0, 0);
 }
