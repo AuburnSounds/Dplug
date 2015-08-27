@@ -10,8 +10,7 @@ import std.math;
 import std.array;
 import std.algorithm;
 
-import binrange;
-
+import dplug.plugin.binrange;
 import dplug.plugin.client;
 
 

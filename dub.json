@@ -37,7 +37,6 @@
             "importPaths": [ "plugin" ],
             "dependencies": {
                 "dplug:core": "*",
-                "binrange": "~>1.0"
             }
         },
         {

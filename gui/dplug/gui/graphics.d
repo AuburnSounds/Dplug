@@ -34,6 +34,8 @@ import dplug.gui.materials;
 /// The material map contains:
 ///   RGBA = roughness / metalness / specular / physical (allows to bypass PBR)
 
+alias RMSP = RGBA; // reminder
+
 // A GUIGraphics is the interface between a plugin client and a IWindow.
 // It is also an UIElement and the root element of the plugin UI hierarchy.
 // You have to derive it to have a GUI.

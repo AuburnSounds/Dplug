@@ -215,8 +215,10 @@ public:
         offLabel.textSize = 13;
         offLabel.textColor = RGBA(0, 0, 0, 0);
 
-        addChild(leftPanel = new UIPanel(context(), RGBA(150, 140, 140, 0), 32, 32));
-        addChild(rightPanel = new UIPanel(context(), RGBA(150, 140, 140, 0), 32, 32));
+        addChild(leftPanel = new UIPanel(context(), RGBA(150, 140, 140, 0),
+                                                    RMSP(128, 255, 255, 255), L16(defaultDepth / 2)));
+        addChild(rightPanel = new UIPanel(context(), RGBA(150, 140, 140, 0),
+                                                     RMSP(128, 255, 255, 255), L16(defaultDepth / 2)));
 
         inputBargraph.setValues([1.0f, 0.5f]);
         outputBargraph.setValues([0.7f, 0.0f]);
