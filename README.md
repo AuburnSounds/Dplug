@@ -29,12 +29,19 @@ Additionally it comes with music DSP algorithms that might be useful for your ne
 ### dplug:gui
    * Needed for plugins that do have an UI
    * Toolkit includes common widgets (knob/slider/switch)
-   * Deferred renderer for a fully procedural UI (updates are lazy)
+   * PBR-based renderer for a fully procedural UI (updates are lazy and parallel)
 
 ### Examples
-   * Mandatory example: distortion VST plugin
-   * Resampling x2 through FFT zero-padding
+   * `examples/distort`: mandatory distortion plugin
+   * `time_stretch`: resampling x2 through FFT zero-padding
+   * `examples/just_windowing`: test program for the windowing sub-package
 
+## How to build plugins
+
+- Use the DMD compiler on Windows or the LDC compiler on Mac: http://dlang.org/download.html
+- Install DUB, the D package manager: http://code.dlang.org/download
+- go in the `examples/distort` directory
+- type `dub --compiler=dmd` or `dub --compiler=ldc2` depending on the platform
 
 ## Licenses
 
@@ -71,4 +78,6 @@ Important contributors to WDL include:
 ### Misc
 
 Other source files fall under the Boost 1.0 license.
+
+
 
