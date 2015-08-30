@@ -19,7 +19,7 @@
             "sourcePaths": [ "core/dplug/core" ],
             "importPaths": [ "core" ],
             "dependencies": {
-                "gfm:core": "~>2.3"
+                "gfm:core": "~>3.0"
             }
         },
         {
@@ -28,7 +28,7 @@
             "importPaths": [ "dsp" ],
             "dependencies": {
                 "dplug:core": "*",
-                "gfm:math": "~>2.3"
+                "gfm:math": "~>3.0"
             }
         },
         {
@@ -58,8 +58,8 @@
 
             "dependencies": {
                 "ae-graphics": "~>0.0",
-                "gfm:math": "~>2.3",
-                "gfm:core": "~>2.3"
+                "gfm:math": "~>3.0",
+                "gfm:core": "~>3.0"
             },
 
             "dependencies-osx": {
@@ -80,8 +80,8 @@
                 "dplug:window": "*",
                 "dplug:core": "*",
                 "ae-graphics": "~>0.0",
-                "gfm:math": "~>2.3",
-                "gfm:image": "~>2.3"
+                "gfm:math": "~>3.0",
+                "gfm:image": "~>3.0"
             }
         }
     ]
