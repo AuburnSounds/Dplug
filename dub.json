@@ -59,7 +59,8 @@
             "dependencies": {
                 "ae-graphics": "~>0.0",
                 "gfm:math": "~>3.0",
-                "gfm:core": "~>3.0"
+                "gfm:core": "~>3.0",
+                "dplug:core": "~>3.0"
             },
 
             "dependencies-osx": {

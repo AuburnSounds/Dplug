@@ -24,6 +24,8 @@ import core.stdc.stdio;
 
 import std.container;
 
+import gfm.core;
+
 import dplug.core.funcs;
 import dplug.plugin.params;
 import dplug.plugin.preset;
@@ -140,17 +142,25 @@ public:
         _outputPins.length = _maxOutputs;
         for (int i = 0; i < _maxOutputs; ++i)
             _outputPins[i] = new OutputPin();
+
+        _initialized = true;
     }
 
-    void close()
+    ~this()
     {
-        // close graphics
-        if (_graphics !is null)
-            _graphics.close();
+        if (_initialized)
+        {
+            debug ensureNotInGC("dplug.plugin.Client");
+            _initialized = false;
 
-        // close parameters
-        foreach(p; _params)
-            p.close();
+            // Destroy graphics
+            if (_graphics !is null)
+                _graphics.destroy();
+
+            // Destroy parameters
+            foreach(p; _params)
+                p.destroy();
+        }
     }
 
     final int maxInputs() pure const nothrow @nogc
@@ -225,13 +235,22 @@ public:
     final void openGUI(void* parentInfo)
     {
         createGraphicsLazily();
+        assert(_graphics !is null);
         _graphics.openUI(parentInfo, _hostCommand.getDAW());
     }
 
-    final int[2] getGUISize()
+    final bool getGUISize(int* width, int* height)
     {
+        assert(_initialized);
+        assert(this !is null);
         createGraphicsLazily();
-        return _graphics.getGUISize();
+        if (_graphics)
+        {
+            _graphics.getGUISize(width, height);
+            return true;
+        }
+        else
+            return false;
     }
 
     /// ditto
@@ -419,7 +438,7 @@ private:
     InputPin[] _inputPins;
     OutputPin[] _outputPins;
 
-    final createGraphicsLazily()
+    final void createGraphicsLazily()
     {
         // First GUI opening create the graphics object
         if ( (_graphics is null) && hasGUI())
@@ -428,5 +447,7 @@ private:
             assert(_graphics !is null); // don't forget to override the createGraphics method
         }
     }
+
+    bool _initialized; // destructor flag
 }
 

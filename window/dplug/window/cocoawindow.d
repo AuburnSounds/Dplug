@@ -14,8 +14,7 @@ import ae.utils.graphics;
 import gfm.core;
 import gfm.math;
 
-
-
+import dplug.core.unchecked_sync;
 import dplug.window.window;
 
 version(OSX)
@@ -48,6 +47,7 @@ version(OSX)
         NSString _logFormatStr;
 
         DPlugCustomView _view = null;
+        //UncheckedMutex _timerLock;
 
         bool _terminated = false;
 
@@ -91,12 +91,7 @@ version(OSX)
             else
                 parentView = NSView(cast(id)parentWindow);
 
-            DPlugCustomView.registerSubclass();
 
-            _view = DPlugCustomView.alloc();
-            _view.initialize(this, width, height);
-
-            parentView.addSubview(_view);
 
             _width = 0;
             _height = 0;
@@ -112,21 +107,42 @@ version(OSX)
 
             _dirtyAreasAreNotYetComputed = true;
 
+            DPlugCustomView.registerSubclass();
+
+            //_timerLock = new UncheckedMutex();
+            _view = DPlugCustomView.alloc();
+            _view.initialize(this, width, height);
+
+            parentView.addSubview(_view);
+
             if (_cocoaApplication)
                 _cocoaApplication.run();
+
+
         }
 
-
-
-        override void close()
+        ~this()
         {
             if (_view)
             {
+                debug ensureNotInGC("CocoaWindow");
                 _terminated = true;
-                _view.killTimer();
+
+                {
+                    //_timerLock.lock();
+                    //scope(exit) _timerLock.unlock();
+                    _view.killTimer();
+                }
+                //_timerLock.destroy();
+
                 _view.removeFromSuperview();
-                //_view.release();
                 _view = DPlugCustomView(null);
+
+                if (_buffer != null)
+                {
+                    free(_buffer);
+                    _buffer = null;
+                }
             }
         }
 
@@ -336,6 +352,9 @@ version(OSX)
 
         void onTimer()
         {
+            //_timerLock.lock();
+            //scope(exit) _timerLock.unlock();
+
             // Deal with animation
             doAnimation();
 
@@ -472,7 +491,6 @@ version(OSX)
 
         if (!itWorked) // use regular call in case all failed
         {
-
             mouseLocation = event.locationInWindow();
         }
 

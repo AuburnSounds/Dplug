@@ -19,13 +19,18 @@ public:
         super(context);
         _param = param;
         _sensivity = 0.25f;
-
         _param.addListener(this);
+        _initialized = true;
     }
 
-    override void close()
+    ~this()
     {
-        _param.removeListener(this);
+        if (_initialized)
+        {
+            debug ensureNotInGC("UIKnob");
+            _param.removeListener(this);
+            _initialized = false;
+        }
     }
 
     /// Returns: sensivity.
@@ -90,9 +95,9 @@ public:
 
         float posEdgeX = centerx + sin(angle) * depthRadius2;
         float posEdgeY = centery - cos(angle) * depthRadius2;
-        
+
         diffuseMap.softCircleFloat(centerx, centery, knobRadius - 1, knobRadius, matKnob.diffuse( (isMouseOver || isDragged) ? 20 : 0 ));
-        
+
         depthMap.softCircleFloat(centerx, centery, depthRadius, knobRadius, L16(65535));
         depthMap.softCircleFloat(centerx, centery, 0, depthRadius, L16(150 * 256));
 
@@ -112,7 +117,7 @@ public:
             ubyte emissive = 40;
             if (isDragged())
                 emissive = 255;
-            
+
             auto ledColor = RGBA(255, 140, 220, emissive);
 
 //            depthMap.softCircleFloat!2.0f(x, y, largerRadius, largerRadius * 2.0f, L16(20000));
@@ -120,7 +125,7 @@ public:
             depthMap.softCircleFloat/*!2.0f*/(x, y, 0, largerRadius, L16(65000));
             diffuseMap.softCircleFloat(x, y, 0, largerRadius, ledColor);
             materialMap.softCircleFloat(x, y, smallRadius, largerRadius, RGBA(128, 128, 255, defaultPhysical));
-        }        
+        }
     }
 
     override bool onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
@@ -182,7 +187,9 @@ protected:
     /// The parameter this knob is linked with.
     FloatParameter _param;
 
-    /// Sensivity: given a mouse movement in 100th of the height of the knob, 
+    /// Sensivity: given a mouse movement in 100th of the height of the knob,
     /// how much should the normalized parameter change.
     float _sensivity;
+
+    bool _initialized; // destructor flag
 }

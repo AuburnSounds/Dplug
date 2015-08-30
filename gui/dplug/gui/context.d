@@ -33,23 +33,24 @@ public:
         skybox.size(10, 1024, 1024);
 
         dirtyList = new DirtyRectList();
+        initialized = true;
     }
 
     ~this()
     {
-    }
-
-    void close()
-    {
-        if (dirtyList !is null)
+        if (initialized)
         {
-            dirtyList.close();
-            dirtyList = null;
+            debug ensureNotInGC("UIContext");
+            dirtyList.destroy();
+            initialized = false;
         }
     }
 
+    /// Destructor flag.
+    bool initialized;
+
     /// Last clicked element.
-    UIElement focused = null; 
+    UIElement focused = null;
 
     /// Currently dragged element.
     UIElement dragged = null;
@@ -61,8 +62,8 @@ public:
     // This used to be a list of rectangles per UIElement,
     // but this wasn't workable because of too many races and
     // inefficiencies.
-    DirtyRectList dirtyList; 
-    
+    DirtyRectList dirtyList;
+
 
     void setSkybox(Image!RGBA image)
     {
@@ -107,12 +108,12 @@ public:
 
     ~this()
     {
-    }
-
-    void close()
-    {
-        _dirtyRectMutex.close();
-        _dirtyRects.close();
+        if (initialized)
+        {
+            _dirtyRectMutex.destroy();
+            _dirtyRects.destroy();
+            initialized = false;
+        }
     }
 
     bool isEmpty() nothrow @nogc
@@ -169,7 +170,7 @@ public:
                     {
                         // compute other without common
                         box2i D, E, F, G;
-                        boxSubtraction(other, common, D, E, F, G);  
+                        boxSubtraction(other, common, D, E, F, G);
 
                         // remove other from list
                         _dirtyRects[i] = _dirtyRects.popBack();
@@ -191,11 +192,14 @@ public:
                 _dirtyRects.pushBack(rect);
 
             assert(haveNoOverlap(_dirtyRects[]));
-        }       
+        }
 
     }
 
 private:
+    /// Destructor flag.
+    bool initialized;
+
     /// The possibly overlapping areas that need updating.
     AlignedBuffer!box2i _dirtyRects;
 

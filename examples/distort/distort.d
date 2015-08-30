@@ -177,6 +177,8 @@ public:
 
     Font _font;
 
+    bool _initialized; // destructor flag
+
     this(Distort client)
     {
         _client = client;
@@ -224,10 +226,14 @@ public:
         outputBargraph.setValues([0.7f, 0.0f]);
     }
 
-    override void close()
+    ~this()
     {
-        _font.close();
-        super.close();
+        if (_initialized)
+        {
+            debug ensureNotInGC("DistortGUI");
+            _font.destroy();
+            _initialized = false;
+        }
     }
 
     override void reflow(box2i availableSpace)

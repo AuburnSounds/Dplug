@@ -39,14 +39,11 @@ final class AlignedBuffer(T)
             memcpy(_data, other._data, _size * T.sizeof);
         }
 
-        ~this() nothrow @nogc
-        {
-        }
-
-        void close() nothrow @nogc
+        ~this()
         {
             if (_data !is null)
             {
+                debug ensureNotInGC("AlignedBuffer");
                 alignedFree(_data);
                 _data = null;
                 _allocated = 0;

@@ -71,7 +71,7 @@ if (isWritableView!V && is(COLOR : ViewColor!V))
                     if (r0 + 1 > rs)
                         alpha = rs - r0;
                     if (rs + 1 > r1)
-                        alpha = r1 - rs;                
+                        alpha = r1 - rs;
 
                     float a = atan2(dy, dx);
                     bool inSector = (a0 <= a && a <= a1);
@@ -98,7 +98,7 @@ void horizontalSlope(V, COLOR)(auto ref V v, box2i rect, COLOR c0, COLOR c1)
     int x1 = rect.max.x;
     int y1 = rect.max.y;
     foreach (px; x0..x1)
-    { 
+    {
         ubyte alpha = cast(ChannelType)( 0.5f + ChannelType.max * (px - x0) / cast(float)(x1 - x0) );  // Not being generic here
         COLOR c = COLOR.op!q{.blend(a, b, c)}(c1, c0, alpha); // warning .blend is confusing, c1 comes first
         vline(v, px, y0, y1, c);
@@ -114,7 +114,7 @@ if (isWritableView!V && is(COLOR : ViewColor!V))
     int x1 = rect.max.x;
     int y1 = rect.max.y;
     foreach (py; y0..y1)
-    { 
+    {
         ChannelType alpha = cast(ChannelType)( 0.5f + ChannelType.max * (py - y0) / cast(float)(y1 - y0) );  // Not being generic here
         COLOR c = COLOR.op!q{.blend(a, b, c)}(c1, c0, alpha); // warning .blend is confusing, c1 comes first
         hline(v, x0, x1, py, c);
@@ -134,7 +134,7 @@ if (isWritableView!V && isNumeric!T && is(COLOR : ViewColor!V))
 
     auto r1s = r1*r1;
     auto r2s = r2*r2;
-    
+
     float fx = x;
     float fy = y;
 
@@ -166,7 +166,7 @@ if (isWritableView!V && isNumeric!T && is(COLOR : ViewColor!V))
     }
 }
 
-void aaFillRectFloat(bool CHECKED=true, V, COLOR)(auto ref V v, float x1, float y1, float x2, float y2, COLOR color) 
+void aaFillRectFloat(bool CHECKED=true, V, COLOR)(auto ref V v, float x1, float y1, float x2, float y2, COLOR color)
     if (isWritableView!V && is(COLOR : ViewColor!V))
 {
     alias ChannelType = COLOR.ChannelType;
@@ -202,16 +202,13 @@ void aaFillRectFloat(bool CHECKED=true, V, COLOR)(auto ref V v, float x1, float 
     v.fillRect!CHECKED(ix1+1, iy1+1, ix2, iy2, color);
 }
 
-/*template aaPutPixelFloat()
-{*/
-    void aaPutPixelFloat(bool CHECKED=true, V, COLOR, A)(auto ref V v, int x, int y, COLOR color, A alpha)
-        if (is(COLOR.ChannelType == A))
-    {
-        static if (CHECKED)
-            if (x<0 || x>=v.w || y<0 || y>=v.h)
-                return;
+void aaPutPixelFloat(bool CHECKED=true, V, COLOR, A)(auto ref V v, int x, int y, COLOR color, A alpha)
+    if (is(COLOR.ChannelType == A))
+{
+    static if (CHECKED)
+        if (x<0 || x>=v.w || y<0 || y>=v.h)
+            return;
 
-        COLOR* p = v.pixelPtr(x, y);
-        *p = COLOR.op!q{.blend(a, b, c)}(color, *p, alpha);
-    }
-//}
+    COLOR* p = v.pixelPtr(x, y);
+    *p = COLOR.op!q{.blend(a, b, c)}(color, *p, alpha);
+}

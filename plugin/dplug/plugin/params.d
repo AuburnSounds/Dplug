@@ -20,8 +20,9 @@ import core.stdc.stdio;
 
 import std.math;
 
-import dplug.core.unchecked_sync;
+import gfm.core;
 
+import dplug.core.unchecked_sync;
 import dplug.plugin.client;
 
 
@@ -86,9 +87,14 @@ public:
     /// Returns: A normalized float, representing the default parameter value.
     abstract float getNormalizedDefault() nothrow @nogc;
 
-    void close()
+    ~this()
     {
-        _valueMutex.close();
+        if (_initialized)
+        {
+            debug ensureNotInGC("Parameter");
+            _valueMutex.destroy();
+            _initialized = false;
+        }
     }
 
 protected:
@@ -100,6 +106,7 @@ protected:
         _label = label;
         _index = index;
         _valueMutex = new UncheckedMutex();
+        _initialized = true;
     }
 
     /// From a normalized float, set the parameter value.
@@ -127,6 +134,8 @@ private:
     IParameterListener[] _listeners;
 
     UncheckedMutex _valueMutex;
+
+    bool _initialized; // destructor flag
 }
 
 /// Parameter listeners are called whenever a parameter is changed from the host POV.

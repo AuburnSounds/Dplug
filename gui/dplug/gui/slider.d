@@ -19,13 +19,18 @@ public:
         super(context);
         _param = param;
         _param.addListener(this);
-
         _sensivity = 1.0f;
+        _initialized = true;
     }
 
-    override void close()
+    ~this()
     {
-        _param.removeListener(this);
+        if (_initialized)
+        {
+            debug ensureNotInGC("UISlider");
+            _param.removeListener(this);
+            _initialized = false;
+        }
     }
 
     /// Returns: sensivity.
@@ -68,7 +73,7 @@ public:
         {
             box2i holeBlack = box2i(holeRect.min.x, holeRect.min.y, holeRect.max.x, std.algorithm.max(holeRect.min.y, posY - 1));
             box2i holeLit = box2i(holeRect.min.x, std.algorithm.min(holeRect.max.y, posY + handleHeight), holeRect.max.x, holeRect.max.y);
-            
+
             diffuseMap.crop(holeBlack).fill(RGBA(150, 40, 20, 8));
             diffuseMap.crop(holeLit).fill(RGBA(230, 80, 43, 192));
             depthMap.crop(holeRect).fill(L16(30000));
@@ -162,7 +167,9 @@ protected:
     /// The parameter this switch is linked with.
     FloatParameter _param;
 
-    /// Sensivity: given a mouse movement in 100th of the height of the knob, 
+    /// Sensivity: given a mouse movement in 100th of the height of the knob,
     /// how much should the normalized parameter change.
     float _sensivity;
+
+    bool _initialized; // destructor flag
 }

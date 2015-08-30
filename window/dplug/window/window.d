@@ -61,9 +61,6 @@ interface IWindow
     // If exit was requested
     bool terminated();
 
-    // Free resources
-    void close();
-
     // Debug-purpose: display debug string
     void debugOutput(string s);
 
@@ -109,7 +106,7 @@ interface IWindowListener
     /// `swapRB` is true when it is expected rendering will swap red and blue channel.
     void onDraw(ImageRef!RGBA wfb, WindowPixelFormat pf);
 
-    /// The drawing area size has changed.    
+    /// The drawing area size has changed.
     /// Always called at least once before onDraw.
     void onResized(int width, int height);
 

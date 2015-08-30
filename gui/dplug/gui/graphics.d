@@ -24,7 +24,6 @@ import dplug.gui.mipmap;
 import dplug.gui.boxlist;
 import dplug.gui.context;
 import dplug.gui.element;
-import dplug.gui.dirtylist;
 import dplug.gui.materials;
 
 /// In the whole package:
@@ -87,24 +86,28 @@ class GUIGraphics : UIElement, IGraphics
         _elemsToDraw = new AlignedBuffer!UIElement;
 
         _compositingWatch = new StopWatch("Compositing = ");
+
+        _initialized = true;
     }
+
 
     ~this()
     {
-    }
-
-    override void close()
-    {
-        super.close();
-        _uiContext.close();
-        _window.close();
-        _areasToUpdate.close();
-        _updateRectScratch[0].close();
-        _updateRectScratch[1].close();
-        _areasToRender.close();
-        _areasToRenderNonOverlapping.close();
-        _areasToRenderNonOverlappingTiled.close();
-        _elemsToDraw.close();
+        if (_initialized)
+        {
+            debug ensureNotInGC("GUIGraphics");
+            closeUI();
+            _uiContext.destroy();
+            _areasToUpdate.destroy();
+            _updateRectScratch[0].destroy();
+            _updateRectScratch[1].destroy();
+            _areasToRender.destroy();
+            _areasToRenderNonOverlapping.destroy();
+            _areasToRenderNonOverlappingTiled.destroy();
+            _elemsToDraw.destroy();
+            _taskPool.destroy();
+            _initialized = false;
+        }
     }
 
     // Graphics implementation
@@ -125,15 +128,17 @@ class GUIGraphics : UIElement, IGraphics
     override void closeUI()
     {
         // Destroy window.
-        _window.close();
+        if (_window !is null)
+        {
+            _window.destroy();
+            _window = null;
+        }
     }
 
-    override int[2] getGUISize()
+    override void getGUISize(int* width, int* height)
     {
-        int[2] result;
-        result[0] = _askedWidth;
-        result[1] = _askedHeight;
-        return result;
+        *width = _askedWidth;
+        *height = _askedWidth;
     }
 
     class StopWatch
@@ -290,6 +295,7 @@ class GUIGraphics : UIElement, IGraphics
     }
 
 protected:
+
     UIContext _uiContext;
 
     WindowListener _windowListener;
@@ -335,6 +341,8 @@ protected:
 
 
     StopWatch _compositingWatch;
+
+    bool _initialized; // destructor flag
 
 
     bool isUIDirty() nothrow @nogc

@@ -6,6 +6,7 @@
 module dplug.gui.bargraph;
 
 import std.math;
+
 import dplug.gui.element;
 import dplug.core.unchecked_sync;
 import dplug.core;
@@ -46,11 +47,18 @@ public:
             _leds ~= LED(RGBA(226, 120, 249, 255));
 
          _valueMutex = new UncheckedMutex();
+
+         _initialized = true;
     }
 
-    override void close()
+    ~this()
     {
-        _valueMutex.close();
+        if (_initialized)
+        {
+            debug ensureNotInGC("UIBargraph");
+            _valueMutex.destroy();
+            _initialized = false;
+        }
     }
 
 
@@ -137,4 +145,6 @@ protected:
     float[] _values;
     float _minValue;
     float _maxValue;
+
+    bool _initialized;
 }

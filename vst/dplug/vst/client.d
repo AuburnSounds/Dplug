@@ -158,17 +158,24 @@ public:
             flags |= effFlagsIsSynth;
             _host.wantEvents();
         }
+        _initialized = true;
     }
 
-    void close()
+    this()
     {
-        _client.close();
+        if (_initialized)
+        {
+            debug ensureNotInGC("dplug.vst.Client");
+            _client.destroy();
+            _initialized = false;
+        }
     }
 
 private:
 
     VSTHostFromClientPOV _host;
     Client _client;
+    bool _initialized; // destructor flag
 
     float _sampleRate; // samplerate from opcode thread POV
     int _maxFrames; // max frames from opcode thread POV
@@ -237,7 +244,7 @@ private:
                 return 0;
 
             case effClose: // opcode 1
-                close(); // free all resources except this and the runtime
+                this.destroy(); // free all resources except this and the runtime
                 return 0;
 
             case effSetProgram: // opcode 2
@@ -358,13 +365,21 @@ private:
                 {
                     if ( _client.hasGUI() )
                     {
-                        int[2] size = _client.getGUISize();
-                        _editRect.top = 0;
-                        _editRect.left = 0;
-                        _editRect.right = cast(short)(size[0]);
-                        _editRect.bottom = cast(short)(size[1]);
-                        *cast(ERect**)(ptr) = &_editRect;
-                        return cast(VstIntPtr)(&_editRect);
+                        int width, height;
+                        if (_client.getGUISize(&width, &height))
+                        {
+                            _editRect.top = 0;
+                            _editRect.left = 0;
+                            _editRect.right = cast(short)(width);
+                            _editRect.bottom = cast(short)(height);
+                            *cast(ERect**)(ptr) = &_editRect;
+                            return 1;
+                        }
+                        else
+                        {
+                            ptr = null;
+                            return 0;
+                        }
                     }
                     ptr = null;
                     return 0;

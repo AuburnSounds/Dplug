@@ -8,6 +8,7 @@ module dplug.gui.element;
 import std.algorithm;
 
 public import gfm.math;
+public import gfm.core.memory;
 
 public import ae.utils.graphics;
 
@@ -25,7 +26,7 @@ public import dplug.gui.materials;
 
 /// Base class of the UI widget hierarchy.
 ///
-/// Bugs: a bunch of stuff in that class is intended specifically for the root element, 
+/// Bugs: a bunch of stuff in that class is intended specifically for the root element,
 ///       there is probably a batter design to find
 
 class UIElement
@@ -34,16 +35,21 @@ public:
     this(UIContext context)
     {
         _context = context;
-
         localRectsBuf = new AlignedBuffer!box2i(1);
+        _childDestroyed = false;
     }
 
-    void close()
+    ~this()
     {
-        foreach(child; children)
-            child.close();
+        if (!_childDestroyed)
+        {
+            debug ensureNotInGC("UIElement");
+            foreach(child; children)
+                child.destroy();
 
-        localRectsBuf.close();
+            localRectsBuf.destroy();
+            _childDestroyed = true;
+        }
     }
 
     /// Returns: true if was drawn, ie. the buffers have changed.
@@ -93,14 +99,14 @@ public:
             child.reflow(availableSpace);
     }
 
-    /// Returns: Position of the element, that will be used for rendering. This 
+    /// Returns: Position of the element, that will be used for rendering. This
     /// position is reset when calling reflow.
     final box2i position()
     {
         return _position;
     }
 
-    /// Forces the position of the element. It is typically used in the parent 
+    /// Forces the position of the element. It is typically used in the parent
     /// reflow() method
     final box2i position(box2i p)
     {
@@ -132,7 +138,7 @@ public:
         return false;
     }
 
-    // Mouse wheel was turned. 
+    // Mouse wheel was turned.
     // This function is meant to be overriden.
     // It should return true if the wheel is handled.
     bool onMouseWheel(int x, int y, int wheelDeltaX, int wheelDeltaY, MouseState mstate)
@@ -211,7 +217,7 @@ public:
                 return true;
             }
         }
-        
+
         // Test children that are displayed below this element last
         foreach(child; _children)
         {
@@ -356,7 +362,7 @@ public:
     /// Returns: Top-level parent. `null` if detached or root element.
     final UIElement topLevelParent() pure nothrow @nogc
     {
-        if (_parent is null) 
+        if (_parent is null)
             return this;
         else
             return _parent.topLevelParent();
@@ -381,7 +387,7 @@ public:
     /// The slice is reused to take advantage of .capacity
     /// You should empty it before calling this function.
     /// Everything visible get into the draw list, but that doesn't mean they
-    /// will get drawn if they don't overlap with a dirty area.    
+    /// will get drawn if they don't overlap with a dirty area.
     final void getDrawList(AlignedBuffer!UIElement list) nothrow @nogc
     {
         if (isVisible())
@@ -390,13 +396,13 @@ public:
             foreach(child; _children)
                 child.getDrawList(list);
         }
-    }   
+    }
 
 protected:
 
     /// Draw method. You should redraw the area there.
     /// For better efficiency, you may only redraw the part in _dirtyRect.
-    /// diffuseMap and depthMap are made to span _position exactly, 
+    /// diffuseMap and depthMap are made to span _position exactly,
     /// so you can draw in the area (0 .. _position.width, 0 .. _position.height)
     void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects)
     {
@@ -454,6 +460,8 @@ private:
     AlignedBuffer!box2i localRectsBuf;
 
     bool _mouseOver = false;
+
+    bool _childDestroyed; // destructor flag
 }
 
 

@@ -175,8 +175,7 @@ version(linux)
           //      XSynchronize(_display, true);
         }
 
-
-        override void close()
+        ~this()
         {
             if (_initialized)
             {

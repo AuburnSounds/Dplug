@@ -13,7 +13,6 @@ interface IGraphics
 {
     abstract void openUI(void* parentInfo, DAW daw);
     abstract void closeUI();
-    abstract int[2] getGUISize();
-    abstract void close(); // free resources
+    abstract void getGUISize(int* width, int* height);
 }
 

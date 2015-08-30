@@ -56,14 +56,12 @@ final class UncheckedMutex
         m_initialized = true;
     }
 
-    ~this() nothrow @nogc
-    {
-    }
-
-    void close() nothrow @nogc
+    ~this()
     {
         if (m_initialized)
         {
+            debug ensureNotInGC("UncheckedMutex");
+
             m_initialized = false;
             version( Windows )
             {

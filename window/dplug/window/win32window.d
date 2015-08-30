@@ -114,7 +114,23 @@ version(Windows)
             _lastMeasturedTimeInMs = _timeAtCreationInMs;
         }
 
+        ~this()
+        {
+            if (_hwnd != null)
+            {
+               DestroyWindow(_hwnd);
+                _hwnd = null;
 
+                // Unregister the window class, which was unique
+                UnregisterClassW(_wndClass.lpszClassName, getModuleHandle());
+
+                if (_buffer != null)
+                {
+                    VirtualFree(_buffer, 0, MEM_RELEASE);
+                    _buffer = null;
+                }
+            }
+        }
 
         /// Returns: true if window size changed.
         bool updateSizeIfNeeded()
@@ -150,18 +166,6 @@ version(Windows)
             }
             else
                 return false;
-        }
-
-        override void close()
-        {
-            if (_hwnd != null)
-            {
-               DestroyWindow(_hwnd);
-                _hwnd = null;
-
-                // Unregister the window class, which was unique
-                UnregisterClassW(_wndClass.lpszClassName, getModuleHandle());
-            }
         }
 
         LRESULT windowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -289,7 +293,7 @@ version(Windows)
                         _listener.onDraw(wfb, WindowPixelFormat.BGRA8);
 
                         box2i areaToRedraw = box2i(r.left, r.top, r.right, r.bottom);
-                        
+
                         box2i[] areasToRedraw = (&areaToRedraw)[0..1];
                         swapBuffers(wfb, areasToRedraw);
                     }
@@ -306,7 +310,7 @@ version(Windows)
                 {
                     if (wParam == TIMER_ID)
                     {
-                        uint now = getTimeMs(); 
+                        uint now = getTimeMs();
                         _lastMeasturedTimeInMs = _timeAtCreationInMs;
                         double dt = (now - _lastMeasturedTimeInMs) * 0.001;
                         double time = (now - _timeAtCreationInMs) * 0.001; // hopefully no plug-in will be open more than 49 days
@@ -336,7 +340,7 @@ version(Windows)
             {
                 if (area.width() <= 0 || area.height() <= 0)
                     continue; // nothing to update
-                
+
                 BITMAPINFOHEADER bmi = BITMAPINFOHEADER.init; // fill with zeroes
                 with (bmi)
                 {
@@ -349,7 +353,7 @@ version(Windows)
                     biYPelsPerMeter = 72;
                     biBitCount      = 32;
                     biSizeImage     = byteStride(_width) * _height;
-                    SetDIBitsToDevice(hdc, area.min.x, area.min.y, area.width, area.height, 
+                    SetDIBitsToDevice(hdc, area.min.x, area.min.y, area.width, area.height,
                                       area.min.x, -area.min.y - area.height + _height, 0, _height, _buffer, cast(BITMAPINFO *)&bmi, DIB_RGB_COLORS);
                 }
             }
@@ -431,12 +435,12 @@ version(Windows)
             if (consumed)
                 sendRepaintIfUIDirty(); // do not wait for the timer
             return consumed;
-        }        
+        }
 
         /// Provokes a WM_PAINT if some UI element is dirty.
         /// TODO: this function should be as fast as possible
         void sendRepaintIfUIDirty()
-        {            
+        {
             _listener.recomputeDirtyAreas();
             box2i dirtyRect = _listener.getDirtyRectangle();
             if (!dirtyRect.empty())
@@ -505,7 +509,7 @@ version(Windows)
             case VK_NUMPAD8: return Key.digit8;
             case VK_NUMPAD9: return Key.digit9;
             case VK_RETURN: return Key.enter;
-            case VK_ESCAPE: return Key.escape;                
+            case VK_ESCAPE: return Key.escape;
             default: return Key.unsupported;
         }
     }

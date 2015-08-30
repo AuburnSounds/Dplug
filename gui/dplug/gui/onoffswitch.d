@@ -19,11 +19,17 @@ public:
         super(context);
         _param = param;
         _param.addListener(this);
+        _initialized = true;
     }
 
-    override void close()
+    ~this()
     {
-        _param.removeListener(this);
+        if (_initialized)
+        {
+            debug ensureNotInGC("UIOnOffSwitch");
+            _param.removeListener(this);
+            _initialized = false;
+        }
     }
 
     override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects)
@@ -36,12 +42,12 @@ public:
         int width = _position.width;
         int height = _position.height;
         float border = 0.1f;
-        box2i switchRect = 
+        box2i switchRect =
             box2i ( cast(int)(0.5f + width * border),
                     cast(int)(0.5f + height * border),
                     cast(int)(0.5f + width * (1-border)),
                     cast(int)(0.5f + height * (1-border)) );
-        
+
 
         bool isOn = _param.value();
         int emissive = isOn ? 205 : 0;
@@ -101,4 +107,6 @@ protected:
 
     /// The parameter this switch is linked with.
     BoolParameter _param;
+
+    bool _initialized = true; // destructor flag
 }
