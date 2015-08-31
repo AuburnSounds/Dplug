@@ -371,7 +371,7 @@ private:
 
             case effEditGetRect: // opcode 13
                 {
-                    if ( _client.hasGUI() )
+                    if ( _client.hasGUI() && ptr)
                     {
                         int width, height;
                         if (_client.getGUISize(&width, &height))
