@@ -138,7 +138,7 @@ class GUIGraphics : UIElement, IGraphics
     override void getGUISize(int* width, int* height)
     {
         *width = _askedWidth;
-        *height = _askedWidth;
+        *height = _askedHeight;
     }
 
     class StopWatch

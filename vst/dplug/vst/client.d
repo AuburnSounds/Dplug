@@ -169,6 +169,7 @@ public:
             _client.destroy();
             _inputScratchBuffer.destroy();
             _outputScratchBuffer.destroy();
+            _zeroesBuffer.destroy();
             _initialized = false;
 
         }

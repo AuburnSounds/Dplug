@@ -104,15 +104,16 @@ public:
     {
         _dirtyRectMutex = new UncheckedMutex();
         _dirtyRects = new AlignedBuffer!box2i(4);
+        _initialized = true;
     }
 
     ~this()
     {
-        if (initialized)
+        if (_initialized)
         {
             _dirtyRectMutex.destroy();
             _dirtyRects.destroy();
-            initialized = false;
+            _initialized = false;
         }
     }
 
@@ -198,7 +199,7 @@ public:
 
 private:
     /// Destructor flag.
-    bool initialized;
+    bool _initialized;
 
     /// The possibly overlapping areas that need updating.
     AlignedBuffer!box2i _dirtyRects;
