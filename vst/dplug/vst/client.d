@@ -167,8 +167,12 @@ public:
         {
             debug ensureNotInGC("dplug.vst.Client");
             _client.destroy();
-            _inputScratchBuffer.destroy();
-            _outputScratchBuffer.destroy();
+
+            for (int i = 0; i < _maxInputs; ++i)
+                _inputScratchBuffer[i].destroy();
+
+            for (int i = 0; i < _maxOutputs; ++i)
+                _outputScratchBuffer[i].destroy();
             _zeroesBuffer.destroy();
             _initialized = false;
 
