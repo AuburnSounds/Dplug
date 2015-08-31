@@ -161,13 +161,16 @@ public:
         _initialized = true;
     }
 
-    this()
+    ~this()
     {
         if (_initialized)
         {
             debug ensureNotInGC("dplug.vst.Client");
             _client.destroy();
+            _inputScratchBuffer.destroy();
+            _outputScratchBuffer.destroy();
             _initialized = false;
+
         }
     }
 

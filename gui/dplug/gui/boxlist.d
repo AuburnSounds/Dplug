@@ -127,6 +127,7 @@ unittest
     import dplug.core.alignedbuffer;
 
     auto ab = new AlignedBuffer!box2i();
+    scope(exit) ab.destroy();
 
     removeOverlappingAreas(bl, ab);
     assert(ab[] == [ box2i(2, 2, 6, 6), box2i(0, 0, 4, 2), box2i(0, 2, 2, 4) ] );

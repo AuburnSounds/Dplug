@@ -302,7 +302,7 @@ version(Windows)
 
                 case WM_CLOSE:
                 {
-                    close();
+                    this.destroy();
                     return 0;
                 }
 

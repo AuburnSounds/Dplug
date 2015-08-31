@@ -224,6 +224,7 @@ public:
 
         inputBargraph.setValues([1.0f, 0.5f]);
         outputBargraph.setValues([0.7f, 0.0f]);
+        _initialized = true;
     }
 
     ~this()

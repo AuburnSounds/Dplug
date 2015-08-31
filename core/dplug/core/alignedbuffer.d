@@ -175,6 +175,7 @@ final class AlignedBuffer(T)
 unittest
 {
     auto buf = new AlignedBuffer!int;
+    scope(exit) buf.destroy();
     enum N = 10;
     buf.resize(N);
     foreach(i ; 0..N)

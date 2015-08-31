@@ -35,7 +35,7 @@ public:
     this(UIContext context)
     {
         _context = context;
-        localRectsBuf = new AlignedBuffer!box2i(1);
+        _localRectsBuf = new AlignedBuffer!box2i(1);
         _childDestroyed = false;
     }
 
@@ -47,7 +47,7 @@ public:
             foreach(child; children)
                 child.destroy();
 
-            localRectsBuf.destroy();
+            _localRectsBuf.destroy();
             _childDestroyed = true;
         }
     }
@@ -59,7 +59,7 @@ public:
         // List of disjointed dirty rectangles intersecting with _position
         // A nice thing with intersection is that a disjointed set of rectangles
         // stays disjointed.
-        localRectsBuf.clearContents();
+        _localRectsBuf.clearContents();
         {
             foreach(rect; areasToUpdate)
             {
@@ -69,12 +69,12 @@ public:
                 {
                     // Express the dirty rect in local coordinates for simplicity
                     // TODO: amortize this allocation else we have big problems
-                    localRectsBuf.pushBack( inter.translate(-_position.min) );
+                    _localRectsBuf.pushBack( inter.translate(-_position.min) );
                 }
             }
         }
 
-        if (localRectsBuf.length == 0)
+        if (_localRectsBuf.length == 0)
             return; // nothing to draw here
 
         // Crop the diffuse and depth to the _position
@@ -83,7 +83,7 @@ public:
         ImageRef!RGBA diffuseMapCropped = diffuseMap.cropImageRef(_position);
         ImageRef!L16 depthMapCropped = depthMap.cropImageRef(_position);
         ImageRef!RGBA materialMapCropped = materialMap.cropImageRef(_position);
-        onDraw(diffuseMapCropped, depthMapCropped, materialMapCropped, localRectsBuf[]);
+        onDraw(diffuseMapCropped, depthMapCropped, materialMapCropped, _localRectsBuf[]);
     }
 
     /// Meant to be overriden almost everytime for custom behaviour.
@@ -457,7 +457,7 @@ protected:
 private:
     UIContext _context;
 
-    AlignedBuffer!box2i localRectsBuf;
+    AlignedBuffer!box2i _localRectsBuf;
 
     bool _mouseOver = false;
 
