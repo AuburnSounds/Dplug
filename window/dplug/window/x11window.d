@@ -254,7 +254,7 @@ version(linux)
                     break;
 
                 case DestroyNotify:
-                    close();
+                    this.destroy();
                     break;
 
 /+
