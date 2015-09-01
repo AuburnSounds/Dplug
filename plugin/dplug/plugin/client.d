@@ -143,6 +143,11 @@ public:
         for (int i = 0; i < _maxOutputs; ++i)
             _outputPins[i] = new OutputPin();
 
+        // Must be done there rather than in
+        // effEditOpen for some reason.
+        // TODO: do it really lazily
+        //createGraphicsLazily();
+
         _initialized = true;
     }
 
@@ -241,8 +246,6 @@ public:
 
     final bool getGUISize(int* width, int* height)
     {
-        assert(_initialized);
-        assert(this !is null);
         createGraphicsLazily();
         if (_graphics)
         {

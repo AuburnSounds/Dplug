@@ -52,8 +52,6 @@ class GUIGraphics : UIElement, IGraphics
 
     float ambientLight;
 
-
-
     this(int initialWidth, int initialHeight)
     {
         _uiContext = new UIContext();
@@ -86,28 +84,22 @@ class GUIGraphics : UIElement, IGraphics
         _elemsToDraw = new AlignedBuffer!UIElement;
 
         _compositingWatch = new StopWatch("Compositing = ");
-
-        _initialized = true;
     }
 
 
     ~this()
     {
-        if (_initialized)
-        {
-            debug ensureNotInGC("GUIGraphics");
-            closeUI();
-            _uiContext.destroy();
-            _areasToUpdate.destroy();
-            _updateRectScratch[0].destroy();
-            _updateRectScratch[1].destroy();
-            _areasToRender.destroy();
-            _areasToRenderNonOverlapping.destroy();
-            _areasToRenderNonOverlappingTiled.destroy();
-            _elemsToDraw.destroy();
-            _taskPool.destroy();
-            _initialized = false;
-        }
+        debug ensureNotInGC("GUIGraphics");
+        closeUI();
+        _uiContext.destroy();
+        _areasToUpdate.destroy();
+        _updateRectScratch[0].destroy();
+        _updateRectScratch[1].destroy();
+        _areasToRender.destroy();
+        _areasToRenderNonOverlapping.destroy();
+        _areasToRenderNonOverlappingTiled.destroy();
+        _elemsToDraw.destroy();
+        _taskPool.destroy();
     }
 
     // Graphics implementation
@@ -342,8 +334,8 @@ protected:
 
     StopWatch _compositingWatch;
 
-    bool _initialized; // destructor flag
-
+    // BUG to report: uncommenting this create crash on interface casts with ldc 0.15.2-b2
+    //bool _initialized;
 
     bool isUIDirty() nothrow @nogc
     {
