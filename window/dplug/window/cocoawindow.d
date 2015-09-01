@@ -138,11 +138,15 @@ version(OSX)
                 _view.removeFromSuperview();
                 _view = DPlugCustomView(null);
 
+                DPlugCustomView.unregisterSubclass();
+
                 if (_buffer != null)
                 {
                     free(_buffer);
                     _buffer = null;
                 }
+
+                DerelictCocoa.unload();
             }
         }
 
@@ -387,8 +391,6 @@ version(OSX)
         CocoaWindow _window;
         NSTimer _timer = null;
 
-        static bool classRegistered = false;
-
         void initialize(CocoaWindow window, int width, int height)
         {
             // Warning: taking this address is fishy since DPlugCustomView is a struct and thus could be copied
@@ -405,12 +407,10 @@ version(OSX)
             NSRunLoop.currentRunLoop().addTimer(_timer, NSRunLoopCommonModes);
         }
 
+        static Class clazz;
+
         static void registerSubclass()
         {
-            if (classRegistered)
-                return;
-
-            Class clazz;
             clazz = objc_allocateClassPair(cast(Class) lazyClass!"NSView", "DPlugCustomView", 0);
 
             class_addMethod(clazz, sel!"keyDown:", cast(IMP) &keyDown, "v@:@");
@@ -440,8 +440,11 @@ version(OSX)
             class_addIvar(clazz, "this", (void*).sizeof, (void*).sizeof == 4 ? 2 : 3, "^v");
 
             objc_registerClassPair(clazz);
+        }
 
-            classRegistered = true;
+        static void unregisterSubclass()
+        {
+            objc_disposeClassPair(clazz);
         }
 
         void killTimer()
