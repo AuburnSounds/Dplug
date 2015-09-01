@@ -132,17 +132,14 @@ version(OSX)
                 _terminated = true;
 
                 {
-                    //_timerLock.lock();
-                    //scope(exit) _timerLock.unlock();
                     _view.killTimer();
                 }
-                //_timerLock.destroy();
 
                 _view.removeFromSuperview();
                 _view.release();
                 _view = DPlugCustomView(null);
 
-                //DPlugCustomView.unregisterSubclass();
+                DPlugCustomView.unregisterSubclass();
 
                 if (_buffer != null)
                 {
@@ -184,7 +181,7 @@ version(OSX)
         {
             // not working
             MouseState state;
-           uint pressedMouseButtons = event.pressedMouseButtons();
+            uint pressedMouseButtons = event.pressedMouseButtons();
             if (pressedMouseButtons & 1)
                 state.leftButtonDown = true;
             if (pressedMouseButtons & 2)
@@ -192,10 +189,13 @@ version(OSX)
             if (pressedMouseButtons & 4)
                 state.middleButtonDown = true;
 
-            // TODO
-            //bool ctrlPressed;
-            //bool shiftPressed;
-            //bool altPressed;
+            NSEventModifierFlags mod = event.modifierFlags();
+            if (mod & NSControlKeyMask)
+                state.ctrlPressed = true;
+            if (mod & NSShiftKeyMask)
+                state.shiftPressed = true;
+            if (mod & NSAlternateKeyMask)
+                state.altPressed = true;
 
             return state;
         }
