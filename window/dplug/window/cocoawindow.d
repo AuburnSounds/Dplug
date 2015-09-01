@@ -8,6 +8,7 @@ module dplug.window.cocoawindow;
 import core.stdc.stdlib;
 import std.string;
 import std.stdio;
+import std.uuid;
 
 import ae.utils.graphics;
 
@@ -107,6 +108,8 @@ version(OSX)
 
             _dirtyAreasAreNotYetComputed = true;
 
+            string uuid = randomUUID().toString();
+            DPlugCustomView.customClassName = "DPlugCustomView_" ~ uuid;
             DPlugCustomView.registerSubclass();
 
             //_timerLock = new UncheckedMutex();
@@ -136,9 +139,10 @@ version(OSX)
                 //_timerLock.destroy();
 
                 _view.removeFromSuperview();
+                _view.release();
                 _view = DPlugCustomView(null);
 
-                DPlugCustomView.unregisterSubclass();
+                //DPlugCustomView.unregisterSubclass();
 
                 if (_buffer != null)
                 {
@@ -381,10 +385,35 @@ version(OSX)
 
     struct DPlugCustomView
     {
+        // This class uses a unique class name for each plugin instance
+        static string customClassName = null;
+
         NSView parent;
         alias parent this;
 
-        mixin NSObjectTemplate!(DPlugCustomView, "DPlugCustomView");
+        // create from an id
+        this (id id_)
+        {
+            this._id = id_;
+        }
+
+        /// Allocates, but do not init
+        static DPlugCustomView alloc()
+        {
+            alias fun_t = extern(C) id function (id obj, SEL sel);
+            return DPlugCustomView( (cast(fun_t)objc_msgSend)(getClassID(), sel!"alloc") );
+        }
+
+        static Class getClass()
+        {
+            return cast(Class)( getClassID() );
+        }
+
+        static id getClassID()
+        {
+            assert(customClassName !is null);
+            return objc_getClass(customClassName);
+        }
 
     private:
 
@@ -411,7 +440,7 @@ version(OSX)
 
         static void registerSubclass()
         {
-            clazz = objc_allocateClassPair(cast(Class) lazyClass!"NSView", "DPlugCustomView", 0);
+            clazz = objc_allocateClassPair(cast(Class) lazyClass!"NSView", toStringz(customClassName), 0);
 
             class_addMethod(clazz, sel!"keyDown:", cast(IMP) &keyDown, "v@:@");
             class_addMethod(clazz, sel!"keyUp:", cast(IMP) &keyUp, "v@:@");
@@ -444,7 +473,8 @@ version(OSX)
 
         static void unregisterSubclass()
         {
-            objc_disposeClassPair(clazz);
+            // For some reason the class need to continue to exist, so we leak it
+            //  objc_disposeClassPair(clazz);
         }
 
         void killTimer()
