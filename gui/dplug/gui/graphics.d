@@ -83,7 +83,7 @@ class GUIGraphics : UIElement, IGraphics
 
         _elemsToDraw = new AlignedBuffer!UIElement;
 
-        _compositingWatch = new StopWatch("Compositing = ");
+        //_compositingWatch = new StopWatch("Compositing = ");
     }
 
 
@@ -266,9 +266,9 @@ class GUIGraphics : UIElement, IGraphics
 
             // Composite GUI
             // Most of the cost of rendering is here
-            _compositingWatch.start();
+            //_compositingWatch.start();
             compositeGUI(wfb, pf);
-            _compositingWatch.stop();
+            //_compositingWatch.stop();
             //_compositingWatch.displayMean();
 
             // only then is the list of rectangles to update cleared
@@ -569,6 +569,9 @@ protected:
                         case BGRA8:
                             finalColor = RGBA(diffuse.b, diffuse.g, diffuse.r, 255);
                             break;
+                        case RGBA8:
+                            finalColor = RGBA(diffuse.r, diffuse.g, diffuse.b, 255);
+                            break;
                     }
 
                     // write composited color
@@ -801,6 +804,9 @@ protected:
                             break;
                         case BGRA8:
                             finalColor = RGBA(cast(ubyte)b, cast(ubyte)g, cast(ubyte)r, 255);
+                            break;
+                        case RGBA8:
+                            finalColor = RGBA(cast(ubyte)r, cast(ubyte)g, cast(ubyte)b, 255);
                             break;
                     }
 

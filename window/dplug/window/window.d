@@ -71,7 +71,8 @@ interface IWindow
 enum WindowPixelFormat
 {
     BGRA8,
-    ARGB8
+    ARGB8,
+    RGBA8
 }
 
 // Receiving commands from a window
