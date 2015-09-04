@@ -99,6 +99,7 @@ class GUIGraphics : UIElement, IGraphics
         _areasToRenderNonOverlapping.destroy();
         _areasToRenderNonOverlappingTiled.destroy();
         _elemsToDraw.destroy();
+        _taskPool.finish(true); // wait for all thread termination
         _taskPool.destroy();
     }
 
