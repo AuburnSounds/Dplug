@@ -243,7 +243,7 @@ public:
 
     float next(float frequency) nothrow @nogc
     {
-        float phaseIncrementSamples = cast(float)(2 * _wavetable.sizeOfMipmap(0) * frequency /  (_samplerate));
+        float phaseIncrementSamples = cast(float)(_wavetable.sizeOfMipmap(0) * frequency /  (_samplerate));
         assert(phaseIncrementSamples >= 0);
         int iPart = cast(int)(phaseIncrementSamples);
         _phaseIntPart += iPart;
