@@ -1,12 +1,13 @@
 language: d
 
 d:
- - dmd-2.068.0
+ - dmd-2.068.2-b1
+ - dmd-2.068.1
  - dmd-2.067.1
  - dmd-2.066.1
  - ldc-0.15.1
  - gdc-4.9.2
- 
+
 script:
   - dub test --compiler=${DC} dplug:core
   - dub test --compiler=${DC} dplug:dsp
