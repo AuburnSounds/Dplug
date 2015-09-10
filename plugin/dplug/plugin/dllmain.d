@@ -80,7 +80,23 @@ else version(OSX)
 {
     template DLLEntryPoint()
     {
-        const char[] DLLEntryPoint = "";
+        const char[] DLLEntryPoint = ``;
+/*
+        extern (C) {
+            pragma(LDC_global_crt_ctor, 0)
+            void initRuntime()
+            {
+                import core.runtime;
+                Runtime.initialize();
+            }
+
+            pragma(LDC_global_crt_dtor, 0)
+            void deinitRuntime()
+            {
+                import core.runtime;
+                Runtime.terminate();
+            }
+        }`;*/
     }
 }
 else
