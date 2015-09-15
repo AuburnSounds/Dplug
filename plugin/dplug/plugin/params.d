@@ -39,15 +39,15 @@ public:
         return _label;
     }
 
-    // From a normalized float, set the parameter value.
-    void setFromHost(float hostValue) nothrow @nogc
+    /// From a normalized double [0..1], set the parameter value.
+    void setFromHost(double hostValue) nothrow @nogc
     {
         setNormalized(hostValue);
         notifyListeners();
     }
 
-    // Returns: A normalized float, represents the parameter value.
-    float getForHost() nothrow @nogc
+    /// Returns: A normalized double [0..1], represents the parameter value.
+    double getForHost() nothrow @nogc
     {
         return getNormalized();
     }
@@ -63,6 +63,7 @@ public:
         _listeners ~= listener;
     }
 
+    /// Removes a parameter listener.
     void removeListener(IParameterListener listener)
     {
         static auto removeElement(IParameterListener[] haystack, IParameterListener needle)
@@ -74,18 +75,20 @@ public:
         _listeners = removeElement(_listeners, listener);
     }
 
+    /// Warns the host that a parameter will be edited.
     void beginParamEdit()
     {
         _client.hostCommand().beginParamEdit(_index);
     }
 
+    /// Warns the host that a parameter has finished being edited.
     void endParamEdit()
     {
         _client.hostCommand().endParamEdit(_index);
     }
 
-    /// Returns: A normalized float, representing the default parameter value.
-    abstract float getNormalizedDefault() nothrow @nogc;
+    /// Returns: A normalized double, representing the default parameter value.
+    abstract double getNormalizedDefault() nothrow @nogc;
 
     ~this()
     {
@@ -109,13 +112,13 @@ protected:
         _initialized = true;
     }
 
-    /// From a normalized float, set the parameter value.
+    /// From a normalized double, set the parameter value.
     /// No guarantee at all that getNormalized will return the same,
     /// because this value is rounded to fit.
-    abstract void setNormalized(float hostValue) nothrow @nogc;
+    abstract void setNormalized(double hostValue) nothrow @nogc;
 
-    /// Returns: A normalized float, representing the parameter value.
-    abstract float getNormalized() nothrow @nogc;
+    /// Returns: A normalized double, representing the parameter value.
+    abstract double getNormalized() nothrow @nogc;
 
     /// Display parameter (without label).
     abstract void toStringN(char* buffer, size_t numBytes) nothrow;
@@ -157,27 +160,27 @@ public:
         _defaultValue = defaultValue;
     }
 
-    override void setNormalized(float hostValue) nothrow @nogc
+    override void setNormalized(double hostValue) nothrow @nogc
     {
         _valueMutex.lock();
-        if (hostValue < 0.5f)
+        if (hostValue < 0.5)
             _value = false;
         else
             _value = true;
         _valueMutex.unlock();
     }
 
-    override float getNormalized() nothrow @nogc
+    override double getNormalized() nothrow @nogc
     {
         _valueMutex.lock();
-        float result = _value ? 1.0f : 0.0f;
+        double result = _value ? 1.0 : 0.0;
         _valueMutex.unlock();
         return result;
     }
 
-    override float getNormalizedDefault() nothrow @nogc
+    override double getNormalizedDefault() nothrow @nogc
     {
-        return _defaultValue ? 1.0f : 0.0f;
+        return _defaultValue ? 1.0 : 0.0;
     }
 
     override void toStringN(char* buffer, size_t numBytes) nothrow @nogc
@@ -204,7 +207,7 @@ public:
         // out of the mutex.
         // That said, the potential for harm seems reduced (receiving a setParameter between _value assignment and getNormalized).
 
-        float normalized = getNormalized();
+        double normalized = getNormalized();
 
         _client.hostCommand().paramAutomate(_index, normalized);
         notifyListeners();
@@ -227,99 +230,6 @@ private:
     bool _defaultValue;
 }
 
-/// A float parameter
-class FloatParameter : Parameter
-{
-public:
-    this(Client client, int index, string name, string label, float min = 0.0f, float max = 1.0f, float defaultValue = 0.5f)
-    {
-        super(client, index, name, label);
-        assert(defaultValue >= min && defaultValue <= max);
-        _defaultValue = defaultValue;
-        _name = name;
-        _value = _defaultValue;
-        _min = min;
-        _max = max;
-    }
-
-    void setFromGUI(float value)
-    {
-        if (value < _min)
-            value = _min;
-        if (value > _max)
-            value = _max;
-
-        float normalized;
-
-        _valueMutex.lock();
-        _value = value;
-        _valueMutex.unlock();
-
-        // Important
-        // There is a race here on _value, because spinlocks aren't reentrant we had to move this line
-        // out of the mutex.
-        // That said, the potential for harm seems reduced (receiving a setParameter between _value assignment and getNormalized).
-
-        normalized = getNormalized();
-
-        _client.hostCommand().paramAutomate(_index, normalized);
-        notifyListeners();
-    }
-
-    override void setNormalized(float hostValue) nothrow @nogc
-    {
-        float v = clamp!float(_min + (_max - _min) * hostValue, _min, _max);
-        _valueMutex.lock();
-        _value = v;
-        _valueMutex.unlock();
-    }
-
-    override float getNormalized() nothrow @nogc
-    {
-        float normalized = clamp!float( (value() - _min) / (_max - _min), 0.0f, 1.0f);
-        return normalized;
-    }
-
-    override float getNormalizedDefault() nothrow @nogc
-    {
-        float normalized = clamp!float( (_defaultValue - _min) / (_max - _min), 0.0f, 1.0f);
-        return normalized;
-    }
-
-    override void toStringN(char* buffer, size_t numBytes) nothrow @nogc
-    {
-        snprintf(buffer, numBytes, "%2.2f", value());
-    }
-
-    float value() nothrow @nogc
-    {
-        _valueMutex.lock();
-        scope(exit) _valueMutex.unlock();
-        return _value;
-    }
-
-    float minValue() pure const nothrow @nogc
-    {
-        return _min;
-    }
-
-    float maxValue() pure const nothrow @nogc
-    {
-        return _max;
-    }
-
-    float defaultValue() pure const nothrow @nogc
-    {
-        return _defaultValue;
-    }
-
-private:
-    float _value;
-    float _min;
-    float _max;
-    float _defaultValue;
-}
-
 /// An integer parameter
 class IntParameter : Parameter
 {
@@ -333,7 +243,7 @@ public:
         _max = max;
     }
 
-    override void setNormalized(float hostValue)
+    override void setNormalized(double hostValue)
     {
         int rounded = cast(int)lround( _min + (_max - _min) * hostValue );
 
@@ -342,20 +252,20 @@ public:
         _valueMutex.unlock();
     }
 
-    override float getNormalized() nothrow @nogc
+    override double getNormalized() nothrow @nogc
     {
         int v;
         _valueMutex.lock();
         v = _value;
         _valueMutex.unlock();
 
-        float normalized = clamp!float( (cast(float)v - _min) / (_max - _min), 0.0f, 1.0f);
+        double normalized = clamp!double( (cast(double)v - _min) / (_max - _min), 0.0, 1.0);
         return normalized;
     }
 
-    override float getNormalizedDefault() nothrow @nogc
+    override double getNormalizedDefault() nothrow @nogc
     {
-        float normalized = clamp!float( (_defaultValue - _min) / (_max - _min), 0.0f, 1.0f);
+        double normalized = clamp!double( (_defaultValue - _min) / (_max - _min), 0.0, 1.0);
         return normalized;
     }
 
@@ -393,4 +303,149 @@ private
         else
             return x;
     }
+}
+
+/// A float parameter
+/// This is an abstract class, mapping from normalized to parmeter values is left to the user.
+class FloatParameter : Parameter
+{
+public:
+    this(Client client, int index, string name, string label, double min, double max, double defaultValue)
+    {
+        super(client, index, name, label);
+        assert(defaultValue >= min && defaultValue <= max);
+        _defaultValue = defaultValue;
+        _name = name;
+        _value = _defaultValue;
+        _min = min;
+        _max = max;
+    }
+
+    double value() nothrow @nogc
+    {
+        _valueMutex.lock();
+        scope(exit) _valueMutex.unlock();
+        return _value;
+    }
+
+    double minValue() pure const nothrow @nogc
+    {
+        return _min;
+    }
+
+    double maxValue() pure const nothrow @nogc
+    {
+        return _max;
+    }
+
+    double defaultValue() pure const nothrow @nogc
+    {
+        return _defaultValue;
+    }
+
+    void setFromGUI(double value)
+    {
+        if (value < _min)
+            value = _min;
+        if (value > _max)
+            value = _max;
+
+        double normalized;
+
+        _valueMutex.lock();
+        _value = value;
+        _valueMutex.unlock();
+
+        // Important
+        // There is a race here on _value, because spinlocks aren't reentrant we had to move this line
+        // out of the mutex.
+        // That said, the potential for harm seems reduced (receiving a setParameter between _value assignment and getNormalized).
+
+        normalized = getNormalized();
+
+        _client.hostCommand().paramAutomate(_index, normalized);
+        notifyListeners();
+    }
+
+    override void setNormalized(double hostValue) nothrow @nogc
+    {
+        double v = fromNormalized(hostValue);
+        _valueMutex.lock();
+        _value = v;
+        _valueMutex.unlock();
+    }
+
+    override double getNormalized() nothrow @nogc
+    {
+        double normalized = toNormalized(value());
+        return normalized;
+    }
+
+    override double getNormalizedDefault() nothrow @nogc
+    {
+        double normalized = toNormalized(_defaultValue);
+        return normalized;
+    }
+
+    override void toStringN(char* buffer, size_t numBytes) nothrow @nogc
+    {
+        snprintf(buffer, numBytes, "%2.2f", value());
+    }
+
+    /// Override it to specify mapping from parameter values to normalized [0..1]
+    abstract double toNormalized(double value) nothrow @nogc;
+
+    /// Override it to specify mapping from normalized [0..1] to parameter value
+    abstract double fromNormalized(double value) nothrow @nogc;
+
+private:
+    double _value;
+    double _min;
+    double _max;
+    double _defaultValue;
+}
+
+/// Linear-mapped float parameter
+class LinearFloatParameter : FloatParameter
+{
+    this(Client client, int index, string name, string label, float min, float max, float defaultValue)
+    {
+        super(client, index, name, label, min, max, defaultValue);
+    }
+
+    override double toNormalized(double value) nothrow @nogc
+    {
+        return clamp!double( (value - _min) / (_max - _min), 0.0, 1.0);
+    }
+
+    override double fromNormalized(double normalizedValue) nothrow @nogc
+    {
+        return clamp!double(_min + (_max - _min) * normalizedValue, _min, _max);
+    }
+}
+
+/// Log-mapped float parameter
+class LogFloatParameter : FloatParameter
+{
+    this(Client client, int index, string name, string label, double min, double max, double defaultValue, double shape)
+    {
+        super(client, index, name, label, min, max, defaultValue);
+        _shape = shape;
+    }
+
+    override double toNormalized(double value) nothrow @nogc
+    {
+        double result = clamp!double( (value - _min) / (_max - _min), 0.0, 1.0) ^^ (1 / _shape);
+        assert(result >= 0 && result <= 1);
+        return result;
+    }
+
+    override double fromNormalized(double normalizedValue) nothrow @nogc
+    {
+        double v = _min + (normalizedValue ^^ _shape) * (_max - _min);
+        return clamp!double(v, _min, _max);
+    }
+
+private:
+    double _shape;
 }

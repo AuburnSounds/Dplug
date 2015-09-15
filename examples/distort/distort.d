@@ -48,9 +48,9 @@ public:
     override Parameter[] buildParameters()
     {
         return [
-            new FloatParameter(this, 0, "input", "db", 0.0f, 2.0f, 1.0f),
-            new FloatParameter(this, 1, "drive", "%", 1.0f, 2.0f, 1.0f),
-            new FloatParameter(this, 2, "output", "db", 0.0f, 1.0f, 0.9f),
+            new LinearFloatParameter(this, 0, "input", "db", 0.0f, 2.0f, 1.0f),
+            new LinearFloatParameter(this, 1, "drive", "%", 1.0f, 2.0f, 1.0f),
+            new LinearFloatParameter(this, 2, "output", "db", 0.0f, 1.0f, 0.9f),
             new BoolParameter(this, 3, "on/off", "", true)
         ];
     }
