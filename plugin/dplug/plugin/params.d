@@ -409,7 +409,7 @@ private:
     double _defaultValue;
 }
 
-/// Linear-mapped float parameter
+/// Linear-mapped float parameter (eg: dry/wet)
 class LinearFloatParameter : FloatParameter
 {
     this(Client client, int index, string name, string label, float min, float max, float defaultValue)
@@ -428,30 +428,29 @@ class LinearFloatParameter : FloatParameter
     }
 }
 
-/// Log-mapped float parameter
+/// Float parameter following an exponential type of mapping (eg: cutoff frequency)
 class LogFloatParameter : FloatParameter
 {
-    this(Client client, int index, string name, string label, double min, double max, double defaultValue, double shape)
+    this(Client client, int index, string name, string label, double min, double max, double defaultValue)
     {
+        assert(min > 0 && max > 0);
         super(client, index, name, label, min, max, defaultValue);
-        _shape = shape;
     }
 
     override double toNormalized(double value) nothrow @nogc
     {
-        double result = clamp!double( (value - _min) / (_max - _min), 0.0, 1.0) ^^ (1 / _shape);
-        assert(result >= 0 && result <= 1);
+        double result = log(value / _min) / log(_max / _min);
+        if (result < 0)
+            result = 0;
+        if (result > 1)
+            result = 1;
         return result;
     }
 
     override double fromNormalized(double normalizedValue) nothrow @nogc
     {
-        double v = _min + (normalizedValue ^^ _shape) * (_max - _min);
-        return clamp!double(v, _min, _max);
+        return _min * exp(normalizedValue * log(_max / _min));
     }
-
-private:
-    double _shape;
 }
 
 /// A parameter with [-inf to value] dB log mapping
@@ -484,4 +483,30 @@ class GainParameter : FloatParameter
 private:
     double _shape;
     enum double POW = 2.0;
+}
+
+/// Float parameter following a x^N type mapping (eg: something that doesn't fit in the other categories)
+class PowFloatParameter : FloatParameter
+{
+    this(Client client, int index, string name, string label, double min, double max, double defaultValue, double shape)
+    {
+        super(client, index, name, label, min, max, defaultValue);
+        _shape = shape;
+    }
+
+    override double toNormalized(double value) nothrow @nogc
+    {
+        double result = clamp!double( (value - _min) / (_max - _min), 0.0, 1.0) ^^ (1 / _shape);
+        assert(result >= 0 && result <= 1);
+        return result;
+    }
+
+    override double fromNormalized(double normalizedValue) nothrow @nogc
+    {
+        double v = _min + (normalizedValue ^^ _shape) * (_max - _min);
+        return clamp!double(v, _min, _max);
+    }
+
+private:
+    double _shape;
 }
