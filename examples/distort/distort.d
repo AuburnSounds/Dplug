@@ -48,9 +48,9 @@ public:
     override Parameter[] buildParameters()
     {
         return [
-            new LinearFloatParameter(this, 0, "input", "db", 0.0f, 2.0f, 1.0f),
+            new GainParameter(this, 0, "input", 6.0, 0.0),
             new LinearFloatParameter(this, 1, "drive", "%", 1.0f, 2.0f, 1.0f),
-            new LinearFloatParameter(this, 2, "output", "db", 0.0f, 1.0f, 0.9f),
+            new GainParameter(this, 2, "output", 6.0, 0.0),
             new BoolParameter(this, 3, "on/off", "", true)
         ];
     }
@@ -101,9 +101,9 @@ public:
 
         int minChan = numInputs > numOutputs ? numOutputs : numInputs;
 
-        float inputGain = (cast(FloatParameter)param(0)).value();
+        float inputGain = deciBelToFloat( (cast(FloatParameter)param(0)).value() );
         float drive = (cast(FloatParameter)param(1)).value();
-        float outputGain = (cast(FloatParameter)param(2)).value();
+        float outputGain = deciBelToFloat( (cast(FloatParameter)param(2)).value() );
 
         bool enabled = (cast(BoolParameter)param(3)).value();
 

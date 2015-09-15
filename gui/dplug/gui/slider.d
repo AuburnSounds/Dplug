@@ -47,8 +47,6 @@ public:
 
     override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects)
     {
-
-
         int width = _position.width;
         int height = _position.height;
 
@@ -122,16 +120,18 @@ public:
     // Called when mouse drag this Element.
     override void onMouseDrag(int x, int y, int dx, int dy, MouseState mstate)
     {
-        float displacementInHeight = cast(float)(dy) / _position.height;
-        float extent = _param.maxValue() - _param.minValue();
+        float displacementInHeight = cast(float)(dy) / _position.height; // TODO: replace by actual trail height instead of total height
 
         float modifier = 1.0f;
         if (mstate.shiftPressed || mstate.ctrlPressed)
             modifier *= 0.1f;
 
-        // TODO: this will break with log params
-        float currentValue = _param.value();
-        _param.setFromGUI(currentValue - displacementInHeight * modifier * _sensivity * extent);
+        double newParamValue = _param.getNormalized() - displacementInHeight * modifier * _sensivity;
+        if (newParamValue < 0)
+            newParamValue = 0;
+        if (newParamValue > 1)
+            newParamValue = 1;
+        _param.setFromGUINormalized(newParamValue);
     }
 
     // For lazy updates

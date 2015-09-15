@@ -22,7 +22,7 @@ import std.math;
 
 import gfm.core;
 
-import dplug.core.unchecked_sync;
+import dplug.core;
 import dplug.plugin.client;
 
 
@@ -321,29 +321,35 @@ public:
         _max = max;
     }
 
-    double value() nothrow @nogc
+    final double value() nothrow @nogc
     {
         _valueMutex.lock();
         scope(exit) _valueMutex.unlock();
         return _value;
     }
 
-    double minValue() pure const nothrow @nogc
+    final double minValue() pure const nothrow @nogc
     {
         return _min;
     }
 
-    double maxValue() pure const nothrow @nogc
+    final double maxValue() pure const nothrow @nogc
     {
         return _max;
     }
 
-    double defaultValue() pure const nothrow @nogc
+    final double defaultValue() pure const nothrow @nogc
     {
         return _defaultValue;
     }
 
-    void setFromGUI(double value)
+    final void setFromGUINormalized(double normalizedValue)
+    {
+        assert(normalizedValue >= 0 && normalizedValue <= 1);
+        setFromGUI(fromNormalized(normalizedValue));
+    }
+
+    final void setFromGUI(double value)
     {
         if (value < _min)
             value = _min;
@@ -377,14 +383,12 @@ public:
 
     override double getNormalized() nothrow @nogc
     {
-        double normalized = toNormalized(value());
-        return normalized;
+        return toNormalized(value());
     }
 
     override double getNormalizedDefault() nothrow @nogc
     {
-        double normalized = toNormalized(_defaultValue);
-        return normalized;
+        return toNormalized(_defaultValue);
     }
 
     override void toStringN(char* buffer, size_t numBytes) nothrow @nogc
@@ -448,4 +452,36 @@ class LogFloatParameter : FloatParameter
 
 private:
     double _shape;
+}
+
+/// A parameter with [-inf to value] dB log mapping
+class GainParameter : FloatParameter
+{
+    this(Client client, int index, string name, double max, double defaultValue)
+    {
+        super(client, index, name, "dB", -double.infinity, max, defaultValue);
+    }
+
+    override double toNormalized(double value) nothrow @nogc
+    {
+        if (value == -double.infinity)
+            return 0.0f;
+
+        double maxAmplitude = deciBelToFloat(_max);
+        double result = ( deciBelToFloat(value) / maxAmplitude ) ^^ (1 / POW);
+        assert(isFinite(result));
+        return result;
+    }
+
+    override double fromNormalized(double normalizedValue) nothrow @nogc
+    {
+        if (normalizedValue == 0)
+            return -double.infinity;
+
+        return floatToDeciBel(  (normalizedValue ^^ POW) * deciBelToFloat(_max));
+    }
+
+private:
+    double _shape;
+    enum double POW = 2.0;
 }
