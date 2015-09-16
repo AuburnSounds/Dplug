@@ -456,33 +456,31 @@ class LogFloatParameter : FloatParameter
 /// A parameter with [-inf to value] dB log mapping
 class GainParameter : FloatParameter
 {
-    this(Client client, int index, string name, double max, double defaultValue)
+    this(Client client, int index, string name, double max, double defaultValue, double shape = 2.0)
     {
         super(client, index, name, "dB", -double.infinity, max, defaultValue);
+        _shape = shape;
     }
 
     override double toNormalized(double value) nothrow @nogc
     {
-        if (value == -double.infinity)
-            return 0.0f;
-
         double maxAmplitude = deciBelToFloat(_max);
-        double result = ( deciBelToFloat(value) / maxAmplitude ) ^^ (1 / POW);
+        double result = ( deciBelToFloat(value) / maxAmplitude ) ^^ (1 / _shape);
+        if (result < 0)
+            result = 0;
+        if (result > 1)
+            result = 1;
         assert(isFinite(result));
         return result;
     }
 
     override double fromNormalized(double normalizedValue) nothrow @nogc
     {
-        if (normalizedValue == 0)
-            return -double.infinity;
-
-        return floatToDeciBel(  (normalizedValue ^^ POW) * deciBelToFloat(_max));
+        return floatToDeciBel(  (normalizedValue ^^ _shape) * deciBelToFloat(_max));
     }
 
 private:
     double _shape;
-    enum double POW = 2.0;
 }
 
 /// Float parameter following a x^N type mapping (eg: something that doesn't fit in the other categories)
