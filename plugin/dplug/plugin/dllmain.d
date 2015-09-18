@@ -98,6 +98,40 @@ else version(OSX)
             }
         }`;*/
     }
+
+
+    // Workaround Issue #15060
+    // https://issues.dlang.org/show_bug.cgi?id=15060
+    // Found by Martin Nowak and bitwise
+    // Trade-off a crash for a leak :|
+
+    alias dyld_image_states = int;
+    enum : dyld_image_states
+    {
+        dyld_image_state_initialized = 50,
+    }
+
+    __gshared bool didInitRuntime = false;
+
+    alias dyld_image_state_change_handler = const(char)* function(dyld_image_states state, uint infoCount, void* dyld_image_info);
+
+    const(char)* ignoreImageLoad(dyld_image_states state, uint infoCount, void* dyld_image_info)
+    {
+        return null;
+    }
+    extern(C) void dyld_register_image_state_change_handler(dyld_image_states state, bool batch, dyld_image_state_change_handler handler);
+
+    void runtimeInitWorkaround15060()
+    {
+        import core.runtime;
+
+        if(!didInitRuntime)
+        {
+            Runtime.initialize();
+            dyld_register_image_state_change_handler(dyld_image_state_initialized, false, &ignoreImageLoad);
+            didInitRuntime = true;
+        }
+    }
 }
 else
     static assert(false, "OS unsupported");

@@ -59,7 +59,10 @@ template VSTEntryPoint(alias ClientClass)
         "       import gfm.core;"
         "       import core.runtime;"
         "       import core.thread;"
-        "       version(OSX) Runtime.initialize();" // Must occur here for OSX, but not for Windows
+        "       version(OSX) {" // Must occur here for OSX, but not for Windows
+        "           import dplug.plugin.dllmain;"
+        "           runtimeInitWorkaround15060();"
+        "       }"
         "       thread_attachThis();" // Attach VSTPluginMain thread to runtime
         "       auto client = new " ~ ClientClass.stringof ~ "();"
 
