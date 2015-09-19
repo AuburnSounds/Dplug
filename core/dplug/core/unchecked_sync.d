@@ -24,6 +24,11 @@ import gfm.core;
 version( Windows )
 {
     private import core.sys.windows.windows;
+
+    extern (Windows) export nothrow @nogc
+    {
+        void InitializeCriticalSectionAndSpinCount(CRITICAL_SECTION * lpCriticalSection, DWORD dwSpinCount);
+    }
 }
 else version( Posix )
 {
@@ -40,7 +45,7 @@ final class UncheckedMutex
     {
         version( Windows )
         {
-            InitializeCriticalSection( &m_hndl );
+            InitializeCriticalSectionAndSpinCount( &m_hndl, 0 ); // No spinning
         }
         else version( Posix )
         {
