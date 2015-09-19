@@ -497,7 +497,6 @@ private:
                                 VstMidiEvent* pME = cast(VstMidiEvent*) pEvent;
 
                                 // enqueue midi message to be processed by the audio thread (why not)
-                                // TODO: who should process these messages anyway?
                                 MidiMessage midi;
                                 midi.deltaFrames = pME.deltaFrames;
                                 midi.detune = pME.detune;
