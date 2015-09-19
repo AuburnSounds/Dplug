@@ -1143,28 +1143,28 @@ public:
      */
     void wantEvents() nothrow
     {
-        _hostCallback(_effect, DEPRECATED_audioMasterWantMidi, 0, 1, null, 0);
+        callback(DEPRECATED_audioMasterWantMidi, 0, 1, null, 0);
     }
 
     /// Request plugin window resize.
     override bool requestResize(int width, int height) nothrow
     {
-        return (_hostCallback(_effect, audioMasterSizeWindow, width, height, null, 0.0f) != 0);
+        return (callback(audioMasterSizeWindow, width, height, null, 0.0f) != 0);
     }
 
     override void beginParamEdit(int paramIndex)
     {
-        _hostCallback(_effect, audioMasterBeginEdit, paramIndex, 0, null, 0.0f);
+        callback(audioMasterBeginEdit, paramIndex, 0, null, 0.0f);
     }
 
     override void paramAutomate(int paramIndex, float value)
     {
-        _hostCallback(_effect, audioMasterAutomate, paramIndex, 0, null, value);
+        callback(audioMasterAutomate, paramIndex, 0, null, value);
     }
 
     override void endParamEdit(int paramIndex)
     {
-        _hostCallback(_effect, audioMasterEndEdit, paramIndex, 0, null, 0.0f);
+        callback(audioMasterEndEdit, paramIndex, 0, null, 0.0f);
     }
 
     override DAW getDAW()
@@ -1174,7 +1174,7 @@ public:
 
     const(char)* vendorString() nothrow
     {
-        int res = cast(int)_hostCallback(_effect, audioMasterGetVendorString, 0, 0, _vendorStringBuf.ptr, 0.0f);
+        int res = cast(int)callback(audioMasterGetVendorString, 0, 0, _vendorStringBuf.ptr, 0.0f);
         if (res == 1)
         {
             return _vendorStringBuf.ptr;
@@ -1185,7 +1185,7 @@ public:
 
     const(char)* productString() nothrow
     {
-        int res = cast(int)_hostCallback(_effect, audioMasterGetProductString, 0, 0, _productStringBuf.ptr, 0.0f);
+        int res = cast(int)callback(audioMasterGetProductString, 0, 0, _productStringBuf.ptr, 0.0f);
         if (res == 1)
         {
             return _productStringBuf.ptr;
@@ -1221,15 +1221,32 @@ public:
         assert(capsString !is null);
 
         // note: const is casted away here
-        return _hostCallback(_effect, audioMasterCanDo, 0, 0, cast(void*)capsString, 0.0f) == 1;
+        return callback(audioMasterCanDo, 0, 0, cast(void*)capsString, 0.0f) == 1;
     }
 
 private:
+
     AEffect* _effect;
     HostCallbackFunction _hostCallback;
     char[65] _vendorStringBuf;
     char[96] _productStringBuf;
     int _vendorVersion;
+
+    nothrow VstIntPtr callback(VstInt32 opcode, VstInt32 index, VstIntPtr value, void* ptr, float opt)
+    {
+        // Saves FP state
+        try
+        {
+            FPControl fpctrl;
+            fpctrl.initialize();
+
+            return _hostCallback(_effect, opcode, index, value, ptr, opt);
+        }
+        catch(Exception e)
+        {
+            return 0; // need a catch since FPControl is not nothrow
+        }
+    }
 
     static const(char)* hostCapsString(HostCaps caps) pure nothrow
     {
