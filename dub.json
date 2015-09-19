@@ -67,7 +67,7 @@
                 "derelict-cocoa": "~>0.0"
             },
 
-            "commented-dependencies-linux": {
+            "dependencies-linux": {
                 "x11": "~>1.0"
             }
         },
