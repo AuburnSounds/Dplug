@@ -67,7 +67,6 @@ template VSTEntryPoint(alias ClientClass)
         "       auto client = new " ~ ClientClass.stringof ~ "();"
 
                 // malloc'd else the GC would not register roots for some reason!
-                // TODO: when will this be freed?
         "       VSTClient plugin = mallocEmplace!VSTClient(client, hostCallback);"
         "       return &plugin._effect;"
         "   }"
