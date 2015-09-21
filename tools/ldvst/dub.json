@@ -1,0 +1,11 @@
+{
+	"name": "ldvst",
+	"dependencies": {
+        "derelict-util": "~>2.0",
+		"dplug:vst": {"path": "../../"},
+        "derelict-cocoa": ">=0.0.0"
+	},
+
+    "sourcePaths": ["source"],
+    "importPaths": ["source"]
+}
