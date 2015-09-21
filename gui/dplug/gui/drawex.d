@@ -41,6 +41,9 @@ if (isWritableView!V && is(COLOR : ViewColor!V))
 {
     alias ChannelType = COLOR.ChannelType;
 
+    if (a0 == a1)
+        return;
+
     int x0 = cast(int)floor(x - r1 - 1);
     int x1 = cast(int)ceil(x + r1 + 1);
 
