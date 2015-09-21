@@ -6,6 +6,9 @@
     "targetType": "dynamicLibrary",
     "stringImportPaths": ["fonts", "gfx"],
 
+    "copyright": "none",
+    "CFBundleIdentifier": "com.audiocompany.vst.distort",
+
     "sourceFiles-windows": [
         "./distort.def"
     ],
@@ -15,6 +18,6 @@
         "dplug:dsp": { "path": "../.." },
         "dplug:vst": { "path": "../.." },
         "dplug:plugin": { "path": "../.." },
-        "dplug:gui": { "path": "../.." },
+        "dplug:gui": { "path": "../.." }
     }
 }
