@@ -47,6 +47,7 @@ public:
         _param.addListener(this);
         _initialized = true;
         _pushedAnimation = 0;
+        clearCrosspoints();
     }
 
     ~this()
@@ -194,13 +195,34 @@ public:
         if (mstate.shiftPressed || mstate.ctrlPressed)
             modifier *= 0.1f;
 
-        double newParamValue = _param.getNormalized() - displacementInHeight * modifier * _sensivity;
+        double oldParamValue = _param.getNormalized();
+
+        double newParamValue = oldParamValue - displacementInHeight * modifier * _sensivity;
+
+        if (y > _mousePosOnLast0Cross)
+            return;
+        if (y < _mousePosOnLast1Cross)
+            return;
+
+        if (newParamValue <= 0 && oldParamValue > 0)
+            _mousePosOnLast0Cross = y;
+
+        if (newParamValue >= 1 && oldParamValue < 1)
+            _mousePosOnLast1Cross = y;
+        
         if (newParamValue < 0)
             newParamValue = 0;
         if (newParamValue > 1)
             newParamValue = 1;
 
-        _param.setFromGUINormalized(newParamValue);
+        if (newParamValue > 0)
+            _mousePosOnLast0Cross = float.infinity;
+
+        if (newParamValue < 1)
+            _mousePosOnLast1Cross = -float.infinity;
+
+        if (newParamValue != oldParamValue)
+            _param.setFromGUINormalized(newParamValue);
     }
 
     // For lazy updates
@@ -213,6 +235,7 @@ public:
     override  void onStopDrag()
     {
         _param.endParamEdit();
+        clearCrosspoints();
         setDirty();
     }
 
@@ -243,5 +266,13 @@ protected:
     float _sensivity;
 
     bool _initialized; // destructor flag
-    
+
+    float _mousePosOnLast0Cross;
+    float _mousePosOnLast1Cross;
+
+    void clearCrosspoints()
+    {
+        _mousePosOnLast0Cross = float.infinity;
+        _mousePosOnLast1Cross = -float.infinity;
+    }
 }
