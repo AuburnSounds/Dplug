@@ -26,6 +26,8 @@ import dplug.core;
 import dplug.plugin.client;
 
 
+/// Plugin parameter. 
+/// Implement the Observer pattern for UI support.
 class Parameter
 {
 public:
@@ -79,12 +81,16 @@ public:
     void beginParamEdit()
     {
         _client.hostCommand().beginParamEdit(_index);
+        foreach(listener; _listeners)
+            listener.onBeginParameterEdit(this);
     }
 
     /// Warns the host that a parameter has finished being edited.
     void endParamEdit()
     {
         _client.hostCommand().endParamEdit(_index);
+        foreach(listener; _listeners)
+            listener.onEndParameterEdit(this);
     }
 
     /// Returns: A normalized double, representing the default parameter value.
@@ -145,7 +151,15 @@ private:
 /// Intended making GUI controls call `setDirty()` and move with automation.
 interface IParameterListener
 {
+    /// Called when a parameter value was changed
     void onParameterChanged(Parameter sender) nothrow @nogc;
+
+    /// Called when a parameter value start being changed due to an UI element
+    void onBeginParameterEdit(Parameter sender);
+
+    /// Called when a parameter value stops being changed
+    void onEndParameterEdit(Parameter sender);
+
 }
 
 

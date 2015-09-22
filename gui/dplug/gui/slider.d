@@ -184,6 +184,14 @@ public:
         setDirty();
     }
 
+    override void onBeginParameterEdit(Parameter sender)
+    {
+    }
+
+    override void onEndParameterEdit(Parameter sender)
+    {
+    }
+
 protected:
 
     /// The parameter this switch is linked with.
