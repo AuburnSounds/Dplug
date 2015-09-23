@@ -15,6 +15,7 @@ public:
 
     /// Change this to point to your website
     string targetURL = "http://example.com";
+    float animationTimeConstant = 30.0f;
 
     this(UIContext context, Image!RGBA diffuseImage)
     {
@@ -27,7 +28,7 @@ public:
     {
         float target = ( isDragged() || isMouseOver() ) ? 1 : 0;
 
-        float newAnimation = lerp(_animation, target, 1.0 - exp(-dt * 0.04));
+        float newAnimation = lerp(_animation, target, 1.0 - exp(-dt * animationTimeConstant));
 
         if (abs(newAnimation - _animation) > 0.001f)
         {

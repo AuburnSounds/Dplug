@@ -38,6 +38,7 @@ public:
     RGBA unlitTrailDiffuse = RGBA(150, 40, 20, 8);
     float trailRadiusMin = 0.85f;
     float trailRadiusMax = 0.97f;
+    float animationTimeConstant = 40.0f;
 
     this(UIContext context, FloatParameter param)
     {
@@ -64,7 +65,7 @@ public:
     {
         float target = isDragged() ? 1 : 0;
 
-        float newAnimation = lerp(_pushedAnimation, target, 1.0 - exp(-dt * 0.1));
+        float newAnimation = lerp(_pushedAnimation, target, 1.0 - exp(-dt * animationTimeConstant));
 
         if (abs(newAnimation - _pushedAnimation) > 0.001f)
         {

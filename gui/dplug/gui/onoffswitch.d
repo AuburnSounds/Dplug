@@ -16,6 +16,7 @@ public:
 
     RGBA diffuse = RGBA(230, 80, 43, 0);
     RGBA material = RGBA(192, 10, 128, 255);
+    float animationTimeConstant = 10.0f;
 
     this(UIContext context, BoolParameter param)
     {
@@ -40,7 +41,7 @@ public:
     {
         float target = _param.value() ? 1 : 0;
 
-        float newAnimation = lerp(_animation, target, 1.0 - exp(-dt * 0.035));
+        float newAnimation = lerp(_animation, target, 1.0 - exp(-dt * animationTimeConstant));
 
         if (abs(newAnimation - _animation) > 0.001f)
         {
