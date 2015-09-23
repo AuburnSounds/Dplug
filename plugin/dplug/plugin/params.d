@@ -476,6 +476,11 @@ class GainParameter : FloatParameter
         _shape = shape;
     }
 
+    override void toStringN(char* buffer, size_t numBytes) nothrow @nogc
+    {
+        snprintf(buffer, numBytes, "%2.1f", value());
+    }
+
     override double toNormalized(double value) nothrow @nogc
     {
         double maxAmplitude = deciBelToFloat(_max);
