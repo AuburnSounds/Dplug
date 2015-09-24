@@ -67,20 +67,7 @@ final class AlignedBuffer(T)
             {
                 size_t numBytes = askedSize * 2 * T.sizeof; // gives 2x what is asked to make room for growth
 
-                enum bool useRealloc = false; // Work-around problem with alignedRealloc
-                static if (useRealloc)
-                    _data = cast(T*)(alignedRealloc(_data, numBytes, _alignment));
-                else
-                {
-                    auto newData = cast(T*)(alignedMalloc(numBytes, _alignment));
-
-                    // copy existing items
-                    if (_data !is null && newData !is null)
-                        memcpy(newData, _data, _size * T.sizeof);
-
-                    alignedFree(_data);
-                    _data = newData;
-                }
+                _data = cast(T*)(alignedRealloc(_data, numBytes, _alignment));
 
                 _allocated = askedSize * 2;
             }
@@ -174,13 +161,61 @@ final class AlignedBuffer(T)
 
 unittest
 {
-    auto buf = new AlignedBuffer!int;
-    scope(exit) buf.destroy();
-    enum N = 10;
-    buf.resize(N);
-    foreach(i ; 0..N)
-        buf[i] = i;
+    import std.random;
+    import std.algorithm;
+    int NBUF = 200;
 
-    foreach(i ; 0..N)
-        assert(buf[i] == i);
+    Xorshift32 rng;
+    rng.seed(0xBAADC0DE);
+    
+    struct box2i { int a, b, c, d; }
+    AlignedBuffer!box2i[] boxes;
+
+    foreach(i; 0..NBUF)
+        boxes ~= new AlignedBuffer!box2i();
+
+    foreach(j; 0..200)
+    {
+        foreach(i; 0..NBUF)
+        {
+            int previousSize = cast(int)(boxes[i].length);
+            void* previousPtr = boxes[i].ptr;
+            foreach(int k; 0..cast(int)(boxes[i].length))
+                boxes[i][k] = box2i(k, k, k, k);
+
+            int newSize = uniform(0, 100, rng);
+            boxes[i].resize(newSize);
+
+            int minSize = min(previousSize, boxes[i].length);
+            void* newPtr = boxes[i].ptr;
+            foreach(int k; 0..minSize)
+            {
+                box2i item = boxes[i][k];
+                box2i shouldBe = box2i(k, k, k, k);
+                assert(item == shouldBe);
+            }
+
+            int sum = 0;
+            foreach(k; 0..newSize)
+            {
+                box2i bb = boxes[i][k];
+                sum += bb.a + bb.b + bb.c + bb.d;
+            }
+        }
+    }
+
+    foreach(i; 0..NBUF)
+        boxes[i].destroy();
+
+    {
+        auto buf = new AlignedBuffer!int;
+        scope(exit) buf.destroy();
+        enum N = 10;
+        buf.resize(N);
+        foreach(i ; 0..N)
+            buf[i] = i;
+
+        foreach(i ; 0..N)
+            assert(buf[i] == i);
+    }
 }
