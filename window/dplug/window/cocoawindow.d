@@ -22,16 +22,6 @@ version(OSX)
 {
     import derelict.cocoa;
 
-//    import core.sys.osx.mach.port;
-//    import core.sys.osx.mach.semaphore;
-
-    // clock declarations
-    extern(C) nothrow @nogc
-    {
-        ulong mach_absolute_time();
-        void absolutetime_to_nanoseconds(ulong abstime, ulong *result);
-    }
-
     final class CocoaWindow : IWindow
     {
     private:
@@ -164,10 +154,8 @@ version(OSX)
 
         override void debugOutput(string s)
         {
-            NSString message = NSString.stringWith(s);
-            //scope(exit) message.release();
-
-            NSLog(_logFormatStr._id, message._id);
+            import core.stdc.stdio;
+            fprintf(stderr, toStringz(s));
         }
 
         override uint getTimeMs()
@@ -474,6 +462,7 @@ version(OSX)
         {
             // For some reason the class need to continue to exist, so we leak it
             //  objc_disposeClassPair(clazz);
+            // TODO: remove this crap
         }
 
         void killTimer()
@@ -499,45 +488,8 @@ version(OSX)
 
     vec2i getMouseXY(NSView view, NSEvent event, int windowHeight)
     {
-        NSPoint mouseLocation;
-
-        // UGLY UGLY HACK: get mouse position through ivar to workaround LDC problem with 32-bit
-        // for function returning NSPoint
-        bool itWorked = false;
-        version(X86) // not necessary in 64-bit (TODO: remove someday)
-        {
-            CGFloat mx, my;
-            Ivar var = object_getInstanceVariable(event._id, "_location", cast(void**)&mx);
-            if (var)
-            {
-                // Because object_getInstanceVariable is fucked up and only ever return pointer-sized variables
-                // we somehow managed to find a way to the other part of the NSPoint
-                var.ivar_offset += size_t.sizeof;
-                Ivar var2 = object_getInstanceVariable(event._id, "_location", cast(void**)&my);
-                var.ivar_offset -= size_t.sizeof;
-                mouseLocation = NSPoint(mx, my);
-                if (var != null && var2 != null)
-                    itWorked = true;
-            }
-        }
-
-        if (!itWorked) // use regular call in case all failed
-        {
-            mouseLocation = event.locationInWindow();
-        }
-
-
-        version(X86) // another workaround for 32-bit LDC
-        {
-            NSRect rect = NSMakeRect(mouseLocation.x, mouseLocation.y, 0, 0);
-            rect = view.convertRect(rect, NSView(null));
-            mouseLocation = rect.origin;
-        }
-        else
-        {
-            mouseLocation = view.convertPoint(mouseLocation, NSView(null));
-        }
-
+        NSPoint mouseLocation = event.locationInWindow();
+        mouseLocation = view.convertPoint(mouseLocation, NSView(null));
         int px = cast(int)(mouseLocation.x) - 2;
         int py = windowHeight - cast(int)(mouseLocation.y) - 3;
         return vec2i(px, py);
