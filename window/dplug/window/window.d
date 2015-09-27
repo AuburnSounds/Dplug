@@ -152,8 +152,16 @@ IWindow createWindow(void* parentInfo, IWindowListener listener, int width, int 
     }
     else version(darwin)
     {
-        import dplug.window.cocoawindow;
-        return new CocoaWindow(parentInfo, listener, width, height);
+        version(X86_64)
+        {
+            import dplug.window.cocoawindow;
+            return new CocoaWindow(parentInfo, listener, width, height);
+        }
+        else
+        {
+            import dplug.window.carbonwindow;
+            return new CarbonWindow(parentInfo, listener, width, height);
+        }
     }
     else
     {
