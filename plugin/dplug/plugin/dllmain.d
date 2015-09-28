@@ -121,6 +121,40 @@ else version(OSX)
     }
     extern(C) void dyld_register_image_state_change_handler(dyld_image_states state, bool batch, dyld_image_state_change_handler handler);
 
+    extern(C) int sysctlbyname(const char *, void *, size_t *, void *, size_t);
+
+    bool needWorkaround15060() nothrow
+    {
+        import std.regex;
+        import std.string;
+        import std.conv;
+
+        try
+        {
+            char[128] str;
+            size_t size = 128;
+            sysctlbyname("kern.osrelease", str.ptr, &size, null, 0);
+            string versionString = fromStringz(str.ptr).idup;
+
+            auto re = regex(`(\d+)\.(\d+)\.(\d+)`);
+
+            if (auto captures = matchFirst(versionString, re))
+            {
+                // >= OS X 10.10
+                // TODO: the workaround is needed in 10.10.4 but harmful in 10.6.8
+                //       find the real crossing-point
+                int kernVersion = to!int(captures[1]);
+                return kernVersion >= 14;
+            }
+            else
+                return false;
+        }
+        catch(Exception e)
+        {
+            return false;
+        }
+    }
+
     void runtimeInitWorkaround15060()
     {
         import core.runtime;
@@ -128,7 +162,8 @@ else version(OSX)
         if(!didInitRuntime)
         {
             Runtime.initialize();
-            dyld_register_image_state_change_handler(dyld_image_state_initialized, false, &ignoreImageLoad);
+            if (needWorkaround15060)
+                dyld_register_image_state_change_handler(dyld_image_state_initialized, false, &ignoreImageLoad);
             didInitRuntime = true;
         }
     }
