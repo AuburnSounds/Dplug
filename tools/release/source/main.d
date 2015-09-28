@@ -181,7 +181,13 @@ void main(string[] args)
                                              `C:\Program Files (x86)\Windows Kits\8.1\lib\winv6.3\um\x64`;
                     }
                 }
-          //      writefln("PATH = %s", environment["PATH"]);
+
+                // Produce output compatible with earlier OSX
+                version(OSX)
+                {
+                    environment["MACOSX_DEPLOYMENT_TARGET"] = "10.6";
+                }
+
                 string path = outputDirectory(dirName, osString, arch, compiler);
 
                 writefln("Creating directory %s", path);
