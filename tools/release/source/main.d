@@ -185,7 +185,7 @@ void main(string[] args)
                 // Produce output compatible with earlier OSX
                 version(OSX)
                 {
-                    environment["MACOSX_DEPLOYMENT_TARGET"] = "10.6";
+                    environment["MACOSX_DEPLOYMENT_TARGET"] = is64b ? "10.7" : "10.6";
                 }
 
                 string path = outputDirectory(dirName, osString, arch, compiler);
