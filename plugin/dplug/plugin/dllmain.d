@@ -109,6 +109,8 @@ else version(OSX)
 
     bool needWorkaround15060() nothrow
     {
+        return true;
+/+
         import std.regex;
         import std.string;
         import std.conv;
@@ -137,6 +139,7 @@ else version(OSX)
         {
             return false;
         }
++/
     }
 
     alias dyld_image_states = int;
