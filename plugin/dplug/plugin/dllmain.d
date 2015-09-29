@@ -105,22 +105,6 @@ else version(OSX)
     // Found by Martin Nowak and bitwise
     // Trade-off a crash for a leak :|
 
-    alias dyld_image_states = int;
-    enum : dyld_image_states
-    {
-        dyld_image_state_initialized = 50,
-    }
-
-    __gshared bool didInitRuntime = false;
-
-    alias dyld_image_state_change_handler = const(char)* function(dyld_image_states state, uint infoCount, void* dyld_image_info);
-
-    const(char)* ignoreImageLoad(dyld_image_states state, uint infoCount, void* dyld_image_info)
-    {
-        return null;
-    }
-    extern(C) void dyld_register_image_state_change_handler(dyld_image_states state, bool batch, dyld_image_state_change_handler handler);
-
     extern(C) int sysctlbyname(const char *, void *, size_t *, void *, size_t);
 
     bool needWorkaround15060() nothrow
@@ -155,6 +139,29 @@ else version(OSX)
         }
     }
 
+    alias dyld_image_states = int;
+    enum : dyld_image_states
+    {
+        dyld_image_state_initialized = 50,
+    }
+
+    __gshared bool didInitRuntime = false;
+
+    alias dyld_image_state_change_handler = const(char)* function(dyld_image_states state, uint infoCount, void* dyld_image_info);
+
+    const(char)* ignoreImageLoad(dyld_image_states state, uint infoCount, void* dyld_image_info)
+    {
+        return null;
+    }
+
+    //version(X86_64)
+        extern(C) void dyld_register_image_state_change_handler(dyld_image_states state, bool batch, dyld_image_state_change_handler handler);
+   /* else
+    {
+        //pragma(mangle, "dyld_register_image_state_change_handler")
+        extern(Pascal) void dyld_register_image_state_change_handler(dyld_image_states state, dyld_image_state_change_handler handler);
+    }*/
+
     void runtimeInitWorkaround15060()
     {
         import core.runtime;
@@ -163,7 +170,12 @@ else version(OSX)
         {
             Runtime.initialize();
             if (needWorkaround15060)
-                dyld_register_image_state_change_handler(dyld_image_state_initialized, false, &ignoreImageLoad);
+            {
+            //    version(X86_64)
+                    dyld_register_image_state_change_handler(dyld_image_state_initialized, false, &ignoreImageLoad);
+              //  else
+                //    dyld_register_image_state_change_handler(dyld_image_state_initialized, &ignoreImageLoad);
+            }
             didInitRuntime = true;
         }
     }

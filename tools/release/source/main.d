@@ -185,7 +185,7 @@ void main(string[] args)
                 // Produce output compatible with earlier OSX
                 version(OSX)
                 {
-                    environment["MACOSX_DEPLOYMENT_TARGET"] = is64b ? "10.7" : "10.6";
+                    environment["MACOSX_DEPLOYMENT_TARGET"] = (compiler == "ldc") ? "10.7" : "10.6";
                 }
 
                 string path = outputDirectory(dirName, osString, arch, compiler);
@@ -319,7 +319,7 @@ Plugin readDubDescription()
             if (copyright == "")
             {
                 version(OSX)
-                {                    
+                {
                     throw new Exception("Your dub.json is missing a non-empty \"copyright\" field to put in Info.plist");
                 }
                 else
@@ -373,7 +373,7 @@ string makePListFile(Plugin plugin)
     addKeyString("CFBundleShortVersionString", productVersion);
     addKeyString("CFBundleSignature", "ABAB"); // doesn't matter http://stackoverflow.com/questions/1875912/naming-convention-for-cfbundlesignature-and-cfbundleidentifier
     addKeyString("CFBundleVersion", productVersion);
-    addKeyString("LSMinimumSystemVersion", "10.7.0");
+    addKeyString("LSMinimumSystemVersion", "10.6.0");
     content ~= `    </dict>` ~ "\n";
     content ~= `</plist>` ~ "\n";
     return content;
