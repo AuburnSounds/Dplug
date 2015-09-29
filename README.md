@@ -31,6 +31,9 @@ Additionally it comes with music DSP algorithms that might be useful for your ne
    * Toolkit includes common widgets (knob/slider/switch)
    * PBR-based renderer for a fully procedural UI (updates are lazy and parallel)
 
+### dplug:window
+   * implements windowing for Win32, Cocoa, Carbon and X11
+
 ### Examples
    * `examples/distort`: mandatory distortion plugin
    * `time_stretch`: resampling x2 through FFT zero-padding
@@ -66,8 +69,10 @@ Plugin wrapping is heavily inspired by the WDL library (best represented here: h
 
 Some files falls under the Cockos WDL license.
 
-However dplug is not a translation of WDL.
-For example a significant difference compared to WDL is that there is no plugin-wide mutex lock.
+However dplug is not a translation of WDL:
+- there is no plugin-wide mutex lock. All locks are of a short duration.
+- plugin parameters implement the Observer pattern
+- no need to use Xcode whatsoever.
 
 Important contributors to WDL include:
 - Cockos: http://www.cockos.com/

@@ -154,13 +154,8 @@ else version(OSX)
         return null;
     }
 
-    //version(X86_64)
-        extern(C) void dyld_register_image_state_change_handler(dyld_image_states state, bool batch, dyld_image_state_change_handler handler);
-   /* else
-    {
-        //pragma(mangle, "dyld_register_image_state_change_handler")
-        extern(Pascal) void dyld_register_image_state_change_handler(dyld_image_states state, dyld_image_state_change_handler handler);
-    }*/
+    extern(C) void dyld_register_image_state_change_handler(dyld_image_states state, bool batch, dyld_image_state_change_handler handler);
+
 
     void runtimeInitWorkaround15060()
     {
@@ -169,13 +164,12 @@ else version(OSX)
         if(!didInitRuntime)
         {
             Runtime.initialize();
-            if (needWorkaround15060)
-            {
-            //    version(X86_64)
+
+            // TODO: workaround for 32-bit
+            version(X86_64)
+                if (needWorkaround15060)
                     dyld_register_image_state_change_handler(dyld_image_state_initialized, false, &ignoreImageLoad);
-              //  else
-                //    dyld_register_image_state_change_handler(dyld_image_state_initialized, &ignoreImageLoad);
-            }
+
             didInitRuntime = true;
         }
     }
