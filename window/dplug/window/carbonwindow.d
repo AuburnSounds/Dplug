@@ -56,6 +56,7 @@ version(OSX)
         {
             _listener = listener;
             DerelictCarbon.load();
+            DerelictCoreFoundation.load();
             DerelictCoreServices.load();
             DerelictCoreGraphics.load();
 
@@ -120,7 +121,9 @@ version(OSX)
             if (status == noErr)
                 SizeControl(_view, r.right, r.bottom);  // offset?
 
-            _colorSpace = CGColorSpaceCreateDeviceRGB();
+            static immutable string colorSpaceName = "kCGColorSpaceSRGB";
+            CFStringRef str = CFStringCreateWithCString(null, colorSpaceName.ptr, kCFStringEncodingUTF8);
+            _colorSpace = CGColorSpaceCreateWithName(str);
 
             _lastMeasturedTimeInMs = _timeAtCreationInMs = getTimeMs();
         }
@@ -153,6 +156,7 @@ version(OSX)
                 RemoveEventHandler(_windowHandler);
 
                 DerelictCoreServices.unload();
+                DerelictCoreFoundation.unload();
                 DerelictCoreGraphics.unload();
                 DerelictCarbon.unload();
             }
@@ -162,7 +166,7 @@ version(OSX)
         // IWindow implmentation
         override void waitEventAndDispatch()
         {
-            // TODO
+            assert(false); // Unimplemented, TODO
         }
 
         // If exit was requested
@@ -178,7 +182,9 @@ version(OSX)
 
         override uint getTimeMs()
         {
-            return 0;
+            import core.time;
+            long msecs = convClockFreq(MonoTime.currTime.ticks, MonoTime.ticksPerSecond, 1_000);
+            return cast(uint)msecs;
         }
 
     private:
