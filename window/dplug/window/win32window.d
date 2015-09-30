@@ -39,17 +39,9 @@ version(Windows)
     import win32.wingdi;
 
 
-    //import dplug.plugin.dllmain: gModuleHandle;
-
     HINSTANCE getModuleHandle()
     {
-        // TODO: what impact on portability?
-
-        /*
-        if (gModuleHandle !is null)
-            return cast(HINSTANCE) gModuleHandle;
-        else*/
-            return GetModuleHandleA(null);
+        return GetModuleHandleA(null);
     }
 
     final class Win32Window : IWindow
