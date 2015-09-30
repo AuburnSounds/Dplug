@@ -9,6 +9,7 @@ version(OSX)
 {
     import core.stdc.stdio;
     import std.string;
+    import std.math;
 
     import derelict.carbon;
 
@@ -29,9 +30,13 @@ version(OSX)
         bool _initialized = true;
         bool _isComposited;
         ControlRef _view = null;
+        WindowRef _window;
         EventHandlerRef _controlHandler = null;
         EventHandlerRef _windowHandler = null;
         EventLoopTimerRef _timer = null;
+
+        CGColorSpaceRef _colorSpace = null;
+        CGDataProviderRef _dataProvider = null;
 
         ubyte* _buffer = null;
 
@@ -40,18 +45,23 @@ version(OSX)
         uint _timeAtCreationInMs;
         uint _lastMeasturedTimeInMs;
 
-        bool _dirtyAreasAreNotYetComputed = true;
+        bool _dirtyAreasAreNotYetComputed = true; // TODO: could have a race on this if timer thread != draw thread
+        bool _firstMouseMove = true;
+
+        int _lastMouseX;
+        int _lastMouseY;
 
     public:
         this(void* parentWindow, IWindowListener listener, int width, int height)
         {
             _listener = listener;
             DerelictCarbon.load();
+            DerelictCoreServices.load();
             DerelictCoreGraphics.load();
 
-            WindowRef pWindow = cast(WindowRef)(parentWindow);
+            _window = cast(WindowRef)(parentWindow);
             WindowAttributes winAttrs = 0;
-            GetWindowAttributes(pWindow, &winAttrs);
+            GetWindowAttributes(_window, &winAttrs);
             _isComposited = (winAttrs & kWindowCompositingAttribute) != 0;
 
             UInt32 features =  kControlSupportsFocus | kControlHandlesTracking | kControlSupportsEmbedding;
@@ -64,7 +74,7 @@ version(OSX)
             r.right = cast(short)width;
             r.bottom = cast(short)height;
 
-            CreateUserPaneControl(pWindow, &r, features, &_view);
+            CreateUserPaneControl(_window, &r, features, &_view);
 
             static immutable EventTypeSpec[] controlEvents =
             [
@@ -75,16 +85,15 @@ version(OSX)
 
             static immutable EventTypeSpec[] windowEvents =
             [
-                EventTypeSpec(kEventClassMouse, kEventMouseDown),
                 EventTypeSpec(kEventClassMouse, kEventMouseUp),
+                EventTypeSpec(kEventClassMouse, kEventMouseDown),
                 EventTypeSpec(kEventClassMouse, kEventMouseMoved),
                 EventTypeSpec(kEventClassMouse, kEventMouseDragged),
                 EventTypeSpec(kEventClassMouse, kEventMouseWheelMoved),
-                EventTypeSpec(kEventClassKeyboard, kEventRawKeyDown),
-                EventTypeSpec(kEventClassWindow, kEventWindowDeactivated)
+                EventTypeSpec(kEventClassKeyboard, kEventRawKeyDown)
             ];
 
-            InstallWindowEventHandler(pWindow, &eventCallback, windowEvents.length, windowEvents.ptr, cast(void*)this, &_windowHandler);
+            InstallWindowEventHandler(_window, &eventCallback, windowEvents.length, windowEvents.ptr, cast(void*)this, &_windowHandler);
 
             OSStatus s = InstallEventLoopTimer(GetMainEventLoop(), 0.0, kEventDurationSecond / 60.0,
                                                &timerCallback, cast(void*)this, &_timer);
@@ -96,7 +105,7 @@ version(OSX)
             {
                 if (!parentControl)
                 {
-                    HIViewRef hvRoot = HIViewGetRoot(pWindow);
+                    HIViewRef hvRoot = HIViewGetRoot(_window);
                     status = HIViewFindByID(hvRoot, kHIViewWindowContentID, &parentControl);
                 }
 
@@ -111,7 +120,20 @@ version(OSX)
             if (status == noErr)
                 SizeControl(_view, r.right, r.bottom);  // offset?
 
+            _colorSpace = CGColorSpaceCreateDeviceRGB();
+
             _lastMeasturedTimeInMs = _timeAtCreationInMs = getTimeMs();
+        }
+
+        void clearBuffers()
+        {
+            if (_buffer != null)
+            {
+                free(_buffer);
+                _buffer = null;
+
+                CGDataProviderRelease(_dataProvider);
+            }
         }
 
         ~this()
@@ -122,16 +144,15 @@ version(OSX)
                 _terminated = true;
                 _initialized = false;
 
-                if (_buffer != null)
-                {
-                    free(_buffer);
-                    _buffer = null;
-                }
+                clearBuffers();
+
+                CGColorSpaceRelease(_colorSpace);
 
                 RemoveEventLoopTimer(_timer);
                 RemoveEventHandler(_controlHandler);
                 RemoveEventHandler(_windowHandler);
 
+                DerelictCoreServices.unload();
                 DerelictCoreGraphics.unload();
                 DerelictCarbon.unload();
             }
@@ -189,6 +210,34 @@ version(OSX)
             }
         }
 
+        vec2i getMouseXY(EventRef pEvent)
+        {
+            // Get mouse position
+            HIPoint mousePos;
+            GetEventParameter(pEvent, kEventParamWindowMouseLocation, typeHIPoint, null, HIPoint.sizeof, null, &mousePos);
+            HIPointConvert(&mousePos, kHICoordSpaceWindow, _window, kHICoordSpaceView, _view);
+            return vec2i(cast(int) round(mousePos.x - 2),
+                         cast(int) round(mousePos.y - 3) );
+        }
+
+        MouseState getMouseState(EventRef pEvent)
+        {
+            UInt32 mods;
+            GetEventParameter(pEvent, kEventParamKeyModifiers, typeUInt32, null, UInt32.sizeof, null, &mods);
+
+            MouseState state;
+            if (mods & btnState)
+                state.leftButtonDown = true;
+            if (mods & controlKey)
+                state.ctrlPressed = true;
+            if (mods & shiftKey)
+                state.shiftPressed = true;
+            if (mods & optionKey)
+                state.altPressed = true;
+
+            return state;
+        }
+
         bool handleEvent(EventRef pEvent)
         {
             UInt32 eventClass = GetEventClass(pEvent);
@@ -204,8 +253,11 @@ version(OSX)
                         {
                             assert(_isComposited);
 
-                            // TODO: get actual size
-                            updateSizeIfNeeded(620, 330);
+                            HIRect bounds;
+                            HIViewGetBounds(_view, &bounds);
+                            int newWidth = cast(int)(0.5f + bounds.size.width);
+                            int newHeight = cast(int)(0.5f + bounds.size.height);
+                            updateSizeIfNeeded(newWidth, newHeight);
 
 
                             if (_dirtyAreasAreNotYetComputed)
@@ -236,19 +288,12 @@ version(OSX)
                             CGRect rect = CGRect(CGPoint(0, 0), CGSize(_width, _height));
 
                             // See: http://stackoverflow.com/questions/2261177/cgimage-from-byte-array
-
-                            size_t sizeNeeded = byteStride(_width) * _height;
-                            CGDataProviderRef provider = CGDataProviderCreateWithData(null, _buffer, sizeNeeded, null);
-                            CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB(); // TODO: replace with sRGB
-
-                            CGImageRef image = CGImageCreate(_width, _height, 8, 32, byteStride(_width), space,
-                                                             kCGBitmapByteOrderDefault, provider, null, false,
+                            CGImageRef image = CGImageCreate(_width, _height, 8, 32, byteStride(_width), _colorSpace,
+                                                             kCGBitmapByteOrderDefault, _dataProvider, null, false,
                                                              kCGRenderingIntentDefault);
 
                             CGContextDrawImage(contextRef, rect, image);
 
-                            CGColorSpaceRelease(space);
-                            CGDataProviderRelease(provider);
                             CGImageRelease(image);
                             return true;
                         }
@@ -257,6 +302,90 @@ version(OSX)
                             return false;
                     }
                 }
+
+                case kEventClassKeyboard:
+                {
+                    switch(eventKind)
+                    {
+                        case kEventRawKeyDown:
+                            return false; // TODO
+
+                        default:
+                            return false;
+                    }
+                }
+
+                case kEventClassMouse:
+                {
+                    switch(eventKind)
+                    {
+                        case kEventMouseUp:
+                        case kEventMouseDown:
+                        {
+                            vec2i mousePos = getMouseXY(pEvent);
+
+                            // Get which button was pressed
+                            MouseButton mb;
+                            EventMouseButton button;
+                            GetEventParameter(pEvent, kEventParamMouseButton, typeMouseButton, null, EventMouseButton.sizeof, null, &button);
+                            switch(button)
+                            {
+                                case kEventMouseButtonPrimary:
+                                    mb = MouseButton.left;
+                                    break;
+                                case kEventMouseButtonSecondary:
+                                    mb = MouseButton.right;
+                                    break;
+                                case kEventMouseButtonTertiary:
+                                    mb = MouseButton.middle;
+                                    break;
+                                default:
+                                    return false;
+                            }
+
+                            if (eventKind == kEventMouseDown)
+                            {
+                                UInt32 clickCount = 0;
+                                GetEventParameter(pEvent, kEventParamClickCount, typeUInt32, null, UInt32.sizeof, null, &clickCount);
+                                bool isDoubleClick = clickCount > 1;
+                                _listener.onMouseClick(mousePos.x, mousePos.y, mb, isDoubleClick, getMouseState(pEvent));
+                            }
+                            else
+                            {
+                                _listener.onMouseRelease(mousePos.x, mousePos.y, mb, getMouseState(pEvent));
+                            }
+                            return false;
+                        }
+
+                        case kEventMouseMoved:
+                        case kEventMouseDragged:
+                        {
+                            vec2i mousePos = getMouseXY(pEvent);
+
+                            if (_firstMouseMove)
+                            {
+                                _firstMouseMove = false;
+                                _lastMouseX = mousePos.x;
+                                _lastMouseY = mousePos.y;
+                            }
+
+                            _listener.onMouseMove(mousePos.x, mousePos.y,
+                                                  mousePos.x - _lastMouseX, mousePos.y - _lastMouseY,
+                                                  getMouseState(pEvent));
+
+                            _lastMouseX = mousePos.x;
+                            _lastMouseY = mousePos.y;
+                            return true;
+                        }
+
+                        case kEventMouseWheelMoved:
+                            return false; // TODO
+
+                        default:
+                            return false;
+                    }
+                }
+
                 default:
                     return false;
             }
@@ -278,14 +407,14 @@ version(OSX)
             if ( (newWidth != _width) || (newHeight != _height) )
             {
                 // Extends buffer
-                if (_buffer != null)
-                {
-                    free(_buffer);
-                    _buffer = null;
-                }
+                clearBuffers();
 
                 size_t sizeNeeded = byteStride(newWidth) * newHeight;
                  _buffer = cast(ubyte*) malloc(sizeNeeded);
+
+                // Create a new data provider
+                _dataProvider = CGDataProviderCreateWithData(null, _buffer, sizeNeeded, null);
+
                 _width = newWidth;
                 _height = newHeight;
                 _listener.onResized(_width, _height);
