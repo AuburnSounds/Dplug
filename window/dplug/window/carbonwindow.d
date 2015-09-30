@@ -9,9 +9,14 @@ version(OSX)
 {
     import core.stdc.stdio;
     import std.string;
+
     import derelict.carbon;
+
     import ae.utils.graphics;
+
     import gfm.core;
+    import gfm.math;
+
     import dplug.window.window;
 
 
@@ -26,11 +31,16 @@ version(OSX)
         ControlRef _view = null;
         EventHandlerRef _controlHandler = null;
         EventHandlerRef _windowHandler = null;
+        EventLoopTimerRef _timer = null;
 
         ubyte* _buffer = null;
 
         int _width = 0;
         int _height = 0;
+        uint _timeAtCreationInMs;
+        uint _lastMeasturedTimeInMs;
+
+        bool _dirtyAreasAreNotYetComputed = true;
 
     public:
         this(void* parentWindow, IWindowListener listener, int width, int height)
@@ -61,7 +71,7 @@ version(OSX)
                 EventTypeSpec(kEventClassControl, kEventControlDraw)
             ];
 
-            InstallControlEventHandler(_view, &MainEventHandler, controlEvents.length, controlEvents.ptr, cast(void*)this, &_controlHandler);
+            InstallControlEventHandler(_view, &eventCallback, controlEvents.length, controlEvents.ptr, cast(void*)this, &_controlHandler);
 
             static immutable EventTypeSpec[] windowEvents =
             [
@@ -74,13 +84,12 @@ version(OSX)
                 EventTypeSpec(kEventClassWindow, kEventWindowDeactivated)
             ];
 
-            InstallWindowEventHandler(pWindow, &MainEventHandler, windowEvents.length, windowEvents.ptr, cast(void*)this, &_windowHandler);
+            InstallWindowEventHandler(pWindow, &eventCallback, windowEvents.length, windowEvents.ptr, cast(void*)this, &_windowHandler);
 
-//            double t = kEventDurationSecond / (double) pGraphicsMac->FPS();
+            OSStatus s = InstallEventLoopTimer(GetMainEventLoop(), 0.0, kEventDurationSecond / 60.0,
+                                               &timerCallback, cast(void*)this, &_timer);
 
- //           OSStatus s = InstallEventLoopTimer(GetMainEventLoop(), 0., t, TimerHandler, this, &mTimer);
-
-            ControlRef parentControl = null; // used for AU only in Iplug
+            ControlRef parentControl = null; // only used for AU in Iplug
 
             OSStatus status;
             if (_isComposited)
@@ -101,6 +110,8 @@ version(OSX)
 
             if (status == noErr)
                 SizeControl(_view, r.right, r.bottom);  // offset?
+
+            _lastMeasturedTimeInMs = _timeAtCreationInMs = getTimeMs();
         }
 
         ~this()
@@ -116,6 +127,10 @@ version(OSX)
                     free(_buffer);
                     _buffer = null;
                 }
+
+                RemoveEventLoopTimer(_timer);
+                RemoveEventHandler(_controlHandler);
+                RemoveEventHandler(_windowHandler);
 
                 DerelictCoreGraphics.unload();
                 DerelictCarbon.unload();
@@ -146,6 +161,34 @@ version(OSX)
         }
 
     private:
+
+        void doAnimation()
+        {
+            uint now = getTimeMs();
+            double dt = (now - _lastMeasturedTimeInMs) * 0.001;
+            double time = (now - _timeAtCreationInMs) * 0.001; // hopefully no plug-in will be open more than 49 days
+            _lastMeasturedTimeInMs = now;
+            _listener.onAnimate(dt, time);
+        }
+
+        void onTimer()
+        {
+            // Deal with animation
+            doAnimation();
+
+            _listener.recomputeDirtyAreas();
+            _dirtyAreasAreNotYetComputed = false;
+
+            box2i dirtyRect = _listener.getDirtyRectangle();
+            if (!dirtyRect.empty())
+            {
+                 CGRect rect = CGRectMake(dirtyRect.min.x, dirtyRect.min.y, dirtyRect.width, dirtyRect.height);
+
+                 // invalidate everything that is set dirty
+                 HIViewSetNeedsDisplayInRect(_view, &rect , true);
+            }
+        }
+
         bool handleEvent(EventRef pEvent)
         {
             UInt32 eventClass = GetEventClass(pEvent);
@@ -164,13 +207,20 @@ version(OSX)
                             // TODO: get actual size
                             updateSizeIfNeeded(620, 330);
 
+
+                            if (_dirtyAreasAreNotYetComputed)
+                            {
+                                _dirtyAreasAreNotYetComputed = false;
+                                _listener.recomputeDirtyAreas();
+                            }
+
                             // Redraw dirty UI
                             ImageRef!RGBA wfb;
                             wfb.w = _width;
                             wfb.h = _height;
                             wfb.pitch = byteStride(_width);
                             wfb.pixels = cast(RGBA*)_buffer;
-                            _listener.onDraw(wfb, WindowPixelFormat.ARGB8);
+                            _listener.onDraw(wfb, WindowPixelFormat.RGBA8);
 
                             CGContextRef contextRef;
 
@@ -179,13 +229,26 @@ version(OSX)
                                               null, CGContextRef.sizeof, null, &contextRef);
 
 
-                            // TODO: use a smaller thing
+                            // Flip things vertically
+                            CGContextTranslateCTM(contextRef, 0, _height);
+                            CGContextScaleCTM(contextRef, 1.0f, -1.0f);
+
                             CGRect rect = CGRect(CGPoint(0, 0), CGSize(_width, _height));
 
-                            CGImageRef image; // TODO build that image
+                            // See: http://stackoverflow.com/questions/2261177/cgimage-from-byte-array
+
+                            size_t sizeNeeded = byteStride(_width) * _height;
+                            CGDataProviderRef provider = CGDataProviderCreateWithData(null, _buffer, sizeNeeded, null);
+                            CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB(); // TODO: replace with sRGB
+
+                            CGImageRef image = CGImageCreate(_width, _height, 8, 32, byteStride(_width), space,
+                                                             kCGBitmapByteOrderDefault, provider, null, false,
+                                                             kCGRenderingIntentDefault);
 
                             CGContextDrawImage(contextRef, rect, image);
 
+                            CGColorSpaceRelease(space);
+                            CGDataProviderRelease(provider);
                             CGImageRelease(image);
                             return true;
                         }
@@ -233,7 +296,7 @@ version(OSX)
         }
     }
 
-    extern(C) OSStatus MainEventHandler(EventHandlerCallRef pHandlerCall, EventRef pEvent, void* user) nothrow
+    extern(C) OSStatus eventCallback(EventHandlerCallRef pHandlerCall, EventRef pEvent, void* user) nothrow
     {
         try
         {
@@ -243,7 +306,21 @@ version(OSX)
         }
         catch(Exception e)
         {
+            // TODO: do something clever
             return false;
+        }
+    }
+
+    extern(C) void timerCallback(EventLoopTimerRef pTimer, void* user) nothrow
+    {
+        try
+        {
+            CarbonWindow window = cast(CarbonWindow)user;
+            window.onTimer();
+        }
+        catch(Exception e)
+        {
+            // TODO: do something clever
         }
     }
 }

@@ -38,7 +38,6 @@ version(OSX)
         NSString _logFormatStr;
 
         DPlugCustomView _view = null;
-        //UncheckedMutex _timerLock;
 
         bool _terminated = false;
 
@@ -102,7 +101,6 @@ version(OSX)
             DPlugCustomView.customClassName = "DPlugCustomView_" ~ uuid;
             DPlugCustomView.registerSubclass();
 
-            //_timerLock = new UncheckedMutex();
             _view = DPlugCustomView.alloc();
             _view.initialize(this, width, height);
 
@@ -347,9 +345,6 @@ version(OSX)
 
         void onTimer()
         {
-            //_timerLock.lock();
-            //scope(exit) _timerLock.unlock();
-
             // Deal with animation
             doAnimation();
 
