@@ -280,14 +280,14 @@ version(OSX)
                             GetEventParameter(pEvent, kEventParamCGContextRef, typeCGContextRef,
                                               null, CGContextRef.sizeof, null, &contextRef);
 
-
                             // Flip things vertically
                             CGContextTranslateCTM(contextRef, 0, _height);
                             CGContextScaleCTM(contextRef, 1.0f, -1.0f);
 
-                            CGRect rect = CGRect(CGPoint(0, 0), CGSize(_width, _height));
+                            CGRect rect = CGRect(CGPoint(0, 0), CGSize(_width, _height)); // TODO: smaller rect
 
                             // See: http://stackoverflow.com/questions/2261177/cgimage-from-byte-array
+                            // Recreating this image looks necessary
                             CGImageRef image = CGImageCreate(_width, _height, 8, 32, byteStride(_width), _colorSpace,
                                                              kCGBitmapByteOrderDefault, _dataProvider, null, false,
                                                              kCGRenderingIntentDefault);
