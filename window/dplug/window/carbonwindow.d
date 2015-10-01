@@ -126,6 +126,8 @@ version(OSX)
             CFStringRef str = CFStringCreateWithCString(null, colorSpaceName.ptr, kCFStringEncodingUTF8);
             _colorSpace = CGColorSpaceCreateWithName(str);
 
+            // TODO: release str
+
             _lastMeasturedTimeInMs = _timeAtCreationInMs = getTimeMs();
         }
 
