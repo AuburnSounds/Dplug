@@ -150,9 +150,12 @@ else version(OSX)
 
     __gshared bool didInitRuntime = false;
 
-    alias dyld_image_state_change_handler = const(char)* function(dyld_image_states state, uint infoCount, void* dyld_image_info);
+    extern(C) nothrow
+    {
+        alias dyld_image_state_change_handler = const(char)* function(dyld_image_states state, uint infoCount, void* dyld_image_info);
+    }
 
-    const(char)* ignoreImageLoad(dyld_image_states state, uint infoCount, void* dyld_image_info)
+    extern(C) const(char)* ignoreImageLoad(dyld_image_states state, uint infoCount, void* dyld_image_info) nothrow
     {
         return null;
     }
@@ -168,10 +171,8 @@ else version(OSX)
         {
             Runtime.initialize();
 
-            // TODO: workaround for 32-bit
-            version(X86_64)
-                if (needWorkaround15060)
-                    dyld_register_image_state_change_handler(dyld_image_state_initialized, false, &ignoreImageLoad);
+            if (needWorkaround15060)
+                dyld_register_image_state_change_handler(dyld_image_state_initialized, false, &ignoreImageLoad);
 
             didInitRuntime = true;
         }
