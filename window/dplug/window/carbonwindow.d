@@ -91,7 +91,8 @@ version(OSX)
                 EventTypeSpec(kEventClassMouse, kEventMouseMoved),
                 EventTypeSpec(kEventClassMouse, kEventMouseDragged),
                 EventTypeSpec(kEventClassMouse, kEventMouseWheelMoved),
-                EventTypeSpec(kEventClassKeyboard, kEventRawKeyDown)
+                EventTypeSpec(kEventClassKeyboard, kEventRawKeyDown),
+                EventTypeSpec(kEventClassKeyboard, kEventRawKeyUp)
             ];
 
             InstallWindowEventHandler(_window, &eventCallback, windowEvents.length, windowEvents.ptr, cast(void*)this, &_windowHandler);
@@ -290,7 +291,7 @@ version(OSX)
                             CGContextTranslateCTM(contextRef, 0, _height);
                             CGContextScaleCTM(contextRef, 1.0f, -1.0f);
 
-                            CGRect rect = CGRect(CGPoint(0, 0), CGSize(_width, _height)); // TODO: smaller rect
+                            CGRect wholeRect = CGRect(CGPoint(0, 0), CGSize(_width, _height));
 
                             // See: http://stackoverflow.com/questions/2261177/cgimage-from-byte-array
                             // Recreating this image looks necessary
@@ -298,7 +299,7 @@ version(OSX)
                                                              kCGBitmapByteOrderDefault, _dataProvider, null, false,
                                                              kCGRenderingIntentDefault);
 
-                            CGContextDrawImage(contextRef, rect, image);
+                            CGContextDrawImage(contextRef, wholeRect, image);
 
                             CGImageRelease(image);
                             return true;
@@ -314,10 +315,49 @@ version(OSX)
                     switch(eventKind)
                     {
                         case kEventRawKeyDown:
-                            return false; // TODO
+                        case kEventRawKeyUp:
+                        {
+                            UInt32 k;
+                            GetEventParameter(pEvent, kEventParamKeyCode, typeUInt32, null, UInt32.sizeof, null, &k);
+
+                            Key key;
+
+                            bool handled = true;
+
+                            switch(k)
+                            {
+                                case 125: key = Key.downArrow; break;
+                                case 126: key = Key.upArrow; break;
+                                case 123: key = Key.leftArrow; break;
+                                case 124: key = Key.rightArrow; break;
+                                case 0x35: key = Key.escape; break;
+                                case 0x24: key = Key.enter; break;
+                                case 0x52: key = Key.digit0; break;
+                                case 0x53: key = Key.digit1; break;
+                                case 0x54: key = Key.digit2; break;
+                                case 0x55: key = Key.digit3; break;
+                                case 0x56: key = Key.digit4; break;
+                                case 0x57: key = Key.digit5; break;
+                                case 0x58: key = Key.digit6; break;
+                                case 0x59: key = Key.digit7; break;
+                                case 0x5B: key = Key.digit8; break;
+                                case 0x5C: key = Key.digit9; break;
+                                default:
+                                    handled = false;
+                            }
+
+                            if (handled)
+                            {
+                                if (eventKind == kEventRawKeyDown)
+                                    _listener.onKeyDown(key);
+                                else
+                                    _listener.onKeyUp(key);
+                            }
+                            return handled;
 
                         default:
                             return false;
+                        }
                     }
                 }
 
@@ -385,7 +425,21 @@ version(OSX)
                         }
 
                         case kEventMouseWheelMoved:
-                            return false; // TODO
+                        {
+                            EventMouseWheelAxis axis;
+                            GetEventParameter(pEvent, kEventParamMouseWheelAxis, typeMouseWheelAxis, null, EventMouseWheelAxis.sizeof, null, &axis);
+
+                            if (axis == kEventMouseWheelAxisY)
+                            {
+                                int d;
+                                GetEventParameter(pEvent, kEventParamMouseWheelDelta, typeSInt32, null, SInt32.sizeof, null, &d);
+                                vec2i mousePos = getMouseXY(pEvent);
+                                _listener.onMouseWheel(mousePos.x, mousePos.y, 0, d, getMouseState(pEvent));
+                                return true;
+                            }
+
+                            return false;
+                        }
 
                         default:
                             return false;
