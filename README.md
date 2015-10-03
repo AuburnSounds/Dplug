@@ -1,9 +1,6 @@
-
-<img alt="logo" src="https://cdn.rawgit.com/p0nce/dplug/master/logo.svg" width="200">
-
 # dplug [![Build Status](https://travis-ci.org/p0nce/dplug.png?branch=master)](https://travis-ci.org/p0nce/dplug)
 
-[![Join the chat at https://gitter.im/p0nce/dplug](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/p0nce/gfm?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+<img alt="logo" src="https://cdn.rawgit.com/p0nce/dplug/master/logo.svg" width="200">
 
 dplug is a library for creating audio plugins.
 Additionally it comes with music DSP algorithms that might be useful for your next-generation MS converter plugin.
