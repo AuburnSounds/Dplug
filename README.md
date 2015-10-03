@@ -1,4 +1,4 @@
-![Logo](https://raw.githubusercontent.com/p0nce/dplug/master/logo.svg)
+![Logo](https://cdn.rawgit.com/p0nce/dplug/master/logo.svg)
 
 # dplug [![Build Status](https://travis-ci.org/p0nce/dplug.png?branch=master)](https://travis-ci.org/p0nce/dplug)
 
