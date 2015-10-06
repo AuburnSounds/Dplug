@@ -66,22 +66,7 @@ final class AlignedBuffer(T)
             if (_allocated < askedSize)
             {
                 size_t numBytes = askedSize * 2 * T.sizeof; // gives 2x what is asked to make room for growth
-
-                enum bool useRealloc = false; // Work-around problem with alignedRealloc
-                static if (useRealloc)
-                    _data = cast(T*)(alignedRealloc(_data, numBytes, _alignment));
-                else
-                {
-                    auto newData = cast(T*)(alignedMalloc(numBytes, _alignment));
-
-                    // copy existing items
-                    if (_data !is null && newData !is null)
-                        memcpy(newData, _data, _size * T.sizeof);
-
-                    alignedFree(_data);
-                    _data = newData;
-                }
-
+                _data = cast(T*)(alignedRealloc(_data, numBytes, _alignment));
                 _allocated = askedSize * 2;
             }
             _size = askedSize;
