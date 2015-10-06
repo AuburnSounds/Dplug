@@ -24,7 +24,7 @@ public
         delay_t x;
         delay_t y;
 
-        void clearState() nothrow @nogc
+        void initialize() nothrow @nogc
         {
             for (int i = 0; i < order; ++i)
             {
@@ -33,7 +33,8 @@ public
             }
         }
 
-        deprecated alias clear = clearState;
+        deprecated("Use initialize() instead") alias clearState = initialize;
+        deprecated("Use initialize() instead") alias clear = clearState;
 
         static if (order == 2)
         {

@@ -58,11 +58,6 @@ public:
         _counter = 0;
     }
 
-    void clearState() nothrow @nogc
-    {
-        _counter = 0;
-    }
-
     T nextSample() nothrow @nogc
     {
         _counter += _increment;
@@ -101,15 +96,10 @@ public:
     void initialize(double frequency, double samplerate) nothrow @nogc
     {
         _rng.seed(nogc_unpredictableSeed());
-        clearState();        
-        _phaseInc = cast(float)(frequency / samplerate);
-    }
-
-    void clearState() nothrow @nogc
-    {
         _current = 0.0f;
         newGoal();
-        _phase = 0.0f;
+        _phase = 0.0f;    
+        _phaseInc = cast(float)(frequency / samplerate);
     }
 
     T nextSample() nothrow @nogc
@@ -168,11 +158,6 @@ public:
     void initialize() nothrow @nogc
     {
         _rng.seed(nogc_unpredictableSeed());
-        clearState();
-    }
-
-    void clearState() nothrow @nogc
-    {
         _contrib[] = 0;
         _accum = 0;
     }

@@ -22,12 +22,8 @@ public:
     void initialize(float cutoffInHz, float samplerate) nothrow @nogc
     {
         _coeff = lowpassFilterRBJ!double(cutoffInHz, samplerate);
-    }
-
-    void clearState() nothrow @nogc
-    {
-        _delay0.clearState();
-        _delay1.clearState();
+        _delay0.initialize();
+        _delay1.initialize();
     }
 
     // takes on sample, return mean amplitude
@@ -57,7 +53,7 @@ private:
 unittest
 {
     EnvelopeFollower!float a;
-    EnvelopeFollower!float b;
+    EnvelopeFollower!double b;
 }
 
 deprecated alias AttackReleaseFollower(T) = ExpSmoother!T;
@@ -71,12 +67,6 @@ public:
     void initialize(T samplerate) nothrow @nogc
     {
         _hilbert.initialize(samplerate);
-        clearState();
-    }
-
-    void clearState() nothrow @nogc
-    {
-        _hilbert.clearState();
     }
 
     T nextSample(T input) nothrow @nogc
@@ -142,11 +132,6 @@ public:
             _coef[j] = -beta;
         }
 
-        clearState();
-    }
-
-    void clearState() nothrow @nogc
-    {
         for (int j = 0; j < 12; ++j)
         {
             _xnm1[j] = 0;
@@ -218,15 +203,8 @@ public:
     {
         // In Reaper, default RMS window is 500 ms
         _envelope.initialize(20, sampleRate);
-        // TODO
 
-        clearState();
-    }
-
-    void clearState()
-    {
         _last = 0;
-        _envelope.clearState();
     }
 
     /// Process a chunk of samples and return a value in dB (could be -infinity)
