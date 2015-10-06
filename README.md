@@ -18,7 +18,7 @@ Additionally it comes with music DSP algorithms that might be useful for your ne
   * VST plugin client
 
 ### dplug:window
-   * implements windowing for Win32, Cocoa, Carbon and X11
+   * implements windowing for Win32, Cocoa and Carbon
 
 ### dplug:gui
    * Needed for plugins that do have an UI

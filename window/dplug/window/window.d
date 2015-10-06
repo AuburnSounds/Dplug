@@ -147,8 +147,7 @@ IWindow createWindow(void* parentInfo, IWindowListener listener, int width, int 
     }
     else version(linux)
     {
-        import dplug.window.x11window;
-        return new X11Window(parentInfo, listener, width, height);
+        return null; // see linux-windowing branch
     }
     else version(darwin)
     {
