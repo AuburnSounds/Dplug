@@ -115,7 +115,7 @@ public:
         _sampleRateInv = 1 / sampleRate;
 
         // clear state
-        current = initialValue;
+        _current = initialValue;
         _phase = 0;
         _firstNextAfterInit = true;
     }
