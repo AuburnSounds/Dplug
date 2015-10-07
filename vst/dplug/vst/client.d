@@ -690,8 +690,8 @@ private:
                 }
 
                 // Needed to have a Cocoa view in effEditOpen for 32-bit plugins in Reaper
-                if (strcmp(str, "hasCockosViewAsConfig") == 0)
-                        return 1;
+                //if (strcmp(str, "hasCockosViewAsConfig") == 0)
+                //        return 1;
 
                 return 0;
             }

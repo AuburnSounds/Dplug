@@ -103,7 +103,6 @@ class App : IWindowListener
         writeln("onKeyDown");
         if (key == Key.escape)
         {
-            window.terminate();
             return true;
         }
         return false;

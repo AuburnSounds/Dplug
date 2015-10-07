@@ -105,6 +105,43 @@ else version(OSX)
     // Found by Martin Nowak and bitwise
     // Trade-off a crash for a leak :|
 
+    extern(C) int sysctlbyname(const char *, void *, size_t *, void *, size_t);
+
+    bool needWorkaround15060() nothrow
+    {
+        return true;
+/+
+        import std.regex;
+        import std.string;
+        import std.conv;
+
+        try
+        {
+            char[128] str;
+            size_t size = 128;
+            sysctlbyname("kern.osrelease", str.ptr, &size, null, 0);
+            string versionString = fromStringz(str.ptr).idup;
+
+            auto re = regex(`(\d+)\.(\d+)\.(\d+)`);
+
+            if (auto captures = matchFirst(versionString, re))
+            {
+                // >= OS X 10.10
+                // TODO: the workaround is needed in 10.10.4 but harmful in 10.6.8
+                //       find the real crossing-point
+                int kernVersion = to!int(captures[1]);
+                return kernVersion >= 14;
+            }
+            else
+                return false;
+        }
+        catch(Exception e)
+        {
+            return false;
+        }
++/
+    }
+
     alias dyld_image_states = int;
     enum : dyld_image_states
     {
@@ -113,13 +150,18 @@ else version(OSX)
 
     __gshared bool didInitRuntime = false;
 
-    alias dyld_image_state_change_handler = const(char)* function(dyld_image_states state, uint infoCount, void* dyld_image_info);
+    extern(C) nothrow
+    {
+        alias dyld_image_state_change_handler = const(char)* function(dyld_image_states state, uint infoCount, void* dyld_image_info);
+    }
 
-    const(char)* ignoreImageLoad(dyld_image_states state, uint infoCount, void* dyld_image_info)
+    extern(C) const(char)* ignoreImageLoad(dyld_image_states state, uint infoCount, void* dyld_image_info) nothrow
     {
         return null;
     }
+
     extern(C) void dyld_register_image_state_change_handler(dyld_image_states state, bool batch, dyld_image_state_change_handler handler);
+
 
     void runtimeInitWorkaround15060()
     {
@@ -128,7 +170,10 @@ else version(OSX)
         if(!didInitRuntime)
         {
             Runtime.initialize();
-            dyld_register_image_state_change_handler(dyld_image_state_initialized, false, &ignoreImageLoad);
+
+            if (needWorkaround15060)
+                dyld_register_image_state_change_handler(dyld_image_state_initialized, false, &ignoreImageLoad);
+
             didInitRuntime = true;
         }
     }

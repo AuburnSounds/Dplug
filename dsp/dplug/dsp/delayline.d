@@ -22,11 +22,6 @@ public:
         resize(numSamples);        
     }
 
-    void clearState() nothrow @nogc
-    {
-        _data[] = 0;
-    }
-
     ~this() nothrow @nogc
     {
         _data.reallocBuffer(0);
@@ -48,7 +43,7 @@ public:
         _data.reallocBuffer(toAllocate);
         _indexMask = toAllocate - 1;
         _numSamples = numSamples;
-        clearState();
+        _data[] = 0;
     }
 
     /// Combined feed + sampleFull.

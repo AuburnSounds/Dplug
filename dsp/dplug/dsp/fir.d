@@ -183,15 +183,8 @@ struct FIR(T)
     {
         assert(sizeOfImpulse > 0);
         _delayline.initialize(sizeOfImpulse);
-        clearState();        
         _impulse.reallocBuffer(sizeOfImpulse);
         _impulse[] = T.nan;
-        clearState();
-    }
-
-    void clearState() nothrow @nogc
-    {
-    	_delayline.clearState();
     }
 
     ~this() nothrow @nogc

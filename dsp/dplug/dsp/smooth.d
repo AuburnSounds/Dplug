@@ -25,17 +25,12 @@ public:
     {
         assert(isFinite(initialValue));
 
-        clearState(initialValue);
+        _current = cast(T)(initialValue);
 
         _expFactorAttack = cast(T)(expDecayFactor(timeAttack, samplerate));
         _expFactorRelease = cast(T)(expDecayFactor(timeRelease, samplerate));
         assert(isFinite(_expFactorAttack));
         assert(isFinite(_expFactorRelease));
-    }
-
-    void clearState(T initialValue) pure nothrow
-    {
-        _current = cast(T)(initialValue);
     }
 
     /// Advance smoothing and return the next smoothed sample with respect
@@ -75,11 +70,6 @@ public:
     {
         assert(isFinite(initialValue));
         _maxAbsDiff = maxAbsDiff;
-        clearState(initialValue);
-    }
-
-    void clearState(T initialValue) nothrow @nogc
-    {
         _current = initialValue;
     }
 
@@ -123,12 +113,8 @@ public:
         _period = periodSecs;
         _periodInv = 1 / periodSecs;
         _sampleRateInv = 1 / sampleRate;
-        clearState(initialValue);
-    }
 
-    /// Advance smoothing and return the next smoothed sample.
-    void clearState(T initialValue) nothrow @nogc
-    {
+        // clear state
         _current = initialValue;
         _phase = 0;
         _firstNextAfterInit = true;
@@ -180,11 +166,6 @@ struct MedianFilter(T, int N) if (isFloatingPoint!T)
 public:
 
     void initialize() nothrow @nogc
-    {
-        clearState();
-    }
-
-    void clearState() nothrow @nogc
     {
         _first = true;
     }
@@ -247,7 +228,15 @@ public:
         _factor = cast(T)(2147483648.0 / maxExpectedValue);
         _invNFactor = cast(T)1 / (_factor * samples);
 
-        clearState(initialValue);
+
+        // clear state
+        // round to integer
+        long ivInt = toIntDomain(initialValue);
+
+        while(!_delay.isFull())
+            _delay.pushBack(ivInt);
+
+        _sum = cast(int)(_delay.length) * ivInt;
     }
 
     /// Initialize with with cutoff frequency and samplerate.
@@ -259,17 +248,6 @@ public:
             nSamples = 1;
 
         initialize(initialValue, nSamples, maxExpectedValue);
-    }
-
-    void clearState(T initialValue)
-    {
-        // round to integer
-        long ivInt = toIntDomain(initialValue);
-
-        while(!_delay.isFull())
-            _delay.pushBack(ivInt);
-
-        _sum = cast(int)(_delay.length) * ivInt;
     }
 
     int latency() const

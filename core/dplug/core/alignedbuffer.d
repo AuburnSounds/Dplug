@@ -66,9 +66,7 @@ final class AlignedBuffer(T)
             if (_allocated < askedSize)
             {
                 size_t numBytes = askedSize * 2 * T.sizeof; // gives 2x what is asked to make room for growth
-
                 _data = cast(T*)(alignedRealloc(_data, numBytes, _alignment));
-
                 _allocated = askedSize * 2;
             }
             _size = askedSize;
