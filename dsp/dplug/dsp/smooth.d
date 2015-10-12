@@ -9,6 +9,7 @@ import std.algorithm;
 import std.traits;
 import std.math;
 
+import gfm.core.memory;
 import gfm.core.queue;
 
 import dplug.core;
@@ -21,7 +22,7 @@ struct ExpSmoother(T) if (isFloatingPoint!T)
 public:
     /// time: the time constant of the smoother.
     /// threshold: absolute difference below which we consider current value and target equal
-    void initialize(double samplerate, double timeAttack, double timeRelease, T initialValue = 0) nothrow @nogc
+    void initialize(float samplerate, float timeAttack, float timeRelease, T initialValue = 0) nothrow @nogc
     {
         assert(isFinite(initialValue));
 
@@ -39,7 +40,7 @@ public:
     {
         T diff = target - _current;
         double expFactor = (diff > 0) ? _expFactorAttack : _expFactorRelease;
-        double temp = _current + diff * expFactor;
+        double temp = _current + diff * expFactor; // Is souble-precision really needed here?
         T newCurrent = cast(T)(temp);
         _current = newCurrent;
         return _current;
@@ -170,8 +171,7 @@ public:
         _first = true;
     }
 
-    // TODO: make it nothrow @nogc
-    T nextSample(T input) /* nothrow @nogc */
+    T nextSample(T input) nothrow @nogc
     {
         if (_first)
         {
@@ -185,7 +185,15 @@ public:
         for (int i = 0; i < N - 1; ++i)
             arr[i + 1] = _delay[i];
 
-        sort(arr[]); // sort in place, is not nothrow @nogc
+        // sort in place
+        nogc_qsort!T(arr[],  
+            (a, b) nothrow @nogc 
+            {
+                if (a > b) return 1;
+                else if (a < b) return -1;
+                else return 0;
+            }
+        );
 
         T median = arr[N/2];
 
@@ -208,26 +216,30 @@ private:
 
 unittest
 {
-    MedianFilter!(float, 3) a;
-    MedianFilter!(double, 5) b;
+    void test() nothrow @nogc 
+    {
+        MedianFilter!(float, 3) a;
+        MedianFilter!(double, 5) b;
+        a.initialize();
+        b.initialize();
+    }
+    test();
 }
 
 
 /// Simple FIR to smooth things cheaply.
-/// I never succeeded in making it very useful, perhaps you need to cascade several.
 /// Introduces (samples - 1) / 2 latency.
-/// Converts everything to integers for performance purpose.
+/// Converts everything to long for performance purpose.
 struct MeanFilter(T) if (isFloatingPoint!T)
 {
 public:
     /// Initialize mean filter with given number of samples.
-    void initialize(T initialValue, int samples, T maxExpectedValue)
+    void initialize(T initialValue, int samples, T maxExpectedValue) nothrow @nogc
     {
-        _delay = new RingBuffer!long(samples);
+        _delay = RingBufferNoGC!long(samples);
 
         _factor = cast(T)(2147483648.0 / maxExpectedValue);
         _invNFactor = cast(T)1 / (_factor * samples);
-
 
         // clear state
         // round to integer
@@ -240,7 +252,7 @@ public:
     }
 
     /// Initialize with with cutoff frequency and samplerate.
-    void initialize(T initialValue, double cutoffHz, double samplerate, T maxExpectedValue)
+    void initialize(T initialValue, double cutoffHz, double samplerate, T maxExpectedValue) nothrow @nogc
     {
         int nSamples = cast(int)(0.5 + samplerate / (2 * cutoffHz));
 
@@ -250,7 +262,7 @@ public:
         initialize(initialValue, nSamples, maxExpectedValue);
     }
 
-    int latency() const
+    int latency() const nothrow @nogc
     {
         return cast(int)(_delay.length());
     }
@@ -279,7 +291,7 @@ private:
         return cast(long)(cast(T)0.5 + x * _factor);
     }
 
-    RingBuffer!long _delay;
+    RingBufferNoGC!long _delay;
     long _sum; // should always be the sum of samples in delay
     T _invNFactor;
     T _factor;
@@ -287,7 +299,13 @@ private:
 
 unittest
 {
-    MeanFilter!float a;
-    MeanFilter!double b;
+    void test() nothrow @nogc 
+    {
+        MeanFilter!float a;
+        MeanFilter!double b;
+        a.initialize(44100.0f, 0.001f, 0.001f, 0.0f);
+        b.initialize(44100.0f, 0.001f, 0.001f, 0.0f);
+    }
+    test();
 }
 
