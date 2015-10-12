@@ -20,7 +20,12 @@ struct FPControl
     {
         // disable FP exceptions
         if(FloatingPointControl.hasExceptionTraps)
+        {
             fpctrl.disableExceptions(FloatingPointControl.allExceptions);
+            
+            // Throw an exception for denormal generation
+            debug fpctrl.enableExceptions(FloatingPointControl.subnormalException);
+        }
 
         // force round to nearest
         fpctrl.rounding(FloatingPointControl.roundToNearest);

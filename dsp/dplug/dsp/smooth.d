@@ -39,10 +39,20 @@ public:
     T nextSample(T target) nothrow @nogc
     {
         T diff = target - _current;
-        double expFactor = (diff > 0) ? _expFactorAttack : _expFactorRelease;
-        double temp = _current + diff * expFactor; // Is souble-precision really needed here?
-        T newCurrent = cast(T)(temp);
-        _current = newCurrent;
+        if (diff != 0)
+        {
+            if (abs(diff) < 1e-10f) // to avoid subnormal, and excess churn
+            {
+                _current = target;
+            }
+            else
+            {
+                double expFactor = (diff > 0) ? _expFactorAttack : _expFactorRelease;
+                double temp = _current + diff * expFactor; // Is double-precision really needed here?
+                T newCurrent = cast(T)(temp);
+                _current = newCurrent;
+            }
+        }
         return _current;
     }
 

@@ -53,6 +53,11 @@ public
 
                 T current = a0 * input + a1 * x1 + a2 * x2 - a3 * y1 - a4 * y2;
 
+                // kill denormals,and double values that would be converted 
+                // to float denormals
+                current += 1e-18f;
+                current -= 1e-18f;
+
                 x[0] = input;
                 x[1] = x1;
                 y[0] = current;
@@ -76,6 +81,12 @@ public
                 for(int i = 0; i < cast(int)input.length; ++i)
                 {
                     T current = a0 * input[i] + a1 * x0 + a2 * x1 - a3 * y0 - a4 * y1;
+
+                    // kill denormals,and double values that would be converted 
+                    // to float denormals
+                    current += 1e-18f;
+                    current -= 1e-18f;
+
                     x1 = x0;
                     x0 = input[i];
                     y1 = y0;
