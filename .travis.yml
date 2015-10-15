@@ -1,6 +1,7 @@
 language: d
 
 d:
+ - dmd-2.069.0-b2
  - dmd-2.068.2
  - dmd-2.068.1
  - dmd-2.067.1
@@ -12,7 +13,8 @@ script:
   - dub test --compiler=${DC} dplug:core
   - dub test --compiler=${DC} dplug:dsp
   - dub test --compiler=${DC} dplug:gui
-  - dub test --compiler=${DC} dplug:plugin
+  - dub test --compiler=${DC} dplug:client
+  - dub test --compiler=${DC} dplug:host
   - dub test --compiler=${DC} dplug:vst
   - dub test --compiler=${DC} dplug:window
 
