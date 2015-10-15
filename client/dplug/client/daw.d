@@ -14,7 +14,7 @@ Permission is granted to anyone to use this software for any purpose, including 
 1. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
 1. This notice may not be removed or altered from any source distribution.
 */
-module dplug.plugin.daw;
+module dplug.client.daw;
 
 import core.stdc.string;
 

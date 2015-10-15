@@ -7,7 +7,7 @@ module dplug.gui.label;
 
 import std.math;
 import dplug.gui.element;
-import dplug.plugin.params;
+import dplug.client.params;
 
 /// Simple area with text.
 class UILabel : UIElement

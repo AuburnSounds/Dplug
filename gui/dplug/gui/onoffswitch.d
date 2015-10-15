@@ -8,7 +8,7 @@ module dplug.gui.onoffswitch;
 import std.math;
 import dplug.gui.element;
 import dplug.gui.drawex;
-import dplug.plugin.params;
+import dplug.client.params;
 
 class UIOnOffSwitch : UIElement, IParameterListener
 {

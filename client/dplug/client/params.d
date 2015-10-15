@@ -14,7 +14,7 @@ Permission is granted to anyone to use this software for any purpose, including 
 1. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
 1. This notice may not be removed or altered from any source distribution.
 */
-module dplug.plugin.params;
+module dplug.client.params;
 
 import core.stdc.stdio;
 
@@ -23,7 +23,7 @@ import std.math;
 import gfm.core;
 
 import dplug.core;
-import dplug.plugin.client;
+import dplug.client.client;
 
 
 /// Plugin parameter. 

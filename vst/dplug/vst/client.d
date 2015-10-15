@@ -30,11 +30,11 @@ import gfm.core;
 import dplug.core.alignedbuffer;
 import dplug.core.funcs;
 
-import dplug.plugin.client,
-       dplug.plugin.daw,
-       dplug.plugin.preset,
-       dplug.plugin.midi,
-       dplug.plugin.fpcontrol;
+import dplug.client.client,
+       dplug.client.daw,
+       dplug.client.preset,
+       dplug.client.midi,
+       dplug.client.fpcontrol;
 
 import dplug.vst.aeffectx;
 

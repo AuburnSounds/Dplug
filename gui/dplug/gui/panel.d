@@ -7,7 +7,7 @@ module dplug.gui.panel;
 
 import std.math;
 import dplug.gui.element;
-import dplug.plugin.params;
+import dplug.client.params;
 
 /// Extends an UIElement with a background color, depth and shininess.
 class UIPanel : UIElement

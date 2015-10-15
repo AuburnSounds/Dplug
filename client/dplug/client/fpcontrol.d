@@ -3,7 +3,7 @@
  * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
  * Authors:   Guillaume Piolat
  */
-module dplug.plugin.fpcontrol;
+module dplug.client.fpcontrol;
 
 import core.cpuid;
 import std.math;

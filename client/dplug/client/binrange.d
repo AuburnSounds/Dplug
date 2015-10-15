@@ -1,4 +1,4 @@
-module dplug.plugin.binrange;
+module dplug.client.binrange;
 
 import std.range,
        std.traits;

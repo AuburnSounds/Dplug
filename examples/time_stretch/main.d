@@ -35,7 +35,7 @@ void main(string[] args)
         {
             FFTAnalyzer ffta;
             ShortTermReconstruction strec;
-            ffta.initialize(windowSize, windowSize, windowSize / 4, WindowType.HANN, false, false);
+            ffta.initialize(windowSize, windowSize, windowSize / 4, WindowType.HANN, false);
             strec.initialize(8, windowSize * 2);
 
             for (int i = 0; i < N; ++i)

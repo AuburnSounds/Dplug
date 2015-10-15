@@ -8,7 +8,7 @@ import std.math;
 import gfm.image;
 
 import dplug.core,
-       dplug.plugin,
+       dplug.client,
        dplug.vst,
        dplug.dsp,
        dplug.gui;
@@ -17,7 +17,7 @@ mixin(DLLEntryPoint!());
 mixin(VSTEntryPoint!Distort);
 
 /// Example mono/stereo distortion plugin.
-final class Distort : dplug.plugin.Client
+final class Distort : dplug.client.Client
 {
 public:
 

@@ -3,15 +3,15 @@
  * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
  * Authors:   Guillaume Piolat
  */
-module dplug.plugin.preset;
+module dplug.client.preset;
 
 import std.range;
 import std.math;
 import std.array;
 import std.algorithm;
 
-import dplug.plugin.binrange;
-import dplug.plugin.client;
+import dplug.client.binrange;
+import dplug.client.client;
 
 
 /// I can see no reason why dplug shouldn't be able to maintain

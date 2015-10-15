@@ -17,7 +17,7 @@ Permission is granted to anyone to use this software for any purpose, including 
 
 /// Base client implementation.
 
-module dplug.plugin.client;
+module dplug.client.client;
 
 import core.stdc.string;
 import core.stdc.stdio;
@@ -27,11 +27,11 @@ import std.container;
 import gfm.core;
 
 import dplug.core.funcs;
-import dplug.plugin.params;
-import dplug.plugin.preset;
-import dplug.plugin.midi;
-import dplug.plugin.graphics;
-import dplug.plugin.daw;
+import dplug.client.params;
+import dplug.client.preset;
+import dplug.client.midi;
+import dplug.client.graphics;
+import dplug.client.daw;
 
 
 class InputPin

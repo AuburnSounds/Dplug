@@ -14,9 +14,9 @@ import ae.utils.graphics;
 
 import dplug.core.funcs;
 
-import dplug.plugin.client;
-import dplug.plugin.graphics;
-import dplug.plugin.daw;
+import dplug.client.client;
+import dplug.client.graphics;
+import dplug.client.daw;
 
 import dplug.window.window;
 

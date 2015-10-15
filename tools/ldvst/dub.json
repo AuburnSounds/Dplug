@@ -1,10 +1,8 @@
 {
     "name": "ldvst",
-    "description": "Very barebones VST host to test a sequence of opcodes similar to Reaper scan process. Also, on Mac it will open and close the UI with a Cocoa NSView.",
+    "description": "Very barebones VST host to test a sequence of opcodes similar to Reaper scan process.",
     "dependencies": {
-        "derelict-util": "~>2.0",
-        "dplug:vst": {"path": "../../"},
-        "derelict-cocoa": ">=0.0.0"
+        "dplug:host": {"path": "../../"}
     },
 
     "sourcePaths": ["source"],

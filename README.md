@@ -10,8 +10,11 @@ Additionally it comes with music DSP algorithms that might be useful for your ne
 
 ## Contents
 
-### dplug:plugin
+### dplug:client
   * Abstract plugin client interface. Currently implemented once for VST.
+
+### dplug:host
+  * Abstract plugin host interface. Currently implemented once for VST.
 
 ### dplug:vst
   * VST SDK D bindings
@@ -38,7 +41,6 @@ Additionally it comes with music DSP algorithms that might be useful for your ne
    * `examples/distort`: mandatory distortion plugin
    * `examples/time_stretch`: resampling x2 through FFT zero-padding
    * `examples/just_windowing`: test program for the windowing sub-package
-   * `examples/materials`: generate pretty images
 
 ### Tools
    * `tools/pbr-sketch`: workspace for creating plugin background textures

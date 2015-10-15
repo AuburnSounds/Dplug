@@ -32,11 +32,21 @@
             }
         },
         {
-            "name": "plugin",
-            "sourcePaths": [ "plugin/dplug/plugin" ],
-            "importPaths": [ "plugin" ],
+            "name": "client",
+            "sourcePaths": [ "client/dplug/client" ],
+            "importPaths": [ "client" ],
             "dependencies": {
                 "dplug:core": "*",
+            }
+        },
+        {
+            "name": "host",
+            "sourcePaths": [ "host/dplug/host" ],
+            "importPaths": [ "host" ],
+            "dependencies": {
+                "dplug:core": "*",
+                "dplug:vst": "*",
+                "derelict-util": "~>2.0"
             }
         },
         {
@@ -44,7 +54,7 @@
             "sourcePaths": [ "vst/dplug/vst" ],
             "importPaths": [ "vst" ],
             "dependencies": {
-                "dplug:plugin": "*"
+                "dplug:client": "*"
             }
         },
         {
@@ -74,7 +84,7 @@
             "importPaths": [ "gui" ],
 
             "dependencies": {
-                "dplug:plugin": "*",
+                "dplug:client": "*",
                 "dplug:window": "*",
                 "dplug:core": "*",
                 "ae-graphics": "~>0.0",
