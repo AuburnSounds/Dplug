@@ -97,6 +97,16 @@ final class VSTPluginHost : IPluginHost
         _aeffect.processReplacing(_aeffect, inputs, outputs, samples);
     }
 
+    override void setSampleRate(float sampleRate)
+    {
+        _dispatcher(_aeffect, effSetSampleRate, 0, 0, null, sampleRate);
+    }
+
+    override void setMaxBufferSize(int samples)
+    {
+        _dispatcher(_aeffect, effSetBlockSize, 0, cast(VstIntPtr)samples, null, 0.0f);
+    }
+
 private:
     SharedLib _lib;
     AEffect* _aeffect;

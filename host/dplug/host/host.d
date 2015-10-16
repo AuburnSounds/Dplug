@@ -8,7 +8,15 @@ module dplug.host.host;
 interface IPluginHost
 {
     /// Process some audio.
+    /// `setSampleRate` and `setMaxBufferSize` must be called before use.
+    /// samples must <= the maximum buffer size asked in 
     void processAudioFloat(float** inputs, float** ouputs, int samples);
+
+    /// Sets the desired sampleRate
+    void setSampleRate(float sampleRate);
+
+    /// Sets the maximum buffer size
+    void setMaxBufferSize(int samples);
 
     /// Sets a parameter's value.
     void setParameter(int paramIndex, float normalizedValue);

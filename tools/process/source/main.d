@@ -33,7 +33,7 @@ void main(string[]args)
                 if (inPath)
                     throw new Exception("Multiple input paths provided");
                 ++i;
-                inPath = arg;
+                inPath = args[i];
             }
             else if (arg == "-o")
             {
@@ -42,7 +42,7 @@ void main(string[]args)
                 ++i;
                 outPath = args[i];
             }
-            if (arg == "-b")
+            else if (arg == "-b")
             {
                 ++i;
                 bufferSize = to!int(args[i]);
@@ -55,7 +55,7 @@ void main(string[]args)
             {
                 if (pluginPath)
                     throw new Exception("Multiple plugin paths provided");
-                pluginPath = args[i];
+                pluginPath = arg;
             }
         }
         if (help)
@@ -67,8 +67,6 @@ void main(string[]args)
             throw new Exception("No plugin path provided");
         if (inPath is null)
             throw new Exception("No input path provided");
-        if (outPath is null)
-            throw new Exception("No output path provided");
 
         Sound sound = decodeSound(inPath);
         if (sound.numChannels != 2)
@@ -98,17 +96,30 @@ void main(string[]args)
         host.setSampleRate(sound.sampleRate);        
         host.setMaxBufferSize(bufferSize);
 
+        long getTickMs() nothrow @nogc
+        {
+            import core.time;
+            return convClockFreq(MonoTime.currTime.ticks, MonoTime.ticksPerSecond, 1_000);
+        }
+
+        writefln("Start processing %s...", inPath);
+        long timeA = getTickMs();
+
         int offset = 0;
         for (int buf = 0; buf < N / bufferSize; ++buf)
         {
             float*[2] inChannels, outChannels;
             inChannels[0] = leftChannelInput.ptr + offset;
-            inChannels[1] = rightChannelInput.ptr + offset;        
+            inChannels[1] = rightChannelInput.ptr + offset;
             outChannels[0] = leftChannelOutput.ptr + offset;
             outChannels[1] = rightChannelOutput.ptr + offset;
             host.processAudioFloat(inChannels.ptr, outChannels.ptr, bufferSize);
             offset += bufferSize;
         }
+
+        long timeB = getTickMs();
+
+        writefln("=> Processed %s with %s in %s ms", inPath, pluginPath, timeB - timeA);
     
         static auto interleave(Range1, Range2)(Range1 a, Range2 b)
         {
