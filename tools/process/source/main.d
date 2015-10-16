@@ -12,7 +12,7 @@ void usage()
 {
     writeln();
     writeln("Auburn Sounds plugin benchmark\n");
-    writeln("usage: process [-i input.wav] [-o output.wav] [-t times] [-h] [-b <bufferSize>] plugin.dll}\n");
+    writeln("usage: process [-i input.wav] [-o output.wav] [-t times] [-h] [-b <bufferSize>] plugin.dll\n");
 
 }
 
