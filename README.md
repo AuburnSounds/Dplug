@@ -45,8 +45,9 @@ Additionally it comes with music DSP algorithms that might be useful for your ne
 ### Tools
    * `tools/pbr-sketch`: workspace for creating plugin background textures
    * `tools/release`: DUB frontend to build Mac bundles and use LDC with proper envvars
-   * `tools/ldvst`: test VST host, in D
-   * `tools/ldvst-cpp`: test VST host, in C++
+   * `tools/ldvst`: small plugin host for testing loading, in D
+   * `tools/ldvst`: test plugin host for testing audio processing speed, in D
+   * `tools/ldvst-cpp`: test plugin host for testing loading,, in C++
 
 ## How to build plugins
 
