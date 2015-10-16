@@ -139,12 +139,12 @@ public:
         _outputScratchBuffer.length = _maxOutputs;
 
         for (int i = 0; i < _maxInputs; ++i)
-            _inputScratchBuffer[i] = new AlignedBuffer!double();
+            _inputScratchBuffer[i] = new AlignedBuffer!float();
 
         for (int i = 0; i < _maxOutputs; ++i)
-            _outputScratchBuffer[i] = new AlignedBuffer!double();
+            _outputScratchBuffer[i] = new AlignedBuffer!float();
 
-        _zeroesBuffer = new AlignedBuffer!double();
+        _zeroesBuffer = new AlignedBuffer!float();
 
         _inputPointers.length = _maxInputs;
         _outputPointers.length = _maxOutputs;
@@ -198,11 +198,11 @@ private:
 
     ERect _editRect;  // structure holding the UI size
 
-    AlignedBuffer!double[] _inputScratchBuffer;  // input double buffer, one per possible input
-    AlignedBuffer!double[] _outputScratchBuffer; // input double buffer, one per output
-    AlignedBuffer!double   _zeroesBuffer;        // used for disconnected inputs
-    double*[] _inputPointers;  // where processAudio will take its audio input, one per possible input
-    double*[] _outputPointers; // where processAudio will output audio, one per possible output
+    AlignedBuffer!float[] _inputScratchBuffer;  // input buffer, one per possible input
+    AlignedBuffer!float[] _outputScratchBuffer; // input buffer, one per output
+    AlignedBuffer!float   _zeroesBuffer;        // used for disconnected inputs
+    float*[] _inputPointers;  // where processAudio will take its audio input, one per possible input
+    float*[] _outputPointers; // where processAudio will output audio, one per possible output
 
     // stores the last asked preset/bank chunk
     ubyte[] _lastPresetChunk = null;
@@ -718,7 +718,7 @@ private:
             _outputScratchBuffer[i].resize(nFrames);
 
         _zeroesBuffer.resize(nFrames);
-        _zeroesBuffer.fill(0.0);
+        _zeroesBuffer.fill(0);
     }
 
 
@@ -788,7 +788,7 @@ private:
 
 
     // Send audio to plugin's processAudio, and optionally slice the buffers too.
-    void sendAudioToClient(double*[] inputs, double*[]outputs, int frames) nothrow @nogc
+    void sendAudioToClient(float*[] inputs, float*[]outputs, int frames) nothrow @nogc
     {
         if (_maxFramesInProcess == 0)
             _client.processAudio(inputs, outputs, frames);
@@ -815,81 +815,30 @@ private:
         }
     }
 
-
     void process(float **inputs, float **outputs, int sampleFrames) nothrow @nogc
     {
         preprocess(sampleFrames);
 
-        // existing inputs gets converted to double
-        // non-connected input is zero
+        // Not sure if the hosts would support an overwriting of these pointers, so copy them
         for (int i = 0; i < _usedInputs; ++i)
-        {
-            float* source = inputs[i];
-            double* dest = _inputScratchBuffer[i].ptr;
-            for (int f = 0; f < sampleFrames; ++f)
-                dest[f] = source[f];
-
-            _inputPointers[i] = dest;
-        }
-
-        // Unused input channels point to an array of zeroes
-        for (int i = _usedInputs; i < _maxInputs; ++i)
-            _inputPointers[i] = _zeroesBuffer.ptr;
+            _inputPointers[i] = inputs[i];
 
         for (int i = 0; i < _maxOutputs; ++i)
-        {
             _outputPointers[i] = _outputScratchBuffer[i].ptr;
-        }
 
-        sendAudioToClient(_inputPointers[0.._usedInputs], _outputPointers[0.._usedOutputs], sampleFrames);
+        sendAudioToClient(_inputPointers[0.._usedInputs], _outputPointers[0.._usedOutputs], sampleFrames);       
 
+        // accumulate
         for (int i = 0; i < _usedOutputs; ++i)
         {
-            double* source = _outputScratchBuffer[i].ptr;
+            float* source = _outputScratchBuffer[i].ptr;
             float* dest = outputs[i];
             for (int f = 0; f < sampleFrames; ++f)
-                dest[f] += cast(float)source[f];
+                dest[f] += source[f];
         }
-        // accumulate data back to float output
     }
 
     void processReplacing(float **inputs, float **outputs, int sampleFrames) nothrow @nogc
-    {
-        preprocess(sampleFrames);
-
-        // existing inputs gets converted to double
-        // non-connected input is zero
-        for (int i = 0; i < _usedInputs; ++i)
-        {
-            float* source = inputs[i];
-            double* dest = _inputScratchBuffer[i].ptr;
-            for (int f = 0; f < sampleFrames; ++f)
-                dest[f] = source[f];
-
-            _inputPointers[i] = dest;
-        }
-
-        // Unused input channels point to an array of zeroes
-        for (int i = _usedInputs; i < _maxInputs; ++i)
-            _inputPointers[i] = _zeroesBuffer.ptr;
-
-        for (int i = 0; i < _maxOutputs; ++i)
-        {
-            _outputPointers[i] = _outputScratchBuffer[i].ptr;
-        }
-
-        sendAudioToClient(_inputPointers[0.._usedInputs], _outputPointers[0.._usedOutputs], sampleFrames);
-
-        for (int i = 0; i < _usedOutputs; ++i)
-        {
-            double* source = _outputScratchBuffer[i].ptr;
-            float* dest = outputs[i];
-            for (int f = 0; f < sampleFrames; ++f)
-                dest[f] = cast(float)source[f];
-        }
-    }
-
-    void processDoubleReplacing(double **inputs, double **outputs, int sampleFrames) nothrow @nogc
     {
         preprocess(sampleFrames);
 
@@ -899,7 +848,43 @@ private:
         for (int i = 0; i < _usedOutputs; ++i)
             _outputPointers[i] = outputs[i];
 
+        sendAudioToClient(_inputPointers[0.._usedInputs], _outputPointers[0.._usedOutputs], sampleFrames);       
+    }
+
+    void processDoubleReplacing(double **inputs, double **outputs, int sampleFrames) nothrow @nogc
+    {
+        preprocess(sampleFrames);
+
+        // existing inputs gets converted to double
+        // non-connected input is zero
+        for (int i = 0; i < _usedInputs; ++i)
+        {
+            double* source = inputs[i];
+            float* dest = _inputScratchBuffer[i].ptr;
+            for (int f = 0; f < sampleFrames; ++f)
+                dest[f] = source[f];
+
+            _inputPointers[i] = dest;
+        }
+
+        // Unused input channels point to an array of zeroes
+        for (int i = _usedInputs; i < _maxInputs; ++i)
+            _inputPointers[i] = _zeroesBuffer.ptr;
+
+        for (int i = 0; i < _maxOutputs; ++i)
+        {
+            _outputPointers[i] = _outputScratchBuffer[i].ptr;
+        }
+
         sendAudioToClient(_inputPointers[0.._usedInputs], _outputPointers[0.._usedOutputs], sampleFrames);
+
+        for (int i = 0; i < _usedOutputs; ++i)
+        {
+            float* source = _outputScratchBuffer[i].ptr;
+            double* dest = outputs[i];
+            for (int f = 0; f < sampleFrames; ++f)
+                dest[f] = cast(double)source[f];
+        }
     }
 }
 

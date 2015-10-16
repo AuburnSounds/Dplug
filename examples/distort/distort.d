@@ -92,7 +92,7 @@ public:
         }
     }
 
-    override void processAudio(const(double*)[] inputs, double*[]outputs, int frames) nothrow @nogc
+    override void processAudio(const(float*)[] inputs, float*[]outputs, int frames) nothrow @nogc
     {
         assert(frames <= 128); // guaranteed by audio buffer splitting
 
@@ -115,14 +115,14 @@ public:
             {
                 for (int f = 0; f < frames; ++f)
                 {
-                    double inputSample = inputGain * 2.0 * inputs[chan][f];
+                    float inputSample = inputGain * 2.0 * inputs[chan][f];
 
                     // Feed the input RMS computation
                     _inputRMS[chan].nextSample(inputSample);
 
                     // Distort signal
-                    double distorted = tanh(inputSample * drive) / drive;
-                    double outputSample = outputGain * distorted;
+                    float distorted = tanh(inputSample * drive) / drive;
+                    float outputSample = outputGain * distorted;
                     outputs[chan][f] = outputSample;
 
                     // Feed the output RMS computation

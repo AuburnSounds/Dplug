@@ -331,7 +331,7 @@ public:
     /// Number of frames are guaranteed to be less or equal to what the last reset() call said.
     /// Number of inputs and outputs are guaranteed to be exactly what the last reset() call said.
     /// Warning: Do not modify the pointers!
-    abstract void processAudio(const(double*)[] inputs, double*[]outputs, int frames) nothrow @nogc;
+    abstract void processAudio(const(float*)[] inputs, float*[]outputs, int frames) nothrow @nogc;
 
     // for plugin client implementations only
     final void setHostCommand(IHostCommand hostCommand)
