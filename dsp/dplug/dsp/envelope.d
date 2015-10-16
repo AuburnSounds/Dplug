@@ -141,8 +141,8 @@ public:
 
     void nextSample(T input, out T out1, out T out2) nothrow @nogc
     {
-        double yn1, yn2;
-        double xn1 = input;
+        T yn1, yn2;
+        T xn1 = input;
 
         /* 6th order allpass filter for sine output. Structure is
         * 6 first-order allpass sections in series. Coefficients
@@ -157,7 +157,7 @@ public:
             xn1 = yn1;
         }
 
-        double xn2 = input;
+        T xn2 = input;
 
         /* 6th order allpass filter for cosine output. Structure is
         * 6 first-order allpass sections in series. Coefficients
@@ -183,9 +183,9 @@ public:
     }
 
 private:
-    double[12] _coef;
-    double[12] _xnm1;
-    double[12] _ynm1;
+    T[12] _coef;
+    T[12] _xnm1;
+    T[12] _ynm1;
 }
 
 unittest
