@@ -34,17 +34,18 @@ T hermite(T)(T frac_pos, T xm1, T x0, T x1, T x2) pure nothrow @nogc
     return ((((a * frac_pos) - b_neg) * frac_pos + c) * frac_pos + x0);
 }
 
-
 /// Convert from dB to float.
 T deciBelToFloat(T)(T dB) pure nothrow @nogc
 {
-    return exp(dB * (cast(T)LN10 / 20));
+    static immutable T ln10_20 = cast(T)LN10 / 20;
+    return exp(dB * ln10_20);
 }
 
 /// Convert from float to dB
 T floatToDeciBel(T)(T x) pure nothrow @nogc
 {
-    return log(x) * (20 / cast(T)LN10);
+    static immutable T f20_ln10 = 20 / cast(T)LN10;
+    return log(x) * f20_ln10;
 }
 
 /// Is this integer odd?
