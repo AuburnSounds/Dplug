@@ -10,8 +10,9 @@ import dplug.host;
 
 void usage()
 {
-    writeln("Auburn Sounds ldvst VST benchmark\n");
-    writeln("usage: process -i input.wav [-o output.wav] [-h] [-b <bufferSize>] plugin.dll}\n");
+    writeln();
+    writeln("Auburn Sounds plugin benchmark\n");
+    writeln("usage: process [-i input.wav] [-o output.wav] [-t times] [-h] [-b <bufferSize>] plugin.dll}\n");
 
 }
 
@@ -24,6 +25,7 @@ void main(string[]args)
         string inPath = null;
         int bufferSize = 256;
         bool help = false;
+        int times = 1;
 
         for(int i = 1; i < args.length; ++i)
         {
@@ -47,6 +49,11 @@ void main(string[]args)
                 ++i;
                 bufferSize = to!int(args[i]);
             }
+            else if (arg == "-t")
+            {
+                ++i;
+                times = to!int(args[i]);
+            }
             else if (arg == "-h")
             {
                 help = true;
@@ -65,10 +72,30 @@ void main(string[]args)
         }
 	    if (pluginPath is null)
             throw new Exception("No plugin path provided");
-        if (inPath is null)
-            throw new Exception("No input path provided");
+        if (times < 1)
+            throw new Exception("Sound must be processed at least 1 time");
 
-        Sound sound = decodeSound(inPath);
+        float[] leftChannelInput;
+        float[] rightChannelInput;
+        float[] leftChannelOutput;
+        float[] rightChannelOutput;
+
+        
+        Sound sound;
+        
+        if (inPath)
+            sound = decodeSound(inPath);
+        else
+        {
+            // ten seconds of silence
+            sound.numChannels = 2;
+            sound.sampleRate = 44100;
+            sound.data = new float[44100 * 2 * 10]; 
+            sound.data[] = 0;
+
+            inPath = "10 seconds of silence";
+        }
+
         if (sound.numChannels != 2)
             throw new Exception("Only support stereo inputs");
         if (bufferSize < 1)
@@ -76,10 +103,7 @@ void main(string[]args)
 
         int N = sound.lengthInFrames();
 
-        float[] leftChannelInput;
-        float[] rightChannelInput;
-        float[] leftChannelOutput;
-        float[] rightChannelOutput;
+        
         leftChannelInput.length = N;
         rightChannelInput.length = N;
         leftChannelOutput.length = N;
@@ -91,7 +115,13 @@ void main(string[]args)
             leftChannelInput[i] = sound.data[i * 2];
             rightChannelInput[i] = sound.data[i * 2 + 1];
         }
-    
+
+        writeln;
+        writefln("Starting speed measurement of %s", pluginPath);
+        writefln("%s will be processed %s time(s)", inPath, times);
+        if (outPath)
+            writefln("Ouput sound will be output to %s", outPath);
+
         IPluginHost host = createPluginHost(pluginPath);
         host.setSampleRate(sound.sampleRate);        
         host.setMaxBufferSize(bufferSize);
@@ -102,28 +132,45 @@ void main(string[]args)
             return convClockFreq(MonoTime.currTime.ticks, MonoTime.ticksPerSecond, 1_000);
         }
 
-        writefln("Start processing %s...", inPath);
-        long timeA = getTickMs();
+        double[] measures;
 
-        int offset = 0;
-        for (int buf = 0; buf < N / bufferSize; ++buf)
+        for (int t = 0; t < times; ++t)
         {
+            writeln;
+            writefln(" * Measure %s: Start processing %s...", t, inPath);
+            long timeA = getTickMs();
+
             float*[2] inChannels, outChannels;
-            inChannels[0] = leftChannelInput.ptr + offset;
-            inChannels[1] = rightChannelInput.ptr + offset;
-            outChannels[0] = leftChannelOutput.ptr + offset;
-            outChannels[1] = rightChannelOutput.ptr + offset;
-            host.processAudioFloat(inChannels.ptr, outChannels.ptr, bufferSize);
-            offset += bufferSize;
+            inChannels[0] = leftChannelInput.ptr;
+            inChannels[1] = rightChannelInput.ptr,
+            outChannels[0] = leftChannelOutput.ptr;
+            outChannels[1] = rightChannelOutput.ptr;
+
+            for (int buf = 0; buf < N / bufferSize; ++buf)
+            {            
+                host.processAudioFloat(inChannels.ptr, outChannels.ptr, bufferSize);
+                inChannels[0] += bufferSize;
+                inChannels[1] += bufferSize;
+                outChannels[0] += bufferSize;
+                outChannels[1] += bufferSize;
+            }
+        
+            // remaining samples
+            host.processAudioFloat(inChannels.ptr, outChannels.ptr, N % bufferSize);
+
+            long timeB = getTickMs();
+            long measure = timeB - timeA;
+            writefln("   Processed %s with %s in %s ms", inPath, pluginPath, measure);
+
+            measures ~= cast(double)measure;
         }
 
-        long timeB = getTickMs();
-
-        writefln("=> Processed %s with %s in %s ms", inPath, pluginPath, timeB - timeA);
-    
-        static auto interleave(Range1, Range2)(Range1 a, Range2 b)
+        if (times > 1)
         {
-            return a.zip(b).map!(a => only(a[0], a[1])).joiner();
+            writeln;
+            writefln("Results:");
+            writefln(" * median time: %s", median(measures));
+            writefln(" * mean time: %s", average(measures));    
         }
 
         // write output if necessary
@@ -139,5 +186,32 @@ void main(string[]args)
     {
         import std.stdio;
         writefln("error: %s", e.msg);
+        usage();
+    }
+}
+
+static auto interleave(Range1, Range2)(Range1 a, Range2 b)
+{
+    return a.zip(b).map!(a => only(a[0], a[1])).joiner();
+}
+
+double average(double[] arr)
+{
+    double sum = 0; 
+    foreach(d; arr)
+        sum += d;
+    return sum / arr.length;
+}
+
+double median(double[] arr)
+{
+    arr.sort(); // harmless
+    if (arr.length % 2 == 0)
+    {
+        return (arr[arr.length/2] + arr[arr.length/2+1])/2;
+    }
+    else
+    {
+        return arr[arr.length/2];
     }
 }
