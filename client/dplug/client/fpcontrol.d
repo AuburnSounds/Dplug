@@ -23,8 +23,9 @@ struct FPControl
         {
             fpctrl.disableExceptions(FloatingPointControl.allExceptions);
             
-            // Throw an exception for denormal generation
-            debug fpctrl.enableExceptions(FloatingPointControl.subnormalException);
+            // Looking for denormals? Uncomment this.
+            // This will throw an exception for denormal generation.
+            //fpctrl.enableExceptions(FloatingPointControl.subnormalException);
         }
 
         // force round to nearest
