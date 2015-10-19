@@ -38,7 +38,7 @@ public
 
         static if (order == 2)
         {
-            T nextSample(T)(T input, const(coeff_t) coeff) nothrow @nogc
+            T nextSample(T input, const(coeff_t) coeff) nothrow @nogc
             {
                 T x1 = x[0],
                   x2 = x[1],
@@ -65,7 +65,7 @@ public
                 return current;
             }
 
-            void nextBuffer(T)(T[] input, T[] output, const(coeff_t) coeff) nothrow @nogc
+            void nextBuffer(T[] input, T[] output, const(coeff_t) coeff) nothrow @nogc
             {
                 T x0 = x[0],
                   x1 = x[1],
