@@ -102,11 +102,6 @@ T sinc(T)(T x) pure nothrow @nogc
         return sin(cast(T)PI * x) / (cast(T)PI * x);
 }
 
-double expm1(double x) pure nothrow @nogc
-{
-    return tanh(x * 0.5) * (exp(x) + 1.0);
-}
-
 double expDecayFactor(double time, double samplerate) pure nothrow @nogc
 {
     // 1 - exp(-time * sampleRate) would yield innacuracies
