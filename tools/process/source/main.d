@@ -208,7 +208,7 @@ double median(double[] arr)
     arr.sort(); // harmless
     if (arr.length % 2 == 0)
     {
-        return (arr[arr.length/2] + arr[arr.length/2+1])/2;
+        return (arr[arr.length/2] + arr[arr.length/2-1])/2;
     }
     else
     {
