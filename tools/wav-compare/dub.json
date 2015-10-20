@@ -1,0 +1,11 @@
+{
+    "name": "wav-compare",
+    "description": "Gives the peak difference between two sounds in dB.",
+    "dependencies": {
+        "dplug:core": {"path": "../../"},
+        "wave-d": "~>1.0"
+    },
+
+    "sourcePaths": ["source"],
+    "importPaths": ["source"]
+}
