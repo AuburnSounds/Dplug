@@ -90,7 +90,7 @@ private:
 unittest
 {
     AnalyticSignal!float a;
-    AnalyticSignal!float b;
+    AnalyticSignal!double b;
 }
 
 
