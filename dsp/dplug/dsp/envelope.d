@@ -35,13 +35,13 @@ public:
         return l;
     }
 
-    void nextBuffer(T[] input, T[] output) nothrow @nogc
+    void nextBuffer(const(T)* input, T* output, int frames) nothrow @nogc
     {
-        for(int i = 0; i < cast(int)(input.length); ++i)
+        for(int i = 0; i < frames; ++i)
             output[i] = abs(input[i]);
 
-        _delay0.nextBuffer(output, output, _coeff);
-        _delay1.nextBuffer(output, output, _coeff);
+        _delay0.nextBuffer(output, output, frames, _coeff);
+        _delay1.nextBuffer(output, output, frames, _coeff);
     }
 
 private:
@@ -76,10 +76,10 @@ public:
         return sqrt(input * input + outSine * outSine);
     }
 
-    void nextBuffer(T[] input, T[] output) nothrow @nogc
+    void nextBuffer(const(T)* input, T* output, int frames) nothrow @nogc
     {
-        // TODO: allocate one buffer on stack and use nextBuffer routines
-        for (int i = 0; i < cast(int)input.length; ++i)
+        // TODO: pass maxFrames and allocate buffers
+        for (int i = 0; i < frames; ++i)
             output[i] = nextSample(input[i]);
     }
 
@@ -174,11 +174,45 @@ public:
         out2 = cast(T)yn1;
     }
 
-    void nextBuffer(T[] input, T[] output1, T[] output2) nothrow @nogc
+    void nextBuffer(const(T)* input, T* output1, T* output2, int frames) nothrow @nogc
     {
-        for (int i = 0; i < cast(int)(input.length); ++i)
+        for (int i = 0; i < frames; ++i)
         {
-            nextSample(input[i], output1[i], output2[i]);
+            T yn1;
+            T xn1 = input[i];
+
+            /* 6th order allpass filter for sine output. Structure is
+            * 6 first-order allpass sections in series. Coefficients
+            * taken from arrays calculated at i-time.
+            */
+            for (int j=0; j < 6; j++)
+            {
+                yn1 = _coef[j] * (xn1 - _ynm1[j]) + _xnm1[j];
+                _xnm1[j] = xn1;
+                _ynm1[j] = yn1;
+                xn1 = yn1;
+            }
+            output2[i] = cast(T)yn1;
+        }
+
+        for (int i = 0; i < frames; ++i)
+        {
+            T yn2;
+            T xn2 = input[i];
+
+            /* 6th order allpass filter for cosine output. Structure is
+            * 6 first-order allpass sections in series. Coefficients
+            * taken from arrays calculated at i-time.
+            */
+            for (int j = 6; j < 12; j++)
+            {
+                yn2 = _coef[j] * (xn2 - _ynm1[j]) + _xnm1[j];
+                _xnm1[j] = xn2;
+                _ynm1[j] = yn2;
+                xn2 = yn2;
+            }
+
+            output1[i] = cast(T)yn2;
         }
     }
 
@@ -213,15 +247,15 @@ public:
         _last = _envelope.nextSample(input * input);
     }
 
-    void nextBuffer(T[] input) nothrow @nogc
+    void nextBuffer(T* input, int frames) nothrow @nogc
     {
-        if (input.length == 0)
+        if (frames == 0)
             return;
 
-        for (int i = 0; i < cast(int)(input.length) - 1; ++i)
+        for (int i = 0; i < frames - 1; ++i)
             _envelope.nextSample(input[i] * input[i]);
 
-        _last = _envelope.nextSample(input[$-1] * input[$-1]);
+        _last = _envelope.nextSample(input[frames - 1] * input[frames - 1]);
     }
 
     T RMS() nothrow @nogc

@@ -26,10 +26,10 @@ public:
         return randNormal!Xorshift32(_rng, cast(T)0, cast(T)1);
     }
 
-    void nextBuffer(T[] output) nothrow @nogc
+    void nextBuffer(T* output, int frames) nothrow @nogc
     {
-        foreach(ref sample; output)
-            sample = nextSample();
+        for (int i = 0; i < frames; ++i)
+            output[i] = nextSample();
     }
 
 private:
@@ -70,10 +70,10 @@ public:
             return 1;
     }
 
-    void nextBuffer(T[] output) nothrow @nogc
+    void nextBuffer(T* output, int frames) nothrow @nogc
     {
-        foreach(ref sample; output)
-            sample = nextSample();
+        for (int i = 0; i < frames; ++i)
+            output[i] = nextSample();
     }
 
 private:
@@ -115,10 +115,10 @@ public:
         return f * _goal + (1 - f) * _current;
     }
 
-    void nextBuffer(T[] output) nothrow @nogc
+    void nextBuffer(T* output, int frames) nothrow @nogc
     {
-        foreach(ref sample; output)
-            sample = nextSample();
+        for (int i = 0; i < frames; ++i)
+            output[i] = nextSample();
     }
 
 private:
@@ -181,10 +181,10 @@ public:
         return _accum / 32768.0f;
     }
 
-    void nextBuffer(T[] output) nothrow @nogc
+    void nextBuffer(T* output, int frames) nothrow @nogc
     {
-        foreach(ref sample; output)
-            sample = nextSample();
+        for (int i = 0; i < frames; ++i)
+            output[i] = nextSample();
     }
 
 private:

@@ -65,7 +65,7 @@ public
                 return current;
             }
 
-            void nextBuffer(T[] input, T[] output, const(coeff_t) coeff) nothrow @nogc
+            void nextBuffer(const(T)* input, T* output, int frames, const(coeff_t) coeff) nothrow @nogc
             {
                 T x0 = x[0],
                   x1 = x[1],
@@ -78,7 +78,7 @@ public
                   a3 = coeff[3],
                   a4 = coeff[4];
 
-                for(int i = 0; i < cast(int)input.length; ++i)
+                for(int i = 0; i < frames; ++i)
                 {
                     T current = a0 * input[i] + a1 * x0 + a2 * x1 - a3 * y0 - a4 * y1;
 

@@ -94,9 +94,9 @@ public:
        return _current;
     }
 
-    void nextBuffer(T[] input, T[] output) nothrow @nogc
+    void nextBuffer(const(T)* input, T* output, int frames) nothrow @nogc
     {
-        for(int i = 0; i < cast(int)(input.length); ++i)
+        for(int i = 0; i < frames; ++i)
             output[i] = nextSample(input[i]);
     }
 
@@ -145,10 +145,10 @@ public:
         return _current;
     }
 
-    void nextBuffer(T[] input, T[] output) nothrow @nogc
+    void nextBuffer(const(T)* input, T* output, int frames) nothrow @nogc
     {
-        for(int i = 0; i < cast(int)(input.length); ++i)
-            input[i] = nextSample(output[i]);
+        for(int i = 0; i < frames; ++i)
+            output[i] = nextSample(input[i]);
     }
 
 private:
@@ -213,9 +213,9 @@ public:
         return median;
     }
 
-    void nextBuffer(T[] input, T[] output)
+    void nextBuffer(const(T)* input, T* output, int frames) nothrow @nogc
     {
-        for (int i = 0; i < cast(int)(input.length); ++i)
+        for(int i = 0; i < frames; ++i)
             output[i] = nextSample(input[i]);
     }
 
@@ -288,9 +288,9 @@ public:
         return cast(T)_sum * _invNFactor;
     }
 
-    void nextBuffer(T[] input, T[] output) nothrow @nogc
+    void nextBuffer(const(T)* input, T* output, int frames) nothrow @nogc
     {
-        for (int i = 0; i < cast(int)(input.length); ++i)
+        for(int i = 0; i < frames; ++i)
             output[i] = nextSample(input[i]);
     }
 
