@@ -67,37 +67,183 @@ public
 
             void nextBuffer(const(T)* input, T* output, int frames, const(coeff_t) coeff) nothrow @nogc
             {
-                double x0 = x[0],
-                       x1 = x[1],
-                       y0 = y[0],
-                       y1 = y[1];
+                static if (is(T == float) && D_InlineAsm_Any)
+                {  
+                    static assert(T.sizeof == 4);
 
-                double a0 = coeff[0],
-                       a1 = coeff[1],
-                       a2 = coeff[2],
-                       a3 = coeff[3],
-                       a4 = coeff[4];
+                    double x0 = x[0],
+                        x1 = x[1],
+                        y0 = y[0],
+                        y1 = y[1];
 
-                for(int i = 0; i < frames; ++i)
-                {
-                    double current = a0 * input[i] + a1 * x0 + a2 * x1 - a3 * y0 - a4 * y1;
+                    double a0 = coeff[0],
+                        a1 = coeff[1],
+                        a2 = coeff[2],
+                        a3 = coeff[3],
+                        a4 = coeff[4];
 
-                    // kill denormals,and double values that would be converted 
-                    // to float denormals
-                    current += 1e-18f;
-                    current -= 1e-18f;
+                    version(D_InlineAsm_X86)
+                    {
+                        asm nothrow @nogc
+                        {
+                            mov EAX, input;
+                            mov EDX, output;
+                            mov ECX, frames;
 
-                    x1 = x0;
-                    x0 = input[i];
-                    y1 = y0;
-                    y0 = current;
-                    output[i] = current;
+                            movlpd XMM0, qword ptr x0; // XMM0 = x1 x0
+                            movhpd XMM0, qword ptr x1;
+                            movlpd XMM1, qword ptr y0; // XMM1 = y1 y0
+                            movhpd XMM1, qword ptr y1;
+
+                            movlpd XMM2, qword ptr a1; // XMM2 = a2 a1
+                            movhpd XMM2, qword ptr a2;
+                            movlpd XMM3, qword ptr a3; // XMM3 = a4 a3
+                            movhpd XMM3, qword ptr a4;
+
+                            movq XMM4, qword ptr a0; // XMM4 = 0 a0
+
+                            loop:
+                                pxor XMM5, XMM5;
+                                cvtss2sd XMM5, dword ptr [EAX];
+
+                                movapd XMM6, XMM0;
+                                movapd XMM7, XMM1;
+
+                                mulpd XMM5, XMM4; // input[i]*a0
+                                mulpd XMM6, XMM2; // x1*a2 x0*a1
+                                mulpd XMM7, XMM3; // y1*a4 y0*a3
+
+                                addpd XMM5, XMM6;
+                                subpd XMM5, XMM7; // x1*a2 - y1*a4 | input[i]*a0 + x0*a1 - y0*a3
+
+                                movapd XMM6, XMM5;
+                                pslldq XMM0, 8;
+                                psrldq XMM6, 8;
+
+                                cvtss2sd XMM0, dword ptr [EAX]; // XMM0 <- x0 input[i]
+                                addpd XMM5, XMM6; // garbage | input[i]*a0 + x0*a1 - y0*a3 + x1*a2 - y1*a4
+                                
+                                cvtsd2ss XMM7, XMM5;
+                                punpcklqdq XMM5, XMM1; // XMM5 <- y0 current
+                                add EAX, 4;
+                                movd dword ptr [EDX], XMM7;
+                                add EDX, 4;
+                                movapd XMM1, XMM5;
+                                
+                                sub ECX, 1;
+                                jnz loop;
+
+                            movlpd qword ptr x0, XMM0;
+                            movhpd qword ptr x1, XMM0;
+                            movlpd qword ptr y0, XMM1;
+                            movhpd qword ptr y1, XMM1;
+                        }
+                    }
+                    else version(D_InlineAsm_X86_64)
+                    {
+                        ubyte[16*2] storage;
+                        asm nothrow @nogc
+                        {
+                            movups storage+0, XMM6;
+                            movups storage+16, XMM7;
+
+                            mov RAX, input;
+                            mov RDX, output;
+                            mov ECX, frames;
+
+                            movlpd XMM0, qword ptr x0; // XMM0 = x1 x0
+                            movhpd XMM0, qword ptr x1;
+                            movlpd XMM1, qword ptr y0; // XMM1 = y1 y0
+                            movhpd XMM1, qword ptr y1;
+
+                            movlpd XMM2, qword ptr a1; // XMM2 = a2 a1
+                            movhpd XMM2, qword ptr a2;
+                            movlpd XMM3, qword ptr a3; // XMM3 = a4 a3
+                            movhpd XMM3, qword ptr a4;
+
+                            movq XMM4, qword ptr a0; // XMM4 = 0 a0
+
+                        loop:
+                            pxor XMM5, XMM5;
+                            cvtss2sd XMM5, dword ptr [RAX];
+
+                            movapd XMM6, XMM0;
+                            movapd XMM7, XMM1;
+
+                            mulpd XMM5, XMM4; // input[i]*a0
+                            mulpd XMM6, XMM2; // x1*a2 x0*a1
+                            mulpd XMM7, XMM3; // y1*a4 y0*a3
+
+                            addpd XMM5, XMM6;
+                            subpd XMM5, XMM7; // x1*a2 - y1*a4 | input[i]*a0 + x0*a1 - y0*a3
+
+                            movapd XMM6, XMM5;
+                            pslldq XMM0, 8;
+                            psrldq XMM6, 8;
+
+                            addpd XMM5, XMM6; // garbage | input[i]*a0 + x0*a1 - y0*a3 + x1*a2 - y1*a4
+                            cvtss2sd XMM0, dword ptr [RAX]; // XMM0 <- x0 input[i]
+                            cvtsd2ss XMM7, XMM5;
+                            punpcklqdq XMM5, XMM1; // XMM5 <- y0 current
+                            add RAX, 4;
+                            movd dword ptr [RDX], XMM7;
+                            add RDX, 4;
+                            movapd XMM1, XMM5;
+
+                            sub ECX, 1;
+                            jnz loop;
+
+                            movlpd qword ptr x0, XMM0;
+                            movhpd qword ptr x1, XMM0;
+                            movlpd qword ptr y0, XMM1;
+                            movhpd qword ptr y1, XMM1;
+
+                            movups XMM6, storage+0; // XMMx with x >= 6 registers need to be preserved
+                            movups XMM7, storage+16;
+                        }
+                    }
+                    else
+                        static assert(false, "Not implemented for this platform.");
+
+                    x[0] = x0;
+                    x[1] = x1;
+                    y[0] = y0;
+                    y[1] = y1;
                 }
+                else
+                {
+                    double x0 = x[0],
+                           x1 = x[1],
+                           y0 = y[0],
+                           y1 = y[1];
 
-                x[0] = x0;
-                x[1] = x1;
-                y[0] = y0;
-                y[1] = y1;
+                    double a0 = coeff[0],
+                           a1 = coeff[1],
+                           a2 = coeff[2],
+                           a3 = coeff[3],
+                           a4 = coeff[4];
+
+                    for(int i = 0; i < frames; ++i)
+                    {
+                        double current = a0 * input[i] + a1 * x0 + a2 * x1 - a3 * y0 - a4 * y1;
+
+                        // kill denormals,and double values that would be converted 
+                        // to float denormals
+                        current += 1e-18f;
+                        current -= 1e-18f;
+
+                        x1 = x0;
+                        x0 = input[i];
+                        y1 = y0;
+                        y0 = current;
+                        output[i] = current;
+                    }
+
+                    x[0] = x0;
+                    x[1] = x1;
+                    y[0] = y0;
+                    y[1] = y1;
+                }
             }
         }
     }
@@ -370,3 +516,10 @@ unittest
     auto j = bypassFilter!float();
     auto k = zeroFilter!float();
 }
+
+version(D_InlineAsm_X86)
+    private enum D_InlineAsm_Any = true;
+else version(D_InlineAsm_X86_64)
+    private enum D_InlineAsm_Any = true;
+else
+    private enum D_InlineAsm_Any = false;
