@@ -40,18 +40,18 @@ public
         {
             T nextSample(T input, const(coeff_t) coeff) nothrow @nogc
             {
-                T x1 = x[0],
-                  x2 = x[1],
-                  y1 = y[0],
-                  y2 = y[1];
+                double x1 = x[0],
+                       x2 = x[1],
+                       y1 = y[0],
+                       y2 = y[1];
 
-                T a0 = coeff[0],
-                  a1 = coeff[1],
-                  a2 = coeff[2],
-                  a3 = coeff[3],
-                  a4 = coeff[4];
+                double a0 = coeff[0],
+                       a1 = coeff[1],
+                       a2 = coeff[2],
+                       a3 = coeff[3],
+                       a4 = coeff[4];
 
-                T current = a0 * input + a1 * x1 + a2 * x2 - a3 * y1 - a4 * y2;
+                double current = a0 * input + a1 * x1 + a2 * x2 - a3 * y1 - a4 * y2;
 
                 // kill denormals,and double values that would be converted 
                 // to float denormals
@@ -67,20 +67,20 @@ public
 
             void nextBuffer(const(T)* input, T* output, int frames, const(coeff_t) coeff) nothrow @nogc
             {
-                T x0 = x[0],
-                  x1 = x[1],
-                  y0 = y[0],
-                  y1 = y[1];
+                double x0 = x[0],
+                       x1 = x[1],
+                       y0 = y[0],
+                       y1 = y[1];
 
-                T a0 = coeff[0],
-                  a1 = coeff[1],
-                  a2 = coeff[2],
-                  a3 = coeff[3],
-                  a4 = coeff[4];
+                double a0 = coeff[0],
+                       a1 = coeff[1],
+                       a2 = coeff[2],
+                       a3 = coeff[3],
+                       a4 = coeff[4];
 
                 for(int i = 0; i < frames; ++i)
                 {
-                    T current = a0 * input[i] + a1 * x0 + a2 * x1 - a3 * y0 - a4 * y1;
+                    double current = a0 * input[i] + a1 * x0 + a2 * x1 - a3 * y0 - a4 * y1;
 
                     // kill denormals,and double values that would be converted 
                     // to float denormals
