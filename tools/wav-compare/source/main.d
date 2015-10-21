@@ -74,11 +74,18 @@ void main(string[] args)
 
         double maxPeakDifference = reduce!max(difference);//!("a > b")(difference).front;
 
+        double rms = 0;
+        for (int i = 0; i < N; ++i)
+            rms +=  difference[i] *  difference[i];
+        rms = sqrt(rms / N);
+
         double peakdB = floatToDeciBel(maxPeakDifference);
+        double rmsdB = floatToDeciBel(rms);
 
         writeln;
         writefln(" Comparing %s vs %s", fileA, fileB);
         writefln(" => peak dB difference = %s dB", peakdB);
+        writefln(" => RMS dB difference  = %s dB", rmsdB);
         if (peakdB == -double.infinity) 
             writeln("    These sounds are identical.");
         writeln;
