@@ -287,6 +287,15 @@ class GUIGraphics : UIElement, IGraphics
         }
     }
 
+    /// Tune this to tune the trade-off between light quality and speed.
+    /// The default value was tuned by hand on very shiny light sources.
+    /// Too high and processing becomes very expensive.
+    /// Too little and the ligth decay doesn't feel natural.
+    void setUpdateMargin(int margin = 30)
+    {
+        _updateMargin = margin;
+    }
+
 protected:
 
     UIContext _uiContext;
@@ -332,11 +341,11 @@ protected:
     //       but this doesn't matter since UIElement are the UI hierarchy anyway.
     AlignedBuffer!UIElement _elemsToDraw;
 
+    /// Amount of pixels dirty rectangles are extended with.
+    int _updateMargin = 30;    
 
     StopWatch _compositingWatch;
 
-    // BUG to report: uncommenting this create crash on interface casts with ldc 0.15.2-b2
-    //bool _initialized;
 
     bool isUIDirty() nothrow @nogc
     {
@@ -362,14 +371,10 @@ protected:
 
     box2i extendsDirtyRect(box2i rect, int width, int height) nothrow @nogc
     {
-        // Tuned by hand on very shiny light sources.
-        // Too high and processing becomes very expensive.
-        // Too little and the ligth decay doesn't feel natural.
-
-        int xmin = rect.min.x - 30;
-        int ymin = rect.min.y - 30;
-        int xmax = rect.max.x + 30;
-        int ymax = rect.max.y + 30;
+        int xmin = rect.min.x - _updateMargin;
+        int ymin = rect.min.y - _updateMargin;
+        int xmax = rect.max.x + _updateMargin;
+        int ymax = rect.max.y + _updateMargin;
 
         if (xmin < 0) xmin = 0;
         if (ymin < 0) ymin = 0;
