@@ -8,7 +8,6 @@ public
            dplug.client.preset,
            dplug.client.daw,
            dplug.client.midi,
-           dplug.client.fpcontrol,
            dplug.client.graphics,
            dplug.client.dllmain;
 }

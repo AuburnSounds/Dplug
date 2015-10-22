@@ -27,14 +27,14 @@ import core.stdc.stdlib,
 
 import gfm.core;
 
-import dplug.core.alignedbuffer;
-import dplug.core.funcs;
+import dplug.core.alignedbuffer,
+       dplug.core.funcs,
+       dplug.core.fpcontrol;
 
 import dplug.client.client,
        dplug.client.daw,
        dplug.client.preset,
-       dplug.client.midi,
-       dplug.client.fpcontrol;
+       dplug.client.midi;
 
 import dplug.vst.aeffectx;
 
