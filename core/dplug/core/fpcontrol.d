@@ -32,10 +32,10 @@ struct FPControl
             ushort control = 0x037f;
 
             // Looking for problems? Unmask all errors.
-            control = 0x0340;
+            //control = 0x0340;
 
             // Looking for denormals only? This unmasks denormal creation and denormal use exceptions.
-            control = 0x036d;
+            //control = 0x036d;
 
             setFPUControlState(control);
         }
