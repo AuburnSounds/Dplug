@@ -56,6 +56,22 @@ public:
         return _current;
     }
 
+    void nextBuffer(const(T)* input, T* output, int frames)
+    {
+        for (int i = 0; i < frames; ++i)
+        {
+            output[i] = nextSample(input[i]);
+        }
+    }
+
+     void nextBuffer(T input, T* output, int frames)
+    {
+        for (int i = 0; i < frames; ++i)
+        {
+            output[i] = nextSample(input);
+        }
+    }
+
 private:
     T _current;
     T _expFactorAttack;
