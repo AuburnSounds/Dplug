@@ -16,6 +16,7 @@ import gfm.core;
 import gfm.math;
 
 import dplug.core.unchecked_sync;
+import dplug.core.fpcontrol;
 import dplug.window.window;
 
 version(OSX)
@@ -497,42 +498,56 @@ version(OSX)
     {
         void keyDown(id self, SEL selector, id event)
         {
+            FPControl fpctrl;
+            fpctrl.initialize();
             DPlugCustomView view = getInstance(self);
             view._window.handleKeyEvent(NSEvent(event), false);
         }
 
         void keyUp(id self, SEL selector, id event)
         {
+            FPControl fpctrl;
+            fpctrl.initialize();
             DPlugCustomView view = getInstance(self);
             view._window.handleKeyEvent(NSEvent(event), true);
         }
 
         void mouseDown(id self, SEL selector, id event)
         {
+            FPControl fpctrl;
+            fpctrl.initialize();
             DPlugCustomView view = getInstance(self);
             view._window.handleMouseClicks(NSEvent(event), MouseButton.left, false);
         }
 
         void mouseUp(id self, SEL selector, id event)
         {
+            FPControl fpctrl;
+            fpctrl.initialize();
             DPlugCustomView view = getInstance(self);
             view._window.handleMouseClicks(NSEvent(event), MouseButton.left, true);
         }
 
         void rightMouseDown(id self, SEL selector, id event)
         {
+            FPControl fpctrl;
+            fpctrl.initialize();
             DPlugCustomView view = getInstance(self);
             view._window.handleMouseClicks(NSEvent(event), MouseButton.right, false);
         }
 
         void rightMouseUp(id self, SEL selector, id event)
         {
+            FPControl fpctrl;
+            fpctrl.initialize();
             DPlugCustomView view = getInstance(self);
             view._window.handleMouseClicks(NSEvent(event), MouseButton.right, true);
         }
 
         void otherMouseDown(id self, SEL selector, id event)
         {
+            FPControl fpctrl;
+            fpctrl.initialize();
             DPlugCustomView view = getInstance(self);
             auto nsEvent = NSEvent(event);
             if (nsEvent.buttonNumber == 2)
@@ -541,6 +556,8 @@ version(OSX)
 
         void otherMouseUp(id self, SEL selector, id event)
         {
+            FPControl fpctrl;
+            fpctrl.initialize();
             DPlugCustomView view = getInstance(self);
             auto nsEvent = NSEvent(event);
             if (nsEvent.buttonNumber == 2)
@@ -549,12 +566,16 @@ version(OSX)
 
         void mouseMoved(id self, SEL selector, id event)
         {
+            FPControl fpctrl;
+            fpctrl.initialize();
             DPlugCustomView view = getInstance(self);
             view._window.handleMouseMove(NSEvent(event));
         }
 
         void scrollWheel(id self, SEL selector, id event)
         {
+            FPControl fpctrl;
+            fpctrl.initialize();
             DPlugCustomView view = getInstance(self);
             view._window.handleMouseWheel(NSEvent(event));
         }
@@ -587,12 +608,16 @@ version(OSX)
 
         void drawRect(id self, SEL selector, NSRect rect)
         {
+            FPControl fpctrl;
+            fpctrl.initialize();
             DPlugCustomView view = getInstance(self);
             view._window.drawRect(rect);
         }
 
         void onTimer(id self, SEL selector, id timer)
         {
+            FPControl fpctrl;
+            fpctrl.initialize();
             DPlugCustomView view = getInstance(self);
             view._window.onTimer();
         }

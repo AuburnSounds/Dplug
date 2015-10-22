@@ -18,6 +18,7 @@ version(OSX)
     import gfm.core;
     import gfm.math;
 
+    import dplug.core.fpcontrol;
     import dplug.window.window;
 
 
@@ -489,6 +490,8 @@ version(OSX)
 
     extern(C) OSStatus eventCallback(EventHandlerCallRef pHandlerCall, EventRef pEvent, void* user) nothrow
     {
+        FPControl fpctrl;
+        fpctrl.initialize();
         try
         {
             CarbonWindow window = cast(CarbonWindow)user;
@@ -504,6 +507,8 @@ version(OSX)
 
     extern(C) void timerCallback(EventLoopTimerRef pTimer, void* user) nothrow
     {
+        FPControl fpctrl;
+        fpctrl.initialize();
         try
         {
             CarbonWindow window = cast(CarbonWindow)user;

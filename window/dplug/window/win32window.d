@@ -25,6 +25,7 @@ import gfm.math;
 
 import ae.utils.graphics;
 
+import dplug.core.fpcontrol;
 import dplug.window.window;
 
 
@@ -457,7 +458,9 @@ version(Windows)
     {
         LRESULT windowProcCallback(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         {
-            import std.stdio;
+            FPControl fpctrl;
+            fpctrl.initialize();
+            
             try
             {
                 Win32Window window = cast(Win32Window)( cast(void*)(GetWindowLongPtrA(hwnd, GWLP_USERDATA)) );
