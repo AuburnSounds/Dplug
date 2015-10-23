@@ -214,6 +214,15 @@ public:
 
             output1[i] = cast(T)yn2;
         }
+
+        // Remove small signals
+        for (int j = 0; j < 12; ++j)
+        {
+            _xnm1[j] += 1e-10f;
+            _xnm1[j] -= 1e-10f;
+            _ynm1[j] += 1e-10f;
+            _ynm1[j] -= 1e-10f;
+        }
     }
 
 private:

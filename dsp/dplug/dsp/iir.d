@@ -206,14 +206,14 @@ public
                         static assert(false, "Not implemented for this platform.");
 
                     // Kill small signals that can cause denormals (no precision loss was measurable)
-                    x0 += 1e-18;
-                    x0 -= 1e-18;
-                    x1 += 1e-18;
-                    x1 -= 1e-18;
-                    y0 += 1e-18;
-                    y0 -= 1e-18;
-                    y1 += 1e-18;
-                    y1 -= 1e-18;
+                    x0 += 1e-10;
+                    x0 -= 1e-10;
+                    x1 += 1e-10;
+                    x1 -= 1e-10;
+                    y0 += 1e-10;
+                    y0 -= 1e-10;
+                    y1 += 1e-10;
+                    y1 -= 1e-10;
 
                     x[0] = x0;
                     x[1] = x1;
