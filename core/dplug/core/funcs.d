@@ -109,7 +109,7 @@ double expDecayFactor(double time, double samplerate) pure nothrow @nogc
 }
 
 /// Give back a phase between -PI and PI
-T normalizePhase(T)(T phase) pure nothrow @nogc
+T normalizePhase(T)(T phase) nothrow @nogc
 {
     T res = fmod(phase, cast(T)TAU);
     if (res > PI)
@@ -119,6 +119,21 @@ T normalizePhase(T)(T phase) pure nothrow @nogc
     return res;
 }
 
+unittest
+{
+    assert(approxEqual(normalizePhase!real(TAU), 0));
+
+    assert(approxEqual(normalizePhase!float(0.1f), 0.1f));
+    assert(approxEqual(normalizePhase!float(TAU + 0.1f), 0.1f));
+
+    assert(approxEqual(normalizePhase!double(-0.1f), -0.1f));
+    assert(approxEqual(normalizePhase!double(-TAU - 0.1f), -0.1f));
+
+    bool approxEqual(T)(T a, T b) nothrow @nogc
+    {
+        return (a - b) < 1e-7;
+    }
+}
 
 /// Quick and dirty sawtooth for testing purposes.
 T rawSawtooth(T)(T x) pure nothrow @nogc
