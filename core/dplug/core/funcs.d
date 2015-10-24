@@ -186,3 +186,9 @@ void reallocBuffer(T)(ref T[] buffer, size_t length, int alignment = 16) nothrow
         buffer = pointer[0..length];
 }
 
+// A bit faster than a dynamic cast.
+// This is to avoid TypeInfo look-up
+T unsafeObjectCast(T)(Object obj)
+{
+    return cast(T)(cast(void*)(obj));
+}
