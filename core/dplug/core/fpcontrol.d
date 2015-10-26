@@ -88,26 +88,15 @@ version(isX86)
     /// Sets FPU control register
     void setFPUControlState(ushort newState) nothrow @nogc
     {
+        // TODO: report that the naked version in Phobos is buggy on OSX
+        // it fills the control word with a random word which can create
+        // FP exceptions.
         version (InlineX86Asm)
         {
-            version (D_InlineAsm_X86_64)
+            asm nothrow @nogc
             {
-                asm nothrow @nogc
-                {
-                    naked;
-                    mov     8[RSP],RCX;
-                    fclex;
-                    fldcw   8[RSP];
-                    ret;
-                }
-            }
-            else
-            {
-                asm nothrow @nogc
-                {
-                    fclex;
-                    fldcw newState;
-                }
+                fclex;
+                fldcw newState;
             }
         }
         else
