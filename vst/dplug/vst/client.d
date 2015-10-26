@@ -60,7 +60,7 @@ template VSTEntryPoint(alias ClientClass)
         "       import core.runtime;"
         "       import core.thread;"
         "       version(OSX) {" // Must occur here for OSX, but not for Windows
-        "           import dplug.plugin.dllmain;"
+        "           import dplug.client.dllmain;"
         "           runtimeInitWorkaround15060();"
         "       }"
         "       thread_attachThis();" // Attach VSTPluginMain thread to runtime
