@@ -102,6 +102,7 @@ public
 
                             movq XMM4, qword ptr a0; // XMM4 = 0 a0
 
+                            align 16;
                             loop:
                                 pxor XMM5, XMM5;
                                 cvtss2sd XMM5, dword ptr [EAX];
@@ -131,7 +132,7 @@ public
                                 movapd XMM1, XMM5;
                                 
                                 sub ECX, 1;
-                                jnz loop;
+                                jnz short loop;
 
                             movlpd qword ptr x0, XMM0;
                             movhpd qword ptr x1, XMM0;
@@ -163,6 +164,7 @@ public
 
                             movq XMM4, qword ptr a0; // XMM4 = 0 a0
 
+                        align 16;
                         loop:
                             pxor XMM5, XMM5;
                             cvtss2sd XMM5, dword ptr [RAX];
@@ -191,7 +193,7 @@ public
                             movapd XMM1, XMM5;
 
                             sub ECX, 1;
-                            jnz loop;
+                            jnz short loop;
 
                             movlpd qword ptr x0, XMM0;
                             movhpd qword ptr x1, XMM0;
