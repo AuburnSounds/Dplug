@@ -52,6 +52,12 @@ class GUIGraphics : UIElement, IGraphics
 
     float ambientLight;
 
+    // Assign those to use lookup tables.
+    bool useTransferTables = false;
+    ubyte[] redTransferTable = null;
+    ubyte[] greenTransferTable = null;
+    ubyte[] blueTransferTable = null;
+
     this(int initialWidth, int initialHeight)
     {
         _uiContext = new UIContext();
@@ -800,6 +806,7 @@ protected:
                     int r = cast(int)(color.x * 255.99f);
                     int g = cast(int)(color.y * 255.99f);
                     int b = cast(int)(color.z * 255.99f);
+
                     RGBA finalColor = void;
 
                     final switch (pf) with (WindowPixelFormat)
@@ -817,6 +824,27 @@ protected:
 
                     // write composited color
                     wfb_scan[i] = finalColor;
+                }
+            }
+        }
+
+        // Optional look-up table
+        if (useTransferTables)
+        {
+            ubyte* red = redTransferTable.ptr;
+            ubyte* green = greenTransferTable.ptr;
+            ubyte* blue = blueTransferTable.ptr;
+            for (int j = area.min.y; j < area.max.y; ++j)
+            {
+                RGBA* wfb_scan = wfb.scanline(j).ptr;
+
+                for (int i = area.min.x; i < area.max.x; ++i)
+                {
+                    RGBA color = wfb_scan[i];
+                    color.r = red[color.r];
+                    color.g = green[color.g];
+                    color.b = blue[color.b];
+                    wfb_scan[i] = color;
                 }
             }
         }
