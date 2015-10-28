@@ -17,7 +17,7 @@ public
     /// To use an IIR filter you need an IIRDelay + one IIRCoeff.
     struct IIRDelay(T, int order)
     {
-        alias Vector!(T, order) delay_t;
+        alias Vector!(double, order) delay_t;
 
         alias Vector!(T, order * 2 + 1) coeff_t; // TODO: be more general
 
