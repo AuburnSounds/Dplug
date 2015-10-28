@@ -34,6 +34,11 @@ public:
         _normalizedParams = normalizedParams;
     }
 
+    void setNormalized(int paramIndex, float value)
+    {
+        _normalizedParams[paramIndex] = value;
+    }
+
     string name()
     {
         return _name;
