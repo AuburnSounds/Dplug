@@ -169,8 +169,6 @@ class PBRCompositor : Compositor
                     float metalness = materialHere.g * div255;
                     float specular  = materialHere.b * div255;
 
-                    float cavity;
-
                     // Add ambient component
                     {
                         float px = i + 0.5f;
@@ -182,9 +180,19 @@ class PBRCompositor : Compositor
                              + depthMap.linearSample(3, px, py)
                              + depthMap.linearSample(4, px, py) ) * 0.25f;
 
-                        cavity = ctLinearStep!(-90.0f * 256.0f, 0.0f)(depthPatch[2][2] - avgDepthHere);
-
-                        color += baseColor * (cavity * ambientLight);
+                        float diff = depthPatch[2][2] - avgDepthHere;
+                        float cavity = void;
+                        if (diff >= 0)
+                            cavity = 1;
+                        else if (diff < -23040)
+                            cavity = 0;
+                        else
+                        {
+                            static immutable float divider = 1.0f / 23040;
+                            cavity = (diff + 23040) * divider;
+                        }
+                        if (cavity > 0)
+                            color += baseColor * (cavity * ambientLight);
                     }
 
                     // cast shadows, ie. enlight what isn't in shadows
@@ -299,13 +307,12 @@ class PBRCompositor : Compositor
                         vec4f colorLevel4 = diffuseMap.linearSample!true(4, ic, jc);
                         vec4f colorLevel5 = diffuseMap.linearSample!true(5, ic, jc);
 
-                        vec4f emitted = colorLevel1 * 0.2f;
-                        emitted += colorLevel2 * 0.3f;
-                        emitted += colorLevel3 * 0.25f;
-                        emitted += colorLevel4 * 0.15f;
-                        emitted += colorLevel5 * 0.10f;
+                        vec4f emitted = colorLevel1 * 0.00117647f;
+                        emitted += colorLevel2      * 0.00176471f;
+                        emitted += colorLevel3      * 0.00147059f;
+                        emitted += colorLevel4      * 0.00088235f;
+                        emitted += colorLevel5      * 0.00058823f;
 
-                        emitted *= (div255 * 1.5f);
 
                         color += emitted.rgb;
                     }
