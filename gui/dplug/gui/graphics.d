@@ -36,6 +36,9 @@ import dplug.gui.compositor;
 
 alias RMSP = RGBA; // reminder
 
+// Uncomment to benchmark compositing and devise optimizations.
+//version = BenchmarkCompositing;
+
 // A GUIGraphics is the interface between a plugin client and a IWindow.
 // It is also an UIElement and the root element of the plugin UI hierarchy.
 // You have to derive it to have a GUI.
@@ -71,7 +74,8 @@ class GUIGraphics : UIElement, IGraphics
 
         _elemsToDraw = new AlignedBuffer!UIElement;
 
-        //_compositingWatch = new StopWatch("Compositing = ");
+        version(BenchmarkCompositing)
+            _compositingWatch = new StopWatch("Compositing = ");
     }
 
 
@@ -122,46 +126,49 @@ class GUIGraphics : UIElement, IGraphics
         *height = _askedHeight;
     }
 
-    class StopWatch
+    version(BenchmarkCompositing)
     {
-        this(string title)
+        class StopWatch
         {
-            _title = title;
-        }
-
-        void start()
-        {
-            _lastTime = _window.getTimeMs();
-        }
-
-        enum WARMUP = 30;
-
-        void stop()
-        {
-            uint now = _window.getTimeMs();
-            int timeDiff = cast(int)(now - _lastTime);
-
-            if (times >= WARMUP)
-                sum += timeDiff; // first samples are discarded
-
-            times++;
-            //string msg = _title ~ to!string(timeDiff) ~ " ms";
-            //_window.debugOutput(msg);
-        }
-
-        void displayMean()
-        {
-            if (times > WARMUP)
+            this(string title)
             {
-                string msg = _title ~ to!string(sum / (times - WARMUP)) ~ " ms mean";
+                _title = title;
+            }
+
+            void start()
+            {
+                _lastTime = _window.getTimeMs();
+            }
+
+            enum WARMUP = 30;
+
+            void stop()
+            {
+                uint now = _window.getTimeMs();
+                int timeDiff = cast(int)(now - _lastTime);
+
+                if (times >= WARMUP)
+                    sum += timeDiff; // first samples are discarded
+
+                times++;
+                string msg = _title ~ to!string(timeDiff) ~ " ms";
                 _window.debugOutput(msg);
             }
-        }
 
-        string _title;
-        uint _lastTime;
-        double sum = 0;
-        int times = 0;
+            void displayMean()
+            {
+                if (times > WARMUP)
+                {
+                    string msg = _title ~ to!string(sum / (times - WARMUP)) ~ " ms mean";
+                    _window.debugOutput(msg);
+                }
+            }
+
+            string _title;
+            uint _lastTime;
+            double sum = 0;
+            int times = 0;
+        }
     }
 
 
@@ -254,10 +261,16 @@ class GUIGraphics : UIElement, IGraphics
 
             // Composite GUI
             // Most of the cost of rendering is here
-            //_compositingWatch.start();
+            version(BenchmarkCompositing)
+                _compositingWatch.start();
+
             compositeGUI(wfb, pf);
-            //_compositingWatch.stop();
-            //_compositingWatch.displayMean();
+
+            version(BenchmarkCompositing)
+            {
+                _compositingWatch.stop();
+                _compositingWatch.displayMean();
+            }
 
             // only then is the list of rectangles to update cleared
             _areasToUpdate.clearContents();
@@ -332,7 +345,8 @@ protected:
     /// Amount of pixels dirty rectangles are extended with.
     int _updateMargin = 20;
 
-    StopWatch _compositingWatch;
+    version(BenchmarkCompositing)
+        StopWatch _compositingWatch;
 
 
     bool isUIDirty() nothrow @nogc
