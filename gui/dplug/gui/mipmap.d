@@ -62,7 +62,7 @@ struct Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
     /// Interpolates a color between mipmap levels.  Floating-point level, spatial linear interpolation.
     /// x and y are in base level coordinates (top-left pixel is on (0.5, 0.5) coordinates).
     /// Clamped to borders.
-    auto linearMipmapSample(bool premultiplied = false)(float level, float x, float y)
+    auto linearMipmapSample(bool premultiplied = false)(float level, float x, float y) nothrow @nogc
     {
         int ilevel = cast(int)level;
         float flevel = level - ilevel;
@@ -79,7 +79,7 @@ struct Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
     /// Interpolates a color.  Integer level, spatial linear interpolation.
     /// x and y are in base level coordinates (top-left pixel is on (0.5, 0.5) coordinates).
     /// Clamped to borders.
-    auto linearSample(bool premultiplied = false)(int level, float x, float y)
+    auto linearSample(bool premultiplied = false)(int level, float x, float y) nothrow @nogc
     {
         if (level < 0)
             level = 0;
@@ -142,7 +142,7 @@ struct Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
             {
                 vec4f asmResult;
 
-                asm
+                asm nothrow @nogc
                 {
                     movd XMM0, A;
                     movd XMM1, B;

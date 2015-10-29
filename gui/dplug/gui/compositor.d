@@ -23,10 +23,10 @@ import dplug.gui.mipmap;
 interface Compositor
 {
     void compositeTile(ImageRef!RGBA wfb, WindowPixelFormat pf, box2i area,
-                       Mipmap!RGBA* _diffuseMap,
-                       Mipmap!RGBA* _materialMap,
-                       Mipmap!L16* _depthMap,
-                       Mipmap!RGBA* skybox);
+                       Mipmap!RGBA* diffuseMap,
+                       Mipmap!RGBA* materialMap,
+                       Mipmap!L16* depthMap,
+                       Mipmap!RGBA* skybox) nothrow @nogc;
 }
 
 /// "Physically Based"-style rendering
@@ -60,10 +60,10 @@ class PBRCompositor : Compositor
 
     /// Don't like this rendering? Feel free to override this method.
     override void compositeTile(ImageRef!RGBA wfb, WindowPixelFormat pf, box2i area,
-                                Mipmap!RGBA* _diffuseMap,
-                                Mipmap!RGBA* _materialMap,
-                                Mipmap!L16* _depthMap,
-                                Mipmap!RGBA* skybox)
+                                Mipmap!RGBA* diffuseMap,
+                                Mipmap!RGBA* materialMap,
+                                Mipmap!L16* depthMap,
+                                Mipmap!RGBA* skybox) nothrow @nogc
     {
         int[5] line_index = void;
         ushort[5][5] depthPatch = void;
@@ -71,8 +71,8 @@ class PBRCompositor : Compositor
         L16*[5] depth_scan = void;
 
         //Mipmap!RGBA* skybox = &context.skybox;
-        int w = _diffuseMap.levels[0].w;
-        int h = _diffuseMap.levels[0].h;
+        int w = diffuseMap.levels[0].w;
+        int h = diffuseMap.levels[0].h;
         float invW = 1.0f / w;
         float invH = 1.0f / h;
         float div255 = 1 / 255.0f;
@@ -88,9 +88,9 @@ class PBRCompositor : Compositor
 
 
             for (int l = 0; l < 5; ++l)
-                depth_scan[l] = _depthMap.levels[0].scanline(line_index[l]).ptr;
+                depth_scan[l] = depthMap.levels[0].scanline(line_index[l]).ptr;
 
-            RGBA* materialScan = _materialMap.levels[0].scanline(j).ptr;
+            RGBA* materialScan = materialMap.levels[0].scanline(j).ptr;
 
             for (int i = area.min.x; i < area.max.x; ++i)
             {
@@ -100,7 +100,7 @@ class PBRCompositor : Compositor
                 if (materialHere.a == 0)
                 {
 
-                    RGBA diffuse = _diffuseMap.levels[0][i, j];
+                    RGBA diffuse = diffuseMap.levels[0][i, j];
                     RGBA finalColor = void;
                     final switch (pf) with (WindowPixelFormat)
                     {
@@ -154,7 +154,7 @@ class PBRCompositor : Compositor
                     vec3f normal = vec3f(sx, sy, sz);
                     normal.normalize();
 
-                    RGBA ibaseColor = _diffuseMap.levels[0][i, j];
+                    RGBA ibaseColor = diffuseMap.levels[0][i, j];
                     vec3f baseColor = vec3f(ibaseColor.r, ibaseColor.g, ibaseColor.b) * div255;
 
                     vec3f toEye = vec3f(0.5f - i * invW, j * invH - 0.5f, 1.0f);
@@ -174,10 +174,10 @@ class PBRCompositor : Compositor
                         float py = j + 0.5f;
 
                         float avgDepthHere =
-                            ( _depthMap.linearSample(1, px, py)
-                              + _depthMap.linearSample(2, px, py)
-                             + _depthMap.linearSample(3, px, py)
-                             + _depthMap.linearSample(4, px, py) ) * 0.25f;
+                            ( depthMap.linearSample(1, px, py)
+                              + depthMap.linearSample(2, px, py)
+                             + depthMap.linearSample(3, px, py)
+                             + depthMap.linearSample(4, px, py) ) * 0.25f;
 
                         cavity = ctLinearStep!(-90.0f * 256.0f, 0.0f)(depthPatch[2][2] - avgDepthHere);
 
@@ -220,7 +220,7 @@ class PBRCompositor : Compositor
                             if (y < 0)
                                 y = 0;
                             int z = depthHere + sample;
-                            int diff = z - _depthMap.levels[0][x, y].l;
+                            int diff = z - depthMap.levels[0][x, y].l;
                             lightPassed += ctLinearStep!(-60.0f * 256.0f, 0.0f)(diff) * weights.ptr[sample];
                         }
                         color += baseColor * light1Color * (lightPassed * invTotalWeights);
@@ -290,11 +290,11 @@ class PBRCompositor : Compositor
 
                         // Get alpha-premultiplied, avoids some white highlights
                         // Maybe we could solve the white highlights by having the whole mipmap premultiplied
-                        vec4f colorLevel1 = _diffuseMap.linearSample!true(1, ic, jc);
-                        vec4f colorLevel2 = _diffuseMap.linearSample!true(2, ic, jc);
-                        vec4f colorLevel3 = _diffuseMap.linearSample!true(3, ic, jc);
-                        vec4f colorLevel4 = _diffuseMap.linearSample!true(4, ic, jc);
-                        vec4f colorLevel5 = _diffuseMap.linearSample!true(5, ic, jc);
+                        vec4f colorLevel1 = diffuseMap.linearSample!true(1, ic, jc);
+                        vec4f colorLevel2 = diffuseMap.linearSample!true(2, ic, jc);
+                        vec4f colorLevel3 = diffuseMap.linearSample!true(3, ic, jc);
+                        vec4f colorLevel4 = diffuseMap.linearSample!true(4, ic, jc);
+                        vec4f colorLevel5 = diffuseMap.linearSample!true(5, ic, jc);
 
                         vec4f emitted = colorLevel1 * 0.2f;
                         emitted += colorLevel2 * 0.3f;
@@ -415,7 +415,7 @@ float linearStep(float a, float b, float t) pure nothrow @nogc
 
 // log2 approximation by Laurent de Soras
 // http://www.flipcode.com/archives/Fast_log_Function.shtml
-float fastlog2(float val)
+float fastlog2(float val) pure nothrow @nogc
 {
     union fi_t
     {
