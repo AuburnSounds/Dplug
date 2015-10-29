@@ -48,6 +48,8 @@ class PBRCompositor : Compositor
     ubyte[] greenTransferTable = null;
     ubyte[] blueTransferTable = null;
 
+    float[256] _exponentTable;
+
     this()
     {
         // defaults
@@ -56,6 +58,11 @@ class PBRCompositor : Compositor
         light2Dir = vec3f(0.0f, 1.0f, 0.1f).normalized;
         light2Color = vec3f(0.378f, 0.35f, 0.322f);
         ambientLight = 0.15f;
+
+        for (int roughByte = 0; roughByte < 256; ++roughByte)
+        {
+            _exponentTable[roughByte] = 0.8f * exp( (1-roughByte / 255.0f) * 5.5f);
+        }
     }
 
     /// Don't like this rendering? Feel free to override this method.
@@ -241,12 +248,12 @@ class PBRCompositor : Compositor
                     {
                         vec3f lightReflect = reflect(-light2Dir, normal);
                         float specularFactor = dot(toEye, lightReflect);
-                        if (specularFactor > 0)
+                        if (specularFactor > 1e-3f)
                         {
-                            float exponent = 0.8f * exp( (1-roughness) * 5.5f);
+                            float exponent = _exponentTable[materialHere.r];
                             specularFactor = specularFactor ^^ exponent;
                             float roughFactor = 10 * (1.0f - roughness) * (1 - metalness * 0.5f);
-                            specularFactor = /* cavity * */ specularFactor * roughFactor;
+                            specularFactor = specularFactor * roughFactor;
                             if (specularFactor != 0)
                                 color += baseColor * light2Color * (specularFactor * specular);
                         }
