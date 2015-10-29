@@ -188,8 +188,8 @@ class PBRCompositor : Compositor
                             cavity = 0;
                         else
                         {
-                            static immutable float divider = 1.0f / 23040;
-                            cavity = (diff + 23040) * divider;
+                            static immutable float divider23040 = 1.0f / 23040;
+                            cavity = (diff + 23040) * divider23040;
                         }
                         if (cavity > 0)
                             color += baseColor * (cavity * ambientLight);
@@ -232,7 +232,22 @@ class PBRCompositor : Compositor
                                 y = 0;
                             int z = depthHere + sample;
                             int diff = z - depthMap.levels[0][x, y].l;
-                            lightPassed += ctLinearStep!(-60.0f * 256.0f, 0.0f)(diff) * weights.ptr[sample];
+
+                            float contrib = void;
+                            if (diff >= 0)
+                                contrib = 1;
+                            else if (diff < -15360)
+                            {
+                                contrib = 0;
+                                continue;
+                            }
+                            else
+                            {
+                                static immutable float divider15360 = 1.0f / 15360;
+                                contrib = (diff + 15360) * divider15360;
+                            }
+
+                            lightPassed += contrib * weights[sample];
                         }
                         color += baseColor * light1Color * (lightPassed * invTotalWeights);
                     }
