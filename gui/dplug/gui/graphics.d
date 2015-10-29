@@ -279,7 +279,7 @@ class GUIGraphics : UIElement, IGraphics
     /// The default value was tuned by hand on very shiny light sources.
     /// Too high and processing becomes very expensive.
     /// Too little and the ligth decay doesn't feel natural.
-    void setUpdateMargin(int margin = 30)
+    void setUpdateMargin(int margin = 20)
     {
         _updateMargin = margin;
     }
@@ -330,7 +330,7 @@ protected:
     AlignedBuffer!UIElement _elemsToDraw;
 
     /// Amount of pixels dirty rectangles are extended with.
-    int _updateMargin = 30;    
+    int _updateMargin = 20;
 
     StopWatch _compositingWatch;
 
