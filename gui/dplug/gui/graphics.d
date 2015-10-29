@@ -250,6 +250,11 @@ class GUIGraphics : UIElement, IGraphics
         // Update composited cache.
         override void onDraw(ImageRef!RGBA wfb, WindowPixelFormat pf)
         {
+            // Render GUI
+            // Most of the cost of rendering is in compositeGUI() call.
+            version(BenchmarkCompositing)
+                _compositingWatch.start();
+
             renderElements();
 
             // Split boxes to avoid overlapped work
@@ -259,21 +264,16 @@ class GUIGraphics : UIElement, IGraphics
 
             regenerateMipmaps();
 
-            // Composite GUI
-            // Most of the cost of rendering is here
-            version(BenchmarkCompositing)
-                _compositingWatch.start();
-
             compositeGUI(wfb, pf);
+
+            // only then is the list of rectangles to update cleared
+            _areasToUpdate.clearContents();
 
             version(BenchmarkCompositing)
             {
                 _compositingWatch.stop();
                 _compositingWatch.displayMean();
             }
-
-            // only then is the list of rectangles to update cleared
-            _areasToUpdate.clearContents();
         }
 
         override void onMouseCaptureCancelled()

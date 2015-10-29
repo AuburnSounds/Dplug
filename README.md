@@ -82,6 +82,7 @@ Pros:
 - plugin parameters implement the Observer pattern
 - no need to use Xcode whatsoever
 - float parameters can have user-defined mapping
+- PBR-style rendering lets you have a good visual quality with less disk space, at the cost of more work.
 
 Cons:
 - much less tested in general
