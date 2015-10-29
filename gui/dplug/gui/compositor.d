@@ -72,9 +72,7 @@ class PBRCompositor : Compositor
                                 Mipmap!L16* depthMap,
                                 Mipmap!RGBA* skybox) nothrow @nogc
     {
-        int[5] line_index = void;
         ushort[5][5] depthPatch = void;
-        int[5] col_index = void;
         L16*[5] depth_scan = void;
 
         //Mipmap!RGBA* skybox = &context.skybox;
@@ -89,13 +87,11 @@ class PBRCompositor : Compositor
             RGBA* wfb_scan = wfb.scanline(j).ptr;
 
             // clamp to existing lines
-
             for (int l = 0; l < 5; ++l)
-                line_index[l] = gfm.math.clamp(j - 2 + l, 0, h - 1);
-
-
-            for (int l = 0; l < 5; ++l)
-                depth_scan[l] = depthMap.levels[0].scanline(line_index[l]).ptr;
+            {
+                int lineIndex = gfm.math.clamp!int(j - 2 + l, 0, h - 1);
+                depth_scan[l] = depthMap.levels[0].scanline(lineIndex).ptr;
+            }
 
             RGBA* materialScan = materialMap.levels[0].scanline(j).ptr;
 
@@ -129,17 +125,17 @@ class PBRCompositor : Compositor
                 {
                     // clamp to existing columns
 
-                    for (int k = 0; k < 5; ++k)
-                        col_index[k] = gfm.math.clamp(i - 2 + k, 0, w - 1);
-
-                    // Get depth for a 5x5 patch
-
-                    for (int l = 0; l < 5; ++l)
                     {
+                        // Get depth for a 5x5 patch
+                        // Turns out DMD like hand-unrolling:(
                         for (int k = 0; k < 5; ++k)
                         {
-                            ushort depthSample = depth_scan.ptr[l][col_index[k]].l;
-                            depthPatch.ptr[l].ptr[k] = depthSample;
+                            int col_index = gfm.math.clamp(i - 2 + k, 0, w - 1);
+                            depthPatch[0][k] = depth_scan.ptr[0][col_index].l;
+                            depthPatch[1][k] = depth_scan.ptr[1][col_index].l;
+                            depthPatch[2][k] = depth_scan.ptr[2][col_index].l;
+                            depthPatch[3][k] = depth_scan.ptr[3][col_index].l;
+                            depthPatch[4][k] = depth_scan.ptr[4][col_index].l;
                         }
                     }
 
@@ -171,7 +167,7 @@ class PBRCompositor : Compositor
 
                     float roughness = materialHere.r * div255;
                     float metalness = materialHere.g * div255;
-                    float specular  = materialHere.b * div255;                
+                    float specular  = materialHere.b * div255;
 
                     float cavity;
 

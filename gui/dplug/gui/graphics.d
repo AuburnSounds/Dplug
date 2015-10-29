@@ -250,8 +250,8 @@ class GUIGraphics : UIElement, IGraphics
         // Update composited cache.
         override void onDraw(ImageRef!RGBA wfb, WindowPixelFormat pf)
         {
-            // Render GUI
-            // Most of the cost of rendering is in compositeGUI() call.
+            // Composite GUI
+            // Most of the cost of rendering is here
             version(BenchmarkCompositing)
                 _compositingWatch.start();
 
