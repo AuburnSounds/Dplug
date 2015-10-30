@@ -45,6 +45,7 @@ class PBRCompositor : Compositor
     vec3f light3Color;
 
     float ambientLight;
+    float skyboxAmount;
 
     // Assign those to use lookup tables.
     bool useTransferTables = false;
@@ -66,6 +67,7 @@ class PBRCompositor : Compositor
         light3Color = vec3f(0.378f, 0.35f, 0.322f);
 
         ambientLight = 0.10f;
+        skyboxAmount = 0.4f;
 
         for (int roughByte = 0; roughByte < 256; ++roughByte)
         {
@@ -313,7 +315,7 @@ class PBRCompositor : Compositor
                         // log2 scaling + threshold
                         float mipLevel = 0.5f * fastlog2(1.0f + indexDeriv * 0.00001f) + 6 * roughness;
 
-                        vec3f skyColor = skybox.linearMipmapSample(mipLevel, skyx, skyy).rgb * (div255 * metalness * 0.4f);
+                        vec3f skyColor = skybox.linearMipmapSample(mipLevel, skyx, skyy).rgb * (div255 * metalness * skyboxAmount);
                         color += skyColor * baseColor;
                     }
 
