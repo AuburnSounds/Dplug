@@ -36,9 +36,13 @@ class PBRCompositor : Compositor
     // always coming from top-right
     vec3f light1Color;
 
-    // light 2 used for things using the normal
+    // light 2 used for diffuse lighting
     vec3f light2Dir;
     vec3f light2Color;
+
+    // light 3 used for specular highlights
+    vec3f light3Dir;
+    vec3f light3Color;
 
     float ambientLight;
 
@@ -57,7 +61,11 @@ class PBRCompositor : Compositor
 
         light2Dir = vec3f(0.0f, 1.0f, 0.1f).normalized;
         light2Color = vec3f(0.378f, 0.35f, 0.322f);
-        ambientLight = 0.15f;
+
+        light3Dir = vec3f(0.0f, 1.0f, 0.1f).normalized;
+        light3Color = vec3f(0.378f, 0.35f, 0.322f);
+
+        ambientLight = 0.10f;
 
         for (int roughByte = 0; roughByte < 256; ++roughByte)
         {
@@ -265,7 +273,7 @@ class PBRCompositor : Compositor
                     // specular reflection
                     if (specular != 0)
                     {
-                        vec3f lightReflect = reflect(-light2Dir, normal);
+                        vec3f lightReflect = reflect(-light3Dir, normal);
                         float specularFactor = dot(toEye, lightReflect);
                         if (specularFactor > 1e-3f)
                         {
@@ -274,7 +282,7 @@ class PBRCompositor : Compositor
                             float roughFactor = 10 * (1.0f - roughness) * (1 - metalness * 0.5f);
                             specularFactor = specularFactor * roughFactor;
                             if (specularFactor != 0)
-                                color += baseColor * light2Color * (specularFactor * specular);
+                                color += baseColor * light3Color * (specularFactor * specular);
                         }
                     }
 
