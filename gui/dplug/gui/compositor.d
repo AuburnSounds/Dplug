@@ -47,14 +47,6 @@ class PBRCompositor : Compositor
     float ambientLight;
     float skyboxAmount;
 
-    // Assign those to use lookup tables.
-    bool useTransferTables = false;
-    ubyte[] redTransferTable = null;
-    ubyte[] greenTransferTable = null;
-    ubyte[] blueTransferTable = null;
-
-    float[256] _exponentTable;
-
     this()
     {
         // defaults
@@ -72,6 +64,41 @@ class PBRCompositor : Compositor
         for (int roughByte = 0; roughByte < 256; ++roughByte)
         {
             _exponentTable[roughByte] = 0.8f * exp( (1-roughByte / 255.0f) * 5.5f);
+        }
+    }
+
+    /// Calling this setup color correction table, with the well
+    /// known lift-gamma-gain formula.
+    void setLiftGammaGain(float lift = 0.0f, float gamma = 1.0f, float gain = 1.0f)
+    {
+        setLiftGammaGainRGB(lift, gamma, gain,
+                            lift, gamma, gain,
+                            lift, gamma, gain);
+    }
+
+    /// Calling this setup color correction table, with the well
+    /// known lift-gamma-gain formula.
+    void setLiftGammaGainRGB(float rLift = 0.0f, float rGamma = 1.0f, float rGain = 1.0f,
+                             float gLift = 0.0f, float gGamma = 1.0f, float gGain = 1.0f,
+                             float bLift = 0.0f, float bGamma = 1.0f, float bGain = 1.0f)
+    {
+        _useTransferTables = true;
+        _redTransferTable = new ubyte[256];
+        _greenTransferTable = new ubyte[256];
+        _blueTransferTable = new ubyte[256];
+
+        for (int b = 0; b < 256; ++b)
+        {
+            float inp = b / 255.0f;
+            float outR = ( rGain*(inp + rLift*(1-inp)) )^^(1/rGamma);
+            float outG = ( rGain*(inp + gLift*(1-inp)) )^^(1/gGamma);
+            float outB = ( rGain*(inp + bLift*(1-inp)) )^^(1/bGamma);
+            outR = gfm.math.clamp!float(outR, 0.0f, 1.0f);
+            outG = gfm.math.clamp!float(outG, 0.0f, 1.0f);
+            outB = gfm.math.clamp!float(outB, 0.0f, 1.0f);
+            _redTransferTable[b] = cast(ubyte)(0.5f + outR * 255.0f);
+            _greenTransferTable[b] = cast(ubyte)(0.5f + outG * 255.0f);
+            _blueTransferTable[b] = cast(ubyte)(0.5f + outB * 255.0f);
         }
     }
 
@@ -394,11 +421,11 @@ class PBRCompositor : Compositor
         }
 
         // Optional look-up table
-        if (useTransferTables)
+        if (_useTransferTables)
         {
-            ubyte* red = redTransferTable.ptr;
-            ubyte* green = greenTransferTable.ptr;
-            ubyte* blue = blueTransferTable.ptr;
+            ubyte* red = _redTransferTable.ptr;
+            ubyte* green = _greenTransferTable.ptr;
+            ubyte* blue = _blueTransferTable.ptr;
             for (int j = area.min.y; j < area.max.y; ++j)
             {
                 RGBA* wfb_scan = wfb.scanline(j).ptr;
@@ -414,6 +441,15 @@ class PBRCompositor : Compositor
             }
         }
     }
+
+private:
+    // Assign those to use lookup tables.
+    bool _useTransferTables = false;
+    ubyte[] _redTransferTable = null;
+    ubyte[] _greenTransferTable = null;
+    ubyte[] _blueTransferTable = null;
+
+    float[256] _exponentTable;
 }
 
 private:
