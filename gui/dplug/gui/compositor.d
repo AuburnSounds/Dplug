@@ -91,8 +91,8 @@ class PBRCompositor : Compositor
         {
             float inp = b / 255.0f;
             float outR = ( rGain*(inp + rLift*(1-inp)) )^^(1/rGamma);
-            float outG = ( rGain*(inp + gLift*(1-inp)) )^^(1/gGamma);
-            float outB = ( rGain*(inp + bLift*(1-inp)) )^^(1/bGamma);
+            float outG = ( gGain*(inp + gLift*(1-inp)) )^^(1/gGamma);
+            float outB = ( bGain*(inp + bLift*(1-inp)) )^^(1/bGamma);
             outR = gfm.math.clamp!float(outR, 0.0f, 1.0f);
             outG = gfm.math.clamp!float(outG, 0.0f, 1.0f);
             outB = gfm.math.clamp!float(outB, 0.0f, 1.0f);
