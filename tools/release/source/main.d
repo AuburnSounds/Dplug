@@ -270,6 +270,15 @@ void buildPlugin(string compiler, string build, bool is64b, bool verbose, bool f
         combined = true; // for -FPIC
     }
 
+    // On OSX, 32-bit plugins made with LDC are compatible >= 10.7
+    // while those made with DMD >= 10.6
+    // So force DMD usage for 32-bit plugins.
+    if ( (is64b == false) && (compiler == "ldc2") )
+    {
+        writefln("warning: forcing DMD compiler for 10.6 compatibility");
+        compiler = "dmd";
+    }
+
     writefln("*** Building with %s, %s arch", compiler, is64b ? "64-bit" : "32-bit");
     // build the output file
     string arch = is64b ? "x86_64" : "x86";
