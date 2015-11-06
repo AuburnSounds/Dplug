@@ -299,7 +299,7 @@ void buildPlugin(string compiler, string build, bool is64b, bool verbose, bool f
     // Produce output compatible with earlier OSX
     version(OSX)
     {
-        environment["MACOSX_DEPLOYMENT_TARGET"] = (compiler == "ldc") ? "10.7" : "10.6";
+        environment["MACOSX_DEPLOYMENT_TARGET"] = (compiler == "ldc2") ? "10.7" : "10.6";
     }
 
     string cmd = format("dub build --build=%s --arch=%s --compiler=%s %s %s %s", build,arch,
