@@ -2,6 +2,7 @@ import std.process;
 import std.file;
 import std.stdio;
 import std.string;
+import std.path;
 import std.uuid;
 
 
@@ -142,7 +143,7 @@ void main(string[] args)
 
 
         Plugin plugin = readDubDescription();
-        string dirName = format("%s-%s", plugin.name, plugin.ver);
+        string dirName = "builds";
 
         void fileMove(string source, string dest)
         {
@@ -182,12 +183,6 @@ void main(string[] args)
                     }
                 }
 
-                // Produce output compatible with earlier OSX
-                version(OSX)
-                {
-                    environment["MACOSX_DEPLOYMENT_TARGET"] = (compiler == "ldc") ? "10.7" : "10.6";
-                }
-
                 string path = outputDirectory(dirName, osString, arch, compiler);
 
                 writefln("Creating directory %s", path);
@@ -195,6 +190,16 @@ void main(string[] args)
 
                 if (arch != Arch.universalBinary)
                     buildPlugin(compiler, build, is64b, verbose, force, combined);
+
+                version(OSX)
+                {
+                    // Make icns and copy it (if any provided in dub.json)
+                    if (plugin.iconPath)
+                    {
+                        string icnsPath = makeMacIcon(plugin.name, plugin.iconPath); // TODO: this should be lazy
+                        fileMove(icnsPath, path ~ "/" ~ baseName(icnsPath));
+                    }
+                }
 
                 version(Windows)
                 {
@@ -233,6 +238,14 @@ void main(string[] args)
                     else
                         fileMove(plugin.outputFile, exePath);
                 }
+
+                // Copy license (if any provided in dub.json)
+                if (plugin.licensePath)
+                    fileMove(plugin.licensePath, path ~ "/" ~ baseName(plugin.licensePath));
+
+                // Copy user manual (if any provided in dub.json)
+                if (plugin.iconPath)
+                    fileMove(plugin.userManualPath, path ~ "/" ~ baseName(plugin.userManualPath));
             }
         }
 
@@ -283,6 +296,12 @@ void buildPlugin(string compiler, string build, bool is64b, bool verbose, bool f
     // build the output file
     string arch = is64b ? "x86_64" : "x86";
 
+    // Produce output compatible with earlier OSX
+    version(OSX)
+    {
+        environment["MACOSX_DEPLOYMENT_TARGET"] = (compiler == "ldc") ? "10.7" : "10.6";
+    }
+
     string cmd = format("dub build --build=%s --arch=%s --compiler=%s %s %s %s", build,arch,
         compiler,
         force ? "--force" : "",
@@ -299,6 +318,9 @@ struct Plugin
     string outputFile; // result of build
     string copyright;  // Copyright information, copied in the bundle
     string CFBundleIdentifier;
+    string userManualPath; // can be null
+    string licensePath;    // can be null
+    string iconPath;       // can be null or a path to a (large) .png
 }
 
 Plugin readDubDescription()
@@ -350,7 +372,34 @@ Plugin readDubDescription()
         version (OSX)
             throw new Exception("Your dub.json is missing a non-empty \"CFBundleIdentifier\" field to put in Info.plist");
         else
-            writeln("Warning: missing \"CFBundleIdentifier\" field in dub.json");
+            writeln("warning: missing \"CFBundleIdentifier\" field in dub.json");
+    }
+
+    try
+    {
+        result.userManualPath = rawDubFile["userManualPath"].str;
+    }
+    catch(Exception e)
+    {
+        writeln("info: no \"userManualPath\" provided in dub.json");
+    }
+
+    try
+    {
+        result.licensePath = rawDubFile["licensePath"].str;
+    }
+    catch(Exception e)
+    {
+        writeln("info: no \"licensePath\" provided in dub.json");
+    }
+
+    try
+    {
+        result.iconPath = rawDubFile["iconPath"].str;
+    }
+    catch(Exception e)
+    {
+        writeln("info: no \"iconPath\" provided in dub.json");
     }
     return result;
 }
@@ -393,3 +442,21 @@ string makePkgInfo()
     return "BNDLABAB";
 }
 
+// return path of newly made icon
+string makeMacIcon(string pluginName, string pngPath)
+{
+    string temp = tempDir();
+    string iconSetDir = buildPath(tempDir(), pluginName ~ ".iconset");
+    string outputIcon = buildPath(tempDir(), pluginName ~ ".icns");
+
+    //string cmd = format("lipo -create %s %s -output %s", path32, path64, exePath);
+    safeCommand(format("mkdir %s", iconSetDir));
+    safeCommand(format("sips -z 16 16     %s --out %s/icon_16x16.png", pngPath, iconSetDir));
+    safeCommand(format("sips -z 32 32     %s --out %s/icon_16x16@2x.png", pngPath, iconSetDir));
+    safeCommand(format("sips -z 32 32     %s --out %s/icon_32x32.png", pngPath, iconSetDir));
+    safeCommand(format("sips -z 64 64     %s --out %s/icon_32x32@2x.png", pngPath, iconSetDir));
+    safeCommand(format("sips -z 128 128   %s --out %s/icon_128x128.png", pngPath, iconSetDir));
+    safeCommand(format("sips -z 256 256   %s --out %s/icon_128x128@2x.png", pngPath, iconSetDir));
+    safeCommand(format("iconutil --convert icns --output %s %s", outputIcon, iconSetDir));
+    return outputIcon;
+}
