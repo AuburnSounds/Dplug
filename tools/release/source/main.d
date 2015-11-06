@@ -241,11 +241,11 @@ void main(string[] args)
 
                 // Copy license (if any provided in dub.json)
                 if (plugin.licensePath)
-                    fileMove(plugin.licensePath, path ~ "/" ~ baseName(plugin.licensePath));
+                    std.file.copy(plugin.licensePath, path ~ "/" ~ baseName(plugin.licensePath));
 
                 // Copy user manual (if any provided in dub.json)
                 if (plugin.iconPath)
-                    fileMove(plugin.userManualPath, path ~ "/" ~ baseName(plugin.userManualPath));
+                    std.file.copy(plugin.userManualPath, path ~ "/" ~ baseName(plugin.userManualPath));
             }
         }
 
@@ -450,7 +450,14 @@ string makeMacIcon(string pluginName, string pngPath)
     string outputIcon = buildPath(tempDir(), pluginName ~ ".icns");
 
     //string cmd = format("lipo -create %s %s -output %s", path32, path64, exePath);
-    safeCommand(format("mkdir %s", iconSetDir));
+    try
+    {
+        safeCommand(format("mkdir %s", iconSetDir));
+    }
+    catch(Exception e)
+    {
+        writefln(" => %s", e.msg);
+    }
     safeCommand(format("sips -z 16 16     %s --out %s/icon_16x16.png", pngPath, iconSetDir));
     safeCommand(format("sips -z 32 32     %s --out %s/icon_16x16@2x.png", pngPath, iconSetDir));
     safeCommand(format("sips -z 32 32     %s --out %s/icon_32x32.png", pngPath, iconSetDir));
