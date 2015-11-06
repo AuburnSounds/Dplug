@@ -82,7 +82,8 @@ Pros:
 - plugin parameters implement the Observer pattern
 - no need to use Xcode whatsoever
 - float parameters can have user-defined mapping
-- PBR-style rendering lets you have a good visual quality with less disk space, at the cost of more work.
+- PBR-style rendering lets you have a good visual quality with less disk space, at the cost of more work
+- no need to deal with resource compilers: D can `import("filename.ext")` them.
 
 Cons:
 - much less tested in general
