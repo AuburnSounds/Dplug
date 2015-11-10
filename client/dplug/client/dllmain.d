@@ -109,8 +109,8 @@ else version(OSX)
 
     bool needWorkaround15060() nothrow
     {
-        return true;
-/+
+//        return true;
+
         import std.regex;
         import std.string;
         import std.conv;
@@ -126,11 +126,11 @@ else version(OSX)
 
             if (auto captures = matchFirst(versionString, re))
             {
-                // >= OS X 10.10
-                // TODO: the workaround is needed in 10.10.4 but harmful in 10.6.8
-                //       find the real crossing-point
+                // >= OS X 10.7
+                // The workaround is needed in 10.10 and 10.9 but harmful in 10.6.8
+                // TODO find the real crossing-point
                 int kernVersion = to!int(captures[1]);
-                return kernVersion >= 14;
+                return kernVersion >= 11;
             }
             else
                 return false;
@@ -139,7 +139,6 @@ else version(OSX)
         {
             return false;
         }
-+/
     }
 
     alias dyld_image_states = int;
