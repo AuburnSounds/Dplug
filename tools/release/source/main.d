@@ -154,13 +154,13 @@ void main(string[] args)
         string dubPath = `C:\Users\ponce\Desktop\dub\bin`;
         auto oldpath = environment["PATH"];
 
-        static string outputDirectory(string dirName, string osString, Arch arch, string compiler)
+        static string outputDirectory(string dirName, string osString, Arch arch)
         {
-            return format("%s/%s_%s_VST_%s", dirName, osString, toString(arch), compiler);
+            return format("%s/%s-%s-VST", dirName, osString, toString(arch)); // no spaces because of lipo call
         }
 
 
-        void buildAndPackage(string compiler, Arch[] architectures)
+        void buildAndPackage(string compiler, Arch[] architectures, string iconPath)
         {
             foreach (arch; architectures)
             {
@@ -183,23 +183,13 @@ void main(string[] args)
                     }
                 }
 
-                string path = outputDirectory(dirName, osString, arch, compiler);
+                string path = outputDirectory(dirName, osString, arch);
 
                 writefln("Creating directory %s", path);
                 mkdirRecurse(path);
 
                 if (arch != Arch.universalBinary)
                     buildPlugin(compiler, build, is64b, verbose, force, combined);
-
-                version(OSX)
-                {
-                    // Make icns and copy it (if any provided in dub.json)
-                    if (plugin.iconPath)
-                    {
-                        string icnsPath = makeMacIcon(plugin.name, plugin.iconPath); // TODO: this should be lazy
-                        fileMove(icnsPath, path ~ "/" ~ baseName(icnsPath));
-                    }
-                }
 
                 version(Windows)
                 {
@@ -215,19 +205,22 @@ void main(string[] args)
                     mkdirRecurse(ressourcesDir);
                     mkdirRecurse(macosDir);
 
-                    string plist = makePListFile(plugin);
+                    string plist = makePListFile(plugin, iconPath != null);
                     std.file.write(contentsDir ~ "/Info.plist", cast(void[])plist);
 
                     std.file.write(contentsDir ~ "/PkgInfo", cast(void[])makePkgInfo());
+
+                    if (iconPath)
+                        std.file.copy(iconPath, contentsDir ~ "/Resources/icon.icns");
 
                     string exePath = macosDir ~ "/" ~ plugin.name;
 
                     if (arch == Arch.universalBinary)
                     {
-                        string path32 = outputDirectory(dirName, osString, Arch.x86, compiler)
+                        string path32 = outputDirectory(dirName, osString, Arch.x86)
                         ~ "/" ~ plugin.name ~ ".vst/Contents/MacOS/" ~plugin.name;
 
-                        string path64 = outputDirectory(dirName, osString, Arch.x64, compiler)
+                        string path64 = outputDirectory(dirName, osString, Arch.x64)
                         ~ "/" ~ plugin.name ~ ".vst/Contents/MacOS/" ~plugin.name;
 
                         writefln("*** Making an universal binary with lipo");
@@ -236,16 +229,10 @@ void main(string[] args)
                         safeCommand(cmd);
                     }
                     else
+                    {
                         fileMove(plugin.outputFile, exePath);
+                    }
                 }
-
-                // Copy license (if any provided in dub.json)
-                if (plugin.licensePath)
-                    std.file.copy(plugin.licensePath, path ~ "/" ~ baseName(plugin.licensePath));
-
-                // Copy user manual (if any provided in dub.json)
-                if (plugin.iconPath)
-                    std.file.copy(plugin.userManualPath, path ~ "/" ~ baseName(plugin.userManualPath));
             }
         }
 
@@ -253,10 +240,30 @@ void main(string[] args)
         bool hasGDC = compiler == Compiler.gdc || compiler == Compiler.all;
         bool hasLDC = compiler == Compiler.ldc || compiler == Compiler.all;
 
+        mkdirRecurse(dirName);
+
+        string iconPath = null;
+        version(OSX)
+        {
+            // Make icns and copy it (if any provided in dub.json)
+            if (plugin.iconPath)
+            {
+                iconPath = makeMacIcon(plugin.name, plugin.iconPath); // TODO: this should be lazy
+            }
+        }
+
+        // Copy license (if any provided in dub.json)
+        if (plugin.licensePath)
+            std.file.copy(plugin.licensePath, dirName ~ "/" ~ baseName(plugin.licensePath));
+
+        // Copy user manual (if any provided in dub.json)
+        if (plugin.iconPath)
+            std.file.copy(plugin.userManualPath, dirName ~ "/" ~ baseName(plugin.userManualPath));
+
         // DMD builds
-        if (hasDMD) buildAndPackage("dmd", archs);
-        if (hasGDC) buildAndPackage("gdc", archs);
-        if (hasLDC) buildAndPackage("ldc", archs);
+        if (hasDMD) buildAndPackage("dmd", archs, iconPath);
+        if (hasGDC) buildAndPackage("gdc", archs, iconPath);
+        if (hasLDC) buildAndPackage("ldc", archs, iconPath);
     }
     catch(Exception e)
     {
@@ -288,7 +295,7 @@ void buildPlugin(string compiler, string build, bool is64b, bool verbose, bool f
     // So force DMD usage for 32-bit plugins.
     if ( (is64b == false) && (compiler == "ldc2") )
     {
-        writefln("warning: forcing DMD compiler for 10.6 compatibility");
+        writefln("info: forcing DMD compiler for 10.6 compatibility");
         compiler = "dmd";
     }
 
@@ -404,7 +411,7 @@ Plugin readDubDescription()
     return result;
 }
 
-string makePListFile(Plugin plugin)
+string makePListFile(Plugin plugin, bool hasIcon)
 {
     string productName = plugin.name;
     string copyright = plugin.copyright;
@@ -432,6 +439,8 @@ string makePListFile(Plugin plugin)
     addKeyString("CFBundleSignature", "ABAB"); // doesn't matter http://stackoverflow.com/questions/1875912/naming-convention-for-cfbundlesignature-and-cfbundleidentifier
     addKeyString("CFBundleVersion", productVersion);
     addKeyString("LSMinimumSystemVersion", "10.6.0");
+    if (hasIcon)
+        addKeyString("CFBundleIconFile", "icon");
     content ~= `    </dict>` ~ "\n";
     content ~= `</plist>` ~ "\n";
     return content;
@@ -449,21 +458,24 @@ string makeMacIcon(string pluginName, string pngPath)
     string iconSetDir = buildPath(tempDir(), pluginName ~ ".iconset");
     string outputIcon = buildPath(tempDir(), pluginName ~ ".icns");
 
-    //string cmd = format("lipo -create %s %s -output %s", path32, path64, exePath);
-    try
+    if(!outputIcon.exists)
     {
-        safeCommand(format("mkdir %s", iconSetDir));
+        //string cmd = format("lipo -create %s %s -output %s", path32, path64, exePath);
+        try
+        {
+            safeCommand(format("mkdir %s", iconSetDir));
+        }
+        catch(Exception e)
+        {
+            writefln(" => %s", e.msg);
+        }
+        safeCommand(format("sips -z 16 16     %s --out %s/icon_16x16.png", pngPath, iconSetDir));
+        safeCommand(format("sips -z 32 32     %s --out %s/icon_16x16@2x.png", pngPath, iconSetDir));
+        safeCommand(format("sips -z 32 32     %s --out %s/icon_32x32.png", pngPath, iconSetDir));
+        safeCommand(format("sips -z 64 64     %s --out %s/icon_32x32@2x.png", pngPath, iconSetDir));
+        safeCommand(format("sips -z 128 128   %s --out %s/icon_128x128.png", pngPath, iconSetDir));
+        safeCommand(format("sips -z 256 256   %s --out %s/icon_128x128@2x.png", pngPath, iconSetDir));
+        safeCommand(format("iconutil --convert icns --output %s %s", outputIcon, iconSetDir));
     }
-    catch(Exception e)
-    {
-        writefln(" => %s", e.msg);
-    }
-    safeCommand(format("sips -z 16 16     %s --out %s/icon_16x16.png", pngPath, iconSetDir));
-    safeCommand(format("sips -z 32 32     %s --out %s/icon_16x16@2x.png", pngPath, iconSetDir));
-    safeCommand(format("sips -z 32 32     %s --out %s/icon_32x32.png", pngPath, iconSetDir));
-    safeCommand(format("sips -z 64 64     %s --out %s/icon_32x32@2x.png", pngPath, iconSetDir));
-    safeCommand(format("sips -z 128 128   %s --out %s/icon_128x128.png", pngPath, iconSetDir));
-    safeCommand(format("sips -z 256 256   %s --out %s/icon_128x128@2x.png", pngPath, iconSetDir));
-    safeCommand(format("iconutil --convert icns --output %s %s", outputIcon, iconSetDir));
     return outputIcon;
 }
