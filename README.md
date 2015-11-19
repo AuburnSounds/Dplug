@@ -6,7 +6,8 @@ dplug is a library for creating audio plugins.
 Additionally it comes with music DSP algorithms that might be useful for your next-generation MS converter plugin.
 **Currently support VST 2.x plugins on Windows and Mac OS X, 32-bit and 64-bit.**
 
-![Mandatory distortion example](screenshot.jpg "Mandatory distortion example")
+![Example screenshot](screenshot.jpg "With a bit of work")
+
 
 ## Contents
 
@@ -46,15 +47,16 @@ Additionally it comes with music DSP algorithms that might be useful for your ne
    * `tools/pbr-sketch`: workspace for creating plugin background textures
    * `tools/release`: DUB frontend to build Mac bundles and use LDC with proper envvars
    * `tools/ldvst`: small plugin host for testing loading, in D
-   * `tools/ldvst`: test plugin host for testing audio processing speed, in D
+   * `tools/process`: test plugin host for testing audio processing speed/reproducibility, in D
    * `tools/ldvst-cpp`: test plugin host for testing loading, in C++
    * `tools/wav-compare`: comparison of WAV files
    
 
 ## How to build plugins
 
-- Use the DMD compiler on Windows or the LDC compiler on Mac: http://dlang.org/download.html
+- Use the DMD >= 2.067 compiler on Windows and/or the LDC >= 0.16.0 compiler for Mac 64-bit: http://dlang.org/download.html
 - Install DUB, the D package manager: http://code.dlang.org/download
+- Compiling for Mac or with LDC? Use my DUB branch instead: https://github.com/p0nce/dub/tree/issue-635-bis
 - go in the `examples/distort` directory
 - type `dub --compiler=dmd` or `dub --compiler=ldc2` depending on the platform
 
@@ -78,7 +80,7 @@ Important contributors to WDL include:
 However dplug is **far** from a translation of WDL:
 
 Pros:
-- there is no plugin-wide mutex lock. All locks are of a short duration.
+- no plugin-wide mutex lock. All locks are of a short duration.
 - plugin parameters implement the Observer pattern
 - no need to use Xcode whatsoever
 - float parameters can have user-defined mapping
@@ -86,10 +88,12 @@ Pros:
 - no need to deal with resource compilers: D can `import("filename.ext")` them.
 
 Cons:
-- much less tested in general
+- less battle-tested in general
 - hipster compilers are used
 - API may change without notice (pin the version of dplug you use)
 - AU, AAX and VST3 unimplemented
+- no resizeable UI
+- no HDPI support
 
 
 
@@ -109,5 +113,21 @@ Find the VST3 SDK there: http://www.steinberg.net/en/company/developers.html
 
 Other source files fall under the Boost 1.0 license.
 
+
+### FAQ
+
+- What is the minimum Windows version supported?
+
+Windows XP+
+
+- What is the minimum OSX version supported?
+
+Mac OS X 10.6+
+Probably possible to go below easily, to do that modify the "release" tool.
+
+- What D compiler should I use?
+
+DMD >= 2.067
+LDC >= 16.0
 
 
