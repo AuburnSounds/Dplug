@@ -50,7 +50,7 @@ Additionally it comes with music DSP algorithms that might be useful for your ne
    * `tools/process`: test plugin host for testing audio processing speed/reproducibility, in D
    * `tools/ldvst-cpp`: test plugin host for testing loading, in C++
    * `tools/wav-compare`: comparison of WAV files
-   
+
 
 ## How to build plugins
 
@@ -123,11 +123,12 @@ Windows XP+
 - What is the minimum OSX version supported?
 
 Mac OS X 10.6+
-Probably possible to go below easily, to do that modify the "release" tool.
+Probably possible to go below, to do that modify the "release" tool.
 
 - What D compiler should I use?
 
-DMD >= 2.067
-LDC >= 16.0
+   * DMD >= 2.067
+
+   * LDC >= 0.16.0
 
 
