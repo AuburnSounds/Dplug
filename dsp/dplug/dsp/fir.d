@@ -122,12 +122,12 @@ void minimumPhaseImpulse(T)(T[] inoutImpulse,  Complex!T[] tempStorage) nothrow 
     for (int i = N; i < fftSize; ++i)
         kernel[i] = 0;
 
-    FFT!T(kernel[], FFTDirection.FORWARD);
+    forwardFFT!T(kernel[]);
 
     for (int i = 0; i < fftSize; ++i)
         kernel[i] = log(abs(kernel[i]));
 
-    FFT!T(kernel[], FFTDirection.REVERSE);
+    inverseFFT!T(kernel[]);
 
     for (int i = 1; i < halfFFTSize; ++i)
         kernel[i] *= 2;
@@ -135,12 +135,12 @@ void minimumPhaseImpulse(T)(T[] inoutImpulse,  Complex!T[] tempStorage) nothrow 
     for (int i = halfFFTSize + 1; i < halfFFTSize; ++i)
         kernel[i] = 0;
 
-    FFT!T(kernel[], FFTDirection.FORWARD);
+    forwardFFT!T(kernel[]);
 
     for (int i = 0; i < fftSize; ++i)
         kernel[i] = complexExp(kernel[i]);
 
-    FFT!T(kernel[], FFTDirection.REVERSE);
+    inverseFFT!T(kernel[]);
 
     for (int i = 0; i < N; ++i)
         inoutImpulse[i] = kernel[i].re;

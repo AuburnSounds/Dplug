@@ -21,9 +21,22 @@ enum FFTDirection
     FORWARD = 0,
     REVERSE = 1
 }
-    
+
 /// Perform in-place FFT.
-void FFT(T)(Complex!T[] buffer, FFTDirection direction) nothrow @nogc
+/// Equivalent to `std.numeric.fft`, but this one is nothrow @nogc.
+void forwardFFT(T)(Complex!T[] buffer) nothrow @nogc
+{
+    FFT_internal!(T, FFTDirection.FORWARD)(buffer);
+}
+
+/// Perform in-place inverse FFT.
+/// Equivalent to `std.numeric.inverseFft`, but this one is nothrow @nogc.
+void inverseFFT(T)(Complex!T[] buffer) nothrow @nogc
+{
+    FFT_internal!(T, FFTDirection.REVERSE)(buffer);
+}
+
+private void FFT_internal(T, FFTDirection direction)(Complex!T[] buffer) nothrow @nogc
 {
     int size = cast(int)(buffer.length);
     assert(isPowerOf2(size));
@@ -73,18 +86,51 @@ void FFT(T)(Complex!T[] buffer, FFTDirection direction) nothrow @nogc
         }
 
         T newImag = sqrt((1 - c.re) / 2);
-        if (direction == FFTDirection.FORWARD)
+        static if (direction == FFTDirection.FORWARD)
             newImag = -newImag;
         T newReal = sqrt((1 + c.re) / 2);
         c = Complex!T(newReal, newImag);
     }
 
-    // scaling for forward transformation
-    if (direction == FFTDirection.FORWARD)
+    // scaling when doing the reverse transformation, to avoid being multiplied by size
+    static if (direction == FFTDirection.REVERSE)
     {
+        T divider = 1 / cast(T)size;
         for (int i = 0; i < size; ++i)
-            buffer[i] = buffer[i] / Complex!T(cast(T)size, 0);
+        {
+            buffer[i].re = buffer[i].re * divider;
+            buffer[i].im = buffer[i].im * divider;
+        }
     }
+}
+
+
+// should operate the same as Phobos FFT
+unittest
+{
+    import std.numeric;
+
+    bool approxEqualArr(Complex!double[] a, Complex!double[] b) pure
+    {
+        foreach(i; 0..a.length)
+        {
+            if (!approxEqual(a[i].re, b[i].re))
+                return false;
+            if (!approxEqual(a[i].im, b[i].im))
+                return false;
+        }
+        return true;
+    }
+
+    Complex!double[] A = [Complex!double(1, 0), Complex!double(13, -4), Complex!double(5, -5), Complex!double(0, 2)];
+    auto fftARef = fft(A);
+    assert(approxEqualArr(inverseFft(fftARef), A));
+
+    auto B = A.dup;
+    forwardFFT(B);
+    assert(approxEqualArr(B, fftARef));
+    inverseFFT(B);
+    assert(approxEqualArr(B, A));
 }
 
 /// From a signal, output chunks of determined size, with optional overlap.
@@ -341,7 +387,7 @@ public:
             }
 
             // perform forward FFT on this slice
-            FFT!float(fftData[0.._fftSize], FFTDirection.FORWARD);
+            forwardFFT!float(fftData[0.._fftSize]);
         }
 
         return _segmenter.feed(x, &processSegment); // TODO: not sure this doesn't allocate
