@@ -40,22 +40,21 @@ double secondaryLobeAttenuationInDb(WindowType type) pure nothrow @nogc
 
 double evalWindow(WindowType type, int n, int N) pure nothrow @nogc
 {
+    double phi = (2 * PI * (n + 1)) / (N + 1);
+
     final switch(type)
     {
         case WindowType.RECT:
             return 1.0;
 
         case WindowType.HANN:
-            return 0.5 - 0.5 * cos((2 * PI * n) / (N - 1));
+            return 0.5 - 0.5 * cos(phi);
 
         case WindowType.HAMMING:
-            return 0.54 - 0.46 * cos((2 * PI * n) / (N - 1));
+            return 0.54 - 0.46 * cos(phi);
 
         case WindowType.BLACKMANN:
-            {
-                double phi = (2 * PI * n) / (N - 1);
-                return 0.42 - 0.5 * cos(phi) + 0.08 * cos(2 * phi);
-            }
+            return 0.42 - 0.5 * cos(phi) + 0.08 * cos(2 * phi);
     }
 }
 
