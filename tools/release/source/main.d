@@ -66,6 +66,7 @@ void main(string[] args)
             archs = [ Arch.x64 ];
 
         string build="debug";
+        string config = "VST";
         bool verbose = false;
         bool force = false;
         bool combined = false;
@@ -85,7 +86,7 @@ void main(string[] args)
             string arg = args[i];
             if (arg == "-v")
                 verbose = true;
-            else if (arg == "-c")
+            else if (arg == "-c" || arg == "--compiler")
             {
                 ++i;
                 if (args[i] == "dmd")
@@ -97,6 +98,11 @@ void main(string[] args)
                 else if (args[i] == "all")
                     compiler = Compiler.all;
                 else throw new Exception("Unrecognized compiler (available: dmd, ldc, gdc, all)");
+            }
+            else if (arg == "--config")
+            {
+                ++i;
+                config = args[i];
             }
             else if (arg == "-comb"|| arg == "--combined")
                 combined = true;
@@ -160,7 +166,7 @@ void main(string[] args)
         }
 
 
-        void buildAndPackage(string compiler, Arch[] architectures, string iconPath)
+        void buildAndPackage(string compiler, string config, Arch[] architectures, string iconPath)
         {
             foreach (arch; architectures)
             {
@@ -189,7 +195,7 @@ void main(string[] args)
                 mkdirRecurse(path);
 
                 if (arch != Arch.universalBinary)
-                    buildPlugin(compiler, build, is64b, verbose, force, combined);
+                    buildPlugin(compiler, config, build, is64b, verbose, force, combined);
 
                 version(Windows)
                 {
@@ -198,8 +204,17 @@ void main(string[] args)
                 }
                 else version(OSX)
                 {
+                    // Only accepts two configurations: VST and AudioUnit
+                    string pluginDir;
+                    if (config == "VST")
+                        pluginDir = plugin.name ~ ".vst";
+                    else if (config == "AU")
+                        pluginDir = plugin.name ~ ".component";
+                    else
+                        throw new Exception("Only configurations accepted are 'VST' or 'AU'");
+
                     // On Mac, make a bundle directory
-                    string contentsDir = path ~ "/" ~ plugin.name ~ ".vst/Contents";
+                    string contentsDir = path ~ "/" ~ pluginDir ~ "/Contents";
                     string ressourcesDir = contentsDir ~ "/Resources";
                     string macosDir = contentsDir ~ "/MacOS";
                     mkdirRecurse(ressourcesDir);
@@ -218,10 +233,10 @@ void main(string[] args)
                     if (arch == Arch.universalBinary)
                     {
                         string path32 = outputDirectory(dirName, osString, Arch.x86)
-                        ~ "/" ~ plugin.name ~ ".vst/Contents/MacOS/" ~plugin.name;
+                        ~ "/" ~ pluginDir ~ "/Contents/MacOS/" ~plugin.name;
 
                         string path64 = outputDirectory(dirName, osString, Arch.x64)
-                        ~ "/" ~ plugin.name ~ ".vst/Contents/MacOS/" ~plugin.name;
+                        ~ "/" ~ pluginDir ~ "/Contents/MacOS/" ~plugin.name;
 
                         writefln("*** Making an universal binary with lipo");
 
@@ -261,9 +276,9 @@ void main(string[] args)
             std.file.copy(plugin.userManualPath, dirName ~ "/" ~ baseName(plugin.userManualPath));
 
         // DMD builds
-        if (hasDMD) buildAndPackage("dmd", archs, iconPath);
-        if (hasGDC) buildAndPackage("gdc", archs, iconPath);
-        if (hasLDC) buildAndPackage("ldc", archs, iconPath);
+        if (hasDMD) buildAndPackage("dmd", config, archs, iconPath);
+        if (hasGDC) buildAndPackage("gdc", config, archs, iconPath);
+        if (hasLDC) buildAndPackage("ldc", config, archs, iconPath);
     }
     catch(Exception e)
     {
@@ -280,7 +295,7 @@ void safeCommand(string cmd)
         throw new Exception(format("Command '%s' returned %s", cmd, errorCode));
 }
 
-void buildPlugin(string compiler, string build, bool is64b, bool verbose, bool force, bool combined)
+void buildPlugin(string compiler, string config, string build, bool is64b, bool verbose, bool force, bool combined)
 {
     if (compiler == "ldc")
         compiler = "ldc2";
@@ -309,11 +324,14 @@ void buildPlugin(string compiler, string build, bool is64b, bool verbose, bool f
         environment["MACOSX_DEPLOYMENT_TARGET"] = (compiler == "ldc2") ? "10.7" : "10.6";
     }
 
-    string cmd = format("dub build --build=%s --arch=%s --compiler=%s %s %s %s", build,arch,
+    string cmd = format("dub build --build=%s --arch=%s --compiler=%s %s %s %s %s",
+        build, arch,
         compiler,
         force ? "--force" : "",
         verbose ? "-v" : "",
-        combined ? "--combined" : "");
+        combined ? "--combined" : "",
+        config ? "--config=" ~ config : ""
+        );
     safeCommand(cmd);
 }
 

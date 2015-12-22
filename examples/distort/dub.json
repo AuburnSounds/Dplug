@@ -3,7 +3,7 @@
     "license": "public domain",
     "importPaths": [ "." ],
     "sourcePaths": [ "." ],
-    "targetType": "dynamicLibrary",
+    "comment-targetType": "dynamicLibrary",
     "stringImportPaths": ["fonts", "gfx"],
 
     "copyright": "none",
@@ -19,5 +19,18 @@
         "dplug:vst": { "path": "../.." },
         "dplug:client": { "path": "../.." },
         "dplug:gui": { "path": "../.." }
-    }
+    },
+
+    "configurations": [
+        {
+            "name": "VST",
+            "versions": ["VST"],
+            "targetType": "dynamicLibrary"
+        },
+        {
+            "name": "AU",
+            "versions": ["AU"],
+            "targetType": "dynamicLibrary"
+        }
+    ]
 }
