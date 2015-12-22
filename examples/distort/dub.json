@@ -7,7 +7,7 @@
     "stringImportPaths": ["fonts", "gfx"],
 
     "copyright": "none",
-    "CFBundleIdentifier": "com.audiocompany.vst.distort",
+    "CFBundleIdentifierPrefix": "com.audiocompany",
 
     "sourceFiles-windows": [
         "./distort.def"

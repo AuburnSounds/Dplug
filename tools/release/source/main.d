@@ -14,6 +14,7 @@ void usage()
     writeln("  -a                selects arch x86|x64|all (default: win => all   mac => x64)");
     writeln("  -b                selects builds (default: release-nobounds)");
     writeln("  -c                selects compiler dmd|ldc|gdc|all (default: dmd)");
+    writeln("  --config          selects configuration VST|AU|<other> (default: VST)");
     writeln("  -f|--force        selects compiler dmd|ldc|gdc|all (default: no)");
     writeln("  -comb|--combined  combined build (default: no)");
     writeln("  -h|--help         shows this help");
@@ -160,11 +161,10 @@ void main(string[] args)
         string dubPath = `C:\Users\ponce\Desktop\dub\bin`;
         auto oldpath = environment["PATH"];
 
-        static string outputDirectory(string dirName, string osString, Arch arch)
+        static string outputDirectory(string dirName, string osString, Arch arch, string config)
         {
-            return format("%s/%s-%s-VST", dirName, osString, toString(arch)); // no spaces because of lipo call
+            return format("%s/%s-%s-%s", dirName, osString, toString(arch), config); // no spaces because of lipo call
         }
-
 
         void buildAndPackage(string compiler, string config, Arch[] architectures, string iconPath)
         {
@@ -189,7 +189,7 @@ void main(string[] args)
                     }
                 }
 
-                string path = outputDirectory(dirName, osString, arch);
+                string path = outputDirectory(dirName, osString, arch, config);
 
                 writefln("Creating directory %s", path);
                 mkdirRecurse(path);
@@ -211,7 +211,7 @@ void main(string[] args)
                     else if (config == "AU")
                         pluginDir = plugin.name ~ ".component";
                     else
-                        throw new Exception("Only configurations accepted are 'VST' or 'AU'");
+                        pluginDir = plugin.name;
 
                     // On Mac, make a bundle directory
                     string contentsDir = path ~ "/" ~ pluginDir ~ "/Contents";
@@ -220,7 +220,7 @@ void main(string[] args)
                     mkdirRecurse(ressourcesDir);
                     mkdirRecurse(macosDir);
 
-                    string plist = makePListFile(plugin, iconPath != null);
+                    string plist = makePListFile(plugin, config, iconPath != null);
                     std.file.write(contentsDir ~ "/Info.plist", cast(void[])plist);
 
                     std.file.write(contentsDir ~ "/PkgInfo", cast(void[])makePkgInfo());
@@ -232,10 +232,10 @@ void main(string[] args)
 
                     if (arch == Arch.universalBinary)
                     {
-                        string path32 = outputDirectory(dirName, osString, Arch.x86)
+                        string path32 = outputDirectory(dirName, osString, Arch.x86, config)
                         ~ "/" ~ pluginDir ~ "/Contents/MacOS/" ~plugin.name;
 
-                        string path64 = outputDirectory(dirName, osString, Arch.x64)
+                        string path64 = outputDirectory(dirName, osString, Arch.x64, config)
                         ~ "/" ~ pluginDir ~ "/Contents/MacOS/" ~plugin.name;
 
                         writefln("*** Making an universal binary with lipo");
@@ -342,7 +342,7 @@ struct Plugin
     string ver;        // version information
     string outputFile; // result of build
     string copyright;  // Copyright information, copied in the bundle
-    string CFBundleIdentifier;
+    string CFBundleIdentifierPrefix;
     string userManualPath; // can be null
     string licensePath;    // can be null
     string iconPath;       // can be null or a path to a (large) .png
@@ -390,14 +390,14 @@ Plugin readDubDescription()
 
     try
     {
-        result.CFBundleIdentifier = rawDubFile["CFBundleIdentifier"].str;
+        result.CFBundleIdentifierPrefix = rawDubFile["CFBundleIdentifierPrefix"].str;
     }
     catch(Exception e)
     {
         version (OSX)
-            throw new Exception("Your dub.json is missing a non-empty \"CFBundleIdentifier\" field to put in Info.plist");
+            throw new Exception("Your dub.json is missing a non-empty \"CFBundleIdentifierPrefix\" field to put in Info.plist");
         else
-            writeln("warning: missing \"CFBundleIdentifier\" field in dub.json");
+            writeln("warning: missing \"CFBundleIdentifierPrefix\" field in dub.json");
     }
 
     try
@@ -429,7 +429,7 @@ Plugin readDubDescription()
     return result;
 }
 
-string makePListFile(Plugin plugin, bool hasIcon)
+string makePListFile(Plugin plugin, string config, bool hasIcon)
 {
     string productName = plugin.name;
     string copyright = plugin.copyright;
@@ -450,7 +450,19 @@ string makePListFile(Plugin plugin, bool hasIcon)
     addKeyString("CFBundleDevelopmentRegion", "English");
 
     addKeyString("CFBundleGetInfoString", productVersion ~ ", " ~ copyright);
-    addKeyString("CFBundleIdentifier", plugin.CFBundleIdentifier);
+
+    string CFBundleIdentifier;
+    if (config == "VST")
+        CFBundleIdentifier = plugin.CFBundleIdentifierPrefix ~ ".vst." ~ plugin.name;
+    else if (config == "AU")
+        CFBundleIdentifier = plugin.CFBundleIdentifierPrefix ~ ".audiounit." ~ plugin.name;
+    else
+        CFBundleIdentifier = plugin.CFBundleIdentifierPrefix ~ "." ~ plugin.name;
+    addKeyString("CFBundleIdentifier", CFBundleIdentifier);
+
+    if (config == "AU")
+        addKeyString("NSPrincipalClass", "dplug_view");
+
     addKeyString("CFBundleInfoDictionaryVersion", "6.0");
     addKeyString("CFBundlePackageType", "BNDL");
     addKeyString("CFBundleShortVersionString", productVersion);
