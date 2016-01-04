@@ -3,7 +3,6 @@
     "license": "public domain",
     "importPaths": [ "." ],
     "sourcePaths": [ "." ],
-    "comment-targetType": "dynamicLibrary",
     "stringImportPaths": ["fonts", "gfx"],
 
     "copyright": "none",
