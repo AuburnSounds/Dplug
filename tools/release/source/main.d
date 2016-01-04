@@ -379,7 +379,7 @@ Plugin readDubDescription()
                     throw new Exception("Your dub.json is missing a non-empty \"copyright\" field to put in Info.plist");
                 }
                 else
-                    writeln("Warning: missing \"copyright\" field in dub.json");
+                    writeln("warning: missing \"copyright\" field in dub.json");
             }
             result.copyright = copyright;
         }
