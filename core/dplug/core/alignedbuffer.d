@@ -105,7 +105,7 @@ final class AlignedBuffer(T)
             }
         }
 
-        /// Retuns: Raw pointer to data.
+        /// Returns: Raw pointer to data.
         @property inout(T)* ptr() inout nothrow @nogc
         {
             return _data;
@@ -165,7 +165,7 @@ unittest
 
     Xorshift32 rng;
     rng.seed(0xBAADC0DE);
-    
+
     struct box2i { int a, b, c, d; }
     AlignedBuffer!box2i[] boxes;
 

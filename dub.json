@@ -58,6 +58,14 @@
             }
         },
         {
+            "name": "au",
+            "sourcePaths": [ "au/dplug/au" ],
+            "importPaths": [ "au" ],
+            "dependencies": {
+                "dplug:client": "*"
+            }
+        },
+        {
             "name": "window",
             "sourcePaths": [ "window/dplug/window" ],
             "importPaths": [ "window" ],

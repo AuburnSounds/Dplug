@@ -10,11 +10,18 @@ import gfm.image;
 import dplug.core,
        dplug.client,
        dplug.vst,
+       dplug.au,
        dplug.dsp,
        dplug.gui;
 
 mixin(DLLEntryPoint!());
-mixin(VSTEntryPoint!Distort);
+
+version(VST)
+    mixin(VSTEntryPoint!Distort);
+
+version(AU)
+    mixin(AUEntryPoint!Distort);
+
 
 /// Example mono/stereo distortion plugin.
 final class Distort : dplug.client.Client
