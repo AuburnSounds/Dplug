@@ -177,19 +177,19 @@ class PBRCompositor : Compositor
                     }
 
                     // compute normal
-                    float sx = depthPatch[1][0]     + depthPatch[1][1] * 2
-                        + depthPatch[2][0] * 2 + depthPatch[2][1] * 4
-                        + depthPatch[3][0]     + depthPatch[3][1] * 2
-                        - ( depthPatch[1][3] * 2 + depthPatch[1][4]
-                            + depthPatch[2][3] * 4 + depthPatch[2][4] * 2
-                           + depthPatch[3][3] * 2 + depthPatch[3][4] );
+                    float sx = depthPatch[1][1]
+                        + depthPatch[2][1] * 2
+                        + depthPatch[3][1]
+                        - ( depthPatch[1][3]
+                            + depthPatch[2][3] * 2
+                           + depthPatch[3][3]);
 
-                    float sy = depthPatch[3][1] * 2 + depthPatch[3][2] * 4 + depthPatch[3][3] * 2
-                        + depthPatch[4][1]     + depthPatch[4][2] * 2 + depthPatch[4][3]
-                        - ( depthPatch[0][1]     + depthPatch[0][2] * 2 + depthPatch[0][3]
-                            + depthPatch[1][1] * 2 + depthPatch[1][2] * 4 + depthPatch[1][3] * 2);
+                   float sy = depthPatch[3][1] + depthPatch[3][2] * 2 + depthPatch[3][3]
+                        - ( depthPatch[1][1] + depthPatch[1][2] * 2 + depthPatch[1][3]);
 
-                    enum float sz = 260.0f * 257.0f; // this factor basically tweak normals to make the UI flatter or not
+                    // this factor basically tweak normals to make the UI flatter or not
+                    // if you change normal filtering, retune this
+                    enum float sz = 260.0f * 257.0f / 1.8f; 
 
                     vec3f normal = vec3f(sx, sy, sz);
                     normal.normalize();
