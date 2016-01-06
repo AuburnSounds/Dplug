@@ -131,6 +131,16 @@ Probably possible to go below, to do that modify the "release" tool.
 
    * LDC >= 0.16.0
 
-
-
 ![Rendering](rendering.jpg)
+
+
+### Release notes
+
+- v2.x.y:
+  * this is the next release, and API will break without notice
+  * supports VST/AU support for 32-bit and 64-bit, Windows and Mac
+  * `release` tool now expects a VST or AU configuration, see the `distort` example for details
+  * special `dub.json` key `CFBundleIdentifier` became `CFBundleIdentifierPrefix`, see how `distort` works to update your plugins dub.json
+
+- v1.x.y:
+  * initial release, VST support for 32-bit and 64-bit, Windows and Mac
