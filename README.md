@@ -131,6 +131,10 @@ Probably possible to go below, to do that modify the "release" tool.
 
    * LDC >= 0.16.0
 
+- Is dplug stable?
+
+No. use a v1.x.y tag to get stability.
+
 ![Rendering](rendering.jpg)
 
 
