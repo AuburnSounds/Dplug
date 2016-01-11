@@ -5,7 +5,7 @@
  */
 module dplug.core.alignedbuffer;
 
-import std.c.string;
+import core.stdc.string;
 
 import gfm.core.memory;
 
