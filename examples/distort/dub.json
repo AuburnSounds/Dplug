@@ -9,7 +9,7 @@
     "CFBundleIdentifierPrefix": "com.audiocompany",
 
     "sourceFiles-windows": [
-        "./distort.def"
+        "./module.def"
     ],
 
     "dependencies":
