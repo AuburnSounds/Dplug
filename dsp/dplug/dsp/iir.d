@@ -274,12 +274,15 @@ public
 
 
     // 1-pole low-pass filter
+    // Not accurate, but coefficient computation is cheap.
     BiquadCoeff!T lowpassFilter1Pole(T)(double frequency, double samplerate) nothrow @nogc
     {
-        double w0 = 0.5 * frequency / samplerate;
-        double t0 = w0 * 0.5;
-        double t1 = 2 - cos(t0 * PI);
-        double t2 = (1 - 2 * t0) * (1 - 2 * t0);
+        double t0 = frequency / samplerate;
+        if (t0 > 0.5f)
+            t0 = 0.5f;
+
+        double t1 = (1 - 2 * t0);
+        double t2  = t1 * t1;
 
         BiquadCoeff!T result;
         result[0] = cast(T)(1 - t2);
@@ -293,10 +296,12 @@ public
     // 1-pole high-pass filter
     BiquadCoeff!T highpassFilter1Pole(T)(double frequency, double samplerate) nothrow @nogc
     {
-        double w0 = 0.5 * frequency / samplerate;
-        double t0 = w0 * 0.5;
-        double t1 = 2 + cos(t0 * PI);
-        double t2 = (2 * t0) * (2 * t0);
+        double t0 = frequency / samplerate;
+        if (t0 > 0.5f)
+            t0 = 0.5f;
+
+        double t1 = (2 * t0);
+        double t2 = t1 * t1;
 
         BiquadCoeff!T result;
         result[0] = cast(T)(t2 - 1);
@@ -372,6 +377,16 @@ public
     BiquadCoeff!T peakFilterRBJ(T)(double frequency, double samplerate, double gain, double Q = SQRT1_2) nothrow @nogc
     {
         return generateBiquad!T(BiquadType.PEAK_FILTER, frequency, samplerate, gain, Q);
+    }
+
+    BiquadCoeff!T lowShelfFilterRBJ(T)(double frequency, double samplerate, double gain, double Q = SQRT1_2) nothrow @nogc
+    {
+        return generateBiquad!T(BiquadType.LOW_SHELF, frequency, samplerate, gain, Q);
+    }
+
+    BiquadCoeff!T highShelfFilterRBJ(T)(double frequency, double samplerate, double gain, double Q = SQRT1_2) nothrow @nogc
+    {
+        return generateBiquad!T(BiquadType.HIGH_SHELF, frequency, samplerate, gain, Q);
     }
 
     // Initialize with no-op filter
@@ -527,6 +542,8 @@ unittest
     auto i = peakFilterRBJ!real(3000.0, 44100.0, 6, 0.5);
     auto j = bypassFilter!float();
     auto k = zeroFilter!float();
+    auto l = lowShelfFilterRBJ!float(300.0, 44100.0, 0.7);
+    auto m = highShelfFilterRBJ!double(300.0, 44100.0, 0.7);
 }
 
 version(D_InlineAsm_X86)
