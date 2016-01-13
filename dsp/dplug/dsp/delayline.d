@@ -109,13 +109,8 @@ public:
             float fPart = cast(float)(sampleLoc - iPart);
             assert(fPart >= 0.0f);
             assert(fPart <= 1.0f);
-            T x0  = _data[ iPart      & _indexMask];
-
-            // early exit, allows to smooth delay to integer values and speed-up things
-            if (fPart == 0)
-                return x0;
-
             T xm1 = _data[(iPart - 1) & _indexMask];
+            T x0  = _data[ iPart      & _indexMask];
             T x1  = _data[(iPart + 1) & _indexMask];
             T x2  = _data[(iPart + 2) & _indexMask];
             return hermite!T(fPart, xm1, x0, x1, x2);
