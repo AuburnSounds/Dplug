@@ -18,8 +18,9 @@ T linmap(T)(T value, T a, T b, T c, T d) pure nothrow @nogc
 
 /// map [0..1] to [min..max] logarithmically
 /// min and max must be all > 0, t in [0..1]
-T logmap(T)(T t, T min, T max, ) pure nothrow @nogc
+T logmap(T)(T t, T min, T max) pure nothrow @nogc
 {
+    assert(min < max);
     return min * exp(t * log(max / min));
 }
 
