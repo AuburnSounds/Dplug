@@ -38,8 +38,8 @@ enum Arch
 Arch[] allArchitectureqForThisPlatform()
 {
     Arch[] archs = [Arch.x86, Arch.x64];
-        version (OSX)
-            archs ~= [Arch.universalBinary]; // only Mac has universal binaries
+    version (OSX)
+        archs ~= [Arch.universalBinary]; // only Mac has universal binaries
     return archs;
 }
 
@@ -200,7 +200,19 @@ void main(string[] args)
                 version(Windows)
                 {
                     // On Windows, simply copy the file
-                    fileMove(plugin.outputFile, path ~ "/" ~ plugin.outputFile);
+                    string appendBitness(string filename)
+                    {
+                        if (is64b)
+                        {
+                            // Issue #84
+                            // Rename 64-bit binary on Windows to get Reaper to list both 32-bit and 64-bit plugins if in the same directory
+                            return stripExtension(filename) ~ "-64" ~ extension(filename);
+                        }
+                        else
+                            return filename;
+                    }
+
+                    fileMove(plugin.outputFile, path ~ "/" ~ appendBitness(plugin.outputFile));
                 }
                 else version(OSX)
                 {
