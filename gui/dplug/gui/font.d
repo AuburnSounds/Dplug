@@ -17,10 +17,6 @@ import gfm.image.stb_truetype;
 import dplug.core.unchecked_sync;
 
 
-// Put in quarantine to avoid https://issues.dlang.org/show_bug.cgi?id=14480
-
-
-
 final class Font
 {
 public:
