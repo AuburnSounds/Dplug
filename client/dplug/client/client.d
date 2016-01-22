@@ -193,7 +193,7 @@ public:
     /// Returns: The parameter indexed by index.
     final Parameter param(int index) nothrow @nogc
     {
-        return _params[index];
+        return _params.ptr[index];
     }
 
     /// Returns: true if index is a valid parameter index.
