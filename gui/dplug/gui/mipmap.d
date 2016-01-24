@@ -488,11 +488,11 @@ struct Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
                                     int red =   (a.r * alphaA + b.r * alphaB + c.r * alphaC + d.r * alphaD);
                                     int green = (a.g * alphaA + b.g * alphaB + c.g * alphaC + d.g * alphaD);
                                     int blue =  (a.b * alphaA + b.b* alphaB + c.b * alphaC + d.b * alphaD);
-                                    int offset = sum >> 1;
+                                    float invSum = 1 / cast(float)sum;
 
-                                    return RGBA( cast(ubyte)( (red + offset) / sum),
-                                                 cast(ubyte)( (green + offset) / sum),
-                                                 cast(ubyte)( (blue + offset) / sum),
+                                    return RGBA( cast(ubyte)( 0.5f + red * invSum),
+                                                 cast(ubyte)( 0.5f + green * invSum),
+                                                 cast(ubyte)( 0.5f + blue * invSum),
                                                  destAlpha );
                                 }
                             }
