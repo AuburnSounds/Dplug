@@ -387,11 +387,11 @@ struct Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
                             int red =   (A.r * alphaA + B.r * alphaB + C.r * alphaC + D.r * alphaD);
                             int green = (A.g * alphaA + B.g * alphaB + C.g * alphaC + D.g * alphaD);
                             int blue =  (A.b * alphaA + B.b* alphaB + C.b * alphaC + D.b * alphaD);
-                            int offset = sum >> 1;
+                            float invSum = 1 / cast(float)(sum);
 
-                            RGBA finalColor = RGBA( cast(ubyte)( (red + offset) / sum),
-                                                    cast(ubyte)( (green + offset) / sum),
-                                                    cast(ubyte)( (blue + offset) / sum),
+                            RGBA finalColor = RGBA( cast(ubyte)(0.5f + red * invSum),
+                                                    cast(ubyte)(0.5f + green * invSum),
+                                                    cast(ubyte)(0.5f + blue * invSum),
                                                     cast(ubyte)destAlpha );
                             dest.ptr[x] = finalColor;
                         }
@@ -488,11 +488,11 @@ struct Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
                                     int red =   (a.r * alphaA + b.r * alphaB + c.r * alphaC + d.r * alphaD);
                                     int green = (a.g * alphaA + b.g * alphaB + c.g * alphaC + d.g * alphaD);
                                     int blue =  (a.b * alphaA + b.b* alphaB + c.b * alphaC + d.b * alphaD);
-                                    int offset = sum >> 1;
+                                    float invSum = 1 / cast(float)sum;
 
-                                    return RGBA( cast(ubyte)( (red + offset) / sum),
-                                                 cast(ubyte)( (green + offset) / sum),
-                                                 cast(ubyte)( (blue + offset) / sum),
+                                    return RGBA( cast(ubyte)( 0.5f + red * invSum),
+                                                 cast(ubyte)( 0.5f + green * invSum),
+                                                 cast(ubyte)( 0.5f + blue * invSum),
                                                  destAlpha );
                                 }
                             }
