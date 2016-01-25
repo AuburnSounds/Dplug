@@ -387,6 +387,31 @@ public:
         return _info.pluginID;
     }
 
+
+    /// Boilerplate function to get the value of a `FloatParameter`, for use in `processAudio`.
+    final float readFloatParamValue(int paramIndex) nothrow @nogc
+    {
+        auto p = param(paramIndex);
+        assert(cast(FloatParameter)p !is null); // check it's a FloatParameter
+        return unsafeObjectCast!FloatParameter(p).value();
+    }
+
+    /// Boilerplate function to get the value of an `IntParameter`, for use in `processAudio`.
+    final int readIntParamValue(int paramIndex) nothrow @nogc
+    {
+        auto p = param(paramIndex);
+        assert(cast(IntParameter)p !is null); // check it's an IntParameter
+        return unsafeObjectCast!IntParameter(p).value();
+    }
+
+    /// Boilerplate function to get the value of a `BoolParameter`,for use in `processAudio`.
+    final bool readBoolParamValue(int paramIndex) nothrow @nogc
+    {
+        auto p = param(paramIndex);
+        assert(cast(BoolParameter)p !is null); // check it's a BoolParameter
+        return unsafeObjectCast!BoolParameter(p).value();
+    }
+
 protected:
 
     /// Override this method to implement parameter creation.
