@@ -842,9 +842,18 @@ private:
     {
         preprocess(sampleFrames);
 
-        // Not sure if the hosts would support an overwriting of these pointers, so copy them
+        // Some hosts (Orion) send identical input and ouput pointers. 
+        // We copy them to a scratch buffer to keep the constaness guarantee of input buffers.
         for (int i = 0; i < _usedInputs; ++i)
+        {
             _inputPointers[i] = inputs[i];
+            float* source = inputs[i];
+            float* dest = _inputScratchBuffer[i].ptr;
+            dest[0..sampleFrames] = source[0..sampleFrames];
+            _inputPointers[i] = dest;
+        }
+
+        // Unused input channels point to an array of zeroes
         for (int i = 0; i < _usedOutputs; ++i)
             _outputPointers[i] = outputs[i];
 
