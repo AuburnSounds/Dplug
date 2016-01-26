@@ -31,14 +31,23 @@ import dplug.client.client;
 class Parameter
 {
 public:
+
+    /// Returns: Parameters name. Displayed when the plugin has no UI.
     string name() pure const nothrow @nogc
     {
         return _name;
     }
 
+    /// Returns: Parameters unit label. 
     string label() pure const nothrow @nogc
     {
         return _label;
+    }
+
+    /// Returns: Index of parameter in the parameter list.
+    int index() pure const nothrow @nogc
+    {
+        return _index;
     }
 
     /// From a normalized double [0..1], set the parameter value.

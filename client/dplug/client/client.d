@@ -121,7 +121,20 @@ public:
         _info = buildPluginInfo();
 
         buildLegalIO();
+
+        // Create parameters.
         _params = buildParameters();
+
+        // Check parameter consistency
+        // This avoid mistake when adding/reordering parameters in a plugin.
+        foreach(int i, Parameter param; _params)
+        {
+            // If you fail here, this means your buildParameter() override is incorrect.
+            // Check the values of the index you're giving.
+            // They should be 0, 1, 2, ..., N-1
+            assert(param.index() == i);
+        }
+
         // Create presets
         _presetBank = new PresetBank(this);
         buildPresets();
