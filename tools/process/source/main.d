@@ -103,12 +103,14 @@ void main(string[]args)
 
         int N = sound.lengthInFrames();
 
+        double sampleDurationMs = (1000.0 * N) / sound.sampleRate;
+
+        writefln("This sounds lasts %s ms at a sampling-rate of %s Hz.", sampleDurationMs, sound.sampleRate);
         
         leftChannelInput.length = N;
         rightChannelInput.length = N;
         leftChannelOutput.length = N;
         rightChannelOutput.length = N;
-        
 
         for (int i = 0; i < N; ++i)
         {
@@ -169,8 +171,17 @@ void main(string[]args)
         {
             writeln;
             writefln("Results:");
-            writefln(" * median time: %s", median(measures));
-            writefln(" * mean time: %s", average(measures));    
+
+            double minTime = double.infinity;
+            foreach(m; measures)
+            {
+                minTime = min(minTime, m);
+            }
+            double medianTime = median(measures);
+            double averageTime = average(measures);
+            writefln(" * minimum time: %s ms => %s x real-time", minTime, sampleDurationMs / minTime);
+            writefln(" * median  time: %s ms => %s x real-time", medianTime, sampleDurationMs / medianTime);
+            writefln(" * average time: %s ms => %s x real-time", averageTime, sampleDurationMs / averageTime);
         }
 
         // write output if necessary
