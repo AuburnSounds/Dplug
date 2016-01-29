@@ -974,8 +974,8 @@ struct VstFileType
     char[128] mimeType1;        ///< MIME type
     char[128] mimeType2;        ///< additional MIME type
 
-    this(const char* _name = null, const char* _macType = null, const char* _dosType = null,
-         const char* _unixType = null, const char* _mimeType1 = null, const char* _mimeType2 = null)
+    this(const char* _name, const char* _macType, const char* _dosType,
+         const char* _unixType, const char* _mimeType1, const char* _mimeType2)
     {
         vst_strncpy (name.ptr, _name ? _name : "", 127);
         vst_strncpy (macType.ptr, _macType ? _macType : "", 7);
