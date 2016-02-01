@@ -268,7 +268,14 @@ public:
 
     override void setNormalized(double hostValue)
     {
-        int rounded = cast(int)lround( _min + (_max - _min) * hostValue );
+        double mapped = _min + (_max - _min) * hostValue;
+
+        // slightly incorrect rounding, but lround is crashing
+        int rounded = void;
+        if (mapped)
+            rounded = cast(int)(0.5f + mapped);
+        else
+            rounded = cast(int)(-0.5f + mapped);
 
         _valueMutex.lock();
         _value = clamp!int(rounded, _min, _max);
