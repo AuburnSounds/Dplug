@@ -12,7 +12,6 @@ d:
 script:
   - dub test --compiler=${DC} dplug:core
   - dub test --compiler=${DC} dplug:dsp
-  - dub test --compiler=${DC} dplug:gui
   - dub test --compiler=${DC} dplug:client
   - dub test --compiler=${DC} dplug:host
   - dub test --compiler=${DC} dplug:vst
