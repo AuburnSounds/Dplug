@@ -125,7 +125,6 @@ T normalizePhase(T)(T phase) nothrow @nogc
         }
         return phase;
     }
-    else
     else version(D_InlineAsm_X86_64)
     {
         static immutable T k_TAU = PI * 2;
