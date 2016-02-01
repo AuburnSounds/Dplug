@@ -112,20 +112,9 @@ double expDecayFactor(double time, double samplerate) pure nothrow @nogc
 /// Give back a phase between -PI and PI
 T normalizePhase(T)(T phase) nothrow @nogc
 {
-    version(D_InlineAsm_X86)
-    {
-        static immutable T k_TAU = PI * 2;
-        asm nothrow @nogc
-        {
-            fld k_TAU;    // TAU
-            fld phase;    // phase | TAU
-            fprem1;       // normalized(phase) | TAU
-            fstp phase;   // TAU
-            fstp ST(0);   //
-        }
-        return phase;
-    }
-    else version(D_InlineAsm_X86_64)
+    enum bool Assembly = D_InlineAsm_Any && !(is(Unqual!T == real));
+
+    static if (Assembly)
     {
         static immutable T k_TAU = PI * 2;
         asm nothrow @nogc
@@ -147,7 +136,6 @@ T normalizePhase(T)(T phase) nothrow @nogc
             res += TAU;
         return res;
     }
-    return 0;
 }
 
 unittest
@@ -223,3 +211,10 @@ T unsafeObjectCast(T)(Object obj)
 {
     return cast(T)(cast(void*)(obj));
 }
+
+version(D_InlineAsm_X86)
+    private enum D_InlineAsm_Any = true;
+else version(D_InlineAsm_X86_64)
+    private enum D_InlineAsm_Any = true;
+else
+    private enum D_InlineAsm_Any = false;
