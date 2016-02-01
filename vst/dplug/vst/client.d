@@ -130,6 +130,8 @@ public:
 
         _maxFramesInProcess = _client.maxFramesInProcess();
 
+        _samplesAlreadyProcessed = 0;
+
         // because effSetSpeakerArrangement might never come
         _usedInputs = _maxInputs;
         _usedOutputs = _maxOutputs;
@@ -195,6 +197,8 @@ private:
     int _maxParams;
     int _usedInputs;  // used inputs from opcode thread POV
     int _usedOutputs; // used outputs from opcode thread POV
+
+    long _samplesAlreadyProcessed; // For hosts that don't provide time info, fake it by counting samples.
 
     ERect _editRect;  // structure holding the UI size
 
@@ -788,10 +792,10 @@ private:
 
 
     // Send audio to plugin's processAudio, and optionally slice the buffers too.
-    void sendAudioToClient(float*[] inputs, float*[]outputs, int frames) nothrow @nogc
+    void sendAudioToClient(float*[] inputs, float*[]outputs, int frames, TimeInfo timeInfo) nothrow @nogc
     {
         if (_maxFramesInProcess == 0)
-            _client.processAudio(inputs, outputs, frames);
+            _client.processAudio(inputs, outputs, frames, timeInfo);
         else
         {
             // Slice audio in smaller parts
@@ -800,7 +804,7 @@ private:
                 // Note: the last slice will be smaller than the others
                 int sliceLength = std.algorithm.min(_maxFramesInProcess, frames);
 
-                _client.processAudio(inputs, outputs, sliceLength);
+                _client.processAudio(inputs, outputs, sliceLength, timeInfo);
 
                 // offset all buffer pointers
                 for (int i = 0; i < cast(int)inputs.length; ++i)
@@ -810,6 +814,9 @@ private:
                     outputs[i] = outputs[i] + sliceLength;
 
                 frames -= sliceLength;
+
+                // timeInfo must be updated
+                timeInfo.timeInSamples += sliceLength;
             }
             assert(frames == 0);
         }
@@ -826,7 +833,9 @@ private:
         for (int i = 0; i < _maxOutputs; ++i)
             _outputPointers[i] = _outputScratchBuffer[i].ptr;
 
-        sendAudioToClient(_inputPointers[0.._usedInputs], _outputPointers[0.._usedOutputs], sampleFrames);       
+        sendAudioToClient(_inputPointers[0.._usedInputs], _outputPointers[0.._usedOutputs], sampleFrames, _host.getVSTTimeInfo(_samplesAlreadyProcessed));  
+
+        _samplesAlreadyProcessed += sampleFrames;
 
         // accumulate
         for (int i = 0; i < _usedOutputs; ++i)
@@ -857,7 +866,9 @@ private:
         for (int i = 0; i < _usedOutputs; ++i)
             _outputPointers[i] = outputs[i];
 
-        sendAudioToClient(_inputPointers[0.._usedInputs], _outputPointers[0.._usedOutputs], sampleFrames);       
+        sendAudioToClient(_inputPointers[0.._usedInputs], _outputPointers[0.._usedOutputs], sampleFrames, _host.getVSTTimeInfo(_samplesAlreadyProcessed));   
+
+        _samplesAlreadyProcessed += sampleFrames;
     }
 
     void processDoubleReplacing(double **inputs, double **outputs, int sampleFrames) nothrow @nogc
@@ -885,7 +896,9 @@ private:
             _outputPointers[i] = _outputScratchBuffer[i].ptr;
         }
 
-        sendAudioToClient(_inputPointers[0.._usedInputs], _outputPointers[0.._usedOutputs], sampleFrames);
+        sendAudioToClient(_inputPointers[0.._usedInputs], _outputPointers[0.._usedOutputs], sampleFrames, _host.getVSTTimeInfo(_samplesAlreadyProcessed));
+
+        _samplesAlreadyProcessed += sampleFrames;
 
         for (int i = 0; i < _usedOutputs; ++i)
         {
@@ -1188,6 +1201,26 @@ public:
             return "unknown";
     }
 
+    /// Gets VSTTimeInfo structure, null if not all flags are supported
+    TimeInfo getVSTTimeInfo(long fallbackTimeInSamples) nothrow @nogc
+    {
+        TimeInfo info;
+        int filters = kVstTempoValid;
+        VstTimeInfo* ti = cast(VstTimeInfo*) callback(audioMasterGetTime, 0, filters, null, 0);
+        if (ti && ti.sampleRate > 0)
+        {
+            info.timeInSamples = cast(long)(0.5f + ti.samplePos);
+            if ((ti.flags & kVstTempoValid) && ti.tempo > 0)
+                info.tempo = ti.tempo;
+        }
+        else
+        {
+            // probably a very simple host, fake time
+            info.timeInSamples = fallbackTimeInSamples;
+        }
+        return info;
+    }
+
     /// Capabilities
 
     enum HostCaps
@@ -1226,20 +1259,12 @@ private:
     char[96] _productStringBuf;
     int _vendorVersion;
 
-    nothrow VstIntPtr callback(VstInt32 opcode, VstInt32 index, VstIntPtr value, void* ptr, float opt)
+    VstIntPtr callback(VstInt32 opcode, VstInt32 index, VstIntPtr value, void* ptr, float opt) nothrow @nogc
     {
         // Saves FP state
-        try
-        {
-            FPControl fpctrl;
-            fpctrl.initialize();
-
-            return _hostCallback(_effect, opcode, index, value, ptr, opt);
-        }
-        catch(Exception e)
-        {
-            return 0; // need a catch since FPControl is not nothrow
-        }
+        FPControl fpctrl;
+        fpctrl.initialize();
+        return _hostCallback(_effect, opcode, index, value, ptr, opt);
     }
 
     static const(char)* hostCapsString(HostCaps caps) pure nothrow

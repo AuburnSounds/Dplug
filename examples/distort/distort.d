@@ -110,7 +110,7 @@ public:
         }
     }
 
-    override void processAudio(const(float*)[] inputs, float*[]outputs, int frames) nothrow @nogc
+    override void processAudio(const(float*)[] inputs, float*[]outputs, int frames, TimeInfo info) nothrow @nogc
     {
         assert(frames <= 128); // guaranteed by audio buffer splitting
 

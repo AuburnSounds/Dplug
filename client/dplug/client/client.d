@@ -107,6 +107,15 @@ struct PluginInfo
     int pluginVersion = 1000;
 }
 
+/// This allows to write things life tempo-synced LFO.
+struct TimeInfo
+{
+    /// BPM
+    double tempo = 120;
+
+    /// Current time from the beginning of the song in samples.
+    long timeInSamples = 0;
+}
 
 /// Plugin interface, from the client point of view.
 /// This client has no knowledge of thread-safety, it must be handled externally.
@@ -344,7 +353,7 @@ public:
     /// Number of frames are guaranteed to be less or equal to what the last reset() call said.
     /// Number of inputs and outputs are guaranteed to be exactly what the last reset() call said.
     /// Warning: Do not modify the pointers!
-    abstract void processAudio(const(float*)[] inputs, float*[]outputs, int frames) nothrow @nogc;
+    abstract void processAudio(const(float*)[] inputs, float*[]outputs, int frames, TimeInfo timeInfo) nothrow @nogc;
 
     // for plugin client implementations only
     final void setHostCommand(IHostCommand hostCommand)

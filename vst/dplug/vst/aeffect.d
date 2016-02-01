@@ -44,7 +44,7 @@ alias long VstInt64;
 alias ptrdiff_t VstIntPtr;
 
 alias extern(C) nothrow VstIntPtr function(AEffect* effect, VstInt32 opcode, VstInt32 index, VstIntPtr value, void* ptr, float opt) AEffectDispatcherProc;
-alias extern(C) nothrow VstIntPtr function(AEffect* effect, VstInt32 opcode, VstInt32 index, VstIntPtr value, void* ptr, float opt) HostCallbackFunction;
+alias extern(C) nothrow @nogc VstIntPtr function(AEffect* effect, VstInt32 opcode, VstInt32 index, VstIntPtr value, void* ptr, float opt) HostCallbackFunction;
 alias extern(C) nothrow void function(AEffect* effect, float** inputs, float** outputs, VstInt32 sampleFrames) AEffectProcessProc;
 alias extern(C) nothrow void function(AEffect* effect, double** inputs, double** outputs, VstInt32 sampleFrames) AEffectProcessDoubleProc;
 alias extern(C) nothrow void function(AEffect* effect, VstInt32 index, float parameter) AEffectSetParameterProc;
