@@ -112,12 +112,43 @@ double expDecayFactor(double time, double samplerate) pure nothrow @nogc
 /// Give back a phase between -PI and PI
 T normalizePhase(T)(T phase) nothrow @nogc
 {
-    T res = fmod(phase, cast(T)TAU);
-    if (res > PI)
-        res -= TAU;
-    if (res < -PI)
-        res += TAU;
-    return res;
+    version(D_InlineAsm_X86)
+    {
+        static immutable T k_TAU = PI * 2;
+        asm nothrow @nogc
+        {
+            fld k_TAU;    // TAU
+            fld phase;    // phase | TAU
+            fprem1;       // normalized(phase) | TAU
+            fstp phase;   // TAU
+            fstp ST(0);   //
+        }
+        return phase;
+    }
+    else
+    else version(D_InlineAsm_X86_64)
+    {
+        static immutable T k_TAU = PI * 2;
+        asm nothrow @nogc
+        {
+            fld k_TAU;    // TAU
+            fld phase;    // phase | TAU
+            fprem1;       // normalized(phase) | TAU
+            fstp phase;   // TAU
+            fstp ST(0);   //
+        }
+        return phase;
+    }
+    else
+    {
+        T res = fmod(phase, cast(T)TAU);
+        if (res > PI)
+            res -= TAU;
+        if (res < -PI)
+            res += TAU;
+        return res;
+    }
+    return 0;
 }
 
 unittest
