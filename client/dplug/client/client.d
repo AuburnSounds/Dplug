@@ -418,7 +418,7 @@ public:
     {
         auto p = param(paramIndex);
         assert(cast(FloatParameter)p !is null); // check it's a FloatParameter
-        return unsafeObjectCast!FloatParameter(p).value();
+        return unsafeObjectCast!FloatParameter(p).valueAtomic();
     }
 
     /// Boilerplate function to get the value of an `IntParameter`, for use in `processAudio`.
@@ -427,14 +427,14 @@ public:
     {
         auto p = param(paramIndex);
         assert(cast(IntegerParameter)p !is null); // check it's an IntParameter
-        return unsafeObjectCast!IntegerParameter(p).value();
+        return unsafeObjectCast!IntegerParameter(p).valueAtomic();
     }
 
     final int readEnumParamValue(int paramIndex) nothrow @nogc
     {
         auto p = param(paramIndex);
         assert(cast(EnumParameter)p !is null); // check it's an EnumParameter
-        return unsafeObjectCast!EnumParameter(p).value();
+        return unsafeObjectCast!EnumParameter(p).valueAtomic();
     }
 
     /// Boilerplate function to get the value of a `BoolParameter`,for use in `processAudio`.
@@ -442,7 +442,7 @@ public:
     {
         auto p = param(paramIndex);
         assert(cast(BoolParameter)p !is null); // check it's a BoolParameter
-        return unsafeObjectCast!BoolParameter(p).value();
+        return unsafeObjectCast!BoolParameter(p).valueAtomic();
     }
 
 protected:
