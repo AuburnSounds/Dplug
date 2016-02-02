@@ -117,9 +117,9 @@ public:
 
 protected:
 
-    this(Client client, int index, string name, string label)
+    this(int index, string name, string label)
     {
-        _client = client;
+        _client = null;
         _name = name;
         _label = label;
         _index = index;
@@ -144,8 +144,19 @@ protected:
             listener.onParameterChanged(this);
     }
 
+package:
+
+    /// Parameters are owned by a client, this is used to make them refer back to it.
+    void setClientReference(Client client)
+    {
+        _client = client;
+    }    
+
 private:
-    Client _client; /// backlink to parameter holder
+
+    /// weak reference to parameter holder, set after parameter creation
+    Client _client; 
+
     int _index;
     string _name;
     string _label;
@@ -176,9 +187,9 @@ interface IParameterListener
 class BoolParameter : Parameter
 {
 public:
-    this(Client client, int index, string name, string label, bool defaultValue)
+    this(int index, string name, string label, bool defaultValue)
     {
-        super(client, index, name, label);
+        super(index, name, label);
         _value = defaultValue;
         _defaultValue = defaultValue;
     }
@@ -254,12 +265,13 @@ private:
 }
 
 /// An integer parameter
-class IntParameter : Parameter
+deprecated("Was renamed to IntegerParameter") alias IntParameter = IntegerParameter;
+class IntegerParameter : Parameter
 {
 public:
-    this(Client client, int index, string name, string label, int min = 0, int max = 1, int defaultValue = 0)
+    this(int index, string name, string label, int min = 0, int max = 1, int defaultValue = 0)
     {
-        super(client, index, name, label);
+        super(index, name, label);
         _name = name;
         _value = _defaultValue = clamp!int(defaultValue, min, max);
         _min = min;
@@ -322,6 +334,29 @@ private:
     int _defaultValue;
 }
 
+class EnumParameter : IntegerParameter
+{
+public:
+    this(int index, string name, string[] possibleValues, int defaultValue = 0)
+    {
+        super(index, name, "", 0, cast(int)possibleValues.length, defaultValue);
+        _possibleValues = possibleValues;
+        // TODO ensure Zero Termination
+    }
+
+    override void toStringN(char* buffer, size_t numBytes) nothrow @nogc
+    {
+        int v;
+        _valueMutex.lock();
+        v = _value;
+        _valueMutex.unlock();
+        snprintf(buffer, numBytes, "%s", v);
+    }
+
+private:
+    string[] _possibleValues;
+}
+
 private
 {
     T clamp(T)(T x, T min, T max) pure nothrow @nogc
@@ -340,9 +375,9 @@ private
 class FloatParameter : Parameter
 {
 public:
-    this(Client client, int index, string name, string label, double min, double max, double defaultValue)
+    this(int index, string name, string label, double min, double max, double defaultValue)
     {
-        super(client, index, name, label);
+        super(index, name, label);
         assert(defaultValue >= min && defaultValue <= max);
         _defaultValue = defaultValue;
         _name = name;
@@ -442,9 +477,9 @@ private:
 /// Linear-mapped float parameter (eg: dry/wet)
 class LinearFloatParameter : FloatParameter
 {
-    this(Client client, int index, string name, string label, float min, float max, float defaultValue)
+    this(int index, string name, string label, float min, float max, float defaultValue)
     {
-        super(client, index, name, label, min, max, defaultValue);
+        super(index, name, label, min, max, defaultValue);
     }
 
     override double toNormalized(double value) nothrow @nogc
@@ -461,10 +496,10 @@ class LinearFloatParameter : FloatParameter
 /// Float parameter following an exponential type of mapping (eg: cutoff frequency)
 class LogFloatParameter : FloatParameter
 {
-    this(Client client, int index, string name, string label, double min, double max, double defaultValue)
+    this(int index, string name, string label, double min, double max, double defaultValue)
     {
         assert(min > 0 && max > 0);
-        super(client, index, name, label, min, max, defaultValue);
+        super(index, name, label, min, max, defaultValue);
     }
 
     override double toNormalized(double value) nothrow @nogc
@@ -486,9 +521,9 @@ class LogFloatParameter : FloatParameter
 /// A parameter with [-inf to value] dB log mapping
 class GainParameter : FloatParameter
 {
-    this(Client client, int index, string name, double max, double defaultValue, double shape = 2.0)
+    this(int index, string name, double max, double defaultValue, double shape = 2.0)
     {
-        super(client, index, name, "dB", -double.infinity, max, defaultValue);
+        super(index, name, "dB", -double.infinity, max, defaultValue);
         _shape = shape;
     }
 
@@ -521,9 +556,9 @@ private:
 /// Float parameter following a x^N type mapping (eg: something that doesn't fit in the other categories)
 class PowFloatParameter : FloatParameter
 {
-    this(Client client, int index, string name, string label, double min, double max, double defaultValue, double shape)
+    this(int index, string name, string label, double min, double max, double defaultValue, double shape)
     {
-        super(client, index, name, label, min, max, defaultValue);
+        super(index, name, label, min, max, defaultValue);
         _shape = shape;
     }
 

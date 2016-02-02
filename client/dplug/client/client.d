@@ -142,6 +142,9 @@ public:
             // Check the values of the index you're giving.
             // They should be 0, 1, 2, ..., N-1
             assert(param.index() == i);
+
+            // Sets owner reference.
+            param.setClientReference(this);
         }
 
         // Create presets
@@ -419,11 +422,19 @@ public:
     }
 
     /// Boilerplate function to get the value of an `IntParameter`, for use in `processAudio`.
-    final int readIntParamValue(int paramIndex) nothrow @nogc
+    deprecated("use readIntegerParamValue instead") alias readIntParamValue = readIntegerParamValue;
+    final int readIntegerParamValue(int paramIndex) nothrow @nogc
     {
         auto p = param(paramIndex);
-        assert(cast(IntParameter)p !is null); // check it's an IntParameter
-        return unsafeObjectCast!IntParameter(p).value();
+        assert(cast(IntegerParameter)p !is null); // check it's an IntParameter
+        return unsafeObjectCast!IntegerParameter(p).value();
+    }
+
+    final int readEnumParamValue(int paramIndex) nothrow @nogc
+    {
+        auto p = param(paramIndex);
+        assert(cast(EnumParameter)p !is null); // check it's an EnumParameter
+        return unsafeObjectCast!EnumParameter(p).value();
     }
 
     /// Boilerplate function to get the value of a `BoolParameter`,for use in `processAudio`.

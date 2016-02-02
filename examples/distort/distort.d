@@ -64,10 +64,12 @@ public:
     {
         // Caution when adding parameters: always add the indices in the same order than the enum
         Parameter[] params;
-        params ~= new GainParameter(this, paramInput, "input", 6.0, 0.0);
-        params ~= new LinearFloatParameter(this, paramDrive, "drive", "%", 1.0f, 2.0f, 1.0f);
-        params ~= new GainParameter(this, paramOutput, "output", 6.0, 0.0);
-        params ~= new BoolParameter(this, paramOnOff, "on/off", "", true);
+        params ~= new GainParameter(paramInput, "input", 6.0, 0.0);
+        params ~= new LinearFloatParameter(paramDrive, "drive", "%", 1.0f, 2.0f, 1.0f);
+        params ~= new GainParameter(paramOutput, "output", 6.0, 0.0);
+        params ~= new BoolParameter(paramOnOff, "on/off", "", true);
+
+        params ~= new EnumParameter(4, "on/off", ["test", "oh", "trois"]);
         return params;
     }
 
