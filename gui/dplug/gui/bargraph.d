@@ -118,7 +118,6 @@ public:
     {
         {
             _valueMutex.lock();
-            scope(exit) _valueMutex.unlock();
             assert(values.length == _values.length);
 
             // remap all values
@@ -127,15 +126,18 @@ public:
                 _values[i] = linmap!float(values[i], _minValue, _maxValue, 0, 1);
                 _values[i] = clamp!float(_values[i], 0, 1);
             }
+            _valueMutex.unlock();
         }
         setDirty();
     }
 
     float getValue(int channel) nothrow @nogc
     {
+        float res = void;
         _valueMutex.lock();
-        scope(exit) _valueMutex.unlock();
-        return _values[channel];
+        res = _values[channel];
+        _valueMutex.unlock();
+        return res;
     }
 
 protected:

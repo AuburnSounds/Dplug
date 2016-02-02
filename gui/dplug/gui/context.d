@@ -120,8 +120,9 @@ public:
     bool isEmpty() nothrow @nogc
     {
         _dirtyRectMutex.lock();
-        scope(exit) _dirtyRectMutex.unlock();
-        return _dirtyRects.length == 0;
+        bool result = _dirtyRects.length == 0;
+        _dirtyRectMutex.unlock();
+        return result;
     }
 
     /// Returns: Array of rectangles in the list, remove them from the list.
@@ -129,12 +130,13 @@ public:
     void pullAllRectangles(AlignedBuffer!box2i result) nothrow @nogc
     {
         _dirtyRectMutex.lock();
-        scope(exit) _dirtyRectMutex.unlock();
 
         foreach(rect; _dirtyRects[])
             result.pushBack(rect);
 
         _dirtyRects.clearContents();
+
+        _dirtyRectMutex.unlock();
     }
 
     /// Add a rect while keeping the no overlap invariant
@@ -192,9 +194,9 @@ public:
             if (!processed)
                 _dirtyRects.pushBack(rect);
 
-            assert(haveNoOverlap(_dirtyRects[]));
+            // Quadratic test, disabled
+            // assert(haveNoOverlap(_dirtyRects[]));
         }
-
     }
 
 private:
