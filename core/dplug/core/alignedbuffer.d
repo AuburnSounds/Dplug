@@ -207,7 +207,6 @@ unittest
 
     {
         auto buf = new AlignedBuffer!int;
-        scope(exit) buf.destroy();
         enum N = 10;
         buf.resize(N);
         foreach(i ; 0..N)
@@ -215,5 +214,6 @@ unittest
 
         foreach(i ; 0..N)
             assert(buf[i] == i);
+        buf.destroy();
     }
 }
