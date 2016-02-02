@@ -28,6 +28,8 @@ import dplug.client.client;
 
 /// Plugin parameter. 
 /// Implement the Observer pattern for UI support.
+/// Note: Recursive mutexes are needed here because `getNormalized()`
+/// could need locking an already taken mutex.
 class Parameter
 {
 public:
@@ -230,31 +232,25 @@ public:
             snprintf(buffer, numBytes, "false");
     }
 
-    void setFromGUI(bool value)
+    final void setFromGUI(bool value)
     {
         _valueMutex.lock();
         _value = value;
-        _valueMutex.unlock();
-
-        // Important
-        // There is a race here on _value, because spinlocks aren't reentrant we had to move this line
-        // out of the mutex.
-        // That said, the potential for harm seems reduced (receiving a setParameter between _value assignment and getNormalized).
-
         double normalized = getNormalized();
+        _valueMutex.unlock();
 
         _client.hostCommand().paramAutomate(_index, normalized);
         notifyListeners();
     }
 
-    bool value() nothrow @nogc
+    final bool value() nothrow @nogc
     {
         _valueMutex.lock();
         scope(exit) _valueMutex.unlock();
         return _value;
     }
 
-    bool defaultValue() pure const nothrow @nogc
+    final bool defaultValue() pure const nothrow @nogc
     {
         return _defaultValue;
     }
@@ -320,11 +316,27 @@ public:
         snprintf(buffer, numBytes, "%d", v);
     }
 
-    int value() nothrow @nogc
+    final int value() nothrow @nogc
     {
         _valueMutex.lock();
         scope(exit) _valueMutex.unlock();
         return _value;
+    }
+
+    final void setFromGUI(int value)
+    {
+        if (value < _min)
+            value = _min;
+        if (value > _max)
+            value = _max;
+
+        _valueMutex.lock();
+        _value = value;
+        double normalized = getNormalized();
+        _valueMutex.unlock();
+
+        _client.hostCommand().paramAutomate(_index, normalized);
+        notifyListeners();
     }
 
 private:
@@ -421,18 +433,10 @@ public:
         if (value > _max)
             value = _max;
 
-        double normalized;
-
         _valueMutex.lock();
         _value = value;
+        double normalized = getNormalized();
         _valueMutex.unlock();
-
-        // Important
-        // There is a race here on _value, because spinlocks aren't reentrant we had to move this line
-        // out of the mutex.
-        // That said, the potential for harm seems reduced (receiving a setParameter between _value assignment and getNormalized).
-
-        normalized = getNormalized();
 
         _client.hostCommand().paramAutomate(_index, normalized);
         notifyListeners();
