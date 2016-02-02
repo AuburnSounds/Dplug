@@ -16,9 +16,11 @@ Permission is granted to anyone to use this software for any purpose, including 
 */
 module dplug.client.params;
 
+import core.atomic;
 import core.stdc.stdio;
 
 import std.math;
+import std.string;
 
 import gfm.core;
 
@@ -199,19 +201,14 @@ public:
     override void setNormalized(double hostValue) nothrow @nogc
     {
         _valueMutex.lock();
-        if (hostValue < 0.5)
-            _value = false;
-        else
-            _value = true;
+        bool newValue = (hostValue >= 0.5);
+        atomicStore(_value, newValue);
         _valueMutex.unlock();
     }
 
     override double getNormalized() nothrow @nogc
     {
-        _valueMutex.lock();
-        double result = _value ? 1.0 : 0.0;
-        _valueMutex.unlock();
-        return result;
+        return value() ? 1.0 : 0.0;
     }
 
     override double getNormalizedDefault() nothrow @nogc
@@ -221,10 +218,7 @@ public:
 
     override void toStringN(char* buffer, size_t numBytes) nothrow @nogc
     {
-        bool v;
-        _valueMutex.lock();
-        v = _value;
-        _valueMutex.unlock();
+        bool v = value();
 
         if (v)
             snprintf(buffer, numBytes, "true");
@@ -232,10 +226,10 @@ public:
             snprintf(buffer, numBytes, "false");
     }
 
-    final void setFromGUI(bool value)
+    final void setFromGUI(bool newValue)
     {
         _valueMutex.lock();
-        _value = value;
+        atomicStore(_value, newValue);
         double normalized = getNormalized();
         _valueMutex.unlock();
 
@@ -243,11 +237,21 @@ public:
         notifyListeners();
     }
 
+    /// Gets current value.
     final bool value() nothrow @nogc
     {
+        bool v = void;
         _valueMutex.lock();
-        scope(exit) _valueMutex.unlock();
-        return _value;
+        v = atomicLoad(_value);
+        _valueMutex.unlock();
+        return v;
+    }
+
+    /// Same as value but doesn't use locking, 
+    /// which make it a better fit for the audio thread.
+    final bool valueAtomic() nothrow @nogc
+    {
+        return atomicLoad(_value);
     }
 
     final bool defaultValue() pure const nothrow @nogc
@@ -256,7 +260,7 @@ public:
     }
 
 private:
-    bool _value;
+    shared(bool) _value;
     bool _defaultValue;
 }
 
@@ -285,18 +289,16 @@ public:
         else
             rounded = cast(int)(-0.5f + mapped);
 
+        int newValue = clamp!int(rounded, _min, _max);
+
         _valueMutex.lock();
-        _value = clamp!int(rounded, _min, _max);
+        atomicStore(_value, newValue);
         _valueMutex.unlock();
     }
 
     override double getNormalized() nothrow @nogc
     {
-        int v;
-        _valueMutex.lock();
-        v = _value;
-        _valueMutex.unlock();
-
+        int v = value();
         double normalized = clamp!double( (cast(double)v - _min) / (_max - _min), 0.0, 1.0);
         return normalized;
     }
@@ -309,18 +311,25 @@ public:
 
     override void toStringN(char* buffer, size_t numBytes) nothrow @nogc
     {
-        int v;
-        _valueMutex.lock();
-        v = _value;
-        _valueMutex.unlock();
+        int v =  value();
         snprintf(buffer, numBytes, "%d", v);
     }
 
+    /// Gets the current parameter value.
     final int value() nothrow @nogc
     {
+        int v = void;
         _valueMutex.lock();
-        scope(exit) _valueMutex.unlock();
-        return _value;
+        v = atomicLoad(_value);
+        _valueMutex.unlock();
+        return v;
+    }
+
+    /// Same as value but doesn't use locking, 
+    /// which make it a better fit for the audio thread.
+    final int valueAtomic() nothrow @nogc
+    {
+        return atomicLoad(_value);
     }
 
     final void setFromGUI(int value)
@@ -331,7 +340,7 @@ public:
             value = _max;
 
         _valueMutex.lock();
-        _value = value;
+        atomicStore(_value, value);
         double normalized = getNormalized();
         _valueMutex.unlock();
 
@@ -340,7 +349,7 @@ public:
     }
 
 private:
-    int _value;
+    shared(int) _value;
     int _min;
     int _max;
     int _defaultValue;
@@ -352,21 +361,20 @@ public:
     this(int index, string name, string[] possibleValues, int defaultValue = 0)
     {
         super(index, name, "", 0, cast(int)possibleValues.length, defaultValue);
-        _possibleValues = possibleValues;
-        // TODO ensure Zero Termination
+
+        _possibleValues = new immutable(char)*[possibleValues.length];
+        foreach(int i, s; possibleValues)
+            _possibleValues[i] = toStringz(s); // ensure zero termination
     }
 
     override void toStringN(char* buffer, size_t numBytes) nothrow @nogc
     {
-        int v;
-        _valueMutex.lock();
-        v = _value;
-        _valueMutex.unlock();
-        snprintf(buffer, numBytes, "%s", v);
+        int v = value();
+        snprintf(buffer, numBytes, "%s", _possibleValues[v]);
     }
 
 private:
-    string[] _possibleValues;
+    immutable(char)*[] _possibleValues;
 }
 
 private
@@ -398,11 +406,21 @@ public:
         _max = max;
     }
 
+    /// Gets current value.
     final double value() nothrow @nogc
     {
+        double v = void;
         _valueMutex.lock();
-        scope(exit) _valueMutex.unlock();
-        return _value;
+        v = atomicLoad(_value);
+        _valueMutex.unlock();
+        return v;
+    }
+
+    /// Same as value but doesn't use locking, 
+    /// which make it a better fit for the audio thread.
+    final double valueAtomic() nothrow @nogc
+    {
+        return atomicLoad(_value);
     }
 
     final double minValue() pure const nothrow @nogc
@@ -434,7 +452,7 @@ public:
             value = _max;
 
         _valueMutex.lock();
-        _value = value;
+        atomicStore(_value, value);
         double normalized = getNormalized();
         _valueMutex.unlock();
 
@@ -446,7 +464,7 @@ public:
     {
         double v = fromNormalized(hostValue);
         _valueMutex.lock();
-        _value = v;
+        atomicStore(_value, v);
         _valueMutex.unlock();
     }
 
@@ -472,7 +490,7 @@ public:
     abstract double fromNormalized(double value) nothrow @nogc;
 
 private:
-    double _value;
+    shared(double) _value;
     double _min;
     double _max;
     double _defaultValue;
