@@ -305,7 +305,7 @@ public:
 
     override double getNormalizedDefault() nothrow @nogc
     {
-        double normalized = clamp!double( (_defaultValue - _min) / (_max - _min), 0.0, 1.0);
+        double normalized = clamp!double( (cast(double)_defaultValue - _min) / (_max - _min), 0.0, 1.0);
         return normalized;
     }
 
