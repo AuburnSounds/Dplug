@@ -20,6 +20,7 @@ import core.atomic;
 import core.stdc.stdio;
 
 import std.math;
+import std.algorithm;
 import std.string;
 
 import gfm.core;
@@ -183,7 +184,6 @@ interface IParameterListener
 
     /// Called when a parameter value stops being changed
     void onEndParameterEdit(Parameter sender);
-
 }
 
 
@@ -191,9 +191,9 @@ interface IParameterListener
 class BoolParameter : Parameter
 {
 public:
-    this(int index, string name, string label, bool defaultValue)
+    this(int index, string name, bool defaultValue)
     {
-        super(index, name, label);
+        super(index, name, "");
         _value = defaultValue;
         _defaultValue = defaultValue;
     }
@@ -221,9 +221,9 @@ public:
         bool v = value();
 
         if (v)
-            snprintf(buffer, numBytes, "true");
+            snprintf(buffer, numBytes, "yes");
         else
-            snprintf(buffer, numBytes, "false");
+            snprintf(buffer, numBytes, "no");
     }
 
     final void setFromGUI(bool newValue)
@@ -360,21 +360,23 @@ class EnumParameter : IntegerParameter
 public:
     this(int index, string name, string[] possibleValues, int defaultValue = 0)
     {
-        super(index, name, "", 0, cast(int)possibleValues.length, defaultValue);
+        super(index, name, "", 0, cast(int)(possibleValues.length) - 1, defaultValue);
 
-        _possibleValues = new immutable(char)*[possibleValues.length];
-        foreach(int i, s; possibleValues)
-            _possibleValues[i] = toStringz(s); // ensure zero termination
+        _possibleValues = possibleValues;
     }
 
     override void toStringN(char* buffer, size_t numBytes) nothrow @nogc
     {
         int v = value();
-        snprintf(buffer, numBytes, "%s", _possibleValues[v]);
+        int toCopy = max(0, min( cast(int)(numBytes) - 1, cast(int)(_possibleValues[v].length)));
+        memcpy(buffer, _possibleValues[v].ptr, toCopy);
+        // add terminal zero
+        if (numBytes > 0)
+            buffer[toCopy] = '\0';
     }
 
 private:
-    immutable(char)*[] _possibleValues;
+    string[] _possibleValues;
 }
 
 private
