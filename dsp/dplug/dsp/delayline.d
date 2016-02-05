@@ -70,7 +70,7 @@ public:
     }
 
     /// Adds several samples at end of delay.
-    void feedBuffer(T[] incoming) nothrow @nogc
+    void feedBuffer(const(T)[] incoming) nothrow @nogc
     {
         foreach(sample; incoming)
             feedSample(sample);
