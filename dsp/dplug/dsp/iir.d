@@ -304,7 +304,7 @@ public
         double t2 = t1 * t1;
 
         BiquadCoeff!T result;
-        result[0] = cast(T)(t2 - 1);
+        result[0] = cast(T)(1 - t2);
         result[1] = 0;
         result[2] = 0;
         result[3] = cast(T)(t2);
