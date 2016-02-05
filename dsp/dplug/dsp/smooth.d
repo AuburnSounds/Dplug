@@ -16,13 +16,76 @@ import dplug.core;
 
 /// Smooth values exponentially with a 1-pole lowpass.
 /// This is usually sufficient for most parameter smoothing.
-/// The type T must support arithmetic operations (+, -, +=, * with a float).
 struct ExpSmoother(T) if (isFloatingPoint!T)
 {
 public:
     /// time: the time constant of the smoother.
     /// threshold: absolute difference below which we consider current value and target equal
-    void initialize(float samplerate, float timeAttack, float timeRelease, T initialValue = 0) nothrow @nogc
+    void initialize(float samplerate, float timeAttackRelease, T initialValue) nothrow @nogc
+    {
+        assert(isFinite(initialValue));
+
+        _current = cast(T)(initialValue);
+
+        _expFactor = cast(T)(expDecayFactor(timeAttackRelease, samplerate));
+        assert(isFinite(_expFactor));
+    }
+
+    /// Advance smoothing and return the next smoothed sample with respect
+    /// to tau time and samplerate.
+    T nextSample(T target) nothrow @nogc
+    {
+        T diff = target - _current;
+        if (diff != 0)
+        {
+            if (abs(diff) < 1e-10f) // to avoid subnormal, and excess churn
+            {
+                _current = target;
+            }
+            else
+            {
+                double temp = _current + diff * _expFactor; // Is double-precision really needed here?
+                T newCurrent = cast(T)(temp);
+                _current = newCurrent;
+            }
+        }
+        return _current;
+    }
+
+    void nextBuffer(const(T)* input, T* output, int frames)
+    {
+        for (int i = 0; i < frames; ++i)
+        {
+            output[i] = nextSample(input[i]);
+        }
+    }
+
+     void nextBuffer(T input, T* output, int frames)
+    {
+        for (int i = 0; i < frames; ++i)
+        {
+            output[i] = nextSample(input);
+        }
+    }
+
+private:
+    T _current;
+    T _expFactor;
+}
+
+unittest
+{
+    ExpSmoother!float a;
+    ExpSmoother!double b;
+}
+
+/// Same as ExpSmoother but have different attack and release decay factors.
+struct AttackReleaseSmoother(T) if (isFloatingPoint!T)
+{
+public:
+    /// time: the time constant of the smoother.
+    /// threshold: absolute difference below which we consider current value and target equal
+    void initialize(float samplerate, float timeAttack, float timeRelease, T initialValue) nothrow @nogc
     {
         assert(isFinite(initialValue));
 
@@ -64,7 +127,7 @@ public:
         }
     }
 
-     void nextBuffer(T input, T* output, int frames)
+    void nextBuffer(T input, T* output, int frames)
     {
         for (int i = 0; i < frames; ++i)
         {
@@ -80,8 +143,8 @@ private:
 
 unittest
 {
-    ExpSmoother!float a;
-    ExpSmoother!double b;
+    AttackReleaseSmoother!float a;
+    AttackReleaseSmoother!double b;
 }
 
 /// Non-linear smoother using absolute difference.
