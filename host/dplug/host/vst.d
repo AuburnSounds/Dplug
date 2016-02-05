@@ -25,16 +25,20 @@ VSTPluginMain_t getVSTEntryPoint(SharedLib lib)
     return cast(VSTPluginMain_t) result;
 }
 
+private __gshared VSTPluginHost[AEffect*] reverseMapping;
+
 final class VSTPluginHost : IPluginHost
 {
-	this(SharedLib lib)
-	{
+    this(SharedLib lib)
+    {
         _lib = lib;
         
         // TODO other symbol names like main_macho or main
         VSTPluginMain_t VSTPluginMain = getVSTEntryPoint(lib); 
 
         _aeffect = VSTPluginMain(&hostCallback);
+
+        reverseMapping[_aeffect] = this;
 
         // various checks
         if (_aeffect.magic != kEffectMagic)
@@ -49,12 +53,12 @@ final class VSTPluginHost : IPluginHost
         _dispatcher = _aeffect.dispatcher;
 
         // open plugin
-        _dispatcher(_aeffect, effOpen, 0, 0, null, 0.0f);		
-	}
+        _dispatcher(_aeffect, effOpen, 0, 0, null, 0.0f);
+    }
 
     override void setParameter(int paramIndex, float normalizedValue)
     {
-        _aeffect.setParameter(_aeffect, paramIndex, normalizedValue);        
+        _aeffect.setParameter(_aeffect, paramIndex, normalizedValue);
     }
 
     override float getParameter(int paramIndex)
@@ -95,6 +99,7 @@ final class VSTPluginHost : IPluginHost
     override void processAudioFloat(float** inputs, float** outputs, int samples)
     {
         _aeffect.processReplacing(_aeffect, inputs, outputs, samples);
+        _processedSamples += samples;
     }
 
     override void setSampleRate(float sampleRate)
@@ -111,65 +116,71 @@ private:
     SharedLib _lib;
     AEffect* _aeffect;
     AEffectDispatcherProc _dispatcher;
+    long _processedSamples;
+    VstTimeInfo timeInfo;
 }
 
-extern(C) nothrow VstIntPtr hostCallback(AEffect* effect, VstInt32 opcode, VstInt32 index, VstIntPtr value, void* ptr, float opt)
+extern(C) nothrow @nogc VstIntPtr hostCallback(AEffect* effect, VstInt32 opcode, VstInt32 index, VstIntPtr value, void* ptr, float opt)
 {
-    try
+    import core.stdc.stdio;
+
+    switch(opcode)
     {
-        import std.stdio;
-        writeln("Received opcode: ");
-        switch(opcode)
+        case DEPRECATED_audioMasterWantMidi: printf("DEPRECATED_audioMasterWantMidi\n"); return 0;
+        case audioMasterGetTime:
         {
-            case DEPRECATED_audioMasterWantMidi: writeln("DEPRECATED_audioMasterWantMidi"); return 0;
-            case audioMasterGetTime: writeln("audioMasterGetTime"); return 0;
-            case audioMasterProcessEvents: writeln("audioMasterProcessEvents"); return 0;
-            case DEPRECATED_audioMasterSetTime: writeln("DEPRECATED_audioMasterSetTime"); return 0;
-            case DEPRECATED_audioMasterTempoAt: writeln("DEPRECATED_audioMasterTempoAt"); return 0;
-            case DEPRECATED_audioMasterGetNumAutomatableParameters: writeln("DEPRECATED_audioMasterGetNumAutomatableParameters"); return 0;
-            case DEPRECATED_audioMasterGetParameterQuantization: writeln("DEPRECATED_audioMasterGetParameterQuantization"); return 0;
-            case audioMasterIOChanged: writeln("audioMasterIOChanged"); return 0;
-            case DEPRECATED_audioMasterNeedIdle: writeln("DEPRECATED_audioMasterNeedIdle"); return 0;
-            case audioMasterSizeWindow: writeln("audioMasterSizeWindow"); return 0;
-            case audioMasterGetSampleRate: writeln("audioMasterGetSampleRate"); return 0;
-            case audioMasterGetBlockSize: writeln("audioMasterGetBlockSize"); return 0;
-            case audioMasterGetInputLatency: writeln("audioMasterGetInputLatency"); return 0;
-            case audioMasterGetOutputLatency: writeln("audioMasterGetOutputLatency"); return 0;
-            case DEPRECATED_audioMasterGetPreviousPlug: writeln("DEPRECATED_audioMasterGetPreviousPlug"); return 0;
-            case DEPRECATED_audioMasterGetNextPlug: writeln("DEPRECATED_audioMasterGetNextPlug"); return 0;
-            case DEPRECATED_audioMasterWillReplaceOrAccumulate: writeln("DEPRECATED_audioMasterWillReplaceOrAccumulate"); return 0;
-            case audioMasterGetCurrentProcessLevel: writeln("audioMasterGetCurrentProcessLevel"); return 0;
-            case audioMasterGetAutomationState: writeln("audioMasterGetAutomationState"); return 0;
-            case audioMasterOfflineStart: writeln("audioMasterOfflineStart"); return 0;
-            case audioMasterOfflineRead: writeln("audioMasterOfflineRead"); return 0;
-            case audioMasterOfflineWrite: writeln("audioMasterOfflineWrite"); return 0;
-            case audioMasterOfflineGetCurrentPass: writeln("audioMasterOfflineGetCurrentPass"); return 0;
-            case audioMasterOfflineGetCurrentMetaPass: writeln("audioMasterOfflineGetCurrentMetaPass"); return 0;
-            case DEPRECATED_audioMasterSetOutputSampleRate: writeln("DEPRECATED_audioMasterSetOutputSampleRate"); return 0;
-            case DEPRECATED_audioMasterGetOutputSpeakerArrangement: writeln("DEPRECATED_audioMasterGetOutputSpeakerArrangement"); return 0;
-            case audioMasterGetVendorString: writeln("audioMasterGetVendorString"); return 0;
-            case audioMasterGetProductString: writeln("audioMasterGetProductString"); return 0;
-            case audioMasterGetVendorVersion: writeln("audioMasterGetVendorVersion"); return 0;
-            case audioMasterVendorSpecific: writeln("audioMasterVendorSpecific"); return 0;
-            case DEPRECATED_audioMasterSetIcon: writeln("DEPRECATED_audioMasterSetIcon"); return 0;
-            case audioMasterCanDo: writeln("audioMasterCanDo"); return 0;
-            case audioMasterGetLanguage: writeln("audioMasterGetLanguage"); return 0;
-            case DEPRECATED_audioMasterOpenWindow: writeln("DEPRECATED_audioMasterOpenWindow"); return 0;
-            case DEPRECATED_audioMasterCloseWindow: writeln("DEPRECATED_audioMasterCloseWindow"); return 0;
-            case audioMasterGetDirectory: writeln("audioMasterGetDirectory"); return 0;
-            case audioMasterUpdateDisplay: writeln("audioMasterUpdateDisplay"); return 0;
-            case audioMasterBeginEdit: writeln("audioMasterBeginEdit"); return 0;
-            case audioMasterEndEdit: writeln("audioMasterEndEdit"); return 0;
-            case audioMasterOpenFileSelector: writeln("audioMasterOpenFileSelector"); return 0;
-            case audioMasterCloseFileSelector: writeln("audioMasterCloseFileSelector"); return 0;
-            case DEPRECATED_audioMasterEditFile: writeln("DEPRECATED_audioMasterEditFile"); return 0;
-            case DEPRECATED_audioMasterGetChunkFile: writeln("DEPRECATED_audioMasterGetChunkFile"); return 0;
-            case DEPRECATED_audioMasterGetInputSpeakerArrangement: writeln("DEPRECATED_audioMasterGetInputSpeakerArrangement"); return 0;
-            default: writeln(" unknown opcode"); return 0;
+            VSTPluginHost* phost = effect in reverseMapping;
+            if (!phost)
+                return 0;
+
+            VSTPluginHost host = *phost;
+            host.timeInfo.samplePos = host._processedSamples;
+            host.timeInfo.flags = 0;
+
+            return cast(VstIntPtr)(&host.timeInfo);
         }
-    }
-    catch(Exception e)
-    {
-        return 0;
+        case audioMasterProcessEvents: printf("audioMasterProcessEvents\n"); return 0;
+        case DEPRECATED_audioMasterSetTime: printf("DEPRECATED_audioMasterSetTime\n"); return 0;
+        case DEPRECATED_audioMasterTempoAt: printf("DEPRECATED_audioMasterTempoAt\n"); return 0;
+        case DEPRECATED_audioMasterGetNumAutomatableParameters: printf("DEPRECATED_audioMasterGetNumAutomatableParameters\n"); return 0;
+        case DEPRECATED_audioMasterGetParameterQuantization: printf("DEPRECATED_audioMasterGetParameterQuantization\n"); return 0;
+        case audioMasterIOChanged: printf("audioMasterIOChanged\n"); return 0;
+        case DEPRECATED_audioMasterNeedIdle: printf("DEPRECATED_audioMasterNeedIdle\n"); return 0;
+        case audioMasterSizeWindow: printf("audioMasterSizeWindow\n"); return 0;
+        case audioMasterGetSampleRate: printf("audioMasterGetSampleRate\n"); return 0;
+        case audioMasterGetBlockSize: printf("audioMasterGetBlockSize\n"); return 0;
+        case audioMasterGetInputLatency: printf("audioMasterGetInputLatency\n"); return 0;
+        case audioMasterGetOutputLatency: printf("audioMasterGetOutputLatency\n"); return 0;
+        case DEPRECATED_audioMasterGetPreviousPlug: printf("DEPRECATED_audioMasterGetPreviousPlug\n"); return 0;
+        case DEPRECATED_audioMasterGetNextPlug: printf("DEPRECATED_audioMasterGetNextPlug\n"); return 0;
+        case DEPRECATED_audioMasterWillReplaceOrAccumulate: printf("DEPRECATED_audioMasterWillReplaceOrAccumulate\n"); return 0;
+        case audioMasterGetCurrentProcessLevel: printf("audioMasterGetCurrentProcessLevel\n"); return 0;
+        case audioMasterGetAutomationState: printf("audioMasterGetAutomationState\n"); return 0;
+        case audioMasterOfflineStart: printf("audioMasterOfflineStart\n"); return 0;
+        case audioMasterOfflineRead: printf("audioMasterOfflineRead\n"); return 0;
+        case audioMasterOfflineWrite: printf("audioMasterOfflineWrite\n"); return 0;
+        case audioMasterOfflineGetCurrentPass: printf("audioMasterOfflineGetCurrentPass\n"); return 0;
+        case audioMasterOfflineGetCurrentMetaPass: printf("audioMasterOfflineGetCurrentMetaPass\n"); return 0;
+        case DEPRECATED_audioMasterSetOutputSampleRate: printf("DEPRECATED_audioMasterSetOutputSampleRate\n"); return 0;
+        case DEPRECATED_audioMasterGetOutputSpeakerArrangement: printf("DEPRECATED_audioMasterGetOutputSpeakerArrangement\n"); return 0;
+        case audioMasterGetVendorString: printf("audioMasterGetVendorString\n"); return 0;
+        case audioMasterGetProductString: printf("audioMasterGetProductString\n"); return 0;
+        case audioMasterGetVendorVersion: printf("audioMasterGetVendorVersion\n"); return 0;
+        case audioMasterVendorSpecific: printf("audioMasterVendorSpecific\n"); return 0;
+        case DEPRECATED_audioMasterSetIcon: printf("DEPRECATED_audioMasterSetIcon\n"); return 0;
+        case audioMasterCanDo: printf("audioMasterCanDo\n"); return 0;
+        case audioMasterGetLanguage: printf("audioMasterGetLanguage\n"); return 0;
+        case DEPRECATED_audioMasterOpenWindow: printf("DEPRECATED_audioMasterOpenWindow\n"); return 0;
+        case DEPRECATED_audioMasterCloseWindow: printf("DEPRECATED_audioMasterCloseWindow\n"); return 0;
+        case audioMasterGetDirectory: printf("audioMasterGetDirectory\n"); return 0;
+        case audioMasterUpdateDisplay: printf("audioMasterUpdateDisplay\n"); return 0;
+        case audioMasterBeginEdit: printf("audioMasterBeginEdit\n"); return 0;
+        case audioMasterEndEdit: printf("audioMasterEndEdit\n"); return 0;
+        case audioMasterOpenFileSelector: printf("audioMasterOpenFileSelector\n"); return 0;
+        case audioMasterCloseFileSelector: printf("audioMasterCloseFileSelector\n"); return 0;
+        case DEPRECATED_audioMasterEditFile: printf("DEPRECATED_audioMasterEditFile\n"); return 0;
+        case DEPRECATED_audioMasterGetChunkFile: printf("DEPRECATED_audioMasterGetChunkFile\n"); return 0;
+        case DEPRECATED_audioMasterGetInputSpeakerArrangement: printf("DEPRECATED_audioMasterGetInputSpeakerArrangement\n"); return 0;
+        default: printf(" unknown opcode\n"); return 0;
     }
 }
