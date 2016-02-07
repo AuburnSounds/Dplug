@@ -215,25 +215,26 @@ public:
         addChild(inputBargraph = new UIBargraph(context(), 2, -80.0f, 6.0f));
         addChild(outputBargraph = new UIBargraph(context(), 2, -80.0f, 6.0f));
 
+        RGBA textColor = RGBA(32, 16, 16, 0);
         addChild(inputLabel = new UILabel(context(), _font, "Input"));
         inputLabel.textSize = 17;
-        inputLabel.textColor = RGBA(0, 0, 0, 0);
+        inputLabel.textColor = textColor;
 
         addChild(driveLabel = new UILabel(context(), _font, "Drive"));
         driveLabel.textSize = 17;
-        driveLabel.textColor = RGBA(0, 0, 0, 0);
+        driveLabel.textColor = textColor;
 
         addChild(outputLabel = new UILabel(context(), _font, "Output"));
         outputLabel.textSize = 17;
-        outputLabel.textColor = RGBA(0, 0, 0, 0);
+        outputLabel.textColor = textColor;
 
         addChild(onLabel = new UILabel(context(), _font, "ON"));
         onLabel.textSize = 13;
-        onLabel.textColor = RGBA(0, 0, 0, 0);
+        onLabel.textColor = textColor;
 
         addChild(offLabel = new UILabel(context(), _font, "OFF"));
         offLabel.textSize = 13;
-        offLabel.textColor = RGBA(0, 0, 0, 0);
+        offLabel.textColor = textColor;
 
         addChild(leftPanel = new UIPanel(context(), RGBA(150, 140, 140, 0),
                                                     RMSP(128, 255, 255, 255), L16(defaultDepth / 2)));
@@ -329,7 +330,7 @@ public:
             // fill material map
             // Roughness Metalness Specular Physical
             auto croppedMaterial = materialMap.crop(dirtyRect);
-            croppedMaterial.fill(RGBA(160, 255, 128, 255)); 
+            croppedMaterial.fill(RMSP(120, 255, 128, 255)); 
         }
     }
 }
