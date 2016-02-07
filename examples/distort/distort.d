@@ -67,9 +67,7 @@ public:
         params ~= new GainParameter(paramInput, "input", 6.0, 0.0);
         params ~= new LinearFloatParameter(paramDrive, "drive", "%", 1.0f, 2.0f, 1.0f);
         params ~= new GainParameter(paramOutput, "output", 6.0, 0.0);
-        params ~= new BoolParameter(paramOnOff, "on/off", "", true);
-
-        params ~= new EnumParameter(4, "on/off", ["test", "oh", "trois"]);
+        params ~= new BoolParameter(paramOnOff, "on/off", true);
         return params;
     }
 
@@ -206,7 +204,7 @@ public:
 
         // Font data is bundled as a static array
         _font = new Font(cast(ubyte[])( import("VeraBd.ttf") ));
-        context.setSkybox( loadImage(cast(ubyte[])(import("skybox.png"))) );
+        context.setSkybox( loadImage(cast(ubyte[])(import("skybox.jpg"))) );
 
         // Buils the UI hierarchy
         addChild(inputSlider = new UISlider(context(), cast(FloatParameter) _client.param(paramInput)));
@@ -289,21 +287,49 @@ public:
         // In onDraw, you are supposed to only update diffuseMap and depthMap in the dirtyRects areas.
         // This rules can be broken when sufficiently far from another UIElement.
 
-        Material bgMat = Material.aluminum;
-
         foreach(dirtyRect; dirtyRects)
         {
             auto croppedDiffuse = diffuseMap.crop(dirtyRect);
-            auto croppedDepth = depthMap.crop(dirtyRect);
-            auto croppedMaterial = materialMap.crop(dirtyRect);
+            
+            
             // fill with clear color
-            croppedDiffuse.fill(bgMat.diffuse(0)); // for rendering efficiency, avoid emissive background
+            // Albedo RGB + Emissive
+            for (int y = dirtyRect.min.y; y < dirtyRect.max.y; ++y)
+            {
+                RGBA[] outDiffuse = diffuseMap.scanline(y);
+                ubyte emissive = 0; // for rendering efficiency, avoid emissive background
+                for (int x = dirtyRect.min.x; x < dirtyRect.max.x; ++x)
+                {
+                    int r = 233;
+                    int g = 235;
+                    int b = 236;
+                    float randomPhase = ( ((y + 1013904223) * 1664525) & 511) * 2 * PI / 32;
+                    int sine = cast(int)(4 * sin(randomPhase + x * 2 * PI / 150 + ( (y & 3) ? PI : 0 )));
+                    r += sine;
+                    g += sine;
+                    b += sine;
+                    RGBA color = RGBA(cast(ubyte)r, cast(ubyte)g, cast(ubyte)b, emissive);
+                    outDiffuse[x] = color;
+                }
+            }
+            
+            // default depth is approximately ~22% of the possible height, but you can choose any other value
+            for (int y = dirtyRect.min.y; y < dirtyRect.max.y; ++y)
+            {
+                L16[] outDepth = depthMap.scanline(y);
+                for (int x = dirtyRect.min.x; x < dirtyRect.max.x; ++x)
+                {
+                    int randomX = x * 1664525 + 1013904223;
+                    int randomDepth = (69096 * (y + randomX)) & 127;
+                    ushort depth = cast(ushort)( defaultDepth + randomDepth );
+                    outDepth[x] = L16(depth);
+                }
+            }
 
-            // fill with clear depth
-            croppedDepth.fill(L16(defaultDepth)); // default depth is approximately ~22% of the possible height, but you can choose any other value
-
-            // fill with bgMat
-            croppedMaterial.fill(bgMat.material(160));
+            // fill material map
+            // Roughness Metalness Specular Physical
+            auto croppedMaterial = materialMap.crop(dirtyRect);
+            croppedMaterial.fill(RGBA(160, 255, 128, 255)); 
         }
     }
 }
