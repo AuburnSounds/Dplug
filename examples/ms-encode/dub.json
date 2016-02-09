@@ -14,6 +14,6 @@
 
     "dependencies":
     {
-        "dplug:vst": { "path": "../.." }     
+        "dplug:vst": "~>2.0"
     }
 }
