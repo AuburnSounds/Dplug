@@ -1,0 +1,19 @@
+{
+    "name": "msencode",
+
+    "importPaths": [ "." ],
+    "sourcePaths": [ "." ],
+
+    "targetType": "dynamicLibrary",
+
+    "CFBundleIdentifierPrefix": "com.audiocompany",
+
+    "sourceFiles-windows": [
+        "./module.def"
+    ],
+
+    "dependencies":
+    {
+        "dplug:vst": { "path": "../.." }     
+    }
+}
