@@ -116,7 +116,7 @@ T normalizePhase(T)(T phase) nothrow @nogc
 
     static if (Assembly)
     {
-        static immutable T k_TAU = PI * 2;
+        T k_TAU = PI * 2;
         asm nothrow @nogc
         {
             fld k_TAU;    // TAU

@@ -15,11 +15,11 @@ import dplug.core;
 struct Delayline(T)
 {
 public:
-    
+
     /// Initialize the delay line. Can delay up to count samples.
     void initialize(int numSamples) nothrow @nogc
     {
-        resize(numSamples);        
+        resize(numSamples);
     }
 
     ~this() nothrow @nogc
@@ -39,7 +39,7 @@ public:
         // Over-allocate to support POW2 delaylines.
         // This wastes memory but allows delay-line of length 0 without tests.
 
-        int toAllocate = nextPowerOf2(numSamples + 1); 
+        int toAllocate = nextPowerOf2(numSamples + 1);
         _data.reallocBuffer(toAllocate);
         _indexMask = toAllocate - 1;
         _numSamples = numSamples;
@@ -49,7 +49,7 @@ public:
     /// Combined feed + sampleFull.
     /// Uses the delay line as a fixed delay of count samples.
     T nextSample(T incoming) nothrow @nogc
-    {        
+    {
         feedSample(incoming);
         return sampleFull(_numSamples);
     }
@@ -115,8 +115,60 @@ public:
             T x2  = _data[(iPart + 2) & _indexMask];
             return hermite!T(fPart, xm1, x0, x1, x2);
         }
+
+        /// Third-order splice interpolation
+        /// http://musicdsp.org/showArchiveComment.php?ArchiveID=62
+        T sampleSpline3(float delay)
+        {
+            assert(delay > 1);
+            float sampleLoc = (_index - delay) + 2 * _data.length;
+            assert(sampleLoc >= 1);
+
+            int iPart = cast(int)(sampleLoc);
+            float fPart = cast(float)(sampleLoc - iPart);
+            assert(fPart >= 0.0f);
+            assert(fPart <= 1.0f);
+            T L1 = _data[(iPart - 1) & _indexMask];
+            T L0  = _data[ iPart      & _indexMask];
+            T H0  = _data[(iPart + 1) & _indexMask];
+            T H1  = _data[(iPart + 2) & _indexMask];
+
+            return L0 + 0.5f *
+                fPart*(H0-L1 +
+                fPart*(H0 + L0*(-2) + L1 +
+                fPart*( (H0 - L0)*9 + (L1 - H1)*3 +
+                fPart*((L0 - H0)*15 + (H1 - L1)*5 +
+                fPart*((H0 - L0)*6 + (L1 - H1)*2 )))));
+        }
+
+        /// 4th order spline interpolation
+        /// http://musicdsp.org/showArchiveComment.php?ArchiveID=60
+        double sampleSpline4(float delay)
+        {
+            assert(delay > 2);
+            float sampleLoc = (_index - delay) + 2 * _data.length;
+            assert(sampleLoc >= 2);
+
+            int iPart = cast(int)(sampleLoc);
+            double fPart = cast(double)(sampleLoc - iPart);
+            assert(fPart >= 0.0f);
+            assert(fPart <= 1.0f);
+
+            double p0 = _data[(iPart-2) & _indexMask];
+            double p1 = _data[(iPart-1) & _indexMask];
+            double p2 = _data[iPart     & _indexMask];
+            double p3 = _data[(iPart+1) & _indexMask];
+            double p4 = _data[(iPart+2) & _indexMask];
+            double p5 = _data[(iPart+3) & _indexMask];
+
+            return p2 + 0.04166666666*fPart*((p3-p1)*16.0+(p0-p4)*2.0
+            + fPart *((p3+p1)*16.0-p0-p2*30.0- p4
+            + fPart *(p3*66.0-p2*70.0-p4*33.0+p1*39.0+ p5*7.0- p0*9.0
+            + fPart *( p2*126.0-p3*124.0+p4*61.0-p1*64.0- p5*12.0+p0*13.0
+            + fPart *((p3-p2)*50.0+(p1-p4)*25.0+(p5-p0)*5.0)))));
+        };
     }
-    
+
 private:
     T[] _data;
     int _index;
