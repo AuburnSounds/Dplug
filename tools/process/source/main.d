@@ -130,17 +130,21 @@ void main(string[]args)
         if (outPath)
             writefln("Ouput sound will be output to %s", outPath);
 
-        IPluginHost host = createPluginHost(pluginPath);
-        host.setSampleRate(sound.sampleRate);        
-        host.setMaxBufferSize(bufferSize);
-        if (preset != -1)
-            host.loadPreset(preset);
-
-        long getTickMs() nothrow @nogc
+        static long getTickMs() nothrow @nogc
         {
             import core.time;
             return convClockFreq(MonoTime.currTime.ticks, MonoTime.ticksPerSecond, 1_000);
         }
+
+        long timeBeforeInit = getTickMs();
+        IPluginHost host = createPluginHost(pluginPath);
+        host.setSampleRate(sound.sampleRate);
+        host.setMaxBufferSize(bufferSize);
+        if (preset != -1)
+            host.loadPreset(preset);
+        long timeAfterInit = getTickMs();
+
+        writefln("Initialization took %s ms", timeAfterInit - timeBeforeInit);
 
         double[] measures;
 
