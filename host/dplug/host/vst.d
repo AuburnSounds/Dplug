@@ -112,6 +112,11 @@ final class VSTPluginHost : IPluginHost
         _dispatcher(_aeffect, effSetBlockSize, 0, cast(VstIntPtr)samples, null, 0.0f);
     }
 
+    override void loadPreset(int presetIndex)
+    {
+        _dispatcher(_aeffect, effSetProgram, 0, cast(ptrdiff_t)(presetIndex), null, 0.0f);
+    }
+
 private:
     SharedLib _lib;
     AEffect* _aeffect;

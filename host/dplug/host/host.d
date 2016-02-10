@@ -24,6 +24,9 @@ interface IPluginHost
     /// Returns: Normalized value for parameter.
     float getParameter(int paramIndex);
 
+    /// Loads a preset.
+    void loadPreset(int presetIndex);
+
     /// Free all resources associated with the plugin host.
     void close();
 

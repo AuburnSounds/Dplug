@@ -12,7 +12,7 @@ void usage()
 {
     writeln();
     writeln("Auburn Sounds plugin benchmark\n");
-    writeln("usage: process [-i input.wav] [-o output.wav] [-t times] [-h] [-b <bufferSize>] plugin.dll\n");
+    writeln("usage: process [-i input.wav] [-o output.wav] [-t times] [-h] [-b <bufferSize>] [-preset <index>] plugin.dll\n");
 
 }
 
@@ -26,6 +26,7 @@ void main(string[]args)
         int bufferSize = 256;
         bool help = false;
         int times = 1;
+        int preset = -1; // none
 
         for(int i = 1; i < args.length; ++i)
         {
@@ -53,6 +54,11 @@ void main(string[]args)
             {
                 ++i;
                 times = to!int(args[i]);
+            }
+            else if (arg == "-preset")
+            {
+                 ++i;
+                preset = to!int(args[i]);
             }
             else if (arg == "-h")
             {
@@ -127,6 +133,8 @@ void main(string[]args)
         IPluginHost host = createPluginHost(pluginPath);
         host.setSampleRate(sound.sampleRate);        
         host.setMaxBufferSize(bufferSize);
+        if (preset != -1)
+            host.loadPreset(preset);
 
         long getTickMs() nothrow @nogc
         {
