@@ -117,15 +117,16 @@ T normalizePhase(T)(T phase) nothrow @nogc
     static if (Assembly)
     {
         T k_TAU = PI * 2;
+        T result = phase;
         asm nothrow @nogc
         {
             fld k_TAU;    // TAU
-            fld phase;    // phase | TAU
+            fld result;    // phase | TAU
             fprem1;       // normalized(phase) | TAU
-            fstp phase;   // TAU
+            fstp result;   // TAU
             fstp ST(0);   //
         }
-        return phase;
+        return result;
     }
     else
     {
