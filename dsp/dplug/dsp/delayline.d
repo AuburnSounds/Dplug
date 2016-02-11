@@ -143,29 +143,31 @@ public:
 
         /// 4th order spline interpolation
         /// http://musicdsp.org/showArchiveComment.php?ArchiveID=60
-        double sampleSpline4(float delay)
+        T sampleSpline4(float delay)
         {
             assert(delay > 2);
-            float sampleLoc = (_index - delay) + 2 * _data.length;
+            T sampleLoc = (_index - delay) + 2 * _data.length;
             assert(sampleLoc >= 2);
 
             int iPart = cast(int)(sampleLoc);
-            double fPart = cast(double)(sampleLoc - iPart);
+            T fPart = cast(T)(sampleLoc - iPart);
+
+
             assert(fPart >= 0.0f);
             assert(fPart <= 1.0f);
 
-            double p0 = _data[(iPart-2) & _indexMask];
-            double p1 = _data[(iPart-1) & _indexMask];
-            double p2 = _data[iPart     & _indexMask];
-            double p3 = _data[(iPart+1) & _indexMask];
-            double p4 = _data[(iPart+2) & _indexMask];
-            double p5 = _data[(iPart+3) & _indexMask];
+            T p0 = _data[(iPart-2) & _indexMask];
+            T p1 = _data[(iPart-1) & _indexMask];
+            T p2 = _data[iPart     & _indexMask];
+            T p3 = _data[(iPart+1) & _indexMask];
+            T p4 = _data[(iPart+2) & _indexMask];
+            T p5 = _data[(iPart+3) & _indexMask];
 
-            return p2 + 0.04166666666*fPart*((p3-p1)*16.0+(p0-p4)*2.0
-            + fPart *((p3+p1)*16.0-p0-p2*30.0- p4
-            + fPart *(p3*66.0-p2*70.0-p4*33.0+p1*39.0+ p5*7.0- p0*9.0
-            + fPart *( p2*126.0-p3*124.0+p4*61.0-p1*64.0- p5*12.0+p0*13.0
-            + fPart *((p3-p2)*50.0+(p1-p4)*25.0+(p5-p0)*5.0)))));
+            return p2 + 0.04166666666f * fPart * ((p3 - p1) * 16 + (p0 - p4) * 2
+            + fPart * ((p3 + p1) * 16 - p0 - p2 * 30 - p4
+            + fPart * (p3 * 66 - p2 * 70 - p4 * 33 + p1 * 39 + p5 * 7- p0 * 9
+            + fPart * ( p2 * 126 - p3 * 124 + p4 * 61 - p1 * 64 - p5 * 12 + p0 * 13
+            + fPart * ((p3-p2) * 50 + (p1-p4) * 25 + (p5-p0)*5)))));
         };
     }
 
