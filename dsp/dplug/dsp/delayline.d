@@ -5,6 +5,7 @@
 */
 module dplug.dsp.delayline;
 
+import core.stdc.string;
 import std.traits;
 
 import gfm.math.funcs;
@@ -43,6 +44,7 @@ public:
         _data.reallocBuffer(toAllocate);
         _indexMask = toAllocate - 1;
         _numSamples = numSamples;
+        _index = _indexMask;
         _data[] = 0;
     }
 
@@ -72,8 +74,27 @@ public:
     /// Adds several samples at end of delay.
     void feedBuffer(const(T)[] incoming) nothrow @nogc
     {
-        foreach(sample; incoming)
-            feedSample(sample);
+        int N = cast(int)(incoming.length);
+
+        // this buffer must be smaller than the delay line, 
+        // else we may risk dropping samples immediately
+        assert(N < _numSamples);
+
+        // remaining samples before end of delayline
+        int remain = _indexMask - _index;
+
+        if (N <= remain)
+        {
+            memcpy( &_data[_index + 1], incoming.ptr, N * T.sizeof );
+            _index += N;
+        }
+        else
+        {
+            memcpy( _data.ptr + (_index + 1), incoming.ptr, remain * T.sizeof );
+            size_t numBytes = (N - remain) * T.sizeof;
+            memcpy( _data.ptr, incoming.ptr + remain, numBytes);
+            _index = (_index + N) & _indexMask;
+        }
     }
 
     /// Random access sampling of the delay-line at integer points.
