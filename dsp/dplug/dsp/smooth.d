@@ -52,7 +52,12 @@ public:
         return _current;
     }
 
-    void nextBuffer(const(T)* input, T* output, int frames)
+    bool hasConverged(T target) nothrow @nogc
+    {
+        return target == _current;
+    }
+
+    void nextBuffer(const(T)* input, T* output, int frames) nothrow @nogc
     {
         for (int i = 0; i < frames; ++i)
         {
@@ -60,7 +65,7 @@ public:
         }
     }
 
-     void nextBuffer(T input, T* output, int frames)
+    void nextBuffer(T input, T* output, int frames) nothrow @nogc
     {
         for (int i = 0; i < frames; ++i)
         {
