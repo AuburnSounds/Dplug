@@ -158,7 +158,6 @@ void main(string[] args)
             std.file.remove(source);
         }
 
-        string dubPath = `C:\Users\ponce\Desktop\dub\bin`;
         auto oldpath = environment["PATH"];
 
         static string outputDirectory(string dirName, string osString, Arch arch, string config)
@@ -178,14 +177,16 @@ void main(string[] args)
                     if (compiler == "gdc" && is64b)
                         environment["PATH"] = `C:\d\gdc-64b\bin;` ~ oldpath;
                     if (compiler == "ldc" && !is64b)
-                        environment["PATH"] = `c:\d\ldc-32b\bin` ~ ";" ~ mingw64Path ~ ";" ~ oldpath;
+                    {
+                        environment["PATH"] = `c:\d\ldc-32b\bin` ~ ";" ~ oldpath;
+                    }
                     if (compiler == "ldc" && is64b)
                     {
-                        environment["PATH"] = `c:\d\ldc-64b\bin` ~ ";" ~ vc14Path ~";" ~ `C:\Users\ponce\Desktop\dub\bin`;// ~ ";" ~ oldpath;
-                        environment["LIB"] = `C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\LIB\amd64;`
+                        environment["PATH"] = `c:\d\ldc-64b\bin` ~ ";" ~ oldpath;
+                   /*     environment["LIB"] = `C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\LIB\amd64;`
                                              `C:\Program Files (x86)\Windows Kits\10\lib\10.0.10150.0\ucrt\x64;`
                                              `C:\Program Files (x86)\Windows Kits\NETFXSDK\4.6\lib\um\x64;`
-                                             `C:\Program Files (x86)\Windows Kits\8.1\lib\winv6.3\um\x64`;
+                                             `C:\Program Files (x86)\Windows Kits\8.1\lib\winv6.3\um\x64`; */
                     }
                 }
 
@@ -320,20 +321,24 @@ void buildPlugin(string compiler, string config, string build, bool is64b, bool 
     // On OSX, 32-bit plugins made with LDC are compatible >= 10.7
     // while those made with DMD >= 10.6
     // So force DMD usage for 32-bit plugins.
+    // UPDATE: no longer support 10.6, D dropped compatibility and 64-bit was untested
+    /*
     if ( (is64b == false) && (compiler == "ldc2") )
     {
         writefln("info: forcing DMD compiler for 10.6 compatibility");
         compiler = "dmd";
     }
+    */
 
     writefln("*** Building with %s, %s arch", compiler, is64b ? "64-bit" : "32-bit");
     // build the output file
     string arch = is64b ? "x86_64" : "x86";
 
     // Produce output compatible with earlier OSX
+    // LDC does not support earlier than 10.7
     version(OSX)
     {
-        environment["MACOSX_DEPLOYMENT_TARGET"] = (compiler == "ldc2") ? "10.7" : "10.6";
+        environment["MACOSX_DEPLOYMENT_TARGET"] = "10.7";
     }
 
     string cmd = format("dub build --build=%s --arch=%s --compiler=%s %s %s %s %s",
@@ -480,7 +485,7 @@ string makePListFile(Plugin plugin, string config, bool hasIcon)
     addKeyString("CFBundleShortVersionString", productVersion);
     addKeyString("CFBundleSignature", "ABAB"); // doesn't matter http://stackoverflow.com/questions/1875912/naming-convention-for-cfbundlesignature-and-cfbundleidentifier
     addKeyString("CFBundleVersion", productVersion);
-    addKeyString("LSMinimumSystemVersion", "10.6.0");
+    addKeyString("LSMinimumSystemVersion", "10.7.0");
     if (hasIcon)
         addKeyString("CFBundleIconFile", "icon");
     content ~= `    </dict>` ~ "\n";
