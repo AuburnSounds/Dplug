@@ -8,6 +8,10 @@ Additionally it comes with music DSP algorithms that might be useful for your ne
 
 ![Example screenshot](screenshot.jpg "With a bit of work")
 
+## Tutorial
+
+https://auburnsounds.com/blog/2016-02-08_Making-a-Windows-VST-plugin-with-D.html
+
 
 ## Contents
 
@@ -122,7 +126,7 @@ Windows XP+
 
 - What is the minimum OSX version supported?
 
-Mac OS X 10.6+
+Mac OS X 10.7+
 Probably possible to go below, to do that modify the "release" tool.
 
 - What D compiler should I use?
@@ -133,7 +137,8 @@ Probably possible to go below, to do that modify the "release" tool.
 
 - Is dplug stable?
 
-No. use a v1.x.y tag to get stability.
+No. The interface tend to change especially in dplug:dsp.
+Pin the version you use using DUB version specifications.
 
 ![Rendering](rendering.jpg)
 
@@ -142,9 +147,10 @@ No. use a v1.x.y tag to get stability.
 
 - v2.x.y:
   * this is the next release, and API will break without notice
-  * supports VST/AU support for 32-bit and 64-bit, Windows and Mac
+  * supports VST for 32-bit and 64-bit, Windows and Mac
   * `release` tool now expects a VST or AU configuration, see the `distort` example for details
   * special `dub.json` key `CFBundleIdentifier` became `CFBundleIdentifierPrefix`, see how `distort` works to update your plugins dub.json
+  * 10.6 compatibility dropped.
 
 - v1.x.y:
   * initial release, VST support for 32-bit and 64-bit, Windows and Mac
