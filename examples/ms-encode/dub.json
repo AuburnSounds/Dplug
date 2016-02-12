@@ -8,8 +8,12 @@
 
     "CFBundleIdentifierPrefix": "com.audiocompany",
 
-    "sourceFiles-windows": [
+    "sourceFiles-windows-dmd": [
         "./module.def"
+    ],
+
+    "lflags-windows-ldc": [
+        "/DEF:module.def"
     ],
 
     "dependencies":
