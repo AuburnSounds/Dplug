@@ -546,7 +546,10 @@ unittest
     auto m = highShelfFilterRBJ!double(300.0, 44100.0, 0.7);
 }
 
-version(D_InlineAsm_X86)
+
+version(LDC)
+    private enum D_InlineAsm_Any = false;
+else version(D_InlineAsm_X86)
     private enum D_InlineAsm_Any = true;
 else version(D_InlineAsm_X86_64)
     private enum D_InlineAsm_Any = true;
