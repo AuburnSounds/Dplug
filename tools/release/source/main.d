@@ -138,7 +138,6 @@ void main(string[] args)
             return;
         }
 
-        string mingw64Path = `C:\D\mingw-w64\mingw32\bin`;
         string vc10Path = `C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\bin;`
                         ~ `C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE`;
 
