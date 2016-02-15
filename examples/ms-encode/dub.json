@@ -19,5 +19,13 @@
     "dependencies":
     {
         "dplug:vst": "~>2.0"
-    }
+    },
+
+    "configurations": [
+        {
+            "name": "VST",
+            "versions": ["VST"],
+            "targetType": "dynamicLibrary"
+        }
+    ]
 }
