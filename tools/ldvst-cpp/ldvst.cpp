@@ -20,7 +20,7 @@ int main(int argc, char**argv)
     std::vector<char*> dllPaths;
     if (argc < 2)
     {
-        printf("usage: ldvst [-lazy] <thing.vst>\n");
+        printf("usage: ldvst [-lazy] <thing.dll | thing.vst>\n");
         return 1;
     }
 
