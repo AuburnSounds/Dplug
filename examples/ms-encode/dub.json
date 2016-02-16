@@ -13,7 +13,10 @@
     ],
 
     "lflags-windows-ldc": [
-        "/DEF:module.def"
+        "/DEF:module.def",
+        "libcmt.lib",
+        "/nodefaultlib:msvcrt.lib",
+        "/nodefaultlib:vcruntime.lib"
     ],
 
     "dependencies":
