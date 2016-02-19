@@ -257,7 +257,25 @@ public:
     final void mouseMove(int x, int y, int dx, int dy, MouseState mstate)
     {
         if (isDragged)
-            onMouseDrag(x, y, dx, dy, mstate);
+        {
+            // in debug mode, dragging with the right mouse button move elements around
+            bool draggingUsed = false;
+            debug
+            {
+                if (mstate.rightButtonDown)
+                {
+                    int nx = _position.min.x + dx;
+                    int ny = _position.min.y + dy;
+                    setDirty();
+                    _position = box2i(nx, ny, nx + _position.width, ny + _position.height);
+                    setDirty();
+                    draggingUsed = true;
+                }
+            }
+
+            if (!draggingUsed)
+                onMouseDrag(x, y, dx, dy, mstate);
+        }
 
         foreach(child; _children)
         {
