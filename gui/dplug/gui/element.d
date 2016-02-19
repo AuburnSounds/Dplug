@@ -259,10 +259,24 @@ public:
         if (isDragged)
         {
             // in debug mode, dragging with the right mouse button move elements around
+            // and dragging with shift  + right button resize elements around
             bool draggingUsed = false;
             debug
             {
-                if (mstate.rightButtonDown)
+                if (mstate.rightButtonDown && mstate.shiftPressed)
+                {
+                    int nx = _position.min.x;
+                    int ny = _position.min.y;
+                    int w = _position.width + dx;
+                    int h = _position.height + dy;
+                    if (w < 5) w = 5;
+                    if (h < 5) h = 5;
+                    setDirty();
+                    _position = box2i(nx, ny, nx + w, ny + h);
+                    setDirty();
+                    draggingUsed = true;
+                }
+                else if (mstate.rightButtonDown)
                 {
                     int nx = _position.min.x + dx;
                     int ny = _position.min.y + dy;
