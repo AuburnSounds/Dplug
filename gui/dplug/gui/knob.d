@@ -143,7 +143,7 @@ public:
         else if (style == KnobStyle.cylinder)
         {
             L16 depth = L16(cast(ushort)(0.5f + lerp(65535.0f, 45000.0f, _pushedAnimation)) );
-            depthMap.softCircleFloat(centerx, centery, knobRadiusPx - 1, knobRadiusPx, depth);
+            depthMap.softCircleFloat(centerx, centery, knobRadiusPx - 5, knobRadiusPx, depth);
         }
         RGBA knobDiffuseLit = knobDiffuse;
             knobDiffuseLit.a = emissive;
