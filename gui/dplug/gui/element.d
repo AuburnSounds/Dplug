@@ -280,6 +280,8 @@ public:
                 {
                     int nx = _position.min.x + dx;
                     int ny = _position.min.y + dy;
+                    if (nx < 0) nx = 0;
+                    if (ny < 0) ny = 0;
                     setDirty();
                     _position = box2i(nx, ny, nx + _position.width, ny + _position.height);
                     setDirty();
