@@ -57,9 +57,24 @@ if (isWritableView!V && is(COLOR : ViewColor!V))
     if (a0 > a1)
         a1 += TAU;
 
-    foreach (py; y0..y1+1)
+    int xmin = x0;
+    int xmax = x1+1;
+    int ymin = y0;
+    int ymax = y1+1;
+
+    // avoids to draw out of bounds
+    if (xmin < 0)
+        xmin = 0;
+    if (ymin < 0)
+        ymin = 0;
+    if (xmax > v.w)
+        xmax = v.w;
+    if (ymax > v.h)
+        ymax = v.h;
+
+    foreach (py; ymin .. ymax)
     {
-        foreach (px; x0..x1+1)
+        foreach (px; xmin .. xmax)
         {
             float dx = px-x;
             float dy = py-y;
