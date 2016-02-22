@@ -147,9 +147,9 @@ public:
         }
         RGBA knobDiffuseLit = knobDiffuse;
             knobDiffuseLit.a = emissive;
-        diffuseMap.softCircleFloat(centerx, centery, knobRadiusPx - 1, knobRadiusPx, knobDiffuseLit);        
+        diffuseMap.softCircleFloat(centerx, centery, knobRadiusPx - 1, knobRadiusPx, knobDiffuseLit);
 
-        materialMap.softCircleFloat(centerx, centery, depthRadius - 1, depthRadius,   knobMaterial);
+        materialMap.softCircleFloat(centerx, centery, knobRadiusPx - 5, knobRadiusPx, knobMaterial);
 
 
         // LEDs
