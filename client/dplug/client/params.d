@@ -400,7 +400,10 @@ public:
     this(int index, string name, string label, double min, double max, double defaultValue)
     {
         super(index, name, label);
+
+        // If you fail in this assertion, this means your default value is out of range.
         assert(defaultValue >= min && defaultValue <= max);
+
         _defaultValue = defaultValue;
         _name = name;
         _value = _defaultValue;
