@@ -14,7 +14,8 @@ import dplug.client.params;
 enum KnobStyle
 {
     thumb, // with a hole
-    cylinder
+    cylinder,
+    cone
 }
 
 class UIKnob : UIElement, IParameterListener
@@ -145,10 +146,14 @@ public:
             L16 depth = L16(cast(ushort)(0.5f + lerp(65535.0f, 45000.0f, _pushedAnimation)) );
             depthMap.softCircleFloat(centerx, centery, knobRadiusPx - 5, knobRadiusPx, depth);
         }
+        else if (style == KnobStyle.cone)
+        {
+            L16 depth = L16(cast(ushort)(0.5f + lerp(65535.0f, 45000.0f, _pushedAnimation)) );
+            depthMap.softCircleFloat(centerx, centery, 0, knobRadiusPx, depth);
+        }
         RGBA knobDiffuseLit = knobDiffuse;
             knobDiffuseLit.a = emissive;
         diffuseMap.softCircleFloat(centerx, centery, knobRadiusPx - 1, knobRadiusPx, knobDiffuseLit);
-
         materialMap.softCircleFloat(centerx, centery, knobRadiusPx - 5, knobRadiusPx, knobMaterial);
 
 
