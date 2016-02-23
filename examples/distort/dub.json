@@ -24,7 +24,6 @@
         "dplug:dsp": { "path": "../.." },
         "dplug:vst": { "path": "../.." },
         "dplug:au": { "path": "../.." },
-        "dplug:client": { "path": "../.." },
         "dplug:gui": { "path": "../.." }
     },
 

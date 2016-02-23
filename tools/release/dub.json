@@ -1,4 +1,5 @@
 {
 	"name": "release",
-	"description": "Build tool. DUB frontend which makes multiple version of a plugin, and also package them in OSX bundles"
+	"description": "Build tool. DUB frontend which makes multiple version of a plugin, and also package them in OSX bundles",
+    "stringImportPaths": ["."]
 }
