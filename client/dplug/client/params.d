@@ -348,6 +348,24 @@ public:
         notifyListeners();
     }
 
+    /// Returns: minimum possible values.
+    final int minValue() pure const nothrow @nogc
+    {
+        return _min;
+    }
+
+    /// Returns: maximum possible values.
+    final int maxValue() pure const nothrow @nogc
+    {
+        return _max;
+    }
+
+    /// Returns: number of possible values.
+    final int numValues() pure const nothrow @nogc
+    {
+        return 1 + _max - _min;
+    }
+
 private:
     shared(int) _value;
     int _min;
