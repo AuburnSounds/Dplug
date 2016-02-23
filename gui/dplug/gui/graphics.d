@@ -382,7 +382,16 @@ protected:
         if (ymin < 0) ymin = 0;
         if (xmax > width) xmax = width;
         if (ymax > height) ymax = height;
-        return box2i(xmin, ymin, xmax, ymax);
+
+        // This could also happen if an UIElement is moved quickly
+        if (xmax < 0) xmax = 0;
+        if (ymax < 0) ymax = 0;
+        if (xmin > width) xmin = width;
+        if (ymin > height) ymin = height;
+
+        box2i result = box2i(xmin, ymin, xmax, ymax);
+        assert(result.isSorted);
+        return result;
     }
 
     /// Redraw UIElements

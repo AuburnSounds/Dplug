@@ -56,20 +56,27 @@ public:
     /// This method is called for each item in the drawlist that was visible and dirty.
     final void render(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, in box2i[] areasToUpdate)
     {
-        // List of disjointed dirty rectangles intersecting with _position
+        // List of disjointed dirty rectangles intersecting with valid part of _position
         // A nice thing with intersection is that a disjointed set of rectangles
         // stays disjointed.
+
+        // we only consider the part of _position that is actually in the surface
+        box2i validPosition = _position.intersection(box2i(0, 0, diffuseMap.w, diffuseMap.h));
+
+        if (validPosition.empty())
+            return; // nothing to draw here
+
         _localRectsBuf.clearContents();
         {
             foreach(rect; areasToUpdate)
             {
-                box2i inter = rect.intersection(_position);
+                box2i inter = rect.intersection(validPosition);
 
                 if (!inter.empty) // don't consider empty rectangles
                 {
                     // Express the dirty rect in local coordinates for simplicity
                     // TODO: amortize this allocation else we have big problems
-                    _localRectsBuf.pushBack( inter.translate(-_position.min) );
+                    _localRectsBuf.pushBack( inter.translate(-validPosition.min) );
                 }
             }
         }
@@ -77,12 +84,15 @@ public:
         if (_localRectsBuf.length == 0)
             return; // nothing to draw here
 
-        // Crop the diffuse and depth to the _position
-        // This is because drawing outside of _position is disallowed by design
-        // Don't even try!
-        ImageRef!RGBA diffuseMapCropped = diffuseMap.cropImageRef(_position);
-        ImageRef!L16 depthMapCropped = depthMap.cropImageRef(_position);
-        ImageRef!RGBA materialMapCropped = materialMap.cropImageRef(_position);
+        // Crop the diffuse and depth to the valid part of _position
+        // This is because drawing outside of _position is disallowed by design.
+        // Never do that!
+        ImageRef!RGBA diffuseMapCropped = diffuseMap.cropImageRef(validPosition);
+        ImageRef!L16 depthMapCropped = depthMap.cropImageRef(validPosition);
+        ImageRef!RGBA materialMapCropped = materialMap.cropImageRef(validPosition);
+
+        // Should never be an empty area there
+        assert(diffuseMapCropped.w != 0 && diffuseMapCropped.h != 0);
         onDraw(diffuseMapCropped, depthMapCropped, materialMapCropped, _localRectsBuf[]);
     }
 
