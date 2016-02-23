@@ -35,21 +35,20 @@ public:
     this(UIContext context)
     {
         _context = context;
-        _localRectsBuf = new AlignedBuffer!box2i(1);
-        _childDestroyed = false;
+        _localRectsBuf = new AlignedBuffer!box2i();
+        _zOrderedChildren = new AlignedBuffer!UIElement(0);
     }
 
     ~this()
     {
-        if (!_childDestroyed)
-        {
-            debug ensureNotInGC("UIElement");
-            foreach(child; children)
-                child.destroy();
+        debug ensureNotInGC("UIElement");
 
-            _localRectsBuf.destroy();
-            _childDestroyed = true;
-        }
+        _zOrderedChildren.destroy();
+
+        foreach(child; children)
+            child.destroy();
+
+        _localRectsBuf.destroy();
     }
 
     /// Returns: true if was drawn, ie. the buffers have changed.
@@ -75,7 +74,6 @@ public:
                 if (!inter.empty) // don't consider empty rectangles
                 {
                     // Express the dirty rect in local coordinates for simplicity
-                    // TODO: amortize this allocation else we have big problems
                     _localRectsBuf.pushBack( inter.translate(-validPosition.min) );
                 }
             }
@@ -209,8 +207,10 @@ public:
     // to be called at top-level when the mouse clicked
     final bool mouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
     {
+        recomputeZOrderedChildren();
+
         // Test children that are displayed above this element first
-        foreach(child; _children)
+        foreach(child; _zOrderedChildren[])
         {
             if (child.zOrder >= zOrder)
                 if (child.mouseClick(x, y, button, isDoubleClick, mstate))
@@ -229,7 +229,7 @@ public:
         }
 
         // Test children that are displayed below this element last
-        foreach(child; _children)
+        foreach(child; _zOrderedChildren[])
         {
             if (child.zOrder < zOrder)
                 if (child.mouseClick(x, y, button, isDoubleClick, mstate))
@@ -308,7 +308,7 @@ public:
             child.mouseMove(x, y, dx, dy, mstate);
         }
 
-        if (_position.contains(vec2i(x, y)))
+        if (_position.contains(vec2i(x, y))) // TODO: something fine-grained
         {
             if (!_mouseOver)
                 onMouseEnter();
@@ -499,13 +499,36 @@ protected:
     int _zOrder = 0;
 
 private:
+
+    /// Reference to owning context
     UIContext _context;
+
+    /// Flag: whether this UIElement has mouse over it or not
+    bool _mouseOver = false;
 
     AlignedBuffer!box2i _localRectsBuf;
 
-    bool _mouseOver = false;
+    /// Necessary for mouse-click to be aware of Z order
+    AlignedBuffer!UIElement _zOrderedChildren;
 
-    bool _childDestroyed; // destructor flag
+    // Sort children in ascending z-order
+    final void recomputeZOrderedChildren()
+    {
+        // Get a z-ordered list of childrens
+        _zOrderedChildren.clearContents();
+        foreach(child; _children)
+            _zOrderedChildren.pushBack(child);
+
+        // Note: unstable sort, so do not forget to _set_ z-order in the first place
+        //       if you have overlapping UIElement
+        nogc_qsort!UIElement(_zOrderedChildren[],  
+                             (a, b) nothrow @nogc 
+                             {
+                                 if (a.zOrder < b.zOrder) return 1;
+                                 else if (a.zOrder > b.zOrder) return -1;
+                                 else return 0;
+                             });
+    }
 }
 
 
