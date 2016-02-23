@@ -103,7 +103,7 @@ public:
     this()
     {
         _dirtyRectMutex = new UncheckedMutex();
-        _dirtyRects = new AlignedBuffer!box2i(4);
+        _dirtyRects = new AlignedBuffer!box2i(0);
         _initialized = true;
     }
 
