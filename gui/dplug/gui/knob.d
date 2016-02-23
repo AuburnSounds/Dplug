@@ -91,8 +91,7 @@ public:
     {
         float normalizedValue = _param.getNormalized();
 
-
-        // We'll draw entireyl in the largest centered square in _position.
+        // We'll draw entirely in the largest centered square in _position.
         box2i subSquare;
         if (_position.width > _position.height)
         {
@@ -116,68 +115,78 @@ public:
         float a2 = a1 + PI * 1.5f * normalizedValue;
         float a3 = a1 + PI * 1.5f;
 
-        diffuseMap.aaFillSector(cast(int)centerx, cast(int)centery, radius * trailRadiusMin, radius * trailRadiusMax, a1, a2, litTrailDiffuse);
-        diffuseMap.aaFillSector(cast(int)centerx, cast(int)centery, radius * trailRadiusMin, radius * trailRadiusMax, a2, a3, unlitTrailDiffuse);
-
-        //
-        // Draw knob
-        //
-
-        float angle = (normalizedValue - 0.5f) * 4.8f;
-        float depthRadius = std.algorithm.max(knobRadiusPx * 3.0f / 5.0f, 0);
-        float depthRadius2 = std.algorithm.max(knobRadiusPx * 3.0f / 5.0f, 0);
-
-        float posEdgeX = centerx + sin(angle) * depthRadius2;
-        float posEdgeY = centery - cos(angle) * depthRadius2;
-
-        ubyte emissive = 8;
-        if (isMouseOver)
-            emissive = 30;
-        if (isDragged)
-            emissive = 60;
-
-        if (style == KnobStyle.thumb)
+        foreach(dirtyRect; dirtyRects)
         {
-            depthMap.softCircleFloat(centerx, centery, depthRadius, knobRadiusPx, L16(65535));
-            depthMap.softCircleFloat(centerx, centery, 0, depthRadius, L16(38400));
-        }
-        else if (style == KnobStyle.cylinder)
-        {
-            L16 depth = L16(cast(ushort)(0.5f + lerp(65535.0f, 45000.0f, _pushedAnimation)) );
-            depthMap.softCircleFloat(centerx, centery, knobRadiusPx - 5, knobRadiusPx, depth);
-        }
-        else if (style == KnobStyle.cone)
-        {
-            L16 depth = L16(cast(ushort)(0.5f + lerp(65535.0f, 45000.0f, _pushedAnimation)) );
-            depthMap.softCircleFloat(centerx, centery, 0, knobRadiusPx, depth);
-        }
-        RGBA knobDiffuseLit = knobDiffuse;
-            knobDiffuseLit.a = emissive;
-        diffuseMap.softCircleFloat(centerx, centery, knobRadiusPx - 1, knobRadiusPx, knobDiffuseLit);
-        materialMap.softCircleFloat(centerx, centery, knobRadiusPx - 5, knobRadiusPx, knobMaterial);
+            auto croppedDiffuse = diffuseMap.crop(dirtyRect);
+            auto croppedDepth = depthMap.crop(dirtyRect);
+            auto croppedMaterial = materialMap.crop(dirtyRect);
+
+            int bx = dirtyRect.min.x;
+            int by = dirtyRect.min.y;
+
+            croppedDiffuse.aaFillSector(cast(int)centerx - bx, cast(int)centery - by, radius * trailRadiusMin, radius * trailRadiusMax, a1, a2, litTrailDiffuse);
+            croppedDiffuse.aaFillSector(cast(int)centerx - bx, cast(int)centery - by, radius * trailRadiusMin, radius * trailRadiusMax, a2, a3, unlitTrailDiffuse);
+
+            //
+            // Draw knob
+            //
+
+            float angle = (normalizedValue - 0.5f) * 4.8f;
+            float depthRadius = std.algorithm.max(knobRadiusPx * 3.0f / 5.0f, 0);
+            float depthRadius2 = std.algorithm.max(knobRadiusPx * 3.0f / 5.0f, 0);
+
+            float posEdgeX = centerx + sin(angle) * depthRadius2;
+            float posEdgeY = centery - cos(angle) * depthRadius2;
+
+            ubyte emissive = 8;
+            if (isMouseOver)
+                emissive = 30;
+            if (isDragged)
+                emissive = 60;
+
+            if (style == KnobStyle.thumb)
+            {
+                croppedDepth.softCircleFloat(centerx - bx, centery - by, depthRadius, knobRadiusPx, L16(65535));
+                croppedDepth.softCircleFloat(centerx - bx, centery - by, 0, depthRadius, L16(38400));
+            }
+            else if (style == KnobStyle.cylinder)
+            {
+                L16 depth = L16(cast(ushort)(0.5f + lerp(65535.0f, 45000.0f, _pushedAnimation)) );
+                croppedDepth.softCircleFloat(centerx - bx, centery - by, knobRadiusPx - 5, knobRadiusPx, depth);
+            }
+            else if (style == KnobStyle.cone)
+            {
+                L16 depth = L16(cast(ushort)(0.5f + lerp(65535.0f, 45000.0f, _pushedAnimation)) );
+                croppedDepth.softCircleFloat(centerx - bx, centery - by, 0, knobRadiusPx, depth);
+            }
+            RGBA knobDiffuseLit = knobDiffuse;
+                knobDiffuseLit.a = emissive;
+            croppedDiffuse.softCircleFloat(centerx - bx, centery - by, knobRadiusPx - 1, knobRadiusPx, knobDiffuseLit);
+            croppedMaterial.softCircleFloat(centerx - bx, centery - by, knobRadiusPx - 5, knobRadiusPx, knobMaterial);
 
 
-        // LEDs
-        for (int i = 0; i < numLEDs; ++i)
-        {
-            float disp = i * 2 * PI / numLEDs;
-            float distance = lerp(LEDDistanceFromCenter, LEDDistanceFromCenterDragged, _pushedAnimation);
-            float x = centerx + sin(angle + disp) * knobRadiusPx * distance;
-            float y = centery - cos(angle + disp) * knobRadiusPx * distance;
+            // LEDs
+            for (int i = 0; i < numLEDs; ++i)
+            {
+                float disp = i * 2 * PI / numLEDs;
+                float distance = lerp(LEDDistanceFromCenter, LEDDistanceFromCenterDragged, _pushedAnimation);
+                float x = centerx + sin(angle + disp) * knobRadiusPx * distance;
+                float y = centery - cos(angle + disp) * knobRadiusPx * distance;
 
-            float t = -1 + 2 * abs(disp - PI) / PI;
+                float t = -1 + 2 * abs(disp - PI) / PI;
 
-            float LEDRadius = std.algorithm.max(0.0f, lerp(LEDRadiusMin, LEDRadiusMax, t));
+                float LEDRadius = std.algorithm.max(0.0f, lerp(LEDRadiusMin, LEDRadiusMax, t));
 
-            float smallRadius = knobRadiusPx * LEDRadius * 0.714f;
-            float largerRadius = knobRadiusPx * LEDRadius;
+                float smallRadius = knobRadiusPx * LEDRadius * 0.714f;
+                float largerRadius = knobRadiusPx * LEDRadius;
 
-            RGBA LEDDiffuseLit = LEDDiffuse;
-            LEDDiffuseLit.a = cast(ubyte)(0.5 + 40 + 215 * _pushedAnimation);                
+                RGBA LEDDiffuseLit = LEDDiffuse;
+                LEDDiffuseLit.a = cast(ubyte)(0.5 + 40 + 215 * _pushedAnimation);                
 
-            depthMap.softCircleFloat(x, y, 0, largerRadius, L16(65000));
-            diffuseMap.softCircleFloat(x, y, 0, largerRadius, LEDDiffuseLit);
-            materialMap.softCircleFloat(x, y, smallRadius, largerRadius, RGBA(128, 128, 255, defaultPhysical));
+                croppedDepth.softCircleFloat(x - bx, y - by, 0, largerRadius, L16(65000));
+                croppedDiffuse.softCircleFloat(x - bx, y - by, 0, largerRadius, LEDDiffuseLit);
+                croppedMaterial.softCircleFloat(x - bx, y - by, smallRadius, largerRadius, RGBA(128, 128, 255, defaultPhysical));
+            }
         }
     }
 
