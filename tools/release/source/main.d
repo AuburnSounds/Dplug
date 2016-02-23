@@ -171,22 +171,12 @@ void main(string[] args)
                 bool is64b = arch == Arch.x64;
                 version(Windows)
                 {
-                    if (compiler == "gdc" && !is64b)
-                        environment["PATH"] = `C:\d\gdc-32b\bin;` ~ oldpath;
-                    if (compiler == "gdc" && is64b)
-                        environment["PATH"] = `C:\d\gdc-64b\bin;` ~ oldpath;
+                    // TODO: remove when LDC on Windows is a single archive (should happen for 0.18.0)
+                    // then fiddling with PATH will be useless
                     if (compiler == "ldc" && !is64b)
-                    {
                         environment["PATH"] = `c:\d\ldc-32b\bin` ~ ";" ~ oldpath;
-                    }
                     if (compiler == "ldc" && is64b)
-                    {
                         environment["PATH"] = `c:\d\ldc-64b\bin` ~ ";" ~ oldpath;
-                   /*     environment["LIB"] = `C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\LIB\amd64;`
-                                             `C:\Program Files (x86)\Windows Kits\10\lib\10.0.10150.0\ucrt\x64;`
-                                             `C:\Program Files (x86)\Windows Kits\NETFXSDK\4.6\lib\um\x64;`
-                                             `C:\Program Files (x86)\Windows Kits\8.1\lib\winv6.3\um\x64`; */
-                    }
                 }
 
                 string path = outputDirectory(dirName, osString, arch, config);
@@ -199,7 +189,6 @@ void main(string[] args)
 
                 version(Windows)
                 {
-                    // On Windows, simply copy the file
                     string appendBitness(string filename)
                     {
                         if (is64b)
@@ -212,6 +201,7 @@ void main(string[] args)
                             return filename;
                     }
 
+                    // On Windows, simply copy the file
                     fileMove(plugin.outputFile, path ~ "/" ~ appendBitness(plugin.outputFile));
                 }
                 else version(OSX)
@@ -279,13 +269,29 @@ void main(string[] args)
             }
         }
 
+        // Create a .rsrc file when building an AU
+        // TODO: this may need some plist work too
+        string rsrcPath = null;
+        version(OSX)
+        {
+            // Make icns and copy it (if any provided in dub.json)
+            if (config == "AU")
+            {
+                rsrcPath = makeRSRC(plugin.name);
+            }
+        }
+
         // Copy license (if any provided in dub.json)
         if (plugin.licensePath)
             std.file.copy(plugin.licensePath, dirName ~ "/" ~ baseName(plugin.licensePath));
 
         // Copy user manual (if any provided in dub.json)
-        if (plugin.iconPath)
+        if (plugin.userManualPath)
             std.file.copy(plugin.userManualPath, dirName ~ "/" ~ baseName(plugin.userManualPath));
+
+        // Copy .rsrc file (if AU config)
+        if (rsrcPath)
+            std.file.copy(rsrcPath, dirName ~ "/" ~ baseName(rsrcPath));
 
         // DMD builds
         if (hasDMD) buildAndPackage("dmd", config, archs, iconPath);
@@ -524,4 +530,30 @@ string makeMacIcon(string pluginName, string pngPath)
         safeCommand(format("iconutil --convert icns --output %s %s", outputIcon, iconSetDir));
     }
     return outputIcon;
+}
+
+string makeRSRC(string pluginName)
+{
+    string temp = tempDir();
+
+    string rPath = buildPath(temp, "plugin.r");
+
+    auto rFile = File(rPath, "w");
+    static immutable string rFileBase = cast(string) import("plugin-base.r");
+
+    rFile.writefln("#define PLUG_NAME %s", pluginName);
+    rFile.writeln(rFileBase);
+    rFile.close();
+
+    string rsrcPath = buildPath(temp, "plugin.rsrc");
+
+    safeCommand(format("rez -t BNDL -o plugin.rsrc -p %s", rPath));
+
+    if (!exists(rsrcPath))
+        throw new Exception(format("%s wasn't created", rsrcPath));
+
+    if (!getSize(rsrcPath))
+        throw new Exception(format("%s is an empty file", rsrcPath));
+
+    return rsrcPath;
 }
