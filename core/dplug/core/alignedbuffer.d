@@ -15,28 +15,15 @@ final class AlignedBuffer(T)
 {
     public
     {
-        /// Creates an empty aligned buffer.
-        this(int alignment = 64) nothrow @nogc
+        /// Creates an aligned buffer with given initial size.
+        this(size_t initialSize = 0, int alignment = 64) nothrow @nogc
         {
+            assert(alignment != 0);
             _size = 0;
             _allocated = 0;
             _data = null;
             _alignment = alignment;
-        }
-
-        /// Creates an aligned buffer with given size.
-        this(size_t initialSize) nothrow @nogc
-        {
-            this();
             resize(initialSize);
-        }
-
-        /// Creates an aligned buffer by copy.
-        this(AlignedBuffer other) nothrow @nogc
-        {
-            this();
-            resize(other.length());
-            memcpy(_data, other._data, _size * T.sizeof);
         }
 
         ~this()
