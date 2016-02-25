@@ -274,7 +274,7 @@ public:
     {
         super(index, name, label);
         _name = name;
-        _value = _defaultValue = clamp!int(defaultValue, min, max);
+        _value = _defaultValue = clampValue!int(defaultValue, min, max);
         _min = min;
         _max = max;
     }
@@ -290,7 +290,7 @@ public:
         else
             rounded = cast(int)(-0.5f + mapped);
 
-        int newValue = clamp!int(rounded, _min, _max);
+        int newValue = clampValue!int(rounded, _min, _max);
 
         _valueMutex.lock();
         atomicStore(_value, newValue);
@@ -300,13 +300,13 @@ public:
     override double getNormalized() nothrow @nogc
     {
         int v = value();
-        double normalized = clamp!double( (cast(double)v - _min) / (_max - _min), 0.0, 1.0);
+        double normalized = clampValue!double( (cast(double)v - _min) / (_max - _min), 0.0, 1.0);
         return normalized;
     }
 
     override double getNormalizedDefault() nothrow @nogc
     {
-        double normalized = clamp!double( (cast(double)_defaultValue - _min) / (_max - _min), 0.0, 1.0);
+        double normalized = clampValue!double( (cast(double)_defaultValue - _min) / (_max - _min), 0.0, 1.0);
         return normalized;
     }
 
@@ -383,7 +383,7 @@ private:
 class EnumParameter : IntegerParameter
 {
 public:
-    this(int index, string name, string[] possibleValues, int defaultValue = 0)
+    this(int index, string name, const(string[]) possibleValues, int defaultValue = 0)
     {
         super(index, name, "", 0, cast(int)(possibleValues.length) - 1, defaultValue);
 
@@ -401,12 +401,12 @@ public:
     }
 
 private:
-    string[] _possibleValues;
+    const(string[]) _possibleValues;
 }
 
 private
 {
-    T clamp(T)(T x, T min, T max) pure nothrow @nogc
+    T clampValue(T)(T x, T min, T max) pure nothrow @nogc
     {
         if (x < min)
             return min;
@@ -536,12 +536,12 @@ class LinearFloatParameter : FloatParameter
 
     override double toNormalized(double value) nothrow @nogc
     {
-        return clamp!double( (value - _min) / (_max - _min), 0.0, 1.0);
+        return clampValue!double( (value - _min) / (_max - _min), 0.0, 1.0);
     }
 
     override double fromNormalized(double normalizedValue) nothrow @nogc
     {
-        return clamp!double(_min + (_max - _min) * normalizedValue, _min, _max);
+        return clampValue!double(_min + (_max - _min) * normalizedValue, _min, _max);
     }
 }
 
@@ -616,7 +616,7 @@ class PowFloatParameter : FloatParameter
 
     override double toNormalized(double value) nothrow @nogc
     {
-        double result = clamp!double( (value - _min) / (_max - _min), 0.0, 1.0) ^^ (1 / _shape);
+        double result = clampValue!double( (value - _min) / (_max - _min), 0.0, 1.0) ^^ (1 / _shape);
         assert(result >= 0 && result <= 1);
         return result;
     }
@@ -624,7 +624,7 @@ class PowFloatParameter : FloatParameter
     override double fromNormalized(double normalizedValue) nothrow @nogc
     {
         double v = _min + (normalizedValue ^^ _shape) * (_max - _min);
-        return clamp!double(v, _min, _max);
+        return clampValue!double(v, _min, _max);
     }
 
 private:
