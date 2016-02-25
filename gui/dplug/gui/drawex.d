@@ -139,8 +139,8 @@ if (isWritableView!V && is(COLOR : ViewColor!V))
     }
 }
 
-// Rewritten because of weird codegen bugs
-void softCircleFloat(float curvature = 1.0f, T, V, COLOR)(auto ref V v, T x, T y, T r1, T r2, COLOR color)
+
+void aaSoftDisc(float curvature = 1.0f, T, V, COLOR)(auto ref V v, T x, T y, T r1, T r2, COLOR color, float globalAlpha = 1.0f)
 if (isWritableView!V && isNumeric!T && is(COLOR : ViewColor!V))
 {
     alias ChannelType = COLOR.ChannelType;
@@ -177,16 +177,72 @@ if (isWritableView!V && isNumeric!T && is(COLOR : ViewColor!V))
                     float alpha = (frs-fr1s) / fr21;
                     static if (curvature != 1.0f)
                         alpha = alpha ^^ curvature;
-                    row[cx] = COLOR.op!q{.blend(a, b, c)}(color, row[cx], cast(ChannelType)(0.5f + ChannelType.max * (1-alpha)));
+                    row[cx] = COLOR.op!q{.blend(a, b, c)}(color, row[cx], cast(ChannelType)(0.5f + ChannelType.max * (1-alpha) * globalAlpha));
                 }
             }
         }
     }
 }
 
-void aaFillRectFloat(bool CHECKED=true, V, COLOR)(auto ref V v, float x1, float y1, float x2, float y2, COLOR color)
+/// Draw a circle gradually fading in between r1 and r2 and fading out between r2 and r3
+void aaSoftCircle(float curvature = 1.0f, T, V, COLOR)(auto ref V v, T x, T y, T r1, T r2, T r3, COLOR color, float globalAlpha = 1.0f)
+if (isWritableView!V && isNumeric!T && is(COLOR : ViewColor!V))
+{
+    alias ChannelType = COLOR.ChannelType;
+    assert(r1 <= r2);
+    assert(r2 <= r3);
+    int x1 = cast(int)(x-r3-1); if (x1<0) x1=0;
+    int y1 = cast(int)(y-r3-1); if (y1<0) y1=0;
+    int x2 = cast(int)(x+r3+1); if (x2>v.w) x2 = v.w;
+    int y2 = cast(int)(y+r3+1); if (y2>v.h) y2 = v.h;
+
+    auto r1s = r1*r1;
+    auto r2s = r2*r2;
+    auto r3s = r3*r3;
+
+    float fx = x;
+    float fy = y;
+
+    float fr1s = r1s;
+    float fr2s = r2s;
+    float fr3s = r3s;
+
+    float fr21 = fr2s - fr1s;
+    float fr32 = fr3s - fr2s;
+
+    for (int cy=y1;cy<y2;cy++)
+    {
+        auto row = v.scanline(cy);
+        for (int cx=x1;cx<x2;cx++)
+        {
+            float frs = (fx - cx)*(fx - cx) + (fy - cy)*(fy - cy);
+
+            if (frs >= fr1s)
+            {
+                if (frs < fr3s)
+                {
+                    float alpha = void;
+                    if (frs >= fr2s)
+                        alpha = (frs - fr2s) / fr32;
+                    else
+                        alpha = 1 - (frs - fr1s) / fr21; 
+
+                    static if (curvature != 1.0f)
+                        alpha = alpha ^^ curvature;
+                    row[cx] = COLOR.op!q{.blend(a, b, c)}(color, row[cx], cast(ChannelType)(0.5f + ChannelType.max * (1-alpha) * globalAlpha));
+                }
+            }
+        }
+    }
+}
+
+
+void aaFillRectFloat(bool CHECKED=true, V, COLOR)(auto ref V v, float x1, float y1, float x2, float y2, COLOR color, float globalAlpha = 1.0f)
     if (isWritableView!V && is(COLOR : ViewColor!V))
 {
+    if (globalAlpha == 0)
+        return;
+
     alias ChannelType = COLOR.ChannelType;
     import ae.utils.math;
     sort2(x1, x2);
@@ -206,18 +262,61 @@ void aaFillRectFloat(bool CHECKED=true, V, COLOR)(auto ref V v, float x1, float 
         return cast(ChannelType)(cast(int)(0.5f + ChannelType.max * fraction));
     }
 
-    v.aaPutPixelFloat!CHECKED(ix1, iy1, color, toAlpha( (1-fx1) * (1-fy1) ));
-    v.hline!CHECKED(ix1+1, ix2, iy1, color, toAlpha(1 - fy1));
-    v.aaPutPixelFloat!CHECKED(ix2, iy1, color, toAlpha( fx2 * (1-fy1) ));
+    v.aaPutPixelFloat!CHECKED(ix1, iy1, color, toAlpha(globalAlpha * (1-fx1) * (1-fy1) ));
+    v.hline!CHECKED(ix1+1, ix2, iy1, color, toAlpha(globalAlpha * (1 - fy1) ));
+    v.aaPutPixelFloat!CHECKED(ix2, iy1, color, toAlpha(globalAlpha * fx2 * (1-fy1) ));
 
-    v.vline!CHECKED(ix1, iy1+1, iy2, color, toAlpha(1 - fx1));
-    v.vline!CHECKED(ix2, iy1+1, iy2, color, toAlpha(fx2));
+    v.vline!CHECKED(ix1, iy1+1, iy2, color, toAlpha(globalAlpha * (1 - fx1)));
+    v.vline!CHECKED(ix2, iy1+1, iy2, color, toAlpha(globalAlpha * fx2));
 
-    v.aaPutPixelFloat!CHECKED(ix1, iy2, color, toAlpha( (1-fx1) * fy2 ));
-    v.hline!CHECKED(ix1+1, ix2, iy2, color,  toAlpha(fy2));
-    v.aaPutPixelFloat!CHECKED(ix2, iy2, color, toAlpha( fx2 * fy2 ));
+    v.aaPutPixelFloat!CHECKED(ix1, iy2, color, toAlpha(globalAlpha * (1-fx1) * fy2 ));
+    v.hline!CHECKED(ix1+1, ix2, iy2, color,  toAlpha(globalAlpha * fy2));
+    v.aaPutPixelFloat!CHECKED(ix2, iy2, color, toAlpha(globalAlpha * fx2 * fy2 ));
 
-    v.fillRect!CHECKED(ix1+1, iy1+1, ix2, iy2, color);
+    v.fillRectFloat!CHECKED(ix1+1, iy1+1, ix2, iy2, color, globalAlpha);
+}
+
+void fillRectFloat(bool CHECKED=true, V, COLOR)(auto ref V v, int x1, int y1, int x2, int y2, COLOR b, float globalAlpha = 1.0f) // [)
+if (isWritableView!V && is(COLOR : ViewColor!V))
+{
+    if (globalAlpha == 0)
+        return;
+    import ae.utils.math;
+    sort2(x1, x2);
+    sort2(y1, y2);
+    static if (CHECKED)
+    {
+        if (x1 >= v.w || y1 >= v.h || x2 <= 0 || y2 <= 0 || x1==x2 || y1==y2) return;
+        if (x1 <    0) x1 =   0;
+        if (y1 <    0) y1 =   0;
+        if (x2 >= v.w) x2 = v.w;
+        if (y2 >= v.h) y2 = v.h;
+    }
+
+    if (globalAlpha == 1)
+    {
+        foreach (y; y1..y2)
+            v.scanline(y)[x1..x2] = b;
+    }
+    else
+    {
+        alias ChannelType = COLOR.ChannelType;      
+        static ChannelType toAlpha(float fraction) pure nothrow @nogc
+        {
+            return cast(ChannelType)(cast(int)(0.5f + ChannelType.max * fraction));
+        }
+
+        ChannelType alpha = toAlpha(globalAlpha);
+
+        foreach (y; y1..y2)
+        {
+            COLOR[] scan = v.scanline(y);
+            foreach (x; x1..x2)
+            {
+                scan[x] = COLOR.op!q{.blend(a, b, c)}(b, scan[x], alpha);
+            }
+        }
+    }
 }
 
 void aaPutPixelFloat(bool CHECKED=true, V, COLOR, A)(auto ref V v, int x, int y, COLOR color, A alpha)

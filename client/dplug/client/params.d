@@ -254,6 +254,7 @@ public:
         return atomicLoad(_value);
     }
 
+    /// Returns: default value.
     final bool defaultValue() pure const nothrow @nogc
     {
         return _defaultValue;
@@ -346,6 +347,30 @@ public:
 
         _client.hostCommand().paramAutomate(_index, normalized);
         notifyListeners();
+    }
+
+    /// Returns: minimum possible values.
+    final int minValue() pure const nothrow @nogc
+    {
+        return _min;
+    }
+
+    /// Returns: maximum possible values.
+    final int maxValue() pure const nothrow @nogc
+    {
+        return _max;
+    }
+
+    /// Returns: number of possible values.
+    final int numValues() pure const nothrow @nogc
+    {
+        return 1 + _max - _min;
+    }
+
+    /// Returns: default value.
+    final int defaultValue() pure const nothrow @nogc
+    {
+        return _defaultValue;
     }
 
 private:

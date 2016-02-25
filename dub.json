@@ -1,6 +1,6 @@
 {
     "name": "dplug",
-    "description": "D audio toolkit. Easy way to make VST plugins.",
+    "description": "Audio plugins framework. VST client + host, AU client, UI widgets.",
     "homepage": "http://github.com/p0nce/dplug/",
     "copyright": "Steinberg",
     "license": "VST",

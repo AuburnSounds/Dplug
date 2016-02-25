@@ -35,41 +35,46 @@ public:
     this(UIContext context)
     {
         _context = context;
-        _localRectsBuf = new AlignedBuffer!box2i(1);
-        _childDestroyed = false;
+        _localRectsBuf = new AlignedBuffer!box2i();
+        _zOrderedChildren = new AlignedBuffer!UIElement(0);
     }
 
     ~this()
     {
-        if (!_childDestroyed)
-        {
-            debug ensureNotInGC("UIElement");
-            foreach(child; children)
-                child.destroy();
+        debug ensureNotInGC("UIElement");
 
-            _localRectsBuf.destroy();
-            _childDestroyed = true;
-        }
+        _zOrderedChildren.destroy();
+
+        foreach(child; children)
+            child.destroy();
+
+        _localRectsBuf.destroy();
     }
 
     /// Returns: true if was drawn, ie. the buffers have changed.
     /// This method is called for each item in the drawlist that was visible and dirty.
     final void render(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, in box2i[] areasToUpdate)
     {
-        // List of disjointed dirty rectangles intersecting with _position
+        // List of disjointed dirty rectangles intersecting with valid part of _position
         // A nice thing with intersection is that a disjointed set of rectangles
         // stays disjointed.
+
+        // we only consider the part of _position that is actually in the surface
+        box2i validPosition = _position.intersection(box2i(0, 0, diffuseMap.w, diffuseMap.h));
+
+        if (validPosition.empty())
+            return; // nothing to draw here
+
         _localRectsBuf.clearContents();
         {
             foreach(rect; areasToUpdate)
             {
-                box2i inter = rect.intersection(_position);
+                box2i inter = rect.intersection(validPosition);
 
                 if (!inter.empty) // don't consider empty rectangles
                 {
                     // Express the dirty rect in local coordinates for simplicity
-                    // TODO: amortize this allocation else we have big problems
-                    _localRectsBuf.pushBack( inter.translate(-_position.min) );
+                    _localRectsBuf.pushBack( inter.translate(-validPosition.min) );
                 }
             }
         }
@@ -77,12 +82,15 @@ public:
         if (_localRectsBuf.length == 0)
             return; // nothing to draw here
 
-        // Crop the diffuse and depth to the _position
-        // This is because drawing outside of _position is disallowed by design
-        // Don't even try!
-        ImageRef!RGBA diffuseMapCropped = diffuseMap.cropImageRef(_position);
-        ImageRef!L16 depthMapCropped = depthMap.cropImageRef(_position);
-        ImageRef!RGBA materialMapCropped = materialMap.cropImageRef(_position);
+        // Crop the diffuse and depth to the valid part of _position
+        // This is because drawing outside of _position is disallowed by design.
+        // Never do that!
+        ImageRef!RGBA diffuseMapCropped = diffuseMap.cropImageRef(validPosition);
+        ImageRef!L16 depthMapCropped = depthMap.cropImageRef(validPosition);
+        ImageRef!RGBA materialMapCropped = materialMap.cropImageRef(validPosition);
+
+        // Should never be an empty area there
+        assert(diffuseMapCropped.w != 0 && diffuseMapCropped.h != 0);
         onDraw(diffuseMapCropped, depthMapCropped, materialMapCropped, _localRectsBuf[]);
     }
 
@@ -199,8 +207,10 @@ public:
     // to be called at top-level when the mouse clicked
     final bool mouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
     {
+        recomputeZOrderedChildren();
+
         // Test children that are displayed above this element first
-        foreach(child; _children)
+        foreach(child; _zOrderedChildren[])
         {
             if (child.zOrder >= zOrder)
                 if (child.mouseClick(x, y, button, isDoubleClick, mstate))
@@ -219,7 +229,7 @@ public:
         }
 
         // Test children that are displayed below this element last
-        foreach(child; _children)
+        foreach(child; _zOrderedChildren[])
         {
             if (child.zOrder < zOrder)
                 if (child.mouseClick(x, y, button, isDoubleClick, mstate))
@@ -298,7 +308,7 @@ public:
             child.mouseMove(x, y, dx, dy, mstate);
         }
 
-        if (_position.contains(vec2i(x, y)))
+        if (_position.contains(vec2i(x, y))) // TODO: something fine-grained
         {
             if (!_mouseOver)
                 onMouseEnter();
@@ -489,13 +499,36 @@ protected:
     int _zOrder = 0;
 
 private:
+
+    /// Reference to owning context
     UIContext _context;
+
+    /// Flag: whether this UIElement has mouse over it or not
+    bool _mouseOver = false;
 
     AlignedBuffer!box2i _localRectsBuf;
 
-    bool _mouseOver = false;
+    /// Necessary for mouse-click to be aware of Z order
+    AlignedBuffer!UIElement _zOrderedChildren;
 
-    bool _childDestroyed; // destructor flag
+    // Sort children in ascending z-order
+    final void recomputeZOrderedChildren()
+    {
+        // Get a z-ordered list of childrens
+        _zOrderedChildren.clearContents();
+        foreach(child; _children)
+            _zOrderedChildren.pushBack(child);
+
+        // Note: unstable sort, so do not forget to _set_ z-order in the first place
+        //       if you have overlapping UIElement
+        nogc_qsort!UIElement(_zOrderedChildren[],  
+                             (a, b) nothrow @nogc 
+                             {
+                                 if (a.zOrder < b.zOrder) return 1;
+                                 else if (a.zOrder > b.zOrder) return -1;
+                                 else return 0;
+                             });
+    }
 }
 
 

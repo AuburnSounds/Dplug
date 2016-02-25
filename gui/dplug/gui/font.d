@@ -168,7 +168,10 @@ void fillText(V, StringType)(auto ref V surface, Font font, StringType s, float 
 
     box2i area = font.measureText(s, fontSizePx);
 
-    // TODO: early exit if out of scope
+    // Early exit if out of scope
+    box2i surfaceArea = box2i(0, 0, surface.w, surface.h);
+    if (!surfaceArea.intersects(area))
+        return;
 
     vec2i offset = vec2i(ipositionx, ipositiony) - area.center; // TODO: support other alignment modes
 
