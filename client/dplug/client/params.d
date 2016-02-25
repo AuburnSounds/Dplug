@@ -358,7 +358,7 @@ private:
 class EnumParameter : IntegerParameter
 {
 public:
-    this(int index, string name, string[] possibleValues, int defaultValue = 0)
+    this(int index, string name, const(string[]) possibleValues, int defaultValue = 0)
     {
         super(index, name, "", 0, cast(int)(possibleValues.length) - 1, defaultValue);
 
@@ -376,7 +376,7 @@ public:
     }
 
 private:
-    string[] _possibleValues;
+    const(string[]) _possibleValues;
 }
 
 private
