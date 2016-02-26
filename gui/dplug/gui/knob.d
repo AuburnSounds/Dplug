@@ -146,23 +146,23 @@ public:
 
             if (style == KnobStyle.thumb)
             {
-                croppedDepth.softCircleFloat(centerx - bx, centery - by, depthRadius, knobRadiusPx, L16(65535));
-                croppedDepth.softCircleFloat(centerx - bx, centery - by, 0, depthRadius, L16(38400));
+                croppedDepth.aaSoftDisc(centerx - bx, centery - by, depthRadius, knobRadiusPx, L16(65535));
+                croppedDepth.aaSoftDisc(centerx - bx, centery - by, 0, depthRadius, L16(38400));
             }
             else if (style == KnobStyle.cylinder)
             {
                 L16 depth = L16(cast(ushort)(0.5f + lerp(65535.0f, 45000.0f, _pushedAnimation)) );
-                croppedDepth.softCircleFloat(centerx - bx, centery - by, knobRadiusPx - 5, knobRadiusPx, depth);
+                croppedDepth.aaSoftDisc(centerx - bx, centery - by, knobRadiusPx - 5, knobRadiusPx, depth);
             }
             else if (style == KnobStyle.cone)
             {
                 L16 depth = L16(cast(ushort)(0.5f + lerp(65535.0f, 45000.0f, _pushedAnimation)) );
-                croppedDepth.softCircleFloat(centerx - bx, centery - by, 0, knobRadiusPx, depth);
+                croppedDepth.aaSoftDisc(centerx - bx, centery - by, 0, knobRadiusPx, depth);
             }
             RGBA knobDiffuseLit = knobDiffuse;
                 knobDiffuseLit.a = emissive;
-            croppedDiffuse.softCircleFloat(centerx - bx, centery - by, knobRadiusPx - 1, knobRadiusPx, knobDiffuseLit);
-            croppedMaterial.softCircleFloat(centerx - bx, centery - by, knobRadiusPx - 5, knobRadiusPx, knobMaterial);
+            croppedDiffuse.aaSoftDisc(centerx - bx, centery - by, knobRadiusPx - 1, knobRadiusPx, knobDiffuseLit);
+            croppedMaterial.aaSoftDisc(centerx - bx, centery - by, knobRadiusPx - 5, knobRadiusPx, knobMaterial);
 
 
             // LEDs
@@ -183,9 +183,9 @@ public:
                 RGBA LEDDiffuseLit = LEDDiffuse;
                 LEDDiffuseLit.a = cast(ubyte)(0.5 + 40 + 215 * _pushedAnimation);                
 
-                croppedDepth.softCircleFloat(x - bx, y - by, 0, largerRadius, L16(65000));
-                croppedDiffuse.softCircleFloat(x - bx, y - by, 0, largerRadius, LEDDiffuseLit);
-                croppedMaterial.softCircleFloat(x - bx, y - by, smallRadius, largerRadius, RGBA(128, 128, 255, defaultPhysical));
+                croppedDepth.aaSoftDisc(x - bx, y - by, 0, largerRadius, L16(65000));
+                croppedDiffuse.aaSoftDisc(x - bx, y - by, 0, largerRadius, LEDDiffuseLit);
+                croppedMaterial.aaSoftDisc(x - bx, y - by, smallRadius, largerRadius, RGBA(128, 128, 255, defaultPhysical));
             }
         }
     }
