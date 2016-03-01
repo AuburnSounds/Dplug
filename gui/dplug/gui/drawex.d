@@ -184,6 +184,56 @@ if (isWritableView!V && isNumeric!T && is(COLOR : ViewColor!V))
     }
 }
 
+/// Draw an ellipse gradually fading out between r1 and r2, and scaled by scaleX and scaleY
+void aaSoftEllipse(float curvature = 1.0f, T, V, COLOR)(auto ref V v, T x, T y, T r1, T r2, T scaleX, T scaleY, COLOR color, float globalAlpha = 1.0f)
+if (isWritableView!V && isNumeric!T && is(COLOR : ViewColor!V))
+{
+    alias ChannelType = COLOR.ChannelType;
+    assert(r1 <= r2);
+    int x1 = cast(int)(x-r2*scaleX-1); if (x1<0) x1=0;
+    int y1 = cast(int)(y-r2*scaleY-1); if (y1<0) y1=0;
+    int x2 = cast(int)(x+r2*scaleX+1); if (x2>v.w) x2 = v.w;
+    int y2 = cast(int)(y+r2*scaleY+1); if (y2>v.h) y2 = v.h;
+
+    float invScaleX = 1 / scaleX;
+    float invScaleY = 1 / scaleY;
+
+    auto r1s = r1*r1;
+    auto r2s = r2*r2;
+
+    float fx = x;
+    float fy = y;
+
+    float fr1s = r1s;
+    float fr2s = r2s;
+
+    float fr21 = fr2s - fr1s;
+
+    for (int cy=y1;cy<y2;cy++)
+    {
+        auto row = v.scanline(cy);
+        for (int cx=x1;cx<x2;cx++)
+        {
+            float dx =  (fx - cx) * invScaleX;
+            float dy =  (fy - cy) * invScaleY;
+            float frs = dx*dx + dy*dy;
+
+            if (frs<fr1s)
+                row[cx] = color;
+            else
+            {
+                if (frs<fr2s)
+                {
+                    float alpha = (frs-fr1s) / fr21;
+                    static if (curvature != 1.0f)
+                        alpha = alpha ^^ curvature;
+                    row[cx] = COLOR.op!q{.blend(a, b, c)}(color, row[cx], cast(ChannelType)(0.5f + ChannelType.max * (1-alpha) * globalAlpha));
+                }
+            }
+        }
+    }
+}
+
 /// Draw a circle gradually fading in between r1 and r2 and fading out between r2 and r3
 void aaSoftCircle(float curvature = 1.0f, T, V, COLOR)(auto ref V v, T x, T y, T r1, T r2, T r3, COLOR color, float globalAlpha = 1.0f)
 if (isWritableView!V && isNumeric!T && is(COLOR : ViewColor!V))
