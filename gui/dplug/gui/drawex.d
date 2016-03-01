@@ -107,35 +107,49 @@ if (isWritableView!V && is(COLOR : ViewColor!V))
 }
 
 /// Fill rectangle while interpolating a color horiontally
-void horizontalSlope(V, COLOR)(auto ref V v, box2i rect, COLOR c0, COLOR c1)
+void horizontalSlope(float curvature = 1.0f, V, COLOR)(auto ref V v, box2i rect, COLOR c0, COLOR c1)
     if (isWritableView!V && is(COLOR : ViewColor!V))
 {
     alias ChannelType = COLOR.ChannelType;
+
+    box2i inter = box2i(0, 0, v.w, v.h).intersection(rect);
+
     int x0 = rect.min.x;
     int y0 = rect.min.y;
     int x1 = rect.max.x;
     int y1 = rect.max.y;
-    foreach (px; x0..x1)
+    
+    foreach (px; inter.min.x .. inter.max.x)
     {
-        ubyte alpha = cast(ChannelType)( 0.5f + ChannelType.max * (px - x0) / cast(float)(x1 - x0) );  // Not being generic here
+        float fAlpha =  (px - x0) / cast(float)(x1 - x0);
+        static if (curvature != 1.0f)
+            fAlpha = fAlpha ^^ curvature;
+        ChannelType alpha = cast(ChannelType)( 0.5f + ChannelType.max * fAlpha );  // Not being generic here
         COLOR c = COLOR.op!q{.blend(a, b, c)}(c1, c0, alpha); // warning .blend is confusing, c1 comes first
-        vline(v, px, y0, y1, c);
+        vline(v, px, inter.min.y, inter.max.y, c);
     }
 }
 
-void verticalSlope(V, COLOR)(auto ref V v, box2i rect, COLOR c0, COLOR c1)
+void verticalSlope(float curvature = 1.0f, V, COLOR)(auto ref V v, box2i rect, COLOR c0, COLOR c1)
 if (isWritableView!V && is(COLOR : ViewColor!V))
 {
     alias ChannelType = COLOR.ChannelType;
+
+    box2i inter = box2i(0, 0, v.w, v.h).intersection(rect);
+
     int x0 = rect.min.x;
     int y0 = rect.min.y;
     int x1 = rect.max.x;
     int y1 = rect.max.y;
-    foreach (py; y0..y1)
+
+    foreach (py; inter.min.y .. inter.max.y)
     {
-        ChannelType alpha = cast(ChannelType)( 0.5f + ChannelType.max * (py - y0) / cast(float)(y1 - y0) );  // Not being generic here
+        float fAlpha =  (py - y0) / cast(float)(y1 - y0);
+        static if (curvature != 1.0f)
+            fAlpha = fAlpha ^^ curvature;
+        ChannelType alpha = cast(ChannelType)( 0.5f + ChannelType.max * fAlpha );  // Not being generic here
         COLOR c = COLOR.op!q{.blend(a, b, c)}(c1, c0, alpha); // warning .blend is confusing, c1 comes first
-        hline(v, x0, x1, py, c);
+        hline(v, inter.min.x, inter.max.x, py, c);
     }
 }
 
@@ -166,7 +180,9 @@ if (isWritableView!V && isNumeric!T && is(COLOR : ViewColor!V))
         auto row = v.scanline(cy);
         for (int cx=x1;cx<x2;cx++)
         {
-            float frs = (fx - cx)*(fx - cx) + (fy - cy)*(fy - cy);
+            float dx =  (fx - cx);
+            float dy =  (fy - cy);
+            float frs = dx*dx + dy*dy;
 
             if (frs<fr1s)
                 row[cx] = color;
@@ -184,7 +200,6 @@ if (isWritableView!V && isNumeric!T && is(COLOR : ViewColor!V))
     }
 }
 
-/// Draw an ellipse gradually fading out between r1 and r2, and scaled by scaleX and scaleY
 void aaSoftEllipse(float curvature = 1.0f, T, V, COLOR)(auto ref V v, T x, T y, T r1, T r2, T scaleX, T scaleY, COLOR color, float globalAlpha = 1.0f)
 if (isWritableView!V && isNumeric!T && is(COLOR : ViewColor!V))
 {
