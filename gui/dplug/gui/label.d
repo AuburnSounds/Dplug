@@ -78,7 +78,7 @@ public:
         // only draw text which is in dirty areas
         foreach(dirtyRect; dirtyRects)
         {
-            auto croppedDiffuse = diffuseMap.crop(dirtyRect);
+            auto croppedDiffuse = diffuseMap.cropImageRef(dirtyRect);
             vec2f positionInDirty = vec2f(diffuseMap.w * 0.5f, diffuseMap.h * 0.5f) - dirtyRect.min;
             croppedDiffuse.fillText(_font, _text, _textSize, _textColor, positionInDirty.x, positionInDirty.y);
         }

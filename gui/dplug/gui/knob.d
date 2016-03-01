@@ -117,9 +117,9 @@ public:
 
         foreach(dirtyRect; dirtyRects)
         {
-            auto croppedDiffuse = diffuseMap.crop(dirtyRect);
-            auto croppedDepth = depthMap.crop(dirtyRect);
-            auto croppedMaterial = materialMap.crop(dirtyRect);
+            auto croppedDiffuse = diffuseMap.cropImageRef(dirtyRect);
+            auto croppedDepth = depthMap.cropImageRef(dirtyRect);
+            auto croppedMaterial = materialMap.cropImageRef(dirtyRect);
 
             int bx = dirtyRect.min.x;
             int by = dirtyRect.min.y;
