@@ -185,7 +185,7 @@ if (isWritableView!V && isNumeric!T && is(COLOR : ViewColor!V))
             float frs = dx*dx + dy*dy;
 
             if (frs<fr1s)
-                row[cx] = color;
+                row[cx] = COLOR.op!q{.blend(a, b, c)}(color, row[cx], cast(ChannelType)(0.5f + ChannelType.max * globalAlpha));
             else
             {
                 if (frs<fr2s)
@@ -234,7 +234,7 @@ if (isWritableView!V && isNumeric!T && is(COLOR : ViewColor!V))
             float frs = dx*dx + dy*dy;
 
             if (frs<fr1s)
-                row[cx] = color;
+                row[cx] = COLOR.op!q{.blend(a, b, c)}(color, row[cx], cast(ChannelType)(0.5f + ChannelType.max * globalAlpha));
             else
             {
                 if (frs<fr2s)
