@@ -171,7 +171,7 @@ public:
 
         foreach(int i, preset; presets)
             preset.serializeBinary(chunk);
-        return null;
+        return chunk.data;
     }
 
     /// Parse a preset chunk and set parameters.
