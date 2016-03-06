@@ -300,7 +300,7 @@ public:
             }
 
             if (!draggingUsed)
-                onMouseDrag(x, y, dx, dy, mstate);
+                onMouseDrag(x - _position.min.x, y - _position.min.y, dx, dy, mstate);
         }
 
         foreach(child; _children)
