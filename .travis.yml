@@ -2,7 +2,9 @@ language: d
 
 d:
  - dmd   # latest
- - dmd-2.071.0-b1
+ - dmd-2.071.2
+ - dmd-2.071.1
+ - dmd-2.071.0
  - dmd-2.070.0
  - dmd-2.069.1
  - dmd-2.068.2
