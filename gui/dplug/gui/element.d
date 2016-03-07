@@ -118,6 +118,7 @@ public:
     /// reflow() method
     final box2i position(box2i p)
     {
+        assert(p.isSorted());
         return _position = p;
     }
 
