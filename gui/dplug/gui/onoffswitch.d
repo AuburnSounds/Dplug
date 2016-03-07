@@ -14,9 +14,21 @@ class UIOnOffSwitch : UIElement, IParameterListener
 {
 public:
 
-    RGBA diffuse = RGBA(230, 80, 43, 0);
+    enum Orientation
+    {
+        vertical,
+        horizontal
+    }
+
+    RGBA diffuseOff = RGBA(230, 80, 43, 0);
+    RGBA diffuseOn = RGBA(230, 80, 43, 200);
     RGBA material = RGBA(192, 10, 128, 255);
     float animationTimeConstant = 10.0f;
+    ushort depthLow = 0;
+    ushort depthHigh = 30000;
+    ushort holeDepth = 0;
+
+    Orientation orientation = Orientation.vertical;
 
     this(UIContext context, BoolParameter param)
     {
@@ -53,7 +65,7 @@ public:
     override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects)
     {
         // dig a hole
-        depthMap.fill(L16(0));
+        depthMap.fill(L16(holeDepth));
 
         // The switch is in a subrect
         int width = _position.width;
@@ -64,21 +76,28 @@ public:
                                   cast(int)(0.5f + width * (1 - border)),
                                   cast(int)(0.5f + height * (1 - border)) );
 
-        bool isOn = _param.value();
-        int emissive = cast(int)(0.5f + 1 + 194 * _animation);
-        if (isMouseOver || isDragged)
-            emissive += 60;
+        ubyte red    = cast(ubyte)(lerp!float(diffuseOff.r, diffuseOn.r, _animation));
+        ubyte green  = cast(ubyte)(lerp!float(diffuseOff.g, diffuseOn.g, _animation));
+        ubyte blue   = cast(ubyte)(lerp!float(diffuseOff.b, diffuseOn.b, _animation));
+        int emissive = cast(ubyte)(lerp!float(diffuseOff.a, diffuseOn.a, _animation));
 
-        RGBA diffuseColor = RGBA(diffuse.r, diffuse.g, diffuse.b, cast(ubyte)emissive);
+        if (isMouseOver || isDragged)
+            emissive += 40;
+
+        if (emissive > 255)
+            emissive = 255;
+
+        RGBA diffuseColor = RGBA(red, green, blue, cast(ubyte)emissive);
 
         diffuseMap.crop(switchRect).fill(diffuseColor);
 
-        ubyte shininess = 100;
-        float colorLow = 0.0f;
-        float colorHigh = 30000.0f;
-        L16 depthUp = L16(cast(short)(lerp(colorHigh, colorLow, _animation)));
-        L16 depthDown = L16(cast(short)(lerp(colorLow, colorHigh, _animation)));
-        verticalSlope(depthMap, switchRect, depthUp, depthDown);
+        L16 depthA = L16(cast(short)(lerp!float(depthHigh, depthLow, _animation)));
+        L16 depthB = L16(cast(short)(lerp!float(depthLow, depthHigh, _animation)));
+
+        if (orientation == Orientation.vertical)
+            verticalSlope(depthMap, switchRect, depthA, depthB);
+        else
+            horizontalSlope(depthMap, switchRect, depthA, depthB);
     
         materialMap.crop(switchRect).fill(material);
     }

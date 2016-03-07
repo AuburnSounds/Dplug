@@ -6,6 +6,8 @@
 module dplug.gui.knob;
 
 import std.math;
+import std.algorithm;
+
 import dplug.gui.element;
 import dplug.gui.knob;
 import dplug.gui.drawex;
@@ -15,7 +17,8 @@ enum KnobStyle
 {
     thumb, // with a hole
     cylinder,
-    cone
+    cone,
+    ball
 }
 
 class UIKnob : UIElement, IParameterListener
@@ -31,15 +34,25 @@ public:
     int numLEDs = 7;
     float LEDRadiusMin = 0.127f;
     float LEDRadiusMax = 0.127f;
-    RGBA LEDDiffuse = RGBA(255, 140, 220, 0);
+    RGBA LEDDiffuseLit = RGBA(255, 140, 220, 215);
+    RGBA LEDDiffuseUnlit = RGBA(255, 140, 220, 40);
     float LEDDistanceFromCenter = 0.8f;
     float LEDDistanceFromCenterDragged = 0.7f;
+    ushort LEDDepth = 65000;
 
     RGBA litTrailDiffuse = RGBA(230, 80, 43, 192);
     RGBA unlitTrailDiffuse = RGBA(150, 40, 20, 8);
     float trailRadiusMin = 0.85f;
     float trailRadiusMax = 0.97f;
+
+    float trailMinAngle = -PI * 0.75f;
+    float trailBaseAngle = -PI * 0.75f;
+    float trailMaxAngle = +PI * 0.75f;
+
+
     float animationTimeConstant = 40.0f;
+
+
 
     this(UIContext context, FloatParameter param)
     {
@@ -111,9 +124,15 @@ public:
 
         float knobRadiusPx = radius * knobRadius;
 
-        float a1 = PI * 3/4;
-        float a2 = a1 + PI * 1.5f * normalizedValue;
-        float a3 = a1 + PI * 1.5f;
+        static float angleConvert(float angle)
+        {
+            return angle + PI * 1.5f;
+        }
+
+        float minAngle = angleConvert(trailMinAngle);
+        float maxAngle = angleConvert(trailMaxAngle);
+        float baseAngle = angleConvert(trailBaseAngle);
+        float valueAngle = lerp(minAngle, maxAngle, normalizedValue);
 
         foreach(dirtyRect; dirtyRects)
         {
@@ -124,25 +143,27 @@ public:
             int bx = dirtyRect.min.x;
             int by = dirtyRect.min.y;
 
-            croppedDiffuse.aaFillSector(cast(int)centerx - bx, cast(int)centery - by, radius * trailRadiusMin, radius * trailRadiusMax, a1, a2, litTrailDiffuse);
-            croppedDiffuse.aaFillSector(cast(int)centerx - bx, cast(int)centery - by, radius * trailRadiusMin, radius * trailRadiusMax, a2, a3, unlitTrailDiffuse);
+            croppedDiffuse.aaFillSector(cast(int)centerx - bx, cast(int)centery - by, radius * trailRadiusMin, radius * trailRadiusMax,
+                                        minAngle, maxAngle, unlitTrailDiffuse);
+
+            croppedDiffuse.aaFillSector(cast(int)centerx - bx, cast(int)centery - by, radius * trailRadiusMin, radius * trailRadiusMax, 
+                                        min(baseAngle, valueAngle), max(baseAngle, valueAngle), litTrailDiffuse);
 
             //
             // Draw knob
             //
-
-            float angle = (normalizedValue - 0.5f) * 4.8f;
+            float angle = valueAngle + PI * 0.5f;
             float depthRadius = std.algorithm.max(knobRadiusPx * 3.0f / 5.0f, 0);
             float depthRadius2 = std.algorithm.max(knobRadiusPx * 3.0f / 5.0f, 0);
 
             float posEdgeX = centerx + sin(angle) * depthRadius2;
             float posEdgeY = centery - cos(angle) * depthRadius2;
 
-            ubyte emissive = 8;
+            ubyte emissive = 0;
             if (isMouseOver)
                 emissive = 30;
             if (isDragged)
-                emissive = 60;
+                emissive = 0;
 
             if (style == KnobStyle.thumb)
             {
@@ -158,6 +179,11 @@ public:
             {
                 L16 depth = L16(cast(ushort)(0.5f + lerp(65535.0f, 45000.0f, _pushedAnimation)) );
                 croppedDepth.aaSoftDisc(centerx - bx, centery - by, 0, knobRadiusPx, depth);
+            }
+            else if (style == KnobStyle.ball)
+            {
+                L16 depth = L16(cast(ushort)(0.5f + lerp(65535.0f, 45000.0f, _pushedAnimation)) );
+                croppedDepth.aaSoftDisc!1.2f(centerx - bx, centery - by, 2, knobRadiusPx, depth);
             }
             RGBA knobDiffuseLit = knobDiffuse;
                 knobDiffuseLit.a = emissive;
@@ -180,11 +206,14 @@ public:
                 float smallRadius = knobRadiusPx * LEDRadius * 0.714f;
                 float largerRadius = knobRadiusPx * LEDRadius;
 
-                RGBA LEDDiffuseLit = LEDDiffuse;
-                LEDDiffuseLit.a = cast(ubyte)(0.5 + 40 + 215 * _pushedAnimation);                
+                RGBA LEDDiffuse;
+                LEDDiffuse.r = cast(ubyte)lerp!float(LEDDiffuseUnlit.r, LEDDiffuseLit.r, _pushedAnimation);
+                LEDDiffuse.g = cast(ubyte)lerp!float(LEDDiffuseUnlit.g, LEDDiffuseLit.g, _pushedAnimation);
+                LEDDiffuse.b = cast(ubyte)lerp!float(LEDDiffuseUnlit.b, LEDDiffuseLit.b, _pushedAnimation);
+                LEDDiffuse.a = cast(ubyte)lerp!float(LEDDiffuseUnlit.a, LEDDiffuseLit.a, _pushedAnimation);
 
-                croppedDepth.aaSoftDisc(x - bx, y - by, 0, largerRadius, L16(65000));
-                croppedDiffuse.aaSoftDisc(x - bx, y - by, 0, largerRadius, LEDDiffuseLit);
+                croppedDepth.aaSoftDisc(x - bx, y - by, 0, largerRadius, L16(LEDDepth));
+                croppedDiffuse.aaSoftDisc(x - bx, y - by, 0, largerRadius, LEDDiffuse);
                 croppedMaterial.aaSoftDisc(x - bx, y - by, smallRadius, largerRadius, RGBA(128, 128, 255, defaultPhysical));
             }
         }
