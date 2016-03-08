@@ -25,12 +25,15 @@ class UIKnob : UIElement, IParameterListener
 {
 public:
 
-    // Modify these to customize
+    //
+    // Modify these public members to customize knobs!
+    //
     float knobRadius = 0.75f;
     RGBA knobDiffuse = RGBA(233, 235, 236, 0);
     RGBA knobMaterial = RGBA(0, 255, 128, 255);
     KnobStyle style = KnobStyle.thumb;
 
+    // LEDs
     int numLEDs = 7;
     float LEDRadiusMin = 0.127f;
     float LEDRadiusMax = 0.127f;
@@ -40,10 +43,13 @@ public:
     float LEDDistanceFromCenterDragged = 0.7f;
     ushort LEDDepth = 65000;
 
+    // trail
     RGBA litTrailDiffuse = RGBA(230, 80, 43, 192);
     RGBA unlitTrailDiffuse = RGBA(150, 40, 20, 8);
     float trailRadiusMin = 0.85f;
     float trailRadiusMax = 0.97f;
+    float trailOffsetX = 0.0f; // in ratio of knob size
+    float trailOffsetY = 0.0f; // in ratio of knob size
 
     float trailMinAngle = -PI * 0.75f;
     float trailBaseAngle = -PI * 0.75f;
@@ -60,19 +66,14 @@ public:
         _param = param;
         _sensivity = 0.25f;
         _param.addListener(this);
-        _initialized = true;
         _pushedAnimation = 0;
         clearCrosspoints();
     }
 
     ~this()
     {
-        if (_initialized)
-        {
             debug ensureNotInGC("UIKnob");
             _param.removeListener(this);
-            _initialized = false;
-        }
     }
 
     override void onAnimate(double dt, double time)
@@ -103,26 +104,13 @@ public:
     override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects)
     {
         float normalizedValue = _param.getNormalized();
-
-        // We'll draw entirely in the largest centered square in _position.
-        box2i subSquare;
-        if (_position.width > _position.height)
-        {
-            int offset = (_position.width - _position.height) / 2;
-            int minX = offset;
-            subSquare = box2i(minX, 0, minX + _position.height, _position.height);
-        }
-        else
-        {
-            int offset = (_position.height - _position.width) / 2;
-            int minY = offset;
-            subSquare = box2i(0, minY, _position.width, minY + _position.width);
-        }
-        float radius = subSquare.width * 0.5f;
-        float centerx = (subSquare.min.x + subSquare.max.x - 1) * 0.5f;
-        float centery = (subSquare.min.y + subSquare.max.y - 1) * 0.5f;
+      
+        float radius = getRadius();
+        vec2f center = getCenter();
 
         float knobRadiusPx = radius * knobRadius;
+
+        vec2f trailOffset = vec2f(knobRadiusPx * trailOffsetX, knobRadiusPx * trailOffsetY);
 
         static float angleConvert(float angle)
         {
@@ -143,11 +131,19 @@ public:
             int bx = dirtyRect.min.x;
             int by = dirtyRect.min.y;
 
-            croppedDiffuse.aaFillSector(cast(int)centerx - bx, cast(int)centery - by, radius * trailRadiusMin, radius * trailRadiusMax,
-                                        minAngle, maxAngle, unlitTrailDiffuse);
+            //
+            // Draw trail
+            //
+            {
+                float trailCenterX = center.x - bx + trailOffset.x;
+                float trailCenterY = center.y - by + trailOffset.y;
+                croppedDiffuse.aaFillSector(trailCenterX, trailCenterY,
+                                            radius * trailRadiusMin, radius * trailRadiusMax,
+                                            minAngle, maxAngle, unlitTrailDiffuse);
 
-            croppedDiffuse.aaFillSector(cast(int)centerx - bx, cast(int)centery - by, radius * trailRadiusMin, radius * trailRadiusMax, 
-                                        min(baseAngle, valueAngle), max(baseAngle, valueAngle), litTrailDiffuse);
+                croppedDiffuse.aaFillSector(trailCenterX, trailCenterY, radius * trailRadiusMin, radius * trailRadiusMax, 
+                                            min(baseAngle, valueAngle), max(baseAngle, valueAngle), litTrailDiffuse);
+            }
 
             //
             // Draw knob
@@ -156,39 +152,39 @@ public:
             float depthRadius = std.algorithm.max(knobRadiusPx * 3.0f / 5.0f, 0);
             float depthRadius2 = std.algorithm.max(knobRadiusPx * 3.0f / 5.0f, 0);
 
-            float posEdgeX = centerx + sin(angle) * depthRadius2;
-            float posEdgeY = centery - cos(angle) * depthRadius2;
+            float posEdgeX = center.x + sin(angle) * depthRadius2;
+            float posEdgeY = center.y - cos(angle) * depthRadius2;
 
             ubyte emissive = 0;
-            if (isMouseOver)
+            if (_shouldBeHighlighted)
                 emissive = 30;
             if (isDragged)
                 emissive = 0;
 
             if (style == KnobStyle.thumb)
             {
-                croppedDepth.aaSoftDisc(centerx - bx, centery - by, depthRadius, knobRadiusPx, L16(65535));
-                croppedDepth.aaSoftDisc(centerx - bx, centery - by, 0, depthRadius, L16(38400));
+                croppedDepth.aaSoftDisc(center.x - bx, center.y - by, depthRadius, knobRadiusPx, L16(65535));
+                croppedDepth.aaSoftDisc(center.x - bx, center.y - by, 0, depthRadius, L16(38400));
             }
             else if (style == KnobStyle.cylinder)
             {
                 L16 depth = L16(cast(ushort)(0.5f + lerp(65535.0f, 45000.0f, _pushedAnimation)) );
-                croppedDepth.aaSoftDisc(centerx - bx, centery - by, knobRadiusPx - 5, knobRadiusPx, depth);
+                croppedDepth.aaSoftDisc(center.x - bx, center.y - by, knobRadiusPx - 5, knobRadiusPx, depth);
             }
             else if (style == KnobStyle.cone)
             {
                 L16 depth = L16(cast(ushort)(0.5f + lerp(65535.0f, 45000.0f, _pushedAnimation)) );
-                croppedDepth.aaSoftDisc(centerx - bx, centery - by, 0, knobRadiusPx, depth);
+                croppedDepth.aaSoftDisc(center.x - bx, center.y - by, 0, knobRadiusPx, depth);
             }
             else if (style == KnobStyle.ball)
             {
                 L16 depth = L16(cast(ushort)(0.5f + lerp(65535.0f, 45000.0f, _pushedAnimation)) );
-                croppedDepth.aaSoftDisc!1.2f(centerx - bx, centery - by, 2, knobRadiusPx, depth);
+                croppedDepth.aaSoftDisc!1.2f(center.x - bx, center.y - by, 2, knobRadiusPx, depth);
             }
             RGBA knobDiffuseLit = knobDiffuse;
-                knobDiffuseLit.a = emissive;
-            croppedDiffuse.aaSoftDisc(centerx - bx, centery - by, knobRadiusPx - 1, knobRadiusPx, knobDiffuseLit);
-            croppedMaterial.aaSoftDisc(centerx - bx, centery - by, knobRadiusPx - 5, knobRadiusPx, knobMaterial);
+            knobDiffuseLit.a = emissive;
+            croppedDiffuse.aaSoftDisc(center.x - bx, center.y - by, knobRadiusPx - 1, knobRadiusPx, knobDiffuseLit);
+            croppedMaterial.aaSoftDisc(center.x - bx, center.y - by, knobRadiusPx - 5, knobRadiusPx, knobMaterial);
 
 
             // LEDs
@@ -196,8 +192,8 @@ public:
             {
                 float disp = i * 2 * PI / numLEDs;
                 float distance = lerp(LEDDistanceFromCenter, LEDDistanceFromCenterDragged, _pushedAnimation);
-                float x = centerx + sin(angle + disp) * knobRadiusPx * distance;
-                float y = centery - cos(angle + disp) * knobRadiusPx * distance;
+                float x = center.x + sin(angle + disp) * knobRadiusPx * distance;
+                float y = center.y - cos(angle + disp) * knobRadiusPx * distance;
 
                 float t = -1 + 2 * abs(disp - PI) / PI;
 
@@ -218,9 +214,12 @@ public:
             }
         }
     }
-
+    
     override bool onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
     {
+        if (!containsPoint(x, y))
+            return false;
+
         // double-click => set to default
         if (isDoubleClick)
         {
@@ -276,20 +275,22 @@ public:
         setDirty();
     }
 
-    override  void onStopDrag()
+    override void onStopDrag()
     {
         _param.endParamEdit();
         clearCrosspoints();
         setDirty();
     }
 
-    override void onMouseEnter()
+    override void onMouseMove(int x, int y, int dx, int dy, MouseState mstate)
     {
+        _shouldBeHighlighted = containsPoint(x, y);
         setDirty();
     }
 
     override void onMouseExit()
     {
+        _shouldBeHighlighted = false;
         setDirty();
     }
 
@@ -317,7 +318,7 @@ protected:
     /// how much should the normalized parameter change.
     float _sensivity;
 
-    bool _initialized; // destructor flag
+    bool _shouldBeHighlighted = false;
 
     float _mousePosOnLast0Cross;
     float _mousePosOnLast1Cross;
@@ -326,5 +327,45 @@ protected:
     {
         _mousePosOnLast0Cross = float.infinity;
         _mousePosOnLast1Cross = -float.infinity;
+    }
+
+    final bool containsPoint(int x, int y)
+    {
+        vec2f center = getCenter();
+        return vec2f(x, y).distanceTo(center) < getRadius();
+    }
+
+    /// Returns: largest square centered in _position
+    final box2i getSubsquare() pure const nothrow @nogc
+    {
+        // We'll draw entirely in the largest centered square in _position.
+        box2i subSquare;
+        if (_position.width > _position.height)
+        {
+            int offset = (_position.width - _position.height) / 2;
+            int minX = offset;
+            subSquare = box2i(minX, 0, minX + _position.height, _position.height);
+        }
+        else
+        {
+            int offset = (_position.height - _position.width) / 2;
+            int minY = offset;
+            subSquare = box2i(0, minY, _position.width, minY + _position.width);
+        }
+        return subSquare;
+    }
+
+    final float getRadius() pure const nothrow @nogc
+    {
+        return getSubsquare().width * 0.5f;
+
+    }
+
+    final vec2f getCenter() pure const nothrow @nogc
+    {
+        box2i subSquare = getSubsquare();
+        float centerx = (subSquare.min.x + subSquare.max.x - 1) * 0.5f;
+        float centery = (subSquare.min.y + subSquare.max.y - 1) * 0.5f;
+        return vec2f(centerx, centery);
     }
 }
