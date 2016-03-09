@@ -55,6 +55,12 @@ public:
     float trailBaseAngle = -PI * 0.75f;
     float trailMaxAngle = +PI * 0.75f;
 
+    // alternate trail is for values below base angle
+    // For example, knob trails can be blue for positive values, 
+    // and orange for negative.
+    RGBA litTrailDiffuseAlt = RGBA(43, 80, 230, 192);
+    bool hasAlternateTrail = false;
+
 
     float animationTimeConstant = 40.0f;
 
@@ -141,8 +147,13 @@ public:
                                             radius * trailRadiusMin, radius * trailRadiusMax,
                                             minAngle, maxAngle, unlitTrailDiffuse);
 
+                // Eventually, use the alternative trail color
+                RGBA litTrail = litTrailDiffuse;
+                if (hasAlternateTrail && valueAngle < baseAngle)
+                    litTrail = litTrailDiffuseAlt;
+
                 croppedDiffuse.aaFillSector(trailCenterX, trailCenterY, radius * trailRadiusMin, radius * trailRadiusMax, 
-                                            min(baseAngle, valueAngle), max(baseAngle, valueAngle), litTrailDiffuse);
+                                            min(baseAngle, valueAngle), max(baseAngle, valueAngle), litTrail);
             }
 
             //
