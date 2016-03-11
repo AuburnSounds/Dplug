@@ -16,6 +16,11 @@ public:
     /// Change this to point to your website
     string targetURL = "http://example.com";
     float animationTimeConstant = 30.0f;
+    ubyte defaultEmissive = 13; // emissive where the logo isn't
+
+    // these are offset on top of defaultEmissive
+    ubyte emissiveOn = 0;
+    ubyte emissiveOff = 40;
 
     this(UIContext context, Image!RGBA diffuseImage)
     {
@@ -47,7 +52,7 @@ public:
             int w = dirtyRect.width;
             int h = dirtyRect.height;
 
-            ubyte emissive = cast(ubyte)(0.5f + lerp(0.0f, 40.0f, _animation));
+            ubyte emissive = cast(ubyte)(0.5f + lerp!float(emissiveOff, emissiveOn, _animation));
 
             for(int j = 0; j < h; ++j)
             {
@@ -58,8 +63,9 @@ public:
                 {
                     ubyte alpha = input[i].a;
                     RGBA color = RGBA.op!q{.blend(a, b, c)}(input[i], output[i], alpha);
-                    // 13 is the default emissive
-                    color.a = cast(ubyte)( (128 + 13 * 256 + (emissive * color.a) ) >> 8);
+
+                    // emissive has to be multiplied by alpha, and added to the default background emissive
+                    color.a = cast(ubyte)( (128 + defaultEmissive * 256 + (emissive * color.a) ) >> 8);
                     output[i] = color;
                 }
             }
