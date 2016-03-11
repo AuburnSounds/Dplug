@@ -60,6 +60,18 @@ public:
         return _textSize = textSize_;
     }
 
+    float letterSpacing()
+    {
+        return _letterSpacing;
+    }
+
+    float letterSpacing(float letterSpacing_)
+    {
+        setDirty();
+        return _letterSpacing = letterSpacing_;
+    }
+
+
     /// Returns: Diffuse color of displayed text.
     RGBA textColor()
     {
@@ -75,19 +87,21 @@ public:
 
     override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects)
     {
+        float textPosx = position.width * 0.5f;
+        float textPosy = position.height * 0.5f;
         // only draw text which is in dirty areas
         foreach(dirtyRect; dirtyRects)
         {
             auto croppedDiffuse = diffuseMap.cropImageRef(dirtyRect);
-            vec2f positionInDirty = vec2f(diffuseMap.w * 0.5f, diffuseMap.h * 0.5f) - dirtyRect.min;
-            croppedDiffuse.fillText(_font, _text, _textSize, _textColor, positionInDirty.x, positionInDirty.y);
+            vec2f positionInDirty = vec2f(textPosx, textPosy) - dirtyRect.min;
+            croppedDiffuse.fillText(_font, _text, _textSize, _letterSpacing, _textColor, positionInDirty.x, positionInDirty.y);
         }
     }
 
     // Sets _position and resize automatically to adjust with text size and content. 
     void setCenterAndResize(int x, int y)
     {
-        box2i textDimensions = _font.measureText(_text, _textSize);
+        box2i textDimensions = _font.measureText(_text, _textSize, _letterSpacing);
         int bx = x - textDimensions.width/2 - 1;
         int by = y - textDimensions.height/2 - 1;
         int w = textDimensions.width/2 + 1;
@@ -103,8 +117,11 @@ protected:
     /// Text to draw
     string _text;
 
-    /// Size of displayed text.
+    /// Size of displayed text in pixels.
     float _textSize = 16.0f;
+
+    /// Additional space between letters, in pixels.
+    float _letterSpacing = 0.0f;
 
     /// Diffuse color of displayed text.
     RGBA _textColor = RGBA(0, 0, 0, 0);
