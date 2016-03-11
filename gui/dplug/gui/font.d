@@ -46,7 +46,7 @@ public:
     }
 
     /// Returns: Where a line of text will be drawn if starting at position (0, 0).
-    box2i measureText(StringType)(StringType s, float fontSizePx)
+    box2i measureText(StringType)(StringType s, float fontSizePx, float letterSpacingPx)
     {
         box2i area;
         void extendArea(int numCh, dchar ch, box2i position, float scale, float xShift, float yShift)
@@ -60,7 +60,7 @@ public:
         // Note: when measuring the size of the text, we do not account for sub-pixel shifts
         // this is because it would make the size of the text vary which does movement jitter
         // for moving text
-        iterateCharacterPositions!StringType(s, fontSizePx, 0, 0, &extendArea);
+        iterateCharacterPositions!StringType(s, fontSizePx, letterSpacingPx, 0, 0, &extendArea);
         return area;
     }
 
@@ -75,7 +75,7 @@ private:
     /// Only support one line of text.
     /// Use kerning.
     /// No hinting.
-    void iterateCharacterPositions(StringType)(StringType text, float fontSizePx, float fractionalPosX, float fractionalPosY,
+    void iterateCharacterPositions(StringType)(StringType text, float fontSizePx, float letterSpacingPx, float fractionalPosX, float fractionalPosY,
         scope void delegate(int numCh, dchar ch, box2i position, float scale, float xShift, float yShift) doSomethingWithPosition)
     {
         assert(0 <= fractionalPosX && fractionalPosX <= 1.0f);
@@ -114,6 +114,10 @@ private:
             box2i position = box2i(x0 + ixpos, y0 + iypos, x1 + ixpos, y1 + iypos);
             doSomethingWithPosition(numCh, ch, position, scale, xShift, yShift);
             xpos += (advance * scale);
+
+            // add a user-provided constant letter spacing
+            xpos += (letterSpacingPx);
+
             lastCh = ch;
         }
     }
@@ -153,7 +157,7 @@ struct GlyphKey
 
 /// Draw text centered on a point on a DirectView.
 
-void fillText(V, StringType)(auto ref V surface, Font font, StringType s, float fontSizePx,
+void fillText(V, StringType)(auto ref V surface, Font font, StringType s, float fontSizePx, float letterSpacingPx,
                              RGBA textColor, float positionx, float positiony)
     if (isWritableView!V && is(ViewColor!V == RGBA))
 {
@@ -166,7 +170,7 @@ void fillText(V, StringType)(auto ref V surface, Font font, StringType s, float 
     float fractionalPosX = positionx - ipositionx;
     float fractionalPosY = positiony - ipositiony;
 
-    box2i area = font.measureText(s, fontSizePx);
+    box2i area = font.measureText(s, fontSizePx, letterSpacingPx);
 
     // Early exit if out of scope
     box2i surfaceArea = box2i(0, 0, surface.w, surface.h);
@@ -215,7 +219,7 @@ void fillText(V, StringType)(auto ref V surface, Font font, StringType s, float 
             }
         }
     }
-    font.iterateCharacterPositions!StringType(s, fontSizePx, fractionalPosX, fractionalPosY, &drawCharacter);
+    font.iterateCharacterPositions!StringType(s, fontSizePx, letterSpacingPx, fractionalPosX, fractionalPosY, &drawCharacter);
 }
 
 
