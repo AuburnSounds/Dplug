@@ -152,6 +152,12 @@ public:
                 if (hasAlternateTrail && valueAngle < baseAngle)
                     litTrail = litTrailDiffuseAlt;
 
+                // when dragged, trail is two times brighter
+                if (isDragged)
+                {
+                    litTrail.a = cast(ubyte) max(255, 2 * litTrail.a);                    
+                }
+
                 croppedDiffuse.aaFillSector(trailCenterX, trailCenterY, radius * trailRadiusMin, radius * trailRadiusMax, 
                                             min(baseAngle, valueAngle), max(baseAngle, valueAngle), litTrail);
             }
