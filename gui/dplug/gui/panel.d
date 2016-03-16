@@ -9,17 +9,17 @@ import std.math;
 import dplug.gui.element;
 import dplug.client.params;
 
-/// Extends an UIElement with a background color, depth and shininess.
+/// An UIPanel is simply a plain rectangle with a depth, material and diffuse.
 class UIPanel : UIElement
 {
 public:
 
-    this(UIContext context, RGBA backgroundColor, RGBA material, L16 depth)
+    this(UIContext context, RGBA diffuse, RGBA material, L16 depth)
     {
         super(context);
         _depth = depth;
         _material = material;
-        _backgroundColor = backgroundColor;
+        _diffuse = diffuse;
     }
 
     override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects)
@@ -27,18 +27,18 @@ public:
         foreach(dirtyRect; dirtyRects)
         {
             // fill diffuse map
-            diffuseMap.crop(dirtyRect).fill(_backgroundColor);
+            diffuseMap.cropImageRef(dirtyRect).fill(_diffuse);
 
             // fill material map
-            materialMap.crop(dirtyRect).fill(_material);
+            materialMap.cropImageRef(dirtyRect).fill(_material);
 
             // fill depth map
-            depthMap.crop(dirtyRect).fill(_depth);
+            depthMap.cropImageRef(dirtyRect).fill(_depth);
         }
     }
 
 protected:
     L16 _depth;
-    RGBA _backgroundColor;
+    RGBA _diffuse;
     RGBA _material;
 }
