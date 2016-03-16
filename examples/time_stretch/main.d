@@ -46,8 +46,7 @@ void main(string[] args)
                     // zero-padding the middle of spectrum
                     fftData[windowSize/2..windowSize*2] = Complex!float(0);
 
-                    // inverse FFT
-                    FFT!float(fftData[0..windowSize*2], FFTDirection.REVERSE);
+                    inverseFFT!float(fftData[0..windowSize*2]);
 
                     for (int k = 0; k < windowSize*2; ++k)
                         segment[k] = fftData[k].re * 0.5f;
