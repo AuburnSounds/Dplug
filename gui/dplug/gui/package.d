@@ -16,7 +16,6 @@ public import dplug.gui.graphics;
 public import dplug.gui.boxlist;
 public import dplug.gui.drawex;
 public import dplug.gui.mipmap;
-public import dplug.gui.materials;
 public import dplug.gui.font;
 public import dplug.gui.compositor;
 

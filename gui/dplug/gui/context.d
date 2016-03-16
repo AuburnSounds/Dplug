@@ -33,21 +33,13 @@ public:
         skybox.size(10, 1024, 1024);
 
         dirtyList = new DirtyRectList();
-        initialized = true;
     }
 
     ~this()
     {
-        if (initialized)
-        {
-            debug ensureNotInGC("UIContext");
-            dirtyList.destroy();
-            initialized = false;
-        }
+        debug ensureNotInGC("UIContext");
+        dirtyList.destroy();
     }
-
-    /// Destructor flag.
-    bool initialized;
 
     /// Last clicked element.
     UIElement focused = null;
@@ -104,17 +96,13 @@ public:
     {
         _dirtyRectMutex = new UncheckedMutex();
         _dirtyRects = new AlignedBuffer!box2i(0);
-        _initialized = true;
     }
 
     ~this()
     {
-        if (_initialized)
-        {
-            _dirtyRectMutex.destroy();
-            _dirtyRects.destroy();
-            _initialized = false;
-        }
+        ensureNotInGC("DirtyRectList");
+        _dirtyRectMutex.destroy();
+        _dirtyRects.destroy();
     }
 
     bool isEmpty() nothrow @nogc
@@ -200,9 +188,6 @@ public:
     }
 
 private:
-    /// Destructor flag.
-    bool _initialized;
-
     /// The possibly overlapping areas that need updating.
     AlignedBuffer!box2i _dirtyRects;
 

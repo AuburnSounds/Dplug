@@ -14,6 +14,10 @@ class UILabel : UIElement
 {
 public:
 
+    /// Sets to true if this is clickable
+    bool clickable = false;
+    string targetURL = "http://example.com";
+
     this(UIContext context, Font font, string text = "")
     {
         super(context);
@@ -71,7 +75,6 @@ public:
         return _letterSpacing = letterSpacing_;
     }
 
-
     /// Returns: Diffuse color of displayed text.
     RGBA textColor()
     {
@@ -85,16 +88,74 @@ public:
         return _textColor = textColor_;
     }
 
+    override void onBeginDrag() 
+    {
+        if (clickable)
+            setDirty();
+    }
+
+    override void onStopDrag()  
+    {
+        if (clickable)
+            setDirty();
+    }
+
+    override void onMouseEnter() 
+    {
+        if (clickable)
+            setDirty();
+    }
+
+    override void onMouseExit()
+    {
+        if (clickable)
+            setDirty();
+    }    
+
+    override bool onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate) 
+    {
+        if (clickable)
+        {
+            import std.process;
+            browse(targetURL);
+            return true;
+        }
+        return false;
+    }    
+
     override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects)
     {
         float textPosx = position.width * 0.5f;
         float textPosy = position.height * 0.5f;
         // only draw text which is in dirty areas
+
+        RGBA diffuse = _textColor;
+        int emissive = _textColor.a;
+        bool underline = false;
+
+        if (clickable && isMouseOver)
+        {
+            emissive += 40;
+            underline = true;
+        }
+        else if (clickable && isDragged)
+        {
+            emissive += 80;
+            underline = true;
+        }
+        if (emissive > 255)
+            emissive = 255;
+        diffuse.a = cast(ubyte)(emissive);
+
+        // TODO: implement underline?
+
         foreach(dirtyRect; dirtyRects)
         {
             auto croppedDiffuse = diffuseMap.cropImageRef(dirtyRect);
             vec2f positionInDirty = vec2f(textPosx, textPosy) - dirtyRect.min;
-            croppedDiffuse.fillText(_font, _text, _textSize, _letterSpacing, _textColor, positionInDirty.x, positionInDirty.y);
+            croppedDiffuse.fillText(_font, _text, _textSize, _letterSpacing, diffuse, positionInDirty.x, positionInDirty.y);
+
+
         }
     }
 

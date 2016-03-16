@@ -24,6 +24,24 @@ public import dplug.gui.context;
 public import dplug.gui.materials;
 
 
+/// Reasonable default value for the Depth channel.
+enum ushort defaultDepth = 15000;
+
+/// Reasonable default value for the Roughness channel.
+enum ubyte defaultRoughness = 128;
+
+/// Reasonable default value for the Specular channel ("everything is shiny").
+enum ubyte defaultSpecular = 128;
+
+/// Reasonable default value for the Physical channel (completely physical).
+enum ubyte defaultPhysical = 255;
+
+/// Reasonable dielectric default value for the Metalness channel.
+enum ubyte defaultMetalnessDielectric = 25; // ~ 0.08
+
+/// Reasonable metal default value for the Metalness channel.
+enum ubyte defaultMetalnessMetal = 255;
+
 /// Base class of the UI widget hierarchy.
 ///
 /// Bugs: a bunch of stuff in that class is intended specifically for the root element,

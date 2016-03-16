@@ -64,13 +64,6 @@ public:
 
     override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects)
     {
-        Material matHole = Material.chromium;
-
-        // TODO fill material map
-        //depthMap.fill(L16(15500));
-    //    diffuseMap.fill(Material.freshSnow.diffuse(20));
-        //materialMap.fill(matHole.material(200));
-
         int numLeds = cast(int)_leds.length;
         int numChannels = cast(int)_values.length;
         int width = _position.width;
