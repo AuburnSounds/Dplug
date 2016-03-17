@@ -77,6 +77,36 @@ class PBRCompositor : Compositor
                             lift, gamma, gain);
     }
 
+    /+ Does not work like that
+
+    /// Calling this setup color correction tables, that you can get from GIMP curve tool.
+    void setColorCorrectionGIMP(const(double[]) valueTable, const(double[]) rTable,
+                                const(double[]) gTable, const(double[]) bTable)
+    {
+
+        _useTransferTables = true;
+        _redTransferTable = new ubyte[256];
+        _greenTransferTable = new ubyte[256];
+        _blueTransferTable = new ubyte[256];
+
+        for (int b = 0; b < 256; ++b)
+        {
+            double inp = b / 255.0;
+            double value = valueTable[b] - inp;
+            double outR = rTable[b] + value;
+            double outG = gTable[b] + value;
+            double outB = bTable[b] + value;
+            outR = std.algorithm.clamp!double(outR, 0.0, 1.0);
+            outG = std.algorithm.clamp!double(outG, 0.0, 1.0);
+            outB = std.algorithm.clamp!double(outB, 0.0, 1.0);
+            _redTransferTable[b] = cast(ubyte)(0.5 + outR * 255);
+            _greenTransferTable[b] = cast(ubyte)(0.5 + outG * 255);
+            _blueTransferTable[b] = cast(ubyte)(0.5 + outB * 255);
+        }
+    }
+
+    +/
+
     /// Calling this setup color correction table, with the well
     /// known lift-gamma-gain formula.
     void setLiftGammaGainRGB(float rLift = 0.0f, float rGamma = 1.0f, float rGain = 1.0f,
@@ -441,6 +471,7 @@ class PBRCompositor : Compositor
             ubyte* red = _redTransferTable.ptr;
             ubyte* green = _greenTransferTable.ptr;
             ubyte* blue = _blueTransferTable.ptr;
+            
 
             for (int j = area.min.y; j < area.max.y; ++j)
             {
@@ -478,7 +509,7 @@ class PBRCompositor : Compositor
                             wfb_scan[i] = color;
                         }
                         break;
-                }
+                }                
             }
         }
     }
