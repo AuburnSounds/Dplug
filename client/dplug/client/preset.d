@@ -81,7 +81,7 @@ public:
             if (isValidNormalizedParam(f))
                 np = f;
             else
-                throw new Exception("Couln't unserialize preset: an invalid float parameter was parsed");
+                throw new Exception("Couldn't unserialize preset: an invalid float parameter was parsed");
         }
     }
 
