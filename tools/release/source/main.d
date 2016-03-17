@@ -138,16 +138,6 @@ void main(string[] args)
             return;
         }
 
-        string vc10Path = `C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\bin;`
-                        ~ `C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE`;
-
-        string vc12Path = `C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin;`
-                        ~ `C:\Program Files (x86)\Microsoft Visual Studio 12.0\Common7\IDE`;
-
-        string vc14Path = `C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\bin;`
-                        ~ `C:\Program Files (x86)\Microsoft Visual Studio 14.0\Common7\IDE`;
-
-
         Plugin plugin = readDubDescription();
         string dirName = "builds";
 
