@@ -70,11 +70,11 @@ class PBRCompositor : Compositor
 
     /// Calling this setup color correction table, with the well
     /// known lift-gamma-gain formula.
-    void setLiftGammaGain(float lift = 0.0f, float gamma = 1.0f, float gain = 1.0f)
+    void setLiftGammaGain(float lift = 0.0f, float gamma = 1.0f, float gain = 1.0f, float contrast = 0.0f)
     {
-        setLiftGammaGainRGB(lift, gamma, gain,
-                            lift, gamma, gain,
-                            lift, gamma, gain);
+        setLiftGammaGainRGB(lift, gamma, gain, contrast,
+                            lift, gamma, gain, contrast,
+                            lift, gamma, gain, contrast);
     }
 
     /+ Does not work like that
@@ -107,11 +107,21 @@ class PBRCompositor : Compositor
 
     +/
 
+     void setLiftGammaGain(float rLift = 0.0f, float rGamma = 1.0f, float rGain = 1.0f, 
+                           float gLift = 0.0f, float gGamma = 1.0f, float gGain = 1.0f,
+                           float bLift = 0.0f, float bGamma = 1.0f, float bGain = 1.0f)
+     {
+        setLiftGammaGainContrastRGB(rLift, rGamma, rGain, 0.0f,
+                                    gLift, gGamma, gGain, 0.0f,
+                                    bLift, bGamma, bGain, 0.0f);
+     }
+
     /// Calling this setup color correction table, with the well
     /// known lift-gamma-gain formula.
-    void setLiftGammaGainRGB(float rLift = 0.0f, float rGamma = 1.0f, float rGain = 1.0f,
-                             float gLift = 0.0f, float gGamma = 1.0f, float gGain = 1.0f,
-                             float bLift = 0.0f, float bGamma = 1.0f, float bGain = 1.0f)
+    void setLiftGammaGainContrastRGB(
+        float rLift = 0.0f, float rGamma = 1.0f, float rGain = 1.0f, float rContrast = 0.0f,
+        float gLift = 0.0f, float gGamma = 1.0f, float gGain = 1.0f, float gContrast = 0.0f,
+        float bLift = 0.0f, float bGamma = 1.0f, float bGain = 1.0f, float bContrast = 0.0f)
     {
         _useTransferTables = true;
         _redTransferTable = new ubyte[256];
@@ -138,9 +148,14 @@ class PBRCompositor : Compositor
             outG = safePow(outG, 1.0f / gGamma );
             outB = safePow(outB, 1.0f / bGamma );
 
-            outR = gfm.math.clamp!float(outR, 0.0f, 1.0f);
-            outG = gfm.math.clamp!float(outG, 0.0f, 1.0f);
-            outB = gfm.math.clamp!float(outB, 0.0f, 1.0f);
+            outR = std.algorithm.clamp!float(outR, 0.0f, 1.0f);
+            outG = std.algorithm.clamp!float(outG, 0.0f, 1.0f);
+            outB = std.algorithm.clamp!float(outB, 0.0f, 1.0f);
+
+            outR = lerp!float(outR, smoothStep!float(0, 1, outR), rContrast);
+            outG = lerp!float(outG, smoothStep!float(0, 1, outG), gContrast);
+            outB = lerp!float(outB, smoothStep!float(0, 1, outB), bContrast);
+
             _redTransferTable[b] = cast(ubyte)(0.5f + outR * 255.0f);
             _greenTransferTable[b] = cast(ubyte)(0.5f + outG * 255.0f);
             _blueTransferTable[b] = cast(ubyte)(0.5f + outB * 255.0f);
