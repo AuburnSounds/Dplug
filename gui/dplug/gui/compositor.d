@@ -11,6 +11,7 @@ import ae.utils.graphics;
 
 import gfm.math.vector;
 import gfm.math.box;
+import gfm.math.funcs;
 
 import dplug.core.funcs;
 import dplug.window.window;
@@ -87,12 +88,26 @@ class PBRCompositor : Compositor
         _greenTransferTable = new ubyte[256];
         _blueTransferTable = new ubyte[256];
 
+        static float safePow(float a, float b)
+        {
+            if (a < 0)
+                a = 0;
+            if (a > 1)
+                a = 1;
+            return a ^^ b;
+        }
+
         for (int b = 0; b < 256; ++b)
         {
             float inp = b / 255.0f;
-            float outR = ( rGain*(inp + rLift*(1-inp)) )^^(1/rGamma);
-            float outG = ( gGain*(inp + gLift*(1-inp)) )^^(1/gGamma);
-            float outB = ( bGain*(inp + bLift*(1-inp)) )^^(1/bGamma);
+            float outR = rGain*(inp + rLift*(1-inp));
+            float outG = gGain*(inp + gLift*(1-inp));
+            float outB = bGain*(inp + bLift*(1-inp));
+
+            outR = safePow(outR, 1.0f / rGamma );
+            outG = safePow(outG, 1.0f / gGamma );
+            outB = safePow(outB, 1.0f / bGamma );
+
             outR = gfm.math.clamp!float(outR, 0.0f, 1.0f);
             outG = gfm.math.clamp!float(outG, 0.0f, 1.0f);
             outB = gfm.math.clamp!float(outB, 0.0f, 1.0f);
@@ -420,23 +435,49 @@ class PBRCompositor : Compositor
             }
         }
 
-        // Optional look-up table
+        // Optional look-up table for color-correction
         if (_useTransferTables)
         {
             ubyte* red = _redTransferTable.ptr;
             ubyte* green = _greenTransferTable.ptr;
             ubyte* blue = _blueTransferTable.ptr;
+
             for (int j = area.min.y; j < area.max.y; ++j)
             {
                 RGBA* wfb_scan = wfb.scanline(j).ptr;
 
-                for (int i = area.min.x; i < area.max.x; ++i)
+                final switch (pf) with (WindowPixelFormat)
                 {
-                    RGBA color = wfb_scan[i];
-                    color.r = red[color.r];
-                    color.g = green[color.g];
-                    color.b = blue[color.b];
-                    wfb_scan[i] = color;
+                    case ARGB8:
+                        for (int i = area.min.x; i < area.max.x; ++i)
+                        {
+                            RGBA color = wfb_scan[i];
+                            color.g = red[color.g];
+                            color.b = green[color.b];
+                            color.a = blue[color.a];
+                            wfb_scan[i] = color;
+                        }
+                        break;
+                    case BGRA8:
+                        for (int i = area.min.x; i < area.max.x; ++i)
+                        {
+                            RGBA color = wfb_scan[i];
+                            color.r = blue[color.r];
+                            color.g = green[color.g];
+                            color.b = red[color.b];
+                            wfb_scan[i] = color;
+                        }
+                        break;
+                    case RGBA8:
+                        for (int i = area.min.x; i < area.max.x; ++i)
+                        {
+                            RGBA color = wfb_scan[i];
+                            color.r = red[color.r];
+                            color.g = green[color.g];
+                            color.b = blue[color.b];
+                            wfb_scan[i] = color;
+                        }
+                        break;
                 }
             }
         }
