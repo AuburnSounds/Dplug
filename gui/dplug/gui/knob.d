@@ -155,7 +155,7 @@ public:
                 // when dragged, trail is two times brighter
                 if (isDragged)
                 {
-                    litTrail.a = cast(ubyte) max(255, 2 * litTrail.a);                    
+                    litTrail.a = cast(ubyte) std.algorithm.min(255, 2 * litTrail.a);                    
                 }
 
                 croppedDiffuse.aaFillSector(trailCenterX, trailCenterY, radius * trailRadiusMin, radius * trailRadiusMax, 

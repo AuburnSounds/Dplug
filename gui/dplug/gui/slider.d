@@ -122,7 +122,7 @@ public:
             RGBA litTrail = litTrailDiffuse;
             if (isDragged)
             {
-                litTrail.a = cast(ubyte) std.algorithm.max(255, 2 * litTrail.a);                    
+                litTrail.a = cast(ubyte) std.algorithm.min(255, 2 * litTrail.a);                    
             }
 
             diffuseMap.cropImageRef(holeLit).fill(litTrail);
