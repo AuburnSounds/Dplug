@@ -54,6 +54,7 @@ https://auburnsounds.com/blog/2016-02-08_Making-a-Windows-VST-plugin-with-D.html
    * `tools/process`: test plugin host for testing audio processing speed/reproducibility, in D
    * `tools/ldvst-cpp`: test plugin host for testing loading, in C++
    * `tools/wav-compare`: comparison of WAV files
+   * `tools/lift-gamma-gain`: tool to adjust color correction curves on a "finished" UI
 
 
 ## How to build plugins
