@@ -70,58 +70,30 @@ class PBRCompositor : Compositor
 
     /// Calling this setup color correction table, with the well
     /// known lift-gamma-gain formula.
-    void setLiftGammaGain(float lift = 0.0f, float gamma = 1.0f, float gain = 1.0f, float contrast = 0.0f)
+    void setLiftGammaGainContrast(float lift = 0.0f, float gamma = 1.0f, float gain = 1.0f, float contrast = 0.0f)
     {
-        setLiftGammaGainRGB(lift, gamma, gain, contrast,
-                            lift, gamma, gain, contrast,
-                            lift, gamma, gain, contrast);
+        setLiftGammaGainContrastRGB(lift, gamma, gain, contrast,
+                                    lift, gamma, gain, contrast,
+                                    lift, gamma, gain, contrast);
     }
 
-    /+ Does not work like that
-
-    /// Calling this setup color correction tables, that you can get from GIMP curve tool.
-    void setColorCorrectionGIMP(const(double[]) valueTable, const(double[]) rTable,
-                                const(double[]) gTable, const(double[]) bTable)
+    /// Calling this setup color correction table, with the well
+    /// known lift-gamma-gain formula, per channel.
+    void setLiftGammaGainRGB(float rLift = 0.0f, float rGamma = 1.0f, float rGain = 1.0f,
+                             float gLift = 0.0f, float gGamma = 1.0f, float gGain = 1.0f,
+                             float bLift = 0.0f, float bGamma = 1.0f, float bGain = 1.0f)
     {
-
-        _useTransferTables = true;
-        _redTransferTable = new ubyte[256];
-        _greenTransferTable = new ubyte[256];
-        _blueTransferTable = new ubyte[256];
-
-        for (int b = 0; b < 256; ++b)
-        {
-            double inp = b / 255.0;
-            double value = valueTable[b] - inp;
-            double outR = rTable[b] + value;
-            double outG = gTable[b] + value;
-            double outB = bTable[b] + value;
-            outR = std.algorithm.clamp!double(outR, 0.0, 1.0);
-            outG = std.algorithm.clamp!double(outG, 0.0, 1.0);
-            outB = std.algorithm.clamp!double(outB, 0.0, 1.0);
-            _redTransferTable[b] = cast(ubyte)(0.5 + outR * 255);
-            _greenTransferTable[b] = cast(ubyte)(0.5 + outG * 255);
-            _blueTransferTable[b] = cast(ubyte)(0.5 + outB * 255);
-        }
-    }
-
-    +/
-
-     void setLiftGammaGain(float rLift = 0.0f, float rGamma = 1.0f, float rGain = 1.0f, 
-                           float gLift = 0.0f, float gGamma = 1.0f, float gGain = 1.0f,
-                           float bLift = 0.0f, float bGamma = 1.0f, float bGain = 1.0f)
-     {
         setLiftGammaGainContrastRGB(rLift, rGamma, rGain, 0.0f,
                                     gLift, gGamma, gGain, 0.0f,
                                     bLift, bGamma, bGain, 0.0f);
-     }
+    }
 
     /// Calling this setup color correction table, with the well
-    /// known lift-gamma-gain formula.
+    /// known lift-gamma-gain formula + contrast addition, per channel.
     void setLiftGammaGainContrastRGB(
-        float rLift = 0.0f, float rGamma = 1.0f, float rGain = 1.0f, float rContrast = 0.0f,
-        float gLift = 0.0f, float gGamma = 1.0f, float gGain = 1.0f, float gContrast = 0.0f,
-        float bLift = 0.0f, float bGamma = 1.0f, float bGain = 1.0f, float bContrast = 0.0f)
+            float rLift = 0.0f, float rGamma = 1.0f, float rGain = 1.0f, float rContrast = 0.0f,
+            float gLift = 0.0f, float gGamma = 1.0f, float gGain = 1.0f, float gContrast = 0.0f,
+            float bLift = 0.0f, float bGamma = 1.0f, float bGain = 1.0f, float bContrast = 0.0f)
     {
         _useTransferTables = true;
         _redTransferTable = new ubyte[256];
