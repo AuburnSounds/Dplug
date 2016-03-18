@@ -118,11 +118,11 @@ public:
 
             diffuseMap.cropImageRef(holeBlack).fill(unlitTrailDiffuse);
 
-            // lit trail is two times brighter when dragged
+            // lit trail is 50% brighter when dragged
             RGBA litTrail = litTrailDiffuse;
             if (isDragged)
             {
-                litTrail.a = cast(ubyte) std.algorithm.min(255, 2 * litTrail.a);                    
+                litTrail.a = cast(ubyte) std.algorithm.min(255, 3 * litTrail.a / 2);
             }
 
             diffuseMap.cropImageRef(holeLit).fill(litTrail);
@@ -131,10 +131,10 @@ public:
 
         // Paint handle of slider
         int emissive = handleDiffuse.a;
-        if (isMouseOver)
-            emissive += 60;
-        if (isDragged)
-            emissive += 90;
+        if (isMouseOver && !isDragged)
+            emissive += 50;
+       // if (isDragged)
+       //     emissive += 90;
         if (emissive > 255)
             emissive = 255;
 
