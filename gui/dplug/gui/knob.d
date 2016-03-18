@@ -25,6 +25,10 @@ class UIKnob : UIElement, IParameterListener
 {
 public:
 
+    // This will change to 1.0f at one point for consistency, so better express your knob 
+    // sensivity with that.
+    enum defaultSensivity = 0.25f;
+
     //
     // Modify these public members to customize knobs!
     //
@@ -70,7 +74,7 @@ public:
     {
         super(context);
         _param = param;
-        _sensivity = 0.25f;
+        _sensivity = defaultSensivity;
         _param.addListener(this);
         _pushedAnimation = 0;
         clearCrosspoints();
