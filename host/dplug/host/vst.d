@@ -117,6 +117,27 @@ final class VSTPluginHost : IPluginHost
         _dispatcher(_aeffect, effSetProgram, 0, cast(ptrdiff_t)(presetIndex), null, 0.0f);
     }
 
+    override ubyte[] saveState()
+    {
+    //    alias extern(C) nothrow VstIntPtr function(AEffect* effect, VstInt32 opcode, VstInt32 index, VstIntPtr value, void* ptr, float opt) AEffectDispatcherProc;
+
+        ubyte* pChunk = null;
+        VstIntPtr size = _dispatcher(_aeffect, effGetChunk, 0 /* want a bank */, 0, &pChunk, 0.0f);
+
+        if (size == 0 || pChunk == null)
+            throw new Exception("effGetChunk returned an empty chunk");
+
+        return pChunk[0..size].dup;
+    }
+
+    /// Restore state of the plugin.
+    override void restoreState(ubyte[] chunk)
+    {
+        VstIntPtr result = _dispatcher(_aeffect, effSetChunk, 0 /* want a bank */, chunk.length, chunk.ptr, 0.0f);
+        if (result != 1)
+            throw new Exception("effSetChunk failed");
+    }
+
 private:
     SharedLib _lib;
     AEffect* _aeffect;

@@ -12,7 +12,7 @@ import dplug.host;
 void usage()
 {
     writeln("Auburn Sounds ldvst VST checker\n");
-    writeln("usage: ldvst [-w | -wait] [-t times] {plugin.vst|plugin.so|plugin.dll}\n");
+    writeln("usage: ldvst [-w | -wait] [-t times] [-chunk chunk.bin] {plugin.vst|plugin.so|plugin.dll}\n");
 
 }
 
@@ -22,6 +22,8 @@ void main(string[]args)
     string vstpath = null;
     bool gui = true;
     bool wait = false;
+    bool dumpChunk = false;
+    string chunkFile;
 
     for(int i = 1; i < args.length; ++i)
     {
@@ -35,6 +37,12 @@ void main(string[]args)
             ++i;
             times = to!int(args[i]);
         }
+        else if (arg == "-chunk")
+        {
+            ++i;
+            dumpChunk = true;
+            chunkFile = args[i];
+        }
         else
         {
             if (!vstpath)
@@ -46,7 +54,7 @@ void main(string[]args)
             }
         }
     }
-	if (vstpath is null)
+    if (vstpath is null)
     {
         usage();
         return;
@@ -58,10 +66,16 @@ void main(string[]args)
         readln;
     }
 
-	// just a dyn lib, try to load it
+    // just a dyn lib, try to load it
     for (int t = 0; t < times; ++t)
     {
        auto host = createPluginHost(vstpath);
+
+       if (dumpChunk)
+       {
+           import std.file;
+           std.file.write(chunkFile, host.saveState());
+       }
        host.close();
     }
 
