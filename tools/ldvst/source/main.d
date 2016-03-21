@@ -12,7 +12,7 @@ import dplug.host;
 void usage()
 {
     writeln("Auburn Sounds ldvst VST checker\n");
-    writeln("usage: ldvst [-w | -wait] [-t times] [-chunk chunk.bin] {plugin.vst|plugin.so|plugin.dll}\n");
+    writeln("usage: ldvst [-w | -wait] [-t times] [-chunk chunk.bin] [-get-program] {plugin.vst|plugin.so|plugin.dll}\n");
 
 }
 
@@ -24,12 +24,15 @@ void main(string[]args)
     bool wait = false;
     bool dumpChunk = false;
     string chunkFile;
+    bool getProgram = false;
 
     for(int i = 1; i < args.length; ++i)
     {
         string arg = args[i];
         if (arg == "-no-gui")
             gui = true;
+        else if (arg == "-get-program")
+            getProgram = true;
         else if (arg == "-w" || arg == "-wait")
             wait = true;
         else if (arg == "-t")
@@ -75,6 +78,11 @@ void main(string[]args)
        {
            import std.file;
            std.file.write(chunkFile, host.saveState());
+       }
+
+       if (getProgram)
+       {
+           writefln("Current program is %s", host.getCurrentProgram());
        }
        host.close();
     }

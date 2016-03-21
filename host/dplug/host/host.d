@@ -33,6 +33,9 @@ interface IPluginHost
     /// Restore state of the plugin.
     void restoreState(ubyte[] chunk);
 
+    /// Gets current "program" index.
+    int getCurrentProgram();
+
     /// Free all resources associated with the plugin host.
     void close();
 

@@ -1126,7 +1126,7 @@ extern(C) private nothrow
 // Copy source into dest.
 // dest must contain room for maxChars characters
 // A zero-byte character is then appended.
-private void stringNCopy(char* dest, size_t maxChars, string source)
+void stringNCopy(char* dest, size_t maxChars, string source) nothrow @nogc
 {
     if (maxChars == 0)
         return;
@@ -1136,8 +1136,6 @@ private void stringNCopy(char* dest, size_t maxChars, string source)
         dest[i] = source[i];
     dest[max] = '\0';
 }
-
-
 
 
 /// Access to VST host from the VST client perspective.
