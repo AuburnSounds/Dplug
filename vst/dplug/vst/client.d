@@ -87,6 +87,9 @@ template VSTEntryPoint(alias ClientClass)
         "}";
 }
 
+// TODO: later
+//version = useChunks;
+
 /// VST client wrapper
 class VSTClient
 {
@@ -105,7 +108,11 @@ public:
 
         _effect.magic = kEffectMagic;
 
-        int flags = effFlagsCanReplacing | effFlagsCanDoubleReplacing | effFlagsProgramChunks;
+
+        int flags = effFlagsCanReplacing | effFlagsCanDoubleReplacing;
+
+        version(useChunks)
+            flags |= effFlagsProgramChunks;
 
         if ( client.hasGUI() )
             flags |= effFlagsHasEditor;
@@ -279,7 +286,10 @@ private:
             }
 
             case effGetProgram: // opcode 3
+            {
+                // TODO: will probably need to be zero with internal preset management
                 return _client.presetBank.currentPresetIndex();
+            }
 
             case effSetProgramName: // opcode 4
             {
@@ -448,22 +458,25 @@ private:
 
             case effGetChunk: // opcode 23
             {
-                ubyte** ppData = cast(ubyte**) ptr;
-                bool wantBank = (index == 0);
-                if (ppData)
+                version(useChunks)
                 {
-                    auto presetBank = _client.presetBank();
-                    if (wantBank)
+                    ubyte** ppData = cast(ubyte**) ptr;
+                    bool wantBank = (index == 0);
+                    if (ppData)
                     {
-                        _lastBankChunk = presetBank.getBankChunk();
-                        *ppData = _lastBankChunk.ptr;
-                        return cast(int)_lastBankChunk.length;
-                    }
-                    else
-                    {
-                        _lastPresetChunk = presetBank.getPresetChunk(presetBank.currentPresetIndex());
-                        *ppData = _lastPresetChunk.ptr;
-                        return cast(int)_lastPresetChunk.length;
+                        auto presetBank = _client.presetBank();
+                        if (wantBank)
+                        {
+                            _lastBankChunk = presetBank.getBankChunk();
+                            *ppData = _lastBankChunk.ptr;
+                            return cast(int)_lastBankChunk.length;
+                        }
+                        else
+                        {
+                            _lastPresetChunk = presetBank.getPresetChunk(presetBank.currentPresetIndex());
+                            *ppData = _lastPresetChunk.ptr;
+                            return cast(int)_lastPresetChunk.length;
+                        }
                     }
                 }
                 return 0;
@@ -471,26 +484,33 @@ private:
 
             case effSetChunk: // opcode 24
             {
-                if (!ptr)
-                    return 0;
+                version(useChunks)
+                {
+                    if (!ptr)
+                        return 0;
 
-                bool isBank = (index == 0);
-                ubyte[] chunk = (cast(ubyte*)ptr)[0..value];
-                auto presetBank = _client.presetBank();
-                try
-                {
-                    if (isBank)
-                        presetBank.loadBankChunk(chunk);
-                    else
+                    bool isBank = (index == 0);
+                    ubyte[] chunk = (cast(ubyte*)ptr)[0..value];
+                    auto presetBank = _client.presetBank();
+                    try
                     {
-                        presetBank.loadPresetChunk(presetBank.currentPresetIndex(), chunk);
-                        presetBank.loadPresetFromHost(presetBank.currentPresetIndex());
+                        if (isBank)
+                            presetBank.loadBankChunk(chunk);
+                        else
+                        {
+                            presetBank.loadPresetChunk(presetBank.currentPresetIndex(), chunk);
+                            presetBank.loadPresetFromHost(presetBank.currentPresetIndex());
+                        }
+                        return 1; // success
                     }
-                    return 1; // success
+                    catch(Exception e)
+                    {
+                        // Chunk didn't parse
+                        return 0;
+                    }
                 }
-                catch(Exception e)
+                else
                 {
-                    // Chunk didn't parse
                     return 0;
                 }
             }
