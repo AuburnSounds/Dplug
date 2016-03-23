@@ -198,9 +198,9 @@ void main(string[] args)
                 {
                     // Only accepts two configurations: VST and AudioUnit
                     string pluginDir;
-                    if (config == "VST")
+                    if (configIsVST(config))
                         pluginDir = plugin.name ~ ".vst";
-                    else if (config == "AU")
+                    else if (configIsAU(config))
                         pluginDir = plugin.name ~ ".component";
                     else
                         pluginDir = plugin.name;
@@ -441,6 +441,16 @@ Plugin readDubDescription()
     return result;
 }
 
+bool configIsVST(string config)
+{
+    return config.length >= 3 && config[0..3] == "VST";
+}
+
+bool configIsAU(string config)
+{
+    return config.length >= 2 && config[0..2] == "AU";
+}
+
 string makePListFile(Plugin plugin, string config, bool hasIcon)
 {
     string productName = plugin.name;
@@ -464,15 +474,15 @@ string makePListFile(Plugin plugin, string config, bool hasIcon)
     addKeyString("CFBundleGetInfoString", productVersion ~ ", " ~ copyright);
 
     string CFBundleIdentifier;
-    if (config == "VST")
+    if (configIsVST(config))
         CFBundleIdentifier = plugin.CFBundleIdentifierPrefix ~ ".vst." ~ plugin.name;
-    else if (config == "AU")
+    else if (configIsAU(config))
         CFBundleIdentifier = plugin.CFBundleIdentifierPrefix ~ ".audiounit." ~ plugin.name;
     else
         CFBundleIdentifier = plugin.CFBundleIdentifierPrefix ~ "." ~ plugin.name;
     addKeyString("CFBundleIdentifier", CFBundleIdentifier);
 
-    if (config == "AU")
+    if (configIsAU(config))
         addKeyString("NSPrincipalClass", "dplug_view");
 
     addKeyString("CFBundleInfoDictionaryVersion", "6.0");
