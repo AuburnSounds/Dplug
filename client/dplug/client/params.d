@@ -107,6 +107,9 @@ public:
             listener.onEndParameterEdit(this);
     }
 
+    /// Returns: A normalized double, representing the parameter value.
+    abstract double getNormalized() nothrow @nogc;
+
     /// Returns: A normalized double, representing the default parameter value.
     abstract double getNormalizedDefault() nothrow @nogc;
 
@@ -136,9 +139,6 @@ protected:
     /// No guarantee at all that getNormalized will return the same,
     /// because this value is rounded to fit.
     abstract void setNormalized(double hostValue) nothrow @nogc;
-
-    /// Returns: A normalized double, representing the parameter value.
-    abstract double getNormalized() nothrow @nogc;
 
     /// Display parameter (without label).
     abstract void toStringN(char* buffer, size_t numBytes) nothrow;

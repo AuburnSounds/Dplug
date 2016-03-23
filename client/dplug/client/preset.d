@@ -25,7 +25,7 @@ enum int DPLUG_SERIALIZATION_MAJOR_VERSION = 0;
 enum int DPLUG_SERIALIZATION_MINOR_VERSION = 0;
 
 /// A preset is a slot in a plugin preset list
-class Preset
+final class Preset
 {
 public:
     this(string name, float[] normalizedParams)
@@ -47,6 +47,15 @@ public:
     string name(string newName)
     {
         return _name = newName;
+    }
+
+    void saveFromHost(Client client)
+    {
+        auto params = client.params();
+        foreach(int i, param; params)
+        {
+            _normalizedParams[i] = param.getNormalized();
+        }
     }
 
     void loadFromHost(Client client)
@@ -96,7 +105,7 @@ private:
 }
 
 /// A preset bank is a collection of presets
-class PresetBank
+final class PresetBank
 {
 public:
 
@@ -145,8 +154,16 @@ public:
         return index >= 0 && index < numPresets();
     }
 
+    // Save current state to current preset. This updates the preset bank to reflect the state change.
+    // This will be unnecessary once we haver internal preset management.
+    void putCurrentStateInCurrentPreset()
+    {        
+        presets[_current].saveFromHost(_client);
+    }
+
     void loadPresetFromHost(int index)
     {
+        putCurrentStateInCurrentPreset();
         presets[index].loadFromHost(_client);
         _current = index;
     }
@@ -163,6 +180,7 @@ public:
     /// Allocate and fill a bank chunk
     ubyte[] getBankChunk()
     {
+        putCurrentStateInCurrentPreset();
         auto chunk = appender!(ubyte[])();
         writeChunkHeader(chunk);
 
@@ -180,6 +198,10 @@ public:
     {
         checkChunkHeader(chunk);
         presets[index].unserializeBinary(chunk);
+
+        // Not sure why it's there in IPlug, this whole function is probably not
+        // doing what it should
+        //putCurrentStateInCurrentPreset();
     }
 
     /// Parse a bank chunk and set parameters.

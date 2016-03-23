@@ -27,6 +27,15 @@ interface IPluginHost
     /// Loads a preset.
     void loadPreset(int presetIndex);
 
+    /// Serialize state of the plugin.
+    ubyte[] saveState();
+
+    /// Restore state of the plugin.
+    void restoreState(ubyte[] chunk);
+
+    /// Gets current "program" index.
+    int getCurrentProgram();
+
     /// Free all resources associated with the plugin host.
     void close();
 

@@ -109,11 +109,10 @@ version(isX86)
         version (InlineX86Asm)
         {
             uint controlWord;
-            static if( __VERSION__ >= 2067 )
-                mixin("asm nothrow @nogc { stmxcsr controlWord; }");
-            else
-                mixin("asm { stmxcsr controlWord; }");
-
+            asm nothrow @nogc 
+            {
+                stmxcsr controlWord; 
+            }
             return controlWord;
         }
         else
@@ -125,10 +124,10 @@ version(isX86)
     {
         version (InlineX86Asm)
         {
-            static if( __VERSION__ >= 2067 )
-                mixin("asm nothrow @nogc { ldmxcsr controlWord; }");
-            else
-                mixin("asm { ldmxcsr controlWord; }");
+            asm nothrow @nogc 
+            { 
+                ldmxcsr controlWord; 
+            }
         }
         else
             assert(0, "Not yet supported");

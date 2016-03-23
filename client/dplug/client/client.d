@@ -172,25 +172,19 @@ public:
         // effEditOpen for some reason.
         // TODO: do it really lazily
         //createGraphicsLazily();
-
-        _initialized = true;
     }
 
     ~this()
     {
-        if (_initialized)
-        {
-            debug ensureNotInGC("dplug.plugin.Client");
-            _initialized = false;
+        debug ensureNotInGC("dplug.plugin.Client");
 
-            // Destroy graphics
-            if (_graphics !is null)
-                _graphics.destroy();
+        // Destroy graphics
+        if (_graphics !is null)
+            _graphics.destroy();
 
-            // Destroy parameters
-            foreach(p; _params)
-                p.destroy();
-        }
+        // Destroy parameters
+        foreach(p; _params)
+            p.destroy();
     }
 
     final int maxInputs() pure const nothrow @nogc
@@ -508,7 +502,5 @@ private:
             assert(_graphics !is null); // don't forget to override the createGraphics method
         }
     }
-
-    bool _initialized; // destructor flag
 }
 

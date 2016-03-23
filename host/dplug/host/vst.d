@@ -17,12 +17,29 @@ alias VSTPluginMain_t = extern(C) AEffect* function(HostCallbackFunction fun);
 
 VSTPluginMain_t getVSTEntryPoint(SharedLib lib)
 {
-    void* result = lib.loadSymbol("VSTPluginMain");
+    void* result = null;
+
+    void tryEntryPoint(string name)
+    {
+        if (result != null)
+            return;
+        try
+        {
+            result = lib.loadSymbol(name);
+        }
+        catch(Exception e)
+        {
+            result = null;
+        }
+    }
+    tryEntryPoint("VSTPluginMain");
+    tryEntryPoint("main_macho");
+    tryEntryPoint("main");
+
     if (result == null)
-        result = lib.loadSymbol("main_macho");
-    if (result == null)
-        result = lib.loadSymbol("main");
-    return cast(VSTPluginMain_t) result;
+        throw new Exception("Did not find a VST entry point");
+    else
+        return cast(VSTPluginMain_t)result;
 }
 
 private __gshared VSTPluginHost[AEffect*] reverseMapping;
@@ -33,7 +50,6 @@ final class VSTPluginHost : IPluginHost
     {
         _lib = lib;
         
-        // TODO other symbol names like main_macho or main
         VSTPluginMain_t VSTPluginMain = getVSTEntryPoint(lib); 
 
         _aeffect = VSTPluginMain(&hostCallback);
@@ -117,6 +133,35 @@ final class VSTPluginHost : IPluginHost
         _dispatcher(_aeffect, effSetProgram, 0, cast(ptrdiff_t)(presetIndex), null, 0.0f);
     }
 
+    override ubyte[] saveState()
+    {
+        if (_aeffect.flags && effFlagsProgramChunks)
+        {
+            ubyte* pChunk = null;
+            VstIntPtr size = _dispatcher(_aeffect, effGetChunk, 0 /* want a bank */, 0, &pChunk, 0.0f);
+
+            if (size == 0 || pChunk == null)
+                throw new Exception("effGetChunk returned an empty chunk");
+
+            return pChunk[0..size].dup;
+        }
+        else
+            throw new Exception("This VST doesn't support chunks");
+        
+    }
+
+    override void restoreState(ubyte[] chunk)
+    {
+        VstIntPtr result = _dispatcher(_aeffect, effSetChunk, 0 /* want a bank */, chunk.length, chunk.ptr, 0.0f);
+        if (result != 1)
+            throw new Exception("effSetChunk failed");
+    }
+
+    override int getCurrentProgram()
+    {
+        return cast(int)( _dispatcher(_aeffect, effGetProgram, 0, 0, null, 0.0f) );
+    }
+
 private:
     SharedLib _lib;
     AEffect* _aeffect;
@@ -131,6 +176,11 @@ extern(C) nothrow @nogc VstIntPtr hostCallback(AEffect* effect, VstInt32 opcode,
 
     switch(opcode)
     {
+        case audioMasterAutomate: printf("audioMasterAutomate\n"); return 0;
+        case audioMasterVersion: return 2400;
+        case audioMasterCurrentId: printf("audioMasterCurrentId\n"); return 0;
+        case audioMasterIdle: printf("audioMasterIdle\n"); return 0;
+        case DEPRECATED_audioMasterPinConnected: printf("DEPRECATED_audioMasterPinConnected\n"); return 0;
         case DEPRECATED_audioMasterWantMidi: printf("DEPRECATED_audioMasterWantMidi\n"); return 0;
         case audioMasterGetTime:
         {
@@ -168,9 +218,18 @@ extern(C) nothrow @nogc VstIntPtr hostCallback(AEffect* effect, VstInt32 opcode,
         case audioMasterOfflineGetCurrentMetaPass: printf("audioMasterOfflineGetCurrentMetaPass\n"); return 0;
         case DEPRECATED_audioMasterSetOutputSampleRate: printf("DEPRECATED_audioMasterSetOutputSampleRate\n"); return 0;
         case DEPRECATED_audioMasterGetOutputSpeakerArrangement: printf("DEPRECATED_audioMasterGetOutputSpeakerArrangement\n"); return 0;
-        case audioMasterGetVendorString: printf("audioMasterGetVendorString\n"); return 0;
-        case audioMasterGetProductString: printf("audioMasterGetProductString\n"); return 0;
-        case audioMasterGetVendorVersion: printf("audioMasterGetVendorVersion\n"); return 0;
+
+        case audioMasterGetVendorString:
+        case audioMasterGetProductString:
+        {
+            char* p = cast(char*)ptr;
+            if (p !is null)
+                stringNCopy(p, 64, "dplug host");
+            return 0;
+        }
+
+        case audioMasterGetVendorVersion: return 0x200; // 2.0
+
         case audioMasterVendorSpecific: printf("audioMasterVendorSpecific\n"); return 0;
         case DEPRECATED_audioMasterSetIcon: printf("DEPRECATED_audioMasterSetIcon\n"); return 0;
         case audioMasterCanDo: printf("audioMasterCanDo\n"); return 0;
@@ -186,6 +245,6 @@ extern(C) nothrow @nogc VstIntPtr hostCallback(AEffect* effect, VstInt32 opcode,
         case DEPRECATED_audioMasterEditFile: printf("DEPRECATED_audioMasterEditFile\n"); return 0;
         case DEPRECATED_audioMasterGetChunkFile: printf("DEPRECATED_audioMasterGetChunkFile\n"); return 0;
         case DEPRECATED_audioMasterGetInputSpeakerArrangement: printf("DEPRECATED_audioMasterGetInputSpeakerArrangement\n"); return 0;
-        default: printf(" unknown opcode\n"); return 0;
+        default: printf(" unknown opcode %d\n", opcode); return 0;
     }
 }

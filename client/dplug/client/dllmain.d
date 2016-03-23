@@ -35,7 +35,7 @@ version(Windows)
                 {
                     case DLL_PROCESS_ATTACH:
                         gModuleHandle = cast(void*)hInstance;
-                        dll_process_attach(hInstance, true);
+                        dll_process_attach(hInstance, false);
                         break;
 
                     case DLL_PROCESS_DETACH:

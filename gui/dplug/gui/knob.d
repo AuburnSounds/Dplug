@@ -25,6 +25,10 @@ class UIKnob : UIElement, IParameterListener
 {
 public:
 
+    // This will change to 1.0f at one point for consistency, so better express your knob 
+    // sensivity with that.
+    enum defaultSensivity = 0.25f;
+
     //
     // Modify these public members to customize knobs!
     //
@@ -70,7 +74,7 @@ public:
     {
         super(context);
         _param = param;
-        _sensivity = 0.25f;
+        _sensivity = defaultSensivity;
         _param.addListener(this);
         _pushedAnimation = 0;
         clearCrosspoints();
@@ -155,7 +159,7 @@ public:
                 // when dragged, trail is two times brighter
                 if (isDragged)
                 {
-                    litTrail.a = cast(ubyte) max(255, 2 * litTrail.a);                    
+                    litTrail.a = cast(ubyte) std.algorithm.min(255, 2 * litTrail.a);                    
                 }
 
                 croppedDiffuse.aaFillSector(trailCenterX, trailCenterY, radius * trailRadiusMin, radius * trailRadiusMax, 
