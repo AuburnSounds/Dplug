@@ -444,6 +444,9 @@ version(OSX)
             class_addMethod(clazz, sel!"drawRect:", cast(IMP) &drawRect, "v@:" ~ encode!NSRect);
             class_addMethod(clazz, sel!"onTimer:", cast(IMP) &onTimer, "v@:@");
 
+            class_addMethod(clazz, sel!"mouseEntered:", cast(IMP) &mouseEntered, "v@:@");
+            class_addMethod(clazz, sel!"mouseExited:", cast(IMP) &mouseExited, "v@:@");
+
             // This ~ is to avoid a strange DMD ICE. Didn't succeed in isolating it.
             class_addMethod(clazz, sel!("scroll" ~ "Wheel:") , cast(IMP) &scrollWheel, "v@:@");
 
@@ -571,6 +574,23 @@ version(OSX)
             DPlugCustomView view = getInstance(self);
             view._window.handleMouseMove(NSEvent(event));
         }
+
+        void mouseEntered(id self, SEL selector, id event)
+        {
+            FPControl fpctrl;
+            fpctrl.initialize();
+       //     DPlugCustomView view = getInstance(self);
+            NSCursor.arrowCursor().push();
+        }
+
+        void mouseExited(id self, SEL selector, id event)
+        {
+            FPControl fpctrl;
+            fpctrl.initialize();
+      //      DPlugCustomView view = getInstance(self);
+            NSCursor.pop();
+        }
+
 
         void scrollWheel(id self, SEL selector, id event)
         {
