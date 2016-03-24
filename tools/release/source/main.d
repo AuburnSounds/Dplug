@@ -13,7 +13,7 @@ void usage()
     writeln("usage: release -c <compiler> -a <arch> -b <build>");
     writeln("  -a                selects arch x86|x64|all (default: win => all   mac => x64)");
     writeln("  -b                selects builds (default: release-nobounds)");
-    writeln("  -c                selects compiler dmd|ldc|gdc|all (default: dmd)");
+    writeln("  -c                selects compiler dmd|ldc|gdc|all (default: ldc)");
     writeln("  --config          selects configuration VST|AU|<other> (default: VST)");
     writeln("  -f|--force        selects compiler dmd|ldc|gdc|all (default: no)");
     writeln("  -comb|--combined  combined build (default: no)");
@@ -58,9 +58,7 @@ void main(string[] args)
     // TODO get executable name from dub.json
     try
     {
-        Compiler compiler = Compiler.dmd;
-        version (OSX)
-            compiler = Compiler.ldc;
+        Compiler compiler = Compiler.ldc; // use LDC by default
 
         Arch[] archs = allArchitectureqForThisPlatform();
         version (OSX)
