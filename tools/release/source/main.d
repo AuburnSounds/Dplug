@@ -3,6 +3,7 @@ import std.file;
 import std.stdio;
 import std.string;
 import std.path;
+import std.conv;
 import std.uuid;
 
 
@@ -65,7 +66,7 @@ void main(string[] args)
             archs = [ Arch.x64 ];
 
         string build="debug";
-        string config = "VST";
+        string config = "AU";
         bool verbose = false;
         bool force = false;
         bool combined = false;
@@ -167,6 +168,17 @@ void main(string[] args)
                         environment["PATH"] = `c:\d\ldc-64b\bin` ~ ";" ~ oldpath;
                 }
 
+                // Create a .rsrc for this set of architecture when building an AU
+                string rsrcPath = null;
+                version(OSX)
+                {
+                    // Make icns and copy it (if any provided in dub.json)
+                    if (configIsAU(config))
+                    {
+                        rsrcPath = makeRSRC(plugin.name, arch);
+                    }
+                }
+
                 string path = outputDirectory(dirName, osString, arch, config);
 
                 writefln("Creating directory %s", path);
@@ -218,6 +230,10 @@ void main(string[] args)
                     if (iconPath)
                         std.file.copy(iconPath, contentsDir ~ "/Resources/icon.icns");
 
+                    // Copy .rsrc file (if needed)
+                    if (rsrcPath)
+                        std.file.copy(rsrcPath, contentsDir ~ "/Resources/plugin.rsrc" ~ baseName(rsrcPath));
+
                     string exePath = macosDir ~ "/" ~ plugin.name;
 
                     if (arch == Arch.universalBinary)
@@ -257,18 +273,6 @@ void main(string[] args)
             }
         }
 
-        // Create a .rsrc file when building an AU
-        // TODO: this may need some plist work too
-        string rsrcPath = null;
-        version(OSX)
-        {
-            // Make icns and copy it (if any provided in dub.json)
-            if (config == "AU")
-            {
-                rsrcPath = makeRSRC(plugin.name);
-            }
-        }
-
         // Copy license (if any provided in dub.json)
         if (plugin.licensePath)
             std.file.copy(plugin.licensePath, dirName ~ "/" ~ baseName(plugin.licensePath));
@@ -277,9 +281,7 @@ void main(string[] args)
         if (plugin.userManualPath)
             std.file.copy(plugin.userManualPath, dirName ~ "/" ~ baseName(plugin.userManualPath));
 
-        // Copy .rsrc file (if AU config)
-        if (rsrcPath)
-            std.file.copy(rsrcPath, dirName ~ "/" ~ baseName(rsrcPath));
+
 
         // DMD builds
         if (hasDMD) buildAndPackage("dmd", config, archs, iconPath);
@@ -477,7 +479,10 @@ string makePListFile(Plugin plugin, string config, bool hasIcon)
     else if (configIsAU(config))
         CFBundleIdentifier = plugin.CFBundleIdentifierPrefix ~ ".audiounit." ~ plugin.name;
     else
+    {
+        writeln(`warning: your configuration doesn't start with "VST" or "AU"`);
         CFBundleIdentifier = plugin.CFBundleIdentifierPrefix ~ "." ~ plugin.name;
+    }
     addKeyString("CFBundleIdentifier", CFBundleIdentifier);
 
     if (configIsAU(config))
@@ -530,8 +535,9 @@ string makeMacIcon(string pluginName, string pngPath)
     return outputIcon;
 }
 
-string makeRSRC(string pluginName)
+string makeRSRC(string pluginName, Arch arch)
 {
+    writeln("Generating a .r file for this arch ", to!string(arch));
     string temp = tempDir();
 
     string rPath = buildPath(temp, "plugin.r");
@@ -539,18 +545,29 @@ string makeRSRC(string pluginName)
     auto rFile = File(rPath, "w");
     static immutable string rFileBase = cast(string) import("plugin-base.r");
 
-    rFile.writefln("#define PLUG_NAME %s", pluginName);
+    rFile.writefln(`#define PLUG_NAME "%s"`, pluginName);
+    rFile.writeln("#define PLUG_MFR_ID 'ABAB'");
+    rFile.writeln("#define PLUG_VER 0x00010000"); // TODO change this
+
     rFile.writeln(rFileBase);
     rFile.close();
 
     string rsrcPath = buildPath(temp, "plugin.rsrc");
 
-    safeCommand(format("rez -t BNDL -o plugin.rsrc -p %s", rPath));
+    string archFlags = "";
+    final switch(arch) with (Arch)
+    {
+        case x86: archFlags = "-arch i386"; break;
+        case x64: archFlags = "-arch x86_64"; break;
+        case universalBinary: archFlags = "-arch i386 -arch x86_64"; break;
+    }
+
+    safeCommand(format("rez %s -t BNDL -o %s %s", archFlags, rsrcPath, rPath));
 
     if (!exists(rsrcPath))
         throw new Exception(format("%s wasn't created", rsrcPath));
 
-    if (!getSize(rsrcPath))
+    if (getSize(rsrcPath) == 0)
         throw new Exception(format("%s is an empty file", rsrcPath));
 
     return rsrcPath;
