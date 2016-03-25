@@ -1,9 +1,5 @@
-
-
 #define PLUG_MFR "WittyAudio"
 
-// Set by build tool
-//#define PLUG_NAME "Distort"
 
 // TODO: this should be set by release tool by reading the dub.json keys
 #define RES_NAME PLUG_MFR ": " PLUG_NAME

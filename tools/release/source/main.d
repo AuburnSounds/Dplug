@@ -230,11 +230,11 @@ void main(string[] args)
                     if (iconPath)
                         std.file.copy(iconPath, contentsDir ~ "/Resources/icon.icns");
 
+                    string exePath = macosDir ~ "/" ~ plugin.name;
+
                     // Copy .rsrc file (if needed)
                     if (rsrcPath)
-                        std.file.copy(rsrcPath, contentsDir ~ "/Resources/plugin.rsrc" ~ baseName(rsrcPath));
-
-                    string exePath = macosDir ~ "/" ~ plugin.name;
+                        std.file.copy(rsrcPath, contentsDir ~ "/Resources/" ~ baseName(exePath) ~ ".rsrc");
 
                     if (arch == Arch.universalBinary)
                     {
@@ -537,7 +537,7 @@ string makeMacIcon(string pluginName, string pngPath)
 
 string makeRSRC(string pluginName, Arch arch, bool verbose)
 {
-    writeln("Generating a .r file for this arch ", to!string(arch));
+    writefln("Generating a .rsrc file for %s arch...", to!string(arch));
     string temp = tempDir();
 
     string rPath = buildPath(temp, "plugin.r");
@@ -571,6 +571,8 @@ string makeRSRC(string pluginName, Arch arch, bool verbose)
 
     if (getSize(rsrcPath) == 0)
         throw new Exception(format("%s is an empty file", rsrcPath));
+
+    writefln("Written %s bytes to %s", getSize(rsrcPath), rsrcPath);
 
     return rsrcPath;
 }
