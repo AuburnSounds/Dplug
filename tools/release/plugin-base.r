@@ -2,11 +2,6 @@
 
 
 // TODO: this should be set by release tool by reading the dub.json keys
-#define RES_NAME PLUG_MFR ": " PLUG_NAME
-#define PLUG_ENTRY plugin_Entry
-#define PLUG_VIEW_ENTRY plugin_ViewEntry
-#define PLUG_ENTRY_STR "plugin_Entry"
-#define PLUG_VIEW_ENTRY_STR "plugin_ViewEntry"
 #define PLUG_IS_INST 0
 #define PLUG_DOES_MIDI 0
 #define PLUG_UNIQUE_ID 'gfm0'
@@ -61,11 +56,14 @@ enum
 {
   kAudioUnitType_MusicDevice        = 'aumu',
   kAudioUnitType_MusicEffect        = 'aumf',
-  kAudioUnitType_Effect             = 'aufx'
+  kAudioUnitType_Effect             = 'aufx',
+  kAudioUnitCarbonViewComponentType = 'auvw',
 };
 
 #define componentDoAutoVersion             0x01
 #define componentHasMultiplePlatforms      0x08
+
+#define RES_NAME PLUG_MFR ": " PLUG_NAME
 
 resource 'STR ' (1000, purgeable) {
   RES_NAME
@@ -76,7 +74,7 @@ resource 'STR ' (1000 + 1, purgeable) {
 };
 
 resource 'dlle' (1000) {
-  PLUG_ENTRY_STR
+  "dplugAUEntryPoint"
 };
 
 resource 'thng' (1000, RES_NAME) {
@@ -108,4 +106,50 @@ kAudioUnitType_Effect,
 #endif
   }
 };
+
+#if TARGET_REZ_MAC_X86
+
+#define RES_ID 2000
+
+#undef RES_NAME
+#define RES_NAME PLUG_MFR ": " PLUG_PUBLIC_NAME " Carbon View"
+
+
+resource 'STR ' (2000, purgeable) {
+  RES_NAME
+};
+
+resource 'STR ' (2000 + 1, purgeable) {
+  PLUG_PUBLIC_NAME " AU Carbon View"
+};
+
+resource 'dlle' (2000) {
+  "dplugAUCarbonViewEntryPoint"
+};
+
+resource 'thng' (2000, RES_NAME) {
+  kAudioUnitCarbonViewComponentType,
+  PLUG_UNIQUE_ID,
+  PLUG_MFR_ID,
+  0, 0, 0, 0,               //  no 68K
+  'STR ', 2000,
+  'STR ', 2000 + 1,
+  0,  0,      // icon
+  PLUG_VER,
+  componentHasMultiplePlatforms | componentDoAutoVersion,
+  0,
+  {
+    cmpThreadSafeOnMac,
+    Target_CodeResType, 2000,
+    Target_PlatformType,
+
+#if TARGET_REZ_FAT_COMPONENTS_2
+    cmpThreadSafeOnMac,
+    Target_CodeResType, 2000,
+    Target_SecondPlatformType,
+#endif
+  }
+};
+
+#endif // TARGET_REZ_MAC_X86
 

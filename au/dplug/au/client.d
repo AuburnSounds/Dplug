@@ -22,16 +22,19 @@ import dplug.client.client;
 
 template AUEntryPoint(alias ClientClass)
 {
-    const char[] AUEntryPoint = ""; // TODO
+    // The entry point names must be kept in sync with names in the .rsrc
+
+    const char[] AUEntryPoint =
+"";
 /*
-    ComponentResult PLUG_ENTRY(ComponentParameters* params, void* pPlug)
-    {
-      return IPlugAU::IPlugAUEntry(params, pPlug);
-    }
-    ComponentResult PLUG_VIEW_ENTRY(ComponentParameters* params, void* pView)
-    {
-      return IPlugAU::IPlugAUCarbonViewEntry(params, pView);
-    }
+    "ComponentResult dplugAUEntryPoint(ComponentParameters* params, void* pPlug)"
+    "{"
+        //return IPlugAU::IPlugAUEntry(params, pPlug);
+    "}"
+    "ComponentResult dplugAUCarbonViewEntryPoint(ComponentParameters* params, void* pView)"
+    "{"
+       // return IPlugAU::IPlugAUCarbonViewEntry(params, pView);
+    "}";
     */
 }
 
@@ -44,20 +47,14 @@ public:
     this(Client client)
     {
         _client = client;
-        _initialized = true;
     }
 
     ~this()
     {
-        if (_initialized)
-        {
-            debug ensureNotInGC("dplug.au.Client");
-            _client.destroy();
-            _initialized = false;
-        }
+        debug ensureNotInGC("dplug.au.Client");
+        _client.destroy();
     }
 
 private:
     Client _client;
-    bool _initialized; // destructor flag
 }
