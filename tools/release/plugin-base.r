@@ -61,6 +61,16 @@
   #define TARGET_REZ_FAT_COMPONENTS_2   0
 #endif
 
+enum
+{
+  kAudioUnitType_MusicDevice        = 'aumu',
+  kAudioUnitType_MusicEffect        = 'aumf',
+  kAudioUnitType_Effect             = 'aufx'
+};
+
+#define componentDoAutoVersion             0x01
+#define componentHasMultiplePlatforms      0x08
+
 resource 'STR ' (1000, purgeable) {
   RES_NAME
 };
@@ -72,19 +82,6 @@ resource 'STR ' (1000 + 1, purgeable) {
 resource 'dlle' (1000) {
   PLUG_ENTRY_STR
 };
-
-
-enum
-{
-  kAudioUnitType_MusicDevice        = 'aumu',
-  kAudioUnitType_MusicEffect        = 'aumf',
-  kAudioUnitType_Effect             = 'aufx'
-};
-
-#define componentDoAutoVersion             0x01
-#define componentHasMultiplePlatforms      0x08
-
-//#define Target_CodeResType      'dlle'
 
 resource 'thng' (1000, RES_NAME) {
 #if PLUG_IS_INST

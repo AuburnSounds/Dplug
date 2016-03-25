@@ -160,7 +160,7 @@ void main(string[] args)
                 bool is64b = arch == Arch.x64;
                 version(Windows)
                 {
-                    // TODO: remove when LDC on Windows is a single archive (should happen for 0.18.0)
+                    // TODO: remove when LDC on Windows is a single archive (should happen for 1.0.0)
                     // then fiddling with PATH will be useless
                     if (compiler == "ldc" && !is64b)
                         environment["PATH"] = `c:\d\ldc-32b\bin` ~ ";" ~ oldpath;
@@ -175,7 +175,7 @@ void main(string[] args)
                     // Make icns and copy it (if any provided in dub.json)
                     if (configIsAU(config))
                     {
-                        rsrcPath = makeRSRC(plugin.name, arch);
+                        rsrcPath = makeRSRC(plugin.name, arch, verbose);
                     }
                 }
 
@@ -535,7 +535,7 @@ string makeMacIcon(string pluginName, string pngPath)
     return outputIcon;
 }
 
-string makeRSRC(string pluginName, Arch arch)
+string makeRSRC(string pluginName, Arch arch, bool verbose)
 {
     writeln("Generating a .r file for this arch ", to!string(arch));
     string temp = tempDir();
@@ -554,7 +554,7 @@ string makeRSRC(string pluginName, Arch arch)
 
     string rsrcPath = buildPath(temp, "plugin.rsrc");
 
-    string archFlags = "";
+    string archFlags;
     final switch(arch) with (Arch)
     {
         case x86: archFlags = "-arch i386"; break;
@@ -562,7 +562,9 @@ string makeRSRC(string pluginName, Arch arch)
         case universalBinary: archFlags = "-arch i386 -arch x86_64"; break;
     }
 
-    safeCommand(format("rez %s -t BNDL -o %s %s", archFlags, rsrcPath, rPath));
+    string verboseFlag = verbose ? " -p" : "";
+    safeCommand(format("rez %s%s -t BNDL -o %s -useDF %s", archFlags, verboseFlag, rsrcPath, rPath));
+
 
     if (!exists(rsrcPath))
         throw new Exception(format("%s wasn't created", rsrcPath));
