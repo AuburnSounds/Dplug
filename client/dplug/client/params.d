@@ -29,7 +29,7 @@ import dplug.core;
 import dplug.client.client;
 
 
-/// Plugin parameter. 
+/// Plugin parameter.
 /// Implement the Observer pattern for UI support.
 /// Note: Recursive mutexes are needed here because `getNormalized()`
 /// could need locking an already taken mutex.
@@ -43,7 +43,7 @@ public:
         return _name;
     }
 
-    /// Returns: Parameters unit label. 
+    /// Returns: Parameters unit label.
     string label() pure const nothrow @nogc
     {
         return _label;
@@ -115,12 +115,8 @@ public:
 
     ~this()
     {
-        if (_initialized)
-        {
-            debug ensureNotInGC("Parameter");
-            _valueMutex.destroy();
-            _initialized = false;
-        }
+        debug ensureNotInGC("Parameter");
+        _valueMutex.destroy();
     }
 
 protected:
@@ -132,7 +128,6 @@ protected:
         _label = label;
         _index = index;
         _valueMutex = new UncheckedMutex();
-        _initialized = true;
     }
 
     /// From a normalized double, set the parameter value.
@@ -155,12 +150,12 @@ package:
     void setClientReference(Client client)
     {
         _client = client;
-    }    
+    }
 
 private:
 
     /// weak reference to parameter holder, set after parameter creation
-    Client _client; 
+    Client _client;
 
     int _index;
     string _name;
@@ -169,7 +164,6 @@ private:
 
     UncheckedMutex _valueMutex;
 
-    bool _initialized; // destructor flag
 }
 
 /// Parameter listeners are called whenever a parameter is changed from the host POV.
@@ -247,7 +241,7 @@ public:
         return v;
     }
 
-    /// Same as value but doesn't use locking, 
+    /// Same as value but doesn't use locking,
     /// which make it a better fit for the audio thread.
     final bool valueAtomic() nothrow @nogc
     {
@@ -326,7 +320,7 @@ public:
         return v;
     }
 
-    /// Same as value but doesn't use locking, 
+    /// Same as value but doesn't use locking,
     /// which make it a better fit for the audio thread.
     final int valueAtomic() nothrow @nogc
     {
@@ -446,7 +440,7 @@ public:
         return v;
     }
 
-    /// Same as value but doesn't use locking, 
+    /// Same as value but doesn't use locking,
     /// which make it a better fit for the audio thread.
     final double valueAtomic() nothrow @nogc
     {
