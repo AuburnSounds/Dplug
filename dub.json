@@ -63,6 +63,10 @@
             "importPaths": [ "au" ],
             "dependencies": {
                 "dplug:client": "*"
+            },
+
+            "dependencies-osx": {
+                "derelict-carbon": "~>0.0"
             }
         },
         {

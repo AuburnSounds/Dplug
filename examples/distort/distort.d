@@ -51,7 +51,7 @@ public:
         PluginInfo info;
         info.isSynth = false;
         info.hasGUI = true;
-        info.pluginID = CCONST('g', 'f', 'm', '0');
+        info.pluginID = dplug.core.funcs.CCONST('g', 'f', 'm', '0');
         info.productName = "Destructatorizer";
         info.effectName = "Destructatorizer";
         info.vendorName = "Distort Audio Ltd.";
@@ -291,8 +291,8 @@ public:
         foreach(dirtyRect; dirtyRects)
         {
             auto croppedDiffuse = diffuseMap.crop(dirtyRect);
-            
-            
+
+
             // fill with clear color
             // Albedo RGB + Emissive
             for (int y = dirtyRect.min.y; y < dirtyRect.max.y; ++y)
@@ -313,7 +313,7 @@ public:
                     outDiffuse[x] = color;
                 }
             }
-            
+
             // default depth is approximately ~22% of the possible height, but you can choose any other value
             for (int y = dirtyRect.min.y; y < dirtyRect.max.y; ++y)
             {
@@ -330,7 +330,7 @@ public:
             // fill material map
             // Roughness Metalness Specular Physical
             auto croppedMaterial = materialMap.crop(dirtyRect);
-            croppedMaterial.fill(RMSP(120, 255, 128, 255)); 
+            croppedMaterial.fill(RMSP(120, 255, 128, 255));
         }
     }
 }

@@ -16,6 +16,7 @@ Permission is granted to anyone to use this software for any purpose, including 
 */
 module dplug.au.client;
 
+import derelict.carbon.coreservices;
 import gfm.core;
 
 import dplug.client.client;
@@ -25,17 +26,27 @@ template AUEntryPoint(alias ClientClass)
     // The entry point names must be kept in sync with names in the .rsrc
 
     const char[] AUEntryPoint =
-"";
-/*
-    "ComponentResult dplugAUEntryPoint(ComponentParameters* params, void* pPlug)"
+    "import derelict.carbon;"
+    "extern(C) nothrow ComponentResult dplugAUEntryPoint(ComponentParameters* params, void* pPlug)"
     "{"
-        //return IPlugAU::IPlugAUEntry(params, pPlug);
+        "return audioUnitEntryPoint!" ~ ClientClass.stringof ~ "(params, pPlug);"
     "}"
-    "ComponentResult dplugAUCarbonViewEntryPoint(ComponentParameters* params, void* pView)"
+    "extern(C) nothrow ComponentResult dplugAUCarbonViewEntryPoint(ComponentParameters* params, void* pView)"
     "{"
-       // return IPlugAU::IPlugAUCarbonViewEntry(params, pView);
+        "return audioUnitCarbonViewEntry!" ~ ClientClass.stringof ~ "(params, pView);"
     "}";
-    */
+}
+
+nothrow ComponentResult audioUnitEntryPoint(alias ClientClass)(ComponentParameters* params, void* pPlug)
+{
+    // TODO
+    return 0;
+}
+
+nothrow ComponentResult audioUnitCarbonViewEntry(alias ClientClass)(ComponentParameters* params, void* pView)
+{
+    // TODO
+    return 0;
 }
 
 /// AU client wrapper
