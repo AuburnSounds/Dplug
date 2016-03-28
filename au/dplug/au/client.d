@@ -117,7 +117,7 @@ public:
 
     ~this()
     {
-        debug ensureNotInGC("dplug.au.Client");
+        debug ensureNotInGC("dplug.au.AUClient");
         _client.destroy();
     }
 
@@ -132,7 +132,8 @@ public:
                 return noErr;
 
             default:
-                return noErr;
+                assert(false);
+                //return noErr;
         }
     }
 

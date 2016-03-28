@@ -66,7 +66,7 @@ void main(string[] args)
             archs = [ Arch.x64 ];
 
         string build="debug";
-        string config = "AU";
+        string config = "VST";
         bool verbose = false;
         bool force = false;
         bool combined = false;
