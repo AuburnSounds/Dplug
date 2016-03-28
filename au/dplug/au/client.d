@@ -37,10 +37,63 @@ template AUEntryPoint(alias ClientClass)
     "}";
 }
 
+// LP64 => "long and pointers are 64-bit"
+static if (size_t.sizeof == 8 && c_long.sizeof == 8)
+    private enum __LP64__ = 1;
+else
+    private enum __LP64__ = 0;
+
+
+private auto T getCompParam(T, int Idx, int Num)(ComponentParameters* params)
+{
+    static if (__LP64__)
+        return *cast(T*)&(params.params[Num - Idx]);
+    else
+        return *cast(T*)&(params.params[Idx]);
+}
+
+void attachToRuntimeIfNeeded()
+{
+    import core.thread;
+    import dplug.client.dllmain;
+    runtimeInitWorkaround15060();
+    thread_attachThis();
+}
+
 nothrow ComponentResult audioUnitEntryPoint(alias ClientClass)(ComponentParameters* params, void* pPlug)
 {
-    // TODO
-    return 0;
+    try
+    {
+        attachToRuntimeIfNeeded();
+        int select = params.what;
+
+        import core.stdc.stdio;
+        debug printf("audioUnitEntryPoint %d", select);
+
+        if (select == kComponentOpenSelect)
+        {
+            DerelictCoreServicesLoader.load();
+
+            // Create client and AUClient
+            auto client = new ClientClass();
+            AUClient plugin = mallocEmplace!AUClient(client);
+            ComponentInstance instance = params.getCompParam!(ComponentInstance, 0, 1);
+            SetComponentInstanceStorage(instance, cast(void*) plugin);
+            return noErr;
+        }
+
+        AUClient auClient = cast(AUClient)pPlug;
+        if (auClient is null)
+            return
+
+        return auClient.dispatcher(select, params);
+    }
+    catch (Throwable e)
+    {
+        moreInfoForDebug(e);
+        unrecoverableError();
+        return null;
+    }
 }
 
 nothrow ComponentResult audioUnitCarbonViewEntry(alias ClientClass)(ComponentParameters* params, void* pView)
@@ -55,9 +108,10 @@ class AUClient
 {
 public:
 
-    this(Client client)
+    this(Client client, ComponentInstance instance)
     {
         _client = client;
+        _instance = instance;
     }
 
     ~this()
@@ -66,6 +120,18 @@ public:
         _client.destroy();
     }
 
+    ComponentResult dispatcher(int select, ComponentParameters* params)
+    {
+        // TODO lock here?
+
+        switch(select)
+        {
+            default:
+                return noErr;
+        }
+    }
+
 private:
+    ComponentInstance _instance;
     Client _client;
 }
