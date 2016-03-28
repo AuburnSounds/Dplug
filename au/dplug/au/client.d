@@ -16,7 +16,9 @@ Permission is granted to anyone to use this software for any purpose, including 
 */
 module dplug.au.client;
 
+import core.stdc.stdio;
 import core.stdc.config;
+
 import derelict.carbon;
 import gfm.core;
 import dplug.core;
@@ -48,10 +50,15 @@ else
 
 private T getCompParam(T, int Idx, int Num)(ComponentParameters* params)
 {
-    static if (__LP64__)
+  /*  static if (__LP64__)
+    {
+        pragma(msg, "__LP64__ on");
         return *cast(T*)&(params.params[Num - Idx]);
-    else
+    }
+    else*/
+    {
         return *cast(T*)&(params.params[Idx]);
+    }
 }
 
 void attachToRuntimeIfNeeded()
@@ -70,7 +77,7 @@ nothrow ComponentResult audioUnitEntryPoint(alias ClientClass)(ComponentParamete
         int select = params.what;
 
         import core.stdc.stdio;
-        debug printf("audioUnitEntryPoint %d", select);
+        debug printf("audioUnitEntryPoint select %d\n", select);
 
         if (select == kComponentOpenSelect)
         {
@@ -132,6 +139,7 @@ public:
                 return noErr;
 
             default:
+                printf("Error: Need to add support for select %d\n", select);
                 assert(false);
                 //return noErr;
         }

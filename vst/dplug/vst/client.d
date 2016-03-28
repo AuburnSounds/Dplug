@@ -58,7 +58,7 @@ template VSTEntryPoint(alias ClientClass)
         "   {"
 
         //  Ugly work-around for GC crashed in LDC + Windows builds: disable the GC :|
-        "       version(Windows) version(LDC)" 
+        "       version(Windows) version(LDC)"
         "       {"
         "           import core.memory;"
         "           GC.disable();"
@@ -861,7 +861,7 @@ private:
         for (int i = 0; i < _maxOutputs; ++i)
             _outputPointers[i] = _outputScratchBuffer[i].ptr;
 
-        sendAudioToClient(_inputPointers[0.._usedInputs], _outputPointers[0.._usedOutputs], sampleFrames, _host.getVSTTimeInfo(_samplesAlreadyProcessed));  
+        sendAudioToClient(_inputPointers[0.._usedInputs], _outputPointers[0.._usedOutputs], sampleFrames, _host.getVSTTimeInfo(_samplesAlreadyProcessed));
 
         _samplesAlreadyProcessed += sampleFrames;
 
@@ -879,7 +879,7 @@ private:
     {
         preprocess(sampleFrames);
 
-        // Some hosts (Orion) send identical input and ouput pointers. 
+        // Some hosts (Orion) send identical input and ouput pointers.
         // We copy them to a scratch buffer to keep the constaness guarantee of input buffers.
         for (int i = 0; i < _usedInputs; ++i)
         {
@@ -894,7 +894,7 @@ private:
         for (int i = 0; i < _usedOutputs; ++i)
             _outputPointers[i] = outputs[i];
 
-        sendAudioToClient(_inputPointers[0.._usedInputs], _outputPointers[0.._usedOutputs], sampleFrames, _host.getVSTTimeInfo(_samplesAlreadyProcessed));   
+        sendAudioToClient(_inputPointers[0.._usedInputs], _outputPointers[0.._usedOutputs], sampleFrames, _host.getVSTTimeInfo(_samplesAlreadyProcessed));
 
         _samplesAlreadyProcessed += sampleFrames;
     }
@@ -935,33 +935,6 @@ private:
             for (int f = 0; f < sampleFrames; ++f)
                 dest[f] = cast(double)source[f];
         }
-    }
-}
-
-void moreInfoForDebug(Throwable e) nothrow @nogc
-{
-    debug
-    {
-        string msg = e.msg;
-        string file = e.file;
-        size_t line = e.line;
-        debugBreak();
-    }
-}
-
-void unrecoverableError() nothrow @nogc
-{
-    debug
-    {
-        // break in debug mode
-        debugBreak();
-
-        assert(false); // then crash
-    }
-    else
-    {
-        // forget about the error since it doesn't seem a good idea
-        // to crash in audio production
     }
 }
 
