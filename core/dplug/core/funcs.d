@@ -1,6 +1,7 @@
 module dplug.core.funcs;
 
 import std.math;
+import gfm.core;
 
 immutable real TAU = PI * 2;
 
@@ -206,11 +207,40 @@ void reallocBuffer(T)(ref T[] buffer, size_t length, int alignment = 16) nothrow
         buffer = pointer[0..length];
 }
 
-// A bit faster than a dynamic cast.
-// This is to avoid TypeInfo look-up
+/// A bit faster than a dynamic cast.
+/// This is to avoid TypeInfo look-up
 T unsafeObjectCast(T)(Object obj)
 {
     return cast(T)(cast(void*)(obj));
+}
+
+/// Friendly breakpoint for debug mode.
+void moreInfoForDebug(Throwable e) nothrow @nogc
+{
+    debug
+    {
+        string msg = e.msg;
+        string file = e.file;
+        size_t line = e.line;
+        debugBreak();
+    }
+}
+
+/// Crash in debug mode only.
+void unrecoverableError() nothrow @nogc
+{
+    debug
+    {
+        // break in debug mode
+        debugBreak();
+
+        assert(false); // then crash unconditionally
+    }
+    else
+    {
+        // forget about the error since it doesn't seem a good idea
+        // to crash in audio production
+    }
 }
 
 version(D_InlineAsm_X86)

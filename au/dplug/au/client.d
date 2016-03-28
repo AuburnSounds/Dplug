@@ -16,10 +16,12 @@ Permission is granted to anyone to use this software for any purpose, including 
 */
 module dplug.au.client;
 
-import derelict.carbon.coreservices;
+import core.stdc.config;
+import derelict.carbon;
 import gfm.core;
-
+import dplug.core;
 import dplug.client.client;
+
 
 template AUEntryPoint(alias ClientClass)
 {
@@ -44,7 +46,7 @@ else
     private enum __LP64__ = 0;
 
 
-private auto T getCompParam(T, int Idx, int Num)(ComponentParameters* params)
+private T getCompParam(T, int Idx, int Num)(ComponentParameters* params)
 {
     static if (__LP64__)
         return *cast(T*)&(params.params[Num - Idx]);
@@ -72,19 +74,18 @@ nothrow ComponentResult audioUnitEntryPoint(alias ClientClass)(ComponentParamete
 
         if (select == kComponentOpenSelect)
         {
-            DerelictCoreServicesLoader.load();
+            DerelictCoreServices.load();
 
             // Create client and AUClient
             auto client = new ClientClass();
-            AUClient plugin = mallocEmplace!AUClient(client);
             ComponentInstance instance = params.getCompParam!(ComponentInstance, 0, 1);
-            SetComponentInstanceStorage(instance, cast(void*) plugin);
+            AUClient plugin = mallocEmplace!AUClient(client, instance);
+            SetComponentInstanceStorage( instance, cast(Handle)(cast(void*)plugin) );
             return noErr;
         }
 
         AUClient auClient = cast(AUClient)pPlug;
-        if (auClient is null)
-            return
+        assert(auClient !is null);
 
         return auClient.dispatcher(select, params);
     }
@@ -92,7 +93,7 @@ nothrow ComponentResult audioUnitEntryPoint(alias ClientClass)(ComponentParamete
     {
         moreInfoForDebug(e);
         unrecoverableError();
-        return null;
+        return noErr;
     }
 }
 
@@ -126,6 +127,10 @@ public:
 
         switch(select)
         {
+            case kComponentCloseSelect:
+                this.destroy(); // free all resources except this and the runtime
+                return noErr;
+
             default:
                 return noErr;
         }
