@@ -82,6 +82,7 @@ nothrow ComponentResult audioUnitEntryPoint(alias ClientClass)(ComponentParamete
         if (select == kComponentOpenSelect)
         {
             DerelictCoreServices.load();
+            DerelictAudioUnit.load();
 
             // Create client and AUClient
             auto client = new ClientClass();
@@ -134,9 +135,86 @@ public:
 
         switch(select)
         {
-            case kComponentCloseSelect:
+            case kComponentCloseSelect: // -2
                 this.destroy(); // free all resources except this and the runtime
                 return noErr;
+
+            case kAudioUnitRange: // 0
+                // TODO
+                return noErr;
+
+            case kAudioUnitInitializeSelect: // 1
+                // TODO
+                return noErr;
+
+            case kAudioUnitUninitializeSelect: // 2
+                // TODO
+                return noErr;
+
+            case kAudioUnitGetPropertyInfoSelect: // 3
+                // TODO
+                return noErr;
+
+            case kAudioUnitGetPropertySelect: // 4
+                // TODO
+                return noErr;
+
+            case kAudioUnitSetPropertySelect: // 5
+                // TODO
+                return noErr;
+
+            case kAudioUnitAddPropertyListenerSelect: // 6
+                // TODO
+                return noErr;
+
+            case kAudioUnitRemovePropertyListenerSelect: // 7
+                // TODO
+                return noErr;
+
+            case kAudioUnitRemovePropertyListenerWithUserDataSelect: // 8
+                // TODO
+                return noErr;
+
+            case kAudioUnitAddRenderNotifySelect: // 9
+                // TODO
+                return noErr;
+
+            case kAudioUnitRemoveRenderNotifySelect: // 10
+                // TODO
+                return noErr;
+
+            case kAudioUnitGetParameterSelect: // 11
+                // TODO
+                return noErr;
+
+            case kAudioUnitSetParameterSelect: // 12
+                // TODO
+                return noErr;
+
+            case kAudioUnitScheduleParametersSelect: // 13
+                // TODO
+                return noErr;
+
+            case kAudioUnitRenderSelect: // 14
+                // TODO
+                return noErr;
+
+            case kAudioUnitResetSelect: // 15
+                // TODO
+                return noErr;
+
+            case kAudioUnitComplexRenderSelect: // 16
+                // TODO
+                return noErr;
+
+            case kAudioUnitProcessSelect: // 17
+                // TODO
+                return noErr;
+
+            case kAudioUnitProcessMultipleSelect: // 18
+                // TODO
+                return noErr;
+
 
             default:
                 printf("Error: Need to add support for select %d\n", select);
