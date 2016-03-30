@@ -34,7 +34,8 @@ import dplug.core.alignedbuffer,
 import dplug.client.client,
        dplug.client.daw,
        dplug.client.preset,
-       dplug.client.midi;
+       dplug.client.midi,
+       dplug.client.messagequeue;
 
 import dplug.vst.aeffectx;
 
@@ -100,7 +101,7 @@ public:
     this(Client client, HostCallbackFunction hostCallback)
     {
         int queueSize = 256;
-        _messageQueue = new LockedQueue!Message(queueSize);
+        _messageQueue = new AudioThreadQueue(queueSize);
 
         _client = client;
 
@@ -166,7 +167,7 @@ public:
         _inputPointers.length = _maxInputs;
         _outputPointers.length = _maxOutputs;
 
-        _messageQueue.pushBack(makeResetStateMessage(Message.Type.resetState));
+        _messageQueue.pushBack(makeResetStateMessage(AudioThreadMessage.Type.resetState));
 
         // Create host callback wrapper
         _host = new VSTHostFromClientPOV(hostCallback, &_effect);
@@ -177,32 +178,25 @@ public:
             flags |= effFlagsIsSynth;
             _host.wantEvents();
         }
-        _initialized = true;
     }
 
     ~this()
     {
-        if (_initialized)
-        {
-            debug ensureNotInGC("dplug.vst.Client");
-            _client.destroy();
+        debug ensureNotInGC("dplug.vst.Client");
+        _client.destroy();
 
-            for (int i = 0; i < _maxInputs; ++i)
-                _inputScratchBuffer[i].destroy();
+        for (int i = 0; i < _maxInputs; ++i)
+            _inputScratchBuffer[i].destroy();
 
-            for (int i = 0; i < _maxOutputs; ++i)
-                _outputScratchBuffer[i].destroy();
-            _zeroesBuffer.destroy();
-            _initialized = false;
-
-        }
+        for (int i = 0; i < _maxOutputs; ++i)
+            _outputScratchBuffer[i].destroy();
+        _zeroesBuffer.destroy();
     }
 
 private:
 
     VSTHostFromClientPOV _host;
     Client _client;
-    bool _initialized; // destructor flag
 
     float _sampleRate; // samplerate from opcode thread POV
     int _maxFrames; // max frames from opcode thread POV
@@ -228,7 +222,7 @@ private:
     ubyte[] _lastBankChunk = null;
 
     // Inter-locked message queue from opcode thread to audio thread
-    LockedQueue!Message _messageQueue;
+    AudioThreadQueue _messageQueue;
 
     final bool isValidParamIndex(int i) pure const nothrow @nogc
     {
@@ -245,15 +239,9 @@ private:
         return index >= 0 && index < _maxOutputs;
     }
 
-    Message makeResetStateMessage(Message.Type type)
+    AudioThreadMessage makeResetStateMessage(AudioThreadMessage.Type type) pure const nothrow @nogc
     {
-        Message msg;
-        msg.type = type;
-        msg.maxFrames = _maxFrames;
-        msg.samplerate = _sampleRate;
-        msg.usedInputs = _usedInputs;
-        msg.usedOutputs = _usedOutputs;
-        return msg;
+        return AudioThreadMessage(type, _maxFrames, _sampleRate, _usedInputs, _usedOutputs);
     }
 
     /// VST opcode dispatcher
@@ -363,7 +351,7 @@ private:
             case effSetSampleRate: // opcode 10
             {
                 _sampleRate = opt;
-                _messageQueue.pushBack(makeResetStateMessage(Message.Type.resetState));
+                _messageQueue.pushBack(makeResetStateMessage(AudioThreadMessage.Type.resetState));
                 return 0;
             }
 
@@ -373,7 +361,7 @@ private:
                     return 1;
 
                 _maxFrames = cast(int)value;
-                _messageQueue.pushBack(makeResetStateMessage(Message.Type.resetState));
+                _messageQueue.pushBack(makeResetStateMessage(AudioThreadMessage.Type.resetState));
                 return 0;
             }
 
@@ -384,7 +372,7 @@ private:
                       // Audio processing was switched off.
                       // The plugin must call flush its state because otherwise pending data
                       // would sound again when the effect is switched on next time.
-                      _messageQueue.pushBack(makeResetStateMessage(Message.Type.resetState));
+                      _messageQueue.pushBack(makeResetStateMessage(AudioThreadMessage.Type.resetState));
                     }
                     else
                     {
@@ -660,7 +648,7 @@ private:
                     if (_usedOutputs > _maxOutputs)
                         _usedOutputs = _maxOutputs;
 
-                    _messageQueue.pushBack(makeResetStateMessage(Message.Type.changedIO));
+                    _messageQueue.pushBack(makeResetStateMessage(AudioThreadMessage.Type.changedIO));
 
                     return 0;
                 }
@@ -756,13 +744,6 @@ private:
 
     void processMessages() /* nothrow @nogc */
     {
-        bool tryPopMessage(out Message msg)
-        {
-            // Tiny change here that the other thread is currently paused by GC, that would make us wait.
-            // What would cause the GC to run? A third thread allocating. That makes it a bit unlikely in my opinion.
-            return _messageQueue.tryPopFront(msg);
-        }
-
         // Race condition here.
         // Being a tryPop, there is a tiny chance that we miss a message from the queue.
         // Thankfully it isn't that bad:
@@ -773,10 +754,10 @@ private:
         // (a third thread might start a collect while the UI thread takes the queue lock) which is another unlikely race condition.
         // Perhaps it's the one to favor, I don't know.
 
-        Message msg;
-        while(tryPopMessage(msg)) // <- here, we have a problem: https://github.com/p0nce/dplug/issues/45
+        AudioThreadMessage msg = void;
+        while(_messageQueue.tryPopFront(msg)) // <- here, we have a problem: https://github.com/p0nce/dplug/issues/45
         {
-            final switch(msg.type) with (Message.Type)
+            final switch(msg.type) with (AudioThreadMessage.Type)
             {
                 case changedIO:
                 {
@@ -1291,40 +1272,4 @@ private:
     }
 }
 
-private
-{
-    struct Message
-    {
-        enum Type
-        {
-            resetState, // reset plugin state, set samplerate and buffer size (samplerate = fParam, buffersize in frames = iParam)
-            changedIO,  // number of inputs/outputs changes (num. inputs = iParam, num. outputs = iParam2)
-            midi
-        }
-
-        this(Type type_, int maxFrames_, float samplerate_, int usedInputs_, int usedOutputs_)
-        {
-            type = type_;
-            maxFrames = maxFrames_;
-            samplerate = samplerate_;
-            usedInputs = usedInputs_;
-            usedOutputs = usedOutputs_;
-        }
-
-        Type type;
-        int maxFrames;
-        float samplerate;
-        int usedInputs;
-        int usedOutputs;
-        MidiMessage midiMessage;
-    }
-
-    Message makeMIDIMessage(MidiMessage midiMessage)
-    {
-        Message msg;
-        msg.type = Message.Type.midi;
-        msg.midiMessage = midiMessage;
-        return msg;
-    }
-}
 

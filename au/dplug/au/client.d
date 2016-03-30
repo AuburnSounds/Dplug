@@ -22,7 +22,9 @@ import core.stdc.config;
 import derelict.carbon;
 import gfm.core;
 import dplug.core;
+
 import dplug.client.client;
+import dplug.client.messagequeue;
 
 
 template AUEntryPoint(alias ClientClass)
@@ -50,6 +52,24 @@ else
 
 private T getCompParam(T, int Idx, int Num)(ComponentParameters* params)
 {
+    /*
+
+    Strange, in AU base classes we have something like:
+
+        #if __LP64__
+            // comp instance, parameters in forward order
+            #define PARAM(_typ, _name, _index, _nparams) \
+                _typ _name = *(_typ *)&params->params[_index + 1];
+        #else
+            // parameters in reverse order, then comp instance
+            #define PARAM(_typ, _name, _index, _nparams) \
+                _typ _name = *(_typ *)&params->params[_nparams - 1 - _index];
+        #endif
+
+    Which is decidedly not the same.
+
+    */
+
   /*  static if (__LP64__)
     {
         pragma(msg, "__LP64__ on");
@@ -121,6 +141,23 @@ public:
     {
         _client = client;
         _instance = instance;
+
+        int queueSize = 256;
+        _messageQueue = new AudioThreadQueue(queueSize);
+
+        _maxInputs = _client.maxInputs();
+        _maxOutputs = _client.maxOutputs();
+        _numParams = cast(int)(client.params().length);
+
+        // dummmy values
+        _sampleRate = 44100.0f;
+        _maxFrames = 128;
+        _maxFramesInProcess = _client.maxFramesInProcess();
+
+        _usedInputs = _maxInputs;
+        _usedOutputs = _maxOutputs;
+
+        _messageQueue.pushBack(makeResetStateMessage(AudioThreadMessage.Type.resetState));
     }
 
     ~this()
@@ -129,35 +166,119 @@ public:
         _client.destroy();
     }
 
+private:
+    ComponentInstance _instance;
+    Client _client;
+    AudioThreadQueue _messageQueue;
+
+    int _maxInputs, _maxOutputs;
+    int _usedInputs, _usedOutputs;
+    int _numParams;
+    float _sampleRate;
+    int _maxFrames;
+    int _maxFramesInProcess;
+
+    //
+    // DISPATCHER
+    //
     ComponentResult dispatcher(int select, ComponentParameters* params)
     {
-        // TODO lock here?
+        // IPlug locks here.
+        // Do we need to do the same?
 
         switch(select)
         {
             case kComponentCloseSelect: // -2
+            {
                 this.destroy(); // free all resources except this and the runtime
                 return noErr;
+            }
 
-            case kAudioUnitRange: // 0
-                // TODO
-                return noErr;
+            case kComponentCanDoSelect: // -3
+            {
+                switch (params.params[0])
+                {
+                    case kAudioUnitInitializeSelect:
+                    case kAudioUnitUninitializeSelect:
+             /*       case kAudioUnitGetPropertyInfoSelect:
+                    case kAudioUnitGetPropertySelect:
+                    case kAudioUnitSetPropertySelect:
+                    case kAudioUnitAddPropertyListenerSelect:
+                    case kAudioUnitRemovePropertyListenerSelect:
+                    case kAudioUnitGetParameterSelect:
+                    case kAudioUnitSetParameterSelect:
+                    case kAudioUnitResetSelect:
+                    case kAudioUnitRenderSelect:
+                    case kAudioUnitAddRenderNotifySelect:
+                    case kAudioUnitRemoveRenderNotifySelect:
+                    case kAudioUnitScheduleParametersSelect:*/
+                        return 1;
+                    default:
+                        return 0;
+                }
+            }
+
+            case kComponentVersionSelect: // -4
+            {
+                int versionMMPR = _client.getPluginVersion();
+                int major = versionMMPR / 1000;
+                versionMMPR %= 1000;
+                int minor = versionMMPR / 100;
+                versionMMPR %= 100;
+                int patch = versionMMPR / 10;
+
+                // rev not included
+                return (major << 16) | (minor << 8) | patch;
+            }
 
             case kAudioUnitInitializeSelect: // 1
-                // TODO
+            {
+                // Audio processing was switched on.
+                _messageQueue.pushBack(makeResetStateMessage(AudioThreadMessage.Type.resetState));
                 return noErr;
+            }
 
             case kAudioUnitUninitializeSelect: // 2
-                // TODO
+            {
+                // Nothing to do here
                 return noErr;
+            }
 
             case kAudioUnitGetPropertyInfoSelect: // 3
-                // TODO
-                return noErr;
+            {
+                AudioUnitPropertyID propID = params.getCompParam!(AudioUnitPropertyID, 4, 5);
+                AudioUnitScope scope_ = params.getCompParam!(AudioUnitScope, 3, 5);
+                AudioUnitElement element = params.getCompParam!(AudioUnitElement, 2, 5);
+                UInt32* pDataSize = params.getCompParam!(UInt32*, 1, 5);
+                Boolean* pWriteable = params.getCompParam!(Boolean*, 0, 5);
+
+                UInt32 dataSize = 0;
+                if (!pDataSize)
+                    pDataSize = &dataSize;
+
+                Boolean writeable;
+                if (!pWriteable)
+                    pWriteable = &writeable;
+
+                *pWriteable = false;
+                return getProperty(propID, scope_, element, pDataSize, pWriteable, null);
+            }
 
             case kAudioUnitGetPropertySelect: // 4
-                // TODO
-                return noErr;
+            {
+                AudioUnitPropertyID propID = params.getCompParam!(AudioUnitPropertyID, 4, 5);
+                AudioUnitScope scope_ = params.getCompParam!(AudioUnitScope, 3, 5);
+                AudioUnitElement element = params.getCompParam!(AudioUnitElement, 2, 5);
+                void* pData = params.getCompParam!(void*, 1, 5);
+                UInt32* pDataSize = params.getCompParam!(UInt32*, 0, 5);
+
+                UInt32 dataSize = 0;
+                if (!pDataSize)
+                    pDataSize = &dataSize;
+
+                Boolean writeable = false;
+                return getProperty(propID, scope_, element, pDataSize, &writeable, pData);
+            }
 
             case kAudioUnitSetPropertySelect: // 5
                 // TODO
@@ -196,34 +317,87 @@ public:
                 return noErr;
 
             case kAudioUnitRenderSelect: // 14
+            {
+                AudioUnitRenderActionFlags* pinActionFlags = params.getCompParam!(AudioUnitRenderActionFlags*, 4, 5)();
+                AudioTimeStamp* pinTimeStamp = params.getCompParam!(AudioTimeStamp*, 3, 5)();
+                int pinOutputBusNumber = params.getCompParam!(int, 2, 5)();
+                int pinNumberFrames = params.getCompParam!(int, 1, 5)();
+                AudioBufferList* pioData = params.getCompParam!(AudioBufferList*, 0, 5)();
+                AudioUnitRenderActionFlags tempFlags;
+
+                processMessages();
+
                 // TODO
+
                 return noErr;
+            }
 
             case kAudioUnitResetSelect: // 15
-                // TODO
+                _messageQueue.pushBack(makeResetStateMessage(AudioThreadMessage.Type.resetState));
                 return noErr;
-
-            case kAudioUnitComplexRenderSelect: // 16
-                // TODO
-                return noErr;
-
-            case kAudioUnitProcessSelect: // 17
-                // TODO
-                return noErr;
-
-            case kAudioUnitProcessMultipleSelect: // 18
-                // TODO
-                return noErr;
-
 
             default:
                 printf("Error: Need to add support for select %d\n", select);
-                assert(false);
-                //return noErr;
+                return badComponentSelector;
         }
     }
 
-private:
-    ComponentInstance _instance;
-    Client _client;
+    ComponentResult getProperty(AudioUnitPropertyID propID, AudioUnitScope scope_, AudioUnitElement element,
+                                UInt32* pDataSize, Boolean* writeable, void* pData)
+    {
+        // TODO
+        return noErr;
+    }
+
+    AudioThreadMessage makeResetStateMessage(AudioThreadMessage.Type type) pure const nothrow @nogc
+    {
+        return AudioThreadMessage(type, _maxFrames, _sampleRate, _usedInputs, _usedOutputs);
+    }
+
+    // This is copypasta from the VST client unfortunately
+    // This part is quite similar
+    void processMessages() /* nothrow @nogc */
+    {
+        // Race condition here.
+        // Being a tryPop, there is a tiny chance that we miss a message from the queue.
+        // Thankfully it isn't that bad:
+        // - we are going to read it next buffer
+        // - not clearing the state for a buffer duration does no harm
+        // - plugin is initialized first with the maximum amount of input and outputs
+        //   so missing such a message isn't that bad: the audio callback will have some outputs that are untouched
+        // (a third thread might start a collect while the UI thread takes the queue lock) which is another unlikely race condition.
+        // Perhaps it's the one to favor, I don't know.
+
+        AudioThreadMessage msg = void;
+        while(_messageQueue.tryPopFront(msg)) // <- here, we have a problem: https://github.com/p0nce/dplug/issues/45
+        {
+            final switch(msg.type) with (AudioThreadMessage.Type)
+            {
+                case changedIO:
+                {
+                    bool success;
+                    success = _client.setNumUsedInputs(msg.usedInputs);
+                    assert(success);
+                    success = _client.setNumUsedOutputs(msg.usedOutputs);
+                    assert(success);
+
+                    goto case resetState; // chaning the number of channels probably need to reset state too
+                }
+
+                case resetState:
+                    //resizeScratchBuffers(msg.maxFrames);
+
+                    // The client need not be aware of the actual size of the buffers,
+                    // if it works on sliced buffers.
+                    int maxFrameFromClientPOV = msg.maxFrames;
+                    if (_maxFramesInProcess != 0 && _maxFramesInProcess < maxFrameFromClientPOV)
+                        maxFrameFromClientPOV = _maxFramesInProcess;
+                    _client.reset(msg.samplerate, maxFrameFromClientPOV, msg.usedInputs, msg.usedOutputs);
+                    break;
+
+                case midi:
+                    _client.processMidiMsg(msg.midiMessage);
+            }
+        }
+    }
 }

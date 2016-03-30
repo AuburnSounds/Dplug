@@ -80,14 +80,6 @@ interface IHostCommand
     DAW getDAW();
 }
 
-/// Describe the version of plugin.
-struct PluginVersion
-{
-    int majorVersion;
-    int minorVersion;
-    int patchVersion;
-}
-
 // Statically known features of the plugin.
 // There is some default for explanation purpose, but you really ought to override them all.
 struct PluginInfo
@@ -104,6 +96,7 @@ struct PluginInfo
     int pluginID = CCONST('g', 'f', 'm', '0');
 
     // Plugin version in x.x.x.x decimal form.
+    // Major.Minor.Patch.Rev
     int pluginVersion = 1000;
 }
 
