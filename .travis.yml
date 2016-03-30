@@ -17,6 +17,8 @@ script:
   - dub test --compiler=${DC} dplug:client
   - dub test --compiler=${DC} dplug:host
   - dub test --compiler=${DC} dplug:vst
-  - dub test --compiler=${DC} dplug:au
   - dub test --compiler=${DC} dplug:window
+
+# under creation, unstable
+#  - dub test --compiler=${DC} dplug:au
 
