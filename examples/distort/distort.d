@@ -63,23 +63,23 @@ public:
     override Parameter[] buildParameters()
     {
         // Caution when adding parameters: always add the indices in the same order than the enum
-        Parameter[] params;
-        params ~= new GainParameter(paramInput, "input", 6.0, 0.0);
-        params ~= new LinearFloatParameter(paramDrive, "drive", "%", 1.0f, 2.0f, 1.0f);
-        params ~= new GainParameter(paramOutput, "output", 6.0, 0.0);
-        params ~= new BoolParameter(paramOnOff, "on/off", true);
-        return params;
+        return [
+            new GainParameter(paramInput, "input", 6.0, 0.0),
+            new LinearFloatParameter(paramDrive, "drive", "%", 1.0f, 2.0f, 1.0f),
+            new GainParameter(paramOutput, "output", 6.0, 0.0),
+            new BoolParameter(paramOnOff, "on/off", true),
+        ];
     }
 
     // This override is optional, the default implementation will
     // have one default preset.
     override Preset[] buildPresets()
     {
-        Preset[] presets;
-        presets ~= makeDefaultPreset();
-        presets ~= new Preset("Silence", [0.0f, 0.0f, 0.0f, 1.0f]);
-        presets ~= new Preset("Full-on", [1.0f, 1.0f, 0.4f, 1.0f]);
-        return presets;
+        return [
+            makeDefaultPreset(),
+            new Preset("Silence", [0.0f, 0.0f, 0.0f, 1.0f]),
+            new Preset("Full-on", [1.0f, 1.0f, 0.4f, 1.0f]),
+        ];
     }
 
     // This override is also optional. It allows to split audio buffers in order to never
@@ -93,12 +93,12 @@ public:
 
     override LegalIO[] buildLegalIO()
     {
-        LegalIO[] legalIOs;
-        legalIOs ~= LegalIO(1, 1);
-        legalIOs ~= LegalIO(1, 2);
-        legalIOs ~= LegalIO(2, 1);
-        legalIOs ~= LegalIO(2, 2);
-        return legalIOs;
+        return [
+            LegalIO(1, 1),
+            LegalIO(1, 2),
+            LegalIO(2, 1),
+            LegalIO(2, 2),
+        ];
     }
 
     override void reset(double sampleRate, int maxFrames, int numInputs, int numOutputs) nothrow @nogc

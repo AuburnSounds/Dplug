@@ -35,13 +35,13 @@ public:
         return [ new BoolParameter(paramOnOff, "on/off", true) ];
     }
 
-    override void buildLegalIO()
-    {       
-        addLegalIO(2, 2);
+    override LegalIO[] buildLegalIO()
+    {
+        return [ LegalIO(2, 2) ];
     }
 
     override void reset(double sampleRate, int maxFrames, int numInputs, int numOutputs) nothrow @nogc
-    {        
+    {
     }
 
     override void processAudio(const(float*)[] inputs, float*[]outputs, int frames, TimeInfo info) nothrow @nogc
