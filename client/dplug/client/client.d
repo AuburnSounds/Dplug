@@ -324,6 +324,14 @@ public:
         return 0;
     }
 
+    /// Override to set the plugin tail length in seconds.
+    /// This is the amount of time before silence is reached with a silent input.
+    /// Returns: Plugin tail size in seconds.
+    float tailSizeInSeconds() pure const nothrow
+    {
+        return 0.100f; // default: 100ms
+    }
+
     /// Override to declare the maximum number of samples to accept
     /// If greater, the audio buffers will be splitted up.
     /// This splitting have several benefits:

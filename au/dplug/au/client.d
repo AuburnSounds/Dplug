@@ -152,6 +152,7 @@ public:
         _sampleRate = 44100.0f;
         _maxFrames = 128;
         _maxFramesInProcess = _client.maxFramesInProcess();
+        _bypassed = false;
 
         _usedInputs = _maxInputs;
         _usedOutputs = _maxOutputs;
@@ -206,6 +207,10 @@ private:
     float _sampleRate;
     int _maxFrames;
     int _maxFramesInProcess;
+
+    // When true, buffers gets bypassed
+    // TODO: implement bypass
+    bool _bypassed;
 
     // Every stereo pair of plugin input or output is a bus.
     // Buses can have zero host channels if the host hasn't connected the bus at all,
@@ -557,17 +562,39 @@ private:
                 return noErr;
             }
 
-            case kAudioUnitProperty_ParameterValueStrings:
+            case kAudioUnitProperty_ParameterValueStrings: // 16
+                // TODO
+                return kAudioUnitErr_InvalidProperty;
+
+            case kAudioUnitProperty_GetUIComponentList: // 18
+                // TODO
                 return kAudioUnitErr_InvalidProperty;
 
             case kAudioUnitProperty_AudioChannelLayout:
-                return kAudioUnitErr_InvalidProperty;
+                // TODO: IPlug says "TODO: this seems wrong but works"
+                return kAudioUnitErr_InvalidPropertyValue;
 
-            case kAudioUnitProperty_TailTime:
-                return kAudioUnitErr_InvalidProperty;
+            case kAudioUnitProperty_TailTime: // 20
+            {
+                if (!isGlobalScope(scope_))
+                    return kAudioUnitErr_InvalidPropertyValue;
+                float tailSize = _client.tailSizeInSeconds();
+                *pDataSize = double.sizeof;
+                if (pData)
+                    *(cast(double*) pData) = tailSize;
+                return noErr;
+            }
 
-            case kAudioUnitProperty_BypassEffect: // TODO
-                return kAudioUnitErr_InvalidProperty;
+            case kAudioUnitProperty_BypassEffect: // 21
+            {
+                if (!isGlobalScope(scope_))
+                    return kAudioUnitErr_InvalidPropertyValue;
+                *pWriteable = true;
+                *pDataSize = UInt32.sizeof;
+                if (pData)
+                    *(cast(UInt32*) pData) = (_bypassed ? 1 : 0);
+                return noErr;
+            }
 
             case kAudioUnitProperty_LastRenderError:  // 22
             {
@@ -591,22 +618,30 @@ private:
                 return noErr;
             }
 
-            case kAudioUnitProperty_FactoryPresets:
+            case kAudioUnitProperty_FactoryPresets: // 24
+            {
+                // TODO
+                return kAudioUnitErr_InvalidProperty;
+            }
+
+            case kAudioUnitProperty_HostCallbacks: // 27
+            {
+                // Not sure why it's not writing anything
+                return kAudioUnitErr_InvalidProperty;
+            }
+
+            case kAudioUnitProperty_ElementName: // 30
+                // TODO, return name of bus
                 return kAudioUnitErr_InvalidProperty;
 
-            case kAudioUnitProperty_RenderQuality:
-                return kAudioUnitErr_InvalidProperty;
-
-            case kAudioUnitProperty_HostCallbacks:
-                return kAudioUnitErr_InvalidProperty;
-
-            case kAudioUnitProperty_InPlaceProcessing:
-                return kAudioUnitErr_InvalidProperty;
-
-            case kAudioUnitProperty_ElementName:
-                return kAudioUnitErr_InvalidProperty;
+            case kAudioUnitProperty_CocoaUI: // 31
+                // TODO
+                return kAudioUnitErr_InvalidProperty; // no UI
 
             case kAudioUnitProperty_SupportedChannelLayoutTags:
+                // kAudioUnitProperty_SupportedChannelLayoutTags
+                // is only needed for multi-output bus instruments
+                // TODO when intruments are to be supported
                 return kAudioUnitErr_InvalidProperty;
 
             case kAudioUnitProperty_PresentPreset:
@@ -645,25 +680,6 @@ private:
             case kAudioUnitProperty_ParameterValueFromString:
                 return kAudioUnitErr_InvalidProperty;
 
-            case kAudioUnitProperty_ContextName:
-                return kAudioUnitErr_InvalidProperty;
-
-            case kAudioUnitProperty_PresentationLatency:
-                return kAudioUnitErr_InvalidProperty;
-
-
-            case kAudioUnitProperty_RequestViewController:
-                return kAudioUnitErr_InvalidProperty;
-
-            case kAudioUnitProperty_ParametersForOverview:
-                return kAudioUnitErr_InvalidProperty;
-
-            case kAudioUnitProperty_GetUIComponentList:
-                return kAudioUnitErr_InvalidProperty;
-
-            case kAudioUnitProperty_CocoaUI: // TODO
-                return kAudioUnitErr_InvalidProperty;
-
             default:
                 return kAudioUnitErr_InvalidProperty;
         }
@@ -699,8 +715,11 @@ private:
             case kAudioUnitProperty_MaximumFramesPerSlice: // TODO
                 return kAudioUnitErr_InvalidProperty;
 
-            case kAudioUnitProperty_BypassEffect: // TODO
-                return kAudioUnitErr_InvalidProperty;
+            case kAudioUnitProperty_BypassEffect: // 21
+            {
+                _bypassed = (*(cast(UInt32*) pData) != 0);
+                return noErr;
+            }
 
             case kAudioUnitProperty_SetRenderCallback: // 23
                 return kAudioUnitErr_InvalidProperty; // TODO
