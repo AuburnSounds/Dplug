@@ -19,8 +19,8 @@ public:
     ubyte defaultEmissive = 13; // emissive where the logo isn't
 
     // these are offset on top of defaultEmissive
-    ubyte emissiveOn = 0;
-    ubyte emissiveOff = 40;
+    ubyte emissiveOn = 40;
+    ubyte emissiveOff = 0;
 
     this(UIContext context, Image!RGBA diffuseImage)
     {

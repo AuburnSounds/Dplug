@@ -2,13 +2,13 @@ language: d
 
 d:
  - dmd   # latest
- - dmd-2.071.2
- - dmd-2.071.1
- - dmd-2.071.0
- - dmd-2.070.0
+ - dmd-2.071.0-b2
+ - dmd-2.071.0-b1
+ - dmd-2.070.2
  - dmd-2.069.1
  - dmd-2.068.2
  - dmd-2.067.1
+ - ldc-0.17.1
  - ldc-0.17.0
 
 script:
@@ -17,6 +17,8 @@ script:
   - dub test --compiler=${DC} dplug:client
   - dub test --compiler=${DC} dplug:host
   - dub test --compiler=${DC} dplug:vst
-  - dub test --compiler=${DC} dplug:au
   - dub test --compiler=${DC} dplug:window
+
+# under creation, unstable
+#  - dub test --compiler=${DC} dplug:au
 
