@@ -113,17 +113,17 @@ public:
     Preset[] presets;
     alias presets this;
 
-
-    // Initially empty
-    this(Client client)
+    // Create a preset bank
+    this(Client client, Preset[] presets_)
     {
         _client = client;
+        presets = presets_;
         _current = 0;
     }
 
-    void addPreset(Preset preset)
+    deprecated void addPreset(Preset preset)
     {
-        presets ~= preset;
+        assert(false);
     }
 
     Preset preset(int i)
@@ -157,7 +157,7 @@ public:
     // Save current state to current preset. This updates the preset bank to reflect the state change.
     // This will be unnecessary once we haver internal preset management.
     void putCurrentStateInCurrentPreset()
-    {        
+    {
         presets[_current].saveFromHost(_client);
     }
 

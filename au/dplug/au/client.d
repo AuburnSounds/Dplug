@@ -2,7 +2,7 @@
 Cockos WDL License
 
 Copyright (C) 2005 - 2015 Cockos Incorporated
-Copyright (C) 2015 and later Auburn Sounds
+Copyright (C) 2016 Auburn Sounds
 
 Portions copyright other contributors, see each source file for more information
 
@@ -433,7 +433,6 @@ private:
             }
 
             default:
-                printf("Error: Need to add support for select %d\n", select);
                 return badComponentSelector;
         }
     }
@@ -454,7 +453,7 @@ private:
     ComponentResult getProperty(AudioUnitPropertyID propID, AudioUnitScope scope_, AudioUnitElement element,
                                 UInt32* pDataSize, Boolean* pWriteable, void* pData)
     {
-        printf("GET property %d\n", propID);
+        debug printf("GET property %d\n", propID);
         // TODO
         switch(propID)
         {
@@ -463,17 +462,16 @@ private:
 
             case kAudioUnitProperty_MakeConnection: // 1
             {
-                // TODO: seems to return nothing, not sure why it's done that way
                 if (!isInputOrGlobalScope(scope_))
                     return kAudioUnitErr_InvalidProperty;
-                *pDataSize = AudioUnitConnection.sizeof;
+                *pDataSize = cast(uint)AudioUnitConnection.sizeof;
                 *pWriteable = true;
                 return noErr;
             }
 
             case kAudioUnitProperty_SampleRate: // 2
             {
-                *pDataSize = double.sizeof;
+                *pDataSize = 8;
                 *pWriteable = true;
                 if (pData)
                     *(cast(Float64*) pData) = _sampleRate;
@@ -497,8 +495,21 @@ private:
                 return kAudioUnitErr_InvalidProperty;
 
             case kAudioUnitProperty_ElementCount: // 11
-                // TODO
-                return kAudioUnitErr_InvalidProperty;
+            {
+                *pDataSize = uint.sizeof;
+                if (pData)
+                {
+                    uint n = 0;
+                    if (scope_ == kAudioUnitScope_Input)
+                        n = cast(uint)_inBuses.length;
+                    else if (scope_ == kAudioUnitScope_Output)
+                        n = cast(uint)_outBuses.length;
+                    else if (scope_ == kAudioUnitScope_Global)
+                        n = 1;
+                    *(cast(uint*) pData) = n;
+                }
+                return noErr;
+            }
 
             case kAudioUnitProperty_Latency: // 12
             {
@@ -515,8 +526,22 @@ private:
 
             case kAudioUnitProperty_SupportedNumChannels: // 13
             {
-                // TODO
-                return kAudioUnitErr_InvalidProperty;
+                if (!isGlobalScope(scope_))
+                    return kAudioUnitErr_InvalidProperty;
+
+                LegalIO[] legalIOs = _client.legalIOs();
+                *pDataSize = cast(uint)( legalIOs.length * AUChannelInfo.sizeof );
+
+                if (pData)
+                {
+                    AUChannelInfo* pChInfo = cast(AUChannelInfo*) pData;
+                    foreach(int i, ref legalIO; legalIOs)
+                    {
+                        pChInfo[i].inChannels = cast(short)legalIO.numInputChannels;
+                        pChInfo[i].outChannels = cast(short)legalIO.numOutputChannels;
+                    }
+                }
+                return noErr;
             }
 
             case kAudioUnitProperty_MaximumFramesPerSlice: // 14
@@ -541,15 +566,22 @@ private:
             case kAudioUnitProperty_TailTime:
                 return kAudioUnitErr_InvalidProperty;
 
-            case kAudioUnitProperty_BypassEffect:
+            case kAudioUnitProperty_BypassEffect: // TODO
                 return kAudioUnitErr_InvalidProperty;
 
-            case kAudioUnitProperty_LastRenderError:
-                return kAudioUnitErr_InvalidProperty;
+            case kAudioUnitProperty_LastRenderError:  // 22
+            {
+                if(!isGlobalScope(scope_))
+                    return kAudioUnitErr_InvalidProperty;
+                *pDataSize = OSStatus.sizeof;
+                if (pData)
+                    *(cast(OSStatus*) pData) = noErr;
+                return noErr;
+            }
 
             case kAudioUnitProperty_SetRenderCallback: // 23
             {
-                // TODO: not sure why it's not writing anything
+                // Not sure why it's not writing anything
                 if(!isInputOrGlobalScope(scope_))
                     return kAudioUnitErr_InvalidProperty;
                 if (element >= _inBuses.length)
@@ -619,8 +651,6 @@ private:
             case kAudioUnitProperty_PresentationLatency:
                 return kAudioUnitErr_InvalidProperty;
 
-            case kAudioUnitProperty_ClassInfoFromDocument:
-                return kAudioUnitErr_InvalidProperty;
 
             case kAudioUnitProperty_RequestViewController:
                 return kAudioUnitErr_InvalidProperty;
@@ -631,19 +661,7 @@ private:
             case kAudioUnitProperty_GetUIComponentList:
                 return kAudioUnitErr_InvalidProperty;
 
-            case kAudioUnitProperty_CocoaUI:
-                return kAudioUnitErr_InvalidProperty;
-
-            case kAudioUnitProperty_IconLocation:
-                return kAudioUnitErr_InvalidProperty;
-
-            case kAudioUnitProperty_AUHostIdentifier:
-                return kAudioUnitErr_InvalidProperty;
-
-            case kAudioUnitProperty_MIDIOutputCallbackInfo:
-                return kAudioUnitErr_InvalidProperty;
-
-            case kAudioUnitProperty_MIDIOutputCallback:
+            case kAudioUnitProperty_CocoaUI: // TODO
                 return kAudioUnitErr_InvalidProperty;
 
             default:
@@ -657,14 +675,15 @@ private:
         // TODO
         //InformListeners(propID, scope);s
 
-        printf("SET property %d\n", propID);
+        debug printf("SET property %d\n", propID);
 
         switch(propID)
         {
             case kAudioUnitProperty_ClassInfo:
                 return kAudioUnitErr_InvalidProperty; // TODO?
 
-            case kAudioUnitProperty_MakeConnection: // TODO
+            case kAudioUnitProperty_MakeConnection: // 1
+                // TODO
                 return kAudioUnitErr_InvalidProperty;
 
             case kAudioUnitProperty_SampleRate: // 2

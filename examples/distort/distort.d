@@ -73,11 +73,13 @@ public:
 
     // This override is optional, the default implementation will
     // have one default preset.
-    override void buildPresets()
+    override Preset[] buildPresets()
     {
-        presetBank.addPreset(makeDefaultPreset());
-        presetBank.addPreset(new Preset("Silence", [0.0f, 0.0f, 0.0f, 1.0f]));
-        presetBank.addPreset(new Preset("Full-on", [1.0f, 1.0f, 0.4f, 1.0f]));
+        Preset[] presets;
+        presets ~= makeDefaultPreset();
+        presets ~= new Preset("Silence", [0.0f, 0.0f, 0.0f, 1.0f]);
+        presets ~= new Preset("Full-on", [1.0f, 1.0f, 0.4f, 1.0f]);
+        return presets;
     }
 
     // This override is also optional. It allows to split audio buffers in order to never
@@ -89,12 +91,14 @@ public:
         return 128;
     }
 
-    override void buildLegalIO()
+    override LegalIO[] buildLegalIO()
     {
-        addLegalIO(1, 1);
-        addLegalIO(1, 2);
-        addLegalIO(2, 1);
-        addLegalIO(2, 2);
+        LegalIO[] legalIOs;
+        legalIOs ~= LegalIO(1, 1);
+        legalIOs ~= LegalIO(1, 2);
+        legalIOs ~= LegalIO(2, 1);
+        legalIOs ~= LegalIO(2, 2);
+        return legalIOs;
     }
 
     override void reset(double sampleRate, int maxFrames, int numInputs, int numOutputs) nothrow @nogc
