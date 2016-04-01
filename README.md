@@ -61,7 +61,7 @@ https://auburnsounds.com/blog/2016-02-08_Making-a-Windows-VST-plugin-with-D.html
 
 - Use the DMD >= 2.067 compiler on Windows and/or the LDC >= 0.16.0 compiler for Mac 64-bit: http://dlang.org/download.html
 - Install DUB, the D package manager: http://code.dlang.org/download
-- Compiling for Mac or with LDC? Use my DUB branch instead: https://github.com/p0nce/dub/tree/issue-635-bis
+- Compiling for Mac or with LDC? Clone and build DUB master: https://github.com/D-Programming-Language/dub for correct flags
 - go in the `examples/distort` directory
 - type `dub --compiler=dmd` or `dub --compiler=ldc2` depending on the platform
 
