@@ -110,6 +110,13 @@ struct TimeInfo
     long timeInSamples = 0;
 }
 
+/// Describe a combination of input channels count and output channels count
+struct LegalIO
+{
+    int numInputChannels;
+    int numOutputChannels;
+}
+
 /// Plugin interface, from the client point of view.
 /// This client has no knowledge of thread-safety, it must be handled externally.
 /// User plugins derivate from this class.
@@ -122,7 +129,8 @@ public:
     {
         _info = buildPluginInfo();
 
-        buildLegalIO();
+        // Create legal I/O combinations
+        _legalIOs = buildLegalIO();
 
         // Create parameters.
         _params = buildParameters();
@@ -141,17 +149,16 @@ public:
         }
 
         // Create presets
-        _presetBank = new PresetBank(this);
-        buildPresets();
+        _presetBank = new PresetBank(this, buildPresets());
 
         _maxInputs = 0;
         _maxOutputs = 0;
         foreach(legalIO; _legalIOs)
         {
-            if (_maxInputs < legalIO.numInputs)
-                _maxInputs = legalIO.numInputs;
-            if (_maxOutputs < legalIO.numOuputs)
-                _maxOutputs = legalIO.numOuputs;
+            if (_maxInputs < legalIO.numInputChannels)
+                _maxInputs = legalIO.numInputChannels;
+            if (_maxOutputs < legalIO.numOutputChannels)
+                _maxOutputs = legalIO.numOutputChannels;
         }
         _inputPins.length = _maxInputs;
         for (int i = 0; i < _maxInputs; ++i)
@@ -194,6 +201,12 @@ public:
     final Parameter[] params() nothrow @nogc
     {
         return _params;
+    }
+
+    /// Returns: Array of legal I/O combinations.
+    final LegalIO[] legalIOs() nothrow @nogc
+    {
+        return _legalIOs;
     }
 
     /// Returns: Array of presets.
@@ -443,9 +456,9 @@ protected:
 
     /// Override this methods to load/fill presets.
     /// See_also: addPreset.
-    void buildPresets()
+    Preset[] buildPresets()
     {
-        presetBank.addPreset(makeDefaultPreset());
+        return [ makeDefaultPreset ];
     }
 
     /// Override this method to tell what plugin you are.
@@ -454,12 +467,12 @@ protected:
 
     /// Override this method to tell which I/O are legal.
     /// See_also: addLegalIO.
-    abstract void buildLegalIO();
+    abstract LegalIO[] buildLegalIO();
 
     /// Adds a legal I/O.
-    final addLegalIO(int numInputs, int numOutputs)
+    deprecated final addLegalIO(int numInputs, int numOutputs)
     {
-        _legalIOs ~= LegalIO(numInputs, numOutputs);
+        assert(false);
     }
 
     IGraphics _graphics;
@@ -472,12 +485,6 @@ private:
     Parameter[] _params;
 
     PresetBank _presetBank;
-
-    struct LegalIO
-    {
-        int numInputs;
-        int numOuputs;
-    }
 
     LegalIO[] _legalIOs;
 

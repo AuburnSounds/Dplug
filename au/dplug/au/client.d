@@ -2,7 +2,7 @@
 Cockos WDL License
 
 Copyright (C) 2005 - 2015 Cockos Incorporated
-Copyright (C) 2015 and later Auburn Sounds
+Copyright (C) 2016 Auburn Sounds
 
 Portions copyright other contributors, see each source file for more information
 
@@ -18,6 +18,8 @@ module dplug.au.client;
 
 import core.stdc.stdio;
 import core.stdc.config;
+
+import std.string;
 
 import derelict.carbon;
 import gfm.core;
@@ -70,15 +72,12 @@ private T getCompParam(T, int Idx, int Num)(ComponentParameters* params)
 
     */
 
-  /*  static if (__LP64__)
-    {
-        pragma(msg, "__LP64__ on");
-        return *cast(T*)&(params.params[Num - Idx]);
-    }
-    else*/
-    {
-        return *cast(T*)&(params.params[Idx]);
-    }
+    c_long* p = params.params.ptr;
+
+    static if (__LP64__)
+        return *cast(T*)(&p[Num - Idx]);
+    else
+        return *cast(T*)(&p[Idx]);
 }
 
 void attachToRuntimeIfNeeded()
@@ -157,6 +156,36 @@ public:
         _usedInputs = _maxInputs;
         _usedOutputs = _maxOutputs;
 
+        // Create input buses
+
+        int numInputBuses = (_maxInputs + 1) / 2;
+        _inBuses.length = numInputBuses;
+        foreach(i; 0..numInputBuses)
+        {
+            int channels = std.algorithm.min(2, numInputBuses - i * 2);
+            assert(channels == 1 || channels == 2);
+            _inBuses[i].connected = false;
+            _inBuses[i].numHostChannels = -1;
+            _inBuses[i].numPlugChannels = channels;
+            _inBuses[i].plugChannelStartIdx = i * 2;
+            _inBuses[i].label = format("input #%d", i);
+        }
+
+        // Create output buses
+
+        int numOutputBuses = (_maxInputs + 1) / 2;
+        _outBuses.length = numOutputBuses;
+        foreach(i; 0..numOutputBuses)
+        {
+            int channels = std.algorithm.min(2, numOutputBuses - i * 2);
+            assert(channels == 1 || channels == 2);
+            _outBuses[i].connected = false;
+            _outBuses[i].numHostChannels = -1;
+            _outBuses[i].numPlugChannels = channels;
+            _outBuses[i].plugChannelStartIdx = i * 2;
+            _outBuses[i].label = format("output #%d", i);
+        }
+
         _messageQueue.pushBack(makeResetStateMessage(AudioThreadMessage.Type.resetState));
     }
 
@@ -178,6 +207,35 @@ private:
     int _maxFrames;
     int _maxFramesInProcess;
 
+    // Every stereo pair of plugin input or output is a bus.
+    // Buses can have zero host channels if the host hasn't connected the bus at all,
+    // one host channel if the plugin supports mono and the host has supplied a mono stream,
+    // or two host channels if the host has supplied a stereo stream.
+    static struct BusChannels
+    {
+        bool connected;
+        int numHostChannels;
+        int numPlugChannels;
+        int plugChannelStartIdx;
+        string label; // pretty name
+    }
+
+
+    BusChannels[] _inBuses;
+    BusChannels[] _outBuses;
+
+    BusChannels* getBus(AudioUnitScope scope_, AudioUnitElement busIdx)
+    {
+        if (scope_ == kAudioUnitScope_Input && busIdx < _inBuses.length)
+            return &_inBuses[busIdx];
+        else if (scope_ == kAudioUnitScope_Output && busIdx < _outBuses.length)
+            return &_outBuses[busIdx];
+        // Global bus is an alias for output bus zero.
+        if (scope_ == kAudioUnitScope_Global && _outBuses.length)
+            return &_outBuses[busIdx];
+        return null;
+    }
+
     //
     // DISPATCHER
     //
@@ -188,36 +246,6 @@ private:
 
         switch(select)
         {
-            case kComponentCloseSelect: // -2
-            {
-                this.destroy(); // free all resources except this and the runtime
-                return noErr;
-            }
-
-            case kComponentCanDoSelect: // -3
-            {
-                switch (params.params[0])
-                {
-                    case kAudioUnitInitializeSelect:
-                    case kAudioUnitUninitializeSelect:
-             /*       case kAudioUnitGetPropertyInfoSelect:
-                    case kAudioUnitGetPropertySelect:
-                    case kAudioUnitSetPropertySelect:
-                    case kAudioUnitAddPropertyListenerSelect:
-                    case kAudioUnitRemovePropertyListenerSelect:
-                    case kAudioUnitGetParameterSelect:
-                    case kAudioUnitSetParameterSelect:
-                    case kAudioUnitResetSelect:
-                    case kAudioUnitRenderSelect:
-                    case kAudioUnitAddRenderNotifySelect:
-                    case kAudioUnitRemoveRenderNotifySelect:
-                    case kAudioUnitScheduleParametersSelect:*/
-                        return 1;
-                    default:
-                        return 0;
-                }
-            }
-
             case kComponentVersionSelect: // -4
             {
                 int versionMMPR = _client.getPluginVersion();
@@ -231,8 +259,47 @@ private:
                 return (major << 16) | (minor << 8) | patch;
             }
 
+            case kComponentCanDoSelect: // -3
+            {
+                switch (params.params[0])
+                {
+                    case kAudioUnitInitializeSelect:
+                    case kAudioUnitUninitializeSelect:
+
+                    case kAudioUnitGetParameterSelect:
+                    case kAudioUnitSetParameterSelect:
+                    case kAudioUnitScheduleParametersSelect:
+
+                    case kAudioUnitGetPropertySelect:
+                    case kAudioUnitSetPropertySelect:
+                    case kAudioUnitGetPropertyInfoSelect:
+
+                    case kAudioUnitResetSelect:
+                    case kAudioUnitRenderSelect:
+
+                    /*
+                    case kAudioUnitAddPropertyListenerSelect:
+                    case kAudioUnitRemovePropertyListenerSelect:
+
+                    case kAudioUnitAddRenderNotifySelect:
+                    case kAudioUnitRemoveRenderNotifySelect: */
+                        return 1;
+
+                    default:
+                        return 0;
+                }
+            }
+
+            case kComponentCloseSelect: // -2
+            {
+                this.destroy(); // free all resources except this and the runtime
+                return noErr;
+            }
+
             case kAudioUnitInitializeSelect: // 1
             {
+                // TODO: should reset parameter values?
+
                 // Audio processing was switched on.
                 _messageQueue.pushBack(makeResetStateMessage(AudioThreadMessage.Type.resetState));
                 return noErr;
@@ -266,6 +333,7 @@ private:
 
             case kAudioUnitGetPropertySelect: // 4
             {
+            //    debugBreak();
                 AudioUnitPropertyID propID = params.getCompParam!(AudioUnitPropertyID, 4, 5);
                 AudioUnitScope scope_ = params.getCompParam!(AudioUnitScope, 3, 5);
                 AudioUnitElement element = params.getCompParam!(AudioUnitElement, 2, 5);
@@ -281,72 +349,378 @@ private:
             }
 
             case kAudioUnitSetPropertySelect: // 5
-                // TODO
-                return noErr;
+            {
+                AudioUnitPropertyID propID = params.getCompParam!(AudioUnitPropertyID, 4, 5);
+                AudioUnitScope scope_ = params.getCompParam!(AudioUnitScope, 3, 5);
+                AudioUnitElement element = params.getCompParam!(AudioUnitElement, 2, 5);
+                const(void)* pData = params.getCompParam!(const(void)*, 1, 5);
+                UInt32* pDataSize = params.getCompParam!(UInt32*, 0, 5);
+                return setProperty(propID, scope_, element, pDataSize, pData);
+            }
 
             case kAudioUnitAddPropertyListenerSelect: // 6
                 // TODO
-                return noErr;
+                return badComponentSelector;
 
             case kAudioUnitRemovePropertyListenerSelect: // 7
                 // TODO
-                return noErr;
+                return badComponentSelector;
 
             case kAudioUnitRemovePropertyListenerWithUserDataSelect: // 8
                 // TODO
-                return noErr;
+                return badComponentSelector;
 
             case kAudioUnitAddRenderNotifySelect: // 9
                 // TODO
-                return noErr;
+                return badComponentSelector;
 
             case kAudioUnitRemoveRenderNotifySelect: // 10
                 // TODO
-                return noErr;
+                return badComponentSelector;
 
             case kAudioUnitGetParameterSelect: // 11
-                // TODO
-                return noErr;
+            {
+                AudioUnitParameterID paramID = params.getCompParam!(AudioUnitParameterID, 3, 4);
+                AudioUnitScope scope_ = params.getCompParam!(AudioUnitScope, 2, 4);
+                AudioUnitElement element = params.getCompParam!(AudioUnitElement, 1, 4);
+                AudioUnitParameterValue* pValue = params.getCompParam!(AudioUnitParameterValue*, 0, 4);
+                return getParamProc(cast(void*)this, paramID, scope_, element, pValue);
+            }
 
             case kAudioUnitSetParameterSelect: // 12
-                // TODO
-                return noErr;
+            {
+                AudioUnitParameterID paramID = params.getCompParam!(AudioUnitParameterID, 4, 5);
+                AudioUnitScope scope_ = params.getCompParam!(AudioUnitScope, 3, 5);
+                AudioUnitElement element = params.getCompParam!(AudioUnitElement, 2, 5);
+                AudioUnitParameterValue value = params.getCompParam!(AudioUnitParameterValue, 1, 5);
+                UInt32 offset = params.getCompParam!(UInt32, 0, 5);
+                return setParamProc(cast(void*)this, paramID, scope_, element, value, offset);
+            }
 
             case kAudioUnitScheduleParametersSelect: // 13
-                // TODO
-                return noErr;
-
-            case kAudioUnitRenderSelect: // 14
             {
-                AudioUnitRenderActionFlags* pinActionFlags = params.getCompParam!(AudioUnitRenderActionFlags*, 4, 5)();
-                AudioTimeStamp* pinTimeStamp = params.getCompParam!(AudioTimeStamp*, 3, 5)();
-                int pinOutputBusNumber = params.getCompParam!(int, 2, 5)();
-                int pinNumberFrames = params.getCompParam!(int, 1, 5)();
-                AudioBufferList* pioData = params.getCompParam!(AudioBufferList*, 0, 5)();
-                AudioUnitRenderActionFlags tempFlags;
+                AudioUnitParameterEvent* pEvent = params.getCompParam!(AudioUnitParameterEvent*, 1, 2);
+                uint nEvents = params.getCompParam!(uint, 0, 2);
 
-                processMessages();
-
-                // TODO
-
+                foreach(ref pE; pEvent[0..nEvents])
+                {
+                    if (pE.eventType == kParameterEvent_Immediate)
+                    {
+                        ComponentResult r = setParamProc(cast(void*)this, pE.parameter, pE.scope_, pE.element,
+                                                         pE.eventValues.immediate.value,
+                                                         pE.eventValues.immediate.bufferOffset);
+                        if (r != noErr)
+                            return r;
+                    }
+                }
                 return noErr;
             }
 
+            case kAudioUnitRenderSelect: // 14
+            {
+                AudioUnitRenderActionFlags* pFlags = params.getCompParam!(AudioUnitRenderActionFlags*, 4, 5)();
+                AudioTimeStamp* pTimestamp = params.getCompParam!(AudioTimeStamp*, 3, 5)();
+                uint outputBusIdx = params.getCompParam!(uint, 2, 5)();
+                uint nFrames = params.getCompParam!(uint, 1, 5)();
+                AudioBufferList* pBufferList = params.getCompParam!(AudioBufferList*, 0, 5)();
+                return renderProc(cast(void*)this, pFlags, pTimestamp, outputBusIdx, nFrames, pBufferList);
+            }
+
             case kAudioUnitResetSelect: // 15
+            {
                 _messageQueue.pushBack(makeResetStateMessage(AudioThreadMessage.Type.resetState));
                 return noErr;
+            }
 
             default:
-                printf("Error: Need to add support for select %d\n", select);
                 return badComponentSelector;
         }
     }
 
+    static bool isGlobalScope(AudioUnitScope scope_) pure nothrow @nogc
+    {
+        return (scope_ == kAudioUnitScope_Global);
+    }
+
+    static bool isInputOrGlobalScope(AudioUnitScope scope_) pure nothrow @nogc
+    {
+        return (scope_ == kAudioUnitScope_Input || scope_ == kAudioUnitScope_Global);
+    }
+
+    //
+    // GET PROPERTY
+    //
     ComponentResult getProperty(AudioUnitPropertyID propID, AudioUnitScope scope_, AudioUnitElement element,
-                                UInt32* pDataSize, Boolean* writeable, void* pData)
+                                UInt32* pDataSize, Boolean* pWriteable, void* pData)
+    {
+        debug printf("GET property %d\n", propID);
+        // TODO
+        switch(propID)
+        {
+            case kAudioUnitProperty_ClassInfo: // 0
+                return kAudioUnitErr_InvalidProperty; // TODO?
+
+            case kAudioUnitProperty_MakeConnection: // 1
+            {
+                if (!isInputOrGlobalScope(scope_))
+                    return kAudioUnitErr_InvalidProperty;
+                *pDataSize = cast(uint)AudioUnitConnection.sizeof;
+                *pWriteable = true;
+                return noErr;
+            }
+
+            case kAudioUnitProperty_SampleRate: // 2
+            {
+                *pDataSize = 8;
+                *pWriteable = true;
+                if (pData)
+                    *(cast(Float64*) pData) = _sampleRate;
+                return noErr;
+            }
+
+            case kAudioUnitProperty_ParameterList: // 3
+                // TODO
+                return kAudioUnitErr_InvalidProperty;
+
+            case kAudioUnitProperty_ParameterInfo: // 4
+                // TODO
+                return kAudioUnitErr_InvalidProperty;
+
+            case kAudioUnitProperty_FastDispatch: // 5
+                // TODO
+                return kAudioUnitErr_InvalidProperty;
+
+            case kAudioUnitProperty_StreamFormat: // 8
+                // TODO
+                return kAudioUnitErr_InvalidProperty;
+
+            case kAudioUnitProperty_ElementCount: // 11
+            {
+                *pDataSize = uint.sizeof;
+                if (pData)
+                {
+                    uint n = 0;
+                    if (scope_ == kAudioUnitScope_Input)
+                        n = cast(uint)_inBuses.length;
+                    else if (scope_ == kAudioUnitScope_Output)
+                        n = cast(uint)_outBuses.length;
+                    else if (scope_ == kAudioUnitScope_Global)
+                        n = 1;
+                    *(cast(uint*) pData) = n;
+                }
+                return noErr;
+            }
+
+            case kAudioUnitProperty_Latency: // 12
+            {
+                if (!isGlobalScope(scope_))
+                    return kAudioUnitErr_InvalidProperty;
+                *pDataSize = double.sizeof;
+                if (pData)
+                {
+                    double latencySecs = cast(double)(_client.latencySamples()) / _sampleRate;
+                    *(cast(Float64*) pData) = latencySecs;
+                }
+                return noErr;
+            }
+
+            case kAudioUnitProperty_SupportedNumChannels: // 13
+            {
+                if (!isGlobalScope(scope_))
+                    return kAudioUnitErr_InvalidProperty;
+
+                LegalIO[] legalIOs = _client.legalIOs();
+                *pDataSize = cast(uint)( legalIOs.length * AUChannelInfo.sizeof );
+
+                if (pData)
+                {
+                    AUChannelInfo* pChInfo = cast(AUChannelInfo*) pData;
+                    foreach(int i, ref legalIO; legalIOs)
+                    {
+                        pChInfo[i].inChannels = cast(short)legalIO.numInputChannels;
+                        pChInfo[i].outChannels = cast(short)legalIO.numOutputChannels;
+                    }
+                }
+                return noErr;
+            }
+
+            case kAudioUnitProperty_MaximumFramesPerSlice: // 14
+            {
+                if (!isGlobalScope(scope_))
+                    return kAudioUnitErr_InvalidProperty;
+                *pDataSize = uint.sizeof;
+                *pWriteable = true;
+                if (pData)
+                {
+                    *(cast(UInt32*) pData) = _maxFrames;
+                }
+                return noErr;
+            }
+
+            case kAudioUnitProperty_ParameterValueStrings:
+                return kAudioUnitErr_InvalidProperty;
+
+            case kAudioUnitProperty_AudioChannelLayout:
+                return kAudioUnitErr_InvalidProperty;
+
+            case kAudioUnitProperty_TailTime:
+                return kAudioUnitErr_InvalidProperty;
+
+            case kAudioUnitProperty_BypassEffect: // TODO
+                return kAudioUnitErr_InvalidProperty;
+
+            case kAudioUnitProperty_LastRenderError:  // 22
+            {
+                if(!isGlobalScope(scope_))
+                    return kAudioUnitErr_InvalidProperty;
+                *pDataSize = OSStatus.sizeof;
+                if (pData)
+                    *(cast(OSStatus*) pData) = noErr;
+                return noErr;
+            }
+
+            case kAudioUnitProperty_SetRenderCallback: // 23
+            {
+                // Not sure why it's not writing anything
+                if(!isInputOrGlobalScope(scope_))
+                    return kAudioUnitErr_InvalidProperty;
+                if (element >= _inBuses.length)
+                    return kAudioUnitErr_InvalidProperty;
+                *pDataSize = AURenderCallbackStruct.sizeof;
+                *pWriteable = true;
+                return noErr;
+            }
+
+            case kAudioUnitProperty_FactoryPresets:
+                return kAudioUnitErr_InvalidProperty;
+
+            case kAudioUnitProperty_RenderQuality:
+                return kAudioUnitErr_InvalidProperty;
+
+            case kAudioUnitProperty_HostCallbacks:
+                return kAudioUnitErr_InvalidProperty;
+
+            case kAudioUnitProperty_InPlaceProcessing:
+                return kAudioUnitErr_InvalidProperty;
+
+            case kAudioUnitProperty_ElementName:
+                return kAudioUnitErr_InvalidProperty;
+
+            case kAudioUnitProperty_SupportedChannelLayoutTags:
+                return kAudioUnitErr_InvalidProperty;
+
+            case kAudioUnitProperty_PresentPreset:
+                return kAudioUnitErr_InvalidProperty;
+
+            case kAudioUnitProperty_DependentParameters:
+                return kAudioUnitErr_InvalidProperty;
+
+            case kAudioUnitProperty_InputSamplesInOutput:
+                return kAudioUnitErr_InvalidProperty;
+
+            case kAudioUnitProperty_ShouldAllocateBuffer:
+                return kAudioUnitErr_InvalidProperty;
+
+            case kAudioUnitProperty_FrequencyResponse:
+                return kAudioUnitErr_InvalidProperty;
+
+            case kAudioUnitProperty_ParameterHistoryInfo:
+                return kAudioUnitErr_InvalidProperty;
+
+            case kAudioUnitProperty_NickName:
+                return kAudioUnitErr_InvalidProperty;
+
+            case kAudioUnitProperty_OfflineRender:
+                return kAudioUnitErr_InvalidProperty;
+
+            case kAudioUnitProperty_ParameterIDName:
+                return kAudioUnitErr_InvalidProperty;
+
+            case kAudioUnitProperty_ParameterStringFromValue:
+                return kAudioUnitErr_InvalidProperty;
+
+            case kAudioUnitProperty_ParameterClumpName:
+                return kAudioUnitErr_InvalidProperty;
+
+            case kAudioUnitProperty_ParameterValueFromString:
+                return kAudioUnitErr_InvalidProperty;
+
+            case kAudioUnitProperty_ContextName:
+                return kAudioUnitErr_InvalidProperty;
+
+            case kAudioUnitProperty_PresentationLatency:
+                return kAudioUnitErr_InvalidProperty;
+
+
+            case kAudioUnitProperty_RequestViewController:
+                return kAudioUnitErr_InvalidProperty;
+
+            case kAudioUnitProperty_ParametersForOverview:
+                return kAudioUnitErr_InvalidProperty;
+
+            case kAudioUnitProperty_GetUIComponentList:
+                return kAudioUnitErr_InvalidProperty;
+
+            case kAudioUnitProperty_CocoaUI: // TODO
+                return kAudioUnitErr_InvalidProperty;
+
+            default:
+                return kAudioUnitErr_InvalidProperty;
+        }
+    }
+
+    ComponentResult setProperty(AudioUnitPropertyID propID, AudioUnitScope scope_, AudioUnitElement element,
+                                UInt32* pDataSize, const(void)* pData)
     {
         // TODO
-        return noErr;
+        //InformListeners(propID, scope);s
+
+        debug printf("SET property %d\n", propID);
+
+        switch(propID)
+        {
+            case kAudioUnitProperty_ClassInfo:
+                return kAudioUnitErr_InvalidProperty; // TODO?
+
+            case kAudioUnitProperty_MakeConnection: // 1
+                // TODO
+                return kAudioUnitErr_InvalidProperty;
+
+            case kAudioUnitProperty_SampleRate: // 2
+            {
+                _sampleRate = *(cast(Float64*)pData);
+                _messageQueue.pushBack(makeResetStateMessage(AudioThreadMessage.Type.resetState));
+                return noErr;
+            }
+
+            case kAudioUnitProperty_StreamFormat: // TODO
+                return kAudioUnitErr_InvalidProperty;
+
+            case kAudioUnitProperty_MaximumFramesPerSlice: // TODO
+                return kAudioUnitErr_InvalidProperty;
+
+            case kAudioUnitProperty_BypassEffect: // TODO
+                return kAudioUnitErr_InvalidProperty;
+
+            case kAudioUnitProperty_SetRenderCallback: // 23
+                return kAudioUnitErr_InvalidProperty; // TODO
+
+            case kAudioUnitProperty_HostCallbacks: // TODO
+                return kAudioUnitErr_InvalidProperty;
+
+            case kAudioUnitProperty_CurrentPreset: // 28
+            case kAudioUnitProperty_PresentPreset: // 36
+                return kAudioUnitErr_InvalidProperty; // TODO
+
+            case kAudioUnitProperty_OfflineRender:
+                return noErr; // 37
+
+            case kAudioUnitProperty_AUHostIdentifier: // TODO
+                return kAudioUnitErr_InvalidProperty;
+
+            default:
+                return kAudioUnitErr_InvalidProperty; // NO-OP, or unsupported
+        }
     }
 
     AudioThreadMessage makeResetStateMessage(AudioThreadMessage.Type type) pure const nothrow @nogc
@@ -401,3 +775,52 @@ private:
         }
     }
 }
+
+
+private:
+
+
+extern(C) ComponentResult getParamProc(void* pPlug,
+                             AudioUnitParameterID paramID,
+                             AudioUnitScope scope_,
+                             AudioUnitElement element,
+                             AudioUnitParameterValue* pValue) nothrow @nogc
+{
+    AUClient _this = cast(AUClient)pPlug;
+    auto client = _this._client;
+    if (!client.isValidParamIndex(paramID))
+        return kAudioUnitErr_InvalidParameter;
+    *pValue = client.param(paramID).getForHost();
+    return noErr;
+}
+
+extern(C) ComponentResult setParamProc(void* pPlug,
+                             AudioUnitParameterID paramID,
+                             AudioUnitScope scope_,
+                             AudioUnitElement element,
+                             AudioUnitParameterValue value,
+                             UInt32 offsetFrames) nothrow @nogc
+{
+    AUClient _this = cast(AUClient)pPlug;
+    auto client = _this._client;
+    if (!client.isValidParamIndex(paramID))
+        return kAudioUnitErr_InvalidParameter;
+    client.setParameterFromHost(paramID, value);
+    return noErr;
+}
+
+extern(C) ComponentResult renderProc(void* pPlug,
+                                     AudioUnitRenderActionFlags* pFlags,
+                                     const(AudioTimeStamp)* pTimestamp,
+                                     uint outputBusIdx,
+                                     uint nFrames,
+                                     AudioBufferList* pOutBufList)
+{
+    // TODO, it's complicated
+    AUClient _this = cast(AUClient)pPlug;
+    auto client = _this._client;
+
+    return noErr;
+}
+
+
