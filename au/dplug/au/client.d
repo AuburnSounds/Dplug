@@ -533,8 +533,7 @@ private:
                 if (pData)
                 {
                     CFPropertyListRef* pList = cast(CFPropertyListRef*) pData;
-                    // TODO get state in that list
-                    printf("TODO kAudioUnitProperty_ClassInfo get plugin state\n");
+                    return readState(pList);
                 }
                 return noErr;
             }
@@ -1005,26 +1004,23 @@ private:
         if (r != noErr)
             return r;
 
-        // TODO!!!
-
-  /+      CFMutableDictionaryRef pDict = CFDictionaryCreateMutable(0, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+        CFMutableDictionaryRef pDict = CFDictionaryCreateMutable(null, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
 
         int version_ = _client.getPluginVersion();
-        PutNumberInDict(pDict, kAUPresetVersionKey, &version_, kCFNumberSInt32Type);
-        PutNumberInDict(pDict, kAUPresetTypeKey, &(cd.componentType), kCFNumberSInt32Type);
-        PutNumberInDict(pDict, kAUPresetSubtypeKey, &(cd.componentSubType), kCFNumberSInt32Type);
-        PutNumberInDict(pDict, kAUPresetManufacturerKey, &(cd.componentManufacturer), kCFNumberSInt32Type);
-        //PutStrInDict(pDict, kAUPresetNameKey, GetPresetName(GetCurrentPresetIdx()));
+        putNumberInDict(pDict, kAUPresetVersionKey, &version_, kCFNumberSInt32Type);
 
-      ByteChunk chunk;
+        putNumberInDict(pDict, kAUPresetTypeKey, &(cd.componentType), kCFNumberSInt32Type);
+        putNumberInDict(pDict, kAUPresetSubtypeKey, &(cd.componentSubType), kCFNumberSInt32Type);
+        putNumberInDict(pDict, kAUPresetManufacturerKey, &(cd.componentManufacturer), kCFNumberSInt32Type);
 
-      if (SerializeState(&chunk))
-      {
-        PutDataInDict(pDict, kAUPresetDataKey, &chunk);
-      }+/
+        auto presetBank = _client.presetBank();
 
-      *ppPropList = null;//pDict;
-      return noErr;
+        //putNumberInDict(pDict, kAUPresetManufacturerKey, &(cd.componentManufacturer), kCFNumberSInt32Type);
+        putStrInDict(pDict, kAUPresetNameKey, presetBank.currentPreset().name);
+
+        ubyte[] state = presetBank.getBankChunk();
+        putDataInDict(pDict, kAUPresetDataKey, state);
+        return noErr;
     }
 }
 
