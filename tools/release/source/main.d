@@ -54,7 +54,7 @@ string toString(Arch arch)
     }
 }
 
-void main(string[] args)
+int main(string[] args)
 {
     // TODO get executable name from dub.json
     try
@@ -134,7 +134,7 @@ void main(string[] args)
         if (help)
         {
             usage();
-            return;
+            return 0;
         }
 
         Plugin plugin = readDubDescription();
@@ -287,12 +287,38 @@ void main(string[] args)
         if (hasDMD) buildAndPackage("dmd", config, archs, iconPath);
         if (hasGDC) buildAndPackage("gdc", config, archs, iconPath);
         if (hasLDC) buildAndPackage("ldc", config, archs, iconPath);
+        return 0;
+    }
+    catch(ExternalProgramErrored e)
+    {
+        writefln("error: %s", e.msg);
+        return e.errorCode;
     }
     catch(Exception e)
     {
         writefln("error: %s", e.msg);
+        return -1;
     }
 }
+
+class ExternalProgramErrored : Exception
+{
+    public
+    {
+        @safe pure nothrow this(int errorCode,
+                                string message,
+                                string file =__FILE__,
+                                size_t line = __LINE__,
+                                Throwable next = null)
+        {
+            super(message, file, line, next);
+            this.errorCode = errorCode;
+        }
+
+        int errorCode;
+    }
+}
+
 
 void safeCommand(string cmd)
 {
@@ -300,7 +326,7 @@ void safeCommand(string cmd)
     auto pid = spawnShell(cmd);
     auto errorCode = wait(pid);
     if (errorCode != 0)
-        throw new Exception(format("Command '%s' returned %s", cmd, errorCode));
+        throw new ExternalProgramErrored(errorCode, format("Command '%s' returned %s", cmd, errorCode));
 }
 
 void buildPlugin(string compiler, string config, string build, bool is64b, bool verbose, bool force, bool combined)
