@@ -80,6 +80,7 @@ nothrow ComponentResult audioUnitEntryPoint(alias ClientClass)(ComponentParamete
 
         if (select == kComponentOpenSelect)
         {
+            DerelictCoreFoundation.load();
             DerelictCoreServices.load();
             DerelictAudioUnit.load();
 
@@ -90,8 +91,6 @@ nothrow ComponentResult audioUnitEntryPoint(alias ClientClass)(ComponentParamete
             SetComponentInstanceStorage( instance, cast(Handle)(cast(void*)plugin) );
             return noErr;
         }
-
-     //   writeln("dispatch");
 
         AUClient auClient = cast(AUClient)pPlug;
         assert(auClient !is null);
@@ -557,9 +556,18 @@ private:
             }
 
             case kAudioUnitProperty_ParameterList: // 3
-                printf("TODO kAudioUnitProperty_ParameterList\n");
-                // TODO
-                return kAudioUnitErr_InvalidProperty;
+            {
+                int numParams = cast(int)( _client.params().length );
+                int n = (scope_ == kAudioUnitScope_Global) ? numParams : 0;
+                *pDataSize = cast(uint)(n * AudioUnitParameterID.sizeof);
+                if (pData && n)
+                {
+                    AudioUnitParameterID* pParamID = cast(AudioUnitParameterID*) pData;
+                    for (int i = 0; i < n; ++i, ++pParamID)
+                       *pParamID = cast(AudioUnitParameterID) i;
+                }
+                return noErr;
+            }
 
             case kAudioUnitProperty_ParameterInfo: // 4
                 printf("TODO kAudioUnitProperty_ParameterInfo\n");
@@ -1003,21 +1011,15 @@ private:
         ComponentResult r = GetComponentInfo(cast(Component) _componentInstance, &cd, null, null, null);
         if (r != noErr)
             return r;
-
         CFMutableDictionaryRef pDict = CFDictionaryCreateMutable(null, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
-
         int version_ = _client.getPluginVersion();
         putNumberInDict(pDict, kAUPresetVersionKey, &version_, kCFNumberSInt32Type);
 
         putNumberInDict(pDict, kAUPresetTypeKey, &(cd.componentType), kCFNumberSInt32Type);
         putNumberInDict(pDict, kAUPresetSubtypeKey, &(cd.componentSubType), kCFNumberSInt32Type);
         putNumberInDict(pDict, kAUPresetManufacturerKey, &(cd.componentManufacturer), kCFNumberSInt32Type);
-
         auto presetBank = _client.presetBank();
-
-        //putNumberInDict(pDict, kAUPresetManufacturerKey, &(cd.componentManufacturer), kCFNumberSInt32Type);
         putStrInDict(pDict, kAUPresetNameKey, presetBank.currentPreset().name);
-
         ubyte[] state = presetBank.getBankChunk();
         putDataInDict(pDict, kAUPresetDataKey, state);
         return noErr;
