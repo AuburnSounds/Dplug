@@ -467,7 +467,7 @@ protected:
     /// Useful multithreading code.
     void compositeGUI(ImageRef!RGBA wfb, WindowPixelFormat pf)
     {
-        // Quick subjective testing indicates than somewhere between 16x16 and 32x32 have best performance
+        // Was tuned for performance, maybe the tradeoff has changed now that we use LDC.
         enum tileWidth = 64;
         enum tileHeight = 32;
 

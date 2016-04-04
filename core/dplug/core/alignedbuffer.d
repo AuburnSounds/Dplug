@@ -91,7 +91,7 @@ final class AlignedBuffer(T)
             memcpy(_data + oldSize, other._data, T.sizeof * other._size);
         }
 
-          /// Appends a slice to this buffer.
+        /// Appends a slice to this buffer.
         void pushBack(T[] slice) nothrow @nogc
         {
             foreach(item; slice)

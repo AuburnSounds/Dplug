@@ -53,26 +53,8 @@ else
 
 
 
-private T getCompParam(T, int Idx, int Num)(ComponentParameters* params)
+private T getCompParam(T, int Idx, int Num)(ComponentParameters* params) pure nothrow @nogc
 {
-    /*
-
-    Strange, in AU base classes we have something like:
-
-        #if __LP64__
-            // comp instance, parameters in forward order
-            #define PARAM(_typ, _name, _index, _nparams) \
-                _typ _name = *(_typ *)&params->params[_index + 1];
-        #else
-            // parameters in reverse order, then comp instance
-            #define PARAM(_typ, _name, _index, _nparams) \
-                _typ _name = *(_typ *)&params->params[_nparams - 1 - _index];
-        #endif
-
-    Which is decidedly not the same.
-
-    */
-
     c_long* p = params.params.ptr;
 
     static if (__LP64__)
@@ -96,9 +78,6 @@ nothrow ComponentResult audioUnitEntryPoint(alias ClientClass)(ComponentParamete
         attachToRuntimeIfNeeded();
         int select = params.what;
 
-        import core.stdc.stdio;
-        debug printf("audioUnitEntryPoint select %d\n", select);
-
         if (select == kComponentOpenSelect)
         {
             DerelictCoreServices.load();
@@ -111,6 +90,8 @@ nothrow ComponentResult audioUnitEntryPoint(alias ClientClass)(ComponentParamete
             SetComponentInstanceStorage( instance, cast(Handle)(cast(void*)plugin) );
             return noErr;
         }
+
+     //   writeln("dispatch");
 
         AUClient auClient = cast(AUClient)pPlug;
         assert(auClient !is null);
@@ -127,6 +108,8 @@ nothrow ComponentResult audioUnitEntryPoint(alias ClientClass)(ComponentParamete
 
 nothrow ComponentResult audioUnitCarbonViewEntry(alias ClientClass)(ComponentParameters* params, void* pView)
 {
+    debug printf("TODO audioUnitCarbonViewEntry\n");
+
     // TODO
     return 0;
 }
@@ -144,10 +127,10 @@ class AUClient
 {
 public:
 
-    this(Client client, ComponentInstance instance)
+    this(Client client, ComponentInstance componentInstance)
     {
         _client = client;
-        _instance = instance;
+        _componentInstance = componentInstance;
 
         int queueSize = 256;
         _messageQueue = new AudioThreadQueue(queueSize);
@@ -166,9 +149,9 @@ public:
         _usedOutputs = _maxOutputs;
 
         // Create input buses
-
         int numInputBuses = (_maxInputs + 1) / 2;
         _inBuses.length = numInputBuses;
+        _inBusConnections.length = numInputBuses;
         foreach(i; 0..numInputBuses)
         {
             int channels = std.algorithm.min(2, numInputBuses - i * 2);
@@ -207,7 +190,7 @@ public:
     }
 
 private:
-    ComponentInstance _instance;
+    ComponentInstance _componentInstance;
     Client _client;
     AudioThreadQueue _messageQueue;
 
@@ -234,7 +217,6 @@ private:
         int plugChannelStartIdx;
         string label; // pretty name
     }
-
 
     BusChannels[] _inBuses;
     BusChannels[] _outBuses;
@@ -294,6 +276,9 @@ private:
     InputBusConnection[] _inBusConnections;
 
 
+    AURenderCallbackStruct[] _renderNotify;
+
+
     //
     // DISPATCHER
     //
@@ -338,9 +323,9 @@ private:
                     /*
                     case kAudioUnitAddPropertyListenerSelect:
                     case kAudioUnitRemovePropertyListenerSelect:
-
+*/
                     case kAudioUnitAddRenderNotifySelect:
-                    case kAudioUnitRemoveRenderNotifySelect: */
+                    case kAudioUnitRemoveRenderNotifySelect:
                         return 1;
 
                     default:
@@ -416,24 +401,45 @@ private:
             }
 
             case kAudioUnitAddPropertyListenerSelect: // 6
+                printf("TODO kAudioUnitAddPropertyListenerSelect\n");
                 // TODO
                 return badComponentSelector;
 
             case kAudioUnitRemovePropertyListenerSelect: // 7
+                printf("TODO kAudioUnitRemovePropertyListenerSelect\n");
                 // TODO
                 return badComponentSelector;
 
             case kAudioUnitRemovePropertyListenerWithUserDataSelect: // 8
+                printf("TODO kAudioUnitRemovePropertyListenerWithUserDataSelect\n");
                 // TODO
                 return badComponentSelector;
 
             case kAudioUnitAddRenderNotifySelect: // 9
-                // TODO
-                return badComponentSelector;
+            {
+                AURenderCallbackStruct acs;
+                acs.inputProc = params.getCompParam!(AURenderCallback, 1, 2);
+                acs.inputProcRefCon = params.getCompParam!(void*, 0, 2);
+                _renderNotify ~= acs;
+                return noErr;
+            }
 
             case kAudioUnitRemoveRenderNotifySelect: // 10
-                // TODO
-                return badComponentSelector;
+            {
+                static auto removeElement(R, N)(R haystack, N needle)
+                {
+                    import std.algorithm : countUntil, remove;
+                    auto index = haystack.countUntil(needle);
+                    return (index != -1) ? haystack.remove(index) : haystack;
+                }
+
+                AURenderCallbackStruct acs;
+                acs.inputProc = params.getCompParam!(AURenderCallback, 1, 2);
+                acs.inputProcRefCon = params.getCompParam!(void*, 0, 2);
+                _renderNotify = removeElement(_renderNotify, acs);
+
+                return noErr;
+            }
 
             case kAudioUnitGetParameterSelect: // 11
             {
@@ -515,14 +521,22 @@ private:
     ComponentResult getProperty(AudioUnitPropertyID propID, AudioUnitScope scope_, AudioUnitElement element,
                                 UInt32* pDataSize, Boolean* pWriteable, void* pData)
     {
-        debug printf("GET property %d\n", propID);
+        //debug printf("GET property %d\n", propID);
 
         switch(propID)
         {
 
             case kAudioUnitProperty_ClassInfo: // 0
             {
-                return kAudioUnitErr_InvalidProperty; // TODO?
+                *pDataSize = CFPropertyListRef.sizeof;
+                *pWriteable = true;
+                if (pData)
+                {
+                    CFPropertyListRef* pList = cast(CFPropertyListRef*) pData;
+                    // TODO get state in that list
+                    printf("TODO kAudioUnitProperty_ClassInfo get plugin state\n");
+                }
+                return noErr;
             }
 
             case kAudioUnitProperty_MakeConnection: // 1
@@ -544,19 +558,44 @@ private:
             }
 
             case kAudioUnitProperty_ParameterList: // 3
+                printf("TODO kAudioUnitProperty_ParameterList\n");
                 // TODO
                 return kAudioUnitErr_InvalidProperty;
 
             case kAudioUnitProperty_ParameterInfo: // 4
+                printf("TODO kAudioUnitProperty_ParameterInfo\n");
                 // TODO
                 return kAudioUnitErr_InvalidProperty;
 
             case kAudioUnitProperty_FastDispatch: // 5
-                // TODO
-                return kAudioUnitErr_InvalidProperty;
+            {
+                switch (element)
+                {
+                    case kAudioUnitGetParameterSelect:
+                        *pDataSize = AudioUnitGetParameterProc.sizeof;
+                        if (pData)
+                            *(cast(AudioUnitGetParameterProc*) pData) = &getParamProc;
+                        return noErr;
+
+                    case kAudioUnitSetParameterSelect:
+                        *pDataSize = AudioUnitSetParameterProc.sizeof;
+                        if (pData)
+                            *(cast(AudioUnitSetParameterProc*) pData) = &setParamProc;
+                        return noErr;
+
+                    case kAudioUnitRenderSelect:
+                        *pDataSize = AudioUnitSetParameterProc.sizeof;
+                        if (pData)
+                            *(cast(AudioUnitRenderProc*) pData) = &renderProc;
+                        return noErr;
+
+                    default:
+                        return kAudioUnitErr_InvalidElement;
+                }
+            }
 
             case kAudioUnitProperty_StreamFormat: // 8
-                // TODO
+                printf("TODO kAudioUnitProperty_StreamFormat\n");
                 return kAudioUnitErr_InvalidProperty;
 
             case kAudioUnitProperty_ElementCount: // 11
@@ -623,14 +662,15 @@ private:
             }
 
             case kAudioUnitProperty_ParameterValueStrings: // 16
-                // TODO
+                printf("TODO kAudioUnitProperty_ParameterValueStrings\n");
                 return kAudioUnitErr_InvalidProperty;
 
             case kAudioUnitProperty_GetUIComponentList: // 18
-                // TODO
+                printf("TODO kAudioUnitProperty_GetUIComponentList\n");
                 return kAudioUnitErr_InvalidProperty;
 
             case kAudioUnitProperty_AudioChannelLayout:
+                printf("TODO kAudioUnitProperty_AudioChannelLayout\n");
                 // TODO: IPlug says "TODO: this seems wrong but works"
                 return kAudioUnitErr_InvalidPropertyValue;
 
@@ -680,6 +720,7 @@ private:
 
             case kAudioUnitProperty_FactoryPresets: // 24
             {
+                printf("TODO kAudioUnitProperty_FactoryPresets\n");
                 // TODO
                 return kAudioUnitErr_InvalidProperty;
             }
@@ -691,10 +732,12 @@ private:
             }
 
             case kAudioUnitProperty_ElementName: // 30
+                printf("TODO kAudioUnitProperty_ElementName\n");
                 // TODO, return name of bus
                 return kAudioUnitErr_InvalidProperty;
 
             case kAudioUnitProperty_CocoaUI: // 31
+                printf("TODO kAudioUnitProperty_CocoaUI\n");
                 // TODO
                 return kAudioUnitErr_InvalidProperty; // no UI
 
@@ -702,6 +745,7 @@ private:
                 // kAudioUnitProperty_SupportedChannelLayoutTags
                 // is only needed for multi-output bus instruments
                 // TODO when intruments are to be supported
+                printf("TODO kAudioUnitProperty_SupportedChannelLayoutTags\n");
                 return kAudioUnitErr_InvalidProperty;
 
             case kAudioUnitProperty_PresentPreset:
@@ -751,7 +795,7 @@ private:
         // TODO
         //InformListeners(propID, scope);s
 
-        debug printf("SET property %d\n", propID);
+        //debug printf("SET property %d\n", propID);
 
         switch(propID)
         {
@@ -759,8 +803,60 @@ private:
                 return kAudioUnitErr_InvalidProperty; // TODO?
 
             case kAudioUnitProperty_MakeConnection: // 1
-                // TODO
-                return kAudioUnitErr_InvalidProperty;
+            {
+                if (!isInputOrGlobalScope(scope_))
+                    return kAudioUnitErr_InvalidProperty;
+
+                AudioUnitConnection* pAUC = cast(AudioUnitConnection*) pData;
+                if (pAUC.destInputNumber >= _inBusConnections.length)
+                    return kAudioUnitErr_InvalidProperty;
+
+                InputBusConnection* pInBusConn = &_inBusConnections[pAUC.destInputNumber];
+                *pInBusConn = InputBusConnection.init;
+
+                bool negotiatedOK = true;
+                if (pAUC.sourceAudioUnit)
+                {
+                    // Open connection.
+                    AudioStreamBasicDescription srcASBD;
+                    uint size = cast(uint)(srcASBD.sizeof);
+
+                    // Ask whoever is sending us audio what the format is.
+                    negotiatedOK = (AudioUnitGetProperty(pAUC.sourceAudioUnit, kAudioUnitProperty_StreamFormat,
+                                        kAudioUnitScope_Output, pAUC.sourceOutputNumber, &srcASBD, &size) == noErr);
+
+                    negotiatedOK &= (setProperty(kAudioUnitProperty_StreamFormat, kAudioUnitScope_Input,
+                                                 pAUC.destInputNumber, &size, &srcASBD) == noErr);
+
+                    if (negotiatedOK)
+                    {
+                        pInBusConn.upstreamUnit = pAUC.sourceAudioUnit;
+                        pInBusConn.upstreamBusIdx = pAUC.sourceOutputNumber;
+
+
+                      /+ TODO fast dispatch
+
+                      // Will the upstream unit give us a fast render proc for input?
+                      AudioUnitRenderProc srcRenderProc;
+                      size = AudioUnitRenderProc.sizeof;
+                      if (AudioUnitGetProperty(pAUC.sourceAudioUnit, kAudioUnitProperty_FastDispatch, kAudioUnitScope_Global, kAudioUnitRenderSelect,
+                                               &srcRenderProc, &size) == noErr)
+                      {
+                        // Yes, we got a fast render proc, and we also need to store the pointer to the upstream audio unit object.
+                        pInBusConn->mUpstreamRenderProc = srcRenderProc;
+                        pInBusConn->mUpstreamObj = GetComponentInstanceStorage(pAUC->sourceAudioUnit);
+                      }
+                      // Else no fast render proc, so leave the input bus connection struct's upstream render proc and upstream object empty,
+                      // and we will need to make a component call through the component manager to get input data.
+
+                      +/
+                    }
+                    // Else this is a call to close the connection, which we effectively did by clearing the InputBusConnection struct,
+                    // which counts as a successful negotiation.
+                }
+                assessInputConnections();
+                return negotiatedOK ? noErr : kAudioUnitErr_InvalidProperty;
+            }
 
             case kAudioUnitProperty_SampleRate: // 2
             {
@@ -770,9 +866,11 @@ private:
             }
 
             case kAudioUnitProperty_StreamFormat: // TODO
+                printf("TODO kAudioUnitProperty_StreamFormat\n");
                 return kAudioUnitErr_InvalidProperty;
 
             case kAudioUnitProperty_MaximumFramesPerSlice: // TODO
+                printf("TODO kAudioUnitProperty_MaximumFramesPerSlice\n");
                 return kAudioUnitErr_InvalidProperty;
 
             case kAudioUnitProperty_BypassEffect: // 21
@@ -799,16 +897,20 @@ private:
             }
 
             case kAudioUnitProperty_HostCallbacks: // TODO
+                printf("TODO kAudioUnitProperty_HostCallbacks\n");
                 return kAudioUnitErr_InvalidProperty;
 
             case kAudioUnitProperty_CurrentPreset: // 28
             case kAudioUnitProperty_PresentPreset: // 36
+                printf("TODO kAudioUnitProperty_CurrentPreset\n");
+                printf("TODO kAudioUnitProperty_PresentPreset\n");
                 return kAudioUnitErr_InvalidProperty; // TODO
 
             case kAudioUnitProperty_OfflineRender:
                 return noErr; // 37
 
             case kAudioUnitProperty_AUHostIdentifier: // TODO
+                printf("TODO kAudioUnitProperty_AUHostIdentifier\n");
                 return kAudioUnitErr_InvalidProperty;
 
             default:
@@ -837,8 +939,6 @@ private:
                     // Assume the host will send all the channels the plugin asks for, and hope for the best.
                     pInBus.numHostChannels = pInBus.numPlugChannels;
                 }
-
-
             }
         }
         // TODO assign _usedInputs and _usedOutputs, and send a message to audio thread
@@ -896,6 +996,36 @@ private:
             }
         }
     }
+
+    // Serialize state
+    ComponentResult readState(CFPropertyListRef* ppPropList)
+    {
+        ComponentDescription cd;
+        ComponentResult r = GetComponentInfo(cast(Component) _componentInstance, &cd, null, null, null);
+        if (r != noErr)
+            return r;
+
+        // TODO!!!
+
+  /+      CFMutableDictionaryRef pDict = CFDictionaryCreateMutable(0, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+
+        int version_ = _client.getPluginVersion();
+        PutNumberInDict(pDict, kAUPresetVersionKey, &version_, kCFNumberSInt32Type);
+        PutNumberInDict(pDict, kAUPresetTypeKey, &(cd.componentType), kCFNumberSInt32Type);
+        PutNumberInDict(pDict, kAUPresetSubtypeKey, &(cd.componentSubType), kCFNumberSInt32Type);
+        PutNumberInDict(pDict, kAUPresetManufacturerKey, &(cd.componentManufacturer), kCFNumberSInt32Type);
+        //PutStrInDict(pDict, kAUPresetNameKey, GetPresetName(GetCurrentPresetIdx()));
+
+      ByteChunk chunk;
+
+      if (SerializeState(&chunk))
+      {
+        PutDataInDict(pDict, kAUPresetDataKey, &chunk);
+      }+/
+
+      *ppPropList = null;//pDict;
+      return noErr;
+    }
 }
 
 
@@ -936,13 +1066,111 @@ extern(C) ComponentResult renderProc(void* pPlug,
                                      const(AudioTimeStamp)* pTimestamp,
                                      uint outputBusIdx,
                                      uint nFrames,
-                                     AudioBufferList* pOutBufList)
+                                     AudioBufferList* pOutBufList) nothrow @nogc
 {
     // TODO, it's complicated
     AUClient _this = cast(AUClient)pPlug;
     auto client = _this._client;
 
+    // TODO notify render callbacks
+    printf("TODO renderProc\n");
+
     return noErr;
 }
 
+// CoreFoundation helpers
 
+struct CFStrLocal
+{
+    CFStringRef parent;
+    alias parent this;
+
+    @disable this();
+    @disable this(this);
+
+    static fromString(string str)
+    {
+        CFStrLocal s = void;
+        s.parent = CFStringCreateWithCString(null, toStringz(str), kCFStringEncodingUTF8);
+        return s;
+    }
+
+    ~this()
+    {
+        CFRelease(parent);
+    }
+}
+
+string copyCFString(CFStringRef cfStr)
+{
+    auto n = CFStringGetLength(cfStr) + 1;
+    char[] buf = new char[n];
+    CFStringGetCString(cfStr, buf.ptr, n, kCFStringEncodingUTF8);
+    return fromStringz(buf.ptr).idup;
+}
+
+void putNumberInDict(CFMutableDictionaryRef pDict, string key, void* pNumber, CFNumberType type)
+{
+    CFStrLocal cfKey = CFStrLocal.fromString(key);
+
+    CFNumberRef pValue = CFNumberCreate(null, type, pNumber);
+    CFDictionarySetValue(pDict, cfKey, pValue);
+    CFRelease(pValue);
+}
+
+void putStrInDict(CFMutableDictionaryRef pDict, string key, string value)
+{
+    CFStrLocal cfKey = CFStrLocal.fromString(key);
+    CFStrLocal cfValue = CFStrLocal.fromString(value);
+    CFDictionarySetValue(pDict, cfKey, cfValue);
+}
+
+void putDataInDict(CFMutableDictionaryRef pDict, string key, ubyte[] pChunk)
+{
+    CFStrLocal cfKey = CFStrLocal.fromString(key);
+
+    CFDataRef pData = CFDataCreate(null, pChunk.ptr, pChunk.length);
+    CFDictionarySetValue(pDict, cfKey, pData);
+    CFRelease(pData);
+}
+
+
+bool getNumberFromDict(CFDictionaryRef pDict, string key, void* pNumber, CFNumberType type)
+{
+    CFStrLocal cfKey = CFStrLocal.fromString(key);
+
+    CFNumberRef pValue = cast(CFNumberRef) CFDictionaryGetValue(pDict, cfKey);
+    if (pValue)
+    {
+        CFNumberGetValue(pValue, type, pNumber);
+        return true;
+    }
+    return false;
+}
+
+bool getStrFromDict(CFDictionaryRef pDict, string key, out string value)
+{
+    CFStrLocal cfKey = CFStrLocal.fromString(key);
+
+    CFStringRef pValue = cast(CFStringRef) CFDictionaryGetValue(pDict, cfKey);
+    if (pValue)
+    {
+        value = copyCFString(pValue);
+        return true;
+    }
+    return false;
+}
+
+bool getDataFromDict(CFDictionaryRef pDict, string key, ubyte[] pChunk)
+{
+    CFStrLocal cfKey = CFStrLocal.fromString(key);
+    CFDataRef pData = cast(CFDataRef) CFDictionaryGetValue(pDict, cfKey);
+    if (pData)
+    {
+        auto n = CFDataGetLength(pData);
+        pChunk.length = n;
+        pChunk[0..n] = CFDataGetBytePtr(pData)[0..n];
+        return true;
+    }
+    return false;
+}
