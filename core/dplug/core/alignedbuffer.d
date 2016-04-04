@@ -75,6 +75,14 @@ final class AlignedBuffer(T)
             _data[i] = x;
         }
 
+        /// Removes an item and replaces it by the last item.
+        /// Warning: this reorders the array.
+        void removeAndReplaceByLastElement(size_t index) nothrow @nogc
+        {
+            assert(index < _size);
+            _data[index] = _data[--_size];
+        }
+
         /// Appends another buffer to this buffer.
         void pushBack(AlignedBuffer other) nothrow @nogc
         {

@@ -59,7 +59,7 @@ class GUIGraphics : UIElement, IGraphics
 
         _window = null;
         _askedWidth = initialWidth;
-        _askedHeight = initialHeight;        
+        _askedHeight = initialHeight;
 
         _taskPool = new TaskPool();
 
@@ -260,7 +260,7 @@ class GUIGraphics : UIElement, IGraphics
             // Split boxes to avoid overlapped work
             // Note: this is done separately for update areas and render areas
             _areasToRenderNonOverlapping.clearContents();
-            removeOverlappingAreas(_areasToRender[], _areasToRenderNonOverlapping);
+            removeOverlappingAreas(_areasToRender, _areasToRenderNonOverlapping);
 
             regenerateMipmaps();
 
@@ -476,7 +476,7 @@ protected:
 
         int numAreas = cast(int)_areasToRenderNonOverlappingTiled.length;
 
-        bool parallelCompositing = true;
+        bool parallelCompositing = numAreas > 1; // no need to wake up thread if only one area to render
 
         if (parallelCompositing)
         {

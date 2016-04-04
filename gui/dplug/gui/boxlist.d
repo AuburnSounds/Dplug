@@ -50,8 +50,9 @@ void boxSubtraction(in box2i A, in box2i C, out box2i D, out box2i E, out box2i 
 
 // Change the list of boxes so that the coverage is the same but none overlaps
 // Every box pushed in filtered are non-intersecting.
+// This may modify boxes.
 // TODO: something better than O(n^2)
-void removeOverlappingAreas(box2i[] boxes, AlignedBuffer!box2i filtered)
+void removeOverlappingAreas(AlignedBuffer!box2i boxes, AlignedBuffer!box2i filtered) nothrow @nogc
 {
     for(int i = 0; i < cast(int)(boxes.length); ++i)
     {
@@ -78,7 +79,8 @@ void removeOverlappingAreas(box2i[] boxes, AlignedBuffer!box2i filtered)
                 // case 1: A contains B, B is removed from the array, and no intersection considered
                 if (A.contains(B))
                 {
-                    boxes = boxes.remove(j); // TODO: remove this allocation
+                    // Remove that box since it has been dealt with
+                    boxes.removeAndReplaceByLastElement(j);
                     j = j - 1;
                     continue;
                 }
@@ -96,13 +98,13 @@ void removeOverlappingAreas(box2i[] boxes, AlignedBuffer!box2i filtered)
                     boxSubtraction(A, C, D, E, F, G);
 
                     if (!D.empty)
-                        boxes ~= D;
+                        boxes.pushBack(D);
                     if (!E.empty)
-                        boxes ~= E;
+                        boxes.pushBack(E);
                     if (!F.empty)
-                        boxes ~= F;
+                        boxes.pushBack(F);
                     if (!G.empty)
-                        boxes ~= G;
+                        boxes.pushBack(G);
 
                     // no need to search for other intersection in A, since its parts have
                     // been pushed
@@ -118,11 +120,11 @@ void removeOverlappingAreas(box2i[] boxes, AlignedBuffer!box2i filtered)
 
 unittest
 {
-    box2i[] bl = [
-        box2i(0, 0, 4, 4),
-        box2i(2, 2, 6, 6),
-        box2i(1, 1, 2, 2)
-    ];
+    auto bl = new AlignedBuffer!box2i();
+    bl.pushBack( box2i(0, 0, 4, 4) );
+    bl.pushBack( box2i(2, 2, 6, 6) );
+    bl.pushBack( box2i(1, 1, 2, 2) );
+
     import std.stdio;
     import dplug.core.alignedbuffer;
 
@@ -131,14 +133,15 @@ unittest
     removeOverlappingAreas(bl, ab);
     assert(ab[] == [ box2i(2, 2, 6, 6), box2i(0, 0, 4, 2), box2i(0, 2, 2, 4) ] );
 
-    assert(bl.boundingBox() == box2i(0, 0, 6, 6));
+    assert(bl[].boundingBox() == box2i(0, 0, 6, 6));
 
     ab.destroy();
+    bl.destroy();
 }
 
 
 // Split each boxes in smaller boxes.
-void tileAreas(in box2i[] areas, int maxWidth, int maxHeight, AlignedBuffer!box2i splitted) nothrow
+void tileAreas(in box2i[] areas, int maxWidth, int maxHeight, AlignedBuffer!box2i splitted) nothrow @nogc
 {
     foreach(area; areas)
     {

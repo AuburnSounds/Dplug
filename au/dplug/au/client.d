@@ -52,6 +52,7 @@ else
     private enum __LP64__ = 0;
 
 
+
 private T getCompParam(T, int Idx, int Num)(ComponentParameters* params)
 {
     /*
@@ -130,8 +131,15 @@ nothrow ComponentResult audioUnitCarbonViewEntry(alias ClientClass)(ComponentPar
     return 0;
 }
 
+enum AUInputType
+{
+    notConnected = 0,
+    directFastProc,
+    directNoFastProc,
+    renderCallback
+}
+
 /// AU client wrapper
-/// Big TODO
 class AUClient
 {
 public:
@@ -188,6 +196,8 @@ public:
         }
 
         _messageQueue.pushBack(makeResetStateMessage(AudioThreadMessage.Type.resetState));
+
+        assessInputConnections();
     }
 
     ~this()
@@ -240,6 +250,49 @@ private:
             return &_outBuses[busIdx];
         return null;
     }
+
+    struct InputBusConnection
+    {
+        void* upstreamObj = null;
+        AudioUnitRenderProc upstreamRenderProc = null;
+
+        AudioUnit upstreamUnit = null;
+        int upstreamBusIdx = 0;
+
+        AURenderCallbackStruct upstreamRenderCallback = AURenderCallbackStruct(null, null);
+
+        bool isConnected() pure const nothrow @nogc
+        {
+            return getInputType() != AUInputType.notConnected;
+        }
+
+        AUInputType getInputType() pure const nothrow @nogc
+        {
+            // AU supports 3 ways to get input from the host (or whoever is upstream).
+            if (upstreamRenderProc != upstreamRenderProc && upstreamObj != null)
+            {
+                // 1: direct input connection with fast render proc (and buffers) supplied by the upstream unit.
+                return AUInputType.directFastProc;
+            }
+            else if (upstreamUnit != null)
+            {
+                // 2: direct input connection with no render proc, buffers supplied by the upstream unit.
+                return AUInputType.directNoFastProc;
+            }
+            else if (upstreamRenderCallback.inputProc)
+            {
+                // 3: no direct connection, render callback, buffers supplied by us.
+                return AUInputType.renderCallback;
+            }
+            else
+            {
+                return AUInputType.notConnected;
+            }
+        }
+    }
+
+    InputBusConnection[] _inBusConnections;
+
 
     //
     // DISPATCHER
@@ -338,7 +391,6 @@ private:
 
             case kAudioUnitGetPropertySelect: // 4
             {
-            //    debugBreak();
                 AudioUnitPropertyID propID = params.getCompParam!(AudioUnitPropertyID, 4, 5);
                 AudioUnitScope scope_ = params.getCompParam!(AudioUnitScope, 3, 5);
                 AudioUnitElement element = params.getCompParam!(AudioUnitElement, 2, 5);
@@ -447,6 +499,11 @@ private:
         return (scope_ == kAudioUnitScope_Global);
     }
 
+    static bool isInputScope(AudioUnitScope scope_) pure nothrow @nogc
+    {
+        return (scope_ == kAudioUnitScope_Input);
+    }
+
     static bool isInputOrGlobalScope(AudioUnitScope scope_) pure nothrow @nogc
     {
         return (scope_ == kAudioUnitScope_Input || scope_ == kAudioUnitScope_Global);
@@ -459,11 +516,14 @@ private:
                                 UInt32* pDataSize, Boolean* pWriteable, void* pData)
     {
         debug printf("GET property %d\n", propID);
-        // TODO
+
         switch(propID)
         {
+
             case kAudioUnitProperty_ClassInfo: // 0
+            {
                 return kAudioUnitErr_InvalidProperty; // TODO?
+            }
 
             case kAudioUnitProperty_MakeConnection: // 1
             {
@@ -722,7 +782,21 @@ private:
             }
 
             case kAudioUnitProperty_SetRenderCallback: // 23
-                return kAudioUnitErr_InvalidProperty; // TODO
+            {
+                if (!isInputScope(scope_))
+                    return kAudioUnitErr_InvalidProperty;
+
+                if (element >= _inBusConnections.length)
+                    return kAudioUnitErr_InvalidProperty;
+
+                InputBusConnection* pInBusConn = &_inBusConnections[element];
+                *pInBusConn = InputBusConnection.init;
+                AURenderCallbackStruct* pCS = cast(AURenderCallbackStruct*) pData;
+                if (pCS.inputProc != null)
+                    pInBusConn.upstreamRenderCallback = *pCS;
+                assessInputConnections();
+                return noErr;
+            }
 
             case kAudioUnitProperty_HostCallbacks: // TODO
                 return kAudioUnitErr_InvalidProperty;
@@ -740,6 +814,35 @@ private:
             default:
                 return kAudioUnitErr_InvalidProperty; // NO-OP, or unsupported
         }
+    }
+
+    // From connection information, transmit to client
+    void assessInputConnections()
+    {
+        foreach (i; 0.._inBuses.length )
+        {
+            BusChannels* pInBus = &_inBuses[i];
+            InputBusConnection* pInBusConn = &_inBusConnections[i];
+
+            pInBus.connected = pInBusConn.isConnected();
+
+            int startChannelIdx = pInBus.plugChannelStartIdx;
+            if (pInBus.connected)
+            {
+                // There's an input connection, so we need to tell the plug to expect however many channels
+                // are in the negotiated host stream format.
+                if (pInBus.numHostChannels < 0)
+                {
+                    // The host set up a connection without specifying how many channels in the stream.
+                    // Assume the host will send all the channels the plugin asks for, and hope for the best.
+                    pInBus.numHostChannels = pInBus.numPlugChannels;
+                }
+
+
+            }
+        }
+        // TODO assign _usedInputs and _usedOutputs, and send a message to audio thread
+        // maybe implement something similar to IPlug
     }
 
     AudioThreadMessage makeResetStateMessage(AudioThreadMessage.Type type) pure const nothrow @nogc
