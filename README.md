@@ -19,11 +19,14 @@ https://auburnsounds.com/blog/2016-02-08_Making-a-Windows-VST-plugin-with-D.html
   * Abstract plugin client interface. Currently implemented once for VST.
 
 ### dplug:host
-  * Abstract plugin host interface. Currently implemented once for VST.
+  * Abstract plugin host interface.
 
 ### dplug:vst
   * VST SDK D bindings
   * VST plugin client
+
+### dplug:au
+  * Audio Unit plugin client (WIP)
 
 ### dplug:window
    * implements windowing for Win32, Cocoa and Carbon
