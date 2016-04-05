@@ -727,9 +727,34 @@ private:
 
             case kAudioUnitProperty_FactoryPresets: // 24
             {
-                printf("TODO kAudioUnitProperty_FactoryPresets\n");
-                // TODO
-                return kAudioUnitErr_InvalidProperty;
+                *pDataSize = CFArrayRef.sizeof;
+                if (pData)
+                {
+                    auto presetBank = _client.presetBank();
+                    int numPresets = presetBank.numPresets();
+
+                    CFMutableArrayRef allPresets = CFArrayCreateMutable(kCFAllocatorDefault, numPresets, &kCFAUPresetArrayCallBacks);
+
+                    if (allPresets == null)
+                        return coreFoundationUnknownErr;
+
+                    for (int presetIndex = 0; presetIndex < numPresets; ++presetIndex)
+                    {
+                        string name = presetBank.preset(presetIndex).name;
+                        CFStrLocal presetName = CFStrLocal.fromString(name);
+
+                        // TODO should preset be 0 based?
+                        CFAUPresetRef newPreset = CFAUPresetCreate(kCFAllocatorDefault, preset, presetName);
+                        if (newPreset != null)
+                        {
+                            CFArrayAppendValue(presetArray, newPreset);
+                            CFAUPresetRelease(newPreset);
+                        }
+                    }
+
+                    *(cast(CFMutableArrayRef*) pData) = allPresets;
+                  }
+                  return noErr;
             }
 
             case kAudioUnitProperty_HostCallbacks: // 27
