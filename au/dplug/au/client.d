@@ -28,6 +28,8 @@ import dplug.core;
 import dplug.client.client;
 import dplug.client.messagequeue;
 
+import dplug.au.dfxutil;
+
 
 template AUEntryPoint(alias ClientClass)
 {
@@ -733,7 +735,8 @@ private:
                     auto presetBank = _client.presetBank();
                     int numPresets = presetBank.numPresets();
 
-                    CFMutableArrayRef allPresets = CFArrayCreateMutable(kCFAllocatorDefault, numPresets, &kCFAUPresetArrayCallBacks);
+                    auto callbacks = getCFAUPresetArrayCallBacks();
+                    CFMutableArrayRef allPresets = CFArrayCreateMutable(kCFAllocatorDefault, numPresets, &callbacks);
 
                     if (allPresets == null)
                         return coreFoundationUnknownErr;
@@ -744,10 +747,10 @@ private:
                         CFStrLocal presetName = CFStrLocal.fromString(name);
 
                         // TODO should preset be 0 based?
-                        CFAUPresetRef newPreset = CFAUPresetCreate(kCFAllocatorDefault, preset, presetName);
+                        CFAUPresetRef newPreset = CFAUPresetCreate(kCFAllocatorDefault, presetIndex, presetName);
                         if (newPreset != null)
                         {
-                            CFArrayAppendValue(presetArray, newPreset);
+                            CFArrayAppendValue(allPresets, newPreset);
                             CFAUPresetRelease(newPreset);
                         }
                     }
