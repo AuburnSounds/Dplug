@@ -603,9 +603,36 @@ private:
                 }
             }
 
-            case kAudioUnitProperty_StreamFormat: // 8
-                printf("TODO kAudioUnitProperty_StreamFormat\n");
-                return kAudioUnitErr_InvalidProperty;
+            case kAudioUnitProperty_StreamFormat: // 8,
+            {
+                BusChannels* pBus = getBus(scope_, element);
+                if (!pBus)
+                {
+                    return kAudioUnitErr_InvalidProperty;
+                }
+
+                *pDataSize = AudioStreamBasicDescription.sizeof;
+                *pWriteable = true;
+                if (pData)
+                {
+                    int nChannels = pBus.numHostChannels;  // Report how many channels the host has connected.
+                    if (nChannels < 0)    // Unless the host hasn't connected any yet, in which case report the default.
+                        nChannels = pBus.numPlugChannels;
+                    AudioStreamBasicDescription* pASBD = cast(AudioStreamBasicDescription*) pData;
+
+                    pASBD.mSampleRate = _sampleRate;
+                    pASBD.mFormatID = dplug.core.CCONST('l', 'p', 'c', 'm');
+                    pASBD.mFormatFlags = kAudioFormatFlagsNativeFloatPacked | kAudioFormatFlagIsNonInterleaved;
+                    pASBD.mFramesPerPacket = 1;
+                    pASBD.mChannelsPerFrame = nChannels;
+                    pASBD.mBitsPerChannel = 8 * AudioSampleType.sizeof;
+                    pASBD.mReserved = 0;
+                    int bytesPerSample = cast(int)(AudioSampleType.sizeof);
+                    pASBD.mBytesPerPacket = bytesPerSample;
+                    pASBD.mBytesPerFrame = bytesPerSample;
+                }
+                return noErr;
+            }
 
             case kAudioUnitProperty_ElementCount: // 11
             {
@@ -1104,99 +1131,3 @@ extern(C) ComponentResult renderProc(void* pPlug,
     return noErr;
 }
 
-// CoreFoundation helpers
-
-struct CFStrLocal
-{
-    CFStringRef parent;
-    alias parent this;
-
-    @disable this();
-    @disable this(this);
-
-    static fromString(string str)
-    {
-        CFStrLocal s = void;
-        s.parent = CFStringCreateWithCString(null, toStringz(str), kCFStringEncodingUTF8);
-        return s;
-    }
-
-    ~this()
-    {
-        CFRelease(parent);
-    }
-}
-
-string copyCFString(CFStringRef cfStr)
-{
-    auto n = CFStringGetLength(cfStr) + 1;
-    char[] buf = new char[n];
-    CFStringGetCString(cfStr, buf.ptr, n, kCFStringEncodingUTF8);
-    return fromStringz(buf.ptr).idup;
-}
-
-void putNumberInDict(CFMutableDictionaryRef pDict, string key, void* pNumber, CFNumberType type)
-{
-    CFStrLocal cfKey = CFStrLocal.fromString(key);
-
-    CFNumberRef pValue = CFNumberCreate(null, type, pNumber);
-    CFDictionarySetValue(pDict, cfKey, pValue);
-    CFRelease(pValue);
-}
-
-void putStrInDict(CFMutableDictionaryRef pDict, string key, string value)
-{
-    CFStrLocal cfKey = CFStrLocal.fromString(key);
-    CFStrLocal cfValue = CFStrLocal.fromString(value);
-    CFDictionarySetValue(pDict, cfKey, cfValue);
-}
-
-void putDataInDict(CFMutableDictionaryRef pDict, string key, ubyte[] pChunk)
-{
-    CFStrLocal cfKey = CFStrLocal.fromString(key);
-
-    CFDataRef pData = CFDataCreate(null, pChunk.ptr, pChunk.length);
-    CFDictionarySetValue(pDict, cfKey, pData);
-    CFRelease(pData);
-}
-
-
-bool getNumberFromDict(CFDictionaryRef pDict, string key, void* pNumber, CFNumberType type)
-{
-    CFStrLocal cfKey = CFStrLocal.fromString(key);
-
-    CFNumberRef pValue = cast(CFNumberRef) CFDictionaryGetValue(pDict, cfKey);
-    if (pValue)
-    {
-        CFNumberGetValue(pValue, type, pNumber);
-        return true;
-    }
-    return false;
-}
-
-bool getStrFromDict(CFDictionaryRef pDict, string key, out string value)
-{
-    CFStrLocal cfKey = CFStrLocal.fromString(key);
-
-    CFStringRef pValue = cast(CFStringRef) CFDictionaryGetValue(pDict, cfKey);
-    if (pValue)
-    {
-        value = copyCFString(pValue);
-        return true;
-    }
-    return false;
-}
-
-bool getDataFromDict(CFDictionaryRef pDict, string key, ubyte[] pChunk)
-{
-    CFStrLocal cfKey = CFStrLocal.fromString(key);
-    CFDataRef pData = cast(CFDataRef) CFDictionaryGetValue(pDict, cfKey);
-    if (pData)
-    {
-        auto n = CFDataGetLength(pData);
-        pChunk.length = n;
-        pChunk[0..n] = CFDataGetBytePtr(pData)[0..n];
-        return true;
-    }
-    return false;
-}
