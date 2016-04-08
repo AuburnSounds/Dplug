@@ -28,6 +28,7 @@ import dplug.core;
 import dplug.client.client;
 import dplug.client.daw;
 import dplug.client.messagequeue;
+import dplug.client.preset;
 
 import dplug.au.dfxutil;
 
@@ -904,41 +905,49 @@ private:
 
                 return kAudioUnitErr_InvalidProperty;
 
-            case kAudioUnitProperty_PresentPreset:
+            case kAudioUnitProperty_ParameterIDName: // 34
+                printf("TODO GET kAudioUnitProperty_ParameterIDName\n");
                 return kAudioUnitErr_InvalidProperty;
 
-            case kAudioUnitProperty_DependentParameters:
+            case kAudioUnitProperty_ParameterClumpName: // 35
+                printf("TODO GET kAudioUnitProperty_ParameterClumpName\n");
                 return kAudioUnitErr_InvalidProperty;
 
-            case kAudioUnitProperty_InputSamplesInOutput:
-                return kAudioUnitErr_InvalidProperty;
-
-            case kAudioUnitProperty_ShouldAllocateBuffer:
-                return kAudioUnitErr_InvalidProperty;
-
-            case kAudioUnitProperty_FrequencyResponse:
-                return kAudioUnitErr_InvalidProperty;
-
-            case kAudioUnitProperty_ParameterHistoryInfo:
-                return kAudioUnitErr_InvalidProperty;
-
-            case kAudioUnitProperty_NickName:
-                return kAudioUnitErr_InvalidProperty;
-
-            case kAudioUnitProperty_OfflineRender:
-                return kAudioUnitErr_InvalidProperty;
-
-            case kAudioUnitProperty_ParameterIDName:
-                return kAudioUnitErr_InvalidProperty;
+            case kAudioUnitProperty_CurrentPreset: // 28
+            case kAudioUnitProperty_PresentPreset: // 36
+            {
+                *pDataSize = AUPreset.sizeof;
+                *pWriteable = true;
+                if (pData)
+                {
+                    auto bank = _client.presetBank();
+                    Preset preset = bank.currentPreset();
+                    AUPreset* pAUPreset = cast(AUPreset*) pData;
+                    pAUPreset.presetNumber = bank.currentPresetIndex();
+                    pAUPreset.presetName = makeCFString(preset.name);
+                }
+                return noErr;
+            }
 
             case kAudioUnitProperty_ParameterStringFromValue:
+                printf("TODO GET kAudioUnitProperty_ParameterStringFromValue\n");
                 return kAudioUnitErr_InvalidProperty;
 
-            case kAudioUnitProperty_ParameterClumpName:
-                return kAudioUnitErr_InvalidProperty;
+            case kMusicDeviceProperty_InstrumentCount:
+            {
+                if (!isGlobalScope(scope_))
+                    return kAudioUnitErr_InvalidScope;
 
-            case kAudioUnitProperty_ParameterValueFromString:
-                return kAudioUnitErr_InvalidProperty;
+                if (_client.isSynth())
+                {
+                    *pDataSize = UInt32.sizeof;
+                    if (pData)
+                        *(cast(UInt32*) pData) = 0; // mono-timbral
+                    return noErr;
+                }
+                else
+                    return kAudioUnitErr_InvalidProperty;
+            }
 
             default:
                 return kAudioUnitErr_InvalidProperty;
@@ -1025,8 +1034,11 @@ private:
                 return kAudioUnitErr_InvalidProperty;
 
             case kAudioUnitProperty_MaximumFramesPerSlice: // TODO
-                printf("TODO kAudioUnitProperty_MaximumFramesPerSlice\n");
-                return kAudioUnitErr_InvalidProperty;
+            {
+                _maxFrames = *(cast(uint*)pData);
+                _messageQueue.pushBack(makeResetStateMessage(AudioThreadMessage.Type.resetState));
+                return noErr;
+            }
 
             case kAudioUnitProperty_BypassEffect: // 21
             {
@@ -1057,9 +1069,15 @@ private:
 
             case kAudioUnitProperty_CurrentPreset: // 28
             case kAudioUnitProperty_PresentPreset: // 36
-                printf("TODO kAudioUnitProperty_CurrentPreset\n");
-                printf("TODO kAudioUnitProperty_PresentPreset\n");
-                return kAudioUnitErr_InvalidProperty; // TODO
+            {
+                int presetIndex = (cast(AUPreset*) pData).presetNumber;
+
+                PresetBank bank = _client.presetBank();
+                if (bank.isValidPresetIndex(presetIndex))
+                    bank.loadPresetFromHost(presetIndex);
+
+                return noErr;
+            }
 
             case kAudioUnitProperty_OfflineRender:
                 return noErr; // 37
