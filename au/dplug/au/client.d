@@ -26,6 +26,7 @@ import gfm.core;
 import dplug.core;
 
 import dplug.client.client;
+import dplug.client.daw;
 import dplug.client.messagequeue;
 
 import dplug.au.dfxutil;
@@ -111,7 +112,6 @@ nothrow ComponentResult audioUnitCarbonViewEntry(alias ClientClass)(ComponentPar
 {
     debug printf("TODO audioUnitCarbonViewEntry\n");
 
-    // TODO
     return 0;
 }
 
@@ -124,7 +124,7 @@ enum AUInputType
 }
 
 /// AU client wrapper
-class AUClient
+class AUClient : IHostCommand
 {
 public:
 
@@ -181,6 +181,9 @@ public:
 
         _messageQueue.pushBack(makeResetStateMessage(AudioThreadMessage.Type.resetState));
 
+        // Implements IHostCommand itself
+        client.setHostCommand(this);
+
         assessInputConnections();
     }
 
@@ -189,6 +192,8 @@ public:
         debug ensureNotInGC("dplug.au.AUClient");
         _client.destroy();
     }
+
+
 
 private:
     ComponentInstance _componentInstance;
@@ -205,6 +210,17 @@ private:
     // When true, buffers gets bypassed
     // TODO: implement bypass
     bool _bypassed;
+
+    //
+    // Property listeners
+    //
+    struct PropertyListener
+    {
+        AudioUnitPropertyID mPropID;
+        AudioUnitPropertyListenerProc mListenerProc;
+        void* mProcArgs;
+    }
+    PropertyListener[] _propertyListeners;
 
     // Every stereo pair of plugin input or output is a bus.
     // Buses can have zero host channels if the host hasn't connected the bus at all,
@@ -287,9 +303,10 @@ private:
     {
         // IPlug locks here.
         // Do we need to do the same?
-
+        //debug printf("select %d ", select);
         switch(select)
         {
+
             case kComponentVersionSelect: // -4
             {
                 int versionMMPR = _client.getPluginVersion();
@@ -321,10 +338,9 @@ private:
                     case kAudioUnitResetSelect:
                     case kAudioUnitRenderSelect:
 
-                    /*
                     case kAudioUnitAddPropertyListenerSelect:
                     case kAudioUnitRemovePropertyListenerSelect:
-*/
+
                     case kAudioUnitAddRenderNotifySelect:
                     case kAudioUnitRemoveRenderNotifySelect:
                         return 1;
@@ -402,19 +418,65 @@ private:
             }
 
             case kAudioUnitAddPropertyListenerSelect: // 6
-                printf("TODO kAudioUnitAddPropertyListenerSelect\n");
-                // TODO
-                return badComponentSelector;
+            {
+                PropertyListener listener;
+                listener.mPropID = params.getCompParam!(AudioUnitPropertyID, 2, 3);
+                listener.mListenerProc = params.getCompParam!(AudioUnitPropertyListenerProc, 1, 3);
+                listener.mProcArgs = params.getCompParam!(void*, 0, 3);
+                int n = cast(int)(_propertyListeners.length);
+                for (int i = 0; i < n; ++i)
+                {
+                    PropertyListener* pListener = &_propertyListeners[i];
+                    if (listener.mPropID == pListener.mPropID && listener.mListenerProc == pListener.mListenerProc)
+                    {
+                        return noErr; // already in
+                    }
+                }
+                _propertyListeners ~= listener;
+                return noErr;
+            }
 
             case kAudioUnitRemovePropertyListenerSelect: // 7
-                printf("TODO kAudioUnitRemovePropertyListenerSelect\n");
-                // TODO
-                return badComponentSelector;
+            {
+                PropertyListener listener;
+                listener.mPropID = params.getCompParam!(AudioUnitPropertyID, 1, 2);
+                listener.mListenerProc = params.getCompParam!(AudioUnitPropertyListenerProc, 0, 2);
+                int n = cast(int)(_propertyListeners.length);
+                for (int i = 0; i < n; ++i)
+                {
+                    PropertyListener* pListener = &_propertyListeners[i];
+                    if (listener.mPropID == pListener.mPropID
+                        && listener.mListenerProc == pListener.mListenerProc)
+                    {
+                        _propertyListeners[i] = _propertyListeners[$-1];
+                        _propertyListeners.length = _propertyListeners.length - 1;
+                        break;
+                    }
+                }
+                return noErr;
+            }
 
-            case kAudioUnitRemovePropertyListenerWithUserDataSelect: // 8
-                printf("TODO kAudioUnitRemovePropertyListenerWithUserDataSelect\n");
-                // TODO
-                return badComponentSelector;
+            case kAudioUnitRemovePropertyListenerWithUserDataSelect:
+            {
+                PropertyListener listener;
+                listener.mPropID = params.getCompParam!(AudioUnitPropertyID, 1, 2);
+                listener.mListenerProc = params.getCompParam!(AudioUnitPropertyListenerProc, 0, 2);
+                listener.mProcArgs = params.getCompParam!(void*, 0, 3);
+                int n = cast(int)(_propertyListeners.length);
+                for (int i = 0; i < n; ++i)
+                {
+                    PropertyListener* pListener = &_propertyListeners[i];
+                    if (listener.mPropID == pListener.mPropID
+                        && listener.mListenerProc == pListener.mListenerProc
+                        && listener.mProcArgs == pListener.mProcArgs)
+                    {
+                        _propertyListeners[i] = _propertyListeners[$-1];
+                        _propertyListeners.length = _propertyListeners.length - 1;
+                        break;
+                    }
+                }
+                return noErr;
+            }
 
             case kAudioUnitAddRenderNotifySelect: // 9
             {
@@ -516,6 +578,11 @@ private:
         return (scope_ == kAudioUnitScope_Input || scope_ == kAudioUnitScope_Global);
     }
 
+    static bool isInputOrOuputScope(AudioUnitScope scope_) pure nothrow @nogc
+    {
+        return (scope_ == kAudioUnitScope_Input || scope_ == kAudioUnitScope_Output);
+    }
+
     //
     // GET PROPERTY
     //
@@ -542,7 +609,7 @@ private:
             case kAudioUnitProperty_MakeConnection: // 1
             {
                 if (!isInputOrGlobalScope(scope_))
-                    return kAudioUnitErr_InvalidProperty;
+                    return kAudioUnitErr_InvalidScope;
                 *pDataSize = cast(uint)AudioUnitConnection.sizeof;
                 *pWriteable = true;
                 return noErr;
@@ -607,9 +674,7 @@ private:
             {
                 BusChannels* pBus = getBus(scope_, element);
                 if (!pBus)
-                {
-                    return kAudioUnitErr_InvalidProperty;
-                }
+                    return kAudioUnitErr_InvalidElement;
 
                 *pDataSize = AudioStreamBasicDescription.sizeof;
                 *pWriteable = true;
@@ -654,7 +719,7 @@ private:
             case kAudioUnitProperty_Latency: // 12
             {
                 if (!isGlobalScope(scope_))
-                    return kAudioUnitErr_InvalidProperty;
+                    return kAudioUnitErr_InvalidScope;
                 *pDataSize = double.sizeof;
                 if (pData)
                 {
@@ -667,7 +732,7 @@ private:
             case kAudioUnitProperty_SupportedNumChannels: // 13
             {
                 if (!isGlobalScope(scope_))
-                    return kAudioUnitErr_InvalidProperty;
+                    return kAudioUnitErr_InvalidScope;
 
                 LegalIO[] legalIOs = _client.legalIOs();
                 *pDataSize = cast(uint)( legalIOs.length * AUChannelInfo.sizeof );
@@ -687,7 +752,7 @@ private:
             case kAudioUnitProperty_MaximumFramesPerSlice: // 14
             {
                 if (!isGlobalScope(scope_))
-                    return kAudioUnitErr_InvalidProperty;
+                    return kAudioUnitErr_InvalidScope;
                 *pDataSize = uint.sizeof;
                 *pWriteable = true;
                 if (pData)
@@ -708,23 +773,37 @@ private:
             case kAudioUnitProperty_AudioChannelLayout:
                 printf("TODO kAudioUnitProperty_AudioChannelLayout\n");
                 // TODO: IPlug says "TODO: this seems wrong but works"
-                return kAudioUnitErr_InvalidPropertyValue;
+                return kAudioUnitErr_InvalidProperty;
 
-            case kAudioUnitProperty_TailTime: // 20
+            case kAudioUnitProperty_TailTime:                    // 20,   // listenable
             {
+             //   return kAudioUnitErr_InvalidPropertyValue;
+
+                // TODO: this doesn't pass auval
+
+     /*           import std.stdio;
+                writeln("")
+*/
+
                 if (!isGlobalScope(scope_))
-                    return kAudioUnitErr_InvalidPropertyValue;
-                float tailSize = _client.tailSizeInSeconds();
-                *pDataSize = double.sizeof;
+                    return kAudioUnitErr_InvalidScope;
+/*
+                double tailSize = _client.tailSizeInSeconds();
+*/
+                *pWriteable = false;
+                *pDataSize = Float64.sizeof;
+
                 if (pData)
-                    *(cast(double*) pData) = tailSize;
+                {
+                    *(cast(Float64*) pData) = 0.0;//cast(double) tailSize;
+                }
                 return noErr;
             }
 
             case kAudioUnitProperty_BypassEffect: // 21
             {
                 if (!isGlobalScope(scope_))
-                    return kAudioUnitErr_InvalidPropertyValue;
+                    return kAudioUnitErr_InvalidScope;
                 *pWriteable = true;
                 *pDataSize = UInt32.sizeof;
                 if (pData)
@@ -735,8 +814,9 @@ private:
             case kAudioUnitProperty_LastRenderError:  // 22
             {
                 if(!isGlobalScope(scope_))
-                    return kAudioUnitErr_InvalidProperty;
+                    return kAudioUnitErr_InvalidScope;
                 *pDataSize = OSStatus.sizeof;
+                *pWriteable = false;
                 if (pData)
                     *(cast(OSStatus*) pData) = noErr;
                 return noErr;
@@ -746,9 +826,9 @@ private:
             {
                 // Not sure why it's not writing anything
                 if(!isInputOrGlobalScope(scope_))
-                    return kAudioUnitErr_InvalidProperty;
+                    return kAudioUnitErr_InvalidScope;
                 if (element >= _inBuses.length)
-                    return kAudioUnitErr_InvalidProperty;
+                    return kAudioUnitErr_InvalidElement;
                 *pDataSize = AURenderCallbackStruct.sizeof;
                 *pWriteable = true;
                 return noErr;
@@ -794,9 +874,22 @@ private:
             }
 
             case kAudioUnitProperty_ElementName: // 30
-                printf("TODO kAudioUnitProperty_ElementName\n");
-                // TODO, return name of bus
-                return kAudioUnitErr_InvalidProperty;
+            {
+                *pDataSize = cast(uint)(CFStringRef.sizeof);
+                *pWriteable = false;
+                if (!isInputOrOuputScope(scope_))
+                    return kAudioUnitErr_InvalidScope;
+                BusChannels* pBus = getBus(scope_, element);
+                if (!pBus)
+                    return kAudioUnitErr_InvalidElement;
+
+                if (pData)
+                {
+                    *cast(CFStringRef *)pData = makeCFString(pBus.label);
+                }
+
+                return noErr;
+            }
 
             case kAudioUnitProperty_CocoaUI: // 31
                 printf("TODO kAudioUnitProperty_CocoaUI\n");
@@ -804,10 +897,11 @@ private:
                 return kAudioUnitErr_InvalidProperty; // no UI
 
             case kAudioUnitProperty_SupportedChannelLayoutTags:
+
                 // kAudioUnitProperty_SupportedChannelLayoutTags
                 // is only needed for multi-output bus instruments
-                // TODO when intruments are to be supported
-                printf("TODO kAudioUnitProperty_SupportedChannelLayoutTags\n");
+                // TODO when multi-output instruments are to be supported
+
                 return kAudioUnitErr_InvalidProperty;
 
             case kAudioUnitProperty_PresentPreset:
@@ -854,8 +948,7 @@ private:
     ComponentResult setProperty(AudioUnitPropertyID propID, AudioUnitScope scope_, AudioUnitElement element,
                                 UInt32* pDataSize, const(void)* pData)
     {
-        // TODO
-        //InformListeners(propID, scope);s
+        informListeners(propID, scope_);
 
         //debug printf("SET property %d\n", propID);
 
@@ -867,11 +960,11 @@ private:
             case kAudioUnitProperty_MakeConnection: // 1
             {
                 if (!isInputOrGlobalScope(scope_))
-                    return kAudioUnitErr_InvalidProperty;
+                    return kAudioUnitErr_InvalidScope;
 
                 AudioUnitConnection* pAUC = cast(AudioUnitConnection*) pData;
                 if (pAUC.destInputNumber >= _inBusConnections.length)
-                    return kAudioUnitErr_InvalidProperty;
+                    return kAudioUnitErr_InvalidElement;
 
                 InputBusConnection* pInBusConn = &_inBusConnections[pAUC.destInputNumber];
                 *pInBusConn = InputBusConnection.init;
@@ -944,10 +1037,10 @@ private:
             case kAudioUnitProperty_SetRenderCallback: // 23
             {
                 if (!isInputScope(scope_))
-                    return kAudioUnitErr_InvalidProperty;
+                    return kAudioUnitErr_InvalidScope;
 
                 if (element >= _inBusConnections.length)
-                    return kAudioUnitErr_InvalidProperty;
+                    return kAudioUnitErr_InvalidElement;
 
                 InputBusConnection* pInBusConn = &_inBusConnections[element];
                 *pInBusConn = InputBusConnection.init;
@@ -971,9 +1064,20 @@ private:
             case kAudioUnitProperty_OfflineRender:
                 return noErr; // 37
 
-            case kAudioUnitProperty_AUHostIdentifier: // TODO
-                printf("TODO kAudioUnitProperty_AUHostIdentifier\n");
-                return kAudioUnitErr_InvalidProperty;
+            case kAudioUnitProperty_AUHostIdentifier:            // 46,
+            {
+                AUHostIdentifier* pHostID = cast(AUHostIdentifier*) pData;
+                _daw = identifyDAW( toStringz(copyCFString(pHostID.hostName)) );
+
+                /*
+                int hostVer = (pHostID->hostVersion.majorRev << 16)
+                        + ((pHostID->hostVersion.minorAndBugRev & 0xF0) << 4)
+                        + ((pHostID->hostVersion.minorAndBugRev & 0x0F));
+                        */
+                return noErr;
+            }
+
+
 
             default:
                 return kAudioUnitErr_InvalidProperty; // NO-OP, or unsupported
@@ -1079,6 +1183,44 @@ private:
         putDataInDict(pDict, kAUPresetDataKey, state);
         return noErr;
     }
+
+    void informListeners(AudioUnitPropertyID propID, AudioUnitScope scope_)
+    {
+        foreach (ref listener; _propertyListeners)
+            if (listener.mPropID == propID)
+                listener.mListenerProc(listener.mProcArgs, _componentInstance, propID, scope_, 0); // always zero?
+    }
+
+    // IHostCommand
+    public
+    {
+        override void beginParamEdit(int paramIndex)
+        {
+            // TODO
+        }
+
+        override void paramAutomate(int paramIndex, float value)
+        {
+            // TODO
+        }
+
+        override void endParamEdit(int paramIndex)
+        {
+            // TODO
+        }
+
+        override bool requestResize(int width, int height)
+        {
+            return false; // TODO implement for AU
+        }
+
+        DAW _daw = DAW.Unknown;
+
+        override DAW getDAW()
+        {
+            return _daw;
+        }
+    }
 }
 
 
@@ -1130,4 +1272,5 @@ extern(C) ComponentResult renderProc(void* pPlug,
 
     return noErr;
 }
+
 

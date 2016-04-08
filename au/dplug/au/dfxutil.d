@@ -201,7 +201,7 @@ struct CFStrLocal
     static fromString(string str) nothrow
     {
         CFStrLocal s = void;
-        s.parent = CFStringCreateWithCString(null, toStringz(str), kCFStringEncodingUTF8);
+        s.parent = makeCFString(str);
         return s;
     }
 
@@ -209,6 +209,11 @@ struct CFStrLocal
     {
         CFRelease(parent);
     }
+}
+
+CFStringRef makeCFString(string str) nothrow
+{
+    return CFStringCreateWithCString(null, toStringz(str), kCFStringEncodingUTF8);
 }
 
 string copyCFString(CFStringRef cfStr) nothrow
