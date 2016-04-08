@@ -19,6 +19,7 @@ module dplug.au.client;
 import core.stdc.stdio;
 import core.stdc.config;
 
+import std.algorithm;
 import std.string;
 
 import derelict.carbon;
@@ -146,6 +147,7 @@ public:
         _maxFrames = 128;
         _maxFramesInProcess = _client.maxFramesInProcess();
         _bypassed = false;
+        _active = false;
 
         _usedInputs = _maxInputs;
         _usedOutputs = _maxOutputs;
@@ -199,6 +201,7 @@ public:
 private:
     ComponentInstance _componentInstance;
     Client _client;
+    HostCallbackInfo _hostCallbacks;
     AudioThreadQueue _messageQueue;
 
     int _maxInputs, _maxOutputs;
@@ -211,6 +214,8 @@ private:
     // When true, buffers gets bypassed
     // TODO: implement bypass
     bool _bypassed;
+
+    bool _active;
 
     //
     // Property listeners
@@ -359,6 +364,7 @@ private:
 
             case kAudioUnitInitializeSelect: // 1
             {
+                _active = true;
                 // TODO: should reset parameter values?
 
                 // Audio processing was switched on.
@@ -368,6 +374,7 @@ private:
 
             case kAudioUnitUninitializeSelect: // 2
             {
+                _active = false;
                 // Nothing to do here
                 return noErr;
             }
@@ -687,7 +694,7 @@ private:
                     AudioStreamBasicDescription* pASBD = cast(AudioStreamBasicDescription*) pData;
 
                     pASBD.mSampleRate = _sampleRate;
-                    pASBD.mFormatID = dplug.core.CCONST('l', 'p', 'c', 'm');
+                    pASBD.mFormatID = kAudioFormatLinearPCM;
                     pASBD.mFormatFlags = kAudioFormatFlagsNativeFloatPacked | kAudioFormatFlagIsNonInterleaved;
                     pASBD.mFramesPerPacket = 1;
                     pASBD.mChannelsPerFrame = nChannels;
@@ -1029,11 +1036,42 @@ private:
                 return noErr;
             }
 
-            case kAudioUnitProperty_StreamFormat: // TODO
-                printf("TODO kAudioUnitProperty_StreamFormat\n");
-                return kAudioUnitErr_InvalidProperty;
+            case kAudioUnitProperty_StreamFormat: // 8// 8,
+            {
+                AudioStreamBasicDescription* pASBD = cast(AudioStreamBasicDescription*) pData;
+                int nHostChannels = pASBD.mChannelsPerFrame;
+                BusChannels* pBus = getBus(scope_, element);
+                if (!pBus)
+                {
+                    return kAudioUnitErr_InvalidElement;
+                }
+                pBus.numHostChannels = 0;
+                // The connection is OK if the plugin expects the same number of channels as the host is attempting to connect,
+                // or if the plugin supports mono channels (meaning it's flexible about how many inputs to expect)
+                // and the plugin supports at least as many channels as the host is attempting to connect.
+                bool moreThanOneChannel = (nHostChannels > 0);
+                bool isLegalIO = checkLegalIO(scope_, element, nHostChannels);
+                bool compatibleFormat = (pASBD.mFormatID == kAudioFormatLinearPCM) && (pASBD.mFormatFlags & kAudioFormatFlagsNativeFloatPacked);
+                bool connectionOK = moreThanOneChannel && isLegalIO && compatibleFormat;
 
-            case kAudioUnitProperty_MaximumFramesPerSlice: // TODO
+                // Interleaved not supported here
+
+                if (connectionOK)
+                {
+                    pBus.numHostChannels = nHostChannels;
+
+                    // Eventually change sample rate
+                    if (pASBD.mSampleRate > 0.0)
+                    {
+                        _sampleRate = pASBD.mSampleRate;
+                        _messageQueue.pushBack(makeResetStateMessage(AudioThreadMessage.Type.resetState));
+                    }
+                }
+                assessInputConnections();
+                return (connectionOK ? noErr : kAudioUnitErr_InvalidProperty);
+            }
+
+            case kAudioUnitProperty_MaximumFramesPerSlice:
             {
                 _maxFrames = *(cast(uint*)pData);
                 _messageQueue.pushBack(makeResetStateMessage(AudioThreadMessage.Type.resetState));
@@ -1063,9 +1101,13 @@ private:
                 return noErr;
             }
 
-            case kAudioUnitProperty_HostCallbacks: // TODO
-                printf("TODO kAudioUnitProperty_HostCallbacks\n");
-                return kAudioUnitErr_InvalidProperty;
+            case kAudioUnitProperty_HostCallbacks:
+            {
+                if (!isInputScope(scope_))
+                    return kAudioUnitScope_Global;
+                _hostCallbacks = *(cast(HostCallbackInfo*)pData);
+                return noErr;
+            }
 
             case kAudioUnitProperty_CurrentPreset: // 28
             case kAudioUnitProperty_PresentPreset: // 36
@@ -1127,6 +1169,48 @@ private:
         }
         // TODO assign _usedInputs and _usedOutputs, and send a message to audio thread
         // maybe implement something similar to IPlug
+    }
+
+    bool checkLegalIO(AudioUnitScope scope_, int busIdx, int nChannels)
+    {
+        assert(scope_ == kAudioUnitScope_Input || scope_ == kAudioUnitScope_Output);
+        if (scope_ == kAudioUnitScope_Input)
+        {
+            int nIn = max(numHostChannelsConnected(_inBuses, busIdx), 0);
+            int nOut = _active ? numHostChannelsConnected(_outBuses) : -1;
+            return _client.isLegalIO(nIn + nChannels, nOut);
+        }
+        else
+        {
+            int nIn = _active ? numHostChannelsConnected(_inBuses) : -1;
+            int nOut = max(numHostChannelsConnected(_outBuses, busIdx), 0);
+            return _client.isLegalIO(nIn, nOut + nChannels);
+        }
+    }
+
+    static int numHostChannelsConnected(BusChannels[] pBuses, int excludeIdx = -1) pure nothrow @nogc
+    {
+        bool init = false;
+        int nCh = 0;
+        int n = cast(int)pBuses.length;
+
+        for (int i = 0; i < n; ++i)
+        {
+            if (i != excludeIdx) // -1 => no bus excluded
+            {
+                int nHostChannels = pBuses[i].numHostChannels;
+                if (nHostChannels >= 0)
+                {
+                    nCh += nHostChannels;
+                    init = true;
+                }
+            }
+        }
+
+        if (init)
+            return nCh;
+        else
+            return -1;
     }
 
     AudioThreadMessage makeResetStateMessage(AudioThreadMessage.Type type) pure const nothrow @nogc
@@ -1199,6 +1283,7 @@ private:
         putStrInDict(pDict, kAUPresetNameKey, presetBank.currentPreset().name);
         ubyte[] state = presetBank.getBankChunk();
         putDataInDict(pDict, kAUPresetDataKey, state);
+        *ppPropList = pDict;
         return noErr;
     }
 

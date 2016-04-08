@@ -209,6 +209,24 @@ public:
         return _legalIOs;
     }
 
+    /// Returns: true if the following I/O combination is a legal one.
+    ///          < 0 means "do not check"
+    final bool isLegalIO(int numInputChannels, int numOutputChannels) pure const nothrow @nogc
+    {
+        foreach(io; _legalIOs)
+            if  ( ( (numInputChannels < 0)
+                    ||
+                    (io.numInputChannels == numInputChannels) )
+                  &&
+                  ( (numOutputChannels < 0)
+                    ||
+                    (io.numOutputChannels == numOutputChannels) )
+                )
+                return true;
+
+        return false;
+    }
+
     /// Returns: Array of presets.
     final PresetBank presetBank() nothrow @nogc
     {
