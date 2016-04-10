@@ -257,28 +257,6 @@ public:
         return index >= 0 && index < maxOutputs();
     }
 
-    /// Sets the number of used input channels.
-    final bool setNumUsedInputs(int numInputs) nothrow @nogc
-    {
-        int max = maxInputs();
-        if (numInputs > max)
-            return false;
-        for (int i = 0; i < max; ++i)
-            _inputPins[i]._isConnected = (i < numInputs);
-        return true;
-    }
-
-    /// Sets the number of used output channels.
-    final bool setNumUsedOutputs(int numOutputs) nothrow @nogc
-    {
-        int max = maxOutputs();
-        if (numOutputs > max)
-            return false;
-        for (int i = 0; i < max; ++i)
-            _outputPins[i]._isConnected = (i < numOutputs);
-        return true;
-    }
-
     /// Override this methods to implement a GUI.
     final void openGUI(void* parentInfo)
     {

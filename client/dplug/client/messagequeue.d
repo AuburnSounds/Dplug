@@ -18,7 +18,6 @@ struct AudioThreadMessage
     enum Type
     {
         resetState, // reset plugin state, set samplerate and buffer size (samplerate = fParam, buffersize in frames = iParam)
-        changedIO,  // number of inputs/outputs changes (num. inputs = iParam, num. outputs = iParam2)
         midi
     }
 

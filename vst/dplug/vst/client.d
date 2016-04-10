@@ -648,7 +648,7 @@ private:
                     if (_usedOutputs > _maxOutputs)
                         _usedOutputs = _maxOutputs;
 
-                    _messageQueue.pushBack(makeResetStateMessage(AudioThreadMessage.Type.changedIO));
+                    _messageQueue.pushBack(makeResetStateMessage(AudioThreadMessage.Type.resetState));
 
                     return 0;
                 }
@@ -759,17 +759,6 @@ private:
         {
             final switch(msg.type) with (AudioThreadMessage.Type)
             {
-                case changedIO:
-                {
-                    bool success;
-                    success = _client.setNumUsedInputs(msg.usedInputs);
-                    assert(success);
-                    success = _client.setNumUsedOutputs(msg.usedOutputs);
-                    assert(success);
-
-                    goto case resetState; // chaning the number of channels probably need to reset state too
-                }
-
                 case resetState:
                     resizeScratchBuffers(msg.maxFrames);
 
@@ -794,9 +783,6 @@ private:
         alias bypassNogc = void delegate() @nogc nothrow;
         bypassNogc proc = cast(bypassNogc)&processMessages;
         proc();
-
-        if (sampleFrames > _maxFrames)
-            unrecoverableError(); // simply crash the audio thread if buffer is above the maximum size
     }
 
 
@@ -1096,21 +1082,6 @@ extern(C) private nothrow
         }
     }
 }
-
-// Copy source into dest.
-// dest must contain room for maxChars characters
-// A zero-byte character is then appended.
-void stringNCopy(char* dest, size_t maxChars, string source) nothrow @nogc
-{
-    if (maxChars == 0)
-        return;
-
-    size_t max = maxChars < source.length ? maxChars - 1 : source.length;
-    for (int i = 0; i < max; ++i)
-        dest[i] = source[i];
-    dest[max] = '\0';
-}
-
 
 /// Access to VST host from the VST client perspective.
 /// The IHostCommand subset is accessible from the plugin client with no knowledge of the format

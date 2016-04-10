@@ -30,8 +30,16 @@ import dplug.client.client;
 import dplug.client.daw;
 import dplug.client.messagequeue;
 import dplug.client.preset;
+import dplug.client.params;
 
 import dplug.au.dfxutil;
+
+// Difference with IPlug
+// - no support for parameters group
+// - no support for multi-output instruments
+// - no support for MIDI
+// - no support for UI resize
+// TODO: no thread safety yet!
 
 
 template AUEntryPoint(alias ClientClass)
@@ -146,11 +154,27 @@ public:
         _sampleRate = 44100.0f;
         _maxFrames = 128;
         _maxFramesInProcess = _client.maxFramesInProcess();
+        _maxFramesAudioThreadView = 0;
         _bypassed = false;
         _active = false;
 
         _usedInputs = _maxInputs;
         _usedOutputs = _maxOutputs;
+
+        _inputScratchBuffer.length = _maxInputs;
+        _outputScratchBuffer.length = _maxOutputs;
+
+        for (int i = 0; i < _maxInputs; ++i)
+            _inputScratchBuffer[i] = new AlignedBuffer!float();
+
+        for (int i = 0; i < _maxOutputs; ++i)
+            _outputScratchBuffer[i] = new AlignedBuffer!float();
+
+        _zeroesBuffer = new AlignedBuffer!float();
+
+        _inputPointers.length = _maxInputs;
+        _outputPointers.length = _maxOutputs;
+
 
         // Create input buses
         int numInputBuses = (_maxInputs + 1) / 2;
@@ -194,9 +218,14 @@ public:
     {
         debug ensureNotInGC("dplug.au.AUClient");
         _client.destroy();
+
+        for (int i = 0; i < _maxInputs; ++i)
+            _inputScratchBuffer[i].destroy();
+
+        for (int i = 0; i < _maxOutputs; ++i)
+            _outputScratchBuffer[i].destroy();
+        _zeroesBuffer.destroy();
     }
-
-
 
 private:
     ComponentInstance _componentInstance;
@@ -210,23 +239,39 @@ private:
     float _sampleRate;
     int _maxFrames;
     int _maxFramesInProcess;
+    int _maxFramesAudioThreadView; // like _maxFrames, but from audio thread POV
+
+    double _lastRenderTimestamp = double.nan;
 
     // When true, buffers gets bypassed
-    // TODO: implement bypass
     bool _bypassed;
 
     bool _active;
 
+    AlignedBuffer!float[] _inputScratchBuffer;  // input buffer, one per possible input
+    AlignedBuffer!float[] _outputScratchBuffer; // input buffer, one per output
+    AlignedBuffer!float   _zeroesBuffer;        // used for disconnected inputs
+    float*[] _inputPointers;  // where processAudio will take its audio input, one per possible input
+    float*[] _outputPointers; // where processAudio will output audio, one per possible output
+
+
     //
     // Property listeners
     //
-    struct PropertyListener
+    static struct PropertyListener
     {
         AudioUnitPropertyID mPropID;
         AudioUnitPropertyListenerProc mListenerProc;
         void* mProcArgs;
     }
     PropertyListener[] _propertyListeners;
+
+    enum MaxIOChannels = 128;
+    static struct BufferList
+    {
+        int mNumberBuffers;
+        AudioBuffer[MaxIOChannels] mBuffers;
+    }
 
     // Every stereo pair of plugin input or output is a bus.
     // Buses can have zero host channels if the host hasn't connected the bus at all,
@@ -256,7 +301,7 @@ private:
         return null;
     }
 
-    struct InputBusConnection
+    static struct InputBusConnection
     {
         void* upstreamObj = null;
         AudioUnitRenderProc upstreamRenderProc = null;
@@ -294,12 +339,59 @@ private:
                 return AUInputType.notConnected;
             }
         }
+
+        ComponentResult callUpstreamRender(AudioUnitRenderActionFlags* flags,
+                                           const(AudioTimeStamp)* pTimestamp,
+                                           uint nFrames,
+                                           AudioBufferList* pOutBufList,
+                                           int inputBusIdx) nothrow @nogc
+        {
+            switch (getInputType()) with (AUInputType)
+            {
+                case directFastProc:
+                {
+                    return upstreamRenderProc(upstreamObj, flags, pTimestamp, upstreamBusIdx, nFrames, pOutBufList);
+                }
+
+                case directNoFastProc:
+                {
+                    return AudioUnitRender(upstreamUnit, flags, pTimestamp, upstreamBusIdx, nFrames, pOutBufList);
+                }
+
+                case renderCallback:
+                {
+                    return callRenderCallback(upstreamRenderCallback, flags, pTimestamp, inputBusIdx, nFrames, pOutBufList);
+                }
+                default:
+                    return noErr;
+            }
+        }
     }
 
     InputBusConnection[] _inBusConnections;
 
 
     AURenderCallbackStruct[] _renderNotify;
+
+
+    // <scratch-buffers>
+
+    /// Resize scratch buffers according to maximum block size.
+    void resizeScratchBuffers(int nFrames) nothrow @nogc
+    {
+        for (int i = 0; i < _maxInputs; ++i)
+            _inputScratchBuffer[i].resize(nFrames);
+
+        for (int i = 0; i < _maxOutputs; ++i)
+            _outputScratchBuffer[i].resize(nFrames);
+
+        _zeroesBuffer.resize(nFrames);
+        _zeroesBuffer.fill(0);
+    }
+
+    // </scratch-buffers>
+
+
 
 
     //
@@ -571,26 +663,6 @@ private:
         }
     }
 
-    static bool isGlobalScope(AudioUnitScope scope_) pure nothrow @nogc
-    {
-        return (scope_ == kAudioUnitScope_Global);
-    }
-
-    static bool isInputScope(AudioUnitScope scope_) pure nothrow @nogc
-    {
-        return (scope_ == kAudioUnitScope_Input);
-    }
-
-    static bool isInputOrGlobalScope(AudioUnitScope scope_) pure nothrow @nogc
-    {
-        return (scope_ == kAudioUnitScope_Input || scope_ == kAudioUnitScope_Global);
-    }
-
-    static bool isInputOrOuputScope(AudioUnitScope scope_) pure nothrow @nogc
-    {
-        return (scope_ == kAudioUnitScope_Input || scope_ == kAudioUnitScope_Output);
-    }
-
     //
     // GET PROPERTY
     //
@@ -647,9 +719,69 @@ private:
             }
 
             case kAudioUnitProperty_ParameterInfo: // 4
-                printf("TODO kAudioUnitProperty_ParameterInfo\n");
-                // TODO
-                return kAudioUnitErr_InvalidProperty;
+            {
+                if (!isGlobalScope(scope_))
+                    return kAudioUnitErr_InvalidScope;
+                if (!_client.isValidParamIndex(element))
+                    return kAudioUnitErr_InvalidElement;
+
+                *pDataSize = AudioUnitParameterInfo.sizeof;
+                if (pData)
+                {
+                    AudioUnitParameterInfo* pInfo = cast(AudioUnitParameterInfo*)pData;
+                    *pInfo = AudioUnitParameterInfo.init;
+
+                    // every parameter in dplug:
+                    //  - is readable
+                    //  - is writeable (automatable)
+                    //  - has a name, that must be CFRelease'd
+                    pInfo.flags = kAudioUnitParameterFlag_CFNameRelease |
+                                  kAudioUnitParameterFlag_HasCFNameString |
+                                  kAudioUnitParameterFlag_IsReadable |
+                                  kAudioUnitParameterFlag_IsWritable;
+
+                    Parameter p = _client.param(element);
+                    pInfo.cfNameString = makeCFString(p.name);
+                    stringNCopy(pInfo.name.ptr, 52, p.name);
+
+                  /* if (auto enumParam = cast(EnumParameter)p)
+                    {
+                        pInfo->unit = kAudioUnitParameterUnit_Indexed;
+                    }
+                    else if (auto intParam = cast(IntegerParameter)p)
+                    {
+                        pInfo->unit = kAudioUnitParameterUnit_Indexed;
+                    }
+                    else if (auto boolParam = cast(BoolParameter)p)
+                    {
+                        pInfo.unit = kAudioUnitParameterUnit_Boolean;
+                    }
+
+                    else if (auto floatParam = cast(FloatParameter)p)
+                    {
+
+                    }
+                    else */
+                    {
+                        assert(p.label !is null);
+                        if (p.label != "")
+                        {
+                            pInfo.unitName = makeCFString(p.label);
+                            pInfo.unit = kAudioUnitParameterUnit_CustomUnit;
+                        }
+                        else
+                        {
+                            pInfo.unit = kAudioUnitParameterUnit_Generic;
+                        }
+                    }
+
+                    pInfo.minValue = 0.0f;
+                    pInfo.maxValue = 1.0f;
+                    pInfo.defaultValue = p.getNormalizedDefault();
+                    pInfo.clumpID = 0; // parameter groups not supported yet
+                }
+                return noErr;
+            }
 
             case kAudioUnitProperty_FastDispatch: // 5
             {
@@ -785,25 +917,17 @@ private:
 
             case kAudioUnitProperty_TailTime:                    // 20,   // listenable
             {
-             //   return kAudioUnitErr_InvalidPropertyValue;
-
-                // TODO: this doesn't pass auval
-
-     /*           import std.stdio;
-                writeln("")
-*/
-
                 if (!isGlobalScope(scope_))
                     return kAudioUnitErr_InvalidScope;
-/*
+
                 double tailSize = _client.tailSizeInSeconds();
-*/
+
                 *pWriteable = false;
                 *pDataSize = Float64.sizeof;
 
                 if (pData)
                 {
-                    *(cast(Float64*) pData) = 0.0;//cast(double) tailSize;
+                    *(cast(Float64*) pData) = cast(double) tailSize;
                 }
                 return noErr;
             }
@@ -885,7 +1009,7 @@ private:
             {
                 *pDataSize = cast(uint)(CFStringRef.sizeof);
                 *pWriteable = false;
-                if (!isInputOrOuputScope(scope_))
+                if (!isInputOrOutputScope(scope_))
                     return kAudioUnitErr_InvalidScope;
                 BusChannels* pBus = getBus(scope_, element);
                 if (!pBus)
@@ -913,12 +1037,26 @@ private:
                 return kAudioUnitErr_InvalidProperty;
 
             case kAudioUnitProperty_ParameterIDName: // 34
+            {
                 printf("TODO GET kAudioUnitProperty_ParameterIDName\n");
                 return kAudioUnitErr_InvalidProperty;
+            }
 
             case kAudioUnitProperty_ParameterClumpName: // 35
-                printf("TODO GET kAudioUnitProperty_ParameterClumpName\n");
-                return kAudioUnitErr_InvalidProperty;
+            {
+                *pDataSize = AudioUnitParameterNameInfo.sizeof;
+                if (pData && scope_ == kAudioUnitScope_Global)
+                {
+                    AudioUnitParameterNameInfo* parameterNameInfo = cast(AudioUnitParameterNameInfo *) pData;
+                    int clumpId = parameterNameInfo.inID;
+                    if (clumpId < 1)
+                        return kAudioUnitErr_PropertyNotInUse;
+
+                    // Parameter groups not supported yet, always return the same string
+                    parameterNameInfo.outName = makeCFString("All params");
+                }
+                return noErr;
+            }
 
             case kAudioUnitProperty_CurrentPreset: // 28
             case kAudioUnitProperty_PresentPreset: // 36
@@ -1147,6 +1285,7 @@ private:
     // From connection information, transmit to client
     void assessInputConnections()
     {
+        int usedInputs = 0;
         foreach (i; 0.._inBuses.length )
         {
             BusChannels* pInBus = &_inBuses[i];
@@ -1165,10 +1304,12 @@ private:
                     // Assume the host will send all the channels the plugin asks for, and hope for the best.
                     pInBus.numHostChannels = pInBus.numPlugChannels;
                 }
+
+                usedInputs += pInBus.numPlugChannels;
             }
         }
-        // TODO assign _usedInputs and _usedOutputs, and send a message to audio thread
-        // maybe implement something similar to IPlug
+
+        _usedInputs = usedInputs;
     }
 
     bool checkLegalIO(AudioUnitScope scope_, int busIdx, int nChannels)
@@ -1215,7 +1356,7 @@ private:
 
     AudioThreadMessage makeResetStateMessage(AudioThreadMessage.Type type) pure const nothrow @nogc
     {
-        return AudioThreadMessage(type, _maxFrames, _sampleRate, _usedInputs, _usedOutputs);
+        return AudioThreadMessage(type, _maxFrames, _sampleRate, _maxInputs, _maxOutputs);
     }
 
     // This is copypasta from the VST client unfortunately
@@ -1231,25 +1372,15 @@ private:
         //   so missing such a message isn't that bad: the audio callback will have some outputs that are untouched
         // (a third thread might start a collect while the UI thread takes the queue lock) which is another unlikely race condition.
         // Perhaps it's the one to favor, I don't know.
-
         AudioThreadMessage msg = void;
         while(_messageQueue.tryPopFront(msg)) // <- here, we have a problem: https://github.com/p0nce/dplug/issues/45
         {
             final switch(msg.type) with (AudioThreadMessage.Type)
             {
-                case changedIO:
-                {
-                    bool success;
-                    success = _client.setNumUsedInputs(msg.usedInputs);
-                    assert(success);
-                    success = _client.setNumUsedOutputs(msg.usedOutputs);
-                    assert(success);
-
-                    goto case resetState; // chaning the number of channels probably need to reset state too
-                }
-
                 case resetState:
-                    //resizeScratchBuffers(msg.maxFrames);
+                    resizeScratchBuffers(msg.maxFrames);
+
+                    _maxFramesAudioThreadView = msg.maxFrames;
 
                     // The client need not be aware of the actual size of the buffers,
                     // if it works on sliced buffers.
@@ -1294,6 +1425,195 @@ private:
                 listener.mListenerProc(listener.mProcArgs, _componentInstance, propID, scope_, 0); // always zero?
     }
 
+
+    //
+    // Render procedure
+    //
+
+    // Send audio to plugin's processAudio, and optionally slice the buffers too.
+    void sendAudioToClient(float*[] inputs, float*[]outputs, int frames, TimeInfo timeInfo) nothrow @nogc
+    {
+        if (_maxFramesInProcess == 0)
+            _client.processAudio(inputs, outputs, frames, timeInfo);
+        else
+        {
+            // Slice audio in smaller parts
+            while (frames > 0)
+            {
+                // Note: the last slice will be smaller than the others
+                int sliceLength = std.algorithm.min(_maxFramesInProcess, frames);
+
+                _client.processAudio(inputs, outputs, sliceLength, timeInfo);
+
+                // offset all buffer pointers
+                for (int i = 0; i < cast(int)inputs.length; ++i)
+                    inputs[i] = inputs[i] + sliceLength;
+
+                for (int i = 0; i < cast(int)outputs.length; ++i)
+                    outputs[i] = outputs[i] + sliceLength;
+
+                frames -= sliceLength;
+
+                // timeInfo must be updated
+                timeInfo.timeInSamples += sliceLength;
+            }
+            assert(frames == 0);
+        }
+    }
+
+    ComponentResult render(AudioUnitRenderActionFlags* pFlags,
+                           const(AudioTimeStamp)* pTimestamp,
+                           uint outputBusIdx,
+                           uint nFrames,
+                           AudioBufferList* pOutBufList) nothrow @nogc
+    {
+        // Non-existing bus
+        if (outputBusIdx > _outBuses.length)
+            return kAudioUnitErr_InvalidPropertyValue;
+
+        // Invalid timestamp
+        if (!(pTimestamp.mFlags & kAudioTimeStampSampleTimeValid))
+            return kAudioUnitErr_InvalidPropertyValue;
+
+        // process messages
+        {
+            alias bypassNogc = void delegate() @nogc nothrow;
+            bypassNogc proc = cast(bypassNogc)&processMessages;
+            proc();
+        }
+
+        printf("1\n");
+
+        // Too much samples? => report an error
+        if (nFrames > _maxFramesAudioThreadView)
+        {
+            printf("nFrames %d _maxFramesAudioThreadView %d\n", nFrames, _maxFramesAudioThreadView);
+            return kAudioUnitErr_InvalidPropertyValue;
+        }
+
+        printf("2\n");
+/+
+
+        // pre-render
+        if (_renderNotify.length)
+        {
+            foreach(ref renderCallbackStruct; _renderNotify)
+            {
+                AudioUnitRenderActionFlags flags = kAudioUnitRenderAction_PreRender;
+                callRenderCallback(renderCallbackStruct, &flags, pTimestamp, outputBusIdx, nFrames, pOutBufList);
+            }
+        }
++/
+        double renderTimestamp = pTimestamp.mSampleTime;
+
+        bool isNewTimestamp = (renderTimestamp != _lastRenderTimestamp);
+
+        // On a new timestamp, we render upstream (pull) and process audio.
+        // Else, just copy the results.
+        // We always provide buffers to upstream unit
+    /+    if (isNewTimestamp)
+        {
+            BufferList bufList;
+            AudioBufferList* pInBufList = cast(AudioBufferList*) &bufList;
+
+            // call render for each upstream units
+            foreach(int inputBusIdx, ref pInBus; _inBuses)
+            {
+                InputBusConnection* pInBusConn = &_inBusConnections[inputBusIdx];
+
+                if (pInBus.connected)
+                {
+                    pInBufList.mNumberBuffers = pInBus.numHostChannels;
+
+                    for (int b = 0; b < pInBufList.mNumberBuffers; ++b)
+                    {
+                        AudioBuffer* pBuffer = &(pInBufList.mBuffers[b]);
+                        pBuffer.mNumberChannels = 1;
+                        pBuffer.mDataByteSize = cast(uint)(nFrames * AudioSampleType.sizeof);
+                        int whichScratch = pInBus.plugChannelStartIdx + b;
+                        pBuffer.mData = _inputScratchBuffer[whichScratch].ptr;
+                    }
+
+                    AudioUnitRenderActionFlags flags = 0;
+                    ComponentResult r = pInBusConn.callUpstreamRender(&flags, pTimestamp, nFrames, pInBufList, inputBusIdx);
+
+                    if (r != noErr)
+                        return r;   // Something went wrong upstream.
+                }
+            }
+            _lastRenderTimestamp = renderTimestamp;
+        }
+        +/
+/+
+
+        BusChannels* pOutBus = &_outBuses[outputBusIdx];
+
+        // if this bus is not connected OR the number of buffers that the host has given are not equal to the number the bus expects
+        // then consider it connected
+        if (!(pOutBus.connected) || pOutBus.numHostChannels != pOutBufList.mNumberBuffers)
+        {
+            pOutBus.connected = true;
+        }
+
+        for (int i = 0; i < pOutBufList.mNumberBuffers; ++i)
+        {
+            int chIdx = pOutBus.plugChannelStartIdx + i;
+
+            AudioSampleType* pData = cast(AudioSampleType*)( pOutBufList.mBuffers[i].mData );
+            if (pData == null)
+                pData = _outputScratchBuffer[chIdx].ptr;
+
+            _outputPointers[chIdx] = pData;
+        }
+
+        int lastConnectedOutputBus = -1;
+
+        foreach(outBus; _outBuses)
+        {
+            if(!outBus.connected)
+                break;
+            else
+                lastConnectedOutputBus++;
+        }
+
+        if (outputBusIdx == lastConnectedOutputBus)
+        {
+            // TODO make _inputPointers and _outputPointers gapless
+            // TODO: call reset if necessary
+
+            if (_bypassed)
+            {
+                int minIO = min(_usedInputs, _usedOutputs);
+
+                for (int i = 0; i < minIO; ++i)
+                    _outputPointers[i][0..nFrames] = _inputPointers[i][0..nFrames];
+
+                for (int i = minIO; i < _usedOutputs; ++i)
+                    _outputPointers[i][0..nFrames] = 0;
+            }
+            else
+            {
+                TimeInfo timeInfo;
+                // TODO fill TimeInfo
+
+                sendAudioToClient(_inputPointers, _outputPointers, nFrames, timeInfo);
+            }
+        }
++/
+
+        // post-render
+  /+      if (_renderNotify.length)
+        {
+            foreach(ref renderCallbackStruct; _renderNotify)
+            {
+                AudioUnitRenderActionFlags flags = kAudioUnitRenderAction_PostRender;
+                callRenderCallback(renderCallbackStruct, &flags, pTimestamp, outputBusIdx, nFrames, pOutBufList);
+            }
+        }+/
+
+        return noErr;
+    }
+
     // IHostCommand
     public
     {
@@ -1328,6 +1648,34 @@ private:
 
 
 private:
+
+// Helpers for scope
+static bool isGlobalScope(AudioUnitScope scope_) pure nothrow @nogc
+{
+    return (scope_ == kAudioUnitScope_Global);
+}
+
+static bool isInputScope(AudioUnitScope scope_) pure nothrow @nogc
+{
+    return (scope_ == kAudioUnitScope_Input);
+}
+
+static bool isInputOrGlobalScope(AudioUnitScope scope_) pure nothrow @nogc
+{
+    return (scope_ == kAudioUnitScope_Input || scope_ == kAudioUnitScope_Global);
+}
+
+static bool isInputOrOutputScope(AudioUnitScope scope_) pure nothrow @nogc
+{
+    return (scope_ == kAudioUnitScope_Input || scope_ == kAudioUnitScope_Output);
+}
+
+/// Calls a render callback
+static ComponentResult callRenderCallback(ref AURenderCallbackStruct pCB, AudioUnitRenderActionFlags* pFlags, const(AudioTimeStamp)* pTimestamp,
+                       UInt32 inputBusIdx, UInt32 nFrames, AudioBufferList* pOutBufList) nothrow @nogc
+{
+    return pCB.inputProc(pCB.inputProcRefCon, pFlags, pTimestamp, inputBusIdx, nFrames, pOutBufList);
+}
 
 
 extern(C) ComponentResult getParamProc(void* pPlug,
@@ -1366,14 +1714,8 @@ extern(C) ComponentResult renderProc(void* pPlug,
                                      uint nFrames,
                                      AudioBufferList* pOutBufList) nothrow @nogc
 {
-    // TODO, it's complicated
     AUClient _this = cast(AUClient)pPlug;
-    auto client = _this._client;
-
-    // TODO notify render callbacks
-    printf("TODO renderProc\n");
-
-    return noErr;
+    return _this.render(pFlags, pTimestamp, outputBusIdx, nFrames, pOutBufList);
 }
 
 

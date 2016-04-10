@@ -243,6 +243,20 @@ void unrecoverableError() nothrow @nogc
     }
 }
 
+// Copy source into dest.
+// dest must contain room for maxChars characters
+// A zero-byte character is then appended.
+void stringNCopy(char* dest, size_t maxChars, string source) nothrow @nogc
+{
+    if (maxChars == 0)
+        return;
+
+    size_t max = maxChars < source.length ? maxChars - 1 : source.length;
+    for (int i = 0; i < max; ++i)
+        dest[i] = source[i];
+    dest[max] = '\0';
+}
+
 version(D_InlineAsm_X86)
     private enum D_InlineAsm_Any = true;
 else version(D_InlineAsm_X86_64)
