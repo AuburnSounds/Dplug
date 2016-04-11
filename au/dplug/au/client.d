@@ -1458,7 +1458,7 @@ private:
             /// This is copypasta from the VST client unfortunately
             /// This part is quite similar
             void processMessages(ref float lastSamplerate, ref int lastMaxFrames,
-                                 ref int lastUsedInputs, ref int lastUsedOutputs) /* nothrow @nogc */
+                                 ref int lastUsedInputs, ref int lastUsedOutputs) nothrow @nogc
             {
                 // Race condition here, see similar code in VST client what could happen
                 // when we miss a message (and why we still use tryPop).
@@ -1511,10 +1511,7 @@ private:
                 }+/
             }
 
-            // bypass @nogc
-            alias bypassNogc = scope void delegate(ref float, ref int, ref int, ref int) @nogc nothrow;
-            bypassNogc proc = cast(bypassNogc)&processMessages;
-         //   proc(_lastSamplerate, _lastMaxFrames, _lastUsedInputs, _lastUsedOutputs);
+            processMessages(_lastSamplerate, _lastMaxFrames, _lastUsedInputs, _lastUsedOutputs);
         }
 /+
 

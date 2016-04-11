@@ -742,7 +742,7 @@ private:
     }
 
 
-    void processMessages() /* nothrow @nogc */
+    void processMessages() nothrow @nogc
     {
         // Race condition here.
         // Being a tryPop, there is a tiny chance that we miss a message from the queue.
@@ -779,10 +779,7 @@ private:
 
     void preprocess(int sampleFrames) nothrow @nogc
     {
-        // bypass @nogc because semaphore and mutexes functions are not @nogc
-        alias bypassNogc = void delegate() @nogc nothrow;
-        bypassNogc proc = cast(bypassNogc)&processMessages;
-        proc();
+        processMessages();
     }
 
 
