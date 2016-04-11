@@ -154,7 +154,7 @@ public:
         _sampleRate = 44100.0f;
         _maxFrames = 128;
         _maxFramesInProcess = _client.maxFramesInProcess();
-        _maxFramesAudioThreadView = 0;
+
         _bypassed = false;
         _active = false;
 
@@ -239,7 +239,12 @@ private:
     float _sampleRate;
     int _maxFrames;
     int _maxFramesInProcess;
-    int _maxFramesAudioThreadView; // like _maxFrames, but from audio thread POV
+
+    // From audio thread POV
+    int _lastMaxFrames = 0;
+    float _lastSamplerate = 0;
+    int _lastUsedInputs = 0;
+    int _lastUsedOutputs = 0;
 
     double _lastRenderTimestamp = double.nan;
 
@@ -1359,43 +1364,6 @@ private:
         return AudioThreadMessage(type, _maxFrames, _sampleRate, _maxInputs, _maxOutputs);
     }
 
-    // This is copypasta from the VST client unfortunately
-    // This part is quite similar
-    void processMessages() /* nothrow @nogc */
-    {
-        // Race condition here.
-        // Being a tryPop, there is a tiny chance that we miss a message from the queue.
-        // Thankfully it isn't that bad:
-        // - we are going to read it next buffer
-        // - not clearing the state for a buffer duration does no harm
-        // - plugin is initialized first with the maximum amount of input and outputs
-        //   so missing such a message isn't that bad: the audio callback will have some outputs that are untouched
-        // (a third thread might start a collect while the UI thread takes the queue lock) which is another unlikely race condition.
-        // Perhaps it's the one to favor, I don't know.
-        AudioThreadMessage msg = void;
-        while(_messageQueue.tryPopFront(msg)) // <- here, we have a problem: https://github.com/p0nce/dplug/issues/45
-        {
-            final switch(msg.type) with (AudioThreadMessage.Type)
-            {
-                case resetState:
-                    resizeScratchBuffers(msg.maxFrames);
-
-                    _maxFramesAudioThreadView = msg.maxFrames;
-
-                    // The client need not be aware of the actual size of the buffers,
-                    // if it works on sliced buffers.
-                    int maxFrameFromClientPOV = msg.maxFrames;
-                    if (_maxFramesInProcess != 0 && _maxFramesInProcess < maxFrameFromClientPOV)
-                        maxFrameFromClientPOV = _maxFramesInProcess;
-                    _client.reset(msg.samplerate, maxFrameFromClientPOV, msg.usedInputs, msg.usedOutputs);
-                    break;
-
-                case midi:
-                    _client.processMidiMsg(msg.midiMessage);
-            }
-        }
-    }
-
     // Serialize state
     ComponentResult readState(CFPropertyListRef* ppPropList)
     {
@@ -1461,6 +1429,15 @@ private:
         }
     }
 
+    // Get max frames from client POV
+    int getMaxFramesClientPOV(int maxFrames) nothrow @nogc
+    {
+        int result = maxFrames;
+        if (_maxFramesInProcess != 0 && _maxFramesInProcess < result)
+             result = _maxFramesInProcess;
+        return result;
+    }
+
     ComponentResult render(AudioUnitRenderActionFlags* pFlags,
                            const(AudioTimeStamp)* pTimestamp,
                            uint outputBusIdx,
@@ -1476,22 +1453,69 @@ private:
             return kAudioUnitErr_InvalidPropertyValue;
 
         // process messages
+        // TODO move this once that we know output number
         {
-            alias bypassNogc = void delegate() @nogc nothrow;
+            /// This is copypasta from the VST client unfortunately
+            /// This part is quite similar
+            void processMessages(ref float lastSamplerate, ref int lastMaxFrames,
+                                 ref int lastUsedInputs, ref int lastUsedOutputs) /* nothrow @nogc */
+            {
+                // Race condition here, see similar code in VST client what could happen
+                // when we miss a message (and why we still use tryPop).
+                AudioThreadMessage msg = void;
+
+                int newMaxFrames = lastMaxFrames;
+                int newUsedInputs = lastUsedInputs;
+                int newUsedOutputs = lastUsedOutputs;
+                float newSamplerate = lastSamplerate;
+
+                // TODO: could be atomics rather than a message queue?
+                while(_messageQueue.tryPopFront(msg))
+                {
+                    final switch(msg.type) with (AudioThreadMessage.Type)
+                    {
+                        case resetState:
+                            // Only the last reset state message is meaningful
+                            newMaxFrames = msg.maxFrames;
+                            newUsedInputs = msg.usedInputs;
+                            newUsedOutputs = msg.usedOutputs;
+                            newSamplerate = msg.samplerate;
+                            break;
+
+                        case midi:
+                            _client.processMidiMsg(msg.midiMessage);
+
+                    }
+                }
+/+
+                // Sometimes the AU host doesn't pass the right maximum buffer size
+                // And we know it at the last moment in the audio thread.
+                // Extend buffers then.
+                if (newMaxFrames > lastMaxFrames)
+                    newMaxFrames = nFrames;
+
+                // Call client.reset if we do need to call it, and only then.
+                bool needReset = (newMaxFrames != lastMaxFrames || newUsedInputs != lastUsedInputs ||
+                                  newUsedOutputs != lastUsedOutputs || newSamplerate != lastSamplerate);
+
+                // Call reset only once
+                if (needReset)
+                {
+                    resizeScratchBuffers(newMaxFrames);
+                    _client.reset(newSamplerate, getMaxFramesClientPOV(newMaxFrames), newUsedInputs, newUsedOutputs);
+
+                    lastMaxFrames = newMaxFrames;
+                    lastSamplerate = newSamplerate;
+                    lastUsedInputs = newUsedInputs;
+                    lastUsedOutputs = newUsedOutputs;
+                }+/
+            }
+
+            // bypass @nogc
+            alias bypassNogc = scope void delegate(ref float, ref int, ref int, ref int) @nogc nothrow;
             bypassNogc proc = cast(bypassNogc)&processMessages;
-            proc();
+         //   proc(_lastSamplerate, _lastMaxFrames, _lastUsedInputs, _lastUsedOutputs);
         }
-
-        printf("1\n");
-
-        // Too much samples? => report an error
-        if (nFrames > _maxFramesAudioThreadView)
-        {
-            printf("nFrames %d _maxFramesAudioThreadView %d\n", nFrames, _maxFramesAudioThreadView);
-            return kAudioUnitErr_InvalidPropertyValue;
-        }
-
-        printf("2\n");
 /+
 
         // pre-render
