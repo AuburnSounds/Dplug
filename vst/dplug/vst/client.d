@@ -185,6 +185,8 @@ public:
         debug ensureNotInGC("dplug.vst.Client");
         _client.destroy();
 
+        _messageQueue.destroy();
+
         for (int i = 0; i < _maxInputs; ++i)
             _inputScratchBuffer[i].destroy();
 

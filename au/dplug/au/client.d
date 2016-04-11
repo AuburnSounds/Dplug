@@ -219,6 +219,8 @@ public:
         debug ensureNotInGC("dplug.au.AUClient");
         _client.destroy();
 
+        _messageQueue.destroy();
+
         for (int i = 0; i < _maxInputs; ++i)
             _inputScratchBuffer[i].destroy();
 
