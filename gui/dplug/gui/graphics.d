@@ -75,7 +75,11 @@ class GUIGraphics : UIElement, IGraphics
         _elemsToDraw = new AlignedBuffer!UIElement;
 
         version(BenchmarkCompositing)
+        {
             _compositingWatch = new StopWatch("Compositing = ");
+            _drawWatch = new StopWatch("Draw = ");
+            _mipmapWatch = new StopWatch("Mipmap = ");
+        }
     }
 
 
@@ -253,16 +257,34 @@ class GUIGraphics : UIElement, IGraphics
             // Composite GUI
             // Most of the cost of rendering is here
             version(BenchmarkCompositing)
-                _compositingWatch.start();
+                _drawWatch.start();
 
             renderElements();
+
+            version(BenchmarkCompositing)
+            {
+                _drawWatch.stop();
+                _drawWatch.displayMean();
+            }
+
+            version(BenchmarkCompositing)
+                _mipmapWatch.start();
 
             // Split boxes to avoid overlapped work
             // Note: this is done separately for update areas and render areas
             _areasToRenderNonOverlapping.clearContents();
-            removeOverlappingAreas(_areasToRender, _areasToRenderNonOverlapping);
+            removeOverlappingAreas(_areasToRender[], _areasToRenderNonOverlapping);
 
             regenerateMipmaps();
+
+            version(BenchmarkCompositing)
+            {
+                _mipmapWatch.stop();
+                _mipmapWatch.displayMean();
+            }
+
+            version(BenchmarkCompositing)
+                _compositingWatch.start();
 
             compositeGUI(wfb, pf);
 
@@ -346,8 +368,11 @@ protected:
     int _updateMargin = 20;
 
     version(BenchmarkCompositing)
+    {
         StopWatch _compositingWatch;
-
+        StopWatch _mipmapWatch;
+        StopWatch _drawWatch;
+    }
 
     bool isUIDirty() nothrow @nogc
     {
