@@ -152,14 +152,11 @@ public:
 
         // dummmy values
         _sampleRate = 44100.0f;
-        _maxFrames = 128;
+        _maxFrames = 1024;
         _maxFramesInProcess = _client.maxFramesInProcess();
 
         _bypassed = false;
         _active = false;
-
-        _usedInputs = _maxInputs;
-        _usedOutputs = _maxOutputs;
 
         _inputScratchBuffer.length = _maxInputs;
         _outputScratchBuffer.length = _maxOutputs;
@@ -174,6 +171,9 @@ public:
 
         _inputPointers.length = _maxInputs;
         _outputPointers.length = _maxOutputs;
+
+        _inputPointersNoGap.length = _maxInputs;
+        _outputPointersNoGap.length = _maxOutputs;
 
 
         // Create input buses
@@ -206,12 +206,10 @@ public:
             _outBuses[i].label = format("output #%d", i);
         }
 
-        _messageQueue.pushBack(makeResetStateMessage(AudioThreadMessage.Type.resetState));
+        assessInputConnections();
 
         // Implements IHostCommand itself
         client.setHostCommand(this);
-
-        assessInputConnections();
     }
 
     ~this()
@@ -236,7 +234,6 @@ private:
     AudioThreadQueue _messageQueue;
 
     int _maxInputs, _maxOutputs;
-    int _usedInputs, _usedOutputs;
     int _numParams;
     float _sampleRate;
     int _maxFrames;
@@ -258,8 +255,12 @@ private:
     AlignedBuffer!float[] _inputScratchBuffer;  // input buffer, one per possible input
     AlignedBuffer!float[] _outputScratchBuffer; // input buffer, one per output
     AlignedBuffer!float   _zeroesBuffer;        // used for disconnected inputs
+
     float*[] _inputPointers;  // where processAudio will take its audio input, one per possible input
     float*[] _outputPointers; // where processAudio will output audio, one per possible output
+
+    float*[] _inputPointersNoGap;  // same array, but flatten and modified in-place
+    float*[] _outputPointersNoGap; // same array, but flatten and modified in-place
 
 
     //
@@ -293,7 +294,7 @@ private:
         string label; // pretty name
     }
 
-    BusChannels[] _inBuses;
+    BusChannels[] _inBuses; // TODO: mutex A
     BusChannels[] _outBuses;
 
     BusChannels* getBus(AudioUnitScope scope_, AudioUnitElement busIdx)
@@ -375,7 +376,7 @@ private:
         }
     }
 
-    InputBusConnection[] _inBusConnections;
+    InputBusConnection[] _inBusConnections; // TODO: mutex A
 
 
     AURenderCallbackStruct[] _renderNotify;
@@ -408,7 +409,7 @@ private:
     {
         // IPlug locks here.
         // Do we need to do the same?
-        //debug printf("select %d ", select);
+        //debug printf("select %d\n", select);
         switch(select)
         {
 
@@ -1032,7 +1033,6 @@ private:
 
             case kAudioUnitProperty_CocoaUI: // 31
                 printf("TODO kAudioUnitProperty_CocoaUI\n");
-                // TODO
                 return kAudioUnitErr_InvalidProperty; // no UI
 
             case kAudioUnitProperty_SupportedChannelLayoutTags:
@@ -1181,7 +1181,7 @@ private:
                 return noErr;
             }
 
-            case kAudioUnitProperty_StreamFormat: // 8// 8,
+            case kAudioUnitProperty_StreamFormat: // 8
             {
                 AudioStreamBasicDescription* pASBD = cast(AudioStreamBasicDescription*) pData;
                 int nHostChannels = pASBD.mChannelsPerFrame;
@@ -1212,7 +1212,6 @@ private:
                         _messageQueue.pushBack(makeResetStateMessage(AudioThreadMessage.Type.resetState));
                     }
                 }
-                assessInputConnections();
                 return (connectionOK ? noErr : kAudioUnitErr_InvalidProperty);
             }
 
@@ -1316,7 +1315,7 @@ private:
             }
         }
 
-        _usedInputs = usedInputs;
+        _messageQueue.pushBack(makeResetStateMessage(AudioThreadMessage.Type.resetState));
     }
 
     bool checkLegalIO(AudioUnitScope scope_, int busIdx, int nChannels)
@@ -1448,74 +1447,46 @@ private:
     {
         // Non-existing bus
         if (outputBusIdx > _outBuses.length)
-            return kAudioUnitErr_InvalidPropertyValue;
+            return kAudioUnitErr_InvalidElement;
 
         // Invalid timestamp
         if (!(pTimestamp.mFlags & kAudioTimeStampSampleTimeValid))
             return kAudioUnitErr_InvalidPropertyValue;
 
-        // process messages
-        // TODO move this once that we know output number
+        // process messages to get newer number of input, samplerate or frame number
+        void processMessages(ref float newSamplerate, ref int newMaxFrames) nothrow @nogc
         {
-            /// This is copypasta from the VST client unfortunately
-            /// This part is quite similar
-            void processMessages(ref float lastSamplerate, ref int lastMaxFrames,
-                                 ref int lastUsedInputs, ref int lastUsedOutputs) nothrow @nogc
+            // Only the last reset state message is meaningful, so we unwrap them
+
+            AudioThreadMessage msg = void;
+
+            while(_messageQueue.tryPopFront(msg))
             {
-                // Race condition here, see similar code in VST client what could happen
-                // when we miss a message (and why we still use tryPop).
-                AudioThreadMessage msg = void;
-
-                int newMaxFrames = lastMaxFrames;
-                int newUsedInputs = lastUsedInputs;
-                int newUsedOutputs = lastUsedOutputs;
-                float newSamplerate = lastSamplerate;
-
-                // TODO: could be atomics rather than a message queue?
-                while(_messageQueue.tryPopFront(msg))
+                final switch(msg.type) with (AudioThreadMessage.Type)
                 {
-                    final switch(msg.type) with (AudioThreadMessage.Type)
-                    {
-                        case resetState:
-                            // Only the last reset state message is meaningful
-                            newMaxFrames = msg.maxFrames;
-                            newUsedInputs = msg.usedInputs;
-                            newUsedOutputs = msg.usedOutputs;
-                            newSamplerate = msg.samplerate;
-                            break;
+                    case resetState:
+                        // Note: number of input/ouputs is discarded from the message
+                        newMaxFrames = msg.maxFrames;
+                        newSamplerate = msg.samplerate;
+                        break;
 
-                        case midi:
-                            _client.processMidiMsg(msg.midiMessage);
+                    case midi:
+                        _client.processMidiMsg(msg.midiMessage);
 
-                    }
                 }
-/+
-                // Sometimes the AU host doesn't pass the right maximum buffer size
-                // And we know it at the last moment in the audio thread.
-                // Extend buffers then.
-                if (newMaxFrames > lastMaxFrames)
-                    newMaxFrames = nFrames;
-
-                // Call client.reset if we do need to call it, and only then.
-                bool needReset = (newMaxFrames != lastMaxFrames || newUsedInputs != lastUsedInputs ||
-                                  newUsedOutputs != lastUsedOutputs || newSamplerate != lastSamplerate);
-
-                // Call reset only once
-                if (needReset)
-                {
-                    resizeScratchBuffers(newMaxFrames);
-                    _client.reset(newSamplerate, getMaxFramesClientPOV(newMaxFrames), newUsedInputs, newUsedOutputs);
-
-                    lastMaxFrames = newMaxFrames;
-                    lastSamplerate = newSamplerate;
-                    lastUsedInputs = newUsedInputs;
-                    lastUsedOutputs = newUsedOutputs;
-                }+/
             }
-
-            processMessages(_lastSamplerate, _lastMaxFrames, _lastUsedInputs, _lastUsedOutputs);
         }
-/+
+        float newSamplerate = _lastSamplerate;
+        int newMaxFrames = _lastMaxFrames;
+        processMessages(newSamplerate, newMaxFrames);
+
+        // Must fail when given too much frames
+        if (nFrames > newMaxFrames)
+            return kAudioUnitErr_TooManyFramesToProcess;
+
+        // We'll need scratch buffers to render upstream
+        if (newMaxFrames != _lastMaxFrames)
+            resizeScratchBuffers(newMaxFrames);
 
         // pre-render
         if (_renderNotify.length)
@@ -1526,7 +1497,7 @@ private:
                 callRenderCallback(renderCallbackStruct, &flags, pTimestamp, outputBusIdx, nFrames, pOutBufList);
             }
         }
-+/
+
         double renderTimestamp = pTimestamp.mSampleTime;
 
         bool isNewTimestamp = (renderTimestamp != _lastRenderTimestamp);
@@ -1534,10 +1505,16 @@ private:
         // On a new timestamp, we render upstream (pull) and process audio.
         // Else, just copy the results.
         // We always provide buffers to upstream unit
-    /+    if (isNewTimestamp)
+
+        if (isNewTimestamp)
         {
             BufferList bufList;
             AudioBufferList* pInBufList = cast(AudioBufferList*) &bufList;
+
+            // Clear inputPointers and fill it:
+            //  - with null for unconnected channels
+            //  - with a pointer to scratch for connected channels
+            _inputPointers[] = null;
 
             // call render for each upstream units
             foreach(int inputBusIdx, ref pInBus; _inBuses)
@@ -1550,25 +1527,22 @@ private:
 
                     for (int b = 0; b < pInBufList.mNumberBuffers; ++b)
                     {
-                        AudioBuffer* pBuffer = &(pInBufList.mBuffers[b]);
+                        AudioBuffer* pBuffer = &(pInBufList.mBuffers.ptr[b]);
                         pBuffer.mNumberChannels = 1;
                         pBuffer.mDataByteSize = cast(uint)(nFrames * AudioSampleType.sizeof);
                         int whichScratch = pInBus.plugChannelStartIdx + b;
-                        pBuffer.mData = _inputScratchBuffer[whichScratch].ptr;
+                        float* buffer = _inputScratchBuffer[whichScratch].ptr;
+                        pBuffer.mData = buffer;
+                        _inputPointers[whichScratch] = buffer;
                     }
-
                     AudioUnitRenderActionFlags flags = 0;
                     ComponentResult r = pInBusConn.callUpstreamRender(&flags, pTimestamp, nFrames, pInBufList, inputBusIdx);
-
                     if (r != noErr)
                         return r;   // Something went wrong upstream.
                 }
             }
             _lastRenderTimestamp = renderTimestamp;
         }
-        +/
-/+
-
         BusChannels* pOutBus = &_outBuses[outputBusIdx];
 
         // if this bus is not connected OR the number of buffers that the host has given are not equal to the number the bus expects
@@ -1576,17 +1550,6 @@ private:
         if (!(pOutBus.connected) || pOutBus.numHostChannels != pOutBufList.mNumberBuffers)
         {
             pOutBus.connected = true;
-        }
-
-        for (int i = 0; i < pOutBufList.mNumberBuffers; ++i)
-        {
-            int chIdx = pOutBus.plugChannelStartIdx + i;
-
-            AudioSampleType* pData = cast(AudioSampleType*)( pOutBufList.mBuffers[i].mData );
-            if (pData == null)
-                pData = _outputScratchBuffer[chIdx].ptr;
-
-            _outputPointers[chIdx] = pData;
         }
 
         int lastConnectedOutputBus = -1;
@@ -1599,40 +1562,78 @@ private:
                 lastConnectedOutputBus++;
         }
 
+        // assign _outputPointers
+        for (int i = 0; i < pOutBufList.mNumberBuffers; ++i)
+        {
+            int chIdx = pOutBus.plugChannelStartIdx + i;
+
+            AudioSampleType* pData = cast(AudioSampleType*)( pOutBufList.mBuffers.ptr[i].mData );
+            if (pData == null)
+                pData = _outputScratchBuffer[chIdx].ptr;
+
+            _outputPointers[chIdx] = pData;
+        }
+
         if (outputBusIdx == lastConnectedOutputBus)
         {
-            // TODO make _inputPointers and _outputPointers gapless
-            // TODO: call reset if necessary
+            // Here we can finally know the real number of input and outputs connected, but not before.
+            // We also flatten the pointer arrays
+            int newUsedInputs = 0;
+            foreach(inputPointer; _inputPointers[])
+                if (inputPointer != null)
+                    _inputPointersNoGap[newUsedInputs++] = inputPointer;
+
+            int newUsedOutputs = 0;
+            foreach(outputPointer; _outputPointers[])
+                if (outputPointer != null)
+                    _outputPointersNoGap[newUsedOutputs++] = outputPointer;
+
+            // Call client.reset if we do need to call it, and only once.
+            bool needReset = (newMaxFrames != _lastMaxFrames || newUsedInputs != _lastUsedInputs ||
+                              newUsedOutputs != _lastUsedOutputs || newSamplerate != _lastSamplerate);
+            if (needReset)
+            {
+                printf("reset %f %d %d %d\n", newSamplerate, getMaxFramesClientPOV(newMaxFrames), newUsedInputs, newUsedOutputs);
+                _client.reset(newSamplerate, getMaxFramesClientPOV(newMaxFrames), newUsedInputs, newUsedOutputs);
+
+                _lastMaxFrames = newMaxFrames;
+                _lastSamplerate = newSamplerate;
+                _lastUsedInputs = newUsedInputs;
+                _lastUsedOutputs = newUsedOutputs;
+            }
 
             if (_bypassed)
             {
-                int minIO = min(_usedInputs, _usedOutputs);
+                int minIO = min(newUsedInputs, newUsedOutputs);
 
                 for (int i = 0; i < minIO; ++i)
-                    _outputPointers[i][0..nFrames] = _inputPointers[i][0..nFrames];
+                    _outputPointersNoGap[i][0..nFrames] = _inputPointersNoGap[i][0..nFrames];
 
-                for (int i = minIO; i < _usedOutputs; ++i)
-                    _outputPointers[i][0..nFrames] = 0;
+                for (int i = minIO; i < newUsedOutputs; ++i)
+                    _outputPointersNoGap[i][0..nFrames] = 0;
             }
             else
             {
                 TimeInfo timeInfo;
                 // TODO fill TimeInfo
 
-                sendAudioToClient(_inputPointers, _outputPointers, nFrames, timeInfo);
+                sendAudioToClient(_inputPointersNoGap[0..newUsedInputs],
+                                  _outputPointersNoGap[0..newUsedOutputs],
+                                  nFrames, timeInfo);
+
+                // TODO: how to return back output pointers we own?
             }
         }
-+/
 
         // post-render
-  /+      if (_renderNotify.length)
+        if (_renderNotify.length)
         {
             foreach(ref renderCallbackStruct; _renderNotify)
             {
                 AudioUnitRenderActionFlags flags = kAudioUnitRenderAction_PostRender;
                 callRenderCallback(renderCallbackStruct, &flags, pTimestamp, outputBusIdx, nFrames, pOutBufList);
             }
-        }+/
+        }
 
         return noErr;
     }
