@@ -5,7 +5,7 @@
  */
 module dplug.client.messagequeue;
 
-import gfm.core.queue;
+import dplug.core.lockedqueue;
 import dplug.client.midi;
 
 
