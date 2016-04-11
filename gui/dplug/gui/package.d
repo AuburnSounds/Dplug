@@ -11,7 +11,6 @@ public import ae.utils.graphics;
 public import dplug.gui.element;
 public import dplug.gui.context;
 
-public import dplug.gui.bargraph;
 public import dplug.gui.graphics;
 public import dplug.gui.boxlist;
 public import dplug.gui.drawex;
@@ -26,5 +25,6 @@ public import dplug.gui.panel;
 public import dplug.gui.onoffswitch;
 public import dplug.gui.slider;
 public import dplug.gui.logo;
+public import dplug.gui.bargraph;
 
 
