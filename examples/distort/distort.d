@@ -7,18 +7,22 @@ import std.math;
 
 import dplug.core,
        dplug.client,
-       dplug.vst,
-       dplug.au,
        dplug.dsp,
        dplug.gui;
 
 mixin(DLLEntryPoint!());
 
 version(VST)
+{
+    import dplug.vst;
     mixin(VSTEntryPoint!Distort);
+}
 
 version(AU)
+{
+    import dplug.au;
     mixin(AUEntryPoint!Distort);
+}
 
 enum : int
 {
