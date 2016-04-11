@@ -5,8 +5,6 @@
 */
 import std.math;
 
-import gfm.image;
-
 import dplug.core,
        dplug.client,
        dplug.vst,

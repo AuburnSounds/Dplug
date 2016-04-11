@@ -12,7 +12,7 @@ import ae.utils.graphics;
 
 import gfm.math;
 import gfm.core;
-import gfm.image.stb_truetype;
+import dplug.gui.stb_truetype;
 
 import dplug.core.unchecked_sync;
 

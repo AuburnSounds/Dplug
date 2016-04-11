@@ -100,7 +100,8 @@
                 "dplug:window": "*",
                 "dplug:core": "*",
                 "gfm:math": "~>5.0",
-                "gfm:image": "~>5.0"
+                "ae-graphics": "~>0.0",
+                "imageformats": "~>5.0"
             }
         }
     ]
