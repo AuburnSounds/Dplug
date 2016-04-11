@@ -45,7 +45,6 @@ else version( Posix )
     import core.sys.posix.pthread;
     import core.sync.config;
     import core.stdc.errno;
-    import core.sys.posix.pthread;
     import core.sys.posix.semaphore;
 }
 else
@@ -84,11 +83,7 @@ final class UncheckedMutex
         }
         else version( Posix )
         {
-            assumeNothrowNoGC(
-                (pthread_mutex_t* handle)
-                {
-                    pthread_mutex_destroy(handle);
-                })(&m_hndl);
+            pthread_mutex_destroy(&m_hndl);
         }
     }
 
@@ -126,7 +121,7 @@ final class UncheckedMutex
         }
     }
 
-    bool tryLock()
+    bool tryLock() nothrow @nogc
     {
         version( Windows )
         {
