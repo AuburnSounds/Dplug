@@ -316,7 +316,7 @@ class UncheckedSemaphore
                 (timespec t, Duration period)
                 {
                     mktspec( t, period );
-                }))(t, period);
+                })(t, period);
 
             while( true )
             {
