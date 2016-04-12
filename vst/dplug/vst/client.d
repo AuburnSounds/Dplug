@@ -29,13 +29,13 @@ import gfm.core;
 
 import dplug.core.alignedbuffer,
        dplug.core.funcs,
+       dplug.core.lockedqueue,
        dplug.core.fpcontrol;
 
 import dplug.client.client,
        dplug.client.daw,
        dplug.client.preset,
-       dplug.client.midi,
-       dplug.client.messagequeue;
+       dplug.client.midi;
 
 import dplug.vst.aeffectx;
 
@@ -1242,4 +1242,45 @@ private:
     }
 }
 
+//
+// Message queue
+//
 
+private:
+
+alias AudioThreadQueue = LockedQueue!AudioThreadMessage;
+
+/// A message for the audio thread.
+/// Intended to be passed from a non critical thread to the audio thread.
+struct AudioThreadMessage
+{
+    enum Type
+    {
+        resetState, // reset plugin state, set samplerate and buffer size (samplerate = fParam, buffersize in frames = iParam)
+        midi
+    }
+
+    this(Type type_, int maxFrames_, float samplerate_, int usedInputs_, int usedOutputs_) pure const nothrow @nogc
+    {
+        type = type_;
+        maxFrames = maxFrames_;
+        samplerate = samplerate_;
+        usedInputs = usedInputs_;
+        usedOutputs = usedOutputs_;
+    }
+
+    Type type;
+    int maxFrames;
+    float samplerate;
+    int usedInputs;
+    int usedOutputs;
+    MidiMessage midiMessage;
+}
+
+AudioThreadMessage makeMIDIMessage(MidiMessage midiMessage) pure nothrow @nogc
+{
+    AudioThreadMessage msg;
+    msg.type = AudioThreadMessage.Type.midi;
+    msg.midiMessage = midiMessage;
+    return msg;
+}

@@ -28,7 +28,7 @@ import dplug.core;
 
 import dplug.client.client;
 import dplug.client.daw;
-import dplug.client.messagequeue;
+import dplug.client.midi;
 import dplug.client.preset;
 import dplug.client.params;
 
@@ -148,7 +148,6 @@ public:
 
         _maxInputs = _client.maxInputs();
         _maxOutputs = _client.maxOutputs();
-        _numParams = cast(int)(client.params().length);
 
         // dummmy values
         _sampleRate = 44100.0f;
@@ -234,7 +233,6 @@ private:
     AudioThreadQueue _messageQueue;
 
     int _maxInputs, _maxOutputs;
-    int _numParams;
     float _sampleRate;
     int _maxFrames;
     int _maxFramesInProcess;
@@ -465,10 +463,7 @@ private:
             case kAudioUnitInitializeSelect: // 1
             {
                 _active = true;
-                // TODO: should reset parameter values?
-
                 // Audio processing was switched on.
-                _messageQueue.pushBack(makeResetStateMessage(AudioThreadMessage.Type.resetState));
                 return noErr;
             }
 
@@ -662,7 +657,7 @@ private:
 
             case kAudioUnitResetSelect: // 15
             {
-                _messageQueue.pushBack(makeResetStateMessage(AudioThreadMessage.Type.resetState));
+                _messageQueue.pushBack(makeResetStateMessage());
                 return noErr;
             }
 
@@ -911,17 +906,50 @@ private:
             }
 
             case kAudioUnitProperty_ParameterValueStrings: // 16
-                printf("TODO kAudioUnitProperty_ParameterValueStrings\n");
+            {
+                if (!isGlobalScope(scope_))
+                    return kAudioUnitErr_InvalidScope;
+                if (!_client.isValidParamIndex(element))
+                    return kAudioUnitErr_InvalidElement;
+
                 return kAudioUnitErr_InvalidProperty;
+        // TODO only for enum parameters
+          /+        Parameter pParam = _client.param(element);
+
+
+                  int n = pParam->GetNDisplayTexts();
+                  if (!n)
+                  {
+                    *pDataSize = 0;
+                    return kAudioUnitErr_InvalidProperty;
+                  }
+                  *pDataSize = sizeof(CFArrayRef);
+                  if (pData)
+                  {
+                    CFMutableArrayRef nameArray = CFArrayCreateMutable(kCFAllocatorDefault, n, &kCFTypeArrayCallBacks);
+                    for (int i = 0; i < n; ++i)
+                    {
+                      const char* str = pParam->GetDisplayText(i);
+                      CFStrLocal cfstr = CFStrLocal(str);
+                      CFArrayAppendValue(nameArray, cfstr.mCFStr);
+                    }
+                    *((CFArrayRef*) pData) = nameArray;
+                  }
+                  return noErr;
+                  +/
+            }
 
             case kAudioUnitProperty_GetUIComponentList: // 18
+            {
                 printf("TODO kAudioUnitProperty_GetUIComponentList\n");
                 return kAudioUnitErr_InvalidProperty;
+            }
 
             case kAudioUnitProperty_AudioChannelLayout:
-                printf("TODO kAudioUnitProperty_AudioChannelLayout\n");
-                // TODO: IPlug says "TODO: this seems wrong but works"
+            {
+                // TODO: IPlug says "this seems wrong but works"
                 return kAudioUnitErr_InvalidProperty;
+            }
 
             case kAudioUnitProperty_TailTime:                    // 20,   // listenable
             {
@@ -993,7 +1021,6 @@ private:
                         string name = presetBank.preset(presetIndex).name;
                         CFStrLocal presetName = CFStrLocal.fromString(name);
 
-                        // TODO should preset be 0 based?
                         CFAUPresetRef newPreset = CFAUPresetCreate(kCFAllocatorDefault, presetIndex, presetName);
                         if (newPreset != null)
                         {
@@ -1045,8 +1072,19 @@ private:
 
             case kAudioUnitProperty_ParameterIDName: // 34
             {
-                printf("TODO GET kAudioUnitProperty_ParameterIDName\n");
-                return kAudioUnitErr_InvalidProperty;
+                *pDataSize = AudioUnitParameterIDName.sizeof;
+                if (pData && scope_ == kAudioUnitScope_Global)
+                {
+                    AudioUnitParameterIDName* pIDName = cast(AudioUnitParameterIDName*) pData;
+                    Parameter parameter = _client.param(pIDName.inID);
+
+                    size_t desiredLength = parameter.name.length;
+                    if (pIDName.inDesiredLength != -1)
+                        desiredLength = pIDName.inDesiredLength;
+
+                    pIDName.outName = makeCFString(parameter.name[0..desiredLength]);
+                }
+                return noErr;
             }
 
             case kAudioUnitProperty_ParameterClumpName: // 35
@@ -1177,7 +1215,7 @@ private:
             case kAudioUnitProperty_SampleRate: // 2
             {
                 _sampleRate = *(cast(Float64*)pData);
-                _messageQueue.pushBack(makeResetStateMessage(AudioThreadMessage.Type.resetState));
+                _messageQueue.pushBack(makeResetStateMessage());
                 return noErr;
             }
 
@@ -1209,7 +1247,7 @@ private:
                     if (pASBD.mSampleRate > 0.0)
                     {
                         _sampleRate = pASBD.mSampleRate;
-                        _messageQueue.pushBack(makeResetStateMessage(AudioThreadMessage.Type.resetState));
+                        _messageQueue.pushBack(makeResetStateMessage());
                     }
                 }
                 return (connectionOK ? noErr : kAudioUnitErr_InvalidProperty);
@@ -1218,13 +1256,14 @@ private:
             case kAudioUnitProperty_MaximumFramesPerSlice:
             {
                 _maxFrames = *(cast(uint*)pData);
-                _messageQueue.pushBack(makeResetStateMessage(AudioThreadMessage.Type.resetState));
+                _messageQueue.pushBack(makeResetStateMessage());
                 return noErr;
             }
 
             case kAudioUnitProperty_BypassEffect: // 21
             {
                 _bypassed = (*(cast(UInt32*) pData) != 0);
+                _messageQueue.pushBack(makeResetStateMessage());
                 return noErr;
             }
 
@@ -1315,7 +1354,7 @@ private:
             }
         }
 
-        _messageQueue.pushBack(makeResetStateMessage(AudioThreadMessage.Type.resetState));
+        _messageQueue.pushBack(makeResetStateMessage());
     }
 
     bool checkLegalIO(AudioUnitScope scope_, int busIdx, int nChannels)
@@ -1360,9 +1399,9 @@ private:
             return -1;
     }
 
-    AudioThreadMessage makeResetStateMessage(AudioThreadMessage.Type type) pure const nothrow @nogc
+    AudioThreadMessage makeResetStateMessage() pure const nothrow @nogc
     {
-        return AudioThreadMessage(type, _maxFrames, _sampleRate, _maxInputs, _maxOutputs);
+        return AudioThreadMessage(AudioThreadMessage.Type.resetState, _maxFrames, _sampleRate, _bypassed);
     }
 
     // Serialize state
@@ -1452,6 +1491,8 @@ private:
         // Invalid timestamp
         if (!(pTimestamp.mFlags & kAudioTimeStampSampleTimeValid))
             return kAudioUnitErr_InvalidPropertyValue;
+
+        // TODO: get bypass out of this queue
 
         // process messages to get newer number of input, samplerate or frame number
         void processMessages(ref float newSamplerate, ref int newMaxFrames) nothrow @nogc
@@ -1602,7 +1643,7 @@ private:
                 _lastUsedOutputs = newUsedOutputs;
             }
 
-            if (_bypassed)
+            if (_bypassed) // TODO: racey
             {
                 int minIO = min(newUsedInputs, newUsedOutputs);
 
@@ -1742,4 +1783,43 @@ extern(C) ComponentResult renderProc(void* pPlug,
     return _this.render(pFlags, pTimestamp, outputBusIdx, nFrames, pOutBufList);
 }
 
+
+//
+// MessageQueue
+//
+
+alias AudioThreadQueue = LockedQueue!AudioThreadMessage;
+
+/// A message for the audio thread.
+/// Intended to be passed from a non critical thread to the audio thread.
+struct AudioThreadMessage
+{
+    enum Type
+    {
+        resetState, // reset plugin state, set samplerate and buffer size (samplerate = fParam, buffersize in frames = iParam)
+        midi
+    }
+
+    this(Type type_, int maxFrames_, float samplerate_, bool bypassed_) pure const nothrow @nogc
+    {
+        type = type_;
+        maxFrames = maxFrames_;
+        samplerate = samplerate_;
+        bypassed = bypassed_;
+    }
+
+    Type type;
+    int maxFrames;
+    float samplerate;
+    bool bypassed;
+    MidiMessage midiMessage;
+}
+
+AudioThreadMessage makeMIDIMessage(MidiMessage midiMessage) pure nothrow @nogc
+{
+    AudioThreadMessage msg;
+    msg.type = AudioThreadMessage.Type.midi;
+    msg.midiMessage = midiMessage;
+    return msg;
+}
 
