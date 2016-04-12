@@ -42,9 +42,9 @@ else version( OSX )
 }
 else version( Posix )
 {
-    import core.sys.posix.pthread;
     import core.sync.config;
     import core.stdc.errno;
+    import core.sys.posix.pthread;
     import core.sys.posix.semaphore;
 }
 else
@@ -236,7 +236,7 @@ class UncheckedSemaphore
                 if (!assumeNothrowNoGC(
                     (sem_t handle)
                     {
-                        return sem_wait(handle);
+                        return sem_wait(&handle);
                     })(m_hndl))
                     return;
                 if( errno != EINTR )
@@ -311,13 +311,18 @@ class UncheckedSemaphore
         else version( Posix )
         {
             timespec t = void;
-            mktspec( t, period );
+
+            assumeNothrowNoGC(
+                (timespec t, Duration period)
+                {
+                    mktspec( t, period );
+                }))(t, period);
 
             while( true )
             {
                 if (! ((sem_t* handle, timespec* t)
                        {
-                            return semaphore_timedwait(handle, t);
+                            return sem_timedwait(handle, t);
                        })(m_hndl, &t))
                     return true;
                 if( errno == ETIMEDOUT )
