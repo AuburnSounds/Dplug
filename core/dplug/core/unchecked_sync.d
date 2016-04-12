@@ -234,10 +234,10 @@ class UncheckedSemaphore
             while( true )
             {
                 if (!assumeNothrowNoGC(
-                    (sem_t handle)
+                    (sem_t* handle)
                     {
-                        return sem_wait(&handle);
-                    })(m_hndl))
+                        return sem_wait(handle);
+                    })(&m_hndl))
                     return;
                 if( errno != EINTR )
                     assert(false);
