@@ -323,7 +323,7 @@ class UncheckedSemaphore
                 if (! ((sem_t* handle, timespec* t)
                        {
                             return sem_timedwait(handle, t);
-                       })(m_hndl, &t))
+                       })(&m_hndl, &t))
                     return true;
                 if( errno == ETIMEDOUT )
                     return false;
