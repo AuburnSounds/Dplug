@@ -9,6 +9,7 @@ import std.string;
 
 import derelict.util.sharedlib;
 
+import dplug.core.funcs;
 import dplug.host.host;
 import dplug.vst;
 
@@ -49,8 +50,8 @@ final class VSTPluginHost : IPluginHost
     this(SharedLib lib)
     {
         _lib = lib;
-        
-        VSTPluginMain_t VSTPluginMain = getVSTEntryPoint(lib); 
+
+        VSTPluginMain_t VSTPluginMain = getVSTEntryPoint(lib);
 
         _aeffect = VSTPluginMain(&hostCallback);
 
@@ -92,21 +93,21 @@ final class VSTPluginHost : IPluginHost
     }
 
     override string getVendorString()
-    {        
+    {
         char[65] buf;
         _dispatcher(_aeffect, effGetVendorString, 0, 0, buf.ptr, 0.0f);
         return fromStringz(buf.ptr).idup;
     }
 
     override string getEffectName()
-    {        
+    {
         char[65] buf;
         _dispatcher(_aeffect, effGetEffectName, 0, 0, buf.ptr, 0.0f);
         return fromStringz(buf.ptr).idup;
     }
 
     override string getProductString()
-    {        
+    {
         char[65] buf;
         _dispatcher(_aeffect, effGetProductString, 0, 0, buf.ptr, 0.0f);
         return fromStringz(buf.ptr).idup;
@@ -147,7 +148,7 @@ final class VSTPluginHost : IPluginHost
         }
         else
             throw new Exception("This VST doesn't support chunks");
-        
+
     }
 
     override void restoreState(ubyte[] chunk)

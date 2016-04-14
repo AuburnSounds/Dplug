@@ -273,7 +273,7 @@ class GUIGraphics : UIElement, IGraphics
             // Split boxes to avoid overlapped work
             // Note: this is done separately for update areas and render areas
             _areasToRenderNonOverlapping.clearContents();
-            removeOverlappingAreas(_areasToRender[], _areasToRenderNonOverlapping);
+            removeOverlappingAreas(_areasToRender, _areasToRenderNonOverlapping);
 
             regenerateMipmaps();
 

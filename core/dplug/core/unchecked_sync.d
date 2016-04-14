@@ -38,11 +38,10 @@ else version( OSX )
     import core.sync.config;
     import core.stdc.errno;
     import core.sys.posix.time;
-    import core.sys.osx.mach.semaphore;    
+    import core.sys.osx.mach.semaphore;
 }
 else version( Posix )
 {
-    import core.sys.posix.pthread;
     import core.sync.config;
     import core.stdc.errno;
     import core.sys.posix.pthread;
@@ -84,11 +83,7 @@ final class UncheckedMutex
         }
         else version( Posix )
         {
-            assumeNothrowNoGC(
-                (pthread_mutex_t* handle)
-                {
-                    pthread_mutex_destroy(handle);
-                })(&m_hndl);
+            pthread_mutex_destroy(&m_hndl);
         }
     }
 
@@ -167,7 +162,7 @@ package:
 
 class UncheckedSemaphore
 {
-    this( uint count = 0 )  nothrow @nogc
+    this( uint count = 0 )
     {
         version( Windows )
         {
@@ -190,7 +185,7 @@ class UncheckedSemaphore
     }
 
 
-    ~this() nothrow
+    ~this()
     {
         debug ensureNotInGC("UncheckedSemaphore");
 
@@ -222,7 +217,11 @@ class UncheckedSemaphore
         {
             while( true )
             {
-                auto rc = semaphore_wait( m_hndl );
+                auto rc = assumeNothrowNoGC(
+                    (semaphore_t handle)
+                    {
+                        return semaphore_wait(handle);
+                    })(m_hndl);
                 if( !rc )
                     return;
                 if( rc == KERN_ABORTED && errno == EINTR )
@@ -234,7 +233,11 @@ class UncheckedSemaphore
         {
             while( true )
             {
-                if( !sem_wait( &m_hndl ) )
+                if (!assumeNothrowNoGC(
+                    (sem_t* handle)
+                    {
+                        return sem_wait(handle);
+                    })(&m_hndl))
                     return;
                 if( errno != EINTR )
                     assert(false);
@@ -292,7 +295,11 @@ class UncheckedSemaphore
                 period.split!("seconds", "nsecs")(t.tv_sec, t.tv_nsec);
             while( true )
             {
-                auto rc = semaphore_timedwait( m_hndl, t );
+                auto rc = assumeNothrowNoGC(
+                            (semaphore_t handle, mach_timespec_t t)
+                            {
+                                return semaphore_timedwait(handle, t);
+                            })(m_hndl, t);
                 if( !rc )
                     return true;
                 if( rc == KERN_OPERATION_TIMED_OUT )
@@ -304,11 +311,19 @@ class UncheckedSemaphore
         else version( Posix )
         {
             timespec t = void;
-            mktspec( t, period );
+
+            assumeNothrowNoGC(
+                (timespec t, Duration period)
+                {
+                    mktspec( t, period );
+                })(t, period);
 
             while( true )
             {
-                if( !sem_timedwait( &m_hndl, &t ) )
+                if (! ((sem_t* handle, timespec* t)
+                       {
+                            return sem_timedwait(handle, t);
+                       })(&m_hndl, &t))
                     return true;
                 if( errno == ETIMEDOUT )
                     return false;
@@ -327,7 +342,11 @@ class UncheckedSemaphore
         }
         else version( OSX )
         {
-            auto rc = semaphore_signal( m_hndl );
+           auto rc = assumeNothrowNoGC(
+                        (semaphore_t handle)
+                        {
+                            return semaphore_signal(handle);
+                        })(m_hndl);
             if( rc )
                 assert(false);
         }

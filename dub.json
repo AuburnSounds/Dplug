@@ -101,7 +101,7 @@
                 "dplug:core": "*",
                 "gfm:math": "~>6.0",
                 "ae-graphics": "~>0.0",
-                "imageformats": "~>5.0"
+                "imageformats": "~>6.0"
             }
         }
     ]
