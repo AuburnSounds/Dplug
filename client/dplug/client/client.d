@@ -34,40 +34,6 @@ import dplug.client.graphics;
 import dplug.client.daw;
 
 
-class InputPin
-{
-public:
-    this()
-    {
-        _isConnected = false;
-    }
-
-    bool isConnected() pure const nothrow
-    {
-        return _isConnected;
-    }
-
-private:
-    bool _isConnected;
-}
-
-class OutputPin
-{
-public:
-    this()
-    {
-        _isConnected = false;
-    }
-
-    bool isConnected() pure const nothrow
-    {
-        return _isConnected;
-    }
-
-private:
-    bool _isConnected;
-}
-
 
 /// A plugin client can send commands to the host.
 /// This interface is injected after the client creation though.
@@ -160,18 +126,6 @@ public:
             if (_maxOutputs < legalIO.numOutputChannels)
                 _maxOutputs = legalIO.numOutputChannels;
         }
-        _inputPins.length = _maxInputs;
-        for (int i = 0; i < _maxInputs; ++i)
-            _inputPins[i] = new InputPin();
-
-        _outputPins.length = _maxOutputs;
-        for (int i = 0; i < _maxOutputs; ++i)
-            _outputPins[i] = new OutputPin();
-
-        // Must be done there rather than in
-        // effEditOpen for some reason.
-        // TODO: do it really lazily
-        //createGraphicsLazily();
     }
 
     ~this()
@@ -493,9 +447,6 @@ private:
     LegalIO[] _legalIOs;
 
     int _maxInputs, _maxOutputs; // maximum number of input/outputs
-
-    InputPin[] _inputPins;
-    OutputPin[] _outputPins;
 
     final void createGraphicsLazily()
     {

@@ -1187,23 +1187,19 @@ private:
                         pInBusConn.upstreamUnit = pAUC.sourceAudioUnit;
                         pInBusConn.upstreamBusIdx = pAUC.sourceOutputNumber;
 
-
-                      /+ TODO fast dispatch
-
-                      // Will the upstream unit give us a fast render proc for input?
-                      AudioUnitRenderProc srcRenderProc;
-                      size = AudioUnitRenderProc.sizeof;
-                      if (AudioUnitGetProperty(pAUC.sourceAudioUnit, kAudioUnitProperty_FastDispatch, kAudioUnitScope_Global, kAudioUnitRenderSelect,
+                        // Will the upstream unit give us a fast render proc for input?
+                        AudioUnitRenderProc srcRenderProc;
+                        size = AudioUnitRenderProc.sizeof;
+                        if (AudioUnitGetProperty(pAUC.sourceAudioUnit, kAudioUnitProperty_FastDispatch, kAudioUnitScope_Global, kAudioUnitRenderSelect,
                                                &srcRenderProc, &size) == noErr)
-                      {
-                        // Yes, we got a fast render proc, and we also need to store the pointer to the upstream audio unit object.
-                        pInBusConn->mUpstreamRenderProc = srcRenderProc;
-                        pInBusConn->mUpstreamObj = GetComponentInstanceStorage(pAUC->sourceAudioUnit);
-                      }
-                      // Else no fast render proc, so leave the input bus connection struct's upstream render proc and upstream object empty,
-                      // and we will need to make a component call through the component manager to get input data.
+                        {
+                            // Yes, we got a fast render proc, and we also need to store the pointer to the upstream audio unit object.
+                            pInBusConn.upstreamRenderProc = srcRenderProc;
+                            pInBusConn.upstreamObj = GetComponentInstanceStorage(pAUC.sourceAudioUnit);
+                        }
+                        // Else no fast render proc, so leave the input bus connection struct's upstream render proc and upstream object empty,
+                        // and we will need to make a component call through the component manager to get input data.
 
-                      +/
                     }
                     // Else this is a call to close the connection, which we effectively did by clearing the InputBusConnection struct,
                     // which counts as a successful negotiation.
