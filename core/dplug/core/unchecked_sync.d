@@ -126,7 +126,7 @@ final class UncheckedMutex
         }
     }
 
-    bool tryLock()
+    bool tryLock() nothrow @nogc
     {
         version( Windows )
         {
