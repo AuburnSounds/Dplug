@@ -238,6 +238,7 @@ private:
     int _maxFramesInProcess;
 
     // From audio thread POV
+    bool _lastBypassed = false;
     int _lastMaxFrames = 0;
     float _lastSamplerate = 0;
     int _lastUsedInputs = 0;
@@ -1350,7 +1351,6 @@ private:
     // From connection information, transmit to client
     void assessInputConnections()
     {
-        int usedInputs = 0;
         foreach (i; 0.._inBuses.length )
         {
             BusChannels* pInBus = &_inBuses[i];
@@ -1369,8 +1369,6 @@ private:
                     // Assume the host will send all the channels the plugin asks for, and hope for the best.
                     pInBus.numHostChannels = pInBus.numPlugChannels;
                 }
-
-                usedInputs += pInBus.numPlugChannels;
             }
         }
 
@@ -1512,10 +1510,8 @@ private:
         if (!(pTimestamp.mFlags & kAudioTimeStampSampleTimeValid))
             return kAudioUnitErr_InvalidPropertyValue;
 
-        // TODO: get bypass out of this queue
-
         // process messages to get newer number of input, samplerate or frame number
-        void processMessages(ref float newSamplerate, ref int newMaxFrames) nothrow @nogc
+        void processMessages(ref float newSamplerate, ref int newMaxFrames, ref bool newBypassed) nothrow @nogc
         {
             // Only the last reset state message is meaningful, so we unwrap them
 
@@ -1529,6 +1525,7 @@ private:
                         // Note: number of input/ouputs is discarded from the message
                         newMaxFrames = msg.maxFrames;
                         newSamplerate = msg.samplerate;
+                        newBypassed = msg.bypassed;
                         break;
 
                     case midi:
@@ -1539,7 +1536,7 @@ private:
         }
         float newSamplerate = _lastSamplerate;
         int newMaxFrames = _lastMaxFrames;
-        processMessages(newSamplerate, newMaxFrames);
+        processMessages(newSamplerate, newMaxFrames, _lastBypassed);
 
         // Must fail when given too much frames
         if (nFrames > newMaxFrames)
@@ -1663,7 +1660,7 @@ private:
                 _lastUsedOutputs = newUsedOutputs;
             }
 
-            if (_bypassed) // TODO: racey
+            if (_lastBypassed)
             {
                 int minIO = min(newUsedInputs, newUsedOutputs);
 
@@ -1681,8 +1678,6 @@ private:
                 sendAudioToClient(_inputPointersNoGap[0..newUsedInputs],
                                   _outputPointersNoGap[0..newUsedOutputs],
                                   nFrames, timeInfo);
-
-                // TODO: how to return back output pointers we own?
             }
         }
 
