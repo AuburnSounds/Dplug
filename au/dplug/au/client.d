@@ -181,7 +181,7 @@ public:
         _inBusConnections.length = numInputBuses;
         foreach(i; 0..numInputBuses)
         {
-            int channels = std.algorithm.min(2, numInputBuses - i * 2);
+            int channels = std.algorithm.min(2, _maxInputs - i * 2);
             assert(channels == 1 || channels == 2);
             _inBuses[i].connected = false;
             _inBuses[i].numHostChannels = -1;
@@ -192,11 +192,11 @@ public:
 
         // Create output buses
 
-        int numOutputBuses = (_maxInputs + 1) / 2;
+        int numOutputBuses = (_maxOutputs + 1) / 2;
         _outBuses.length = numOutputBuses;
         foreach(i; 0..numOutputBuses)
         {
-            int channels = std.algorithm.min(2, numOutputBuses - i * 2);
+            int channels = std.algorithm.min(2, _maxOutputs - i * 2);
             assert(channels == 1 || channels == 2);
             _outBuses[i].connected = false;
             _outBuses[i].numHostChannels = -1;
