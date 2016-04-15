@@ -201,7 +201,7 @@ struct CFStrLocal
     static fromString(string str) nothrow
     {
         CFStrLocal s = void;
-        s.parent = makeCFString(str);
+        s.parent = toCFString(str);
         return s;
     }
 
@@ -211,12 +211,14 @@ struct CFStrLocal
     }
 }
 
-CFStringRef makeCFString(string str) nothrow
+deprecated("use toCFString instead") alias makeCFString = toCFString;
+CFStringRef toCFString(string str) nothrow
 {
     return CFStringCreateWithCString(null, toStringz(str), kCFStringEncodingUTF8);
 }
 
-string copyCFString(CFStringRef cfStr) nothrow
+deprecated("use fromCFString instead") alias copyCFString = fromCFString;
+string fromCFString(CFStringRef cfStr) nothrow
 {
     auto n = CFStringGetLength(cfStr) + 1;
     char[] buf = new char[n];
@@ -270,7 +272,7 @@ bool getStrFromDict(CFDictionaryRef pDict, string key, out string value) nothrow
     CFStringRef pValue = cast(CFStringRef) CFDictionaryGetValue(pDict, cfKey);
     if (pValue)
     {
-        value = copyCFString(pValue);
+        value = fromCFString(pValue);
         return true;
     }
     return false;

@@ -744,7 +744,7 @@ private:
                                   kAudioUnitParameterFlag_IsWritable;
 
                     Parameter p = _client.param(element);
-                    pInfo.cfNameString = makeCFString(p.name);
+                    pInfo.cfNameString = toCFString(p.name);
                     stringNCopy(pInfo.name.ptr, 52, p.name);
 
                   /* if (auto enumParam = cast(EnumParameter)p)
@@ -769,7 +769,7 @@ private:
                         assert(p.label !is null);
                         if (p.label != "")
                         {
-                            pInfo.unitName = makeCFString(p.label);
+                            pInfo.unitName = toCFString(p.label);
                             pInfo.unit = kAudioUnitParameterUnit_CustomUnit;
                         }
                         else
@@ -1052,7 +1052,7 @@ private:
 
                 if (pData)
                 {
-                    *cast(CFStringRef *)pData = makeCFString(pBus.label);
+                    *cast(CFStringRef *)pData = toCFString(pBus.label);
                 }
 
                 return noErr;
@@ -1082,7 +1082,7 @@ private:
                     if (pIDName.inDesiredLength != -1)
                         desiredLength = pIDName.inDesiredLength;
 
-                    pIDName.outName = makeCFString(parameter.name[0..desiredLength]);
+                    pIDName.outName = toCFString(parameter.name[0..desiredLength]);
                 }
                 return noErr;
             }
@@ -1098,7 +1098,7 @@ private:
                         return kAudioUnitErr_PropertyNotInUse;
 
                     // Parameter groups not supported yet, always return the same string
-                    parameterNameInfo.outName = makeCFString("All params");
+                    parameterNameInfo.outName = toCFString("All params");
                 }
                 return noErr;
             }
@@ -1114,14 +1114,38 @@ private:
                     Preset preset = bank.currentPreset();
                     AUPreset* pAUPreset = cast(AUPreset*) pData;
                     pAUPreset.presetNumber = bank.currentPresetIndex();
-                    pAUPreset.presetName = makeCFString(preset.name);
+                    pAUPreset.presetName = toCFString(preset.name);
                 }
                 return noErr;
             }
 
-            case kAudioUnitProperty_ParameterStringFromValue:
-                printf("TODO GET kAudioUnitProperty_ParameterStringFromValue\n");
-                return kAudioUnitErr_InvalidProperty;
+            case kAudioUnitProperty_ParameterStringFromValue: // 33
+            {
+                *pDataSize = AudioUnitParameterStringFromValue.sizeof;
+                if (pData && scope_ == kAudioUnitScope_Global)
+                {
+                    AudioUnitParameterStringFromValue* pSFV = cast(AudioUnitParameterStringFromValue*) pData;
+                    Parameter parameter = _client.param(pSFV.inParamID);
+                    pSFV.outString = toCFString(parameter.stringFromNormalizedValue(*pSFV.inValue));
+                }
+                return noErr;
+            }
+
+            case kAudioUnitProperty_ParameterValueFromString: // 38
+            {
+                *pDataSize = AudioUnitParameterValueFromString.sizeof;
+                if (pData)
+                {
+                    AudioUnitParameterValueFromString* pVFS = cast(AudioUnitParameterValueFromString*) pData;
+                    if (scope_ == kAudioUnitScope_Global)
+                    {
+                        Parameter parameter = _client.param(pVFS.inParamID);
+                        string paramString = fromCFString(pVFS.inString);
+                        pVFS.outValue = parameter.normalizedValueFromString(paramString);
+                    }
+                }
+                return noErr;
+            }
 
             case kMusicDeviceProperty_InstrumentCount:
             {
@@ -1306,7 +1330,7 @@ private:
             case kAudioUnitProperty_AUHostIdentifier:            // 46,
             {
                 AUHostIdentifier* pHostID = cast(AUHostIdentifier*) pData;
-                _daw = identifyDAW( toStringz(copyCFString(pHostID.hostName)) );
+                _daw = identifyDAW( toStringz(fromCFString(pHostID.hostName)) );
 
                 /*
                 int hostVer = (pHostID->hostVersion.majorRev << 16)

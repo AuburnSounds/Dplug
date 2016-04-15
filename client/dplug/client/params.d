@@ -22,6 +22,7 @@ import core.stdc.stdio;
 import std.math;
 import std.algorithm;
 import std.string;
+import std.conv;
 
 import gfm.core;
 
@@ -112,6 +113,13 @@ public:
 
     /// Returns: A normalized double, representing the default parameter value.
     abstract double getNormalizedDefault() nothrow @nogc;
+
+    /// Returns: A string associated with the normalized normalized.
+    abstract string stringFromNormalizedValue(double normalizedValue);
+
+    /// Returns: A normalized normalized associated with the string.
+    /// Can throw Exceptions.
+    abstract double normalizedValueFromString(string valueString);
 
     ~this()
     {
@@ -220,6 +228,21 @@ public:
             snprintf(buffer, numBytes, "no");
     }
 
+    /// Returns: A string associated with the normalized normalized.
+    override string stringFromNormalizedValue(double normalizedValue)
+    {
+        bool value = (normalizedValue >= 0.5);
+        return value ? "yes" : "no";
+    }
+
+    /// Returns: A normalized normalized associated with the string.
+    override double normalizedValueFromString(string valueString)
+    {
+        if (valueString == "yes") return 1;
+        if (valueString == "no") return 1;
+        throw new Exception("Couln't parse parameter string");
+    }
+
     final void setFromGUI(bool newValue)
     {
         _valueMutex.lock();
@@ -275,17 +298,7 @@ public:
 
     override void setNormalized(double hostValue)
     {
-        double mapped = _min + (_max - _min) * hostValue;
-
-        // slightly incorrect rounding, but lround is crashing
-        int rounded = void;
-        if (mapped)
-            rounded = cast(int)(0.5f + mapped);
-        else
-            rounded = cast(int)(-0.5f + mapped);
-
-        int newValue = clampValue!int(rounded, _min, _max);
-
+        int newValue = fromNormalized(hostValue);
         _valueMutex.lock();
         atomicStore(_value, newValue);
         _valueMutex.unlock();
@@ -294,13 +307,13 @@ public:
     override double getNormalized() nothrow @nogc
     {
         int v = value();
-        double normalized = clampValue!double( (cast(double)v - _min) / (_max - _min), 0.0, 1.0);
+        double normalized = toNormalized(value());
         return normalized;
     }
 
     override double getNormalizedDefault() nothrow @nogc
     {
-        double normalized = clampValue!double( (cast(double)_defaultValue - _min) / (_max - _min), 0.0, 1.0);
+        double normalized = toNormalized(_defaultValue);
         return normalized;
     }
 
@@ -308,6 +321,16 @@ public:
     {
         int v =  value();
         snprintf(buffer, numBytes, "%d", v);
+    }
+
+    override string stringFromNormalizedValue(double normalizedValue)
+    {
+        return to!string(fromNormalized(normalizedValue));
+    }
+
+    override double normalizedValueFromString(string valueString)
+    {
+        return toNormalized(to!int(valueString));
     }
 
     /// Gets the current parameter value.
@@ -372,6 +395,25 @@ private:
     int _min;
     int _max;
     int _defaultValue;
+
+    final int fromNormalized(double normalizedValue) nothrow @nogc
+    {
+        double mapped = _min + (_max - _min) * normalizedValue;
+
+        // slightly incorrect rounding, but lround is crashing
+        int rounded = void;
+        if (mapped)
+            rounded = cast(int)(0.5f + mapped);
+        else
+            rounded = cast(int)(-0.5f + mapped);
+
+        return clampValue!int(rounded, _min, _max);
+    }
+
+    final double toNormalized(int value) nothrow @nogc
+    {
+        return clampValue!double( (cast(double)value - _min) / (_max - _min), 0.0, 1.0);
+    }
 }
 
 class EnumParameter : IntegerParameter
@@ -392,6 +434,20 @@ public:
         // add terminal zero
         if (numBytes > 0)
             buffer[toCopy] = '\0';
+    }
+
+    override string stringFromNormalizedValue(double normalizedValue)
+    {
+        return _possibleValues[ fromNormalized(normalizedValue) ];
+    }
+
+    override double normalizedValueFromString(string valueString)
+    {
+        foreach(int i; 0..cast(int)(_possibleValues.length))
+            if (_possibleValues[i] == valueString)
+                return toNormalized(i);
+
+        throw new Exception("Couldn't parse enum parameter value");
     }
 
 private:
@@ -505,6 +561,16 @@ public:
     override void toStringN(char* buffer, size_t numBytes) nothrow @nogc
     {
         snprintf(buffer, numBytes, "%2.2f", value());
+    }
+
+    override string stringFromNormalizedValue(double normalizedValue)
+    {
+        return to!string(fromNormalized(normalizedValue));
+    }
+
+    override double normalizedValueFromString(string valueString)
+    {
+        return toNormalized(to!double(valueString));
     }
 
     /// Override it to specify mapping from parameter values to normalized [0..1]
