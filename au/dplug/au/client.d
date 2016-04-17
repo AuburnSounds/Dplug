@@ -96,6 +96,7 @@ nothrow ComponentResult audioUnitEntryPoint(alias ClientClass)(ComponentParamete
             DerelictCoreFoundation.load();
             DerelictCoreServices.load();
             DerelictAudioUnit.load();
+            DerelictAudioToolbox.load();
 
             // Create client and AUClient
             auto client = new ClientClass();
@@ -166,8 +167,6 @@ public:
         for (int i = 0; i < _maxOutputs; ++i)
             _outputScratchBuffer[i] = new AlignedBuffer!float();
 
-        _zeroesBuffer = new AlignedBuffer!float();
-
         _inputPointers.length = _maxInputs;
         _outputPointers.length = _maxOutputs;
 
@@ -223,13 +222,12 @@ public:
 
         for (int i = 0; i < _maxOutputs; ++i)
             _outputScratchBuffer[i].destroy();
-        _zeroesBuffer.destroy();
     }
 
 private:
     ComponentInstance _componentInstance;
     Client _client;
-    HostCallbackInfo _hostCallbacks;
+    HostCallbackInfo _hostCallbacks; // TODO need synchronization
     AudioThreadQueue _messageQueue;
 
     int _maxInputs, _maxOutputs;
@@ -253,7 +251,6 @@ private:
 
     AlignedBuffer!float[] _inputScratchBuffer;  // input buffer, one per possible input
     AlignedBuffer!float[] _outputScratchBuffer; // input buffer, one per output
-    AlignedBuffer!float   _zeroesBuffer;        // used for disconnected inputs
 
     float*[] _inputPointers;  // where processAudio will take its audio input, one per possible input
     float*[] _outputPointers; // where processAudio will output audio, one per possible output
@@ -392,8 +389,6 @@ private:
         for (int i = 0; i < _maxOutputs; ++i)
             _outputScratchBuffer[i].resize(nFrames);
 
-        _zeroesBuffer.resize(nFrames);
-        _zeroesBuffer.fill(0);
     }
 
     // </scratch-buffers>
@@ -1651,9 +1646,7 @@ private:
                               newUsedOutputs != _lastUsedOutputs || newSamplerate != _lastSamplerate);
             if (needReset)
             {
-                printf("reset %f %d %d %d\n", newSamplerate, getMaxFramesClientPOV(newMaxFrames), newUsedInputs, newUsedOutputs);
                 _client.reset(newSamplerate, getMaxFramesClientPOV(newMaxFrames), newUsedInputs, newUsedOutputs);
-
                 _lastMaxFrames = newMaxFrames;
                 _lastSamplerate = newSamplerate;
                 _lastUsedInputs = newUsedInputs;
@@ -1672,9 +1665,10 @@ private:
             }
             else
             {
-                TimeInfo timeInfo;
-                // TODO fill TimeInfo
-
+                TimeInfo timeInfo = getTimeInfo();
+                //printf("process %d frames\n", nFrames);
+                //printf("%p %p\n", _inputPointersNoGap[0], _inputPointersNoGap[1]);
+                //printf("%p %p\n", _outputPointersNoGap[0], _outputPointersNoGap[1]);
                 sendAudioToClient(_inputPointersNoGap[0..newUsedInputs],
                                   _outputPointersNoGap[0..newUsedOutputs],
                                   nFrames, timeInfo);
@@ -1697,19 +1691,31 @@ private:
     // IHostCommand
     public
     {
+        final void sendAUEvent(AudioUnitEventType type, ComponentInstance ci, int paramIndex)
+        {
+            AudioUnitEvent auEvent;
+            auEvent.mEventType = type;
+            auEvent.mArgument.mParameter.mAudioUnit = ci;
+            auEvent.mArgument.mParameter.mParameterID = paramIndex;
+            auEvent.mArgument.mParameter.mScope = kAudioUnitScope_Global;
+            auEvent.mArgument.mParameter.mElement = 0;
+            AUEventListenerNotify(null, null, &auEvent);
+        }
+
         override void beginParamEdit(int paramIndex)
         {
-            // TODO
+            sendAUEvent(kAudioUnitEvent_BeginParameterChangeGesture, _componentInstance, paramIndex);
         }
 
         override void paramAutomate(int paramIndex, float value)
         {
-            // TODO
+            // TODO: no value?
+            sendAUEvent(kAudioUnitEvent_ParameterValueChange, _componentInstance, paramIndex);
         }
 
         override void endParamEdit(int paramIndex)
         {
-            // TODO
+            sendAUEvent(kAudioUnitEvent_EndParameterChangeGesture, _componentInstance, paramIndex);
         }
 
         override bool requestResize(int width, int height)
@@ -1723,6 +1729,30 @@ private:
         {
             return _daw;
         }
+    }
+
+    // Host callbacks
+    final TimeInfo getTimeInfo() nothrow @nogc
+    {
+        TimeInfo result;
+
+        if (_hostCallbacks.transportStateProc)
+        {
+            double samplePos = 0.0, loopStartBeat, loopEndBeat;
+            Boolean playing, changed, looping;
+            _hostCallbacks.transportStateProc(_hostCallbacks.hostUserData, &playing, &changed, &samplePos,
+                                              &looping, &loopStartBeat, &loopEndBeat);
+            result.timeInSamples = cast(long)(samplePos + 0.5);
+        }
+
+        if (_hostCallbacks.beatAndTempoProc)
+        {
+            double currentBeat = 0.0, tempo = 0.0;
+            _hostCallbacks.beatAndTempoProc(_hostCallbacks.hostUserData, &currentBeat, &tempo);
+            if (tempo > 0.0)
+                result.tempo = tempo;
+        }
+        return result;
     }
 }
 
