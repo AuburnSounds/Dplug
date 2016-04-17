@@ -288,6 +288,17 @@ private:
         int numPlugChannels;
         int plugChannelStartIdx;
         string label; // pretty name
+
+        AudioChannelLayoutTag[] getSupportedChannelLayoutTags()
+        {
+            // a bit rigid right now, could be useful to support mono systematically?
+            if (numPlugChannels == 1)
+                return [ kAudioChannelLayoutTag_Mono ];
+            else if (numPlugChannels == 2)
+                return [ kAudioChannelLayoutTag_Stereo ];
+            else
+                return [ kAudioChannelLayoutTag_Unknown | numPlugChannels ];
+        }
     }
 
     BusChannels[] _inBuses; // TODO: mutex A
@@ -1059,12 +1070,28 @@ private:
                 return kAudioUnitErr_InvalidProperty; // no UI
 
             case kAudioUnitProperty_SupportedChannelLayoutTags:
+            {
+                if (isInputOrOutputScope(scope_))
+                  return kAudioUnitErr_InvalidScope;
 
-                // kAudioUnitProperty_SupportedChannelLayoutTags
-                // is only needed for multi-output bus instruments
-                // TODO when multi-output instruments are to be supported
+                BusChannels* bus = getBus(scope_, element);
+                if (!bus)
+                    return kAudioUnitErr_InvalidElement;
 
-                return kAudioUnitErr_InvalidProperty;
+                AudioChannelLayoutTag[] tags = bus.getSupportedChannelLayoutTags();
+
+                if (!pData) // GetPropertyInfo
+                {
+                    *pDataSize = cast(int)(tags.length * AudioChannelLayoutTag.sizeof);
+                    *pWriteable = true;
+                }
+                else
+                {
+                    AudioChannelLayoutTag* ptags = cast(AudioChannelLayoutTag*)(pData);
+                    ptags[0..tags.length] = tags[];
+                }
+                return noErr;
+            }
 
             case kAudioUnitProperty_ParameterIDName: // 34
             {
@@ -1241,9 +1268,8 @@ private:
                 int nHostChannels = pASBD.mChannelsPerFrame;
                 BusChannels* pBus = getBus(scope_, element);
                 if (!pBus)
-                {
                     return kAudioUnitErr_InvalidElement;
-                }
+
                 pBus.numHostChannels = 0;
                 // The connection is OK if the plugin expects the same number of channels as the host is attempting to connect,
                 // or if the plugin supports mono channels (meaning it's flexible about how many inputs to expect)
@@ -1327,12 +1353,6 @@ private:
             {
                 AUHostIdentifier* pHostID = cast(AUHostIdentifier*) pData;
                 _daw = identifyDAW( toStringz(fromCFString(pHostID.hostName)) );
-
-                /*
-                int hostVer = (pHostID->hostVersion.majorRev << 16)
-                        + ((pHostID->hostVersion.minorAndBugRev & 0xF0) << 4)
-                        + ((pHostID->hostVersion.minorAndBugRev & 0x0F));
-                        */
                 return noErr;
             }
 
@@ -1709,7 +1729,6 @@ private:
 
         override void paramAutomate(int paramIndex, float value)
         {
-            // TODO: no value?
             sendAUEvent(kAudioUnitEvent_ParameterValueChange, _componentInstance, paramIndex);
         }
 
@@ -1768,6 +1787,11 @@ static bool isGlobalScope(AudioUnitScope scope_) pure nothrow @nogc
 static bool isInputScope(AudioUnitScope scope_) pure nothrow @nogc
 {
     return (scope_ == kAudioUnitScope_Input);
+}
+
+static bool isOutputScope(AudioUnitScope scope_) pure nothrow @nogc
+{
+    return (scope_ == kAudioUnitScope_Output);
 }
 
 static bool isInputOrGlobalScope(AudioUnitScope scope_) pure nothrow @nogc
