@@ -28,28 +28,28 @@ enum int DPLUG_SERIALIZATION_MINOR_VERSION = 0;
 final class Preset
 {
 public:
-    this(string name, float[] normalizedParams)
+    this(string name, float[] normalizedParams) nothrow @nogc
     {
         _name = name;
         _normalizedParams = normalizedParams;
     }
 
-    void setNormalized(int paramIndex, float value)
+    void setNormalized(int paramIndex, float value) nothrow @nogc
     {
         _normalizedParams[paramIndex] = value;
     }
 
-    string name()
+    string name() pure nothrow @nogc
     {
         return _name;
     }
 
-    string name(string newName)
+    string name(string newName) pure nothrow @nogc
     {
         return _name = newName;
     }
 
-    void saveFromHost(Client client)
+    void saveFromHost(Client client) nothrow @nogc
     {
         auto params = client.params();
         foreach(int i, param; params)
@@ -126,12 +126,12 @@ public:
         assert(false);
     }
 
-    Preset preset(int i)
+    Preset preset(int i) nothrow @nogc
     {
         return presets[i];
     }
 
-    int numPresets()
+    int numPresets() nothrow @nogc
     {
         return cast(int)presets.length;
     }
@@ -141,7 +141,7 @@ public:
         return _current;
     }
 
-    Preset currentPreset()
+    Preset currentPreset() nothrow @nogc
     {
         int ind = currentPresetIndex();
         if (!isValidPresetIndex(ind))
@@ -149,14 +149,14 @@ public:
         return presets[ind];
     }
 
-    bool isValidPresetIndex(int index)
+    bool isValidPresetIndex(int index) nothrow @nogc
     {
         return index >= 0 && index < numPresets();
     }
 
     // Save current state to current preset. This updates the preset bank to reflect the state change.
     // This will be unnecessary once we haver internal preset management.
-    void putCurrentStateInCurrentPreset()
+    void putCurrentStateInCurrentPreset() nothrow @nogc
     {
         presets[_current].saveFromHost(_client);
     }
@@ -178,7 +178,7 @@ public:
     }
 
     /// Allocate and fill a bank chunk
-    ubyte[] getBankChunk()
+    ubyte[] getBankChunk() nothrow
     {
         putCurrentStateInCurrentPreset();
         auto chunk = appender!(ubyte[])();

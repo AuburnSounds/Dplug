@@ -66,7 +66,7 @@ alias CFAUPresetRef = void*;
 
 //-----------------------------------------------------------------------------
 // create an instance of a CFAUPreset object
-CFAUPresetRef CFAUPresetCreate(CFAllocatorRef inAllocator, SInt32 inPresetNumber, CFStringRef inPresetName)
+CFAUPresetRef CFAUPresetCreate(CFAllocatorRef inAllocator, SInt32 inPresetNumber, CFStringRef inPresetName) nothrow @nogc
 {
     CFAUPreset * newPreset = cast(CFAUPreset*) CFAllocatorAllocate(inAllocator, CFAUPreset.sizeof, 0);
     if (newPreset != null)
@@ -278,7 +278,7 @@ bool getStrFromDict(CFDictionaryRef pDict, string key, out string value) nothrow
     return false;
 }
 
-bool getDataFromDict(CFDictionaryRef pDict, string key, ubyte[] pChunk) nothrow
+bool getDataFromDict(CFDictionaryRef pDict, string key, out ubyte[] pChunk) nothrow
 {
     CFStrLocal cfKey = CFStrLocal.fromString(key);
     CFDataRef pData = cast(CFDataRef) CFDictionaryGetValue(pDict, cfKey);

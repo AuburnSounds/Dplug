@@ -297,7 +297,7 @@ private:
         int plugChannelStartIdx;
         string label; // pretty name
 
-        AudioChannelLayoutTag[] getSupportedChannelLayoutTags()
+        AudioChannelLayoutTag[] getSupportedChannelLayoutTags() nothrow
         {
             // a bit rigid right now, could be useful to support mono systematically?
             if (numPlugChannels == 1)
@@ -312,7 +312,7 @@ private:
     BusChannels[] _inBuses;
     BusChannels[] _outBuses;
 
-    BusChannels* getBus(AudioUnitScope scope_, AudioUnitElement busIdx)
+    BusChannels* getBus(AudioUnitScope scope_, AudioUnitElement busIdx) nothrow
     {
         if (scope_ == kAudioUnitScope_Input && busIdx < _inBuses.length)
             return &_inBuses[busIdx];
@@ -419,11 +419,17 @@ private:
     //
     // DISPATCHER
     //
-    ComponentResult dispatcher(int select, ComponentParameters* params)
+    ComponentResult dispatcher(int select, ComponentParameters* params) nothrow
     {
         if (select == kComponentCloseSelect) // -2
         {
-            this.destroy(); // free all resources except this and the runtime
+            try
+            {
+                this.destroy(); // free all resources except this and the runtime
+            }
+            catch(Exception e)
+            {
+            }
             return noErr;
         }
 
@@ -629,11 +635,14 @@ private:
 
             case kAudioUnitRemoveRenderNotifySelect: // 10
             {
-                static auto removeElement(R, N)(R haystack, N needle)
+                static void removeElement(T)(ref T[] arr, T needle) nothrow
                 {
-                    import std.algorithm : countUntil, remove;
-                    auto index = haystack.countUntil(needle);
-                    return (index != -1) ? haystack.remove(index) : haystack;
+                    foreach(i; 0..arr.length)
+                        if (arr[i] == needle)
+                        {
+                            arr[i] = arr[$-1];
+                            arr.length = arr.length - 1;
+                        }
                 }
 
                 AURenderCallbackStruct acs;
@@ -642,7 +651,7 @@ private:
 
                 _renderNotifyMutex.lock();
                 scope(exit) _renderNotifyMutex.unlock();
-                _renderNotify = removeElement(_renderNotify, acs);
+                removeElement(_renderNotify, acs);
                 return noErr;
             }
 
@@ -709,7 +718,7 @@ private:
     // GET PROPERTY
     //
     ComponentResult getProperty(AudioUnitPropertyID propID, AudioUnitScope scope_, AudioUnitElement element,
-                                UInt32* pDataSize, Boolean* pWriteable, void* pData)
+                                UInt32* pDataSize, Boolean* pWriteable, void* pData) nothrow
     {
         //debug printf("GET property %d\n", propID);
 
@@ -1198,7 +1207,14 @@ private:
                     {
                         Parameter parameter = _client.param(pVFS.inParamID);
                         string paramString = fromCFString(pVFS.inString);
-                        pVFS.outValue = parameter.normalizedValueFromString(paramString);
+                        try
+                        {
+                            pVFS.outValue = parameter.normalizedValueFromString(paramString);
+                        }
+                        catch(Exception e)
+                        {
+                            return kAudioUnitErr_InvalidProperty;
+                        }
                     }
                 }
                 return noErr;
@@ -1226,7 +1242,7 @@ private:
     }
 
     ComponentResult setProperty(AudioUnitPropertyID propID, AudioUnitScope scope_, AudioUnitElement element,
-                                UInt32* pDataSize, const(void)* pData)
+                                UInt32* pDataSize, const(void)* pData) nothrow
     {
         // inform listeners
         foreach (ref listener; _propertyListeners)
@@ -1238,7 +1254,7 @@ private:
         switch(propID)
         {
             case kAudioUnitProperty_ClassInfo:
-                return kAudioUnitErr_InvalidProperty; // TODO restore state
+                return writeState(*(cast(CFPropertyListRef*) pData));
 
             case kAudioUnitProperty_MakeConnection: // 1
             {
@@ -1382,7 +1398,12 @@ private:
 
                 PresetBank bank = _client.presetBank();
                 if (bank.isValidPresetIndex(presetIndex))
-                    bank.loadPresetFromHost(presetIndex);
+                {
+                    try
+                        bank.loadPresetFromHost(presetIndex);
+                    catch(Exception e)
+                        return kAudioUnitErr_InvalidProperty;
+                }
 
                 return noErr;
             }
@@ -1403,7 +1424,7 @@ private:
     }
 
     // From connection information, transmit to client
-    void assessInputConnections()
+    void assessInputConnections() nothrow
     {
         foreach (i; 0.._inBuses.length )
         {
@@ -1429,7 +1450,7 @@ private:
         _messageQueue.pushBack(makeResetStateMessage());
     }
 
-    bool checkLegalIO(AudioUnitScope scope_, int busIdx, int nChannels)
+    bool checkLegalIO(AudioUnitScope scope_, int busIdx, int nChannels) nothrow
     {
         assert(scope_ == kAudioUnitScope_Input || scope_ == kAudioUnitScope_Output);
         if (scope_ == kAudioUnitScope_Input)
@@ -1477,7 +1498,7 @@ private:
     }
 
     // Serialize state
-    ComponentResult readState(CFPropertyListRef* ppPropList)
+    ComponentResult readState(CFPropertyListRef* ppPropList) nothrow
     {
         ComponentDescription cd;
         ComponentResult r = GetComponentInfo(cast(Component) _componentInstance, &cd, null, null, null);
@@ -1486,7 +1507,6 @@ private:
         CFMutableDictionaryRef pDict = CFDictionaryCreateMutable(null, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
         int version_ = _client.getPluginVersion();
         putNumberInDict(pDict, kAUPresetVersionKey, &version_, kCFNumberSInt32Type);
-
         putNumberInDict(pDict, kAUPresetTypeKey, &(cd.componentType), kCFNumberSInt32Type);
         putNumberInDict(pDict, kAUPresetSubtypeKey, &(cd.componentSubType), kCFNumberSInt32Type);
         putNumberInDict(pDict, kAUPresetManufacturerKey, &(cd.componentManufacturer), kCFNumberSInt32Type);
@@ -1495,6 +1515,45 @@ private:
         ubyte[] state = presetBank.getBankChunk();
         putDataInDict(pDict, kAUPresetDataKey, state);
         *ppPropList = pDict;
+        return noErr;
+    }
+
+    ComponentResult writeState(CFPropertyListRef ppPropList) nothrow
+    {
+        ComponentDescription cd;
+        ComponentResult r = GetComponentInfo(cast(Component) _componentInstance, &cd, null, null, null);
+        if (r != noErr)
+            return r;
+
+        int version_, type, subtype, mfr;
+        string presetName;
+
+        CFMutableDictionaryRef pDict = cast(CFMutableDictionaryRef)ppPropList;
+
+        if (!getNumberFromDict(pDict, kAUPresetVersionKey, &version_, kCFNumberSInt32Type) ||
+            !getNumberFromDict(pDict, kAUPresetTypeKey, &type, kCFNumberSInt32Type) ||
+            !getNumberFromDict(pDict, kAUPresetSubtypeKey, &subtype, kCFNumberSInt32Type) ||
+            !getNumberFromDict(pDict, kAUPresetManufacturerKey, &mfr, kCFNumberSInt32Type) ||
+            !getStrFromDict(pDict, kAUPresetNameKey, presetName) ||
+              type != cd.componentType ||
+              subtype != cd.componentSubType ||
+              mfr != cd.componentManufacturer)
+        {
+            return kAudioUnitErr_InvalidPropertyValue;
+        }
+
+        ubyte[] chunk;
+        if (!getDataFromDict(pDict, kAUPresetDataKey, chunk))
+            return kAudioUnitErr_InvalidPropertyValue;
+        try
+        {
+            auto presetBank = _client.presetBank();
+            presetBank.loadBankChunk(chunk);
+        }
+        catch(Exception e)
+        {
+            return kAudioUnitErr_InvalidPropertyValue;
+        }
         return noErr;
     }
 

@@ -115,7 +115,7 @@ public:
     abstract double getNormalizedDefault() nothrow @nogc;
 
     /// Returns: A string associated with the normalized normalized.
-    abstract string stringFromNormalizedValue(double normalizedValue);
+    abstract string stringFromNormalizedValue(double normalizedValue) nothrow;
 
     /// Returns: A normalized normalized associated with the string.
     /// Can throw Exceptions.
@@ -229,7 +229,7 @@ public:
     }
 
     /// Returns: A string associated with the normalized normalized.
-    override string stringFromNormalizedValue(double normalizedValue)
+    override string stringFromNormalizedValue(double normalizedValue) nothrow
     {
         bool value = (normalizedValue >= 0.5);
         return value ? "yes" : "no";
@@ -323,7 +323,7 @@ public:
         snprintf(buffer, numBytes, "%d", v);
     }
 
-    override string stringFromNormalizedValue(double normalizedValue)
+    override string stringFromNormalizedValue(double normalizedValue) nothrow
     {
         return to!string(fromNormalized(normalizedValue));
     }
@@ -436,7 +436,7 @@ public:
             buffer[toCopy] = '\0';
     }
 
-    override string stringFromNormalizedValue(double normalizedValue)
+    override string stringFromNormalizedValue(double normalizedValue) nothrow
     {
         return _possibleValues[ fromNormalized(normalizedValue) ];
     }
@@ -450,7 +450,7 @@ public:
         throw new Exception("Couldn't parse enum parameter value");
     }
 
-    final string getValueString(int n)
+    final string getValueString(int n) nothrow @nogc
     {
         return _possibleValues[n];
     }
@@ -568,9 +568,16 @@ public:
         snprintf(buffer, numBytes, "%2.2f", value());
     }
 
-    override string stringFromNormalizedValue(double normalizedValue)
+    override string stringFromNormalizedValue(double normalizedValue) nothrow
     {
-        return to!string(fromNormalized(normalizedValue));
+        try
+        {
+            return to!string(fromNormalized(normalizedValue));
+        }
+        catch(Exception e)
+        {
+            assert(false);
+        }
     }
 
     override double normalizedValueFromString(string valueString)

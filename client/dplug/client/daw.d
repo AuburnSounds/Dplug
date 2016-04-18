@@ -57,7 +57,7 @@ enum DAW
     // MiniHost
 }
 
-private bool hasSubstring(const(char*) s, const(char*) sub) pure
+private bool hasSubstring(const(char*) s, const(char*) sub) pure nothrow
 {
     size_t len_s = strlen(s);
     size_t len_sub = strlen(sub);
@@ -66,7 +66,7 @@ private bool hasSubstring(const(char*) s, const(char*) sub) pure
     {
         index = indexOf(s[0..len_s], sub[0..len_sub], 0, CaseSensitive.no);
     }
-    catch(UTFException e)
+    catch(Exception e)
     {
         return false;
     }
@@ -74,8 +74,7 @@ private bool hasSubstring(const(char*) s, const(char*) sub) pure
     return index != -1;
 }
 
-
-DAW identifyDAW(const(char*) s) pure
+DAW identifyDAW(const(char*) s) pure nothrow
 {
     if (hasSubstring(s, "reaper")) return DAW.Reaper;
     // TODO: see how to detect
