@@ -1703,9 +1703,6 @@ private:
             else
             {
                 TimeInfo timeInfo = getTimeInfo();
-                //printf("process %d frames\n", nFrames);
-                //printf("%p %p\n", _inputPointersNoGap[0], _inputPointersNoGap[1]);
-                //printf("%p %p\n", _outputPointersNoGap[0], _outputPointersNoGap[1]);
                 sendAudioToClient(_inputPointersNoGap[0..newUsedInputs],
                                   _outputPointersNoGap[0..newUsedOutputs],
                                   nFrames, timeInfo);
