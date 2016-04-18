@@ -1544,7 +1544,10 @@ private:
 
         ubyte[] chunk;
         if (!getDataFromDict(pDict, kAUPresetDataKey, chunk))
+        {
             return kAudioUnitErr_InvalidPropertyValue;
+        }
+
         try
         {
             auto presetBank = _client.presetBank();

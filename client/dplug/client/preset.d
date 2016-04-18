@@ -62,15 +62,25 @@ public:
     {
         auto params = client.params();
         foreach(int i, param; params)
-            param.setFromHost(_normalizedParams[i]);
+        {
+            if (i < _normalizedParams.length)
+                param.setFromHost(_normalizedParams[i]);
+            else
+            {
+                // this is a new parameter that old presets don't know, set default
+                param.setFromHost(param.getNormalizedDefault());
+            }
+        }
     }
 
     void serializeBinary(O)(auto ref O output) if (isOutputRange!(O, ubyte))
     {
-        foreach(np; _normalizedParams)
-            output.writeLE!int(cast(int)_name.length);
+        output.writeLE!int(cast(int)_name.length);
+
         foreach(i; 0..name.length)
             output.writeLE!ubyte(_name[i]);
+
+        output.writeLE!int(cast(int)_normalizedParams.length);
 
         foreach(np; _normalizedParams)
             output.writeLE!float(np);
@@ -82,15 +92,24 @@ public:
         int nameLength = input.popLE!int();
         _name.reserve(nameLength);
         foreach(i; 0..nameLength)
-            _name ~= input.popLE!ubyte();
+        {
+            ubyte ch = input.popLE!ubyte();
+            _name ~= ch;
+        }
 
-        foreach(ref np; _normalizedParams)
+        int paramCount = input.popLE!int();
+
+        foreach(int ip; 0..paramCount)
         {
             float f = input.popLE!float();
-            if (isValidNormalizedParam(f))
-                np = f;
-            else
+
+            // TODO: best-effort recovery?
+            if (!isValidNormalizedParam(f))
                 throw new Exception("Couldn't unserialize preset: an invalid float parameter was parsed");
+
+            // There may be more parameters when downgrading
+            if (ip < _normalizedParams.length)
+                _normalizedParams[ip] = f;
         }
     }
 
@@ -212,7 +231,7 @@ public:
 
         int numPresets = chunk.popLE!int();
 
-        // TODO: is there a way to have a dynamic number of presets in VST?
+        // TODO: is there a way to have a dynamic number of presets in the bank? Check with VST and AU
         numPresets = min(numPresets, presets.length);
         foreach(preset; presets[0..numPresets])
             preset.unserializeBinary(chunk);
@@ -221,21 +240,6 @@ public:
 private:
     Client _client;
     int _current; // should this be only in VST client?
-
-    void serializeBinary(O)(auto ref O output) if (isOutputRange!O)
-    {
-        foreach(preset; presets)
-            preset.serializeBinary(output);
-    }
-
-    void unserializeBinary(I)(auto ref I input) if (isInputRange!O)
-    {
-        foreach(int i, preset; presets)
-        {
-            float defaultValue = _client.param(i).getNormalizedDefault();
-            preset.deserializeBinary(input);
-        }
-    }
 
     enum uint DPLUG_MAGIC = 0xB20BA92;
 

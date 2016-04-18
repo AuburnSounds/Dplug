@@ -81,8 +81,8 @@ public:
     {
         return [
             makeDefaultPreset(),
-            new Preset("Silence", [0.0f, 0.0f, 0.0f, 1.0f]),
-            new Preset("Full-on", [1.0f, 1.0f, 0.4f, 1.0f]),
+            new Preset("Silence", [0.0f, 0.0f, 0.0f, 1.0f, 0]),
+            new Preset("Full-on", [1.0f, 1.0f, 0.4f, 1.0f, 0]),
         ];
     }
 
