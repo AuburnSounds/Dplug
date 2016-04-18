@@ -21,6 +21,7 @@ import core.stdc.config;
 
 import std.algorithm;
 import std.string;
+import std.conv;
 
 import derelict.carbon;
 import gfm.core;
@@ -754,27 +755,25 @@ private:
                     pInfo.cfNameString = toCFString(p.name);
                     stringNCopy(pInfo.name.ptr, 52, p.name);
 
-                  /* if (auto enumParam = cast(EnumParameter)p)
+                    /*if (auto intParam = cast(IntegerParameter)p)
                     {
-                        pInfo->unit = kAudioUnitParameterUnit_Indexed;
-                    }
-                    else if (auto intParam = cast(IntegerParameter)p)
-                    {
-                        pInfo->unit = kAudioUnitParameterUnit_Indexed;
+                        pInfo.unit = kAudioUnitParameterUnit_Indexed;
+                        pInfo.minValue = intParam.minValue;
+                        pInfo.maxValue = intParam.maxValue;
+                        pInfo.defaultValue = intParam.defaultValue;
                     }
                     else if (auto boolParam = cast(BoolParameter)p)
                     {
+                        pInfo.minValue = 0;
+                        pInfo.maxValue = 1;
+                        pInfo.defaultValue = boolParam.getNormalizedDefault();
                         pInfo.unit = kAudioUnitParameterUnit_Boolean;
                     }
-
-                    else if (auto floatParam = cast(FloatParameter)p)
+                    else*/
                     {
-
-                    }
-                    else */
-                    {
+                        // Generic label
                         assert(p.label !is null);
-                        if (p.label != "")
+                        /*if (p.label != "")
                         {
                             pInfo.unitName = toCFString(p.label);
                             pInfo.unit = kAudioUnitParameterUnit_CustomUnit;
@@ -782,12 +781,14 @@ private:
                         else
                         {
                             pInfo.unit = kAudioUnitParameterUnit_Generic;
-                        }
-                    }
+                        }*/
 
-                    pInfo.minValue = 0.0f;
-                    pInfo.maxValue = 1.0f;
-                    pInfo.defaultValue = p.getNormalizedDefault();
+                        // Should FloatParameter be mapped?
+                        pInfo.unit = kAudioUnitParameterUnit_Generic;
+                        pInfo.minValue = 0.0f;
+                        pInfo.maxValue = 1.0f;
+                        pInfo.defaultValue = p.getNormalizedDefault();
+                    }
                     pInfo.clumpID = 0; // parameter groups not supported yet
                 }
                 return noErr;
@@ -919,31 +920,34 @@ private:
                 if (!_client.isValidParamIndex(element))
                     return kAudioUnitErr_InvalidElement;
 
-                return kAudioUnitErr_InvalidProperty;
-        // TODO only for enum parameters
-          /+        Parameter pParam = _client.param(element);
+                if (auto intParam = cast(IntegerParameter)_client.param(element))
+                {
+                    *pDataSize = CFArrayRef.sizeof;
+                    if (pData)
+                    {
+                        int numValues = intParam.numValues();
+                        CFMutableArrayRef nameArray = CFArrayCreateMutable(kCFAllocatorDefault, numValues, &kCFTypeArrayCallBacks);
 
+                        if (auto enumParam = cast(EnumParameter)intParam)
+                        {
+                            for (int i = 0; i < numValues; ++i)
+                                CFArrayAppendValue(nameArray, toCFString(enumParam.getValueString(i)));
+                        }
+                        else
+                        {
+                            for (int i = 0; i < numValues; ++i)
+                                CFArrayAppendValue(nameArray, toCFString(to!string(intParam.minValue + i)));
+                        }
 
-                  int n = pParam->GetNDisplayTexts();
-                  if (!n)
-                  {
+                        *(cast(CFArrayRef*) pData) = nameArray;
+                    }
+                    return noErr;
+                }
+                else
+                {
                     *pDataSize = 0;
                     return kAudioUnitErr_InvalidProperty;
-                  }
-                  *pDataSize = sizeof(CFArrayRef);
-                  if (pData)
-                  {
-                    CFMutableArrayRef nameArray = CFArrayCreateMutable(kCFAllocatorDefault, n, &kCFTypeArrayCallBacks);
-                    for (int i = 0; i < n; ++i)
-                    {
-                      const char* str = pParam->GetDisplayText(i);
-                      CFStrLocal cfstr = CFStrLocal(str);
-                      CFArrayAppendValue(nameArray, cfstr.mCFStr);
-                    }
-                    *((CFArrayRef*) pData) = nameArray;
-                  }
-                  return noErr;
-                  +/
+                }
             }
 
             case kAudioUnitProperty_GetUIComponentList: // 18
@@ -954,11 +958,10 @@ private:
 
             case kAudioUnitProperty_AudioChannelLayout:
             {
-                // TODO: IPlug says "this seems wrong but works"
-                return kAudioUnitErr_InvalidProperty;
+                return kAudioUnitErr_InvalidProperty; // TODO?: IPlug says "this seems wrong but works"
             }
 
-            case kAudioUnitProperty_TailTime:                    // 20,   // listenable
+            case kAudioUnitProperty_TailTime: // 20
             {
                 if (!isGlobalScope(scope_))
                     return kAudioUnitErr_InvalidScope;
@@ -1201,7 +1204,7 @@ private:
         switch(propID)
         {
             case kAudioUnitProperty_ClassInfo:
-                return kAudioUnitErr_InvalidProperty; // TODO?
+                return kAudioUnitErr_InvalidProperty; // TODO restore state
 
             case kAudioUnitProperty_MakeConnection: // 1
             {
@@ -1235,7 +1238,7 @@ private:
                         pInBusConn.upstreamBusIdx = pAUC.sourceOutputNumber;
 
                         // Will the upstream unit give us a fast render proc for input?
-                        enum bool enableFastProc = false;
+                        enum bool enableFastProc = true;
 
                         static if (enableFastProc)
                         {

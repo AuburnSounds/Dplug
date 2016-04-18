@@ -450,6 +450,11 @@ public:
         throw new Exception("Couldn't parse enum parameter value");
     }
 
+    final string getValueString(int n)
+    {
+        return _possibleValues[n];
+    }
+
 private:
     const(string[]) _possibleValues;
 }

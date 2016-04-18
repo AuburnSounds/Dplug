@@ -29,7 +29,8 @@ enum : int
     paramInput,
     paramDrive,
     paramOutput,
-    paramOnOff
+    paramOnOff,
+    paramReserved,
 }
 
 
@@ -70,6 +71,7 @@ public:
             new LinearFloatParameter(paramDrive, "drive", "%", 1.0f, 2.0f, 1.0f),
             new GainParameter(paramOutput, "output", 6.0, 0.0),
             new BoolParameter(paramOnOff, "on/off", true),
+            new IntegerParameter(paramReserved, "reserved", "", 1, 4, 3),
         ];
     }
 
