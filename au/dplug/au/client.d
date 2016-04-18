@@ -1235,18 +1235,22 @@ private:
                         pInBusConn.upstreamBusIdx = pAUC.sourceOutputNumber;
 
                         // Will the upstream unit give us a fast render proc for input?
-                        AudioUnitRenderProc srcRenderProc;
-                        size = AudioUnitRenderProc.sizeof;
-                        if (AudioUnitGetProperty(pAUC.sourceAudioUnit, kAudioUnitProperty_FastDispatch, kAudioUnitScope_Global, kAudioUnitRenderSelect,
-                                               &srcRenderProc, &size) == noErr)
-                        {
-                            // Yes, we got a fast render proc, and we also need to store the pointer to the upstream audio unit object.
-                            pInBusConn.upstreamRenderProc = srcRenderProc;
-                            pInBusConn.upstreamObj = GetComponentInstanceStorage(pAUC.sourceAudioUnit);
-                        }
-                        // Else no fast render proc, so leave the input bus connection struct's upstream render proc and upstream object empty,
-                        // and we will need to make a component call through the component manager to get input data.
+                        enum bool enableFastProc = false;
 
+                        static if (enableFastProc)
+                        {
+                            AudioUnitRenderProc srcRenderProc;
+                            size = AudioUnitRenderProc.sizeof;
+                            if (AudioUnitGetProperty(pAUC.sourceAudioUnit, kAudioUnitProperty_FastDispatch, kAudioUnitScope_Global, kAudioUnitRenderSelect,
+                                                   &srcRenderProc, &size) == noErr)
+                            {
+                                // Yes, we got a fast render proc, and we also need to store the pointer to the upstream audio unit object.
+                                pInBusConn.upstreamRenderProc = srcRenderProc;
+                                pInBusConn.upstreamObj = GetComponentInstanceStorage(pAUC.sourceAudioUnit);
+                            }
+                            // Else no fast render proc, so leave the input bus connection struct's upstream render proc and upstream object empty,
+                            // and we will need to make a component call through the component manager to get input data.
+                        }
                     }
                     // Else this is a call to close the connection, which we effectively did by clearing the InputBusConnection struct,
                     // which counts as a successful negotiation.
@@ -1516,14 +1520,19 @@ private:
                            uint outputBusIdx,
                            uint nFrames,
                            AudioBufferList* pOutBufList) nothrow @nogc
-    {
-        // Non-existing bus
-        if (outputBusIdx > _outBuses.length)
-            return kAudioUnitErr_InvalidElement;
+   {
+        bool checkErrrors = (*pFlags & kAudioUnitRenderAction_DoNotCheckRenderArgs) == 0;
 
-        // Invalid timestamp
-        if (!(pTimestamp.mFlags & kAudioTimeStampSampleTimeValid))
-            return kAudioUnitErr_InvalidPropertyValue;
+        if (checkErrrors)
+        {
+            // Non-existing bus
+            if (outputBusIdx > _outBuses.length)
+                return kAudioUnitErr_InvalidElement;
+
+            // Invalid timestamp
+            if (!(pTimestamp.mFlags & kAudioTimeStampSampleTimeValid))
+                return kAudioUnitErr_InvalidPropertyValue;
+        }
 
         // process messages to get newer number of input, samplerate or frame number
         void processMessages(ref float newSamplerate, ref int newMaxFrames, ref bool newBypassed) nothrow @nogc
@@ -1601,19 +1610,27 @@ private:
                     for (int b = 0; b < pInBufList.mNumberBuffers; ++b)
                     {
                         AudioBuffer* pBuffer = &(pInBufList.mBuffers.ptr[b]);
-                        pBuffer.mNumberChannels = 1;
-                        pBuffer.mDataByteSize = cast(uint)(nFrames * AudioSampleType.sizeof);
                         int whichScratch = pInBus.plugChannelStartIdx + b;
                         float* buffer = _inputScratchBuffer[whichScratch].ptr;
                         pBuffer.mData = buffer;
-                        _inputPointers[whichScratch] = buffer;
+                        pBuffer.mNumberChannels = 1;
+                        pBuffer.mDataByteSize = cast(uint)(nFrames * AudioSampleType.sizeof);
                     }
                     AudioUnitRenderActionFlags flags = 0;
                     ComponentResult r = pInBusConn.callUpstreamRender(&flags, pTimestamp, nFrames, pInBufList, inputBusIdx);
                     if (r != noErr)
                         return r;   // Something went wrong upstream.
+
+                    // Get back input data pointer, that may have been modified by upstream
+                    for (int b = 0; b < pInBufList.mNumberBuffers; ++b)
+                    {
+                        AudioBuffer* pBuffer = &(pInBufList.mBuffers.ptr[b]);
+                        int whichScratch = pInBus.plugChannelStartIdx + b;
+                        _inputPointers[whichScratch] = cast(float*)(pBuffer.mData);
+                    }
                 }
             }
+
             _lastRenderTimestamp = renderTimestamp;
         }
         BusChannels* pOutBus = &_outBuses[outputBusIdx];
