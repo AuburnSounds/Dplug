@@ -40,7 +40,8 @@ import dplug.au.dfxutil;
 // - no support for multi-output instruments
 // - no support for MIDI
 // - no support for UI resize
-// TODO: no thread safety yet!
+
+// TODO: thread safety isn't very fine-grained, and there is 3 mutex lock in the audio thread
 
 
 template AUEntryPoint(alias ClientClass)
@@ -152,12 +153,7 @@ public:
         _maxOutputs = _client.maxOutputs();
 
         // dummmy values
-        _sampleRate = 44100.0f;
-        _maxFrames = 1024;
         _maxFramesInProcess = _client.maxFramesInProcess();
-
-        _bypassed = false;
-        _active = false;
 
         _inputScratchBuffer.length = _maxInputs;
         _outputScratchBuffer.length = _maxOutputs;
@@ -209,6 +205,9 @@ public:
 
         // Implements IHostCommand itself
         client.setHostCommand(this);
+
+        _globalMutex = new UncheckedMutex();
+        _renderNotifyMutex = new UncheckedMutex();
     }
 
     ~this()
@@ -223,17 +222,25 @@ public:
 
         for (int i = 0; i < _maxOutputs; ++i)
             _outputScratchBuffer[i].destroy();
+
+        _globalMutex.destroy();
+        _renderNotifyMutex.destroy();
     }
 
 private:
     ComponentInstance _componentInstance;
     Client _client;
-    HostCallbackInfo _hostCallbacks; // TODO need synchronization
+
+    HostCallbackInfo _hostCallbacks;
+
+    // Ugly protection for everything (for now)
+    UncheckedMutex _globalMutex;
+
     AudioThreadQueue _messageQueue;
 
     int _maxInputs, _maxOutputs;
-    float _sampleRate;
-    int _maxFrames;
+    float _sampleRate = 44100.0f;
+    int _maxFrames = 1024;
     int _maxFramesInProcess;
 
     // From audio thread POV
@@ -246,9 +253,9 @@ private:
     double _lastRenderTimestamp = double.nan;
 
     // When true, buffers gets bypassed
-    bool _bypassed;
+    bool _bypassed = false;
 
-    bool _active;
+    bool _active = false;
 
     AlignedBuffer!float[] _inputScratchBuffer;  // input buffer, one per possible input
     AlignedBuffer!float[] _outputScratchBuffer; // input buffer, one per output
@@ -302,7 +309,7 @@ private:
         }
     }
 
-    BusChannels[] _inBuses; // TODO: mutex A
+    BusChannels[] _inBuses;
     BusChannels[] _outBuses;
 
     BusChannels* getBus(AudioUnitScope scope_, AudioUnitElement busIdx)
@@ -384,9 +391,10 @@ private:
         }
     }
 
-    InputBusConnection[] _inBusConnections; // TODO: mutex A
+    InputBusConnection[] _inBusConnections;
 
 
+    UncheckedMutex _renderNotifyMutex;
     AURenderCallbackStruct[] _renderNotify;
 
 
@@ -413,13 +421,21 @@ private:
     //
     ComponentResult dispatcher(int select, ComponentParameters* params)
     {
+        if (select == kComponentCloseSelect) // -2
+        {
+            this.destroy(); // free all resources except this and the runtime
+            return noErr;
+        }
+
         // IPlug locks here.
-        // Do we need to do the same?
+        // Do we need to do the same? For now, yes.
+        // TODO: better concurrency
+
         //debug printf("select %d\n", select);
         switch(select)
         {
 
-            case kComponentVersionSelect: // -4
+            case kComponentVersionSelect: // -4, S
             {
                 int versionMMPR = _client.getPluginVersion();
                 int major = versionMMPR / 1000;
@@ -432,7 +448,7 @@ private:
                 return (major << 16) | (minor << 8) | patch;
             }
 
-            case kComponentCanDoSelect: // -3
+            case kComponentCanDoSelect: // -3, S
             {
                 switch (params.params[0])
                 {
@@ -462,21 +478,19 @@ private:
                 }
             }
 
-            case kComponentCloseSelect: // -2
+            case kAudioUnitInitializeSelect: // 1, S
             {
-                this.destroy(); // free all resources except this and the runtime
-                return noErr;
-            }
-
-            case kAudioUnitInitializeSelect: // 1
-            {
+                _globalMutex.lock();
+                scope(exit) _globalMutex.unlock();
                 _active = true;
                 // Audio processing was switched on.
                 return noErr;
             }
 
-            case kAudioUnitUninitializeSelect: // 2
+            case kAudioUnitUninitializeSelect: // 2, S
             {
+                _globalMutex.lock();
+                scope(exit) _globalMutex.unlock();
                 _active = false;
                 // Nothing to do here
                 return noErr;
@@ -499,6 +513,8 @@ private:
                     pWriteable = &writeable;
 
                 *pWriteable = false;
+                _globalMutex.lock();
+                scope(exit) _globalMutex.unlock();
                 return getProperty(propID, scope_, element, pDataSize, pWriteable, null);
             }
 
@@ -515,6 +531,8 @@ private:
                     pDataSize = &dataSize;
 
                 Boolean writeable = false;
+                _globalMutex.lock();
+                scope(exit) _globalMutex.unlock();
                 return getProperty(propID, scope_, element, pDataSize, &writeable, pData);
             }
 
@@ -525,6 +543,8 @@ private:
                 AudioUnitElement element = params.getCompParam!(AudioUnitElement, 2, 5);
                 const(void)* pData = params.getCompParam!(const(void)*, 1, 5);
                 UInt32* pDataSize = params.getCompParam!(UInt32*, 0, 5);
+                _globalMutex.lock();
+                scope(exit) _globalMutex.unlock();
                 return setProperty(propID, scope_, element, pDataSize, pData);
             }
 
@@ -534,6 +554,8 @@ private:
                 listener.mPropID = params.getCompParam!(AudioUnitPropertyID, 2, 3);
                 listener.mListenerProc = params.getCompParam!(AudioUnitPropertyListenerProc, 1, 3);
                 listener.mProcArgs = params.getCompParam!(void*, 0, 3);
+                _globalMutex.lock();
+                scope(exit) _globalMutex.unlock();
                 int n = cast(int)(_propertyListeners.length);
                 for (int i = 0; i < n; ++i)
                 {
@@ -552,6 +574,8 @@ private:
                 PropertyListener listener;
                 listener.mPropID = params.getCompParam!(AudioUnitPropertyID, 1, 2);
                 listener.mListenerProc = params.getCompParam!(AudioUnitPropertyListenerProc, 0, 2);
+                _globalMutex.lock();
+                scope(exit) _globalMutex.unlock();
                 int n = cast(int)(_propertyListeners.length);
                 for (int i = 0; i < n; ++i)
                 {
@@ -573,6 +597,8 @@ private:
                 listener.mPropID = params.getCompParam!(AudioUnitPropertyID, 1, 2);
                 listener.mListenerProc = params.getCompParam!(AudioUnitPropertyListenerProc, 0, 2);
                 listener.mProcArgs = params.getCompParam!(void*, 0, 3);
+                _globalMutex.lock();
+                scope(exit) _globalMutex.unlock();
                 int n = cast(int)(_propertyListeners.length);
                 for (int i = 0; i < n; ++i)
                 {
@@ -594,6 +620,9 @@ private:
                 AURenderCallbackStruct acs;
                 acs.inputProc = params.getCompParam!(AURenderCallback, 1, 2);
                 acs.inputProcRefCon = params.getCompParam!(void*, 0, 2);
+
+                _renderNotifyMutex.lock();
+                scope(exit) _renderNotifyMutex.unlock();
                 _renderNotify ~= acs;
                 return noErr;
             }
@@ -610,8 +639,10 @@ private:
                 AURenderCallbackStruct acs;
                 acs.inputProc = params.getCompParam!(AURenderCallback, 1, 2);
                 acs.inputProcRefCon = params.getCompParam!(void*, 0, 2);
-                _renderNotify = removeElement(_renderNotify, acs);
 
+                _renderNotifyMutex.lock();
+                scope(exit) _renderNotifyMutex.unlock();
+                _renderNotify = removeElement(_renderNotify, acs);
                 return noErr;
             }
 
@@ -659,8 +690,8 @@ private:
                 AudioTimeStamp* pTimestamp = params.getCompParam!(AudioTimeStamp*, 3, 5)();
                 uint outputBusIdx = params.getCompParam!(uint, 2, 5)();
                 uint nFrames = params.getCompParam!(uint, 1, 5)();
-                AudioBufferList* pBufferList = params.getCompParam!(AudioBufferList*, 0, 5)();
-                return renderProc(cast(void*)this, pFlags, pTimestamp, outputBusIdx, nFrames, pBufferList);
+                AudioBufferList* pOutBufList = params.getCompParam!(AudioBufferList*, 0, 5)();
+                return render(pFlags, pTimestamp, outputBusIdx, nFrames, pOutBufList, false);
             }
 
             case kAudioUnitResetSelect: // 15
@@ -1090,7 +1121,7 @@ private:
                 }
                 else
                 {
-                    AudioChannelLayoutTag* ptags = cast(AudioChannelLayoutTag*)(pData);
+                    AudioChannelLayoutTag* ptags = cast(AudioChannelLayoutTag*)pData;
                     ptags[0..tags.length] = tags[];
                 }
                 return noErr;
@@ -1197,7 +1228,10 @@ private:
     ComponentResult setProperty(AudioUnitPropertyID propID, AudioUnitScope scope_, AudioUnitElement element,
                                 UInt32* pDataSize, const(void)* pData)
     {
-        informListeners(propID, scope_);
+        // inform listeners
+        foreach (ref listener; _propertyListeners)
+            if (listener.mPropID == propID)
+                listener.mListenerProc(listener.mProcArgs, _componentInstance, propID, scope_, 0); // always zero?
 
         //debug printf("SET property %d\n", propID);
 
@@ -1363,8 +1397,6 @@ private:
                 return noErr;
             }
 
-
-
             default:
                 return kAudioUnitErr_InvalidProperty; // NO-OP, or unsupported
         }
@@ -1466,13 +1498,6 @@ private:
         return noErr;
     }
 
-    void informListeners(AudioUnitPropertyID propID, AudioUnitScope scope_)
-    {
-        foreach (ref listener; _propertyListeners)
-            if (listener.mPropID == propID)
-                listener.mListenerProc(listener.mProcArgs, _componentInstance, propID, scope_, 0); // always zero?
-    }
-
 
     //
     // Render procedure
@@ -1522,7 +1547,8 @@ private:
                            const(AudioTimeStamp)* pTimestamp,
                            uint outputBusIdx,
                            uint nFrames,
-                           AudioBufferList* pOutBufList) nothrow @nogc
+                           AudioBufferList* pOutBufList,
+                           bool isFastCall) nothrow @nogc
    {
         bool checkErrrors = (*pFlags & kAudioUnitRenderAction_DoNotCheckRenderArgs) == 0;
 
@@ -1573,13 +1599,19 @@ private:
         if (newMaxFrames != _lastMaxFrames)
             resizeScratchBuffers(newMaxFrames);
 
-        // pre-render
-        if (_renderNotify.length)
+
         {
-            foreach(ref renderCallbackStruct; _renderNotify)
+            _renderNotifyMutex.lock();
+            scope(exit) _renderNotifyMutex.unlock();
+
+            // pre-render
+            if (_renderNotify.length)
             {
-                AudioUnitRenderActionFlags flags = kAudioUnitRenderAction_PreRender;
-                callRenderCallback(renderCallbackStruct, &flags, pTimestamp, outputBusIdx, nFrames, pOutBufList);
+                foreach(ref renderCallbackStruct; _renderNotify)
+                {
+                    AudioUnitRenderActionFlags flags = kAudioUnitRenderAction_PreRender;
+                    callRenderCallback(renderCallbackStruct, &flags, pTimestamp, outputBusIdx, nFrames, pOutBufList);
+                }
             }
         }
 
@@ -1590,82 +1622,87 @@ private:
         // On a new timestamp, we render upstream (pull) and process audio.
         // Else, just copy the results.
         // We always provide buffers to upstream unit
-
-        if (isNewTimestamp)
+        int lastConnectedOutputBus = -1;
         {
-            BufferList bufList;
-            AudioBufferList* pInBufList = cast(AudioBufferList*) &bufList;
+            // Lock input and output buses
+            _globalMutex.lock();
+            scope(exit) _globalMutex.unlock();
 
-            // Clear inputPointers and fill it:
-            //  - with null for unconnected channels
-            //  - with a pointer to scratch for connected channels
-            _inputPointers[] = null;
-
-            // call render for each upstream units
-            foreach(int inputBusIdx, ref pInBus; _inBuses)
+            if (isNewTimestamp)
             {
-                InputBusConnection* pInBusConn = &_inBusConnections[inputBusIdx];
+                BufferList bufList;
+                AudioBufferList* pInBufList = cast(AudioBufferList*) &bufList;
 
-                if (pInBus.connected)
+                // Clear inputPointers and fill it:
+                //  - with null for unconnected channels
+                //  - with a pointer to scratch for connected channels
+                _inputPointers[] = null;
+
+                // call render for each upstream units
+                foreach(int inputBusIdx, ref pInBus; _inBuses)
                 {
-                    pInBufList.mNumberBuffers = pInBus.numHostChannels;
+                    InputBusConnection* pInBusConn = &_inBusConnections[inputBusIdx];
 
-                    for (int b = 0; b < pInBufList.mNumberBuffers; ++b)
+                    if (pInBus.connected)
                     {
-                        AudioBuffer* pBuffer = &(pInBufList.mBuffers.ptr[b]);
-                        int whichScratch = pInBus.plugChannelStartIdx + b;
-                        float* buffer = _inputScratchBuffer[whichScratch].ptr;
-                        pBuffer.mData = buffer;
-                        pBuffer.mNumberChannels = 1;
-                        pBuffer.mDataByteSize = cast(uint)(nFrames * AudioSampleType.sizeof);
-                    }
-                    AudioUnitRenderActionFlags flags = 0;
-                    ComponentResult r = pInBusConn.callUpstreamRender(&flags, pTimestamp, nFrames, pInBufList, inputBusIdx);
-                    if (r != noErr)
-                        return r;   // Something went wrong upstream.
+                        pInBufList.mNumberBuffers = pInBus.numHostChannels;
 
-                    // Get back input data pointer, that may have been modified by upstream
-                    for (int b = 0; b < pInBufList.mNumberBuffers; ++b)
-                    {
-                        AudioBuffer* pBuffer = &(pInBufList.mBuffers.ptr[b]);
-                        int whichScratch = pInBus.plugChannelStartIdx + b;
-                        _inputPointers[whichScratch] = cast(float*)(pBuffer.mData);
+                        for (int b = 0; b < pInBufList.mNumberBuffers; ++b)
+                        {
+                            AudioBuffer* pBuffer = &(pInBufList.mBuffers.ptr[b]);
+                            int whichScratch = pInBus.plugChannelStartIdx + b;
+                            float* buffer = _inputScratchBuffer[whichScratch].ptr;
+                            pBuffer.mData = buffer;
+                            pBuffer.mNumberChannels = 1;
+                            pBuffer.mDataByteSize = cast(uint)(nFrames * AudioSampleType.sizeof);
+                        }
+                        AudioUnitRenderActionFlags flags = 0;
+                        ComponentResult r = pInBusConn.callUpstreamRender(&flags, pTimestamp, nFrames, pInBufList, inputBusIdx);
+                        if (r != noErr)
+                            return r;   // Something went wrong upstream.
+
+                        // Get back input data pointer, that may have been modified by upstream
+                        for (int b = 0; b < pInBufList.mNumberBuffers; ++b)
+                        {
+                            AudioBuffer* pBuffer = &(pInBufList.mBuffers.ptr[b]);
+                            int whichScratch = pInBus.plugChannelStartIdx + b;
+                            _inputPointers[whichScratch] = cast(float*)(pBuffer.mData);
+                        }
                     }
                 }
+
+                _lastRenderTimestamp = renderTimestamp;
+            }
+            BusChannels* pOutBus = &_outBuses[outputBusIdx];
+
+            // if this bus is not connected OR the number of buffers that the host has given are not equal to the number the bus expects
+            // then consider it connected
+            if (!(pOutBus.connected) || pOutBus.numHostChannels != pOutBufList.mNumberBuffers)
+            {
+                pOutBus.connected = true;
             }
 
-            _lastRenderTimestamp = renderTimestamp;
+            foreach(outBus; _outBuses)
+            {
+                if(!outBus.connected)
+                    break;
+                else
+                    lastConnectedOutputBus++;
+            }
+
+            // assign _outputPointers
+            for (int i = 0; i < pOutBufList.mNumberBuffers; ++i)
+            {
+                int chIdx = pOutBus.plugChannelStartIdx + i;
+
+                AudioSampleType* pData = cast(AudioSampleType*)( pOutBufList.mBuffers.ptr[i].mData );
+                if (pData == null)
+                    pData = _outputScratchBuffer[chIdx].ptr;
+
+                _outputPointers[chIdx] = pData;
+            }
         }
-        BusChannels* pOutBus = &_outBuses[outputBusIdx];
 
-        // if this bus is not connected OR the number of buffers that the host has given are not equal to the number the bus expects
-        // then consider it connected
-        if (!(pOutBus.connected) || pOutBus.numHostChannels != pOutBufList.mNumberBuffers)
-        {
-            pOutBus.connected = true;
-        }
-
-        int lastConnectedOutputBus = -1;
-
-        foreach(outBus; _outBuses)
-        {
-            if(!outBus.connected)
-                break;
-            else
-                lastConnectedOutputBus++;
-        }
-
-        // assign _outputPointers
-        for (int i = 0; i < pOutBufList.mNumberBuffers; ++i)
-        {
-            int chIdx = pOutBus.plugChannelStartIdx + i;
-
-            AudioSampleType* pData = cast(AudioSampleType*)( pOutBufList.mBuffers.ptr[i].mData );
-            if (pData == null)
-                pData = _outputScratchBuffer[chIdx].ptr;
-
-            _outputPointers[chIdx] = pData;
-        }
 
         if (outputBusIdx == lastConnectedOutputBus)
         {
@@ -1715,6 +1752,9 @@ private:
         // post-render
         if (_renderNotify.length)
         {
+            _renderNotifyMutex.lock();
+            scope(exit) _renderNotifyMutex.unlock();
+
             foreach(ref renderCallbackStruct; _renderNotify)
             {
                 AudioUnitRenderActionFlags flags = kAudioUnitRenderAction_PostRender;
@@ -1772,19 +1812,21 @@ private:
     {
         TimeInfo result;
 
-        if (_hostCallbacks.transportStateProc)
+        auto hostCallbacks = _hostCallbacks;
+
+        if (hostCallbacks.transportStateProc)
         {
             double samplePos = 0.0, loopStartBeat, loopEndBeat;
             Boolean playing, changed, looping;
-            _hostCallbacks.transportStateProc(_hostCallbacks.hostUserData, &playing, &changed, &samplePos,
-                                              &looping, &loopStartBeat, &loopEndBeat);
+            hostCallbacks.transportStateProc(hostCallbacks.hostUserData, &playing, &changed, &samplePos,
+                                             &looping, &loopStartBeat, &loopEndBeat);
             result.timeInSamples = cast(long)(samplePos + 0.5);
         }
 
-        if (_hostCallbacks.beatAndTempoProc)
+        if (hostCallbacks.beatAndTempoProc)
         {
             double currentBeat = 0.0, tempo = 0.0;
-            _hostCallbacks.beatAndTempoProc(_hostCallbacks.hostUserData, &currentBeat, &tempo);
+            hostCallbacks.beatAndTempoProc(hostCallbacks.hostUserData, &currentBeat, &tempo);
             if (tempo > 0.0)
                 result.tempo = tempo;
         }
@@ -1866,7 +1908,7 @@ extern(C) ComponentResult renderProc(void* pPlug,
                                      AudioBufferList* pOutBufList) nothrow @nogc
 {
     AUClient _this = cast(AUClient)pPlug;
-    return _this.render(pFlags, pTimestamp, outputBusIdx, nFrames, pOutBufList);
+    return _this.render(pFlags, pTimestamp, outputBusIdx, nFrames, pOutBufList, true);
 }
 
 
