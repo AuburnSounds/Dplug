@@ -286,8 +286,7 @@ public:
 
     override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects)
     {
-        // In onDraw, you are supposed to only update diffuseMap and depthMap in the dirtyRects areas.
-        // This rules can be broken when sufficiently far from another UIElement.
+        // In onDraw, you are supposed to only update diffuseMap, depthMap and materialMap in the dirtyRects areas.
 
         foreach(dirtyRect; dirtyRects)
         {

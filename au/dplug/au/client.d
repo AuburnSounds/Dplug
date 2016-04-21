@@ -1512,7 +1512,7 @@ private:
         putNumberInDict(pDict, kAUPresetManufacturerKey, &(cd.componentManufacturer), kCFNumberSInt32Type);
         auto presetBank = _client.presetBank();
         putStrInDict(pDict, kAUPresetNameKey, presetBank.currentPreset().name);
-        ubyte[] state = presetBank.getBankChunk();
+        ubyte[] state = presetBank.getStateChunk();
         putDataInDict(pDict, kAUPresetDataKey, state);
         *ppPropList = pDict;
         return noErr;
@@ -1551,7 +1551,7 @@ private:
         try
         {
             auto presetBank = _client.presetBank();
-            presetBank.loadBankChunk(chunk);
+            presetBank.loadStateChunk(chunk);
         }
         catch(Exception e)
         {

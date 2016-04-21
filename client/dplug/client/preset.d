@@ -196,6 +196,18 @@ public:
         return chunk.data;
     }
 
+    /// Parse a preset chunk and set parameters.
+    /// May throw an Exception.
+    void loadPresetChunk(int index, ubyte[] chunk)
+    {
+        checkChunkHeader(chunk);
+        presets[index].unserializeBinary(chunk);
+
+        // Not sure why it's there in IPlug, this whole function is probably not
+        // doing what it should
+        //putCurrentStateInCurrentPreset();
+    }
+
     /// Allocate and fill a bank chunk
     ubyte[] getBankChunk() nothrow
     {
@@ -211,18 +223,6 @@ public:
         return chunk.data;
     }
 
-    /// Parse a preset chunk and set parameters.
-    /// May throw an Exception.
-    void loadPresetChunk(int index, ubyte[] chunk)
-    {
-        checkChunkHeader(chunk);
-        presets[index].unserializeBinary(chunk);
-
-        // Not sure why it's there in IPlug, this whole function is probably not
-        // doing what it should
-        //putCurrentStateInCurrentPreset();
-    }
-
     /// Parse a bank chunk and set parameters.
     /// May throw an Exception.
     void loadBankChunk(ubyte[] chunk)
@@ -235,6 +235,46 @@ public:
         numPresets = min(numPresets, presets.length);
         foreach(preset; presets[0..numPresets])
             preset.unserializeBinary(chunk);
+    }
+
+    /// Gets a chunk with current state
+    ubyte[] getStateChunk() nothrow
+    {
+        auto chunk = appender!(ubyte[])();
+        writeChunkHeader(chunk);
+
+        auto params = _client.params();
+
+        chunk.writeLE!int(_current);
+
+        chunk.writeLE!int(cast(int)params.length);
+        foreach(param; params)
+            chunk.writeLE!float(param.getNormalized());
+        return chunk.data;
+    }
+
+    /// Loads a chunk state, update current state.
+    /// May throw an Exception.
+    void loadStateChunk(ubyte[] chunk)
+    {
+        checkChunkHeader(chunk);
+
+        // This avoid to overwrite the preset 0 while we modified preset N
+        int presetIndex = chunk.popLE!int();
+        if (!isValidPresetIndex(presetIndex))
+            throw new Exception("Invalid preset index in state chunk");
+        else
+            _current = presetIndex;
+
+        // Load parameters values
+        auto params = _client.params();
+        int numParams = chunk.popLE!int();
+        foreach(int i; 0..numParams)
+        {
+            float normalized = chunk.popLE!float();
+            if (i < params.length)
+                params[i].setFromHost(normalized);
+        }
     }
 
 private:
