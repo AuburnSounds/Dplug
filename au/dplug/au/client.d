@@ -35,6 +35,8 @@ import dplug.client.params;
 
 import dplug.au.dfxutil;
 
+version(OSX):
+
 // Difference with IPlug
 // - no support for parameters group
 // - no support for multi-output instruments
