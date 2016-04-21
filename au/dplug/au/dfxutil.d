@@ -220,7 +220,7 @@ CFStringRef toCFString(string str) nothrow
 deprecated("use fromCFString instead") alias copyCFString = fromCFString;
 string fromCFString(CFStringRef cfStr) nothrow
 {
-    auto n = CFStringGetLength(cfStr) + 1;
+    int n = cast(int)CFStringGetLength(cfStr) + 1;
     char[] buf = new char[n];
     CFStringGetCString(cfStr, buf.ptr, n, kCFStringEncodingUTF8);
     return fromStringz(buf.ptr).idup;
@@ -284,7 +284,7 @@ bool getDataFromDict(CFDictionaryRef pDict, string key, out ubyte[] pChunk) noth
     CFDataRef pData = cast(CFDataRef) CFDictionaryGetValue(pDict, cfKey);
     if (pData)
     {
-        auto n = CFDataGetLength(pData);
+        int n = cast(int)CFDataGetLength(pData);
         pChunk.length = n;
         pChunk[0..n] = CFDataGetBytePtr(pData)[0..n];
         return true;
