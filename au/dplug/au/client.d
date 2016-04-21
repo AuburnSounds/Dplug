@@ -34,6 +34,7 @@ import dplug.client.preset;
 import dplug.client.params;
 
 import dplug.au.dfxutil;
+import dplug.au.cocoaviewfactory;
 
 // Difference with IPlug
 // - no support for parameters group
@@ -208,6 +209,7 @@ public:
 
         _globalMutex = new UncheckedMutex();
         _renderNotifyMutex = new UncheckedMutex();
+
     }
 
     ~this()
@@ -1109,8 +1111,38 @@ private:
             }
 
             case kAudioUnitProperty_CocoaUI: // 31
-                printf("TODO kAudioUnitProperty_CocoaUI\n");
-                return kAudioUnitErr_InvalidProperty; // no UI
+            {
+                try
+                {
+                    if ( _client.hasGUI() )
+                    {
+                        *pDataSize = AudioUnitCocoaViewInfo.sizeof;
+                        if (pData)
+                        {
+                            registerCocoaViewFactory();
+
+                            // TODO: pass from dub.json somehow
+                            string OSXBundleID = "com.audiocompany.component.distort";
+                            string factoryClassName = registerCocoaViewFactory();
+
+                            CFStringRef bundleID = toCFString(OSXBundleID);
+                            CFBundleRef pBundle = CFBundleGetBundleWithIdentifier(bundleID);
+                            CFURLRef url = CFBundleCopyBundleURL(pBundle);
+
+                            AudioUnitCocoaViewInfo* pViewInfo = cast(AudioUnitCocoaViewInfo*) pData;
+                            pViewInfo.mCocoaAUViewBundleLocation = url;
+                            pViewInfo.mCocoaAUViewClass[0] = toCFString(factoryClassName);
+                        }
+                        return noErr;
+                    }
+                    else
+                        return kAudioUnitErr_InvalidProperty;
+                }
+                catch(Exception e)
+                {
+                    return kAudioUnitErr_InvalidProperty;
+                }
+            }
 
             case kAudioUnitProperty_SupportedChannelLayoutTags:
             {

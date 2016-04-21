@@ -506,13 +506,16 @@ string makePListFile(Plugin plugin, string config, bool hasIcon)
         CFBundleIdentifier = plugin.CFBundleIdentifierPrefix ~ ".audiounit." ~ plugin.name;
     else
     {
-        writeln(`warning: your configuration doesn't start with "VST" or "AU"`);
+        writeln(`warning: your configuration name doesn't start with "VST" or "AU"`);
         CFBundleIdentifier = plugin.CFBundleIdentifierPrefix ~ "." ~ plugin.name;
     }
     addKeyString("CFBundleIdentifier", CFBundleIdentifier);
 
-    if (configIsAU(config))
+    // This doesn't seem needed afterall
+    /*if (configIsAU(config))
+    {
         addKeyString("NSPrincipalClass", "dplug_view");
+    }*/
 
     addKeyString("CFBundleInfoDictionaryVersion", "6.0");
     addKeyString("CFBundlePackageType", "BNDL");

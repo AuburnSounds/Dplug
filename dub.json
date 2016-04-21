@@ -66,7 +66,8 @@
             },
 
             "dependencies-osx": {
-                "derelict-carbon": "~>0.0"
+                "derelict-carbon": "~>0.0",
+                "derelict-cocoa": "~>0.0"
             }
         },
         {
