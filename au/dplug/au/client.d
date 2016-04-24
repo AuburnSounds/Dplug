@@ -36,6 +36,8 @@ import dplug.client.params;
 import dplug.au.dfxutil;
 import dplug.au.cocoaviewfactory;
 
+version(OSX):
+
 // Difference with IPlug
 // - no support for parameters group
 // - no support for multi-output instruments
