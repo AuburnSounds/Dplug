@@ -27,13 +27,11 @@ import dplug.core;
 import std.stdio;
 
 // register a view factory object, return the class name
-string registerCocoaViewFactory(string pluginName)
+string registerCocoaViewFactory()
 {
-    writeln(">registerCocoaViewFactory");
     DerelictCocoa.load();
     NSApplicationLoad(); // to use Cocoa in Carbon applications
     DPlugCocoaViewFactory.registerSubclass();
-    writeln("<registerCocoaViewFactory");
     return DPlugCocoaViewFactory.customClassName;
 }
 
@@ -49,12 +47,14 @@ struct DPlugCocoaViewFactory
     // create from an id
     this(id id_)
     {
+        printf("this\n");
         this._id = id_;
     }
 
     /// Allocates, but do not init
     static DPlugCocoaViewFactory alloc()
     {
+        printf("alloc\n");
         alias fun_t = extern(C) id function (id obj, SEL sel);
         return DPlugCocoaViewFactory( (cast(fun_t)objc_msgSend)(getClassID(), sel!"alloc") );
     }
@@ -74,22 +74,62 @@ struct DPlugCocoaViewFactory
 
     static void registerSubclass()
     {
-        if (customClassName !is null)
-            return;
-
+        import gfm.core;
+   //     if (customClassName !is null)
+   //         return;
         string uuid = randomUUID().toString();
-        string customClassName = "DPlugCocoaViewFactory_" ~ uuid;
-
-        clazz = objc_allocateClassPair(cast(Class) lazyClass!"AUCocoaUIBase", toStringz(customClassName), 0);
-
-        class_addMethod(clazz, sel!"keyDown:", cast(IMP) &keyDown, "v@:@");
-
-        class_addMethod(clazz, sel!"init:", cast(IMP) &drawRect, "v@:" ~ encode!NSRect);
+        customClassName = "DPlugCocoaViewFactory_" ~ uuid;
+        clazz = objc_allocateClassPair(cast(Class) lazyClass!"NSObject", toStringz(customClassName), 0);
+ //       class_addMethod(clazz, sel!"init:", cast(IMP) &init, "v@:");
+        class_addMethod(clazz, sel!"description:", cast(IMP) &description, "@@:");
+        class_addMethod(clazz, sel!"interfaceVersion", cast(IMP) &interfaceVersion, "I@:");
+        class_addMethod(clazz, sel!"uiViewForAudioUnit:withSize:", cast(IMP) &uiViewForAudioUnit, "@@:^{ComponentInstanceRecord=[1q]}{CGSize=dd}");
 
         // very important: add an instance variable for the this pointer so that the D object can be
         // retrieved from an id
         class_addIvar(clazz, "this", (void*).sizeof, (void*).sizeof == 4 ? 2 : 3, "^v");
 
+        // Replicates the AUCocoaUIBase protocol
+        // Surprinsingly there is no way to have it already without using a @protocol directive.
+        // But as it's just runtime documentation, there is no downsize to have it duplicated (hopefully).
+        //
+        // This protocol is created at runtime because we don't have @protocol in D.
+        // http://stackoverflow.com/questions/2615725/how-to-create-a-protocol-at-runtime-in-objective-c
+   /*     {
+
+            Protocol *protocol = objc_getProtocol("AUCocoaUIBase".ptr);
+
+            if (protocol == null)
+            {
+                // create it at runtime
+                protocol = objc_allocateProtocol("AUCocoaUIBase".ptr);
+                protocol_addMethodDescription(protocol, sel!"interfaceVersion", "I@:", YES, YES);
+                protocol_addMethodDescription(protocol, sel!"interfaceVersion:", "@@:^{ComponentInstanceRecord=[1q]}{CGSize=dd}", YES, YES);
+                objc_registerProtocol(protocol);
+            }
+
+            class_addProtocol(clazz, protocol);
+
+      //      if (!class_conformsToProtocol(clazz, protocol))
+        //    {
+          //      printf("Does not conform to protocol\n");
+            //}
+        }*/
+
+/*
+            Protocol* baseProtocol = ;
+            try
+            {
+                baseProtocol = objc_getProtocol("AUCocoaUIBase");
+            }
+            catch(Exception e)
+            {
+                writeln(e.msg);
+            }
+            writeln("B");
+            class_addProtocol(clazz, baseProtocol);
+            writeln("C");
+        }*/
         objc_registerClassPair(clazz);
     }
 
@@ -116,6 +156,7 @@ struct DPlugCocoaViewFactory
     {
         void init(id self, SEL selector)
         {
+            printf("init callbacked\n");
             FPControl fpctrl;
             fpctrl.initialize();
             DPlugCocoaViewFactory factory = getInstance(self);
@@ -125,21 +166,26 @@ struct DPlugCocoaViewFactory
 
         id description(id self, SEL selector)
         {
+            printf("description callbacked\n");
             FPControl fpctrl;
             fpctrl.initialize();
             DPlugCocoaViewFactory factory = getInstance(self);
 
             // return ToNSString(PLUG_NAME " View");
-            return NSString.stringWith("dplug Cocoa UI")._id; // TODO: is this important?
+            return NSString.stringWith("Filter View")._id;
         }
 
         uint interfaceVersion(id self, SEL selector)
         {
+//            debugBreak();
+            printf("interfaceVersion callbacked\n");
             return 0;
         }
 
         id uiViewForAudioUnit(id self, SEL selector, AudioUnit audioUnit, NSSize preferredSize)
         {
+     //       debugBreak();
+            printf("uiViewForAudioUnit callbacked\n");
             /*
               mPlug = (IPlugBase*) GetComponentInstanceStorage(audioUnit);
               if (mPlug) {

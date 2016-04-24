@@ -1112,6 +1112,8 @@ private:
 
             case kAudioUnitProperty_CocoaUI: // 31
             {
+                return kAudioUnitErr_InvalidProperty; // WIP
+                /+
                 try
                 {
                     if ( _client.hasGUI() )
@@ -1121,12 +1123,17 @@ private:
                         {
                             registerCocoaViewFactory();
 
-                            // TODO: pass from dub.json somehow
-                            string OSXBundleID = "com.audiocompany.component.distort";
-                            string factoryClassName = registerCocoaViewFactory();
+                            import std.stdio;
 
+                            // TODO: pass from dub.json somehow
+                            string OSXBundleID = "com.audiocompany.audiounit.distort";
+                            string factoryClassName = registerCocoaViewFactory();
                             CFStringRef bundleID = toCFString(OSXBundleID);
                             CFBundleRef pBundle = CFBundleGetBundleWithIdentifier(bundleID);
+
+// TODO: test alternatively that
+//                            CFBundleRef pBundle = CFBundleGetMainBundle();
+
                             CFURLRef url = CFBundleCopyBundleURL(pBundle);
 
                             AudioUnitCocoaViewInfo* pViewInfo = cast(AudioUnitCocoaViewInfo*) pData;
@@ -1140,8 +1147,11 @@ private:
                 }
                 catch(Exception e)
                 {
+                    import core.stdc.stdio;
+                    debug printf("error: %s", e.msg.ptr);
                     return kAudioUnitErr_InvalidProperty;
                 }
+                +/
             }
 
             case kAudioUnitProperty_SupportedChannelLayoutTags:
@@ -1826,6 +1836,7 @@ private:
 
             if (_lastBypassed)
             {
+                // TODO: should delay by latency when bypassed
                 int minIO = min(newUsedInputs, newUsedOutputs);
 
                 for (int i = 0; i < minIO; ++i)

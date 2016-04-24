@@ -517,6 +517,28 @@ string makePListFile(Plugin plugin, string config, bool hasIcon)
         addKeyString("NSPrincipalClass", "dplug_view");
     }*/
 
+    if (configIsAU(config))
+    {
+        content ~= "<key>AudioComponents</key>";
+        content ~= "<array>";
+        content ~= "    <dict>";
+        content ~= "        <key>type</key>";
+        content ~= "        <string>aufx</string>";
+        content ~= "        <key>subtype</key>";
+        content ~= "        <string>XMPL</string>";
+        content ~= "        <key>manufacturer</key>";
+        content ~= "        <string>ACME</string>";
+        content ~= "        <key>name</key>";
+        content ~= format("        <string>%s</string>", plugin.name);
+        content ~= "        <key>version</key>";
+        content ~= format("        <integer>%s</integer>", plugin.ver);
+        content ~= "        <key>factoryFunction</key>";
+        content ~= "        <string>AUFactoryFunction</string>";
+        content ~= "        <key>sandboxSafe</key><true/>";
+        content ~= "    </dict>";
+        content ~= "</array>";
+    }
+
     addKeyString("CFBundleInfoDictionaryVersion", "6.0");
     addKeyString("CFBundlePackageType", "BNDL");
     addKeyString("CFBundleShortVersionString", productVersion);
