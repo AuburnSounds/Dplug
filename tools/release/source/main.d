@@ -519,24 +519,24 @@ string makePListFile(Plugin plugin, string config, bool hasIcon)
 
     if (configIsAU(config))
     {
-        content ~= "<key>AudioComponents</key>";
-        content ~= "<array>";
-        content ~= "    <dict>";
-        content ~= "        <key>type</key>";
-        content ~= "        <string>aufx</string>";
-        content ~= "        <key>subtype</key>";
-        content ~= "        <string>XMPL</string>";
-        content ~= "        <key>manufacturer</key>";
-        content ~= "        <string>ACME</string>";
-        content ~= "        <key>name</key>";
-        content ~= format("        <string>%s</string>", plugin.name);
-        content ~= "        <key>version</key>";
-        content ~= format("        <integer>%s</integer>", plugin.ver);
-        content ~= "        <key>factoryFunction</key>";
-        content ~= "        <string>AUFactoryFunction</string>";
-        content ~= "        <key>sandboxSafe</key><true/>";
-        content ~= "    </dict>";
-        content ~= "</array>";
+        content ~= "        <key>AudioComponents</key>\n";
+        content ~= "        <array>\n";
+        content ~= "            <dict>\n";
+        content ~= "                <key>type</key>\n";
+        content ~= "                <string>aufx</string>\n";
+        content ~= "                <key>subtype</key>\n";
+        content ~= "                <string>dely</string>\n";
+        content ~= "                <key>manufacturer</key>\n";
+        content ~= "                <string>ABAB</string>\n"; // TODO change
+        content ~= "                <key>name</key>\n";
+        content ~= format("                <string>%s</string>\n", plugin.name);
+        content ~= "                <key>version</key>\n";
+        content ~= "                <integer>0</integer>\n";
+        content ~= "                <key>factoryFunction</key>\n";
+        content ~= "                <string>dplugAUComponentFactoryFunction</string>\n";
+        content ~= "                <key>sandboxSafe</key><true/>\n";
+        content ~= "            </dict>\n";
+        content ~= "        </array>\n";
     }
 
     addKeyString("CFBundleInfoDictionaryVersion", "6.0");
@@ -614,7 +614,8 @@ string makeRSRC(string pluginName, Arch arch, bool verbose)
     }
 
     string verboseFlag = verbose ? " -p" : "";
-    safeCommand(format("rez %s%s -t BNDL -o %s -useDF %s", archFlags, verboseFlag, rsrcPath, rPath));
+    /* -t BNDL */
+    safeCommand(format("rez %s%s -o %s -useDF %s", archFlags, verboseFlag, rsrcPath, rPath));
 
 
     if (!exists(rsrcPath))

@@ -35,6 +35,7 @@ import dplug.client.params;
 
 import dplug.au.dfxutil;
 import dplug.au.cocoaviewfactory;
+import dplug.au.audiocomponentdispatch;
 
 version(OSX):
 
@@ -60,7 +61,12 @@ template AUEntryPoint(alias ClientClass)
     "extern(C) nothrow ComponentResult dplugAUCarbonViewEntryPoint(ComponentParameters* params, void* pView)"
     "{"
         "return audioUnitCarbonViewEntry!" ~ ClientClass.stringof ~ "(params, pView);"
-    "}";
+    "}"
+    "extern(C) nothrow void* dplugAUComponentFactoryFunction(void* inDesc)" // type-punned here to avoid leaing the derelict.carbon import
+    "{"
+        "return audioUnitComponentFactory!" ~ ClientClass.stringof ~ "(inDesc);"
+    "}"
+    ;
 }
 
 // LP64 => "long and pointers are 64-bit"
@@ -129,6 +135,19 @@ nothrow ComponentResult audioUnitCarbonViewEntry(alias ClientClass)(ComponentPar
     debug printf("TODO audioUnitCarbonViewEntry\n");
 
     return 0;
+}
+
+// Factory function entry point for Audio Component
+void* audioUnitComponentFactory(alias ClientClass)(void* inDesc) nothrow
+{
+    const(AudioComponentDescription)* desc = cast(const(AudioComponentDescription)*)inDesc;
+
+    AudioComponentPlugInInterface* result;
+
+    import core.stdc.stdio;
+
+    printf("Using the Audio Component callback youhou\n");
+    return null;
 }
 
 enum AUInputType

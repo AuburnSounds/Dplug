@@ -26,6 +26,8 @@ import dplug.core;
 
 import std.stdio;
 
+version(OSX):
+
 // register a view factory object, return the class name
 string registerCocoaViewFactory()
 {
