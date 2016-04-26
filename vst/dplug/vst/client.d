@@ -57,14 +57,6 @@ template VSTEntryPoint(alias ClientClass)
         "       return null;"
         "   try"
         "   {"
-
-        //  Ugly work-around for GC crashed in LDC + Windows builds: disable the GC :|
-        "       version(Windows) version(LDC)"
-        "       {"
-        "           import core.memory;"
-        "           GC.disable();"
-        "       }"
-
         "       import gfm.core;"
         "       import core.runtime;"
         "       import core.thread;"
