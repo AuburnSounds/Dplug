@@ -11,7 +11,8 @@ import dplug.client.daw;
 /// Plugin GUI
 interface IGraphics
 {
-    abstract void openUI(void* parentInfo, DAW daw);
+    /// Create an UI, return a system-specific handle for the window/view
+    abstract void* openUI(void* parentInfo, DAW daw);
     abstract void closeUI();
     abstract void getGUISize(int* width, int* height);
 }

@@ -162,6 +162,11 @@ version(OSX)
             return cast(uint)(NSDate.timeIntervalSinceReferenceDate() * 1000.0);
         }
 
+        override void* systemHandle()
+        {
+            return _view._id;
+        }
+
     private:
 
         MouseState getMouseState(NSEvent event)
@@ -395,7 +400,7 @@ version(OSX)
         static id getClassID()
         {
             assert(customClassName !is null);
-            return objc_getClass(customClassName);
+            return objc_getClass(toStringz(customClassName));
         }
 
     private:

@@ -95,6 +95,14 @@ void attachToRuntimeIfNeeded()
     thread_attachThis();
 }
 
+void loadDerelictFunctions()
+{
+    DerelictCoreFoundation.load();
+    DerelictCoreServices.load();
+    DerelictAudioUnit.load();
+    DerelictAudioToolbox.load();
+}
+
 nothrow ComponentResult audioUnitEntryPoint(alias ClientClass)(ComponentParameters* params, void* pPlug)
 {
     try
@@ -104,10 +112,7 @@ nothrow ComponentResult audioUnitEntryPoint(alias ClientClass)(ComponentParamete
 
         if (select == kComponentOpenSelect)
         {
-            DerelictCoreFoundation.load();
-            DerelictCoreServices.load();
-            DerelictAudioUnit.load();
-            DerelictAudioToolbox.load();
+            loadDerelictFunctions();
 
             // Create client and AUClient
             auto client = new ClientClass();
@@ -133,20 +138,39 @@ nothrow ComponentResult audioUnitEntryPoint(alias ClientClass)(ComponentParamete
 nothrow ComponentResult audioUnitCarbonViewEntry(alias ClientClass)(ComponentParameters* params, void* pView)
 {
     debug printf("TODO audioUnitCarbonViewEntry\n");
-
     return 0;
 }
+
+__gshared AudioComponentPlugInInterface audioComponentPlugInInterface;
 
 // Factory function entry point for Audio Component
 void* audioUnitComponentFactory(alias ClientClass)(void* inDesc) nothrow
 {
-    const(AudioComponentDescription)* desc = cast(const(AudioComponentDescription)*)inDesc;
+ /*   try
+    {
+        const(AudioComponentDescription)* desc = cast(const(AudioComponentDescription)*)inDesc;
 
-    AudioComponentPlugInInterface* result;
+        // TODO: this function is racey
 
-    import core.stdc.stdio;
+        attachToRuntimeIfNeeded();
+        loadDerelictFunctions();
 
-    printf("Using the Audio Component callback youhou\n");
+        auto instance = cast(AudioComponentPlugInInstance*) malloc(  )
+
+        instance.iface.Open = &audioComponentOpen;
+        instance.iface.Close = &audioComponentClose;
+        instance.iface.Lookup = &audioComponentLookup;
+        instance.iface.reserved = null;
+
+
+        return cast(void*)(&audioComponentPlugInInterface);
+    }
+    catch (Throwable e)
+    {
+        moreInfoForDebug(e);
+        unrecoverableError();
+        return null;
+    }*/
     return null;
 }
 
@@ -1133,8 +1157,6 @@ private:
 
             case kAudioUnitProperty_CocoaUI: // 31
             {
-                return kAudioUnitErr_InvalidProperty; // WIP
-                /+
                 try
                 {
                     if ( _client.hasGUI() )
@@ -1146,14 +1168,16 @@ private:
 
                             import std.stdio;
 
-                            // TODO: pass from dub.json somehow
-                            string OSXBundleID = "com.audiocompany.audiounit.distort";
                             string factoryClassName = registerCocoaViewFactory();
-                            CFStringRef bundleID = toCFString(OSXBundleID);
-                            CFBundleRef pBundle = CFBundleGetBundleWithIdentifier(bundleID);
+
+                            // TODO: pass from dub.json somehow
+    //                        string OSXBundleID = "com.audiocompany.audiounit.distort";
+
+  //                          CFStringRef bundleID = toCFString(OSXBundleID);
+//                            CFBundleRef pBundle = CFBundleGetBundleWithIdentifier(bundleID);
 
 // TODO: test alternatively that
-//                            CFBundleRef pBundle = CFBundleGetMainBundle();
+                            CFBundleRef pBundle = CFBundleGetMainBundle();
 
                             CFURLRef url = CFBundleCopyBundleURL(pBundle);
 
@@ -1172,7 +1196,6 @@ private:
                     debug printf("error: %s", e.msg.ptr);
                     return kAudioUnitErr_InvalidProperty;
                 }
-                +/
             }
 
             case kAudioUnitProperty_SupportedChannelLayoutTags:
@@ -1957,6 +1980,13 @@ private:
                 result.tempo = tempo;
         }
         return result;
+    }
+
+    package void* openGUIAndReturnCocoaView()
+    {
+        if (!_client.hasGUI())
+            return null;
+        return _client.openGUI(null);
     }
 }
 

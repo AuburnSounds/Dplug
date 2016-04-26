@@ -101,7 +101,7 @@ class GUIGraphics : UIElement, IGraphics
 
     // Graphics implementation
 
-    override void openUI(void* parentInfo, DAW daw)
+    override void* openUI(void* parentInfo, DAW daw)
     {
         // We create this window each time.
         _window = createWindow(parentInfo, _windowListener, _askedWidth, _askedHeight);
@@ -112,6 +112,8 @@ class GUIGraphics : UIElement, IGraphics
 
         // Sets the whole UI dirty
         setDirty();
+
+        return _window.systemHandle();
     }
 
     override void closeUI()

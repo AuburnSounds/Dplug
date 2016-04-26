@@ -24,9 +24,12 @@ import derelict.cocoa;
 
 import dplug.core;
 
-import std.stdio;
+import dplug.au.client;
 
 version(OSX):
+
+
+import core.stdc.stdio;
 
 // register a view factory object, return the class name
 string registerCocoaViewFactory()
@@ -53,6 +56,10 @@ struct DPlugCocoaViewFactory
         this._id = id_;
     }
 
+    ~this() nothrow
+    {
+    }
+
     /// Allocates, but do not init
     static DPlugCocoaViewFactory alloc()
     {
@@ -69,7 +76,7 @@ struct DPlugCocoaViewFactory
     static id getClassID()
     {
         assert(customClassName !is null);
-        return objc_getClass(customClassName);
+        return objc_getClass(toStringz(customClassName));
     }
 
     static Class clazz;
@@ -92,12 +99,11 @@ struct DPlugCocoaViewFactory
         class_addIvar(clazz, "this", (void*).sizeof, (void*).sizeof == 4 ? 2 : 3, "^v");
 
         // Replicates the AUCocoaUIBase protocol
-        // Surprinsingly there is no way to have it already without using a @protocol directive.
-        // But as it's just runtime documentation, there is no downsize to have it duplicated (hopefully).
-        //
-        // This protocol is created at runtime because we don't have @protocol in D.
+        // For host to accept that our object follow AUCocoaUIBase, we replicate AUCocoaUIBase
+        // with the same name and methods.
+        // This protocol has to be created at runtime because we don't have @protocol in D.
         // http://stackoverflow.com/questions/2615725/how-to-create-a-protocol-at-runtime-in-objective-c
-   /*     {
+        {
 
             Protocol *protocol = objc_getProtocol("AUCocoaUIBase".ptr);
 
@@ -106,101 +112,83 @@ struct DPlugCocoaViewFactory
                 // create it at runtime
                 protocol = objc_allocateProtocol("AUCocoaUIBase".ptr);
                 protocol_addMethodDescription(protocol, sel!"interfaceVersion", "I@:", YES, YES);
-                protocol_addMethodDescription(protocol, sel!"interfaceVersion:", "@@:^{ComponentInstanceRecord=[1q]}{CGSize=dd}", YES, YES);
+                protocol_addMethodDescription(protocol, sel!"uiViewForAudioUnit:withSize:", "@@:^{ComponentInstanceRecord=[1q]}{CGSize=dd}", YES, YES);
                 objc_registerProtocol(protocol);
             }
 
             class_addProtocol(clazz, protocol);
-
-      //      if (!class_conformsToProtocol(clazz, protocol))
-        //    {
-          //      printf("Does not conform to protocol\n");
-            //}
-        }*/
-
-/*
-            Protocol* baseProtocol = ;
-            try
-            {
-                baseProtocol = objc_getProtocol("AUCocoaUIBase");
-            }
-            catch(Exception e)
-            {
-                writeln(e.msg);
-            }
-            writeln("B");
-            class_addProtocol(clazz, baseProtocol);
-            writeln("C");
-        }*/
+        }
         objc_registerClassPair(clazz);
     }
 
-    static void unregisterSubclass()
+    static void unregisterSubclass() nothrow
     {
-        // TODO: remove leaking the class
+        // TODO: remove leaking of class and protocol
     }
+}
 
-    DPlugCocoaViewFactory getInstance(id anId)
-    {
-        // strange thing: object_getInstanceVariable definition is odd (void**)
-        // and only works for pointer-sized values says SO
-        void* thisPointer = null;
-        Ivar var = object_getInstanceVariable(anId, "this", &thisPointer);
-        assert(var !is null);
-        assert(thisPointer !is null);
-        return *cast(DPlugCocoaViewFactory*)thisPointer;
-    }
+DPlugCocoaViewFactory getInstance(id anId) nothrow
+{
+    // strange thing: object_getInstanceVariable definition is odd (void**)
+    // and only works for pointer-sized values says SO
+    void* thisPointer = null;
+    Ivar var = object_getInstanceVariable(anId, "this", &thisPointer);
+    assert(var !is null);
+    assert(thisPointer !is null);
+    return *cast(DPlugCocoaViewFactory*)thisPointer;
+}
 
-    // Overridden function gets called with an id, instead of the self pointer.
-    // So we have to get back the D class object address.
-    // Big thanks to Mike Ash (@macdev)
-    extern(C)
+// Overridden function gets called with an id, instead of the self pointer.
+// So we have to get back the D class object address.
+// Big thanks to Mike Ash (@macdev)
+extern(C) nothrow
+{
+/+    void init(id self, SEL selector)
     {
-        void init(id self, SEL selector)
+        printf("init callbacked\n");
+        FPControl fpctrl;
+        fpctrl.initialize();
+        /*DPlugCocoaViewFactory factory = */getInstance(self);
+
+        // TODO
+    }+/
+
+    id description(id self, SEL selector)
+    {
+        try
         {
-            printf("init callbacked\n");
             FPControl fpctrl;
             fpctrl.initialize();
-            DPlugCocoaViewFactory factory = getInstance(self);
-
-            // TODO
-        }
-
-        id description(id self, SEL selector)
-        {
-            printf("description callbacked\n");
-            FPControl fpctrl;
-            fpctrl.initialize();
-            DPlugCocoaViewFactory factory = getInstance(self);
-
-            // return ToNSString(PLUG_NAME " View");
             return NSString.stringWith("Filter View")._id;
         }
-
-        uint interfaceVersion(id self, SEL selector)
+        catch(Exception e)
         {
-//            debugBreak();
-            printf("interfaceVersion callbacked\n");
-            return 0;
-        }
-
-        id uiViewForAudioUnit(id self, SEL selector, AudioUnit audioUnit, NSSize preferredSize)
-        {
-     //       debugBreak();
-            printf("uiViewForAudioUnit callbacked\n");
-            /*
-              mPlug = (IPlugBase*) GetComponentInstanceStorage(audioUnit);
-              if (mPlug) {
-                IGraphics* pGraphics = mPlug->GetGUI();
-                if (pGraphics) {
-                  IGRAPHICS_COCOA* pView = (IGRAPHICS_COCOA*) pGraphics->OpenWindow(0);
-                  mPlug->OnGUIOpen();
-                  return pView;
-                }
-              }
-              */
             return null;
         }
     }
 
+    uint interfaceVersion(id self, SEL selector)
+    {
+        return 0;
+    }
+
+    // Create the Cocoa view and return it
+    id uiViewForAudioUnit(id self, SEL selector, AudioUnit audioUnit, NSSize preferredSize)
+    {
+        try
+        {
+            AUClient plugin = cast(AUClient)( cast(void*)GetComponentInstanceStorage(audioUnit) );
+            if (plugin)
+            {
+                return cast(id)( plugin.openGUIAndReturnCocoaView() );
+            }
+            else
+                return null;
+        }
+        catch(Exception e)
+        {
+            debug printf("uiViewForAudioUnit failed\n");
+            return null;
+        }
+    }
 }

@@ -66,6 +66,9 @@ interface IWindow
 
     // Profile-purpose: get time in milliseconds.
     uint getTimeMs();
+
+    // Get the OS window handle.
+    void* systemHandle();
 }
 
 enum WindowPixelFormat

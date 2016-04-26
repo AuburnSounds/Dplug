@@ -845,7 +845,8 @@ private:
     {
         preprocess(sampleFrames);
 
-        // Some hosts (Orion) send identical input and ouput pointers.
+        // Some hosts (Live, Orion, and others) send identical input and ouput pointers.
+        // This is actually legal in VST.
         // We copy them to a scratch buffer to keep the constaness guarantee of input buffers.
         for (int i = 0; i < _usedInputs; ++i)
         {

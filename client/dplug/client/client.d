@@ -211,12 +211,11 @@ public:
         return index >= 0 && index < maxOutputs();
     }
 
-    /// Override this methods to implement a GUI.
-    final void openGUI(void* parentInfo)
+    final void* openGUI(void* parentInfo)
     {
         createGraphicsLazily();
         assert(_graphics !is null);
-        _graphics.openUI(parentInfo, _hostCommand.getDAW());
+        return _graphics.openUI(parentInfo, _hostCommand.getDAW());
     }
 
     final bool getGUISize(int* width, int* height)

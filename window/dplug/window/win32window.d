@@ -383,6 +383,11 @@ version(Windows)
             return cast(uint)(time);
         }
 
+        override void* systemHandle()
+        {
+            return cast(void*)( cast(size_t)_hwnd );
+        }
+
     private:
         enum TIMER_ID = 144;
 
@@ -460,7 +465,7 @@ version(Windows)
         {
             FPControl fpctrl;
             fpctrl.initialize();
-            
+
             try
             {
                 Win32Window window = cast(Win32Window)( cast(void*)(GetWindowLongPtrA(hwnd, GWLP_USERDATA)) );

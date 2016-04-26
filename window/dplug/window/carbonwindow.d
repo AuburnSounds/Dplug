@@ -191,6 +191,11 @@ version(OSX)
             return cast(uint)msecs;
         }
 
+        override void* systemHandle()
+        {
+            return _view;
+        }
+
     private:
 
         void doAnimation()
