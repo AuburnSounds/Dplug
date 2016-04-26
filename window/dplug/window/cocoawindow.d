@@ -28,11 +28,6 @@ version(OSX)
     private:
         IWindowListener _listener;
 
-        // Stays null in the case of a plugin, but exists for a stand-alone program
-        // For testing purpose.
-        NSWindow _cocoaWindow = null;
-        NSApplication _cocoaApplication;
-
         NSColorSpace _nsColorSpace;
         CGColorSpaceRef _cgColorSpaceRef;
         NSData _imageData;
@@ -63,26 +58,6 @@ version(OSX)
             DerelictCocoa.load();
             NSApplicationLoad(); // to use Cocoa in Carbon applications
             bool parentViewExists = parentWindow !is null;
-            NSView parentView;
-            if (!parentViewExists)
-            {
-                // create a NSWindow to hold our NSView
-                _cocoaApplication = NSApplication.sharedApplication;
-                _cocoaApplication.setActivationPolicy(NSApplicationActivationPolicyRegular);
-
-                NSWindow window = NSWindow.alloc();
-                window.initWithContentRect(NSMakeRect(100, 100, width, height),
-                                           NSBorderlessWindowMask, NSBackingStoreBuffered, NO);
-                window.makeKeyAndOrderFront();
-
-                parentView = window.contentView();
-
-                _cocoaApplication.activateIgnoringOtherApps(YES);
-            }
-            else
-                parentView = NSView(cast(id)parentWindow);
-
-
 
             _width = 0;
             _height = 0;
@@ -105,12 +80,13 @@ version(OSX)
             _view = DPlugCustomView.alloc();
             _view.initialize(this, width, height);
 
-            parentView.addSubview(_view);
-
-            if (_cocoaApplication)
-                _cocoaApplication.run();
-
-
+            // In VST, add the view the parent view.
+            // In AU (parentWindow == null), a reference to the view is returned instead and the host does it.
+            if (parentWindow !is null)
+            {
+                NSView parentView = NSView(cast(id)parentWindow);
+                parentView.addSubview(_view);
+            }
         }
 
         ~this()
