@@ -112,7 +112,7 @@ kAudioUnitType_Effect,
 #define RES_ID 2000
 
 #undef RES_NAME
-#define RES_NAME PLUG_MFR ": " PLUG_PUBLIC_NAME " Carbon View"
+#define RES_NAME PLUG_MFR ": " PLUG_NAME " Carbon View"
 
 
 resource 'STR ' (2000, purgeable) {
@@ -120,7 +120,7 @@ resource 'STR ' (2000, purgeable) {
 };
 
 resource 'STR ' (2000 + 1, purgeable) {
-  PLUG_PUBLIC_NAME " AU Carbon View"
+  PLUG_NAME " AU Carbon View"
 };
 
 resource 'dlle' (2000) {
