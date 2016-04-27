@@ -53,7 +53,7 @@ public
 
                 double current = a0 * input + a1 * x1 + a2 * x2 - a3 * y1 - a4 * y2;
 
-                // kill denormals,and double values that would be converted 
+                // kill denormals,and double values that would be converted
                 // to float denormals
                 current += 1e-18f;
                 current -= 1e-18f;
@@ -68,7 +68,7 @@ public
             void nextBuffer(const(T)* input, T* output, int frames, const(coeff_t) coeff) nothrow @nogc
             {
                 static if (is(T == float) && D_InlineAsm_Any)
-                {  
+                {
                     static assert(T.sizeof == 4);
 
                     double x0 = x[0],
@@ -123,14 +123,14 @@ public
 
                                 cvtss2sd XMM0, dword ptr [EAX]; // XMM0 <- x0 input[i]
                                 addpd XMM5, XMM6; // garbage | input[i]*a0 + x0*a1 - y0*a3 + x1*a2 - y1*a4
-                                
+
                                 cvtsd2ss XMM7, XMM5;
                                 punpcklqdq XMM5, XMM1; // XMM5 <- y0 current
                                 add EAX, 4;
                                 movd dword ptr [EDX], XMM7;
                                 add EDX, 4;
                                 movapd XMM1, XMM5;
-                                
+
                                 sub ECX, 1;
                                 jnz short loop;
 
@@ -239,7 +239,7 @@ public
                     {
                         double current = a0 * input[i] + a1 * x0 + a2 * x1 - a3 * y0 - a4 * y1;
 
-                        // kill denormals,and double values that would be converted 
+                        // kill denormals,and double values that would be converted
                         // to float denormals
                         current += 1e-18f;
                         current -= 1e-18f;
@@ -338,7 +338,7 @@ public
     {
         assert(fractionalDelay >= 0);
         double a1 = 2 * (2 - fractionalDelay) / (1 + fractionalDelay);
-        double a2 = (fractionalDelay - 1) * (fractionalDelay - 2) 
+        double a2 = (fractionalDelay - 1) * (fractionalDelay - 2)
                                           /
                     (fractionalDelay + 1) * (fractionalDelay + 2);
 
@@ -547,9 +547,7 @@ unittest
 }
 
 
-version(LDC)
-    private enum D_InlineAsm_Any = false;
-else version(D_InlineAsm_X86)
+version(D_InlineAsm_X86)
     private enum D_InlineAsm_Any = true;
 else version(D_InlineAsm_X86_64)
     private enum D_InlineAsm_Any = true;
