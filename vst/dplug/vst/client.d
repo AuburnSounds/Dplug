@@ -35,6 +35,7 @@ import dplug.core.alignedbuffer,
 import dplug.client.client,
        dplug.client.daw,
        dplug.client.preset,
+       dplug.client.graphics,
        dplug.client.midi;
 
 import dplug.vst.aeffectx;
@@ -403,7 +404,7 @@ private:
                 {
                     if ( _client.hasGUI() )
                     {
-                        _client.openGUI(ptr);
+                        _client.openGUI(ptr, GraphicsBackend.autodetect);
                         return 1;
                     }
                     else

@@ -33,8 +33,6 @@ import dplug.client.midi;
 import dplug.client.graphics;
 import dplug.client.daw;
 
-
-
 /// A plugin client can send commands to the host.
 /// This interface is injected after the client creation though.
 interface IHostCommand
@@ -211,11 +209,11 @@ public:
         return index >= 0 && index < maxOutputs();
     }
 
-    final void* openGUI(void* parentInfo)
+    final void* openGUI(void* parentInfo, GraphicsBackend backend)
     {
         createGraphicsLazily();
         assert(_graphics !is null);
-        return _graphics.openUI(parentInfo, _hostCommand.getDAW());
+        return _graphics.openUI(parentInfo, _hostCommand.getDAW(), backend);
     }
 
     final bool getGUISize(int* width, int* height)

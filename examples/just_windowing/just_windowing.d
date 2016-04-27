@@ -16,7 +16,7 @@ import derelict.cocoa;
 void main(string[] args)
 {
     auto app = scoped!App();
-    app.mainloop();    
+    app.mainloop();
 }
 
 
@@ -28,7 +28,7 @@ class App : IWindowListener
 
     this()
     {
-        window = createWindow(null, this, 640, 480);
+        window = createWindow(null, this, WindowBackend.autodetect, 640, 480);
     }
 
     void mainloop()
@@ -50,13 +50,13 @@ class App : IWindowListener
         _height = height;
     }
 
-    
+
     override void recomputeDirtyAreas()
     {
         // do nothing
     }
 
-    
+
     override box2i getDirtyRectangle()
     {
         return box2i(0, 0, _width, _height);

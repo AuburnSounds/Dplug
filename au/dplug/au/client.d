@@ -32,6 +32,7 @@ import dplug.client.daw;
 import dplug.client.midi;
 import dplug.client.preset;
 import dplug.client.params;
+import dplug.client.graphics;
 
 import dplug.au.dfxutil;
 import dplug.au.cocoaviewfactory;
@@ -1986,7 +1987,7 @@ private:
     {
         if (!_client.hasGUI())
             return null;
-        return _client.openGUI(null);
+        return _client.openGUI(null, GraphicsBackend.cocoa);
     }
 }
 

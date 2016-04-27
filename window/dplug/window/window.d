@@ -137,33 +137,71 @@ interface IWindowListener
 }
 
 
-
-// Factory function
-IWindow createWindow(void* parentInfo, IWindowListener listener, int width, int height)
+enum WindowBackend
 {
+    autodetect,
+    win32,
+    carbon,
+    cocoa
+}
+
+
+/// Factory function to create windows.
+/// Returns: null if this backend isn't available on this platform.
+IWindow createWindow(void* parentInfo, IWindowListener listener, WindowBackend backend, int width, int height)
+{
+    static WindowBackend autoDetectBackend()
+    {
+        version(Windows)
+            return WindowBackend.win32;
+        else version(linux)
+            return WindowBackend.autodetect;
+        else version(OSX)
+        {
+            version(X86_64)
+            {
+                return WindowBackend.cocoa;
+            }
+            else
+            {
+                return WindowBackend.carbon;
+            }
+        }
+    }
+
+    if (backend == WindowBackend.autodetect)
+        backend = autoDetectBackend();
+
     version(Windows)
     {
-        import win32.windef;
-        import dplug.window.win32window;
-        HWND parent = cast(HWND)parentInfo;
-        return new Win32Window(parent, listener, width, height);
+        if (backend == WindowBackend.win32)
+        {
+            import win32.windef;
+            import dplug.window.win32window;
+            HWND parent = cast(HWND)parentInfo;
+            return new Win32Window(parent, listener, width, height);
+        }
+        else
+            return null;
     }
     else version(linux)
     {
         return null; // see linux-windowing branch
     }
-    else version(darwin)
+    else version(OSX)
     {
-        version(X86_64)
+        if (backend == WindowBackend.cocoa)
         {
             import dplug.window.cocoawindow;
             return new CocoaWindow(parentInfo, listener, width, height);
         }
-        else
+        else if (backend == WindowBackend.carbon)
         {
             import dplug.window.carbonwindow;
             return new CarbonWindow(parentInfo, listener, width, height);
         }
+        else
+            return null;
     }
     else
     {

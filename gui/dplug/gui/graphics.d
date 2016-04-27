@@ -101,10 +101,19 @@ class GUIGraphics : UIElement, IGraphics
 
     // Graphics implementation
 
-    override void* openUI(void* parentInfo, DAW daw)
+    override void* openUI(void* parentInfo, DAW daw, GraphicsBackend backend)
     {
+        WindowBackend wbackend = void;
+        final switch(backend)
+        {
+            case GraphicsBackend.autodetect: wbackend = WindowBackend.autodetect; break;
+            case GraphicsBackend.win32: wbackend = WindowBackend.win32; break;
+            case GraphicsBackend.cocoa: wbackend = WindowBackend.cocoa; break;
+            case GraphicsBackend.carbon: wbackend = WindowBackend.carbon; break;
+        }
+
         // We create this window each time.
-        _window = createWindow(parentInfo, _windowListener, _askedWidth, _askedHeight);
+        _window = createWindow(parentInfo, _windowListener, wbackend, _askedWidth, _askedHeight);
 
         _uiContext.debugOutput = &_window.debugOutput;
 
