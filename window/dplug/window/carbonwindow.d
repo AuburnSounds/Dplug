@@ -53,7 +53,7 @@ version(OSX)
         int _lastMouseY;
 
     public:
-        this(void* parentWindow, IWindowListener listener, int width, int height)
+        this(void* parentWindow, void* parentControl, IWindowListener listener, int width, int height)
         {
             _listener = listener;
             DerelictCarbon.load();
@@ -101,18 +101,19 @@ version(OSX)
             OSStatus s = InstallEventLoopTimer(GetMainEventLoop(), 0.0, kEventDurationSecond / 60.0,
                                                &timerCallback, cast(void*)this, &_timer);
 
-            ControlRef parentControl = null; // only used for AU in Iplug
+            // AU pass something, but VST does not.
+            ControlRef parentControlRef = cast(void*)parentControl;
 
             OSStatus status;
             if (_isComposited)
             {
-                if (!parentControl)
+                if (!parentControlRef)
                 {
                     HIViewRef hvRoot = HIViewGetRoot(_window);
-                    status = HIViewFindByID(hvRoot, kHIViewWindowContentID, &parentControl);
+                    status = HIViewFindByID(hvRoot, kHIViewWindowContentID, &parentControlRef);
                 }
 
-                status = HIViewAddSubview(parentControl, _view);
+                status = HIViewAddSubview(parentControlRef, _view);
             }
             else
             {
@@ -159,10 +160,10 @@ version(OSX)
                 RemoveEventHandler(_controlHandler);
                 RemoveEventHandler(_windowHandler);
 
-                DerelictCoreServices.unload();
+               /* DerelictCoreServices.unload();
                 DerelictCoreFoundation.unload();
                 DerelictCoreGraphics.unload();
-                DerelictCarbon.unload();
+                DerelictCarbon.unload();*/
             }
         }
 

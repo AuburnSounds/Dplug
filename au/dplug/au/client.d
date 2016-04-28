@@ -136,10 +136,66 @@ nothrow ComponentResult audioUnitEntryPoint(alias ClientClass)(ComponentParamete
     }
 }
 
+struct CarbonViewInstance
+{
+    ComponentInstance mCI;
+    AUClient mPlug;
+}
+
 nothrow ComponentResult audioUnitCarbonViewEntry(alias ClientClass)(ComponentParameters* params, void* pView)
 {
-    debug printf("TODO audioUnitCarbonViewEntry\n");
-    return 0;
+    debugBreak();
+    try
+    {
+        attachToRuntimeIfNeeded();
+        int select = params.what;
+
+        debug printf("audioUnitCarbonViewEntry select %d\n", select);
+
+        if (select == kComponentOpenSelect)
+        {
+            CarbonViewInstance* pCVI = new CarbonViewInstance;
+            pCVI.mCI = getCompParam!(ComponentInstance, 0, 1)(params);
+            pCVI.mPlug = null;
+            SetComponentInstanceStorage(pCVI.mCI, cast(Handle)pCVI);
+            return noErr;
+        }
+
+        CarbonViewInstance* pCVI = cast(CarbonViewInstance*) pView;
+
+        switch (select)
+        {
+            case kComponentCloseSelect:
+            {
+                AUClient auClient = pCVI.mPlug;
+                if (auClient && auClient._client.hasGUI())
+                {
+                    auClient._client.closeGUI();
+                }
+                pCVI.destroy();
+                return noErr;
+            }
+            case kAudioUnitCarbonViewCreateSelect:
+            {
+                AudioUnitCarbonViewCreateGluePB* pb = cast(AudioUnitCarbonViewCreateGluePB*) params;
+                AUClient auClient = cast(AUClient) GetComponentInstanceStorage(pb.inAudioUnit);
+                pCVI.mPlug = auClient;
+                if (auClient && auClient._client.hasGUI())
+                {
+                    void* controlRef = auClient._client.openGUI(pb.inWindow, pb.inParentControl, GraphicsBackend.carbon);
+                    *(pb.outControl) = cast(ControlRef)controlRef;
+                    return noErr;
+                }
+                return badComponentSelector;
+            }
+            default:
+                return badComponentSelector;
+        }
+    }
+    catch(Exception e)
+    {
+        return badComponentSelector;
+    }
 }
 
 __gshared AudioComponentPlugInInterface audioComponentPlugInInterface;
@@ -1193,8 +1249,6 @@ private:
                 }
                 catch(Exception e)
                 {
-                    import core.stdc.stdio;
-                    debug printf("error: %s", e.msg.ptr);
                     return kAudioUnitErr_InvalidProperty;
                 }
             }
@@ -1987,7 +2041,7 @@ private:
     {
         if (!_client.hasGUI())
             return null;
-        return _client.openGUI(null, GraphicsBackend.cocoa);
+        return _client.openGUI(null, null, GraphicsBackend.cocoa);
     }
 }
 

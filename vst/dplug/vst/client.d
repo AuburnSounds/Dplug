@@ -404,7 +404,7 @@ private:
                 {
                     if ( _client.hasGUI() )
                     {
-                        _client.openGUI(ptr, GraphicsBackend.autodetect);
+                        _client.openGUI(ptr, null, GraphicsBackend.autodetect);
                         return 1;
                     }
                     else

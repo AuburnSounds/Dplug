@@ -209,11 +209,11 @@ public:
         return index >= 0 && index < maxOutputs();
     }
 
-    final void* openGUI(void* parentInfo, GraphicsBackend backend)
+    final void* openGUI(void* parentInfo, void* controlInfo, GraphicsBackend backend)
     {
         createGraphicsLazily();
         assert(_graphics !is null);
-        return _graphics.openUI(parentInfo, _hostCommand.getDAW(), backend);
+        return _graphics.openUI(parentInfo, controlInfo, _hostCommand.getDAW(), backend);
     }
 
     final bool getGUISize(int* width, int* height)

@@ -148,7 +148,8 @@ enum WindowBackend
 
 /// Factory function to create windows.
 /// Returns: null if this backend isn't available on this platform.
-IWindow createWindow(void* parentInfo, IWindowListener listener, WindowBackend backend, int width, int height)
+/// Note: controlInfo is only used by Carbon + AU, can be null otherwise
+IWindow createWindow(void* parentInfo, void* controlInfo, IWindowListener listener, WindowBackend backend, int width, int height)
 {
     static WindowBackend autoDetectBackend()
     {
@@ -198,7 +199,7 @@ IWindow createWindow(void* parentInfo, IWindowListener listener, WindowBackend b
         else if (backend == WindowBackend.carbon)
         {
             import dplug.window.carbonwindow;
-            return new CarbonWindow(parentInfo, listener, width, height);
+            return new CarbonWindow(parentInfo, controlInfo, listener, width, height);
         }
         else
             return null;

@@ -112,7 +112,7 @@ version(OSX)
                     _buffer = null;
                 }
 
-                DerelictCocoa.unload();
+                //DerelictCocoa.unload();
             }
         }
 

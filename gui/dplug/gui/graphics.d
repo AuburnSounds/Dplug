@@ -101,7 +101,7 @@ class GUIGraphics : UIElement, IGraphics
 
     // Graphics implementation
 
-    override void* openUI(void* parentInfo, DAW daw, GraphicsBackend backend)
+    override void* openUI(void* parentInfo, void* controlInfo, DAW daw, GraphicsBackend backend)
     {
         WindowBackend wbackend = void;
         final switch(backend)
@@ -113,7 +113,7 @@ class GUIGraphics : UIElement, IGraphics
         }
 
         // We create this window each time.
-        _window = createWindow(parentInfo, _windowListener, wbackend, _askedWidth, _askedHeight);
+        _window = createWindow(parentInfo, controlInfo, _windowListener, wbackend, _askedWidth, _askedHeight);
 
         _uiContext.debugOutput = &_window.debugOutput;
 

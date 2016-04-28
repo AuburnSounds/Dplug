@@ -517,7 +517,9 @@ string makePListFile(Plugin plugin, string config, bool hasIcon)
         addKeyString("NSPrincipalClass", "dplug_view");
     }*/
 
-    if (configIsAU(config))
+    enum isAudioComponentAPIImplemented = false;
+
+    if (isAudioComponentAPIImplemented && configIsAU(config))
     {
         content ~= "        <key>AudioComponents</key>\n";
         content ~= "        <array>\n";
