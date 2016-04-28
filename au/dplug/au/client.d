@@ -662,7 +662,37 @@ private:
                 return setProperty(propID, scope_, element, pDataSize, pData);
             }
 
-            case kAudioUnitAddPropertyListenerSelect: // 6
+            case kAudioUnitGetParameterSelect: // 6
+            {
+                AudioUnitParameterID paramID = params.getCompParam!(AudioUnitParameterID, 3, 4);
+                AudioUnitScope scope_ = params.getCompParam!(AudioUnitScope, 2, 4);
+                AudioUnitElement element = params.getCompParam!(AudioUnitElement, 1, 4);
+                AudioUnitParameterValue* pValue = params.getCompParam!(AudioUnitParameterValue*, 0, 4);
+                return getParamProc(cast(void*)this, paramID, scope_, element, pValue);
+            }
+
+            case kAudioUnitSetParameterSelect: // 7
+            {
+                AudioUnitParameterID paramID = params.getCompParam!(AudioUnitParameterID, 4, 5);
+                AudioUnitScope scope_ = params.getCompParam!(AudioUnitScope, 3, 5);
+                AudioUnitElement element = params.getCompParam!(AudioUnitElement, 2, 5);
+                AudioUnitParameterValue value = params.getCompParam!(AudioUnitParameterValue, 1, 5);
+                UInt32 offset = params.getCompParam!(UInt32, 0, 5);
+                return setParamProc(cast(void*)this, paramID, scope_, element, value, offset);
+            }
+
+            case kAudioUnitResetSelect: // 9
+            {
+                printf(">kAudioUnitResetSelect\n");
+                auto message = makeResetStateMessage();
+                printf("message created ok\n");
+                printf("messagequeue is at %p\n", cast(void*)_messageQueue);
+                _messageQueue.pushBack(message);
+                printf("<kAudioUnitResetSelect\n");
+                return noErr;
+            }
+
+            case kAudioUnitAddPropertyListenerSelect: // 10
             {
                 PropertyListener listener;
                 listener.mPropID = params.getCompParam!(AudioUnitPropertyID, 2, 3);
@@ -683,7 +713,7 @@ private:
                 return noErr;
             }
 
-            case kAudioUnitRemovePropertyListenerSelect: // 7
+            case kAudioUnitRemovePropertyListenerSelect: // 11
             {
                 PropertyListener listener;
                 listener.mPropID = params.getCompParam!(AudioUnitPropertyID, 1, 2);
@@ -705,31 +735,17 @@ private:
                 return noErr;
             }
 
-            case kAudioUnitRemovePropertyListenerWithUserDataSelect:
+            case kAudioUnitRenderSelect: // 14
             {
-                PropertyListener listener;
-                listener.mPropID = params.getCompParam!(AudioUnitPropertyID, 1, 2);
-                listener.mListenerProc = params.getCompParam!(AudioUnitPropertyListenerProc, 0, 2);
-                listener.mProcArgs = params.getCompParam!(void*, 0, 3);
-                _globalMutex.lock();
-                scope(exit) _globalMutex.unlock();
-                int n = cast(int)(_propertyListeners.length);
-                for (int i = 0; i < n; ++i)
-                {
-                    PropertyListener* pListener = &_propertyListeners[i];
-                    if (listener.mPropID == pListener.mPropID
-                        && listener.mListenerProc == pListener.mListenerProc
-                        && listener.mProcArgs == pListener.mProcArgs)
-                    {
-                        _propertyListeners[i] = _propertyListeners[$-1];
-                        _propertyListeners.length = _propertyListeners.length - 1;
-                        break;
-                    }
-                }
-                return noErr;
+                AudioUnitRenderActionFlags* pFlags = params.getCompParam!(AudioUnitRenderActionFlags*, 4, 5)();
+                AudioTimeStamp* pTimestamp = params.getCompParam!(AudioTimeStamp*, 3, 5)();
+                uint outputBusIdx = params.getCompParam!(uint, 2, 5)();
+                uint nFrames = params.getCompParam!(uint, 1, 5)();
+                AudioBufferList* pOutBufList = params.getCompParam!(AudioBufferList*, 0, 5)();
+                return render(pFlags, pTimestamp, outputBusIdx, nFrames, pOutBufList, false);
             }
 
-            case kAudioUnitAddRenderNotifySelect: // 9
+            case kAudioUnitAddRenderNotifySelect: // 15
             {
                 AURenderCallbackStruct acs;
                 acs.inputProc = params.getCompParam!(AURenderCallback, 1, 2);
@@ -741,7 +757,7 @@ private:
                 return noErr;
             }
 
-            case kAudioUnitRemoveRenderNotifySelect: // 10
+            case kAudioUnitRemoveRenderNotifySelect: // 16
             {
                 static void removeElement(T)(ref T[] arr, T needle) nothrow
                 {
@@ -763,26 +779,7 @@ private:
                 return noErr;
             }
 
-            case kAudioUnitGetParameterSelect: // 11
-            {
-                AudioUnitParameterID paramID = params.getCompParam!(AudioUnitParameterID, 3, 4);
-                AudioUnitScope scope_ = params.getCompParam!(AudioUnitScope, 2, 4);
-                AudioUnitElement element = params.getCompParam!(AudioUnitElement, 1, 4);
-                AudioUnitParameterValue* pValue = params.getCompParam!(AudioUnitParameterValue*, 0, 4);
-                return getParamProc(cast(void*)this, paramID, scope_, element, pValue);
-            }
-
-            case kAudioUnitSetParameterSelect: // 12
-            {
-                AudioUnitParameterID paramID = params.getCompParam!(AudioUnitParameterID, 4, 5);
-                AudioUnitScope scope_ = params.getCompParam!(AudioUnitScope, 3, 5);
-                AudioUnitElement element = params.getCompParam!(AudioUnitElement, 2, 5);
-                AudioUnitParameterValue value = params.getCompParam!(AudioUnitParameterValue, 1, 5);
-                UInt32 offset = params.getCompParam!(UInt32, 0, 5);
-                return setParamProc(cast(void*)this, paramID, scope_, element, value, offset);
-            }
-
-            case kAudioUnitScheduleParametersSelect: // 13
+            case kAudioUnitScheduleParametersSelect: // 17
             {
                 AudioUnitParameterEvent* pEvent = params.getCompParam!(AudioUnitParameterEvent*, 1, 2);
                 uint nEvents = params.getCompParam!(uint, 0, 2);
@@ -801,19 +798,27 @@ private:
                 return noErr;
             }
 
-            case kAudioUnitRenderSelect: // 14
+            case kAudioUnitRemovePropertyListenerWithUserDataSelect: // 18
             {
-                AudioUnitRenderActionFlags* pFlags = params.getCompParam!(AudioUnitRenderActionFlags*, 4, 5)();
-                AudioTimeStamp* pTimestamp = params.getCompParam!(AudioTimeStamp*, 3, 5)();
-                uint outputBusIdx = params.getCompParam!(uint, 2, 5)();
-                uint nFrames = params.getCompParam!(uint, 1, 5)();
-                AudioBufferList* pOutBufList = params.getCompParam!(AudioBufferList*, 0, 5)();
-                return render(pFlags, pTimestamp, outputBusIdx, nFrames, pOutBufList, false);
-            }
-
-            case kAudioUnitResetSelect: // 15
-            {
-                _messageQueue.pushBack(makeResetStateMessage());
+                PropertyListener listener;
+                listener.mPropID = params.getCompParam!(AudioUnitPropertyID, 1, 2);
+                listener.mListenerProc = params.getCompParam!(AudioUnitPropertyListenerProc, 0, 2);
+                listener.mProcArgs = params.getCompParam!(void*, 0, 3);
+                _globalMutex.lock();
+                scope(exit) _globalMutex.unlock();
+                int n = cast(int)(_propertyListeners.length);
+                for (int i = 0; i < n; ++i)
+                {
+                    PropertyListener* pListener = &_propertyListeners[i];
+                    if (listener.mPropID == pListener.mPropID
+                        && listener.mListenerProc == pListener.mListenerProc
+                        && listener.mProcArgs == pListener.mProcArgs)
+                    {
+                        _propertyListeners[i] = _propertyListeners[$-1];
+                        _propertyListeners.length = _propertyListeners.length - 1;
+                        break;
+                    }
+                }
                 return noErr;
             }
 
