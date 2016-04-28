@@ -39,7 +39,7 @@ import dplug.au.cocoaviewfactory;
 import dplug.au.audiocomponentdispatch;
 
 
-version = logDispatcher;
+//version = logDispatcher;
 
 version(OSX):
 
@@ -683,12 +683,7 @@ private:
 
             case kAudioUnitResetSelect: // 9
             {
-                printf(">kAudioUnitResetSelect\n");
-                auto message = makeResetStateMessage();
-                printf("message created ok\n");
-                printf("messagequeue is at %p\n", cast(void*)_messageQueue);
-                _messageQueue.pushBack(message);
-                printf("<kAudioUnitResetSelect\n");
+                _messageQueue.pushBack(makeResetStateMessage());
                 return noErr;
             }
 
