@@ -58,24 +58,6 @@ struct DPlugCocoaViewFactory
     ~this() nothrow
     {
     }
-/*
-    /// Allocates, but do not init
-    static DPlugCocoaViewFactory alloc()
-    {
-        alias fun_t = extern(C) id function (id obj, SEL sel);
-        return DPlugCocoaViewFactory( (cast(fun_t)objc_msgSend)(getClassID(), sel!"alloc") );
-    }
-
-    static Class getClass()
-    {
-        return cast(Class)( getClassID() );
-    }
-
-    static id getClassID()
-    {
-        assert(customClassName !is null);
-        return objc_getClass(customClassName);
-    }*/
 
     static Class clazz;
 
