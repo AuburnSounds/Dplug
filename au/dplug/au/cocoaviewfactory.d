@@ -52,18 +52,16 @@ struct DPlugCocoaViewFactory
     // create from an id
     this(id id_)
     {
-        printf("this\n");
         this._id = id_;
     }
 
     ~this() nothrow
     {
     }
-
+/*
     /// Allocates, but do not init
     static DPlugCocoaViewFactory alloc()
     {
-        printf("alloc\n");
         alias fun_t = extern(C) id function (id obj, SEL sel);
         return DPlugCocoaViewFactory( (cast(fun_t)objc_msgSend)(getClassID(), sel!"alloc") );
     }
@@ -76,14 +74,15 @@ struct DPlugCocoaViewFactory
     static id getClassID()
     {
         assert(customClassName !is null);
-        return objc_getClass(toStringz(customClassName));
-    }
+        return objc_getClass(customClassName);
+    }*/
 
     static Class clazz;
 
     static void registerSubclass()
     {
         import gfm.core;
+   //   TODO: enable back?
    //     if (customClassName !is null)
    //         return;
         string uuid = randomUUID().toString();
@@ -94,11 +93,11 @@ struct DPlugCocoaViewFactory
         class_addMethod(clazz, sel!"interfaceVersion", cast(IMP) &interfaceVersion, "I@:");
         class_addMethod(clazz, sel!"uiViewForAudioUnit:withSize:", cast(IMP) &uiViewForAudioUnit, "@@:^{ComponentInstanceRecord=[1q]}{CGSize=dd}");
 
-        // very important: add an instance variable for the this pointer so that the D object can be
+        // Very important: add an instance variable for the this pointer so that the D object can be
         // retrieved from an id
         class_addIvar(clazz, "this", (void*).sizeof, (void*).sizeof == 4 ? 2 : 3, "^v");
 
-        // Replicates the AUCocoaUIBase protocol
+        // Replicates the AUCocoaUIBase protocol.
         // For host to accept that our object follow AUCocoaUIBase, we replicate AUCocoaUIBase
         // with the same name and methods.
         // This protocol has to be created at runtime because we don't have @protocol in D.

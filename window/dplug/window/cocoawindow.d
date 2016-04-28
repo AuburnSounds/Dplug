@@ -376,7 +376,7 @@ version(OSX)
         static id getClassID()
         {
             assert(customClassName !is null);
-            return objc_getClass(toStringz(customClassName));
+            return objc_getClass(customClassName);
         }
 
     private:

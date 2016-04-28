@@ -38,6 +38,9 @@ import dplug.au.dfxutil;
 import dplug.au.cocoaviewfactory;
 import dplug.au.audiocomponentdispatch;
 
+
+version = logDispatcher;
+
 version(OSX):
 
 // Difference with IPlug
@@ -106,6 +109,9 @@ void loadDerelictFunctions()
 
 nothrow ComponentResult audioUnitEntryPoint(alias ClientClass)(ComponentParameters* params, void* pPlug)
 {
+    version(logDispatcher) printf(">audioUnitEntryPoint\n");
+
+    version(logDispatcher) scope(exit) printf("<audioUnitEntryPoint\n");
     try
     {
         attachToRuntimeIfNeeded();
@@ -134,6 +140,7 @@ nothrow ComponentResult audioUnitEntryPoint(alias ClientClass)(ComponentParamete
         unrecoverableError();
         return noErr;
     }
+
 }
 
 struct CarbonViewInstance
@@ -150,7 +157,7 @@ nothrow ComponentResult audioUnitCarbonViewEntry(alias ClientClass)(ComponentPar
         attachToRuntimeIfNeeded();
         int select = params.what;
 
-        debug printf("audioUnitCarbonViewEntry select %d\n", select);
+        version(logDispatcher) printf("audioUnitCarbonViewEntry select %d\n", select);
 
         if (select == kComponentOpenSelect)
         {
@@ -537,11 +544,8 @@ private:
             return noErr;
         }
 
-        // IPlug locks here.
-        // Do we need to do the same? For now, yes.
-        // TODO: better concurrency
+        version(logDispatcher) printf("select %d\n", select);
 
-        //debug printf("select %d\n", select);
         switch(select)
         {
 
@@ -824,7 +828,13 @@ private:
     ComponentResult getProperty(AudioUnitPropertyID propID, AudioUnitScope scope_, AudioUnitElement element,
                                 UInt32* pDataSize, Boolean* pWriteable, void* pData) nothrow
     {
-        //debug printf("GET property %d\n", propID);
+        version(logDispatcher)
+        {
+            if (pData)
+                printf("GET property %d\n", propID);
+            else
+                printf("GETINFO property %d\n", propID);
+        }
 
         switch(propID)
         {
@@ -955,7 +965,7 @@ private:
                         return noErr;
 
                     case kAudioUnitRenderSelect:
-                        *pDataSize = AudioUnitSetParameterProc.sizeof;
+                        *pDataSize = AudioUnitRenderProc.sizeof;
                         if (pData)
                             *(cast(AudioUnitRenderProc*) pData) = &renderProc;
                         return noErr;
@@ -1096,7 +1106,7 @@ private:
 
             case kAudioUnitProperty_GetUIComponentList: // 18
             {
-                printf("TODO kAudioUnitProperty_GetUIComponentList\n");
+                version(logDispatcher) printf("TODO kAudioUnitProperty_GetUIComponentList\n");
                 return kAudioUnitErr_InvalidProperty;
             }
 
@@ -1221,23 +1231,9 @@ private:
                         *pDataSize = AudioUnitCocoaViewInfo.sizeof;
                         if (pData)
                         {
-                            registerCocoaViewFactory();
-
-                            import std.stdio;
-
                             string factoryClassName = registerCocoaViewFactory();
-
-                            // TODO: pass from dub.json somehow
-    //                        string OSXBundleID = "com.audiocompany.audiounit.distort";
-
-  //                          CFStringRef bundleID = toCFString(OSXBundleID);
-//                            CFBundleRef pBundle = CFBundleGetBundleWithIdentifier(bundleID);
-
-// TODO: test alternatively that
                             CFBundleRef pBundle = CFBundleGetMainBundle();
-
                             CFURLRef url = CFBundleCopyBundleURL(pBundle);
-
                             AudioUnitCocoaViewInfo* pViewInfo = cast(AudioUnitCocoaViewInfo*) pData;
                             pViewInfo.mCocoaAUViewBundleLocation = url;
                             pViewInfo.mCocoaAUViewClass[0] = toCFString(factoryClassName);
@@ -1390,7 +1386,7 @@ private:
             if (listener.mPropID == propID)
                 listener.mListenerProc(listener.mProcArgs, _componentInstance, propID, scope_, 0); // always zero?
 
-        //debug printf("SET property %d\n", propID);
+        version(logDispatcher) printf("SET property %d\n", propID);
 
         switch(propID)
         {
