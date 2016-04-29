@@ -334,21 +334,35 @@ struct Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
         final switch(quality) with (Quality)
         {
             case box:
-                for (int y = updateRect.min.y; y < updateRect.max.y; ++y)
-                {
-                    COLOR[] L0 = previousLevel.scanline(y * 2);
-                    COLOR[] L1 = previousLevel.scanline(y * 2 + 1);
-                    COLOR[] dest = thisLevel.scanline(y);
 
-                    for (int x = updateRect.min.x; x < updateRect.max.x; ++x)
+                static if (is(COLOR == RGBA))
+                    generateLevelBoxRGBA(thisLevel, previousLevel, updateRect);
+                else static if (is(COLOR == L16))
+                    generateLevelBoxL16(thisLevel, previousLevel, updateRect);
+                else
+                    static assert(false, "not implemented");
+
+                // To verify correctness
+                enum verifyBoxMipmaps = false;
+
+                static if (verifyBoxMipmaps)
+                {
+                    for (int y = updateRect.min.y; y < updateRect.max.y; ++y)
                     {
-                        // A B
-                        // C D
-                        COLOR A = L0.ptr[2 * x];
-                        COLOR B = L0.ptr[2 * x + 1];
-                        COLOR C = L1.ptr[2 * x];
-                        COLOR D = L1.ptr[2 * x + 1];
-                        dest.ptr[x] = COLOR.op!q{(a + b + c + d + 2) >> 2}(A, B, C, D);
+                        COLOR[] L0 = previousLevel.scanline(y * 2);
+                        COLOR[] L1 = previousLevel.scanline(y * 2 + 1);
+                        COLOR[] dest = thisLevel.scanline(y);
+
+                        for (int x = updateRect.min.x; x < updateRect.max.x; ++x)
+                        {
+                            // A B
+                            // C D
+                            COLOR A = L0[2 * x];
+                            COLOR B = L0[2 * x + 1];
+                            COLOR C = L1[2 * x];
+                            COLOR D = L1[2 * x + 1];
+                            assert(dest[x] == COLOR.op!q{(a + b + c + d + 2) >> 2}(A, B, C, D));
+                        }
                     }
                 }
                 break;
@@ -357,45 +371,54 @@ struct Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
 
             static if (is(COLOR == RGBA))
             {
-                for (int y = updateRect.min.y; y < updateRect.max.y; ++y)
+                generateLevelBoxAlphaCovRGBA(thisLevel, previousLevel, updateRect);
+
+                static if (false)
                 {
-                    RGBA[] L0 = previousLevel.scanline(y * 2);
-                    RGBA[] L1 = previousLevel.scanline(y * 2 + 1);
-                    RGBA[] dest = thisLevel.scanline(y);
-
-                    for (int x = updateRect.min.x; x < updateRect.max.x; ++x)
+                    void checkLevelBoxAlphaConvRGBA(Image!RGBA* thisLevel, Image!RGBA* previousLevel, box2i updateRect)
                     {
-                        // A B
-                        // C D
-                        RGBA A = L0.ptr[2 * x];
-                        RGBA B = L0.ptr[2 * x + 1];
-                        RGBA C = L1.ptr[2 * x];
-                        RGBA D = L1.ptr[2 * x + 1];
-
-                        int alphaA = A.a;
-                        int alphaB = B.a;
-                        int alphaC = C.a;
-                        int alphaD = D.a;
-                        int sum = alphaA + alphaB + alphaC + alphaD;
-                        if (sum == 0)
+                        for (int y = updateRect.min.y; y < updateRect.max.y; ++y)
                         {
-                            dest.ptr[x] = A;
-                        }
-                        else
-                        {
-                            int destAlpha = cast(ubyte)( (alphaA + alphaB + alphaC + alphaD + 2) >> 2 );
-                            int red =   (A.r * alphaA + B.r * alphaB + C.r * alphaC + D.r * alphaD);
-                            int green = (A.g * alphaA + B.g * alphaB + C.g * alphaC + D.g * alphaD);
-                            int blue =  (A.b * alphaA + B.b* alphaB + C.b * alphaC + D.b * alphaD);
-                            float invSum = 1 / cast(float)(sum);
+                            RGBA[] L0 = previousLevel.scanline(y * 2);
+                            RGBA[] L1 = previousLevel.scanline(y * 2 + 1);
+                            RGBA[] dest = thisLevel.scanline(y);
 
-                            RGBA finalColor = RGBA( cast(ubyte)(0.5f + red * invSum),
-                                                    cast(ubyte)(0.5f + green * invSum),
-                                                    cast(ubyte)(0.5f + blue * invSum),
-                                                    cast(ubyte)destAlpha );
-                            dest.ptr[x] = finalColor;
+                            for (int x = updateRect.min.x; x < updateRect.max.x; ++x)
+                            {
+                                // A B
+                                // C D
+                                RGBA A = L0.ptr[2 * x];
+                                RGBA B = L0.ptr[2 * x + 1];
+                                RGBA C = L1.ptr[2 * x];
+                                RGBA D = L1.ptr[2 * x + 1];
+
+                                int alphaA = A.a;
+                                int alphaB = B.a;
+                                int alphaC = C.a;
+                                int alphaD = D.a;
+                                int sum = alphaA + alphaB + alphaC + alphaD;
+                                if (sum == 0)
+                                {
+                                    assert(dest.ptr[x] == A);
+                                }
+                                else
+                                {
+                                    int destAlpha = cast(ubyte)( (alphaA + alphaB + alphaC + alphaD + 2) >> 2 );
+                                    int red =   (A.r * alphaA + B.r * alphaB + C.r * alphaC + D.r * alphaD);
+                                    int green = (A.g * alphaA + B.g * alphaB + C.g * alphaC + D.g * alphaD);
+                                    int blue =  (A.b * alphaA + B.b* alphaB + C.b * alphaC + D.b * alphaD);
+                                    float invSum = 1 / cast(float)(sum);
+
+                                    RGBA finalColor = RGBA( cast(ubyte)(0.5f + red * invSum),
+                                                            cast(ubyte)(0.5f + green * invSum),
+                                                            cast(ubyte)(0.5f + blue * invSum),
+                                                            cast(ubyte)destAlpha );
+                                    assert(dest.ptr[x] == finalColor);
+                                }
+                            }
                         }
                     }
+                    checkLevelBoxAlphaConvRGBA(thisLevel, previousLevel, updateRect);
                 }
                 break;
             }
@@ -548,3 +571,249 @@ unittest
     b.size(16, 17, 333);
 }
 
+void generateLevelBoxRGBA(Image!RGBA* thisLevel, 
+                          Image!RGBA* previousLevel, 
+                          box2i updateRect) pure nothrow @nogc
+{
+    int width = updateRect.width();
+    int height = updateRect.height();
+
+    int previousPitch = previousLevel.w;
+    int thisPitch = thisLevel.w;
+
+    RGBA* L0 = previousLevel.scanline(updateRect.min.y * 2).ptr + updateRect.min.x * 2;
+    RGBA* L1 = L0 + previousPitch;
+    RGBA* dest = thisLevel.scanline(updateRect.min.y).ptr + updateRect.min.x;
+
+    for (int y = 0; y < height; ++y)
+    {
+        version(D_InlineAsm_X86)
+        {
+            align(16) static immutable short[8] xmmTwo = [ 2, 2, 2, 2, 2, 2, 2, 2];
+            asm pure nothrow @nogc
+            {
+                mov ECX, width;
+                shr ECX, 1;
+                jz no_need; // ECX = 0 => no pair of pixels to process
+
+                mov EAX, L0;
+                mov EDX, L1;
+                mov EDI, dest;
+                movaps XMM5, xmmTwo;
+
+            loop_ecx:
+                movdqu XMM0, [EAX]; // A B E F
+                pxor XMM4, XMM4;
+                movdqu XMM1, [EDX]; // C D G H
+                movdqa XMM2, XMM0;
+                movdqa XMM3, XMM1;
+                punpcklbw XMM0, XMM4; // A B in short
+                punpcklbw XMM1, XMM4; // C D in short
+                punpckhbw XMM2, XMM4; // E F in short
+                punpckhbw XMM3, XMM4; // G H in short
+                paddusw XMM0, XMM1; // A + C | B + D
+                paddusw XMM2, XMM3; // E + F | G + H
+                movdqa XMM1, XMM0;
+                movdqa XMM3, XMM2;
+                psrldq XMM1, 8;
+                psrldq XMM3, 8;
+                add EDI, 8;
+                paddusw XMM0, XMM1; // A + B + C + D | garbage
+                paddusw XMM2, XMM3; // E + F + G + H | garbage
+                paddusw XMM0, XMM5; // A + B + C + D + 2 | garbage
+                paddusw XMM2, XMM5; // E + F + G + H + 2 | garbage
+                psrlw XMM0, 2; // (A + B + C + D + 2) >> 2 | garbage
+                psrlw XMM2, 2; // (E + F + G + H + 2) >> 2 | garbage
+                add EAX, 16;
+                punpcklqdq XMM0, XMM2;
+                add EDX, 16;
+                packuswb XMM0, XMM4; // (A + B + C + D + 2) >> 2 | (E + F + G + H + 2) >> 2 | 0 | 0
+                movq [EDI-8], XMM0;
+                sub ECX, 1;
+                jnz loop_ecx;
+            no_need: ;
+            }
+
+            // Eventually filter the last pixel
+            int remaining = width & ~1;
+            for (int x = remaining; x < width; ++x)
+            {
+                RGBA A = L0[2 * x];
+                RGBA B = L0[2 * x + 1];
+                RGBA C = L1[2 * x];
+                RGBA D = L1[2 * x + 1];
+                dest[x] = RGBA.op!q{(a + b + c + d + 2) >> 2}(A, B, C, D);
+            }
+        }
+        else version(D_InlineAsm_X86_64)
+        {
+            align(16) static immutable short[8] xmmTwo = [ 2, 2, 2, 2, 2, 2, 2, 2];
+            asm pure nothrow @nogc
+            {
+                mov ECX, width;
+                shr ECX, 1;
+                jz no_need; // ECX = 0 => no pair of pixels to process
+
+                mov RAX, L0;
+                mov RDX, L1;
+                mov RDI, dest;
+                movaps XMM5, xmmTwo;
+
+            loop_ecx:
+                movdqu XMM0, [RAX]; // A B E F
+                pxor XMM4, XMM4;
+                movdqu XMM1, [RDX]; // C D G H
+                movdqa XMM2, XMM0;
+                movdqa XMM3, XMM1;
+                punpcklbw XMM0, XMM4; // A B in short
+                punpcklbw XMM1, XMM4; // C D in short
+                punpckhbw XMM2, XMM4; // E F in short
+                punpckhbw XMM3, XMM4; // G H in short
+                paddusw XMM0, XMM1; // A + C | B + D
+                paddusw XMM2, XMM3; // E + F | G + H
+                movdqa XMM1, XMM0;
+                movdqa XMM3, XMM2;
+                psrldq XMM1, 8;
+                psrldq XMM3, 8;
+                add EDI, 8;
+                paddusw XMM0, XMM1; // A + B + C + D | garbage
+                paddusw XMM2, XMM3; // E + F + G + H | garbage
+                paddusw XMM0, XMM5; // A + B + C + D + 2 | garbage
+                paddusw XMM2, XMM5; // E + F + G + H + 2 | garbage
+                psrlw XMM0, 2; // (A + B + C + D + 2) >> 2 | garbage
+                psrlw XMM2, 2; // (E + F + G + H + 2) >> 2 | garbage
+                add RAX, 16;
+                punpcklqdq XMM0, XMM2;
+                add RDX, 16;
+                packuswb XMM0, XMM4; // (A + B + C + D + 2) >> 2 | (E + F + G + H + 2) >> 2 | 0 | 0
+                movq [RDI-8], XMM0;
+                sub ECX, 1;
+                jnz loop_ecx;
+            no_need: ;
+            }
+
+            // Eventually filter the last pixel
+            int remaining = width & ~1;
+            for (int x = remaining; x < width; ++x)
+            {
+                RGBA A = L0[2 * x];
+                RGBA B = L0[2 * x + 1];
+                RGBA C = L1[2 * x];
+                RGBA D = L1[2 * x + 1];
+                dest[x] = RGBA.op!q{(a + b + c + d + 2) >> 2}(A, B, C, D);
+            }
+        }
+        else
+        {
+            for (int x = 0; x < width; ++x)
+            {
+                // A B
+                // C D
+                RGBA A = L0[2 * x];
+                RGBA B = L0[2 * x + 1];
+                RGBA C = L1[2 * x];
+                RGBA D = L1[2 * x + 1];
+
+                dest[x] = RGBA.op!q{(a + b + c + d + 2) >> 2}(A, B, C, D);
+            }
+        }
+
+        L0 += (2 * previousPitch);
+        L1 += (2 * previousPitch);
+        dest += thisPitch;
+    }
+}
+
+void generateLevelBoxL16(Image!L16* thisLevel, 
+                         Image!L16* previousLevel, 
+                         box2i updateRect) pure nothrow @nogc
+{
+    int width = updateRect.width();
+    int height = updateRect.height();
+
+    int previousPitch = previousLevel.w;
+    int thisPitch = thisLevel.w;
+
+    L16* L0 = previousLevel.scanline(updateRect.min.y * 2).ptr + updateRect.min.x * 2;
+    L16* L1 = L0 + previousPitch;
+
+    L16* dest = thisLevel.scanline(updateRect.min.y).ptr + updateRect.min.x;
+
+    for (int y = 0; y < height; ++y)
+    {
+        for (int x = 0; x < width; ++x)
+        {
+            // A B
+            // C D
+            L16 A = L0[2 * x];
+            L16 B = L0[2 * x + 1];
+            L16 C = L1[2 * x];
+            L16 D = L1[2 * x + 1];
+
+            dest[x] = L16.op!q{(a + b + c + d + 2) >> 2}(A, B, C, D);
+        }
+
+        L0 += (2 * previousPitch);
+        L1 += (2 * previousPitch);
+        dest += thisPitch;
+    }
+}
+
+
+void generateLevelBoxAlphaCovRGBA(Image!RGBA* thisLevel, 
+                                  Image!RGBA* previousLevel, 
+                                  box2i updateRect) pure nothrow @nogc
+{
+    int width = updateRect.width();
+    int height = updateRect.height();
+
+    int previousPitch = previousLevel.w;
+    int thisPitch = thisLevel.w;
+
+    RGBA* L0 = previousLevel.scanline(updateRect.min.y * 2).ptr + updateRect.min.x * 2;
+    RGBA* L1 = L0 + previousPitch;
+
+    RGBA* dest = thisLevel.scanline(updateRect.min.y).ptr + updateRect.min.x;
+
+    for (int y = 0; y < height; ++y)
+    {
+
+        for (int x = 0; x < width; ++x)
+        {
+            // A B
+            // C D
+            RGBA A = L0[2 * x];
+            RGBA B = L0[2 * x + 1];
+            RGBA C = L1[2 * x];
+            RGBA D = L1[2 * x + 1];
+
+            int alphaA = A.a;
+            int alphaB = B.a;
+            int alphaC = C.a;
+            int alphaD = D.a;
+            int sum = alphaA + alphaB + alphaC + alphaD;
+            if (sum == 0)
+            {
+                dest[x] = A;
+            }
+            else
+            {
+                int destAlpha = cast(ubyte)( (alphaA + alphaB + alphaC + alphaD + 2) >> 2 );
+                int red =   (A.r * alphaA + B.r * alphaB + C.r * alphaC + D.r * alphaD);
+                int green = (A.g * alphaA + B.g * alphaB + C.g * alphaC + D.g * alphaD);
+                int blue =  (A.b * alphaA + B.b* alphaB + C.b * alphaC + D.b * alphaD);
+                float invSum = 1 / cast(float)(sum);
+
+                RGBA finalColor = RGBA( cast(ubyte)(0.5f + red * invSum),
+                                        cast(ubyte)(0.5f + green * invSum),
+                                        cast(ubyte)(0.5f + blue * invSum),
+                                        cast(ubyte)destAlpha );
+                dest[x] = finalColor;
+            }
+        }
+
+        L0 += (2 * previousPitch);
+        L1 += (2 * previousPitch);
+        dest += thisPitch;
+    }
+}
