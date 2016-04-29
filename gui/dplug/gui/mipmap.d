@@ -342,10 +342,9 @@ struct Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
                 else
                     static assert(false, "not implemented");
 
-                // To verify correctness
-                enum verifyBoxMipmaps = false;
+                enum checkBoxMipmaps = false;
 
-                static if (verifyBoxMipmaps)
+                static if (checkBoxMipmaps)
                 {
                     for (int y = updateRect.min.y; y < updateRect.max.y; ++y)
                     {
@@ -571,6 +570,12 @@ unittest
     b.size(16, 17, 333);
 }
 
+
+private:
+
+align(16) static immutable short[8] xmmTwoShort = [ 2, 2, 2, 2, 2, 2, 2, 2 ];
+align(16) static immutable int[8] xmmTwoInt = [ 2, 2, 2, 2 ];
+
 void generateLevelBoxRGBA(Image!RGBA* thisLevel, 
                           Image!RGBA* previousLevel, 
                           box2i updateRect) pure nothrow @nogc
@@ -589,7 +594,6 @@ void generateLevelBoxRGBA(Image!RGBA* thisLevel,
     {
         version(D_InlineAsm_X86)
         {
-            align(16) static immutable short[8] xmmTwo = [ 2, 2, 2, 2, 2, 2, 2, 2];
             asm pure nothrow @nogc
             {
                 mov ECX, width;
@@ -599,7 +603,7 @@ void generateLevelBoxRGBA(Image!RGBA* thisLevel,
                 mov EAX, L0;
                 mov EDX, L1;
                 mov EDI, dest;
-                movaps XMM5, xmmTwo;
+                movaps XMM5, xmmTwoShort;
 
             loop_ecx:
                 movdqu XMM0, [EAX]; // A B E F
@@ -647,7 +651,6 @@ void generateLevelBoxRGBA(Image!RGBA* thisLevel,
         }
         else version(D_InlineAsm_X86_64)
         {
-            align(16) static immutable short[8] xmmTwo = [ 2, 2, 2, 2, 2, 2, 2, 2];
             asm pure nothrow @nogc
             {
                 mov ECX, width;
@@ -657,7 +660,7 @@ void generateLevelBoxRGBA(Image!RGBA* thisLevel,
                 mov RAX, L0;
                 mov RDX, L1;
                 mov RDI, dest;
-                movaps XMM5, xmmTwo;
+                movaps XMM5, xmmTwoShort;
 
             loop_ecx:
                 movdqu XMM0, [RAX]; // A B E F
@@ -741,16 +744,163 @@ void generateLevelBoxL16(Image!L16* thisLevel,
 
     for (int y = 0; y < height; ++y)
     {
-        for (int x = 0; x < width; ++x)
+        version(D_InlineAsm_X86)
         {
-            // A B
-            // C D
-            L16 A = L0[2 * x];
-            L16 B = L0[2 * x + 1];
-            L16 C = L1[2 * x];
-            L16 D = L1[2 * x + 1];
+            asm pure nothrow @nogc
+            {
+                mov ECX, width;
+                shr ECX, 2;
+                jz no_need; // ECX = 0 => less than 4 pixels to process
 
-            dest[x] = L16.op!q{(a + b + c + d + 2) >> 2}(A, B, C, D);
+                mov EAX, L0;
+                mov EDX, L1;
+                mov EDI, dest;
+                movdqa XMM5, xmmTwoInt;
+                pxor XMM4, XMM4;
+                
+            loop_ecx:
+                movdqu XMM0, [EAX]; // A B E F I J M N
+                movdqu XMM1, [EDX]; // C D G H K L O P
+
+                add EAX, 16;
+                add EDX, 16;
+
+                movdqa XMM2, XMM0;
+                movdqa XMM3, XMM1;
+
+                punpcklwd XMM0, XMM4; // A B E F in int32
+                punpckhwd XMM2, XMM4; // I J M N in int32
+                punpcklwd XMM1, XMM4; // C D G H in int32
+                punpckhwd XMM3, XMM4; // K L O P in int32
+
+                paddd XMM0, XMM1; // A+C B+D E+G F+H
+                paddd XMM2, XMM3; // I+K J+L M+O N+P
+
+                movdqa XMM1, XMM0;
+                movdqa XMM3, XMM2;
+
+                psrldq XMM1, 4; // B+D E+G F+H 0
+                psrldq XMM3, 4; // J+L M+O N+P 0
+
+                paddd XMM0, XMM1; // A+B+C+D garbage E+F+G+H garbage
+                paddd XMM2, XMM3; // I+J+K+L garbage M+N+O+P garbage
+
+                pshufd XMM0, XMM0, 0b00001000; // A+B+C+D E+F+G+H garbage garbage
+                pshufd XMM2, XMM2, 0b00001000; // I+J+K+L M+N+O+P garbage garbage
+
+                punpcklqdq XMM0, XMM2; // A+B+C+D E+F+G+H I+J+K+L M+N+O+P
+                paddd XMM0, XMM5; // add 2
+                psrld XMM0, 2; // >> 2
+
+                // because packusdw is not available before SSE4.1
+                // Extend sign bit to the right
+                pslld XMM0, 16;
+                psrad XMM0, 16;
+                add EDI, 8;
+                packssdw XMM0, XMM4;
+
+                movq [EDI-8], XMM0;
+                sub ECX, 1;
+                jnz loop_ecx;
+            no_need: ;
+            }
+
+            // Eventually filter the 0 to 3 pixels
+            int remaining = width & ~3;
+            for (int x = remaining; x < width; ++x)
+            {
+                L16 A = L0[2 * x];
+                L16 B = L0[2 * x + 1];
+                L16 C = L1[2 * x];
+                L16 D = L1[2 * x + 1];
+                dest[x] = L16.op!q{(a + b + c + d + 2) >> 2}(A, B, C, D);
+            }
+        }
+        else version(D_InlineAsm_X86_64)
+        {
+            asm pure nothrow @nogc
+            {
+                mov ECX, width;
+                shr ECX, 2;
+                jz no_need; // ECX = 0 => less than 4 pixels to process
+
+                mov RAX, L0;
+                mov RDX, L1;
+                mov RDI, dest;
+                movdqa XMM5, xmmTwoInt;
+                pxor XMM4, XMM4;
+
+            loop_ecx:
+                movdqu XMM0, [RAX]; // A B E F I J M N
+                movdqu XMM1, [RDX]; // C D G H K L O P
+
+                add RAX, 16;
+                add RDX, 16;
+
+                movdqa XMM2, XMM0;
+                movdqa XMM3, XMM1;
+
+                punpcklwd XMM0, XMM4; // A B E F in int32
+                punpckhwd XMM2, XMM4; // I J M N in int32
+                punpcklwd XMM1, XMM4; // C D G H in int32
+                punpckhwd XMM3, XMM4; // K L O P in int32
+
+                paddd XMM0, XMM1; // A+C B+D E+G F+H
+                paddd XMM2, XMM3; // I+K J+L M+O N+P
+
+                movdqa XMM1, XMM0;
+                movdqa XMM3, XMM2;
+
+                psrldq XMM1, 4; // B+D E+G F+H 0
+                psrldq XMM3, 4; // J+L M+O N+P 0
+
+                paddd XMM0, XMM1; // A+B+C+D garbage E+F+G+H garbage
+                paddd XMM2, XMM3; // I+J+K+L garbage M+N+O+P garbage
+
+                pshufd XMM0, XMM0, 0b00001000; // A+B+C+D E+F+G+H garbage garbage
+                pshufd XMM2, XMM2, 0b00001000; // I+J+K+L M+N+O+P garbage garbage
+
+                punpcklqdq XMM0, XMM2; // A+B+C+D E+F+G+H I+J+K+L M+N+O+P
+                paddd XMM0, XMM5; // add 2
+                psrld XMM0, 2; // >> 2
+
+                // because packusdw is not available before SSE4.1
+                // Extend sign bit to the right
+                pslld XMM0, 16;
+                psrad XMM0, 16;
+                add EDI, 8;
+                packssdw XMM0, XMM4;
+
+                movq [RDI-8], XMM0;
+                sub ECX, 1;
+                jnz loop_ecx;
+            no_need: ;
+            }
+
+            // Eventually filter the 0 to 3 pixels
+            int remaining = width & ~3;
+            for (int x = remaining; x < width; ++x)
+            {
+                L16 A = L0[2 * x];
+                L16 B = L0[2 * x + 1];
+                L16 C = L1[2 * x];
+                L16 D = L1[2 * x + 1];
+                dest[x] = L16.op!q{(a + b + c + d + 2) >> 2}(A, B, C, D);
+            }
+        }
+        else
+        {
+            for (int x = 0; x < width; ++x)
+            {
+                // A B
+                // C D
+                L16 A = L0[2 * x];
+                L16 B = L0[2 * x + 1];
+                L16 C = L1[2 * x];
+                L16 D = L1[2 * x + 1];
+
+                dest[x] = L16.op!q{(a + b + c + d + 2) >> 2}(A, B, C, D);
+            }
         }
 
         L0 += (2 * previousPitch);
