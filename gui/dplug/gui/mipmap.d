@@ -579,8 +579,8 @@ align(16) static immutable float[4] xmm0_5 = [ 0.5f, 0.5f, 0.5f, 0.5f ];
 
 
 
-void generateLevelBoxRGBA(Image!RGBA* thisLevel, 
-                          Image!RGBA* previousLevel, 
+void generateLevelBoxRGBA(Image!RGBA* thisLevel,
+                          Image!RGBA* previousLevel,
                           box2i updateRect) pure nothrow @nogc
 {
     int width = updateRect.width();
@@ -681,7 +681,7 @@ void generateLevelBoxRGBA(Image!RGBA* thisLevel,
                 movdqa XMM3, XMM2;
                 psrldq XMM1, 8;
                 psrldq XMM3, 8;
-                add EDI, 8;
+                add RDI, 8;
                 paddusw XMM0, XMM1; // A + B + C + D | garbage
                 paddusw XMM2, XMM3; // E + F + G + H | garbage
                 paddusw XMM0, XMM5; // A + B + C + D + 2 | garbage
@@ -730,8 +730,8 @@ void generateLevelBoxRGBA(Image!RGBA* thisLevel,
     }
 }
 
-void generateLevelBoxL16(Image!L16* thisLevel, 
-                         Image!L16* previousLevel, 
+void generateLevelBoxL16(Image!L16* thisLevel,
+                         Image!L16* previousLevel,
                          box2i updateRect) pure nothrow @nogc
 {
     int width = updateRect.width();
@@ -760,7 +760,7 @@ void generateLevelBoxL16(Image!L16* thisLevel,
                 mov EDI, dest;
                 movdqa XMM5, xmmTwoInt;
                 pxor XMM4, XMM4;
-                
+
             loop_ecx:
                 movdqu XMM0, [EAX]; // A B E F I J M N
                 movdqu XMM1, [EDX]; // C D G H K L O P
@@ -871,7 +871,7 @@ void generateLevelBoxL16(Image!L16* thisLevel,
                 // Extend sign bit to the right
                 pslld XMM0, 16;
                 psrad XMM0, 16;
-                add EDI, 8;
+                add RDI, 8;
                 packssdw XMM0, XMM4;
 
                 movq [RDI-8], XMM0;
@@ -913,8 +913,8 @@ void generateLevelBoxL16(Image!L16* thisLevel,
 }
 
 
-void generateLevelBoxAlphaCovRGBA(Image!RGBA* thisLevel, 
-                                  Image!RGBA* previousLevel, 
+void generateLevelBoxAlphaCovRGBA(Image!RGBA* thisLevel,
+                                  Image!RGBA* previousLevel,
                                   box2i updateRect) nothrow @nogc
 {
     int width = updateRect.width();
@@ -936,22 +936,22 @@ void generateLevelBoxAlphaCovRGBA(Image!RGBA* thisLevel,
             asm nothrow @nogc
             {
                 mov ECX, width;
-                
+
                 mov EAX, L0;
                 mov EDX, L1;
                 mov EDI, dest;
 
                 loop_ecx:
-                
+
                     movq XMM0, [EAX];                  // Ar Ag Ab Aa Br Bg Bb Ba + zeroes
                     movq XMM1, [EDX];                  // Cr Cg Cb Ca Dr Dg Db Da + zeroes
                     pxor XMM4, XMM4;
                     add EAX, 8;
                     add EDX, 8;
-                    
+
                     punpcklbw XMM0, XMM4;              // Ar Ag Ab Aa Br Bg Bb Ba
                     punpcklbw XMM1, XMM4;              // Cr Cg Cb Ca Dr Dg Db Da
-                    
+
                     movdqa XMM2, XMM0;
                     punpcklwd XMM0, XMM1;              // Ar Cr Ag Cg Ab Cb Aa Ca
                     punpckhwd XMM2, XMM1;              // Br Dr Bg Dg Bb Db Ba Da
@@ -959,7 +959,7 @@ void generateLevelBoxAlphaCovRGBA(Image!RGBA* thisLevel,
                     // perhaps unnecessary
                     movdqa XMM3, XMM0;
                     punpcklwd XMM0, XMM2;              // Ar Br Cr Dr Ag Bg Cg Dg
-                    punpckhwd XMM3, XMM2;              // Ab Bb Cb Db Aa Ba Ca Da 
+                    punpckhwd XMM3, XMM2;              // Ab Bb Cb Db Aa Ba Ca Da
 
                     movdqa XMM1, XMM3;
                     punpckhqdq XMM1, XMM1;             // Aa Ba Ca Da Aa Ba Ca Da
@@ -972,7 +972,7 @@ void generateLevelBoxAlphaCovRGBA(Image!RGBA* thisLevel,
                     cmp ESI, 0xffff;
                     jnz non_null;
 
-                        pxor XMM0, XMM0; 
+                        pxor XMM0, XMM0;
                         sub ECX, 1;
                         movd [EDI-4], XMM0;            // dest[x] = A
                         jnz loop_ecx;
@@ -1013,7 +1013,7 @@ void generateLevelBoxAlphaCovRGBA(Image!RGBA* thisLevel,
 
                         divps XMM0, XMM3;          // fR/sum fG/sum fB/sum fA/sum
                         addps XMM0, xmm0_5;
-                        cvttps2dq XMM0, XMM0;      // return into integer domain using cast(int)(x + 0.5f)                        
+                        cvttps2dq XMM0, XMM0;      // return into integer domain using cast(int)(x + 0.5f)
 
                         paddd XMM1, xmmTwoInt;
                         psrld XMM1, 2;             // finalAlpha finalAlpha finalAlpha finalAlpha
@@ -1062,7 +1062,7 @@ void generateLevelBoxAlphaCovRGBA(Image!RGBA* thisLevel,
                 // perhaps unnecessary
                 movdqa XMM3, XMM0;
                 punpcklwd XMM0, XMM2;              // Ar Br Cr Dr Ag Bg Cg Dg
-                punpckhwd XMM3, XMM2;              // Ab Bb Cb Db Aa Ba Ca Da 
+                punpckhwd XMM3, XMM2;              // Ab Bb Cb Db Aa Ba Ca Da
 
                 movdqa XMM1, XMM3;
                 punpckhqdq XMM1, XMM1;             // Aa Ba Ca Da Aa Ba Ca Da
@@ -1071,11 +1071,11 @@ void generateLevelBoxAlphaCovRGBA(Image!RGBA* thisLevel,
                 movdqa XMM2, XMM1;
                 pcmpeqb XMM2, XMM4;
                 pmovmskb ESI, XMM2;
-                add EDI, 4;
+                add RDI, 4;
                 cmp ESI, 0xffff;
                 jnz non_null;
 
-                pxor XMM0, XMM0; 
+                pxor XMM0, XMM0;
                 sub ECX, 1;
                 movd [RDI-4], XMM0;            // dest[x] = A
                 jnz loop_ecx;
@@ -1116,7 +1116,7 @@ void generateLevelBoxAlphaCovRGBA(Image!RGBA* thisLevel,
 
                 divps XMM0, XMM3;          // fR/sum fG/sum fB/sum fA/sum
                 addps XMM0, xmm0_5;
-                cvttps2dq XMM0, XMM0;      // return into integer domain using cast(int)(x + 0.5f)                        
+                cvttps2dq XMM0, XMM0;      // return into integer domain using cast(int)(x + 0.5f)
 
                 paddd XMM1, xmmTwoInt;
                 psrld XMM1, 2;             // finalAlpha finalAlpha finalAlpha finalAlpha
