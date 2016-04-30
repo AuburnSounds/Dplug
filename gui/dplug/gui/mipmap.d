@@ -575,6 +575,9 @@ private:
 
 align(16) static immutable short[8] xmmTwoShort = [ 2, 2, 2, 2, 2, 2, 2, 2 ];
 align(16) static immutable int[8] xmmTwoInt = [ 2, 2, 2, 2 ];
+align(16) static immutable float[4] xmm0_5 = [ 0.5f, 0.5f, 0.5f, 0.5f ];
+
+
 
 void generateLevelBoxRGBA(Image!RGBA* thisLevel, 
                           Image!RGBA* previousLevel, 
@@ -912,7 +915,7 @@ void generateLevelBoxL16(Image!L16* thisLevel,
 
 void generateLevelBoxAlphaCovRGBA(Image!RGBA* thisLevel, 
                                   Image!RGBA* previousLevel, 
-                                  box2i updateRect) pure nothrow @nogc
+                                  box2i updateRect) nothrow @nogc
 {
     int width = updateRect.width();
     int height = updateRect.height();
@@ -927,38 +930,300 @@ void generateLevelBoxAlphaCovRGBA(Image!RGBA* thisLevel,
 
     for (int y = 0; y < height; ++y)
     {
-
-        for (int x = 0; x < width; ++x)
+        version(D_InlineAsm_X86)
         {
-            // A B
-            // C D
-            RGBA A = L0[2 * x];
-            RGBA B = L0[2 * x + 1];
-            RGBA C = L1[2 * x];
-            RGBA D = L1[2 * x + 1];
-
-            int alphaA = A.a;
-            int alphaB = B.a;
-            int alphaC = C.a;
-            int alphaD = D.a;
-            int sum = alphaA + alphaB + alphaC + alphaD;
-            if (sum == 0)
+            assert(width > 0);
+            asm nothrow @nogc
             {
-                dest[x] = A;
+                mov ECX, width;
+                
+                mov EAX, L0;
+                mov EDX, L1;
+                mov EDI, dest;
+
+                loop_ecx:
+                
+                    movq XMM0, [EAX];                  // Ar Ag Ab Aa Br Bg Bb Ba + zeroes
+                    movq XMM1, [EDX];                  // Cr Cg Cb Ca Dr Dg Db Da + zeroes
+                    pxor XMM4, XMM4;
+                    add EAX, 8;
+                    add EDX, 8;
+                    
+                    punpcklbw XMM0, XMM4;              // Ar Ag Ab Aa Br Bg Bb Ba
+                    punpcklbw XMM1, XMM4;              // Cr Cg Cb Ca Dr Dg Db Da
+                    
+                    movdqa XMM2, XMM0;
+                    punpcklwd XMM0, XMM1;              // Ar Cr Ag Cg Ab Cb Aa Ca
+                    punpckhwd XMM2, XMM1;              // Br Dr Bg Dg Bb Db Ba Da
+
+                    // perhaps unnecessary
+                    movdqa XMM3, XMM0;
+                    punpcklwd XMM0, XMM2;              // Ar Br Cr Dr Ag Bg Cg Dg
+                    punpckhwd XMM3, XMM2;              // Ab Bb Cb Db Aa Ba Ca Da 
+
+                    movdqa XMM1, XMM3;
+                    punpckhqdq XMM1, XMM1;             // Aa Ba Ca Da Aa Ba Ca Da
+
+                    // Are alpha all zeroes? if so, early continue.
+                    movdqa XMM2, XMM1;
+                    pcmpeqb XMM2, XMM4;
+                    pmovmskb ESI, XMM2;
+                    add EDI, 4;
+                    cmp ESI, 0xffff;
+                    jnz non_null;
+
+                        pxor XMM0, XMM0; 
+                        sub ECX, 1;
+                        movd [EDI-4], XMM0;            // dest[x] = A
+                        jnz loop_ecx;
+                        jmp end_of_loop;
+
+                    non_null:
+
+                        pmaddwd XMM0, XMM1;            // Ar*Aa+Br*Ba Cr*Ca+Dr*Da Ag*Aa+Bg*Ba Cg*Ca+Dg*Da
+                        pmaddwd XMM3, XMM1;            // Ab*Aa+Bb*Ba Cb*Ca+Db*Da Aa*Aa+Ba*Ba Ca*Ca+Da*Da
+
+                        // Starting computing sum of coefficients too
+                        punpcklwd XMM1, XMM4;      // Aa Ba Ca Da
+
+                        movdqa XMM2, XMM0;
+                        movdqa XMM5, XMM3;
+                        movdqa XMM4, XMM1;
+                        psrldq XMM4, 8;
+
+                        psrldq XMM2, 4;                // Cr*Ca+Dr*Da Ag*Aa+Bg*Ba Cg*Ca+Dg*Da 0
+                        psrldq XMM5, 4;                // Cb*Ca+Db*Da Aa*Aa+Ba*Ba Ca*Ca+Da*Da 0
+                        paddq XMM1, XMM4;              // Aa+Ca Ba+Da garbage garbage
+                        movdqa XMM4, XMM1;
+
+                        paddd XMM0, XMM2;              // Ar*Aa+Br*Ba+Cr*Ca+Dr*Da garbage Ag*Aa+Bg*Ba+Cg*Ca+Dg*Da garbage
+                        paddd XMM3, XMM5;              // Ab*Aa+Bb*Ba+Cb*Ca+Db*Da garbage Aa*Aa+Ba*Ba+Ca*Ca+Da*Da garbage
+                        psrldq XMM4, 4;
+
+                        pshufd XMM0, XMM0, 0b00001000; // Ar*Aa+Br*Ba+Cr*Ca+Dr*Da Ag*Aa+Bg*Ba+Cg*Ca+Dg*Da garbage garbage
+                        paddq XMM1, XMM4;          // Aa+Ba+Ca+Da garbage garbage garbage
+                        pshufd XMM3, XMM3, 0b00001000; // Ab*Aa+Bb*Ba+Cb*Ca+Db*Da Aa*Aa+Ba*Ba+Ca*Ca+Da*Da garbage garbage
+
+                        punpcklqdq XMM0, XMM3;     // fR fG fB fA
+                        pshufd XMM1, XMM1, 0;
+
+                        cvtdq2ps XMM0, XMM0;
+
+                        cvtdq2ps XMM3, XMM1;       // sum sum sum sum
+
+                        divps XMM0, XMM3;          // fR/sum fG/sum fB/sum fA/sum
+                        addps XMM0, xmm0_5;
+                        cvttps2dq XMM0, XMM0;      // return into integer domain using cast(int)(x + 0.5f)                        
+
+                        paddd XMM1, xmmTwoInt;
+                        psrld XMM1, 2;             // finalAlpha finalAlpha finalAlpha finalAlpha
+
+                        pslldq XMM0, 4;            // 0 fR/sum fG/sum fB/sum
+                        pslldq XMM1, 12;           // 0 0 0 finalAlpha
+                        psrldq XMM0, 4;            // fR/sum fG/sum fB/sum 0
+
+                        por XMM0, XMM1;            // fR/sum fG/sum fB/sum finalAlpha
+                        pxor XMM3, XMM3;
+                        packssdw XMM0, XMM3;       // same in words
+                        packuswb XMM0, XMM3;       // same in bytes
+
+                        sub ECX, 1;
+                        movd [EDI-4], XMM0;            // dest[x] = A
+                jnz loop_ecx;
+                end_of_loop: ;
             }
-            else
+        }
+        else version(D_InlineAsm_X86_64)
+        {
+            assert(width > 0);
+            asm nothrow @nogc
             {
-                int destAlpha = cast(ubyte)( (alphaA + alphaB + alphaC + alphaD + 2) >> 2 );
-                int red =   (A.r * alphaA + B.r * alphaB + C.r * alphaC + D.r * alphaD);
-                int green = (A.g * alphaA + B.g * alphaB + C.g * alphaC + D.g * alphaD);
-                int blue =  (A.b * alphaA + B.b* alphaB + C.b * alphaC + D.b * alphaD);
-                float invSum = 1 / cast(float)(sum);
+                mov ECX, width;
 
-                RGBA finalColor = RGBA( cast(ubyte)(0.5f + red * invSum),
-                                        cast(ubyte)(0.5f + green * invSum),
-                                        cast(ubyte)(0.5f + blue * invSum),
-                                        cast(ubyte)destAlpha );
-                dest[x] = finalColor;
+                mov RAX, L0;
+                mov RDX, L1;
+                mov RDI, dest;
+
+            loop_ecx:
+
+                movq XMM0, [RAX];                  // Ar Ag Ab Aa Br Bg Bb Ba + zeroes
+                movq XMM1, [RDX];                  // Cr Cg Cb Ca Dr Dg Db Da + zeroes
+                pxor XMM4, XMM4;
+                add RAX, 8;
+                add RDX, 8;
+
+                punpcklbw XMM0, XMM4;              // Ar Ag Ab Aa Br Bg Bb Ba
+                punpcklbw XMM1, XMM4;              // Cr Cg Cb Ca Dr Dg Db Da
+
+                movdqa XMM2, XMM0;
+                punpcklwd XMM0, XMM1;              // Ar Cr Ag Cg Ab Cb Aa Ca
+                punpckhwd XMM2, XMM1;              // Br Dr Bg Dg Bb Db Ba Da
+
+                // perhaps unnecessary
+                movdqa XMM3, XMM0;
+                punpcklwd XMM0, XMM2;              // Ar Br Cr Dr Ag Bg Cg Dg
+                punpckhwd XMM3, XMM2;              // Ab Bb Cb Db Aa Ba Ca Da 
+
+                movdqa XMM1, XMM3;
+                punpckhqdq XMM1, XMM1;             // Aa Ba Ca Da Aa Ba Ca Da
+
+                // Are alpha all zeroes? if so, early continue.
+                movdqa XMM2, XMM1;
+                pcmpeqb XMM2, XMM4;
+                pmovmskb ESI, XMM2;
+                add EDI, 4;
+                cmp ESI, 0xffff;
+                jnz non_null;
+
+                pxor XMM0, XMM0; 
+                sub ECX, 1;
+                movd [RDI-4], XMM0;            // dest[x] = A
+                jnz loop_ecx;
+                jmp end_of_loop;
+
+            non_null:
+
+                pmaddwd XMM0, XMM1;            // Ar*Aa+Br*Ba Cr*Ca+Dr*Da Ag*Aa+Bg*Ba Cg*Ca+Dg*Da
+                pmaddwd XMM3, XMM1;            // Ab*Aa+Bb*Ba Cb*Ca+Db*Da Aa*Aa+Ba*Ba Ca*Ca+Da*Da
+
+                // Starting computing sum of coefficients too
+                punpcklwd XMM1, XMM4;      // Aa Ba Ca Da
+
+                movdqa XMM2, XMM0;
+                movdqa XMM5, XMM3;
+                movdqa XMM4, XMM1;
+                psrldq XMM4, 8;
+
+                psrldq XMM2, 4;                // Cr*Ca+Dr*Da Ag*Aa+Bg*Ba Cg*Ca+Dg*Da 0
+                psrldq XMM5, 4;                // Cb*Ca+Db*Da Aa*Aa+Ba*Ba Ca*Ca+Da*Da 0
+                paddq XMM1, XMM4;              // Aa+Ca Ba+Da garbage garbage
+                movdqa XMM4, XMM1;
+
+                paddd XMM0, XMM2;              // Ar*Aa+Br*Ba+Cr*Ca+Dr*Da garbage Ag*Aa+Bg*Ba+Cg*Ca+Dg*Da garbage
+                paddd XMM3, XMM5;              // Ab*Aa+Bb*Ba+Cb*Ca+Db*Da garbage Aa*Aa+Ba*Ba+Ca*Ca+Da*Da garbage
+                psrldq XMM4, 4;
+
+                pshufd XMM0, XMM0, 0b00001000; // Ar*Aa+Br*Ba+Cr*Ca+Dr*Da Ag*Aa+Bg*Ba+Cg*Ca+Dg*Da garbage garbage
+                paddq XMM1, XMM4;          // Aa+Ba+Ca+Da garbage garbage garbage
+                pshufd XMM3, XMM3, 0b00001000; // Ab*Aa+Bb*Ba+Cb*Ca+Db*Da Aa*Aa+Ba*Ba+Ca*Ca+Da*Da garbage garbage
+
+                punpcklqdq XMM0, XMM3;     // fR fG fB fA
+                pshufd XMM1, XMM1, 0;
+
+                cvtdq2ps XMM0, XMM0;
+
+                cvtdq2ps XMM3, XMM1;       // sum sum sum sum
+
+                divps XMM0, XMM3;          // fR/sum fG/sum fB/sum fA/sum
+                addps XMM0, xmm0_5;
+                cvttps2dq XMM0, XMM0;      // return into integer domain using cast(int)(x + 0.5f)                        
+
+                paddd XMM1, xmmTwoInt;
+                psrld XMM1, 2;             // finalAlpha finalAlpha finalAlpha finalAlpha
+
+                pslldq XMM0, 4;            // 0 fR/sum fG/sum fB/sum
+                pslldq XMM1, 12;           // 0 0 0 finalAlpha
+                psrldq XMM0, 4;            // fR/sum fG/sum fB/sum 0
+
+                por XMM0, XMM1;            // fR/sum fG/sum fB/sum finalAlpha
+                pxor XMM3, XMM3;
+                packssdw XMM0, XMM3;       // same in words
+                packuswb XMM0, XMM3;       // same in bytes
+
+                sub ECX, 1;
+                movd [RDI-4], XMM0;            // dest[x] = A
+                jnz loop_ecx;
+            end_of_loop: ;
+            }
+        }
+        else
+        {
+            for (int x = 0; x < width; ++x)
+            {
+                // A B
+                // C D
+                RGBA A = L0[2 * x];
+                RGBA B = L0[2 * x + 1];
+                RGBA C = L1[2 * x];
+                RGBA D = L1[2 * x + 1];
+
+                int alphaA = A.a;
+                int alphaB = B.a;
+                int alphaC = C.a;
+                int alphaD = D.a;
+                int sum = alphaA + alphaB + alphaC + alphaD;
+                if (sum == 0)
+                {
+                    dest[x] = RGBA(0,0,0,0);
+                }
+                else
+                {
+                    int destAlpha = cast(ubyte)( (alphaA + alphaB + alphaC + alphaD + 2) >> 2 );
+                    int red =   (A.r * alphaA + B.r * alphaB + C.r * alphaC + D.r * alphaD);
+                    int green = (A.g * alphaA + B.g * alphaB + C.g * alphaC + D.g * alphaD);
+                    int blue =  (A.b * alphaA + B.b* alphaB + C.b * alphaC + D.b * alphaD);
+                    float invSum = 1 / cast(float)(sum);
+
+                    RGBA finalColor = RGBA( cast(ubyte)(0.5f + red * invSum),
+                                            cast(ubyte)(0.5f + green * invSum),
+                                            cast(ubyte)(0.5f + blue * invSum),
+                                            cast(ubyte)destAlpha );
+                    dest[x] = finalColor;
+                }
+            }
+        }
+
+        enum verify = false;
+
+        static if (verify)
+        {
+            for (int x = 0; x < width; ++x)
+            {
+                // A B
+                // C D
+                RGBA A = L0[2 * x];
+                RGBA B = L0[2 * x + 1];
+                RGBA C = L1[2 * x];
+                RGBA D = L1[2 * x + 1];
+
+                int alphaA = A.a;
+                int alphaB = B.a;
+                int alphaC = C.a;
+                int alphaD = D.a;
+                int sum = alphaA + alphaB + alphaC + alphaD;
+                if (sum == 0)
+                {
+                    assert(dest[x] == RGBA(0,0,0,0));
+                }
+                else
+                {
+                    int destAlpha = cast(ubyte)( (alphaA + alphaB + alphaC + alphaD + 2) >> 2 );
+                    int red =   (A.r * alphaA + B.r * alphaB + C.r * alphaC + D.r * alphaD);
+                    int green = (A.g * alphaA + B.g * alphaB + C.g * alphaC + D.g * alphaD);
+                    int blue =  (A.b * alphaA + B.b* alphaB + C.b * alphaC + D.b * alphaD);
+
+                    float invSum = 1 / cast(float)(sum);
+
+                    RGBA finalColor = RGBA( cast(ubyte)(0.5f + red * invSum),
+                                            cast(ubyte)(0.5f + green * invSum),
+                                           cast(ubyte)(0.5f + blue * invSum),
+                                           cast(ubyte)destAlpha );
+                    RGBA instead = dest[x];
+
+                    int insteadR = instead.r;
+                    int insteadG = instead.g;
+                    int insteadB = instead.b;
+                    int insteadA = instead.a;
+                    int finalColorR = finalColor.r;
+                    int finalColorG = finalColor.g;
+                    int finalColorB = finalColor.b;
+                    int finalColorA = finalColor.a;
+                    import std.math;
+                    assert(abs(insteadR - finalColorR) <= 1); // some remaining differences because of rounding
+                    assert(abs(insteadG - finalColorG) <= 1);
+                    assert(abs(insteadB - finalColorB) <= 1);
+                    assert(insteadA == finalColorA);
+                }
             }
         }
 
