@@ -43,6 +43,9 @@ version(OSX)
         int _width;
         int _height;
 
+        int _askedWidth;
+        int _askedHeight;
+
         ubyte* _buffer = null;
 
         uint _timeAtCreationInMs;
@@ -61,6 +64,9 @@ version(OSX)
 
             _width = 0;
             _height = 0;
+
+            _askedWidth = width;
+            _askedHeight = height;
 
             _nsColorSpace = NSColorSpace.sRGBColorSpace();
             // hopefully not null else the colors will be brighter
@@ -255,11 +261,14 @@ version(OSX)
             CIContext ciContext = nsContext.getCIContext();
 
             // update internal buffers in case of startup/resize
+            // TODO: why is the bounds rect too large? It creates havoc in AU even without resizing.
             {
+                /*
                 NSRect boundsRect = _view.bounds();
                 int width = cast(int)(boundsRect.size.width);   // truncating down the dimensions of bounds
                 int height = cast(int)(boundsRect.size.height);
-                updateSizeIfNeeded(width, height);
+                */
+                updateSizeIfNeeded(_askedWidth, _askedHeight);
             }
 
             // The first drawRect callback occurs before the timer triggers.
@@ -561,7 +570,6 @@ version(OSX)
         {
             FPControl fpctrl;
             fpctrl.initialize();
-       //     DPlugCustomView view = getInstance(self);
             NSCursor.arrowCursor().push();
         }
 
@@ -569,7 +577,6 @@ version(OSX)
         {
             FPControl fpctrl;
             fpctrl.initialize();
-      //      DPlugCustomView view = getInstance(self);
             NSCursor.pop();
         }
 
