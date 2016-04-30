@@ -1531,7 +1531,9 @@ private:
             case kAudioUnitProperty_CurrentPreset: // 28
             case kAudioUnitProperty_PresentPreset: // 36
             {
-                int presetIndex = (cast(AUPreset*) pData).presetNumber;
+                AUPreset* auPreset = cast(AUPreset*)pData;
+                int presetIndex = auPreset.presetNumber;
+
 
                 PresetBank bank = _client.presetBank();
                 if (bank.isValidPresetIndex(presetIndex))
@@ -1541,7 +1543,11 @@ private:
                     catch(Exception e)
                         return kAudioUnitErr_InvalidProperty;
                 }
-
+                else if (auPreset.presetName != null)
+                {
+                    string presetName = fromCFString(auPreset.presetName);
+                    bank.addNewDefaultPresetFromHost(presetName);
+                }
                 return noErr;
             }
 

@@ -58,7 +58,7 @@ public:
         }
     }
 
-    void loadFromHost(Client client)
+    void loadFromHost(Client client) nothrow
     {
         auto params = client.params();
         foreach(int i, param; params)
@@ -180,11 +180,28 @@ public:
         presets[_current].saveFromHost(_client);
     }
 
-    void loadPresetFromHost(int index)
+    void loadPresetByNameFromHost(string name) nothrow
+    {
+        foreach(int index, preset; presets)
+            if (preset.name == name)
+                loadPresetFromHost(index);
+    }
+
+    void loadPresetFromHost(int index) nothrow
     {
         putCurrentStateInCurrentPreset();
         presets[index].loadFromHost(_client);
         _current = index;
+    }
+
+    /// Enqueue a new preset and load it
+    void addNewDefaultPresetFromHost(string presetName) nothrow
+    {
+        float[] values;
+        foreach(param; _client.params)
+            values ~= param.getNormalizedDefault();
+        presets ~= new Preset(presetName, values);
+        loadPresetFromHost(cast(int)(presets.length) - 1);
     }
 
     /// Allocates and fill a preset chunk
