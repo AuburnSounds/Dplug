@@ -163,6 +163,7 @@ class PBRCompositor : Compositor
             }
 
             RGBA* materialScan = materialMap.levels[0].scanline(j).ptr;
+            RGBA* diffuseScan = diffuseMap.levels[0].scanline(j).ptr;
 
             for (int i = area.min.x; i < area.max.x; ++i)
             {
@@ -171,24 +172,19 @@ class PBRCompositor : Compositor
                 // Bypass PBR if Physical == 0
                 if (materialHere.a == 0)
                 {
-
-                    RGBA diffuse = diffuseMap.levels[0][i, j];
-                    RGBA finalColor = void;
+                    RGBA diffuse = diffuseScan[i];
                     final switch (pf) with (WindowPixelFormat)
                     {
                         case ARGB8:
-                            finalColor = RGBA(255, diffuse.r, diffuse.g, diffuse.b);
+                             wfb_scan[i] = RGBA(255, diffuse.r, diffuse.g, diffuse.b);
                             break;
                         case BGRA8:
-                            finalColor = RGBA(diffuse.b, diffuse.g, diffuse.r, 255);
+                             wfb_scan[i] = RGBA(diffuse.b, diffuse.g, diffuse.r, 255);
                             break;
                         case RGBA8:
-                            finalColor = RGBA(diffuse.r, diffuse.g, diffuse.b, 255);
+                             wfb_scan[i] = RGBA(diffuse.r, diffuse.g, diffuse.b, 255);
                             break;
                     }
-
-                    // write composited color
-                    wfb_scan[i] = finalColor;
                 }
                 else
                 {
@@ -226,7 +222,7 @@ class PBRCompositor : Compositor
                     vec3f normal = vec3f(sx, sy, sz);
                     normal.normalize();
 
-                    RGBA ibaseColor = diffuseMap.levels[0][i, j];
+                    RGBA ibaseColor = diffuseScan[i];
                     vec3f baseColor = vec3f(ibaseColor.r, ibaseColor.g, ibaseColor.b) * div255;
 
                     vec3f toEye = vec3f(0.5f - i * invW, j * invH - 0.5f, 1.0f);
@@ -290,6 +286,8 @@ class PBRCompositor : Compositor
 
                         float lightPassed = 0.0f;
 
+                        Image!L16 depthLevel0 = depthMap.levels[0];
+
                         int depthHere = depthPatch[2][2];
                         for (int sample = 1; sample < samples; ++sample)
                         {
@@ -300,7 +298,7 @@ class PBRCompositor : Compositor
                             if (y < 0)
                                 y = 0;
                             int z = depthHere + sample;
-                            int diff = z - depthMap.levels[0][x, y].l;
+                            int diff = z - depthLevel0[x, y].l; // TODO: use pointer offsets here instead of opIndex
 
                             float contrib = void;
                             if (diff >= 0)
