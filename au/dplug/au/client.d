@@ -368,6 +368,8 @@ private:
 
     bool _active = false;
 
+    bool _isUIOpenedAlready = false;
+
     AlignedBuffer!float[] _inputScratchBuffer;  // input buffer, one per possible input
     AlignedBuffer!float[] _outputScratchBuffer; // input buffer, one per output
 
@@ -2043,6 +2045,12 @@ private:
     {
         if (!_client.hasGUI())
             return null;
+
+        if (_isUIOpenedAlready)
+            _client.closeGUI();
+
+        _isUIOpenedAlready = true;
+
         return _client.openGUI(null, null, GraphicsBackend.cocoa);
     }
 }
