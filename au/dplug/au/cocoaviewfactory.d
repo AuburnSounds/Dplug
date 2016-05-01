@@ -63,14 +63,13 @@ struct DPlugCocoaViewFactory
 
     static void registerSubclass()
     {
-        import gfm.core;
-   //   TODO: enable back?
-   //     if (customClassName !is null)
-   //         return;
+        if (customClassName !is null)
+            return;
+
         string uuid = randomUUID().toString();
         customClassName = "DPlugCocoaViewFactory_" ~ uuid;
         clazz = objc_allocateClassPair(cast(Class) lazyClass!"NSObject", toStringz(customClassName), 0);
- //       class_addMethod(clazz, sel!"init:", cast(IMP) &init, "v@:");
+
         class_addMethod(clazz, sel!"description:", cast(IMP) &description, "@@:");
         class_addMethod(clazz, sel!"interfaceVersion", cast(IMP) &interfaceVersion, "I@:");
         class_addMethod(clazz, sel!"uiViewForAudioUnit:withSize:", cast(IMP) &uiViewForAudioUnit, "@@:^{ComponentInstanceRecord=[1q]}{CGSize=dd}");
@@ -124,22 +123,11 @@ DPlugCocoaViewFactory getInstance(id anId) nothrow
 // Big thanks to Mike Ash (@macdev)
 extern(C) nothrow
 {
-/+    void init(id self, SEL selector)
-    {
-        printf("init callbacked\n");
-        FPControl fpctrl;
-        fpctrl.initialize();
-        /*DPlugCocoaViewFactory factory = */getInstance(self);
-
-        // TODO
-    }+/
-
     id description(id self, SEL selector)
     {
         try
         {
-            FPControl fpctrl;
-            fpctrl.initialize();
+            attachToRuntimeIfNeeded(); // attach this thread which might well be unknown
             return NSString.stringWith("Filter View")._id;
         }
         catch(Exception e)
@@ -158,6 +146,9 @@ extern(C) nothrow
     {
         try
         {
+            attachToRuntimeIfNeeded(); // attach this thread which might well be unknown
+            FPControl fpctrl;
+            fpctrl.initialize();
             AUClient plugin = cast(AUClient)( cast(void*)GetComponentInstanceStorage(audioUnit) );
             if (plugin)
             {
