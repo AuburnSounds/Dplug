@@ -39,6 +39,9 @@ alias RMSP = RGBA; // reminder
 // Uncomment to benchmark compositing and devise optimizations.
 //version = BenchmarkCompositing;
 
+// Not ready yet
+//version = diffuseMipmapIsAlphaPremul;
+
 // A GUIGraphics is the interface between a plugin client and a IWindow.
 // It is also an UIElement and the root element of the plugin UI hierarchy.
 // You have to derive it to have a GUI.
@@ -553,7 +556,16 @@ protected:
                 Mipmap!RGBA* mipmap = &_diffuseMap;
                 foreach(level; 1 .. mipmap.numLevels())
                 {
-                    auto quality = level >= 2 ? Mipmap!RGBA.Quality.cubicAlphaCov : Mipmap!RGBA.Quality.boxAlphaCov;
+                    version(diffuseMipmapIsAlphaPremul)
+                    {
+                        auto quality = Mipmap!RGBA.Quality.boxAlphaCovIntoPremul;
+                        if (i >= 2)
+                            quality = Mipmap!RGBA.Quality.cubic;
+                    }    
+                    else
+                    {
+                        auto quality = level >= 2 ? Mipmap!RGBA.Quality.cubicAlphaCov : Mipmap!RGBA.Quality.boxAlphaCov;
+                    }
                     foreach(ref area; _updateRectScratch[i])
                     {
                         area = mipmap.generateNextLevel(quality, area, level);

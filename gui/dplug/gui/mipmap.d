@@ -31,10 +31,11 @@ struct Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
 {
     enum Quality
     {
-        box,          // simple 2x2 filter, creates phase problems with NPOT. For higher levels, automatically uses cubic.
-        cubic,        // Very smooth kernel [1 2 1] x [1 2 1]
-        boxAlphaCov,  // ditto but alpha is used as weight, only implemented for RGBA
-        cubicAlphaCov // ditto but alpha is used as weight, only implemented for RGBA
+        box,                  // simple 2x2 filter, creates phase problems with NPOT. For higher levels, automatically uses cubic.
+        cubic,                // Very smooth kernel [1 2 1] x [1 2 1]
+        boxAlphaCov,          // ditto but alpha is used as weight, only implemented for RGBA
+        cubicAlphaCov,        // ditto but alpha is used as weight, only implemented for RGBA
+        boxAlphaCovIntoPremul, // same as boxAlphaConv but after such a step the next level is alpha-premultiplied
     }
 
     Image!COLOR[] levels;
@@ -424,6 +425,15 @@ struct Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
             else
                 assert(false);
 
+        case boxAlphaCovIntoPremul:
+
+            static if (is(COLOR == RGBA))
+            {
+                generateLevelBoxAlphaCovIntoPremulRGBA(thisLevel, previousLevel, updateRect);
+                break;
+            }
+            else
+                assert(false);
 
         case cubic:
         case cubicAlphaCov:
@@ -544,6 +554,7 @@ private:
         {
         case box:
         case boxAlphaCov:
+        case boxAlphaCovIntoPremul:
             int xmin = area.min.x / 2;
             int ymin = area.min.y / 2;
             int xmax = (area.max.x + 1) / 2;
@@ -558,6 +569,7 @@ private:
             int ymax = (area.max.y + 2) / 2;
             return box2i(xmin, ymin, xmax, ymax).intersection(maxArea);
         }
+
     }
 }
 
@@ -1072,7 +1084,6 @@ void generateLevelBoxAlphaCovRGBA(Image!RGBA* thisLevel,
                 pcmpeqb XMM2, XMM4;
                 add RDI, 4;
                 pmovmskb ESI, XMM2;
-
                 cmp ESI, 0xffff;
                 jnz non_null;
 
@@ -1225,6 +1236,63 @@ void generateLevelBoxAlphaCovRGBA(Image!RGBA* thisLevel,
                     assert(abs(insteadB - finalColorB) <= 1);
                     assert(insteadA == finalColorA);
                 }
+            }
+        }
+
+        L0 += (2 * previousPitch);
+        L1 += (2 * previousPitch);
+        dest += thisPitch;
+    }
+}
+
+void generateLevelBoxAlphaCovIntoPremulRGBA(Image!RGBA* thisLevel,
+                                            Image!RGBA* previousLevel,
+                                            box2i updateRect) nothrow @nogc
+{
+    int width = updateRect.width();
+    int height = updateRect.height();
+
+    int previousPitch = previousLevel.w;
+    int thisPitch = thisLevel.w;
+
+    RGBA* L0 = previousLevel.scanline(updateRect.min.y * 2).ptr + updateRect.min.x * 2;
+    RGBA* L1 = L0 + previousPitch;
+
+    RGBA* dest = thisLevel.scanline(updateRect.min.y).ptr + updateRect.min.x;
+
+    for (int y = 0; y < height; ++y)
+    {
+        for (int x = 0; x < width; ++x)
+        {
+            // A B
+            // C D
+            RGBA A = L0[2 * x];
+            RGBA B = L0[2 * x + 1];
+            RGBA C = L1[2 * x];
+            RGBA D = L1[2 * x + 1];
+
+            ubyte alphaA = A.a;
+            ubyte alphaB = B.a;
+            ubyte alphaC = C.a;
+            ubyte alphaD = D.a;
+            int sum = alphaA + alphaB + alphaC + alphaD;
+
+            if (sum == 0)
+            {
+                dest[x] = RGBA(0,0,0,0);
+            }
+            else
+            {
+                int destAlpha = cast(ubyte)( (alphaA + alphaB + alphaC + alphaD + 2) >> 2 );
+                int red =   (A.r * alphaA + B.r * alphaB + C.r * alphaC + D.r * alphaD);
+                int green = (A.g * alphaA + B.g * alphaB + C.g * alphaC + D.g * alphaD);
+                int blue =  (A.b * alphaA + B.b* alphaB + C.b * alphaC + D.b * alphaD);
+                
+                RGBA finalColor = RGBA( cast(ubyte)((red + 2) >> 10),
+                                        cast(ubyte)((green + 2) >> 10),
+                                        cast(ubyte)((blue + 2) >> 10),
+                                        cast(ubyte)destAlpha );
+                dest[x] = finalColor;
             }
         }
 
