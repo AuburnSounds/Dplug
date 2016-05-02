@@ -97,6 +97,7 @@ class GUIGraphics : UIElement, IGraphics
         _elemsToDraw.destroy();
         _taskPool.finish(true); // wait for all thread termination
         _taskPool.destroy();
+        compositor.destroy();
     }
 
     // Graphics implementation
