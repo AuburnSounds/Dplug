@@ -967,8 +967,8 @@ void generateLevelBoxAlphaCovRGBA(Image!RGBA* thisLevel,
                     // Are alpha all zeroes? if so, early continue.
                     movdqa XMM2, XMM1;
                     pcmpeqb XMM2, XMM4;
-                    pmovmskb ESI, XMM2;
                     add EDI, 4;
+                    pmovmskb ESI, XMM2;
                     cmp ESI, 0xffff;
                     jnz non_null;
 
@@ -1070,8 +1070,8 @@ void generateLevelBoxAlphaCovRGBA(Image!RGBA* thisLevel,
                 // Are alpha all zeroes? if so, early continue.
                 movdqa XMM2, XMM1;
                 pcmpeqb XMM2, XMM4;
+                add RDI, 4;
                 pmovmskb ESI, XMM2;
-                add EDI, 4;
                 cmp ESI, 0xffff;
                 jnz non_null;
 
