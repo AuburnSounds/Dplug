@@ -116,13 +116,12 @@ void horizontalSlope(float curvature = 1.0f, V, COLOR)(auto ref V v, box2i rect,
     box2i inter = box2i(0, 0, v.w, v.h).intersection(rect);
 
     int x0 = rect.min.x;
-    int y0 = rect.min.y;
     int x1 = rect.max.x;
-    int y1 = rect.max.y;
+    immutable float invX1mX0 = 1.0f / (x1 - x0);
     
     foreach (px; inter.min.x .. inter.max.x)
     {
-        float fAlpha =  (px - x0) / cast(float)(x1 - x0);
+        float fAlpha =  (px - x0) * invX1mX0;
         static if (curvature != 1.0f)
             fAlpha = fAlpha ^^ curvature;
         ChannelType alpha = cast(ChannelType)( 0.5f + ChannelType.max * fAlpha );  // Not being generic here
@@ -143,9 +142,11 @@ if (isWritableView!V && is(COLOR : ViewColor!V))
     int x1 = rect.max.x;
     int y1 = rect.max.y;
 
+    immutable float invY1mY0 = 1.0f / (y1 - y0);
+
     foreach (py; inter.min.y .. inter.max.y)
     {
-        float fAlpha =  (py - y0) / cast(float)(y1 - y0);
+        float fAlpha =  (py - y0) * invY1mY0;
         static if (curvature != 1.0f)
             fAlpha = fAlpha ^^ curvature;
         ChannelType alpha = cast(ChannelType)( 0.5f + ChannelType.max * fAlpha );  // Not being generic here
@@ -171,10 +172,11 @@ if (isWritableView!V && isNumeric!T && is(COLOR : ViewColor!V))
     float fx = x;
     float fy = y;
 
-    float fr1s = r1s;
-    float fr2s = r2s;
+    immutable float fr1s = r1s;
+    immutable float fr2s = r2s;
 
-    float fr21 = fr2s - fr1s;
+    immutable float fr21 = fr2s - fr1s;
+    immutable float invfr21 = 1 / fr21;
 
     for (int cy=y1;cy<y2;cy++)
     {
@@ -191,7 +193,7 @@ if (isWritableView!V && isNumeric!T && is(COLOR : ViewColor!V))
             {
                 if (frs<fr2s)
                 {
-                    float alpha = (frs-fr1s) / fr21;
+                    float alpha = (frs-fr1s) * invfr21;
                     static if (curvature != 1.0f)
                         alpha = alpha ^^ curvature;
                     row[cx] = COLOR.op!q{.blend(a, b, c)}(color, row[cx], cast(ChannelType)(0.5f + ChannelType.max * (1-alpha) * globalAlpha));
@@ -220,10 +222,11 @@ if (isWritableView!V && isNumeric!T && is(COLOR : ViewColor!V))
     float fx = x;
     float fy = y;
 
-    float fr1s = r1s;
-    float fr2s = r2s;
+    immutable float fr1s = r1s;
+    immutable float fr2s = r2s;
 
-    float fr21 = fr2s - fr1s;
+    immutable float fr21 = fr2s - fr1s;
+    immutable float invfr21 = 1 / fr21;
 
     for (int cy=y1;cy<y2;cy++)
     {
@@ -240,7 +243,7 @@ if (isWritableView!V && isNumeric!T && is(COLOR : ViewColor!V))
             {
                 if (frs<fr2s)
                 {
-                    float alpha = (frs-fr1s) / fr21;
+                    float alpha = (frs-fr1s) * invfr21;
                     static if (curvature != 1.0f)
                         alpha = alpha ^^ curvature;
                     row[cx] = COLOR.op!q{.blend(a, b, c)}(color, row[cx], cast(ChannelType)(0.5f + ChannelType.max * (1-alpha) * globalAlpha));
@@ -269,12 +272,14 @@ if (isWritableView!V && isNumeric!T && is(COLOR : ViewColor!V))
     float fx = x;
     float fy = y;
 
-    float fr1s = r1s;
-    float fr2s = r2s;
-    float fr3s = r3s;
+    immutable float fr1s = r1s;
+    immutable float fr2s = r2s;
+    immutable float fr3s = r3s;
 
-    float fr21 = fr2s - fr1s;
-    float fr32 = fr3s - fr2s;
+    immutable float fr21 = fr2s - fr1s;
+    immutable float fr32 = fr3s - fr2s;
+    immutable float invfr21 = 1 / fr21;
+    immutable float invfr32 = 1 / fr32;
 
     for (int cy=y1;cy<y2;cy++)
     {
@@ -289,9 +294,9 @@ if (isWritableView!V && isNumeric!T && is(COLOR : ViewColor!V))
                 {
                     float alpha = void;
                     if (frs >= fr2s)
-                        alpha = (frs - fr2s) / fr32;
+                        alpha = (frs - fr2s) * invfr32;
                     else
-                        alpha = 1 - (frs - fr1s) / fr21; 
+                        alpha = 1 - (frs - fr1s) * invfr21; 
 
                     static if (curvature != 1.0f)
                         alpha = alpha ^^ curvature;
