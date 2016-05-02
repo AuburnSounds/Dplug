@@ -52,7 +52,6 @@ struct DPlugCocoaViewFactory
     // create from an id
     this(id id_)
     {
-        printf("this\n");
         this._id = id_;
     }
 
@@ -60,45 +59,26 @@ struct DPlugCocoaViewFactory
     {
     }
 
-    /// Allocates, but do not init
-    static DPlugCocoaViewFactory alloc()
-    {
-        printf("alloc\n");
-        alias fun_t = extern(C) id function (id obj, SEL sel);
-        return DPlugCocoaViewFactory( (cast(fun_t)objc_msgSend)(getClassID(), sel!"alloc") );
-    }
-
-    static Class getClass()
-    {
-        return cast(Class)( getClassID() );
-    }
-
-    static id getClassID()
-    {
-        assert(customClassName !is null);
-        return objc_getClass(toStringz(customClassName));
-    }
-
     static Class clazz;
 
     static void registerSubclass()
     {
-        import gfm.core;
-   //     if (customClassName !is null)
-   //         return;
+        if (customClassName !is null)
+            return;
+
         string uuid = randomUUID().toString();
         customClassName = "DPlugCocoaViewFactory_" ~ uuid;
         clazz = objc_allocateClassPair(cast(Class) lazyClass!"NSObject", toStringz(customClassName), 0);
- //       class_addMethod(clazz, sel!"init:", cast(IMP) &init, "v@:");
+
         class_addMethod(clazz, sel!"description:", cast(IMP) &description, "@@:");
         class_addMethod(clazz, sel!"interfaceVersion", cast(IMP) &interfaceVersion, "I@:");
         class_addMethod(clazz, sel!"uiViewForAudioUnit:withSize:", cast(IMP) &uiViewForAudioUnit, "@@:^{ComponentInstanceRecord=[1q]}{CGSize=dd}");
 
-        // very important: add an instance variable for the this pointer so that the D object can be
+        // Very important: add an instance variable for the this pointer so that the D object can be
         // retrieved from an id
         class_addIvar(clazz, "this", (void*).sizeof, (void*).sizeof == 4 ? 2 : 3, "^v");
 
-        // Replicates the AUCocoaUIBase protocol
+        // Replicates the AUCocoaUIBase protocol.
         // For host to accept that our object follow AUCocoaUIBase, we replicate AUCocoaUIBase
         // with the same name and methods.
         // This protocol has to be created at runtime because we don't have @protocol in D.
@@ -143,22 +123,11 @@ DPlugCocoaViewFactory getInstance(id anId) nothrow
 // Big thanks to Mike Ash (@macdev)
 extern(C) nothrow
 {
-/+    void init(id self, SEL selector)
-    {
-        printf("init callbacked\n");
-        FPControl fpctrl;
-        fpctrl.initialize();
-        /*DPlugCocoaViewFactory factory = */getInstance(self);
-
-        // TODO
-    }+/
-
     id description(id self, SEL selector)
     {
         try
         {
-            FPControl fpctrl;
-            fpctrl.initialize();
+            attachToRuntimeIfNeeded(); // attach this thread which might well be unknown
             return NSString.stringWith("Filter View")._id;
         }
         catch(Exception e)
@@ -177,6 +146,9 @@ extern(C) nothrow
     {
         try
         {
+            attachToRuntimeIfNeeded(); // attach this thread which might well be unknown
+            FPControl fpctrl;
+            fpctrl.initialize();
             AUClient plugin = cast(AUClient)( cast(void*)GetComponentInstanceStorage(audioUnit) );
             if (plugin)
             {
