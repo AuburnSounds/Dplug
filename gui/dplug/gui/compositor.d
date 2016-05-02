@@ -106,13 +106,13 @@ class PBRCompositor : Compositor
         int alignment = 256; // this is necessary for asm optimization of look-up
 
         _tableArea.reallocBuffer(256 * 3, alignment);
-        _redTransferTable = _tableArea[0..256];
-        _greenTransferTable = _tableArea[256..512];
-        _blueTransferTable = _tableArea[512..768];
+        _redTransferTable = _tableArea.ptr;
+        _greenTransferTable = _tableArea.ptr + 256;
+        _blueTransferTable = _tableArea.ptr + 512;
 
-        assert( ( cast(size_t)(_redTransferTable.ptr) & 255 ) == 0);
-        assert( ( cast(size_t)(_greenTransferTable.ptr) & 255 ) == 0);
-        assert( ( cast(size_t)(_blueTransferTable.ptr) & 255 ) == 0);
+        assert( ( cast(size_t)(_redTransferTable) & 255 ) == 0);
+        assert( ( cast(size_t)(_greenTransferTable) & 255 ) == 0);
+        assert( ( cast(size_t)(_blueTransferTable) & 255 ) == 0);
 
         static float safePow(float a, float b)
         {
@@ -467,9 +467,9 @@ class PBRCompositor : Compositor
         // Optional look-up table for color-correction
         if (_useTransferTables)
         {
-            ubyte* red = _redTransferTable.ptr;
-            ubyte* green = _greenTransferTable.ptr;
-            ubyte* blue = _blueTransferTable.ptr;
+            ubyte* red = _redTransferTable;
+            ubyte* green = _greenTransferTable;
+            ubyte* blue = _blueTransferTable;
 
             final switch (pf) with (WindowPixelFormat)
             {
@@ -492,9 +492,9 @@ private:
     // Assign those to use lookup tables.
     bool _useTransferTables = false;
     ubyte[] _tableArea = null;
-    ubyte[] _redTransferTable = null;
-    ubyte[] _greenTransferTable = null;
-    ubyte[] _blueTransferTable = null;
+    ubyte* _redTransferTable = null;
+    ubyte* _greenTransferTable = null;
+    ubyte* _blueTransferTable = null;
 
     float[256] _exponentTable;
 }
