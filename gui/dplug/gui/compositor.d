@@ -9,6 +9,7 @@ import std.math;
 
 import ae.utils.graphics;
 
+import gfm.core.memory;
 import gfm.math.vector;
 import gfm.math.box;
 import gfm.math.funcs;
@@ -68,6 +69,12 @@ class PBRCompositor : Compositor
         }
     }
 
+    ~this()
+    {
+        debug ensureNotInGC("PBRCompositor");
+        _tableArea.reallocBuffer(0);
+    }
+
     /// Calling this setup color correction table, with the well
     /// known lift-gamma-gain formula.
     void setLiftGammaGainContrast(float lift = 0.0f, float gamma = 1.0f, float gain = 1.0f, float contrast = 0.0f)
@@ -96,9 +103,16 @@ class PBRCompositor : Compositor
             float bLift = 0.0f, float bGamma = 1.0f, float bGain = 1.0f, float bContrast = 0.0f)
     {
         _useTransferTables = true;
-        _redTransferTable = new ubyte[256];
-        _greenTransferTable = new ubyte[256];
-        _blueTransferTable = new ubyte[256];
+        int alignment = 256; // this is necessary for asm optimization of look-up
+
+        _tableArea.reallocBuffer(256 * 3, alignment);
+        _redTransferTable = _tableArea[0..256];
+        _greenTransferTable = _tableArea[256..512];
+        _blueTransferTable = _tableArea[512..768];
+
+        assert( ( cast(size_t)(_redTransferTable.ptr) & 255 ) == 0);
+        assert( ( cast(size_t)(_greenTransferTable.ptr) & 255 ) == 0);
+        assert( ( cast(size_t)(_blueTransferTable.ptr) & 255 ) == 0);
 
         static float safePow(float a, float b)
         {
@@ -456,45 +470,20 @@ class PBRCompositor : Compositor
             ubyte* red = _redTransferTable.ptr;
             ubyte* green = _greenTransferTable.ptr;
             ubyte* blue = _blueTransferTable.ptr;
-            
 
-            for (int j = area.min.y; j < area.max.y; ++j)
+            final switch (pf) with (WindowPixelFormat)
             {
-                RGBA* wfb_scan = wfb.scanline(j).ptr;
+                case ARGB8:
+                    applyColorCorrectionARGB8(wfb, area, red, green, blue);
+                    break;
 
-                final switch (pf) with (WindowPixelFormat)
-                {
-                    case ARGB8:
-                        for (int i = area.min.x; i < area.max.x; ++i)
-                        {
-                            RGBA color = wfb_scan[i];
-                            color.g = red[color.g];
-                            color.b = green[color.b];
-                            color.a = blue[color.a];
-                            wfb_scan[i] = color;
-                        }
-                        break;
-                    case BGRA8:
-                        for (int i = area.min.x; i < area.max.x; ++i)
-                        {
-                            RGBA color = wfb_scan[i];
-                            color.r = blue[color.r];
-                            color.g = green[color.g];
-                            color.b = red[color.b];
-                            wfb_scan[i] = color;
-                        }
-                        break;
-                    case RGBA8:
-                        for (int i = area.min.x; i < area.max.x; ++i)
-                        {
-                            RGBA color = wfb_scan[i];
-                            color.r = red[color.r];
-                            color.g = green[color.g];
-                            color.b = blue[color.b];
-                            wfb_scan[i] = color;
-                        }
-                        break;
-                }                
+                case BGRA8:
+                    applyColorCorrectionBGRA8(wfb, area, red, green, blue);
+                    break;
+
+                case RGBA8: 
+                    applyColorCorrectionRGBA8(wfb, area, red, green, blue);
+                    break;
             }
         }
     }
@@ -502,6 +491,7 @@ class PBRCompositor : Compositor
 private:
     // Assign those to use lookup tables.
     bool _useTransferTables = false;
+    ubyte[] _tableArea = null;
     ubyte[] _redTransferTable = null;
     ubyte[] _greenTransferTable = null;
     ubyte[] _blueTransferTable = null;
@@ -561,4 +551,107 @@ float fastlog2(float val) pure nothrow @nogc
     return fi.f + log_2;
 }
 
+void applyColorCorrectionARGB8(ImageRef!RGBA wfb, box2i area, ubyte* red, ubyte* green, ubyte* blue) nothrow @nogc
+{
+    for (int j = area.min.y; j < area.max.y; ++j)
+    {
+        RGBA* wfb_scan = wfb.scanline(j).ptr;
+        for (int i = area.min.x; i < area.max.x; ++i)
+        {
+            RGBA color = wfb_scan[i];
+            color.g = red[color.g];
+            color.b = green[color.b];
+            color.a = blue[color.a];
+            wfb_scan[i] = color;
+        }
+    }
+}
 
+void applyColorCorrectionBGRA8(ImageRef!RGBA wfb, box2i area, ubyte* red, ubyte* green, ubyte* blue) nothrow @nogc
+{
+    //7.73
+    // Must prove that it gains some speed
+    version(none)
+    //version(D_InlineAsm_X86)
+    {
+        int width = area.width();
+        int height = area.height();
+        RGBA* scan = wfb.scanline(area.min.y).ptr + area.min.x;
+        int pitch = wfb.pitch - 4 * width;
+
+        asm nothrow @nogc
+        {
+            push EBX;
+            
+            mov EDI, scan;
+            
+            // since these table are aligned on a 256-byte boundary, we'll use this to compute 
+            // the lookup address cheaply by just changing the last byte
+            mov EAX, red;
+            mov EBX, green;
+            mov ECX, blue;
+
+            y_loop:
+
+                mov ESI, width;
+                x_loop:
+
+                    mov CL, byte ptr [EDI];
+                    mov BL, byte ptr [EDI+1];
+                    mov AL, byte ptr [EDI+2];
+
+                    // look-up
+                    mov CL, byte ptr [ECX];
+                    mov BL, byte ptr [EBX];
+                    mov AL, byte ptr [EAX];
+
+                    mov byte ptr [EDI], CL;
+                    mov byte ptr [EDI+1], BL;
+                    mov byte ptr [EDI+2], AL;
+                    add EDI, 4;
+
+                    sub ESI, 1;
+                jnz x_loop;
+
+                add EDI, pitch;
+                sub height, 1;
+            jnz y_loop;
+
+            pop EBX;
+        }
+
+
+
+    }
+    else
+    {
+        for (int j = area.min.y; j < area.max.y; ++j)
+        {
+            RGBA* wfb_scan = wfb.scanline(j).ptr;
+            for (int i = area.min.x; i < area.max.x; ++i)
+            {
+                RGBA color = wfb_scan[i];
+                color.r = blue[color.r];
+                color.g = green[color.g];
+                color.b = red[color.b];
+                wfb_scan[i] = color;
+            }
+        }
+    }
+}
+
+void applyColorCorrectionRGBA8(ImageRef!RGBA wfb, box2i area, ubyte* red, ubyte* green, ubyte* blue) nothrow @nogc
+{
+    for (int j = area.min.y; j < area.max.y; ++j)
+    {
+        RGBA* wfb_scan = wfb.scanline(j).ptr;
+        for (int i = area.min.x; i < area.max.x; ++i)
+        {
+            RGBA color = wfb_scan[i];
+            color.r = red[color.r];
+            color.g = green[color.g];
+            color.b = blue[color.b];
+            wfb_scan[i] = color;
+        }
+    }
+}
