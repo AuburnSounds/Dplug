@@ -1108,8 +1108,33 @@ private:
 
             case kAudioUnitProperty_GetUIComponentList: // 18
             {
-                version(logDispatcher) printf("TODO kAudioUnitProperty_GetUIComponentList\n");
+                // TODO
                 return kAudioUnitErr_InvalidProperty;
+
+                /+
+                try
+                {
+                    if ( _client.hasGUI() )
+                    {
+                        *pDataSize = ComponentDescription.sizeof;
+                        if (pData)
+                        {
+                            ComponentDescription* pDesc = cast(ComponentDescription*) pData;
+                            pDesc.componentType = kAudioUnitCarbonViewComponentType;
+                            pDesc.componentSubType = GetUniqueID();
+                            pDesc.componentManufacturer = GetMfrID();
+                            pDesc.componentFlags = 0;
+                            pDesc.componentFlagsMask = 0;
+                        }
+                        return noErr;
+                    }
+                    else
+                        return kAudioUnitErr_InvalidProperty;
+                }
+                catch(Exception e)
+                {
+                    return kAudioUnitErr_InvalidProperty;
+                }+/
             }
 
             case kAudioUnitProperty_AudioChannelLayout:

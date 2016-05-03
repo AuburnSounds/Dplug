@@ -56,7 +56,6 @@ string toString(Arch arch)
 
 int main(string[] args)
 {
-    // TODO get executable name from dub.json
     try
     {
         Compiler compiler = Compiler.ldc; // use LDC by default
@@ -71,6 +70,7 @@ int main(string[] args)
         bool force = false;
         bool combined = false;
         bool help = false;
+        string prettyName = null;
 
         string osString = "";
         version (OSX)
@@ -209,11 +209,11 @@ int main(string[] args)
                     // Only accepts two configurations: VST and AudioUnit
                     string pluginDir;
                     if (configIsVST(config))
-                        pluginDir = plugin.name ~ ".vst";
+                        pluginDir = plugin.prettyName ~ ".vst";
                     else if (configIsAU(config))
-                        pluginDir = plugin.name ~ ".component";
+                        pluginDir = plugin.prettyName ~ ".component";
                     else
-                        pluginDir = plugin.name;
+                        pluginDir = plugin.prettyName;
 
                     // On Mac, make a bundle directory
                     string contentsDir = path ~ "/" ~ pluginDir ~ "/Contents";
@@ -230,7 +230,7 @@ int main(string[] args)
                     if (iconPath)
                         std.file.copy(iconPath, contentsDir ~ "/Resources/icon.icns");
 
-                    string exePath = macosDir ~ "/" ~ plugin.name;
+                    string exePath = macosDir ~ "/" ~ plugin.prettyName;
 
                     // Copy .rsrc file (if needed)
                     if (rsrcPath)
@@ -239,10 +239,10 @@ int main(string[] args)
                     if (arch == Arch.universalBinary)
                     {
                         string path32 = outputDirectory(dirName, osString, Arch.x86, config)
-                        ~ "/" ~ pluginDir ~ "/Contents/MacOS/" ~plugin.name;
+                        ~ "/" ~ pluginDir ~ "/Contents/MacOS/" ~ plugin.prettyName;
 
                         string path64 = outputDirectory(dirName, osString, Arch.x64, config)
-                        ~ "/" ~ pluginDir ~ "/Contents/MacOS/" ~plugin.name;
+                        ~ "/" ~ pluginDir ~ "/Contents/MacOS/" ~ plugin.prettyName;
 
                         writefln("*** Making an universal binary with lipo");
 
@@ -376,7 +376,7 @@ void buildPlugin(string compiler, string config, string build, bool is64b, bool 
 
 struct Plugin
 {
-    string name;       // name, extracted from dub.json
+    string name;       // name, extracted from dub.json(eg: 'distort')
     string ver;        // version information
     string outputFile; // result of build
     string copyright;  // Copyright information, copied in the bundle
@@ -384,6 +384,8 @@ struct Plugin
     string userManualPath; // can be null
     string licensePath;    // can be null
     string iconPath;       // can be null or a path to a (large) .png
+    string prettyName;     // Prettier name, extracted from dub.json (eg: 'My Company Distorter')
+    string publicVersion;  // Public version of the plugin, has nothing to do with what DUB says.
 }
 
 Plugin readDubDescription()
@@ -444,7 +446,7 @@ Plugin readDubDescription()
     }
     catch(Exception e)
     {
-        writeln("info: no \"userManualPath\" provided in dub.json");
+        writeln("info: no \"userManualPath\" provided in dub.json (eg: \"UserManual.pdf\")");
     }
 
     try
@@ -453,7 +455,31 @@ Plugin readDubDescription()
     }
     catch(Exception e)
     {
-        writeln("info: no \"licensePath\" provided in dub.json");
+        writeln("info: no \"licensePath\" provided in dub.json (eg: \"license.txt\")");
+    }
+
+    // prettyName is the fancy Manufacturer + Product name that will be displayed as much as possible in:
+    // - bundle name
+    // - renamed executable file names
+    try
+    {
+        result.prettyName = rawDubFile["prettyName"].str;
+    }
+    catch(Exception e)
+    {
+        writeln("info: no \"prettyName\" provided in dub.json (eg: \"My Company Compressor\"). Using \"name\" key instead.");
+        result.prettyName = result.name;
+    }
+
+    // In developpement, should stay at 0.x.y to avoid various AU caches
+    try
+    {
+        result.publicVersion = rawDubFile["publicVersion"].str;
+    }
+    catch(Exception e)
+    {
+        writeln("info: no \"publicVersion\" provided in dub.json (eg: \"1.0.1\"). Using \"0.0.0\" instead.");
+        result.publicVersion = "0.0.0";
     }
 
     try
@@ -479,10 +505,9 @@ bool configIsAU(string config)
 
 string makePListFile(Plugin plugin, string config, bool hasIcon)
 {
-    string productName = plugin.name;
     string copyright = plugin.copyright;
 
-    string productVersion = "1.0.0";
+    string productVersion = plugin.publicVersion;
     string content = "";
 
     content ~= `<?xml version="1.0" encoding="UTF-8"?>` ~ "\n";
@@ -510,6 +535,8 @@ string makePListFile(Plugin plugin, string config, bool hasIcon)
         CFBundleIdentifier = plugin.CFBundleIdentifierPrefix ~ "." ~ plugin.name;
     }
     addKeyString("CFBundleIdentifier", CFBundleIdentifier);
+    addKeyString("CFBundleExecutable", plugin.prettyName);
+    addKeyString("CFBundleName", plugin.prettyName);
 
     // This doesn't seem needed afterall
     /*if (configIsAU(config))
@@ -547,6 +574,8 @@ string makePListFile(Plugin plugin, string config, bool hasIcon)
     addKeyString("CFBundleSignature", "ABAB"); // doesn't matter http://stackoverflow.com/questions/1875912/naming-convention-for-cfbundlesignature-and-cfbundleidentifier
     addKeyString("CFBundleVersion", productVersion);
     addKeyString("LSMinimumSystemVersion", "10.7.0");
+    content ~= "        <key>VSTWindowCompositing</key><true/>\n";
+
     if (hasIcon)
         addKeyString("CFBundleIconFile", "icon");
     content ~= `    </dict>` ~ "\n";
@@ -600,7 +629,7 @@ string makeRSRC(string pluginName, Arch arch, bool verbose)
 
     rFile.writefln(`#define PLUG_NAME "%s"`, pluginName);
     rFile.writeln("#define PLUG_MFR_ID 'ABAB'");
-    rFile.writeln("#define PLUG_VER 0x00010000"); // TODO change this
+    rFile.writeln("#define PLUG_VER 0x00010000"); // TODO change this actual plugin version
 
     rFile.writeln(rFileBase);
     rFile.close();
