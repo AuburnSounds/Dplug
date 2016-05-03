@@ -70,7 +70,7 @@ int main(string[] args)
         bool force = false;
         bool combined = false;
         bool help = false;
-        string targetName = null;
+        string prettyName = null;
 
         string osString = "";
         version (OSX)
@@ -209,11 +209,11 @@ int main(string[] args)
                     // Only accepts two configurations: VST and AudioUnit
                     string pluginDir;
                     if (configIsVST(config))
-                        pluginDir = plugin.targetName ~ ".vst";
+                        pluginDir = plugin.prettyName ~ ".vst";
                     else if (configIsAU(config))
-                        pluginDir = plugin.targetName ~ ".component";
+                        pluginDir = plugin.prettyName ~ ".component";
                     else
-                        pluginDir = plugin.targetName;
+                        pluginDir = plugin.prettyName;
 
                     // On Mac, make a bundle directory
                     string contentsDir = path ~ "/" ~ pluginDir ~ "/Contents";
@@ -230,7 +230,7 @@ int main(string[] args)
                     if (iconPath)
                         std.file.copy(iconPath, contentsDir ~ "/Resources/icon.icns");
 
-                    string exePath = macosDir ~ "/" ~ plugin.targetName;
+                    string exePath = macosDir ~ "/" ~ plugin.prettyName;
 
                     // Copy .rsrc file (if needed)
                     if (rsrcPath)
@@ -239,10 +239,10 @@ int main(string[] args)
                     if (arch == Arch.universalBinary)
                     {
                         string path32 = outputDirectory(dirName, osString, Arch.x86, config)
-                        ~ "/" ~ pluginDir ~ "/Contents/MacOS/" ~ plugin.targetName;
+                        ~ "/" ~ pluginDir ~ "/Contents/MacOS/" ~ plugin.prettyName;
 
                         string path64 = outputDirectory(dirName, osString, Arch.x64, config)
-                        ~ "/" ~ pluginDir ~ "/Contents/MacOS/" ~ plugin.targetName;
+                        ~ "/" ~ pluginDir ~ "/Contents/MacOS/" ~ plugin.prettyName;
 
                         writefln("*** Making an universal binary with lipo");
 
@@ -384,7 +384,8 @@ struct Plugin
     string userManualPath; // can be null
     string licensePath;    // can be null
     string iconPath;       // can be null or a path to a (large) .png
-    string targetName;   // Prettier name, extracted from dub.json (eg: 'My Company Distorter')
+    string prettyName;     // Prettier name, extracted from dub.json (eg: 'My Company Distorter')
+    string publicVersion;  // Public version of the plugin, has nothing to do with what DUB says.
 }
 
 Plugin readDubDescription()
@@ -457,17 +458,28 @@ Plugin readDubDescription()
         writeln("info: no \"licensePath\" provided in dub.json (eg: \"license.txt\")");
     }
 
-    // target name is the fancy Manufacturer + Product name that will be displayed as much as possible in:
+    // prettyName is the fancy Manufacturer + Product name that will be displayed as much as possible in:
     // - bundle name
-    // - executable file names
+    // - renamed executable file names
     try
     {
-        result.targetName = rawDubFile["targetName"].str;
+        result.prettyName = rawDubFile["prettyName"].str;
     }
     catch(Exception e)
     {
-        writeln("info: no \"targetName\" provided in dub.json (eg: \"My Company Compressor\"). Using the \"name\" key instead.");
-        result.targetName = result.name;
+        writeln("info: no \"prettyName\" provided in dub.json (eg: \"My Company Compressor\"). Using \"name\" key instead.");
+        result.prettyName = result.name;
+    }
+
+    // In developpement, should stay at 0.x.y to avoid various AU caches
+    try
+    {
+        result.publicVersion = rawDubFile["publicVersion"].str;
+    }
+    catch(Exception e)
+    {
+        writeln("info: no \"publicVersion\" provided in dub.json (eg: \"1.0.1\"). Using \"0.0.0\" instead.");
+        result.publicVersion = "0.0.0";
     }
 
     try
@@ -495,7 +507,7 @@ string makePListFile(Plugin plugin, string config, bool hasIcon)
 {
     string copyright = plugin.copyright;
 
-    string productVersion = "1.0.0"; // TODO: this is a problem, introduce public version in dub.json deccorelated from git tags
+    string productVersion = plugin.publicVersion;
     string content = "";
 
     content ~= `<?xml version="1.0" encoding="UTF-8"?>` ~ "\n";
@@ -523,8 +535,8 @@ string makePListFile(Plugin plugin, string config, bool hasIcon)
         CFBundleIdentifier = plugin.CFBundleIdentifierPrefix ~ "." ~ plugin.name;
     }
     addKeyString("CFBundleIdentifier", CFBundleIdentifier);
-    addKeyString("CFBundleExecutable", plugin.targetName);
-    addKeyString("CFBundleName", plugin.targetName);
+    addKeyString("CFBundleExecutable", plugin.prettyName);
+    addKeyString("CFBundleName", plugin.prettyName);
 
     // This doesn't seem needed afterall
     /*if (configIsAU(config))
@@ -617,7 +629,7 @@ string makeRSRC(string pluginName, Arch arch, bool verbose)
 
     rFile.writefln(`#define PLUG_NAME "%s"`, pluginName);
     rFile.writeln("#define PLUG_MFR_ID 'ABAB'");
-    rFile.writeln("#define PLUG_VER 0x00010000"); // TODO change this
+    rFile.writeln("#define PLUG_VER 0x00010000"); // TODO change this actual plugin version
 
     rFile.writeln(rFileBase);
     rFile.close();
