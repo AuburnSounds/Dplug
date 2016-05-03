@@ -34,7 +34,6 @@ struct Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
         box,                  // simple 2x2 filter, creates phase problems with NPOT. For higher levels, automatically uses cubic.
         cubic,                // Very smooth kernel [1 2 1] x [1 2 1]
         boxAlphaCov,          // ditto but alpha is used as weight, only implemented for RGBA
-        cubicAlphaCov,        // ditto but alpha is used as weight, only implemented for RGBA
         boxAlphaCovIntoPremul, // same as boxAlphaConv but after such a step the next level is alpha-premultiplied
     }
 
@@ -63,15 +62,15 @@ struct Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
     /// Interpolates a color between mipmap levels.  Floating-point level, spatial linear interpolation.
     /// x and y are in base level coordinates (top-left pixel is on (0.5, 0.5) coordinates).
     /// Clamped to borders.
-    auto linearMipmapSample(bool premultiplied = false)(float level, float x, float y) nothrow @nogc
+    auto linearMipmapSample(float level, float x, float y) nothrow @nogc
     {
         int ilevel = cast(int)level;
         float flevel = level - ilevel;
-        vec4f levelN = linearSample!premultiplied(ilevel, x, y);
+        vec4f levelN = linearSample(ilevel, x, y);
         if (flevel == 0)
             return levelN;
 
-        auto levelNp1 = linearSample!premultiplied(ilevel + 1, x, y);
+        auto levelNp1 = linearSample(ilevel + 1, x, y);
 
         return levelN * (1 - flevel) + levelNp1 * flevel;
     }
@@ -80,7 +79,7 @@ struct Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
     /// Interpolates a color.  Integer level, spatial linear interpolation.
     /// x and y are in base level coordinates (top-left pixel is on (0.5, 0.5) coordinates).
     /// Clamped to borders.
-    auto linearSample(bool premultiplied = false)(int level, float x, float y) nothrow @nogc
+    auto linearSample(int level, float x, float y) nothrow @nogc
     {
         if (level < 0)
             level = 0;
@@ -161,39 +160,12 @@ struct Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
                     punpcklwd XMM2, XMM4;
                     punpcklwd XMM3, XMM4;
 
-                    mov ECX, premultiplied;
-
                     cvtdq2ps XMM0, XMM0;
                     cvtdq2ps XMM1, XMM1;
 
                     cvtdq2ps XMM2, XMM2;
                     cvtdq2ps XMM3, XMM3;
-
-                    cmp ECX, 0;
-                    jz not_premultiplied;
-
-                        pshufd XMM4, XMM0, 0xff; // A.a A.a A.a A.a
-                        mulps XMM0, XMM4;
-
-                        pshufd XMM5, XMM1, 0xff; // B.a B.a B.a B.a
-                        mulps XMM1, XMM5;
-
-                        pshufd XMM4, XMM2, 0xff; // C.a C.a C.a C.a
-                        mulps XMM2, XMM4;
-
-                        pshufd XMM5, XMM3, 0xff; // D.a D.a D.a D.a
-                        mulps XMM3, XMM5;
-
-                        movss XMM4, inv255;
-                        pshufd XMM4, XMM4, 0;
-
-                        mulps XMM0, XMM4;
-                        mulps XMM1, XMM4;
-                        mulps XMM2, XMM4;
-                        mulps XMM3, XMM4;
-
-                    not_premultiplied:
-
+              
                     movss XMM4, fxm1;
                     pshufd XMM4, XMM4, 0;
                     movss XMM5, fx;
@@ -227,14 +199,6 @@ struct Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
                 vec4f vC = vec4f(C.r, C.g, C.b, C.a);
                 vec4f vD = vec4f(D.r, D.g, D.b, D.a);
 
-                static if (premultiplied)
-                {
-                    vA *= vec4f(vA.a * inv255);
-                    vB *= vec4f(vB.a * inv255);
-                    vC *= vec4f(vC.a * inv255);
-                    vD *= vec4f(vD.a * inv255);
-                }
-
                 vec4f up = vA * fxm1 + vB * fx;
                 vec4f down = vC * fxm1 + vD * fx;
                 vec4f dResult = up * fym1 + down * fy;
@@ -255,13 +219,7 @@ struct Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
                 vec4f vC = vec4f(C.r, C.g, C.b, C.a);
                 vec4f vD = vec4f(D.r, D.g, D.b, D.a);
 
-                static if (premultiplied)
-                {
-                    vA *= vec4f(vA.a * inv255);
-                    vB *= vec4f(vB.a * inv255);
-                    vC *= vec4f(vC.a * inv255);
-                    vD *= vec4f(vD.a * inv255);
-                }
+
 
                 vec4f up = vA * fxm1 + vB * fx;
                 vec4f down = vC * fxm1 + vD * fx;
@@ -436,8 +394,7 @@ struct Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
                 assert(false);
 
         case cubic:
-        case cubicAlphaCov:
-            for (int y = updateRect.min.y; y < updateRect.max.y; ++y)
+           for (int y = updateRect.min.y; y < updateRect.max.y; ++y)
             {
                 COLOR[] LM1 = previousLevel.scanline(max(y * 2 - 1, 0));
                 COLOR[] L0 = previousLevel.scanline(y * 2);
@@ -477,67 +434,17 @@ struct Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
                     auto O = L2.ptr[x2p1];
                     auto P = L2.ptr[x2p2];
 
+                    // Apply filter
+                    // 1 3 3 1
+                    // 3 9 9 3
+                    // 3 9 9 3
+                    // 1 3 3 1
 
-                    if (quality == Quality.cubic)
-                    {
-                        // Apply filter
-                        // 1 3 3 1
-                        // 3 9 9 3
-                        // 3 9 9 3
-                        // 1 3 3 1
-
-                        COLOR line0 = COLOR.op!q{(a + d + 3 * (b + c) + 4) >> 3}(A, B, C, D);
-                        COLOR line1 = COLOR.op!q{(a + d + 3 * (b + c) + 4) >> 3}(E, F, G, H);
-                        COLOR line2 = COLOR.op!q{(a + d + 3 * (b + c) + 4) >> 3}(I, J, K, L);
-                        COLOR line3 = COLOR.op!q{(a + d + 3 * (b + c) + 4) >> 3}(M, N, O, P);
-                        dest.ptr[x] = COLOR.op!q{(a + d + 3 * (b + c) + 4) >> 3}(line0, line1, line2, line3);
-                    }
-                    else
-                    {
-                        static if(is(COLOR == RGBA))
-                        {
-                            // Apply filter + alpha weighting
-                            // 1 3 3 1
-                            // 3 9 9 3 multiplied by alpha are the filter
-                            // 3 9 9 3
-                            // 1 3 3 1
-
-                            // Perform the [1 3 3 1] kernel + alpha weighing
-                            static RGBA merge4(RGBA a, RGBA b, RGBA c, RGBA d) nothrow @nogc
-                            {
-                                int alphaA = a.a;
-                                int alphaB = b.a * 3;
-                                int alphaC = c.a * 3;
-                                int alphaD = d.a;
-                                int sum = alphaA + alphaB + alphaC + alphaD;
-                                if (sum == 0)
-                                {
-                                    return a; // return any since alpha is zero, it won't count
-                                }
-                                else
-                                {
-                                    ubyte destAlpha = cast(ubyte)( (sum + 4) >> 3 );
-                                    int red =   (a.r * alphaA + b.r * alphaB + c.r * alphaC + d.r * alphaD);
-                                    int green = (a.g * alphaA + b.g * alphaB + c.g * alphaC + d.g * alphaD);
-                                    int blue =  (a.b * alphaA + b.b* alphaB + c.b * alphaC + d.b * alphaD);
-                                    float invSum = 1 / cast(float)sum;
-
-                                    return RGBA( cast(ubyte)( 0.5f + red * invSum),
-                                                 cast(ubyte)( 0.5f + green * invSum),
-                                                 cast(ubyte)( 0.5f + blue * invSum),
-                                                 destAlpha );
-                                }
-                            }
-
-                            RGBA line0 = merge4(A, B, C, D);
-                            RGBA line1 = merge4(E, F, G, H);
-                            RGBA line2 = merge4(I, J, K, L);
-                            RGBA line3 = merge4(M, N, O, P);
-                            dest.ptr[x] = merge4(line0, line1, line2, line3);
-                        }
-                        else
-                            assert(false);
-                    }
+                    COLOR line0 = COLOR.op!q{(a + d + 3 * (b + c) + 4) >> 3}(A, B, C, D);
+                    COLOR line1 = COLOR.op!q{(a + d + 3 * (b + c) + 4) >> 3}(E, F, G, H);
+                    COLOR line2 = COLOR.op!q{(a + d + 3 * (b + c) + 4) >> 3}(I, J, K, L);
+                    COLOR line3 = COLOR.op!q{(a + d + 3 * (b + c) + 4) >> 3}(M, N, O, P);
+                    dest.ptr[x] = COLOR.op!q{(a + d + 3 * (b + c) + 4) >> 3}(line0, line1, line2, line3);                  
                 }
             }
         }
@@ -562,7 +469,6 @@ private:
             return box2i(xmin, ymin, xmax, ymax).intersection(maxArea);
 
         case cubic:
-        case cubicAlphaCov:
             int xmin = (area.min.x - 1) / 2;
             int ymin = (area.min.y - 1) / 2;
             int xmax = (area.max.x + 2) / 2;
@@ -1283,14 +1189,14 @@ void generateLevelBoxAlphaCovIntoPremulRGBA(Image!RGBA* thisLevel,
             }
             else
             {
-                int destAlpha = cast(ubyte)( (alphaA + alphaB + alphaC + alphaD + 2) >> 2 );
+                int destAlpha = 255;// no significance whatsoever
                 int red =   (A.r * alphaA + B.r * alphaB + C.r * alphaC + D.r * alphaD);
                 int green = (A.g * alphaA + B.g * alphaB + C.g * alphaC + D.g * alphaD);
                 int blue =  (A.b * alphaA + B.b* alphaB + C.b * alphaC + D.b * alphaD);
                 
-                RGBA finalColor = RGBA( cast(ubyte)((red + 2) >> 10),
-                                        cast(ubyte)((green + 2) >> 10),
-                                        cast(ubyte)((blue + 2) >> 10),
+                RGBA finalColor = RGBA( cast(ubyte)((red + 512) >> 10),
+                                        cast(ubyte)((green + 512) >> 10),
+                                        cast(ubyte)((blue + 512) >> 10),
                                         cast(ubyte)destAlpha );
                 dest[x] = finalColor;
             }

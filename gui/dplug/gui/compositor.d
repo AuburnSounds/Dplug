@@ -18,9 +18,6 @@ import dplug.core.funcs;
 import dplug.window.window;
 import dplug.gui.mipmap;
 
-// Not ready yet
-//version = diffuseMipmapIsAlphaPremul;
-
 // Only deals with rendering tiles.
 // If you don't like dplug default compositing, just make another Compositor
 // and assign the 'compositor' field in GUIGraphics.
@@ -398,37 +395,18 @@ class PBRCompositor : Compositor
                         float ic = i + 0.5f;
                         float jc = j + 0.5f;
 
-                        // Get alpha-premultiplied, avoids some white highlights
-                        // Maybe we could solve the white highlights by having the whole mipmap premultiplied
-                        version(diffuseMipmapIsAlphaPremul)
-                        {
-                            vec4f colorLevel1 = diffuseMap.linearSample!false(1, ic, jc);
-                            vec4f colorLevel2 = diffuseMap.linearSample!false(2, ic, jc);
-                            vec4f colorLevel3 = diffuseMap.linearSample!false(3, ic, jc);
-                            vec4f colorLevel4 = diffuseMap.linearSample!false(4, ic, jc);
-                            vec4f colorLevel5 = diffuseMap.linearSample!false(5, ic, jc);
-
-                            vec4f emitted = colorLevel1 * 0.00117647f;
-                            emitted += colorLevel2      * 0.00176471f;
-                            emitted += colorLevel3      * 0.00147059f;
-                            emitted += colorLevel4      * 0.00088235f;
-                            emitted += colorLevel5      * 0.00058823f;
-                        }
-                        else
-                        {
-                            vec4f colorLevel1 = diffuseMap.linearSample!true(1, ic, jc);
-                            vec4f colorLevel2 = diffuseMap.linearSample!true(2, ic, jc);
-                            vec4f colorLevel3 = diffuseMap.linearSample!true(3, ic, jc);
-                            vec4f colorLevel4 = diffuseMap.linearSample!true(4, ic, jc);
-                            vec4f colorLevel5 = diffuseMap.linearSample!true(5, ic, jc);
-
-                            vec4f emitted = colorLevel1 * 0.00117647f;
-                            emitted += colorLevel2      * 0.00176471f;
-                            emitted += colorLevel3      * 0.00147059f;
-                            emitted += colorLevel4      * 0.00088235f;
-                            emitted += colorLevel5      * 0.00058823f;
-                        }
-
+                        // Get alpha-premultiplied, avoids to have to do alpha-aware mipmapping
+                        vec4f colorLevel1 = diffuseMap.linearSample(1, ic, jc);
+                        vec4f colorLevel2 = diffuseMap.linearSample(2, ic, jc);
+                        vec4f colorLevel3 = diffuseMap.linearSample(3, ic, jc);
+                        vec4f colorLevel4 = diffuseMap.linearSample(4, ic, jc);
+                        vec4f colorLevel5 = diffuseMap.linearSample(5, ic, jc);
+                      
+                        vec4f emitted = colorLevel1 * 0.00117647f;
+                        emitted += colorLevel2      * 0.00176471f;
+                        emitted += colorLevel3      * 0.00147059f;
+                        emitted += colorLevel4      * 0.00088235f;
+                        emitted += colorLevel5      * 0.00058823f;
                         color += emitted.rgb;
                     }
 
