@@ -56,7 +56,6 @@ string toString(Arch arch)
 
 int main(string[] args)
 {
-    // TODO get executable name from dub.json
     try
     {
         Compiler compiler = Compiler.ldc; // use LDC by default
@@ -71,6 +70,7 @@ int main(string[] args)
         bool force = false;
         bool combined = false;
         bool help = false;
+        string targetName = null;
 
         string osString = "";
         version (OSX)
@@ -209,11 +209,11 @@ int main(string[] args)
                     // Only accepts two configurations: VST and AudioUnit
                     string pluginDir;
                     if (configIsVST(config))
-                        pluginDir = plugin.name ~ ".vst";
+                        pluginDir = plugin.targetName ~ ".vst";
                     else if (configIsAU(config))
-                        pluginDir = plugin.name ~ ".component";
+                        pluginDir = plugin.targetName ~ ".component";
                     else
-                        pluginDir = plugin.name;
+                        pluginDir = plugin.targetName;
 
                     // On Mac, make a bundle directory
                     string contentsDir = path ~ "/" ~ pluginDir ~ "/Contents";
@@ -230,7 +230,7 @@ int main(string[] args)
                     if (iconPath)
                         std.file.copy(iconPath, contentsDir ~ "/Resources/icon.icns");
 
-                    string exePath = macosDir ~ "/" ~ plugin.name;
+                    string exePath = macosDir ~ "/" ~ plugin.targetName;
 
                     // Copy .rsrc file (if needed)
                     if (rsrcPath)
@@ -239,10 +239,10 @@ int main(string[] args)
                     if (arch == Arch.universalBinary)
                     {
                         string path32 = outputDirectory(dirName, osString, Arch.x86, config)
-                        ~ "/" ~ pluginDir ~ "/Contents/MacOS/" ~plugin.name;
+                        ~ "/" ~ pluginDir ~ "/Contents/MacOS/" ~ plugin.targetName;
 
                         string path64 = outputDirectory(dirName, osString, Arch.x64, config)
-                        ~ "/" ~ pluginDir ~ "/Contents/MacOS/" ~plugin.name;
+                        ~ "/" ~ pluginDir ~ "/Contents/MacOS/" ~ plugin.targetName;
 
                         writefln("*** Making an universal binary with lipo");
 
@@ -376,7 +376,7 @@ void buildPlugin(string compiler, string config, string build, bool is64b, bool 
 
 struct Plugin
 {
-    string name;       // name, extracted from dub.json
+    string name;       // name, extracted from dub.json(eg: 'distort')
     string ver;        // version information
     string outputFile; // result of build
     string copyright;  // Copyright information, copied in the bundle
@@ -384,6 +384,7 @@ struct Plugin
     string userManualPath; // can be null
     string licensePath;    // can be null
     string iconPath;       // can be null or a path to a (large) .png
+    string targetName;   // Prettier name, extracted from dub.json (eg: 'My Company Distorter')
 }
 
 Plugin readDubDescription()
@@ -444,7 +445,7 @@ Plugin readDubDescription()
     }
     catch(Exception e)
     {
-        writeln("info: no \"userManualPath\" provided in dub.json");
+        writeln("info: no \"userManualPath\" provided in dub.json (eg: \"UserManual.pdf\")");
     }
 
     try
@@ -453,7 +454,20 @@ Plugin readDubDescription()
     }
     catch(Exception e)
     {
-        writeln("info: no \"licensePath\" provided in dub.json");
+        writeln("info: no \"licensePath\" provided in dub.json (eg: \"license.txt\")");
+    }
+
+    // target name is the fancy Manufacturer + Product name that will be displayed as much as possible in:
+    // - bundle name
+    // - executable file names
+    try
+    {
+        result.targetName = rawDubFile["targetName"].str;
+    }
+    catch(Exception e)
+    {
+        writeln("info: no \"targetName\" provided in dub.json (eg: \"My Company Compressor\"). Using the \"name\" key instead.");
+        result.targetName = result.name;
     }
 
     try
@@ -479,10 +493,9 @@ bool configIsAU(string config)
 
 string makePListFile(Plugin plugin, string config, bool hasIcon)
 {
-    string productName = plugin.name;
     string copyright = plugin.copyright;
 
-    string productVersion = "1.0.0";
+    string productVersion = "1.0.0"; // TODO: this is a problem, introduce public version in dub.json deccorelated from git tags
     string content = "";
 
     content ~= `<?xml version="1.0" encoding="UTF-8"?>` ~ "\n";
@@ -510,6 +523,8 @@ string makePListFile(Plugin plugin, string config, bool hasIcon)
         CFBundleIdentifier = plugin.CFBundleIdentifierPrefix ~ "." ~ plugin.name;
     }
     addKeyString("CFBundleIdentifier", CFBundleIdentifier);
+    addKeyString("CFBundleExecutable", plugin.targetName);
+    addKeyString("CFBundleName", plugin.targetName);
 
     // This doesn't seem needed afterall
     /*if (configIsAU(config))
@@ -547,6 +562,8 @@ string makePListFile(Plugin plugin, string config, bool hasIcon)
     addKeyString("CFBundleSignature", "ABAB"); // doesn't matter http://stackoverflow.com/questions/1875912/naming-convention-for-cfbundlesignature-and-cfbundleidentifier
     addKeyString("CFBundleVersion", productVersion);
     addKeyString("LSMinimumSystemVersion", "10.7.0");
+    content ~= "        <key>VSTWindowCompositing</key><true/>\n";
+
     if (hasIcon)
         addKeyString("CFBundleIconFile", "icon");
     content ~= `    </dict>` ~ "\n";
