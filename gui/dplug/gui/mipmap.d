@@ -396,11 +396,19 @@ struct Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
         case cubic:
            for (int y = updateRect.min.y; y < updateRect.max.y; ++y)
             {
-                COLOR[] LM1 = previousLevel.scanline(max(y * 2 - 1, 0));
-                COLOR[] L0 = previousLevel.scanline(y * 2);
-                COLOR[] L1 = previousLevel.scanline(y * 2 + 1);
-                COLOR[] L2 = previousLevel.scanline(min(y * 2 + 2, previousLevel.h - 1));
-                COLOR[] dest = thisLevel.scanline(y);
+                int y2m1 = 2 * y - 1;
+                if (y2m1 < 0)
+                    y2m1 = 0;
+
+                int y2p2 = 2 * y + 2;
+                if (y2p2 > previousLevel.h - 1)
+                    y2p2 = previousLevel.h - 1;
+
+                COLOR* LM1 = previousLevel.scanline(y2m1).ptr;
+                COLOR* L0 = previousLevel.scanline(y * 2).ptr;
+                COLOR* L1 = previousLevel.scanline(y * 2 + 1).ptr;
+                COLOR* L2 = previousLevel.scanline(y2p2).ptr;
+                COLOR* dest = thisLevel.scanline(y).ptr;
 
                 for (int x = updateRect.min.x; x < updateRect.max.x; ++x)
                 {
@@ -409,30 +417,34 @@ struct Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
                     // I J K L
                     // M N O P
 
-                    int x2m1 = max(0, 2 * x - 1);
+                    int x2m1 = 2 * x - 1;
+                    if (x2m1 < 0)
+                        x2m1 = 0;
                     int x2p0 = 2 * x;
                     int x2p1 = 2 * x + 1;
-                    int x2p2 = min(2 * x + 2, previousLevel.w - 1);
+                    int x2p2 = 2 * x + 2;
+                    if (x2p2 > previousLevel.w - 1)
+                        x2p2 = previousLevel.w - 1;
 
-                    auto A = LM1.ptr[x2m1];
-                    auto B = LM1.ptr[x2p0];
-                    auto C = LM1.ptr[x2p1];
-                    auto D = LM1.ptr[x2p2];
+                    auto A = LM1[x2m1];
+                    auto B = LM1[x2p0];
+                    auto C = LM1[x2p1];
+                    auto D = LM1[x2p2];
 
-                    auto E = L0.ptr[x2m1];
-                    auto F = L0.ptr[x2p0];
-                    auto G = L0.ptr[x2p1];
-                    auto H = L0.ptr[x2p2];
+                    auto E = L0[x2m1];
+                    auto F = L0[x2p0];
+                    auto G = L0[x2p1];
+                    auto H = L0[x2p2];
 
-                    auto I = L1.ptr[x2m1];
-                    auto J = L1.ptr[x2p0];
-                    auto K = L1.ptr[x2p1];
-                    auto L = L1.ptr[x2p2];
+                    auto I = L1[x2m1];
+                    auto J = L1[x2p0];
+                    auto K = L1[x2p1];
+                    auto L = L1[x2p2];
 
-                    auto M = L2.ptr[x2m1];
-                    auto N = L2.ptr[x2p0];
-                    auto O = L2.ptr[x2p1];
-                    auto P = L2.ptr[x2p2];
+                    auto M = L2[x2m1];
+                    auto N = L2[x2p0];
+                    auto O = L2[x2p1];
+                    auto P = L2[x2p2];
 
                     // Apply filter
                     // 1 3 3 1
@@ -444,7 +456,7 @@ struct Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
                     COLOR line1 = COLOR.op!q{(a + d + 3 * (b + c) + 4) >> 3}(E, F, G, H);
                     COLOR line2 = COLOR.op!q{(a + d + 3 * (b + c) + 4) >> 3}(I, J, K, L);
                     COLOR line3 = COLOR.op!q{(a + d + 3 * (b + c) + 4) >> 3}(M, N, O, P);
-                    dest.ptr[x] = COLOR.op!q{(a + d + 3 * (b + c) + 4) >> 3}(line0, line1, line2, line3);                  
+                    dest[x] = COLOR.op!q{(a + d + 3 * (b + c) + 4) >> 3}(line0, line1, line2, line3);                  
                 }
             }
         }
@@ -492,9 +504,9 @@ unittest
 private:
 
 align(16) static immutable short[8] xmmTwoShort = [ 2, 2, 2, 2, 2, 2, 2, 2 ];
-align(16) static immutable int[8] xmmTwoInt = [ 2, 2, 2, 2 ];
+align(16) static immutable int[4] xmmTwoInt = [ 2, 2, 2, 2 ];
 align(16) static immutable float[4] xmm0_5 = [ 0.5f, 0.5f, 0.5f, 0.5f ];
-
+align(16) static immutable int[4] xmm512 = [ 512, 512, 512, 512 ];
 
 
 void generateLevelBoxRGBA(Image!RGBA* thisLevel,
@@ -1168,37 +1180,177 @@ void generateLevelBoxAlphaCovIntoPremulRGBA(Image!RGBA* thisLevel,
 
     for (int y = 0; y < height; ++y)
     {
-        for (int x = 0; x < width; ++x)
+        version(D_InlineAsm_X86)
         {
-            // A B
-            // C D
-            RGBA A = L0[2 * x];
-            RGBA B = L0[2 * x + 1];
-            RGBA C = L1[2 * x];
-            RGBA D = L1[2 * x + 1];
-
-            ubyte alphaA = A.a;
-            ubyte alphaB = B.a;
-            ubyte alphaC = C.a;
-            ubyte alphaD = D.a;
-            int sum = alphaA + alphaB + alphaC + alphaD;
-
-            if (sum == 0)
+            asm nothrow @nogc
             {
-                dest[x] = RGBA(0,0,0,0);
-            }
-            else
-            {
-                int destAlpha = 255;// no significance whatsoever
-                int red =   (A.r * alphaA + B.r * alphaB + C.r * alphaC + D.r * alphaD);
-                int green = (A.g * alphaA + B.g * alphaB + C.g * alphaC + D.g * alphaD);
-                int blue =  (A.b * alphaA + B.b* alphaB + C.b * alphaC + D.b * alphaD);
+                mov ECX, width;
+
+                mov EAX, L0;
+                mov EDX, L1;
+                mov EDI, dest;
+
+                movdqa XMM5, xmm512;               // 512 512 5121 512
+                pxor XMM4, XMM4;                   // all zeroes
+
+            loop_ecx:
+
+                movq XMM0, [EAX];                  // Ar Ag Ab Aa Br Bg Bb Ba + zeroes
+                movq XMM1, [EDX];                  // Cr Cg Cb Ca Dr Dg Db Da + zeroes
+                pxor XMM4, XMM4;
+                add EAX, 8;
+                add EDX, 8;
+
+                punpcklbw XMM0, XMM4;              // Ar Ag Ab Aa Br Bg Bb Ba
+                punpcklbw XMM1, XMM4;              // Cr Cg Cb Ca Dr Dg Db Da
+
+                movdqa XMM2, XMM0;
+                punpcklwd XMM0, XMM1;              // Ar Cr Ag Cg Ab Cb Aa Ca
+                punpckhwd XMM2, XMM1;              // Br Dr Bg Dg Bb Db Ba Da
+
+                movdqa XMM3, XMM0;
+                punpcklwd XMM0, XMM2;              // Ar Br Cr Dr Ag Bg Cg Dg
+                punpckhwd XMM3, XMM2;              // Ab Bb Cb Db Aa Ba Ca Da
+
+                movdqa XMM1, XMM3;
+                punpckhqdq XMM1, XMM1;             // Aa Ba Ca Da Aa Ba Ca Da
+
+                add EDI, 4;                
+
+                pmaddwd XMM0, XMM1;            // Ar*Aa+Br*Ba Cr*Ca+Dr*Da Ag*Aa+Bg*Ba Cg*Ca+Dg*Da
+                pmaddwd XMM3, XMM1;            // Ab*Aa+Bb*Ba Cb*Ca+Db*Da Aa*Aa+Ba*Ba Ca*Ca+Da*Da
+
+                movdqa XMM2, XMM0;
+                movdqa XMM1, XMM3;
+
+                psrldq XMM2, 4;                // Cr*Ca+Dr*Da Ag*Aa+Bg*Ba Cg*Ca+Dg*Da 0
+                psrldq XMM1, 4;                // Cb*Ca+Db*Da Aa*Aa+Ba*Ba Ca*Ca+Da*Da 0
+
+                paddd XMM0, XMM2;              // Ar*Aa+Br*Ba+Cr*Ca+Dr*Da garbage Ag*Aa+Bg*Ba+Cg*Ca+Dg*Da garbage
+                paddd XMM3, XMM1;              // Ab*Aa+Bb*Ba+Cb*Ca+Db*Da garbage Aa*Aa+Ba*Ba+Ca*Ca+Da*Da garbage
+
+                pshufd XMM0, XMM0, 0b00001000; // Ar*Aa+Br*Ba+Cr*Ca+Dr*Da Ag*Aa+Bg*Ba+Cg*Ca+Dg*Da garbage garbage
+                pshufd XMM3, XMM3, 0b00001000; // Ab*Aa+Bb*Ba+Cb*Ca+Db*Da Aa*Aa+Ba*Ba+Ca*Ca+Da*Da garbage garbage
+
+                punpcklqdq XMM0, XMM3;     // fR fG fB fA
+
                 
+                paddd XMM0, XMM5;
+                psrld XMM0, 10;             // final color in dwords
+
+                packssdw XMM0, XMM4;       // same in words
+                packuswb XMM0, XMM4;       // same in bytes
+
+                sub ECX, 1;
+                movd [EDI-4], XMM0;            // dest[x] = A
+                jnz loop_ecx;
+            }           
+        }
+        else version(D_InlineAsm_X86_64)
+        {
+            asm nothrow @nogc
+            {
+                mov ECX, width;
+
+                mov RAX, L0;
+                mov RDX, L1;
+                mov RDI, dest;
+
+                movdqa XMM5, xmm512;               // 512 512 5121 512
+                pxor XMM4, XMM4;                   // all zeroes
+
+            loop_ecx:
+
+                movq XMM0, [RAX];                  // Ar Ag Ab Aa Br Bg Bb Ba + zeroes
+                movq XMM1, [RDX];                  // Cr Cg Cb Ca Dr Dg Db Da + zeroes
+                pxor XMM4, XMM4;
+                add RAX, 8;
+                add RDX, 8;
+
+                punpcklbw XMM0, XMM4;              // Ar Ag Ab Aa Br Bg Bb Ba
+                punpcklbw XMM1, XMM4;              // Cr Cg Cb Ca Dr Dg Db Da
+
+                movdqa XMM2, XMM0;
+                punpcklwd XMM0, XMM1;              // Ar Cr Ag Cg Ab Cb Aa Ca
+                punpckhwd XMM2, XMM1;              // Br Dr Bg Dg Bb Db Ba Da
+
+                movdqa XMM3, XMM0;
+                punpcklwd XMM0, XMM2;              // Ar Br Cr Dr Ag Bg Cg Dg
+                punpckhwd XMM3, XMM2;              // Ab Bb Cb Db Aa Ba Ca Da
+
+                movdqa XMM1, XMM3;
+                punpckhqdq XMM1, XMM1;             // Aa Ba Ca Da Aa Ba Ca Da
+
+                add RDI, 4;                
+
+                pmaddwd XMM0, XMM1;            // Ar*Aa+Br*Ba Cr*Ca+Dr*Da Ag*Aa+Bg*Ba Cg*Ca+Dg*Da
+                pmaddwd XMM3, XMM1;            // Ab*Aa+Bb*Ba Cb*Ca+Db*Da Aa*Aa+Ba*Ba Ca*Ca+Da*Da
+
+                movdqa XMM2, XMM0;
+                movdqa XMM1, XMM3;
+
+                psrldq XMM2, 4;                // Cr*Ca+Dr*Da Ag*Aa+Bg*Ba Cg*Ca+Dg*Da 0
+                psrldq XMM1, 4;                // Cb*Ca+Db*Da Aa*Aa+Ba*Ba Ca*Ca+Da*Da 0
+
+                paddd XMM0, XMM2;              // Ar*Aa+Br*Ba+Cr*Ca+Dr*Da garbage Ag*Aa+Bg*Ba+Cg*Ca+Dg*Da garbage
+                paddd XMM3, XMM1;              // Ab*Aa+Bb*Ba+Cb*Ca+Db*Da garbage Aa*Aa+Ba*Ba+Ca*Ca+Da*Da garbage
+
+                pshufd XMM0, XMM0, 0b00001000; // Ar*Aa+Br*Ba+Cr*Ca+Dr*Da Ag*Aa+Bg*Ba+Cg*Ca+Dg*Da garbage garbage
+                pshufd XMM3, XMM3, 0b00001000; // Ab*Aa+Bb*Ba+Cb*Ca+Db*Da Aa*Aa+Ba*Ba+Ca*Ca+Da*Da garbage garbage
+
+                punpcklqdq XMM0, XMM3;     // fR fG fB fA
+
+
+                paddd XMM0, XMM5;
+                psrld XMM0, 10;             // final color in dwords
+
+                packssdw XMM0, XMM4;       // same in words
+                packuswb XMM0, XMM4;       // same in bytes
+
+                sub ECX, 1;
+                movd [RDI-4], XMM0;            // dest[x] = A
+                jnz loop_ecx;
+            }
+        }
+        else
+        {
+            for (int x = 0; x < width; ++x)
+            {
+                RGBA A = L0[2 * x];
+                RGBA B = L0[2 * x + 1];
+                RGBA C = L1[2 * x];
+                RGBA D = L1[2 * x + 1];
+                int red =   (A.r * A.a + B.r * B.a + C.r * C.a + D.r * D.a);
+                int green = (A.g * A.a + B.g * B.a + C.g * C.a + D.g * D.a);
+                int blue =  (A.b * A.a + B.b* B.a + C.b * C.a + D.b * D.a);
+                int alpha =  (A.a * A.a + B.a* B.a + C.a * C.a + D.a * D.a);                
                 RGBA finalColor = RGBA( cast(ubyte)((red + 512) >> 10),
                                         cast(ubyte)((green + 512) >> 10),
                                         cast(ubyte)((blue + 512) >> 10),
-                                        cast(ubyte)destAlpha );
+                                        cast(ubyte)((alpha + 512) >> 10));
                 dest[x] = finalColor;
+            }
+        }
+
+        enum bool verify = false;
+
+        static if (verify)
+        {
+            for (int x = 0; x < width; ++x)
+            {
+                RGBA A = L0[2 * x];
+                RGBA B = L0[2 * x + 1];
+                RGBA C = L1[2 * x];
+                RGBA D = L1[2 * x + 1];
+                int red =   (A.r * A.a + B.r * B.a + C.r * C.a + D.r * D.a);
+                int green = (A.g * A.a + B.g * B.a + C.g * C.a + D.g * D.a);
+                int blue =  (A.b * A.a + B.b* B.a + C.b * C.a + D.b * D.a);
+                int alpha =  (A.a * A.a + B.a* B.a + C.a * C.a + D.a * D.a);                
+                RGBA finalColor = RGBA( cast(ubyte)((red + 512) >> 10),
+                                        cast(ubyte)((green + 512) >> 10),
+                                       cast(ubyte)((blue + 512) >> 10),
+                                       cast(ubyte)((alpha + 512) >> 10));
+                assert(dest[x] == finalColor);
             }
         }
 
