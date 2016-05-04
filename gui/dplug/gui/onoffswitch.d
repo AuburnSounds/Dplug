@@ -35,18 +35,13 @@ public:
         super(context);
         _param = param;
         _param.addListener(this);
-        _initialized = true;
         _animation = 0.0f;
     }
 
     ~this()
     {
-        if (_initialized)
-        {
-            debug ensureNotInGC("UIOnOffSwitch");
-            _param.removeListener(this);
-            _initialized = false;
-        }
+        debug ensureNotInGC("UIOnOffSwitch");
+        _param.removeListener(this);
     }
 
     override void onAnimate(double dt, double time)
@@ -138,8 +133,6 @@ protected:
 
     /// The parameter this switch is linked with.
     BoolParameter _param;
-
-    bool _initialized = true; // destructor flag
 
 private:
     float _animation;

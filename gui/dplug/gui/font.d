@@ -32,17 +32,12 @@ public:
         stbtt_GetFontVMetrics(&_font, &_fontAscent, &_fontDescent, &_fontLineGap);
 
         _mutex = new UncheckedMutex();
-        _initialized = true;
     }
 
     ~this()
     {
-        if (_initialized)
-        {
-            debug ensureNotInGC("Font");
-            _initialized = false;
-            _mutex.destroy();
-        }
+        debug ensureNotInGC("Font");
+        _mutex.destroy();
     }
 
     /// Returns: Where a line of text will be drawn if starting at position (0, 0).
@@ -69,7 +64,6 @@ private:
     stbtt_fontinfo _font;
     const(ubyte)[] _fontData;
     int _fontAscent, _fontDescent, _fontLineGap;
-    bool _initialized;
 
     /// Iterates on character and call the delegate with their subpixel position
     /// Only support one line of text.

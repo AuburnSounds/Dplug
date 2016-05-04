@@ -42,19 +42,14 @@ public:
         _param = param;
         _param.addListener(this);
         _sensivity = 1.0f;
-        _initialized = true;
          _pushedAnimation = 0;
         clearCrosspoints();
     }
 
     ~this()
     {
-        if (_initialized)
-        {
-            debug ensureNotInGC("UISlider");
-            _param.removeListener(this);
-            _initialized = false;
-        }
+        debug ensureNotInGC("UISlider");
+        _param.removeListener(this);
     }
 
     /// Returns: sensivity.
@@ -286,8 +281,6 @@ protected:
     float _sensivity;
 
     float  _pushedAnimation;
-
-    bool _initialized; // destructor flag
 
     float _mousePosOnLast0Cross;
     float _mousePosOnLast1Cross;

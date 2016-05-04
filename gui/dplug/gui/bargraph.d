@@ -47,18 +47,12 @@ public:
             _leds ~= LED(RGBA(226, 120, 249, 255));
 
          _valueMutex = new UncheckedMutex();
-
-         _initialized = true;
     }
 
     ~this()
     {
-        if (_initialized)
-        {
-            debug ensureNotInGC("UIBargraph");
-            _valueMutex.destroy();
-            _initialized = false;
-        }
+        debug ensureNotInGC("UIBargraph");
+        _valueMutex.destroy();
     }
 
 
@@ -140,6 +134,4 @@ protected:
     float[] _values;
     float _minValue;
     float _maxValue;
-
-    bool _initialized;
 }
