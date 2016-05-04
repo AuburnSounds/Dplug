@@ -134,9 +134,18 @@ class PBRCompositor : Compositor
             outG = safePow(outG, 1.0f / gGamma );
             outB = safePow(outB, 1.0f / bGamma );
 
-            outR = std.algorithm.clamp!float(outR, 0.0f, 1.0f);
-            outG = std.algorithm.clamp!float(outG, 0.0f, 1.0f);
-            outB = std.algorithm.clamp!float(outB, 0.0f, 1.0f);
+            if (outR < 0)
+                outR = 0;
+            if (outG < 0)
+                outG = 0;
+            if (outB < 0)
+                outB = 0;
+            if (outR > 1)
+                outR = 1;
+            if (outG > 1)
+                outG = 1;
+            if (outB > 1)
+                outB = 1;
 
             outR = lerp!float(outR, smoothStep!float(0, 1, outR), rContrast);
             outG = lerp!float(outG, smoothStep!float(0, 1, outG), gContrast);
@@ -155,25 +164,31 @@ class PBRCompositor : Compositor
                                 Mipmap!L16* depthMap,
                                 Mipmap!RGBA* skybox) nothrow @nogc
     {
-        ushort[5][5] depthPatch = void;
-        L16*[5] depth_scan = void;
+        ushort[3][3] depthPatch = void;
+        L16*[3] depth_scan = void;
 
-        //Mipmap!RGBA* skybox = &context.skybox;
         int w = diffuseMap.levels[0].w;
         int h = diffuseMap.levels[0].h;
         float invW = 1.0f / w;
         float invH = 1.0f / h;
-        float div255 = 1 / 255.0f;
+        static immutable float div255 = 1 / 255.0f;
 
         for (int j = area.min.y; j < area.max.y; ++j)
         {
             RGBA* wfb_scan = wfb.scanline(j).ptr;
 
             // clamp to existing lines
-            for (int l = 0; l < 5; ++l)
             {
-                int lineIndex = gfm.math.clamp!int(j - 2 + l, 0, h - 1);
-                depth_scan[l] = depthMap.levels[0].scanline(lineIndex).ptr;
+                Image!L16 depthLevel0 = depthMap.levels[0];
+                for (int line = 0; line < 3; ++line)
+                {
+                    int lineIndex = j - 1 + line;
+                    if (lineIndex < 0)
+                        lineIndex = 0;
+                    if (lineIndex > h - 1)
+                        lineIndex = h - 1;
+                    depth_scan[line] = depthLevel0.scanline(lineIndex).ptr;
+                }
             }
 
             RGBA* materialScan = materialMap.levels[0].scanline(j).ptr;
@@ -205,29 +220,32 @@ class PBRCompositor : Compositor
                     // clamp to existing columns
 
                     {
-                        // Get depth for a 5x5 patch
+                        // Get depth for a 3x3 patch
                         // Turns out DMD like hand-unrolling:(
-                        for (int k = 0; k < 5; ++k)
+                        for (int k = 0; k < 3; ++k)
                         {
-                            int col_index = gfm.math.clamp(i - 2 + k, 0, w - 1);
-                            depthPatch[0][k] = depth_scan.ptr[0][col_index].l;
-                            depthPatch[1][k] = depth_scan.ptr[1][col_index].l;
-                            depthPatch[2][k] = depth_scan.ptr[2][col_index].l;
-                            depthPatch[3][k] = depth_scan.ptr[3][col_index].l;
-                            depthPatch[4][k] = depth_scan.ptr[4][col_index].l;
+                            int colIndex = i - 1 + k;
+                            if (colIndex < 0)
+                                colIndex = 0;
+                            if (colIndex > w - 1)
+                                colIndex = w - 1;
+
+                            depthPatch[0][k] = depth_scan.ptr[0][colIndex].l;
+                            depthPatch[1][k] = depth_scan.ptr[1][colIndex].l;
+                            depthPatch[2][k] = depth_scan.ptr[2][colIndex].l;
                         }
                     }
 
                     // compute normal
-                    float sx = depthPatch[1][1]
-                        + depthPatch[2][1] * 2
-                        + depthPatch[3][1]
-                        - ( depthPatch[1][3]
-                            + depthPatch[2][3] * 2
-                           + depthPatch[3][3]);
+                    float sx = depthPatch[0][0]
+                        + depthPatch[1][0] * 2
+                        + depthPatch[2][0]
+                        - ( depthPatch[0][2]
+                            + depthPatch[1][2] * 2
+                           + depthPatch[2][2]);
 
-                   float sy = depthPatch[3][1] + depthPatch[3][2] * 2 + depthPatch[3][3]
-                        - ( depthPatch[1][1] + depthPatch[1][2] * 2 + depthPatch[1][3]);
+                   float sy = depthPatch[2][0] + depthPatch[2][1] * 2 + depthPatch[2][2]
+                        - ( depthPatch[0][0] + depthPatch[0][1] * 2 + depthPatch[0][2]);
 
                     // this factor basically tweak normals to make the UI flatter or not
                     // if you change normal filtering, retune this
@@ -259,7 +277,7 @@ class PBRCompositor : Compositor
                              + depthMap.linearSample(3, px, py)
                              + depthMap.linearSample(4, px, py) ) * 0.25f;
 
-                        float diff = depthPatch[2][2] - avgDepthHere;
+                        float diff = depthPatch[1][1] - avgDepthHere;
                         float cavity = void;
                         if (diff >= 0)
                             cavity = 1;
@@ -302,7 +320,7 @@ class PBRCompositor : Compositor
 
                         Image!L16 depthLevel0 = depthMap.levels[0];
 
-                        int depthHere = depthPatch[2][2];
+                        int depthHere = depthPatch[1][1];
                         for (int sample = 1; sample < samples; ++sample)
                         {
                             int x = i + sample;
@@ -368,13 +386,13 @@ class PBRCompositor : Compositor
                         float skyy = 0.5f + ((0.5f + pureReflection.y *0.5f) * (skybox.height - 1));
 
                         // 2nd order derivatives
-                        float depthDX = depthPatch[3][1] + depthPatch[3][2] + depthPatch[3][3]
-                            + depthPatch[1][1] + depthPatch[1][2] + depthPatch[1][3]
-                            - 2 * (depthPatch[2][1] + depthPatch[2][2] + depthPatch[2][3]);
+                        float depthDX = depthPatch[2][0] + depthPatch[2][1] + depthPatch[2][2]
+                            + depthPatch[0][0] + depthPatch[0][1] + depthPatch[0][2]
+                            - 2 * (depthPatch[1][0] + depthPatch[1][1] + depthPatch[1][2]);
 
-                        float depthDY = depthPatch[1][3] + depthPatch[2][3] + depthPatch[3][3]
-                            + depthPatch[1][1] + depthPatch[2][1] + depthPatch[3][1]
-                            - 2 * (depthPatch[1][2] + depthPatch[2][2] + depthPatch[3][2]);
+                        float depthDY = depthPatch[0][2] + depthPatch[1][2] + depthPatch[2][2]
+                            + depthPatch[0][0] + depthPatch[1][0] + depthPatch[2][0]
+                            - 2 * (depthPatch[0][1] + depthPatch[1][1] + depthPatch[2][1]);
 
                         depthDX *= (1 / 256.0f);
                         depthDY *= (1 / 256.0f);
@@ -422,7 +440,7 @@ class PBRCompositor : Compositor
 
                     // Show depth
                     {
-                        //    float depthColor = depthPatch[2][2] / 65535.0f;
+                        //    float depthColor = depthPatch[1][1] / 65535.0f;
                         //    color = vec3f(depthColor);
                     }
 
@@ -431,10 +449,16 @@ class PBRCompositor : Compositor
 
                     //  color = toEye;
                     //color = vec3f(cavity);
+                    assert(color.x >= 0);
+                    assert(color.y >= 0);
+                    assert(color.z >= 0);
 
-                    color.x = gfm.math.clamp(color.x, 0.0f, 1.0f);
-                    color.y = gfm.math.clamp(color.y, 0.0f, 1.0f);
-                    color.z = gfm.math.clamp(color.z, 0.0f, 1.0f);
+                    if (color.x > 1)
+                        color.x = 1;
+                    if (color.y > 1)
+                        color.y = 1;
+                    if (color.z > 1)
+                        color.z = 1;
 
                     int r = cast(int)(color.x * 255.99f);
                     int g = cast(int)(color.y * 255.99f);

@@ -394,71 +394,20 @@ struct Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
                 assert(false);
 
         case cubic:
-           for (int y = updateRect.min.y; y < updateRect.max.y; ++y)
+            static if (is(COLOR == RGBA))
             {
-                int y2m1 = 2 * y - 1;
-                if (y2m1 < 0)
-                    y2m1 = 0;
-
-                int y2p2 = 2 * y + 2;
-                if (y2p2 > previousLevel.h - 1)
-                    y2p2 = previousLevel.h - 1;
-
-                COLOR* LM1 = previousLevel.scanline(y2m1).ptr;
-                COLOR* L0 = previousLevel.scanline(y * 2).ptr;
-                COLOR* L1 = previousLevel.scanline(y * 2 + 1).ptr;
-                COLOR* L2 = previousLevel.scanline(y2p2).ptr;
-                COLOR* dest = thisLevel.scanline(y).ptr;
-
-                for (int x = updateRect.min.x; x < updateRect.max.x; ++x)
-                {
-                    // A B C D
-                    // E F G H
-                    // I J K L
-                    // M N O P
-
-                    int x2m1 = 2 * x - 1;
-                    if (x2m1 < 0)
-                        x2m1 = 0;
-                    int x2p0 = 2 * x;
-                    int x2p1 = 2 * x + 1;
-                    int x2p2 = 2 * x + 2;
-                    if (x2p2 > previousLevel.w - 1)
-                        x2p2 = previousLevel.w - 1;
-
-                    auto A = LM1[x2m1];
-                    auto B = LM1[x2p0];
-                    auto C = LM1[x2p1];
-                    auto D = LM1[x2p2];
-
-                    auto E = L0[x2m1];
-                    auto F = L0[x2p0];
-                    auto G = L0[x2p1];
-                    auto H = L0[x2p2];
-
-                    auto I = L1[x2m1];
-                    auto J = L1[x2p0];
-                    auto K = L1[x2p1];
-                    auto L = L1[x2p2];
-
-                    auto M = L2[x2m1];
-                    auto N = L2[x2p0];
-                    auto O = L2[x2p1];
-                    auto P = L2[x2p2];
-
-                    // Apply filter
-                    // 1 3 3 1
-                    // 3 9 9 3
-                    // 3 9 9 3
-                    // 1 3 3 1
-
-                    COLOR line0 = COLOR.op!q{(a + d + 3 * (b + c) + 4) >> 3}(A, B, C, D);
-                    COLOR line1 = COLOR.op!q{(a + d + 3 * (b + c) + 4) >> 3}(E, F, G, H);
-                    COLOR line2 = COLOR.op!q{(a + d + 3 * (b + c) + 4) >> 3}(I, J, K, L);
-                    COLOR line3 = COLOR.op!q{(a + d + 3 * (b + c) + 4) >> 3}(M, N, O, P);
-                    dest[x] = COLOR.op!q{(a + d + 3 * (b + c) + 4) >> 3}(line0, line1, line2, line3);                  
-                }
+                generateLevelCubicRGBA(thisLevel, previousLevel, updateRect);
+                break;
             }
+            else static if (is(COLOR == L16))
+            {
+                generateLevelCubicL16(thisLevel, previousLevel, updateRect);
+                break;
+            }
+            else
+                static assert(false, "not implemented");
+
+
         }
     }
 
@@ -1357,5 +1306,148 @@ void generateLevelBoxAlphaCovIntoPremulRGBA(Image!RGBA* thisLevel,
         L0 += (2 * previousPitch);
         L1 += (2 * previousPitch);
         dest += thisPitch;
+    }
+}
+
+void generateLevelCubicRGBA(Image!RGBA* thisLevel,
+                            Image!RGBA* previousLevel,
+                            box2i updateRect) nothrow @nogc
+{
+    for (int y = updateRect.min.y; y < updateRect.max.y; ++y)
+    {
+        int y2m1 = 2 * y - 1;
+        if (y2m1 < 0)
+            y2m1 = 0;
+
+        int y2p2 = 2 * y + 2;
+        if (y2p2 > previousLevel.h - 1)
+            y2p2 = previousLevel.h - 1;
+
+        RGBA* LM1 = previousLevel.scanline(y2m1).ptr;
+        RGBA* L0 = previousLevel.scanline(y * 2).ptr;
+        RGBA* L1 = previousLevel.scanline(y * 2 + 1).ptr;
+        RGBA* L2 = previousLevel.scanline(y2p2).ptr;
+        RGBA* dest = thisLevel.scanline(y).ptr;
+
+        for (int x = updateRect.min.x; x < updateRect.max.x; ++x)
+        {
+            // A B C D
+            // E F G H
+            // I J K L
+            // M N O P
+
+            int x2m1 = 2 * x - 1;
+            if (x2m1 < 0)
+                x2m1 = 0;
+            int x2p0 = 2 * x;
+            int x2p1 = 2 * x + 1;
+            int x2p2 = 2 * x + 2;
+            if (x2p2 > previousLevel.w - 1)
+                x2p2 = previousLevel.w - 1;
+
+            auto A = LM1[x2m1];
+            auto B = LM1[x2p0];
+            auto C = LM1[x2p1];
+            auto D = LM1[x2p2];
+
+            auto E = L0[x2m1];
+            auto F = L0[x2p0];
+            auto G = L0[x2p1];
+            auto H = L0[x2p2];
+
+            auto I = L1[x2m1];
+            auto J = L1[x2p0];
+            auto K = L1[x2p1];
+            auto L = L1[x2p2];
+
+            auto M = L2[x2m1];
+            auto N = L2[x2p0];
+            auto O = L2[x2p1];
+            auto P = L2[x2p2];
+
+            // Apply filter
+            // 1 3 3 1
+            // 3 9 9 3
+            // 3 9 9 3
+            // 1 3 3 1
+
+            int rSum = (A.r + D.r + M.r + P.r) + 3 * (B.r + C.r + E.r + H.r + I.r + L.r + N.r + O.r) + 9 * (F.r + G.r + J.r + K.r);
+            int gSum = (A.g + D.g + M.g + P.g) + 3 * (B.g + C.g + E.g + H.g + I.g + L.g + N.g + O.g) + 9 * (F.g + G.g + J.g + K.g);
+            int bSum = (A.b + D.b + M.b + P.b) + 3 * (B.b + C.b + E.b + H.b + I.b + L.b + N.b + O.b) + 9 * (F.b + G.b + J.b + K.b);
+            dest[x].r = cast(ubyte)((rSum + 32) >> 6);
+            dest[x].g = cast(ubyte)((gSum + 32) >> 6);
+            dest[x].b = cast(ubyte)((bSum + 32) >> 6);
+            dest[x].a = 255; // whatever, only use in diffuse upper levels
+        }
+    }
+}
+
+void generateLevelCubicL16(Image!L16* thisLevel,
+                           Image!L16* previousLevel,
+                           box2i updateRect) nothrow @nogc
+{
+    for (int y = updateRect.min.y; y < updateRect.max.y; ++y)
+    {
+        int y2m1 = 2 * y - 1;
+        if (y2m1 < 0)
+            y2m1 = 0;
+
+        int y2p2 = 2 * y + 2;
+        if (y2p2 > previousLevel.h - 1)
+            y2p2 = previousLevel.h - 1;
+
+        L16* LM1 = previousLevel.scanline(y2m1).ptr;
+        L16* L0 = previousLevel.scanline(y * 2).ptr;
+        L16* L1 = previousLevel.scanline(y * 2 + 1).ptr;
+        L16* L2 = previousLevel.scanline(y2p2).ptr;
+        L16* dest = thisLevel.scanline(y).ptr;
+
+        for (int x = updateRect.min.x; x < updateRect.max.x; ++x)
+        {
+            // A B C D
+            // E F G H
+            // I J K L
+            // M N O P
+
+            int x2m1 = 2 * x - 1;
+            if (x2m1 < 0)
+                x2m1 = 0;
+            int x2p0 = 2 * x;
+            int x2p1 = 2 * x + 1;
+            int x2p2 = 2 * x + 2;
+            if (x2p2 > previousLevel.w - 1)
+                x2p2 = previousLevel.w - 1;
+
+            ushort A = LM1[x2m1].l;
+            ushort B = LM1[x2p0].l;
+            ushort C = LM1[x2p1].l;
+            ushort D = LM1[x2p2].l;
+
+            ushort E = L0[x2m1].l;
+            ushort F = L0[x2p0].l;
+            ushort G = L0[x2p1].l;
+            ushort H = L0[x2p2].l;
+
+            ushort I = L1[x2m1].l;
+            ushort J = L1[x2p0].l;
+            ushort K = L1[x2p1].l;
+            ushort L = L1[x2p2].l;
+
+            ushort M = L2[x2m1].l;
+            ushort N = L2[x2p0].l;
+            ushort O = L2[x2p1].l;
+            ushort P = L2[x2p2].l;
+
+            // Apply filter
+            // 1 3 3 1    A B C D
+            // 3 9 9 3    E F G H
+            // 3 9 9 3    I J K L
+            // 1 3 3 1    M N O P
+
+            int depthSum = (A + D + M + P) 
+                         + 3 * (B + C + E + H + I + L + N + O)
+                         + 9 * (F + G + J + K);
+            dest[x].l = cast(ushort)((depthSum + 32) >> 6  );
+        }
     }
 }
