@@ -165,7 +165,7 @@ struct Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
 
                     cvtdq2ps XMM2, XMM2;
                     cvtdq2ps XMM3, XMM3;
-              
+
                     movss XMM4, fxm1;
                     pshufd XMM4, XMM4, 0;
                     movss XMM5, fx;
@@ -1169,7 +1169,7 @@ void generateLevelBoxAlphaCovIntoPremulRGBA(Image!RGBA* thisLevel,
                 movdqa XMM1, XMM3;
                 punpckhqdq XMM1, XMM1;             // Aa Ba Ca Da Aa Ba Ca Da
 
-                add EDI, 4;                
+                add EDI, 4;
 
                 pmaddwd XMM0, XMM1;            // Ar*Aa+Br*Ba Cr*Ca+Dr*Da Ag*Aa+Bg*Ba Cg*Ca+Dg*Da
                 pmaddwd XMM3, XMM1;            // Ab*Aa+Bb*Ba Cb*Ca+Db*Da Aa*Aa+Ba*Ba Ca*Ca+Da*Da
@@ -1188,7 +1188,7 @@ void generateLevelBoxAlphaCovIntoPremulRGBA(Image!RGBA* thisLevel,
 
                 punpcklqdq XMM0, XMM3;     // fR fG fB fA
 
-                
+
                 paddd XMM0, XMM5;
                 psrld XMM0, 10;             // final color in dwords
 
@@ -1198,7 +1198,7 @@ void generateLevelBoxAlphaCovIntoPremulRGBA(Image!RGBA* thisLevel,
                 sub ECX, 1;
                 movd [EDI-4], XMM0;            // dest[x] = A
                 jnz loop_ecx;
-            }           
+            }
         }
         else version(D_InlineAsm_X86_64)
         {
@@ -1235,7 +1235,7 @@ void generateLevelBoxAlphaCovIntoPremulRGBA(Image!RGBA* thisLevel,
                 movdqa XMM1, XMM3;
                 punpckhqdq XMM1, XMM1;             // Aa Ba Ca Da Aa Ba Ca Da
 
-                add RDI, 4;                
+                add RDI, 4;
 
                 pmaddwd XMM0, XMM1;            // Ar*Aa+Br*Ba Cr*Ca+Dr*Da Ag*Aa+Bg*Ba Cg*Ca+Dg*Da
                 pmaddwd XMM3, XMM1;            // Ab*Aa+Bb*Ba Cb*Ca+Db*Da Aa*Aa+Ba*Ba Ca*Ca+Da*Da
@@ -1277,7 +1277,7 @@ void generateLevelBoxAlphaCovIntoPremulRGBA(Image!RGBA* thisLevel,
                 int red =   (A.r * A.a + B.r * B.a + C.r * C.a + D.r * D.a);
                 int green = (A.g * A.a + B.g * B.a + C.g * C.a + D.g * D.a);
                 int blue =  (A.b * A.a + B.b* B.a + C.b * C.a + D.b * D.a);
-                int alpha =  (A.a * A.a + B.a* B.a + C.a * C.a + D.a * D.a);                
+                int alpha =  (A.a * A.a + B.a* B.a + C.a * C.a + D.a * D.a);
                 RGBA finalColor = RGBA( cast(ubyte)((red + 512) >> 10),
                                         cast(ubyte)((green + 512) >> 10),
                                         cast(ubyte)((blue + 512) >> 10),
@@ -1299,7 +1299,7 @@ void generateLevelBoxAlphaCovIntoPremulRGBA(Image!RGBA* thisLevel,
                 int red =   (A.r * A.a + B.r * B.a + C.r * C.a + D.r * D.a);
                 int green = (A.g * A.a + B.g * B.a + C.g * C.a + D.g * D.a);
                 int blue =  (A.b * A.a + B.b* B.a + C.b * C.a + D.b * D.a);
-                int alpha =  (A.a * A.a + B.a* B.a + C.a * C.a + D.a * D.a);                
+                int alpha =  (A.a * A.a + B.a* B.a + C.a * C.a + D.a * D.a);
                 RGBA finalColor = RGBA( cast(ubyte)((red + 512) >> 10),
                                         cast(ubyte)((green + 512) >> 10),
                                        cast(ubyte)((blue + 512) >> 10),
@@ -1421,9 +1421,9 @@ void generateLevelCubicRGBA(Image!RGBA* thisLevel,
                     psrlw XMM3, 6;
                     mov EAX, pDest;
                     packuswb XMM3, XMM2;
-                    
+
                     movd [EAX], XMM3;
-                }   
+                }
             }
             else version(D_InlineAsm_X86_64)
             {
@@ -1468,7 +1468,7 @@ void generateLevelCubicRGBA(Image!RGBA* thisLevel,
                     paddw XMM5, XMM1;
 
                     movdqu XMM0, buf+32;  // I J K L
-                    movdqu XMM1, but+32;
+                    movdqu XMM1, buf+32;
                     punpcklbw XMM0, XMM2; // I J
                     punpckhbw XMM1, XMM2; // K L
                     pmullw XMM0, xmm33339999; // I*3 J*9 in shorts
@@ -1499,7 +1499,7 @@ void generateLevelCubicRGBA(Image!RGBA* thisLevel,
                     packuswb XMM3, XMM2;
 
                     movd [RAX], XMM3;
-                }   
+                }
             }
             else
             {
@@ -1603,10 +1603,10 @@ void generateLevelCubicL16(Image!L16* thisLevel,
             // 3 9 9 3    I J K L
             // 1 3 3 1    M N O P
 
-            int depthSum = (A + D + M + P) 
+            int depthSum = (A + D + M + P)
                          + 3 * (B + C + E + H + I + L + N + O)
                          + 9 * (F + G + J + K);
-            dest[x].l = cast(ushort)((depthSum + 32) >> 6  );                  
+            dest[x].l = cast(ushort)((depthSum + 32) >> 6  );
         }
     }
 }

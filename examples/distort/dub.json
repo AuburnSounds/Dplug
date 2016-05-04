@@ -1,6 +1,9 @@
 {
     "name": "distort",
-    "prettyName": "My Audio Company Distortion",
+
+    "prettyName": "distort",
+    "publicVersion": "1.0.0",
+
     "license": "public domain",
     "importPaths": [ "." ],
     "sourcePaths": [ "." ],
