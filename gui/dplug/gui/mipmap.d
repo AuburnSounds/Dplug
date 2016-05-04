@@ -456,6 +456,11 @@ align(16) static immutable short[8] xmmTwoShort = [ 2, 2, 2, 2, 2, 2, 2, 2 ];
 align(16) static immutable int[4] xmmTwoInt = [ 2, 2, 2, 2 ];
 align(16) static immutable float[4] xmm0_5 = [ 0.5f, 0.5f, 0.5f, 0.5f ];
 align(16) static immutable int[4] xmm512 = [ 512, 512, 512, 512 ];
+align(16) static immutable short[8] xmm11113333 = [ 1, 1, 1, 1, 3, 3, 3, 3 ];
+align(16) static immutable short[8] xmm33331111 = [ 3, 3, 3, 3, 1, 1, 1, 1 ];
+align(16) static immutable short[8] xmm33339999 = [ 3, 3, 3, 3, 9, 9, 9, 9 ];
+align(16) static immutable short[8] xmm99993333 = [ 9, 9, 9, 9, 3, 3, 3, 3 ];
+align(16) static immutable short[8] xmm32       = [ 32, 32, 32, 32, 32, 32, 32, 32 ];
 
 
 void generateLevelBoxRGBA(Image!RGBA* thisLevel,
@@ -1344,39 +1349,195 @@ void generateLevelCubicRGBA(Image!RGBA* thisLevel,
             if (x2p2 > previousLevel.w - 1)
                 x2p2 = previousLevel.w - 1;
 
-            auto A = LM1[x2m1];
-            auto B = LM1[x2p0];
-            auto C = LM1[x2p0+1];
-            auto D = LM1[x2p2];
+            version(D_InlineAsm_X86)
+            {
+                RGBA[16] buf = void;
+                buf[0] = LM1[x2m1];
+                buf[1] = LM1[x2p0];
+                buf[2] = LM1[x2p0+1];
+                buf[3] = LM1[x2p2];
+                buf[4] = L0[x2m1];
+                buf[5] = L0[x2p0];
+                buf[6] = L0[x2p0+1];
+                buf[7] = L0[x2p2];
+                buf[8] = L1[x2m1];
+                buf[9] = L1[x2p0];
+                buf[10] = L1[x2p0+1];
+                buf[11] = L1[x2p2];
+                buf[12] = L2[x2m1];
+                buf[13] = L2[x2p0];
+                buf[14] = L2[x2p0+1];
+                buf[15] = L2[x2p2];
+                RGBA* pDest = dest + x;
 
-            auto E = L0[x2m1];
-            auto F = L0[x2p0];
-            auto G = L0[x2p0+1];
-            auto H = L0[x2p2];
+                asm nothrow @nogc
+                {
+                    movdqu XMM0, buf;  // A B C D
+                    movdqu XMM1, buf;
+                    pxor XMM2, XMM2;      // zeroes
+                    punpcklbw XMM0, XMM2; // A B
+                    punpckhbw XMM1, XMM2; // C D
+                    pmullw XMM0, xmm11113333; // A*1 B*3 in shorts
+                    movdqa XMM3, XMM0;
+                    pmullw XMM1, xmm33331111; // C*3 D*3 in shorts
+                    movdqa XMM5, XMM1;
 
-            auto I = L1[x2m1];
-            auto J = L1[x2p0];
-            auto K = L1[x2p0+1];
-            auto L = L1[x2p2];
+                    movdqu XMM0, buf+16;  // E F G H
+                    movdqu XMM1, buf+16;
+                    punpcklbw XMM0, XMM2; // E F
+                    punpckhbw XMM1, XMM2; // G H
+                    pmullw XMM0, xmm33339999; // E*3 F*9 in shorts
+                    paddw XMM3, XMM0;
+                    pmullw XMM1, xmm99993333; // G*9 H*3 in shorts
+                    paddw XMM5, XMM1;
 
-            auto M = L2[x2m1];
-            auto N = L2[x2p0];
-            auto O = L2[x2p0+1];
-            auto P = L2[x2p2];
+                    movdqu XMM0, buf+32;  // I J K L
+                    movdqu XMM1, buf+32;
+                    punpcklbw XMM0, XMM2; // I J
+                    punpckhbw XMM1, XMM2; // K L
+                    pmullw XMM0, xmm33339999; // I*3 J*9 in shorts
+                    paddw XMM3, XMM0;
+                    pmullw XMM1, xmm99993333; // K*9 L*3 in shorts
+                    paddw XMM5, XMM1;
 
-            // Apply filter
-            // 1 3 3 1
-            // 3 9 9 3
-            // 3 9 9 3
-            // 1 3 3 1
+                    movdqu XMM0, buf+48;  // M N O P
+                    movdqu XMM1, buf+48;
+                    punpcklbw XMM0, XMM2; // M N
+                    punpckhbw XMM1, XMM2; // O P
+                    pmullw XMM0, xmm11113333; // M*1 N*3 in shorts
+                    paddw XMM3, XMM0; // A+E*3+I*3+M B*3+F*9+J*9+3*N
+                    pmullw XMM1, xmm33331111; // O*3 P*1 in shorts
+                    paddw XMM5, XMM1; // C*3+G*9+K*9+O*3 D+H*3+L*3+P
 
-            int rSum = (A.r + D.r + M.r + P.r) + 3 * (B.r + C.r + E.r + H.r + I.r + L.r + N.r + O.r) + 9 * (F.r + G.r + J.r + K.r);
-            int gSum = (A.g + D.g + M.g + P.g) + 3 * (B.g + C.g + E.g + H.g + I.g + L.g + N.g + O.g) + 9 * (F.g + G.g + J.g + K.g);
-            int bSum = (A.b + D.b + M.b + P.b) + 3 * (B.b + C.b + E.b + H.b + I.b + L.b + N.b + O.b) + 9 * (F.b + G.b + J.b + K.b);
-            dest[x].r = cast(ubyte)((rSum + 32) >> 6);
-            dest[x].g = cast(ubyte)((gSum + 32) >> 6);
-            dest[x].b = cast(ubyte)((bSum + 32) >> 6);
-            dest[x].a = 255; // whatever, only use in diffuse upper levels
+                    movdqa XMM0, XMM3;
+                    movdqa XMM1, XMM5;
+                    psrldq XMM0, 8;
+                    psrldq XMM1, 8;
+                    paddw XMM3, XMM0; // A+E*3+I*3+M+B*3+F*9+J*9+3*N garbage(x4)
+                    paddw XMM5, XMM1; // C*3+G*9+K*9+O*3+D+H*3+L*3+P garbage(x4)
+                    paddw XMM3, XMM5; // total-sum garbage(x4)
+
+                    paddw XMM3, xmm32;
+                    psrlw XMM3, 6;
+                    mov EAX, pDest;
+                    packuswb XMM3, XMM2;
+                    
+                    movd [EAX], XMM3;
+                }   
+            }
+            else version(D_InlineAsm_X86_64)
+            {
+                RGBA[16] buf = void;
+                buf[0] = LM1[x2m1];
+                buf[1] = LM1[x2p0];
+                buf[2] = LM1[x2p0+1];
+                buf[3] = LM1[x2p2];
+                buf[4] = L0[x2m1];
+                buf[5] = L0[x2p0];
+                buf[6] = L0[x2p0+1];
+                buf[7] = L0[x2p2];
+                buf[8] = L1[x2m1];
+                buf[9] = L1[x2p0];
+                buf[10] = L1[x2p0+1];
+                buf[11] = L1[x2p2];
+                buf[12] = L2[x2m1];
+                buf[13] = L2[x2p0];
+                buf[14] = L2[x2p0+1];
+                buf[15] = L2[x2p2];
+                RGBA* pDest = dest + x;
+
+                asm nothrow @nogc
+                {
+                    movdqu XMM0, buf;  // A B C D
+                    movdqu XMM1, buf;
+                    pxor XMM2, XMM2;      // zeroes
+                    punpcklbw XMM0, XMM2; // A B
+                    punpckhbw XMM1, XMM2; // C D
+                    pmullw XMM0, xmm11113333; // A*1 B*3 in shorts
+                    movdqa XMM3, XMM0;
+                    pmullw XMM1, xmm33331111; // C*3 D*3 in shorts
+                    movdqa XMM5, XMM1;
+
+                    movdqu XMM0, buf+16;  // E F G H
+                    movdqu XMM1, buf+16;
+                    punpcklbw XMM0, XMM2; // E F
+                    punpckhbw XMM1, XMM2; // G H
+                    pmullw XMM0, xmm33339999; // E*3 F*9 in shorts
+                    paddw XMM3, XMM0;
+                    pmullw XMM1, xmm99993333; // G*9 H*3 in shorts
+                    paddw XMM5, XMM1;
+
+                    movdqu XMM0, buf+32;  // I J K L
+                    movdqu XMM1, but+32;
+                    punpcklbw XMM0, XMM2; // I J
+                    punpckhbw XMM1, XMM2; // K L
+                    pmullw XMM0, xmm33339999; // I*3 J*9 in shorts
+                    paddw XMM3, XMM0;
+                    pmullw XMM1, xmm99993333; // K*9 L*3 in shorts
+                    paddw XMM5, XMM1;
+
+                    movdqu XMM0, buf+48;  // M N O P
+                    movdqu XMM1, buf+48;
+                    punpcklbw XMM0, XMM2; // M N
+                    punpckhbw XMM1, XMM2; // O P
+                    pmullw XMM0, xmm11113333; // M*1 N*3 in shorts
+                    paddw XMM3, XMM0; // A+E*3+I*3+M B*3+F*9+J*9+3*N
+                    pmullw XMM1, xmm33331111; // O*3 P*1 in shorts
+                    paddw XMM5, XMM1; // C*3+G*9+K*9+O*3 D+H*3+L*3+P
+
+                    movdqa XMM0, XMM3;
+                    movdqa XMM1, XMM5;
+                    psrldq XMM0, 8;
+                    psrldq XMM1, 8;
+                    paddw XMM3, XMM0; // A+E*3+I*3+M+B*3+F*9+J*9+3*N garbage(x4)
+                    paddw XMM5, XMM1; // C*3+G*9+K*9+O*3+D+H*3+L*3+P garbage(x4)
+                    paddw XMM3, XMM5; // total-sum garbage(x4)
+
+                    paddw XMM3, xmm32;
+                    psrlw XMM3, 6;
+                    mov RAX, pDest;
+                    packuswb XMM3, XMM2;
+
+                    movd [RAX], XMM3;
+                }   
+            }
+            else
+            {
+                auto A = LM1[x2m1];
+                auto B = LM1[x2p0];
+                auto C = LM1[x2p0+1];
+                auto D = LM1[x2p2];
+
+                auto E = L0[x2m1];
+                auto F = L0[x2p0];
+                auto G = L0[x2p0+1];
+                auto H = L0[x2p2];
+
+                auto I = L1[x2m1];
+                auto J = L1[x2p0];
+                auto K = L1[x2p0+1];
+                auto L = L1[x2p2];
+
+                auto M = L2[x2m1];
+                auto N = L2[x2p0];
+                auto O = L2[x2p0+1];
+                auto P = L2[x2p2];
+
+                // Apply filter
+                // 1 3 3 1
+                // 3 9 9 3
+                // 3 9 9 3
+                // 1 3 3 1
+
+                int rSum = (A.r + D.r + M.r + P.r) + 3 * (B.r + C.r + E.r + H.r + I.r + L.r + N.r + O.r) + 9 * (F.r + G.r + J.r + K.r);
+                int gSum = (A.g + D.g + M.g + P.g) + 3 * (B.g + C.g + E.g + H.g + I.g + L.g + N.g + O.g) + 9 * (F.g + G.g + J.g + K.g);
+                int bSum = (A.b + D.b + M.b + P.b) + 3 * (B.b + C.b + E.b + H.b + I.b + L.b + N.b + O.b) + 9 * (F.b + G.b + J.b + K.b);
+                int aSum = (A.a + D.a + M.a + P.a) + 3 * (B.a + C.a + E.a + H.a + I.a + L.a + N.a + O.a) + 9 * (F.a + G.a + J.a + K.a);
+                dest[x].r = cast(ubyte)((rSum + 32) >> 6);
+                dest[x].g = cast(ubyte)((gSum + 32) >> 6);
+                dest[x].b = cast(ubyte)((bSum + 32) >> 6);
+                dest[x].a = cast(ubyte)((aSum + 32) >> 6);
+            }
         }
     }
 }
@@ -1445,7 +1606,7 @@ void generateLevelCubicL16(Image!L16* thisLevel,
             int depthSum = (A + D + M + P) 
                          + 3 * (B + C + E + H + I + L + N + O)
                          + 9 * (F + G + J + K);
-            dest[x].l = cast(ushort)((depthSum + 32) >> 6  );
+            dest[x].l = cast(ushort)((depthSum + 32) >> 6  );                  
         }
     }
 }
