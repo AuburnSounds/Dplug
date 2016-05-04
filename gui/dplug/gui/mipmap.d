@@ -1340,29 +1340,28 @@ void generateLevelCubicRGBA(Image!RGBA* thisLevel,
             if (x2m1 < 0)
                 x2m1 = 0;
             int x2p0 = 2 * x;
-            int x2p1 = 2 * x + 1;
             int x2p2 = 2 * x + 2;
             if (x2p2 > previousLevel.w - 1)
                 x2p2 = previousLevel.w - 1;
 
             auto A = LM1[x2m1];
             auto B = LM1[x2p0];
-            auto C = LM1[x2p1];
+            auto C = LM1[x2p0+1];
             auto D = LM1[x2p2];
 
             auto E = L0[x2m1];
             auto F = L0[x2p0];
-            auto G = L0[x2p1];
+            auto G = L0[x2p0+1];
             auto H = L0[x2p2];
 
             auto I = L1[x2m1];
             auto J = L1[x2p0];
-            auto K = L1[x2p1];
+            auto K = L1[x2p0+1];
             auto L = L1[x2p2];
 
             auto M = L2[x2m1];
             auto N = L2[x2p0];
-            auto O = L2[x2p1];
+            auto O = L2[x2p0+1];
             auto P = L2[x2p2];
 
             // Apply filter
@@ -1413,29 +1412,28 @@ void generateLevelCubicL16(Image!L16* thisLevel,
             if (x2m1 < 0)
                 x2m1 = 0;
             int x2p0 = 2 * x;
-            int x2p1 = 2 * x + 1;
             int x2p2 = 2 * x + 2;
             if (x2p2 > previousLevel.w - 1)
                 x2p2 = previousLevel.w - 1;
 
             ushort A = LM1[x2m1].l;
             ushort B = LM1[x2p0].l;
-            ushort C = LM1[x2p1].l;
+            ushort C = LM1[x2p0+1].l;
             ushort D = LM1[x2p2].l;
 
             ushort E = L0[x2m1].l;
             ushort F = L0[x2p0].l;
-            ushort G = L0[x2p1].l;
+            ushort G = L0[x2p0+1].l;
             ushort H = L0[x2p2].l;
 
             ushort I = L1[x2m1].l;
             ushort J = L1[x2p0].l;
-            ushort K = L1[x2p1].l;
+            ushort K = L1[x2p0+1].l;
             ushort L = L1[x2p2].l;
 
             ushort M = L2[x2m1].l;
             ushort N = L2[x2p0].l;
-            ushort O = L2[x2p1].l;
+            ushort O = L2[x2p0+1].l;
             ushort P = L2[x2p2].l;
 
             // Apply filter

@@ -67,6 +67,20 @@ class PBRCompositor : Compositor
         {
             _exponentTable[roughByte] = 0.8f * exp( (1-roughByte / 255.0f) * 5.5f);
         }
+
+        // Set standard tables
+        int alignment = 256; // this is necessary for asm optimization of look-up
+        _tableArea.reallocBuffer(256 * 3, alignment);
+        _redTransferTable = _tableArea.ptr;
+        _greenTransferTable = _tableArea.ptr + 256;
+        _blueTransferTable = _tableArea.ptr + 512;
+
+        foreach(i; 0..256)
+        {
+            _redTransferTable[i] = cast(ubyte)i;
+            _greenTransferTable[i] = cast(ubyte)i;
+            _blueTransferTable[i] = cast(ubyte)i;
+        }
     }
 
     ~this()
@@ -102,18 +116,6 @@ class PBRCompositor : Compositor
             float gLift = 0.0f, float gGamma = 1.0f, float gGain = 1.0f, float gContrast = 0.0f,
             float bLift = 0.0f, float bGamma = 1.0f, float bGain = 1.0f, float bContrast = 0.0f)
     {
-        _useTransferTables = true;
-        int alignment = 256; // this is necessary for asm optimization of look-up
-
-        _tableArea.reallocBuffer(256 * 3, alignment);
-        _redTransferTable = _tableArea.ptr;
-        _greenTransferTable = _tableArea.ptr + 256;
-        _blueTransferTable = _tableArea.ptr + 512;
-
-        assert( ( cast(size_t)(_redTransferTable) & 255 ) == 0);
-        assert( ( cast(size_t)(_greenTransferTable) & 255 ) == 0);
-        assert( ( cast(size_t)(_blueTransferTable) & 255 ) == 0);
-
         static float safePow(float a, float b)
         {
             if (a < 0)
@@ -201,19 +203,7 @@ class PBRCompositor : Compositor
                 // Bypass PBR if Physical == 0
                 if (materialHere.a == 0)
                 {
-                    RGBA diffuse = diffuseScan[i];
-                    final switch (pf) with (WindowPixelFormat)
-                    {
-                        case ARGB8:
-                             wfb_scan[i] = RGBA(255, diffuse.r, diffuse.g, diffuse.b);
-                            break;
-                        case BGRA8:
-                             wfb_scan[i] = RGBA(diffuse.b, diffuse.g, diffuse.r, 255);
-                            break;
-                        case RGBA8:
-                             wfb_scan[i] = RGBA(diffuse.r, diffuse.g, diffuse.b, 255);
-                            break;
-                    }
+                    wfb_scan[i] = diffuseScan[i];
                 }
                 else
                 {
@@ -252,13 +242,13 @@ class PBRCompositor : Compositor
                     enum float sz = 260.0f * 257.0f / 1.8f; 
 
                     vec3f normal = vec3f(sx, sy, sz);
-                    normal.normalize();
+                    normal.fastNormalize(); // this makes very, very little difference in output vs normalize
 
                     RGBA ibaseColor = diffuseScan[i];
                     vec3f baseColor = vec3f(ibaseColor.r, ibaseColor.g, ibaseColor.b) * div255;
 
                     vec3f toEye = vec3f(0.5f - i * invW, j * invH - 0.5f, 1.0f);
-                    toEye.normalize();
+                    toEye.fastNormalize(); // this makes very, very little difference in output vs normalize
 
                     vec3f color = vec3f(0.0f);
 
@@ -464,29 +454,13 @@ class PBRCompositor : Compositor
                     int g = cast(int)(color.y * 255.99f);
                     int b = cast(int)(color.z * 255.99f);
 
-                    RGBA finalColor = void;
-
-                    final switch (pf) with (WindowPixelFormat)
-                    {
-                        case ARGB8:
-                            finalColor = RGBA(255, cast(ubyte)r, cast(ubyte)g, cast(ubyte)b);
-                            break;
-                        case BGRA8:
-                            finalColor = RGBA(cast(ubyte)b, cast(ubyte)g, cast(ubyte)r, 255);
-                            break;
-                        case RGBA8:
-                            finalColor = RGBA(cast(ubyte)r, cast(ubyte)g, cast(ubyte)b, 255);
-                            break;
-                    }
-
                     // write composited color
-                    wfb_scan[i] = finalColor;
+                    wfb_scan[i] = RGBA(cast(ubyte)r, cast(ubyte)g, cast(ubyte)b, 255);
                 }
             }
         }
 
-        // Optional look-up table for color-correction
-        if (_useTransferTables)
+        // Look-up table for color-correction and ordering of output
         {
             ubyte* red = _redTransferTable;
             ubyte* green = _greenTransferTable;
@@ -511,7 +485,6 @@ class PBRCompositor : Compositor
 
 private:
     // Assign those to use lookup tables.
-    bool _useTransferTables = false;
     ubyte[] _tableArea = null;
     ubyte* _redTransferTable = null;
     ubyte* _greenTransferTable = null;
@@ -572,6 +545,7 @@ float fastlog2(float val) pure nothrow @nogc
     return fi.f + log_2;
 }
 
+// Apply color correction and convert RGBA8 to ARGB8
 void applyColorCorrectionARGB8(ImageRef!RGBA wfb, box2i area, ubyte* red, ubyte* green, ubyte* blue) nothrow @nogc
 {
     for (int j = area.min.y; j < area.max.y; ++j)
@@ -579,88 +553,28 @@ void applyColorCorrectionARGB8(ImageRef!RGBA wfb, box2i area, ubyte* red, ubyte*
         RGBA* wfb_scan = wfb.scanline(j).ptr;
         for (int i = area.min.x; i < area.max.x; ++i)
         {
-            RGBA color = wfb_scan[i];
-            color.g = red[color.g];
-            color.b = green[color.b];
-            color.a = blue[color.a];
-            wfb_scan[i] = color;
+            immutable RGBA color = wfb_scan[i];
+            wfb_scan[i] = RGBA(255, red[color.r], green[color.g], blue[color.b]);
         }
     }
 }
 
+// Apply color correction and convert RGBA8 to BGRA8
 void applyColorCorrectionBGRA8(ImageRef!RGBA wfb, box2i area, ubyte* red, ubyte* green, ubyte* blue) nothrow @nogc
 {
-    //7.73
-    // Must prove that it gains some speed
-    version(none)
-    //version(D_InlineAsm_X86)
+    int width = area.width();
+    for (int j = area.min.y; j < area.max.y; ++j)
     {
-        int width = area.width();
-        int height = area.height();
-        RGBA* scan = wfb.scanline(area.min.y).ptr + area.min.x;
-        int pitch = wfb.pitch - 4 * width;
-
-        asm nothrow @nogc
+        RGBA* wfb_scan = wfb.scanline(j).ptr;
+        for (int i = area.min.x; i < area.max.x; ++i)
         {
-            push EBX;
-            
-            mov EDI, scan;
-            
-            // since these table are aligned on a 256-byte boundary, we'll use this to compute 
-            // the lookup address cheaply by just changing the last byte
-            mov EAX, red;
-            mov EBX, green;
-            mov ECX, blue;
-
-            y_loop:
-
-                mov ESI, width;
-                x_loop:
-
-                    mov CL, byte ptr [EDI];
-                    mov BL, byte ptr [EDI+1];
-                    mov AL, byte ptr [EDI+2];
-
-                    // look-up
-                    mov CL, byte ptr [ECX];
-                    mov BL, byte ptr [EBX];
-                    mov AL, byte ptr [EAX];
-
-                    mov byte ptr [EDI], CL;
-                    mov byte ptr [EDI+1], BL;
-                    mov byte ptr [EDI+2], AL;
-                    add EDI, 4;
-
-                    sub ESI, 1;
-                jnz x_loop;
-
-                add EDI, pitch;
-                sub height, 1;
-            jnz y_loop;
-
-            pop EBX;
-        }
-
-
-
-    }
-    else
-    {
-        for (int j = area.min.y; j < area.max.y; ++j)
-        {
-            RGBA* wfb_scan = wfb.scanline(j).ptr;
-            for (int i = area.min.x; i < area.max.x; ++i)
-            {
-                RGBA color = wfb_scan[i];
-                color.r = blue[color.r];
-                color.g = green[color.g];
-                color.b = red[color.b];
-                wfb_scan[i] = color;
-            }
+            immutable RGBA color = wfb_scan[i];
+            wfb_scan[i] = RGBA(blue[color.b], green[color.g], red[color.r], 255);
         }
     }
 }
 
+// Apply color correction and do nothing about color order
 void applyColorCorrectionRGBA8(ImageRef!RGBA wfb, box2i area, ubyte* red, ubyte* green, ubyte* blue) nothrow @nogc
 {
     for (int j = area.min.y; j < area.max.y; ++j)
@@ -668,11 +582,8 @@ void applyColorCorrectionRGBA8(ImageRef!RGBA wfb, box2i area, ubyte* red, ubyte*
         RGBA* wfb_scan = wfb.scanline(j).ptr;
         for (int i = area.min.x; i < area.max.x; ++i)
         {
-            RGBA color = wfb_scan[i];
-            color.r = red[color.r];
-            color.g = green[color.g];
-            color.b = blue[color.b];
-            wfb_scan[i] = color;
+            immutable RGBA color = wfb_scan[i];
+            wfb_scan[i] = RGBA(red[color.r], green[color.g], blue[color.b], 255);
         }
     }
 }
