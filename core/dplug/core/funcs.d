@@ -3,6 +3,11 @@ module dplug.core.funcs;
 import std.math;
 import gfm.core;
 
+version(LDC)
+{
+    import ldc.intrinsics;
+}
+
 immutable real TAU = PI * 2;
 
 /** Four Character Constant (for AEffect->uniqueID) */
@@ -263,3 +268,98 @@ else version(D_InlineAsm_X86_64)
     private enum D_InlineAsm_Any = true;
 else
     private enum D_InlineAsm_Any = false;
+
+// These functions trade correctness for speed
+// The contract is that they don't check for infinity or NaN
+// and assume small finite numbers instead.
+// Don't rely on them being correct for your situation: test them.
+
+///
+T fast_pow(T)(T val, T power)
+{
+    version(LDC)
+        return llvm_pow(val, power);
+    else
+        return pow(val, power);
+}
+
+///
+T fast_exp(T)(T val, T)
+{
+    version(LDC)
+        return llvm_exp(val);
+    else
+        return exp(val);
+}
+
+///
+T fast_log(T)(T val)
+{
+    version(LDC)
+        return llvm_log(val);
+    else
+        return log(val);
+}
+
+///
+T fast_floor(T)(T val)
+{
+    version(LDC)
+        return llvm_floor(val);
+    else
+        return log(val);
+}
+
+///
+T fast_ceil(T)(T val)
+{
+    version(LDC)
+        return llvm_ceil(val);
+    else
+        return ceil(val);
+}
+
+///
+T fast_trunc(T)(T val)
+{
+    version(LDC)
+        return llvm_trunc(val);
+    else
+        return trunc(val);
+}
+
+///
+T fast_round(T)(T val)
+{
+    version(LDC)
+        return llvm_round(val);
+    else
+        return round(val);
+}
+
+///
+T fast_exp2(T)(T val)
+{
+    version(LDC)
+        return llvm_exp2(val);
+    else
+        return exp2(val);
+}
+
+///
+T fast_log10(T)(T val)
+{
+    version(LDC)
+        return llvm_log10(val);
+    else
+        return log10(val);
+}
+
+///
+T fast_log2(T)(T val)
+{
+    version(LDC)
+        return llvm_log2(val);
+    else
+        return log2(val);
+}
