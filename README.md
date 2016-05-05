@@ -47,22 +47,20 @@ https://auburnsounds.com/blog/2016-02-08_Making-a-Windows-VST-plugin-with-D.html
 
 ### Examples
    * `examples/distort`: mandatory distortion plugin
+   * `examples/ms-encode`: simplest plugin for tutorial purpose
    * `examples/time_stretch`: resampling x2 through FFT zero-padding
-   * `examples/just_windowing`: test program for the windowing sub-package
 
 ### Tools
    * `tools/pbr-sketch`: workspace for creating plugin background textures
    * `tools/release`: DUB frontend to build Mac bundles and use LDC with proper envvars
-   * `tools/ldvst`: small plugin host for testing loading, in D
    * `tools/process`: test plugin host for testing audio processing speed/reproducibility, in D
-   * `tools/ldvst-cpp`: test plugin host for testing loading, in C++
    * `tools/wav-compare`: comparison of WAV files
    * `tools/lift-gamma-gain`: tool to adjust color correction curves on a "finished" UI
 
 
 ## How to build plugins
 
-- Use the DMD >= 2.067 compiler or the LDC >= 1.0.0-b1
+- Use the DMD >= 2.067 compiler or the LDC >= 1.0.0
 - Install DUB, the D package manager: http://code.dlang.org/download
 - Compiling for Mac or with LDC? Clone and build DUB master: https://github.com/D-Programming-Language/dub for correct flags
 - go in the `examples/distort` directory
@@ -131,17 +129,15 @@ Windows XP+
 - What is the minimum OSX version supported?
 
 Mac OS X 10.7+
-Probably possible to go below, to do that modify the "release" tool.
+Probably possible to go below in cases, but impractical. To try that modify the "release" tool.
 
-- What D compiler should I use?
+- What D compiler can possibly be used?
 
-   * DMD >= 2.067
-
-   * LDC >= 0.16.0
+   See `.travis.yml` for supported compilers.
 
 - Is dplug stable?
 
-No. The interface tend to change especially in dplug:dsp.
+No. The interface tend to change for improvements.
 Pin the version you use using DUB version specifications.
 
 ![Rendering](rendering.jpg)
