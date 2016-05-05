@@ -44,6 +44,26 @@ interface IHostCommand
     DAW getDAW();
 }
 
+// Plugin version in major.minor.patch form.
+struct PluginVersion
+{
+    int major;
+    int minor;
+    int patch;
+
+    int toVSTVersion() pure const nothrow @nogc
+    {
+        assert(major < 10 && minor < 10 && patch < 10);
+        return major * 1000 + minor * 100 + patch*10;
+    }
+
+    int toAUVersion() pure const nothrow @nogc
+    {
+        assert(major < 256 && minor < 256 && patch < 256);
+        return (major << 16) | (minor << 8) | patch;
+    }
+}
+
 // Statically known features of the plugin.
 // There is some default for explanation purpose, but you really ought to override them all.
 struct PluginInfo
@@ -59,9 +79,7 @@ struct PluginInfo
     /// get a sufficiently random one to avoid conflicts.
     int pluginID = CCONST('g', 'f', 'm', '0');
 
-    // Plugin version in x.x.x.x decimal form.
-    // Major.Minor.Patch.Rev
-    int pluginVersion = 1000;
+    PluginVersion pluginVersion = PluginVersion(0, 0, 0); // for AU, 0.x.y means "do not cache", useful in development
 }
 
 /// This allows to write things life tempo-synced LFO.
@@ -356,7 +374,7 @@ public:
     }
 
     /// Returns: Plugin version in x.x.x.x decimal form.
-    final int getPluginVersion() pure const nothrow @nogc
+    final PluginVersion getPluginVersion() pure const nothrow @nogc
     {
         return _info.pluginVersion;
     }

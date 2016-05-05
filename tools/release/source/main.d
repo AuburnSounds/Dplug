@@ -3,6 +3,7 @@ import std.file;
 import std.stdio;
 import std.string;
 import std.path;
+import std.regex;
 import std.conv;
 import std.uuid;
 
@@ -137,7 +138,7 @@ int main(string[] args)
             return 0;
         }
 
-        Plugin plugin = readDubDescription();
+        Plugin plugin = readPluginDescription();
         string dirName = "builds";
 
         void fileMove(string source, string dest)
@@ -172,10 +173,10 @@ int main(string[] args)
                 string rsrcPath = null;
                 version(OSX)
                 {
-                    // Make icns and copy it (if any provided in dub.json)
+                    // Make icns and copy it (if any provided in plugin.json)
                     if (configIsAU(config))
                     {
-                        rsrcPath = makeRSRC(plugin.name, arch, verbose);
+                        rsrcPath = makeRSRC(plugin, arch, verbose);
                     }
                 }
 
@@ -202,7 +203,7 @@ int main(string[] args)
                     }
 
                     // On Windows, simply copy the file
-                    fileMove(plugin.outputFile, path ~ "/" ~ appendBitness(plugin.outputFile));
+                    fileMove(plugin.targetFileName, path ~ "/" ~ appendBitness(plugin.targetFileName)); // TODO: use pretty name
                 }
                 else version(OSX)
                 {
@@ -251,7 +252,7 @@ int main(string[] args)
                     }
                     else
                     {
-                        fileMove(plugin.outputFile, exePath);
+                        fileMove(plugin.targetFileName, exePath);
                     }
                 }
             }
@@ -266,18 +267,18 @@ int main(string[] args)
         string iconPath = null;
         version(OSX)
         {
-            // Make icns and copy it (if any provided in dub.json)
+            // Make icns and copy it (if any provided in plugin.json)
             if (plugin.iconPath)
             {
                 iconPath = makeMacIcon(plugin.name, plugin.iconPath); // TODO: this should be lazy
             }
         }
 
-        // Copy license (if any provided in dub.json)
+        // Copy license (if any provided in plugin.json)
         if (plugin.licensePath)
             std.file.copy(plugin.licensePath, dirName ~ "/" ~ baseName(plugin.licensePath));
 
-        // Copy user manual (if any provided in dub.json)
+        // Copy user manual (if any provided in plugin.json)
         if (plugin.userManualPath)
             std.file.copy(plugin.userManualPath, dirName ~ "/" ~ baseName(plugin.userManualPath));
 
@@ -377,18 +378,31 @@ void buildPlugin(string compiler, string config, string build, bool is64b, bool 
 struct Plugin
 {
     string name;       // name, extracted from dub.json(eg: 'distort')
-    string ver;        // version information
-    string outputFile; // result of build
+    string targetFileName; // result of build
     string copyright;  // Copyright information, copied in the bundle
     string CFBundleIdentifierPrefix;
     string userManualPath; // can be null
     string licensePath;    // can be null
     string iconPath;       // can be null or a path to a (large) .png
-    string prettyName;     // Prettier name, extracted from dub.json (eg: 'My Company Distorter')
-    string publicVersion;  // Public version of the plugin, has nothing to do with what DUB says.
+    string prettyName;     // Prettier name, extracted from plugin.json (eg: 'My Company Distorter')
+
+    string pluginUniqueID;
+    string manufacturerName;
+    string manufacturerUniqueID;
+
+    // Public version of the plugin
+    // Each release of a plugin should upgrade the version somehow
+    int publicVersionMajor;
+    int publicVersionMinor;
+    int publicVersionPatch;
+
+    string publicVersionString() pure const nothrow
+    {
+        return to!string(publicVersionMajor) ~ "." ~ to!string(publicVersionMinor) ~ "." ~ to!string(publicVersionMinor);
+    }
 }
 
-Plugin readDubDescription()
+Plugin readPluginDescription()
 {
     Plugin result;
     auto dubResult = execute(["dub", "describe"]);
@@ -407,8 +421,7 @@ Plugin readDubDescription()
         if (name == mainPackage)
         {
             result.name = name;
-            result.ver = pack["version"].str;
-            result.outputFile = pack["targetFileName"].str;
+            result.targetFileName = pack["targetFileName"].str;
 
             string copyright = pack["copyright"].str;
 
@@ -416,7 +429,7 @@ Plugin readDubDescription()
             {
                 version(OSX)
                 {
-                    throw new Exception("Your dub.json is missing a non-empty \"copyright\" field to put in Info.plist");
+                    throw new Exception("Your plugin.json is missing a non-empty \"copyright\" field to put in Info.plist");
                 }
                 else
                     writeln("warning: missing \"copyright\" field in dub.json");
@@ -425,71 +438,117 @@ Plugin readDubDescription()
         }
     }
 
-    // Open dub.json directly to find keys that DUB doesn't bypass
-    JSONValue rawDubFile = parseJSON(cast(string)(std.file.read("dub.json")));
-
-    try
-    {
-        result.CFBundleIdentifierPrefix = rawDubFile["CFBundleIdentifierPrefix"].str;
-    }
-    catch(Exception e)
-    {
-        version (OSX)
-            throw new Exception("Your dub.json is missing a non-empty \"CFBundleIdentifierPrefix\" field to put in Info.plist");
-        else
-            writeln("warning: missing \"CFBundleIdentifierPrefix\" field in dub.json");
-    }
-
-    try
-    {
-        result.userManualPath = rawDubFile["userManualPath"].str;
-    }
-    catch(Exception e)
-    {
-        writeln("info: no \"userManualPath\" provided in dub.json (eg: \"UserManual.pdf\")");
-    }
-
-    try
-    {
-        result.licensePath = rawDubFile["licensePath"].str;
-    }
-    catch(Exception e)
-    {
-        writeln("info: no \"licensePath\" provided in dub.json (eg: \"license.txt\")");
-    }
+    // Open an eventual plugin.json directly to find keys that DUB doesn't bypass
+    JSONValue rawPluginFile = parseJSON(cast(string)(std.file.read("plugin.json")));
 
     // prettyName is the fancy Manufacturer + Product name that will be displayed as much as possible in:
     // - bundle name
     // - renamed executable file names
     try
     {
-        result.prettyName = rawDubFile["prettyName"].str;
+        result.prettyName = rawPluginFile["prettyName"].str;
     }
     catch(Exception e)
     {
-        writeln("info: no \"prettyName\" provided in dub.json (eg: \"My Company Compressor\"). Using \"name\" key instead.");
+        writeln("info: no \"prettyName\" provided in plugin.json (eg: \"My Company Compressor\"). Using \"name\" key instead.");
         result.prettyName = result.name;
     }
 
     // In developpement, should stay at 0.x.y to avoid various AU caches
+    string publicV;
     try
     {
-        result.publicVersion = rawDubFile["publicVersion"].str;
+        publicV = rawPluginFile["publicVersion"].str;
     }
     catch(Exception e)
     {
-        writeln("info: no \"publicVersion\" provided in dub.json (eg: \"1.0.1\"). Using \"0.0.0\" instead.");
-        result.publicVersion = "0.0.0";
+        writeln("warning: no \"publicVersion\" provided in plugin.json (eg: \"1.0.1\"). Using \"0.0.0\" instead.");
+        publicV = "0.0.0";
+    }
+
+    if (auto captures = matchFirst(publicV, regex(`(\d+)\.(\d+)\.(\d+)`)))
+    {
+        result.publicVersionMajor = to!int(captures[1]);
+        result.publicVersionMinor = to!int(captures[2]);
+        result.publicVersionPatch = to!int(captures[3]);
+    }
+    else
+    {
+        throw new Exception("\"publicVersion\" should follow the form x.y.z with 3 integers (eg: \"1.0.0\")");
     }
 
     try
     {
-        result.iconPath = rawDubFile["iconPath"].str;
+        result.userManualPath = rawPluginFile["userManualPath"].str;
     }
     catch(Exception e)
     {
-        writeln("info: no \"iconPath\" provided in dub.json");
+        writeln("info: no \"userManualPath\" provided in plugin.json (eg: \"UserManual.pdf\")");
     }
+
+    try
+    {
+        result.licensePath = rawPluginFile["licensePath"].str;
+    }
+    catch(Exception e)
+    {
+        writeln("info: no \"licensePath\" provided in plugin.json (eg: \"license.txt\")");
+    }
+
+    try
+    {
+        result.CFBundleIdentifierPrefix = rawPluginFile["CFBundleIdentifierPrefix"].str;
+    }
+    catch(Exception e)
+    {
+        version (OSX)
+            throw new Exception("Your plugin.json is missing a non-empty \"CFBundleIdentifierPrefix\" field to put in Info.plist");
+        else
+            writeln("warning: missing \"CFBundleIdentifierPrefix\" field in plugin.json");
+    }
+
+    try
+    {
+        result.iconPath = rawPluginFile["iconPath"].str;
+    }
+    catch(Exception e)
+    {
+        writeln("info: no \"iconPath\" provided in plugin.json");
+    }
+
+    try
+    {
+        result.manufacturerName = rawPluginFile["manufacturerName"].str;
+    }
+    catch(Exception e)
+    {
+        writeln("info: no \"manufacturerName\" provided in plugin.json (eg: \"Example Corp\")");
+    }
+
+    try
+    {
+        result.manufacturerUniqueID = rawPluginFile["manufacturerUniqueID"].str;
+    }
+    catch(Exception e)
+    {
+        writeln("warning: no \"manufacturerUniqueID\" provided in plugin.json (eg: \"aucd\")");
+    }
+
+    if (result.manufacturerUniqueID.length != 4)
+        throw new Exception("\"manufacturerUniqueID\" should be a string of 4 characters (eg: \"aucd\")");
+
+    try
+    {
+        result.pluginUniqueID = rawPluginFile["pluginUniqueID"].str;
+    }
+    catch(Exception e)
+    {
+        writeln("warning: no \"pluginUniqueID\" provided in plugin.json (eg: \"val8\")");
+    }
+
+    if (result.pluginUniqueID.length != 4)
+        throw new Exception("\"pluginUniqueID\" should be a string of 4 characters (eg: \"val8\")");
+
     return result;
 }
 
@@ -507,7 +566,7 @@ string makePListFile(Plugin plugin, string config, bool hasIcon)
 {
     string copyright = plugin.copyright;
 
-    string productVersion = plugin.publicVersion;
+    string productVersion = plugin.publicVersionString;
     string content = "";
 
     content ~= `<?xml version="1.0" encoding="UTF-8"?>` ~ "\n";
@@ -534,15 +593,12 @@ string makePListFile(Plugin plugin, string config, bool hasIcon)
         writeln(`warning: your configuration name doesn't start with "VST" or "AU"`);
         CFBundleIdentifier = plugin.CFBundleIdentifierPrefix ~ "." ~ plugin.name;
     }
-    addKeyString("CFBundleIdentifier", CFBundleIdentifier);
-    addKeyString("CFBundleExecutable", plugin.prettyName);
     addKeyString("CFBundleName", plugin.prettyName);
+    addKeyString("CFBundleIdentifier", CFBundleIdentifier);
 
-    // This doesn't seem needed afterall
-    /*if (configIsAU(config))
-    {
-        addKeyString("NSPrincipalClass", "dplug_view");
-    }*/
+    addKeyString("CFBundleVersion", productVersion);
+    addKeyString("CFBundleShortVersionString", productVersion);
+    addKeyString("CFBundleExecutable", plugin.prettyName);
 
     enum isAudioComponentAPIImplemented = false;
 
@@ -556,7 +612,7 @@ string makePListFile(Plugin plugin, string config, bool hasIcon)
         content ~= "                <key>subtype</key>\n";
         content ~= "                <string>dely</string>\n";
         content ~= "                <key>manufacturer</key>\n";
-        content ~= "                <string>ABAB</string>\n"; // TODO change
+        content ~= "                <string>" ~ plugin.manufacturerUniqueID ~ "</string>\n"; // TODO XML escape that
         content ~= "                <key>name</key>\n";
         content ~= format("                <string>%s</string>\n", plugin.name);
         content ~= "                <key>version</key>\n";
@@ -570,11 +626,11 @@ string makePListFile(Plugin plugin, string config, bool hasIcon)
 
     addKeyString("CFBundleInfoDictionaryVersion", "6.0");
     addKeyString("CFBundlePackageType", "BNDL");
-    addKeyString("CFBundleShortVersionString", productVersion);
+
     addKeyString("CFBundleSignature", "ABAB"); // doesn't matter http://stackoverflow.com/questions/1875912/naming-convention-for-cfbundlesignature-and-cfbundleidentifier
-    addKeyString("CFBundleVersion", productVersion);
+
     addKeyString("LSMinimumSystemVersion", "10.7.0");
-    content ~= "        <key>VSTWindowCompositing</key><true/>\n";
+   // content ~= "        <key>VSTWindowCompositing</key><true/>\n";
 
     if (hasIcon)
         addKeyString("CFBundleIconFile", "icon");
@@ -617,8 +673,9 @@ string makeMacIcon(string pluginName, string pngPath)
     return outputIcon;
 }
 
-string makeRSRC(string pluginName, Arch arch, bool verbose)
+string makeRSRC(Plugin plugin, Arch arch, bool verbose)
 {
+    string pluginName = plugin.name;
     writefln("Generating a .rsrc file for %s arch...", to!string(arch));
     string temp = tempDir();
 
@@ -627,9 +684,13 @@ string makeRSRC(string pluginName, Arch arch, bool verbose)
     auto rFile = File(rPath, "w");
     static immutable string rFileBase = cast(string) import("plugin-base.r");
 
-    rFile.writefln(`#define PLUG_NAME "%s"`, pluginName);
-    rFile.writeln("#define PLUG_MFR_ID 'ABAB'");
-    rFile.writeln("#define PLUG_VER 0x00010000"); // TODO change this actual plugin version
+    string plugVer = to!string((plugin.publicVersionMajor << 16) | (plugin.publicVersionMinor << 8) | plugin.publicVersionPatch);
+
+    writefln("Writing version plugVer = %s", plugVer);
+    rFile.writefln(`#define PLUG_NAME "%s"`, pluginName); // no escaping there, TODO
+    rFile.writefln("#define PLUG_MFR_ID '%s'", plugin.manufacturerUniqueID);
+    rFile.writefln("#define PLUG_VER %s", plugVer);
+    rFile.writefln("#define PLUG_UNIQUE_ID '%s'", plugin.pluginUniqueID);
 
     rFile.writeln(rFileBase);
     rFile.close();

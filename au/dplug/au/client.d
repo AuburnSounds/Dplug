@@ -550,18 +550,9 @@ private:
 
         switch(select)
         {
-
             case kComponentVersionSelect: // -4, S
             {
-                int versionMMPR = _client.getPluginVersion();
-                int major = versionMMPR / 1000;
-                versionMMPR %= 1000;
-                int minor = versionMMPR / 100;
-                versionMMPR %= 100;
-                int patch = versionMMPR / 10;
-
-                // rev not included
-                return (major << 16) | (minor << 8) | patch;
+                return _client.getPluginVersion().toAUVersion;
             }
 
             case kComponentCanDoSelect: // -3, S
@@ -1675,7 +1666,7 @@ private:
         if (r != noErr)
             return r;
         CFMutableDictionaryRef pDict = CFDictionaryCreateMutable(null, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
-        int version_ = _client.getPluginVersion();
+        int version_ = _client.getPluginVersion().toAUVersion;
         putNumberInDict(pDict, kAUPresetVersionKey, &version_, kCFNumberSInt32Type);
         putNumberInDict(pDict, kAUPresetTypeKey, &(cd.componentType), kCFNumberSInt32Type);
         putNumberInDict(pDict, kAUPresetSubtypeKey, &(cd.componentSubType), kCFNumberSInt32Type);

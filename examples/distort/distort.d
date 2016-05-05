@@ -58,7 +58,7 @@ public:
         info.productName = "Destructatorizer";
         info.effectName = "Destructatorizer";
         info.vendorName = "Distort Audio Ltd.";
-        info.pluginVersion = 1000;
+        info.pluginVersion = PluginVersion(1, 0, 0);
         return info;
     }
 
@@ -209,8 +209,8 @@ public:
         super(620, 330); // initial size
 
         // Font data is bundled as a static array
-        _font = new Font(cast(ubyte[])( import("VeraBd.ttf") ));
-        context.setSkybox( loadImage(cast(ubyte[])(import("skybox.jpg"))) );
+        _font = new Font(cast(ubyte[])( import("fonts/VeraBd.ttf") ));
+        context.setSkybox( loadImage(cast(ubyte[])(import("gfx/skybox.jpg"))) );
 
         // Buils the UI hierarchy
         addChild(inputSlider = new UISlider(context(), cast(FloatParameter) _client.param(paramInput)));

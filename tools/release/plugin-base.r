@@ -1,10 +1,9 @@
 #define PLUG_MFR "WittyAudio"
 
 
-// TODO: this should be set by release tool by reading the dub.json keys
+// TODO: this should be set by release tool by reading the plugin.json keys (from CT)
 #define PLUG_IS_INST 0
 #define PLUG_DOES_MIDI 0
-#define PLUG_UNIQUE_ID 'gfm0'
 
 #define UseExtendedThingResource 1
 #include <CoreServices/CoreServices.r>

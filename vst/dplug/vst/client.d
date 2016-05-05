@@ -118,7 +118,7 @@ public:
         assert(_maxParams >= 0 && _maxInputs >= 0 && _maxOutputs >= 0);
         _effect.numParams = cast(int)(client.params().length);
         _effect.numPrograms = cast(int)(client.presetBank().numPresets());
-        _effect.version_ = client.getPluginVersion();
+        _effect.version_ = client.getPluginVersion().toVSTVersion();
         _effect.uniqueID = client.getPluginID();
         _effect.processReplacing = &processReplacingCallback;
         _effect.dispatcher = &dispatcherCallback;

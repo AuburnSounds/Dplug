@@ -1,16 +1,13 @@
 {
     "name": "distort",
 
-    "prettyName": "distort",
-    "publicVersion": "1.0.0",
-
     "license": "public domain",
     "importPaths": [ "." ],
     "sourcePaths": [ "." ],
-    "stringImportPaths": ["fonts", "gfx"],
+    "stringImportPaths": ["."],
 
     "copyright": "none",
-    "CFBundleIdentifierPrefix": "com.audiocompany",
+
 
     "sourceFiles-windows-dmd": [
         "./module.def"
