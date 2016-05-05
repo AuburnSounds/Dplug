@@ -1,1 +1,0 @@
-A tool that was made to test dynlib load/unload on Mac.
