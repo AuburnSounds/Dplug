@@ -142,6 +142,27 @@ string toString(Arch arch)
     }
 }
 
+string toStringArchs(Arch[] archs)
+{
+    string r = "";
+    foreach(int i, arch; archs)
+    {
+        final switch(arch) with (Arch)
+        {
+            case x86:
+                if (i) r ~= " and ";
+                r ~= "32-bit";
+                break;
+            case x64:
+                if (i) r ~= " and ";
+                r ~= "64-bit";
+                break;
+            case universalBinary: break;
+        }
+    }
+    return r;
+}
+
 int main(string[] args)
 {
     try
@@ -223,6 +244,8 @@ int main(string[] args)
             return 0;
         }
 
+        cwriteln("*** Reading dub.json and plugin.json...".white);
+
         Plugin plugin = readPluginDescription();
         string dirName = "builds";
 
@@ -237,6 +260,16 @@ int main(string[] args)
         static string outputDirectory(string dirName, string osString, Arch arch, string config)
         {
             return format("%s/%s-%s-%s", dirName, osString, toString(arch), config); // no spaces because of lipo call
+        }
+
+        {
+            cwriteln();
+            string dot = ".".green;
+            cwritefln("=> The task is to bundle plugin ".green ~ "%s".yellow ~ " from manufacturer ".green ~ "%s".yellow ~ dot, plugin.prettyName, plugin.manufacturerName);
+            cwritefln("   This plugin will be working in ".green ~ "%s".yellow~dot, toStringArchs(archs));
+            cwritefln("   The choosen configuration is ".green ~ "%s".yellow~dot, config);
+            cwritefln("   The choosen build type is ".green ~ "%s".yellow ~ dot, build);
+            cwriteln();
         }
 
         void buildAndPackage(string compiler, string config, Arch[] architectures, string iconPath)
@@ -428,7 +461,7 @@ void buildPlugin(string compiler, string config, string build, bool is64b, bool 
         combined = true; // for -FPIC
     }
 
-    cwritefln("*** Building with %s, %s arch".white, compiler, is64b ? "64-bit" : "32-bit");
+    cwritefln("*** Building with %s, %s arch...".white, compiler, is64b ? "64-bit" : "32-bit");
     // build the output file
     string arch = is64b ? "x86_64" : "x86";
 
@@ -763,7 +796,7 @@ string makeMacIcon(string pluginName, string pngPath)
 string makeRSRC(Plugin plugin, Arch arch, bool verbose)
 {
     string pluginName = plugin.name;
-    cwritefln("*** Generating a .rsrc file for %s arch...".white, to!string(arch));
+    cwritefln("*** Generating a .rsrc file for the bundle...".white);
     string temp = tempDir();
 
     string rPath = buildPath(temp, "plugin.r");
