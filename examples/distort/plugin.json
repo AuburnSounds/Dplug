@@ -1,8 +1,8 @@
 {
     "prettyName": "distort",
-    "manufacturerName": "ExampleAudio",
+    "manufacturerName": "Witty Audio",
     "manufacturerUniqueID": "Wity",
-    "pluginUniqueID": "wit0",
-    "publicVersion": "0.0.0",
-    "CFBundleIdentifierPrefix": "com.exampleaudio"
+    "pluginUniqueID": "WiDi",
+    "publicVersion": "1.0.0",
+    "CFBundleIdentifierPrefix": "com.wittyaudio"
 }

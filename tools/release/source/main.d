@@ -7,19 +7,91 @@ import std.regex;
 import std.conv;
 import std.uuid;
 
+import colorize;
 
-// Builds plugins and make an archive
+string white(string s) @property
+{
+    return s.color(fg.light_white);
+}
+
+string grey(string s) @property
+{
+    return s.color(fg.white);
+}
+
+string cyan(string s) @property
+{
+    return s.color(fg.light_cyan);
+}
+
+string green(string s) @property
+{
+    return s.color(fg.light_green);
+}
+
+string yellow(string s) @property
+{
+    return s.color(fg.light_yellow);
+}
+
+string red(string s) @property
+{
+    return s.color(fg.light_red);
+}
 
 void usage()
 {
-    writeln("usage: release -c <compiler> -a <arch> -b <build>");
-    writeln("  -a                selects arch x86|x64|all (default: win => all   mac => x64)");
-    writeln("  -b                selects builds (default: release-nobounds)");
-    writeln("  -c                selects compiler dmd|ldc|gdc|all (default: ldc)");
-    writeln("  --config          selects configuration VST|AU|<other> (default: VST)");
-    writeln("  -f|--force        selects compiler dmd|ldc|gdc|all (default: no)");
-    writeln("  -comb|--combined  combined build (default: no)");
-    writeln("  -h|--help         shows this help");
+
+    void flag(string arg, string desc, string possibleValues, string defaultDesc)
+    {
+        string argStr = format("        %s", arg);
+        cwrite(argStr.cyan);
+        for(size_t i = argStr.length; i < 24; ++i)
+            write(" ");
+        cwritefln("%s".white, desc);
+        if (possibleValues)
+            cwritefln("                        Possible values: ".grey ~ "%s".color(fg.light_yellow), possibleValues);
+        if (defaultDesc)
+            cwritefln("                        Default: ".grey ~ "%s".color(fg.cyan), defaultDesc);
+        cwriteln;
+    }
+
+    cwriteln();
+    cwriteln( "This is the ".white ~ "release".cyan ~ " tool: plugin bundler and DUB front-end.".white);
+    cwriteln();
+    cwriteln("FLAGS:".white);
+    cwriteln();
+    flag("-a", "Selects target architecture.", "x86 | x86_64 | all", "Windows => all   OSX => x86_64");
+    flag("-b", "Selects build type.", "same ones as dub accepts", "debug");
+    flag("-c", "Selects D compiler.", "dmd | ldc | gdc", "ldc");
+    flag("--config", "Selects build configuration.", "VST | AU | name starting with \"VST\" | name starting with \"AU\"", "ldc");
+    flag("-f|--force", "Forces rebuild", null, "no");
+    flag("--combined", "Combined build", null, "no");
+    flag("-h|--help", "Shows this help", null, null);
+
+    cwriteln();
+    cwriteln("EXAMPLES".white);
+    cwriteln();
+    cwriteln("        # Releases a final VST plugin for all architectures".green);
+    cwriteln("        release -c ldc -a all -b release-nobounds --combined".cyan);
+    cwriteln();
+    cwriteln("        # Builds a 32-bit Audio Unit plugin for profiling".green);
+    cwriteln("        release -c dmd -a x86 --config AU -b release-debug".cyan);
+    cwriteln();
+    cwriteln("        # Shows help".green);
+    cwriteln("        release -h".cyan);
+
+    cwriteln();
+    cwriteln("NOTES".white);
+    cwriteln();
+    cwriteln("      The configuration name used with " ~ "--config".cyan ~ " must exist in your dub.json file.");
+    cwriteln();
+    cwriteln("      --combined".cyan ~ " has no effect on code speed, but can avoid flags problems.".grey);
+    cwriteln();
+    cwriteln("      release".cyan ~ " expects a " ~ "plugin.json".cyan ~ " file for proper bundling and will provide help".grey);
+    cwriteln("      for populating it. For other informations it reads the " ~ "dub.json".cyan ~ " file.".grey);
+    cwriteln();
+    cwriteln();
 }
 
 enum Compiler
@@ -27,7 +99,6 @@ enum Compiler
     ldc,
     gdc,
     dmd,
-    all
 }
 
 enum Arch
@@ -96,23 +167,21 @@ int main(string[] args)
                     compiler = Compiler.gdc;
                 else if (args[i] == "ldc")
                     compiler = Compiler.ldc;
-                else if (args[i] == "all")
-                    compiler = Compiler.all;
-                else throw new Exception("Unrecognized compiler (available: dmd, ldc, gdc, all)");
+                else throw new Exception("Unrecognized compiler (available: dmd, ldc, gdc)");
             }
             else if (arg == "--config")
             {
                 ++i;
                 config = args[i];
             }
-            else if (arg == "-comb"|| arg == "--combined")
+            else if (arg == "--combined")
                 combined = true;
             else if (arg == "-a")
             {
                 ++i;
                 if (args[i] == "x86" || args[i] == "x32")
                     archs = [ Arch.x86 ];
-                else if (args[i] == "x64" || args[i] == "x86_64")
+                else if (args[i] == "x64" || args[i] == "x86_64" || args[i] == "x86-64")
                     archs = [ Arch.x64 ];
                 else if (args[i] == "all")
                 {
@@ -258,9 +327,9 @@ int main(string[] args)
             }
         }
 
-        bool hasDMD = compiler == Compiler.dmd || compiler == Compiler.all;
-        bool hasGDC = compiler == Compiler.gdc || compiler == Compiler.all;
-        bool hasLDC = compiler == Compiler.ldc || compiler == Compiler.all;
+        bool hasDMD = compiler == Compiler.dmd;
+        bool hasGDC = compiler == Compiler.gdc;
+        bool hasLDC = compiler == Compiler.ldc;
 
         mkdirRecurse(dirName);
 
@@ -281,8 +350,6 @@ int main(string[] args)
         // Copy user manual (if any provided in plugin.json)
         if (plugin.userManualPath)
             std.file.copy(plugin.userManualPath, dirName ~ "/" ~ baseName(plugin.userManualPath));
-
-
 
         // DMD builds
         if (hasDMD) buildAndPackage("dmd", config, archs, iconPath);
@@ -716,7 +783,7 @@ string makeRSRC(Plugin plugin, Arch arch, bool verbose)
     if (getSize(rsrcPath) == 0)
         throw new Exception(format("%s is an empty file", rsrcPath));
 
-    writefln("Written %s bytes to %s", getSize(rsrcPath), rsrcPath);
+    cwritefln("Written %s bytes to %s".color(fg.white), getSize(rsrcPath), rsrcPath);
 
     return rsrcPath;
 }
