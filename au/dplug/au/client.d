@@ -788,10 +788,14 @@ private:
 
             case kAudioUnitRemovePropertyListenerWithUserDataSelect: // 18
             {
+
                 PropertyListener listener;
-                listener.mPropID = params.getCompParam!(AudioUnitPropertyID, 1, 2);
-                listener.mListenerProc = params.getCompParam!(AudioUnitPropertyListenerProc, 0, 2);
+                listener.mPropID = params.getCompParam!(AudioUnitPropertyID, 2, 3);
+                listener.mListenerProc = params.getCompParam!(AudioUnitPropertyListenerProc, 1, 3);
                 listener.mProcArgs = params.getCompParam!(void*, 0, 3);
+
+                printf("### Add property listener for prop %d proc %p arg %p\n", listener.mPropID, listener.mListenerProc, listener.mProcArgs);
+
                 _globalMutex.lock();
                 scope(exit) _globalMutex.unlock();
                 int n = cast(int)(_propertyListeners.length);
@@ -1507,7 +1511,7 @@ private:
                 return (connectionOK ? noErr : kAudioUnitErr_InvalidProperty);
             }
 
-            case kAudioUnitProperty_MaximumFramesPerSlice:
+            case kAudioUnitProperty_MaximumFramesPerSlice: // 14
             {
                 _maxFrames = *(cast(uint*)pData);
                 _messageQueue.pushBack(makeResetStateMessage());
