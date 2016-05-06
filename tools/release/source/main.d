@@ -39,6 +39,21 @@ string red(string s) @property
     return s.color(fg.light_red);
 }
 
+void info(string msg)
+{
+    cwritefln("info: %s".white, msg);
+}
+
+void warning(string msg)
+{
+    cwritefln("warning: %s".yellow, msg);
+}
+
+void error(string msg)
+{
+    cwritefln("error: %s".red, msg);
+}
+
 void usage()
 {
 
@@ -59,15 +74,16 @@ void usage()
     cwriteln();
     cwriteln( "This is the ".white ~ "release".cyan ~ " tool: plugin bundler and DUB front-end.".white);
     cwriteln();
-    cwriteln("FLAGS:".white);
+    cwriteln("FLAGS".white);
     cwriteln();
-    flag("-a", "Selects target architecture.", "x86 | x86_64 | all", "Windows => all   OSX => x86_64");
-    flag("-b", "Selects build type.", "same ones as dub accepts", "debug");
-    flag("-c", "Selects D compiler.", "dmd | ldc | gdc", "ldc");
-    flag("--config", "Selects build configuration.", "VST | AU | name starting with \"VST\" | name starting with \"AU\"", "ldc");
-    flag("-f|--force", "Forces rebuild", null, "no");
+    flag("-a --arch", "Selects target architecture.", "x86 | x86_64 | all", "Windows => all   OSX => x86_64");
+    flag("-b --build", "Selects build type.", "same ones as dub accepts", "debug");
+    flag("--compiler", "Selects D compiler.", "dmd | ldc | gdc", "ldc");
+    flag("-c --config", "Selects build configuration.", "VST | AU | name starting with \"VST\" | name starting with \"AU\"", "ldc");
+    flag("-f --force", "Forces rebuild", null, "no");
     flag("--combined", "Combined build", null, "no");
-    flag("-h|--help", "Shows this help", null, null);
+    flag("-v --verbose", "Verbose output", null, "no");
+    flag("-h --help", "Shows this help", null, null);
 
     cwriteln();
     cwriteln("EXAMPLES".white);
@@ -156,9 +172,9 @@ int main(string[] args)
         for (int i = 1; i < args.length; ++i)
         {
             string arg = args[i];
-            if (arg == "-v")
+            if (arg == "-v" || arg == "--verbose")
                 verbose = true;
-            else if (arg == "-c" || arg == "--compiler")
+            else if (arg == "--compiler")
             {
                 ++i;
                 if (args[i] == "dmd")
@@ -169,14 +185,14 @@ int main(string[] args)
                     compiler = Compiler.ldc;
                 else throw new Exception("Unrecognized compiler (available: dmd, ldc, gdc)");
             }
-            else if (arg == "--config")
+            else if (arg == "-c" || arg == "--config")
             {
                 ++i;
                 config = args[i];
             }
             else if (arg == "--combined")
                 combined = true;
-            else if (arg == "-a")
+            else if (arg == "-a" || arg == "--arch")
             {
                 ++i;
                 if (args[i] == "x86" || args[i] == "x32")
@@ -191,7 +207,7 @@ int main(string[] args)
             }
             else if (arg == "-h" || arg == "-help" || arg == "--help")
                 help = true;
-            else if (arg == "-b")
+            else if (arg == "-b" || arg == "--build")
             {
                 build = args[++i];
             }
@@ -251,11 +267,14 @@ int main(string[] args)
 
                 string path = outputDirectory(dirName, osString, arch, config);
 
-                writefln("Creating directory %s", path);
                 mkdirRecurse(path);
 
                 if (arch != Arch.universalBinary)
+                {
                     buildPlugin(compiler, config, build, is64b, verbose, force, combined);
+                    cwritefln("    => build OK, available in %s".green, path);
+                    cwriteln();
+                }
 
                 version(Windows)
                 {
@@ -314,10 +333,12 @@ int main(string[] args)
                         string path64 = outputDirectory(dirName, osString, Arch.x64, config)
                         ~ "/" ~ pluginDir ~ "/Contents/MacOS/" ~ plugin.prettyName;
 
-                        writefln("*** Making an universal binary with lipo");
+                        cwritefln("*** Making an universal binary with lipo".white);
 
                         string cmd = format("lipo -create %s %s -output %s", path32, path64, exePath);
                         safeCommand(cmd);
+                        cwritefln("    => Universal build OK, available in %s".green, path);
+                        cwriteln();
                     }
                     else
                     {
@@ -359,12 +380,12 @@ int main(string[] args)
     }
     catch(ExternalProgramErrored e)
     {
-        writefln("error: %s", e.msg);
+        error(e.msg);
         return e.errorCode;
     }
     catch(Exception e)
     {
-        writefln("error: %s", e.msg);
+        error(e.msg);
         return -1;
     }
 }
@@ -390,7 +411,7 @@ class ExternalProgramErrored : Exception
 
 void safeCommand(string cmd)
 {
-    writefln("*** %s", cmd);
+    cwritefln("$ %s".cyan, cmd);
     auto pid = spawnShell(cmd);
     auto errorCode = wait(pid);
     if (errorCode != 0)
@@ -407,19 +428,7 @@ void buildPlugin(string compiler, string config, string build, bool is64b, bool 
         combined = true; // for -FPIC
     }
 
-    // On OSX, 32-bit plugins made with LDC are compatible >= 10.7
-    // while those made with DMD >= 10.6
-    // So force DMD usage for 32-bit plugins.
-    // UPDATE: no longer support 10.6, D dropped compatibility and 64-bit was untested
-    /*
-    if ( (is64b == false) && (compiler == "ldc2") )
-    {
-        writefln("info: forcing DMD compiler for 10.6 compatibility");
-        compiler = "dmd";
-    }
-    */
-
-    writefln("*** Building with %s, %s arch", compiler, is64b ? "64-bit" : "32-bit");
+    cwritefln("*** Building with %s, %s arch".white, compiler, is64b ? "64-bit" : "32-bit");
     // build the output file
     string arch = is64b ? "x86_64" : "x86";
 
@@ -496,7 +505,7 @@ Plugin readPluginDescription()
             {
                 version(OSX)
                 {
-                    throw new Exception("Your plugin.json is missing a non-empty \"copyright\" field to put in Info.plist");
+                    throw new Exception("Your dub.json is missing a non-empty \"copyright\" field to put in Info.plist");
                 }
                 else
                     writeln("warning: missing \"copyright\" field in dub.json");
@@ -505,8 +514,15 @@ Plugin readPluginDescription()
         }
     }
 
+    if (!exists("plugin.json"))
+    {
+        throw new Exception("needs a plugin.json description for proper bundling. Please create one next to dub.json.");
+    }
+
     // Open an eventual plugin.json directly to find keys that DUB doesn't bypass
     JSONValue rawPluginFile = parseJSON(cast(string)(std.file.read("plugin.json")));
+
+    // Optional keys
 
     // prettyName is the fancy Manufacturer + Product name that will be displayed as much as possible in:
     // - bundle name
@@ -517,11 +533,87 @@ Plugin readPluginDescription()
     }
     catch(Exception e)
     {
-        writeln("info: no \"prettyName\" provided in plugin.json (eg: \"My Company Compressor\"). Using \"name\" key instead.");
+        info("Missing \"prettyName\" in plugin.json (eg: \"My Company Compressor\")\n        => Using dub.json \"name\" key instead.");
         result.prettyName = result.name;
     }
 
-    // In developpement, should stay at 0.x.y to avoid various AU caches
+    try
+    {
+        result.userManualPath = rawPluginFile["userManualPath"].str;
+    }
+    catch(Exception e)
+    {
+        info("Missing \"userManualPath\" in plugin.json (eg: \"UserManual.pdf\")");
+    }
+
+    try
+    {
+        result.licensePath = rawPluginFile["licensePath"].str;
+    }
+    catch(Exception e)
+    {
+        info("Missing \"licensePath\" in plugin.json (eg: \"license.txt\")");
+    }
+
+    try
+    {
+        result.iconPath = rawPluginFile["iconPath"].str;
+    }
+    catch(Exception e)
+    {
+        info("Missing \"iconPath\" in plugin.json (eg: \"gfx/myIcon.png\")");
+    }
+
+    // Mandatory keys, but with workarounds
+
+    try
+    {
+        result.CFBundleIdentifierPrefix = rawPluginFile["CFBundleIdentifierPrefix"].str;
+    }
+    catch(Exception e)
+    {
+        warning("Missing \"CFBundleIdentifierPrefix\" in plugin.json (eg: \"com.myaudiocompany\")\n         => Using \"com.totoaudio\" instead.");
+        result.CFBundleIdentifierPrefix = "com.totoaudio";
+    }
+
+    try
+    {
+        result.manufacturerName = rawPluginFile["manufacturerName"].str;
+
+    }
+    catch(Exception e)
+    {
+        warning("Missing \"manufacturerName\" in plugin.json (eg: \"Example Corp\")\n         => Using \"Toto Audio\" instead.");
+        result.manufacturerName = "Toto Audio";
+    }
+
+    try
+    {
+        result.manufacturerUniqueID = rawPluginFile["manufacturerUniqueID"].str;
+    }
+    catch(Exception e)
+    {
+        warning("Missing \"manufacturerUniqueID\" in plugin.json (eg: \"aucd\")\n         => Using \"Toto\" instead.");
+        result.manufacturerUniqueID = "Toto";
+    }
+
+    if (result.manufacturerUniqueID.length != 4)
+        throw new Exception("\"manufacturerUniqueID\" should be a string of 4 characters (eg: \"aucd\")");
+
+    try
+    {
+        result.pluginUniqueID = rawPluginFile["pluginUniqueID"].str;
+    }
+    catch(Exception e)
+    {
+        warning("Missing \"pluginUniqueID\" provided in plugin.json (eg: \"val8\")\n         => Using \"tot0\" instead, change it for a proper release.");
+        result.pluginUniqueID = "tot0";
+    }
+
+    if (result.pluginUniqueID.length != 4)
+        throw new Exception("\"pluginUniqueID\" should be a string of 4 characters (eg: \"val8\")");
+
+        // In developpement, should stay at 0.x.y to avoid various AU caches
     string publicV;
     try
     {
@@ -529,7 +621,7 @@ Plugin readPluginDescription()
     }
     catch(Exception e)
     {
-        writeln("warning: no \"publicVersion\" provided in plugin.json (eg: \"1.0.1\"). Using \"0.0.0\" instead.");
+        warning("no \"publicVersion\" provided in plugin.json (eg: \"1.0.1\")\n         => Using \"0.0.0\" instead.");
         publicV = "0.0.0";
     }
 
@@ -543,78 +635,6 @@ Plugin readPluginDescription()
     {
         throw new Exception("\"publicVersion\" should follow the form x.y.z with 3 integers (eg: \"1.0.0\")");
     }
-
-    try
-    {
-        result.userManualPath = rawPluginFile["userManualPath"].str;
-    }
-    catch(Exception e)
-    {
-        writeln("info: no \"userManualPath\" provided in plugin.json (eg: \"UserManual.pdf\")");
-    }
-
-    try
-    {
-        result.licensePath = rawPluginFile["licensePath"].str;
-    }
-    catch(Exception e)
-    {
-        writeln("info: no \"licensePath\" provided in plugin.json (eg: \"license.txt\")");
-    }
-
-    try
-    {
-        result.CFBundleIdentifierPrefix = rawPluginFile["CFBundleIdentifierPrefix"].str;
-    }
-    catch(Exception e)
-    {
-        version (OSX)
-            throw new Exception("Your plugin.json is missing a non-empty \"CFBundleIdentifierPrefix\" field to put in Info.plist");
-        else
-            writeln("warning: missing \"CFBundleIdentifierPrefix\" field in plugin.json");
-    }
-
-    try
-    {
-        result.iconPath = rawPluginFile["iconPath"].str;
-    }
-    catch(Exception e)
-    {
-        writeln("info: no \"iconPath\" provided in plugin.json");
-    }
-
-    try
-    {
-        result.manufacturerName = rawPluginFile["manufacturerName"].str;
-    }
-    catch(Exception e)
-    {
-        writeln("info: no \"manufacturerName\" provided in plugin.json (eg: \"Example Corp\")");
-    }
-
-    try
-    {
-        result.manufacturerUniqueID = rawPluginFile["manufacturerUniqueID"].str;
-    }
-    catch(Exception e)
-    {
-        writeln("warning: no \"manufacturerUniqueID\" provided in plugin.json (eg: \"aucd\")");
-    }
-
-    if (result.manufacturerUniqueID.length != 4)
-        throw new Exception("\"manufacturerUniqueID\" should be a string of 4 characters (eg: \"aucd\")");
-
-    try
-    {
-        result.pluginUniqueID = rawPluginFile["pluginUniqueID"].str;
-    }
-    catch(Exception e)
-    {
-        writeln("warning: no \"pluginUniqueID\" provided in plugin.json (eg: \"val8\")");
-    }
-
-    if (result.pluginUniqueID.length != 4)
-        throw new Exception("\"pluginUniqueID\" should be a string of 4 characters (eg: \"val8\")");
 
     return result;
 }
@@ -660,12 +680,12 @@ string makePListFile(Plugin plugin, string config, bool hasIcon)
         writeln(`warning: your configuration name doesn't start with "VST" or "AU"`);
         CFBundleIdentifier = plugin.CFBundleIdentifierPrefix ~ "." ~ plugin.name;
     }
-    addKeyString("CFBundleName", plugin.prettyName);
+    //addKeyString("CFBundleName", plugin.prettyName);
     addKeyString("CFBundleIdentifier", CFBundleIdentifier);
 
     addKeyString("CFBundleVersion", productVersion);
     addKeyString("CFBundleShortVersionString", productVersion);
-    addKeyString("CFBundleExecutable", plugin.prettyName);
+    //addKeyString("CFBundleExecutable", plugin.prettyName);
 
     enum isAudioComponentAPIImplemented = false;
 
@@ -743,7 +763,7 @@ string makeMacIcon(string pluginName, string pngPath)
 string makeRSRC(Plugin plugin, Arch arch, bool verbose)
 {
     string pluginName = plugin.name;
-    writefln("Generating a .rsrc file for %s arch...", to!string(arch));
+    cwritefln("*** Generating a .rsrc file for %s arch...".white, to!string(arch));
     string temp = tempDir();
 
     string rPath = buildPath(temp, "plugin.r");
@@ -753,7 +773,6 @@ string makeRSRC(Plugin plugin, Arch arch, bool verbose)
 
     string plugVer = to!string((plugin.publicVersionMajor << 16) | (plugin.publicVersionMinor << 8) | plugin.publicVersionPatch);
 
-    writefln("Writing version plugVer = %s", plugVer);
     rFile.writefln(`#define PLUG_NAME "%s"`, pluginName); // no escaping there, TODO
     rFile.writefln("#define PLUG_MFR_ID '%s'", plugin.manufacturerUniqueID);
     rFile.writefln("#define PLUG_VER %s", plugVer);
@@ -783,7 +802,7 @@ string makeRSRC(Plugin plugin, Arch arch, bool verbose)
     if (getSize(rsrcPath) == 0)
         throw new Exception(format("%s is an empty file", rsrcPath));
 
-    cwritefln("Written %s bytes to %s".color(fg.white), getSize(rsrcPath), rsrcPath);
-
+    cwritefln("    => Written %s bytes to %s".color(fg.light_green), getSize(rsrcPath), rsrcPath);
+    cwriteln();
     return rsrcPath;
 }
