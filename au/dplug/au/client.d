@@ -788,13 +788,10 @@ private:
 
             case kAudioUnitRemovePropertyListenerWithUserDataSelect: // 18
             {
-
                 PropertyListener listener;
                 listener.mPropID = params.getCompParam!(AudioUnitPropertyID, 2, 3);
                 listener.mListenerProc = params.getCompParam!(AudioUnitPropertyListenerProc, 1, 3);
                 listener.mProcArgs = params.getCompParam!(void*, 0, 3);
-
-                printf("### Add property listener for prop %d proc %p arg %p\n", listener.mPropID, listener.mListenerProc, listener.mProcArgs);
 
                 _globalMutex.lock();
                 scope(exit) _globalMutex.unlock();
@@ -1777,18 +1774,15 @@ private:
                            AudioBufferList* pOutBufList,
                            bool isFastCall) nothrow @nogc
    {
-        bool checkErrrors = (*pFlags & kAudioUnitRenderAction_DoNotCheckRenderArgs) == 0;
+        // GarageBand will happily send NULL pFlags, do not use it
 
-        if (checkErrrors)
-        {
-            // Non-existing bus
-            if (outputBusIdx > _outBuses.length)
-                return kAudioUnitErr_InvalidElement;
+        // Non-existing bus
+        if (outputBusIdx > _outBuses.length)
+            return kAudioUnitErr_InvalidElement;
 
-            // Invalid timestamp
-            if (!(pTimestamp.mFlags & kAudioTimeStampSampleTimeValid))
-                return kAudioUnitErr_InvalidPropertyValue;
-        }
+        // Invalid timestamp
+        if (!(pTimestamp.mFlags & kAudioTimeStampSampleTimeValid))
+            return kAudioUnitErr_InvalidPropertyValue;
 
         // process messages to get newer number of input, samplerate or frame number
         void processMessages(ref float newSamplerate, ref int newMaxFrames, ref bool newBypassed) nothrow @nogc
