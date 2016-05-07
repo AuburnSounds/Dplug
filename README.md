@@ -4,7 +4,9 @@
 
 dplug is a library for creating audio plugins.
 Additionally it comes with music DSP algorithms that might be useful for your next-generation MS converter plugin.
-**Currently support VST 2.x plugins on Windows and Mac OS X, 32-bit and 64-bit.**
+Currently support:
+- VST 2.x plugins on Windows and Mac OS X, 32-bit and 64-bit.
+- Audio Unit v2 plugins for Mac OS X, 32-bit and 64-bit
 
 ![Example screenshot](screenshot.jpg "With a bit of work")
 
@@ -97,7 +99,7 @@ Cons:
 - less battle-tested in general
 - hipster compilers are used
 - API may change without notice (pin the version of dplug you use)
-- AU, AAX and VST3 unimplemented
+- AAX and VST3 unimplemented
 - no resizeable UI
 - no HDPI support
 
