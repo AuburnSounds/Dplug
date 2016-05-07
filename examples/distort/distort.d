@@ -43,21 +43,17 @@ public:
     {
     }
 
-    override IGraphics createGraphics()
-    {
-        return new DistortGUI(this); // still in flux
-    }
-
+    // The information that is duplicated here and in plugin.json should be the same
     override PluginInfo buildPluginInfo()
     {
         // change all of these!
         PluginInfo info;
         info.isSynth = false;
         info.hasGUI = true;
-        info.pluginID = dplug.core.funcs.CCONST('g', 'f', 'm', '0');
+        info.pluginID = dplug.core.funcs.CCONST('W', 'i', 'D', 'i');
         info.productName = "Destructatorizer";
         info.effectName = "Destructatorizer";
-        info.vendorName = "Distort Audio Ltd.";
+        info.vendorName = "Witty Audio";
         info.pluginVersion = PluginVersion(1, 0, 0);
         return info;
     }
@@ -75,6 +71,16 @@ public:
         ];
     }
 
+    override LegalIO[] buildLegalIO()
+    {
+        return [
+            LegalIO(1, 1),
+            LegalIO(1, 2),
+            LegalIO(2, 1),
+            LegalIO(2, 2),
+        ];
+    }
+
     // This override is optional, the default implementation will
     // have one default preset.
     override Preset[] buildPresets()
@@ -89,20 +95,10 @@ public:
     // This override is also optional. It allows to split audio buffers in order to never
     // exceed some amount of frames at once.
     // This can be useful as a cheap chunking for parameter smoothing.
-    // Buffer splitting allows to allocate statically or on the stack with less worries.
+    // Buffer splitting also allows to allocate statically or on the stack with less worries.
     override int maxFramesInProcess() pure const nothrow @nogc
     {
         return 128;
-    }
-
-    override LegalIO[] buildLegalIO()
-    {
-        return [
-            LegalIO(1, 1),
-            LegalIO(1, 2),
-            LegalIO(2, 1),
-            LegalIO(2, 2),
-        ];
     }
 
     override void reset(double sampleRate, int maxFrames, int numInputs, int numOutputs) nothrow @nogc
@@ -181,6 +177,11 @@ public:
             outputLevels[1] = minChan >= 1 ? floatToDeciBel(_outputRMS[1].RMS()) : outputLevels[0];
             gui.outputBargraph.setValues(outputLevels);
         }
+    }
+
+    override IGraphics createGraphics()
+    {
+        return new DistortGUI(this);
     }
 
 private:
@@ -287,11 +288,11 @@ public:
     override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects)
     {
         // In onDraw, you are supposed to only update diffuseMap, depthMap and materialMap in the dirtyRects areas.
+        // See also the wiki: https://github.com/p0nce/dplug/wiki/Advices-for-creating-UIs-with-dplug
 
         foreach(dirtyRect; dirtyRects)
         {
             auto croppedDiffuse = diffuseMap.crop(dirtyRect);
-
 
             // fill with clear color
             // Albedo RGB + Emissive
@@ -314,7 +315,8 @@ public:
                 }
             }
 
-            // default depth is approximately ~22% of the possible height, but you can choose any other value
+            // Default depth is approximately ~22% of the possible height, but you can choose any other value
+            // Here we add some noise too.
             for (int y = dirtyRect.min.y; y < dirtyRect.max.y; ++y)
             {
                 L16[] outDepth = depthMap.scanline(y);
@@ -327,8 +329,8 @@ public:
                 }
             }
 
-            // fill material map
-            // Roughness Metalness Specular Physical
+            // Fill. material map.
+            // Which is "RMSP": Roughness Metalness Specular Physical
             auto croppedMaterial = materialMap.crop(dirtyRect);
             croppedMaterial.fill(RMSP(120, 255, 128, 255));
         }
