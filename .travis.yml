@@ -1,5 +1,9 @@
 language: d
 
+os:
+  - linux
+  - osx
+
 d:
  - dmd   # latest
  - dmd-2.071.0
