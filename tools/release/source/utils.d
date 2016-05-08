@@ -80,6 +80,11 @@ void safeCommand(string cmd)
         throw new ExternalProgramErrored(errorCode, format("Command '%s' returned %s", cmd, errorCode));
 }
 
+string escapeShellArgument(string arg)
+{
+    return arg.replace(" ", "\\ ");
+}
+
 /// Recusrive directory copy.
 /// https://forum.dlang.org/post/n7hc17$19jg$1@digitalmars.com
 /// Returns: number of copied files

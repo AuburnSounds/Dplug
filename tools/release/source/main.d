@@ -296,7 +296,10 @@ int main(string[] args)
 
                         cwritefln("*** Making an universal binary with lipo".white);
 
-                        string cmd = format("lipo -create %s %s -output %s", path32, path64, exePath);
+                        string cmd = format("lipo -create %s %s -output %s",
+                                            escapeShellArgument(path32),
+                                            escapeShellArgument(path64),
+                                            escapeShellArgument(exePath));
                         safeCommand(cmd);
                         cwritefln("    => Universal build OK, available in %s".green, path);
                         cwriteln();
