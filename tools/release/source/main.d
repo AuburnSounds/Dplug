@@ -189,7 +189,7 @@ int main(string[] args)
         if (!quiet)
         {
             string dot = ".".green;
-            cwritefln("=> The task is to bundle plugin ".green ~ "%s".yellow ~ " from manufacturer ".green ~ "%s".yellow ~ dot, plugin.prettyName, plugin.manufacturerName);
+            cwritefln("=> The task is to bundle plugin ".green ~ "%s".yellow ~ " from ".green ~ "%s".yellow ~ dot, plugin.pluginName, plugin.vendorName);
             cwritefln("   This plugin will be working in ".green ~ "%s".yellow~dot, toStringArchs(archs));
             cwritefln("   The choosen configuration is ".green ~ "%s".yellow~dot, config);
             cwritefln("   The choosen build type is ".green ~ "%s".yellow ~ dot, build);
@@ -312,9 +312,9 @@ int main(string[] args)
                     {
                         string destPath;
                         if (configIsVST(config))
-                            destPath = "/Users/" ~ environment["USER"] ~ "/Library/Audio/Plug-Ins/VST";
+                            destPath = "/Library/Audio/Plug-Ins/VST"; // This need elevated privileges
                         else if (configIsAU(config))
-                            destPath = "/Users/" ~ environment["USER"] ~ "/Library/Audio/Plug-Ins/Components";
+                            destPath = "/Library/Audio/Plug-Ins/Components"; // This need elevated privileges
                         else
                             assert(false);
                         cwritefln("*** Publishing to %s...".white, destPath);
@@ -332,7 +332,7 @@ int main(string[] args)
                                 exename,
                                 is32b ? " -32 ":"",
                                 plugin.pluginUniqueID,
-                                plugin.manufacturerUniqueID);
+                                plugin.vendorUniqueID);
                             safeCommand(cmd);
 
                             cwriteln("    => Audio Unit passed validation.".green);

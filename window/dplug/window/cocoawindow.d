@@ -117,8 +117,6 @@ version(OSX)
                     free(_buffer);
                     _buffer = null;
                 }
-
-                //DerelictCocoa.unload();
             }
         }
 
@@ -260,7 +258,7 @@ version(OSX)
 
             CIContext ciContext = nsContext.getCIContext();
 
-            // update internal buffers in case of startup/resize
+            // Updates internal buffers in case of startup/resize
             // TODO: why is the bounds rect too large? It creates havoc in AU even without resizing.
             {
                 /*

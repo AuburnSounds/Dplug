@@ -1,7 +1,7 @@
 {
-    "prettyName": "Destructatorizer",
-    "manufacturerName": "Witty Audio",
-    "manufacturerUniqueID": "Wity",
+    "vendorName": "Witty Audio",
+    "vendorUniqueID": "Wity",
+    "pluginName": "Destructatorizer",
     "pluginUniqueID": "WiDi",
     "publicVersion": "1.0.0",
     "CFBundleIdentifierPrefix": "com.wittyaudio"

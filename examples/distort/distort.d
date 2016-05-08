@@ -48,13 +48,13 @@ public:
     {
         // change all of these!
         PluginInfo info;
+        info.vendorName = "Witty Audio";
+        info.vendorUniqueID = dplug.core.funcs.CCONST('W', 'i', 't', 'y');
+        info.pluginName = "Destructatorizer";
+        info.pluginUniqueID = dplug.core.funcs.CCONST('W', 'i', 'D', 'i');
+        info.pluginVersion = PluginVersion(1, 0, 0);
         info.isSynth = false;
         info.hasGUI = true;
-        info.pluginID = dplug.core.funcs.CCONST('W', 'i', 'D', 'i');
-        info.productName = "Destructatorizer";
-        info.effectName = "Destructatorizer";
-        info.vendorName = "Witty Audio";
-        info.pluginVersion = PluginVersion(1, 0, 0);
         return info;
     }
 

@@ -66,20 +66,36 @@ struct PluginVersion
 
 // Statically known features of the plugin.
 // There is some default for explanation purpose, but you really ought to override them all.
+// Most of it is redundant with plugin.json, in the future the JSON will be parsed instead.
 struct PluginInfo
 {
-    string vendorName = "Witty Audio Ltd.";
-    string effectName = "Destructatorizer";
-    string productName = "Destructatorizer";
+    string vendorName = "Witty Audio";
+
+    /// Used in AU only.
+    int vendorUniqueID = CCONST('W', 'i', 't', 'y');
+
+    string pluginName = "Destructatorizer";
+
+    /// Used for both VST and AU.
+    /// In AU it is namespaced by the manufacturer. In VST it
+    /// should be unique. While it seems no VST host use this
+    /// ID as a unique way to identify a plugin, common wisdom
+    /// is to try to get a sufficiently random one.
+    int pluginUniqueID = CCONST('W', 'i', 'D', 'i');
+
+    // for AU, 0.x.y means "do not cache", useful in development
+    PluginVersion pluginVersion = PluginVersion(0, 0, 0);
+
+    /// True if the plugin has a graphical UI. Easy way to disable it.
     bool hasGUI = false;
+
     bool isSynth = false;
 
-    /// While it seems no VST host use this ID as a unique
-    /// way to identify a plugin, common wisdom is to try to
-    /// get a sufficiently random one to avoid conflicts.
-    int pluginID = CCONST('g', 'f', 'm', '0');
-
-    PluginVersion pluginVersion = PluginVersion(0, 0, 0); // for AU, 0.x.y means "do not cache", useful in development
+private:
+    /// Vendor + plugin pretty name.
+    /// Eg: "Witty Audio Destructatorizer"
+    // You don't have to assign it, and are not allowed to.
+    string pluginFullName;
 }
 
 /// This allows to write things life tempo-synced LFO.
@@ -110,6 +126,8 @@ public:
     this()
     {
         _info = buildPluginInfo();
+
+        _info.pluginFullName = _info.vendorName ~ " " ~ _info.pluginName;
 
         // Create legal I/O combinations
         _legalIOs = buildLegalIO();
@@ -358,19 +376,30 @@ public:
         return _info.isSynth;
     }
 
-    final string effectName() pure const nothrow @nogc
-    {
-        return _info.effectName;
-    }
-
     final string vendorName() pure const nothrow @nogc
     {
         return _info.vendorName;
     }
 
-    final string productName() pure const nothrow @nogc
+    final int getVendorUniqueID() pure const nothrow @nogc
     {
-        return _info.productName;
+        return _info.vendorUniqueID;
+    }
+
+    final string pluginName() pure const nothrow @nogc
+    {
+        return _info.pluginName;
+    }
+
+    /// Returns: Plugin "unique" ID.
+    final int getPluginUniqueID() pure const nothrow @nogc
+    {
+        return _info.pluginUniqueID;
+    }
+
+    final string pluginFullName() pure const nothrow @nogc
+    {
+        return _info.pluginFullName;
     }
 
     /// Returns: Plugin version in x.x.x.x decimal form.
@@ -379,11 +408,6 @@ public:
         return _info.pluginVersion;
     }
 
-    /// Returns: Plugin ID.
-    final int getPluginID() pure const nothrow @nogc
-    {
-        return _info.pluginID;
-    }
 
 
     /// Boilerplate function to get the value of a `FloatParameter`, for use in `processAudio`.

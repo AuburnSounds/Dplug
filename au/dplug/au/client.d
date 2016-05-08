@@ -40,6 +40,8 @@ import dplug.au.audiocomponentdispatch;
 
 
 //version = logDispatcher;
+version = supportCocoaUI;
+version = supportCarbonUI;
 
 version(OSX):
 
@@ -109,9 +111,6 @@ void loadDerelictFunctions()
 
 nothrow ComponentResult audioUnitEntryPoint(alias ClientClass)(ComponentParameters* params, void* pPlug)
 {
-    version(logDispatcher) printf(">audioUnitEntryPoint\n");
-
-    version(logDispatcher) scope(exit) printf("<audioUnitEntryPoint\n");
     try
     {
         attachToRuntimeIfNeeded();
@@ -151,7 +150,6 @@ struct CarbonViewInstance
 
 nothrow ComponentResult audioUnitCarbonViewEntry(alias ClientClass)(ComponentParameters* params, void* pView)
 {
-    debugBreak();
     try
     {
         attachToRuntimeIfNeeded();
@@ -161,7 +159,8 @@ nothrow ComponentResult audioUnitCarbonViewEntry(alias ClientClass)(ComponentPar
 
         if (select == kComponentOpenSelect)
         {
-            CarbonViewInstance* pCVI = new CarbonViewInstance;
+            // mallocEmplace'd else it would be collected by GC the moment we look elsewhere
+            CarbonViewInstance* pCVI = mallocEmplace!CarbonViewInstance();
             pCVI.mCI = getCompParam!(ComponentInstance, 0, 1)(params);
             pCVI.mPlug = null;
             SetComponentInstanceStorage(pCVI.mCI, cast(Handle)pCVI);
@@ -174,12 +173,13 @@ nothrow ComponentResult audioUnitCarbonViewEntry(alias ClientClass)(ComponentPar
         {
             case kComponentCloseSelect:
             {
+                assert(pCVI !is null);
                 AUClient auClient = pCVI.mPlug;
                 if (auClient && auClient._client.hasGUI())
                 {
                     auClient._client.closeGUI();
                 }
-                pCVI.destroy();
+                destroyFree(pCVI);
                 return noErr;
             }
             case kAudioUnitCarbonViewCreateSelect:
@@ -205,7 +205,7 @@ nothrow ComponentResult audioUnitCarbonViewEntry(alias ClientClass)(ComponentPar
     }
 }
 
-__gshared AudioComponentPlugInInterface audioComponentPlugInInterface;
+//__gshared AudioComponentPlugInInterface audioComponentPlugInInterface;
 
 // Factory function entry point for Audio Component
 void* audioUnitComponentFactory(alias ClientClass)(void* inDesc) nothrow
@@ -538,7 +538,7 @@ private:
         {
             try
             {
-                this.destroy(); // free all resources except this and the runtime
+                destroyFree(cast(void*)this); // free all resources except the runtime
             }
             catch(Exception e)
             {
@@ -546,7 +546,7 @@ private:
             return noErr;
         }
 
-        version(logDispatcher) printf("select %d\n", select);
+        version(logDispatcher) if (select != 14) printf("select %d\n", select);
 
         switch(select)
         {
@@ -1098,35 +1098,34 @@ private:
                 }
             }
 
-            case kAudioUnitProperty_GetUIComponentList: // 18
+            version(supportCarbonUI)
             {
-                // TODO
-                return kAudioUnitErr_InvalidProperty;
-
-                /+
-                try
+                case kAudioUnitProperty_GetUIComponentList: // 18
                 {
-                    if ( _client.hasGUI() )
+                    try
                     {
-                        *pDataSize = ComponentDescription.sizeof;
-                        if (pData)
+                        if ( _client.hasGUI() )
                         {
-                            ComponentDescription* pDesc = cast(ComponentDescription*) pData;
-                            pDesc.componentType = kAudioUnitCarbonViewComponentType;
-                            pDesc.componentSubType = GetUniqueID();
-                            pDesc.componentManufacturer = GetMfrID();
-                            pDesc.componentFlags = 0;
-                            pDesc.componentFlagsMask = 0;
+                            *pDataSize = ComponentDescription.sizeof;
+                            if (pData)
+                            {
+                                ComponentDescription* pDesc = cast(ComponentDescription*) pData;
+                                pDesc.componentType = kAudioUnitCarbonViewComponentType;
+                                pDesc.componentSubType = _client.getPluginUniqueID();
+                                pDesc.componentManufacturer = _client.getVendorUniqueID();
+                                pDesc.componentFlags = 0;
+                                pDesc.componentFlagsMask = 0;
+                            }
+                            return noErr;
                         }
-                        return noErr;
+                        else
+                            return kAudioUnitErr_InvalidProperty;
                     }
-                    else
+                    catch(Exception e)
+                    {
                         return kAudioUnitErr_InvalidProperty;
+                    }
                 }
-                catch(Exception e)
-                {
-                    return kAudioUnitErr_InvalidProperty;
-                }+/
             }
 
             case kAudioUnitProperty_AudioChannelLayout:
@@ -1241,30 +1240,33 @@ private:
                 return noErr;
             }
 
-            case kAudioUnitProperty_CocoaUI: // 31
+            version(supportCocoaUI)
             {
-                try
+                case kAudioUnitProperty_CocoaUI: // 31
                 {
-                    if ( _client.hasGUI() )
+                    try
                     {
-                        *pDataSize = AudioUnitCocoaViewInfo.sizeof;
-                        if (pData)
+                        if ( _client.hasGUI() )
                         {
-                            string factoryClassName = registerCocoaViewFactory();
-                            CFBundleRef pBundle = CFBundleGetMainBundle();
-                            CFURLRef url = CFBundleCopyBundleURL(pBundle);
-                            AudioUnitCocoaViewInfo* pViewInfo = cast(AudioUnitCocoaViewInfo*) pData;
-                            pViewInfo.mCocoaAUViewBundleLocation = url;
-                            pViewInfo.mCocoaAUViewClass[0] = toCFString(factoryClassName);
+                            *pDataSize = AudioUnitCocoaViewInfo.sizeof;
+                            if (pData)
+                            {
+                                string factoryClassName = registerCocoaViewFactory();
+                                CFBundleRef pBundle = CFBundleGetMainBundle();
+                                CFURLRef url = CFBundleCopyBundleURL(pBundle);
+                                AudioUnitCocoaViewInfo* pViewInfo = cast(AudioUnitCocoaViewInfo*) pData;
+                                pViewInfo.mCocoaAUViewBundleLocation = url;
+                                pViewInfo.mCocoaAUViewClass[0] = toCFString(factoryClassName);
+                            }
+                            return noErr;
                         }
-                        return noErr;
+                        else
+                            return kAudioUnitErr_InvalidProperty;
                     }
-                    else
+                    catch(Exception e)
+                    {
                         return kAudioUnitErr_InvalidProperty;
-                }
-                catch(Exception e)
-                {
-                    return kAudioUnitErr_InvalidProperty;
+                    }
                 }
             }
 

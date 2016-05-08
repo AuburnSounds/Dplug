@@ -119,7 +119,7 @@ public:
         _effect.numParams = cast(int)(client.params().length);
         _effect.numPrograms = cast(int)(client.presetBank().numPresets());
         _effect.version_ = client.getPluginVersion().toVSTVersion();
-        _effect.uniqueID = client.getPluginID();
+        _effect.uniqueID = client.getPluginUniqueID();
         _effect.processReplacing = &processReplacingCallback;
         _effect.dispatcher = &dispatcherCallback;
         _effect.setParameter = &setParameterCallback;
@@ -655,7 +655,7 @@ private:
                 char* p = cast(char*)ptr;
                 if (p !is null)
                 {
-                    stringNCopy(p, 32, _client.effectName());
+                    stringNCopy(p, 32, _client.pluginName());
                     return 1;
                 }
                 return 0;
@@ -677,7 +677,7 @@ private:
                 char* p = cast(char*)ptr;
                 if (p !is null)
                 {
-                    stringNCopy(p, 64, _client.productName());
+                    stringNCopy(p, 64, _client.pluginFullName());
                     return 1;
                 }
                 return 0;

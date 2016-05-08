@@ -28,7 +28,6 @@ version(OSX)
     private:
         IWindowListener _listener;
         bool _terminated = false;
-        bool _initialized = true;
         bool _isComposited;
         ControlRef _view = null;
         WindowRef _window;
@@ -43,6 +42,8 @@ version(OSX)
 
         int _width = 0;
         int _height = 0;
+        int _askedWidth;
+        int _askedHeight;
         uint _timeAtCreationInMs;
         uint _lastMeasturedTimeInMs;
 
@@ -60,6 +61,9 @@ version(OSX)
             DerelictCoreFoundation.load();
             DerelictCoreServices.load();
             DerelictCoreGraphics.load();
+
+            _askedWidth = width;
+            _askedHeight = height;
 
             _window = cast(WindowRef)(parentWindow);
             WindowAttributes winAttrs = 0;
@@ -146,25 +150,16 @@ version(OSX)
 
         ~this()
         {
-            if (_initialized)
-            {
-                debug ensureNotInGC("CarbonWindow");
-                _terminated = true;
-                _initialized = false;
+            debug ensureNotInGC("CarbonWindow");
+            _terminated = true;
 
-                clearBuffers();
+            clearBuffers();
 
-                CGColorSpaceRelease(_colorSpace);
+            CGColorSpaceRelease(_colorSpace);
 
-                RemoveEventLoopTimer(_timer);
-                RemoveEventHandler(_controlHandler);
-                RemoveEventHandler(_windowHandler);
-
-               /* DerelictCoreServices.unload();
-                DerelictCoreFoundation.unload();
-                DerelictCoreGraphics.unload();
-                DerelictCarbon.unload();*/
-            }
+            RemoveEventLoopTimer(_timer);
+            RemoveEventHandler(_controlHandler);
+            RemoveEventHandler(_windowHandler);
         }
 
 
@@ -269,10 +264,14 @@ version(OSX)
                         {
                             assert(_isComposited);
 
-                            HIRect bounds;
+                            // TODO: why is the bounds rect too large? It creates havoc in AU even without resizing.
+                            /*HIRect bounds;
                             HIViewGetBounds(_view, &bounds);
                             int newWidth = cast(int)(0.5f + bounds.size.width);
                             int newHeight = cast(int)(0.5f + bounds.size.height);
+                            */
+                            int newWidth = _askedWidth; // In reaper, excess space is provided, leading in a crash
+                            int newHeight = _askedHeight; // fix size until we have resizeable UI
                             updateSizeIfNeeded(newWidth, newHeight);
 
 

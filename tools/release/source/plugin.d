@@ -93,11 +93,11 @@ struct Plugin
     string userManualPath; // can be null
     string licensePath;    // can be null
     string iconPath;       // can be null or a path to a (large) .png
-    string prettyName;     // Prettier name, extracted from plugin.json (eg: 'My Company Distorter')
 
+    string pluginName;     // Prettier name, extracted from plugin.json (eg: 'Distorter')
     string pluginUniqueID;
-    string manufacturerName;
-    string manufacturerUniqueID;
+    string vendorName;
+    string vendorUniqueID;
 
     // Public version of the plugin
     // Each release of a plugin should upgrade the version somehow
@@ -105,21 +105,60 @@ struct Plugin
     int publicVersionMinor;
     int publicVersionPatch;
 
+    string prettyName() pure const nothrow
+    {
+        return vendorName ~ " " ~ pluginName;
+    }
+
     string publicVersionString() pure const nothrow
     {
         return to!string(publicVersionMajor) ~ "." ~ to!string(publicVersionMinor) ~ "." ~ to!string(publicVersionMinor);
     }
 
-    string makePkgInfo()
+    // AU version integer
+    int publicVersionInt() pure const nothrow
     {
-        return "BNDL" ~ manufacturerUniqueID;
+        return (publicVersionMajor << 16) | (publicVersionMinor << 8) | publicVersionPatch;
+    }
+
+    string makePkgInfo() pure const nothrow
+    {
+        return "BNDL" ~ vendorUniqueID;
+    }
+
+    // only a handful of characters are accepter in bundle identifiers
+    static string sanitizeBundleString(string s) pure
+    {
+        string r = "";
+        foreach(dchar ch; s)
+        {
+            if (ch >= 'A' && ch <= 'Z')
+                r ~= ch;
+            else if (ch >= 'a' && ch <= 'z')
+                r ~= ch;
+            else if (ch == '.')
+                r ~= ch;
+            else
+                r ~= "-";
+        }
+        return r;
+    }
+
+    string getVSTBundleIdentifier() pure const
+    {
+        return CFBundleIdentifierPrefix ~ ".vst." ~ sanitizeBundleString(pluginName);
+    }
+
+    string getAUBundleIdentifier() pure const
+    {
+        return CFBundleIdentifierPrefix ~ ".audiounit." ~ sanitizeBundleString(pluginName);
     }
 }
 
 Plugin readPluginDescription()
 {
     Plugin result;
-    auto dubResult = execute(["dub", "describe"]);
+    auto dubResult = execute(["dub", "describe", "--skip-registry=all"]); // checking the registry is very slow
 
     if (dubResult.status != 0)
         throw new Exception(format("dub returned %s", dubResult.status));
@@ -167,12 +206,12 @@ Plugin readPluginDescription()
     // - renamed executable file names
     try
     {
-        result.prettyName = rawPluginFile["prettyName"].str;
+        result.pluginName = rawPluginFile["pluginName"].str;
     }
     catch(Exception e)
     {
-        info("Missing \"prettyName\" in plugin.json (eg: \"My Company Compressor\")\n        => Using dub.json \"name\" key instead.");
-        result.prettyName = result.name;
+        info("Missing \"pluginName\" in plugin.json (eg: \"My Compressor\")\n        => Using dub.json \"name\" key instead.");
+        result.pluginName = result.name;
     }
 
     try
@@ -216,27 +255,27 @@ Plugin readPluginDescription()
 
     try
     {
-        result.manufacturerName = rawPluginFile["manufacturerName"].str;
+        result.vendorName = rawPluginFile["vendorName"].str;
 
     }
     catch(Exception e)
     {
-        warning("Missing \"manufacturerName\" in plugin.json (eg: \"Example Corp\")\n         => Using \"Toto Audio\" instead.");
-        result.manufacturerName = "Toto Audio";
+        warning("Missing \"vendorName\" in plugin.json (eg: \"Example Corp\")\n         => Using \"Toto Audio\" instead.");
+        result.vendorName = "Toto Audio";
     }
 
     try
     {
-        result.manufacturerUniqueID = rawPluginFile["manufacturerUniqueID"].str;
+        result.vendorUniqueID = rawPluginFile["vendorUniqueID"].str;
     }
     catch(Exception e)
     {
-        warning("Missing \"manufacturerUniqueID\" in plugin.json (eg: \"aucd\")\n         => Using \"Toto\" instead.");
-        result.manufacturerUniqueID = "Toto";
+        warning("Missing \"vendorUniqueID\" in plugin.json (eg: \"aucd\")\n         => Using \"Toto\" instead.");
+        result.vendorUniqueID = "Toto";
     }
 
-    if (result.manufacturerUniqueID.length != 4)
-        throw new Exception("\"manufacturerUniqueID\" should be a string of 4 characters (eg: \"aucd\")");
+    if (result.vendorUniqueID.length != 4)
+        throw new Exception("\"vendorUniqueID\" should be a string of 4 characters (eg: \"aucd\")");
 
     try
     {
@@ -301,9 +340,9 @@ string makePListFile(Plugin plugin, string config, bool hasIcon)
 
     string CFBundleIdentifier;
     if (configIsVST(config))
-        CFBundleIdentifier = plugin.CFBundleIdentifierPrefix ~ ".vst." ~ plugin.name;
+        CFBundleIdentifier = plugin.getVSTBundleIdentifier();
     else if (configIsAU(config))
-        CFBundleIdentifier = plugin.CFBundleIdentifierPrefix ~ ".audiounit." ~ plugin.name;
+        CFBundleIdentifier = plugin.getAUBundleIdentifier();
     else
         throw new Exception("Configuration name given by --config must start with \"VST\" or \"AU\"");
 
@@ -326,11 +365,11 @@ string makePListFile(Plugin plugin, string config, bool hasIcon)
         content ~= "                <key>subtype</key>\n";
         content ~= "                <string>dely</string>\n";
         content ~= "                <key>manufacturer</key>\n";
-        content ~= "                <string>" ~ plugin.manufacturerUniqueID ~ "</string>\n"; // TODO XML escape that
+        content ~= "                <string>" ~ plugin.vendorUniqueID ~ "</string>\n"; // TODO XML escape that
         content ~= "                <key>name</key>\n";
-        content ~= format("                <string>%s</string>\n", plugin.name);
+        content ~= format("                <string>%s</string>\n", plugin.pluginName);
         content ~= "                <key>version</key>\n";
-        content ~= "                <integer>0</integer>\n";
+        content ~= format("                <integer>%s</integer>\n", plugin.publicVersionInt()); // correct?
         content ~= "                <key>factoryFunction</key>\n";
         content ~= "                <string>dplugAUComponentFactoryFunction</string>\n";
         content ~= "                <key>sandboxSafe</key><true/>\n";
@@ -384,7 +423,7 @@ string makeMacIcon(string pluginName, string pngPath)
 
 string makeRSRC(Plugin plugin, Arch arch, bool verbose)
 {
-    string pluginName = plugin.name;
+    string pluginName = plugin.pluginName;
     cwritefln("*** Generating a .rsrc file for the bundle...".white);
     string temp = tempDir();
 
@@ -393,11 +432,9 @@ string makeRSRC(Plugin plugin, Arch arch, bool verbose)
     File rFile = File(rPath, "w");
     static immutable string rFileBase = cast(string) import("plugin-base.r");
 
-    string plugVer = to!string((plugin.publicVersionMajor << 16) | (plugin.publicVersionMinor << 8) | plugin.publicVersionPatch);
-
     rFile.writefln(`#define PLUG_NAME "%s"`, pluginName); // no escaping there, TODO
-    rFile.writefln("#define PLUG_MFR_ID '%s'", plugin.manufacturerUniqueID);
-    rFile.writefln("#define PLUG_VER %s", plugVer);
+    rFile.writefln("#define PLUG_MFR_ID '%s'", plugin.vendorUniqueID);
+    rFile.writefln("#define PLUG_VER %s", to!string(plugin.publicVersionInt()));
     rFile.writefln("#define PLUG_UNIQUE_ID '%s'", plugin.pluginUniqueID);
 
     rFile.writeln(rFileBase);
