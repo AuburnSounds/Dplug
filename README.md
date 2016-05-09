@@ -88,22 +88,21 @@ Important contributors to WDL include:
 However dplug is **far** from a translation of WDL:
 
 Pros:
-- no plugin-wide mutex lock. All locks are of a short duration.
-- plugin parameters implement the Observer pattern
-- no need to use Xcode whatsoever
-- float parameters can have user-defined mapping
+- No dispatcher-wide mutex lock. All locks are of a short duration, to avoid blocking the audio thread.
+- Plugin parameters implement the Observer pattern.
+- No need to use Xcode whatsoever.
+- Float parameters can have user-defined mapping
 - PBR-style rendering lets you have a good visual quality with less disk space, at the cost of more work
-- no need to deal with resource compilers: D can `import("filename.ext")` them.
+- No need to deal with resource compilers: D can `import("filename.ext")` them.
 
 Cons:
-- less battle-tested in general
-- hipster compilers are used
+- Less battle-tested in general.
+- Hipster compilers are used, though they get better all the time.
 - API may change without notice (pin the version of dplug you use)
 - AAX and VST3 unimplemented
-- no resizeable UI
-- no HDPI support
-
-
+- No resizeable UI yet.
+- No HDPI support yet.
+- No modal windows.
 
 
 ### VST SDK translation
@@ -126,12 +125,13 @@ Other source files fall under the Boost 1.0 license.
 
 - What is the minimum Windows version supported?
 
-Windows XP+
+Windows Vista. But users report plugins made with both DMD and LDC work on Windows XP.
 
 - What is the minimum OSX version supported?
 
 Mac OS X 10.7+
 Probably possible to go below in cases, but impractical. To try that modify the "release" tool.
+D compilers do not support OS X 10.6 anymore.
 
 - What D compiler can possibly be used?
 
@@ -146,6 +146,13 @@ Pin the version you use using DUB version specifications.
 
 
 ### Release notes
+
+- v3.x.y:
+  * Audio Unit compatibility added, with both Cocoa and Carbon UI. What is still missing from AU: Audio Component API, sandboxing, v3. In other words it's on parity with IPlug but not JUCE.
+  * The `release` tool is now much more friendly to use.
+  * Special keys in `dub.json` are now expected in a `plugin.json` file next to dub.json. In the future it will be the place of autority for information about a plugin, for now this has to be duplicated in `buildPluginInfo()` override. An empty `plugin.json` is OK, defaults are in place.
+  * The Wiki became a place to visit.
+  * no API guarantee yet. Do not expect things not to change.
 
 - v2.x.y:
   * this is the next release, and API will break without notice
