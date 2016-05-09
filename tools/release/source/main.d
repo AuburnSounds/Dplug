@@ -228,20 +228,20 @@ int main(string[] args)
 
                 version(Windows)
                 {
-                    string appendBitness(string filename)
+                    string appendBitness(string prettyName, string originalPath)
                     {
                         if (is64b)
                         {
                             // Issue #84
                             // Rename 64-bit binary on Windows to get Reaper to list both 32-bit and 64-bit plugins if in the same directory
-                            return stripExtension(filename) ~ "-64" ~ extension(filename);
+                            return prettyName ~ "-64" ~ extension(originalPath);
                         }
                         else
-                            return filename;
+                            return prettyName ~ extension(originalPath);
                     }
 
                     // On Windows, simply copy the file
-                    fileMove(plugin.targetFileName, path ~ "/" ~ appendBitness(plugin.targetFileName)); // TODO: use pretty name
+                    fileMove(plugin.targetFileName, path ~ "/" ~ appendBitness(plugin.prettyName, plugin.targetFileName));
                 }
                 else version(OSX)
                 {
