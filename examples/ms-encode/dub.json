@@ -21,7 +21,7 @@
 
     "dependencies":
     {
-        "dplug:vst": "~>2.0"
+        "dplug:vst": "~>3.0"
     },
 
     "configurations": [

@@ -20,13 +20,13 @@ public:
     override PluginInfo buildPluginInfo()
     {
         PluginInfo info;
+        info.vendorName = "No Name Audio";
+        info.vendorUniqueID = CCONST('N', 'o', 'A', 'u');
+        info.pluginName = "MSEncodator";
+        info.pluginUniqueID = CCONST('N', 'A', 'm', 's');
+        info.pluginVersion = PluginVersion(1, 0, 0);
         info.isSynth = false;
         info.hasGUI = false;
-        info.pluginID = CCONST('b', 'e', 'a', 'r');
-        info.productName = "MS-Encode";
-        info.effectName = "MS-Encode";
-        info.vendorName = "Witty Audio";
-        info.pluginVersion = 1000;
         return info;
     }
 
