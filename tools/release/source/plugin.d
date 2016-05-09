@@ -158,7 +158,7 @@ struct Plugin
 Plugin readPluginDescription()
 {
     Plugin result;
-    auto dubResult = execute(["dub", "describe", "--skip-registry=all"]); // checking the registry is very slow
+    auto dubResult = execute(["dub", "describe"]); 
 
     if (dubResult.status != 0)
         throw new Exception(format("dub returned %s", dubResult.status));
@@ -290,7 +290,7 @@ Plugin readPluginDescription()
     if (result.pluginUniqueID.length != 4)
         throw new Exception("\"pluginUniqueID\" should be a string of 4 characters (eg: \"val8\")");
 
-        // In developpement, should stay at 0.x.y to avoid various AU caches
+    // In developpement, should stay at 0.x.y to avoid various AU caches
     string publicV;
     try
     {
