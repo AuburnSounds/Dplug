@@ -1,0 +1,8 @@
+{
+    "vendorName": "No Name Audio",
+    "vendorUniqueID": "NoAu",
+    "pluginName": "MSEncodator",
+    "pluginUniqueID": "NAms",
+    "publicVersion": "1.0.0",
+    "CFBundleIdentifierPrefix": "com.nonameaudio"
+}

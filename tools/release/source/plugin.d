@@ -185,7 +185,10 @@ Plugin readPluginDescription()
                     throw new Exception("Your dub.json is missing a non-empty \"copyright\" field to put in Info.plist");
                 }
                 else
-                    writeln("warning: missing \"copyright\" field in dub.json");
+                {
+                    warning("Missing \"copyright\" in dub.json\n         => Using \"Unknown\" instead.");
+                    copyright = "Unknown";
+                }
             }
             result.copyright = copyright;
         }
@@ -193,7 +196,7 @@ Plugin readPluginDescription()
 
     if (!exists("plugin.json"))
     {
-        throw new Exception("needs a plugin.json description for proper bundling. Please create one next to dub.json.");
+        throw new Exception("Needs a plugin.json file for proper bundling. Please create one next to dub.json.");
     }
 
     // Open an eventual plugin.json directly to find keys that DUB doesn't bypass
