@@ -18,21 +18,21 @@
 
 ### Release notes
 
-- v3.x.y (09/05/2016):
+- v3.x.y (9th May 2016):
   * Audio Unit compatibility added, with both Cocoa and Carbon UI. What is still missing from AU: Audio Component API, sandboxing, v3. In other words it's on parity with IPlug but not JUCE.
   * The `release` tool is now much more friendly to use.
   * Special keys in `dub.json` are now expected in a `plugin.json` file next to dub.json. In the future it will be the place of autority for information about a plugin, for now this has to be duplicated in `buildPluginInfo()` override. An empty `plugin.json` is OK, defaults are in place.
   * The Wiki became a place to visit.
   * no API guarantee yet. Do not expect things not to change.
 
-- v2.x.y:
+- v2.x.y: (6th January 2016)
   * this is the next release, and API will break without notice
   * supports VST for 32-bit and 64-bit, Windows and Mac
   * `release` tool now expects a VST or AU configuration, see the `distort` example for details
   * special `dub.json` key `CFBundleIdentifier` became `CFBundleIdentifierPrefix`, see how `distort` works to update your plugins dub.json
   * 10.6 compatibility dropped.
 
-- v1.x.y:
+- v1.x.y: (26th May 2015)
   * initial release, VST support for 32-bit and 64-bit, Windows and Mac
 
 
