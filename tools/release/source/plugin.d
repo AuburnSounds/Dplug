@@ -7,6 +7,7 @@ import std.file;
 import std.regex;
 import std.path;
 import std.stdio;
+import std.datetime;
 
 import colorize;
 import utils;
@@ -88,7 +89,6 @@ struct Plugin
 {
     string name;       // name, extracted from dub.json(eg: 'distort')
     string targetFileName; // result of build
-    string copyright;  // Copyright information, copied in the bundle
     string CFBundleIdentifierPrefix;
     string userManualPath; // can be null
     string licensePath;    // can be null
@@ -126,6 +126,12 @@ struct Plugin
         return "BNDL" ~ vendorUniqueID;
     }
 
+    string copyright() const  // Copyright information, copied in the OSX bundle
+    {
+        SysTime time = Clock.currTime(UTC());
+        return format("Copyright %s, %s", vendorName, time.year);
+    }
+
     // only a handful of characters are accepter in bundle identifiers
     static string sanitizeBundleString(string s) pure
     {
@@ -158,7 +164,7 @@ struct Plugin
 Plugin readPluginDescription()
 {
     Plugin result;
-    auto dubResult = execute(["dub", "describe"]); 
+    auto dubResult = execute(["dub", "describe"]);
 
     if (dubResult.status != 0)
         throw new Exception(format("dub returned %s", dubResult.status));
@@ -175,22 +181,6 @@ Plugin readPluginDescription()
         {
             result.name = name;
             result.targetFileName = pack["targetFileName"].str;
-
-            string copyright = pack["copyright"].str;
-
-            if (copyright == "")
-            {
-                version(OSX)
-                {
-                    throw new Exception("Your dub.json is missing a non-empty \"copyright\" field to put in Info.plist");
-                }
-                else
-                {
-                    warning("Missing \"copyright\" in dub.json\n         => Using \"Unknown\" instead.");
-                    copyright = "Unknown";
-                }
-            }
-            result.copyright = copyright;
         }
     }
 
@@ -322,8 +312,6 @@ Plugin readPluginDescription()
 
 string makePListFile(Plugin plugin, string config, bool hasIcon)
 {
-    string copyright = plugin.copyright;
-
     string productVersion = plugin.publicVersionString;
     string content = "";
 
@@ -339,7 +327,7 @@ string makePListFile(Plugin plugin, string config, bool hasIcon)
 
     addKeyString("CFBundleDevelopmentRegion", "English");
 
-    addKeyString("CFBundleGetInfoString", productVersion ~ ", " ~ copyright);
+    addKeyString("CFBundleGetInfoString", productVersion ~ ", " ~ plugin.copyright);
 
     string CFBundleIdentifier;
     if (configIsVST(config))
@@ -349,12 +337,15 @@ string makePListFile(Plugin plugin, string config, bool hasIcon)
     else
         throw new Exception("Configuration name given by --config must start with \"VST\" or \"AU\"");
 
+    // Doesn't seem useful at all
     //addKeyString("CFBundleName", plugin.prettyName);
+    //addKeyString("CFBundleExecutable", plugin.prettyName);
+
     addKeyString("CFBundleIdentifier", CFBundleIdentifier);
 
     addKeyString("CFBundleVersion", productVersion);
     addKeyString("CFBundleShortVersionString", productVersion);
-    //addKeyString("CFBundleExecutable", plugin.prettyName);
+
 
     enum isAudioComponentAPIImplemented = false;
 
@@ -437,6 +428,7 @@ string makeRSRC(Plugin plugin, Arch arch, bool verbose)
 
     rFile.writefln(`#define PLUG_NAME "%s"`, pluginName); // no escaping there, TODO
     rFile.writefln("#define PLUG_MFR_ID '%s'", plugin.vendorUniqueID);
+    rFile.writefln("#define PLUG_MFR '%s'", plugin.vendorName);
     rFile.writefln("#define PLUG_VER %s", to!string(plugin.publicVersionInt()));
     rFile.writefln("#define PLUG_UNIQUE_ID '%s'", plugin.pluginUniqueID);
 
