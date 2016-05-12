@@ -1,6 +1,6 @@
 {
     "name": "dplug",
-    "description": "Audio plugins framework. VST client + host, AU client, UI widgets.",
+    "description": "A library for crafting native audio plugins as simply as possible.",
     "homepage": "http://github.com/p0nce/dplug/",
     "copyright": "Steinberg",
     "license": "VST",

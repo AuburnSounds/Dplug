@@ -1,8 +1,8 @@
-# dplug [![Build Status](https://travis-ci.org/p0nce/dplug.png?branch=master)](https://travis-ci.org/p0nce/dplug)
+# Dplug [![Build Status](https://travis-ci.org/p0nce/dplug.png?branch=master)](https://travis-ci.org/p0nce/dplug)
 
 <img alt="logo" src="https://cdn.rawgit.com/p0nce/dplug/master/logo.svg" width="200">
 
-`dplug` is a library for creating native audio plugins as simply as possible.
+`Dplug` is a library for crafting native audio plugins as simply as possible.
 
 
 ## Current features
@@ -83,7 +83,7 @@ D compilers do not support OS X 10.6 anymore.
 
    See `.travis.yml` for supported compilers.
 
-- Is dplug stable?
+- Is Dplug stable?
 
 No. The interface tend to change for improvements.
 Pin the version you use using DUB version specifications.
@@ -126,7 +126,7 @@ Cons:
 
 ## Licenses
 
-dplug has three different licenses depending on the part you need.
+Dplug has three different licenses depending on the part you need.
 For an audio plugin, you would typically need all three.
 I recommend that you check individual source files for license information.
 
@@ -140,7 +140,7 @@ Important contributors to WDL include:
 - Cockos: http://www.cockos.com/
 - Oliver Larkin: http://www.olilarkin.co.uk/
 
-However dplug is **far** from a translation of WDL (see FAQ).
+However Dplug is **far** from a translation of WDL (see FAQ).
 
 
 ### VST SDK translation
@@ -150,8 +150,8 @@ This sub-package falls under the Steinberg VST license.
 VST is a trademark of Steinberg Media Technologies GmbH.
 Please register the SDK via the 3rd party developper license on Steinberg site.
 
-Before you make VST plugins with dplug, you need to read and agree with the license for the VST3 SDK by Steinberg.
-If you don't agree with the license, don't make plugins with dplug.
+Before you make VST plugins with Dplug, you need to read and agree with the license for the VST3 SDK by Steinberg.
+If you don't agree with the license, don't make plugins with Dplug.
 Find the VST3 SDK there: http://www.steinberg.net/en/company/developers.html
 
 ### Misc
