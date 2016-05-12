@@ -1,12 +1,48 @@
-#define PLUG_MFR "WittyAudio"
 
+type 'STR '
+{
+    pstring;
+};
 
-// TODO: this should be set by release tool by reading the plugin.json keys (from CT)
-#define PLUG_IS_INST 0
-#define PLUG_DOES_MIDI 0
+type 'dlle'
+{
+    cstring;
+};
 
-#define UseExtendedThingResource 1
-#include <CoreServices/CoreServices.r>
+type 'thng'
+{
+    literal longint;
+    literal longint;
+    literal longint;
+    unsigned hex longint;
+    unsigned hex longint    kAnyComponentFlagsMask = 0;
+    literal longint;
+    integer;
+    literal longint;
+    integer;
+    literal longint;
+    integer;
+    literal longint;
+    integer;
+
+    unsigned hex longint;
+    longint;
+    integer;
+    longint = $$CountOf(ComponentPlatformInfo);
+    wide array ComponentPlatformInfo {
+        unsigned hex longint;
+        literal longint;
+        integer;
+        integer platform68k = 1,
+                platformPowerPC = 2,
+                platformInterpreted = 3,
+                platformWin32 = 4,
+                platformPowerPCNativeEntryPoint = 5,
+                platformIA32NativeEntryPoint = 6,
+                platformPowerPC64NativeEntryPoint = 7,
+                platformX86_64NativeEntryPoint = 8;
+    };
+};
 
 
 // this is a define used to indicate that a component has no static data that would mean
@@ -29,23 +65,19 @@
   #define TARGET_REZ_MAC_X86_64     0
 #endif
 
-#if TARGET_OS_MAC
-  #if TARGET_REZ_MAC_X86 && TARGET_REZ_MAC_X86_64
-    #define TARGET_REZ_FAT_COMPONENTS_2 1
-    #define Target_PlatformType     platformIA32NativeEntryPoint
-    #define Target_SecondPlatformType platformX86_64NativeEntryPoint
-  #elif TARGET_REZ_MAC_X86
-    #define Target_PlatformType     platformIA32NativeEntryPoint
-  #elif TARGET_REZ_MAC_X86_64
-    #define Target_PlatformType     platformX86_64NativeEntryPoint
-  #else
-    #error you gotta target something
-  #endif
-  #define Target_CodeResType    'dlle'
-  #define TARGET_REZ_USE_DLLE   1
+#if TARGET_REZ_MAC_X86 && TARGET_REZ_MAC_X86_64
+  #define TARGET_REZ_FAT_COMPONENTS_2 1
+  #define Target_PlatformType     platformIA32NativeEntryPoint
+  #define Target_SecondPlatformType platformX86_64NativeEntryPoint
+#elif TARGET_REZ_MAC_X86
+  #define Target_PlatformType     platformIA32NativeEntryPoint
+#elif TARGET_REZ_MAC_X86_64
+  #define Target_PlatformType     platformX86_64NativeEntryPoint
 #else
-  #error get a real platform type
-#endif // not TARGET_OS_MAC
+  #error you gotta target something
+#endif
+#define Target_CodeResType    'dlle'
+#define TARGET_REZ_USE_DLLE   1
 
 #ifndef TARGET_REZ_FAT_COMPONENTS_2
   #define TARGET_REZ_FAT_COMPONENTS_2   0

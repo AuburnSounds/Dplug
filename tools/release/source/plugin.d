@@ -426,11 +426,15 @@ string makeRSRC(Plugin plugin, Arch arch, bool verbose)
     File rFile = File(rPath, "w");
     static immutable string rFileBase = cast(string) import("plugin-base.r");
 
-    rFile.writefln(`#define PLUG_NAME "%s"`, pluginName); // no escaping there, TODO
+    rFile.writefln(`#define PLUG_MFR "%s"`, plugin.vendorName); // no C escaping there, TODO
     rFile.writefln("#define PLUG_MFR_ID '%s'", plugin.vendorUniqueID);
-    rFile.writefln("#define PLUG_MFR '%s'", plugin.vendorName);
-    rFile.writefln("#define PLUG_VER %s", to!string(plugin.publicVersionInt()));
+    rFile.writefln(`#define PLUG_NAME "%s"`, pluginName); // no C escaping there, TODO
     rFile.writefln("#define PLUG_UNIQUE_ID '%s'", plugin.pluginUniqueID);
+    rFile.writefln("#define PLUG_VER %d", plugin.publicVersionInt());
+
+    // TODO: this should be set by release tool by reading the plugin.json keys (from CT)
+    rFile.writeln("#define PLUG_IS_INST 0");
+    rFile.writeln("#define PLUG_DOES_MIDI 0");
 
     rFile.writeln(rFileBase);
     rFile.close();
