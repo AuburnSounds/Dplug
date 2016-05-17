@@ -58,7 +58,9 @@ final class UncheckedMutex
     {
         version( Windows )
         {
-            InitializeCriticalSectionAndSpinCount( &m_hndl, 0 ); // No spinning
+            // Cargo-culting the spin-count in WTGF::Lock
+            // See: https://webkit.org/blog/6161/locking-in-webkit/
+            InitializeCriticalSectionAndSpinCount( &m_hndl, 40 );
         }
         else version( Posix )
         {
