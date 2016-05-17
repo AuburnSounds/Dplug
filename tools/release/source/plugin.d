@@ -5,6 +5,7 @@ import std.process;
 import std.string;
 import std.file;
 import std.regex;
+import std.json;
 import std.path;
 import std.stdio;
 import std.datetime;
@@ -88,7 +89,6 @@ bool configIsAU(string config)
 struct Plugin
 {
     string name;       // name, extracted from dub.json(eg: 'distort')
-    string targetFileName; // result of build
     string CFBundleIdentifierPrefix;
     string userManualPath; // can be null
     string licensePath;    // can be null
@@ -150,6 +150,15 @@ struct Plugin
         return r;
     }
 
+    // copied from dub logic
+    string targetFileName() pure const nothrow
+    {
+        version(Windows)
+            return name  ~ ".dll";
+        else
+            return "lib" ~ name ~ ".so";
+    }
+
     string getVSTBundleIdentifier() pure const
     {
         return CFBundleIdentifierPrefix ~ ".vst." ~ sanitizeBundleString(pluginName);
@@ -163,31 +172,27 @@ struct Plugin
 
 Plugin readPluginDescription()
 {
+    if (!exists("dub.json"))
+        throw new Exception("Needs a dub.json file. Please launch 'release' in a D project directory.");
+
     Plugin result;
-    auto dubResult = execute(["dub", "describe"]);
 
-    if (dubResult.status != 0)
-        throw new Exception(format("dub returned %s", dubResult.status));
+    enum useDubDescribe = true;
 
-    import std.json;
-    JSONValue description = parseJSON(dubResult.output);
+    // Open an eventual plugin.json directly to find keys that DUB doesn't bypass
+    JSONValue dubFile = parseJSON(cast(string)(std.file.read("dub.json")));
 
-    string mainPackage = description["mainPackage"].str;
-
-    foreach (pack; description["packages"].array())
+    try
     {
-        string name = pack["name"].str;
-        if (name == mainPackage)
-        {
-            result.name = name;
-            result.targetFileName = pack["targetFileName"].str;
-        }
+        result.name = dubFile["name"].str;
+    }
+    catch(Exception e)
+    {
+        throw new Exception("Missing \"name\" in dub.json (eg: \"myplugin\")");
     }
 
     if (!exists("plugin.json"))
-    {
         throw new Exception("Needs a plugin.json file for proper bundling. Please create one next to dub.json.");
-    }
 
     // Open an eventual plugin.json directly to find keys that DUB doesn't bypass
     JSONValue rawPluginFile = parseJSON(cast(string)(std.file.read("plugin.json")));
