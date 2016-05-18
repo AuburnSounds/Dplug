@@ -25,6 +25,8 @@ import core.stdc.stdlib,
        core.thread,
        core.stdc.stdio;
 
+import std.algorithm;
+
 import gfm.core;
 
 import dplug.core.alignedbuffer,

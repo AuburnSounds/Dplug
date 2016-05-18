@@ -14,6 +14,7 @@ import std.traits;
 
 import gfm.math;
 import ae.utils.graphics;
+import ae.utils.graphics.view;
 import imageformats;
 
 
@@ -56,7 +57,7 @@ if (isWritableView!V && is(COLOR : ViewColor!V))
 
 
     if (a0 > a1)
-        a1 += TAU;
+        a1 += 2 * PI;
 
     int xmin = x0;
     int xmax = x1+1;
@@ -94,7 +95,7 @@ if (isWritableView!V && is(COLOR : ViewColor!V))
 
                     float a = atan2(dy, dx);
                     bool inSector = (a0 <= a && a <= a1);
-                    a += TAU;
+                    a += 2 * PI;
                     bool inSector2 = (a0 <= a && a <= a1);
                     if( inSector || inSector2 )
                     {

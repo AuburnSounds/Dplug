@@ -49,9 +49,9 @@ public:
         // change all of these!
         PluginInfo info;
         info.vendorName = "Witty Audio";
-        info.vendorUniqueID = dplug.core.funcs.CCONST('W', 'i', 't', 'y');
+        info.vendorUniqueID = CCONST('W', 'i', 't', 'y');
         info.pluginName = "Destructatorizer";
-        info.pluginUniqueID = dplug.core.funcs.CCONST('W', 'i', 'D', 'i');
+        info.pluginUniqueID = CCONST('W', 'i', 'D', 'i');
         info.pluginVersion = PluginVersion(1, 0, 0);
         info.isSynth = false;
         info.hasGUI = true;
@@ -210,8 +210,8 @@ public:
         super(620, 330); // initial size
 
         // Font data is bundled as a static array
-        _font = new Font(cast(ubyte[])( import("fonts/VeraBd.ttf") ));
-        context.setSkybox( loadImage(cast(ubyte[])(import("gfx/skybox.jpg"))) );
+        _font = new Font(cast(ubyte[])( import("VeraBd.ttf") ));
+        context.setSkybox( loadImage(cast(ubyte[])(import("skybox.jpg"))) );
 
         // Buils the UI hierarchy
         addChild(inputSlider = new UISlider(context(), cast(FloatParameter) _client.param(paramInput)));
