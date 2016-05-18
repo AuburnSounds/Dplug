@@ -44,7 +44,7 @@ string registerCocoaViewFactory()
 struct DPlugCocoaViewFactory
 {
     // This class uses a unique class name for each plugin instance
-    static string customClassName = null;
+    static __gshared string customClassName = null;
 
     NSView parent;
     alias parent this;
@@ -59,7 +59,7 @@ struct DPlugCocoaViewFactory
     {
     }
 
-    static Class clazz;
+    static __gshared Class clazz;
 
     static void registerSubclass()
     {
