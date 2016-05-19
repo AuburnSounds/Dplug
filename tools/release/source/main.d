@@ -222,7 +222,9 @@ int main(string[] args)
                 if (arch != Arch.universalBinary)
                 {
                     buildPlugin(compiler, config, build, is64b, verbose, force, combined, quiet);
-                    cwritefln("    => build OK, available in %s".green, path);
+
+                    double bytes = getSize(plugin.targetFileName) / (1024.0 * 1024.0);
+                    cwritefln("    => Build OK, binary size = %0.1f mb, available in %s".green, bytes, path);
                     cwriteln();
                 }
 
