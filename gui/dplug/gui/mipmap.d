@@ -1610,3 +1610,9 @@ void generateLevelCubicL16(Image!L16* thisLevel,
         }
     }
 }
+
+unittest
+{
+    Mipmap!RGBA rgbaMipmap;
+    Mipmap!L16 l16Mipmap;
+}
