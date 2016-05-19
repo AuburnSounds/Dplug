@@ -19,7 +19,8 @@ module dplug.window.win32window;
 import core.thread;
 
 import std.process,
-       std.string;
+       std.string,
+       std.conv;
 
 import gfm.math;
 

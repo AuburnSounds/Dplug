@@ -23,6 +23,21 @@ else version( D_InlineAsm_X86_64 )
     version = AsmX86;
 }
 
+// Because of unability to load globals in PIC code with DMD, only enable some assembly with LDC
+version(LDC)
+{
+    version( D_InlineAsm_X86 )
+    {
+        version = inlineAsmCanLoadGlobalsInPIC;
+    }
+    else version( D_InlineAsm_X86_64 )
+    {
+        version = inlineAsmCanLoadGlobalsInPIC;
+    }
+}
+
+
+
 
 /// Mipmapped images.
 /// Supports non power-of-two textures.
@@ -479,119 +494,124 @@ void generateLevelBoxRGBA(Image!RGBA* thisLevel,
 
     for (int y = 0; y < height; ++y)
     {
-        version(D_InlineAsm_X86)
+        version(inlineAsmCanLoadGlobalsInPIC)
         {
-            asm pure nothrow @nogc
+            version(D_InlineAsm_X86)
             {
-                mov ECX, width;
-                shr ECX, 1;
-                jz no_need; // ECX = 0 => no pair of pixels to process
+                asm pure nothrow @nogc
+                {
+                    mov ECX, width;
+                    shr ECX, 1;
+                    jz no_need; // ECX = 0 => no pair of pixels to process
 
-                mov EAX, L0;
-                mov EDX, L1;
-                mov EDI, dest;
-                movaps XMM5, xmmTwoShort;
+                    mov EAX, L0;
+                    mov EDX, L1;
+                    mov EDI, dest;
+                    movaps XMM5, xmmTwoShort;
 
-            loop_ecx:
-                movdqu XMM0, [EAX]; // A B E F
-                pxor XMM4, XMM4;
-                movdqu XMM1, [EDX]; // C D G H
-                movdqa XMM2, XMM0;
-                movdqa XMM3, XMM1;
-                punpcklbw XMM0, XMM4; // A B in short
-                punpcklbw XMM1, XMM4; // C D in short
-                punpckhbw XMM2, XMM4; // E F in short
-                punpckhbw XMM3, XMM4; // G H in short
-                paddusw XMM0, XMM1; // A + C | B + D
-                paddusw XMM2, XMM3; // E + F | G + H
-                movdqa XMM1, XMM0;
-                movdqa XMM3, XMM2;
-                psrldq XMM1, 8;
-                psrldq XMM3, 8;
-                add EDI, 8;
-                paddusw XMM0, XMM1; // A + B + C + D | garbage
-                paddusw XMM2, XMM3; // E + F + G + H | garbage
-                paddusw XMM0, XMM5; // A + B + C + D + 2 | garbage
-                paddusw XMM2, XMM5; // E + F + G + H + 2 | garbage
-                psrlw XMM0, 2; // (A + B + C + D + 2) >> 2 | garbage
-                psrlw XMM2, 2; // (E + F + G + H + 2) >> 2 | garbage
-                add EAX, 16;
-                punpcklqdq XMM0, XMM2;
-                add EDX, 16;
-                packuswb XMM0, XMM4; // (A + B + C + D + 2) >> 2 | (E + F + G + H + 2) >> 2 | 0 | 0
-                movq [EDI-8], XMM0;
-                sub ECX, 1;
-                jnz loop_ecx;
-            no_need: ;
+                loop_ecx:
+                    movdqu XMM0, [EAX]; // A B E F
+                    pxor XMM4, XMM4;
+                    movdqu XMM1, [EDX]; // C D G H
+                    movdqa XMM2, XMM0;
+                    movdqa XMM3, XMM1;
+                    punpcklbw XMM0, XMM4; // A B in short
+                    punpcklbw XMM1, XMM4; // C D in short
+                    punpckhbw XMM2, XMM4; // E F in short
+                    punpckhbw XMM3, XMM4; // G H in short
+                    paddusw XMM0, XMM1; // A + C | B + D
+                    paddusw XMM2, XMM3; // E + F | G + H
+                    movdqa XMM1, XMM0;
+                    movdqa XMM3, XMM2;
+                    psrldq XMM1, 8;
+                    psrldq XMM3, 8;
+                    add EDI, 8;
+                    paddusw XMM0, XMM1; // A + B + C + D | garbage
+                    paddusw XMM2, XMM3; // E + F + G + H | garbage
+                    paddusw XMM0, XMM5; // A + B + C + D + 2 | garbage
+                    paddusw XMM2, XMM5; // E + F + G + H + 2 | garbage
+                    psrlw XMM0, 2; // (A + B + C + D + 2) >> 2 | garbage
+                    psrlw XMM2, 2; // (E + F + G + H + 2) >> 2 | garbage
+                    add EAX, 16;
+                    punpcklqdq XMM0, XMM2;
+                    add EDX, 16;
+                    packuswb XMM0, XMM4; // (A + B + C + D + 2) >> 2 | (E + F + G + H + 2) >> 2 | 0 | 0
+                    movq [EDI-8], XMM0;
+                    sub ECX, 1;
+                    jnz loop_ecx;
+                no_need: ;
+                }
+
+                // Eventually filter the last pixel
+                int remaining = width & ~1;
+                for (int x = remaining; x < width; ++x)
+                {
+                    RGBA A = L0[2 * x];
+                    RGBA B = L0[2 * x + 1];
+                    RGBA C = L1[2 * x];
+                    RGBA D = L1[2 * x + 1];
+                    dest[x] = RGBA.op!q{(a + b + c + d + 2) >> 2}(A, B, C, D);
+                }
             }
-
-            // Eventually filter the last pixel
-            int remaining = width & ~1;
-            for (int x = remaining; x < width; ++x)
+            else version(D_InlineAsm_X86_64)
             {
-                RGBA A = L0[2 * x];
-                RGBA B = L0[2 * x + 1];
-                RGBA C = L1[2 * x];
-                RGBA D = L1[2 * x + 1];
-                dest[x] = RGBA.op!q{(a + b + c + d + 2) >> 2}(A, B, C, D);
-            }
-        }
-        else version(D_InlineAsm_X86_64)
-        {
-            asm pure nothrow @nogc
-            {
-                mov ECX, width;
-                shr ECX, 1;
-                jz no_need; // ECX = 0 => no pair of pixels to process
+                asm pure nothrow @nogc
+                {
+                    mov ECX, width;
+                    shr ECX, 1;
+                    jz no_need; // ECX = 0 => no pair of pixels to process
 
-                mov RAX, L0;
-                mov RDX, L1;
-                mov RDI, dest;
-                movaps XMM5, xmmTwoShort;
+                    mov RAX, L0;
+                    mov RDX, L1;
+                    mov RDI, dest;
+                    movaps XMM5, xmmTwoShort;
 
-            loop_ecx:
-                movdqu XMM0, [RAX]; // A B E F
-                pxor XMM4, XMM4;
-                movdqu XMM1, [RDX]; // C D G H
-                movdqa XMM2, XMM0;
-                movdqa XMM3, XMM1;
-                punpcklbw XMM0, XMM4; // A B in short
-                punpcklbw XMM1, XMM4; // C D in short
-                punpckhbw XMM2, XMM4; // E F in short
-                punpckhbw XMM3, XMM4; // G H in short
-                paddusw XMM0, XMM1; // A + C | B + D
-                paddusw XMM2, XMM3; // E + F | G + H
-                movdqa XMM1, XMM0;
-                movdqa XMM3, XMM2;
-                psrldq XMM1, 8;
-                psrldq XMM3, 8;
-                add RDI, 8;
-                paddusw XMM0, XMM1; // A + B + C + D | garbage
-                paddusw XMM2, XMM3; // E + F + G + H | garbage
-                paddusw XMM0, XMM5; // A + B + C + D + 2 | garbage
-                paddusw XMM2, XMM5; // E + F + G + H + 2 | garbage
-                psrlw XMM0, 2; // (A + B + C + D + 2) >> 2 | garbage
-                psrlw XMM2, 2; // (E + F + G + H + 2) >> 2 | garbage
-                add RAX, 16;
-                punpcklqdq XMM0, XMM2;
-                add RDX, 16;
-                packuswb XMM0, XMM4; // (A + B + C + D + 2) >> 2 | (E + F + G + H + 2) >> 2 | 0 | 0
-                movq [RDI-8], XMM0;
-                sub ECX, 1;
-                jnz loop_ecx;
-            no_need: ;
-            }
+                loop_ecx:
+                    movdqu XMM0, [RAX]; // A B E F
+                    pxor XMM4, XMM4;
+                    movdqu XMM1, [RDX]; // C D G H
+                    movdqa XMM2, XMM0;
+                    movdqa XMM3, XMM1;
+                    punpcklbw XMM0, XMM4; // A B in short
+                    punpcklbw XMM1, XMM4; // C D in short
+                    punpckhbw XMM2, XMM4; // E F in short
+                    punpckhbw XMM3, XMM4; // G H in short
+                    paddusw XMM0, XMM1; // A + C | B + D
+                    paddusw XMM2, XMM3; // E + F | G + H
+                    movdqa XMM1, XMM0;
+                    movdqa XMM3, XMM2;
+                    psrldq XMM1, 8;
+                    psrldq XMM3, 8;
+                    add RDI, 8;
+                    paddusw XMM0, XMM1; // A + B + C + D | garbage
+                    paddusw XMM2, XMM3; // E + F + G + H | garbage
+                    paddusw XMM0, XMM5; // A + B + C + D + 2 | garbage
+                    paddusw XMM2, XMM5; // E + F + G + H + 2 | garbage
+                    psrlw XMM0, 2; // (A + B + C + D + 2) >> 2 | garbage
+                    psrlw XMM2, 2; // (E + F + G + H + 2) >> 2 | garbage
+                    add RAX, 16;
+                    punpcklqdq XMM0, XMM2;
+                    add RDX, 16;
+                    packuswb XMM0, XMM4; // (A + B + C + D + 2) >> 2 | (E + F + G + H + 2) >> 2 | 0 | 0
+                    movq [RDI-8], XMM0;
+                    sub ECX, 1;
+                    jnz loop_ecx;
+                no_need: ;
+                }
 
-            // Eventually filter the last pixel
-            int remaining = width & ~1;
-            for (int x = remaining; x < width; ++x)
-            {
-                RGBA A = L0[2 * x];
-                RGBA B = L0[2 * x + 1];
-                RGBA C = L1[2 * x];
-                RGBA D = L1[2 * x + 1];
-                dest[x] = RGBA.op!q{(a + b + c + d + 2) >> 2}(A, B, C, D);
+                // Eventually filter the last pixel
+                int remaining = width & ~1;
+                for (int x = remaining; x < width; ++x)
+                {
+                    RGBA A = L0[2 * x];
+                    RGBA B = L0[2 * x + 1];
+                    RGBA C = L1[2 * x];
+                    RGBA D = L1[2 * x + 1];
+                    dest[x] = RGBA.op!q{(a + b + c + d + 2) >> 2}(A, B, C, D);
+                }
             }
+            else
+                static assert(false);
         }
         else
         {
@@ -631,149 +651,154 @@ void generateLevelBoxL16(Image!L16* thisLevel,
 
     for (int y = 0; y < height; ++y)
     {
-        version(D_InlineAsm_X86)
+        version(inlineAsmCanLoadGlobalsInPIC)
         {
-            asm pure nothrow @nogc
+            version(D_InlineAsm_X86)
             {
-                mov ECX, width;
-                shr ECX, 2;
-                jz no_need; // ECX = 0 => less than 4 pixels to process
+                asm pure nothrow @nogc
+                {
+                    mov ECX, width;
+                    shr ECX, 2;
+                    jz no_need; // ECX = 0 => less than 4 pixels to process
 
-                mov EAX, L0;
-                mov EDX, L1;
-                mov EDI, dest;
-                movdqa XMM5, xmmTwoInt;
-                pxor XMM4, XMM4;
+                    mov EAX, L0;
+                    mov EDX, L1;
+                    mov EDI, dest;
+                    movdqa XMM5, xmmTwoInt;
+                    pxor XMM4, XMM4;
 
-            loop_ecx:
-                movdqu XMM0, [EAX]; // A B E F I J M N
-                movdqu XMM1, [EDX]; // C D G H K L O P
+                loop_ecx:
+                    movdqu XMM0, [EAX]; // A B E F I J M N
+                    movdqu XMM1, [EDX]; // C D G H K L O P
 
-                add EAX, 16;
-                add EDX, 16;
+                    add EAX, 16;
+                    add EDX, 16;
 
-                movdqa XMM2, XMM0;
-                movdqa XMM3, XMM1;
+                    movdqa XMM2, XMM0;
+                    movdqa XMM3, XMM1;
 
-                punpcklwd XMM0, XMM4; // A B E F in int32
-                punpckhwd XMM2, XMM4; // I J M N in int32
-                punpcklwd XMM1, XMM4; // C D G H in int32
-                punpckhwd XMM3, XMM4; // K L O P in int32
+                    punpcklwd XMM0, XMM4; // A B E F in int32
+                    punpckhwd XMM2, XMM4; // I J M N in int32
+                    punpcklwd XMM1, XMM4; // C D G H in int32
+                    punpckhwd XMM3, XMM4; // K L O P in int32
 
-                paddd XMM0, XMM1; // A+C B+D E+G F+H
-                paddd XMM2, XMM3; // I+K J+L M+O N+P
+                    paddd XMM0, XMM1; // A+C B+D E+G F+H
+                    paddd XMM2, XMM3; // I+K J+L M+O N+P
 
-                movdqa XMM1, XMM0;
-                movdqa XMM3, XMM2;
+                    movdqa XMM1, XMM0;
+                    movdqa XMM3, XMM2;
 
-                psrldq XMM1, 4; // B+D E+G F+H 0
-                psrldq XMM3, 4; // J+L M+O N+P 0
+                    psrldq XMM1, 4; // B+D E+G F+H 0
+                    psrldq XMM3, 4; // J+L M+O N+P 0
 
-                paddd XMM0, XMM1; // A+B+C+D garbage E+F+G+H garbage
-                paddd XMM2, XMM3; // I+J+K+L garbage M+N+O+P garbage
+                    paddd XMM0, XMM1; // A+B+C+D garbage E+F+G+H garbage
+                    paddd XMM2, XMM3; // I+J+K+L garbage M+N+O+P garbage
 
-                pshufd XMM0, XMM0, 0b00001000; // A+B+C+D E+F+G+H garbage garbage
-                pshufd XMM2, XMM2, 0b00001000; // I+J+K+L M+N+O+P garbage garbage
+                    pshufd XMM0, XMM0, 0b00001000; // A+B+C+D E+F+G+H garbage garbage
+                    pshufd XMM2, XMM2, 0b00001000; // I+J+K+L M+N+O+P garbage garbage
 
-                punpcklqdq XMM0, XMM2; // A+B+C+D E+F+G+H I+J+K+L M+N+O+P
-                paddd XMM0, XMM5; // add 2
-                psrld XMM0, 2; // >> 2
+                    punpcklqdq XMM0, XMM2; // A+B+C+D E+F+G+H I+J+K+L M+N+O+P
+                    paddd XMM0, XMM5; // add 2
+                    psrld XMM0, 2; // >> 2
 
-                // because packusdw is not available before SSE4.1
-                // Extend sign bit to the right
-                pslld XMM0, 16;
-                psrad XMM0, 16;
-                add EDI, 8;
-                packssdw XMM0, XMM4;
+                    // because packusdw is not available before SSE4.1
+                    // Extend sign bit to the right
+                    pslld XMM0, 16;
+                    psrad XMM0, 16;
+                    add EDI, 8;
+                    packssdw XMM0, XMM4;
 
-                movq [EDI-8], XMM0;
-                sub ECX, 1;
-                jnz loop_ecx;
-            no_need: ;
+                    movq [EDI-8], XMM0;
+                    sub ECX, 1;
+                    jnz loop_ecx;
+                no_need: ;
+                }
+
+                // Eventually filter the 0 to 3 pixels
+                int remaining = width & ~3;
+                for (int x = remaining; x < width; ++x)
+                {
+                    L16 A = L0[2 * x];
+                    L16 B = L0[2 * x + 1];
+                    L16 C = L1[2 * x];
+                    L16 D = L1[2 * x + 1];
+                    dest[x] = L16.op!q{(a + b + c + d + 2) >> 2}(A, B, C, D);
+                }
             }
-
-            // Eventually filter the 0 to 3 pixels
-            int remaining = width & ~3;
-            for (int x = remaining; x < width; ++x)
+            else version(D_InlineAsm_X86_64)
             {
-                L16 A = L0[2 * x];
-                L16 B = L0[2 * x + 1];
-                L16 C = L1[2 * x];
-                L16 D = L1[2 * x + 1];
-                dest[x] = L16.op!q{(a + b + c + d + 2) >> 2}(A, B, C, D);
+                asm pure nothrow @nogc
+                {
+                    mov ECX, width;
+                    shr ECX, 2;
+                    jz no_need; // ECX = 0 => less than 4 pixels to process
+
+                    mov RAX, L0;
+                    mov RDX, L1;
+                    mov RDI, dest;
+                    movdqa XMM5, xmmTwoInt;
+                    pxor XMM4, XMM4;
+
+                loop_ecx:
+                    movdqu XMM0, [RAX]; // A B E F I J M N
+                    movdqu XMM1, [RDX]; // C D G H K L O P
+
+                    add RAX, 16;
+                    add RDX, 16;
+
+                    movdqa XMM2, XMM0;
+                    movdqa XMM3, XMM1;
+
+                    punpcklwd XMM0, XMM4; // A B E F in int32
+                    punpckhwd XMM2, XMM4; // I J M N in int32
+                    punpcklwd XMM1, XMM4; // C D G H in int32
+                    punpckhwd XMM3, XMM4; // K L O P in int32
+
+                    paddd XMM0, XMM1; // A+C B+D E+G F+H
+                    paddd XMM2, XMM3; // I+K J+L M+O N+P
+
+                    movdqa XMM1, XMM0;
+                    movdqa XMM3, XMM2;
+
+                    psrldq XMM1, 4; // B+D E+G F+H 0
+                    psrldq XMM3, 4; // J+L M+O N+P 0
+
+                    paddd XMM0, XMM1; // A+B+C+D garbage E+F+G+H garbage
+                    paddd XMM2, XMM3; // I+J+K+L garbage M+N+O+P garbage
+
+                    pshufd XMM0, XMM0, 0b00001000; // A+B+C+D E+F+G+H garbage garbage
+                    pshufd XMM2, XMM2, 0b00001000; // I+J+K+L M+N+O+P garbage garbage
+
+                    punpcklqdq XMM0, XMM2; // A+B+C+D E+F+G+H I+J+K+L M+N+O+P
+                    paddd XMM0, XMM5; // add 2
+                    psrld XMM0, 2; // >> 2
+
+                    // because packusdw is not available before SSE4.1
+                    // Extend sign bit to the right
+                    pslld XMM0, 16;
+                    psrad XMM0, 16;
+                    add RDI, 8;
+                    packssdw XMM0, XMM4;
+
+                    movq [RDI-8], XMM0;
+                    sub ECX, 1;
+                    jnz loop_ecx;
+                no_need: ;
+                }
+
+                // Eventually filter the 0 to 3 pixels
+                int remaining = width & ~3;
+                for (int x = remaining; x < width; ++x)
+                {
+                    L16 A = L0[2 * x];
+                    L16 B = L0[2 * x + 1];
+                    L16 C = L1[2 * x];
+                    L16 D = L1[2 * x + 1];
+                    dest[x] = L16.op!q{(a + b + c + d + 2) >> 2}(A, B, C, D);
+                }
             }
-        }
-        else version(D_InlineAsm_X86_64)
-        {
-            asm pure nothrow @nogc
-            {
-                mov ECX, width;
-                shr ECX, 2;
-                jz no_need; // ECX = 0 => less than 4 pixels to process
-
-                mov RAX, L0;
-                mov RDX, L1;
-                mov RDI, dest;
-                movdqa XMM5, xmmTwoInt;
-                pxor XMM4, XMM4;
-
-            loop_ecx:
-                movdqu XMM0, [RAX]; // A B E F I J M N
-                movdqu XMM1, [RDX]; // C D G H K L O P
-
-                add RAX, 16;
-                add RDX, 16;
-
-                movdqa XMM2, XMM0;
-                movdqa XMM3, XMM1;
-
-                punpcklwd XMM0, XMM4; // A B E F in int32
-                punpckhwd XMM2, XMM4; // I J M N in int32
-                punpcklwd XMM1, XMM4; // C D G H in int32
-                punpckhwd XMM3, XMM4; // K L O P in int32
-
-                paddd XMM0, XMM1; // A+C B+D E+G F+H
-                paddd XMM2, XMM3; // I+K J+L M+O N+P
-
-                movdqa XMM1, XMM0;
-                movdqa XMM3, XMM2;
-
-                psrldq XMM1, 4; // B+D E+G F+H 0
-                psrldq XMM3, 4; // J+L M+O N+P 0
-
-                paddd XMM0, XMM1; // A+B+C+D garbage E+F+G+H garbage
-                paddd XMM2, XMM3; // I+J+K+L garbage M+N+O+P garbage
-
-                pshufd XMM0, XMM0, 0b00001000; // A+B+C+D E+F+G+H garbage garbage
-                pshufd XMM2, XMM2, 0b00001000; // I+J+K+L M+N+O+P garbage garbage
-
-                punpcklqdq XMM0, XMM2; // A+B+C+D E+F+G+H I+J+K+L M+N+O+P
-                paddd XMM0, XMM5; // add 2
-                psrld XMM0, 2; // >> 2
-
-                // because packusdw is not available before SSE4.1
-                // Extend sign bit to the right
-                pslld XMM0, 16;
-                psrad XMM0, 16;
-                add RDI, 8;
-                packssdw XMM0, XMM4;
-
-                movq [RDI-8], XMM0;
-                sub ECX, 1;
-                jnz loop_ecx;
-            no_need: ;
-            }
-
-            // Eventually filter the 0 to 3 pixels
-            int remaining = width & ~3;
-            for (int x = remaining; x < width; ++x)
-            {
-                L16 A = L0[2 * x];
-                L16 B = L0[2 * x + 1];
-                L16 C = L1[2 * x];
-                L16 D = L1[2 * x + 1];
-                dest[x] = L16.op!q{(a + b + c + d + 2) >> 2}(A, B, C, D);
-            }
+            else
+                static assert(false);
         }
         else
         {
@@ -814,24 +839,129 @@ void generateLevelBoxAlphaCovRGBA(Image!RGBA* thisLevel,
 
     for (int y = 0; y < height; ++y)
     {
-        version(D_InlineAsm_X86)
+        version(inlineAsmCanLoadGlobalsInPIC)
         {
-            assert(width > 0);
-            asm nothrow @nogc
+            version(D_InlineAsm_X86)
             {
-                mov ECX, width;
+                assert(width > 0);
+                asm nothrow @nogc
+                {
+                    mov ECX, width;
 
-                mov EAX, L0;
-                mov EDX, L1;
-                mov EDI, dest;
+                    mov EAX, L0;
+                    mov EDX, L1;
+                    mov EDI, dest;
+
+                    loop_ecx:
+
+                        movq XMM0, [EAX];                  // Ar Ag Ab Aa Br Bg Bb Ba + zeroes
+                        movq XMM1, [EDX];                  // Cr Cg Cb Ca Dr Dg Db Da + zeroes
+                        pxor XMM4, XMM4;
+                        add EAX, 8;
+                        add EDX, 8;
+
+                        punpcklbw XMM0, XMM4;              // Ar Ag Ab Aa Br Bg Bb Ba
+                        punpcklbw XMM1, XMM4;              // Cr Cg Cb Ca Dr Dg Db Da
+
+                        movdqa XMM2, XMM0;
+                        punpcklwd XMM0, XMM1;              // Ar Cr Ag Cg Ab Cb Aa Ca
+                        punpckhwd XMM2, XMM1;              // Br Dr Bg Dg Bb Db Ba Da
+
+                        // perhaps unnecessary
+                        movdqa XMM3, XMM0;
+                        punpcklwd XMM0, XMM2;              // Ar Br Cr Dr Ag Bg Cg Dg
+                        punpckhwd XMM3, XMM2;              // Ab Bb Cb Db Aa Ba Ca Da
+
+                        movdqa XMM1, XMM3;
+                        punpckhqdq XMM1, XMM1;             // Aa Ba Ca Da Aa Ba Ca Da
+
+                        // Are alpha all zeroes? if so, early continue.
+                        movdqa XMM2, XMM1;
+                        pcmpeqb XMM2, XMM4;
+                        add EDI, 4;
+                        pmovmskb ESI, XMM2;
+                        cmp ESI, 0xffff;
+                        jnz non_null;
+
+                            pxor XMM0, XMM0;
+                            sub ECX, 1;
+                            movd [EDI-4], XMM0;            // dest[x] = A
+                            jnz loop_ecx;
+                            jmp end_of_loop;
+
+                        non_null:
+
+                            pmaddwd XMM0, XMM1;            // Ar*Aa+Br*Ba Cr*Ca+Dr*Da Ag*Aa+Bg*Ba Cg*Ca+Dg*Da
+                            pmaddwd XMM3, XMM1;            // Ab*Aa+Bb*Ba Cb*Ca+Db*Da Aa*Aa+Ba*Ba Ca*Ca+Da*Da
+
+                            // Starting computing sum of coefficients too
+                            punpcklwd XMM1, XMM4;      // Aa Ba Ca Da
+
+                            movdqa XMM2, XMM0;
+                            movdqa XMM5, XMM3;
+                            movdqa XMM4, XMM1;
+                            psrldq XMM4, 8;
+
+                            psrldq XMM2, 4;                // Cr*Ca+Dr*Da Ag*Aa+Bg*Ba Cg*Ca+Dg*Da 0
+                            psrldq XMM5, 4;                // Cb*Ca+Db*Da Aa*Aa+Ba*Ba Ca*Ca+Da*Da 0
+                            paddq XMM1, XMM4;              // Aa+Ca Ba+Da garbage garbage
+                            movdqa XMM4, XMM1;
+
+                            paddd XMM0, XMM2;              // Ar*Aa+Br*Ba+Cr*Ca+Dr*Da garbage Ag*Aa+Bg*Ba+Cg*Ca+Dg*Da garbage
+                            paddd XMM3, XMM5;              // Ab*Aa+Bb*Ba+Cb*Ca+Db*Da garbage Aa*Aa+Ba*Ba+Ca*Ca+Da*Da garbage
+                            psrldq XMM4, 4;
+
+                            pshufd XMM0, XMM0, 0b00001000; // Ar*Aa+Br*Ba+Cr*Ca+Dr*Da Ag*Aa+Bg*Ba+Cg*Ca+Dg*Da garbage garbage
+                            paddq XMM1, XMM4;          // Aa+Ba+Ca+Da garbage garbage garbage
+                            pshufd XMM3, XMM3, 0b00001000; // Ab*Aa+Bb*Ba+Cb*Ca+Db*Da Aa*Aa+Ba*Ba+Ca*Ca+Da*Da garbage garbage
+
+                            punpcklqdq XMM0, XMM3;     // fR fG fB fA
+                            pshufd XMM1, XMM1, 0;
+
+                            cvtdq2ps XMM0, XMM0;
+
+                            cvtdq2ps XMM3, XMM1;       // sum sum sum sum
+
+                            divps XMM0, XMM3;          // fR/sum fG/sum fB/sum fA/sum
+                            addps XMM0, xmm0_5;
+                            cvttps2dq XMM0, XMM0;      // return into integer domain using cast(int)(x + 0.5f)
+
+                            paddd XMM1, xmmTwoInt;
+                            psrld XMM1, 2;             // finalAlpha finalAlpha finalAlpha finalAlpha
+
+                            pslldq XMM0, 4;            // 0 fR/sum fG/sum fB/sum
+                            pslldq XMM1, 12;           // 0 0 0 finalAlpha
+                            psrldq XMM0, 4;            // fR/sum fG/sum fB/sum 0
+
+                            por XMM0, XMM1;            // fR/sum fG/sum fB/sum finalAlpha
+                            pxor XMM3, XMM3;
+                            packssdw XMM0, XMM3;       // same in words
+                            packuswb XMM0, XMM3;       // same in bytes
+
+                            sub ECX, 1;
+                            movd [EDI-4], XMM0;            // dest[x] = A
+                    jnz loop_ecx;
+                    end_of_loop: ;
+                }
+            }
+            else version(D_InlineAsm_X86_64)
+            {
+                assert(width > 0);
+                asm nothrow @nogc
+                {
+                    mov ECX, width;
+
+                    mov RAX, L0;
+                    mov RDX, L1;
+                    mov RDI, dest;
 
                 loop_ecx:
 
-                    movq XMM0, [EAX];                  // Ar Ag Ab Aa Br Bg Bb Ba + zeroes
-                    movq XMM1, [EDX];                  // Cr Cg Cb Ca Dr Dg Db Da + zeroes
+                    movq XMM0, [RAX];                  // Ar Ag Ab Aa Br Bg Bb Ba + zeroes
+                    movq XMM1, [RDX];                  // Cr Cg Cb Ca Dr Dg Db Da + zeroes
                     pxor XMM4, XMM4;
-                    add EAX, 8;
-                    add EDX, 8;
+                    add RAX, 8;
+                    add RDX, 8;
 
                     punpcklbw XMM0, XMM4;              // Ar Ag Ab Aa Br Bg Bb Ba
                     punpcklbw XMM1, XMM4;              // Cr Cg Cb Ca Dr Dg Db Da
@@ -851,174 +981,74 @@ void generateLevelBoxAlphaCovRGBA(Image!RGBA* thisLevel,
                     // Are alpha all zeroes? if so, early continue.
                     movdqa XMM2, XMM1;
                     pcmpeqb XMM2, XMM4;
-                    add EDI, 4;
+                    add RDI, 4;
                     pmovmskb ESI, XMM2;
                     cmp ESI, 0xffff;
                     jnz non_null;
 
-                        pxor XMM0, XMM0;
-                        sub ECX, 1;
-                        movd [EDI-4], XMM0;            // dest[x] = A
-                        jnz loop_ecx;
-                        jmp end_of_loop;
+                    pxor XMM0, XMM0;
+                    sub ECX, 1;
+                    movd [RDI-4], XMM0;            // dest[x] = A
+                    jnz loop_ecx;
+                    jmp end_of_loop;
 
-                    non_null:
+                non_null:
 
-                        pmaddwd XMM0, XMM1;            // Ar*Aa+Br*Ba Cr*Ca+Dr*Da Ag*Aa+Bg*Ba Cg*Ca+Dg*Da
-                        pmaddwd XMM3, XMM1;            // Ab*Aa+Bb*Ba Cb*Ca+Db*Da Aa*Aa+Ba*Ba Ca*Ca+Da*Da
+                    pmaddwd XMM0, XMM1;            // Ar*Aa+Br*Ba Cr*Ca+Dr*Da Ag*Aa+Bg*Ba Cg*Ca+Dg*Da
+                    pmaddwd XMM3, XMM1;            // Ab*Aa+Bb*Ba Cb*Ca+Db*Da Aa*Aa+Ba*Ba Ca*Ca+Da*Da
 
-                        // Starting computing sum of coefficients too
-                        punpcklwd XMM1, XMM4;      // Aa Ba Ca Da
+                    // Starting computing sum of coefficients too
+                    punpcklwd XMM1, XMM4;      // Aa Ba Ca Da
 
-                        movdqa XMM2, XMM0;
-                        movdqa XMM5, XMM3;
-                        movdqa XMM4, XMM1;
-                        psrldq XMM4, 8;
+                    movdqa XMM2, XMM0;
+                    movdqa XMM5, XMM3;
+                    movdqa XMM4, XMM1;
+                    psrldq XMM4, 8;
 
-                        psrldq XMM2, 4;                // Cr*Ca+Dr*Da Ag*Aa+Bg*Ba Cg*Ca+Dg*Da 0
-                        psrldq XMM5, 4;                // Cb*Ca+Db*Da Aa*Aa+Ba*Ba Ca*Ca+Da*Da 0
-                        paddq XMM1, XMM4;              // Aa+Ca Ba+Da garbage garbage
-                        movdqa XMM4, XMM1;
+                    psrldq XMM2, 4;                // Cr*Ca+Dr*Da Ag*Aa+Bg*Ba Cg*Ca+Dg*Da 0
+                    psrldq XMM5, 4;                // Cb*Ca+Db*Da Aa*Aa+Ba*Ba Ca*Ca+Da*Da 0
+                    paddq XMM1, XMM4;              // Aa+Ca Ba+Da garbage garbage
+                    movdqa XMM4, XMM1;
 
-                        paddd XMM0, XMM2;              // Ar*Aa+Br*Ba+Cr*Ca+Dr*Da garbage Ag*Aa+Bg*Ba+Cg*Ca+Dg*Da garbage
-                        paddd XMM3, XMM5;              // Ab*Aa+Bb*Ba+Cb*Ca+Db*Da garbage Aa*Aa+Ba*Ba+Ca*Ca+Da*Da garbage
-                        psrldq XMM4, 4;
+                    paddd XMM0, XMM2;              // Ar*Aa+Br*Ba+Cr*Ca+Dr*Da garbage Ag*Aa+Bg*Ba+Cg*Ca+Dg*Da garbage
+                    paddd XMM3, XMM5;              // Ab*Aa+Bb*Ba+Cb*Ca+Db*Da garbage Aa*Aa+Ba*Ba+Ca*Ca+Da*Da garbage
+                    psrldq XMM4, 4;
 
-                        pshufd XMM0, XMM0, 0b00001000; // Ar*Aa+Br*Ba+Cr*Ca+Dr*Da Ag*Aa+Bg*Ba+Cg*Ca+Dg*Da garbage garbage
-                        paddq XMM1, XMM4;          // Aa+Ba+Ca+Da garbage garbage garbage
-                        pshufd XMM3, XMM3, 0b00001000; // Ab*Aa+Bb*Ba+Cb*Ca+Db*Da Aa*Aa+Ba*Ba+Ca*Ca+Da*Da garbage garbage
+                    pshufd XMM0, XMM0, 0b00001000; // Ar*Aa+Br*Ba+Cr*Ca+Dr*Da Ag*Aa+Bg*Ba+Cg*Ca+Dg*Da garbage garbage
+                    paddq XMM1, XMM4;          // Aa+Ba+Ca+Da garbage garbage garbage
+                    pshufd XMM3, XMM3, 0b00001000; // Ab*Aa+Bb*Ba+Cb*Ca+Db*Da Aa*Aa+Ba*Ba+Ca*Ca+Da*Da garbage garbage
 
-                        punpcklqdq XMM0, XMM3;     // fR fG fB fA
-                        pshufd XMM1, XMM1, 0;
+                    punpcklqdq XMM0, XMM3;     // fR fG fB fA
+                    pshufd XMM1, XMM1, 0;
 
-                        cvtdq2ps XMM0, XMM0;
+                    cvtdq2ps XMM0, XMM0;
 
-                        cvtdq2ps XMM3, XMM1;       // sum sum sum sum
+                    cvtdq2ps XMM3, XMM1;       // sum sum sum sum
 
-                        divps XMM0, XMM3;          // fR/sum fG/sum fB/sum fA/sum
-                        addps XMM0, xmm0_5;
-                        cvttps2dq XMM0, XMM0;      // return into integer domain using cast(int)(x + 0.5f)
+                    divps XMM0, XMM3;          // fR/sum fG/sum fB/sum fA/sum
+                    addps XMM0, xmm0_5;
+                    cvttps2dq XMM0, XMM0;      // return into integer domain using cast(int)(x + 0.5f)
 
-                        paddd XMM1, xmmTwoInt;
-                        psrld XMM1, 2;             // finalAlpha finalAlpha finalAlpha finalAlpha
+                    paddd XMM1, xmmTwoInt;
+                    psrld XMM1, 2;             // finalAlpha finalAlpha finalAlpha finalAlpha
 
-                        pslldq XMM0, 4;            // 0 fR/sum fG/sum fB/sum
-                        pslldq XMM1, 12;           // 0 0 0 finalAlpha
-                        psrldq XMM0, 4;            // fR/sum fG/sum fB/sum 0
+                    pslldq XMM0, 4;            // 0 fR/sum fG/sum fB/sum
+                    pslldq XMM1, 12;           // 0 0 0 finalAlpha
+                    psrldq XMM0, 4;            // fR/sum fG/sum fB/sum 0
 
-                        por XMM0, XMM1;            // fR/sum fG/sum fB/sum finalAlpha
-                        pxor XMM3, XMM3;
-                        packssdw XMM0, XMM3;       // same in words
-                        packuswb XMM0, XMM3;       // same in bytes
+                    por XMM0, XMM1;            // fR/sum fG/sum fB/sum finalAlpha
+                    pxor XMM3, XMM3;
+                    packssdw XMM0, XMM3;       // same in words
+                    packuswb XMM0, XMM3;       // same in bytes
 
-                        sub ECX, 1;
-                        movd [EDI-4], XMM0;            // dest[x] = A
-                jnz loop_ecx;
+                    sub ECX, 1;
+                    movd [RDI-4], XMM0;            // dest[x] = A
+                    jnz loop_ecx;
                 end_of_loop: ;
+                }
             }
-        }
-        else version(D_InlineAsm_X86_64)
-        {
-            assert(width > 0);
-            asm nothrow @nogc
-            {
-                mov ECX, width;
-
-                mov RAX, L0;
-                mov RDX, L1;
-                mov RDI, dest;
-
-            loop_ecx:
-
-                movq XMM0, [RAX];                  // Ar Ag Ab Aa Br Bg Bb Ba + zeroes
-                movq XMM1, [RDX];                  // Cr Cg Cb Ca Dr Dg Db Da + zeroes
-                pxor XMM4, XMM4;
-                add RAX, 8;
-                add RDX, 8;
-
-                punpcklbw XMM0, XMM4;              // Ar Ag Ab Aa Br Bg Bb Ba
-                punpcklbw XMM1, XMM4;              // Cr Cg Cb Ca Dr Dg Db Da
-
-                movdqa XMM2, XMM0;
-                punpcklwd XMM0, XMM1;              // Ar Cr Ag Cg Ab Cb Aa Ca
-                punpckhwd XMM2, XMM1;              // Br Dr Bg Dg Bb Db Ba Da
-
-                // perhaps unnecessary
-                movdqa XMM3, XMM0;
-                punpcklwd XMM0, XMM2;              // Ar Br Cr Dr Ag Bg Cg Dg
-                punpckhwd XMM3, XMM2;              // Ab Bb Cb Db Aa Ba Ca Da
-
-                movdqa XMM1, XMM3;
-                punpckhqdq XMM1, XMM1;             // Aa Ba Ca Da Aa Ba Ca Da
-
-                // Are alpha all zeroes? if so, early continue.
-                movdqa XMM2, XMM1;
-                pcmpeqb XMM2, XMM4;
-                add RDI, 4;
-                pmovmskb ESI, XMM2;
-                cmp ESI, 0xffff;
-                jnz non_null;
-
-                pxor XMM0, XMM0;
-                sub ECX, 1;
-                movd [RDI-4], XMM0;            // dest[x] = A
-                jnz loop_ecx;
-                jmp end_of_loop;
-
-            non_null:
-
-                pmaddwd XMM0, XMM1;            // Ar*Aa+Br*Ba Cr*Ca+Dr*Da Ag*Aa+Bg*Ba Cg*Ca+Dg*Da
-                pmaddwd XMM3, XMM1;            // Ab*Aa+Bb*Ba Cb*Ca+Db*Da Aa*Aa+Ba*Ba Ca*Ca+Da*Da
-
-                // Starting computing sum of coefficients too
-                punpcklwd XMM1, XMM4;      // Aa Ba Ca Da
-
-                movdqa XMM2, XMM0;
-                movdqa XMM5, XMM3;
-                movdqa XMM4, XMM1;
-                psrldq XMM4, 8;
-
-                psrldq XMM2, 4;                // Cr*Ca+Dr*Da Ag*Aa+Bg*Ba Cg*Ca+Dg*Da 0
-                psrldq XMM5, 4;                // Cb*Ca+Db*Da Aa*Aa+Ba*Ba Ca*Ca+Da*Da 0
-                paddq XMM1, XMM4;              // Aa+Ca Ba+Da garbage garbage
-                movdqa XMM4, XMM1;
-
-                paddd XMM0, XMM2;              // Ar*Aa+Br*Ba+Cr*Ca+Dr*Da garbage Ag*Aa+Bg*Ba+Cg*Ca+Dg*Da garbage
-                paddd XMM3, XMM5;              // Ab*Aa+Bb*Ba+Cb*Ca+Db*Da garbage Aa*Aa+Ba*Ba+Ca*Ca+Da*Da garbage
-                psrldq XMM4, 4;
-
-                pshufd XMM0, XMM0, 0b00001000; // Ar*Aa+Br*Ba+Cr*Ca+Dr*Da Ag*Aa+Bg*Ba+Cg*Ca+Dg*Da garbage garbage
-                paddq XMM1, XMM4;          // Aa+Ba+Ca+Da garbage garbage garbage
-                pshufd XMM3, XMM3, 0b00001000; // Ab*Aa+Bb*Ba+Cb*Ca+Db*Da Aa*Aa+Ba*Ba+Ca*Ca+Da*Da garbage garbage
-
-                punpcklqdq XMM0, XMM3;     // fR fG fB fA
-                pshufd XMM1, XMM1, 0;
-
-                cvtdq2ps XMM0, XMM0;
-
-                cvtdq2ps XMM3, XMM1;       // sum sum sum sum
-
-                divps XMM0, XMM3;          // fR/sum fG/sum fB/sum fA/sum
-                addps XMM0, xmm0_5;
-                cvttps2dq XMM0, XMM0;      // return into integer domain using cast(int)(x + 0.5f)
-
-                paddd XMM1, xmmTwoInt;
-                psrld XMM1, 2;             // finalAlpha finalAlpha finalAlpha finalAlpha
-
-                pslldq XMM0, 4;            // 0 fR/sum fG/sum fB/sum
-                pslldq XMM1, 12;           // 0 0 0 finalAlpha
-                psrldq XMM0, 4;            // fR/sum fG/sum fB/sum 0
-
-                por XMM0, XMM1;            // fR/sum fG/sum fB/sum finalAlpha
-                pxor XMM3, XMM3;
-                packssdw XMM0, XMM3;       // same in words
-                packuswb XMM0, XMM3;       // same in bytes
-
-                sub ECX, 1;
-                movd [RDI-4], XMM0;            // dest[x] = A
-                jnz loop_ecx;
-            end_of_loop: ;
-            }
+            else
+                static assert(false);
         }
         else
         {
@@ -1134,137 +1164,142 @@ void generateLevelBoxAlphaCovIntoPremulRGBA(Image!RGBA* thisLevel,
 
     for (int y = 0; y < height; ++y)
     {
-        version(D_InlineAsm_X86)
+        version(inlineAsmCanLoadGlobalsInPIC)
         {
-            asm nothrow @nogc
+            version(D_InlineAsm_X86)
             {
-                mov ECX, width;
+                asm nothrow @nogc
+                {
+                    mov ECX, width;
 
-                mov EAX, L0;
-                mov EDX, L1;
-                mov EDI, dest;
+                    mov EAX, L0;
+                    mov EDX, L1;
+                    mov EDI, dest;
 
-                movdqa XMM5, xmm512;               // 512 512 5121 512
-                pxor XMM4, XMM4;                   // all zeroes
+                    movdqa XMM5, xmm512;               // 512 512 5121 512
+                    pxor XMM4, XMM4;                   // all zeroes
 
-            loop_ecx:
+                loop_ecx:
 
-                movq XMM0, [EAX];                  // Ar Ag Ab Aa Br Bg Bb Ba + zeroes
-                movq XMM1, [EDX];                  // Cr Cg Cb Ca Dr Dg Db Da + zeroes
-                pxor XMM4, XMM4;
-                add EAX, 8;
-                add EDX, 8;
+                    movq XMM0, [EAX];                  // Ar Ag Ab Aa Br Bg Bb Ba + zeroes
+                    movq XMM1, [EDX];                  // Cr Cg Cb Ca Dr Dg Db Da + zeroes
+                    pxor XMM4, XMM4;
+                    add EAX, 8;
+                    add EDX, 8;
 
-                punpcklbw XMM0, XMM4;              // Ar Ag Ab Aa Br Bg Bb Ba
-                punpcklbw XMM1, XMM4;              // Cr Cg Cb Ca Dr Dg Db Da
+                    punpcklbw XMM0, XMM4;              // Ar Ag Ab Aa Br Bg Bb Ba
+                    punpcklbw XMM1, XMM4;              // Cr Cg Cb Ca Dr Dg Db Da
 
-                movdqa XMM2, XMM0;
-                punpcklwd XMM0, XMM1;              // Ar Cr Ag Cg Ab Cb Aa Ca
-                punpckhwd XMM2, XMM1;              // Br Dr Bg Dg Bb Db Ba Da
+                    movdqa XMM2, XMM0;
+                    punpcklwd XMM0, XMM1;              // Ar Cr Ag Cg Ab Cb Aa Ca
+                    punpckhwd XMM2, XMM1;              // Br Dr Bg Dg Bb Db Ba Da
 
-                movdqa XMM3, XMM0;
-                punpcklwd XMM0, XMM2;              // Ar Br Cr Dr Ag Bg Cg Dg
-                punpckhwd XMM3, XMM2;              // Ab Bb Cb Db Aa Ba Ca Da
+                    movdqa XMM3, XMM0;
+                    punpcklwd XMM0, XMM2;              // Ar Br Cr Dr Ag Bg Cg Dg
+                    punpckhwd XMM3, XMM2;              // Ab Bb Cb Db Aa Ba Ca Da
 
-                movdqa XMM1, XMM3;
-                punpckhqdq XMM1, XMM1;             // Aa Ba Ca Da Aa Ba Ca Da
+                    movdqa XMM1, XMM3;
+                    punpckhqdq XMM1, XMM1;             // Aa Ba Ca Da Aa Ba Ca Da
 
-                add EDI, 4;
+                    add EDI, 4;
 
-                pmaddwd XMM0, XMM1;            // Ar*Aa+Br*Ba Cr*Ca+Dr*Da Ag*Aa+Bg*Ba Cg*Ca+Dg*Da
-                pmaddwd XMM3, XMM1;            // Ab*Aa+Bb*Ba Cb*Ca+Db*Da Aa*Aa+Ba*Ba Ca*Ca+Da*Da
+                    pmaddwd XMM0, XMM1;            // Ar*Aa+Br*Ba Cr*Ca+Dr*Da Ag*Aa+Bg*Ba Cg*Ca+Dg*Da
+                    pmaddwd XMM3, XMM1;            // Ab*Aa+Bb*Ba Cb*Ca+Db*Da Aa*Aa+Ba*Ba Ca*Ca+Da*Da
 
-                movdqa XMM2, XMM0;
-                movdqa XMM1, XMM3;
+                    movdqa XMM2, XMM0;
+                    movdqa XMM1, XMM3;
 
-                psrldq XMM2, 4;                // Cr*Ca+Dr*Da Ag*Aa+Bg*Ba Cg*Ca+Dg*Da 0
-                psrldq XMM1, 4;                // Cb*Ca+Db*Da Aa*Aa+Ba*Ba Ca*Ca+Da*Da 0
+                    psrldq XMM2, 4;                // Cr*Ca+Dr*Da Ag*Aa+Bg*Ba Cg*Ca+Dg*Da 0
+                    psrldq XMM1, 4;                // Cb*Ca+Db*Da Aa*Aa+Ba*Ba Ca*Ca+Da*Da 0
 
-                paddd XMM0, XMM2;              // Ar*Aa+Br*Ba+Cr*Ca+Dr*Da garbage Ag*Aa+Bg*Ba+Cg*Ca+Dg*Da garbage
-                paddd XMM3, XMM1;              // Ab*Aa+Bb*Ba+Cb*Ca+Db*Da garbage Aa*Aa+Ba*Ba+Ca*Ca+Da*Da garbage
+                    paddd XMM0, XMM2;              // Ar*Aa+Br*Ba+Cr*Ca+Dr*Da garbage Ag*Aa+Bg*Ba+Cg*Ca+Dg*Da garbage
+                    paddd XMM3, XMM1;              // Ab*Aa+Bb*Ba+Cb*Ca+Db*Da garbage Aa*Aa+Ba*Ba+Ca*Ca+Da*Da garbage
 
-                pshufd XMM0, XMM0, 0b00001000; // Ar*Aa+Br*Ba+Cr*Ca+Dr*Da Ag*Aa+Bg*Ba+Cg*Ca+Dg*Da garbage garbage
-                pshufd XMM3, XMM3, 0b00001000; // Ab*Aa+Bb*Ba+Cb*Ca+Db*Da Aa*Aa+Ba*Ba+Ca*Ca+Da*Da garbage garbage
+                    pshufd XMM0, XMM0, 0b00001000; // Ar*Aa+Br*Ba+Cr*Ca+Dr*Da Ag*Aa+Bg*Ba+Cg*Ca+Dg*Da garbage garbage
+                    pshufd XMM3, XMM3, 0b00001000; // Ab*Aa+Bb*Ba+Cb*Ca+Db*Da Aa*Aa+Ba*Ba+Ca*Ca+Da*Da garbage garbage
 
-                punpcklqdq XMM0, XMM3;     // fR fG fB fA
+                    punpcklqdq XMM0, XMM3;     // fR fG fB fA
 
 
-                paddd XMM0, XMM5;
-                psrld XMM0, 10;             // final color in dwords
+                    paddd XMM0, XMM5;
+                    psrld XMM0, 10;             // final color in dwords
 
-                packssdw XMM0, XMM4;       // same in words
-                packuswb XMM0, XMM4;       // same in bytes
+                    packssdw XMM0, XMM4;       // same in words
+                    packuswb XMM0, XMM4;       // same in bytes
 
-                sub ECX, 1;
-                movd [EDI-4], XMM0;            // dest[x] = A
-                jnz loop_ecx;
+                    sub ECX, 1;
+                    movd [EDI-4], XMM0;            // dest[x] = A
+                    jnz loop_ecx;
+                }
             }
-        }
-        else version(D_InlineAsm_X86_64)
-        {
-            asm nothrow @nogc
+            else version(D_InlineAsm_X86_64)
             {
-                mov ECX, width;
+                asm nothrow @nogc
+                {
+                    mov ECX, width;
 
-                mov RAX, L0;
-                mov RDX, L1;
-                mov RDI, dest;
+                    mov RAX, L0;
+                    mov RDX, L1;
+                    mov RDI, dest;
 
-                movdqa XMM5, xmm512;               // 512 512 5121 512
-                pxor XMM4, XMM4;                   // all zeroes
+                    movdqa XMM5, xmm512;               // 512 512 5121 512
+                    pxor XMM4, XMM4;                   // all zeroes
 
-            loop_ecx:
+                loop_ecx:
 
-                movq XMM0, [RAX];                  // Ar Ag Ab Aa Br Bg Bb Ba + zeroes
-                movq XMM1, [RDX];                  // Cr Cg Cb Ca Dr Dg Db Da + zeroes
-                pxor XMM4, XMM4;
-                add RAX, 8;
-                add RDX, 8;
+                    movq XMM0, [RAX];                  // Ar Ag Ab Aa Br Bg Bb Ba + zeroes
+                    movq XMM1, [RDX];                  // Cr Cg Cb Ca Dr Dg Db Da + zeroes
+                    pxor XMM4, XMM4;
+                    add RAX, 8;
+                    add RDX, 8;
 
-                punpcklbw XMM0, XMM4;              // Ar Ag Ab Aa Br Bg Bb Ba
-                punpcklbw XMM1, XMM4;              // Cr Cg Cb Ca Dr Dg Db Da
+                    punpcklbw XMM0, XMM4;              // Ar Ag Ab Aa Br Bg Bb Ba
+                    punpcklbw XMM1, XMM4;              // Cr Cg Cb Ca Dr Dg Db Da
 
-                movdqa XMM2, XMM0;
-                punpcklwd XMM0, XMM1;              // Ar Cr Ag Cg Ab Cb Aa Ca
-                punpckhwd XMM2, XMM1;              // Br Dr Bg Dg Bb Db Ba Da
+                    movdqa XMM2, XMM0;
+                    punpcklwd XMM0, XMM1;              // Ar Cr Ag Cg Ab Cb Aa Ca
+                    punpckhwd XMM2, XMM1;              // Br Dr Bg Dg Bb Db Ba Da
 
-                movdqa XMM3, XMM0;
-                punpcklwd XMM0, XMM2;              // Ar Br Cr Dr Ag Bg Cg Dg
-                punpckhwd XMM3, XMM2;              // Ab Bb Cb Db Aa Ba Ca Da
+                    movdqa XMM3, XMM0;
+                    punpcklwd XMM0, XMM2;              // Ar Br Cr Dr Ag Bg Cg Dg
+                    punpckhwd XMM3, XMM2;              // Ab Bb Cb Db Aa Ba Ca Da
 
-                movdqa XMM1, XMM3;
-                punpckhqdq XMM1, XMM1;             // Aa Ba Ca Da Aa Ba Ca Da
+                    movdqa XMM1, XMM3;
+                    punpckhqdq XMM1, XMM1;             // Aa Ba Ca Da Aa Ba Ca Da
 
-                add RDI, 4;
+                    add RDI, 4;
 
-                pmaddwd XMM0, XMM1;            // Ar*Aa+Br*Ba Cr*Ca+Dr*Da Ag*Aa+Bg*Ba Cg*Ca+Dg*Da
-                pmaddwd XMM3, XMM1;            // Ab*Aa+Bb*Ba Cb*Ca+Db*Da Aa*Aa+Ba*Ba Ca*Ca+Da*Da
+                    pmaddwd XMM0, XMM1;            // Ar*Aa+Br*Ba Cr*Ca+Dr*Da Ag*Aa+Bg*Ba Cg*Ca+Dg*Da
+                    pmaddwd XMM3, XMM1;            // Ab*Aa+Bb*Ba Cb*Ca+Db*Da Aa*Aa+Ba*Ba Ca*Ca+Da*Da
 
-                movdqa XMM2, XMM0;
-                movdqa XMM1, XMM3;
+                    movdqa XMM2, XMM0;
+                    movdqa XMM1, XMM3;
 
-                psrldq XMM2, 4;                // Cr*Ca+Dr*Da Ag*Aa+Bg*Ba Cg*Ca+Dg*Da 0
-                psrldq XMM1, 4;                // Cb*Ca+Db*Da Aa*Aa+Ba*Ba Ca*Ca+Da*Da 0
+                    psrldq XMM2, 4;                // Cr*Ca+Dr*Da Ag*Aa+Bg*Ba Cg*Ca+Dg*Da 0
+                    psrldq XMM1, 4;                // Cb*Ca+Db*Da Aa*Aa+Ba*Ba Ca*Ca+Da*Da 0
 
-                paddd XMM0, XMM2;              // Ar*Aa+Br*Ba+Cr*Ca+Dr*Da garbage Ag*Aa+Bg*Ba+Cg*Ca+Dg*Da garbage
-                paddd XMM3, XMM1;              // Ab*Aa+Bb*Ba+Cb*Ca+Db*Da garbage Aa*Aa+Ba*Ba+Ca*Ca+Da*Da garbage
+                    paddd XMM0, XMM2;              // Ar*Aa+Br*Ba+Cr*Ca+Dr*Da garbage Ag*Aa+Bg*Ba+Cg*Ca+Dg*Da garbage
+                    paddd XMM3, XMM1;              // Ab*Aa+Bb*Ba+Cb*Ca+Db*Da garbage Aa*Aa+Ba*Ba+Ca*Ca+Da*Da garbage
 
-                pshufd XMM0, XMM0, 0b00001000; // Ar*Aa+Br*Ba+Cr*Ca+Dr*Da Ag*Aa+Bg*Ba+Cg*Ca+Dg*Da garbage garbage
-                pshufd XMM3, XMM3, 0b00001000; // Ab*Aa+Bb*Ba+Cb*Ca+Db*Da Aa*Aa+Ba*Ba+Ca*Ca+Da*Da garbage garbage
+                    pshufd XMM0, XMM0, 0b00001000; // Ar*Aa+Br*Ba+Cr*Ca+Dr*Da Ag*Aa+Bg*Ba+Cg*Ca+Dg*Da garbage garbage
+                    pshufd XMM3, XMM3, 0b00001000; // Ab*Aa+Bb*Ba+Cb*Ca+Db*Da Aa*Aa+Ba*Ba+Ca*Ca+Da*Da garbage garbage
 
-                punpcklqdq XMM0, XMM3;     // fR fG fB fA
+                    punpcklqdq XMM0, XMM3;     // fR fG fB fA
 
 
-                paddd XMM0, XMM5;
-                psrld XMM0, 10;             // final color in dwords
+                    paddd XMM0, XMM5;
+                    psrld XMM0, 10;             // final color in dwords
 
-                packssdw XMM0, XMM4;       // same in words
-                packuswb XMM0, XMM4;       // same in bytes
+                    packssdw XMM0, XMM4;       // same in words
+                    packuswb XMM0, XMM4;       // same in bytes
 
-                sub ECX, 1;
-                movd [RDI-4], XMM0;            // dest[x] = A
-                jnz loop_ecx;
+                    sub ECX, 1;
+                    movd [RDI-4], XMM0;            // dest[x] = A
+                    jnz loop_ecx;
+                }
             }
+            else 
+                static assert(false);
         }
         else
         {
@@ -1349,157 +1384,162 @@ void generateLevelCubicRGBA(Image!RGBA* thisLevel,
             if (x2p2 > previousLevel.w - 1)
                 x2p2 = previousLevel.w - 1;
 
-            version(D_InlineAsm_X86)
+            version(inlineAsmCanLoadGlobalsInPIC)
             {
-                RGBA[16] buf = void;
-                buf[0] = LM1[x2m1];
-                buf[1] = LM1[x2p0];
-                buf[2] = LM1[x2p0+1];
-                buf[3] = LM1[x2p2];
-                buf[4] = L0[x2m1];
-                buf[5] = L0[x2p0];
-                buf[6] = L0[x2p0+1];
-                buf[7] = L0[x2p2];
-                buf[8] = L1[x2m1];
-                buf[9] = L1[x2p0];
-                buf[10] = L1[x2p0+1];
-                buf[11] = L1[x2p2];
-                buf[12] = L2[x2m1];
-                buf[13] = L2[x2p0];
-                buf[14] = L2[x2p0+1];
-                buf[15] = L2[x2p2];
-                RGBA* pDest = dest + x;
-
-                asm nothrow @nogc
+                version(D_InlineAsm_X86)
                 {
-                    movdqu XMM0, buf;  // A B C D
-                    movdqu XMM1, buf;
-                    pxor XMM2, XMM2;      // zeroes
-                    punpcklbw XMM0, XMM2; // A B
-                    punpckhbw XMM1, XMM2; // C D
-                    pmullw XMM0, xmm11113333; // A*1 B*3 in shorts
-                    movdqa XMM3, XMM0;
-                    pmullw XMM1, xmm33331111; // C*3 D*3 in shorts
-                    movdqa XMM5, XMM1;
+                    RGBA[16] buf = void;
+                    buf[0] = LM1[x2m1];
+                    buf[1] = LM1[x2p0];
+                    buf[2] = LM1[x2p0+1];
+                    buf[3] = LM1[x2p2];
+                    buf[4] = L0[x2m1];
+                    buf[5] = L0[x2p0];
+                    buf[6] = L0[x2p0+1];
+                    buf[7] = L0[x2p2];
+                    buf[8] = L1[x2m1];
+                    buf[9] = L1[x2p0];
+                    buf[10] = L1[x2p0+1];
+                    buf[11] = L1[x2p2];
+                    buf[12] = L2[x2m1];
+                    buf[13] = L2[x2p0];
+                    buf[14] = L2[x2p0+1];
+                    buf[15] = L2[x2p2];
+                    RGBA* pDest = dest + x;
 
-                    movdqu XMM0, buf+16;  // E F G H
-                    movdqu XMM1, buf+16;
-                    punpcklbw XMM0, XMM2; // E F
-                    punpckhbw XMM1, XMM2; // G H
-                    pmullw XMM0, xmm33339999; // E*3 F*9 in shorts
-                    paddw XMM3, XMM0;
-                    pmullw XMM1, xmm99993333; // G*9 H*3 in shorts
-                    paddw XMM5, XMM1;
+                    asm nothrow @nogc
+                    {
+                        movdqu XMM0, buf;  // A B C D
+                        movdqu XMM1, buf;
+                        pxor XMM2, XMM2;      // zeroes
+                        punpcklbw XMM0, XMM2; // A B
+                        punpckhbw XMM1, XMM2; // C D
+                        pmullw XMM0, xmm11113333; // A*1 B*3 in shorts
+                        movdqa XMM3, XMM0;
+                        pmullw XMM1, xmm33331111; // C*3 D*3 in shorts
+                        movdqa XMM5, XMM1;
 
-                    movdqu XMM0, buf+32;  // I J K L
-                    movdqu XMM1, buf+32;
-                    punpcklbw XMM0, XMM2; // I J
-                    punpckhbw XMM1, XMM2; // K L
-                    pmullw XMM0, xmm33339999; // I*3 J*9 in shorts
-                    paddw XMM3, XMM0;
-                    pmullw XMM1, xmm99993333; // K*9 L*3 in shorts
-                    paddw XMM5, XMM1;
+                        movdqu XMM0, buf+16;  // E F G H
+                        movdqu XMM1, buf+16;
+                        punpcklbw XMM0, XMM2; // E F
+                        punpckhbw XMM1, XMM2; // G H
+                        pmullw XMM0, xmm33339999; // E*3 F*9 in shorts
+                        paddw XMM3, XMM0;
+                        pmullw XMM1, xmm99993333; // G*9 H*3 in shorts
+                        paddw XMM5, XMM1;
 
-                    movdqu XMM0, buf+48;  // M N O P
-                    movdqu XMM1, buf+48;
-                    punpcklbw XMM0, XMM2; // M N
-                    punpckhbw XMM1, XMM2; // O P
-                    pmullw XMM0, xmm11113333; // M*1 N*3 in shorts
-                    paddw XMM3, XMM0; // A+E*3+I*3+M B*3+F*9+J*9+3*N
-                    pmullw XMM1, xmm33331111; // O*3 P*1 in shorts
-                    paddw XMM5, XMM1; // C*3+G*9+K*9+O*3 D+H*3+L*3+P
+                        movdqu XMM0, buf+32;  // I J K L
+                        movdqu XMM1, buf+32;
+                        punpcklbw XMM0, XMM2; // I J
+                        punpckhbw XMM1, XMM2; // K L
+                        pmullw XMM0, xmm33339999; // I*3 J*9 in shorts
+                        paddw XMM3, XMM0;
+                        pmullw XMM1, xmm99993333; // K*9 L*3 in shorts
+                        paddw XMM5, XMM1;
 
-                    movdqa XMM0, XMM3;
-                    movdqa XMM1, XMM5;
-                    psrldq XMM0, 8;
-                    psrldq XMM1, 8;
-                    paddw XMM3, XMM0; // A+E*3+I*3+M+B*3+F*9+J*9+3*N garbage(x4)
-                    paddw XMM5, XMM1; // C*3+G*9+K*9+O*3+D+H*3+L*3+P garbage(x4)
-                    paddw XMM3, XMM5; // total-sum garbage(x4)
+                        movdqu XMM0, buf+48;  // M N O P
+                        movdqu XMM1, buf+48;
+                        punpcklbw XMM0, XMM2; // M N
+                        punpckhbw XMM1, XMM2; // O P
+                        pmullw XMM0, xmm11113333; // M*1 N*3 in shorts
+                        paddw XMM3, XMM0; // A+E*3+I*3+M B*3+F*9+J*9+3*N
+                        pmullw XMM1, xmm33331111; // O*3 P*1 in shorts
+                        paddw XMM5, XMM1; // C*3+G*9+K*9+O*3 D+H*3+L*3+P
 
-                    paddw XMM3, xmm32;
-                    psrlw XMM3, 6;
-                    mov EAX, pDest;
-                    packuswb XMM3, XMM2;
+                        movdqa XMM0, XMM3;
+                        movdqa XMM1, XMM5;
+                        psrldq XMM0, 8;
+                        psrldq XMM1, 8;
+                        paddw XMM3, XMM0; // A+E*3+I*3+M+B*3+F*9+J*9+3*N garbage(x4)
+                        paddw XMM5, XMM1; // C*3+G*9+K*9+O*3+D+H*3+L*3+P garbage(x4)
+                        paddw XMM3, XMM5; // total-sum garbage(x4)
 
-                    movd [EAX], XMM3;
+                        paddw XMM3, xmm32;
+                        psrlw XMM3, 6;
+                        mov EAX, pDest;
+                        packuswb XMM3, XMM2;
+
+                        movd [EAX], XMM3;
+                    }
                 }
-            }
-            else version(D_InlineAsm_X86_64)
-            {
-                RGBA[16] buf = void;
-                buf[0] = LM1[x2m1];
-                buf[1] = LM1[x2p0];
-                buf[2] = LM1[x2p0+1];
-                buf[3] = LM1[x2p2];
-                buf[4] = L0[x2m1];
-                buf[5] = L0[x2p0];
-                buf[6] = L0[x2p0+1];
-                buf[7] = L0[x2p2];
-                buf[8] = L1[x2m1];
-                buf[9] = L1[x2p0];
-                buf[10] = L1[x2p0+1];
-                buf[11] = L1[x2p2];
-                buf[12] = L2[x2m1];
-                buf[13] = L2[x2p0];
-                buf[14] = L2[x2p0+1];
-                buf[15] = L2[x2p2];
-                RGBA* pDest = dest + x;
-
-                asm nothrow @nogc
+                else version(D_InlineAsm_X86_64)
                 {
-                    movdqu XMM0, buf;  // A B C D
-                    movdqu XMM1, buf;
-                    pxor XMM2, XMM2;      // zeroes
-                    punpcklbw XMM0, XMM2; // A B
-                    punpckhbw XMM1, XMM2; // C D
-                    pmullw XMM0, xmm11113333; // A*1 B*3 in shorts
-                    movdqa XMM3, XMM0;
-                    pmullw XMM1, xmm33331111; // C*3 D*3 in shorts
-                    movdqa XMM5, XMM1;
+                    RGBA[16] buf = void;
+                    buf[0] = LM1[x2m1];
+                    buf[1] = LM1[x2p0];
+                    buf[2] = LM1[x2p0+1];
+                    buf[3] = LM1[x2p2];
+                    buf[4] = L0[x2m1];
+                    buf[5] = L0[x2p0];
+                    buf[6] = L0[x2p0+1];
+                    buf[7] = L0[x2p2];
+                    buf[8] = L1[x2m1];
+                    buf[9] = L1[x2p0];
+                    buf[10] = L1[x2p0+1];
+                    buf[11] = L1[x2p2];
+                    buf[12] = L2[x2m1];
+                    buf[13] = L2[x2p0];
+                    buf[14] = L2[x2p0+1];
+                    buf[15] = L2[x2p2];
+                    RGBA* pDest = dest + x;
 
-                    movdqu XMM0, buf+16;  // E F G H
-                    movdqu XMM1, buf+16;
-                    punpcklbw XMM0, XMM2; // E F
-                    punpckhbw XMM1, XMM2; // G H
-                    pmullw XMM0, xmm33339999; // E*3 F*9 in shorts
-                    paddw XMM3, XMM0;
-                    pmullw XMM1, xmm99993333; // G*9 H*3 in shorts
-                    paddw XMM5, XMM1;
+                    asm nothrow @nogc
+                    {
+                        movdqu XMM0, buf;  // A B C D
+                        movdqu XMM1, buf;
+                        pxor XMM2, XMM2;      // zeroes
+                        punpcklbw XMM0, XMM2; // A B
+                        punpckhbw XMM1, XMM2; // C D
+                        pmullw XMM0, xmm11113333; // A*1 B*3 in shorts
+                        movdqa XMM3, XMM0;
+                        pmullw XMM1, xmm33331111; // C*3 D*3 in shorts
+                        movdqa XMM5, XMM1;
 
-                    movdqu XMM0, buf+32;  // I J K L
-                    movdqu XMM1, buf+32;
-                    punpcklbw XMM0, XMM2; // I J
-                    punpckhbw XMM1, XMM2; // K L
-                    pmullw XMM0, xmm33339999; // I*3 J*9 in shorts
-                    paddw XMM3, XMM0;
-                    pmullw XMM1, xmm99993333; // K*9 L*3 in shorts
-                    paddw XMM5, XMM1;
+                        movdqu XMM0, buf+16;  // E F G H
+                        movdqu XMM1, buf+16;
+                        punpcklbw XMM0, XMM2; // E F
+                        punpckhbw XMM1, XMM2; // G H
+                        pmullw XMM0, xmm33339999; // E*3 F*9 in shorts
+                        paddw XMM3, XMM0;
+                        pmullw XMM1, xmm99993333; // G*9 H*3 in shorts
+                        paddw XMM5, XMM1;
 
-                    movdqu XMM0, buf+48;  // M N O P
-                    movdqu XMM1, buf+48;
-                    punpcklbw XMM0, XMM2; // M N
-                    punpckhbw XMM1, XMM2; // O P
-                    pmullw XMM0, xmm11113333; // M*1 N*3 in shorts
-                    paddw XMM3, XMM0; // A+E*3+I*3+M B*3+F*9+J*9+3*N
-                    pmullw XMM1, xmm33331111; // O*3 P*1 in shorts
-                    paddw XMM5, XMM1; // C*3+G*9+K*9+O*3 D+H*3+L*3+P
+                        movdqu XMM0, buf+32;  // I J K L
+                        movdqu XMM1, buf+32;
+                        punpcklbw XMM0, XMM2; // I J
+                        punpckhbw XMM1, XMM2; // K L
+                        pmullw XMM0, xmm33339999; // I*3 J*9 in shorts
+                        paddw XMM3, XMM0;
+                        pmullw XMM1, xmm99993333; // K*9 L*3 in shorts
+                        paddw XMM5, XMM1;
 
-                    movdqa XMM0, XMM3;
-                    movdqa XMM1, XMM5;
-                    psrldq XMM0, 8;
-                    psrldq XMM1, 8;
-                    paddw XMM3, XMM0; // A+E*3+I*3+M+B*3+F*9+J*9+3*N garbage(x4)
-                    paddw XMM5, XMM1; // C*3+G*9+K*9+O*3+D+H*3+L*3+P garbage(x4)
-                    paddw XMM3, XMM5; // total-sum garbage(x4)
+                        movdqu XMM0, buf+48;  // M N O P
+                        movdqu XMM1, buf+48;
+                        punpcklbw XMM0, XMM2; // M N
+                        punpckhbw XMM1, XMM2; // O P
+                        pmullw XMM0, xmm11113333; // M*1 N*3 in shorts
+                        paddw XMM3, XMM0; // A+E*3+I*3+M B*3+F*9+J*9+3*N
+                        pmullw XMM1, xmm33331111; // O*3 P*1 in shorts
+                        paddw XMM5, XMM1; // C*3+G*9+K*9+O*3 D+H*3+L*3+P
 
-                    paddw XMM3, xmm32;
-                    psrlw XMM3, 6;
-                    mov RAX, pDest;
-                    packuswb XMM3, XMM2;
+                        movdqa XMM0, XMM3;
+                        movdqa XMM1, XMM5;
+                        psrldq XMM0, 8;
+                        psrldq XMM1, 8;
+                        paddw XMM3, XMM0; // A+E*3+I*3+M+B*3+F*9+J*9+3*N garbage(x4)
+                        paddw XMM5, XMM1; // C*3+G*9+K*9+O*3+D+H*3+L*3+P garbage(x4)
+                        paddw XMM3, XMM5; // total-sum garbage(x4)
 
-                    movd [RAX], XMM3;
+                        paddw XMM3, xmm32;
+                        psrlw XMM3, 6;
+                        mov RAX, pDest;
+                        packuswb XMM3, XMM2;
+
+                        movd [RAX], XMM3;
+                    }
                 }
+                else
+                    static assert(false);
             }
             else
             {
@@ -1609,4 +1649,10 @@ void generateLevelCubicL16(Image!L16* thisLevel,
             dest[x].l = cast(ushort)((depthSum + 32) >> 6  );
         }
     }
+}
+
+unittest
+{
+    Mipmap!RGBA rgbaMipmap;
+    Mipmap!L16 l16Mipmap;
 }

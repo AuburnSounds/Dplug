@@ -18,6 +18,7 @@ module dplug.client.params;
 
 import core.atomic;
 import core.stdc.stdio;
+import core.stdc.string;
 
 import std.math;
 import std.algorithm;
