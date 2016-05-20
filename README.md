@@ -46,13 +46,13 @@ https://auburnsounds.com/blog/2016-02-08_Making-a-Windows-VST-plugin-with-D.html
 ## How to build plugins
 
 ### For Windows:
-- Use DMD >= v2.067 or LDC >= v1.0.0
+- Use DMD >= v2.067 or LDC >= v1.0.0-b2
 - Install DUB, the D package manager: http://code.dlang.org/download
 - Go into an example directory
 - Type `dub --compiler=dmd` or `dub --compiler=ldc2` depending on the compiler used.
 
 ### For OS X:
-- Use DMD >= v2.067 or LDC >= v1.0.0
+- Use DMD >= v2.067 or LDC >= v1.0.0-b2
 - Install DUB, the D package manager: http://code.dlang.org/download
 - Build and use the `release` tool which is in the `tools/release/` directory.
 - Go into an example directory
@@ -77,7 +77,7 @@ But this target isn't officially supported by D compilers.
 
 OS X 10.7+
 Probably possible to go below in cases, but impractical. To try that modify the "release" tool.
-D compilers do not support OS X 10.6 anymore.
+D compilers do not support OS X 10.6 anymore so you won't get any help in case of problem.
 
 - What D compiler can possibly be used?
 
