@@ -117,7 +117,6 @@ Pros:
 Cons:
   - Less battle-tested in general.
   - Less man-power.
-  - Hipster compilers are used, though they get better all the time.
   - API may change without notice (pin the version of dplug you use).
   - AAX and VST3 unimplemented.
   - No resizeable UI yet.
