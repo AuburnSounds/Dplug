@@ -162,6 +162,7 @@ else version(OSX)
     extern(C) void dyld_register_image_state_change_handler(dyld_image_states state, bool batch, dyld_image_state_change_handler handler);
 
 
+    // Initializes the runtime if not already initialized
     void runtimeInitWorkaround15060()
     {
         import core.runtime;
@@ -175,6 +176,15 @@ else version(OSX)
 
             didInitRuntime = true;
         }
+    }
+
+    // Initializes the runtime if not already initialized
+    // and attach the running thread if necessary
+    void attachToRuntimeIfNeeded()
+    {
+        import core.thread;
+        runtimeInitWorkaround15060();
+        thread_attachThis();
     }
 }
 else

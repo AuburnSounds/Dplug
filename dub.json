@@ -83,7 +83,8 @@
                 "ae-graphics": "~>0.0",
                 "gfm:math": "~>6.0",
                 "gfm:core": "~>6.0",
-                "dplug:core": "*"
+                "dplug:core": "*",
+                "dplug:client": "*"
             },
 
             "dependencies-osx": {

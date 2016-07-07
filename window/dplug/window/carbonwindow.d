@@ -20,7 +20,7 @@ version(OSX)
 
     import dplug.core.fpcontrol;
     import dplug.window.window;
-
+    import dplug.client.dllmain;
 
 
     final class CarbonWindow : IWindow
@@ -499,6 +499,7 @@ version(OSX)
         fpctrl.initialize();
         try
         {
+            attachToRuntimeIfNeeded();
             CarbonWindow window = cast(CarbonWindow)user;
             bool handled = window.handleEvent(pEvent);
             return handled ? noErr : eventNotHandledErr;
@@ -516,6 +517,7 @@ version(OSX)
         fpctrl.initialize();
         try
         {
+            attachToRuntimeIfNeeded();
             CarbonWindow window = cast(CarbonWindow)user;
             window.onTimer();
         }

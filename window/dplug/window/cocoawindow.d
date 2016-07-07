@@ -18,6 +18,7 @@ import gfm.math;
 import dplug.core.unchecked_sync;
 import dplug.core.fpcontrol;
 import dplug.window.window;
+import dplug.client.dllmain;
 
 version(OSX)
 {
@@ -490,6 +491,7 @@ version(OSX)
     {
         void keyDown(id self, SEL selector, id event)
         {
+            attachToRuntimeIfNeeded();
             FPControl fpctrl;
             fpctrl.initialize();
             DPlugCustomView view = getInstance(self);
@@ -498,6 +500,7 @@ version(OSX)
 
         void keyUp(id self, SEL selector, id event)
         {
+            attachToRuntimeIfNeeded();
             FPControl fpctrl;
             fpctrl.initialize();
             DPlugCustomView view = getInstance(self);
@@ -506,6 +509,7 @@ version(OSX)
 
         void mouseDown(id self, SEL selector, id event)
         {
+            attachToRuntimeIfNeeded();
             FPControl fpctrl;
             fpctrl.initialize();
             DPlugCustomView view = getInstance(self);
@@ -514,6 +518,7 @@ version(OSX)
 
         void mouseUp(id self, SEL selector, id event)
         {
+            attachToRuntimeIfNeeded();
             FPControl fpctrl;
             fpctrl.initialize();
             DPlugCustomView view = getInstance(self);
@@ -522,6 +527,7 @@ version(OSX)
 
         void rightMouseDown(id self, SEL selector, id event)
         {
+            attachToRuntimeIfNeeded();
             FPControl fpctrl;
             fpctrl.initialize();
             DPlugCustomView view = getInstance(self);
@@ -530,6 +536,7 @@ version(OSX)
 
         void rightMouseUp(id self, SEL selector, id event)
         {
+            attachToRuntimeIfNeeded();
             FPControl fpctrl;
             fpctrl.initialize();
             DPlugCustomView view = getInstance(self);
@@ -538,6 +545,7 @@ version(OSX)
 
         void otherMouseDown(id self, SEL selector, id event)
         {
+            attachToRuntimeIfNeeded();
             FPControl fpctrl;
             fpctrl.initialize();
             DPlugCustomView view = getInstance(self);
@@ -548,6 +556,7 @@ version(OSX)
 
         void otherMouseUp(id self, SEL selector, id event)
         {
+            attachToRuntimeIfNeeded();
             FPControl fpctrl;
             fpctrl.initialize();
             DPlugCustomView view = getInstance(self);
@@ -558,6 +567,7 @@ version(OSX)
 
         void mouseMoved(id self, SEL selector, id event)
         {
+            attachToRuntimeIfNeeded();
             FPControl fpctrl;
             fpctrl.initialize();
             DPlugCustomView view = getInstance(self);
@@ -566,6 +576,7 @@ version(OSX)
 
         void mouseEntered(id self, SEL selector, id event)
         {
+            attachToRuntimeIfNeeded();
             FPControl fpctrl;
             fpctrl.initialize();
             NSCursor.arrowCursor().push();
@@ -573,6 +584,7 @@ version(OSX)
 
         void mouseExited(id self, SEL selector, id event)
         {
+            attachToRuntimeIfNeeded();
             FPControl fpctrl;
             fpctrl.initialize();
             NSCursor.pop();
@@ -581,6 +593,7 @@ version(OSX)
 
         void scrollWheel(id self, SEL selector, id event)
         {
+            attachToRuntimeIfNeeded();
             FPControl fpctrl;
             fpctrl.initialize();
             DPlugCustomView view = getInstance(self);
@@ -604,6 +617,7 @@ version(OSX)
 
         void viewDidMoveToWindow(id self, SEL selector)
         {
+            attachToRuntimeIfNeeded();
             DPlugCustomView view = getInstance(self);
             NSWindow parentWindow = view.window();
             if (parentWindow)
@@ -615,6 +629,7 @@ version(OSX)
 
         void drawRect(id self, SEL selector, NSRect rect)
         {
+            attachToRuntimeIfNeeded();
             FPControl fpctrl;
             fpctrl.initialize();
             DPlugCustomView view = getInstance(self);
@@ -623,6 +638,7 @@ version(OSX)
 
         void onTimer(id self, SEL selector, id timer)
         {
+            attachToRuntimeIfNeeded();
             FPControl fpctrl;
             fpctrl.initialize();
             DPlugCustomView view = getInstance(self);

@@ -33,6 +33,7 @@ import dplug.client.midi;
 import dplug.client.preset;
 import dplug.client.params;
 import dplug.client.graphics;
+import dplug.client.dllmain;
 
 import dplug.au.dfxutil;
 import dplug.au.cocoaviewfactory;
@@ -91,14 +92,6 @@ private T getCompParam(T, int Idx, int Num)(ComponentParameters* params) pure no
         return *cast(T*)(&p[Num - Idx]);
     else
         return *cast(T*)(&p[Idx]);
-}
-
-void attachToRuntimeIfNeeded()
-{
-    import core.thread;
-    import dplug.client.dllmain;
-    runtimeInitWorkaround15060();
-    thread_attachThis();
 }
 
 void loadDerelictFunctions()
