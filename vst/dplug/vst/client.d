@@ -32,7 +32,8 @@ import gfm.core;
 import dplug.core.alignedbuffer,
        dplug.core.funcs,
        dplug.core.lockedqueue,
-       dplug.core.fpcontrol;
+       dplug.core.fpcontrol,
+       dplug.core.unchecked_sync;
 
 import dplug.client.client,
        dplug.client.daw,
@@ -173,6 +174,8 @@ public:
             flags |= effFlagsIsSynth;
             _host.wantEvents();
         }
+
+        _graphicsMutex = new UncheckedMutex();
     }
 
     ~this()
@@ -188,6 +191,8 @@ public:
         for (int i = 0; i < _maxOutputs; ++i)
             _outputScratchBuffer[i].destroy();
         _zeroesBuffer.destroy();
+
+        _graphicsMutex.destroy();
     }
 
 private:
@@ -220,6 +225,8 @@ private:
 
     // Inter-locked message queue from opcode thread to audio thread
     AudioThreadQueue _messageQueue;
+
+    UncheckedMutex _graphicsMutex;
 
     final bool isValidParamIndex(int i) pure const nothrow @nogc
     {
@@ -382,6 +389,10 @@ private:
                 {
                     if ( _client.hasGUI() && ptr)
                     {
+                        // Cubase may call effEditOpen and effEditGetRect simultaneously
+                        _graphicsMutex.lock();
+                        scope(exit) _graphicsMutex.unlock();
+
                         int width, height;
                         if (_client.getGUISize(&width, &height))
                         {
@@ -406,6 +417,10 @@ private:
                 {
                     if ( _client.hasGUI() )
                     {
+                        // Cubase may call effEditOpen and effEditGetRect simultaneously
+                        _graphicsMutex.lock();
+                        scope(exit) _graphicsMutex.unlock();
+
                         _client.openGUI(ptr, null, GraphicsBackend.autodetect);
                         return 1;
                     }
@@ -417,6 +432,9 @@ private:
                 {
                     if ( _client.hasGUI() )
                     {
+                        _graphicsMutex.lock();
+                        scope(exit) _graphicsMutex.unlock();
+
                         _client.closeGUI();
                         return 1;
                     }
