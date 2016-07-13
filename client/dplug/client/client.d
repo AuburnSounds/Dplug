@@ -19,6 +19,7 @@ Permission is granted to anyone to use this software for any purpose, including 
 
 module dplug.client.client;
 
+import core.atomic;
 import core.stdc.string;
 import core.stdc.stdio;
 
@@ -168,7 +169,15 @@ public:
 
         // Destroy graphics
         if (_graphics !is null)
+        {
+            // so that it's the last time the audio uses it,
+            // and we can wait for its exit in _graphics destructor
+            atomicStore(_graphicsCreated, false);
+
+            // Destroy the graphics stored on stack,
+            // can safely wait for the audio thread to exit its methods
             _graphics.destroy();
+        }
 
         // Destroy parameters
         foreach(p; _params)
@@ -245,19 +254,21 @@ public:
         return index >= 0 && index < maxOutputs();
     }
 
+    // Note: openGUI, getGUISize and closeGUI are guaranteed
+    // synchronized by the client implementation
     final void* openGUI(void* parentInfo, void* controlInfo, GraphicsBackend backend)
     {
         createGraphicsLazily();
-        assert(_graphics !is null);
-        return _graphics.openUI(parentInfo, controlInfo, _hostCommand.getDAW(), backend);
+        return (cast(IGraphics)_graphics).openUI(parentInfo, controlInfo, _hostCommand.getDAW(), backend);
     }
 
     final bool getGUISize(int* width, int* height)
     {
         createGraphicsLazily();
-        if (_graphics)
+        auto graphics = (cast(IGraphics)_graphics);
+        if (graphics)
         {
-            _graphics.getGUISize(width, height);
+            graphics.getGUISize(width, height);
             return true;
         }
         else
@@ -267,7 +278,7 @@ public:
     /// ditto
     final void closeGUI()
     {
-        _graphics.closeUI();
+        (cast(IGraphics)_graphics).closeUI();
     }
 
     // This should be called only by a client implementation
@@ -283,8 +294,13 @@ public:
     }
 
     // Getter for the IGraphics interface
-    final IGraphics graphics() nothrow @nogc
+    // This is intended for the audio thread so
+    // we protect the member _graphics with an atomic
+    final IGraphics graphicsAtomic() nothrow @nogc
     {
+        if (!atomicLoad(_graphicsCreated))
+            return null; // this is a work-around since interface can't go in atomics
+
         return _graphics;
     }
 
@@ -473,6 +489,7 @@ protected:
     }
 
     IGraphics _graphics;
+    shared(bool) _graphicsCreated = false;
 
     IHostCommand _hostCommand;
 
@@ -490,10 +507,19 @@ private:
     final void createGraphicsLazily()
     {
         // First GUI opening create the graphics object
+        // no need to protect _graphics here since the audio thread
+        // does not write to it
         if ( (_graphics is null) && hasGUI())
         {
-            _graphics = createGraphics();
-            assert(_graphics !is null); // don't forget to override the createGraphics method
+            IGraphics graphics = createGraphics();
+
+            // Don't forget to override the createGraphics method!
+            assert(graphics !is null);
+
+            _graphics = graphics;
+
+            // Now that the UI is fully created, we enable the audio thread to use it
+            atomicStore(_graphicsCreated, true);
         }
     }
 }
