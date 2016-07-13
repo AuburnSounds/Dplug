@@ -164,7 +164,7 @@ public:
             outputs[chan][0..frames] = 0; // D has array slices assignments and operations
 
         // Update RMS meters from the audio callback
-        DistortGUI gui = cast(DistortGUI) graphics();
+        DistortGUI gui = cast(DistortGUI) graphicsAtomic();
         if (gui !is null)
         {
             float[2] inputLevels;
