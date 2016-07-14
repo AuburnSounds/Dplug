@@ -489,160 +489,265 @@ version(OSX)
     // TODO: why are these methods members???
     extern(C)
     {
-        void keyDown(id self, SEL selector, id event)
+        void keyDown(id self, SEL selector, id event) nothrow
         {
-            attachToRuntimeIfNeeded();
-            FPControl fpctrl;
-            fpctrl.initialize();
-            DPlugCustomView view = getInstance(self);
-            view._window.handleKeyEvent(NSEvent(event), false);
-        }
-
-        void keyUp(id self, SEL selector, id event)
-        {
-            attachToRuntimeIfNeeded();
-            FPControl fpctrl;
-            fpctrl.initialize();
-            DPlugCustomView view = getInstance(self);
-            view._window.handleKeyEvent(NSEvent(event), true);
-        }
-
-        void mouseDown(id self, SEL selector, id event)
-        {
-            attachToRuntimeIfNeeded();
-            FPControl fpctrl;
-            fpctrl.initialize();
-            DPlugCustomView view = getInstance(self);
-            view._window.handleMouseClicks(NSEvent(event), MouseButton.left, false);
-        }
-
-        void mouseUp(id self, SEL selector, id event)
-        {
-            attachToRuntimeIfNeeded();
-            FPControl fpctrl;
-            fpctrl.initialize();
-            DPlugCustomView view = getInstance(self);
-            view._window.handleMouseClicks(NSEvent(event), MouseButton.left, true);
-        }
-
-        void rightMouseDown(id self, SEL selector, id event)
-        {
-            attachToRuntimeIfNeeded();
-            FPControl fpctrl;
-            fpctrl.initialize();
-            DPlugCustomView view = getInstance(self);
-            view._window.handleMouseClicks(NSEvent(event), MouseButton.right, false);
-        }
-
-        void rightMouseUp(id self, SEL selector, id event)
-        {
-            attachToRuntimeIfNeeded();
-            FPControl fpctrl;
-            fpctrl.initialize();
-            DPlugCustomView view = getInstance(self);
-            view._window.handleMouseClicks(NSEvent(event), MouseButton.right, true);
-        }
-
-        void otherMouseDown(id self, SEL selector, id event)
-        {
-            attachToRuntimeIfNeeded();
-            FPControl fpctrl;
-            fpctrl.initialize();
-            DPlugCustomView view = getInstance(self);
-            auto nsEvent = NSEvent(event);
-            if (nsEvent.buttonNumber == 2)
-                view._window.handleMouseClicks(nsEvent, MouseButton.middle, false);
-        }
-
-        void otherMouseUp(id self, SEL selector, id event)
-        {
-            attachToRuntimeIfNeeded();
-            FPControl fpctrl;
-            fpctrl.initialize();
-            DPlugCustomView view = getInstance(self);
-            auto nsEvent = NSEvent(event);
-            if (nsEvent.buttonNumber == 2)
-                view._window.handleMouseClicks(nsEvent, MouseButton.middle, true);
-        }
-
-        void mouseMoved(id self, SEL selector, id event)
-        {
-            attachToRuntimeIfNeeded();
-            FPControl fpctrl;
-            fpctrl.initialize();
-            DPlugCustomView view = getInstance(self);
-            view._window.handleMouseMove(NSEvent(event));
-        }
-
-        void mouseEntered(id self, SEL selector, id event)
-        {
-            attachToRuntimeIfNeeded();
-            FPControl fpctrl;
-            fpctrl.initialize();
-            NSCursor.arrowCursor().push();
-        }
-
-        void mouseExited(id self, SEL selector, id event)
-        {
-            attachToRuntimeIfNeeded();
-            FPControl fpctrl;
-            fpctrl.initialize();
-            NSCursor.pop();
-        }
-
-
-        void scrollWheel(id self, SEL selector, id event)
-        {
-            attachToRuntimeIfNeeded();
-            FPControl fpctrl;
-            fpctrl.initialize();
-            DPlugCustomView view = getInstance(self);
-            view._window.handleMouseWheel(NSEvent(event));
-        }
-
-        bool acceptsFirstResponder(id self, SEL selector)
-        {
-            return YES;
-        }
-
-        bool acceptsFirstMouse(id self, SEL selector, id pEvent)
-        {
-            return YES;
-        }
-
-        bool isOpaque(id self, SEL selector)
-        {
-            return YES;
-        }
-
-        void viewDidMoveToWindow(id self, SEL selector)
-        {
-            attachToRuntimeIfNeeded();
-            DPlugCustomView view = getInstance(self);
-            NSWindow parentWindow = view.window();
-            if (parentWindow)
+            try
             {
-                parentWindow.makeFirstResponder(view);
-                parentWindow.setAcceptsMouseMovedEvents(true);
+                attachToRuntimeIfNeeded();
+                FPControl fpctrl;
+                fpctrl.initialize();
+                DPlugCustomView view = getInstance(self);
+                view._window.handleKeyEvent(NSEvent(event), false);
+            }
+            catch(Throwable)
+            {
+                assert(false);
             }
         }
 
-        void drawRect(id self, SEL selector, NSRect rect)
+        void keyUp(id self, SEL selector, id event) nothrow
         {
-            attachToRuntimeIfNeeded();
-            FPControl fpctrl;
-            fpctrl.initialize();
-            DPlugCustomView view = getInstance(self);
-            view._window.drawRect(rect);
+            try
+            {
+                attachToRuntimeIfNeeded();
+                FPControl fpctrl;
+                fpctrl.initialize();
+                DPlugCustomView view = getInstance(self);
+                view._window.handleKeyEvent(NSEvent(event), true);
+            }
+            catch(Throwable)
+            {
+                assert(false);
+            }
         }
 
-        void onTimer(id self, SEL selector, id timer)
+        void mouseDown(id self, SEL selector, id event) nothrow
         {
-            attachToRuntimeIfNeeded();
-            FPControl fpctrl;
-            fpctrl.initialize();
-            DPlugCustomView view = getInstance(self);
-            view._window.onTimer();
+            try
+            {
+                attachToRuntimeIfNeeded();
+                FPControl fpctrl;
+                fpctrl.initialize();
+                DPlugCustomView view = getInstance(self);
+                view._window.handleMouseClicks(NSEvent(event), MouseButton.left, false);
+            }
+            catch(Throwable)
+            {
+                assert(false);
+            }
+        }
+
+        void mouseUp(id self, SEL selector, id event) nothrow
+        {
+            try
+            {
+                attachToRuntimeIfNeeded();
+                FPControl fpctrl;
+                fpctrl.initialize();
+                DPlugCustomView view = getInstance(self);
+                view._window.handleMouseClicks(NSEvent(event), MouseButton.left, true);
+            }
+            catch(Throwable)
+            {
+                assert(false);
+            }
+        }
+
+        void rightMouseDown(id self, SEL selector, id event) nothrow
+        {
+            try
+            {
+                attachToRuntimeIfNeeded();
+                FPControl fpctrl;
+                fpctrl.initialize();
+                DPlugCustomView view = getInstance(self);
+                view._window.handleMouseClicks(NSEvent(event), MouseButton.right, false);
+            }
+            catch(Throwable)
+            {
+                assert(false);
+            }
+        }
+
+        void rightMouseUp(id self, SEL selector, id event) nothrow
+        {
+            try
+            {
+                attachToRuntimeIfNeeded();
+                FPControl fpctrl;
+                fpctrl.initialize();
+                DPlugCustomView view = getInstance(self);
+                view._window.handleMouseClicks(NSEvent(event), MouseButton.right, true);
+            }
+            catch(Throwable)
+            {
+                assert(false);
+            }
+        }
+
+        void otherMouseDown(id self, SEL selector, id event) nothrow
+        {
+            try
+            {
+                attachToRuntimeIfNeeded();
+                FPControl fpctrl;
+                fpctrl.initialize();
+                DPlugCustomView view = getInstance(self);
+                auto nsEvent = NSEvent(event);
+                if (nsEvent.buttonNumber == 2)
+                    view._window.handleMouseClicks(nsEvent, MouseButton.middle, false);
+            }
+            catch(Throwable)
+            {
+                assert(false);
+            }
+        }
+
+        void otherMouseUp(id self, SEL selector, id event) nothrow
+        {
+            try
+            {
+                attachToRuntimeIfNeeded();
+                FPControl fpctrl;
+                fpctrl.initialize();
+                DPlugCustomView view = getInstance(self);
+                auto nsEvent = NSEvent(event);
+                if (nsEvent.buttonNumber == 2)
+                    view._window.handleMouseClicks(nsEvent, MouseButton.middle, true);
+            }
+            catch(Throwable)
+            {
+                assert(false);
+            }
+        }
+
+        void mouseMoved(id self, SEL selector, id event) nothrow
+        {
+            try
+            {
+                attachToRuntimeIfNeeded();
+                FPControl fpctrl;
+                fpctrl.initialize();
+                DPlugCustomView view = getInstance(self);
+                view._window.handleMouseMove(NSEvent(event));
+            }
+            catch(Throwable)
+            {
+                assert(false);
+            }
+        }
+
+        void mouseEntered(id self, SEL selector, id event) nothrow
+        {
+            try
+            {
+                attachToRuntimeIfNeeded();
+                FPControl fpctrl;
+                fpctrl.initialize();
+                NSCursor.arrowCursor().push();
+            }
+            catch(Throwable)
+            {
+                assert(false);
+            }
+        }
+
+        void mouseExited(id self, SEL selector, id event) nothrow
+        {
+            try
+            {
+                attachToRuntimeIfNeeded();
+                FPControl fpctrl;
+                fpctrl.initialize();
+                NSCursor.pop();
+            }
+            catch(Throwable)
+            {
+                assert(false);
+            }
+        }
+
+
+        void scrollWheel(id self, SEL selector, id event) nothrow
+        {
+            try
+            {
+                attachToRuntimeIfNeeded();
+                FPControl fpctrl;
+                fpctrl.initialize();
+                DPlugCustomView view = getInstance(self);
+                view._window.handleMouseWheel(NSEvent(event));
+            }
+            catch(Throwable)
+            {
+                assert(false);
+            }
+        }
+
+        bool acceptsFirstResponder(id self, SEL selector) nothrow
+        {
+            return YES;
+        }
+
+        bool acceptsFirstMouse(id self, SEL selector, id pEvent) nothrow
+        {
+            return YES;
+        }
+
+        bool isOpaque(id self, SEL selector) nothrow
+        {
+            return YES;
+        }
+
+        void viewDidMoveToWindow(id self, SEL selector) nothrow
+        {
+            try
+            {
+                attachToRuntimeIfNeeded();
+                DPlugCustomView view = getInstance(self);
+                NSWindow parentWindow = view.window();
+                if (parentWindow)
+                {
+                    parentWindow.makeFirstResponder(view);
+                    parentWindow.setAcceptsMouseMovedEvents(true);
+                }
+            }
+            catch(Throwable)
+            {
+                assert(false);
+            }
+        }
+
+        void drawRect(id self, SEL selector, NSRect rect) nothrow
+        {
+            try
+            {
+                attachToRuntimeIfNeeded();
+                FPControl fpctrl;
+                fpctrl.initialize();
+                DPlugCustomView view = getInstance(self);
+                view._window.drawRect(rect);
+            }
+            catch(Throwable)
+            {
+                assert(false);
+            }
+        }
+
+        void onTimer(id self, SEL selector, id timer) nothrow
+        {
+            try
+            {
+                attachToRuntimeIfNeeded();
+                FPControl fpctrl;
+                fpctrl.initialize();
+                DPlugCustomView view = getInstance(self);
+                view._window.onTimer();
+            }
+            catch(Throwable)
+            {
+                assert(false);
+            }
         }
     }
 }

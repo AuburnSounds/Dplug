@@ -77,9 +77,7 @@ template VSTEntryPoint(alias ClientClass)
         "   }"
         "   catch (Throwable e)"
         "   {"
-        "       moreInfoForDebug(e);"
-        "       unrecoverableError();" // should not throw in a callback
-        "       return null;"
+        "       assert(false);"  // so we are clearly identified as the source of the bug
         "   }"
         "}";
 }
@@ -946,8 +944,7 @@ extern(C) private nothrow
         }
         catch (Throwable e)
         {
-            moreInfoForDebug(e);
-            unrecoverableError(); // should not throw in a callback
+            assert(false); // so we are clearly identified as the source of the bug
         }
 
         /*if (terminated)
@@ -980,8 +977,7 @@ extern(C) private nothrow
         }
         catch (Throwable e)
         {
-            moreInfoForDebug(e);
-            unrecoverableError(); // should not throw in a callback
+            assert(false); // so we are clearly identified as the source of the bug
         }
     }
 
@@ -1004,8 +1000,7 @@ extern(C) private nothrow
         }
         catch (Throwable e)
         {
-            moreInfoForDebug(e);
-            unrecoverableError(); // should not throw in a callback
+            assert(false); // so we are clearly identified as the source of the bug
         }
     }
 
@@ -1028,8 +1023,7 @@ extern(C) private nothrow
         }
         catch (Throwable e)
         {
-            moreInfoForDebug(e);
-            unrecoverableError(); // should not throw in a callback
+            assert(false); // so we are clearly identified as the source of the bug
         }
     }
 
@@ -1057,8 +1051,7 @@ extern(C) private nothrow
         }
         catch (Throwable e)
         {
-            moreInfoForDebug(e);
-            unrecoverableError(); // should not throw in a callback
+            assert(false); // so we are clearly identified as the source of the bug
         }
     }
 
@@ -1087,11 +1080,7 @@ extern(C) private nothrow
         }
         catch (Throwable e)
         {
-            moreInfoForDebug(e);
-            unrecoverableError(); // should not throw in a callback
-
-            // Still here? Return zero.
-            return 0.0f;
+            assert(false); // so we are clearly identified as the source of the bug
         }
     }
 }
