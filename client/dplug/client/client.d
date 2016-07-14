@@ -174,6 +174,13 @@ public:
             // and we can wait for its exit in _graphics destructor
             atomicStore(_graphicsCreated, false);
 
+            // wait for the audio thread to exit using the IGraphics object
+            // (typically used for meters, etc)
+            while (atomicLoad(_audioThreadIsUsingGraphics))
+            {
+                // TODO: relax CPU here
+            }
+
             // Destroy the graphics stored on stack,
             // can safely wait for the audio thread to exit its methods
             _graphics.destroy();
@@ -293,15 +300,27 @@ public:
         return null;
     }
 
-    // Getter for the IGraphics interface
-    // This is intended for the audio thread so
-    // we protect the member _graphics with an atomic
-    final IGraphics graphicsAtomic() nothrow @nogc
+    /// Getter for the IGraphics interface
+    /// This is intended for the audio thread and has acquire semantics.
+    /// Not reentrant!
+    /// Returns: null if feedback from audio thread is not welcome.
+    final IGraphics graphicsAcquire() nothrow @nogc
     {
         if (!atomicLoad(_graphicsCreated))
             return null; // this is a work-around since interface can't go in atomics
 
+        // Not reentrant! You can't call this twice without a graphicsRelease first.
+        assert(!atomicLoad(_audioThreadIsUsingGraphics));
+        atomicStore(_audioThreadIsUsingGraphics, true);
         return _graphics;
+    }
+
+    /// Mirror function to release the IGraphics from the audio-thread.
+    final void graphicsRelease() nothrow @nogc
+    {
+        // graphicsAcquire should have been called before 
+        assert(atomicLoad(_audioThreadIsUsingGraphics));
+        atomicStore(_audioThreadIsUsingGraphics, false);
     }
 
     // Getter for the IHostCommand interface
@@ -490,6 +509,7 @@ protected:
 
     IGraphics _graphics;
     shared(bool) _graphicsCreated = false;
+    shared(bool) _audioThreadIsUsingGraphics = false;
 
     IHostCommand _hostCommand;
 
@@ -511,6 +531,8 @@ private:
         // does not write to it
         if ( (_graphics is null) && hasGUI())
         {
+            // Why is the IGraphics created lazily? This allows to load a plugin very quickly, 
+            // without opening its logical UI
             IGraphics graphics = createGraphics();
 
             // Don't forget to override the createGraphics method!
