@@ -181,8 +181,6 @@ public:
                 // TODO: relax CPU here
             }
 
-            // Destroy the graphics stored on stack,
-            // can safely wait for the audio thread to exit its methods
             _graphics.destroy();
         }
 
