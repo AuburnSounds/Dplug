@@ -5,6 +5,8 @@
 */
 import std.math;
 
+static import dplug.core.funcs;
+
 import dplug.core,
        dplug.client,
        dplug.dsp,
@@ -164,8 +166,9 @@ public:
             outputs[chan][0..frames] = 0; // D has array slices assignments and operations
 
         // Update RMS meters from the audio callback
-        DistortGUI gui = cast(DistortGUI) graphicsAtomic();
-        if (gui !is null)
+        // The IGraphics object must be acquired and released, so that it does not
+        // disappear under your feet
+        if (DistortGUI gui = cast(DistortGUI) graphicsAcquire())
         {
             float[2] inputLevels;
             inputLevels[0] = floatToDeciBel(_inputRMS[0].RMS());
@@ -176,6 +179,8 @@ public:
             outputLevels[0] = floatToDeciBel(_outputRMS[0].RMS());
             outputLevels[1] = minChan >= 1 ? floatToDeciBel(_outputRMS[1].RMS()) : outputLevels[0];
             gui.outputBargraph.setValues(outputLevels);
+
+            graphicsRelease();
         }
     }
 
