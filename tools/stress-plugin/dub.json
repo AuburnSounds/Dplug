@@ -3,6 +3,7 @@
     "description": "Test loading/unloading.",
     "dependencies": {
         "dplug:host": {"path": "../../"},
+		"dplug:window": {"path": "../../"},
          "wave-d": "~>1.0"
     },
 

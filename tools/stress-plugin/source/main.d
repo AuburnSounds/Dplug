@@ -6,6 +6,7 @@ import std.conv;
 import waved;
 
 import dplug.host;
+import dplug.window;
 
 
 void usage()
@@ -23,6 +24,7 @@ void main(string[]args)
         string pluginPath = null;
         int times = 1;
         bool help = false;
+        bool gui = false;
 
         for(int i = 1; i < args.length; ++i)
         {
@@ -36,6 +38,10 @@ void main(string[]args)
             else if (arg == "-h")
             {
                 help = true;
+            }
+            else if (arg == "-gui")
+            {
+                gui = true;
             }
             else
             {
@@ -52,6 +58,12 @@ void main(string[]args)
 	    if (pluginPath is null)
             throw new Exception("No plugin path provided");
 
+        void* windowHandle;
+        auto listener = new NullWindowListener;
+
+        IWindow window = createWindow(null, null, listener, WindowBackend.autodetect, 400, 400);
+        scope(exit) window.destroy();
+
         double[] measures;
         for (int t = 0; t < times; ++t)
         {
@@ -60,9 +72,23 @@ void main(string[]args)
             IPluginHost host = createPluginHost(pluginPath);
             host.setSampleRate(44100);
             host.setMaxBufferSize(1024);
+
+            
+            
+            if (gui) 
+            {
+                host.openUI();
+            }
+
             long timeAfterInit = getTickMs();
             writefln("Initialization took %s ms", timeAfterInit - timeBeforeInit);
             measures ~= timeAfterInit - timeBeforeInit;
+
+            if (gui) 
+            {
+                host.closeUI();
+            }
+
             host.close();
         }
 
@@ -117,4 +143,23 @@ double median(double[] arr)
     {
         return arr[arr.length/2];
     }
+}
+
+
+/// Do nothing
+class NullWindowListener
+{
+    bool onMouseClick(int x, int y, MouseButton mb, bool isDoubleClick, MouseState mstate){}
+    bool onMouseRelease(int x, int y, MouseButton mb, MouseState mstate){}
+    bool onMouseWheel(int x, int y, int wheelDeltaX, int wheelDeltaY, MouseState mstate){}
+    void onMouseMove(int x, int y, int dx, int dy, MouseState mstate){}
+    bool onKeyDown(Key key){}
+    bool onKeyUp(Key up){}
+    void onDraw(ImageRef!RGBA wfb, WindowPixelFormat pf){}
+    void onResized(int width, int height){}
+    void recomputeDirtyAreas(){}
+    box2i getDirtyRectangle(){}
+    bool isUIDirty(){}
+    void onMouseCaptureCancelled(){}
+    void onAnimate(double dt, double time){}
 }

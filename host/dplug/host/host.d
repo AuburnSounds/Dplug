@@ -47,6 +47,14 @@ interface IPluginHost
     
     ///ditto
     string getVendorString();
+
+    /// Opens the editor window.
+    /// On Windows, pass a HWND
+    /// On Mac, a NSView    
+    void openUI(void* windowHandle);
+
+    /// Closes the editor.
+    void closeUI();
 }
 
 

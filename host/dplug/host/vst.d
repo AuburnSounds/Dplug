@@ -134,6 +134,16 @@ final class VSTPluginHost : IPluginHost
         _dispatcher(_aeffect, effSetProgram, 0, cast(ptrdiff_t)(presetIndex), null, 0.0f);
     }
 
+    void openUI(void* windowHandle)
+    {
+        _dispatcher(_aeffect, effEditOpen, 0, 0, windowHandle, 0.0f);
+    }
+
+    void closeUI()
+    {
+        _dispatcher(_aeffect, effEditClose, 0, 0, null, 0.0f);
+    }
+
     override ubyte[] saveState()
     {
         if (_aeffect.flags && effFlagsProgramChunks)
