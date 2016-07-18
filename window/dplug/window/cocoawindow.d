@@ -287,7 +287,6 @@ version(OSX)
             wfb.pixels = cast(RGBA*)_buffer;
             _listener.onDraw(wfb, WindowPixelFormat.ARGB8);
 
-
             size_t sizeNeeded = byteStride(_width) * _height;
             _imageData = NSData.dataWithBytesNoCopy(_buffer, sizeNeeded, false);
 

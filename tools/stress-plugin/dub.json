@@ -1,0 +1,11 @@
+{
+    "name": "stress-plugin",
+    "description": "Test loading/unloading.",
+    "dependencies": {
+        "dplug:host": {"path": "../../"},
+         "wave-d": "~>1.0"
+    },
+
+    "sourcePaths": ["source"],
+    "importPaths": ["source"]
+}
