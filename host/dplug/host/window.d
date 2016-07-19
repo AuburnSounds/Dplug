@@ -20,14 +20,3 @@ IWindow createHostWindow(IPluginHost pluginHost)
 
     return hostWindow;
 }
-
-
-        return box2i(0, 0, 0, 0);
-    }
-    bool isUIDirty()
-    {
-        return false;
-    }
-    void onMouseCaptureCancelled(){}
-    void onAnimate(double dt, double time){}
-}+/

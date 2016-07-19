@@ -54,8 +54,7 @@ version(Windows)
         {
             _wndClass.style = CS_DBLCLKS | CS_OWNDC;
 
-            // If there is no listener, don't register a custom message callback
-            _wndClass.lpfnWndProc = listener is null ? null : &windowProcCallback;
+            _wndClass.lpfnWndProc = &windowProcCallback;
 
             _wndClass.cbClsExtra = 0;
             _wndClass.cbWndExtra = 0;
@@ -79,6 +78,8 @@ version(Windows)
             DWORD flags = WS_VISIBLE;
             if (parentWindow != null)
                 flags |= WS_CHILD;
+            else
+                parentWindow = GetDesktopWindow();
 
             _hwnd = CreateWindowW(_className.ptr, null, flags, CW_USEDEFAULT, CW_USEDEFAULT, width, height,
                                  parentWindow, null,
@@ -92,12 +93,11 @@ version(Windows)
             }
 
             _listener = listener;
+            // Sets this as user data
+            SetWindowLongPtrA(_hwnd, GWLP_USERDATA, cast(LONG_PTR)( cast(void*)this ));
 
-            if (_listener != null) // we are interested in custom behaviour
+            if (_listener !is null) // we are interested in custom behaviour
             {
-
-                // Sets this as user data
-                SetWindowLongPtrA(_hwnd, GWLP_USERDATA, cast(LONG_PTR)( cast(void*)this ));
 
                 int mSec = 15; // refresh at 60 hz if possible
                 SetTimer(_hwnd, TIMER_ID, mSec, null);
@@ -174,6 +174,9 @@ version(Windows)
         {
             // because DispatchMessage is called by host
             thread_attachThis();
+
+            if (_listener is null)
+                return DefWindowProc(hwnd, uMsg, wParam, lParam);
 
             switch (uMsg)
             {
