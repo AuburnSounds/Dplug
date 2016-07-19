@@ -88,8 +88,9 @@ final class VSTPluginHost : IPluginHost
         // close plugin
         _dispatcher(_aeffect, effClose, 0, 0, null, 0.0f);
 
+        // TODO: disabled because this breaks the second time the DLL is unloaded on Windows
         // unload dynlib
-        _lib.unload();
+        //  _lib.unload();
     }
 
     override string getVendorString()
