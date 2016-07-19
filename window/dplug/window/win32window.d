@@ -120,7 +120,8 @@ version(Windows)
         {
             if (_hwnd != null)
             {
-               DestroyWindow(_hwnd);
+                debug ensureNotInGC("Win32Window");
+                DestroyWindow(_hwnd);
                 _hwnd = null;
 
                 // Unregister the window class, which was unique
