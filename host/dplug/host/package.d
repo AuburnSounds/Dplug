@@ -1,5 +1,5 @@
 /**
- * Copyright: Copyright Auburn Sounds 2015 and later.
+ * Copyright: Copyright Auburn Sounds 2016
  * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
  * Authors:   Guillaume Piolat
  */
@@ -7,6 +7,7 @@ module dplug.host;
 
 public import dplug.host.host;
 public import dplug.host.vst;
+public import dplug.host.window;
 
 /// Loads an audio plugin.
 IPluginHost createPluginHost(string dynlibPath)

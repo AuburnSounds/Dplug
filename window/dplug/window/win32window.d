@@ -53,7 +53,10 @@ version(Windows)
         this(HWND parentWindow, IWindowListener listener, int width, int height)
         {
             _wndClass.style = CS_DBLCLKS | CS_OWNDC;
-            _wndClass.lpfnWndProc = &windowProcCallback;
+
+            // If there is no listener, don't register a custom message callback
+            _wndClass.lpfnWndProc = listener is null ? null : &windowProcCallback;
+
             _wndClass.cbClsExtra = 0;
             _wndClass.cbWndExtra = 0;
             _wndClass.hInstance = getModuleHandle();
@@ -90,11 +93,16 @@ version(Windows)
 
             _listener = listener;
 
-            // Sets this as user data
-            SetWindowLongPtrA(_hwnd, GWLP_USERDATA, cast(LONG_PTR)( cast(void*)this ));
+            if (_listener != null) // we are interested in custom behaviour
+            {
 
-            int mSec = 15; // refresh at 60 hz if possible
-            SetTimer(_hwnd, TIMER_ID, mSec, null);
+                // Sets this as user data
+                SetWindowLongPtrA(_hwnd, GWLP_USERDATA, cast(LONG_PTR)( cast(void*)this ));
+
+                int mSec = 15; // refresh at 60 hz if possible
+                SetTimer(_hwnd, TIMER_ID, mSec, null);
+            }
+
             SetFocus(_hwnd);
 
             // Get performance counter frequency
@@ -164,7 +172,7 @@ version(Windows)
 
         LRESULT windowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         {
-            // because DispatchMesage is called by host
+            // because DispatchMessage is called by host
             thread_attachThis();
 
             switch (uMsg)
@@ -401,7 +409,7 @@ version(Windows)
         uint _timeAtCreationInMs;
         uint _lastMeasturedTimeInMs;
 
-        IWindowListener _listener;
+        IWindowListener _listener; // contract: _listener must only be used in the message callback
 
         // The framebuffer. This should point into commited virtual memory for faster (maybe) upload to device
         ubyte* _buffer = null;

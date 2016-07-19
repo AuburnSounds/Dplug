@@ -46,7 +46,8 @@
             "dependencies": {
                 "dplug:core": "*",
                 "dplug:vst": "*",
-                "derelict-util": "~>2.0"
+                "derelict-util": "~>2.0",
+                "dplug:window": "*"
             }
         },
         {
