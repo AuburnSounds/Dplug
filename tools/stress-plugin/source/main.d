@@ -56,12 +56,8 @@ void main(string[]args)
             usage();
             return;
         }
-	    if (pluginPath is null)
+        if (pluginPath is null)
             throw new Exception("No plugin path provided");
-
-        void* windowHandle;
-        auto listener = new NullWindowListener;
-
 
         double[] measures;
         for (int t = 0; t < times; ++t)
@@ -72,15 +68,11 @@ void main(string[]args)
             host.setSampleRate(44100);
             host.setMaxBufferSize(1024);
 
-            IWindow hostWindow;
+            IWindow hostWindow = createHostWindow(host);
+
             if (gui) 
             {
-                int[2] windowSize = host.getUISize();
-                hostWindow = createWindow(null, null, listener, WindowBackend.autodetect, windowSize[0], windowSize[1]);
-                host.openUI(hostWindow.systemHandle());
-
-                while (!hostWindow.terminated)
-                    hostWindow.waitEventAndDispatch();
+                hostWindow = createHostWindow(host);
             }
 
             long timeAfterInit = getTickMs();
@@ -149,50 +141,3 @@ double median(double[] arr)
     }
 }
 
-
-/// Do nothing
-class NullWindowListener : IWindowListener
-{
-    bool onMouseClick(int x, int y, MouseButton mb, bool isDoubleClick, MouseState mstate)
-    { 
-        return false;
-    }
-
-    bool onMouseRelease(int x, int y, MouseButton mb, MouseState mstate)
-    {
-        return false;
-    }
-
-    bool onMouseWheel(int x, int y, int wheelDeltaX, int wheelDeltaY, MouseState mstate)
-    {
-        return false;
-    }
-
-    void onMouseMove(int x, int y, int dx, int dy, MouseState mstate)
-    {
-    }
-
-    bool onKeyDown(Key key)
-    {
-        return false;
-    }
-
-    bool onKeyUp(Key up)
-    {
-        return false;
-    }
-
-    void onDraw(ImageRef!RGBA wfb, WindowPixelFormat pf){}
-    void onResized(int width, int height){}
-    void recomputeDirtyAreas(){}
-    box2i getDirtyRectangle()
-    {
-        return box2i(0, 0, 0, 0);
-    }
-    bool isUIDirty()
-    {
-        return false;
-    }
-    void onMouseCaptureCancelled(){}
-    void onAnimate(double dt, double time){}
-}
