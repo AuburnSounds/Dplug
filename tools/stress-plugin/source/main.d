@@ -82,7 +82,7 @@ void main(string[]args)
             if (gui) 
             {
                 // stop after 1 sec
-                while(getTickMs() > 1000 + timeBeforeInit)
+                while(getTickMs() < 1000 + timeBeforeInit)
                     hostWindow.waitEventAndDispatch();
 
                 host.closeUI();
