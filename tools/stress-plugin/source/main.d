@@ -68,7 +68,7 @@ void main(string[]args)
             host.setSampleRate(44100);
             host.setMaxBufferSize(1024);
 
-            IWindow hostWindow = createHostWindow(host);
+            IWindow hostWindow;
 
             if (gui)
             {
