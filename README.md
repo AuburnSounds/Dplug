@@ -171,7 +171,8 @@ Other source files fall under the Boost 1.0 license.
   * VST plugin client
 
 ### dplug:au
-  * Audio Unit plugin client (WIP)
+  * Audio Unit v2 plugin client
+  * Allows both Carbon and Cocoa windows
 
 ### dplug:window
    * implements windowing for Win32, Cocoa and Carbon
