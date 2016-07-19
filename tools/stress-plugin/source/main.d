@@ -15,7 +15,7 @@ void usage()
 {
     writeln();
     writeln("Auburn Sounds plugin loader\n");
-    writeln("usage: stress-load [-t times] [-h] [-gui] [-preset <p>] [-buffer <samples>] plugin.dll|plugin.vst\n");
+    writeln("usage: stress-plugin [-t times] [-h] [-gui] [-preset <p>] [-buffer <samples>] plugin.dll|plugin.vst\n");
 
 }
 
@@ -95,7 +95,7 @@ void main(string[]args)
             host.setMaxBufferSize(bufLength);
             if (preset != -1)
                 host.loadPreset(preset);
-            
+
             foreach(thread; iota(2).parallel)
             {
                 if (thread == 0)
@@ -103,7 +103,6 @@ void main(string[]args)
                     // On thread 0, open and close the UI
 
                     IWindow hostWindow;
-
                     if (gui)
                     {
                         hostWindow = createHostWindow(host);
@@ -113,7 +112,7 @@ void main(string[]args)
                     writefln("Initialization took %s ms", timeAfterInit - timeBeforeInit);
                     measures ~= timeAfterInit - timeBeforeInit;
 
-                    if (gui) 
+                    if (gui)
                     {
                         // stop after 1 sec
                         while(getTickMs() < 1000 + timeBeforeInit)
@@ -187,4 +186,3 @@ double median(double[] arr)
         return arr[arr.length/2];
     }
 }
-
