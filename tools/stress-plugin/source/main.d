@@ -70,7 +70,7 @@ void main(string[]args)
 
             IWindow hostWindow = createHostWindow(host);
 
-            if (gui) 
+            if (gui)
             {
                 hostWindow = createHostWindow(host);
             }
@@ -81,6 +81,10 @@ void main(string[]args)
 
             if (gui) 
             {
+                // stop after 1 sec
+                while(getTickMs() > 1000 + timeBeforeInit)
+                    hostWindow.waitEventAndDispatch();
+
                 host.closeUI();
                 hostWindow.destroy();
             }
