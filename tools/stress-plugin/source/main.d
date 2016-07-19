@@ -7,6 +7,7 @@ import waved;
 
 import dplug.host;
 import dplug.window;
+import ae.utils.graphics;
 
 
 void usage()
@@ -61,8 +62,6 @@ void main(string[]args)
         void* windowHandle;
         auto listener = new NullWindowListener;
 
-        IWindow window = createWindow(null, null, listener, WindowBackend.autodetect, 400, 400);
-        scope(exit) window.destroy();
 
         double[] measures;
         for (int t = 0; t < times; ++t)
@@ -73,11 +72,15 @@ void main(string[]args)
             host.setSampleRate(44100);
             host.setMaxBufferSize(1024);
 
-            
-            
+            IWindow hostWindow;
             if (gui) 
             {
-                host.openUI();
+                int[2] windowSize = host.getUISize();
+                hostWindow = createWindow(null, null, listener, WindowBackend.autodetect, windowSize[0], windowSize[1]);
+                host.openUI(hostWindow.systemHandle());
+
+                while (!hostWindow.terminated)
+                    hostWindow.waitEventAndDispatch();
             }
 
             long timeAfterInit = getTickMs();
@@ -87,6 +90,7 @@ void main(string[]args)
             if (gui) 
             {
                 host.closeUI();
+                hostWindow.destroy();
             }
 
             host.close();
@@ -147,19 +151,48 @@ double median(double[] arr)
 
 
 /// Do nothing
-class NullWindowListener
+class NullWindowListener : IWindowListener
 {
-    bool onMouseClick(int x, int y, MouseButton mb, bool isDoubleClick, MouseState mstate){}
-    bool onMouseRelease(int x, int y, MouseButton mb, MouseState mstate){}
-    bool onMouseWheel(int x, int y, int wheelDeltaX, int wheelDeltaY, MouseState mstate){}
-    void onMouseMove(int x, int y, int dx, int dy, MouseState mstate){}
-    bool onKeyDown(Key key){}
-    bool onKeyUp(Key up){}
+    bool onMouseClick(int x, int y, MouseButton mb, bool isDoubleClick, MouseState mstate)
+    { 
+        return false;
+    }
+
+    bool onMouseRelease(int x, int y, MouseButton mb, MouseState mstate)
+    {
+        return false;
+    }
+
+    bool onMouseWheel(int x, int y, int wheelDeltaX, int wheelDeltaY, MouseState mstate)
+    {
+        return false;
+    }
+
+    void onMouseMove(int x, int y, int dx, int dy, MouseState mstate)
+    {
+    }
+
+    bool onKeyDown(Key key)
+    {
+        return false;
+    }
+
+    bool onKeyUp(Key up)
+    {
+        return false;
+    }
+
     void onDraw(ImageRef!RGBA wfb, WindowPixelFormat pf){}
     void onResized(int width, int height){}
     void recomputeDirtyAreas(){}
-    box2i getDirtyRectangle(){}
-    bool isUIDirty(){}
+    box2i getDirtyRectangle()
+    {
+        return box2i(0, 0, 0, 0);
+    }
+    bool isUIDirty()
+    {
+        return false;
+    }
     void onMouseCaptureCancelled(){}
     void onAnimate(double dt, double time){}
 }

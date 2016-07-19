@@ -55,6 +55,9 @@ interface IPluginHost
 
     /// Closes the editor.
     void closeUI();
+
+    /// Gets the UI size.
+    int[2] getUISize();
 }
 
 

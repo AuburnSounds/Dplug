@@ -134,14 +134,24 @@ final class VSTPluginHost : IPluginHost
         _dispatcher(_aeffect, effSetProgram, 0, cast(ptrdiff_t)(presetIndex), null, 0.0f);
     }
 
-    void openUI(void* windowHandle)
+    override void openUI(void* windowHandle)
     {
         _dispatcher(_aeffect, effEditOpen, 0, 0, windowHandle, 0.0f);
     }
 
-    void closeUI()
+    override void closeUI()
     {
         _dispatcher(_aeffect, effEditClose, 0, 0, null, 0.0f);
+    }
+
+    override int[2] getUISize()
+    {
+        ERect* rect;
+        _dispatcher(_aeffect, effEditGetRect, 0, 0, &rect, 0.0f);
+        int[2] size;
+        size[0] = rect.right - rect.left;
+        size[1] = rect.bottom - rect.top;
+        return size;
     }
 
     override ubyte[] saveState()
@@ -184,6 +194,8 @@ private:
 extern(C) nothrow @nogc VstIntPtr hostCallback(AEffect* effect, VstInt32 opcode, VstInt32 index, VstIntPtr value, void* ptr, float opt)
 {
     import core.stdc.stdio;
+
+    // unimplemented stuff will printf
 
     switch(opcode)
     {
