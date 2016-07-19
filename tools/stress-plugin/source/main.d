@@ -15,7 +15,7 @@ void usage()
 {
     writeln();
     writeln("Auburn Sounds plugin loader\n");
-    writeln("usage: stress-load [-t times] [-h] [-gui] plugin.dll|plugin.vst\n");
+    writeln("usage: stress-load [-t times] [-h] [-gui] [-preset <p>] [-buffer <samples>] plugin.dll|plugin.vst\n");
 
 }
 
@@ -27,6 +27,8 @@ void main(string[]args)
         int times = 1;
         bool help = false;
         bool gui = false;
+        int preset = -1;
+        int bufLength = 16384 * 16;
 
         for(int i = 1; i < args.length; ++i)
         {
@@ -40,6 +42,16 @@ void main(string[]args)
             else if (arg == "-h")
             {
                 help = true;
+            }
+            else if (arg == "-buffer")
+            {
+                ++i;
+                bufLength = to!int(args[i]);
+            }
+            else if (arg == "-preset")
+            {
+                ++i;
+                preset = to!int(args[i]);
             }
             else if (arg == "-gui")
             {
@@ -60,50 +72,64 @@ void main(string[]args)
         if (pluginPath is null)
             throw new Exception("No plugin path provided");
 
+        float[][] buffers;
+        buffers.length = 2;
+        buffers[0].length = bufLength;
+        buffers[1].length = bufLength;
+        double invN = 1.0 / (2.0 ^^ 31);
+        for (int i = 0; i < bufLength; ++i)
+        {
+            buffers[0][i] = (i ^ 1324643) * invN;
+            buffers[1][i] = ((i+1) ^ 1324643) * invN;
+        }
+
         double[] measures;
         for (int t = 0; t < times; ++t)
         {
             long timeBeforeInit = getTickMs();
 
             IPluginHost host = createPluginHost(pluginPath);
+
+
             host.setSampleRate(44100);
-            host.setMaxBufferSize(1024);
-
-
-            foreach(thread; parallel.iota(2))
+            host.setMaxBufferSize(bufLength);
+            if (preset != -1)
+                host.loadPreset(preset);
+            
+            foreach(thread; iota(2).parallel)
             {
-
                 if (thread == 0)
                 {
+                    // On thread 0, open and close the UI
+
+                    IWindow hostWindow;
+
+                    if (gui)
+                    {
+                        hostWindow = createHostWindow(host);
+                    }
+
+                    long timeAfterInit = getTickMs();
+                    writefln("Initialization took %s ms", timeAfterInit - timeBeforeInit);
+                    measures ~= timeAfterInit - timeBeforeInit;
+
+                    if (gui) 
+                    {
+                        // stop after 1 sec
+                        while(getTickMs() < 1000 + timeBeforeInit)
+                            hostWindow.waitEventAndDispatch();
+
+                        host.closeUI();
+                        hostWindow.destroy();
+                    }
 
                 }
                 else if (thread == 1)
                 {
-
+                    // Audio processing
+                    float*[2] p = [ buffers[0].ptr, buffers[1].ptr ];
+                    host.processAudioFloat(p.ptr, p.ptr, bufLength);
                 }
-            }
-
-            launchAudioThread
-
-            IWindow hostWindow;
-
-            if (gui)
-            {
-                hostWindow = createHostWindow(host);
-            }
-
-            long timeAfterInit = getTickMs();
-            writefln("Initialization took %s ms", timeAfterInit - timeBeforeInit);
-            measures ~= timeAfterInit - timeBeforeInit;
-
-            if (gui) 
-            {
-                // stop after 1 sec
-                while(getTickMs() < 1000 + timeBeforeInit)
-                    hostWindow.waitEventAndDispatch();
-
-                host.closeUI();
-                hostWindow.destroy();
             }
 
             host.close();
