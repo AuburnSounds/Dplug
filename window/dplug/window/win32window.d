@@ -22,6 +22,7 @@ import std.process,
        std.string,
        std.conv;
 
+import gfm.core.memory;
 import gfm.math;
 
 import ae.utils.graphics;
