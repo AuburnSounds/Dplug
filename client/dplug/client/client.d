@@ -34,6 +34,9 @@ import dplug.client.midi;
 import dplug.client.graphics;
 import dplug.client.daw;
 
+
+version = lazyGraphicsCreation;
+
 /// A plugin client can send commands to the host.
 /// This interface is injected after the client creation though.
 interface IHostCommand
@@ -161,6 +164,12 @@ public:
             if (_maxOutputs < legalIO.numOutputChannels)
                 _maxOutputs = legalIO.numOutputChannels;
         }
+
+        version (lazyGraphicsCreation) {}
+        else
+        {
+            createGraphicsLazily();
+        }
     }
 
     ~this()
@@ -172,7 +181,10 @@ public:
         {
             // so that it's the last time the audio uses it,
             // and we can wait for its exit in _graphics destructor
-            atomicStore(_graphicsCreated, false);
+            version(lazyGraphicsCreation)
+            {
+                atomicStore(_graphicsCreated, false);
+            }
 
             // wait for the audio thread to exit using the IGraphics object
             // (typically used for meters, etc)
@@ -304,8 +316,11 @@ public:
     /// Returns: null if feedback from audio thread is not welcome.
     final IGraphics graphicsAcquire() nothrow @nogc
     {
-        if (!atomicLoad(_graphicsCreated))
-            return null; // this is a work-around since interface can't go in atomics
+        version(lazyGraphicsCreation)
+        {
+            if (!atomicLoad(_graphicsCreated))
+                return null; // this is a work-around since interface can't go in atomics
+        }
 
         // Not reentrant! You can't call this twice without a graphicsRelease first.
         assert(!atomicLoad(_audioThreadIsUsingGraphics));
@@ -506,7 +521,10 @@ protected:
     }
 
     IGraphics _graphics;
-    shared(bool) _graphicsCreated = false;
+    version (lazyGraphicsCreation)
+    {
+        shared(bool) _graphicsCreated = false;
+    }
     shared(bool) _audioThreadIsUsingGraphics = false;
 
     IHostCommand _hostCommand;
@@ -539,7 +557,10 @@ private:
             _graphics = graphics;
 
             // Now that the UI is fully created, we enable the audio thread to use it
-            atomicStore(_graphicsCreated, true);
+            version(lazyGraphicsCreation)
+            {
+                atomicStore(_graphicsCreated, true);
+            }
         }
     }
 }
