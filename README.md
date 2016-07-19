@@ -13,8 +13,8 @@
 - Comes with a suite of `tools` to make plugin creation faster (bundling, color correction, regression tests)
 - Graphics renderer inspired by PBR
 
+![Example screenshot](http://www.auburnsounds.com/images/panagement.jpg)
 ![Example screenshot](screenshot.jpg "With a bit of work")
-
 
 ### Release notes
 
@@ -97,8 +97,6 @@ If you want something to be changed, you can:
 - do it yourself
 - use the bounty system
 
-
-![Rendering](rendering.jpg)
 
 
 ## Comparison vs IPlug

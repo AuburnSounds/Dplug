@@ -2,6 +2,7 @@ import std.stdio;
 import std.algorithm;
 import std.range;
 import std.conv;
+import std.parallelism;
 
 import waved;
 
@@ -67,6 +68,22 @@ void main(string[]args)
             IPluginHost host = createPluginHost(pluginPath);
             host.setSampleRate(44100);
             host.setMaxBufferSize(1024);
+
+
+            foreach(thread; parallel.iota(2))
+            {
+
+                if (thread == 0)
+                {
+
+                }
+                else if (thread == 1)
+                {
+
+                }
+            }
+
+            launchAudioThread
 
             IWindow hostWindow;
 
