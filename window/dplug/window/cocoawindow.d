@@ -34,6 +34,10 @@ version(OSX)
         NSData _imageData;
         NSString _logFormatStr;
 
+        // Only used by host windows
+        NSWindow _nsWindow;
+        NSApplication _nsApplication;
+
         DPlugCustomView _view = null;
 
         bool _terminated = false;
@@ -55,8 +59,12 @@ version(OSX)
 
     public:
 
+        // If listener is null, this window is a host window who doesn't need to register a view
+        // Else it's a client window.
         this(void* parentWindow, IWindowListener listener, int width, int height)
         {
+            bool isHostWindow = listener is null;
+
             _listener = listener;
 
             DerelictCocoa.load();
@@ -80,25 +88,42 @@ version(OSX)
 
             _dirtyAreasAreNotYetComputed = true;
 
-            string uuid = randomUUID().toString();
-            DPlugCustomView.customClassName = "DPlugCustomView_" ~ uuid;
-            DPlugCustomView.registerSubclass();
-
-            _view = DPlugCustomView.alloc();
-            _view.initialize(this, width, height);
-
-            // In VST, add the view the parent view.
-            // In AU (parentWindow == null), a reference to the view is returned instead and the host does it.
-            if (parentWindow !is null)
+            if (!isHostWindow)
             {
-                NSView parentView = NSView(cast(id)parentWindow);
-                parentView.addSubview(_view);
+                string uuid = randomUUID().toString();
+                DPlugCustomView.customClassName = "DPlugCustomView_" ~ uuid;
+                DPlugCustomView.registerSubclass();
+
+                _view = DPlugCustomView.alloc();
+                _view.initialize(this, width, height);
+
+                // In VST, add the view to the parent view.
+                // In AU (parentWindow == null), a reference to the view is returned instead and the host does it.
+                if (parentWindow !is null)
+                {
+                    NSView parentView = NSView(cast(id)parentWindow);
+                    parentView.addSubview(_view);
+                }
+            }
+            else
+            {
+                _nsApplication = NSApplication.sharedApplication;
+                _nsApplication.setActivationPolicy(NSApplicationActivationPolicyRegular);
+                _nsWindow = NSWindow.alloc();
+                _nsWindow.initWithContentRect(NSMakeRect(0, 0, width, height),
+                                              NSBorderlessWindowMask, NSBackingStoreBuffered, NO);
+                _nsWindow.makeKeyAndOrderFront();
+
+                 _nsApplication.activateIgnoringOtherApps(YES);
+                //_nsApplication.run();
             }
         }
 
         ~this()
         {
-            if (_view)
+            bool isHostWindow = _listener is null;
+
+            if (!isHostWindow)
             {
                 debug ensureNotInGC("CocoaWindow");
                 _terminated = true;
@@ -119,12 +144,20 @@ version(OSX)
                     _buffer = null;
                 }
             }
+            else
+            {
+                _nsWindow.destroy();
+            }
         }
 
         // Implements IWindow
         override void waitEventAndDispatch()
         {
-            assert(false); // not implemented in Cocoa, since we don't have a NSWindow
+            bool isHostWindow = _listener is null;
+            if (!isHostWindow)
+                assert(false); // only valid for a host window
+
+            NSEvent event = _nsWindow.nextEventMatchingMask(cast(NSUInteger)-1);
         }
 
         override bool terminated()
@@ -145,7 +178,11 @@ version(OSX)
 
         override void* systemHandle()
         {
-            return _view._id;
+            bool isHostWindow = _listener is null;
+            if (isHostWindow)
+                return _nsWindow.contentView()._id; // return the main NSView
+            else
+                return _view._id;
         }
 
     private:

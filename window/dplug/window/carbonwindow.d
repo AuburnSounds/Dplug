@@ -8,6 +8,7 @@ module dplug.window.carbonwindow;
 version(OSX)
 {
     import core.stdc.stdio;
+    import core.stdc.stdlib;
     import std.string;
     import std.math;
 
