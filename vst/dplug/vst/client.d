@@ -142,9 +142,6 @@ public:
 
         _samplesAlreadyProcessed = 0;
 
-        // because effSetSpeakerArrangement might never come
-        _usedInputs = _maxInputs;
-        _usedOutputs = _maxOutputs;
 
         // GUI thread can allocate
         _inputScratchBuffer.length = _maxInputs;
@@ -161,6 +158,8 @@ public:
         _inputPointers.length = _maxInputs;
         _outputPointers.length = _maxOutputs;
 
+        // because effSetSpeakerArrangement might never come, take a default
+        chooseIOArrangement(_maxInputs, _maxOutputs);
         _messageQueue.pushBack(makeResetStateMessage(AudioThreadMessage.Type.resetState));
 
         // Create host callback wrapper
@@ -204,8 +203,57 @@ private:
     int _maxInputs;
     int _maxOutputs;
     int _maxParams;
-    int _usedInputs;  // used inputs from opcode thread POV
-    int _usedOutputs; // used outputs from opcode thread POV
+
+    // Actual channels the host will give.
+    IO _hostIOFromOpcodeThread;
+
+    // Logical number of channels the plugin will use.
+    // This might be different with hosts that call effSetSpeakerArrangement with
+    // an invalid number of channels (like Audition which uses 1-1 even if not available).
+    IO _processingIOFromOpcodeThread;
+
+    // Fills _hostIOFromOpcodeThread and _processingIOFromOpcodeThread
+    final void chooseIOArrangement(int numInputs, int numOutputs) nothrow @nogc
+    {
+        _hostIOFromOpcodeThread = IO(numInputs, numOutputs);
+
+        // Note: _hostIOFromOpcodeThread may contain invalid stuff
+        // Compute acceptable number of channels based on I/O legality.
+
+        // Find the legal I/O combination with the highest score.
+        int bestScore = -10000;
+        IO bestProcessingIO = _hostIOFromOpcodeThread;
+        bool found = false;
+
+        foreach(LegalIO io; _client.legalIOs())
+        {
+            // The reasoning is: try to match exactly inputs and outputs. 
+            // If this isn't possible, better have the largest number of channels,
+            // all other things being equal.
+            // Note: this heuristic will prefer 1-2 to 2-1 if 1-1 was asked.
+            int score = 0;
+            if (io.numInputChannels == numInputs)
+                score += 2000;
+            else
+                score += (io.numInputChannels - numInputs);
+
+            if (io.numOutputChannels == numOutputs)
+                score += 1000;
+            else
+                score += (io.numOutputChannels - numOutputs);
+
+            if (score > bestScore)
+            {
+                bestScore = score;
+                bestProcessingIO = IO(io.numInputChannels, io.numOutputChannels);
+            }
+        }       
+        _processingIOFromOpcodeThread = bestProcessingIO;
+    }
+
+    // Same data, but on the audio thread point of view.
+    IO _hostIOFromAudioThread;  
+    IO _processingIOFromAudioThread;
 
     long _samplesAlreadyProcessed; // For hosts that don't provide time info, fake it by counting samples.
 
@@ -243,7 +291,7 @@ private:
 
     AudioThreadMessage makeResetStateMessage(AudioThreadMessage.Type type) pure const nothrow @nogc
     {
-        return AudioThreadMessage(type, _maxFrames, _sampleRate, _usedInputs, _usedOutputs);
+        return AudioThreadMessage(type, _maxFrames, _sampleRate, _hostIOFromOpcodeThread, _processingIOFromOpcodeThread);
     }
 
     /// VST opcode dispatcher
@@ -372,7 +420,7 @@ private:
                     if (value == 0)
                     {
                       // Audio processing was switched off.
-                      // The plugin must call flush its state because otherwise pending data
+                      // The plugin must flush its state because otherwise pending data
                       // would sound again when the effect is switched on next time.
                       _messageQueue.pushBack(makeResetStateMessage(AudioThreadMessage.Type.resetState));
                     }
@@ -652,17 +700,10 @@ private:
                 VstSpeakerArrangement* pOutputArr = cast(VstSpeakerArrangement*) ptr;
                 if (pInputArr !is null && pOutputArr !is null )
                 {
-                    _usedInputs = pInputArr.numChannels;
-                    _usedOutputs = pOutputArr.numChannels;
-
-                    // limit to possible I/O
-                    if (_usedInputs > _maxInputs)
-                        _usedInputs = _maxInputs;
-                    if (_usedOutputs > _maxOutputs)
-                        _usedOutputs = _maxOutputs;
-
+                    int numInputs = pInputArr.numChannels;
+                    int numOutputs = pOutputArr.numChannels;
+                    chooseIOArrangement(numInputs, numOutputs);
                     _messageQueue.pushBack(makeResetStateMessage(AudioThreadMessage.Type.resetState));
-
                     return 0;
                 }
                 return 1;
@@ -781,7 +822,13 @@ private:
                     if (_maxFramesInProcess != 0 && _maxFramesInProcess < maxFrameFromClientPOV)
                         maxFrameFromClientPOV = _maxFramesInProcess;
 
-                    _client.reset(msg.samplerate, maxFrameFromClientPOV, msg.usedInputs, msg.usedOutputs);
+                    _hostIOFromAudioThread = msg.hostIO;
+                    _processingIOFromAudioThread = msg.processingIO;
+
+                    _client.reset(msg.samplerate, 
+                                  maxFrameFromClientPOV, 
+                                  _processingIOFromAudioThread.inputs, 
+                                  _processingIOFromAudioThread.outputs);
                     break;
 
                 case midi:
@@ -789,12 +836,6 @@ private:
             }
         }
     }
-
-    void preprocess(int sampleFrames) nothrow @nogc
-    {
-        processMessages();
-    }
-
 
     // Send audio to plugin's processAudio, and optionally slice the buffers too.
     void sendAudioToClient(float*[] inputs, float*[]outputs, int frames, TimeInfo timeInfo) nothrow @nogc
@@ -825,25 +866,35 @@ private:
             }
             assert(frames == 0);
         }
+        _samplesAlreadyProcessed += frames;
     }
 
     void process(float **inputs, float **outputs, int sampleFrames) nothrow @nogc
     {
-        preprocess(sampleFrames);
+        processMessages();
+        int hostInputs = _hostIOFromAudioThread.inputs;
+        int hostOutputs = _hostIOFromAudioThread.outputs;
+        int usedInputs = _processingIOFromAudioThread.inputs;
+        int usedOutputs = _processingIOFromAudioThread.outputs;
+        int minOutputs = std.algorithm.min(usedOutputs, hostOutputs);
 
         // Not sure if the hosts would support an overwriting of these pointers, so copy them
-        for (int i = 0; i < _usedInputs; ++i)
-            _inputPointers[i] = inputs[i];
+        for (int i = 0; i < usedInputs; ++i)
+        {
+            // Points to zeros if the host provides a buffer, or the host buffer otherwise.
+            // Note: all input channels point on same buffer, but it's ok since input channels are const
+            _inputPointers[i] = (i < hostInputs) ? inputs[i] : _zeroesBuffer.ptr; 
+        }
 
-        for (int i = 0; i < _maxOutputs; ++i)
+        for (int i = 0; i < usedOutputs; ++i)
+        {
             _outputPointers[i] = _outputScratchBuffer[i].ptr;
+        }
 
-        sendAudioToClient(_inputPointers[0.._usedInputs], _outputPointers[0.._usedOutputs], sampleFrames, _host.getVSTTimeInfo(_samplesAlreadyProcessed));
+        sendAudioToClient(_inputPointers[0..usedInputs], _outputPointers[0..usedOutputs], sampleFrames, _host.getVSTTimeInfo(_samplesAlreadyProcessed));
 
-        _samplesAlreadyProcessed += sampleFrames;
-
-        // accumulate
-        for (int i = 0; i < _usedOutputs; ++i)
+        // accumulate on available host output channels
+        for (int i = 0; i < minOutputs; ++i)
         {
             float* source = _outputScratchBuffer[i].ptr;
             float* dest = outputs[i];
@@ -854,64 +905,97 @@ private:
 
     void processReplacing(float **inputs, float **outputs, int sampleFrames) nothrow @nogc
     {
-        preprocess(sampleFrames);
+        processMessages();
+        int hostInputs = _hostIOFromAudioThread.inputs;
+        int hostOutputs = _hostIOFromAudioThread.outputs;
+        int usedInputs = _processingIOFromAudioThread.inputs;
+        int usedOutputs = _processingIOFromAudioThread.outputs;
+        int minOutputs = std.algorithm.min(usedOutputs, hostOutputs);
 
-        // Some hosts (Live, Orion, and others) send identical input and ouput pointers.
+        // Some hosts (Live, Orion, and others) send identical input and output pointers.
         // This is actually legal in VST.
-        // We copy them to a scratch buffer to keep the constaness guarantee of input buffers.
-        for (int i = 0; i < _usedInputs; ++i)
+        // We copy them to a scratch buffer to keep the constness guarantee of input buffers.
+        for (int i = 0; i < usedInputs; ++i)
         {
-            _inputPointers[i] = inputs[i];
-            float* source = inputs[i];
-            float* dest = _inputScratchBuffer[i].ptr;
-            dest[0..sampleFrames] = source[0..sampleFrames];
-            _inputPointers[i] = dest;
+            if (i < hostInputs)
+            {
+                float* source = inputs[i];
+                float* dest = _inputScratchBuffer[i].ptr;
+                dest[0..sampleFrames] = source[0..sampleFrames];
+                _inputPointers[i] = dest;
+            }
+            else
+            {
+                _inputPointers[i] = _zeroesBuffer.ptr;
+            }
         }
 
-        // Unused input channels point to an array of zeroes
-        for (int i = 0; i < _usedOutputs; ++i)
-            _outputPointers[i] = outputs[i];
+        for (int i = 0; i < usedOutputs; ++i)
+        {
+            if (i < hostOutputs)
+                _outputPointers[i] = outputs[i];
+            else
+                _outputPointers[i] = _outputScratchBuffer[i].ptr; // dummy output
+        }
 
-        sendAudioToClient(_inputPointers[0.._usedInputs], _outputPointers[0.._usedOutputs], sampleFrames, _host.getVSTTimeInfo(_samplesAlreadyProcessed));
+        sendAudioToClient(_inputPointers[0..usedInputs], _outputPointers[0..usedOutputs], sampleFrames, _host.getVSTTimeInfo(_samplesAlreadyProcessed));
 
-        _samplesAlreadyProcessed += sampleFrames;
+        // Fills remaining host channels (if any) with zeroes
+        for (int i = minOutputs; i < hostOutputs; ++i)
+        {
+            float* dest = outputs[i];
+            for (int f = 0; f < sampleFrames; ++f)
+                dest[f] = 0;
+        }
     }
 
     void processDoubleReplacing(double **inputs, double **outputs, int sampleFrames) nothrow @nogc
     {
-        preprocess(sampleFrames);
+        processMessages();
+        int hostInputs = _hostIOFromAudioThread.inputs;
+        int hostOutputs = _hostIOFromAudioThread.outputs;
+        int usedInputs = _processingIOFromAudioThread.inputs;
+        int usedOutputs = _processingIOFromAudioThread.outputs;
+        int minOutputs = std.algorithm.min(usedOutputs, hostOutputs);
 
-        // existing inputs gets converted to double
-        // non-connected input is zero
-        for (int i = 0; i < _usedInputs; ++i)
+        // Existing inputs gets converted to double
+        // Non-connected inputs are zeroes
+        for (int i = 0; i < usedInputs; ++i)
         {
-            double* source = inputs[i];
-            float* dest = _inputScratchBuffer[i].ptr;
-            for (int f = 0; f < sampleFrames; ++f)
-                dest[f] = source[f];
-
-            _inputPointers[i] = dest;
+            if (i < hostInputs)
+            {
+                double* source = inputs[i];
+                float* dest = _inputScratchBuffer[i].ptr;
+                for (int f = 0; f < sampleFrames; ++f)
+                    dest[f] = source[f];
+                _inputPointers[i] = dest;
+            }
+            else
+                _inputPointers[i] = _zeroesBuffer.ptr;
         }
 
-        // Unused input channels point to an array of zeroes
-        for (int i = _usedInputs; i < _maxInputs; ++i)
-            _inputPointers[i] = _zeroesBuffer.ptr;
-
-        for (int i = 0; i < _maxOutputs; ++i)
+        for (int i = 0; i < usedOutputs; ++i)
         {
             _outputPointers[i] = _outputScratchBuffer[i].ptr;
         }
 
-        sendAudioToClient(_inputPointers[0.._usedInputs], _outputPointers[0.._usedOutputs], sampleFrames, _host.getVSTTimeInfo(_samplesAlreadyProcessed));
+        sendAudioToClient(_inputPointers[0..usedInputs], _outputPointers[0..usedOutputs], sampleFrames, _host.getVSTTimeInfo(_samplesAlreadyProcessed));
 
-        _samplesAlreadyProcessed += sampleFrames;
-
-        for (int i = 0; i < _usedOutputs; ++i)
+        // Converts back to double on available host output channels        
+        for (int i = 0; i < minOutputs; ++i)
         {
             float* source = _outputScratchBuffer[i].ptr;
             double* dest = outputs[i];
             for (int f = 0; f < sampleFrames; ++f)
                 dest[f] = cast(double)source[f];
+        }
+
+        // Fills remaining host channels (if any) with zeroes
+        for (int i = minOutputs; i < hostOutputs; ++i)
+        {
+            double* dest = outputs[i];
+            for (int f = 0; f < sampleFrames; ++f)
+                dest[f] = 0;
         }
     }
 }
@@ -1245,6 +1329,13 @@ private:
     }
 }
 
+
+struct IO
+{
+    int inputs;  /// number of input channels
+    int outputs; /// number of output channels
+}
+
 //
 // Message queue
 //
@@ -1263,20 +1354,20 @@ struct AudioThreadMessage
         midi
     }
 
-    this(Type type_, int maxFrames_, float samplerate_, int usedInputs_, int usedOutputs_) pure const nothrow @nogc
+    this(Type type_, int maxFrames_, float samplerate_, IO hostIO_, IO processingIO_) pure const nothrow @nogc
     {
         type = type_;
         maxFrames = maxFrames_;
         samplerate = samplerate_;
-        usedInputs = usedInputs_;
-        usedOutputs = usedOutputs_;
+        hostIO = hostIO_;
+        processingIO = processingIO_;
     }
 
     Type type;
     int maxFrames;
     float samplerate;
-    int usedInputs;
-    int usedOutputs;
+    IO hostIO;
+    IO processingIO;
     MidiMessage midiMessage;
 }
 
