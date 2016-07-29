@@ -358,9 +358,15 @@ version(OSX)
                             if (handled)
                             {
                                 if (eventKind == kEventRawKeyDown)
-                                    _listener.onKeyDown(key);
+                                {
+                                    if (!_listener.onKeyDown(key))
+                                        handled = false;
+                                }
                                 else
-                                    _listener.onKeyUp(key);
+                                {
+                                    if (!_listener.onKeyUp(key))
+                                        handled = false;
+                                }
                             }
                             return handled;
 
