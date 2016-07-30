@@ -2,7 +2,7 @@
 Cockos WDL License
 
 Copyright (C) 2005 - 2015 Cockos Incorporated
-Copyright (C) 2015 and later Auburn Sounds
+Copyright (C) 2015 - 2016 Auburn Sounds
 
 Portions copyright other contributors, see each source file for more information
 
@@ -185,19 +185,27 @@ version(Windows)
                 case WM_KEYDOWN:
                 case WM_KEYUP:
                 {
+                    bool handled = false;
+
                     Key key = vkToKey(wParam);
                     if (uMsg == WM_KEYDOWN)
                     {
                         if (_listener.onKeyDown(key))
+                        {
                             sendRepaintIfUIDirty(); // do not wait for the timer
+                            handled = true;
+                        }
                     }
                     else
                     {
                         if (_listener.onKeyUp(key))
+                        {
                             sendRepaintIfUIDirty(); // do not wait for the timer
+                            handled = true;
+                        }
                     }
 
-                    if (key == Key.unsupported)
+                    if (!handled)
                     {
                         // key is passed to the parent window
                         HWND rootHWnd = GetAncestor(hwnd, GA_ROOT);
