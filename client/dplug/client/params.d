@@ -260,16 +260,16 @@ public:
     {
         bool v = void;
         _valueMutex.lock();
-        v = atomicLoad(_value);
+        v = atomicLoad!(MemoryOrder.raw)(_value); // already sequenced by mutex locks
         _valueMutex.unlock();
         return v;
     }
 
-    /// Same as value but doesn't use locking,
-    /// which make it a better fit for the audio thread.
+    /// Same as value but doesn't use locking, and doesn't use ordering.
+    /// Which make it a better fit for the audio thread.
     final bool valueAtomic() nothrow @nogc
     {
-        return atomicLoad(_value);
+        return atomicLoad!(MemoryOrder.raw)(_value);
     }
 
     /// Returns: default value.
@@ -339,16 +339,16 @@ public:
     {
         int v = void;
         _valueMutex.lock();
-        v = atomicLoad(_value);
+        v = atomicLoad!(MemoryOrder.raw)(_value); // already sequenced by mutex locks
         _valueMutex.unlock();
         return v;
     }
 
-    /// Same as value but doesn't use locking,
-    /// which make it a better fit for the audio thread.
+    /// Same as value but doesn't use locking, and doesn't use ordering.
+    /// Which make it a better fit for the audio thread.
     final int valueAtomic() nothrow @nogc
     {
-        return atomicLoad(_value);
+        return atomicLoad!(MemoryOrder.raw)(_value);
     }
 
     final void setFromGUI(int value)
@@ -497,16 +497,16 @@ public:
     {
         double v = void;
         _valueMutex.lock();
-        v = atomicLoad(_value);
+        v = atomicLoad!(MemoryOrder.raw)(_value); // already sequenced by mutex locks
         _valueMutex.unlock();
         return v;
     }
 
-    /// Same as value but doesn't use locking,
-    /// which make it a better fit for the audio thread.
+    /// Same as value but doesn't use locking, and doesn't use ordering.
+    /// Which make it a better fit for the audio thread.
     final double valueAtomic() nothrow @nogc
     {
-        return atomicLoad(_value);
+        return atomicLoad!(MemoryOrder.raw)(_value);
     }
 
     final double minValue() pure const nothrow @nogc
