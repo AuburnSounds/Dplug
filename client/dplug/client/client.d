@@ -179,20 +179,13 @@ public:
         // Destroy graphics
         if (_graphics !is null)
         {
+            // Acquire _graphicsIsAvailable forever
             // so that it's the last time the audio uses it,
             // and we can wait for its exit in _graphics destructor
-            version(lazyGraphicsCreation)
+            while(!cas(&_graphicsIsAvailable, true, false))
             {
-                atomicStore(_graphicsCreated, false);
+                // TODO: relax CPU
             }
-
-            // wait for the audio thread to exit using the IGraphics object
-            // (typically used for meters, etc)
-            while (atomicLoad(_audioThreadIsUsingGraphics))
-            {
-                // TODO: relax CPU here
-            }
-
             _graphics.destroy();
         }
 
@@ -312,28 +305,23 @@ public:
 
     /// Getter for the IGraphics interface
     /// This is intended for the audio thread and has acquire semantics.
-    /// Not reentrant!
+    /// Not reentrant! You can't call this twice without a graphicsRelease first.
     /// Returns: null if feedback from audio thread is not welcome.
     final IGraphics graphicsAcquire() nothrow @nogc
     {
-        version(lazyGraphicsCreation)
-        {
-            if (!atomicLoad(_graphicsCreated))
-                return null; // this is a work-around since interface can't go in atomics
-        }
-
-        // Not reentrant! You can't call this twice without a graphicsRelease first.
-        assert(!atomicLoad(_audioThreadIsUsingGraphics));
-        atomicStore(_audioThreadIsUsingGraphics, true);
-        return _graphics;
+        if (cas(&_graphicsIsAvailable, true, false))
+            return _graphics;
+        else
+            return null;
     }
 
     /// Mirror function to release the IGraphics from the audio-thread.
+    /// Do not call if graphicsAcquire() returned `null`.
     final void graphicsRelease() nothrow @nogc
     {
-        // graphicsAcquire should have been called before 
-        assert(atomicLoad(_audioThreadIsUsingGraphics));
-        atomicStore(_audioThreadIsUsingGraphics, false);
+        // graphicsAcquire should have been called before
+        // TODO: which memory order here? Don't looks like we need a barrier.
+        atomicStore(_graphicsIsAvailable, true);
     }
 
     // Getter for the IHostCommand interface
@@ -521,11 +509,9 @@ protected:
     }
 
     IGraphics _graphics;
-    version (lazyGraphicsCreation)
-    {
-        shared(bool) _graphicsCreated = false;
-    }
-    shared(bool) _audioThreadIsUsingGraphics = false;
+
+    // Used as a flag that _graphics can be used (by audio thread or for destruction)
+    shared(bool) _graphicsIsAvailable = false;
 
     IHostCommand _hostCommand;
 
@@ -547,7 +533,7 @@ private:
         // does not write to it
         if ( (_graphics is null) && hasGUI())
         {
-            // Why is the IGraphics created lazily? This allows to load a plugin very quickly, 
+            // Why is the IGraphics created lazily? This allows to load a plugin very quickly,
             // without opening its logical UI
             IGraphics graphics = createGraphics();
 
@@ -557,10 +543,7 @@ private:
             _graphics = graphics;
 
             // Now that the UI is fully created, we enable the audio thread to use it
-            version(lazyGraphicsCreation)
-            {
-                atomicStore(_graphicsCreated, true);
-            }
+            atomicStore(_graphicsIsAvailable, true);
         }
     }
 }

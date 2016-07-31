@@ -218,7 +218,7 @@ version(OSX)
             _listener.onMouseWheel(mousePos.x, mousePos.y, deltaX, deltaY, getMouseState(event));
         }
 
-        void handleKeyEvent(NSEvent event, bool released)
+        bool handleKeyEvent(NSEvent event, bool released)
         {
             uint keyCode = event.keyCode();
             Key key;
@@ -243,10 +243,20 @@ version(OSX)
                 default: key = Key.unsupported;
             }
 
+            bool handled = false;
+
             if (released)
-                _listener.onKeyDown(key);
+            {
+                if (_listener.onKeyDown(key))
+                    handled = true;
+            }
             else
-                _listener.onKeyUp(key);
+            {
+                if (_listener.onKeyUp(key))
+                    handled = true;
+            }
+
+            return handled;
         }
 
         void handleMouseMove(NSEvent event)
@@ -533,7 +543,17 @@ version(OSX)
                 FPControl fpctrl;
                 fpctrl.initialize();
                 DPlugCustomView view = getInstance(self);
-                view._window.handleKeyEvent(NSEvent(event), false);
+                bool handled = view._window.handleKeyEvent(NSEvent(event), false);
+
+                // send event to superclass if event not handled
+                if (!handled)
+                {
+                    objc_super sup;
+                    sup.receiver = self;
+                    sup.clazz = cast(Class) lazyClass!"NSView";
+                    alias fun_t = extern(C) void function (objc_super*, SEL, id);
+                    (cast(fun_t)objc_msgSendSuper)(&sup, selector, event);
+                }
             }
             catch(Throwable)
             {
