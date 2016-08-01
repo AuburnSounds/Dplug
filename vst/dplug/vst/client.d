@@ -85,6 +85,8 @@ template VSTEntryPoint(alias ClientClass)
 // TODO: later
 //version = useChunks;
 
+//version = logVSTDispatcher;
+
 /// VST client wrapper
 class VSTClient
 {
@@ -227,7 +229,7 @@ private:
 
         foreach(LegalIO io; _client.legalIOs())
         {
-            // The reasoning is: try to match exactly inputs and outputs. 
+            // The reasoning is: try to match exactly inputs and outputs.
             // If this isn't possible, better have the largest number of channels,
             // all other things being equal.
             // Note: this heuristic will prefer 1-2 to 2-1 if 1-1 was asked.
@@ -247,12 +249,12 @@ private:
                 bestScore = score;
                 bestProcessingIO = IO(io.numInputChannels, io.numOutputChannels);
             }
-        }       
+        }
         _processingIOFromOpcodeThread = bestProcessingIO;
     }
 
     // Same data, but on the audio thread point of view.
-    IO _hostIOFromAudioThread;  
+    IO _hostIOFromAudioThread;
     IO _processingIOFromAudioThread;
 
     long _samplesAlreadyProcessed; // For hosts that don't provide time info, fake it by counting samples.
@@ -305,6 +307,7 @@ private:
         //     (user saves project, or for automatic undo state tracking), effSetChunk
         //     is guaranteed to not run while audio is processing.
         // So nearly everything else should be threadsafe."
+
         switch(opcode)
         {
             case effOpen: // opcode 0
@@ -825,9 +828,9 @@ private:
                     _hostIOFromAudioThread = msg.hostIO;
                     _processingIOFromAudioThread = msg.processingIO;
 
-                    _client.reset(msg.samplerate, 
-                                  maxFrameFromClientPOV, 
-                                  _processingIOFromAudioThread.inputs, 
+                    _client.reset(msg.samplerate,
+                                  maxFrameFromClientPOV,
+                                  _processingIOFromAudioThread.inputs,
                                   _processingIOFromAudioThread.outputs);
                     break;
 
@@ -883,7 +886,7 @@ private:
         {
             // Points to zeros if the host provides a buffer, or the host buffer otherwise.
             // Note: all input channels point on same buffer, but it's ok since input channels are const
-            _inputPointers[i] = (i < hostInputs) ? inputs[i] : _zeroesBuffer.ptr; 
+            _inputPointers[i] = (i < hostInputs) ? inputs[i] : _zeroesBuffer.ptr;
         }
 
         for (int i = 0; i < usedOutputs; ++i)
@@ -981,7 +984,7 @@ private:
 
         sendAudioToClient(_inputPointers[0..usedInputs], _outputPointers[0..usedOutputs], sampleFrames, _host.getVSTTimeInfo(_samplesAlreadyProcessed));
 
-        // Converts back to double on available host output channels        
+        // Converts back to double on available host output channels
         for (int i = 0; i < minOutputs; ++i)
         {
             float* source = _outputScratchBuffer[i].ptr;
@@ -1017,6 +1020,17 @@ extern(C) private nothrow
 
             FPControl fpctrl;
             fpctrl.initialize();
+
+            version(logVSTDispatcher)
+            {
+                import core.stdc.stdio;
+                Thread thread = Thread.getThis();
+                if (thread)
+                {
+                    ThreadID tid = thread.id;
+                    printf("dispatcher effect %p thread %llu opcode %d \n", effect, tid, opcode);
+                }
+            }
 
             auto plugin = cast(VSTClient)(effect.user);
             result = plugin.dispatcher(opcode, index, value, ptr, opt);
