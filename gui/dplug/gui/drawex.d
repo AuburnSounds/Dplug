@@ -407,8 +407,8 @@ void aaPutPixelFloat(bool CHECKED=true, V, COLOR, A)(auto ref V v, int x, int y,
 class OwnedImage(COLOR)
 {
 public:
-	int w, h;
-	
+    int w, h;
+
     /// Create empty.
     this() nothrow @nogc
     {
@@ -418,11 +418,11 @@ public:
     }
 
     /// Create with given initial size.
-	this(int w, int h) nothrow @nogc
-	{
+    this(int w, int h) nothrow @nogc
+    {
         this();
-		size(w, h);
-	}
+        size(w, h);
+    }
 
     ~this()
     {
@@ -434,24 +434,24 @@ public:
         }
     }
 
-	/// Returns an array for the pixels at row y.
-	COLOR[] scanline(int y) pure nothrow @nogc
-	{
-		assert(y>=0 && y<h);
-		auto start = w*y;
-		return _pixels[start..start+w];
-	}
+    /// Returns an array for the pixels at row y.
+    COLOR[] scanline(int y) pure nothrow @nogc
+    {
+        assert(y>=0 && y<h);
+        auto start = w*y;
+        return _pixels[start..start+w];
+    }
 
-	mixin DirectView;
+    mixin DirectView;
 
-    /// Resize the image, the content is lost.	
-	void size(int w, int h) nothrow @nogc
-	{
-		this.w = w;
-		this.h = h;
+    /// Resize the image, the content is lost.  
+    void size(int w, int h) nothrow @nogc
+    {
+        this.w = w;
+        this.h = h;
         size_t sizeInBytes = w * h * COLOR.sizeof;
         _pixels = cast(COLOR*) alignedRealloc(_pixels, sizeInBytes, 128);
-	}
+    }
 
     /// Returns: A slice of all pixels.
     COLOR[] pixels() nothrow @nogc
@@ -465,7 +465,7 @@ private:
 
 unittest
 {
-	static assert(isDirectView!(OwnedImage!ubyte));
+    static assert(isDirectView!(OwnedImage!ubyte));
 }
 
 //
