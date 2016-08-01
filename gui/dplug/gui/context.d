@@ -30,7 +30,8 @@ public:
     this()
     {
         // create a dummy black skybox
-        skybox.size(10, 1024, 1024);
+        // TODO: is it actually black?
+        skybox = new Mipmap!RGBA(10, 1024, 1024);
 
         dirtyList = new DirtyRectList();
     }
@@ -39,6 +40,8 @@ public:
     {
         debug ensureNotInGC("UIContext");
         dirtyList.destroy();
+
+        skybox.destroy();
     }
 
     /// Last clicked element.
@@ -56,10 +59,14 @@ public:
     // inefficiencies.
     DirtyRectList dirtyList;
 
-
-    void setSkybox(Image!RGBA image)
+    // Note: take ownership of image
+    void setSkybox(OwnedImage!RGBA image)
     {
-        skybox.size(12, image.w, image.h); // up to 8k skybox
+        skybox.destroy();
+        skybox = new Mipmap!RGBA(12, image.w, image.h);
+
+        // replaces level 0
+        skybox.levels[0].destroy();
         skybox.levels[0] = image;
         skybox.generateMipmaps(Mipmap!RGBA.Quality.box);
     }

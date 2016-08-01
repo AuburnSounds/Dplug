@@ -9,8 +9,11 @@ import std.algorithm;
 
 import ae.utils.graphics;
 
+import gfm.core.memory;
 import gfm.math.vector;
 import gfm.math.box;
+
+import dplug.gui.drawex;
 
 
 
@@ -37,12 +40,11 @@ version(LDC)
 }
 
 
-
-
 /// Mipmapped images.
 /// Supports non power-of-two textures.
 /// Size of the i+1-th mipmap is { (width)/2, (height)/2 }
-struct Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
+/// The mipmap owns each of its levels.
+class Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
 {
     enum Quality
     {
@@ -52,26 +54,75 @@ struct Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
         boxAlphaCovIntoPremul, // same as boxAlphaConv but after such a step the next level is alpha-premultiplied
     }
 
-    Image!COLOR[] levels;
+    OwnedImage!COLOR[] levels;
 
-    @disable this(this);
+    /// Creates empty
+    this()
+    {
+        levels.length = 0;        
+    }
 
     /// Set number of levels and size
     /// maxLevel = 0 => only one image
     /// maxLevel = 1 => one image + one 2x downsampled mipmap
+    this(int maxLevel, int w, int h)
+    {
+        size(maxLevel, w, h);
+    }
+
     void size(int maxLevel, int w, int h)
     {
-        levels.length = 0;
-
-        for (int level = 0; level <= maxLevel; ++level)
+        // find number of needed levels
+        int neededLevels = 0;
         {
-            if (w == 0 || h == 0)
-                break;
-            levels.length = levels.length + 1;
+            int wr = w;
+            int hr = h;        
+            for (; neededLevels <= maxLevel; ++neededLevels)
+            {
+                if (wr == 0 || hr == 0)
+                    break;
+                wr  = (wr + 0) >> 1;
+                hr  = (hr + 0) >> 1;
+            }
+        }
+
+        void setLevels(int numLevels)
+        {
+            // TODO cleanup excess levels
+            // should not happen until we have resizing
+            if (numLevels < levels.length)
+            {
+                assert(false);
+            }
+
+            int previousLength = cast(int)levels.length;
+            levels.length = numLevels;
+
+            // create empty image for new levels
+            for(int level = previousLength; level < numLevels; ++level)
+            {
+                levels[level] = new OwnedImage!COLOR();
+            }
+        }
+
+        setLevels(neededLevels);
+
+        // resize levels
+        for (int level = 0; level < neededLevels; ++level)
+        {
+            assert(w != 0 && h != 0);
             levels[level].size(w, h);
             w  = (w + 0) >> 1;
             h  = (h + 0) >> 1;
         }
+    }
+
+    ~this()
+    {
+        debug ensureNotInGC("Mipmap");
+        
+        foreach(level; levels)
+            level.destroy();
     }
 
     /// Interpolates a color between mipmap levels.  Floating-point level, spatial linear interpolation.
@@ -102,7 +153,7 @@ struct Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
         if (level >= numLevels)
             level = numLevels - 1;
 
-        Image!COLOR* image = &levels[level];
+        OwnedImage!COLOR image = levels[level];
 
 
         static immutable float[14] factors = [ 1.0f, 0.5f, 0.25f, 0.125f,
@@ -291,7 +342,7 @@ struct Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
     /// before computing the next one.
     box2i generateNextLevel(Quality quality, box2i updateRectPreviousLevel, int level) nothrow @nogc
     {
-        Image!COLOR* previousLevel = &levels[level - 1];
+        OwnedImage!COLOR previousLevel = levels[level - 1];
         box2i updateRect = impactOnNextLevel(quality, updateRectPreviousLevel, previousLevel.w, previousLevel.h);
         generateLevel(level, quality, updateRect);
         return updateRect;
@@ -302,8 +353,8 @@ struct Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
     void generateLevel(int level, Quality quality, box2i updateRect) nothrow @nogc
     {
         assert(level > 0);
-        Image!COLOR* thisLevel = &levels[level];
-        Image!COLOR* previousLevel = &levels[level - 1];
+        OwnedImage!COLOR thisLevel = levels[level];
+        OwnedImage!COLOR previousLevel = levels[level - 1];
 
         final switch(quality) with (Quality)
         {
@@ -457,11 +508,13 @@ private:
 
 unittest
 {
-    Mipmap!RGBA a;
+    Mipmap!RGBA a = new Mipmap!RGBA();
     a.size(4, 256, 256);
+    a.destroy();
 
-    Mipmap!L16 b;
+    Mipmap!L16 b = new Mipmap!L16();
     b.size(16, 17, 333);
+    b.destroy();
 }
 
 
@@ -478,8 +531,8 @@ align(16) static immutable short[8] xmm99993333 = [ 9, 9, 9, 9, 3, 3, 3, 3 ];
 align(16) static immutable short[8] xmm32       = [ 32, 32, 32, 32, 32, 32, 32, 32 ];
 
 
-void generateLevelBoxRGBA(Image!RGBA* thisLevel,
-                          Image!RGBA* previousLevel,
+void generateLevelBoxRGBA(OwnedImage!RGBA thisLevel,
+                          OwnedImage!RGBA previousLevel,
                           box2i updateRect) pure nothrow @nogc
 {
     int width = updateRect.width();
@@ -634,8 +687,8 @@ void generateLevelBoxRGBA(Image!RGBA* thisLevel,
     }
 }
 
-void generateLevelBoxL16(Image!L16* thisLevel,
-                         Image!L16* previousLevel,
+void generateLevelBoxL16(OwnedImage!L16 thisLevel,
+                         OwnedImage!L16 previousLevel,
                          box2i updateRect) pure nothrow @nogc
 {
     int width = updateRect.width();
@@ -822,8 +875,8 @@ void generateLevelBoxL16(Image!L16* thisLevel,
 }
 
 
-void generateLevelBoxAlphaCovRGBA(Image!RGBA* thisLevel,
-                                  Image!RGBA* previousLevel,
+void generateLevelBoxAlphaCovRGBA(OwnedImage!RGBA thisLevel,
+                                  OwnedImage!RGBA previousLevel,
                                   box2i updateRect) nothrow @nogc
 {
     int width = updateRect.width();
@@ -1147,8 +1200,8 @@ void generateLevelBoxAlphaCovRGBA(Image!RGBA* thisLevel,
     }
 }
 
-void generateLevelBoxAlphaCovIntoPremulRGBA(Image!RGBA* thisLevel,
-                                            Image!RGBA* previousLevel,
+void generateLevelBoxAlphaCovIntoPremulRGBA(OwnedImage!RGBA thisLevel,
+                                            OwnedImage!RGBA previousLevel,
                                             box2i updateRect) nothrow @nogc
 {
     int width = updateRect.width();
@@ -1349,8 +1402,8 @@ void generateLevelBoxAlphaCovIntoPremulRGBA(Image!RGBA* thisLevel,
     }
 }
 
-void generateLevelCubicRGBA(Image!RGBA* thisLevel,
-                            Image!RGBA* previousLevel,
+void generateLevelCubicRGBA(OwnedImage!RGBA thisLevel,
+                            OwnedImage!RGBA previousLevel,
                             box2i updateRect) nothrow @nogc
 {
     for (int y = updateRect.min.y; y < updateRect.max.y; ++y)
@@ -1582,8 +1635,8 @@ void generateLevelCubicRGBA(Image!RGBA* thisLevel,
     }
 }
 
-void generateLevelCubicL16(Image!L16* thisLevel,
-                           Image!L16* previousLevel,
+void generateLevelCubicL16(OwnedImage!L16 thisLevel,
+                           OwnedImage!L16 previousLevel,
                            box2i updateRect) nothrow @nogc
 {
     for (int y = updateRect.min.y; y < updateRect.max.y; ++y)

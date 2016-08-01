@@ -21,11 +21,18 @@ public:
     ubyte emissiveOn = 40;
     ubyte emissiveOff = 0;
 
-    this(UIContext context, Image!RGBA diffuseImage)
+    /// Note: once called, the logo now own the diffuse image, and will destroy it.
+    this(UIContext context, OwnedImage!RGBA diffuseImage)
     {
         super(context);
         _diffuseImage = diffuseImage;
         _animation = 0;
+    }
+
+    ~this()
+    {
+        debug ensureNotInGC("UILogo");
+        _diffuseImage.destroy();
     }
 
     override void onAnimate(double dt, double time)
@@ -80,5 +87,5 @@ public:
 
 private:
     float _animation;
-    Image!RGBA _diffuseImage;
+    OwnedImage!RGBA _diffuseImage;
 }

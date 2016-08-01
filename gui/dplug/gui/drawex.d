@@ -12,6 +12,7 @@ import std.algorithm;
 import std.math;
 import std.traits;
 
+import gfm.core.memory;
 import gfm.math;
 import ae.utils.graphics;
 import ae.utils.graphics.view;
@@ -402,31 +403,112 @@ void aaPutPixelFloat(bool CHECKED=true, V, COLOR, A)(auto ref V v, int x, int y,
     *p = COLOR.op!q{.blend(a, b, c)}(color, *p, alpha);
 }
 
+/// Manually managed image which is also GC-proof.
+class OwnedImage(COLOR)
+{
+public:
+	int w, h;
+	
+    /// Create empty.
+    this() nothrow @nogc
+    {
+        w = 0;
+        h = 0;
+        _pixels = null;
+    }
+
+    /// Create with given initial size.
+	this(int w, int h) nothrow @nogc
+	{
+        this();
+		size(w, h);
+	}
+
+    ~this()
+    {
+        if (_pixels !is null)
+        {
+            debug ensureNotInGC("OwnedImage");
+            alignedFree(_pixels);
+            _pixels = null;
+        }
+    }
+
+	/// Returns an array for the pixels at row y.
+	COLOR[] scanline(int y) pure nothrow @nogc
+	{
+		assert(y>=0 && y<h);
+		auto start = w*y;
+		return _pixels[start..start+w];
+	}
+
+	mixin DirectView;
+
+    /// Resize the image, the content is lost.	
+	void size(int w, int h) nothrow @nogc
+	{
+		this.w = w;
+		this.h = h;
+        size_t sizeInBytes = w * h * COLOR.sizeof;
+        _pixels = cast(COLOR*) alignedRealloc(_pixels, sizeInBytes, 128);
+	}
+
+    /// Returns: A slice of all pixels.
+    COLOR[] pixels() nothrow @nogc
+    {
+        return _pixels[0..w*h];
+    }
+
+private:
+    COLOR* _pixels;
+}
+
+unittest
+{
+	static assert(isDirectView!(OwnedImage!ubyte));
+}
 
 //
 // Image loading
 //
 
+
 /// The one function you probably want to use.
 /// Loads an image from a static array.
-/// Might throw internally.
 /// Throws: $(D ImageIOException) on error.
-Image!RGBA loadImage(in void[] imageData)
+OwnedImage!RGBA loadOwnedImage(in void[] imageData)
+{
+    IFImage ifImage = read_image_from_mem(cast(const(ubyte[])) imageData, 4);
+    int width = cast(int)ifImage.w;
+    int height = cast(int)ifImage.h;
+
+    OwnedImage!RGBA loaded = new OwnedImage!RGBA(width, height);
+    loaded.pixels[] = (cast(RGBA[]) ifImage.pixels)[]; // pixel copy here
+    return loaded;
+}
+
+
+/// Legacy Image loading, gives an Image
+/// However this one is not GC-proof and may result in space leaks in 32-bit
+deprecated("Use loadOwnedImage instead") Image!RGBA loadImage(in void[] imageData)
 {
     IFImage ifImage = read_image_from_mem(cast(const(ubyte[])) imageData, 4);
     int width = cast(int)ifImage.w;
     int height = cast(int)ifImage.h;
 
     Image!RGBA loaded;
-    loaded.size(width, height);
-    loaded.pixels = cast(RGBA[]) ifImage.pixels; // no pixel copy, GC does the job
+    loaded.w = width; // avoids using size which would allocate for nothing
+    loaded.h = height;
+    loaded.pixels = cast(RGBA[]) ifImage.pixels; // no pixel copy here, GC takes care
     return loaded;
 }
+
 
 /// Loads two different images:
 /// - the 1st is the RGB channels
 /// - the 2nd is interpreted as greyscale and fetch in the alpha channel of the result.
-Image!RGBA loadImageSeparateAlpha(in void[] imageDataRGB, in void[] imageDataAlpha)
+/// Throws: $(D ImageIOException) on error.
+OwnedImage!RGBA loadImageSeparateAlpha(in void[] imageDataRGB, in void[] imageDataAlpha)
 {
     IFImage ifImageRGB = read_image_from_mem(cast(const(ubyte[])) imageDataRGB, 3);
     int widthRGB = cast(int)ifImageRGB.w;
@@ -444,8 +526,7 @@ Image!RGBA loadImageSeparateAlpha(in void[] imageDataRGB, in void[] imageDataAlp
     int width = widthA;
     int height = heightA;
 
-    Image!RGBA loaded;
-    loaded.size(width, height);
+    OwnedImage!RGBA loaded = new OwnedImage!RGBA(width, height);
 
     for (int j = 0; j < height; ++j)
     {

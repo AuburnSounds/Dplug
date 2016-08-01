@@ -80,6 +80,10 @@ class GUIGraphics : UIElement, IGraphics
             _drawWatch = new StopWatch("Draw = ");
             _mipmapWatch = new StopWatch("Mipmap = ");
         }
+
+        _diffuseMap = new Mipmap!RGBA();
+        _materialMap = new Mipmap!RGBA();
+        _depthMap = new Mipmap!L16();
     }
 
 
@@ -98,6 +102,9 @@ class GUIGraphics : UIElement, IGraphics
         _taskPool.finish(true); // wait for all thread termination
         _taskPool.destroy();
         compositor.destroy();
+        _diffuseMap.destroy();
+        _materialMap.destroy();
+        _depthMap.destroy();
     }
 
     // Graphics implementation
@@ -257,6 +264,7 @@ class GUIGraphics : UIElement, IGraphics
 
             reflow(box2i(0, 0, _askedWidth, _askedHeight));
 
+            // TODO: maybe not destroy the whole mipmap?
             _diffuseMap.size(5, width, height);
             _depthMap.size(4, width, height);
             _materialMap.size(0, width, height);
@@ -519,13 +527,13 @@ protected:
         {
             foreach(i; _taskPool.parallel(numAreas.iota))
                 compositor.compositeTile(wfb, pf, _areasToRenderNonOverlappingTiled[i],
-                                         &_diffuseMap, &_materialMap, &_depthMap, &context.skybox);
+                                         _diffuseMap, _materialMap, _depthMap, context.skybox);
         }
         else
         {
             foreach(i; 0..numAreas)
                 compositor.compositeTile(wfb, pf, _areasToRenderNonOverlappingTiled[i],
-                                         &_diffuseMap, &_materialMap, &_depthMap, &context.skybox);
+                                         _diffuseMap, _materialMap, _depthMap, context.skybox);
         }
     }
 
@@ -550,7 +558,7 @@ protected:
             if (i == 0)
             {
                 // diffuse
-                Mipmap!RGBA* mipmap = &_diffuseMap;
+                Mipmap!RGBA mipmap = _diffuseMap;
                 int levelMax = min(mipmap.numLevels(), 5);
                 foreach(level; 1 .. mipmap.numLevels())
                 {
@@ -569,7 +577,7 @@ protected:
             else
             {
                 // depth
-                Mipmap!L16* mipmap = &_depthMap;
+                Mipmap!L16 mipmap = _depthMap;
                 foreach(level; 1 .. mipmap.numLevels())
                 {
                     auto quality = level >= 3 ? Mipmap!L16.Quality.cubic : Mipmap!L16.Quality.box;

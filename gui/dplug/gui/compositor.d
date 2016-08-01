@@ -17,6 +17,7 @@ import gfm.math.funcs;
 import dplug.core.funcs;
 import dplug.window.window;
 import dplug.gui.mipmap;
+import dplug.gui.drawex;
 
 // Only deals with rendering tiles.
 // If you don't like dplug default compositing, just make another Compositor
@@ -25,10 +26,10 @@ import dplug.gui.mipmap;
 interface Compositor
 {
     void compositeTile(ImageRef!RGBA wfb, WindowPixelFormat pf, box2i area,
-                       Mipmap!RGBA* diffuseMap,
-                       Mipmap!RGBA* materialMap,
-                       Mipmap!L16* depthMap,
-                       Mipmap!RGBA* skybox) nothrow @nogc;
+                       Mipmap!RGBA diffuseMap,
+                       Mipmap!RGBA materialMap,
+                       Mipmap!L16 depthMap,
+                       Mipmap!RGBA skybox) nothrow @nogc;
 }
 
 /// "Physically Based"-style rendering
@@ -161,10 +162,10 @@ class PBRCompositor : Compositor
 
     /// Don't like this rendering? Feel free to override this method.
     override void compositeTile(ImageRef!RGBA wfb, WindowPixelFormat pf, box2i area,
-                                Mipmap!RGBA* diffuseMap,
-                                Mipmap!RGBA* materialMap,
-                                Mipmap!L16* depthMap,
-                                Mipmap!RGBA* skybox) nothrow @nogc
+                                Mipmap!RGBA diffuseMap,
+                                Mipmap!RGBA materialMap,
+                                Mipmap!L16 depthMap,
+                                Mipmap!RGBA skybox) nothrow @nogc
     {
         ushort[3][3] depthPatch = void;
         L16*[3] depth_scan = void;
@@ -181,7 +182,7 @@ class PBRCompositor : Compositor
 
             // clamp to existing lines
             {
-                Image!L16 depthLevel0 = depthMap.levels[0];
+                OwnedImage!L16 depthLevel0 = depthMap.levels[0];
                 for (int line = 0; line < 3; ++line)
                 {
                     int lineIndex = j - 1 + line;
@@ -308,7 +309,7 @@ class PBRCompositor : Compositor
 
                         float lightPassed = 0.0f;
 
-                        Image!L16 depthLevel0 = depthMap.levels[0];
+                        OwnedImage!L16 depthLevel0 = depthMap.levels[0];
 
                         int depthHere = depthPatch[1][1];
                         for (int sample = 1; sample < samples; ++sample)
@@ -320,7 +321,7 @@ class PBRCompositor : Compositor
                             if (y < 0)
                                 y = 0;
                             int z = depthHere + sample;
-                            int diff = z - depthLevel0[x, y].l; // TODO: use pointer offsets here instead of opIndex
+                            int diff = z - depthLevel0.scanline(y)[x].l; // TODO: use pointer offsets here instead of opIndex
 
                             float contrib = void;
                             if (diff >= 0)

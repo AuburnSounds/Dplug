@@ -16,6 +16,7 @@ IWindow createHostWindow(IPluginHost pluginHost)
     int[2] windowSize = pluginHost.getUISize();
 
     auto hostWindow = createWindow(null, null, null, WindowBackend.autodetect, windowSize[0], windowSize[1]);
+    pluginHost.getUISize();
     pluginHost.openUI(hostWindow.systemHandle());
 
     return hostWindow;
