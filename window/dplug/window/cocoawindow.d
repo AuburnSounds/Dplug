@@ -158,6 +158,7 @@ version(OSX)
                 assert(false); // only valid for a host window
 
             NSEvent event = _nsWindow.nextEventMatchingMask(cast(NSUInteger)-1);
+            _nsApplication.sendEvent(event);
         }
 
         override bool terminated()
