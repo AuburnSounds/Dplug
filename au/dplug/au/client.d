@@ -106,8 +106,9 @@ nothrow ComponentResult audioUnitEntryPoint(alias ClientClass)(ComponentParamete
 {
     try
     {
-        attachToRuntimeIfNeeded();
         int select = params.what;
+        if (select != kAudioUnitRenderSelect)
+            attachToRuntimeIfNeeded(); // don't attach the audio thread to the runtime, since it's not interruptible
 
         if (select == kComponentOpenSelect)
         {
