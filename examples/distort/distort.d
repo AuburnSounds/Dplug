@@ -216,7 +216,7 @@ public:
 
         // Font data is bundled as a static array
         _font = new Font(cast(ubyte[])( import("VeraBd.ttf") ));
-        context.setSkybox( loadImage(cast(ubyte[])(import("skybox.jpg"))) );
+        context.setSkybox( loadOwnedImage(cast(ubyte[])(import("skybox.jpg"))) );
 
         // Buils the UI hierarchy
         addChild(inputSlider = new UISlider(context(), cast(FloatParameter) _client.param(paramInput)));
