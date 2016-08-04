@@ -71,7 +71,7 @@ public:
 
     /// Returns: true if was drawn, ie. the buffers have changed.
     /// This method is called for each item in the drawlist that was visible and dirty.
-    final void render(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, in box2i[] areasToUpdate)
+    final void render(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, in box2i[] areasToUpdate) nothrow @nogc
     {
         // List of disjointed dirty rectangles intersecting with valid part of _position
         // A nice thing with intersection is that a disjointed set of rectangles
@@ -127,14 +127,14 @@ public:
 
     /// Returns: Position of the element, that will be used for rendering. This
     /// position is reset when calling reflow.
-    final box2i position()
+    final box2i position() nothrow @nogc
     {
         return _position;
     }
 
     /// Forces the position of the element. It is typically used in the parent
     /// reflow() method
-    final box2i position(box2i p)
+    final box2i position(box2i p) nothrow @nogc
     {
         assert(p.isSorted());
         return _position = p;
@@ -371,7 +371,7 @@ public:
     }
 
     // To be called at top-level periodically.
-    void animate(double dt, double time)
+    void animate(double dt, double time) nothrow @nogc
     {
         onAnimate(dt, time);
         foreach(child; _children)
@@ -467,7 +467,7 @@ protected:
     /// For better efficiency, you may only redraw the part in _dirtyRect.
     /// diffuseMap and depthMap are made to span _position exactly,
     /// so you can draw in the area (0 .. _position.width, 0 .. _position.height)
-    void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects)
+    void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects) nothrow @nogc
     {
         // defaults to filling with a grey pattern
         RGBA darkGrey = RGBA(100, 100, 100, 0);
@@ -496,7 +496,7 @@ protected:
     /// Warning: Summing `dt` will not lead to a time that increase like `time`.
     ///          `time` can go backwards if the window was reopen.
     ///          `time` is guaranteed to increase as fast as system time but is not synced to audio time.
-    void onAnimate(double dt, double time)
+    void onAnimate(double dt, double time) nothrow @nogc
     {
     }
 

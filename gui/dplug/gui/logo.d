@@ -35,7 +35,7 @@ public:
         _diffuseImage.destroy();
     }
 
-    override void onAnimate(double dt, double time)
+    override void onAnimate(double dt, double time) nothrow @nogc
     {
         float target = ( isDragged() || isMouseOver() ) ? 1 : 0;
 
@@ -48,7 +48,7 @@ public:
         }
     }
 
-    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects)
+    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects) nothrow @nogc
     {
         foreach(dirtyRect; dirtyRects)
         {

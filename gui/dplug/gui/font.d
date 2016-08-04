@@ -5,17 +5,20 @@
 */
 module dplug.gui.font;
 
+import core.stdc.stdlib;
 import std.conv;
 import std.math;
+import std.utf;
 
 import ae.utils.graphics;
 
 import gfm.math;
 import gfm.core;
-import dplug.gui.stb_truetype;
 
+import dplug.core.alignedbuffer;
 import dplug.core.unchecked_sync;
 
+import dplug.gui.stb_truetype;
 
 final class Font
 {
@@ -32,6 +35,8 @@ public:
         stbtt_GetFontVMetrics(&_font, &_fontAscent, &_fontDescent, &_fontLineGap);
 
         _mutex = new UncheckedMutex();
+
+        _glyphCache.initialize(&_font);
     }
 
     ~this()
@@ -41,10 +46,10 @@ public:
     }
 
     /// Returns: Where a line of text will be drawn if starting at position (0, 0).
-    box2i measureText(StringType)(StringType s, float fontSizePx, float letterSpacingPx)
+    box2i measureText(StringType)(StringType s, float fontSizePx, float letterSpacingPx) nothrow @nogc
     {
         box2i area;
-        void extendArea(int numCh, dchar ch, box2i position, float scale, float xShift, float yShift)
+        void extendArea(int numCh, dchar ch, box2i position, float scale, float xShift, float yShift) nothrow @nogc
         {
             if (numCh == 0)
                 area = position;
@@ -70,7 +75,7 @@ private:
     /// Use kerning.
     /// No hinting.
     void iterateCharacterPositions(StringType)(StringType text, float fontSizePx, float letterSpacingPx, float fractionalPosX, float fractionalPosY,
-        scope void delegate(int numCh, dchar ch, box2i position, float scale, float xShift, float yShift) doSomethingWithPosition)
+        scope void delegate(int numCh, dchar ch, box2i position, float scale, float xShift, float yShift) nothrow @nogc doSomethingWithPosition) nothrow @nogc
     {
         assert(0 <= fractionalPosX && fractionalPosX <= 1.0f);
         assert(0 <= fractionalPosY && fractionalPosY <= 1.0f);
@@ -82,7 +87,8 @@ private:
         dchar lastCh;
         int maxHeight = 0;
         box2i area;
-        foreach(int numCh, dchar ch; text)
+        int numCh = 0;
+        foreach(dchar ch; text.byDchar)
         {
             if (numCh > 0)
                 xpos += scale * stbtt_GetCodepointKernAdvance(&_font, lastCh, ch);
@@ -113,46 +119,26 @@ private:
             xpos += (letterSpacingPx);
 
             lastCh = ch;
+            numCh++;
         }
     }
 
-    // Glyph cache
-    Image!L8[GlyphKey] _glyphCache;
+    GlyphCache _glyphCache;
+
     UncheckedMutex _mutex;
 
-    Image!L8 getGlyphCoverage(dchar codepoint, float scale, int w, int h, float xShift, float yShift)
+    Image!L8 getGlyphCoverage(dchar codepoint, float scale, int w, int h, float xShift, float yShift) nothrow @nogc
     {
-        {
-            GlyphKey key = GlyphKey(codepoint, scale, xShift, yShift);
+        GlyphKey key = GlyphKey(codepoint, scale, xShift, yShift);
 
-            Image!L8* found = key in _glyphCache;
-
-            if (found)
-                return *found;
-            else
-            {
-                int stride = w;
-                _glyphCache[key] = Image!L8(w, h);
-                ubyte* buf = cast(ubyte*)(_glyphCache[key].pixels.ptr);
-                stbtt_MakeCodepointBitmapSubpixel(&_font, buf, w, h, stride, scale, scale, xShift, yShift, codepoint);
-                return _glyphCache[key];
-            }
-        }
+        return _glyphCache.requestGlyph(key, w, h);
     }
-}
-
-struct GlyphKey
-{
-    dchar codepoint;
-    float scale;
-    float xShift;
-    float yShift;
 }
 
 /// Draw text centered on a point on a DirectView.
 
 void fillText(V, StringType)(auto ref V surface, Font font, StringType s, float fontSizePx, float letterSpacingPx,
-                             RGBA textColor, float positionx, float positiony)
+                             RGBA textColor, float positionx, float positiony) nothrow @nogc
     if (isWritableView!V && is(ViewColor!V == RGBA))
 {
     font._mutex.lock();
@@ -173,7 +159,7 @@ void fillText(V, StringType)(auto ref V surface, Font font, StringType s, float 
 
     vec2i offset = vec2i(ipositionx, ipositiony) - area.center; // TODO: support other alignment modes
 
-    void drawCharacter(int numCh, dchar ch, box2i position, float scale, float xShift, float yShift)
+    void drawCharacter(int numCh, dchar ch, box2i position, float scale, float xShift, float yShift) nothrow @nogc
     {
         vec2i offsetPos = position.min + offset;
 
@@ -217,7 +203,7 @@ void fillText(V, StringType)(auto ref V surface, Font font, StringType s, float 
 }
 
 
-private void blendFontPixel(ref RGBA bg, RGBA fontColor, int alpha)
+private void blendFontPixel(ref RGBA bg, RGBA fontColor, int alpha) nothrow @nogc
 {
 
     int alpha2 = 255 - alpha;
@@ -226,4 +212,85 @@ private void blendFontPixel(ref RGBA bg, RGBA fontColor, int alpha)
     int blue =  (bg.b * alpha2 + fontColor.b * alpha + 128) >> 8;
 
     bg = RGBA(cast(ubyte)red, cast(ubyte)green, cast(ubyte)blue, fontColor.a);
+}
+
+
+private struct GlyphKey
+{
+    dchar codepoint;
+    float scale;
+    float xShift;
+    float yShift;
+}
+
+static assert(GlyphKey.sizeof == 16);
+
+private struct GlyphCache
+{
+public:
+    void initialize(stbtt_fontinfo* font)
+    {
+        _font = font;
+        keys = new AlignedBuffer!GlyphKey;
+        glyphs = new AlignedBuffer!(ubyte*);
+    }
+
+    @disable this(this);
+
+    ~this()
+    {
+        // Free all glyphs
+        foreach(g; glyphs)
+        {
+            free(g);
+        }
+
+        glyphs.destroy();
+        keys.destroy();
+    }
+
+    // Note: the returned glyph does not point into GC memory
+    Image!L8 requestGlyph(GlyphKey key, int w, int h) nothrow @nogc
+    {
+        // TODO
+        // Just a linear search for now. Obviously this
+        // will be a problem for larger text
+        assert(keys.length == glyphs.length);
+
+        for(int i = 0; i < glyphs.length; ++i)
+        {
+            GlyphKey k = keys[i];
+            if (k.codepoint == key.codepoint
+                && k.scale == key.scale
+                && k.xShift == key.xShift
+                && k.yShift == key.yShift)
+            {
+                Image!L8 result;
+                result.w = w;
+                result.h = h;
+                result.pixels = cast(L8[])(glyphs[i][0..w*h]);
+                return result;
+            }
+        }
+
+        //  Not existing, creates the glyph and add them to the cache
+        {
+            int stride = w;
+            ubyte* buf = cast(ubyte*) malloc(w * h);
+            keys.pushBack(key);
+            glyphs.pushBack(buf);
+
+            stbtt_MakeCodepointBitmapSubpixel(_font, buf, w, h, stride, key.scale, key.scale, key.xShift, key.yShift, key.codepoint);
+            
+            Image!L8 result;
+            result.w = w;
+            result.h = h;
+            result.pixels = cast(L8[])(buf[0..w*h]);
+            return result;
+        }
+    }
+private:
+    AlignedBuffer!GlyphKey keys;
+    AlignedBuffer!(ubyte*) glyphs;
+    stbtt_fontinfo* _font;
 }
