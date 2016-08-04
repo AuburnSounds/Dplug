@@ -148,7 +148,7 @@ nothrow ComponentResult audioUnitCarbonViewEntry(alias ClientClass)(ComponentPar
         attachToRuntimeIfNeeded();
         int select = params.what;
 
-        version(logDispatcher) printf("audioUnitCarbonViewEntry select %d\n", select);
+        version(logDispatcher) printf("audioUnitCarbonViewEntry thread %p select %d\n", currentThreadId(), select);
 
         if (select == kComponentOpenSelect)
         {

@@ -36,6 +36,7 @@ import dplug.core.alignedbuffer,
        dplug.core.unchecked_sync;
 
 import dplug.client.client,
+       dplug.client.dllmain,
        dplug.client.daw,
        dplug.client.preset,
        dplug.client.graphics,
@@ -1022,15 +1023,7 @@ extern(C) private nothrow
             fpctrl.initialize();
 
             version(logVSTDispatcher)
-            {
-                import core.stdc.stdio;
-                Thread thread = Thread.getThis();
-                if (thread)
-                {
-                    ThreadID tid = thread.id;
-                    printf("dispatcher effect %p thread %llu opcode %d \n", effect, tid, opcode);
-                }
-            }
+                printf("dispatcher effect %p thread %p opcode %d \n", effect, currentThreadId(), opcode);
 
             auto plugin = cast(VSTClient)(effect.user);
             result = plugin.dispatcher(opcode, index, value, ptr, opt);
@@ -1128,12 +1121,6 @@ extern(C) private nothrow
     // VST callback for setParameter
     void setParameterCallback(AEffect *effect, int index, float parameter) nothrow @nogc
     {
-
-        // GC pauses might happen in some circumstances.
-        // If the thread calling this callback is a registered thread (has also called the opcode dispatcher),
-        // then this thread could be paused by an other thread collecting.
-        // We assume that in that case, avoiding pauses in the audio thread wasn't a primary concern of the host.
-
         try
         {
             FPControl fpctrl;
@@ -1156,11 +1143,6 @@ extern(C) private nothrow
     // VST callback for getParameter
     float getParameterCallback(AEffect *effect, int index) nothrow @nogc
     {
-        // GC pauses might happen in some circumstances.
-        // If the thread calling this callback is a registered thread (has also called the opcode dispatcher),
-        // then this thread could be paused by an other thread collecting.
-        // We assume that in that case, avoiding pauses in the audio thread wasn't a primary concern of the host.
-
         try
         {
             FPControl fpctrl;

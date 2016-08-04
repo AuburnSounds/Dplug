@@ -70,7 +70,7 @@ public:
         return getNormalized();
     }
 
-    void toDisplayN(char* buffer, size_t numBytes) nothrow
+    void toDisplayN(char* buffer, size_t numBytes) nothrow @nogc
     {
         toStringN(buffer, numBytes);
     }
@@ -145,7 +145,7 @@ protected:
     abstract void setNormalized(double hostValue) nothrow @nogc;
 
     /// Display parameter (without label).
-    abstract void toStringN(char* buffer, size_t numBytes) nothrow;
+    abstract void toStringN(char* buffer, size_t numBytes) nothrow @nogc;
 
     void notifyListeners() nothrow @nogc
     {

@@ -115,7 +115,6 @@ version(OSX)
                 _nsWindow.makeKeyAndOrderFront();
 
                  _nsApplication.activateIgnoringOtherApps(YES);
-                //_nsApplication.run();
             }
         }
 

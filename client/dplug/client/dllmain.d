@@ -57,6 +57,12 @@ version(Windows)
             }
         };
     }
+
+    void* currentThreadId() nothrow @nogc
+    {
+        import std.c.windows.windows;
+        return cast(void*)GetCurrentThreadId();
+    }
 }
 else version(linux)
 {
@@ -185,6 +191,12 @@ else version(OSX)
         import core.thread;
         runtimeInitWorkaround15060();
         thread_attachThis();
+    }
+
+    void* currentThreadId() nothrow @nogc
+    {
+        import core.sys.posix.pthread;
+        return pthread_self;
     }
 }
 else
