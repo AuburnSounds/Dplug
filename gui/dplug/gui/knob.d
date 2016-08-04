@@ -86,7 +86,7 @@ public:
             _param.removeListener(this);
     }
 
-    override void onAnimate(double dt, double time)
+    override void onAnimate(double dt, double time) nothrow @nogc
     {
         float target = isDragged() ? 1 : 0;
 
@@ -111,7 +111,7 @@ public:
         return _sensivity = sensivity;
     }
 
-    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects)
+    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects) nothrow @nogc
     {
         float normalizedValue = _param.getNormalized();
       
@@ -122,7 +122,7 @@ public:
 
         vec2f trailOffset = vec2f(knobRadiusPx * trailOffsetX, knobRadiusPx * trailOffsetY);
 
-        static float angleConvert(float angle)
+        static float angleConvert(float angle) nothrow @nogc
         {
             return angle + PI * 1.5f;
         }

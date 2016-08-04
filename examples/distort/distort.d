@@ -290,7 +290,7 @@ public:
         rightPanel.position = box2i(570, 0, 620, 330);
     }
 
-    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects)
+    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects) nothrow @nogc
     {
         // In onDraw, you are supposed to only update diffuseMap, depthMap and materialMap in the dirtyRects areas.
         // See also the wiki: https://github.com/p0nce/dplug/wiki/Advices-for-creating-UIs-with-dplug

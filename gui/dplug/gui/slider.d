@@ -66,7 +66,7 @@ public:
         return _sensivity = sensivity;
     }
 
-    override void onAnimate(double dt, double time)
+    override void onAnimate(double dt, double time) nothrow @nogc
     {
         float target = isDragged() ? 1 : 0;
         float newAnimation = lerp(_pushedAnimation, target, 1.0 - exp(-dt * 30));
@@ -78,7 +78,7 @@ public:
     }
 
     // Warning: does not respect dirtyRects!
-    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects)
+    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects) nothrow @nogc
     {
         int width = _position.width;
         int height = _position.height;
