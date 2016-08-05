@@ -164,11 +164,12 @@ else version(OSX)
 else
     static assert(false, "OS unsupported");
 
-/// Should cover every use case for callbacks!
-struct ScopedCallback(Flag!"thisThreadNeedRuntimeInitialized" thisThreadNeedRuntimeInitialized,
-                      Flag!"assumeRuntimeIsAlreadyInitialized" assumeRuntimeIsAlreadyInitialized,
-                      Flag!"assumeThisThreadIsAlreadyAttached" assumeThisThreadIsAlreadyAttached,
-                      Flag!"saveRestoreFPU" saveRestoreFPU)
+/// RAII struct to cover every use case for callbacks!
+/// This deals with runtime inialization and thread attachment in a very explicit way.
+struct ScopedForeignCallback(Flag!"thisThreadNeedRuntimeInitialized" thisThreadNeedRuntimeInitialized,
+                             Flag!"assumeRuntimeIsAlreadyInitialized" assumeRuntimeIsAlreadyInitialized,
+                             Flag!"assumeThisThreadIsAlreadyAttached" assumeThisThreadIsAlreadyAttached,
+                             Flag!"saveRestoreFPU" saveRestoreFPU)
 {
 public:
     enum bool doInitializeRuntime = (thisThreadNeedRuntimeInitialized == Yes.thisThreadNeedRuntimeInitialized)
@@ -176,7 +177,12 @@ public:
 
     /// Thread that shouldn't be attached are eg. the audio threads.
     void enter(Flag!"thisThreadNeedAttachment" thisThreadNeedAttachment)
-    {            
+    {
+        debug _entered = true;
+
+        static if (saveRestoreFPU == Yes.saveRestoreFPU)
+            fpControl.initialize();
+
         // Runtime initialization if needed.
         static if (doInitializeRuntime)
         {
@@ -189,30 +195,33 @@ public:
             }
         }
 
+        // Thread attachment if needed.
         bool doThreadAttach = (thisThreadNeedAttachment == Yes.thisThreadNeedAttachment)
                                && !(assumeThisThreadIsAlreadyAttached == Yes.assumeThisThreadIsAlreadyAttached);
-
+        
         if (doThreadAttach)
-    enum bool doThreadDetach = doThreadAttach && false; // TODO: test if this solves #110
+        {
+            import core.thread;
+            thread_attachThis();
+            _threadWasAttached = true;
+        }
+    }
 
+    ~this()
+    {
+        // TODO: eventually detach threads here
 
-        // Thread attachment if needed.
-        static if (saveRestoreFPU == Yes.saveRestoreFPU)
-            fpControl.initialize();
+        // Ensure enter() was called.
+        debug assert(_entered);
     }
 
     @disable this(this);
 
-    ~this()
-    {
-
-    }
-
 private:
-
-    
     bool _threadWasAttached = false;
              
     static if (saveRestoreFPU == Yes.saveRestoreFPU)
         FPControl fpControl;
+
+    debug bool _entered = false;
 }
