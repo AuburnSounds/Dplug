@@ -24,8 +24,14 @@ import std.string;
 import std.conv;
 
 import derelict.carbon;
-import gfm.core;
-import dplug.core;
+
+import gfm.core.memory;
+
+import dplug.core.alignedbuffer;
+import dplug.core.funcs;
+import dplug.core.lockedqueue;
+import dplug.core.runtime;
+import dplug.core.unchecked_sync;
 
 import dplug.client.client;
 import dplug.client.daw;
@@ -106,8 +112,21 @@ nothrow ComponentResult audioUnitEntryPoint(alias ClientClass)(ComponentParamete
     try
     {
         int select = params.what;
-        if (select != kAudioUnitRenderSelect)
-            attachToRuntimeIfNeeded(); // don't attach the audio thread to the runtime, since it's not interruptible
+
+        // Special case for the audio case that doesn't need to initialize runtime
+        // and can't support attaching the thread (it's not interruptible)
+        bool isAudioThread = (select == kAudioUnitRenderSelect);
+        if (isAudioThread)
+        {
+            AUClient auClient = cast(AUClient)pPlug;
+            return auClient.dispatcher(select, params);
+        }
+
+        ScopedForeignCallback!(Yes.thisThreadNeedRuntimeInitialized,
+                               No.assumeRuntimeIsAlreadyInitialized,
+                               No.assumeThisThreadIsAlreadyAttached,
+                               Yes.saveRestoreFPU) scopedCallback;
+        scopedCallback.enter(Yes.thisThreadNeedAttachment);
 
         if (select == kComponentOpenSelect)
         {
@@ -122,8 +141,6 @@ nothrow ComponentResult audioUnitEntryPoint(alias ClientClass)(ComponentParamete
         }
 
         AUClient auClient = cast(AUClient)pPlug;
-        assert(auClient !is null);
-
         return auClient.dispatcher(select, params);
     }
     catch (Throwable e)
@@ -145,7 +162,12 @@ nothrow ComponentResult audioUnitCarbonViewEntry(alias ClientClass)(ComponentPar
 {
     try
     {
-        attachToRuntimeIfNeeded();
+        ScopedForeignCallback!(Yes.thisThreadNeedRuntimeInitialized,
+                               No.assumeRuntimeIsAlreadyInitialized,
+                               No.assumeThisThreadIsAlreadyAttached,
+                               Yes.saveRestoreFPU) scopedCallback;
+        scopedCallback.enter(Yes.thisThreadNeedAttachment);
+
         int select = params.what;
 
         version(logDispatcher) printf("audioUnitCarbonViewEntry thread %p select %d\n", currentThreadId(), select);

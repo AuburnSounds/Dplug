@@ -22,7 +22,7 @@ import std.uuid;
 import derelict.carbon;
 import derelict.cocoa;
 
-import dplug.core;
+import dplug.core.runtime;
 import dplug.au.client;
 
 version(OSX):
@@ -126,7 +126,12 @@ extern(C) nothrow
     {
         try
         {
-            attachToRuntimeIfNeeded(); // attach this thread which might well be unknown
+            ScopedForeignCallback!(Yes.thisThreadNeedRuntimeInitialized,
+                                   Yes.assumeRuntimeIsAlreadyInitialized,
+                                   No.assumeThisThreadIsAlreadyAttached,
+                                   No.saveRestoreFPU) scopedCallback;
+            scopedCallback.enter(Yes.thisThreadNeedAttachment);
+
             return NSString.stringWith("Filter View")._id;
         }
         catch(Exception e)
@@ -145,9 +150,12 @@ extern(C) nothrow
     {
         try
         {
-            attachToRuntimeIfNeeded(); // attach this thread which might well be unknown
-            FPControl fpctrl;
-            fpctrl.initialize();
+            ScopedForeignCallback!(Yes.thisThreadNeedRuntimeInitialized,
+                                   Yes.assumeRuntimeIsAlreadyInitialized,
+                                   No.assumeThisThreadIsAlreadyAttached,
+                                   Yes.saveRestoreFPU) scopedCallback;
+            scopedCallback.enter(Yes.thisThreadNeedAttachment);
+
             AUClient plugin = cast(AUClient)( cast(void*)GetComponentInstanceStorage(audioUnit) );
             if (plugin)
             {
