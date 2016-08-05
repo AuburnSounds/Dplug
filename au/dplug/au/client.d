@@ -33,7 +33,7 @@ import dplug.client.midi;
 import dplug.client.preset;
 import dplug.client.params;
 import dplug.client.graphics;
-import dplug.client.dllmain;
+import dplug.client.runtime;
 
 import dplug.au.dfxutil;
 import dplug.au.cocoaviewfactory;

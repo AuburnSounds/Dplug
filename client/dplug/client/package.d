@@ -9,5 +9,5 @@ public
            dplug.client.daw,
            dplug.client.midi,
            dplug.client.graphics,
-           dplug.client.dllmain;
+           dplug.client.runtime;
 }

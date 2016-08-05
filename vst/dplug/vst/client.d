@@ -36,7 +36,7 @@ import dplug.core.alignedbuffer,
        dplug.core.unchecked_sync;
 
 import dplug.client.client,
-       dplug.client.dllmain,
+       dplug.client.runtime,
        dplug.client.daw,
        dplug.client.preset,
        dplug.client.graphics,

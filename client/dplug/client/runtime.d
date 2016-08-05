@@ -1,21 +1,14 @@
-/*
-Cockos WDL License
+/**
+ * Copyright: Copyright Auburn Sounds 2015-2016.
+ * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
+ * Authors:   Guillaume Piolat
+ */
+module dplug.client.runtime;
 
-Copyright (C) 2005 - 2015 Cockos Incorporated
-Copyright (C) 2015 and later Auburn Sounds
+import std.typecons;
+import dplug.core.fpcontrol;
 
-Portions copyright other contributors, see each source file for more information
-
-This software is provided 'as-is', without any express or implied warranty.  In no event will the authors be held liable for any damages arising from the use of this software.
-
-Permission is granted to anyone to use this software for any purpose, including commercial applications, and to alter it and redistribute it freely, subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
-1. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
-1. This notice may not be removed or altered from any source distribution.
-*/
-module dplug.client.dllmain;
-
+// Helpers to deal with the D runtime, and dynamic libraries entry points.
 
 __gshared void* gModuleHandle = null;
 
@@ -43,11 +36,13 @@ version(Windows)
                         break;
 
                     case DLL_THREAD_ATTACH:
+                        // TODO: see if we can avoid to do anything here
                         dll_thread_attach(false, true);
                         break;
 
                     case DLL_THREAD_DETACH:
-                        dll_thread_attach(true, true);
+                        // TODO: see if we can avoid to do anything here
+                        dll_thread_attach(true, true); 
                         break;
 
                     default:
@@ -113,40 +108,6 @@ else version(OSX)
 
     extern(C) int sysctlbyname(const char *, void *, size_t *, void *, size_t);
 
-    bool needWorkaround15060() nothrow
-    {
-        return true;
-/*
-        import std.regex;
-        import std.string;
-        import std.conv;
-
-        try
-        {
-            char[128] str;
-            size_t size = 128;
-            sysctlbyname("kern.osrelease", str.ptr, &size, null, 0);
-            string versionString = fromStringz(str.ptr).idup;
-
-            auto re = regex(`(\d+)\.(\d+)\.(\d+)`);
-
-            if (auto captures = matchFirst(versionString, re))
-            {
-                // >= OS X 10.7
-                // The workaround is needed in 10.10 and 10.9 but not in 10.6.8
-                // TODO find the real crossing-point
-                int kernVersion = to!int(captures[1]);
-                return kernVersion >= 11;
-            }
-            else
-                return false;
-        }
-        catch(Exception e)
-        {
-            return false;
-        }*/
-    }
-
     alias dyld_image_states = int;
     enum : dyld_image_states
     {
@@ -173,11 +134,12 @@ else version(OSX)
     {
         import core.runtime;
 
-        if(!didInitRuntime)
+        if(!didInitRuntime) // There is a race here, could it possibly be a problem? Until now, no.
         {
             Runtime.initialize();
 
-            if (needWorkaround15060)
+            enum bool needWorkaround15060 = true;
+            static if (needWorkaround15060)
                 dyld_register_image_state_change_handler(dyld_image_state_initialized, false, &ignoreImageLoad);
 
             didInitRuntime = true;
@@ -201,3 +163,56 @@ else version(OSX)
 }
 else
     static assert(false, "OS unsupported");
+
+/// Should cover every use case for callbacks!
+struct ScopedCallback(Flag!"thisThreadNeedRuntimeInitialized" thisThreadNeedRuntimeInitialized,
+                      Flag!"assumeRuntimeIsAlreadyInitialized" assumeRuntimeIsAlreadyInitialized,
+                      Flag!"assumeThisThreadIsAlreadyAttached" assumeThisThreadIsAlreadyAttached,
+                      Flag!"saveRestoreFPU" saveRestoreFPU)
+{
+public:
+    enum bool doInitializeRuntime = (thisThreadNeedRuntimeInitialized == Yes.thisThreadNeedRuntimeInitialized)
+                                && !(assumeRuntimeIsAlreadyInitialized == Yes.assumeRuntimeIsAlreadyInitialized);
+
+    /// Thread that shouldn't be attached are eg. the audio threads.
+    void enter(Flag!"thisThreadNeedAttachment" thisThreadNeedAttachment)
+    {            
+        // Runtime initialization if needed.
+        static if (doInitializeRuntime)
+        {
+            version(OSX)
+                runtimeInitWorkaround15060();
+            else
+            {
+                import core.runtime;
+                Runtime.initialiaze();
+            }
+        }
+
+        bool doThreadAttach = (thisThreadNeedAttachment == Yes.thisThreadNeedAttachment)
+                               && !(assumeThisThreadIsAlreadyAttached == Yes.assumeThisThreadIsAlreadyAttached);
+
+        if (doThreadAttach)
+    enum bool doThreadDetach = doThreadAttach && false; // TODO: test if this solves #110
+
+
+        // Thread attachment if needed.
+        static if (saveRestoreFPU == Yes.saveRestoreFPU)
+            fpControl.initialize();
+    }
+
+    @disable this(this);
+
+    ~this()
+    {
+
+    }
+
+private:
+
+    
+    bool _threadWasAttached = false;
+             
+    static if (saveRestoreFPU == Yes.saveRestoreFPU)
+        FPControl fpControl;
+}
