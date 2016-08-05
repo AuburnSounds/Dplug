@@ -7,8 +7,7 @@ module dplug.dsp;
 
 public
 {
-    import dplug.dsp.concept,
-           dplug.dsp.fir,
+    import dplug.dsp.fir,
            dplug.dsp.iir,
            dplug.dsp.noise,
            dplug.dsp.window,
