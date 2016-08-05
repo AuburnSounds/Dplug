@@ -18,11 +18,8 @@ module dplug.vst.client;
 
 import std.string;
 
-import core.memory;
-
 import core.stdc.stdlib,
        core.stdc.string,
-       core.thread,
        core.stdc.stdio;
 
 import std.algorithm;
@@ -32,11 +29,11 @@ import gfm.core;
 import dplug.core.alignedbuffer,
        dplug.core.funcs,
        dplug.core.lockedqueue,
+       dplug.core.runtime,
        dplug.core.fpcontrol,
        dplug.core.unchecked_sync;
 
 import dplug.client.client,
-       dplug.client.runtime,
        dplug.client.daw,
        dplug.client.preset,
        dplug.client.graphics,
@@ -1011,16 +1008,15 @@ extern(C) private nothrow
 {
     VstIntPtr dispatcherCallback(AEffect *effect, int opcode, int index, ptrdiff_t value, void *ptr, float opt) nothrow
     {
-        // Register this thread to the D runtime if unknown.
-        bool terminated = false;
         VstIntPtr result = 0;
 
         try
         {
-            thread_attachThis();
-
-            FPControl fpctrl;
-            fpctrl.initialize();
+            ScopedForeignCallback!(Yes.thisThreadNeedRuntimeInitialized,
+                                   Yes.assumeRuntimeIsAlreadyInitialized,
+                                   No.assumeThisThreadIsAlreadyAttached,
+                                   Yes.saveRestoreFPU) scopedCallback;
+            scopedCallback.enter(Yes.thisThreadNeedAttachment);
 
             version(logVSTDispatcher)
                 printf("dispatcher effect %p thread %p opcode %d \n", effect, currentThreadId(), opcode);
@@ -1030,7 +1026,6 @@ extern(C) private nothrow
             if (opcode == effClose)
             {
                 destroyFree(plugin);
-                terminated = true;
             }
         }
         catch (Throwable e)
@@ -1038,14 +1033,6 @@ extern(C) private nothrow
             assert(false); // so we are clearly identified as the source of the bug
         }
 
-        /*if (terminated)
-        {
-            assumeNothrow( ()
-                {
-                    import core.runtime;
-                    Runtime.terminate();
-                })();
-        }*/
         return result;
     }
 

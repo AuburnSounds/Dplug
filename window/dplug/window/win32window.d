@@ -16,8 +16,6 @@ Permission is granted to anyone to use this software for any purpose, including 
 */
 module dplug.window.win32window;
 
-import core.thread;
-
 import std.process,
        std.string,
        std.conv;
@@ -27,7 +25,7 @@ import gfm.math;
 
 import ae.utils.graphics;
 
-import dplug.core.fpcontrol;
+import dplug.core.runtime;
 import dplug.window.window;
 
 
@@ -174,8 +172,12 @@ version(Windows)
 
         LRESULT windowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         {
-            // because DispatchMessage is called by host
-            thread_attachThis();
+            // because DispatchMessage is called by host, we don't know which thread comes here
+            ScopedForeignCallback!(Yes.thisThreadNeedRuntimeInitialized,
+                                   Yes.assumeRuntimeIsAlreadyInitialized,
+                                   No.assumeThisThreadIsAlreadyAttached,
+                                   Yes.saveRestoreFPU) scopedCallback;
+            scopedCallback.enter(Yes.thisThreadNeedAttachment);
 
             if (_listener is null)
                 return DefWindowProc(hwnd, uMsg, wParam, lParam);
@@ -485,9 +487,6 @@ version(Windows)
     {
         LRESULT windowProcCallback(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         {
-            FPControl fpctrl;
-            fpctrl.initialize();
-
             try
             {
                 Win32Window window = cast(Win32Window)( cast(void*)(GetWindowLongPtrA(hwnd, GWLP_USERDATA)) );

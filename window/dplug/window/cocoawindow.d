@@ -16,9 +16,7 @@ import gfm.core;
 import gfm.math;
 
 import dplug.core.unchecked_sync;
-import dplug.core.fpcontrol;
 import dplug.window.window;
-import dplug.client.runtime;
 
 version(OSX)
 {

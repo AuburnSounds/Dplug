@@ -19,9 +19,7 @@ version(OSX)
     import gfm.core;
     import gfm.math;
 
-    import dplug.core.fpcontrol;
     import dplug.window.window;
-    import dplug.client.dllmain;
 
 
     final class CarbonWindow : IWindow
