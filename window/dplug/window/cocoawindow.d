@@ -6,16 +6,19 @@
 module dplug.window.cocoawindow;
 
 import core.stdc.stdlib;
+
 import std.string;
 import std.stdio;
 import std.uuid;
 
 import ae.utils.graphics;
 
-import gfm.core;
-import gfm.math;
+import gfm.core.memory;
+import gfm.math.vector;
+import gfm.math.box;
 
 import dplug.core.unchecked_sync;
+import dplug.core.runtime;
 import dplug.window.window;
 
 version(OSX)
@@ -527,6 +530,13 @@ version(OSX)
         return vec2i(px, py);
     }
 
+
+
+    alias CocoaScopedCallback = ScopedForeignCallback!(Yes.thisThreadNeedRuntimeInitialized,
+                                                       Yes.assumeRuntimeIsAlreadyInitialized,
+                                                       No.assumeThisThreadIsAlreadyAttached,
+                                                       Yes.saveRestoreFPU);
+
     // Overridden function gets called with an id, instead of the self pointer.
     // So we have to get back the D class object address.
     // Big thanks to Mike Ash (@macdev)
@@ -537,9 +547,9 @@ version(OSX)
         {
             try
             {
-                attachToRuntimeIfNeeded();
-                FPControl fpctrl;
-                fpctrl.initialize();
+                CocoaScopedCallback scopedCallback;
+                scopedCallback.enter(Yes.thisThreadNeedAttachment);
+
                 DPlugCustomView view = getInstance(self);
                 bool handled = view._window.handleKeyEvent(NSEvent(event), false);
 
@@ -563,9 +573,9 @@ version(OSX)
         {
             try
             {
-                attachToRuntimeIfNeeded();
-                FPControl fpctrl;
-                fpctrl.initialize();
+                CocoaScopedCallback scopedCallback;
+                scopedCallback.enter(Yes.thisThreadNeedAttachment);
+
                 DPlugCustomView view = getInstance(self);
                 view._window.handleKeyEvent(NSEvent(event), true);
             }
@@ -579,9 +589,9 @@ version(OSX)
         {
             try
             {
-                attachToRuntimeIfNeeded();
-                FPControl fpctrl;
-                fpctrl.initialize();
+                CocoaScopedCallback scopedCallback;
+                scopedCallback.enter(Yes.thisThreadNeedAttachment);
+
                 DPlugCustomView view = getInstance(self);
                 view._window.handleMouseClicks(NSEvent(event), MouseButton.left, false);
             }
@@ -595,9 +605,9 @@ version(OSX)
         {
             try
             {
-                attachToRuntimeIfNeeded();
-                FPControl fpctrl;
-                fpctrl.initialize();
+                CocoaScopedCallback scopedCallback;
+                scopedCallback.enter(Yes.thisThreadNeedAttachment);
+
                 DPlugCustomView view = getInstance(self);
                 view._window.handleMouseClicks(NSEvent(event), MouseButton.left, true);
             }
@@ -611,9 +621,9 @@ version(OSX)
         {
             try
             {
-                attachToRuntimeIfNeeded();
-                FPControl fpctrl;
-                fpctrl.initialize();
+                CocoaScopedCallback scopedCallback;
+                scopedCallback.enter(Yes.thisThreadNeedAttachment);
+
                 DPlugCustomView view = getInstance(self);
                 view._window.handleMouseClicks(NSEvent(event), MouseButton.right, false);
             }
@@ -627,9 +637,9 @@ version(OSX)
         {
             try
             {
-                attachToRuntimeIfNeeded();
-                FPControl fpctrl;
-                fpctrl.initialize();
+                CocoaScopedCallback scopedCallback;
+                scopedCallback.enter(Yes.thisThreadNeedAttachment);
+
                 DPlugCustomView view = getInstance(self);
                 view._window.handleMouseClicks(NSEvent(event), MouseButton.right, true);
             }
@@ -643,9 +653,9 @@ version(OSX)
         {
             try
             {
-                attachToRuntimeIfNeeded();
-                FPControl fpctrl;
-                fpctrl.initialize();
+                CocoaScopedCallback scopedCallback;
+                scopedCallback.enter(Yes.thisThreadNeedAttachment);
+
                 DPlugCustomView view = getInstance(self);
                 auto nsEvent = NSEvent(event);
                 if (nsEvent.buttonNumber == 2)
@@ -661,9 +671,9 @@ version(OSX)
         {
             try
             {
-                attachToRuntimeIfNeeded();
-                FPControl fpctrl;
-                fpctrl.initialize();
+                CocoaScopedCallback scopedCallback;
+                scopedCallback.enter(Yes.thisThreadNeedAttachment);
+
                 DPlugCustomView view = getInstance(self);
                 auto nsEvent = NSEvent(event);
                 if (nsEvent.buttonNumber == 2)
@@ -679,9 +689,9 @@ version(OSX)
         {
             try
             {
-                attachToRuntimeIfNeeded();
-                FPControl fpctrl;
-                fpctrl.initialize();
+                CocoaScopedCallback scopedCallback;
+                scopedCallback.enter(Yes.thisThreadNeedAttachment);
+
                 DPlugCustomView view = getInstance(self);
                 view._window.handleMouseMove(NSEvent(event));
             }
@@ -695,9 +705,8 @@ version(OSX)
         {
             try
             {
-                attachToRuntimeIfNeeded();
-                FPControl fpctrl;
-                fpctrl.initialize();
+                CocoaScopedCallback scopedCallback;
+                scopedCallback.enter(Yes.thisThreadNeedAttachment);
                 NSCursor.arrowCursor().push();
             }
             catch(Throwable)
@@ -710,9 +719,8 @@ version(OSX)
         {
             try
             {
-                attachToRuntimeIfNeeded();
-                FPControl fpctrl;
-                fpctrl.initialize();
+                CocoaScopedCallback scopedCallback;
+                scopedCallback.enter(Yes.thisThreadNeedAttachment);
                 NSCursor.pop();
             }
             catch(Throwable)
@@ -726,9 +734,8 @@ version(OSX)
         {
             try
             {
-                attachToRuntimeIfNeeded();
-                FPControl fpctrl;
-                fpctrl.initialize();
+                CocoaScopedCallback scopedCallback;
+                scopedCallback.enter(Yes.thisThreadNeedAttachment);
                 DPlugCustomView view = getInstance(self);
                 view._window.handleMouseWheel(NSEvent(event));
             }
@@ -757,7 +764,9 @@ version(OSX)
         {
             try
             {
-                attachToRuntimeIfNeeded();
+                CocoaScopedCallback scopedCallback;
+                scopedCallback.enter(Yes.thisThreadNeedAttachment);
+
                 DPlugCustomView view = getInstance(self);
                 NSWindow parentWindow = view.window();
                 if (parentWindow)
@@ -776,9 +785,9 @@ version(OSX)
         {
             try
             {
-                attachToRuntimeIfNeeded();
-                FPControl fpctrl;
-                fpctrl.initialize();
+                CocoaScopedCallback scopedCallback;
+                scopedCallback.enter(Yes.thisThreadNeedAttachment);
+
                 DPlugCustomView view = getInstance(self);
                 view._window.drawRect(rect);
             }
@@ -792,9 +801,9 @@ version(OSX)
         {
             try
             {
-                attachToRuntimeIfNeeded();
-                FPControl fpctrl;
-                fpctrl.initialize();
+                CocoaScopedCallback scopedCallback;
+                scopedCallback.enter(Yes.thisThreadNeedAttachment);
+
                 DPlugCustomView view = getInstance(self);
                 view._window.onTimer();
             }

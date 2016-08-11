@@ -16,9 +16,11 @@ version(OSX)
 
     import ae.utils.graphics;
 
-    import gfm.core;
-    import gfm.math;
+    import gfm.core.memory;
+    import gfm.math.vector;
+    import gfm.math.box;
 
+    import dplug.core.runtime;
     import dplug.window.window;
 
 
@@ -498,13 +500,17 @@ version(OSX)
         }
     }
 
+    alias CarbonScopedCallback = ScopedForeignCallback!(Yes.thisThreadNeedRuntimeInitialized,
+                                                        Yes.assumeRuntimeIsAlreadyInitialized,
+                                                        No.assumeThisThreadIsAlreadyAttached,
+                                                        Yes.saveRestoreFPU);
+
     extern(C) OSStatus eventCallback(EventHandlerCallRef pHandlerCall, EventRef pEvent, void* user) nothrow
     {
-        FPControl fpctrl;
-        fpctrl.initialize();
         try
         {
-            attachToRuntimeIfNeeded();
+            CarbonScopedCallback scopedCallback;
+            scopedCallback.enter(Yes.thisThreadNeedAttachment);
             CarbonWindow window = cast(CarbonWindow)user;
             bool handled = window.handleEvent(pEvent);
             return handled ? noErr : eventNotHandledErr;
@@ -518,11 +524,10 @@ version(OSX)
 
     extern(C) void timerCallback(EventLoopTimerRef pTimer, void* user) nothrow
     {
-        FPControl fpctrl;
-        fpctrl.initialize();
         try
         {
-            attachToRuntimeIfNeeded();
+            CarbonScopedCallback scopedCallback;
+            scopedCallback.enter(Yes.thisThreadNeedAttachment);
             CarbonWindow window = cast(CarbonWindow)user;
             window.onTimer();
         }
