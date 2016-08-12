@@ -130,8 +130,20 @@ public:
         if (doThreadAttach)
         {
             import core.thread: thread_attachThis;
-            thread_attachThis();
-            _threadWasAttached = true;
+
+            static if (detachThreadsAfterCallback)
+            {
+                bool alreadyAttached = isThisThreadAttached();
+                if (!alreadyAttached)
+                {
+                    thread_attachThis();
+                    _threadWasAttached = true;
+                }
+            }
+            else
+            {
+                thread_attachThis();
+            }
         }
     }
 
@@ -151,10 +163,24 @@ public:
     @disable this(this);
 
 private:
-    bool _threadWasAttached = false;
+
+    static if (detachThreadsAfterCallback)
+        bool _threadWasAttached = false;
              
     static if (saveRestoreFPU == Yes.saveRestoreFPU)
         FPControl _fpControl;
 
     debug bool _entered = false;
+
+    static bool isThisThreadAttached() nothrow
+    {
+        import core.memory;
+        import core.thread;
+        GC.disable(); scope(exit) GC.enable();
+        if (auto t = Thread.getThis())
+            return true;
+        else
+            return false;
+    }
+
 }
