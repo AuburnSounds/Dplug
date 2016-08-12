@@ -308,9 +308,6 @@ private:
 
         switch(opcode)
         {
-            case effOpen: // opcode 0
-                return 0;
-
             case effClose: // opcode 1
                 this.destroy(); // free all resources except this and the runtime
                 return 0;
@@ -391,11 +388,6 @@ private:
                 {
                     stringNCopy(p, 32, _client.param(index).name());
                 }
-                return 0;
-            }
-
-            case DEPRECATED_effGetVu: // opcode 9
-            {
                 return 0;
             }
 
@@ -488,20 +480,6 @@ private:
                     else
                         return 0;
                 }
-
-            case DEPRECATED_effEditDraw: // opcode 16
-            case DEPRECATED_effEditMouse: // opcode 17
-            case DEPRECATED_effEditKey: // opcode 18
-                return 0;
-
-            case effEditIdle: // opcode 19
-                return 0; // why would it be useful to do anything?
-
-            case DEPRECATED_effEditTop: // opcode 20, edit window has topped
-                return 0;
-
-            case DEPRECATED_effEditSleep:  // opcode 21, edit window goes to background
-                return 0;
 
             case DEPRECATED_effIdentify: // opcode 22
                 return CCONST('N', 'v', 'E', 'f');
@@ -636,11 +614,6 @@ private:
                     return 0;
             }
 
-            case DEPRECATED_effCopyProgram: // opcode 30
-            case DEPRECATED_effConnectInput: // opcode 31
-            case DEPRECATED_effConnectOutput: // opcode 32
-                return 0;
-
             case effGetInputProperties: // opcode 33
             {
                 if (ptr == null)
@@ -683,19 +656,7 @@ private:
                 else
                     return kPlugCategEffect;
 
-            case DEPRECATED_effGetCurrentPosition: // opcode 36
-            case DEPRECATED_effGetDestinationBuffer: // opcode 37
-                return 0;
-
-            case effOfflineNotify: // opcode 38
-            case effOfflinePrepare: // opcode 39
-            case effOfflineRun: // opcode 40
-                return 0;
-
-            case effProcessVarIo: // opcode 41
-                return 0;
-
-            case effSetSpeakerArrangement:
+            case effSetSpeakerArrangement: // opcode 42
             {
                 VstSpeakerArrangement* pInputArr = cast(VstSpeakerArrangement*) value;
                 VstSpeakerArrangement* pOutputArr = cast(VstSpeakerArrangement*) ptr;
@@ -710,7 +671,7 @@ private:
                 return 1;
             }
 
-            case effGetEffectName:
+            case effGetEffectName: // opcode 45
             {
                 char* p = cast(char*)ptr;
                 if (p !is null)
@@ -721,7 +682,7 @@ private:
                 return 0;
             }
 
-            case effGetVendorString:
+            case effGetVendorString: // opcode 47
             {
                 char* p = cast(char*)ptr;
                 if (p !is null)
@@ -732,7 +693,7 @@ private:
                 return 0;
             }
 
-            case effGetProductString:
+            case effGetProductString: // opcode 48
             {
                 char* p = cast(char*)ptr;
                 if (p !is null)
@@ -743,7 +704,7 @@ private:
                 return 0;
             }
 
-            case effCanDo:
+            case effCanDo: // opcode 51
             {
                 char* str = cast(char*)ptr;
                 if (str is null)
@@ -771,11 +732,11 @@ private:
                 return 0;
             }
 
-            case effGetVstVersion:
+            case effGetVstVersion: // opcode 58
                 return 2400; // version 2.4
 
         default:
-            return 0; // unknown opcode
+            return 0; // unknown opcode, should never happen
         }
     }
 
@@ -1001,6 +962,17 @@ private:
     }
 }
 
+
+private static immutable ubyte[64] opcodeShouldReturn0Immediately =
+[ 1, 0, 0, 0, 0, 0, 0, 0,
+  0, 1, 0, 0, 0, 0, 0, 0,
+  1, 1, 1, 1, 1, 1, 0, 0,
+  0, 0, 0, 0, 0, 0, 1, 1,
+  1, 0, 0, 0, 1, 1, 1, 1,
+  1, 1, 0, 1, 1, 0, 1, 0,
+  0, 1, 1, 0, 1, 1, 1, 1,
+  1, 1, 0, 1, 1, 1, 1, 1 ];
+
 //
 // VST callbacks
 //
@@ -1009,6 +981,12 @@ extern(C) private nothrow
     VstIntPtr dispatcherCallback(AEffect *effect, int opcode, int index, ptrdiff_t value, void *ptr, float opt) nothrow
     {
         VstIntPtr result = 0;
+
+        // Short-circuit inconsequential opcodes to gain speed
+        if (cast(uint)opcode >= 64)
+            return 0;
+        if (opcodeShouldReturn0Immediately[opcode])
+            return 0;
 
         try
         {
