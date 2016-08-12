@@ -101,7 +101,15 @@ public:
                                 && !(assumeRuntimeIsAlreadyInitialized == Yes.assumeRuntimeIsAlreadyInitialized);
 
 
-    enum bool detachThreadsAfterCallback = false;
+    version(OSX)
+    {
+        // detaching threads when going out of callbacks
+        // fixed #110 (Cubase + OS X)
+        // At a runtime cost.
+        enum bool detachThreadsAfterCallback = true;
+    }
+    else
+        enum bool detachThreadsAfterCallback = false;
 
     /// Thread that shouldn't be attached are eg. the audio threads.
     void enter(Flag!"thisThreadNeedAttachment" thisThreadNeedAttachment)
@@ -119,19 +127,31 @@ public:
             else
             {
                 import core.runtime;
-                Runtime.initialiaze();
+                Runtime.initialize();
             }
         }
 
         // Thread attachment if needed.
         bool doThreadAttach = (thisThreadNeedAttachment == Yes.thisThreadNeedAttachment)
                                && !(assumeThisThreadIsAlreadyAttached == Yes.assumeThisThreadIsAlreadyAttached);
-        
+
         if (doThreadAttach)
         {
             import core.thread: thread_attachThis;
-            thread_attachThis();
-            _threadWasAttached = true;
+
+            static if (detachThreadsAfterCallback)
+            {
+                bool alreadyAttached = isThisThreadAttached();
+                if (!alreadyAttached)
+                {
+                    thread_attachThis();
+                    _threadWasAttached = true;
+                }
+            }
+            else
+            {
+                thread_attachThis();
+            }
         }
     }
 
@@ -151,10 +171,24 @@ public:
     @disable this(this);
 
 private:
-    bool _threadWasAttached = false;
-             
+
+    static if (detachThreadsAfterCallback)
+        bool _threadWasAttached = false;
+
     static if (saveRestoreFPU == Yes.saveRestoreFPU)
         FPControl _fpControl;
 
     debug bool _entered = false;
+
+    static bool isThisThreadAttached() nothrow
+    {
+        import core.memory;
+        import core.thread;
+        GC.disable(); scope(exit) GC.enable();
+        if (auto t = Thread.getThis())
+            return true;
+        else
+            return false;
+    }
+
 }
