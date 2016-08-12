@@ -27,7 +27,7 @@ else version(Posix)
     {
         import core.sys.posix.pthread;
         return pthread_self;
-    }    
+    }
 }
 else
     static assert(false, "OS unsupported");
@@ -86,7 +86,7 @@ version(OSX)
         import core.thread;
         runtimeInitWorkaround15060();
         thread_attachThis();
-    }    
+    }
 }
 
 /// RAII struct to cover every use case for callbacks!
@@ -103,9 +103,9 @@ public:
 
     version(OSX)
     {
-        // detaching threads when going out of callbacks
-        // fixed #110 (Cubase + OS X)
-        // At a runtime cost.
+        // Detaching threads when going out of callbacks, except for the main
+        // thread in VST (the one calling VSTPlugin Main).
+        // This fixed #110 (Cubase + OS X), at a runtime cost.
         enum bool detachThreadsAfterCallback = true;
     }
     else
