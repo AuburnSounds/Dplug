@@ -173,11 +173,9 @@ version(Windows)
         LRESULT windowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         {
             // because DispatchMessage is called by host, we don't know which thread comes here
-            ScopedForeignCallback!(Yes.thisThreadNeedRuntimeInitialized,
-                                   Yes.assumeRuntimeIsAlreadyInitialized,
-                                   No.assumeThisThreadIsAlreadyAttached,
+            ScopedForeignCallback!(Yes.assumeRuntimeIsAlreadyInitialized,
                                    Yes.saveRestoreFPU) scopedCallback;
-            scopedCallback.enter(Yes.thisThreadNeedAttachment);
+            scopedCallback.enter();
 
             if (_listener is null)
                 return DefWindowProc(hwnd, uMsg, wParam, lParam);

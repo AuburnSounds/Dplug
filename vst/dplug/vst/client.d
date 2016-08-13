@@ -990,11 +990,9 @@ extern(C) private nothrow
 
         try
         {
-            ScopedForeignCallback!(Yes.thisThreadNeedRuntimeInitialized,
-                                   Yes.assumeRuntimeIsAlreadyInitialized,
-                                   No.assumeThisThreadIsAlreadyAttached,
+            ScopedForeignCallback!(Yes.assumeRuntimeIsAlreadyInitialized,
                                    Yes.saveRestoreFPU) scopedCallback;
-            scopedCallback.enter(Yes.thisThreadNeedAttachment);
+            scopedCallback.enter();
 
             version(logVSTDispatcher)
                 printf("dispatcher effect %p thread %p opcode %d \n", effect, currentThreadId(), opcode);

@@ -89,16 +89,18 @@ version(OSX)
     }
 }
 
-/// RAII struct to cover every use case for callbacks!
+/// RAII struct to cover calback that need attachment and runtime initialized.
 /// This deals with runtime inialization and thread attachment in a very explicit way.
-struct ScopedForeignCallback(Flag!"thisThreadNeedRuntimeInitialized" thisThreadNeedRuntimeInitialized,
-                             Flag!"assumeRuntimeIsAlreadyInitialized" assumeRuntimeIsAlreadyInitialized,
-                             Flag!"assumeThisThreadIsAlreadyAttached" assumeThisThreadIsAlreadyAttached,
+struct ScopedForeignCallback(Flag!"assumeRuntimeIsAlreadyInitialized" assumeRuntimeIsAlreadyInitialized,
                              Flag!"saveRestoreFPU" saveRestoreFPU)
 {
 public:
-    enum bool doInitializeRuntime = (thisThreadNeedRuntimeInitialized == Yes.thisThreadNeedRuntimeInitialized)
-                                && !(assumeRuntimeIsAlreadyInitialized == Yes.assumeRuntimeIsAlreadyInitialized);
+
+    // On Windows, we can assume that the runtime is initialized already by virtue of DLL_PROCESS_ATTACH
+    version(Windows)
+        enum bool doInitializeRuntime = false;
+    else
+        enum bool doInitializeRuntime = !(assumeRuntimeIsAlreadyInitialized == Yes.assumeRuntimeIsAlreadyInitialized);
 
 
     version(OSX)
@@ -109,10 +111,13 @@ public:
         enum bool detachThreadsAfterCallback = true;
     }
     else
+    {
+        // No such problem on Windows
         enum bool detachThreadsAfterCallback = false;
+    }
 
     /// Thread that shouldn't be attached are eg. the audio threads.
-    void enter(Flag!"thisThreadNeedAttachment" thisThreadNeedAttachment)
+    void enter()
     {
         debug _entered = true;
 
@@ -131,27 +136,20 @@ public:
             }
         }
 
-        // Thread attachment if needed.
-        bool doThreadAttach = (thisThreadNeedAttachment == Yes.thisThreadNeedAttachment)
-                               && !(assumeThisThreadIsAlreadyAttached == Yes.assumeThisThreadIsAlreadyAttached);
+        import core.thread: thread_attachThis;
 
-        if (doThreadAttach)
+        static if (detachThreadsAfterCallback)
         {
-            import core.thread: thread_attachThis;
-
-            static if (detachThreadsAfterCallback)
-            {
-                bool alreadyAttached = isThisThreadAttached();
-                if (!alreadyAttached)
-                {
-                    thread_attachThis();
-                    _threadWasAttached = true;
-                }
-            }
-            else
+            bool alreadyAttached = isThisThreadAttached();
+            if (!alreadyAttached)
             {
                 thread_attachThis();
+                _threadWasAttached = true;
             }
+        }
+        else
+        {
+            thread_attachThis();
         }
     }
 

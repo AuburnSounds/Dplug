@@ -126,11 +126,9 @@ extern(C) nothrow
     {
         try
         {
-            ScopedForeignCallback!(Yes.thisThreadNeedRuntimeInitialized,
-                                   Yes.assumeRuntimeIsAlreadyInitialized,
-                                   No.assumeThisThreadIsAlreadyAttached,
+            ScopedForeignCallback!(Yes.assumeRuntimeIsAlreadyInitialized,
                                    No.saveRestoreFPU) scopedCallback;
-            scopedCallback.enter(Yes.thisThreadNeedAttachment);
+            scopedCallback.enter();
 
             return NSString.stringWith("Filter View")._id;
         }
@@ -150,11 +148,9 @@ extern(C) nothrow
     {
         try
         {
-            ScopedForeignCallback!(Yes.thisThreadNeedRuntimeInitialized,
-                                   Yes.assumeRuntimeIsAlreadyInitialized,
-                                   No.assumeThisThreadIsAlreadyAttached,
+            ScopedForeignCallback!(Yes.assumeRuntimeIsAlreadyInitialized,
                                    Yes.saveRestoreFPU) scopedCallback;
-            scopedCallback.enter(Yes.thisThreadNeedAttachment);
+            scopedCallback.enter();
 
             AUClient plugin = cast(AUClient)( cast(void*)GetComponentInstanceStorage(audioUnit) );
             if (plugin)

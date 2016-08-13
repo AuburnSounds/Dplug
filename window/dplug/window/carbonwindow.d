@@ -500,9 +500,7 @@ version(OSX)
         }
     }
 
-    alias CarbonScopedCallback = ScopedForeignCallback!(Yes.thisThreadNeedRuntimeInitialized,
-                                                        Yes.assumeRuntimeIsAlreadyInitialized,
-                                                        No.assumeThisThreadIsAlreadyAttached,
+    alias CarbonScopedCallback = ScopedForeignCallback!(Yes.assumeRuntimeIsAlreadyInitialized,
                                                         Yes.saveRestoreFPU);
 
     extern(C) OSStatus eventCallback(EventHandlerCallRef pHandlerCall, EventRef pEvent, void* user) nothrow
@@ -510,7 +508,7 @@ version(OSX)
         try
         {
             CarbonScopedCallback scopedCallback;
-            scopedCallback.enter(Yes.thisThreadNeedAttachment);
+            scopedCallback.enter();
             CarbonWindow window = cast(CarbonWindow)user;
             bool handled = window.handleEvent(pEvent);
             return handled ? noErr : eventNotHandledErr;
@@ -527,7 +525,7 @@ version(OSX)
         try
         {
             CarbonScopedCallback scopedCallback;
-            scopedCallback.enter(Yes.thisThreadNeedAttachment);
+            scopedCallback.enter();
             CarbonWindow window = cast(CarbonWindow)user;
             window.onTimer();
         }

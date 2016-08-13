@@ -532,9 +532,7 @@ version(OSX)
 
 
 
-    alias CocoaScopedCallback = ScopedForeignCallback!(Yes.thisThreadNeedRuntimeInitialized,
-                                                       Yes.assumeRuntimeIsAlreadyInitialized,
-                                                       No.assumeThisThreadIsAlreadyAttached,
+    alias CocoaScopedCallback = ScopedForeignCallback!(Yes.assumeRuntimeIsAlreadyInitialized,
                                                        Yes.saveRestoreFPU);
 
     // Overridden function gets called with an id, instead of the self pointer.
@@ -548,7 +546,7 @@ version(OSX)
             try
             {
                 CocoaScopedCallback scopedCallback;
-                scopedCallback.enter(Yes.thisThreadNeedAttachment);
+                scopedCallback.enter();
 
                 DPlugCustomView view = getInstance(self);
                 bool handled = view._window.handleKeyEvent(NSEvent(event), false);
@@ -574,7 +572,7 @@ version(OSX)
             try
             {
                 CocoaScopedCallback scopedCallback;
-                scopedCallback.enter(Yes.thisThreadNeedAttachment);
+                scopedCallback.enter();
 
                 DPlugCustomView view = getInstance(self);
                 view._window.handleKeyEvent(NSEvent(event), true);
@@ -590,7 +588,7 @@ version(OSX)
             try
             {
                 CocoaScopedCallback scopedCallback;
-                scopedCallback.enter(Yes.thisThreadNeedAttachment);
+                scopedCallback.enter();
 
                 DPlugCustomView view = getInstance(self);
                 view._window.handleMouseClicks(NSEvent(event), MouseButton.left, false);
@@ -606,7 +604,7 @@ version(OSX)
             try
             {
                 CocoaScopedCallback scopedCallback;
-                scopedCallback.enter(Yes.thisThreadNeedAttachment);
+                scopedCallback.enter();
 
                 DPlugCustomView view = getInstance(self);
                 view._window.handleMouseClicks(NSEvent(event), MouseButton.left, true);
@@ -622,7 +620,7 @@ version(OSX)
             try
             {
                 CocoaScopedCallback scopedCallback;
-                scopedCallback.enter(Yes.thisThreadNeedAttachment);
+                scopedCallback.enter();
 
                 DPlugCustomView view = getInstance(self);
                 view._window.handleMouseClicks(NSEvent(event), MouseButton.right, false);
@@ -638,7 +636,7 @@ version(OSX)
             try
             {
                 CocoaScopedCallback scopedCallback;
-                scopedCallback.enter(Yes.thisThreadNeedAttachment);
+                scopedCallback.enter();
 
                 DPlugCustomView view = getInstance(self);
                 view._window.handleMouseClicks(NSEvent(event), MouseButton.right, true);
@@ -654,7 +652,7 @@ version(OSX)
             try
             {
                 CocoaScopedCallback scopedCallback;
-                scopedCallback.enter(Yes.thisThreadNeedAttachment);
+                scopedCallback.enter();
 
                 DPlugCustomView view = getInstance(self);
                 auto nsEvent = NSEvent(event);
@@ -672,7 +670,7 @@ version(OSX)
             try
             {
                 CocoaScopedCallback scopedCallback;
-                scopedCallback.enter(Yes.thisThreadNeedAttachment);
+                scopedCallback.enter();
 
                 DPlugCustomView view = getInstance(self);
                 auto nsEvent = NSEvent(event);
@@ -690,7 +688,7 @@ version(OSX)
             try
             {
                 CocoaScopedCallback scopedCallback;
-                scopedCallback.enter(Yes.thisThreadNeedAttachment);
+                scopedCallback.enter();
 
                 DPlugCustomView view = getInstance(self);
                 view._window.handleMouseMove(NSEvent(event));
@@ -706,7 +704,7 @@ version(OSX)
             try
             {
                 CocoaScopedCallback scopedCallback;
-                scopedCallback.enter(Yes.thisThreadNeedAttachment);
+                scopedCallback.enter();
                 NSCursor.arrowCursor().push();
             }
             catch(Throwable)
@@ -720,7 +718,7 @@ version(OSX)
             try
             {
                 CocoaScopedCallback scopedCallback;
-                scopedCallback.enter(Yes.thisThreadNeedAttachment);
+                scopedCallback.enter();
                 NSCursor.pop();
             }
             catch(Throwable)
@@ -735,7 +733,7 @@ version(OSX)
             try
             {
                 CocoaScopedCallback scopedCallback;
-                scopedCallback.enter(Yes.thisThreadNeedAttachment);
+                scopedCallback.enter();
                 DPlugCustomView view = getInstance(self);
                 view._window.handleMouseWheel(NSEvent(event));
             }
@@ -765,7 +763,7 @@ version(OSX)
             try
             {
                 CocoaScopedCallback scopedCallback;
-                scopedCallback.enter(Yes.thisThreadNeedAttachment);
+                scopedCallback.enter();
 
                 DPlugCustomView view = getInstance(self);
                 NSWindow parentWindow = view.window();
@@ -786,7 +784,7 @@ version(OSX)
             try
             {
                 CocoaScopedCallback scopedCallback;
-                scopedCallback.enter(Yes.thisThreadNeedAttachment);
+                scopedCallback.enter();
 
                 DPlugCustomView view = getInstance(self);
                 view._window.drawRect(rect);
@@ -802,7 +800,7 @@ version(OSX)
             try
             {
                 CocoaScopedCallback scopedCallback;
-                scopedCallback.enter(Yes.thisThreadNeedAttachment);
+                scopedCallback.enter();
 
                 DPlugCustomView view = getInstance(self);
                 view._window.onTimer();
