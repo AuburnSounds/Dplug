@@ -1,6 +1,6 @@
-# Dplug [![Build Status](https://travis-ci.org/p0nce/dplug.png?branch=master)](https://travis-ci.org/p0nce/dplug)
-
 <img alt="logo" src="https://cdn.rawgit.com/p0nce/dplug/master/logo.svg" width="200">
+
+# Dplug [![Build Status](https://travis-ci.org/p0nce/dplug.png?branch=master)](https://travis-ci.org/p0nce/dplug) <a href="https://code.dlang.org/packages/dplug" title="Go to dplug"><img src="https://img.shields.io/dub/v/dplug.svg" alt="Dub version"></a> <a href="https://code.dlang.org/packages/dplug" title="Go to dplug"><img src="https://img.shields.io/dub/dt/dplug.svg alt="Dub downloads"></a>
 
 `Dplug` is a library for crafting native audio plugins as simply as possible.
 
