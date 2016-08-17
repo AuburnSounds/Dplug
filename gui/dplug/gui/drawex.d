@@ -472,13 +472,45 @@ unittest
 // Image loading
 //
 
+IFImage readImageFromMem(const(ubyte[]) imageData, int channels)
+{
+    static immutable ubyte[8] pngSignature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+    bool isPNG = imageData.length >= 8 && (imageData[0..8] == pngSignature);
+
+    // PNG are decoded using stb_image to avoid GC overload using zlib
+    if (isPNG)
+    {
+        import dplug.gui.pngload;
+
+        int width, height, components;
+        ubyte* decoded = stbi_load_png_from_memory(imageData, width, height, components, channels);
+        scope(exit) stbi_image_free(decoded);
+
+        IFImage result;
+        result.w = width;
+        result.h = height;
+        if (channels == 1) result.c = ColFmt.Y;
+        if (channels == 2) result.c = ColFmt.YA;
+        if (channels == 3) result.c = ColFmt.RGB;
+        if (channels == 4) result.c = ColFmt.RGBA;
+        int size = width * height * channels; 
+        result.pixels = new ubyte[size];
+        import core.stdc.string: memcpy;
+        memcpy(result.pixels.ptr, decoded, size);
+        return result;
+    }
+    else
+    {
+        return read_image_from_mem(imageData, channels);
+    }
+}
 
 /// The one function you probably want to use.
 /// Loads an image from a static array.
 /// Throws: $(D ImageIOException) on error.
 OwnedImage!RGBA loadOwnedImage(in void[] imageData)
 {
-    IFImage ifImage = read_image_from_mem(cast(const(ubyte[])) imageData, 4);
+    IFImage ifImage = readImageFromMem(cast(const(ubyte[])) imageData, 4);
     int width = cast(int)ifImage.w;
     int height = cast(int)ifImage.h;
 
@@ -488,21 +520,6 @@ OwnedImage!RGBA loadOwnedImage(in void[] imageData)
 }
 
 
-/// Legacy Image loading, gives an Image
-/// However this one is not GC-proof and may result in space leaks in 32-bit
-deprecated("Use loadOwnedImage instead") Image!RGBA loadImage(in void[] imageData)
-{
-    IFImage ifImage = read_image_from_mem(cast(const(ubyte[])) imageData, 4);
-    int width = cast(int)ifImage.w;
-    int height = cast(int)ifImage.h;
-
-    Image!RGBA loaded;
-    loaded.w = width; // avoids using size which would allocate for nothing
-    loaded.h = height;
-    loaded.pixels = cast(RGBA[]) ifImage.pixels; // no pixel copy here, GC takes care
-    return loaded;
-}
-
 
 /// Loads two different images:
 /// - the 1st is the RGB channels
@@ -510,11 +527,11 @@ deprecated("Use loadOwnedImage instead") Image!RGBA loadImage(in void[] imageDat
 /// Throws: $(D ImageIOException) on error.
 OwnedImage!RGBA loadImageSeparateAlpha(in void[] imageDataRGB, in void[] imageDataAlpha)
 {
-    IFImage ifImageRGB = read_image_from_mem(cast(const(ubyte[])) imageDataRGB, 3);
+    IFImage ifImageRGB = readImageFromMem(cast(const(ubyte[])) imageDataRGB, 3);
     int widthRGB = cast(int)ifImageRGB.w;
     int heightRGB = cast(int)ifImageRGB.h;
 
-    IFImage ifImageA = read_image_from_mem(cast(const(ubyte[])) imageDataAlpha, 1);
+    IFImage ifImageA = readImageFromMem(cast(const(ubyte[])) imageDataAlpha, 1);
     int widthA = cast(int)ifImageA.w;
     int heightA = cast(int)ifImageA.h;
 
