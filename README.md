@@ -1,6 +1,6 @@
-# Dplug [![Build Status](https://travis-ci.org/p0nce/dplug.png?branch=master)](https://travis-ci.org/p0nce/dplug)
-
 <img alt="logo" src="https://cdn.rawgit.com/p0nce/dplug/master/logo.svg" width="200">
+
+# Dplug [![Build Status](https://travis-ci.org/p0nce/dplug.png?branch=master)](https://travis-ci.org/p0nce/dplug) <a href="https://code.dlang.org/packages/dplug" title="Go to dplug"><img src="https://img.shields.io/dub/v/dplug.svg" alt="Dub version"></a> <a href="https://code.dlang.org/packages/dplug" title="Go to dplug"><img src="https://img.shields.io/dub/dt/dplug.svg alt="Dub downloads"></a>
 
 `Dplug` is a library for crafting native audio plugins as simply as possible.
 
@@ -10,8 +10,8 @@
 - Creating VST 2.4 plugins on Windows and Mac OS X, 32-bit and 64-bit
 - Creating Audio Unit v2 plugins for Mac OS X, 32-bit and 64-bit
 - Comes with a few music DSP algorithms
-- Comes with a suite of `tools` to make plugin creation faster (bundling, color correction, regression tests)
-- Graphics renderer inspired by PBR
+- Comes with a number of `tools` to make plugin creation faster (bundling, color correction, regression tests)
+- Graphics renderer inspired by PBR to keep installers small
 
 ![Example screenshot](http://www.auburnsounds.com/images/panagement.jpg)
 ![Example screenshot](screenshot.jpg "With a bit of work")
@@ -114,7 +114,6 @@ Pros:
 
 Cons:
   - Less battle-tested in general.
-  - Less man-power.
   - API may change without notice (pin the version of dplug you use).
   - AAX and VST3 unimplemented.
   - No resizeable UI yet.
@@ -199,4 +198,5 @@ Other source files fall under the Boost 1.0 license.
    * `tools/release`: DUB frontend to build Mac bundles and use LDC with proper envvars
    * `tools/process`: plugin host for testing audio processing speed/reproducibility
    * `tools/wav-compare`: comparison of WAV files
-   * `tools/lift-gamma-gain`: tool to adjust color correction curves on a finished UI
+   * `tools/stress-plugin`: makes multiple load of plugins while processing audio mainly to test GUI opening
+   * `Lift-Gamma-Gain-Contrast`: adjust color correction curves on a finished UI http://www.gamesfrommars.fr/lift-gamma-gain-contrast/

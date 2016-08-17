@@ -60,22 +60,10 @@ template VSTEntryPoint(alias ClientClass)
         "   try"
         "   {"
         "       import gfm.core;"
-
-        ///*
-        "       import core.runtime;"
-        "       import core.thread;"
-        "       version(OSX) {" // Must occur here for OSX, but not for Windows
-        "           import dplug.client.dllmain;"
-        "           runtimeInitWorkaround15060();"
-        "       }"
-        "       thread_attachThis();" // Attach VSTPluginMain thread to runtime
-        /**/
-
-            // TODO test on OSX if this doesn't revive #110
-            //    "ScopedForeignCallback!(No.assumeRuntimeIsAlreadyInitialized,"
-            //    "                       Yes.saveRestoreFPU) scopedCallback;"
-            //    "scopedCallback.enter();"
-
+        "       import dplug.core.runtime;"
+        "       ScopedForeignCallback!(No.assumeRuntimeIsAlreadyInitialized,"
+        "                              Yes.saveRestoreFPU) scopedCallback;"
+        "       scopedCallback.enter();"
         "       auto client = new " ~ ClientClass.stringof ~ "();"
 
                 // malloc'd else the GC would not register roots for some reason!

@@ -1931,7 +1931,11 @@ private:
 
                 AudioSampleType* pData = cast(AudioSampleType*)( pOutBufList.mBuffers.ptr[i].mData );
                 if (pData == null)
+                {
+                    // No output buffers given, we use scratch buffers instead
                     pData = _outputScratchBuffer[chIdx].ptr;
+                    pOutBufList.mBuffers.ptr[i].mData = pData;
+                }
 
                 _outputPointers[chIdx] = pData;
             }
