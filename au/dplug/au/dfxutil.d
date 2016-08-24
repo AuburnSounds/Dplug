@@ -213,13 +213,11 @@ struct CFStrLocal
     }
 }
 
-deprecated("use toCFString instead") alias makeCFString = toCFString;
 CFStringRef toCFString(string str) nothrow
 {
     return CFStringCreateWithCString(null, toStringz(str), kCFStringEncodingUTF8);
 }
 
-deprecated("use fromCFString instead") alias copyCFString = fromCFString;
 string fromCFString(CFStringRef cfStr) nothrow
 {
     int n = cast(int)CFStringGetLength(cfStr) + 1;

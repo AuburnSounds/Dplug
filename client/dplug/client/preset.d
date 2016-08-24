@@ -140,11 +140,6 @@ public:
         _current = 0;
     }
 
-    deprecated void addPreset(Preset preset)
-    {
-        assert(false);
-    }
-
     Preset preset(int i) nothrow @nogc
     {
         return presets[i];

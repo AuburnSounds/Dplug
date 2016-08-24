@@ -78,15 +78,6 @@ version(OSX)
             didInitRuntime = true;
         }
     }
-
-    // Initializes the runtime if not already initialized
-    // and attach the running thread if necessary
-    deprecated void attachToRuntimeIfNeeded()
-    {
-        import core.thread;
-        runtimeInitWorkaround15060();
-        thread_attachThis();
-    }
 }
 
 /// RAII struct to cover calback that need attachment and runtime initialized.

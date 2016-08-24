@@ -455,7 +455,6 @@ public:
     }
 
     /// Boilerplate function to get the value of an `IntParameter`, for use in `processAudio`.
-    deprecated("use readIntegerParamValue instead") alias readIntParamValue = readIntegerParamValue;
     final int readIntegerParamValue(int paramIndex) nothrow @nogc
     {
         auto p = param(paramIndex);
@@ -501,12 +500,6 @@ protected:
     /// Override this method to tell which I/O are legal.
     /// See_also: addLegalIO.
     abstract LegalIO[] buildLegalIO();
-
-    /// Adds a legal I/O.
-    deprecated final addLegalIO(int numInputs, int numOutputs)
-    {
-        assert(false);
-    }
 
     IGraphics _graphics;
 

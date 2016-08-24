@@ -284,7 +284,6 @@ private:
 }
 
 /// An integer parameter
-deprecated("Was renamed to IntegerParameter") alias IntParameter = IntegerParameter;
 class IntegerParameter : Parameter
 {
 public:

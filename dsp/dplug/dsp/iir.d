@@ -33,9 +33,6 @@ public
             }
         }
 
-        deprecated("Use initialize() instead") alias clearState = initialize;
-        deprecated("Use initialize() instead") alias clear = clearState;
-
         static if (order == 2)
         {
             T nextSample(T input, const(coeff_t) coeff) nothrow @nogc

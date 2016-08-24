@@ -56,8 +56,6 @@ unittest
     EnvelopeFollower!double b;
 }
 
-deprecated alias AttackReleaseFollower(T) = ExpSmoother!T;
-
 /// Get the module of estimate of analytic signal.
 /// Phase response depends a lot on input signal, it's not great for bass but gets
 /// better in medium frequencies.

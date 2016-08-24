@@ -116,8 +116,6 @@ final class AlignedBuffer(T)
             return _data[i] = x;
         }
 
-        deprecated alias clear = clearContents;
-
         /// Sets size to zero.
         void clearContents() nothrow @nogc
         {
