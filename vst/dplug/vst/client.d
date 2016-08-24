@@ -72,7 +72,9 @@ template VSTEntryPoint(alias ClientClass)
         "   }"
         "   catch (Throwable e)"
         "   {"
-        "       assert(false);"  // so we are clearly identified as the source of the bug
+        "       import dplug.core.funcs;"
+        "       unrecoverableError();"  // best effort, at least it won't crash the host
+        "       return null;"
         "   }"
         "}";
 }
@@ -1003,7 +1005,10 @@ extern(C) private nothrow
         }
         catch (Throwable e)
         {
-            assert(false); // so we are clearly identified as the source of the bug
+            // The dispatcher may throw for remote and unknown reason
+            // We chose a best-effort here.
+            unrecoverableError(); // crash in debug mode
+            return 0;
         }
 
         return result;
@@ -1018,18 +1023,11 @@ extern(C) private nothrow
         // then this thread could be paused by an other thread collecting.
         // We assume that in that case, avoiding pauses in the audio thread wasn't a primary concern of the host.
 
-        try
-        {
-            FPControl fpctrl;
-            fpctrl.initialize();
+        FPControl fpctrl;
+        fpctrl.initialize();
 
-            auto plugin = cast(VSTClient)effect.user;
-            plugin.process(inputs, outputs, sampleFrames);
-        }
-        catch (Throwable e)
-        {
-            assert(false); // so we are clearly identified as the source of the bug
-        }
+        auto plugin = cast(VSTClient)effect.user;
+        plugin.process(inputs, outputs, sampleFrames);        
     }
 
     // VST callback for processReplacing
@@ -1041,18 +1039,11 @@ extern(C) private nothrow
         // then this thread could be paused by an other thread collecting.
         // We assume that in that case, avoiding pauses in the audio thread wasn't a primary concern of the host.
 
-        try
-        {
-            FPControl fpctrl;
-            fpctrl.initialize();
+        FPControl fpctrl;
+        fpctrl.initialize();
 
-            auto plugin = cast(VSTClient)effect.user;
-            plugin.processReplacing(inputs, outputs, sampleFrames);
-        }
-        catch (Throwable e)
-        {
-            assert(false); // so we are clearly identified as the source of the bug
-        }
+        auto plugin = cast(VSTClient)effect.user;
+        plugin.processReplacing(inputs, outputs, sampleFrames);
     }
 
     // VST callback for processDoubleReplacing
@@ -1064,64 +1055,43 @@ extern(C) private nothrow
         // then this thread could be paused by an other thread collecting.
         // We assume that in that case, avoiding pauses in the audio thread wasn't a primary concern of the host.
 
-        try
-        {
-            FPControl fpctrl;
-            fpctrl.initialize();
+        FPControl fpctrl;
+        fpctrl.initialize();
 
-            auto plugin = cast(VSTClient)effect.user;
-            plugin.processDoubleReplacing(inputs, outputs, sampleFrames);
-        }
-        catch (Throwable e)
-        {
-            assert(false); // so we are clearly identified as the source of the bug
-        }
+        auto plugin = cast(VSTClient)effect.user;
+        plugin.processDoubleReplacing(inputs, outputs, sampleFrames);
     }
 
     // VST callback for setParameter
     void setParameterCallback(AEffect *effect, int index, float parameter) nothrow @nogc
     {
-        try
-        {
-            FPControl fpctrl;
-            fpctrl.initialize();
+        FPControl fpctrl;
+        fpctrl.initialize();
 
-            auto plugin = cast(VSTClient)effect.user;
-            Client client = plugin._client;
+        auto plugin = cast(VSTClient)effect.user;
+        Client client = plugin._client;
 
-            if (!plugin.isValidParamIndex(index))
-                return;
+        if (!plugin.isValidParamIndex(index))
+            return;
 
-            client.setParameterFromHost(index, parameter);
-        }
-        catch (Throwable e)
-        {
-            assert(false); // so we are clearly identified as the source of the bug
-        }
+        client.setParameterFromHost(index, parameter);
     }
 
     // VST callback for getParameter
     float getParameterCallback(AEffect *effect, int index) nothrow @nogc
     {
-        try
-        {
-            FPControl fpctrl;
-            fpctrl.initialize();
+        FPControl fpctrl;
+        fpctrl.initialize();
 
-            auto plugin = cast(VSTClient)(effect.user);
-            Client client = plugin._client;
+        auto plugin = cast(VSTClient)(effect.user);
+        Client client = plugin._client;
 
-            if (!plugin.isValidParamIndex(index))
-                return 0.0f;
+        if (!plugin.isValidParamIndex(index))
+            return 0.0f;
 
-            float value;
-            value = client.param(index).getForHost();
-            return value;
-        }
-        catch (Throwable e)
-        {
-            assert(false); // so we are clearly identified as the source of the bug
-        }
+        float value;
+        value = client.param(index).getForHost();
+        return value;
     }
 }
 

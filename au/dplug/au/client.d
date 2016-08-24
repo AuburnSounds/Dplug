@@ -143,7 +143,6 @@ nothrow ComponentResult audioUnitEntryPoint(alias ClientClass)(ComponentParamete
     }
     catch (Throwable e)
     {
-        moreInfoForDebug(e);
         unrecoverableError();
         return noErr;
     }
@@ -212,6 +211,7 @@ nothrow ComponentResult audioUnitCarbonViewEntry(alias ClientClass)(ComponentPar
     }
     catch(Exception e)
     {
+        unrecoverableError();
         return badComponentSelector;
     }
 }

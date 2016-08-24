@@ -231,20 +231,24 @@ void moreInfoForDebug(Throwable e) nothrow @nogc
     }
 }
 
-/// Crash in debug mode only.
+/// To call for something that should never happen, but we still
+/// want to make a "best effort" at runtime even if it can be meaningless.
+/// TODO: change that name, it's not actually unrecoverable
 void unrecoverableError() nothrow @nogc
 {
     debug
     {
-        // break in debug mode
-        debugBreak();
-
-        assert(false); // then crash unconditionally
+        // Crash unconditionally
+        assert(false); 
     }
     else
     {
-        // forget about the error since it doesn't seem a good idea
-        // to crash in audio production
+        // There is a trade-off here, if we crash immediately we will be 
+        // correctly identified by the user as the origin of the bug, which
+        // is always helpful.
+        // But crashing may in many-case also crash the host, which is not very friendly.
+        // Eg: a plugin not instancing vs host crashing.
+        // The reasoning is that the former is better from the user POV.
     }
 }
 

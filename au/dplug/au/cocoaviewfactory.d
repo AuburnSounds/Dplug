@@ -134,6 +134,7 @@ extern(C) nothrow
         }
         catch(Exception e)
         {
+            unrecoverableError();
             return null;
         }
     }
@@ -162,7 +163,7 @@ extern(C) nothrow
         }
         catch(Exception e)
         {
-            debug printf("uiViewForAudioUnit failed\n");
+            unrecoverableError();
             return null;
         }
     }
