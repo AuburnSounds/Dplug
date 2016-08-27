@@ -403,14 +403,13 @@ public:
         _zOrder = zOrder;
     }
 
-
-    /// Mark this element dirty and all elements in the same position.
+    /// Mark this element position dirty.
     final void setDirty() nothrow @nogc
     {
         setDirty(_position);
     }
 
-    /// Mark all elements in an area dirty.
+    /// Mark an area dirty.
     final void setDirty(box2i rect) nothrow @nogc
     {
         _context.dirtyList.addRect(rect);
@@ -447,7 +446,6 @@ public:
     }
 
     /// Appends the Elements that should be drawn, in order.
-    /// The slice is reused to take advantage of .capacity
     /// You should empty it before calling this function.
     /// Everything visible get into the draw list, but that doesn't mean they
     /// will get drawn if they don't overlap with a dirty area.

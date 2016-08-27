@@ -50,7 +50,7 @@ void boxSubtraction(in box2i A, in box2i C, out box2i D, out box2i E, out box2i 
 
 // Change the list of boxes so that the coverage is the same but none overlaps
 // Every box pushed in filtered are non-intersecting.
-// This may modify boxes.
+// This may modify boxes in input.
 // TODO: something better than O(n^2)
 void removeOverlappingAreas(AlignedBuffer!box2i boxes, AlignedBuffer!box2i filtered) nothrow @nogc
 {

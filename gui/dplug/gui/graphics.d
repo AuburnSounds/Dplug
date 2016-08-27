@@ -63,7 +63,8 @@ class GUIGraphics : UIElement, IGraphics
 
         _taskPool = new TaskPool();
 
-        _areasToUpdate = new AlignedBuffer!box2i;
+        _areasToUpdateNonOverlapping = new AlignedBuffer!box2i;
+        _areasToUpdateTemp = new AlignedBuffer!box2i;
 
         _updateRectScratch[0] = new AlignedBuffer!box2i;
         _updateRectScratch[1] = new AlignedBuffer!box2i;
@@ -92,7 +93,8 @@ class GUIGraphics : UIElement, IGraphics
         debug ensureNotInGC("GUIGraphics");
         closeUI();
         _uiContext.destroy();
-        _areasToUpdate.destroy();
+        _areasToUpdateNonOverlapping.destroy();
+        _areasToUpdateTemp.destroy();
         _updateRectScratch[0].destroy();
         _updateRectScratch[1].destroy();
         _areasToRender.destroy();
@@ -225,11 +227,6 @@ class GUIGraphics : UIElement, IGraphics
             return this.outer.recomputeDirtyAreas();
         }
 
-        override bool isUIDirty()
-        {
-            return this.outer.isUIDirty();
-        }
-
         override bool onKeyDown(Key key)
         {
             // Sends the event to the last clicked element first
@@ -309,7 +306,7 @@ class GUIGraphics : UIElement, IGraphics
             compositeGUI(wfb, pf);
 
             // only then is the list of rectangles to update cleared
-            _areasToUpdate.clearContents();
+            _areasToUpdateNonOverlapping.clearContents();
 
             version(BenchmarkCompositing)
             {
@@ -364,7 +361,10 @@ protected:
     Mipmap!RGBA _materialMap;
 
     // The list of areas whose diffuse/depth data have been changed.
-    AlignedBuffer!box2i _areasToUpdate;
+    AlignedBuffer!box2i _areasToUpdateNonOverlapping;
+
+    // Used to maintain the _areasToUpdate invariant of no overlap
+    AlignedBuffer!box2i _areasToUpdateTemp;
 
     // Same, but temporary variable for mipmap generation
     AlignedBuffer!box2i[2] _updateRectScratch;
@@ -394,21 +394,35 @@ protected:
         StopWatch _drawWatch;
     }
 
-    bool isUIDirty() nothrow @nogc
-    {
-        bool dirtyListEmpty = context().dirtyList.isEmpty();
-        return !dirtyListEmpty;
-    }
-
     // Fills _areasToUpdate and _areasToRender
     void recomputeDirtyAreas() nothrow @nogc
     {
         // Get areas to update
         _areasToRender.clearContents();
 
-        context().dirtyList.pullAllRectangles(_areasToUpdate);
+        // First we pull dirty rectangles from the UI
+        context().dirtyList.pullAllRectangles(_areasToUpdateNonOverlapping);
 
-        foreach(dirtyRect; _areasToUpdate)
+        // TECHNICAL DEBT HERE
+        // The problem here is that if the window isn't shown there may be duplicates in
+        // _areasToUpdate, so we have to maintain unicity again
+        // The code with dirty rects is a big mess, it needs a severe rewrite.
+        //
+        // SOLUTION
+        // The fundamental problem is that dirtyList should probably be merged with 
+        // _areasToUpdateNonOverlapping.
+        // _areasToRender should also be purely derived from _areasToUpdateNonOverlapping
+        // Finally the interface of IWindowListener is poorly defined, this ties the window 
+        // to the renderer in a bad way.
+        {
+            _areasToUpdateTemp.clearContents();
+            removeOverlappingAreas(_areasToUpdateNonOverlapping, _areasToUpdateTemp);
+            _areasToUpdateNonOverlapping.clearContents();
+            _areasToUpdateNonOverlapping.pushBack(_areasToUpdateTemp);
+        }
+        assert(haveNoOverlap(_areasToUpdateNonOverlapping[]));
+
+        foreach(dirtyRect; _areasToUpdateNonOverlapping)
         {
             assert(dirtyRect.isSorted);
             assert(!dirtyRect.empty);
@@ -489,10 +503,10 @@ protected:
 
                 // Draw a number of UIElement in parallel, don't use other threads if only one element
                 if (canBeDrawn == 1)
-                    _elemsToDraw[drawn].render(diffuseRef, depthRef, materialRef, _areasToUpdate[]);
+                    _elemsToDraw[drawn].render(diffuseRef, depthRef, materialRef, _areasToUpdateNonOverlapping[]);
                 else
                     foreach(i; _taskPool.parallel(canBeDrawn.iota))
-                        _elemsToDraw[drawn + i].render(diffuseRef, depthRef, materialRef,  _areasToUpdate[]);
+                        _elemsToDraw[drawn + i].render(diffuseRef, depthRef, materialRef, _areasToUpdateNonOverlapping[]);
 
                 drawn += canBeDrawn;
                 assert(drawn <= N);
@@ -542,13 +556,13 @@ protected:
     /// Useful multithreading code.
     void regenerateMipmaps()
     {
-        int numAreas = cast(int)_areasToUpdate.length;
+        int numAreas = cast(int)_areasToUpdateNonOverlapping.length;
 
         // Fill update rect buffer with the content of _areasToUpdateNonOverlapping
         for (int i = 0; i < 2; ++i)
         {
             _updateRectScratch[i].clearContents();
-            _updateRectScratch[i].pushBack(_areasToUpdate[]);
+            _updateRectScratch[i].pushBack(_areasToUpdateNonOverlapping[]);
         }
 
         // We can't use tiled parallelism here because there is overdraw beyond level 0
@@ -562,7 +576,7 @@ protected:
                 int levelMax = min(mipmap.numLevels(), 5);
                 foreach(level; 1 .. mipmap.numLevels())
                 {
-                    Mipmap!RGBA.Quality quality;                        
+                    Mipmap!RGBA.Quality quality;
                     if (level == 1)
                         quality = Mipmap!RGBA.Quality.boxAlphaCovIntoPremul;
                     else
