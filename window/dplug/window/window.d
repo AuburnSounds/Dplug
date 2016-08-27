@@ -125,9 +125,6 @@ interface IWindowListener
     /// recomputeDirtyAreas() MUST have been called before.
     box2i getDirtyRectangle();
 
-    /// Returns: true if a control must be redrawn.
-    bool isUIDirty();
-
     /// Called whenever mouse capture was canceled (ALT + TAB, SetForegroundWindow...)
     void onMouseCaptureCancelled();
 
