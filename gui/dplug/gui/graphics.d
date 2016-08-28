@@ -107,6 +107,8 @@ class GUIGraphics : UIElement, IGraphics
         _diffuseMap.destroy();
         _materialMap.destroy();
         _depthMap.destroy();
+
+        alignedFree(_renderedBuffer);
     }
 
     // Graphics implementation
@@ -265,12 +267,22 @@ class GUIGraphics : UIElement, IGraphics
             _diffuseMap.size(5, width, height);
             _depthMap.size(4, width, height);
             _materialMap.size(0, width, height);
+
+            // Extends buffer
+            size_t sizeNeeded = byteStride(width) * height;
+            _renderedBuffer = cast(ubyte*) alignedRealloc(_renderedBuffer, sizeNeeded, 16);
         }
 
         // Redraw dirtied controls in depth and diffuse maps.
         // Update composited cache.
-        override void onDraw(ImageRef!RGBA wfb, WindowPixelFormat pf)
+        override ImageRef!RGBA onDraw(WindowPixelFormat pf)
         {
+            ImageRef!RGBA wfb;
+            wfb.w = _askedWidth;
+            wfb.h = _askedHeight;
+            wfb.pitch = byteStride(_askedWidth);
+            wfb.pixels = cast(RGBA*)_renderedBuffer;
+
             // Composite GUI
             // Most of the cost of rendering is here
             version(BenchmarkCompositing)
@@ -313,6 +325,8 @@ class GUIGraphics : UIElement, IGraphics
                 _compositingWatch.stop();
                 _compositingWatch.displayMean();
             }
+
+            return wfb;
         }
 
         override void onMouseCaptureCancelled()
@@ -386,6 +400,10 @@ protected:
 
     /// Amount of pixels dirty rectangles are extended with.
     int _updateMargin = 20;
+
+    // The fully rendered framebuffer.
+    // This should point into comitted virtual memory for faster (maybe) upload to device
+    ubyte* _renderedBuffer = null;
 
     version(BenchmarkCompositing)
     {
@@ -603,4 +621,14 @@ protected:
             }
         }
     }
+}
+
+
+enum scanLineAlignment = 4; // could be anything
+
+// given a width, how long in bytes should scanlines be
+int byteStride(int width)
+{
+    int widthInBytes = width * 4;
+    return (widthInBytes + (scanLineAlignment - 1)) & ~(scanLineAlignment-1);
 }

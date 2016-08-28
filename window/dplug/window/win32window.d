@@ -125,12 +125,6 @@ version(Windows)
 
                 // Unregister the window class, which was unique
                 UnregisterClassW(_wndClass.lpszClassName, getModuleHandle());
-
-                if (_buffer != null)
-                {
-                    VirtualFree(_buffer, 0, MEM_RELEASE);
-                    _buffer = null;
-                }
             }
         }
 
@@ -151,15 +145,6 @@ version(Windows)
             // only do something if the client size has changed
             if (newWidth != _width || newHeight != _height)
             {
-                // Extends buffer
-                if (_buffer != null)
-                {
-                    VirtualFree(_buffer, 0, MEM_RELEASE);
-                    _buffer = null;
-                }
-
-                size_t sizeNeeded = byteStride(newWidth) * newHeight;
-                _buffer = cast(ubyte*) VirtualAlloc(null, sizeNeeded, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
                 _width = newWidth;
                 _height = newHeight;
 
@@ -298,14 +283,8 @@ version(Windows)
 
                         // TODO: check resize work
 
-                        ImageRef!RGBA wfb;
-                        wfb.w = _width;
-                        wfb.h = _height;
-                        wfb.pitch = byteStride(_width);
-                        wfb.pixels = cast(RGBA*)_buffer;
-
                         // For efficiency purpose, render in BGRA for Windows
-                        _listener.onDraw(wfb, WindowPixelFormat.BGRA8);
+                        auto wfb = _listener.onDraw(WindowPixelFormat.BGRA8);
 
                         box2i areaToRedraw = box2i(r.left, r.top, r.right, r.bottom);
 
@@ -359,16 +338,16 @@ version(Windows)
                 with (bmi)
                 {
                     biSize          = BITMAPINFOHEADER.sizeof;
-                    biWidth         = _width;
-                    biHeight        = -_height;
+                    biWidth         = wfb.w;
+                    biHeight        = -wfb.h;
                     biPlanes        = 1;
                     biCompression = BI_RGB;
                     biXPelsPerMeter = 72;
                     biYPelsPerMeter = 72;
                     biBitCount      = 32;
-                    biSizeImage     = byteStride(_width) * _height;
+                    biSizeImage     = wfb.pitch * wfb.h;
                     SetDIBitsToDevice(hdc, area.min.x, area.min.y, area.width, area.height,
-                                      area.min.x, -area.min.y - area.height + _height, 0, _height, _buffer, cast(BITMAPINFO *)&bmi, DIB_RGB_COLORS);
+                                      area.min.x, -area.min.y - area.height + wfb.h, 0, wfb.h, wfb.pixels, cast(BITMAPINFO *)&bmi, DIB_RGB_COLORS);
                 }
             }
 
@@ -424,9 +403,6 @@ version(Windows)
 
         IWindowListener _listener; // contract: _listener must only be used in the message callback
 
-        // The framebuffer. This should point into commited virtual memory for faster (maybe) upload to device
-        ubyte* _buffer = null;
-
         bool _terminated = false;
         int _width = 0;
         int _height = 0;
@@ -473,13 +449,6 @@ version(Windows)
         }
     }
 
-    // given a width, how long in bytes should scanlines be
-    int byteStride(int width)
-    {
-        enum alignment = 4;
-        int widthInBytes = width * 4;
-        return (widthInBytes + (alignment - 1)) & ~(alignment-1);
-    }
 
     extern(Windows) nothrow
     {
