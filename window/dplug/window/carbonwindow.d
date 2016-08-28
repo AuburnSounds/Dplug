@@ -39,7 +39,8 @@ version(OSX)
         CGColorSpaceRef _colorSpace = null;
         CGDataProviderRef _dataProvider = null;
 
-        ubyte* _buffer = null;
+        // Rendered frame buffer
+        ImageRef!RGBA _wfb;
 
         int _width = 0;
         int _height = 0;
@@ -138,14 +139,12 @@ version(OSX)
             _lastMeasturedTimeInMs = _timeAtCreationInMs = getTimeMs();
         }
 
-        void clearBuffers()
+        void clearDataProvider()
         {
-            if (_buffer != null)
+            if (_dataProvider != null)
             {
-                free(_buffer);
-                _buffer = null;
-
                 CGDataProviderRelease(_dataProvider);
+                _dataProvider = null;
             }
         }
 
@@ -154,7 +153,7 @@ version(OSX)
             debug ensureNotInGC("CarbonWindow");
             _terminated = true;
 
-            clearBuffers();
+            clearDataProvider();
 
             CGColorSpaceRelease(_colorSpace);
 
@@ -283,12 +282,7 @@ version(OSX)
                             }
 
                             // Redraw dirty UI
-                            ImageRef!RGBA wfb;
-                            wfb.w = _width;
-                            wfb.h = _height;
-                            wfb.pitch = byteStride(_width);
-                            wfb.pixels = cast(RGBA*)_buffer;
-                            _listener.onDraw(wfb, WindowPixelFormat.RGBA8);
+                            _listener.onDraw(WindowPixelFormat.RGBA8);
 
                             CGContextRef contextRef;
 
@@ -482,17 +476,14 @@ version(OSX)
             if ( (newWidth != _width) || (newHeight != _height) )
             {
                 // Extends buffer
-                clearBuffers();
-
-                size_t sizeNeeded = byteStride(newWidth) * newHeight;
-                 _buffer = cast(ubyte*) malloc(sizeNeeded);
-
-                // Create a new data provider
-                _dataProvider = CGDataProviderCreateWithData(null, _buffer, sizeNeeded, null);
+                clearDataProvider();
 
                 _width = newWidth;
                 _height = newHeight;
-                _listener.onResized(_width, _height);
+                _wfb = _listener.onResized(_width, _height);
+
+                // Create a new data provider
+                _dataProvider = CGDataProviderCreateWithData(null, _wfb.pixels, _wfb.pitch * _wfb.h, null);
                 return true;
             }
             else

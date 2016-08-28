@@ -53,7 +53,7 @@ version(OSX)
         int _askedWidth;
         int _askedHeight;
 
-        ubyte* _buffer = null;
+        ImageRef!RGBA _wfb;
 
         uint _timeAtCreationInMs;
         uint _lastMeasturedTimeInMs;
@@ -138,12 +138,6 @@ version(OSX)
                 _view = DPlugCustomView(null);
 
                 DPlugCustomView.unregisterSubclass();
-
-                if (_buffer != null)
-                {
-                    free(_buffer);
-                    _buffer = null;
-                }
             }
             else
             {
@@ -328,16 +322,10 @@ version(OSX)
                 _listener.recomputeDirtyAreas();
             }
 
-            // draw buffers
-            ImageRef!RGBA wfb;
-            wfb.w = _width;
-            wfb.h = _height;
-            wfb.pitch = byteStride(_width);
-            wfb.pixels = cast(RGBA*)_buffer;
-            _listener.onDraw(wfb, WindowPixelFormat.ARGB8);
+            _listener.onDraw(WindowPixelFormat.ARGB8);
 
-            size_t sizeNeeded = byteStride(_width) * _height;
-            _imageData = NSData.dataWithBytesNoCopy(_buffer, sizeNeeded, false);
+            size_t sizeNeeded = _wfb.pitch * _wfb.h;
+            _imageData = NSData.dataWithBytesNoCopy(_wfb.pixels, sizeNeeded, false);
 
             CIImage image = CIImage.imageWithBitmapData(_imageData,
                                                         byteStride(_width),
@@ -354,18 +342,9 @@ version(OSX)
             // only do something if the client size has changed
             if ( (newWidth != _width) || (newHeight != _height) )
             {
-                // Extends buffer
-                if (_buffer != null)
-                {
-                    free(_buffer);
-                    _buffer = null;
-                }
-
-                size_t sizeNeeded = byteStride(newWidth) * newHeight;
-                 _buffer = cast(ubyte*) malloc(sizeNeeded);
                 _width = newWidth;
                 _height = newHeight;
-                _listener.onResized(_width, _height);
+                _wfb = _listener.onResized(_width, _height);
                 return true;
             }
             else

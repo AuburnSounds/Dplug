@@ -256,7 +256,7 @@ class GUIGraphics : UIElement, IGraphics
             return _areasToRender[].boundingBox();
         }
 
-        override void onResized(int width, int height)
+        override ImageRef!RGBA onResized(int width, int height)
         {
             _askedWidth = width;
             _askedHeight = height;
@@ -271,11 +271,18 @@ class GUIGraphics : UIElement, IGraphics
             // Extends buffer
             size_t sizeNeeded = byteStride(width) * height;
             _renderedBuffer = cast(ubyte*) alignedRealloc(_renderedBuffer, sizeNeeded, 16);
+
+            ImageRef!RGBA wfb;
+            wfb.w = _askedWidth;
+            wfb.h = _askedHeight;
+            wfb.pitch = byteStride(_askedWidth);
+            wfb.pixels = cast(RGBA*)_renderedBuffer;
+            return wfb;
         }
 
         // Redraw dirtied controls in depth and diffuse maps.
         // Update composited cache.
-        override ImageRef!RGBA onDraw(WindowPixelFormat pf)
+        override void onDraw(WindowPixelFormat pf)
         {
             ImageRef!RGBA wfb;
             wfb.w = _askedWidth;
@@ -325,8 +332,6 @@ class GUIGraphics : UIElement, IGraphics
                 _compositingWatch.stop();
                 _compositingWatch.displayMean();
             }
-
-            return wfb;
         }
 
         override void onMouseCaptureCancelled()
@@ -427,10 +432,10 @@ protected:
         // The code with dirty rects is a big mess, it needs a severe rewrite.
         //
         // SOLUTION
-        // The fundamental problem is that dirtyList should probably be merged with 
+        // The fundamental problem is that dirtyList should probably be merged with
         // _areasToUpdateNonOverlapping.
         // _areasToRender should also be purely derived from _areasToUpdateNonOverlapping
-        // Finally the interface of IWindowListener is poorly defined, this ties the window 
+        // Finally the interface of IWindowListener is poorly defined, this ties the window
         // to the renderer in a bad way.
         {
             _areasToUpdateTemp.clearContents();
@@ -599,7 +604,7 @@ protected:
                         quality = Mipmap!RGBA.Quality.boxAlphaCovIntoPremul;
                     else
                         quality = Mipmap!RGBA.Quality.cubic;
-                
+
                     foreach(ref area; _updateRectScratch[i])
                     {
                         area = mipmap.generateNextLevel(quality, area, level);

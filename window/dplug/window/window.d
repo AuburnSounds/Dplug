@@ -105,14 +105,15 @@ interface IWindowListener
     bool onKeyUp(Key up);
 
     /// An image you have to draw to, or return that nothing has changed.
-    /// The size of this image is given before-hand by onResized.
+    /// The location of this image is given before-hand by onResized.
     /// recomputeDirtyAreas() MUST have been called before.
-    /// The full rendered framebuffer is given back.
-    ImageRef!RGBA onDraw(WindowPixelFormat pf);
+    /// The pixel format cannot change over the lifetime of the window.
+    void onDraw(WindowPixelFormat pf);
 
     /// The drawing area size has changed.
     /// Always called at least once before onDraw.
-    void onResized(int width, int height);
+    /// Returns: the location of the full rendered framebuffer.
+    ImageRef!RGBA onResized(int width, int height);
 
     /// Recompute internally what needs be done for the next onDraw.
     /// This function MUST be called before calling `onDraw` and `getDirtyRectangle`.
