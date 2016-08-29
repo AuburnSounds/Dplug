@@ -16,7 +16,6 @@ import gfm.core.memory;
 import gfm.math;
 import ae.utils.graphics;
 import ae.utils.graphics.view;
-import imageformats;
 
 
 /// Crop a view from a box2i
@@ -472,6 +471,13 @@ unittest
 // Image loading
 //
 
+struct IFImage
+{
+    int w, h;
+    ubyte[] pixels;
+    int channels; // number of channels
+}
+
 IFImage readImageFromMem(const(ubyte[]) imageData, int channels)
 {
     static immutable ubyte[8] pngSignature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
@@ -489,10 +495,7 @@ IFImage readImageFromMem(const(ubyte[]) imageData, int channels)
         IFImage result;
         result.w = width;
         result.h = height;
-        if (channels == 1) result.c = ColFmt.Y;
-        if (channels == 2) result.c = ColFmt.YA;
-        if (channels == 3) result.c = ColFmt.RGB;
-        if (channels == 4) result.c = ColFmt.RGBA;
+        result.channels = channels;
         int size = width * height * channels; 
         result.pixels = new ubyte[size];
         import core.stdc.string: memcpy;
@@ -501,7 +504,22 @@ IFImage readImageFromMem(const(ubyte[]) imageData, int channels)
     }
     else
     {
-        return read_image_from_mem(imageData, channels);
+        bool isJPEG = (imageData.length >= 2) && (imageData[0] == 0xff) && (imageData[1] == 0xd8);
+
+        if (isJPEG)
+        {
+            import dplug.gui.jpegload;
+
+            IFImage result;
+            int comp;
+            ubyte[] pixels = decompress_jpeg_image_from_memory!false(imageData, result.w, result.h, comp, channels);
+            result.channels = channels;
+            result.pixels = pixels;
+
+            return result;
+        }
+        else
+            assert(false); // Only PNG and JPEG are supported
     }
 }
 
@@ -537,7 +555,7 @@ OwnedImage!RGBA loadImageSeparateAlpha(in void[] imageDataRGB, in void[] imageDa
 
     if ( (widthA != widthRGB) || (heightRGB != heightA) )
     {
-        throw new ImageIOException("Image size mismatch");
+        throw new Exception("Image size mismatch");
     }
 
     int width = widthA;
