@@ -148,7 +148,7 @@ version(Windows)
                 _width = newWidth;
                 _height = newHeight;
 
-                _listener.onResized(_width, _height);
+                _wfb = _listener.onResized(_width, _height);
                 return true;
             }
             else
@@ -284,12 +284,12 @@ version(Windows)
                         // TODO: check resize work
 
                         // For efficiency purpose, render in BGRA for Windows
-                        auto wfb = _listener.onDraw(WindowPixelFormat.BGRA8);
+                        _listener.onDraw(WindowPixelFormat.BGRA8);
 
                         box2i areaToRedraw = box2i(r.left, r.top, r.right, r.bottom);
 
                         box2i[] areasToRedraw = (&areaToRedraw)[0..1];
-                        swapBuffers(wfb, areasToRedraw);
+                        swapBuffers(_wfb, areasToRedraw);
                     }
                     return 0;
                 }
@@ -402,6 +402,8 @@ version(Windows)
         uint _lastMeasturedTimeInMs;
 
         IWindowListener _listener; // contract: _listener must only be used in the message callback
+
+        ImageRef!RGBA _wfb; // framebuffer reference
 
         bool _terminated = false;
         int _width = 0;
