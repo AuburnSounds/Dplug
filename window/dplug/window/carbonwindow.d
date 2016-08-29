@@ -483,7 +483,7 @@ version(OSX)
                 _wfb = _listener.onResized(_width, _height);
 
                 // Create a new data provider
-                _dataProvider = CGDataProviderCreateWithData(null, _wfb.pixels, _wfb.pitch * _wfb.h, null);
+                _dataProvider = CGDataProviderCreateWithData(null, _wfb.pixels, cast(int)(_wfb.pitch) * _wfb.h, null);
                 return true;
             }
             else

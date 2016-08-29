@@ -345,7 +345,7 @@ version(Windows)
                     biXPelsPerMeter = 72;
                     biYPelsPerMeter = 72;
                     biBitCount      = 32;
-                    biSizeImage     = wfb.pitch * wfb.h;
+                    biSizeImage     = cast(int)(wfb.pitch) * wfb.h;
                     SetDIBitsToDevice(hdc, area.min.x, area.min.y, area.width, area.height,
                                       area.min.x, -area.min.y - area.height + wfb.h, 0, wfb.h, wfb.pixels, cast(BITMAPINFO *)&bmi, DIB_RGB_COLORS);
                 }
