@@ -35,7 +35,7 @@ void usage()
     flag("-a --arch", "Selects target architecture.", "x86 | x86_64 | all", "Windows => all   OSX => x86_64");
     flag("-b --build", "Selects build type.", "same ones as dub accepts", "debug");
     flag("--compiler", "Selects D compiler.", "dmd | ldc | gdc", "ldc");
-    flag("-c --config", "Selects build configuration.", "VST | AU | name starting with \"VST\" or \"AU\"", "ldc");
+    flag("-c --config", "Adds a build configuration.", "VST | AU | name starting with \"VST\" or \"AU\"", "all");
     flag("-f --force", "Forces rebuild", null, "no");
     flag("--combined", "Combined build", null, "no");
     flag("-q --quiet", "Quieter output", null, "no");
@@ -81,7 +81,7 @@ int main(string[] args)
             archs = [ Arch.x86_64 ];
 
         string build="debug";
-        string config = "VST";
+        string[] configurations = [];
         bool verbose = false;
         bool quiet = false;
         bool force = false;
@@ -121,7 +121,7 @@ int main(string[] args)
             else if (arg == "-c" || arg == "--config")
             {
                 ++i;
-                config = args[i];
+                configurations ~= args[i];
             }
             else if (arg == "--combined")
                 combined = true;
@@ -169,6 +169,11 @@ int main(string[] args)
         cwriteln("*** Reading dub.json and plugin.json...".white);
 
         Plugin plugin = readPluginDescription();
+
+        // If no configurations provided, take all
+        if (configurations == [])
+            configurations = plugin.getAllConfigurations();
+
         string dirName = "builds";
 
         void fileMove(string source, string dest)
@@ -191,7 +196,7 @@ int main(string[] args)
             string dot = ".".green;
             cwritefln("=> The task is to bundle plugin ".green ~ "%s".yellow ~ " from ".green ~ "%s".yellow ~ dot, plugin.pluginName, plugin.vendorName);
             cwritefln("   This plugin will be working in ".green ~ "%s".yellow~dot, toStringArchs(archs));
-            cwritefln("   The choosen configuration is ".green ~ "%s".yellow~dot, config);
+            cwritefln("   The choosen configurations are ".green ~ "%s".yellow~dot, configurations);
             cwritefln("   The choosen build type is ".green ~ "%s".yellow ~ dot, build);
             if (publish)
                 cwritefln("   The binaries will be copied to standard plugin directories.".green);
@@ -368,8 +373,9 @@ int main(string[] args)
         if (plugin.userManualPath)
             std.file.copy(plugin.userManualPath, dirName ~ "/" ~ baseName(plugin.userManualPath));
 
-        // DMD builds
-        buildAndPackage(toString(compiler), config, archs, iconPath);
+        // Build various configuration
+        foreach(config; configurations)
+            buildAndPackage(toString(compiler), config, archs, iconPath);
         return 0;
     }
     catch(ExternalProgramErrored e)
@@ -394,7 +400,7 @@ void buildPlugin(string compiler, string config, string build, bool is64b, bool 
         combined = true; // for -FPIC
     }
 
-    cwritefln("*** Building with %s, %s arch...".white, compiler, is64b ? "64-bit" : "32-bit");
+    cwritefln("*** Building configuration %s with %s, %s arch...".white, config, compiler, is64b ? "64-bit" : "32-bit");
     // build the output file
     string arch = is64b ? "x86_64" : "x86";
 

@@ -99,6 +99,9 @@ struct Plugin
     string vendorName;
     string vendorUniqueID;
 
+    // Available configurations, taken from dub.json
+    string[] configurations;
+
     // Public version of the plugin
     // Each release of a plugin should upgrade the version somehow
     int publicVersionMajor;
@@ -168,6 +171,11 @@ struct Plugin
     {
         return CFBundleIdentifierPrefix ~ ".audiounit." ~ sanitizeBundleString(pluginName);
     }
+
+    string[] getAllConfigurations()
+    {
+        return configurations;
+    }
 }
 
 Plugin readPluginDescription()
@@ -189,6 +197,18 @@ Plugin readPluginDescription()
     catch(Exception e)
     {
         throw new Exception("Missing \"name\" in dub.json (eg: \"myplugin\")");
+    }
+
+    try
+    {
+        JSONValue[] config = dubFile["configurations"].array();
+        foreach(c; config)
+            result.configurations ~= c["name"].str;
+    }
+    catch(Exception e)
+    {
+        warning("Couldln't parse configurations names in dub.json.");
+        result.configurations = [];
     }
 
     if (!exists("plugin.json"))
@@ -310,6 +330,8 @@ Plugin readPluginDescription()
     {
         throw new Exception("\"publicVersion\" should follow the form x.y.z with 3 integers (eg: \"1.0.0\")");
     }
+
+
 
     return result;
 }
