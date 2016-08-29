@@ -1229,8 +1229,11 @@ private:
 
             case kAudioUnitProperty_HostCallbacks: // 27
             {
-                // Not sure why it's not writing anything
-                return kAudioUnitErr_InvalidProperty;
+                if(!isGlobalScope(scope_))
+                    return kAudioUnitErr_InvalidScope;
+                *pDataSize = HostCallbackInfo.sizeof;
+                *pWriteable = true;
+                return noErr;
             }
 
             case kAudioUnitProperty_ElementName: // 30
@@ -1552,9 +1555,9 @@ private:
                 return noErr;
             }
 
-            case kAudioUnitProperty_HostCallbacks:
+            case kAudioUnitProperty_HostCallbacks: // 27
             {
-                if (!isInputScope(scope_))
+                if (!isGlobalScope(scope_))
                     return kAudioUnitScope_Global;
                 _hostCallbacks = *(cast(HostCallbackInfo*)pData);
                 return noErr;
