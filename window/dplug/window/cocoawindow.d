@@ -512,8 +512,7 @@ version(OSX)
 
 
 
-    alias CocoaScopedCallback = ScopedForeignCallback!(Yes.assumeRuntimeIsAlreadyInitialized,
-                                                       Yes.saveRestoreFPU);
+    alias CocoaScopedCallback = ScopedForeignCallback!(true, true);
 
     // Overridden function gets called with an id, instead of the self pointer.
     // So we have to get back the D class object address.

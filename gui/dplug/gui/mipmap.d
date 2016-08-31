@@ -5,7 +5,7 @@
 */
 module dplug.gui.mipmap;
 
-import std.algorithm;
+import std.algorithm.comparison;
 
 import ae.utils.graphics;
 

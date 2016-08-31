@@ -110,7 +110,7 @@ public:
     {
         debug _entered = true;
 
-        static if (saveRestoreFPU == Yes.saveRestoreFPU)
+        static if (saveRestoreFPU)
             _fpControl.initialize();
 
         // Runtime initialization if needed.
@@ -162,7 +162,7 @@ private:
     static if (detachThreadsAfterCallback)
         bool _threadWasAttached = false;
 
-    static if (saveRestoreFPU == Yes.saveRestoreFPU)
+    static if (saveRestoreFPU)
         FPControl _fpControl;
 
     debug bool _entered = false;

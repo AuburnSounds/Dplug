@@ -6,7 +6,7 @@
 module dplug.gui.knob;
 
 import std.math;
-import std.algorithm;
+import std.algorithm.comparison;
 
 import dplug.gui.element;
 import dplug.gui.knob;

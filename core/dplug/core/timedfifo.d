@@ -7,10 +7,6 @@ module dplug.core.timedfifo;
 
 import core.atomic;
 
-import std.algorithm;
-
-//import gfm.math;
-
 import dplug.core.unchecked_sync;
 import dplug.core.funcs;
 

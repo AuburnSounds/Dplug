@@ -8,7 +8,9 @@ module dplug.gui.graphics;
 import std.math;
 import std.range;
 import std.parallelism;
-import std.algorithm;
+import std.algorithm.comparison;
+import std.algorithm.sorting;
+import std.algorithm.mutation;
 
 import ae.utils.graphics;
 

@@ -284,5 +284,5 @@ private
 
 unittest
 {
-    TimeFIFO!float a;
+    TimedFIFO!float a;
 }

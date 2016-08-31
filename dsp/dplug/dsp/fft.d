@@ -12,8 +12,8 @@ import std.math;
 
 import gfm.math.funcs;
 
-import dplug.core,
-       dplug.dsp.window;
+import dplug.dsp.window;
+import dplug.core.funcs;
 
 
 enum FFTDirection

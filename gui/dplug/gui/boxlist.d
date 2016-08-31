@@ -7,7 +7,7 @@ module dplug.gui.boxlist;
 
 // Operations on list of boxes
 
-import std.algorithm;
+import std.algorithm.comparison;
 
 import gfm.math;
 

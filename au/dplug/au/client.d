@@ -122,8 +122,7 @@ nothrow ComponentResult audioUnitEntryPoint(alias ClientClass)(ComponentParamete
             return auClient.dispatcher(select, params);
         }
 
-        ScopedForeignCallback!(No.assumeRuntimeIsAlreadyInitialized,
-                               Yes.saveRestoreFPU) scopedCallback;
+        ScopedForeignCallback!(false, true) scopedCallback;
         scopedCallback.enter();
 
         if (select == kComponentOpenSelect)
@@ -159,8 +158,7 @@ nothrow ComponentResult audioUnitCarbonViewEntry(alias ClientClass)(ComponentPar
 {
     try
     {
-        ScopedForeignCallback!(No.assumeRuntimeIsAlreadyInitialized,
-                               Yes.saveRestoreFPU) scopedCallback;
+        ScopedForeignCallback!(false, true) scopedCallback;
         scopedCallback.enter();
 
         int select = params.what;

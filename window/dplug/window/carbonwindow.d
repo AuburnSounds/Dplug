@@ -491,8 +491,7 @@ version(OSX)
         }
     }
 
-    alias CarbonScopedCallback = ScopedForeignCallback!(Yes.assumeRuntimeIsAlreadyInitialized,
-                                                        Yes.saveRestoreFPU);
+    alias CarbonScopedCallback = ScopedForeignCallback!(true, true);
 
     extern(C) OSStatus eventCallback(EventHandlerCallRef pHandlerCall, EventRef pEvent, void* user) nothrow
     {

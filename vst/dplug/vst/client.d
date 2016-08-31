@@ -61,8 +61,7 @@ template VSTEntryPoint(alias ClientClass)
         "   {"
         "       import gfm.core;"
         "       import dplug.core.runtime;"
-        "       ScopedForeignCallback!(No.assumeRuntimeIsAlreadyInitialized,"
-        "                              Yes.saveRestoreFPU) scopedCallback;"
+        "       ScopedForeignCallback!(false, true) scopedCallback;"
         "       scopedCallback.enter();"
         "       auto client = new " ~ ClientClass.stringof ~ "();"
 
@@ -989,8 +988,7 @@ extern(C) private nothrow
 
         try
         {
-            ScopedForeignCallback!(Yes.assumeRuntimeIsAlreadyInitialized,
-                                   Yes.saveRestoreFPU) scopedCallback;
+            ScopedForeignCallback!(true, true) scopedCallback;
             scopedCallback.enter();
 
             version(logVSTDispatcher)

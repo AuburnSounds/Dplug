@@ -127,8 +127,7 @@ extern(C) nothrow
     {
         try
         {
-            ScopedForeignCallback!(Yes.assumeRuntimeIsAlreadyInitialized,
-                                   No.saveRestoreFPU) scopedCallback;
+            ScopedForeignCallback!(true, false) scopedCallback;
             scopedCallback.enter();
 
             return NSString.stringWith("Filter View")._id;
@@ -150,8 +149,7 @@ extern(C) nothrow
     {
         try
         {
-            ScopedForeignCallback!(Yes.assumeRuntimeIsAlreadyInitialized,
-                                   Yes.saveRestoreFPU) scopedCallback;
+            ScopedForeignCallback!(true, true) scopedCallback;
             scopedCallback.enter();
 
             AUClient plugin = cast(AUClient)( cast(void*)GetComponentInstanceStorage(audioUnit) );

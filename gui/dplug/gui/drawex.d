@@ -8,7 +8,7 @@ module dplug.gui.drawex;
 // Extends ae.graphics.utils
 // Additional graphics primitives, and image loading
 
-import std.algorithm;
+import std.algorithm.comparison;
 import std.math;
 import std.traits;
 
