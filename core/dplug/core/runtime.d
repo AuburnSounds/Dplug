@@ -5,8 +5,6 @@
  */
 module dplug.core.runtime;
 
-public import std.typecons;
-
 import dplug.core.fpcontrol;
 
 // Helpers to deal with the D runtime.
@@ -82,8 +80,8 @@ version(OSX)
 
 /// RAII struct to cover calback that need attachment and runtime initialized.
 /// This deals with runtime inialization and thread attachment in a very explicit way.
-struct ScopedForeignCallback(Flag!"assumeRuntimeIsAlreadyInitialized" assumeRuntimeIsAlreadyInitialized,
-                             Flag!"saveRestoreFPU" saveRestoreFPU)
+struct ScopedForeignCallback(bool assumeRuntimeIsAlreadyInitialized,
+                             bool saveRestoreFPU)
 {
 public:
 
@@ -91,7 +89,7 @@ public:
     version(Windows)
         enum bool doInitializeRuntime = false;
     else
-        enum bool doInitializeRuntime = !(assumeRuntimeIsAlreadyInitialized == Yes.assumeRuntimeIsAlreadyInitialized);
+        enum bool doInitializeRuntime = !assumeRuntimeIsAlreadyInitialized;
 
 
     version(OSX)

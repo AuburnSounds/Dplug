@@ -1,7 +1,11 @@
+/**
+* Copyright: Copyright Auburn Sounds 2015-2016
+* License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
+* Authors:   Guillaume Piolat
+*/
 module dplug.core.funcs;
 
 import std.math;
-import gfm.core;
 
 version(LDC)
 {
@@ -217,18 +221,6 @@ void reallocBuffer(T)(ref T[] buffer, size_t length, int alignment = 16) nothrow
 T unsafeObjectCast(T)(Object obj)
 {
     return cast(T)(cast(void*)(obj));
-}
-
-/// Friendly breakpoint for debug mode.
-void moreInfoForDebug(Throwable e) nothrow @nogc
-{
-    debug
-    {
-        string msg = e.msg;
-        string file = e.file;
-        size_t line = e.line;
-        debugBreak();
-    }
 }
 
 /// To call for something that should never happen, but we still
