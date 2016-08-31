@@ -472,7 +472,8 @@ public:
     * @param SampleRate Sample rate.
     */
     void initialize(double sampleRate, double Attack, double Release, 
-                                       double AttackDelay, double ReleaseDelay) nothrow @nogc
+                                       double AttackDelay, double ReleaseDelay,
+                                       bool isInverse) nothrow @nogc
     {
         double a;
         double adly;
@@ -494,17 +495,19 @@ public:
             adly = ReleaseDelay;
         }
 
-        // TODO: move this in processing whenever attack or release changes
-        calcMults( SampleRate, a, adly, enva, enva5 );
-        calcMults( SampleRate, b, bdly, envb, envb5 );
+        _isInverse = isInverse;
 
-        clearState();
+        // TODO: move this in processing whenever attack or release changes
+        calcMults( sampleRate, a, adly, enva.ptr, enva5 );
+        calcMults( sampleRate, b, bdly, envb.ptr, envb5 );
+
+        clearState(0);
     }
 
     double nextSample( double v ) nothrow @nogc
     {
         const double resa = nextSampleSymmetric( v );
-        const double cres = ( IsInverse ? resa <= prevr : resa >= prevr );
+        const double cres = ( _isInverse ? resa <= prevr : resa >= prevr );
         int i;
 
         if( cres )
@@ -563,6 +566,7 @@ private:
     double envb5; ///< Release stage envelope multiplier 5.
     double envr5; ///< Signal envelope (release) stage 5.
     double prevr; ///< Previous output (release).
+    bool _isInverse;
 
     /**
     * Function clears state of *this object.
@@ -673,7 +677,7 @@ private:
                 0.885938 * log( e0 );
         }
 
-        const double c = M_2PI / SampleRate;
+        const double c = 2 * PI / SampleRate;
         envs[ 0 ] = calcLP1CoeffLim( c / ( Time * envs[ 0 ]));
         envs[ 1 ] = calcLP1CoeffLim( c / ( Time * envs[ 1 ]));
         envs[ 2 ] = calcLP1CoeffLim( c / ( Time * envs[ 2 ]));
@@ -706,7 +710,7 @@ private:
     */
     static double calcLP1CoeffLim( const double theta ) nothrow @nogc
     {
-        return( calcLP1Coeff( theta < M_PI ? theta : M_PI ));
+        return( calcLP1Coeff( theta < PI ? theta : PI ));
     }
 }
 
