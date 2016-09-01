@@ -1173,6 +1173,7 @@ public:
             info.timeInSamples = cast(long)(0.5f + ti.samplePos);
             if ((ti.flags & kVstTempoValid) && ti.tempo > 0)
                 info.tempo = ti.tempo;
+            info.hostIsPlaying = (ti.flags & kVstTransportPlaying) != 0;
         }
         else
         {

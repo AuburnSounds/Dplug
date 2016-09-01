@@ -2061,6 +2061,7 @@ private:
             hostCallbacks.transportStateProc(hostCallbacks.hostUserData, &playing, &changed, &samplePos,
                                              &looping, &loopStartBeat, &loopEndBeat);
             result.timeInSamples = cast(long)(samplePos + 0.5);
+            result.hostIsPlaying = (playing  != 0);
         }
 
         if (hostCallbacks.beatAndTempoProc)

@@ -110,6 +110,9 @@ struct TimeInfo
 
     /// Current time from the beginning of the song in samples.
     long timeInSamples = 0;
+
+    /// Whether the host sequencer is currently playing
+    bool hostIsPlaying;
 }
 
 /// Describe a combination of input channels count and output channels count
