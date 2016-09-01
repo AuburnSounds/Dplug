@@ -91,19 +91,10 @@ public:
     else
         enum bool doInitializeRuntime = !assumeRuntimeIsAlreadyInitialized;
 
-
-    version(OSX)
-    {
-        // Detaching threads when going out of callbacks, except for the main
-        // thread in VST (the one calling VSTPlugin Main).
-        // This fixed #110 (Cubase + OS X), at a runtime cost.
-        enum bool detachThreadsAfterCallback = true;
-    }
-    else
-    {
-        // No such problem on Windows
-        enum bool detachThreadsAfterCallback = false;
-    }
+    // Detaching threads when going out of callbacks.
+    // This avoid the GC pausing threads that are doing their things or have died since.
+    // This fixed #110 (Cubase + OS X), at a runtime cost.
+    enum bool detachThreadsAfterCallback = true;
 
     /// Thread that shouldn't be attached are eg. the audio threads.
     void enter()

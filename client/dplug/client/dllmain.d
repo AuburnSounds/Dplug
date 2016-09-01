@@ -30,13 +30,11 @@ version(Windows)
                         break;
 
                     case DLL_THREAD_ATTACH:
-                        // TODO: see if we can avoid to do anything here
                         dll_thread_attach(false, true);
                         break;
 
                     case DLL_THREAD_DETACH:
-                        // TODO: see if we can avoid to do anything here
-                        dll_thread_attach(true, true); 
+                        dll_thread_detach(false, true); 
                         break;
 
                     default:
