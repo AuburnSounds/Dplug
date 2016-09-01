@@ -154,6 +154,13 @@ private:
     float _timeDebt;
     float _integerDebt; // because of rounding
 
+    /// Returns: true of i is a power of 2.
+    static bool isPowerOf2(int i) @nogc nothrow
+    {
+        assert(i >= 0);
+        return (i != 0) && ((i & (i - 1)) == 0);
+    }
+
 public:
 
     /// Params:
@@ -268,16 +275,6 @@ public:
     bool readOldestDataAndDropSome(T* output, double dt) nothrow @nogc
     {
         return readOldestDataAndDropSome(output[0..1], dt) != 0;
-    }
-}
-
-private
-{
-    /// Returns: true of i is a power of 2.
-    bool isPowerOf2(int i) @nogc nothrow 
-    {
-        assert(i >= 0);
-        return (i != 0) && ((i & (i - 1)) == 0);
     }
 }
 
