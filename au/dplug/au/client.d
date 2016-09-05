@@ -1316,7 +1316,11 @@ private:
 
                     size_t desiredLength = parameter.name.length;
                     if (pIDName.inDesiredLength != -1)
+                    {
                         desiredLength = pIDName.inDesiredLength;
+                        if (desiredLength > parameter.name.length)
+                            desiredLength = parameter.name.length;
+                    }
 
                     pIDName.outName = toCFString(parameter.name[0..desiredLength]);
                 }
