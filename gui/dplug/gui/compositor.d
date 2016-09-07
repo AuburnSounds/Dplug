@@ -53,15 +53,15 @@ class PBRCompositor : Compositor
     this()
     {
         // defaults
-        light1Color = vec3f(0.54f, 0.50f, 0.46f) * 0.4f;
+        light1Color = vec3f(0.25f, 0.25f, 0.25f);
 
         light2Dir = vec3f(0.0f, 1.0f, 0.1f).normalized;
-        light2Color = vec3f(0.378f, 0.35f, 0.322f) * 0.85f;
+        light2Color = vec3f(0.37f, 0.37f, 0.37f);
 
         light3Dir = vec3f(0.0f, 1.0f, 0.1f).normalized;
-        light3Color = vec3f(0.378f, 0.35f, 0.322f);
+        light3Color = vec3f(0.2f, 0.2f, 0.2f);
 
-        ambientLight = 0.10f;
+        ambientLight = 0.0625f;
         skyboxAmount = 0.4f;
 
         for (int roughByte = 0; roughByte < 256; ++roughByte)
