@@ -2,7 +2,6 @@ import std.file;
 import std.stdio;
 import dplug.gui;
 import ae.utils.graphics;
-import gfm.image;
 import std.path;
 
 void main(string[] args)
@@ -14,14 +13,18 @@ void main(string[] args)
     string physicalName = buildPath(appDir, "physical.png");
     string depthName = buildPath(appDir, "depth.png");
 
-    Image!RGBA diffuse = loadImageSeparateAlpha(std.file.read(basecolorName), std.file.read(emissiveName));
-    Image!RGBA material = loadImageSeparateAlpha(std.file.read(materialName), std.file.read(physicalName));
-    Image!RGBA depth = loadImage(std.file.read(depthName));
+    OwnedImage!RGBA diffuse = loadImageSeparateAlpha(std.file.read(basecolorName), std.file.read(emissiveName));
+    scope(exit) diffuse.destroy();
+    OwnedImage!RGBA material = loadImageSeparateAlpha(std.file.read(materialName), std.file.read(physicalName));
+    scope(exit) material.destroy();
+    OwnedImage!RGBA depth = loadOwnedImage(std.file.read(depthName));
+    scope(exit) depth.destroy();
 
     string diffuseCopy = buildPath(appDir, "diffuse-copy.png");
 
     string skyboxPath = buildPath(appDir, "skybox.jpg");
-    Image!RGBA skybox = loadImage(std.file.read(skyboxPath));
+    OwnedImage!RGBA skybox = loadOwnedImage(std.file.read(skyboxPath));
+    scope(exit) skybox.destroy();
 
     assert(diffuse.w == material.w);
     assert(diffuse.h == material.h);
@@ -31,8 +34,6 @@ void main(string[] args)
     int height = diffuse.h;
 
     writefln("width = %s  height = %s", width, height);
-    Image!RGBA result;
-    result.size(width, height);
 
     class CustomGraphics : GUIGraphics
     {
@@ -41,33 +42,40 @@ void main(string[] args)
             super(width, height);
         }
 
-        override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects)
+        override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects) nothrow @nogc
         {
             diffuse.blitTo(diffuseMap);
             material.blitTo(materialMap);
 
             for (int j = 0; j < height; ++j)
+            {
+                L16[] depthScan = depthMap.scanline(j);
+                RGBA[] depthInp = depth.scanline(j);
                 for (int i = 0; i < width; ++i)
-                    depthMap[i, j].l = cast(ushort)(0.5 + 257 * (depth[i, j].g + depth[i, j].r + depth[i, j].b) / 3);
+                {
+                    depthScan[i].l = cast(ushort)(0.5 + 257 * (depthInp[i].g + depthInp[i].r + depthInp[i].b) / 3);
+                }
+            }
         }
 
-        void forceUpdate()
+        ImageRef!RGBA forceUpdate()
         {
-            _windowListener.onResized(width, height);
+            auto result = _windowListener.onResized(width, height);
             setDirty();
             _windowListener.recomputeDirtyAreas();
-            _windowListener.onDraw(result.toRef, WindowPixelFormat.RGBA8);
+            _windowListener.onDraw(WindowPixelFormat.RGBA8);
+            return result;
         }
     }
 
-
     CustomGraphics graphics = new CustomGraphics();
+    scope(exit) graphics.destroy();
     graphics.context().setSkybox(skybox);
-    graphics.forceUpdate();
-    graphics.destroy();
+    ImageRef!RGBA rendered = graphics.forceUpdate();
 
+    writeln(rendered.pixels[0]);
     string resultPath = buildPath(appDir, "result.png");
-    auto png = result.toPNG();
+    auto png = rendered.toPNG();
     writefln("Writing %s bytes", png.length);
     std.file.write(resultPath, png);
 }
