@@ -90,16 +90,25 @@ struct AttackReleaseSmoother(T) if (isFloatingPoint!T)
 public:
     /// time: the time constant of the smoother.
     /// threshold: absolute difference below which we consider current value and target equal
-    void initialize(float samplerate, float timeAttack, float timeRelease, T initialValue) nothrow @nogc
+    void initialize(float sampleRate, float timeAttackSecs, float timeReleaseSecs, T initialValue) nothrow @nogc
     {
         assert(isFinite(initialValue));
-
+        _sampleRate = sampleRate;
         _current = cast(T)(initialValue);
+        setAttackTime(timeAttackSecs);
+        setReleaseTime(timeReleaseSecs);
+    }
 
-        _expFactorAttack = cast(T)(expDecayFactor(timeAttack, samplerate));
-        _expFactorRelease = cast(T)(expDecayFactor(timeRelease, samplerate));
-        assert(isFinite(_expFactorAttack));
-        assert(isFinite(_expFactorRelease));
+    /// Changes attack time.
+    void setAttackTime(float timeAttackSecs) nothrow @nogc
+    {
+        _expFactorAttack = cast(T)(expDecayFactor(timeAttackSecs, _sampleRate));
+    }
+
+    /// Changes release time.
+    void setReleaseTime(float timeReleaseSecs) nothrow @nogc
+    {
+        _expFactorRelease = cast(T)(expDecayFactor(timeReleaseSecs, _sampleRate));
     }
 
     /// Advance smoothing and return the next smoothed sample with respect
@@ -144,6 +153,7 @@ private:
     T _current;
     T _expFactorAttack;
     T _expFactorRelease;
+    float _sampleRate;
 }
 
 unittest
