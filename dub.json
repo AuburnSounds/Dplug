@@ -36,7 +36,7 @@
             "sourcePaths": [ "client/dplug/client" ],
             "importPaths": [ "client" ],
             "dependencies": {
-                "dplug:core": "*",
+                "dplug:core": "*"
             }
         },
         {
@@ -90,7 +90,7 @@
             "dependencies-osx": {
                 "derelict-cocoa": "~>1.0",
                 "derelict-carbon": "~>1.0"
-            },
+            }
         },
         {
             "name": "gui",
