@@ -137,7 +137,7 @@ protected:
         _name = name;
         _label = label;
         _index = index;
-        _valueMutex = new UncheckedMutex();
+        _valueMutex = uncheckedMutex();
     }
 
     /// From a normalized double, set the parameter value.

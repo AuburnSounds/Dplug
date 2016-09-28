@@ -34,7 +34,7 @@ public:
 
         stbtt_GetFontVMetrics(&_font, &_fontAscent, &_fontDescent, &_fontLineGap);
 
-        _mutex = new UncheckedMutex();
+        _mutex = uncheckedMutex();
 
         _glyphCache.initialize(&_font);
     }
@@ -42,7 +42,6 @@ public:
     ~this()
     {
         debug ensureNotInGC("Font");
-        _mutex.destroy();
     }
 
     /// Returns: Where a line of text will be drawn if starting at position (0, 0).

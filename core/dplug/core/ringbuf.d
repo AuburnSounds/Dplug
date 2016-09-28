@@ -179,7 +179,7 @@ public:
         _invDivider = 1.0f / divider;
 
         _data.reallocBuffer(size);
-        _dataMutex = new UncheckedMutex();
+        _dataMutex = uncheckedMutex();
 
         _timeDebt = 0;
         _integerDebt = 0;

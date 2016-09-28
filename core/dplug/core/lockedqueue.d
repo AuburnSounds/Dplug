@@ -26,7 +26,7 @@ final class LockedQueue(T)
         this(size_t capacity)
         {
             _queue = new FixedSizeQueue!T(capacity);
-            _rwMutex = new UncheckedMutex();
+            _rwMutex = uncheckedMutex();
             _readerSemaphore = uncheckedSemaphore(0);
             _writerSemaphore = uncheckedSemaphore(cast(uint)capacity);
         }
@@ -35,7 +35,6 @@ final class LockedQueue(T)
         {
             debug ensureNotInGC("LockedQueue");
             clear();
-            _rwMutex.destroy();
         }
 
         /// Returns: Capacity of the locked queue.

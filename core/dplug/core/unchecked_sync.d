@@ -52,13 +52,20 @@ else
     static assert(false, "Platform not supported");
 }
 
-final class UncheckedMutex
+/// Returns: A newly created `UnchekedMutex`.
+UncheckedMutex uncheckedMutex() nothrow @nogc
 {
-    this() nothrow @nogc
+    return UncheckedMutex(42);
+}
+
+struct UncheckedMutex
+{
+    this(int dummyArg) nothrow @nogc
     {
+        assert(!_created);        
         version( Windows )
         {
-            // Cargo-culting the spin-count in WTGF::Lock
+            // Cargo-culting the spin-count in WTF::Lock
             // See: https://webkit.org/blog/6161/locking-in-webkit/
             InitializeCriticalSectionAndSpinCount( &m_hndl, 40 );
         }
@@ -73,21 +80,27 @@ final class UncheckedMutex
                     pthread_mutex_init( handle, &attr );
                 })(&m_hndl);
         }
+        _created = true;
     }
 
-    ~this()
+    ~this() nothrow @nogc
     {
-        debug ensureNotInGC("UncheckedMutex");
+        if (_created)
+        {
+            //debug ensureNotInGC("UncheckedMutex");
 
-        version( Windows )
-        {
-            DeleteCriticalSection( &m_hndl );
-        }
-        else version( Posix )
-        {
-            pthread_mutex_destroy(&m_hndl);
+            version( Windows )
+            {
+                DeleteCriticalSection( &m_hndl );
+            }
+            else version( Posix )
+            {
+                pthread_mutex_destroy(&m_hndl);
+            }
         }
     }
+
+    @disable this(this);
 
     /// Lock mutex
     final void lock() nothrow @nogc
@@ -151,6 +164,8 @@ private:
         pthread_mutex_t     m_hndl;
     }
 
+    bool _created;
+
 package:
     version( Posix )
     {
@@ -162,15 +177,14 @@ package:
 }
 
 /// Returns: A new `UncheckedSemaphore`
-UncheckedSemaphore uncheckedSemaphore(uint count = 0)
+UncheckedSemaphore uncheckedSemaphore(uint count) nothrow @nogc
 {
     return UncheckedSemaphore(count);
-
 }
 
 struct UncheckedSemaphore
 {
-    this( uint count )
+    this( uint count ) nothrow @nogc
     {
         version( Windows )
         {
@@ -193,11 +207,11 @@ struct UncheckedSemaphore
         _created = true;
     }
 
-    ~this()
+    ~this() nothrow @nogc
     {
         if (_created)
         {
-            debug ensureNotInGC("UncheckedSemaphore");
+//            debug ensureNotInGC("UncheckedSemaphore");
 
             version( Windows )
             {

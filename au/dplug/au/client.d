@@ -325,8 +325,8 @@ public:
         // Implements IHostCommand itself
         client.setHostCommand(this);
 
-        _globalMutex = new UncheckedMutex();
-        _renderNotifyMutex = new UncheckedMutex();
+        _globalMutex = uncheckedMutex();
+        _renderNotifyMutex = uncheckedMutex();
 
     }
 
@@ -342,9 +342,6 @@ public:
 
         for (int i = 0; i < _maxOutputs; ++i)
             _outputScratchBuffer[i].destroy();
-
-        _globalMutex.destroy();
-        _renderNotifyMutex.destroy();
     }
 
 private:

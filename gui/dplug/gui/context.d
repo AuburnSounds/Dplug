@@ -101,14 +101,13 @@ public:
 
     this()
     {
-        _dirtyRectMutex = new UncheckedMutex();
+        _dirtyRectMutex = uncheckedMutex();
         _dirtyRects = new AlignedBuffer!box2i(0);
     }
 
     ~this()
     {
         ensureNotInGC("DirtyRectList");
-        _dirtyRectMutex.destroy();
         _dirtyRects.destroy();
     }
 

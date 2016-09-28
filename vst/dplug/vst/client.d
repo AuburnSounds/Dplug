@@ -170,7 +170,7 @@ public:
             _host.wantEvents();
         }
 
-        _graphicsMutex = new UncheckedMutex();
+        _graphicsMutex = uncheckedMutex();
     }
 
     ~this()
@@ -186,8 +186,6 @@ public:
         for (int i = 0; i < _maxOutputs; ++i)
             _outputScratchBuffer[i].destroy();
         _zeroesBuffer.destroy();
-
-        _graphicsMutex.destroy();
     }
 
 private:

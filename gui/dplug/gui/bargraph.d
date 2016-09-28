@@ -46,13 +46,12 @@ public:
         foreach (i; 0..magentaLeds)
             _leds ~= LED(RGBA(226, 120, 249, 255));
 
-         _valueMutex = new UncheckedMutex();
+         _valueMutex = uncheckedMutex();
     }
 
     ~this()
     {
         debug ensureNotInGC("UIBargraph");
-        _valueMutex.destroy();
     }
 
 
