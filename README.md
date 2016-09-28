@@ -1,6 +1,6 @@
-<img alt="logo" src="https://cdn.rawgit.com/p0nce/dplug/master/logo.svg" width="200">
+<img alt="logo" src="https://cdn.rawgit.com/AuburnSounds/dplug/master/logo.svg" width="200">
 
-# Dplug [![Build Status](https://travis-ci.org/p0nce/dplug.png?branch=master)](https://travis-ci.org/p0nce/dplug) <a href="https://code.dlang.org/packages/dplug" title="Go to dplug"><img src="https://img.shields.io/dub/v/dplug.svg" alt="Dub version"></a> <a href="https://code.dlang.org/packages/dplug" title="Go to dplug"><img src="https://img.shields.io/dub/dt/dplug.svg" alt="Dub downloads"></a>
+# Dplug [![Build Status](https://travis-ci.org/AuburnSounds/dplug.png?branch=master)](https://travis-ci.org/p0nce/dplug) <a href="https://code.dlang.org/packages/dplug" title="Go to dplug"><img src="https://img.shields.io/dub/v/dplug.svg" alt="Dub version"></a> <a href="https://code.dlang.org/packages/dplug" title="Go to dplug"><img src="https://img.shields.io/dub/dt/dplug.svg" alt="Dub downloads"></a>
 
 `Dplug` is a library for crafting native audio plugins as simply as possible.
 
@@ -13,8 +13,8 @@
 - Comes with a number of `tools` to make plugin creation faster (bundling, color correction, regression tests)
 - Graphics renderer inspired by PBR to keep installers small
 
-![Example screenshot](http://www.auburnsounds.com/images/panagement.jpg)
-![Example screenshot](screenshot.jpg "With a bit of work")
+![Example screenshot](https://www.auburnsounds.com/images/panagement.jpg)
+![Example screenshot](https://www.auburnsounds.com/images/graillon.jpg "With a bit of work")
 
 ### Release notes
 
