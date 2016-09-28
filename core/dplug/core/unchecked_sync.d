@@ -161,10 +161,16 @@ package:
     }
 }
 
-
-class UncheckedSemaphore
+/// Returns: A new `UncheckedSemaphore`
+UncheckedSemaphore uncheckedSemaphore(uint count = 0)
 {
-    this( uint count = 0 )
+    return UncheckedSemaphore(count);
+
+}
+
+struct UncheckedSemaphore
+{
+    this( uint count )
     {
         version( Windows )
         {
@@ -184,29 +190,34 @@ class UncheckedSemaphore
             if( rc )
                 assert(false);
         }
+        _created = true;
     }
-
 
     ~this()
     {
-        debug ensureNotInGC("UncheckedSemaphore");
+        if (_created)
+        {
+            debug ensureNotInGC("UncheckedSemaphore");
 
-        version( Windows )
-        {
-            BOOL rc = CloseHandle( m_hndl );
-            assert( rc, "Unable to destroy semaphore" );
-        }
-        else version( OSX )
-        {
-            auto rc = semaphore_destroy( mach_task_self(), m_hndl );
-            assert( !rc, "Unable to destroy semaphore" );
-        }
-        else version( Posix )
-        {
-            int rc = sem_destroy( &m_hndl );
-            assert( !rc, "Unable to destroy semaphore" );
+            version( Windows )
+            {
+                BOOL rc = CloseHandle( m_hndl );
+                assert( rc, "Unable to destroy semaphore" );
+            }
+            else version( OSX )
+            {
+                auto rc = semaphore_destroy( mach_task_self(), m_hndl );
+                assert( !rc, "Unable to destroy semaphore" );
+            }
+            else version( Posix )
+            {
+                int rc = sem_destroy( &m_hndl );
+                assert( !rc, "Unable to destroy semaphore" );
+            }
         }
     }
+
+    @disable this(this);
 
     void wait() nothrow @nogc
     {
@@ -406,5 +417,6 @@ private:
     {
         sem_t   m_hndl;
     }
+    bool _created = false;
 }
 
