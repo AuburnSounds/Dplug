@@ -62,7 +62,7 @@ struct UncheckedMutex
 {
     this(int dummyArg) nothrow @nogc
     {
-        assert(!_created);        
+        assert(!_created);
         version( Windows )
         {
             // Cargo-culting the spin-count in WTF::Lock
@@ -177,14 +177,14 @@ package:
 }
 
 /// Returns: A new `UncheckedSemaphore`
-UncheckedSemaphore uncheckedSemaphore(uint count) nothrow @nogc
+UncheckedSemaphore uncheckedSemaphore(uint count)
 {
     return UncheckedSemaphore(count);
 }
 
 struct UncheckedSemaphore
 {
-    this( uint count ) nothrow @nogc
+    this( uint count )
     {
         version( Windows )
         {
@@ -207,7 +207,7 @@ struct UncheckedSemaphore
         _created = true;
     }
 
-    ~this() nothrow @nogc
+    ~this()
     {
         if (_created)
         {
