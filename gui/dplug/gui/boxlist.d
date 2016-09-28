@@ -52,7 +52,7 @@ void boxSubtraction(in box2i A, in box2i C, out box2i D, out box2i E, out box2i 
 // Every box pushed in filtered are non-intersecting.
 // This may modify boxes in input.
 // TODO: something better than O(n^2)
-void removeOverlappingAreas(AlignedBuffer!box2i boxes, AlignedBuffer!box2i filtered) nothrow @nogc
+void removeOverlappingAreas(ref AlignedBuffer!box2i boxes, ref AlignedBuffer!box2i filtered) nothrow @nogc
 {
     for(int i = 0; i < cast(int)(boxes.length); ++i)
     {
@@ -141,7 +141,7 @@ unittest
 
 
 // Split each boxes in smaller boxes.
-void tileAreas(in box2i[] areas, int maxWidth, int maxHeight, AlignedBuffer!box2i splitted) nothrow @nogc
+void tileAreas(in box2i[] areas, int maxWidth, int maxHeight, ref AlignedBuffer!box2i splitted) nothrow @nogc
 {
     foreach(area; areas)
     {

@@ -230,8 +230,8 @@ public:
     void initialize(stbtt_fontinfo* font)
     {
         _font = font;
-        keys = new AlignedBuffer!GlyphKey;
-        glyphs = new AlignedBuffer!(ubyte*);
+        keys = alignedBuffer!GlyphKey;
+        glyphs = alignedBuffer!(ubyte*);
     }
 
     @disable this(this);
@@ -243,9 +243,6 @@ public:
         {
             free(g);
         }
-
-        glyphs.destroy();
-        keys.destroy();
     }
 
     // Note: the returned glyph does not point into GC memory

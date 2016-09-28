@@ -102,13 +102,12 @@ public:
     this()
     {
         _dirtyRectMutex = uncheckedMutex();
-        _dirtyRects = new AlignedBuffer!box2i(0);
+        _dirtyRects = alignedBuffer!box2i(0);
     }
 
     ~this()
     {
         ensureNotInGC("DirtyRectList");
-        _dirtyRects.destroy();
     }
 
     bool isEmpty() nothrow @nogc
@@ -121,7 +120,7 @@ public:
 
     /// Returns: Array of rectangles in the list, remove them from the list.
     /// Needed to avoid races in repainting.
-    void pullAllRectangles(AlignedBuffer!box2i result) nothrow @nogc
+    void pullAllRectangles(ref AlignedBuffer!box2i result) nothrow @nogc
     {
         _dirtyRectMutex.lock();
 

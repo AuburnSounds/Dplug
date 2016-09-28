@@ -65,17 +65,17 @@ class GUIGraphics : UIElement, IGraphics
 
         _taskPool = new TaskPool();
 
-        _areasToUpdateNonOverlapping = new AlignedBuffer!box2i;
-        _areasToUpdateTemp = new AlignedBuffer!box2i;
+        _areasToUpdateNonOverlapping = alignedBuffer!box2i;
+        _areasToUpdateTemp = alignedBuffer!box2i;
 
-        _updateRectScratch[0] = new AlignedBuffer!box2i;
-        _updateRectScratch[1] = new AlignedBuffer!box2i;
+        _updateRectScratch[0] = alignedBuffer!box2i;
+        _updateRectScratch[1] = alignedBuffer!box2i;
 
-        _areasToRender = new AlignedBuffer!box2i;
-        _areasToRenderNonOverlapping = new AlignedBuffer!box2i;
-        _areasToRenderNonOverlappingTiled = new AlignedBuffer!box2i;
+        _areasToRender = alignedBuffer!box2i;
+        _areasToRenderNonOverlapping = alignedBuffer!box2i;
+        _areasToRenderNonOverlappingTiled = alignedBuffer!box2i;
 
-        _elemsToDraw = new AlignedBuffer!UIElement;
+        _elemsToDraw = alignedBuffer!UIElement;
 
         version(BenchmarkCompositing)
         {
@@ -95,14 +95,7 @@ class GUIGraphics : UIElement, IGraphics
         debug ensureNotInGC("GUIGraphics");
         closeUI();
         _uiContext.destroy();
-        _areasToUpdateNonOverlapping.destroy();
-        _areasToUpdateTemp.destroy();
-        _updateRectScratch[0].destroy();
-        _updateRectScratch[1].destroy();
-        _areasToRender.destroy();
-        _areasToRenderNonOverlapping.destroy();
-        _areasToRenderNonOverlappingTiled.destroy();
-        _elemsToDraw.destroy();
+
         _taskPool.finish(true); // wait for all thread termination
         _taskPool.destroy();
         compositor.destroy();

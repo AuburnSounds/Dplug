@@ -53,20 +53,16 @@ public:
     this(UIContext context)
     {
         _context = context;
-        _localRectsBuf = new AlignedBuffer!box2i();
-        _zOrderedChildren = new AlignedBuffer!UIElement(0);
+        _localRectsBuf = alignedBuffer!box2i();
+        _zOrderedChildren = alignedBuffer!UIElement(0);
     }
 
     ~this()
     {
         debug ensureNotInGC("UIElement");
 
-        _zOrderedChildren.destroy();
-
         foreach(child; children)
             child.destroy();
-
-        _localRectsBuf.destroy();
     }
 
     /// Returns: true if was drawn, ie. the buffers have changed.
@@ -449,7 +445,7 @@ public:
     /// You should empty it before calling this function.
     /// Everything visible get into the draw list, but that doesn't mean they
     /// will get drawn if they don't overlap with a dirty area.
-    final void getDrawList(AlignedBuffer!UIElement list) nothrow @nogc
+    final void getDrawList(ref AlignedBuffer!UIElement list) nothrow @nogc
     {
         if (isVisible())
         {

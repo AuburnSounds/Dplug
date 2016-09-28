@@ -9,14 +9,20 @@ import core.stdc.string;
 
 import gfm.core.memory;
 
+/// Returns: A newly created AlignedBuffer
+AlignedBuffer!T alignedBuffer(T)(size_t initialSize = 0, int alignment = 64) nothrow @nogc
+{
+    return AlignedBuffer!T(initialSize, alignment);
+}
+
 /// Growable array, points to a memory aligned location.
 /// Bugs: make this class disappear when std.allocator is out.
-final class AlignedBuffer(T)
+struct AlignedBuffer(T)
 {
     public
     {
         /// Creates an aligned buffer with given initial size.
-        this(size_t initialSize = 0, int alignment = 64) nothrow @nogc
+        this(size_t initialSize, int alignment) nothrow @nogc
         {
             assert(alignment != 0);
             _size = 0;
@@ -26,16 +32,17 @@ final class AlignedBuffer(T)
             resize(initialSize);
         }
 
-        ~this()
+        ~this() nothrow @nogc
         {
             if (_data !is null)
             {
-                debug ensureNotInGC("AlignedBuffer");
                 alignedFree(_data);
                 _data = null;
                 _allocated = 0;
             }
         }
+
+        @disable this(this);
 
         /// Returns: Length of buffer in elements.
         size_t length() pure const nothrow @nogc
@@ -84,7 +91,7 @@ final class AlignedBuffer(T)
         }
 
         /// Appends another buffer to this buffer.
-        void pushBack(AlignedBuffer other) nothrow @nogc
+        void pushBack(ref AlignedBuffer other) nothrow @nogc
         {
             size_t oldSize = _size;
             resize(_size + other._size);
@@ -161,9 +168,12 @@ unittest
 
     struct box2i { int a, b, c, d; }
     AlignedBuffer!box2i[] boxes;
+    boxes.length = NBUF;
 
     foreach(i; 0..NBUF)
-        boxes ~= new AlignedBuffer!box2i();
+    {
+        boxes[i] = alignedBuffer!box2i();
+    }
 
     foreach(j; 0..200)
     {
@@ -199,7 +209,7 @@ unittest
         boxes[i].destroy();
 
     {
-        auto buf = new AlignedBuffer!int;
+        auto buf = alignedBuffer!int;
         enum N = 10;
         buf.resize(N);
         foreach(i ; 0..N)
@@ -207,6 +217,5 @@ unittest
 
         foreach(i ; 0..N)
             assert(buf[i] == i);
-        buf.destroy();
     }
 }
