@@ -13,3 +13,11 @@ __test__library__
 *.suo
 *.so
 examples/just_windowing/just_windowing
+.DS_Store
+.lldbinit
+tools/process/process
+tools/process/process32
+tools/release/release
+tools/stress-plugin/stress-plugin
+tools/wav-compare/wav-compare
+builds
