@@ -19,7 +19,7 @@ import gfm.math.box;
 
 import dplug.core.unchecked_sync;
 import dplug.core.runtime;
-import dplug.core.funcs;
+//import dplug.core.funcs;
 import dplug.window.window;
 
 version(OSX)

@@ -6,7 +6,7 @@
 module dplug.vst.vstfxstore;
 
 import dplug.vst.aeffect;
-import dplug.core.funcs;
+import dplug.core.math;
 
 /** Define SDK Version (you can generate different versions (from 2.0 to 2.4) of this SDK by unsetting the unwanted extensions). */
 
@@ -109,4 +109,10 @@ struct fxBank
 
     Content content;                    ///< bank content depending on fxMagic
 //-------------------------------------------------------------------------------------------------------
+}
+
+/** Four Character Constant (for AEffect->uniqueID) */
+private int CCONST(int a, int b, int c, int d) pure nothrow
+{
+    return (a << 24) | (b << 16) | (c << 8) | (d << 0);
 }

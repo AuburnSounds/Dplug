@@ -14,7 +14,7 @@ import std.algorithm.mutation;
 
 import ae.utils.graphics;
 
-import dplug.core.funcs;
+import dplug.core.math;
 
 import dplug.client.client;
 import dplug.client.graphics;

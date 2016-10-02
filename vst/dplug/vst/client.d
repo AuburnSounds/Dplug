@@ -27,7 +27,8 @@ import std.algorithm;
 import gfm.core;
 
 import dplug.core.alignedbuffer,
-       dplug.core.funcs,
+       dplug.core.nogc,
+       dplug.core.math,
        dplug.core.lockedqueue,
        dplug.core.runtime,
        dplug.core.fpcontrol,
@@ -71,7 +72,7 @@ template VSTEntryPoint(alias ClientClass)
         "   }"
         "   catch (Throwable e)"
         "   {"
-        "       import dplug.core.funcs;"
+        "       import dplug.core.nogc;"
         "       unrecoverableError();"  // best effort, at least it won't crash the host
         "       return null;"
         "   }"
@@ -93,7 +94,7 @@ public:
     this(Client client, HostCallbackFunction hostCallback)
     {
         int queueSize = 256;
-        _messageQueue = new AudioThreadQueue(queueSize);
+        _messageQueue = new LockedQueue!AudioThreadMessage(queueSize);
 
         _client = client;
 
@@ -118,7 +119,8 @@ public:
         _effect.numParams = cast(int)(client.params().length);
         _effect.numPrograms = cast(int)(client.presetBank().numPresets());
         _effect.version_ = client.getPluginVersion().toVSTVersion();
-        _effect.uniqueID = client.getPluginUniqueID();
+        char[4] uniqueID = client.getPluginUniqueID();
+        _effect.uniqueID = CCONST(uniqueID[0], uniqueID[1], uniqueID[2], uniqueID[3]);
         _effect.processReplacing = &processReplacingCallback;
         _effect.dispatcher = &dispatcherCallback;
         _effect.setParameter = &setParameterCallback;
@@ -178,14 +180,14 @@ public:
         debug ensureNotInGC("dplug.vst.Client");
         _client.destroy();
 
-        _messageQueue.destroy();
-
         for (int i = 0; i < _maxInputs; ++i)
             _inputScratchBuffer[i].destroy();
 
         for (int i = 0; i < _maxOutputs; ++i)
             _outputScratchBuffer[i].destroy();
         _zeroesBuffer.destroy();
+
+        _messageQueue.destroy();
     }
 
 private:
@@ -266,7 +268,7 @@ private:
     ubyte[] _lastBankChunk = null;
 
     // Inter-locked message queue from opcode thread to audio thread
-    AudioThreadQueue _messageQueue;
+    LockedQueue!AudioThreadMessage _messageQueue;
 
     UncheckedMutex _graphicsMutex;
 
@@ -1253,6 +1255,12 @@ private:
 }
 
 
+/** Four Character Constant (for AEffect->uniqueID) */
+private int CCONST(int a, int b, int c, int d) pure nothrow
+{
+    return (a << 24) | (b << 16) | (c << 8) | (d << 0);
+}
+
 struct IO
 {
     int inputs;  /// number of input channels
@@ -1264,8 +1272,6 @@ struct IO
 //
 
 private:
-
-alias AudioThreadQueue = LockedQueue!AudioThreadMessage;
 
 /// A message for the audio thread.
 /// Intended to be passed from a non critical thread to the audio thread.

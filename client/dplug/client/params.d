@@ -27,7 +27,7 @@ import std.conv;
 
 import gfm.core.memory;
 
-import dplug.core.funcs;
+import dplug.core.math;
 import dplug.core.unchecked_sync;
 import dplug.client.client;
 

@@ -14,7 +14,8 @@ import gfm.math.vector;
 import gfm.math.box;
 import gfm.math.funcs;
 
-import dplug.core.funcs;
+import dplug.core.nogc;
+import dplug.core.math;
 import dplug.window.window;
 import dplug.gui.mipmap;
 import dplug.gui.drawex;

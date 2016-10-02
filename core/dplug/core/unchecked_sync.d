@@ -21,7 +21,7 @@ module dplug.core.unchecked_sync;
 
 public import core.time;
 
-import gfm.core;
+//import gfm.core;
 
 version( Windows )
 {
@@ -87,8 +87,6 @@ struct UncheckedMutex
     {
         if (_created)
         {
-            //debug ensureNotInGC("UncheckedMutex");
-
             version( Windows )
             {
                 DeleteCriticalSection( &m_hndl );
@@ -177,14 +175,14 @@ package:
 }
 
 /// Returns: A new `UncheckedSemaphore`
-UncheckedSemaphore uncheckedSemaphore(uint count)
+UncheckedSemaphore uncheckedSemaphore(uint count) nothrow @nogc
 {
     return UncheckedSemaphore(count);
 }
 
 struct UncheckedSemaphore
 {
-    this( uint count )
+    this( uint count ) nothrow @nogc
     {
         version( Windows )
         {
@@ -207,12 +205,10 @@ struct UncheckedSemaphore
         _created = true;
     }
 
-    ~this()
+    ~this() nothrow @nogc
     {
         if (_created)
         {
-//            debug ensureNotInGC("UncheckedSemaphore");
-
             version( Windows )
             {
                 BOOL rc = CloseHandle( m_hndl );

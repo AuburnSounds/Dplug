@@ -23,7 +23,6 @@ import derelict.carbon;
 import derelict.cocoa;
 
 import dplug.core.runtime;
-import dplug.core.funcs;
 import dplug.au.client;
 
 version(OSX):

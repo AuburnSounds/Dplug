@@ -27,7 +27,8 @@ import std.container;
 
 import gfm.core;
 
-import dplug.core.funcs;
+import dplug.core.nogc;
+import dplug.core.math;
 import dplug.client.params;
 import dplug.client.preset;
 import dplug.client.midi;
@@ -76,7 +77,7 @@ struct PluginInfo
     string vendorName = "Witty Audio";
 
     /// Used in AU only.
-    int vendorUniqueID = CCONST('W', 'i', 't', 'y');
+    char[4] vendorUniqueID = "Wity";
 
     string pluginName = "Destructatorizer";
 
@@ -85,7 +86,7 @@ struct PluginInfo
     /// should be unique. While it seems no VST host use this
     /// ID as a unique way to identify a plugin, common wisdom
     /// is to try to get a sufficiently random one.
-    int pluginUniqueID = CCONST('W', 'i', 'D', 'i');
+    char[4] pluginUniqueID = "WiDi";
 
     // for AU, 0.x.y means "do not cache", useful in development
     PluginVersion pluginVersion = PluginVersion(0, 0, 0);
@@ -420,7 +421,7 @@ public:
         return _info.vendorName;
     }
 
-    final int getVendorUniqueID() pure const nothrow @nogc
+    final char[4] getVendorUniqueID() pure const nothrow @nogc
     {
         return _info.vendorUniqueID;
     }
@@ -431,7 +432,7 @@ public:
     }
 
     /// Returns: Plugin "unique" ID.
-    final int getPluginUniqueID() pure const nothrow @nogc
+    final char[4] getPluginUniqueID() pure const nothrow @nogc
     {
         return _info.pluginUniqueID;
     }
@@ -446,8 +447,6 @@ public:
     {
         return _info.pluginVersion;
     }
-
-
 
     /// Boilerplate function to get the value of a `FloatParameter`, for use in `processAudio`.
     final float readFloatParamValue(int paramIndex) nothrow @nogc
