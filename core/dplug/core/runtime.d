@@ -24,7 +24,7 @@ else version(Posix)
     void* currentThreadId() nothrow @nogc
     {
         import core.sys.posix.pthread;
-        return pthread_self;
+        return cast(void*)(pthread_self());
     }
 }
 else
