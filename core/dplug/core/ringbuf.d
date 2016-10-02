@@ -11,6 +11,11 @@ import dplug.core.unchecked_sync;
 import dplug.core.funcs;
 
 
+RingBufferNoGC!T ringBufferNoGC(T)(size_t initialCapacity) nothrow @nogc
+{
+    return RingBufferNoGC!T(initialCapacity);
+}
+
 /// @nogc ring-buffer
 struct RingBufferNoGC(T)
 {
@@ -81,6 +86,12 @@ struct RingBufferNoGC(T)
         size_t length() pure const nothrow @nogc
         {
             return _count;
+        }
+
+        /// Returns: maximum number of items in the queue.
+        size_t capacity() pure const nothrow @nogc
+        {
+            return _data.length;
         }
 
         /// Returns: item at the front of the queue.

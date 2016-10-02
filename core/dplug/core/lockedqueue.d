@@ -5,10 +5,10 @@
 */
 module dplug.core.lockedqueue;
 
-import gfm.core.queue;
-import gfm.core.memory;
-
+import dplug.core.ringbuf;
 import dplug.core.unchecked_sync;
+
+import gfm.core.memory;
 
 /**
     Locked queue for inter-thread communication.
@@ -18,24 +18,32 @@ import dplug.core.unchecked_sync;
 
     See_also: $(LINK2 #Queue, Queue)
  */
-final class LockedQueue(T)
+
+class LockedQueue(T)
 {
     public
     {
         /// Creates a locked queue with an initial capacity.
-        this(size_t capacity)
+        this(size_t capacity) nothrow @nogc
         {
-            _queue = new FixedSizeQueue!T(capacity);
+            _queue = ringBufferNoGC!T(capacity);
             _rwMutex = uncheckedMutex();
             _readerSemaphore = uncheckedSemaphore(0);
             _writerSemaphore = uncheckedSemaphore(cast(uint)capacity);
+            _initialized = true;
         }
 
         ~this()
         {
-            debug ensureNotInGC("LockedQueue");
-            clear();
+            if (_initialized)
+            {
+                debug ensureNotInGC("LockedQueue");
+                clear();
+                _initialized = false;
+            }
         }
+
+//        @disable this(this);
 
         /// Returns: Capacity of the locked queue.
         size_t capacity() const nothrow @nogc
@@ -137,9 +145,10 @@ final class LockedQueue(T)
 
     private
     {
-        FixedSizeQueue!T _queue;
+        RingBufferNoGC!T _queue;
         UncheckedMutex _rwMutex;
         UncheckedSemaphore _readerSemaphore, _writerSemaphore;
+        bool _initialized;
     }
 }
 
@@ -163,3 +172,4 @@ unittest
         assert(res == 2);
     }
 }
+

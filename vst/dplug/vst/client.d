@@ -93,7 +93,7 @@ public:
     this(Client client, HostCallbackFunction hostCallback)
     {
         int queueSize = 256;
-        _messageQueue = new AudioThreadQueue(queueSize);
+        _messageQueue = new LockedQueue!AudioThreadMessage(queueSize);
 
         _client = client;
 
@@ -178,14 +178,14 @@ public:
         debug ensureNotInGC("dplug.vst.Client");
         _client.destroy();
 
-        _messageQueue.destroy();
-
         for (int i = 0; i < _maxInputs; ++i)
             _inputScratchBuffer[i].destroy();
 
         for (int i = 0; i < _maxOutputs; ++i)
             _outputScratchBuffer[i].destroy();
         _zeroesBuffer.destroy();
+
+        _messageQueue.destroy();
     }
 
 private:
@@ -266,7 +266,7 @@ private:
     ubyte[] _lastBankChunk = null;
 
     // Inter-locked message queue from opcode thread to audio thread
-    AudioThreadQueue _messageQueue;
+    LockedQueue!AudioThreadMessage _messageQueue;
 
     UncheckedMutex _graphicsMutex;
 
@@ -1264,8 +1264,6 @@ struct IO
 //
 
 private:
-
-alias AudioThreadQueue = LockedQueue!AudioThreadMessage;
 
 /// A message for the audio thread.
 /// Intended to be passed from a non critical thread to the audio thread.
