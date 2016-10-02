@@ -21,7 +21,7 @@ module dplug.core.unchecked_sync;
 
 public import core.time;
 
-//import gfm.core;
+import gfm.core.memory;
 
 version( Windows )
 {
@@ -192,7 +192,18 @@ struct UncheckedSemaphore
         }
         else version( OSX )
         {
-            auto rc = semaphore_create( mach_task_self(), &m_hndl, SYNC_POLICY_FIFO, count );
+            mach_port_t task = assumeNothrowNoGC(
+                ()
+                {
+                    return mach_task_self();
+                })();
+
+            kern_return_t rc = assumeNothrowNoGC(
+                (mach_port_t t, semaphore_t* handle, uint count)
+                {
+                    return semaphore_create(t, handle, SYNC_POLICY_FIFO, count );
+                })(task, &m_hndl, count);
+
             if( rc )
                  assert(false);
         }
@@ -216,7 +227,18 @@ struct UncheckedSemaphore
             }
             else version( OSX )
             {
-                auto rc = semaphore_destroy( mach_task_self(), m_hndl );
+                mach_port_t task = assumeNothrowNoGC(
+                    ()
+                    {
+                        return mach_task_self();
+                    })();
+
+                kern_return_t rc = assumeNothrowNoGC(
+                    (mach_port_t t, semaphore_t handle)
+                    {
+                        return semaphore_destroy( t, handle );
+                    })(task, m_hndl);
+
                 assert( !rc, "Unable to destroy semaphore" );
             }
             else version( Posix )
