@@ -5,8 +5,6 @@
 */
 import std.math;
 
-static import dplug.core.funcs;
-
 import dplug.core,
        dplug.client,
        dplug.dsp,
@@ -51,9 +49,9 @@ public:
         // change all of these!
         PluginInfo info;
         info.vendorName = "Witty Audio";
-        info.vendorUniqueID = dplug.core.funcs.CCONST('W', 'i', 't', 'y');
+        info.vendorUniqueID = "Wity";
         info.pluginName = "Destructatorizer";
-        info.pluginUniqueID = dplug.core.funcs.CCONST('W', 'i', 'D', 'i');
+        info.pluginUniqueID = "WiDi";
         info.pluginVersion = PluginVersion(1, 0, 0);
         info.isSynth = false;
         info.hasGUI = true;

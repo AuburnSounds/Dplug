@@ -8,7 +8,7 @@ module dplug.core.ringbuf;
 import core.atomic;
 
 import dplug.core.unchecked_sync;
-import dplug.core.funcs;
+import dplug.core.nogc;
 
 
 RingBufferNoGC!T ringBufferNoGC(T)(size_t initialCapacity) nothrow @nogc

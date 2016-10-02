@@ -9,8 +9,6 @@ import core.stdc.string;
 import std.traits;
 
 import gfm.math.funcs;
-import dplug.core.funcs;
-
 /// Allow to sample signal back in time.
 struct Delayline(T)
 {

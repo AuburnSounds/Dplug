@@ -27,7 +27,8 @@ import std.algorithm;
 import gfm.core;
 
 import dplug.core.alignedbuffer,
-       dplug.core.funcs,
+       dplug.core.nogc,
+       dplug.core.math,
        dplug.core.lockedqueue,
        dplug.core.runtime,
        dplug.core.fpcontrol,
@@ -71,7 +72,7 @@ template VSTEntryPoint(alias ClientClass)
         "   }"
         "   catch (Throwable e)"
         "   {"
-        "       import dplug.core.funcs;"
+        "       import dplug.core.nogc;"
         "       unrecoverableError();"  // best effort, at least it won't crash the host
         "       return null;"
         "   }"
@@ -118,7 +119,8 @@ public:
         _effect.numParams = cast(int)(client.params().length);
         _effect.numPrograms = cast(int)(client.presetBank().numPresets());
         _effect.version_ = client.getPluginVersion().toVSTVersion();
-        _effect.uniqueID = client.getPluginUniqueID();
+        char[4] uniqueID = client.getPluginUniqueID();
+        _effect.uniqueID = CCONST(uniqueID[0], uniqueID[1], uniqueID[2], uniqueID[3]);
         _effect.processReplacing = &processReplacingCallback;
         _effect.dispatcher = &dispatcherCallback;
         _effect.setParameter = &setParameterCallback;
@@ -1252,6 +1254,12 @@ private:
     }
 }
 
+
+/** Four Character Constant (for AEffect->uniqueID) */
+private int CCONST(int a, int b, int c, int d) pure nothrow
+{
+    return (a << 24) | (b << 16) | (c << 8) | (d << 0);
+}
 
 struct IO
 {

@@ -12,7 +12,7 @@ import std.math;
 import gfm.core.memory;
 import gfm.core.queue;
 
-import dplug.core;
+//import dplug.core;
 
 /// Smooth values exponentially with a 1-pole lowpass.
 /// This is usually sufficient for most parameter smoothing.

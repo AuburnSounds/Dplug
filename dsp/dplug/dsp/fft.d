@@ -13,7 +13,8 @@ import std.math;
 import gfm.math.funcs;
 
 import dplug.dsp.window;
-import dplug.core.funcs;
+import dplug.core.math;
+import dplug.core.nogc;
 
 
 enum FFTDirection

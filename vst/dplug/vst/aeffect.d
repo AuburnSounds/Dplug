@@ -5,10 +5,10 @@
 */
 module dplug.vst.aeffect;
 
-//import core.stdc.stdio; // for strncpy
 import core.stdc.string; // for strncpy
 
 import dplug.core;
+
 
 /** Define SDK Version (you can generate different versions (from 2.0 to 2.4) of this SDK by unsetting the unwanted extensions). */
 
@@ -243,3 +243,8 @@ struct ERect
     VstInt16 right;     ///< right coordinate
 }
 
+/** Four Character Constant (for AEffect->uniqueID) */
+private int CCONST(int a, int b, int c, int d) pure nothrow
+{
+    return (a << 24) | (b << 16) | (c << 8) | (d << 0);
+}
