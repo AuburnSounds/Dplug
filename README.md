@@ -18,6 +18,11 @@
 
 ### Release notes
 
+- v4.x.y (in progress)
+  * macOS Sierra support fixed.
+  * To allow that, the D runtime is now linked with but disabled. No GC, no TLS, no global ctor/dtor.
+  * does not rely on gfm:core anymore.
+
 - v3.x.y (9th May 2016):
   * Audio Unit compatibility added, with both Cocoa and Carbon UI. What is still missing from AU: Audio Component API, sandboxing, v3. In other words it's on parity with IPlug but not JUCE.
   * The `release` tool is now much more friendly to use.
