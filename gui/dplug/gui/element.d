@@ -7,8 +7,6 @@ module dplug.gui.element;
 
 import std.algorithm;
 
-public import ae.utils.graphics;
-
 public import dplug.graphics;
 
 public import dplug.window.window;
@@ -21,8 +19,6 @@ public import dplug.gui.font;
 public import dplug.gui.drawex;
 public import dplug.gui.boxlist;
 public import dplug.gui.context;
-public import dplug.gui.materials;
-
 
 /// Reasonable default value for the Depth channel.
 enum ushort defaultDepth = 15000;

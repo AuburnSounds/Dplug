@@ -11,13 +11,14 @@ import std.math;
 import std.algorithm.comparison;
 import std.utf;
 
-import ae.utils.graphics;
-
 import dplug.core.alignedbuffer;
 import dplug.core.unchecked_sync;
 import dplug.core.nogc;
+
 import dplug.graphics.vector;
 import dplug.graphics.box;
+import dplug.graphics.image;
+
 import dplug.gui.stb_truetype;
 
 final class Font

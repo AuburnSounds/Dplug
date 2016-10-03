@@ -1,5 +1,5 @@
 /**
-* Copyright: Copyright Auburn Sounds 2015 and later.
+* Copyright: Copyright Auburn Sounds 2015 - 2016.
 * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 * Authors:   Guillaume Piolat
 */
@@ -16,15 +16,15 @@ import dplug.core.nogc;
 import dplug.core.alignedbuffer;
 
 import dplug.graphics.box;
-
-import ae.utils.graphics;
-import ae.utils.graphics.view;
+import dplug.graphics.view;
+import dplug.graphics.draw;
+import dplug.graphics.image;
 
 
 /// Crop a view from a box2i
 auto crop(V)(auto ref V src, box2i b) if (isView!V)
 {
-    return ae.utils.graphics.view.crop(src, b.min.x, b.min.y, b.max.x, b.max.y);
+    return dplug.graphics.view.crop(src, b.min.x, b.min.y, b.max.x, b.max.y);
 }
 
 /// Crop an ImageRef and get an ImageRef instead of a Voldemort type.
@@ -319,7 +319,7 @@ void aaFillRectFloat(bool CHECKED=true, V, COLOR)(auto ref V v, float x1, float 
         return;
 
     alias ChannelType = COLOR.ChannelType;
-    import ae.utils.math;
+
     sort2(x1, x2);
     sort2(y1, y2);
 
@@ -356,7 +356,7 @@ if (isWritableView!V && is(COLOR : ViewColor!V))
 {
     if (globalAlpha == 0)
         return;
-    import ae.utils.math;
+
     sort2(x1, x2);
     sort2(y1, y2);
     static if (CHECKED)
@@ -579,5 +579,4 @@ OwnedImage!RGBA loadImageSeparateAlpha(in void[] imageDataRGB, in void[] imageDa
     }
     return loaded;
 }
-
 

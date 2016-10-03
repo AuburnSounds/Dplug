@@ -6,8 +6,6 @@
 module dplug.gui;
 
 // ae.utils.graphics is fundamental to use dplug's gui
-public import ae.utils.graphics;
-
 public import dplug.gui.element;
 public import dplug.gui.context;
 

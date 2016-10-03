@@ -20,12 +20,13 @@ import std.process,
        std.string,
        std.conv;
 
-import ae.utils.graphics;
-
 import dplug.core.runtime;
 import dplug.core.nogc;
+
 import dplug.graphics.vector;
 import dplug.graphics.box;
+import dplug.graphics.image;
+
 import dplug.window.window;
 
 

@@ -11,8 +11,6 @@ import std.string;
 import std.stdio;
 import std.uuid;
 
-import ae.utils.graphics;
-
 import dplug.graphics.vector;
 import dplug.graphics.box;
 

@@ -12,8 +12,6 @@ import std.algorithm.comparison;
 import std.algorithm.sorting;
 import std.algorithm.mutation;
 
-import ae.utils.graphics;
-
 import dplug.core.math;
 
 import dplug.client.client;
@@ -26,7 +24,6 @@ import dplug.gui.mipmap;
 import dplug.gui.boxlist;
 import dplug.gui.context;
 import dplug.gui.element;
-import dplug.gui.materials;
 import dplug.gui.compositor;
 
 /// In the whole package:

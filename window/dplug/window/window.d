@@ -6,7 +6,7 @@
 module dplug.window.window;
 
 import dplug.graphics.box;
-import ae.utils.graphics;
+import dplug.graphics.image;
 
 enum Key
 {

@@ -7,15 +7,17 @@ module dplug.gui.compositor;
 
 import std.math;
 
-import ae.utils.graphics;
-
 import dplug.graphics.vector;
 import dplug.graphics.box;
 
 import dplug.core.alignedbuffer;
 import dplug.core.nogc;
 import dplug.core.math;
+
+import dplug.graphics.image;
+
 import dplug.window.window;
+
 import dplug.gui.mipmap;
 import dplug.gui.drawex;
 

@@ -86,7 +86,6 @@
             "libs-windows": ["gdi32", "user32"],
 
             "dependencies": {
-                "ae-graphics": "~>0.0",
                 "dplug:graphics": "*",
                 "dplug:core": "*"
             },
@@ -105,8 +104,7 @@
                 "dplug:client": "*",
                 "dplug:window": "*",
                 "dplug:core": "*",
-                "dplug:graphics": "*",
-                "ae-graphics": "~>0.0"
+                "dplug:graphics": "*"
             }
         }
     ]

@@ -7,15 +7,12 @@ module dplug.gui.mipmap;
 
 import std.algorithm.comparison;
 
-import ae.utils.graphics;
-
 import dplug.graphics.vector;
 import dplug.graphics.box;
+import dplug.graphics.color;
 
 import dplug.core.nogc;
 import dplug.gui.drawex;
-
-
 
 version( D_InlineAsm_X86 )
 {

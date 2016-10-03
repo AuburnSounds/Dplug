@@ -7,7 +7,6 @@ module dplug.host.window;
 
 import dplug.window;
 import dplug.host.host;
-import ae.utils.graphics;
 
 /// Creates a new native window suitable to host the plugin window.
 /// This window may keep a reference to pluginHost
