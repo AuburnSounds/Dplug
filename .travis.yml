@@ -9,7 +9,7 @@ d:
  - dmd-2.072.0-b1
  - dmd-2.071.2
  - dmd-2.070.2
-  - ldc-1.0.0
+ - ldc-1.0.0
 
 script:
   - dub test --compiler=${DC} dplug:core
