@@ -8,6 +8,7 @@ module dplug.gui.knob;
 import std.math;
 import std.algorithm.comparison;
 
+import dplug.core.math;
 import dplug.gui.element;
 import dplug.gui.knob;
 import dplug.gui.drawex;

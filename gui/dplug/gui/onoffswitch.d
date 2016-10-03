@@ -6,6 +6,7 @@
 module dplug.gui.onoffswitch;
 
 import std.math;
+import dplug.core.math;
 import dplug.gui.element;
 import dplug.gui.drawex;
 import dplug.client.params;

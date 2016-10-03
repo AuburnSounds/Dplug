@@ -65,6 +65,40 @@ bool isEven(T)(T i) pure nothrow @nogc
     return (i & 1) == 0;
 }
 
+/// Returns: true of i is a power of 2.
+bool isPowerOfTwo(int i) pure nothrow @nogc
+{
+    assert(i >= 0);
+    return (i != 0) && ((i & (i - 1)) == 0);
+}
+
+/// Computes next power of 2.
+int nextPowerOf2(int i) pure nothrow @nogc
+{
+    int v = i - 1;
+    v |= v >> 1;
+    v |= v >> 2;
+    v |= v >> 4;
+    v |= v >> 8;
+    v |= v >> 16;
+    v++;
+    return v;
+}
+
+/// Computes next power of 2.
+long nextPowerOf2(long i) pure nothrow @nogc
+{
+    long v = i - 1;
+    v |= v >> 1;
+    v |= v >> 2;
+    v |= v >> 4;
+    v |= v >> 8;
+    v |= v >> 16;
+    v |= v >> 32;
+    v++;
+    return v;
+}
+
 /// Returns: x so that (1 << x) >= i
 int iFloorLog2(int i) pure nothrow @nogc
 {
@@ -292,4 +326,56 @@ T fast_log2(T)(T val)
         return llvm_log2(val);
     else
         return log2(val);
+}
+
+/// Linear interpolation, akin to GLSL's mix.
+S lerp(S, T)(S a, S b, T t) pure nothrow @nogc 
+    if (is(typeof(t * b + (1 - t) * a) : S))
+{
+    return t * b + (1 - t) * a;
+}
+
+/// Same as GLSL smoothstep function.
+/// See: http://en.wikipedia.org/wiki/Smoothstep
+T smoothStep(T)(T a, T b, T t) pure nothrow @nogc 
+{
+    if (t <= a)
+        return 0;
+    else if (t >= b)
+        return 1;
+    else
+    {
+        T x = (t - a) / (b - a);
+        return x * x * (3 - 2 * x);
+    }
+}
+
+/// SSE approximation of reciprocal square root.
+T inverseSqrt(T)(T x) pure nothrow @nogc if (is(T : float) || is(T: double))
+{
+    version(AsmX86)
+    {
+        static if (is(T == float))
+        {
+            float result;
+
+            asm pure nothrow @nogc 
+            {
+                movss XMM0, x; 
+                rsqrtss XMM0, XMM0; 
+                movss result, XMM0; 
+            }
+            return result;
+        }
+        else
+            return 1 / sqrt(x);
+    }
+    else
+        return 1 / sqrt(x);
+}
+
+unittest
+{
+    assert(abs( inverseSqrt!float(1) - 1) < 1e-3 );
+    assert(abs( inverseSqrt!double(1) - 1) < 1e-3 );
 }

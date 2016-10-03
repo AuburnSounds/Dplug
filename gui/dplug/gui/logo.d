@@ -6,7 +6,8 @@
 module dplug.gui.logo;
 
 import std.math;
-import dplug.gui;
+import dplug.gui.element;
+import dplug.core.math;
 
 class UILogo : UIElement
 {

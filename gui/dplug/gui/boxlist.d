@@ -7,11 +7,10 @@ module dplug.gui.boxlist;
 
 // Operations on list of boxes
 
-import std.algorithm.comparison;
-
-import gfm.math;
+//import std.algorithm.comparison;
 
 import dplug.core.alignedbuffer;
+import dplug.graphics.box;
 
 /// Returns: Bounding boxes of all bounding boxes.
 box2i boundingBox(box2i[] boxes) pure nothrow @nogc

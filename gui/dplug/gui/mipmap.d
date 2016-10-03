@@ -9,8 +9,8 @@ import std.algorithm.comparison;
 
 import ae.utils.graphics;
 
-import gfm.math.vector;
-import gfm.math.box;
+import dplug.graphics.vector;
+import dplug.graphics.box;
 
 import dplug.core.nogc;
 import dplug.gui.drawex;

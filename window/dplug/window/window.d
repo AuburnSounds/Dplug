@@ -5,8 +5,7 @@
 */
 module dplug.window.window;
 
-import gfm.math;
-
+import dplug.graphics.box;
 import ae.utils.graphics;
 
 enum Key

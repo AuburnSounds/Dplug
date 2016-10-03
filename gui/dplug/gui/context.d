@@ -7,8 +7,6 @@ module dplug.gui.context;
 
 import std.file;
 
-import gfm.math;
-
 import dplug.core.alignedbuffer;
 import dplug.core.nogc;
 import dplug.core.unchecked_sync;

@@ -9,8 +9,6 @@ import std.range,
        std.math,
        std.complex;
 
-import gfm.math.funcs;
-
 import dplug.core,
        dplug.dsp.fft,
        dplug.dsp.delayline,

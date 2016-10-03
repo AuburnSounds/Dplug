@@ -9,9 +9,8 @@ import std.math;
 
 import ae.utils.graphics;
 
-import gfm.math.vector;
-import gfm.math.box;
-import gfm.math.funcs;
+import dplug.graphics.vector;
+import dplug.graphics.box;
 
 import dplug.core.alignedbuffer;
 import dplug.core.nogc;

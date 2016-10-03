@@ -8,10 +8,8 @@ module dplug.dsp.wavetable;
 import std.math;
 
 //import dplug.core.nogc;
-//import dplug.core.math;
+import dplug.core.math;
 import dplug.core.alignedbuffer;
-
-import gfm.math.funcs;
 
 /// Generate a sine.
 /// It turns out it's very stable, stable enough for table generation at least.
@@ -98,8 +96,15 @@ struct Wavetable
         float level = cast(float)log2(phaseIncrementSamples);
         int level0 = cast(int)floor(level);
         int level1 = level0 + 1;
-        level0 = clamp!int(level0, 0, cast(int)_numTables - 1);
-        level1 = clamp!int(level1, 0, cast(int)_numTables - 1);
+        if (level0 < 0)
+            level0 = 0;
+        if (level1 < 0)
+            level1 = 0;
+        int maxLevel = cast(int)_numTables - 1;
+        if (level0 > maxLevel)
+            level0 = maxLevel;
+        if (level1 > maxLevel)
+            level1 = maxLevel;
 
         if (level1 == 0)
         {
@@ -159,7 +164,7 @@ private:
 
     void resize(int largestSize) nothrow @nogc
     {
-        assert(gfm.math.funcs.isPowerOf2(largestSize));
+        assert(isPowerOfTwo(largestSize));
 
         _largestSize = largestSize;
         // compute size for all mipmaps

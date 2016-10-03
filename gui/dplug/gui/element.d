@@ -7,9 +7,9 @@ module dplug.gui.element;
 
 import std.algorithm;
 
-public import gfm.math;
-
 public import ae.utils.graphics;
+
+public import dplug.graphics;
 
 public import dplug.window.window;
 

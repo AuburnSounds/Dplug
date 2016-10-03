@@ -8,8 +8,6 @@ module dplug.dsp.delayline;
 import core.stdc.string;
 import std.traits;
 
-import gfm.math.funcs;
-
 import dplug.core.nogc;
 import dplug.core.math;
 import dplug.core.alignedbuffer;

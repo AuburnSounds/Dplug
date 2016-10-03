@@ -10,8 +10,6 @@ import core.stdc.string;
 public import std.complex;
 import std.math;
 
-import gfm.math.funcs;
-
 import dplug.dsp.window;
 import dplug.core.math;
 import dplug.core.alignedbuffer;
@@ -40,7 +38,7 @@ void inverseFFT(T)(Complex!T[] buffer) nothrow @nogc
 private void FFT_internal(T, FFTDirection direction)(Complex!T[] buffer) nothrow @nogc
 {
     int size = cast(int)(buffer.length);
-    assert(gfm.math.funcs.isPowerOf2(size));
+    assert(isPowerOfTwo(size));
     int m = iFloorLog2(size);
 
     // do the bit reversal
@@ -318,7 +316,7 @@ public:
     /// (center of window is at first sample, zero-padding happen at center)
     void initialize(int windowSize, int fftSize, int analysisPeriod, WindowType windowType, bool zeroPhaseWindowing) nothrow @nogc
     {
-        assert(gfm.math.funcs.isPowerOf2(fftSize));
+        assert(isPowerOfTwo(fftSize));
         assert(fftSize >= windowSize);
 
         _zeroPhaseWindowing = zeroPhaseWindowing;

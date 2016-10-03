@@ -7,7 +7,7 @@ module dplug.dsp.iir;
 
 import std.traits;
 public import std.math;
-public import gfm.math.vector;
+public import dplug.graphics.vector;
 
 
 public

@@ -9,7 +9,6 @@ import std.random,
        std.traits,
        std.math;
 
-import gfm.math.simplerng;
 import dplug.core.nogc;
 
 /// Generates white gaussian noise.

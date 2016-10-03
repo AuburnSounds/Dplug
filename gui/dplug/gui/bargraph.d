@@ -10,6 +10,7 @@ import std.math;
 import dplug.gui.element;
 import dplug.core.unchecked_sync;
 import dplug.core.math;
+import std.algorithm.comparison: clamp;
 
 // Vertical bargraphs made of LEDs
 class UIBargraph : UIElement

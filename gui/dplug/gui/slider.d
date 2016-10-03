@@ -8,6 +8,7 @@ module dplug.gui.slider;
 import std.math;
 import std.algorithm.comparison;
 
+import dplug.core.math;
 import dplug.gui.element;
 import dplug.gui.drawex;
 import dplug.client.params;

@@ -25,13 +25,21 @@
             "importPaths": [ "dsp" ],
             "dependencies": {
                 "dplug:core": "*",
-                "gfm:math": "~>6.0"
+                "dplug:graphics": "*"
             }
         },
         {
             "name": "client",
             "sourcePaths": [ "client/dplug/client" ],
             "importPaths": [ "client" ],
+            "dependencies": {
+                "dplug:core": "*"
+            }
+        },
+        {
+            "name": "graphics",
+            "sourcePaths": [ "graphics/dplug/graphics" ],
+            "importPaths": [ "graphics" ],
             "dependencies": {
                 "dplug:core": "*"
             }
@@ -79,7 +87,7 @@
 
             "dependencies": {
                 "ae-graphics": "~>0.0",
-                "gfm:math": "~>6.0",
+                "dplug:graphics": "*",
                 "dplug:core": "*"
             },
 
@@ -97,7 +105,7 @@
                 "dplug:client": "*",
                 "dplug:window": "*",
                 "dplug:core": "*",
-                "gfm:math": "~>6.0",
+                "dplug:graphics": "*",
                 "ae-graphics": "~>0.0"
             }
         }

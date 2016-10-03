@@ -14,7 +14,9 @@ import std.traits;
 
 import dplug.core.nogc;
 import dplug.core.alignedbuffer;
-import gfm.math;
+
+import dplug.graphics.box;
+
 import ae.utils.graphics;
 import ae.utils.graphics.view;
 
