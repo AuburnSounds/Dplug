@@ -26,7 +26,7 @@ import std.conv;
 import derelict.carbon;
 
 import dplug.core.alignedbuffer;
-//import dplug.core.funcs;
+import dplug.core.nogc;
 import dplug.core.lockedqueue;
 import dplug.core.runtime;
 import dplug.core.unchecked_sync;
@@ -1115,8 +1115,10 @@ private:
                             {
                                 ComponentDescription* pDesc = cast(ComponentDescription*) pData;
                                 pDesc.componentType = kAudioUnitCarbonViewComponentType;
-                                pDesc.componentSubType = _client.getPluginUniqueID();
-                                pDesc.componentManufacturer = _client.getVendorUniqueID();
+                                char[4] uid =_client.getPluginUniqueID();
+                                pDesc.componentSubType = CCONST(uid[0], uid[1], uid[2], uid[3]);
+                                char[4] vid =_client.getVendorUniqueID();
+                                pDesc.componentManufacturer = CCONST(vid[0], vid[1], vid[2], vid[3]);
                                 pDesc.componentFlags = 0;
                                 pDesc.componentFlagsMask = 0;
                             }
@@ -2204,3 +2206,8 @@ AudioThreadMessage makeMIDIMessage(MidiMessage midiMessage) pure nothrow @nogc
     return msg;
 }
 
+/** Four Character Constant (for AEffect->uniqueID) */
+private int CCONST(int a, int b, int c, int d) pure nothrow
+{
+    return (a << 24) | (b << 16) | (c << 8) | (d << 0);
+}

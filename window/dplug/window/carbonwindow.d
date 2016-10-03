@@ -14,9 +14,9 @@ version(OSX)
 
     import derelict.carbon;
 
-    import ae.utils.graphics;
-    import gfm.math.vector;
-    import gfm.math.box;
+    import dplug.graphics.vector;
+    import dplug.graphics.box;
+    import dplug.graphics.image;
 
     import dplug.core.runtime;
     import dplug.core.nogc;
