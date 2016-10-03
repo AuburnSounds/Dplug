@@ -21,9 +21,11 @@ module dplug.core.unchecked_sync;
 
 public import core.time;
 
+import dplug.core.nogc;
+
 version( Windows )
 {
-    private import core.sys.windows.windows;
+    import core.sys.windows.windows;
 
     extern (Windows) export nothrow @nogc
     {

@@ -6,6 +6,7 @@
 module dplug.core.runtime;
 
 import dplug.core.fpcontrol;
+import dplug.core.nogc;
 
 // Helpers to deal with the D runtime.
 
