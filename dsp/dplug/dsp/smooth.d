@@ -9,11 +9,9 @@ import std.algorithm;
 import std.traits;
 import std.math;
 
-//import gfm.core.memory;
-//import gfm.core.queue;
-
 import dplug.core.math;
 import dplug.core.ringbuf;
+import dplug.core.nogc;
 
 /// Smooth values exponentially with a 1-pole lowpass.
 /// This is usually sufficient for most parameter smoothing.
