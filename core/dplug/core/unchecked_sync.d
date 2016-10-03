@@ -159,7 +159,7 @@ private:
     }
     else version( Posix )
     {
-        pthread_mutex_t     m_hndl;
+        pthread_mutex_t     m_hndl = cast(pthread_mutex_t)0;
     }
 
     bool _created;
