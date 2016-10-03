@@ -43,37 +43,37 @@ import dplug.vst.aeffectx;
 template VSTEntryPoint(alias ClientClass)
 {
     const char[] VSTEntryPoint =
-        "extern(C) nothrow AEffect* VSTPluginMain(HostCallbackFunction hostCallback) "
-        "{"
-        "    return VSTEntryPoint(hostCallback);"
-        "}"
+        "extern(C) nothrow AEffect* VSTPluginMain(HostCallbackFunction hostCallback) " ~
+        "{" ~
+        "    return VSTEntryPoint(hostCallback);" ~
+        "}" ~
         // has been found useful to have "main" for linux VST
-        "extern(C) nothrow AEffect* main_macho(HostCallbackFunction hostCallback) "
-        "{"
-        "    return VSTEntryPoint(hostCallback);"
-        "}"
-        "nothrow AEffect* VSTEntryPoint(HostCallbackFunction hostCallback) "
-        "{"
-        "   if (hostCallback is null)"
-        "       return null;"
-        "   try"
-        "   {"
-        "       import dplug.core.nogc;"
-        "       import dplug.core.runtime;"
-        "       ScopedForeignCallback!(false, true) scopedCallback;"
-        "       scopedCallback.enter();"
-        "       auto client = new " ~ ClientClass.stringof ~ "();"
+        "extern(C) nothrow AEffect* main_macho(HostCallbackFunction hostCallback) " ~
+        "{" ~
+        "    return VSTEntryPoint(hostCallback);" ~
+        "}" ~
+        "nothrow AEffect* VSTEntryPoint(HostCallbackFunction hostCallback) " ~
+        "{" ~
+        "   if (hostCallback is null)" ~
+        "       return null;" ~
+        "   try" ~
+        "   {" ~
+        "       import dplug.core.nogc;" ~
+        "       import dplug.core.runtime;" ~
+        "       ScopedForeignCallback!(false, true) scopedCallback;" ~
+        "       scopedCallback.enter();" ~
+        "       auto client = new " ~ ClientClass.stringof ~ "();" ~
 
                 // malloc'd else the GC would not register roots for some reason!
-        "       VSTClient plugin = mallocEmplace!VSTClient(client, hostCallback);"
-        "       return &plugin._effect;"
-        "   }"
-        "   catch (Throwable e)"
-        "   {"
-        "       import dplug.core.nogc;"
-        "       unrecoverableError();"  // best effort, at least it won't crash the host
-        "       return null;"
-        "   }"
+        "       VSTClient plugin = mallocEmplace!VSTClient(client, hostCallback);" ~
+        "       return &plugin._effect;" ~
+        "   }" ~
+        "   catch (Throwable e)" ~
+        "   {" ~
+        "       import dplug.core.nogc;" ~
+        "       unrecoverableError();" ~ // best effort, at least it won't crash the host
+        "       return null;" ~
+        "   }" ~
         "}";
 }
 
