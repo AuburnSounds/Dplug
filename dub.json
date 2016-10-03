@@ -17,10 +17,7 @@
         {
             "name": "core",
             "sourcePaths": [ "core/dplug/core" ],
-            "importPaths": [ "core" ],
-            "dependencies": {
-                "gfm:core": "~>6.0"
-            }
+            "importPaths": [ "core" ]
         },
         {
             "name": "dsp",
@@ -83,7 +80,6 @@
             "dependencies": {
                 "ae-graphics": "~>0.0",
                 "gfm:math": "~>6.0",
-                "gfm:core": "~>6.0",
                 "dplug:core": "*"
             },
 

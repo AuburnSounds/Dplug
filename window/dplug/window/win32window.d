@@ -20,12 +20,12 @@ import std.process,
        std.string,
        std.conv;
 
-import gfm.core.memory;
 import gfm.math;
 
 import ae.utils.graphics;
 
 import dplug.core.runtime;
+import dplug.core.nogc;
 import dplug.window.window;
 
 

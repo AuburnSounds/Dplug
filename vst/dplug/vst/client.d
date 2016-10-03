@@ -24,8 +24,6 @@ import core.stdc.stdlib,
 
 import std.algorithm;
 
-import gfm.core;
-
 import dplug.core.alignedbuffer,
        dplug.core.nogc,
        dplug.core.math,
@@ -60,7 +58,7 @@ template VSTEntryPoint(alias ClientClass)
         "       return null;"
         "   try"
         "   {"
-        "       import gfm.core;"
+        "       import dplug.core.nogc;"
         "       import dplug.core.runtime;"
         "       ScopedForeignCallback!(false, true) scopedCallback;"
         "       scopedCallback.enter();"

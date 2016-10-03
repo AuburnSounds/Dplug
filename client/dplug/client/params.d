@@ -25,10 +25,9 @@ import std.algorithm;
 import std.string;
 import std.conv;
 
-import gfm.core.memory;
-
 import dplug.core.math;
 import dplug.core.unchecked_sync;
+import dplug.core.nogc;
 import dplug.client.client;
 
 

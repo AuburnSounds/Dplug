@@ -9,8 +9,8 @@ import std.random,
        std.traits,
        std.math;
 
-import gfm.core.memory;
 import gfm.math.simplerng;
+import dplug.core.nogc;
 
 /// Generates white gaussian noise.
 struct WhiteNoise(T) if (isFloatingPoint!T)

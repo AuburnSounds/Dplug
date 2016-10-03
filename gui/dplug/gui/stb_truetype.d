@@ -10,7 +10,7 @@ import core.stdc.string : memcpy, memset;
 
 import std.math : ceil, floor, sqrt;
 
-import gfm.core.memory;
+import dplug.core.nogc;
 
 int ifloor(float x) nothrow @nogc
 {

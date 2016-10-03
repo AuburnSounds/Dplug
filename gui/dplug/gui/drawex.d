@@ -12,7 +12,8 @@ import std.algorithm.comparison;
 import std.math;
 import std.traits;
 
-import gfm.core.memory;
+import dplug.core.nogc;
+import dplug.core.alignedbuffer;
 import gfm.math;
 import ae.utils.graphics;
 import ae.utils.graphics.view;

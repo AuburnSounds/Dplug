@@ -13,7 +13,6 @@ import std.uuid;
 
 import ae.utils.graphics;
 
-import gfm.core.memory;
 import gfm.math.vector;
 import gfm.math.box;
 

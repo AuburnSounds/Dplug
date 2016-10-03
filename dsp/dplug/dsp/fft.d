@@ -14,7 +14,7 @@ import gfm.math.funcs;
 
 import dplug.dsp.window;
 import dplug.core.math;
-import dplug.core.nogc;
+import dplug.core.alignedbuffer;
 
 
 enum FFTDirection

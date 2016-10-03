@@ -9,7 +9,7 @@ import std.math;
 
 import dplug.gui.element;
 import dplug.core.unchecked_sync;
-import dplug.core;
+import dplug.core.math;
 
 // Vertical bargraphs made of LEDs
 class UIBargraph : UIElement

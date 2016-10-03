@@ -8,7 +8,7 @@ module dplug.dsp.window;
 import std.math,
        std.traits;
 
-import dplug.core;
+import dplug.core.alignedbuffer;
 
 enum WindowType
 {

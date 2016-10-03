@@ -7,8 +7,10 @@ module dplug.dsp.wavetable;
 
 import std.math;
 
-import dplug.core.nogc;
-import dplug.core.math;
+//import dplug.core.nogc;
+//import dplug.core.math;
+import dplug.core.alignedbuffer;
+
 import gfm.math.funcs;
 
 /// Generate a sine.
@@ -209,7 +211,7 @@ private:
 
                     for (int t = 0; t < size; ++t)
                     {
-                        double x = sin( cast(double)t * TAU * (h + 1) / cast(double)size ) * amplitude;
+                        double x = sin( cast(double)t * (2 * PI) * (h + 1) / cast(double)size ) * amplitude;
                         data[t] += cast(float)x;
                     }
                 }

@@ -9,11 +9,11 @@ import std.math;
 
 import ae.utils.graphics;
 
-import gfm.core.memory;
 import gfm.math.vector;
 import gfm.math.box;
 import gfm.math.funcs;
 
+import dplug.core.alignedbuffer;
 import dplug.core.nogc;
 import dplug.core.math;
 import dplug.window.window;

@@ -9,6 +9,7 @@ import core.atomic;
 
 import dplug.core.unchecked_sync;
 import dplug.core.nogc;
+import dplug.core.alignedbuffer;
 
 
 RingBufferNoGC!T ringBufferNoGC(T)(size_t initialCapacity) nothrow @nogc

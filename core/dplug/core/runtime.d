@@ -5,7 +5,6 @@
  */
 module dplug.core.runtime;
 
-import gfm.core.memory;
 import dplug.core.fpcontrol;
 
 // Helpers to deal with the D runtime.

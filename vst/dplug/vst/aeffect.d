@@ -7,7 +7,7 @@ module dplug.vst.aeffect;
 
 import core.stdc.string; // for strncpy
 
-import dplug.core;
+//import dplug.core;
 
 
 /** Define SDK Version (you can generate different versions (from 2.0 to 2.4) of this SDK by unsetting the unwanted extensions). */

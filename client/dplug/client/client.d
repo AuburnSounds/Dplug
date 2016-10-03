@@ -25,8 +25,6 @@ import core.stdc.stdio;
 
 import std.container;
 
-import gfm.core;
-
 import dplug.core.nogc;
 import dplug.core.math;
 import dplug.client.params;

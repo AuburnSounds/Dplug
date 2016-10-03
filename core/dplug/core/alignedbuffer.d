@@ -5,9 +5,183 @@
  */
 module dplug.core.alignedbuffer;
 
-import core.stdc.string;
+import core.stdc.stdlib: malloc, free;
+import core.stdc.string: memcpy;
 
-import gfm.core.memory;
+import core.exception;
+
+
+// This module deals with aligned memory
+
+
+/// Returns: next pointer aligned with alignment bytes.
+@nogc void* nextAlignedPointer(void* start, size_t alignment) pure nothrow
+{
+    return cast(void*)nextMultipleOf(cast(size_t)(start), alignment);
+}
+
+/// Allocates an aligned memory chunk.
+/// Functionally equivalent to Visual C++ _aligned_malloc.
+@nogc void* alignedMalloc(size_t size, size_t alignment) nothrow
+{
+    if (size == 0)
+        return null;
+
+    size_t request = requestedSize(size, alignment);
+    void* raw = malloc(request);
+
+    if (request > 0 && raw == null) // malloc(0) can validly return anything
+        onOutOfMemoryError();
+
+    return storeRawPointerPlusSizeAndReturnAligned(raw, size, alignment);
+}
+
+/// Frees aligned memory allocated by alignedMalloc or alignedRealloc.
+/// Functionally equivalent to Visual C++ _aligned_free.
+@nogc void alignedFree(void* aligned) nothrow
+{
+    // support for free(NULL)
+    if (aligned is null)
+        return;
+
+    void** rawLocation = cast(void**)(cast(char*)aligned - size_t.sizeof);
+    free(*rawLocation);
+}
+
+/// Reallocates an aligned memory chunk allocated by alignedMalloc or alignedRealloc.
+/// Functionally equivalent to Visual C++ _aligned_realloc.
+@nogc void* alignedRealloc(void* aligned, size_t size, size_t alignment) nothrow
+{
+    if (aligned is null)
+        return alignedMalloc(size, alignment);
+
+    if (size == 0)
+    {
+        alignedFree(aligned);
+        return null;
+    }
+
+    size_t previousSize = *cast(size_t*)(cast(char*)aligned - size_t.sizeof * 2);
+
+
+    void* raw = *cast(void**)(cast(char*)aligned - size_t.sizeof);
+    size_t request = requestedSize(size, alignment);
+
+    // Heuristic: if new requested size is within 50% to 100% of what is already allocated
+    //            then exit with the same pointer
+    if ( (previousSize < request * 4) && (request <= previousSize) )
+        return aligned;
+
+    void* newRaw = malloc(request);
+    static if( __VERSION__ > 2067 ) // onOutOfMemoryError wasn't nothrow before July 2014
+    {
+        if (request > 0 && newRaw == null) // realloc(0) can validly return anything
+            onOutOfMemoryError();
+    }
+
+    void* newAligned = storeRawPointerPlusSizeAndReturnAligned(newRaw, request, alignment);
+    size_t minSize = size < previousSize ? size : previousSize;
+    memcpy(newAligned, aligned, minSize);
+
+    // Free previous data
+    alignedFree(aligned);
+    return newAligned;
+}
+
+private
+{
+    // Returns number of bytes to actually allocate when asking
+    // for a particular alignement
+    @nogc size_t requestedSize(size_t askedSize, size_t alignment) pure nothrow
+    {
+        enum size_t pointerSize = size_t.sizeof;
+        return askedSize + alignment - 1 + pointerSize * 2;
+    }
+
+    // Store pointer given my malloc, and size in bytes initially requested (alignedRealloc needs it)
+    @nogc void* storeRawPointerPlusSizeAndReturnAligned(void* raw, size_t size, size_t alignment) nothrow
+    {
+        enum size_t pointerSize = size_t.sizeof;
+        char* start = cast(char*)raw + pointerSize * 2;
+        void* aligned = nextAlignedPointer(start, alignment);
+        void** rawLocation = cast(void**)(cast(char*)aligned - pointerSize);
+        *rawLocation = raw;
+        size_t* sizeLocation = cast(size_t*)(cast(char*)aligned - 2 * pointerSize);
+        *sizeLocation = size;
+        return aligned;
+    }
+
+    // Returns: x, multiple of powerOfTwo, so that x >= n.
+    @nogc size_t nextMultipleOf(size_t n, size_t powerOfTwo) pure nothrow
+    {
+        // check power-of-two
+        assert( (powerOfTwo != 0) && ((powerOfTwo & (powerOfTwo - 1)) == 0));
+
+        size_t mask = ~(powerOfTwo - 1);
+        return (n + powerOfTwo - 1) & mask;
+    }
+}
+
+unittest
+{
+    assert(nextMultipleOf(0, 4) == 0);
+    assert(nextMultipleOf(1, 4) == 4);
+    assert(nextMultipleOf(2, 4) == 4);
+    assert(nextMultipleOf(3, 4) == 4);
+    assert(nextMultipleOf(4, 4) == 4);
+    assert(nextMultipleOf(5, 4) == 8);
+
+    {
+        void* p = alignedMalloc(23, 16);
+        assert(p !is null);
+        assert(((cast(size_t)p) & 0xf) == 0);
+
+        alignedFree(p);
+    }
+
+    assert(alignedMalloc(0, 16) == null);
+    alignedFree(null);
+
+    {
+        int alignment = 16;
+        int* p = null;
+
+        // check if growing keep values in place
+        foreach(int i; 0..100)
+        {
+            p = cast(int*) alignedRealloc(p, (i + 1) * int.sizeof, alignment);
+            p[i] = i;
+        }
+
+        foreach(int i; 0..100)
+            assert(p[i] == i);
+
+
+        p = cast(int*) alignedRealloc(p, 0, alignment);
+        assert(p is null);
+    }
+}
+
+
+
+/// Use throughout dplug:dsp to avoid reliance on GC.
+/// This works like alignedRealloc except with slices as input.
+///
+/// Params:
+///    buffer Existing allocated buffer. Can be null. Input slice length is not considered.
+///    length desired slice length
+///
+void reallocBuffer(T)(ref T[] buffer, size_t length, int alignment = 16) nothrow @nogc
+{
+    T* pointer = cast(T*) alignedRealloc(buffer.ptr, T.sizeof * length, alignment);
+    if (pointer is null)
+        buffer = null;
+    else
+        buffer = pointer[0..length];
+}
+
+
+
 
 /// Returns: A newly created AlignedBuffer
 AlignedBuffer!T alignedBuffer(T)(size_t initialSize = 0, int alignment = 64) nothrow @nogc

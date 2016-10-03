@@ -25,8 +25,6 @@ import std.conv;
 
 import derelict.carbon;
 
-import gfm.core.memory;
-
 import dplug.core.alignedbuffer;
 //import dplug.core.funcs;
 import dplug.core.lockedqueue;

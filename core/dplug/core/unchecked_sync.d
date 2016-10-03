@@ -21,8 +21,6 @@ module dplug.core.unchecked_sync;
 
 public import core.time;
 
-import gfm.core.memory;
-
 version( Windows )
 {
     private import core.sys.windows.windows;

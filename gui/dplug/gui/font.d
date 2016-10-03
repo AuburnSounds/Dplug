@@ -13,10 +13,10 @@ import std.utf;
 import ae.utils.graphics;
 
 import gfm.math;
-import gfm.core;
 
 import dplug.core.alignedbuffer;
 import dplug.core.unchecked_sync;
+import dplug.core.nogc;
 
 import dplug.gui.stb_truetype;
 

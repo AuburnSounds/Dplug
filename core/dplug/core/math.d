@@ -14,12 +14,6 @@ version(LDC)
 
 immutable real TAU = PI * 2;
 
-/** Four Character Constant (for AEffect->uniqueID) */
-int CCONST(int a, int b, int c, int d) pure nothrow
-{
-    return (a << 24) | (b << 16) | (c << 8) | (d << 0);
-}
-
 /// Map linearly x from the range [a, b] to the range [c, d]
 T linmap(T)(T value, T a, T b, T c, T d) pure nothrow @nogc
 {

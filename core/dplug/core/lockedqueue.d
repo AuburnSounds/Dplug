@@ -7,8 +7,7 @@ module dplug.core.lockedqueue;
 
 import dplug.core.ringbuf;
 import dplug.core.unchecked_sync;
-
-import gfm.core.memory;
+import dplug.core.nogc;
 
 /**
     Locked queue for inter-thread communication.
