@@ -93,7 +93,11 @@ struct UncheckedMutex
             }
             else version( Posix )
             {
-                pthread_mutex_destroy(&m_hndl);
+                assumeNothrowNoGC(
+                    (pthread_mutex_t* handle)
+                    {
+                        pthread_mutex_destroy(handle);
+                    })(&m_hndl);
             }
         }
     }

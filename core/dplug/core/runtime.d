@@ -5,6 +5,7 @@
  */
 module dplug.core.runtime;
 
+import gfm.core.memory;
 import dplug.core.fpcontrol;
 
 // Helpers to deal with the D runtime.
@@ -24,7 +25,12 @@ else version(Posix)
     void* currentThreadId() nothrow @nogc
     {
         import core.sys.posix.pthread;
-        return cast(void*)(pthread_self());
+
+        return assumeNothrowNoGC(
+                ()
+                {
+                    return cast(void*)(pthread_self());
+                })();
     }
 }
 else
