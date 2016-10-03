@@ -159,7 +159,7 @@ private:
 
     void resize(int largestSize) nothrow @nogc
     {
-        assert(isPowerOf2(largestSize));
+        assert(gfm.math.funcs.isPowerOf2(largestSize));
 
         _largestSize = largestSize;
         // compute size for all mipmaps

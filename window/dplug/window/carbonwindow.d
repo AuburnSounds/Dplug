@@ -15,12 +15,11 @@ version(OSX)
     import derelict.carbon;
 
     import ae.utils.graphics;
-
-    import gfm.core.memory;
     import gfm.math.vector;
     import gfm.math.box;
 
     import dplug.core.runtime;
+    import dplug.core.nogc;
     import dplug.window.window;
 
 

@@ -318,7 +318,7 @@ public:
     /// (center of window is at first sample, zero-padding happen at center)
     void initialize(int windowSize, int fftSize, int analysisPeriod, WindowType windowType, bool zeroPhaseWindowing) nothrow @nogc
     {
-        assert(isPowerOf2(fftSize));
+        assert(gfm.math.funcs.isPowerOf2(fftSize));
         assert(fftSize >= windowSize);
 
         _zeroPhaseWindowing = zeroPhaseWindowing;
