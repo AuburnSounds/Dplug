@@ -2981,57 +2981,6 @@ public bool detect_jpeg_image_from_stream (scope JpegStreamReadFunc rfn, out int
   return true;
 }
 
-
-// ////////////////////////////////////////////////////////////////////////// //
-/// read JPEG image header, determine dimensions and number of components.
-/// return `false` if image is not JPEG (i hope).
-public bool detect_jpeg_image_from_file (const(char)[] filename, out int width, out int height, out int actual_comps) {
-  import core.stdc.stdio;
-
-  FILE* m_pFile;
-  bool m_eof_flag, m_error_flag;
-
-  if (filename.length == 0) throw new Exception("cannot open unnamed file");
-  if (filename.length < 2048) {
-    import core.stdc.stdlib : alloca;
-    auto tfn = (cast(char*)alloca(filename.length+1))[0..filename.length+1];
-    tfn[0..filename.length] = filename[];
-    tfn[filename.length] = 0;
-    m_pFile = fopen(tfn.ptr, "rb");
-  } else {
-    import core.stdc.stdlib : malloc, free;
-    auto tfn = (cast(char*)malloc(filename.length+1))[0..filename.length+1];
-    if (tfn !is null) {
-      scope(exit) free(tfn.ptr);
-      m_pFile = fopen(tfn.ptr, "rb");
-    }
-  }
-  if (m_pFile is null) throw new Exception("cannot open file '"~filename.idup~"'");
-  scope(exit) if (m_pFile) fclose(m_pFile);
-
-  return detect_jpeg_image_from_stream(
-    delegate int (void* pBuf, int max_bytes_to_read, bool *pEOF_flag) {
-      if (m_pFile is null) return -1;
-      if (m_eof_flag) {
-        *pEOF_flag = true;
-        return 0;
-      }
-      if (m_error_flag) return -1;
-      int bytes_read = cast(int)(fread(pBuf, 1, max_bytes_to_read, m_pFile));
-      if (bytes_read < max_bytes_to_read) {
-        if (ferror(m_pFile)) {
-          m_error_flag = true;
-          return -1;
-        }
-        m_eof_flag = true;
-        *pEOF_flag = true;
-      }
-      return bytes_read;
-    },
-    width, height, actual_comps);
-}
-
-
 // ////////////////////////////////////////////////////////////////////////// //
 /// read JPEG image header, determine dimensions and number of components.
 /// return `false` if image is not JPEG (i hope).
