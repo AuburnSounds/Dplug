@@ -40,7 +40,7 @@ void inverseFFT(T)(Complex!T[] buffer) nothrow @nogc
 private void FFT_internal(T, FFTDirection direction)(Complex!T[] buffer) nothrow @nogc
 {
     int size = cast(int)(buffer.length);
-    assert(isPowerOf2(size));
+    assert(gfm.math.funcs.isPowerOf2(size));
     int m = iFloorLog2(size);
 
     // do the bit reversal
