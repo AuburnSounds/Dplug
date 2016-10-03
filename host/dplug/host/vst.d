@@ -9,7 +9,7 @@ import std.string;
 
 import derelict.util.sharedlib;
 
-import dplug.core.funcs;
+import dplug.core.nogc;
 import dplug.host.host;
 import dplug.vst;
 
