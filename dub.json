@@ -106,6 +106,26 @@
                 "dplug:core": "*",
                 "dplug:graphics": "*"
             }
+        },
+        {
+            "name": "derelict-nogc",
+            "sourcePaths": [ "derelictnogc/derelict/util" ],
+            "importPaths": [ "derelictnogc" ],
+            "license": "Boost",
+            "authors": [
+                "Mike Parker"
+            ],            
+            "libs-linux": ["dl"],
+
+            "configurations": [
+                {
+                    "name": "vanilla",
+                },
+                {
+                    "name": "nogc",
+                    "versions": ["doNotUseRuntime"],
+                }
+            ]
         }
     ]
 }
