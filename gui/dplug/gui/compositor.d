@@ -18,8 +18,8 @@ import dplug.graphics.image;
 
 import dplug.window.window;
 
-import dplug.gui.mipmap;
-import dplug.gui.drawex;
+import dplug.graphics.mipmap;
+import dplug.graphics.drawex;
 
 // Only deals with rendering tiles.
 // If you don't like dplug default compositing, just make another Compositor

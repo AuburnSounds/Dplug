@@ -20,7 +20,8 @@ import dplug.client.daw;
 
 import dplug.window.window;
 
-import dplug.gui.mipmap;
+import dplug.graphics.mipmap;
+
 import dplug.gui.boxlist;
 import dplug.gui.context;
 import dplug.gui.element;

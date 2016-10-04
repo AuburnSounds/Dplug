@@ -13,8 +13,9 @@ import dplug.core.unchecked_sync;
 
 import dplug.window.window;
 
-import dplug.gui.font;
-import dplug.gui.mipmap;
+import dplug.graphics.font;
+import dplug.graphics.mipmap;
+
 import dplug.gui.element;
 import dplug.gui.boxlist;
 

@@ -9,9 +9,11 @@ import std.math;
 import std.algorithm.comparison;
 
 import dplug.core.math;
+import dplug.graphics.drawex;
+
 import dplug.gui.element;
 import dplug.gui.knob;
-import dplug.gui.drawex;
+
 import dplug.client.params;
 
 enum KnobStyle
