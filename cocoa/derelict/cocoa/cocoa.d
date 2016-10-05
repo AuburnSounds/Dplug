@@ -49,12 +49,12 @@ class DerelictCocoaLoader : SharedLibLoader
 {
     protected
     {
-        this()
+        this() nothrow @nogc
         {
             super(libNames);
         }
 
-        override void loadSymbols()
+        override void loadSymbols() nothrow @nogc
         {
             // Runtime
             bindFunc(cast(void**)&objc_registerClassPair, "objc_registerClassPair");
@@ -92,8 +92,8 @@ class DerelictCocoaLoader : SharedLibLoader
             bindFunc(cast(void**)&NSDeallocateMemoryPages, "NSDeallocateMemoryPages");
 
             // TODO: load from proper global variables
-            NSDefaultRunLoopMode = NSString.stringWith("kCFRunLoopDefaultMode");
-            NSRunLoopCommonModes = NSString.stringWith("kCFRunLoopCommonModes");
+            NSDefaultRunLoopMode = NSString.stringWith("kCFRunLoopDefaultMode"w);
+            NSRunLoopCommonModes = NSString.stringWith("kCFRunLoopCommonModes"w);
 
             // Appkit
             bindFunc(cast(void**)&NSApplicationLoad, "NSApplicationLoad");

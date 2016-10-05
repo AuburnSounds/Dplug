@@ -41,6 +41,7 @@ import core.atomic;
 import std.string;
 
 import derelict.util.loader;
+import derelict.util.nogc;
 
 
 // NSGeometry.h
@@ -258,144 +259,87 @@ __gshared
     pfprotocol_addMethodDescription protocol_addMethodDescription;
 }
 
-bool class_addIvar (Class cls, string name, size_t size, byte alignment, string types)
+bool class_addIvar (Class cls, string name, size_t size, byte alignment, string types) nothrow @nogc
 {
-    return varclass_addIvar(cls, toStringz(name), size, alignment, toStringz(types));
+    return varclass_addIvar(cls, CString(name), size, alignment, CString(types));
 }
 
-bool class_addMethod (Class cls, SEL name, IMP imp, string types)
+bool class_addMethod (Class cls, SEL name, IMP imp, string types) nothrow @nogc
 {
-    return varclass_addMethod(cls, name, imp, toStringz(types));
+    return varclass_addMethod(cls, name, imp, CString(types));
 }
 
-Class objc_allocateClassPair (Class superclass, const(char)* name, size_t extraBytes)
+Class objc_allocateClassPair (Class superclass, const(char)* name, size_t extraBytes) nothrow @nogc
 {
     return varobjc_allocateClassPair(superclass, name, extraBytes);
 }
 
-id objc_getClass (string name) nothrow
+id objc_getClass (string name) nothrow @nogc
 {
-    return varobjc_getClass(toStringz(name));
+    return varobjc_getClass(CString(name));
 }
 
-id objc_lookUpClass (string name) nothrow
+id objc_lookUpClass (string name) nothrow @nogc
 {
-    return varobjc_lookUpClass(toStringz(name));
+    return varobjc_lookUpClass(CString(name));
 }
-
-string object_getClassName (id obj)
+/*
+string object_getClassName (id obj) nothrow @nogc
 {
     return fromStringz(varobject_getClassName(obj)).idup;
 }
-
-SEL sel_registerName (string str) nothrow
+*/
+SEL sel_registerName (string str) nothrow @nogc
 {
-    return varsel_registerName(toStringz(str));
+    return varsel_registerName(CString(str));
 }
 
-Method class_getInstanceMethod (Class aClass, string aSelector)
+Method class_getInstanceMethod (Class aClass, string aSelector) nothrow @nogc
 {
-    return varclass_getInstanceMethod(aClass, toStringz(aSelector));
+    return varclass_getInstanceMethod(aClass, CString(aSelector));
 }
-
-
-// Only LDC supports TLS for Mac in shared libraries.
-//version(LDC)
-//    version = useTLSVariables;
-
-version = useAtomics; // this way we avoid TLS variables
-
 
 // Lazy selector literal
 // eg: sel!"init"
-SEL sel(string selectorName)() nothrow
-{
-    version(useTLSVariables)
+SEL sel(string selectorName)() nothrow @nogc
+{   
+    // we use type-punning here because deep shared(T) is annoying
+    shared(size_t) cached = 0;
+    size_t got = atomicLoad(cached);
+    if (got == 0)
     {
-        static SEL cached = null; // cached is TLS
-
-        if (cached is null)
-        {
-            cached = sel_registerName(selectorName);
-        }
-        return cached;
+        got = cast(size_t)( sel_registerName(selectorName) );
+        atomicStore(cached, got);
     }
-    else version(useAtomics)
-    {
-        // we use type-punning here because deep shared(T) is annoying
-        shared(size_t) cached = 0;
-        size_t got = atomicLoad(cached);
-        if (got == 0)
-        {
-            got = cast(size_t)( sel_registerName(selectorName) );
-            atomicStore(cached, got);
-        }
-        return cast(SEL) got;
-    }
-    else
-    {
-        // TODO: could be done with caching, shared variables and atomics only
-        return sel_registerName(selectorName);
-    }
-
+    return cast(SEL) got;
 }
 
 // Lazy class object
 // eg: lazyClass!"NSObject"
-id lazyClass(string className)() nothrow
+id lazyClass(string className)() nothrow @nogc
 {
-    version(useTLSVariables)
+    // we use type-punning here because deep shared(T) is annoying
+    shared(size_t) cached = 0;
+    size_t got = atomicLoad(cached);
+    if (got == 0)
     {
-        static id cached = null; // cached is TLS
-
-        if (cached is null) // Not thread-safe! TODO
-        {
-            cached = objc_getClass(className);
-        }
-        return cached;
+        got = cast(size_t)( objc_getClass(className) );
+        atomicStore(cached, got);
     }
-    else version(useAtomics)
-    {
-        // we use type-punning here because deep shared(T) is annoying
-        shared(size_t) cached = 0;
-        size_t got = atomicLoad(cached);
-        if (got == 0)
-        {
-            got = cast(size_t)( objc_getClass(className) );
-            atomicStore(cached, got);
-        }
-        return cast(id) got;
-    }
-    else
-        return objc_getClass(className);
+    return cast(id) got;
 }
 
 Protocol* lazyProtocol(string className)() nothrow @nogc
-{
-    version(useTLSVariables)
+{  
+    // we use type-punning here because deep shared(T) is annoying
+    shared(size_t) cached = 0;
+    size_t got = atomicLoad(cached);
+    if (got == 0)
     {
-        static id cached = null; // cached is TLS
-
-        if (cached is null) // Not thread-safe! TODO
-        {
-            cached = objc_getProtocol(className);
-        }
-        return cached;
+        got = cast(size_t)( objc_getProtocol(className) );
+        atomicStore(cached, got);
     }
-    else version(useAtomics)
-    {
-        // we use type-punning here because deep shared(T) is annoying
-        shared(size_t) cached = 0;
-        size_t got = atomicLoad(cached);
-        if (got == 0)
-        {
-            got = cast(size_t)( objc_getProtocol(className) );
-            atomicStore(cached, got);
-        }
-        return cast(Protocol*) got;
-    }
-    else
-        return objc_getProtocol(className);
+    return cast(Protocol*) got;
 }
 
 // @encode replacement

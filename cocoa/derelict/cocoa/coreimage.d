@@ -38,6 +38,7 @@ import derelict.cocoa.coregraphics;
 
 struct CIContext
 {
+nothrow @nogc:
     NSObject parent;
     alias parent this;
 
@@ -45,7 +46,7 @@ struct CIContext
 
     void drawImage(CIImage image, CGRect inRect, CGRect fromRect)
     {
-        alias fun_t = extern(C) void function (id obj, SEL sel, id, CGRect, CGRect);
+        alias fun_t = extern(C) void function (id obj, SEL sel, id, CGRect, CGRect) nothrow @nogc;
         (cast(fun_t)objc_msgSend)(_id, sel!"drawImage:inRect:fromRect:", image._id, inRect, fromRect);
     }
 }
@@ -55,8 +56,6 @@ alias CIFormat = int;
 extern(C)
 {
     __gshared CIFormat kCIFormatARGB8;
-    //__gshared CIFormat kCIFormatBGRA8; // iOS only
-    //__gshared CIFormat kCIFormatRGBA8; // iOS only
     __gshared CIFormat kCIFormatRGBA16;
     __gshared CIFormat kCIFormatRGBAf;
     __gshared CIFormat kCIFormatRGBAh;
@@ -64,6 +63,7 @@ extern(C)
 
 struct CIImage
 {
+nothrow @nogc:
     NSObject parent;
     alias parent this;
 
@@ -71,7 +71,7 @@ struct CIImage
 
     static CIImage imageWithBitmapData(NSData d, size_t bytesPerRow, CGSize size, CIFormat f, CGColorSpaceRef cs)
     {
-        alias fun_t = extern(C) id function (id obj, SEL sel, id, NSUInteger, CGSize, CIFormat, CGColorSpaceRef);
+        alias fun_t = extern(C) id function (id obj, SEL sel, id, NSUInteger, CGSize, CIFormat, CGColorSpaceRef) nothrow @nogc;
         id result = (cast(fun_t)objc_msgSend)(getClassID(),
                                  sel!"imageWithBitmapData:bytesPerRow:size:format:colorSpace:",
                                  d._id, cast(NSUInteger)bytesPerRow, size, f, cs);

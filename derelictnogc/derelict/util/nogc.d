@@ -32,22 +32,27 @@ import std.traits;
 import core.stdc.stdlib: malloc, free;
 
 
-/// Zero-terminated C string, to replace toStringz
-struct CString
+alias CString = CStringImpl!char;
+
+alias CString16 = CStringImpl!wchar;
+
+/// Zero-terminated C string, to replace toStringz and toUTF16z
+struct CStringImpl(CharType) if (is(CharType: char) || is(CharType: wchar))
 {
 public:
 nothrow:
 @nogc:
 
-    const(char)* storage = null;
-    alias storage this;
+    const(CharType)* storage = null;
+    alias storage this;    
 
-    this(string s)
+    this(immutable(CharType)[] s)
     {    
         // Same optimizations that for toStringz
         if (s.empty)
         {
-            storage = "".ptr;
+            enum emptyString = cast(CharType[])"";
+            storage = emptyString.ptr;
             return;
         }
 
@@ -69,10 +74,10 @@ nothrow:
         }
 
         size_t len = s.length;
-        char* buffer = cast(char*) malloc(len + 1);
+        CharType* buffer = cast(CharType*) malloc((len + 1) * CharType.sizeof);
         buffer[0..len] = s[0..len];
         buffer[len] = '\0';
-        storage = buffer;        
+        storage = buffer;
         wasAllocated = true;
     }
 
