@@ -45,8 +45,6 @@ import std.string;
 
 import derelict.carbon;
 
-version(OSX):
-
 //-----------------------------------------------------------------------------
 // The following defines and implements CoreFoundation-like handling of
 // an AUPreset container object:  CFAUPreset

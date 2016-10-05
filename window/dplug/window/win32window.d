@@ -370,11 +370,6 @@ version(Windows)
             return _terminated;
         }
 
-        override void debugOutput(string s)
-        {
-            OutputDebugStringA(toStringz(s ~ "\n"));
-        }
-
         override uint getTimeMs()
         {
             LARGE_INTEGER perfCounter;

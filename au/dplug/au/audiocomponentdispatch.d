@@ -56,8 +56,6 @@ import derelict.carbon;
 // Dispatcher for the Audio Component API
 // Not implemented yet
 
-version(OSX):
-
 import core.stdc.stdio;
 
 

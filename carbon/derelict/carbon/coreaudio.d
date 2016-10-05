@@ -31,7 +31,6 @@
 */
 module derelict.carbon.coreaudio;
 
-version(OSX):
 
 import derelict.carbon.corefoundation;
 

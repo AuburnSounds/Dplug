@@ -26,8 +26,6 @@ import dplug.core.runtime;
 import dplug.core.nogc;
 import dplug.au.client;
 
-version(OSX):
-
 
 import core.stdc.stdio;
 

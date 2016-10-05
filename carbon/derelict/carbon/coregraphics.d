@@ -33,8 +33,6 @@ module derelict.carbon.coregraphics;
 
 // TODO: this should go in its own Derelict package
 
-version(OSX):
-
 import derelict.util.system;
 import derelict.util.loader;
 
@@ -44,7 +42,7 @@ static if(Derelict_OS_Mac)
     // because CoreGraphics.framework did not exist in OSX 10.6
     enum libNames = "/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices";
 else
-    static assert(0, "Need to implement CoreGraphics libNames for this operating system.");
+    enum libNames = "";
 
 
 class DerelictCoreGraphicsLoader : SharedLibLoader

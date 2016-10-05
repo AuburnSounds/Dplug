@@ -33,8 +33,6 @@ module derelict.carbon.coreservices;
 
 // TODO: this should go in its own Derelict package
 
-version(OSX):
-
 import core.stdc.config;
 
 import derelict.util.system;
@@ -45,7 +43,7 @@ import derelict.carbon.corefoundation;
 static if(Derelict_OS_Mac)
     enum libNames = "/System/Library/Frameworks/CoreServices.framework/CoreServices";
 else
-    static assert(0, "Need to implement CoreServices libNames for this operating system.");
+    enum libNames = "";    
 
 
 class DerelictCoreServicesLoader : SharedLibLoader

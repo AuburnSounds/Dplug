@@ -31,8 +31,6 @@
  */
 module derelict.cocoa.foundation;
 
-version(OSX):
-
 import std.string;
 import std.utf;
 
@@ -162,7 +160,7 @@ struct NSString
 
     mixin NSObjectTemplate!(NSString, "NSString");
 
-    static NSString stringWith (string str)
+    static NSString stringWith (string str) 
     {
         alias fun_t = extern(C) id function(id, SEL, const(wchar)*, NSUInteger);
         id result = (cast(fun_t)objc_msgSend)(getClassID(), sel!"stringWithCharacters:length:",

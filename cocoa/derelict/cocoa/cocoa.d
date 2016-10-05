@@ -31,8 +31,6 @@
 */
 module derelict.cocoa.cocoa;
 
-version(OSX):
-
 import derelict.util.system;
 import derelict.util.loader;
 
@@ -44,7 +42,7 @@ import derelict.cocoa.coreimage;
 static if(Derelict_OS_Mac)
     enum libNames = "/System/Library/Frameworks/Cocoa.framework/Cocoa";
 else
-    static assert(0, "Need to implement Cocoa libNames for this operating system.");
+    enum libNames = "";
 
 
 class DerelictCocoaLoader : SharedLibLoader

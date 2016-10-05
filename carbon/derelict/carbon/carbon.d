@@ -31,7 +31,6 @@
 */
 module derelict.carbon.carbon;
 
-version(OSX):
 
 import derelict.util.system;
 import derelict.util.loader;
@@ -41,7 +40,7 @@ import derelict.carbon.hitoolbox;
 static if(Derelict_OS_Mac)
     enum libNames = "/System/Library/Frameworks/Carbon.framework/Carbon";
 else
-    static assert(0, "Need to implement Carbon libNames for this operating system.");
+    enum libNames = "";
 
 
 class DerelictCarbonLoader : SharedLibLoader

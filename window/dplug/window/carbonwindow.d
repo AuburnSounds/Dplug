@@ -174,11 +174,6 @@ version(OSX)
             return _terminated;
         }
 
-        override void debugOutput(string s)
-        {
-            fprintf(stderr, toStringz(s));
-        }
-
         override uint getTimeMs()
         {
             import core.time;

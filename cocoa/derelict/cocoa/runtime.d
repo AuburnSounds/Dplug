@@ -35,8 +35,6 @@ module derelict.cocoa.runtime;
 /// Important reading: The "OS X ABI Function Call Guide"
 /// https://developer.apple.com/library/mac/documentation/DeveloperTools/Conceptual/LowLevelABI/
 
-version(OSX):
-
 import core.stdc.config;
 import core.atomic;
 

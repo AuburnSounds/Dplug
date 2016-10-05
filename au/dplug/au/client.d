@@ -47,8 +47,6 @@ import dplug.au.audiocomponentdispatch;
 version = supportCocoaUI;
 version = supportCarbonUI;
 
-version(OSX):
-
 // Difference with IPlug
 // - no support for parameters group
 // - no support for multi-output instruments

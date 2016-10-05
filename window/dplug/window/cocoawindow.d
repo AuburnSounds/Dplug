@@ -159,12 +159,6 @@ version(OSX)
             return _terminated;
         }
 
-        override void debugOutput(string s)
-        {
-            import core.stdc.stdio;
-            fprintf(stderr, toStringz(s));
-        }
-
         override uint getTimeMs()
         {
             return cast(uint)(NSDate.timeIntervalSinceReferenceDate() * 1000.0);

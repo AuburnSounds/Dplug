@@ -35,8 +35,6 @@ module derelict.carbon.audiounit;
 // Not strictly in Carbon, this is technical debt
 
 
-version(OSX):
-
 import core.stdc.config;
 
 import derelict.util.system;
@@ -50,7 +48,7 @@ import derelict.carbon.coreservices;
 static if(Derelict_OS_Mac)
     enum libNames = "/System/Library/Frameworks/AudioUnit.framework/AudioUnit";
 else
-    static assert(0, "Need to implement AudioUnit libNames for this operating system.");
+    enum libNames = "";  
 
 
 class DerelictAudioUnitLoader : SharedLibLoader
@@ -583,7 +581,7 @@ struct AudioUnitParameterValueFromString
 static if(Derelict_OS_Mac)
     enum libNamesToolbox = "/System/Library/Frameworks/AudioToolbox.framework/AudioToolbox";
 else
-    static assert(0, "Need to implement AudioToolbox libNames for this operating system.");
+    enum libNamesToolbox = "";  
 
 
 class DerelictAudioToolboxLoader : SharedLibLoader

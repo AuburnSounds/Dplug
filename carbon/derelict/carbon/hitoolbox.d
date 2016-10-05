@@ -31,9 +31,6 @@
 */
 module derelict.carbon.hitoolbox;
 
-version(OSX):
-
-
 import derelict.carbon.corefoundation;
 import derelict.carbon.coregraphics;
 

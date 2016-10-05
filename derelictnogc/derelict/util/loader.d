@@ -357,9 +357,10 @@ protected:
 
      This method is called by the load methods.
     +/
-    version(doNotUseRuntime)
-        abstract void loadSymbols() nothrow @nogc;
-    else
+    // TODO
+    //version(doNotUseRuntime)
+    //    abstract void loadSymbols() nothrow @nogc;
+    //else
         abstract void loadSymbols();
 
     /++

@@ -56,8 +56,6 @@ module derelict.carbon.corefoundation;
 
 // TODO: this should go in the existing Derelict package DerelictCF
 
-version(OSX):
-
 import core.stdc.config;
 
 import derelict.util.system;
@@ -66,19 +64,19 @@ import derelict.util.loader;
 static if(Derelict_OS_Mac)
     enum libNames = "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation";
 else
-    static assert(0, "Need to implement CoreFoundation libNames for this operating system.");
+    enum libNames = "";//static assert(0, "Need to implement CoreFoundation libNames for this operating system.");
 
 
 class DerelictCoreFoundationLoader : SharedLibLoader
 {
     protected
     {
-        this()
+        this() nothrow @nogc
         {
             super(libNames);
         }
 
-        override void loadSymbols()
+        override void loadSymbols() nothrow @nogc
         {
             bindFunc(cast(void**)&CFRetain, "CFRetain");
             bindFunc(cast(void**)&CFRelease, "CFRelease");

@@ -91,8 +91,6 @@ public:
             dragged = null;
         }
     }
-
-    void delegate(string message) debugOutput;
 }
 
 final class DirtyRectList

@@ -31,8 +31,6 @@
 */
 module derelict.cocoa.coregraphics;
 
-version(OSX):
-
 import derelict.cocoa.runtime;
 import derelict.cocoa.foundation;
 

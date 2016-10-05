@@ -120,8 +120,6 @@ class GUIGraphics : UIElement, IGraphics
         // We create this window each time.
         _window = createWindow(parentInfo, controlInfo, _windowListener, wbackend, _askedWidth, _askedHeight);
 
-        _uiContext.debugOutput = &_window.debugOutput;
-
         reflow(box2i(0, 0, _askedWidth, _askedHeight));
 
         // Sets the whole UI dirty
