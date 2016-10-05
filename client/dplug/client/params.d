@@ -21,7 +21,7 @@ import core.stdc.stdio;
 import core.stdc.string;
 
 import std.math;
-import std.algorithm;
+import std.algorithm.comparison;
 import std.string;
 import std.conv;
 
@@ -86,7 +86,8 @@ public:
     {
         static auto removeElement(IParameterListener[] haystack, IParameterListener needle)
         {
-            import std.algorithm;
+            import std.algorithm.searching;
+            import std.algorithm.mutation;
             auto index = haystack.countUntil(needle);
             return (index != -1) ? haystack.remove(index) : haystack;
         }

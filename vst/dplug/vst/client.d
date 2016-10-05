@@ -22,7 +22,7 @@ import core.stdc.stdlib,
        core.stdc.string,
        core.stdc.stdio;
 
-import std.algorithm;
+import std.algorithm.comparison;
 
 import dplug.core.alignedbuffer,
        dplug.core.nogc,

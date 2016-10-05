@@ -5,7 +5,7 @@
 */
 module dplug.dsp.smooth;
 
-import std.algorithm;
+import std.algorithm.comparison;
 import std.traits;
 import std.math;
 

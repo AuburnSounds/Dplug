@@ -67,7 +67,7 @@ abstract class SharedLibLoader
      Throws:        SymbolLoadException if doThrow is true and a the symbol
                     specified by funcName is missing from the shared library.
     +/
-    final void bindFunc(bool dummy)(void** ptr, string funcName, bool doThrow = true) // templated to infer attributes
+    final void bindFunc(bool dummy = false)(void** ptr, string funcName, bool doThrow = true) // templated to infer attributes
     {
         void* func = loadSymbol(funcName, doThrow);
         *ptr = func;
@@ -140,7 +140,7 @@ abstract class SharedLibLoader
                 SymbolLoadException if an expected symbol is missing from the
                 library.
     +/
-    final void load(bool dummy)() { load(_libNames); } // templated to infer attributes
+    final void load(bool dummy = false)() { load(_libNames); } // templated to infer attributes
 
     /++
      Finds and loads any version of a shared library greater than or equal to
@@ -166,7 +166,7 @@ abstract class SharedLibLoader
                 SymbolLoadException if an expected symbol is missing from the
                 library.
     +/
-    final void load(bool dummy)(SharedLibVersion minRequiredVersion) // templated to infer attributes
+    final void load(bool dummy = false)(SharedLibVersion minRequiredVersion) // templated to infer attributes
     {
         configureMinimumVersion(minRequiredVersion);
         load();
@@ -193,7 +193,7 @@ abstract class SharedLibLoader
                 SymbolLoadException if an expected symbol is missing from the
                 library.
     +/
-    final void load(bool dummy)(string libNames) // templated to infer attributes
+    final void load(bool dummy = false)(string libNames) // templated to infer attributes
     {
         if(libNames == null)
             libNames = _libNames;
@@ -231,7 +231,7 @@ abstract class SharedLibLoader
                 SymbolLoadException if an expected symbol is missing from the
                 library.
     +/
-    final void load(bool dummy)(string libNames, SharedLibVersion minRequiredVersion) // templated to infer attributes
+    final void load(bool dummy = false)(string libNames, SharedLibVersion minRequiredVersion) // templated to infer attributes
     {
         configureMinimumVersion(minRequiredVersion);
         load(libNames);
@@ -256,7 +256,7 @@ abstract class SharedLibLoader
                 SymbolLoadException if an expected symbol is missing from the
                 library.
     +/
-    final void load(bool dummy)(string[] libNames) // templated to infer attributes
+    final void load(bool dummy = false)(string[] libNames) // templated to infer attributes
     {
         _lib.load(libNames);
         loadSymbols();
@@ -289,7 +289,7 @@ abstract class SharedLibLoader
                 SymbolLoadException if an expected symbol is missing from the
                 library.
     +/
-    final void load(bool dummy)(string[] libNames, SharedLibVersion minRequiredVersion) // templated to infer attributes
+    final void load(bool dummy = false)(string[] libNames, SharedLibVersion minRequiredVersion) // templated to infer attributes
     {
         configureMinimumVersion(minRequiredVersion);
         load(libNames);

@@ -14,7 +14,7 @@
 
 module dplug.graphics.image;
 
-import std.algorithm;
+import std.algorithm.comparison;
 import std.conv : to;
 import std.exception;
 import std.range;

@@ -19,7 +19,7 @@ module dplug.au.client;
 import core.stdc.stdio;
 import core.stdc.config;
 
-import std.algorithm;
+import std.algorithm.comparison;
 import std.string;
 import std.conv;
 

@@ -334,7 +334,7 @@ struct AlignedBuffer(T)
 unittest
 {
     import std.random;
-    import std.algorithm;
+    import std.algorithm.comparison;
     int NBUF = 200;
 
     Xorshift32 rng;

@@ -5,7 +5,7 @@
 */
 module dplug.gui.element;
 
-import std.algorithm;
+import std.algorithm.comparison;
 
 public import dplug.graphics;
 

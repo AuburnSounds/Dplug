@@ -51,8 +51,11 @@
             "dependencies": {
                 "dplug:core": "*",
                 "dplug:vst": "*",
-                "derelict-util": "~>2.0",
+                "dplug:derelict-nogc": "*",
                 "dplug:window": "*"
+            },
+            "subConfigurations": {
+                "dplug:derelict-nogc": "nogc"
             }
         },
         {
@@ -72,8 +75,8 @@
             },
 
             "dependencies-osx": {
-                "derelict-carbon": "~>2.0",
-                "derelict-cocoa": "~>2.0"
+                "dplug:carbon": "*",
+                "dplug:cocoa": "*"
             }
         },
         {
@@ -91,8 +94,8 @@
             },
 
             "dependencies-osx": {
-                "derelict-cocoa": "~>2.0",
-                "derelict-carbon": "~>2.0"
+                "dplug:cocoa": "*",
+                "dplug:carbon": "*"
             }
         },
         {
@@ -126,6 +129,28 @@
                     "versions": ["doNotUseRuntime"],
                 }
             ]
+        },
+        {
+            "name": "cocoa",
+            "sourcePaths": [ "cocoa/derelict/cocoa" ],
+            "importPaths": [ "cocoa" ],
+            "dependencies": {
+                "dplug:derelict-nogc": "*"
+            },
+            "subConfigurations": {
+                "dplug:derelict-nogc": "nogc"
+            }
+        },
+        {
+            "name": "carbon",
+            "sourcePaths": [ "carbon/derelict/carbon" ],
+            "importPaths": [ "carbon" ],
+            "dependencies": {
+                "dplug:derelict-nogc": "*"
+            },
+            "subConfigurations": {
+                "dplug:derelict-nogc": "nogc"
+            }
         }
     ]
 }

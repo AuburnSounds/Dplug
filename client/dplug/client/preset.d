@@ -8,7 +8,7 @@ module dplug.client.preset;
 import std.range;
 import std.math;
 import std.array;
-import std.algorithm;
+import std.algorithm.comparison;
 
 import dplug.client.binrange;
 import dplug.client.client;

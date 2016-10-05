@@ -277,7 +277,7 @@ auto flipXY(V)(auto ref V src)
 
 		void warp(ref int x, ref int y)
 		{
-			import std.algorithm;
+			import std.algorithm.mutation;
 			swap(x, y);
 		}
 	}

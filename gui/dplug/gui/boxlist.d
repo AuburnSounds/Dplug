@@ -7,7 +7,7 @@ module dplug.gui.boxlist;
 
 // Operations on list of boxes
 
-//import std.algorithm.comparison;
+import std.algorithm.comparison;
 
 import dplug.core.alignedbuffer;
 import dplug.graphics.box;
