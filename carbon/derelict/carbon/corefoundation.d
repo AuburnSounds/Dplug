@@ -71,12 +71,13 @@ class DerelictCoreFoundationLoader : SharedLibLoader
 {
     protected
     {
-        this() nothrow @nogc
+        nothrow @nogc:
+        this()
         {
             super(libNames);
         }
 
-        override void loadSymbols() nothrow @nogc
+        override void loadSymbols()
         {
             bindFunc(cast(void**)&CFRetain, "CFRetain");
             bindFunc(cast(void**)&CFRelease, "CFRelease");

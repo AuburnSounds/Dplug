@@ -47,6 +47,7 @@ class DerelictCarbonLoader : SharedLibLoader
 {
     protected
     {
+        nothrow @nogc:
         this()
         {
             super(libNames);

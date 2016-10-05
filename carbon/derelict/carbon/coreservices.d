@@ -50,6 +50,7 @@ class DerelictCoreServicesLoader : SharedLibLoader
 {
     protected
     {
+        nothrow @nogc:
         this()
         {
             super(libNames);

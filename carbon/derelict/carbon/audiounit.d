@@ -55,16 +55,15 @@ class DerelictAudioUnitLoader : SharedLibLoader
 {
     protected
     {
-        this()
+        this() nothrow @nogc
         {
             super(libNames);
         }
 
-        override void loadSymbols()
+        override void loadSymbols() nothrow @nogc
         {
             bindFunc(cast(void**)&AudioUnitGetProperty, "AudioUnitGetProperty");
             bindFunc(cast(void**)&AudioUnitRender, "AudioUnitRender");
-
         }
     }
 }
@@ -588,6 +587,7 @@ class DerelictAudioToolboxLoader : SharedLibLoader
 {
     protected
     {
+        nothrow @nogc:
         this()
         {
             super(libNamesToolbox);
