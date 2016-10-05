@@ -72,8 +72,8 @@
             },
 
             "dependencies-osx": {
-                "derelict-carbon": "~>1.0",
-                "derelict-cocoa": "~>1.0"
+                "derelict-carbon": "~>2.0",
+                "derelict-cocoa": "~>2.0"
             }
         },
         {
@@ -91,8 +91,8 @@
             },
 
             "dependencies-osx": {
-                "derelict-cocoa": "~>1.0",
-                "derelict-carbon": "~>1.0"
+                "derelict-cocoa": "~>2.0",
+                "derelict-carbon": "~>2.0"
             }
         },
         {

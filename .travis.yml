@@ -18,6 +18,8 @@ script:
   - dub test --compiler=${DC} dplug:host
   - dub test --compiler=${DC} dplug:vst
   - dub test --compiler=${DC} dplug:window
+  - dub test --compiler=${DC} -c vanilla dplug:derelict-nogc
+  - dub test --compiler=${DC} -c nogc dplug:derelict-nogc
 
 # under creation, unstable
 #  - dub test --compiler=${DC} dplug:au
