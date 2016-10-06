@@ -53,13 +53,6 @@ void safePut(V, COLOR)(auto ref V v, int x, int y, COLOR value)
 		v[x, y] = value;
 }
 
-unittest
-{
-	auto v = Image!int(1, 1);
-	v.safePut(0, 0, 7);
-	v.safePut(0, 1, 9);
-	assert(v[0, 0] == 7);
-}
 
 /// Forwards to safePut or opIndex, depending on the
 /// CHECKED parameter. Allows propagation of a
@@ -73,13 +66,6 @@ void putPixel(bool CHECKED, V, COLOR)(auto ref V v, int x, int y, COLOR value)
 		v[x, y] = value;
 }
 
-unittest
-{
-	auto v = Image!int(1, 1);
-	v.putPixel!false(0, 0, 7);
-	v.putPixel!true(0, 1, 9);
-	assert(v[0, 0] == 7);
-}
 
 /// Gets a pixel's address from a direct view.
 ViewColor!V* pixelPtr(V)(auto ref V v, int x, int y)
@@ -88,13 +74,7 @@ ViewColor!V* pixelPtr(V)(auto ref V v, int x, int y)
 	return &v.scanline(y)[x];
 }
 
-unittest
-{
-	auto v = Image!int(1, 1);
-	v[0, 0] = 7;
-	auto p = v.pixelPtr(0, 0);
-	assert(*p == 7);
-}
+
 
 /// Fills a writable view with a solid color.
 void fill(V, COLOR)(auto ref V v, COLOR c)
@@ -682,7 +662,12 @@ unittest
 {
 	// Test instantiation
 	import dplug.graphics.color;
-	auto i = Image!RGB(100, 100);
+    ImageRef!RGB i;
+    i.w = 100;
+    i.h = 100;
+    i.pitch = 100;
+    i.pixels = new RGB[100 * 100];
+	
 	auto c = RGB(1, 2, 3);
 	i.whiteNoise();
 	i.aaLine(10, 10, 20, 20, c);

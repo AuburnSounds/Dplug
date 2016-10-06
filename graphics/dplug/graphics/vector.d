@@ -588,7 +588,7 @@ private
 /// Element-wise minimum.
 @nogc Vector!(T, N) minByElem(T, int N)(const Vector!(T, N) a, const Vector!(T, N) b) pure nothrow
 {
-    import std.algorithm: min;
+    import std.algorithm.comparison: min;
     Vector!(T, N) res = void;
     mixin(generateLoopCode!("res.v[@] = min(a.v[@], b.v[@]);", N)());
     return res;
@@ -597,7 +597,7 @@ private
 /// Element-wise maximum.
 @nogc Vector!(T, N) maxByElem(T, int N)(const Vector!(T, N) a, const Vector!(T, N) b) pure nothrow
 {
-    import std.algorithm: max;
+    import std.algorithm.comparison: max;
     Vector!(T, N) res = void;
     mixin(generateLoopCode!("res.v[@] = max(a.v[@], b.v[@]);", N)());
     return res;

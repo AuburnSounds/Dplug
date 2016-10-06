@@ -14,7 +14,6 @@
 
 module dplug.graphics.image;
 
-import std.algorithm;
 import std.conv : to;
 import std.exception;
 import std.range;
@@ -60,155 +59,6 @@ ImageRef!(ViewColor!SRC) toRef(SRC)(auto ref SRC src)
 		src.scanline(0).ptr);
 }
 
-unittest
-{
-	auto i = Image!ubyte(1, 1);
-	auto r = i.toRef();
-	assert(r.scanline(0).ptr is i.scanline(0).ptr);
-}
-
-// ***************************************************************************
-
-/// An in-memory image.
-/// Pixels are stored in a flat array.
-struct Image(COLOR)
-{
-	int w, h;
-	COLOR[] pixels;
-
-	/// Returns an array for the pixels at row y.
-	COLOR[] scanline(int y)
-	{
-		assert(y>=0 && y<h);
-		auto start = w*y;
-		return pixels[start..start+w];
-	}
-
-	mixin DirectView;
-
-	this(int w, int h)
-	{
-		size(w, h);
-	}
-
-	/// Does not scale image
-	void size(int w, int h)
-	{
-		this.w = w;
-		this.h = h;
-		if (pixels.length < w*h)
-			pixels.length = w*h;
-	}
-}
-
-unittest
-{
-	static assert(isDirectView!(Image!ubyte));
-}
-
-// ***************************************************************************
-
-// Functions which need a target image to operate on are currenty declared
-// as two overloads. The code might be simplified if some of these get fixed:
-// https://d.puremagic.com/issues/show_bug.cgi?id=8074
-// https://d.puremagic.com/issues/show_bug.cgi?id=12386
-// https://d.puremagic.com/issues/show_bug.cgi?id=12425
-// https://d.puremagic.com/issues/show_bug.cgi?id=12426
-// https://d.puremagic.com/issues/show_bug.cgi?id=12433
-
-alias ViewImage(V) = Image!(ViewColor!V);
-
-/// Copy the given view into the specified target.
-auto copy(SRC, TARGET)(auto ref SRC src, auto ref TARGET target)
-	if (isView!SRC && isWritableView!TARGET)
-{
-	target.size(src.w, src.h);
-	src.blitTo(target);
-	return target;
-}
-
-/// Copy the given view into a newly-allocated image.
-auto copy(SRC)(auto ref SRC src)
-	if (isView!SRC)
-{
-	ViewImage!SRC target;
-	return src.copy(target);
-}
-
-unittest
-{
-	auto v = onePixel(0);
-	auto i = v.copy();
-	v.copy(i);
-
-	auto c = i.crop(0, 0, 1, 1);
-	v.copy(c);
-}
-
-alias ElementViewImage(R) = ViewImage!(ElementType!R);
-
-/// Splice multiple images horizontally.
-auto hjoin(R, TARGET)(R images, auto ref TARGET target)
-	if (isInputRange!R && isView!(ElementType!R) && isWritableView!TARGET)
-{
-	int w, h;
-	foreach (ref image; images)
-		w += image.w,
-		h = max(h, image.h);
-	target.size(w, h);
-	int x;
-	foreach (ref image; images)
-		image.blitTo(target, x, 0),
-		x += image.w;
-	return target;
-}
-/// ditto
-auto hjoin(R)(R images)
-	if (isInputRange!R && isView!(ElementType!R))
-{
-	ElementViewImage!R target;
-	return images.hjoin(target);
-}
-
-/// Splice multiple images vertically.
-auto vjoin(R, TARGET)(R images, auto ref TARGET target)
-	if (isInputRange!R && isView!(ElementType!R) && isWritableView!TARGET)
-{
-	int w, h;
-	foreach (ref image; images)
-		w = max(w, image.w),
-		h += image.h;
-	target.size(w, h);
-	int y;
-	foreach (ref image; images)
-		image.blitTo(target, 0, y),
-		y += image.h;
-	return target;
-}
-/// ditto
-auto vjoin(R)(R images)
-	if (isInputRange!R && isView!(ElementType!R))
-{
-	ElementViewImage!R target;
-	return images.vjoin(target);
-}
-
-unittest
-{
-	auto h = 10
-		.iota
-		.retro
-		.map!onePixel
-		.retro
-		.hjoin();
-
-	foreach (i; 0..10)
-		assert(h[i, 0] == i);
-
-	auto v = 10.iota.map!onePixel.vjoin();
-	foreach (i; 0..10)
-		assert(v[0, i] == i);
-}
 
 // ***************************************************************************
 
@@ -287,11 +137,6 @@ template downscale(int HRX, int HRY=HRX)
 		ViewImage!SRC target;
 		return src.downscale(target);
 	}
-}
-
-unittest
-{
-	onePixel(RGB.init).nearestNeighbor(4, 4).copy.downscale!(2, 2)();
 }
 
 // ***************************************************************************

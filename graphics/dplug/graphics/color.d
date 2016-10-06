@@ -334,26 +334,13 @@ struct Color(FieldTuple...)
 
 // The "x" has the special meaning of "padding" and is ignored in some circumstances
 alias Color!(ubyte  , "r", "g", "b"     ) RGB    ;
-alias Color!(ushort , "r", "g", "b"     ) RGB16  ;
-alias Color!(ubyte  , "r", "g", "b", "x") RGBX   ;
-alias Color!(ushort , "r", "g", "b", "x") RGBX16 ;
 alias Color!(ubyte  , "r", "g", "b", "a") RGBA   ;
-alias Color!(ushort , "r", "g", "b", "a") RGBA16 ;
 
-alias Color!(ubyte  , "b", "g", "r"     ) BGR    ;
-alias Color!(ubyte  , "b", "g", "r", "x") BGRX   ;
-alias Color!(ubyte  , "b", "g", "r", "a") BGRA   ;
 
 alias Color!(ubyte  , "l"               ) L8     ;
 alias Color!(ushort , "l"               ) L16    ;
-alias Color!(ubyte  , "l", "a"          ) LA     ;
-alias Color!(ushort , "l", "a"          ) LA16   ;
 
-alias Color!(byte   , "l"               ) S8     ;
-alias Color!(short  , "l"               ) S16    ;
 
-alias Color!(float  , "r", "g", "b"     ) RGBf   ;
-alias Color!(double , "r", "g", "b"     ) RGBd   ;
 
 unittest
 {
@@ -431,7 +418,6 @@ template ChangeChannelType(COLOR, T)
 	alias ChangeChannelType = Color!(T, COLOR.Spec[1..$]);
 }
 
-static assert(is(ChangeChannelType!(RGB, ushort) == RGB16));
 static assert(is(ChangeChannelType!(int, ushort) == ushort));
 
 
@@ -509,7 +495,7 @@ alias ExpandChannelType(COLOR, int BYTES) =
 		ExpandNumericType!(ChannelType!COLOR, BYTES * 8));
 
 alias temp = ExpandChannelType!(RGB, 1);
-static assert(is(ExpandChannelType!(RGB, 1) == RGB16));
+//static assert(is(ExpandChannelType!(RGB, 1) == RGB16));
 
 unittest
 {

@@ -126,7 +126,7 @@ private:
 
     UncheckedMutex _mutex;
 
-    Image!L8 getGlyphCoverage(dchar codepoint, float scale, int w, int h, float xShift, float yShift) nothrow @nogc
+    ImageRef!L8 getGlyphCoverage(dchar codepoint, float scale, int w, int h, float xShift, float yShift) nothrow @nogc
     {
         GlyphKey key = GlyphKey(codepoint, scale, xShift, yShift);
 
@@ -166,7 +166,7 @@ void fillText(V, StringType)(auto ref V surface, Font font, StringType s, float 
         int w = position.width;
         int h = position.height;
 
-        Image!L8 coverageBuffer = font.getGlyphCoverage(ch, scale, w, h, xShift, yShift);
+        ImageRef!L8 coverageBuffer = font.getGlyphCoverage(ch, scale, w, h, xShift, yShift);
 
         // follows the cropping limitations of crop()
         int cropX0 = clamp!int(offsetPos.x, 0, surface.w);
@@ -245,8 +245,7 @@ public:
         }
     }
 
-    // Note: the returned glyph does not point into GC memory
-    Image!L8 requestGlyph(GlyphKey key, int w, int h) nothrow @nogc
+    ImageRef!L8 requestGlyph(GlyphKey key, int w, int h) nothrow @nogc
     {
         // TODO
         // Just a linear search for now. Obviously this
@@ -261,10 +260,12 @@ public:
                 && k.xShift == key.xShift
                 && k.yShift == key.yShift)
             {
-                Image!L8 result;
+                // Found, return this glyph
+                ImageRef!L8 result;
                 result.w = w;
                 result.h = h;
-                result.pixels = cast(L8[])(glyphs[i][0..w*h]);
+                result.pitch = w;
+                result.pixels = cast(L8*)(glyphs[i]);
                 return result;
             }
         }
@@ -278,10 +279,11 @@ public:
 
             stbtt_MakeCodepointBitmapSubpixel(_font, buf, w, h, stride, key.scale, key.scale, key.xShift, key.yShift, key.codepoint);
             
-            Image!L8 result;
+            ImageRef!L8 result;
             result.w = w;
             result.h = h;
-            result.pixels = cast(L8[])(buf[0..w*h]);
+            result.pitch = w;
+            result.pixels = cast(L8*)buf;
             return result;
         }
     }

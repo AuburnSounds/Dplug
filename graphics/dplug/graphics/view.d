@@ -16,7 +16,7 @@ module dplug.graphics.view;
 
 import std.functional;
 import std.typetuple;
-import std.algorithm: swap;
+import std.algorithm.mutation: swap;
 import std.math;
 
 import dplug.core.math;
