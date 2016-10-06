@@ -34,11 +34,10 @@ version(Windows)
 {
     import std.uuid;
 
-    import win32.w32api;
-    import win32.winuser;
-    import win32.winbase;
-    import win32.windef;
-    import win32.wingdi;
+    import core.sys.windows.windef;
+    import core.sys.windows.winuser;
+    import core.sys.windows.winbase;
+    import core.sys.windows.wingdi;
 
 
     HINSTANCE getModuleHandle()
@@ -60,7 +59,7 @@ version(Windows)
             _wndClass.cbWndExtra = 0;
             _wndClass.hInstance = getModuleHandle();
             _wndClass.hIcon = null;
-            _wndClass.hCursor = LoadCursorA(null, IDC_ARROW);
+            _wndClass.hCursor = LoadCursor(null, IDC_ARROW);
             _wndClass.hbrBackground = null;
             _wndClass.lpszMenuName = null;
 

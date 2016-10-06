@@ -83,8 +83,6 @@
             "name": "window",
             "sourcePaths": [ "window/dplug/window" ],
             "importPaths": [ "window" ],
-            "sourcePaths-windows": [ "platforms/windows" ],
-            "importPaths-windows": [ "platforms/windows" ],
 
             "libs-windows": ["gdi32", "user32"],
 

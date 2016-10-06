@@ -171,7 +171,7 @@ IWindow createWindow(void* parentInfo, void* controlInfo, IWindowListener listen
     {
         if (backend == WindowBackend.win32)
         {
-            import win32.windef;
+            import core.sys.windows.windef;
             import dplug.window.win32window;
             HWND parent = cast(HWND)parentInfo;
             return new Win32Window(parent, listener, width, height);
