@@ -113,11 +113,11 @@ public:
     abstract double getNormalizedDefault() nothrow @nogc;
 
     /// Returns: A string associated with the normalized normalized.
-    abstract string stringFromNormalizedValue(double normalizedValue) nothrow;
+    abstract void stringFromNormalizedValue(double normalizedValue, char* buffer, size_t len) nothrow @nogc;
 
     /// Returns: A normalized normalized associated with the string.
     /// Can throw Exceptions.
-    abstract double normalizedValueFromString(string valueString);
+    abstract bool normalizedValueFromString(string valueString, out double result) nothrow @nogc;
 
     ~this()
     {
@@ -176,14 +176,15 @@ private:
 /// Intended making GUI controls call `setDirty()` and move with automation.
 interface IParameterListener
 {
+nothrow @nogc:
     /// Called when a parameter value was changed
-    void onParameterChanged(Parameter sender) nothrow @nogc;
+    void onParameterChanged(Parameter sender);
 
     /// Called when a parameter value start being changed due to an UI element
-    void onBeginParameterEdit(Parameter sender) nothrow @nogc;
+    void onBeginParameterEdit(Parameter sender);
 
     /// Called when a parameter value stops being changed
-    void onEndParameterEdit(Parameter sender) nothrow @nogc;
+    void onEndParameterEdit(Parameter sender);
 }
 
 
@@ -191,14 +192,14 @@ interface IParameterListener
 class BoolParameter : Parameter
 {
 public:
-    this(int index, string name, bool defaultValue)
+    this(int index, string name, bool defaultValue) nothrow @nogc
     {
         super(index, name, "");
         _value = defaultValue;
         _defaultValue = defaultValue;
     }
 
-    override void setNormalized(double hostValue) nothrow @nogc
+    override void setNormalized(double hostValue)
     {
         _valueMutex.lock();
         bool newValue = (hostValue >= 0.5);
@@ -206,17 +207,17 @@ public:
         _valueMutex.unlock();
     }
 
-    override double getNormalized() nothrow @nogc
+    override double getNormalized() 
     {
         return value() ? 1.0 : 0.0;
     }
 
-    override double getNormalizedDefault() nothrow @nogc
+    override double getNormalizedDefault() 
     {
         return _defaultValue ? 1.0 : 0.0;
     }
 
-    override void toStringN(char* buffer, size_t numBytes) nothrow @nogc
+    override void toStringN(char* buffer, size_t numBytes)
     {
         bool v = value();
 
@@ -227,21 +228,33 @@ public:
     }
 
     /// Returns: A string associated with the normalized normalized.
-    override string stringFromNormalizedValue(double normalizedValue) nothrow
+    override void stringFromNormalizedValue(double normalizedValue, char* buffer, size_t len)
     {
         bool value = (normalizedValue >= 0.5);
-        return value ? "yes" : "no";
+        if (value)
+            snprintf(buffer, len, "yes");
+        else
+            snprintf(buffer, len, "no");
     }
 
     /// Returns: A normalized normalized associated with the string.
-    override double normalizedValueFromString(string valueString)
+    override bool normalizedValueFromString(string valueString, out double result)
     {
-        if (valueString == "yes") return 1;
-        if (valueString == "no") return 1;
-        throw new Exception("Couln't parse parameter string");
+        if (valueString == "yes")
+        {
+            result = 1;
+            return true;
+        }
+        else if (valueString == "no")
+        {
+            result = 0;
+            return true;
+        }
+        else
+            return false;
     }
 
-    final void setFromGUI(bool newValue)
+    final void setFromGUI(bool newValue) nothrow @nogc
     {
         _valueMutex.lock();
         atomicStore(_value, newValue);
@@ -284,7 +297,7 @@ private:
 class IntegerParameter : Parameter
 {
 public:
-    this(int index, string name, string label, int min = 0, int max = 1, int defaultValue = 0)
+    this(int index, string name, string label, int min = 0, int max = 1, int defaultValue = 0) nothrow @nogc
     {
         super(index, name, label);
         _name = name;
@@ -301,33 +314,48 @@ public:
         _valueMutex.unlock();
     }
 
-    override double getNormalized() nothrow @nogc
+    override double getNormalized()
     {
         int v = value();
         double normalized = toNormalized(value());
         return normalized;
     }
 
-    override double getNormalizedDefault() nothrow @nogc
+    override double getNormalizedDefault()
     {
         double normalized = toNormalized(_defaultValue);
         return normalized;
     }
 
-    override void toStringN(char* buffer, size_t numBytes) nothrow @nogc
+    override void toStringN(char* buffer, size_t numBytes)
     {
         int v =  value();
         snprintf(buffer, numBytes, "%d", v);
     }
 
-    override string stringFromNormalizedValue(double normalizedValue) nothrow
+    override void stringFromNormalizedValue(double normalizedValue, char* buffer, size_t len)
     {
-        return to!string(fromNormalized(normalizedValue));
+        int denorm = fromNormalized(normalizedValue);
+        snprintf(buffer, len, "%d", denorm);
     }
 
-    override double normalizedValueFromString(string valueString)
+    override bool normalizedValueFromString(string valueString, out double result)
     {
-        return toNormalized(to!int(valueString));
+        if (valueString.length > 63)
+            return false;
+
+        // Because the input string is not zero-terminated
+        char[64] buf;
+        snprintf(buf.ptr, buf.length, "%.*s", valueString.length, valueString.ptr);
+
+        int denorm;
+        if (1 == sscanf(buf.ptr, "%d", denorm))
+        {
+            result = toNormalized(denorm);
+            return true;
+        }
+        else
+            return false;
     }
 
     /// Gets the current parameter value.
@@ -347,7 +375,7 @@ public:
         return atomicLoad!(MemoryOrder.raw)(_value);
     }
 
-    final void setFromGUI(int value)
+    final void setFromGUI(int value) nothrow @nogc
     {
         if (value < _min)
             value = _min;
@@ -416,14 +444,14 @@ private:
 class EnumParameter : IntegerParameter
 {
 public:
-    this(int index, string name, const(string[]) possibleValues, int defaultValue = 0)
+    this(int index, string name, const(string[]) possibleValues, int defaultValue = 0) nothrow @nogc
     {
         super(index, name, "", 0, cast(int)(possibleValues.length) - 1, defaultValue);
 
         _possibleValues = possibleValues;
     }
 
-    override void toStringN(char* buffer, size_t numBytes) nothrow @nogc
+    override void toStringN(char* buffer, size_t numBytes)
     {
         int v = value();
         int toCopy = max(0, min( cast(int)(numBytes) - 1, cast(int)(_possibleValues[v].length)));
@@ -433,18 +461,22 @@ public:
             buffer[toCopy] = '\0';
     }
 
-    override string stringFromNormalizedValue(double normalizedValue) nothrow
+    override void stringFromNormalizedValue(double normalizedValue, char* buffer, size_t len)
     {
-        return _possibleValues[ fromNormalized(normalizedValue) ];
+        const(char[]) valueLabel = _possibleValues[ fromNormalized(normalizedValue) ];
+        snprintf(buffer, len, "%.*s", valueLabel.length, valueLabel.ptr);
     }
 
-    override double normalizedValueFromString(string valueString)
+    override bool normalizedValueFromString(string valueString, out double result)
     {
         foreach(int i; 0..cast(int)(_possibleValues.length))
             if (_possibleValues[i] == valueString)
-                return toNormalized(i);
+            {
+                result = toNormalized(i);
+                return true;
+            }
 
-        throw new Exception("Couldn't parse enum parameter value");
+        return false;
     }
 
     final string getValueString(int n) nothrow @nogc
@@ -474,7 +506,7 @@ private
 class FloatParameter : Parameter
 {
 public:
-    this(int index, string name, string label, double min, double max, double defaultValue)
+    this(int index, string name, string label, double min, double max, double defaultValue) nothrow @nogc
     {
         super(index, name, label);
 
@@ -526,7 +558,7 @@ public:
         setFromGUI(fromNormalized(normalizedValue));
     }
 
-    final void setFromGUI(double value)
+    final void setFromGUI(double value) nothrow @nogc
     {
         if (value < _min)
             value = _min;
@@ -542,7 +574,7 @@ public:
         notifyListeners();
     }
 
-    override void setNormalized(double hostValue) nothrow @nogc
+    override void setNormalized(double hostValue)
     {
         double v = fromNormalized(hostValue);
         _valueMutex.lock();
@@ -550,36 +582,44 @@ public:
         _valueMutex.unlock();
     }
 
-    override double getNormalized() nothrow @nogc
+    override double getNormalized()
     {
         return toNormalized(value());
     }
 
-    override double getNormalizedDefault() nothrow @nogc
+    override double getNormalizedDefault() 
     {
         return toNormalized(_defaultValue);
     }
 
-    override void toStringN(char* buffer, size_t numBytes) nothrow @nogc
+    override void toStringN(char* buffer, size_t numBytes)
     {
         snprintf(buffer, numBytes, "%2.2f", value());
     }
 
-    override string stringFromNormalizedValue(double normalizedValue) nothrow
+    override void stringFromNormalizedValue(double normalizedValue, char* buffer, size_t len)
     {
-        try
-        {
-            return to!string(fromNormalized(normalizedValue));
-        }
-        catch(Exception e)
-        {
-            assert(false);
-        }
+        double denorm = fromNormalized(normalizedValue);
+        snprintf(buffer, len, "%2.2f", denorm);
     }
 
-    override double normalizedValueFromString(string valueString)
+    override bool normalizedValueFromString(string valueString, out double result)
     {
-        return toNormalized(to!double(valueString));
+        if (valueString.length > 63)
+            return false;
+
+        // Because the input string is not zero-terminated
+        char[64] buf;
+        snprintf(buf.ptr, buf.length, "%.*s", valueString.length, valueString.ptr);
+
+        int denorm;
+        if (1 == sscanf(buf.ptr, "%f", denorm))
+        {
+            result = toNormalized(denorm);
+            return true;
+        }
+        else
+            return false;
     }
 
     /// Override it to specify mapping from parameter values to normalized [0..1]
@@ -598,17 +638,17 @@ private:
 /// Linear-mapped float parameter (eg: dry/wet)
 class LinearFloatParameter : FloatParameter
 {
-    this(int index, string name, string label, float min, float max, float defaultValue)
+    this(int index, string name, string label, float min, float max, float defaultValue) nothrow @nogc
     {
         super(index, name, label, min, max, defaultValue);
     }
 
-    override double toNormalized(double value) nothrow @nogc
+    override double toNormalized(double value)
     {
         return clampValue!double( (value - _min) / (_max - _min), 0.0, 1.0);
     }
 
-    override double fromNormalized(double normalizedValue) nothrow @nogc
+    override double fromNormalized(double normalizedValue)
     {
         return clampValue!double(_min + (_max - _min) * normalizedValue, _min, _max);
     }
@@ -617,13 +657,13 @@ class LinearFloatParameter : FloatParameter
 /// Float parameter following an exponential type of mapping (eg: cutoff frequency)
 class LogFloatParameter : FloatParameter
 {
-    this(int index, string name, string label, double min, double max, double defaultValue)
+    this(int index, string name, string label, double min, double max, double defaultValue) nothrow @nogc
     {
         assert(min > 0 && max > 0);
         super(index, name, label, min, max, defaultValue);
     }
 
-    override double toNormalized(double value) nothrow @nogc
+    override double toNormalized(double value)
     {
         double result = log(value / _min) / log(_max / _min);
         if (result < 0)
@@ -633,7 +673,7 @@ class LogFloatParameter : FloatParameter
         return result;
     }
 
-    override double fromNormalized(double normalizedValue) nothrow @nogc
+    override double fromNormalized(double normalizedValue)
     {
         return _min * exp(normalizedValue * log(_max / _min));
     }
@@ -642,18 +682,18 @@ class LogFloatParameter : FloatParameter
 /// A parameter with [-inf to value] dB log mapping
 class GainParameter : FloatParameter
 {
-    this(int index, string name, double max, double defaultValue, double shape = 2.0)
+    this(int index, string name, double max, double defaultValue, double shape = 2.0) nothrow @nogc
     {
         super(index, name, "dB", -double.infinity, max, defaultValue);
         _shape = shape;
     }
 
-    override void toStringN(char* buffer, size_t numBytes) nothrow @nogc
+    override void toStringN(char* buffer, size_t numBytes)
     {
         snprintf(buffer, numBytes, "%2.1f", value());
     }
 
-    override double toNormalized(double value) nothrow @nogc
+    override double toNormalized(double value)
     {
         double maxAmplitude = deciBelToFloat(_max);
         double result = ( deciBelToFloat(value) / maxAmplitude ) ^^ (1 / _shape);
@@ -665,7 +705,7 @@ class GainParameter : FloatParameter
         return result;
     }
 
-    override double fromNormalized(double normalizedValue) nothrow @nogc
+    override double fromNormalized(double normalizedValue)
     {
         return floatToDeciBel(  (normalizedValue ^^ _shape) * deciBelToFloat(_max));
     }
@@ -677,20 +717,20 @@ private:
 /// Float parameter following a x^N type mapping (eg: something that doesn't fit in the other categories)
 class PowFloatParameter : FloatParameter
 {
-    this(int index, string name, string label, double min, double max, double defaultValue, double shape)
+    this(int index, string name, string label, double min, double max, double defaultValue, double shape) nothrow @nogc
     {
         super(index, name, label, min, max, defaultValue);
         _shape = shape;
     }
 
-    override double toNormalized(double value) nothrow @nogc
+    override double toNormalized(double value)
     {
         double result = clampValue!double( (value - _min) / (_max - _min), 0.0, 1.0) ^^ (1 / _shape);
         assert(result >= 0 && result <= 1);
         return result;
     }
 
-    override double fromNormalized(double normalizedValue) nothrow @nogc
+    override double fromNormalized(double normalizedValue)
     {
         double v = _min + (normalizedValue ^^ _shape) * (_max - _min);
         return clampValue!double(v, _min, _max);

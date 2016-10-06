@@ -211,7 +211,7 @@ struct CFStrLocal
     }
 }
 
-CFStringRef toCFString(string str) nothrow
+CFStringRef toCFString(const(char)[] str) nothrow
 {
     return CFStringCreateWithCString(null, toStringz(str), kCFStringEncodingUTF8);
 }

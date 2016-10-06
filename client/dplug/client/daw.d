@@ -64,6 +64,7 @@ private bool hasSubstring(const(char*) s, const(char*) sub) pure nothrow @nogc
 
 DAW identifyDAW(const(char*) s) pure nothrow @nogc
 {
+    // Warning: this relies on zero terminated string literals
     if (hasSubstring(s, "reaper")) return DAW.Reaper;
     if (hasSubstring(s, "cubase")) return DAW.Cubase;
     if (hasSubstring(s, "reaper")) return DAW.Reaper;

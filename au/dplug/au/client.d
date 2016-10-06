@@ -18,6 +18,7 @@ module dplug.au.client;
 
 import core.stdc.stdio;
 import core.stdc.config;
+import core.stdc.string;
 
 import std.algorithm.comparison;
 import std.string;
@@ -1361,7 +1362,11 @@ private:
                 {
                     AudioUnitParameterStringFromValue* pSFV = cast(AudioUnitParameterStringFromValue*) pData;
                     Parameter parameter = _client.param(pSFV.inParamID);
-                    pSFV.outString = toCFString(parameter.stringFromNormalizedValue(*pSFV.inValue));
+                    
+                    char[128] buffer;
+                    parameter.stringFromNormalizedValue(*pSFV.inValue, buffer.ptr, buffer.length);
+                    size_t len = strlen(buffer.ptr);
+                    pSFV.outString = toCFString(buffer[0..len]);
                 }
                 return noErr;
             }
@@ -1376,14 +1381,11 @@ private:
                     {
                         Parameter parameter = _client.param(pVFS.inParamID);
                         string paramString = fromCFString(pVFS.inString);
-                        try
-                        {
-                            pVFS.outValue = parameter.normalizedValueFromString(paramString);
-                        }
-                        catch(Exception e)
-                        {
+                        double doubleValue;
+                        if (parameter.normalizedValueFromString(paramString, doubleValue))
+                            pVFS.outValue = doubleValue;
+                        else
                             return kAudioUnitErr_InvalidProperty;
-                        }
                     }
                 }
                 return noErr;
