@@ -256,6 +256,15 @@ struct AlignedBuffer(T)
             _data[i] = x;
         }
 
+        /// Finds an item, returns -1 if not found
+        int indexOf(T x) nothrow @nogc
+        {
+            foreach(size_t i; 0.._size)
+                if (_data[i] is x)
+                    return i;
+            return -1;
+        }
+
         /// Removes an item and replaces it by the last item.
         /// Warning: this reorders the array.
         void removeAndReplaceByLastElement(size_t index) nothrow @nogc

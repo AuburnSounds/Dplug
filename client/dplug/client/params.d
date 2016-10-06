@@ -28,6 +28,7 @@ import std.conv;
 import dplug.core.math;
 import dplug.core.unchecked_sync;
 import dplug.core.nogc;
+import dplug.core.alignedbuffer;
 import dplug.client.client;
 
 
@@ -76,26 +77,21 @@ public:
     }
 
     /// Adds a parameter listener.
-    void addListener(IParameterListener listener)
+    void addListener(IParameterListener listener) nothrow @nogc
     {
-        _listeners ~= listener;
+        _listeners.pushBack(listener);
     }
 
     /// Removes a parameter listener.
-    void removeListener(IParameterListener listener)
+    void removeListener(IParameterListener listener) nothrow @nogc
     {
-        static auto removeElement(IParameterListener[] haystack, IParameterListener needle)
-        {
-            import std.algorithm.searching;
-            import std.algorithm.mutation;
-            auto index = haystack.countUntil(needle);
-            return (index != -1) ? haystack.remove(index) : haystack;
-        }
-        _listeners = removeElement(_listeners, listener);
+        int index = _listeners.indexOf(listener);
+        if (index != -1)
+            _listeners.removeAndReplaceByLastElement(index);
     }
 
     /// Warns the host that a parameter will be edited.
-    void beginParamEdit()
+    void beginParamEdit() nothrow @nogc
     {
         _client.hostCommand().beginParamEdit(_index);
         foreach(listener; _listeners)
@@ -103,7 +99,7 @@ public:
     }
 
     /// Warns the host that a parameter has finished being edited.
-    void endParamEdit()
+    void endParamEdit() nothrow @nogc
     {
         _client.hostCommand().endParamEdit(_index);
         foreach(listener; _listeners)
@@ -131,13 +127,14 @@ public:
 
 protected:
 
-    this(int index, string name, string label)
+    this(int index, string name, string label) nothrow @nogc
     {
         _client = null;
         _name = name;
         _label = label;
         _index = index;
         _valueMutex = uncheckedMutex();
+        _listeners = alignedBuffer!IParameterListener();
     }
 
     /// From a normalized double, set the parameter value.
@@ -157,7 +154,7 @@ protected:
 package:
 
     /// Parameters are owned by a client, this is used to make them refer back to it.
-    void setClientReference(Client client)
+    void setClientReference(Client client) nothrow @nogc
     {
         _client = client;
     }
@@ -170,8 +167,7 @@ private:
     int _index;
     string _name;
     string _label;
-    IParameterListener[] _listeners;
-
+    AlignedBuffer!IParameterListener _listeners;
     UncheckedMutex _valueMutex;
 
 }
@@ -184,10 +180,10 @@ interface IParameterListener
     void onParameterChanged(Parameter sender) nothrow @nogc;
 
     /// Called when a parameter value start being changed due to an UI element
-    void onBeginParameterEdit(Parameter sender);
+    void onBeginParameterEdit(Parameter sender) nothrow @nogc;
 
     /// Called when a parameter value stops being changed
-    void onEndParameterEdit(Parameter sender);
+    void onEndParameterEdit(Parameter sender) nothrow @nogc;
 }
 
 

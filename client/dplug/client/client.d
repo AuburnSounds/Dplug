@@ -40,6 +40,7 @@ version = lazyGraphicsCreation;
 /// This interface is injected after the client creation though.
 interface IHostCommand
 {
+nothrow @nogc:
     void beginParamEdit(int paramIndex);
     void paramAutomate(int paramIndex, float value);
     void endParamEdit(int paramIndex);
@@ -327,7 +328,7 @@ public:
     }
 
     // Getter for the IHostCommand interface
-    final IHostCommand hostCommand()
+    final IHostCommand hostCommand() nothrow @nogc
     {
         return _hostCommand;
     }

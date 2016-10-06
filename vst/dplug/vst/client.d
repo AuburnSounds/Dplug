@@ -1108,38 +1108,38 @@ public:
      * Deprecated: This call is deprecated, but was added to support older hosts (like MaxMSP).
      * Plugins (VSTi2.0 thru VSTi2.3) call this to tell the host that the plugin is an instrument.
      */
-    void wantEvents() nothrow
+    void wantEvents() nothrow @nogc
     {
         callback(DEPRECATED_audioMasterWantMidi, 0, 1, null, 0);
     }
 
     /// Request plugin window resize.
-    override bool requestResize(int width, int height) nothrow
+    override bool requestResize(int width, int height) nothrow @nogc
     {
         return (callback(audioMasterSizeWindow, width, height, null, 0.0f) != 0);
     }
 
-    override void beginParamEdit(int paramIndex)
+    override void beginParamEdit(int paramIndex) nothrow @nogc
     {
         callback(audioMasterBeginEdit, paramIndex, 0, null, 0.0f);
     }
 
-    override void paramAutomate(int paramIndex, float value)
+    override void paramAutomate(int paramIndex, float value) nothrow @nogc
     {
         callback(audioMasterAutomate, paramIndex, 0, null, value);
     }
 
-    override void endParamEdit(int paramIndex)
+    override void endParamEdit(int paramIndex) nothrow @nogc
     {
         callback(audioMasterEndEdit, paramIndex, 0, null, 0.0f);
     }
 
-    override DAW getDAW()
+    override DAW getDAW() nothrow @nogc
     {
         return identifyDAW(productString());
     }
 
-    const(char)* vendorString() nothrow
+    const(char)* vendorString() nothrow @nogc
     {
         int res = cast(int)callback(audioMasterGetVendorString, 0, 0, _vendorStringBuf.ptr, 0.0f);
         if (res == 1)
@@ -1150,7 +1150,7 @@ public:
             return "unknown";
     }
 
-    const(char)* productString() nothrow
+    const(char)* productString() nothrow @nogc
     {
         int res = cast(int)callback(audioMasterGetProductString, 0, 0, _productStringBuf.ptr, 0.0f);
         if (res == 1)

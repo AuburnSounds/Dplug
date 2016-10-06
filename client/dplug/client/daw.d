@@ -57,32 +57,14 @@ enum DAW
     // MiniHost
 }
 
-private bool hasSubstring(const(char*) s, const(char*) sub) pure nothrow
+private bool hasSubstring(const(char*) s, const(char*) sub) pure nothrow @nogc
 {
-    size_t len_s = strlen(s);
-    size_t len_sub = strlen(sub);
-    ptrdiff_t index;
-    try
-    {
-        index = indexOf(s[0..len_s], sub[0..len_sub], 0, CaseSensitive.no);
-    }
-    catch(Exception e)
-    {
-        return false;
-    }
-
-    return index != -1;
+    return strstr(s, sub) != null;
 }
 
-DAW identifyDAW(const(char*) s) pure nothrow
+DAW identifyDAW(const(char*) s) pure nothrow @nogc
 {
     if (hasSubstring(s, "reaper")) return DAW.Reaper;
-    // TODO: see how to detect
-    //    Vegas
-    //    Tracktion
-    //    NTracks
-    //    Bias
-
     if (hasSubstring(s, "cubase")) return DAW.Cubase;
     if (hasSubstring(s, "reaper")) return DAW.Reaper;
     if (hasSubstring(s, "nuendo")) return DAW.Nuendo;

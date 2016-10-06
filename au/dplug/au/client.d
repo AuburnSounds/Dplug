@@ -2007,7 +2007,7 @@ private:
     // IHostCommand
     public
     {
-        final void sendAUEvent(AudioUnitEventType type, ComponentInstance ci, int paramIndex)
+        final void sendAUEvent(AudioUnitEventType type, ComponentInstance ci, int paramIndex) nothrow @nogc
         {
             AudioUnitEvent auEvent;
             auEvent.mEventType = type;
