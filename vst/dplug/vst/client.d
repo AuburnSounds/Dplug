@@ -92,7 +92,7 @@ public:
     this(Client client, HostCallbackFunction hostCallback)
     {
         int queueSize = 256;
-        _messageQueue = new LockedQueue!AudioThreadMessage(queueSize);
+        _messageQueue = lockedQueue!AudioThreadMessage(queueSize);
 
         _client = client;
 

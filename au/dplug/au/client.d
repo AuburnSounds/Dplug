@@ -262,7 +262,7 @@ public:
         _componentInstance = componentInstance;
 
         int queueSize = 256;
-        _messageQueue = new AudioThreadQueue(queueSize);
+        _messageQueue = lockedQueue!AudioThreadMessage(queueSize);
 
         _maxInputs = _client.maxInputs();
         _maxOutputs = _client.maxOutputs();
@@ -349,7 +349,7 @@ private:
     // Ugly protection for everything (for now)
     UncheckedMutex _globalMutex;
 
-    AudioThreadQueue _messageQueue;
+    LockedQueue!AudioThreadMessage _messageQueue;
 
     int _maxInputs, _maxOutputs;
     float _sampleRate = 44100.0f;
@@ -2169,7 +2169,6 @@ extern(C) ComponentResult renderProc(void* pPlug,
 // MessageQueue
 //
 
-alias AudioThreadQueue = LockedQueue!AudioThreadMessage;
 
 /// A message for the audio thread.
 /// Intended to be passed from a non critical thread to the audio thread.

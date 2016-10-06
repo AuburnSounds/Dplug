@@ -9,16 +9,22 @@ import dplug.core.ringbuf;
 import dplug.core.unchecked_sync;
 import dplug.core.nogc;
 
+
+
+auto lockedQueue(T)(size_t capacity) nothrow @nogc
+{
+    return LockedQueue!T(capacity);
+}
+
 /**
-    Locked queue for inter-thread communication.
-    Support multiple writers, multiple readers.
-    Blocks threads either when empty or full.
-    @nogc once in use.
+Locked queue for inter-thread communication.
+Support multiple writers, multiple readers.
+Blocks threads either when empty or full.
+@nogc once in use.
 
-    See_also: $(LINK2 #Queue, Queue)
- */
-
-class LockedQueue(T)
+See_also: $(LINK2 #Queue, Queue)
+*/
+struct LockedQueue(T)
 {
     public
     {
@@ -32,17 +38,16 @@ class LockedQueue(T)
             _initialized = true;
         }
 
-        ~this()
+        ~this() nothrow @nogc
         {
             if (_initialized)
             {
-                debug ensureNotInGC("LockedQueue");
                 clear();
                 _initialized = false;
             }
         }
 
-//        @disable this(this);
+        @disable this(this);
 
         /// Returns: Capacity of the locked queue.
         size_t capacity() const nothrow @nogc
