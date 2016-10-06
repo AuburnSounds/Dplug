@@ -157,7 +157,34 @@ else version( D_InlineAsm_X86_64 )
     version = AsmX86;
 }
 
+/// Allocates a slice with `malloc`.
+/// This does not add GC roots so when using the runtime do not use such slice as traceable.
+T[] mallocSlice(T)(size_t count) nothrow @nogc
+{
+    T[] slice = mallocSliceNoInit(count);
+    slice[0..count] = T.init;
+    return slice;
+}
 
+/// Allocates a slice with `malloc`, but does not initialize the content.
+/// This does not add GC roots so when using the runtime do not use such slice as traceable.
+T[] mallocSliceNoInit(T)(size_t count) nothrow @nogc
+{
+    T* p = cast(T*)(count * T.sizeof);
+    return p[0..count];
+}
+
+/// Free a slice allocated with `mallocSlice`.
+void freeSlice(T)(const(T)[] slice) nothrow @nogc
+{
+    free(slice.ptr);
+}
+
+unittest
+{
+    int[] slice = mallocSlice(4);
+    freeSlice(slice);
+}
 
 
 //
