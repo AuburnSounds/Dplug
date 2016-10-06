@@ -161,7 +161,7 @@ else version( D_InlineAsm_X86_64 )
 /// This does not add GC roots so when using the runtime do not use such slice as traceable.
 T[] mallocSlice(T)(size_t count) nothrow @nogc
 {
-    T[] slice = mallocSliceNoInit(count);
+    T[] slice = mallocSliceNoInit!T(count);
     slice[0..count] = T.init;
     return slice;
 }
@@ -170,19 +170,27 @@ T[] mallocSlice(T)(size_t count) nothrow @nogc
 /// This does not add GC roots so when using the runtime do not use such slice as traceable.
 T[] mallocSliceNoInit(T)(size_t count) nothrow @nogc
 {
-    T* p = cast(T*)(count * T.sizeof);
+    T* p = cast(T*) malloc(count * T.sizeof);
     return p[0..count];
 }
 
 /// Free a slice allocated with `mallocSlice`.
 void freeSlice(T)(const(T)[] slice) nothrow @nogc
 {
-    free(slice.ptr);
+    free(cast(void*)(slice.ptr)); // const cast here
 }
 
 unittest
 {
-    int[] slice = mallocSlice(4);
+    int[] slice = mallocSlice!int(4);
+    freeSlice(slice);
+    assert(slice[3] == int.init);
+
+    slice = mallocSliceNoInit!int(4);
+    freeSlice(slice);
+
+    slice = mallocSliceNoInit!int(0);
+    assert(slice == []);
     freeSlice(slice);
 }
 
