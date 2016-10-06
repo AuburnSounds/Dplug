@@ -51,22 +51,22 @@ static if(Derelict_OS_Posix) {
     private {
         LDFlags ldFlags = LDFlags.rtldNow;
 
-        SharedLibHandle LoadSharedLib(string libName) @nogc
+        SharedLibHandle LoadSharedLib(string libName) nothrow @nogc
         {
-            return dlopen(libName.toStringz(), ldFlags);
+            return dlopen(CString(libName), ldFlags);
         }
 
-        void UnloadSharedLib(SharedLibHandle hlib) @nogc
+        void UnloadSharedLib(SharedLibHandle hlib) nothrow @nogc
         {
             dlclose(hlib);
         }
 
-        void* GetSymbol(SharedLibHandle hlib, string symbolName) @nogc
+        void* GetSymbol(SharedLibHandle hlib, string symbolName) nothrow @nogc
         {
-            return dlsym(hlib, symbolName.toStringz());
+            return dlsym(hlib, CString(symbolName));
         }
 
-        string GetErrorStr() @nogc
+        string GetErrorStr()
         {
             import std.conv : to;
 
@@ -83,7 +83,7 @@ static if(Derelict_OS_Posix) {
     private {
         nothrow @nogc
         SharedLibHandle LoadSharedLib(string libName)
-        {            
+        {
             return LoadLibraryA(CString(libName));
         }
 
@@ -152,7 +152,7 @@ struct SharedLib
         void load(string[] names)
         {
             if(isLoaded)
-                return;      
+                return;
 
             foreach(n; names) {
                 _hlib = LoadSharedLib(n);
