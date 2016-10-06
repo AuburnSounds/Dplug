@@ -90,17 +90,6 @@ void fill(V, COLOR)(auto ref V v, COLOR c)
 				v[x, y] = c;
 	}
 }
-deprecated alias clear = fill;
-
-unittest
-{
-	auto i = onePixel(0).copy();
-	i.fill(1);
-	assert(i[0, 0] == 1);
-	auto t = i.tile(10, 10);
-	t.fill(2);
-	assert(i[0, 0] == 2);
-}
 
 // ***************************************************************************
 
@@ -666,7 +655,7 @@ unittest
     i.w = 100;
     i.h = 100;
     i.pitch = 100;
-    i.pixels = new RGB[100 * 100];
+    i.pixels = (new RGB[100 * 100]).ptr;
 	
 	auto c = RGB(1, 2, 3);
 	i.whiteNoise();

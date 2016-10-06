@@ -500,9 +500,6 @@ nothrow:
 /// True if `T` is some kind of `Vector`
 enum isVector(T) = is(T : Vector!U, U...);
 
-// Previous name, but the alias doesn't seem to show deprecation messages
-deprecated("Use isVector instead") alias isVectorInstantiation(T) = isVector!T;
-
 ///
 unittest
 {

@@ -370,24 +370,6 @@ unittest
 	assert(r ==  L8(150), text(r));
 }
 
-unittest
-{
-	import std.conv;
-
-	LA r;
-
-	r = LA.blend(LA(123,   0),
-	             LA(111, 222));
-	assert(r ==  LA(111, 222), text(r));
-
-	r = LA.blend(LA(123, 213),
-	             LA(111, 255));
-	assert(r ==  LA(111, 255), text(r));
-
-	r = LA.blend(LA(  0, 255),
-	             LA(255, 100));
-	assert(r ==  LA(100, 255), text(r));
-}
 
 unittest
 {
