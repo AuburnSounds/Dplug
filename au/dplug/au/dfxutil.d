@@ -244,7 +244,7 @@ void putDataInDict(CFMutableDictionaryRef pDict, string key, ubyte[] pChunk) not
 {
     CFStrLocal cfKey = CFStrLocal.fromString(key);
 
-    CFDataRef pData = CFDataCreate(null, pChunk.ptr, pChunk.length);
+    CFDataRef pData = CFDataCreate(null, pChunk.ptr, cast(CFIndex)(pChunk.length));
     CFDictionarySetValue(pDict, cfKey, pData);
     CFRelease(pData);
 }
