@@ -5,7 +5,7 @@
  */
 module dplug.core.alignedbuffer;
 
-import core.stdc.stdlib: malloc, free;
+import core.stdc.stdlib: malloc, free, realloc;
 import core.stdc.string: memcpy;
 
 import core.exception;
@@ -14,16 +14,15 @@ import core.exception;
 // This module deals with aligned memory
 
 
-/// Returns: next pointer aligned with alignment bytes.
-@nogc void* nextAlignedPointer(void* start, size_t alignment) pure nothrow
-{
-    return cast(void*)nextMultipleOf(cast(size_t)(start), alignment);
-}
-
 /// Allocates an aligned memory chunk.
 /// Functionally equivalent to Visual C++ _aligned_malloc.
-@nogc void* alignedMalloc(size_t size, size_t alignment) nothrow
+/// Do not mix allocations with different alignment.
+void* alignedMalloc(size_t size, size_t alignment) nothrow @nogc 
 {
+    // Short-cut and use the C allocator to avoid overhead if no alignment
+    if (alignment == 1)
+        return malloc(size);
+
     if (size == 0)
         return null;
 
@@ -38,8 +37,13 @@ import core.exception;
 
 /// Frees aligned memory allocated by alignedMalloc or alignedRealloc.
 /// Functionally equivalent to Visual C++ _aligned_free.
-@nogc void alignedFree(void* aligned, size_t alignment) nothrow
+/// Do not mix allocations with different alignment.
+void alignedFree(void* aligned, size_t alignment) nothrow @nogc
 {
+    // Short-cut and use the C allocator to avoid overhead if no alignment
+    if (alignment == 1)
+        return free(aligned);
+
     // support for free(NULL)
     if (aligned is null)
         return;
@@ -50,8 +54,13 @@ import core.exception;
 
 /// Reallocates an aligned memory chunk allocated by alignedMalloc or alignedRealloc.
 /// Functionally equivalent to Visual C++ _aligned_realloc.
+/// Do not mix allocations with different alignment.
 @nogc void* alignedRealloc(void* aligned, size_t size, size_t alignment) nothrow
 {
+    // Short-cut and use the C allocator to avoid overhead if no alignment
+    if (alignment == 1)
+        return realloc(aligned, size);
+
     if (aligned is null)
         return alignedMalloc(size, alignment);
 
@@ -90,6 +99,12 @@ import core.exception;
 
 private
 {
+    /// Returns: next pointer aligned with alignment bytes.
+    void* nextAlignedPointer(void* start, size_t alignment) pure nothrow @nogc 
+    {
+        return cast(void*)nextMultipleOf(cast(size_t)(start), alignment);
+    }
+
     // Returns number of bytes to actually allocate when asking
     // for a particular alignement
     @nogc size_t requestedSize(size_t askedSize, size_t alignment) pure nothrow
