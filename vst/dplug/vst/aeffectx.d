@@ -5,7 +5,7 @@
 */
 module dplug.vst.aeffectx;
 
-public import dplug.vst.aeffect;
+import dplug.vst.aeffect;
 
 align(8):
 

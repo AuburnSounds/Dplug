@@ -8,7 +8,6 @@ module dplug.window.cocoawindow;
 import core.stdc.stdlib;
 
 import std.string;
-import std.stdio;
 import std.uuid;
 
 import dplug.graphics.vector;

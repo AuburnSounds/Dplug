@@ -159,7 +159,6 @@ struct LockedQueue(T)
 
 unittest
 {
-    import std.stdio;
     auto lq = new LockedQueue!int(3);
     scope(exit) lq.destroy();
     lq.clear();

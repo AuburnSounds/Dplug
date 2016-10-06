@@ -203,7 +203,6 @@ unittest
 {
     Delayline!float line;
     line.initialize(0); // should be possible
-    import std.stdio;
     assert(line.nextSample(1) == 1);
 
     Delayline!double line2;

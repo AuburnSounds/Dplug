@@ -38,6 +38,7 @@ import dplug.client.client,
        dplug.client.graphics,
        dplug.client.midi;
 
+import dplug.vst.aeffect;
 import dplug.vst.aeffectx;
 
 template VSTEntryPoint(alias ClientClass)

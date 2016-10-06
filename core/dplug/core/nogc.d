@@ -200,7 +200,6 @@ bool isCalledByGC() nothrow
 
 unittest
 {
-    import std.stdio;
     class A
     {
         ~this()

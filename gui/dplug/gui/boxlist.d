@@ -124,7 +124,6 @@ unittest
     bl.pushBack( box2i(2, 2, 6, 6) );
     bl.pushBack( box2i(1, 1, 2, 2) );
 
-    import std.stdio;
     import dplug.core.alignedbuffer;
 
     auto ab = alignedBuffer!box2i();
