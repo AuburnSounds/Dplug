@@ -275,10 +275,10 @@ public:
         _outputScratchBuffer.length = _maxOutputs;
 
         for (int i = 0; i < _maxInputs; ++i)
-            _inputScratchBuffer[i] = alignedBuffer!float();
+            _inputScratchBuffer[i] = alignedBuffer!float(0, 64);
 
         for (int i = 0; i < _maxOutputs; ++i)
-            _outputScratchBuffer[i] = alignedBuffer!float();
+            _outputScratchBuffer[i] = alignedBuffer!float(0, 64);
 
         _inputPointers.length = _maxInputs;
         _outputPointers.length = _maxOutputs;

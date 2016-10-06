@@ -101,7 +101,7 @@ class GUIGraphics : UIElement, IGraphics
         _materialMap.destroy();
         _depthMap.destroy();
 
-        alignedFree(_renderedBuffer);
+        alignedFree(_renderedBuffer, 16);
     }
 
     // Graphics implementation

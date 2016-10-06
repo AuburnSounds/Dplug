@@ -38,7 +38,7 @@ import core.exception;
 
 /// Frees aligned memory allocated by alignedMalloc or alignedRealloc.
 /// Functionally equivalent to Visual C++ _aligned_free.
-@nogc void alignedFree(void* aligned) nothrow
+@nogc void alignedFree(void* aligned, size_t alignment) nothrow
 {
     // support for free(NULL)
     if (aligned is null)
@@ -57,7 +57,7 @@ import core.exception;
 
     if (size == 0)
     {
-        alignedFree(aligned);
+        alignedFree(aligned, alignment);
         return null;
     }
 
@@ -84,7 +84,7 @@ import core.exception;
     memcpy(newAligned, aligned, minSize);
 
     // Free previous data
-    alignedFree(aligned);
+    alignedFree(aligned, alignment);
     return newAligned;
 }
 
@@ -136,11 +136,11 @@ unittest
         assert(p !is null);
         assert(((cast(size_t)p) & 0xf) == 0);
 
-        alignedFree(p);
+        alignedFree(p, 16);
     }
 
     assert(alignedMalloc(0, 16) == null);
-    alignedFree(null);
+    alignedFree(null, 16);
 
     {
         int alignment = 16;
@@ -166,12 +166,13 @@ unittest
 
 /// Use throughout dplug:dsp to avoid reliance on GC.
 /// This works like alignedRealloc except with slices as input.
+/// You MUST use consistent alignement thoughout the lifetime of this buffer.
 ///
 /// Params:
 ///    buffer Existing allocated buffer. Can be null. Input slice length is not considered.
 ///    length desired slice length
 ///
-void reallocBuffer(T)(ref T[] buffer, size_t length, int alignment = 16) nothrow @nogc
+void reallocBuffer(T)(ref T[] buffer, size_t length, int alignment = 1) nothrow @nogc
 {
     T* pointer = cast(T*) alignedRealloc(buffer.ptr, T.sizeof * length, alignment);
     if (pointer is null)
@@ -181,10 +182,8 @@ void reallocBuffer(T)(ref T[] buffer, size_t length, int alignment = 16) nothrow
 }
 
 
-
-
-/// Returns: A newly created AlignedBuffer
-AlignedBuffer!T alignedBuffer(T)(size_t initialSize = 0, int alignment = 64) nothrow @nogc
+/// Returns: A newly created AlignedBuffer.
+AlignedBuffer!T alignedBuffer(T)(size_t initialSize = 0, int alignment = 1) nothrow @nogc
 {
     return AlignedBuffer!T(initialSize, alignment);
 }
@@ -210,7 +209,7 @@ struct AlignedBuffer(T)
         {
             if (_data !is null)
             {
-                alignedFree(_data);
+                alignedFree(_data, _alignment);
                 _data = null;
                 _allocated = 0;
             }

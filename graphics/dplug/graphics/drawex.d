@@ -432,7 +432,7 @@ public:
         if (_pixels !is null)
         {
             debug ensureNotInGC("OwnedImage");
-            alignedFree(_pixels);
+            alignedFree(_pixels, 128);
             _pixels = null;
         }
     }
