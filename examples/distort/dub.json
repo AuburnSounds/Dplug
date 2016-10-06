@@ -32,12 +32,14 @@
         {
             "name": "VST",
             "versions": ["VST"],
-            "targetType": "dynamicLibrary"
+            "targetType": "dynamicLibrary",
+            "lflags-osx": [ "-exported_symbols_list", "source/module-vst.lst", "-dead_strip" ]
         },
         {
             "name": "AU",
             "versions": ["AU"],
-            "targetType": "dynamicLibrary"
+            "targetType": "dynamicLibrary",
+            "lflags-osx": [ "-exported_symbols_list", "source/module-au.lst", "-dead_strip" ]
         }
     ]
 }
