@@ -44,14 +44,6 @@ public:
     {
         _stackSize = stackSize;
         _callback = callback;
-
-        version(Posix)
-        {
-        }
-        else version(Windows)
-        {
-
-        }
     }
 
     /// Destroys a thread. The thread is supposed to be finished at this point.
@@ -163,6 +155,7 @@ unittest
 
     class A
     {
+    nothrow @nogc:
         this()
         {
             t = makeThread(&f);
@@ -174,7 +167,7 @@ unittest
             t.join();
         }
 
-        void f() nothrow @nogc
+        void f()
         {
             outerInt = 1;
         }
