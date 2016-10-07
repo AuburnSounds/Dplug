@@ -17,7 +17,7 @@ import core.exception;
 /// Allocates an aligned memory chunk.
 /// Functionally equivalent to Visual C++ _aligned_malloc.
 /// Do not mix allocations with different alignment.
-void* alignedMalloc(size_t size, size_t alignment) nothrow @nogc 
+void* alignedMalloc(size_t size, size_t alignment) nothrow @nogc
 {
     // Short-cut and use the C allocator to avoid overhead if no alignment
     if (alignment == 1)
@@ -100,7 +100,7 @@ void alignedFree(void* aligned, size_t alignment) nothrow @nogc
 private
 {
     /// Returns: next pointer aligned with alignment bytes.
-    void* nextAlignedPointer(void* start, size_t alignment) pure nothrow @nogc 
+    void* nextAlignedPointer(void* start, size_t alignment) pure nothrow @nogc
     {
         return cast(void*)nextMultipleOf(cast(size_t)(start), alignment);
     }
@@ -273,7 +273,7 @@ struct AlignedBuffer(T)
         /// Finds an item, returns -1 if not found
         int indexOf(T x) nothrow @nogc
         {
-            foreach(size_t i; 0.._size)
+            foreach(int i; 0..cast(int)_size)
                 if (_data[i] is x)
                     return i;
             return -1;
