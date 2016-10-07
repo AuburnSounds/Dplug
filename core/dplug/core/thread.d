@@ -162,7 +162,7 @@ unittest
             t.start();
         }
 
-        ~this()
+        void join()
         {
             t.join();
         }
@@ -170,12 +170,16 @@ unittest
         void f()
         {
             outerInt = 1;
+            innerInt = 2;
         }
 
+        int innerInt = 0;
         Thread t;
     }
 
     auto a = new A();
+    a.t.join();
+    assert(a.innerInt == 2);
     a.destroy();
     assert(outerInt == 1);
 }
