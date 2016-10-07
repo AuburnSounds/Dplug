@@ -15,7 +15,15 @@ import dplug.core.nogc;
 version(Posix)
     import core.sys.posix.pthread;
 else version(Windows)
-    import core.sys.windows.kernel;
+{
+    import core.stdc.stdint : uintptr_t;
+    import core.sys.windows.windef;
+    import core.sys.windows.winbase;
+    import core.thread;
+
+    extern (Windows) alias btex_fptr = uint function(void*) ;
+    extern (C) uintptr_t _beginthreadex(void*, uint, btex_fptr, void*, uint, uint*) nothrow @nogc;
+}
 else
     static assert(false, "Platform not supported");
 
@@ -108,16 +116,22 @@ public:
 
         version(Windows)
         {
+            
+            uint dummy;
             _id = cast(HANDLE) _beginthreadex(null,
                                               cast(uint)_stackSize,
-                                              &thread_entryPoint,
-                                              cast(void*) this,
-                                              CREATE_SUSPENDED, &_id );
-            if (_id == 0 )
+                                              &windowsThreadEntryPoint,
+                                              &_callback,
+                                              CREATE_SUSPENDED, 
+                                              &dummy);
+            if (cast(size_t)_id == 0)
                 assert(false);
+            if (ResumeThread(_id) == -1)
+                assert(false);            
         }
     }
 
+    /// Wait for that thread termination
     void join()
     {
         version(Posix)
@@ -128,7 +142,9 @@ public:
         }
         else version(Windows)
         {
-            // TODO
+            if(WaitForSingleObject(_id, INFINITE) != WAIT_OBJECT_0)
+                assert(false);
+            CloseHandle(_id);
         }
     }
 
@@ -140,14 +156,25 @@ private:
     bool _started = false;
 }
 
-extern(C) void* posixThreadEntryPoint(void* threadContext)
+version(Posix)
 {
-    ThreadDelegate dg = *cast(ThreadDelegate*)(threadContext);
-    dg(); // hopfully called with the right context pointer
-    return null;
+    extern(C) void* posixThreadEntryPoint(void* threadContext) nothrow @nogc
+    {
+        ThreadDelegate dg = *cast(ThreadDelegate*)(threadContext);
+        dg(); // hopfully called with the right context pointer
+        return null;
+    }
 }
 
-
+version(Windows)
+{
+    extern (Windows) uint windowsThreadEntryPoint(void* threadContext) nothrow @nogc
+    {
+        ThreadDelegate dg = *cast(ThreadDelegate*)(threadContext);
+        dg();
+        return 0;
+    }
+}
 
 unittest
 {
@@ -168,7 +195,7 @@ unittest
         }
 
         void f()
-        {
+        {            
             outerInt = 1;
             innerInt = 2;
         }
