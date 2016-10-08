@@ -211,3 +211,24 @@ unittest
     assert(outerInt == 1);
 }
 
+
+version(Windows)
+{
+    /// Returns: current thread identifier.
+    void* currentThreadId() nothrow @nogc
+    {
+        return cast(void*)GetCurrentThreadId();
+    }
+}
+else version(Posix)
+{
+    /// Returns: current thread identifier.
+    void* currentThreadId() nothrow @nogc
+    {
+        return assumeNothrowNoGC(
+                ()
+                {
+                    return cast(void*)(pthread_self());
+                })();
+    }
+}

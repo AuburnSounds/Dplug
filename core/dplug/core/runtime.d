@@ -10,61 +10,39 @@ import dplug.core.nogc;
 
 // Helpers to deal with the D runtime.
 
-version(Windows)
-{
-    /// Returns: current thread id in a nothrow @nogc way.
-    void* currentThreadId() nothrow @nogc
-    {
-        import std.c.windows.windows;
-        return cast(void*)GetCurrentThreadId();
-    }
-}
-else version(Posix)
-{
-    /// Returns: current thread id in a nothrow @nogc way.
-    void* currentThreadId() nothrow @nogc
-    {
-        import core.sys.posix.pthread;
-
-        return assumeNothrowNoGC(
-                ()
-                {
-                    return cast(void*)(pthread_self());
-                })();
-    }
-}
-else
-    static assert(false, "OS unsupported");
+version = useShakyWorkaround;
 
 version(OSX)
 {
-    // Workaround Issue #15060
-    // https://issues.dlang.org/show_bug.cgi?id=15060
-    // Found by Martin Nowak and bitwise
-    // Trade-off a crash for a leak :|
-
-    extern(C) int sysctlbyname(const char *, void *, size_t *, void *, size_t);
-
-    alias dyld_image_states = int;
-    enum : dyld_image_states
-    {
-        dyld_image_state_initialized = 50,
-    }
-
     __gshared bool didInitRuntime = false;
 
-    extern(C) nothrow
+    version(useShakyWorkaround)
     {
-        alias dyld_image_state_change_handler = const(char)* function(dyld_image_states state, uint infoCount, void* dyld_image_info);
+        // Workaround Issue #15060
+        // https://issues.dlang.org/show_bug.cgi?id=15060
+        // Found by Martin Nowak and bitwise
+        // Trade-off a crash for a leak :|
+
+        extern(C) int sysctlbyname(const char *, void *, size_t *, void *, size_t);
+
+        alias dyld_image_states = int;
+        enum : dyld_image_states
+        {
+            dyld_image_state_initialized = 50,
+        }        
+
+        extern(C) nothrow
+        {
+            alias dyld_image_state_change_handler = const(char)* function(dyld_image_states state, uint infoCount, void* dyld_image_info);
+        }
+
+        extern(C) const(char)* ignoreImageLoad(dyld_image_states state, uint infoCount, void* dyld_image_info) nothrow
+        {
+            return null;
+        }
+
+        extern(C) void dyld_register_image_state_change_handler(dyld_image_states state, bool batch, dyld_image_state_change_handler handler);
     }
-
-    extern(C) const(char)* ignoreImageLoad(dyld_image_states state, uint infoCount, void* dyld_image_info) nothrow
-    {
-        return null;
-    }
-
-    extern(C) void dyld_register_image_state_change_handler(dyld_image_states state, bool batch, dyld_image_state_change_handler handler);
-
 
     // Initializes the runtime if not already initialized
     void runtimeInitWorkaround15060()
@@ -75,9 +53,10 @@ version(OSX)
         {
             Runtime.initialize();
 
-            enum bool needWorkaround15060 = true;
-            static if (needWorkaround15060)
+            version(useShakyWorkaround)
+            {
                 dyld_register_image_state_change_handler(dyld_image_state_initialized, false, &ignoreImageLoad);
+            }
 
             didInitRuntime = true;
         }
