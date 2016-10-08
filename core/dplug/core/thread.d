@@ -2,15 +2,17 @@
  * The thread module provides support for thread creation and management.
  *
  * Copyright: Copyright Sean Kelly 2005 - 2012.
+ * Copyright:  Copyright (c) 2009-2011, David Simcha.
  * Copyright: Copyright Auburn Sounds 2016
  * License: Distributed under the
  *      $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost Software License 1.0).
  *    (See accompanying file LICENSE)
- * Authors:   Sean Kelly, Walter Bright, Alex Rønne Petersen, Martin Nowak, Guillaume Piolat
+ * Authors:   Sean Kelly, Walter Bright, Alex Rønne Petersen, Martin Nowak, David Simcha, Guillaume Piolat
  */
 module dplug.core.thread;
 
 import dplug.core.nogc;
+import dplug.core.lockedqueue;
 
 version(Posix)
     import core.sys.posix.pthread;
@@ -27,9 +29,13 @@ else version(Windows)
 else
     static assert(false, "Platform not supported");
 
+version(OSX)
+{
+    extern(C) int sysctlbyname(const(char)*, void *, size_t *, void *, size_t);
+}
+
 
 alias ThreadDelegate = void delegate() nothrow @nogc;
-
 
 
 Thread makeThread(ThreadDelegate callback, size_t stackSize = 0) nothrow @nogc
@@ -48,6 +54,9 @@ public:
     /// Params:
     ///     callback The delegate that will be called by the thread
     ///     stackSize The thread stack size in bytes. 0 for default size.
+    /// Warning: It is STRONGLY ADVISED to pass a class member delegate to have 
+    ///          the right delegate context.
+    ///          Passing struct method delegates are currently UNSUPPORTED.
     this(ThreadDelegate callback, size_t stackSize = 0)
     {
         _stackSize = stackSize;
@@ -198,13 +207,19 @@ unittest
         {            
             outerInt = 1;
             innerInt = 2;
+
+            // verify this
+            assert(checkValue0 == 0x11223344);
+            assert(checkValue1 == 0x55667788);
         }
 
+        int checkValue0 = 0x11223344;
+        int checkValue1 = 0x55667788;
         int innerInt = 0;
-        Thread t;
+        Thread t;        
     }
 
-    auto a = new A();
+    auto a = new A;
     a.t.join();
     assert(a.innerInt == 2);
     a.destroy();
@@ -231,4 +246,204 @@ else version(Posix)
                     return cast(void*)(pthread_self());
                 })();
     }
+}
+
+
+//
+// Thread-pool
+//
+
+alias ThreadPoolDelegate = void delegate(int workItem) nothrow @nogc;
+
+
+/// Optimistic thread-pool, failure not supported
+class ThreadPool
+{
+public:
+nothrow:
+@nogc:
+
+    /// Creates a thread-pool.
+    this(int numThreads = 0, size_t stackSize = 0)
+    {
+        // Create the queues first
+        size_t maxTasksPushedAtOnce = 512; // TODO, find something clever
+        _taskQueue = lockedQueue!Task(maxTasksPushedAtOnce);
+        
+        _taskFinishedQueue = lockedQueue!int(maxTasksPushedAtOnce);
+
+        // Create threads
+        if (numThreads == 0)
+            numThreads = getTotalCPUs();
+        _threads = mallocSlice!Thread(numThreads);
+        foreach(ref thread; _threads)
+        {
+            thread = makeThread(&workerThreadFunc, stackSize);
+            thread.start();
+        }        
+    }
+
+    /// Destroys a thread-pool.
+    ~this()
+    {
+        if (_threads !is null)
+        {
+            // Post quit message for each threads
+            int numThreads = cast(int)(_threads.length);
+            foreach(i; 0..numThreads)
+            {
+                _taskQueue.pushBack(Task(TaskType.exit, -1, null));
+            }
+
+            // Wait for each thread termination
+            foreach(ref thread; _threads)
+                thread.join();
+
+            // Detroys each thread
+            foreach(ref thread; _threads)
+                thread.destroy();
+            freeSlice(_threads);
+            _threads = null;
+        }
+    }
+
+    /// Calls the delegate in parallel, with 0..count as index
+    void parallelFor(int count, ThreadPoolDelegate dg)
+    {
+        if (count == 0) // no tasks, exit immediately
+            return;
+
+      // TODO: allow this
+      //  if (count == 1) // Do NOT launch threads for one work-item, not worth it.
+      //      dg(1);
+
+        // push the tasks on the queue
+        foreach(int i; 0..count)
+            _taskQueue.pushBack(Task(TaskType.callThisDelegate, i, dg));
+
+        // Wait for all tasks to be finished 
+        // TODO: this way to synchronize is inefficient
+        foreach(int i; 0..count)
+            _taskFinishedQueue.popFront();
+    }
+
+    //@disable this(this); // no copy supported
+
+
+private:
+    Thread[] _threads = null;
+    LockedQueue!Task _taskQueue;
+    LockedQueue!int _taskFinishedQueue;
+    ulong _currentTask = 0;
+
+    enum TaskType
+    {
+        exit,
+        callThisDelegate
+    }
+
+    struct Task
+    {
+        TaskType type;
+        int workItem; // index of the task
+        ThreadPoolDelegate dg;
+    }
+
+    // What worker threads do
+    // TODO: threads come here with bad context with struct delegates
+    void workerThreadFunc() nothrow @nogc
+    {
+        while(true)
+        {
+            Task task = _taskQueue.popFront();
+
+
+            final switch(task.type)
+            {
+                case TaskType.exit:
+                {
+                    return; // normal exit
+                }
+
+                case TaskType.callThisDelegate:
+                    task.dg(task.workItem);
+                    _taskFinishedQueue.pushBack(task.workItem);
+            }
+        }
+    }
+
+    static int getTotalCPUs()
+    {
+        version(Windows)
+        {
+            import core.sys.windows.windows : SYSTEM_INFO, GetSystemInfo;
+            SYSTEM_INFO si;
+            GetSystemInfo(&si);
+            int procs = cast(int) si.dwNumberOfProcessors;
+            if (procs < 1)
+                procs = 1;
+            return procs;
+        }
+        else version(linux)
+        {
+            import core.sys.posix.unistd : _SC_NPROCESSORS_ONLN, sysconf;
+            return cast(int) sysconf(_SC_NPROCESSORS_ONLN);
+        }
+        else version(OSX)
+        {            
+            auto nameStr = "machdep.cpu.core_count\0".ptr;
+            uint ans;
+            size_t len = uint.sizeof;
+            sysctlbyname(nameStr, &ans, &len, null, 0);
+            return cast(int)ans;
+        }
+        else
+            static assert(false, "OS unsupported");
+    }
+}
+
+unittest
+{
+    import core.atomic;
+    import dplug.core.nogc;
+
+    struct A
+    {
+        ThreadPool _pool;
+
+        this(int dummy)
+        {
+            _pool = mallocEmplace!ThreadPool();
+        }
+
+        ~this()
+        {
+            _pool.destroy();
+        }
+
+        void launch(int count) nothrow @nogc
+        {
+            _pool.parallelFor(count, &loopBody);
+        }
+
+        void loopBody(int workItem) nothrow @nogc
+        {
+            atomicOp!"+="(counter, 1);
+        }
+
+        shared(int) counter = 0;
+    }
+
+    auto a = A(4);
+    a.launch(10);
+    assert(a.counter == 10);
+
+    a.launch(500);
+    assert(a.counter == 510);
+
+    a.launch(1);
+    assert(a.counter == 511);
+
+    a.launch(0);
+    assert(a.counter == 511);
 }
