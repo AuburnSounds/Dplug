@@ -31,7 +31,8 @@ else
 
 version(OSX)
 {
-    extern(C) int sysctlbyname(const(char)*, void *, size_t *, void *, size_t);
+    extern(C) nothrow @nogc
+    int sysctlbyname(const(char)*, void *, size_t *, void *, size_t);
 }
 
 
@@ -54,7 +55,7 @@ public:
     /// Params:
     ///     callback The delegate that will be called by the thread
     ///     stackSize The thread stack size in bytes. 0 for default size.
-    /// Warning: It is STRONGLY ADVISED to pass a class member delegate to have 
+    /// Warning: It is STRONGLY ADVISED to pass a class member delegate to have
     ///          the right delegate context.
     ///          Passing struct method delegates are currently UNSUPPORTED.
     this(ThreadDelegate callback, size_t stackSize = 0)
@@ -125,18 +126,18 @@ public:
 
         version(Windows)
         {
-            
+
             uint dummy;
             _id = cast(HANDLE) _beginthreadex(null,
                                               cast(uint)_stackSize,
                                               &windowsThreadEntryPoint,
                                               &_callback,
-                                              CREATE_SUSPENDED, 
+                                              CREATE_SUSPENDED,
                                               &dummy);
             if (cast(size_t)_id == 0)
                 assert(false);
             if (ResumeThread(_id) == -1)
-                assert(false);            
+                assert(false);
         }
     }
 
@@ -204,7 +205,7 @@ unittest
         }
 
         void f()
-        {            
+        {
             outerInt = 1;
             innerInt = 2;
 
@@ -216,7 +217,7 @@ unittest
         int checkValue0 = 0x11223344;
         int checkValue1 = 0x55667788;
         int innerInt = 0;
-        Thread t;        
+        Thread t;
     }
 
     auto a = new A;
@@ -269,7 +270,7 @@ nothrow:
         // Create the queues first
         size_t maxTasksPushedAtOnce = 512; // TODO, find something clever
         _taskQueue = lockedQueue!Task(maxTasksPushedAtOnce);
-        
+
         _taskFinishedQueue = lockedQueue!int(maxTasksPushedAtOnce);
 
         // Create threads
@@ -280,7 +281,7 @@ nothrow:
         {
             thread = makeThread(&workerThreadFunc, stackSize);
             thread.start();
-        }        
+        }
     }
 
     /// Destroys a thread-pool.
@@ -321,7 +322,7 @@ nothrow:
         foreach(int i; 0..count)
             _taskQueue.pushBack(Task(TaskType.callThisDelegate, i, dg));
 
-        // Wait for all tasks to be finished 
+        // Wait for all tasks to be finished
         // TODO: this way to synchronize is inefficient
         foreach(int i; 0..count)
             _taskFinishedQueue.popFront();
@@ -390,7 +391,7 @@ private:
             return cast(int) sysconf(_SC_NPROCESSORS_ONLN);
         }
         else version(OSX)
-        {            
+        {
             auto nameStr = "machdep.cpu.core_count\0".ptr;
             uint ans;
             size_t len = uint.sizeof;
