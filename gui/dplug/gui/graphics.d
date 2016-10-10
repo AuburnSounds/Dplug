@@ -274,7 +274,7 @@ class GUIGraphics : UIElement, IGraphics
 
         // Redraw dirtied controls in depth and diffuse maps.
         // Update composited cache.
-        override void onDraw(WindowPixelFormat pf)
+        override void onDraw(WindowPixelFormat pf) nothrow @nogc
         {
             ImageRef!RGBA wfb;
             wfb.w = _askedWidth;
@@ -342,7 +342,7 @@ class GUIGraphics : UIElement, IGraphics
     /// The default value was tuned by hand on very shiny light sources.
     /// Too high and processing becomes very expensive.
     /// Too little and the ligth decay doesn't feel natural.
-    void setUpdateMargin(int margin = 20)
+    void setUpdateMargin(int margin = 20) nothrow @nogc
     {
         _updateMargin = margin;
     }
@@ -624,7 +624,7 @@ protected:
 enum scanLineAlignment = 4; // could be anything
 
 // given a width, how long in bytes should scanlines be
-int byteStride(int width)
+int byteStride(int width) pure nothrow @nogc
 {
     int widthInBytes = width * 4;
     return (widthInBytes + (scanLineAlignment - 1)) & ~(scanLineAlignment-1);
