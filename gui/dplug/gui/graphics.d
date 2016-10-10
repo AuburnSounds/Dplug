@@ -45,7 +45,7 @@ alias RMSP = RGBA; // reminder
 // It dispatches window events to the GUI hierarchy.
 class GUIGraphics : UIElement, IGraphics
 {
-    Compositor compositor;
+    ICompositor compositor;
 
     this(int initialWidth, int initialHeight)
     {
