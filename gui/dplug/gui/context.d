@@ -69,19 +69,19 @@ public:
         skybox.generateMipmaps(Mipmap!RGBA.Quality.box);
     }
 
-    void setFocused(UIElement focused)
+    final void setFocused(UIElement focused) nothrow @nogc
     {
         this.focused = focused;
     }
 
-    void beginDragging(UIElement element)
+    final void beginDragging(UIElement element) nothrow @nogc
     {
         stopDragging();
         dragged = element;
         dragged.onBeginDrag();
     }
 
-    void stopDragging()
+    final void stopDragging() nothrow @nogc
     {
         if (dragged !is null)
         {

@@ -57,6 +57,49 @@ unittest
 }
 
 
+//
+// Optimistic .destroy, which is @nogc nothrow by breaking the type-system
+//
+
+// for classes
+void destroyNoGC(T)(T x) nothrow @nogc if (is(T == class) || is(T == interface))
+{
+    assumeNothrowNoGC(
+        (T x) 
+        {
+            return destroy(x);
+        })(x);
+}
+
+// for struct
+void destroyNoGC(T)(ref T obj) nothrow @nogc if (is(T == struct))
+{
+    assumeNothrowNoGC(
+        (ref T x) 
+        {
+            return destroy(x);
+        })(obj);
+}
+/*
+void destroyNoGC(T : U[n], U, size_t n)(ref T obj) nothrow @nogc
+{
+    assumeNothrowNoGC(
+        (T x) 
+        {
+            return destroy(x);
+        })(obj);
+}*/
+
+void destroyNoGC(T)(ref T obj) nothrow @nogc 
+    if (!is(T == struct) && !is(T == class) && !is(T == interface))
+{
+    assumeNothrowNoGC(
+                      (ref T x) 
+                      {
+                          return destroy(x);
+                      })(obj);
+}
+
 
 
 //
@@ -97,7 +140,7 @@ void destroyFree(T)(T p) if (is(T == class))
 {
     if (p !is null)
     {
-        .destroy(p);
+        destroyNoGC(p);
 
         static if (hasIndirections!T)
             GC.removeRange(cast(void*)p);
@@ -111,7 +154,7 @@ void destroyFree(T)(T* p) if (!is(T == class))
 {
     if (p !is null)
     {
-        .destroy(p);
+        destroyNoGC(p);
 
         static if (hasIndirections!T)
             GC.removeRange(cast(void*)p);
@@ -119,6 +162,7 @@ void destroyFree(T)(T* p) if (!is(T == class))
         free(cast(void*)p);
     }
 }
+
 
 unittest
 {

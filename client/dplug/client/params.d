@@ -552,7 +552,7 @@ public:
         return _defaultValue;
     }
 
-    final void setFromGUINormalized(double normalizedValue)
+    final void setFromGUINormalized(double normalizedValue) nothrow @nogc
     {
         assert(normalizedValue >= 0 && normalizedValue <= 1);
         setFromGUI(fromNormalized(normalizedValue));

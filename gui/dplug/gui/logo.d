@@ -82,7 +82,9 @@ public:
     override bool onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
     {
         import std.process;
-        browse(targetURL);
+
+        // TODO
+        // browse(targetURL);
         return true;
     }
 

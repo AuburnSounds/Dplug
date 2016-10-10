@@ -217,39 +217,39 @@ public:
         context.setSkybox( loadOwnedImage(cast(ubyte[])(import("skybox.jpg"))) );
 
         // Buils the UI hierarchy
-        addChild(inputSlider = new UISlider(context(), cast(FloatParameter) _client.param(paramInput)));
-        addChild(driveKnob = new UIKnob(context(), cast(FloatParameter) _client.param(paramDrive)));
-        addChild(outputSlider = new UISlider(context(), cast(FloatParameter) _client.param(paramOutput)));
-        addChild(onOffSwitch = new UIOnOffSwitch(context(), cast(BoolParameter) _client.param(paramOnOff)));
+        addChild(inputSlider = mallocEmplace!UISlider(context(), cast(FloatParameter) _client.param(paramInput)));
+        addChild(driveKnob = mallocEmplace!UIKnob(context(), cast(FloatParameter) _client.param(paramDrive)));
+        addChild(outputSlider = mallocEmplace!UISlider(context(), cast(FloatParameter) _client.param(paramOutput)));
+        addChild(onOffSwitch = mallocEmplace!UIOnOffSwitch(context(), cast(BoolParameter) _client.param(paramOnOff)));
 
-        addChild(inputBargraph = new UIBargraph(context(), 2, -80.0f, 6.0f));
-        addChild(outputBargraph = new UIBargraph(context(), 2, -80.0f, 6.0f));
+        addChild(inputBargraph = mallocEmplace!UIBargraph(context(), 2, -80.0f, 6.0f));
+        addChild(outputBargraph = mallocEmplace!UIBargraph(context(), 2, -80.0f, 6.0f));
 
         RGBA textColor = RGBA(32, 16, 16, 0);
-        addChild(inputLabel = new UILabel(context(), _font, "Input"));
+        addChild(inputLabel = mallocEmplace!UILabel(context(), _font, "Input"));
         inputLabel.textSize = 17;
         inputLabel.textColor = textColor;
 
-        addChild(driveLabel = new UILabel(context(), _font, "Drive"));
+        addChild(driveLabel = mallocEmplace!UILabel(context(), _font, "Drive"));
         driveLabel.textSize = 17;
         driveLabel.textColor = textColor;
 
-        addChild(outputLabel = new UILabel(context(), _font, "Output"));
+        addChild(outputLabel = mallocEmplace!UILabel(context(), _font, "Output"));
         outputLabel.textSize = 17;
         outputLabel.textColor = textColor;
 
-        addChild(onLabel = new UILabel(context(), _font, "ON"));
+        addChild(onLabel = mallocEmplace!UILabel(context(), _font, "ON"));
         onLabel.textSize = 13;
         onLabel.textColor = textColor;
 
-        addChild(offLabel = new UILabel(context(), _font, "OFF"));
+        addChild(offLabel = mallocEmplace!UILabel(context(), _font, "OFF"));
         offLabel.textSize = 13;
         offLabel.textColor = textColor;
 
-        addChild(leftPanel = new UIPanel(context(), RGBA(150, 140, 140, 0),
-                                                    RMSP(128, 255, 255, 255), L16(defaultDepth / 2)));
-        addChild(rightPanel = new UIPanel(context(), RGBA(150, 140, 140, 0),
-                                                     RMSP(128, 255, 255, 255), L16(defaultDepth / 2)));
+        addChild(leftPanel = mallocEmplace!UIPanel(context(), RGBA(150, 140, 140, 0),
+                                                              RMSP(128, 255, 255, 255), L16(defaultDepth / 2)));
+        addChild(rightPanel = mallocEmplace!UIPanel(context(), RGBA(150, 140, 140, 0),
+                                                               RMSP(128, 255, 255, 255), L16(defaultDepth / 2)));
 
         inputBargraph.setValues([1.0f, 0.5f]);
         outputBargraph.setValues([0.7f, 0.0f]);

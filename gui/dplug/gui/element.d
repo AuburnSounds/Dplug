@@ -47,6 +47,9 @@ enum ubyte defaultMetalnessMetal = 255;
 class UIElement
 {
 public:
+nothrow:
+@nogc:
+
     this(UIContext context)
     {
         _context = context;
@@ -56,15 +59,13 @@ public:
 
     ~this()
     {
-        debug ensureNotInGC("UIElement");
-
-        foreach(child; children)
-            child.destroy();
+        foreach(child; _children[])
+            child.destroyFree();
     }
 
     /// Returns: true if was drawn, ie. the buffers have changed.
     /// This method is called for each item in the drawlist that was visible and dirty.
-    final void render(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, in box2i[] areasToUpdate) nothrow @nogc
+    final void render(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, in box2i[] areasToUpdate)
     {
         // List of disjointed dirty rectangles intersecting with valid part of _position
         // A nice thing with intersection is that a disjointed set of rectangles
@@ -114,7 +115,7 @@ public:
         // default: span the entire available area, and do the same for children
         _position = availableSpace;
 
-        foreach(ref child; children)
+        foreach(ref child; _children)
             child.reflow(availableSpace);
     }
 
@@ -133,22 +134,17 @@ public:
         return _position = p;
     }
 
-    /// Returns: Children of this element.
-    final ref UIElement[] children()
-    {
-        return _children;
-    }
-
     final UIElement child(int n)
     {
         return _children[n];
     }
 
-    // The addChild method is mandatory
+    // The addChild method is mandatory.
+    // Such a child MUST be created through `dplug.core.nogc.mallocEmplace`.
     final void addChild(UIElement element)
     {
         element._parent = this;
-        _children ~= element;
+        _children.pushBack(element); // TODO: this break traceability
     }
 
     // This function is meant to be overriden.
@@ -260,7 +256,7 @@ public:
     // to be called at top-level when the mouse wheeled
     final bool mouseWheel(int x, int y, int wheelDeltaX, int wheelDeltaY, MouseState mstate)
     {
-        foreach(child; _children)
+        foreach(child; _children[])
         {
             if (child.mouseWheel(x, y, wheelDeltaX, wheelDeltaY, mstate))
                 return true;
@@ -315,7 +311,7 @@ public:
                 onMouseDrag(x - _position.min.x, y - _position.min.y, dx, dy, mstate);
         }
 
-        foreach(child; _children)
+        foreach(child; _children[])
         {
             child.mouseMove(x, y, dx, dy, mstate);
         }
@@ -341,7 +337,7 @@ public:
         if (onKeyDown(key))
             return true;
 
-        foreach(child; _children)
+        foreach(child; _children[])
         {
             if (child.keyDown(key))
                 return true;
@@ -355,7 +351,7 @@ public:
         if (onKeyUp(key))
             return true;
 
-        foreach(child; _children)
+        foreach(child; _children[])
         {
             if (child.keyUp(key))
                 return true;
@@ -367,7 +363,7 @@ public:
     void animate(double dt, double time) nothrow @nogc
     {
         onAnimate(dt, time);
-        foreach(child; _children)
+        foreach(child; _children[])
             child.animate(dt, time);
     }
 
@@ -447,7 +443,7 @@ public:
         if (isVisible())
         {
             list.pushBack(this);
-            foreach(child; _children)
+            foreach(child; _children[])
                 child.getDrawList(list);
         }
     }
@@ -499,7 +495,7 @@ protected:
     /// An Element is not allowed though to draw further than its _position.
     box2i _position;
 
-    UIElement[] _children;
+    AlignedBuffer!UIElement _children;
 
     /// If _visible is false, neither the Element nor its children are drawn.
     bool _visible = true;
@@ -526,7 +522,7 @@ private:
     {
         // Get a z-ordered list of childrens
         _zOrderedChildren.clearContents();
-        foreach(child; _children)
+        foreach(child; _children[])
             _zOrderedChildren.pushBack(child);
 
         // Note: unstable sort, so do not forget to _set_ z-order in the first place
