@@ -309,7 +309,7 @@ nothrow:
     }
 
     /// Calls the delegate in parallel, with 0..count as index
-    void parallelFor(int count, ThreadPoolDelegate dg)
+    void parallelFor(int count, scope ThreadPoolDelegate dg)
     {
         if (count == 0) // no tasks, exit immediately
             return;
@@ -317,7 +317,7 @@ nothrow:
         // Do not launch worker threads for one work-item, not worth it.
         if (count == 1) 
         {
-            dg(1);
+            dg(0);
             return;
         }
 
