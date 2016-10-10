@@ -1015,12 +1015,6 @@ extern(C) private nothrow
     // VST callback for DEPRECATED_process
     void processCallback(AEffect *effect, float **inputs, float **outputs, int sampleFrames) nothrow @nogc
     {
-
-        // GC pauses might happen in some circumstances.
-        // If the thread calling this callback is a registered thread (has also called the opcode dispatcher),
-        // then this thread could be paused by an other thread collecting.
-        // We assume that in that case, avoiding pauses in the audio thread wasn't a primary concern of the host.
-
         FPControl fpctrl;
         fpctrl.initialize();
 
@@ -1031,12 +1025,6 @@ extern(C) private nothrow
     // VST callback for processReplacing
     void processReplacingCallback(AEffect *effect, float **inputs, float **outputs, int sampleFrames) nothrow @nogc
     {
-
-        // GC pauses might happen in some circumstances.
-        // If the thread calling this callback is a registered thread (has also called the opcode dispatcher),
-        // then this thread could be paused by an other thread collecting.
-        // We assume that in that case, avoiding pauses in the audio thread wasn't a primary concern of the host.
-
         FPControl fpctrl;
         fpctrl.initialize();
 
@@ -1047,12 +1035,6 @@ extern(C) private nothrow
     // VST callback for processDoubleReplacing
     void processDoubleReplacingCallback(AEffect *effect, double **inputs, double **outputs, int sampleFrames) nothrow @nogc
     {
-
-        // GC pauses might happen in some circumstances.
-        // If the thread calling this callback is a registered thread (has also called the opcode dispatcher),
-        // then this thread could be paused by an other thread collecting.
-        // We assume that in that case, avoiding pauses in the audio thread wasn't a primary concern of the host.
-
         FPControl fpctrl;
         fpctrl.initialize();
 
