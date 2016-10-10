@@ -808,7 +808,7 @@ private:
             while (frames > 0)
             {
                 // Note: the last slice will be smaller than the others
-                int sliceLength = std.algorithm.min(_maxFramesInProcess, frames);
+                int sliceLength = std.algorithm.comparison.min(_maxFramesInProcess, frames);
 
                 _client.processAudio(inputs, outputs, sliceLength, timeInfo);
 
@@ -836,7 +836,7 @@ private:
         int hostOutputs = _hostIOFromAudioThread.outputs;
         int usedInputs = _processingIOFromAudioThread.inputs;
         int usedOutputs = _processingIOFromAudioThread.outputs;
-        int minOutputs = std.algorithm.min(usedOutputs, hostOutputs);
+        int minOutputs = std.algorithm.comparison.min(usedOutputs, hostOutputs);
 
         // Not sure if the hosts would support an overwriting of these pointers, so copy them
         for (int i = 0; i < usedInputs; ++i)
@@ -870,7 +870,7 @@ private:
         int hostOutputs = _hostIOFromAudioThread.outputs;
         int usedInputs = _processingIOFromAudioThread.inputs;
         int usedOutputs = _processingIOFromAudioThread.outputs;
-        int minOutputs = std.algorithm.min(usedOutputs, hostOutputs);
+        int minOutputs = std.algorithm.comparison.min(usedOutputs, hostOutputs);
 
         // Some hosts (Live, Orion, and others) send identical input and output pointers.
         // This is actually legal in VST.
@@ -916,7 +916,7 @@ private:
         int hostOutputs = _hostIOFromAudioThread.outputs;
         int usedInputs = _processingIOFromAudioThread.inputs;
         int usedOutputs = _processingIOFromAudioThread.outputs;
-        int minOutputs = std.algorithm.min(usedOutputs, hostOutputs);
+        int minOutputs = std.algorithm.comparison.min(usedOutputs, hostOutputs);
 
         // Existing inputs gets converted to double
         // Non-connected inputs are zeroes
@@ -1019,7 +1019,7 @@ extern(C) private nothrow
         fpctrl.initialize();
 
         auto plugin = cast(VSTClient)effect.user;
-        plugin.process(inputs, outputs, sampleFrames);        
+        plugin.process(inputs, outputs, sampleFrames);
     }
 
     // VST callback for processReplacing
