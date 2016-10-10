@@ -13,6 +13,7 @@ module dplug.core.thread;
 
 import dplug.core.nogc;
 import dplug.core.lockedqueue;
+import dplug.core.unchecked_sync;
 
 version(Posix)
     import core.sys.posix.pthread;
@@ -270,7 +271,7 @@ nothrow:
         size_t maxTasksPushedAtOnce = 512; // TODO, find something clever
         _taskQueue = lockedQueue!Task(maxTasksPushedAtOnce);
         
-        _taskFinishedQueue = lockedQueue!int(maxTasksPushedAtOnce);
+        _taskFinishedSemaphore = uncheckedSemaphore(0);
 
         // Create threads
         if (numThreads == 0)
@@ -280,7 +281,7 @@ nothrow:
         {
             thread = makeThread(&workerThreadFunc, stackSize);
             thread.start();
-        }        
+        }
     }
 
     /// Destroys a thread-pool.
@@ -327,13 +328,13 @@ nothrow:
         // Wait for all tasks to be finished 
         // TODO: this way to synchronize is inefficient
         foreach(int i; 0..count)
-            _taskFinishedQueue.popFront();
+            _taskFinishedSemaphore.wait();
     }
 
 private:
     Thread[] _threads = null;
     LockedQueue!Task _taskQueue;
-    LockedQueue!int _taskFinishedQueue;
+    UncheckedSemaphore _taskFinishedSemaphore;
     ulong _currentTask = 0;
 
     enum TaskType
@@ -365,8 +366,10 @@ private:
                 }
 
                 case TaskType.callThisDelegate:
+                {
                     task.dg(task.workItem);
-                    _taskFinishedQueue.pushBack(task.workItem);
+                    _taskFinishedSemaphore.notify();
+                }
             }
         }
     }
