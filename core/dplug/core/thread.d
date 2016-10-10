@@ -313,9 +313,12 @@ nothrow:
         if (count == 0) // no tasks, exit immediately
             return;
 
-      // TODO: allow this
-      //  if (count == 1) // Do NOT launch threads for one work-item, not worth it.
-      //      dg(1);
+        // Do not launch worker threads for one work-item, not worth it.
+        if (count == 1) 
+        {
+            dg(1);
+            return;
+        }
 
         // push the tasks on the queue
         foreach(int i; 0..count)
@@ -326,9 +329,6 @@ nothrow:
         foreach(int i; 0..count)
             _taskFinishedQueue.popFront();
     }
-
-    //@disable this(this); // no copy supported
-
 
 private:
     Thread[] _threads = null;
@@ -356,7 +356,6 @@ private:
         while(true)
         {
             Task task = _taskQueue.popFront();
-
 
             final switch(task.type)
             {
