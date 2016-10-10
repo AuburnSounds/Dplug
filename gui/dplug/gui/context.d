@@ -33,14 +33,12 @@ public:
         // TODO: is it actually black?
         skybox = new Mipmap!RGBA(10, 1024, 1024);
 
-        dirtyList = new DirtyRectList();
+        dirtyList = makeDirtyRectList();
     }
 
     ~this()
     {
         debug ensureNotInGC("UIContext");
-        dirtyList.destroy();
-
         skybox.destroy();
     }
 
@@ -93,20 +91,23 @@ public:
     }
 }
 
-final class DirtyRectList
+DirtyRectList makeDirtyRectList() nothrow @nogc
+{
+    return DirtyRectList(4);
+}
+
+struct DirtyRectList
 {
 public:
+nothrow @nogc:
 
-    this()
+    this(int dummy) 
     {
         _dirtyRectMutex = uncheckedMutex();
         _dirtyRects = alignedBuffer!box2i(0);
     }
 
-    ~this()
-    {
-        ensureNotInGC("DirtyRectList");
-    }
+    @disable this(this);
 
     bool isEmpty() nothrow @nogc
     {
