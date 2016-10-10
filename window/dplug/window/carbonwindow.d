@@ -355,10 +355,10 @@ private:
                             }
                         }
                         return handled;
+                    }
 
                     default:
                         return false;
-                    }
                 }
             }
 
