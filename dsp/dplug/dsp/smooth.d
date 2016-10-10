@@ -289,7 +289,7 @@ public:
             arr[i + 1] = _delay[i];
 
         // sort in place
-        nogc_qsort!T(arr[],  
+        quicksort!T(arr[],  
             (a, b) nothrow @nogc 
             {
                 if (a > b) return 1;

@@ -18,6 +18,9 @@ import dplug.graphics.vector;
 /// N-dimensional half-open interval [a, b[.
 struct Box(T, int N)
 {
+nothrow:
+@nogc:
+
     static assert(N > 0);
 
     public

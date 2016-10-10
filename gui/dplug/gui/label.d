@@ -116,8 +116,7 @@ public:
     {
         if (clickable)
         {
-            import std.process;
-            browse(targetURL);
+            browseNoGC(targetURL);
             return true;
         }
         return false;
@@ -160,7 +159,7 @@ public:
     }
 
     // Sets _position and resize automatically to adjust with text size and content. 
-    void setCenterAndResize(int x, int y)
+    void setCenterAndResize(int x, int y) nothrow @nogc
     {
         box2i textDimensions = _font.measureText(_text, _textSize, _letterSpacing);
         int bx = x - textDimensions.width/2 - 1;

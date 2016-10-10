@@ -11,6 +11,7 @@ import dplug.core.nogc;
 // Helpers to deal with the D runtime.
 
 version = useShakyWorkaround;
+//version = doNotUseRuntime;
 
 version(OSX)
 {
@@ -70,6 +71,7 @@ struct ScopedForeignCallback(bool assumeRuntimeIsAlreadyInitialized,
 {
 public:
 
+
     // On Windows, we can assume that the runtime is initialized already by virtue of DLL_PROCESS_ATTACH
     version(Windows)
         enum bool doInitializeRuntime = false;
@@ -89,43 +91,57 @@ public:
         static if (saveRestoreFPU)
             _fpControl.initialize();
 
-        // Runtime initialization if needed.
-        static if (doInitializeRuntime)
+        version(doNotUseRuntime)
         {
-            version(OSX)
-                runtimeInitWorkaround15060();
-            else
-            {
-                import core.runtime;
-                Runtime.initialize();
-            }
-        }
-
-        import core.thread: thread_attachThis;
-
-        static if (detachThreadsAfterCallback)
-        {
-            bool alreadyAttached = isThisThreadAttached();
-            if (!alreadyAttached)
-            {
-                thread_attachThis();
-                _threadWasAttached = true;
-            }
+            // Nothing to do, since we won't use the runtime
         }
         else
         {
-            thread_attachThis();
+            // Runtime initialization if needed.
+            static if (doInitializeRuntime)
+            {
+                version(OSX)
+                    runtimeInitWorkaround15060();
+                else
+                {
+                    import core.runtime;
+                    Runtime.initialize();
+                }
+            }
+
+            import core.thread: thread_attachThis;
+
+            static if (detachThreadsAfterCallback)
+            {
+                bool alreadyAttached = isThisThreadAttached();
+                if (!alreadyAttached)
+                {
+                    thread_attachThis();
+                    _threadWasAttached = true;
+                }
+            }
+            else
+            {
+                thread_attachThis();
+            }
         }
     }
 
     ~this()
     {
-        static if (detachThreadsAfterCallback)
-            if (_threadWasAttached)
-            {
-                import core.thread: thread_detachThis;
-                thread_detachThis();
-            }
+        version(doNotUseRuntime)
+        {
+            // Nothing to do, since thread was never attached
+        }
+        else
+        {
+            static if (detachThreadsAfterCallback)
+                if (_threadWasAttached)
+                {
+                    import core.thread: thread_detachThis;
+                    thread_detachThis();
+                }
+        }
 
         // Ensure enter() was called.
         debug assert(_entered);
@@ -135,8 +151,14 @@ public:
 
 private:
 
-    static if (detachThreadsAfterCallback)
-        bool _threadWasAttached = false;
+    version(doNotUseRuntime)
+    {
+    }
+    else
+    {
+        static if (detachThreadsAfterCallback)
+            bool _threadWasAttached = false;
+    }
 
     static if (saveRestoreFPU)
         FPControl _fpControl;

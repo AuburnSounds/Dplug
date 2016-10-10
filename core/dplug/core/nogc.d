@@ -5,13 +5,14 @@
 */
 module dplug.core.nogc;
 
-
-import core.stdc.stdlib: malloc, free;
+import core.stdc.string: strdup;
+import core.stdc.stdlib: malloc, free, getenv;
 import core.memory: GC;
 import core.exception: onOutOfMemoryErrorNoGC;
 
 import std.conv: emplace;
 import std.traits;
+import std.array: empty;
 
 // This module provides many utilities to deal with @nogc
 
@@ -57,6 +58,49 @@ unittest
 }
 
 
+//
+// Optimistic .destroy, which is @nogc nothrow by breaking the type-system
+//
+
+// for classes
+void destroyNoGC(T)(T x) nothrow @nogc if (is(T == class) || is(T == interface))
+{
+    assumeNothrowNoGC(
+        (T x) 
+        {
+            return destroy(x);
+        })(x);
+}
+
+// for struct
+void destroyNoGC(T)(ref T obj) nothrow @nogc if (is(T == struct))
+{
+    assumeNothrowNoGC(
+        (ref T x) 
+        {
+            return destroy(x);
+        })(obj);
+}
+/*
+void destroyNoGC(T : U[n], U, size_t n)(ref T obj) nothrow @nogc
+{
+    assumeNothrowNoGC(
+        (T x) 
+        {
+            return destroy(x);
+        })(obj);
+}*/
+
+void destroyNoGC(T)(ref T obj) nothrow @nogc 
+    if (!is(T == struct) && !is(T == class) && !is(T == interface))
+{
+    assumeNothrowNoGC(
+                      (ref T x) 
+                      {
+                          return destroy(x);
+                      })(obj);
+}
+
 
 
 //
@@ -97,7 +141,7 @@ void destroyFree(T)(T p) if (is(T == class))
 {
     if (p !is null)
     {
-        .destroy(p);
+        destroyNoGC(p);
 
         static if (hasIndirections!T)
             GC.removeRange(cast(void*)p);
@@ -111,7 +155,7 @@ void destroyFree(T)(T* p) if (!is(T == class))
 {
     if (p !is null)
     {
-        .destroy(p);
+        destroyNoGC(p);
 
         static if (hasIndirections!T)
             GC.removeRange(cast(void*)p);
@@ -119,6 +163,7 @@ void destroyFree(T)(T* p) if (!is(T == class))
         free(cast(void*)p);
     }
 }
+
 
 unittest
 {
@@ -260,7 +305,7 @@ alias nogcComparisonFunction(T) = int delegate(in T a, in T b) nothrow @nogc;
 
 /// @nogc quicksort
 /// From the excellent: http://codereview.stackexchange.com/a/77788
-void nogc_qsort(T)(T[] array, nogcComparisonFunction!T comparison) nothrow @nogc
+void quicksort(T)(T[] array, nogcComparisonFunction!T comparison) nothrow @nogc
 {
     if (array.length < 2)
         return;
@@ -311,10 +356,74 @@ void nogc_qsort(T)(T[] array, nogcComparisonFunction!T comparison) nothrow @nogc
 unittest
 {
     int[] testData = [110, 5, 10, 3, 22, 100, 1, 23];
-    nogc_qsort!int(testData, (a, b) => (a - b));
+    quicksort!int(testData, (a, b) => (a - b));
     assert(testData == [1, 3, 5, 10, 22, 23, 100, 110]);
 }
 
+
+//
+// STABLE MERGE SORT
+//
+
+// Stable merge sort, using a temporary array.
+// Array A[] has the items to sort.
+// Array B[] is a work array.
+void mergeSort(T)(T[] inoutElements, T[] scratchBuffer, nogcComparisonFunction!T comparison) nothrow @nogc
+{
+    // Left source half is A[ iBegin:iMiddle-1].
+    // Right source half is A[iMiddle:iEnd-1   ].
+    // Result is            B[ iBegin:iEnd-1   ].
+    void topDownMerge(T)(T* A, int iBegin, int iMiddle, int iEnd, T* B) nothrow @nogc
+    {
+        int i = iBegin;
+        int j = iMiddle;
+
+        // While there are elements in the left or right runs...
+        for (int k = iBegin; k < iEnd; k++) 
+        {
+            // If left run head exists and is <= existing right run head.
+            if ( i < iMiddle && ( j >= iEnd || (comparison(A[i], A[j]) <= 0) ) ) 
+            {
+                B[k] = A[i];
+                i = i + 1;
+            } 
+            else 
+            {
+                B[k] = A[j];
+                j = j + 1;    
+            }
+        } 
+    }
+
+    // Sort the given run of array A[] using array B[] as a source.
+    // iBegin is inclusive; iEnd is exclusive (A[iEnd] is not in the set).
+    void topDownSplitMerge(T)(T* B, int iBegin, int iEnd, T* A) nothrow @nogc
+    {
+        if(iEnd - iBegin < 2)                       // if run size == 1
+            return;                                 //   consider it sorted
+        // split the run longer than 1 item into halves
+        int iMiddle = (iEnd + iBegin) / 2;              // iMiddle = mid point
+        // recursively sort both runs from array A[] into B[]
+        topDownSplitMerge!T(A, iBegin,  iMiddle, B);  // sort the left  run
+        topDownSplitMerge!T(A, iMiddle,    iEnd, B);  // sort the right run
+        // merge the resulting runs from array B[] into A[]
+        topDownMerge!T(B, iBegin, iMiddle, iEnd, A);
+    }
+
+    assert(inoutElements.length == scratchBuffer.length);
+    int n = cast(int)inoutElements.length;
+    scratchBuffer[] = inoutElements[]; // copy data into temporary buffer
+    topDownSplitMerge(scratchBuffer.ptr, 0, n, inoutElements.ptr);
+}
+
+unittest
+{
+    int[2][] scratch;
+    scratch.length = 8;
+    int[2][] testData = [[110, 0], [5, 0], [10, 0], [3, 0], [110, 1], [5, 1], [10, 1], [3, 1]];
+    mergeSort!(int[2])(testData, scratch, (a, b) => (a[0] - b[0]));
+    assert(testData == [[3, 0], [3, 1], [5, 0], [5, 1], [10, 0], [10, 1], [110, 0], [110, 1]]);
+}
 
 
 
@@ -413,4 +522,114 @@ void stringNCopy(char* dest, size_t maxChars, string source) nothrow @nogc
     for (int i = 0; i < max; ++i)
         dest[i] = source[i];
     dest[max] = '\0';
+}
+
+
+//
+// Low-cost C string conversions
+//
+alias CString = CStringImpl!char;
+alias CString16 = CStringImpl!wchar;
+
+/// Zero-terminated C string, to replace toStringz and toUTF16z
+struct CStringImpl(CharType) if (is(CharType: char) || is(CharType: wchar))
+{
+public:
+nothrow:
+@nogc:
+
+    const(CharType)* storage = null;
+    alias storage this;
+
+    this(immutable(CharType)[] s)
+    {    
+        // Same optimizations that for toStringz
+        if (s.empty)
+        {
+            enum emptyString = cast(CharType[])"";
+            storage = emptyString.ptr;
+            return;
+        }
+
+        /* Peek past end of s[], if it's 0, no conversion necessary.
+        * Note that the compiler will put a 0 past the end of static
+        * strings, and the storage allocator will put a 0 past the end
+        * of newly allocated char[]'s.
+        */
+        immutable p = s.ptr + s.length;
+        // Is p dereferenceable? A simple test: if the p points to an
+        // address multiple of 4, then conservatively assume the pointer
+        // might be pointing to a new block of memory, which might be
+        // unreadable. Otherwise, it's definitely pointing to valid
+        // memory.
+        if ((cast(size_t) p & 3) && *p == 0)
+        {
+            storage = s.ptr;
+            return;
+        }
+
+        size_t len = s.length;
+        CharType* buffer = cast(CharType*) malloc((len + 1) * CharType.sizeof);
+        buffer[0..len] = s[0..len];
+        buffer[len] = '\0';
+        storage = buffer;
+        wasAllocated = true;
+    }
+
+    ~this()
+    {
+        if (wasAllocated)
+            free(cast(void*)storage);
+    }
+
+    @disable this(this);
+
+private:
+    bool wasAllocated = false;
+}
+
+
+//
+// Launch browser, replaces std.process.browse
+//
+
+void browseNoGC(string url) nothrow @nogc
+{
+    version(Windows)
+    {
+        import core.sys.windows.winuser;
+        import core.sys.windows.shellapi;
+        ShellExecuteA(null, CString("open").storage, CString(url).storage, null, null, SW_SHOWNORMAL);
+    }
+
+    version(OSX)
+    {
+        import core.sys.posix.unistd;
+        const(char)*[5] args;
+
+        auto curl = CString(url).storage;
+        const(char)* browser = getenv("BROWSER");
+        if (browser)
+        {   
+            browser = strdup(browser);
+            args[0] = browser;
+            args[1] = curl;
+            args[2] = null;
+        }
+        else
+        {
+            args[0] = "open".ptr;
+            args[1] = curl;
+            args[2] = null;
+        }
+
+        auto childpid = core.sys.posix.unistd.fork();
+        if (childpid == 0)
+        {
+            core.sys.posix.unistd.execvp(args[0], cast(char**)args.ptr);
+            return;
+        }
+        if (browser)
+            free(cast(void*)browser);
+    }
 }

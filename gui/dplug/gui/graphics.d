@@ -7,12 +7,12 @@ module dplug.gui.graphics;
 
 import std.math;
 import std.range;
-import std.parallelism;
 import std.algorithm.comparison;
 import std.algorithm.sorting;
 import std.algorithm.mutation;
 
 import dplug.core.math;
+import dplug.core.thread;
 
 import dplug.client.client;
 import dplug.client.graphics;
@@ -45,7 +45,7 @@ alias RMSP = RGBA; // reminder
 // It dispatches window events to the GUI hierarchy.
 class GUIGraphics : UIElement, IGraphics
 {
-    Compositor compositor;
+    ICompositor compositor;
 
     this(int initialWidth, int initialHeight)
     {
@@ -61,19 +61,20 @@ class GUIGraphics : UIElement, IGraphics
         _askedWidth = initialWidth;
         _askedHeight = initialHeight;
 
-        _taskPool = new TaskPool();
+        _threadPool = new ThreadPool();
 
-        _areasToUpdateNonOverlapping = alignedBuffer!box2i;
-        _areasToUpdateTemp = alignedBuffer!box2i;
+        _areasToUpdateNonOverlapping = makeAlignedBuffer!box2i;
+        _areasToUpdateTemp = makeAlignedBuffer!box2i;
 
-        _updateRectScratch[0] = alignedBuffer!box2i;
-        _updateRectScratch[1] = alignedBuffer!box2i;
+        _updateRectScratch[0] = makeAlignedBuffer!box2i;
+        _updateRectScratch[1] = makeAlignedBuffer!box2i;
 
-        _areasToRender = alignedBuffer!box2i;
-        _areasToRenderNonOverlapping = alignedBuffer!box2i;
-        _areasToRenderNonOverlappingTiled = alignedBuffer!box2i;
+        _areasToRender = makeAlignedBuffer!box2i;
+        _areasToRenderNonOverlapping = makeAlignedBuffer!box2i;
+        _areasToRenderNonOverlappingTiled = makeAlignedBuffer!box2i;
 
-        _elemsToDraw = alignedBuffer!UIElement;
+        _elemsToDraw = makeAlignedBuffer!UIElement;
+        _elemsToDrawScratch = makeAlignedBuffer!UIElement;
 
         version(BenchmarkCompositing)
         {
@@ -94,8 +95,8 @@ class GUIGraphics : UIElement, IGraphics
         closeUI();
         _uiContext.destroy();
 
-        _taskPool.finish(true); // wait for all thread termination
-        _taskPool.destroy();
+        _threadPool.destroy();
+
         compositor.destroy();
         _diffuseMap.destroy();
         _materialMap.destroy();
@@ -273,7 +274,7 @@ class GUIGraphics : UIElement, IGraphics
 
         // Redraw dirtied controls in depth and diffuse maps.
         // Update composited cache.
-        override void onDraw(WindowPixelFormat pf)
+        override void onDraw(WindowPixelFormat pf) nothrow @nogc
         {
             ImageRef!RGBA wfb;
             wfb.w = _askedWidth;
@@ -341,7 +342,7 @@ class GUIGraphics : UIElement, IGraphics
     /// The default value was tuned by hand on very shiny light sources.
     /// Too high and processing becomes very expensive.
     /// Too little and the ligth decay doesn't feel natural.
-    void setUpdateMargin(int margin = 20)
+    void setUpdateMargin(int margin = 20) nothrow @nogc
     {
         _updateMargin = margin;
     }
@@ -356,7 +357,7 @@ protected:
     IWindow _window;
 
     // Task pool for multi-threaded image work
-    TaskPool _taskPool;
+    ThreadPool _threadPool;
 
     int _askedWidth = 0;
     int _askedHeight = 0;
@@ -393,6 +394,9 @@ protected:
     // Note: AlignedBuffer memory isn't scanned,
     //       but this doesn't matter since UIElement are the UI hierarchy anyway.
     AlignedBuffer!UIElement _elemsToDraw;
+
+    /// Temporary buffer for stable sorting of _elemsToDraw
+    AlignedBuffer!UIElement _elemsToDrawScratch;
 
     /// Amount of pixels dirty rectangles are extended with.
     int _updateMargin = 20;
@@ -468,7 +472,7 @@ protected:
     }
 
     /// Redraw UIElements
-    void renderElements()
+    void renderElements() nothrow @nogc
     {
         // recompute draw list
         _elemsToDraw.clearContents();
@@ -476,8 +480,12 @@ protected:
 
         // Sort by ascending z-order (high z-order gets drawn last)
         // This sort must be stable to avoid messing with tree natural order.
-        auto elemsToSort = _elemsToDraw[];
-        sort!("a.zOrder() < b.zOrder()", SwapStrategy.stable)(elemsToSort);
+        _elemsToDrawScratch.resize(_elemsToDraw.length);
+        int compareZOrder(in UIElement a, in UIElement b) nothrow @nogc
+        {
+            return a.zOrder() - b.zOrder();
+        }
+        mergeSort!UIElement(_elemsToDraw[], _elemsToDrawScratch[] , &compareZOrder);
 
         enum bool parallelDraw = true;
 
@@ -514,13 +522,13 @@ protected:
                 }
 
                 assert(canBeDrawn >= 1 && canBeDrawn <= maxParallelElements);
-
-                // Draw a number of UIElement in parallel, don't use other threads if only one element
-                if (canBeDrawn == 1)
-                    _elemsToDraw[drawn].render(diffuseRef, depthRef, materialRef, _areasToUpdateNonOverlapping[]);
-                else
-                    foreach(i; _taskPool.parallel(canBeDrawn.iota))
-                        _elemsToDraw[drawn + i].render(diffuseRef, depthRef, materialRef, _areasToUpdateNonOverlapping[]);
+ 
+                // Draw a number of UIElement in parallel
+                void drawOneItem(int i) nothrow @nogc
+                {
+                    _elemsToDraw[drawn + i].render(diffuseRef, depthRef, materialRef, _areasToUpdateNonOverlapping[]);
+                }
+                _threadPool.parallelFor(canBeDrawn, &drawOneItem);
 
                 drawn += canBeDrawn;
                 assert(drawn <= N);
@@ -538,7 +546,7 @@ protected:
     /// Compose lighting effects from depth and diffuse into a result.
     /// takes output image and non-overlapping areas as input
     /// Useful multithreading code.
-    void compositeGUI(ImageRef!RGBA wfb, WindowPixelFormat pf)
+    void compositeGUI(ImageRef!RGBA wfb, WindowPixelFormat pf) nothrow @nogc
     {
         // Was tuned for performance, maybe the tradeoff has changed now that we use LDC.
         enum tileWidth = 64;
@@ -549,26 +557,18 @@ protected:
 
         int numAreas = cast(int)_areasToRenderNonOverlappingTiled.length;
 
-        bool parallelCompositing = numAreas > 1; // no need to wake up thread if only one area to render
-
-        if (parallelCompositing)
+        void compositeOneTile(int i) nothrow @nogc
         {
-            foreach(i; _taskPool.parallel(numAreas.iota))
-                compositor.compositeTile(wfb, pf, _areasToRenderNonOverlappingTiled[i],
-                                         _diffuseMap, _materialMap, _depthMap, context.skybox);
+            compositor.compositeTile(wfb, pf, _areasToRenderNonOverlappingTiled[i],
+                                     _diffuseMap, _materialMap, _depthMap, context.skybox);
         }
-        else
-        {
-            foreach(i; 0..numAreas)
-                compositor.compositeTile(wfb, pf, _areasToRenderNonOverlappingTiled[i],
-                                         _diffuseMap, _materialMap, _depthMap, context.skybox);
-        }
+        _threadPool.parallelFor(numAreas, &compositeOneTile);
     }
 
     /// Compose lighting effects from depth and diffuse into a result.
     /// takes output image and non-overlapping areas as input
     /// Useful multithreading code.
-    void regenerateMipmaps()
+    void regenerateMipmaps() nothrow @nogc
     {
         int numAreas = cast(int)_areasToUpdateNonOverlapping.length;
 
@@ -579,9 +579,9 @@ protected:
             _updateRectScratch[i].pushBack(_areasToUpdateNonOverlapping[]);
         }
 
-        // We can't use tiled parallelism here because there is overdraw beyond level 0
+        // We can't use tiled parallelism for mipmapping here because there is overdraw beyond level 0
         // So instead what we do is using up to 2 threads.
-        foreach(i; _taskPool.parallel(2.iota))
+        void processOneMipmap(int i) nothrow @nogc
         {
             if (i == 0)
             {
@@ -616,6 +616,7 @@ protected:
                 }
             }
         }
+        _threadPool.parallelFor(2, &processOneMipmap);
     }
 }
 
@@ -623,7 +624,7 @@ protected:
 enum scanLineAlignment = 4; // could be anything
 
 // given a width, how long in bytes should scanlines be
-int byteStride(int width)
+int byteStride(int width) pure nothrow @nogc
 {
     int widthInBytes = width * 4;
     return (widthInBytes + (scanLineAlignment - 1)) & ~(scanLineAlignment-1);

@@ -41,7 +41,7 @@ version(LDC)
 /// Supports non power-of-two textures.
 /// Size of the i+1-th mipmap is { (width)/2, (height)/2 }
 /// The mipmap owns each of its levels.
-class Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
+final class Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
 {
     enum Quality
     {

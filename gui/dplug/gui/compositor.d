@@ -25,7 +25,7 @@ import dplug.graphics.drawex;
 // If you don't like dplug default compositing, just make another Compositor
 // and assign the 'compositor' field in GUIGraphics.
 // However for now mipmaps and are not negotiable.
-interface Compositor
+interface ICompositor
 {
     void compositeTile(ImageRef!RGBA wfb, WindowPixelFormat pf, box2i area,
                        Mipmap!RGBA diffuseMap,
@@ -35,8 +35,9 @@ interface Compositor
 }
 
 /// "Physically Based"-style rendering
-class PBRCompositor : Compositor
+class PBRCompositor : ICompositor
 {
+nothrow @nogc:
     // light 1 used for key lighting and shadows
     // always coming from top-right
     vec3f light1Color;
@@ -72,8 +73,8 @@ class PBRCompositor : Compositor
         }
 
         // Set standard tables
-        int alignment = 256; // this is necessary for asm optimization of look-up
-        _tableArea.reallocBuffer(256 * 3, alignment);
+        enum tableAlignment = 256; // this is necessary for asm optimization of look-up
+        _tableArea.reallocBuffer(256 * 3, tableAlignment);
         _redTransferTable = _tableArea.ptr;
         _greenTransferTable = _tableArea.ptr + 256;
         _blueTransferTable = _tableArea.ptr + 512;
@@ -88,8 +89,8 @@ class PBRCompositor : Compositor
 
     ~this()
     {
-        debug ensureNotInGC("PBRCompositor");
-        _tableArea.reallocBuffer(0);
+        enum tableAlignment = 256;
+        _tableArea.reallocBuffer(0, tableAlignment);
     }
 
     /// Calling this setup color correction table, with the well
@@ -119,7 +120,7 @@ class PBRCompositor : Compositor
             float gLift = 0.0f, float gGamma = 1.0f, float gGain = 1.0f, float gContrast = 0.0f,
             float bLift = 0.0f, float bGamma = 1.0f, float bGain = 1.0f, float bContrast = 0.0f)
     {
-        static float safePow(float a, float b)
+        static float safePow(float a, float b) nothrow @nogc
         {
             if (a < 0)
                 a = 0;
@@ -167,7 +168,7 @@ class PBRCompositor : Compositor
                                 Mipmap!RGBA diffuseMap,
                                 Mipmap!RGBA materialMap,
                                 Mipmap!L16 depthMap,
-                                Mipmap!RGBA skybox) nothrow @nogc
+                                Mipmap!RGBA skybox)
     {
         ushort[3][3] depthPatch = void;
         L16*[3] depth_scan = void;

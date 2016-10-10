@@ -33,14 +33,12 @@ public:
         // TODO: is it actually black?
         skybox = new Mipmap!RGBA(10, 1024, 1024);
 
-        dirtyList = new DirtyRectList();
+        dirtyList = makeDirtyRectList();
     }
 
     ~this()
     {
         debug ensureNotInGC("UIContext");
-        dirtyList.destroy();
-
         skybox.destroy();
     }
 
@@ -71,19 +69,19 @@ public:
         skybox.generateMipmaps(Mipmap!RGBA.Quality.box);
     }
 
-    void setFocused(UIElement focused)
+    final void setFocused(UIElement focused) nothrow @nogc
     {
         this.focused = focused;
     }
 
-    void beginDragging(UIElement element)
+    final void beginDragging(UIElement element) nothrow @nogc
     {
         stopDragging();
         dragged = element;
         dragged.onBeginDrag();
     }
 
-    void stopDragging()
+    final void stopDragging() nothrow @nogc
     {
         if (dragged !is null)
         {
@@ -93,20 +91,23 @@ public:
     }
 }
 
-final class DirtyRectList
+DirtyRectList makeDirtyRectList() nothrow @nogc
+{
+    return DirtyRectList(4);
+}
+
+struct DirtyRectList
 {
 public:
+nothrow @nogc:
 
-    this()
+    this(int dummy) 
     {
-        _dirtyRectMutex = uncheckedMutex();
-        _dirtyRects = alignedBuffer!box2i(0);
+        _dirtyRectMutex = makeMutex();
+        _dirtyRects = makeAlignedBuffer!box2i(0);
     }
 
-    ~this()
-    {
-        ensureNotInGC("DirtyRectList");
-    }
+    @disable this(this);
 
     bool isEmpty() nothrow @nogc
     {

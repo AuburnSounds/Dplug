@@ -47,7 +47,7 @@ public:
         foreach (i; 0..magentaLeds)
             _leds ~= LED(RGBA(226, 120, 249, 255));
 
-         _valueMutex = uncheckedMutex();
+         _valueMutex = makeMutex();
     }
 
     ~this()

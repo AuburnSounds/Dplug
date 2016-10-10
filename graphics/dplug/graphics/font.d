@@ -34,7 +34,7 @@ public:
 
         stbtt_GetFontVMetrics(&_font, &_fontAscent, &_fontDescent, &_fontLineGap);
 
-        _mutex = uncheckedMutex();
+        _mutex = makeMutex();
 
         _glyphCache.initialize(&_font);
     }
@@ -230,8 +230,8 @@ public:
     void initialize(stbtt_fontinfo* font)
     {
         _font = font;
-        keys = alignedBuffer!GlyphKey;
-        glyphs = alignedBuffer!(ubyte*);
+        keys = makeAlignedBuffer!GlyphKey;
+        glyphs = makeAlignedBuffer!(ubyte*);
     }
 
     @disable this(this);

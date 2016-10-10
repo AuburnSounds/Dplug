@@ -13,6 +13,7 @@ module dplug.core.thread;
 
 import dplug.core.nogc;
 import dplug.core.lockedqueue;
+import dplug.core.unchecked_sync;
 
 version(Posix)
     import core.sys.posix.pthread;
@@ -270,8 +271,7 @@ nothrow:
         // Create the queues first
         size_t maxTasksPushedAtOnce = 512; // TODO, find something clever
         _taskQueue = lockedQueue!Task(maxTasksPushedAtOnce);
-
-        _taskFinishedQueue = lockedQueue!int(maxTasksPushedAtOnce);
+        _taskFinishedSemaphore = makeSemaphore(0);
 
         // Create threads
         if (numThreads == 0)
@@ -309,14 +309,17 @@ nothrow:
     }
 
     /// Calls the delegate in parallel, with 0..count as index
-    void parallelFor(int count, ThreadPoolDelegate dg)
+    void parallelFor(int count, scope ThreadPoolDelegate dg)
     {
         if (count == 0) // no tasks, exit immediately
             return;
 
-      // TODO: allow this
-      //  if (count == 1) // Do NOT launch threads for one work-item, not worth it.
-      //      dg(1);
+        // Do not launch worker threads for one work-item, not worth it.
+        if (count == 1)
+        {
+            dg(0);
+            return;
+        }
 
         // push the tasks on the queue
         foreach(int i; 0..count)
@@ -325,16 +328,13 @@ nothrow:
         // Wait for all tasks to be finished
         // TODO: this way to synchronize is inefficient
         foreach(int i; 0..count)
-            _taskFinishedQueue.popFront();
+            _taskFinishedSemaphore.wait();
     }
-
-    //@disable this(this); // no copy supported
-
 
 private:
     Thread[] _threads = null;
     LockedQueue!Task _taskQueue;
-    LockedQueue!int _taskFinishedQueue;
+    UncheckedSemaphore _taskFinishedSemaphore;
     ulong _currentTask = 0;
 
     enum TaskType
@@ -358,7 +358,6 @@ private:
         {
             Task task = _taskQueue.popFront();
 
-
             final switch(task.type)
             {
                 case TaskType.exit:
@@ -367,8 +366,10 @@ private:
                 }
 
                 case TaskType.callThisDelegate:
+                {
                     task.dg(task.workItem);
-                    _taskFinishedQueue.pushBack(task.workItem);
+                    _taskFinishedSemaphore.notify();
+                }
             }
         }
     }

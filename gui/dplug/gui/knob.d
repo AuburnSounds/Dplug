@@ -347,13 +347,13 @@ protected:
     float _mousePosOnLast0Cross;
     float _mousePosOnLast1Cross;
 
-    void clearCrosspoints()
+    void clearCrosspoints() nothrow @nogc
     {
         _mousePosOnLast0Cross = float.infinity;
         _mousePosOnLast1Cross = -float.infinity;
     }
 
-    final bool containsPoint(int x, int y)
+    final bool containsPoint(int x, int y) nothrow @nogc
     {
         vec2f center = getCenter();
         return vec2f(x, y).distanceTo(center) < getRadius();

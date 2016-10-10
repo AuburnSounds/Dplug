@@ -53,14 +53,14 @@ else
 }
 
 /// Returns: A newly created `UnchekedMutex`.
-UncheckedMutex uncheckedMutex() nothrow @nogc
+UncheckedMutex makeMutex() nothrow @nogc
 {
     return UncheckedMutex(42);
 }
 
 struct UncheckedMutex
 {
-    this(int dummyArg) nothrow @nogc
+    private this(int dummyArg) nothrow @nogc
     {
         assert(!_created);
         version( Windows )
@@ -179,14 +179,14 @@ package:
 }
 
 /// Returns: A new `UncheckedSemaphore`
-UncheckedSemaphore uncheckedSemaphore(uint count) nothrow @nogc
+UncheckedSemaphore makeSemaphore(uint count) nothrow @nogc
 {
     return UncheckedSemaphore(count);
 }
 
 struct UncheckedSemaphore
 {
-    this( uint count ) nothrow @nogc
+    private this( uint count ) nothrow @nogc
     {
         version( Windows )
         {
