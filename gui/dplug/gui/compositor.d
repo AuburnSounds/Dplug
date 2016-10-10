@@ -72,8 +72,8 @@ class PBRCompositor : Compositor
         }
 
         // Set standard tables
-        int alignment = 256; // this is necessary for asm optimization of look-up
-        _tableArea.reallocBuffer(256 * 3, alignment);
+        enum tableAlignment = 256; // this is necessary for asm optimization of look-up
+        _tableArea.reallocBuffer(256 * 3, tableAlignment);
         _redTransferTable = _tableArea.ptr;
         _greenTransferTable = _tableArea.ptr + 256;
         _blueTransferTable = _tableArea.ptr + 512;
@@ -89,7 +89,8 @@ class PBRCompositor : Compositor
     ~this()
     {
         debug ensureNotInGC("PBRCompositor");
-        _tableArea.reallocBuffer(0);
+        enum tableAlignment = 256;
+        _tableArea.reallocBuffer(0, tableAlignment);
     }
 
     /// Calling this setup color correction table, with the well

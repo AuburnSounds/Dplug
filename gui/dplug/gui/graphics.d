@@ -468,7 +468,7 @@ protected:
     }
 
     /// Redraw UIElements
-    void renderElements() nothrow @nogc
+    void renderElements() //nothrow @nogc
     {
         // recompute draw list
         _elemsToDraw.clearContents();
