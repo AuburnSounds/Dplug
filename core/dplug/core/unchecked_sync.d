@@ -60,7 +60,7 @@ UncheckedMutex makeMutex() nothrow @nogc
 
 struct UncheckedMutex
 {
-    this(int dummyArg) nothrow @nogc
+    private this(int dummyArg) nothrow @nogc
     {
         assert(!_created);
         version( Windows )
@@ -186,7 +186,7 @@ UncheckedSemaphore makeSemaphore(uint count) nothrow @nogc
 
 struct UncheckedSemaphore
 {
-    this( uint count ) nothrow @nogc
+    private this( uint count ) nothrow @nogc
     {
         version( Windows )
         {
