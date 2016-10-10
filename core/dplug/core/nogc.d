@@ -5,13 +5,14 @@
 */
 module dplug.core.nogc;
 
-
-import core.stdc.stdlib: malloc, free;
+import core.stdc.string: strdup;
+import core.stdc.stdlib: malloc, free, getenv;
 import core.memory: GC;
 import core.exception: onOutOfMemoryErrorNoGC;
 
 import std.conv: emplace;
 import std.traits;
+import std.array: empty;
 
 // This module provides many utilities to deal with @nogc
 
@@ -521,4 +522,114 @@ void stringNCopy(char* dest, size_t maxChars, string source) nothrow @nogc
     for (int i = 0; i < max; ++i)
         dest[i] = source[i];
     dest[max] = '\0';
+}
+
+
+//
+// Low-cost C string conversions
+//
+alias CString = CStringImpl!char;
+alias CString16 = CStringImpl!wchar;
+
+/// Zero-terminated C string, to replace toStringz and toUTF16z
+struct CStringImpl(CharType) if (is(CharType: char) || is(CharType: wchar))
+{
+public:
+nothrow:
+@nogc:
+
+    const(CharType)* storage = null;
+    alias storage this;
+
+    this(immutable(CharType)[] s)
+    {    
+        // Same optimizations that for toStringz
+        if (s.empty)
+        {
+            enum emptyString = cast(CharType[])"";
+            storage = emptyString.ptr;
+            return;
+        }
+
+        /* Peek past end of s[], if it's 0, no conversion necessary.
+        * Note that the compiler will put a 0 past the end of static
+        * strings, and the storage allocator will put a 0 past the end
+        * of newly allocated char[]'s.
+        */
+        immutable p = s.ptr + s.length;
+        // Is p dereferenceable? A simple test: if the p points to an
+        // address multiple of 4, then conservatively assume the pointer
+        // might be pointing to a new block of memory, which might be
+        // unreadable. Otherwise, it's definitely pointing to valid
+        // memory.
+        if ((cast(size_t) p & 3) && *p == 0)
+        {
+            storage = s.ptr;
+            return;
+        }
+
+        size_t len = s.length;
+        CharType* buffer = cast(CharType*) malloc((len + 1) * CharType.sizeof);
+        buffer[0..len] = s[0..len];
+        buffer[len] = '\0';
+        storage = buffer;
+        wasAllocated = true;
+    }
+
+    ~this()
+    {
+        if (wasAllocated)
+            free(cast(void*)storage);
+    }
+
+    @disable this(this);
+
+private:
+    bool wasAllocated = false;
+}
+
+
+//
+// Launch browser, replaces std.process.browse
+//
+
+void browseNoGC(string url) nothrow @nogc
+{
+    version(Windows)
+    {
+        import core.sys.windows.winuser;
+        import core.sys.windows.shellapi;
+        ShellExecuteA(null, CString("open").storage, CString(url).storage, null, null, SW_SHOWNORMAL);
+    }
+
+    version(OSX)
+    {
+        import core.sys.posix.unistd;
+        const(char)*[5] args;
+
+        auto curl = CString(url).storage;
+        const(char)* browser = getenv("BROWSER");
+        if (browser)
+        {   
+            browser = strdup(browser);
+            args[0] = browser;
+            args[1] = curl;
+            args[2] = null;
+        }
+        else
+        {
+            args[0] = "open".ptr;
+            args[1] = curl;
+            args[2] = null;
+        }
+
+        auto childpid = core.sys.posix.unistd.fork();
+        if (childpid == 0)
+        {
+            core.sys.posix.unistd.execvp(args[0], cast(char**)args.ptr);
+            return;
+        }
+        if (browser)
+            free(cast(void*)browser);
+    }
 }

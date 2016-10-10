@@ -116,9 +116,7 @@ public:
     {
         if (clickable)
         {
-            import std.process;
-            // TODO
-            // browse(targetURL);
+            browseNoGC(targetURL);
             return true;
         }
         return false;

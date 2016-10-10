@@ -22,6 +22,7 @@ import dplug.core.math;
 struct Vector(T, int N)
 {
 nothrow:
+@nogc:
     public
     {
         static assert(N >= 1);
@@ -140,15 +141,6 @@ nothrow:
         @nogc inout(T)* ptr() pure inout nothrow @property
         {
             return v.ptr;
-        }
-
-        /// Converts to a pretty string.
-        string toString() const nothrow
-        {
-            try
-                return format("%s", v);
-            catch (Exception e)
-                assert(false); // should not happen since format is right
         }
 
         @nogc bool opEquals(U)(U other) pure const nothrow
