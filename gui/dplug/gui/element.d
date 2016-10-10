@@ -50,8 +50,8 @@ public:
     this(UIContext context)
     {
         _context = context;
-        _localRectsBuf = alignedBuffer!box2i();
-        _zOrderedChildren = alignedBuffer!UIElement(0);
+        _localRectsBuf = makeAlignedBuffer!box2i();
+        _zOrderedChildren = makeAlignedBuffer!UIElement(0);
     }
 
     ~this()
@@ -531,7 +531,7 @@ private:
 
         // Note: unstable sort, so do not forget to _set_ z-order in the first place
         //       if you have overlapping UIElement
-        nogc_qsort!UIElement(_zOrderedChildren[],  
+        quicksort!UIElement(_zOrderedChildren[],  
                              (a, b) nothrow @nogc 
                              {
                                  if (a.zOrder < b.zOrder) return 1;

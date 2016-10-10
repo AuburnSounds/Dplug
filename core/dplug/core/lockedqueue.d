@@ -32,9 +32,9 @@ struct LockedQueue(T)
         this(size_t capacity) nothrow @nogc
         {
             _queue = ringBufferNoGC!T(capacity);
-            _rwMutex = uncheckedMutex();
-            _readerSemaphore = uncheckedSemaphore(0);
-            _writerSemaphore = uncheckedSemaphore(cast(uint)capacity);
+            _rwMutex = makeMutex();
+            _readerSemaphore = makeSemaphore(0);
+            _writerSemaphore = makeSemaphore(cast(uint)capacity);
             _initialized = true;
         }
 

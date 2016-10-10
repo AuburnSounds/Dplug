@@ -53,7 +53,7 @@ else
 }
 
 /// Returns: A newly created `UnchekedMutex`.
-UncheckedMutex uncheckedMutex() nothrow @nogc
+UncheckedMutex makeMutex() nothrow @nogc
 {
     return UncheckedMutex(42);
 }
@@ -179,7 +179,7 @@ package:
 }
 
 /// Returns: A new `UncheckedSemaphore`
-UncheckedSemaphore uncheckedSemaphore(uint count) nothrow @nogc
+UncheckedSemaphore makeSemaphore(uint count) nothrow @nogc
 {
     return UncheckedSemaphore(count);
 }

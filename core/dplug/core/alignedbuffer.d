@@ -198,7 +198,7 @@ void reallocBuffer(T)(ref T[] buffer, size_t length, int alignment = 1) nothrow 
 
 
 /// Returns: A newly created AlignedBuffer.
-AlignedBuffer!T alignedBuffer(T)(size_t initialSize = 0, int alignment = 1) nothrow @nogc
+AlignedBuffer!T makeAlignedBuffer(T)(size_t initialSize = 0, int alignment = 1) nothrow @nogc
 {
     return AlignedBuffer!T(initialSize, alignment);
 }
@@ -369,7 +369,7 @@ unittest
 
     foreach(i; 0..NBUF)
     {
-        boxes[i] = alignedBuffer!box2i();
+        boxes[i] = makeAlignedBuffer!box2i();
     }
 
     foreach(j; 0..200)
@@ -406,7 +406,7 @@ unittest
         boxes[i].destroy();
 
     {
-        auto buf = alignedBuffer!int;
+        auto buf = makeAlignedBuffer!int;
         enum N = 10;
         buf.resize(N);
         foreach(i ; 0..N)

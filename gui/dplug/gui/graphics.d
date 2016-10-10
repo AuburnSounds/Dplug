@@ -63,17 +63,17 @@ class GUIGraphics : UIElement, IGraphics
 
         _taskPool = new TaskPool();
 
-        _areasToUpdateNonOverlapping = alignedBuffer!box2i;
-        _areasToUpdateTemp = alignedBuffer!box2i;
+        _areasToUpdateNonOverlapping = makeAlignedBuffer!box2i;
+        _areasToUpdateTemp = makeAlignedBuffer!box2i;
 
-        _updateRectScratch[0] = alignedBuffer!box2i;
-        _updateRectScratch[1] = alignedBuffer!box2i;
+        _updateRectScratch[0] = makeAlignedBuffer!box2i;
+        _updateRectScratch[1] = makeAlignedBuffer!box2i;
 
-        _areasToRender = alignedBuffer!box2i;
-        _areasToRenderNonOverlapping = alignedBuffer!box2i;
-        _areasToRenderNonOverlappingTiled = alignedBuffer!box2i;
+        _areasToRender = makeAlignedBuffer!box2i;
+        _areasToRenderNonOverlapping = makeAlignedBuffer!box2i;
+        _areasToRenderNonOverlappingTiled = makeAlignedBuffer!box2i;
 
-        _elemsToDraw = alignedBuffer!UIElement;
+        _elemsToDraw = makeAlignedBuffer!UIElement;
 
         version(BenchmarkCompositing)
         {
@@ -468,7 +468,7 @@ protected:
     }
 
     /// Redraw UIElements
-    void renderElements()
+    void renderElements() nothrow @nogc
     {
         // recompute draw list
         _elemsToDraw.clearContents();

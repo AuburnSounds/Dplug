@@ -148,12 +148,12 @@ public:
         _outputScratchBuffer.length = _maxOutputs;
 
         for (int i = 0; i < _maxInputs; ++i)
-            _inputScratchBuffer[i] = alignedBuffer!float();
+            _inputScratchBuffer[i] = makeAlignedBuffer!float();
 
         for (int i = 0; i < _maxOutputs; ++i)
-            _outputScratchBuffer[i] = alignedBuffer!float();
+            _outputScratchBuffer[i] = makeAlignedBuffer!float();
 
-        _zeroesBuffer = alignedBuffer!float();
+        _zeroesBuffer = makeAlignedBuffer!float();
 
         _inputPointers.length = _maxInputs;
         _outputPointers.length = _maxOutputs;
@@ -172,7 +172,7 @@ public:
             _host.wantEvents();
         }
 
-        _graphicsMutex = uncheckedMutex();
+        _graphicsMutex = makeMutex();
     }
 
     ~this()

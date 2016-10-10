@@ -271,7 +271,7 @@ nothrow:
         size_t maxTasksPushedAtOnce = 512; // TODO, find something clever
         _taskQueue = lockedQueue!Task(maxTasksPushedAtOnce);
         
-        _taskFinishedSemaphore = uncheckedSemaphore(0);
+        _taskFinishedSemaphore = makeSemaphore(0);
 
         // Create threads
         if (numThreads == 0)

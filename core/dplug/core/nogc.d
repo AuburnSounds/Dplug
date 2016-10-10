@@ -260,7 +260,7 @@ alias nogcComparisonFunction(T) = int delegate(in T a, in T b) nothrow @nogc;
 
 /// @nogc quicksort
 /// From the excellent: http://codereview.stackexchange.com/a/77788
-void nogc_qsort(T)(T[] array, nogcComparisonFunction!T comparison) nothrow @nogc
+void quicksort(T)(T[] array, nogcComparisonFunction!T comparison) nothrow @nogc
 {
     if (array.length < 2)
         return;
@@ -311,10 +311,74 @@ void nogc_qsort(T)(T[] array, nogcComparisonFunction!T comparison) nothrow @nogc
 unittest
 {
     int[] testData = [110, 5, 10, 3, 22, 100, 1, 23];
-    nogc_qsort!int(testData, (a, b) => (a - b));
+    quicksort!int(testData, (a, b) => (a - b));
     assert(testData == [1, 3, 5, 10, 22, 23, 100, 110]);
 }
 
+
+//
+// STABLE MERGE SORT
+//
+
+// Stable merge sort, using a temporary array.
+// Array A[] has the items to sort.
+// Array B[] is a work array.
+void mergeSort(T)(T[] inoutElements, T[] scratchBuffer, nogcComparisonFunction!T comparison) nothrow @nogc
+{
+    // Left source half is A[ iBegin:iMiddle-1].
+    // Right source half is A[iMiddle:iEnd-1   ].
+    // Result is            B[ iBegin:iEnd-1   ].
+    void topDownMerge(T)(T* A, int iBegin, int iMiddle, int iEnd, T* B) nothrow @nogc
+    {
+        int i = iBegin;
+        int j = iMiddle;
+
+        // While there are elements in the left or right runs...
+        for (int k = iBegin; k < iEnd; k++) 
+        {
+            // If left run head exists and is <= existing right run head.
+            if ( i < iMiddle && ( j >= iEnd || (comparison(A[i], A[j]) <= 0) ) ) 
+            {
+                B[k] = A[i];
+                i = i + 1;
+            } 
+            else 
+            {
+                B[k] = A[j];
+                j = j + 1;    
+            }
+        } 
+    }
+
+    // Sort the given run of array A[] using array B[] as a source.
+    // iBegin is inclusive; iEnd is exclusive (A[iEnd] is not in the set).
+    void topDownSplitMerge(T)(T* B, int iBegin, int iEnd, T* A) nothrow @nogc
+    {
+        if(iEnd - iBegin < 2)                       // if run size == 1
+            return;                                 //   consider it sorted
+        // split the run longer than 1 item into halves
+        int iMiddle = (iEnd + iBegin) / 2;              // iMiddle = mid point
+        // recursively sort both runs from array A[] into B[]
+        topDownSplitMerge!T(A, iBegin,  iMiddle, B);  // sort the left  run
+        topDownSplitMerge!T(A, iMiddle,    iEnd, B);  // sort the right run
+        // merge the resulting runs from array B[] into A[]
+        topDownMerge!T(B, iBegin, iMiddle, iEnd, A);
+    }
+
+    assert(inoutElements.length == scratchBuffer.length);
+    int n = cast(int)inoutElements.length;
+    scratchBuffer[] = inoutElements[]; // copy data into temporary buffer
+    topDownSplitMerge(scratchBuffer.ptr, 0, n, inoutElements.ptr);
+}
+
+unittest
+{
+    int[2][] scratch;
+    scratch.length = 8;
+    int[2][] testData = [[110, 0], [5, 0], [10, 0], [3, 0], [110, 1], [5, 1], [10, 1], [3, 1]];
+    mergeSort!(int[2])(testData, scratch, (a, b) => (a[0] - b[0]));
+    assert(testData == [[3, 0], [3, 1], [5, 0], [5, 1], [10, 0], [10, 1], [110, 0], [110, 1]]);
+}
 
 
 

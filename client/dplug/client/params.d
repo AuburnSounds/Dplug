@@ -133,8 +133,8 @@ protected:
         _name = name;
         _label = label;
         _index = index;
-        _valueMutex = uncheckedMutex();
-        _listeners = alignedBuffer!IParameterListener();
+        _valueMutex = makeMutex();
+        _listeners = makeAlignedBuffer!IParameterListener();
     }
 
     /// From a normalized double, set the parameter value.

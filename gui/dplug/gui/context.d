@@ -103,8 +103,8 @@ nothrow @nogc:
 
     this(int dummy) 
     {
-        _dirtyRectMutex = uncheckedMutex();
-        _dirtyRects = alignedBuffer!box2i(0);
+        _dirtyRectMutex = makeMutex();
+        _dirtyRects = makeAlignedBuffer!box2i(0);
     }
 
     @disable this(this);
