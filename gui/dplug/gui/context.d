@@ -58,13 +58,14 @@ public:
     DirtyRectList dirtyList;
 
     // Note: take ownership of image
+    // That image must have been built with `mallocEmplace`
     void setSkybox(OwnedImage!RGBA image)
     {
         skybox.destroy();
         skybox = new Mipmap!RGBA(12, image.w, image.h);
 
         // replaces level 0
-        skybox.levels[0].destroy();
+        skybox.levels[0].destroyFree();
         skybox.levels[0] = image;
         skybox.generateMipmaps(Mipmap!RGBA.Quality.box);
     }

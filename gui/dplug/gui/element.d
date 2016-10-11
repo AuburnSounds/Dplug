@@ -54,7 +54,8 @@ nothrow:
     {
         _context = context;
         _localRectsBuf = makeAlignedBuffer!box2i();
-        _zOrderedChildren = makeAlignedBuffer!UIElement(0);
+        _children = makeAlignedBuffer!UIElement();
+        _zOrderedChildren = makeAlignedBuffer!UIElement();
     }
 
     ~this()

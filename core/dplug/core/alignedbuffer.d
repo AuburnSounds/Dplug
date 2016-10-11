@@ -19,6 +19,8 @@ import core.exception;
 /// Do not mix allocations with different alignment.
 void* alignedMalloc(size_t size, size_t alignment) nothrow @nogc
 {
+    assert(alignment != 0);
+
     // Short-cut and use the C allocator to avoid overhead if no alignment
     if (alignment == 1)
         return malloc(size);
@@ -40,6 +42,8 @@ void* alignedMalloc(size_t size, size_t alignment) nothrow @nogc
 /// Do not mix allocations with different alignment.
 void alignedFree(void* aligned, size_t alignment) nothrow @nogc
 {
+    assert(alignment != 0);
+
     // Short-cut and use the C allocator to avoid overhead if no alignment
     if (alignment == 1)
         return free(aligned);
@@ -57,6 +61,8 @@ void alignedFree(void* aligned, size_t alignment) nothrow @nogc
 /// Do not mix allocations with different alignment.
 @nogc void* alignedRealloc(void* aligned, size_t size, size_t alignment) nothrow
 {
+    assert(alignment != 0);
+
     // Short-cut and use the C allocator to avoid overhead if no alignment
     if (alignment == 1)
         return realloc(aligned, size);
@@ -310,7 +316,7 @@ struct AlignedBuffer(T)
             return _data;
         }
 
-        T opIndex(size_t i) pure nothrow @nogc
+        inout(T) opIndex(size_t i) pure nothrow inout @nogc
         {
             return _data[i];
         }

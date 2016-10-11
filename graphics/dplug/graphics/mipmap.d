@@ -12,6 +12,7 @@ import dplug.graphics.box;
 import dplug.graphics.color;
 
 import dplug.core.nogc;
+import dplug.core.alignedbuffer;
 import dplug.graphics.drawex;
 
 version( D_InlineAsm_X86 )
@@ -43,6 +44,10 @@ version(LDC)
 /// The mipmap owns each of its levels.
 final class Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
 {
+public:
+nothrow:
+@nogc:
+
     enum Quality
     {
         box,                  // simple 2x2 filter, creates phase problems with NPOT. For higher levels, automatically uses cubic.
@@ -51,12 +56,12 @@ final class Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
         boxAlphaCovIntoPremul, // same as boxAlphaConv but after such a step the next level is alpha-premultiplied
     }
 
-    OwnedImage!COLOR[] levels;
+    AlignedBuffer!(OwnedImage!COLOR) levels;
 
     /// Creates empty
     this()
     {
-        levels.length = 0;        
+        levels = makeAlignedBuffer!(OwnedImage!COLOR)();
     }
 
     /// Set number of levels and size
@@ -64,6 +69,7 @@ final class Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
     /// maxLevel = 1 => one image + one 2x downsampled mipmap
     this(int maxLevel, int w, int h)
     {
+        this();
         size(maxLevel, w, h);
     }
 
@@ -73,7 +79,7 @@ final class Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
         int neededLevels = 0;
         {
             int wr = w;
-            int hr = h;        
+            int hr = h;
             for (; neededLevels <= maxLevel; ++neededLevels)
             {
                 if (wr == 0 || hr == 0)
@@ -93,12 +99,13 @@ final class Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
             }
 
             int previousLength = cast(int)levels.length;
-            levels.length = numLevels;
+
+            levels.resize(numLevels);
 
             // create empty image for new levels
             for(int level = previousLength; level < numLevels; ++level)
             {
-                levels[level] = new OwnedImage!COLOR();
+                levels[level] = mallocEmplace!(OwnedImage!COLOR)();
             }
         }
 
@@ -116,10 +123,8 @@ final class Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
 
     ~this()
     {
-        debug ensureNotInGC("Mipmap");
-        
         foreach(level; levels)
-            level.destroy();
+            level.destroyFree();
     }
 
     /// Interpolates a color between mipmap levels.  Floating-point level, spatial linear interpolation.
