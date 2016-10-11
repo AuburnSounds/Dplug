@@ -8,6 +8,8 @@ module dplug.graphics.drawex;
 // Extends ae.graphics.utils
 // Additional graphics primitives, and image loading
 
+import core.stdc.stdlib: free;
+
 import std.algorithm.comparison;
 import std.math;
 import std.traits;
@@ -20,6 +22,9 @@ import dplug.graphics.view;
 import dplug.graphics.draw;
 import dplug.graphics.image;
 import dplug.graphics.pngload;
+
+nothrow:
+@nogc:
 
 
 /// Crop a view from a box2i
@@ -474,15 +479,20 @@ unittest
 //
 // Image loading
 //
-
 struct IFImage
 {
     int w, h;
     ubyte[] pixels;
     int channels; // number of channels
+
+    void free() nothrow @nogc
+    {
+        if (pixels.ptr !is null)
+            .free(pixels.ptr);
+    }
 }
 
-IFImage readImageFromMem(const(ubyte[]) imageData, int channels)
+IFImage readImageFromMem(const(ubyte[]) imageData, int channels) 
 {
     static immutable ubyte[8] pngSignature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
     bool isPNG = imageData.length >= 8 && (imageData[0..8] == pngSignature);
@@ -492,16 +502,12 @@ IFImage readImageFromMem(const(ubyte[]) imageData, int channels)
     {
         int width, height, components;
         ubyte* decoded = stbi_load_png_from_memory(imageData, width, height, components, channels);
-        scope(exit) stbi_image_free(decoded);
-
         IFImage result;
         result.w = width;
         result.h = height;
         result.channels = channels;
         int size = width * height * channels; 
-        result.pixels = new ubyte[size];
-        import core.stdc.string: memcpy;
-        memcpy(result.pixels.ptr, decoded, size);
+        result.pixels = decoded[0..size];
         return result;
     }
     else
@@ -511,13 +517,11 @@ IFImage readImageFromMem(const(ubyte[]) imageData, int channels)
         if (isJPEG)
         {
             import dplug.gui.jpegload;
-
             IFImage result;
             int comp;
-            ubyte[] pixels = decompress_jpeg_image_from_memory!false(imageData, result.w, result.h, comp, channels);
+            ubyte[] pixels = decompress_jpeg_image_from_memory(imageData, result.w, result.h, comp, channels);
             result.channels = channels;
             result.pixels = pixels;
-
             return result;
         }
         else
@@ -527,14 +531,16 @@ IFImage readImageFromMem(const(ubyte[]) imageData, int channels)
 
 /// The one function you probably want to use.
 /// Loads an image from a static array.
+/// The OwnedImage is allocated with `mallocEmplace` and should be destroyed with `destroyFree`.
 /// Throws: $(D ImageIOException) on error.
 OwnedImage!RGBA loadOwnedImage(in void[] imageData)
 {
     IFImage ifImage = readImageFromMem(cast(const(ubyte[])) imageData, 4);
+    scope(exit) ifImage.free();
     int width = cast(int)ifImage.w;
     int height = cast(int)ifImage.h;
 
-    OwnedImage!RGBA loaded = new OwnedImage!RGBA(width, height);
+    OwnedImage!RGBA loaded = mallocEmplace!(OwnedImage!RGBA)(width, height);
     loaded.pixels[] = (cast(RGBA[]) ifImage.pixels)[]; // pixel copy here
     return loaded;
 }
@@ -544,26 +550,27 @@ OwnedImage!RGBA loadOwnedImage(in void[] imageData)
 /// Loads two different images:
 /// - the 1st is the RGB channels
 /// - the 2nd is interpreted as greyscale and fetch in the alpha channel of the result.
+/// The OwnedImage is allocated with `mallocEmplace` and should be destroyed with `destroyFree`.
 /// Throws: $(D ImageIOException) on error.
 OwnedImage!RGBA loadImageSeparateAlpha(in void[] imageDataRGB, in void[] imageDataAlpha)
 {
     IFImage ifImageRGB = readImageFromMem(cast(const(ubyte[])) imageDataRGB, 3);
+    scope(exit) ifImageRGB.free();
     int widthRGB = cast(int)ifImageRGB.w;
     int heightRGB = cast(int)ifImageRGB.h;
 
     IFImage ifImageA = readImageFromMem(cast(const(ubyte[])) imageDataAlpha, 1);
+    scope(exit) ifImageA.free();
     int widthA = cast(int)ifImageA.w;
     int heightA = cast(int)ifImageA.h;
 
     if ( (widthA != widthRGB) || (heightRGB != heightA) )
-    {
-        throw new Exception("Image size mismatch");
-    }
+        assert(false, "Image size mismatch");
 
     int width = widthA;
     int height = heightA;
 
-    OwnedImage!RGBA loaded = new OwnedImage!RGBA(width, height);
+    OwnedImage!RGBA loaded = mallocEmplace!(OwnedImage!RGBA)(width, height);
 
     for (int j = 0; j < height; ++j)
     {

@@ -42,9 +42,14 @@
  */
 module dplug.gui.jpegload;
 
+nothrow:
+@nogc:
+
 // arsd.color stripped down
 class TrueColorImage
 {
+nothrow:
+@nogc:
 	//ubyte[] data; // stored as rgba quads, upper left to right to bottom
 	/// .
 	struct Data {
@@ -63,13 +68,6 @@ class TrueColorImage
 	int width() const { return _width; }
 	///.
 	int height() const { return _height; }
-
-	/// .
-	this(int w, int h) {
-		_width = w;
-		_height = h;
-		imageData.bytes = new ubyte[w*h*4];
-	}
 
 	/// Creates with existing data. The data pointer is stored here.
 	this(int w, int h, ubyte[] data) {
@@ -404,6 +402,9 @@ void idct_4x4() (const(jpeg_decoder.jpgd_block_t)* pSrc_ptr, ubyte* pDst_ptr) {
 
 // ////////////////////////////////////////////////////////////////////////// //
 struct jpeg_decoder {
+nothrow:
+@nogc:
+
 private import core.stdc.string : memcpy, memset;
 private:
   static auto JPGD_MIN(T) (T a, T b) pure nothrow @safe @nogc { pragma(inline, true); return (a < b ? a : b); }
@@ -528,7 +529,7 @@ public:
       m_ready_flag = true;
       return JPGD_SUCCESS;
     } catch (Exception) {}
-    return JPGD_FAILED;
+  //  return JPGD_FAILED;
   }
 
   // Returns the next scan line.
@@ -588,7 +589,7 @@ public:
       --m_total_lines_left;
       return JPGD_SUCCESS;
     } catch (Exception) {}
-    return JPGD_FAILED;
+    assert(false);
   }
 
   @property const pure nothrow @safe @nogc {
@@ -1045,7 +1046,7 @@ private:
     m_error_code = status;
     free_all_blocks();
     //longjmp(m_jmp_state, status);
-    throw new Exception("jpeg decoding error");
+    assert(false, "jpeg decoding error");
   }
 
   void* alloc (size_t nSize, bool zero=false) {
@@ -3008,7 +3009,7 @@ public bool detect_jpeg_image_from_memory (const(void)[] buf, out int width, out
 // ////////////////////////////////////////////////////////////////////////// //
 /// decompress JPEG image, what else?
 /// you can specify required color components in `req_comps` (3 for RGB or 4 for RGBA), or leave it as is to use image value.
-public ubyte[] decompress_jpeg_image_from_stream(bool useMalloc=false) (scope JpegStreamReadFunc rfn, out int width, out int height, out int actual_comps, int req_comps=-1) {
+public ubyte[] decompress_jpeg_image_from_stream(scope JpegStreamReadFunc rfn, out int width, out int height, out int actual_comps, int req_comps=-1) {
   import core.stdc.string : memcpy;
 
   //actual_comps = 0;
@@ -3030,14 +3031,9 @@ public ubyte[] decompress_jpeg_image_from_stream(bool useMalloc=false) (scope Jp
 
   immutable int dst_bpl = image_width*req_comps;
 
-  static if (useMalloc) {
-    ubyte* pImage_data = cast(ubyte*)jpgd_malloc(dst_bpl*image_height);
-    if (pImage_data is null) return null;
-    auto idata = pImage_data[0..dst_bpl*image_height];
-  } else {
-    auto idata = new ubyte[](dst_bpl*image_height);
-    auto pImage_data = idata.ptr;
-  }
+   ubyte* pImage_data = cast(ubyte*)jpgd_malloc(dst_bpl*image_height);
+   if (pImage_data is null) return null;
+   auto idata = pImage_data[0..dst_bpl*image_height];
 
   for (int y = 0; y < image_height; ++y) {
     const(ubyte)* pScan_line;
@@ -3097,12 +3093,12 @@ public ubyte[] decompress_jpeg_image_from_stream(bool useMalloc=false) (scope Jp
 // ////////////////////////////////////////////////////////////////////////// //
 /// decompress JPEG image from memory buffer.
 /// you can specify required color components in `req_comps` (3 for RGB or 4 for RGBA), or leave it as is to use image value.
-public ubyte[] decompress_jpeg_image_from_memory(bool useMalloc=false) (const(void)[] buf, out int width, out int height, out int actual_comps, int req_comps=-1) {
+public ubyte[] decompress_jpeg_image_from_memory(const(void)[] buf, out int width, out int height, out int actual_comps, int req_comps=-1) {
   bool m_eof_flag;
   size_t bufpos;
   auto b = cast(const(ubyte)*)buf.ptr;
 
-  return decompress_jpeg_image_from_stream!useMalloc(
+  return decompress_jpeg_image_from_stream(
     delegate int (void* pBuf, int max_bytes_to_read, bool *pEOF_flag) {
       import core.stdc.string : memcpy;
       if (bufpos >= buf.length) {
@@ -3115,104 +3111,4 @@ public ubyte[] decompress_jpeg_image_from_memory(bool useMalloc=false) (const(vo
       return max_bytes_to_read;
     },
     width, height, actual_comps, req_comps);
-}
-
-// ////////////////////////////////////////////////////////////////////////// //
-/// decompress JPEG image, what else?
-public TrueColorImage readJpegFromStream (scope JpegStreamReadFunc rfn) {
-  import core.stdc.string : memcpy;
-  enum req_comps = 4;
-
-  if (rfn is null) return null;
-
-  auto decoder = jpeg_decoder(rfn);
-  if (decoder.error_code != JPGD_SUCCESS) return null;
-  version(jpegd_test) scope(exit) { import core.stdc.stdio : printf; printf("%u bytes read.\n", cast(uint)decoder.total_bytes_read); }
-
-  immutable int image_width = decoder.width;
-  immutable int image_height = decoder.height;
-  //width = image_width;
-  //height = image_height;
-  //actual_comps = decoder.num_components;
-
-  if (decoder.begin_decoding() != JPGD_SUCCESS || image_width < 1 || image_height < 1) return null;
-
-  immutable int dst_bpl = image_width*req_comps;
-  auto img = new TrueColorImage(image_width, image_height);
-  ubyte* pImage_data = img.imageData.bytes.ptr;
-
-  for (int y = 0; y < image_height; ++y) {
-    const(ubyte)* pScan_line;
-    uint scan_line_len;
-    if (decoder.decode(/*(const void**)*/cast(void**)&pScan_line, &scan_line_len) != JPGD_SUCCESS) {
-      jpgd_free(pImage_data);
-      return null;
-    }
-
-    ubyte* pDst = pImage_data+y*dst_bpl;
-
-    if ((req_comps == 1 && decoder.num_components == 1) || (req_comps == 4 && decoder.num_components == 3)) {
-      memcpy(pDst, pScan_line, dst_bpl);
-    } else if (decoder.num_components == 1) {
-      if (req_comps == 3) {
-        for (int x = 0; x < image_width; ++x) {
-          ubyte luma = pScan_line[x];
-          pDst[0] = luma;
-          pDst[1] = luma;
-          pDst[2] = luma;
-          pDst += 3;
-        }
-      } else {
-        for (int x = 0; x < image_width; ++x) {
-          ubyte luma = pScan_line[x];
-          pDst[0] = luma;
-          pDst[1] = luma;
-          pDst[2] = luma;
-          pDst[3] = 255;
-          pDst += 4;
-        }
-      }
-    } else if (decoder.num_components == 3) {
-      if (req_comps == 1) {
-        immutable int YR = 19595, YG = 38470, YB = 7471;
-        for (int x = 0; x < image_width; ++x) {
-          int r = pScan_line[x*4+0];
-          int g = pScan_line[x*4+1];
-          int b = pScan_line[x*4+2];
-          *pDst++ = cast(ubyte)((r * YR + g * YG + b * YB + 32768) >> 16);
-        }
-      } else {
-        for (int x = 0; x < image_width; ++x) {
-          pDst[0] = pScan_line[x*4+0];
-          pDst[1] = pScan_line[x*4+1];
-          pDst[2] = pScan_line[x*4+2];
-          pDst += 3;
-        }
-      }
-    }
-  }
-
-  return img;
-}
-
-// ////////////////////////////////////////////////////////////////////////// //
-/// decompress JPEG image from memory buffer.
-public TrueColorImage readJpegFromMemory (const(void)[] buf) {
-  bool m_eof_flag;
-  size_t bufpos;
-  auto b = cast(const(ubyte)*)buf.ptr;
-
-  return readJpegFromStream(
-    delegate int (void* pBuf, int max_bytes_to_read, bool *pEOF_flag) {
-      import core.stdc.string : memcpy;
-      if (bufpos >= buf.length) {
-        *pEOF_flag = true;
-        return 0;
-      }
-      if (buf.length-bufpos < max_bytes_to_read) max_bytes_to_read = cast(int)(buf.length-bufpos);
-      memcpy(pBuf, b, max_bytes_to_read);
-      b += max_bytes_to_read;
-      return max_bytes_to_read;
-    }
-  );
 }

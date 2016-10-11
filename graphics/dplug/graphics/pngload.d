@@ -34,17 +34,8 @@ import core.stdc.string;
 
 enum STBI_VERSION = 1;
 
-/// The exception type thrown when loading an image failed.
-class STBImageException : Exception
-{
-    public
-    {
-        @safe pure nothrow this(string message, string file =__FILE__, size_t line = __LINE__, Throwable next = null)
-        {
-            super(message, file, line, next);
-        }
-    }
-}
+nothrow:
+@nogc:
 
 enum : int
 {
@@ -90,11 +81,6 @@ ubyte* stbi_load_png_from_memory(const(void)[] buffer, out int width, out int he
    return stbi_png_load(&s, &width, &height, &components, requestedComponents);
 }
 
-/// Frees an image loaded by stb_image.
-void stbi_image_free(void *retval_from_stbi_load)
-{
-    free(retval_from_stbi_load);
-}
 
 //
 // Common code used by all image loaders
@@ -191,7 +177,8 @@ ubyte *convert_format(ubyte *data, int img_n, int req_comp, uint x, uint y)
     good = cast(ubyte*) malloc(req_comp * x * y);
     if (good == null) {
         free(data);
-        throw new STBImageException("Out of memory");
+        assert(false);
+        //throw new STBImageException("Out of memory");
     }
 
     for (j=0; j < cast(int) y; ++j) {
@@ -321,7 +308,7 @@ int zbuild_huffman(zhuffman *z, ubyte *sizelist, int num)
       code = (code + sizes[i]);
       if (sizes[i])
          if (code-1 >= (1 << i))
-            throw new STBImageException("Bad codelength, corrupt JPEG");
+             assert(false);
       z.maxcode[i] = code << (16-i); // preshift for inner loop
       code <<= 1;
       k += sizes[i];
@@ -424,14 +411,14 @@ int expand(zbuf *z, int n)  // need to make room for n bytes
    ubyte *q;
    int cur, limit;
    if (!z.z_expandable)
-      throw new STBImageException("Output buffer limit, corrupt PNG");
+      assert(false, "Output buffer limit, corrupt PNG");
    cur   = cast(int) (z.zout     - z.zout_start);
    limit = cast(int) (z.zout_end - z.zout_start);
    while (cur + n > limit)
       limit *= 2;
    q = cast(ubyte*) realloc(z.zout_start, limit);
    if (q == null)
-      throw new STBImageException("Out of memory");
+      assert(false, "Out of memory");
    z.zout_start = q;
    z.zout       = q + cur;
    z.zout_end   = q + limit;
@@ -458,7 +445,7 @@ int parse_huffman_block(zbuf *a)
       int z = zhuffman_decode(a, &a.z_length);
       if (z < 256) {
          if (z < 0)
-             throw new STBImageException("Bad Huffman code, corrupt PNG");
+             assert(false, "Bad Huffman code, corrupt PNG");
          if (a.zout >= a.zout_end) if (!expand(a, 1)) return 0;
          *a.zout++ = cast(ubyte) z;
       } else {
@@ -469,10 +456,10 @@ int parse_huffman_block(zbuf *a)
          len = length_base[z];
          if (length_extra[z]) len += zreceive(a, length_extra[z]);
          z = zhuffman_decode(a, &a.z_distance);
-         if (z < 0) throw new STBImageException("Bad Huffman code, corrupt PNG");
+         if (z < 0) assert(false, "Bad Huffman code, corrupt PNG");
          dist = dist_base[z];
          if (dist_extra[z]) dist += zreceive(a, dist_extra[z]);
-         if (a.zout - a.zout_start < dist) throw new STBImageException("Bad dist, corrupt PNG");
+         if (a.zout - a.zout_start < dist) assert(false, "Bad dist, corrupt PNG");
          if (a.zout + len > a.zout_end) if (!expand(a, len)) return 0;
          p = a.zout - dist;
          while (len--)
@@ -521,7 +508,7 @@ int compute_huffman_codes(zbuf *a)
          n += c;
       }
    }
-   if (n != hlit+hdist) throw new STBImageException("Bad codelengths, corrupt PNG");
+   if (n != hlit+hdist) assert(false, "Bad codelengths, corrupt PNG");
    if (!zbuild_huffman(&a.z_length, lencodes.ptr, hlit)) return 0;
    if (!zbuild_huffman(&a.z_distance, lencodes.ptr+hlit, hdist)) return 0;
    return 1;
@@ -546,8 +533,8 @@ int parse_uncompressed_block(zbuf *a)
       header[k++] = cast(ubyte) zget8(a);
    len  = header[1] * 256 + header[0];
    nlen = header[3] * 256 + header[2];
-   if (nlen != (len ^ 0xffff)) throw new STBImageException("Zlib corrupt, corrupt PNG");
-   if (a.zbuffer + len > a.zbuffer_end) throw new STBImageException("Read past buffer, corrupt PNG");
+   if (nlen != (len ^ 0xffff)) assert(false, "Zlib corrupt, corrupt PNG");
+   if (a.zbuffer + len > a.zbuffer_end) assert(false, "Read past buffer, corrupt PNG");
    if (a.zout + len > a.zout_end)
       if (!expand(a, len)) return 0;
    memcpy(a.zout, a.zbuffer, len);
@@ -562,9 +549,9 @@ int parse_zlib_header(zbuf *a)
    int cm    = cmf & 15;
    /* int cinfo = cmf >> 4; */
    int flg   = zget8(a);
-   if ((cmf*256+flg) % 31 != 0) throw new STBImageException("Bad zlib header, corrupt PNG"); // zlib spec
-   if (flg & 32) throw new STBImageException("No preset dict, corrupt PNG"); // preset dictionary not allowed in png
-   if (cm != 8) throw new STBImageException("Bad compression, corrupt PNG");  // DEFLATE required for png
+   if ((cmf*256+flg) % 31 != 0) assert(false, "Bad zlib header, corrupt PNG"); // zlib spec
+   if (flg & 32) assert(false, "No preset dict, corrupt PNG"); // preset dictionary not allowed in png
+   if (cm != 8) assert(false, "Bad compression, corrupt PNG");  // DEFLATE required for png
    // window = 1 << (8 + cinfo)... but who cares, we fully buffer output
    return 1;
 }
@@ -739,7 +726,7 @@ static int check_png_header(stbi *s)
        ubyte headerByte = get8u(s);
        ubyte expected = png_sig[i];
        if (headerByte != expected)
-           throw new STBImageException("Bad PNG sig, not a PNG");
+           assert(false, "Bad PNG sig, not a PNG");
    }
    return 1;
 }
@@ -785,19 +772,19 @@ static int create_png_image_raw(png *a, ubyte *raw, uint raw_len, int out_n, uin
    assert(out_n == s.img_n || out_n == s.img_n+1);
    if (stbi_png_partial) y = 1;
    a.out_ = cast(ubyte*) malloc(x * y * out_n);
-   if (!a.out_) throw new STBImageException("Out of memory");
+   if (!a.out_) assert(false, "Out of memory");
    if (!stbi_png_partial) {
       if (s.img_x == x && s.img_y == y) {
-         if (raw_len != (img_n * x + 1) * y) throw new STBImageException("Not enough pixels, corrupt PNG");
+         if (raw_len != (img_n * x + 1) * y) assert(false, "Not enough pixels, corrupt PNG");
       } else { // interlaced:
-         if (raw_len < (img_n * x + 1) * y) throw new STBImageException("Not enough pixels, corrupt PNG");
+         if (raw_len < (img_n * x + 1) * y) assert(false, "Not enough pixels, corrupt PNG");
       }
    }
    for (j=0; j < y; ++j) {
       ubyte *cur = a.out_ + stride*j;
       ubyte *prior = cur - stride;
       int filter = *raw++;
-      if (filter > 4) throw new STBImageException("Invalid filter, corrupt PNG");
+      if (filter > 4) assert(false, "Invalid filter, corrupt PNG");
       // if first row, use special filter that doesn't sample previous row
       if (j == 0) filter = first_row_filter[filter];
       // handle first pixel explicitly
@@ -931,7 +918,7 @@ int expand_palette(png *a, ubyte *palette, int len, int pal_img_n)
 
    p = cast(ubyte*) malloc(pixel_count * pal_img_n);
    if (p == null)
-      throw new STBImageException("Out of memory");
+      assert(false, "Out of memory");
 
    // between here and free(out) below, exitting would leak
    temp_out = p;
@@ -983,37 +970,37 @@ int parse_png_file(png *z, int scan, int req_comp)
       switch (c.type) {
          case PNG_TYPE('I','H','D','R'): {
             int depth,color,comp,filter;
-            if (!first) throw new STBImageException("Multiple IHDR, corrupt PNG");
+            if (!first) assert(false, "Multiple IHDR, corrupt PNG");
             first = 0;
-            if (c.length != 13) throw new STBImageException("Bad IHDR len, corrupt PNG");
-            s.img_x = get32(s); if (s.img_x > (1 << 24)) throw new STBImageException("Very large image (corrupt?)");
-            s.img_y = get32(s); if (s.img_y > (1 << 24)) throw new STBImageException("Very large image (corrupt?)");
-            depth = get8(s);  if (depth != 8)        throw new STBImageException("8bit only, PNG not supported: 8-bit only");
-            color = get8(s);  if (color > 6)         throw new STBImageException("Bad ctype, corrupt PNG");
-            if (color == 3) pal_img_n = 3; else if (color & 1) throw new STBImageException("Bad ctype, corrupt PNG");
-            comp  = get8(s);  if (comp) throw new STBImageException("Bad comp method, corrupt PNG");
-            filter= get8(s);  if (filter) throw new STBImageException("Bad filter method, corrupt PNG");
-            interlace = get8(s); if (interlace>1) throw new STBImageException("Bad interlace method, corrupt PNG");
-            if (!s.img_x || !s.img_y) throw new STBImageException("0-pixel image, corrupt PNG");
+            if (c.length != 13) assert(false, "Bad IHDR len, corrupt PNG");
+            s.img_x = get32(s); if (s.img_x > (1 << 24)) assert(false, "Very large image (corrupt?)");
+            s.img_y = get32(s); if (s.img_y > (1 << 24)) assert(false, "Very large image (corrupt?)");
+            depth = get8(s);  if (depth != 8)        assert(false, "8bit only, PNG not supported: 8-bit only");
+            color = get8(s);  if (color > 6)         assert(false, "Bad ctype, corrupt PNG");
+            if (color == 3) pal_img_n = 3; else if (color & 1) assert(false, "Bad ctype, corrupt PNG");
+            comp  = get8(s);  if (comp) assert(false, "Bad comp method, corrupt PNG");
+            filter= get8(s);  if (filter) assert(false, "Bad filter method, corrupt PNG");
+            interlace = get8(s); if (interlace>1) assert(false, "Bad interlace method, corrupt PNG");
+            if (!s.img_x || !s.img_y) assert(false, "0-pixel image, corrupt PNG");
             if (!pal_img_n) {
                s.img_n = (color & 2 ? 3 : 1) + (color & 4 ? 1 : 0);
-               if ((1 << 30) / s.img_x / s.img_n < s.img_y) throw new STBImageException("Image too large to decode");
+               if ((1 << 30) / s.img_x / s.img_n < s.img_y) assert(false, "Image too large to decode");
                if (scan == SCAN_header) return 1;
             } else {
                // if paletted, then pal_n is our final components, and
                // img_n is # components to decompress/filter.
                s.img_n = 1;
-               if ((1 << 30) / s.img_x / 4 < s.img_y) throw new STBImageException("Too large, corrupt PNG");
+               if ((1 << 30) / s.img_x / 4 < s.img_y) assert(false, "Too large, corrupt PNG");
                // if SCAN_header, have to scan to see if we have a tRNS
             }
             break;
          }
 
          case PNG_TYPE('P','L','T','E'):  {
-            if (first) throw new STBImageException("first not IHDR, corrupt PNG");
-            if (c.length > 256*3) throw new STBImageException("invalid PLTE, corrupt PNG");
+            if (first) assert(false, "first not IHDR, corrupt PNG");
+            if (c.length > 256*3) assert(false, "invalid PLTE, corrupt PNG");
             pal_len = c.length / 3;
-            if (pal_len * 3 != c.length) throw new STBImageException("invalid PLTE, corrupt PNG");
+            if (pal_len * 3 != c.length) assert(false, "invalid PLTE, corrupt PNG");
             for (i=0; i < pal_len; ++i) {
                palette[i*4+0] = get8u(s);
                palette[i*4+1] = get8u(s);
@@ -1024,18 +1011,18 @@ int parse_png_file(png *z, int scan, int req_comp)
          }
 
          case PNG_TYPE('t','R','N','S'): {
-            if (first) throw new STBImageException("first not IHDR, cCorrupt PNG");
-            if (z.idata) throw new STBImageException("tRNS after IDAT, corrupt PNG");
+            if (first) assert(false, "first not IHDR, cCorrupt PNG");
+            if (z.idata) assert(false, "tRNS after IDAT, corrupt PNG");
             if (pal_img_n) {
                if (scan == SCAN_header) { s.img_n = 4; return 1; }
-               if (pal_len == 0) throw new STBImageException("tRNS before PLTE, corrupt PNG");
-               if (c.length > pal_len) throw new STBImageException("bad tRNS len, corrupt PNG");
+               if (pal_len == 0) assert(false, "tRNS before PLTE, corrupt PNG");
+               if (c.length > pal_len) assert(false, "bad tRNS len, corrupt PNG");
                pal_img_n = 4;
                for (i=0; i < c.length; ++i)
                   palette[i*4+3] = get8u(s);
             } else {
-               if (!(s.img_n & 1)) throw new STBImageException("tRNS with alpha, corrupt PNG");
-               if (c.length != cast(uint) s.img_n*2) throw new STBImageException("bad tRNS len, corrupt PNG");
+               if (!(s.img_n & 1)) assert(false, "tRNS with alpha, corrupt PNG");
+               if (c.length != cast(uint) s.img_n*2) assert(false, "bad tRNS len, corrupt PNG");
                has_trans = 1;
                for (k=0; k < s.img_n; ++k)
                   tc[k] = cast(ubyte) get16(s); // non 8-bit images will be larger
@@ -1044,27 +1031,27 @@ int parse_png_file(png *z, int scan, int req_comp)
          }
 
          case PNG_TYPE('I','D','A','T'): {
-            if (first) throw new STBImageException("first not IHDR, corrupt PNG");
-            if (pal_img_n && !pal_len) throw new STBImageException("no PLTE, corrupt PNG");
+            if (first) assert(false, "first not IHDR, corrupt PNG");
+            if (pal_img_n && !pal_len) assert(false, "no PLTE, corrupt PNG");
             if (scan == SCAN_header) { s.img_n = pal_img_n; return 1; }
             if (ioff + c.length > idata_limit) {
                ubyte *p;
                if (idata_limit == 0) idata_limit = c.length > 4096 ? c.length : 4096;
                while (ioff + c.length > idata_limit)
                   idata_limit *= 2;
-               p = cast(ubyte*) realloc(z.idata, idata_limit); if (p == null) throw new STBImageException("outofmem, cOut of memory");
+               p = cast(ubyte*) realloc(z.idata, idata_limit); if (p == null) assert(false, "outofmem, cOut of memory");
                z.idata = p;
             }
-            if (!getn(s, z.idata+ioff,c.length)) throw new STBImageException("outofdata, corrupt PNG");
+            if (!getn(s, z.idata+ioff,c.length)) assert(false, "outofdata, corrupt PNG");
             ioff += c.length;
             break;
          }
 
          case PNG_TYPE('I','E','N','D'): {
             uint raw_len;
-            if (first) throw new STBImageException("first not IHDR, corrupt PNG");
+            if (first) assert(false, "first not IHDR, corrupt PNG");
             if (scan != SCAN_load) return 1;
-            if (z.idata == null) throw new STBImageException("no IDAT, corrupt PNG");
+            if (z.idata == null) assert(false, "no IDAT, corrupt PNG");
             z.expanded = stbi_zlib_decode_malloc_guesssize_headerflag(z.idata, ioff, 16384, cast(int *) &raw_len, 1);
             if (z.expanded == null) return 0; // zlib should set error
             free(z.idata); z.idata = null;
@@ -1089,10 +1076,9 @@ int parse_png_file(png *z, int scan, int req_comp)
 
          default:
             // if critical, fail
-            if (first) throw new STBImageException("first not IHDR, corrupt PNG");
+            if (first) assert(false, "first not IHDR, corrupt PNG");
             if ((c.type & (1 << 29)) == 0) {
-
-               throw new STBImageException("PNG not supported: unknown chunk type");
+               assert(false, "PNG not supported: unknown chunk type");
             }
             skip(s, c.length);
             break;
@@ -1106,7 +1092,7 @@ ubyte *do_png(png *p, int *x, int *y, int *n, int req_comp)
 {
    ubyte *result=null;
    if (req_comp < 0 || req_comp > 4)
-      throw new STBImageException("Internal error: bad req_comp");
+      assert(false, "Internal error: bad req_comp");
    if (parse_png_file(p, SCAN_load, req_comp)) {
       result = p.out_;
       p.out_ = null;
