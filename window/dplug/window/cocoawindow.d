@@ -17,6 +17,7 @@ import dplug.graphics.image;
 import dplug.core.unchecked_sync;
 import dplug.core.runtime;
 import dplug.core.nogc;
+import dplug.core.random;
 import dplug.window.window;
 
 import derelict.cocoa;
@@ -89,8 +90,7 @@ public:
 
         if (!isHostWindow)
         {
-            string uuid = randomUUID().toString();
-            DPlugCustomView.customClassName = "DPlugCustomView_" ~ uuid;
+            DPlugCustomView.generateClassName();
             DPlugCustomView.registerSubclass();
 
             _view = DPlugCustomView.alloc();
@@ -123,7 +123,6 @@ public:
 
         if (!isHostWindow)
         {
-            debug ensureNotInGC("CocoaWindow");
             _terminated = true;
 
             {
@@ -377,8 +376,9 @@ private:
 
 struct DPlugCustomView
 {
-    // This class uses a unique class name for each plugin instance
-    static __gshared string customClassName = null;
+public:
+nothrow:
+@nogc:
 
     NSView parent;
     alias parent this;
@@ -392,7 +392,7 @@ struct DPlugCustomView
     /// Allocates, but do not init
     static DPlugCustomView alloc()
     {
-        alias fun_t = extern(C) id function (id obj, SEL sel);
+        alias fun_t = extern(C) id function (id obj, SEL sel) nothrow @nogc;
         return DPlugCustomView( (cast(fun_t)objc_msgSend)(getClassID(), sel!"alloc") );
     }
 
@@ -403,9 +403,22 @@ struct DPlugCustomView
 
     static id getClassID()
     {
-        assert(customClassName !is null);
-        return objc_getClass(customClassName);
+        return objc_getClass(customClassName.ptr);
     }
+
+    // This class uses a unique class name for each plugin instance
+    static __gshared char[16 + 36 + 1] customClassName;
+
+    static void generateClassName() nothrow @nogc
+    {
+        customClassName[0..16] = "DPlugCustomView_";
+        char[36] uuidString;
+        UUID uuid = generateRandomUUID();
+        uuid.toString(uuidString[]);
+        for(int i = 0; i < 36; ++i)
+            customClassName[16 + i] = cast(wchar)( uuidString[i] );
+        customClassName[$-1] = '\0';
+    }    
 
 private:
 
@@ -432,7 +445,7 @@ private:
 
     static void registerSubclass()
     {
-        clazz = objc_allocateClassPair(cast(Class) lazyClass!"NSView", toStringz(customClassName), 0);
+        clazz = objc_allocateClassPair(cast(Class) lazyClass!"NSView", customClassName.ptr, 0);
 
         class_addMethod(clazz, sel!"keyDown:", cast(IMP) &keyDown, "v@:@");
         class_addMethod(clazz, sel!"keyUp:", cast(IMP) &keyUp, "v@:@");
@@ -483,7 +496,7 @@ private:
     }
 }
 
-DPlugCustomView getInstance(id anId)
+DPlugCustomView getInstance(id anId) nothrow @nogc
 {
     // strange thing: object_getInstanceVariable definition is odd (void**)
     // and only works for pointer-sized values says SO
@@ -494,7 +507,7 @@ DPlugCustomView getInstance(id anId)
     return *cast(DPlugCustomView*)thisPointer;
 }
 
-vec2i getMouseXY(NSView view, NSEvent event, int windowHeight)
+vec2i getMouseXY(NSView view, NSEvent event, int windowHeight) nothrow @nogc
 {
     NSPoint mouseLocation = event.locationInWindow();
     mouseLocation = view.convertPoint(mouseLocation, NSView(null));
@@ -513,273 +526,168 @@ alias CocoaScopedCallback = ScopedForeignCallback!(true, true);
 // TODO: why are these methods members???
 extern(C)
 {
-    void keyDown(id self, SEL selector, id event) nothrow
+    void keyDown(id self, SEL selector, id event) nothrow @nogc
     {
-        try
-        {
-            CocoaScopedCallback scopedCallback;
-            scopedCallback.enter();
+        CocoaScopedCallback scopedCallback;
+        scopedCallback.enter();
 
-            DPlugCustomView view = getInstance(self);
-            bool handled = view._window.handleKeyEvent(NSEvent(event), false);
+        DPlugCustomView view = getInstance(self);
+        bool handled = view._window.handleKeyEvent(NSEvent(event), false);
 
-            // send event to superclass if event not handled
-            if (!handled)
-            {
-                objc_super sup;
-                sup.receiver = self;
-                sup.clazz = cast(Class) lazyClass!"NSView";
-                alias fun_t = extern(C) void function (objc_super*, SEL, id);
-                (cast(fun_t)objc_msgSendSuper)(&sup, selector, event);
-            }
-        }
-        catch(Throwable)
+        // send event to superclass if event not handled
+        if (!handled)
         {
-            unrecoverableError();
+            objc_super sup;
+            sup.receiver = self;
+            sup.clazz = cast(Class) lazyClass!"NSView";
+            alias fun_t = extern(C) void function (objc_super*, SEL, id) nothrow @nogc;
+            (cast(fun_t)objc_msgSendSuper)(&sup, selector, event);
         }
     }
 
-    void keyUp(id self, SEL selector, id event) nothrow
+    void keyUp(id self, SEL selector, id event) nothrow @nogc
     {
-        try
-        {
-            CocoaScopedCallback scopedCallback;
-            scopedCallback.enter();
+        CocoaScopedCallback scopedCallback;
+        scopedCallback.enter();
 
-            DPlugCustomView view = getInstance(self);
-            view._window.handleKeyEvent(NSEvent(event), true);
-        }
-        catch(Throwable)
-        {
-            unrecoverableError();
-        }
+        DPlugCustomView view = getInstance(self);
+        view._window.handleKeyEvent(NSEvent(event), true);
     }
 
-    void mouseDown(id self, SEL selector, id event) nothrow
+    void mouseDown(id self, SEL selector, id event) nothrow @nogc
     {
-        try
-        {
-            CocoaScopedCallback scopedCallback;
-            scopedCallback.enter();
+        CocoaScopedCallback scopedCallback;
+        scopedCallback.enter();
 
-            DPlugCustomView view = getInstance(self);
-            view._window.handleMouseClicks(NSEvent(event), MouseButton.left, false);
-        }
-        catch(Throwable)
-        {
-            unrecoverableError();
-        }
+        DPlugCustomView view = getInstance(self);
+        view._window.handleMouseClicks(NSEvent(event), MouseButton.left, false);        
     }
 
-    void mouseUp(id self, SEL selector, id event) nothrow
+    void mouseUp(id self, SEL selector, id event) nothrow @nogc
     {
-        try
-        {
-            CocoaScopedCallback scopedCallback;
-            scopedCallback.enter();
+        CocoaScopedCallback scopedCallback;
+        scopedCallback.enter();
 
-            DPlugCustomView view = getInstance(self);
-            view._window.handleMouseClicks(NSEvent(event), MouseButton.left, true);
-        }
-        catch(Throwable)
-        {
-            unrecoverableError();
-        }
+        DPlugCustomView view = getInstance(self);
+        view._window.handleMouseClicks(NSEvent(event), MouseButton.left, true);        
     }
 
-    void rightMouseDown(id self, SEL selector, id event) nothrow
-    {
-        try
-        {
-            CocoaScopedCallback scopedCallback;
-            scopedCallback.enter();
+    void rightMouseDown(id self, SEL selector, id event) nothrow @nogc
+    {       
+        CocoaScopedCallback scopedCallback;
+        scopedCallback.enter();
 
-            DPlugCustomView view = getInstance(self);
-            view._window.handleMouseClicks(NSEvent(event), MouseButton.right, false);
-        }
-        catch(Throwable)
-        {
-            unrecoverableError();
-        }
+        DPlugCustomView view = getInstance(self);
+        view._window.handleMouseClicks(NSEvent(event), MouseButton.right, false);
     }
 
-    void rightMouseUp(id self, SEL selector, id event) nothrow
-    {
-        try
-        {
-            CocoaScopedCallback scopedCallback;
-            scopedCallback.enter();
+    void rightMouseUp(id self, SEL selector, id event) nothrow @nogc
+    {        
+        CocoaScopedCallback scopedCallback;
+        scopedCallback.enter();
 
-            DPlugCustomView view = getInstance(self);
-            view._window.handleMouseClicks(NSEvent(event), MouseButton.right, true);
-        }
-        catch(Throwable)
-        {
-            unrecoverableError();
-        }
+        DPlugCustomView view = getInstance(self);
+        view._window.handleMouseClicks(NSEvent(event), MouseButton.right, true);
     }
 
-    void otherMouseDown(id self, SEL selector, id event) nothrow
+    void otherMouseDown(id self, SEL selector, id event) nothrow @nogc
     {
-        try
-        {
-            CocoaScopedCallback scopedCallback;
-            scopedCallback.enter();
+        CocoaScopedCallback scopedCallback;
+        scopedCallback.enter();
 
-            DPlugCustomView view = getInstance(self);
-            auto nsEvent = NSEvent(event);
-            if (nsEvent.buttonNumber == 2)
-                view._window.handleMouseClicks(nsEvent, MouseButton.middle, false);
-        }
-        catch(Throwable)
-        {
-            unrecoverableError();
-        }
+        DPlugCustomView view = getInstance(self);
+        auto nsEvent = NSEvent(event);
+        if (nsEvent.buttonNumber == 2)
+            view._window.handleMouseClicks(nsEvent, MouseButton.middle, false);
     }
 
-    void otherMouseUp(id self, SEL selector, id event) nothrow
+    void otherMouseUp(id self, SEL selector, id event) nothrow @nogc
     {
-        try
-        {
-            CocoaScopedCallback scopedCallback;
-            scopedCallback.enter();
+        CocoaScopedCallback scopedCallback;
+        scopedCallback.enter();
 
-            DPlugCustomView view = getInstance(self);
-            auto nsEvent = NSEvent(event);
-            if (nsEvent.buttonNumber == 2)
-                view._window.handleMouseClicks(nsEvent, MouseButton.middle, true);
-        }
-        catch(Throwable)
-        {
-            unrecoverableError();
-        }
+        DPlugCustomView view = getInstance(self);
+        auto nsEvent = NSEvent(event);
+        if (nsEvent.buttonNumber == 2)
+            view._window.handleMouseClicks(nsEvent, MouseButton.middle, true);    
     }
 
-    void mouseMoved(id self, SEL selector, id event) nothrow
+    void mouseMoved(id self, SEL selector, id event) nothrow @nogc
     {
-        try
-        {
-            CocoaScopedCallback scopedCallback;
-            scopedCallback.enter();
+        CocoaScopedCallback scopedCallback;
+        scopedCallback.enter();
 
-            DPlugCustomView view = getInstance(self);
-            view._window.handleMouseMove(NSEvent(event));
-        }
-        catch(Throwable)
-        {
-            unrecoverableError();
-        }
+        DPlugCustomView view = getInstance(self);
+        view._window.handleMouseMove(NSEvent(event));        
     }
 
-    void mouseEntered(id self, SEL selector, id event) nothrow
+    void mouseEntered(id self, SEL selector, id event) nothrow @nogc
     {
-        try
-        {
-            CocoaScopedCallback scopedCallback;
-            scopedCallback.enter();
-            NSCursor.arrowCursor().push();
-        }
-        catch(Throwable)
-        {
-            unrecoverableError();
-        }
+        CocoaScopedCallback scopedCallback;
+        scopedCallback.enter();
+        NSCursor.arrowCursor().push();
     }
 
-    void mouseExited(id self, SEL selector, id event) nothrow
+    void mouseExited(id self, SEL selector, id event) nothrow @nogc
     {
-        try
-        {
-            CocoaScopedCallback scopedCallback;
-            scopedCallback.enter();
-            NSCursor.pop();
-        }
-        catch(Throwable)
-        {
-            unrecoverableError();
-        }
+        CocoaScopedCallback scopedCallback;
+        scopedCallback.enter();
+        NSCursor.pop();    
     }
 
 
-    void scrollWheel(id self, SEL selector, id event) nothrow
+    void scrollWheel(id self, SEL selector, id event) nothrow @nogc
     {
-        try
-        {
-            CocoaScopedCallback scopedCallback;
-            scopedCallback.enter();
-            DPlugCustomView view = getInstance(self);
-            view._window.handleMouseWheel(NSEvent(event));
-        }
-        catch(Throwable)
-        {
-            unrecoverableError();
-        }
+        CocoaScopedCallback scopedCallback;
+        scopedCallback.enter();
+        DPlugCustomView view = getInstance(self);
+        view._window.handleMouseWheel(NSEvent(event));
     }
 
-    bool acceptsFirstResponder(id self, SEL selector) nothrow
+    bool acceptsFirstResponder(id self, SEL selector) nothrow @nogc
     {
         return YES;
     }
 
-    bool acceptsFirstMouse(id self, SEL selector, id pEvent) nothrow
+    bool acceptsFirstMouse(id self, SEL selector, id pEvent) nothrow @nogc
     {
         return YES;
     }
 
-    bool isOpaque(id self, SEL selector) nothrow
+    bool isOpaque(id self, SEL selector) nothrow @nogc
     {
         return YES;
     }
 
-    void viewDidMoveToWindow(id self, SEL selector) nothrow
+    void viewDidMoveToWindow(id self, SEL selector) nothrow @nogc
     {
-        try
-        {
-            CocoaScopedCallback scopedCallback;
-            scopedCallback.enter();
+        CocoaScopedCallback scopedCallback;
+        scopedCallback.enter();
 
-            DPlugCustomView view = getInstance(self);
-            NSWindow parentWindow = view.window();
-            if (parentWindow)
-            {
-                parentWindow.makeFirstResponder(view);
-                parentWindow.setAcceptsMouseMovedEvents(true);
-            }
-        }
-        catch(Throwable)
+        DPlugCustomView view = getInstance(self);
+        NSWindow parentWindow = view.window();
+        if (parentWindow)
         {
-            unrecoverableError();
+            parentWindow.makeFirstResponder(view);
+            parentWindow.setAcceptsMouseMovedEvents(true);
         }
     }
 
-    void drawRect(id self, SEL selector, NSRect rect) nothrow
+    void drawRect(id self, SEL selector, NSRect rect) nothrow @nogc
     {
-        try
-        {
-            CocoaScopedCallback scopedCallback;
-            scopedCallback.enter();
+        CocoaScopedCallback scopedCallback;
+        scopedCallback.enter();
 
-            DPlugCustomView view = getInstance(self);
-            view._window.drawRect(rect);
-        }
-        catch(Throwable)
-        {
-            unrecoverableError();
-        }
+        DPlugCustomView view = getInstance(self);
+        view._window.drawRect(rect);   
     }
 
-    void onTimer(id self, SEL selector, id timer) nothrow
+    void onTimer(id self, SEL selector, id timer) nothrow @nogc
     {
-        try
-        {
-            CocoaScopedCallback scopedCallback;
-            scopedCallback.enter();
+        CocoaScopedCallback scopedCallback;
+        scopedCallback.enter();
 
-            DPlugCustomView view = getInstance(self);
-            view._window.onTimer();
-        }
-        catch(Throwable)
-        {
-            unrecoverableError();
-        }
+        DPlugCustomView view = getInstance(self);
+        view._window.onTimer();
     }
 }

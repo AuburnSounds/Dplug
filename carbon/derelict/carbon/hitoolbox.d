@@ -432,13 +432,13 @@ enum : EventMouseButton
 }
 
 OSStatus InstallControlEventHandler(ControlRef target, EventHandlerUPP handler, ItemCount numTypes,
-                                    const(EventTypeSpec)* list, void* userData, EventHandlerRef* outHandlerRef)
+                                    const(EventTypeSpec)* list, void* userData, EventHandlerRef* outHandlerRef) nothrow @nogc
 {
     return InstallEventHandler(GetControlEventTarget(target), handler, numTypes, list, userData, outHandlerRef);
 }
 
 OSStatus InstallWindowEventHandler(WindowRef target, EventHandlerUPP handler, ItemCount numTypes,
-                                   const(EventTypeSpec)* list, void* userData, EventHandlerRef* outHandlerRef)
+                                   const(EventTypeSpec)* list, void* userData, EventHandlerRef* outHandlerRef) nothrow @nogc
 {
     return InstallEventHandler(GetWindowEventTarget(target), handler, numTypes, list, userData, outHandlerRef);
 }

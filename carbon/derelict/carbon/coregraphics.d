@@ -210,7 +210,7 @@ static immutable CGPoint CGPointZero = CGPoint(0, 0);
 static immutable CGSize CGSizeZero = CGSize(0, 0);
 static immutable CGRect CGRectZero = CGRect(CGPoint(0, 0), CGSize(0, 0));
 
-CGRect CGRectMake(CGFloat x, CGFloat y, CGFloat w, CGFloat h)
+CGRect CGRectMake(CGFloat x, CGFloat y, CGFloat w, CGFloat h) nothrow @nogc
 {
     return CGRect(CGPoint(x, y), CGSize(w, h));
 }

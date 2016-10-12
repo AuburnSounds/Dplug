@@ -54,6 +54,8 @@ struct MouseState
 // Giving commands to a window
 interface IWindow
 {
+nothrow:
+@nogc:
     // To put in your message loop
     void waitEventAndDispatch();
 

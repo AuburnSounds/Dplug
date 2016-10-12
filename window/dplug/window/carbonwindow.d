@@ -23,6 +23,8 @@ import dplug.window.window;
 
 final class CarbonWindow : IWindow
 {
+nothrow:
+@nogc:
 private:
     IWindowListener _listener;
     bool _terminated = false;
@@ -148,8 +150,7 @@ public:
 
     ~this()
     {
-        debug ensureNotInGC("CarbonWindow");
-        _terminated = true;
+       _terminated = true;
 
         clearDataProvider();
 

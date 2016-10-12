@@ -72,7 +72,7 @@ struct NSRect
     NSSize size;
 }
 
-NSRect NSMakeRect(CGFloat x, CGFloat y, CGFloat w, CGFloat h)
+NSRect NSMakeRect(CGFloat x, CGFloat y, CGFloat w, CGFloat h) nothrow @nogc
 {
     return NSRect(NSPoint(x, y), NSSize(w, h));
 }
@@ -277,6 +277,11 @@ Class objc_allocateClassPair (Class superclass, const(char)* name, size_t extraB
 id objc_getClass (string name) nothrow @nogc
 {
     return varobjc_getClass(CString(name));
+}
+
+id objc_getClass (char* name) nothrow @nogc
+{
+    return varobjc_getClass(name);
 }
 
 id objc_lookUpClass (string name) nothrow @nogc
