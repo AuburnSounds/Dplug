@@ -23,6 +23,8 @@ import dplug.graphics.stb_truetype;
 final class Font
 {
 public:
+nothrow:
+@nogc:
 
     /// Loads a TTF file.
     /// fontData should be the content of that file.
@@ -30,7 +32,7 @@ public:
     {
         _fontData = fontData;
         if (0 == stbtt_InitFont(&_font, _fontData.ptr, stbtt_GetFontOffsetForIndex(_fontData.ptr, 0)))
-            throw new Exception("Coudln't load font");
+            assert(false, "Coudln't load font");
 
         stbtt_GetFontVMetrics(&_font, &_fontAscent, &_fontDescent, &_fontLineGap);
 
@@ -41,7 +43,6 @@ public:
 
     ~this()
     {
-        debug ensureNotInGC("Font");
     }
 
     /// Returns: Where a line of text will be drawn if starting at position (0, 0).
@@ -227,6 +228,8 @@ static assert(GlyphKey.sizeof == 16);
 private struct GlyphCache
 {
 public:
+nothrow:
+@nogc:
     void initialize(stbtt_fontinfo* font)
     {
         _font = font;
@@ -245,7 +248,7 @@ public:
         }
     }
 
-    ImageRef!L8 requestGlyph(GlyphKey key, int w, int h) nothrow @nogc
+    ImageRef!L8 requestGlyph(GlyphKey key, int w, int h)
     {
         // TODO
         // Just a linear search for now. Obviously this
