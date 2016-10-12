@@ -448,7 +448,7 @@ version(Windows)
 
         void generateClassName() nothrow @nogc
         {
-            _className[0..6] = "dplug_";
+            _className[0..6] = "dplug_"w;
             char[36] uuidString;
             UUID uuid = generateRandomUUID();
             uuid.toString(uuidString[]);
