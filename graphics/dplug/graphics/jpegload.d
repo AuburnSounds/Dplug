@@ -524,12 +524,10 @@ public:
   int begin_decoding () {
     if (m_ready_flag) return JPGD_SUCCESS;
     if (m_error_code) return JPGD_FAILED;
-    try {
-      decode_start();
-      m_ready_flag = true;
-      return JPGD_SUCCESS;
-    } catch (Exception) {}
-  //  return JPGD_FAILED;
+
+    decode_start();
+    m_ready_flag = true;
+    return JPGD_SUCCESS;
   }
 
   // Returns the next scan line.
