@@ -134,7 +134,7 @@ class GUIGraphics : UIElement, IGraphics
         // Destroy window.
         if (_window !is null)
         {
-            _window.destroy();
+            _window.destroyFree();
             _window = null;
         }
     }

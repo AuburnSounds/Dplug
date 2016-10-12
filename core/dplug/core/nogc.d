@@ -164,6 +164,20 @@ void destroyFree(T)(T p) if (is(T == class))
     }
 }
 
+/// Destroys and frees an interface object created with $(D mallocEmplace).
+void destroyFree(T)(T p) if (is(T == interface))
+{
+    if (p !is null)
+    {
+        destroyNoGC(p);
+
+        static if (hasIndirections!T)
+            GC.removeRange(cast(void*)(cast(Object)p));
+
+        free(cast(void*)p);
+    }
+}
+
 /// Destroys and frees a non-class object created with $(D mallocEmplace).
 void destroyFree(T)(T* p) if (!is(T == class))
 {

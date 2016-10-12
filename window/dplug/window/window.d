@@ -5,6 +5,7 @@
 */
 module dplug.window.window;
 
+import dplug.core.nogc;
 import dplug.graphics.box;
 import dplug.graphics.image;
 
@@ -144,11 +145,13 @@ enum WindowBackend
 
 
 /// Factory function to create windows.
+/// The window is allocated with `mallocEmplace` and should be destroyed with `destroyFree`.
 /// Returns: null if this backend isn't available on this platform.
 /// Note: controlInfo is only used by Carbon + AU, can be null otherwise
+nothrow @nogc
 IWindow createWindow(void* parentInfo, void* controlInfo, IWindowListener listener, WindowBackend backend, int width, int height)
 {
-    static WindowBackend autoDetectBackend()
+    static WindowBackend autoDetectBackend() nothrow @nogc
     {
         version(Windows)
             return WindowBackend.win32;
@@ -177,7 +180,7 @@ IWindow createWindow(void* parentInfo, void* controlInfo, IWindowListener listen
             import core.sys.windows.windef;
             import dplug.window.win32window;
             HWND parent = cast(HWND)parentInfo;
-            return new Win32Window(parent, listener, width, height);
+            return mallocEmplace!Win32Window(parent, listener, width, height);
         }
         else
             return null;
@@ -191,12 +194,12 @@ IWindow createWindow(void* parentInfo, void* controlInfo, IWindowListener listen
         if (backend == WindowBackend.cocoa)
         {
             import dplug.window.cocoawindow;
-            return new CocoaWindow(parentInfo, listener, width, height);
+            return mallocEmplace!CocoaWindow(parentInfo, listener, width, height);
         }
         else if (backend == WindowBackend.carbon)
         {
             import dplug.window.carbonwindow;
-            return new CarbonWindow(parentInfo, controlInfo, listener, width, height);
+            return mallocEmplace!CarbonWindow(parentInfo, controlInfo, listener, width, height);
         }
         else
             return null;
