@@ -25,6 +25,8 @@ enum HandleStyle
 class UISlider : UIElement, IParameterListener
 {
 public:
+nothrow:
+@nogc:
 
     // Trail customization
     L16 trailDepth = L16(30000);
@@ -51,7 +53,6 @@ public:
 
     ~this()
     {
-        debug ensureNotInGC("UISlider");
         _param.removeListener(this);
     }
 

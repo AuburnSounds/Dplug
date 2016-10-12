@@ -13,6 +13,8 @@ import dplug.client.params;
 class UILabel : UIElement
 {
 public:
+nothrow:
+@nogc:
 
     /// Sets to true if this is clickable
     bool clickable = false;

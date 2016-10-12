@@ -14,6 +14,8 @@ import dplug.client.params;
 class UIOnOffSwitch : UIElement, IParameterListener
 {
 public:
+nothrow:
+@nogc:
 
     enum Orientation
     {
@@ -41,7 +43,6 @@ public:
 
     ~this()
     {
-        debug ensureNotInGC("UIOnOffSwitch");
         _param.removeListener(this);
     }
 

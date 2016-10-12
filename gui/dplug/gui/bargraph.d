@@ -16,6 +16,8 @@ import std.algorithm.comparison: clamp;
 class UIBargraph : UIElement
 {
 public:
+nothrow:
+@nogc:
 
     struct LED
     {
@@ -29,30 +31,32 @@ public:
     {
         super(context);
 
-        _values.length = numChannels;
+        _values = mallocSliceNoInit!float(numChannels);
         _values[] = 0;
 
         _minValue = minValue;
         _maxValue = maxValue;
 
+        _leds = makeAlignedBuffer!LED();
+
         foreach (i; 0..redLeds)
-            _leds ~= LED(RGBA(255, 32, 0, 255));
+            _leds.pushBack( LED(RGBA(255, 32, 0, 255)) );
 
         foreach (i; 0..orangeLeds)
-            _leds ~= LED(RGBA(255, 128, 64, 255));
+            _leds.pushBack( LED(RGBA(255, 128, 64, 255)) );
 
         foreach (i; 0..yellowLeds)
-            _leds ~= LED(RGBA(255, 255, 64, 255));
+            _leds.pushBack( LED(RGBA(255, 255, 64, 255)) );
 
         foreach (i; 0..magentaLeds)
-            _leds ~= LED(RGBA(226, 120, 249, 255));
+            _leds.pushBack( LED(RGBA(226, 120, 249, 255)) );
 
          _valueMutex = makeMutex();
     }
 
     ~this()
     {
-        debug ensureNotInGC("UIBargraph");
+        _values.freeSlice();
     }
 
 
@@ -101,7 +105,7 @@ public:
         }
     }
 
-    void setValues(float[] values) nothrow @nogc
+    void setValues(const(float)[] values) nothrow @nogc
     {
         {
             _valueMutex.lock();
@@ -128,7 +132,8 @@ public:
     }
 
 protected:
-    LED[] _leds;
+
+    AlignedBuffer!LED _leds;
 
     UncheckedMutex _valueMutex;
     float[] _values;

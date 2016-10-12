@@ -13,6 +13,8 @@ import dplug.client.params;
 class UIPanel : UIElement
 {
 public:
+nothrow:
+@nogc:
 
     this(UIContext context, RGBA diffuse, RGBA material, L16 depth)
     {

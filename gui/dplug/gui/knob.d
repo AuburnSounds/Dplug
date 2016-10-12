@@ -27,6 +27,8 @@ enum KnobStyle
 class UIKnob : UIElement, IParameterListener
 {
 public:
+nothrow:
+@nogc:
 
     // This will change to 1.0f at one point for consistency, so better express your knob 
     // sensivity with that.
@@ -85,8 +87,7 @@ public:
 
     ~this()
     {
-            debug ensureNotInGC("UIKnob");
-            _param.removeListener(this);
+        _param.removeListener(this);
     }
 
     override void onAnimate(double dt, double time) nothrow @nogc
