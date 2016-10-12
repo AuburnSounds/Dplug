@@ -169,10 +169,11 @@ void destroyFree(T)(T p) if (is(T == interface))
 {
     if (p !is null)
     {
+        void* here = cast(void*)(cast(Object)p);
         destroyNoGC(p);
 
         static if (hasIndirections!T)
-            GC.removeRange(cast(void*)(cast(Object)p));
+            GC.removeRange(here);
 
         free(cast(void*)p);
     }
