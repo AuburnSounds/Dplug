@@ -184,7 +184,7 @@ public:
 
     override IGraphics createGraphics()
     {
-        return new DistortGUI(this);
+        return mallocEmplace!DistortGUI(this);
     }
 
 private:
@@ -251,8 +251,9 @@ public:
         addChild(rightPanel = mallocEmplace!UIPanel(context(), RGBA(150, 140, 140, 0),
                                                                RMSP(128, 255, 255, 255), L16(defaultDepth / 2)));
 
-        inputBargraph.setValues([1.0f, 0.5f]);
-        outputBargraph.setValues([0.7f, 0.0f]);
+        static immutable float[2] startValues = [0.0f, 0.0f];
+        inputBargraph.setValues(startValues);
+        outputBargraph.setValues(startValues);
     }
 
     ~this()

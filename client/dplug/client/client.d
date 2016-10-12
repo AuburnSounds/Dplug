@@ -341,7 +341,7 @@ public:
     /// Override to set the plugin latency in samples.
     /// Unfortunately most of the time latency is dependent on the sampling rate and frequency,
     /// but most hosts don't support latency changes.
-    int latencySamples() pure const nothrow /// Returns: Plugin latency in samples.
+    int latencySamples() pure const nothrow @nogc /// Returns: Plugin latency in samples.
     {
         return 0;
     }
@@ -349,7 +349,7 @@ public:
     /// Override to set the plugin tail length in seconds.
     /// This is the amount of time before silence is reached with a silent input.
     /// Returns: Plugin tail size in seconds.
-    float tailSizeInSeconds() pure const nothrow
+    float tailSizeInSeconds() pure const nothrow @nogc 
     {
         return 0.100f; // default: 100ms
     }
@@ -389,7 +389,7 @@ public:
     abstract void processAudio(const(float*)[] inputs, float*[]outputs, int frames, TimeInfo timeInfo) nothrow @nogc;
 
     // for plugin client implementations only
-    final void setHostCommand(IHostCommand hostCommand)
+    final void setHostCommand(IHostCommand hostCommand) nothrow @nogc
     {
         _hostCommand = hostCommand;
     }

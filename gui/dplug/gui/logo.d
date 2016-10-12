@@ -12,6 +12,8 @@ import dplug.core.math;
 class UILogo : UIElement
 {
 public:
+nothrow:
+@nogc:
 
     /// Change this to point to your website
     string targetURL = "http://example.com";
@@ -32,7 +34,6 @@ public:
 
     ~this()
     {
-        debug ensureNotInGC("UILogo");
         _diffuseImage.destroy();
     }
 
