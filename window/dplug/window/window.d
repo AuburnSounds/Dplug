@@ -77,6 +77,7 @@ enum WindowPixelFormat
 // Receiving commands from a window
 interface IWindowListener
 {
+nothrow @nogc:
     /// Called on mouse click.
     /// Returns: true if the event was handled.
     bool onMouseClick(int x, int y, MouseButton mb, bool isDoubleClick, MouseState mstate);

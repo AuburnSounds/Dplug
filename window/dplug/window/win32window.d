@@ -29,10 +29,14 @@ import dplug.graphics.image;
 
 import dplug.window.window;
 
+nothrow:
+@nogc:
+
 
 version(Windows)
 {
     import std.uuid;
+    import dplug.core.random;
 
     import core.sys.windows.windef;
     import core.sys.windows.winuser;
@@ -40,7 +44,7 @@ version(Windows)
     import core.sys.windows.wingdi;
 
 
-    HINSTANCE getModuleHandle()
+    HINSTANCE getModuleHandle() nothrow @nogc
     {
         return GetModuleHandleA(null);
     }
@@ -48,6 +52,8 @@ version(Windows)
     final class Win32Window : IWindow
     {
     public:
+    nothrow:
+    @nogc:
 
         this(HWND parentWindow, IWindowListener listener, int width, int height)
         {
@@ -64,14 +70,12 @@ version(Windows)
             _wndClass.lpszMenuName = null;
 
             // Generates an unique class name
-            string uuid = randomUUID().toString();
-            _className = "dplug_" ~ to!wstring(uuid) ~ "\0"; // add a terminator since toStringz for wstring doesn't seem to exist
+            generateClassName();
             _wndClass.lpszClassName = _className.ptr;
 
             if (!RegisterClassW(&_wndClass))
             {
-                DWORD err = GetLastError();
-                throw new Exception(format("Couldn't register Win32 class (error %s)", err));
+                assert(false, "Couldn't register Win32 class");
             }
 
             DWORD flags = WS_VISIBLE;
@@ -87,8 +91,7 @@ version(Windows)
 
             if (_hwnd is null)
             {
-                DWORD err = GetLastError();
-                throw new Exception(format("Couldn't create a Win32 window (error %s)", err));
+                assert(false, "Couldn't create a Win32 window");
             }
 
             _listener = listener;
@@ -119,7 +122,6 @@ version(Windows)
         {
             if (_hwnd != null)
             {
-                debug ensureNotInGC("Win32Window");
                 DestroyWindow(_hwnd);
                 _hwnd = null;
 
@@ -135,8 +137,7 @@ version(Windows)
             BOOL res = GetClientRect(_hwnd, &winsize);
             if (res == 0)
             {
-                DWORD err = GetLastError();
-                throw new Exception(format("GetClientRect failed (error %s)", err));
+                assert(false, "GetClientRect failed");
             }
 
             int newWidth = winsize.right - winsize.left;
@@ -295,7 +296,7 @@ version(Windows)
 
                 case WM_CLOSE:
                 {
-                    this.destroy();
+                    this.destroyNoGC();
                     return 0;
                 }
 
@@ -359,7 +360,7 @@ version(Windows)
             MSG msg;
             int ret = GetMessageW(&msg, _hwnd, 0, 0); // no range filtering
             if (ret == -1)
-                throw new Exception("Error while in GetMessage");
+                assert(false, "Error while in GetMessage");
             TranslateMessage(&msg);
             DispatchMessageW(&msg);
         }
@@ -389,7 +390,6 @@ version(Windows)
         HWND _hwnd;
 
         WNDCLASSW _wndClass;
-        wstring _className;
 
         long _performanceCounterDivider;
         uint _timeAtCreationInMs;
@@ -442,6 +442,20 @@ version(Windows)
                 UpdateWindow(_hwnd);
 
             }
+        }
+
+        wchar[43] _className; // Zero-terminated class name
+
+        void generateClassName() nothrow @nogc
+        {
+            _className[0..6] = "dplug_";
+            char[36] uuidString;
+            UUID uuid = generateRandomUUID();
+            uuid.toString(uuidString[]);
+
+            for(int i = 0; i < 36; ++i)
+                _className[6 + i] = cast(wchar)( uuidString[i] );
+            _className[42] = '\0';
         }
     }
 

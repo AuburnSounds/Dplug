@@ -10,6 +10,7 @@ import std.random,
        std.math;
 
 import dplug.core.nogc;
+import dplug.core.random;
 
 /// Generates white gaussian noise.
 struct WhiteNoise(T) if (isFloatingPoint!T)
@@ -204,58 +205,6 @@ unittest
 
 private
 {
-    // Work-around std.random not being @nogc
-    // - unpredictableSeed uses TLS which isn't desirable with DMD
-    // - MonoTime.currTime.ticks sometimes fails on Mac
-    // => that leaves us only with the RDTSC instruction.
-    uint nogc_unpredictableSeed() @nogc nothrow
-    {
-        import core.cpuid;
-        if (hasRdtsc())
-        {
-            uint result;
-            version(D_InlineAsm_X86)
-            {
-                asm nothrow @nogc
-                {
-                    rdtsc;
-                    mov result, EAX;
-                }
-
-            }
-            else version(D_InlineAsm_X86_64)
-            {
-                asm nothrow @nogc
-                {
-                    rdtsc;
-                    mov result, EAX;
-                }
-            }
-            else
-                static assert(false, "Unsupported");
-            return result;
-        }
-        else
-            return 0;
-    }
-
-    auto nogc_uniform_int(int min, int max, ref Xorshift32 rng) @nogc nothrow
-    {
-        return assumeNothrowNoGC( (int min, int max, ref Xorshift32 rng)
-                                  {
-                                      return uniform(min, max, rng);
-                                  } )(min, max, rng);
-    }
-
-    auto nogc_uniform_float(float min, float max, ref Xorshift32 rng) @nogc nothrow
-    {
-        return assumeNothrowNoGC( (float min, float max, ref Xorshift32 rng)
-                                  {
-                                      return uniform(min, max, rng);
-                                  } )(min, max, rng);
-    }
-
-
     /// Returns: Normal (Gaussian) random sample.
     /// See_also: Box-Muller algorithm.
     float randNormal(RNG)(ref RNG rng, float mean = 0.0, float standardDeviation = 1.0) nothrow @nogc
