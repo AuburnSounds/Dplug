@@ -133,6 +133,7 @@
             "sourcePaths": [ "cocoa/derelict/cocoa" ],
             "importPaths": [ "cocoa" ],
             "dependencies": {
+                "dplug:core": "*",
                 "dplug:derelict-nogc": "*"
             },
             "subConfigurations": {
@@ -144,6 +145,7 @@
             "sourcePaths": [ "carbon/derelict/carbon" ],
             "importPaths": [ "carbon" ],
             "dependencies": {
+                "dplug:core": "*",
                 "dplug:derelict-nogc": "*"
             },
             "subConfigurations": {

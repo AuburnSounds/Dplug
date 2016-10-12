@@ -60,6 +60,7 @@ import core.stdc.config;
 
 import derelict.util.system;
 import derelict.util.loader;
+import dplug.core.nogc;
 
 static if(Derelict_OS_Mac)
     enum libNames = "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation";
@@ -149,11 +150,30 @@ class DerelictCoreFoundationLoader : SharedLibLoader
     }
 }
 
-__gshared DerelictCoreFoundationLoader DerelictCoreFoundation;
+private __gshared DerelictCoreFoundationLoader DerelictCoreFoundation;
 
-shared static this()
+private __gshared loaderCounter = 0;
+
+// Call this each time a new owner uses these functions
+// TODO: hold a mutex, because this isn't thread-safe
+void acquireCoreFoundationFunctions() nothrow @nogc
 {
-    DerelictCoreFoundation = new DerelictCoreFoundationLoader;
+    if (loaderCounter++ == 0)  // You only live once    
+    {
+        DerelictCoreFoundation = mallocEmplace!DerelictCoreFoundationLoader();
+        DerelictCoreFoundation.load();
+    }
+}
+
+// Call this each time a new owner releases a Cocoa functions
+// TODO: hold a mutex, because this isn't thread-safe
+void releaseCoreFoundationFunctions() nothrow @nogc
+{
+    if (--loaderCounter == 0)
+    {
+        DerelictCoreFoundation.destroyFree();
+        DerelictCoreFoundation.unload();
+    }
 }
 
 // To support character constants

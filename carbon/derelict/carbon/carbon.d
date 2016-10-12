@@ -37,6 +37,8 @@ import derelict.util.loader;
 
 import derelict.carbon.hitoolbox;
 
+import dplug.core.nogc;
+
 static if(Derelict_OS_Mac)
     enum libNames = "/System/Library/Frameworks/Carbon.framework/Carbon";
 else
@@ -83,11 +85,29 @@ class DerelictCarbonLoader : SharedLibLoader
 }
 
 
-__gshared DerelictCarbonLoader DerelictCarbon;
+private __gshared DerelictCarbonLoader DerelictCarbon;
 
-shared static this()
+private __gshared loaderCounter = 0;
+
+// Call this each time a new owner uses these functions
+// TODO: hold a mutex, because this isn't thread-safe
+void acquireCarbonFunctions() nothrow @nogc
 {
-    DerelictCarbon = new DerelictCarbonLoader;
+    if (loaderCounter++ == 0)  // You only live once    
+    {
+        DerelictCarbon = mallocEmplace!DerelictCarbonLoader();
+        DerelictCarbon.load();
+    }
 }
 
+// Call this each time a new owner releases a Cocoa functions
+// TODO: hold a mutex, because this isn't thread-safe
+void releaseCarbonFunctions() nothrow @nogc
+{
+    if (--loaderCounter == 0)
+    {
+        DerelictCarbon.destroyFree();
+        DerelictCarbon.unload();
+    }
+}
 

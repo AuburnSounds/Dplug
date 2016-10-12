@@ -39,6 +39,8 @@ import derelict.cocoa.foundation;
 import derelict.cocoa.appkit;
 import derelict.cocoa.coreimage;
 
+import dplug.core.nogc;
+
 static if(Derelict_OS_Mac)
     enum libNames = "/System/Library/Frameworks/Cocoa.framework/Cocoa";
 else
@@ -109,15 +111,39 @@ class DerelictCocoaLoader : SharedLibLoader
 }
 
 
-__gshared DerelictCocoaLoader DerelictCocoa;
+private __gshared DerelictCocoaLoader DerelictCocoa;
 
-shared static this()
+private __gshared loaderCounter = 0;
+
+// Call this each time a new owner uses Cocoa functions
+// TODO: hold a mutex, because this isn't thread-safe
+// Corrolary: how to protect that mutex creation?
+void acquireCocoaFunctions() nothrow @nogc
 {
-    DerelictCocoa = new DerelictCocoaLoader;
+    if (loaderCounter++ == 0)  // You only live once    
+    {
+        DerelictCocoa = mallocEmplace!DerelictCocoaLoader();
+        DerelictCocoa.load();
+    }
+}
+ 
+// Call this each time a new owner releases a Cocoa functions
+// TODO: hold a mutex, because this isn't thread-safe
+// Corrolary: how to protect that mutex creation?
+void releaseCocoaFunctions() nothrow @nogc
+{
+    if (--loaderCounter == 0)
+    {
+        DerelictCocoa.destroyFree();
+        DerelictCocoa.unload();
+    }
 }
 
 unittest
 {
     static if(Derelict_OS_Mac)
-        DerelictCocoa.load();
+    {
+        acquireCocoaFunctions();
+        releaseCocoaFunctions();
+    }
 }

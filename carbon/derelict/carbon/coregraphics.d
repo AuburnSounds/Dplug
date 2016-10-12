@@ -38,6 +38,8 @@ import derelict.util.loader;
 
 import derelict.carbon.corefoundation;
 
+import dplug.core.nogc;
+
 static if(Derelict_OS_Mac)
     // because CoreGraphics.framework did not exist in OSX 10.6
     enum libNames = "/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices";
@@ -71,11 +73,30 @@ class DerelictCoreGraphicsLoader : SharedLibLoader
     }
 }
 
-__gshared DerelictCoreGraphicsLoader DerelictCoreGraphics;
+private __gshared DerelictCoreGraphicsLoader DerelictCoreGraphics;
 
-shared static this()
+private __gshared loaderCounter = 0;
+
+// Call this each time a new owner uses these functions
+// TODO: hold a mutex, because this isn't thread-safe
+void acquireCoreGraphicsFunctions() nothrow @nogc
 {
-    DerelictCoreGraphics = new DerelictCoreGraphicsLoader;
+    if (loaderCounter++ == 0)  // You only live once    
+    {
+        DerelictCoreGraphics = mallocEmplace!DerelictCoreGraphicsLoader();
+        DerelictCoreGraphics.load();
+    }
+}
+
+// Call this each time a new owner releases a Cocoa functions
+// TODO: hold a mutex, because this isn't thread-safe
+void releaseCoreGraphicsFunctions() nothrow @nogc
+{
+    if (--loaderCounter == 0)
+    {
+        DerelictCoreGraphics.destroyFree();
+        DerelictCoreGraphics.unload();
+    }
 }
 
 

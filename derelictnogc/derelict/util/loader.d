@@ -67,10 +67,21 @@ abstract class SharedLibLoader
      Throws:        SymbolLoadException if doThrow is true and a the symbol
                     specified by funcName is missing from the shared library.
     +/
-    final void bindFunc(bool dummy = false)(void** ptr, string funcName, bool doThrow = true) // templated to infer attributes
+    version(doNotUseRuntime)
     {
-        void* func = loadSymbol(funcName, doThrow);
-        *ptr = func;
+        final void bindFunc(void** ptr, string funcName, bool doThrow = true) nothrow @nogc
+        {
+            void* func = loadSymbol(funcName, doThrow);
+            *ptr = func;
+        }    
+    }
+    else
+    {
+        final void bindFunc(void** ptr, string funcName, bool doThrow = true)
+        {
+            void* func = loadSymbol(funcName, doThrow);
+            *ptr = func;
+        }
     }
 
     /++
@@ -140,7 +151,14 @@ abstract class SharedLibLoader
                 SymbolLoadException if an expected symbol is missing from the
                 library.
     +/
-    final void load(bool dummy = false)() { load(_libNames); } // templated to infer attributes
+    version(doNotUseRuntime)
+    {
+        final void load() nothrow @nogc { load(_libNames); }
+    }
+    else
+    {
+        final void load() { load(_libNames); }
+    }
 
     /++
      Finds and loads any version of a shared library greater than or equal to
@@ -166,10 +184,21 @@ abstract class SharedLibLoader
                 SymbolLoadException if an expected symbol is missing from the
                 library.
     +/
-    final void load(bool dummy = false)(SharedLibVersion minRequiredVersion) // templated to infer attributes
+    version(doNotUseRuntime)
     {
-        configureMinimumVersion(minRequiredVersion);
-        load();
+        final void load(SharedLibVersion minRequiredVersion) nothrow @nogc
+        {
+            configureMinimumVersion(minRequiredVersion);
+            load();
+        }
+    }
+    else
+    {
+        final void load(SharedLibVersion minRequiredVersion)
+        {
+            configureMinimumVersion(minRequiredVersion);
+            load();
+        }
     }
 
     /++
@@ -193,16 +222,41 @@ abstract class SharedLibLoader
                 SymbolLoadException if an expected symbol is missing from the
                 library.
     +/
-    final void load(bool dummy = false)(string libNames) // templated to infer attributes
+    version(doNotUseRuntime)
     {
-        if(libNames == null)
-            libNames = _libNames;
+        final void load(string libNames) nothrow @nogc
+        {
+            if(libNames == null)
+                libNames = _libNames;
 
-        auto lnames = libNames.split(",");
-        foreach(ref string l; lnames)
-            l = l.strip();
+            // TODO support multiple paths
+      /*      auto lnames = libNames.split(",");
+            foreach(ref string l; lnames)
+                l = l.strip();
+            load(lnames);
+            */
 
-        load(lnames);
+            //
+            string[1] lnames;
+            lnames[0] = libNames;
+            load(lnames);
+
+            
+        }
+    }
+    else
+    {
+        final void load(string libNames)
+        {
+            if(libNames == null)
+                libNames = _libNames;
+
+            auto lnames = libNames.split(",");
+            foreach(ref string l; lnames)
+                l = l.strip();
+
+            load(lnames);
+        }
     }
 
     /++
@@ -256,10 +310,21 @@ abstract class SharedLibLoader
                 SymbolLoadException if an expected symbol is missing from the
                 library.
     +/
-    final void load(bool dummy = false)(string[] libNames) // templated to infer attributes
+    version(doNotUseRuntime)
     {
-        _lib.load(libNames);
-        loadSymbols();
+        final void load(string[] libNames) nothrow @nogc
+        {
+            _lib.load(libNames);
+            loadSymbols();
+        }
+    }
+    else
+    {
+        final void load(string[] libNames)
+        {
+            _lib.load(libNames);
+            loadSymbols();
+        }
     }
 
     /++
@@ -289,10 +354,21 @@ abstract class SharedLibLoader
                 SymbolLoadException if an expected symbol is missing from the
                 library.
     +/
-    final void load(bool dummy = false)(string[] libNames, SharedLibVersion minRequiredVersion) // templated to infer attributes
+    version(doNotUseRuntime)
     {
-        configureMinimumVersion(minRequiredVersion);
-        load(libNames);
+        final void load(string[] libNames, SharedLibVersion minRequiredVersion) nothrow @nogc // templated to infer attributes
+        {
+            configureMinimumVersion(minRequiredVersion);
+            load(libNames);
+        }
+    }
+    else
+    {
+        final void load(string[] libNames, SharedLibVersion minRequiredVersion) // templated to infer attributes
+        {
+            configureMinimumVersion(minRequiredVersion);
+            load(libNames);
+        }
     }
 
     /++
@@ -358,9 +434,9 @@ protected:
      This method is called by the load methods.
     +/
     // TODO
-    //version(doNotUseRuntime)
-    //    abstract void loadSymbols() nothrow @nogc;
-    //else
+    version(doNotUseRuntime)
+        abstract void loadSymbols() nothrow @nogc;
+    else
         abstract void loadSymbols();
 
     /++

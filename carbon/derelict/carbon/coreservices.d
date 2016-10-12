@@ -40,6 +40,8 @@ import derelict.util.loader;
 
 import derelict.carbon.corefoundation;
 
+import dplug.core.nogc;
+
 static if(Derelict_OS_Mac)
     enum libNames = "/System/Library/Frameworks/CoreServices.framework/CoreServices";
 else
@@ -65,11 +67,30 @@ class DerelictCoreServicesLoader : SharedLibLoader
     }
 }
 
-__gshared DerelictCoreServicesLoader DerelictCoreServices;
+private __gshared DerelictCoreServicesLoader DerelictCoreServices;
 
-shared static this()
+private __gshared loaderCounter = 0;
+
+// Call this each time a new owner uses these functions
+// TODO: hold a mutex, because this isn't thread-safe
+void acquireCoreServicesFunctions() nothrow @nogc
 {
-    DerelictCoreServices = new DerelictCoreServicesLoader;
+    if (loaderCounter++ == 0)  // You only live once    
+    {
+        DerelictCoreServices = mallocEmplace!DerelictCoreServicesLoader();
+        DerelictCoreServices.load();
+    }
+}
+
+// Call this each time a new owner releases a Cocoa functions
+// TODO: hold a mutex, because this isn't thread-safe
+void releaseCoreServicesFunctions() nothrow @nogc
+{
+    if (--loaderCounter == 0)
+    {
+        DerelictCoreServices.destroyFree();
+        DerelictCoreServices.unload();
+    }
 }
 
 enum : int

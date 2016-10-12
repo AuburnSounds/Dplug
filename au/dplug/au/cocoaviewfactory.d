@@ -30,12 +30,18 @@ import dplug.au.client;
 import core.stdc.stdio;
 
 // register a view factory object, return the class name
-string registerCocoaViewFactory()
+string registerCocoaViewFactory() //nothrow @nogc
 {
-    DerelictCocoa.load();
+    acquireCocoaFunctions();
     NSApplicationLoad(); // to use Cocoa in Carbon applications
     DPlugCocoaViewFactory.registerSubclass();
     return DPlugCocoaViewFactory.customClassName;
+}
+
+void unregisterCocoaViewFactory() //nothrow @nogc
+{
+    DPlugCocoaViewFactory.unregisterSubclass();
+    releaseCocoaFunctions();
 }
 
 

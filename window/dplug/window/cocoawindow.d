@@ -23,6 +23,8 @@ import derelict.cocoa;
 
 final class CocoaWindow : IWindow
 {
+nothrow:
+@nogc:
 private:
     IWindowListener _listener;
 
@@ -64,7 +66,7 @@ public:
 
         _listener = listener;
 
-        DerelictCocoa.load();
+        acquireCocoaFunctions();
         NSApplicationLoad(); // to use Cocoa in Carbon applications
         bool parentViewExists = parentWindow !is null;
 
@@ -138,6 +140,8 @@ public:
         {
             _nsWindow.destroy();
         }
+
+        releaseCocoaFunctions();
     }
 
     // Implements IWindow

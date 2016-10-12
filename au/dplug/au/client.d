@@ -96,12 +96,20 @@ private T getCompParam(T, int Idx, int Num)(ComponentParameters* params) pure no
         return *cast(T*)(&p[Idx]);
 }
 
-void loadDerelictFunctions()
+private void acquireAudioUnitFunctions() nothrow @nogc
 {
-    DerelictCoreFoundation.load();
-    DerelictCoreServices.load();
-    DerelictAudioUnit.load();
-    DerelictAudioToolbox.load();
+    acquireCoreFoundationFunctions();
+    acquireCoreServicesFunctions();
+    acquireAudioUnitFunctions();
+    acquireAudioToolboxFunctions();
+}
+
+private void releaseAudioUnitFunctions() nothrow @nogc
+{
+    releaseCoreFoundationFunctions();
+    releaseCoreServicesFunctions();
+    releaseAudioUnitFunctions();
+    releaseAudioToolboxFunctions();
 }
 
 nothrow ComponentResult audioUnitEntryPoint(alias ClientClass)(ComponentParameters* params, void* pPlug)
@@ -1259,7 +1267,7 @@ private:
                             *pDataSize = AudioUnitCocoaViewInfo.sizeof;
                             if (pData)
                             {
-                                string factoryClassName = registerCocoaViewFactory();
+                                string factoryClassName = registerCocoaViewFactory(); // TODO: call unregisterCocoaViewFactory somewhere
                                 CFBundleRef pBundle = CFBundleGetMainBundle();
                                 CFURLRef url = CFBundleCopyBundleURL(pBundle);
                                 AudioUnitCocoaViewInfo* pViewInfo = cast(AudioUnitCocoaViewInfo*) pData;

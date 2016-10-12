@@ -56,10 +56,11 @@ public:
     this(void* parentWindow, void* parentControl, IWindowListener listener, int width, int height)
     {
         _listener = listener;
-        DerelictCarbon.load();
-        DerelictCoreFoundation.load();
-        DerelictCoreServices.load();
-        DerelictCoreGraphics.load();
+
+        acquireCarbonFunctions();
+        acquireCoreFoundationFunctions();
+        acquireCoreServicesFunctions();
+        acquireCoreGraphicsFunctions();
 
         _askedWidth = width;
         _askedHeight = height;
@@ -157,6 +158,11 @@ public:
         RemoveEventLoopTimer(_timer);
         RemoveEventHandler(_controlHandler);
         RemoveEventHandler(_windowHandler);
+
+        releaseCarbonFunctions();
+        releaseCoreFoundationFunctions();
+        releaseCoreServicesFunctions();
+        releaseCoreGraphicsFunctions();
     }
 
 

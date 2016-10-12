@@ -40,6 +40,7 @@ import core.stdc.config;
 import derelict.util.system;
 import derelict.util.loader;
 
+import dplug.core.nogc;
 import derelict.carbon.corefoundation;
 import derelict.carbon.coreaudio;
 import derelict.carbon.hitoolbox;
@@ -69,11 +70,30 @@ class DerelictAudioUnitLoader : SharedLibLoader
 }
 
 
-__gshared DerelictAudioUnitLoader DerelictAudioUnit;
+private __gshared DerelictAudioUnitLoader DerelictAudioUnit;
 
-shared static this()
+private __gshared loaderCounterAU = 0;
+
+// Call this each time a new owner uses these functions
+// TODO: hold a mutex, because this isn't thread-safe
+void acquireAudioUnitFunctions() nothrow @nogc
 {
-    DerelictAudioUnit = new DerelictAudioUnitLoader;
+    if (loaderCounterAU++ == 0)  // You only live once    
+    {
+        DerelictAudioUnit = mallocEmplace!DerelictAudioUnitLoader();
+        DerelictAudioUnit.load();
+    }
+}
+
+// Call this each time a new owner releases a Cocoa functions
+// TODO: hold a mutex, because this isn't thread-safe
+void releaseAudioUnitFunctions() nothrow @nogc
+{
+    if (--loaderCounterAU == 0)
+    {
+        DerelictAudioUnit.destroyFree();
+        DerelictAudioUnit.unload();
+    }
 }
 
 enum : int
@@ -601,12 +621,32 @@ class DerelictAudioToolboxLoader : SharedLibLoader
 }
 
 
-__gshared DerelictAudioToolboxLoader DerelictAudioToolbox;
+private __gshared DerelictAudioToolboxLoader DerelictAudioToolbox;
 
-shared static this()
+private __gshared loaderCounter = 0;
+
+// Call this each time a new owner uses these functions
+// TODO: hold a mutex, because this isn't thread-safe
+void acquireAudioToolboxFunctions() nothrow @nogc
 {
-    DerelictAudioToolbox = new DerelictAudioToolboxLoader;
+    if (loaderCounter++ == 0)  // You only live once    
+    {
+        DerelictAudioToolbox = mallocEmplace!DerelictAudioToolboxLoader();
+        DerelictAudioToolbox.load();
+    }
 }
+
+// Call this each time a new owner releases a Cocoa functions
+// TODO: hold a mutex, because this isn't thread-safe
+void releaseAudioToolboxFunctions() nothrow @nogc
+{
+    if (--loaderCounter == 0)
+    {
+        DerelictAudioToolbox.destroyFree();
+        DerelictAudioToolbox.unload();
+    }
+}
+
 
 alias AudioUnitEventType = UInt32;
 enum : AudioUnitEventType
