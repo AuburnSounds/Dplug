@@ -34,7 +34,7 @@ nothrow:
 
     ~this()
     {
-        _diffuseImage.destroy();
+        _diffuseImage.destroyNoGC();
     }
 
     override void onAnimate(double dt, double time) nothrow @nogc

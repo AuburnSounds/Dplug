@@ -62,18 +62,18 @@ template AUEntryPoint(alias ClientClass)
     // The entry point names must be kept in sync with names in the .rsrc
 
     const char[] AUEntryPoint =
-    "import derelict.carbon;"
-    "extern(C) nothrow ComponentResult dplugAUEntryPoint(ComponentParameters* params, void* pPlug)"
-    "{"
-        "return audioUnitEntryPoint!" ~ ClientClass.stringof ~ "(params, pPlug);"
-    "}"
-    "extern(C) nothrow ComponentResult dplugAUCarbonViewEntryPoint(ComponentParameters* params, void* pView)"
-    "{"
-        "return audioUnitCarbonViewEntry!" ~ ClientClass.stringof ~ "(params, pView);"
-    "}"
-    "extern(C) nothrow void* dplugAUComponentFactoryFunction(void* inDesc)" // type-punned here to avoid leaing the derelict.carbon import
-    "{"
-        "return audioUnitComponentFactory!" ~ ClientClass.stringof ~ "(inDesc);"
+    "import derelict.carbon;" ~
+    "extern(C) nothrow ComponentResult dplugAUEntryPoint(ComponentParameters* params, void* pPlug)" ~
+    "{" ~
+        "return audioUnitEntryPoint!" ~ ClientClass.stringof ~ "(params, pPlug);" ~
+    "}" ~
+    "extern(C) nothrow ComponentResult dplugAUCarbonViewEntryPoint(ComponentParameters* params, void* pView)" ~
+    "{" ~
+        "return audioUnitCarbonViewEntry!" ~ ClientClass.stringof ~ "(params, pView);" ~
+    "}" ~
+    "extern(C) nothrow void* dplugAUComponentFactoryFunction(void* inDesc)"  ~ // type-punned here to avoid the derelict.carbon import
+    "{" ~
+        "return audioUnitComponentFactory!" ~ ClientClass.stringof ~ "(inDesc);" ~
     "}"
     ;
 }
@@ -301,7 +301,7 @@ public:
         _inBusConnections.length = numInputBuses;
         foreach(i; 0..numInputBuses)
         {
-            int channels = std.algorithm.min(2, _maxInputs - i * 2);
+            int channels = std.algorithm.comparison.min(2, _maxInputs - i * 2);
             assert(channels == 1 || channels == 2);
             _inBuses[i].connected = false;
             _inBuses[i].numHostChannels = -1;
@@ -316,7 +316,7 @@ public:
         _outBuses.length = numOutputBuses;
         foreach(i; 0..numOutputBuses)
         {
-            int channels = std.algorithm.min(2, _maxOutputs - i * 2);
+            int channels = std.algorithm.comparison.min(2, _maxOutputs - i * 2);
             assert(channels == 1 || channels == 2);
             _outBuses[i].connected = false;
             _outBuses[i].numHostChannels = -1;
@@ -1370,7 +1370,7 @@ private:
                 {
                     AudioUnitParameterStringFromValue* pSFV = cast(AudioUnitParameterStringFromValue*) pData;
                     Parameter parameter = _client.param(pSFV.inParamID);
-                    
+
                     char[128] buffer;
                     parameter.stringFromNormalizedValue(*pSFV.inValue, buffer.ptr, buffer.length);
                     size_t len = strlen(buffer.ptr);
@@ -1761,7 +1761,7 @@ private:
             while (frames > 0)
             {
                 // Note: the last slice will be smaller than the others
-                int sliceLength = std.algorithm.min(_maxFramesInProcess, frames);
+                int sliceLength = std.algorithm.comparison.min(_maxFramesInProcess, frames);
 
                 _client.processAudio(inputs, outputs, sliceLength, timeInfo);
 
