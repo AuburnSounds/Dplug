@@ -27,19 +27,20 @@ import dplug.gui.boxlist;
 class UIContext
 {
 public:
+nothrow:
+@nogc:
     this()
     {
         // create a dummy black skybox
         // TODO: is it actually black?
-        skybox = new Mipmap!RGBA(10, 1024, 1024);
+        skybox = mallocEmplace!(Mipmap!RGBA)(10, 1024, 1024);
 
         dirtyList = makeDirtyRectList();
     }
 
     ~this()
     {
-        debug ensureNotInGC("UIContext");
-        skybox.destroy();
+        skybox.destroyFree();
     }
 
     /// Last clicked element.
@@ -61,8 +62,8 @@ public:
     // That image must have been built with `mallocEmplace`
     void setSkybox(OwnedImage!RGBA image)
     {
-        skybox.destroy();
-        skybox = new Mipmap!RGBA(12, image.w, image.h);
+        skybox.destroyFree();
+        skybox = mallocEmplace!(Mipmap!RGBA)(12, image.w, image.h);
 
         // replaces level 0
         skybox.levels[0].destroyFree();
