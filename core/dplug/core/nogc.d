@@ -19,7 +19,7 @@
 */
 module dplug.core.nogc;
 
-import core.stdc.string: strdup;
+import core.stdc.string: strdup, memcpy;
 import core.stdc.stdlib: malloc, free, getenv;
 import core.memory: GC;
 import core.exception: onOutOfMemoryErrorNoGC;
@@ -236,7 +236,17 @@ else version( D_InlineAsm_X86_64 )
 T[] mallocSlice(T)(size_t count) nothrow @nogc
 {
     T[] slice = mallocSliceNoInit!T(count);
-    slice[0..count] = T.init;
+    static if (is(T == struct))
+    {
+        // we must avoid calling struct destructors with uninitialized memory
+        for(size_t i = 0; i < count; ++i)
+        {
+            T uninitialized;
+            memcpy(&slice[i], &uninitialized, T.sizeof);
+        }
+    }
+    else
+        slice[0..count] = T.init;
     return slice;
 }
 

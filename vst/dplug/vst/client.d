@@ -144,8 +144,8 @@ public:
 
 
         // GUI thread can allocate
-        _inputScratchBuffer.length = _maxInputs;
-        _outputScratchBuffer.length = _maxOutputs;
+        _inputScratchBuffer = mallocSlice!(AlignedBuffer!float)(_maxInputs);
+        _outputScratchBuffer = mallocSlice!(AlignedBuffer!float)(_maxOutputs);
 
         for (int i = 0; i < _maxInputs; ++i)
             _inputScratchBuffer[i] = makeAlignedBuffer!float();
@@ -155,8 +155,8 @@ public:
 
         _zeroesBuffer = makeAlignedBuffer!float();
 
-        _inputPointers.length = _maxInputs;
-        _outputPointers.length = _maxOutputs;
+        _inputPointers = mallocSlice!(float*)(_maxInputs);
+        _outputPointers = mallocSlice!(float*)(_maxOutputs);
 
         // because effSetSpeakerArrangement might never come, take a default
         chooseIOArrangement(_maxInputs, _maxOutputs);
@@ -185,7 +185,14 @@ public:
 
         for (int i = 0; i < _maxOutputs; ++i)
             _outputScratchBuffer[i].destroy();
+
+        _inputScratchBuffer.freeSlice();
+        _outputScratchBuffer.freeSlice();
+
         _zeroesBuffer.destroy();
+
+        _inputPointers.freeSlice();
+        _outputPointers.freeSlice();
 
         _messageQueue.destroy();
     }
