@@ -49,11 +49,11 @@ class GUIGraphics : UIElement, IGraphics
 
     this(int initialWidth, int initialHeight)
     {
-        _uiContext = new UIContext();
+        _uiContext = mallocEmplace!UIContext();
         super(_uiContext);
 
         // Don't like the default rendering? Make another compositor.
-        compositor = new PBRCompositor();
+        compositor = mallocEmplace!PBRCompositor();
 
         _windowListener = new WindowListener();
 
@@ -61,7 +61,7 @@ class GUIGraphics : UIElement, IGraphics
         _askedWidth = initialWidth;
         _askedHeight = initialHeight;
 
-        _threadPool = new ThreadPool();
+        _threadPool = mallocEmplace!ThreadPool();
 
         _areasToUpdateNonOverlapping = makeAlignedBuffer!box2i;
         _areasToUpdateTemp = makeAlignedBuffer!box2i;
@@ -83,9 +83,9 @@ class GUIGraphics : UIElement, IGraphics
             _mipmapWatch = new StopWatch("Mipmap = ");
         }
 
-        _diffuseMap = new Mipmap!RGBA();
-        _materialMap = new Mipmap!RGBA();
-        _depthMap = new Mipmap!L16();
+        _diffuseMap = mallocEmplace!(Mipmap!RGBA)();
+        _materialMap = mallocEmplace!(Mipmap!RGBA)();
+        _depthMap = mallocEmplace!(Mipmap!L16)();
     }
 
 
@@ -93,14 +93,14 @@ class GUIGraphics : UIElement, IGraphics
     {
         debug ensureNotInGC("GUIGraphics");
         closeUI();
-        _uiContext.destroy();
+        _uiContext.destroyFree();
 
-        _threadPool.destroy();
+        _threadPool.destroyFree();
 
-        compositor.destroy();
-        _diffuseMap.destroy();
-        _materialMap.destroy();
-        _depthMap.destroy();
+        compositor.destroyFree();
+        _diffuseMap.destroyFree();
+        _materialMap.destroyFree();
+        _depthMap.destroyFree();
 
         alignedFree(_renderedBuffer, 16);
     }

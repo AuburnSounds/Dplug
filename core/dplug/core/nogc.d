@@ -175,7 +175,7 @@ void destroyFree(T)(T p) if (is(T == interface))
         static if (hasIndirections!T)
             GC.removeRange(here);
 
-        free(cast(void*)p);
+        free(cast(void*)here);
     }
 }
 
