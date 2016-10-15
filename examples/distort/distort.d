@@ -195,6 +195,9 @@ private:
 class DistortGUI : GUIGraphics
 {
 public:
+nothrow:
+@nogc:
+
     Distort _client;
 
     UISlider inputSlider;
@@ -213,7 +216,7 @@ public:
         super(620, 330); // initial size
 
         // Font data is bundled as a static array
-        _font = new Font(cast(ubyte[])( import("VeraBd.ttf") ));
+        _font = mallocEmplace!Font(cast(ubyte[])( import("VeraBd.ttf") ));
         context.setSkybox( loadOwnedImage(cast(ubyte[])(import("skybox.jpg"))) );
 
         // Buils the UI hierarchy
@@ -258,8 +261,7 @@ public:
 
     ~this()
     {
-        debug ensureNotInGC("DistortGUI");
-        _font.destroy();
+        _font.destroyFree();
     }
 
     override void reflow(box2i availableSpace)

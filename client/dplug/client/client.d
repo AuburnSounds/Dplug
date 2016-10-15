@@ -269,13 +269,13 @@ public:
 
     // Note: openGUI, getGUISize and closeGUI are guaranteed
     // synchronized by the client implementation
-    final void* openGUI(void* parentInfo, void* controlInfo, GraphicsBackend backend)
+    final void* openGUI(void* parentInfo, void* controlInfo, GraphicsBackend backend) nothrow @nogc
     {
         createGraphicsLazily();
         return (cast(IGraphics)_graphics).openUI(parentInfo, controlInfo, _hostCommand.getDAW(), backend);
     }
 
-    final bool getGUISize(int* width, int* height)
+    final bool getGUISize(int* width, int* height) nothrow @nogc
     {
         createGraphicsLazily();
         auto graphics = (cast(IGraphics)_graphics);
@@ -289,7 +289,7 @@ public:
     }
 
     /// ditto
-    final void closeGUI()
+    final void closeGUI() nothrow @nogc
     {
         (cast(IGraphics)_graphics).closeUI();
     }
@@ -301,7 +301,7 @@ public:
     }
 
     /// Override if you create a plugin with UI.
-    IGraphics createGraphics()
+    IGraphics createGraphics() nothrow @nogc
     {
         return null;
     }
@@ -520,7 +520,7 @@ private:
 
     int _maxInputs, _maxOutputs; // maximum number of input/outputs
 
-    final void createGraphicsLazily()
+    final void createGraphicsLazily() nothrow @nogc
     {
         // First GUI opening create the graphics object
         // no need to protect _graphics here since the audio thread

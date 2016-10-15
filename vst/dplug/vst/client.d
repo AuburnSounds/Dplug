@@ -88,6 +88,8 @@ nothrow AEffect* myVSTEntryPoint(alias ClientClass)(HostCallbackFunction hostCal
 class VSTClient
 {
 public:
+//nothrow:
+//@nogc:
 
     AEffect _effect;
 
@@ -163,7 +165,7 @@ public:
         _messageQueue.pushBack(makeResetStateMessage(AudioThreadMessage.Type.resetState));
 
         // Create host callback wrapper
-        _host = new VSTHostFromClientPOV(hostCallback, &_effect);
+        _host = mallocEmplace!VSTHostFromClientPOV(hostCallback, &_effect);
         client.setHostCommand(_host);
 
         if ( client.isSynth() )
@@ -177,7 +179,6 @@ public:
 
     ~this()
     {
-        debug ensureNotInGC("dplug.vst.Client");
         _client.destroy();
 
         for (int i = 0; i < _maxInputs; ++i)
@@ -193,6 +194,8 @@ public:
 
         _inputPointers.freeSlice();
         _outputPointers.freeSlice();
+
+        _host.destroyFree();
 
         _messageQueue.destroy();
     }
@@ -300,7 +303,7 @@ private:
     }
 
     /// VST opcode dispatcher
-    final VstIntPtr dispatcher(int opcode, int index, ptrdiff_t value, void *ptr, float opt)
+    final VstIntPtr dispatcher(int opcode, int index, ptrdiff_t value, void *ptr, float opt)// nothrow @nogc
     {
         // Important message from Cockos:
         // "Assume everything can (and WILL) run at the same time as your
@@ -314,7 +317,6 @@ private:
         switch(opcode)
         {
             case effClose: // opcode 1
-                this.destroy(); // free all resources except this and the runtime
                 return 0;
 
             case effSetProgram: // opcode 2
@@ -1087,6 +1089,8 @@ extern(C) private nothrow
 class VSTHostFromClientPOV : IHostCommand
 {
 public:
+nothrow:
+@nogc:
 
     this(HostCallbackFunction hostCallback, AEffect* effect)
     {
@@ -1245,7 +1249,7 @@ private:
 
 
 /** Four Character Constant (for AEffect->uniqueID) */
-private int CCONST(int a, int b, int c, int d) pure nothrow
+private int CCONST(int a, int b, int c, int d) pure nothrow @nogc
 {
     return (a << 24) | (b << 16) | (c << 8) | (d << 0);
 }
