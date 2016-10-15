@@ -6,14 +6,13 @@
 module dplug.dsp.noise;
 
 import std.random,
-       std.traits,
        std.math;
 
 import dplug.core.nogc;
 import dplug.core.random;
 
 /// Generates white gaussian noise.
-struct WhiteNoise(T) if (isFloatingPoint!T)
+struct WhiteNoise(T) if (is(T == float) || is(T == double))
 {
 public:
     void initialize() nothrow @nogc
@@ -45,7 +44,7 @@ unittest
 
 /// Makes a periodic noise for plugins demos.
 /// Simply multiply you signal to footprint by the next() sample.
-struct DemoNoise(T) if (isFloatingPoint!T)
+struct DemoNoise(T) if (is(T == float) || is(T == double))
 {
 public:
     enum int PERIOD = 30;
@@ -90,7 +89,7 @@ unittest
 
 /// 1D perlin noise octave.
 /// Is useful to slightly move parameters over time.
-struct Perlin1D(T) if (isFloatingPoint!T)
+struct Perlin1D(T) if (is(T == float) || is(T == double))
 {
 public:
     void initialize(double frequency, double samplerate) nothrow @nogc
@@ -152,7 +151,7 @@ unittest
 /// see http://home.earthlink.net/~ltrammell/tech/newpink.htm
 /// There are no restrictions.
 /// See_also: http://musicdsp.org/showArchiveComment.php?ArchiveID=244
-struct PinkNoise(T) if (isFloatingPoint!T)
+struct PinkNoise(T) if (is(T == float) || is(T == double))
 {
 public:
     void initialize() nothrow @nogc

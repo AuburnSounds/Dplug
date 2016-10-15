@@ -15,9 +15,6 @@
 module dplug.graphics.image;
 
 import std.conv : to;
-import std.exception;
-import std.range;
-import std.traits;
 import std.string : format;
 
 public import dplug.graphics.view;

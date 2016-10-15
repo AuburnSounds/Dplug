@@ -5,8 +5,6 @@
 */
 module dplug.dsp.envelope;
 
-import std.traits;
-
 import dplug.dsp.iir;
 import dplug.dsp.smooth;
 
@@ -14,7 +12,7 @@ import dplug.dsp.smooth;
 
 
 /// Simple envelope follower, filters the envelope with 24db/oct lowpass.
-struct EnvelopeFollower(T) if (isFloatingPoint!T)
+struct EnvelopeFollower(T) if (is(T == float) || is(T == double))
 {
 public:
 
@@ -59,7 +57,7 @@ unittest
 /// Get the module of estimate of analytic signal.
 /// Phase response depends a lot on input signal, it's not great for bass but gets
 /// better in medium frequencies.
-struct AnalyticSignal(T) if (isFloatingPoint!T)
+struct AnalyticSignal(T) if (is(T == float) || is(T == double))
 {
 public:
     void initialize(T samplerate) nothrow @nogc
@@ -106,7 +104,7 @@ unittest
 */
 
 /// Estimate amplitude.
-struct HilbertTransformer(T) if (isFloatingPoint!T)
+struct HilbertTransformer(T) if (is(T == float) || is(T == double))
 {
 public:
     void initialize(float sampleRate) nothrow @nogc
@@ -237,7 +235,7 @@ unittest
 
 /// Sliding RMS computation
 /// To use for coarse grained levels for visual display.
-struct CoarseRMS(T) if (isFloatingPoint!T)
+struct CoarseRMS(T) if (is(T == float) || is(T == double))
 {
 public:
     void initialize(double sampleRate) nothrow @nogc

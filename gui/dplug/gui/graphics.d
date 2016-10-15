@@ -6,7 +6,6 @@
 module dplug.gui.graphics;
 
 import std.math;
-import std.range;
 import std.algorithm.comparison;
 import std.algorithm.sorting;
 import std.algorithm.mutation;

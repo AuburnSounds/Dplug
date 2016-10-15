@@ -5,7 +5,7 @@
  */
 module dplug.client.preset;
 
-import std.range;
+import std.range.primitives;
 import std.math;
 import std.array;
 import std.algorithm.comparison;

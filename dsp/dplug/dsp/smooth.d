@@ -6,7 +6,6 @@
 module dplug.dsp.smooth;
 
 import std.algorithm.comparison;
-import std.traits;
 import std.math;
 
 import dplug.core.math;
@@ -15,7 +14,7 @@ import dplug.core.nogc;
 
 /// Smooth values exponentially with a 1-pole lowpass.
 /// This is usually sufficient for most parameter smoothing.
-struct ExpSmoother(T) if (isFloatingPoint!T)
+struct ExpSmoother(T) if (is(T == float) || is(T == double))
 {
 public:
     /// time: the time constant of the smoother.
@@ -84,7 +83,7 @@ unittest
 }
 
 /// Same as ExpSmoother but have different attack and release decay factors.
-struct AttackReleaseSmoother(T) if (isFloatingPoint!T)
+struct AttackReleaseSmoother(T) if (is(T == float) || is(T == double))
 {
 public:
     /// time: the time constant of the smoother.
@@ -164,7 +163,7 @@ unittest
 /// Non-linear smoother using absolute difference.
 /// Designed to have a nice phase response.
 /// Warning: samplerate-dependent.
-struct AbsSmoother(T) if (isFloatingPoint!T)
+struct AbsSmoother(T) if (is(T == float) || is(T == double))
 {
 public:
 
@@ -207,7 +206,7 @@ unittest
 /// Smooth values over time with a linear slope.
 /// This can be useful for some smoothing needs.
 /// Intermediate between fast phase and actual smoothing.
-struct LinearSmoother(T) if (isFloatingPoint!T)
+struct LinearSmoother(T) if (is(T == float) || is(T == double))
 {
 public:
 
@@ -262,7 +261,7 @@ unittest
 
 /// Can be very useful when filtering values with outliers.
 /// For what it's meant to do, excellent phase response.
-struct MedianFilter(T, int N) if (isFloatingPoint!T)
+struct MedianFilter(T, int N) if (is(T == float) || is(T == double))
 {
     static assert(N >= 2, "N must be >= 2");
     static assert(N % 2 == 1, "N must be odd");
@@ -333,7 +332,7 @@ unittest
 /// Simple FIR to smooth things cheaply.
 /// Introduces (samples - 1) / 2 latency.
 /// Converts everything to long for performance purpose.
-struct MeanFilter(T) if (isFloatingPoint!T)
+struct MeanFilter(T) if (is(T == float) || is(T == double))
 {
 public:
     /// Initialize mean filter with given number of samples.
@@ -470,7 +469,7 @@ unittest
 * unpredictably).
 */
 /// gammaenv from Aleksey Vaneev is a better way to have an attack-release smoothing
-struct GammaEnv(T) if (isFloatingPoint!T)
+struct GammaEnv(T) if (is(T == float) || is(T == double))
 {
 public:
 

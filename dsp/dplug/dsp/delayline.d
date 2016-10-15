@@ -6,7 +6,6 @@
 module dplug.dsp.delayline;
 
 import core.stdc.string;
-import std.traits;
 
 import dplug.core.nogc;
 import dplug.core.math;
@@ -105,7 +104,7 @@ public:
         return _data[(_index - delay) & _indexMask];
     }
 
-    static if(isFloatingPoint!T)
+    static if (is(T == float) || is(T == double))
     {
         /// Random access sampling of the delay-line with linear interpolation.
         T sampleLinear(float delay) nothrow @nogc

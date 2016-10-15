@@ -5,8 +5,7 @@
 */
 module dplug.dsp.window;
 
-import std.math,
-       std.traits;
+import std.math;
 
 import dplug.core.alignedbuffer;
 
@@ -58,7 +57,7 @@ double evalWindow(WindowType type, int n, int N) pure nothrow @nogc
     }
 }
 
-struct Window(T) if (isFloatingPoint!T)
+struct Window(T) if (is(T == float) || is(T == double))
 {
     void initialize(WindowType type, int lengthInSamples) nothrow @nogc
     {

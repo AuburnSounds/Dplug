@@ -1,6 +1,6 @@
 module dplug.client.binrange;
 
-import std.range,
+import std.range.primitives,
        std.traits;
 
 public

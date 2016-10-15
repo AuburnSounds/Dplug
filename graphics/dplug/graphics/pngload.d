@@ -178,7 +178,6 @@ ubyte *convert_format(ubyte *data, int img_n, int req_comp, uint x, uint y)
     if (good == null) {
         free(data);
         assert(false);
-        //throw new STBImageException("Out of memory");
     }
 
     for (j=0; j < cast(int) y; ++j) {

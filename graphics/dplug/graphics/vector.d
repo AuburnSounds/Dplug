@@ -310,7 +310,7 @@ nothrow:
             return (v - this).squaredLength();
         }
 
-        static if (isFloatingPoint!T)
+        static if (is(T == float) || is(T == double))
         {
             /// Returns: Euclidean length
             @nogc T length() pure const nothrow

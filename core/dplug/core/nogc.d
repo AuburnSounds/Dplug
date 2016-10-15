@@ -57,7 +57,8 @@ unittest
 {
     void funcThatDoesGC()
     {
-        throw new Exception("hello!");
+        int a = 4;
+        int[] b = [a, a, a];
     }
 
     void anotherFunction() nothrow @nogc
