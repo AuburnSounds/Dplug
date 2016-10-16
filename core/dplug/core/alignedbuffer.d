@@ -210,6 +210,7 @@ AlignedBuffer!T makeAlignedBuffer(T)(size_t initialSize = 0, int alignment = 1) 
 }
 
 /// Growable array, points to a memory aligned location.
+/// This can also work as an output range.
 /// Bugs: make this class disappear when std.allocator is out.
 struct AlignedBuffer(T)
 {
@@ -275,6 +276,9 @@ struct AlignedBuffer(T)
             resize(_size + 1);
             _data[i] = x;
         }
+
+        // Output range support
+        alias put = pushBack;
 
         /// Finds an item, returns -1 if not found
         int indexOf(T x) nothrow @nogc
@@ -349,6 +353,18 @@ struct AlignedBuffer(T)
         {
             _data[0.._size] = x;
         }
+
+        /// Move. Give up owner ship of the data.
+        T[] releaseData() nothrow @nogc
+        {
+            T[] data = _data[0.._size];
+            assert(_alignment == 1); // else would need to be freed with alignedFree.
+            this._data = null;
+            this._size = 0;
+            this._allocated = 0;
+            this._alignment = 0;
+            return data;
+        }
     }
 
     private
@@ -362,6 +378,10 @@ struct AlignedBuffer(T)
 
 unittest
 {
+    import std.range.primitives;
+    static assert(isOutputRange!(AlignedBuffer!ubyte));
+
+
     import std.random;
     import std.algorithm.comparison;
     int NBUF = 200;
