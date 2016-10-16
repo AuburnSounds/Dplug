@@ -303,7 +303,7 @@ private:
     }
 
     /// VST opcode dispatcher
-    final VstIntPtr dispatcher(int opcode, int index, ptrdiff_t value, void *ptr, float opt)// nothrow @nogc
+    final VstIntPtr dispatcher(int opcode, int index, ptrdiff_t value, void *ptr, float opt) nothrow @nogc
     {
         // Important message from Cockos:
         // "Assume everything can (and WILL) run at the same time as your
@@ -342,7 +342,7 @@ private:
                 Preset current = bank.currentPreset();
                 if (current !is null)
                 {
-                    current.name = p[0..len].idup;
+                    current.setName(p[0..len]);
                 }
                 return 0;
             }
@@ -540,6 +540,7 @@ private:
                     }
                     catch(Exception e)
                     {
+                        e.destroyFree();
                         // Chunk didn't parse
                         return 0;
                     }
@@ -613,7 +614,7 @@ private:
                     PresetBank bank = _client.presetBank();
                     if (!bank.isValidPresetIndex(index))
                         return 0;
-                    string name = bank[index].name();
+                    const(char)[] name = bank.preset(index).name();
                     stringNCopy(p, 24, name);
                     return (name.length > 0) ? 1 : 0;
                 }
@@ -985,7 +986,7 @@ private static immutable ubyte[64] opcodeShouldReturn0Immediately =
 //
 extern(C) private nothrow
 {
-    VstIntPtr dispatcherCallback(AEffect *effect, int opcode, int index, ptrdiff_t value, void *ptr, float opt) nothrow
+    VstIntPtr dispatcherCallback(AEffect *effect, int opcode, int index, ptrdiff_t value, void *ptr, float opt) nothrow @nogc
     {
         VstIntPtr result = 0;
 

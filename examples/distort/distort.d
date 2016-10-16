@@ -83,20 +83,24 @@ public:
 
     // This override is optional, the default implementation will
     // have one default preset.
-    override Preset[] buildPresets()
+    override Preset[] buildPresets() nothrow @nogc
     {
-        return [
-            makeDefaultPreset(),
-            new Preset("Silence", [0.0f, 0.0f, 0.0f, 1.0f, 0]),
-            new Preset("Full-on", [1.0f, 1.0f, 0.4f, 1.0f, 0]),
-        ];
+        auto presets = makeAlignedBuffer!Preset();
+        presets.pushBack( makeDefaultPreset() );
+
+        static immutable float[] silenceParams = [0.0f, 0.0f, 0.0f, 1.0f, 0];
+        presets.pushBack( mallocEmplace!Preset("Silence", silenceParams) );
+
+        static immutable float[] fullOnParams = [1.0f, 1.0f, 0.4f, 1.0f, 0];
+        presets.pushBack( mallocEmplace!Preset("Full-on", fullOnParams) );
+        return presets.releaseData();
     }
 
     // This override is also optional. It allows to split audio buffers in order to never
     // exceed some amount of frames at once.
     // This can be useful as a cheap chunking for parameter smoothing.
     // Buffer splitting also allows to allocate statically or on the stack with less worries.
-    override int maxFramesInProcess() pure const nothrow @nogc
+    override int maxFramesInProcess() const //nothrow @nogc
     {
         return 128;
     }

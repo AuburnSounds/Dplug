@@ -1213,7 +1213,7 @@ private:
 
                     for (int presetIndex = 0; presetIndex < numPresets; ++presetIndex)
                     {
-                        string name = presetBank.preset(presetIndex).name;
+                        const(char)[] name = presetBank.preset(presetIndex).name;
                         CFStrLocal presetName = CFStrLocal.fromString(name);
 
                         CFAUPresetRef newPreset = CFAUPresetCreate(kCFAllocatorDefault, presetIndex, presetName);

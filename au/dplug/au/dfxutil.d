@@ -198,7 +198,7 @@ struct CFStrLocal
     @disable this();
     @disable this(this);
 
-    static fromString(string str) nothrow
+    static fromString(const(char)[] str) nothrow
     {
         CFStrLocal s = void;
         s.parent = toCFString(str);
@@ -224,7 +224,7 @@ string fromCFString(CFStringRef cfStr) nothrow
     return fromStringz(buf.ptr).idup;
 }
 
-void putNumberInDict(CFMutableDictionaryRef pDict, string key, void* pNumber, CFNumberType type) nothrow
+void putNumberInDict(CFMutableDictionaryRef pDict, const(char)[] key, void* pNumber, CFNumberType type) nothrow
 {
     CFStrLocal cfKey = CFStrLocal.fromString(key);
 
@@ -233,14 +233,14 @@ void putNumberInDict(CFMutableDictionaryRef pDict, string key, void* pNumber, CF
     CFRelease(pValue);
 }
 
-void putStrInDict(CFMutableDictionaryRef pDict, string key, string value) nothrow
+void putStrInDict(CFMutableDictionaryRef pDict, const(char)[] key, const(char)[] value) nothrow
 {
     CFStrLocal cfKey = CFStrLocal.fromString(key);
     CFStrLocal cfValue = CFStrLocal.fromString(value);
     CFDictionarySetValue(pDict, cfKey, cfValue);
 }
 
-void putDataInDict(CFMutableDictionaryRef pDict, string key, ubyte[] pChunk) nothrow
+void putDataInDict(CFMutableDictionaryRef pDict, const(char)[] key, ubyte[] pChunk) nothrow
 {
     CFStrLocal cfKey = CFStrLocal.fromString(key);
 
@@ -250,7 +250,7 @@ void putDataInDict(CFMutableDictionaryRef pDict, string key, ubyte[] pChunk) not
 }
 
 
-bool getNumberFromDict(CFDictionaryRef pDict, string key, void* pNumber, CFNumberType type) nothrow
+bool getNumberFromDict(CFDictionaryRef pDict, const(char)[] key, void* pNumber, CFNumberType type) nothrow
 {
     CFStrLocal cfKey = CFStrLocal.fromString(key);
 
@@ -263,7 +263,7 @@ bool getNumberFromDict(CFDictionaryRef pDict, string key, void* pNumber, CFNumbe
     return false;
 }
 
-bool getStrFromDict(CFDictionaryRef pDict, string key, out string value) nothrow
+bool getStrFromDict(CFDictionaryRef pDict, const(char)[] key, out string value) nothrow
 {
     CFStrLocal cfKey = CFStrLocal.fromString(key);
 

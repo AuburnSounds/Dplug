@@ -3,7 +3,12 @@ module dplug.client.binrange;
 import std.range.primitives,
        std.traits;
 
-public
+import dplug.core.nogc;
+
+// Note: the exceptions thrown here are allocated with mallocEmplace, 
+// and should be released with destroyFree.
+
+public @nogc
 {
     void skipBytes(R)(ref R input, int numBytes) if (isInputRange!R)
     {
@@ -77,28 +82,28 @@ private
         ulong i;
     }
 
-    uint float2uint(float x) pure nothrow
+    uint float2uint(float x) pure nothrow @nogc
     {
         float_uint fi;
         fi.f = x;
         return fi.i;
     }
 
-    float uint2float(int x) pure nothrow
+    float uint2float(int x) pure nothrow @nogc
     {
         float_uint fi;
         fi.i = x;
         return fi.f;
     }
 
-    ulong double2ulong(double x) pure nothrow
+    ulong double2ulong(double x) pure nothrow @nogc
     {
         double_ulong fi;
         fi.f = x;
         return fi.i;
     }
 
-    double ulong2double(ulong x) pure nothrow
+    double ulong2double(ulong x) pure nothrow @nogc
     {
         double_ulong fi;
         fi.i = x;
@@ -117,10 +122,10 @@ private
             alias IntegerLargerThan = ulong;
     }
 
-    ubyte popUbyte(R)(ref R input) if (isInputRange!R)
+    ubyte popUbyte(R)(ref R input) @nogc if (isInputRange!R)
     {
         if (input.empty)
-            throw new Exception("Expected a byte, but found end of input");
+            throw mallocEmplace!Exception("Expected a byte, but found end of input");
 
         ubyte b = input.front;
         input.popFront();
@@ -128,7 +133,7 @@ private
     }
 
     // Generic integer parsing
-    auto popInteger(R, int NumBytes, bool WantSigned, bool LittleEndian)(ref R input) if (isInputRange!R)
+    auto popInteger(R, int NumBytes, bool WantSigned, bool LittleEndian)(ref R input) @nogc if (isInputRange!R)
     {
         alias T = IntegerLargerThan!NumBytes;
 
@@ -176,7 +181,7 @@ private
         }
     }
 
-    void writeFunction(T, R, bool endian)(ref R output, T n) if (isOutputRange!(R, ubyte))
+    void writeFunction(T, R, bool endian)(ref R output, T n) @nogc if (isOutputRange!(R, ubyte))
     {
         static if (isIntegral!T)
             writeInteger!(R, T.sizeof, endian)(output, n);
@@ -188,7 +193,7 @@ private
             static assert(false, "Unsupported type " ~ T.stringof);
     }
 
-    T popFunction(T, R, bool endian)(ref R input) if (isInputRange!R)
+    T popFunction(T, R, bool endian)(ref R input) @nogc if (isInputRange!R)
     {
         static if(isIntegral!T)
             return popInteger!(R, T.sizeof, isSigned!T, endian)(input);

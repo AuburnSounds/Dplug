@@ -27,6 +27,8 @@ import std.container;
 
 import dplug.core.nogc;
 import dplug.core.math;
+import dplug.core.alignedbuffer;
+
 import dplug.client.params;
 import dplug.client.preset;
 import dplug.client.midi;
@@ -191,6 +193,9 @@ public:
             }
             _graphics.destroy();
         }
+
+        // Destroy presets
+        _presetBank.destroy();
 
         // Destroy parameters
         foreach(p; _params)
@@ -395,12 +400,13 @@ public:
     }
 
     /// Returns a new default preset.
-    final Preset makeDefaultPreset()
+    final Preset makeDefaultPreset() nothrow @nogc
     {
-        float[] values;
+        // TODO: use mallocSlice for perf
+        auto values = makeAlignedBuffer!float();
         foreach(param; _params)
-            values ~= param.getNormalizedDefault();
-        return new Preset("Default", values);
+            values.pushBack(param.getNormalizedDefault());
+        return mallocEmplace!Preset("Default", values.releaseData);
     }
 
     // Getters for fields in _info
@@ -488,10 +494,13 @@ protected:
     }
 
     /// Override this methods to load/fill presets.
-    /// See_also: addPreset.
-    Preset[] buildPresets()
+    /// This function must return a slice allocated with `malloc`, 
+    /// that contains presets crteated with `mallocEmplace`.
+    Preset[] buildPresets() nothrow @nogc
     {
-        return [ makeDefaultPreset ];
+        auto presets = makeAlignedBuffer!Preset();
+        presets.pushBack( makeDefaultPreset() );
+        return presets.releaseData();
     }
 
     /// Override this method to tell what plugin you are.

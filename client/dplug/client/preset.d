@@ -10,8 +10,12 @@ import std.math;
 import std.array;
 import std.algorithm.comparison;
 
+import dplug.core.alignedbuffer;
+import dplug.core.nogc;
+
 import dplug.client.binrange;
 import dplug.client.client;
+import dplug.client.params;
 
 
 /// I can see no reason why dplug shouldn't be able to maintain
@@ -28,10 +32,17 @@ enum int DPLUG_SERIALIZATION_MINOR_VERSION = 0;
 final class Preset
 {
 public:
-    this(string name, float[] normalizedParams) nothrow @nogc
+
+    this(string name, const(float)[] normalizedParams) nothrow @nogc
     {
-        _name = name;
-        _normalizedParams = normalizedParams;
+        _name = name.mallocDup;
+        _normalizedParams = normalizedParams.mallocDup;
+    }
+
+    ~this() nothrow @nogc
+    {
+        clearName();
+        free(_normalizedParams.ptr);
     }
 
     void setNormalized(int paramIndex, float value) nothrow @nogc
@@ -39,14 +50,15 @@ public:
         _normalizedParams[paramIndex] = value;
     }
 
-    string name() pure nothrow @nogc
+    const(char)[] name() pure nothrow @nogc
     {
         return _name;
     }
 
-    string name(string newName) pure nothrow @nogc
+    void setName(const(char)[] newName) nothrow @nogc
     {
-        return _name = newName;
+        clearName();
+        _name = newName.mallocDup;
     }
 
     void saveFromHost(Client client) nothrow @nogc
@@ -58,7 +70,7 @@ public:
         }
     }
 
-    void loadFromHost(Client client) nothrow
+    void loadFromHost(Client client) nothrow @nogc
     {
         auto params = client.params();
         foreach(int i, param; params)
@@ -73,7 +85,7 @@ public:
         }
     }
 
-    void serializeBinary(O)(auto ref O output) if (isOutputRange!(O, ubyte))
+    void serializeBinary(O)(auto ref O output) nothrow @nogc if (isOutputRange!(O, ubyte))
     {
         output.writeLE!int(cast(int)_name.length);
 
@@ -86,15 +98,16 @@ public:
             output.writeLE!float(np);
     }
 
-    void unserializeBinary(ref ubyte[] input)
+    /// Throws: A `mallocEmplace`d `Exception`
+    void unserializeBinary(ref ubyte[] input) @nogc
     {
-        _name = "";
+        clearName();
         int nameLength = input.popLE!int();
-        _name.reserve(nameLength);
+        _name = mallocSlice!char(nameLength);
         foreach(i; 0..nameLength)
         {
             ubyte ch = input.popLE!ubyte();
-            _name ~= ch;
+            _name[i] = ch;
         }
 
         int paramCount = input.popLE!int();
@@ -105,7 +118,7 @@ public:
 
             // TODO: best-effort recovery?
             if (!isValidNormalizedParam(f))
-                throw new Exception("Couldn't unserialize preset: an invalid float parameter was parsed");
+                throw mallocEmplace!Exception("Couldn't unserialize preset: an invalid float parameter was parsed");
 
             // There may be more parameters when downgrading
             if (ip < _normalizedParams.length)
@@ -113,14 +126,23 @@ public:
         }
     }
 
-    static bool isValidNormalizedParam(float f)
+    static bool isValidNormalizedParam(float f) nothrow @nogc
     {
         return (isFinite(f) && f >= 0 && f <= 1);
     }
 
 private:
-    string _name;
+    char[] _name;
     float[] _normalizedParams;
+
+    void clearName() nothrow @nogc
+    {
+        if (_name !is null)
+        {
+            free(_name.ptr);
+            _name = null;
+        }
+    }
 }
 
 /// A preset bank is a collection of presets
@@ -129,15 +151,31 @@ final class PresetBank
 public:
 
     // Extends an array or Preset
-    Preset[] presets;
-    alias presets this;
+    AlignedBuffer!Preset presets;
 
     // Create a preset bank
-    this(Client client, Preset[] presets_)
+    // Takes ownership of this slice, which must be allocated with `malloc`, 
+    // containing presets allocated with `mallocEmplace`.
+    this(Client client, Preset[] presets_) nothrow @nogc
     {
         _client = client;
-        presets = presets_;
+
+        // Copy presets to own them
+        presets = makeAlignedBuffer!Preset(presets_.length);
+        foreach(size_t i; 0..presets_.length)
+            presets[i] = presets_[i];
         _current = 0;
+    }
+
+    ~this() nothrow @nogc
+    {
+        // free all presets
+        foreach(p; presets)
+        {
+            // if you hit a break-point here, maybe your 
+            // presets weren't allocated with `mallocEmplace`
+            p.destroyFree();
+        }
     }
 
     Preset preset(int i) nothrow @nogc
@@ -150,7 +188,7 @@ public:
         return cast(int)presets.length;
     }
 
-    int currentPresetIndex() @nogc nothrow
+    int currentPresetIndex() nothrow @nogc
     {
         return _current;
     }
@@ -175,14 +213,14 @@ public:
         presets[_current].saveFromHost(_client);
     }
 
-    void loadPresetByNameFromHost(string name) nothrow
+    void loadPresetByNameFromHost(string name) nothrow @nogc
     {
         foreach(int index, preset; presets)
             if (preset.name == name)
                 loadPresetFromHost(index);
     }
 
-    void loadPresetFromHost(int index) nothrow
+    void loadPresetFromHost(int index) nothrow @nogc
     {
         putCurrentStateInCurrentPreset();
         presets[index].loadFromHost(_client);
@@ -190,22 +228,27 @@ public:
     }
 
     /// Enqueue a new preset and load it
-    void addNewDefaultPresetFromHost(string presetName) nothrow
+    void addNewDefaultPresetFromHost(string presetName) nothrow @nogc
     {
-        float[] values;
-        foreach(param; _client.params)
-            values ~= param.getNormalizedDefault();
-        presets ~= new Preset(presetName, values);
+        Parameter[] params = _client.params;
+        float[] values = mallocSlice!float(params.length);
+        scope(exit) values.freeSlice();
+
+        foreach(int i, param; _client.params)
+            values[i] = param.getNormalizedDefault();
+
+        presets.pushBack(mallocEmplace!Preset(presetName, values));
         loadPresetFromHost(cast(int)(presets.length) - 1);
     }
 
     /// Allocates and fill a preset chunk
-    ubyte[] getPresetChunk(int index)
+    /// The resulting buffer should be freed with `free`.
+    ubyte[] getPresetChunk(int index) nothrow @nogc
     {
-        auto chunk = appender!(ubyte[])();
+        auto chunk = makeAlignedBuffer!ubyte();
         writeChunkHeader(chunk);
         presets[index].serializeBinary(chunk);
-        return chunk.data;
+        return chunk.releaseData();
     }
 
     /// Parse a preset chunk and set parameters.
@@ -221,10 +264,11 @@ public:
     }
 
     /// Allocate and fill a bank chunk
-    ubyte[] getBankChunk() nothrow
+    /// The resulting buffer should be freed with `free`.
+    ubyte[] getBankChunk() nothrow @nogc
     {
         putCurrentStateInCurrentPreset();
-        auto chunk = appender!(ubyte[])();
+        auto chunk = makeAlignedBuffer!ubyte();
         writeChunkHeader(chunk);
 
         // write number of presets
@@ -232,12 +276,12 @@ public:
 
         foreach(int i, preset; presets)
             preset.serializeBinary(chunk);
-        return chunk.data;
+        return chunk.releaseData();
     }
 
     /// Parse a bank chunk and set parameters.
     /// May throw an Exception.
-    void loadBankChunk(ubyte[] chunk)
+    void loadBankChunk(ubyte[] chunk) @nogc
     {
         checkChunkHeader(chunk);
 
@@ -249,10 +293,11 @@ public:
             preset.unserializeBinary(chunk);
     }
 
-    /// Gets a chunk with current state
-    ubyte[] getStateChunk() nothrow
+    /// Gets a chunk with current state.
+    /// The resulting buffer should be freed with `free`.
+    ubyte[] getStateChunk() nothrow @nogc
     {
-        auto chunk = appender!(ubyte[])();
+        auto chunk = makeAlignedBuffer!ubyte();
         writeChunkHeader(chunk);
 
         auto params = _client.params();
@@ -262,19 +307,19 @@ public:
         chunk.writeLE!int(cast(int)params.length);
         foreach(param; params)
             chunk.writeLE!float(param.getNormalized());
-        return chunk.data;
+        return chunk.releaseData;
     }
 
     /// Loads a chunk state, update current state.
     /// May throw an Exception.
-    void loadStateChunk(ubyte[] chunk)
+    void loadStateChunk(ubyte[] chunk) @nogc
     {
         checkChunkHeader(chunk);
 
         // This avoid to overwrite the preset 0 while we modified preset N
         int presetIndex = chunk.popLE!int();
         if (!isValidPresetIndex(presetIndex))
-            throw new Exception("Invalid preset index in state chunk");
+            throw mallocEmplace!Exception("Invalid preset index in state chunk");
         else
             _current = presetIndex;
 
@@ -295,7 +340,7 @@ private:
 
     enum uint DPLUG_MAGIC = 0xB20BA92;
 
-    void writeChunkHeader(O)(auto ref O output) if (isOutputRange!(O, ubyte))
+    void writeChunkHeader(O)(auto ref O output) @nogc if (isOutputRange!(O, ubyte))
     {
         // write magic number and dplug version information (not the tag version)
         output.writeBE!uint(DPLUG_MAGIC);
@@ -306,17 +351,17 @@ private:
         output.writeLE!int(_client.getPluginVersion().toAUVersion());
     }
 
-    void checkChunkHeader(ref ubyte[] input)
+    void checkChunkHeader(ref ubyte[] input) @nogc
     {
         // nothing to check with minor version
         uint magic = input.popBE!uint();
         if (magic !=  DPLUG_MAGIC)
-            throw new Exception("Can not load, magic number didn't match");
+            throw mallocEmplace!Exception("Can not load, magic number didn't match");
 
         // nothing to check with minor version
         int dplugMajor = input.popLE!int();
         if (dplugMajor > DPLUG_SERIALIZATION_MAJOR_VERSION)
-            throw new Exception("Can not load chunk done with a newer, incompatible dplug library");
+            throw mallocEmplace!Exception("Can not load chunk done with a newer, incompatible dplug library");
 
         int dplugMinor = input.popLE!int();
         // nothing to check with minor version

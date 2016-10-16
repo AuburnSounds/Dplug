@@ -265,6 +265,22 @@ void freeSlice(T)(const(T)[] slice) nothrow @nogc
     free(cast(void*)(slice.ptr)); // const cast here
 }
 
+// Duplicates a slice with malloc. Equivalent to .dup
+T[] mallocDup(T)(const(T)[] slice) nothrow @nogc if (!is(T == struct))
+{
+    T[] copy = mallocSliceNoInit!T(slice.length);
+    memcpy(copy.ptr, slice.ptr, slice.length * T.sizeof);
+    return copy;
+}
+
+// Duplicates a slice with malloc. Equivalent to .idup
+immutable(T)[] mallocIDup(T)(const(T)[] slice) nothrow @nogc if (!is(T == struct))
+{
+    T[] copy = mallocSliceNoInit!T(slice.length);
+    memcpy(copy.ptr, slice.ptr, slice.length * T.sizeof);
+    return assumeUnique(copy);
+}
+
 unittest
 {
     int[] slice = mallocSlice!int(4);
@@ -553,7 +569,7 @@ void debugBreak() nothrow @nogc
 // Copy source into dest.
 // dest must contain room for maxChars characters
 // A zero-byte character is then appended.
-void stringNCopy(char* dest, size_t maxChars, string source) nothrow @nogc
+void stringNCopy(char* dest, size_t maxChars, const(char)[] source) nothrow @nogc
 {
     if (maxChars == 0)
         return;
