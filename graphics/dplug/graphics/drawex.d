@@ -415,6 +415,8 @@ void aaPutPixelFloat(bool CHECKED=true, V, COLOR, A)(auto ref V v, int x, int y,
 class OwnedImage(COLOR)
 {
 public:
+nothrow:
+@nogc:
     int w, h;
 
     /// Create empty.
@@ -436,7 +438,6 @@ public:
     {
         if (_pixels !is null)
         {
-            debug ensureNotInGC("OwnedImage");
             alignedFree(_pixels, 128);
             _pixels = null;
         }

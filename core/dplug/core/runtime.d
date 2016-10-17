@@ -11,7 +11,7 @@ import dplug.core.nogc;
 // Helpers to deal with the D runtime.
 
 version = useShakyWorkaround;
-//version = doNotUseRuntime;
+version = doNotUseRuntime;
 
 version(OSX)
 {

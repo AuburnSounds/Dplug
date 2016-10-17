@@ -30,6 +30,7 @@ import std.array: empty;
 
 // This module provides many utilities to deal with @nogc
 
+version = doNotUseRuntime;
 
 //
 // Faking @nogc
@@ -135,8 +136,14 @@ auto mallocEmplace(T, Args...)(Args args)
     if (!rawMemory)
         onOutOfMemoryErrorNoGC();
 
-    static if (hasIndirections!T)
-        GC.addRange(rawMemory, allocSize);
+    version(doNotUseRuntime)
+    {
+    }
+    else
+    {
+        static if (hasIndirections!T)
+            GC.addRange(rawMemory, allocSize);
+    }
 
     static if (is(T == class))
     {
@@ -158,8 +165,14 @@ void destroyFree(T)(T p) if (is(T == class))
     {
         destroyNoGC(p);
 
-        static if (hasIndirections!T)
-            GC.removeRange(cast(void*)p);
+        version(doNotUseRuntime)
+        {
+        }
+        else
+        {
+            static if (hasIndirections!T)
+                GC.removeRange(cast(void*)p);
+        }
 
         free(cast(void*)p);
     }
@@ -173,8 +186,14 @@ void destroyFree(T)(T p) if (is(T == interface))
         void* here = cast(void*)(cast(Object)p);
         destroyNoGC(p);
 
-        static if (hasIndirections!T)
-            GC.removeRange(here);
+        version(doNotUseRuntime)
+        {
+        }
+        else
+        {
+            static if (hasIndirections!T)
+                GC.removeRange(here);
+        }
 
         free(cast(void*)here);
     }
@@ -187,8 +206,14 @@ void destroyFree(T)(T* p) if (!is(T == class))
     {
         destroyNoGC(p);
 
-        static if (hasIndirections!T)
-            GC.removeRange(cast(void*)p);
+        version(doNotUseRuntime)
+        {
+        }
+        else
+        {
+            static if (hasIndirections!T)
+                GC.removeRange(cast(void*)p);
+        }
 
         free(cast(void*)p);
     }

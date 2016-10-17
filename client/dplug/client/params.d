@@ -39,6 +39,8 @@ import dplug.client.client;
 class Parameter
 {
 public:
+nothrow:
+@nogc:
 
     /// Returns: Parameters name. Displayed when the plugin has no UI.
     string name() pure const nothrow @nogc
@@ -121,7 +123,6 @@ public:
 
     ~this()
     {
-        debug ensureNotInGC("Parameter");
         _valueMutex.destroy();
     }
 
