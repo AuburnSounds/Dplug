@@ -8,7 +8,6 @@ import waved;
 
 import dplug.host;
 import dplug.window;
-import ae.utils.graphics;
 
 
 void usage()
@@ -83,6 +82,8 @@ void main(string[]args)
             buffers[1][i] = ((i+1) ^ 1324643) * invN;
         }
 
+        long timeBeforeMeasures = getTickMs();
+
         double[] measures;
         for (int t = 0; t < times; ++t)
         {
@@ -134,6 +135,7 @@ void main(string[]args)
             host.close();
         }
 
+        long timeAfterMeasures = getTickMs();
 
         if (times > 1)
         {
@@ -150,6 +152,7 @@ void main(string[]args)
             writefln(" * minimum load+close time: %s ms", minTime);
             writefln(" * median  load+close time: %s ms", medianTime);
             writefln(" * average load+close time: %s ms", averageTime);
+            writefln(" * total time: %s ms", timeAfterMeasures - timeBeforeMeasures);
         }
     }
     catch(Exception e)
