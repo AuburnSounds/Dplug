@@ -59,24 +59,14 @@ nothrow AEffect* myVSTEntryPoint(alias ClientClass)(HostCallbackFunction hostCal
 {
     if (hostCallback is null)
         return null;
-    try
-    {
-        import dplug.core.nogc;
-        import dplug.core.runtime;
-        ScopedForeignCallback!(false, true) scopedCallback;
-        scopedCallback.enter();
-        auto client = new ClientClass();
 
-        // malloc'd else the GC would not register roots for some reason!
-        VSTClient plugin = mallocEmplace!VSTClient(client, hostCallback);
-        return &plugin._effect;
-    }
-    catch (Throwable e)
-    {
-        import dplug.core.nogc;
-        unrecoverableError(); // best effort, at least it won't crash the host
-        return null;
-    }
+    ScopedForeignCallback!(false, true) scopedCallback;
+    scopedCallback.enter();
+    auto client = mallocEmplace!ClientClass();
+
+    // malloc'd else the GC would not register roots for some reason!
+    VSTClient plugin = mallocEmplace!VSTClient(client, hostCallback);
+    return &plugin._effect;
 };
 
 // TODO: later
@@ -88,8 +78,8 @@ nothrow AEffect* myVSTEntryPoint(alias ClientClass)(HostCallbackFunction hostCal
 class VSTClient
 {
 public:
-//nothrow:
-//@nogc:
+nothrow:
+@nogc:
 
     AEffect _effect;
 
@@ -179,7 +169,7 @@ public:
 
     ~this()
     {
-        _client.destroy();
+        _client.destroyFree();
 
         for (int i = 0; i < _maxInputs; ++i)
             _inputScratchBuffer[i].destroy();
@@ -706,7 +696,7 @@ private:
                 char* p = cast(char*)ptr;
                 if (p !is null)
                 {
-                    stringNCopy(p, 64, _client.pluginFullName());
+                    _client.getPluginFullName(p, 64);
                     return 1;
                 }
                 return 0;

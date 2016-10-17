@@ -96,12 +96,6 @@ struct PluginInfo
     bool hasGUI = false;
 
     bool isSynth = false;
-
-private:
-    /// Vendor + plugin pretty name.
-    /// Eg: "Witty Audio Destructatorizer"
-    // You don't have to assign it, and are not allowed to.
-    string pluginFullName;
 }
 
 /// This allows to write things life tempo-synced LFO.
@@ -131,12 +125,12 @@ struct LegalIO
 class Client
 {
 public:
+nothrow:
+@nogc:
 
     this()
     {
         _info = buildPluginInfo();
-
-        _info.pluginFullName = _info.vendorName ~ " " ~ _info.pluginName;
 
         // Create legal I/O combinations
         _legalIOs = buildLegalIO();
@@ -151,6 +145,7 @@ public:
             // If you fail here, this means your buildParameter() override is incorrect.
             // Check the values of the index you're giving.
             // They should be 0, 1, 2, ..., N-1
+            // Maybe you have duplicated a line or misordered them.
             assert(param.index() == i);
 
             // Sets owner reference.
@@ -158,7 +153,7 @@ public:
         }
 
         // Create presets
-        _presetBank = new PresetBank(this, buildPresets());
+        _presetBank = mallocEmplace!PresetBank(this, buildPresets());
 
         _maxInputs = 0;
         _maxOutputs = 0;
@@ -179,8 +174,6 @@ public:
 
     ~this()
     {
-        debug ensureNotInGC("dplug.plugin.Client");
-
         // Destroy graphics
         if (_graphics !is null)
         {
@@ -191,15 +184,17 @@ public:
             {
                 // TODO: relax CPU
             }
-            _graphics.destroy();
+            _graphics.destroyFree();
         }
 
         // Destroy presets
-        _presetBank.destroy();
+        _presetBank.destroyFree();
 
         // Destroy parameters
         foreach(p; _params)
-            p.destroy();
+            p.destroyFree();
+        _params.freeSlice();
+        _legalIOs.freeSlice();
     }
 
     final int maxInputs() pure const nothrow @nogc
@@ -299,13 +294,14 @@ public:
         (cast(IGraphics)_graphics).closeUI();
     }
 
-    // This should be called only by a client implementation
+    // This should be called only by a client implementation.
     void setParameterFromHost(int index, float value) nothrow @nogc
     {
         param(index).setFromHost(value);
     }
 
     /// Override if you create a plugin with UI.
+    /// The returned IGraphics must be allocated with `mallocEmplace`.
     IGraphics createGraphics() nothrow @nogc
     {
         return null;
@@ -442,9 +438,12 @@ public:
         return _info.pluginUniqueID;
     }
 
-    final string pluginFullName() pure const nothrow @nogc
+    /// Returns: Plugin full name "$VENDOR $PRODUCT"
+    final void getPluginFullName(char* p, int bufLength) const nothrow @nogc
     {
-        return _info.pluginFullName;
+        snprintf(p, bufLength, "%.*s %.*s", 
+                 _info.vendorName.length, _info.vendorName.ptr, 
+                 _info.pluginName.length, _info.pluginName.ptr);
     }
 
     /// Returns: Plugin version in x.x.x.x decimal form.
@@ -488,6 +487,8 @@ protected:
 
     /// Override this method to implement parameter creation.
     /// This is an optional overload, default implementation declare no parameters.
+    /// The returned slice must be allocated with `malloc`/`mallocSlice` and contains
+    /// `Parameter` objects created with `mallocEmplace`.
     Parameter[] buildParameters()
     {
         return [];
@@ -508,7 +509,7 @@ protected:
     abstract PluginInfo buildPluginInfo();
 
     /// Override this method to tell which I/O are legal.
-    /// See_also: addLegalIO.
+    /// The returned slice must be allocated with `malloc`/`mallocSlice`.
     abstract LegalIO[] buildLegalIO();
 
     IGraphics _graphics;
