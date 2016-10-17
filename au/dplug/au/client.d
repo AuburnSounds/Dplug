@@ -132,7 +132,7 @@ nothrow ComponentResult audioUnitEntryPoint(alias ClientClass)(ComponentParamete
 
         if (select == kComponentOpenSelect)
         {
-            loadDerelictFunctions();
+            acquireAudioUnitFunctions();
 
             // Create client and AUClient
             auto client = new ClientClass();
@@ -231,7 +231,7 @@ void* audioUnitComponentFactory(alias ClientClass)(void* inDesc) nothrow
         // TODO: this function is racey
 
         attachToRuntimeIfNeeded();
-        loadDerelictFunctions();
+        acquireAudioUnitFunctions();
 
         auto instance = cast(AudioComponentPlugInInstance*) malloc(  )
 
@@ -547,13 +547,8 @@ private:
     {
         if (select == kComponentCloseSelect) // -2
         {
-            try
-            {
-                destroyFree(cast(void*)this); // free all resources except the runtime
-            }
-            catch(Exception e)
-            {
-            }
+            destroyFree(cast(void*)this); // free all resources except the runtime
+            releaseAudioUnitFunctions();
             return noErr;
         }
 
