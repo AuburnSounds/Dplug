@@ -89,7 +89,7 @@ private __gshared DerelictCarbonLoader DerelictCarbon;
 
 private __gshared loaderCounter = 0;
 
-// Call this each time a new owner uses these functions
+// Call this each time a novel owner uses these functions
 // TODO: hold a mutex, because this isn't thread-safe
 void acquireCarbonFunctions() nothrow @nogc
 {
@@ -100,7 +100,7 @@ void acquireCarbonFunctions() nothrow @nogc
     }
 }
 
-// Call this each time a new owner releases a Cocoa functions
+// Call this each time a novel owner releases a Cocoa functions
 // TODO: hold a mutex, because this isn't thread-safe
 void releaseCarbonFunctions() nothrow @nogc
 {

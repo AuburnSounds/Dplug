@@ -63,15 +63,15 @@ template AUEntryPoint(alias ClientClass)
 
     const char[] AUEntryPoint =
     "import derelict.carbon;" ~
-    "extern(C) nothrow ComponentResult dplugAUEntryPoint(ComponentParameters* params, void* pPlug)" ~
+    "extern(C) ComponentResult dplugAUEntryPoint(ComponentParameters* params, void* pPlug) nothrow  @nogc" ~
     "{" ~
         "return audioUnitEntryPoint!" ~ ClientClass.stringof ~ "(params, pPlug);" ~
     "}" ~
-    "extern(C) nothrow ComponentResult dplugAUCarbonViewEntryPoint(ComponentParameters* params, void* pView)" ~
+    "extern(C) ComponentResult dplugAUCarbonViewEntryPoint(ComponentParameters* params, void* pView) nothrow  @nogc" ~
     "{" ~
         "return audioUnitCarbonViewEntry!" ~ ClientClass.stringof ~ "(params, pView);" ~
     "}" ~
-    "extern(C) nothrow void* dplugAUComponentFactoryFunction(void* inDesc)"  ~ // type-punned here to avoid the derelict.carbon import
+    "extern(C) void* dplugAUComponentFactoryFunction(void* inDesc) nothrow  @nogc"  ~ // type-punned here to avoid the derelict.carbon import
     "{" ~
         "return audioUnitComponentFactory!" ~ ClientClass.stringof ~ "(inDesc);" ~
     "}"
@@ -112,45 +112,36 @@ private void releaseAudioUnitFunctions() nothrow @nogc
     releaseAudioToolboxFunctions();
 }
 
-nothrow ComponentResult audioUnitEntryPoint(alias ClientClass)(ComponentParameters* params, void* pPlug)
+ComponentResult audioUnitEntryPoint(alias ClientClass)(ComponentParameters* params, void* pPlug) nothrow @nogc
 {
-    try
+    int select = params.what;
+
+    // Special case for the audio case that doesn't need to initialize runtime
+    // and can't support attaching the thread (it's not interruptible)
+    bool isAudioThread = (select == kAudioUnitRenderSelect);
+    if (isAudioThread)
     {
-        int select = params.what;
-
-        // Special case for the audio case that doesn't need to initialize runtime
-        // and can't support attaching the thread (it's not interruptible)
-        bool isAudioThread = (select == kAudioUnitRenderSelect);
-        if (isAudioThread)
-        {
-            AUClient auClient = cast(AUClient)pPlug;
-            return auClient.dispatcher(select, params);
-        }
-
-        ScopedForeignCallback!(false, true) scopedCallback;
-        scopedCallback.enter();
-
-        if (select == kComponentOpenSelect)
-        {
-            acquireAudioUnitFunctions();
-
-            // Create client and AUClient
-            auto client = new ClientClass();
-            ComponentInstance instance = params.getCompParam!(ComponentInstance, 0, 1);
-            AUClient plugin = mallocEmplace!AUClient(client, instance);
-            SetComponentInstanceStorage( instance, cast(Handle)(cast(void*)plugin) );
-            return noErr;
-        }
-
         AUClient auClient = cast(AUClient)pPlug;
         return auClient.dispatcher(select, params);
     }
-    catch (Throwable e)
+
+    ScopedForeignCallback!(false, true) scopedCallback;
+    scopedCallback.enter();
+
+    if (select == kComponentOpenSelect)
     {
-        unrecoverableError();
+        acquireAudioUnitFunctions();
+
+        // Create client and AUClient
+        ClientClass client = mallocEmplace!ClientClass();
+        ComponentInstance instance = params.getCompParam!(ComponentInstance, 0, 1);
+        AUClient plugin = mallocEmplace!AUClient(client, instance);
+        SetComponentInstanceStorage( instance, cast(Handle)(cast(void*)plugin) );
         return noErr;
     }
 
+    AUClient auClient = cast(AUClient)pPlug;
+    return auClient.dispatcher(select, params);
 }
 
 struct CarbonViewInstance
@@ -1867,7 +1858,7 @@ private:
 
         bool isNewTimestamp = (renderTimestamp != _lastRenderTimestamp);
 
-        // On a new timestamp, we render upstream (pull) and process audio.
+        // On a novel timestamp, we render upstream (pull) and process audio.
         // Else, just copy the results.
         // We always provide buffers to upstream unit
         int lastConnectedOutputBus = -1;

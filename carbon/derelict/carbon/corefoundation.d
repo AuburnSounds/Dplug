@@ -154,7 +154,7 @@ private __gshared DerelictCoreFoundationLoader DerelictCoreFoundation;
 
 private __gshared loaderCounter = 0;
 
-// Call this each time a new owner uses these functions
+// Call this each time a novel owner uses these functions
 // TODO: hold a mutex, because this isn't thread-safe
 void acquireCoreFoundationFunctions() nothrow @nogc
 {
@@ -165,7 +165,7 @@ void acquireCoreFoundationFunctions() nothrow @nogc
     }
 }
 
-// Call this each time a new owner releases a Cocoa functions
+// Call this each time a novel owner releases a Cocoa functions
 // TODO: hold a mutex, because this isn't thread-safe
 void releaseCoreFoundationFunctions() nothrow @nogc
 {

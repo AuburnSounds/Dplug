@@ -209,7 +209,7 @@ public:
         // Here we are in the audio thread, so blocking is not welcome
         atomicStore(_sampleRate, sampleRate);
 
-        // push new data, but it's not that bad if we miss some
+        // Push incoming data, but it's not that bad if we miss some
         if (_dataMutex.tryLock())
         {
             foreach (i; 0..input.length)

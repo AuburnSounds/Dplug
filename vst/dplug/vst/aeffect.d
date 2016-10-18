@@ -61,7 +61,7 @@ align(8) struct AEffect
     /** \deprecated Accumulating process mode is deprecated in VST 2.4! Use AEffect::processReplacing instead! */
     AEffectProcessProc DEPRECATED_process;
 
-    /** Set new value of automatable parameter @see AudioEffect::setParameter */
+    /** Set value of automatable parameter @see AudioEffect::setParameter */
     AEffectSetParameterProc setParameter;
 
     /** Returns current value of automatable parameter @see AudioEffect::getParameter*/
@@ -138,9 +138,9 @@ enum : AEffectOpcodes
     effOpen = 0,        ///< no arguments  @see AudioEffect::open
     effClose,           ///< no arguments  @see AudioEffect::close
 
-    effSetProgram,      ///< [value]: new program number  @see AudioEffect::setProgram
+    effSetProgram,      ///< [value]: program number  @see AudioEffect::setProgram
     effGetProgram,      ///< [return value]: current program number  @see AudioEffect::getProgram
-    effSetProgramName,  ///< [ptr]: char* with new program name, limited to #kVstMaxProgNameLen  @see AudioEffect::setProgramName
+    effSetProgramName,  ///< [ptr]: char* with program name, limited to #kVstMaxProgNameLen  @see AudioEffect::setProgramName
     effGetProgramName,  ///< [ptr]: char buffer for current program name, limited to #kVstMaxProgNameLen  @see AudioEffect::getProgramName
 
     effGetParamLabel,   ///< [ptr]: char buffer for parameter label, limited to #kVstMaxParamStrLen  @see AudioEffect::getParameterLabel
@@ -149,8 +149,8 @@ enum : AEffectOpcodes
 
     DEPRECATED_effGetVu,  ///< \deprecated deprecated in VST 2.4
 
-    effSetSampleRate,   ///< [opt]: new sample rate for audio processing  @see AudioEffect::setSampleRate
-    effSetBlockSize,    ///< [value]: new maximum block size for audio processing  @see AudioEffect::setBlockSize
+    effSetSampleRate,   ///< [opt]: sample rate for audio processing  @see AudioEffect::setSampleRate
+    effSetBlockSize,    ///< [value]: maximum block size for audio processing  @see AudioEffect::setBlockSize
     effMainsChanged,    ///< [value]: 0 means "turn off", 1 means "turn on"  @see AudioEffect::suspend @see AudioEffect::resume
 
     effEditGetRect,     ///< [ptr]: #ERect** receiving pointer to editor size  @see ERect @see AEffEditor::getRect

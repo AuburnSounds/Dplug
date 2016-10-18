@@ -220,7 +220,7 @@ nothrow:
 }
 
 
-/// Creates a new CFString from an int give up its ownership.
+/// Creates a CFString from an int give up its ownership.
 CFStringRef convertIntToCFString(int number) nothrow @nogc
 {
     char[16] str;

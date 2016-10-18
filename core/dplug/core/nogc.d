@@ -655,7 +655,7 @@ nothrow:
         const(CharType)* p = s.ptr + s.length;
         // Is p dereferenceable? A simple test: if the p points to an
         // address multiple of 4, then conservatively assume the pointer
-        // might be pointing to a new block of memory, which might be
+        // might be pointing to another block of memory, which might be
         // unreadable. Otherwise, it's definitely pointing to valid
         // memory.
         if ((cast(size_t) p & 3) && *p == 0)

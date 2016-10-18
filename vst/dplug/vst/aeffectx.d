@@ -214,7 +214,7 @@ enum : AudioMasterOpcodesX
 
     DEPRECATED_audioMasterNeedIdle,   ///< \deprecated deprecated in VST 2.4
 
-    audioMasterSizeWindow,          ///< [index]: new width [value]: new height [return value]: 1 if supported  @see AudioEffectX::sizeWindow
+    audioMasterSizeWindow,          ///< [index]: width [value]: height [return value]: 1 if supported  @see AudioEffectX::sizeWindow
     audioMasterGetSampleRate,       ///< [return value]: current sample rate  @see AudioEffectX::updateSampleRate
     audioMasterGetBlockSize,        ///< [return value]: current block size  @see AudioEffectX::updateBlockSize
     audioMasterGetInputLatency,     ///< [return value]: input latency in audio samples  @see AudioEffectX::getInputLatency
@@ -550,7 +550,7 @@ struct VstSpeakerProperties
     float elevation;    ///< unit: rad, range: -PI/2...PI/2, exception: 10.f for LFE channel
     float radius;       ///< unit: meter, exception: 0.f for LFE channel
     float reserved;     ///< zero (reserved for future use)
-    char[kVstMaxNameLen] name;  ///< for new setups, new names should be given (L/R/C... won't do)
+    char[kVstMaxNameLen] name;  ///< for other setups, other names should be given (L/R/C... won't do)
     VstInt32 type;      ///< @see VstSpeakerType
 
     char[28] future;    ///< reserved for future use

@@ -84,7 +84,7 @@ void alignedFree(void* aligned, size_t alignment) nothrow @nogc
     void* raw = *cast(void**)(cast(char*)aligned - size_t.sizeof);
     size_t request = requestedSize(size, alignment);
 
-    // Heuristic: if new requested size is within 50% to 100% of what is already allocated
+    // Heuristic: if a requested size is within 50% to 100% of what is already allocated
     //            then exit with the same pointer
     if ( (previousSize < request * 4) && (request <= previousSize) )
         return aligned;

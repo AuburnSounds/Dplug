@@ -110,7 +110,7 @@ static UUID generate(ref Xorshift32 randomGen) nothrow @nogc
     return u;
 }
 
-/// Generates a new random UUID.
+/// Generates a random UUID.
 UUID generateRandomUUID() nothrow @nogc
 {
     UUID u = generate(defaultGlobalRNG());
