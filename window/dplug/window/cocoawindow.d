@@ -411,14 +411,8 @@ nothrow:
 
     static void generateClassName() nothrow @nogc
     {
-        customClassName[0..16] = "DPlugCustomView_";
-        char[36] uuidString;
-        UUID uuid = generateRandomUUID();
-        uuid.toString(uuidString[]);
-        for(int i = 0; i < 36; ++i)
-            customClassName[16 + i] = cast(wchar)( uuidString[i] );
-        customClassName[$-1] = '\0';
-    }    
+        generateNullTerminatedRandomUUID!char(customClassName, "DPlugCustomView_");
+    }
 
 private:
 

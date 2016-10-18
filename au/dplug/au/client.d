@@ -1262,7 +1262,7 @@ private:
                             *pDataSize = AudioUnitCocoaViewInfo.sizeof;
                             if (pData)
                             {
-                                string factoryClassName = registerCocoaViewFactory(); // TODO: call unregisterCocoaViewFactory somewhere
+                                const(char)[] factoryClassName = registerCocoaViewFactory(); // TODO: call unregisterCocoaViewFactory somewhere
                                 CFBundleRef pBundle = CFBundleGetMainBundle();
                                 CFURLRef url = CFBundleCopyBundleURL(pBundle);
                                 AudioUnitCocoaViewInfo* pViewInfo = cast(AudioUnitCocoaViewInfo*) pData;

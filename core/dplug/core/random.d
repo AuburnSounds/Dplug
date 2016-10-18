@@ -110,9 +110,32 @@ static UUID generate(ref Xorshift32 randomGen) nothrow @nogc
     return u;
 }
 
-// UUID generation
+/// Generates a new random UUID.
 UUID generateRandomUUID() nothrow @nogc
 {
     UUID u = generate(defaultGlobalRNG());
     return u;
+}
+
+/// Generate a zero-terminated string with concatenated prefix and an UUDI.
+/// Random UUID generation is often used to generate names like this.
+/// Example: "MyPrefix_cb3b51b1-5c34-4412-b6b9-01193f1294b4\0"
+void generateNullTerminatedRandomUUID(CharType)(CharType[] buffer, const(CharType)[] prefix) nothrow @nogc
+{
+    assert(buffer.length >= 36 + prefix.length + 1);
+
+    // Copy prefix
+    buffer[0..prefix.length] = prefix;
+
+    // Generate an UUID string
+    char[36] uuidString;
+    UUID uuid = generateRandomUUID();
+    uuid.toString(uuidString[]);
+    
+    // Copy UUID
+    for(int i = 0; i < 36; ++i)
+        buffer[prefix.length + i] = cast(CharType)( uuidString[i] );
+
+    // Add terminal zero
+    buffer[prefix.length + 36] = '\0';
 }

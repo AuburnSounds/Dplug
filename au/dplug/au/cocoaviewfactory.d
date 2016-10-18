@@ -23,22 +23,28 @@ import derelict.carbon;
 import derelict.cocoa;
 
 import dplug.core.runtime;
+import dplug.core.random;
 import dplug.core.nogc;
 import dplug.au.client;
 
 
 import core.stdc.stdio;
 
-// register a view factory object, return the class name
-string registerCocoaViewFactory() //nothrow @nogc
+// TODO: this file is ugly, ownership is all over the place
+//       and leaking
+
+// Register a view factory object, return the class name.
+const(char)[] registerCocoaViewFactory() nothrow @nogc
 {
     acquireCocoaFunctions();
     NSApplicationLoad(); // to use Cocoa in Carbon applications
     DPlugCocoaViewFactory.registerSubclass();
-    return DPlugCocoaViewFactory.customClassName;
+    return DPlugCocoaViewFactory.customClassName[0..(22 + 36)];
 }
 
-void unregisterCocoaViewFactory() //nothrow @nogc
+// TODO: this is never called! This was required a long time ago
+//       but conditions have changed now and we can probably be clean.
+void unregisterCocoaViewFactory() nothrow @nogc
 {
     DPlugCocoaViewFactory.unregisterSubclass();
     releaseCocoaFunctions();
@@ -47,8 +53,15 @@ void unregisterCocoaViewFactory() //nothrow @nogc
 
 struct DPlugCocoaViewFactory
 {
+nothrow:
+@nogc:
+
+    // The custom class we use.
+    static __gshared Class clazz = null;
+
     // This class uses a unique class name for each plugin instance
-    static __gshared string customClassName = null;
+    static __gshared char[22 + 36 + 1] customClassName;
+    
 
     NSView parent;
     alias parent this;
@@ -59,20 +72,18 @@ struct DPlugCocoaViewFactory
         this._id = id_;
     }
 
-    ~this() nothrow
+    ~this()
     {
     }
 
-    static __gshared Class clazz;
-
     static void registerSubclass()
     {
-        if (customClassName !is null)
+        if (clazz !is null) // custom class already registered (TODO: use acquire/release semantics instead)
             return;
 
-        string uuid = randomUUID().toString();
-        customClassName = "DPlugCocoaViewFactory_" ~ uuid;
-        clazz = objc_allocateClassPair(cast(Class) lazyClass!"NSObject", toStringz(customClassName), 0);
+        generateNullTerminatedRandomUUID!char(customClassName, "DPlugCocoaViewFactory_");
+
+        clazz = objc_allocateClassPair(cast(Class) lazyClass!"NSObject", customClassName.ptr, 0);
 
         class_addMethod(clazz, sel!"description:", cast(IMP) &description, "@@:");
         class_addMethod(clazz, sel!"interfaceVersion", cast(IMP) &interfaceVersion, "I@:");
