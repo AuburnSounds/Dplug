@@ -5,6 +5,8 @@
  */
 module dplug.core.alignedbuffer;
 
+import std.traits: hasElaborateDestructor;
+
 import core.stdc.stdlib: malloc, free, realloc;
 import core.stdc.string: memcpy;
 
@@ -194,6 +196,7 @@ unittest
 ///    length desired slice length
 ///
 void reallocBuffer(T)(ref T[] buffer, size_t length, int alignment = 1) nothrow @nogc
+    if (! (is(T == struct) && hasElaborateDestructor!T)) // struct with destructors not supported
 {
     T* pointer = cast(T*) alignedRealloc(buffer.ptr, T.sizeof * length, alignment);
     if (pointer is null)
@@ -379,7 +382,7 @@ struct AlignedBuffer(T)
 unittest
 {
     import std.range.primitives;
-    static assert(isOutputRange!(AlignedBuffer!ubyte));
+    static assert(isOutputRange!(AlignedBuffer!ubyte, ubyte));
 
 
     import std.random;
