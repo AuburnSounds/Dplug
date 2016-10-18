@@ -539,7 +539,7 @@ public:
   int decode (/*const void** */void** pScan_line, uint* pScan_line_len) {
     if (m_error_code || !m_ready_flag) return JPGD_FAILED;
     if (m_total_lines_left == 0) return JPGD_DONE;
-    try {
+    
       if (m_mcu_lines_left == 0) {
         if (m_progressive_flag) load_next_row(); else decode_next_row();
         // Find the EOI marker if that was the last row.
@@ -586,8 +586,6 @@ public:
       --m_mcu_lines_left;
       --m_total_lines_left;
       return JPGD_SUCCESS;
-    } catch (Exception) {}
-    assert(false);
   }
 
   @property const pure nothrow @safe @nogc {

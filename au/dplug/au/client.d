@@ -1100,31 +1100,24 @@ private:
             {
                 case kAudioUnitProperty_GetUIComponentList: // 18
                 {
-                    try
+                    if ( _client.hasGUI() )
                     {
-                        if ( _client.hasGUI() )
+                        *pDataSize = ComponentDescription.sizeof;
+                        if (pData)
                         {
-                            *pDataSize = ComponentDescription.sizeof;
-                            if (pData)
-                            {
-                                ComponentDescription* pDesc = cast(ComponentDescription*) pData;
-                                pDesc.componentType = kAudioUnitCarbonViewComponentType;
-                                char[4] uid =_client.getPluginUniqueID();
-                                pDesc.componentSubType = CCONST(uid[0], uid[1], uid[2], uid[3]);
-                                char[4] vid =_client.getVendorUniqueID();
-                                pDesc.componentManufacturer = CCONST(vid[0], vid[1], vid[2], vid[3]);
-                                pDesc.componentFlags = 0;
-                                pDesc.componentFlagsMask = 0;
-                            }
-                            return noErr;
+                            ComponentDescription* pDesc = cast(ComponentDescription*) pData;
+                            pDesc.componentType = kAudioUnitCarbonViewComponentType;
+                            char[4] uid =_client.getPluginUniqueID();
+                            pDesc.componentSubType = CCONST(uid[0], uid[1], uid[2], uid[3]);
+                            char[4] vid =_client.getVendorUniqueID();
+                            pDesc.componentManufacturer = CCONST(vid[0], vid[1], vid[2], vid[3]);
+                            pDesc.componentFlags = 0;
+                            pDesc.componentFlagsMask = 0;
                         }
-                        else
-                            return kAudioUnitErr_InvalidProperty;
+                        return noErr;
                     }
-                    catch(Exception e)
-                    {
+                    else
                         return kAudioUnitErr_InvalidProperty;
-                    }
                 }
             }
 
@@ -1246,30 +1239,23 @@ private:
             version(supportCocoaUI)
             {
                 case kAudioUnitProperty_CocoaUI: // 31
-                {
-                    try
+                {     
+                    if ( _client.hasGUI() )
                     {
-                        if ( _client.hasGUI() )
+                        *pDataSize = AudioUnitCocoaViewInfo.sizeof;
+                        if (pData)
                         {
-                            *pDataSize = AudioUnitCocoaViewInfo.sizeof;
-                            if (pData)
-                            {
-                                const(char)[] factoryClassName = registerCocoaViewFactory(); // TODO: call unregisterCocoaViewFactory somewhere
-                                CFBundleRef pBundle = CFBundleGetMainBundle();
-                                CFURLRef url = CFBundleCopyBundleURL(pBundle);
-                                AudioUnitCocoaViewInfo* pViewInfo = cast(AudioUnitCocoaViewInfo*) pData;
-                                pViewInfo.mCocoaAUViewBundleLocation = url;
-                                pViewInfo.mCocoaAUViewClass[0] = toCFString(factoryClassName);
-                            }
-                            return noErr;
+                            const(char)[] factoryClassName = registerCocoaViewFactory(); // TODO: call unregisterCocoaViewFactory somewhere
+                            CFBundleRef pBundle = CFBundleGetMainBundle();
+                            CFURLRef url = CFBundleCopyBundleURL(pBundle);
+                            AudioUnitCocoaViewInfo* pViewInfo = cast(AudioUnitCocoaViewInfo*) pData;
+                            pViewInfo.mCocoaAUViewBundleLocation = url;
+                            pViewInfo.mCocoaAUViewClass[0] = toCFString(factoryClassName);
                         }
-                        else
-                            return kAudioUnitErr_InvalidProperty;
+                        return noErr;
                     }
-                    catch(Exception e)
-                    {
+                    else
                         return kAudioUnitErr_InvalidProperty;
-                    }
                 }
             }
 
@@ -1568,10 +1554,7 @@ private:
                 PresetBank bank = _client.presetBank();
                 if (bank.isValidPresetIndex(presetIndex))
                 {
-                    try
-                        bank.loadPresetFromHost(presetIndex);
-                    catch(Exception e)
-                        return kAudioUnitErr_InvalidProperty;
+                    bank.loadPresetFromHost(presetIndex);                  
                 }
                 else if (auPreset.presetName != null)
                 {
@@ -1735,6 +1718,7 @@ private:
         }
         catch(Exception e)
         {
+            e.destroyFree();
             return kAudioUnitErr_InvalidPropertyValue;
         }
         return noErr;

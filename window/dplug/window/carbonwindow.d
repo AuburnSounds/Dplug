@@ -492,34 +492,19 @@ private:
 
 alias CarbonScopedCallback = ScopedForeignCallback!(true, true);
 
-extern(C) OSStatus eventCallback(EventHandlerCallRef pHandlerCall, EventRef pEvent, void* user) nothrow
+extern(C) OSStatus eventCallback(EventHandlerCallRef pHandlerCall, EventRef pEvent, void* user) nothrow @nogc
 {
-    try
-    {
-        CarbonScopedCallback scopedCallback;
-        scopedCallback.enter();
-        CarbonWindow window = cast(CarbonWindow)user;
-        bool handled = window.handleEvent(pEvent);
-        return handled ? noErr : eventNotHandledErr;
-    }
-    catch(Exception e)
-    {
-        // TODO: do something clever
-        return false;
-    }
+    CarbonScopedCallback scopedCallback;
+    scopedCallback.enter();
+    CarbonWindow window = cast(CarbonWindow)user;
+    bool handled = window.handleEvent(pEvent);
+    return handled ? noErr : eventNotHandledErr;
 }
 
-extern(C) void timerCallback(EventLoopTimerRef pTimer, void* user) nothrow
+extern(C) void timerCallback(EventLoopTimerRef pTimer, void* user) nothrow @nogc
 {
-    try
-    {
-        CarbonScopedCallback scopedCallback;
-        scopedCallback.enter();
-        CarbonWindow window = cast(CarbonWindow)user;
-        window.onTimer();
-    }
-    catch(Exception e)
-    {
-        // TODO: do something clever
-    }
+    CarbonScopedCallback scopedCallback;
+    scopedCallback.enter();
+    CarbonWindow window = cast(CarbonWindow)user;
+    window.onTimer();
 }
