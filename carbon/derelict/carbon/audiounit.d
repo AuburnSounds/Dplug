@@ -616,7 +616,7 @@ else
 
 class DerelictAudioToolboxLoader : SharedLibLoader
 {
-    protected
+    public
     {
         nothrow @nogc:
         this()

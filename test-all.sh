@@ -19,5 +19,8 @@ dub test -a x86 --compiler=ldc2 dplug:au
 dub test -a x86 --compiler=ldc2 dplug:graphics
 dub test -a x86 --compiler=ldc2 dplug:gui
 dub test -a x86 --compiler=ldc2 dplug:cocoa
-dub test -a x86 --compiler=ldc2 dplug:carbon
+
+# Not all functions are here
+#dub test -a x86 --compiler=ldc2 dplug:carbon
+
 dub test -a x86 --compiler=ldc2 dplug:derelict-nogc

@@ -106,8 +106,6 @@ class DerelictCoreFoundationLoader : SharedLibLoader
             bindFunc(cast(void**)&CFStringCompare, "CFStringCompare");
             bindFunc(cast(void**)&CFStringCreateWithFormat, "CFStringCreateWithFormat");
 
-
-
             bindFunc(cast(void**)&CFDataCreate, "CFDataCreate");
             bindFunc(cast(void**)&CFDataGetLength, "CFDataGetLength");
             bindFunc(cast(void**)&CFDataGetBytePtr, "CFDataGetBytePtr");

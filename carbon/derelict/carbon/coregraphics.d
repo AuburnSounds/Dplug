@@ -98,7 +98,7 @@ void releaseCoreGraphicsFunctions() nothrow @nogc
         DerelictCoreGraphics.destroyFree();
     }
 }
-/+
+
 unittest
 {
     static if(Derelict_OS_Mac)
@@ -107,7 +107,7 @@ unittest
         releaseCoreGraphicsFunctions();
     }
 }
-+/
+
 
 // <CoreGraphics/CGBase.h>
 

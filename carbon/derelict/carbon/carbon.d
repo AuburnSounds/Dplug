@@ -62,7 +62,11 @@ class DerelictCarbonLoader : SharedLibLoader
             bindFunc(cast(void**)&InstallEventHandler, "InstallEventHandler");
             bindFunc(cast(void**)&GetControlEventTarget, "GetControlEventTarget");
             bindFunc(cast(void**)&GetWindowEventTarget, "GetWindowEventTarget");
-       //     bindFunc(cast(void**)&CreateUserPaneControl, "CreateUserPaneControl");
+
+           // Not available in macOS 10.12 in 64-bit
+            static if (size_t.sizeof == 4)
+                bindFunc(cast(void**)&CreateUserPaneControl, "CreateUserPaneControl");
+
             bindFunc(cast(void**)&GetWindowAttributes, "GetWindowAttributes");
             bindFunc(cast(void**)&HIViewGetRoot, "HIViewGetRoot");
             bindFunc(cast(void**)&HIViewFindByID, "HIViewFindByID");
@@ -70,7 +74,7 @@ class DerelictCarbonLoader : SharedLibLoader
             bindFunc(cast(void**)&HIViewAddSubview, "HIViewAddSubview");
             bindFunc(cast(void**)&GetRootControl, "GetRootControl");
             bindFunc(cast(void**)&CreateRootControl, "CreateRootControl");
-        //    bindFunc(cast(void**)&EmbedControl, "EmbedControl");
+
             bindFunc(cast(void**)&SizeControl, "SizeControl");
             bindFunc(cast(void**)&GetEventClass, "GetEventClass");
             bindFunc(cast(void**)&GetEventKind, "GetEventKind");

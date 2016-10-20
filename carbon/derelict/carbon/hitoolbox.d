@@ -497,7 +497,6 @@ extern (C) nothrow @nogc
 {
     alias da_GetRootControl = OSErr function(WindowRef, ControlRef*);
     alias da_CreateRootControl = OSErr function(WindowRef inWindow, ControlRef* outControl);
-    alias da_EmbedControl = OSErr function(ControlRef inControl, ControlRef inContainer);
     alias da_SizeControl = void function(ControlRef theControl, SInt16 w, SInt16 h);
 }
 
@@ -505,7 +504,6 @@ __gshared
 {
     da_GetRootControl GetRootControl;
     da_CreateRootControl CreateRootControl;
-    da_EmbedControl EmbedControl;
     da_SizeControl SizeControl;
 }
 
@@ -547,6 +545,7 @@ __gshared
 {
     da_CreateUserPaneControl CreateUserPaneControl;
 }
+
 
 
 // <HIToolbox/HIGeometry.h>

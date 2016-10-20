@@ -92,7 +92,7 @@ void releaseCoreServicesFunctions() nothrow @nogc
         DerelictCoreServices.destroyFree();
     }
 }
-/+
+
 unittest
 {
     static if(Derelict_OS_Mac)
@@ -101,7 +101,7 @@ unittest
         releaseCoreServicesFunctions();
     }
 }
-+/
+
 enum : int
 {
     typeSInt16                 = CCONST('s', 'h', 'o', 'r'),
