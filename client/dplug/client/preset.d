@@ -5,6 +5,8 @@
  */
 module dplug.client.preset;
 
+import core.stdc.stdlib: free;
+
 import std.range.primitives;
 import std.math;
 import std.array;
@@ -154,7 +156,7 @@ public:
     AlignedBuffer!Preset presets;
 
     // Create a preset bank
-    // Takes ownership of this slice, which must be allocated with `malloc`, 
+    // Takes ownership of this slice, which must be allocated with `malloc`,
     // containing presets allocated with `mallocEmplace`.
     this(Client client, Preset[] presets_) nothrow @nogc
     {
@@ -172,7 +174,7 @@ public:
         // free all presets
         foreach(p; presets)
         {
-            // if you hit a break-point here, maybe your 
+            // if you hit a break-point here, maybe your
             // presets weren't allocated with `mallocEmplace`
             p.destroyFree();
         }

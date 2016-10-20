@@ -379,7 +379,7 @@ struct AlignedBuffer(T)
 unittest
 {
     import std.range.primitives;
-    static assert(isOutputRange!(AlignedBuffer!ubyte));
+    static assert(isOutputRange!(AlignedBuffer!ubyte, ubyte));
 
 
     import std.random;
