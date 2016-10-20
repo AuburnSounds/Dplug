@@ -50,7 +50,7 @@ else
 
 class DerelictCoreServicesLoader : SharedLibLoader
 {
-    protected
+    public
     {
         nothrow @nogc:
         this()
@@ -88,11 +88,11 @@ void releaseCoreServicesFunctions() nothrow @nogc
 {
     if (--loaderCounter == 0)
     {
-        DerelictCoreServices.destroyFree();
         DerelictCoreServices.unload();
+        DerelictCoreServices.destroyFree();
     }
 }
-
+/+
 unittest
 {
     static if(Derelict_OS_Mac)
@@ -101,7 +101,7 @@ unittest
         releaseCoreServicesFunctions();
     }
 }
-
++/
 enum : int
 {
     typeSInt16                 = CCONST('s', 'h', 'o', 'r'),

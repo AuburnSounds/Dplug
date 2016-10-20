@@ -70,7 +70,7 @@ else
 
 class DerelictCoreFoundationLoader : SharedLibLoader
 {
-    protected
+    public
     {
         nothrow @nogc:
         this()
@@ -158,7 +158,7 @@ private __gshared loaderCounter = 0;
 // TODO: hold a mutex, because this isn't thread-safe
 void acquireCoreFoundationFunctions() nothrow @nogc
 {
-    if (loaderCounter++ == 0)  // You only live once    
+    if (loaderCounter++ == 0)  // You only live once
     {
         DerelictCoreFoundation = mallocEmplace!DerelictCoreFoundationLoader();
         DerelictCoreFoundation.load();
@@ -171,8 +171,17 @@ void releaseCoreFoundationFunctions() nothrow @nogc
 {
     if (--loaderCounter == 0)
     {
-        DerelictCoreFoundation.destroyFree();
         DerelictCoreFoundation.unload();
+        DerelictCoreFoundation.destroyFree();
+    }
+}
+
+unittest
+{
+    static if(Derelict_OS_Mac)
+    {
+        acquireCoreFoundationFunctions();
+        releaseCoreFoundationFunctions();
     }
 }
 

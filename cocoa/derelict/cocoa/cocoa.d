@@ -80,7 +80,6 @@ class DerelictCocoaLoader : SharedLibLoader
             bindFunc(cast(void**)&varclass_getInstanceMethod, "class_getInstanceMethod");
             bindFunc(cast(void**)&method_setImplementation, "method_setImplementation");
 
-
             bindFunc(cast(void**)&class_addProtocol, "class_addProtocol");
             bindFunc(cast(void**)&objc_getProtocol, "objc_getProtocol");
             bindFunc(cast(void**)&objc_allocateProtocol, "objc_allocateProtocol"); // min 10.7
@@ -135,8 +134,8 @@ void releaseCocoaFunctions() nothrow @nogc
 {
     if (--loaderCounter == 0)
     {
-        DerelictCocoa.destroyFree();
         DerelictCocoa.unload();
+        DerelictCocoa.destroyFree();
     }
 }
 

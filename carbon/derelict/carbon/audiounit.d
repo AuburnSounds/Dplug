@@ -49,12 +49,12 @@ import derelict.carbon.coreservices;
 static if(Derelict_OS_Mac)
     enum libNames = "/System/Library/Frameworks/AudioUnit.framework/AudioUnit";
 else
-    enum libNames = "";  
+    enum libNames = "";
 
 
 class DerelictAudioUnitLoader : SharedLibLoader
 {
-    protected
+    public
     {
         this() nothrow @nogc
         {
@@ -91,10 +91,11 @@ void releaseAudioUnitFunctions() nothrow @nogc
 {
     if (--loaderCounterAU == 0)
     {
-        DerelictAudioUnit.destroyFree();
         DerelictAudioUnit.unload();
+        DerelictAudioUnit.destroyFree();
     }
 }
+
 
 unittest
 {
@@ -104,6 +105,7 @@ unittest
         releaseAudioUnitFunctions();
     }
 }
+
 
 enum : int
 {
@@ -651,9 +653,15 @@ void releaseAudioToolboxFunctions() nothrow @nogc
 {
     if (--loaderCounter == 0)
     {
-        DerelictAudioToolbox.destroyFree();
         DerelictAudioToolbox.unload();
+        DerelictAudioToolbox.destroyFree();
     }
+}
+
+unittest
+{
+    acquireAudioToolboxFunctions();
+    releaseAudioToolboxFunctions();
 }
 
 

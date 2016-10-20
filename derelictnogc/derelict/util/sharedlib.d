@@ -53,6 +53,11 @@ static if(Derelict_OS_Posix) {
 
         SharedLibHandle LoadSharedLib(string libName) nothrow @nogc
         {
+            // To debug shared libraries on OSX
+            import core.stdc.stdio;
+            import derelict.util.nogc;
+            auto lib = CString(libName);
+            printf("dlopen('%s')\n", lib.storage);
             return dlopen(CString(libName), ldFlags);
         }
 
@@ -63,6 +68,10 @@ static if(Derelict_OS_Posix) {
 
         void* GetSymbol(SharedLibHandle hlib, string symbolName) nothrow @nogc
         {
+            import core.stdc.stdio;
+            import derelict.util.nogc;
+            auto symbol = CString(symbolName);
+            printf("dlsym('%s')\n", symbol.storage);
             return dlsym(hlib, CString(symbolName));
         }
 

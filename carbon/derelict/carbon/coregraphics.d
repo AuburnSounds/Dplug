@@ -49,7 +49,7 @@ else
 
 class DerelictCoreGraphicsLoader : SharedLibLoader
 {
-    protected
+    public
     {
         nothrow @nogc:
         this()
@@ -94,11 +94,11 @@ void releaseCoreGraphicsFunctions() nothrow @nogc
 {
     if (--loaderCounter == 0)
     {
-        DerelictCoreGraphics.destroyFree();
         DerelictCoreGraphics.unload();
+        DerelictCoreGraphics.destroyFree();
     }
 }
-
+/+
 unittest
 {
     static if(Derelict_OS_Mac)
@@ -107,7 +107,7 @@ unittest
         releaseCoreGraphicsFunctions();
     }
 }
-
++/
 
 // <CoreGraphics/CGBase.h>
 
