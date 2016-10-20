@@ -96,7 +96,7 @@ private T getCompParam(T, int Idx, int Num)(ComponentParameters* params) pure no
         return *cast(T*)(&p[Idx]);
 }
 
-private void acquireAudioUnitFunctions() nothrow @nogc
+private void acquireAUFunctions() nothrow @nogc
 {
     acquireCoreFoundationFunctions();
     acquireCoreServicesFunctions();
@@ -104,7 +104,7 @@ private void acquireAudioUnitFunctions() nothrow @nogc
     acquireAudioToolboxFunctions();
 }
 
-private void releaseAudioUnitFunctions() nothrow @nogc
+private void releaseAUFunctions() nothrow @nogc
 {
     releaseCoreFoundationFunctions();
     releaseCoreServicesFunctions();
@@ -132,10 +132,10 @@ nothrow ComponentResult audioUnitEntryPoint(alias ClientClass)(ComponentParamete
 
         if (select == kComponentOpenSelect)
         {
-            acquireAudioUnitFunctions();
+            acquireAUFunctions();
 
             // Create client and AUClient
-            auto client = new ClientClass();
+            auto client = mallocEmplace!ClientClass();
             ComponentInstance instance = params.getCompParam!(ComponentInstance, 0, 1);
             AUClient plugin = mallocEmplace!AUClient(client, instance);
             SetComponentInstanceStorage( instance, cast(Handle)(cast(void*)plugin) );
@@ -1858,7 +1858,7 @@ private:
 
         bool isNewTimestamp = (renderTimestamp != _lastRenderTimestamp);
 
-        // On a new timestamp, we render upstream (pull) and process audio.
+        // On a novel timestamp, we render upstream (pull) and process audio.
         // Else, just copy the results.
         // We always provide buffers to upstream unit
         int lastConnectedOutputBus = -1;
