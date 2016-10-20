@@ -122,7 +122,7 @@ nothrow:
     }
 }
 
-DPlugCocoaViewFactory getInstance(id anId) nothrow
+DPlugCocoaViewFactory getInstance(id anId) nothrow @nogc
 {
     // strange thing: object_getInstanceVariable definition is odd (void**)
     // and only works for pointer-sized values says SO
@@ -136,22 +136,14 @@ DPlugCocoaViewFactory getInstance(id anId) nothrow
 // Overridden function gets called with an id, instead of the self pointer.
 // So we have to get back the D class object address.
 // Big thanks to Mike Ash (@macdev)
-extern(C) nothrow
+extern(C) nothrow @nogc
 {
     id description(id self, SEL selector)
     {
-        try
-        {
-            ScopedForeignCallback!(true, false) scopedCallback;
-            scopedCallback.enter();
+        ScopedForeignCallback!(true, false) scopedCallback;
+        scopedCallback.enter();
 
-            return NSString.stringWith("Filter View")._id;
-        }
-        catch(Exception e)
-        {
-            unrecoverableError();
-            return null;
-        }
+        return NSString.stringWith("Filter View"w)._id;
     }
 
     uint interfaceVersion(id self, SEL selector)
@@ -162,23 +154,15 @@ extern(C) nothrow
     // Create the Cocoa view and return it
     id uiViewForAudioUnit(id self, SEL selector, AudioUnit audioUnit, NSSize preferredSize)
     {
-        try
-        {
-            ScopedForeignCallback!(true, true) scopedCallback;
-            scopedCallback.enter();
+        ScopedForeignCallback!(true, true) scopedCallback;
+        scopedCallback.enter();
 
-            AUClient plugin = cast(AUClient)( cast(void*)GetComponentInstanceStorage(audioUnit) );
-            if (plugin)
-            {
-                return cast(id)( plugin.openGUIAndReturnCocoaView() );
-            }
-            else
-                return null;
-        }
-        catch(Exception e)
+        AUClient plugin = cast(AUClient)( cast(void*)GetComponentInstanceStorage(audioUnit) );
+        if (plugin)
         {
-            unrecoverableError();
-            return null;
+            return cast(id)( plugin.openGUIAndReturnCocoaView() );
         }
+        else
+            return null;
     }
 }

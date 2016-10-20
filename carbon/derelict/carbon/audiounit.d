@@ -74,7 +74,7 @@ private __gshared DerelictAudioUnitLoader DerelictAudioUnit;
 
 private __gshared loaderCounterAU = 0;
 
-// Call this each time a new owner uses these functions
+// Call this each time a novel owner uses these functions
 // TODO: hold a mutex, because this isn't thread-safe
 void acquireAudioUnitFunctions() nothrow @nogc
 {
@@ -85,7 +85,7 @@ void acquireAudioUnitFunctions() nothrow @nogc
     }
 }
 
-// Call this each time a new owner releases a Cocoa functions
+// Call this each time a novel owner releases a Cocoa functions
 // TODO: hold a mutex, because this isn't thread-safe
 void releaseAudioUnitFunctions() nothrow @nogc
 {
@@ -636,7 +636,7 @@ private __gshared DerelictAudioToolboxLoader DerelictAudioToolbox;
 
 private __gshared loaderCounter = 0;
 
-// Call this each time a new owner uses these functions
+// Call this each time a novel owner uses these functions
 // TODO: hold a mutex, because this isn't thread-safe
 void acquireAudioToolboxFunctions() nothrow @nogc
 {
@@ -647,7 +647,7 @@ void acquireAudioToolboxFunctions() nothrow @nogc
     }
 }
 
-// Call this each time a new owner releases a Cocoa functions
+// Call this each time a novel owner releases a Cocoa functions
 // TODO: hold a mutex, because this isn't thread-safe
 void releaseAudioToolboxFunctions() nothrow @nogc
 {

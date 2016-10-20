@@ -63,15 +63,15 @@ template AUEntryPoint(alias ClientClass)
 
     const char[] AUEntryPoint =
     "import derelict.carbon;" ~
-    "extern(C) nothrow ComponentResult dplugAUEntryPoint(ComponentParameters* params, void* pPlug)" ~
+    "extern(C) ComponentResult dplugAUEntryPoint(ComponentParameters* params, void* pPlug) nothrow  @nogc" ~
     "{" ~
         "return audioUnitEntryPoint!" ~ ClientClass.stringof ~ "(params, pPlug);" ~
     "}" ~
-    "extern(C) nothrow ComponentResult dplugAUCarbonViewEntryPoint(ComponentParameters* params, void* pView)" ~
+    "extern(C) ComponentResult dplugAUCarbonViewEntryPoint(ComponentParameters* params, void* pView) nothrow  @nogc" ~
     "{" ~
         "return audioUnitCarbonViewEntry!" ~ ClientClass.stringof ~ "(params, pView);" ~
     "}" ~
-    "extern(C) nothrow void* dplugAUComponentFactoryFunction(void* inDesc)"  ~ // type-punned here to avoid the derelict.carbon import
+    "extern(C) void* dplugAUComponentFactoryFunction(void* inDesc) nothrow  @nogc"  ~ // type-punned here to avoid the derelict.carbon import
     "{" ~
         "return audioUnitComponentFactory!" ~ ClientClass.stringof ~ "(inDesc);" ~
     "}"
@@ -112,45 +112,36 @@ private void releaseAUFunctions() nothrow @nogc
     releaseAudioToolboxFunctions();
 }
 
-nothrow ComponentResult audioUnitEntryPoint(alias ClientClass)(ComponentParameters* params, void* pPlug)
+ComponentResult audioUnitEntryPoint(alias ClientClass)(ComponentParameters* params, void* pPlug) nothrow @nogc
 {
-    try
+    int select = params.what;
+
+    // Special case for the audio case that doesn't need to initialize runtime
+    // and can't support attaching the thread (it's not interruptible)
+    bool isAudioThread = (select == kAudioUnitRenderSelect);
+    if (isAudioThread)
     {
-        int select = params.what;
-
-        // Special case for the audio case that doesn't need to initialize runtime
-        // and can't support attaching the thread (it's not interruptible)
-        bool isAudioThread = (select == kAudioUnitRenderSelect);
-        if (isAudioThread)
-        {
-            AUClient auClient = cast(AUClient)pPlug;
-            return auClient.dispatcher(select, params);
-        }
-
-        ScopedForeignCallback!(false, true) scopedCallback;
-        scopedCallback.enter();
-
-        if (select == kComponentOpenSelect)
-        {
-            acquireAUFunctions();
-
-            // Create client and AUClient
-            auto client = mallocEmplace!ClientClass();
-            ComponentInstance instance = params.getCompParam!(ComponentInstance, 0, 1);
-            AUClient plugin = mallocEmplace!AUClient(client, instance);
-            SetComponentInstanceStorage( instance, cast(Handle)(cast(void*)plugin) );
-            return noErr;
-        }
-
         AUClient auClient = cast(AUClient)pPlug;
         return auClient.dispatcher(select, params);
     }
-    catch (Throwable e)
+
+    ScopedForeignCallback!(false, true) scopedCallback;
+    scopedCallback.enter();
+
+    if (select == kComponentOpenSelect)
     {
-        unrecoverableError();
+        acquireAudioUnitFunctions();
+
+        // Create client and AUClient
+        ClientClass client = mallocEmplace!ClientClass();
+        ComponentInstance instance = params.getCompParam!(ComponentInstance, 0, 1);
+        AUClient plugin = mallocEmplace!AUClient(client, instance);
+        SetComponentInstanceStorage( instance, cast(Handle)(cast(void*)plugin) );
         return noErr;
     }
 
+    AUClient auClient = cast(AUClient)pPlug;
+    return auClient.dispatcher(select, params);
 }
 
 struct CarbonViewInstance
@@ -159,74 +150,66 @@ struct CarbonViewInstance
     AUClient mPlug;
 }
 
-nothrow ComponentResult audioUnitCarbonViewEntry(alias ClientClass)(ComponentParameters* params, void* pView)
+ComponentResult audioUnitCarbonViewEntry(alias ClientClass)(ComponentParameters* params, void* pView) nothrow @nogc
 {
-    try
+    ScopedForeignCallback!(false, true) scopedCallback;
+    scopedCallback.enter();
+
+    int select = params.what;
+
+    version(logDispatcher) printf("audioUnitCarbonViewEntry thread %p select %d\n", currentThreadId(), select);
+
+    if (select == kComponentOpenSelect)
     {
-        ScopedForeignCallback!(false, true) scopedCallback;
-        scopedCallback.enter();
+        // mallocEmplace'd else it would be collected by GC the moment we look elsewhere
+        CarbonViewInstance* pCVI = mallocEmplace!CarbonViewInstance();
+        pCVI.mCI = getCompParam!(ComponentInstance, 0, 1)(params);
+        pCVI.mPlug = null;
+        SetComponentInstanceStorage(pCVI.mCI, cast(Handle)pCVI);
+        return noErr;
+    }
 
-        int select = params.what;
+    CarbonViewInstance* pCVI = cast(CarbonViewInstance*) pView;
 
-        version(logDispatcher) printf("audioUnitCarbonViewEntry thread %p select %d\n", currentThreadId(), select);
-
-        if (select == kComponentOpenSelect)
+    switch (select)
+    {
+        case kComponentCloseSelect:
         {
-            // mallocEmplace'd else it would be collected by GC the moment we look elsewhere
-            CarbonViewInstance* pCVI = mallocEmplace!CarbonViewInstance();
-            pCVI.mCI = getCompParam!(ComponentInstance, 0, 1)(params);
-            pCVI.mPlug = null;
-            SetComponentInstanceStorage(pCVI.mCI, cast(Handle)pCVI);
+            assert(pCVI !is null);
+            AUClient auClient = pCVI.mPlug;
+            if (auClient && auClient._client.hasGUI())
+            {
+                auClient._client.closeGUI();
+            }
+            destroyFree(pCVI);
             return noErr;
         }
-
-        CarbonViewInstance* pCVI = cast(CarbonViewInstance*) pView;
-
-        switch (select)
+        case kAudioUnitCarbonViewCreateSelect:
         {
-            case kComponentCloseSelect:
+            AudioUnitCarbonViewCreateGluePB* pb = cast(AudioUnitCarbonViewCreateGluePB*) params;
+            AUClient auClient = cast(AUClient) GetComponentInstanceStorage(pb.inAudioUnit);
+            pCVI.mPlug = auClient;
+            if (auClient && auClient._client.hasGUI())
             {
-                assert(pCVI !is null);
-                AUClient auClient = pCVI.mPlug;
-                if (auClient && auClient._client.hasGUI())
-                {
-                    auClient._client.closeGUI();
-                }
-                destroyFree(pCVI);
+                void* controlRef = auClient._client.openGUI(pb.inWindow, pb.inParentControl, GraphicsBackend.carbon);
+                *(pb.outControl) = cast(ControlRef)controlRef;
                 return noErr;
             }
-            case kAudioUnitCarbonViewCreateSelect:
-            {
-                AudioUnitCarbonViewCreateGluePB* pb = cast(AudioUnitCarbonViewCreateGluePB*) params;
-                AUClient auClient = cast(AUClient) GetComponentInstanceStorage(pb.inAudioUnit);
-                pCVI.mPlug = auClient;
-                if (auClient && auClient._client.hasGUI())
-                {
-                    void* controlRef = auClient._client.openGUI(pb.inWindow, pb.inParentControl, GraphicsBackend.carbon);
-                    *(pb.outControl) = cast(ControlRef)controlRef;
-                    return noErr;
-                }
-                return badComponentSelector;
-            }
-            default:
-                return badComponentSelector;
+            return badComponentSelector;
         }
-    }
-    catch(Exception e)
-    {
-        unrecoverableError();
-        return badComponentSelector;
+        default:
+            return badComponentSelector;
     }
 }
 
 //__gshared AudioComponentPlugInInterface audioComponentPlugInInterface;
 
 // Factory function entry point for Audio Component
-void* audioUnitComponentFactory(alias ClientClass)(void* inDesc) nothrow
+void* audioUnitComponentFactory(alias ClientClass)(void* inDesc) nothrow @nogc
 {
- /*   try
-    {
-        const(AudioComponentDescription)* desc = cast(const(AudioComponentDescription)*)inDesc;
+    // disabled since we don't use the Audio Component API (yet?)
+ /+
+      const(AudioComponentDescription)* desc = cast(const(AudioComponentDescription)*)inDesc;
 
         // TODO: this function is racey
 
@@ -242,13 +225,8 @@ void* audioUnitComponentFactory(alias ClientClass)(void* inDesc) nothrow
 
 
         return cast(void*)(&audioComponentPlugInInterface);
-    }
-    catch (Throwable e)
-    {
-        moreInfoForDebug(e);
-        unrecoverableError();
-        return null;
-    }*/
+
+    +/
     return null;
 }
 
@@ -264,6 +242,8 @@ enum AUInputType
 class AUClient : IHostCommand
 {
 public:
+nothrow:
+@nogc:
 
     this(Client client, ComponentInstance componentInstance)
     {
@@ -279,8 +259,8 @@ public:
         // dummmy values
         _maxFramesInProcess = _client.maxFramesInProcess();
 
-        _inputScratchBuffer.length = _maxInputs;
-        _outputScratchBuffer.length = _maxOutputs;
+        _inputScratchBuffer = mallocSlice!(AlignedBuffer!float)(_maxInputs);
+        _outputScratchBuffer = mallocSlice!(AlignedBuffer!float)(_maxOutputs);
 
         for (int i = 0; i < _maxInputs; ++i)
             _inputScratchBuffer[i] = makeAlignedBuffer!float(0, 64);
@@ -288,17 +268,16 @@ public:
         for (int i = 0; i < _maxOutputs; ++i)
             _outputScratchBuffer[i] = makeAlignedBuffer!float(0, 64);
 
-        _inputPointers.length = _maxInputs;
-        _outputPointers.length = _maxOutputs;
+        _inputPointers = mallocSlice!(float*)(_maxInputs);
+        _outputPointers = mallocSlice!(float*)(_maxOutputs);
 
-        _inputPointersNoGap.length = _maxInputs;
-        _outputPointersNoGap.length = _maxOutputs;
-
+        _inputPointersNoGap = mallocSlice!(float*)(_maxInputs);
+        _outputPointersNoGap = mallocSlice!(float*)(_maxOutputs);
 
         // Create input buses
         int numInputBuses = (_maxInputs + 1) / 2;
-        _inBuses.length = numInputBuses;
-        _inBusConnections.length = numInputBuses;
+        _inBuses = mallocSlice!BusChannels(numInputBuses);
+        _inBusConnections = mallocSlice!InputBusConnection(numInputBuses);
         foreach(i; 0..numInputBuses)
         {
             int channels = std.algorithm.comparison.min(2, _maxInputs - i * 2);
@@ -307,13 +286,13 @@ public:
             _inBuses[i].numHostChannels = -1;
             _inBuses[i].numPlugChannels = channels;
             _inBuses[i].plugChannelStartIdx = i * 2;
-            _inBuses[i].label = format("input #%d", i);
+            snprintf(_inBuses[i].label.ptr, _inBuses[i].label.length, "input #%d", i);
         }
 
         // Create output buses
 
         int numOutputBuses = (_maxOutputs + 1) / 2;
-        _outBuses.length = numOutputBuses;
+        _outBuses = mallocSlice!BusChannels(numOutputBuses);
         foreach(i; 0..numOutputBuses)
         {
             int channels = std.algorithm.comparison.min(2, _maxOutputs - i * 2);
@@ -322,7 +301,7 @@ public:
             _outBuses[i].numHostChannels = -1;
             _outBuses[i].numPlugChannels = channels;
             _outBuses[i].plugChannelStartIdx = i * 2;
-            _outBuses[i].label = format("output #%d", i);
+            snprintf(_outBuses[i].label.ptr, _outBuses[i].label.length, "output #%d", i);
         }
 
         assessInputConnections();
@@ -333,20 +312,32 @@ public:
         _globalMutex = makeMutex();
         _renderNotifyMutex = makeMutex();
 
+        _propertyListeners = makeAlignedBuffer!PropertyListener();
+        _renderNotify = makeAlignedBuffer!AURenderCallbackStruct();
     }
 
     ~this()
     {
-        debug ensureNotInGC("dplug.au.AUClient");
-        _client.destroy();
+        _client.destroyFree();
 
         _messageQueue.destroy();
 
         for (int i = 0; i < _maxInputs; ++i)
             _inputScratchBuffer[i].destroy();
+        _inputScratchBuffer.freeSlice();
 
         for (int i = 0; i < _maxOutputs; ++i)
             _outputScratchBuffer[i].destroy();
+        _outputScratchBuffer.freeSlice();
+
+        _inputPointers.freeSlice();
+        _outputPointers.freeSlice();
+        _inputPointersNoGap.freeSlice();
+        _outputPointersNoGap.freeSlice();
+
+        _inBuses.freeSlice();
+        _inBusConnections.freeSlice();
+        _outBuses.freeSlice();
     }
 
 private:
@@ -400,7 +391,7 @@ private:
         AudioUnitPropertyListenerProc mListenerProc;
         void* mProcArgs;
     }
-    PropertyListener[] _propertyListeners;
+    AlignedBuffer!PropertyListener _propertyListeners;
 
     enum MaxIOChannels = 128;
     static struct BufferList
@@ -419,24 +410,33 @@ private:
         int numHostChannels;
         int numPlugChannels;
         int plugChannelStartIdx;
-        string label; // pretty name
+        char[16] label; // pretty name
+        AudioChannelLayoutTag[1] tagsBuffer;
 
-        AudioChannelLayoutTag[] getSupportedChannelLayoutTags() nothrow
+        AudioChannelLayoutTag[] getSupportedChannelLayoutTags() nothrow @nogc
         {
             // a bit rigid right now, could be useful to support mono systematically?
             if (numPlugChannels == 1)
-                return [ kAudioChannelLayoutTag_Mono ];
+            {
+                tagsBuffer[0] = kAudioChannelLayoutTag_Mono;
+
+            }
             else if (numPlugChannels == 2)
-                return [ kAudioChannelLayoutTag_Stereo ];
+            {
+                tagsBuffer[0] = kAudioChannelLayoutTag_Stereo;
+            }
             else
-                return [ kAudioChannelLayoutTag_Unknown | numPlugChannels ];
+            {
+                tagsBuffer[0] = kAudioChannelLayoutTag_Unknown | numPlugChannels;
+            }
+            return tagsBuffer[0..1];
         }
     }
 
     BusChannels[] _inBuses;
     BusChannels[] _outBuses;
 
-    BusChannels* getBus(AudioUnitScope scope_, AudioUnitElement busIdx) nothrow
+    BusChannels* getBus(AudioUnitScope scope_, AudioUnitElement busIdx) nothrow @nogc
     {
         if (scope_ == kAudioUnitScope_Input && busIdx < _inBuses.length)
             return &_inBuses[busIdx];
@@ -519,7 +519,7 @@ private:
 
 
     UncheckedMutex _renderNotifyMutex;
-    AURenderCallbackStruct[] _renderNotify;
+    AlignedBuffer!AURenderCallbackStruct _renderNotify;
 
 
     // <scratch-buffers>
@@ -697,13 +697,13 @@ private:
                 int n = cast(int)(_propertyListeners.length);
                 for (int i = 0; i < n; ++i)
                 {
-                    PropertyListener* pListener = &_propertyListeners[i];
+                    PropertyListener pListener = _propertyListeners[i];
                     if (listener.mPropID == pListener.mPropID && listener.mListenerProc == pListener.mListenerProc)
                     {
                         return noErr; // already in
                     }
                 }
-                _propertyListeners ~= listener;
+                _propertyListeners.pushBack(listener);
                 return noErr;
             }
 
@@ -717,12 +717,11 @@ private:
                 int n = cast(int)(_propertyListeners.length);
                 for (int i = 0; i < n; ++i)
                 {
-                    PropertyListener* pListener = &_propertyListeners[i];
+                    PropertyListener pListener = _propertyListeners[i];
                     if (listener.mPropID == pListener.mPropID
                         && listener.mListenerProc == pListener.mListenerProc)
                     {
-                        _propertyListeners[i] = _propertyListeners[$-1];
-                        _propertyListeners.length = _propertyListeners.length - 1;
+                        _propertyListeners.removeAndReplaceByLastElement(i);
                         break;
                     }
                 }
@@ -747,29 +746,23 @@ private:
 
                 _renderNotifyMutex.lock();
                 scope(exit) _renderNotifyMutex.unlock();
-                _renderNotify ~= acs;
+                _renderNotify.pushBack(acs);
                 return noErr;
             }
 
             case kAudioUnitRemoveRenderNotifySelect: // 16
             {
-                static void removeElement(T)(ref T[] arr, T needle) nothrow
-                {
-                    foreach(i; 0..arr.length)
-                        if (arr[i] == needle)
-                        {
-                            arr[i] = arr[$-1];
-                            arr.length = arr.length - 1;
-                        }
-                }
-
                 AURenderCallbackStruct acs;
                 acs.inputProc = params.getCompParam!(AURenderCallback, 1, 2);
                 acs.inputProcRefCon = params.getCompParam!(void*, 0, 2);
 
                 _renderNotifyMutex.lock();
                 scope(exit) _renderNotifyMutex.unlock();
-                removeElement(_renderNotify, acs);
+
+                int iElem = _renderNotify.indexOf(acs);
+                if (iElem != -1)
+                    _renderNotify.removeAndReplaceByLastElement(iElem);
+
                 return noErr;
             }
 
@@ -804,13 +797,12 @@ private:
                 int n = cast(int)(_propertyListeners.length);
                 for (int i = 0; i < n; ++i)
                 {
-                    PropertyListener* pListener = &_propertyListeners[i];
+                    PropertyListener pListener = _propertyListeners[i];
                     if (listener.mPropID == pListener.mPropID
                         && listener.mListenerProc == pListener.mListenerProc
                         && listener.mProcArgs == pListener.mProcArgs)
                     {
-                        _propertyListeners[i] = _propertyListeners[$-1];
-                        _propertyListeners.length = _propertyListeners.length - 1;
+                        _propertyListeners.removeAndReplaceByLastElement(i);
                         break;
                     }
                 }
@@ -1090,7 +1082,7 @@ private:
                         else
                         {
                             for (int i = 0; i < numValues; ++i)
-                                CFArrayAppendValue(nameArray, toCFString(to!string(intParam.minValue + i)));
+                                CFArrayAppendValue(nameArray, convertIntToCFString(intParam.minValue + i));
                         }
 
                         *(cast(CFArrayRef*) pData) = nameArray;
@@ -1108,31 +1100,24 @@ private:
             {
                 case kAudioUnitProperty_GetUIComponentList: // 18
                 {
-                    try
+                    if ( _client.hasGUI() )
                     {
-                        if ( _client.hasGUI() )
+                        *pDataSize = ComponentDescription.sizeof;
+                        if (pData)
                         {
-                            *pDataSize = ComponentDescription.sizeof;
-                            if (pData)
-                            {
-                                ComponentDescription* pDesc = cast(ComponentDescription*) pData;
-                                pDesc.componentType = kAudioUnitCarbonViewComponentType;
-                                char[4] uid =_client.getPluginUniqueID();
-                                pDesc.componentSubType = CCONST(uid[0], uid[1], uid[2], uid[3]);
-                                char[4] vid =_client.getVendorUniqueID();
-                                pDesc.componentManufacturer = CCONST(vid[0], vid[1], vid[2], vid[3]);
-                                pDesc.componentFlags = 0;
-                                pDesc.componentFlagsMask = 0;
-                            }
-                            return noErr;
+                            ComponentDescription* pDesc = cast(ComponentDescription*) pData;
+                            pDesc.componentType = kAudioUnitCarbonViewComponentType;
+                            char[4] uid =_client.getPluginUniqueID();
+                            pDesc.componentSubType = CCONST(uid[0], uid[1], uid[2], uid[3]);
+                            char[4] vid =_client.getVendorUniqueID();
+                            pDesc.componentManufacturer = CCONST(vid[0], vid[1], vid[2], vid[3]);
+                            pDesc.componentFlags = 0;
+                            pDesc.componentFlagsMask = 0;
                         }
-                        else
-                            return kAudioUnitErr_InvalidProperty;
+                        return noErr;
                     }
-                    catch(Exception e)
-                    {
+                    else
                         return kAudioUnitErr_InvalidProperty;
-                    }
                 }
             }
 
@@ -1255,29 +1240,22 @@ private:
             {
                 case kAudioUnitProperty_CocoaUI: // 31
                 {
-                    try
+                    if ( _client.hasGUI() )
                     {
-                        if ( _client.hasGUI() )
+                        *pDataSize = AudioUnitCocoaViewInfo.sizeof;
+                        if (pData)
                         {
-                            *pDataSize = AudioUnitCocoaViewInfo.sizeof;
-                            if (pData)
-                            {
-                                const(char)[] factoryClassName = registerCocoaViewFactory(); // TODO: call unregisterCocoaViewFactory somewhere
-                                CFBundleRef pBundle = CFBundleGetMainBundle();
-                                CFURLRef url = CFBundleCopyBundleURL(pBundle);
-                                AudioUnitCocoaViewInfo* pViewInfo = cast(AudioUnitCocoaViewInfo*) pData;
-                                pViewInfo.mCocoaAUViewBundleLocation = url;
-                                pViewInfo.mCocoaAUViewClass[0] = toCFString(factoryClassName);
-                            }
-                            return noErr;
+                            const(char)[] factoryClassName = registerCocoaViewFactory(); // TODO: call unregisterCocoaViewFactory somewhere
+                            CFBundleRef pBundle = CFBundleGetMainBundle();
+                            CFURLRef url = CFBundleCopyBundleURL(pBundle);
+                            AudioUnitCocoaViewInfo* pViewInfo = cast(AudioUnitCocoaViewInfo*) pData;
+                            pViewInfo.mCocoaAUViewBundleLocation = url;
+                            pViewInfo.mCocoaAUViewClass[0] = toCFString(factoryClassName);
                         }
-                        else
-                            return kAudioUnitErr_InvalidProperty;
+                        return noErr;
                     }
-                    catch(Exception e)
-                    {
+                    else
                         return kAudioUnitErr_InvalidProperty;
-                    }
                 }
             }
 
@@ -1383,7 +1361,8 @@ private:
                     if (scope_ == kAudioUnitScope_Global)
                     {
                         Parameter parameter = _client.param(pVFS.inParamID);
-                        string paramString = fromCFString(pVFS.inString);
+                        string paramString = mallocStringFromCFString(pVFS.inString);
+                        scope(exit) paramString.freeSlice();
                         double doubleValue;
                         if (parameter.normalizedValueFromString(paramString, doubleValue))
                             pVFS.outValue = doubleValue;
@@ -1575,14 +1554,12 @@ private:
                 PresetBank bank = _client.presetBank();
                 if (bank.isValidPresetIndex(presetIndex))
                 {
-                    try
-                        bank.loadPresetFromHost(presetIndex);
-                    catch(Exception e)
-                        return kAudioUnitErr_InvalidProperty;
+                    bank.loadPresetFromHost(presetIndex);
                 }
                 else if (auPreset.presetName != null)
                 {
-                    string presetName = fromCFString(auPreset.presetName);
+                    string presetName = mallocStringFromCFString(auPreset.presetName);
+                    scope(exit) presetName.freeSlice();
                     bank.addNewDefaultPresetFromHost(presetName);
                 }
                 return noErr;
@@ -1594,7 +1571,9 @@ private:
             case kAudioUnitProperty_AUHostIdentifier:            // 46,
             {
                 AUHostIdentifier* pHostID = cast(AUHostIdentifier*) pData;
-                _daw = identifyDAW( toStringz(fromCFString(pHostID.hostName)) );
+                string dawName = mallocStringFromCFString(pHostID.hostName);
+                _daw = identifyDAW(dawName.ptr); // dawName is guaranteed zero-terminated
+                dawName.freeSlice();
                 return noErr;
             }
 
@@ -1698,7 +1677,7 @@ private:
         return noErr;
     }
 
-    ComponentResult writeState(CFPropertyListRef ppPropList) nothrow
+    ComponentResult writeState(CFPropertyListRef ppPropList) nothrow @nogc
     {
         ComponentDescription cd;
         ComponentResult r = GetComponentInfo(cast(Component) _componentInstance, &cd, null, null, null);
@@ -1722,11 +1701,15 @@ private:
             return kAudioUnitErr_InvalidPropertyValue;
         }
 
+        scope(exit) presetName.freeSlice();
+
         ubyte[] chunk;
         if (!getDataFromDict(pDict, kAUPresetDataKey, chunk))
         {
             return kAudioUnitErr_InvalidPropertyValue;
         }
+
+        scope(exit) chunk.freeSlice();
 
         try
         {
@@ -1735,6 +1718,7 @@ private:
         }
         catch(Exception e)
         {
+            e.destroyFree();
             return kAudioUnitErr_InvalidPropertyValue;
         }
         return noErr;
@@ -2209,7 +2193,7 @@ AudioThreadMessage makeMIDIMessage(MidiMessage midiMessage) pure nothrow @nogc
 }
 
 /** Four Character Constant (for AEffect->uniqueID) */
-private int CCONST(int a, int b, int c, int d) pure nothrow
+private int CCONST(int a, int b, int c, int d) pure nothrow @nogc
 {
     return (a << 24) | (b << 16) | (c << 8) | (d << 0);
 }

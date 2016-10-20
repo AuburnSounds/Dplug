@@ -986,29 +986,18 @@ extern(C) private nothrow
         if (opcodeShouldReturn0Immediately[opcode])
             return 0;
 
-        try
+        ScopedForeignCallback!(true, true) scopedCallback;
+        scopedCallback.enter();
+
+        version(logVSTDispatcher)
+            printf("dispatcher effect %p thread %p opcode %d \n", effect, currentThreadId(), opcode);
+
+        auto plugin = cast(VSTClient)(effect.user);
+        result = plugin.dispatcher(opcode, index, value, ptr, opt);
+        if (opcode == effClose)
         {
-            ScopedForeignCallback!(true, true) scopedCallback;
-            scopedCallback.enter();
-
-            version(logVSTDispatcher)
-                printf("dispatcher effect %p thread %p opcode %d \n", effect, currentThreadId(), opcode);
-
-            auto plugin = cast(VSTClient)(effect.user);
-            result = plugin.dispatcher(opcode, index, value, ptr, opt);
-            if (opcode == effClose)
-            {
-                destroyFree(plugin);
-            }
+            destroyFree(plugin);
         }
-        catch (Throwable e)
-        {
-            // The dispatcher may throw for remote and unknown reason
-            // We chose a best-effort here.
-            unrecoverableError(); // crash in debug mode
-            return 0;
-        }
-
         return result;
     }
 

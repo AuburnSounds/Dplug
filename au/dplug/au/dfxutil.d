@@ -41,9 +41,14 @@
 // Copyright (C) 2016 Auburn Sounds
 module dplug.au.dfxutil;
 
+import core.stdc.stdio: snprintf;
+
 import std.string;
+import std.exception: assumeUnique;
 
 import derelict.carbon;
+
+import dplug.core.nogc;
 
 //-----------------------------------------------------------------------------
 // The following defines and implements CoreFoundation-like handling of
@@ -192,13 +197,16 @@ CFArrayCallBacks getCFAUPresetArrayCallBacks() nothrow @nogc
 
 struct CFStrLocal
 {
+nothrow:
+@nogc:
+
     CFStringRef parent;
     alias parent this;
 
     @disable this();
     @disable this(this);
 
-    static fromString(const(char)[] str) nothrow
+    static fromString(const(char)[] str)
     {
         CFStrLocal s = void;
         s.parent = toCFString(str);
@@ -211,20 +219,33 @@ struct CFStrLocal
     }
 }
 
-CFStringRef toCFString(const(char)[] str) nothrow
+
+/// Creates a CFString from an int give up its ownership.
+CFStringRef convertIntToCFString(int number) nothrow @nogc
 {
-    return CFStringCreateWithCString(null, toStringz(str), kCFStringEncodingUTF8);
+    char[16] str;
+    snprintf(str.ptr, str.length, "%d", number); 
+    return CFStringCreateWithCString(null, str.ptr, kCFStringEncodingUTF8);
 }
 
-string fromCFString(CFStringRef cfStr) nothrow
+/// Creates a CFString from a string and give up its ownership.
+CFStringRef toCFString(const(char)[] str) nothrow @nogc
+{
+    return CFStringCreateWithCString(null, CString(str).storage, kCFStringEncodingUTF8);
+}
+
+/// Create string from a CFString, and give up its ownership.
+/// Such a string must be deallocated with `free`/`freeSlice`.
+/// It is guaranteed to finish with a terminal zero character ('\0').
+string mallocStringFromCFString(CFStringRef cfStr) nothrow @nogc
 {
     int n = cast(int)CFStringGetLength(cfStr) + 1;
-    char[] buf = new char[n];
+    char[] buf = mallocSlice!char(n);
     CFStringGetCString(cfStr, buf.ptr, n, kCFStringEncodingUTF8);
-    return fromStringz(buf.ptr).idup;
+    return assumeUnique(buf);
 }
 
-void putNumberInDict(CFMutableDictionaryRef pDict, const(char)[] key, void* pNumber, CFNumberType type) nothrow
+void putNumberInDict(CFMutableDictionaryRef pDict, const(char)[] key, void* pNumber, CFNumberType type) nothrow @nogc
 {
     CFStrLocal cfKey = CFStrLocal.fromString(key);
 
@@ -233,14 +254,14 @@ void putNumberInDict(CFMutableDictionaryRef pDict, const(char)[] key, void* pNum
     CFRelease(pValue);
 }
 
-void putStrInDict(CFMutableDictionaryRef pDict, const(char)[] key, const(char)[] value) nothrow
+void putStrInDict(CFMutableDictionaryRef pDict, const(char)[] key, const(char)[] value) nothrow @nogc
 {
     CFStrLocal cfKey = CFStrLocal.fromString(key);
     CFStrLocal cfValue = CFStrLocal.fromString(value);
     CFDictionarySetValue(pDict, cfKey, cfValue);
 }
 
-void putDataInDict(CFMutableDictionaryRef pDict, const(char)[] key, ubyte[] pChunk) nothrow
+void putDataInDict(CFMutableDictionaryRef pDict, const(char)[] key, ubyte[] pChunk) nothrow @nogc
 {
     CFStrLocal cfKey = CFStrLocal.fromString(key);
 
@@ -250,7 +271,7 @@ void putDataInDict(CFMutableDictionaryRef pDict, const(char)[] key, ubyte[] pChu
 }
 
 
-bool getNumberFromDict(CFDictionaryRef pDict, const(char)[] key, void* pNumber, CFNumberType type) nothrow
+bool getNumberFromDict(CFDictionaryRef pDict, const(char)[] key, void* pNumber, CFNumberType type) nothrow @nogc
 {
     CFStrLocal cfKey = CFStrLocal.fromString(key);
 
@@ -263,28 +284,30 @@ bool getNumberFromDict(CFDictionaryRef pDict, const(char)[] key, void* pNumber, 
     return false;
 }
 
-bool getStrFromDict(CFDictionaryRef pDict, const(char)[] key, out string value) nothrow
+/// Get a string in a dictionnary, and give up its ownership.
+bool getStrFromDict(CFDictionaryRef pDict, const(char)[] key, out string value) nothrow @nogc
 {
     CFStrLocal cfKey = CFStrLocal.fromString(key);
 
     CFStringRef pValue = cast(CFStringRef) CFDictionaryGetValue(pDict, cfKey);
     if (pValue)
     {
-        value = fromCFString(pValue);
+        value = mallocStringFromCFString(pValue);
         return true;
     }
     return false;
 }
 
-bool getDataFromDict(CFDictionaryRef pDict, string key, out ubyte[] pChunk) nothrow
+/// Gets data from a CFDataRef dictionnary entry and give up its ownership.
+/// Must be deallocated with `free`/`freeSlice`.
+bool getDataFromDict(CFDictionaryRef pDict, string key, out ubyte[] pChunk) nothrow @nogc
 {
     CFStrLocal cfKey = CFStrLocal.fromString(key);
     CFDataRef pData = cast(CFDataRef) CFDictionaryGetValue(pDict, cfKey);
     if (pData)
     {
         int n = cast(int)CFDataGetLength(pData);
-        pChunk.length = n;
-        pChunk[0..n] = CFDataGetBytePtr(pData)[0..n];
+        pChunk = ( CFDataGetBytePtr(pData)[0..n] ).mallocDup;
         return true;
     }
     return false;

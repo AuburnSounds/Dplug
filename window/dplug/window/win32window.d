@@ -457,23 +457,11 @@ version(Windows)
     {
         LRESULT windowProcCallback(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         {
-            try
-            {
-                Win32Window window = cast(Win32Window)( cast(void*)(GetWindowLongPtrA(hwnd, GWLP_USERDATA)) );
-
-                if (window !is null)
-                {
-                    return window.windowProc(hwnd, uMsg, wParam, lParam);
-                }
-                else
-                {
-                    return DefWindowProcA(hwnd, uMsg, wParam, lParam);
-                }
-            }
-            catch(Throwable t)
-            {
-                assert(false);
-            }
+            Win32Window window = cast(Win32Window)( cast(void*)(GetWindowLongPtrA(hwnd, GWLP_USERDATA)) );
+            if (window !is null)
+                return window.windowProc(hwnd, uMsg, wParam, lParam);
+            else
+                return DefWindowProcA(hwnd, uMsg, wParam, lParam);
         }
     }
 

@@ -159,8 +159,9 @@ struct LockedQueue(T)
 
 unittest
 {
-    auto lq = new LockedQueue!int(3);
-    scope(exit) lq.destroy();
+    import dplug.core.nogc;
+    auto lq = mallocEmplace!(LockedQueue!int)(3);
+    scope(exit) lq.destroyFree();
     lq.clear();
     lq.pushFront(2);
     lq.pushBack(3);

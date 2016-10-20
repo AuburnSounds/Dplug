@@ -5,6 +5,8 @@
  */
 module dplug.core.alignedbuffer;
 
+import std.traits: hasElaborateDestructor;
+
 import core.stdc.stdlib: malloc, free, realloc;
 import core.stdc.string: memcpy;
 
@@ -82,7 +84,7 @@ void alignedFree(void* aligned, size_t alignment) nothrow @nogc
     void* raw = *cast(void**)(cast(char*)aligned - size_t.sizeof);
     size_t request = requestedSize(size, alignment);
 
-    // Heuristic: if new requested size is within 50% to 100% of what is already allocated
+    // Heuristic: if a requested size is within 50% to 100% of what is already allocated
     //            then exit with the same pointer
     if ( (previousSize < request * 4) && (request <= previousSize) )
         return aligned;
@@ -194,6 +196,7 @@ unittest
 ///    length desired slice length
 ///
 void reallocBuffer(T)(ref T[] buffer, size_t length, int alignment = 1) nothrow @nogc
+    if (! (is(T == struct) && hasElaborateDestructor!T)) // struct with destructors not supported
 {
     T* pointer = cast(T*) alignedRealloc(buffer.ptr, T.sizeof * length, alignment);
     if (pointer is null)

@@ -16,10 +16,10 @@ version(VST)
 {
     import dplug.vst;
     mixin(VSTEntryPoint!Distort);
-}
+//}
 
-version(AU)
-{
+//version(AU)
+//{
     import dplug.au;
     mixin(AUEntryPoint!Distort);
 }

@@ -178,7 +178,7 @@ package:
     }
 }
 
-/// Returns: A new `UncheckedSemaphore`
+/// Returns: A newly created `UncheckedSemaphore`
 UncheckedSemaphore makeSemaphore(uint count) nothrow @nogc
 {
     return UncheckedSemaphore(count);

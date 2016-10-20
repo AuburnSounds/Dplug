@@ -622,6 +622,21 @@ nothrow:
     const(CharType)* storage = null;
     alias storage this;
 
+
+    this(const(CharType)[] s)
+    {
+        // Always copy. We can't assume anything about the input.
+        size_t len = s.length;
+        CharType* buffer = cast(CharType*) malloc((len + 1) * CharType.sizeof);
+        buffer[0..len] = s[0..len];
+        buffer[len] = '\0';
+        storage = buffer;
+        wasAllocated = true;
+    }
+    
+    // The constructor taking immutable can safely assume that such memory 
+    // has been allocated by the GC or malloc, or an allocator that align 
+    // pointer on at least 4 bytes.
     this(immutable(CharType)[] s)
     {    
         // Same optimizations that for toStringz
@@ -637,10 +652,10 @@ nothrow:
         * strings, and the storage allocator will put a 0 past the end
         * of newly allocated char[]'s.
         */
-        immutable p = s.ptr + s.length;
+        const(CharType)* p = s.ptr + s.length;
         // Is p dereferenceable? A simple test: if the p points to an
         // address multiple of 4, then conservatively assume the pointer
-        // might be pointing to a new block of memory, which might be
+        // might be pointing to another block of memory, which might be
         // unreadable. Otherwise, it's definitely pointing to valid
         // memory.
         if ((cast(size_t) p & 3) && *p == 0)
