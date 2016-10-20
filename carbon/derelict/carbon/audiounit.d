@@ -49,12 +49,12 @@ import derelict.carbon.coreservices;
 static if(Derelict_OS_Mac)
     enum libNames = "/System/Library/Frameworks/AudioUnit.framework/AudioUnit";
 else
-    enum libNames = "";  
+    enum libNames = "";
 
 
 class DerelictAudioUnitLoader : SharedLibLoader
 {
-    protected
+    public
     {
         this() nothrow @nogc
         {
@@ -78,7 +78,7 @@ private __gshared loaderCounterAU = 0;
 // TODO: hold a mutex, because this isn't thread-safe
 void acquireAudioUnitFunctions() nothrow @nogc
 {
-    if (loaderCounterAU++ == 0)  // You only live once    
+    if (loaderCounterAU++ == 0)  // You only live once
     {
         DerelictAudioUnit = mallocEmplace!DerelictAudioUnitLoader();
         DerelictAudioUnit.load();
@@ -91,10 +91,21 @@ void releaseAudioUnitFunctions() nothrow @nogc
 {
     if (--loaderCounterAU == 0)
     {
-        DerelictAudioUnit.destroyFree();
         DerelictAudioUnit.unload();
+        DerelictAudioUnit.destroyFree();
     }
 }
+
+
+unittest
+{
+    static if(Derelict_OS_Mac)
+    {
+        acquireAudioUnitFunctions();
+        releaseAudioUnitFunctions();
+    }
+}
+
 
 enum : int
 {
@@ -600,12 +611,12 @@ struct AudioUnitParameterValueFromString
 static if(Derelict_OS_Mac)
     enum libNamesToolbox = "/System/Library/Frameworks/AudioToolbox.framework/AudioToolbox";
 else
-    enum libNamesToolbox = "";  
+    enum libNamesToolbox = "";
 
 
 class DerelictAudioToolboxLoader : SharedLibLoader
 {
-    protected
+    public
     {
         nothrow @nogc:
         this()
@@ -629,7 +640,7 @@ private __gshared loaderCounter = 0;
 // TODO: hold a mutex, because this isn't thread-safe
 void acquireAudioToolboxFunctions() nothrow @nogc
 {
-    if (loaderCounter++ == 0)  // You only live once    
+    if (loaderCounter++ == 0)  // You only live once
     {
         DerelictAudioToolbox = mallocEmplace!DerelictAudioToolboxLoader();
         DerelictAudioToolbox.load();
@@ -642,9 +653,15 @@ void releaseAudioToolboxFunctions() nothrow @nogc
 {
     if (--loaderCounter == 0)
     {
-        DerelictAudioToolbox.destroyFree();
         DerelictAudioToolbox.unload();
+        DerelictAudioToolbox.destroyFree();
     }
+}
+
+unittest
+{
+    acquireAudioToolboxFunctions();
+    releaseAudioToolboxFunctions();
 }
 
 

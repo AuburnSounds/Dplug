@@ -49,7 +49,7 @@ else
 
 class DerelictCoreGraphicsLoader : SharedLibLoader
 {
-    protected
+    public
     {
         nothrow @nogc:
         this()
@@ -81,7 +81,7 @@ private __gshared loaderCounter = 0;
 // TODO: hold a mutex, because this isn't thread-safe
 void acquireCoreGraphicsFunctions() nothrow @nogc
 {
-    if (loaderCounter++ == 0)  // You only live once    
+    if (loaderCounter++ == 0)  // You only live once
     {
         DerelictCoreGraphics = mallocEmplace!DerelictCoreGraphicsLoader();
         DerelictCoreGraphics.load();
@@ -94,8 +94,17 @@ void releaseCoreGraphicsFunctions() nothrow @nogc
 {
     if (--loaderCounter == 0)
     {
-        DerelictCoreGraphics.destroyFree();
         DerelictCoreGraphics.unload();
+        DerelictCoreGraphics.destroyFree();
+    }
+}
+
+unittest
+{
+    static if(Derelict_OS_Mac)
+    {
+        acquireCoreGraphicsFunctions();
+        releaseCoreGraphicsFunctions();
     }
 }
 

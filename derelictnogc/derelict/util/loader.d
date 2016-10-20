@@ -73,7 +73,7 @@ abstract class SharedLibLoader
         {
             void* func = loadSymbol(funcName, doThrow);
             *ptr = func;
-        }    
+        }
     }
     else
     {
@@ -241,7 +241,7 @@ abstract class SharedLibLoader
             lnames[0] = libNames;
             load(lnames);
 
-            
+
         }
     }
     else

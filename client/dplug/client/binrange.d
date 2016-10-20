@@ -5,7 +5,7 @@ import std.range.primitives,
 
 import dplug.core.nogc;
 
-// Note: the exceptions thrown here are allocated with mallocEmplace, 
+// Note: the exceptions thrown here are allocated with mallocEmplace,
 // and should be released with destroyFree.
 
 public @nogc
@@ -214,9 +214,8 @@ unittest
     assert(popLE!uint(arr) == 0x03020100);
     assert(popBE!int(arr) == 0x00010203);
 
-    import std.array;
-    ubyte[] arr2;
-    auto app = appender(arr2);
+    import dplug.core.alignedbuffer;
+    auto app = makeAlignedBuffer!ubyte();
     writeBE!float(app, 1.0f);
     writeLE!double(app, 2.0);
 }

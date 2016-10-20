@@ -115,7 +115,7 @@
             "license": "Boost",
             "authors": [
                 "Mike Parker"
-            ],            
+            ],
             "libs-linux": ["dl"],
 
             "configurations": [

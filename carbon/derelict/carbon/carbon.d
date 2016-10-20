@@ -47,7 +47,7 @@ else
 
 class DerelictCarbonLoader : SharedLibLoader
 {
-    protected
+    public
     {
         nothrow @nogc:
         this()
@@ -62,7 +62,11 @@ class DerelictCarbonLoader : SharedLibLoader
             bindFunc(cast(void**)&InstallEventHandler, "InstallEventHandler");
             bindFunc(cast(void**)&GetControlEventTarget, "GetControlEventTarget");
             bindFunc(cast(void**)&GetWindowEventTarget, "GetWindowEventTarget");
-            bindFunc(cast(void**)&CreateUserPaneControl, "CreateUserPaneControl");
+
+           // Not available in macOS 10.12 in 64-bit
+            static if (size_t.sizeof == 4)
+                bindFunc(cast(void**)&CreateUserPaneControl, "CreateUserPaneControl");
+
             bindFunc(cast(void**)&GetWindowAttributes, "GetWindowAttributes");
             bindFunc(cast(void**)&HIViewGetRoot, "HIViewGetRoot");
             bindFunc(cast(void**)&HIViewFindByID, "HIViewFindByID");
@@ -70,7 +74,7 @@ class DerelictCarbonLoader : SharedLibLoader
             bindFunc(cast(void**)&HIViewAddSubview, "HIViewAddSubview");
             bindFunc(cast(void**)&GetRootControl, "GetRootControl");
             bindFunc(cast(void**)&CreateRootControl, "CreateRootControl");
-            bindFunc(cast(void**)&EmbedControl, "EmbedControl");
+
             bindFunc(cast(void**)&SizeControl, "SizeControl");
             bindFunc(cast(void**)&GetEventClass, "GetEventClass");
             bindFunc(cast(void**)&GetEventKind, "GetEventKind");
@@ -93,7 +97,7 @@ private __gshared loaderCounter = 0;
 // TODO: hold a mutex, because this isn't thread-safe
 void acquireCarbonFunctions() nothrow @nogc
 {
-    if (loaderCounter++ == 0)  // You only live once    
+    if (loaderCounter++ == 0)  // You only live once
     {
         DerelictCarbon = mallocEmplace!DerelictCarbonLoader();
         DerelictCarbon.load();
@@ -106,8 +110,16 @@ void releaseCarbonFunctions() nothrow @nogc
 {
     if (--loaderCounter == 0)
     {
-        DerelictCarbon.destroyFree();
         DerelictCarbon.unload();
+        DerelictCarbon.destroyFree();
     }
 }
 
+unittest
+{
+    static if(Derelict_OS_Mac)
+    {
+        acquireCarbonFunctions();
+        releaseCarbonFunctions();
+    }
+}

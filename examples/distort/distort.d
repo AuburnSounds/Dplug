@@ -61,7 +61,7 @@ nothrow:
     }
 
     // This is an optional overload, default is zero parameter.
-    // Caution when adding parameters: always add the indices 
+    // Caution when adding parameters: always add the indices
     // in the same order than the parameter enum.
     override Parameter[] buildParameters()
     {
@@ -70,7 +70,7 @@ nothrow:
         params.pushBack( mallocEmplace!LinearFloatParameter(paramDrive, "drive", "%", 1.0f, 2.0f, 1.0f) );
         params.pushBack( mallocEmplace!GainParameter(paramOutput, "output", 6.0, 0.0) );
         params.pushBack( mallocEmplace!BoolParameter(paramOnOff, "on/off", true) );
-        params.pushBack( mallocEmplace!IntegerParameter(paramReserved, "reserved", "", 1, 4, 3) );        
+        params.pushBack( mallocEmplace!IntegerParameter(paramReserved, "reserved", "", 1, 4, 3) );
         return params.releaseData();
     }
 
