@@ -78,7 +78,7 @@ private __gshared loaderCounterAU = 0;
 // TODO: hold a mutex, because this isn't thread-safe
 void acquireAudioUnitFunctions() nothrow @nogc
 {
-    if (loaderCounterAU++ == 0)  // You only live once    
+    if (loaderCounterAU++ == 0)  // You only live once
     {
         DerelictAudioUnit = mallocEmplace!DerelictAudioUnitLoader();
         DerelictAudioUnit.load();
@@ -93,6 +93,15 @@ void releaseAudioUnitFunctions() nothrow @nogc
     {
         DerelictAudioUnit.destroyFree();
         DerelictAudioUnit.unload();
+    }
+}
+
+unittest
+{
+    static if(Derelict_OS_Mac)
+    {
+        acquireAudioUnitFunctions();
+        releaseAudioUnitFunctions();
     }
 }
 
@@ -600,7 +609,7 @@ struct AudioUnitParameterValueFromString
 static if(Derelict_OS_Mac)
     enum libNamesToolbox = "/System/Library/Frameworks/AudioToolbox.framework/AudioToolbox";
 else
-    enum libNamesToolbox = "";  
+    enum libNamesToolbox = "";
 
 
 class DerelictAudioToolboxLoader : SharedLibLoader
@@ -629,7 +638,7 @@ private __gshared loaderCounter = 0;
 // TODO: hold a mutex, because this isn't thread-safe
 void acquireAudioToolboxFunctions() nothrow @nogc
 {
-    if (loaderCounter++ == 0)  // You only live once    
+    if (loaderCounter++ == 0)  // You only live once
     {
         DerelictAudioToolbox = mallocEmplace!DerelictAudioToolboxLoader();
         DerelictAudioToolbox.load();

@@ -93,7 +93,7 @@ private __gshared loaderCounter = 0;
 // TODO: hold a mutex, because this isn't thread-safe
 void acquireCarbonFunctions() nothrow @nogc
 {
-    if (loaderCounter++ == 0)  // You only live once    
+    if (loaderCounter++ == 0)  // You only live once
     {
         DerelictCarbon = mallocEmplace!DerelictCarbonLoader();
         DerelictCarbon.load();
@@ -111,3 +111,11 @@ void releaseCarbonFunctions() nothrow @nogc
     }
 }
 
+unittest
+{
+    static if(Derelict_OS_Mac)
+    {
+        acquireCarbonFunctions();
+        releaseCarbonFunctions();
+    }
+}

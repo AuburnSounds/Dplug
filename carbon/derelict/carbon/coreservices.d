@@ -45,7 +45,7 @@ import dplug.core.nogc;
 static if(Derelict_OS_Mac)
     enum libNames = "/System/Library/Frameworks/CoreServices.framework/CoreServices";
 else
-    enum libNames = "";    
+    enum libNames = "";
 
 
 class DerelictCoreServicesLoader : SharedLibLoader
@@ -75,7 +75,7 @@ private __gshared loaderCounter = 0;
 // TODO: hold a mutex, because this isn't thread-safe
 void acquireCoreServicesFunctions() nothrow @nogc
 {
-    if (loaderCounter++ == 0)  // You only live once    
+    if (loaderCounter++ == 0)  // You only live once
     {
         DerelictCoreServices = mallocEmplace!DerelictCoreServicesLoader();
         DerelictCoreServices.load();
@@ -90,6 +90,15 @@ void releaseCoreServicesFunctions() nothrow @nogc
     {
         DerelictCoreServices.destroyFree();
         DerelictCoreServices.unload();
+    }
+}
+
+unittest
+{
+    static if(Derelict_OS_Mac)
+    {
+        acquireCoreServicesFunctions();
+        releaseCoreServicesFunctions();
     }
 }
 
