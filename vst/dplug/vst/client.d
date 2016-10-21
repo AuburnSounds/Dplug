@@ -30,6 +30,7 @@ import dplug.core.alignedbuffer,
        dplug.core.lockedqueue,
        dplug.core.runtime,
        dplug.core.fpcontrol,
+       dplug.core.thread,
        dplug.core.unchecked_sync;
 
 import dplug.client.client,
@@ -55,6 +56,7 @@ template VSTEntryPoint(alias ClientClass)
         "}";
 }
 
+// This is the main VST entrypoint
 nothrow AEffect* myVSTEntryPoint(alias ClientClass)(HostCallbackFunction hostCallback)
 {
     if (hostCallback is null)

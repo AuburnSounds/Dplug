@@ -178,6 +178,14 @@ package:
     }
 }
 
+unittest
+{
+    UncheckedMutex mutex = makeMutex();
+    mutex.lock();
+    mutex.unlock();
+    mutex.destroy();
+}
+
 /// Returns: A newly created `UncheckedSemaphore`
 UncheckedSemaphore makeSemaphore(uint count) nothrow @nogc
 {

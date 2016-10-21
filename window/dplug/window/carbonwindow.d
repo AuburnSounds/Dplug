@@ -47,6 +47,7 @@ private:
     int _askedHeight;
     uint _timeAtCreationInMs;
     uint _lastMeasturedTimeInMs;
+    long _ticksPerSecond;
 
     bool _dirtyAreasAreNotYetComputed = true; // TODO: could have a race on this if timer thread != draw thread
     bool _firstMouseMove = true;
@@ -57,6 +58,7 @@ private:
 public:
     this(void* parentWindow, void* parentControl, IWindowListener listener, int width, int height)
     {
+        _ticksPerSecond = machTicksPerSecond();
         _listener = listener;
 
         acquireCarbonFunctions();
@@ -181,8 +183,9 @@ public:
 
     override uint getTimeMs()
     {
-        import core.time;
-        long msecs = convClockFreq(MonoTime.currTime.ticks, MonoTime.ticksPerSecond, 1_000);
+        import core.time: convClockFreq;
+        long ticks = cast(long)mach_absolute_time();
+        long msecs = convClockFreq(ticks, _ticksPerSecond, 1_000);
         return cast(uint)msecs;
     }
 
@@ -507,4 +510,36 @@ extern(C) void timerCallback(EventLoopTimerRef pTimer, void* user) nothrow @nogc
     scopedCallback.enter();
     CarbonWindow window = cast(CarbonWindow)user;
     window.onTimer();
+}
+
+
+version(OSX)
+{
+    extern(C) nothrow @nogc
+    {
+        struct mach_timebase_info_data_t
+        {
+            uint numer;
+            uint denom;
+        }
+        alias mach_timebase_info_data_t* mach_timebase_info_t;
+        alias kern_return_t = int;
+        kern_return_t mach_timebase_info(mach_timebase_info_t);
+        ulong mach_absolute_time();
+    }
+
+    long machTicksPerSecond() nothrow @nogc
+    {
+        // Be optimistic that ticksPerSecond (1e9*denom/numer) is integral. So far
+        // so good on Darwin based platforms OS X, iOS.
+        import core.internal.abort : abort;
+        mach_timebase_info_data_t info;
+        if(mach_timebase_info(&info) != 0)
+            assert(false);
+
+        long scaledDenom = 1_000_000_000L * info.denom;
+        if(scaledDenom % info.numer != 0)
+            assert(false);
+        return scaledDenom / info.numer;
+    }
 }

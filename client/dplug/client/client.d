@@ -350,7 +350,7 @@ nothrow:
     /// Override to set the plugin tail length in seconds.
     /// This is the amount of time before silence is reached with a silent input.
     /// Returns: Plugin tail size in seconds.
-    float tailSizeInSeconds() pure const nothrow @nogc 
+    float tailSizeInSeconds() pure const nothrow @nogc
     {
         return 0.100f; // default: 100ms
     }
@@ -441,8 +441,8 @@ nothrow:
     /// Returns: Plugin full name "$VENDOR $PRODUCT"
     final void getPluginFullName(char* p, int bufLength) const nothrow @nogc
     {
-        snprintf(p, bufLength, "%.*s %.*s", 
-                 _info.vendorName.length, _info.vendorName.ptr, 
+        snprintf(p, bufLength, "%.*s %.*s",
+                 _info.vendorName.length, _info.vendorName.ptr,
                  _info.pluginName.length, _info.pluginName.ptr);
     }
 
@@ -495,7 +495,7 @@ protected:
     }
 
     /// Override this methods to load/fill presets.
-    /// This function must return a slice allocated with `malloc`, 
+    /// This function must return a slice allocated with `malloc`,
     /// that contains presets crteated with `mallocEmplace`.
     Preset[] buildPresets() nothrow @nogc
     {
