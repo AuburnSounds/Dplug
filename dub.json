@@ -114,19 +114,10 @@
             "importPaths": [ "derelictnogc" ],
             "license": "Boost",
             "authors": [
-                "Mike Parker"
+                "Mike Parker",
+                "Guillaume Piolat"
             ],
-            "libs-linux": ["dl"],
-
-            "configurations": [
-                {
-                    "name": "vanilla",
-                },
-                {
-                    "name": "nogc",
-                    "versions": ["doNotUseRuntime"],
-                }
-            ]
+            "libs-linux": ["dl"]
         },
         {
             "name": "cocoa",
@@ -135,9 +126,6 @@
             "dependencies": {
                 "dplug:core": "*",
                 "dplug:derelict-nogc": "*"
-            },
-            "subConfigurations": {
-                "dplug:derelict-nogc": "nogc"
             }
         },
         {
@@ -147,9 +135,6 @@
             "dependencies": {
                 "dplug:core": "*",
                 "dplug:derelict-nogc": "*"
-            },
-            "subConfigurations": {
-                "dplug:derelict-nogc": "nogc"
             }
         }
     ]

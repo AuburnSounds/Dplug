@@ -27,6 +27,8 @@ DEALINGS IN THE SOFTWARE.
 */
 module derelict.util.sharedlib;
 
+version = doNotUseRuntime;
+
 import std.string;
 
 import derelict.util.exception,

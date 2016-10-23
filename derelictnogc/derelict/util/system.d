@@ -27,6 +27,8 @@ DEALINGS IN THE SOFTWARE.
 */
 module derelict.util.system;
 
+version = doNotUseRuntime;
+
 static if((void*).sizeof == 8) {
 	enum Derelict_Arch_64 = true;
 	enum Derelict_Arch_32 = false;

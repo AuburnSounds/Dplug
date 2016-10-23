@@ -27,6 +27,7 @@ DEALINGS IN THE SOFTWARE.
 */
 module derelict.util.exception;
 
+version = doNotUseRuntime;
 
 /++
     Base class for all exceptions thrown by Derelict packages.
