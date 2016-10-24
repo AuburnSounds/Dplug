@@ -184,11 +184,13 @@ package:
 
 unittest
 {
+    // This test crashes DMD in 32-bit,
     UncheckedMutex mutex = makeMutex();
-    mutex.lock();
-    mutex.unlock();
-    mutex.lock();
-    mutex.unlock();
+    foreach(i; 0..100)
+    {
+        mutex.lock();
+        mutex.unlock();
+    }
     mutex.destroy();
 }
 
