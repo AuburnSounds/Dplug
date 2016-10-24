@@ -498,6 +498,7 @@ extern (C) nothrow @nogc
     alias da_GetRootControl = OSErr function(WindowRef, ControlRef*);
     alias da_CreateRootControl = OSErr function(WindowRef inWindow, ControlRef* outControl);
     alias da_SizeControl = void function(ControlRef theControl, SInt16 w, SInt16 h);
+    alias da_EmbedControl = OSErr function(ControlRef inControl, ControlRef inContainer);
 }
 
 __gshared
@@ -505,6 +506,7 @@ __gshared
     da_GetRootControl GetRootControl;
     da_CreateRootControl CreateRootControl;
     da_SizeControl SizeControl;
+    da_EmbedControl EmbedControl;
 }
 
 

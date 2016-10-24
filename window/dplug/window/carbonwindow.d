@@ -127,12 +127,12 @@ public:
         {
             if (!parentControlRef)
             {
-                if (GetRootControl(pWindow, &parentControlRef) != noErr)
+                if (GetRootControl(_window, &parentControlRef) != noErr)
                 {
-                    CreateRootControl(pWindow, &parentControlRef);
+                    CreateRootControl(_window, &parentControlRef);
                 }
             }
-            status = EmbedControl(mView, parentControlRef);
+            status = EmbedControl(_view, parentControlRef);
         }
 
         if (status == noErr)
@@ -270,8 +270,6 @@ private:
                 {
                     case kEventControlDraw:
                     {
-                        assert(_isComposited);
-
                         // TODO: why is the bounds rect too large? It creates havoc in AU even without resizing.
                         /*HIRect bounds;
                         HIViewGetBounds(_view, &bounds);
@@ -292,27 +290,34 @@ private:
                         // Redraw dirty UI
                         _listener.onDraw(WindowPixelFormat.RGBA8);
 
-                        CGContextRef contextRef;
+                        if (_isComposited)
+                        {
+                            CGContextRef contextRef;
 
-                        // Get the CGContext
-                        GetEventParameter(pEvent, kEventParamCGContextRef, typeCGContextRef,
-                                            null, CGContextRef.sizeof, null, &contextRef);
+                            // Get the CGContext
+                            GetEventParameter(pEvent, kEventParamCGContextRef, typeCGContextRef,
+                                                null, CGContextRef.sizeof, null, &contextRef);
 
-                        // Flip things vertically
-                        CGContextTranslateCTM(contextRef, 0, _height);
-                        CGContextScaleCTM(contextRef, 1.0f, -1.0f);
+                            // Flip things vertically
+                            CGContextTranslateCTM(contextRef, 0, _height);
+                            CGContextScaleCTM(contextRef, 1.0f, -1.0f);
 
-                        CGRect wholeRect = CGRect(CGPoint(0, 0), CGSize(_width, _height));
+                            CGRect wholeRect = CGRect(CGPoint(0, 0), CGSize(_width, _height));
 
-                        // See: http://stackoverflow.com/questions/2261177/cgimage-from-byte-array
-                        // Recreating this image looks necessary
-                        CGImageRef image = CGImageCreate(_width, _height, 8, 32, byteStride(_width), _colorSpace,
-                                                            kCGBitmapByteOrderDefault, _dataProvider, null, false,
-                                                            kCGRenderingIntentDefault);
+                            // See: http://stackoverflow.com/questions/2261177/cgimage-from-byte-array
+                            // Recreating this image looks necessary
+                            CGImageRef image = CGImageCreate(_width, _height, 8, 32, byteStride(_width), _colorSpace,
+                                                                kCGBitmapByteOrderDefault, _dataProvider, null, false,
+                                                                kCGRenderingIntentDefault);
 
-                        CGContextDrawImage(contextRef, wholeRect, image);
+                            CGContextDrawImage(contextRef, wholeRect, image);
 
-                        CGImageRelease(image);
+                            CGImageRelease(image);
+                        }
+                        else
+                        {
+                            // TODO
+                        }
                         return true;
                     }
 

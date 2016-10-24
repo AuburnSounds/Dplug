@@ -116,7 +116,9 @@ struct UncheckedMutex
             assumeNothrowNoGC(
                 (pthread_mutex_t* handle)
                 {
-                    pthread_mutex_lock(handle);
+                    int res = pthread_mutex_lock(handle);
+                    if (res != 0)
+                        assert(false);
                 })(&m_hndl);
         }
     }
@@ -133,7 +135,9 @@ struct UncheckedMutex
             assumeNothrowNoGC(
                 (pthread_mutex_t* handle)
                 {
-                    pthread_mutex_unlock(handle);
+                    int res = pthread_mutex_unlock(handle);
+                    if (res != 0)
+                        assert(false);
                 })(&m_hndl);
         }
     }
@@ -181,6 +185,8 @@ package:
 unittest
 {
     UncheckedMutex mutex = makeMutex();
+    mutex.lock();
+    mutex.unlock();
     mutex.lock();
     mutex.unlock();
     mutex.destroy();
