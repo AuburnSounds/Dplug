@@ -125,8 +125,14 @@ public:
         }
         else
         {
-            // QuickDraw not supported
-            assert(false);
+            if (!parentControlRef)
+            {
+                if (GetRootControl(pWindow, &parentControlRef) != noErr)
+                {
+                    CreateRootControl(pWindow, &parentControlRef);
+                }
+            }
+            status = EmbedControl(mView, parentControlRef);
         }
 
         if (status == noErr)

@@ -429,20 +429,22 @@ private:
                     {
                         // Cubase may call effEditOpen and effEditGetRect simultaneously
                         _graphicsMutex.lock();
-                        scope(exit) _graphicsMutex.unlock();
 
                         int width, height;
                         if (_client.getGUISize(&width, &height))
                         {
+                            _graphicsMutex.unlock();
                             _editRect.top = 0;
                             _editRect.left = 0;
                             _editRect.right = cast(short)(width);
                             _editRect.bottom = cast(short)(height);
                             *cast(ERect**)(ptr) = &_editRect;
+
                             return 1;
                         }
                         else
                         {
+                            _graphicsMutex.unlock();
                             ptr = null;
                             return 0;
                         }
@@ -457,9 +459,8 @@ private:
                     {
                         // Cubase may call effEditOpen and effEditGetRect simultaneously
                         _graphicsMutex.lock();
-                        scope(exit) _graphicsMutex.unlock();
-
                         _client.openGUI(ptr, null, GraphicsBackend.autodetect);
+                        _graphicsMutex.unlock();
                         return 1;
                     }
                     else
@@ -471,9 +472,8 @@ private:
                     if ( _client.hasGUI() )
                     {
                         _graphicsMutex.lock();
-                        scope(exit) _graphicsMutex.unlock();
-
                         _client.closeGUI();
+                        _graphicsMutex.unlock();
                         return 1;
                     }
                     else
