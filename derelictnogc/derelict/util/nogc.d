@@ -27,6 +27,8 @@ DEALINGS IN THE SOFTWARE.
 */
 module derelict.util.nogc;
 
+version = doNotUseRuntime;
+
 import std.array;
 import std.traits;
 import core.stdc.stdlib: malloc, free;

@@ -27,6 +27,8 @@ DEALINGS IN THE SOFTWARE.
 */
 module derelict.util.loader;
 
+version = doNotUseRuntime;
+
 import std.array,
        std.string;
 
