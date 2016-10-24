@@ -80,7 +80,7 @@ struct UncheckedMutex
                     pthread_mutex_init( handle, &attr );
                 })(&m_hndl);
         }
-        _created = true;
+        _created = 1;
     }
 
     ~this() nothrow @nogc
@@ -170,7 +170,10 @@ private:
         pthread_mutex_t     m_hndl = cast(pthread_mutex_t)0;
     }
 
-    bool _created;
+    // Work-around for Issue 16636
+    // https://issues.dlang.org/show_bug.cgi?id=16636
+    // Still crash with LDC somehow
+    long _created;
 
 package:
     version( Posix )
