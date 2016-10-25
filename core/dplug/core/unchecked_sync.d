@@ -21,7 +21,10 @@ module dplug.core.unchecked_sync;
 
 public import core.time;
 
+import dplug.core.alignedbuffer;
 import dplug.core.nogc;
+
+import core.stdc.stdio;
 
 version( Windows )
 {
@@ -58,6 +61,8 @@ UncheckedMutex makeMutex() nothrow @nogc
     return UncheckedMutex(42);
 }
 
+private enum PosixMutexAlignment = 64; // Wild guess, no measurements done
+
 struct UncheckedMutex
 {
     private this(int dummyArg) nothrow @nogc
@@ -71,14 +76,18 @@ struct UncheckedMutex
         }
         else version( Posix )
         {
+            _handle = cast(pthread_mutex_t*)( alignedMalloc(pthread_mutex_t.sizeof, PosixMutexAlignment) );
+
             assumeNothrowNoGC(
                 (pthread_mutex_t* handle)
                 {
                     pthread_mutexattr_t attr = void;
                     pthread_mutexattr_init( &attr );
                     pthread_mutexattr_settype( &attr, PTHREAD_MUTEX_RECURSIVE );
-                    pthread_mutex_init( handle, &attr );
-                })(&m_hndl);
+                    pthread_mutex_init( handle, null); //&attr );
+                })(handleAddr());
+    //        printf("CREATED %p ", handleAddr());
+    //        dumpState();
         }
         _created = 1;
     }
@@ -93,11 +102,14 @@ struct UncheckedMutex
             }
             else version( Posix )
             {
+     //           printf("DESTROY %p ", handleAddr());
+     //           dumpState();
                 assumeNothrowNoGC(
                     (pthread_mutex_t* handle)
                     {
                         pthread_mutex_destroy(handle);
-                    })(&m_hndl);
+                    })(handleAddr);
+                alignedFree(_handle, PosixMutexAlignment);
             }
         }
     }
@@ -113,13 +125,17 @@ struct UncheckedMutex
         }
         else version( Posix )
         {
+    //        printf(">  LOCK %p ", handleAddr());
+    //        dumpState();
             assumeNothrowNoGC(
                 (pthread_mutex_t* handle)
                 {
                     int res = pthread_mutex_lock(handle);
                     if (res != 0)
                         assert(false);
-                })(&m_hndl);
+                })(handleAddr());
+    //        printf("<  LOCK %p ", handleAddr());
+    //        dumpState();
         }
     }
 
@@ -132,13 +148,18 @@ struct UncheckedMutex
         }
         else version( Posix )
         {
+    //        printf(">UNLOCK %p ", handleAddr());
+   //         dumpState();
             assumeNothrowNoGC(
                 (pthread_mutex_t* handle)
                 {
                     int res = pthread_mutex_unlock(handle);
                     if (res != 0)
                         assert(false);
-                })(&m_hndl);
+                })(handleAddr());
+
+  //          printf("<UNLOCK %p ", handleAddr());
+  //          dumpState();
         }
     }
 
@@ -154,10 +175,25 @@ struct UncheckedMutex
                 (pthread_mutex_t* handle)
                 {
                     return pthread_mutex_trylock(handle);
-                })(&m_hndl);
+                })(handleAddr());
             return result == 0;
         }
     }
+
+    // For debugging purpose
+    void dumpState() nothrow @nogc
+    {
+        version( Posix )
+        {
+            ubyte* pstate = cast(ubyte*)(handleAddr());
+            for (size_t i = 0; i < pthread_mutex_t.sizeof; ++i)
+            {
+                printf("%02x", pstate[i]);
+            }
+            printf("\n");
+        }
+    }
+
 
 
 private:
@@ -167,20 +203,20 @@ private:
     }
     else version( Posix )
     {
-        pthread_mutex_t     m_hndl = cast(pthread_mutex_t)0;
+        pthread_mutex_t* _handle = null;
     }
 
     // Work-around for Issue 16636
     // https://issues.dlang.org/show_bug.cgi?id=16636
     // Still crash with LDC somehow
-    long _created;
+    ubyte _created;
 
 package:
     version( Posix )
     {
-        pthread_mutex_t* handleAddr()
+        pthread_mutex_t* handleAddr() nothrow @nogc
         {
-            return &m_hndl;
+            return _handle;
         }
     }
 }
