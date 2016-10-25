@@ -18,8 +18,8 @@ script:
   - dub test --compiler=${DC} dplug:vst
   - dub test --compiler=${DC} dplug:window
   - dub test --compiler=${DC} dplug:cocoa
-  - dub test --compiler=${DC} -c vanilla dplug:derelict-nogc
-  - dub test --compiler=${DC} -c nogc dplug:derelict-nogc
+  - dub test --compiler=${DC} dplug:carbon
+  - dub test --compiler=${DC} dplug:derelict-nogc
   - dub test --compiler=${DC} -a x86 dplug:core
   - dub test --compiler=${DC} -a x86 dplug:dsp
   - dub test --compiler=${DC} -a x86 dplug:client
@@ -28,8 +28,7 @@ script:
   - dub test --compiler=${DC} -a x86 dplug:window
   - dub test --compiler=${DC} -a x86 dplug:cocoa
   - dub test --compiler=${DC} -a x86 dplug:carbon
-  - dub test --compiler=${DC} -a x86 -c vanilla dplug:derelict-nogc
-  - dub test --compiler=${DC} -a x86 -c nogc dplug:derelict-nogc
+  - dub test --compiler=${DC} -a x86 dplug:derelict-nogc
 
 
 # under creation, unstable
