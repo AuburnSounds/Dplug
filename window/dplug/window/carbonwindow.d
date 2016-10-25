@@ -125,7 +125,7 @@ public:
         }
         else
         {
-            if (!parentControlRef)
+            /*if (!parentControlRef)
             {
                 if (GetRootControl(_window, &parentControlRef) != noErr)
                 {
@@ -133,6 +133,8 @@ public:
                 }
             }
             status = EmbedControl(_view, parentControlRef);
+            */
+            assert(false);
         }
 
         if (status == noErr)
