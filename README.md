@@ -81,27 +81,20 @@ But this target isn't officially supported by D compilers.
 - What is the oldest supported OS X version?
 
 OS X 10.7+
-Probably possible to go below in cases, but impractical. To try that modify the "release" tool.
-D compilers do not support OS X 10.6 anymore so you won't get any help in case of problem.
 
 - What D compiler can possibly be used?
 
-   See `.travis.yml` for supported compilers.
+   See `.travis.yml` for supported compilers. The latest DMD or LDC should do.
 
 - Is Dplug stable?
 
-No. The interface tend to change for improvements.
-Pin the version you use using DUB version specifications.
+The interface tend to change a bit for improvements. Starting with v4 we'll issue major version tag for breaking changes, but SemVer isn't always followed.
 
 
 - Will you fix the bugs I encounter?
 
-I might but don't guarantee it. **This software is released for free. It doesn't mean support is for free.**
-If you want something to be changed, you can:
-- ask it
-- do it yourself
-- use the bounty system
-
+I can't guarantee it. **This software is released for free. It doesn't mean support is for free.**
+If you want something to be changed, you can do it yourself or use the bounty system.
 
 
 ## Comparison vs IPlug
