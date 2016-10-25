@@ -84,10 +84,8 @@ struct UncheckedMutex
                     pthread_mutexattr_t attr = void;
                     pthread_mutexattr_init( &attr );
                     pthread_mutexattr_settype( &attr, PTHREAD_MUTEX_RECURSIVE );
-                    pthread_mutex_init( handle, null); //&attr );
+                    pthread_mutex_init( handle, &attr );
                 })(handleAddr());
-    //        printf("CREATED %p ", handleAddr());
-    //        dumpState();
         }
         _created = 1;
     }
@@ -102,8 +100,6 @@ struct UncheckedMutex
             }
             else version( Posix )
             {
-     //           printf("DESTROY %p ", handleAddr());
-     //           dumpState();
                 assumeNothrowNoGC(
                     (pthread_mutex_t* handle)
                     {
@@ -125,8 +121,6 @@ struct UncheckedMutex
         }
         else version( Posix )
         {
-    //        printf(">  LOCK %p ", handleAddr());
-    //        dumpState();
             assumeNothrowNoGC(
                 (pthread_mutex_t* handle)
                 {
@@ -134,8 +128,6 @@ struct UncheckedMutex
                     if (res != 0)
                         assert(false);
                 })(handleAddr());
-    //        printf("<  LOCK %p ", handleAddr());
-    //        dumpState();
         }
     }
 
@@ -148,8 +140,6 @@ struct UncheckedMutex
         }
         else version( Posix )
         {
-    //        printf(">UNLOCK %p ", handleAddr());
-   //         dumpState();
             assumeNothrowNoGC(
                 (pthread_mutex_t* handle)
                 {
@@ -157,9 +147,6 @@ struct UncheckedMutex
                     if (res != 0)
                         assert(false);
                 })(handleAddr());
-
-  //          printf("<UNLOCK %p ", handleAddr());
-  //          dumpState();
         }
     }
 
@@ -209,7 +196,7 @@ private:
     // Work-around for Issue 16636
     // https://issues.dlang.org/show_bug.cgi?id=16636
     // Still crash with LDC somehow
-    ubyte _created;
+    long _created;
 
 package:
     version( Posix )
@@ -272,7 +259,7 @@ struct UncheckedSemaphore
             if( rc )
                 assert(false);
         }
-        _created = true;
+        _created = 1;
     }
 
     ~this() nothrow @nogc
@@ -508,6 +495,6 @@ private:
     {
         sem_t   m_hndl;
     }
-    bool _created = false;
+    ulong _created = 0;
 }
 
