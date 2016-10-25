@@ -27,8 +27,6 @@ DEALINGS IN THE SOFTWARE.
 */
 module derelict.util.exception;
 
-version = doNotUseRuntime;
-
 /++
     Base class for all exceptions thrown by Derelict packages.
 +/
@@ -128,16 +126,10 @@ enum ShouldThrow {
     functions the loader expects to find, provided of course that the app does not need
     to use those functions.
 +/
-version(doNotUseRuntime)
-    alias MissingSymbolCallbackFunc = ShouldThrow function(string symbolName) nothrow @nogc;
-else
-    alias MissingSymbolCallbackFunc = ShouldThrow function(string symbolName);
+alias MissingSymbolCallbackFunc = ShouldThrow function(string symbolName) nothrow @nogc;
 
 /// Ditto
-version(doNotUseRuntime)
-    alias MissingSymbolCallbackDg = ShouldThrow delegate(string symbolName) nothrow @nogc;
-else
-    alias MissingSymbolCallbackDg = ShouldThrow delegate(string symbolName);
+alias MissingSymbolCallbackDg = ShouldThrow delegate(string symbolName) nothrow @nogc;
 
 /// Convenient alias to use as a return value.
 alias MissingSymbolCallback = MissingSymbolCallbackDg;

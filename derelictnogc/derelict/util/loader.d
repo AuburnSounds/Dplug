@@ -27,8 +27,6 @@ DEALINGS IN THE SOFTWARE.
 */
 module derelict.util.loader;
 
-version = doNotUseRuntime;
-
 import std.array,
        std.string;
 
@@ -69,21 +67,10 @@ abstract class SharedLibLoader
      Throws:        SymbolLoadException if doThrow is true and a the symbol
                     specified by funcName is missing from the shared library.
     +/
-    version(doNotUseRuntime)
+    final void bindFunc(void** ptr, string funcName, bool doThrow = true) nothrow @nogc
     {
-        final void bindFunc(void** ptr, string funcName, bool doThrow = true) nothrow @nogc
-        {
-            void* func = loadSymbol(funcName, doThrow);
-            *ptr = func;
-        }
-    }
-    else
-    {
-        final void bindFunc(void** ptr, string funcName, bool doThrow = true)
-        {
-            void* func = loadSymbol(funcName, doThrow);
-            *ptr = func;
-        }
+        void* func = loadSymbol(funcName, doThrow);
+        *ptr = func;
     }
 
     /++
@@ -101,39 +88,12 @@ abstract class SharedLibLoader
      Throws:        SymbolLoadException if doThrow is true and a the symbol
                     specified by funcName is missing from the shared library.
     +/
-    version(doNotUseRuntime)
-    {
-        // TODO: bindFunc_stdcall currently unavailable without runtime
-        //       but this would be possible
-    }
-    else
-    {
-        void bindFunc_stdcall(Func)(ref Func f, string unmangledName)
+
+     /+   void bindFunc_stdcall(Func)(ref Func f, string unmangledName)
         {
-            static if(Derelict_OS_Windows && !Derelict_Arch_64) {
-                import std.format : format;
-                import std.traits : ParameterTypeTuple;
-
-                // get type-tuple of parameters
-                ParameterTypeTuple!f params;
-
-                size_t sizeOfParametersOnStack(A...)(A args)
-                {
-                    size_t sum = 0;
-                    foreach (arg; args) {
-                        sum += arg.sizeof;
-
-                        // align on 32-bit stack
-                        if (sum % 4 != 0)
-                            sum += 4 - (sum % 4);
-                    }
-                    return sum;
-                }
-                unmangledName = format("_%s@%s", unmangledName, sizeOfParametersOnStack(params));
-            }
-            bindFunc(cast(void**)&f, unmangledName);
+            // TODO
         }
-    }
+        +/
 
     /++
      Finds and loads a shared library, using this loader's default shared library
@@ -153,14 +113,7 @@ abstract class SharedLibLoader
                 SymbolLoadException if an expected symbol is missing from the
                 library.
     +/
-    version(doNotUseRuntime)
-    {
-        final void load() nothrow @nogc { load(_libNames); }
-    }
-    else
-    {
-        final void load() { load(_libNames); }
-    }
+    final void load() nothrow @nogc { load(_libNames); }
 
     /++
      Finds and loads any version of a shared library greater than or equal to
@@ -186,21 +139,10 @@ abstract class SharedLibLoader
                 SymbolLoadException if an expected symbol is missing from the
                 library.
     +/
-    version(doNotUseRuntime)
+    final void load(SharedLibVersion minRequiredVersion) nothrow @nogc
     {
-        final void load(SharedLibVersion minRequiredVersion) nothrow @nogc
-        {
-            configureMinimumVersion(minRequiredVersion);
-            load();
-        }
-    }
-    else
-    {
-        final void load(SharedLibVersion minRequiredVersion)
-        {
-            configureMinimumVersion(minRequiredVersion);
-            load();
-        }
+        configureMinimumVersion(minRequiredVersion);
+        load();
     }
 
     /++
@@ -224,41 +166,22 @@ abstract class SharedLibLoader
                 SymbolLoadException if an expected symbol is missing from the
                 library.
     +/
-    version(doNotUseRuntime)
+    final void load(string libNames) nothrow @nogc
     {
-        final void load(string libNames) nothrow @nogc
-        {
-            if(libNames == null)
-                libNames = _libNames;
+        if(libNames == null)
+            libNames = _libNames;
 
-            // TODO support multiple paths
-      /*      auto lnames = libNames.split(",");
-            foreach(ref string l; lnames)
-                l = l.strip();
-            load(lnames);
-            */
+        // TODO support multiple paths
+  /*      auto lnames = libNames.split(",");
+        foreach(ref string l; lnames)
+            l = l.strip();
+        load(lnames);
+        */
 
-            //
-            string[1] lnames;
-            lnames[0] = libNames;
-            load(lnames);
-
-
-        }
-    }
-    else
-    {
-        final void load(string libNames)
-        {
-            if(libNames == null)
-                libNames = _libNames;
-
-            auto lnames = libNames.split(",");
-            foreach(ref string l; lnames)
-                l = l.strip();
-
-            load(lnames);
-        }
+        //
+        string[1] lnames;
+        lnames[0] = libNames;
+        load(lnames);
     }
 
     /++
@@ -312,21 +235,10 @@ abstract class SharedLibLoader
                 SymbolLoadException if an expected symbol is missing from the
                 library.
     +/
-    version(doNotUseRuntime)
+    final void load(string[] libNames) nothrow @nogc
     {
-        final void load(string[] libNames) nothrow @nogc
-        {
-            _lib.load(libNames);
-            loadSymbols();
-        }
-    }
-    else
-    {
-        final void load(string[] libNames)
-        {
-            _lib.load(libNames);
-            loadSymbols();
-        }
+        _lib.load(libNames);
+        loadSymbols();
     }
 
     /++
@@ -356,21 +268,10 @@ abstract class SharedLibLoader
                 SymbolLoadException if an expected symbol is missing from the
                 library.
     +/
-    version(doNotUseRuntime)
+    final void load(string[] libNames, SharedLibVersion minRequiredVersion) nothrow @nogc // templated to infer attributes
     {
-        final void load(string[] libNames, SharedLibVersion minRequiredVersion) nothrow @nogc // templated to infer attributes
-        {
-            configureMinimumVersion(minRequiredVersion);
-            load(libNames);
-        }
-    }
-    else
-    {
-        final void load(string[] libNames, SharedLibVersion minRequiredVersion) // templated to infer attributes
-        {
-            configureMinimumVersion(minRequiredVersion);
-            load(libNames);
-        }
+        configureMinimumVersion(minRequiredVersion);
+        load(libNames);
     }
 
     /++
@@ -385,49 +286,6 @@ abstract class SharedLibLoader
     @property @nogc nothrow
     final bool isLoaded() { return _lib.isLoaded; }
 
-    /++
-     Sets the callback that will be called when an expected symbol is
-     missing from the shared library.
-
-     Params:
-        callback =      A delegate that returns a value of type
-                        derelict.util.exception.ShouldThrow and accepts
-                        a string as the sole parameter.
-    +/
-    @property @nogc nothrow
-    final void missingSymbolCallback(MissingSymbolCallbackDg callback)
-    {
-        _lib.missingSymbolCallback = callback;
-    }
-
-    /++
-     Sets the callback that will be called when an expected symbol is
-     missing from the shared library.
-
-     Params:
-        callback =      A pointer to a function that returns a value of type
-                        derelict.util.exception.ShouldThrow and accepts
-                        a string as the sole parameter.
-    +/
-    @property @nogc nothrow
-    final void missingSymbolCallback(MissingSymbolCallbackFunc callback)
-    {
-        _lib.missingSymbolCallback = callback;
-    }
-
-    /++
-     Returns the currently active missing symbol callback.
-
-     This exists primarily as a means to save the current callback before
-     setting a new one. It's useful, for example, if the new callback needs
-     to delegate to the old one.
-    +/
-    @property @nogc nothrow
-    final MissingSymbolCallback missingSymbolCallback()
-    {
-        return _lib.missingSymbolCallback;
-    }
-
 protected:
     /++
      Must be implemented by subclasses to load all of the symbols from a
@@ -436,10 +294,7 @@ protected:
      This method is called by the load methods.
     +/
     // TODO
-    version(doNotUseRuntime)
-        abstract void loadSymbols() nothrow @nogc;
-    else
-        abstract void loadSymbols();
+    abstract void loadSymbols() nothrow @nogc;
 
     /++
      Allows a subclass to install an exception handler for specific versions
@@ -449,20 +304,10 @@ protected:
      any of the overloads of the load method that take a SharedLibVersion will
      cause a compile time assert to fire.
     +/
-    version(doNotUseRuntime)
+    nothrow @nogc
+    void configureMinimumVersion(SharedLibVersion minVersion)
     {
-        nothrow @nogc
-        void configureMinimumVersion(SharedLibVersion minVersion)
-        {
-            assert(0, "SharedLibVersion is not supported by this loader.");
-        }
-    }
-    else
-    {
-        void configureMinimumVersion(SharedLibVersion minVersion)
-        {
-            assert(0, "SharedLibVersion is not supported by this loader.");
-        }
+        assert(0, "SharedLibVersion is not supported by this loader.");
     }
 
     /++
@@ -480,20 +325,10 @@ protected:
                     specified by funcName is missing from the shared library.
      Returns:       The symbol matching the name parameter.
     +/
-    version(doNotUseRuntime)
+    nothrow @nogc
+    void* loadSymbol(string name, bool doThrow = true)
     {
-        nothrow @nogc
-        void* loadSymbol(string name, bool doThrow = true)
-        {
-            return _lib.loadSymbol(name, doThrow);
-        }
-    }
-    else
-    {
-        void* loadSymbol(string name, bool doThrow = true)
-        {
-            return _lib.loadSymbol(name, doThrow);
-        }
+        return _lib.loadSymbol(name, doThrow);
     }
 
     /// Returns a reference to the shared library wrapped by this loader.

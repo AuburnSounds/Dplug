@@ -27,7 +27,6 @@ DEALINGS IN THE SOFTWARE.
 */
 module derelict.util.nogc;
 
-version = doNotUseRuntime;
 
 import std.array;
 import std.traits;
@@ -46,10 +45,10 @@ nothrow:
 @nogc:
 
     const(CharType)* storage = null;
-    alias storage this;    
+    alias storage this;
 
     this(immutable(CharType)[] s)
-    {    
+    {
         // Same optimizations that for toStringz
         if (s.empty)
         {
@@ -91,7 +90,7 @@ nothrow:
 
     @disable this(this);
 
-private:    
+private:
     bool wasAllocated = false;
 }
 

@@ -27,8 +27,6 @@ DEALINGS IN THE SOFTWARE.
 */
 module derelict.util.sharedlib;
 
-version = doNotUseRuntime;
-
 import std.string;
 
 import derelict.util.exception,
@@ -157,53 +155,25 @@ struct SharedLib
                 SymbolLoadException if an expected symbol is missing from the
                 library.
     +/
-    version(doNotUseRuntime)
+    nothrow @nogc
+    void load(string[] names)
     {
-        nothrow @nogc
-        void load(string[] names)
-        {
-            if(isLoaded)
-                return;
+        if(isLoaded)
+            return;
 
-            foreach(n; names) {
-                _hlib = LoadSharedLib(n);
-                if(_hlib !is null) {
-                    _name = n;
-                    break;
-                }
-            }
-
-            if(!isLoaded) {
-                assert(false);
+        foreach(n; names) {
+            _hlib = LoadSharedLib(n);
+            if(_hlib !is null) {
+                _name = n;
+                break;
             }
         }
-    }
-    else
-    {
-        void load(string[] names)
-        {
-            if(isLoaded)
-                return;
 
-            string[] failedLibs;
-            string[] reasons;
-
-            foreach(n; names) {
-                _hlib = LoadSharedLib(n);
-                if(_hlib !is null) {
-                    _name = n;
-                    break;
-                }
-
-                failedLibs ~= n;
-                reasons ~= GetErrorStr();
-            }
-
-            if(!isLoaded) {
-                SharedLibLoadException.throwNew(failedLibs, reasons);
-            }
+        if(!isLoaded) {
+            assert(false);
         }
     }
+
 
     /++
      Loads the symbol specified by symbolName from a shared library.
@@ -216,39 +186,16 @@ struct SharedLib
      Throws:        SymbolLoadException if doThrow is true and a the symbol
                     specified by funcName is missing from the shared library.
     +/
-    version(doNotUseRuntime)
+    // Unfortunately we can't let @nogc be inferred because this function is not a template.
+    nothrow @nogc
+    void* loadSymbol(string symbolName, bool doThrow = true)
     {
-        // Unfortunately we can't let @nogc be inferred because this function is not a template.
-        nothrow @nogc
-        void* loadSymbol(string symbolName, bool doThrow = true)
-        {
-            void* sym = GetSymbol(_hlib, symbolName);
-            if(doThrow && !sym) {
-                auto result = ShouldThrow.Yes;
-                if(_onMissingSym !is null)
-                    result = _onMissingSym(symbolName);
-                if(result == ShouldThrow.Yes)
-                    assert(false);
-            }
-
-            return sym;
+        void* sym = GetSymbol(_hlib, symbolName);
+        if(doThrow && !sym) {
+            assert(false);
         }
-    }
-    else
-    {
-        void* loadSymbol(string symbolName, bool doThrow = true)
-        {
-            void* sym = GetSymbol(_hlib, symbolName);
-            if(doThrow && !sym) {
-                auto result = ShouldThrow.Yes;
-                if(_onMissingSym !is null)
-                    result = _onMissingSym(symbolName);
-                if(result == ShouldThrow.Yes)
-                    throw new SymbolLoadException(_name, symbolName);
-            }
 
-            return sym;
-        }
+        return sym;
     }
 
     /++
@@ -282,40 +229,8 @@ struct SharedLib
                         derelict.util.exception.ShouldThrow and accepts
                         a string as the sole parameter.
     +/
-    @property @nogc nothrow
-    void missingSymbolCallback(MissingSymbolCallbackDg callback)
-    {
-        _onMissingSym = callback;
-    }
-
-    /++
-     Sets the callback that will be called when an expected symbol is
-     missing from the shared library.
-
-     Params:
-        callback =      A pointer to a function that returns a value of type
-                        derelict.util.exception.ShouldThrow and accepts
-                        a string as the sole parameter.
-    +/
-    @property @nogc nothrow
-    void missingSymbolCallback(MissingSymbolCallbackFunc callback)
-    {
-        import std.functional : toDelegate;
-        _onMissingSym = toDelegate(callback);
-    }
-
-    /++
-     Returns the currently active missing symbol callback.
-
-     This exists primarily as a means to save the current callback before
-     setting a new one. It's useful, for example, if the new callback needs
-     to delegate to the old one.
-    +/
-    @property @nogc nothrow
-    MissingSymbolCallback missingSymbolCallback() { return _onMissingSym; }
 
 private:
     string _name;
     SharedLibHandle _hlib;
-    private MissingSymbolCallbackDg _onMissingSym;
 }
