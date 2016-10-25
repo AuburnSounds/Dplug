@@ -47,6 +47,7 @@ private:
     int _askedHeight;
     uint _timeAtCreationInMs;
     uint _lastMeasturedTimeInMs;
+    long _ticksPerSecond;
 
     bool _dirtyAreasAreNotYetComputed = true; // TODO: could have a race on this if timer thread != draw thread
     bool _firstMouseMove = true;
@@ -57,6 +58,7 @@ private:
 public:
     this(void* parentWindow, void* parentControl, IWindowListener listener, int width, int height)
     {
+        _ticksPerSecond = machTicksPerSecond();
         _listener = listener;
 
         acquireCarbonFunctions();
@@ -123,8 +125,14 @@ public:
         }
         else
         {
-            // QuickDraw not supported
-            assert(false);
+            if (!parentControlRef)
+            {
+                if (GetRootControl(_window, &parentControlRef) != noErr)
+                {
+                    CreateRootControl(_window, &parentControlRef);
+                }
+            }
+            status = EmbedControl(_view, parentControlRef);
         }
 
         if (status == noErr)
@@ -181,8 +189,9 @@ public:
 
     override uint getTimeMs()
     {
-        import core.time;
-        long msecs = convClockFreq(MonoTime.currTime.ticks, MonoTime.ticksPerSecond, 1_000);
+        import core.time: convClockFreq;
+        long ticks = cast(long)mach_absolute_time();
+        long msecs = convClockFreq(ticks, _ticksPerSecond, 1_000);
         return cast(uint)msecs;
     }
 
@@ -261,8 +270,6 @@ private:
                 {
                     case kEventControlDraw:
                     {
-                        assert(_isComposited);
-
                         // TODO: why is the bounds rect too large? It creates havoc in AU even without resizing.
                         /*HIRect bounds;
                         HIViewGetBounds(_view, &bounds);
@@ -283,27 +290,34 @@ private:
                         // Redraw dirty UI
                         _listener.onDraw(WindowPixelFormat.RGBA8);
 
-                        CGContextRef contextRef;
+                        if (_isComposited)
+                        {
+                            CGContextRef contextRef;
 
-                        // Get the CGContext
-                        GetEventParameter(pEvent, kEventParamCGContextRef, typeCGContextRef,
-                                            null, CGContextRef.sizeof, null, &contextRef);
+                            // Get the CGContext
+                            GetEventParameter(pEvent, kEventParamCGContextRef, typeCGContextRef,
+                                                null, CGContextRef.sizeof, null, &contextRef);
 
-                        // Flip things vertically
-                        CGContextTranslateCTM(contextRef, 0, _height);
-                        CGContextScaleCTM(contextRef, 1.0f, -1.0f);
+                            // Flip things vertically
+                            CGContextTranslateCTM(contextRef, 0, _height);
+                            CGContextScaleCTM(contextRef, 1.0f, -1.0f);
 
-                        CGRect wholeRect = CGRect(CGPoint(0, 0), CGSize(_width, _height));
+                            CGRect wholeRect = CGRect(CGPoint(0, 0), CGSize(_width, _height));
 
-                        // See: http://stackoverflow.com/questions/2261177/cgimage-from-byte-array
-                        // Recreating this image looks necessary
-                        CGImageRef image = CGImageCreate(_width, _height, 8, 32, byteStride(_width), _colorSpace,
-                                                            kCGBitmapByteOrderDefault, _dataProvider, null, false,
-                                                            kCGRenderingIntentDefault);
+                            // See: http://stackoverflow.com/questions/2261177/cgimage-from-byte-array
+                            // Recreating this image looks necessary
+                            CGImageRef image = CGImageCreate(_width, _height, 8, 32, byteStride(_width), _colorSpace,
+                                                                kCGBitmapByteOrderDefault, _dataProvider, null, false,
+                                                                kCGRenderingIntentDefault);
 
-                        CGContextDrawImage(contextRef, wholeRect, image);
+                            CGContextDrawImage(contextRef, wholeRect, image);
 
-                        CGImageRelease(image);
+                            CGImageRelease(image);
+                        }
+                        else
+                        {
+                            // TODO
+                        }
                         return true;
                     }
 
@@ -507,4 +521,36 @@ extern(C) void timerCallback(EventLoopTimerRef pTimer, void* user) nothrow @nogc
     scopedCallback.enter();
     CarbonWindow window = cast(CarbonWindow)user;
     window.onTimer();
+}
+
+
+version(OSX)
+{
+    extern(C) nothrow @nogc
+    {
+        struct mach_timebase_info_data_t
+        {
+            uint numer;
+            uint denom;
+        }
+        alias mach_timebase_info_data_t* mach_timebase_info_t;
+        alias kern_return_t = int;
+        kern_return_t mach_timebase_info(mach_timebase_info_t);
+        ulong mach_absolute_time();
+    }
+
+    long machTicksPerSecond() nothrow @nogc
+    {
+        // Be optimistic that ticksPerSecond (1e9*denom/numer) is integral. So far
+        // so good on Darwin based platforms OS X, iOS.
+        import core.internal.abort : abort;
+        mach_timebase_info_data_t info;
+        if(mach_timebase_info(&info) != 0)
+            assert(false);
+
+        long scaledDenom = 1_000_000_000L * info.denom;
+        if(scaledDenom % info.numer != 0)
+            assert(false);
+        return scaledDenom / info.numer;
+    }
 }

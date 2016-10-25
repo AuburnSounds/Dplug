@@ -184,7 +184,7 @@ public:
         assert(isPowerOf2(divider));
 
         _count = 0; // no data at start
-        _readIndex = 0; 
+        _readIndex = 0;
         _indexMask = size - 1;
         _inputTimestamp = 0;
         _dividerMask = divider - 1;
@@ -240,7 +240,7 @@ public:
     // Note that there is a disconnect between the data that is dropped, and the data that is returned.
     // The same data may well be returned multiple time given a large buffer, or zero time.
     int readOldestDataAndDropSome(T[] output, double dt, int keepAtLeast = 0) nothrow @nogc
-    {        
+    {
         assert(dt >= 0);
         _timeDebt += dt * 1.01; // add 1% because it's better to be a bit short in buffer than too large.
         if (_dataMutex.tryLock())
@@ -278,7 +278,7 @@ public:
             _count -= numSamplesToDrop;
             _readIndex += numSamplesToDrop;
             return pointsAvailable;
-        } 
+        }
         else
             return 0;
     }

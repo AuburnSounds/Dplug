@@ -74,6 +74,7 @@ class DerelictCarbonLoader : SharedLibLoader
             bindFunc(cast(void**)&HIViewAddSubview, "HIViewAddSubview");
             bindFunc(cast(void**)&GetRootControl, "GetRootControl");
             bindFunc(cast(void**)&CreateRootControl, "CreateRootControl");
+            bindFunc(cast(void**)&EmbedControl, "EmbedControl");
 
             bindFunc(cast(void**)&SizeControl, "SizeControl");
             bindFunc(cast(void**)&GetEventClass, "GetEventClass");

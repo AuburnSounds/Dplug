@@ -130,7 +130,7 @@ ComponentResult audioUnitEntryPoint(alias ClientClass)(ComponentParameters* para
 
     if (select == kComponentOpenSelect)
     {
-        acquireAudioUnitFunctions();
+        acquireAUFunctions();
 
         // Create client and AUClient
         ClientClass client = mallocEmplace!ClientClass();
@@ -182,6 +182,7 @@ ComponentResult audioUnitCarbonViewEntry(alias ClientClass)(ComponentParameters*
                 auClient._client.closeGUI();
             }
             destroyFree(pCVI);
+            releaseAUFunctions(); // release librariesx
             return noErr;
         }
         case kAudioUnitCarbonViewCreateSelect:

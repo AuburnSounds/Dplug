@@ -80,7 +80,7 @@ struct UncheckedMutex
                     pthread_mutex_init( handle, &attr );
                 })(&m_hndl);
         }
-        _created = true;
+        _created = 1;
     }
 
     ~this() nothrow @nogc
@@ -116,7 +116,9 @@ struct UncheckedMutex
             assumeNothrowNoGC(
                 (pthread_mutex_t* handle)
                 {
-                    pthread_mutex_lock(handle);
+                    int res = pthread_mutex_lock(handle);
+                    if (res != 0)
+                        assert(false);
                 })(&m_hndl);
         }
     }
@@ -133,7 +135,9 @@ struct UncheckedMutex
             assumeNothrowNoGC(
                 (pthread_mutex_t* handle)
                 {
-                    pthread_mutex_unlock(handle);
+                    int res = pthread_mutex_unlock(handle);
+                    if (res != 0)
+                        assert(false);
                 })(&m_hndl);
         }
     }
@@ -166,7 +170,10 @@ private:
         pthread_mutex_t     m_hndl = cast(pthread_mutex_t)0;
     }
 
-    bool _created;
+    // Work-around for Issue 16636
+    // https://issues.dlang.org/show_bug.cgi?id=16636
+    // Still crash with LDC somehow
+    long _created;
 
 package:
     version( Posix )
@@ -176,6 +183,18 @@ package:
             return &m_hndl;
         }
     }
+}
+
+unittest
+{
+    // This test crashes DMD in 32-bit,
+    UncheckedMutex mutex = makeMutex();
+    foreach(i; 0..100)
+    {
+        mutex.lock();
+        mutex.unlock();
+    }
+    mutex.destroy();
 }
 
 /// Returns: A newly created `UncheckedSemaphore`

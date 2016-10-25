@@ -209,3 +209,4 @@ IWindow createWindow(void* parentInfo, void* controlInfo, IWindowListener listen
         static assert(false, "Unsupported OS.");
     }
 }
+
