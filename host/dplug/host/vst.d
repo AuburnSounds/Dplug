@@ -90,6 +90,7 @@ final class VSTPluginHost : IPluginHost
 
         // TODO: disabled because this breaks the second time the DLL is unloaded on Windows
         // unload dynlib
+        // Note: probably fixed now
         //  _lib.unload();
     }
 

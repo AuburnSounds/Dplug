@@ -91,7 +91,7 @@ nothrow:
 
         void setLevels(int numLevels)
         {
-            // TODO cleanup excess levels
+            // FUTURE: cleanup excess levels
             // should not happen until we have resizing
             if (numLevels < levels.length)
             {

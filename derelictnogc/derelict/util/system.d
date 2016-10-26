@@ -53,7 +53,6 @@ else enum Derelict_OS_Posix = false;
 version(Android) enum Derelict_OS_Android = true;
 else enum Derelict_OS_Android = false;
 
-// TODO
 enum Derelict_OS_iOS = false;
 enum Derelict_OS_WinRT = false;
 

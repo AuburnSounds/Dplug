@@ -13,7 +13,7 @@ import dplug.core.alignedbuffer;
 
 /// Generate a sine.
 /// It turns out it's very stable, stable enough for table generation at least.
-/// TODO: resync method
+/// FUTURE: resync method
 struct SineGenerator(T)
 {
     void initialize(T initPhase, T frequency, T samplerate) nothrow @nogc
@@ -48,7 +48,7 @@ enum WaveformType
 
 /// Generates anti-aliased waveform generation through
 /// procedurally generated mipmapped tables.
-/// TODO: only integer phase
+/// FUTURE: only integer phase
 struct Wavetable
 {
     void initialize(int largestSize, WaveformType waveform) nothrow @nogc

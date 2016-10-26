@@ -295,7 +295,7 @@ private:
         CIContext ciContext = nsContext.getCIContext();
 
         // Updates internal buffers in case of startup/resize
-        // TODO: why is the bounds rect too large? It creates havoc in AU even without resizing.
+        // FUTURE: why is the bounds rect too large? It creates havoc in AU even without resizing.
         {
             /*
             NSRect boundsRect = _view.bounds();
@@ -517,7 +517,7 @@ alias CocoaScopedCallback = ScopedForeignCallback!(true, true);
 // Overridden function gets called with an id, instead of the self pointer.
 // So we have to get back the D class object address.
 // Big thanks to Mike Ash (@macdev)
-// TODO: why are these methods members???
+// MAYDO: why are these methods members???
 extern(C)
 {
     void keyDown(id self, SEL selector, id event) nothrow @nogc

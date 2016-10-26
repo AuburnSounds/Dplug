@@ -97,6 +97,13 @@ I can't guarantee it. **This software is released for free. It doesn't mean supp
 If you want something to be changed, you can do it yourself or use the bounty system.
 
 
+- How are `TODO`, `FUTURE` and `MAYDO` comments defined?
+
+`TODO` represent a bug a user could possibly bump into.
+`FUTURE` represent an future enhancement that could concern speed, maintainability or correctness but doesn't affect the experience much, if any.
+`MAYDO` represent things that we could want to do given enough time.
+
+
 ## Comparison vs IPlug
 
 Pros:

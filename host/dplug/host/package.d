@@ -15,7 +15,7 @@ IPluginHost createPluginHost(string dynlibPath)
     import std.string;
     import derelict.util.sharedlib;
 
-    // TODO support OSX plugin bundles
+    // FUTURE support OSX plugin bundles
     SharedLib lib;
     lib.load([ dynlibPath ]);
     

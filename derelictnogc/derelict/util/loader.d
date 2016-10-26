@@ -74,28 +74,6 @@ abstract class SharedLibLoader
     }
 
     /++
-     Binds a function pointer to a stdcall symbol in this loader's shared library.
-
-     On builds for anything other than 32-bit Windows, this simply delegates to bindFunc.
-
-     Params:
-        ptr =       Pointer to a function pointer that will be used as the bind
-                    point.
-        funcName =  The name of the symbol to be bound.
-        doThrow =   If true, a SymbolLoadException will be thrown if the symbol
-                    is missing. If false, no exception will be thrown and the
-                    ptr parameter will be set to null.
-     Throws:        SymbolLoadException if doThrow is true and a the symbol
-                    specified by funcName is missing from the shared library.
-    +/
-
-     /+   void bindFunc_stdcall(Func)(ref Func f, string unmangledName)
-        {
-            // TODO
-        }
-        +/
-
-    /++
      Finds and loads a shared library, using this loader's default shared library
      names and default supported shared library version.
 
@@ -171,7 +149,7 @@ abstract class SharedLibLoader
         if(libNames == null)
             libNames = _libNames;
 
-        // TODO support multiple paths
+        // FUTURE support multiple paths
   /*      auto lnames = libNames.split(",");
         foreach(ref string l; lnames)
             l = l.strip();
@@ -293,7 +271,6 @@ protected:
 
      This method is called by the load methods.
     +/
-    // TODO
     abstract void loadSymbols() nothrow @nogc;
 
     /++

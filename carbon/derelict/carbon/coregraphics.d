@@ -31,8 +31,6 @@
 */
 module derelict.carbon.coregraphics;
 
-// TODO: this should go in its own Derelict package
-
 import derelict.util.system;
 import derelict.util.loader;
 

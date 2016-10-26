@@ -35,7 +35,7 @@ import derelict.carbon.corefoundation;
 import derelict.carbon.coregraphics;
 
 
-alias WindowRef = void*; // TODO: this actually belongs to QD framework
+alias WindowRef = void*; // This actually belongs to QD framework
 
 // <HIToolbox/CarbonEventsCore.h.h>
 
@@ -622,7 +622,7 @@ __gshared
 
 // <HIToolbox/HIWindowViews.h>
 
-static immutable HIViewID kHIViewWindowContentID = HIViewID(CCONST('w', 'i', 'n', 'd'), 1); // TODO: is it portable across OSX versions?
+static immutable HIViewID kHIViewWindowContentID = HIViewID(CCONST('w', 'i', 'n', 'd'), 1); // MAYDO: is it portable across OSX versions? Seems so.
 
 // <HIToolbox/MacWindows.h>
 

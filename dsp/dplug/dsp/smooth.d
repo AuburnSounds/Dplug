@@ -505,7 +505,7 @@ public:
 
         _isInverse = isInverse;
 
-        // TODO: move this in processing whenever attack or release changes
+        // FUTURE: move this in processing whenever attack or release changes
         calcMults( sampleRate, a, adly, enva.ptr, enva5 );
         calcMults( sampleRate, b, bdly, envb.ptr, envb5 );
 

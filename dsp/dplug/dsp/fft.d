@@ -190,7 +190,7 @@ struct Segmenter(T)
                 assert(0 < samplesToDrop && samplesToDrop <= _segmentSize);
                 int remainingSamples = _segmentSize - samplesToDrop;
 
-                // TODO: use ring buffer instead of copy?
+                // FUTURE: use ring buffer instead of copy?
                 memmove(_buffer.ptr, _buffer.ptr + samplesToDrop, T.sizeof * remainingSamples);
                 _index = remainingSamples;
 
@@ -389,7 +389,7 @@ public:
             forwardFFT!float(fftData[0.._fftSize]);
         }
 
-        return _segmenter.feed(x, &processSegment); // TODO: not sure this doesn't allocate
+        return _segmenter.feed(x, &processSegment);
     }
 
 private:

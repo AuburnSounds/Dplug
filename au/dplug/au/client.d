@@ -54,7 +54,7 @@ version = supportCarbonUI;
 // - no support for MIDI
 // - no support for UI resize
 
-// TODO: thread safety isn't very fine-grained, and there is 3 mutex lock in the audio thread
+// FUTURE: thread safety isn't very fine-grained, and there is 3 mutex lock in the audio thread
 
 
 template AUEntryPoint(alias ClientClass)
@@ -212,7 +212,7 @@ void* audioUnitComponentFactory(alias ClientClass)(void* inDesc) nothrow @nogc
  /+
       const(AudioComponentDescription)* desc = cast(const(AudioComponentDescription)*)inDesc;
 
-        // TODO: this function is racey
+        // FUTURE: this function is racey
 
         attachToRuntimeIfNeeded();
         acquireAudioUnitFunctions();
@@ -1124,7 +1124,7 @@ private:
 
             case kAudioUnitProperty_AudioChannelLayout:
             {
-                return kAudioUnitErr_InvalidProperty; // TODO?: IPlug says "this seems wrong but works"
+                return kAudioUnitErr_InvalidProperty; // MAYDO IPlug says "this seems wrong but works"
             }
 
             case kAudioUnitProperty_TailTime: // 20
@@ -2025,7 +2025,7 @@ private:
 
         override bool requestResize(int width, int height)
         {
-            return false; // TODO implement for AU
+            return false; // FUTURE implement for AU
         }
 
         DAW _daw = DAW.Unknown;

@@ -476,7 +476,7 @@ protected:
 
         reflow(box2i(0, 0, _askedWidth, _askedHeight));
 
-        // TODO: maybe not destroy the whole mipmap?
+        // FUTURE: maybe not destroy the whole mipmap?
         _diffuseMap.size(5, width, height);
         _depthMap.size(4, width, height);
         _materialMap.size(0, width, height);

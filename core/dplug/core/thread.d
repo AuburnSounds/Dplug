@@ -269,7 +269,7 @@ nothrow:
     this(int numThreads = 0, size_t stackSize = 0)
     {
         // Create the queues first
-        size_t maxTasksPushedAtOnce = 512; // TODO, find something clever
+        size_t maxTasksPushedAtOnce = 512; // FUTURE, find something clever
         _taskQueue = lockedQueue!Task(maxTasksPushedAtOnce);
         _taskFinishedSemaphore = makeSemaphore(0);
 
@@ -326,7 +326,7 @@ nothrow:
             _taskQueue.pushBack(Task(TaskType.callThisDelegate, i, dg));
 
         // Wait for all tasks to be finished
-        // TODO: this way to synchronize is inefficient
+        // FUTURE: this way to synchronize is inefficient
         foreach(int i; 0..count)
             _taskFinishedSemaphore.wait();
     }
@@ -351,7 +351,7 @@ private:
     }
 
     // What worker threads do
-    // TODO: threads come here with bad context with struct delegates
+    // MAYDO: threads come here with bad context with struct delegates
     void workerThreadFunc() nothrow @nogc
     {
         while(true)

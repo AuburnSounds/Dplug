@@ -125,7 +125,7 @@ void hline(bool CHECKED=true, V, COLOR)(auto ref V v, int x1, int x2, int y, COL
 void vline(bool CHECKED=true, V, COLOR)(auto ref V v, int x, int y1, int y2, COLOR c)
 {
 	mixin(CheckVLine);
-	foreach (y; y1..y2) // TODO: optimize
+	foreach (y; y1..y2) // FUTURE: optimize
 		v[x, y] = c;
 }
 
@@ -254,7 +254,7 @@ void fillCircle(V, COLOR)(auto ref V v, int x, int y, int r, COLOR c)
 	int x1 = min(x+r, v.w-1);
 	int y1 = min(y+r, v.h-1);
 	int rs = sqr(r);
-	// TODO: optimize
+	// FUTURE: optimize
 	foreach (py; y0..y1+1)
 		foreach (px; x0..x1+1)
 			if (sqr(x-px) + sqr(y-py) < rs)
@@ -630,7 +630,7 @@ void aaFillRect(bool CHECKED=true, F:float, V, COLOR)(auto ref V v, F x1, F y1, 
 void aaLine(bool CHECKED=true, V, COLOR)(auto ref V v, float x1, float y1, float x2, float y2, COLOR color)
 	if (isWritableView!V && is(COLOR : ViewColor!V))
 {
-	// Simplistic straight-forward implementation. TODO: optimize
+	// Simplistic straight-forward implementation. FUTURE: optimize
 	if (abs(x1-x2) > abs(y1-y2))
 		for (auto x=x1; sign(x1-x2)!=sign(x2-x); x += sign(x2-x1))
 			v.aaPutPixel!CHECKED(x, itpl(y1, y2, x, x1, x2), color);

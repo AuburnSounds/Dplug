@@ -660,8 +660,11 @@ void releaseAudioToolboxFunctions() nothrow @nogc
 
 unittest
 {
-    acquireAudioToolboxFunctions();
-    releaseAudioToolboxFunctions();
+    static if(Derelict_OS_Mac)
+    {
+        acquireAudioToolboxFunctions();
+        releaseAudioToolboxFunctions();
+    }
 }
 
 

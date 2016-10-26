@@ -14,7 +14,7 @@ import dplug.core,
        dplug.dsp.delayline,
        dplug.dsp.window;
 
-// TODO:
+// FUTURE:
 // - bandstop/bandstop IR
 // - naive convolution
 
@@ -99,7 +99,7 @@ int tempBufferSizeForMinPhase(T)(T[] inputImpulse) nothrow @nogc
 /// From an impulse, computes a minimum-phase impulse
 /// Courtesy of kasaudio, based on Aleksey Vaneev's algorithm
 /// See: http://www.kvraudio.com/forum/viewtopic.php?t=197881
-/// TODO: does it preserve amplitude?
+/// MAYDO: does it preserve amplitude?
 void minimumPhaseImpulse(T)(T[] inoutImpulse,  Complex!T[] tempStorage) nothrow @nogc // alloc free version
 {
     assert(tempStorage.length >= tempBufferSizeForMinPhase(inoutImpulse));

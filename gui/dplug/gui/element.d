@@ -145,7 +145,7 @@ nothrow:
     final void addChild(UIElement element)
     {
         element._parent = this;
-        _children.pushBack(element); // TODO: this break traceability
+        _children.pushBack(element); 
     }
 
     // This function is meant to be overriden.
@@ -317,7 +317,7 @@ nothrow:
             child.mouseMove(x, y, dx, dy, mstate);
         }
 
-        if (_position.contains(vec2i(x, y))) // TODO: something fine-grained
+        if (_position.contains(vec2i(x, y))) // FUTURE: something more fine-grained?
         {
             if (!_mouseOver)
                 onMouseEnter();
