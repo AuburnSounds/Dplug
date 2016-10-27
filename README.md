@@ -2,26 +2,26 @@
 
 # Dplug [![Build Status](https://travis-ci.org/AuburnSounds/dplug.png?branch=master)](https://travis-ci.org/AuburnSounds/dplug) <a href="https://code.dlang.org/packages/dplug" title="Go to dplug"><img src="https://img.shields.io/dub/v/dplug.svg" alt="Dub version"></a> <a href="https://code.dlang.org/packages/dplug" title="Go to dplug"><img src="https://img.shields.io/dub/dt/dplug.svg" alt="Dub downloads"></a>
 
-`Dplug` is a library for crafting native audio plugins as simply as possible.
+`Dplug` is a library for crafting audio plugins as simply as possible.
 
 
 ## Current features
 
 - Creating VST 2.4 plugins on Windows and Mac OS X, 32-bit and 64-bit
 - Creating Audio Unit v2 plugins for Mac OS X, 32-bit and 64-bit
-- Comes with a few music DSP algorithms
-- Comes with a number of `tools` to make plugin creation faster (bundling, color correction, regression tests)
-- Graphics renderer inspired by PBR to keep installers small
+- Comes with basic music DSP algorithms
+- Comes with a number of `tools` to make plugin creation faster (bundling, color correction, regression tests, stress tests)
+- Dplug is using Physically Based Rendering to keep installers small: http://www.auburnsounds.com/blog/2016-09-16_PBR-for-Audio-Software-Interfaces.html
 
 ![Example screenshot](https://www.auburnsounds.com/images/panagement.jpg)
 ![Example screenshot](https://www.auburnsounds.com/images/graillon.jpg "With a bit of work")
 
 ### Release notes
 
-- v4.x.y (in progress)
+- v4.x.y (work in progress)
   * macOS Sierra support fixed.
   * To allow that, the D runtime is now linked with but disabled. No GC, no TLS, no global ctor/dtor.
-  * does not rely on gfm:core anymore.
+  * Does not rely on external libraries anymore. Everything is self-contained in `dplug`.
 
 - v3.x.y (9th May 2016):
   * Audio Unit compatibility added, with both Cocoa and Carbon UI. What is still missing from AU: Audio Component API, sandboxing, v3. In other words it's on parity with IPlug but not JUCE.
@@ -75,8 +75,7 @@ Like most D programs, you can build it by typing `dub`.
 
 - What is the oldest supported Windows version?
 
-Windows Vista. Users report plugins made with both DMD and LDC work on Windows XP.
-But this target isn't officially supported by D compilers.
+Windows Vista. Users report plugins made with both DMD and LDC work on Windows XP. But XP isn't officially supported by D compilers.
 
 - What is the oldest supported OS X version?
 
@@ -111,12 +110,10 @@ Pros:
   - No need to use a MacOSX SDK.
 
 Cons:
-  - Less battle-tested in general.
-  - API may change without notice (pin the version of dplug you use).
   - AAX and VST3 unimplemented.
   - No resizeable UI yet.
   - No HDPI support yet.
-  - No modal windows, and no plans for it.
+  - No modal windows.
 
 ## Licenses
 
@@ -156,35 +153,42 @@ Other source files fall under the Boost 1.0 license.
 ## Contents of the tree
 
 ### dplug:client
-  * Abstract plugin client interface. Currently implemented once for VST.
+  * Abstract plugin client interface. Currently implemented for VST and AU.
 
 ### dplug:host
-  * Abstract plugin host interface.
+  * Abstract plugin host interface. Basic support for VST hosting.
 
 ### dplug:vst
-  * VST SDK D bindings
-  * VST plugin client
+  * VST 2.4 plugin client implementation
 
 ### dplug:au
-  * Audio Unit v2 plugin client
-  * Allows both Carbon and Cocoa windows
+  * Audio Unit v2 plugin client implementation
 
 ### dplug:window
    * implements windowing for Win32, Cocoa and Carbon
 
 ### dplug:gui
    * Needed for plugins that do have an UI
-   * Toolkit includes common widgets (knob/slider/switch/logo/label)
-   * PBR-based renderer for a fully procedural UI (updates are lazy and parallel)
+   * Toolkit includes common widgets (knob, slider, switch, logo, level, label...)
+   * Physically Based Renderer for a fully procedural UI
 
 ### dplug:dsp
   * Basic support for audio processing:
-    - FFT and windowing functions (include STFT with tunable overlap and zero-phase windowing)
-    - FIR, 1st order IIR filters and RBJ biquads (no higher order IIR filters)
+    - FFT and windowing functions (STFT with overlap and zero-phase windowing)
+    - FIR, 1st order IIR filters and RBJ biquads
     - mipmapped wavetables for antialiased oscillators
     - noise generation including white/pink/demo noise
     - various kinds of smoothers and envelopes
     - delay-line and interpolation
+
+### dplug:derelict-nogc
+   * Enables dynamic library loading without using the D runtime
+
+### dplug:carbon
+   * Dynamic Carbon bindings
+
+### dplug:cocoa
+   * Dynamic Cocoa bindings
 
 ### Examples
    * `examples/distort`: mandatory distortion plugin
@@ -196,5 +200,5 @@ Other source files fall under the Boost 1.0 license.
    * `tools/release`: DUB frontend to build Mac bundles and use LDC with proper envvars
    * `tools/process`: plugin host for testing audio processing speed/reproducibility
    * `tools/wav-compare`: comparison of WAV files
-   * `tools/stress-plugin`: makes multiple load of plugins while processing audio mainly to test GUI opening
+   * `tools/stress-plugin`: makes multiple load of plugins while processing audio mainly to test GUI opening speed
    * `Lift-Gamma-Gain-Contrast`: adjust color correction curves on a finished UI http://www.gamesfrommars.fr/lift-gamma-gain-contrast/
