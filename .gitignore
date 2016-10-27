@@ -5,6 +5,7 @@ dub.selections.json
 *.sublime-workspace
 *.a
 __test__library__
+__test__vanilla__
 *.lib
 *.exe
 *.visualdproj
@@ -21,3 +22,4 @@ tools/release/release
 tools/stress-plugin/stress-plugin
 tools/wav-compare/wav-compare
 builds
+repro*.sh
