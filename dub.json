@@ -55,7 +55,6 @@
             "dependencies": {
                 "dplug:core": "*",
                 "dplug:vst": "*",
-                "dplug:derelict-nogc": "*",
                 "dplug:window": "*"
             }
         },

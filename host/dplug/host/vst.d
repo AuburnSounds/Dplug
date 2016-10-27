@@ -7,8 +7,7 @@ module dplug.host.vst;
 
 import std.string;
 
-import derelict.util.sharedlib;
-
+import dplug.core.sharedlib;
 import dplug.core.nogc;
 import dplug.host.host;
 import dplug.vst;
