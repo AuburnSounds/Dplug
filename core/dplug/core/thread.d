@@ -321,14 +321,28 @@ nothrow:
             return;
         }
 
-        // push the tasks on the queue
-        foreach(int i; 0..count)
-            _taskQueue.pushBack(Task(TaskType.callThisDelegate, i, dg));
+        enum noActualConcurrency = false;
 
-        // Wait for all tasks to be finished
-        // FUTURE: this way to synchronize is inefficient
-        foreach(int i; 0..count)
-            _taskFinishedSemaphore.wait();
+        static if (noActualConcurrency)
+        {
+            // Useful for debug purpose.
+            // Do not use concurrency, use the caller thread only.
+            foreach(int i; 0..count)
+            {
+                dg(i);
+            }
+        }
+        else
+        {
+            // push the tasks on the queue
+            foreach(int i; 0..count)
+                _taskQueue.pushBack(Task(TaskType.callThisDelegate, i, dg));
+
+            // Wait for all tasks to be finished
+            // FUTURE: this way to synchronize is inefficient
+            foreach(int i; 0..count)
+                _taskFinishedSemaphore.wait();
+        }
     }
 
 private:

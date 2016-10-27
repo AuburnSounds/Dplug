@@ -2,7 +2,7 @@
 *
 * Various @nogc alternatives. This file includes parts of std.process, std.random, std.uuid.
 *
-* Authors:   
+* Authors:
 *    $(HTTP guillaumepiolat.fr, Guillaume Piolat)
 *    $(LINK2 https://github.com/kyllingstad, Lars Tandle Kyllingstad),
 *    $(LINK2 https://github.com/schveiguy, Steven Schveighoffer),
@@ -82,7 +82,7 @@ unittest
 void destroyNoGC(T)(T x) nothrow @nogc if (is(T == class) || is(T == interface))
 {
     assumeNothrowNoGC(
-        (T x) 
+        (T x)
         {
             return destroy(x);
         })(x);
@@ -92,7 +92,7 @@ void destroyNoGC(T)(T x) nothrow @nogc if (is(T == class) || is(T == interface))
 void destroyNoGC(T)(ref T obj) nothrow @nogc if (is(T == struct))
 {
     assumeNothrowNoGC(
-        (ref T x) 
+        (ref T x)
         {
             return destroy(x);
         })(obj);
@@ -101,17 +101,17 @@ void destroyNoGC(T)(ref T obj) nothrow @nogc if (is(T == struct))
 void destroyNoGC(T : U[n], U, size_t n)(ref T obj) nothrow @nogc
 {
     assumeNothrowNoGC(
-        (T x) 
+        (T x)
         {
             return destroy(x);
         })(obj);
 }*/
 
-void destroyNoGC(T)(ref T obj) nothrow @nogc 
+void destroyNoGC(T)(ref T obj) nothrow @nogc
     if (!is(T == struct) && !is(T == class) && !is(T == interface))
 {
     assumeNothrowNoGC(
-                      (ref T x) 
+                      (ref T x)
                       {
                           return destroy(x);
                       })(obj);
@@ -323,7 +323,7 @@ unittest
 
 //
 // GC-proof resources: for when the GC does exist.
-// 
+//
 
 /// Destructors called by the GC enjoy a variety of limitations and
 /// relying on them is dangerous.
@@ -460,20 +460,20 @@ void mergeSort(T)(T[] inoutElements, T[] scratchBuffer, nogcComparisonFunction!T
         int j = iMiddle;
 
         // While there are elements in the left or right runs...
-        for (int k = iBegin; k < iEnd; k++) 
+        for (int k = iBegin; k < iEnd; k++)
         {
             // If left run head exists and is <= existing right run head.
-            if ( i < iMiddle && ( j >= iEnd || (comparison(A[i], A[j]) <= 0) ) ) 
+            if ( i < iMiddle && ( j >= iEnd || (comparison(A[i], A[j]) <= 0) ) )
             {
                 B[k] = A[i];
                 i = i + 1;
-            } 
-            else 
+            }
+            else
             {
                 B[k] = A[j];
-                j = j + 1;    
+                j = j + 1;
             }
-        } 
+        }
     }
 
     // Sort the given run of array A[] using array B[] as a source.
@@ -545,11 +545,11 @@ void unrecoverableError() nothrow @nogc
     debug
     {
         // Crash unconditionally
-        assert(false); 
+        assert(false);
     }
     else
     {
-        // There is a trade-off here, if we crash immediately we will be 
+        // There is a trade-off here, if we crash immediately we will be
         // correctly identified by the user as the origin of the bug, which
         // is always helpful.
         // But crashing may in many-case also crash the host, which is not very friendly.
@@ -634,12 +634,12 @@ nothrow:
         storage = buffer;
         wasAllocated = true;
     }
-    
-    // The constructor taking immutable can safely assume that such memory 
-    // has been allocated by the GC or malloc, or an allocator that align 
+
+    // The constructor taking immutable can safely assume that such memory
+    // has been allocated by the GC or malloc, or an allocator that align
     // pointer on at least 4 bytes.
     this(immutable(CharType)[] s)
-    {    
+    {
         // Same optimizations that for toStringz
         if (s.empty)
         {
@@ -707,7 +707,7 @@ void browseNoGC(string url) nothrow @nogc
         auto curl = CString(url).storage;
         const(char)* browser = getenv("BROWSER");
         if (browser)
-        {   
+        {
             browser = strdup(browser);
             args[0] = browser;
             args[1] = curl;
