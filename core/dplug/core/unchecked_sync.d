@@ -107,6 +107,7 @@ struct UncheckedMutex
                     })(handleAddr);
                 alignedFree(_handle, PosixMutexAlignment);
             }
+            _created = 0;
         }
     }
 
@@ -210,7 +211,6 @@ package:
 
 unittest
 {
-    // This test crashes DMD in 32-bit,
     UncheckedMutex mutex = makeMutex();
     foreach(i; 0..100)
     {
@@ -292,6 +292,7 @@ struct UncheckedSemaphore
                 int rc = sem_destroy( &m_hndl );
                 assert( !rc, "Unable to destroy semaphore" );
             }
+            _created = 0;
         }
     }
 
