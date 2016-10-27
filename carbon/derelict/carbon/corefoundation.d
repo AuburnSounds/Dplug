@@ -58,7 +58,7 @@ module derelict.carbon.corefoundation;
 
 import core.stdc.config;
 
-import derelict.util.loader;
+import dplug.core.sharedlib;
 import dplug.core.nogc;
 
 version(OSX)

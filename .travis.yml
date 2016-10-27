@@ -19,7 +19,6 @@ script:
   - dub test --compiler=${DC} dplug:window
   - dub test --compiler=${DC} dplug:cocoa
   - dub test --compiler=${DC} dplug:carbon
-  - dub test --compiler=${DC} dplug:derelict-nogc
   - dub test --compiler=${DC} dplug:au
   - dub test --compiler=${DC} -a x86 dplug:core
   - dub test --compiler=${DC} -a x86 dplug:dsp
@@ -29,6 +28,5 @@ script:
   - dub test --compiler=${DC} -a x86 dplug:window
   - dub test --compiler=${DC} -a x86 dplug:cocoa
   - dub test --compiler=${DC} -a x86 dplug:carbon
-  - dub test --compiler=${DC} -a x86 dplug:derelict-nogc
   - dub test --compiler=${DC} -a x86 dplug:au
 

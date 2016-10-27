@@ -32,7 +32,7 @@
 module derelict.carbon.carbon;
 
 
-import derelict.util.loader;
+import dplug.core.sharedlib;
 
 import derelict.carbon.hitoolbox;
 

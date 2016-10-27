@@ -31,14 +31,14 @@
 */
 module derelict.cocoa.cocoa;
 
-import derelict.util.loader;
+import dplug.core.sharedlib;
+import dplug.core.nogc;
 
 import derelict.cocoa.runtime;
 import derelict.cocoa.foundation;
 import derelict.cocoa.appkit;
 import derelict.cocoa.coreimage;
 
-import dplug.core.nogc;
 
 version(OSX)
     enum libNames = "/System/Library/Frameworks/Cocoa.framework/Cocoa";

@@ -33,10 +33,8 @@ module derelict.carbon.coregraphics;
 
 // TODO: this should go in its own Derelict package
 
-import derelict.util.loader;
-
+import dplug.core.sharedlib;
 import derelict.carbon.corefoundation;
-
 import dplug.core.nogc;
 
 version(OSX)

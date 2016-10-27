@@ -9,7 +9,6 @@ dub test dplug:graphics
 dub test dplug:gui
 dub test dplug:cocoa
 dub test dplug:carbon
-dub test dplug:derelict-nogc
 
 dub test -a x86 --compiler=ldc2 dplug:core
 dub test -a x86 --compiler=ldc2 dplug:client
@@ -22,5 +21,3 @@ dub test -a x86 --compiler=ldc2 dplug:cocoa
 
 # Not all functions are here
 #dub test -a x86 --compiler=ldc2 dplug:carbon
-
-dub test -a x86 --compiler=ldc2 dplug:derelict-nogc

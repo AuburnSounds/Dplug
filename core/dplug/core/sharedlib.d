@@ -27,7 +27,7 @@ DEALINGS IN THE SOFTWARE.
 */
 module derelict.util.sharedlib;
 
-import std.string;
+//import std.string;
 
 import dplug.core.nogc;
 
@@ -158,4 +158,43 @@ nothrow:
 private:
     string _name;
     SharedLibHandle _hlib;
+}
+
+
+abstract class SharedLibLoader
+{
+nothrow:
+@nogc:
+
+    this(string libName)
+    {
+        _libName = libName;
+    }
+
+    /// Binds a function pointer to a symbol in this loader's shared library.
+    final void bindFunc(void** ptr, string funcName)
+    {
+        void* func = _lib.loadSymbol(funcName);
+        *ptr = func;
+    }
+
+    final void load()
+    {
+        _lib.load(_libName);
+        loadSymbols();
+    }
+
+    final void unload()
+    {
+        _lib.unload();
+    }
+
+protected:
+
+    /// Implemented by subclasses to load all symbols with `bindFunc`.
+    abstract void loadSymbols();
+
+private:
+    string _libName;
+    SharedLib _lib;
 }

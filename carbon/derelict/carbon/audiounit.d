@@ -37,8 +37,7 @@ module derelict.carbon.audiounit;
 
 import core.stdc.config;
 
-import derelict.util.loader;
-
+import dplug.core.sharedlib;
 import dplug.core.nogc;
 import derelict.carbon.corefoundation;
 import derelict.carbon.coreaudio;

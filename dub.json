@@ -17,7 +17,11 @@
         {
             "name": "core",
             "sourcePaths": [ "core/dplug/core" ],
-            "importPaths": [ "core" ]
+            "importPaths": [ "core" ],
+            "authors": [
+                "Guillaume Piolat",
+                "Mike Parker (derelict-util bits)"
+            ]
         },
         {
             "name": "dsp",
@@ -106,26 +110,11 @@
             }
         },
         {
-            "name": "derelict-nogc",
-            "sourcePaths": [ "derelictnogc/derelict/util" ],
-            "importPaths": [ "derelictnogc" ],
-            "license": "Boost",
-            "authors": [
-                "Mike Parker",
-                "Guillaume Piolat"
-            ],
-            "libs-linux": ["dl"],
-            "dependencies": {
-                "dplug:core": "*"
-            }
-        },
-        {
             "name": "cocoa",
             "sourcePaths": [ "cocoa/derelict/cocoa" ],
             "importPaths": [ "cocoa" ],
             "dependencies": {
-                "dplug:core": "*",
-                "dplug:derelict-nogc": "*"
+                "dplug:core": "*"
             }
         },
         {
@@ -133,8 +122,7 @@
             "sourcePaths": [ "carbon/derelict/carbon" ],
             "importPaths": [ "carbon" ],
             "dependencies": {
-                "dplug:core": "*",
-                "dplug:derelict-nogc": "*"
+                "dplug:core": "*"
             }
         }
     ]

@@ -35,7 +35,7 @@ module derelict.carbon.coreservices;
 
 import core.stdc.config;
 
-import derelict.util.loader;
+import dplug.core.sharedlib;
 
 import derelict.carbon.corefoundation;
 
