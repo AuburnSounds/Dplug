@@ -29,27 +29,15 @@ module derelict.util.sharedlib;
 
 import std.string;
 
-import derelict.util.exception,
-       derelict.util.nogc,
-       derelict.util.system;
+import dplug.core.nogc;
 
 alias void* SharedLibHandle;
 
-static if(Derelict_OS_Posix) {
+version(Posix)
+{
     import core.sys.posix.dlfcn;
 
-    enum LDFlags
-    {
-        rtldLocal = RTLD_LOCAL,
-        rtldLazy = RTLD_LAZY,
-        rtldNow = RTLD_NOW,
-        rtldGlobal = RTLD_GLOBAL,
-    }
-
-    void derelictLDFlags(LDFlags flags) { ldFlags = flags; }
-
     private {
-        LDFlags ldFlags = LDFlags.rtldNow;
 
         SharedLibHandle LoadSharedLib(string libName) nothrow @nogc
         {
@@ -58,7 +46,7 @@ static if(Derelict_OS_Posix) {
             import derelict.util.nogc;
             auto lib = CString(libName);
             printf("dlopen('%s')\n", lib.storage);*/
-            return dlopen(CString(libName), ldFlags);
+            return dlopen(CString(libName), RTLD_NOW);
         }
 
         void UnloadSharedLib(SharedLibHandle hlib) nothrow @nogc
@@ -86,7 +74,9 @@ static if(Derelict_OS_Posix) {
             return to!string(err);
         }
     }
-} else static if(Derelict_OS_Windows) {
+}
+else version(Windows)
+{
     import core.sys.windows.windows;
 
     private {
@@ -125,110 +115,45 @@ static if(Derelict_OS_Posix) {
     static assert(0, "Derelict does not support this platform.");
 }
 
-/++
- Low-level wrapper of the even lower-level operating-specific shared library
- loading interface.
-
- While this interface can be used directly in applications, it is recommended
- to use the interface specified by derelict.util.loader.SharedLibLoader
- to implement bindings. SharedLib is designed to be the base of a higher-level
- loader, but can be used in a program if only a handful of functions need to
- be loaded from a given shared library.
-+/
+/// Shared library ressource
 struct SharedLib
 {
-    /++
-     Finds and loads a shared library, using names to find the library
-     on the file system.
+nothrow:
+@nogc:
 
-     If multiple library names are specified in names, a SharedLibLoadException
-     will only be thrown if all of the libraries fail to load. It will be the head
-     of an exceptin chain containing one instance of the exception for each library
-     that failed.
-
-
-     Params:
-        names = An array containing one or more shared library names,
-                with one name per index.
-     Throws:    SharedLibLoadException if the shared library or one of its
-                dependencies cannot be found on the file system.
-                SymbolLoadException if an expected symbol is missing from the
-                library.
-    +/
-    nothrow @nogc
-    void load(string[] names)
+    void load(string name)
     {
         if(isLoaded)
             return;
-
-        foreach(n; names) {
-            _hlib = LoadSharedLib(n);
-            if(_hlib !is null) {
-                _name = n;
-                break;
-            }
-        }
-
-        if(!isLoaded) {
+        _name = name;
+        _hlib = LoadSharedLib(name);
+        if(_hlib is null)
             assert(false);
-        }
     }
 
-
-    /++
-     Loads the symbol specified by symbolName from a shared library.
-
-     Params:
-        symbolName =        The name of the symbol to load.
-        doThrow =   If true, a SymbolLoadException will be thrown if the symbol
-                    is missing. If false, no exception will be thrown and the
-                    ptr parameter will be set to null.
-     Throws:        SymbolLoadException if doThrow is true and a the symbol
-                    specified by funcName is missing from the shared library.
-    +/
-    // Unfortunately we can't let @nogc be inferred because this function is not a template.
-    nothrow @nogc
-    void* loadSymbol(string symbolName, bool doThrow = true)
+    void* loadSymbol(string symbolName)
     {
+        assert(isLoaded());
         void* sym = GetSymbol(_hlib, symbolName);
-        if(doThrow && !sym) {
+        if(!sym)
             assert(false);
-        }
-
         return sym;
     }
 
-    /++
-     Unloads the shared library from memory, invalidating all function pointers
-     which were assigned a symbol by one of the load methods.
-    +/
-    nothrow @nogc
     void unload()
     {
-        if(isLoaded) {
+        if(isLoaded())
+        {
             UnloadSharedLib(_hlib);
             _hlib = null;
         }
     }
 
-
-    /// Returns the name of the shared library.
-    @property @nogc nothrow
-    string name() { return _name; }
-
     /// Returns true if the shared library is currently loaded, false otherwise.
-    @property @nogc nothrow
-    bool isLoaded() { return (_hlib !is null); }
-
-    /++
-     Sets the callback that will be called when an expected symbol is
-     missing from the shared library.
-
-     Params:
-        callback =      A delegate that returns a value of type
-                        derelict.util.exception.ShouldThrow and accepts
-                        a string as the sole parameter.
-    +/
+    bool isLoaded()
+    {
+        return (_hlib !is null);
+    }
 
 private:
     string _name;

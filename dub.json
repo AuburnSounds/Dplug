@@ -114,7 +114,10 @@
                 "Mike Parker",
                 "Guillaume Piolat"
             ],
-            "libs-linux": ["dl"]
+            "libs-linux": ["dl"],
+            "dependencies": {
+                "dplug:core": "*"
+            }
         },
         {
             "name": "cocoa",

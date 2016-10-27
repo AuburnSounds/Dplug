@@ -37,7 +37,6 @@ module derelict.carbon.audiounit;
 
 import core.stdc.config;
 
-import derelict.util.system;
 import derelict.util.loader;
 
 import dplug.core.nogc;
@@ -46,7 +45,7 @@ import derelict.carbon.coreaudio;
 import derelict.carbon.hitoolbox;
 import derelict.carbon.coreservices;
 
-static if(Derelict_OS_Mac)
+version(OSX)
     enum libNames = "/System/Library/Frameworks/AudioUnit.framework/AudioUnit";
 else
     enum libNames = "";
@@ -99,7 +98,7 @@ void releaseAudioUnitFunctions() nothrow @nogc
 
 unittest
 {
-    static if(Derelict_OS_Mac)
+    version(OSX)
     {
         acquireAudioUnitFunctions();
         releaseAudioUnitFunctions();
@@ -608,7 +607,7 @@ struct AudioUnitParameterValueFromString
 
 // AudioToolbox framework
 
-static if(Derelict_OS_Mac)
+version(OSX)
     enum libNamesToolbox = "/System/Library/Frameworks/AudioToolbox.framework/AudioToolbox";
 else
     enum libNamesToolbox = "";

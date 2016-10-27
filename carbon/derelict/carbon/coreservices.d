@@ -35,14 +35,13 @@ module derelict.carbon.coreservices;
 
 import core.stdc.config;
 
-import derelict.util.system;
 import derelict.util.loader;
 
 import derelict.carbon.corefoundation;
 
 import dplug.core.nogc;
 
-static if(Derelict_OS_Mac)
+version(OSX)
     enum libNames = "/System/Library/Frameworks/CoreServices.framework/CoreServices";
 else
     enum libNames = "";
@@ -95,7 +94,7 @@ void releaseCoreServicesFunctions() nothrow @nogc
 
 unittest
 {
-    static if(Derelict_OS_Mac)
+    version(OSX)
     {
         acquireCoreServicesFunctions();
         releaseCoreServicesFunctions();

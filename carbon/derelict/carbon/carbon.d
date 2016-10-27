@@ -32,14 +32,13 @@
 module derelict.carbon.carbon;
 
 
-import derelict.util.system;
 import derelict.util.loader;
 
 import derelict.carbon.hitoolbox;
 
 import dplug.core.nogc;
 
-static if(Derelict_OS_Mac)
+version(OSX)
     enum libNames = "/System/Library/Frameworks/Carbon.framework/Carbon";
 else
     enum libNames = "";
@@ -121,7 +120,7 @@ void releaseCarbonFunctions() nothrow @nogc
 
 unittest
 {
-    static if(Derelict_OS_Mac)
+    version(OSX)
     {
         acquireCarbonFunctions();
         releaseCarbonFunctions();

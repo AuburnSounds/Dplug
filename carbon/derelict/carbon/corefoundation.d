@@ -58,11 +58,10 @@ module derelict.carbon.corefoundation;
 
 import core.stdc.config;
 
-import derelict.util.system;
 import derelict.util.loader;
 import dplug.core.nogc;
 
-static if(Derelict_OS_Mac)
+version(OSX)
     enum libNames = "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation";
 else
     enum libNames = "";//static assert(0, "Need to implement CoreFoundation libNames for this operating system.");
@@ -176,7 +175,7 @@ void releaseCoreFoundationFunctions() nothrow @nogc
 
 unittest
 {
-    static if(Derelict_OS_Mac)
+    version(OSX)
     {
         acquireCoreFoundationFunctions();
         releaseCoreFoundationFunctions();

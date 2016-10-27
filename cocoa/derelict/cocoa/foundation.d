@@ -34,11 +34,10 @@ module derelict.cocoa.foundation;
 import std.string;
 import std.utf;
 
-import derelict.util.loader;
-import derelict.util.system;
-import derelict.util.nogc;
+import dplug.core.nogc;
 
 import derelict.cocoa.runtime;
+
 
 // NSZone
 
@@ -88,7 +87,7 @@ nothrow @nogc:
         return cast(Class)( lazyClass!className() );
     }
 
-    static id getClassID() 
+    static id getClassID()
     {
         return lazyClass!className();
     }

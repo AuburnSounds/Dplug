@@ -11,17 +11,17 @@ public import dplug.host.window;
 
 /// Loads an audio plugin.
 IPluginHost createPluginHost(string dynlibPath)
-{    
+{
     import std.string;
     import derelict.util.sharedlib;
 
     // TODO support OSX plugin bundles
     SharedLib lib;
-    lib.load([ dynlibPath ]);
-    
+    lib.load(dynlibPath);
+
     auto VSTPluginMain = getVSTEntryPoint(lib);
     if (VSTPluginMain != null) // is this is a VST plugin?
-    {        
+    {
         return new VSTPluginHost(lib);
     }
     else

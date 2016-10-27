@@ -33,14 +33,13 @@ module derelict.carbon.coregraphics;
 
 // TODO: this should go in its own Derelict package
 
-import derelict.util.system;
 import derelict.util.loader;
 
 import derelict.carbon.corefoundation;
 
 import dplug.core.nogc;
 
-static if(Derelict_OS_Mac)
+version(OSX)
     // because CoreGraphics.framework did not exist in OSX 10.6
     enum libNames = "/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices";
 else
@@ -101,7 +100,7 @@ void releaseCoreGraphicsFunctions() nothrow @nogc
 
 unittest
 {
-    static if(Derelict_OS_Mac)
+    version(OSX)
     {
         acquireCoreGraphicsFunctions();
         releaseCoreGraphicsFunctions();

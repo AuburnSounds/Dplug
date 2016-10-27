@@ -40,8 +40,8 @@ import core.atomic;
 
 import std.string;
 
-import derelict.util.loader;
-import derelict.util.nogc;
+import dplug.core.nogc;
+
 
 
 // NSGeometry.h
@@ -307,7 +307,7 @@ Method class_getInstanceMethod (Class aClass, string aSelector) nothrow @nogc
 // Lazy selector literal
 // eg: sel!"init"
 SEL sel(string selectorName)() nothrow @nogc
-{   
+{
     // we use type-punning here because deep shared(T) is annoying
     shared(size_t) cached = 0;
     size_t got = atomicLoad(cached);
@@ -335,7 +335,7 @@ id lazyClass(string className)() nothrow @nogc
 }
 
 Protocol* lazyProtocol(string className)() nothrow @nogc
-{  
+{
     // we use type-punning here because deep shared(T) is annoying
     shared(size_t) cached = 0;
     size_t got = atomicLoad(cached);

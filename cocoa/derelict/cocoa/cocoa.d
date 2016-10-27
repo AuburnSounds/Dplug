@@ -31,7 +31,6 @@
 */
 module derelict.cocoa.cocoa;
 
-import derelict.util.system;
 import derelict.util.loader;
 
 import derelict.cocoa.runtime;
@@ -41,7 +40,7 @@ import derelict.cocoa.coreimage;
 
 import dplug.core.nogc;
 
-static if(Derelict_OS_Mac)
+version(OSX)
     enum libNames = "/System/Library/Frameworks/Cocoa.framework/Cocoa";
 else
     enum libNames = "";
@@ -141,7 +140,7 @@ void releaseCocoaFunctions() nothrow @nogc
 
 unittest
 {
-    static if(Derelict_OS_Mac)
+    version(OSX)
     {
         acquireCocoaFunctions();
         releaseCocoaFunctions();
