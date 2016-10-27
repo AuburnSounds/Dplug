@@ -40,6 +40,12 @@ nothrow:
 
     void load(string name)
     {
+        version(debugSharedLibs)
+        {
+            auto lib = CString(name);
+            printf("loading dynlib '%s'\n", lib.storage);
+        }
+
         if(isLoaded)
             return;
         _name = name;
@@ -51,6 +57,13 @@ nothrow:
     void* loadSymbol(string symbolName)
     {
         assert(isLoaded());
+
+        version(debugSharedLibs)
+        {
+            auto sb = CString(symbolName);
+            printf("  loading symbol '%s'\n", sb.storage);
+        }
+
         void* sym = GetSymbol(_hlib, symbolName);
         if(!sym)
             assert(false);
@@ -63,6 +76,12 @@ nothrow:
         {
             UnloadSharedLib(_hlib);
             _hlib = null;
+
+            version(debugSharedLibs)
+            {
+                auto lib = CString(_name);
+                printf("unloaded dynlib '%s'\n", lib.storage);
+            }
         }
     }
 
@@ -140,11 +159,6 @@ version(Posix)
 
         SharedLibHandle LoadSharedLib(string libName) nothrow @nogc
         {
-            // To debug shared libraries on OSX
-            /*import core.stdc.stdio;
-            import derelict.util.nogc;
-            auto lib = CString(libName);
-            printf("dlopen('%s')\n", lib.storage);*/
             return dlopen(CString(libName), RTLD_NOW);
         }
 
@@ -155,10 +169,6 @@ version(Posix)
 
         void* GetSymbol(SharedLibHandle hlib, string symbolName) nothrow @nogc
         {
-            /*import core.stdc.stdio;
-            import derelict.util.nogc;
-            auto symbol = CString(symbolName);
-            printf("dlopen('%s')\n", symbol.storage);*/
             return dlsym(hlib, CString(symbolName));
         }
 

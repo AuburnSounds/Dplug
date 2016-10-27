@@ -95,6 +95,10 @@ class DerelictCocoaLoader : SharedLibLoader
             NSDefaultRunLoopMode = NSString.stringWith("kCFRunLoopDefaultMode"w);
             NSRunLoopCommonModes = NSString.stringWith("kCFRunLoopCommonModes"w);
 
+            // For debugging purpose
+            //NSLog(NSString.stringWith("%@\n")._id, NSDefaultRunLoopMode._id);
+            //NSLog(NSString.stringWith("%@\n")._id, NSRunLoopCommonModes._id);
+
             // Appkit
             bindFunc(cast(void**)&NSApplicationLoad, "NSApplicationLoad");
 
