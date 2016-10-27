@@ -658,8 +658,11 @@ void releaseAudioToolboxFunctions() nothrow @nogc
 
 unittest
 {
-    acquireAudioToolboxFunctions();
-    releaseAudioToolboxFunctions();
+    version(OSX)
+    {
+        acquireAudioToolboxFunctions();
+        releaseAudioToolboxFunctions();
+    }
 }
 
 

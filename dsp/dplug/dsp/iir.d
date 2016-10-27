@@ -19,7 +19,7 @@ public
     {
         alias Vector!(double, order) delay_t;
 
-        alias Vector!(T, order * 2 + 1) coeff_t; // TODO: be more general
+        alias Vector!(T, order * 2 + 1) coeff_t; // FUTURE: stop using Vector?
 
         delay_t x;
         delay_t y;

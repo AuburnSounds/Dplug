@@ -212,7 +212,7 @@ int main(string[] args)
                 bool is64b = arch == Arch.x86_64;
                 version(Windows)
                 {
-                    // TODO: remove when LDC on Windows is a single archive (should happen for 1.0.0)
+                    // FUTURE: remove when LDC on Windows is a single archive (should happen for 1.0.0)
                     // then fiddling with PATH will be useless
                     if (compiler == "ldc" && !is64b)
                         environment["PATH"] = `c:\d\ldc-32b\bin` ~ ";" ~ oldpath;
@@ -361,7 +361,7 @@ int main(string[] args)
             // Make icns and copy it (if any provided in plugin.json)
             if (plugin.iconPath)
             {
-                iconPath = makeMacIcon(plugin.name, plugin.iconPath); // TODO: this should be lazy
+                iconPath = makeMacIcon(plugin.name, plugin.iconPath); // FUTURE: this should be lazy
             }
         }
 

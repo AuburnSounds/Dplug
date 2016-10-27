@@ -281,7 +281,7 @@ version(Windows)
                     {
                         bool sizeChanged = updateSizeIfNeeded();
 
-                        // TODO: check resize work
+                        // FUTURE: check resize work
 
                         // For efficiency purpose, render in BGRA for Windows
                         _listener.onDraw(WindowPixelFormat.BGRA8);
@@ -429,7 +429,7 @@ version(Windows)
         }
 
         /// Provokes a WM_PAINT if some UI element is dirty.
-        /// TODO: this function should be as fast as possible
+        /// FUTURE: this function should be as fast as possible, maybe invalidate differently?
         void sendRepaintIfUIDirty()
         {
             _listener.recomputeDirtyAreas();
@@ -437,10 +437,9 @@ version(Windows)
             if (!dirtyRect.empty())
             {
                 RECT r = RECT(dirtyRect.min.x, dirtyRect.min.y, dirtyRect.max.x, dirtyRect.max.y);
-                // TODO: maybe use RedrawWindow instead
-                InvalidateRect(_hwnd, &r, FALSE); // TODO: invalidate rects one by one
+                // MAYDO: maybe use RedrawWindow instead
+                InvalidateRect(_hwnd, &r, FALSE); // FUTURE: invalidate rects one by one
                 UpdateWindow(_hwnd);
-
             }
         }
 

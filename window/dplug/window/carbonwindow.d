@@ -125,6 +125,7 @@ public:
         }
         else
         {
+            // MAYDO
             /*if (!parentControlRef)
             {
                 if (GetRootControl(_window, &parentControlRef) != noErr)
@@ -144,7 +145,7 @@ public:
         CFStringRef str = CFStringCreateWithCString(null, colorSpaceName.ptr, kCFStringEncodingUTF8);
         _colorSpace = CGColorSpaceCreateWithName(str);
 
-        // TODO: release str
+        // TODO: release str which is leaking right now
 
         _lastMeasturedTimeInMs = _timeAtCreationInMs = getTimeMs();
     }
@@ -180,7 +181,7 @@ public:
     // IWindow implmentation
     override void waitEventAndDispatch()
     {
-        assert(false); // Unimplemented, TODO
+        assert(false); // Unimplemented, FUTURE
     }
 
     // If exit was requested
@@ -272,7 +273,7 @@ private:
                 {
                     case kEventControlDraw:
                     {
-                        // TODO: why is the bounds rect too large? It creates havoc in AU even without resizing.
+                        // FUTURE: why is the bounds rect too large? It creates havoc in AU even without resizing.
                         /*HIRect bounds;
                         HIViewGetBounds(_view, &bounds);
                         int newWidth = cast(int)(0.5f + bounds.size.width);
@@ -318,7 +319,7 @@ private:
                         }
                         else
                         {
-                            // TODO
+                            // MAYDO
                         }
                         return true;
                     }
@@ -554,5 +555,17 @@ version(OSX)
         if(scaledDenom % info.numer != 0)
             assert(false);
         return scaledDenom / info.numer;
+    }
+}
+else
+{
+    ulong mach_absolute_time() nothrow @nogc
+    { 
+        return 0; 
+    }
+
+    long machTicksPerSecond() nothrow @nogc
+    {
+        return 0;
     }
 }

@@ -555,7 +555,7 @@ int parse_zlib_header(zbuf *a)
    return 1;
 }
 
-// @TODO: should statically initialize these for optimal thread safety
+// MAYDO: should statically initialize these for optimal thread safety
 __gshared ubyte[288] default_length;
 __gshared ubyte[32] default_distance;
 

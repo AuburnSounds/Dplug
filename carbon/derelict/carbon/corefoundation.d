@@ -54,8 +54,6 @@ SOFTWARE.
 */
 module derelict.carbon.corefoundation;
 
-// TODO: this should go in the existing Derelict package DerelictCF
-
 import core.stdc.config;
 
 import dplug.core.sharedlib;
@@ -64,7 +62,7 @@ import dplug.core.nogc;
 version(OSX)
     enum libNames = "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation";
 else
-    enum libNames = "";//static assert(0, "Need to implement CoreFoundation libNames for this operating system.");
+    enum libNames = "";
 
 
 class DerelictCoreFoundationLoader : SharedLibLoader
@@ -502,13 +500,13 @@ private extern(C) nothrow @nogc
 {
     const(void)* myRetainCallBack(CFAllocatorRef allocator, const(void)* value)
     {
-        // TODO: not sure what to do with the allocator
+        // MAYDO: not sure what to do with the allocator
         return CFRetain(value);
     }
 
     void myReleaseCallBack(CFAllocatorRef allocator, const(void)* value)
     {
-        // TODO: not sure what to do with the allocator
+        // MAYDO: not sure what to do with the allocator
         return CFRelease(value);
     }
 }

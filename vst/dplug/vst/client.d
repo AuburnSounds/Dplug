@@ -71,7 +71,7 @@ nothrow AEffect* myVSTEntryPoint(alias ClientClass)(HostCallbackFunction hostCal
     return &plugin._effect;
 };
 
-// TODO: later
+// FUTURE: later
 //version = useChunks;
 
 //version = logVSTDispatcher;
@@ -322,7 +322,7 @@ private:
 
             case effGetProgram: // opcode 3
             {
-                // TODO: will probably need to be zero with internal preset management
+                // FUTURE: will probably need to be zero with internal preset management
                 return _client.presetBank.currentPresetIndex();
             }
 
@@ -566,7 +566,7 @@ private:
                             }
                             else
                             {
-                                // TODO handle sysex
+                                // FUTURE handle sysex
                             }
                         }
                     }

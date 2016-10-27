@@ -324,7 +324,7 @@ nothrow @nogc:
                             if (y < 0)
                                 y = 0;
                             int z = depthHere + sample;
-                            int diff = z - depthLevel0.scanline(y)[x].l; // TODO: use pointer offsets here instead of opIndex
+                            int diff = z - depthLevel0.scanline(y)[x].l; // FUTURE: use pointer offsets here instead of opIndex
 
                             float contrib = void;
                             if (diff >= 0)

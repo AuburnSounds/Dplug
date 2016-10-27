@@ -91,7 +91,7 @@ class DerelictCocoaLoader : SharedLibLoader
             bindFunc(cast(void**)&NSAllocateMemoryPages, "NSAllocateMemoryPages");
             bindFunc(cast(void**)&NSDeallocateMemoryPages, "NSDeallocateMemoryPages");
 
-            // TODO: load from proper global variables
+            // MAYDO: load from proper global variables
             NSDefaultRunLoopMode = NSString.stringWith("kCFRunLoopDefaultMode"w);
             NSRunLoopCommonModes = NSString.stringWith("kCFRunLoopCommonModes"w);
 
@@ -99,7 +99,7 @@ class DerelictCocoaLoader : SharedLibLoader
             bindFunc(cast(void**)&NSApplicationLoad, "NSApplicationLoad");
 
             // Core Image
-            // TODO load from proper global variables
+            // MAYDO load from proper global variables
             kCIFormatARGB8 = 23;
             kCIFormatRGBA16 = 27;
             kCIFormatRGBAf = 34;

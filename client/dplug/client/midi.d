@@ -19,7 +19,7 @@ module dplug.client.midi;
 /// MIDI types
 struct MidiMessage
 {
-    // TODO: this offset should be part of a priority-queue instead of the message itself
+    // FUTURE: this offset should be part of a priority-queue instead of the message itself
     int deltaFrames;
 
     ubyte[4] data;

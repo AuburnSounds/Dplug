@@ -147,8 +147,8 @@ static assert(valueBits!double == 53);
 /// - l: lightness (or grey, for monochrome images)
 /// - others (r, g, b, etc.): color information
 
-// TODO: figure out if we need alll these methods in the color type itself
-// - code such as gamma conversion needs to create color types
+// MAYDO: figure out if we need all these methods in the color type itself
+//   - code such as gamma conversion needs to create color types
 //   - ReplaceType can't copy methods
 //   - even if we move out all conventional methods, that still leaves operator overloading
 

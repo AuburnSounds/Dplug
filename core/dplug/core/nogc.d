@@ -538,7 +538,8 @@ void ensureNotInGC(string resourceName = null) nothrow
 
 /// To call for something that should never happen, but we still
 /// want to make a "best effort" at runtime even if it can be meaningless.
-/// TODO: change that name, it's not actually unrecoverable
+/// MAYDO: change that name, it's not actually unrecoverable
+/// MAYDO: stop using that function
 void unrecoverableError() nothrow @nogc
 {
     debug

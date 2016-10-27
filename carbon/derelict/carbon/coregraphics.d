@@ -31,8 +31,6 @@
 */
 module derelict.carbon.coregraphics;
 
-// TODO: this should go in its own Derelict package
-
 import dplug.core.sharedlib;
 import derelict.carbon.corefoundation;
 import dplug.core.nogc;

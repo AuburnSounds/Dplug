@@ -151,77 +151,77 @@ extern(C) nothrow
 
     OSStatus AUMethodInitialize(void* self)
     {
-        printf("TODO AUMethodInitialize\n");
+        printf("FUTURE AUMethodInitialize\n");
         return noErr;
     }
     OSStatus AUMethodUninitialize(void* self)
     {
-        printf("TODO AUMethodUninitialize\n");
+        printf("FUTURE AUMethodUninitialize\n");
         return noErr;
     }
     OSStatus AUMethodGetPropertyInfo(void* self)
     {
-        printf("TODO AUMethodGetPropertyInfo\n");
+        printf("FUTURE AUMethodGetPropertyInfo\n");
         return noErr;
     }
     OSStatus AUMethodGetProperty(void* self)
     {
-        printf("TODO AUMethodGetProperty\n");
+        printf("FUTURE AUMethodGetProperty\n");
         return noErr;
     }
     OSStatus AUMethodSetProperty(void* self)
     {
-        printf("TODO AUMethodSetProperty\n");
+        printf("FUTURE AUMethodSetProperty\n");
         return noErr;
     }
     OSStatus AUMethodAddPropertyListener(void* self)
     {
-        printf("TODO AUMethodAddPropertyListener\n");
+        printf("FUTURE AUMethodAddPropertyListener\n");
         return noErr;
     }
     OSStatus AUMethodRemovePropertyListener(void* self)
     {
-        printf("TODO AUMethodRemovePropertyListener\n");
+        printf("FUTURE AUMethodRemovePropertyListener\n");
         return noErr;
     }
     OSStatus AUMethodRemovePropertyListenerWithUserData(void* self)
     {
-        printf("TODO AUMethodRemovePropertyListenerWithUserData\n");
+        printf("FUTURE AUMethodRemovePropertyListenerWithUserData\n");
         return noErr;
     }
     OSStatus AUMethodAddRenderNotify(void* self)
     {
-        printf("TODO AUMethodAddRenderNotify\n");
+        printf("FUTURE AUMethodAddRenderNotify\n");
         return noErr;
     }
     OSStatus AUMethodRemoveRenderNotify(void* self)
     {
-        printf("TODO AUMethodRemoveRenderNotify\n");
+        printf("FUTURE AUMethodRemoveRenderNotify\n");
         return noErr;
     }
     OSStatus AUMethodGetParameter(void* self)
     {
-        printf("TODO AUMethodGetParameter\n");
+        printf("FUTURE AUMethodGetParameter\n");
         return noErr;
     }
     OSStatus AUMethodSetParameter(void* self)
     {
-        printf("TODO AUMethodSetParameter\n");
+        printf("FUTURE AUMethodSetParameter\n");
         return noErr;
     }
     OSStatus AUMethodScheduleParameters(void* self)
     {
-        printf("TODO AUMethodScheduleParameters\n");
+        printf("FUTURE AUMethodScheduleParameters\n");
         return noErr;
     }
     OSStatus AUMethodRender(void* self)
     {
-        printf("TODO AUMethodRender\n");
+        printf("FUTURE AUMethodRender\n");
         return noErr;
     }
     OSStatus AUMethodReset(void* self)
     {
-        printf("TODO AUMethodReset\n");
+        printf("FUTURE AUMethodReset\n");
         return noErr;
     }
 }

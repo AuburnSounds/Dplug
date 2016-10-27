@@ -182,7 +182,7 @@ nothrow:
             // and we can wait for its exit in _graphics destructor
             while(!cas(&_graphicsIsAvailable, true, false))
             {
-                // TODO: relax CPU
+                // MAYDO: relax CPU
             }
             _graphics.destroyFree();
         }
@@ -324,7 +324,7 @@ nothrow:
     final void graphicsRelease() nothrow @nogc
     {
         // graphicsAcquire should have been called before
-        // TODO: which memory order here? Don't looks like we need a barrier.
+        // MAYDO: which memory order here? Don't looks like we need a barrier.
         atomicStore(_graphicsIsAvailable, true);
     }
 
@@ -370,7 +370,7 @@ nothrow:
     /// Process incoming MIDI messages.
     /// This is called before processAudio for each message.
     /// Override to do something with them;
-    /// TODO: this does not currently work with the buffer split.
+    /// FUTURE: this does not currently work with the buffer split.
     void processMidiMsg(MidiMessage message) nothrow @nogc
     {
         // Default behaviour: do nothing.
@@ -398,7 +398,7 @@ nothrow:
     /// Returns a new default preset.
     final Preset makeDefaultPreset() nothrow @nogc
     {
-        // TODO: use mallocSlice for perf
+        // MAYDO: use mallocSlice for perf
         auto values = makeAlignedBuffer!float();
         foreach(param; _params)
             values.pushBack(param.getNormalizedDefault());

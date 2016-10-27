@@ -17,7 +17,6 @@ void usage()
 
 void main(string[] args)
 {
-    // TODO get executable name from dub.json
     try
     {
         bool help = false;

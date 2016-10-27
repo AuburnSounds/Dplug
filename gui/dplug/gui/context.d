@@ -32,7 +32,7 @@ nothrow:
     this()
     {
         // create a dummy black skybox
-        // TODO: is it actually black?
+        // FUTURE: do not create it, support no-skybox in rendering
         skybox = mallocEmplace!(Mipmap!RGBA)(10, 1024, 1024);
 
         dirtyList = makeDirtyRectList();

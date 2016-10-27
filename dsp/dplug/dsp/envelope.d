@@ -74,7 +74,7 @@ public:
 
     void nextBuffer(const(T)* input, T* output, int frames) nothrow @nogc
     {
-        // TODO: pass maxFrames and allocate buffers
+        // FUTURE: pass maxFrames and allocate buffers
         for (int i = 0; i < frames; ++i)
             output[i] = nextSample(input[i]);
     }

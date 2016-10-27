@@ -55,8 +55,6 @@ import dplug.core.nogc;
 // an AUPreset container object:  CFAUPreset
 //-----------------------------------------------------------------------------
 
-// TODO: extern(C) for arrays callbacks
-
 enum UInt32 kCFAUPreset_CurrentVersion = 0;
 
 struct CFAUPreset

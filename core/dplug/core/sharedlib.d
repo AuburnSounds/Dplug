@@ -27,9 +27,108 @@ DEALINGS IN THE SOFTWARE.
 */
 module derelict.util.sharedlib;
 
-//import std.string;
-
 import dplug.core.nogc;
+import dplug.core.alignedbuffer;
+
+
+
+/// Shared library ressource
+struct SharedLib
+{
+nothrow:
+@nogc:
+
+    void load(string name)
+    {
+        if(isLoaded)
+            return;
+        _name = name;
+        _hlib = LoadSharedLib(name);
+        if(_hlib is null)
+            assert(false);
+    }
+
+    void* loadSymbol(string symbolName)
+    {
+        assert(isLoaded());
+        void* sym = GetSymbol(_hlib, symbolName);
+        if(!sym)
+            assert(false);
+        return sym;
+    }
+
+    void unload()
+    {
+        if(isLoaded())
+        {
+            UnloadSharedLib(_hlib);
+            _hlib = null;
+        }
+    }
+
+    /// Returns true if the shared library is currently loaded, false otherwise.
+    bool isLoaded()
+    {
+        return (_hlib !is null);
+    }
+
+private:
+    string _name;
+    SharedLibHandle _hlib;
+}
+
+
+abstract class SharedLibLoader
+{
+nothrow:
+@nogc:
+
+    this(string libName)
+    {
+        _libName = libName;
+        _funcPointers = makeAlignedBuffer!(void**)();
+    }
+
+    /// Binds a function pointer to a symbol in this loader's shared library.
+    final void bindFunc(void** ptr, string funcName)
+    {
+        void* func = _lib.loadSymbol(funcName);
+        _funcPointers.pushBack(ptr);
+        *ptr = func;
+    }
+
+    final void load()
+    {
+        _lib.load(_libName);
+        loadSymbols();
+    }
+
+    // Unload the library, and sets all functions pointer to null.
+    final void unload()
+    {
+        _lib.unload();
+
+        // Sets all registered functions pointers to null
+        // so that they can't be reused
+        foreach(ptr; _funcPointers[])
+            *ptr = null;
+
+        _funcPointers.clearContents();
+    }
+
+protected:
+
+    /// Implemented by subclasses to load all symbols with `bindFunc`.
+    abstract void loadSymbols();
+
+private:
+    string _libName;
+    SharedLib _lib;
+    AlignedBuffer!(void**) _funcPointers;
+}
+
+
+private:
 
 alias void* SharedLibHandle;
 
@@ -113,88 +212,4 @@ else version(Windows)
     }
 } else {
     static assert(0, "Derelict does not support this platform.");
-}
-
-/// Shared library ressource
-struct SharedLib
-{
-nothrow:
-@nogc:
-
-    void load(string name)
-    {
-        if(isLoaded)
-            return;
-        _name = name;
-        _hlib = LoadSharedLib(name);
-        if(_hlib is null)
-            assert(false);
-    }
-
-    void* loadSymbol(string symbolName)
-    {
-        assert(isLoaded());
-        void* sym = GetSymbol(_hlib, symbolName);
-        if(!sym)
-            assert(false);
-        return sym;
-    }
-
-    void unload()
-    {
-        if(isLoaded())
-        {
-            UnloadSharedLib(_hlib);
-            _hlib = null;
-        }
-    }
-
-    /// Returns true if the shared library is currently loaded, false otherwise.
-    bool isLoaded()
-    {
-        return (_hlib !is null);
-    }
-
-private:
-    string _name;
-    SharedLibHandle _hlib;
-}
-
-
-abstract class SharedLibLoader
-{
-nothrow:
-@nogc:
-
-    this(string libName)
-    {
-        _libName = libName;
-    }
-
-    /// Binds a function pointer to a symbol in this loader's shared library.
-    final void bindFunc(void** ptr, string funcName)
-    {
-        void* func = _lib.loadSymbol(funcName);
-        *ptr = func;
-    }
-
-    final void load()
-    {
-        _lib.load(_libName);
-        loadSymbols();
-    }
-
-    final void unload()
-    {
-        _lib.unload();
-    }
-
-protected:
-
-    /// Implemented by subclasses to load all symbols with `bindFunc`.
-    abstract void loadSymbols();
-
-private:
-    string _libName;
-    SharedLib _lib;
 }

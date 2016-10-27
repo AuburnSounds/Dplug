@@ -157,7 +157,7 @@ void fillText(V, StringType)(auto ref V surface, Font font, StringType s, float 
     if (!surfaceArea.intersects(area))
         return;
 
-    vec2i offset = vec2i(ipositionx, ipositiony) - area.center; // TODO: support other alignment modes
+    vec2i offset = vec2i(ipositionx, ipositiony) - area.center; // MAYDO: support other alignment modes
 
     void drawCharacter(int numCh, dchar ch, box2i position, float scale, float xShift, float yShift) nothrow @nogc
     {

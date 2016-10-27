@@ -853,12 +853,7 @@ private:
     enum SCALE = 1 << FRACT_BITS;
 
     alias Temp_Type = int;
-    //TODO: convert defines to mixins
-    //#define D(i) (((i) + (SCALE >> 1)) >> FRACT_BITS)
-    //#define F(i) ((int)((i) * SCALE + .5f))
-    // Any decent C++ compiler will optimize this at compile time to a 0, or an array access.
-    //#define AT(c, r) ((((c)>=NUM_COLS)||((r)>=NUM_ROWS)) ? 0 : pSrc[(c)+(r)*8])
-
+    
     static int D(T) (T i) { pragma(inline, true); return (((i) + (SCALE >> 1)) >> FRACT_BITS); }
     enum F(float i) = (cast(int)((i) * SCALE + 0.5f));
 

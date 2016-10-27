@@ -204,7 +204,8 @@ nothrow:
     // Called when mouse drag this Element.
     override void onMouseDrag(int x, int y, int dx, int dy, MouseState mstate)
     {
-        float displacementInHeight = cast(float)(dy) / _position.height; // TODO: replace by actual trail height instead of total height
+        // FUTURE: replace by actual trail height instead of total height
+        float displacementInHeight = cast(float)(dy) / _position.height; 
 
         float modifier = 1.0f;
         if (mstate.shiftPressed || mstate.ctrlPressed)

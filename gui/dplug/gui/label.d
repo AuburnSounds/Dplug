@@ -148,15 +148,13 @@ nothrow:
             emissive = 255;
         diffuse.a = cast(ubyte)(emissive);
 
-        // TODO: implement underline?
+        // MAYDO: implement underline?
 
         foreach(dirtyRect; dirtyRects)
         {
             auto croppedDiffuse = diffuseMap.cropImageRef(dirtyRect);
             vec2f positionInDirty = vec2f(textPosx, textPosy) - dirtyRect.min;
             croppedDiffuse.fillText(_font, _text, _textSize, _letterSpacing, diffuse, positionInDirty.x, positionInDirty.y);
-
-
         }
     }
 
