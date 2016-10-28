@@ -502,13 +502,15 @@ private:
 
 unittest
 {
-    UncheckedSemaphore semaphore = makeSemaphore(1);
-    foreach(i; 0..100)
+    foreach(j; 0..4)
     {
-        semaphore.wait();
-        semaphore.notify();
-        if (semaphore.tryWait())
+        UncheckedSemaphore semaphore = makeSemaphore(1);
+        foreach(i; 0..100)
+        {
+            semaphore.wait();
             semaphore.notify();
+            if (semaphore.tryWait())
+                semaphore.notify();
+        }
     }
-    semaphore.destroy();
 }

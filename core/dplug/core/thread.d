@@ -271,7 +271,7 @@ nothrow:
         // Create the queues first
         size_t maxTasksPushedAtOnce = 512; // FUTURE, find something clever
         _taskQueue = lockedQueue!Task(maxTasksPushedAtOnce);
-        _taskFinishedSemaphore = makeSemaphore(0);
+        _taskFinishedQueue = lockedQueue!int(maxTasksPushedAtOnce);
 
         // Create threads
         if (numThreads == 0)
@@ -336,19 +336,23 @@ nothrow:
         {
             // push the tasks on the queue
             foreach(int i; 0..count)
+            {
                 _taskQueue.pushBack(Task(TaskType.callThisDelegate, i, dg));
+            }
 
             // Wait for all tasks to be finished
             // FUTURE: this way to synchronize is inefficient
             foreach(int i; 0..count)
-                _taskFinishedSemaphore.wait();
+                _taskFinishedQueue.popFront();
         }
     }
 
 private:
     Thread[] _threads = null;
     LockedQueue!Task _taskQueue;
-    UncheckedSemaphore _taskFinishedSemaphore;
+    LockedQueue!int _taskFinishedQueue;
+
+    //UncheckedSemaphore _taskFinishedSemaphore;
     ulong _currentTask = 0;
 
     enum TaskType
@@ -382,7 +386,7 @@ private:
                 case TaskType.callThisDelegate:
                 {
                     task.dg(task.workItem);
-                    _taskFinishedSemaphore.notify();
+                    _taskFinishedQueue.pushBack(task.workItem);
                 }
             }
         }
