@@ -31,6 +31,7 @@ import dplug.core.nogc;
 import dplug.core.lockedqueue;
 import dplug.core.runtime;
 import dplug.core.unchecked_sync;
+import dplug.core.thread;
 
 import dplug.client.client;
 import dplug.client.daw;
@@ -182,7 +183,6 @@ ComponentResult audioUnitCarbonViewEntry(alias ClientClass)(ComponentParameters*
                 auClient._client.closeGUI();
             }
             destroyFree(pCVI);
-            releaseAUFunctions(); // release librariesx
             return noErr;
         }
         case kAudioUnitCarbonViewCreateSelect:
@@ -549,7 +549,7 @@ private:
         if (select == kComponentCloseSelect) // -2
         {
             destroyFree(cast(void*)this); // free all resources except the runtime
-            releaseAudioUnitFunctions();
+            releaseAUFunctions();
             return noErr;
         }
 

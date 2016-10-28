@@ -632,13 +632,13 @@ class DerelictAudioToolboxLoader : SharedLibLoader
 
 private __gshared DerelictAudioToolboxLoader DerelictAudioToolbox;
 
-private __gshared loaderCounter = 0;
+private __gshared loaderCounterATB = 0;
 
 // Call this each time a novel owner uses these functions
 // TODO: hold a mutex, because this isn't thread-safe
 void acquireAudioToolboxFunctions() nothrow @nogc
 {
-    if (loaderCounter++ == 0)  // You only live once
+    if (loaderCounterATB++ == 0)  // You only live once
     {
         DerelictAudioToolbox = mallocEmplace!DerelictAudioToolboxLoader();
         DerelictAudioToolbox.load();
@@ -649,7 +649,7 @@ void acquireAudioToolboxFunctions() nothrow @nogc
 // TODO: hold a mutex, because this isn't thread-safe
 void releaseAudioToolboxFunctions() nothrow @nogc
 {
-    if (--loaderCounter == 0)
+    if (--loaderCounterATB == 0)
     {
         DerelictAudioToolbox.unload();
         DerelictAudioToolbox.destroyFree();
