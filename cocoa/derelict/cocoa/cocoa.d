@@ -115,14 +115,14 @@ class DerelictCocoaLoader : SharedLibLoader
 
 private __gshared DerelictCocoaLoader DerelictCocoa;
 
-private __gshared loaderCounter = 0;
+private __gshared loaderCounterCocoa = 0;
 
 // Call this each time a new owner uses Cocoa functions
 // TODO: hold a mutex, because this isn't thread-safe
 // Corrolary: how to protect that mutex creation?
 void acquireCocoaFunctions() nothrow @nogc
 {
-    if (loaderCounter++ == 0)  // You only live once
+    if (loaderCounterCocoa++ == 0)  // You only live once
     {
         import core.stdc.stdio;
         DerelictCocoa = mallocEmplace!DerelictCocoaLoader();
@@ -135,7 +135,7 @@ void acquireCocoaFunctions() nothrow @nogc
 // Corrolary: how to protect that mutex creation?
 void releaseCocoaFunctions() nothrow @nogc
 {
-    if (--loaderCounter == 0)
+    if (--loaderCounterCocoa == 0)
     {
         DerelictCocoa.unload();
         DerelictCocoa.destroyFree();

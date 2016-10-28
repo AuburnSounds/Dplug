@@ -68,13 +68,13 @@ class DerelictCoreServicesLoader : SharedLibLoader
 
 private __gshared DerelictCoreServicesLoader DerelictCoreServices;
 
-private __gshared loaderCounter = 0;
+private __gshared loaderCounterCS = 0;
 
 // Call this each time a novel owner uses these functions
 // TODO: hold a mutex, because this isn't thread-safe
 void acquireCoreServicesFunctions() nothrow @nogc
 {
-    if (loaderCounter++ == 0)  // You only live once
+    if (loaderCounterCS++ == 0)  // You only live once
     {
         DerelictCoreServices = mallocEmplace!DerelictCoreServicesLoader();
         DerelictCoreServices.load();
@@ -85,7 +85,7 @@ void acquireCoreServicesFunctions() nothrow @nogc
 // TODO: hold a mutex, because this isn't thread-safe
 void releaseCoreServicesFunctions() nothrow @nogc
 {
-    if (--loaderCounter == 0)
+    if (--loaderCounterCS == 0)
     {
         DerelictCoreServices.unload();
         DerelictCoreServices.destroyFree();

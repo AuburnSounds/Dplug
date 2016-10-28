@@ -94,13 +94,13 @@ class DerelictCarbonLoader : SharedLibLoader
 
 private __gshared DerelictCarbonLoader DerelictCarbon;
 
-private __gshared loaderCounter = 0;
+private __gshared loaderCounterCarbon = 0;
 
 // Call this each time a novel owner uses these functions
 // TODO: hold a mutex, because this isn't thread-safe
 void acquireCarbonFunctions() nothrow @nogc
 {
-    if (loaderCounter++ == 0)  // You only live once
+    if (loaderCounterCarbon++ == 0)  // You only live once
     {
         DerelictCarbon = mallocEmplace!DerelictCarbonLoader();
         DerelictCarbon.load();
@@ -111,7 +111,7 @@ void acquireCarbonFunctions() nothrow @nogc
 // TODO: hold a mutex, because this isn't thread-safe
 void releaseCarbonFunctions() nothrow @nogc
 {
-    if (--loaderCounter == 0)
+    if (--loaderCounterCarbon == 0)
     {
         DerelictCarbon.unload();
         DerelictCarbon.destroyFree();

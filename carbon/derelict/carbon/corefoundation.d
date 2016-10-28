@@ -147,13 +147,13 @@ class DerelictCoreFoundationLoader : SharedLibLoader
 
 private __gshared DerelictCoreFoundationLoader DerelictCoreFoundation;
 
-private __gshared loaderCounter = 0;
+private __gshared loaderCounterCF = 0;
 
 // Call this each time a novel owner uses these functions
 // TODO: hold a mutex, because this isn't thread-safe
 void acquireCoreFoundationFunctions() nothrow @nogc
 {
-    if (loaderCounter++ == 0)  // You only live once
+    if (loaderCounterCF++ == 0)  // You only live once
     {
         DerelictCoreFoundation = mallocEmplace!DerelictCoreFoundationLoader();
         DerelictCoreFoundation.load();
@@ -164,7 +164,7 @@ void acquireCoreFoundationFunctions() nothrow @nogc
 // TODO: hold a mutex, because this isn't thread-safe
 void releaseCoreFoundationFunctions() nothrow @nogc
 {
-    if (--loaderCounter == 0)
+    if (--loaderCounterCF == 0)
     {
         DerelictCoreFoundation.unload();
         DerelictCoreFoundation.destroyFree();

@@ -70,13 +70,13 @@ class DerelictCoreGraphicsLoader : SharedLibLoader
 
 private __gshared DerelictCoreGraphicsLoader DerelictCoreGraphics;
 
-private __gshared loaderCounter = 0;
+private __gshared loaderCounterCG = 0;
 
 // Call this each time a novel owner uses these functions
 // TODO: hold a mutex, because this isn't thread-safe
 void acquireCoreGraphicsFunctions() nothrow @nogc
 {
-    if (loaderCounter++ == 0)  // You only live once
+    if (loaderCounterCG++ == 0)  // You only live once
     {
         DerelictCoreGraphics = mallocEmplace!DerelictCoreGraphicsLoader();
         DerelictCoreGraphics.load();
@@ -87,7 +87,7 @@ void acquireCoreGraphicsFunctions() nothrow @nogc
 // TODO: hold a mutex, because this isn't thread-safe
 void releaseCoreGraphicsFunctions() nothrow @nogc
 {
-    if (--loaderCounter == 0)
+    if (--loaderCounterCG == 0)
     {
         DerelictCoreGraphics.unload();
         DerelictCoreGraphics.destroyFree();
