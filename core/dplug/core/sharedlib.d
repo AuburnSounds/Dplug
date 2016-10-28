@@ -30,7 +30,12 @@ module derelict.util.sharedlib;
 import dplug.core.nogc;
 import dplug.core.alignedbuffer;
 
+version = debugSharedLibs;
 
+version(debugSharedLibs)
+{
+    import core.stdc.stdio;
+}
 
 /// Shared library ressource
 struct SharedLib
@@ -96,7 +101,7 @@ private:
     SharedLibHandle _hlib;
 }
 
-
+/// Loader. In debug mode, this fills functions pointers with null.
 abstract class SharedLibLoader
 {
 nothrow:
@@ -105,14 +110,20 @@ nothrow:
     this(string libName)
     {
         _libName = libName;
-        _funcPointers = makeAlignedBuffer!(void**)();
+        version(debugSharedLibs)
+        {
+            _funcPointers = makeAlignedBuffer!(void**)();
+        }
     }
 
     /// Binds a function pointer to a symbol in this loader's shared library.
     final void bindFunc(void** ptr, string funcName)
     {
         void* func = _lib.loadSymbol(funcName);
-        _funcPointers.pushBack(ptr);
+        version(debugSharedLibs)
+        {
+            _funcPointers.pushBack(ptr);
+        }
         *ptr = func;
     }
 
@@ -127,12 +138,15 @@ nothrow:
     {
         _lib.unload();
 
-        // Sets all registered functions pointers to null
-        // so that they can't be reused
-        foreach(ptr; _funcPointers[])
-            *ptr = null;
+        version(debugSharedLibs)
+        {
+            // Sets all registered functions pointers to null
+            // so that they can't be reused
+            foreach(ptr; _funcPointers[])
+                *ptr = null;
 
-        _funcPointers.clearContents();
+            _funcPointers.clearContents();
+        }
     }
 
 protected:
@@ -143,7 +157,8 @@ protected:
 private:
     string _libName;
     SharedLib _lib;
-    AlignedBuffer!(void**) _funcPointers;
+    version(debugSharedLibs)
+        AlignedBuffer!(void**) _funcPointers;
 }
 
 
