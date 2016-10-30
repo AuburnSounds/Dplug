@@ -87,11 +87,11 @@ void acquireAudioUnitFunctions() nothrow @nogc
 // TODO: hold a mutex, because this isn't thread-safe
 void releaseAudioUnitFunctions() nothrow @nogc
 {
-    if (--loaderCounterAU == 0)
+    /*if (--loaderCounterAU == 0)
     {
         DerelictAudioUnit.unload();
         DerelictAudioUnit.destroyFree();
-    }
+    }*/
 }
 
 
@@ -649,11 +649,11 @@ void acquireAudioToolboxFunctions() nothrow @nogc
 // TODO: hold a mutex, because this isn't thread-safe
 void releaseAudioToolboxFunctions() nothrow @nogc
 {
-    if (--loaderCounterATB == 0)
+    /*if (--loaderCounterATB == 0)
     {
         DerelictAudioToolbox.unload();
         DerelictAudioToolbox.destroyFree();
-    }
+    }*/
 }
 
 unittest

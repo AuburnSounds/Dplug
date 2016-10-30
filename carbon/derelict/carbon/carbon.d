@@ -111,11 +111,11 @@ void acquireCarbonFunctions() nothrow @nogc
 // TODO: hold a mutex, because this isn't thread-safe
 void releaseCarbonFunctions() nothrow @nogc
 {
-    if (--loaderCounterCarbon == 0)
+    /*if (--loaderCounterCarbon == 0)
     {
         DerelictCarbon.unload();
         DerelictCarbon.destroyFree();
-    }
+    }*/
 }
 
 unittest

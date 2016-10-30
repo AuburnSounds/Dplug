@@ -85,11 +85,11 @@ void acquireCoreServicesFunctions() nothrow @nogc
 // TODO: hold a mutex, because this isn't thread-safe
 void releaseCoreServicesFunctions() nothrow @nogc
 {
-    if (--loaderCounterCS == 0)
+    /*if (--loaderCounterCS == 0)
     {
         DerelictCoreServices.unload();
         DerelictCoreServices.destroyFree();
-    }
+    }*/
 }
 
 unittest

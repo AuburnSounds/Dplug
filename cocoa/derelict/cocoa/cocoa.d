@@ -135,11 +135,11 @@ void acquireCocoaFunctions() nothrow @nogc
 // Corrolary: how to protect that mutex creation?
 void releaseCocoaFunctions() nothrow @nogc
 {
-    if (--loaderCounterCocoa == 0)
+    /*if (--loaderCounterCocoa == 0)
     {
         DerelictCocoa.unload();
         DerelictCocoa.destroyFree();
-    }
+    }*/
 }
 
 unittest

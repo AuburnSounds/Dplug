@@ -164,11 +164,11 @@ void acquireCoreFoundationFunctions() nothrow @nogc
 // TODO: hold a mutex, because this isn't thread-safe
 void releaseCoreFoundationFunctions() nothrow @nogc
 {
-    if (--loaderCounterCF == 0)
+    /*if (--loaderCounterCF == 0)
     {
         DerelictCoreFoundation.unload();
         DerelictCoreFoundation.destroyFree();
-    }
+    }*/
 }
 
 unittest

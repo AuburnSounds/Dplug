@@ -87,11 +87,11 @@ void acquireCoreGraphicsFunctions() nothrow @nogc
 // TODO: hold a mutex, because this isn't thread-safe
 void releaseCoreGraphicsFunctions() nothrow @nogc
 {
-    if (--loaderCounterCG == 0)
+    /*if (--loaderCounterCG == 0)
     {
         DerelictCoreGraphics.unload();
         DerelictCoreGraphics.destroyFree();
-    }
+    }*/
 }
 
 unittest
