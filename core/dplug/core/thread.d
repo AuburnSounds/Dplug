@@ -321,7 +321,7 @@ nothrow:
             return;
         }
 
-        enum noActualConcurrency = false;
+        enum noActualConcurrency = true; // TEMP: dplug Issue #138 work-around
 
         static if (noActualConcurrency)
         {
