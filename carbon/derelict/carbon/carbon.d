@@ -100,7 +100,7 @@ private __gshared loaderCounterCarbon = 0;
 // TODO: hold a mutex, because this isn't thread-safe
 void acquireCarbonFunctions() nothrow @nogc
 {
-    if (loaderCounterCarbon++ == 0)  // You only live once
+    if (DerelictCarbon is null)  // You only live once
     {
         DerelictCarbon = mallocEmplace!DerelictCarbonLoader();
         DerelictCarbon.load();

@@ -76,7 +76,7 @@ private __gshared loaderCounterCG = 0;
 // TODO: hold a mutex, because this isn't thread-safe
 void acquireCoreGraphicsFunctions() nothrow @nogc
 {
-    if (loaderCounterCG++ == 0)  // You only live once
+    if (DerelictCoreGraphics is null)  // You only live once
     {
         DerelictCoreGraphics = mallocEmplace!DerelictCoreGraphicsLoader();
         DerelictCoreGraphics.load();

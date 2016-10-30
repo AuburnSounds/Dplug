@@ -76,7 +76,7 @@ private __gshared loaderCounterAU = 0;
 // TODO: hold a mutex, because this isn't thread-safe
 void acquireAudioUnitFunctions() nothrow @nogc
 {
-    if (loaderCounterAU++ == 0)  // You only live once
+    if (DerelictAudioUnit is null)  // You only live once
     {
         DerelictAudioUnit = mallocEmplace!DerelictAudioUnitLoader();
         DerelictAudioUnit.load();
@@ -638,7 +638,7 @@ private __gshared loaderCounterATB = 0;
 // TODO: hold a mutex, because this isn't thread-safe
 void acquireAudioToolboxFunctions() nothrow @nogc
 {
-    if (loaderCounterATB++ == 0)  // You only live once
+    if (DerelictAudioToolbox is null)  // You only live once
     {
         DerelictAudioToolbox = mallocEmplace!DerelictAudioToolboxLoader();
         DerelictAudioToolbox.load();

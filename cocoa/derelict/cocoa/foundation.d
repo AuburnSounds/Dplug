@@ -57,7 +57,7 @@ __gshared
 
 __gshared
 {
-    NSString NSDefaultRunLoopMode;
+    //NSString NSDefaultRunLoopMode;
     NSString NSRunLoopCommonModes;
 }
 

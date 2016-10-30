@@ -418,6 +418,7 @@ private:
 
     CocoaWindow _window;
     NSTimer _timer = null;
+    NSString _runLoopMode;
 
     void initialize(CocoaWindow window, int width, int height)
     {
@@ -432,7 +433,8 @@ private:
         initWithFrame(r);
 
         _timer = NSTimer.timerWithTimeInterval(1 / 60.0, this, sel!"onTimer:", null, true);
-        NSRunLoop.currentRunLoop().addTimer(_timer, NSRunLoopCommonModes);
+        _runLoopMode = NSString.stringWith("kCFRunLoopCommonModes"w);
+        NSRunLoop.currentRunLoop().addTimer(_timer, _runLoopMode);
     }
 
     static __gshared Class clazz;

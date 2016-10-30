@@ -74,7 +74,7 @@ private __gshared loaderCounterCS = 0;
 // TODO: hold a mutex, because this isn't thread-safe
 void acquireCoreServicesFunctions() nothrow @nogc
 {
-    if (loaderCounterCS++ == 0)  // You only live once
+    if (DerelictCoreServices is null)  // You only live once
     {
         DerelictCoreServices = mallocEmplace!DerelictCoreServicesLoader();
         DerelictCoreServices.load();

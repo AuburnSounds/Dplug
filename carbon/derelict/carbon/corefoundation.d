@@ -153,7 +153,7 @@ private __gshared loaderCounterCF = 0;
 // TODO: hold a mutex, because this isn't thread-safe
 void acquireCoreFoundationFunctions() nothrow @nogc
 {
-    if (loaderCounterCF++ == 0)  // You only live once
+    if (DerelictCoreFoundation is null)  // You only live once
     {
         DerelictCoreFoundation = mallocEmplace!DerelictCoreFoundationLoader();
         DerelictCoreFoundation.load();

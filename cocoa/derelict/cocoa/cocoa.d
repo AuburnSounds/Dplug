@@ -92,7 +92,6 @@ class DerelictCocoaLoader : SharedLibLoader
             bindFunc(cast(void**)&NSDeallocateMemoryPages, "NSDeallocateMemoryPages");
 
             // MAYDO: load from proper global variables
-            NSDefaultRunLoopMode = NSString.stringWith("kCFRunLoopDefaultMode"w);
             NSRunLoopCommonModes = NSString.stringWith("kCFRunLoopCommonModes"w);
 
             // For debugging purpose
@@ -122,9 +121,8 @@ private __gshared loaderCounterCocoa = 0;
 // Corrolary: how to protect that mutex creation?
 void acquireCocoaFunctions() nothrow @nogc
 {
-    if (loaderCounterCocoa++ == 0)  // You only live once
+    if (DerelictCocoa is null)  // You only live once
     {
-        import core.stdc.stdio;
         DerelictCocoa = mallocEmplace!DerelictCocoaLoader();
         DerelictCocoa.load();
     }
