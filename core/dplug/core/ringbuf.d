@@ -7,7 +7,7 @@ module dplug.core.ringbuf;
 
 import core.atomic;
 
-import dplug.core.unchecked_sync;
+import dplug.core.sync;
 import dplug.core.nogc;
 import dplug.core.alignedbuffer;
 

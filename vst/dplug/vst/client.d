@@ -31,7 +31,7 @@ import dplug.core.alignedbuffer,
        dplug.core.runtime,
        dplug.core.fpcontrol,
        dplug.core.thread,
-       dplug.core.unchecked_sync;
+       dplug.core.sync;
 
 import dplug.client.client,
        dplug.client.daw,

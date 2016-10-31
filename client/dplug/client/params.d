@@ -26,7 +26,7 @@ import std.string;
 import std.conv;
 
 import dplug.core.math;
-import dplug.core.unchecked_sync;
+import dplug.core.sync;
 import dplug.core.nogc;
 import dplug.core.alignedbuffer;
 import dplug.client.client;

@@ -11,7 +11,7 @@ public import dplug.graphics;
 
 public import dplug.window.window;
 
-public import dplug.core.unchecked_sync;
+public import dplug.core.sync;
 public import dplug.core.alignedbuffer;
 public import dplug.core.nogc;
 

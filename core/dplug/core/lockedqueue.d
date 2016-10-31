@@ -6,7 +6,7 @@
 module dplug.core.lockedqueue;
 
 import dplug.core.ringbuf;
-import dplug.core.unchecked_sync;
+import dplug.core.sync;
 import dplug.core.nogc;
 
 

@@ -12,7 +12,7 @@ import std.algorithm.comparison;
 import std.utf;
 
 import dplug.core.alignedbuffer;
-import dplug.core.unchecked_sync;
+import dplug.core.sync;
 import dplug.core.nogc;
 
 import dplug.graphics.vector;

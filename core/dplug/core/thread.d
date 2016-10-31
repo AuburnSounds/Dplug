@@ -13,7 +13,7 @@ module dplug.core.thread;
 
 import dplug.core.nogc;
 import dplug.core.lockedqueue;
-import dplug.core.unchecked_sync;
+import dplug.core.sync;
 
 version(Posix)
     import core.sys.posix.pthread;

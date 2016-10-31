@@ -8,7 +8,7 @@ module dplug.gui.bargraph;
 import std.math;
 
 import dplug.gui.element;
-import dplug.core.unchecked_sync;
+import dplug.core.sync;
 import dplug.core.math;
 import std.algorithm.comparison: clamp;
 

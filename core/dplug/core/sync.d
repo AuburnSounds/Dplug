@@ -1,23 +1,11 @@
 /**
- * The mutex module provides a primitive for maintaining mutually exclusive
- * access.
- *
  * Copyright: Copyright Sean Kelly 2005 - 2009.
  * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
  * Authors:   Sean Kelly
- * Source:    $(DRUNTIMESRC core/sync/_mutex.d)
  */
-
-/*          Copyright Sean Kelly 2005 - 2009.
- * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE or copy at
- *          http://www.boost.org/LICENSE_1_0.txt)
- */
- /// Modified to make it @nogc
- /// Added a synchronized ring buffer.
-
-/// Created because of pressing needs of nothrow @nogc synchronization
-module dplug.core.unchecked_sync;
+/// This contains part of druntime's core.sys.mutex, core.sys.semaphore core.sys.condition and
+/// Modified to make it @nogc nothrow
+module dplug.core.sync;
 
 public import core.time;
 
@@ -49,11 +37,17 @@ else version( Posix )
     import core.stdc.errno;
     import core.sys.posix.pthread;
     import core.sys.posix.semaphore;
+    import core.sys.posix.time;
 }
 else
 {
     static assert(false, "Platform not supported");
 }
+
+
+//
+// MUTEX
+//
 
 /// Returns: A newly created `UnchekedMutex`.
 UncheckedMutex makeMutex() nothrow @nogc
@@ -219,6 +213,12 @@ unittest
     }
     mutex.destroy();
 }
+
+
+
+//
+// SEMAPHORE
+//
 
 /// Returns: A newly created `UncheckedSemaphore`
 UncheckedSemaphore makeSemaphore(uint count) nothrow @nogc
@@ -513,4 +513,329 @@ unittest
                 semaphore.notify();
         }
     }
+}
+
+
+
+//
+// CONDITION VARIABLE
+//
+
+
+ConditionVariable makeConditionVariable(UncheckedMutex* associatedMutex) nothrow @nogc
+{
+    return ConditionVariable(associatedMutex);
+}
+
+/**
+* This struct represents a condition variable as conceived by C.A.R. Hoare.  As
+* per Mesa type monitors however, "signal" has been replaced with "notify" to
+* indicate that control is not transferred to the waiter when a notification
+* is sent.
+*/
+struct ConditionVariable
+{
+public:
+nothrow:
+@nogc:
+
+    /// Initializes a condition variable.
+    this(UncheckedMutex* m) nothrow @safe
+    {
+        version( Windows )
+        {
+            m_blockLock = CreateSemaphoreA( null, 1, 1, null );
+            if( m_blockLock == m_blockLock.init )
+                assert(false);
+            m_blockQueue = CreateSemaphoreA( null, 0, int.max, null );
+            if( m_blockQueue == m_blockQueue.init )
+                assert(false);
+            InitializeCriticalSection( &m_unblockLock );
+            m_assocMutex = m;
+        }
+        else version( Posix )
+        {
+            m_assocMutex = m;
+            int rc = pthread_cond_init( &m_hndl, null );
+            if( rc )
+                assert(false);
+        }
+    }
+
+
+    ~this()
+    {
+        version( Windows )
+        {
+            CloseHandle( m_blockLock );
+            CloseHandle( m_blockQueue );
+            DeleteCriticalSection( &m_unblockLock );
+        }
+        else version( Posix )
+        {
+            int rc = pthread_cond_destroy( &m_hndl );
+            assert( !rc, "Unable to destroy condition" );
+        }
+    }
+
+    /// Wait until notified.
+    void wait()
+    {
+        version( Windows )
+        {
+            timedWait( INFINITE );
+        }
+        else version( Posix )
+        {
+            int rc = pthread_cond_wait( &m_hndl, m_assocMutex.handleAddr() );
+            if( rc )
+                assert(false);
+        }
+    }
+
+    /**
+    * Suspends the calling thread until a notification occurs or until the
+    * supplied time period has elapsed.
+    */
+    bool wait( Duration val )
+    in
+    {
+        assert( !val.isNegative );
+    }
+    body
+    {
+        version( Windows )
+        {
+            auto maxWaitMillis = dur!("msecs")( uint.max - 1 );
+
+            while( val > maxWaitMillis )
+            {
+                if( timedWait( cast(uint)
+                               maxWaitMillis.total!"msecs" ) )
+                    return true;
+                val -= maxWaitMillis;
+            }
+            return timedWait( cast(uint) val.total!"msecs" );
+        }
+        else version( Posix )
+        {
+            timespec t = void;
+            mktspec( t, val );
+
+            int rc = pthread_cond_timedwait( &m_hndl,
+                                             m_assocMutex.handleAddr(),
+                                            &t );
+            if( !rc )
+                return true;
+            if( rc == ETIMEDOUT )
+                return false;
+            assert(false);
+        }
+    }
+
+    /// Notifies one waiter.
+    void notify()
+    {
+        version( Windows )
+        {
+            notify( false );
+        }
+        else version( Posix )
+        {
+            int rc = pthread_cond_signal( &m_hndl );
+            if( rc )
+                assert(false);
+        }
+    }
+
+
+    /// Notifies all waiters.
+    void notifyAll()
+    {
+        version( Windows )
+        {
+            notify( true );
+        }
+        else version( Posix )
+        {
+            int rc = pthread_cond_broadcast( &m_hndl );
+            if( rc )
+                assert(false);
+        }
+    }
+
+
+private:
+    version( Windows )
+    {
+        bool timedWait( DWORD timeout )
+        {
+            int   numSignalsLeft;
+            int   numWaitersGone;
+            DWORD rc;
+
+            rc = WaitForSingleObject( m_blockLock, INFINITE );
+            assert( rc == WAIT_OBJECT_0 );
+
+            m_numWaitersBlocked++;
+
+            rc = ReleaseSemaphore( m_blockLock, 1, null );
+            assert( rc );
+
+            m_assocMutex.unlock();
+
+            rc = WaitForSingleObject( m_blockQueue, timeout );
+            assert( rc == WAIT_OBJECT_0 || rc == WAIT_TIMEOUT );
+            bool timedOut = (rc == WAIT_TIMEOUT);
+
+            EnterCriticalSection( &m_unblockLock );
+
+            if( (numSignalsLeft = m_numWaitersToUnblock) != 0 )
+            {
+                if ( timedOut )
+                {
+                    // timeout (or canceled)
+                    if( m_numWaitersBlocked != 0 )
+                    {
+                        m_numWaitersBlocked--;
+                        // do not unblock next waiter below (already unblocked)
+                        numSignalsLeft = 0;
+                    }
+                    else
+                    {
+                        // spurious wakeup pending!!
+                        m_numWaitersGone = 1;
+                    }
+                }
+                if( --m_numWaitersToUnblock == 0 )
+                {
+                    if( m_numWaitersBlocked != 0 )
+                    {
+                        // open the gate
+                        rc = ReleaseSemaphore( m_blockLock, 1, null );
+                        assert( rc );
+                        // do not open the gate below again
+                        numSignalsLeft = 0;
+                    }
+                    else if( (numWaitersGone = m_numWaitersGone) != 0 )
+                    {
+                        m_numWaitersGone = 0;
+                    }
+                }
+            }
+            else if( ++m_numWaitersGone == int.max / 2 )
+            {
+                // timeout/canceled or spurious event :-)
+                rc = WaitForSingleObject( m_blockLock, INFINITE );
+                assert( rc == WAIT_OBJECT_0 );
+                // something is going on here - test of timeouts?
+                m_numWaitersBlocked -= m_numWaitersGone;
+                rc = ReleaseSemaphore( m_blockLock, 1, null );
+                assert( rc == WAIT_OBJECT_0 );
+                m_numWaitersGone = 0;
+            }
+
+            LeaveCriticalSection( &m_unblockLock );
+
+            if( numSignalsLeft == 1 )
+            {
+                // better now than spurious later (same as ResetEvent)
+                for( ; numWaitersGone > 0; --numWaitersGone )
+                {
+                    rc = WaitForSingleObject( m_blockQueue, INFINITE );
+                    assert( rc == WAIT_OBJECT_0 );
+                }
+                // open the gate
+                rc = ReleaseSemaphore( m_blockLock, 1, null );
+                assert( rc );
+            }
+            else if( numSignalsLeft != 0 )
+            {
+                // unblock next waiter
+                rc = ReleaseSemaphore( m_blockQueue, 1, null );
+                assert( rc );
+            }
+            m_assocMutex.lock();
+            return !timedOut;
+        }
+
+
+        void notify( bool all )
+        {
+            DWORD rc;
+
+            EnterCriticalSection( &m_unblockLock );
+
+            if( m_numWaitersToUnblock != 0 )
+            {
+                if( m_numWaitersBlocked == 0 )
+                {
+                    LeaveCriticalSection( &m_unblockLock );
+                    return;
+                }
+                if( all )
+                {
+                    m_numWaitersToUnblock += m_numWaitersBlocked;
+                    m_numWaitersBlocked = 0;
+                }
+                else
+                {
+                    m_numWaitersToUnblock++;
+                    m_numWaitersBlocked--;
+                }
+                LeaveCriticalSection( &m_unblockLock );
+            }
+            else if( m_numWaitersBlocked > m_numWaitersGone )
+            {
+                rc = WaitForSingleObject( m_blockLock, INFINITE );
+                assert( rc == WAIT_OBJECT_0 );
+                if( 0 != m_numWaitersGone )
+                {
+                    m_numWaitersBlocked -= m_numWaitersGone;
+                    m_numWaitersGone = 0;
+                }
+                if( all )
+                {
+                    m_numWaitersToUnblock = m_numWaitersBlocked;
+                    m_numWaitersBlocked = 0;
+                }
+                else
+                {
+                    m_numWaitersToUnblock = 1;
+                    m_numWaitersBlocked--;
+                }
+                LeaveCriticalSection( &m_unblockLock );
+                rc = ReleaseSemaphore( m_blockQueue, 1, null );
+                assert( rc );
+            }
+            else
+            {
+                LeaveCriticalSection( &m_unblockLock );
+            }
+        }
+
+
+        // NOTE: This implementation uses Algorithm 8c as described here:
+        //       http://groups.google.com/group/comp.programming.threads/
+        //              browse_frm/thread/1692bdec8040ba40/e7a5f9d40e86503a
+        HANDLE              m_blockLock;    // auto-reset event (now semaphore)
+        HANDLE              m_blockQueue;   // auto-reset event (now semaphore)
+        UncheckedMutex*     m_assocMutex;   // external mutex/CS
+        CRITICAL_SECTION    m_unblockLock;  // internal mutex/CS
+        int                 m_numWaitersGone        = 0;
+        int                 m_numWaitersBlocked     = 0;
+        int                 m_numWaitersToUnblock   = 0;
+    }
+    else version( Posix )
+    {
+        UncheckedMutex*     m_assocMutex;
+        pthread_cond_t      m_hndl;
+    }
+}
+
+unittest
+{
+    auto mutex = makeMutex();
+    auto condvar = makeConditionVariable(&mutex);
+    condvar.destroy();
 }

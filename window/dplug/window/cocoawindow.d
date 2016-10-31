@@ -14,7 +14,7 @@ import dplug.graphics.vector;
 import dplug.graphics.box;
 import dplug.graphics.image;
 
-import dplug.core.unchecked_sync;
+import dplug.core.sync;
 import dplug.core.runtime;
 import dplug.core.nogc;
 import dplug.core.random;

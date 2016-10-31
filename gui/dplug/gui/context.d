@@ -9,7 +9,7 @@ import std.file;
 
 import dplug.core.alignedbuffer;
 import dplug.core.nogc;
-import dplug.core.unchecked_sync;
+import dplug.core.sync;
 
 import dplug.window.window;
 

@@ -30,7 +30,7 @@ import dplug.core.alignedbuffer;
 import dplug.core.nogc;
 import dplug.core.lockedqueue;
 import dplug.core.runtime;
-import dplug.core.unchecked_sync;
+import dplug.core.sync;
 import dplug.core.thread;
 
 import dplug.client.client;
