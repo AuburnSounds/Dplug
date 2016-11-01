@@ -509,7 +509,7 @@ nothrow:
             _workMutex.lock();
             _stop = true;
             _workMutex.unlock();
-            
+
             // Notify all workers
             _workCondition.notifyAll();
 
@@ -539,12 +539,12 @@ nothrow:
         }
 
         // At this point we assume all worker threads are waiting for messages
-        
+
         // Sets the current task
         _workMutex.lock();
         _taskDelegate = dg;       // immutable during this parallelFor
         _taskNumWorkItem = count; // immutable during this parallelFor
-        _taskCurrentWorkItem = 0;        
+        _taskCurrentWorkItem = 0;
         _taskCompleted = 0;
         _workMutex.unlock();
 
@@ -591,15 +591,15 @@ private:
         {
             if (_taskCompleted == _taskNumWorkItem) // TODO: order thread will be waken up multiple times
                 return;
-            _finishCondition.wait(&_finishMutex);  
+            _finishCondition.wait(&_finishMutex);
         }
     }
 
     // What worker threads do
     // MAYDO: threads come here with bad context with struct delegates
-    void workerThreadFunc() 
+    void workerThreadFunc()
     {
-        
+
         while (true)
         {
             int workItem = -1;
@@ -640,11 +640,11 @@ unittest
 
     struct A
     {
-        ThreadPool2 _pool;
+        ThreadPool _pool;
 
         this(int dummy)
         {
-            _pool = mallocEmplace!ThreadPool2();
+            _pool = mallocEmplace!ThreadPool();
         }
 
         ~this()

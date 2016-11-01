@@ -617,8 +617,12 @@ nothrow:
         }
         else version( Posix )
         {
-            timespec t = void;
-            mktspec( t, val );
+            timespec t;
+            assumeNothrowNoGC(
+                (timespec* time, Duration dur)
+                {
+                    return mktspec(*time, dur );
+                })(&t, val);
 
             int rc = pthread_cond_timedwait( &m_hndl,
                                              assocMutex.handleAddr(),
