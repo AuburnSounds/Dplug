@@ -228,6 +228,15 @@ unittest
     assert(outerInt == 1);
 }
 
+/// Launch a function in a newly created thread, which is destroyed afterwards.
+/// Return the thread so that you can call `.join()` on it.
+Thread launchInAThread(ThreadDelegate dg) nothrow @nogc
+{
+    Thread t = makeThread(dg);
+    t.start();
+    return t;
+}
+
 
 version(Windows)
 {
@@ -484,10 +493,10 @@ nothrow:
     {
         // Create sync first
         _workMutex = makeMutex();
-        _workCondition = makeConditionVariable(&_workMutex);
+        _workCondition = makeConditionVariable();
 
         _finishMutex = makeMutex();
-        _finishCondition = makeConditionVariable(&_workMutex);
+        _finishCondition = makeConditionVariable();
 
         // Create threads
         if (numThreads == 0)
@@ -542,10 +551,12 @@ nothrow:
 
         // Sets the current task
         _workMutex.lock();
+
         _taskDelegate = dg;       // immutable during this parallelFor
         _taskNumWorkItem = count; // immutable during this parallelFor
         _taskCurrentWorkItem = 0;
         _taskCompleted = 0;
+
         _workMutex.unlock();
 
         // wake up all threads
@@ -587,10 +598,11 @@ private:
         _finishMutex.lock();
         scope(exit) _finishMutex.unlock();
 
-        while (true)
+        // FUTURE: order thread will be waken up multiple times
+        //         (one for every completed task)
+        //         maybe that can be optimized
+        while (_taskCompleted < _taskNumWorkItem)
         {
-            if (_taskCompleted == _taskNumWorkItem) // TODO: order thread will be waken up multiple times
-                return;
             _finishCondition.wait(&_finishMutex);
         }
     }
@@ -599,7 +611,6 @@ private:
     // MAYDO: threads come here with bad context with struct delegates
     void workerThreadFunc()
     {
-
         while (true)
         {
             int workItem = -1;
@@ -614,10 +625,14 @@ private:
                 if (_stop && !hasWork())
                     return;
 
+                assert(hasWork());
+
                 // Pick a task and increment counter
                 workItem = _taskCurrentWorkItem;
                 _taskCurrentWorkItem++;
             }
+
+            assert(workItem != -1);
 
             // Do the actual task
             _taskDelegate(workItem);
@@ -627,6 +642,8 @@ private:
                 _finishMutex.lock();
                 _taskCompleted++;
                 _finishMutex.unlock();
+
+                _finishCondition.notifyOne(); // wake-up
             }
         }
     }

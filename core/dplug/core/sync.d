@@ -522,9 +522,9 @@ unittest
 //
 
 
-ConditionVariable makeConditionVariable(UncheckedMutex* associatedMutex) nothrow @nogc
+ConditionVariable makeConditionVariable() nothrow @nogc
 {
-    return ConditionVariable(associatedMutex);
+    return ConditionVariable(42);
 }
 
 /**
@@ -540,7 +540,7 @@ nothrow:
 @nogc:
 
     /// Initializes a condition variable.
-    this(UncheckedMutex* m) nothrow @safe
+    this(int dummy)
     {
         version( Windows )
         {
@@ -577,6 +577,7 @@ nothrow:
     }
 
     /// Wait until notified.
+    /// The associated mutex should always be the same for this condition variable.
     void wait(UncheckedMutex* assocMutex)
     {
         version( Windows )
@@ -591,10 +592,8 @@ nothrow:
         }
     }
 
-    /**
-    * Suspends the calling thread until a notification occurs or until the
-    * supplied time period has elapsed.
-    */
+    /// Suspends the calling thread until a notification occurs or until the
+    /// supplied time period has elapsed.
     bool wait( Duration val, UncheckedMutex* assocMutex )
     in
     {
@@ -636,11 +635,11 @@ nothrow:
     }
 
     /// Notifies one waiter.
-    void notify()
+    void notifyOne()
     {
         version( Windows )
         {
-            notify( false );
+            notifyImpl( false );
         }
         else version( Posix )
         {
@@ -656,7 +655,7 @@ nothrow:
     {
         version( Windows )
         {
-            notify( true );
+            notifyImpl( true );
         }
         else version( Posix )
         {
@@ -762,7 +761,7 @@ private:
         }
 
 
-        void notify( bool all )
+        void notifyImpl( bool all )
         {
             DWORD rc;
 
@@ -835,7 +834,27 @@ private:
 
 unittest
 {
+    import dplug.core.thread;
+
     auto mutex = makeMutex();
-    auto condvar = makeConditionVariable(&mutex);
-    condvar.destroy();
+    auto condvar = makeConditionVariable();
+
+    bool finished = false;
+
+    // Launch a thread that wait on this condition
+    Thread t = launchInAThread( 
+        () { 
+            mutex.lock();
+            while(!finished)
+                condvar.wait(&mutex);
+            mutex.unlock();
+        });
+
+    // Notify termination
+    mutex.lock();
+        finished = true;
+    mutex.unlock();
+    condvar.notifyOne();
+
+    t.join();
 }
