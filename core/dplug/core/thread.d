@@ -255,8 +255,39 @@ else version(Posix)
 // Thread-pool
 //
 
+
+int getTotalNumberOfCPUs() nothrow @nogc
+{
+    version(Windows)
+    {
+        import core.sys.windows.windows : SYSTEM_INFO, GetSystemInfo;
+        SYSTEM_INFO si;
+        GetSystemInfo(&si);
+        int procs = cast(int) si.dwNumberOfProcessors;
+        if (procs < 1)
+            procs = 1;
+        return procs;
+    }
+    else version(linux)
+    {
+        import core.sys.posix.unistd : _SC_NPROCESSORS_ONLN, sysconf;
+        return cast(int) sysconf(_SC_NPROCESSORS_ONLN);
+    }
+    else version(OSX)
+    {
+        auto nameStr = "machdep.cpu.core_count\0".ptr;
+        uint ans;
+        size_t len = uint.sizeof;
+        sysctlbyname(nameStr, &ans, &len, null, 0);
+        return cast(int)ans;
+    }
+    else
+        static assert(false, "OS unsupported");
+}
+
 alias ThreadPoolDelegate = void delegate(int workItem) nothrow @nogc;
 
+/+
 
 /// Optimistic thread-pool, failure not supported
 class ThreadPool
@@ -275,7 +306,7 @@ nothrow:
 
         // Create threads
         if (numThreads == 0)
-            numThreads = getTotalCPUs();
+            numThreads = getTotalNumberOfCPUs();
         _threads = mallocSlice!Thread(numThreads);
         foreach(ref thread; _threads)
         {
@@ -391,35 +422,6 @@ private:
             }
         }
     }
-
-    static int getTotalCPUs()
-    {
-        version(Windows)
-        {
-            import core.sys.windows.windows : SYSTEM_INFO, GetSystemInfo;
-            SYSTEM_INFO si;
-            GetSystemInfo(&si);
-            int procs = cast(int) si.dwNumberOfProcessors;
-            if (procs < 1)
-                procs = 1;
-            return procs;
-        }
-        else version(linux)
-        {
-            import core.sys.posix.unistd : _SC_NPROCESSORS_ONLN, sysconf;
-            return cast(int) sysconf(_SC_NPROCESSORS_ONLN);
-        }
-        else version(OSX)
-        {
-            auto nameStr = "machdep.cpu.core_count\0".ptr;
-            uint ans;
-            size_t len = uint.sizeof;
-            sysctlbyname(nameStr, &ans, &len, null, 0);
-            return cast(int)ans;
-        }
-        else
-            static assert(false, "OS unsupported");
-    }
 }
 
 unittest
@@ -434,6 +436,215 @@ unittest
         this(int dummy)
         {
             _pool = mallocEmplace!ThreadPool();
+        }
+
+        ~this()
+        {
+            _pool.destroy();
+        }
+
+        void launch(int count) nothrow @nogc
+        {
+            _pool.parallelFor(count, &loopBody);
+        }
+
+        void loopBody(int workItem) nothrow @nogc
+        {
+            atomicOp!"+="(counter, 1);
+        }
+
+        shared(int) counter = 0;
+    }
+
+    auto a = A(4);
+    a.launch(10);
+    assert(a.counter == 10);
+
+    a.launch(500);
+    assert(a.counter == 510);
+
+    a.launch(1);
+    assert(a.counter == 511);
+
+    a.launch(0);
+    assert(a.counter == 511);
+}
+
++/
+
+/// Rewrite of the ThreadPool using condition variables.
+class ThreadPool
+{
+public:
+nothrow:
+@nogc:
+
+    /// Creates a thread-pool.
+    this(int numThreads = 0, size_t stackSize = 0)
+    {
+        // Create sync first
+        _workMutex = makeMutex();
+        _workCondition = makeConditionVariable(&_workMutex);
+
+        _finishMutex = makeMutex();
+        _finishCondition = makeConditionVariable(&_workMutex);
+
+        // Create threads
+        if (numThreads == 0)
+            numThreads = getTotalNumberOfCPUs();
+        _threads = mallocSlice!Thread(numThreads);
+        foreach(ref thread; _threads)
+        {
+            thread = makeThread(&workerThreadFunc, stackSize);
+            thread.start();
+        }
+    }
+
+    /// Destroys a thread-pool.
+    ~this()
+    {
+        if (_threads !is null)
+        {
+            // Put the threadpool is stop state
+            _workMutex.lock();
+            _stop = true;
+            _workMutex.unlock();
+            
+            // Notify all workers
+            _workCondition.notifyAll();
+
+            // Wait for each thread termination
+            foreach(ref thread; _threads)
+                thread.join();
+
+            // Detroys each thread
+            foreach(ref thread; _threads)
+                thread.destroy();
+            freeSlice(_threads);
+            _threads = null;
+        }
+    }
+
+    /// Calls the delegate in parallel, with 0..count as index
+    void parallelFor(int count, scope ThreadPoolDelegate dg)
+    {
+        if (count == 0) // no tasks, exit immediately
+            return;
+
+        // Do not launch worker threads for one work-item, not worth it.
+        if (count == 1)
+        {
+            dg(0);
+            return;
+        }
+
+        // At this point we assume all worker threads are waiting for messages
+        
+        // Sets the current task
+        _workMutex.lock();
+        _taskDelegate = dg;       // immutable during this parallelFor
+        _taskNumWorkItem = count; // immutable during this parallelFor
+        _taskCurrentWorkItem = 0;        
+        _taskCompleted = 0;
+        _workMutex.unlock();
+
+        // wake up all threads
+        // FUTURE: if number of tasks < number of threads only wake up the necessary amount of threads
+        _workCondition.notifyAll();
+
+        waitForCompletion();
+    }
+
+
+
+private:
+    Thread[] _threads = null;
+
+    // Used to signal more work
+    UncheckedMutex _workMutex;
+    ConditionVariable _workCondition;
+
+    // Used to signal completion
+    UncheckedMutex _finishMutex;
+    ConditionVariable _finishCondition;
+
+    // These fields represent the current task group (ie. a parallelFor)
+    ThreadPoolDelegate _taskDelegate;
+    int _taskNumWorkItem;     // total number of tasks in this task group
+    int _taskCurrentWorkItem; // current task still left to do (protected by _workMutex)
+    int _taskCompleted;       // every task < taskCompleted has already been completed (protected by _finishMutex)
+
+    bool _stop;
+
+    bool hasWork()
+    {
+        return _taskCurrentWorkItem < _taskNumWorkItem;
+    }
+
+    // Wait for completion of the previous parallelFor
+    void waitForCompletion()
+    {
+        _finishMutex.lock();
+        scope(exit) _finishMutex.unlock();
+
+        while (true)
+        {
+            if (_taskCompleted == _taskNumWorkItem) // TODO: order thread will be waken up multiple times
+                return;
+            _finishCondition.wait(&_finishMutex);  
+        }
+    }
+
+    // What worker threads do
+    // MAYDO: threads come here with bad context with struct delegates
+    void workerThreadFunc() 
+    {
+        
+        while (true)
+        {
+            int workItem = -1;
+            {
+                _workMutex.lock();
+                scope(exit) _workMutex.unlock();
+
+                // Wait for notification
+                while (!_stop && !hasWork())
+                    _workCondition.wait(&_workMutex);
+
+                if (_stop && !hasWork())
+                    return;
+
+                // Pick a task and increment counter
+                workItem = _taskCurrentWorkItem;
+                _taskCurrentWorkItem++;
+            }
+
+            // Do the actual task
+            _taskDelegate(workItem);
+
+            // signal completion of one more task
+            {
+                _finishMutex.lock();
+                _taskCompleted++;
+                _finishMutex.unlock();
+            }
+        }
+    }
+}
+
+
+unittest
+{
+    import core.atomic;
+    import dplug.core.nogc;
+
+    struct A
+    {
+        ThreadPool2 _pool;
+
+        this(int dummy)
+        {
+            _pool = mallocEmplace!ThreadPool2();
         }
 
         ~this()
