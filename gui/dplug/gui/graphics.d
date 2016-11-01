@@ -403,6 +403,9 @@ protected:
         // only then is the list of rectangles to update cleared
         _areasToUpdateNonOverlapping.clearContents();
 
+        // wait for compositing completion
+        //_threadPool.waitForCompletion();
+
         version(BenchmarkCompositing)
         {
             _compositingWatch.stop();
@@ -550,7 +553,8 @@ protected:
                 {
                     _elemsToDraw[drawn + i].render(diffuseRef, depthRef, materialRef, _areasToUpdateNonOverlapping[]);
                 }
-                _threadPool.parallelFor(canBeDrawn, &drawOneItem);
+                //_threadPool.waitForCompletion();
+                _threadPool.parallelFor/*Async*/(canBeDrawn, &drawOneItem);
 
                 drawn += canBeDrawn;
                 assert(drawn <= N);
@@ -584,7 +588,8 @@ protected:
             compositor.compositeTile(wfb, pf, _areasToRenderNonOverlappingTiled[i],
                                      _diffuseMap, _materialMap, _depthMap, context.skybox);
         }
-        _threadPool.parallelFor(numAreas, &compositeOneTile);
+        //_threadPool.waitForCompletion(); // wait for mipmaps to be generated
+        _threadPool.parallelFor/*Async*/(numAreas, &compositeOneTile);
     }
 
     /// Compose lighting effects from depth and diffuse into a result.
@@ -638,7 +643,8 @@ protected:
                 }
             }
         }
-        _threadPool.parallelFor(2, &processOneMipmap);
+        //_threadPool.waitForCompletion(); // wait for UI widgets to be drawn
+        _threadPool.parallelFor/*Async*/(2, &processOneMipmap);
     }
 }
 
