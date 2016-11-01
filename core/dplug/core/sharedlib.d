@@ -25,7 +25,7 @@ ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 
 */
-module derelict.util.sharedlib;
+module dplug.core.sharedlib;
 
 import dplug.core.nogc;
 import dplug.core.alignedbuffer;
