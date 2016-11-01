@@ -30,7 +30,7 @@ module dplug.core.sharedlib;
 import dplug.core.nogc;
 import dplug.core.alignedbuffer;
 
-version = debugSharedLibs;
+//version = debugSharedLibs;
 
 version(debugSharedLibs)
 {
