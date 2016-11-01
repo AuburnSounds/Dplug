@@ -264,7 +264,7 @@ else version(Posix)
 // Thread-pool
 //
 
-
+/// Returns: Number of CPUs.
 int getTotalNumberOfCPUs() nothrow @nogc
 {
     version(Windows)
@@ -296,192 +296,12 @@ int getTotalNumberOfCPUs() nothrow @nogc
 
 alias ThreadPoolDelegate = void delegate(int workItem) nothrow @nogc;
 
-/+
-
-/// Optimistic thread-pool, failure not supported
-class ThreadPool
-{
-public:
-nothrow:
-@nogc:
-
-    /// Creates a thread-pool.
-    this(int numThreads = 0, size_t stackSize = 0)
-    {
-        // Create the queues first
-        size_t maxTasksPushedAtOnce = 512; // FUTURE, find something clever
-        _taskQueue = lockedQueue!Task(maxTasksPushedAtOnce);
-        _taskFinishedQueue = lockedQueue!int(maxTasksPushedAtOnce);
-
-        // Create threads
-        if (numThreads == 0)
-            numThreads = getTotalNumberOfCPUs();
-        _threads = mallocSlice!Thread(numThreads);
-        foreach(ref thread; _threads)
-        {
-            thread = makeThread(&workerThreadFunc, stackSize);
-            thread.start();
-        }
-    }
-
-    /// Destroys a thread-pool.
-    ~this()
-    {
-        if (_threads !is null)
-        {
-            // Post quit message for each threads
-            int numThreads = cast(int)(_threads.length);
-            foreach(i; 0..numThreads)
-            {
-                _taskQueue.pushBack(Task(TaskType.exit, -1, null));
-            }
-
-            // Wait for each thread termination
-            foreach(ref thread; _threads)
-                thread.join();
-
-            // Detroys each thread
-            foreach(ref thread; _threads)
-                thread.destroy();
-            freeSlice(_threads);
-            _threads = null;
-        }
-    }
-
-    /// Calls the delegate in parallel, with 0..count as index
-    void parallelFor(int count, scope ThreadPoolDelegate dg)
-    {
-        if (count == 0) // no tasks, exit immediately
-            return;
-
-        // Do not launch worker threads for one work-item, not worth it.
-        if (count == 1)
-        {
-            dg(0);
-            return;
-        }
-
-        enum noActualConcurrency = true; // TEMP: dplug Issue #138 work-around
-
-        static if (noActualConcurrency)
-        {
-            // Useful for debug purpose.
-            // Do not use concurrency, use the caller thread only.
-            foreach(int i; 0..count)
-            {
-                dg(i);
-            }
-        }
-        else
-        {
-            // push the tasks on the queue
-            foreach(int i; 0..count)
-            {
-                _taskQueue.pushBack(Task(TaskType.callThisDelegate, i, dg));
-            }
-
-            // Wait for all tasks to be finished
-            // FUTURE: this way to synchronize is inefficient
-            foreach(int i; 0..count)
-                _taskFinishedQueue.popFront();
-        }
-    }
-
-private:
-    Thread[] _threads = null;
-    LockedQueue!Task _taskQueue;
-    LockedQueue!int _taskFinishedQueue;
-
-    //UncheckedSemaphore _taskFinishedSemaphore;
-    ulong _currentTask = 0;
-
-    enum TaskType
-    {
-        exit,
-        callThisDelegate
-    }
-
-    struct Task
-    {
-        TaskType type;
-        int workItem; // index of the task
-        ThreadPoolDelegate dg;
-    }
-
-    // What worker threads do
-    // MAYDO: threads come here with bad context with struct delegates
-    void workerThreadFunc() nothrow @nogc
-    {
-        while(true)
-        {
-            Task task = _taskQueue.popFront();
-
-            final switch(task.type)
-            {
-                case TaskType.exit:
-                {
-                    return; // normal exit
-                }
-
-                case TaskType.callThisDelegate:
-                {
-                    task.dg(task.workItem);
-                    _taskFinishedQueue.pushBack(task.workItem);
-                }
-            }
-        }
-    }
-}
-
-unittest
-{
-    import core.atomic;
-    import dplug.core.nogc;
-
-    struct A
-    {
-        ThreadPool _pool;
-
-        this(int dummy)
-        {
-            _pool = mallocEmplace!ThreadPool();
-        }
-
-        ~this()
-        {
-            _pool.destroy();
-        }
-
-        void launch(int count) nothrow @nogc
-        {
-            _pool.parallelFor(count, &loopBody);
-        }
-
-        void loopBody(int workItem) nothrow @nogc
-        {
-            atomicOp!"+="(counter, 1);
-        }
-
-        shared(int) counter = 0;
-    }
-
-    auto a = A(4);
-    a.launch(10);
-    assert(a.counter == 10);
-
-    a.launch(500);
-    assert(a.counter == 510);
-
-    a.launch(1);
-    assert(a.counter == 511);
-
-    a.launch(0);
-    assert(a.counter == 511);
-}
-
-+/
 
 /// Rewrite of the ThreadPool using condition variables.
+/// FUTURE: this could be speed-up by using futures. Description of the task
+///         and associated condition+mutex would go in an external struct.
+/// Note: the interface of the thread-pool itself is not thread-safe, you cannot give orders from
+///       multiple threads at once.
 class ThreadPool
 {
 public:
@@ -514,9 +334,11 @@ nothrow:
     {
         if (_threads !is null)
         {
+            assert(_state == State.initial);
+
             // Put the threadpool is stop state
             _workMutex.lock();
-            _stop = true;
+                _stopFlag = true;
             _workMutex.unlock();
 
             // Notify all workers
@@ -534,18 +356,35 @@ nothrow:
         }
     }
 
-    /// Calls the delegate in parallel, with 0..count as index
+    /// Calls the delegate in parallel, with 0..count as index.
+    /// Immediate waiting for completion.
     void parallelFor(int count, scope ThreadPoolDelegate dg)
     {
-        if (count == 0) // no tasks, exit immediately
-            return;
+        assert(_state == State.initial);
 
         // Do not launch worker threads for one work-item, not worth it.
+        // (but it is worth it in async).
         if (count == 1)
         {
             dg(0);
             return;
         }
+
+        // Unleash parallel threads.
+        parallelForAsync(count, dg);
+
+        // Wait for completion immediately.
+        waitForCompletion(); 
+    }
+
+    /// Same, but does not wait for completion. 
+    /// You cannot have 2 concurrent parallelFor for the same thread-pool.
+    void parallelForAsync(int count, scope ThreadPoolDelegate dg)
+    {
+        assert(_state == State.initial);
+
+        if (count == 0) // no tasks, exit immediately
+            return;
 
         // At this point we assume all worker threads are waiting for messages
 
@@ -563,10 +402,31 @@ nothrow:
         // FUTURE: if number of tasks < number of threads only wake up the necessary amount of threads
         _workCondition.notifyAll();
 
-        waitForCompletion();
+        _state = State.parallelForInProgress;
     }
 
+    /// Wait for completion of the previous parallelFor, if any.
+    // It's always safe to call this function before doing another parallelFor.
+    void waitForCompletion()
+    {
+        if (_state == State.initial)
+            return; // that means that parallel threads were not launched
 
+        assert(_state == State.parallelForInProgress);
+
+        _finishMutex.lock();
+        scope(exit) _finishMutex.unlock();
+
+        // FUTURE: order thread will be waken up multiple times
+        //         (one for every completed task)
+        //         maybe that can be optimized
+        while (_taskCompleted < _taskNumWorkItem)
+        {
+            _finishCondition.wait(&_finishMutex);
+        }
+
+        _state = State.initial;
+    }
 
 private:
     Thread[] _threads = null;
@@ -585,27 +445,20 @@ private:
     int _taskCurrentWorkItem; // current task still left to do (protected by _workMutex)
     int _taskCompleted;       // every task < taskCompleted has already been completed (protected by _finishMutex)
 
-    bool _stop;
+    bool _stopFlag;
 
     bool hasWork()
     {
         return _taskCurrentWorkItem < _taskNumWorkItem;
     }
 
-    // Wait for completion of the previous parallelFor
-    void waitForCompletion()
+    // Represent the thread-pool state from the user POV
+    enum State
     {
-        _finishMutex.lock();
-        scope(exit) _finishMutex.unlock();
-
-        // FUTURE: order thread will be waken up multiple times
-        //         (one for every completed task)
-        //         maybe that can be optimized
-        while (_taskCompleted < _taskNumWorkItem)
-        {
-            _finishCondition.wait(&_finishMutex);
-        }
+        initial,               // tasks can be launched
+        parallelForInProgress, // task were launched, but not waited one
     }
+    State _state = State.initial;
 
     // What worker threads do
     // MAYDO: threads come here with bad context with struct delegates
@@ -619,10 +472,10 @@ private:
                 scope(exit) _workMutex.unlock();
 
                 // Wait for notification
-                while (!_stop && !hasWork())
+                while (!_stopFlag && !hasWork())
                     _workCondition.wait(&_workMutex);
 
-                if (_stop && !hasWork())
+                if (_stopFlag && !hasWork())
                     return;
 
                 assert(hasWork());
@@ -669,9 +522,15 @@ unittest
             _pool.destroy();
         }
 
-        void launch(int count) nothrow @nogc
+        void launch(int count, bool async) nothrow @nogc
         {
-            _pool.parallelFor(count, &loopBody);
+            if (async)
+            {
+                _pool.parallelForAsync(count, &loopBody);
+                _pool.waitForCompletion();
+            }
+            else
+                _pool.parallelFor(count, &loopBody);
         }
 
         void loopBody(int workItem) nothrow @nogc
@@ -683,15 +542,20 @@ unittest
     }
 
     auto a = A(4);
-    a.launch(10);
+    a.launch(10, false);
     assert(a.counter == 10);
 
-    a.launch(500);
+    a.launch(500, true);
     assert(a.counter == 510);
 
-    a.launch(1);
+    a.launch(1, false);
     assert(a.counter == 511);
 
-    a.launch(0);
-    assert(a.counter == 511);
+    a.launch(1, true);
+    assert(a.counter == 512);
+
+    a.launch(0, true);
+    assert(a.counter == 512);
+    a.launch(0, false);
+    assert(a.counter == 512);
 }
