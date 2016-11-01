@@ -554,7 +554,9 @@ nothrow:
         }
         else version( Posix )
         {
-            int rc = pthread_cond_init( &m_hndl, null );
+            _handle = cast(pthread_cond_t*)( alignedMalloc(pthread_cond_t.sizeof, PosixMutexAlignment) );
+
+            int rc = pthread_cond_init( handleAddr(), null );
             if( rc )
                 assert(false);
         }
@@ -571,8 +573,13 @@ nothrow:
         }
         else version( Posix )
         {
-            int rc = pthread_cond_destroy( &m_hndl );
-            assert( !rc, "Unable to destroy condition" );
+            if (_handle !is null)
+            {
+                int rc = pthread_cond_destroy( handleAddr() );
+                assert( !rc, "Unable to destroy condition" );
+                alignedFree(_handle, PosixMutexAlignment);
+                _handle = null;
+            }
         }
     }
 
@@ -586,51 +593,9 @@ nothrow:
         }
         else version( Posix )
         {
-            int rc = pthread_cond_wait( &m_hndl, assocMutex.handleAddr() );
+            int rc = pthread_cond_wait( handleAddr(), assocMutex.handleAddr() );
             if( rc )
                 assert(false);
-        }
-    }
-
-    /// Suspends the calling thread until a notification occurs or until the
-    /// supplied time period has elapsed.
-    bool wait( Duration val, UncheckedMutex* assocMutex )
-    in
-    {
-        assert( !val.isNegative );
-    }
-    body
-    {
-        version( Windows )
-        {
-            auto maxWaitMillis = dur!("msecs")( uint.max - 1 );
-
-            while( val > maxWaitMillis )
-            {
-                if( timedWait( cast(uint)
-                               maxWaitMillis.total!"msecs", assocMutex ) )
-                    return true;
-                val -= maxWaitMillis;
-            }
-            return timedWait( cast(uint) val.total!"msecs", assocMutex );
-        }
-        else version( Posix )
-        {
-            timespec t;
-            assumeNothrowNoGC(
-                (timespec* time, Duration dur)
-                {
-                    return mktspec(*time, dur );
-                })(&t, val);
-
-            int rc = pthread_cond_timedwait( &m_hndl,
-                                             assocMutex.handleAddr(),
-                                            &t );
-            if( !rc )
-                return true;
-            if( rc == ETIMEDOUT )
-                return false;
-            assert(false);
         }
     }
 
@@ -643,7 +608,7 @@ nothrow:
         }
         else version( Posix )
         {
-            int rc = pthread_cond_signal( &m_hndl );
+            int rc = pthread_cond_signal( handleAddr() );
             if( rc )
                 assert(false);
         }
@@ -659,9 +624,17 @@ nothrow:
         }
         else version( Posix )
         {
-            int rc = pthread_cond_broadcast( &m_hndl );
+            int rc = pthread_cond_broadcast( handleAddr() );
             if( rc )
                 assert(false);
+        }
+    }
+
+    version(Posix)
+    {
+        pthread_cond_t* handleAddr() nothrow @nogc
+        {
+            return _handle;
         }
     }
 
@@ -828,7 +801,7 @@ private:
     }
     else version( Posix )
     {
-        pthread_cond_t      m_hndl;
+        pthread_cond_t*     _handle;
     }
 }
 
@@ -842,8 +815,8 @@ unittest
     bool finished = false;
 
     // Launch a thread that wait on this condition
-    Thread t = launchInAThread( 
-        () { 
+    Thread t = launchInAThread(
+        () {
             mutex.lock();
             while(!finished)
                 condvar.wait(&mutex);
