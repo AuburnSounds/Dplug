@@ -551,11 +551,9 @@ nothrow:
             if( m_blockQueue == m_blockQueue.init )
                 assert(false);
             InitializeCriticalSection( &m_unblockLock );
-            m_assocMutex = m;
         }
         else version( Posix )
         {
-            m_assocMutex = m;
             int rc = pthread_cond_init( &m_hndl, null );
             if( rc )
                 assert(false);
@@ -579,15 +577,15 @@ nothrow:
     }
 
     /// Wait until notified.
-    void wait()
+    void wait(UncheckedMutex* assocMutex)
     {
         version( Windows )
         {
-            timedWait( INFINITE );
+            timedWait( INFINITE, assocMutex );
         }
         else version( Posix )
         {
-            int rc = pthread_cond_wait( &m_hndl, m_assocMutex.handleAddr() );
+            int rc = pthread_cond_wait( &m_hndl, assocMutex.handleAddr() );
             if( rc )
                 assert(false);
         }
@@ -597,7 +595,7 @@ nothrow:
     * Suspends the calling thread until a notification occurs or until the
     * supplied time period has elapsed.
     */
-    bool wait( Duration val )
+    bool wait( Duration val, UncheckedMutex* assocMutex )
     in
     {
         assert( !val.isNegative );
@@ -611,11 +609,11 @@ nothrow:
             while( val > maxWaitMillis )
             {
                 if( timedWait( cast(uint)
-                               maxWaitMillis.total!"msecs" ) )
+                               maxWaitMillis.total!"msecs", assocMutex ) )
                     return true;
                 val -= maxWaitMillis;
             }
-            return timedWait( cast(uint) val.total!"msecs" );
+            return timedWait( cast(uint) val.total!"msecs", assocMutex );
         }
         else version( Posix )
         {
@@ -623,7 +621,7 @@ nothrow:
             mktspec( t, val );
 
             int rc = pthread_cond_timedwait( &m_hndl,
-                                             m_assocMutex.handleAddr(),
+                                             assocMutex.handleAddr(),
                                             &t );
             if( !rc )
                 return true;
@@ -668,7 +666,7 @@ nothrow:
 private:
     version( Windows )
     {
-        bool timedWait( DWORD timeout )
+        bool timedWait( DWORD timeout, UncheckedMutex* assocMutex )
         {
             int   numSignalsLeft;
             int   numWaitersGone;
@@ -682,7 +680,7 @@ private:
             rc = ReleaseSemaphore( m_blockLock, 1, null );
             assert( rc );
 
-            m_assocMutex.unlock();
+            assocMutex.unlock();
 
             rc = WaitForSingleObject( m_blockQueue, timeout );
             assert( rc == WAIT_OBJECT_0 || rc == WAIT_TIMEOUT );
@@ -755,7 +753,7 @@ private:
                 rc = ReleaseSemaphore( m_blockQueue, 1, null );
                 assert( rc );
             }
-            m_assocMutex.lock();
+            assocMutex.lock();
             return !timedOut;
         }
 
@@ -820,7 +818,6 @@ private:
         //              browse_frm/thread/1692bdec8040ba40/e7a5f9d40e86503a
         HANDLE              m_blockLock;    // auto-reset event (now semaphore)
         HANDLE              m_blockQueue;   // auto-reset event (now semaphore)
-        UncheckedMutex*     m_assocMutex;   // external mutex/CS
         CRITICAL_SECTION    m_unblockLock;  // internal mutex/CS
         int                 m_numWaitersGone        = 0;
         int                 m_numWaitersBlocked     = 0;
@@ -828,7 +825,6 @@ private:
     }
     else version( Posix )
     {
-        UncheckedMutex*     m_assocMutex;
         pthread_cond_t      m_hndl;
     }
 }
