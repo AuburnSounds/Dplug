@@ -18,7 +18,7 @@
 
 ### Release notes
 
-- v4.x.y (work in progress)
+- v4.x.y (2nd Nov 2016)
   * macOS Sierra support fixed.
   * To allow that, the D runtime is now linked with but disabled. No GC, no TLS, no global ctor/dtor.
   * Does not rely on external libraries anymore. Everything is self-contained in `dplug`.
