@@ -1,9 +1,9 @@
 module dplug.client.binrange;
 
-import std.range.primitives,
-       std.traits;
+import std.range.primitives;
 
 import dplug.core.nogc;
+import dplug.core.traits;
 
 // Note: the exceptions thrown here are allocated with mallocEmplace,
 // and should be released with destroyFree.
@@ -151,7 +151,7 @@ private
         }
 
         static if (WantSigned)
-            return cast(Signed!T)result;
+            return cast(UnsignedToSigned!T)result;
         else
             return result;
     }
@@ -161,7 +161,8 @@ private
     {
         alias T = IntegerLargerThan!NumBytes;
 
-        auto u = cast(Unsigned!T)n;
+        static assert(isUnsignedIntegral!T);
+        auto u = cast(T)n;
 
         static if (LittleEndian)
         {
@@ -183,7 +184,7 @@ private
 
     void writeFunction(T, R, bool endian)(ref R output, T n) @nogc if (isOutputRange!(R, ubyte))
     {
-        static if (isIntegral!T)
+        static if (isBuiltinIntegral!T)
             writeInteger!(R, T.sizeof, endian)(output, n);
         else static if (is(T : float))
             writeInteger!(R, 4, endian)(output, float2uint(n));
@@ -195,8 +196,8 @@ private
 
     T popFunction(T, R, bool endian)(ref R input) @nogc if (isInputRange!R)
     {
-        static if(isIntegral!T)
-            return popInteger!(R, T.sizeof, isSigned!T, endian)(input);
+        static if(isBuiltinIntegral!T)
+            return popInteger!(R, T.sizeof, isSignedIntegral!T, endian)(input);
         else static if (is(T == float))
             return uint2float(popInteger!(R, 4, false, endian)(input));
         else static if (is(T == double))

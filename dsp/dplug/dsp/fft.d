@@ -7,7 +7,7 @@ module dplug.dsp.fft;
 
 import core.stdc.string;
 
-public import std.complex;
+import std.complex;
 import std.math;
 
 import dplug.dsp.window;

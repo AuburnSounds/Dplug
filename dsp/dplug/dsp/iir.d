@@ -5,8 +5,7 @@
 */
 module dplug.dsp.iir;
 
-import std.traits;
-public import std.math;
+import std.math;
 public import dplug.graphics.vector;
 
 

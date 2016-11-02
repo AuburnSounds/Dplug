@@ -166,8 +166,8 @@ if (isWritableView!V && is(COLOR : ViewColor!V))
 }
 
 
-void aaSoftDisc(float curvature = 1.0f, T, V, COLOR)(auto ref V v, T x, T y, T r1, T r2, COLOR color, float globalAlpha = 1.0f)
-if (isWritableView!V && isNumeric!T && is(COLOR : ViewColor!V))
+void aaSoftDisc(float curvature = 1.0f, V, COLOR)(auto ref V v, float x, float y, float r1, float r2, COLOR color, float globalAlpha = 1.0f)
+if (isWritableView!V && is(COLOR : ViewColor!V))
 {
     alias ChannelType = COLOR.ChannelType;
     assert(r1 <= r2);
@@ -213,8 +213,8 @@ if (isWritableView!V && isNumeric!T && is(COLOR : ViewColor!V))
     }
 }
 
-void aaSoftEllipse(float curvature = 1.0f, T, V, COLOR)(auto ref V v, T x, T y, T r1, T r2, T scaleX, T scaleY, COLOR color, float globalAlpha = 1.0f)
-if (isWritableView!V && isNumeric!T && is(COLOR : ViewColor!V))
+void aaSoftEllipse(float curvature = 1.0f, V, COLOR)(auto ref V v, float x, float y, float r1, float r2, float scaleX, float scaleY, COLOR color, float globalAlpha = 1.0f)
+if (isWritableView!V && is(COLOR : ViewColor!V))
 {
     alias ChannelType = COLOR.ChannelType;
     assert(r1 <= r2);
@@ -264,8 +264,8 @@ if (isWritableView!V && isNumeric!T && is(COLOR : ViewColor!V))
 }
 
 /// Draw a circle gradually fading in between r1 and r2 and fading out between r2 and r3
-void aaSoftCircle(float curvature = 1.0f, T, V, COLOR)(auto ref V v, T x, T y, T r1, T r2, T r3, COLOR color, float globalAlpha = 1.0f)
-if (isWritableView!V && isNumeric!T && is(COLOR : ViewColor!V))
+void aaSoftCircle(float curvature = 1.0f, V, COLOR)(auto ref V v, float x, float y, float r1, float r2, float r3, COLOR color, float globalAlpha = 1.0f)
+if (isWritableView!V && is(COLOR : ViewColor!V))
 {
     alias ChannelType = COLOR.ChannelType;
     assert(r1 <= r2);

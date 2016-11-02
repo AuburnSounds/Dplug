@@ -15,7 +15,6 @@
 module dplug.graphics.draw;
 
 import std.algorithm : sort, min;
-import std.traits;
 import std.math;
 
 import dplug.graphics.view;

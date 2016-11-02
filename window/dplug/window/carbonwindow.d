@@ -15,6 +15,7 @@ import derelict.carbon;
 import dplug.graphics.vector;
 import dplug.graphics.box;
 import dplug.graphics.image;
+import dplug.graphics.view;
 
 import dplug.core.runtime;
 import dplug.core.nogc;

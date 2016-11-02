@@ -5,11 +5,12 @@
 */
 module dplug.graphics.vector;
 
-import std.traits,
-       std.math,
-       std.conv,
-       std.array,
-       std.string;
+import std.traits: isAssignable, isStaticArray, isDynamicArray;
+
+import std.math;
+import std.conv;
+import std.array;
+import std.string;
 
 import dplug.core.math;
 

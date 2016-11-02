@@ -26,6 +26,7 @@ import dplug.core.nogc;
 import dplug.graphics.vector;
 import dplug.graphics.box;
 import dplug.graphics.image;
+import dplug.graphics.view;
 
 import dplug.window.window;
 

@@ -17,7 +17,7 @@ module dplug.graphics.image;
 import std.conv : to;
 import std.string : format;
 
-public import dplug.graphics.view;
+import dplug.graphics.view;
 
 /// Represents a reference to COLOR data
 /// already existing elsewhere in memory.

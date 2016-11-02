@@ -9,11 +9,12 @@ public import dplug.host.host;
 public import dplug.host.vst;
 public import dplug.host.window;
 
+
 /// Loads an audio plugin.
 IPluginHost createPluginHost(string dynlibPath)
 {
     import std.string;
-    import derelict.util.sharedlib;
+    import dplug.core.sharedlib;
 
     // FUTURE support OSX plugin bundles
     SharedLib lib;

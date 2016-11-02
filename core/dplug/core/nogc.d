@@ -36,22 +36,26 @@ version = doNotUseRuntime;
 // Faking @nogc
 //
 
-auto assumeNoGC(T) (T t) if (isFunctionPointer!T || isDelegate!T)
+auto assumeNoGC(T) (T t)
 {
-    enum attrs = functionAttributes!T | FunctionAttribute.nogc;
-    return cast(SetFunctionAttributes!(T, functionLinkage!T, attrs)) t;
+    static if (isFunctionPointer!T || isDelegate!T)
+    {
+        enum attrs = functionAttributes!T | FunctionAttribute.nogc;
+        return cast(SetFunctionAttributes!(T, functionLinkage!T, attrs)) t;
+    }
+    else
+        static assert(false);
 }
 
-auto assumeNothrow(T) (T t) if (isFunctionPointer!T || isDelegate!T)
+auto assumeNothrowNoGC(T) (T t)
 {
-    enum attrs = functionAttributes!T | FunctionAttribute.nothrow_;
-    return cast(SetFunctionAttributes!(T, functionLinkage!T, attrs)) t;
-}
-
-auto assumeNothrowNoGC(T) (T t) if (isFunctionPointer!T || isDelegate!T)
-{
-    enum attrs = functionAttributes!T | FunctionAttribute.nogc | FunctionAttribute.nothrow_;
-    return cast(SetFunctionAttributes!(T, functionLinkage!T, attrs)) t;
+    static if (isFunctionPointer!T || isDelegate!T)
+    {
+        enum attrs = functionAttributes!T | FunctionAttribute.nogc | FunctionAttribute.nothrow_;
+        return cast(SetFunctionAttributes!(T, functionLinkage!T, attrs)) t;
+    }
+    else
+        static assert(false);
 }
 
 unittest

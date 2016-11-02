@@ -7,7 +7,7 @@
 /// Modified to make it @nogc nothrow
 module dplug.core.sync;
 
-public import core.time;
+import core.time;
 
 import dplug.core.alignedbuffer;
 import dplug.core.nogc;

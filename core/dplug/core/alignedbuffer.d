@@ -196,8 +196,12 @@ unittest
 ///    length desired slice length
 ///
 void reallocBuffer(T)(ref T[] buffer, size_t length, int alignment = 1) nothrow @nogc
-    if (! (is(T == struct) && hasElaborateDestructor!T)) // struct with destructors not supported
 {
+    static if (is(T == struct) && hasElaborateDestructor!T)
+    {
+        static assert(false); // struct with destructors not supported
+    }
+
     T* pointer = cast(T*) alignedRealloc(buffer.ptr, T.sizeof * length, alignment);
     if (pointer is null)
         buffer = null;

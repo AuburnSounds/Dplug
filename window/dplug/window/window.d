@@ -8,6 +8,7 @@ module dplug.window.window;
 import dplug.core.nogc;
 import dplug.graphics.box;
 import dplug.graphics.image;
+import dplug.graphics.view;
 
 enum Key
 {

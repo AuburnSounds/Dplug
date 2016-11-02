@@ -14,12 +14,12 @@ import dplug.core.alignedbuffer;
 import dplug.core.nogc;
 import dplug.core.math;
 
-import dplug.graphics.image;
-
 import dplug.window.window;
 
 import dplug.graphics.mipmap;
 import dplug.graphics.drawex;
+import dplug.graphics.image;
+import dplug.graphics.view;
 
 // Only deals with rendering tiles.
 // If you don't like dplug default compositing, just make another Compositor

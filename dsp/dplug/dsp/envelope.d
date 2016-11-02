@@ -5,6 +5,7 @@
 */
 module dplug.dsp.envelope;
 
+import std.math;
 import dplug.dsp.iir;
 import dplug.dsp.smooth;
 
