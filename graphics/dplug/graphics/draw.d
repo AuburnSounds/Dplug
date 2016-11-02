@@ -433,8 +433,8 @@ void whiteNoise(V)(V v)
 
 private template softRoundShape(bool RING)
 {
-	void softRoundShape(T, V, COLOR)(auto ref V v, T x, T y, T r0, T r1, T r2, COLOR color)
-		if (isWritableView!V && isNumeric!T && is(COLOR : ViewColor!V))
+	void softRoundShape(V, COLOR)(auto ref V v, float x, float y, float r0, float r1, float r2, COLOR color)
+		if (isWritableView!V && is(COLOR : ViewColor!V))
 	{
 		mixin FixMath;
 
@@ -510,16 +510,16 @@ private template softRoundShape(bool RING)
 	}
 }
 
-void softRing(T, V, COLOR)(auto ref V v, T x, T y, T r0, T r1, T r2, COLOR color)
-	if (isWritableView!V && isNumeric!T && is(COLOR : ViewColor!V))
+void softRing(V, COLOR)(auto ref V v, float x, float y, float r0, float r1, float r2, COLOR color)
+	if (isWritableView!V && is(COLOR : ViewColor!V))
 {
 	v.softRoundShape!true(x, y, r0, r1, r2, color);
 }
 
-void softCircle(T, V, COLOR)(auto ref V v, T x, T y, T r1, T r2, COLOR color)
-	if (isWritableView!V && isNumeric!T && is(COLOR : ViewColor!V))
+void softCircle(V, COLOR)(auto ref V v, float x, float y, float r1, float r2, COLOR color)
+	if (isWritableView!V && is(COLOR : ViewColor!V))
 {
-	v.softRoundShape!false(x, y, cast(T)0, r1, r2, color);
+	v.softRoundShape!false(x, y, 0, r1, r2, color);
 }
 
 template aaPutPixel(bool CHECKED=true, bool USE_ALPHA=true)
