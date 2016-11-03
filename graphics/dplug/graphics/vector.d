@@ -88,7 +88,7 @@ nothrow:
                     }
                     else static if (isVector!(typeof(arg)) && isAssignable!(T, arg._T))
                     {
-                        mixin(generateLoopCode!("v[index + @] = arg[@];", arg._N)());
+                        mixin(generateLoopCode("v[index + @] = arg[@];", arg._N));
                         index += arg._N;
                     }
                     else
@@ -101,14 +101,14 @@ nothrow:
         /// Assign a Vector from a compatible type.
         @nogc ref Vector opAssign(U)(U x) pure nothrow if (isAssignable!(T, U))
         {
-            mixin(generateLoopCode!("v[@] = x;", N)()); // copy to each component
+            mixin(generateLoopCode("v[@] = x;", N)); // copy to each component
             return this;
         }
 
         /// Assign a Vector with a static array type.
         @nogc ref Vector opAssign(U)(U arr) pure nothrow if ((isStaticArray!(U) && isAssignable!(T, typeof(arr[0])) && (arr.length == N)))
         {
-            mixin(generateLoopCode!("v[@] = arr[@];", N)());
+            mixin(generateLoopCode("v[@] = arr[@];", N));
             return this;
         }
 
@@ -117,7 +117,7 @@ nothrow:
         @nogc ref Vector opAssign(U)(U arr) pure nothrow if (isDynamicArray!(U) && isAssignable!(T, typeof(arr[0])))
         {
             assert(arr.length == N);
-            mixin(generateLoopCode!("v[@] = arr[@];", N)());
+            mixin(generateLoopCode("v[@] = arr[@];", N));
             return this;
         }
 
@@ -134,7 +134,7 @@ nothrow:
                                                        && (!is(U: Vector))
                                                        && (U._N == _N))
         {
-            mixin(generateLoopCode!("v[@] = x.v[@];", N)());
+            mixin(generateLoopCode("v[@] = x.v[@];", N));
             return this;
         }
 
@@ -168,14 +168,14 @@ nothrow:
             if (op == "+" || op == "-" || op == "~" || op == "!")
         {
             Vector res = void;
-            mixin(generateLoopCode!("res.v[@] = " ~ op ~ " v[@];", N)());
+            mixin(generateLoopCode("res.v[@] = " ~ op ~ " v[@];", N));
             return res;
         }
 
         @nogc ref Vector opOpAssign(string op, U)(U operand) pure nothrow
             if (is(U : Vector))
         {
-            mixin(generateLoopCode!("v[@] " ~ op ~ "= operand.v[@];", N)());
+            mixin(generateLoopCode("v[@] " ~ op ~ "= operand.v[@];", N));
             return this;
         }
 
@@ -190,11 +190,11 @@ nothrow:
         {
             Vector result = void;
             static if (is(U: T))
-                mixin(generateLoopCode!("result.v[@] = cast(T)(v[@] " ~ op ~ " operand);", N)());
+                mixin(generateLoopCode("result.v[@] = cast(T)(v[@] " ~ op ~ " operand);", N));
             else
             {
                 Vector other = operand;
-                mixin(generateLoopCode!("result.v[@] = cast(T)(v[@] " ~ op ~ " other.v[@]);", N)());
+                mixin(generateLoopCode("result.v[@] = cast(T)(v[@] " ~ op ~ " other.v[@]);", N));
             }
             return result;
         }
@@ -203,11 +203,11 @@ nothrow:
         {
             Vector result = void;
             static if (is(U: T))
-                mixin(generateLoopCode!("result.v[@] = cast(T)(operand " ~ op ~ " v[@]);", N)());
+                mixin(generateLoopCode("result.v[@] = cast(T)(operand " ~ op ~ " v[@]);", N));
             else
             {
                 Vector other = operand;
-                mixin(generateLoopCode!("result.v[@] = cast(T)(other.v[@] " ~ op ~ " v[@]);", N)());
+                mixin(generateLoopCode("result.v[@] = cast(T)(other.v[@] " ~ op ~ " v[@]);", N));
             }
             return result;
         }
@@ -273,7 +273,7 @@ nothrow:
         @nogc U opCast(U)() pure const nothrow if (isVector!U && (U._N == _N))
         {
             U res = void;
-            mixin(generateLoopCode!("res.v[@] = cast(U._T)v[@];", N)());
+            mixin(generateLoopCode("res.v[@] = cast(U._T)v[@];", N));
             return res;
         }
 
@@ -301,7 +301,7 @@ nothrow:
         @nogc T squaredLength() pure const nothrow
         {
             T sumSquares = 0;
-            mixin(generateLoopCode!("sumSquares += v[@] * v[@];", N)());
+            mixin(generateLoopCode("sumSquares += v[@] * v[@];", N));
             return sumSquares;
         }
 
@@ -342,7 +342,7 @@ nothrow:
             @nogc void normalize() pure nothrow
             {
                 auto invLength = inverseLength();
-                mixin(generateLoopCode!("v[@] *= invLength;", N)());
+                mixin(generateLoopCode("v[@] *= invLength;", N));
             }
 
             /// Returns: Normalized vector.
@@ -357,7 +357,7 @@ nothrow:
             @nogc void fastNormalize() pure nothrow
             {
                 auto invLength = fastInverseLength();
-                mixin(generateLoopCode!("v[@] *= invLength;", N)());
+                mixin(generateLoopCode("v[@] *= invLength;", N));
             }
 
             /// Faster but less accurate vector normalization.
@@ -551,22 +551,49 @@ alias vec4!double vec4d;
 
 private
 {
-    static string generateLoopCode(string formatString, int N)() pure nothrow
+    static const(char)[] generateLoopCode(string formatString, int N) pure nothrow
     {
-        string result;
-        for (int i = 0; i < N; ++i)
+        if (!__ctfe)
+            return null;
+        else
         {
-            string index = ctIntToString(i);
-            // replace all @ by indices
-            result ~= formatString.replace("@", index);
+            if (N < 10)
+            {
+                size_t L = formatString.length;
+                char[] result;
+                result.length = L * N;
+                for (int i = 0; i < N; ++i)
+                {
+                    size_t start = i * L;
+                    for(size_t j = 0; j < L; ++j)
+                    {
+                        char ch = formatString[j];
+                        if (ch == '@')
+                            result[start + j] = cast(char)('0' + i);
+                        else
+                            result[start + j] = ch;
+                    }
+                }
+                return result;
+            }
+            else
+            {
+                char[] result;
+                for (int i = 0; i < N; ++i)
+                {
+                    string index = ctIntToString(i);
+                    // replace all @ by indices
+                    result ~= formatString.replace("@", index);
+                }
+                return result;
+            }
         }
-        return result;
     }
 
     // Speed-up CTFE conversions
     static string ctIntToString(int n) pure nothrow
     {
-        static immutable string[16] table = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+        static immutable string[10] table = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
         if (n < 10)
             return table[n];
         else
@@ -580,7 +607,7 @@ private
 {
     import std.algorithm.comparison: min;
     Vector!(T, N) res = void;
-    mixin(generateLoopCode!("res.v[@] = min(a.v[@], b.v[@]);", N)());
+    mixin(generateLoopCode("res.v[@] = min(a.v[@], b.v[@]);", N));
     return res;
 }
 
@@ -589,7 +616,7 @@ private
 {
     import std.algorithm.comparison: max;
     Vector!(T, N) res = void;
-    mixin(generateLoopCode!("res.v[@] = max(a.v[@], b.v[@]);", N)());
+    mixin(generateLoopCode("res.v[@] = max(a.v[@], b.v[@]);", N));
     return res;
 }
 
@@ -597,7 +624,7 @@ private
 @nogc T dot(T, int N)(const Vector!(T, N) a, const Vector!(T, N) b) pure nothrow
 {
     T sum = 0;
-    mixin(generateLoopCode!("sum += a.v[@] * b.v[@];", N)());
+    mixin(generateLoopCode("sum += a.v[@] * b.v[@];", N));
     return sum;
 }
 

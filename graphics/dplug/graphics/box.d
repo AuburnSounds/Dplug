@@ -115,7 +115,7 @@ nothrow:
             @nogc bool empty() pure const nothrow
             {
                 bound_t size = size();
-                mixin(generateLoopCode!("if (min[@] == max[@]) return true;", N)());
+                mixin(generateLoopCode("if (min[@] == max[@]) return true;", N));
                 return false;
             }
         }
@@ -137,7 +137,7 @@ nothrow:
             assert(isSorted());
             assert(other.isSorted());
 
-            mixin(generateLoopCode!("if ( (other.min[@] < min[@]) || (other.max[@] > max[@]) ) return false;", N)());
+            mixin(generateLoopCode("if ( (other.min[@] < min[@]) || (other.max[@] > max[@]) ) return false;", N));
             return true;
         }
 
@@ -426,22 +426,49 @@ unittest
 
 private
 {
-    static string generateLoopCode(string formatString, int N)() pure nothrow
+    static const(char)[] generateLoopCode(string formatString, int N) pure nothrow
     {
-        string result;
-        for (int i = 0; i < N; ++i)
+        if (!__ctfe)
+            return null;
+        else
         {
-            string index = ctIntToString(i);
-            // replace all @ by indices
-            result ~= formatString.replace("@", index);
+            if (N < 10)
+            {
+                size_t L = formatString.length;
+                char[] result;
+                result.length = L * N;
+                for (int i = 0; i < N; ++i)
+                {
+                    size_t start = i * L;
+                    for(size_t j = 0; j < L; ++j)
+                    {
+                        char ch = formatString[j];
+                        if (ch == '@')
+                            result[start + j] = cast(char)('0' + i);
+                        else
+                            result[start + j] = ch;
+                    }
+                }
+                return result;
+            }
+            else
+            {
+                char[] result;
+                for (int i = 0; i < N; ++i)
+                {
+                    string index = ctIntToString(i);
+                    // replace all @ by indices
+                    result ~= formatString.replace("@", index);
+                }
+                return result;
+            }
         }
-        return result;
     }
 
     // Speed-up CTFE conversions
     static string ctIntToString(int n) pure nothrow
     {
-        static immutable string[16] table = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+        static immutable string[10] table = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
         if (n < 10)
             return table[n];
         else
