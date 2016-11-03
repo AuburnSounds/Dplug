@@ -28,33 +28,28 @@ import dplug.core.nogc;
 // => that leaves us only with the RDTSC instruction.
 uint nogc_unpredictableSeed() @nogc nothrow
 {
-    import core.cpuid;
-    if (hasRdtsc())
+    // assume we always have CPUID
+    uint result;
+    version(D_InlineAsm_X86)
     {
-        uint result;
-        version(D_InlineAsm_X86)
+        asm nothrow @nogc
         {
-            asm nothrow @nogc
-            {
-                rdtsc;
-                mov result, EAX;
-            }
+            rdtsc;
+            mov result, EAX;
+        }
 
-        }
-        else version(D_InlineAsm_X86_64)
+    }
+    else version(D_InlineAsm_X86_64)
+    {
+        asm nothrow @nogc
         {
-            asm nothrow @nogc
-            {
-                rdtsc;
-                mov result, EAX;
-            }
+            rdtsc;
+            mov result, EAX;
         }
-        else
-            static assert(false, "Unsupported");
-        return result;
     }
     else
-        return 0;
+        static assert(false, "Unsupported");
+    return result;
 }
 
 auto nogc_uniform_int(int min, int max, ref Xorshift32 rng) @nogc nothrow
