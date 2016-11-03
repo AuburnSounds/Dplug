@@ -517,7 +517,7 @@ IFImage readImageFromMem(const(ubyte[]) imageData, int channels)
 
         if (isJPEG)
         {
-            import dplug.gui.jpegload;
+            import dplug.graphics.jpegload;
             IFImage result;
             int comp;
             ubyte[] pixels = decompress_jpeg_image_from_memory(imageData, result.w, result.h, comp, channels);
