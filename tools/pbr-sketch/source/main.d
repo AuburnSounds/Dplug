@@ -1,8 +1,9 @@
 import std.file;
 import std.stdio;
 import dplug.gui;
-import ae.utils.graphics;
+import dplug.graphics;
 import std.path;
+import imageformats;
 
 void main(string[] args)
 {
@@ -24,7 +25,6 @@ void main(string[] args)
 
     string skyboxPath = buildPath(appDir, "skybox.jpg");
     OwnedImage!RGBA skybox = loadOwnedImage(std.file.read(skyboxPath));
-    scope(exit) skybox.destroy();
 
     assert(diffuse.w == material.w);
     assert(diffuse.h == material.h);
@@ -75,7 +75,9 @@ void main(string[] args)
 
     writeln(rendered.pixels[0]);
     string resultPath = buildPath(appDir, "result.png");
-    auto png = rendered.toPNG();
+
+    assert(4 * rendered.w == rendered.pitch); // no pitch supported
+    ubyte[] png = write_png_to_mem(rendered.w, rendered.h, cast(ubyte[])( rendered.pixels[0..width*height] ), 3);
     writefln("Writing %s bytes", png.length);
     std.file.write(resultPath, png);
 }
