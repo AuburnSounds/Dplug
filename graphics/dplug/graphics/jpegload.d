@@ -40,7 +40,7 @@
  * On return, width/height will be set to the image's dimensions, and actual_comps will be set to the either 1 (grayscale) or 3 (RGB).
  * Requesting a 8 or 32bpp image is currently a little faster than 24bpp because the jpeg_decoder class itself currently always unpacks to either 8 or 32bpp.
  */
-module dplug.gui.jpegload;
+module dplug.graphics.jpegload;
 
 nothrow:
 @nogc:
@@ -539,7 +539,7 @@ public:
   int decode (/*const void** */void** pScan_line, uint* pScan_line_len) {
     if (m_error_code || !m_ready_flag) return JPGD_FAILED;
     if (m_total_lines_left == 0) return JPGD_DONE;
-    
+
       if (m_mcu_lines_left == 0) {
         if (m_progressive_flag) load_next_row(); else decode_next_row();
         // Find the EOI marker if that was the last row.
@@ -853,7 +853,7 @@ private:
     enum SCALE = 1 << FRACT_BITS;
 
     alias Temp_Type = int;
-    
+
     static int D(T) (T i) { pragma(inline, true); return (((i) + (SCALE >> 1)) >> FRACT_BITS); }
     enum F(float i) = (cast(int)((i) * SCALE + 0.5f));
 
