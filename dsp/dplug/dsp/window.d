@@ -62,8 +62,8 @@ struct Window(T) if (is(T == float) || is(T == double))
     void initialize(WindowType type, int lengthInSamples) nothrow @nogc
     {
         _lengthInSamples = lengthInSamples;
-        generateWindow!T(type, _window);
         _window.reallocBuffer(lengthInSamples);
+        generateWindow!T(type, _window);
     }
 
     ~this() nothrow @nogc
