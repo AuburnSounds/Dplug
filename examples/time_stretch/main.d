@@ -4,6 +4,7 @@ import waved,
        dplug.dsp;
 
 import std.stdio;
+import std.complex;
 
 // stretch a sound 2x
 
