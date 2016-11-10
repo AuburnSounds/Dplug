@@ -369,7 +369,7 @@ public:
             else
             {
                 // "Normal" windowing
-                // Phase of ouput coefficient will relate to the start of the buffer
+                // Phase of output coefficient will relate to the start of the buffer
                 //      _
                 //    _/ \_
                 //   /     \

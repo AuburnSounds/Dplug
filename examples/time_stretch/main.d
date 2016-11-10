@@ -1,34 +1,98 @@
 import std.math;
 
-import waved,
-       dplug.dsp;
-
 import std.stdio;
 import std.complex;
+import std.conv;
 
-// stretch a sound 2x
+import waved;
 
-void main(string[] args)
+import dplug.core;
+import dplug.dsp;
+
+// stretch a sound N times
+
+void usage()
 {
-    if (args.length != 3)
+    writeln();
+    writefln("usage: time_stretch [-n 10] [-rp] [-ov 4] -o output.wav -i input.wav");
+    writeln();
+    writefln("    Stretches a sound N times.");
+    writeln();
+    writefln("    -n      Dilation factor (default = 1)");
+    writefln("    -o      Set output file (WAV only)");
+    writefln("    -rp     Randomize phases");
+    writefln("    -w      Changes window size (must be power of 2, default = 1024)");
+    writefln("    -ov      Sets overlap (default = 2)");
+    writeln();
+}
+
+int main(string[] args)
+{
+    // Parse arguments
+    bool randomizePhase = false;
+    string inputFile = null;
+    string outputFile = null;
+    int stretchFactor = 1;
+    int windowSize = 1024;
+    int overlap = 2;
+
+    for(int i = 1; i < args.length; ++i)
     {
-        writefln("usage: time_stretch input.wav output.wav");
-        return;
+        string arg = args[i];
+        if (arg == "-n")
+        {
+            stretchFactor = to!int(args[++i]);
+        }
+        else if (arg == "-o")
+        {
+            outputFile = args[++i];
+        }
+        else if (arg == "-i")
+        {
+            inputFile = args[++i];
+        }
+        else if (arg == "-w")
+        {
+            windowSize = to!int(args[++i]);            
+        }
+        else if (arg == "-ov")
+        {
+            overlap = to!int(args[++i]);            
+        }
+        else if (arg == "-rp")
+        {
+            randomizePhase = true;
+        }
     }
 
-    Sound input = decodeWAV(args[1]);
+    if (!inputFile || !outputFile || !isPowerOfTwo(windowSize) || overlap < 1)
+    {
+        usage();
+        return 1;
+    }
 
-    int N = input.lengthInFrames();
+    Sound input = decodeWAV(inputFile);
+
+    int lengthInFrames = input.lengthInFrames();
     int numChans = input.numChannels;
     int sampleRate = input.sampleRate;
 
+    Complex!float randomPhase() nothrow @nogc
+    {
+        float phase = nogc_uniform_float(0, 2 * PI, defaultGlobalRNG());
+        return Complex!float(cos(phase), sin(phase));
+    }
 
-    float[] stretched = new float[2 * N * numChans];
+    // output sound
+    float[] stretched = new float[stretchFactor * lengthInFrames * numChans];
 
-    int windowSize = 1024;
 
-    Complex!float[] fftData = new Complex!float[windowSize * 2];
-    float[] segment = new float[windowSize * 2];
+    Complex!float[] fftData = new Complex!float[windowSize * stretchFactor];
+    int fftSize = windowSize * stretchFactor;
+    float[] segment = new float[fftSize];
+    
+
+    int maxSimultaneousSegments = 1 + windowSize / ( windowSize / overlap);
 
     void process() nothrow @nogc
     {
@@ -36,30 +100,33 @@ void main(string[] args)
         {
             FFTAnalyzer ffta;
             ShortTermReconstruction strec;
-            ffta.initialize(windowSize, windowSize, windowSize / 4, WindowType.HANN, false);
-            strec.initialize(8, windowSize * 2);
+            ffta.initialize(windowSize, fftSize, windowSize / overlap, WindowType.HANN, false);
+            strec.initialize(maxSimultaneousSegments, fftSize);
 
-            for (int i = 0; i < N; ++i)
+            for (int i = 0; i < lengthInFrames; ++i)
             {
                 float sample = input.data[i * numChans + ch];
-                if (ffta.feed(sample, fftData[0..windowSize]))
-                {                
-                    // zero-padding the middle of spectrum
-                    fftData[windowSize/2..windowSize*2] = Complex!float(0);
+                if (ffta.feed(sample, fftData))
+                {  
+                    inverseFFT!float(fftData);
 
-                    inverseFFT!float(fftData[0..windowSize*2]);
-
-                    for (int k = 0; k < windowSize*2; ++k)
-                        segment[k] = fftData[k].re * 0.5f;
-
-                    strec.startSegment(segment[0..windowSize*2]);
+                    for (int k = 0; k < fftSize; ++k)
+                    {
+                        segment[k] = fftData[k].re;
+                        assert( abs(fftData[k].im) < 0.01f );
+                    }
+                    strec.startSegment(segment);
                 }
-                stretched[(i * numChans + ch)*2] = strec.next();
-                stretched[(i * numChans + ch)*2+1] = strec.next();
+                for (int k = 0; k < stretchFactor; ++k)
+                {
+                    stretched[ ( (i * stretchFactor + k) * numChans + ch) ] = strec.next();
+                }
             }
         }     
     }
     process();
 
-    Sound(sampleRate, numChans, stretched).encodeWAV(args[2]);
+    Sound(sampleRate, numChans, stretched).encodeWAV(outputFile);
+
+    return 0;
 }
