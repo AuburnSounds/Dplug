@@ -12,8 +12,21 @@ d:
 
 script:
   - cd examples/distort; dub --compiler=${DC}
+  - cd examples/distort; dub -a x86 --compiler=${DC}
   - cd examples/ms-encode; dub --compiler=${DC}
+  - cd examples/ms-encode; dub -a x86 --compiler=${DC}
   - cd examples/time_stretch; dub --compiler=${DC}
+  - cd examples/time_stretch; dub -a x86 --compiler=${DC}
+  - cd tools/pbr-sketch; dub --compiler=${DC}
+  - cd tools/pbr-sketch; dub -a x86 --compiler=${DC}
+  - cd tools/release; dub --compiler=${DC}
+  - cd tools/release; dub -a x86 --compiler=${DC}
+  - cd tools/stress-plugin; dub --compiler=${DC}
+  - cd tools/stress-plugin; dub -a x86 --compiler=${DC}
+  - cd tools/process; dub --compiler=${DC}
+  - cd tools/process; dub -a x86 --compiler=${DC}
+  - cd tools/wav-compare; dub --compiler=${DC}
+  - cd tools/wav-compare; dub -a x86 --compiler=${DC}
   - dub test --compiler=${DC} dplug:core
   - dub test --compiler=${DC} dplug:dsp
   - dub test --compiler=${DC} dplug:client
