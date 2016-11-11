@@ -21,9 +21,9 @@ public:
     {
         PluginInfo info;
         info.vendorName = "No Name Audio";
-        info.vendorUniqueID = CCONST('N', 'o', 'A', 'u');
+        info.vendorUniqueID = "NoAu";
         info.pluginName = "MSEncodator";
-        info.pluginUniqueID = CCONST('N', 'A', 'm', 's');
+        info.pluginUniqueID = "NAms";
         info.pluginVersion = PluginVersion(1, 0, 0);
         info.isSynth = false;
         info.hasGUI = false;
@@ -32,12 +32,16 @@ public:
 
     override Parameter[] buildParameters()
     {
-        return [ new BoolParameter(paramOnOff, "on/off", true) ];
+        auto params = makeAlignedBuffer!Parameter();
+        params.pushBack( mallocEmplace!BoolParameter(paramOnOff, "on/off", true) );
+        return params.releaseData();
     }
 
     override LegalIO[] buildLegalIO()
     {
-        return [ LegalIO(2, 2) ];
+        auto io = makeAlignedBuffer!LegalIO();
+        io.pushBack(LegalIO(2, 2));
+        return io.releaseData();
     }
 
     override void reset(double sampleRate, int maxFrames, int numInputs, int numOutputs) nothrow @nogc
