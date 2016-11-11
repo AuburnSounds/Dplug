@@ -11,6 +11,9 @@ d:
  - ldc-1.0.0
 
 script:
+  - cd examples/distort; dub --compiler=${DC}
+  - cd examples/ms-encode; dub --compiler=${DC}
+  - cd examples/time_stretch; dub --compiler=${DC}
   - dub test --compiler=${DC} dplug:core
   - dub test --compiler=${DC} dplug:dsp
   - dub test --compiler=${DC} dplug:client

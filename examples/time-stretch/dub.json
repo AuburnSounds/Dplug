@@ -1,5 +1,5 @@
 {
-    "name": "time_stretch",
+    "name": "time-stretch",
     "license": "public domain",
     "importPaths": [ "." ],
     "sourcePaths": [ "." ],
