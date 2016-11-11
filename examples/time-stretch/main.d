@@ -65,7 +65,7 @@ int main(string[] args)
         }
     }
 
-    if (!inputFile || !outputFile || !isPowerOfTwo(windowSize) || !isPowerOfTwo(stretchFactor) || overlap < 1)
+    if (!inputFile || !outputFile || !isPowerOfTwo(windowSize) || stretchFactor < 1 || overlap < 1)
     {
         usage();
         return 1;
@@ -76,8 +76,7 @@ int main(string[] args)
     int lengthInFrames = input.lengthInFrames();
     int numChans = input.numChannels;
     int sampleRate = input.sampleRate;
-    int fftSmallSize = windowSize;
-    int fftSize = windowSize * stretchFactor;
+    int fftSize = windowSize;
 
     Complex!float randomPhase() nothrow @nogc
     {
@@ -91,11 +90,13 @@ int main(string[] args)
     // For reonstruction, since each segment is generated larger and periodic
     Window!float segmentWindow;
     segmentWindow.initialize(WindowType.HANN, fftSize);
-    Complex!float[] fftData = new Complex!float[windowSize * stretchFactor];
+    Complex!float[] fftData = new Complex!float[fftSize];
+
+    Complex!float[] fftDataSegment = new Complex!float[fftSize];
 
     float[] segment = new float[fftSize];
 
-    int maxSimultaneousSegments = 1 + windowSize / ( windowSize / overlap);
+    
 
     void process() nothrow @nogc
     {
@@ -103,37 +104,56 @@ int main(string[] args)
         {
             FFTAnalyzer ffta;
             ShortTermReconstruction strec;
-            ffta.initialize(windowSize, fftSize, windowSize / overlap, WindowType.HANN, false);
+            ffta.initialize(windowSize, fftSize, windowSize / overlap, WindowType.RECT, false);
+            int maxSimultaneousSegments = 1 + (1 + overlap) * stretchFactor;
             strec.initialize(maxSimultaneousSegments, fftSize);
-
+            int counter = 0;
             for (int i = 0; i < lengthInFrames; ++i)
             {
                 float sample = input.data[i * numChans + ch];
                 if (ffta.feed(sample, fftData[0..fftSize]))
-                {           
-                    if (randomizePhase)
+                {
+                    // prepate stretchFactor time segments with random phase
+                    for (int stretch = 0; stretch < stretchFactor; ++stretch)
                     {
-                        for (int k = 1; k < fftSmallSize/2; ++k)
+                        if (randomizePhase)
                         {
-                            fftData[k] *= randomPhase();
+                            fftDataSegment[0] = fftData[0];
+                            foreach(bin; 1..fftSize/2)
+                            {
+                                Complex!float mul = randomPhase();
+               //                 if (bin > 512)
+               //                     mul = Complex!float(1, 0);
+                                fftDataSegment[bin] = fftData[bin] * mul;
+                            }
+                            fftDataSegment[fftSize/2] = fftData[fftSize/2];
+
+                            // keep it real
+                            foreach(bin; 1..fftSize/2)
+                                fftDataSegment[$-bin] = fftDataSegment[bin].conj();
+                        }
+                        else
+                        {
+                            foreach(bin; 0..fftSize)
+                                fftDataSegment[bin] = fftData[bin];
                         }
 
-                        // maintain FFT mirror
-                        for(int k = 1; k < fftSmallSize/2; ++k)
+                        inverseFFT!float(fftDataSegment);
+
+                        // apply time window to segment
+
+                        for (int k = 0; k < fftSize; ++k)
                         {
-                            fftData[$ - k] = fftData[k].conj;
+                            segment[k] = fftDataSegment[k].re * segmentWindow[k] * 2;
+                            assert( abs(fftDataSegment[k].im) < 0.01f );
                         }
+
+                        // schedule several of these segments spaced by a window size
+                        int delay = (stretch * windowSize) / 2;
+                        //if (delay == 0)
+                            strec.startSegment(segment, delay);
+                        counter++;
                     }
-
-                    inverseFFT!float(fftData);
-
-                    for (int k = 0; k < fftSize; ++k)
-                    {
-                        segment[k] = fftData[k].re * segmentWindow[k] * 5;
-                        assert( abs(fftData[k].im) < 0.01f );
-                    }
-
-                    strec.startSegment(segment);
                 }
                 for (int k = 0; k < stretchFactor; ++k)
                 {

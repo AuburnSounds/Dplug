@@ -246,9 +246,10 @@ struct ShortTermReconstruction
 
     @disable this(this);
 
+    // TODO: interpolate FFT energy, window the input
     // Copy segment to a free slot, and start its summing.
-    // The first sample of this segment will be played at next() call.
-    void startSegment(float[] newSegment) nothrow @nogc
+    // The first sample of this segment will be played at next() call if delay is 0.
+    void startSegment(float[] newSegment, int delay = 0) nothrow @nogc
     {
         assert(newSegment.length <= _maxSegmentLength);
         
@@ -257,7 +258,7 @@ struct ShortTermReconstruction
             if (!_desc[i].active())
             {
                 int len = cast(int)(newSegment.length);
-                _desc[i].playOffset = 0;
+                _desc[i].playOffset = -delay;
                 _desc[i].length = len;
                 _desc[i].buffer[0..len] = newSegment[]; // copy segment
                 return;
@@ -275,7 +276,8 @@ struct ShortTermReconstruction
         {
             if (desc.playOffset < desc.length)
             {
-                sum += desc.buffer[desc.playOffset];
+                if (desc.playOffset > 0)
+                    sum += desc.buffer[desc.playOffset];
                 desc.playOffset += 1;
             }
         }
