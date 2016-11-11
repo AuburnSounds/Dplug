@@ -1,5 +1,5 @@
+import core.stdc.stdio;
 import std.math;
-
 import std.stdio;
 import std.complex;
 import std.conv;
@@ -22,7 +22,7 @@ void usage()
     writefln("    -o      Set output file (WAV only)");
     writefln("    -rp     Randomize phases");
     writefln("    -w      Changes window size (must be power of 2, default = 1024)");
-    writefln("    -ov      Sets overlap (default = 2)");
+    writefln("    -ov     Sets overlap (default = 2)");
     writeln();
 }
 
@@ -94,7 +94,6 @@ int main(string[] args)
     Complex!float[] fftData = new Complex!float[windowSize * stretchFactor];
 
     float[] segment = new float[fftSize];
-    int counter = 0;
 
     int maxSimultaneousSegments = 1 + windowSize / ( windowSize / overlap);
 
@@ -104,28 +103,28 @@ int main(string[] args)
         {
             FFTAnalyzer ffta;
             ShortTermReconstruction strec;
-            ffta.initialize(windowSize, fftSmallSize, windowSize / overlap, WindowType.HANN, false);
+            ffta.initialize(windowSize, fftSize, windowSize / overlap, WindowType.HANN, false);
             strec.initialize(maxSimultaneousSegments, fftSize);
 
             for (int i = 0; i < lengthInFrames; ++i)
             {
                 float sample = input.data[i * numChans + ch];
-                if (ffta.feed(sample, fftData[0..fftSmallSize]))
-                {
-                    // Pad in frequency domain
-                    // Here we have meaningful data in fftData[0..fftSmallSize], and garbage in fftData[fftSmallSize..$]
-
-                    fftData[($-fftSmallSize/2)..$] = fftData[(fftSmallSize/2)..fftSmallSize];
-
-                    fftData[fftSmallSize/2..($-fftSmallSize/2)] = Complex!float(0, 0);
-
-                    // TODO change phase randomly on fftData[0..fftSmallSize/2]
-/*
-                    for(int k = 0; k < fftSmallSize; ++k)
+                if (ffta.feed(sample, fftData[0..fftSize]))
+                {           
+                    if (randomizePhase)
                     {
-                        fftData[$ - 1 - k] = -fftData[k];//.conj;
+                        for (int k = 1; k < fftSmallSize/2; ++k)
+                        {
+                            fftData[k] *= randomPhase();
+                        }
+
+                        // maintain FFT mirror
+                        for(int k = 1; k < fftSmallSize/2; ++k)
+                        {
+                            fftData[$ - k] = fftData[k].conj;
+                        }
                     }
-*/
+
                     inverseFFT!float(fftData);
 
                     for (int k = 0; k < fftSize; ++k)
@@ -133,11 +132,8 @@ int main(string[] args)
                         segment[k] = fftData[k].re * segmentWindow[k] * 5;
                         assert( abs(fftData[k].im) < 0.01f );
                     }
-               //     if ((counter % 4) == 0)
-                    {
-                        strec.startSegment(segment);
-                    }
-                    counter++;
+
+                    strec.startSegment(segment);
                 }
                 for (int k = 0; k < stretchFactor; ++k)
                 {
