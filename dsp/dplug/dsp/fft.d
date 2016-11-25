@@ -107,7 +107,7 @@ private void FFT_internal(T, FFTDirection direction)(Complex!T[] buffer) nothrow
 // should operate the same as Phobos FFT
 unittest
 {
-    import std.numeric;
+    import std.numeric: approxEqual, fft;
 
     bool approxEqualArr(Complex!double[] a, Complex!double[] b) pure
     {
@@ -123,7 +123,6 @@ unittest
 
     Complex!double[] A = [Complex!double(1, 0), Complex!double(13, -4), Complex!double(5, -5), Complex!double(0, 2)];
     auto fftARef = fft(A);
-    assert(approxEqualArr(inverseFft(fftARef), A));
 
     auto B = A.dup;
     forwardFFT(B);

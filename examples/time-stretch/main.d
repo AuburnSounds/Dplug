@@ -28,7 +28,7 @@ void usage()
 
 int main(string[] args)
 {
-    // Parse arguments
+/+    // Parse arguments
     bool randomizePhase = false;
     string inputFile = null;
     string outputFile = null;
@@ -165,6 +165,6 @@ int main(string[] args)
     process();
 
     Sound(sampleRate, numChans, stretched).encodeWAV(outputFile);
-
++/
     return 0;
 }

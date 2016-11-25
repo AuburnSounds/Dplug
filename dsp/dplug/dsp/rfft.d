@@ -14,12 +14,20 @@ To Public License, Version 2, as published by Sam Hocevar. See
 http://sam.zoy.org/wtfpl/COPYING for more details.
 
 */
-
-import std.math: PI, sin, cos, sqrt, SQRT1_2;
+/**
+* Copyright: Copyright Auburn Sounds 2016.
+* License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
+* Authors:   Guillaume Piolat
+* What has changed? Shuffling was added to have a similar output than the regular complex FFT.
+*/
+import std.math: PI, sin, cos, SQRT1_2;
+import std.complex;
 
 import dplug.core.math;
 import dplug.core.alignedbuffer;
 
+
+/// Performs FFT from real input, and IFFT towards real output.
 struct RFFT(T)
 {
 public:
@@ -31,85 +39,129 @@ nothrow:
     
     void initialize(int length)
     {
-        assert(length > 1);
+        assert(length > 0);
         assert(isPowerOfTwo(length));
         _length = length;
-        _nbr_bits = nextPowerOf2(length);
+        _nbr_bits = iFloorLog2(length);
         init_br_lut();
         init_trigo_lut();
         init_trigo_osc();
+        _buffer.reallocBuffer(_length);
+        _shuffledValues.reallocBuffer(_length);
+    }
+
+    ~this()
+    {
+        _br_lut.reallocBuffer(0);
+        _trigo_lut.reallocBuffer(0);
+        _trigo_osc.reallocBuffer(0);        
+        _buffer.reallocBuffer(0); // temporary buffer
+        _shuffledValues.reallocBuffer(0);
     }
 
     /**
     * Compute the Real FFT of the array.
     * Params:
-    *     x source array (time)
-    *     f destination array (frequency bins)
-	*       f[0...length(x)/2] = real values,
-    *       f[length(x)/2+1...length(x)-1] = negative imaginary values of coefficents 1...length(x)/2-1.
+    *    timeData Input array (N time samples)
+    *    outputBins Destination coefficients (N/2 + 1 frequency bins)    
     */
-    void forwardTransform(const(T)[] x, T[] f)
+    void forwardTransform(const(T)[] timeData, Complex!T[] outputBins)
     {
-        assert(f.length == 2 * x.length);
+        assert(timeData.length == _length);
+        assert(outputBins.length == (_length/2)+1);
+
+        T[] f = _shuffledValues;
+
         if (_nbr_bits > 2)
         {
-            compute_fft_general(f.ptr, x.ptr);
+            compute_fft_general(f.ptr, timeData.ptr);
         }        
         else if (_nbr_bits == 2) // 4-point FFT
         {
-            f[1] = x[0] - x[2];
-            f[3] = x[1] - x[3];
+            f[1] = timeData[0] - timeData[2];
+            f[3] = timeData[1] - timeData[3];
 
-            T b_0 = x[0] + x[2];
-            T b_2 = x[1] + x[3];
+            T b_0 = timeData[0] + timeData[2];
+            T b_2 = timeData[1] + timeData[3];
 
             f[0] = b_0 + b_2;
             f[2] = b_0 - b_2;
         }        
         else if (_nbr_bits == 1) // 2-point FFT
         {
-            f [0] = x [0] + x [1];
-            f [1] = x [0] - x [1];
+            f [0] = timeData[0] + timeData[1];
+            f [1] = timeData[0] - timeData[1];
         }        
         else
         {
-            f[0] = x[0]; // 1-point FFT
+            f[0] = timeData[0]; // 1-point FFT
         }
+
+        // At this point, f contains:
+        //    f destination array (frequency bins)
+        //    f[0...length(x)/2] = real values,
+        //    f[length(x)/2+1...length(x)-1] = negative imaginary values of coefficents 1...length(x)/2-1.
+        // So we have to reshuffle them to have nice complex bins.
+        int mid = _length/2;
+        outputBins[0] = Complex!T(f[0], 0);
+        for(int i = 1; i < mid; ++i)
+            outputBins[i] = Complex!T(f[i], -f[mid+i]);
+        outputBins[mid] = Complex!T(f[mid], 0); // for length 1, this still works
     }
 
     /**
-    * Compute the inverse FFT of the array. Note that data must be post-scaled:
-	* IFFT (FFT (x)) = x * length (x).
+    * Compute the inverse FFT of the array. Perform post-scaling.
+    *
     * Params:
-	*    f Source arrays (frequency bins)
-    *         f [0...length(x)/2] = real values
-    *         f [length(x)/2+1...length(x)-1] = negative(???) imaginary values of coefficents 1...length(x)/2-1.
-    *    x Destination array (time).
+	*    inputBins Source arrays (N/2 + 1 frequency bins)    
+    *    timeData Destination array (N time samples).
+    *
+    * Note: 
+    *    This transform has the benefit you don't have to conjugate the "mirorred" part of the FFT.
+    *    Excess data in imaginary part of DC and Nyquist bins are ignored.
     */
-    // TODO: does the comment mean "conjugate" instead?
-    void reverseTransform(const(T)[] f, T[] x) 
+    void reverseTransform(Complex!T[] inputBins, T[] timeData) 
     {
+        int mid = _length/2;
+        assert(inputBins.length == mid+1); // expect _length/2+1 complex numbers, 
+        assert(timeData.length == _length);
+
+        // On inverse transform, scale down result
+        T invMultiplier = cast(T)1 / _length;
+
+        // Shuffle input frequency bins, and scale down.
+        T[] f = _shuffledValues;
+        for(int i = 0; i <= mid; ++i)
+            f[i] = inputBins[i].re * invMultiplier;
+        for(int i = mid+1; i < _length; ++i)
+            f[i] = -inputBins[i-mid].im * invMultiplier;
+
+        // At this point, the format in f is:
+        //          f [0...length(x)/2] = real values
+        //          f [length(x)/2+1...length(x)-1] = negative imaginary values of coefficents 1...length(x)/2-1.
+        // Which is suitable for the RealFFT algorithm.
+
         if (_nbr_bits > 2) // General case
         {
-            compute_ifft_general(f.ptr, x.ptr);
+            compute_ifft_general(f.ptr, timeData.ptr);
         }        
         else if (_nbr_bits == 2) // 4-point IFFT
         {
             const(T) b_0 = f[0] + f[2];
             const(T) b_2 = f[0] - f[2];
-            x[0] = b_0 + f[1] * 2;
-            x[2] = b_0 - f[1] * 2;
-            x[1] = b_2 + f[3] * 2;
-            x[3] = b_2 - f[3] * 2;
+            timeData[0] = b_0 + f[1] * 2;
+            timeData[2] = b_0 - f[1] * 2;
+            timeData[1] = b_2 + f[3] * 2;
+            timeData[3] = b_2 - f[3] * 2;
         }
         else if (_nbr_bits == 1) // 2-point IFFT
         {
-            x[0] = f[0] + f[1];
-            x[1] = f[0] - f[1];
+            timeData[0] = f[0] + f[1];
+            timeData[1] = f[0] - f[1];
         }
         else // 1-point IFFT
         {
-            x[0] = f[0];
+            timeData[0] = f[0];
         }
     }
 
@@ -117,14 +169,13 @@ private:
 
     int _nbr_bits;
     int _length;
-
     int[] _br_lut;
-
-    T[] _trigo_lut;
-
-    T[] _buffer;
+    T[] _trigo_lut;    
     OscSinCos!T[] _trigo_osc;
+    T[] _buffer; // temporary buffer
+    T[] _shuffledValues; // shuffled values, output of the RFFT and input of IRFFT
 
+    // Returns: temporary buffer
     T* use_buffer()
     {
         return _buffer.ptr;
@@ -207,13 +258,13 @@ private:
 
         if ((_nbr_bits & 1) != 0)
         {
-            df = use_buffer ();
+            df = use_buffer();
             sf = f;
         }
         else
         {
             df = f;
-            sf = use_buffer ();
+            sf = use_buffer();
         }
 
         compute_direct_pass_1_2 (df, x);
@@ -258,7 +309,7 @@ private:
 
     void compute_direct_pass_3 (T* df, const(T)* sf)
     {
-        enum T sqrt2_2 = sqrt(2.0)/2; // TODO: replace with SQRT_1_2;
+        alias sqrt2_2 = SQRT1_2;
         int				coef_index = 0;
         do
         {
@@ -362,7 +413,7 @@ private:
             T			* dfr = df + coef_index;
             T			* dfi = dfr + nbr_coef;
 
-            osc.clearBuffers();
+            osc.resetPhase();
 
             // Extreme coefficients are always real
             dfr [0] = sf1r [0] + sf2r [0];
@@ -397,19 +448,19 @@ private:
     // Transform in several pass
     void compute_ifft_general (const(T)* f, T* x)
     {
-        T* sf = cast(T*)(f); // TODO: is this const_cast safe?
+        T* sf = cast(T*)(f);
         T *		df;
         T *		df_temp;
 
         if (_nbr_bits & 1)
         {
-            df = use_buffer ();
+            df = use_buffer();
             df_temp = x;
         }
         else
         {
             df = x;
-            df_temp = use_buffer ();
+            df_temp = use_buffer();
         }
 
         for (int pass = _nbr_bits - 1; pass >= 3; -- pass)
@@ -510,7 +561,7 @@ private:
             T			* df1r = df + coef_index;
             T			* df2r = df1r + nbr_coef;
 
-            osc.clearBuffers ();
+            osc.resetPhase ();
 
             // Extreme coefficients are always real
             df1r [0] = sfr [0] + sfi [0];		// + sfr [nbr_coef]
@@ -545,7 +596,7 @@ private:
 
     void compute_inverse_pass_3 (T* df, const(T)* sf)
     {
-        enum T	sqrt2_2 = sqrt(2.0)/2;
+        alias sqrt2_2 = SQRT1_2;
         int				coef_index = 0;
         do
         {
@@ -605,28 +656,77 @@ private:
         while (coef_index < _length);
     }
 
+    static struct OscSinCos(T)
+    {
+    public:
+    nothrow:
+    pure:
+    @nogc:
+        void setStep(double angleRad)
+        {
+            _step_cos = cast(T)(cos(angleRad));
+            _step_sin = cast(T)(sin(angleRad));
+        }
 
+        alias getCos = _pos_cos;
+        alias getSin = _pos_sin;
+
+        void resetPhase()
+        {
+            _pos_cos = 1;
+            _pos_sin = 0;
+        }
+
+        void step()
+        {
+            T old_cos = _pos_cos;
+            T old_sin = _pos_sin;
+            _pos_cos = old_cos * _step_cos - old_sin * _step_sin;
+            _pos_sin = old_cos * _step_sin + old_sin * _step_cos;
+        }
+
+        T _pos_cos = 1;		// Current phase expressed with sin and cos. [-1 ; 1]
+        T _pos_sin = 0;		// -
+        T _step_cos = 1;		// Phase increment per step, [-1 ; 1]
+        T _step_sin = 0;		// -
+    }
 }
 
-
-void test()
+unittest
 {
-    import std.numeric: approxEqual;
+    import std.numeric: fft, approxEqual;
+    import dplug.dsp.rfft;
+    import std.stdio; // TEMP
+    import dplug.core.random;
 
-    void testRFFT(float[] A) nothrow @nogc
+    auto random = defaultGlobalRNG();
+
+    void testRFFT(T)(T[] A)
     {
+        // Takes reference fft
+        Complex!T[] reference = fft!T(A);
 
-        RFFT!float rfft;
+        RFFT!T rfft;
         rfft.initialize(A.length);
 
-        float[] B, C;
-        B.reallocBuffer(A.length);
-        C.reallocBuffer(A.length);
+        int N = cast(int)(A.length);
+        Complex!T[] B;
+        T[] C;
+        B.reallocBuffer(N/2+1);
+        C.reallocBuffer(N);
 
         rfft.forwardTransform(A, B);
+
+        foreach(i; 0..N/2+1)
+        {
+            if (!approxEqual(reference[i].re, B[i].re))
+                assert(false);
+            if (!approxEqual(reference[i].im, B[i].im))
+                assert(false);
+        }
         rfft.reverseTransform(B, C);
 
-        foreach(i; 0..A.length)
+        foreach(i; 0..N)
         {
             if (!approxEqual(A[i].re, C[i].re))
                 assert(false);
@@ -637,44 +737,19 @@ void test()
         B.reallocBuffer(0);
         C.reallocBuffer(0);
     }
-    testRFFT([1]);
-    testRFFT([1, 2]);
-    testRFFT([1, 13, 5, 0]);
+    testRFFT!float([0.5f]);
+    testRFFT!float([1, 2]);
+    testRFFT!float([1, 13, 5, 0]);
+    testRFFT!float([1, 13, 5, 0, 2, 0, 4, 0]);
+
+    // test larger FFTs
+    uint seed = 1;
+    for(int bit = 4; bit < 16; ++bit)
+    {
+        int size = 1 << bit;
+        double[] sequence = new double[size];
+        foreach(i; 0..size)
+            sequence[i] = nogc_uniform_float(-1.0f, 1.0f, random);
+        testRFFT!double(sequence);
+    }
 }
-
-struct OscSinCos(T)
-{
-public:
-nothrow:
-pure:
-@nogc:
-    void setStep(double angleRad)
-    {
-        _step_cos = cast(T)(cos(angleRad));
-        _step_sin = cast(T)(sin(angleRad));
-    }
-    
-    alias getCos = _pos_cos;
-    alias getSin = _pos_sin;
-
-    void clearBuffers() // TODO: rename
-    {
-        _pos_cos = 1;
-        _pos_sin = 0;
-    }
-
-    void step()
-    {
-        T old_cos = _pos_cos;
-        T old_sin = _pos_sin;
-        _pos_cos = old_cos * _step_cos - old_sin * _step_sin;
-        _pos_sin = old_cos * _step_sin + old_sin * _step_cos;
-    }
-
-    T _pos_cos = 1;		// Current phase expressed with sin and cos. [-1 ; 1]
-    T _pos_sin = 0;		// -
-    T _step_cos = 1;		// Phase increment per step, [-1 ; 1]
-    T _step_sin = 0;		// -
-}
-
-
