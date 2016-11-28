@@ -411,6 +411,59 @@ void aaPutPixelFloat(bool CHECKED=true, V, COLOR, A)(auto ref V v, int x, int y,
     *p = COLOR.op!q{.blend(a, b, c)}(color, *p, alpha);
 }
 
+
+/// Blits a view onto another.
+/// The views must have the same size.
+/// PERF: optimize that
+void blendWithAlpha(SRC, DST)(auto ref SRC srcView, auto ref DST dstView, auto ref ImageRef!L8 alphaView)
+{
+    static assert(isDirectView!SRC);
+    static assert(isDirectView!DST);
+    static assert(isWritableView!DST);
+
+    static ubyte blendByte(ubyte a, ubyte b, ubyte f) nothrow @nogc
+    { 
+        int sum = ( f * a + b * (~f) ) + 127;
+        return cast(ubyte)(sum / 255 );// ((sum+1)*257) >> 16 ); // integer divide by 255
+    }
+
+    static ushort blendShort(ushort a, ushort b, ubyte f) nothrow @nogc
+    { 
+        ushort ff = (f << 8) | f;
+        int sum = ( ff * a + b * (~ff) ) + 32768;
+        return cast(ushort)( sum >> 16 ); // MAYDO: this doesn't map to the full range
+    }
+
+    alias COLOR = ViewColor!DST;
+    assert(srcView.w == dstView.w && srcView.h == dstView.h, "View size mismatch");
+
+    foreach (y; 0..srcView.h)
+    {
+        COLOR* srcScan = srcView.scanline(y).ptr;
+        COLOR* dstScan = dstView.scanline(y).ptr;
+        L8* alphaScan = alphaView.scanline(y).ptr;
+
+        foreach (x; 0..srcView.w)
+        {
+            ubyte alpha = alphaScan[x].l;
+            if (alpha == 0) 
+                continue;
+            static if (is(COLOR == RGBA))
+            {
+                dstScan[x].r = blendByte(srcScan[x].r, dstScan[x].r, alpha);
+                dstScan[x].g = blendByte(srcScan[x].g, dstScan[x].g, alpha);
+                dstScan[x].b = blendByte(srcScan[x].b, dstScan[x].b, alpha);
+                dstScan[x].a = blendByte(srcScan[x].a, dstScan[x].a, alpha);
+            }
+            else static if (is(COLOR == L16))
+                dstScan[x].l = blendShort(srcScan[x].l, dstScan[x].l, alpha);
+            else
+                static assert(false);
+        }
+    }
+}
+
+
 /// Manually managed image which is also GC-proof.
 class OwnedImage(COLOR)
 {

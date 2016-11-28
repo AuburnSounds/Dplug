@@ -290,9 +290,9 @@ nothrow:
                     int h = _position.height + dy;
                     if (w < 5) w = 5;
                     if (h < 5) h = 5;
-                    setDirty();
+                    setDirtyWhole();
                     _position = box2i(nx, ny, nx + w, ny + h);
-                    setDirty();
+                    setDirtyWhole();
                     draggingUsed = true;
                 }
                 else if (mstate.rightButtonDown)
@@ -301,9 +301,9 @@ nothrow:
                     int ny = _position.min.y + dy;
                     if (nx < 0) nx = 0;
                     if (ny < 0) ny = 0;
-                    setDirty();
+                    setDirtyWhole();
                     _position = box2i(nx, ny, nx + _position.width, ny + _position.height);
-                    setDirty();
+                    setDirtyWhole();
                     draggingUsed = true;
                 }
             }
@@ -393,14 +393,14 @@ nothrow:
         _zOrder = zOrder;
     }
 
-    /// Mark this element position dirty.
-    final void setDirty() nothrow @nogc
+    /// Mark this element as wholly dirty.
+    final void setDirtyWhole() nothrow @nogc
     {
         setDirty(_position);
     }
 
-    /// Mark an area dirty.
-    final void setDirty(box2i rect) nothrow @nogc
+    /// Mark an area of the element dirty.
+    void setDirty(box2i rect) nothrow @nogc
     {
         _context.dirtyList.addRect(rect);
     }

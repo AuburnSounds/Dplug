@@ -10,7 +10,7 @@ import std.algorithm.comparison;
 
 import dplug.core.math;
 import dplug.graphics.drawex;
-import dplug.gui.element;
+import dplug.gui.bufferedelement;
 import dplug.client.params;
 
 
@@ -22,7 +22,7 @@ enum HandleStyle
     shapeBlock
 }
 
-class UISlider : UIElement, IParameterListener
+class UISlider : UIBufferedElement, IParameterListener
 {
 public:
 nothrow:
@@ -75,12 +75,16 @@ nothrow:
         if (abs(newAnimation - _pushedAnimation) > 0.001f)
         {
             _pushedAnimation = newAnimation;
-            setDirty();
+            setDirtyWhole();
         }
     }
 
-    // Warning: does not respect dirtyRects!
-    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects) nothrow @nogc
+    override void onDrawBuffered(ImageRef!RGBA diffuseMap, 
+                                 ImageRef!L16 depthMap, 
+                                 ImageRef!RGBA materialMap,
+                                 ImageRef!L8 diffuseOpacity,
+                                 ImageRef!L8 depthOpacity,
+                                 ImageRef!L8 materialOpacity) nothrow @nogc
     {
         int width = _position.width;
         int height = _position.height;
@@ -126,6 +130,10 @@ nothrow:
 
             diffuseMap.cropImageRef(holeLit).fill(litTrail);
             depthMap.cropImageRef(holeRect).fill(trailDepth);
+
+            // Fill opacity for hole
+            diffuseOpacity.cropImageRef(holeRect).fill(opacityFullyOpaque);
+            depthOpacity.cropImageRef(holeRect).fill(opacityFullyOpaque);
         }
 
         // Paint handle of slider
@@ -188,6 +196,11 @@ nothrow:
         }
 
         materialMap.cropImageRef(handleRect).fill(handleMaterial);
+
+        // Fill opacity for handle
+        diffuseOpacity.cropImageRef(handleRect).fill(opacityFullyOpaque);
+        depthOpacity.cropImageRef(handleRect).fill(opacityFullyOpaque);
+        materialOpacity.cropImageRef(handleRect).fill(opacityFullyOpaque);
     }
 
     override bool onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
@@ -244,28 +257,28 @@ nothrow:
     override void onBeginDrag()
     {
         _param.beginParamEdit();
-        setDirty();
+        setDirtyWhole();
     }
 
-    override  void onStopDrag()
+    override void onStopDrag()
     {
         _param.endParamEdit();
-        setDirty();
+        setDirtyWhole();
     }
 
     override void onMouseEnter()
     {
-        setDirty();
+        setDirtyWhole();
     }
 
     override void onMouseExit()
     {
-        setDirty();
+        setDirtyWhole();
     }
 
-    override void onParameterChanged(Parameter sender) nothrow @nogc
+    override void onParameterChanged(Parameter sender)
     {
-        setDirty();
+        setDirtyWhole();
     }
 
     override void onBeginParameterEdit(Parameter sender)

@@ -99,7 +99,7 @@ nothrow:
         if (abs(newAnimation - _pushedAnimation) > 0.001f)
         {
             _pushedAnimation = newAnimation;
-            setDirty();
+            setDirtyWhole();
         }
     }
 
@@ -297,31 +297,31 @@ nothrow:
     override void onBeginDrag()
     {
         _param.beginParamEdit();
-        setDirty();
+        setDirtyWhole();
     }
 
     override void onStopDrag()
     {
         _param.endParamEdit();
         clearCrosspoints();
-        setDirty();
+        setDirtyWhole();
     }
 
     override void onMouseMove(int x, int y, int dx, int dy, MouseState mstate)
     {
         _shouldBeHighlighted = containsPoint(x, y);
-        setDirty();
+        setDirtyWhole();
     }
 
     override void onMouseExit()
     {
         _shouldBeHighlighted = false;
-        setDirty();
+        setDirtyWhole();
     }
 
     override void onParameterChanged(Parameter sender) nothrow @nogc
     {
-        setDirty();
+        setDirtyWhole();
     }
 
     override void onBeginParameterEdit(Parameter sender)

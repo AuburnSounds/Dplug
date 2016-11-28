@@ -119,7 +119,7 @@ nothrow:
             }
             _valueMutex.unlock();
         }
-        setDirty();
+        setDirtyWhole();
     }
 
     float getValue(int channel) nothrow @nogc
