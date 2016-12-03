@@ -39,7 +39,7 @@ double secondaryLobeAttenuationInDb(WindowType type) pure nothrow @nogc
 
 double evalWindow(WindowType type, int n, int N) pure nothrow @nogc
 {
-    double phi = (2 * PI * (n + 1)) / (N + 1);
+    double phi = (2 * PI * n ) / N;
 
     final switch(type)
     {
