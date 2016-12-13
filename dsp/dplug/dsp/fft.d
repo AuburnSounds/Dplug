@@ -304,7 +304,7 @@ private:
 /// From a signal, output short term FFT data.
 /// Variable overlap.
 /// Introduces approximately windowSize/2 samples delay.
-struct FFTAnalyzer
+struct FFTAnalyzer(T)
 {
 public:
 
@@ -336,14 +336,14 @@ public:
         _segmenter.initialize(windowSize, analysisPeriod);
     }
 
-    bool feed(float x, Complex!float[] fftData) nothrow @nogc
+    bool feed(float x, Complex!T[] fftData) nothrow @nogc
     {    
-        void processSegment(float[] segment) nothrow @nogc
+        void processSegment(T[] segment) nothrow @nogc
         {
             int windowSize = _windowSize;
             assert(segment.length == _windowSize);
 
-            float scaleFactor = _scaleFactor;
+            T scaleFactor = _scaleFactor;
 
             if (_zeroPhaseWindowing)
             {
@@ -387,19 +387,25 @@ public:
             }
 
             // perform forward FFT on this slice
-            forwardFFT!float(fftData[0.._fftSize]);
+            forwardFFT!double(fftData[0.._fftSize]);
         }
 
         return _segmenter.feed(x, &processSegment);
     }
 
 private:
-    Segmenter!float _segmenter;
+    Segmenter!T _segmenter;
     bool _zeroPhaseWindowing;
     int _fftSize;        // in samples
 
-    Window!float _window;
+    Window!T _window;
     int _windowSize;     // in samples
 
-    float _scaleFactor; // account to the shape of the windowing function
+    T _scaleFactor; // account to the shape of the windowing function
+}
+
+unittest
+{
+    FFTAnalyzer!float a;
+    FFTAnalyzer!double b;
 }
