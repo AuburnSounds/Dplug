@@ -315,7 +315,7 @@ public:
     /// Basic overlap is achieved with windowSize = 2 * analysisPeriod
     /// if zeroPhaseWindowing = true, "zero phase" windowing is used
     /// (center of window is at first sample, zero-padding happen at center)
-    void initialize(int windowSize, int fftSize, int analysisPeriod, WindowType windowType, bool zeroPhaseWindowing) nothrow @nogc
+    void initialize(int windowSize, int fftSize, int analysisPeriod, WindowDesc windowDesc, bool zeroPhaseWindowing) nothrow @nogc
     {
         assert(isPowerOfTwo(fftSize));
         assert(fftSize >= windowSize);
@@ -324,7 +324,7 @@ public:
         
         _fftSize = fftSize;
 
-        _window.initialize(windowType, windowSize);
+        _window.initialize(windowDesc, windowSize);
         _windowSize = windowSize;
 
         // account for window shape
@@ -402,6 +402,15 @@ private:
     int _windowSize;     // in samples
 
     T _scaleFactor; // account to the shape of the windowing function
+}
+
+unittest
+{
+    FFTAnalyzer!float a;
+    a.initialize(1024, 2048, 512, WindowDesc(WindowType.HANN), true);
+
+    FFTAnalyzer!double b;
+    b.initialize(1024, 2048, 512, WindowDesc(WindowType.HANN), false);
 }
 
 
