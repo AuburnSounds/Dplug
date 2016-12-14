@@ -382,3 +382,15 @@ unittest
     assert(abs( inverseSqrt!float(1) - 1) < 1e-3 );
     assert(abs( inverseSqrt!double(1) - 1) < 1e-3 );
 }
+
+/// Computes a normalized frequency form a frequency.
+float convertFrequencyToNormalizedFrequency(float frequencyHz, float samplingRate) pure nothrow @nogc
+{
+    return frequencyHz / samplingRate;
+}
+
+/// Computes a frequency.
+float convertNormalizedFreqyencyToFrequency(float frequencyCyclesPerSample, float samplingRate) pure nothrow @nogc
+{
+    return frequencyCyclesPerSample * samplingRate;
+}

@@ -387,7 +387,7 @@ public:
             }
 
             // perform forward FFT on this slice
-            forwardFFT!double(fftData[0.._fftSize]);
+            forwardFFT!T(fftData[0.._fftSize]);
         }
 
         return _segmenter.feed(x, &processSegment);
@@ -404,8 +404,37 @@ private:
     T _scaleFactor; // account to the shape of the windowing function
 }
 
-unittest
+
+/// Converts a normalized frequency to a FFT bin.
+/// Params:
+///     normalizedFrequency frequency in cycles per sample
+///     fftSize size of FFT
+/// Returns: Corresponding fractional bin.
+float convertNormalizedFrequencyToFFTBin(float normalizedFrequency, int fftSize)
 {
-    FFTAnalyzer!float a;
-    FFTAnalyzer!double b;
+    return (normalizedFrequency * fftSize);
+}
+
+/// Converts a frequency to a FFT bin.
+/// Returns: Corresponding fractional bin.
+float convertFrequencyToFFTBin(float frequencyHz, float samplingRate, int fftSize)
+{
+    return (frequencyHz * fftSize) / samplingRate;
+}
+
+/// Converts a FFT bin to a frequency.
+/// Returns: Corresponding center frequency.
+float convertFFTBinToFrequency(float fftBin, int fftSize, float samplingRate)
+{
+    return (samplingRate * fftBin) / fftSize;
+}
+
+/// Converts a FFT bin to a normalized frequency.
+/// Params:
+///     fftBin bin index of the FFT
+///     fftSize size of FFT
+/// Returns: Corresponding normalized frequency
+float convertFFTBinToNormalizedFrequency(float fftBin, int fftSize)
+{
+    return fftBin / fftSize;
 }
