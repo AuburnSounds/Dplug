@@ -141,10 +141,13 @@ T sinc(T)(T x) pure nothrow @nogc
         return sin(cast(T)PI * x) / (cast(T)PI * x);
 }
 
-double expDecayFactor(double time, double samplerate) pure nothrow @nogc
+/// Params:
+///    timeConstantInSeconds time after which the amplitude is only 37% of the original.
+/// Returns: Multiplier for this time constant and sampling rate.
+double expDecayFactor(double timeConstantInSeconds, double samplerate) pure nothrow @nogc
 {
     // 1 - exp(-time * sampleRate) would yield innacuracies
-    return -expm1(-1.0 / (time * samplerate));
+    return -expm1(-1.0 / (timeConstantInSeconds * samplerate));
 }
 
 /// Give back a phase between -PI and PI
@@ -378,4 +381,16 @@ unittest
 {
     assert(abs( inverseSqrt!float(1) - 1) < 1e-3 );
     assert(abs( inverseSqrt!double(1) - 1) < 1e-3 );
+}
+
+/// Computes a normalized frequency form a frequency.
+float convertFrequencyToNormalizedFrequency(float frequencyHz, float samplingRate) pure nothrow @nogc
+{
+    return frequencyHz / samplingRate;
+}
+
+/// Computes a frequency.
+float convertNormalizedFreqyencyToFrequency(float frequencyCyclesPerSample, float samplingRate) pure nothrow @nogc
+{
+    return frequencyCyclesPerSample * samplingRate;
 }

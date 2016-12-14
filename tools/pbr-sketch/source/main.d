@@ -61,7 +61,7 @@ void main(string[] args)
         ImageRef!RGBA forceUpdate()
         {
             auto result = _windowListener.onResized(width, height);
-            setDirty();
+            setDirtyWhole();
             _windowListener.recomputeDirtyAreas();
             _windowListener.onDraw(WindowPixelFormat.RGBA8);
             return result;

@@ -28,7 +28,7 @@ void usage()
 
 int main(string[] args)
 {
-    // Parse arguments
+/+    // Parse arguments
     bool randomizePhase = false;
     string inputFile = null;
     string outputFile = null;
@@ -74,7 +74,7 @@ int main(string[] args)
     Sound input = decodeWAV(inputFile);
 
     int lengthInFrames = input.lengthInFrames();
-    int numChans = input.numChannels;
+    int numChans = input.channels;
     int sampleRate = input.sampleRate;
     int fftSize = windowSize;
 
@@ -110,7 +110,7 @@ int main(string[] args)
             int counter = 0;
             for (int i = 0; i < lengthInFrames; ++i)
             {
-                float sample = input.data[i * numChans + ch];
+                float sample = input.sample(ch, i);
                 if (ffta.feed(sample, fftData[0..fftSize]))
                 {
                     // prepate stretchFactor time segments with random phase
@@ -165,6 +165,6 @@ int main(string[] args)
     process();
 
     Sound(sampleRate, numChans, stretched).encodeWAV(outputFile);
-
++/
     return 0;
 }

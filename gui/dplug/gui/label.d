@@ -36,7 +36,7 @@ nothrow:
     /// Sets text size.
     Font font(Font font_)
     {
-        setDirty();
+        setDirtyWhole();
         return _font = font_;
     }
 
@@ -49,7 +49,7 @@ nothrow:
     /// Sets displayed text.
     string text(string text_)
     {
-        setDirty();
+        setDirtyWhole();
         return _text = text_;
     }
 
@@ -62,7 +62,7 @@ nothrow:
     /// Sets size of displayed text.
     float textSize(float textSize_)
     {
-        setDirty();
+        setDirtyWhole();
         return _textSize = textSize_;
     }
 
@@ -73,7 +73,7 @@ nothrow:
 
     float letterSpacing(float letterSpacing_)
     {
-        setDirty();
+        setDirtyWhole();
         return _letterSpacing = letterSpacing_;
     }
 
@@ -86,32 +86,32 @@ nothrow:
     /// Sets diffuse color of displayed text.
     RGBA textColor(RGBA textColor_)
     {
-        setDirty();
+        setDirtyWhole();
         return _textColor = textColor_;
     }
 
     override void onBeginDrag() 
     {
         if (clickable)
-            setDirty();
+            setDirtyWhole();
     }
 
     override void onStopDrag()  
     {
         if (clickable)
-            setDirty();
+            setDirtyWhole();
     }
 
     override void onMouseEnter() 
     {
         if (clickable)
-            setDirty();
+            setDirtyWhole();
     }
 
     override void onMouseExit()
     {
         if (clickable)
-            setDirty();
+            setDirtyWhole();
     }    
 
     override bool onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate) 

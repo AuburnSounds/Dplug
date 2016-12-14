@@ -56,7 +56,7 @@ void generateHighpassImpulse(T)(T[] output, double cutoff, double samplerate) no
     normalizeImpulse(output);
 }
 
-void generateHilbertTransformer(T)(T[] outImpulse, WindowType window, double samplerate) nothrow @nogc
+void generateHilbertTransformer(T)(T[] outImpulse, WindowDesc windowDesc, double samplerate) nothrow @nogc
 {
     int size = cast(int)(outImpulse.length);
     assert(isOdd(size));
@@ -67,7 +67,7 @@ void generateHilbertTransformer(T)(T[] outImpulse, WindowType window, double sam
         double x = cast(double)i - cast(double)center;
         double y = x * cast(double)PI / 2;
         double sine = sin(y);
-        T value = cast(T)(-sine*sine / y) * evalWindow(window, i, size);
+        T value = cast(T)(-sine*sine / y) * evalWindow(windowDesc, i, size);
         outImpulse[i] = value;
         outImpulse[size - 1 - i] = -value;
     }
@@ -169,7 +169,7 @@ unittest
     Complex!double[] tempStorage = new Complex!double[tempBufferSizeForMinPhase(lp_impulse[])];
     minimumPhaseImpulse(lp_impulse[], tempStorage);
 
-    generateHilbertTransformer(lp_impulse[0..$-1], WindowType.BLACKMANN, 44100.0);
+    generateHilbertTransformer(lp_impulse[0..$-1], WindowDesc(WindowType.BLACKMANN_HARRIS), 44100.0);
 }
 
 
@@ -218,10 +218,10 @@ struct FIR(T)
         minimumPhaseImpulse(_impulse, _tempBuffer);
     }
 
-    void applyWindow(WindowType windowType) nothrow @nogc
+    void applyWindow(WindowDesc windowDesc) nothrow @nogc
     {
         _windowBuffer.reallocBuffer(_impulse.length);
-        generateWindow(windowType, _windowBuffer);
+        generateWindow(windowDesc, _windowBuffer);
         foreach(i; 0.._impulse.length)
         {
             _impulse[i] *= _windowBuffer[i];
@@ -242,5 +242,5 @@ unittest
     fir.initialize(32);
     generateLowpassImpulse(fir.impulse(), 40.0, 44100.0);
     fir.makeMinimumPhase();
-    fir.applyWindow(WindowType.HANN);
+    fir.applyWindow(WindowDesc(WindowType.HANN));
 }

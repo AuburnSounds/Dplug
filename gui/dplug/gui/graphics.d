@@ -126,7 +126,7 @@ nothrow:
         reflow(box2i(0, 0, _askedWidth, _askedHeight));
 
         // Sets the whole UI dirty
-        setDirty();
+        setDirtyWhole();
 
         return _window.systemHandle();
     }

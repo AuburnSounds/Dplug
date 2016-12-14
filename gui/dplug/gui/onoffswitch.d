@@ -55,7 +55,7 @@ nothrow:
         if (abs(newAnimation - _animation) > 0.001f)
         {
             _animation = newAnimation;
-            setDirty();
+            setDirtyWhole();
         }
     }
 
@@ -110,17 +110,17 @@ nothrow:
 
     override void onMouseEnter()
     {
-        setDirty();
+        setDirtyWhole();
     }
 
     override void onMouseExit()
     {
-        setDirty();
+        setDirtyWhole();
     }
 
     override void onParameterChanged(Parameter sender) nothrow @nogc
     {
-        setDirty();
+        setDirtyWhole();
     }
 
     override void onBeginParameterEdit(Parameter sender)

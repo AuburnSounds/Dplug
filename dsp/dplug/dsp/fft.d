@@ -14,6 +14,8 @@ import dplug.dsp.window;
 import dplug.core.math;
 import dplug.core.alignedbuffer;
 
+nothrow:
+@nogc:
 
 enum FFTDirection
 {
@@ -107,7 +109,7 @@ private void FFT_internal(T, FFTDirection direction)(Complex!T[] buffer) nothrow
 // should operate the same as Phobos FFT
 unittest
 {
-    import std.numeric;
+    import std.numeric: approxEqual, fft;
 
     bool approxEqualArr(Complex!double[] a, Complex!double[] b) pure
     {
@@ -123,7 +125,6 @@ unittest
 
     Complex!double[] A = [Complex!double(1, 0), Complex!double(13, -4), Complex!double(5, -5), Complex!double(0, 2)];
     auto fftARef = fft(A);
-    assert(approxEqualArr(inverseFft(fftARef), A));
 
     auto B = A.dup;
     forwardFFT(B);
@@ -148,7 +149,7 @@ struct Segmenter(T)
 
     /// To call at initialization and whenever samplerate changes.
     /// segmentSize = size of sound segments, expressed in samples.
-    /// analysisPeriod = period of analysis results, allow to be more precise frequentially, expressed in samples.    
+    /// analysisPeriod = period of analysis results, allow to be more precise frequentially, expressed in samples.
     void initialize(int segmentSize, int analysisPeriod) nothrow @nogc
     {
         assert(analysisPeriod <= segmentSize); // no support for zero overlap
@@ -197,7 +198,7 @@ struct Segmenter(T)
             }
             return true;
         }
-        else 
+        else
             return false;
     }
 
@@ -233,7 +234,7 @@ struct ShortTermReconstruction
             _desc[i].buffer = null;
             _desc[i].buffer.reallocBuffer(maxSegmentLength);
             //reallocBuffer(_desc[i].buffer, maxSegmentLength);
-        } //) 
+        } //)
     }
 
     ~this() nothrow @nogc
@@ -252,7 +253,7 @@ struct ShortTermReconstruction
     void startSegment(float[] newSegment, int delay = 0) nothrow @nogc
     {
         assert(newSegment.length <= _maxSegmentLength);
-        
+
         for (int i = 0; i < _maxSimultSegments; ++i)
         {
             if (!_desc[i].active())
@@ -305,7 +306,7 @@ private:
 /// From a signal, output short term FFT data.
 /// Variable overlap.
 /// Introduces approximately windowSize/2 samples delay.
-struct FFTAnalyzer
+struct FFTAnalyzer(T)
 {
 public:
 
@@ -316,16 +317,16 @@ public:
     /// Basic overlap is achieved with windowSize = 2 * analysisPeriod
     /// if zeroPhaseWindowing = true, "zero phase" windowing is used
     /// (center of window is at first sample, zero-padding happen at center)
-    void initialize(int windowSize, int fftSize, int analysisPeriod, WindowType windowType, bool zeroPhaseWindowing) nothrow @nogc
+    void initialize(int windowSize, int fftSize, int analysisPeriod, WindowDesc windowDesc, bool zeroPhaseWindowing) nothrow @nogc
     {
         assert(isPowerOfTwo(fftSize));
         assert(fftSize >= windowSize);
 
         _zeroPhaseWindowing = zeroPhaseWindowing;
-        
+
         _fftSize = fftSize;
 
-        _window.initialize(windowType, windowSize);
+        _window.initialize(windowDesc, windowSize);
         _windowSize = windowSize;
 
         // account for window shape
@@ -337,14 +338,14 @@ public:
         _segmenter.initialize(windowSize, analysisPeriod);
     }
 
-    bool feed(float x, Complex!float[] fftData) nothrow @nogc
-    {    
-        void processSegment(float[] segment) nothrow @nogc
+    bool feed(float x, Complex!T[] fftData) nothrow @nogc
+    {
+        void processSegment(T[] segment) nothrow @nogc
         {
             int windowSize = _windowSize;
             assert(segment.length == _windowSize);
 
-            float scaleFactor = _scaleFactor;
+            T scaleFactor = _scaleFactor;
 
             if (_zeroPhaseWindowing)
             {
@@ -388,19 +389,63 @@ public:
             }
 
             // perform forward FFT on this slice
-            forwardFFT!float(fftData[0.._fftSize]);
+            forwardFFT!T(fftData[0.._fftSize]);
         }
 
         return _segmenter.feed(x, &processSegment);
     }
 
 private:
-    Segmenter!float _segmenter;
+    Segmenter!T _segmenter;
     bool _zeroPhaseWindowing;
     int _fftSize;        // in samples
 
-    Window!float _window;
+    Window!T _window;
     int _windowSize;     // in samples
 
-    float _scaleFactor; // account to the shape of the windowing function
+    T _scaleFactor; // account to the shape of the windowing function
+}
+
+unittest
+{
+    FFTAnalyzer!float a;
+    a.initialize(1024, 2048, 512, WindowDesc(WindowType.HANN), true);
+
+    FFTAnalyzer!double b;
+    b.initialize(1024, 2048, 512, WindowDesc(WindowType.HANN), false);
+}
+
+
+/// Converts a normalized frequency to a FFT bin.
+/// Params:
+///     normalizedFrequency frequency in cycles per sample
+///     fftSize size of FFT
+/// Returns: Corresponding fractional bin.
+float convertNormalizedFrequencyToFFTBin(float normalizedFrequency, int fftSize)
+{
+    return (normalizedFrequency * fftSize);
+}
+
+/// Converts a frequency to a FFT bin.
+/// Returns: Corresponding fractional bin.
+float convertFrequencyToFFTBin(float frequencyHz, float samplingRate, int fftSize)
+{
+    return (frequencyHz * fftSize) / samplingRate;
+}
+
+/// Converts a FFT bin to a frequency.
+/// Returns: Corresponding center frequency.
+float convertFFTBinToFrequency(float fftBin, int fftSize, float samplingRate)
+{
+    return (samplingRate * fftBin) / fftSize;
+}
+
+/// Converts a FFT bin to a normalized frequency.
+/// Params:
+///     fftBin bin index of the FFT
+///     fftSize size of FFT
+/// Returns: Corresponding normalized frequency
+float convertFFTBinToNormalizedFrequency(float fftBin, int fftSize)
+{
+    return fftBin / fftSize;
 }

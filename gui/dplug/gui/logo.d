@@ -46,7 +46,7 @@ nothrow:
         if (abs(newAnimation - _animation) > 0.001f)
         {
             _animation = newAnimation;
-            setDirty();
+            setDirtyWhole();
         }
     }
 
