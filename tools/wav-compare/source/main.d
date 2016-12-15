@@ -1,6 +1,7 @@
 import std.stdio;
 import std.algorithm;
 import std.math;
+import std.string;
 import std.array;
 
 import waved;
@@ -10,18 +11,21 @@ import dplug.core;
 
 void usage()
 {
-    writeln("usage: wav-compare file-A.wav file-B.wav");    
-    writeln("  -h|--help         shows this help");
+    writeln("Usage:");
+    writeln("        wav-compare fileA.wav fileB.wav");
+    writeln;
+    writeln("Flags:");
+    writeln("        -h, --help   Shows this help");
+    writeln;
 }
 
-
-void main(string[] args)
+int main(string[] args)
 {
     try
     {
         bool help = false;
         string[] files = null;
-    
+
         for (int i = 1; i < args.length; ++i)
         {
             string arg = args[i];
@@ -34,7 +38,7 @@ void main(string[] args)
         if (help)
         {
             usage();
-            return;
+            return 1;
         }
 
         if (files.length < 2)
@@ -50,25 +54,25 @@ void main(string[] args)
         Sound soundB = decodeSound(fileB);
 
         if (fileA == fileB)
-            throw new Exception("Same file!");
+            writeln(format("warning: comparing %s with itself", fileA));
 
-        if (soundA.numChannels != 2 || soundB.numChannels != 2)
-            throw new Exception("Only support stereo inputs!");
+        if (soundA.channels != soundB.channels)
+            throw new Exception(format("%s and %s have different channel count", fileA, fileB));
 
         if (soundA.sampleRate != soundB.sampleRate)
-            throw new Exception("Different sample-rate!");
+            throw new Exception(format("%s and %s have different sample rate", fileA, fileB));
 
-        if (soundA.data.length != soundB.data.length)
-            throw new Exception("Different length!");
+        if (soundA.samples.length != soundB.samples.length)
+            throw new Exception(format("%s and %s have different length", fileA, fileB));
 
-        int N = cast(int)(soundA.data.length);
+        int N = cast(int)(soundA.samples.length);
 
         // No need to deinterleave stereo, since the peak difference is what interest us
         double[] difference = new double[N];
 
         for (int i = 0; i < N; ++i)
         {
-            difference[i] = abs(soundA.data[i] - soundB.data[i]);
+            difference[i] = abs(soundA.samples[i] - soundB.samples[i]);
         }
 
         double maxPeakDifference = reduce!max(difference);//!("a > b")(difference).front;
@@ -85,12 +89,18 @@ void main(string[] args)
         writefln(" Comparing %s vs %s", fileA, fileB);
         writefln(" => peak dB difference = %s dB", peakdB);
         writefln(" => RMS dB difference  = %s dB", rmsdB);
-        if (peakdB == -double.infinity) 
+        if (peakdB == -double.infinity)
             writeln("    These sounds are identical.");
         writeln;
+        return 0;
     }
     catch(Exception e)
     {
+        writeln;
         writefln("error: %s", e.msg);
+        writeln;
+        usage();
+        writeln;
+        return 1;
     }
 }
