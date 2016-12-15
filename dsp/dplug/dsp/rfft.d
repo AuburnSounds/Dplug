@@ -707,7 +707,7 @@ unittest
         Complex!T[] reference = fft!T(A);
 
         RFFT!T rfft;
-        rfft.initialize(A.length);
+        rfft.initialize(cast(int)A.length);
 
         int N = cast(int)(A.length);
         Complex!T[] B;
