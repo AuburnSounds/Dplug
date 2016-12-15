@@ -14,6 +14,8 @@ import dplug.dsp.window;
 import dplug.core.math;
 import dplug.core.alignedbuffer;
 
+nothrow:
+@nogc:
 
 enum FFTDirection
 {
@@ -147,7 +149,7 @@ struct Segmenter(T)
 
     /// To call at initialization and whenever samplerate changes.
     /// segmentSize = size of sound segments, expressed in samples.
-    /// analysisPeriod = period of analysis results, allow to be more precise frequentially, expressed in samples.    
+    /// analysisPeriod = period of analysis results, allow to be more precise frequentially, expressed in samples.
     void initialize(int segmentSize, int analysisPeriod) nothrow @nogc
     {
         assert(analysisPeriod <= segmentSize); // no support for zero overlap
@@ -196,7 +198,7 @@ struct Segmenter(T)
             }
             return true;
         }
-        else 
+        else
             return false;
     }
 
@@ -232,7 +234,7 @@ struct ShortTermReconstruction
             _desc[i].buffer = null;
             _desc[i].buffer.reallocBuffer(maxSegmentLength);
             //reallocBuffer(_desc[i].buffer, maxSegmentLength);
-        } //) 
+        } //)
     }
 
     ~this() nothrow @nogc
@@ -251,7 +253,7 @@ struct ShortTermReconstruction
     void startSegment(float[] newSegment, int delay = 0) nothrow @nogc
     {
         assert(newSegment.length <= _maxSegmentLength);
-        
+
         for (int i = 0; i < _maxSimultSegments; ++i)
         {
             if (!_desc[i].active())
@@ -321,7 +323,7 @@ public:
         assert(fftSize >= windowSize);
 
         _zeroPhaseWindowing = zeroPhaseWindowing;
-        
+
         _fftSize = fftSize;
 
         _window.initialize(windowDesc, windowSize);
@@ -337,7 +339,7 @@ public:
     }
 
     bool feed(float x, Complex!T[] fftData) nothrow @nogc
-    {    
+    {
         void processSegment(T[] segment) nothrow @nogc
         {
             int windowSize = _windowSize;

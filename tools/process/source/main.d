@@ -86,23 +86,23 @@ void main(string[]args)
         float[] leftChannelOutput;
         float[] rightChannelOutput;
 
-        
+
         Sound sound;
-        
+
         if (inPath)
             sound = decodeSound(inPath);
         else
         {
             // ten seconds of silence
-            sound.numChannels = 2;
+            sound.channels = 2;
             sound.sampleRate = 44100;
-            sound.data = new float[44100 * 2 * 10]; 
-            sound.data[] = 0;
+            sound.samples = new float[44100 * 2 * 10];
+            sound.samples[] = 0;
 
             inPath = "10 seconds of silence";
         }
 
-        if (sound.numChannels != 2)
+        if (sound.channels != 2)
             throw new Exception("Only support stereo inputs");
         if (bufferSize < 1)
             throw new Exception("bufferSize is < 1");
@@ -112,7 +112,7 @@ void main(string[]args)
         double sampleDurationMs = (1000.0 * N) / sound.sampleRate;
 
         writefln("This sounds lasts %s ms at a sampling-rate of %s Hz.", sampleDurationMs, sound.sampleRate);
-        
+
         leftChannelInput.length = N;
         rightChannelInput.length = N;
         leftChannelOutput.length = N;
@@ -120,8 +120,8 @@ void main(string[]args)
 
         for (int i = 0; i < N; ++i)
         {
-            leftChannelInput[i] = sound.data[i * 2];
-            rightChannelInput[i] = sound.data[i * 2 + 1];
+            leftChannelInput[i] = sound.samples[i * 2];
+            rightChannelInput[i] = sound.samples[i * 2 + 1];
         }
 
         writeln;
@@ -161,14 +161,14 @@ void main(string[]args)
             outChannels[1] = rightChannelOutput.ptr;
 
             for (int buf = 0; buf < N / bufferSize; ++buf)
-            {            
+            {
                 host.processAudioFloat(inChannels.ptr, outChannels.ptr, bufferSize);
                 inChannels[0] += bufferSize;
                 inChannels[1] += bufferSize;
                 outChannels[0] += bufferSize;
                 outChannels[1] += bufferSize;
             }
-        
+
             // remaining samples
             host.processAudioFloat(inChannels.ptr, outChannels.ptr, N % bufferSize);
 
@@ -199,7 +199,7 @@ void main(string[]args)
         // write output if necessary
         if (outPath)
         {
-            sound.data = interleave(leftChannelOutput, rightChannelOutput).array;
+            sound.samples = interleave(leftChannelOutput, rightChannelOutput).array;
             encodeWAV(sound, outPath);
         }
 
@@ -220,7 +220,7 @@ static auto interleave(Range1, Range2)(Range1 a, Range2 b)
 
 double average(double[] arr)
 {
-    double sum = 0; 
+    double sum = 0;
     foreach(d; arr)
         sum += d;
     return sum / arr.length;
