@@ -6,8 +6,6 @@
 
     "targetType": "dynamicLibrary",
 
-    "CFBundleIdentifierPrefix": "com.audiocompany",
-
     "sourceFiles-windows-dmd": [
         "./module.def"
     ],
