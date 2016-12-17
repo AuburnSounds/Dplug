@@ -24,6 +24,14 @@
             ]
         },
         {
+            "name": "audio",
+            "sourcePaths": [ "audio/dplug/audio" ],
+            "importPaths": [ "audio" ],
+            "dependencies": {
+                "dplug:core": "*"
+            }
+        },
+        {
             "name": "dsp",
             "sourcePaths": [ "dsp/dplug/dsp" ],
             "importPaths": [ "dsp" ],
