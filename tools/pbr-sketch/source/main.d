@@ -101,7 +101,7 @@ void main(string[] args)
     long after = getTickMs();
 
     writefln("Rendered %s times in %s sec", timesRendering, (after - before) * 0.001);
-    writefln("Mean = %s sec", timesRendering, ((after - before) * 0.001)/timesRendering );
+    writefln("Mean = %s ms per render", cast(float)(after - before) / timesRendering );
 
     string resultPath = buildPath(appDir, "result.png");
 
