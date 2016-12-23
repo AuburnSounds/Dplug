@@ -7,6 +7,9 @@ module dplug.gui.element;
 
 import std.algorithm.comparison;
 
+public import gfm.math.vector;
+public import gfm.math.box;
+
 public import dplug.graphics;
 
 public import dplug.window.window;

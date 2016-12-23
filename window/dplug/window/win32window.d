@@ -20,11 +20,12 @@ import std.process,
        std.string,
        std.conv;
 
+import gfm.math.vector;
+import gfm.math.box;
+
 import dplug.core.runtime;
 import dplug.core.nogc;
 
-import dplug.graphics.vector;
-import dplug.graphics.box;
 import dplug.graphics.image;
 import dplug.graphics.view;
 

@@ -11,12 +11,13 @@ import std.math;
 import std.algorithm.comparison;
 import std.utf;
 
+import gfm.math.vector;
+import gfm.math.box;
+
 import dplug.core.alignedbuffer;
 import dplug.core.sync;
 import dplug.core.nogc;
 
-import dplug.graphics.vector;
-import dplug.graphics.box;
 import dplug.graphics.view;
 import dplug.graphics.image;
 import dplug.graphics.stb_truetype;

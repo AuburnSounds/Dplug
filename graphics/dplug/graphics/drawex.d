@@ -14,10 +14,11 @@ import std.algorithm.comparison;
 import std.math;
 import std.traits;
 
+import gfm.math.box;
+
 import dplug.core.nogc;
 import dplug.core.alignedbuffer;
 
-import dplug.graphics.box;
 import dplug.graphics.view;
 import dplug.graphics.draw;
 import dplug.graphics.image;

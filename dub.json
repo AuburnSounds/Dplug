@@ -29,7 +29,7 @@
             "importPaths": [ "dsp" ],
             "dependencies": {
                 "dplug:core": "*",
-                "dplug:graphics": "*"
+                "gfm:math": "~>6.0"
             }
         },
         {
@@ -45,7 +45,8 @@
             "sourcePaths": [ "graphics/dplug/graphics" ],
             "importPaths": [ "graphics" ],
             "dependencies": {
-                "dplug:core": "*"
+                "dplug:core": "*",
+                "gfm:math": "~>6.0"
             }
         },
         {
@@ -87,6 +88,7 @@
             "libs-windows": ["gdi32", "user32"],
 
             "dependencies": {
+                "gfm:math": "~>6.0",
                 "dplug:graphics": "*",
                 "dplug:core": "*"
             },
@@ -102,6 +104,7 @@
             "importPaths": [ "gui" ],
 
             "dependencies": {
+                "gfm:math": "~>6.0",
                 "dplug:client": "*",
                 "dplug:window": "*",
                 "dplug:core": "*",

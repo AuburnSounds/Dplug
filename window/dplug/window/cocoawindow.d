@@ -10,8 +10,8 @@ import core.stdc.stdlib;
 import std.string;
 import std.uuid;
 
-import dplug.graphics.vector;
-import dplug.graphics.box;
+import gfm.math.vector;
+import gfm.math.box;
 import dplug.graphics.image;
 import dplug.graphics.view;
 
