@@ -94,14 +94,33 @@ void main(string[] args)
     scope(exit) graphics.destroy();
     graphics.context().setSkybox(skybox);
 
-    long before = getTickMs();
     ImageRef!RGBA rendered;
-    foreach(time; 0..timesRendering)
-        rendered = graphics.forceUpdate();
-    long after = getTickMs();
+    
+    // render one time for warming-up
+    rendered = graphics.forceUpdate();
 
-    writefln("Rendered %s times in %s sec", timesRendering, (after - before) * 0.001);
-    writefln("Mean = %s ms per render", cast(float)(after - before) / timesRendering );
+    long[] timeSamples = new long[timesRendering];
+    long totalTime = 0;
+    long minTime = long.max;
+    
+    foreach(time; 0..timesRendering)
+    {
+        long before = getTickMs();
+        rendered = graphics.forceUpdate();
+        long timeElapsed = getTickMs() - before;
+
+
+        totalTime += timeElapsed;
+        if (minTime > timeElapsed)
+            minTime = timeElapsed;
+
+        timeSamples[time] = timeElapsed;
+    }
+
+    writefln("Rendered %s times in %s sec", timesRendering, totalTime * 0.001);
+    writefln("Time samples: %s", timeSamples);
+    writefln("Min  = %s ms", cast(float)(minTime));
+    writefln("Mean = %s ms per render", cast(float)(totalTime) / timesRendering );    
 
     string resultPath = buildPath(appDir, "result.png");
 
