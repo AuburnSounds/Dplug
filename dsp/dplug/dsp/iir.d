@@ -138,11 +138,12 @@ public
                     }
                     else version(D_InlineAsm_X86_64)
                     {
-                        ubyte[16*2] storage;
+                        ubyte[16] storage0;
+                        ubyte[16] storage1;
                         asm nothrow @nogc
                         {
-                            movups storage+0, XMM6;
-                            movups storage+16, XMM7;
+                            movups storage0, XMM6;
+                            movups storage1, XMM7;
 
                             mov RAX, input;
                             mov RDX, output;
@@ -196,8 +197,8 @@ public
                             movlpd qword ptr y0, XMM1;
                             movhpd qword ptr y1, XMM1;
 
-                            movups XMM6, storage+0; // XMMx with x >= 6 registers need to be preserved
-                            movups XMM7, storage+16;
+                            movups XMM6, storage0; // XMMx with x >= 6 registers need to be preserved
+                            movups XMM7, storage1;
                         }
                     }
                     else
