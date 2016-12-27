@@ -6,10 +6,10 @@ os:
 d:
  - dmd   # latest
  - dmd-2.072.1
- - dmd-2.072.0
  - dmd-2.071.2
  - dmd-2.070.2
  - ldc-1.0.0
+ - ldc-1.1.0-b6
 
 script:
   - cd examples/distort; dub --compiler=${DC}; cd ..
