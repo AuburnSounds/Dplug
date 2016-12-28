@@ -10,10 +10,10 @@ import dplug.graphics;
 import imageformats;
 
 /// Returns: Most precise clock ticks, in milliseconds.
-long getTickMs() nothrow @nogc
+long getTickUs() nothrow @nogc
 {
     import core.time;
-    return convClockFreq(MonoTime.currTime.ticks, MonoTime.ticksPerSecond, 1_000);
+    return convClockFreq(MonoTime.currTime.ticks, MonoTime.ticksPerSecond, 1_000_000);
 }
 
 
@@ -105,9 +105,9 @@ void main(string[] args)
     
     foreach(time; 0..timesRendering)
     {
-        long before = getTickMs();
+        long before = getTickUs();
         rendered = graphics.forceUpdate();
-        long timeElapsed = getTickMs() - before;
+        long timeElapsed = getTickUs() - before;
 
 
         totalTime += timeElapsed;
@@ -117,10 +117,10 @@ void main(string[] args)
         timeSamples[time] = timeElapsed;
     }
 
-    writefln("Rendered %s times in %s sec", timesRendering, totalTime * 0.001);
+    writefln("Rendered %s times in %s sec", timesRendering, totalTime * 0.000001);
     writefln("Time samples: %s", timeSamples);
-    writefln("Min  = %s ms", cast(float)(minTime));
-    writefln("Mean = %s ms per render", cast(float)(totalTime) / timesRendering );    
+    writefln("Min  = %s ms", minTime / 1000.0);
+    writefln("Mean = %s ms per render", (totalTime / 1000.0) / timesRendering );    
 
     string resultPath = buildPath(appDir, "result.png");
 
