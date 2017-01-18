@@ -118,12 +118,13 @@ Pros:
   - No need to make Info.plist files, they are generated instead.
   - No need to use Xcode whatsoever.
   - No need to use a MacOSX SDK.
+  - Easy to install: DUB will download the library itself when building, a <= 2mb archive.
 
 Cons:
   - **AAX and VST3 unimplemented.**
-  - No resizeable UI yet.
-  - No HDPI support yet.
-  - No modal windows.
+  - No resizeable UI
+  - No HDPI support
+  - No modal windows
 
 ## Licenses
 
