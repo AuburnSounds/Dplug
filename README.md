@@ -13,8 +13,11 @@
 - Comes with a number of `tools` to make plugin creation faster (bundling, color correction, regression tests, performance tests)
 - Dplug is using Physically Based Rendering to keep installers small: http://www.auburnsounds.com/blog/2016-09-16_PBR-for-Audio-Software-Interfaces.html
 
-![Example screenshot](https://www.auburnsounds.com/images/panagement.jpg)
-![Example screenshot](https://www.auburnsounds.com/images/graillon.jpg "With a bit of work")
+### Products made with Dplug
+
+- [Panagement](https://www.auburnsounds.com/products/Panagement.html)
+- [Graillon](https://www.auburnsounds.com/products/Graillon.html)
+
 
 ### Release notes
 
