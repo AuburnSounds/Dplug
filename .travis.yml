@@ -4,13 +4,13 @@ os:
   - osx
 
 d:
- - dmd   # latest
  - dmd-2.073.0
  - dmd-2.072.1
  - dmd-2.071.2
  - dmd-2.070.2
  - ldc-1.0.0
- - ldc-1.1.0-beta6
+ - ldc-1.1.0
+ - dmd-beta   # latest
 
 script:
   - cd examples/distort; dub --compiler=${DC}; cd ../..
