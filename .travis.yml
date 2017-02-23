@@ -4,31 +4,15 @@ os:
   - osx
 
 d:
+ - ldc-1.0.0
+ - ldc-1.1.0
  - dmd-2.073.1
  - dmd-2.072.1
  - dmd-2.071.2
  - dmd-2.070.2
- - ldc-1.0.0
- - ldc-1.1.0
- - dmd-beta   # latest
+ - dmd-beta
 
 script:
-  - cd examples/distort; dub --compiler=${DC}; cd ../..
-  - cd examples/distort; dub -a x86 --compiler=${DC}; cd ../..
-  - cd examples/ms-encode; dub --compiler=${DC}; cd ../..
-  - cd examples/ms-encode; dub -a x86 --compiler=${DC}; cd ../..
-  - cd examples/time-stretch; dub --compiler=${DC}; cd ../..
-  - cd examples/time-stretch; dub -a x86 --compiler=${DC}; cd ../..
-  - cd tools/pbr-sketch; dub --compiler=${DC}; cd ../..
-  - cd tools/pbr-sketch; dub -a x86 --compiler=${DC}; cd ../..
-  - cd tools/release; dub --compiler=${DC}; cd ../..
-  - cd tools/release; dub -a x86 --compiler=${DC}; cd ../..
-  - cd tools/stress-plugin; dub --compiler=${DC}; cd ../..
-  - cd tools/stress-plugin; dub -a x86 --compiler=${DC}; cd ../..
-  - cd tools/process; dub --compiler=${DC}; cd ../..
-  - cd tools/process; dub -a x86 --compiler=${DC}; cd ../..
-  - cd tools/wav-compare; dub --compiler=${DC}; cd ../..
-  - cd tools/wav-compare; dub -a x86 --compiler=${DC}; cd ../..
   - dub test --compiler=${DC} dplug:core
   - dub test --compiler=${DC} dplug:dsp
   - dub test --compiler=${DC} dplug:client
