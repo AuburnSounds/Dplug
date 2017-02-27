@@ -424,21 +424,21 @@ unittest
 ///     normalizedFrequency frequency in cycles per sample
 ///     fftSize size of FFT
 /// Returns: Corresponding fractional bin.
-float convertNormalizedFrequencyToFFTBin(float normalizedFrequency, int fftSize)
+float convertNormalizedFrequencyToFFTBin(float normalizedFrequency, int fftSize) nothrow @nogc
 {
     return (normalizedFrequency * fftSize);
 }
 
 /// Converts a frequency to a FFT bin.
 /// Returns: Corresponding fractional bin.
-float convertFrequencyToFFTBin(float frequencyHz, float samplingRate, int fftSize)
+float convertFrequencyToFFTBin(float frequencyHz, float samplingRate, int fftSize) nothrow @nogc
 {
     return (frequencyHz * fftSize) / samplingRate;
 }
 
 /// Converts a FFT bin to a frequency.
 /// Returns: Corresponding center frequency.
-float convertFFTBinToFrequency(float fftBin, int fftSize, float samplingRate)
+float convertFFTBinToFrequency(float fftBin, int fftSize, float samplingRate) nothrow @nogc
 {
     return (samplingRate * fftBin) / fftSize;
 }
@@ -448,7 +448,7 @@ float convertFFTBinToFrequency(float fftBin, int fftSize, float samplingRate)
 ///     fftBin bin index of the FFT
 ///     fftSize size of FFT
 /// Returns: Corresponding normalized frequency
-float convertFFTBinToNormalizedFrequency(float fftBin, int fftSize)
+float convertFFTBinToNormalizedFrequency(float fftBin, int fftSize) nothrow @nogc
 {
     return fftBin / fftSize;
 }
