@@ -927,7 +927,7 @@ void cpuidSparc()
 __gshared initializedCpuid = false;
 
 /// Instead of a static this constructor, this 
-void initializeCpuid()
+public void initializeCpuid()
 {
     if (initializedCpuid)
         return;
