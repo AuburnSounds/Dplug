@@ -926,6 +926,11 @@ void cpuidSparc()
 
 __gshared initializedCpuid = false;
 
+shared static this()
+{
+    initializeCpuid();
+}
+
 /// Instead of a static this constructor, this 
 public void initializeCpuid()
 {
