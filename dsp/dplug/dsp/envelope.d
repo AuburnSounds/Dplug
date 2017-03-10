@@ -123,8 +123,7 @@ public:
         for (int j = 0; j < 12; ++j)
         {
             const double polefreq = poles[j] * 15.0;
-            const double rc = 1.0 / (2.0 * PI * polefreq);
-            const double alpha = 1.0 / rc;
+            const double alpha = (2.0 * PI * polefreq);
             const double beta = (1.0 - (alpha * 0.5 * onedsr)) / (1.0 + (alpha * 0.5 * onedsr));
             _coef[j] = -beta;
         }
