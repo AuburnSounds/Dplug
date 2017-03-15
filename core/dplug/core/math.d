@@ -113,15 +113,17 @@ int iFloorLog2(int i) pure nothrow @nogc
 }
 
 /// Mapping from MIDI notes to frequency
-double MIDIToFrequency(T)(int note) pure nothrow @nogc
+deprecated("use convertMIDINoteToFrequency instead") alias MIDIToFrequency = convertMIDINoteToFrequency;
+T convertMIDINoteToFrequency(T)(T note) pure nothrow @nogc
 {
-    return 440 * pow(2.0, (note - 69.0) / 12.0);
+    return 440.0f * pow(2.0, (note - 69.0f) / 12.0f);
 }
 
 /// Mapping from frequency to MIDI notes
-double frequencyToMIDI(T)(double frequency) pure nothrow @nogc
+deprecated("use convertFrequencyToMIDINote instead") alias frequencyToMIDI = convertFrequencyToMIDINote;
+T convertFrequencyToMIDINote(T)(T frequency) pure nothrow @nogc
 {
-    return 69.0 + 12 * log2(frequency / 440.0);
+    return 69.0f + 12.0f * log2(frequency / 440.0f);
 }
 
 /// Fletcher and Munson equal-loudness curve
