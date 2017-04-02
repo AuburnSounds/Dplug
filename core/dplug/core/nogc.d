@@ -27,6 +27,7 @@ import core.exception: onOutOfMemoryErrorNoGC;
 import std.conv: emplace;
 import std.traits;
 import std.array: empty;
+import std.exception: assumeUnique;
 
 // This module provides many utilities to deal with @nogc
 

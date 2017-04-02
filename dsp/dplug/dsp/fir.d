@@ -64,15 +64,24 @@ void generateHilbertTransformer(T)(T[] outImpulse, WindowDesc windowDesc, double
 
     for (int i = 0; i < center; ++i)
     {
-        double x = cast(double)i - cast(double)center;
-        double y = x * cast(double)PI / 2;
-        double sine = sin(y);
-        T value = cast(T)(-sine*sine / y) * evalWindow(windowDesc, i, size);
-        outImpulse[i] = value;
-        outImpulse[size - 1 - i] = -value;
+        int xi = i - center;
+        double x = cast(double)xi;
+        if (isEven(xi))
+        {
+            outImpulse[i] = 0;
+            outImpulse[size - 1 - i] = 0;
+        }
+        else
+        {
+            double y = x * cast(double)PI / 2;
+            double sine = sin(y);
+            T value = cast(T)(-sine*sine / y);
+            value *= evalWindow(windowDesc, i, size);
+            outImpulse[i] = value;
+            outImpulse[size - 1 - i] = -value;
+        }
     }
     outImpulse[center] = 0;
-    normalizeImpulse(outImpulse);
 }
 
 
@@ -215,7 +224,7 @@ struct FIR(T)
     {
         int sizeOfTemp = tempBufferSizeForMinPhase(_impulse);
         _tempBuffer.reallocBuffer(sizeOfTemp);
-        minimumPhaseImpulse(_impulse, _tempBuffer);
+        minimumPhaseImpulse!T(_impulse, _tempBuffer);
     }
 
     void applyWindow(WindowDesc windowDesc) nothrow @nogc
@@ -232,7 +241,7 @@ private:
     T[] _impulse;
 
     Delayline!T _delayline;
-    Complex!double[] _tempBuffer;
+    Complex!T[] _tempBuffer;
     T[] _windowBuffer;
 }
 

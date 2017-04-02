@@ -15,3 +15,4 @@ public import dplug.core.runtime;
 public import dplug.core.nogc;
 public import dplug.core.random;
 public import dplug.core.thread;
+public import dplug.core.cpuid;

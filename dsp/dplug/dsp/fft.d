@@ -14,9 +14,6 @@ import dplug.dsp.window;
 import dplug.core.math;
 import dplug.core.alignedbuffer;
 
-nothrow:
-@nogc:
-
 enum FFTDirection
 {
     FORWARD = 0,
@@ -137,12 +134,15 @@ unittest
 /// Introduces approximately windowSize/2 samples delay.
 struct Segmenter(T)
 {
-    int segmentSize() pure const nothrow @nogc
+nothrow:
+@nogc:
+
+    int segmentSize() pure const 
     {
         return _segmentSize;
     }
 
-    int analysisPeriod() pure const nothrow @nogc
+    int analysisPeriod() pure const
     {
         return _analysisPeriod;
     }
@@ -150,7 +150,7 @@ struct Segmenter(T)
     /// To call at initialization and whenever samplerate changes.
     /// segmentSize = size of sound segments, expressed in samples.
     /// analysisPeriod = period of analysis results, allow to be more precise frequentially, expressed in samples.
-    void initialize(int segmentSize, int analysisPeriod) nothrow @nogc
+    void initialize(int segmentSize, int analysisPeriod)
     {
         assert(analysisPeriod <= segmentSize); // no support for zero overlap
 
@@ -175,7 +175,7 @@ struct Segmenter(T)
     @disable this(this);
 
     // Push one sample, eventually call the delegate to process a segment.
-    bool feed(T x, scope void delegate(T[] segment) nothrow @nogc processSegment = null) nothrow @nogc
+    bool feed(T x, scope void delegate(T[] segment) nothrow @nogc processSegment = null)
     {
         _buffer[_index] = x;
         _index = _index + 1;
@@ -203,7 +203,7 @@ struct Segmenter(T)
     }
 
     /// Returns: Internal buffer.
-    T[] buffer() nothrow @nogc
+    T[] buffer()
     {
         return _buffer;
     }
@@ -220,9 +220,11 @@ private:
 /// Segments can be irregular and have different size.
 struct ShortTermReconstruction
 {
+nothrow:
+@nogc:
     /// maxSimultSegments is the maximum number of simulatneously summed samples.
     /// maxSegmentLength in samples
-    void initialize(int maxSimultSegments, int maxSegmentLength) nothrow @nogc
+    void initialize(int maxSimultSegments, int maxSegmentLength)
     {
         _maxSegmentLength = maxSegmentLength;
         _maxSimultSegments = maxSimultSegments;
@@ -237,7 +239,7 @@ struct ShortTermReconstruction
         } //)
     }
 
-    ~this() nothrow @nogc
+    ~this()
     {
         if (_desc !is null)
             for (int i = 0; i < _maxSimultSegments; ++i)
@@ -250,7 +252,7 @@ struct ShortTermReconstruction
     // TODO: interpolate FFT energy, window the input
     // Copy segment to a free slot, and start its summing.
     // The first sample of this segment will be played at next() call if delay is 0.
-    void startSegment(float[] newSegment, int delay = 0) nothrow @nogc
+    void startSegment(float[] newSegment, int delay = 0)
     {
         assert(newSegment.length <= _maxSegmentLength);
 
@@ -270,7 +272,8 @@ struct ShortTermReconstruction
     }
 
     // Get next sample, update segment statuses.
-    float next() nothrow @nogc
+    deprecated("Use nextSample instead") alias next = nextSample;
+    float nextSample()
     {
         float sum = 0;
         foreach(ref desc; _desc)
@@ -421,21 +424,21 @@ unittest
 ///     normalizedFrequency frequency in cycles per sample
 ///     fftSize size of FFT
 /// Returns: Corresponding fractional bin.
-float convertNormalizedFrequencyToFFTBin(float normalizedFrequency, int fftSize)
+float convertNormalizedFrequencyToFFTBin(float normalizedFrequency, int fftSize) nothrow @nogc
 {
     return (normalizedFrequency * fftSize);
 }
 
 /// Converts a frequency to a FFT bin.
 /// Returns: Corresponding fractional bin.
-float convertFrequencyToFFTBin(float frequencyHz, float samplingRate, int fftSize)
+float convertFrequencyToFFTBin(float frequencyHz, float samplingRate, int fftSize) nothrow @nogc
 {
     return (frequencyHz * fftSize) / samplingRate;
 }
 
 /// Converts a FFT bin to a frequency.
 /// Returns: Corresponding center frequency.
-float convertFFTBinToFrequency(float fftBin, int fftSize, float samplingRate)
+float convertFFTBinToFrequency(float fftBin, int fftSize, float samplingRate) nothrow @nogc
 {
     return (samplingRate * fftBin) / fftSize;
 }
@@ -445,7 +448,7 @@ float convertFFTBinToFrequency(float fftBin, int fftSize, float samplingRate)
 ///     fftBin bin index of the FFT
 ///     fftSize size of FFT
 /// Returns: Corresponding normalized frequency
-float convertFFTBinToNormalizedFrequency(float fftBin, int fftSize)
+float convertFFTBinToNormalizedFrequency(float fftBin, int fftSize) nothrow @nogc
 {
     return fftBin / fftSize;
 }

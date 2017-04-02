@@ -7,10 +7,12 @@ module dplug.core.runtime;
 
 import dplug.core.fpcontrol;
 import dplug.core.nogc;
+import dplug.core.cpuid;
 
 // Helpers to deal with the D runtime.
-
 version = useShakyWorkaround;
+
+/// When this version is defined, the runtime won't be initialized.
 version = doNotUseRuntime;
 
 version(OSX)
@@ -64,7 +66,7 @@ version(OSX)
     }
 }
 
-/// RAII struct to cover calback that need attachment and runtime initialized.
+/// RAII struct to cover callbacks that need attachment and runtime initialized.
 /// This deals with runtime inialization and thread attachment in a very explicit way.
 struct ScopedForeignCallback(bool assumeRuntimeIsAlreadyInitialized,
                              bool saveRestoreFPU)
@@ -93,7 +95,8 @@ public:
 
         version(doNotUseRuntime)
         {
-            // Nothing to do, since we won't use the runtime
+            // Just detect the CPU
+            initializeCpuid();
         }
         else
         {
@@ -107,6 +110,9 @@ public:
                     import core.runtime;
                     Runtime.initialize();
                 }
+
+                // CPUID detection
+                initializeCpuid();
             }
 
             import core.thread: thread_attachThis;

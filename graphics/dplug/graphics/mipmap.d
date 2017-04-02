@@ -7,8 +7,8 @@ module dplug.graphics.mipmap;
 
 import std.algorithm.comparison;
 
-import dplug.graphics.vector;
-import dplug.graphics.box;
+import gfm.math.vector;
+import gfm.math.box;
 import dplug.graphics.color;
 
 import dplug.core.nogc;

@@ -428,7 +428,7 @@ private:
 
         // slightly incorrect rounding, but lround is crashing
         int rounded = void;
-        if (mapped)
+        if (mapped >= 0)
             rounded = cast(int)(0.5f + mapped);
         else
             rounded = cast(int)(-0.5f + mapped);

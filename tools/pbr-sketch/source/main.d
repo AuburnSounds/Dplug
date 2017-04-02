@@ -1,12 +1,34 @@
 import std.file;
 import std.stdio;
+import std.path;
+import std.conv;
+import std.string;
+
 import dplug.gui;
 import dplug.graphics;
-import std.path;
+
 import imageformats;
+
+/// Returns: Most precise clock ticks, in milliseconds.
+long getTickUs() nothrow @nogc
+{
+    import core.time;
+    return convClockFreq(MonoTime.currTime.ticks, MonoTime.ticksPerSecond, 1_000_000);
+}
+
 
 void main(string[] args)
 {
+    int timesRendering = 1;
+    for (int i = 1; i < args.length; ++i)
+    {
+        string arg = args[i];
+        if (arg == "-n")
+            timesRendering = to!int(args[++i]);
+        else 
+            throw new Exception(format("Unknown parameter '%s'", arg));
+    }
+
     string appDir = dirName(thisExePath());
     string basecolorName = buildPath(appDir, "basecolor.png");
     string materialName = buildPath(appDir, "material.png");
@@ -71,9 +93,35 @@ void main(string[] args)
     CustomGraphics graphics = new CustomGraphics();
     scope(exit) graphics.destroy();
     graphics.context().setSkybox(skybox);
-    ImageRef!RGBA rendered = graphics.forceUpdate();
 
-    writeln(rendered.pixels[0]);
+    ImageRef!RGBA rendered;
+    
+    // render one time for warming-up
+    rendered = graphics.forceUpdate();
+
+    long[] timeSamples = new long[timesRendering];
+    long totalTime = 0;
+    long minTime = long.max;
+    
+    foreach(time; 0..timesRendering)
+    {
+        long before = getTickUs();
+        rendered = graphics.forceUpdate();
+        long timeElapsed = getTickUs() - before;
+
+
+        totalTime += timeElapsed;
+        if (minTime > timeElapsed)
+            minTime = timeElapsed;
+
+        timeSamples[time] = timeElapsed;
+    }
+
+    writefln("Rendered %s times in %s sec", timesRendering, totalTime * 0.000001);
+    writefln("Time samples: %s", timeSamples);
+    writefln("Min  = %s ms", minTime / 1000.0);
+    writefln("Mean = %s ms per render", (totalTime / 1000.0) / timesRendering );    
+
     string resultPath = buildPath(appDir, "result.png");
 
     assert(4 * rendered.w == rendered.pitch); // no pitch supported

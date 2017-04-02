@@ -462,7 +462,7 @@ int stbtt_GetGlyphShape(const stbtt_fontinfo *info, int glyph_index, stbtt_verte
          flags = vertices[off+i].type;
          if (flags & 2) {
             short dx = *points++;
-            x += (flags & 16) ? dx : -dx; // ???
+            x += (flags & 16) ? dx : -dx;
          } else {
             if (!(flags & 16)) {
                x = x + cast(short) (points[0]*256 + points[1]);
@@ -478,7 +478,7 @@ int stbtt_GetGlyphShape(const stbtt_fontinfo *info, int glyph_index, stbtt_verte
          flags = vertices[off+i].type;
          if (flags & 4) {
             short dy = *points++;
-            y += (flags & 32) ? dy : -dy; // ???
+            y += (flags & 32) ? dy : -dy;
          } else {
             if (!(flags & 32)) {
                y = y + cast(short) (points[0]*256 + points[1]);

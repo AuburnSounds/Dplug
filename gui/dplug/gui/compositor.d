@@ -7,8 +7,8 @@ module dplug.gui.compositor;
 
 import std.math;
 
-import dplug.graphics.vector;
-import dplug.graphics.box;
+import gfm.math.vector;
+import gfm.math.box;
 
 import dplug.core.alignedbuffer;
 import dplug.core.nogc;

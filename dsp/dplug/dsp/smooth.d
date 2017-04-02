@@ -24,9 +24,17 @@ public:
         assert(isFinite(initialValue));
 
         _current = cast(T)(initialValue);
+        _sampleRate = samplerate;
 
-        _expFactor = cast(T)(expDecayFactor(timeAttackRelease, samplerate));
+        setAttackReleaseTime(timeAttackRelease);
+        
         assert(isFinite(_expFactor));
+    }
+
+    /// Changes attack and release time (given in seconds).
+    void setAttackReleaseTime(float timeAttackRelease) nothrow @nogc
+    {
+        _expFactor = cast(T)(expDecayFactor(timeAttackRelease, _sampleRate));
     }
 
     /// Advance smoothing and return the next smoothed sample with respect
@@ -74,6 +82,7 @@ public:
 private:
     T _current;
     T _expFactor;
+    float _sampleRate;
 }
 
 unittest
@@ -97,13 +106,13 @@ public:
         setReleaseTime(timeReleaseSecs);
     }
 
-    /// Changes attack time.
+    /// Changes attack time (given in seconds).
     void setAttackTime(float timeAttackSecs) nothrow @nogc
     {
         _expFactorAttack = cast(T)(expDecayFactor(timeAttackSecs, _sampleRate));
     }
 
-    /// Changes release time.
+    /// Changes release time (given in seconds).
     void setReleaseTime(float timeReleaseSecs) nothrow @nogc
     {
         _expFactorRelease = cast(T)(expDecayFactor(timeReleaseSecs, _sampleRate));

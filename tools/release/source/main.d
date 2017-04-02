@@ -40,6 +40,7 @@ void usage()
     flag("--combined", "Combined build", null, "no");
     flag("-q --quiet", "Quieter output", null, "no");
     flag("-v --verbose", "Verbose output", null, "no");
+    flag("-sr --skip-registry", "Skip registry (avoid network)", null, "no");
     flag("--publish", "Make the plugin available in standard directories (OSX only)", null, "no");
     flag("--auval", "Check Audio Unit validation with auval (OSX only)", null, "no");
     flag("-h --help", "Shows this help", null, null);
@@ -89,6 +90,7 @@ int main(string[] args)
         bool help = false;
         bool publish = false;
         bool auval = false;
+        bool skipRegistry = false;
         string prettyName = null;
 
         string osString = "";
@@ -122,6 +124,10 @@ int main(string[] args)
             {
                 ++i;
                 configurations ~= args[i];
+            }
+            else if (arg == "-sr" || arg == "--skip-registry")
+            {
+                skipRegistry = true;
             }
             else if (arg == "--combined")
                 combined = true;
@@ -226,7 +232,7 @@ int main(string[] args)
 
                 if (arch != Arch.universalBinary)
                 {
-                    buildPlugin(compiler, config, build, is64b, verbose, force, combined, quiet);
+                    buildPlugin(compiler, config, build, is64b, verbose, force, combined, quiet, skipRegistry);
 
                     double bytes = getSize(plugin.targetFileName) / (1024.0 * 1024.0);
                     cwritefln("    => Build OK, binary size = %0.1f mb, available in %s".green, bytes, path);
@@ -390,7 +396,7 @@ int main(string[] args)
     }
 }
 
-void buildPlugin(string compiler, string config, string build, bool is64b, bool verbose, bool force, bool combined, bool quiet)
+void buildPlugin(string compiler, string config, string build, bool is64b, bool verbose, bool force, bool combined, bool quiet, bool skipRegistry)
 {
     if (compiler == "ldc")
         compiler = "ldc2";
@@ -411,14 +417,15 @@ void buildPlugin(string compiler, string config, string build, bool is64b, bool 
         environment["MACOSX_DEPLOYMENT_TARGET"] = "10.7";
     }
 
-    string cmd = format("dub build --build=%s --arch=%s --compiler=%s%s%s%s%s%s",
+    string cmd = format("dub build --build=%s --arch=%s --compiler=%s%s%s%s%s%s%s",
         build, arch,
         compiler,
         force ? " --force" : "",
         verbose ? " -v" : "",
         quiet ? " -q" : "",
         combined ? " --combined" : "",
-        config ? " --config=" ~ config : ""
+        config ? " --config=" ~ config : "",
+        skipRegistry ? " --skip-registry=all" : ""
         );
     safeCommand(cmd);
 }
