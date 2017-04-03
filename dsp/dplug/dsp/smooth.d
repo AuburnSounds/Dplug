@@ -340,7 +340,61 @@ unittest
 
 /// Simple FIR to smooth things cheaply.
 /// Introduces (samples - 1) / 2 latency.
-/// Converts everything to long for performance purpose.
+/// This one doesn't convert to integers internally so it may 
+/// loose precision over time. Meants for finite signals.
+struct UnstableMeanFilter(T) if (is(T == float) || is(T == double))
+{
+public:
+    /// Initialize mean filter with given number of samples.
+    void initialize(T initialValue, int samples) nothrow @nogc
+    {
+        _delay = RingBufferNoGC!T(samples);
+
+        _invNFactor = cast(T)1 / samples;
+
+        while(!_delay.isFull())
+            _delay.pushBack(initialValue);
+
+        _sum = _delay.length * initialValue;
+    }
+
+    /// Initialize with with cutoff frequency and samplerate.
+    void initialize(T initialValue, double cutoffHz, double samplerate) nothrow @nogc
+    {
+        int nSamples = cast(int)(0.5 + samplerate / (2 * cutoffHz));
+
+        if (nSamples < 1)
+            nSamples = 1;
+
+        initialize(initialValue, nSamples);
+    }
+
+    // process next sample
+    T nextSample(T x) nothrow @nogc
+    {
+        _sum = _sum + x;
+        _sum = _sum - _delay.popFront();
+        _delay.pushBack(x);
+        return _sum * _invNFactor;
+    }
+
+    void nextBuffer(const(T)* input, T* output, int frames) nothrow @nogc
+    {
+        for(int i = 0; i < frames; ++i)
+            output[i] = nextSample(input[i]);
+    }
+
+private:
+    RingBufferNoGC!T _delay;
+    double _sum; // should be approximately the sum of samples in delay
+    T _invNFactor;
+    T _factor;
+}
+
+/// Simple FIR to smooth things cheaply.
+/// Introduces (samples - 1) / 2 latency.
+/// Converts everything to long for stability purpose.
+/// So this may run forever as long as the input is below some threshold.
 struct MeanFilter(T) if (is(T == float) || is(T == double))
 {
 public:
@@ -371,11 +425,6 @@ public:
             nSamples = 1;
 
         initialize(initialValue, nSamples, maxExpectedValue);
-    }
-
-    int latency() const nothrow @nogc
-    {
-        return cast(int)(_delay.length());
     }
 
     // process next sample
