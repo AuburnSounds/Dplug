@@ -16,35 +16,43 @@ Permission is granted to anyone to use this software for any purpose, including 
 */
 module dplug.client.midi;
 
-/// MIDI types
+
+/// It's the same abstraction that in IPlug.
+/// For VST raw Midi messages are passed.
+/// For AU Midi messages gets synthesized.
 struct MidiMessage
 {
-    // FUTURE: this offset should be part of a priority-queue instead of the message itself
-    int deltaFrames;
+pure:
+nothrow:
+@nogc:
+    int offset = 0;
 
-    ubyte[4] data;
+    ubyte status = 0;
 
-    byte detune;
-/*
+    ubyte data1 = 0;
 
+    ubyte data2 = 0;   
 
-    enum Status
+    int channel() const
     {
-        none = 0,
-        noteOff = 8,
-        noteOn = 9,
-        polyAftertouch = 10,
-        controlChange = 11,
-        programChange = 12,
-        channelAftertouch = 13,
-        pitchWheel = 14
-    };
+        return status & 0x0F;
+    }
+}
 
-    */
+
+enum MidiStatus : ubyte
+{
+    none = 0,
+    noteOff = 8,
+    noteOn = 9,
+    polyAftertouch = 10,
+    controlChange = 11,
+    programChange = 12,
+    channelAftertouch = 13,
+    pitchWheel = 14
 };
 
-
-enum MidiControlChange
+enum MidiControlChange : ubyte
 {
     modWheel = 1,
     breathController = 2,
@@ -82,4 +90,46 @@ enum MidiControlChange
     chorusDepth = 93,
     phaserDepth = 95,
     allNotesOff = 123
+}
+
+pure nothrow @nogc:
+
+MidiMessage makeMidiMessage(int offset, int channel, MidiStatus status, int data1, int data2)
+{
+    assert(channel >= 0 && channel <= 15);
+    assert(status >= 0 && status <= 15);
+    assert(data1 >= 0 && data2 <= 255);
+    assert(data1 >= 0 && data2 <= 255);
+    MidiMessage msg;
+    msg.offset = offset;
+    msg.status = cast(ubyte)( channel | (status << 4) );
+    msg.data1 = cast(ubyte)data1;
+    msg.data2 = cast(ubyte)data2;
+    return msg;
+}
+
+MidiMessage makeMidiMessageNoteOn(int offset, int channel, int noteNumber, int velocity)
+{    
+    return makeMidiMessage(offset, channel, MidiStatus.noteOn, noteNumber, velocity);
+}
+
+MidiMessage makeMidiMessageNoteOff(int offset, int channel, int noteNumber)
+{    
+    return makeMidiMessage(offset, channel, MidiStatus.noteOff, noteNumber, 0);
+}
+
+MidiMessage makeMidiMessagePitchWheel(int offset, int channel, float value)
+{
+    int ivalue = 8192 + cast(int)(value * 8192.0);
+    if (ivalue < 0) 
+        ivalue = 0;
+    if (ivalue > 16383) 
+        ivalue = 16383;
+    return makeMidiMessage(offset, channel, MidiStatus.pitchWheel, ivalue & 0x7F, ivalue >> 7);
+}
+
+MidiMessage makeMidiMessageControlChange(int offset, int channel, MidiControlChange index, float value)
+{
+    // MAYDO: mapping is a bit strange here, not sure it can make +127 except exactly for 1.0f
+    return makeMidiMessage(offset, channel, MidiStatus.controlChange, index, cast(int)(value * 127.0f) );    
 }

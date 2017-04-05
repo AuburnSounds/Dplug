@@ -95,7 +95,11 @@ struct PluginInfo
     /// True if the plugin has a graphical UI. Easy way to disable it.
     bool hasGUI = false;
 
+    /// True if the plugin "is a synth". This has only a semantic effect.
     bool isSynth = false;
+
+    /// True if the plugin should receive MIDI events.
+    bool receivesMIDI = false;
 }
 
 /// This allows to write things life tempo-synced LFO.
@@ -415,6 +419,11 @@ nothrow:
     final bool isSynth() pure const nothrow @nogc
     {
         return _info.isSynth;
+    }
+
+    final bool receivesMIDI() pure const nothrow @nogc
+    {
+        return _info.receivesMIDI;
     }
 
     final string vendorName() pure const nothrow @nogc

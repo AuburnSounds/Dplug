@@ -163,6 +163,10 @@ nothrow:
         if ( client.isSynth() )
         {
             flags |= effFlagsIsSynth;
+        }
+
+        if ( client.receivesMIDI() )
+        {
             _host.wantEvents();
         }
 
@@ -556,13 +560,14 @@ private:
                             {
                                 VstMidiEvent* pME = cast(VstMidiEvent*) pEvent;
 
-                                // enqueue midi message to be processed by the audio thread (why not)
-                                MidiMessage midi;
-                                midi.deltaFrames = pME.deltaFrames;
-                                midi.detune = pME.detune;
-                                foreach(k; 0..4)
-                                    midi.data[k] = cast(ubyte)(pME.midiData[k]);
-                                _messageQueue.pushBack(makeMIDIMessage(midi));
+                                // Enqueue midi message to be processed by the audio thread.
+                                // Note that not all information is kept, some is discarded like in IPlug.
+                                MidiMessage msg;
+                                msg.offset = pME.deltaFrames;
+                                msg.status = pME.midiData[0];
+                                msg.data1 = pME.midiData[1];
+                                msg.data2 = pME.midiData[2];
+                                _messageQueue.pushBack(makeMIDIMessage(msg));
                             }
                             else
                             {
