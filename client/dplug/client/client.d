@@ -177,6 +177,9 @@ nothrow:
         {
             createGraphicsLazily();
         }
+
+        _midiQueue = makeMidiQueue();
+        _midiBuffer = makeAlignedBuffer!MidiMessage();
     }
 
     ~this()
@@ -349,7 +352,8 @@ nothrow:
     /// Override to set the plugin latency in samples.
     /// Unfortunately most of the time latency is dependent on the sampling rate and frequency,
     /// but most hosts don't support latency changes.
-    int latencySamples() pure const nothrow @nogc /// Returns: Plugin latency in samples.
+    /// Returns: Plugin latency in samples.
+    int latencySamples() pure const nothrow @nogc
     {
         return 0;
     }
@@ -372,15 +376,6 @@ nothrow:
     int maxFramesInProcess() pure const nothrow @nogc
     {
         return 0; // default returns 0 which means "do not split"
-    }
-
-    /// Process incoming MIDI messages.
-    /// This is called before processAudio for each message.
-    /// Override to do something with them;
-    /// FUTURE: this does not currently work with the buffer split.
-    void processMidiMsg(MidiMessage message) nothrow @nogc
-    {
-        // Default behaviour: do nothing.
     }
 
     /// Process some audio.
@@ -499,6 +494,13 @@ nothrow:
     }
 
     /// For plugin format clients only.
+    /// Enqueues an incoming MIDI message.
+    void enqueueMIDIFromHost(MidiMessage message)
+    {
+        _midiQueue.enqueue(message);
+    }
+
+    /// For plugin format clients only.
     /// Calls processAudio repeatedly, splitting the buffers.
     /// Splitting allow to decouple memory requirements from the actual host buffer size.
     /// There is few performance penalty above 512 samples.
@@ -508,8 +510,13 @@ nothrow:
                               TimeInfo timeInfo
                               ) nothrow @nogc
     {
+
         if (_maxFramesInProcess == 0)
-            processAudio(inputs, outputs, frames, timeInfo, []);
+        {
+            // No splitting
+            _midiQueue.getMessagesForNextFrames(frames, _midiBuffer);
+            processAudio(inputs, outputs, frames, timeInfo, _midiBuffer[]);
+        }
         else
         {
             // Slice audio in smaller parts
@@ -520,7 +527,8 @@ nothrow:
                 if (sliceLength > _maxFramesInProcess)
                     sliceLength = _maxFramesInProcess;
 
-                processAudio(inputs, outputs, sliceLength, timeInfo, []);
+                _midiQueue.getMessagesForNextFrames(sliceLength, _midiBuffer);
+                processAudio(inputs, outputs, sliceLength, timeInfo, _midiBuffer[]);
 
                 // offset all input buffer pointers
                 for (int i = 0; i < cast(int)inputs.length; ++i)
@@ -539,13 +547,21 @@ nothrow:
         }
     }
 
-    // Get maximum frame length to give this client.
-    int computeMaximumFrameLength(int hostMaxFrameLength) nothrow @nogc
+    /// For plugin format clients only.
+    /// Calls `reset()`.
+    /// Muzt be called by the audio thread.
+    void resetFromHost(double sampleRate, int maxFrames, int numInputs, int numOutputs) nothrow @nogc
     {
-        int result = hostMaxFrameLength;
-        if (_maxFramesInProcess != 0 && _maxFramesInProcess < result)
-            result = _maxFramesInProcess;
-        return result;
+        // Clear outstanding MIDI messages (now invalid)
+        _midiQueue.initialize();
+
+        // We potentially give to the client implementation a lower value
+        // for the maximum number of frames
+        if (_maxFramesInProcess != 0 && _maxFramesInProcess < maxFrames)
+            maxFrames = _maxFramesInProcess;
+
+        // Calls the reset virtual call        
+        reset(sampleRate, maxFrames, numInputs, numOutputs);
     }
 
 protected:
@@ -598,6 +614,10 @@ private:
     // Cache result of maxFramesInProcess(), maximum frame length
     int _maxFramesInProcess;
 
+    // Container for awaiting MIDI messages.
+    MidiQueue _midiQueue; 
+    AlignedBuffer!MidiMessage _midiBuffer;
+
     final void createGraphicsLazily() nothrow @nogc
     {
         // First GUI opening create the graphics object
@@ -619,4 +639,3 @@ private:
         }
     }
 }
-

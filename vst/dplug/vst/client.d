@@ -774,7 +774,7 @@ private:
         //   so missing such a message isn't that bad: the audio callback will have some outputs that are untouched
         // (a third thread might start a collect while the UI thread takes the queue lock) which is another unlikely race condition.
         // Perhaps it's the one to favor, I don't know.
-        // TODO: Objectionable decision, for MIDI input, see impact.
+        // TODO: Objectionable decision, for MIDI input, think about impact.
 
         AudioThreadMessage msg = void;
         while(_messageQueue.tryPopFront(msg))
@@ -784,21 +784,17 @@ private:
                 case resetState:
                     resizeScratchBuffers(msg.maxFrames);
 
-                    // The client need not be aware of the actual size of the buffers,
-                    // if it works on sliced buffers.
-                    int maxFrameFromClientPOV = _client.computeMaximumFrameLength(msg.maxFrames);
-
                     _hostIOFromAudioThread = msg.hostIO;
                     _processingIOFromAudioThread = msg.processingIO;
 
-                    _client.reset(msg.samplerate,
-                                  maxFrameFromClientPOV,
-                                  _processingIOFromAudioThread.inputs,
-                                  _processingIOFromAudioThread.outputs);
+                    _client.resetFromHost(msg.samplerate,
+                                          msg.maxFrames,
+                                          _processingIOFromAudioThread.inputs,
+                                          _processingIOFromAudioThread.outputs);
                     break;
 
                 case midi:
-                    _client.processMidiMsg(msg.midiMessage);
+                    _client.enqueueMIDIFromHost(msg.midiMessage);
             }
         }
     }

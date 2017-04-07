@@ -16,6 +16,8 @@ Permission is granted to anyone to use this software for any purpose, including 
 */
 module dplug.client.midi;
 
+import std.algorithm.mutation;
+import dplug.core.alignedbuffer;
 
 /// It's the same abstraction that in IPlug.
 /// For VST raw Midi messages are passed.
@@ -92,7 +94,7 @@ enum MidiControlChange : ubyte
     allNotesOff = 123
 }
 
-pure nothrow @nogc:
+nothrow @nogc:
 
 MidiMessage makeMidiMessage(int offset, int channel, MidiStatus status, int data1, int data2)
 {
@@ -132,4 +134,185 @@ MidiMessage makeMidiMessageControlChange(int offset, int channel, MidiControlCha
 {
     // MAYDO: mapping is a bit strange here, not sure it can make +127 except exactly for 1.0f
     return makeMidiMessage(offset, channel, MidiStatus.controlChange, index, cast(int)(value * 127.0f) );    
+}
+
+
+MidiQueue makeMidiQueue()
+{
+    return MidiQueue(42);
+}
+
+/// Queue for MIDI messages
+/// TODO: use a priority queue
+struct MidiQueue
+{
+nothrow:
+@nogc:
+
+    this(int dummy)
+    {
+    }
+
+    @disable this(this);
+
+    ~this()
+    {
+    }
+
+    void initialize()
+    {
+        // Clears all pending MIDI messages
+        _framesElapsed = 0;
+        _numElements = 0;
+    }
+
+    /// Enqueue a message in the priority queue.
+    void enqueue(MidiMessage message)
+    {
+        // Tweak message to mark it with current stamp
+        // This allows to have an absolute offset for MIDI messages.
+        message.offset += _framesElapsed;
+        insertElement(message);
+    }
+
+    /// Gets all the MIDI messages for the next `frames` samples.
+    /// Clears the output buffer and push the messages that will happen in the next `frames` samples.
+    void getMessagesForNextFrames(int frames, ref AlignedBuffer!MidiMessage outMessages)
+    {
+        outMessages.clearContents();
+
+        int framesLimit = _framesElapsed;
+
+        if (!empty())
+        {
+            MidiMessage m = minElement();
+
+            while(m.offset < _framesElapsed)
+            {
+                // Subtract the timestamp again
+                m.offset -= _framesElapsed;
+                outMessages.pushBack(m);
+                popMinElement();
+
+                if (empty())
+                    break;
+
+                m = minElement();
+            }
+        }
+        _framesElapsed += frames;
+    }
+
+private:
+
+    // Frames elapsed since the beginning
+    int _framesElapsed = 0;
+
+    //
+    // Min heap implementation below.
+    //
+
+    int _numElements = 0;
+
+    // Useful slots are in 1..512
+    // means it can contain 511 items at most
+    MidiMessage[512] _heap; 
+
+    void insertElement(MidiMessage message)
+    {
+        // Insert the element at the next available bottom level slot
+        int slot = _numElements + 1;
+
+        _numElements++;
+
+        if (slot >= _heap.length)
+        {
+            // TODO: limitation here, we can't accept more than 511 MIDI messages by audio buffer
+            debug 
+                assert(false); // dropping excessive message
+            else
+                return;
+        }
+
+        _heap[slot] = message;
+
+        // Bubble up
+        while (slot > 1 && _heap[parentOf(slot)].offset > _heap[slot].offset)
+        {
+            // swap with parent if larger
+            swap(_heap[slot], _heap[parentOf(slot)]);
+            slot = parentOf(slot);
+        }
+    }
+
+    bool empty()
+    {
+        assert(_numElements >= 0);
+        return _numElements == 0;
+    }
+
+    MidiMessage minElement()
+    {
+        assert(!empty);
+        return _heap[1];
+    }
+
+    void popMinElement()
+    {
+        assert(!empty);
+
+        // Put the last element into root
+        _heap[1] = _heap[_numElements];
+
+        _numElements = _numElements-1;
+
+        int slot = 1;
+
+        if (slot >= _heap.length)
+        {
+            debug assert(false); // dropping excessive message
+        }
+
+        while (1)
+        {
+            // Looking for the minimum of self and children
+
+            int left = leftChildOf(slot);
+            int right = rightChildOf(slot);
+            int best = slot;
+            if (left <= _numElements && _heap[left].offset < _heap[best].offset)
+                best = left;
+            if (left <= _numElements && _heap[left].offset < _heap[best].offset)
+                best = right;
+
+            if (best == slot) // no swap, final position
+            {
+                // both children (if any) are larger, everything good
+                break;
+            }
+            else
+            {
+                // swap with smallest of children
+                swap(_heap[slot], _heap[best]);
+
+                // continue to bubble down
+                slot = best;
+            }
+        }
+    }
+
+    static int parentOf(int index)
+    {
+        return index >> 1;
+    }
+
+    static int leftChildOf(int index)
+    {
+        return 2*index;
+    }
+
+    static int rightChildOf(int index)
+    {
+        return 2*index+1;
+    }
 }

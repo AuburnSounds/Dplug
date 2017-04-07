@@ -56,6 +56,7 @@ nothrow:
         info.pluginUniqueID = "WiDi";
         info.pluginVersion = PluginVersion(1, 0, 0);
         info.isSynth = false;
+        info.receivesMIDI = false;
         info.hasGUI = true;
         return info;
     }

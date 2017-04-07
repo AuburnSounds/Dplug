@@ -1762,7 +1762,7 @@ private:
                         break;
 
                     case midi:
-                        _client.processMidiMsg(msg.midiMessage);
+                        _client.enqueueMIDIFromHost(msg.midiMessage);
 
                 }
             }
@@ -1907,9 +1907,7 @@ private:
                               newUsedOutputs != _lastUsedOutputs || newSamplerate != _lastSamplerate);
             if (needReset)
             {
-                // maxFrames is different from client POV
-                int maxFrames = _client.computeMaximumFrameLength(newMaxFrames);
-                _client.reset(newSamplerate, maxFrames, newUsedInputs, newUsedOutputs);
+                _client.resetFromHost(newSamplerate, newMaxFrames, newUsedInputs, newUsedOutputs);
                 _lastMaxFrames = newMaxFrames;
                 _lastSamplerate = newSamplerate;
                 _lastUsedInputs = newUsedInputs;
