@@ -257,9 +257,6 @@ nothrow:
         _maxInputs = _client.maxInputs();
         _maxOutputs = _client.maxOutputs();
 
-        // dummmy values
-        _maxFramesInProcess = _client.maxFramesInProcess();
-
         _inputScratchBuffer = mallocSlice!(AlignedBuffer!float)(_maxInputs);
         _outputScratchBuffer = mallocSlice!(AlignedBuffer!float)(_maxOutputs);
 
@@ -355,7 +352,6 @@ private:
     int _maxInputs, _maxOutputs;
     float _sampleRate = 44100.0f;
     int _maxFrames = 1024;
-    int _maxFramesInProcess;
 
     // From audio thread POV
     bool _lastBypassed = false;
@@ -1730,46 +1726,6 @@ private:
     // Render procedure
     //
 
-    // Send audio to plugin's processAudio, and optionally slice the buffers too.
-    void sendAudioToClient(float*[] inputs, float*[]outputs, int frames, TimeInfo timeInfo) nothrow @nogc
-    {
-        if (_maxFramesInProcess == 0)
-            _client.processAudio(inputs, outputs, frames, timeInfo);
-        else
-        {
-            // Slice audio in smaller parts
-            while (frames > 0)
-            {
-                // Note: the last slice will be smaller than the others
-                int sliceLength = std.algorithm.comparison.min(_maxFramesInProcess, frames);
-
-                _client.processAudio(inputs, outputs, sliceLength, timeInfo);
-
-                // offset all buffer pointers
-                for (int i = 0; i < cast(int)inputs.length; ++i)
-                    inputs[i] = inputs[i] + sliceLength;
-
-                for (int i = 0; i < cast(int)outputs.length; ++i)
-                    outputs[i] = outputs[i] + sliceLength;
-
-                frames -= sliceLength;
-
-                // timeInfo must be updated
-                timeInfo.timeInSamples += sliceLength;
-            }
-            assert(frames == 0);
-        }
-    }
-
-    // Get max frames from client POV
-    int getMaxFramesClientPOV(int maxFrames) nothrow @nogc
-    {
-        int result = maxFrames;
-        if (_maxFramesInProcess != 0 && _maxFramesInProcess < result)
-             result = _maxFramesInProcess;
-        return result;
-    }
-
     ComponentResult render(AudioUnitRenderActionFlags* pFlags,
                            const(AudioTimeStamp)* pTimestamp,
                            uint outputBusIdx,
@@ -1951,7 +1907,9 @@ private:
                               newUsedOutputs != _lastUsedOutputs || newSamplerate != _lastSamplerate);
             if (needReset)
             {
-                _client.reset(newSamplerate, getMaxFramesClientPOV(newMaxFrames), newUsedInputs, newUsedOutputs);
+                // maxFrames is different from client POV
+                int maxFrames = _client.computeMaximumFrameLength(newMaxFrames);
+                _client.reset(newSamplerate, maxFrames, newUsedInputs, newUsedOutputs);
                 _lastMaxFrames = newMaxFrames;
                 _lastSamplerate = newSamplerate;
                 _lastUsedInputs = newUsedInputs;
@@ -1972,9 +1930,10 @@ private:
             else
             {
                 TimeInfo timeInfo = getTimeInfo();
-                sendAudioToClient(_inputPointersNoGap[0..newUsedInputs],
-                                  _outputPointersNoGap[0..newUsedOutputs],
-                                  nFrames, timeInfo);
+                _client.processAudioFromHost(_inputPointersNoGap[0..newUsedInputs],
+                                             _outputPointersNoGap[0..newUsedOutputs],
+                                             nFrames, 
+                                             timeInfo);
             }
         }
 

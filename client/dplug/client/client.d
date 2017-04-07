@@ -159,6 +159,9 @@ nothrow:
         // Create presets
         _presetBank = mallocEmplace!PresetBank(this, buildPresets());
 
+
+        _maxFramesInProcess = maxFramesInProcess();
+
         _maxInputs = 0;
         _maxOutputs = 0;
         foreach(legalIO; _legalIOs)
@@ -385,19 +388,16 @@ nothrow:
     /// In processAudio you are always guaranteed to get valid pointers
     /// to all the channels the plugin requested.
     /// Unconnected input pins are zeroed.
-    /// Important: This will be called by the audio thread.
-    ///            You should not use the GC in this callback.
     ///
     /// Number of frames are guaranteed to be less or equal to what the last reset() call said.
     /// Number of inputs and outputs are guaranteed to be exactly what the last reset() call said.
     /// Warning: Do not modify the pointers!
-    abstract void processAudio(const(float*)[] inputs, float*[]outputs, int frames, TimeInfo timeInfo) nothrow @nogc;
-
-    // for plugin client implementations only
-    final void setHostCommand(IHostCommand hostCommand) nothrow @nogc
-    {
-        _hostCommand = hostCommand;
-    }
+    abstract void processAudio(const(float*)[] inputs,    // array of input channels
+                               float*[]outputs,           // array of output channels
+                               int frames,                // number of sample in each input & output channel
+                               TimeInfo timeInfo,         // time information associated with this signal frame
+                               MidiMessage[] midiMessages // a slice of MidiMessage for this signal frame
+                               ) nothrow @nogc;
 
     /// Returns a new default preset.
     final Preset makeDefaultPreset() nothrow @nogc
@@ -492,6 +492,62 @@ nothrow:
         return unsafeObjectCast!BoolParameter(p).valueAtomic();
     }
 
+    /// For plugin format clients only.
+    final void setHostCommand(IHostCommand hostCommand) nothrow @nogc
+    {
+        _hostCommand = hostCommand;
+    }
+
+    /// For plugin format clients only.
+    /// Calls processAudio repeatedly, splitting the buffers.
+    /// Splitting allow to decouple memory requirements from the actual host buffer size.
+    /// There is few performance penalty above 512 samples.
+    void processAudioFromHost(float*[] inputs,
+                              float*[] outputs,
+                              int frames,
+                              TimeInfo timeInfo
+                              ) nothrow @nogc
+    {
+        if (_maxFramesInProcess == 0)
+            processAudio(inputs, outputs, frames, timeInfo, []);
+        else
+        {
+            // Slice audio in smaller parts
+            while (frames > 0)
+            {
+                // Note: the last slice will be smaller than the others
+                int sliceLength = frames;
+                if (sliceLength > _maxFramesInProcess)
+                    sliceLength = _maxFramesInProcess;
+
+                processAudio(inputs, outputs, sliceLength, timeInfo, []);
+
+                // offset all input buffer pointers
+                for (int i = 0; i < cast(int)inputs.length; ++i)
+                    inputs[i] = inputs[i] + sliceLength;
+
+                // offset all output buffer pointers
+                for (int i = 0; i < cast(int)outputs.length; ++i)
+                    outputs[i] = outputs[i] + sliceLength;
+
+                frames -= sliceLength;
+
+                // timeInfo must be updated
+                timeInfo.timeInSamples += sliceLength;
+            }
+            assert(frames == 0);
+        }
+    }
+
+    // Get maximum frame length to give this client.
+    int computeMaximumFrameLength(int hostMaxFrameLength) nothrow @nogc
+    {
+        int result = hostMaxFrameLength;
+        if (_maxFramesInProcess != 0 && _maxFramesInProcess < result)
+            result = _maxFramesInProcess;
+        return result;
+    }
+
 protected:
 
     /// Override this method to implement parameter creation.
@@ -538,6 +594,9 @@ private:
     LegalIO[] _legalIOs;
 
     int _maxInputs, _maxOutputs; // maximum number of input/outputs
+
+    // Cache result of maxFramesInProcess(), maximum frame length
+    int _maxFramesInProcess;
 
     final void createGraphicsLazily() nothrow @nogc
     {

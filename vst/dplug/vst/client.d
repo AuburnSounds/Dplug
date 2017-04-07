@@ -774,9 +774,10 @@ private:
         //   so missing such a message isn't that bad: the audio callback will have some outputs that are untouched
         // (a third thread might start a collect while the UI thread takes the queue lock) which is another unlikely race condition.
         // Perhaps it's the one to favor, I don't know.
+        // TODO: Objectionable decision, for MIDI input, see impact.
 
         AudioThreadMessage msg = void;
-        while(_messageQueue.tryPopFront(msg)) // <- here, we have a problem: https://github.com/p0nce/dplug/issues/45
+        while(_messageQueue.tryPopFront(msg))
         {
             final switch(msg.type) with (AudioThreadMessage.Type)
             {
@@ -785,9 +786,7 @@ private:
 
                     // The client need not be aware of the actual size of the buffers,
                     // if it works on sliced buffers.
-                    int maxFrameFromClientPOV = msg.maxFrames;
-                    if (_maxFramesInProcess != 0 && _maxFramesInProcess < maxFrameFromClientPOV)
-                        maxFrameFromClientPOV = _maxFramesInProcess;
+                    int maxFrameFromClientPOV = _client.computeMaximumFrameLength(msg.maxFrames);
 
                     _hostIOFromAudioThread = msg.hostIO;
                     _processingIOFromAudioThread = msg.processingIO;
@@ -802,38 +801,6 @@ private:
                     _client.processMidiMsg(msg.midiMessage);
             }
         }
-    }
-
-    // Send audio to plugin's processAudio, and optionally slice the buffers too.
-    void sendAudioToClient(float*[] inputs, float*[]outputs, int frames, TimeInfo timeInfo) nothrow @nogc
-    {
-        if (_maxFramesInProcess == 0)
-            _client.processAudio(inputs, outputs, frames, timeInfo);
-        else
-        {
-            // Slice audio in smaller parts
-            while (frames > 0)
-            {
-                // Note: the last slice will be smaller than the others
-                int sliceLength = std.algorithm.comparison.min(_maxFramesInProcess, frames);
-
-                _client.processAudio(inputs, outputs, sliceLength, timeInfo);
-
-                // offset all buffer pointers
-                for (int i = 0; i < cast(int)inputs.length; ++i)
-                    inputs[i] = inputs[i] + sliceLength;
-
-                for (int i = 0; i < cast(int)outputs.length; ++i)
-                    outputs[i] = outputs[i] + sliceLength;
-
-                frames -= sliceLength;
-
-                // timeInfo must be updated
-                timeInfo.timeInSamples += sliceLength;
-            }
-            assert(frames == 0);
-        }
-        _samplesAlreadyProcessed += frames;
     }
 
     void process(float **inputs, float **outputs, int sampleFrames) nothrow @nogc
@@ -858,7 +825,11 @@ private:
             _outputPointers[i] = _outputScratchBuffer[i].ptr;
         }
 
-        sendAudioToClient(_inputPointers[0..usedInputs], _outputPointers[0..usedOutputs], sampleFrames, _host.getVSTTimeInfo(_samplesAlreadyProcessed));
+        _client.processAudioFromHost(_inputPointers[0..usedInputs], 
+                                     _outputPointers[0..usedOutputs], 
+                                     sampleFrames, 
+                                     _host.getVSTTimeInfo(_samplesAlreadyProcessed));
+        _samplesAlreadyProcessed += sampleFrames;
 
         // accumulate on available host output channels
         for (int i = 0; i < minOutputs; ++i)
@@ -905,7 +876,11 @@ private:
                 _outputPointers[i] = _outputScratchBuffer[i].ptr; // dummy output
         }
 
-        sendAudioToClient(_inputPointers[0..usedInputs], _outputPointers[0..usedOutputs], sampleFrames, _host.getVSTTimeInfo(_samplesAlreadyProcessed));
+        _client.processAudioFromHost(_inputPointers[0..usedInputs], 
+                                     _outputPointers[0..usedOutputs], 
+                                     sampleFrames, 
+                                     _host.getVSTTimeInfo(_samplesAlreadyProcessed));
+        _samplesAlreadyProcessed += sampleFrames;
 
         // Fills remaining host channels (if any) with zeroes
         for (int i = minOutputs; i < hostOutputs; ++i)
@@ -946,7 +921,11 @@ private:
             _outputPointers[i] = _outputScratchBuffer[i].ptr;
         }
 
-        sendAudioToClient(_inputPointers[0..usedInputs], _outputPointers[0..usedOutputs], sampleFrames, _host.getVSTTimeInfo(_samplesAlreadyProcessed));
+        _client.processAudioFromHost(_inputPointers[0..usedInputs], 
+                                     _outputPointers[0..usedOutputs], 
+                                     sampleFrames, 
+                                     _host.getVSTTimeInfo(_samplesAlreadyProcessed));
+        _samplesAlreadyProcessed += sampleFrames;
 
         // Converts back to double on available host output channels
         for (int i = 0; i < minOutputs; ++i)
