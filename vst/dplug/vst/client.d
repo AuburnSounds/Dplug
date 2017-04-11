@@ -562,11 +562,10 @@ private:
 
                                 // Enqueue midi message to be processed by the audio thread.
                                 // Note that not all information is kept, some is discarded like in IPlug.
-                                MidiMessage msg;
-                                msg.offset = pME.deltaFrames;
-                                msg.status = pME.midiData[0];
-                                msg.data1 = pME.midiData[1];
-                                msg.data2 = pME.midiData[2];
+                                MidiMessage msg = MidiMessage(pME.deltaFrames, 
+                                                              pME.midiData[0], 
+                                                              pME.midiData[1], 
+                                                              pME.midiData[2]);
                                 _messageQueue.pushBack(makeMIDIMessage(msg));
                             }
                             else

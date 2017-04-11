@@ -191,8 +191,11 @@ struct MidiQueue
 nothrow:
 @nogc:
 
-    this(int dummy)
+    enum QueueCapacity = 511;
+
+    private this(int dummy)
     {
+        _outMessages = makeAlignedBuffer!MidiMessage(QueueCapacity);
     }
 
     @disable this(this);
@@ -219,10 +222,11 @@ nothrow:
     }
 
     /// Gets all the MIDI messages for the next `frames` samples.
-    /// Clears the output buffer and push the messages that will happen in the next `frames` samples.
-    void getMessagesForNextFrames(int frames, ref AlignedBuffer!MidiMessage outMessages)
+    /// It is guaranteed to be in order relative to time.
+    /// These messages are valid until the next call to `getNextMidiMessages`.
+    const(MidiMessage)[] getNextMidiMessages(int frames)
     {
-        outMessages.clearContents();
+        _outMessages.clearContents();
 
         int framesLimit = _framesElapsed;
 
@@ -236,7 +240,7 @@ nothrow:
                 m._offset -= _framesElapsed;
                 assert(m._offset >= 0);
                 assert(m._offset < frames);
-                outMessages.pushBack(m);
+                _outMessages.pushBack(m);
                 popMinElement();
 
                 if (empty())
@@ -246,6 +250,7 @@ nothrow:
             }
         }
         _framesElapsed += frames;
+        return _outMessages[];
     }
 
 private:
@@ -253,15 +258,18 @@ private:
     // Frames elapsed since the beginning
     int _framesElapsed = 0;
 
+    // Scratch buffer to return slices of messages on demand (messages are copied there).
+    AlignedBuffer!MidiMessage _outMessages;
+
     //
     // Min heap implementation below.
     //
 
     int _numElements = 0;
 
-    // Useful slots are in 1..512
-    // means it can contain 511 items at most
-    MidiMessage[512] _heap; 
+    // Useful slots are in 1..QueueCapacity+1
+    // means it can contain QueueCapacity items at most
+    MidiMessage[QueueCapacity+1] _heap;    
 
     void insertElement(MidiMessage message)
     {
@@ -272,11 +280,18 @@ private:
 
         if (slot >= _heap.length)
         {
-            // TODO: limitation here, we can't accept more than 511 MIDI messages by audio buffer
-            debug 
-                assert(false); // dropping excessive message
+            // TODO: limitation here, we can't accept more than QueueCapacity MIDI messages in the queue
+            debug
+            {
+                // MIDI messages heap is on full capacity.
+                // That can happen because you have forgotten to call `getNextMidiMessages` 
+                // with the necessary number of frames.
+                assert(false); 
+            }
             else
-                return;
+            {
+                return; // dropping excessive message
+            }
         }
 
         _heap[slot] = message;
@@ -327,7 +342,7 @@ private:
             int best = slot;
             if (left <= _numElements && _heap[left]._offset < _heap[best]._offset)
                 best = left;
-            if (right <= _numElements && _heap[left]._offset < _heap[best]._offset)
+            if (right <= _numElements && _heap[right]._offset < _heap[best]._offset)
                 best = right;
 
             if (best == slot) // no swap, final position
@@ -359,5 +374,29 @@ private:
     static int rightChildOf(int index)
     {
         return 2*index+1;
+    }
+}
+
+unittest
+{
+    MidiQueue queue = makeMidiQueue();
+
+    foreach (k; 0..2)
+    {
+        // Enqueue QueueCapacity messages with decreasing timestamps
+        foreach(i; 0..MidiQueue.QueueCapacity)
+        {
+            queue.enqueue( makeMidiMessageNoteOn(MidiQueue.QueueCapacity-1-i, 0, 60, 100) );
+            assert(queue._numElements == i+1);
+        }
+
+        const(MidiMessage)[] messages = queue.getNextMidiMessages(1024);
+        foreach(int i, m; messages)
+        {
+            import core.stdc.stdio;
+            // each should be in order
+            assert(m.offset == i);
+            assert(m.isNoteOn);
+        }
     }
 }

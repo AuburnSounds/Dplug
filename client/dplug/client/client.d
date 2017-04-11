@@ -99,6 +99,8 @@ struct PluginInfo
     bool isSynth = false;
 
     /// True if the plugin should receive MIDI events.
+    /// Warning: receiving MIDI forces you to call `getNextMidiMessages`
+    /// with the right number of `frames`, every buffer.
     bool receivesMIDI = false;
 }
 
@@ -179,7 +181,6 @@ nothrow:
         }
 
         _midiQueue = makeMidiQueue();
-        _midiBuffer = makeAlignedBuffer!MidiMessage();
     }
 
     ~this()
@@ -383,16 +384,25 @@ nothrow:
     /// In processAudio you are always guaranteed to get valid pointers
     /// to all the channels the plugin requested.
     /// Unconnected input pins are zeroed.
+    /// This callback is the only place you may call `getNextMidiMessages()` (it is
+    /// even required for plugins receiving MIDI).
     ///
     /// Number of frames are guaranteed to be less or equal to what the last reset() call said.
     /// Number of inputs and outputs are guaranteed to be exactly what the last reset() call said.
     /// Warning: Do not modify the pointers!
     abstract void processAudio(const(float*)[] inputs,    // array of input channels
-                               float*[]outputs,           // array of output channels
+                               float*[] outputs,           // array of output channels
                                int frames,                // number of sample in each input & output channel
-                               TimeInfo timeInfo,         // time information associated with this signal frame
-                               MidiMessage[] midiMessages // a slice of MidiMessage for this signal frame
+                               TimeInfo timeInfo          // time information associated with this signal frame
                                ) nothrow @nogc;
+
+    /// Should only be called in `processAudio`.
+    /// This return a slice of MIDI messages corresponding to the next `frames` samples.
+    /// Useful if you don't want to process messages every samples, or every split buffer.
+    final const(MidiMessage)[] getNextMidiMessages(int frames) nothrow @nogc
+    {
+        return _midiQueue.getNextMidiMessages(frames);
+    }
 
     /// Returns a new default preset.
     final Preset makeDefaultPreset() nothrow @nogc
@@ -512,10 +522,8 @@ nothrow:
     {
 
         if (_maxFramesInProcess == 0)
-        {
-            // No splitting
-            _midiQueue.getMessagesForNextFrames(frames, _midiBuffer);
-            processAudio(inputs, outputs, frames, timeInfo, _midiBuffer[]);
+        {            
+            processAudio(inputs, outputs, frames, timeInfo);
         }
         else
         {
@@ -527,8 +535,7 @@ nothrow:
                 if (sliceLength > _maxFramesInProcess)
                     sliceLength = _maxFramesInProcess;
 
-                _midiQueue.getMessagesForNextFrames(sliceLength, _midiBuffer);
-                processAudio(inputs, outputs, sliceLength, timeInfo, _midiBuffer[]);
+                processAudio(inputs, outputs, sliceLength, timeInfo);
 
                 // offset all input buffer pointers
                 for (int i = 0; i < cast(int)inputs.length; ++i)
@@ -616,7 +623,6 @@ private:
 
     // Container for awaiting MIDI messages.
     MidiQueue _midiQueue; 
-    AlignedBuffer!MidiMessage _midiBuffer;
 
     final void createGraphicsLazily() nothrow @nogc
     {

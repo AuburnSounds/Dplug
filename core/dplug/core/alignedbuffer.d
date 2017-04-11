@@ -63,6 +63,7 @@ void alignedFree(void* aligned, size_t alignment) nothrow @nogc
 /// Do not mix allocations with different alignment.
 @nogc void* alignedRealloc(void* aligned, size_t size, size_t alignment) nothrow
 {
+    // If you fail here, it can mean you've used an uninitialized AlignedBuffer.
     assert(alignment != 0);
 
     // Short-cut and use the C allocator to avoid overhead if no alignment
