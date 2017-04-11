@@ -27,18 +27,60 @@ struct MidiMessage
 pure:
 nothrow:
 @nogc:
-    int offset = 0;
 
-    ubyte status = 0;
+    this( int offset, ubyte status, ubyte data1, ubyte data2)
+    {
+        _offset = offset;
+        _status = status;
+        _data1 = data1;
+        _data2 = data2;
+    }
 
-    ubyte data1 = 0;
-
-    ubyte data2 = 0;   
+    int offset() const
+    {
+        return _offset;
+    } 
 
     int channel() const
     {
         return status & 0x0F;
     }
+
+    int status() const
+    {
+        return _status >> 4;
+    }
+
+    bool isNoteOn() const
+    {
+        return status() == MidiStatus.noteOn;
+    }
+
+    bool isNoteOff() const
+    {
+        return status() == MidiStatus.noteOff;
+    }
+
+    int noteNumber() const
+    {
+        assert(isNoteOn() || isNoteOff());
+        return _data1;
+    }
+
+    int noteVelocity() const
+    {
+        assert(isNoteOn() || isNoteOff());
+        return _data2;
+    }
+
+private:
+    int _offset = 0;
+
+    ubyte _status = 0;
+
+    ubyte _data1 = 0;
+
+    ubyte _data2 = 0; 
 }
 
 
@@ -103,10 +145,10 @@ MidiMessage makeMidiMessage(int offset, int channel, MidiStatus status, int data
     assert(data1 >= 0 && data2 <= 255);
     assert(data1 >= 0 && data2 <= 255);
     MidiMessage msg;
-    msg.offset = offset;
-    msg.status = cast(ubyte)( channel | (status << 4) );
-    msg.data1 = cast(ubyte)data1;
-    msg.data2 = cast(ubyte)data2;
+    msg._offset = offset;
+    msg._status = cast(ubyte)( channel | (status << 4) );
+    msg._data1 = cast(ubyte)data1;
+    msg._data2 = cast(ubyte)data2;
     return msg;
 }
 
@@ -171,7 +213,8 @@ nothrow:
     {
         // Tweak message to mark it with current stamp
         // This allows to have an absolute offset for MIDI messages.
-        message.offset += _framesElapsed;
+        assert(message._offset >= 0);
+        message._offset += _framesElapsed;
         insertElement(message);
     }
 
@@ -187,10 +230,12 @@ nothrow:
         {
             MidiMessage m = minElement();
 
-            while(m.offset < _framesElapsed)
+            while(m._offset < (_framesElapsed + frames))
             {
                 // Subtract the timestamp again
-                m.offset -= _framesElapsed;
+                m._offset -= _framesElapsed;
+                assert(m._offset >= 0);
+                assert(m._offset < frames);
                 outMessages.pushBack(m);
                 popMinElement();
 
@@ -237,7 +282,7 @@ private:
         _heap[slot] = message;
 
         // Bubble up
-        while (slot > 1 && _heap[parentOf(slot)].offset > _heap[slot].offset)
+        while (slot > 1 && _heap[parentOf(slot)]._offset > _heap[slot]._offset)
         {
             // swap with parent if larger
             swap(_heap[slot], _heap[parentOf(slot)]);
@@ -280,9 +325,9 @@ private:
             int left = leftChildOf(slot);
             int right = rightChildOf(slot);
             int best = slot;
-            if (left <= _numElements && _heap[left].offset < _heap[best].offset)
+            if (left <= _numElements && _heap[left]._offset < _heap[best]._offset)
                 best = left;
-            if (left <= _numElements && _heap[left].offset < _heap[best].offset)
+            if (right <= _numElements && _heap[left]._offset < _heap[best]._offset)
                 best = right;
 
             if (best == slot) // no swap, final position
