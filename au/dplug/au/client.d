@@ -806,6 +806,40 @@ private:
                 return noErr;
             }
 
+            case kMusicDeviceMIDIEventSelect: // 0x0101
+            {
+                // TODO
+                return noErr;
+            }
+
+            case kMusicDeviceSysExSelect: // 0x0102
+            {
+                // MAYDO Not supported
+                return noErr;
+            }
+
+            case kMusicDevicePrepareInstrumentSelect: // 0x0103
+            {
+                return noErr;
+            }
+
+            case kMusicDeviceReleaseInstrumentSelect: // 0x0104
+            {
+                return noErr;
+            }
+
+            case kMusicDeviceStartNoteSelect: // 0x0105
+            {
+                // TODO
+                return noErr;
+            }
+
+            case kMusicDeviceStopNoteSelect: // 0x0106
+            {
+                // TODO
+                return noErr;
+            }
+
             default:
                 return badComponentSelector;
         }

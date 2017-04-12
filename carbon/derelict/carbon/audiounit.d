@@ -698,6 +698,18 @@ __gshared
     da_AUEventListenerNotify AUEventListenerNotify;
 }
 
+enum
+{
+    kMusicDeviceRange = 0x0100,
+    kMusicDeviceMIDIEventSelect = 0x0101,
+    kMusicDeviceSysExSelect = 0x0102,
+    kMusicDevicePrepareInstrumentSelect = 0x0103,
+    kMusicDeviceReleaseInstrumentSelect = 0x0104,
+    kMusicDeviceStartNoteSelect = 0x0105,
+    kMusicDeviceStopNoteSelect = 0x0106,
+}
+
+
 
 // AudioUnitCarbonView.h
 // Technically in AU base classes but fits well here
