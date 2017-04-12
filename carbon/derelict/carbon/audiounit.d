@@ -709,6 +709,7 @@ enum
     kMusicDeviceStopNoteSelect = 0x0106,
 }
 
+alias NoteInstanceID = uint;
 
 
 // AudioUnitCarbonView.h

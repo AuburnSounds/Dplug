@@ -808,7 +808,12 @@ private:
 
             case kMusicDeviceMIDIEventSelect: // 0x0101
             {
-                // TODO
+                int offset = params.getCompParam!(uint, 0, 4);
+                ubyte status = cast(ubyte)( params.getCompParam!(uint, 3, 4) );
+                ubyte data1 = cast(ubyte)( params.getCompParam!(uint, 2, 4) );
+                ubyte data2 = cast(ubyte)( params.getCompParam!(uint, 1, 4) );
+                MidiMessage m =  MidiMessage(offset, status, data1, data2);
+                _messageQueue.pushBack(makeMidiThreadMessage(m));
                 return noErr;
             }
 
@@ -830,13 +835,34 @@ private:
 
             case kMusicDeviceStartNoteSelect: // 0x0105
             {
-                // TODO
+                NoteInstanceID* pNoteID = params.getCompParam!(NoteInstanceID*, 2, 5);
+                uint offset = params.getCompParam!(uint, 1, 5);
+                MusicDeviceNoteParams* pNoteParams = params.getCompParam!(MusicDeviceNoteParams*, 0, 5);
+                int noteNumber = cast(int) pNoteParams.mPitch;
+                if (noteNumber < 0) noteNumber = 0;
+                if (noteNumber > 127) noteNumber = 127;
+
+                int velocity = cast(int) pNoteParams.mVelocity;
+                if (velocity < 0) velocity = 0;
+                if (velocity > 127) velocity = 127;
+
+                // Note from IPlug: noteID is supposed to be some incremented unique ID, 
+                // but we're just storing note number in it.
+                *pNoteID = noteNumber;
+
+                int channel = 0; // always using channel 0
+                MidiMessage m = makeMidiMessageNoteOn(offset, channel, noteNumber, velocity); 
+                _messageQueue.pushBack(makeMidiThreadMessage(m));                
                 return noErr;
             }
 
             case kMusicDeviceStopNoteSelect: // 0x0106
             {
-                // TODO
+                NoteInstanceID noteID = params.getCompParam!(NoteInstanceID, 1, 3);
+                uint offset = params.getCompParam!(uint, 0, 3);
+                int channel = 0; // always using channel 0
+                MidiMessage m = makeMidiMessageNoteOff(offset, channel, noteID);
+                _messageQueue.pushBack(makeMidiThreadMessage(m));
                 return noErr;
             }
 
@@ -2176,7 +2202,7 @@ struct AudioThreadMessage
     MidiMessage midiMessage;
 }
 
-AudioThreadMessage makeMIDIMessage(MidiMessage midiMessage) pure nothrow @nogc
+AudioThreadMessage makeMidiThreadMessage(MidiMessage midiMessage) pure nothrow @nogc
 {
     AudioThreadMessage msg;
     msg.type = AudioThreadMessage.Type.midi;
