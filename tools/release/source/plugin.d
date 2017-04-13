@@ -108,6 +108,11 @@ struct Plugin
     int publicVersionMinor;
     int publicVersionPatch;
 
+
+    bool receivesMIDI;
+    bool isSynth;
+
+
     string prettyName() pure const nothrow
     {
         return vendorName ~ " " ~ pluginName;
@@ -331,7 +336,34 @@ Plugin readPluginDescription()
         throw new Exception("\"publicVersion\" should follow the form x.y.z with 3 integers (eg: \"1.0.0\")");
     }
 
+    bool toBoolean(JSONValue value)
+    {
+        if (value.type == JSON_TYPE.TRUE)
+            return true;
+        if (value.type == JSON_TYPE.FALSE)
+            return false;
+        throw new Exception("Expected a boolean");
+    }
 
+    try
+    {
+        result.isSynth = toBoolean(rawPluginFile["isSynth"]);
+    }
+    catch(Exception e)
+    {
+        warning("no \"isSynth\" provided in plugin.json (eg: \"true\")\n         => Using \"false\" instead.");
+        result.isSynth = false;
+    }
+
+    try
+    {
+        result.receivesMIDI = toBoolean(rawPluginFile["receivesMIDI"]);
+    }
+    catch(Exception e)
+    {
+        warning("no \"receivesMIDI\" provided in plugin.json (eg: \"true\")\n         => Using \"false\" instead.");
+        result.receivesMIDI = false;
+    }
 
     return result;
 }
@@ -382,7 +414,12 @@ string makePListFile(Plugin plugin, string config, bool hasIcon)
         content ~= "        <array>\n";
         content ~= "            <dict>\n";
         content ~= "                <key>type</key>\n";
-        content ~= "                <string>aufx</string>\n";
+        if (plugin.isSynth)
+            content ~= "                <string>aumu</string>\n";
+        else if (plugin.receivesMIDI)
+            content ~= "                <string>aumf</string>\n";
+        else
+            content ~= "                <string>aufx</string>\n";
         content ~= "                <key>subtype</key>\n";
         content ~= "                <string>dely</string>\n";
         content ~= "                <key>manufacturer</key>\n";
@@ -459,9 +496,8 @@ string makeRSRC(Plugin plugin, Arch arch, bool verbose)
     rFile.writefln("#define PLUG_UNIQUE_ID '%s'", plugin.pluginUniqueID);
     rFile.writefln("#define PLUG_VER %d", plugin.publicVersionInt());
 
-    // FUTURE: this should be set by release tool by reading the plugin.json keys
-    rFile.writeln("#define PLUG_IS_INST 0");
-    rFile.writeln("#define PLUG_DOES_MIDI 0");
+    rFile.writefln("#define PLUG_IS_INST %s", (plugin.isSynth ? "1" : "0"));
+    rFile.writefln("#define PLUG_DOES_MIDI %s", (plugin.receivesMIDI ? "1" : "0"));
 
     rFile.writeln(rFileBase);
     rFile.close();
