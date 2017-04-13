@@ -711,6 +711,14 @@ enum
 
 alias NoteInstanceID = uint;
 
+struct MusicDeviceNoteParams
+{
+    UInt32 argCount;
+    Float32 mPitch;
+    Float32 mVelocity;
+    //NoteParamsControlValue[1] mControls;               /* arbitrary length */
+}
+
 
 // AudioUnitCarbonView.h
 // Technically in AU base classes but fits well here
