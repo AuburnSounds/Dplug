@@ -11,6 +11,7 @@ import std.math;
 import dplug.core.math;
 import dplug.core.ringbuf;
 import dplug.core.nogc;
+import dplug.core.alignedbuffer;
 
 /// Smooth values exponentially with a 1-pole lowpass.
 /// This is usually sufficient for most parameter smoothing.
@@ -270,34 +271,38 @@ unittest
 
 /// Can be very useful when filtering values with outliers.
 /// For what it's meant to do, excellent phase response.
-struct MedianFilter(T, int N) if (is(T == float) || is(T == double))
+struct MedianFilter(T) if (is(T == float) || is(T == double))
 {
-    static assert(N >= 2, "N must be >= 2");
-    static assert(N % 2 == 1, "N must be odd");
-
 public:
 
-    void initialize() nothrow @nogc
+    void initialize(T initialValue, int samples) nothrow @nogc
     {
-        _first = true;
+        assert(samples >= 2, "N must be >= 2");
+        assert(samples % 2 == 1, "N must be odd");
+
+        _delay.reallocBuffer(samples - 1);
+        _delay[] = initialValue;
+
+        _arr.reallocBuffer(samples);
+        _N = samples;
+    }
+
+    ~this()
+    {
+        _delay.reallocBuffer(0);
+        _arr.reallocBuffer(0);
     }
 
     T nextSample(T input) nothrow @nogc
     {
-        if (_first)
-        {
-            for (int i = 0; i < N - 1; ++i)
-                _delay[i] = input;
-            _first = false;
-        }
+        // dramatically inefficient
 
-        T[N] arr;
-        arr[0] = input;
-        for (int i = 0; i < N - 1; ++i)
-            arr[i + 1] = _delay[i];
+        _arr[0] = input;
+        for (int i = 0; i < _N - 1; ++i)
+            _arr[i + 1] = _delay[i];
 
         // sort in place
-        quicksort!T(arr[],  
+        quicksort!T(_arr[],  
             (a, b) nothrow @nogc 
             {
                 if (a > b) return 1;
@@ -306,9 +311,9 @@ public:
             }
         );
 
-        T median = arr[N/2];
+        T median = _arr[_N/2];
 
-        for (int i = N - 3; i >= 0; --i)
+        for (int i = _N - 3; i >= 0; --i)
             _delay[i + 1] = _delay[i];
         _delay[0] = input;
         return median;
@@ -321,18 +326,19 @@ public:
     }
 
 private:
-    T[N - 1] _delay;
-    bool _first;
+    T[] _delay;
+    T[] _arr;
+    int _N;
 }
 
 unittest
 {
     void test() nothrow @nogc 
     {
-        MedianFilter!(float, 3) a;
-        MedianFilter!(double, 5) b;
-        a.initialize();
-        b.initialize();
+        MedianFilter!float a;
+        MedianFilter!double b;
+        a.initialize(0.0f, 3);
+        b.initialize(0.0f, 5);
     }
     test();
 }
