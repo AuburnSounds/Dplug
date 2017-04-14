@@ -78,11 +78,11 @@ Windows Vista. Users report plugins made with both DMD and LDC work on Windows X
 
 - What is the oldest supported OS X version?
 
-OS X 10.7+
+OS X 10.7+.
 
 - What D compiler can possibly be used?
 
-   See `.travis.yml` for supported compilers. The latest DMD or LDC should do. However, it is a risk, **it is recommended that you use LDC-1.0.0-b2** for final binaries as no other LDc version has been as well tested with Dplug.
+   See `.travis.yml` for supported compilers. The latest DMD or LDC should do. However, it is recommended that you use LDC-1.0.0-b2 for final binaries as no other LDc version has been as well tested with Dplug.
 
 - Is Dplug stable?
 
@@ -100,7 +100,7 @@ The interface tend to change a bit for improvements. Starting with v4 we'll issu
 
 Pros:
   - No dispatcher-wide mutex lock. All locks are of a short duration, to avoid blocking the audio thread.
-  - Buffer splitting: ensure your plugin never receive a buffer larger than N samples.
+  - Buffer splitting: ensure your plugin never receive a buffer larger than N samples, and the corresponding MIDI input.
   - Plugin parameters implement the Observer pattern.
   - Float parameters can have user-defined mapping.
   - PBR-style rendering lets you have a good visual quality with less disk space.
