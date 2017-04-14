@@ -4,5 +4,7 @@
     "pluginName": "MSEncodator",
     "pluginUniqueID": "NAms",
     "publicVersion": "1.0.0",
-    "CFBundleIdentifierPrefix": "com.nonameaudio"
+    "CFBundleIdentifierPrefix": "com.nonameaudio",
+    "isSynth": false,
+    "receivesMIDI": false
 }

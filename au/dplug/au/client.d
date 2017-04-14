@@ -846,13 +846,13 @@ private:
                 if (velocity < 0) velocity = 0;
                 if (velocity > 127) velocity = 127;
 
-                // Note from IPlug: noteID is supposed to be some incremented unique ID, 
+                // Note from IPlug: noteID is supposed to be some incremented unique ID,
                 // but we're just storing note number in it.
                 *pNoteID = noteNumber;
 
                 int channel = 0; // always using channel 0
-                MidiMessage m = makeMidiMessageNoteOn(offset, channel, noteNumber, velocity); 
-                _messageQueue.pushBack(makeMidiThreadMessage(m));                
+                MidiMessage m = makeMidiMessageNoteOn(offset, channel, noteNumber, velocity);
+                _messageQueue.pushBack(makeMidiThreadMessage(m));
                 return noErr;
             }
 
@@ -1990,7 +1990,7 @@ private:
                 TimeInfo timeInfo = getTimeInfo();
                 _client.processAudioFromHost(_inputPointersNoGap[0..newUsedInputs],
                                              _outputPointersNoGap[0..newUsedOutputs],
-                                             nFrames, 
+                                             nFrames,
                                              timeInfo);
             }
         }

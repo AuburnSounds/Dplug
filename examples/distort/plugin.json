@@ -4,5 +4,7 @@
     "pluginName": "Destructatorizer",
     "pluginUniqueID": "WiDi",
     "publicVersion": "1.0.0",
-    "CFBundleIdentifierPrefix": "com.wittyaudio"
+    "CFBundleIdentifierPrefix": "com.wittyaudio",
+    "isSynth": false,
+    "receivesMIDI": false
 }
