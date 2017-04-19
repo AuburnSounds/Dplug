@@ -249,7 +249,6 @@ nothrow:
 
     @disable this(this);
 
-    // TODO: interpolate FFT energy, window the input
     // Copy segment to a free slot, and start its summing.
     // The first sample of this segment will be played at next() call if delay is 0.
     void startSegment(float[] newSegment, int delay = 0)
@@ -436,11 +435,25 @@ float convertFrequencyToFFTBin(float frequencyHz, float samplingRate, int fftSiz
     return (frequencyHz * fftSize) / samplingRate;
 }
 
+/// Converts a frequency to a FFT bin.
+/// Returns: Corresponding fractional bin.
+float convertFrequencyToFFTBinInv(float frequencyHz, float invSamplingRate, int fftSize) nothrow @nogc
+{
+    return (frequencyHz * fftSize) * invSamplingRate;
+}
+
 /// Converts a FFT bin to a frequency.
 /// Returns: Corresponding center frequency.
 float convertFFTBinToFrequency(float fftBin, int fftSize, float samplingRate) nothrow @nogc
 {
     return (samplingRate * fftBin) / fftSize;
+}
+
+/// Converts a FFT bin to a frequency.
+/// Returns: Corresponding center frequency.
+float convertFFTBinToFrequencyInv(float fftBin, float invFFTSize, float samplingRate) nothrow @nogc
+{
+    return (samplingRate * fftBin) * invFFTSize;
 }
 
 /// Converts a FFT bin to a normalized frequency.
@@ -451,4 +464,15 @@ float convertFFTBinToFrequency(float fftBin, int fftSize, float samplingRate) no
 float convertFFTBinToNormalizedFrequency(float fftBin, int fftSize) nothrow @nogc
 {
     return fftBin / fftSize;
+}
+
+
+/// Converts a FFT bin to a normalized frequency.
+/// Params:
+///     fftBin Bin index of the FFT.
+///     invFFTSize Inverse size of FFT.
+/// Returns: Corresponding normalized frequency.
+float convertFFTBinToNormalizedFrequencyInv(float fftBin, float invFFTSize) nothrow @nogc
+{
+    return fftBin * invFFTSize;
 }
