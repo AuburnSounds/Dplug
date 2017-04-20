@@ -99,13 +99,13 @@ double evalWindow(WindowDesc desc, int n, int N) pure nothrow @nogc
 
         case WindowType.HANN:
         {
-            double phi = (2 * PI * n ) / N;
+            double phi = (2 * PI * n ) / (N - 1);
             return 0.5 - 0.5 * cos(phi);
         }
 
         case WindowType.HAMMING:
         {
-            double phi = (2 * PI * n ) / N;
+            double phi = (2 * PI * n ) / (N - 1);
             return 0.54 - 0.46 * cos(phi);
         }
 
