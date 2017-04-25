@@ -549,11 +549,12 @@ private:
 
             case effProcessEvents: // opcode 25, "host usually call ProcessEvents just before calling ProcessReplacing"
                 VstEvents* pEvents = cast(VstEvents*) ptr;
-                if (pEvents != null/* && pEvents.events != 0*/)
+                if (pEvents != null)
                 {
+                    VstEvent** allEvents = pEvents.events.ptr;
                     for (int i = 0; i < pEvents.numEvents; ++i)
                     {
-                        VstEvent* pEvent = pEvents.events[i];
+                        VstEvent* pEvent = allEvents[i];
                         if (pEvent)
                         {
                             if (pEvent.type == kVstMidiType)
@@ -717,12 +718,16 @@ private:
                 if (strcmp(str, "receiveVstTimeInfo") == 0)
                     return 1;
 
-                if (_client.isSynth() )
+                if (_client.isSynth())
                 {
                     if (strcmp(str, "sendVstEvents") == 0)
                         return 1;
                     if (strcmp(str, "sendVstMidiEvents") == 0)
                         return 1;
+                }
+
+                if (_client.receivesMIDI())
+                {
                     if (strcmp(str, "receiveVstEvents") == 0)
                         return 1;
                     if (strcmp(str, "receiveVstMidiEvents") == 0)
