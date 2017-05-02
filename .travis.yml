@@ -4,7 +4,7 @@ os:
   - osx
 
 d:
- - ldc-1.2.0-beta2
+ - ldc-1.2.0
  - ldc-1.0.0
  - ldc-1.1.0
  - dmd-beta
