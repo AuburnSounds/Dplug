@@ -1,0 +1,10 @@
+{
+    "vendorName": "Witty Audio",
+    "vendorUniqueID": "Wity",
+    "pluginName": "ExamplePlugin",
+    "pluginUniqueID": "WiDi",
+    "publicVersion": "1.0.0",
+    "CFBundleIdentifierPrefix": "com.wittyaudio",
+    "isSynth": false,
+    "receivesMIDI": false
+}
