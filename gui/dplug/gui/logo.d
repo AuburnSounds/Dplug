@@ -18,7 +18,7 @@ nothrow:
     /// Change this to point to your website
     string targetURL = "http://example.com";
     float animationTimeConstant = 30.0f;
-    ubyte defaultEmissive = 13; // emissive where the logo isn't
+    ubyte defaultEmissive = 0; // emissive where the logo isn't
 
     // these are offset on top of defaultEmissive
     ubyte emissiveOn = 40;
