@@ -24,6 +24,7 @@ import core.stdc.string;
 import core.stdc.stdio;
 
 import std.container;
+import std.json;
 
 import dplug.core.nogc;
 import dplug.core.math;
@@ -102,6 +103,24 @@ struct PluginInfo
     /// Warning: receiving MIDI forces you to call `getNextMidiMessages`
     /// with the right number of `frames`, every buffer.
     bool receivesMIDI = false;
+}
+
+/// Should be called in Client class during compile time to parse
+/// PluginInfo from a supplied json file.
+enum PluginInfo parsePluginInfo(string json){
+  PluginInfo info;
+
+  JSONValue j = parseJSON(json);
+
+  info.vendorName = j["vendorName"].str;
+  info.vendorUniqueID = j["vendorUniqueID"].str;
+  info.pluginName = j["pluginName"].str;
+  info.pluginUniqueID = j["pluginUniqueID"].str;
+  info.hasGUI = true;
+  if(j["isSynth"].toString == "true") info.isSynth = true;
+  if(j["receivesMIDI"].toString == "true") info.receivesMIDI = true;
+
+  return info;
 }
 
 /// This allows to write things life tempo-synced LFO.
@@ -522,7 +541,7 @@ nothrow:
     {
 
         if (_maxFramesInProcess == 0)
-        {            
+        {
             processAudio(inputs, outputs, frames, timeInfo);
         }
         else
@@ -567,7 +586,7 @@ nothrow:
         if (_maxFramesInProcess != 0 && _maxFramesInProcess < maxFrames)
             maxFrames = _maxFramesInProcess;
 
-        // Calls the reset virtual call        
+        // Calls the reset virtual call
         reset(sampleRate, maxFrames, numInputs, numOutputs);
     }
 
@@ -622,7 +641,7 @@ private:
     int _maxFramesInProcess;
 
     // Container for awaiting MIDI messages.
-    MidiQueue _midiQueue; 
+    MidiQueue _midiQueue;
 
     final void createGraphicsLazily() nothrow @nogc
     {
