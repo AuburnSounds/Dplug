@@ -24,7 +24,6 @@ import core.stdc.string;
 import core.stdc.stdio;
 
 import std.container;
-import std.regex;
 import std.json;
 
 import dplug.core.nogc;
