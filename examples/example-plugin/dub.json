@@ -1,0 +1,45 @@
+{
+    "name": "ExamplePlugin",
+
+    "license": "public domain",
+    "importPaths": [ "." ],
+    "sourcePaths": [ "." ],
+    "stringImportPaths": ["gfx", "fonts"],
+
+    "copyright": "none",
+
+
+    "sourceFiles-windows-dmd": [
+        "./module.def"
+    ],
+
+    "lflags-windows-ldc": [
+        "/DEF:module.def",
+        "libcmt.lib",
+        "/nodefaultlib:msvcrt.lib",
+        "/nodefaultlib:vcruntime.lib"
+    ],
+
+    "dependencies":
+    {
+        "dplug:dsp": { "path": "../.." },
+        "dplug:vst": { "path": "../.." },
+        "dplug:au": { "path": "../.." },
+        "dplug:gui": { "path": "../.." }
+    },
+
+    "configurations": [
+        {
+            "name": "VST",
+            "versions": ["VST"],
+            "targetType": "dynamicLibrary",
+            "lflags-osx": [ "-exported_symbols_list", "module-vst.lst", "-dead_strip" ]
+        },
+        {
+            "name": "AU",
+            "versions": ["AU"],
+            "targetType": "dynamicLibrary",
+            "lflags-osx": [ "-exported_symbols_list", "module-au.lst", "-dead_strip" ]
+        }
+    ]
+}
