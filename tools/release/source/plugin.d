@@ -93,6 +93,7 @@ struct Plugin
     string userManualPath; // can be null
     string licensePath;    // can be null
     string iconPath;       // can be null or a path to a (large) .png
+    bool hasGUI;
 
     string pluginName;     // Prettier name, extracted from plugin.json (eg: 'Distorter')
     string pluginUniqueID;
@@ -237,6 +238,17 @@ Plugin readPluginDescription()
         result.pluginName = result.name;
     }
 
+    // Note: release parses it but doesn't need hasGUI
+    try
+    {
+        result.hasGUI = toBool(rawPluginFile["hasGUI"]);
+    }
+    catch(Exception e)
+    {
+        warning("Missing \"hasGUI\" in plugin.json (must be true or false)\n    => Using false instead.");
+        result.hasGUI = false;
+    }
+
     try
     {
         result.userManualPath = rawPluginFile["userManualPath"].str;
@@ -366,6 +378,16 @@ Plugin readPluginDescription()
     }
 
     return result;
+}
+
+bool toBool(JSONValue v)
+{
+    if (v.type == JSON_TYPE.FALSE)
+        return false;
+    else if (v.type == JSON_TYPE.TRUE)
+        return true;
+    else
+        throw new Exception("expected boolean value");
 }
 
 

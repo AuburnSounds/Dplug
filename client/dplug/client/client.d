@@ -24,7 +24,6 @@ import core.stdc.string;
 import core.stdc.stdio;
 
 import std.container;
-import std.json;
 
 import dplug.core.nogc;
 import dplug.core.math;
@@ -103,24 +102,6 @@ struct PluginInfo
     /// Warning: receiving MIDI forces you to call `getNextMidiMessages`
     /// with the right number of `frames`, every buffer.
     bool receivesMIDI = false;
-}
-
-/// Should be called in Client class during compile time to parse
-/// PluginInfo from a supplied json file.
-enum PluginInfo parsePluginInfo(string json){
-  PluginInfo info;
-
-  JSONValue j = parseJSON(json);
-
-  info.vendorName = j["vendorName"].str;
-  info.vendorUniqueID = j["vendorUniqueID"].str;
-  info.pluginName = j["pluginName"].str;
-  info.pluginUniqueID = j["pluginUniqueID"].str;
-  info.hasGUI = true;
-  if(j["isSynth"].toString == "true") info.isSynth = true;
-  if(j["receivesMIDI"].toString == "true") info.receivesMIDI = true;
-
-  return info;
 }
 
 /// This allows to write things life tempo-synced LFO.
@@ -663,4 +644,62 @@ private:
             atomicStore(_graphicsIsAvailable, true);
         }
     }
+}
+
+/// Should be called in Client class during compile time
+/// to parse a `PluginInfo` from a supplied json file.
+PluginInfo parsePluginInfo(string json)
+{
+    import std.json;
+    import std.string;
+    import std.conv;
+
+    JSONValue j = parseJSON(json);
+
+    static bool toBoolean(JSONValue value)
+    {
+        if (value.type == JSON_TYPE.TRUE)
+            return true;
+        if (value.type == JSON_TYPE.FALSE)
+            return false;
+        throw new Exception(format("Expected a boolean, got %s instead", value));
+    }
+
+    // Check that a string is "x.y.z"
+    // FUTURE: support larger integers than 0 to 9 in the string
+    static PluginVersion parsePluginVersion(string value)
+    {
+        bool isDigit(char ch)
+        {
+            return ch >= '0' && ch <= '9';
+        }
+
+        if ( value.length != 5  ||
+             !isDigit(value[0]) ||
+             value[1] != '.'    ||
+             !isDigit(value[2]) ||
+             value[3] != '.'    ||
+             !isDigit(value[4]))
+        {
+            throw new Exception("\"publicVersion\" should follow the form x.y.z (eg: \"1.0.0\")");
+        }
+
+        PluginVersion ver;
+        ver.major = value[0] - '0';
+        ver.minor = value[1] - '0';
+        ver.patch = value[2] - '0';
+        return ver;
+    }
+
+    PluginInfo info;
+    info.vendorName = j["vendorName"].str;
+    info.vendorUniqueID = j["vendorUniqueID"].str;
+    info.pluginName = j["pluginName"].str;
+    info.pluginUniqueID = j["pluginUniqueID"].str;
+    info.isSynth = toBoolean(j["isSynth"]);
+    info.hasGUI = toBoolean(j["hasGUI"]);
+    info.receivesMIDI = toBoolean(j["receivesMIDI"]);
+    info.pluginVersion = parsePluginVersion(j["publicVersion"].str);
+
+    return info;
 }

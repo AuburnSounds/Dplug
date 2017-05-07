@@ -45,11 +45,10 @@ nothrow:
     {
     }
 
-    // Plugin info is parsed from plugin.json here at compile time
-    static PluginInfo pluginInfo = parsePluginInfo(import("plugin.json"));
-
     override PluginInfo buildPluginInfo()
     {
+        // Plugin info is parsed from plugin.json here at compile time
+        static immutable PluginInfo pluginInfo = parsePluginInfo(import("plugin.json"));
         return pluginInfo;
     }
 
