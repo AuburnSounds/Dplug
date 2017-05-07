@@ -89,8 +89,10 @@ struct PluginInfo
     /// is to try to get a sufficiently random one.
     char[4] pluginUniqueID = "WiDi";
 
-    // for AU, 0.x.y means "do not cache", useful in development
-    PluginVersion pluginVersion = PluginVersion(0, 0, 0);
+    // For AU, 0.x.y means "do not cache", useful in development
+    // Though caching rarely makes problem, if ever?
+    deprecated("Use publicVersion instead") alias pluginVersion = publicVersion;
+    PluginVersion publicVersion = PluginVersion(0, 0, 0);
 
     /// True if the plugin has a graphical UI. Easy way to disable it.
     bool hasGUI = false;
@@ -461,9 +463,10 @@ nothrow:
     }
 
     /// Returns: Plugin version in x.x.x.x decimal form.
-    final PluginVersion getPluginVersion() pure const nothrow @nogc
+    deprecated("Use getPublicVersion instead") alias getPluginVersion = getPublicVersion;
+    final PluginVersion getPublicVersion() pure const nothrow @nogc
     {
-        return _info.pluginVersion;
+        return _info.publicVersion;
     }
 
     /// Boilerplate function to get the value of a `FloatParameter`, for use in `processAudio`.
@@ -699,7 +702,7 @@ PluginInfo parsePluginInfo(string json)
     info.isSynth = toBoolean(j["isSynth"]);
     info.hasGUI = toBoolean(j["hasGUI"]);
     info.receivesMIDI = toBoolean(j["receivesMIDI"]);
-    info.pluginVersion = parsePluginVersion(j["publicVersion"].str);
+    info.publicVersion = parsePluginVersion(j["publicVersion"].str);
 
     return info;
 }

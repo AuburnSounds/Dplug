@@ -555,7 +555,7 @@ private:
         {
             case kComponentVersionSelect: // -4, S
             {
-                return _client.getPluginVersion().toAUVersion;
+                return _client.getPublicVersion().toAUVersion;
             }
 
             case kComponentCanDoSelect: // -3, S
@@ -1721,7 +1721,7 @@ private:
         if (r != noErr)
             return r;
         CFMutableDictionaryRef pDict = CFDictionaryCreateMutable(null, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
-        int version_ = _client.getPluginVersion().toAUVersion;
+        int version_ = _client.getPublicVersion().toAUVersion;
         putNumberInDict(pDict, kAUPresetVersionKey, &version_, kCFNumberSInt32Type);
         putNumberInDict(pDict, kAUPresetTypeKey, &(cd.componentType), kCFNumberSInt32Type);
         putNumberInDict(pDict, kAUPresetSubtypeKey, &(cd.componentSubType), kCFNumberSInt32Type);

@@ -112,7 +112,7 @@ nothrow:
         assert(_maxParams >= 0 && _maxInputs >= 0 && _maxOutputs >= 0);
         _effect.numParams = cast(int)(client.params().length);
         _effect.numPrograms = cast(int)(client.presetBank().numPresets());
-        _effect.version_ = client.getPluginVersion().toVSTVersion();
+        _effect.version_ = client.getPublicVersion().toVSTVersion();
         char[4] uniqueID = client.getPluginUniqueID();
         _effect.uniqueID = CCONST(uniqueID[0], uniqueID[1], uniqueID[2], uniqueID[3]);
         _effect.processReplacing = &processReplacingCallback;
@@ -563,9 +563,9 @@ private:
 
                                 // Enqueue midi message to be processed by the audio thread.
                                 // Note that not all information is kept, some is discarded like in IPlug.
-                                MidiMessage msg = MidiMessage(pME.deltaFrames, 
-                                                              pME.midiData[0], 
-                                                              pME.midiData[1], 
+                                MidiMessage msg = MidiMessage(pME.deltaFrames,
+                                                              pME.midiData[0],
+                                                              pME.midiData[1],
                                                               pME.midiData[2]);
                                 _messageQueue.pushBack(makeMIDIMessage(msg));
                             }
@@ -825,9 +825,9 @@ private:
             _outputPointers[i] = _outputScratchBuffer[i].ptr;
         }
 
-        _client.processAudioFromHost(_inputPointers[0..usedInputs], 
-                                     _outputPointers[0..usedOutputs], 
-                                     sampleFrames, 
+        _client.processAudioFromHost(_inputPointers[0..usedInputs],
+                                     _outputPointers[0..usedOutputs],
+                                     sampleFrames,
                                      _host.getVSTTimeInfo(_samplesAlreadyProcessed));
         _samplesAlreadyProcessed += sampleFrames;
 
@@ -876,9 +876,9 @@ private:
                 _outputPointers[i] = _outputScratchBuffer[i].ptr; // dummy output
         }
 
-        _client.processAudioFromHost(_inputPointers[0..usedInputs], 
-                                     _outputPointers[0..usedOutputs], 
-                                     sampleFrames, 
+        _client.processAudioFromHost(_inputPointers[0..usedInputs],
+                                     _outputPointers[0..usedOutputs],
+                                     sampleFrames,
                                      _host.getVSTTimeInfo(_samplesAlreadyProcessed));
         _samplesAlreadyProcessed += sampleFrames;
 
@@ -921,9 +921,9 @@ private:
             _outputPointers[i] = _outputScratchBuffer[i].ptr;
         }
 
-        _client.processAudioFromHost(_inputPointers[0..usedInputs], 
-                                     _outputPointers[0..usedOutputs], 
-                                     sampleFrames, 
+        _client.processAudioFromHost(_inputPointers[0..usedInputs],
+                                     _outputPointers[0..usedOutputs],
+                                     sampleFrames,
                                      _host.getVSTTimeInfo(_samplesAlreadyProcessed));
         _samplesAlreadyProcessed += sampleFrames;
 
