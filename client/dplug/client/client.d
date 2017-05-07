@@ -686,8 +686,8 @@ PluginInfo parsePluginInfo(string json)
 
         PluginVersion ver;
         ver.major = value[0] - '0';
-        ver.minor = value[1] - '0';
-        ver.patch = value[2] - '0';
+        ver.minor = value[2] - '0';
+        ver.patch = value[4] - '0';
         return ver;
     }
 
