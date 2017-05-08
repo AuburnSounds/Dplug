@@ -9,6 +9,7 @@
 
     "authors": [
         "Guillaume Piolat",
+        "Ethan Reker (compile-time JSON parsing)",
         "Andrej Mitrovic",
         "Sean M. Costello (Hilbert transformer)"
     ],
