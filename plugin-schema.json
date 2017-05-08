@@ -1,0 +1,59 @@
+
+
+    {
+        "$schema": "http://json-schema.org/draft-04/schema#",
+        "definitions": {},
+        "id": "https://github.com/AuburnSounds/dplug/master/plugin-schema.json",
+        "properties": {
+            "CFBundleIdentifierPrefix": {
+                "id": "/properties/CFBundleIdentifierPrefix",
+                "type": "string"
+            },
+            "commented-iconPath": {
+                "id": "/properties/commented-iconPath",
+                "type": "string"
+            },
+            "hasGUI": {
+                "id": "/properties/hasGUI",
+                "type": "boolean"
+            },
+            "isSynth": {
+                "id": "/properties/isSynth",
+                "type": "boolean"
+            },
+            "licensePath": {
+                "id": "/properties/licensePath",
+                "type": "string"
+            },
+            "pluginName": {
+                "id": "/properties/pluginName",
+                "type": "string"
+            },
+            "pluginUniqueID": {
+                "id": "/properties/pluginUniqueID",
+                "type": "string"
+            },
+            "publicVersion": {
+                "id": "/properties/publicVersion",
+                "type": "string"
+            },
+            "receivesMIDI": {
+                "id": "/properties/receivesMIDI",
+                "type": "boolean"
+            },
+            "userManualPath": {
+                "id": "/properties/userManualPath",
+                "type": "string"
+            },
+            "vendorName": {
+                "id": "/properties/vendorName",
+                "type": "string"
+            },
+            "vendorUniqueID": {
+                "id": "/properties/vendorUniqueID",
+                "type": "string"
+            }
+        },
+        "type": "object"
+    }
+
