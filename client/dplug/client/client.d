@@ -89,8 +89,10 @@ struct PluginInfo
     /// is to try to get a sufficiently random one.
     char[4] pluginUniqueID = "WiDi";
 
-    // for AU, 0.x.y means "do not cache", useful in development
-    PluginVersion pluginVersion = PluginVersion(0, 0, 0);
+    // For AU, 0.x.y means "do not cache", useful in development
+    // Though caching rarely makes problem, if ever?
+    deprecated("Use publicVersion instead") alias pluginVersion = publicVersion;
+    PluginVersion publicVersion = PluginVersion(0, 0, 0);
 
     /// True if the plugin has a graphical UI. Easy way to disable it.
     bool hasGUI = false;
@@ -461,9 +463,10 @@ nothrow:
     }
 
     /// Returns: Plugin version in x.x.x.x decimal form.
-    final PluginVersion getPluginVersion() pure const nothrow @nogc
+    deprecated("Use getPublicVersion instead") alias getPluginVersion = getPublicVersion;
+    final PluginVersion getPublicVersion() pure const nothrow @nogc
     {
-        return _info.pluginVersion;
+        return _info.publicVersion;
     }
 
     /// Boilerplate function to get the value of a `FloatParameter`, for use in `processAudio`.
@@ -522,7 +525,7 @@ nothrow:
     {
 
         if (_maxFramesInProcess == 0)
-        {            
+        {
             processAudio(inputs, outputs, frames, timeInfo);
         }
         else
@@ -567,7 +570,7 @@ nothrow:
         if (_maxFramesInProcess != 0 && _maxFramesInProcess < maxFrames)
             maxFrames = _maxFramesInProcess;
 
-        // Calls the reset virtual call        
+        // Calls the reset virtual call
         reset(sampleRate, maxFrames, numInputs, numOutputs);
     }
 
@@ -622,7 +625,7 @@ private:
     int _maxFramesInProcess;
 
     // Container for awaiting MIDI messages.
-    MidiQueue _midiQueue; 
+    MidiQueue _midiQueue;
 
     final void createGraphicsLazily() nothrow @nogc
     {
@@ -644,4 +647,62 @@ private:
             atomicStore(_graphicsIsAvailable, true);
         }
     }
+}
+
+/// Should be called in Client class during compile time
+/// to parse a `PluginInfo` from a supplied json file.
+PluginInfo parsePluginInfo(string json)
+{
+    import std.json;
+    import std.string;
+    import std.conv;
+
+    JSONValue j = parseJSON(json);
+
+    static bool toBoolean(JSONValue value)
+    {
+        if (value.type == JSON_TYPE.TRUE)
+            return true;
+        if (value.type == JSON_TYPE.FALSE)
+            return false;
+        throw new Exception(format("Expected a boolean, got %s instead", value));
+    }
+
+    // Check that a string is "x.y.z"
+    // FUTURE: support larger integers than 0 to 9 in the string
+    static PluginVersion parsePluginVersion(string value)
+    {
+        bool isDigit(char ch)
+        {
+            return ch >= '0' && ch <= '9';
+        }
+
+        if ( value.length != 5  ||
+             !isDigit(value[0]) ||
+             value[1] != '.'    ||
+             !isDigit(value[2]) ||
+             value[3] != '.'    ||
+             !isDigit(value[4]))
+        {
+            throw new Exception("\"publicVersion\" should follow the form x.y.z (eg: \"1.0.0\")");
+        }
+
+        PluginVersion ver;
+        ver.major = value[0] - '0';
+        ver.minor = value[2] - '0';
+        ver.patch = value[4] - '0';
+        return ver;
+    }
+
+    PluginInfo info;
+    info.vendorName = j["vendorName"].str;
+    info.vendorUniqueID = j["vendorUniqueID"].str;
+    info.pluginName = j["pluginName"].str;
+    info.pluginUniqueID = j["pluginUniqueID"].str;
+    info.isSynth = toBoolean(j["isSynth"]);
+    info.hasGUI = toBoolean(j["hasGUI"]);
+    info.receivesMIDI = toBoolean(j["receivesMIDI"]);
+    info.publicVersion = parsePluginVersion(j["publicVersion"].str);
+
+    return info;
 }

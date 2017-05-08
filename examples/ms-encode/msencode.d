@@ -19,15 +19,9 @@ public:
 
     override PluginInfo buildPluginInfo()
     {
-        PluginInfo info;
-        info.vendorName = "No Name Audio";
-        info.vendorUniqueID = "NoAu";
-        info.pluginName = "MSEncodator";
-        info.pluginUniqueID = "NAms";
-        info.pluginVersion = PluginVersion(1, 0, 0);
-        info.isSynth = false;
-        info.hasGUI = false;
-        return info;
+        // Plugin info is parsed from plugin.json here at compile time
+        static immutable PluginInfo pluginInfo = parsePluginInfo(import("plugin.json"));
+        return pluginInfo;
     }
 
     override Parameter[] buildParameters()

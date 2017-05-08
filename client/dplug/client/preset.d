@@ -350,7 +350,7 @@ private:
         output.writeLE!int(DPLUG_SERIALIZATION_MINOR_VERSION);
 
         // write plugin version
-        output.writeLE!int(_client.getPluginVersion().toAUVersion());
+        output.writeLE!int(_client.getPublicVersion().toAUVersion());
     }
 
     void checkChunkHeader(ref ubyte[] input) @nogc

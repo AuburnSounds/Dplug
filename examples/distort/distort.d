@@ -45,20 +45,11 @@ nothrow:
     {
     }
 
-    // The information that is duplicated here and in plugin.json should be the same
     override PluginInfo buildPluginInfo()
     {
-        // change all of these!
-        PluginInfo info;
-        info.vendorName = "Witty Audio";
-        info.vendorUniqueID = "Wity";
-        info.pluginName = "Destructatorizer";
-        info.pluginUniqueID = "WiDi";
-        info.pluginVersion = PluginVersion(1, 0, 0);
-        info.isSynth = false;
-        info.receivesMIDI = false;
-        info.hasGUI = true;
-        return info;
+        // Plugin info is parsed from plugin.json here at compile time
+        static immutable PluginInfo pluginInfo = parsePluginInfo(import("plugin.json"));
+        return pluginInfo;
     }
 
     // This is an optional overload, default is zero parameter.
@@ -122,7 +113,7 @@ nothrow:
         }
     }
 
-    override void processAudio(const(float*)[] inputs, float*[]outputs, int frames, 
+    override void processAudio(const(float*)[] inputs, float*[]outputs, int frames,
                                TimeInfo info) nothrow @nogc
     {
         assert(frames <= 128); // guaranteed by audio buffer splitting
@@ -351,4 +342,3 @@ nothrow:
         }
     }
 }
-

@@ -5,6 +5,7 @@
     "pluginUniqueID": "WiDi",
     "publicVersion": "1.0.0",
     "CFBundleIdentifierPrefix": "com.wittyaudio",
+    "hasGUI": true,
     "isSynth": false,
     "receivesMIDI": false
 }

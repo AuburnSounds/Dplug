@@ -3,6 +3,7 @@
 
     "importPaths": [ "." ],
     "sourcePaths": [ "." ],
+    "stringImportPaths": [ "." ],
 
     "targetType": "dynamicLibrary",
 

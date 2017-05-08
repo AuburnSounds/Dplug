@@ -5,6 +5,7 @@
     "pluginUniqueID": "NAms",
     "publicVersion": "1.0.0",
     "CFBundleIdentifierPrefix": "com.nonameaudio",
+    "hasGUI": false,
     "isSynth": false,
     "receivesMIDI": false
 }
