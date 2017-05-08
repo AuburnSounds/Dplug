@@ -3,7 +3,7 @@
     {
         "$schema": "http://json-schema.org/draft-04/schema#",
         "definitions": {},
-        "id": "https://github.com/AuburnSounds/dplug/master/plugin-schema.json",
+        "id": "https://raw.githubusercontent.com/AuburnSounds/dplug/master/plugin-schema.json",
         "properties": {
             "CFBundleIdentifierPrefix": {
                 "id": "/properties/CFBundleIdentifierPrefix",
