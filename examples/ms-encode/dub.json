@@ -1,4 +1,6 @@
 {
+    "$schema": "https://raw.githubusercontent.com/Pure-D/code-d/master/json-validation/dub.schema.json",
+
     "name": "msencode",
 
     "importPaths": [ "." ],
