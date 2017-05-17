@@ -392,6 +392,12 @@ public:
         notifyListeners();
     }
 
+    final void setFromGUINormalized(double normalizedValue) nothrow @nogc
+    {
+        assert(normalizedValue >= 0 && normalizedValue <= 1);
+        setFromGUI(fromNormalized(normalizedValue));
+    }
+
     /// Returns: minimum possible values.
     final int minValue() pure const nothrow @nogc
     {

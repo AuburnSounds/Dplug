@@ -41,7 +41,7 @@ nothrow:
     RGBA handleDiffuse = RGBA(248, 245, 233, 16);
     RGBA handleMaterial = RGBA(0, 255, 128, 255);
 
-    this(UIContext context, FloatParameter param)
+    this(UIContext context, Parameter param)
     {
         super(context);
         _param = param;
@@ -140,8 +140,6 @@ nothrow:
         int emissive = handleDiffuse.a;
         if (isMouseOver && !isDragged)
             emissive += 50;
-       // if (isDragged)
-       //     emissive += 90;
         if (emissive > 255)
             emissive = 255;
 
@@ -208,7 +206,12 @@ nothrow:
         // double-click => set to default
         if (isDoubleClick)
         {
-            _param.setFromGUI(_param.defaultValue());
+            if (auto p = cast(FloatParameter)_param)
+                p.setFromGUI(p.defaultValue());
+            else if (auto p = cast(IntegerParameter)_param)
+                p.setFromGUI(p.defaultValue());
+            else
+                assert(false); // only integer and float parameters supported
         }
 
         return true; // to initiate dragging
@@ -224,7 +227,7 @@ nothrow:
         if (mstate.shiftPressed || mstate.ctrlPressed)
             modifier *= 0.1f;
 
-        double oldParamValue = _param.getNormalized();
+        double oldParamValue = _param.getNormalized() + _draggingDebt;
         double newParamValue = oldParamValue - displacementInHeight * modifier * _sensivity;
 
         if (y > _mousePosOnLast0Cross)
@@ -250,7 +253,19 @@ nothrow:
             _mousePosOnLast1Cross = -float.infinity;
 
         if (newParamValue != oldParamValue)
-            _param.setFromGUINormalized(newParamValue);
+        {
+            if (auto p = cast(FloatParameter)_param)
+            {
+                p.setFromGUINormalized(newParamValue);
+            }
+            else if (auto p = cast(IntegerParameter)_param)
+            {
+                p.setFromGUINormalized(newParamValue);
+                _draggingDebt = newParamValue - p.getNormalized();
+            }
+            else
+                assert(false); // only integer and float parameters supported
+        }
     }
 
     // For lazy updates
@@ -264,6 +279,7 @@ nothrow:
     {
         _param.endParamEdit();
         setDirtyWhole();
+        _draggingDebt = 0.0f;
     }
 
     override void onMouseEnter()
@@ -292,7 +308,7 @@ nothrow:
 protected:
 
     /// The parameter this switch is linked with.
-    FloatParameter _param;
+    Parameter _param;
 
     /// Sensivity: given a mouse movement in 100th of the height of the knob,
     /// how much should the normalized parameter change.
@@ -302,6 +318,10 @@ protected:
 
     float _mousePosOnLast0Cross;
     float _mousePosOnLast1Cross;
+
+    // Exists because small mouse drags for integer parameters may not 
+    // lead to a parameter value change, hence a need to accumulate those drags.
+    float _draggingDebt = 0.0f;
 
     void clearCrosspoints()
     {
