@@ -48,7 +48,7 @@ nothrow:
 
     override void onAnimate(double dt, double time) nothrow @nogc
     {
-        float target = _param.value() ? 1 : 0;
+        float target = _param.valueAtomic() ? 1 : 0;
 
         float newAnimation = lerp(_animation, target, 1.0 - exp(-dt * animationTimeConstant));
 
