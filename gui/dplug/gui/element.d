@@ -397,12 +397,13 @@ nothrow:
     }
 
     /// Mark this element as wholly dirty.
-    final void setDirtyWhole() nothrow @nogc
+    void setDirtyWhole() nothrow @nogc
     {
         _context.dirtyList.addRect(_position);
     }
 
-    /// Mark an area of the element dirty.
+    /// Mark a part of the element dirty.
+    /// This part must be a subrect of the _position.
     /// Params:
     ///     rect Position of the dirtied rectangle, in widget coordinates.
     void setDirty(box2i rect) nothrow @nogc

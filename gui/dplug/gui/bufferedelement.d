@@ -55,6 +55,12 @@ nothrow:
         _mustBeRedrawn = true; // the content of the cached buffer will change, need to be redrawn
     }
 
+    override void setDirtyWhole() nothrow @nogc 
+    {
+        super.setDirtyWhole();
+        _mustBeRedrawn = true; // the content of the cached buffer will change, need to be redrawn
+    }
+
     override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects) nothrow @nogc
     {
         // Did the element's size changed?
