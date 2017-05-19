@@ -178,7 +178,10 @@ private:
 interface IParameterListener
 {
 nothrow @nogc:
+
     /// Called when a parameter value was changed
+    /// You'll probably want to call `setDirtyWhole()` or `setDirty()` in it
+    /// to make the graphics respond to host changing a parameter.
     void onParameterChanged(Parameter sender);
 
     /// Called when a parameter value start being changed due to an UI element
@@ -255,6 +258,13 @@ public:
             return false;
     }
 
+    /// Toggles the parameter value from the UI thread.
+    final void toggleFromGUI() nothrow @nogc
+    {
+        setFromGUI(value());
+    }
+
+    /// Sets the parameter value from the UI thread.
     final void setFromGUI(bool newValue) nothrow @nogc
     {
         _valueMutex.lock();
