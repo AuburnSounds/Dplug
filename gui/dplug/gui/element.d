@@ -399,13 +399,17 @@ nothrow:
     /// Mark this element as wholly dirty.
     final void setDirtyWhole() nothrow @nogc
     {
-        setDirty(_position);
+        _context.dirtyList.addRect(_position);
     }
 
     /// Mark an area of the element dirty.
+    /// Params:
+    ///     rect Position of the dirtied rectangle, in widget coordinates.
     void setDirty(box2i rect) nothrow @nogc
     {
-        _context.dirtyList.addRect(rect);
+        box2i translatedRect = rect.translate(_position.min);
+        assert(_position.contains(translatedRect));
+        _context.dirtyList.addRect(translatedRect);
     }
 
     /// Returns: Parent element. `null` if detached or root element.
