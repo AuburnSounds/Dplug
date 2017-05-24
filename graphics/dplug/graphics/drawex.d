@@ -48,7 +48,7 @@ ImageRef!COLOR cropImageRef(COLOR)(ImageRef!COLOR src, box2i rect)
 }
 
 /// Rough anti-aliased fillsector
-void aaFillSector(V, COLOR)(auto ref V v, float x, float y, float r0, float r1, float a0, float a1, float aTransition, COLOR c)
+void aaFillSector(V, COLOR)(auto ref V v, float x, float y, float r0, float r1, float a0, float a1, COLOR c)
     if (isWritableView!V && is(COLOR : ViewColor!V))
 {
     alias ChannelType = COLOR.ChannelType;
@@ -95,6 +95,14 @@ void aaFillSector(V, COLOR)(auto ref V v, float x, float y, float r0, float r1, 
             if(r0s <= rsq && rsq <= r1s)
             {
                 float rs = sqrt(rsq);
+
+                // How much angle is one pixel at this radius?
+                // It's actually rule of 3.
+                // 2*pi radians => 2*pi*radius pixels
+                // ???          => 1 pixel
+                float aTransition = 1.0f / rs;
+
+
                 if (r0 <= rs && rs < r1)
                 {
                     float alpha = 1.0f;

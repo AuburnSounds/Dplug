@@ -151,6 +151,7 @@ nothrow:
             {
                 float trailCenterX = center.x - bx + trailOffset.x;
                 float trailCenterY = center.y - by + trailOffset.y;
+
                 croppedDiffuse.aaFillSector(trailCenterX, trailCenterY,
                                             radius * trailRadiusMin, radius * trailRadiusMax,
                                             minAngle, maxAngle, unlitTrailDiffuse);
