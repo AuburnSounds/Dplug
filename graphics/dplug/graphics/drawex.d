@@ -48,8 +48,8 @@ ImageRef!COLOR cropImageRef(COLOR)(ImageRef!COLOR src, box2i rect)
 }
 
 /// Rough anti-aliased fillsector
-void aaFillSector(V, COLOR)(auto ref V v, float x, float y, float r0, float r1, float a0, float a1, COLOR c)
-if (isWritableView!V && is(COLOR : ViewColor!V))
+void aaFillSector(V, COLOR)(auto ref V v, float x, float y, float r0, float r1, float a0, float a1, float aTransition, COLOR c)
+    if (isWritableView!V && is(COLOR : ViewColor!V))
 {
     alias ChannelType = COLOR.ChannelType;
 
@@ -105,12 +105,32 @@ if (isWritableView!V && is(COLOR : ViewColor!V))
 
                     float a = atan2(dy, dx);
                     bool inSector = (a0 <= a && a <= a1);
-                    a += 2 * PI;
-                    bool inSector2 = (a0 <= a && a <= a1);
-                    if( inSector || inSector2 )
+                    if (inSector)
                     {
+                        float alpha2 = alpha;
+                        if (a0 + aTransition > a)
+                            alpha2 *= (a-a0) / aTransition;
+                        else if (a + aTransition > a1)
+                            alpha2 *= (a1 - a)/aTransition;
+
                         auto p = v.pixelPtr(px, py);
-                        *p = COLOR.op!q{.blend(a, b, c)}(c, *p, cast(ChannelType)(0.5f + alpha * ChannelType.max));
+                        *p = COLOR.op!q{.blend(a, b, c)}(c, *p, cast(ChannelType)(0.5f + alpha2 * ChannelType.max));
+                    }
+                    else
+                    {
+                        a += 2 * PI;
+                        bool inSector2 = (a0 <= a && a <= a1);
+                        if(inSector2 )
+                        {
+                            float alpha2 = alpha;
+                            if (a0 + aTransition > a)
+                                alpha2 *= (a-a0) / aTransition;
+                            else if (a + aTransition > a1)
+                                alpha2 *= (a1 - a)/aTransition;
+
+                            auto p = v.pixelPtr(px, py);
+                            *p = COLOR.op!q{.blend(a, b, c)}(c, *p, cast(ChannelType)(0.5f + alpha2 * ChannelType.max));
+                        }
                     }
                 }
             }
