@@ -22,5 +22,8 @@ public import dplug.gui.onoffswitch;
 public import dplug.gui.slider;
 public import dplug.gui.logo;
 public import dplug.gui.bargraph;
+public import dplug.gui.paramhint;
+
+public import dplug.gui.pbrbackgroundgui;
 
 
