@@ -575,6 +575,14 @@ public:
         setFromGUI(fromNormalized(normalizedValue));
     }
 
+    /// Sets the number of decimal digits after the dot to be displayed.
+    final void setDecimalPrecision(int digits) nothrow @nogc
+    {
+        assert(digits >= 0);
+        assert(digits <= 9);
+        _formatString[3] = cast(char)('0' + digits);
+    }
+
     final void setFromGUI(double value) nothrow @nogc
     {
         if (value < _min)
@@ -611,13 +619,13 @@ public:
 
     override void toStringN(char* buffer, size_t numBytes)
     {
-        snprintf(buffer, numBytes, "%2.2f", value());
+        snprintf(buffer, numBytes, _formatString.ptr, value());
     }
 
     override void stringFromNormalizedValue(double normalizedValue, char* buffer, size_t len)
     {
         double denorm = fromNormalized(normalizedValue);
-        snprintf(buffer, len, "%2.2f", denorm);
+        snprintf(buffer, len, _formatString.ptr, denorm);
     }
 
     override bool normalizedValueFromString(string valueString, out double result)
@@ -650,6 +658,9 @@ private:
     double _min;
     double _max;
     double _defaultValue;
+
+    // format string for string conversion, is overwritten by `setDecimalPrecision`.
+    char[6] _formatString = "%2.2f"; 
 }
 
 /// Linear-mapped float parameter (eg: dry/wet)
@@ -703,11 +714,7 @@ class GainParameter : FloatParameter
     {
         super(index, name, "dB", -double.infinity, max, defaultValue);
         _shape = shape;
-    }
-
-    override void toStringN(char* buffer, size_t numBytes)
-    {
-        snprintf(buffer, numBytes, "%2.1f", value());
+        setDecimalPrecision(1);
     }
 
     override double toNormalized(double value)
