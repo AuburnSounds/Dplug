@@ -7,7 +7,7 @@ The following is a set of guidelines for contributing to Dplug and its packages,
 Use your best judgment, and feel free to propose changes to this document in a pull request.
 
 
-## 1. Please discuss change before with the maintainer
+## 1. If possible, discuss changes ahead of time with the maintainer
 
 Please open new bugs in the bugtracker before doing a PR.
 This tends to lead to a better outcome.
