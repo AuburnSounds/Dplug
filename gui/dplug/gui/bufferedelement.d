@@ -12,7 +12,7 @@ public import dplug.gui.element;
 enum L8 opacityFullyOpaque = L8(255);
 enum L8 opacityFullyTransparent = L8(0);
 
-///Extending the UIElement with an owned drawing buffer.
+/// Extending the UIElement with an owned drawing buffer.
 /// This is intended to have easier dirtyrect-compliant widgets.
 /// Also caches expensive drawing, but it's not free at all.
 ///
@@ -61,7 +61,7 @@ nothrow:
         _mustBeRedrawn = true; // the content of the cached buffer will change, need to be redrawn
     }
 
-    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects) nothrow @nogc
+    final override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects) nothrow @nogc
     {
         // Did the element's size changed?
         int currentWidth = _diffuseBuf.w;
@@ -126,9 +126,9 @@ nothrow:
 
     /// Redraws the whole widget without consideration for drawing only in dirty rects.
     /// That is a lot of maps to fill. On the plus side, this happen quite infrequently.
-    abstract void onDrawBuffered(ImageRef!RGBA diffuse, 
-                                 ImageRef!L16 depth, 
-                                 ImageRef!RGBA material, 
+    abstract void onDrawBuffered(ImageRef!RGBA diffuseMap, 
+                                 ImageRef!L16 depthMap, 
+                                 ImageRef!RGBA materialMap, 
                                  ImageRef!L8 diffuseOpacity,
                                  ImageRef!L8 depthOpacity,
                                  ImageRef!L8 materialOpacity) nothrow @nogc;
