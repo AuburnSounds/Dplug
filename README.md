@@ -66,6 +66,10 @@ https://auburnsounds.com/blog/2016-02-08_Making-a-Windows-VST-plugin-with-D.html
 
 ## FAQ
 
+- Am I forced to use the PBR graphics system?
+
+No. There are people making plugins with Dplug without using PBR. How it works is that the physical channel is just filled with 0. Doing that requires a set of custom widgets.
+
 - How do I build plugins for OS X?
 
 You need to use the `release` program in the `tools`directory.
