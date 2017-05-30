@@ -492,5 +492,8 @@ unittest
 
 // ***************************************************************************
 
-// TODO: deprecate
-T blend(T)(T f, T b, T a) if (is(typeof(f*a+~b))) { return cast(T) ( ((f*a) + (b*~a)) / T.max ); }
+T blend(T)(T f, T b, T a) pure nothrow @nogc
+    if (is(typeof(f*a+~b))) 
+{ 
+    return cast(T) ( ((f*a) + (b*~a)) / T.max ); 
+}
