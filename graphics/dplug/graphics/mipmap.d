@@ -67,10 +67,26 @@ nothrow:
     /// Set number of levels and size
     /// maxLevel = 0 => only one image
     /// maxLevel = 1 => one image + one 2x downsampled mipmap
+    /// etc...
     this(int maxLevel, int w, int h)
     {
         this();
         size(maxLevel, w, h);
+    }
+
+
+    /// Creates a Mipmap out of a flat OwnedImage.
+    /// This takes ownership of the given image, which is now owned by the `Mipmap`.
+    this(int maxLevel, OwnedImage!COLOR level0)
+    {
+        //PERF: could avoid to create the 0th level only to replace it later
+
+        this(maxLevel, level0.w, level0.h);
+
+        // replaces level 0
+        levels[0].destroyFree();
+        levels[0] = level0;
+        generateMipmaps(Quality.box);
     }
 
     void size(int maxLevel, int w, int h)
