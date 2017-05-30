@@ -117,8 +117,12 @@ nothrow:
 
     override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects) nothrow @nogc
     {
-        float normalizedValue = _param.getNormalized();
-      
+        drawTrail(diffuseMap, depthMap, materialMap, dirtyRects);
+        drawKnob(diffuseMap, depthMap, materialMap, dirtyRects);
+    }
+
+    void drawTrail(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects) nothrow @nogc
+    {
         float radius = getRadius();
         vec2f center = getCenter();
 
@@ -126,15 +130,7 @@ nothrow:
 
         vec2f trailOffset = vec2f(knobRadiusPx * trailOffsetX, knobRadiusPx * trailOffsetY);
 
-        static float angleConvert(float angle) nothrow @nogc
-        {
-            return angle + PI * 1.5f;
-        }
 
-        float minAngle = angleConvert(trailMinAngle);
-        float maxAngle = angleConvert(trailMaxAngle);
-        float baseAngle = angleConvert(trailBaseAngle);
-        float valueAngle = lerp(minAngle, maxAngle, normalizedValue);
 
         foreach(dirtyRect; dirtyRects)
         {
@@ -154,11 +150,11 @@ nothrow:
 
                 croppedDiffuse.aaFillSector(trailCenterX, trailCenterY,
                                             radius * trailRadiusMin, radius * trailRadiusMax,
-                                            minAngle, maxAngle, unlitTrailDiffuse);
+                                            getMinAngle, getMaxAngle, unlitTrailDiffuse);
 
                 // Eventually, use the alternative trail color
                 RGBA litTrail = litTrailDiffuse;
-                if (hasAlternateTrail && valueAngle < baseAngle)
+                if (hasAlternateTrail && getValueAngle < getBaseAngle)
                     litTrail = litTrailDiffuseAlt;
 
                 // when dragged, trail is two times brighter
@@ -168,13 +164,13 @@ nothrow:
                 }
 
                 croppedDiffuse.aaFillSector(trailCenterX, trailCenterY, radius * trailRadiusMin, radius * trailRadiusMax, 
-                                            min(baseAngle, valueAngle), max(baseAngle, valueAngle), litTrail);
+                                            min(getBaseAngle, getValueAngle), max(getBaseAngle, getValueAngle), litTrail);
             }
 
             //
             // Draw knob
             //
-            float angle = valueAngle + PI * 0.5f;
+            float angle = getValueAngle + PI * 0.5f;
             float depthRadius = std.algorithm.max(knobRadiusPx * 3.0f / 5.0f, 0);
             float depthRadius2 = std.algorithm.max(knobRadiusPx * 3.0f / 5.0f, 0);
 
@@ -240,6 +236,94 @@ nothrow:
             }
         }
     }
+
+    void drawKnob(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects) nothrow @nogc
+    {
+        float radius = getRadius();
+        vec2f center = getCenter();
+
+        float knobRadiusPx = radius * knobRadius;
+
+        foreach(dirtyRect; dirtyRects)
+        {
+            auto croppedDiffuse = diffuseMap.cropImageRef(dirtyRect);
+            auto croppedDepth = depthMap.cropImageRef(dirtyRect);
+            auto croppedMaterial = materialMap.cropImageRef(dirtyRect);
+
+            int bx = dirtyRect.min.x;
+            int by = dirtyRect.min.y;
+
+            //
+            // Draw knob
+            //
+            float angle = getValueAngle + PI * 0.5f;
+            float depthRadius = std.algorithm.max(knobRadiusPx * 3.0f / 5.0f, 0);
+            float depthRadius2 = std.algorithm.max(knobRadiusPx * 3.0f / 5.0f, 0);
+
+            float posEdgeX = center.x + sin(angle) * depthRadius2;
+            float posEdgeY = center.y - cos(angle) * depthRadius2;
+
+            ubyte emissive = 0;
+            if (_shouldBeHighlighted)
+                emissive = 30;
+            if (isDragged)
+                emissive = 0;
+
+            if (style == KnobStyle.thumb)
+            {
+                croppedDepth.aaSoftDisc(center.x - bx, center.y - by, depthRadius, knobRadiusPx, L16(65535));
+                croppedDepth.aaSoftDisc(center.x - bx, center.y - by, 0, depthRadius, L16(38400));
+            }
+            else if (style == KnobStyle.cylinder)
+            {
+                L16 depth = L16(cast(ushort)(0.5f + lerp(65535.0f, 45000.0f, _pushedAnimation)) );
+                croppedDepth.aaSoftDisc(center.x - bx, center.y - by, knobRadiusPx - 5, knobRadiusPx, depth);
+            }
+            else if (style == KnobStyle.cone)
+            {
+                L16 depth = L16(cast(ushort)(0.5f + lerp(65535.0f, 45000.0f, _pushedAnimation)) );
+                croppedDepth.aaSoftDisc(center.x - bx, center.y - by, 0, knobRadiusPx, depth);
+            }
+            else if (style == KnobStyle.ball)
+            {
+                L16 depth = L16(cast(ushort)(0.5f + lerp(65535.0f, 45000.0f, _pushedAnimation)) );
+                croppedDepth.aaSoftDisc!1.2f(center.x - bx, center.y - by, 2, knobRadiusPx, depth);
+            }
+            RGBA knobDiffuseLit = knobDiffuse;
+            knobDiffuseLit.a = emissive;
+            croppedDiffuse.aaSoftDisc(center.x - bx, center.y - by, knobRadiusPx - 1, knobRadiusPx, knobDiffuseLit);
+            croppedMaterial.aaSoftDisc(center.x - bx, center.y - by, knobRadiusPx - 5, knobRadiusPx, knobMaterial);
+
+
+            // LEDs
+            for (int i = 0; i < numLEDs; ++i)
+            {
+                float disp = i * 2 * PI / numLEDs;
+                float distance = lerp(LEDDistanceFromCenter, LEDDistanceFromCenterDragged, _pushedAnimation);
+                float x = center.x + sin(angle + disp) * knobRadiusPx * distance;
+                float y = center.y - cos(angle + disp) * knobRadiusPx * distance;
+
+                float t = -1 + 2 * abs(disp - PI) / PI;
+
+                float LEDRadius = std.algorithm.max(0.0f, lerp(LEDRadiusMin, LEDRadiusMax, t));
+
+                float smallRadius = knobRadiusPx * LEDRadius * 0.714f;
+                float largerRadius = knobRadiusPx * LEDRadius;
+
+                RGBA LEDDiffuse;
+                LEDDiffuse.r = cast(ubyte)lerp!float(LEDDiffuseUnlit.r, LEDDiffuseLit.r, _pushedAnimation);
+                LEDDiffuse.g = cast(ubyte)lerp!float(LEDDiffuseUnlit.g, LEDDiffuseLit.g, _pushedAnimation);
+                LEDDiffuse.b = cast(ubyte)lerp!float(LEDDiffuseUnlit.b, LEDDiffuseLit.b, _pushedAnimation);
+                LEDDiffuse.a = cast(ubyte)lerp!float(LEDDiffuseUnlit.a, LEDDiffuseLit.a, _pushedAnimation);
+
+                croppedDepth.aaSoftDisc(x - bx, y - by, 0, largerRadius, L16(LEDDepth));
+                croppedDiffuse.aaSoftDisc(x - bx, y - by, 0, largerRadius, LEDDiffuse);
+                croppedMaterial.aaSoftDisc(x - bx, y - by, smallRadius, largerRadius, RGBA(128, 128, 255, defaultPhysical));
+            }
+        }
+    }
+
+
     
     override bool onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
     {
@@ -348,6 +432,37 @@ protected:
 
     float _mousePosOnLast0Cross;
     float _mousePosOnLast1Cross;
+
+    /// Exists because public angle properties are given in a 
+    /// different referential, where 0 is at the top 
+    static float angleConvert(float angle) nothrow @nogc pure
+    {
+        return angle + PI * 1.5f;
+    }
+
+    /// Min angle of the trail, fit for `aaFillSector`.
+    float getMinAngle() const pure nothrow @nogc
+    {
+        return angleConvert(trailMinAngle);
+    }
+
+    /// Min angle of the trail, fit for `aaFillSector`.
+    float getMaxAngle() const pure nothrow @nogc
+    {
+        return angleConvert(trailMaxAngle);
+    }
+
+    /// Max angle of the trail, fit for `aaFillSector`.
+    float getBaseAngle() const pure nothrow @nogc
+    {
+        return angleConvert(trailBaseAngle);
+    }
+
+    /// Angle of the trail, fit for `aaFillSector`.
+    float getValueAngle() nothrow @nogc
+    {
+        return lerp(getMinAngle, getMaxAngle, _param.getNormalized());
+    }    
 
     void clearCrosspoints() nothrow @nogc
     {

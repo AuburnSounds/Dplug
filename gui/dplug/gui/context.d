@@ -63,12 +63,7 @@ nothrow:
     void setSkybox(OwnedImage!RGBA image)
     {
         skybox.destroyFree();
-        skybox = mallocEmplace!(Mipmap!RGBA)(12, image.w, image.h);
-
-        // replaces level 0
-        skybox.levels[0].destroyFree();
-        skybox.levels[0] = image;
-        skybox.generateMipmaps(Mipmap!RGBA.Quality.box);
+        skybox = mallocEmplace!(Mipmap!RGBA)(12, image);
     }
 
     final void setFocused(UIElement focused) nothrow @nogc
