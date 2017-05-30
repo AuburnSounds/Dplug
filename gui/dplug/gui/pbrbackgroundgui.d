@@ -140,6 +140,14 @@ private:
             loadImages(basecolorData, emissiveData, materialData, physicalData, depthData, skyboxData);
             setDirtyWhole();
         }
+
+        // Release copy of file contents
+        freeSlice(basecolorData);
+        freeSlice(emissiveData);
+        freeSlice(materialData);
+        freeSlice(physicalData);
+        freeSlice(depthData);
+        freeSlice(skyboxData);
     }
 
     void loadImages(ubyte[] basecolorData, ubyte[] emissiveData,
