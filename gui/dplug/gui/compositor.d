@@ -22,9 +22,9 @@ import dplug.graphics.image;
 import dplug.graphics.view;
 
 // Only deals with rendering tiles.
-// If you don't like dplug default compositing, just make another Compositor
+// If you don't like Dplug default compositing, just make another Compositor
 // and assign the 'compositor' field in GUIGraphics.
-// However for now mipmaps and are not negotiable.
+// However for now mipmaps are not negotiable, they will get generated outside this compositor.
 interface ICompositor
 {
     void compositeTile(ImageRef!RGBA wfb, WindowPixelFormat pf, box2i area,
@@ -377,7 +377,7 @@ nothrow @nogc:
                     {
                         vec3f pureReflection = reflect(toEye, normal);
 
-                        float skyx = 0.5f + ((0.5f + pureReflection.x *0.5f) * (skybox.width - 1));
+                        float skyx = 0.5f + ((0.5f - pureReflection.x *0.5f) * (skybox.width - 1));
                         float skyy = 0.5f + ((0.5f + pureReflection.y *0.5f) * (skybox.height - 1));
 
                         // 2nd order derivatives
