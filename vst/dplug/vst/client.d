@@ -120,7 +120,7 @@ nothrow:
         _effect.setParameter = &setParameterCallback;
         _effect.getParameter = &getParameterCallback;
         _effect.user = cast(void*)(this);
-        _effect.initialDelay = _client.latencySamples();
+        _effect.initialDelay = _client.latencySamples(44100); // Note: we can't have a sample-rate yet
         _effect.object = cast(void*)(this);
         _effect.processDoubleReplacing = &processDoubleReplacingCallback;
 
@@ -415,14 +415,16 @@ private:
                 {
                     if (value == 0)
                     {
-                      // Audio processing was switched off.
-                      // The plugin must flush its state because otherwise pending data
-                      // would sound again when the effect is switched on next time.
-                      _messageQueue.pushBack(makeResetStateMessage(AudioThreadMessage.Type.resetState));
+                        // Audio processing was switched off.
+                        // The plugin must flush its state because otherwise pending data
+                        // would sound again when the effect is switched on next time.
+                        _messageQueue.pushBack(makeResetStateMessage(AudioThreadMessage.Type.resetState));
                     }
-                    else
+                    else // "resume()" in VST parlance
                     {
-                        // Audio processing was switched on.
+                        // Audio processing was switched on. Update the latency. #154
+                        int latency = _client.latencySamples(_sampleRate);
+                        _effect.initialDelay = latency;
                     }
                     return 0;
                 }
@@ -946,7 +948,7 @@ private:
     }
 }
 
-
+// This look-up table speed-up unimplemented opcodes
 private static immutable ubyte[64] opcodeShouldReturn0Immediately =
 [ 1, 0, 0, 0, 0, 0, 0, 0,
   0, 1, 0, 0, 0, 0, 0, 0,

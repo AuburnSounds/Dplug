@@ -353,12 +353,13 @@ nothrow:
     abstract void reset(double sampleRate, int maxFrames, int numInputs, int numOutputs) nothrow @nogc;
 
     /// Override to set the plugin latency in samples.
-    /// Unfortunately most of the time latency is dependent on the sampling rate and frequency,
-    /// but most hosts don't support latency changes.
+    /// Plugin latency can depend on `sampleRate` but no other value.
+    /// If you want your latency to depend on a `Parameter` your only choice is to
+    /// pessimize the needed latency and compensate in the process callback.
     /// Returns: Plugin latency in samples.
-    int latencySamples() pure const nothrow @nogc
+    int latencySamples(double sampleRate) pure const nothrow @nogc
     {
-        return 0;
+        return 0; // By default, no latency introduced by plugin
     }
 
     /// Override to set the plugin tail length in seconds.
@@ -559,7 +560,7 @@ nothrow:
 
     /// For plugin format clients only.
     /// Calls `reset()`.
-    /// Muzt be called by the audio thread.
+    /// Must be called by the audio thread.
     void resetFromHost(double sampleRate, int maxFrames, int numInputs, int numOutputs) nothrow @nogc
     {
         // Clear outstanding MIDI messages (now invalid)

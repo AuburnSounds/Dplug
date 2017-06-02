@@ -1077,7 +1077,7 @@ private:
                 *pDataSize = double.sizeof;
                 if (pData)
                 {
-                    double latencySecs = cast(double)(_client.latencySamples()) / _sampleRate;
+                    double latencySecs = cast(double)(_client.latencySamples(_sampleRate)) / _sampleRate;
                     *(cast(Float64*) pData) = latencySecs;
                 }
                 return noErr;
