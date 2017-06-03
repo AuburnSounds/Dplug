@@ -105,6 +105,10 @@
             "dependencies-osx": {
                 "dplug:cocoa": "*",
                 "dplug:carbon": "*"
+            },
+
+            "dependencies-posix": {
+                "x11": "~>1.0.16"
             }
         },
         {
