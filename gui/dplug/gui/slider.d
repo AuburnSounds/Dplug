@@ -34,6 +34,10 @@ nothrow:
     RGBA litTrailDiffuse = RGBA(240, 165, 102, 130);
     float trailWidth = 0.2f;
 
+    RGBA litTrailDiffuseAlt = RGBA(240, 165, 102, 130);
+    bool hasAlternateTrail = false;
+    float trailBase = 0.0f; // trail is from trailBase to parameter value
+
     // Handle customization
     HandleStyle handleStyle = HandleStyle.shapeW;
     float handleHeightRatio = 0.25f;
@@ -114,26 +118,46 @@ nothrow:
         box2i handleRect = box2i(posX, posY, posX + handleWidth, posY + handleHeight);
 
 
-        // Paint deeper hole
+        // Dig hole and paint trail deeper hole
         {
-            box2i holeBlack = box2i(holeRect.min.x, holeRect.min.y, holeRect.max.x, std.algorithm.max(holeRect.min.y, posY - 1));
-            box2i holeLit = box2i(holeRect.min.x, std.algorithm.min(holeRect.max.y, posY + handleHeight), holeRect.max.x, holeRect.max.y);
 
-            diffuseMap.cropImageRef(holeBlack).fill(unlitTrailDiffuse);
 
-            // lit trail is 50% brighter when dragged
-            RGBA litTrail = litTrailDiffuse;
-            if (isDragged)
-            {
-                litTrail.a = cast(ubyte) std.algorithm.min(255, 3 * litTrail.a / 2);
-            }
-
-            diffuseMap.cropImageRef(holeLit).fill(litTrail);
             depthMap.cropImageRef(holeRect).fill(trailDepth);
 
             // Fill opacity for hole
             diffuseOpacity.cropImageRef(holeRect).fill(opacityFullyOpaque);
             depthOpacity.cropImageRef(holeRect).fill(opacityFullyOpaque);
+
+            int valueToTrail(float value) nothrow @nogc
+            {
+                return cast(int)(0.5f + (1 - value) * (height+4 - handleHeight) + handleHeight*0.5f - 2);
+            }
+
+            void paintTrail(float from, float to, RGBA diffuse) nothrow @nogc
+            {
+                int ymin = valueToTrail(from);
+                int ymax = valueToTrail(to);
+                if (ymin > ymax)
+                {
+                    int temp = ymin;
+                    ymin = ymax;
+                    ymax = temp;
+                }
+                box2i b = box2i(holeRect.min.x, ymin, holeRect.max.x, ymax);
+                diffuseMap.cropImageRef(b).fill(diffuse);
+            }
+
+            
+        
+            RGBA litTrail = (value >= trailBase) ? litTrailDiffuse : litTrailDiffuseAlt;                  
+            if (isDragged)
+            {
+                // lit trail is 50% brighter when dragged      
+                litTrail.a = cast(ubyte) std.algorithm.min(255, 3 * litTrail.a / 2);
+            }
+
+            paintTrail(0, 1, unlitTrailDiffuse);
+            paintTrail(trailBase, value, litTrail);
         }
 
         // Paint handle of slider
