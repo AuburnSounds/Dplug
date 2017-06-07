@@ -9,6 +9,7 @@ import std.math;
 
 import gfm.math.vector;
 import gfm.math.box;
+import gfm.math.matrix;
 
 import dplug.core.alignedbuffer;
 import dplug.core.nogc;
@@ -162,6 +163,15 @@ nothrow @nogc:
             _greenTransferTable[b] = cast(ubyte)(0.5f + outG * 255.0f);
             _blueTransferTable[b] = cast(ubyte)(0.5f + outB * 255.0f);
         }
+    }
+
+    /// ditto
+    void setLiftGammaGainContrastRGB(mat3x4f liftGammaGainContrast)
+    {
+        auto m = liftGammaGainContrast;
+        setLiftGammaGainContrastRGB(m.c[0][0], m.c[0][1], m.c[0][2], m.c[0][3],
+                                    m.c[1][0], m.c[1][1], m.c[1][2], m.c[1][3],
+                                    m.c[2][0], m.c[2][1], m.c[2][2], m.c[2][3]);
     }
 
     /// Don't like this rendering? Feel free to override this method.
