@@ -31,10 +31,12 @@ else version( OSX )
     import core.sys.posix.time;
     import core.sys.osx.mach.semaphore;
 
+    /+
     extern (C):
     nothrow:
     @nogc:
     int pthread_mutexattr_setpolicy_np(pthread_mutexattr_t* attr, int);
+    +/
 }
 else version( Posix )
 {
@@ -86,12 +88,16 @@ struct UncheckedMutex
 
                     version (OSX)
                     {
-                        // OSX mutexes are fair by default, but this has a cost for contended locks
-                        // Disable fairness.
-                        // https://blog.mozilla.org/nfroyd/2017/03/29/on-mutex-performance-part-1/
-                        enum _PTHREAD_MUTEX_POLICY_FIRSTFIT = 2;
-                        pthread_mutexattr_setpolicy_np(& attr, _PTHREAD_MUTEX_POLICY_FIRSTFIT);
+                        // Note: disabled since this breaks thread pool.
+                        /+
+                            // OSX mutexes are fair by default, but this has a cost for contended locks
+                            // Disable fairness.
+                            // https://blog.mozilla.org/nfroyd/2017/03/29/on-mutex-performance-part-1/
+                            enum _PTHREAD_MUTEX_POLICY_FIRSTFIT = 2;
+                            pthread_mutexattr_setpolicy_np(& attr, _PTHREAD_MUTEX_POLICY_FIRSTFIT);
+                        +/
                     }
+
                     pthread_mutex_init( handle, &attr );
 
                 })(handleAddr());
