@@ -205,7 +205,7 @@ extern(C) nothrow @nogc VstIntPtr hostCallback(AEffect* effect, VstInt32 opcode,
         case audioMasterCurrentId: printf("audioMasterCurrentId\n"); return 0;
         case audioMasterIdle: printf("audioMasterIdle\n"); return 0;
         case DEPRECATED_audioMasterPinConnected: printf("DEPRECATED_audioMasterPinConnected\n"); return 0;
-        case DEPRECATED_audioMasterWantMidi: printf("DEPRECATED_audioMasterWantMidi\n"); return 0;
+        case DEPRECATED_audioMasterWantMidi: return 0;
         case audioMasterGetTime:
         {
             VSTPluginHost* phost = effect in reverseMapping;
