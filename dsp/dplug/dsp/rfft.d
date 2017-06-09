@@ -21,9 +21,9 @@ http://sam.zoy.org/wtfpl/COPYING for more details.
 * What has changed? Shuffling was added to have a similar output than the regular complex FFT.
 */
 import std.math: PI, sin, cos, SQRT1_2;
-import std.complex;
 
 import dplug.core.math;
+import dplug.core.complex;
 import dplug.core.alignedbuffer;
 
 
@@ -63,9 +63,9 @@ nothrow:
     * Compute the Real FFT of the array.
     * Params:
     *    timeData Input array (N time samples)
-    *    outputBins Destination coefficients (N/2 + 1 frequency bins)    
+    *    outputBins Destination coefficients (N/2 + 1 frequency bins)
     */
-    void forwardTransform(const(T)[] timeData, Complex!T[] outputBins)
+    void forwardTransform(const(T)[] timeData, BuiltinComplex!T[] outputBins)
     {
         assert(timeData.length == _length);
         assert(outputBins.length == (_length/2)+1);
@@ -103,10 +103,10 @@ nothrow:
         //    f[length(x)/2+1...length(x)-1] = negative imaginary values of coefficents 1...length(x)/2-1.
         // So we have to reshuffle them to have nice complex bins.
         int mid = _length/2;
-        outputBins[0] = Complex!T(f[0], 0);
+        outputBins[0] = f[0] + 0i;
         for(int i = 1; i < mid; ++i)
-            outputBins[i] = Complex!T(f[i], -f[mid+i]);
-        outputBins[mid] = Complex!T(f[mid], 0); // for length 1, this still works
+            outputBins[i] = f[i] + 1i * -f[mid+i];
+        outputBins[mid] = f[mid] + 0i; // for length 1, this still works
     }
 
     /**
@@ -120,7 +120,7 @@ nothrow:
     *    This transform has the benefit you don't have to conjugate the "mirorred" part of the FFT.
     *    Excess data in imaginary part of DC and Nyquist bins are ignored.
     */
-    void reverseTransform(Complex!T[] inputBins, T[] timeData) 
+    void reverseTransform(BuiltinComplex!T[] inputBins, T[] timeData) 
     {
         int mid = _length/2;
         assert(inputBins.length == mid+1); // expect _length/2+1 complex numbers, 
@@ -698,6 +698,7 @@ unittest
     import dplug.dsp.rfft;
     import std.stdio; // TEMP
     import dplug.core.random;
+    import std.complex;
 
     auto random = defaultGlobalRNG();
 
@@ -710,7 +711,7 @@ unittest
         rfft.initialize(cast(int)A.length);
 
         int N = cast(int)(A.length);
-        Complex!T[] B;
+        BuiltinComplex!T[] B;
         T[] C;
         B.reallocBuffer(N/2+1);
         C.reallocBuffer(N);

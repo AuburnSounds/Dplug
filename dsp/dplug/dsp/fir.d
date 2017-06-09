@@ -6,10 +6,11 @@
 module dplug.dsp.fir;
 
 import std.range,
-       std.math,
-       std.complex;
+       std.math;
 
-import dplug.core,
+import dplug.core.math,
+       dplug.core.alignedbuffer,
+       dplug.core.complex,
        dplug.dsp.fft,
        dplug.dsp.delayline,
        dplug.dsp.window;
@@ -109,7 +110,7 @@ int tempBufferSizeForMinPhase(T)(T[] inputImpulse) nothrow @nogc
 /// Courtesy of kasaudio, based on Aleksey Vaneev's algorithm
 /// See: http://www.kvraudio.com/forum/viewtopic.php?t=197881
 /// MAYDO: does it preserve amplitude?
-void minimumPhaseImpulse(T)(T[] inoutImpulse,  Complex!T[] tempStorage) nothrow @nogc // alloc free version
+void minimumPhaseImpulse(T)(T[] inoutImpulse,  BuiltinComplex!T[] tempStorage) nothrow @nogc // alloc free version
 {
     assert(tempStorage.length >= tempBufferSizeForMinPhase(inoutImpulse));
 
@@ -124,15 +125,15 @@ void minimumPhaseImpulse(T)(T[] inoutImpulse,  Complex!T[] tempStorage) nothrow 
     auto kernel = tempStorage;
 
     for (int i = 0; i < N; ++i)
-        kernel[i] = inoutImpulse[i];
+        kernel[i] = (inoutImpulse[i] + 0i);
 
     for (int i = N; i < fftSize; ++i)
-        kernel[i] = 0;
+        kernel[i] = 0+0i;
 
     forwardFFT!T(kernel[]);
 
     for (int i = 0; i < fftSize; ++i)
-        kernel[i] = log(abs(kernel[i]));
+        kernel[i] = log(abs(kernel[i]))+0i;
 
     inverseFFT!T(kernel[]);
 
@@ -140,12 +141,12 @@ void minimumPhaseImpulse(T)(T[] inoutImpulse,  Complex!T[] tempStorage) nothrow 
         kernel[i] *= 2;
 
     for (int i = halfFFTSize + 1; i < halfFFTSize; ++i)
-        kernel[i] = 0;
+        kernel[i] = 0+0i;
 
     forwardFFT!T(kernel[]);
 
     for (int i = 0; i < fftSize; ++i)
-        kernel[i] = complexExp(kernel[i]);
+        kernel[i] = complexExp!T(kernel[i]);
 
     inverseFFT!T(kernel[]);
 
@@ -153,10 +154,10 @@ void minimumPhaseImpulse(T)(T[] inoutImpulse,  Complex!T[] tempStorage) nothrow 
         inoutImpulse[i] = kernel[i].re;
 }
 
-private Complex!T complexExp(T)(Complex!T z) nothrow @nogc
+private BuiltinComplex!T complexExp(T)(BuiltinComplex!T z) nothrow @nogc
 {
     T mag = exp(z.re);
-    return Complex!T(mag * cos(z.re), mag * sin(z.im));
+    return (mag * cos(z.re)) + 1i * (mag * sin(z.im));
 }
 
 
@@ -175,8 +176,8 @@ unittest
     generateLowpassImpulse(lp_impulse[], 40.0, 44100.0);
     generateHighpassImpulse(hp_impulse[], 40.0, 44100.0);
 
-    Complex!double[] tempStorage = new Complex!double[tempBufferSizeForMinPhase(lp_impulse[])];
-    minimumPhaseImpulse(lp_impulse[], tempStorage);
+    cdouble[] tempStorage = new cdouble[tempBufferSizeForMinPhase(lp_impulse[])];
+    minimumPhaseImpulse!double(lp_impulse[], tempStorage);
 
     generateHilbertTransformer(lp_impulse[0..$-1], WindowDesc(WindowType.BLACKMANN_HARRIS), 44100.0);
 }
@@ -241,7 +242,7 @@ private:
     T[] _impulse;
 
     Delayline!T _delayline;
-    Complex!T[] _tempBuffer;
+    BuiltinComplex!T[] _tempBuffer;
     T[] _windowBuffer;
 }
 

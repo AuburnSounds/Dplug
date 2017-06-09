@@ -7,12 +7,13 @@ module dplug.dsp.fft;
 
 import core.stdc.string;
 
-import std.complex;
 import std.math;
 
 import dplug.dsp.window;
 import dplug.core.math;
+import dplug.core.complex;
 import dplug.core.alignedbuffer;
+
 
 enum FFTDirection
 {
@@ -22,19 +23,19 @@ enum FFTDirection
 
 /// Perform in-place FFT.
 /// Equivalent to `std.numeric.fft`, but this one is nothrow @nogc.
-void forwardFFT(T)(Complex!T[] buffer) nothrow @nogc
+void forwardFFT(T)(BuiltinComplex!T[] buffer) nothrow @nogc
 {
     FFT_internal!(T, FFTDirection.FORWARD)(buffer);
 }
 
 /// Perform in-place inverse FFT.
 /// Equivalent to `std.numeric.inverseFft`, but this one is nothrow @nogc.
-void inverseFFT(T)(Complex!T[] buffer) nothrow @nogc
+void inverseFFT(T)(BuiltinComplex!T[] buffer) nothrow @nogc
 {
     FFT_internal!(T, FFTDirection.REVERSE)(buffer);
 }
 
-private void FFT_internal(T, FFTDirection direction)(Complex!T[] buffer) nothrow @nogc
+private void FFT_internal(T, FFTDirection direction)(BuiltinComplex!T[] buffer) nothrow @nogc
 {
     int size = cast(int)(buffer.length);
     assert(isPowerOfTwo(size));
@@ -62,20 +63,20 @@ private void FFT_internal(T, FFTDirection direction)(Complex!T[] buffer) nothrow
     }
 
     // compute the FFT
-    Complex!T c = Complex!T(-1);
+    BuiltinComplex!T c = -1+0i;
     int l2 = 1;
     for (int l = 0; l < m; ++l)
     {
         int l1 = l2;
         l2 = l2 * 2;
-        Complex!T u = 1;
+        BuiltinComplex!T u = 1+0i;
         for (int j2 = 0; j2 < l1; ++j2)
         {
             int i = j2;
             while (i < size)
             {
                 int i1 = i + l1;
-                Complex!T t1 = u * buffer[i1];
+                BuiltinComplex!T t1 = u * buffer[i1];
                 buffer[i1] = buffer[i] - t1;
                 buffer[i] += t1;
                 i += l2;
@@ -87,7 +88,7 @@ private void FFT_internal(T, FFTDirection direction)(Complex!T[] buffer) nothrow
         static if (direction == FFTDirection.FORWARD)
             newImag = -newImag;
         T newReal = sqrt((1 + c.re) / 2);
-        c = Complex!T(newReal, newImag);
+        c = newReal + 1.0fi * newImag;
     }
 
     // scaling when doing the reverse transformation, to avoid being multiplied by size
@@ -96,8 +97,7 @@ private void FFT_internal(T, FFTDirection direction)(Complex!T[] buffer) nothrow
         T divider = 1 / cast(T)size;
         for (int i = 0; i < size; ++i)
         {
-            buffer[i].re = buffer[i].re * divider;
-            buffer[i].im = buffer[i].im * divider;
+            buffer[i] = buffer[i] * divider;
         }
     }
 }
@@ -106,9 +106,10 @@ private void FFT_internal(T, FFTDirection direction)(Complex!T[] buffer) nothrow
 // should operate the same as Phobos FFT
 unittest
 {
+    import std.complex;
     import std.numeric: approxEqual, fft;
 
-    bool approxEqualArr(Complex!double[] a, Complex!double[] b) pure
+    bool approxEqualArrBuiltin(BuiltinComplex!double[] a, BuiltinComplex!double[] b) pure
     {
         foreach(i; 0..a.length)
         {
@@ -120,14 +121,27 @@ unittest
         return true;
     }
 
-    Complex!double[] A = [Complex!double(1, 0), Complex!double(13, -4), Complex!double(5, -5), Complex!double(0, 2)];
-    auto fftARef = fft(A);
+    bool approxEqualArr(BuiltinComplex!double[] a, Complex!double[] b) pure
+    {
+        foreach(i; 0..a.length)
+        {
+            if (!approxEqual(a[i].re, b[i].re))
+                return false;
+            if (!approxEqual(a[i].im, b[i].im))
+                return false;
+        }
+        return true;
+    }
+
+    BuiltinComplex!double[] A = [1+0i, 13-4i, 5-5i, 0+2i];
+    Complex!double[] Abis = [Complex!double(1, 0), Complex!double(13, -4), Complex!double(5,-5), Complex!double(0,2)];
+    Complex!double[] fftARef = fft(Abis);
 
     auto B = A.dup;
-    forwardFFT(B);
+    forwardFFT!double(B);
     assert(approxEqualArr(B, fftARef));
-    inverseFFT(B);
-    assert(approxEqualArr(B, A));
+    inverseFFT!double(B);
+    assert(approxEqualArrBuiltin(B, A));
 }
 
 /// From a signal, output chunks of determined size, with optional overlap.
@@ -340,7 +354,7 @@ public:
         _segmenter.initialize(windowSize, analysisPeriod);
     }
 
-    bool feed(float x, Complex!T[] fftData) nothrow @nogc
+    bool feed(float x, BuiltinComplex!T[] fftData) nothrow @nogc
     {
         void processSegment(T[] segment) nothrow @nogc
         {
@@ -362,14 +376,14 @@ public:
                 int center = (_windowSize - 1) / 2; // position of center bin
                 int nLeft = _windowSize - center;
                 for (int i = 0; i < nLeft; ++i)
-                    fftData[i] = segment[center + i] * _window[center + i] * scaleFactor;
+                    fftData[i] = (segment[center + i] * _window[center + i] * scaleFactor) + 0i;
 
                 int nPadding = _fftSize - _windowSize;
                 for (int i = 0; i < nPadding; ++i)
-                    fftData[nLeft + i] = 0.0f;
+                    fftData[nLeft + i] = 0 + 0i;
 
                 for (int i = 0; i < center; ++i)
-                    fftData[nLeft + nPadding + i] = segment[i] * _window[i] * scaleFactor;
+                    fftData[nLeft + nPadding + i] = (segment[i] * _window[i] * scaleFactor) + 0i;
             }
             else
             {
@@ -383,11 +397,11 @@ public:
 
                 // fill FFT buffer and multiply by window
                 for (int i = 0; i < _windowSize; ++i)
-                    fftData[i] = segment[i] * _window[i] * scaleFactor;
+                    fftData[i] = (segment[i] * _window[i] * scaleFactor)+0i;
 
                 // zero-padding
                 for (int i = _windowSize; i < _fftSize; ++i)
-                    fftData[i] = 0.0f;
+                    fftData[i] = 0+0i;
             }
 
             // perform forward FFT on this slice
