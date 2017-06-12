@@ -35,11 +35,13 @@ void inverseFFT(T)(BuiltinComplex!T[] buffer) nothrow @nogc
     FFT_internal!(T, FFTDirection.REVERSE)(buffer);
 }
 
-private void FFT_internal(T, FFTDirection direction)(BuiltinComplex!T[] buffer) nothrow @nogc
+private void FFT_internal(T, FFTDirection direction)(BuiltinComplex!T[] buffer) pure nothrow @nogc
 {
     int size = cast(int)(buffer.length);
     assert(isPowerOfTwo(size));
     int m = iFloorLog2(size);
+
+    BuiltinComplex!T* pbuffer = buffer.ptr;
 
     // do the bit reversal
     int i2 = cast(int)size / 2;
@@ -48,9 +50,9 @@ private void FFT_internal(T, FFTDirection direction)(BuiltinComplex!T[] buffer) 
     {
         if (i < j)
         {
-            auto tmp = buffer[i];
-            buffer[i] = buffer[j];
-            buffer[j] = tmp;
+            auto tmp = pbuffer[i];
+            pbuffer[i] = pbuffer[j];
+            pbuffer[j] = tmp;
         }
 
         int k = i2;
@@ -76,9 +78,9 @@ private void FFT_internal(T, FFTDirection direction)(BuiltinComplex!T[] buffer) 
             while (i < size)
             {
                 int i1 = i + l1;
-                BuiltinComplex!T t1 = u * buffer[i1];
-                buffer[i1] = buffer[i] - t1;
-                buffer[i] += t1;
+                BuiltinComplex!T t1 = u * pbuffer[i1];
+                pbuffer[i1] = pbuffer[i] - t1;
+                pbuffer[i] += t1;
                 i += l2;
             }
             u = u * c;
@@ -97,7 +99,7 @@ private void FFT_internal(T, FFTDirection direction)(BuiltinComplex!T[] buffer) 
         T divider = 1 / cast(T)size;
         for (int i = 0; i < size; ++i)
         {
-            buffer[i] = buffer[i] * divider;
+            pbuffer[i] = pbuffer[i] * divider;
         }
     }
 }
@@ -319,9 +321,15 @@ private:
     SegmentDesc[] _desc;
 }
 
+//version = useRealFFT;
+
+version(useRealFFT)
+    import dplug.dsp.rfft;
+
 /// From a signal, output short term FFT data.
 /// Variable overlap.
 /// Introduces approximately windowSize/2 samples delay.
+/// Uses a real FFT to gain some speed.
 struct FFTAnalyzer(T)
 {
 public:
@@ -352,6 +360,29 @@ public:
         _scaleFactor *= cast(float)(analysisPeriod) / windowSize;
 
         _segmenter.initialize(windowSize, analysisPeriod);
+
+        version(useRealFFT)
+        {
+            _timeData.reallocBuffer(fftSize);
+            _rfft.initialize(fftSize);
+        }
+    }
+
+    ~this()
+    {
+        version(useRealFFT)
+        {
+            _timeData.reallocBuffer(0);
+        }
+    }
+
+    version(useRealFFT)
+    {
+        /// Gets the RFFT object which allows to perform efficient incverse FFT with the same pre-computed tables.
+        ref RFFT!T realFFT()
+        {
+            return _rfft;
+        }
     }
 
     bool feed(float x, BuiltinComplex!T[] fftData) nothrow @nogc
@@ -363,49 +394,99 @@ public:
 
             T scaleFactor = _scaleFactor;
 
-            if (_zeroPhaseWindowing)
+            version(useRealFFT)
             {
-                // "Zero Phase" windowing
-                // Through clever reordering, phase of ouput coefficients will relate to the
-                // center of the window
-                //_
-                // \_                   _/
-                //   \                 /
-                //    \               /
-                //     \_____________/____
-                int center = (_windowSize - 1) / 2; // position of center bin
-                int nLeft = _windowSize - center;
-                for (int i = 0; i < nLeft; ++i)
-                    fftData[i] = (segment[center + i] * _window[center + i] * scaleFactor) + 0i;
+                if (_zeroPhaseWindowing)
+                {
+                    // "Zero Phase" windowing
+                    // Through clever reordering, phase of ouput coefficients will relate to the
+                    // center of the window
+                    //_
+                    // \_                   _/
+                    //   \                 /
+                    //    \               /
+                    //     \_____________/____
+                    int center = (_windowSize - 1) / 2; // position of center bin
+                    int nLeft = _windowSize - center;
+                    for (int i = 0; i < nLeft; ++i)
+                        _timeData[i] = (segment[center + i] * _window[center + i] * scaleFactor);
 
-                int nPadding = _fftSize - _windowSize;
-                for (int i = 0; i < nPadding; ++i)
-                    fftData[nLeft + i] = 0 + 0i;
+                    int nPadding = _fftSize - _windowSize;
+                    for (int i = 0; i < nPadding; ++i)
+                        _timeData[nLeft + i] = 0;
 
-                for (int i = 0; i < center; ++i)
-                    fftData[nLeft + nPadding + i] = (segment[i] * _window[i] * scaleFactor) + 0i;
+                    for (int i = 0; i < center; ++i)
+                        _timeData[nLeft + nPadding + i] = (segment[i] * _window[i] * scaleFactor);
+                }
+                else
+                {
+                    // "Normal" windowing
+                    // Phase of output coefficient will relate to the start of the buffer
+                    //      _
+                    //    _/ \_
+                    //   /     \
+                    //  /       \
+                    //_/         \____________
+
+                    // fill FFT buffer and multiply by window
+                    for (int i = 0; i < _windowSize; ++i)
+                        _timeData[i] = (segment[i] * _window[i] * scaleFactor);
+
+                    // zero-padding
+                    for (int i = _windowSize; i < _fftSize; ++i)
+                        _timeData[i] = 0;
+                }
             }
             else
             {
-                // "Normal" windowing
-                // Phase of output coefficient will relate to the start of the buffer
-                //      _
-                //    _/ \_
-                //   /     \
-                //  /       \
-                //_/         \____________
 
-                // fill FFT buffer and multiply by window
-                for (int i = 0; i < _windowSize; ++i)
-                    fftData[i] = (segment[i] * _window[i] * scaleFactor)+0i;
+                if (_zeroPhaseWindowing)
+                {
+                    // "Zero Phase" windowing
+                    // Through clever reordering, phase of ouput coefficients will relate to the
+                    // center of the window
+                    //_
+                    // \_                   _/
+                    //   \                 /
+                    //    \               /
+                    //     \_____________/____
+                    int center = (_windowSize - 1) / 2; // position of center bin
+                    int nLeft = _windowSize - center;
+                    for (int i = 0; i < nLeft; ++i)
+                        fftData[i] = (segment[center + i] * _window[center + i] * scaleFactor)+0i;
 
-                // zero-padding
-                for (int i = _windowSize; i < _fftSize; ++i)
-                    fftData[i] = 0+0i;
+                    int nPadding = _fftSize - _windowSize;
+                    for (int i = 0; i < nPadding; ++i)
+                        fftData[nLeft + i] = 0+0i;
+
+                    for (int i = 0; i < center; ++i)
+                        fftData[nLeft + nPadding + i] = (segment[i] * _window[i] * scaleFactor)+0i;
+                }
+                else
+                {
+                    // "Normal" windowing
+                    // Phase of output coefficient will relate to the start of the buffer
+                    //      _
+                    //    _/ \_
+                    //   /     \
+                    //  /       \
+                    //_/         \____________
+
+                    // fill FFT buffer and multiply by window
+                    for (int i = 0; i < _windowSize; ++i)
+                        fftData[i] = (segment[i] * _window[i] * scaleFactor)+0i;
+
+                    // zero-padding
+                    for (int i = _windowSize; i < _fftSize; ++i)
+                        fftData[i] = 0+0i;
+                }
             }
 
             // perform forward FFT on this slice
-            forwardFFT!T(fftData[0.._fftSize]);
+            version(useRealFFT)
+                _rfft.forwardTransform(_timeData[], fftData[0.._fftSize/2+1]);
+            else
+                forwardFFT!T(fftData[0.._fftSize]);
         }
 
         return _segmenter.feed(x, &processSegment);
@@ -420,6 +501,12 @@ private:
     int _windowSize;     // in samples
 
     T _scaleFactor; // account to the shape of the windowing function
+
+    version(useRealFFT)
+    {
+        RFFT!T _rfft;
+        T[] _timeData;
+    }
 }
 
 unittest
