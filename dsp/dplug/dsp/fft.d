@@ -321,7 +321,7 @@ private:
     SegmentDesc[] _desc;
 }
 
-//version = useRealFFT;
+version = useRealFFT;
 
 version(useRealFFT)
     import dplug.dsp.rfft;
