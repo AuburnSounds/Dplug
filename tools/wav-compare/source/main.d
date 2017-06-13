@@ -65,31 +65,36 @@ int main(string[] args)
         if (soundA.samples.length != soundB.samples.length)
             throw new Exception(format("%s and %s have different length", fileA, fileB));
 
+        // Normalize both sounds by the same amount
+        // However we don't apply this factor yet to avoid introducing noise.
+        real nFactor = (normalizeFactor(soundA) + normalizeFactor(soundB) ) * 0.5f;
+
+
         int N = cast(int)(soundA.samples.length);
 
         // No need to deinterleave stereo, since the peak difference is what interest us
-        double[] difference = new double[N];
+        real[] difference = new real[N];
 
         for (int i = 0; i < N; ++i)
         {
-            difference[i] = abs(soundA.samples[i] - soundB.samples[i]);
+            difference[i] = nFactor * abs(cast(real)soundA.samples[i] - soundB.samples[i]);
         }
 
-        double maxPeakDifference = reduce!max(difference);//!("a > b")(difference).front;
+        real maxPeakDifference = reduce!max(difference);//!("a > b")(difference).front;
 
-        double rms = 0;
+        real rms = 0;
         for (int i = 0; i < N; ++i)
-            rms +=  difference[i] *  difference[i];
+            rms +=  difference[i] * difference[i];
         rms = sqrt(rms / N);
 
-        double peakdB = floatToDeciBel(maxPeakDifference);
-        double rmsdB = floatToDeciBel(rms);
+        real peakdB = floatToDeciBel(maxPeakDifference);
+        real rmsdB = floatToDeciBel(rms);
 
         writeln;
         writefln(" Comparing %s vs %s", fileA, fileB);
         writefln(" => peak dB difference = %s dB", peakdB);
         writefln(" => RMS dB difference  = %s dB", rmsdB);
-        if (peakdB == -double.infinity)
+        if (peakdB == -real.infinity)
             writeln("    These sounds are identical.");
         writeln;
         return 0;
@@ -103,4 +108,16 @@ int main(string[] args)
         writeln;
         return 1;
     }
+}
+
+real normalizeFactor(Sound s)
+{
+    int N = cast(int)(s.samples.length);
+
+    // Compute RMS
+    real rms = 0;
+    for (int i = 0; i < N; ++i)
+        rms += (cast(real)s.samples[i]) * s.samples[i];
+    rms = sqrt(rms / N);
+    return 1.0f / (rms + 1e-10f);
 }
