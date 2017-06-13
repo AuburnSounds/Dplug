@@ -270,20 +270,26 @@ nothrow:
     void startSegment(float[] newSegment, int delay = 0)
     {
         assert(newSegment.length <= _maxSegmentLength);
+        int i = allocSegmentSlot();
+        int len = cast(int)(newSegment.length);
+        _desc[i].playOffset = -delay;
+        _desc[i].length = len;
+        _desc[i].buffer[0..len] = newSegment[]; // copy segment
+    }
 
-        for (int i = 0; i < _maxSimultSegments; ++i)
-        {
-            if (!_desc[i].active())
-            {
-                int len = cast(int)(newSegment.length);
-                _desc[i].playOffset = -delay;
-                _desc[i].length = len;
-                _desc[i].buffer[0..len] = newSegment[]; // copy segment
-                return;
-            }
-        }
+    // Same, but with the input being split into two slices A ~ B. This is a common case
+    // when summing zero-phase windows in STFT analysis.
+    void startSegmentSplitted(float[] segmentA, float[] segmentB, int delay = 0)
+    {
+        int i = allocSegmentSlot();
+        int lenA = cast(int)(segmentA.length);
+        int lenB = cast(int)(segmentB.length);
+        assert(lenA + lenB <= _maxSegmentLength);
 
-        assert(false); // maxSimultSegments too small, or usage error
+        _desc[i].playOffset = -delay;
+        _desc[i].length = lenA + lenB;
+        _desc[i].buffer[0..lenA] = segmentA[];         // copy segment part A
+        _desc[i].buffer[lenA..lenA+lenB] = segmentB[]; // copy segment part B
     }
 
     // Get next sample, update segment statuses.
@@ -319,6 +325,14 @@ private:
     int _maxSimultSegments;
     int _maxSegmentLength;
     SegmentDesc[] _desc;
+
+    int allocSegmentSlot()
+    {
+        for (int i = 0; i < _maxSimultSegments; ++i)
+            if (!_desc[i].active())
+                return i;
+        assert(false); // maxSimultSegments too small, or usage error
+    }
 }
 
 version = useRealFFT;
