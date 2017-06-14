@@ -9,7 +9,7 @@ import std.algorithm.comparison;
 import std.math;
 
 import dplug.core.math;
-import dplug.dsp.delayline;
+import dplug.core.ringbuf;
 import dplug.core.nogc;
 import dplug.core.alignedbuffer;
 
@@ -354,14 +354,14 @@ public:
     /// Initialize mean filter with given number of samples.
     void initialize(T initialValue, int samples) nothrow @nogc
     {
-        _delay.initialize(samples);
+        _delay = RingBufferNoGC!T(samples);
 
         _invNFactor = cast(T)1 / samples;
 
-        foreach(i; 0..samples)
-            _delay.feedSample(initialValue);
+        while(!_delay.isFull())
+            _delay.pushBack(initialValue);
 
-        _sum = samples * initialValue;
+        _sum = _delay.length * initialValue;
     }
 
     /// Initialize with with cutoff frequency and samplerate.
@@ -379,7 +379,8 @@ public:
     T nextSample(T x) nothrow @nogc
     {
         _sum = _sum + x;
-        _sum = _sum - _delay.nextSample(x);
+        _sum = _sum - _delay.popFront();
+        _delay.pushBack(x);
         return _sum * _invNFactor;
     }
 
@@ -390,7 +391,7 @@ public:
     }
 
 private:
-    Delayline!T _delay;
+    RingBufferNoGC!T _delay;
     double _sum; // should be approximately the sum of samples in delay
     T _invNFactor;
     T _factor;
