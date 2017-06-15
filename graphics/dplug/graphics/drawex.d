@@ -65,9 +65,15 @@ void aaFillSector(V, COLOR)(auto ref V v, float x, float y, float r0, float r1, 
     float r0s = std.algorithm.max(0, r0 - 1) ^^ 2;
     float r1s = (r1 + 1) * (r1 + 1);
 
-
     if (a0 > a1)
         a1 += 2 * PI;
+
+    if (a0 < -PI || a1 < -PI)
+    {
+        // else atan2 will never produce angles below PI
+        a0 += 2 * PI;
+        a1 += 2 * PI;
+    }
 
     int xmin = x0;
     int xmax = x1+1;
