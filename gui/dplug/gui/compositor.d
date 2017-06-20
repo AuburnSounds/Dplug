@@ -484,22 +484,20 @@ nothrow @nogc:
 
         // Look-up table for color-correction and ordering of output
         {
-            ubyte* red = _redTransferTable;
-            ubyte* green = _greenTransferTable;
-            ubyte* blue = _blueTransferTable;
+            ubyte* rgbTable = _redTransferTable;
 
             final switch (pf) with (WindowPixelFormat)
             {
                 case ARGB8:
-                    applyColorCorrectionARGB8(wfb, area, red, green, blue);
+                    applyColorCorrectionARGB8(wfb, area, rgbTable);
                     break;
 
                 case BGRA8:
-                    applyColorCorrectionBGRA8(wfb, area, red, green, blue);
+                    applyColorCorrectionBGRA8(wfb, area, rgbTable);
                     break;
 
                 case RGBA8: 
-                    applyColorCorrectionRGBA8(wfb, area, red, green, blue);
+                    applyColorCorrectionRGBA8(wfb, area, rgbTable);
                     break;
             }
         }
@@ -568,44 +566,59 @@ float fastlog2(float val) pure nothrow @nogc
 }
 
 // Apply color correction and convert RGBA8 to ARGB8
-void applyColorCorrectionARGB8(ImageRef!RGBA wfb, box2i area, ubyte* red, ubyte* green, ubyte* blue) nothrow @nogc
+void applyColorCorrectionARGB8(ImageRef!RGBA wfb, const(box2i) area, const(ubyte*) rgbTable) pure nothrow @nogc
 {
     for (int j = area.min.y; j < area.max.y; ++j)
     {
-        RGBA* wfb_scan = wfb.scanline(j).ptr;
+        ubyte* wfb_scan = cast(ubyte*)wfb.scanline(j).ptr;
         for (int i = area.min.x; i < area.max.x; ++i)
         {
-            immutable RGBA color = wfb_scan[i];
-            wfb_scan[i] = RGBA(255, red[color.r], green[color.g], blue[color.b]);
+            ubyte r = wfb_scan[4*i];
+            ubyte g = wfb_scan[4*i+1];
+            ubyte b = wfb_scan[4*i+2];
+            wfb_scan[4*i] = 255;
+            wfb_scan[4*i+1] = rgbTable[r];
+            wfb_scan[4*i+2] = rgbTable[g+256];
+            wfb_scan[4*i+3] = rgbTable[b+512];
         }
     }
 }
 
 // Apply color correction and convert RGBA8 to BGRA8
-void applyColorCorrectionBGRA8(ImageRef!RGBA wfb, box2i area, ubyte* red, ubyte* green, ubyte* blue) nothrow @nogc
+void applyColorCorrectionBGRA8(ImageRef!RGBA wfb, const(box2i) area, const(ubyte*) rgbTable) pure nothrow @nogc
 {
     int width = area.width();
     for (int j = area.min.y; j < area.max.y; ++j)
     {
-        RGBA* wfb_scan = wfb.scanline(j).ptr;
+        ubyte* wfb_scan = cast(ubyte*)wfb.scanline(j).ptr;
         for (int i = area.min.x; i < area.max.x; ++i)
         {
-            immutable RGBA color = wfb_scan[i];
-            wfb_scan[i] = RGBA(blue[color.b], green[color.g], red[color.r], 255);
+            ubyte r = wfb_scan[4*i];
+            ubyte g = wfb_scan[4*i+1];
+            ubyte b = wfb_scan[4*i+2];
+            wfb_scan[4*i] = rgbTable[b+512];
+            wfb_scan[4*i+1] = rgbTable[g+256];
+            wfb_scan[4*i+2] = rgbTable[r];
+            wfb_scan[4*i+3] = 255;
         }
     }
 }
 
 // Apply color correction and do nothing about color order
-void applyColorCorrectionRGBA8(ImageRef!RGBA wfb, box2i area, ubyte* red, ubyte* green, ubyte* blue) nothrow @nogc
+void applyColorCorrectionRGBA8(ImageRef!RGBA wfb, const(box2i) area, const(ubyte*) rgbTable) pure nothrow @nogc
 {
     for (int j = area.min.y; j < area.max.y; ++j)
     {
-        RGBA* wfb_scan = wfb.scanline(j).ptr;
+        ubyte* wfb_scan = cast(ubyte*)wfb.scanline(j).ptr;
         for (int i = area.min.x; i < area.max.x; ++i)
         {
-            immutable RGBA color = wfb_scan[i];
-            wfb_scan[i] = RGBA(red[color.r], green[color.g], blue[color.b], 255);
+            ubyte r = wfb_scan[4*i];
+            ubyte g = wfb_scan[4*i+1];
+            ubyte b = wfb_scan[4*i+2];
+            wfb_scan[4*i] = rgbTable[r];
+            wfb_scan[4*i+1] = rgbTable[g+256];
+            wfb_scan[4*i+2] = rgbTable[b+512];
+            wfb_scan[4*i+3] = 255;
         }
     }
 }
