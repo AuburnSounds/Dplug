@@ -208,8 +208,8 @@ nothrow @nogc:
                 }
             }
 
-            RGBA* materialScan = materialMap.levels[0].scanline(j).ptr;
-            RGBA* diffuseScan = diffuseMap.levels[0].scanline(j).ptr;
+            const(RGBA)* materialScan = materialMap.levels[0].scanline(j).ptr;
+            const(RGBA)* diffuseScan = diffuseMap.levels[0].scanline(j).ptr;
 
             for (int i = area.min.x; i < area.max.x; ++i)
             {
@@ -218,7 +218,14 @@ nothrow @nogc:
                 // Bypass PBR if Physical == 0
                 if (materialHere.a == 0)
                 {
-                    wfb_scan[i] = diffuseScan[i];
+                    // Note: the 0% physical areas are rectangular shapes, 
+                    // so it's very likely that the next pixel is also 0% physical.
+                    // So let's batch this copy.
+                    int maxCopy = area.max.x - i;
+                    i += copyNonPhysical(materialScan + i, diffuseScan + i, wfb_scan + i, maxCopy) - 1;
+
+                    // Former
+                    //wfb_scan[i] = diffuseScan[i];
                 }
                 else
                 {
@@ -601,4 +608,87 @@ void applyColorCorrectionRGBA8(ImageRef!RGBA wfb, box2i area, ubyte* red, ubyte*
             wfb_scan[i] = RGBA(red[color.r], green[color.g], blue[color.b], 255);
         }
     }
+}
+
+// Copy up to maxCopy color from diffuse_scan into wfb_scan, while the corresponding materialScan.a is 0
+int copyNonPhysical(const(RGBA)* materialScan, const(RGBA)* diffuseScan, RGBA* wfb_scan, int maxCopy) pure nothrow @nogc
+{
+    assert(maxCopy >= 1);
+    int count = 1; // since materialScan[0].a == 0
+
+    version(D_InlineAsm_X86)
+    {
+        // try to count 16 pixels at once
+        while(count+15 < maxCopy)
+        {
+            int mask;
+            asm pure nothrow @nogc
+            {
+                mov ESI, materialScan;
+                mov EAX, count;
+                movupd XMM0, [ESI+EAX*4];
+                movupd XMM1, [ESI+16+EAX*4];
+                movupd XMM2, [ESI+32+EAX*4];
+                movupd XMM3, [ESI+48+EAX*4];
+                por XMM0, XMM1;
+                por XMM2, XMM3;
+                pxor XMM3, XMM3; // XMM3 <- zero
+                por XMM0, XMM2;  // (XMM0 | XMM1 | XMM2 | XMM3).a should be zero
+                psrld XMM0, 24;
+                packusdw XMM0, XMM3;
+                packuswb XMM0, XMM3; // lowest 32-bit should be 4 byte values, that will test against zero
+                movd mask, XMM0;
+            }
+
+            if (mask == 0) // all 16 pixels were 0% physical, add 16 to count
+            {
+                count += 16;
+            }
+            else
+                break;
+        }
+    }
+    else version(D_InlineAsm_X86_64)
+    {
+        // try to count 16 pixels at once
+        while(count+15 < maxCopy)
+        {
+            int mask;
+            asm pure nothrow @nogc
+            {
+                mov RSI, materialScan;
+                mov EAX, count;
+                movupd XMM0, [RSI+RAX*4];
+                movupd XMM1, [RSI+16+RAX*4];
+                movupd XMM2, [RSI+32+RAX*4];
+                movupd XMM3, [RSI+48+RAX*4];
+                por XMM0, XMM1;
+                por XMM2, XMM3;
+                pxor XMM3, XMM3; // XMM3 <- zero
+                por XMM0, XMM2;  // (XMM0 | XMM1 | XMM2 | XMM3).a should be zero
+                psrld XMM0, 24;
+                packusdw XMM0, XMM3;
+                packuswb XMM0, XMM3; // lowest 32-bit should be 4 byte values, that will test against zero
+                movd mask, XMM0;
+            }
+
+            if (mask == 0) // all 16 pixels were 0% physical, add 16 to count
+            {
+                count += 16;
+            }
+            else
+                break;
+        }
+    }
+
+    // Found the number of 0% physical pixels.
+    while (count < maxCopy && materialScan[count].a == 0)
+    {
+        count++;
+    }
+
+    assert(count <= maxCopy);
+
+    wfb_scan[0..count] = diffuseScan[0..count];
+    return count;
 }
