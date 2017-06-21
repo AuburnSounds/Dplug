@@ -45,7 +45,7 @@ public:
         T diff = target - _current;
         if (diff != 0)
         {
-            if (abs(diff) < 1e-10f) // to avoid subnormal, and excess churn
+            if (fast_fabs(diff) < 1e-10f) // to avoid subnormal, and excess churn
             {
                 _current = target;
             }
@@ -126,7 +126,7 @@ public:
         T diff = target - _current;
         if (diff != 0)
         {
-            if (abs(diff) < 1e-10f) // to avoid subnormal, and excess churn
+            if (fast_fabs(diff) < 1e-10f) // to avoid subnormal, and excess churn
             {
                 _current = target;
             }

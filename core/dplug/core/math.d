@@ -238,99 +238,50 @@ else version(D_InlineAsm_X86_64)
 else
     private enum D_InlineAsm_Any = false;
 
-// These functions trade correctness for speed
-// The contract is that they don't check for infinity or NaN
-// and assume small finite numbers instead.
-// Don't rely on them being correct for your situation: test them.
+// Expose LDC intrinsics, but usable with DMD too.
 
-///
-T fast_pow(T)(T val, T power)
+version(LDC)
 {
-    version(LDC)
-        return llvm_pow(val, power);
-    else
-        return pow(val, power);
+    // Note: function wouldn't work (depending on inlining), 
+    // it's much more reliable to use alias
+
+    alias fast_exp = llvm_exp;
+    alias fast_log = llvm_log;
+    alias fast_pow = llvm_pow;
+
+    alias fast_fabs = llvm_fabs;
+    alias fast_log2 = llvm_log2;
+    alias fast_êxp2 = llvm_exp2;
+    alias fast_log10 = llvm_log10;
+
+    alias fast_floor = llvm_floor;
+    alias fast_ceil = llvm_ceil;
+    alias fast_trunc = llvm_trunc;
+    alias fast_round = llvm_round;
+
+    alias fast_sqrt = llvm_sqrt;
+    alias fast_sin = llvm_sin;
+    alias fast_cos = llvm_cos;
 }
-
-///
-T fast_exp(T)(T val, T)
+else
 {
-    version(LDC)
-        return llvm_exp(val);
-    else
-        return exp(val);
-}
+    alias fast_exp = exp;
+    alias fast_log = log;
+    alias fast_pow = pow;
 
-///
-T fast_log(T)(T val)
-{
-    version(LDC)
-        return llvm_log(val);
-    else
-        return log(val);
-}
+    alias fast_fabs = fabs;
+    alias fast_log2 = log2;
+    alias fast_êxp2 = exp2;
+    alias fast_log10 = log10;
 
-///
-T fast_floor(T)(T val)
-{
-    version(LDC)
-        return llvm_floor(val);
-    else
-        return log(val);
-}
+    alias fast_floor = floor;
+    alias fast_ceil = ceil;
+    alias fast_trunc = trunc;
+    alias fast_round = round;
 
-///
-T fast_ceil(T)(T val)
-{
-    version(LDC)
-        return llvm_ceil(val);
-    else
-        return ceil(val);
-}
-
-///
-T fast_trunc(T)(T val)
-{
-    version(LDC)
-        return llvm_trunc(val);
-    else
-        return trunc(val);
-}
-
-///
-T fast_round(T)(T val)
-{
-    version(LDC)
-        return llvm_round(val);
-    else
-        return round(val);
-}
-
-///
-T fast_exp2(T)(T val)
-{
-    version(LDC)
-        return llvm_exp2(val);
-    else
-        return exp2(val);
-}
-
-///
-T fast_log10(T)(T val)
-{
-    version(LDC)
-        return llvm_log10(val);
-    else
-        return log10(val);
-}
-
-///
-T fast_log2(T)(T val)
-{
-    version(LDC)
-        return llvm_log2(val);
-    else
-        return log2(val);
+    alias fast_sqrt = sqrt; // Undefined behaviour for operands below -0
+    alias fast_sin = sin;
+    alias fast_cos = cos;
 }
 
 /// Linear interpolation, akin to GLSL's mix.
