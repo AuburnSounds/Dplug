@@ -86,12 +86,13 @@ OS X 10.7+.
 
 - What D compiler can possibly be used?
 
-   See `.travis.yml` for supported compilers. The latest DMD or LDC should do. However, it is recommended that you use LDC-1.0.0-b2 for final binaries as no other LDc version has been as well tested with Dplug.
+   See `.travis.yml` for supported compilers. The latest DMD or LDC should do. However, it is recommended that you use LDC-1.0.0-b2 for final binaries as no other LDC version has been as well tested with Dplug.
 
 - Is Dplug stable?
 
-The interface tend to change a bit for improvements. Starting with v4 we'll issue major version tag for breaking changes, but SemVer isn't always followed.
-
+Starting with v4 we'll issue major or minor version tag for breaking changes.
+If you don't want breaking change, you can pin Dplug to a specific version in your `dub.json`.
+Breaking commits are marked with BREAKING in the commit backlog.
 
 - How are `TODO`, `FUTURE` and `MAYDO` comments defined?
 
@@ -113,7 +114,7 @@ Pros:
     eg: `dub generate visuald` or `dub generate sublimetext`
   - No need to make Info.plist files, they are generated instead.
   - No need to use Xcode whatsoever.
-  - No need to use a MacOSX SDK.
+  - No need to use a macOS SDK.
   - Easy to install: DUB will download the library itself when building, a <= 2mb archive.  
   - 10x less lines of code than the next larger alternative.
 
@@ -201,7 +202,6 @@ Other source files fall under the Boost 1.0 license.
 ### Examples
    * `examples/distort`: mandatory distortion plugin
    * `examples/ms-encode`: simplest plugin for tutorial purpose
-   * `examples/time_stretch`: resampling x2 through FFT zero-padding
 
 ### Tools
    * `tools/pbr-sketch`: playground for creating plugin background textures
