@@ -247,7 +247,7 @@ nothrow:
         _desc.reallocBuffer(maxSimultSegments);
         for (int i = 0; i < _maxSimultSegments; ++i)
         {
-            _desc[i].playOffset = 0;
+            _desc[i].playOffset = 0; // initially inactive
             _desc[i].length = 0;
             _desc[i].buffer = null;
             _desc[i].buffer.reallocBuffer(maxSegmentLength);
@@ -292,8 +292,6 @@ nothrow:
         _desc[i].buffer[lenA..lenA+lenB] = segmentB[]; // copy segment part B
     }
 
-    // Get next sample, update segment statuses.
-    deprecated("Use nextSample instead") alias next = nextSample;
     float nextSample()
     {
         float sum = 0;
@@ -301,12 +299,53 @@ nothrow:
         {
             if (desc.playOffset < desc.length)
             {
-                if (desc.playOffset > 0)
+                if (desc.playOffset >= 0)
                     sum += desc.buffer[desc.playOffset];
                 desc.playOffset += 1;
             }
         }
         return sum;
+    }
+
+    void nextBuffer(float* outAudio, int frames)
+    {
+        outAudio[0..frames] = 0;
+
+        // Add each pending segment
+        foreach(ref desc; _desc)
+        {
+            const int offset = desc.playOffset;
+            const int len = desc.length;
+            if (offset < len)
+            {
+                // Compute relative time event for the segment
+                int startOfSegment = -offset;
+                int endOfSegment = startOfSegment + len;
+
+                // Compute the area in 0..frames we can playback the segment
+                int startOfSumming = startOfSegment;
+                if (startOfSumming < 0)
+                    startOfSumming = 0;
+                if (startOfSumming >= frames)
+                    startOfSumming = frames;
+                int endOfSumming = endOfSegment;
+                if (endOfSumming >= frames)
+                    endOfSumming = frames;
+
+                int count = endOfSumming - startOfSumming;
+                assert(count >= 0);
+                
+                const(float)* segmentData = desc.buffer.ptr + offset;
+
+                // PERF: this can be optimized further
+                for (int i = startOfSumming; i < endOfSumming; ++i) 
+                {
+                    outAudio[i] += segmentData[i];
+                }
+                desc.playOffset = offset + frames;
+            }
+            // else disabled segment
+        }
     }
 
 private:
