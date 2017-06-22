@@ -19,8 +19,6 @@ script:
   - cd examples/distort; dub -a x86 --compiler=${DC}; cd ../..
   - cd examples/ms-encode; dub --compiler=${DC}; cd ../..
   - cd examples/ms-encode; dub -a x86 --compiler=${DC}; cd ../..
-  - cd examples/time-stretch; dub --compiler=${DC}; cd ../..
-  - cd examples/time-stretch; dub -a x86 --compiler=${DC}; cd ../..
   - cd tools/pbr-sketch; dub --compiler=${DC}; cd ../..
   - cd tools/pbr-sketch; dub -a x86 --compiler=${DC}; cd ../..
   - cd tools/release; dub --compiler=${DC}; cd ../..
