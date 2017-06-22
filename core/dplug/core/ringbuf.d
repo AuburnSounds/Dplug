@@ -234,11 +234,11 @@ public:
         pushData( (&input)[0..1], sampleRate);
     }
 
-    // Get some amount of oldest samples in the FIFO
-    // The drop some amount of samples that correspond to time passing of dt
-    // Returns: the number of sample data returned. Also return no data if tryLock failed to take the lock.
-    // Note that there is a disconnect between the data that is dropped, and the data that is returned.
-    // The same data may well be returned multiple time given a large buffer, or zero time.
+    /// Get some amount of oldest samples in the FIFO
+    /// The drop some amount of samples that correspond to time passing of dt
+    /// Returns: the number of sample data returned. Also return no data if tryLock failed to take the lock.
+    /// Note that there is a disconnect between the data that is dropped, and the data that is returned.
+    /// The same data may well be returned multiple time given a large buffer, or zero time.
     int readOldestDataAndDropSome(T[] output, double dt, int keepAtLeast = 0) nothrow @nogc
     {
         assert(dt >= 0);
@@ -250,6 +250,15 @@ public:
             int pointsNeeded = cast(int)(output.length);
 
             int pointsAvailable = ( (_count < pointsNeeded) ? _count : pointsNeeded);
+
+            // Purpose: always drop data albeit slowly.
+            // In case of CPU overrun in Reaper, playback is stopped.
+            // To avoid display of the same information, we force keepAtLeast 
+            // to be always smaller than pointsAvailable.
+            if (keepAtLeast >= pointsAvailable && pointsAvailable > 0)
+            {
+                keepAtLeast = pointsAvailable - 1;
+            }
 
             bool noData = (pointsAvailable == 0);
 
