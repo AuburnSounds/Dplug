@@ -38,7 +38,8 @@
             "importPaths": [ "dsp" ],
             "dependencies": {
                 "dplug:core": "*",
-                "gfm:math": "~>6.0"
+                "gfm:math": "~>6.0",
+                "pfft": "~>0.0"
             }
         },
         {
