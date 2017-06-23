@@ -45,6 +45,7 @@ void* alignedMalloc(size_t size, size_t alignment) nothrow @nogc
 void alignedFree(void* aligned, size_t alignment) nothrow @nogc
 {
     assert(alignment != 0);
+    assert(isPointerAligned(aligned, alignment));
 
     // Short-cut and use the C allocator to avoid overhead if no alignment
     if (alignment == 1)
@@ -63,6 +64,8 @@ void alignedFree(void* aligned, size_t alignment) nothrow @nogc
 /// Do not mix allocations with different alignment.
 @nogc void* alignedRealloc(void* aligned, size_t size, size_t alignment) nothrow
 {
+    assert(isPointerAligned(aligned, alignment));
+
     // If you fail here, it can mean you've used an uninitialized AlignedBuffer.
     assert(alignment != 0);
 
@@ -103,7 +106,15 @@ void alignedFree(void* aligned, size_t alignment) nothrow @nogc
 
     // Free previous data
     alignedFree(aligned, alignment);
+    isPointerAligned(newAligned, alignment);
     return newAligned;
+}
+
+/// Returns: `true` if the pointer is suitably aligned.
+bool isPointerAligned(void* p, size_t alignment) pure nothrow @nogc
+{
+    assert(alignment != 0);
+    return ( cast(size_t)p & (alignment - 1) ) == 0;
 }
 
 private
@@ -132,6 +143,7 @@ private
         *rawLocation = raw;
         size_t* sizeLocation = cast(size_t*)(cast(char*)aligned - 2 * pointerSize);
         *sizeLocation = size;
+        assert( isPointerAligned(aligned, alignment) );
         return aligned;
     }
 
