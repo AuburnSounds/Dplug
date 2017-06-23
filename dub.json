@@ -39,7 +39,7 @@
             "dependencies": {
                 "dplug:core": "*",
                 "gfm:math": "~>6.0",
-                "pfft": "~>0.0"
+                "pfft": "~>1.0"
             }
         },
         {
