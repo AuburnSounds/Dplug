@@ -183,7 +183,7 @@ Other source files fall under the Boost 1.0 license.
 
 ### dplug:dsp
   * Basic support for audio processing:
-    - FFT and windowing functions (STFT with overlap and zero-phase windowing)
+    - Real and Complex FFT, windowing functions (STFT with overlap and zero-phase windowing)
     - FIR, 1st order IIR filters and RBJ biquads
     - mipmapped wavetables for antialiased oscillators
     - noise generation including white/pink/demo noise

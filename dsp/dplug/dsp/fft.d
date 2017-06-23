@@ -13,6 +13,7 @@ import dplug.dsp.window;
 import dplug.core.math;
 import dplug.core.complex;
 import dplug.core.alignedbuffer;
+import pfft.pfft;
 
 
 enum FFTDirection
@@ -35,6 +36,7 @@ void inverseFFT(T)(BuiltinComplex!T[] buffer) nothrow @nogc
     FFT_internal!(T, FFTDirection.REVERSE)(buffer);
 }
 
+// PERF: use pfft instead would be much faster
 private void FFT_internal(T, FFTDirection direction)(BuiltinComplex!T[] buffer) pure nothrow @nogc
 {
     int size = cast(int)(buffer.length);
@@ -376,9 +378,6 @@ private:
 
 version = useRealFFT;
 
-version(useRealFFT)
-    import dplug.dsp.rfft;
-
 /// From a signal, output short term FFT data.
 /// Variable overlap.
 /// Introduces approximately windowSize/2 samples delay.
@@ -629,4 +628,95 @@ float convertFFTBinToNormalizedFrequency(float fftBin, int fftSize) nothrow @nog
 float convertFFTBinToNormalizedFrequencyInv(float fftBin, float invFFTSize) nothrow @nogc
 {
     return fftBin * invFFTSize;
+}
+
+/// Perform a FFT from a real signal, saves up CPU.
+struct RFFT(T)
+{
+public:
+nothrow:
+@nogc:
+
+    void initialize(int length)
+    {
+        _length = length;
+        _internal.initialize(length);  
+        _alignment = cast(int)_internal.alignment(length);
+
+        _buffer.reallocBuffer(length, _alignment);
+    }
+
+    ~this()
+    {
+        if (_buffer != null)
+            _buffer.reallocBuffer(0, _alignment);
+    }
+
+    @disable this(this);
+ 
+    void forwardTransform(const(T)[] timeData, BuiltinComplex!T[] outputBins)
+    {
+        _buffer[] = timeData[];
+   
+        // Perform real FFT
+        _internal.rfft(_buffer);
+
+        //_buffer[]  =0;
+        // At this point, f contains:
+        //    f destination array (frequency bins)
+        //    f[0...length(x)/2] = real values,
+        //    f[length(x)/2+1...length(x)-1] = imaginary values of coefficents 1...length(x)/2-1.
+        // So we have to reshuffle them to have nice complex bins.
+        int mid = _length/2;
+        outputBins[0] = _buffer[0] + 0i;
+        for(int i = 1; i < mid; ++i)
+            outputBins[i] = _buffer[i] + 1i * _buffer[mid+i];
+        outputBins[mid] = _buffer[mid] + 0i; // for length 1, this still works
+    }
+
+    /**
+    * Compute the inverse FFT of the array. Perform post-scaling.
+    *
+    * Params:
+    *    inputBins Source arrays (N/2 + 1 frequency bins)    
+    *    timeData Destination array (N time samples).
+    *
+    * Note: 
+    *    This transform has the benefit you don't have to conjugate the "mirrored" part of the FFT.
+    *    Excess data in imaginary part of DC and Nyquist bins are ignored.
+    */
+    void reverseTransform(BuiltinComplex!T[] inputBins, T[] timeData) 
+    {
+        // On inverse transform, scale down result
+        T invMultiplier = cast(T)1 / _length;
+
+        // Shuffle input frequency bins, and scale down.
+        int mid = _length/2;
+        for(int i = 0; i <= mid; ++i)
+            _buffer[i] = inputBins[i].re * invMultiplier;
+        for(int i = mid+1; i < _length; ++i)
+            _buffer[i] = inputBins[i-mid].im * invMultiplier;
+
+        // At this point, the format in f is:
+        //          f [0...length(x)/2] = real values
+        //          f [length(x)/2+1...length(x)-1] = negative imaginary values of coefficents 1...length(x)/2-1.
+        // Which is suitable for the RealFFT algorithm.
+        _internal.irfft(_buffer);
+
+        // Perf: use scaling from pfft
+        timeData[] = _buffer[];
+    }
+
+private:
+    // Required alignment for RFFT buffers.
+    int _alignment;
+
+    // pfft object
+    Rfft!T _internal;
+
+    // length of FFT
+    int _length;
+
+    // temporary buffer since pfft is in-place
+    T[] _buffer;
 }

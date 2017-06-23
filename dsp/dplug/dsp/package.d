@@ -15,6 +15,5 @@ public
            dplug.dsp.envelope,
            dplug.dsp.wavetable,
            dplug.dsp.fft,
-           dplug.dsp.rfft,
            dplug.dsp.delayline;
 }
