@@ -88,6 +88,14 @@ OS X 10.7+.
 
    See `.travis.yml` for supported compilers. The latest DMD or LDC should do. However, it is recommended that you use LDC-1.0.0-b2 for final binaries as no other LDC version has been as well tested with Dplug.
 
+   When using LDC 1.1 or later, it is currently unknown if OS X 10.7 is properly supported.
+
+- What D compilers are recommended?
+
+   See `.travis.yml` for supported compilers. The latest DMD or LDC should do. However, it is recommended that you use LDC-1.0.0-b2 for final binaries as no other LDC version has been as well tested with Dplug.
+
+   When using LDC 1.1 or later, it is currently unknown if OS X 10.7 is properly supported.
+
 - Is Dplug stable?
 
 Starting with v4 we'll issue major or minor version tag for breaking changes.
