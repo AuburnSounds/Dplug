@@ -112,16 +112,14 @@ int iFloorLog2(int i) pure nothrow @nogc
     return result;
 }
 
-/// Mapping from MIDI notes to frequency
-deprecated("use convertMIDINoteToFrequency instead") alias MIDIToFrequency = convertMIDINoteToFrequency;
-T convertMIDINoteToFrequency(T)(T note) pure nothrow @nogc
+/// Mapping from MIDI notes to frequency.
+float convertMIDINoteToFrequency(float note) pure nothrow @nogc
 {
     return 440.0f * pow(2.0, (note - 69.0f) / 12.0f);
 }
 
-/// Mapping from frequency to MIDI notes
-deprecated("use convertFrequencyToMIDINote instead") alias frequencyToMIDI = convertFrequencyToMIDINote;
-T convertFrequencyToMIDINote(T)(T frequency) pure nothrow @nogc
+/// Mapping from frequency to MIDI notes.
+float convertFrequencyToMIDINote(float frequency) pure nothrow @nogc
 {
     return 69.0f + 12.0f * log2(frequency / 440.0f);
 }
