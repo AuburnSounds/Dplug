@@ -212,6 +212,7 @@ Other source files fall under the Boost 1.0 license.
 ### Examples
    * `examples/distort`: mandatory distortion plugin
    * `examples/ms-encode`: simplest plugin for tutorial purpose
+   * `examples/simple-mono-synth`: very basic sine-wave generator
 
 ### Tools
    * `tools/pbr-sketch`: playground for creating plugin background textures
