@@ -137,9 +137,15 @@ nothrow:
                                 cast(ubyte)(0.5f + lerp!float(textDiffuseLow.b, textDiffuseHigh.b, moveUpAnimation)),
                                 cast(ubyte)(0.5f + lerp!float(textDiffuseLow.a, textDiffuseHigh.a, moveUpAnimation)));
 
-        diffuseMap.crop(ilabelRectCrossHole).fillText(_font, _lastParamString, textSizePx * perspectiveAnimation, 0, textDiffuse, 
-                                                      ilabelRectCrossHole.width - labelRectCrossHole.center.x, 
-                                                      ilabelRectCrossHole.height - labelRect.height * 0.5f);
+        // Draw text
+        float fontSizePx = textSizePx * perspectiveAnimation;
+        float textPositionX = ilabelRectCrossHole.width - labelRectCrossHole.center.x;
+        float fontVerticalExtent = _font.getAscent(fontSizePx) - _font.getDescent(fontSizePx);
+        float textPositionY = ilabelRectCrossHole.height - labelRect.height * 0.5f + 0.5f * _font.getHeightOfx(fontSizePx);
+        diffuseMap.crop(ilabelRectCrossHole).fillText(_font, _lastParamString, fontSizePx, 0, textDiffuse, 
+                                                      textPositionX, textPositionY,
+                                                      HorizontalAlignment.center,
+                                                      VerticalAlignment.baseline);
 
         // Fill opacity
         {

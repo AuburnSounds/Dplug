@@ -47,7 +47,42 @@ nothrow:
     {
     }
 
+    /// Returns: font ascent in pixels (aka the size of "A").
+    float getAscent(float fontSizePx)
+    {
+        float scale = stbtt_ScaleForPixelHeight(&_font, fontSizePx);
+        return scale * _fontAscent;
+    }
+
+    /// Returns: font descent in pixels (aka the size of "A").
+    /// `ascent - descent` gives the extent of characters.
+    float getDescent(float fontSizePx)
+    {
+        float scale = stbtt_ScaleForPixelHeight(&_font, fontSizePx);
+        return scale * _fontDescent;
+    }
+
+    /// Returns: size of little 'x' in pixels. Useful for vertical alignment.
+    float getHeightOfx(float fontSizePx)
+    {
+        float scale = stbtt_ScaleForPixelHeight(&_font, fontSizePx);
+        int xIndex = stbtt_FindGlyphIndex(&_font, 'x'); // TODO optimize this function
+        if (xIndex == 0)
+            return getAscent(fontSizePx); // No 'x', return a likely height
+
+        int x0, y0, x1, y1;
+        if (stbtt_GetGlyphBox(&_font, xIndex, &x0, &y0, &x1, &y1))
+        {
+            return scale * y1;
+        }
+        else
+            return getAscent(fontSizePx); // No 'x', return a likely height        
+    }
+
+
     /// Returns: Where a line of text will be drawn if starting at position (0, 0).
+    /// Note: aligning vertically with this information is dangerous, since different characters
+    ///       may affect vertical extent differently. Prefer the use of `getHeightOfx()`.
     box2i measureText(StringType)(StringType s, float fontSizePx, float letterSpacingPx) nothrow @nogc
     {
         box2i area;
@@ -137,29 +172,48 @@ private:
     }
 }
 
-/// Draw text centered on a point on a DirectView.
 
+enum HorizontalAlignment
+{
+    left,    // positionX in surface corresponds to the leftmost point of the first character 
+             //   (a bit incorrect, since some chars such as O could go lefter than that)
+    center   // positionX in surface corresponds to the center of the horizontal extent of the text
+}
+
+enum VerticalAlignment
+{
+    baseline, // positionY in surface corresponds to baseline coordinate in surface
+    center    // positionY in surface corresponds to the center of the vertical extent of the text
+}
+
+/// Draw text centered on a point on a DirectView.
 void fillText(V, StringType)(auto ref V surface, Font font, StringType s, float fontSizePx, float letterSpacingPx,
-                             RGBA textColor, float positionx, float positiony) nothrow @nogc
+                             RGBA textColor, float positionX, float positionY,
+                             HorizontalAlignment horzAlign = HorizontalAlignment.center,
+                             VerticalAlignment   vertAlign = VerticalAlignment.center) nothrow @nogc
     if (isWritableView!V && is(ViewColor!V == RGBA))
 {
     font._mutex.lock();
     scope(exit) font._mutex.unlock();
 
     // Decompose in fractional and integer position
-    int ipositionx = cast(int)floor(positionx);
-    int ipositiony = cast(int)floor(positiony);
-    float fractionalPosX = positionx - ipositionx;
-    float fractionalPosY = positiony - ipositiony;
+    int ipositionx = cast(int)floor(positionX);
+    int ipositiony = cast(int)floor(positionY);
+    float fractionalPosX = positionX - ipositionx;
+    float fractionalPosY = positionY - ipositiony;
 
     box2i area = font.measureText(s, fontSizePx, letterSpacingPx);
 
-    // Early exit if out of scope
+    // For clipping outside characters
     box2i surfaceArea = box2i(0, 0, surface.w, surface.h);
-    if (!surfaceArea.intersects(area))
-        return;
 
-    vec2i offset = vec2i(ipositionx, ipositiony) - area.center; // MAYDO: support other alignment modes
+    vec2i offset = vec2i(ipositionx, ipositiony);
+    
+    if (horzAlign == HorizontalAlignment.center)
+        offset.x -= area.center.x;
+
+    if (vertAlign == VerticalAlignment.center)
+        offset.y -= area.center.y;
 
     void drawCharacter(int numCh, dchar ch, box2i position, float scale, float xShift, float yShift) nothrow @nogc
     {
@@ -177,6 +231,10 @@ void fillText(V, StringType)(auto ref V surface, Font font, StringType s, float 
         int cropX1 = clamp!int(offsetPos.x + w, 0, surface.w);
         int cropY1 = clamp!int(offsetPos.y + h, 0, surface.h);
         auto outsurf = surface.crop(cropX0, cropY0, cropX1, cropY1);
+
+        // Early exit if out of scope
+        if (!surfaceArea.intersects(box2i(cropX0, cropY0, cropX1, cropY1)))
+            return;
 
         int croppedWidth = outsurf.w;
 
