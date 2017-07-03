@@ -44,16 +44,39 @@ import dplug.vst.aeffectx;
 
 template VSTEntryPoint(alias ClientClass)
 {
-    const char[] VSTEntryPoint =
-        "extern(C) nothrow AEffect* VSTPluginMain(HostCallbackFunction hostCallback) " ~
+    enum entry_VSTPluginMain = 
+        "export extern(C) nothrow AEffect* VSTPluginMain(HostCallbackFunction hostCallback) " ~
         "{" ~
         "    return myVSTEntryPoint!" ~ ClientClass.stringof ~ "(hostCallback);" ~
-        "}" ~
-        // has been found useful to have "main" for linux VST
+        "}\n";
+    enum entry_main = 
+        "export extern(C) nothrow AEffect* main(HostCallbackFunction hostCallback) " ~
+        "{" ~
+        "    return myVSTEntryPoint!" ~ ClientClass.stringof ~ "(hostCallback);" ~
+        "}\n";
+    enum entry_main_macho = 
         "extern(C) nothrow AEffect* main_macho(HostCallbackFunction hostCallback) " ~
         "{" ~
         "    return myVSTEntryPoint!" ~ ClientClass.stringof ~ "(hostCallback);" ~
-        "}";
+        "}\n";
+
+    version(OSX)
+        // OSX has two VST entry points
+        const char[] VSTEntryPoint =entry_VSTPluginMain ~ entry_main_macho;
+    else version(Windows)
+    {
+        static if (size_t.sizeof == int.sizeof)
+            // 32-bit Windows needs a legacy "main" entry point
+            const char[] VSTEntryPoint = entry_VSTPluginMain ~ entry_main;
+        else
+            // 64-bit Windows does not
+            const char[] VSTEntryPoint = entry_VSTPluginMain;
+
+    }
+    else version(linux)
+        const char[] VSTEntryPoint = entry_VSTPluginMain ~ entry_main;
+    else
+        static assert(false);
 }
 
 // This is the main VST entrypoint

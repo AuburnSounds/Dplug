@@ -50,7 +50,7 @@ https://auburnsounds.com/blog/2016-02-08_Making-a-Windows-VST-plugin-with-D.html
 ## How to build plugins
 
 ### For Windows:
-- Use DMD >= v2.070 or LDC >= v1.0.0-b2
+- Use DMD >= v2.070 or LDC >= v1.1
 - Install DUB, the D package manager: http://code.dlang.org/download
 - Go into an example directory
 - Type `dub --compiler=dmd` or `dub --compiler=ldc2` depending on the compiler used.
@@ -65,6 +65,10 @@ https://auburnsounds.com/blog/2016-02-08_Making-a-Windows-VST-plugin-with-D.html
 
 
 ## FAQ
+
+- Does Dplug support the creation of synthesizer plugins?
+
+Yes. See simple-mono-synth example.
 
 - Am I forced to use the PBR graphics system?
 
@@ -86,19 +90,17 @@ OS X 10.7+.
 
 - What D compiler can possibly be used?
 
-   See `.travis.yml` for supported compilers. The latest DMD or LDC should do. However, it is recommended that you use LDC-1.0.0-b2 for final binaries as no other LDC version has been as well tested with Dplug.
-
-   When using LDC 1.1 or later, it is currently unknown if OS X 10.7 is properly supported.
+   See `.travis.yml` for supported compilers. The latest DMD or LDC should do.
 
 - What D compilers are recommended?
 
-   See `.travis.yml` for supported compilers. The latest DMD or LDC should do. However, it is recommended that you use LDC-1.0.0-b2 for final binaries as no other LDC version has been as well tested with Dplug.
+   For OSX it is recommended that you use LDC-1.0.0-b2 for final binaries as no other LDC version has been as well tested with Dplug (especially it is unknown if it works on OS X 10.7).
 
-   When using LDC 1.1 or later, it is currently unknown if OS X 10.7 is properly supported.
+   For Windows it is recommended to use LDC >= 1.1. LDC 1.0 does not `export` function in DLL.
 
 - Is Dplug stable?
 
-Starting with v4 we'll issue major or minor version tag for breaking changes.
+Starting with v5 we'll have issue major or minor version tag for breaking changes.
 If you don't want breaking change, you can pin Dplug to a specific version in your `dub.json`.
 Breaking commits are marked with BREAKING in the commit backlog.
 

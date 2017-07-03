@@ -10,13 +10,7 @@
 
     "copyright": "none",
 
-
-    "sourceFiles-windows-dmd": [
-        "./module.def"
-    ],
-
     "lflags-windows-ldc": [
-        "/DEF:module.def",
         "libcmt.lib",
         "/nodefaultlib:msvcrt.lib",
         "/nodefaultlib:vcruntime.lib"

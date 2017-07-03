@@ -3,10 +3,10 @@ platform: x64
 environment:
  matrix:
   - DC: ldc
-    DVersion: 1.1.0-beta2
+    DVersion: 1.1.0
     arch: x64
   - DC: ldc
-    DVersion: 1.0.0-beta2
+    DVersion: 1.2.0
     arch: x64
 
 skip_tags: true
