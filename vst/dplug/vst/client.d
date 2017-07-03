@@ -105,6 +105,9 @@ nothrow:
         if ( client.hasGUI() )
             flags |= effFlagsHasEditor;
 
+        if ( client.isSynth() )
+            flags |= effFlagsIsSynth;
+
         _effect.flags = flags;
         _maxParams = cast(int)(client.params().length);
         _maxInputs = _effect.numInputs = _client.maxInputs();
@@ -159,11 +162,6 @@ nothrow:
         // Create host callback wrapper
         _host = mallocEmplace!VSTHostFromClientPOV(hostCallback, &_effect);
         client.setHostCommand(_host);
-
-        if ( client.isSynth() )
-        {
-            flags |= effFlagsIsSynth;
-        }
 
         if ( client.receivesMIDI() )
         {
@@ -722,10 +720,13 @@ private:
 
                 if (_client.isSynth())
                 {
+                    // Not supported yet
+                    /*
                     if (strcmp(str, "sendVstEvents") == 0)
                         return 1;
                     if (strcmp(str, "sendVstMidiEvents") == 0)
                         return 1;
+                    */
                 }
 
                 if (_client.receivesMIDI())

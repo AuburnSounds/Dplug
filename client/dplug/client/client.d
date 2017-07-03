@@ -217,7 +217,7 @@ nothrow:
 
     final int maxOutputs() pure const nothrow @nogc
     {
-        return _maxInputs;
+        return _maxOutputs;
     }
 
     /// Returns: Array of parameters.
