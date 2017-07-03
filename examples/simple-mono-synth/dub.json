@@ -1,0 +1,35 @@
+{
+    "$schema": "https://raw.githubusercontent.com/Pure-D/code-d/master/json-validation/dub.schema.json",
+
+    "name": "simple-mono-synth",
+
+    "importPaths": [ "." ],
+    "sourcePaths": [ "." ],
+    "stringImportPaths": [ "." ],
+
+    "targetType": "dynamicLibrary",
+
+    "sourceFiles-windows-dmd": [
+        "./module.def"
+    ],
+
+    "lflags-windows-ldc": [
+        "/DEF:module.def",
+        "libcmt.lib",
+        "/nodefaultlib:msvcrt.lib",
+        "/nodefaultlib:vcruntime.lib"
+    ],
+
+    "dependencies":
+    {
+        "dplug:vst": { "path": "../.." }
+    },
+
+    "configurations": [
+        {
+            "name": "VST",
+            "versions": ["VST"],
+            "targetType": "dynamicLibrary"
+        }
+    ]
+}
