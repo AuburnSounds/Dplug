@@ -93,19 +93,23 @@ nothrow:
     }
 
     /// Warns the host that a parameter will be edited.
+    /// Should only ever be called from the UI thread.
     void beginParamEdit() nothrow @nogc
     {
+        debug _editCount += 1;
         _client.hostCommand().beginParamEdit(_index);
         foreach(listener; _listeners)
             listener.onBeginParameterEdit(this);
     }
 
     /// Warns the host that a parameter has finished being edited.
+    /// Should only ever be called from the UI thread.
     void endParamEdit() nothrow @nogc
     {
         _client.hostCommand().endParamEdit(_index);
         foreach(listener; _listeners)
             listener.onEndParameterEdit(this);
+        debug _editCount -= 1;
     }
 
     /// Returns: A normalized double, representing the parameter value.
@@ -124,6 +128,7 @@ nothrow:
     ~this()
     {
         _valueMutex.destroy();
+        debug assert(_editCount == 0);
     }
 
 protected:
@@ -152,6 +157,17 @@ protected:
             listener.onParameterChanged(this);
     }
 
+    void checkBeingEdited() nothrow @nogc
+    {
+        // If you fail here, you have changed the value of a Parameter from the UI
+        // without enclosing within a pair of `beginParamEdit()`/`endParamEdit()`.
+        // This will cause some hosts like Apple Logic not to record automation.
+        //
+        // When setting a Parameter from an UI widget, it's important to call `beginParamEdit()`
+        // and `endParamEdit()` too.
+        debug assert(_editCount > 0);
+    }
+
 package:
 
     /// Parameters are owned by a client, this is used to make them refer back to it.
@@ -169,8 +185,12 @@ private:
     string _name;
     string _label;
     AlignedBuffer!IParameterListener _listeners;
-    UncheckedMutex _valueMutex;
 
+    // Current number of calls into `beginParamEdit()`/`endParamEdit()` pair.
+    // Only checked in debug mode.
+    debug int _editCount = 0;
+
+    UncheckedMutex _valueMutex;
 }
 
 /// Parameter listeners are called whenever a parameter is changed from the host POV.
@@ -261,12 +281,13 @@ public:
     /// Toggles the parameter value from the UI thread.
     final void toggleFromGUI() nothrow @nogc
     {
-        setFromGUI(value());
+        setFromGUI(!value());
     }
 
     /// Sets the parameter value from the UI thread.
     final void setFromGUI(bool newValue) nothrow @nogc
     {
+        checkBeingEdited();
         _valueMutex.lock();
         atomicStore(_value, newValue);
         double normalized = getNormalized();
@@ -388,6 +409,7 @@ public:
 
     final void setFromGUI(int value) nothrow @nogc
     {
+        checkBeingEdited();
         if (value < _min)
             value = _min;
         if (value > _max)
@@ -585,6 +607,7 @@ public:
 
     final void setFromGUI(double value) nothrow @nogc
     {
+        checkBeingEdited();
         if (value < _min)
             value = _min;
         if (value > _max)
