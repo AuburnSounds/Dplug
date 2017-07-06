@@ -115,7 +115,7 @@ nothrow @nogc:
                                     bLift, bGamma, bGain, 0.0f);
     }
 
-    /// Calling this setup color correction table, with the well
+    /// Calling this setup color correction table, with the less
     /// known lift-gamma-gain formula + contrast addition, per channel.
     void setLiftGammaGainContrastRGB(
             float rLift = 0.0f, float rGamma = 1.0f, float rGain = 1.0f, float rContrast = 0.0f,
