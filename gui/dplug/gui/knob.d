@@ -263,7 +263,9 @@ nothrow:
         // double-click => set to default
         if (isDoubleClick)
         {
+            _param.beginParamEdit();
             _param.setFromGUI(_param.defaultValue());
+            _param.endParamEdit();
         }
 
         return true; // to initiate dragging
