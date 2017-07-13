@@ -231,9 +231,17 @@ nothrow:
         if (isDoubleClick)
         {
             if (auto p = cast(FloatParameter)_param)
+            {
+                p.beginParamEdit();
                 p.setFromGUI(p.defaultValue());
+                p.endParamEdit();
+            }
             else if (auto p = cast(IntegerParameter)_param)
+            {
+                p.beginParamEdit();
                 p.setFromGUI(p.defaultValue());
+                p.endParamEdit();
+            }
             else
                 assert(false); // only integer and float parameters supported
         }
