@@ -2,6 +2,7 @@ language: d
 
 os:
   - osx
+  - linux
 
 d:
  - ldc-1.2.0
