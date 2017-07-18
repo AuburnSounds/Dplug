@@ -107,6 +107,13 @@ void main(string[]args)
         if (bufferSize < 1)
             throw new Exception("bufferSize is < 1");
 
+        int maxBufferSize = 16384;
+        if (bufferSize > 16384) // 370ms @ 44100hz
+        {
+            bufferSize = 16384;
+            writefln("Buffer clamped to 16384.");
+        }
+
         int N = sound.lengthInFrames();
 
         double sampleDurationMs = (1000.0 * N) / sound.sampleRate;
