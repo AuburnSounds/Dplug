@@ -29,13 +29,13 @@ nothrow:
         foreach(dirtyRect; dirtyRects)
         {
             // fill diffuse map
-            diffuseMap.cropImageRef(dirtyRect).fill(_diffuse);
+            diffuseMap.cropImageRef(dirtyRect).fillAll(_diffuse);
 
             // fill material map
-            materialMap.cropImageRef(dirtyRect).fill(_material);
+            materialMap.cropImageRef(dirtyRect).fillAll(_material);
 
             // fill depth map
-            depthMap.cropImageRef(dirtyRect).fill(_depth);
+            depthMap.cropImageRef(dirtyRect).fillAll(_depth);
         }
     }
 

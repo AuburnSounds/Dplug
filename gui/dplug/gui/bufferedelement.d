@@ -87,13 +87,13 @@ nothrow:
         if (_mustBeRedrawn)
         {
             // opacity buffer originally filled with zeroes
-            _diffuseOpacityBuf.fill(opacityFullyTransparent);
-            _depthOpacityBuf.fill(opacityFullyTransparent);
-            _materialOpacityBuf.fill(opacityFullyTransparent);
+            _diffuseOpacityBuf.fillAll(opacityFullyTransparent);
+            _depthOpacityBuf.fillAll(opacityFullyTransparent);
+            _materialOpacityBuf.fillAll(opacityFullyTransparent);
 
-            _diffuseBuf.fill(RGBA(128, 128, 128, 0));
-            _depthBuf.fill(L16(defaultDepth));
-            _materialBuf.fill(RGBA(defaultRoughness, defaultMetalnessMetal, defaultSpecular, defaultPhysical));
+            _diffuseBuf.fillAll(RGBA(128, 128, 128, 0));
+            _depthBuf.fillAll(L16(defaultDepth));
+            _materialBuf.fillAll(RGBA(defaultRoughness, defaultMetalnessMetal, defaultSpecular, defaultPhysical));
 
             onDrawBuffered(_diffuseBuf.toRef(), _depthBuf.toRef(), _materialBuf.toRef(), 
                            _diffuseOpacityBuf.toRef(),

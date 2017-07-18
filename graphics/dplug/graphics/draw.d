@@ -75,8 +75,9 @@ ViewColor!V* pixelPtr(V)(auto ref V v, int x, int y)
 
 
 
-/// Fills a writable view with a solid color.
-void fill(V, COLOR)(auto ref V v, COLOR c)
+/// Fills the whole writable view with a solid color.
+deprecated("Use fillAll instead.") alias fill = fillAll;
+void fillAll(V, COLOR)(auto ref V v, COLOR c)
 	if (isWritableView!V
 	 && is(COLOR : ViewColor!V))
 {

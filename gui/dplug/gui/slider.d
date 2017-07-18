@@ -122,11 +122,11 @@ nothrow:
         {
 
 
-            depthMap.cropImageRef(holeRect).fill(trailDepth);
+            depthMap.cropImageRef(holeRect).fillAll(trailDepth);
 
             // Fill opacity for hole
-            diffuseOpacity.cropImageRef(holeRect).fill(opacityFullyOpaque);
-            depthOpacity.cropImageRef(holeRect).fill(opacityFullyOpaque);
+            diffuseOpacity.cropImageRef(holeRect).fillAll(opacityFullyOpaque);
+            depthOpacity.cropImageRef(holeRect).fillAll(opacityFullyOpaque);
 
             int valueToTrail(float value) nothrow @nogc
             {
@@ -144,7 +144,7 @@ nothrow:
                     ymax = temp;
                 }
                 box2i b = box2i(holeRect.min.x, ymin, holeRect.max.x, ymax);
-                diffuseMap.cropImageRef(b).fill(diffuse);
+                diffuseMap.cropImageRef(b).fillAll(diffuse);
             }
 
             
@@ -169,7 +169,7 @@ nothrow:
 
         RGBA handleDiffuseLit = RGBA(handleDiffuse.r, handleDiffuse.g, handleDiffuse.b, cast(ubyte)emissive);        
 
-        diffuseMap.cropImageRef(handleRect).fill(handleDiffuseLit);
+        diffuseMap.cropImageRef(handleRect).fillAll(handleDiffuseLit);
 
         if (handleStyle == HandleStyle.shapeV)
         {
@@ -214,15 +214,15 @@ nothrow:
         }
         else if (handleStyle == HandleStyle.shapeBlock)
         {
-            depthMap.cropImageRef(handleRect).fill(L16(50000));
+            depthMap.cropImageRef(handleRect).fillAll(L16(50000));
         }
 
-        materialMap.cropImageRef(handleRect).fill(handleMaterial);
+        materialMap.cropImageRef(handleRect).fillAll(handleMaterial);
 
         // Fill opacity for handle
-        diffuseOpacity.cropImageRef(handleRect).fill(opacityFullyOpaque);
-        depthOpacity.cropImageRef(handleRect).fill(opacityFullyOpaque);
-        materialOpacity.cropImageRef(handleRect).fill(opacityFullyOpaque);
+        diffuseOpacity.cropImageRef(handleRect).fillAll(opacityFullyOpaque);
+        depthOpacity.cropImageRef(handleRect).fillAll(opacityFullyOpaque);
+        materialOpacity.cropImageRef(handleRect).fillAll(opacityFullyOpaque);
     }
 
     override bool onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)

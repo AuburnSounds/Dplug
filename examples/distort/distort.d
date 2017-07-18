@@ -335,10 +335,10 @@ nothrow:
                 }
             }
 
-            // Fill. material map.
+            // Fill the whole of material map.
             // Which is "RMSP": Roughness Metalness Specular Physical
             auto croppedMaterial = materialMap.crop(dirtyRect);
-            croppedMaterial.fill(RMSP(120, 255, 128, 255));
+            croppedMaterial.fillAll(RMSP(120, 255, 128, 255));
         }
     }
 }

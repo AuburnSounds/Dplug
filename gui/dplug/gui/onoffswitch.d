@@ -62,7 +62,7 @@ nothrow:
     override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects) nothrow @nogc
     {
         // dig a hole
-        depthMap.fill(L16(holeDepth));
+        depthMap.fillAll(L16(holeDepth));
 
         // The switch is in a subrect
         int width = _position.width;
@@ -86,7 +86,7 @@ nothrow:
 
         RGBA diffuseColor = RGBA(red, green, blue, cast(ubyte)emissive);
 
-        diffuseMap.crop(switchRect).fill(diffuseColor);
+        diffuseMap.crop(switchRect).fillAll(diffuseColor);
 
         L16 depthA = L16(cast(short)(lerp!float(depthHigh, depthLow, _animation)));
         L16 depthB = L16(cast(short)(lerp!float(depthLow, depthHigh, _animation)));
@@ -96,7 +96,7 @@ nothrow:
         else
             horizontalSlope(depthMap, switchRect, depthA, depthB);
     
-        materialMap.crop(switchRect).fill(material);
+        materialMap.crop(switchRect).fillAll(material);
     }
 
     override bool onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
