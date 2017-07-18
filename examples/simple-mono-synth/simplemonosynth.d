@@ -7,12 +7,7 @@ mixin(DLLEntryPoint!());
 // This create the VST entry point
 mixin(VSTEntryPoint!SimpleMonoSynth);
 
-enum : int
-{
-    paramOnOff
-}
-
-/// Simplest VST plugin you could make.
+/// Simplest VST synth you could make.
 final class SimpleMonoSynth : dplug.client.Client
 {
 public:
@@ -29,7 +24,6 @@ nothrow:
     override Parameter[] buildParameters()
     {
         auto params = makeAlignedBuffer!Parameter();
-        params.pushBack( mallocEmplace!BoolParameter(paramOnOff, "on/off", true) );
         return params.releaseData();
     }
 
