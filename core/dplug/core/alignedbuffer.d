@@ -204,7 +204,9 @@ unittest
             assert(p[i] == i);
 
         p = cast(int*) alignedRealloc(p, 0, alignment);
-        assert(p is null);
+        assert(p !is null);
+
+        alignedFree(p, alignment);
     }
 }
 
