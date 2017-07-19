@@ -298,7 +298,6 @@ else version( D_InlineAsm_X86_64 )
 }
 
 /// Allocates a slice with `malloc`.
-/// This does not add GC roots so when using the runtime do not use such slice as traceable.
 T[] mallocSlice(T)(size_t count) nothrow @nogc
 {
     T[] slice = mallocSliceNoInit!T(count);
@@ -317,7 +316,6 @@ T[] mallocSlice(T)(size_t count) nothrow @nogc
 }
 
 /// Allocates a slice with `malloc`, but does not initialize the content.
-/// This does not add GC roots so when using the runtime do not use such slice as traceable.
 T[] mallocSliceNoInit(T)(size_t count) nothrow @nogc
 {
     T* p = cast(T*) malloc(count * T.sizeof);
@@ -359,60 +357,6 @@ unittest
     assert(slice == []);
     freeSlice(slice);
 }
-
-
-//
-// GC-proof resources: for when the GC does exist.
-//
-
-/// Destructors called by the GC enjoy a variety of limitations and
-/// relying on them is dangerous.
-/// See_also: $(WEB p0nce.github.io/d-idioms/#The-trouble-with-class-destructors)
-/// Example:
-/// ---
-/// class Resource
-/// {
-///     ~this()
-///     {
-///         if (!alreadyClosed)
-///         {
-///             if (isCalledByGC())
-///                 assert(false, "Resource release relies on Garbage Collection");
-///             alreadyClosed = true;
-///             releaseResource();
-///         }
-///     }
-/// }
-/// ---
-bool isCalledByGC() nothrow
-{
-    import core.exception;
-    try
-    {
-        import core.memory;
-        cast(void) GC.malloc(1); // not ideal since it allocates
-        return false;
-    }
-    catch(InvalidMemoryOperationError e)
-    {
-        return true;
-    }
-}
-
-unittest
-{
-    class A
-    {
-        ~this()
-        {
-            assert(!isCalledByGC());
-        }
-    }
-    import std.typecons;
-    auto a = scoped!A();
-}
-
-
 
 
 //
@@ -545,36 +489,6 @@ unittest
     mergeSort!(int[2])(testData, scratch, (a, b) => (a[0] - b[0]));
     assert(testData == [[3, 0], [3, 1], [5, 0], [5, 1], [10, 0], [10, 1], [110, 0], [110, 1]]);
 }
-
-
-
-//
-// Unrelated things that hardly goes anywhere
-//
-
-/// Crash if the GC is running.
-/// Useful in destructors to avoid reliance GC resource release.
-/// However since this is not @nogc, this is not suitable in runtime-less D.
-/// See_also: $(WEB p0nce.github.io/d-idioms/#GC-proof-resource-class)
-void ensureNotInGC(string resourceName = null) nothrow
-{
-    import core.exception;
-    try
-    {
-        import core.memory;
-        cast(void) GC.malloc(1); // not ideal since it allocates
-        return;
-    }
-    catch(InvalidMemoryOperationError e)
-    {
-        import core.stdc.stdio;
-        fprintf(stderr, "Error: clean-up of %s incorrectly depends on destructors called by the GC.\n",
-                resourceName ? resourceName.ptr : "a resource".ptr);
-        assert(false); // crash
-    }
-}
-
-
 
 /// To call for something that should never happen, but we still
 /// want to make a "best effort" at runtime even if it can be meaningless.
