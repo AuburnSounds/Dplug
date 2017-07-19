@@ -182,7 +182,7 @@ IWindow createWindow(void* parentInfo, void* controlInfo, IWindowListener listen
             import core.sys.windows.windef;
             import dplug.window.win32window;
             HWND parent = cast(HWND)parentInfo;
-            return mallocEmplace!Win32Window(parent, listener, width, height);
+            return mallocNew!Win32Window(parent, listener, width, height);
         }
         else
             return null;

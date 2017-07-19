@@ -56,9 +56,9 @@ nothrow:
     this(UIContext context)
     {
         _context = context;
-        _localRectsBuf = makeAlignedBuffer!box2i();
-        _children = makeAlignedBuffer!UIElement();
-        _zOrderedChildren = makeAlignedBuffer!UIElement();
+        _localRectsBuf = makeVec!box2i();
+        _children = makeVec!UIElement();
+        _zOrderedChildren = makeVec!UIElement();
     }
 
     ~this()
@@ -447,7 +447,7 @@ nothrow:
     /// You should empty it before calling this function.
     /// Everything visible get into the draw list, but that doesn't mean they
     /// will get drawn if they don't overlap with a dirty area.
-    final void getDrawList(ref AlignedBuffer!UIElement list) nothrow @nogc
+    final void getDrawList(ref Vec!UIElement list) nothrow @nogc
     {
         if (isVisible())
         {
@@ -504,7 +504,7 @@ protected:
     /// An Element is not allowed though to draw further than its _position.
     box2i _position;
 
-    AlignedBuffer!UIElement _children;
+    Vec!UIElement _children;
 
     /// If _visible is false, neither the Element nor its children are drawn.
     bool _visible = true;
@@ -521,10 +521,10 @@ private:
     /// Flag: whether this UIElement has mouse over it or not
     bool _mouseOver = false;
 
-    AlignedBuffer!box2i _localRectsBuf;
+    Vec!box2i _localRectsBuf;
 
     /// Necessary for mouse-click to be aware of Z order
-    AlignedBuffer!UIElement _zOrderedChildren;
+    Vec!UIElement _zOrderedChildren;
 
     // Sort children in ascending z-order
     final void recomputeZOrderedChildren()

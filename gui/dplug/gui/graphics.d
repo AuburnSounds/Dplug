@@ -51,32 +51,32 @@ nothrow:
 
     this(int initialWidth, int initialHeight)
     {
-        _uiContext = mallocEmplace!UIContext();
+        _uiContext = mallocNew!UIContext();
         super(_uiContext);
 
         // Don't like the default rendering? Make another compositor.
-        compositor = mallocEmplace!PBRCompositor();
+        compositor = mallocNew!PBRCompositor();
 
-        _windowListener = mallocEmplace!WindowListener(this);
+        _windowListener = mallocNew!WindowListener(this);
 
         _window = null;
         _askedWidth = initialWidth;
         _askedHeight = initialHeight;
 
-        _threadPool = mallocEmplace!ThreadPool();
+        _threadPool = mallocNew!ThreadPool();
 
-        _areasToUpdateNonOverlapping = makeAlignedBuffer!box2i;
-        _areasToUpdateTemp = makeAlignedBuffer!box2i;
+        _areasToUpdateNonOverlapping = makeVec!box2i;
+        _areasToUpdateTemp = makeVec!box2i;
 
-        _updateRectScratch[0] = makeAlignedBuffer!box2i;
-        _updateRectScratch[1] = makeAlignedBuffer!box2i;
+        _updateRectScratch[0] = makeVec!box2i;
+        _updateRectScratch[1] = makeVec!box2i;
 
-        _areasToRender = makeAlignedBuffer!box2i;
-        _areasToRenderNonOverlapping = makeAlignedBuffer!box2i;
-        _areasToRenderNonOverlappingTiled = makeAlignedBuffer!box2i;
+        _areasToRender = makeVec!box2i;
+        _areasToRenderNonOverlapping = makeVec!box2i;
+        _areasToRenderNonOverlappingTiled = makeVec!box2i;
 
-        _elemsToDraw = makeAlignedBuffer!UIElement;
-        _elemsToDrawScratch = makeAlignedBuffer!UIElement;
+        _elemsToDraw = makeVec!UIElement;
+        _elemsToDrawScratch = makeVec!UIElement;
 
         version(BenchmarkCompositing)
         {
@@ -85,9 +85,9 @@ nothrow:
             _mipmapWatch = new StopWatch("Mipmap = ");
         }
 
-        _diffuseMap = mallocEmplace!(Mipmap!RGBA)();
-        _materialMap = mallocEmplace!(Mipmap!RGBA)();
-        _depthMap = mallocEmplace!(Mipmap!L16)();
+        _diffuseMap = mallocNew!(Mipmap!RGBA)();
+        _materialMap = mallocNew!(Mipmap!RGBA)();
+        _depthMap = mallocNew!(Mipmap!L16)();
     }
 
 
@@ -318,31 +318,31 @@ protected:
     Mipmap!RGBA _materialMap;
 
     // The list of areas whose diffuse/depth data have been changed.
-    AlignedBuffer!box2i _areasToUpdateNonOverlapping;
+    Vec!box2i _areasToUpdateNonOverlapping;
 
     // Used to maintain the _areasToUpdate invariant of no overlap
-    AlignedBuffer!box2i _areasToUpdateTemp;
+    Vec!box2i _areasToUpdateTemp;
 
     // Same, but temporary variable for mipmap generation
-    AlignedBuffer!box2i[2] _updateRectScratch;
+    Vec!box2i[2] _updateRectScratch;
 
     // The list of areas that must be effectively updated in the composite buffer
     // (sligthly larger than _areasToUpdate).
-    AlignedBuffer!box2i _areasToRender;
+    Vec!box2i _areasToRender;
 
     // same list, but reorganized to avoid overlap
-    AlignedBuffer!box2i _areasToRenderNonOverlapping;
+    Vec!box2i _areasToRenderNonOverlapping;
 
     // same list, but separated in smaller tiles
-    AlignedBuffer!box2i _areasToRenderNonOverlappingTiled;
+    Vec!box2i _areasToRenderNonOverlappingTiled;
 
     // The list of UIElement to draw
     // Note: AlignedBuffer memory isn't scanned,
     //       but this doesn't matter since UIElement are the UI hierarchy anyway.
-    AlignedBuffer!UIElement _elemsToDraw;
+    Vec!UIElement _elemsToDraw;
 
     /// Temporary buffer for stable sorting of _elemsToDraw
-    AlignedBuffer!UIElement _elemsToDrawScratch;
+    Vec!UIElement _elemsToDrawScratch;
 
     /// Amount of pixels dirty rectangles are extended with.
     int _updateMargin = 20;

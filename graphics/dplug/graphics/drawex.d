@@ -629,7 +629,7 @@ OwnedImage!RGBA loadOwnedImage(in void[] imageData)
     int width = cast(int)ifImage.w;
     int height = cast(int)ifImage.h;
 
-    OwnedImage!RGBA loaded = mallocEmplace!(OwnedImage!RGBA)(width, height);
+    OwnedImage!RGBA loaded = mallocNew!(OwnedImage!RGBA)(width, height);
     loaded.pixels[] = (cast(RGBA[]) ifImage.pixels)[]; // pixel copy here
     return loaded;
 }
@@ -659,7 +659,7 @@ OwnedImage!RGBA loadImageSeparateAlpha(in void[] imageDataRGB, in void[] imageDa
     int width = widthA;
     int height = heightA;
 
-    OwnedImage!RGBA loaded = mallocEmplace!(OwnedImage!RGBA)(width, height);
+    OwnedImage!RGBA loaded = mallocNew!(OwnedImage!RGBA)(width, height);
 
     for (int j = 0; j < height; ++j)
     {

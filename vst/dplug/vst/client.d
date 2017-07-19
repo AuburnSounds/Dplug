@@ -87,10 +87,10 @@ nothrow AEffect* myVSTEntryPoint(alias ClientClass)(HostCallbackFunction hostCal
 
     ScopedForeignCallback!(false, true) scopedCallback;
     scopedCallback.enter();
-    auto client = mallocEmplace!ClientClass();
+    auto client = mallocNew!ClientClass();
 
     // malloc'd else the GC would not register roots for some reason!
-    VSTClient plugin = mallocEmplace!VSTClient(client, hostCallback);
+    VSTClient plugin = mallocNew!VSTClient(client, hostCallback);
     return &plugin._effect;
 };
 
@@ -164,16 +164,16 @@ nothrow:
 
 
         // GUI thread can allocate
-        _inputScratchBuffer = mallocSlice!(AlignedBuffer!float)(_maxInputs);
-        _outputScratchBuffer = mallocSlice!(AlignedBuffer!float)(_maxOutputs);
+        _inputScratchBuffer = mallocSlice!(Vec!float)(_maxInputs);
+        _outputScratchBuffer = mallocSlice!(Vec!float)(_maxOutputs);
 
         for (int i = 0; i < _maxInputs; ++i)
-            _inputScratchBuffer[i] = makeAlignedBuffer!float();
+            _inputScratchBuffer[i] = makeVec!float();
 
         for (int i = 0; i < _maxOutputs; ++i)
-            _outputScratchBuffer[i] = makeAlignedBuffer!float();
+            _outputScratchBuffer[i] = makeVec!float();
 
-        _zeroesBuffer = makeAlignedBuffer!float();
+        _zeroesBuffer = makeVec!float();
 
         _inputPointers = mallocSlice!(float*)(_maxInputs);
         _outputPointers = mallocSlice!(float*)(_maxOutputs);
@@ -183,7 +183,7 @@ nothrow:
         _messageQueue.pushBack(makeResetStateMessage(AudioThreadMessage.Type.resetState));
 
         // Create host callback wrapper
-        _host = mallocEmplace!VSTHostFromClientPOV(hostCallback, &_effect);
+        _host = mallocNew!VSTHostFromClientPOV(hostCallback, &_effect);
         client.setHostCommand(_host);
 
         if ( client.receivesMIDI() )
@@ -284,9 +284,9 @@ private:
 
     ERect _editRect;  // structure holding the UI size
 
-    AlignedBuffer!float[] _inputScratchBuffer;  // input buffer, one per possible input
-    AlignedBuffer!float[] _outputScratchBuffer; // input buffer, one per output
-    AlignedBuffer!float   _zeroesBuffer;        // used for disconnected inputs
+    Vec!float[] _inputScratchBuffer;  // input buffer, one per possible input
+    Vec!float[] _outputScratchBuffer; // input buffer, one per output
+    Vec!float   _zeroesBuffer;        // used for disconnected inputs
     float*[] _inputPointers;  // where processAudio will take its audio input, one per possible input
     float*[] _outputPointers; // where processAudio will output audio, one per possible output
 

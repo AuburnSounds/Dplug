@@ -243,7 +243,14 @@ void reallocBuffer(T)(ref T[] buffer, size_t length, int alignment = 1) nothrow 
 
 
 /// Returns: A newly created `Vec`.
-deprecated("Use makeVec instead.") alias makeAlignedBuffer = makeVec;
+// Note: strangely enough, deprecated alias didn't work for this.
+deprecated("Use makeVec!T instead.")
+AlignedBuffer!T makeAlignedBuffer(T)(size_t initialSize = 0, int alignment = 1) nothrow @nogc
+{
+    return AlignedBuffer!T(initialSize, alignment);
+}
+
+
 Vec!T makeVec(T)(size_t initialSize = 0, int alignment = 1) nothrow @nogc
 {
     return Vec!T(initialSize, alignment);
@@ -252,7 +259,172 @@ Vec!T makeVec(T)(size_t initialSize = 0, int alignment = 1) nothrow @nogc
 /// Growable array, points to a (optionally aligned) memory location.
 /// This can also work as an output range.
 /// Bugs: make this class disappear when std.allocator is out.
-deprecated("Use Vec instead.") alias AlignedBuffer = Vec;
+// Note: strangely enough, deprecated alias didn't work for this.
+deprecated("Use Vec!T instead.")
+struct AlignedBuffer(T)
+{
+    public
+    {
+        /// Creates an aligned buffer with given initial size.
+        this(size_t initialSize, int alignment) nothrow @nogc
+        {
+            assert(alignment != 0);
+            _size = 0;
+            _allocated = 0;
+            _data = null;
+            _alignment = alignment;
+            resize(initialSize);
+        }
+
+        ~this() nothrow @nogc
+        {
+            if (_data !is null)
+            {
+                alignedFree(_data, _alignment);
+                _data = null;
+                _allocated = 0;
+            }
+        }
+
+        @disable this(this);
+
+        /// Returns: Length of buffer in elements.
+        size_t length() pure const nothrow @nogc
+        {
+            return _size;
+        }
+
+        /// Returns: Length of buffer in elements.
+        alias opDollar = length;
+
+        /// Resizes a buffer to hold $(D askedSize) elements.
+        void resize(size_t askedSize) nothrow @nogc
+        {
+            // grow only
+            if (_allocated < askedSize)
+            {
+                size_t numBytes = askedSize * 2 * T.sizeof; // gives 2x what is asked to make room for growth
+                _data = cast(T*)(alignedRealloc(_data, numBytes, _alignment));
+                _allocated = askedSize * 2;
+            }
+            _size = askedSize;
+        }
+
+        /// Pop last element
+        T popBack() nothrow @nogc
+        {
+            assert(_size > 0);
+            _size = _size - 1;
+            return _data[_size];
+        }
+
+        /// Append an element to this buffer.
+        void pushBack(T x) nothrow @nogc
+        {
+            size_t i = _size;
+            resize(_size + 1);
+            _data[i] = x;
+        }
+
+        // Output range support
+        alias put = pushBack;
+
+        /// Finds an item, returns -1 if not found
+        int indexOf(T x) nothrow @nogc
+        {
+            foreach(int i; 0..cast(int)_size)
+                if (_data[i] is x)
+                    return i;
+            return -1;
+        }
+
+        /// Removes an item and replaces it by the last item.
+        /// Warning: this reorders the array.
+        void removeAndReplaceByLastElement(size_t index) nothrow @nogc
+        {
+            assert(index < _size);
+            _data[index] = _data[--_size];
+        }
+
+        /// Appends another buffer to this buffer.
+        void pushBack(ref AlignedBuffer other) nothrow @nogc
+        {
+            size_t oldSize = _size;
+            resize(_size + other._size);
+            memcpy(_data + oldSize, other._data, T.sizeof * other._size);
+        }
+
+        /// Appends a slice to this buffer.
+        void pushBack(T[] slice) nothrow @nogc
+        {
+            foreach(item; slice)
+            {
+                pushBack(item);
+            }
+        }
+
+        /// Returns: Raw pointer to data.
+        @property inout(T)* ptr() inout nothrow @nogc
+        {
+            return _data;
+        }
+
+        inout(T) opIndex(size_t i) pure nothrow inout @nogc
+        {
+            return _data[i];
+        }
+
+        T opIndexAssign(T x, size_t i) nothrow @nogc
+        {
+            return _data[i] = x;
+        }
+
+        /// Sets size to zero.
+        void clearContents() nothrow @nogc
+        {
+            _size = 0;
+        }
+
+        /// Returns: Whole content of the array in one slice.
+        inout(T)[] opSlice() inout nothrow @nogc
+        {
+            return opSlice(0, length());
+        }
+
+        /// Returns: A slice of the array.
+        inout(T)[] opSlice(size_t i1, size_t i2) inout nothrow @nogc
+        {
+            return _data[i1 .. i2];
+        }
+
+        /// Fills the buffer with the same value.
+        void fill(T x) nothrow @nogc
+        {
+            _data[0.._size] = x;
+        }
+
+        /// Move. Give up owner ship of the data.
+        T[] releaseData() nothrow @nogc
+        {
+            T[] data = _data[0.._size];
+            assert(_alignment == 1); // else would need to be freed with alignedFree.
+            this._data = null;
+            this._size = 0;
+            this._allocated = 0;
+            this._alignment = 0;
+            return data;
+        }
+    }
+
+    private
+    {
+        size_t _size;
+        T* _data;
+        size_t _allocated;
+        size_t _alignment;
+    }
+}
+
 struct Vec(T)
 {
     public

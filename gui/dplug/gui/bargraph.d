@@ -37,7 +37,7 @@ nothrow:
         _minValue = minValue;
         _maxValue = maxValue;
 
-        _leds = makeAlignedBuffer!LED();
+        _leds = makeVec!LED();
 
         foreach (i; 0..redLeds)
             _leds.pushBack( LED(RGBA(255, 32, 0, 255)) );
@@ -133,7 +133,7 @@ nothrow:
 
 protected:
 
-    AlignedBuffer!LED _leds;
+    Vec!LED _leds;
 
     UncheckedMutex _valueMutex;
     float[] _values;

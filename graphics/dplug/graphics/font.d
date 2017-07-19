@@ -293,8 +293,8 @@ nothrow:
     void initialize(stbtt_fontinfo* font)
     {
         _font = font;
-        keys = makeAlignedBuffer!GlyphKey;
-        glyphs = makeAlignedBuffer!(ubyte*);
+        keys = makeVec!GlyphKey;
+        glyphs = makeVec!(ubyte*);
     }
 
     @disable this(this);
@@ -351,7 +351,7 @@ nothrow:
         }
     }
 private:
-    AlignedBuffer!GlyphKey keys;
-    AlignedBuffer!(ubyte*) glyphs;
+    Vec!GlyphKey keys;
+    Vec!(ubyte*) glyphs;
     stbtt_fontinfo* _font;
 }

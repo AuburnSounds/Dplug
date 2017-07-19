@@ -102,7 +102,7 @@ void acquireCarbonFunctions() nothrow @nogc
 {
     if (DerelictCarbon is null)  // You only live once
     {
-        DerelictCarbon = mallocEmplace!DerelictCarbonLoader();
+        DerelictCarbon = mallocNew!DerelictCarbonLoader();
         DerelictCarbon.load();
     }
 }

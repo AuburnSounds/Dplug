@@ -23,13 +23,13 @@ nothrow:
 
     override Parameter[] buildParameters()
     {
-        auto params = makeAlignedBuffer!Parameter();
+        auto params = makeVec!Parameter();
         return params.releaseData();
     }
 
     override LegalIO[] buildLegalIO()
     {
-        auto io = makeAlignedBuffer!LegalIO();
+        auto io = makeVec!LegalIO();
         io.pushBack(LegalIO(0, 1));
         io.pushBack(LegalIO(0, 2));
         return io.releaseData();

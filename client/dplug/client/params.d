@@ -140,7 +140,7 @@ protected:
         _label = label;
         _index = index;
         _valueMutex = makeMutex();
-        _listeners = makeAlignedBuffer!IParameterListener();
+        _listeners = makeVec!IParameterListener();
     }
 
     /// From a normalized double, set the parameter value.
@@ -184,7 +184,7 @@ private:
     int _index;
     string _name;
     string _label;
-    AlignedBuffer!IParameterListener _listeners;
+    Vec!IParameterListener _listeners;
 
     // Current number of calls into `beginParamEdit()`/`endParamEdit()` pair.
     // Only checked in debug mode.

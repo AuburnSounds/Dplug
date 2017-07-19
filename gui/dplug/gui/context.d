@@ -33,7 +33,7 @@ nothrow:
     {
         // create a dummy black skybox
         // FUTURE: do not create it, support no-skybox in rendering
-        skybox = mallocEmplace!(Mipmap!RGBA)(10, 1024, 1024);
+        skybox = mallocNew!(Mipmap!RGBA)(10, 1024, 1024);
 
         dirtyList = makeDirtyRectList();
     }
@@ -63,7 +63,7 @@ nothrow:
     void setSkybox(OwnedImage!RGBA image)
     {
         skybox.destroyFree();
-        skybox = mallocEmplace!(Mipmap!RGBA)(12, image);
+        skybox = mallocNew!(Mipmap!RGBA)(12, image);
     }
 
     final void setFocused(UIElement focused) nothrow @nogc
@@ -101,7 +101,7 @@ nothrow @nogc:
     this(int dummy) 
     {
         _dirtyRectMutex = makeMutex();
-        _dirtyRects = makeAlignedBuffer!box2i(0);
+        _dirtyRects = makeVec!box2i(0);
     }
 
     @disable this(this);
@@ -116,7 +116,7 @@ nothrow @nogc:
 
     /// Returns: Array of rectangles in the list, remove them from the list.
     /// Needed to avoid races in repainting.
-    void pullAllRectangles(ref AlignedBuffer!box2i result) nothrow @nogc
+    void pullAllRectangles(ref Vec!box2i result) nothrow @nogc
     {
         _dirtyRectMutex.lock();
 
@@ -190,7 +190,7 @@ nothrow @nogc:
 
 private:
     /// The possibly overlapping areas that need updating.
-    AlignedBuffer!box2i _dirtyRects;
+    Vec!box2i _dirtyRects;
 
     /// This is protected by a mutex, because it is sometimes updated from the host.
     UncheckedMutex _dirtyRectMutex;

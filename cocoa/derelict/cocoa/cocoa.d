@@ -123,7 +123,7 @@ void acquireCocoaFunctions() nothrow @nogc
 {
     if (DerelictCocoa is null)  // You only live once
     {
-        DerelictCocoa = mallocEmplace!DerelictCocoaLoader();
+        DerelictCocoa = mallocNew!DerelictCocoaLoader();
         DerelictCocoa.load();
     }
 }

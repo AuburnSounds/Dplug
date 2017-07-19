@@ -51,7 +51,7 @@ void boxSubtraction(in box2i A, in box2i C, out box2i D, out box2i E, out box2i 
 // Every box pushed in filtered are non-intersecting.
 // This may modify boxes in input.
 // FUTURE: something better than O(n^2)
-void removeOverlappingAreas(ref AlignedBuffer!box2i boxes, ref AlignedBuffer!box2i filtered) nothrow @nogc
+void removeOverlappingAreas(ref Vec!box2i boxes, ref Vec!box2i filtered) nothrow @nogc
 {
     for(int i = 0; i < cast(int)(boxes.length); ++i)
     {
@@ -119,14 +119,14 @@ void removeOverlappingAreas(ref AlignedBuffer!box2i boxes, ref AlignedBuffer!box
 
 unittest
 {
-    auto bl = makeAlignedBuffer!box2i();
+    auto bl = makeVec!box2i();
     bl.pushBack( box2i(0, 0, 4, 4) );
     bl.pushBack( box2i(2, 2, 6, 6) );
     bl.pushBack( box2i(1, 1, 2, 2) );
 
     import dplug.core.alignedbuffer;
 
-    auto ab = makeAlignedBuffer!box2i();
+    auto ab = makeVec!box2i();
 
     removeOverlappingAreas(bl, ab);
     assert(ab[] == [ box2i(2, 2, 6, 6), box2i(0, 0, 4, 2), box2i(0, 2, 2, 4) ] );
@@ -136,7 +136,7 @@ unittest
 
 
 // Split each boxes in smaller boxes.
-void tileAreas(in box2i[] areas, int maxWidth, int maxHeight, ref AlignedBuffer!box2i splitted) nothrow @nogc
+void tileAreas(in box2i[] areas, int maxWidth, int maxHeight, ref Vec!box2i splitted) nothrow @nogc
 {
     foreach(area; areas)
     {

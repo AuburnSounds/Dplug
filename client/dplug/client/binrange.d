@@ -125,7 +125,7 @@ private
     ubyte popUbyte(R)(ref R input) @nogc if (isInputRange!R)
     {
         if (input.empty)
-            throw mallocEmplace!Exception("Expected a byte, but found end of input");
+            throw mallocNew!Exception("Expected a byte, but found end of input");
 
         ubyte b = input.front;
         input.popFront();
@@ -216,7 +216,7 @@ unittest
     assert(popBE!int(arr) == 0x00010203);
 
     import dplug.core.alignedbuffer;
-    auto app = makeAlignedBuffer!ubyte();
+    auto app = makeVec!ubyte();
     writeBE!float(app, 1.0f);
     writeLE!double(app, 2.0);
 }

@@ -26,14 +26,14 @@ public:
 
     override Parameter[] buildParameters()
     {
-        auto params = makeAlignedBuffer!Parameter();
-        params.pushBack( mallocEmplace!BoolParameter(paramOnOff, "on/off", true) );
+        auto params = makeVec!Parameter();
+        params.pushBack( mallocNew!BoolParameter(paramOnOff, "on/off", true) );
         return params.releaseData();
     }
 
     override LegalIO[] buildLegalIO()
     {
-        auto io = makeAlignedBuffer!LegalIO();
+        auto io = makeVec!LegalIO();
         io.pushBack(LegalIO(2, 2));
         return io.releaseData();
     }

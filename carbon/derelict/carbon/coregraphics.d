@@ -78,7 +78,7 @@ void acquireCoreGraphicsFunctions() nothrow @nogc
 {
     if (DerelictCoreGraphics is null)  // You only live once
     {
-        DerelictCoreGraphics = mallocEmplace!DerelictCoreGraphicsLoader();
+        DerelictCoreGraphics = mallocNew!DerelictCoreGraphicsLoader();
         DerelictCoreGraphics.load();
     }
 }

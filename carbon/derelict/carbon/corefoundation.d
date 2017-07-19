@@ -155,7 +155,7 @@ void acquireCoreFoundationFunctions() nothrow @nogc
 {
     if (DerelictCoreFoundation is null)  // You only live once
     {
-        DerelictCoreFoundation = mallocEmplace!DerelictCoreFoundationLoader();
+        DerelictCoreFoundation = mallocNew!DerelictCoreFoundationLoader();
         DerelictCoreFoundation.load();
     }
 }

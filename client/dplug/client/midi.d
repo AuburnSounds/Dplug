@@ -195,7 +195,7 @@ nothrow:
 
     private this(int dummy)
     {
-        _outMessages = makeAlignedBuffer!MidiMessage(QueueCapacity);
+        _outMessages = makeVec!MidiMessage(QueueCapacity);
     }
 
     @disable this(this);
@@ -259,7 +259,7 @@ private:
     int _framesElapsed = 0;
 
     // Scratch buffer to return slices of messages on demand (messages are copied there).
-    AlignedBuffer!MidiMessage _outMessages;
+    Vec!MidiMessage _outMessages;
 
     //
     // Min heap implementation below.

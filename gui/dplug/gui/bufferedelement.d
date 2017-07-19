@@ -29,13 +29,13 @@ nothrow:
     this(UIContext context)
     {
         super(context);
-        _diffuseBuf = mallocEmplace!(OwnedImage!RGBA)();
-        _depthBuf = mallocEmplace!(OwnedImage!L16)();
-        _materialBuf = mallocEmplace!(OwnedImage!RGBA)();
+        _diffuseBuf = mallocNew!(OwnedImage!RGBA)();
+        _depthBuf = mallocNew!(OwnedImage!L16)();
+        _materialBuf = mallocNew!(OwnedImage!RGBA)();
 
-        _diffuseOpacityBuf = mallocEmplace!(OwnedImage!L8)();
-        _depthOpacityBuf = mallocEmplace!(OwnedImage!L8)();
-        _materialOpacityBuf = mallocEmplace!(OwnedImage!L8)();
+        _diffuseOpacityBuf = mallocNew!(OwnedImage!L8)();
+        _depthOpacityBuf = mallocNew!(OwnedImage!L8)();
+        _materialOpacityBuf = mallocNew!(OwnedImage!L8)();
     }
 
     ~this()

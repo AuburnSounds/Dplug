@@ -257,14 +257,14 @@ nothrow:
         _maxInputs = _client.maxInputs();
         _maxOutputs = _client.maxOutputs();
 
-        _inputScratchBuffer = mallocSlice!(AlignedBuffer!float)(_maxInputs);
-        _outputScratchBuffer = mallocSlice!(AlignedBuffer!float)(_maxOutputs);
+        _inputScratchBuffer = mallocSlice!(Vec!float)(_maxInputs);
+        _outputScratchBuffer = mallocSlice!(Vec!float)(_maxOutputs);
 
         for (int i = 0; i < _maxInputs; ++i)
-            _inputScratchBuffer[i] = makeAlignedBuffer!float(0, 64);
+            _inputScratchBuffer[i] = makeVec!float(0, 64);
 
         for (int i = 0; i < _maxOutputs; ++i)
-            _outputScratchBuffer[i] = makeAlignedBuffer!float(0, 64);
+            _outputScratchBuffer[i] = makeVec!float(0, 64);
 
         _inputPointers = mallocSlice!(float*)(_maxInputs);
         _outputPointers = mallocSlice!(float*)(_maxOutputs);
@@ -310,8 +310,8 @@ nothrow:
         _globalMutex = makeMutex();
         _renderNotifyMutex = makeMutex();
 
-        _propertyListeners = makeAlignedBuffer!PropertyListener();
-        _renderNotify = makeAlignedBuffer!AURenderCallbackStruct();
+        _propertyListeners = makeVec!PropertyListener();
+        _renderNotify = makeVec!AURenderCallbackStruct();
     }
 
     ~this()
@@ -369,8 +369,8 @@ private:
 
     bool _isUIOpenedAlready = false;
 
-    AlignedBuffer!float[] _inputScratchBuffer;  // input buffer, one per possible input
-    AlignedBuffer!float[] _outputScratchBuffer; // input buffer, one per output
+    Vec!float[] _inputScratchBuffer;  // input buffer, one per possible input
+    Vec!float[] _outputScratchBuffer; // input buffer, one per output
 
     float*[] _inputPointers;  // where processAudio will take its audio input, one per possible input
     float*[] _outputPointers; // where processAudio will output audio, one per possible output
@@ -388,7 +388,7 @@ private:
         AudioUnitPropertyListenerProc mListenerProc;
         void* mProcArgs;
     }
-    AlignedBuffer!PropertyListener _propertyListeners;
+    Vec!PropertyListener _propertyListeners;
 
     enum MaxIOChannels = 128;
     static struct BufferList
@@ -516,7 +516,7 @@ private:
 
 
     UncheckedMutex _renderNotifyMutex;
-    AlignedBuffer!AURenderCallbackStruct _renderNotify;
+    Vec!AURenderCallbackStruct _renderNotify;
 
 
     // <scratch-buffers>

@@ -78,7 +78,7 @@ void acquireAudioUnitFunctions() nothrow @nogc
 {
     if (DerelictAudioUnit is null)  // You only live once
     {
-        DerelictAudioUnit = mallocEmplace!DerelictAudioUnitLoader();
+        DerelictAudioUnit = mallocNew!DerelictAudioUnitLoader();
         DerelictAudioUnit.load();
     }
 }
@@ -640,7 +640,7 @@ void acquireAudioToolboxFunctions() nothrow @nogc
 {
     if (DerelictAudioToolbox is null)  // You only live once
     {
-        DerelictAudioToolbox = mallocEmplace!DerelictAudioToolboxLoader();
+        DerelictAudioToolbox = mallocNew!DerelictAudioToolboxLoader();
         DerelictAudioToolbox.load();
     }
 }

@@ -120,7 +120,7 @@ public:
 
             // MAYDO: best-effort recovery?
             if (!isValidNormalizedParam(f))
-                throw mallocEmplace!Exception("Couldn't unserialize preset: an invalid float parameter was parsed");
+                throw mallocNew!Exception("Couldn't unserialize preset: an invalid float parameter was parsed");
 
             // There may be more parameters when downgrading
             if (ip < _normalizedParams.length)
@@ -153,7 +153,7 @@ final class PresetBank
 public:
 
     // Extends an array or Preset
-    AlignedBuffer!Preset presets;
+    Vec!Preset presets;
 
     // Create a preset bank
     // Takes ownership of this slice, which must be allocated with `malloc`,
@@ -163,7 +163,7 @@ public:
         _client = client;
 
         // Copy presets to own them
-        presets = makeAlignedBuffer!Preset(presets_.length);
+        presets = makeVec!Preset(presets_.length);
         foreach(size_t i; 0..presets_.length)
             presets[i] = presets_[i];
         _current = 0;
@@ -239,7 +239,7 @@ public:
         foreach(int i, param; _client.params)
             values[i] = param.getNormalizedDefault();
 
-        presets.pushBack(mallocEmplace!Preset(presetName, values));
+        presets.pushBack(mallocNew!Preset(presetName, values));
         loadPresetFromHost(cast(int)(presets.length) - 1);
     }
 
@@ -247,7 +247,7 @@ public:
     /// The resulting buffer should be freed with `free`.
     ubyte[] getPresetChunk(int index) nothrow @nogc
     {
-        auto chunk = makeAlignedBuffer!ubyte();
+        auto chunk = makeVec!ubyte();
         writeChunkHeader(chunk);
         presets[index].serializeBinary(chunk);
         return chunk.releaseData();
@@ -270,7 +270,7 @@ public:
     ubyte[] getBankChunk() nothrow @nogc
     {
         putCurrentStateInCurrentPreset();
-        auto chunk = makeAlignedBuffer!ubyte();
+        auto chunk = makeVec!ubyte();
         writeChunkHeader(chunk);
 
         // write number of presets
@@ -299,7 +299,7 @@ public:
     /// The resulting buffer should be freed with `free`.
     ubyte[] getStateChunk() nothrow @nogc
     {
-        auto chunk = makeAlignedBuffer!ubyte();
+        auto chunk = makeVec!ubyte();
         writeChunkHeader(chunk);
 
         auto params = _client.params();
@@ -321,7 +321,7 @@ public:
         // This avoid to overwrite the preset 0 while we modified preset N
         int presetIndex = chunk.popLE!int();
         if (!isValidPresetIndex(presetIndex))
-            throw mallocEmplace!Exception("Invalid preset index in state chunk");
+            throw mallocNew!Exception("Invalid preset index in state chunk");
         else
             _current = presetIndex;
 
@@ -358,12 +358,12 @@ private:
         // nothing to check with minor version
         uint magic = input.popBE!uint();
         if (magic !=  DPLUG_MAGIC)
-            throw mallocEmplace!Exception("Can not load, magic number didn't match");
+            throw mallocNew!Exception("Can not load, magic number didn't match");
 
         // nothing to check with minor version
         int dplugMajor = input.popLE!int();
         if (dplugMajor > DPLUG_SERIALIZATION_MAJOR_VERSION)
-            throw mallocEmplace!Exception("Can not load chunk done with a newer, incompatible dplug library");
+            throw mallocNew!Exception("Can not load chunk done with a newer, incompatible dplug library");
 
         int dplugMinor = input.popLE!int();
         // nothing to check with minor version

@@ -56,12 +56,12 @@ nothrow:
         boxAlphaCovIntoPremul, // same as boxAlphaConv but after such a step the next level is alpha-premultiplied
     }
 
-    AlignedBuffer!(OwnedImage!COLOR) levels;
+    Vec!(OwnedImage!COLOR) levels;
 
     /// Creates empty
     this()
     {
-        levels = makeAlignedBuffer!(OwnedImage!COLOR)();
+        levels = makeVec!(OwnedImage!COLOR)();
     }
 
     /// Set number of levels and size
@@ -121,7 +121,7 @@ nothrow:
             // create empty image for new levels
             for(int level = previousLength; level < numLevels; ++level)
             {
-                levels[level] = mallocEmplace!(OwnedImage!COLOR)();
+                levels[level] = mallocNew!(OwnedImage!COLOR)();
             }
         }
 

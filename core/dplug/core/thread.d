@@ -514,7 +514,7 @@ unittest
 
         this(int dummy)
         {
-            _pool = mallocEmplace!ThreadPool();
+            _pool = mallocNew!ThreadPool();
         }
 
         ~this()

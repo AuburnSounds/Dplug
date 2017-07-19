@@ -161,7 +161,7 @@ nothrow:
         }
 
         // Create presets
-        _presetBank = mallocEmplace!PresetBank(this, buildPresets());
+        _presetBank = mallocNew!PresetBank(this, buildPresets());
 
 
         _maxFramesInProcess = maxFramesInProcess();
@@ -411,10 +411,10 @@ nothrow:
     final Preset makeDefaultPreset() nothrow @nogc
     {
         // MAYDO: use mallocSlice for perf
-        auto values = makeAlignedBuffer!float();
+        auto values = makeVec!float();
         foreach(param; _params)
             values.pushBack(param.getNormalizedDefault());
-        return mallocEmplace!Preset("Default", values.releaseData);
+        return mallocNew!Preset("Default", values.releaseData);
     }
 
     // Getters for fields in _info
@@ -591,7 +591,7 @@ protected:
     /// that contains presets crteated with `mallocEmplace`.
     Preset[] buildPresets() nothrow @nogc
     {
-        auto presets = makeAlignedBuffer!Preset();
+        auto presets = makeVec!Preset();
         presets.pushBack( makeDefaultPreset() );
         return presets.releaseData();
     }

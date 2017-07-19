@@ -57,18 +57,18 @@ nothrow:
     // in the same order than the parameter enum.
     override Parameter[] buildParameters()
     {
-        auto params = makeAlignedBuffer!Parameter();
-        params.pushBack( mallocEmplace!GainParameter(paramInput, "input", 6.0, 0.0) );
-        params.pushBack( mallocEmplace!LinearFloatParameter(paramDrive, "drive", "%", 1.0f, 2.0f, 1.0f) );
-        params.pushBack( mallocEmplace!GainParameter(paramOutput, "output", 6.0, 0.0) );
-        params.pushBack( mallocEmplace!BoolParameter(paramOnOff, "on/off", true) );
-        params.pushBack( mallocEmplace!IntegerParameter(paramReserved, "reserved", "", 1, 4, 3) );
+        auto params = makeVec!Parameter();
+        params.pushBack( mallocNew!GainParameter(paramInput, "input", 6.0, 0.0) );
+        params.pushBack( mallocNew!LinearFloatParameter(paramDrive, "drive", "%", 1.0f, 2.0f, 1.0f) );
+        params.pushBack( mallocNew!GainParameter(paramOutput, "output", 6.0, 0.0) );
+        params.pushBack( mallocNew!BoolParameter(paramOnOff, "on/off", true) );
+        params.pushBack( mallocNew!IntegerParameter(paramReserved, "reserved", "", 1, 4, 3) );
         return params.releaseData();
     }
 
     override LegalIO[] buildLegalIO()
     {
-        auto io = makeAlignedBuffer!LegalIO();
+        auto io = makeVec!LegalIO();
         io.pushBack(LegalIO(1, 1));
         io.pushBack(LegalIO(1, 2));
         io.pushBack(LegalIO(2, 1));
@@ -80,14 +80,14 @@ nothrow:
     // have one default preset.
     override Preset[] buildPresets() nothrow @nogc
     {
-        auto presets = makeAlignedBuffer!Preset();
+        auto presets = makeVec!Preset();
         presets.pushBack( makeDefaultPreset() );
 
         static immutable float[] silenceParams = [0.0f, 0.0f, 0.0f, 1.0f, 0];
-        presets.pushBack( mallocEmplace!Preset("Silence", silenceParams) );
+        presets.pushBack( mallocNew!Preset("Silence", silenceParams) );
 
         static immutable float[] fullOnParams = [1.0f, 1.0f, 0.4f, 1.0f, 0];
-        presets.pushBack( mallocEmplace!Preset("Full-on", fullOnParams) );
+        presets.pushBack( mallocNew!Preset("Full-on", fullOnParams) );
         return presets.releaseData();
     }
 
@@ -184,7 +184,7 @@ nothrow:
 
     override IGraphics createGraphics()
     {
-        return mallocEmplace!DistortGUI(this);
+        return mallocNew!DistortGUI(this);
     }
 
 private:
@@ -216,43 +216,43 @@ nothrow:
         super(620, 330); // initial size
 
         // Font data is bundled as a static array
-        _font = mallocEmplace!Font(cast(ubyte[])( import("VeraBd.ttf") ));
+        _font = mallocNew!Font(cast(ubyte[])( import("VeraBd.ttf") ));
         context.setSkybox( loadOwnedImage(cast(ubyte[])(import("skybox.jpg"))) );
 
         // Buils the UI hierarchy
-        addChild(inputSlider = mallocEmplace!UISlider(context(), cast(FloatParameter) _client.param(paramInput)));
-        addChild(driveKnob = mallocEmplace!UIKnob(context(), cast(FloatParameter) _client.param(paramDrive)));
-        addChild(outputSlider = mallocEmplace!UISlider(context(), cast(FloatParameter) _client.param(paramOutput)));
-        addChild(onOffSwitch = mallocEmplace!UIOnOffSwitch(context(), cast(BoolParameter) _client.param(paramOnOff)));
+        addChild(inputSlider = mallocNew!UISlider(context(), cast(FloatParameter) _client.param(paramInput)));
+        addChild(driveKnob = mallocNew!UIKnob(context(), cast(FloatParameter) _client.param(paramDrive)));
+        addChild(outputSlider = mallocNew!UISlider(context(), cast(FloatParameter) _client.param(paramOutput)));
+        addChild(onOffSwitch = mallocNew!UIOnOffSwitch(context(), cast(BoolParameter) _client.param(paramOnOff)));
 
-        addChild(inputBargraph = mallocEmplace!UIBargraph(context(), 2, -80.0f, 6.0f));
-        addChild(outputBargraph = mallocEmplace!UIBargraph(context(), 2, -80.0f, 6.0f));
+        addChild(inputBargraph = mallocNew!UIBargraph(context(), 2, -80.0f, 6.0f));
+        addChild(outputBargraph = mallocNew!UIBargraph(context(), 2, -80.0f, 6.0f));
 
         RGBA textColor = RGBA(32, 16, 16, 0);
-        addChild(inputLabel = mallocEmplace!UILabel(context(), _font, "Input"));
+        addChild(inputLabel = mallocNew!UILabel(context(), _font, "Input"));
         inputLabel.textSize = 17;
         inputLabel.textColor = textColor;
 
-        addChild(driveLabel = mallocEmplace!UILabel(context(), _font, "Drive"));
+        addChild(driveLabel = mallocNew!UILabel(context(), _font, "Drive"));
         driveLabel.textSize = 17;
         driveLabel.textColor = textColor;
 
-        addChild(outputLabel = mallocEmplace!UILabel(context(), _font, "Output"));
+        addChild(outputLabel = mallocNew!UILabel(context(), _font, "Output"));
         outputLabel.textSize = 17;
         outputLabel.textColor = textColor;
 
-        addChild(onLabel = mallocEmplace!UILabel(context(), _font, "ON"));
+        addChild(onLabel = mallocNew!UILabel(context(), _font, "ON"));
         onLabel.textSize = 13;
         onLabel.textColor = textColor;
 
-        addChild(offLabel = mallocEmplace!UILabel(context(), _font, "OFF"));
+        addChild(offLabel = mallocNew!UILabel(context(), _font, "OFF"));
         offLabel.textSize = 13;
         offLabel.textColor = textColor;
 
-        addChild(leftPanel = mallocEmplace!UIPanel(context(), RGBA(150, 140, 140, 0),
-                                                              RMSP(128, 255, 255, 255), L16(defaultDepth / 2)));
-        addChild(rightPanel = mallocEmplace!UIPanel(context(), RGBA(150, 140, 140, 0),
-                                                               RMSP(128, 255, 255, 255), L16(defaultDepth / 2)));
+        addChild(leftPanel = mallocNew!UIPanel(context(), RGBA(150, 140, 140, 0),
+                                                          RMSP(128, 255, 255, 255), L16(defaultDepth / 2)));
+        addChild(rightPanel = mallocNew!UIPanel(context(), RGBA(150, 140, 140, 0),
+                                                           RMSP(128, 255, 255, 255), L16(defaultDepth / 2)));
 
         static immutable float[2] startValues = [0.0f, 0.0f];
         inputBargraph.setValues(startValues);

@@ -76,7 +76,7 @@ void acquireCoreServicesFunctions() nothrow @nogc
 {
     if (DerelictCoreServices is null)  // You only live once
     {
-        DerelictCoreServices = mallocEmplace!DerelictCoreServicesLoader();
+        DerelictCoreServices = mallocNew!DerelictCoreServicesLoader();
         DerelictCoreServices.load();
     }
 }
