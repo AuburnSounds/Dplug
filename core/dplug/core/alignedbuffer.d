@@ -19,6 +19,8 @@ import core.exception;
 /// Allocates an aligned memory chunk.
 /// Functionally equivalent to Visual C++ _aligned_malloc.
 /// Do not mix allocations with different alignment.
+/// Important: `alignedMalloc(0)` does not necessarily return `null`, and its result 
+///            _has_ to be freed with `alignedFree`.
 void* alignedMalloc(size_t size, size_t alignment) nothrow @nogc
 {
     assert(alignment != 0);
@@ -30,13 +32,9 @@ void* alignedMalloc(size_t size, size_t alignment) nothrow @nogc
         // Implementation-defined behavior
         // Whether the calloc, malloc, and realloc functions return a null pointer
         // or a pointer to an allocated object when the size requested is zero.
-        void* res = malloc(size);
-        if (size == 0)
-            return null;
+        // In any case, we'll have to free() it.
+        return malloc(size);
     }
-
-    if (size == 0)
-        return null;
 
     size_t request = requestedSize(size, alignment);
     void* raw = malloc(request);
@@ -70,6 +68,8 @@ void alignedFree(void* aligned, size_t alignment) nothrow @nogc
 /// Reallocates an aligned memory chunk allocated by alignedMalloc or alignedRealloc.
 /// Functionally equivalent to Visual C++ _aligned_realloc.
 /// Do not mix allocations with different alignment.
+/// Important: `alignedRealloc(p, 0)` does not necessarily return `null`, and its result 
+///            _has_ to be freed with `alignedFree`.
 @nogc void* alignedRealloc(void* aligned, size_t size, size_t alignment) nothrow
 {
     assert(isPointerAligned(aligned, alignment));
@@ -80,29 +80,18 @@ void alignedFree(void* aligned, size_t alignment) nothrow @nogc
     // Short-cut and use the C allocator to avoid overhead if no alignment
     if (alignment == 1)
     {
-        void* res = realloc(aligned, size);
-
         // C99:
         // Implementation-defined behavior
         // Whether the calloc, malloc, and realloc functions return a null pointer
         // or a pointer to an allocated object when the size requested is zero.
-        if (size == 0)
-            return null;
-
-        return res;
+        // In any case, we'll have to `free()` it.
+        return realloc(aligned, size);
     }
 
     if (aligned is null)
         return alignedMalloc(size, alignment);
 
-    if (size == 0)
-    {
-        alignedFree(aligned, alignment);
-        return null;
-    }
-
     size_t previousSize = *cast(size_t*)(cast(char*)aligned - size_t.sizeof * 2);
-
 
     void* raw = *cast(void**)(cast(char*)aligned - size_t.sizeof);
     size_t request = requestedSize(size, alignment);
@@ -194,8 +183,11 @@ unittest
         alignedFree(p, 16);
     }
 
-    assert(alignedMalloc(0, 16) == null);
-    alignedFree(null, 16);
+    void* nullAlloc = alignedMalloc(0, 16);
+    assert(nullAlloc != null);
+    nullAlloc = alignedRealloc(nullAlloc, 0, 16);
+    assert(nullAlloc != null);
+    alignedFree(nullAlloc, 16);
 
     {
         int alignment = 16;
@@ -211,7 +203,6 @@ unittest
         foreach(int i; 0..100)
             assert(p[i] == i);
 
-
         p = cast(int*) alignedRealloc(p, 0, alignment);
         assert(p is null);
     }
@@ -220,7 +211,8 @@ unittest
 
 
 /// Use throughout dplug:dsp to avoid reliance on GC.
-/// This works like alignedRealloc except with slices as input.
+/// Important: Size 0 is special-case to free the slice.
+/// This works a bit like alignedRealloc except with slices as input.
 /// You MUST use consistent alignement thoughout the lifetime of this buffer.
 ///
 /// Params:
@@ -234,9 +226,17 @@ void reallocBuffer(T)(ref T[] buffer, size_t length, int alignment = 1) nothrow 
         static assert(false); // struct with destructors not supported
     }
 
+    /// Size 0 is special-case to free the slice.
+    if (length == 0)
+    {
+        alignedFree(buffer.ptr, alignment);
+        buffer = null;
+        return;
+    }
+
     T* pointer = cast(T*) alignedRealloc(buffer.ptr, T.sizeof * length, alignment);
     if (pointer is null)
-        buffer = null;
+        buffer = null; // alignement 1 can still return null
     else
         buffer = pointer[0..length];
 }
@@ -278,7 +278,7 @@ struct AlignedBuffer(T)
 
         ~this() nothrow @nogc
         {
-            if (_data !is null)
+            if (_allocated != 0)
             {
                 alignedFree(_data, _alignment);
                 _data = null;
@@ -301,7 +301,7 @@ struct AlignedBuffer(T)
         void resize(size_t askedSize) nothrow @nogc
         {
             // grow only
-            if (_allocated < askedSize)
+            if (askedSize > 0 &&_allocated < askedSize)
             {
                 size_t numBytes = askedSize * 2 * T.sizeof; // gives 2x what is asked to make room for growth
                 _data = cast(T*)(alignedRealloc(_data, numBytes, _alignment));
