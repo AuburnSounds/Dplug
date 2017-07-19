@@ -166,7 +166,7 @@ private:
         int width = depthRGBA.w;
         int height = depthRGBA.h;
 
-        _depth = mallocEmplace!(OwnedImage!L16)(width, height);
+        _depth = mallocNew!(OwnedImage!L16)(width, height);
 
         for (int j = 0; j < height; ++j)
         {
