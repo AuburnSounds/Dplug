@@ -15,6 +15,7 @@ d:
  - dmd-2.071.2
  - dmd-2.070.2
 
+# Note: 32-bit x86 isn't tested for Linux
 script:
   - cd examples/distort; dub --compiler=${DC}; cd ../..
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then cd examples/distort; dub -a x86 --compiler=${DC}; cd ../..; fi

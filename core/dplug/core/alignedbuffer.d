@@ -13,8 +13,8 @@ import core.stdc.string: memcpy;
 import core.exception;
 
 
-// This module deals with aligned memory
-
+// This module deals with aligned memory.
+// You'll also find here a non-copyable std::vector equivalent `Vec`.
 
 /// Allocates an aligned memory chunk.
 /// Functionally equivalent to Visual C++ _aligned_malloc.
@@ -26,9 +26,9 @@ void* alignedMalloc(size_t size, size_t alignment) nothrow @nogc
     // Short-cut and use the C allocator to avoid overhead if no alignment
     if (alignment == 1)
     {
-        // C99: 
+        // C99:
         // Implementation-defined behavior
-        // Whether the calloc, malloc, and realloc functions return a null pointer 
+        // Whether the calloc, malloc, and realloc functions return a null pointer
         // or a pointer to an allocated object when the size requested is zero.
         void* res = malloc(size);
         if (size == 0)
@@ -82,9 +82,9 @@ void alignedFree(void* aligned, size_t alignment) nothrow @nogc
     {
         void* res = realloc(aligned, size);
 
-        // C99: 
+        // C99:
         // Implementation-defined behavior
-        // Whether the calloc, malloc, and realloc functions return a null pointer 
+        // Whether the calloc, malloc, and realloc functions return a null pointer
         // or a pointer to an allocated object when the size requested is zero.
         if (size == 0)
             return null;
@@ -242,16 +242,18 @@ void reallocBuffer(T)(ref T[] buffer, size_t length, int alignment = 1) nothrow 
 }
 
 
-/// Returns: A newly created AlignedBuffer.
-AlignedBuffer!T makeAlignedBuffer(T)(size_t initialSize = 0, int alignment = 1) nothrow @nogc
+/// Returns: A newly created `Vec`.
+deprecated("Use makeVec instead.") alias makeAlignedBuffer = makeVec;
+Vec!T makeVec(T)(size_t initialSize = 0, int alignment = 1) nothrow @nogc
 {
-    return AlignedBuffer!T(initialSize, alignment);
+    return Vec!T(initialSize, alignment);
 }
 
-/// Growable array, points to a memory aligned location.
+/// Growable array, points to a (optionally aligned) memory location.
 /// This can also work as an output range.
 /// Bugs: make this class disappear when std.allocator is out.
-struct AlignedBuffer(T)
+deprecated("Use Vec instead.") alias AlignedBuffer = Vec;
+struct Vec(T)
 {
     public
     {
@@ -337,7 +339,7 @@ struct AlignedBuffer(T)
         }
 
         /// Appends another buffer to this buffer.
-        void pushBack(ref AlignedBuffer other) nothrow @nogc
+        void pushBack(ref Vec other) nothrow @nogc
         {
             size_t oldSize = _size;
             resize(_size + other._size);
@@ -418,7 +420,7 @@ struct AlignedBuffer(T)
 unittest
 {
     import std.range.primitives;
-    static assert(isOutputRange!(AlignedBuffer!ubyte, ubyte));
+    static assert(isOutputRange!(Vec!ubyte, ubyte));
 
 
     import std.random;
@@ -429,12 +431,12 @@ unittest
     rng.seed(0xBAADC0DE);
 
     struct box2i { int a, b, c, d; }
-    AlignedBuffer!box2i[] boxes;
+    Vec!box2i[] boxes;
     boxes.length = NBUF;
 
     foreach(i; 0..NBUF)
     {
-        boxes[i] = makeAlignedBuffer!box2i();
+        boxes[i] = makeVec!box2i();
     }
 
     foreach(j; 0..200)
@@ -471,7 +473,7 @@ unittest
         boxes[i].destroy();
 
     {
-        auto buf = makeAlignedBuffer!int;
+        auto buf = makeVec!int;
         enum N = 10;
         buf.resize(N);
         foreach(i ; 0..N)

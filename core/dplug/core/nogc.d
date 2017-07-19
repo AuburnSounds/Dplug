@@ -130,7 +130,8 @@ void destroyNoGC(T)(ref T obj) nothrow @nogc
 
 /// Allocates and construct a struct or class object.
 /// Returns: Newly allocated object.
-auto mallocEmplace(T, Args...)(Args args)
+deprecated("Use mallocNew instead.") alias mallocEmplace = mallocNew;
+auto mallocNew(T, Args...)(Args args)
 {
     static if (is(T == class))
         immutable size_t allocSize = __traits(classInstanceSize, T);
