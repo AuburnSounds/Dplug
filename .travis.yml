@@ -39,13 +39,13 @@ script:
   - dub test --compiler=${DC} dplug:cocoa
   - dub test --compiler=${DC} dplug:carbon
   - dub test --compiler=${DC} dplug:au
-  - dub test --compiler=${DC} -a x86 dplug:core
-  - dub test --compiler=${DC} -a x86 dplug:dsp
-  - dub test --compiler=${DC} -a x86 dplug:client
-  - dub test --compiler=${DC} -a x86 dplug:host
-  - dub test --compiler=${DC} -a x86 dplug:vst
-  - dub test --compiler=${DC} -a x86 dplug:window
-  - dub test --compiler=${DC} -a x86 dplug:cocoa
-  - dub test --compiler=${DC} -a x86 dplug:carbon
-  - dub test --compiler=${DC} -a x86 dplug:au
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then dub test --compiler=${DC} -a x86 dplug:core ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then dub test --compiler=${DC} -a x86 dplug:dsp ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then dub test --compiler=${DC} -a x86 dplug:client ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then dub test --compiler=${DC} -a x86 dplug:host ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then dub test --compiler=${DC} -a x86 dplug:vst ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then dub test --compiler=${DC} -a x86 dplug:window ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then dub test --compiler=${DC} -a x86 dplug:cocoa ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then dub test --compiler=${DC} -a x86 dplug:carbon ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then dub test --compiler=${DC} -a x86 dplug:au ; fi
 
