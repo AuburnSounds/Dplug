@@ -1,0 +1,12 @@
+{
+    "name": "window",
+    "license": "public domain",
+    "importPaths": [ "." ],
+    "sourcePaths": [ "." ],
+    "targetType": "executable",
+
+    "dependencies":
+    {
+        "dplug:gui": { "path": "../.." }
+    }
+}

@@ -66,6 +66,7 @@ nothrow:
     bool terminated();
 
     // Profile-purpose: get time in milliseconds.
+    // Use the results of this function for deltas only.
     uint getTimeMs();
 
     // Get the OS window handle.
@@ -142,7 +143,8 @@ enum WindowBackend
     autodetect,
     win32,
     carbon,
-    cocoa
+    cocoa,
+    x11
 }
 
 
@@ -157,8 +159,6 @@ IWindow createWindow(void* parentInfo, void* controlInfo, IWindowListener listen
     {
         version(Windows)
             return WindowBackend.win32;
-        else version(linux)
-            return WindowBackend.autodetect;
         else version(OSX)
         {
             version(X86_64)
@@ -170,11 +170,15 @@ IWindow createWindow(void* parentInfo, void* controlInfo, IWindowListener listen
                 return WindowBackend.carbon;
             }
         }
+        else version(Posix)
+        {
+            return WindowBackend.x11;
+        }
     }
 
     if (backend == WindowBackend.autodetect)
         backend = autoDetectBackend();
-
+    
     version(Windows)
     {
         if (backend == WindowBackend.win32)
@@ -187,10 +191,6 @@ IWindow createWindow(void* parentInfo, void* controlInfo, IWindowListener listen
         else
             return null;
     }
-    else version(linux)
-    {
-        return null; // see linux-windowing branch
-    }
     else version(OSX)
     {
         if (backend == WindowBackend.cocoa)
@@ -202,6 +202,16 @@ IWindow createWindow(void* parentInfo, void* controlInfo, IWindowListener listen
         {
             import dplug.window.carbonwindow;
             return mallocEmplace!CarbonWindow(parentInfo, controlInfo, listener, width, height);
+        }
+        else
+            return null;
+    }
+    else version(Posix)
+    {
+        if (backend == WindowBackend.x11)
+        {
+            import dplug.window.x11window;
+            return mallocEmplace!X11Window(parentInfo, listener, width, height);
         }
         else
             return null;
