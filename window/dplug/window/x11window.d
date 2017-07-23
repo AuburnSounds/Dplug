@@ -473,7 +473,6 @@ MouseState mouseStateFromX11(uint state) {
 /// No seriously, its probably worse than O(n)!
 struct DumbSlowNoGCMap(K, V)
 {
-    import dplug.core.nogc;
     import std.typecons : Nullable;
 
     private
