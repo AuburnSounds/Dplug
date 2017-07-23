@@ -9,6 +9,7 @@
 
     "authors": [
         "Guillaume Piolat",
+        "Richard Andrew Cattermole (X11 windowing)",
         "Ethan Reker (compile-time JSON parsing)",
         "Andrej Mitrovic",
         "Sean M. Costello (Hilbert transformer)"
