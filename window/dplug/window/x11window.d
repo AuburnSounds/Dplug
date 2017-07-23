@@ -1,10 +1,10 @@
 ﻿/**
  * Copyright (C) 2017 Richard Andrew Cattermole
  * X11 support.
- * 
+ *
  * Bugs:
  *     - X11 does not support double clicks, it is sometimes emulated https://github.com/glfw/glfw/issues/462
- * 
+ *
  * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
  * Authors:   Richard (Rikki) Andrew Cattermole
  */
@@ -23,7 +23,7 @@ import dplug.graphics.view;
 nothrow:
 @nogc:
 
-version(Posix):
+version(linux):
 
 import x11.X;
 import x11.Xlib;
@@ -33,6 +33,7 @@ import x11.Xutil;
 import x11.extensions.Xrandr;
 import x11.extensions.randr;
 
+// TODO: these are TLS variable, which is forbidden
 Display* _display;
 size_t _white_pixel, _black_pixel;
 int _screen;
@@ -54,7 +55,7 @@ nothrow:
         this.listener = listener;
 
         //
-        
+
         if (_display is null)
         {
             _display = assumeNoGC(&XOpenDisplay)(null);
@@ -113,7 +114,7 @@ nothrow:
         _wfb = listener.onResized(width, height);
         listener.recomputeDirtyAreas();
         listener.onDraw(WindowPixelFormat.RGBA8);
-        
+
         box2i areaToRedraw = listener.getDirtyRectangle();
         box2i[] areasToRedraw = (&areaToRedraw)[0..1];
         if (_wfb.pixels !is null)
@@ -124,7 +125,7 @@ nothrow:
         creationTime = getTimeMs();
         lastTimeGot = creationTime;
     }
-    
+
     ~this()
     {
         x11WindowMapping.remove(_windowId);
@@ -237,7 +238,7 @@ private:
 
     ImageRef!RGBA _wfb; // framebuffer reference
 
-    GC _graphicGC;
+    x11.Xlib.GC _graphicGC;
     XImage* _graphicImage;
     ubyte[4][] _bufferData;
     int width, height, depth;
@@ -280,7 +281,7 @@ void handleEvents(ref XEvent event, X11Window theWindow)
                 {
                     listener.recomputeDirtyAreas();
                     listener.onDraw(WindowPixelFormat.RGBA8);
-                    
+
                     box2i areaToRedraw = listener.getDirtyRectangle();
                     box2i[] areasToRedraw = (&areaToRedraw)[0..1];
                     if (_wfb.pixels !is null)
@@ -289,20 +290,20 @@ void handleEvents(ref XEvent event, X11Window theWindow)
                     }
                 }
                 break;
-                
+
             case ConfigureNotify:
                 if (event.xconfigure.width != width || event.xconfigure.height != height)
                 {
                     width = event.xconfigure.width;
                     height = event.xconfigure.height;
-                    
+
                     if (listener !is null)
                     {
                         _wfb = listener.onResized(width, height);
-                        
+
                         listener.recomputeDirtyAreas();
                         listener.onDraw(WindowPixelFormat.RGBA8);
-                        
+
                         box2i areaToRedraw = listener.getDirtyRectangle();
                         box2i[] areasToRedraw = (&areaToRedraw)[0..1];
                         if (_wfb.pixels !is null)
@@ -312,7 +313,7 @@ void handleEvents(ref XEvent event, X11Window theWindow)
                     }
                 }
                 break;
-                
+
             case ButtonPress:
                 if (listener !is null)
                 {
@@ -350,9 +351,9 @@ void handleEvents(ref XEvent event, X11Window theWindow)
                 {
                     int newMouseX = event.xbutton.x;
                     int newMouseY = event.xbutton.y;
-                    
+
                     MouseButton button;
-                    
+
                     if (event.xbutton.button == Button1)
                         button = MouseButton.left;
                     else if (event.xbutton.button == Button3)
@@ -361,7 +362,7 @@ void handleEvents(ref XEvent event, X11Window theWindow)
                         button = MouseButton.middle;
                     else if (event.xbutton.button == Button4 || event.xbutton.button == Button5)
                         break;
-                    
+
                     listener.onMouseRelease(newMouseX, newMouseY, button, mouseStateFromX11(event.xbutton.state));
                 }
                 break;
@@ -380,7 +381,7 @@ void handleEvents(ref XEvent event, X11Window theWindow)
                     lastMouseY = newMouseY;
                 }
                 break;
-                
+
             case KeyPress:
                 KeySym symbol;
                 assumeNoGC(&XLookupString)(&event.xkey, null, 0, &symbol, null);
@@ -397,7 +398,7 @@ void handleEvents(ref XEvent event, X11Window theWindow)
                     listener.onKeyUp(convertKeyFromX11(symbol));
                 }
                 break;
-                
+
             case ClientMessage:
                 if (event.xclient.data.l[0] == _closeAtom)
                 {
@@ -409,7 +410,7 @@ void handleEvents(ref XEvent event, X11Window theWindow)
                     assumeNoGC(&XFlush)(_display);
                 }
                 break;
-                
+
             default:
                 break;
         }
@@ -430,7 +431,7 @@ Key convertKeyFromX11(KeySym symbol)
             return Key.leftArrow;
         case XK_Right:
             return Key.rightArrow;
-            
+
         case XK_0: .. case XK_9:
             return cast(Key)(Key.digit0 + (symbol - XK_0));
         case XK_KP_0: .. case XK_KP_9:
@@ -461,7 +462,7 @@ MouseState mouseStateFromX11(uint state) {
 
 /**
  * A simple @nogc map, that also happens to be quite dumb.
- * 
+ *
  * It is used for X11 mapping of window id's to instances,
  * if you need something like this for anything more serious, replace!
  * Or look into EMSI's containers.

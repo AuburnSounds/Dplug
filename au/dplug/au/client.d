@@ -134,9 +134,9 @@ ComponentResult audioUnitEntryPoint(alias ClientClass)(ComponentParameters* para
         acquireAUFunctions();
 
         // Create client and AUClient
-        ClientClass client = mallocEmplace!ClientClass();
+        ClientClass client = mallocNew!ClientClass();
         ComponentInstance instance = params.getCompParam!(ComponentInstance, 0, 1);
-        AUClient plugin = mallocEmplace!AUClient(client, instance);
+        AUClient plugin = mallocNew!AUClient(client, instance);
         SetComponentInstanceStorage( instance, cast(Handle)(cast(void*)plugin) );
         return noErr;
     }
@@ -162,8 +162,7 @@ ComponentResult audioUnitCarbonViewEntry(alias ClientClass)(ComponentParameters*
 
     if (select == kComponentOpenSelect)
     {
-        // mallocEmplace'd else it would be collected by GC the moment we look elsewhere
-        CarbonViewInstance* pCVI = mallocEmplace!CarbonViewInstance();
+        CarbonViewInstance* pCVI = mallocNew!CarbonViewInstance();
         pCVI.mCI = getCompParam!(ComponentInstance, 0, 1)(params);
         pCVI.mPlug = null;
         SetComponentInstanceStorage(pCVI.mCI, cast(Handle)pCVI);
