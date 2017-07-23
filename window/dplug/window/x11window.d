@@ -33,11 +33,18 @@ import x11.Xutil;
 import x11.extensions.Xrandr;
 import x11.extensions.randr;
 
-// TODO: these are TLS variable, which is forbidden
-Display* _display;
-size_t _white_pixel, _black_pixel;
-int _screen;
-DumbSlowNoGCMap!(Window, X11Window) x11WindowMapping;
+// TODO: remove data races with the globals
+
+// TODO: check with multiple instances
+// Who owns the connection? Rikki says it should be us, not the host. The host would provide us
+// with a parent window, but no connection. Only testing will answer.
+__gshared Display* _display;
+
+__gshared size_t _white_pixel, _black_pixel; // TODO: could be made a field without questions
+__gshared int _screen;                       // TODO: could be made a field without questions
+
+// Reverse mapping
+__gshared DumbSlowNoGCMap!(Window, X11Window) x11WindowMapping;
 
 // This is an extension to X11, almost always should exist on modern systems
 // If it becomes a problem, version out its usage, it'll work just won't be as nice event wise
