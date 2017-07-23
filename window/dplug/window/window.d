@@ -149,7 +149,7 @@ enum WindowBackend
 
 
 /// Factory function to create windows.
-/// The window is allocated with `mallocEmplace` and should be destroyed with `destroyFree`.
+/// The window is allocated with `mallocNew` and should be destroyed with `destroyFree`.
 /// Returns: null if this backend isn't available on this platform.
 /// Note: controlInfo is only used by Carbon + AU, can be null otherwise
 nothrow @nogc
@@ -170,15 +170,17 @@ IWindow createWindow(void* parentInfo, void* controlInfo, IWindowListener listen
                 return WindowBackend.carbon;
             }
         }
-        else version(Posix)
+        else version(linux)
         {
             return WindowBackend.x11;
         }
+        else
+            static assert(false, "Unsupported OS");
     }
 
     if (backend == WindowBackend.autodetect)
         backend = autoDetectBackend();
-    
+
     version(Windows)
     {
         if (backend == WindowBackend.win32)
@@ -196,22 +198,22 @@ IWindow createWindow(void* parentInfo, void* controlInfo, IWindowListener listen
         if (backend == WindowBackend.cocoa)
         {
             import dplug.window.cocoawindow;
-            return mallocEmplace!CocoaWindow(parentInfo, listener, width, height);
+            return mallocNew!CocoaWindow(parentInfo, listener, width, height);
         }
         else if (backend == WindowBackend.carbon)
         {
             import dplug.window.carbonwindow;
-            return mallocEmplace!CarbonWindow(parentInfo, controlInfo, listener, width, height);
+            return mallocNew!CarbonWindow(parentInfo, controlInfo, listener, width, height);
         }
         else
             return null;
     }
-    else version(Posix)
+    else version(linux)
     {
         if (backend == WindowBackend.x11)
         {
             import dplug.window.x11window;
-            return mallocEmplace!X11Window(parentInfo, listener, width, height);
+            return mallocNew!X11Window(parentInfo, listener, width, height);
         }
         else
             return null;
