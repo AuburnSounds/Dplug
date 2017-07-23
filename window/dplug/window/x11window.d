@@ -23,136 +23,157 @@ import dplug.graphics.view;
 nothrow:
 @nogc:
 
-version(Posix)
+version(Posix):
+
+import x11.X;
+import x11.Xlib;
+import x11.keysym;
+import x11.keysymdef;
+import x11.Xutil;
+import x11.extensions.Xrandr;
+import x11.extensions.randr;
+
+Display* _display;
+size_t _white_pixel, _black_pixel;
+int _screen;
+DumbSlowNoGCMap!(Window, X11Window) x11WindowMapping;
+
+// This is an extension to X11, almost always should exist on modern systems
+// If it becomes a problem, version out its usage, it'll work just won't be as nice event wise
+extern(C) bool XkbSetDetectableAutoRepeat(Display*, bool, bool*);
+
+final class X11Window : IWindow
 {
-    import x11.X;
-    import x11.Xlib;
-    import x11.keysym;
-    import x11.keysymdef;
-    import x11.Xutil;
-    import x11.extensions.Xrandr;
-    import x11.extensions.randr;
+public:
+nothrow:
+@nogc:
 
-    Display* _display;
-    size_t _white_pixel, _black_pixel;
-    int _screen;
-    DumbSlowNoGCMap!(Window, X11Window) x11WindowMapping;
-
-    // This is an extension to X11, almost always should exist on modern systems
-    // If it becomes a problem, version out its usage, it'll work just won't be as nice event wise
-    extern(C) bool XkbSetDetectableAutoRepeat(Display*, bool, bool*);
-
-    final class X11Window : IWindow
+    this(void* parentWindow, IWindowListener listener, int width, int height)
     {
-    public:
-    nothrow:
-    @nogc:
+        int x, y;
+        this.listener = listener;
 
-        this(void* parentWindow, IWindowListener listener, int width, int height)
-        {
-            int x, y;
-            this.listener = listener;
-
-            //
-            
-            if (_display is null)
-            {
-                _display = assumeNoGC(&XOpenDisplay)(null);
-                _screen = assumeNoGC(&DefaultScreen)(_display);
-                _white_pixel = assumeNoGC(&WhitePixel)(_display, _screen);
-                _black_pixel = assumeNoGC(&BlackPixel)(_display, _screen);
-                assumeNoGC(&XkbSetDetectableAutoRepeat)(_display, true, null);
-            }
-
-            if (parentWindow is null)
-            {
-                _parentWindowId = assumeNoGC(&RootWindow)(_display, _screen);
-            }
-            else
-            {
-                _parentWindowId = cast(Window)parentWindow;
-            }
-
-            x = (assumeNoGC(&DisplayWidth)(_display, _screen) - width) / 2;
-            y = (assumeNoGC(&DisplayHeight)(_display, _screen) - height) / 3;
-            this.width = width;
-            this.height = height;
-            depth = 24;
-
-            //
-
-            _windowId = assumeNoGC(&XCreateSimpleWindow)(_display, _parentWindowId, x, y, width, height, 0, 0, _white_pixel);
-            assumeNoGC(&XStoreName)(_display, _windowId, cast(char*)"Dplug window".ptr);
-            x11WindowMapping[_windowId] = this;
-
-            //
-
-            XSizeHints sizeHints;
-            sizeHints.flags = PMinSize | PMaxSize;
-            sizeHints.min_width = width;
-            sizeHints.max_width = width;
-            sizeHints.min_height = height;
-            sizeHints.max_height = height;
-
-            assumeNoGC(&XSetWMNormalHints)(_display, _windowId, &sizeHints);
-
-            //
-
-            _closeAtom = assumeNoGC(&XInternAtom)(_display, cast(char*)("WM_DELETE_WINDOW".ptr), cast(Bool)false);
-            assumeNoGC(&XSetWMProtocols)(_display, _windowId, &_closeAtom, 1);
-
-            assumeNoGC(&XMapWindow)(_display, _windowId);
-            assumeNoGC(&XFlush)(_display);
-
-            assumeNoGC(&XSelectInput)(_display, _windowId, ExposureMask | KeyPressMask | StructureNotifyMask |
-                KeyReleaseMask | KeyPressMask | ButtonReleaseMask | ButtonPressMask | PointerMotionMask);
-            _graphicGC = assumeNoGC(&XCreateGC)(_display, _windowId, 0, null);
-            assumeNoGC(&XSetBackground)(_display, _graphicGC, _white_pixel);
-            assumeNoGC(&XSetForeground)(_display, _graphicGC, _black_pixel);
-
-            _wfb = listener.onResized(width, height);
-            listener.recomputeDirtyAreas();
-            listener.onDraw(WindowPixelFormat.RGBA8);
-            
-            box2i areaToRedraw = listener.getDirtyRectangle();
-            box2i[] areasToRedraw = (&areaToRedraw)[0..1];
-            if (_wfb.pixels !is null)
-            {
-                swapBuffers(_wfb, areasToRedraw);
-            }
-
-            creationTime = getTimeMs();
-            lastTimeGot = creationTime;
-        }
+        //
         
-        ~this()
+        if (_display is null)
         {
-            x11WindowMapping.remove(_windowId);
-            assumeNoGC(&XDestroyImage)(_graphicImage);
-            assumeNoGC(&XFreeGC)(_display, _graphicGC);
-            assumeNoGC(&XDestroyWindow)(_display, _windowId);
-            assumeNoGC(&XFlush)(_display);
+            _display = assumeNoGC(&XOpenDisplay)(null);
+            _screen = assumeNoGC(&DefaultScreen)(_display);
+            _white_pixel = assumeNoGC(&WhitePixel)(_display, _screen);
+            _black_pixel = assumeNoGC(&BlackPixel)(_display, _screen);
+            assumeNoGC(&XkbSetDetectableAutoRepeat)(_display, true, null);
         }
 
-        void swapBuffers(ImageRef!RGBA wfb, box2i[] areasToRedraw)
+        if (parentWindow is null)
         {
-            if (_bufferData.length != wfb.w * wfb.h)
+            _parentWindowId = assumeNoGC(&RootWindow)(_display, _screen);
+        }
+        else
+        {
+            _parentWindowId = cast(Window)parentWindow;
+        }
+
+        x = (assumeNoGC(&DisplayWidth)(_display, _screen) - width) / 2;
+        y = (assumeNoGC(&DisplayHeight)(_display, _screen) - height) / 3;
+        this.width = width;
+        this.height = height;
+        depth = 24;
+
+        //
+
+        _windowId = assumeNoGC(&XCreateSimpleWindow)(_display, _parentWindowId, x, y, width, height, 0, 0, _white_pixel);
+        assumeNoGC(&XStoreName)(_display, _windowId, cast(char*)"Dplug window".ptr);
+        x11WindowMapping[_windowId] = this;
+
+        //
+
+        XSizeHints sizeHints;
+        sizeHints.flags = PMinSize | PMaxSize;
+        sizeHints.min_width = width;
+        sizeHints.max_width = width;
+        sizeHints.min_height = height;
+        sizeHints.max_height = height;
+
+        assumeNoGC(&XSetWMNormalHints)(_display, _windowId, &sizeHints);
+
+        //
+
+        _closeAtom = assumeNoGC(&XInternAtom)(_display, cast(char*)("WM_DELETE_WINDOW".ptr), cast(Bool)false);
+        assumeNoGC(&XSetWMProtocols)(_display, _windowId, &_closeAtom, 1);
+
+        assumeNoGC(&XMapWindow)(_display, _windowId);
+        assumeNoGC(&XFlush)(_display);
+
+        assumeNoGC(&XSelectInput)(_display, _windowId, ExposureMask | KeyPressMask | StructureNotifyMask |
+            KeyReleaseMask | KeyPressMask | ButtonReleaseMask | ButtonPressMask | PointerMotionMask);
+        _graphicGC = assumeNoGC(&XCreateGC)(_display, _windowId, 0, null);
+        assumeNoGC(&XSetBackground)(_display, _graphicGC, _white_pixel);
+        assumeNoGC(&XSetForeground)(_display, _graphicGC, _black_pixel);
+
+        _wfb = listener.onResized(width, height);
+        listener.recomputeDirtyAreas();
+        listener.onDraw(WindowPixelFormat.RGBA8);
+        
+        box2i areaToRedraw = listener.getDirtyRectangle();
+        box2i[] areasToRedraw = (&areaToRedraw)[0..1];
+        if (_wfb.pixels !is null)
+        {
+            swapBuffers(_wfb, areasToRedraw);
+        }
+
+        creationTime = getTimeMs();
+        lastTimeGot = creationTime;
+    }
+    
+    ~this()
+    {
+        x11WindowMapping.remove(_windowId);
+        assumeNoGC(&XDestroyImage)(_graphicImage);
+        assumeNoGC(&XFreeGC)(_display, _graphicGC);
+        assumeNoGC(&XDestroyWindow)(_display, _windowId);
+        assumeNoGC(&XFlush)(_display);
+    }
+
+    void swapBuffers(ImageRef!RGBA wfb, box2i[] areasToRedraw)
+    {
+        if (_bufferData.length != wfb.w * wfb.h)
+        {
+            _bufferData = mallocSlice!(ubyte[4])(wfb.w * wfb.h);
+
+            if (_graphicImage !is null)
             {
-                _bufferData = mallocSlice!(ubyte[4])(wfb.w * wfb.h);
+                // X11 deallocates _bufferData for us (ugh...)
+                assumeNoGC(&XDestroyImage)(_graphicImage);
+            }
 
-                if (_graphicImage !is null)
+            _graphicImage = assumeNoGC(&XCreateImage)(_display, cast(Visual*)&_graphicGC, depth, ZPixmap, 0, cast(char*)_bufferData.ptr, width, height, 32, 0);
+
+            size_t i;
+            foreach(y; 0 .. wfb.h)
+            {
+                RGBA[] scanLine = wfb.scanline(y);
+                foreach(x, ref c; scanLine)
                 {
-                    // X11 deallocates _bufferData for us (ugh...)
-                    assumeNoGC(&XDestroyImage)(_graphicImage);
+                    _bufferData[i][0] = c.b;
+                    _bufferData[i][1] = c.g;
+                    _bufferData[i][2] = c.r;
+                    _bufferData[i][3] = c.a;
+                    i++;
                 }
-
-                _graphicImage = assumeNoGC(&XCreateImage)(_display, cast(Visual*)&_graphicGC, depth, ZPixmap, 0, cast(char*)_bufferData.ptr, width, height, 32, 0);
-
-                size_t i;
-                foreach(y; 0 .. wfb.h)
+            }
+        }
+        else
+        {
+            foreach(box2i area; areasToRedraw)
+            {
+                foreach(y; area.min.y .. area.max.y)
                 {
                     RGBA[] scanLine = wfb.scanline(y);
-                    foreach(x, ref c; scanLine)
+
+                    size_t i = y * wfb.w;
+                    i += area.min.x;
+
+                    foreach(x, ref c; scanLine[area.min.x .. area.max.x])
                     {
                         _bufferData[i][0] = c.b;
                         _bufferData[i][1] = c.g;
@@ -162,91 +183,68 @@ version(Posix)
                     }
                 }
             }
-            else
-            {
-                foreach(box2i area; areasToRedraw)
-                {
-                    foreach(y; area.min.y .. area.max.y)
-                    {
-                        RGBA[] scanLine = wfb.scanline(y);
-
-                        size_t i = y * wfb.w;
-                        i += area.min.x;
-
-                        foreach(x, ref c; scanLine[area.min.x .. area.max.x])
-                        {
-                            _bufferData[i][0] = c.b;
-                            _bufferData[i][1] = c.g;
-                            _bufferData[i][2] = c.r;
-                            _bufferData[i][3] = c.a;
-                            i++;
-                        }
-                    }
-                }
-            }
-
-            assumeNoGC(&XPutImage)(_display, _windowId, _graphicGC, _graphicImage, 0, 0, 0, 0, cast(uint)width, cast(uint)height);
         }
 
-        // Implements IWindow
-        override void waitEventAndDispatch()
-        {
-            while(x11WindowMapping.haveAValue)
-            {
-                XEvent event;
-                assumeNoGC(&XNextEvent)(_display, &event);
-
-                X11Window theWindow = x11WindowMapping[event.xany.window];
-
-                if (theWindow is null)
-                {
-                    // well hello, I didn't expect this.. goodbye
-                    continue;
-                }
-
-                handleEvents(event, theWindow);
-            }
-        }
-
-        override bool terminated()
-        {
-            return _terminated;
-        }
-
-        override uint getTimeMs()
-        {
-            static uint perform() {
-                import std.datetime : Clock;
-                return cast(uint)(Clock.currTime.stdTime / 100000);
-            }
-
-            return assumeNothrowNoGC(&perform)();
-        }
-
-        override void* systemHandle()
-        {
-            return cast(void*)_windowId;
-        }
-
-    private:
-
-        IWindowListener listener;
-        Window _windowId, _parentWindowId;
-        bool _terminated = false;
-        Atom _closeAtom;
-
-        ImageRef!RGBA _wfb; // framebuffer reference
-
-        GC _graphicGC;
-        XImage* _graphicImage;
-        ubyte[4][] _bufferData;
-        int width, height, depth;
-
-        uint lastTimeGot, creationTime;
-        int lastMouseX, lastMouseY;
+        assumeNoGC(&XPutImage)(_display, _windowId, _graphicGC, _graphicImage, 0, 0, 0, 0, cast(uint)width, cast(uint)height);
     }
-}
 
+    // Implements IWindow
+    override void waitEventAndDispatch()
+    {
+        while(x11WindowMapping.haveAValue)
+        {
+            XEvent event;
+            assumeNoGC(&XNextEvent)(_display, &event);
+
+            X11Window theWindow = x11WindowMapping[event.xany.window];
+
+            if (theWindow is null)
+            {
+                // well hello, I didn't expect this.. goodbye
+                continue;
+            }
+
+            handleEvents(event, theWindow);
+        }
+    }
+
+    override bool terminated()
+    {
+        return _terminated;
+    }
+
+    override uint getTimeMs()
+    {
+        static uint perform() {
+            import std.datetime : Clock;
+            return cast(uint)(Clock.currTime.stdTime / 100000);
+        }
+
+        return assumeNothrowNoGC(&perform)();
+    }
+
+    override void* systemHandle()
+    {
+        return cast(void*)_windowId;
+    }
+
+private:
+
+    IWindowListener listener;
+    Window _windowId, _parentWindowId;
+    bool _terminated = false;
+    Atom _closeAtom;
+
+    ImageRef!RGBA _wfb; // framebuffer reference
+
+    GC _graphicGC;
+    XImage* _graphicImage;
+    ubyte[4][] _bufferData;
+    int width, height, depth;
+
+    uint lastTimeGot, creationTime;
+    int lastMouseX, lastMouseY;
+}
 
 void handleEvents(ref XEvent event, X11Window theWindow)
 {
