@@ -107,6 +107,7 @@ void main(string[]args)
 
                 host.setSampleRate(44100);
                 host.setMaxBufferSize(bufLength);
+                host.beginAudioProcessing();
                 if (preset != -1)
                     host.loadPreset(preset);
 
@@ -145,6 +146,7 @@ void main(string[]args)
                     }
                 }
 
+                host.endAudioProcessing();
                 host.close();
             }
 

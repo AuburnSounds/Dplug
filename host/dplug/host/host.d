@@ -58,6 +58,12 @@ interface IPluginHost
 
     /// Gets the UI size.
     int[2] getUISize();
+
+    /// Switch on the plugin. Call it before processing.
+    void beginAudioProcessing();
+
+    /// Switch off the plugin. Call it after processing.
+    void endAudioProcessing();
 }
 
 

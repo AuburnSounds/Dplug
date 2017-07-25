@@ -147,6 +147,8 @@ void main(string[]args)
         IPluginHost host = createPluginHost(pluginPath);
         host.setSampleRate(sound.sampleRate);
         host.setMaxBufferSize(bufferSize);
+        host.beginAudioProcessing();
+
         if (preset != -1)
             host.loadPreset(preset);
         long timeAfterInit = getTickMs();
@@ -210,6 +212,7 @@ void main(string[]args)
             encodeWAV(sound, outPath);
         }
 
+        host.endAudioProcessing();
         host.close();
     }
     catch(Exception e)

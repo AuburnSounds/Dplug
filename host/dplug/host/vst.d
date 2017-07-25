@@ -116,17 +116,35 @@ final class VSTPluginHost : IPluginHost
 
     override void processAudioFloat(float** inputs, float** outputs, int samples)
     {
+        if (_suspended)
+            throw new Exception("Cannot process audio with VST plugin while suspended");
         _aeffect.processReplacing(_aeffect, inputs, outputs, samples);
         _processedSamples += samples;
     }
 
+    override void beginAudioProcessing()
+    {
+        _dispatcher(_aeffect, effMainsChanged, 0, 1, null, 0.0f);
+        _suspended = false;
+    }
+
+    override void endAudioProcessing()
+    {
+        _dispatcher(_aeffect, effMainsChanged, 0, 0, null, 0.0f);
+        _suspended = true;
+    }
+
     override void setSampleRate(float sampleRate)
     {
+        if (!_suspended)
+            throw new Exception("Cannot set sample rate of VST plugin while not suspended");
         _dispatcher(_aeffect, effSetSampleRate, 0, 0, null, sampleRate);
     }
 
     override void setMaxBufferSize(int samples)
     {
+        if (!_suspended)
+            throw new Exception("Cannot set block sizeof VST plugin while not suspended");
         _dispatcher(_aeffect, effSetBlockSize, 0, cast(VstIntPtr)samples, null, 0.0f);
     }
 
@@ -142,6 +160,8 @@ final class VSTPluginHost : IPluginHost
 
     override void closeUI()
     {
+        if (!_suspended)
+            throw new Exception("Cannot close VST plugin while not suspended");
         _dispatcher(_aeffect, effEditClose, 0, 0, null, 0.0f);
     }
 
@@ -190,6 +210,7 @@ private:
     AEffectDispatcherProc _dispatcher;
     long _processedSamples;
     VstTimeInfo timeInfo;
+    bool _suspended = true;
 }
 
 extern(C) nothrow @nogc VstIntPtr hostCallback(AEffect* effect, VstInt32 opcode, VstInt32 index, VstIntPtr value, void* ptr, float opt)
@@ -248,7 +269,7 @@ extern(C) nothrow @nogc VstIntPtr hostCallback(AEffect* effect, VstInt32 opcode,
         {
             char* p = cast(char*)ptr;
             if (p !is null)
-                stringNCopy(p, 64, "dplug host");
+                stringNCopy(p, 64, "Dplug host");
             return 0;
         }
 
