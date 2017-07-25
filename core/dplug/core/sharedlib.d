@@ -59,6 +59,13 @@ nothrow:
             assert(false);
     }
 
+    bool hasSymbol(string symbolName)
+    {
+        assert(isLoaded());
+        void* sym = GetSymbol(_hlib, symbolName);
+        return sym != null;
+    }
+
     void* loadSymbol(string symbolName)
     {
         assert(isLoaded());

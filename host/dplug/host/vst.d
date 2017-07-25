@@ -23,14 +23,11 @@ VSTPluginMain_t getVSTEntryPoint(SharedLib lib)
     {
         if (result != null)
             return;
-        try
-        {
+
+        if (lib.hasSymbol(name))
             result = lib.loadSymbol(name);
-        }
-        catch(Exception e)
-        {
+        else
             result = null;
-        }
     }
     tryEntryPoint("VSTPluginMain");
     tryEntryPoint("main_macho");
