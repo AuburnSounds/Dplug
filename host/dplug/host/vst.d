@@ -251,7 +251,10 @@ extern(C) nothrow @nogc VstIntPtr hostCallback(AEffect* effect, VstInt32 opcode,
         case DEPRECATED_audioMasterGetPreviousPlug: printf("DEPRECATED_audioMasterGetPreviousPlug\n"); return 0;
         case DEPRECATED_audioMasterGetNextPlug: printf("DEPRECATED_audioMasterGetNextPlug\n"); return 0;
         case DEPRECATED_audioMasterWillReplaceOrAccumulate: printf("DEPRECATED_audioMasterWillReplaceOrAccumulate\n"); return 0;
-        case audioMasterGetCurrentProcessLevel: printf("audioMasterGetCurrentProcessLevel\n"); return 0;
+
+        case audioMasterGetCurrentProcessLevel: 
+            return 2; /* kVstProcessLevelRealtime */
+
         case audioMasterGetAutomationState: printf("audioMasterGetAutomationState\n"); return 0;
         case audioMasterOfflineStart: printf("audioMasterOfflineStart\n"); return 0;
         case audioMasterOfflineRead: printf("audioMasterOfflineRead\n"); return 0;
