@@ -145,6 +145,7 @@ nothrow:
 
     // The addChild method is mandatory.
     // Such a child MUST be created through `dplug.core.nogc.mallocEmplace`.
+    // MAYDO: Should we dirty this place in the case it's not plugin creation?
     final void addChild(UIElement element)
     {
         element._parent = this;
@@ -158,6 +159,9 @@ nothrow:
         int index= _children.indexOf(element);
         if(index >= 0)
         {
+            // Dirty where the UIElement has been removed
+            element.setDirtyWhole();
+
             _children.removeAndReplaceByLastElement(index);
         }
     }
