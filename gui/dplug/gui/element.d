@@ -151,6 +151,17 @@ nothrow:
         _children.pushBack(element); 
     }
 
+    // Removes a child but does not destroy it.
+    // Useful for creating dynamic UI's
+    final void removeChild(UIElement element)
+    {
+        int index= _children.indexOf(element);
+        if(index >= 0)
+        {
+            _children.removeAndReplaceByLastElement(index);
+        }
+    }
+
     // This function is meant to be overriden.
     // Happens _before_ checking for children collisions.
     bool onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
