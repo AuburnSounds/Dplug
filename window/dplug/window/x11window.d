@@ -267,7 +267,7 @@ void handleEvents(ref XEvent event, X11Window theWindow)
             lastTimeGot = currentTime;
             if (listener !is null)
             {
-                double dt = (now - _lastMeasturedTimeInMs) * 0.001;
+                double dt = (currentTime - lastTimeGot) * 0.001;
                 double time = (currentTime - creationTime) * 0.001;
                 listener.onAnimate(dt, time);
 
