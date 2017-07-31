@@ -1,5 +1,7 @@
 /**
-* Copyright: Copyright Auburn Sounds 2015 and later.
+* Copyright: Copyright Auburn Sounds 2015 - 2017.
+*            Copyright Richard Andrew Cattermole 2017.
+*
 * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 * Authors:   Guillaume Piolat
 */

@@ -1,5 +1,6 @@
 ﻿/**
  * Copyright (C) 2017 Richard Andrew Cattermole
+ * Copyright (C) 2017 Ethan Reker
  * X11 support.
  *
  * Bugs:
@@ -256,7 +257,7 @@ private:
 
 void handleEvents(ref XEvent event, X11Window theWindow)
 {
-    enum OneSixteith = 100/60;
+    enum OneSixteith = 100/60; // TODO ??? this is always one, looks like a bug
 
     with(theWindow)
     {
@@ -347,8 +348,8 @@ void handleEvents(ref XEvent event, X11Window theWindow)
                         listener.onMouseWheel(newMouseX, newMouseY, 0, event.xbutton.button == Button4 ? 1 : -1,
                             mouseStateFromX11(event.xbutton.state));
                     }
-                else
-                {
+                    else
+                    {
                         listener.onMouseClick(newMouseX, newMouseY, button, isDoubleClick, mouseStateFromX11(event.xbutton.state));
                     }
                 }
