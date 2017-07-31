@@ -224,8 +224,8 @@ nothrow:
     override uint getTimeMs()
     {
         static uint perform() {
-            import std.datetime : Clock;
-            return cast(uint)(Clock.currTime.stdTime / 100000);
+            import core.stdc.time;
+            return cast(uint)ctime(null);
         }
 
         return assumeNothrowNoGC(&perform)();
