@@ -257,18 +257,23 @@ private:
 
 void handleEvents(ref XEvent event, X11Window theWindow)
 {
-    enum OneSixteith = 100/60; // TODO ??? this is always one, looks like a bug
-
     with(theWindow)
     {
         uint currentTime = getTimeMs();
-        uint diff = currentTime-lastTimeGot;
-        if (diff >= OneSixteith)
+        uint diff = currentTime - lastTimeGot;
+
+        if (diff >= 1000 / 60)
         {
             lastTimeGot = currentTime;
             if (listener !is null)
             {
-                listener.onAnimate(cast(double)diff, cast(double)creationTime);
+                double dt = (now - _lastMeasturedTimeInMs) * 0.001;
+                double time = (currentTime - creationTime) * 0.001;
+                listener.onAnimate(dt, time);
+
+                // TODO onAnimate will call setDirty, we should use the X11
+                // mechanism to have Expose called instead, NOT calling onDraw here
+
                 listener.recomputeDirtyAreas();
                 listener.onDraw(WindowPixelFormat.RGBA8);
 
@@ -354,6 +359,7 @@ void handleEvents(ref XEvent event, X11Window theWindow)
                     }
                 }
                 break;
+
             case ButtonRelease:
                 if (listener !is null)
                 {
@@ -398,6 +404,7 @@ void handleEvents(ref XEvent event, X11Window theWindow)
                     listener.onKeyDown(convertKeyFromX11(symbol));
                 }
                 break;
+
             case KeyRelease:
                 KeySym symbol;
                 assumeNoGC(&XLookupString)(&event.xkey, null, 0, &symbol, null);
@@ -431,17 +438,22 @@ Key convertKeyFromX11(KeySym symbol)
     {
         case XK_space:
             return Key.space;
+
         case XK_Up:
             return Key.upArrow;
+
         case XK_Down:
             return Key.downArrow;
+
         case XK_Left:
             return Key.leftArrow;
+
         case XK_Right:
             return Key.rightArrow;
 
         case XK_0: .. case XK_9:
             return cast(Key)(Key.digit0 + (symbol - XK_0));
+
         case XK_KP_0: .. case XK_KP_9:
             return cast(Key)(Key.digit0 + (symbol - XK_KP_0));
 

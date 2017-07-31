@@ -136,6 +136,7 @@ nothrow @nogc:
 
     /// Must be called periodically (ideally 60 times per second but this is not mandatory).
     /// `time` must refer to the window creation time.
+    /// `dt` and `time` are expressed in seconds (not milliseconds).
     void onAnimate(double dt, double time);
 }
 
