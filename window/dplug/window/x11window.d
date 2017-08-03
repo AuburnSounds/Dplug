@@ -1,5 +1,6 @@
 ﻿/**
  * Copyright (C) 2017 Richard Andrew Cattermole
+ * Copyright (C) 2017 Ethan Reker
  * X11 support.
  *
  * Bugs:
@@ -224,8 +225,8 @@ nothrow:
     override uint getTimeMs()
     {
         static uint perform() {
-            import std.datetime : Clock;
-            return cast(uint)(Clock.currTime.stdTime / 100000);
+            import core.stdc.time;
+            return cast(uint)ctime(null);
         }
 
         return assumeNothrowNoGC(&perform)();
@@ -256,18 +257,23 @@ private:
 
 void handleEvents(ref XEvent event, X11Window theWindow)
 {
-    enum OneSixteith = 100/60;
-
     with(theWindow)
     {
         uint currentTime = getTimeMs();
-        uint diff = currentTime-lastTimeGot;
-        if (diff >= OneSixteith)
+        uint diff = currentTime - lastTimeGot;
+
+        if (diff >= 1000 / 60)
         {
             lastTimeGot = currentTime;
             if (listener !is null)
             {
-                listener.onAnimate(cast(double)diff, cast(double)creationTime);
+                double dt = (currentTime - lastTimeGot) * 0.001;
+                double time = (currentTime - creationTime) * 0.001;
+                listener.onAnimate(dt, time);
+
+                // TODO onAnimate will call setDirty, we should use the X11
+                // mechanism to have Expose called instead, NOT calling onDraw here
+
                 listener.recomputeDirtyAreas();
                 listener.onDraw(WindowPixelFormat.RGBA8);
 
@@ -347,12 +353,13 @@ void handleEvents(ref XEvent event, X11Window theWindow)
                         listener.onMouseWheel(newMouseX, newMouseY, 0, event.xbutton.button == Button4 ? 1 : -1,
                             mouseStateFromX11(event.xbutton.state));
                     }
-                else
-                {
+                    else
+                    {
                         listener.onMouseClick(newMouseX, newMouseY, button, isDoubleClick, mouseStateFromX11(event.xbutton.state));
                     }
                 }
                 break;
+
             case ButtonRelease:
                 if (listener !is null)
                 {
@@ -397,6 +404,7 @@ void handleEvents(ref XEvent event, X11Window theWindow)
                     listener.onKeyDown(convertKeyFromX11(symbol));
                 }
                 break;
+
             case KeyRelease:
                 KeySym symbol;
                 assumeNoGC(&XLookupString)(&event.xkey, null, 0, &symbol, null);
@@ -430,17 +438,22 @@ Key convertKeyFromX11(KeySym symbol)
     {
         case XK_space:
             return Key.space;
+
         case XK_Up:
             return Key.upArrow;
+
         case XK_Down:
             return Key.downArrow;
+
         case XK_Left:
             return Key.leftArrow;
+
         case XK_Right:
             return Key.rightArrow;
 
         case XK_0: .. case XK_9:
             return cast(Key)(Key.digit0 + (symbol - XK_0));
+
         case XK_KP_0: .. case XK_KP_9:
             return cast(Key)(Key.digit0 + (symbol - XK_KP_0));
 
