@@ -106,12 +106,14 @@
 
             "dependencies-osx": {
                 "dplug:cocoa": "*",
-                "dplug:carbon": "*"
+                "dplug:carbon": "*",
             },
 
-            "dependencies-posix": {
-                "x11": "~>1.0.16"
+            "dependencies-linux": {
+                "dplug:x11": "*"
             }
+
+                            
         },
         {
             "name": "gui",
@@ -138,6 +140,15 @@
             "name": "carbon",
             "sourcePaths": [ "carbon/derelict/carbon" ],
             "importPaths": [ "carbon" ],
+            "dependencies": {
+                "dplug:core": "*"
+            }
+        },
+        {
+            "name": "x11",
+            "sourcePaths": [ "x11/derelict/x11" ],
+            "importPaths": [ "x11" ],
+            "libs-linux": ["X11"],
             "dependencies": {
                 "dplug:core": "*"
             }

@@ -25,13 +25,13 @@ nothrow:
 
 version(linux):
 
-import x11.X;
-import x11.Xlib;
-import x11.keysym;
-import x11.keysymdef;
-import x11.Xutil;
-import x11.extensions.Xrandr;
-import x11.extensions.randr;
+import derelict.x11.X;
+import derelict.x11.Xlib;
+import derelict.x11.keysym;
+import derelict.x11.keysymdef;
+import derelict.x11.Xutil;
+import derelict.x11.extensions.Xrandr;
+import derelict.x11.extensions.randr;
 
 // TODO: remove data races with the globals
 
