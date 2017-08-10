@@ -110,10 +110,11 @@ nothrow:
         onDraw(diffuseMapCropped, depthMapCropped, materialMapCropped, _localRectsBuf[]);
     }
 
+    /// TODO: useless until we have resizeable UIs.
     /// Meant to be overriden almost everytime for custom behaviour.
     /// Default behaviour is to span the whole area and reflow children.
     /// Any layout algorithm is up to you.
-    /// Children elements don't need to be inside their parent.
+    /// Like in the DOM, children elements don't need to be inside _position of their parent.
     void reflow(box2i availableSpace)
     {
         // default: span the entire available area, and do the same for children
@@ -231,6 +232,13 @@ nothrow:
         return false;
     }
 
+    // Check if given pixel is within the widget.
+    // FUTURE: This will be used to avoid making onMouseClick both the test and the event.
+    final bool contains(vec2i pt)
+    {
+        return _position.contains(pt);
+    }
+
     // to be called at top-level when the mouse clicked
     final bool mouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
     {
@@ -245,7 +253,7 @@ nothrow:
         }
 
         // Test for collision with this element
-        if (_position.contains(vec2i(x, y)))
+        if (contains(vec2i(x, y)))
         {
             if(onMouseClick(x - _position.min.x, y - _position.min.y, button, isDoubleClick, mstate))
             {
@@ -275,16 +283,28 @@ nothrow:
     // to be called at top-level when the mouse wheeled
     final bool mouseWheel(int x, int y, int wheelDeltaX, int wheelDeltaY, MouseState mstate)
     {
-        foreach(child; _children[])
+        recomputeZOrderedChildren();
+
+        // Test children that are displayed above this element first
+        foreach(child; _zOrderedChildren[])
         {
-            if (child.mouseWheel(x, y, wheelDeltaX, wheelDeltaY, mstate))
-                return true;
+            if (child.zOrder >= zOrder)
+                if (child.mouseWheel(x, y, wheelDeltaX, wheelDeltaY, mstate))
+                    return true;
         }
 
-        if (_position.contains(vec2i(x, y)))
+        if (contains(vec2i(x, y)))
         {
             if (onMouseWheel(x - _position.min.x, y - _position.min.y, wheelDeltaX, wheelDeltaY, mstate))
                 return true;
+        }
+
+        // Test children that are displayed below this element last
+        foreach(child; _zOrderedChildren[])
+        {
+            if (child.zOrder < zOrder)
+                if (child.mouseWheel(x, y, wheelDeltaX, wheelDeltaY, mstate))
+                    return true;
         }
 
         return false;
@@ -330,12 +350,14 @@ nothrow:
                 onMouseDrag(x - _position.min.x, y - _position.min.y, dx, dy, mstate);
         }
 
+        // Note: no z-order for mouse-move, it's called for everything. Is it right? What would the DOM do?
+
         foreach(child; _children[])
         {
             child.mouseMove(x, y, dx, dy, mstate);
         }
 
-        if (_position.contains(vec2i(x, y))) // FUTURE: something more fine-grained?
+        if (contains(vec2i(x, y))) // FUTURE: something more fine-grained?
         {
             if (!_mouseOver)
                 onMouseEnter();
@@ -474,10 +496,18 @@ nothrow:
 
 protected:
 
-    /// Draw method. You should redraw the area there.
-    /// For better efficiency, you may only redraw the part in _dirtyRect.
-    /// diffuseMap and depthMap are made to span _position exactly,
-    /// so you can draw in the area (0 .. _position.width, 0 .. _position.height)
+    /// Draw method. This gives you 3 surfaces cropped by  _position for drawing.
+    /// Note that you are not forced to draw all the surfaces at all, in which case the
+    /// below background`UIElement` will be displayed.
+    /// 
+    /// `UIElement` are drawn by increasing z-order, or lexical order if lack thereof.
+    /// Those elements who have non-overlapping `_position` are drawn in parallel.
+    /// Hence you CAN'T draw outside `_position` and receive cropped surfaces.
+    /// `diffuseMap`, `depthMap` and `materialMap` are made to span _position exactly.
+    ///
+    /// IMPORTANT: For better efficiency, you SHALL NOT draw part outside `dirtyRects`. 
+    /// This allows more fine-grained updates.
+    /// A `UIElement` that doesn't respect dirtyRects will have display problems if it overlaps with another `UIElement`.        
     void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects) nothrow @nogc
     {
         // defaults to filling with a grey pattern
@@ -501,7 +531,7 @@ protected:
         }
     }
 
-    /// Called periodically.
+    /// Called periodically for every `UIElement`.
     /// Override this to create animations.
     /// Using setDirty there allows to redraw an element continuously (like a meter or an animated object).
     /// Warning: Summing `dt` will not lead to a time that increase like `time`.
@@ -524,7 +554,8 @@ protected:
     /// If _visible is false, neither the Element nor its children are drawn.
     bool _visible = true;
 
-    /// By default, every Element have the same z-order
+    /// Higher z-order = above other `UIElement`.
+    /// By default, every `UIElement` have the same z-order.
     /// Because the sort is stable, tree traversal order is the default order (depth first).
     int _zOrder = 0;
 
