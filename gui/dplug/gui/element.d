@@ -44,9 +44,8 @@ enum ubyte defaultMetalnessMetal = 255;
 
 /// Base class of the UI widget hierarchy.
 ///
-/// Bugs: a bunch of stuff in that class is intended specifically for the root element,
-///       there is probably a batter design to find
-
+/// MAYDO: a bunch of stuff in that class is intended specifically for the root element,
+///        there is probably a batter design to find
 class UIElement
 {
 public:
@@ -153,8 +152,9 @@ nothrow:
         _children.pushBack(element); 
     }
 
-    // Removes a child but does not destroy it.
-    // Useful for creating dynamic UI's
+    /// Removes a child (but does not destroy it, you take back the ownership of it).
+    /// Useful for creating dynamic UI's.
+    /// MAYDO: there are restrictions for where this is allowed. Find them.
     final void removeChild(UIElement element)
     {
         int index= _children.indexOf(element);
@@ -525,7 +525,7 @@ protected:
                 {
                     diffuseScan.ptr[x] = ( (x >> 3) ^  (y >> 3) ) & 1 ? darkGrey : lighterGrey;
                     depthScan.ptr[x] = L16(defaultDepth);
-                    materialScan.ptr[x] = RGBA(defaultRoughness,defaultMetalnessDielectric, defaultSpecular, defaultPhysical);
+                    materialScan.ptr[x] = RGBA(defaultRoughness, defaultMetalnessDielectric, defaultSpecular, defaultPhysical);
                 }
             }
         }
@@ -545,10 +545,12 @@ protected:
     /// Following this chain gets to the root element.
     UIElement _parent = null;
 
-    /// Position is the graphical extent
-    /// An Element is not allowed though to draw further than its _position.
+    /// Position is the graphical extent of the element, or something larger.
+    /// An `UIElement` is not allowed though to draw further than its _position.
+    /// For efficiency it's best to keep `_position` as small as feasible.
     box2i _position;
 
+    /// The list of children UI elements.
     Vec!UIElement _children;
 
     /// If _visible is false, neither the Element nor its children are drawn.
@@ -561,12 +563,13 @@ protected:
 
 private:
 
-    /// Reference to owning context
+    /// Reference to owning context.
     UIContext _context;
 
-    /// Flag: whether this UIElement has mouse over it or not
+    /// Flag: whether this UIElement has mouse over it or not.
     bool _mouseOver = false;
 
+    /// Dirty rectangles buffer, cropped to _position.
     Vec!box2i _localRectsBuf;
 
     /// Necessary for mouse-click to be aware of Z order
