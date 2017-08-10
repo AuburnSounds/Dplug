@@ -1027,7 +1027,7 @@ void stbtt__rasterize(stbtt__bitmap *result, stbtt__point *pts, int *wcount, int
    }
 
    // now sort the edges by their highest point (should snap to integer, and then by x)
-   quicksort!stbtt__edge(e[0..n], &edgeCompare);
+   grailSort!stbtt__edge(e[0..n], &edgeCompare);
 
    // now, traverse the scanlines and find the intersections on each scanline, use xor winding rule
    stbtt__rasterize_sorted_edges(result, e, n, vsubsample, off_x, off_y);

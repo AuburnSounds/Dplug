@@ -58,7 +58,6 @@ nothrow:
         _localRectsBuf = makeVec!box2i();
         _children = makeVec!UIElement();
         _zOrderedChildren = makeVec!UIElement();
-        _tempArrayForSort = makeVec!UIElement();
     }
 
     ~this()
@@ -576,9 +575,6 @@ private:
     /// Sported children in Z-lexical-order (sorted by Z, or else increasing index in _children).
     Vec!UIElement _zOrderedChildren;
 
-    /// Scratch buffer for sorting children in Z-lexical-order.
-    Vec!UIElement _tempArrayForSort;
-
     // Sort children in ascending z-order
     // Input: unsorted _children
     // Output: sorted _zOrderedChildren
@@ -589,12 +585,8 @@ private:
         foreach(child; _children[])
             _zOrderedChildren.pushBack(child);
 
-        _tempArrayForSort.resize(_zOrderedChildren.length);
-
         // This is a stable sort, so the order of children with same z-order still counts.
-        // PERF: make mergeSort in place so that we avoid those ugly scratch buffers
-        mergeSort!UIElement(_zOrderedChildren[],
-                            _tempArrayForSort[],
+        grailSort!UIElement(_zOrderedChildren[],
                              (a, b) nothrow @nogc 
                              {
                                  if (a.zOrder < b.zOrder) return 1;

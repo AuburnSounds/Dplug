@@ -370,7 +370,7 @@ alias nogcComparisonFunction(T) = int delegate(in T a, in T b) nothrow @nogc;
 
 /// @nogc quicksort
 /// From the excellent: http://codereview.stackexchange.com/a/77788
-void quicksort(T)(T[] array, nogcComparisonFunction!T comparison) nothrow @nogc
+deprecated("Use grailSort() instead, which is faster") void quicksort(T)(T[] array, nogcComparisonFunction!T comparison) nothrow @nogc
 {
     if (array.length < 2)
         return;
@@ -418,20 +418,13 @@ void quicksort(T)(T[] array, nogcComparisonFunction!T comparison) nothrow @nogc
     doQsort(array.ptr, 0, cast(int)(array.length) - 1);
 }
 
-unittest
-{
-    int[] testData = [110, 5, 10, 3, 22, 100, 1, 23];
-    quicksort!int(testData, (a, b) => (a - b));
-    assert(testData == [1, 3, 5, 10, 22, 23, 100, 110]);
-}
-
 //
-// STABLE IN-PLACE SORT (implementation below)
+// STABLE IN-PLACE SORT (implementation is at bottom of file)
 //
 
 void grailSort(T)(T[] inoutElements, nogcComparisonFunction!T comparison) nothrow @nogc
 {
-    GrailSortWithBuffer!T(inoutElements.ptr, cast(int)(inoutElements.length), comparison);
+    GrailSort!T(inoutElements.ptr, cast(int)(inoutElements.length), comparison);
 }
 
 unittest
@@ -446,9 +439,10 @@ unittest
 // STABLE MERGE SORT
 //
 
-// Stable merge sort, using a temporary array.
-// Array A[] has the items to sort.
-// Array B[] is a work array.
+/// Stable merge sort, using a temporary array.
+/// Array A[] has the items to sort.
+/// Array B[] is a work array.
+/// `grailSort` is approx. 30% slower but doesn't need a scratchBuffer.
 void mergeSort(T)(T[] inoutElements, T[] scratchBuffer, nogcComparisonFunction!T comparison) nothrow @nogc
 {
     // Left source half is A[ iBegin:iMiddle-1].

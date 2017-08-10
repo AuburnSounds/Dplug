@@ -302,7 +302,7 @@ public:
             _arr[i + 1] = _delay[i];
 
         // sort in place
-        quicksort!T(_arr[],  
+        grailSort!T(_arr[],  
             (a, b) nothrow @nogc 
             {
                 if (a > b) return 1;

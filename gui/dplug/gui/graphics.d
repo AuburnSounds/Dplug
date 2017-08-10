@@ -76,7 +76,6 @@ nothrow:
         _areasToRenderNonOverlappingTiled = makeVec!box2i;
 
         _elemsToDraw = makeVec!UIElement;
-        _elemsToDrawScratch = makeVec!UIElement;
 
         version(BenchmarkCompositing)
         {
@@ -341,9 +340,6 @@ protected:
     //       but this doesn't matter since UIElement are the UI hierarchy anyway.
     Vec!UIElement _elemsToDraw;
 
-    /// Temporary buffer for stable sorting of _elemsToDraw
-    Vec!UIElement _elemsToDrawScratch;
-
     /// Amount of pixels dirty rectangles are extended with.
     int _updateMargin = 20;
 
@@ -505,12 +501,11 @@ protected:
 
         // Sort by ascending z-order (high z-order gets drawn last)
         // This sort must be stable to avoid messing with tree natural order.
-        _elemsToDrawScratch.resize(_elemsToDraw.length);
         int compareZOrder(in UIElement a, in UIElement b) nothrow @nogc
         {
             return a.zOrder() - b.zOrder();
         }
-        mergeSort!UIElement(_elemsToDraw[], _elemsToDrawScratch[] , &compareZOrder);
+        grailSort!UIElement(_elemsToDraw[], &compareZOrder);
 
         enum bool parallelDraw = true;
 
