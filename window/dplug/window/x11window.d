@@ -17,6 +17,7 @@ import dplug.window.window;
 
 import dplug.core.runtime;
 import dplug.core.nogc;
+import dplug.core.thread;
 
 import dplug.graphics.image;
 import dplug.graphics.view;
@@ -62,16 +63,14 @@ nothrow:
         int x, y;
         this.listener = listener;
 
-        //
+        _display = assumeNoGC(&XOpenDisplay)(null);
+        _screen = assumeNoGC(&DefaultScreen)(_display);
+        _white_pixel = assumeNoGC(&WhitePixel)(_display, _screen);
+        _black_pixel = assumeNoGC(&BlackPixel)(_display, _screen);
+        assumeNoGC(&XkbSetDetectableAutoRepeat)(_display, true, null);
 
-        if (_display is null)
-        {
-            _display = assumeNoGC(&XOpenDisplay)(null);
-            _screen = assumeNoGC(&DefaultScreen)(_display);
-            _white_pixel = assumeNoGC(&WhitePixel)(_display, _screen);
-            _black_pixel = assumeNoGC(&BlackPixel)(_display, _screen);
-            assumeNoGC(&XkbSetDetectableAutoRepeat)(_display, true, null);
-        }
+        if(_display == null)
+            assert(false);
 
         if (parentWindow is null)
         {
@@ -90,8 +89,8 @@ nothrow:
 
         //
 
-        _windowId = assumeNoGC(&XCreateSimpleWindow)(_display, _parentWindowId, x, y, width, height, 0, 0, _white_pixel);
-        assumeNoGC(&XStoreName)(_display, _windowId, cast(char*)"Dplug window".ptr);
+        _windowId = assumeNoGC(&XCreateSimpleWindow)(_display, _parentWindowId, x, y, width, height, 0, 0, _black_pixel);
+        assumeNoGC(&XStoreName)(_display, _windowId, cast(char*)" ".ptr);
         x11WindowMapping[_windowId] = this;
 
         //
@@ -132,6 +131,9 @@ nothrow:
 
         creationTime = getTimeMs();
         lastTimeGot = creationTime;
+
+        _eventLoop = makeThread(&asyncEventHandling);
+        _eventLoop.start();
     }
 
     ~this()
@@ -200,7 +202,7 @@ nothrow:
     // Implements IWindow
     override void waitEventAndDispatch()
     {
-        while(x11WindowMapping.haveAValue)
+        while(assumeNoGC(&XPending)(_display))
         {
             XEvent event;
             assumeNoGC(&XNextEvent)(_display, &event);
@@ -217,6 +219,47 @@ nothrow:
         }
     }
 
+    //Called on a separate thread to dispatch events and redraw the UI
+    void asyncEventHandling() nothrow @nogc
+    {
+        while(x11WindowMapping.haveAValue)
+        {
+            waitEventAndDispatch();
+            redraw();
+        }
+    }
+
+    void redraw()
+    {
+        uint currentTime = getTimeMs();
+        float diff = currentTime - lastTimeGot;
+
+        double dt = (currentTime - lastTimeGot) * 0.001;
+        double time = (currentTime - creationTime) * 0.001;
+        listener.onAnimate(dt, time);
+
+        if(diff >= 1000.0f / 60.0f)
+        {
+            lastTimeGot = currentTime;
+            if (listener !is null)
+            {
+                // TODO onAnimate will call setDirty, we should use the X11
+                // mechanism to have Expose called instead, NOT calling onDraw here
+                _wfb = listener.onResized(_wfb.w, _wfb.h);
+
+                listener.recomputeDirtyAreas();
+                listener.onDraw(WindowPixelFormat.RGBA8);
+
+                box2i areaToRedraw = listener.getDirtyRectangle();
+                box2i[] areasToRedraw = (&areaToRedraw)[0..1];
+                if (_wfb.pixels !is null)
+                {
+                    swapBuffers(_wfb, areasToRedraw);
+                }
+            }
+        }
+    }
+
     override bool terminated()
     {
         return _terminated;
@@ -225,8 +268,13 @@ nothrow:
     override uint getTimeMs()
     {
         static uint perform() {
-            import core.stdc.time;
-            return cast(uint)ctime(null);
+            import core.sys.posix.sys.time;
+            timeval  tv;
+            gettimeofday(&tv, null);
+
+            double timeInMill = cast(double)(tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
+            return cast(uint)timeInMill;
+
         }
 
         return assumeNothrowNoGC(&perform)();
@@ -246,45 +294,23 @@ private:
 
     ImageRef!RGBA _wfb; // framebuffer reference
 
-    x11.Xlib.GC _graphicGC;
+    derelict.x11.Xlib.GC _graphicGC;
     XImage* _graphicImage;
     ubyte[4][] _bufferData;
     int width, height, depth;
 
     uint lastTimeGot, creationTime;
     int lastMouseX, lastMouseY;
+
+    MouseButton lastMouseButton;
+
+    Thread _eventLoop;
 }
 
 void handleEvents(ref XEvent event, X11Window theWindow)
 {
     with(theWindow)
     {
-        uint currentTime = getTimeMs();
-        uint diff = currentTime - lastTimeGot;
-
-        if (diff >= 1000 / 60)
-        {
-            lastTimeGot = currentTime;
-            if (listener !is null)
-            {
-                double dt = (currentTime - lastTimeGot) * 0.001;
-                double time = (currentTime - creationTime) * 0.001;
-                listener.onAnimate(dt, time);
-
-                // TODO onAnimate will call setDirty, we should use the X11
-                // mechanism to have Expose called instead, NOT calling onDraw here
-
-                listener.recomputeDirtyAreas();
-                listener.onDraw(WindowPixelFormat.RGBA8);
-
-                box2i areaToRedraw = listener.getDirtyRectangle();
-                box2i[] areasToRedraw = (&areaToRedraw)[0..1];
-                if (_wfb.pixels !is null)
-                {
-                    swapBuffers(_wfb, areasToRedraw);
-                }
-            }
-        }
 
         switch(event.type)
         {
@@ -292,6 +318,7 @@ void handleEvents(ref XEvent event, X11Window theWindow)
             case Expose:
                 if (listener !is null)
                 {
+                    _wfb = listener.onResized(_wfb.w, _wfb.h);
                     listener.recomputeDirtyAreas();
                     listener.onDraw(WindowPixelFormat.RGBA8);
 
@@ -327,6 +354,21 @@ void handleEvents(ref XEvent event, X11Window theWindow)
                 }
                 break;
 
+            case MotionNotify:
+                if (listener !is null)
+                {
+                    int newMouseX = event.xmotion.x;
+                    int newMouseY = event.xmotion.y;
+                    int dx = newMouseX - lastMouseX;
+                    int dy = newMouseY - lastMouseY;
+
+                    listener.onMouseMove(newMouseX, newMouseY, dx, dy, mouseStateFromX11(event.xbutton.state));
+
+                    lastMouseX = newMouseX;
+                    lastMouseY = newMouseY;
+                }
+                break;
+
             case ButtonPress:
                 if (listener !is null)
                 {
@@ -348,6 +390,9 @@ void handleEvents(ref XEvent event, X11Window theWindow)
 
                     bool isDoubleClick;
 
+                    lastMouseX = newMouseX;
+                    lastMouseY = newMouseY;
+
                     if (event.xbutton.button == Button4 || event.xbutton.button == Button5)
                     {
                         listener.onMouseWheel(newMouseX, newMouseY, 0, event.xbutton.button == Button4 ? 1 : -1,
@@ -356,6 +401,7 @@ void handleEvents(ref XEvent event, X11Window theWindow)
                     else
                     {
                         listener.onMouseClick(newMouseX, newMouseY, button, isDoubleClick, mouseStateFromX11(event.xbutton.state));
+                        lastMouseButton = button;
                     }
                 }
                 break;
@@ -368,6 +414,9 @@ void handleEvents(ref XEvent event, X11Window theWindow)
 
                     MouseButton button;
 
+                    lastMouseX = newMouseX;
+                    lastMouseY = newMouseY;
+
                     if (event.xbutton.button == Button1)
                         button = MouseButton.left;
                     else if (event.xbutton.button == Button3)
@@ -378,21 +427,6 @@ void handleEvents(ref XEvent event, X11Window theWindow)
                         break;
 
                     listener.onMouseRelease(newMouseX, newMouseY, button, mouseStateFromX11(event.xbutton.state));
-                }
-                break;
-
-            case MotionNotify:
-                if (listener !is null)
-                {
-                    int newMouseX = event.xmotion.x;
-                    int newMouseY = event.xmotion.y;
-                    int dx = newMouseX - lastMouseX;
-                    int dy = newMouseY - lastMouseY;
-
-                    listener.onMouseMove(newMouseX, newMouseY, dx, dy, mouseStateFromX11(event.xmotion.state));
-
-                    lastMouseX = newMouseX;
-                    lastMouseY = newMouseY;
                 }
                 break;
 

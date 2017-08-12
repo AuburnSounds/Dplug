@@ -216,7 +216,7 @@ IWindow createWindow(void* parentInfo, void* controlInfo, IWindowListener listen
         if (backend == WindowBackend.x11)
         {
             import dplug.window.x11window;
-            return mallocNew!X11Window(parentInfo, listener, width, height);
+            return mallocNew!X11Window(null, listener, width, height);
         }
         else
             return null;
