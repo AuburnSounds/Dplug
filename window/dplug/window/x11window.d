@@ -13,6 +13,8 @@ module dplug.window.x11window;
 
 import gfm.math.box;
 
+import core.sys.posix.unistd;
+
 import dplug.window.window;
 
 import dplug.core.runtime;
@@ -139,10 +141,10 @@ nothrow:
     ~this()
     {
         x11WindowMapping.remove(_windowId);
-        assumeNoGC(&XDestroyImage)(_graphicImage);
-        assumeNoGC(&XFreeGC)(_display, _graphicGC);
-        assumeNoGC(&XDestroyWindow)(_display, _windowId);
-        assumeNoGC(&XFlush)(_display);
+        //assumeNoGC(&XDestroyImage)(_graphicImage);
+        //assumeNoGC(&XFreeGC)(_display, _graphicGC);
+        //assumeNoGC(&XDestroyWindow)(_display, _windowId);
+        //assumeNoGC(&XFlush)(_display);
     }
 
     void swapBuffers(ImageRef!RGBA wfb, box2i[] areasToRedraw)
@@ -226,36 +228,34 @@ nothrow:
         {
             waitEventAndDispatch();
             redraw();
+            //Sleep for ~16.6 milliseconds (60 frames per second rendering)
+            usleep(16666);
         }
     }
 
     void redraw()
     {
-        uint currentTime = getTimeMs();
+        currentTime = getTimeMs();
         float diff = currentTime - lastTimeGot;
 
         double dt = (currentTime - lastTimeGot) * 0.001;
         double time = (currentTime - creationTime) * 0.001;
         listener.onAnimate(dt, time);
 
-        if(diff >= 1000.0f / 60.0f)
+        lastTimeGot = currentTime;
+        if (listener !is null)
         {
-            lastTimeGot = currentTime;
-            if (listener !is null)
+            // TODO onAnimate will call setDirty, we should use the X11
+            // mechanism to have Expose called instead, NOT calling onDraw here
+            _wfb = listener.onResized(_wfb.w, _wfb.h);
+
+            listener.recomputeDirtyAreas();
+            box2i areaToRedraw = listener.getDirtyRectangle();
+            if (!areaToRedraw.empty())
             {
-                // TODO onAnimate will call setDirty, we should use the X11
-                // mechanism to have Expose called instead, NOT calling onDraw here
-                _wfb = listener.onResized(_wfb.w, _wfb.h);
-
-                listener.recomputeDirtyAreas();
                 listener.onDraw(WindowPixelFormat.RGBA8);
-
-                box2i areaToRedraw = listener.getDirtyRectangle();
                 box2i[] areasToRedraw = (&areaToRedraw)[0..1];
-                if (_wfb.pixels !is null)
-                {
-                    swapBuffers(_wfb, areasToRedraw);
-                }
+                swapBuffers(_wfb, areasToRedraw);
             }
         }
     }
@@ -271,9 +271,7 @@ nothrow:
             import core.sys.posix.sys.time;
             timeval  tv;
             gettimeofday(&tv, null);
-
-            double timeInMill = cast(double)(tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
-            return cast(uint)timeInMill;
+            return cast(uint)((tv.tv_sec) * 1000 + (tv.tv_usec) / 1000) ;
 
         }
 
@@ -299,10 +297,8 @@ private:
     ubyte[4][] _bufferData;
     int width, height, depth;
 
-    uint lastTimeGot, creationTime;
+    uint lastTimeGot, creationTime, currentTime;
     int lastMouseX, lastMouseY;
-
-    MouseButton lastMouseButton;
 
     Thread _eventLoop;
 }
@@ -401,7 +397,6 @@ void handleEvents(ref XEvent event, X11Window theWindow)
                     else
                     {
                         listener.onMouseClick(newMouseX, newMouseY, button, isDoubleClick, mouseStateFromX11(event.xbutton.state));
-                        lastMouseButton = button;
                     }
                 }
                 break;
