@@ -161,7 +161,7 @@ VST is a trademark of Steinberg Media Technologies GmbH.
 Please register the SDK via the 3rd party developper license on Steinberg site.
 
 Before you make VST plugins with Dplug, you need to read and agree with the license for the VST3 SDK by Steinberg.
-If you don't agree with the license, don't make plugins with Dplug.
+**If you don't agree with the VST SDK license, don't make plugins with Dplug.**
 Find the VST3 SDK there: http://www.steinberg.net/en/company/developers.html
 
 ### Misc
