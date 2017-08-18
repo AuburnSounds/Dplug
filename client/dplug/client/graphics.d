@@ -13,7 +13,8 @@ enum GraphicsBackend
     autodetect,
     win32,
     carbon,
-    cocoa
+    cocoa,
+    x11
 }
 
 /// Plugin GUI
