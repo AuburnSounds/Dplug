@@ -17,33 +17,17 @@
 
 - [Panagement](https://www.auburnsounds.com/products/Panagement.html)
 - [Graillon](https://www.auburnsounds.com/products/Graillon.html)
-
+- [M4 Multiband Compressor](http://www.modernmetalproduction.com/product/m4-multiband-compressor-vst-au/)
 
 ### Release notes
 
-- v4.x.y (2nd Nov 2016)
-  * macOS Sierra support fixed.
-  * To allow that, the D runtime is now linked with but disabled. No GC, no TLS, no global ctor/dtor.
-
-- v3.x.y (9th May 2016):
-  * Audio Unit compatibility added, with both Cocoa and Carbon UI. What is still missing from AU: Audio Component API, sandboxing, v3. In other words it's on parity with IPlug but not JUCE.
-  * The `release` tool is now much more friendly to use.
-  * Special keys in `dub.json` are now expected in a `plugin.json` file next to dub.json. In the future it will be the place of autority for information about a plugin, for now this has to be duplicated in `buildPluginInfo()` override. An empty `plugin.json` is OK, defaults are in place. This file is consumed by the `release` tool.
-  * The Wiki became a place to visit.
-
-- v2.x.y: (6th January 2016)
-  * `release` tool now expects a VST or AU configuration, see the `distort` example for details
-  * special `dub.json` key `CFBundleIdentifier` became `CFBundleIdentifierPrefix`, see how `distort` works to update your plugins dub.json
-  * 10.6 compatibility dropped.
-
-- v1.x.y: (26th May 2015)
-  * initial release, VST support for 32-bit and 64-bit, Windows and Mac
+Read about major changes here: https://github.com/AuburnSounds/dplug/wiki/Release-notes
 
 
+## Tutorials
 
-## Tutorial
-
-https://auburnsounds.com/blog/2016-02-08_Making-a-Windows-VST-plugin-with-D.html (This tutorial is a bit outdated)
+- https://github.com/AuburnSounds/dplug/wiki/Getting-Started
+- https://auburnsounds.com/blog/2016-02-08_Making-a-Windows-VST-plugin-with-D.html (This tutorial is a bit outdated)
 
 
 
@@ -103,6 +87,7 @@ OS X 10.7+.
 Starting with v5 we'll have issue major or minor version tag for breaking changes.
 If you don't want breaking change, you can pin Dplug to a specific version in your `dub.json`.
 Breaking commits are marked with BREAKING in the commit backlog.
+They are always discussed on Discord before-hand.
 
 - How are `TODO`, `FUTURE` and `MAYDO` comments defined?
 
@@ -112,7 +97,7 @@ Breaking commits are marked with BREAKING in the commit backlog.
 
 - Where do I start?
 
-Be sure to read the Wiki for the finer difficult points.
+Be sure to read the [Wiki](https://github.com/AuburnSounds/dplug/wiki/) in depth.
 
 
 ## Comparison vs IPlug
@@ -188,7 +173,7 @@ Other source files fall under the Boost 1.0 license.
   * Audio Unit v2 plugin client implementation
 
 ### dplug:window
-  * implements windowing for Win32, Cocoa and Carbon
+  * implements windowing for Win32, X11, Cocoa and Carbon
 
 ### dplug:gui
    * Needed for plugins that do have an UI
