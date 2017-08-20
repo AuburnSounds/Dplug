@@ -17,7 +17,7 @@
 
 - [Panagement](https://www.auburnsounds.com/products/Panagement.html)
 - [Graillon](https://www.auburnsounds.com/products/Graillon.html)
-
+- [M4 Multiband Compressor](http://www.modernmetalproduction.com/product/m4-multiband-compressor-vst-au/)
 
 ### Release notes
 
