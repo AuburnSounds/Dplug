@@ -44,17 +44,17 @@ import dplug.vst.aeffectx;
 
 template VSTEntryPoint(alias ClientClass)
 {
-    enum entry_VSTPluginMain = 
+    enum entry_VSTPluginMain =
         "export extern(C) nothrow AEffect* VSTPluginMain(HostCallbackFunction hostCallback) " ~
         "{" ~
         "    return myVSTEntryPoint!" ~ ClientClass.stringof ~ "(hostCallback);" ~
         "}\n";
-    enum entry_main = 
+    enum entry_main =
         "export extern(C) nothrow AEffect* main(HostCallbackFunction hostCallback) " ~
         "{" ~
         "    return myVSTEntryPoint!" ~ ClientClass.stringof ~ "(hostCallback);" ~
         "}\n";
-    enum entry_main_macho = 
+    enum entry_main_macho =
         "extern(C) nothrow AEffect* main_macho(HostCallbackFunction hostCallback) " ~
         "{" ~
         "    return myVSTEntryPoint!" ~ ClientClass.stringof ~ "(hostCallback);" ~
@@ -110,7 +110,7 @@ nothrow:
 
     this(Client client, HostCallbackFunction hostCallback)
     {
-        int queueSize = 256;
+        int queueSize = 2048;
         _messageQueue = lockedQueue!AudioThreadMessage(queueSize);
 
         _client = client;
@@ -180,7 +180,7 @@ nothrow:
 
         // because effSetSpeakerArrangement might never come, take a default
         chooseIOArrangement(_maxInputs, _maxOutputs);
-        _messageQueue.pushBack(makeResetStateMessage(AudioThreadMessage.Type.resetState));
+        sendResetMessage();
 
         // Create host callback wrapper
         _host = mallocNew!VSTHostFromClientPOV(hostCallback, &_effect);
@@ -314,9 +314,14 @@ private:
         return index >= 0 && index < _maxOutputs;
     }
 
-    AudioThreadMessage makeResetStateMessage(AudioThreadMessage.Type type) pure const nothrow @nogc
+    void sendResetMessage()
     {
-        return AudioThreadMessage(type, _maxFrames, _sampleRate, _hostIOFromOpcodeThread, _processingIOFromOpcodeThread);
+        AudioThreadMessage msg = AudioThreadMessage(AudioThreadMessage.Type.resetState,
+                                                    _maxFrames,
+                                                    _sampleRate,
+                                                    _hostIOFromOpcodeThread,
+                                                    _processingIOFromOpcodeThread);
+        _messageQueue.pushBack(msg);
     }
 
     /// VST opcode dispatcher
@@ -418,7 +423,7 @@ private:
             case effSetSampleRate: // opcode 10
             {
                 _sampleRate = opt;
-                _messageQueue.pushBack(makeResetStateMessage(AudioThreadMessage.Type.resetState));
+                sendResetMessage();
                 return 0;
             }
 
@@ -428,7 +433,7 @@ private:
                     return 1;
 
                 _maxFrames = cast(int)value;
-                _messageQueue.pushBack(makeResetStateMessage(AudioThreadMessage.Type.resetState));
+                sendResetMessage();
                 return 0;
             }
 
@@ -439,7 +444,8 @@ private:
                         // Audio processing was switched off.
                         // The plugin must flush its state because otherwise pending data
                         // would sound again when the effect is switched on next time.
-                        _messageQueue.pushBack(makeResetStateMessage(AudioThreadMessage.Type.resetState));
+                        // MAYDO: this sounds backwards...
+                        sendResetMessage();
                     }
                     else // "resume()" in VST parlance
                     {
@@ -693,8 +699,8 @@ private:
                     int numInputs = pInputArr.numChannels;
                     int numOutputs = pOutputArr.numChannels;
                     chooseIOArrangement(numInputs, numOutputs);
-                    _messageQueue.pushBack(makeResetStateMessage(AudioThreadMessage.Type.resetState));
-                    return 0;
+                    sendResetMessage();
+                    return 0; // MAYDO: this looks very wrong
                 }
                 return 1;
             }
