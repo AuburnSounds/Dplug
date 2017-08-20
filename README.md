@@ -7,7 +7,7 @@
 
 ## Current features
 
-- Creating VST 2.4 plugins on Windows Vista or later, and Mac OS X 10.7 or later, 32-bit and 64-bit
+- Creating VST 2.4 plugins for Windows, macOS, and Linux, for 32-bit and 64-bit
 - Creating Audio Unit v2 plugins for Mac OS X, 32-bit and 64-bit
 - Comes with basic music DSP algorithms
 - Comes with a number of `tools` to make plugin creation faster (bundling, color correction, regression tests, performance tests)
@@ -72,7 +72,7 @@ Yes. See simple-mono-synth example.
 
 - Am I forced to use the PBR graphics system?
 
-No. There are people making plugins with Dplug without using PBR. How it works is that the physical channel is just filled with 0. Doing that requires a set of custom widgets.
+No. There are people making [plugins with Dplug without using PBR](http://www.modernmetalproduction.com/product/m4-multiband-compressor-vst-au/). How it works is that the physical channel is just filled with 0. Doing that requires a set of custom widgets.
 
 - How do I build plugins for OS X?
 
@@ -96,7 +96,7 @@ OS X 10.7+.
 
    For OSX it is recommended that you use LDC-1.0.0-b2 for final binaries as no other LDC version has been as well tested with Dplug (especially it is unknown if it works on OS X 10.7).
 
-   For Windows it is recommended to use LDC >= 1.1. LDC 1.0 does not `export` function in DLL.
+   For Windows it is necessary to use LDC >= 1.1. LDC 1.0 does not `export` function in DLL.
 
 - Is Dplug stable?
 
@@ -110,12 +110,16 @@ Breaking commits are marked with BREAKING in the commit backlog.
 `FUTURE` represent an future enhancement that could concern speed, maintainability or correctness but doesn't affect the experience much, if any.
 `MAYDO` represent things that we could want to do given enough time.
 
+- Where do I start?
+
+Be sure to read the Wiki for the finer difficult points.
+
 
 ## Comparison vs IPlug
 
 Pros:
   - No dispatcher-wide mutex lock. All locks are of a short duration, to avoid blocking the audio thread.
-  - Buffer splitting: ensure your plugin never receive a buffer larger than N samples, and the corresponding MIDI input.
+  - Buffer splitting: ensure your plugin never receive a buffer larger than N samples, and the corresponding MIDI input. This helps with memory consumption for the largest buffer sizes.
   - Plugin parameters implement the Observer pattern.
   - Float parameters can have user-defined mapping.
   - PBR-style rendering lets you have a good visual quality with less disk space.
@@ -129,7 +133,7 @@ Pros:
   - 10x less lines of code than the next larger alternative.
 
 Cons:
-  - **AAX and VST3 unimplemented.**
+  - AAX and VST3 not yet implemented
   - No resizeable UI
   - No HDPI support
   - No modal windows
@@ -142,7 +146,7 @@ I recommend that you check individual source files for license information.
 
 ### Plugin format wrapping
 
-Plugin wrapping is heavily inspired by the WDL library (best represented here: https://github.com/olilarkin/wdl-ol).
+Plugin wrapping is inspired by the WDL library (best represented here: https://github.com/olilarkin/wdl-ol).
 
 Some files falls under the Cockos WDL license.
 
@@ -184,7 +188,7 @@ Other source files fall under the Boost 1.0 license.
   * Audio Unit v2 plugin client implementation
 
 ### dplug:window
-   * implements windowing for Win32, Cocoa and Carbon
+  * implements windowing for Win32, Cocoa and Carbon
 
 ### dplug:gui
    * Needed for plugins that do have an UI
@@ -209,10 +213,14 @@ Other source files fall under the Boost 1.0 license.
 ### dplug:cocoa
    * Dynamic Cocoa bindings
 
+### dplug:x11
+   * Static X11 bindings
+
 ### Examples
    * `examples/distort`: mandatory distortion plugin
    * `examples/ms-encode`: simplest plugin for tutorial purpose
    * `examples/simple-mono-synth`: very basic sine-wave generator
+   * `examples/window`: for windowing testing
 
 ### Tools
    * `tools/pbr-sketch`: playground for creating plugin background textures
