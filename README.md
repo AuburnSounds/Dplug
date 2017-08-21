@@ -15,9 +15,9 @@
 
 ### Products made with Dplug
 
-- [Panagement](https://www.auburnsounds.com/products/Panagement.html)
-- [Graillon](https://www.auburnsounds.com/products/Graillon.html)
-- [M4 Multiband Compressor](http://www.modernmetalproduction.com/product/m4-multiband-compressor-vst-au/)
+- [Auburn Sounds - Graillon](https://www.auburnsounds.com/products/Graillon.html)
+- [Auburn Sounds - Panagement](https://www.auburnsounds.com/products/Panagement.html)
+- [Cut Through Recordings - M4 Multiband Compressor](http://www.modernmetalproduction.com/product/m4-multiband-compressor-vst-au/)
 
 ### Release notes
 
