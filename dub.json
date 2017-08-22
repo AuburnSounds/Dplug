@@ -129,6 +129,19 @@
             }
         },
         {
+            "name": "pbr-widgets",
+            "sourcePaths": [ "pbrwidgets/dplug/pbrwidgets" ],
+            "importPaths": [ "pbrwidgets" ],
+
+            "dependencies": {
+                "dplug:core": "*",
+                "dplug:graphics": "*",
+                "dplug:window": "*",
+                "dplug:client": "*",
+                "dplug:gui": "*",
+            }
+        },
+        {
             "name": "cocoa",
             "sourcePaths": [ "cocoa/derelict/cocoa" ],
             "importPaths": [ "cocoa" ],

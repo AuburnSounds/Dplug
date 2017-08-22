@@ -9,6 +9,7 @@ import std.math;
 
 import gfm.math;
 import dplug.gui;
+import dplug.pbrwidgets;
 import dplug.client;
 
 import main;

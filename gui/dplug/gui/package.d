@@ -14,16 +14,4 @@ public import dplug.gui.graphics;
 public import dplug.gui.boxlist;
 public import dplug.gui.compositor;
 
-// widgets
-public import dplug.gui.knob;
-public import dplug.gui.label;
-public import dplug.gui.panel;
-public import dplug.gui.onoffswitch;
-public import dplug.gui.slider;
-public import dplug.gui.logo;
-public import dplug.gui.bargraph;
-public import dplug.gui.paramhint;
-
-public import dplug.gui.pbrbackgroundgui;
-
 

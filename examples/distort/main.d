@@ -9,8 +9,7 @@ import std.math;
 
 import dplug.core,
        dplug.client,
-       dplug.dsp,
-       dplug.gui;
+       dplug.dsp;
 
 import gui;
 

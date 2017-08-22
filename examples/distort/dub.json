@@ -21,7 +21,8 @@
         "dplug:dsp": { "path": "../.." },
         "dplug:vst": { "path": "../.." },
         "dplug:au": { "path": "../.." },
-        "dplug:gui": { "path": "../.." }
+        "dplug:gui": { "path": "../.." },
+        "dplug:pbr-widgets": { "path": "../.." }
     },
 
     "configurations": [
