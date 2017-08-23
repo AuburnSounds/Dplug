@@ -142,6 +142,19 @@
             }
         },
         {
+            "name": "flat-widgets",
+            "sourcePaths": [ "flatwidgets/dplug/flatwidgets" ],
+            "importPaths": [ "flatwidgets" ],
+
+            "dependencies": {
+                "dplug:core": "*",
+                "dplug:graphics": "*",
+                "dplug:window": "*",
+                "dplug:client": "*",
+                "dplug:gui": "*",
+            }
+        },
+        {
             "name": "cocoa",
             "sourcePaths": [ "cocoa/derelict/cocoa" ],
             "importPaths": [ "cocoa" ],
