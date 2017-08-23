@@ -23,11 +23,6 @@ nothrow:
         horizontal
     }
 
-    float animationTimeConstant = 40.0f;
-
-    int _width;
-    int _height;
-
     Orientation orientation = Orientation.vertical;
 
     this(UIContext context, BoolParameter param, OwnedImage!RGBA onImage, OwnedImage!RGBA offImage)
@@ -35,7 +30,6 @@ nothrow:
         super(context);
         _param = param;
         _param.addListener(this);
-        _animation = 0.0f;
 
         _onImage = onImage;
         _offImage = offImage;
@@ -55,48 +49,32 @@ nothrow:
       return unsafeObjectCast!BoolParameter(_param).valueAtomic();
     }
 
-    override void onAnimate(double dt, double time) nothrow @nogc
-    {
-        float target = _param.value() ? 1 : 0;
-
-        float newAnimation = lerp(_animation, target, 1.0 - exp(-dt * animationTimeConstant));
-
-        if (abs(newAnimation - _animation) > 0.001f)
-        {
-            _animation = newAnimation;
-            setDirtyWhole();
-        }
-    }
-
     override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects) nothrow @nogc
     {
-  		auto _currentImage = getState() ? _onImage : _offImage;
-  		foreach(dirtyRect; dirtyRects){
+          auto _currentImage = getState() ? _onImage : _offImage;
+          foreach(dirtyRect; dirtyRects){
 
-  			//float radius = getRadius();
-  			//vec2f center = getCenter();
+              auto croppedDiffuseIn = _currentImage.crop(dirtyRect);
+              auto croppedDiffuseOut = diffuseMap.crop(dirtyRect);
 
-  			auto croppedDiffuseIn = _currentImage.crop(dirtyRect);
-  			auto croppedDiffuseOut = diffuseMap.crop(dirtyRect);
+              int w = dirtyRect.width;
+              int h = dirtyRect.height;
 
-  			int w = dirtyRect.width;
-  			int h = dirtyRect.height;
+              for(int j = 0; j < h; ++j){
 
-  			for(int j = 0; j < h; ++j){
-
-  				RGBA[] input = croppedDiffuseIn.scanline(j);
-  				RGBA[] output = croppedDiffuseOut.scanline(j);
+                  RGBA[] input = croppedDiffuseIn.scanline(j);
+                  RGBA[] output = croppedDiffuseOut.scanline(j);
 
 
-  				for(int i = 0; i < w; ++i){
-  					ubyte alpha = input[i].a;
+                  for(int i = 0; i < w; ++i){
+                      ubyte alpha = input[i].a;
 
-  					RGBA color = RGBA.op!q{.blend(a, b, c)} (input[i], output[i], alpha);
-  					output[i] = color;
-  				}
-  			}
+                      RGBA color = RGBA.op!q{.blend(a, b, c)} (input[i], output[i], alpha);
+                      output[i] = color;
+                  }
+              }
 
-  		}
+          }
     }
 
     override bool onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
@@ -113,9 +91,9 @@ nothrow:
         setDirtyWhole();
     }
 
-	override void onMouseMove(int x, int y, int dx, int dy, MouseState mstate)
+    override void onMouseMove(int x, int y, int dx, int dy, MouseState mstate)
     {
-        //_shouldBeHighlighted = containsPoint(x, y);
+        
     }
 
     override void onMouseExit()
@@ -154,12 +132,10 @@ nothrow:
 
 protected:
 
-    /// The parameter this switch is linked with.
     BoolParameter _param;
     bool _state;
     OwnedImage!RGBA _onImage;
     OwnedImage!RGBA _offImage;
-
-private:
-    float _animation;
+    int _width;
+    int _height;
 }

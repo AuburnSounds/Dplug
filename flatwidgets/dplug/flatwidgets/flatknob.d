@@ -29,8 +29,6 @@ nothrow:
     // sensivity with that.
     enum defaultSensivity = 0.25f;
 
-    float animationTimeConstant = 40.0f;
-
     this(UIContext context, FloatParameter param, OwnedImage!RGBA mipmap, int numFrames, float sensitivity = 0.25)
     {
         super(context);
@@ -38,8 +36,8 @@ nothrow:
         _sensitivity = sensitivity;
         _filmstrip = mipmap;
         _numFrames = numFrames;
-        knobWidth = _filmstrip.w;
-		knobHeight = _filmstrip.h / _numFrames;
+        _knobWidth = _filmstrip.w;
+        _knobHeight = _filmstrip.h / _numFrames;
 
         _disabled = false;
 
@@ -68,56 +66,53 @@ nothrow:
     }
 
     override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects) nothrow @nogc
-	{
-		setCurrentImage();
-		auto _currentImage = _filmstrip.crop(box2i(_imageX1, _imageY1, _imageX2, _imageY2));
-		foreach(dirtyRect; dirtyRects){
+    {
+        setCurrentImage();
+        auto _currentImage = _filmstrip.crop(box2i(_imageX1, _imageY1, _imageX2, _imageY2));
+        foreach(dirtyRect; dirtyRects){
 
-			float radius = getRadius();
-			vec2f center = getCenter();
+            auto croppedDiffuseIn = _currentImage.crop(dirtyRect);
+            auto croppedDiffuseOut = diffuseMap.crop(dirtyRect);
 
-			auto croppedDiffuseIn = _currentImage.crop(dirtyRect);
-			auto croppedDiffuseOut = diffuseMap.crop(dirtyRect);
+            int w = dirtyRect.width;
+            int h = dirtyRect.height;
 
-			int w = dirtyRect.width;
-			int h = dirtyRect.height;
+            for(int j = 0; j < h; ++j){
 
-			for(int j = 0; j < h; ++j){
-
-				RGBA[] input = croppedDiffuseIn.scanline(j);
-				RGBA[] output = croppedDiffuseOut.scanline(j);
+                RGBA[] input = croppedDiffuseIn.scanline(j);
+                RGBA[] output = croppedDiffuseOut.scanline(j);
 
 
-				for(int i = 0; i < w; ++i){
-					ubyte alpha = input[i].a;
+                for(int i = 0; i < w; ++i){
+                    ubyte alpha = input[i].a;
 
-					RGBA color = RGBA.op!q{.blend(a, b, c)} (input[i], output[i], alpha);
-					output[i] = color;
-				}
-			}
+                    RGBA color = RGBA.op!q{.blend(a, b, c)} (input[i], output[i], alpha);
+                    output[i] = color;
+                }
+            }
 
-		}
-	}
+        }
+    }
 
-	float distance(float x1, float x2, float y1, float y2)
-	{
-		return sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1));
-	}
+    float distance(float x1, float x2, float y1, float y2)
+    {
+        return sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1));
+    }
 
-	void setCurrentImage()
-	{
+    void setCurrentImage()
+    {
         float value = _param.getNormalized();
-		currentFrame = cast(int)(round(value * (_numFrames - 1)));
+        currentFrame = cast(int)(round(value * (_numFrames - 1)));
 
-		if(currentFrame < 0) currentFrame = 0;
+        if(currentFrame < 0) currentFrame = 0;
 
-		_imageX1 = 0;
-		_imageY1 = (_filmstrip.h / _numFrames) * currentFrame;
+        _imageX1 = 0;
+        _imageY1 = (_filmstrip.h / _numFrames) * currentFrame;
 
-		_imageX2 = _filmstrip.w;
-		_imageY2 = _imageY1 + (_filmstrip.h / _numFrames);
+        _imageX2 = _filmstrip.w;
+        _imageY2 = _imageY1 + (_filmstrip.h / _numFrames);
 
-	}
+    }
 
     override bool onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
     {
@@ -127,18 +122,13 @@ nothrow:
         // double-click => set to default
         if (isDoubleClick)
         {
-			_param.beginParamEdit();
+            _param.beginParamEdit();
             _param.setFromGUI(_param.defaultValue());
-			_param.endParamEdit();
+            _param.endParamEdit();
         }
 
         return true; // to initiate dragging
     }
-
-	//void setFilmstripImage(OwnedImage!RGBA image, int numFrames)
-	//{
-		//_filmstrip = image;
-	//}
 
     // Called when mouse drag this Element.
     override void onMouseDrag(int x, int y, int dx, int dy, MouseState mstate)
@@ -199,7 +189,7 @@ nothrow:
 
     override void onMouseMove(int x, int y, int dx, int dy, MouseState mstate)
     {
-        //_shouldBeHighlighted = containsPoint(x, y);
+        
     }
 
     override void onMouseExit()
@@ -229,20 +219,19 @@ protected:
     OwnedImage!RGBA _faderFilmstrip;
     OwnedImage!RGBA _knobGreenFilmstrip;
     ImageRef!RGBA _currentImage;
-	int _numFrames;
-	int _imageX1, _imageX2, _imageY1, _imageY2;
-	int currentFrame;
 
-	public int knobWidth;
-	public int knobHeight;
+    int _numFrames;
+    int _imageX1, _imageX2, _imageY1, _imageY2;
+    int currentFrame;
+
+    int _knobWidth;
+    int _knobHeight;
 
     float _pushedAnimation;
 
     /// Sensivity: given a mouse movement in 100th of the height of the knob,
     /// how much should the normalized parameter change.
     float _sensitivity;
-
-    bool _shouldBeHighlighted = false;
 
     float _mousePosOnLast0Cross;
     float _mousePosOnLast1Cross;

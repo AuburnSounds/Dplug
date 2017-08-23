@@ -28,10 +28,9 @@ nothrow:
         _sensivity = sensitivity;
         _filmstrip = mipmap;
         _numFrames = numFrames;
-        knobWidth = _filmstrip.w;
-		knobHeight = _filmstrip.h / _numFrames;
+        _knobWidth = _filmstrip.w;
+        _knobHeight = _filmstrip.h / _numFrames;
         _disabled = false;
-        _hidden = false;
     }
 
     ~this()
@@ -63,7 +62,7 @@ nothrow:
     }
 
     override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects) nothrow @nogc
-	{
+    {
         setCurrentImage();
         auto _currentImage = _filmstrip.crop(box2i(_imageX1, _imageY1, _imageX2, _imageY2));
         foreach(dirtyRect; dirtyRects){
@@ -89,37 +88,37 @@ nothrow:
             }
 
         }
-	}
+    }
 
     void setCurrentImage()
-	{
+    {
         float value = _param.getNormalized();
-		currentFrame = cast(int)(round(value * (_numFrames - 1)));
+        currentFrame = cast(int)(round(value * (_numFrames - 1)));
 
-		if(currentFrame < 0) currentFrame = 0;
-		if(currentFrame > 59) currentFrame = 59;
+        if(currentFrame < 0) currentFrame = 0;
+        if(currentFrame > 59) currentFrame = 59;
 
-		_imageX1 = 0;
-		_imageY1 = (_filmstrip.h / _numFrames) * currentFrame;
+        _imageX1 = 0;
+        _imageY1 = (_filmstrip.h / _numFrames) * currentFrame;
 
-		_imageX2 = _filmstrip.w;
-		_imageY2 = _imageY1 + (_filmstrip.h / _numFrames);
+        _imageX2 = _filmstrip.w;
+        _imageY2 = _imageY1 + (_filmstrip.h / _numFrames);
 
-	}
+    }
 
     override bool onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
     {
         // double-click => set to default
         if (isDoubleClick)
         {
-			_param.beginParamEdit();
+            _param.beginParamEdit();
             if (auto p = cast(FloatParameter)_param)
                 p.setFromGUI(p.defaultValue());
             else if (auto p = cast(IntegerParameter)_param)
                 p.setFromGUI(p.defaultValue());
             else
                 assert(false); // only integer and float parameters supported
-			_param.endParamEdit();
+            _param.endParamEdit();
         }
 
         return true; // to initiate dragging
@@ -220,30 +219,18 @@ nothrow:
         _disabled = true;
     }
 
-    void hide()
-    {
-        _hidden = true;
-        _disabled = true;
-    }
-
-    void unhide()
-    {
-        _hidden = false;
-        _disabled = false;
-    }
-
 protected:
 
     /// The parameter this switch is linked with.
     Parameter _param;
 
     OwnedImage!RGBA _filmstrip;
-	int _numFrames;
-	int _imageX1, _imageX2, _imageY1, _imageY2;
-	int currentFrame;
+    int _numFrames;
+    int _imageX1, _imageX2, _imageY1, _imageY2;
+    int currentFrame;
 
-	public int knobWidth;
-	public int knobHeight;
+    int _knobWidth;
+    int _knobHeight;
 
     /// Sensivity: given a mouse movement in 100th of the height of the knob,
     /// how much should the normalized parameter change.
@@ -259,7 +246,6 @@ protected:
     float _draggingDebt = 0.0f;
 
     bool _disabled;
-    bool _hidden;
 
     void clearCrosspoints()
     {
