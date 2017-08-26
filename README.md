@@ -90,11 +90,10 @@ If you don't want breaking change, you can pin Dplug to a specific version in yo
 Breaking commits are marked with BREAKING in the commit backlog.
 They are always discussed on Discord before-hand.
 
-- How are `TODO`, `FUTURE` and `MAYDO` comments defined?
+- Will you add feature X?
 
-`TODO` represent a bug a user could possibly bump into.
-`FUTURE` represent an future enhancement that could concern speed, maintainability or correctness but doesn't affect the experience much, if any.
-`MAYDO` represent things that we could want to do given enough time.
+You have to understand that Dplug is a part-time operation, from people who spend much more time working on and releasing plug-ins. Being stable and bug-free is much more important to us that implementing every possible feature.
+If you have money to spare it can definately help though.
 
 - Where do I start?
 
