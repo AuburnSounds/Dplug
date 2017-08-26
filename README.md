@@ -92,8 +92,11 @@ They are always discussed on Discord before-hand.
 
 - Will you add feature X?
 
-You have to understand that Dplug is a part-time operation, from people who spend much more time working on and releasing plug-ins. Being stable and bug-free is much more important to us that implementing every possible feature.
-If you have money to spare it can definately help though.
+You have to understand that Dplug is a part-time operation, from people who spend much more time working on and releasing plug-ins. 
+
+Dplug is there to support existing products and building companies around them, not to be beta software. Being stable and bug-free is much more important to us than implementing every possible feature.
+
+If you have money to sponsor some sanctionned feature it can definately help though.
 
 - Where do I start?
 
