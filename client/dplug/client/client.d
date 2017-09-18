@@ -89,8 +89,13 @@ struct PluginInfo
     /// is to try to get a sufficiently random one.
     char[4] pluginUniqueID = "WiDi";
 
-    // For AU, 0.x.y means "do not cache", useful in development
-    // Though caching rarely makes problem, if ever?
+    // Plugin version information. 
+    // It's important that the version you fill at runtime is identical to the
+    // one in `plugin.json` else you won't pass AU validation.
+    //
+    // Note: For AU, 0.x.y is supposed to mean "do not cache", however it is
+    //       unknown what it actually changes. AU caching hasn't caused any problem
+    //       and can probably be ignored.
     deprecated("Use publicVersion instead") alias pluginVersion = publicVersion;
     PluginVersion publicVersion = PluginVersion(0, 0, 0);
 

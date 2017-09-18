@@ -16,7 +16,9 @@ nothrow:
 
     override PluginInfo buildPluginInfo()
     {
-        // Plugin info is parsed from plugin.json here at compile time
+        // Plugin info is parsed from plugin.json here at compile time.
+        // Indeed it is strongly recommended that you do not fill PluginInfo 
+        // manually, else the information could diverge.
         static immutable PluginInfo pluginInfo = parsePluginInfo(import("plugin.json"));
         return pluginInfo;
     }
