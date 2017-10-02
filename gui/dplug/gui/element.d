@@ -434,15 +434,21 @@ nothrow:
     }
 
     /// Mark this element as wholly dirty.
+    /// Important: you could call this from the audio thread, however it is
+    ///            much more efficient to mark the widget dirty with an atomic 
+    ///            and call setDirty in animation callback.
     void setDirtyWhole() nothrow @nogc
     {
         _context.dirtyList.addRect(_position);
     }
 
     /// Mark a part of the element dirty.
-    /// This part must be a subrect of the _position.
+    /// This part must be a subrect of its _position.
     /// Params:
     ///     rect Position of the dirtied rectangle, in widget coordinates.
+    /// Important: you could call this from the audio thread, however it is
+    ///            much more efficient to mark the widget dirty with an atomic 
+    ///            and call setDirty in animation callback.
     void setDirty(box2i rect) nothrow @nogc
     {
         box2i translatedRect = rect.translate(_position.min);

@@ -325,7 +325,6 @@ version(Windows)
 
                 default:
                     return DefWindowProcA(hwnd, uMsg, wParam, lParam);
-                }
             }
         }
 

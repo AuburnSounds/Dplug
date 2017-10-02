@@ -193,6 +193,7 @@ private:
     Vec!box2i _dirtyRects;
 
     /// This is protected by a mutex, because it is sometimes updated from the host.
+    /// Note: we cannot remove this mutex, as host parameter change call setDirtyWhole directly.ODO: we want to remove this lock, the host thread should never directly.
     UncheckedMutex _dirtyRectMutex;
 }
 
