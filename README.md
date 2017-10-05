@@ -1,20 +1,21 @@
 <img alt="logo" src="https://cdn.rawgit.com/AuburnSounds/dplug/master/logo.svg" width="200">
 
-# Dplug [![Build Status](https://travis-ci.org/AuburnSounds/dplug.png?branch=master)](https://travis-ci.org/AuburnSounds/dplug) <a href="https://code.dlang.org/packages/dplug" title="Go to dplug"><img src="https://img.shields.io/dub/v/dplug.svg" alt="Dub version"></a> 
+# Dplug [![Build Status](https://travis-ci.org/AuburnSounds/dplug.png?branch=master)](https://travis-ci.org/AuburnSounds/dplug) <a href="https://code.dlang.org/packages/dplug" title="Go to dplug"><img src="https://img.shields.io/dub/v/dplug.svg" alt="Dub version"></a>
 
-`Dplug` is a library for crafting audio plugins as simply as possible. [Come talk with us!](https://discord.gg/QZtGZUw) if you want to learn more.
+`Dplug` is a library for crafting audio plug-ins as simply as possible. [Come talk with us!](https://discord.gg/QZtGZUw) if you want to learn more.
 
 
 ## Current features
 
-- Creating VST 2.4 plugins for Windows, macOS, and Linux, for 32-bit and 64-bit
-- Creating Audio Unit v2 plugins for Mac OS X, 32-bit and 64-bit
+- Creating VST 2.4 plug-ins for Windows, macOS, and Linux, for 32-bit and 64-bit
+- Creating Audio Unit v2 plug-ins for Mac OS X, 32-bit and 64-bit
 - Comes with basic music DSP algorithms
-- Comes with a number of `tools` to make plugin creation faster (bundling, color correction, regression tests, performance tests)
+- Comes with a number of `tools` to make plug-in authoring faster (bundling, color correction, regression tests, performance tests)
 - Dplug is using Physically Based Rendering to keep installers small: http://www.auburnsounds.com/blog/2016-09-16_PBR-for-Audio-Software-Interfaces.html
 
 ### Products made with Dplug
 
+- [Entropy by Cut Through Recordings](http://www.modernmetalproduction.com/product/entropy-ii-enhanced-stereo-delay-vst-au/)
 - [Graillon by Auburn Sounds](https://www.auburnsounds.com/products/Graillon.html)
 - [M4 Multiband Compressor by Cut Through Recordings](http://www.modernmetalproduction.com/product/m4-multiband-compressor-vst-au/)
 - [Panagement by Auburn Sounds](https://www.auburnsounds.com/products/Panagement.html)
@@ -28,20 +29,20 @@ Read about major changes here: https://github.com/AuburnSounds/dplug/wiki/Releas
 ## Tutorials
 
 - https://github.com/AuburnSounds/dplug/wiki/Getting-Started
-- https://auburnsounds.com/blog/2016-02-08_Making-a-Windows-VST-plugin-with-D.html (This tutorial is a bit outdated)
+- https://auburnsounds.com/blog/2016-02-08_Making-a-Windows-VST-plugin-with-D.html (This tutorial is outdated)
 
 
 
-## How to build plugins
+## How to build plug-ins
 
 ### For Windows:
-- Use DMD >= v2.070 or LDC >= v1.1
+- Use a recent DMD or LDC
 - Install DUB, the D package manager: http://code.dlang.org/download
 - Go into an example directory
 - Type `dub --compiler=dmd` or `dub --compiler=ldc2` depending on the compiler used.
 
 ### For OS X:
-- Use DMD >= v2.070 or LDC >= v1.0.0-b2
+- Use a recent LDC
 - Install DUB, the D package manager: http://code.dlang.org/download
 - Build and use the `release` tool which is in the `tools/release/` directory.
 - Go into an example directory
@@ -51,13 +52,13 @@ Read about major changes here: https://github.com/AuburnSounds/dplug/wiki/Releas
 
 ## FAQ
 
-- Does Dplug support the creation of synthesizer plugins?
+- Does Dplug support the creation of synthesizer plug-ins?
 
 Yes. See simple-mono-synth example.
 
 - Am I forced to use the PBR graphics system?
 
-No. There are people making [plugins with Dplug without using PBR](http://www.modernmetalproduction.com/product/m4-multiband-compressor-vst-au/). How it works is that the physical channel is just filled with 0. Doing that requires a set of custom widgets.
+No. There are people making [plug-ins with Dplug without using PBR](http://www.modernmetalproduction.com/product/m4-multiband-compressor-vst-au/). How it works is that the physical channel is just filled with 0. Doing that requires a set of custom widgets.
 
 - How do I build plugins for OS X?
 
@@ -92,7 +93,7 @@ They are always discussed on Discord before-hand.
 
 - Will you add feature X?
 
-You have to understand that Dplug is a part-time operation, from people who spend much more time working on and releasing plug-ins. 
+You have to understand that Dplug is a part-time operation, from people who spend much more time working on and releasing plug-ins.
 
 Dplug is there to support existing products and building companies around them, not to be beta software. Being stable and bug-free is much more important to us than implementing every possible feature.
 
@@ -117,7 +118,7 @@ Pros:
   - No need to make Info.plist files, they are generated instead.
   - No need to use Xcode whatsoever.
   - No need to use a macOS SDK.
-  - Easy to install: DUB will download the library itself when building, a <= 2mb archive.  
+  - Easy to install: DUB will download the library itself when building, a <= 2mb archive.
   - 10x less lines of code than the next larger alternative.
 
 Cons:
