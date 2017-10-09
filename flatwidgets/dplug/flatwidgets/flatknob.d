@@ -38,7 +38,7 @@ nothrow:
         _numFrames = numFrames;
         _knobWidth = _filmstrip.w;
         _knobHeight = _filmstrip.h / _numFrames;
-
+        _param.addListener(this);
         _disabled = false;
 
     }
