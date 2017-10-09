@@ -45,21 +45,21 @@ nothrow:
     
     override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects) nothrow @nogc
     {
-		foreach(dirtyRect; dirtyRects)
-		{
-			auto croppedDiffuseIn = _backgroundImage.crop(dirtyRect);
-			auto croppedDiffuseOut = diffuseMap.crop(dirtyRect);
+        foreach(dirtyRect; dirtyRects)
+        {
+            auto croppedDiffuseIn = _backgroundImage.crop(dirtyRect);
+            auto croppedDiffuseOut = diffuseMap.crop(dirtyRect);
 
 
-			for(int j = 0; j < dirtyRect.height; ++j){
-				RGBA[] input = croppedDiffuseIn.scanline(j);
-				RGBA[] output = croppedDiffuseOut.scanline(j);
+            for(int j = 0; j < dirtyRect.height; ++j){
+                RGBA[] input = croppedDiffuseIn.scanline(j);
+                RGBA[] output = croppedDiffuseOut.scanline(j);
 
-				for(int i = 0; i < dirtyRect.width; ++i){
+                for(int i = 0; i < dirtyRect.width; ++i){
                     output[i] = input[i];
-				}
-			}
-		}
+                }
+            }
+        }
     }
     
 private:
