@@ -762,6 +762,11 @@ private:
                 {
                     if (strcmp(str, "receiveVstEvents") == 0)
                         return 1;
+
+                    // Issue #198, Bitwig Studio need this
+                    if (strcmp(str, "receiveVstMidiEvent") == 0)
+                        return 1;
+
                     if (strcmp(str, "receiveVstMidiEvents") == 0)
                         return 1;
                 }
