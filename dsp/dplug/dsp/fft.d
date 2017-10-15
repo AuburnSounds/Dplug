@@ -573,8 +573,8 @@ unittest
 
 /// Converts a normalized frequency to a FFT bin.
 /// Params:
-///     normalizedFrequency frequency in cycles per sample
-///     fftSize size of FFT
+///     normalizedFrequency = Frequency in cycles per sample.
+///     fftSize = Size of FFT.
 /// Returns: Corresponding fractional bin.
 float convertNormalizedFrequencyToFFTBin(float normalizedFrequency, int fftSize) nothrow @nogc
 {
@@ -611,8 +611,8 @@ float convertFFTBinToFrequencyInv(float fftBin, float invFFTSize, float sampling
 
 /// Converts a FFT bin to a normalized frequency.
 /// Params:
-///     fftBin bin index of the FFT
-///     fftSize size of FFT
+///     fftBin = Bin index in the FFT.
+///     fftSize = Size of FFT.
 /// Returns: Corresponding normalized frequency
 float convertFFTBinToNormalizedFrequency(float fftBin, int fftSize) nothrow @nogc
 {
@@ -622,8 +622,8 @@ float convertFFTBinToNormalizedFrequency(float fftBin, int fftSize) nothrow @nog
 
 /// Converts a FFT bin to a normalized frequency.
 /// Params:
-///     fftBin Bin index of the FFT.
-///     invFFTSize Inverse size of FFT.
+///     fftBin = Bin index of the FFT.
+///     invFFTSize = Inverse size of FFT.
 /// Returns: Corresponding normalized frequency.
 float convertFFTBinToNormalizedFrequencyInv(float fftBin, float invFFTSize) nothrow @nogc
 {
@@ -678,8 +678,8 @@ nothrow:
     * Compute the inverse FFT of the array. Perform post-scaling.
     *
     * Params:
-    *    inputBins Source arrays (N/2 + 1 frequency bins)    
-    *    timeData Destination array (N time samples).
+    *    inputBins = Source arrays (N/2 + 1 frequency bins).    
+    *    timeData = Destination array (N time samples).
     *
     * Note: 
     *    This transform has the benefit you don't have to conjugate the "mirrored" part of the FFT.

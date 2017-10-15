@@ -147,8 +147,8 @@ T sinc(T)(T x) pure nothrow @nogc
 /// Returns: Multiplier for this time constant and sampling rate.
 ///
 /// Params:
-///    timeConstantInSeconds time after which the amplitude is only 37% of the original.
-///    samplerate Sampling rate.
+///    timeConstantInSeconds = Time after which the amplitude is only 37% of the original.
+///    samplerate = Sampling rate.
 double expDecayFactor(double timeConstantInSeconds, double samplerate) pure nothrow @nogc
 {
     // 1 - exp(-time * sampleRate) would yield innacuracies

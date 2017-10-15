@@ -218,9 +218,11 @@ unittest
 /// You MUST use consistent alignement thoughout the lifetime of this buffer.
 ///
 /// Params:
-///    buffer Existing allocated buffer. Can be null. Input slice length is not considered.
-///    length Desired slice length.
-///    alignment Alignement if the slice has allocation requirements, 1 else. Must match for deallocation.
+///    buffer = Existing allocated buffer. Can be null. 
+///             Input slice length is not considered.
+///    length = Desired slice length.
+///    alignment = Alignement if the slice has allocation requirements, 1 else. 
+///                Must match for deallocation.
 ///
 void reallocBuffer(T)(ref T[] buffer, size_t length, int alignment = 1) nothrow @nogc
 {
@@ -245,7 +247,6 @@ void reallocBuffer(T)(ref T[] buffer, size_t length, int alignment = 1) nothrow 
 }
 
 
-/// Returns: A newly created `Vec`.
 // Note: strangely enough, deprecated alias didn't work for this.
 deprecated("Use makeVec!T instead.")
 AlignedBuffer!T makeAlignedBuffer(T)(size_t initialSize = 0, int alignment = 1) nothrow @nogc
@@ -253,7 +254,7 @@ AlignedBuffer!T makeAlignedBuffer(T)(size_t initialSize = 0, int alignment = 1) 
     return AlignedBuffer!T(initialSize, alignment);
 }
 
-
+/// Returns: A newly created `Vec`.
 Vec!T makeVec(T)(size_t initialSize = 0, int alignment = 1) nothrow @nogc
 {
     return Vec!T(initialSize, alignment);
