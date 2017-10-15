@@ -1,6 +1,6 @@
 <img alt="logo" src="https://cdn.rawgit.com/AuburnSounds/dplug/master/logo.svg" width="200">
 
-# Dplug [![Build Status](https://travis-ci.org/AuburnSounds/dplug.png?branch=master)](https://travis-ci.org/AuburnSounds/dplug) <a href="https://code.dlang.org/packages/dplug" title="Go to dplug"><img src="https://img.shields.io/dub/v/dplug.svg" alt="Dub version"></a>
+# Dplug [![Build Status](https://travis-ci.org/AuburnSounds/Dplug.png?branch=master)](https://travis-ci.org/AuburnSounds/dplug) <a href="https://code.dlang.org/packages/dplug" title="Go to dplug"><img src="https://img.shields.io/dub/v/dplug.svg" alt="Dub version"></a>
 
 `Dplug` is a library for crafting audio plug-ins as simply as possible. [Come talk with us!](https://discord.gg/QZtGZUw) if you want to learn more.
 
