@@ -30,13 +30,13 @@
             "name": "VST",
             "versions": ["VST"],
             "targetType": "dynamicLibrary",
-            "lflags-osx": [ "-exported_symbols_list", "module-vst.lst", "-dead_strip" ]
+            "lflags-osx-ldc": [ "-exported_symbols_list", "module-vst.lst", "-dead_strip" ]
         },
         {
             "name": "AU",
             "versions": ["AU"],
             "targetType": "dynamicLibrary",
-            "lflags-osx": [ "-exported_symbols_list", "module-au.lst", "-dead_strip" ]
+            "lflags-osx-ldc": [ "-exported_symbols_list", "module-au.lst", "-dead_strip" ]
         }
     ]
 }
