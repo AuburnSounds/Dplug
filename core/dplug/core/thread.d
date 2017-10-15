@@ -53,12 +53,15 @@ nothrow:
 public:
 
     /// Create a suspended thread.
+    ///
     /// Params:
-    ///     callback The delegate that will be called by the thread
+    ///     callback The delegate that will be called by the thread.
     ///     stackSize The thread stack size in bytes. 0 for default size.
-    /// Warning: It is STRONGLY ADVISED to pass a class member delegate to have
-    ///          the right delegate context.
+    ///
+    /// Warning: It is STRONGLY ADVISED to pass a class member delegate (not a struct
+    ///          member delegate) to have context.
     ///          Passing struct method delegates are currently UNSUPPORTED.
+    ///
     this(ThreadDelegate callback, size_t stackSize = 0)
     {
         _stackSize = stackSize;

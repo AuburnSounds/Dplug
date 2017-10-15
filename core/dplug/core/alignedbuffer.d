@@ -219,7 +219,8 @@ unittest
 ///
 /// Params:
 ///    buffer Existing allocated buffer. Can be null. Input slice length is not considered.
-///    length desired slice length
+///    length Desired slice length.
+///    alignment Alignement if the slice has allocation requirements, 1 else. Must match for deallocation.
 ///
 void reallocBuffer(T)(ref T[] buffer, size_t length, int alignment = 1) nothrow @nogc
 {

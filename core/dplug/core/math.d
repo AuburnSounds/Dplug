@@ -141,9 +141,14 @@ T sinc(T)(T x) pure nothrow @nogc
         return sin(cast(T)PI * x) / (cast(T)PI * x);
 }
 
+
+/// Gets a factor for making exponential decay curves.
+///
+/// Returns: Multiplier for this time constant and sampling rate.
+///
 /// Params:
 ///    timeConstantInSeconds time after which the amplitude is only 37% of the original.
-/// Returns: Multiplier for this time constant and sampling rate.
+///    samplerate Sampling rate.
 double expDecayFactor(double timeConstantInSeconds, double samplerate) pure nothrow @nogc
 {
     // 1 - exp(-time * sampleRate) would yield innacuracies
