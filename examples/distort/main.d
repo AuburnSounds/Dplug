@@ -79,6 +79,13 @@ nothrow:
         return io.releaseData();
     }
 
+    // This override is optional, this supports plugin delay compensation in hosts.
+    // By default, 0 samples of latency.
+    override int latencySamples(double sampleRate) pure const 
+    {
+        return 0;
+    }
+
     // This override is optional, the default implementation will
     // have one default preset.
     override Preset[] buildPresets() nothrow @nogc
