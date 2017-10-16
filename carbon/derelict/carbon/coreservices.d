@@ -29,9 +29,10 @@
 * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
+/**
+    Dynamic bindings to the CoreServices framework.
+*/
 module derelict.carbon.coreservices;
-
-// TODO: this should go in its own Derelict package
 
 import core.stdc.config;
 

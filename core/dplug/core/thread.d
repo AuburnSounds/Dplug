@@ -1,5 +1,5 @@
 /**
- * The thread module provides support for thread creation and management.
+ * Threads and thread-pool.
  *
  * Copyright: Copyright Sean Kelly 2005 - 2012.
  * Copyright: Copyright (c) 2009-2011, David Simcha.

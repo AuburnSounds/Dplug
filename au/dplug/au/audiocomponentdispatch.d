@@ -45,6 +45,7 @@
 
 */
 /**
+* Audio Unit plug-in client. Unused yet. Unfinished dispatcher for the Audio Component API.
 * Copyright: Copyright Auburn Sounds 2016.
 * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 * Authors:   Guillaume Piolat

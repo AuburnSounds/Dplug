@@ -3,8 +3,11 @@
  * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
  * Authors:   Sean Kelly
  */
-/// This contains part of druntime's core.sys.mutex, core.sys.semaphore core.sys.condition and
-/// Modified to make it @nogc nothrow
+// This contains part of druntime's core.sys.mutex, core.sys.semaphore core.sys.condition and
+// Modified to make it @nogc nothrow
+/**
+    Mutexes, semaphores and condition variables.
+*/
 module dplug.core.sync;
 
 import core.time;

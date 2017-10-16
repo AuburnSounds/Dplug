@@ -29,9 +29,12 @@
 * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
+/**
+    Dynamic bindings to the AudioUnit and AudioToolbox frameworks.
+*/
 module derelict.carbon.audiounit;
 
-// AudioUnit and AudioToolbox frameworks loadder
+// AudioUnit and AudioToolbox frameworks loader
 // Not strictly in Carbon, this is technical debt
 
 

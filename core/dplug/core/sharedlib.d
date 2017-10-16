@@ -25,6 +25,9 @@ ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 
 */
+/**
+    Loading and unloading shared libraries.
+*/
 module dplug.core.sharedlib;
 
 import dplug.core.nogc;

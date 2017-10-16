@@ -2,7 +2,7 @@
 Cockos WDL License
 
 Copyright (C) 2005 - 2015 Cockos Incorporated
-Copyright (C) 2015 and later Auburn Sounds
+Copyright (C) 2015 - 2017 Auburn Sounds
 
 Portions copyright other contributors, see each source file for more information
 
@@ -14,14 +14,17 @@ Permission is granted to anyone to use this software for any purpose, including 
 1. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
 1. This notice may not be removed or altered from any source distribution.
 */
+/**
+    MIDI messages definitions.
+*/
 module dplug.client.midi;
 
 import std.algorithm.mutation;
 import dplug.core.alignedbuffer;
 
 /// It's the same abstraction that in IPlug.
-/// For VST raw Midi messages are passed.
-/// For AU Midi messages gets synthesized.
+/// For VST raw MIDI messages are passed.
+/// For AU MIDI messages gets synthesized.
 struct MidiMessage
 {
 pure:

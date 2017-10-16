@@ -52,6 +52,9 @@ SOFTWARE.
 * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
+/**
+    Dynamic bindings to the CoreFoundation framework.
+*/
 module derelict.carbon.corefoundation;
 
 import core.stdc.config;

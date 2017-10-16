@@ -1,4 +1,5 @@
 /**
+* Translation of the VST SDK.
 * Copyright: Steinberg.
 * License:   To use this file you MUST agree with the Steinberg VST license included in the VST SDK.
 * Authors:   D translation by Guillaume Piolat.
