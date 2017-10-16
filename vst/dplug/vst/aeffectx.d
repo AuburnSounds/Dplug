@@ -604,8 +604,7 @@ enum : VstSpeakerType
 //-------------------------------------------------------------------------------------------------------
 /** User-defined speaker types, to be extended in the negative range.
     Will be handled as their corresponding speaker types with abs values:
-    e.g abs(#kSpeakerU1) == #kSpeakerL, abs(#kSpeakerU2) == #kSpeakerR) */
-//-------------------------------------------------------------------------------------------------------
+    e.g abs(#kSpeakerU1) == #kSpeakerL, abs(#kSpeakerU2) == #kSpeakerR */
 alias int VstUserSpeakerType;
 enum : VstUserSpeakerType
 {
