@@ -1,5 +1,5 @@
 /**
- * Color type and operations.
+ * Color type and operations. Port of ae.utils.graphics.
  *
  * License:
  *   This Source Code Form is subject to the terms of

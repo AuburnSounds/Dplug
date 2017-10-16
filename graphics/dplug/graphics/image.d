@@ -1,5 +1,5 @@
 /**
- * In-memory images and various image formats.
+ * In-memory images.
  *
  * License:
  *   This Source Code Form is subject to the terms of

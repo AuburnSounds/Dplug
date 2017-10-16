@@ -1,7 +1,8 @@
 ﻿/**
- * Copyright (C) 2017 Richard Andrew Cattermole
- * Copyright (C) 2017 Ethan Reker
- * X11 support.
+ * X11 window implementation.
+ * 
+ * Copyright: Copyright (C) 2017 Richard Andrew Cattermole
+ *            Copyright (C) 2017 Ethan Reker
  *
  * Bugs:
  *     - X11 does not support double clicks, it is sometimes emulated https://github.com/glfw/glfw/issues/462
