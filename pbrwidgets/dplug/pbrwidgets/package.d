@@ -10,7 +10,6 @@ public import dplug.gui.element;
 // widgets
 public import dplug.pbrwidgets.knob;
 public import dplug.pbrwidgets.label;
-public import dplug.pbrwidgets.panel;
 public import dplug.pbrwidgets.onoffswitch;
 public import dplug.pbrwidgets.slider;
 public import dplug.pbrwidgets.logo;

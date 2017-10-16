@@ -11,7 +11,7 @@ import dplug.gui.element;
 import dplug.client.params;
 
 /// An UIPanel is simply a plain rectangle with a depth, material and diffuse.
-class UIPanel : UIElement
+deprecated("Use a custom widget, or look at the background widgets") class UIPanel : UIElement
 {
 public:
 nothrow:
