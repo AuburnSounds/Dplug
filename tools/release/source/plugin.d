@@ -76,12 +76,17 @@ string toStringArchs(Arch[] archs)
     return r;
 }
 
-bool configIsVST(string config)
+bool configIsVST(string config) pure nothrow @nogc
 {
     return config.length >= 3 && config[0..3] == "VST";
 }
 
-bool configIsAU(string config)
+bool configIsAAX(string config) pure nothrow @nogc
+{
+    return config.length >= 3 && config[0..3] == "AAX";
+}
+
+bool configIsAU(string config) pure nothrow @nogc
 {
     return config.length >= 2 && config[0..2] == "AU";
 }
@@ -130,9 +135,12 @@ struct Plugin
         return (publicVersionMajor << 16) | (publicVersionMinor << 8) | publicVersionPatch;
     }
 
-    string makePkgInfo() pure const nothrow
+    string makePkgInfo(string config) pure const nothrow
     {
-        return "BNDL" ~ vendorUniqueID;
+        if (configIsAAX(config))
+            return "TDMwPTul";
+        else
+            return "BNDL" ~ vendorUniqueID;
     }
 
     string copyright() const  // Copyright information, copied in the OSX bundle
@@ -159,8 +167,17 @@ struct Plugin
         return r;
     }
 
-    // copied from dub logic
-    string targetFileName() pure const nothrow
+    // The destination file name
+    /*string targetFileName() pure const nothrow
+    {
+        version(Windows)
+            return name  ~ ".dll";
+        else
+            return "lib" ~ name ~ ".so";
+    }*/
+
+    // The file name DUB outputs
+    string dubOutputFileName() pure const nothrow
     {
         version(Windows)
             return name  ~ ".dll";
@@ -176,6 +193,11 @@ struct Plugin
     string getAUBundleIdentifier() pure const
     {
         return CFBundleIdentifierPrefix ~ ".audiounit." ~ sanitizeBundleString(pluginName);
+    }
+
+    string getAAXBundleIdentifier() pure const
+    {
+        return CFBundleIdentifierPrefix ~ ".aax." ~ sanitizeBundleString(pluginName);
     }
 
     string[] getAllConfigurations()
@@ -415,8 +437,10 @@ string makePListFile(Plugin plugin, string config, bool hasIcon)
         CFBundleIdentifier = plugin.getVSTBundleIdentifier();
     else if (configIsAU(config))
         CFBundleIdentifier = plugin.getAUBundleIdentifier();
+    else if (configIsAAX(config))
+        CFBundleIdentifier = plugin.getAAXBundleIdentifier();
     else
-        throw new Exception("Configuration name given by --config must start with \"VST\" or \"AU\"");
+        throw new Exception("Configuration name given by --config must start with \"VST\" or \"AU\" or \"AAX\"");
 
     // Doesn't seem useful at all
     //addKeyString("CFBundleName", plugin.prettyName);

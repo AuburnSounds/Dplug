@@ -35,7 +35,7 @@ void usage()
     flag("-a --arch", "Selects target architecture.", "x86 | x86_64 | all", "Windows => all   OSX => x86_64");
     flag("-b --build", "Selects build type.", "same ones as dub accepts", "debug");
     flag("--compiler", "Selects D compiler.", "dmd | ldc | gdc", "ldc");
-    flag("-c --config", "Adds a build configuration.", "VST | AU | name starting with \"VST\" or \"AU\"", "all");
+    flag("-c --config", "Adds a build configuration.", "VST | AU | AAX | name starting with \"VST\" or \"AU\" or \"AAX\"", "all");
     flag("-f --force", "Forces rebuild", null, "no");
     flag("--combined", "Combined build", null, "no");
     flag("-q --quiet", "Quieter output", null, "no");
@@ -234,27 +234,50 @@ int main(string[] args)
                 {
                     buildPlugin(compiler, config, build, is64b, verbose, force, combined, quiet, skipRegistry);
 
-                    double bytes = getSize(plugin.targetFileName) / (1024.0 * 1024.0);
+                    double bytes = getSize(plugin.dubOutputFileName) / (1024.0 * 1024.0);
                     cwritefln("    => Build OK, binary size = %0.1f mb, available in %s".green, bytes, path);
                     cwriteln();
                 }
 
                 version(Windows)
                 {
-                    string appendBitness(string prettyName, string originalPath)
+                    // Special case for AAX need its own directory, but according to Voxengo releases, 
+                    // its more minimal than either JUCE or IPlug builds.
+                    // Only one file (.dll even) seems to be needed in <plugin-name>.aaxplugin\Contents\x64
+                    // Note: only 64-bit AAX supported.
+                    if (configIsAAX(config))
                     {
+                        string pluginFinalName = plugin.prettyName ~ ".aaxplugin";
+                        string pluginDir = path ~ "/" ~ (plugin.prettyName ~ ".aaxplugin") ~ "/Contents/";                        
+
                         if (is64b)
                         {
-                            // Issue #84
-                            // Rename 64-bit binary on Windows to get Reaper to list both 32-bit and 64-bit plugins if in the same directory
-                            return prettyName ~ "-64" ~ extension(originalPath);
+                            mkdirRecurse(pluginDir ~ "x64");
+                            fileMove(plugin.dubOutputFileName, pluginDir ~ "x64/" ~ pluginFinalName);
                         }
                         else
-                            return prettyName ~ extension(originalPath);
+                        {
+                            mkdirRecurse(pluginDir ~ "Win32");
+                            fileMove(plugin.dubOutputFileName, pluginDir ~ "Win32/" ~ pluginFinalName);
+                        }
                     }
+                    else
+                    {
+                        string appendBitness(string prettyName, string originalPath)
+                        {
+                            if (is64b)
+                            {
+                                // Issue #84
+                                // Rename 64-bit binary on Windows to get Reaper to list both 32-bit and 64-bit plugins if in the same directory
+                                return prettyName ~ "-64" ~ extension(originalPath);
+                            }
+                            else
+                                return prettyName ~ extension(originalPath);
+                        }
 
-                    // On Windows, simply copy the file
-                    fileMove(plugin.targetFileName, path ~ "/" ~ appendBitness(plugin.prettyName, plugin.targetFileName));
+                        // On Windows, simply copy the file
+                        fileMove(plugin.dubOutputFileName, path ~ "/" ~ appendBitness(plugin.prettyName, plugin.dubOutputFileName));
+                    }
                 }
                 else version(OSX)
                 {
@@ -264,6 +287,8 @@ int main(string[] args)
                         pluginDir = plugin.prettyName ~ ".vst";
                     else if (configIsAU(config))
                         pluginDir = plugin.prettyName ~ ".component";
+                    else if (configIsAAX(config))
+                        pluginDir = plugin.prettyName ~ ".aaxplugin";
                     else
                         assert(false);
 
@@ -280,7 +305,7 @@ int main(string[] args)
                     cwriteln();
                     std.file.write(contentsDir ~ "/Info.plist", cast(void[])plist);
 
-                    void[] pkgInfo = cast(void[]) plugin.makePkgInfo();
+                    void[] pkgInfo = cast(void[]) plugin.makePkgInfo(config);
                     std.file.write(contentsDir ~ "/PkgInfo", pkgInfo);
 
                     string exePath = macosDir ~ "/" ~ plugin.prettyName;
@@ -319,7 +344,7 @@ int main(string[] args)
                     }
                     else
                     {
-                        fileMove(plugin.targetFileName, exePath);
+                        fileMove(plugin.dubOutputFileName, exePath);
                     }
 
                     // Should this arch be published? Only if the --publish arg was given and

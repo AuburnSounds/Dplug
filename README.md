@@ -205,16 +205,3 @@ Other source files fall under the Boost 1.0 license.
 ### dplug:x11
    * Static X11 bindings
 
-### Examples
-   * `examples/distort`: mandatory distortion plugin
-   * `examples/ms-encode`: simplest plugin for tutorial purpose
-   * `examples/simple-mono-synth`: very basic sine-wave generator
-   * `examples/window`: for windowing testing
-
-### Tools
-   * `tools/pbr-sketch`: playground for creating plugin background textures
-   * `tools/release`: DUB frontend to build Mac bundles and use LDC with proper envvars
-   * `tools/process`: plugin host for testing audio processing speed/reproducibility
-   * `tools/wav-compare`: comparison of WAV files
-   * `tools/stress-plugin`: makes multiple load of plugins while processing audio mainly to test GUI opening speed
-   * `Lift-Gamma-Gain-Contrast`: adjust color correction curves on a finished UI http://www.gamesfrommars.fr/lift-gamma-gain-contrast/

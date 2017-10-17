@@ -85,7 +85,7 @@ string escapeShellArgument(string arg)
     return arg.replace(" ", "\\ ");
 }
 
-/// Recusrive directory copy.
+/// Recursive directory copy.
 /// https://forum.dlang.org/post/n7hc17$19jg$1@digitalmars.com
 /// Returns: number of copied files
 int copyRecurse(string from, string to, bool verbose)
