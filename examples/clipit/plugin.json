@@ -1,0 +1,13 @@
+{
+    "$schema": "https://raw.githubusercontent.com/AuburnSounds/dplug/master/plugin-schema.json",
+
+    "vendorName": "Witty Audio",
+    "vendorUniqueID": "Wity",
+    "pluginName": "CLIP It",
+    "pluginUniqueID": "WiDi",
+    "publicVersion": "1.0.0",
+    "CFBundleIdentifierPrefix": "com.wittyaudio",
+    "hasGUI": true,
+    "isSynth": false,
+    "receivesMIDI": false
+}
