@@ -23,6 +23,7 @@
 // Martin "SpartanJ" Golini                     Ryamond Barbiero
 // David Woo
 
+/// PNG loader
 module dplug.graphics.pngload;
 
 // This has been revived for the sake of loading PNG without too much memory usage.

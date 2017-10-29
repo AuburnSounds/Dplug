@@ -38,7 +38,12 @@
 */
 // this is a modified version of dfx-au-utilities.h keeping only CFAUPreset related functionality
 
-// Copyright (C) 2016 Auburn Sounds
+/**
+Audio Unit plug-in client. Port of Destroy FX AU Utilities.
+
+Copyright: Copyright (C) 2003-2008  Sophia Poirier
+           Copyright (C) 2016 Guillaume Piolat
+*/
 module dplug.au.dfxutil;
 
 import core.stdc.stdio: snprintf;

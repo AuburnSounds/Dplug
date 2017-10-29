@@ -1,5 +1,5 @@
 /**
- * Image maps.
+ * A `View` is the base abstraction for images. Port of ae.utils.graphics.
  *
  * License:
  *   This Source Code Form is subject to the terms of

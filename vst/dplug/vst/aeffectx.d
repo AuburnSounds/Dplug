@@ -1,4 +1,5 @@
 /**
+* Translation of the VST SDK.
 * Copyright: Steinberg.
 * License:   To use this file you MUST agree with the Steinberg VST license included in the VST SDK.
 * Authors:   D translation by Guillaume Piolat.
@@ -604,8 +605,7 @@ enum : VstSpeakerType
 //-------------------------------------------------------------------------------------------------------
 /** User-defined speaker types, to be extended in the negative range.
     Will be handled as their corresponding speaker types with abs values:
-    e.g abs(#kSpeakerU1) == #kSpeakerL, abs(#kSpeakerU2) == #kSpeakerR) */
-//-------------------------------------------------------------------------------------------------------
+    e.g abs(#kSpeakerU1) == #kSpeakerL, abs(#kSpeakerU2) == #kSpeakerR */
 alias int VstUserSpeakerType;
 enum : VstUserSpeakerType
 {

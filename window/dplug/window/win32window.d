@@ -14,6 +14,9 @@ Permission is granted to anyone to use this software for any purpose, including 
 1. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
 1. This notice may not be removed or altered from any source distribution.
 */
+/**
+    Win32 window implementation.
+*/
 module dplug.window.win32window;
 
 import std.process,
@@ -314,15 +317,17 @@ version(Windows)
                         sendRepaintIfUIDirty();
                     }
                     return 0;
+                }
 
                 case WM_SIZE:
+                {
                     _width = LOWORD(lParam);
                     _height = HIWORD(lParam);
                     return DefWindowProcA(hwnd, uMsg, wParam, lParam);
+                }
 
                 default:
                     return DefWindowProcA(hwnd, uMsg, wParam, lParam);
-                }
             }
         }
 

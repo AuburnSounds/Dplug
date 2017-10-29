@@ -1,6 +1,5 @@
+/// Simple version of traits from std.traits, for the purpose of faster compile times.
 module dplug.core.traits;
-
-// Simple version of traits from std.traits
 
 // Like `Unqual` but does not remove "shared" or "inout"
 template RemoveConst(T)

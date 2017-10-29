@@ -1,10 +1,13 @@
 /**
+* PBR widget: bargraph.
+*
 * Copyright: Copyright Auburn Sounds 2015 and later.
 * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 * Authors:   Guillaume Piolat
 */
 module dplug.pbrwidgets.bargraph;
 
+import core.atomic;
 import std.math;
 
 import dplug.gui.element;
@@ -105,6 +108,16 @@ nothrow:
         }
     }
 
+    override void onAnimate(double dt, double time) nothrow @nogc
+    {
+        bool wasChanged = cas(&_valuesUpdated, true, false);
+        if (wasChanged)
+        {
+            setDirtyWhole();
+        }
+    }
+
+    // To be called by audio thread. So this function cannot call setDirtyWhole directly.
     void setValues(const(float)[] values) nothrow @nogc
     {
         {
@@ -119,7 +132,7 @@ nothrow:
             }
             _valueMutex.unlock();
         }
-        setDirtyWhole();
+        atomicStore(_valuesUpdated, true);
     }
 
     float getValue(int channel) nothrow @nogc
@@ -139,4 +152,6 @@ protected:
     float[] _values;
     float _minValue;
     float _maxValue;
+
+    shared(bool) _valuesUpdated = true;
 }

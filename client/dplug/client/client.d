@@ -2,7 +2,7 @@
 Cockos WDL License
 
 Copyright (C) 2005 - 2015 Cockos Incorporated
-Copyright (C) 2015 and later Auburn Sounds
+Copyright (C) 2015 - 2017 Auburn Sounds
 
 Portions copyright other contributors, see each source file for more information
 
@@ -15,8 +15,7 @@ Permission is granted to anyone to use this software for any purpose, including 
 1. This notice may not be removed or altered from any source distribution.
 */
 
-/// Base client implementation.
-
+/// Base client implementation. Every plugin format implementation hold a `Client` member.
 module dplug.client.client;
 
 import core.atomic;

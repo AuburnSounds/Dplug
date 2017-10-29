@@ -14,6 +14,9 @@ Permission is granted to anyone to use this software for any purpose, including 
 1. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
 1. This notice may not be removed or altered from any source distribution.
 */
+/**
+    VST plugin client implementation.
+*/
 module dplug.vst.client;
 
 import std.string;
@@ -762,6 +765,11 @@ private:
                 {
                     if (strcmp(str, "receiveVstEvents") == 0)
                         return 1;
+
+                    // Issue #198, Bitwig Studio need this
+                    if (strcmp(str, "receiveVstMidiEvent") == 0)
+                        return 1;
+
                     if (strcmp(str, "receiveVstMidiEvents") == 0)
                         return 1;
                 }

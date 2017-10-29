@@ -1,4 +1,6 @@
 /**
+* DSP utility functions. 
+*
 * Copyright: Copyright Auburn Sounds 2015-2016
 * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 * Authors:   Guillaume Piolat
@@ -141,9 +143,14 @@ T sinc(T)(T x) pure nothrow @nogc
         return sin(cast(T)PI * x) / (cast(T)PI * x);
 }
 
-/// Params:
-///    timeConstantInSeconds time after which the amplitude is only 37% of the original.
+
+/// Gets a factor for making exponential decay curves.
+///
 /// Returns: Multiplier for this time constant and sampling rate.
+///
+/// Params:
+///    timeConstantInSeconds = Time after which the amplitude is only 37% of the original.
+///    samplerate = Sampling rate.
 double expDecayFactor(double timeConstantInSeconds, double samplerate) pure nothrow @nogc
 {
     // 1 - exp(-time * sampleRate) would yield innacuracies

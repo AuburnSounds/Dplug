@@ -1,3 +1,4 @@
+/// X11 static bindings.
 module derelict.x11.X;
 
 version(linux):

@@ -1,4 +1,6 @@
 /**
+* `UIContext` holds global state for the whole UI (current selected widget, etc...).
+*
 * Copyright: Copyright Auburn Sounds 2015 and later.
 * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 * Authors:   Guillaume Piolat
@@ -193,6 +195,7 @@ private:
     Vec!box2i _dirtyRects;
 
     /// This is protected by a mutex, because it is sometimes updated from the host.
+    /// Note: we cannot remove this mutex, as host parameter change call setDirtyWhole directly.ODO: we want to remove this lock, the host thread should never directly.
     UncheckedMutex _dirtyRectMutex;
 }
 

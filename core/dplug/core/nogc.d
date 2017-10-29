@@ -1,6 +1,6 @@
 /**
 *
-* Various @nogc alternatives. This file includes parts of std.process, std.random, std.uuid.
+* Various @nogc alternatives. This file includes parts of `std.process`, `std.random`, `std.uuid`.
 *
 * Authors:
 *    $(HTTP guillaumepiolat.fr, Guillaume Piolat)
@@ -165,6 +165,8 @@ auto mallocEmplace(T, Args...)(Args args)
     return obj;
 }
 
+/// Allocates and construct a struct or class object.
+/// Returns: Newly allocated object.
 auto mallocNew(T, Args...)(Args args)
 {
     static if (is(T == class))

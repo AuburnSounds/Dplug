@@ -1,4 +1,5 @@
 /**
+* PBR widget: panel (rather useless beware).
 * Copyright: Copyright Auburn Sounds 2015 and later.
 * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 * Authors:   Guillaume Piolat
@@ -10,7 +11,7 @@ import dplug.gui.element;
 import dplug.client.params;
 
 /// An UIPanel is simply a plain rectangle with a depth, material and diffuse.
-class UIPanel : UIElement
+deprecated("Use a custom widget, or look at the background widgets") class UIPanel : UIElement
 {
 public:
 nothrow:

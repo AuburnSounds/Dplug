@@ -1,9 +1,9 @@
 /**
- * The thread module provides support for thread creation and management.
+ * Threads and thread-pool.
  *
  * Copyright: Copyright Sean Kelly 2005 - 2012.
- * Copyright:  Copyright (c) 2009-2011, David Simcha.
- * Copyright: Copyright Auburn Sounds 2016
+ * Copyright: Copyright (c) 2009-2011, David Simcha.
+ * Copyright: Copyright Auburn Sounds 2016.
  * License: Distributed under the
  *      $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost Software License 1.0).
  *    (See accompanying file LICENSE)
@@ -53,12 +53,15 @@ nothrow:
 public:
 
     /// Create a suspended thread.
+    ///
     /// Params:
-    ///     callback The delegate that will be called by the thread
-    ///     stackSize The thread stack size in bytes. 0 for default size.
-    /// Warning: It is STRONGLY ADVISED to pass a class member delegate to have
-    ///          the right delegate context.
+    ///     callback = The delegate that will be called by the thread.
+    ///     stackSize = The thread stack size in bytes. 0 for default size.
+    ///
+    /// Warning: It is STRONGLY ADVISED to pass a class member delegate (not a struct
+    ///          member delegate) to have context.
     ///          Passing struct method delegates are currently UNSUPPORTED.
+    ///
     this(ThreadDelegate callback, size_t stackSize = 0)
     {
         _stackSize = stackSize;

@@ -15,6 +15,25 @@
         "Sean M. Costello (Hilbert transformer)"
     ],
 
+    "dependencies":
+    {
+        "dplug:core": "*",
+        "dplug:audio": "*",
+        "dplug:dsp": "*",
+        "dplug:client": "*",
+        "dplug:graphics": "*",
+        "dplug:host": "*",
+        "dplug:vst": "*",
+        "dplug:au": "*",
+        "dplug:window": "*",
+        "dplug:gui": "*",
+        "dplug:pbr-widgets": "*",
+        "dplug:flat-widgets": "*",
+        "dplug:cocoa": "*",
+        "dplug:carbon": "*",
+        "dplug:x11": "*"
+    },
+
     "subPackages": [
         {
             "name": "core",
