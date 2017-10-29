@@ -1,7 +1,8 @@
 /**
 * Copyright: Copyright Auburn Sounds 2015-2017
+* Copyright: Cut Through Recordings
 * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
-* Authors:   Guillaume Piolat
+* Authors:   Guillaume Piolat, Ethan Reker
 */
 module gui;
 
