@@ -1,7 +1,7 @@
 {
     "name": "dplug",
     "description": "A library for crafting native audio plugins as simply as possible.",
-    "homepage": "http://github.com/p0nce/dplug/",
+    "homepage": "http://github.com/AuburnSounds/dplug/",
     "copyright": "Steinberg",
     "license": "VST",
 
@@ -10,7 +10,7 @@
     "authors": [
         "Guillaume Piolat (original author)",
         "Richard Andrew Cattermole (X11 windowing)",
-        "Ethan Reker (compile-time JSON parsing, X11 fixes, Wiki)",
+        "Ethan Reker (compile-time JSON parsing, X11 fixes, Wiki, clipit)",
         "Andrej Mitrovic",
         "Sean M. Costello (Hilbert transformer)"
     ],

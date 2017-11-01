@@ -12,8 +12,8 @@ import dplug.client;
 
 import main;
 
-// Plugin GUI, based on PBRBackgroundGUI.
-// If you don't want to use PBR, you not inherit from it.
+// Plugin GUI, based on FlatBackgroundGUI.
+// This allows to use knobs rendered with Knobman
 class ClipitGUI : FlatBackgroundGUI!("background.png")
 {
 public:
@@ -40,9 +40,9 @@ nothrow:
         OwnedImage!RGBA knobImage = loadOwnedImage(cast(ubyte[])(import("knob.png")));
         OwnedImage!RGBA switchOnImage = loadOwnedImage(cast(ubyte[])(import("switchOn.png")));
         OwnedImage!RGBA switchOffImage = loadOwnedImage(cast(ubyte[])(import("switchOff.png")));
-    
-        // Creates all widgest and adds them as children to the GUI
-        // widgets are not visible until their positons have been set
+
+        // Creates all widets and adds them as children to the GUI
+        // widgets are not visible until their positions have been set
         int numFrames = 101;
         UIFilmstripKnob inputGainKnob = mallocNew!UIFilmstripKnob(context(), cast(FloatParameter) _client.param(paramInputGain), knobImage, numFrames);
         addChild(inputGainKnob);
@@ -77,11 +77,6 @@ nothrow:
         immutable int switchHeight = 21;
 
         modeSwitch.position = box2i(switchX, switchY, switchX + switchWidth, switchY  + switchHeight);
-        
     }
 
-    ~this()
-    {
-        _font.destroyFree();
-    }
 }
