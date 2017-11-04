@@ -1,8 +1,8 @@
 <img alt="logo" src="https://cdn.rawgit.com/AuburnSounds/dplug/master/logo.svg" width="200">
 
-# Dplug [![Build Status](https://travis-ci.org/AuburnSounds/Dplug.png?branch=master)](https://travis-ci.org/AuburnSounds/dplug) <a href="https://code.dlang.org/packages/dplug" title="Go to dplug"><img src="https://img.shields.io/dub/v/dplug.svg" alt="Dub version"></a>
+# Dplug [![Build Status](https://travis-ci.org/AuburnSounds/Dplug.svg?branch=master)](https://travis-ci.org/AuburnSounds/Dplug) <a href="https://code.dlang.org/packages/dplug" title="Go to dplug"><img src="https://img.shields.io/dub/v/dplug.svg" alt="Dub version"></a>
 
-`Dplug` is a library for crafting audio plug-ins as simply as possible. [Come talk with us!](https://discord.gg/QZtGZUw) if you want to learn more.
+`Dplug` is a library for creating audio plug-ins as simply as possible. [Come talk with us!](https://discord.gg/QZtGZUw) if you want to learn more.
 
 
 ## Current features
@@ -11,7 +11,7 @@
 - Creating Audio Unit v2 plug-ins for Mac OS X, 32-bit and 64-bit
 - Comes with basic music DSP algorithms
 - Comes with a number of `tools` to make plug-in authoring faster (bundling, color correction, regression tests, performance tests)
-- Dplug is using Physically Based Rendering to keep installers small: http://www.auburnsounds.com/blog/2016-09-16_PBR-for-Audio-Software-Interfaces.html
+- Dplug is using rendering to keep installers small: http://www.auburnsounds.com/blog/2016-09-16_PBR-for-Audio-Software-Interfaces.html though you're not forced to use it.
 
 ### Products made with Dplug
 
@@ -29,25 +29,25 @@ Read about major changes here: https://github.com/AuburnSounds/dplug/wiki/Releas
 ## Tutorials
 
 - https://github.com/AuburnSounds/dplug/wiki/Getting-Started
-- https://auburnsounds.com/blog/2016-02-08_Making-a-Windows-VST-plugin-with-D.html (This tutorial is outdated)
+- https://auburnsounds.com/blog/2016-02-08_Making-a-Windows-VST-plugin-with-D.html (outdated)
 
 
 
 ## How to build plug-ins
 
 ### For Windows:
-- Use a recent DMD or LDC
-- Install DUB, the D package manager: http://code.dlang.org/download
+- Install DMD or LDC.
+- (optional) Install DUB, the D package manager: http://code.dlang.org/download
 - Go into an example directory
-- Type `dub --compiler=dmd` or `dub --compiler=ldc2` depending on the compiler used.
+- Type `dub --compiler=dmd` or `dub --compiler=ldc2` depending on the desired compiler.
 
 ### For OS X:
-- Use a recent LDC
-- Install DUB, the D package manager: http://code.dlang.org/download
+- Install DMD or LDC.
+- (optional) Install DUB, the D package manager: http://code.dlang.org/download
 - Build and use the `release` tool which is in the `tools/release/` directory.
+- `sudo ln -s /path/to/Dplug/tools/release/release /usr/local/bin/release`
 - Go into an example directory
-- Type `release --compiler dmd` or `release --compiler ldc` depending on the compiler used.
-- This tool is needed to create the whole bundle.
+- Type `release --compiler dmd` or `release --compiler ldc` depending on the desired compiler.
 
 
 ## FAQ
@@ -58,7 +58,7 @@ Yes. See simple-mono-synth example.
 
 - Am I forced to use the PBR graphics system?
 
-No. There are people making [plug-ins with Dplug without using PBR](http://www.modernmetalproduction.com/product/m4-multiband-compressor-vst-au/). How it works is that the physical channel is just filled with 0. Doing that requires a set of custom widgets.
+No. There are people making [plug-ins with Dplug without using PBR](http://www.modernmetalproduction.com/product/m4-multiband-compressor-vst-au/). How it works is that the physical channel is just filled with 0. Doing that requires a set of custom widgets, which you can find in `dplug:flat-widgets`.
 
 - How do I build plugins for OS X?
 
