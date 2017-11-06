@@ -40,7 +40,11 @@ nothrow:
 
     ~this()
     {
-        destroyFree(_rbt);
+        if (_rbt !is null)
+        {
+            destroyFree(_rbt);
+            _rbt = null;
+        }
     }
 
     /// Insert an element in the container, if the container doesn't already contain 
@@ -90,12 +94,11 @@ nothrow:
             *p = value;
     }
 
-
     /// Returns: `true` if this key is contained.
-    bool contains(K key)
+    bool contains(K key) const
     {
         auto kv = KeyValue(key, V.init);
-        return kv in _rbt;
+        return (kv in _rbt);
     }
 
 private:
@@ -209,7 +212,11 @@ nothrow:
 
     ~this()
     {
-        destroyFree(_rbt);
+        if (_rbt !is null)
+        {
+            destroyFree(_rbt);
+            _rbt = null;
+        }
     }
 
     /// Insert an element in the container, if the container doesn't already contain 
