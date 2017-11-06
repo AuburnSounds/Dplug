@@ -9,7 +9,7 @@
 * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 * Authors:   Authors: Steven Schveighoffer, $(HTTP erdani.com, Andrei Alexandrescu), Guillaume Piolat
 */
-module std.container.rbtree;
+module dplug.core.map;
 
 import dplug.core.nogc;
 
@@ -126,7 +126,6 @@ private:
 
 unittest
 {
-    import core.stdc.stdio;
     assert(totalAllocations == 0);
 
     void test(bool removeKeys) nothrow @nogc
@@ -162,7 +161,7 @@ unittest
         assert(totalAllocations == 0);
     }
     test(true);
-    test(false);    
+    test(false);
 }
 
 unittest
@@ -187,15 +186,15 @@ unittest
 }
 
 /// Creates a new empty `Map`.
-Set!(K) makeSet(K)()
+Set!K makeSet(K)()
 {
-    return Set!(K)(42);
+    return Set!K(42);
 }
 
 
 /// Set, designed to replace std::set usage.
 /// O(lg(n)) insertion, removal, and search time.
-struct Set(K, V)
+struct Set(K)
 {
 public:
 nothrow:
@@ -216,7 +215,7 @@ nothrow:
     /// Insert an element in the container, if the container doesn't already contain 
     /// an element with equivalent key. 
     /// Returns: `true` if the insertion took place.
-    bool insert(K key, V value)
+    bool insert(K key)
     {
         return _rbt.insert(key) != 0;
     }
@@ -243,7 +242,7 @@ nothrow:
     /// Returns: `true` if the element is present.
     bool contains(K key) const
     {
-        return kv in _rbt;
+        return key in _rbt;
     }
 
 private:
@@ -251,6 +250,25 @@ private:
     InternalTree _rbt;
 }
 
+
+unittest
+{
+    {
+        Set!(string) keywords = makeSet!string;
+
+        assert(keywords.insert("public"));
+        assert(keywords.insert("private"));
+        assert(!keywords.insert("private"));
+
+        assert(keywords.remove("public"));
+        assert(!keywords.remove("non-existent"));
+
+        assert(keywords.contains("private"));
+        assert(!keywords.contains("public"));
+    }
+
+    assert(totalAllocations == 0);
+}
 
 private:
 
