@@ -1,5 +1,5 @@
 /**
-* This module implements an associative array (keys must be ordered with < operator).
+* This module implements an associative array.
 * @nogc associative array, replacement for std::map and std::set.
 * Implementation of Red Black Tree from Phobos.
 *
@@ -11,21 +11,23 @@
 */
 module dplug.core.map;
 
+import std.functional: binaryFun;
+
 import dplug.core.nogc;
 
 nothrow:
 @nogc:
 
 /// Creates a new empty `Map`.
-Map!(K, V) makeMap(K, V)()
+Map!(K, V, less) makeMap(K, V, alias less = "a < b")()
 {
-    return Map!(K, V)(42);
+    return Map!(K, V, less)(42);
 }
 
 /// Tree-map, designed to replace std::map usage.
 /// The API should looks closely like the builtin associative arrays.
 /// O(lg(n)) insertion, removal, and search time.
-struct Map(K, V)
+struct Map(K, V, alias less = "a < b")
 {
 public:
 nothrow:
@@ -84,6 +86,7 @@ nothrow:
         return *p;
     }
 
+    /// Updates a value associated with a key, creates it if necessary.
     void opIndexAssign(V value, K key)
     {
         // PERF: this could be faster
@@ -101,8 +104,27 @@ nothrow:
         return (kv in _rbt);
     }
 
+    /// Returns: Number of elements in the map.
+    size_t length() const
+    {
+        return _rbt.length();
+    }
+
+    /// Returns: `ttue` is the map has no element.
+    bool empty() const
+    {
+        return _rbt.length() == 0;
+    }
+
 private:
-    alias InternalTree = RedBlackTree!(KeyValue, false);
+
+    alias _less = binaryFun!less;
+    static bool lessForAggregate(KeyValue a, KeyValue b)
+    {
+        return _less(a.key, b.key);
+    }
+
+    alias InternalTree = RedBlackTree!(KeyValue, lessForAggregate, false);
 
     // we need a composite value to reuse Phobos RedBlackTree
     static struct KeyValue
@@ -112,16 +134,7 @@ private:
         K key;
         V value;
 
-        // K must be comparable with <
-        int opCmp(KeyValue other) const
-        {
-            if (key < other.key) 
-                return -1;
-            else if (key < other.key) 
-                return 1;
-            else
-                return 0;
-        }
+
     }
 
     InternalTree _rbt;
@@ -189,15 +202,15 @@ unittest
 }
 
 /// Creates a new empty `Map`.
-Set!K makeSet(K)()
+Set!(K, less) makeSet(K, alias less = "a < b")()
 {
-    return Set!K(42);
+    return Set!(K, less)(42);
 }
 
 
 /// Set, designed to replace std::set usage.
 /// O(lg(n)) insertion, removal, and search time.
-struct Set(K)
+struct Set(K, alias less = "a < b")
 {
 public:
 nothrow:
@@ -252,8 +265,26 @@ nothrow:
         return key in _rbt;
     }
 
+    /// Fetch a range that spans all the elements in the container.
+    auto opSlice() inout
+    {
+        return _rbt[];
+    }
+
+    /// Returns: Number of elements in the set.
+    size_t length() const
+    {
+        return _rbt.length();
+    }
+
+    /// Returns: `ttue` is the set has no element.
+    bool empty() const
+    {
+        return _rbt.length() == 0;
+    }
+
 private:
-    alias InternalTree = RedBlackTree!(K, false); 
+    alias InternalTree = RedBlackTree!(K, less, false); 
     InternalTree _rbt;
 }
 
@@ -927,7 +958,7 @@ private struct RBRange(N)
 * inserted after all existing duplicate elements.
 */
 
-final class RedBlackTree(T, bool allowDuplicates = false)
+final class RedBlackTree(T, alias less = "a < b", bool allowDuplicates = false)
 {
 nothrow:
 @nogc:
@@ -935,6 +966,8 @@ nothrow:
     * Element type for the tree
     */
     alias Elem = T;
+
+    alias _less = binaryFun!less;
 
     // used for convenience
     private alias RBNode = .RBNode!Elem;
@@ -983,9 +1016,9 @@ nothrow:
             inout(RBNode)* result = null;
             while (cur)
             {
-                if (cur.value < e)
+                if (_less(cur.value, e))
                     cur = cur.right;
-                else if (e < cur.value)
+                else if (_less(e, cur.value))
                     cur = cur.left;
                 else
                 {
@@ -1001,9 +1034,9 @@ nothrow:
             inout(RBNode)* cur = _end.left;
             while (cur)
             {
-                if (cur.value < e)
+                if (_less(cur.value, e))
                     cur = cur.right;
-                else if (e < cur.value)
+                else if (_less(e, cur.value))
                     cur = cur.left;
                 else
                     return cur;
@@ -1030,7 +1063,7 @@ nothrow:
             Node nxt;
             while (true)
             {
-                if (n < newParent.value)
+                if (_less(n, newParent.value))
                 {
                     nxt = newParent.left;
                     if (nxt is null)
@@ -1046,7 +1079,7 @@ nothrow:
                 {
                     static if (!allowDuplicates)
                     {
-                        if (!(newParent.value < n))
+                        if (!(_less(newParent.value, n)))
                         {
                             result = newParent;
                             added = false;
@@ -1244,7 +1277,7 @@ nothrow:
         immutable lenBefore = length;
 
         auto beg = _firstGreaterEqual(e);
-        if (beg is _end || e < beg.value)
+        if (beg is _end || _less(e, beg.value))
             // no values are equal
             return 0;
         auto oldBeg = beg;
@@ -1267,7 +1300,7 @@ nothrow:
         inout(RBNode)* result = _end;
         while (cur)
         {
-            if (e < cur.value)
+            if (_less(e, cur.value))
             {
                 result = cur;
                 cur = cur.left;
@@ -1286,7 +1319,7 @@ nothrow:
         inout(RBNode)* result = _end;
         while (cur)
         {
-            if (cur.value < e)
+            if (_less(cur.value, e))
                 cur = cur.right;
             else
             {
