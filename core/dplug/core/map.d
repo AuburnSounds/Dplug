@@ -19,15 +19,15 @@ nothrow:
 @nogc:
 
 /// Creates a new empty `Map`.
-Map!(K, V, less) makeMap(K, V, alias less = "a < b")()
+Map!(K, V, less, allowDuplicates) makeMap(K, V, alias less = "a < b", bool allowDuplicates = false)()
 {
-    return Map!(K, V, less)(42);
+    return Map!(K, V, less, allowDuplicates)(42);
 }
 
 /// Tree-map, designed to replace std::map usage.
 /// The API should looks closely like the builtin associative arrays.
 /// O(lg(n)) insertion, removal, and search time.
-struct Map(K, V, alias less = "a < b")
+struct Map(K, V, alias less = "a < b", bool allowDuplicates = false)
 {
 public:
 nothrow:
@@ -116,15 +116,107 @@ nothrow:
         return _rbt.length() == 0;
     }
 
+    // Iterate by value only
+
+    /// Fetch a forward range on all values.
+    Range!(MapRangeType.value) byValue()
+    {
+        return Range!(MapRangeType.value)(_rbt[]);
+    }
+
+    /// ditto
+    ConstRange!(MapRangeType.value) byValue() const
+    {
+        return ConstRange!(MapRangeType.value)(_rbt[]);
+    }
+
+    /// ditto
+    ImmutableRange!(MapRangeType.value) byValue() immutable
+    {
+        return ImmutableRange!(MapRangeType.value)(_rbt[]);
+    }
+
+    // default opSlice is like byValue for builtin associative arrays
+    alias opSlice = byValue;
+
+    // Iterate by key only
+
+    /// Fetch a forward range on all keys.
+    Range!(MapRangeType.key) byKey()
+    {
+        return Range!(MapRangeType.key)(_rbt[]);
+    }
+
+    /// ditto
+    ConstRange!(MapRangeType.key) byKey() const
+    {
+        return ConstRange!(MapRangeType.key)(_rbt[]);
+    }
+
+    /// ditto
+    ImmutableRange!(MapRangeType.key) byKey() immutable
+    {
+        return ImmutableRange!(MapRangeType.key)(_rbt[]);
+    }
+
+    // Iterate by key-value
+
+    /// Fetch a forward range on all keys.
+    Range!(MapRangeType.keyValue) byKeyValue()
+    {
+        return Range!(MapRangeType.keyValue)(_rbt[]);
+    }
+
+    /// ditto
+    ConstRange!(MapRangeType.keyValue) byKeyValue() const
+    {
+        return ConstRange!(MapRangeType.keyValue)(_rbt[]);
+    }
+
+    /// ditto
+    ImmutableRange!(MapRangeType.keyValue) byKeyValue() immutable
+    {
+        return ImmutableRange!(MapRangeType.keyValue)(_rbt[]);
+    }
+
+    // Iterate by single value (return a range where all elements have equal key)
+
+    /// Fetch a forward range on all elements with given key.
+    Range!(MapRangeType.value) byGivenKey(K key)
+    {
+        auto kv = KeyValue(key, V.init);
+        return Range!(MapRangeType.value)(_rbt.range(kv));
+    }
+
+    /// ditto
+    ConstRange!(MapRangeType.value) byGivenKey(K key) const
+    {
+        auto kv = KeyValue(key, V.init);
+        return ConstRange!(MapRangeType.value)(_rbt.range(kv));
+    }
+
+    /// ditto
+    ImmutableRange!(MapRangeType.value) byGivenKey(K key) immutable
+    {
+        auto kv = KeyValue(key, V.init);
+        return ImmutableRange!(MapRangeType.value)(_rbt.range(kv));
+    }
+
+    
+
 private:
 
+    alias Range(MapRangeType type) = MapRange!(RBNode!KeyValue*, type);
+    alias ConstRange(MapRangeType type) = MapRange!(const(RBNode!KeyValue)*, type); /// Ditto
+    alias ImmutableRange(MapRangeType type) = MapRange!(immutable(RBNode!KeyValue)*, type); /// Ditto
+
     alias _less = binaryFun!less;
-    static bool lessForAggregate(KeyValue a, KeyValue b)
+    static bool lessForAggregate(const(KeyValue) a, const(KeyValue) b)
     {
         return _less(a.key, b.key);
     }
 
-    alias InternalTree = RedBlackTree!(KeyValue, lessForAggregate, false);
+    alias InternalTree = RedBlackTree!(KeyValue, lessForAggregate, allowDuplicates);
 
     // we need a composite value to reuse Phobos RedBlackTree
     static struct KeyValue
@@ -133,8 +225,6 @@ private:
     @nogc:
         K key;
         V value;
-
-
     }
 
     InternalTree _rbt;
@@ -202,15 +292,15 @@ unittest
 }
 
 /// Creates a new empty `Map`.
-Set!(K, less) makeSet(K, alias less = "a < b")()
+Set!(K, less) makeSet(K, alias less = "a < b", bool allowDuplicates = false)()
 {
-    return Set!(K, less)(42);
+    return Set!(K, less, allowDuplicates)(42);
 }
 
 
 /// Set, designed to replace std::set usage.
 /// O(lg(n)) insertion, removal, and search time.
-struct Set(K, alias less = "a < b")
+struct Set(K, alias less = "a < b", bool allowDuplicates = false)
 {
 public:
 nothrow:
@@ -232,8 +322,9 @@ nothrow:
         }
     }
 
-    /// Insert an element in the container, if the container doesn't already contain 
-    /// an element with equivalent key. 
+    /// Insert an element in the container. 
+    /// If allowDuplicates is false, this can fail and return `false` 
+    /// if the already contains an element with equivalent key. 
     /// Returns: `true` if the insertion took place.
     bool insert(K key)
     {
@@ -284,7 +375,7 @@ nothrow:
     }
 
 private:
-    alias InternalTree = RedBlackTree!(K, less, false); 
+    alias InternalTree = RedBlackTree!(K, less, allowDuplicates); 
     InternalTree _rbt;
 }
 
@@ -869,8 +960,11 @@ nothrow:
     }
 }
 
+// Range type for RedBlackTree
 private struct RBRange(N)
 {
+nothrow:
+@nogc:
     alias Node = N;
     alias Elem = typeof(Node.value);
 
@@ -931,6 +1025,104 @@ private struct RBRange(N)
     * Trivial _save implementation, needed for $(D isForwardRange).
     */
     @property RBRange save()
+    {
+        return this;
+    }
+}
+
+private enum MapRangeType
+{
+    key,
+    value,
+    keyValue
+}
+
+// Range type for Dplug's Map, can iterate on keys or values
+private struct MapRange(N, MapRangeType type)
+{
+nothrow:
+@nogc:
+
+    alias Node = N;
+    alias InnerRange = RBRange!N;
+
+    static if (type == MapRangeType.key)
+        alias Elem = typeof(Node.value.key);
+
+    else static if (type == MapRangeType.value)
+        alias Elem = typeof(Node.value.value);
+
+    else static if (type == MapRangeType.keyValue)
+        alias Elem = typeof(Node.value);
+
+    static Elem get(InnerRange.Elem pair)
+    {
+        static if (type == MapRangeType.key)
+            return pair.key;
+
+        else static if (type == MapRangeType.value)
+            return pair.value;
+
+        else static if (type == MapRangeType.keyValue)
+            return pair;
+    }
+
+    // A Map range is just a wrapper around a RBRange
+    private InnerRange _inner;
+
+    private this(InnerRange inner)
+    {
+        _inner = inner;
+    }
+
+    /**
+    * Returns $(D true) if the range is _empty
+    */
+    @property bool empty() const
+    {
+        return _inner.empty;
+    }
+
+    /**
+    * Returns the first element in the range
+    */
+    @property Elem front()
+    {
+        return get(_inner.front);
+    }
+
+    /**
+    * Returns the last element in the range
+    */
+    @property Elem back()
+    {
+        return get(_inner.back());
+    }
+
+    /**
+    * pop the front element from the range
+    *
+    * complexity: amortized $(BIGOH 1)
+    */
+    void popFront()
+    {
+        _inner.popFront();
+    }
+
+    /**
+    * pop the back element from the range
+    *
+    * complexity: amortized $(BIGOH 1)
+    */
+    void popBack()
+    {
+        _inner.popBack();
+    }
+
+    /**
+    * Trivial _save implementation, needed for $(D isForwardRange).
+    */
+    @property MapRange save()
     {
         return this;
     }
@@ -1141,6 +1333,13 @@ nothrow:
         return _length;
     }
 
+    // Find the range for which every element is equal.
+    private void findEnclosingRange(Elem e, inout(RBNode)** begin, inout(RBNode)** end) inout
+    {
+        *begin = _firstGreaterEqual(e);
+        *end = _firstGreater(e);
+    }
+
     /**
     * Fetch a range that spans all the elements in the container.
     *
@@ -1161,6 +1360,34 @@ nothrow:
     ImmutableRange opSlice() immutable
     {
         return ImmutableRange(_begin, _end);
+    }
+
+    /**
+    * Fetch a range that spans all equal elements of a particular value.
+    *
+    * Complexity: $(BIGOH 1)
+    */
+    Range range(Elem e)
+    {
+        RBNode* begin, end;
+        findEnclosingRange(e, &begin, &end);
+        return Range(begin, end);
+    }
+
+    /// Ditto
+    ConstRange range(Elem e) const
+    {
+        const(RBNode)* begin, end;
+        findEnclosingRange(e, &begin, &end);
+        return ConstRange(begin, end);
+    }
+
+    /// Ditto
+    ImmutableRange range(Elem e) immutable
+    {
+        immutable(RBNode)* begin, end;
+        findEnclosingRange(e, &begin, &end);
+        return ImmutableRange(begin, end);
     }
 
     /**
@@ -1310,6 +1537,7 @@ nothrow:
         }
         return result;
     }
+
 
     // find the first node where the value is >= e
     private inout(RBNode)* _firstGreaterEqual(Elem e) inout
