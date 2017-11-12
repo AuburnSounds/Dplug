@@ -516,6 +516,15 @@ struct Vec(T)
             _data[index] = _data[--_size];
         }
 
+        /// Removes an item and shift the rest of the array to front by 1.
+        /// Warning: O(N) complexity.
+        void removeAndShiftRestOfArray(size_t index) nothrow @nogc
+        {
+            assert(index < _size);
+            for (; index + 1 < _size; ++index)
+                _data[index] = _data[index+1];
+        }
+
         /// Appends another buffer to this buffer.
         void pushBack(ref Vec other) nothrow @nogc
         {
