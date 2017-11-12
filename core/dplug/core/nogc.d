@@ -19,7 +19,7 @@
 */
 module dplug.core.nogc;
 
-import core.stdc.string: strdup, memcpy;
+import core.stdc.string: strdup, memcpy, strlen;
 import core.stdc.stdlib: malloc, free, getenv;
 import core.memory: GC;
 import core.exception: onOutOfMemoryErrorNoGC;
@@ -324,13 +324,14 @@ T[] mallocSliceNoInit(T)(size_t count) nothrow @nogc
     return p[0..count];
 }
 
-/// Free a slice allocated with `mallocSlice`.
+/// Frees a slice allocated with `mallocSlice`.
 void freeSlice(T)(const(T)[] slice) nothrow @nogc
 {
     free(cast(void*)(slice.ptr)); // const cast here
 }
 
-// Duplicates a slice with malloc. Equivalent to .dup
+/// Duplicates a slice with `malloc`. Equivalent to `.dup`
+/// Has to be cleaned-up with `free()`.
 T[] mallocDup(T)(const(T)[] slice) nothrow @nogc if (!is(T == struct))
 {
     T[] copy = mallocSliceNoInit!T(slice.length);
@@ -338,12 +339,32 @@ T[] mallocDup(T)(const(T)[] slice) nothrow @nogc if (!is(T == struct))
     return copy;
 }
 
-// Duplicates a slice with malloc. Equivalent to .idup
+/// Duplicates a slice with `malloc`. Equivalent to `.idup`
+/// Has to be cleaned-up with `free()`.
 immutable(T)[] mallocIDup(T)(const(T)[] slice) nothrow @nogc if (!is(T == struct))
 {
-    T[] copy = mallocSliceNoInit!T(slice.length);
-    memcpy(copy.ptr, slice.ptr, slice.length * T.sizeof);
-    return assumeUnique(copy);
+    return assumeUnique(mallocDup!T(slice));
+}
+
+/// Duplicates a zero-terminated string with `malloc`, return a `char[]`. Equivalent to `.dup`
+/// Has to be cleaned-up with `free()`.
+/// Note: The zero-terminating byte is preserved. This allow to have a string which also can be converted
+/// to a C string with `.ptr`. However the zero byte is not included in slice length.
+char[] stringDup(const(char)* cstr) nothrow @nogc
+{
+    assert(cstr !is null);
+    size_t len = strlen(cstr);
+    char* copy = strdup(cstr);
+    return copy[0..len];
+}
+
+/// Duplicates a zero-terminated string with `malloc`, return a `string`. Equivalent to `.idup`
+/// Has to be cleaned-up with `free()`.
+/// Note: The zero-terminating byte is preserved. This allow to have a string which also can be converted
+/// to a C string with `.ptr`. However the zero byte is not included in slice length.
+string stringIDup(const(char)* cstr) nothrow @nogc
+{
+    return assumeUnique(stringDup(cstr));
 }
 
 unittest
