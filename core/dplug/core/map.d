@@ -67,6 +67,13 @@ nothrow:
         return _rbt.removeKey(kv) != 0;
     }
 
+    /// Removes all elements from the map.
+    void clearContents()
+    {
+        while(_rbt.length > 0)
+            _rbt.removeBack();
+    }
+
     /// Returns: A pointer to the value corresponding to this key, or null if not available.
     ///          Live builtin associative arrays.
     inout(V)* opBinaryRight(string op)(K key) inout if (op == "in")
@@ -202,7 +209,6 @@ nothrow:
         return ImmutableRange!(MapRangeType.value)(_rbt.range(kv));
     }
 
-    
 
 private:
 
@@ -336,6 +342,13 @@ nothrow:
     bool remove(K key)
     {
         return _rbt.removeKey(key) != 0;
+    }
+
+    /// Removes all elements from the set.
+    void clearContents()
+    {
+        while(_rbt.length > 0)
+            _rbt.removeBack();
     }
 
     /// Returns: `true` if the element is present.
