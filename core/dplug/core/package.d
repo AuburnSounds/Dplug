@@ -18,3 +18,4 @@ public import dplug.core.thread;
 public import dplug.core.file;
 public import dplug.core.cpuid;
 public import dplug.core.complex;
+public import dplug.core.map;
