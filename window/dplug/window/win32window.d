@@ -177,7 +177,10 @@ version(Windows)
                 {
                     bool handled = false;
 
-                    Key key = vkToKey(wParam);
+                    if(GetKeyState(VK_LSHIFT))
+                        shiftPressed = !shiftPressed;
+
+                    Key key = vkToKey(wParam, shiftPressed);
                     if (uMsg == WM_KEYDOWN)
                     {
                         if (_listener.onKeyDown(key))
@@ -413,6 +416,8 @@ version(Windows)
         int _mouseX = 0;
         int _mouseY = 0;
 
+        bool shiftPressed = false;
+
         /// Propagates mouse events.
         /// Returns: true if event handled.
         bool mouseClick(int mouseX, int mouseY, MouseButton mb, bool isDoubleClick, WPARAM wParam)
@@ -471,31 +476,58 @@ version(Windows)
         }
     }
 
-    Key vkToKey(WPARAM vk) pure nothrow @nogc
+    Key vkToKey(WPARAM vk, bool shiftPressed)pure nothrow @nogc
     {
         switch (vk)
-        {
-            case VK_SPACE: return Key.space;
+            {
+                case VK_SPACE: return Key.space;
 
-            case VK_UP: return Key.upArrow;
-            case VK_DOWN: return Key.downArrow;
-            case VK_LEFT: return Key.leftArrow;
-            case VK_RIGHT: return Key.rightArrow;
+                case VK_UP: return Key.upArrow;
+                case VK_DOWN: return Key.downArrow;
+                case VK_LEFT: return Key.leftArrow;
+                case VK_RIGHT: return Key.rightArrow;
 
-            case VK_NUMPAD0: return Key.digit0;
-            case VK_NUMPAD1: return Key.digit1;
-            case VK_NUMPAD2: return Key.digit2;
-            case VK_NUMPAD3: return Key.digit3;
-            case VK_NUMPAD4: return Key.digit4;
-            case VK_NUMPAD5: return Key.digit5;
-            case VK_NUMPAD6: return Key.digit6;
-            case VK_NUMPAD7: return Key.digit7;
-            case VK_NUMPAD8: return Key.digit8;
-            case VK_NUMPAD9: return Key.digit9;
-            case VK_RETURN: return Key.enter;
-            case VK_ESCAPE: return Key.escape;
-            default: return Key.unsupported;
-        }
+                case VK_NUMPAD0: return Key.digit0;
+                case VK_NUMPAD1: return Key.digit1;
+                case VK_NUMPAD2: return Key.digit2;
+                case VK_NUMPAD3: return Key.digit3;
+                case VK_NUMPAD4: return Key.digit4;
+                case VK_NUMPAD5: return Key.digit5;
+                case VK_NUMPAD6: return Key.digit6;
+                case VK_NUMPAD7: return Key.digit7;
+                case VK_NUMPAD8: return Key.digit8;
+                case VK_NUMPAD9: return Key.digit9;
+                case 0x41: return shiftPressed ?  Key.A : Key.a;
+                case 0x42: return shiftPressed ?  Key.B : Key.b;
+                case 0x43: return shiftPressed ?  Key.C : Key.c;
+                case 0x44: return shiftPressed ?  Key.D : Key.d;
+                case 0x45: return shiftPressed ?  Key.E : Key.e;
+                case 0x46: return shiftPressed ?  Key.F : Key.f;
+                case 0x47: return shiftPressed ?  Key.G : Key.g;
+                case 0x48: return shiftPressed ?  Key.H : Key.h;
+                case 0x49: return shiftPressed ?  Key.I : Key.i;
+                case 0x4A: return shiftPressed ?  Key.J : Key.j;
+                case 0x4B: return shiftPressed ?  Key.K : Key.k;
+                case 0x4C: return shiftPressed ?  Key.L : Key.l;
+                case 0x4D: return shiftPressed ?  Key.M : Key.m;
+                case 0x4E: return shiftPressed ?  Key.N : Key.n;
+                case 0x4F: return shiftPressed ?  Key.O : Key.o;
+                case 0x50: return shiftPressed ?  Key.P : Key.p;
+                case 0x51: return shiftPressed ?  Key.Q : Key.q;
+                case 0x52: return shiftPressed ?  Key.R : Key.r;
+                case 0x53: return shiftPressed ?  Key.S : Key.s;
+                case 0x54: return shiftPressed ?  Key.T : Key.t;
+                case 0x55: return shiftPressed ?  Key.U : Key.u;
+                case 0x56: return shiftPressed ?  Key.V : Key.v;
+                case 0x57: return shiftPressed ?  Key.W : Key.w;
+                case 0x58: return shiftPressed ?  Key.X : Key.x;
+                case 0x59: return shiftPressed ?  Key.Y : Key.y;
+                case 0x5A: return shiftPressed ?  Key.Z : Key.z;
+                case VK_BACK: return Key.backspace;
+                case VK_RETURN: return Key.enter;
+                case VK_ESCAPE: return Key.escape;
+                default: return Key.unsupported;
+            }
     }
 
     static MouseState getMouseState(WPARAM wParam)
