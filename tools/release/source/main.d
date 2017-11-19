@@ -50,10 +50,10 @@ void usage()
     cwriteln("EXAMPLES".white);
     cwriteln();
     cwriteln("        # Releases a final VST plugin for 32-bit and 64-bit".green);
-    cwriteln("        release -c ldc -a all -b release-nobounds --combined".cyan);
+    cwriteln("        release --compiler ldc -a all -b release-nobounds --combined".cyan);
     cwriteln();
     cwriteln("        # Builds a 32-bit Audio Unit plugin for profiling, and publish it".green);
-    cwriteln("        release -c dmd -a x86 --config AU -b release-debug --publish".cyan);
+    cwriteln("        release --compiler dmd -a x86 --config AU -b release-debug --publish".cyan);
     cwriteln();
     cwriteln("        # Shows help".green);
     cwriteln("        release -h".cyan);
