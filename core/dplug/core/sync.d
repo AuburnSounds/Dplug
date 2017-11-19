@@ -429,10 +429,10 @@ struct UncheckedSemaphore
         }
         else version( Posix )
         {
-            timespec t = void;
+            timespec t;
 
             assumeNothrowNoGC(
-                (timespec t, Duration period)
+                (ref timespec t, Duration period)
                 {
                     mktspec( t, period );
                 })(t, period);
