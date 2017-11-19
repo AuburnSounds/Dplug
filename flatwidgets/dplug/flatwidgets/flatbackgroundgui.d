@@ -45,20 +45,31 @@ nothrow:
         _position = availableSpace;
     }
     
+    /// Fill diffuse map with diffuse from background image.  Alpha is ignored since ideally a background image will not
+    /// need an alpha channel.
+    /// Material and depth maps are zeroed out to initialize them. Otherwise this can lead to nasty errors.
     override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects) nothrow @nogc
     {
         foreach(dirtyRect; dirtyRects)
         {
             auto croppedDiffuseIn = _backgroundImage.crop(dirtyRect);
             auto croppedDiffuseOut = diffuseMap.crop(dirtyRect);
+            auto croppedMaterialOut = materialMap.crop(dirtyRect);
+            auto croppedDepthOut = depthMap.crop(dirtyRect);
 
+            immutable RGBA inputMaterial = RGBA(0, 0, 0, 0);
+            immutable L16 inputDepth = L16(0);
 
             for(int j = 0; j < dirtyRect.height; ++j){
-                RGBA[] input = croppedDiffuseIn.scanline(j);
-                RGBA[] output = croppedDiffuseOut.scanline(j);
+                RGBA[] inputDiffuse = croppedDiffuseIn.scanline(j);
+                RGBA[] outputDiffuse = croppedDiffuseOut.scanline(j);
+                RGBA[] outputMaterial = croppedMaterialOut.scanline(j);
+                L16[] outputDepth = croppedDepthOut.scanline(j);
 
                 for(int i = 0; i < dirtyRect.width; ++i){
-                    output[i] = input[i];
+                    outputDiffuse[i] = inputDiffuse[i];
+                    outputMaterial[i] = inputMaterial;
+                    outputDepth[i] = inputDepth;
                 }
             }
         }
