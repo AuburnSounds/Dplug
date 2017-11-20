@@ -35,14 +35,14 @@ void usage()
     flag("-a --arch", "Selects target architecture.", "x86 | x86_64 | all", "Windows => all   OSX => x86_64");
     flag("-b --build", "Selects build type.", "same ones as dub accepts", "debug");
     flag("--compiler", "Selects D compiler.", "dmd | ldc | gdc", "ldc");
-    flag("-c --config", "Adds a build configuration.", "VST | AU | AAX | name starting with \"VST\" or \"AU\" or \"AAX\"", "all");
+    flag("-c --config", "Adds a build configuration.", "VST | AU | AAX | name starting with \"VST\", \"AU\" or \"AAX\"", "all");
     flag("-f --force", "Forces rebuild", null, "no");
     flag("--combined", "Combined build", null, "no");
     flag("-q --quiet", "Quieter output", null, "no");
     flag("-v --verbose", "Verbose output", null, "no");
-    flag("-sr --skip-registry", "Skip registry (avoid network)", null, "no");
-    flag("--publish", "Make the plugin available in standard directories (OSX only)", null, "no");
-    flag("--auval", "Check Audio Unit validation with auval (OSX only)", null, "no");
+    flag("-sr --skip-registry", " Skip checking the DUB registry\n                        Avoid network, doesn't update dependencies", null, "no");
+    flag("--publish", "Make the plugin available in standard directories " ~ "(OSX only, DOESN'T WORK)".red, null, "no");
+    flag("--auval", "Check Audio Unit validation with auval " ~ "(OSX only, DOESN'T WORK)".red, null, "no");
     flag("-h --help", "Shows this help", null, null);
 
 
@@ -52,8 +52,8 @@ void usage()
     cwriteln("        # Releases a final VST plugin for 32-bit and 64-bit".green);
     cwriteln("        release --compiler ldc -a all -b release-nobounds --combined".cyan);
     cwriteln();
-    cwriteln("        # Builds a 32-bit Audio Unit plugin for profiling, and publish it".green);
-    cwriteln("        release --compiler dmd -a x86 --config AU -b release-debug --publish".cyan);
+    cwriteln("        # Builds a 32-bit Audio Unit plugin for profiling".green);
+    cwriteln("        release --compiler dmd -a x86 --config AU -b release-debug".cyan);
     cwriteln();
     cwriteln("        # Shows help".green);
     cwriteln("        release -h".cyan);
@@ -61,7 +61,8 @@ void usage()
     cwriteln();
     cwriteln("NOTES".white);
     cwriteln();
-    cwriteln("      The configuration name used with " ~ "--config".cyan ~ " must exist in your dub.json file.");
+    cwriteln("      The configuration name used with " ~ "--config".cyan ~ " must exist in your " ~ "dub.json".cyan ~ " file.");
+    cwriteln("      release".cyan ~ " detects plugin format based on the " ~ "configuration".yellow ~ " name's prefix: " ~ "AU | VST | AAX.".yellow);
     cwriteln();
     cwriteln("      --combined".cyan ~ " has no effect on code speed, but can avoid DUB flags problems.".grey);
     cwriteln();
