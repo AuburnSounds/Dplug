@@ -381,6 +381,19 @@ unittest
     freeSlice(slice);
 }
 
+/// Semantic function to check that a D string implicitely conveys a 
+/// termination byte after the slice.
+/// (typically those comes from string literals or `stringDup`/`stringIDup`)
+const(char)* assumeZeroTerminated(const(char)[] input) nothrow @nogc
+{
+    if (input.ptr is null)
+        return null;
+
+    // Check that the null character is there
+    assert(input.ptr[input.length] == '\0');
+    return input.ptr;
+}
+
 
 //
 // @nogc sorting.

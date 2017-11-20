@@ -67,7 +67,14 @@ struct PluginVersion
         assert(major < 256 && minor < 256 && patch < 256);
         return (major << 16) | (minor << 8) | patch;
     }
+
+    int toAAXPackageVersion() pure const nothrow @nogc
+    {
+        // For AAX, considered binary-compatible unless major version change
+        return major;
+    }
 }
+
 
 // Statically known features of the plugin.
 // There is some default for explanation purpose, but you really ought to override them all.
