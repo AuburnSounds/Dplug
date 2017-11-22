@@ -12,7 +12,8 @@ import dplug.core.nogc;
 import dplug.core.cpuid;
 
 // Helpers to deal with the D runtime.
-version = useShakyWorkaround;
+// Note: removed since this isn't working anymore since OSX 10.11
+//version = useShakyWorkaround;
 
 /// When this version is defined, the runtime won't be initialized.
 version = doNotUseRuntime;
@@ -34,7 +35,7 @@ version(OSX)
         enum : dyld_image_states
         {
             dyld_image_state_initialized = 50,
-        }        
+        }
 
         extern(C) nothrow
         {
