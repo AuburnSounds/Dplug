@@ -242,14 +242,14 @@ int main(string[] args)
 
                 version(Windows)
                 {
-                    // Special case for AAX need its own directory, but according to Voxengo releases, 
+                    // Special case for AAX need its own directory, but according to Voxengo releases,
                     // its more minimal than either JUCE or IPlug builds.
                     // Only one file (.dll even) seems to be needed in <plugin-name>.aaxplugin\Contents\x64
                     // Note: only 64-bit AAX supported.
                     if (configIsAAX(config))
                     {
                         string pluginFinalName = plugin.prettyName ~ ".aaxplugin";
-                        string pluginDir = path ~ "/" ~ (plugin.prettyName ~ ".aaxplugin") ~ "/Contents/";                        
+                        string pluginDir = path ~ "/" ~ (plugin.prettyName ~ ".aaxplugin") ~ "/Contents/";
 
                         if (is64b)
                         {
@@ -437,10 +437,10 @@ void buildPlugin(string compiler, string config, string build, bool is64b, bool 
     string arch = is64b ? "x86_64" : "x86";
 
     // Produce output compatible with earlier OSX
-    // LDC does not support earlier than 10.7
+    // LDC >= 1.1 does not support earlier than 10.8
     version(OSX)
     {
-        environment["MACOSX_DEPLOYMENT_TARGET"] = "10.7";
+        environment["MACOSX_DEPLOYMENT_TARGET"] = "10.8";
     }
 
     string cmd = format("dub build --build=%s --arch=%s --compiler=%s%s%s%s%s%s%s",
