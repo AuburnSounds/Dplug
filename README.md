@@ -72,7 +72,7 @@ Windows Vista. Users report plugins made with both DMD and LDC work on Windows X
 
 - What is the oldest supported OS X version?
 
-OS X 10.7+.
+OS X 10.8+.
 
 - What D compiler can possibly be used?
 
@@ -80,9 +80,7 @@ OS X 10.7+.
 
 - What D compilers are recommended?
 
-   For OSX it is recommended that you use LDC-1.0.0-b2 for final binaries as no other LDC version has been as well tested with Dplug (especially it is unknown if it works on OS X 10.7).
-
-   For Windows it is necessary to use LDC >= 1.1. LDC 1.0 does not `export` function in DLL.
+   For both macOS and Windows it is recommended that you use LDC 1.2 or later.
 
 - Is Dplug stable?
 
