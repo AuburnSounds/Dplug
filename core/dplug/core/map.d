@@ -238,8 +238,6 @@ private:
 
 unittest
 {
-    assert(totalAllocations == 0);
-
     void test(bool removeKeys) nothrow @nogc
     {
         {
@@ -270,7 +268,6 @@ unittest
                 assert(removeKeys ^ test.contains(key)); // either keys are here or removed
             }            
         }
-        assert(totalAllocations == 0);
     }
     test(true);
     test(false);
@@ -409,13 +406,9 @@ unittest
         assert(!keywords.contains("public"));
     }
 
-    assert(totalAllocations == 0);
 }
 
 private:
-
-version(unittest)
-    __gshared int totalAllocations = 0;
 
 
 /*
@@ -489,8 +482,6 @@ nothrow:
 
     void deallocate()
     {
-        version(unittest)
-            totalAllocations -= 1;
         //import core.stdc.stdio;
         //printf("deallocate %p\n", &this);
         destroyFree(&this);
@@ -1190,8 +1181,6 @@ nothrow:
 
     static private Node allocate()
     {
-        version(unittest)
-            totalAllocations += 1;
         Node p = mallocNew!RBNode;
         //import core.stdc.stdio;
         //printf("allocate %p\n", p);
