@@ -485,7 +485,9 @@ string makePListFile(Plugin plugin, string config, bool hasIcon)
     addKeyString("CFBundlePackageType", "BNDL");
     addKeyString("CFBundleSignature", plugin.pluginUniqueID); // doesn't matter http://stackoverflow.com/questions/1875912/naming-convention-for-cfbundlesignature-and-cfbundleidentifier
 
+   // Set to 10.7 in case 10.7 is supported by chance
     addKeyString("LSMinimumSystemVersion", "10.7.0");
+    
    // content ~= "        <key>VSTWindowCompositing</key><true/>\n";
 
     if (hasIcon)
