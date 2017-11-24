@@ -61,3 +61,15 @@ Always add `TODO` comments for _any_ doubt your may have. Don't sweep subtle dec
 
 Breaking changes are allowed for now.
 When renaming, introduce a `deprecated("Use this symbol instead: foo") alias bar = foo;` line.
+
+
+
+# Design rules
+
+- Dplug's window backend should have the same functionnality.
+
+- Dplug's plugin clients should have the same functionnality.
+
+- Dplug should work the latest D compilers and the largest possible extent of past compilers that fits the need of plug-in development
+
+- In Dplug all plug-in parameters are considered automatable. This could change in the future but this is the current state right now.
