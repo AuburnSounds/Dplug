@@ -232,7 +232,7 @@ nothrow:
     }
 
     /// Returns: Array of parameters.
-    final Parameter[] params() nothrow @nogc
+    final inout(Parameter[]) params() inout nothrow @nogc
     {
         return _params;
     }
@@ -268,13 +268,13 @@ nothrow:
     }
 
     /// Returns: The parameter indexed by index.
-    final Parameter param(int index) nothrow @nogc
+    final inout(Parameter) param(int index) inout nothrow @nogc
     {
         return _params.ptr[index];
     }
 
     /// Returns: true if index is a valid parameter index.
-    final bool isValidParamIndex(int index) nothrow @nogc
+    final bool isValidParamIndex(int index) const nothrow @nogc
     {
         return index >= 0 && index < _params.length;
     }
