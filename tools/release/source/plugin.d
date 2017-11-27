@@ -406,7 +406,7 @@ Plugin readPluginDescription()
 
     try
     {
-        result.category = convertStringToPluginCategory(rawPluginFile["category"].str);
+        result.category = parsePluginCategory(rawPluginFile["category"].str);
         if (result.category == PluginCategory.invalid)
             throw new Exception("");
     }
