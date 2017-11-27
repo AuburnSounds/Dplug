@@ -9,5 +9,6 @@
     "CFBundleIdentifierPrefix": "com.nonameaudio",
     "hasGUI": false,
     "isSynth": true,
-    "receivesMIDI": true
+    "receivesMIDI": true,
+    "category": "instrumentSynthesizer"
 }

@@ -9,5 +9,6 @@
     "CFBundleIdentifierPrefix": "com.nonameaudio",
     "hasGUI": false,
     "isSynth": false,
-    "receivesMIDI": false
+    "receivesMIDI": false,
+    "category": "effectImaging"
 }
