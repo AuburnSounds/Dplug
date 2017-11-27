@@ -25,10 +25,120 @@ import std.string;
 import std.conv;
 import std.utf;
 
-
-
 nothrow:
 @nogc:
+
+
+///
+/// Plug-in categories.
+/// For each plug-in format, a format-specific category is obtained from this.
+///
+/// Important: a `PluginCategory`doesn't affect I/O or MIDI, it's only a
+///            hint for the goal of categorizing a plug-in in lists.
+///
+/// You should use such a category enclosed with quotes in plugin.json, eg:
+///
+/// Example:
+///
+///     {
+///         "category": "effectAnalysisAndMetering"
+///     }
+///
+enum PluginCategory
+{
+    // ### Effects
+
+    /// FFT analyzers, phase display, waveform display, meters...
+    effectAnalysisAndMetering,
+
+        /// Any kind of delay, but not chorus/flanger types.
+        effectDelay,
+
+        /// Any kind of distortion: amp simulations, octavers, wave-shapers, 
+        /// clippers, tape simulations...
+        effectDistortion,
+
+        /// Compressors, limiters, gates, transient designers...
+        effectDynamics,
+
+        /// Any kind of equalization.
+        effectEQ,
+
+        /// Stereoizers, panners, stereo manipulation, spatial modeling...
+        effectImaging,
+
+        /// Chorus, flanger, any kind of modulation effect...
+        effectModulation,
+
+        /// Any kind of pitch processing: shifters, pitch correction, 
+        /// vocoder, formant shifting...
+        effectPitch,
+
+        /// Any kind of reverb: algorithmic, early reflections, convolution...
+        effectReverb,
+
+        /// Effects that don't fit in any other category.
+        /// eg: Dither, noise reduction...
+        effectOther,
+
+
+        // ### Instruments
+
+        /// Source that generates sound primarily from drum samples/drum synthesis.
+        instrumentDrums,
+
+        /// Source that generates sound primarily from samples, romplers...
+        instrumentSampler,
+
+        /// Source that generates sound primarily from synthesis.
+        instrumentSynthesizer,
+
+        /// Generates sound, but doesn't fit in any other category.
+        instrumentOther,
+
+        // Should never be used, except for parsing.
+        invalid = -1,
+}
+
+/// From a string, return the PluginCategory enumeration.
+/// Should be reasonably fast since it will be called at compile-time.
+/// Returns: `PluginCategory.invalid` if parsing failed.
+PluginCategory parsePluginCategory(const(char)[] input)
+{
+    if (input.length >= 6 && input[0..6] == "effect")
+    {
+        input = input[6..$];
+        if (input == "AnalysisAndMetering") return PluginCategory.effectAnalysisAndMetering;
+        if (input == "Delay") return PluginCategory.effectDelay;
+        if (input == "Distortion") return PluginCategory.effectDistortion;
+        if (input == "Dynamics") return PluginCategory.effectDynamics;
+        if (input == "EQ") return PluginCategory.effectEQ;
+        if (input == "Imaging") return PluginCategory.effectImaging;
+        if (input == "Modulation") return PluginCategory.effectModulation;
+        if (input == "Pitch") return PluginCategory.effectPitch;
+        if (input == "Reverb") return PluginCategory.effectReverb;
+        if (input == "Other") return PluginCategory.effectOther;
+    }
+    else if (input.length >= 10 && input[0..10] == "instrument")
+    {
+        input = input[10..$];
+        if (input == "Drums") return PluginCategory.instrumentDrums;
+        if (input == "Sampler") return PluginCategory.instrumentSampler;
+        if (input == "Synthesizer") return PluginCategory.instrumentSynthesizer;
+        if (input == "Other") return PluginCategory.instrumentOther;
+    }
+    return PluginCategory.invalid;
+}
+
+unittest
+{
+    assert(convertStringToPluginCategory("effectDelay") == PluginCategory.effectDelay);
+    assert(convertStringToPluginCategory("instrumentSynthesizer") == PluginCategory.effectDelay);
+
+    assert(convertStringToPluginCategory("does-not-exist") == PluginCategory.invalid);
+    assert(convertStringToPluginCategory("effect") == PluginCategory.invalid);
+}
+
 
 enum DAW
 {
@@ -102,113 +212,3 @@ DAW identifyDAW(const(char*) s) pure nothrow @nogc
     return DAW.Unknown;
 }
 
-///
-/// Plug-in categories.
-/// For each plug-in format, a format-specific category is obtained from this.
-///
-/// Important: a `PluginCategory`doesn't affect I/O or MIDI, it's only a
-///            hint for the goal of categorizing a plug-in in lists.
-///
-/// You should use such a category enclosed with quotes in plugin.json, eg:
-///
-/// Example:
-///
-///     {
-///         "category": "effectAnalysisAndMetering"
-///     }
-///
-enum PluginCategory
-{
-    // ### Effects
-
-    /// FFT analyzers, phase display, waveform display, meters...
-    effectAnalysisAndMetering,
-
-    /// Any kind of delay, but not chorus/flanger types.
-    effectDelay,
-
-    /// Any kind of distortion: amp simulations, octavers, wave-shapers, 
-    /// clippers, tape simulations...
-    effectDistortion,
-
-    /// Compressors, limiters, gates, transient designers...
-    effectDynamics,
-
-    /// Any kind of equalization.
-    effectEQ,
-
-    /// Stereoizers, panners, stereo manipulation, spatial modeling...
-    effectImaging,
-
-    /// Chorus, flanger, any kind of modulation effect...
-    effectModulation,
-
-    /// Any kind of pitch processing: shifters, pitch correction, 
-    /// vocoder, formant shifting...
-    effectPitch,
-
-    /// Any kind of reverb: algorithmic, early reflections, convolution...
-    effectReverb,
-
-    /// Effects that don't fit in any other category.
-    /// eg: Dither, noise reduction...
-    effectOther,    
-
-
-    // ### Instruments
-
-    /// Source that generates sound primarily from drum samples/drum synthesis.
-    instrumentDrums,
-
-    /// Source that generates sound primarily from samples, romplers...
-    instrumentSampler,
-
-    /// Source that generates sound primarily from synthesis.
-    instrumentSynthesizer,
-
-    /// Generates sound, but doesn't fit in any other category.
-    instrumentOther,
-
-    // Should never be used, except for parsing.
-    invalid = -1,
-}
-
-/// From a string, return the PluginCategory enumeration.
-/// Should be reasonably fast since it will be called at compile-time.
-/// Returns: `PluginCategory.invalid` if parsing failed.
-deprecated alias convertStringToPluginCategory = parsePluginCategory;
-PluginCategory parsePluginCategory(const(char)[] input)
-{
-    if (input.length >= 6 && input[0..6] == "effect")
-    {
-        input = input[6..$];
-        if (input == "AnalysisAndMetering") return PluginCategory.effectAnalysisAndMetering;
-        if (input == "Delay") return PluginCategory.effectDelay;
-        if (input == "Distortion") return PluginCategory.effectDistortion;
-        if (input == "Dynamics") return PluginCategory.effectDynamics;
-        if (input == "EQ") return PluginCategory.effectEQ;
-        if (input == "Imaging") return PluginCategory.effectImaging;
-        if (input == "Modulation") return PluginCategory.effectModulation;
-        if (input == "Pitch") return PluginCategory.effectPitch;
-        if (input == "Reverb") return PluginCategory.effectReverb;
-        if (input == "Other") return PluginCategory.effectOther;
-    }
-    else if (input.length >= 10 && input[0..10] == "instrument")
-    {
-        input = input[10..$];
-        if (input == "Drums") return PluginCategory.instrumentDrums;
-        if (input == "Sampler") return PluginCategory.instrumentSampler;
-        if (input == "Synthesizer") return PluginCategory.instrumentSynthesizer;
-        if (input == "Other") return PluginCategory.instrumentOther;
-    }
-    return PluginCategory.invalid;
-}
-
-unittest
-{
-    assert(convertStringToPluginCategory("effectDelay") == PluginCategory.effectDelay);
-    assert(convertStringToPluginCategory("instrumentSynthesizer") == PluginCategory.effectDelay);
-
-    assert(convertStringToPluginCategory("does-not-exist") == PluginCategory.invalid);
-    assert(convertStringToPluginCategory("effect") == PluginCategory.invalid);
-}
