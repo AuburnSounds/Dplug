@@ -1,10 +1,11 @@
 {
-	"name": "release",
-	"description": "Build tool. DUB frontend which makes multiple version of a plugin, and also package them in OSX bundles",
+    "name": "release",
+    "description": "Build tool. DUB frontend which makes multiple version of a plugin, and also package them in OSX bundles",
     "stringImportPaths": ["."],
 
     "dependencies":
     {
-        "colorize": "~>1.0"
+        "colorize": "~>1.0",
+        "dplug:client": { "path": "../.." }
     }
 }

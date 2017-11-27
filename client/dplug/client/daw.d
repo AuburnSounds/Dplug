@@ -109,11 +109,16 @@ DAW identifyDAW(const(char*) s) pure nothrow @nogc
 /// Important: a `PluginCategory`doesn't affect I/O or MIDI, it's only a
 ///            hint for the goal of categorizing a plug-in in lists.
 ///
+/// You should use such a category enclosed with quotes in plugin.json, eg:
+///
+/// Example:
+///
+///     {
+///         "category": "effectAnalysisAndMetering"
+///     }
+///
 enum PluginCategory
 {
-    // Should never be used
-    invalid = -1,
-
     // ### Effects
 
     /// FFT analyzers, phase display, waveform display, meters...
@@ -163,12 +168,16 @@ enum PluginCategory
 
     /// Generates sound, but doesn't fit in any other category.
     instrumentOther,
+
+    // Should never be used, except for parsing.
+    invalid = -1,
 }
 
 /// From a string, return the PluginCategory enumeration.
 /// Should be reasonably fast since it will be called at compile-time.
 /// Returns: `PluginCategory.invalid` if parsing failed.
-PluginCategory convertStringToPluginCategory(const(char)[] input)
+deprecated alias convertStringToPluginCategory = parsePluginCategory;
+PluginCategory parsePluginCategory(const(char)[] input)
 {
     if (input.length >= 6 && input[0..6] == "effect")
     {
@@ -198,6 +207,8 @@ PluginCategory convertStringToPluginCategory(const(char)[] input)
 unittest
 {
     assert(convertStringToPluginCategory("effectDelay") == PluginCategory.effectDelay);
+    assert(convertStringToPluginCategory("instrumentSynthesizer") == PluginCategory.effectDelay);
+
     assert(convertStringToPluginCategory("does-not-exist") == PluginCategory.invalid);
     assert(convertStringToPluginCategory("effect") == PluginCategory.invalid);
 }

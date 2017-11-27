@@ -115,6 +115,9 @@ struct PluginInfo
     /// Warning: receiving MIDI forces you to call `getNextMidiMessages`
     /// with the right number of `frames`, every buffer.
     bool receivesMIDI = false;
+
+    /// Used for being at the right place in list of plug-ins.
+    PluginCategory category;
 }
 
 /// This allows to write things life tempo-synced LFO.
@@ -716,5 +719,9 @@ PluginInfo parsePluginInfo(string json)
     info.receivesMIDI = toBoolean(j["receivesMIDI"]);
     info.publicVersion = parsePluginVersion(j["publicVersion"].str);
 
+    PluginCategory category = parsePluginCategory(j["category"].str);
+    if (category == PluginCategory.invalid)
+        throw new Exception("Invalid \"category\" in plugin.json. Check out dplug.client.daw for valid values (eg: \"effectDynamics\").");
+    info.category = category;
     return info;
 }

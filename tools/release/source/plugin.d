@@ -13,6 +13,8 @@ import std.datetime;
 import colorize;
 import utils;
 
+import dplug.client.daw;
+
 enum Compiler
 {
     ldc,
@@ -117,6 +119,8 @@ struct Plugin
 
     bool receivesMIDI;
     bool isSynth;
+
+    PluginCategory category;
 
 
     string prettyName() pure const nothrow
@@ -397,6 +401,19 @@ Plugin readPluginDescription()
     {
         warning("no \"receivesMIDI\" provided in plugin.json (eg: \"true\")\n         => Using \"false\" instead.");
         result.receivesMIDI = false;
+    }
+
+
+    try
+    {
+        result.category = convertStringToPluginCategory(rawPluginFile["category"].str);
+        if (result.category == PluginCategory.invalid)
+            throw new Exception("");
+    }
+    catch(Exception e)
+    {
+        error("Missing or invalid \"category\" provided in plugin.json (eg: \"effectDelay\")");
+        throw new Exception("=> Check dplug/client/daw.d to find a suitable \"category\" for plugin.json.");
     }
 
     return result;
