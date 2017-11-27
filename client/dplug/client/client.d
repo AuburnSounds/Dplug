@@ -484,6 +484,12 @@ nothrow:
         return _info.publicVersion;
     }
 
+    /// Returns: Plugin category.
+    final PluginCategory pluginCategory() pure const nothrow @nogc
+    {
+        return _info.category;
+    }
+
     /// Boilerplate function to get the value of a `FloatParameter`, for use in `processAudio`.
     final float readFloatParamValue(int paramIndex) nothrow @nogc
     {
