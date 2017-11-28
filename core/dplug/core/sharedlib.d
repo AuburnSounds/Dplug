@@ -168,7 +168,7 @@ private:
     string _libName;
     SharedLib _lib;
     version(debugSharedLibs)
-        AlignedBuffer!(void**) _funcPointers;
+        Vec!(void**) _funcPointers;
 }
 
 

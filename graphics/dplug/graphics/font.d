@@ -16,9 +16,9 @@ import std.utf;
 import gfm.math.vector;
 import gfm.math.box;
 
-import dplug.core.alignedbuffer;
 import dplug.core.sync;
 import dplug.core.nogc;
+import dplug.core.map;
 
 import dplug.graphics.view;
 import dplug.graphics.image;
@@ -283,6 +283,40 @@ private struct GlyphKey
     float scale;
     float xShift;
     float yShift;
+
+    // PERF: that sounds a bit expensive, could be replaced by a hash I guess
+    int opCmp(const(GlyphKey) other) const nothrow @nogc
+    {
+        // Basically: group by scale then by yShift (likely yo be the same line)
+        //            then codepoint then xShift
+        if (scale < other.scale)
+            return -1;
+        else if (scale > other.scale)
+            return 1;
+        else
+        {
+            if (yShift < other.yShift)
+                return -1;
+            else if (yShift > other.yShift)
+                return 1;
+            else
+            {
+                if (codepoint < other.codepoint)
+                    return -1;
+                else if (codepoint > other.codepoint)
+                    return 1;
+                else
+                {
+                    if (xShift < other.xShift)
+                        return -1;
+                    else if (xShift > other.xShift)
+                        return 1;
+                    else
+                        return 0;
+                }
+            }
+        }
+    }
 }
 
 static assert(GlyphKey.sizeof == 16);
@@ -295,8 +329,7 @@ nothrow:
     void initialize(stbtt_fontinfo* font)
     {
         _font = font;
-        keys = makeVec!GlyphKey;
-        glyphs = makeVec!(ubyte*);
+        _glyphs = makeMap!(GlyphKey, ubyte*);
     }
 
     @disable this(this);
@@ -304,7 +337,7 @@ nothrow:
     ~this()
     {
         // Free all glyphs
-        foreach(g; glyphs)
+        foreach(g; _glyphs.byValue)
         {
             free(g);
         }
@@ -312,37 +345,25 @@ nothrow:
 
     ImageRef!L8 requestGlyph(GlyphKey key, int w, int h)
     {
-        // TODO
-        // Just a linear search for now. Obviously this
-        // will be a problem for larger text
-        assert(keys.length == glyphs.length);
+        ubyte** p = key in _glyphs;
 
-        for(int i = 0; i < glyphs.length; ++i)
+        if (p !is null)
         {
-            GlyphKey k = keys[i];
-            if (k.codepoint == key.codepoint
-                && k.scale == key.scale
-                && k.xShift == key.xShift
-                && k.yShift == key.yShift)
-            {
-                // Found, return this glyph
-                ImageRef!L8 result;
-                result.w = w;
-                result.h = h;
-                result.pitch = w;
-                result.pixels = cast(L8*)(glyphs[i]);
-                return result;
-            }
+            // Found glyph in cache, return this glyph
+            ImageRef!L8 result;
+            result.w = w;
+            result.h = h;
+            result.pitch = w;
+            result.pixels = cast(L8*)(*p);
+            return result;
         }
 
         //  Not existing, creates the glyph and add them to the cache
         {
             int stride = w;
             ubyte* buf = cast(ubyte*) malloc(w * h);
-            keys.pushBack(key);
-            glyphs.pushBack(buf);
-
             stbtt_MakeCodepointBitmapSubpixel(_font, buf, w, h, stride, key.scale, key.scale, key.xShift, key.yShift, key.codepoint);
+            _glyphs[key] = buf;
             
             ImageRef!L8 result;
             result.w = w;
@@ -353,7 +374,6 @@ nothrow:
         }
     }
 private:
-    Vec!GlyphKey keys;
-    Vec!(ubyte*) glyphs;
+    Map!(GlyphKey, ubyte*) _glyphs;
     stbtt_fontinfo* _font;
 }
