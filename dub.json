@@ -18,7 +18,6 @@
     "dependencies":
     {
         "dplug:core": "*",
-        "dplug:audio": "*",
         "dplug:dsp": "*",
         "dplug:client": "*",
         "dplug:graphics": "*",
@@ -43,14 +42,6 @@
                 "Guillaume Piolat",
                 "Mike Parker (derelict-util bits)"
             ]
-        },
-        {
-            "name": "audio",
-            "sourcePaths": [ "audio/dplug/audio" ],
-            "importPaths": [ "audio" ],
-            "dependencies": {
-                "dplug:core": "*"
-            }
         },
         {
             "name": "dsp",
