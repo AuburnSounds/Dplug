@@ -498,6 +498,14 @@ version(Windows)
         }
     }
 
+    SHORT keyState(int vk)
+    {
+        version(AAX)
+            return GetAsyncKeyState(VK_MENU);
+        else
+            return GetKeyState(VK_MENU);
+    }
+
     static MouseState getMouseState(WPARAM wParam)
     {
         return MouseState( (wParam & MK_LBUTTON) != 0,
@@ -507,6 +515,6 @@ version(Windows)
                            (wParam & MK_XBUTTON2) != 0,
                            (wParam & MK_CONTROL) != 0,
                            (wParam & MK_SHIFT) != 0,
-                           GetKeyState(VK_MENU) < 0 );
+                           keyState(VK_MENU) < 0 );
     }
 }
