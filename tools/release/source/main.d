@@ -1,3 +1,5 @@
+import core.stdc.string;
+
 import std.file;
 import std.stdio;
 import std.conv;
@@ -5,6 +7,8 @@ import std.uuid;
 import std.process;
 import std.string;
 import std.path;
+
+import dplug.core.sharedlib;
 
 import colorize;
 import utils;
@@ -240,6 +244,58 @@ int main(string[] args)
                     cwriteln();
                 }
 
+                void extractAAXPresetsFromBinary(string binaryPath, string pluginDir)
+                {
+                    // Extract presets from the AAX plugin binary by executing it.
+                    // Because of this release itself must be 64-bit.
+                    // To avoid this coupling, presets should be stored outside of the binary in the future.
+                    if ((void*).sizeof == 4)
+                        throw new Exception("Can't extract presets from AAX plug-in when release is built as a 32-bit program. Please rebuild release with `dub -a x86_64`.");
+                    else
+                    {
+                        mkdirRecurse(pluginDir ~ "Factory Presets");
+
+                        SharedLib lib;
+                        lib.load(plugin.dubOutputFileName);
+                        if (!lib.hasSymbol("DplugEnumerateTFX"))
+                            throw new Exception("Couldn't find the symbol DplugEnumerateTFX in the plug-in");
+
+                        // Note: this is duplicated in dplug-aax in aax_init.d
+                        // This callback is called with:
+                        // - name a zero-terminated C string
+                        // - a buffer representing the .tfx content
+                        // - a user-provided pointer
+                        alias enumerateTFXCallback = extern(C) void function(const(char)* name, const(ubyte)* tfxContent, size_t len, void* userPointer);
+                        alias enumerateTFX_t = extern(C) void function(enumerateTFXCallback, void* userPointer);
+
+                        struct Context
+                        {
+                            string factoryPresetsDir;
+                            int presetCount = 0;
+                        }
+
+                        Context context = Context(pluginDir ~ "Factory Presets");
+
+                        static extern(C) void processPreset(const(char)* name, 
+                                                            const(ubyte)* tfxContent, 
+                                                            size_t len, 
+                                                            void* userPointer)
+                        {
+                            Context* context = cast(Context*)userPointer;
+                            const(char)[] presetName = name[0..strlen(name)];
+                            std.file.write(context.factoryPresetsDir ~ "/" ~ presetName ~ ".tfx", tfxContent[0..len]);
+                            context.presetCount += 1;
+                        }
+
+                        enumerateTFX_t ptrDplugEnumerateTFX = cast(enumerateTFX_t) lib.loadSymbol("DplugEnumerateTFX");
+                        ptrDplugEnumerateTFX(&processPreset, &context);
+                        lib.unload();
+
+                        cwritefln("    => Extracted %s AAX factory presets from binary".green, context.presetCount);
+                        cwriteln();
+                    }
+                }
+
                 version(Windows)
                 {
                     // Special case for AAX need its own directory, but according to Voxengo releases,
@@ -251,37 +307,7 @@ int main(string[] args)
                         string pluginFinalName = plugin.prettyName ~ ".aaxplugin";
                         string pluginDir = path ~ "/" ~ (plugin.prettyName ~ ".aaxplugin") ~ "/Contents/";
 
-                        enum bool extractPresetsFromBinary = true;
-
-                        if (extractPresetsFromBinary)
-                        {
-                            // Extract presets from the AAX plugin binary by executing it.
-                            // Because of this release itself must be 64-bit.
-                            // To avoid this coupling, presets should be stored outside of the binary in the future.
-                            if ((void*).sizeof == 4)
-                                throw new Exception("Can't extract presets from AAX plug-in when release is built as a 32-bit program. Please rebuild release with `dub -a x86_64`.");
-                            else
-                            {
-                                mkdirRecurse(pluginDir ~ "Factory Presets");
-
-                                import dplug.core.sharedlib;
-                                SharedLib lib;
-                                lib.load(plugin.dubOutputFileName);
-                                if (!lib.hasSymbol("DplugEnumerateTFX"))
-                                    throw new Exception("Couldn't find the symbol DplugEnumerateTFX in the plug-in");
-
-                                alias enumerateTFXCallback = void delegate(const(char)[] name, const(ubyte)[] tfxContent);
-
-                                alias enumerateTFX_t = void function(enumerateTFXCallback);
-                                enumerateTFX_t ptrDplugEnumerateTFX = cast(enumerateTFX_t) lib.loadSymbol("DplugEnumerateTFX");
-
-                                void processPreset(const(char)[] name, const(ubyte)[] tfxContent)
-                                {
-                                    writeln(name);
-                                }
-                                ptrDplugEnumerateTFX(&processPreset);
-                            }
-                        }
+                        extractAAXPresetsFromBinary(plugin.dubOutputFileName, pluginDir);
 
                         if (is64b)
                         {
@@ -324,6 +350,9 @@ int main(string[] args)
                         pluginDir = plugin.prettyName ~ ".aaxplugin";
                     else
                         assert(false);
+
+                    if (configIsAAX(config))
+                        extractAAXPresetsFromBinary(plugin.dubOutputFileName, pluginDir);
 
                     // On Mac, make a bundle directory
                     string contentsDir = path ~ "/" ~ pluginDir ~ "/Contents";

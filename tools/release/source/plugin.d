@@ -142,7 +142,7 @@ struct Plugin
     string makePkgInfo(string config) pure const nothrow
     {
         if (configIsAAX(config))
-            return "TDMwPTul";
+            return "TDMwPTul"; // this should actually have no effect on whether or not the AAX plug-ins load
         else
             return "BNDL" ~ vendorUniqueID;
     }
