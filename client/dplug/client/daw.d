@@ -132,11 +132,11 @@ PluginCategory parsePluginCategory(const(char)[] input)
 
 unittest
 {
-    assert(convertStringToPluginCategory("effectDelay") == PluginCategory.effectDelay);
-    assert(convertStringToPluginCategory("instrumentSynthesizer") == PluginCategory.effectDelay);
+    assert(parsePluginCategory("effectDelay") == PluginCategory.effectDelay);
+    assert(parsePluginCategory("instrumentSynthesizer") == PluginCategory.instrumentSynthesizer);
 
-    assert(convertStringToPluginCategory("does-not-exist") == PluginCategory.invalid);
-    assert(convertStringToPluginCategory("effect") == PluginCategory.invalid);
+    assert(parsePluginCategory("does-not-exist") == PluginCategory.invalid);
+    assert(parsePluginCategory("effect") == PluginCategory.invalid);
 }
 
 
