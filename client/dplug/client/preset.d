@@ -21,6 +21,15 @@ import dplug.client.binrange;
 import dplug.client.client;
 import dplug.client.params;
 
+// The current situation is really complicated.
+//
+// There are 3 types of chunks:
+// - "preset" and "bank" chunks are used by VST2. The whole preset "bank" structure exists for VST2.
+//   Changing a preset and loading another changes the bank. VST2 is the only format that could
+//   store unused presets.
+// - AU and AAX uses "state chunks" which are storing a single preset and a preset index.
+//   On load, the bank from factory is restored but the single preset stored will be changed.
+//   However, in AU and AAX the whole concept of the preset bank is there for nothing.
 
 /// I can see no reason why dplug shouldn't be able to maintain
 /// backward-compatibility with older versions in the future.
@@ -182,7 +191,7 @@ public:
         }
     }
 
-    Preset preset(int i) nothrow @nogc
+    inout(Preset) preset(int i) inout nothrow @nogc
     {
         return presets[i];
     }
@@ -297,9 +306,10 @@ public:
             preset.unserializeBinary(chunk);
     }
 
-    /// Gets a chunk with current state.
-    /// The resulting buffer should be freed with `free`.
-    ubyte[] getStateChunk() nothrow @nogc
+    /// Gets a state chunk to save the current state.
+    /// The returned state chunk should be freed with `free`.
+    deprecated("Use getStateChunkFromCurrentState() instead") alias getStateChunk = getStateChunkFromCurrentState;
+    ubyte[] getStateChunkFromCurrentState() nothrow @nogc
     {
         auto chunk = makeVec!ubyte();
         writeChunkHeader(chunk);
@@ -311,6 +321,24 @@ public:
         chunk.writeLE!int(cast(int)params.length);
         foreach(param; params)
             chunk.writeLE!float(param.getNormalized());
+        return chunk.releaseData;
+    }
+
+    /// Gets a state chunk that would be the current state _if_ 
+    /// preset `presetIndex` was made current first. So it's not
+    /// changing the client state.
+    /// The returned state chunk should be freed with `free()`.
+    ubyte[] getStateChunkFromPreset(int presetIndex) const nothrow @nogc
+    {
+        auto chunk = makeVec!ubyte();
+        writeChunkHeader(chunk);
+
+        auto p = preset(presetIndex);
+        chunk.writeLE!int(presetIndex);
+
+        chunk.writeLE!int(cast(int)p._normalizedParams.length);
+        foreach(param; p._normalizedParams)
+            chunk.writeLE!float(param);
         return chunk.releaseData;
     }
 
@@ -344,7 +372,7 @@ private:
 
     enum uint DPLUG_MAGIC = 0xB20BA92;
 
-    void writeChunkHeader(O)(auto ref O output) @nogc if (isOutputRange!(O, ubyte))
+    void writeChunkHeader(O)(auto ref O output) const @nogc if (isOutputRange!(O, ubyte))
     {
         // write magic number and dplug version information (not the tag version)
         output.writeBE!uint(DPLUG_MAGIC);

@@ -251,6 +251,38 @@ int main(string[] args)
                         string pluginFinalName = plugin.prettyName ~ ".aaxplugin";
                         string pluginDir = path ~ "/" ~ (plugin.prettyName ~ ".aaxplugin") ~ "/Contents/";
 
+                        enum bool extractPresetsFromBinary = true;
+
+                        if (extractPresetsFromBinary)
+                        {
+                            // Extract presets from the AAX plugin binary by executing it.
+                            // Because of this release itself must be 64-bit.
+                            // To avoid this coupling, presets should be stored outside of the binary in the future.
+                            if ((void*).sizeof == 4)
+                                throw new Exception("Can't extract presets from AAX plug-in when release is built as a 32-bit program. Please rebuild release with `dub -a x86_64`.");
+                            else
+                            {
+                                mkdirRecurse(pluginDir ~ "Factory Presets");
+
+                                import dplug.core.sharedlib;
+                                SharedLib lib;
+                                lib.load(plugin.dubOutputFileName);
+                                if (!lib.hasSymbol("DplugEnumerateTFX"))
+                                    throw new Exception("Couldn't find the symbol DplugEnumerateTFX in the plug-in");
+
+                                alias enumerateTFXCallback = void delegate(const(char)[] name, const(ubyte)[] tfxContent);
+
+                                alias enumerateTFX_t = void function(enumerateTFXCallback);
+                                enumerateTFX_t ptrDplugEnumerateTFX = cast(enumerateTFX_t) lib.loadSymbol("DplugEnumerateTFX");
+
+                                void processPreset(const(char)[] name, const(ubyte)[] tfxContent)
+                                {
+                                    writeln(name);
+                                }
+                                ptrDplugEnumerateTFX(&processPreset);
+                            }
+                        }
+
                         if (is64b)
                         {
                             mkdirRecurse(pluginDir ~ "x64");
