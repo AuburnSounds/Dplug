@@ -259,7 +259,14 @@ int main(string[] args)
                     {
                         // We need to have a sub-directory of vendorName else the presets aren't found.
                         // Then we need one level deeper else the presets aren't organized in sub-directories.
-                        string factoryPresetsLocation = pluginDir ~ "Factory Presets/" ~ plugin.vendorName ~ "/Factory Presets";
+                        //
+                        // "AAX plug-ins should include a set of presets in the following directory within the .aaxplugin:
+                        //       MyPlugIn.aaxplugin/Contents/Factory Presets/MyPlugInPackage/
+                        //  Where MyPlugInPackage is the plug-in's longest Package Name with 16 characters or fewer."
+                        string packageName = plugin.vendorName;
+                        if (packageName.length > 16)
+                            packageName = packageName[0..16];
+                        string factoryPresetsLocation = pluginDir ~ "Factory Presets/" ~ packageName ~ "/Factory Presets";
 
                         mkdirRecurse(factoryPresetsLocation);
 
