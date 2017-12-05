@@ -150,7 +150,7 @@ int main(string[] args)
                 {
                     archs = allArchitectureqForThisPlatform();
                 }
-                else 
+                else
                     throw new Exception("Unrecognized arch (available: x86, x86_64, all)");
             }
             else if (arg == "-h" || arg == "-help" || arg == "--help")
@@ -222,9 +222,18 @@ int main(string[] args)
 
         void buildAndPackage(string compiler, string config, Arch[] architectures, string iconPath)
         {
+
             foreach (int archCount, arch; architectures)
             {
                 bool is64b = arch == Arch.x86_64;
+
+                // Does not try to build 32-bit builds of AAX, or Universal Binaries
+                if (configIsAAX(config) && !is64b)
+                {
+                    cwritefln("info: Skipping architecture %s for AAX\n".white, arch);
+                    continue;
+                }
+
                 version(Windows)
                 {
                     // FUTURE: remove when LDC on Windows is a single archive (should happen for 1.0.0)
@@ -291,9 +300,9 @@ int main(string[] args)
 
                         Context context = Context(factoryPresetsLocation);
 
-                        static extern(C) void processPreset(const(char)* name, 
-                                                            const(ubyte)* tfxContent, 
-                                                            size_t len, 
+                        static extern(C) void processPreset(const(char)* name,
+                                                            const(ubyte)* tfxContent,
+                                                            size_t len,
                                                             void* userPointer)
                         {
                             Context* context = cast(Context*)userPointer;
@@ -531,5 +540,6 @@ void buildPlugin(string compiler, string config, string build, bool is64b, bool 
         );
     safeCommand(cmd);
 }
+
 
 
