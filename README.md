@@ -44,10 +44,10 @@ Read about major changes here: https://github.com/AuburnSounds/dplug/wiki/Releas
 ### For OS X:
 - Install DMD or LDC.
 - (optional) Install DUB, the D package manager: http://code.dlang.org/download
-- Build and use the `release` tool which is in the `tools/release/` directory.
-- `sudo ln -s /path/to/Dplug/tools/release/release /usr/local/bin/release`
+- Build and use the `dplug-build` tool which is in the `tools/dplug-build/` directory.
+- `sudo ln -s /path/to/Dplug/tools/dplug-build/dplug-build /usr/local/bin/dplug-build`
 - Go into an example directory
-- Type `release --compiler dmd` or `release --compiler ldc` depending on the desired compiler.
+- Type `dplug-build --compiler dmd` or `dplug-build --compiler ldc` depending on the desired compiler.
 
 
 ## FAQ
@@ -62,13 +62,13 @@ No. There are people making [plug-ins with Dplug without using PBR](http://www.m
 
 - How do I build plugins for OS X?
 
-You need to use the `release` program in the `tools`directory.
-This tool create a bundle and Universal Binaries as needed.
+You need to use the `dplug-build` program in the `tools`directory.
+This tool creates Mac bundles and Universal Binaries as needed.
 Like most D programs, you can build it by typing `dub`.
 
 - What is the oldest supported Windows version?
 
-Windows Vista. Users report plugins made with both DMD and LDC work on Windows XP. But XP isn't officially supported by D compilers.
+Windows Vista. Users report plug-ins made with both DMD and LDC work on Windows XP. But XP isn't officially supported by D compilers.
 
 - What is the oldest supported OS X version?
 

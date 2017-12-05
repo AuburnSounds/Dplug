@@ -23,8 +23,8 @@ script:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then cd examples/ms-encode; dub -a x86 --compiler=${DC}; cd ../..; fi
   - cd tools/pbr-sketch; dub --compiler=${DC}; cd ../..
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then cd tools/pbr-sketch; dub -a x86 --compiler=${DC}; cd ../..; fi
-  - cd tools/release; dub --compiler=${DC}; cd ../..
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then cd tools/release; dub -a x86 --compiler=${DC}; cd ../..; fi
+  - cd tools/dplug-build; dub --compiler=${DC}; cd ../..
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then cd tools/dplug-build; dub -a x86 --compiler=${DC}; cd ../..; fi
   - cd tools/stress-plugin; dub --compiler=${DC}; cd ../..
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then cd tools/stress-plugin; dub -a x86 --compiler=${DC}; cd ../..; fi
   - cd tools/process; dub --compiler=${DC}; cd ../..
