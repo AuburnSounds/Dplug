@@ -139,15 +139,19 @@ int main(string[] args)
             else if (arg == "-a" || arg == "--arch")
             {
                 ++i;
-                if (args[i] == "x86" || args[i] == "x32")
+                if (args[i] == "x32" || args[i] == "x64" || args[i] == "x86-64")
+                    throw new Exception("This arch switch value has been deprecated (available: x86, x86_64, all)");
+
+                if (args[i] == "x86")
                     archs = [ Arch.x86 ];
-                else if (args[i] == "x64" || args[i] == "x86_64" || args[i] == "x86-64") // for convenience
+                else if (args[i] == "x86_64")
                     archs = [ Arch.x86_64 ];
                 else if (args[i] == "all")
                 {
                     archs = allArchitectureqForThisPlatform();
                 }
-                else throw new Exception("Unrecognized arch (available: x86, x86_64, x32, x64, all)");
+                else 
+                    throw new Exception("Unrecognized arch (available: x86, x86_64, all)");
             }
             else if (arg == "-h" || arg == "-help" || arg == "--help")
                 help = true;
@@ -253,7 +257,11 @@ int main(string[] args)
                         throw new Exception("Can't extract presets from AAX plug-in when release is built as a 32-bit program. Please rebuild release with `dub -a x86_64`.");
                     else
                     {
-                        mkdirRecurse(pluginDir ~ "Factory Presets");
+                        // We need to have a sub-directory of vendorName else the presets aren't found.
+                        // Then we need one level deeper else the presets aren't organized in sub-directories.
+                        string factoryPresetsLocation = pluginDir ~ "Factory Presets/" ~ plugin.vendorName ~ "/Factory Presets";
+
+                        mkdirRecurse(factoryPresetsLocation);
 
                         SharedLib lib;
                         lib.load(plugin.dubOutputFileName);
@@ -274,7 +282,7 @@ int main(string[] args)
                             int presetCount = 0;
                         }
 
-                        Context context = Context(pluginDir ~ "Factory Presets");
+                        Context context = Context(factoryPresetsLocation);
 
                         static extern(C) void processPreset(const(char)* name, 
                                                             const(ubyte)* tfxContent, 
