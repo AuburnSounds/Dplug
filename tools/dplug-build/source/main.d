@@ -257,7 +257,7 @@ int main(string[] args)
                     cwriteln();
                 }
 
-                void extractAAXPresetsFromBinary(string binaryPath, string pluginDir)
+                void extractAAXPresetsFromBinary(string binaryPath, string contentsDir)
                 {
                     // Extract presets from the AAX plugin binary by executing it.
                     // Because of this release itself must be 64-bit.
@@ -275,8 +275,7 @@ int main(string[] args)
                         string packageName = plugin.vendorName;
                         if (packageName.length > 16)
                             packageName = packageName[0..16];
-                        string factoryPresetsLocation = pluginDir ~ "Factory Presets/" ~ packageName ~ "/Factory Presets";
-
+                        string factoryPresetsLocation = contentsDir ~ "Factory Presets/" ~ packageName ~ "/Factory Presets";
                         mkdirRecurse(factoryPresetsLocation);
 
                         SharedLib lib;
@@ -329,19 +328,19 @@ int main(string[] args)
                     if (configIsAAX(config))
                     {
                         string pluginFinalName = plugin.prettyName ~ ".aaxplugin";
-                        string pluginDir = path ~ "/" ~ (plugin.prettyName ~ ".aaxplugin") ~ "/Contents/";
+                        string contentsDir = path ~ "/" ~ (plugin.prettyName ~ ".aaxplugin") ~ "/Contents/";
 
-                        extractAAXPresetsFromBinary(plugin.dubOutputFileName, pluginDir);
+                        extractAAXPresetsFromBinary(plugin.dubOutputFileName, contentsDir);
 
                         if (is64b)
                         {
-                            mkdirRecurse(pluginDir ~ "x64");
-                            fileMove(plugin.dubOutputFileName, pluginDir ~ "x64/" ~ pluginFinalName);
+                            mkdirRecurse(contentsDir ~ "x64");
+                            fileMove(plugin.dubOutputFileName, contentsDir ~ "x64/" ~ pluginFinalName);
                         }
                         else
                         {
-                            mkdirRecurse(pluginDir ~ "Win32");
-                            fileMove(plugin.dubOutputFileName, pluginDir ~ "Win32/" ~ pluginFinalName);
+                            mkdirRecurse(contentsDir ~ "Win32");
+                            fileMove(plugin.dubOutputFileName, contentsDir ~ "Win32/" ~ pluginFinalName);
                         }
                     }
                     else
@@ -375,24 +374,26 @@ int main(string[] args)
                     else
                         assert(false);
 
-                    if (configIsAAX(config))
-                        extractAAXPresetsFromBinary(plugin.dubOutputFileName, pluginDir);
-
                     // On Mac, make a bundle directory
-                    string contentsDir = path ~ "/" ~ pluginDir ~ "/Contents";
-                    string ressourcesDir = contentsDir ~ "/Resources";
-                    string macosDir = contentsDir ~ "/MacOS";
+                    string contentsDir = path ~ "/" ~ pluginDir ~ "/Contents/";
+                    string ressourcesDir = contentsDir ~ "Resources";
+                    string macosDir = contentsDir ~ "MacOS";
                     mkdirRecurse(ressourcesDir);
                     mkdirRecurse(macosDir);
+
+                    if (configIsAAX(config))
+                        extractAAXPresetsFromBinary(plugin.dubOutputFileName, contentsDir);
+
+
 
                     cwriteln("*** Generating Info.plist...".white);
                     string plist = makePListFile(plugin, config, iconPath != null);
                     cwritefln("    => Generated %s bytes.".green, plist.length);
                     cwriteln();
-                    std.file.write(contentsDir ~ "/Info.plist", cast(void[])plist);
+                    std.file.write(contentsDir ~ "Info.plist", cast(void[])plist);
 
                     void[] pkgInfo = cast(void[]) plugin.makePkgInfo(config);
-                    std.file.write(contentsDir ~ "/PkgInfo", pkgInfo);
+                    std.file.write(contentsDir ~ "PkgInfo", pkgInfo);
 
                     string exePath = macosDir ~ "/" ~ plugin.prettyName;
 
@@ -403,12 +404,12 @@ int main(string[] args)
                         if (configIsAU(config))
                         {
                             string rsrcPath = makeRSRC(plugin, arch, verbose);
-                            std.file.copy(rsrcPath, contentsDir ~ "/Resources/" ~ baseName(exePath) ~ ".rsrc");
+                            std.file.copy(rsrcPath, contentsDir ~ "Resources/" ~ baseName(exePath) ~ ".rsrc");
                         }
                     }
 
                     if (iconPath)
-                        std.file.copy(iconPath, contentsDir ~ "/Resources/icon.icns");
+                        std.file.copy(iconPath, contentsDir ~ "Resources/icon.icns");
 
                     if (arch == Arch.universalBinary)
                     {
