@@ -275,7 +275,9 @@ int main(string[] args)
                         string packageName = plugin.vendorName;
                         if (packageName.length > 16)
                             packageName = packageName[0..16];
-                        string factoryPresetsLocation = contentsDir ~ "Factory Presets/" ~ packageName ~ "/Factory Presets";
+                        string factoryPresetsLocation =
+                            format(contentsDir ~ "Factory Presets/" ~ packageName ~ "/%s Factory Presets", plugin.prettyName);
+
                         mkdirRecurse(factoryPresetsLocation);
 
                         SharedLib lib;
