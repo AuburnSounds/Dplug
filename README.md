@@ -12,7 +12,9 @@
 - Creating AAX Native plug-ins for Windows and Mac OS X, 32-bit and 64-bit
 - Comes with basic music DSP algorithms
 - Comes with a number of `tools` to make plug-in authoring faster (bundling, color correction, regression tests, performance tests)
-- Dplug is using (optional) rendering to keep installers small: http://www.auburnsounds.com/blog/2016-09-16_PBR-for-Audio-Software-Interfaces.html though you're not forced to use it.
+- Dplug is using (optional) [rendering](http://www.auburnsounds.com/blog/2016-09-16_PBR-for-Audio-Software-Interfaces.html) to keep installers small
+- [See the list of supported hosts...](https://github.com/AuburnSounds/Dplug/wiki/Supported-Hosts)
+
 
 ### Products made with Dplug
 
@@ -24,31 +26,13 @@
 
 ### Release notes
 
-Read about major changes here: https://github.com/AuburnSounds/dplug/wiki/Release-notes
+Keep up with major changes here: [Release Notes](https://github.com/AuburnSounds/Dplug/wiki/Release-notes)
 
 
 ## Tutorials
 
-- https://github.com/AuburnSounds/dplug/wiki/Getting-Started
-- https://auburnsounds.com/blog/2016-02-08_Making-a-Windows-VST-plugin-with-D.html (outdated)
-
-
-
-## How to build plug-ins
-
-### For Windows:
-- Install DMD or LDC.
-- (optional) Install DUB, the D package manager: http://code.dlang.org/download
-- Go into an example directory
-- Type `dub --compiler=dmd` or `dub --compiler=ldc2` depending on the desired compiler.
-
-### For OS X:
-- Install DMD or LDC.
-- (optional) Install DUB, the D package manager: http://code.dlang.org/download
-- Build and use the `dplug-build` tool which is in the `tools/dplug-build/` directory.
-- `sudo ln -s /path/to/Dplug/tools/dplug-build/dplug-build /usr/local/bin/dplug-build`
-- Go into an example directory
-- Type `dplug-build --compiler dmd` or `dplug-build --compiler ldc` depending on the desired compiler.
+- [Getting Started](https://github.com/AuburnSounds/Dplug/wiki/Getting-Started)
+- [Making a Windows VST plugin with D](https://auburnsounds.com/blog/2016-02-08_Making-a-Windows-VST-plugin-with-D.html) (outdated)
 
 
 ## FAQ
@@ -100,7 +84,7 @@ If you have money to sponsor some sanctionned feature it can definately help tho
 
 - Where do I start?
 
-Be sure to read the [Wiki](https://github.com/AuburnSounds/dplug/wiki/) in depth.
+Be sure to read the [Wiki](https://github.com/AuburnSounds/Dplug/wiki/) in depth.
 
 
 ## Comparison vs IPlug
