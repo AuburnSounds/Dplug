@@ -27,7 +27,7 @@ import core.stdc.stdlib,
 
 import std.algorithm.comparison;
 
-import dplug.core.alignedbuffer,
+import dplug.core.vec,
        dplug.core.nogc,
        dplug.core.math,
        dplug.core.lockedqueue,

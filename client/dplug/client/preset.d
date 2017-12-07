@@ -14,7 +14,7 @@ import std.math;
 import std.array;
 import std.algorithm.comparison;
 
-import dplug.core.alignedbuffer;
+import dplug.core.vec;
 import dplug.core.nogc;
 
 import dplug.client.binrange;

@@ -26,7 +26,7 @@ import std.container;
 
 import dplug.core.nogc;
 import dplug.core.math;
-import dplug.core.alignedbuffer;
+import dplug.core.vec;
 
 import dplug.client.params;
 import dplug.client.preset;

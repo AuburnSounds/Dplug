@@ -9,7 +9,7 @@ module dplug.dsp.window;
 
 import std.math;
 
-import dplug.core.alignedbuffer;
+import dplug.core.vec;
 
 // Useful reference:
 // https://en.wikipedia.org/wiki/Window_function

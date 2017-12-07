@@ -31,7 +31,7 @@ import std.conv;
 import dplug.core.math;
 import dplug.core.sync;
 import dplug.core.nogc;
-import dplug.core.alignedbuffer;
+import dplug.core.vec;
 import dplug.client.client;
 
 

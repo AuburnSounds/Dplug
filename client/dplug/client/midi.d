@@ -20,7 +20,7 @@ Permission is granted to anyone to use this software for any purpose, including 
 module dplug.client.midi;
 
 import std.algorithm.mutation;
-import dplug.core.alignedbuffer;
+import dplug.core.vec;
 
 /// It's the same abstraction that in IPlug.
 /// For VST raw MIDI messages are passed.

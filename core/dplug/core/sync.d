@@ -12,7 +12,7 @@ module dplug.core.sync;
 
 import core.time;
 
-import dplug.core.alignedbuffer;
+import dplug.core.vec;
 import dplug.core.nogc;
 
 import core.stdc.stdio;

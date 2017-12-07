@@ -29,7 +29,7 @@ import std.conv;
 
 import derelict.carbon;
 
-import dplug.core.alignedbuffer;
+import dplug.core.vec;
 import dplug.core.nogc;
 import dplug.core.lockedqueue;
 import dplug.core.runtime;

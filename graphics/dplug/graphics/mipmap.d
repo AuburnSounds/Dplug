@@ -14,7 +14,7 @@ import gfm.math.box;
 import dplug.graphics.color;
 
 import dplug.core.nogc;
-import dplug.core.alignedbuffer;
+import dplug.core.vec;
 import dplug.graphics.drawex;
 
 version( D_InlineAsm_X86 )

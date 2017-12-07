@@ -31,7 +31,7 @@ DEALINGS IN THE SOFTWARE.
 module dplug.core.sharedlib;
 
 import dplug.core.nogc;
-import dplug.core.alignedbuffer;
+import dplug.core.vec;
 
 //version = debugSharedLibs;
 
