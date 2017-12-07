@@ -3,7 +3,7 @@
 
 - **State clearly what your problem is.**
 
-- **Give us a way to reproduce a problem.** If you don't do this, **it will never get fixed.**
+- **Give us a way to reproduce a problem.** If you don't do this, **it might never get fixed.**
 
 - **Have no expectation.** Dplug is there to support existing companies and products first. Because there is no money in bugfixing for people on the Internet, the alloted time for that is effectively zero. **You are basically on your own, and noone owes you a bug fix.**
 
