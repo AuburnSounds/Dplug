@@ -3,6 +3,7 @@ import core.stdc.string;
 import std.file;
 import std.stdio;
 import std.conv;
+import std.uni;
 import std.uuid;
 import std.process;
 import std.string;
@@ -32,7 +33,7 @@ void usage()
     }
 
     cwriteln();
-    cwriteln( "This is the ".white ~ "release".cyan ~ " tool: plugin bundler and DUB front-end.".white);
+    cwriteln( "This is the ".white ~ "dplug-build".cyan ~ " tool: plugin bundler and DUB front-end.".white);
     cwriteln();
     cwriteln("FLAGS".white);
     cwriteln();
@@ -54,23 +55,23 @@ void usage()
     cwriteln("EXAMPLES".white);
     cwriteln();
     cwriteln("        # Releases a final VST plugin for 32-bit and 64-bit".green);
-    cwriteln("        release --compiler ldc -a all -b release-nobounds --combined".cyan);
+    cwriteln("        dplug-build --compiler ldc -a all -b release-nobounds --combined".cyan);
     cwriteln();
     cwriteln("        # Builds a 32-bit Audio Unit plugin for profiling".green);
-    cwriteln("        release --compiler dmd -a x86 --config AU -b release-debug".cyan);
+    cwriteln("        dplug-build --compiler dmd -a x86 --config AU -b release-debug".cyan);
     cwriteln();
     cwriteln("        # Shows help".green);
-    cwriteln("        release -h".cyan);
+    cwriteln("        dplug-build -h".cyan);
 
     cwriteln();
     cwriteln("NOTES".white);
     cwriteln();
     cwriteln("      The configuration name used with " ~ "--config".cyan ~ " must exist in your " ~ "dub.json".cyan ~ " file.");
-    cwriteln("      release".cyan ~ " detects plugin format based on the " ~ "configuration".yellow ~ " name's prefix: " ~ "AU | VST | AAX.".yellow);
+    cwriteln("      dplug-build".cyan ~ " detects plugin format based on the " ~ "configuration".yellow ~ " name's prefix: " ~ "AU | VST | AAX.".yellow);
     cwriteln();
     cwriteln("      --combined".cyan ~ " has no effect on code speed, but can avoid DUB flags problems.".grey);
     cwriteln();
-    cwriteln("      release".cyan ~ " expects a " ~ "plugin.json".cyan ~ " file for proper bundling and will provide help".grey);
+    cwriteln("      dplug-build".cyan ~ " expects a " ~ "plugin.json".cyan ~ " file for proper bundling and will provide help".grey);
     cwriteln("      for populating it. For other informations it reads the " ~ "dub.json".cyan ~ " file.".grey);
     cwriteln();
     cwriteln();
@@ -169,7 +170,7 @@ int main(string[] args)
                 auval = true;
             }
             else
-                throw new Exception(format("Unrecognized argument '%s'. Type \"release -h\" for help.", arg));
+                throw new Exception(format("Unrecognized argument '%s'. Type \"dplug-build -h\" for help.", arg));
         }
 
         if (quiet && verbose)
@@ -181,7 +182,7 @@ int main(string[] args)
             return 0;
         }
 
-        cwriteln("*** Reading dub.json and plugin.json...".white);
+        //cwriteln("*** Reading dub.json and plugin.json...".white);
 
         Plugin plugin = readPluginDescription();
 
@@ -213,6 +214,7 @@ int main(string[] args)
             cwritefln("   This plugin will be working in ".green ~ "%s".yellow~dot, toStringArchs(archs));
             cwritefln("   The choosen configurations are ".green ~ "%s".yellow~dot, configurations);
             cwritefln("   The choosen build type is ".green ~ "%s".yellow ~ dot, build);
+            cwritefln("   The choosen compiler is ".green ~ "%s".yellow ~ dot, toStringUpper(compiler));
             if (publish)
                 cwritefln("   The binaries will be copied to standard plugin directories.".green);
             if (auval)
@@ -253,7 +255,7 @@ int main(string[] args)
                     buildPlugin(compiler, config, build, is64b, verbose, force, combined, quiet, skipRegistry);
 
                     double bytes = getSize(plugin.dubOutputFileName) / (1024.0 * 1024.0);
-                    cwritefln("    => Build OK, binary size = %0.1f mb, available in %s".green, bytes, path);
+                    cwritefln("    => Build OK, binary size = %0.1f mb, available in ./%s".green, bytes, path);
                     cwriteln();
                 }
 
@@ -263,7 +265,7 @@ int main(string[] args)
                     // Because of this release itself must be 64-bit.
                     // To avoid this coupling, presets should be stored outside of the binary in the future.
                     if ((void*).sizeof == 4)
-                        throw new Exception("Can't extract presets from AAX plug-in when release is built as a 32-bit program. Please rebuild release with `dub -a x86_64`.");
+                        throw new Exception("Can't extract presets from AAX plug-in when dplug-build is built as a 32-bit program. Please rebuild dplug-build with `dub -a x86_64`.");
                     else
                     {
                         // We need to have a sub-directory of vendorName else the presets aren't found.
@@ -428,7 +430,7 @@ int main(string[] args)
                                             escapeShellArgument(path64),
                                             escapeShellArgument(exePath));
                         safeCommand(cmd);
-                        cwritefln("    => Universal build OK, available in %s".green, path);
+                        cwritefln("    => Universal build OK, available in ./%s".green, path);
                         cwriteln();
                     }
                     else
@@ -496,6 +498,14 @@ int main(string[] args)
         // Build various configuration
         foreach(config; configurations)
             buildAndPackage(toString(compiler), config, archs, iconPath);
+        return 0;
+    }
+    catch(DplugBuildBuiltCorrectlyException e)
+    {
+        cwriteln;
+        cwriteln("    Congratulations! ".green ~ "dplug-build".cyan ~ " built successfully.".green);
+        cwriteln("    Type " ~ "dplug-build --help".cyan ~ " to know about its usage.");
+        cwriteln("    You'll probably want " ~ "dplug-build".cyan ~ " to be in your" ~ " PATH".yellow ~ ".");
         return 0;
     }
     catch(ExternalProgramErrored e)

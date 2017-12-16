@@ -57,6 +57,16 @@ string toString(Compiler compiler)
     }
 }
 
+string toStringUpper(Compiler compiler)
+{
+    final switch(compiler) with (Compiler)
+    {
+        case dmd: return "DMD";
+        case gdc: return "GDC";
+        case ldc: return "LDC";
+    }
+}
+
 string toStringArchs(Arch[] archs)
 {
     string r = "";
@@ -210,6 +220,20 @@ struct Plugin
     }
 }
 
+class DplugBuildBuiltCorrectlyException : Exception
+{
+    public
+    {
+        @safe pure nothrow this(string message,
+                                string file =__FILE__,
+                                size_t line = __LINE__,
+                                Throwable next = null)
+        {
+            super(message, file, line, next);
+        }
+    }
+}
+
 Plugin readPluginDescription()
 {
     if (!exists("dub.json"))
@@ -229,6 +253,14 @@ Plugin readPluginDescription()
     catch(Exception e)
     {
         throw new Exception("Missing \"name\" in dub.json (eg: \"myplugin\")");
+    }
+
+    // We simply launched `dub` to build dplug-build. So we're not building a plugin.
+    // avoid the embarassment of having a red message that confuses new users.
+    // You've read correctly: you can't name your plugin "dplug-build" as a consequence.
+    if (result.name == "dplug-build") 
+    {
+        throw new DplugBuildBuiltCorrectlyException("");
     }
 
     try
