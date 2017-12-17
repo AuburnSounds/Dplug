@@ -47,7 +47,7 @@ version(Windows)
     import core.sys.windows.winuser;
     import core.sys.windows.winbase;
     import core.sys.windows.wingdi;
-
+	import core.sys.windows.shellapi;
 
     HINSTANCE getModuleHandle() nothrow @nogc
     {
@@ -108,6 +108,8 @@ version(Windows)
 
                 int mSec = 15; // refresh at 60 hz if possible
                 SetTimer(_hwnd, TIMER_ID, mSec, null);
+
+				DragAcceptFiles(_hwnd, _listener.supportsDragAndDrop());
             }
 
             SetFocus(_hwnd);
@@ -325,6 +327,61 @@ version(Windows)
                     _height = HIWORD(lParam);
                     return DefWindowProcA(hwnd, uMsg, wParam, lParam);
                 }
+
+				case WM_DROPFILES:
+				{
+					import std.utf : byChar, codeLength;
+
+					if (_listener.supportsDragAndDrop())
+					{
+						HDROP hdrop = cast(HDROP)wParam;
+						POINT point;
+						DragQueryPoint(hdrop, &point);
+
+						wchar[] buffer1 = mallocSlice!wchar(256);
+						char[] buffer2 = mallocSlice!char(256);
+						size_t count, len1, len2;
+
+						while((len1 = DragQueryFileW(hdrop, count, null, 0)) != 0)
+						{
+							if (buffer1.length < len1)
+							{
+								freeSlice(buffer1);
+								buffer1 = mallocSlice!wchar(len1);
+							}
+
+							DragQueryFileW(hdrop, count++, buffer1.ptr, buffer1.length);
+
+							try {
+								len2 = codeLength!char(buffer1[0 .. len1]);
+							} catch (Exception e) {
+								continue;
+							}
+
+							if (buffer2.length < len2)
+							{
+								freeSlice(buffer2);
+								buffer2 = mallocSlice!char(len2);
+							}
+
+							size_t offset;
+							foreach(c; buffer1[0 .. len1].byChar)
+							{
+								buffer2[offset++] = c;
+							}
+
+							_listener.onDragDrop(cast(string)buffer2[0 .. len2], point.x, point.y);
+						}
+
+						freeSlice(buffer1);
+						freeSlice(buffer2);
+
+						DragFinish(hdrop);
+						return 0;
+					}
+					else
+						return DefWindowProcA(hwnd, uMsg, wParam, lParam);
+				}
 
                 default:
                     return DefWindowProcA(hwnd, uMsg, wParam, lParam);

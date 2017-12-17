@@ -115,6 +115,12 @@ nothrow @nogc:
     /// The pixel format cannot change over the lifetime of the window.
     void onDraw(WindowPixelFormat pf);
 
+	/// Called when a drag and drop operation completes
+	void onDragDrop(scope string filename, int x, int y);
+
+	/// Is drag and drop operations supported?
+	bool supportsDragAndDrop();
+
     /// The drawing area size has changed.
     /// Always called at least once before onDraw.
     /// Returns: the location of the full rendered framebuffer.
