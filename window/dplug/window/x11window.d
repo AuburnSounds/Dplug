@@ -209,7 +209,7 @@ nothrow:
     // Implements IWindow
     override void waitEventAndDispatch()
     {
-        while(assumeNoGC(&XPending)(_display))
+        if (assumeNoGC(&XPending)(_display))
         {
             XEvent event;
             assumeNoGC(&XNextEvent)(_display, &event);
@@ -219,7 +219,7 @@ nothrow:
             if (theWindow is null)
             {
                 // well hello, I didn't expect this.. goodbye
-                continue;
+				return;
             }
 
             handleEvents(event, theWindow);
