@@ -53,6 +53,22 @@ __gshared int _screen;                       // TODO: could be made a field with
 // Reverse mapping
 __gshared Map!(Window, X11Window) x11WindowMapping;
 
+// XDND related Atoms
+__gshared Atom
+	XdndEnter,
+	XdndPosition,
+	XdndStatus,
+	XdndTypeList,
+	XdndActionCopy,
+	XdndDrop,
+	XdndLeave,
+	XdndFinished,
+	XdndSelection,
+	XdndProxy,
+	XA_ATOM,
+	XA_TARGETS;
+
+
 // This is an extension to X11, almost always should exist on modern systems
 // If it becomes a problem, version out its usage, it'll work just won't be as nice event wise
 extern(C) bool XkbSetDetectableAutoRepeat(Display*, bool, bool*);
@@ -74,8 +90,23 @@ nothrow:
         _black_pixel = assumeNoGC(&BlackPixel)(_display, _screen);
         assumeNoGC(&XkbSetDetectableAutoRepeat)(_display, true, null);
 
-        if(_display == null)
-            assert(false);
+		if(_display == null)
+			assert(false);
+
+		XdndEnter = assumeNoGC(&XInternAtom)(_display, "XdndEnter".ptr, false);
+		XdndPosition = assumeNoGC(&XInternAtom)(_display, "XdndPosition".ptr, false);
+		XdndStatus = assumeNoGC(&XInternAtom)(_display, "XdndStatus".ptr, false);
+		XdndTypeList = assumeNoGC(&XInternAtom)(_display, "XdndTypeList".ptr, false);
+		XdndActionCopy = assumeNoGC(&XInternAtom)(_display, "XdndActionCopy".ptr, false);
+		XdndDrop = assumeNoGC(&XInternAtom)(_display, "XdndDrop".ptr, false);
+		XdndLeave = assumeNoGC(&XInternAtom)(_display, "XdndLeave".ptr, false);
+		XdndFinished = assumeNoGC(&XInternAtom)(_display, "XdndFinished".ptr, false);
+		XdndSelection = assumeNoGC(&XInternAtom)(_display, "XdndSelection".ptr, false);
+		XdndProxy = assumeNoGC(&XInternAtom)(_display, "XdndProxy".ptr, false);
+		XA_ATOM = assumeNoGC(&XInternAtom)(_display, "ATOM".ptr, false);
+		XA_TARGETS = assumeNoGC(&XInternAtom)(_display, "TARGETS".ptr, false);
+
+		Atom bufferSelector = assumeNoGC(&XInternAtom)(_display, "PRIMARY".ptr, false);
 
         if (parentWindow is null)
         {
@@ -113,11 +144,26 @@ nothrow:
 
         //
 
-        _closeAtom = assumeNoGC(&XInternAtom)(_display, cast(char*)("WM_DELETE_WINDOW".ptr), cast(Bool)false);
-        assumeNoGC(&XSetWMProtocols)(_display, _windowId, &_closeAtom, 1);
+		if (listener.supportsDragAndDrop())
+		{
+			supportsXDND = true;
 
-        assumeNoGC(&XMapWindow)(_display, _windowId);
-        assumeNoGC(&XFlush)(_display);
+			Atom XdndAware = assumeNoGC(&XInternAtom)(_display, "XdndAware".ptr, false);
+			Atom version_ = 5;
+			assumeNoGC(&XChangeProperty)(_display, _windowId, XdndAware, XA_ATOM, 32, PropModeReplace, cast(ubyte*)&version_, 1);
+
+			XConvertSelection(_display, bufferSelector, XA_TARGETS, bufferSelector, _windowId, CurrentTime);
+		}
+
+		//
+
+		_closeAtom = assumeNoGC(&XInternAtom)(_display, cast(char*)("WM_DELETE_WINDOW".ptr), cast(Bool)false);
+		assumeNoGC(&XSetWMProtocols)(_display, _windowId, &_closeAtom, 1);
+		
+		assumeNoGC(&XMapWindow)(_display, _windowId);
+		assumeNoGC(&XFlush)(_display);
+		
+		//
 
         assumeNoGC(&XSelectInput)(_display, _windowId, ExposureMask | KeyPressMask | StructureNotifyMask |
             KeyReleaseMask | KeyPressMask | ButtonReleaseMask | ButtonPressMask | PointerMotionMask);
@@ -139,8 +185,10 @@ nothrow:
         creationTime = getTimeMs();
         lastTimeGot = creationTime;
 
-        _eventLoop = makeThread(&asyncEventHandling);
-        _eventLoop.start();
+		version(none) {
+        	_eventLoop = makeThread(&asyncEventHandling);
+        	_eventLoop.start();
+		}
     }
 
     ~this()
@@ -307,6 +355,8 @@ private:
     int lastMouseX, lastMouseY;
 
     Thread _eventLoop;
+
+	bool supportsXDND;
 }
 
 void handleEvents(ref XEvent event, X11Window theWindow)
@@ -450,15 +500,35 @@ void handleEvents(ref XEvent event, X11Window theWindow)
                 break;
 
             case ClientMessage:
-                if (event.xclient.data.l[0] == _closeAtom)
-                {
-                    _terminated = true;
-                    x11WindowMapping.remove(_windowId);
-                    assumeNoGC(&XDestroyImage)(_graphicImage);
-                    assumeNoGC(&XFreeGC)(_display, _graphicGC);
-                    assumeNoGC(&XDestroyWindow)(_display, _windowId);
-                    assumeNoGC(&XFlush)(_display);
-                }
+				if (event.xclient.message_type == _closeAtom)
+				{
+					_terminated = true;
+					x11WindowMapping.remove(_windowId);
+					assumeNoGC(&XDestroyImage)(_graphicImage);
+					assumeNoGC(&XFreeGC)(_display, _graphicGC);
+					assumeNoGC(&XDestroyWindow)(_display, _windowId);
+					assumeNoGC(&XFlush)(_display);
+				}
+				else if (!supportsXDND)
+				{
+				}
+				else if (event.xclient.message_type == XdndEnter)
+				{
+					import std.stdio;assumeNothrowNoGC(&writeln!string)("XdndEnter");
+				}
+				else if (event.xclient.message_type == XdndPosition)
+				{
+					import std.stdio;assumeNothrowNoGC(&writeln!string)("XdndPosition");
+				}
+				else if (event.xclient.message_type == XdndLeave)
+				{
+					import std.stdio;assumeNothrowNoGC(&writeln!string)("XdndLeave");
+				}
+				else if (event.xclient.message_type == XdndDrop)
+				{
+					import std.stdio;assumeNothrowNoGC(&writeln!string)("XdndDrop");
+				}
+
                 break;
 
             default:

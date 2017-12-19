@@ -5,6 +5,8 @@ import dplug.window;
 import gfm.math.box;
 import std.stdio;
 
+bool stopMe;
+
 class WindowListener : IWindowListener {
     IWindow window;
     ImageRef!RGBA image;
@@ -66,6 +68,10 @@ class WindowListener : IWindowListener {
 
             assumeNothrowNoGC(&func)(key);
 
+            if (key == Key.escape) {
+                stopMe = true;
+            }
+
             return true;
         }
 
@@ -123,7 +129,7 @@ void main() {
     IWindow window = createWindow(null, null, listener, WindowBackend.autodetect, 800, 600);
     listener.window = window;
 	
-	while(!window.terminated()) {
+	while(!window.terminated() && !stopMe) {
 		window.waitEventAndDispatch;
 	}
 	
