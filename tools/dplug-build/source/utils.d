@@ -80,9 +80,15 @@ void safeCommand(string cmd)
         throw new ExternalProgramErrored(errorCode, format("Command '%s' returned %s", cmd, errorCode));
 }
 
+// Currently this only escapes spaces...
 string escapeShellArgument(string arg)
 {
-    return arg.replace(" ", "\\ ");
+    version(Windows)
+    {
+        return `"` ~ arg ~ `"`;
+    }
+    else
+        return arg.replace(" ", "\\ ");
 }
 
 /// Recursive directory copy.

@@ -259,6 +259,40 @@ int main(string[] args)
                     cwriteln();
                 }
 
+                void signAAXBinaryWithPACE(string binaryPathInOut)
+                {
+                    if (!plugin.hasPACEConfig)
+                    {
+                        warning("Plug-in will not be signed by PACE because no pace.json found");
+                        return;
+                    }
+
+                    auto paceConfig = plugin.paceConfig;
+
+                    version(Windows)
+                    {
+                        string cmd = format(`wraptool sign --verbose --account %s --password %s --keyfile %s --keypassword %s --wcguid %s --in %s --out %s`,
+                                            paceConfig.iLokAccount,
+                                            paceConfig.iLokPassword,
+                                            paceConfig.keyFileWindows,
+                                            paceConfig.keyPasswordWindows,
+                                            paceConfig.wrapConfigGUID,
+                                            escapeShellArgument(binaryPathInOut),
+                                            escapeShellArgument(binaryPathInOut));
+                    }
+                    else version(OSX)
+                    {
+                        string cmd = format(`wraptool sign --verbose --account %s --password %s --signid %s --wcguid %s --in %s --out %s`,
+                                            paceConfig.iLokAccount,
+                                            paceConfig.iLokPassword,                                            
+                                            paceConfig.developerIdentityOSX,
+                                            paceConfig.wrapConfigGUID,
+                                            escapeShellArgument(binaryPathInOut),
+                                            escapeShellArgument(binaryPathInOut));
+                    }
+                    safeCommand(cmd);
+                }
+
                 void extractAAXPresetsFromBinary(string binaryPath, string contentsDir)
                 {
                     // Extract presets from the AAX plugin binary by executing it.
@@ -340,11 +374,13 @@ int main(string[] args)
                         {
                             mkdirRecurse(contentsDir ~ "x64");
                             fileMove(plugin.dubOutputFileName, contentsDir ~ "x64/" ~ pluginFinalName);
+                            signAAXBinaryWithPACE(contentsDir ~ "x64/" ~ pluginFinalName);
                         }
                         else
                         {
                             mkdirRecurse(contentsDir ~ "Win32");
                             fileMove(plugin.dubOutputFileName, contentsDir ~ "Win32/" ~ pluginFinalName);
+                            signAAXBinaryWithPACE(contentsDir ~ "Win32/" ~ pluginFinalName);
                         }
                     }
                     else
@@ -437,6 +473,9 @@ int main(string[] args)
                     {
                         fileMove(plugin.dubOutputFileName, exePath);
                     }
+
+                    if (configIsAAX(config))
+                        signAAXBinaryWithPACE(exePath);
 
                     // Should this arch be published? Only if the --publish arg was given and
                     // it's the last architecture in the list (to avoid overwrite)

@@ -132,6 +132,12 @@ struct Plugin
 
     PluginCategory category;
 
+    PACEConfig paceConfig;
+
+    bool hasPACEConfig() pure const nothrow
+    {
+        return paceConfig !is null;
+    }
 
     string prettyName() pure const nothrow
     {
@@ -219,6 +225,7 @@ struct Plugin
         return configurations;
     }
 }
+
 
 class DplugBuildBuiltCorrectlyException : Exception
 {
@@ -448,6 +455,8 @@ Plugin readPluginDescription()
         throw new Exception("=> Check dplug/client/daw.d to find a suitable \"category\" for plugin.json.");
     }
 
+    result.paceConfig = readPACEConfig();
+
     return result;
 }
 
@@ -624,3 +633,59 @@ string makeRSRC(Plugin plugin, Arch arch, bool verbose)
     cwriteln();
     return rsrcPath;
 }
+
+// <PACE CONFIG>
+
+
+class PACEConfig
+{
+    // The iLok account of the AAX developer
+    string iLokAccount;
+
+    // The iLok password of the AAX developer
+    string iLokPassword;
+
+    // WIndows-only, points to a .p12/.pfx certificate...
+    string keyFileWindows;
+
+    // ...and the password of its private key
+    string keyPasswordWindows;
+
+    // For Mac, only a developer identiyy string is needed
+    string developerIdentityOSX;
+
+    // The wrap configuration GUID (go to PACE Central to create such wrap configurations)
+    string wrapConfigGUID;
+}
+
+PACEConfig readPACEConfig()
+{
+    // It's OK not to have a pace.json, but you have, it must be correct.
+    if (!exists("pace.json"))
+        return null;
+
+    auto config = new PACEConfig;
+    JSONValue dubFile = parseJSON(cast(string)(std.file.read("pace.json")));
+
+    void get(string fieldName, string jsonKey)()
+    {
+        try
+        {
+            mixin("config." ~ fieldName ~ ` = dubFile["` ~ jsonKey ~ `"].str;`);
+        }
+        catch(Exception e)
+        {
+            throw new Exception("Missing \"" ~ jsonKey ~ "\" in pace.json");
+        }
+    }
+    get!("iLokAccount", "iLokAccount");
+    get!("iLokPassword", "iLokPassword");
+    get!("keyFileWindows", "keyFile-windows");
+    get!("keyPasswordWindows", "keyPassword-windows");
+    get!("developerIdentityOSX", "developerIdentity-osx");
+    get!("wrapConfigGUID", "wrapConfigGUID");
+    return config;
+}
+
+
+// </PACE CONFIG>
