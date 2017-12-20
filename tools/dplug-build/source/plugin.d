@@ -244,7 +244,7 @@ class DplugBuildBuiltCorrectlyException : Exception
 Plugin readPluginDescription()
 {
     if (!exists("dub.json"))
-        throw new Exception("Needs a dub.json file. Please launch 'release' in a D project directory.");
+        throw new Exception("Needs a dub.json file. Please launch 'dplug-build' in a plug-in project directory.");
 
     Plugin result;
 
@@ -265,7 +265,7 @@ Plugin readPluginDescription()
     // We simply launched `dub` to build dplug-build. So we're not building a plugin.
     // avoid the embarassment of having a red message that confuses new users.
     // You've read correctly: you can't name your plugin "dplug-build" as a consequence.
-    if (result.name == "dplug-build") 
+    if (result.name == "dplug-build")
     {
         throw new DplugBuildBuiltCorrectlyException("");
     }
@@ -303,7 +303,7 @@ Plugin readPluginDescription()
         result.pluginName = result.name;
     }
 
-    // Note: release parses it but doesn't need hasGUI
+    // Note: dplug-build parses it but doesn't need hasGUI
     try
     {
         result.hasGUI = toBool(rawPluginFile["hasGUI"]);
@@ -545,7 +545,7 @@ string makePListFile(Plugin plugin, string config, bool hasIcon)
 
    // Set to 10.7 in case 10.7 is supported by chance
     addKeyString("LSMinimumSystemVersion", "10.7.0");
-    
+
    // content ~= "        <key>VSTWindowCompositing</key><true/>\n";
 
     if (hasIcon)
