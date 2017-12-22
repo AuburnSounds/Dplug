@@ -45,7 +45,7 @@ class WindowListener : IWindowListener {
 
         void onMouseMove(int x, int y, int dx, int dy, MouseState mstate) {
             static void func(int x, int y, int dx, int dy, MouseState mstate) {
-                writeln("onMouseMove: ", x, "x", y, " ", dx, "x", dy, " ", mstate);
+                //writeln("onMouseMove: ", x, "x", y, " ", dx, "x", dy, " ", mstate);
             }
 
             assumeNothrowNoGC(&func)(x, y, dx, dy, mstate);
