@@ -230,7 +230,7 @@ int main(string[] args)
                 bool is64b = arch == Arch.x86_64;
 
                 // Does not try to build 32-bit builds of AAX, or Universal Binaries
-                if (configIsAAX(config) && !is64b)
+                if (configIsAAX(config) && arch == Arch.universalBinary)
                 {
                     cwritefln("info: Skipping architecture %s for AAX\n".white, arch);
                     continue;
@@ -299,7 +299,7 @@ int main(string[] args)
                     // Because of this release itself must be 64-bit.
                     // To avoid this coupling, presets should be stored outside of the binary in the future.
                     if ((void*).sizeof == 4)
-                        throw new Exception("Can't extract presets from AAX plug-in when dplug-build is built as a 32-bit program. Please rebuild dplug-build with `dub -a x86_64`.");
+                        warning("Can't extract presets from AAX plug-in when dplug-build is built as a 32-bit program. 32-bit AAX have no presets.");
                     else
                     {
                         // We need to have a sub-directory of vendorName else the presets aren't found.
