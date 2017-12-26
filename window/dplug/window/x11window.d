@@ -209,30 +209,32 @@ nothrow:
     // Implements IWindow
     override void waitEventAndDispatch()
     {
-        while(assumeNoGC(&XPending)(_display))
+        XEvent event;
+        assumeNoGC(&XNextEvent)(_display, &event);
+
+        X11Window theWindow = x11WindowMapping[event.xany.window];
+
+        if (theWindow is null)
         {
-            XEvent event;
-            assumeNoGC(&XNextEvent)(_display, &event);
-
-            X11Window theWindow = x11WindowMapping[event.xany.window];
-
-            if (theWindow is null)
-            {
-                // well hello, I didn't expect this.. goodbye
-                continue;
-            }
-
-            handleEvents(event, theWindow);
+            // well hello, I didn't expect this.. goodbye
+            return;
         }
+        handleEvents(event, theWindow);
     }
 
     //Called on a separate thread to dispatch events and redraw the UI
     void asyncEventHandling() nothrow @nogc
     {
         // TODO: this thread termination test is racey
+        // TODO: racey in the case of not-a-plugin
+        // TODO: the thread pulling event is supposed to be the one who
+        //       created the window
         while(!x11WindowMapping.empty)
         {
-            waitEventAndDispatch();
+            // dispatch all pending events, but do not wait for them
+            while (hasPendingEvents)
+                waitEventAndDispatch();
+
             redraw();
             //Sleep for ~16.6 milliseconds (60 frames per second rendering)
             usleep(16666);
@@ -307,6 +309,12 @@ private:
     int lastMouseX, lastMouseY;
 
     Thread _eventLoop;
+
+    // Is there pending events?
+    bool hasPendingEvents()
+    {
+        return assumeNoGC(&XPending)(_display) != 0;
+    }
 }
 
 void handleEvents(ref XEvent event, X11Window theWindow)
