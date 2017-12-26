@@ -271,7 +271,8 @@ int main(string[] args)
 
                     version(Windows)
                     {
-                        string cmd = format(`wraptool sign --verbose --account %s --password %s --keyfile %s --keypassword %s --wcguid %s --in %s --out %s`,
+                        string cmd = format(`wraptool sign %s--account %s --password %s --keyfile %s --keypassword %s --wcguid %s --in %s --out %s`,
+                                            (verbose ? "--verbose " : ""),
                                             paceConfig.iLokAccount,
                                             paceConfig.iLokPassword,
                                             paceConfig.keyFileWindows,
@@ -293,13 +294,15 @@ int main(string[] args)
                     safeCommand(cmd);
                 }
 
-                void extractAAXPresetsFromBinary(string binaryPath, string contentsDir)
+                void extractAAXPresetsFromBinary(string binaryPath, string contentsDir, bool is64b)
                 {
                     // Extract presets from the AAX plugin binary by executing it.
                     // Because of this release itself must be 64-bit.
                     // To avoid this coupling, presets should be stored outside of the binary in the future.
-                    if ((void*).sizeof == 4)
-                        warning("Can't extract presets from AAX plug-in when dplug-build is built as a 32-bit program. 32-bit AAX have no presets.");
+                    if ((void*).sizeof == 4 && is64b)
+                        warning("Can't extract presets from a 64-bit AAX plug-in when dplug-build is built as a 32-bit program.");
+                    else if ((void*).sizeof == 8 && !is64b)
+                        warning("Can't extract presets from a 32-bit AAX plug-in when dplug-build is built as a 64-bit program.");
                     else
                     {
                         // We need to have a sub-directory of vendorName else the presets aren't found.
@@ -368,7 +371,7 @@ int main(string[] args)
                         string pluginFinalName = plugin.prettyName ~ ".aaxplugin";
                         string contentsDir = path ~ "/" ~ (plugin.prettyName ~ ".aaxplugin") ~ "/Contents/";
 
-                        extractAAXPresetsFromBinary(plugin.dubOutputFileName, contentsDir);
+                        extractAAXPresetsFromBinary(plugin.dubOutputFileName, contentsDir, is64b);
 
                         if (is64b)
                         {
@@ -422,7 +425,7 @@ int main(string[] args)
                     mkdirRecurse(macosDir);
 
                     if (configIsAAX(config))
-                        extractAAXPresetsFromBinary(plugin.dubOutputFileName, contentsDir);
+                        extractAAXPresetsFromBinary(plugin.dubOutputFileName, contentsDir, is64b);
 
 
 
