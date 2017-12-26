@@ -262,6 +262,16 @@ nothrow:
             return outer._areasToRender[].boundingBox();
         }
 
+		override void onDragDrop(scope string filename,int x,int y) nothrow @nogc
+		{
+		}
+
+
+		override bool supportsDragAndDrop() nothrow @nogc
+		{
+			return false;
+		}
+
         override ImageRef!RGBA onResized(int width, int height)
         {
             return outer.doResize(width, height);          

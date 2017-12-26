@@ -5,6 +5,8 @@ import dplug.window;
 import gfm.math.box;
 import std.stdio;
 
+bool stopMe;
+
 class WindowListener : IWindowListener {
     IWindow window;
     ImageRef!RGBA image;
@@ -66,6 +68,10 @@ class WindowListener : IWindowListener {
 
             assumeNothrowNoGC(&func)(key);
 
+            if (key == Key.escape) {
+                stopMe = true;
+            }
+
             return true;
         }
 
@@ -78,6 +84,16 @@ class WindowListener : IWindowListener {
                 }
             }
         }
+		
+		void onDragDrop(scope string filename, int x, int y) {
+		    static void func(scope string filename, int x, int y) {
+                writeln("On Drag and drop operation as ", x, "x", y, " for ", filename);
+            }
+			
+			assumeNothrowNoGC(&func)(filename, x, y);
+		}
+		
+		bool supportsDragAndDrop() { return true; }
 
         ImageRef!RGBA onResized(int width, int height) {
             if (image.pixels !is null) {
@@ -108,11 +124,14 @@ class WindowListener : IWindowListener {
 void main() {
     writeln("Hi!");
 
-    auto listener = mallocEmplace!WindowListener;
+    auto listener = mallocNew!WindowListener;
 
     IWindow window = createWindow(null, null, listener, WindowBackend.autodetect, 800, 600);
     listener.window = window;
-    window.waitEventAndDispatch;
-
+	
+	while(!window.terminated() && !stopMe) {
+		window.waitEventAndDispatch;
+	}
+	
     writeln("END");
 }

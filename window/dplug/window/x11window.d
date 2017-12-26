@@ -40,6 +40,8 @@ import derelict.x11.Xutil;
 import derelict.x11.extensions.Xrandr;
 import derelict.x11.extensions.randr;
 
+import core.stdc.string : strlen;
+
 // TODO: remove data races with the globals
 
 // TODO: check with multiple instances
@@ -52,6 +54,22 @@ __gshared int _screen;                       // TODO: could be made a field with
 
 // Reverse mapping
 __gshared Map!(Window, X11Window) x11WindowMapping;
+
+// XDND related Atoms
+__gshared Atom
+	XdndEnter,
+	XdndPosition,
+	XdndStatus,
+	XdndTypeList,
+	XdndActionCopy,
+	XdndDrop,
+	XdndLeave,
+	XdndFinished,
+	XdndSelection,
+	XdndProxy,
+	XA_ATOM,
+	XA_TARGETS;
+
 
 // This is an extension to X11, almost always should exist on modern systems
 // If it becomes a problem, version out its usage, it'll work just won't be as nice event wise
@@ -74,8 +92,23 @@ nothrow:
         _black_pixel = assumeNoGC(&BlackPixel)(_display, _screen);
         assumeNoGC(&XkbSetDetectableAutoRepeat)(_display, true, null);
 
-        if(_display == null)
-            assert(false);
+		if(_display == null)
+			assert(false);
+
+		XdndEnter = assumeNoGC(&XInternAtom)(_display, "XdndEnter".ptr, false);
+		XdndPosition = assumeNoGC(&XInternAtom)(_display, "XdndPosition".ptr, false);
+		XdndStatus = assumeNoGC(&XInternAtom)(_display, "XdndStatus".ptr, false);
+		XdndTypeList = assumeNoGC(&XInternAtom)(_display, "XdndTypeList".ptr, false);
+		XdndActionCopy = assumeNoGC(&XInternAtom)(_display, "XdndActionCopy".ptr, false);
+		XdndDrop = assumeNoGC(&XInternAtom)(_display, "XdndDrop".ptr, false);
+		XdndLeave = assumeNoGC(&XInternAtom)(_display, "XdndLeave".ptr, false);
+		XdndFinished = assumeNoGC(&XInternAtom)(_display, "XdndFinished".ptr, false);
+		XdndSelection = assumeNoGC(&XInternAtom)(_display, "XdndSelection".ptr, false);
+		XdndProxy = assumeNoGC(&XInternAtom)(_display, "XdndProxy".ptr, false);
+		XA_ATOM = assumeNoGC(&XInternAtom)(_display, "ATOM".ptr, false);
+		XA_TARGETS = assumeNoGC(&XInternAtom)(_display, "TARGETS".ptr, false);
+
+		xdndBufferSelector = assumeNoGC(&XInternAtom)(_display, "PRIMARY".ptr, false);
 
         if (parentWindow is null)
         {
@@ -113,11 +146,24 @@ nothrow:
 
         //
 
-        _closeAtom = assumeNoGC(&XInternAtom)(_display, cast(char*)("WM_DELETE_WINDOW".ptr), cast(Bool)false);
-        assumeNoGC(&XSetWMProtocols)(_display, _windowId, &_closeAtom, 1);
+		if (listener !is null && listener.supportsDragAndDrop())
+		{
+			supportsXDND = true;
 
-        assumeNoGC(&XMapWindow)(_display, _windowId);
-        assumeNoGC(&XFlush)(_display);
+			Atom XdndAware = assumeNoGC(&XInternAtom)(_display, "XdndAware".ptr, false);
+			Atom version_ = 5;
+			assumeNoGC(&XChangeProperty)(_display, _windowId, XdndAware, XA_ATOM, 32, PropModeReplace, cast(ubyte*)&version_, 1);
+		}
+
+		//
+
+		_closeAtom = assumeNoGC(&XInternAtom)(_display, cast(char*)("WM_DELETE_WINDOW".ptr), cast(Bool)false);
+		assumeNoGC(&XSetWMProtocols)(_display, _windowId, &_closeAtom, 1);
+		
+		assumeNoGC(&XMapWindow)(_display, _windowId);
+		assumeNoGC(&XFlush)(_display);
+		
+		//
 
         assumeNoGC(&XSelectInput)(_display, _windowId, ExposureMask | KeyPressMask | StructureNotifyMask |
             KeyReleaseMask | KeyPressMask | ButtonReleaseMask | ButtonPressMask | PointerMotionMask);
@@ -139,8 +185,10 @@ nothrow:
         creationTime = getTimeMs();
         lastTimeGot = creationTime;
 
-        _eventLoop = makeThread(&asyncEventHandling);
-        _eventLoop.start();
+		version(none) {
+        	_eventLoop = makeThread(&asyncEventHandling);
+        	_eventLoop.start();
+		}
     }
 
     ~this()
@@ -209,7 +257,7 @@ nothrow:
     // Implements IWindow
     override void waitEventAndDispatch()
     {
-        while(assumeNoGC(&XPending)(_display))
+        if (assumeNoGC(&XPending)(_display))
         {
             XEvent event;
             assumeNoGC(&XNextEvent)(_display, &event);
@@ -219,7 +267,7 @@ nothrow:
             if (theWindow is null)
             {
                 // well hello, I didn't expect this.. goodbye
-                continue;
+				return;
             }
 
             handleEvents(event, theWindow);
@@ -307,6 +355,10 @@ private:
     int lastMouseX, lastMouseY;
 
     Thread _eventLoop;
+
+	bool supportsXDND;
+	Atom xdndToBeRequested, xdndBufferSelector;
+	Window xdndSourceWindow;
 }
 
 void handleEvents(ref XEvent event, X11Window theWindow)
@@ -450,16 +502,149 @@ void handleEvents(ref XEvent event, X11Window theWindow)
                 break;
 
             case ClientMessage:
-                if (event.xclient.data.l[0] == _closeAtom)
-                {
-                    _terminated = true;
-                    x11WindowMapping.remove(_windowId);
-                    assumeNoGC(&XDestroyImage)(_graphicImage);
-                    assumeNoGC(&XFreeGC)(_display, _graphicGC);
-                    assumeNoGC(&XDestroyWindow)(_display, _windowId);
-                    assumeNoGC(&XFlush)(_display);
-                }
+				if (event.xclient.message_type == _closeAtom)
+				{
+					_terminated = true;
+					x11WindowMapping.remove(_windowId);
+					assumeNoGC(&XDestroyImage)(_graphicImage);
+					assumeNoGC(&XFreeGC)(_display, _graphicGC);
+					assumeNoGC(&XDestroyWindow)(_display, _windowId);
+					assumeNoGC(&XFlush)(_display);
+				}
+				else if (!supportsXDND)
+				{
+				}
+				else if (event.xclient.message_type == XdndEnter)
+				{
+					bool moreThanThreeTypes = (event.xclient.data.l[1] & 1) == 1;
+					xdndSourceWindow = cast(Window)event.xclient.data.l[0];
+					xdndToBeRequested = None;
+
+					if (moreThanThreeTypes)
+					{
+						WindowProperty property = readWindowProperty(_display, xdndSourceWindow, XdndTypeList);
+
+						if (property.type == XA_ATOM)
+						{
+							xdndToBeRequested = chooseAtomXDND(_display, (cast(Atom*)property.data)[0 .. property.numberOfItems]);
+						}
+						XFree(property.data);
+					}
+					else
+					{
+						Atom[3] listOfAtoms = [cast(Atom)event.xclient.data.l[2], event.xclient.data.l[3], event.xclient.data.l[4]];
+						xdndToBeRequested = chooseAtomXDND(_display, listOfAtoms[]);
+					}
+				}
+				else if (event.xclient.message_type == XdndPosition)
+				{
+					XClientMessageEvent message;
+					message.type = ClientMessage;
+					message.display = event.xclient.display;
+					message.window = event.xclient.data.l[0];
+					message.message_type = XdndStatus;
+					message.format = 32;
+					message.data.l[0] = _windowId;
+					message.data.l[1] = xdndToBeRequested != None;
+					message.data.l[4] = XdndActionCopy;
+
+					XSendEvent(_display, event.xclient.data.l[0], false, NoEventMask, cast(XEvent*)&message);
+					XFlush(_display);
+				}
+				else if (event.xclient.message_type == XdndLeave)
+				{
+				}
+				else if (event.xclient.message_type == XdndDrop)
+				{
+					if (xdndToBeRequested == None)
+					{
+						XClientMessageEvent message;
+						message.type = ClientMessage;
+						message.display = event.xclient.display;
+						message.window = event.xclient.data.l[0];
+						message.message_type = XdndFinished;
+						message.format = 32;
+						message.data.l[0] = _windowId;
+						message.data.l[2] = None;
+						
+						XSendEvent(_display, event.xclient.data.l[0], false, NoEventMask, cast(XEvent*)&message);
+					}
+					else
+					{
+						XConvertSelection(_display, XdndSelection, xdndToBeRequested, xdndBufferSelector, _windowId, event.xclient.data.l[2]);
+					}
+				}
                 break;
+
+			case SelectionNotify:
+				if (event.xselection.property == None)
+					break;
+				else if (!supportsXDND)
+					break;
+
+				Atom target = event.xselection.target;
+				WindowProperty property = readWindowProperty(_display, _windowId, xdndBufferSelector);
+
+				if (target == XA_TARGETS)
+				{
+					WindowProperty propertyTL = readWindowProperty(_display, xdndSourceWindow, XdndTypeList);
+					
+					if (propertyTL.type == XA_ATOM)
+					{
+						xdndToBeRequested = chooseAtomXDND(_display, (cast(Atom*)propertyTL.data)[0 .. propertyTL.numberOfItems]);
+						if (xdndToBeRequested != None)
+						{
+							XConvertSelection(_display, XdndSelection, xdndToBeRequested, xdndBufferSelector, _windowId, event.xclient.data.l[2]);
+						}
+					}
+					XFree(propertyTL.data);
+				}
+				else if (target == xdndToBeRequested)
+				{
+					char* str = cast(char*)property.data;
+					string text = cast(string)str[0 .. strlen(str)];
+
+					Window queryPointer1, queryPointer2;
+					int x, y, queryPointer3, queryPointer4;
+					uint queryPointer5;
+					XQueryPointer(_display, _windowId, &queryPointer1, &queryPointer2, &queryPointer3, &queryPointer4, &x, &y, &queryPointer5);
+
+					size_t start;
+					foreach(i, c; text)
+					{
+						if (c == '\n')
+						{
+							listener.onDragDrop(text[start .. i], x, y);
+							start = i + 1;
+						}
+					}
+
+					if (start < text.length)
+					{
+						listener.onDragDrop(text[start .. $], x, y);
+					}
+
+					XClientMessageEvent message;
+					message.type = ClientMessage;
+					message.display = _display;
+					message.window = xdndSourceWindow;
+					message.message_type = XdndFinished;
+					message.format = 32;
+					message.data.l[0] = _windowId;
+					message.data.l[1] = 1;
+					message.data.l[2] = XdndActionCopy;
+					
+					XSendEvent(_display, xdndSourceWindow, false, NoEventMask, cast(XEvent*)&message);
+
+					XDeleteProperty(_display, _windowId, xdndBufferSelector);
+					XSync(_display, false);
+				}
+
+				if (property.data !is null)
+				{
+					XFree(property.data);
+				}
+				break;
 
             default:
                 break;
@@ -515,3 +700,52 @@ MouseState mouseStateFromX11(uint state) {
         (state & Mod1Mask) == Mod1Mask);
 }
 
+struct WindowProperty {
+	import core.stdc.config : c_ulong;
+	Atom type;
+	int format;
+	c_ulong numberOfItems;
+	ubyte* data;
+}
+
+WindowProperty readWindowProperty(Display* display, Window window, Atom property) nothrow @nogc
+{
+	import core.stdc.config : c_ulong;
+
+	c_ulong readByteCount = 1024;
+	WindowProperty ret;
+
+	while(readByteCount > 0)
+	{
+		assumeNothrowNoGC(&XGetWindowProperty)(display, window, property, 0, readByteCount, false, AnyPropertyType, &ret.type,
+			&ret.format, &ret.numberOfItems, &readByteCount, &ret.data);
+	}
+
+	return ret;
+}
+
+Atom chooseAtomXDND(Display* display, Atom[] atoms)
+{
+	Atom ret = None;
+
+	foreach(atom; atoms)
+	{
+		char* str = XGetAtomName(display, atom);
+		string name = cast(string)str[0 .. strlen(str)];
+		
+		if (name == "UTF8_STRING")
+		{
+			return atom;
+		}
+		else if (name == "text/plain;charset=utf-8")
+		{
+			return atom;
+		}
+		else if (ret == None && name == "text/plain")
+		{
+			ret = atom;
+		}
+	}
+
+	return ret;
+}
