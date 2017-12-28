@@ -525,7 +525,7 @@ string makePListFile(Plugin plugin, string config, bool hasIcon)
         else
             content ~= "                <string>aufx</string>\n";
         content ~= "                <key>subtype</key>\n";
-        content ~= "                <string>dely</string>\n";
+        content ~= "                <string>dely</string>\n"; // TODO: when Audio Component API is implemented, use the right subtype
         content ~= "                <key>manufacturer</key>\n";
         content ~= "                <string>" ~ plugin.vendorUniqueID ~ "</string>\n"; // FUTURE XML escape that
         content ~= "                <key>name</key>\n";
