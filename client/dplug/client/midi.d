@@ -151,12 +151,12 @@ nothrow:
         return _data2;
     }
 
-    /// Returns: [-1.0 .. 1.0]
-    double pitchBend() const
+    /// Returns: [-1.0 .. 1.0[
+    float pitchBend() const
     {
         assert(isPitchBend());
         immutable int iVal = (_data2 << 7) + _data1;
-        return cast(double) (iVal - 8192) / 8192.0;
+        return cast(float) (iVal - 8192) / 8192.0f;
     }
 
     alias pitchWheel = pitchBend;
