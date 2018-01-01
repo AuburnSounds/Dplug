@@ -117,17 +117,26 @@ nothrow:
 
     /// Controller's new value
     ///
-    /// Returns: [0.0 .. 1.0]
-    double controlChangeValue() const
+    /// Returns: [1 .. 127]
+    int controlChangeValue() const
     {
         assert(isControlChange());
-        return cast(double)(_data2) / 127.0;
+        return _data2;
+    }
+
+    /// Controller's new value
+    ///
+    /// Returns: [0.0 .. 1.0]
+    float controlChangeValue0to1() const
+    {
+        assert(isControlChange());
+        return cast(float)(_data2) / 127.0f;
     }
 
     /// Returns: true = on
     bool controlChangeOnOff() const
     {
-        return controlChangeValue() >= 0.5;
+        return controlChangeValue() >= 64;
     }
 
     int noteNumber() const
