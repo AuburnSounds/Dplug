@@ -42,16 +42,34 @@ nothrow:
     int offset() const
     {
         return _offset;
-    } 
+    }
 
+    /// Midi channels 1 .. 16
+    ///
+    /// Returns: [0 .. 15]
     int channel() const
     {
         return status & 0x0F;
     }
 
+    /// Status Type
+    ///
+    /// See_Also: dplug.client.midi : MidiStatus
     int status() const
     {
         return _status >> 4;
+    }
+
+    // Status type distinction properties
+
+    bool isChannelAftertouch() const
+    {
+        return status() == MidiStatus.channelAftertouch;
+    }
+
+    bool isControlChange() const
+    {
+        return status() == MidiStatus.controlChange;
     }
 
     bool isNoteOn() const
@@ -64,9 +82,65 @@ nothrow:
         return status() == MidiStatus.noteOff;
     }
 
+    bool isPitchBend() const
+    {
+        return status() == MidiStatus.pitchWheel;
+    }
+
+    alias isPitchWheel = isPitchBend;
+
+    bool isPolyAftertouch() const
+    {
+        return status() == MidiStatus.polyAftertouch;
+    }
+
+    bool isProgramChange() const
+    {
+        return status() == MidiStatus.programChange;
+    }
+
+    // Data value properties
+
+    /// Channel pressure
+    int channelAftertouch() const
+    {
+        assert(isChannelAftertouch());
+        return _data1;
+    }
+
+    /// Number of the changed controller
+    MidiControlChange controlChangeControl() const
+    {
+        assert(isControlChange());
+        return cast(MidiControlChange)(_data1);
+    }
+
+    /// Controller's new value
+    ///
+    /// Returns: [1 .. 127]
+    int controlChangeValue() const
+    {
+        assert(isControlChange());
+        return _data2;
+    }
+
+    /// Controller's new value
+    ///
+    /// Returns: [0.0 .. 1.0]
+    float controlChangeValue0to1() const
+    {
+        return cast(float)(controlChangeValue()) / 127.0f;
+    }
+
+    /// Returns: true = on
+    bool controlChangeOnOff() const
+    {
+        return controlChangeValue() >= 64;
+    }
+
     int noteNumber() const
     {
-        assert(isNoteOn() || isNoteOff());
+        assert(isNoteOn() || isNoteOff() || isPolyAftertouch());
         return _data1;
     }
 
@@ -74,6 +148,30 @@ nothrow:
     {
         assert(isNoteOn() || isNoteOff());
         return _data2;
+    }
+
+    /// Returns: [-1.0 .. 1.0[
+    float pitchBend() const
+    {
+        assert(isPitchBend());
+        immutable int iVal = (_data2 << 7) + _data1;
+        return cast(float) (iVal - 8192) / 8192.0f;
+    }
+
+    alias pitchWheel = pitchBend;
+
+    /// Amount of pressure
+    int polyAftertouch() const
+    {
+        assert(isPolyAftertouch());
+        return _data2;
+    }
+
+    /// Program number
+    int program() const
+    {
+        assert(isProgramChange());
+        return _data1;
     }
 
 private:
@@ -96,7 +194,8 @@ enum MidiStatus : ubyte
     controlChange = 11,
     programChange = 12,
     channelAftertouch = 13,
-    pitchWheel = 14
+    pitchBend = 14,
+    pitchWheel = pitchBend
 };
 
 enum MidiControlChange : ubyte
