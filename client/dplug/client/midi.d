@@ -129,8 +129,7 @@ nothrow:
     /// Returns: [0.0 .. 1.0]
     float controlChangeValue0to1() const
     {
-        assert(isControlChange());
-        return cast(float)(_data2) / 127.0f;
+        return cast(float)(controlChangeValue()) / 127.0f;
     }
 
     /// Returns: true = on
