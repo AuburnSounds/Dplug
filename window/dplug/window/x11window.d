@@ -1,8 +1,9 @@
 ﻿/**
  * X11 window implementation.
- * 
+ *
  * Copyright: Copyright (C) 2017 Richard Andrew Cattermole
  *            Copyright (C) 2017 Ethan Reker
+ *            Copyright (C) 2017 Lukasz Pelszynski
  *
  * Bugs:
  *     - X11 does not support double clicks, it is sometimes emulated https://github.com/glfw/glfw/issues/462
@@ -115,6 +116,11 @@ nothrow:
 
         _closeAtom = assumeNoGC(&XInternAtom)(_display, cast(char*)("WM_DELETE_WINDOW".ptr), cast(Bool)false);
         assumeNoGC(&XSetWMProtocols)(_display, _windowId, &_closeAtom, 1);
+
+        if (parentWindow) {
+          // Embed the window in parent (most VST hosts expose some area for embedding a VST client)
+          assumeNoGC(&XReparentWindow)(_display, _windowId, _parentWindowId, 0, 0);
+        }
 
         assumeNoGC(&XMapWindow)(_display, _windowId);
         assumeNoGC(&XFlush)(_display);
@@ -522,4 +528,3 @@ MouseState mouseStateFromX11(uint state) {
         (state & ShiftMask) == ShiftMask,
         (state & Mod1Mask) == Mod1Mask);
 }
-
