@@ -108,19 +108,9 @@ class WindowListener : IWindowListener {
 void main() {
     writeln("Hi!");
 
-    // Important: this example works differently in Win32 and X11, and in Cocoa and Carbon.
-    // The Cocoa and Carbon example assume that a non-null listener means it's a plug-in window.
-    //
-    // A window that exists for a plugin has different requirements that a general purpose "host"
-    // window, and in Dplug the former has been favoured, while "host" (aka top-level) windows 
-    // only exist for barebones hosting or testing.
-    //
-    // This bug is reported as #221, and the way to fix it is a redifinition of what an IWindow and
-    // IWindowListener are.
-
     auto listener = mallocNew!WindowListener;
 
-    IWindow window = createWindow(null, null, listener, WindowBackend.autodetect, 800, 600);
+    IWindow window = createWindow(WindowUsage.host, null, null, listener, WindowBackend.autodetect, 800, 600);
     listener.window = window;
     while(!window.terminated) 
         window.waitEventAndDispatch;
