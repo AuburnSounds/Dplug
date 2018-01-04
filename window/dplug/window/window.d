@@ -66,7 +66,7 @@ enum WindowUsage
     plugin,
 
     /// This window is intended to be top-level, for hosting another OS window.
-    /// Event pumping will be done by the caller manually through 
+    /// Event pumping will be done by the caller manually through
     /// Important: This case is not the nominal case.
     ///            Some calls to the `IWindowListener` will make no sense.
     host
@@ -181,7 +181,7 @@ enum WindowBackend
 ///
 /// Returns: null if this backend isn't available on this platform.
 ///
-/// Params: 
+/// Params:
 ///   usage = Intended usage of the window.
 ///
 ///   parentInfo = OS handle of the parent window.
@@ -197,18 +197,18 @@ enum WindowBackend
 ///
 ///   backend = Which windowing sub-system is used. Only Mac has any choice in this.
 ///             Should be `WindowBackend.autodetect` in almost all cases
-///  
+///
 ///   width = Initial width of the window.
 ///
 ///   height = Initial height of the window.
 ///
 nothrow @nogc
 IWindow createWindow(WindowUsage usage,
-                     void* parentInfo, 
-                     void* controlInfo, 
-                     IWindowListener listener, 
-                     WindowBackend backend, 
-                     int width, 
+                     void* parentInfo,
+                     void* controlInfo,
+                     IWindowListener listener,
+                     WindowBackend backend,
+                     int width,
                      int height)
 {
     //MAYDO  `null` listeners not accepted anymore.
@@ -257,12 +257,12 @@ IWindow createWindow(WindowUsage usage,
         if (backend == WindowBackend.cocoa)
         {
             import dplug.window.cocoawindow;
-            return mallocNew!CocoaWindow(parentInfo, listener, width, height);
+            return mallocNew!CocoaWindow(usage, parentInfo, listener, width, height);
         }
         else if (backend == WindowBackend.carbon)
         {
             import dplug.window.carbonwindow;
-            return mallocNew!CarbonWindow(parentInfo, controlInfo, listener, width, height);
+            return mallocNew!CarbonWindow(usage, parentInfo, controlInfo, listener, width, height);
         }
         else
             return null;
