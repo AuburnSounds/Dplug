@@ -13,7 +13,7 @@
 - Comes with basic music DSP algorithms
 - Comes with a number of `tools` to make plug-in authoring faster (bundling, color correction, regression tests, performance tests)
 - Dplug is using (optional) [rendering](http://www.auburnsounds.com/blog/2016-09-16_PBR-for-Audio-Software-Interfaces.html) to keep installers small
-- [See the list of supported hosts...](https://github.com/AuburnSounds/Dplug/wiki/Supported-Hosts)
+- See the [list of supported hosts...](https://github.com/AuburnSounds/Dplug/wiki/Host-Support)
 
 
 ### Products made with Dplug
