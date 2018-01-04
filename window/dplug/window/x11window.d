@@ -132,20 +132,12 @@ nothrow:
         assumeNoGC(&XSetForeground)(_display, _graphicGC, _black_pixel);
 
         _wfb = listener.onResized(width, height);
-        listener.recomputeDirtyAreas();
-        listener.onDraw(WindowPixelFormat.RGBA8);
 
-        box2i areaToRedraw = listener.getDirtyRectangle();
-        box2i[] areasToRedraw = (&areaToRedraw)[0..1];
-        if (_wfb.pixels !is null)
-        {
-            swapBuffers(_wfb, areasToRedraw);
-        }
 
         creationTime = getTimeMs();
         lastTimeGot = creationTime;
 
-        _eventLoop = makeThread(&asyncEventHandling);
+        _eventLoop = makeThread(&asyncEventLoop);
         _eventLoop.start();
     }
 
@@ -229,7 +221,7 @@ nothrow:
     }
 
     //Called on a separate thread to dispatch events and redraw the UI
-    void asyncEventHandling() nothrow @nogc
+    void asyncEventLoop() nothrow @nogc
     {
         // TODO: this thread termination test is racey
         // TODO: racey in the case of not-a-plugin
@@ -241,13 +233,14 @@ nothrow:
             while (hasPendingEvents)
                 waitEventAndDispatch();
 
-            redraw();
+            timerEvent();
+
             //Sleep for ~16.6 milliseconds (60 frames per second rendering)
             usleep(16666);
         }
     }
 
-    void redraw()
+    void timerEvent()
     {
         currentTime = getTimeMs();
         float diff = currentTime - lastTimeGot;
@@ -255,22 +248,34 @@ nothrow:
         double dt = (currentTime - lastTimeGot) * 0.001;
         double time = (currentTime - creationTime) * 0.001;
         listener.onAnimate(dt, time);
-
+        sendRepaintIfUIDirty();
         lastTimeGot = currentTime;
-        if (listener !is null)
-        {
-            // TODO onAnimate will call setDirty, we should use the X11
-            // mechanism to have Expose called instead, NOT calling onDraw here
-            _wfb = listener.onResized(_wfb.w, _wfb.h);
+    }
 
-            listener.recomputeDirtyAreas();
-            box2i areaToRedraw = listener.getDirtyRectangle();
-            if (!areaToRedraw.empty())
-            {
-                listener.onDraw(WindowPixelFormat.RGBA8);
-                box2i[] areasToRedraw = (&areaToRedraw)[0..1];
-                swapBuffers(_wfb, areasToRedraw);
-            }
+    void sendRepaintIfUIDirty()
+    {
+        listener.recomputeDirtyAreas();
+        box2i dirtyRect = listener.getDirtyRectangle();
+        if (!dirtyRect.empty())
+        {
+            int x = dirtyRect.min.x;
+            int y = dirtyRect.min.y;
+            int width = dirtyRect.max.x - x;
+            int height = dirtyRect.max.y - y;
+
+            XEvent exppp;
+            import core.stdc.string;
+            memset(&exppp, 0, XEvent.sizeof);
+            exppp.type = Expose;
+            exppp.xexpose.window = _windowId;
+            exppp.xexpose.display = _display;
+            exppp.xexpose.x = x;
+            exppp.xexpose.y = y;
+            exppp.xexpose.width = width;
+            exppp.xexpose.height = height;
+
+            XSendEvent(_display, _windowId, False, ExposureMask, &exppp);
+            XFlush(_display);
         }
     }
 
@@ -317,10 +322,7 @@ private:
     Thread _eventLoop;
 
     // Is there pending events?
-    bool hasPendingEvents()
-    {
-        return assumeNoGC(&XPending)(_display) != 0;
-    }
+    bool hasPendingEvents() { return assumeNoGC(&XPending)(_display) != 0; }
 }
 
 void handleEvents(ref XEvent event, X11Window theWindow)
@@ -332,135 +334,101 @@ void handleEvents(ref XEvent event, X11Window theWindow)
         {
             case MapNotify:
             case Expose:
-                if (listener !is null)
-                {
-                    _wfb = listener.onResized(_wfb.w, _wfb.h);
-                    listener.recomputeDirtyAreas();
-                    listener.onDraw(WindowPixelFormat.RGBA8);
-
-                    box2i areaToRedraw = listener.getDirtyRectangle();
-                    box2i[] areasToRedraw = (&areaToRedraw)[0..1];
-                    if (_wfb.pixels !is null)
-                    {
-                        swapBuffers(_wfb, areasToRedraw);
-                    }
-                }
+                // Resize should trigger Expose event, so we don't need to handle it here
+                listener.onDraw(WindowPixelFormat.RGBA8);
+                box2i areaToRedraw = box2i(event.xexpose.x, event.xexpose.y, event.xexpose.x + event.xexpose.width, event.xexpose.y + event.xexpose.height);
+                box2i[] areasToRedraw = (&areaToRedraw)[0..1];
+                swapBuffers(_wfb, areasToRedraw);
                 break;
 
             case ConfigureNotify:
                 if (event.xconfigure.width != width || event.xconfigure.height != height)
                 {
+                    // Handle resize event
                     width = event.xconfigure.width;
                     height = event.xconfigure.height;
 
-                    if (listener !is null)
-                    {
-                        _wfb = listener.onResized(width, height);
-
-                        listener.recomputeDirtyAreas();
-                        listener.onDraw(WindowPixelFormat.RGBA8);
-
-                        box2i areaToRedraw = listener.getDirtyRectangle();
-                        box2i[] areasToRedraw = (&areaToRedraw)[0..1];
-                        if (_wfb.pixels !is null)
-                        {
-                            swapBuffers(_wfb, areasToRedraw);
-                        }
-                    }
+                    _wfb = listener.onResized(width, height);
+                    sendRepaintIfUIDirty();
                 }
                 break;
 
             case MotionNotify:
-                if (listener !is null)
-                {
-                    int newMouseX = event.xmotion.x;
-                    int newMouseY = event.xmotion.y;
-                    int dx = newMouseX - lastMouseX;
-                    int dy = newMouseY - lastMouseY;
+                int newMouseX = event.xmotion.x;
+                int newMouseY = event.xmotion.y;
+                int dx = newMouseX - lastMouseX;
+                int dy = newMouseY - lastMouseY;
 
-                    listener.onMouseMove(newMouseX, newMouseY, dx, dy, mouseStateFromX11(event.xbutton.state));
+                listener.onMouseMove(newMouseX, newMouseY, dx, dy, mouseStateFromX11(event.xbutton.state));
 
-                    lastMouseX = newMouseX;
-                    lastMouseY = newMouseY;
-                }
+                lastMouseX = newMouseX;
+                lastMouseY = newMouseY;
                 break;
 
             case ButtonPress:
-                if (listener !is null)
+                int newMouseX = event.xbutton.x;
+                int newMouseY = event.xbutton.y;
+
+                MouseButton button;
+
+                if (event.xbutton.button == Button1)
+                    button = MouseButton.left;
+                else if (event.xbutton.button == Button3)
+                    button = MouseButton.right;
+                else if (event.xbutton.button == Button2)
+                    button = MouseButton.middle;
+                else if (event.xbutton.button == Button4)
+                    button = MouseButton.x1;
+                else if (event.xbutton.button == Button5)
+                    button = MouseButton.x2;
+
+                bool isDoubleClick;
+
+                lastMouseX = newMouseX;
+                lastMouseY = newMouseY;
+
+                if (event.xbutton.button == Button4 || event.xbutton.button == Button5)
                 {
-                    int newMouseX = event.xbutton.x;
-                    int newMouseY = event.xbutton.y;
-
-                    MouseButton button;
-
-                    if (event.xbutton.button == Button1)
-                        button = MouseButton.left;
-                    else if (event.xbutton.button == Button3)
-                        button = MouseButton.right;
-                    else if (event.xbutton.button == Button2)
-                        button = MouseButton.middle;
-                    else if (event.xbutton.button == Button4)
-                        button = MouseButton.x1;
-                    else if (event.xbutton.button == Button5)
-                        button = MouseButton.x2;
-
-                    bool isDoubleClick;
-
-                    lastMouseX = newMouseX;
-                    lastMouseY = newMouseY;
-
-                    if (event.xbutton.button == Button4 || event.xbutton.button == Button5)
-                    {
-                        listener.onMouseWheel(newMouseX, newMouseY, 0, event.xbutton.button == Button4 ? 1 : -1,
-                            mouseStateFromX11(event.xbutton.state));
-                    }
-                    else
-                    {
-                        listener.onMouseClick(newMouseX, newMouseY, button, isDoubleClick, mouseStateFromX11(event.xbutton.state));
-                    }
+                    listener.onMouseWheel(newMouseX, newMouseY, 0, event.xbutton.button == Button4 ? 1 : -1,
+                        mouseStateFromX11(event.xbutton.state));
+                }
+                else
+                {
+                    listener.onMouseClick(newMouseX, newMouseY, button, isDoubleClick, mouseStateFromX11(event.xbutton.state));
                 }
                 break;
 
             case ButtonRelease:
-                if (listener !is null)
-                {
-                    int newMouseX = event.xbutton.x;
-                    int newMouseY = event.xbutton.y;
+                int newMouseX = event.xbutton.x;
+                int newMouseY = event.xbutton.y;
 
-                    MouseButton button;
+                MouseButton button;
 
-                    lastMouseX = newMouseX;
-                    lastMouseY = newMouseY;
+                lastMouseX = newMouseX;
+                lastMouseY = newMouseY;
 
-                    if (event.xbutton.button == Button1)
-                        button = MouseButton.left;
-                    else if (event.xbutton.button == Button3)
-                        button = MouseButton.right;
-                    else if (event.xbutton.button == Button2)
-                        button = MouseButton.middle;
-                    else if (event.xbutton.button == Button4 || event.xbutton.button == Button5)
-                        break;
+                if (event.xbutton.button == Button1)
+                    button = MouseButton.left;
+                else if (event.xbutton.button == Button3)
+                    button = MouseButton.right;
+                else if (event.xbutton.button == Button2)
+                    button = MouseButton.middle;
+                else if (event.xbutton.button == Button4 || event.xbutton.button == Button5)
+                    break;
 
-                    listener.onMouseRelease(newMouseX, newMouseY, button, mouseStateFromX11(event.xbutton.state));
-                }
+                listener.onMouseRelease(newMouseX, newMouseY, button, mouseStateFromX11(event.xbutton.state));
                 break;
 
             case KeyPress:
                 KeySym symbol;
                 assumeNoGC(&XLookupString)(&event.xkey, null, 0, &symbol, null);
-                if (listener !is null)
-                {
-                    listener.onKeyDown(convertKeyFromX11(symbol));
-                }
+                listener.onKeyDown(convertKeyFromX11(symbol));
                 break;
 
             case KeyRelease:
                 KeySym symbol;
                 assumeNoGC(&XLookupString)(&event.xkey, null, 0, &symbol, null);
-                if (listener !is null)
-                {
-                    listener.onKeyUp(convertKeyFromX11(symbol));
-                }
+                listener.onKeyUp(convertKeyFromX11(symbol));
                 break;
 
             case ClientMessage:
