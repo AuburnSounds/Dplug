@@ -59,7 +59,7 @@ nothrow:
         _name = name;
         _hlib = LoadSharedLib(name);
         if(_hlib is null)
-            assert(false);
+            assert(false, "Couldn't open the shared library.");
     }
 
     bool hasSymbol(string symbolName)
@@ -81,7 +81,7 @@ nothrow:
 
         void* sym = GetSymbol(_hlib, symbolName);
         if(!sym)
-            assert(false);
+            assert(false, "Couldn't get symbol.");
         return sym;
     }
 
