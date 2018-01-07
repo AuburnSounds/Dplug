@@ -17,7 +17,7 @@ import gfm.math.box;
 
 import core.sys.posix.unistd;
 import core.stdc.string;
-import std.functional;
+import core.atomic;
 
 import dplug.window.window;
 
@@ -44,13 +44,11 @@ import derelict.x11.Xutil;
 import derelict.x11.extensions.Xrandr;
 import derelict.x11.extensions.randr;
 
-// TODO: check with multiple instances
-// Who owns the connection? Rikki says it should be us, not the host. The host would provide us
-// with a parent window, but no connection. Only testing will answer.
-
 // This is an extension to X11, almost always should exist on modern systems
 // If it becomes a problem, version out its usage, it'll work just won't be as nice event wise
 extern(C) bool XkbSetDetectableAutoRepeat(Display*, bool, bool*);
+
+__gshared XLibInitialized = false;
 
 final class X11Window : IWindow
 {
@@ -60,8 +58,8 @@ nothrow:
 private:
     // Xlib variables
     Display* _display;
-    size_t _white_pixel, _black_pixel; // TODO: could be made a field without questions
-    int _screen;                       // TODO: could be made a field without questions
+    size_t _white_pixel, _black_pixel;
+    int _screen;
     Window _windowId, _parentWindowId;
     Atom _closeAtom;
     derelict.x11.Xlib.GC _graphicGC;
@@ -69,7 +67,7 @@ private:
     int width, height, depth;
     // Threads
     Thread _eventLoop, _timerLoop;
-    UncheckedMutex exposeMutex;
+    UncheckedMutex drawMutex;
     //Other
     IWindowListener listener;
 
@@ -81,47 +79,46 @@ private:
 
     box2i prevMergedDirtyRect, mergedDirtyRect;
 
-    bool _terminated = false;
-
-    // Is there pending events?
-    bool hasPendingEvents() { return assumeNoGC(&XPending)(_display) != 0; }
+    shared(bool) _terminated = false;
 
 public:
     this(void* parentWindow, IWindowListener listener, int width, int height)
     {
-        exposeMutex = makeMutex();
+        drawMutex = makeMutex();
+
+        initializeXLib();
 
         int x, y;
         this.listener = listener;
 
-        _display = assumeNoGC(&XOpenDisplay)(null);
+        _display = XOpenDisplay(null);
         if(_display == null)
             assert(false);
 
-        _screen = assumeNoGC(&DefaultScreen)(_display);
-        _white_pixel = assumeNoGC(&WhitePixel)(_display, _screen);
-        _black_pixel = assumeNoGC(&BlackPixel)(_display, _screen);
-        assumeNoGC(&XkbSetDetectableAutoRepeat)(_display, true, null);
+        _screen = DefaultScreen(_display);
+        _white_pixel = WhitePixel(_display, _screen);
+        _black_pixel = BlackPixel(_display, _screen);
+        XkbSetDetectableAutoRepeat(_display, true, null);
 
         if (parentWindow is null)
         {
-            _parentWindowId = assumeNoGC(&RootWindow)(_display, _screen);
+            _parentWindowId = RootWindow(_display, _screen);
         }
         else
         {
             _parentWindowId = cast(Window)parentWindow;
         }
 
-        x = (assumeNoGC(&DisplayWidth)(_display, _screen) - width) / 2;
-        y = (assumeNoGC(&DisplayHeight)(_display, _screen) - height) / 3;
+        x = (DisplayWidth(_display, _screen) - width) / 2;
+        y = (DisplayHeight(_display, _screen) - height) / 3;
         this.width = width;
         this.height = height;
         depth = 24;
 
         //
 
-        _windowId = assumeNoGC(&XCreateSimpleWindow)(_display, _parentWindowId, x, y, width, height, 0, 0, _black_pixel);
-        assumeNoGC(&XStoreName)(_display, _windowId, cast(char*)" ".ptr);
+        _windowId = XCreateSimpleWindow(_display, _parentWindowId, x, y, width, height, 0, 0, _black_pixel);
+        XStoreName(_display, _windowId, cast(char*)" ".ptr);
 
         XSizeHints sizeHints;
         sizeHints.flags = PMinSize | PMaxSize;
@@ -130,27 +127,25 @@ public:
         sizeHints.min_height = height;
         sizeHints.max_height = height;
 
-        assumeNoGC(&XSetWMNormalHints)(_display, _windowId, &sizeHints);
+        XSetWMNormalHints(_display, _windowId, &sizeHints);
 
         //
 
-        _closeAtom = assumeNoGC(&XInternAtom)(_display, cast(char*)("WM_DELETE_WINDOW".ptr), cast(Bool)false);
-        assumeNoGC(&XSetWMProtocols)(_display, _windowId, &_closeAtom, 1);
+        _closeAtom = XInternAtom(_display, cast(char*)("WM_DELETE_WINDOW".ptr), cast(Bool)false);
+        XSetWMProtocols(_display, _windowId, &_closeAtom, 1);
 
         if (parentWindow) {
           // Embed the window in parent (most VST hosts expose some area for embedding a VST client)
-          assumeNoGC(&XReparentWindow)(_display, _windowId, _parentWindowId, 0, 0);
-          // Receive events from parent when child is destroyed
-          assumeNoGC(&XSelectInput)(_display, _parentWindowId, SubstructureNotifyMask);
+          XReparentWindow(_display, _windowId, _parentWindowId, 0, 0);
         }
 
-        assumeNoGC(&XMapWindow)(_display, _windowId);
-        assumeNoGC(&XFlush)(_display);
+        XMapWindow(_display, _windowId);
+        XFlush(_display);
 
-        assumeNoGC(&XSelectInput)(_display, _windowId, windowEventMask());
-        _graphicGC = assumeNoGC(&XCreateGC)(_display, _windowId, 0, null);
-        assumeNoGC(&XSetBackground)(_display, _graphicGC, _white_pixel);
-        assumeNoGC(&XSetForeground)(_display, _graphicGC, _black_pixel);
+        XSelectInput(_display, _windowId, windowEventMask());
+        _graphicGC = XCreateGC(_display, _windowId, 0, null);
+        XSetBackground(_display, _graphicGC, _white_pixel);
+        XSetForeground(_display, _graphicGC, _black_pixel);
 
         _wfb = listener.onResized(width, height);
 
@@ -168,14 +163,17 @@ public:
 
     ~this()
     {
-        assumeNoGC(&XDestroyWindow)(_display, _windowId);
+        XDestroyWindow(_display, _windowId);
         XFlush(_display);
         _timerLoop.join();
         _eventLoop.join();
-        //assumeNoGC(&XDestroyImage)(_graphicImage);
-        //assumeNoGC(&XFreeGC)(_display, _graphicGC);
-        //
-        //assumeNoGC(&XFlush)(_display);
+    }
+
+    void initializeXLib() {
+        if (!XLibInitialized) {
+            XInitThreads();
+            XLibInitialized = true;
+        }
     }
 
     long windowEventMask() {
@@ -192,10 +190,10 @@ public:
             if (_graphicImage !is null)
             {
                 // X11 deallocates _bufferData for us (ugh...)
-                assumeNoGC(&XDestroyImage)(_graphicImage);
+                XDestroyImage(_graphicImage);
             }
 
-            _graphicImage = assumeNoGC(&XCreateImage)(_display, cast(Visual*)&_graphicGC, depth, ZPixmap, 0, cast(char*)_bufferData.ptr, width, height, 32, 0);
+            _graphicImage = XCreateImage(_display, cast(Visual*)&_graphicGC, depth, ZPixmap, 0, cast(char*)_bufferData.ptr, width, height, 32, 0);
 
             size_t i;
             foreach(y; 0 .. wfb.h)
@@ -234,15 +232,15 @@ public:
             }
         }
 
-        assumeNoGC(&XPutImage)(_display, _windowId, _graphicGC, _graphicImage, 0, 0, 0, 0, cast(uint)width, cast(uint)height);
+        XPutImage(_display, _windowId, _graphicGC, _graphicImage, 0, 0, 0, 0, cast(uint)width, cast(uint)height);
     }
 
     // Implements IWindow
     override void waitEventAndDispatch() nothrow @nogc
     {
         XEvent event;
-        // Get wait for events for current window
-        assumeNoGC(&XWindowEvent)(_display, _windowId, windowEventMask(), &event);
+        // Wait for events for current window
+        XWindowEvent(_display, _windowId, windowEventMask(), &event);
         handleEvents(event, this);
     }
 
@@ -265,7 +263,7 @@ public:
         box2i dirtyRect = listener.getDirtyRectangle();
         if (!dirtyRect.empty())
         {
-            exposeMutex.lock();
+            drawMutex.lock();
 
             prevMergedDirtyRect = mergedDirtyRect;
             mergedDirtyRect = mergedDirtyRect.expand(dirtyRect);
@@ -287,11 +285,11 @@ public:
                 evt.xexpose.width = 0;
                 evt.xexpose.height = 0;
 
-                assumeNoGC(&XSendEvent)(_display, _windowId, False, ExposureMask, &evt);
-                assumeNoGC(&XFlush)(_display);
+                XSendEvent(_display, _windowId, False, ExposureMask, &evt);
+                XFlush(_display);
             }
 
-            exposeMutex.unlock();
+            drawMutex.unlock();
         }
     }
 
@@ -313,7 +311,7 @@ public:
 
     override bool terminated()
     {
-        return _terminated;
+        return atomicLoad(_terminated);
     }
 
     override uint getTimeMs()
@@ -345,7 +343,7 @@ void handleEvents(ref XEvent event, X11Window theWindow) nothrow @nogc
             case MapNotify:
             case Expose:
                 // Resize should trigger Expose event, so we don't need to handle it here
-                exposeMutex.lock();
+                drawMutex.lock();
 
                 box2i areaToRedraw = mergedDirtyRect;
                 box2i eventAreaToRedraw = box2i(event.xexpose.x, event.xexpose.y, event.xexpose.x + event.xexpose.width, event.xexpose.y + event.xexpose.height);
@@ -353,7 +351,7 @@ void handleEvents(ref XEvent event, X11Window theWindow) nothrow @nogc
 
                 emptyMergedBoxes();
 
-                exposeMutex.unlock();
+                drawMutex.unlock();
 
                 if (!areaToRedraw.empty()) {
                     listener.onDraw(WindowPixelFormat.RGBA8);
@@ -444,31 +442,31 @@ void handleEvents(ref XEvent event, X11Window theWindow) nothrow @nogc
 
             case KeyPress:
                 KeySym symbol;
-                assumeNoGC(&XLookupString)(&event.xkey, null, 0, &symbol, null);
+                XLookupString(&event.xkey, null, 0, &symbol, null);
                 listener.onKeyDown(convertKeyFromX11(symbol));
                 break;
 
             case KeyRelease:
                 KeySym symbol;
-                assumeNoGC(&XLookupString)(&event.xkey, null, 0, &symbol, null);
+                XLookupString(&event.xkey, null, 0, &symbol, null);
                 listener.onKeyUp(convertKeyFromX11(symbol));
                 break;
 
             case DestroyNotify:
-                assumeNoGC(&XDestroyImage)(_graphicImage);
-                assumeNoGC(&XFreeGC)(_display, _graphicGC);
-                _terminated = true;
+                XDestroyImage(_graphicImage);
+                XFreeGC(_display, _graphicGC);
+                atomicStore(_terminated, true);
                 break;
 
             case ClientMessage:
                 // TODO Possibly not used anymore
                 if (event.xclient.data.l[0] == _closeAtom)
                 {
-                    _terminated = true;
-                    assumeNoGC(&XDestroyImage)(_graphicImage);
-                    assumeNoGC(&XFreeGC)(_display, _graphicGC);
-                    assumeNoGC(&XDestroyWindow)(_display, _windowId);
-                    assumeNoGC(&XFlush)(_display);
+                    atomicStore(_terminated, true);
+                    XDestroyImage(_graphicImage);
+                    XFreeGC(_display, _graphicGC);
+                    XDestroyWindow(_display, _windowId);
+                    XFlush(_display);
                 }
                 break;
 
