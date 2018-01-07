@@ -49,6 +49,9 @@ import derelict.x11.extensions.randr;
 extern(C) bool XkbSetDetectableAutoRepeat(Display*, bool, bool*);
 
 __gshared XLibInitialized = false;
+__gshared Display* _display;
+__gshared size_t _white_pixel, _black_pixel;
+__gshared int _screen;
 
 final class X11Window : IWindow
 {
@@ -57,9 +60,6 @@ nothrow:
 
 private:
     // Xlib variables
-    Display* _display;
-    size_t _white_pixel, _black_pixel;
-    int _screen;
     Window _windowId, _parentWindowId;
     Atom _closeAtom;
     derelict.x11.Xlib.GC _graphicGC;
@@ -90,15 +90,6 @@ public:
 
         int x, y;
         this.listener = listener;
-
-        _display = XOpenDisplay(null);
-        if(_display == null)
-            assert(false);
-
-        _screen = DefaultScreen(_display);
-        _white_pixel = WhitePixel(_display, _screen);
-        _black_pixel = BlackPixel(_display, _screen);
-        XkbSetDetectableAutoRepeat(_display, true, null);
 
         if (parentWindow is null)
         {
@@ -172,6 +163,16 @@ public:
     void initializeXLib() {
         if (!XLibInitialized) {
             XInitThreads();
+
+            _display = XOpenDisplay(null);
+            if(_display == null)
+                assert(false);
+
+            _screen = DefaultScreen(_display);
+            _white_pixel = WhitePixel(_display, _screen);
+            _black_pixel = BlackPixel(_display, _screen);
+            XkbSetDetectableAutoRepeat(_display, true, null);
+
             XLibInitialized = true;
         }
     }
