@@ -236,6 +236,32 @@ int main(string[] args)
                     continue;
                 }
 
+                // Does not try to build AU under Windows
+                version(Windows)
+                {
+                    if (configIsAU(config))
+                    {
+                        cwritefln("info: Skipping AU format since building for Windows\n".white, arch);
+                        continue;
+                    }
+                }
+
+                // Does not try to build AAX or AU under Linux
+                version(linux)
+                {
+                    if (configIsAAX(config))
+                    {
+                        cwritefln("info: Skipping AAX format since building for Linux\n".white, arch);
+                        continue;
+                    }
+
+                    if (configIsAU(config))
+                    {
+                        cwritefln("info: Skipping AU format since building for Linux\n".white, arch);
+                        continue;
+                    }
+                }
+
                 version(Windows)
                 {
                     // FUTURE: remove when LDC on Windows is a single archive (should happen for 1.0.0)
