@@ -306,6 +306,7 @@ int main(string[] args)
                                             paceConfig.wrapConfigGUID,
                                             escapeShellArgument(binaryPathInOut),
                                             escapeShellArgument(binaryPathInOut));
+                        safeCommand(cmd);
                     }
                     else version(OSX)
                     {
@@ -316,8 +317,10 @@ int main(string[] args)
                                             paceConfig.wrapConfigGUID,
                                             escapeShellArgument(binaryPathInOut),
                                             escapeShellArgument(binaryPathInOut));
+                        safeCommand(cmd);
                     }
-                    safeCommand(cmd);
+                    else
+                        assert(false);                    
                 }
 
                 void extractAAXPresetsFromBinary(string binaryPath, string contentsDir, bool is64b)
