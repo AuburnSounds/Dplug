@@ -596,10 +596,11 @@ void buildPlugin(string compiler, string config, string build, bool is64b, bool 
     if (compiler == "ldc")
         compiler = "ldc2";
 
-    version(linux)
+    // Note: unfortunately --combined builds crash with LDC on Linux, -FPIC is probably fixed in Dub now?
+    /*version(linux)
     {
         combined = true; // for -FPIC
-    }
+    }*/
 
     cwritefln("*** Building configuration %s with %s, %s arch...".white, config, compiler, is64b ? "64-bit" : "32-bit");
     // build the output file
