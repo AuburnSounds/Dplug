@@ -340,7 +340,7 @@ int main(string[] args)
                         // "AAX plug-ins should include a set of presets in the following directory within the .aaxplugin:
                         //       MyPlugIn.aaxplugin/Contents/Factory Presets/MyPlugInPackage/
                         //  Where MyPlugInPackage is the plug-in's longest Package Name with 16 characters or fewer."
-                        string packageName = plugin.vendorName;
+                        string packageName = plugin.pluginName;
                         if (packageName.length > 16)
                             packageName = packageName[0..16];
                         string factoryPresetsLocation =
