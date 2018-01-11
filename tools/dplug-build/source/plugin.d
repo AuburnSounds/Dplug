@@ -303,6 +303,10 @@ Plugin readPluginDescription()
         result.pluginName = result.name;
     }
 
+    // TODO: not all characters are allowed in pluginName. 
+    //       All characters in pluginName should be able to be in a filename.
+    //       For Orion compatibility is should not have '-' in the file name
+
     // Note: dplug-build parses it but doesn't need hasGUI
     try
     {
@@ -390,7 +394,11 @@ Plugin readPluginDescription()
     if (result.pluginUniqueID.length != 4)
         throw new Exception("\"pluginUniqueID\" should be a string of 4 characters (eg: \"val8\")");
 
-    // In developpement, should stay at 0.x.y to avoid various AU caches
+    // TODO: check for special characters in pluginUniqueID and vendorUniqueID
+    //       I'm not sure if Audio Unit would take anything not printable, would auval support it?
+
+    // In developement, publicVersion should stay at 0.x.y to avoid various AU caches
+    // (this is only the theory...)
     string publicV;
     try
     {
