@@ -303,7 +303,7 @@ Plugin readPluginDescription()
         result.pluginName = result.name;
     }
 
-    // TODO: not all characters are allowed in pluginName. 
+    // TODO: not all characters are allowed in pluginName.
     //       All characters in pluginName should be able to be in a filename.
     //       For Orion compatibility is should not have '-' in the file name
 
@@ -517,6 +517,8 @@ string makePListFile(Plugin plugin, string config, bool hasIcon)
     addKeyString("CFBundleVersion", productVersion);
     addKeyString("CFBundleShortVersionString", productVersion);
 
+    // PACE signing need this on Mac to find the executable to sign
+    addKeyString("CFBundleExecutable", plugin.prettyName);
 
     enum isAudioComponentAPIImplemented = false;
 

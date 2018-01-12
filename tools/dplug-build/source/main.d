@@ -312,15 +312,15 @@ int main(string[] args)
                     {
                         string cmd = format(`wraptool sign --verbose --account %s --password %s --signid %s --wcguid %s --in %s --out %s`,
                                             paceConfig.iLokAccount,
-                                            paceConfig.iLokPassword,                                            
-                                            paceConfig.developerIdentityOSX,
+                                            paceConfig.iLokPassword,
+                                            escapeShellArgument(paceConfig.developerIdentityOSX),
                                             paceConfig.wrapConfigGUID,
                                             escapeShellArgument(binaryPathInOut),
                                             escapeShellArgument(binaryPathInOut));
                         safeCommand(cmd);
                     }
                     else
-                        assert(false);                    
+                        assert(false);
                 }
 
                 void extractAAXPresetsFromBinary(string binaryPath, string contentsDir, bool is64b)
@@ -447,6 +447,7 @@ int main(string[] args)
                         assert(false);
 
                     // On Mac, make a bundle directory
+                    string bundleDir = path ~ "/" ~ pluginDir;
                     string contentsDir = path ~ "/" ~ pluginDir ~ "/Contents/";
                     string ressourcesDir = contentsDir ~ "Resources";
                     string macosDir = contentsDir ~ "MacOS";
@@ -506,8 +507,9 @@ int main(string[] args)
                         fileMove(plugin.dubOutputFileName, exePath);
                     }
 
+                    // Note: on Mac, the bundle path is passed instead, since wraptool won't accept the executable only
                     if (configIsAAX(config))
-                        signAAXBinaryWithPACE(exePath);
+                        signAAXBinaryWithPACE(bundleDir);
 
                     // Should this arch be published? Only if the --publish arg was given and
                     // it's the last architecture in the list (to avoid overwrite)
