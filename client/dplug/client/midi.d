@@ -49,7 +49,7 @@ nothrow:
     /// Returns: [0 .. 15]
     int channel() const
     {
-        return status & 0x0F;
+        return _status & 0x0F;
     }
 
     /// Status Type
