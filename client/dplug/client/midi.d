@@ -31,10 +31,10 @@ pure:
 nothrow:
 @nogc:
 
-    this( int offset, ubyte status, ubyte data1, ubyte data2)
+    this( int offset, ubyte statusByte, ubyte data1, ubyte data2)
     {
         _offset = offset;
-        _status = status;
+        _statusByte = statusByte;
         _data1 = data1;
         _data2 = data2;
     }
@@ -49,54 +49,54 @@ nothrow:
     /// Returns: [0 .. 15]
     int channel() const
     {
-        return status & 0x0F;
+        return _statusByte & 0x0F;
     }
 
     /// Status Type
     ///
     /// See_Also: dplug.client.midi : MidiStatus
-    int status() const
+    int statusType() const
     {
-        return _status >> 4;
+        return _statusByte >> 4;
     }
 
     // Status type distinction properties
 
     bool isChannelAftertouch() const
     {
-        return status() == MidiStatus.channelAftertouch;
+        return statusType() == MidiStatus.channelAftertouch;
     }
 
     bool isControlChange() const
     {
-        return status() == MidiStatus.controlChange;
+        return statusType() == MidiStatus.controlChange;
     }
 
     bool isNoteOn() const
     {
-        return status() == MidiStatus.noteOn;
+        return statusType() == MidiStatus.noteOn;
     }
 
     bool isNoteOff() const
     {
-        return status() == MidiStatus.noteOff;
+        return statusType() == MidiStatus.noteOff;
     }
 
     bool isPitchBend() const
     {
-        return status() == MidiStatus.pitchWheel;
+        return statusType() == MidiStatus.pitchWheel;
     }
 
     alias isPitchWheel = isPitchBend;
 
     bool isPolyAftertouch() const
     {
-        return status() == MidiStatus.polyAftertouch;
+        return statusType() == MidiStatus.polyAftertouch;
     }
 
     bool isProgramChange() const
     {
-        return status() == MidiStatus.programChange;
+        return statusType() == MidiStatus.programChange;
     }
 
     // Data value properties
@@ -177,7 +177,7 @@ nothrow:
 private:
     int _offset = 0;
 
-    ubyte _status = 0;
+    ubyte _statusByte = 0;
 
     ubyte _data1 = 0;
 
@@ -240,15 +240,15 @@ enum MidiControlChange : ubyte
 
 nothrow @nogc:
 
-MidiMessage makeMidiMessage(int offset, int channel, MidiStatus status, int data1, int data2)
+MidiMessage makeMidiMessage(int offset, int channel, MidiStatus statusType, int data1, int data2)
 {
     assert(channel >= 0 && channel <= 15);
-    assert(status >= 0 && status <= 15);
+    assert(statusType >= 0 && statusType <= 15);
     assert(data1 >= 0 && data2 <= 255);
     assert(data1 >= 0 && data2 <= 255);
     MidiMessage msg;
     msg._offset = offset;
-    msg._status = cast(ubyte)( channel | (status << 4) );
+    msg._statusByte = cast(ubyte)( channel | (statusType << 4) );
     msg._data1 = cast(ubyte)data1;
     msg._data2 = cast(ubyte)data2;
     return msg;
