@@ -55,6 +55,7 @@ nothrow:
     /// Status Type
     ///
     /// See_Also: dplug.client.midi : MidiStatus
+    deprecated("Use statusType instead") alias status = statusType;
     int statusType() const
     {
         return _statusByte >> 4;
@@ -181,7 +182,7 @@ private:
 
     ubyte _data1 = 0;
 
-    ubyte _data2 = 0; 
+    ubyte _data2 = 0;
 }
 
 
@@ -255,21 +256,21 @@ MidiMessage makeMidiMessage(int offset, int channel, MidiStatus statusType, int 
 }
 
 MidiMessage makeMidiMessageNoteOn(int offset, int channel, int noteNumber, int velocity)
-{    
+{
     return makeMidiMessage(offset, channel, MidiStatus.noteOn, noteNumber, velocity);
 }
 
 MidiMessage makeMidiMessageNoteOff(int offset, int channel, int noteNumber)
-{    
+{
     return makeMidiMessage(offset, channel, MidiStatus.noteOff, noteNumber, 0);
 }
 
 MidiMessage makeMidiMessagePitchWheel(int offset, int channel, float value)
 {
     int ivalue = 8192 + cast(int)(value * 8192.0);
-    if (ivalue < 0) 
+    if (ivalue < 0)
         ivalue = 0;
-    if (ivalue > 16383) 
+    if (ivalue > 16383)
         ivalue = 16383;
     return makeMidiMessage(offset, channel, MidiStatus.pitchWheel, ivalue & 0x7F, ivalue >> 7);
 }
@@ -277,7 +278,7 @@ MidiMessage makeMidiMessagePitchWheel(int offset, int channel, float value)
 MidiMessage makeMidiMessageControlChange(int offset, int channel, MidiControlChange index, float value)
 {
     // MAYDO: mapping is a bit strange here, not sure it can make +127 except exactly for 1.0f
-    return makeMidiMessage(offset, channel, MidiStatus.controlChange, index, cast(int)(value * 127.0f) );    
+    return makeMidiMessage(offset, channel, MidiStatus.controlChange, index, cast(int)(value * 127.0f) );
 }
 
 
@@ -371,7 +372,7 @@ private:
 
     // Useful slots are in 1..QueueCapacity+1
     // means it can contain QueueCapacity items at most
-    MidiMessage[QueueCapacity+1] _heap;    
+    MidiMessage[QueueCapacity+1] _heap;
 
     void insertElement(MidiMessage message)
     {
@@ -386,9 +387,9 @@ private:
             debug
             {
                 // MIDI messages heap is on full capacity.
-                // That can happen because you have forgotten to call `getNextMidiMessages` 
+                // That can happen because you have forgotten to call `getNextMidiMessages`
                 // with the necessary number of frames.
-                assert(false); 
+                assert(false);
             }
             else
             {
