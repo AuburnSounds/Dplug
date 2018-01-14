@@ -255,7 +255,7 @@ public:
     void emptyMergedBoxes() nothrow @nogc
     {
         prevMergedDirtyRect = box2i(0,0,0,0);
-        mergedDirtyRect= box2i(0,0,0,0);
+        mergedDirtyRect = box2i(0,0,0,0);
     }
 
     void sendRepaintIfUIDirty() nothrow @nogc
@@ -359,8 +359,6 @@ void handleEvents(ref XEvent event, X11Window theWindow) nothrow @nogc
                     box2i[] areasToRedraw = (&areaToRedraw)[0..1];
                     swapBuffers(_wfb, areasToRedraw);
                 }
-
-
                 break;
 
             case ConfigureNotify:

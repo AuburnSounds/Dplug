@@ -77,7 +77,7 @@ interface IWindow
 {
 nothrow:
 @nogc:
-    /// To put in your message loop.*
+    /// To put in your message loop.
     /// This call should only be used if the window was
     /// created with `WindowUsage.host`.
     /// Else, event pumping is managed by the host or internally (X11).
@@ -87,7 +87,7 @@ nothrow:
     /// This call should only be used if the window was
     /// created with `WindowUsage.host`.
     /// In the case of a plug-in, the plugin client will request
-    /// termination of the window.
+    /// termination of the window through its destructor.
     bool terminated();
 
     /// Profile-purpose: get time in milliseconds.
@@ -144,9 +144,12 @@ nothrow @nogc:
     ImageRef!RGBA onResized(int width, int height);
 
     /// Recompute internally what needs be done for the next onDraw.
-    /// This function MUST be called before calling `onDraw` and `getDirtyRectangle`.
+    /// This function MUST have been called before calling `onDraw` and `getDirtyRectangle`.
     /// This method exists to allow the Window to recompute these draw lists less.
     /// And because cache invalidation was easier on user code than internally in the UI.
+    /// Important: once you've called `recomputeDirtyAreas()` you COMMIT to redraw the
+    /// corresponding area given by `getDirtyRectangle()`.
+    /// Two calls to `recomputeDirtyAreas()` will not yield the same area.
     void recomputeDirtyAreas();
 
     /// Returns: Minimal rectangle that contains dirty UIELement in UI + their graphical extent.
