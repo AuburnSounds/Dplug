@@ -108,6 +108,8 @@ nothrow:
     ///
     /// Background:
     ///     Some devices send a 'Note On' message with a velocity value of zero instead of a real 'Note Off' message.
+    ///     Many DAWs will automatically convert such ones to explicit ones, but one cannot rely on this.
+    ///     If developed software is not a plugin, there actually is not even a DAW that could perform this conversion.
     ///
     /// See_Also:
     ///     isNoteOff(),
