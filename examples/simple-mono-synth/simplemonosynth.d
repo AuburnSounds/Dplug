@@ -53,9 +53,23 @@ nothrow:
     {
         foreach(msg; getNextMidiMessages(frames))
         {
-            if (msg.isNoteOn())
+            // A wee bit faster version:
+            //
+            // if (msg.isNoteOn())
+            // {
+            //     if (msg.noteVelocity() > 0)
+            //         _voiceStatus.markNoteOn(msg.noteNumber());
+            //     else // implicit note off
+            //         _voiceStatus.markNoteOff(msg.noteNumber());
+            // }
+            // else if (msg.isNoteOff)
+            // {
+            //     _voiceStatus.markNoteOff(msg.noteNumber());
+            // }
+
+            if (msg.isNoteOnActual())
                 _voiceStatus.markNoteOn(msg.noteNumber());
-            if (msg.isNoteOff())
+            else if (msg.isNoteOffAny())
                 _voiceStatus.markNoteOff(msg.noteNumber());
         }
 
