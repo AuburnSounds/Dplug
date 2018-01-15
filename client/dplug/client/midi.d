@@ -22,7 +22,7 @@ module dplug.client.midi;
 import std.algorithm.mutation;
 import dplug.core.vec;
 
-/// It's the same abstraction that in IPlug.
+/// This abstraction is similar to the one in IPlug.
 /// For VST raw MIDI messages are passed.
 /// For AU MIDI messages gets synthesized.
 struct MidiMessage
@@ -73,14 +73,60 @@ nothrow:
         return statusType() == MidiStatus.controlChange;
     }
 
+    /// Checks whether the status type of the message is 'Note On'.
+    /// Doesn't consider the velocity value.
+    ///
+    /// See_Also: isNoteOnActual()
     bool isNoteOn() const
     {
         return statusType() == MidiStatus.noteOn;
     }
 
+    /// Checks whether the status type of the message is 'Note On'
+    /// and the velocity value is actually greater than zero.
+    ///
+    /// See_Also:
+    ///     isNoteOn(),
+    ///     isNoteOffImplicit()
+    bool isNoteOnActual() const
+    {
+        return isNoteOn() && (noteVelocity() > 0);
+    }
+
+    /// Checks whether the status type of the message is 'Note Off'.
+    /// Doesn't consider the velocity value.
+    ///
+    /// See_Also: isNoteOffImplicit()
     bool isNoteOff() const
     {
         return statusType() == MidiStatus.noteOff;
+    }
+
+    /// Checks whether the message is an implicit 'Note Off' message.
+    /// This means the message would be a 'Note On' message according to its status type
+    /// but its velocity value equals zero.
+    ///
+    /// Background:
+    ///     Some devices send a 'Note On' message with a velocity value of zero instead of a real 'Note Off' message.
+    ///     Many DAWs will automatically convert such ones to explicit ones, but one cannot rely on this.
+    ///     If the developed software is not a plugin, there is not even a DAW that could perform this conversion actually.
+    ///
+    /// See_Also:
+    ///     isNoteOff(),
+    ///     isNoteOffAny()
+    bool isNoteOffImplicit() const
+    {
+        return isNoteOn() && (noteVelocity() == 0);
+    }
+
+    /// Checks whether the message is 'Note Off' message regardless of whether explicit or implicit.
+    ///
+    /// See_Also:
+    ///     isNoteOff(),
+    ///     isNoteOffImplicit()
+    bool isNoteOffAny() const
+    {
+        return isNoteOff() || isNoteOffImplicit();
     }
 
     bool isPitchBend() const
