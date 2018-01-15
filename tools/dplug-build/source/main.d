@@ -230,7 +230,7 @@ int main(string[] args)
                 bool is64b = arch == Arch.x86_64;
 
                 // Does not try to build 32-bit builds of AAX, or Universal Binaries
-                if (configIsAAX(config) && arch == Arch.universalBinary)
+                if (configIsAAX(config) && (arch == Arch.universalBinary || arch == Arch.x86))
                 {
                     cwritefln("info: Skipping architecture %s for AAX\n".white, arch);
                     continue;
