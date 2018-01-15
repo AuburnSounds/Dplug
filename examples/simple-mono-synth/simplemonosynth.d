@@ -12,7 +12,7 @@ final class SimpleMonoSynth : dplug.client.Client
 {
 public:
 nothrow:
-@nogc:   
+@nogc:
 
     override PluginInfo buildPluginInfo()
     {
@@ -44,7 +44,7 @@ nothrow:
 
     override void reset(double sampleRate, int maxFrames, int numInputs, int numOutputs)
     {
-        _phase = 1+0i;        
+        _phase = 1+0i;
         _sampleRate = sampleRate;
         _voiceStatus.initialize();
     }
@@ -53,23 +53,9 @@ nothrow:
     {
         foreach(msg; getNextMidiMessages(frames))
         {
-            // A wee bit faster version:
-            //
-            // if (msg.isNoteOn())
-            // {
-            //     if (msg.noteVelocity() > 0)
-            //         _voiceStatus.markNoteOn(msg.noteNumber());
-            //     else // implicit note off
-            //         _voiceStatus.markNoteOff(msg.noteNumber());
-            // }
-            // else if (msg.isNoteOff)
-            // {
-            //     _voiceStatus.markNoteOff(msg.noteNumber());
-            // }
-
-            if (msg.isNoteOnActual())
+            if (msg.isNoteOn())
                 _voiceStatus.markNoteOn(msg.noteNumber());
-            else if (msg.isNoteOffAny())
+            else if (msg.isNoteOff())
                 _voiceStatus.markNoteOff(msg.noteNumber());
         }
 

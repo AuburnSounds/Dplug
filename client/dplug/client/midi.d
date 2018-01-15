@@ -73,60 +73,39 @@ nothrow:
         return statusType() == MidiStatus.controlChange;
     }
 
-    /// Checks whether the status type of the message is 'Note On'.
-    /// Doesn't consider the velocity value.
+    /// Checks whether the status type of the message is 'Note On'
+    /// _and the velocity value is actually greater than zero_.
     ///
-    /// See_Also: isNoteOnActual()
+    /// IMPORTANT: As per MIDI 1.0, a 'Note On' event with a velocity
+    ///            of zero should be treated like a 'Note Off' event.
+    ///            Which is why this function checks velocity > 0.
+    ///
+    /// See_Also:
+    ///     isNoteOff()
     bool isNoteOn() const
     {
-        return statusType() == MidiStatus.noteOn;
+        return (statusType() == MidiStatus.noteOn) && (noteVelocity() > 0);
     }
 
-    /// Checks whether the status type of the message is 'Note On'
-    /// and the velocity value is actually greater than zero.
+    /// Checks whether the status type of the message is 'Note Off'
+    /// or 'Note On' with a velocity of 0.
+    ///
+    /// IMPORTANT: As per MIDI 1.0, a 'Note On' event with a velocity
+    ///            of zero should be treated like a 'Note Off' event.
+    ///            Which is why this function checks velocity == 0.
+    ///
+    ///            Some devices send a 'Note On' message with a velocity 
+    ///            value of zero instead of a real 'Note Off' message.
+    ///            Many DAWs will automatically convert such ones to 
+    ///            explicit ones, but one cannot rely on this.
     ///
     /// See_Also:
-    ///     isNoteOn(),
-    ///     isNoteOffImplicit()
-    bool isNoteOnActual() const
-    {
-        return isNoteOn() && (noteVelocity() > 0);
-    }
-
-    /// Checks whether the status type of the message is 'Note Off'.
-    /// Doesn't consider the velocity value.
-    ///
-    /// See_Also: isNoteOffImplicit()
+    ///     isNoteOn()
     bool isNoteOff() const
     {
-        return statusType() == MidiStatus.noteOff;
-    }
-
-    /// Checks whether the message is an implicit 'Note Off' message.
-    /// This means the message would be a 'Note On' message according to its status type
-    /// but its velocity value equals zero.
-    ///
-    /// Background:
-    ///     Some devices send a 'Note On' message with a velocity value of zero instead of a real 'Note Off' message.
-    ///     Many DAWs will automatically convert such ones to explicit ones, but one cannot rely on this.
-    ///     If the developed software is not a plugin, there is not even a DAW that could perform this conversion actually.
-    ///
-    /// See_Also:
-    ///     isNoteOff(),
-    ///     isNoteOffAny()
-    bool isNoteOffImplicit() const
-    {
-        return isNoteOn() && (noteVelocity() == 0);
-    }
-
-    /// Checks whether the message is 'Note Off' message regardless of whether explicit or implicit.
-    ///
-    /// See_Also:
-    ///     isNoteOff(),
-    ///     isNoteOffImplicit()
-    bool isNoteOffAny() const
-    {
-        return isNoteOff() || isNoteOffImplicit();
+        return (statusType() == MidiStatus.noteOff) 
+               || 
+               ( (statusType() == MidiStatus.noteOn) && (noteVelocity() == 0) );
     }
 
     bool isPitchBend() const
