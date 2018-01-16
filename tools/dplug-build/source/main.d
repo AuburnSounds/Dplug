@@ -101,7 +101,7 @@ int main(string[] args)
 
         string osString = "";
         version (OSX)
-            osString = "Mac-OS-X";
+            osString = "macOS";
         else version(linux)
             osString = "Linux";
         else version(Windows)
