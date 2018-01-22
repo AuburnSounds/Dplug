@@ -11,7 +11,7 @@ import std.math;
 
 //import dplug.core.nogc;
 import dplug.core.math;
-import dplug.core.alignedbuffer;
+import dplug.core.vec;
 
 /// Generate a sine.
 /// It turns out it's very stable, stable enough for table generation at least.

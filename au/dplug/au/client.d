@@ -29,7 +29,7 @@ import std.conv;
 
 import derelict.carbon;
 
-import dplug.core.alignedbuffer;
+import dplug.core.vec;
 import dplug.core.nogc;
 import dplug.core.lockedqueue;
 import dplug.core.runtime;
@@ -1730,7 +1730,7 @@ private:
         putNumberInDict(pDict, kAUPresetManufacturerKey, &(cd.componentManufacturer), kCFNumberSInt32Type);
         auto presetBank = _client.presetBank();
         putStrInDict(pDict, kAUPresetNameKey, presetBank.currentPreset().name);
-        ubyte[] state = presetBank.getStateChunk();
+        ubyte[] state = presetBank.getStateChunkFromCurrentState();
         putDataInDict(pDict, kAUPresetDataKey, state);
         *ppPropList = pDict;
         return noErr;

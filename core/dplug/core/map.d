@@ -27,6 +27,7 @@ Map!(K, V, less, allowDuplicates) makeMap(K, V, alias less = "a < b", bool allow
 /// Tree-map, designed to replace std::map usage.
 /// The API should looks closely like the builtin associative arrays.
 /// O(lg(n)) insertion, removal, and search time.
+/// `Map` is designed to operate even without initialization through `makeMap`.
 struct Map(K, V, alias less = "a < b", bool allowDuplicates = false)
 {
 public:
@@ -35,7 +36,7 @@ nothrow:
 
     this(int dummy)
     {
-        _rbt = mallocNew!InternalTree();
+        lazyInitialize();
     }
 
     @disable this(this);
@@ -54,6 +55,8 @@ nothrow:
     /// Returns: `true` if the insertion took place.
     bool insert(K key, V value)
     {
+        lazyInitialize();
+
         auto kv = KeyValue(key, value);
         assert(_rbt);
         return _rbt.insert(kv) != 0;
@@ -63,6 +66,9 @@ nothrow:
     /// Returns: `true` if the removal took place.
     bool remove(K key)
     {
+        if (!isInitialized)
+            return false;
+
         auto kv = KeyValue(key, V.init);
         return _rbt.removeKey(kv) != 0;
     }
@@ -70,6 +76,9 @@ nothrow:
     /// Removes all elements from the map.
     void clearContents()
     {
+        if (!isInitialized)
+            return;
+
         while(_rbt.length > 0)
             _rbt.removeBack();
     }
@@ -78,6 +87,9 @@ nothrow:
     ///          Live builtin associative arrays.
     inout(V)* opBinaryRight(string op)(K key) inout if (op == "in")
     {
+        if (!isInitialized)
+            return null;
+
         auto kv = KeyValue(key, V.init);
         auto node = _rbt._find(kv);
         if (node is null)
@@ -107,6 +119,8 @@ nothrow:
     /// Returns: `true` if this key is contained.
     bool contains(K key) const
     {
+         if (!isInitialized)
+            return false;
         auto kv = KeyValue(key, V.init);
         return (kv in _rbt);
     }
@@ -114,12 +128,17 @@ nothrow:
     /// Returns: Number of elements in the map.
     size_t length() const
     {
+        if (!isInitialized)
+            return 0;
+
         return _rbt.length();
     }
 
     /// Returns: `ttue` is the map has no element.
     bool empty() const
     {
+        if (!isInitialized)
+            return true;
         return _rbt.length() == 0;
     }
 
@@ -128,18 +147,27 @@ nothrow:
     /// Fetch a forward range on all values.
     Range!(MapRangeType.value) byValue()
     {
+        if (!isInitialized)
+            return Range!(MapRangeType.value).init;
+
         return Range!(MapRangeType.value)(_rbt[]);
     }
 
     /// ditto
     ConstRange!(MapRangeType.value) byValue() const
     {
+        if (!isInitialized)
+            return ConstRange!(MapRangeType.value).init;
+
         return ConstRange!(MapRangeType.value)(_rbt[]);
     }
 
     /// ditto
     ImmutableRange!(MapRangeType.value) byValue() immutable
     {
+        if (!isInitialized)
+            return ImmutableRange!(MapRangeType.value).init;
+        
         return ImmutableRange!(MapRangeType.value)(_rbt[]);
     }
 
@@ -151,18 +179,27 @@ nothrow:
     /// Fetch a forward range on all keys.
     Range!(MapRangeType.key) byKey()
     {
+        if (!isInitialized)
+            return Range!(MapRangeType.key).init;
+
         return Range!(MapRangeType.key)(_rbt[]);
     }
 
     /// ditto
     ConstRange!(MapRangeType.key) byKey() const
     {
+        if (!isInitialized)
+            return ConstRange!(MapRangeType.key).init;
+
         return ConstRange!(MapRangeType.key)(_rbt[]);
     }
 
     /// ditto
     ImmutableRange!(MapRangeType.key) byKey() immutable
     {
+        if (!isInitialized)
+            return ImmutableRange!(MapRangeType.key).init;
+
         return ImmutableRange!(MapRangeType.key)(_rbt[]);
     }
 
@@ -171,18 +208,27 @@ nothrow:
     /// Fetch a forward range on all keys.
     Range!(MapRangeType.keyValue) byKeyValue()
     {
+        if (!isInitialized)
+            return Range!(MapRangeType.keyValue).init;
+
         return Range!(MapRangeType.keyValue)(_rbt[]);
     }
 
     /// ditto
     ConstRange!(MapRangeType.keyValue) byKeyValue() const
     {
+        if (!isInitialized)
+            return ConstRange!(MapRangeType.keyValue).init;
+
         return ConstRange!(MapRangeType.keyValue)(_rbt[]);
     }
 
     /// ditto
     ImmutableRange!(MapRangeType.keyValue) byKeyValue() immutable
     {
+        if (!isInitialized)
+            return ImmutableRange!(MapRangeType.keyValue).init;
+
         return ImmutableRange!(MapRangeType.keyValue)(_rbt[]);
     }
 
@@ -191,6 +237,9 @@ nothrow:
     /// Fetch a forward range on all elements with given key.
     Range!(MapRangeType.value) byGivenKey(K key)
     {
+       if (!isInitialized)
+            return Range!(MapRangeType.value).init;
+
         auto kv = KeyValue(key, V.init);
         return Range!(MapRangeType.value)(_rbt.range(kv));
     }
@@ -198,6 +247,9 @@ nothrow:
     /// ditto
     ConstRange!(MapRangeType.value) byGivenKey(K key) const
     {
+        if (!isInitialized)
+            return ConstRange!(MapRangeType.value).init;
+
         auto kv = KeyValue(key, V.init);
         return ConstRange!(MapRangeType.value)(_rbt.range(kv));
     }
@@ -205,6 +257,9 @@ nothrow:
     /// ditto
     ImmutableRange!(MapRangeType.value) byGivenKey(K key) immutable
     {
+        if (!isInitialized)
+            return ImmutableRange!(MapRangeType.value).init;
+
         auto kv = KeyValue(key, V.init);
         return ImmutableRange!(MapRangeType.value)(_rbt.range(kv));
     }
@@ -234,12 +289,42 @@ private:
     }
 
     InternalTree _rbt;
+
+    bool isInitialized() const
+    {
+        return _rbt !is null;
+    }
+
+    void lazyInitialize()
+    {
+        if (_rbt is null)
+        {
+            _rbt = mallocNew!InternalTree();
+        }
+    }
 }
 
 unittest
 {
-    assert(totalAllocations == 0);
+    // It should be possible to use most function of an uninitialized Map
+    // All except functions returning a range will work.
+    Map!(int, string) m;
 
+    assert(m.length == 0);
+    assert(m.empty);
+    assert(!m.contains(7));
+
+    auto range = m.byKey();
+    assert(range.empty);
+    foreach(e; range)
+    {        
+    }
+
+    m[1] = "fun";
+}
+
+unittest
+{
     void test(bool removeKeys) nothrow @nogc
     {
         {
@@ -270,7 +355,6 @@ unittest
                 assert(removeKeys ^ test.contains(key)); // either keys are here or removed
             }            
         }
-        assert(totalAllocations == 0);
     }
     test(true);
     test(false);
@@ -297,7 +381,7 @@ unittest
     aa.remove("hello");
 }
 
-/// Creates a new empty `Map`.
+/// Creates a new empty `Set`.
 Set!(K, less) makeSet(K, alias less = "a < b", bool allowDuplicates = false)()
 {
     return Set!(K, less, allowDuplicates)(42);
@@ -306,6 +390,7 @@ Set!(K, less) makeSet(K, alias less = "a < b", bool allowDuplicates = false)()
 
 /// Set, designed to replace std::set usage.
 /// O(lg(n)) insertion, removal, and search time.
+/// `Set` is designed to operate even without initialization through `makeSet`.
 struct Set(K, alias less = "a < b", bool allowDuplicates = false)
 {
 public:
@@ -314,14 +399,14 @@ nothrow:
 
     this(int dummy)
     {
-        _rbt = mallocNew!InternalTree();
+         lazyInitialize();
     }
 
     @disable this(this);
 
     ~this()
     {
-        if (_rbt !is null)
+        if (isInitialized)
         {
             destroyFree(_rbt);
             _rbt = null;
@@ -334,6 +419,7 @@ nothrow:
     /// Returns: `true` if the insertion took place.
     bool insert(K key)
     {
+        lazyInitialize();
         return _rbt.insert(key) != 0;
     }
 
@@ -341,12 +427,16 @@ nothrow:
     /// Returns: `true` if the removal took place.
     bool remove(K key)
     {
+        if (!isInitialized)
+            return false;
         return _rbt.removeKey(key) != 0;
     }
 
     /// Removes all elements from the set.
     void clearContents()
     {
+        if (!isInitialized)
+            return;
         while(_rbt.length > 0)
             _rbt.removeBack();
     }
@@ -354,42 +444,109 @@ nothrow:
     /// Returns: `true` if the element is present.
     bool opBinaryRight(string op)(K key) inout if (op == "in")
     {
+        if (!isInitialized)
+            return false;
         return key in _rbt;
     }
 
     /// Returns: `true` if the element is present.
     bool opIndex(K key) const
     {
+        if (!isInitialized)
+            return false;
         return key in _rbt;
     }
 
     /// Returns: `true` if the element is present.
     bool contains(K key) const
     {
+        if (!isInitialized)
+            return false;
         return key in _rbt;
     }
 
     /// Fetch a range that spans all the elements in the container.
     auto opSlice() inout
     {
+        if (!isInitialized)
+            return nullRange();
         return _rbt[];
     }
 
     /// Returns: Number of elements in the set.
     size_t length() const
     {
+        if (!isInitialized)
+            return 0;
         return _rbt.length();
     }
 
     /// Returns: `ttue` is the set has no element.
     bool empty() const
     {
+        if (!isInitialized)
+            return true;
         return _rbt.length() == 0;
     }
 
 private:
     alias InternalTree = RedBlackTree!(K, less, allowDuplicates); 
     InternalTree _rbt;
+
+    bool isInitialized() const
+    {
+        return _rbt !is null;
+    }
+
+    void lazyInitialize()
+    {
+        if (_rbt is null)
+        {
+            _rbt = mallocNew!InternalTree();
+        }
+    }
+
+    /**
+    * Return a range without any items.
+    */
+    auto nullRange()
+    {
+        return InternalTree.Range.init;
+    }
+
+    /// Ditto
+    auto nullRange() const
+    {
+        return InternalTree.ConstRange.init;
+    }
+
+    /// Ditto
+    auto nullRange() immutable
+    {
+        return InternalTree.ImmutableRange.init;
+    }
+}
+
+unittest
+{
+    // It should be possible to use most function of an uninitialized Set
+    // All except functions returning a range will work.
+    Set!(string) set;
+
+    assert(set.length == 0);
+    assert(set.empty);
+    set.clearContents();
+    assert(!set.contains("toto"));
+
+    auto range = set[];
+    assert(range.empty);
+    foreach(e; range)
+    {        
+    }
+
+    // Finally create the internal state
+    set.insert("titi");
+    assert(set.contains("titi"));
 }
 
 
@@ -409,13 +566,9 @@ unittest
         assert(!keywords.contains("public"));
     }
 
-    assert(totalAllocations == 0);
 }
 
 private:
-
-version(unittest)
-    __gshared int totalAllocations = 0;
 
 
 /*
@@ -489,8 +642,6 @@ nothrow:
 
     void deallocate()
     {
-        version(unittest)
-            totalAllocations -= 1;
         //import core.stdc.stdio;
         //printf("deallocate %p\n", &this);
         destroyFree(&this);
@@ -981,8 +1132,8 @@ nothrow:
     alias Node = N;
     alias Elem = typeof(Node.value);
 
-    private Node _begin;
-    private Node _end;
+    private Node _begin = null;
+    private Node _end = null;
 
     private this(Node b, Node e)
     {
@@ -1040,6 +1191,16 @@ nothrow:
     @property RBRange save()
     {
         return this;
+    }
+}
+
+unittest
+{
+    // RBRange.init is supposed to be an empty valid range
+    RBRange!(RBNode!int*) range;
+    assert(range.empty);
+    foreach(e; range)
+    {        
     }
 }
 
@@ -1190,8 +1351,6 @@ nothrow:
 
     static private Node allocate()
     {
-        version(unittest)
-            totalAllocations += 1;
         Node p = mallocNew!RBNode;
         //import core.stdc.stdio;
         //printf("allocate %p\n", p);

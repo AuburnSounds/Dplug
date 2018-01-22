@@ -18,7 +18,7 @@ examples/just_windowing/just_windowing
 .lldbinit
 tools/process/process
 tools/process/process32
-tools/release/release
+tools/dplug-build/dplug-build
 tools/stress-plugin/stress-plugin
 tools/wav-compare/wav-compare
 builds

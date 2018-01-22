@@ -1,10 +1,15 @@
+import core.stdc.string;
+
 import std.file;
 import std.stdio;
 import std.conv;
+import std.uni;
 import std.uuid;
 import std.process;
 import std.string;
 import std.path;
+
+import dplug.core.sharedlib;
 
 import colorize;
 import utils;
@@ -28,21 +33,21 @@ void usage()
     }
 
     cwriteln();
-    cwriteln( "This is the ".white ~ "release".cyan ~ " tool: plugin bundler and DUB front-end.".white);
+    cwriteln( "This is the ".white ~ "dplug-build".cyan ~ " tool: plugin bundler and DUB front-end.".white);
     cwriteln();
     cwriteln("FLAGS".white);
     cwriteln();
     flag("-a --arch", "Selects target architecture.", "x86 | x86_64 | all", "Windows => all   OSX => x86_64");
     flag("-b --build", "Selects build type.", "same ones as dub accepts", "debug");
     flag("--compiler", "Selects D compiler.", "dmd | ldc | gdc", "ldc");
-    flag("-c --config", "Adds a build configuration.", "VST | AU | AAX | name starting with \"VST\" or \"AU\" or \"AAX\"", "all");
+    flag("-c --config", "Adds a build configuration.", "VST | AU | AAX | name starting with \"VST\", \"AU\" or \"AAX\"", "all");
     flag("-f --force", "Forces rebuild", null, "no");
     flag("--combined", "Combined build", null, "no");
     flag("-q --quiet", "Quieter output", null, "no");
     flag("-v --verbose", "Verbose output", null, "no");
-    flag("-sr --skip-registry", "Skip registry (avoid network)", null, "no");
-    flag("--publish", "Make the plugin available in standard directories (OSX only)", null, "no");
-    flag("--auval", "Check Audio Unit validation with auval (OSX only)", null, "no");
+    flag("-sr --skip-registry", " Skip checking the DUB registry\n                        Avoid network, doesn't update dependencies", null, "no");
+    flag("--publish", "Make the plugin available in standard directories " ~ "(OSX only, DOESN'T WORK)".red, null, "no");
+    flag("--auval", "Check Audio Unit validation with auval " ~ "(OSX only, DOESN'T WORK)".red, null, "no");
     flag("-h --help", "Shows this help", null, null);
 
 
@@ -50,22 +55,23 @@ void usage()
     cwriteln("EXAMPLES".white);
     cwriteln();
     cwriteln("        # Releases a final VST plugin for 32-bit and 64-bit".green);
-    cwriteln("        release -c ldc -a all -b release-nobounds --combined".cyan);
+    cwriteln("        dplug-build --compiler ldc -a all -b release-nobounds --combined".cyan);
     cwriteln();
-    cwriteln("        # Builds a 32-bit Audio Unit plugin for profiling, and publish it".green);
-    cwriteln("        release -c dmd -a x86 --config AU -b release-debug --publish".cyan);
+    cwriteln("        # Builds a 32-bit Audio Unit plugin for profiling".green);
+    cwriteln("        dplug-build --compiler dmd -a x86 --config AU -b release-debug".cyan);
     cwriteln();
     cwriteln("        # Shows help".green);
-    cwriteln("        release -h".cyan);
+    cwriteln("        dplug-build -h".cyan);
 
     cwriteln();
     cwriteln("NOTES".white);
     cwriteln();
-    cwriteln("      The configuration name used with " ~ "--config".cyan ~ " must exist in your dub.json file.");
+    cwriteln("      The configuration name used with " ~ "--config".cyan ~ " must exist in your " ~ "dub.json".cyan ~ " file.");
+    cwriteln("      dplug-build".cyan ~ " detects plugin format based on the " ~ "configuration".yellow ~ " name's prefix: " ~ "AU | VST | AAX.".yellow);
     cwriteln();
     cwriteln("      --combined".cyan ~ " has no effect on code speed, but can avoid DUB flags problems.".grey);
     cwriteln();
-    cwriteln("      release".cyan ~ " expects a " ~ "plugin.json".cyan ~ " file for proper bundling and will provide help".grey);
+    cwriteln("      dplug-build".cyan ~ " expects a " ~ "plugin.json".cyan ~ " file for proper bundling and will provide help".grey);
     cwriteln("      for populating it. For other informations it reads the " ~ "dub.json".cyan ~ " file.".grey);
     cwriteln();
     cwriteln();
@@ -95,7 +101,7 @@ int main(string[] args)
 
         string osString = "";
         version (OSX)
-            osString = "Mac-OS-X";
+            osString = "macOS";
         else version(linux)
             osString = "Linux";
         else version(Windows)
@@ -134,15 +140,19 @@ int main(string[] args)
             else if (arg == "-a" || arg == "--arch")
             {
                 ++i;
-                if (args[i] == "x86" || args[i] == "x32")
+                if (args[i] == "x32" || args[i] == "x64" || args[i] == "x86-64")
+                    throw new Exception("This arch switch value has been deprecated (available: x86, x86_64, all)");
+
+                if (args[i] == "x86")
                     archs = [ Arch.x86 ];
-                else if (args[i] == "x64" || args[i] == "x86_64" || args[i] == "x86-64") // for convenience
+                else if (args[i] == "x86_64")
                     archs = [ Arch.x86_64 ];
                 else if (args[i] == "all")
                 {
                     archs = allArchitectureqForThisPlatform();
                 }
-                else throw new Exception("Unrecognized arch (available: x86, x86_64, x32, x64, all)");
+                else
+                    throw new Exception("Unrecognized arch (available: x86, x86_64, all)");
             }
             else if (arg == "-h" || arg == "-help" || arg == "--help")
                 help = true;
@@ -160,7 +170,7 @@ int main(string[] args)
                 auval = true;
             }
             else
-                throw new Exception(format("Unrecognized argument '%s'. Type \"release -h\" for help.", arg));
+                throw new Exception(format("Unrecognized argument '%s'. Type \"dplug-build -h\" for help.", arg));
         }
 
         if (quiet && verbose)
@@ -172,7 +182,7 @@ int main(string[] args)
             return 0;
         }
 
-        cwriteln("*** Reading dub.json and plugin.json...".white);
+        //cwriteln("*** Reading dub.json and plugin.json...".white);
 
         Plugin plugin = readPluginDescription();
 
@@ -204,6 +214,7 @@ int main(string[] args)
             cwritefln("   This plugin will be working in ".green ~ "%s".yellow~dot, toStringArchs(archs));
             cwritefln("   The choosen configurations are ".green ~ "%s".yellow~dot, configurations);
             cwritefln("   The choosen build type is ".green ~ "%s".yellow ~ dot, build);
+            cwritefln("   The choosen compiler is ".green ~ "%s".yellow ~ dot, toStringUpper(compiler));
             if (publish)
                 cwritefln("   The binaries will be copied to standard plugin directories.".green);
             if (auval)
@@ -213,9 +224,44 @@ int main(string[] args)
 
         void buildAndPackage(string compiler, string config, Arch[] architectures, string iconPath)
         {
+
             foreach (int archCount, arch; architectures)
             {
                 bool is64b = arch == Arch.x86_64;
+
+                // Does not try to build 32-bit builds of AAX, or Universal Binaries
+                if (configIsAAX(config) && (arch == Arch.universalBinary || arch == Arch.x86))
+                {
+                    cwritefln("info: Skipping architecture %s for AAX\n".white, arch);
+                    continue;
+                }
+
+                // Does not try to build AU under Windows
+                version(Windows)
+                {
+                    if (configIsAU(config))
+                    {
+                        cwritefln("info: Skipping AU format since building for Windows\n".white, arch);
+                        continue;
+                    }
+                }
+
+                // Does not try to build AAX or AU under Linux
+                version(linux)
+                {
+                    if (configIsAAX(config))
+                    {
+                        cwritefln("info: Skipping AAX format since building for Linux\n".white, arch);
+                        continue;
+                    }
+
+                    if (configIsAU(config))
+                    {
+                        cwritefln("info: Skipping AU format since building for Linux\n".white, arch);
+                        continue;
+                    }
+                }
+
                 version(Windows)
                 {
                     // FUTURE: remove when LDC on Windows is a single archive (should happen for 1.0.0)
@@ -235,30 +281,138 @@ int main(string[] args)
                     buildPlugin(compiler, config, build, is64b, verbose, force, combined, quiet, skipRegistry);
 
                     double bytes = getSize(plugin.dubOutputFileName) / (1024.0 * 1024.0);
-                    cwritefln("    => Build OK, binary size = %0.1f mb, available in %s".green, bytes, path);
+                    cwritefln("    => Build OK, binary size = %0.1f mb, available in ./%s".green, bytes, path);
                     cwriteln();
+                }
+
+                void signAAXBinaryWithPACE(string binaryPathInOut)
+                {
+                    if (!plugin.hasPACEConfig)
+                    {
+                        warning("Plug-in will not be signed by PACE because no pace.json found");
+                        return;
+                    }
+
+                    auto paceConfig = plugin.paceConfig;
+
+                    version(Windows)
+                    {
+                        string cmd = format(`wraptool sign %s--account %s --password %s --keyfile %s --keypassword %s --wcguid %s --in %s --out %s`,
+                                            (verbose ? "--verbose " : ""),
+                                            paceConfig.iLokAccount,
+                                            paceConfig.iLokPassword,
+                                            paceConfig.keyFileWindows,
+                                            paceConfig.keyPasswordWindows,
+                                            paceConfig.wrapConfigGUID,
+                                            escapeShellArgument(binaryPathInOut),
+                                            escapeShellArgument(binaryPathInOut));
+                        safeCommand(cmd);
+                    }
+                    else version(OSX)
+                    {
+                        string cmd = format(`wraptool sign --verbose --account %s --password %s --signid %s --wcguid %s --in %s --out %s`,
+                                            paceConfig.iLokAccount,
+                                            paceConfig.iLokPassword,
+                                            escapeShellArgument(paceConfig.developerIdentityOSX),
+                                            paceConfig.wrapConfigGUID,
+                                            escapeShellArgument(binaryPathInOut),
+                                            escapeShellArgument(binaryPathInOut));
+                        safeCommand(cmd);
+                    }
+                    else
+                        assert(false);
+                }
+
+                void extractAAXPresetsFromBinary(string binaryPath, string contentsDir, bool is64b)
+                {
+                    // Extract presets from the AAX plugin binary by executing it.
+                    // Because of this release itself must be 64-bit.
+                    // To avoid this coupling, presets should be stored outside of the binary in the future.
+                    if ((void*).sizeof == 4 && is64b)
+                        warning("Can't extract presets from a 64-bit AAX plug-in when dplug-build is built as a 32-bit program.");
+                    else if ((void*).sizeof == 8 && !is64b)
+                        warning("Can't extract presets from a 32-bit AAX plug-in when dplug-build is built as a 64-bit program.");
+                    else
+                    {
+                        // We need to have a sub-directory of vendorName else the presets aren't found.
+                        // Then we need one level deeper else the presets aren't organized in sub-directories.
+                        //
+                        // "AAX plug-ins should include a set of presets in the following directory within the .aaxplugin:
+                        //       MyPlugIn.aaxplugin/Contents/Factory Presets/MyPlugInPackage/
+                        //  Where MyPlugInPackage is the plug-in's longest Package Name with 16 characters or fewer."
+                        string packageName = plugin.pluginName;
+                        if (packageName.length > 16)
+                            packageName = packageName[0..16];
+                        string factoryPresetsLocation =
+                            format(contentsDir ~ "Factory Presets/" ~ packageName ~ "/%s Factory Presets", plugin.prettyName);
+
+                        mkdirRecurse(factoryPresetsLocation);
+
+                        SharedLib lib;
+                        lib.load(plugin.dubOutputFileName);
+                        if (!lib.hasSymbol("DplugEnumerateTFX"))
+                            throw new Exception("Couldn't find the symbol DplugEnumerateTFX in the plug-in");
+
+                        // Note: this is duplicated in dplug-aax in aax_init.d
+                        // This callback is called with:
+                        // - name a zero-terminated C string
+                        // - a buffer representing the .tfx content
+                        // - a user-provided pointer
+                        alias enumerateTFXCallback = extern(C) void function(const(char)* name, const(ubyte)* tfxContent, size_t len, void* userPointer);
+                        alias enumerateTFX_t = extern(C) void function(enumerateTFXCallback, void* userPointer);
+
+                        struct Context
+                        {
+                            string factoryPresetsDir;
+                            int presetCount = 0;
+                        }
+
+                        Context context = Context(factoryPresetsLocation);
+
+                        static extern(C) void processPreset(const(char)* name,
+                                                            const(ubyte)* tfxContent,
+                                                            size_t len,
+                                                            void* userPointer)
+                        {
+                            Context* context = cast(Context*)userPointer;
+                            const(char)[] presetName = name[0..strlen(name)];
+                            std.file.write(context.factoryPresetsDir ~ "/" ~ presetName ~ ".tfx", tfxContent[0..len]);
+                            context.presetCount += 1;
+                        }
+
+                        enumerateTFX_t ptrDplugEnumerateTFX = cast(enumerateTFX_t) lib.loadSymbol("DplugEnumerateTFX");
+                        ptrDplugEnumerateTFX(&processPreset, &context);
+                        lib.unload();
+
+                        cwritefln("    => Extracted %s AAX factory presets from binary".green, context.presetCount);
+                        cwriteln();
+                    }
                 }
 
                 version(Windows)
                 {
-                    // Special case for AAX need its own directory, but according to Voxengo releases, 
+                    // Special case for AAX need its own directory, but according to Voxengo releases,
                     // its more minimal than either JUCE or IPlug builds.
                     // Only one file (.dll even) seems to be needed in <plugin-name>.aaxplugin\Contents\x64
                     // Note: only 64-bit AAX supported.
                     if (configIsAAX(config))
                     {
                         string pluginFinalName = plugin.prettyName ~ ".aaxplugin";
-                        string pluginDir = path ~ "/" ~ (plugin.prettyName ~ ".aaxplugin") ~ "/Contents/";                        
+                        string contentsDir = path ~ "/" ~ (plugin.prettyName ~ ".aaxplugin") ~ "/Contents/";
+
+                        extractAAXPresetsFromBinary(plugin.dubOutputFileName, contentsDir, is64b);
 
                         if (is64b)
                         {
-                            mkdirRecurse(pluginDir ~ "x64");
-                            fileMove(plugin.dubOutputFileName, pluginDir ~ "x64/" ~ pluginFinalName);
+                            mkdirRecurse(contentsDir ~ "x64");
+                            fileMove(plugin.dubOutputFileName, contentsDir ~ "x64/" ~ pluginFinalName);
+                            signAAXBinaryWithPACE(contentsDir ~ "x64/" ~ pluginFinalName);
                         }
                         else
                         {
-                            mkdirRecurse(pluginDir ~ "Win32");
-                            fileMove(plugin.dubOutputFileName, pluginDir ~ "Win32/" ~ pluginFinalName);
+                            mkdirRecurse(contentsDir ~ "Win32");
+                            fileMove(plugin.dubOutputFileName, contentsDir ~ "Win32/" ~ pluginFinalName);
+                            signAAXBinaryWithPACE(contentsDir ~ "Win32/" ~ pluginFinalName);
                         }
                     }
                     else
@@ -293,20 +447,26 @@ int main(string[] args)
                         assert(false);
 
                     // On Mac, make a bundle directory
-                    string contentsDir = path ~ "/" ~ pluginDir ~ "/Contents";
-                    string ressourcesDir = contentsDir ~ "/Resources";
-                    string macosDir = contentsDir ~ "/MacOS";
+                    string bundleDir = path ~ "/" ~ pluginDir;
+                    string contentsDir = path ~ "/" ~ pluginDir ~ "/Contents/";
+                    string ressourcesDir = contentsDir ~ "Resources";
+                    string macosDir = contentsDir ~ "MacOS";
                     mkdirRecurse(ressourcesDir);
                     mkdirRecurse(macosDir);
+
+                    if (configIsAAX(config))
+                        extractAAXPresetsFromBinary(plugin.dubOutputFileName, contentsDir, is64b);
+
+
 
                     cwriteln("*** Generating Info.plist...".white);
                     string plist = makePListFile(plugin, config, iconPath != null);
                     cwritefln("    => Generated %s bytes.".green, plist.length);
                     cwriteln();
-                    std.file.write(contentsDir ~ "/Info.plist", cast(void[])plist);
+                    std.file.write(contentsDir ~ "Info.plist", cast(void[])plist);
 
                     void[] pkgInfo = cast(void[]) plugin.makePkgInfo(config);
-                    std.file.write(contentsDir ~ "/PkgInfo", pkgInfo);
+                    std.file.write(contentsDir ~ "PkgInfo", pkgInfo);
 
                     string exePath = macosDir ~ "/" ~ plugin.prettyName;
 
@@ -317,12 +477,12 @@ int main(string[] args)
                         if (configIsAU(config))
                         {
                             string rsrcPath = makeRSRC(plugin, arch, verbose);
-                            std.file.copy(rsrcPath, contentsDir ~ "/Resources/" ~ baseName(exePath) ~ ".rsrc");
+                            std.file.copy(rsrcPath, contentsDir ~ "Resources/" ~ baseName(exePath) ~ ".rsrc");
                         }
                     }
 
                     if (iconPath)
-                        std.file.copy(iconPath, contentsDir ~ "/Resources/icon.icns");
+                        std.file.copy(iconPath, contentsDir ~ "Resources/icon.icns");
 
                     if (arch == Arch.universalBinary)
                     {
@@ -339,13 +499,17 @@ int main(string[] args)
                                             escapeShellArgument(path64),
                                             escapeShellArgument(exePath));
                         safeCommand(cmd);
-                        cwritefln("    => Universal build OK, available in %s".green, path);
+                        cwritefln("    => Universal build OK, available in ./%s".green, path);
                         cwriteln();
                     }
                     else
                     {
                         fileMove(plugin.dubOutputFileName, exePath);
                     }
+
+                    // Note: on Mac, the bundle path is passed instead, since wraptool won't accept the executable only
+                    if (configIsAAX(config))
+                        signAAXBinaryWithPACE(bundleDir);
 
                     // Should this arch be published? Only if the --publish arg was given and
                     // it's the last architecture in the list (to avoid overwrite)
@@ -409,6 +573,14 @@ int main(string[] args)
             buildAndPackage(toString(compiler), config, archs, iconPath);
         return 0;
     }
+    catch(DplugBuildBuiltCorrectlyException e)
+    {
+        cwriteln;
+        cwriteln("    Congratulations! ".green ~ "dplug-build".cyan ~ " built successfully.".green);
+        cwriteln("    Type " ~ "dplug-build --help".cyan ~ " to know about its usage.");
+        cwriteln("    You'll probably want " ~ "dplug-build".cyan ~ " to be in your" ~ " PATH".yellow ~ ".");
+        return 0;
+    }
     catch(ExternalProgramErrored e)
     {
         error(e.msg);
@@ -426,20 +598,21 @@ void buildPlugin(string compiler, string config, string build, bool is64b, bool 
     if (compiler == "ldc")
         compiler = "ldc2";
 
-    version(linux)
+    // Note: unfortunately --combined builds crash with LDC on Linux, -FPIC is probably fixed in Dub now?
+    /*version(linux)
     {
         combined = true; // for -FPIC
-    }
+    }*/
 
     cwritefln("*** Building configuration %s with %s, %s arch...".white, config, compiler, is64b ? "64-bit" : "32-bit");
     // build the output file
     string arch = is64b ? "x86_64" : "x86";
 
     // Produce output compatible with earlier OSX
-    // LDC does not support earlier than 10.7
+    // LDC >= 1.1 does not support earlier than 10.8
     version(OSX)
     {
-        environment["MACOSX_DEPLOYMENT_TARGET"] = "10.7";
+        environment["MACOSX_DEPLOYMENT_TARGET"] = "10.8";
     }
 
     string cmd = format("dub build --build=%s --arch=%s --compiler=%s%s%s%s%s%s%s",
@@ -454,5 +627,6 @@ void buildPlugin(string compiler, string config, string build, bool is64b, bool 
         );
     safeCommand(cmd);
 }
+
 
 

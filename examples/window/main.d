@@ -81,7 +81,7 @@ class WindowListener : IWindowListener {
 
         ImageRef!RGBA onResized(int width, int height) {
             if (image.pixels !is null) {
-              freeSlice(image.pixels[0 .. image.w*image.h]);  
+              freeSlice(image.pixels[0 .. image.w*image.h]);
             }
 
             image.w = width;
@@ -99,7 +99,7 @@ class WindowListener : IWindowListener {
             static void func(double dt, double time) {
                 writeln("onAnimate[", time, "]: ", dt);
             }
-            
+
             counter += cast(ubyte)dt;
             assumeNothrowNoGC(&func)(dt, time);
         }
@@ -108,11 +108,12 @@ class WindowListener : IWindowListener {
 void main() {
     writeln("Hi!");
 
-    auto listener = mallocEmplace!WindowListener;
+    auto listener = mallocNew!WindowListener;
 
-    IWindow window = createWindow(null, null, listener, WindowBackend.autodetect, 800, 600);
+    IWindow window = createWindow(WindowUsage.host, null, null, listener, WindowBackend.autodetect, 800, 600);
     listener.window = window;
-    window.waitEventAndDispatch;
+    while(!window.terminated) 
+        window.waitEventAndDispatch;
 
     writeln("END");
 }

@@ -52,6 +52,10 @@
             "vendorUniqueID": {
                 "id": "/properties/vendorUniqueID",
                 "type": "string"
+            },
+            "category": {
+                "id": "/properties/category",
+                "type": "string"
             }
         },
         "type": "object"

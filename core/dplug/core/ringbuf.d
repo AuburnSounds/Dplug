@@ -11,7 +11,7 @@ import core.atomic;
 
 import dplug.core.sync;
 import dplug.core.nogc;
-import dplug.core.alignedbuffer;
+import dplug.core.vec;
 
 
 RingBufferNoGC!T ringBufferNoGC(T)(size_t initialCapacity) nothrow @nogc

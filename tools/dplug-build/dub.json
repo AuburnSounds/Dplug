@@ -1,0 +1,11 @@
+{
+    "name": "dplug-build",
+    "description": "Build tool for plug-ins. DUB frontend which makes multiple versions of a plugin, and also package them in OSX bundles",
+    "stringImportPaths": ["."],
+
+    "dependencies":
+    {
+        "colorize": "~>1.0",
+        "dplug:client": { "path": "../.." }
+    }
+}

@@ -11,7 +11,7 @@ import std.range,
        std.math;
 
 import dplug.core.math,
-       dplug.core.alignedbuffer,
+       dplug.core.vec,
        dplug.core.complex,
        dplug.dsp.fft,
        dplug.dsp.delayline,

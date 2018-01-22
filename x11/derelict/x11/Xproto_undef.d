@@ -1,6 +1,7 @@
 module derelict.x11.Xproto_undef;
-version(linux):
 import derelict.x11.Xmd;
+
+version(linux):
 
 alias CARD32    Window;
 alias CARD32    Drawable;

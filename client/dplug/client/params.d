@@ -31,7 +31,7 @@ import std.conv;
 import dplug.core.math;
 import dplug.core.sync;
 import dplug.core.nogc;
-import dplug.core.alignedbuffer;
+import dplug.core.vec;
 import dplug.client.client;
 
 
@@ -46,49 +46,49 @@ nothrow:
 @nogc:
 
     /// Returns: Parameters name. Displayed when the plugin has no UI.
-    string name() pure const nothrow @nogc
+    string name() pure const
     {
         return _name;
     }
 
     /// Returns: Parameters unit label.
-    string label() pure const nothrow @nogc
+    string label() pure const
     {
         return _label;
     }
 
     /// Returns: Index of parameter in the parameter list.
-    int index() pure const nothrow @nogc
+    int index() pure const
     {
         return _index;
     }
 
     /// From a normalized double [0..1], set the parameter value.
-    void setFromHost(double hostValue) nothrow @nogc
+    void setFromHost(double hostValue)
     {
         setNormalized(hostValue);
         notifyListeners();
     }
 
     /// Returns: A normalized double [0..1], represents the parameter value.
-    double getForHost() nothrow @nogc
+    double getForHost()
     {
         return getNormalized();
     }
 
-    void toDisplayN(char* buffer, size_t numBytes) nothrow @nogc
+    void toDisplayN(char* buffer, size_t numBytes)
     {
         toStringN(buffer, numBytes);
     }
 
     /// Adds a parameter listener.
-    void addListener(IParameterListener listener) nothrow @nogc
+    void addListener(IParameterListener listener)
     {
         _listeners.pushBack(listener);
     }
 
     /// Removes a parameter listener.
-    void removeListener(IParameterListener listener) nothrow @nogc
+    void removeListener(IParameterListener listener)
     {
         int index = _listeners.indexOf(listener);
         if (index != -1)
@@ -97,7 +97,7 @@ nothrow:
 
     /// Warns the host that a parameter will be edited.
     /// Should only ever be called from the UI thread.
-    void beginParamEdit() nothrow @nogc
+    void beginParamEdit()
     {
         debug _editCount += 1;
         _client.hostCommand().beginParamEdit(_index);
@@ -107,7 +107,7 @@ nothrow:
 
     /// Warns the host that a parameter has finished being edited.
     /// Should only ever be called from the UI thread.
-    void endParamEdit() nothrow @nogc
+    void endParamEdit()
     {
         _client.hostCommand().endParamEdit(_index);
         foreach(listener; _listeners)
@@ -116,17 +116,20 @@ nothrow:
     }
 
     /// Returns: A normalized double, representing the parameter value.
-    abstract double getNormalized() nothrow @nogc;
+    abstract double getNormalized();
 
     /// Returns: A normalized double, representing the default parameter value.
-    abstract double getNormalizedDefault() nothrow @nogc;
+    abstract double getNormalizedDefault();
 
-    /// Returns: A string associated with the normalized normalized.
-    abstract void stringFromNormalizedValue(double normalizedValue, char* buffer, size_t len) nothrow @nogc;
+    /// Returns: A string associated with the normalized value.
+    abstract void stringFromNormalizedValue(double normalizedValue, char* buffer, size_t len);
 
-    /// Returns: A normalized normalized associated with the string.
+    /// Returns: A normalized value associated with the string.
     /// Can throw Exceptions.
-    abstract bool normalizedValueFromString(string valueString, out double result) nothrow @nogc;
+    abstract bool normalizedValueFromString(const(char)[] valueString, out double result);
+
+    /// Returns: `true` if the parameters has only discrete values, `false` if continuous.
+    abstract bool isDiscrete();
 
     ~this()
     {
@@ -136,7 +139,7 @@ nothrow:
 
 protected:
 
-    this(int index, string name, string label) nothrow @nogc
+    this(int index, string name, string label)
     {
         _client = null;
         _name = name;
@@ -149,18 +152,18 @@ protected:
     /// From a normalized double, set the parameter value.
     /// No guarantee at all that getNormalized will return the same,
     /// because this value is rounded to fit.
-    abstract void setNormalized(double hostValue) nothrow @nogc;
+    abstract void setNormalized(double hostValue);
 
-    /// Display parameter (without label).
-    abstract void toStringN(char* buffer, size_t numBytes) nothrow @nogc;
+    /// Display parameter (without label). This always adds a terminal zero within `numBytes`.
+    abstract void toStringN(char* buffer, size_t numBytes);
 
-    void notifyListeners() nothrow @nogc
+    void notifyListeners()
     {
         foreach(listener; _listeners)
             listener.onParameterChanged(this);
     }
 
-    void checkBeingEdited() nothrow @nogc
+    void checkBeingEdited()
     {
         // If you fail here, you have changed the value of a Parameter from the UI
         // without enclosing within a pair of `beginParamEdit()`/`endParamEdit()`.
@@ -174,7 +177,7 @@ protected:
 package:
 
     /// Parameters are owned by a client, this is used to make them refer back to it.
-    void setClientReference(Client client) nothrow @nogc
+    void setClientReference(Client client)
     {
         _client = client;
     }
@@ -200,7 +203,8 @@ private:
 /// Intended making GUI controls call `setDirty()` and move with automation.
 interface IParameterListener
 {
-nothrow @nogc:
+nothrow:
+@nogc:
 
     /// Called when a parameter value was changed
     /// You'll probably want to call `setDirtyWhole()` or `setDirty()` in it
@@ -265,7 +269,7 @@ public:
     }
 
     /// Returns: A normalized normalized associated with the string.
-    override bool normalizedValueFromString(string valueString, out double result)
+    override bool normalizedValueFromString(const(char)[] valueString, out double result)
     {
         if (valueString == "yes")
         {
@@ -281,6 +285,11 @@ public:
             return false;
     }
 
+    override bool isDiscrete() 
+    {
+        return true;
+    }
+    
     /// Toggles the parameter value from the UI thread.
     final void toggleFromGUI() nothrow @nogc
     {
@@ -374,7 +383,7 @@ public:
         snprintf(buffer, len, "%d", denorm);
     }
 
-    override bool normalizedValueFromString(string valueString, out double result)
+    override bool normalizedValueFromString(const(char)[] valueString, out double result)
     {
         if (valueString.length > 63)
             return false;
@@ -391,6 +400,11 @@ public:
         }
         else
             return false;
+    }
+
+    override bool isDiscrete() 
+    {
+        return true;
     }
 
     /// Gets the current parameter value.
@@ -509,7 +523,7 @@ public:
         snprintf(buffer, len, "%.*s", valueLabel.length, valueLabel.ptr);
     }
 
-    override bool normalizedValueFromString(string valueString, out double result)
+    override bool normalizedValueFromString(const(char)[] valueString, out double result)
     {
         foreach(int i; 0..cast(int)(_possibleValues.length))
             if (_possibleValues[i] == valueString)
@@ -654,7 +668,7 @@ public:
         snprintf(buffer, len, _formatString.ptr, denorm);
     }
 
-    override bool normalizedValueFromString(string valueString, out double result)
+    override bool normalizedValueFromString(const(char)[] valueString, out double result)
     {
         if (valueString.length > 63)
             return false;
@@ -671,6 +685,11 @@ public:
         }
         else
             return false;
+    }
+
+    override bool isDiscrete() 
+    {
+        return false; // continous
     }
 
     /// Override it to specify mapping from parameter values to normalized [0..1]

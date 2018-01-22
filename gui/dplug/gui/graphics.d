@@ -123,7 +123,7 @@ nothrow:
         }
 
         // We create this window each time.
-        _window = createWindow(parentInfo, controlInfo, _windowListener, wbackend, _askedWidth, _askedHeight);
+        _window = createWindow(WindowUsage.plugin, parentInfo, controlInfo, _windowListener, wbackend, _askedWidth, _askedHeight);
 
         reflow(box2i(0, 0, _askedWidth, _askedHeight));
 

@@ -13,7 +13,7 @@ import std.math;
 import dplug.core.math;
 import dplug.core.ringbuf;
 import dplug.core.nogc;
-import dplug.core.alignedbuffer;
+import dplug.core.vec;
 
 /// Smooth values exponentially with a 1-pole lowpass.
 /// This is usually sufficient for most parameter smoothing.

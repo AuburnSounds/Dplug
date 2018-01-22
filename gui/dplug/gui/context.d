@@ -9,7 +9,7 @@ module dplug.gui.context;
 
 import std.file;
 
-import dplug.core.alignedbuffer;
+import dplug.core.vec;
 import dplug.core.nogc;
 import dplug.core.sync;
 

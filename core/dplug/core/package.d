@@ -5,7 +5,7 @@
 */
 module dplug.core;
 
-public import dplug.core.alignedbuffer;
+public import dplug.core.vec;
 public import dplug.core.math;
 public import dplug.core.sync;
 public import dplug.core.ringbuf;

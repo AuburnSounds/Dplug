@@ -8,7 +8,7 @@ module dplug.gui.boxlist;
 
 import std.algorithm.comparison;
 
-import dplug.core.alignedbuffer;
+import dplug.core.vec;
 import gfm.math.box;
 
 /// Returns: Bounding boxes of all bounding boxes.
@@ -123,7 +123,7 @@ unittest
     bl.pushBack( box2i(2, 2, 6, 6) );
     bl.pushBack( box2i(1, 1, 2, 2) );
 
-    import dplug.core.alignedbuffer;
+    import dplug.core.vec;
 
     auto ab = makeVec!box2i();
 

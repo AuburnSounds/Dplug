@@ -15,7 +15,7 @@ import std.traits;
 import gfm.math.box;
 
 import dplug.core.nogc;
-import dplug.core.alignedbuffer;
+import dplug.core.vec;
 
 import dplug.graphics.view;
 import dplug.graphics.draw;

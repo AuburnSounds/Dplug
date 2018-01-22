@@ -1,8 +1,9 @@
 ﻿/**
  * X11 window implementation.
- * 
+ *
  * Copyright: Copyright (C) 2017 Richard Andrew Cattermole
  *            Copyright (C) 2017 Ethan Reker
+ *            Copyright (C) 2017 Lukasz Pelszynski
  *
  * Bugs:
  *     - X11 does not support double clicks, it is sometimes emulated https://github.com/glfw/glfw/issues/462
@@ -15,12 +16,15 @@ module dplug.window.x11window;
 import gfm.math.box;
 
 import core.sys.posix.unistd;
+import core.stdc.string;
+import core.atomic;
 
 import dplug.window.window;
 
 import dplug.core.runtime;
 import dplug.core.nogc;
 import dplug.core.thread;
+import dplug.core.sync;
 
 import dplug.graphics.image;
 import dplug.graphics.view;
@@ -30,6 +34,8 @@ nothrow:
 
 version(linux):
 
+import dplug.core.map;
+
 import derelict.x11.X;
 import derelict.x11.Xlib;
 import derelict.x11.keysym;
@@ -38,65 +44,72 @@ import derelict.x11.Xutil;
 import derelict.x11.extensions.Xrandr;
 import derelict.x11.extensions.randr;
 
-// TODO: remove data races with the globals
-
-// TODO: check with multiple instances
-// Who owns the connection? Rikki says it should be us, not the host. The host would provide us
-// with a parent window, but no connection. Only testing will answer.
-__gshared Display* _display;
-
-__gshared size_t _white_pixel, _black_pixel; // TODO: could be made a field without questions
-__gshared int _screen;                       // TODO: could be made a field without questions
-
-// Reverse mapping
-__gshared DumbSlowNoGCMap!(Window, X11Window) x11WindowMapping;
-
 // This is an extension to X11, almost always should exist on modern systems
 // If it becomes a problem, version out its usage, it'll work just won't be as nice event wise
 extern(C) bool XkbSetDetectableAutoRepeat(Display*, bool, bool*);
 
+__gshared XLibInitialized = false;
+__gshared Display* _display;
+__gshared size_t _white_pixel, _black_pixel;
+__gshared int _screen;
+
 final class X11Window : IWindow
 {
-public:
 nothrow:
 @nogc:
 
+private:
+    // Xlib variables
+    Window _windowId, _parentWindowId;
+    Atom _closeAtom;
+    derelict.x11.Xlib.GC _graphicGC;
+    XImage* _graphicImage;
+    int width, height, depth;
+    // Threads
+    Thread _eventLoop, _timerLoop;
+    UncheckedMutex drawMutex;
+    //Other
+    IWindowListener listener;
+
+    ImageRef!RGBA _wfb; // framebuffer reference
+    ubyte[4][] _bufferData;
+
+    uint lastTimeGot, creationTime, currentTime;
+    int lastMouseX, lastMouseY;
+
+    box2i prevMergedDirtyRect, mergedDirtyRect;
+
+    shared(bool) _terminated = false;
+
+public:
     this(void* parentWindow, IWindowListener listener, int width, int height)
     {
+        drawMutex = makeMutex();
+
+        initializeXLib();
+
         int x, y;
         this.listener = listener;
 
-        _display = assumeNoGC(&XOpenDisplay)(null);
-        _screen = assumeNoGC(&DefaultScreen)(_display);
-        _white_pixel = assumeNoGC(&WhitePixel)(_display, _screen);
-        _black_pixel = assumeNoGC(&BlackPixel)(_display, _screen);
-        assumeNoGC(&XkbSetDetectableAutoRepeat)(_display, true, null);
-
-        if(_display == null)
-            assert(false);
-
         if (parentWindow is null)
         {
-            _parentWindowId = assumeNoGC(&RootWindow)(_display, _screen);
+            _parentWindowId = RootWindow(_display, _screen);
         }
         else
         {
             _parentWindowId = cast(Window)parentWindow;
         }
 
-        x = (assumeNoGC(&DisplayWidth)(_display, _screen) - width) / 2;
-        y = (assumeNoGC(&DisplayHeight)(_display, _screen) - height) / 3;
+        x = (DisplayWidth(_display, _screen) - width) / 2;
+        y = (DisplayHeight(_display, _screen) - height) / 3;
         this.width = width;
         this.height = height;
         depth = 24;
 
         //
 
-        _windowId = assumeNoGC(&XCreateSimpleWindow)(_display, _parentWindowId, x, y, width, height, 0, 0, _black_pixel);
-        assumeNoGC(&XStoreName)(_display, _windowId, cast(char*)" ".ptr);
-        x11WindowMapping[_windowId] = this;
-
-        //
+        _windowId = XCreateSimpleWindow(_display, _parentWindowId, x, y, width, height, 0, 0, _black_pixel);
+        XStoreName(_display, _windowId, cast(char*)" ".ptr);
 
         XSizeHints sizeHints;
         sizeHints.flags = PMinSize | PMaxSize;
@@ -105,47 +118,68 @@ nothrow:
         sizeHints.min_height = height;
         sizeHints.max_height = height;
 
-        assumeNoGC(&XSetWMNormalHints)(_display, _windowId, &sizeHints);
+        XSetWMNormalHints(_display, _windowId, &sizeHints);
 
         //
 
-        _closeAtom = assumeNoGC(&XInternAtom)(_display, cast(char*)("WM_DELETE_WINDOW".ptr), cast(Bool)false);
-        assumeNoGC(&XSetWMProtocols)(_display, _windowId, &_closeAtom, 1);
+        _closeAtom = XInternAtom(_display, cast(char*)("WM_DELETE_WINDOW".ptr), cast(Bool)false);
+        XSetWMProtocols(_display, _windowId, &_closeAtom, 1);
 
-        assumeNoGC(&XMapWindow)(_display, _windowId);
-        assumeNoGC(&XFlush)(_display);
+        if (parentWindow) {
+          // Embed the window in parent (most VST hosts expose some area for embedding a VST client)
+          XReparentWindow(_display, _windowId, _parentWindowId, 0, 0);
+        }
 
-        assumeNoGC(&XSelectInput)(_display, _windowId, ExposureMask | KeyPressMask | StructureNotifyMask |
-            KeyReleaseMask | KeyPressMask | ButtonReleaseMask | ButtonPressMask | PointerMotionMask);
-        _graphicGC = assumeNoGC(&XCreateGC)(_display, _windowId, 0, null);
-        assumeNoGC(&XSetBackground)(_display, _graphicGC, _white_pixel);
-        assumeNoGC(&XSetForeground)(_display, _graphicGC, _black_pixel);
+        XMapWindow(_display, _windowId);
+        XFlush(_display);
+
+        XSelectInput(_display, _windowId, windowEventMask());
+        _graphicGC = XCreateGC(_display, _windowId, 0, null);
+        XSetBackground(_display, _graphicGC, _white_pixel);
+        XSetForeground(_display, _graphicGC, _black_pixel);
 
         _wfb = listener.onResized(width, height);
-        listener.recomputeDirtyAreas();
-        listener.onDraw(WindowPixelFormat.RGBA8);
-
-        box2i areaToRedraw = listener.getDirtyRectangle();
-        box2i[] areasToRedraw = (&areaToRedraw)[0..1];
-        if (_wfb.pixels !is null)
-        {
-            swapBuffers(_wfb, areasToRedraw);
-        }
 
         creationTime = getTimeMs();
         lastTimeGot = creationTime;
 
-        _eventLoop = makeThread(&asyncEventHandling);
+        emptyMergedBoxes();
+
+        _timerLoop = makeThread(&timerLoop);
+        _timerLoop.start();
+
+        _eventLoop = makeThread(&eventLoop);
         _eventLoop.start();
     }
 
     ~this()
     {
-        x11WindowMapping.remove(_windowId);
-        //assumeNoGC(&XDestroyImage)(_graphicImage);
-        //assumeNoGC(&XFreeGC)(_display, _graphicGC);
-        //assumeNoGC(&XDestroyWindow)(_display, _windowId);
-        //assumeNoGC(&XFlush)(_display);
+        XDestroyWindow(_display, _windowId);
+        XFlush(_display);
+        _timerLoop.join();
+        _eventLoop.join();
+    }
+
+    void initializeXLib() {
+        if (!XLibInitialized) {
+            XInitThreads();
+
+            _display = XOpenDisplay(null);
+            if(_display == null)
+                assert(false);
+
+            _screen = DefaultScreen(_display);
+            _white_pixel = WhitePixel(_display, _screen);
+            _black_pixel = BlackPixel(_display, _screen);
+            XkbSetDetectableAutoRepeat(_display, true, null);
+
+            XLibInitialized = true;
+        }
+    }
+
+    long windowEventMask() {
+        return ExposureMask | KeyPressMask | StructureNotifyMask |
+            KeyReleaseMask | KeyPressMask | ButtonReleaseMask | ButtonPressMask | PointerMotionMask;
     }
 
     void swapBuffers(ImageRef!RGBA wfb, box2i[] areasToRedraw)
@@ -157,10 +191,10 @@ nothrow:
             if (_graphicImage !is null)
             {
                 // X11 deallocates _bufferData for us (ugh...)
-                assumeNoGC(&XDestroyImage)(_graphicImage);
+                XDestroyImage(_graphicImage);
             }
 
-            _graphicImage = assumeNoGC(&XCreateImage)(_display, cast(Visual*)&_graphicGC, depth, ZPixmap, 0, cast(char*)_bufferData.ptr, width, height, 32, 0);
+            _graphicImage = XCreateImage(_display, cast(Visual*)&_graphicGC, depth, ZPixmap, 0, cast(char*)_bufferData.ptr, width, height, 32, 0);
 
             size_t i;
             foreach(y; 0 .. wfb.h)
@@ -199,71 +233,86 @@ nothrow:
             }
         }
 
-        assumeNoGC(&XPutImage)(_display, _windowId, _graphicGC, _graphicImage, 0, 0, 0, 0, cast(uint)width, cast(uint)height);
+        XPutImage(_display, _windowId, _graphicGC, _graphicImage, 0, 0, 0, 0, cast(uint)width, cast(uint)height);
     }
 
     // Implements IWindow
-    override void waitEventAndDispatch()
+    override void waitEventAndDispatch() nothrow @nogc
     {
-        while(assumeNoGC(&XPending)(_display))
-        {
-            XEvent event;
-            assumeNoGC(&XNextEvent)(_display, &event);
+        XEvent event;
+        // Wait for events for current window
+        XWindowEvent(_display, _windowId, windowEventMask(), &event);
+        handleEvents(event, this);
+    }
 
-            X11Window theWindow = x11WindowMapping[event.xany.window];
-
-            if (theWindow is null)
-            {
-                // well hello, I didn't expect this.. goodbye
-                continue;
-            }
-
-            handleEvents(event, theWindow);
+    void eventLoop() nothrow @nogc
+    {
+        while (!terminated()) {
+            waitEventAndDispatch();
         }
     }
 
-    //Called on a separate thread to dispatch events and redraw the UI
-    void asyncEventHandling() nothrow @nogc
+    void emptyMergedBoxes() nothrow @nogc
     {
-        while(x11WindowMapping.haveAValue)
+        prevMergedDirtyRect = box2i(0,0,0,0);
+        mergedDirtyRect = box2i(0,0,0,0);
+    }
+
+    void sendRepaintIfUIDirty() nothrow @nogc
+    {
+        listener.recomputeDirtyAreas();
+        box2i dirtyRect = listener.getDirtyRectangle();
+        if (!dirtyRect.empty())
         {
-            waitEventAndDispatch();
-            redraw();
+            drawMutex.lock();
+
+            prevMergedDirtyRect = mergedDirtyRect;
+            mergedDirtyRect = mergedDirtyRect.expand(dirtyRect);
+            // If everything has been drawn by Expose event handler, send Expose event.
+            // Otherwise merge areas to be redrawn and postpone Expose event.
+            if (prevMergedDirtyRect.empty() && !mergedDirtyRect.empty()) {
+                int x = dirtyRect.min.x;
+                int y = dirtyRect.min.y;
+                int width = dirtyRect.max.x - x;
+                int height = dirtyRect.max.y - y;
+
+                XEvent evt;
+                memset(&evt, 0, XEvent.sizeof);
+                evt.type = Expose;
+                evt.xexpose.window = _windowId;
+                evt.xexpose.display = _display;
+                evt.xexpose.x = 0;
+                evt.xexpose.y = 0;
+                evt.xexpose.width = 0;
+                evt.xexpose.height = 0;
+
+                XSendEvent(_display, _windowId, False, ExposureMask, &evt);
+                XFlush(_display);
+            }
+
+            drawMutex.unlock();
+        }
+    }
+
+    void timerLoop() nothrow @nogc
+    {
+        while(!terminated())
+        {
+            currentTime = getTimeMs();
+            float diff = currentTime - lastTimeGot;
+            double dt = (currentTime - lastTimeGot) * 0.001;
+            double time = (currentTime - creationTime) * 0.001;
+            listener.onAnimate(dt, time);
+            sendRepaintIfUIDirty();
+            lastTimeGot = currentTime;
             //Sleep for ~16.6 milliseconds (60 frames per second rendering)
             usleep(16666);
         }
     }
 
-    void redraw()
-    {
-        currentTime = getTimeMs();
-        float diff = currentTime - lastTimeGot;
-
-        double dt = (currentTime - lastTimeGot) * 0.001;
-        double time = (currentTime - creationTime) * 0.001;
-        listener.onAnimate(dt, time);
-
-        lastTimeGot = currentTime;
-        if (listener !is null)
-        {
-            // TODO onAnimate will call setDirty, we should use the X11
-            // mechanism to have Expose called instead, NOT calling onDraw here
-            _wfb = listener.onResized(_wfb.w, _wfb.h);
-
-            listener.recomputeDirtyAreas();
-            box2i areaToRedraw = listener.getDirtyRectangle();
-            if (!areaToRedraw.empty())
-            {
-                listener.onDraw(WindowPixelFormat.RGBA8);
-                box2i[] areasToRedraw = (&areaToRedraw)[0..1];
-                swapBuffers(_wfb, areasToRedraw);
-            }
-        }
-    }
-
     override bool terminated()
     {
-        return _terminated;
+        return atomicLoad(_terminated);
     }
 
     override uint getTimeMs()
@@ -283,28 +332,9 @@ nothrow:
     {
         return cast(void*)_windowId;
     }
-
-private:
-
-    IWindowListener listener;
-    Window _windowId, _parentWindowId;
-    bool _terminated = false;
-    Atom _closeAtom;
-
-    ImageRef!RGBA _wfb; // framebuffer reference
-
-    derelict.x11.Xlib.GC _graphicGC;
-    XImage* _graphicImage;
-    ubyte[4][] _bufferData;
-    int width, height, depth;
-
-    uint lastTimeGot, creationTime, currentTime;
-    int lastMouseX, lastMouseY;
-
-    Thread _eventLoop;
 }
 
-void handleEvents(ref XEvent event, X11Window theWindow)
+void handleEvents(ref XEvent event, X11Window theWindow) nothrow @nogc
 {
     with(theWindow)
     {
@@ -313,146 +343,129 @@ void handleEvents(ref XEvent event, X11Window theWindow)
         {
             case MapNotify:
             case Expose:
-                if (listener !is null)
-                {
-                    _wfb = listener.onResized(_wfb.w, _wfb.h);
-                    listener.recomputeDirtyAreas();
-                    listener.onDraw(WindowPixelFormat.RGBA8);
+                // Resize should trigger Expose event, so we don't need to handle it here
+                drawMutex.lock();
 
-                    box2i areaToRedraw = listener.getDirtyRectangle();
+                box2i areaToRedraw = mergedDirtyRect;
+                box2i eventAreaToRedraw = box2i(event.xexpose.x, event.xexpose.y, event.xexpose.x + event.xexpose.width, event.xexpose.y + event.xexpose.height);
+                areaToRedraw = areaToRedraw.expand(eventAreaToRedraw);
+
+                emptyMergedBoxes();
+
+                drawMutex.unlock();
+
+                if (!areaToRedraw.empty()) {
+                    listener.onDraw(WindowPixelFormat.RGBA8);
                     box2i[] areasToRedraw = (&areaToRedraw)[0..1];
-                    if (_wfb.pixels !is null)
-                    {
-                        swapBuffers(_wfb, areasToRedraw);
-                    }
+                    swapBuffers(_wfb, areasToRedraw);
                 }
                 break;
 
             case ConfigureNotify:
                 if (event.xconfigure.width != width || event.xconfigure.height != height)
                 {
+                    // Handle resize event
                     width = event.xconfigure.width;
                     height = event.xconfigure.height;
 
-                    if (listener !is null)
-                    {
-                        _wfb = listener.onResized(width, height);
-
-                        listener.recomputeDirtyAreas();
-                        listener.onDraw(WindowPixelFormat.RGBA8);
-
-                        box2i areaToRedraw = listener.getDirtyRectangle();
-                        box2i[] areasToRedraw = (&areaToRedraw)[0..1];
-                        if (_wfb.pixels !is null)
-                        {
-                            swapBuffers(_wfb, areasToRedraw);
-                        }
-                    }
+                    _wfb = listener.onResized(width, height);
+                    sendRepaintIfUIDirty();
                 }
                 break;
 
             case MotionNotify:
-                if (listener !is null)
-                {
-                    int newMouseX = event.xmotion.x;
-                    int newMouseY = event.xmotion.y;
-                    int dx = newMouseX - lastMouseX;
-                    int dy = newMouseY - lastMouseY;
+                int newMouseX = event.xmotion.x;
+                int newMouseY = event.xmotion.y;
+                int dx = newMouseX - lastMouseX;
+                int dy = newMouseY - lastMouseY;
 
-                    listener.onMouseMove(newMouseX, newMouseY, dx, dy, mouseStateFromX11(event.xbutton.state));
+                listener.onMouseMove(newMouseX, newMouseY, dx, dy, mouseStateFromX11(event.xbutton.state));
 
-                    lastMouseX = newMouseX;
-                    lastMouseY = newMouseY;
-                }
+                lastMouseX = newMouseX;
+                lastMouseY = newMouseY;
                 break;
 
             case ButtonPress:
-                if (listener !is null)
+                int newMouseX = event.xbutton.x;
+                int newMouseY = event.xbutton.y;
+
+                MouseButton button;
+
+                if (event.xbutton.button == Button1)
+                    button = MouseButton.left;
+                else if (event.xbutton.button == Button3)
+                    button = MouseButton.right;
+                else if (event.xbutton.button == Button2)
+                    button = MouseButton.middle;
+                else if (event.xbutton.button == Button4)
+                    button = MouseButton.x1;
+                else if (event.xbutton.button == Button5)
+                    button = MouseButton.x2;
+
+                bool isDoubleClick;
+
+                lastMouseX = newMouseX;
+                lastMouseY = newMouseY;
+
+                if (event.xbutton.button == Button4 || event.xbutton.button == Button5)
                 {
-                    int newMouseX = event.xbutton.x;
-                    int newMouseY = event.xbutton.y;
-
-                    MouseButton button;
-
-                    if (event.xbutton.button == Button1)
-                        button = MouseButton.left;
-                    else if (event.xbutton.button == Button3)
-                        button = MouseButton.right;
-                    else if (event.xbutton.button == Button2)
-                        button = MouseButton.middle;
-                    else if (event.xbutton.button == Button4)
-                        button = MouseButton.x1;
-                    else if (event.xbutton.button == Button5)
-                        button = MouseButton.x2;
-
-                    bool isDoubleClick;
-
-                    lastMouseX = newMouseX;
-                    lastMouseY = newMouseY;
-
-                    if (event.xbutton.button == Button4 || event.xbutton.button == Button5)
-                    {
-                        listener.onMouseWheel(newMouseX, newMouseY, 0, event.xbutton.button == Button4 ? 1 : -1,
-                            mouseStateFromX11(event.xbutton.state));
-                    }
-                    else
-                    {
-                        listener.onMouseClick(newMouseX, newMouseY, button, isDoubleClick, mouseStateFromX11(event.xbutton.state));
-                    }
+                    listener.onMouseWheel(newMouseX, newMouseY, 0, event.xbutton.button == Button4 ? 1 : -1,
+                        mouseStateFromX11(event.xbutton.state));
+                }
+                else
+                {
+                    listener.onMouseClick(newMouseX, newMouseY, button, isDoubleClick, mouseStateFromX11(event.xbutton.state));
                 }
                 break;
 
             case ButtonRelease:
-                if (listener !is null)
-                {
-                    int newMouseX = event.xbutton.x;
-                    int newMouseY = event.xbutton.y;
+                int newMouseX = event.xbutton.x;
+                int newMouseY = event.xbutton.y;
 
-                    MouseButton button;
+                MouseButton button;
 
-                    lastMouseX = newMouseX;
-                    lastMouseY = newMouseY;
+                lastMouseX = newMouseX;
+                lastMouseY = newMouseY;
 
-                    if (event.xbutton.button == Button1)
-                        button = MouseButton.left;
-                    else if (event.xbutton.button == Button3)
-                        button = MouseButton.right;
-                    else if (event.xbutton.button == Button2)
-                        button = MouseButton.middle;
-                    else if (event.xbutton.button == Button4 || event.xbutton.button == Button5)
-                        break;
+                if (event.xbutton.button == Button1)
+                    button = MouseButton.left;
+                else if (event.xbutton.button == Button3)
+                    button = MouseButton.right;
+                else if (event.xbutton.button == Button2)
+                    button = MouseButton.middle;
+                else if (event.xbutton.button == Button4 || event.xbutton.button == Button5)
+                    break;
 
-                    listener.onMouseRelease(newMouseX, newMouseY, button, mouseStateFromX11(event.xbutton.state));
-                }
+                listener.onMouseRelease(newMouseX, newMouseY, button, mouseStateFromX11(event.xbutton.state));
                 break;
 
             case KeyPress:
                 KeySym symbol;
-                assumeNoGC(&XLookupString)(&event.xkey, null, 0, &symbol, null);
-                if (listener !is null)
-                {
-                    listener.onKeyDown(convertKeyFromX11(symbol));
-                }
+                XLookupString(&event.xkey, null, 0, &symbol, null);
+                listener.onKeyDown(convertKeyFromX11(symbol));
                 break;
 
             case KeyRelease:
                 KeySym symbol;
-                assumeNoGC(&XLookupString)(&event.xkey, null, 0, &symbol, null);
-                if (listener !is null)
-                {
-                    listener.onKeyUp(convertKeyFromX11(symbol));
-                }
+                XLookupString(&event.xkey, null, 0, &symbol, null);
+                listener.onKeyUp(convertKeyFromX11(symbol));
+                break;
+
+            case DestroyNotify:
+                XDestroyImage(_graphicImage);
+                XFreeGC(_display, _graphicGC);
+                atomicStore(_terminated, true);
                 break;
 
             case ClientMessage:
+                // TODO Possibly not used anymore
                 if (event.xclient.data.l[0] == _closeAtom)
                 {
-                    _terminated = true;
-                    x11WindowMapping.remove(_windowId);
-                    assumeNoGC(&XDestroyImage)(_graphicImage);
-                    assumeNoGC(&XFreeGC)(_display, _graphicGC);
-                    assumeNoGC(&XDestroyWindow)(_display, _windowId);
-                    assumeNoGC(&XFlush)(_display);
+                    atomicStore(_terminated, true);
+                    XDestroyImage(_graphicImage);
+                    XFreeGC(_display, _graphicGC);
+                    XDestroyWindow(_display, _windowId);
+                    XFlush(_display);
                 }
                 break;
 
@@ -508,124 +521,4 @@ MouseState mouseStateFromX11(uint state) {
         (state & ControlMask) == ControlMask,
         (state & ShiftMask) == ShiftMask,
         (state & Mod1Mask) == Mod1Mask);
-}
-
-/**
- * A simple @nogc map, that also happens to be quite dumb.
- *
- * It is used for X11 mapping of window id's to instances,
- * if you need something like this for anything more serious, replace!
- * Or look into EMSI's containers.
- *
- */
-
-/// A dumb slow @nogc map implementation. You probably don't want to use this...
-/// No seriously, its probably worse than O(n)!
-struct DumbSlowNoGCMap(K, V)
-{
-    import std.typecons : Nullable;
-
-    private
-    {
-        Nullable!K[] keys_;
-        V[] values_;
-    }
-
-@nogc:
-
-    @disable
-    this(this);
-
-    ~this()
-    {
-        freeSlice(keys_);
-        freeSlice(values_);
-    }
-
-    V opIndex(K key)
-    {
-        foreach(i, ref k; keys_)
-        {
-            if (!k.isNull && k == key)
-                return values_[i];
-        }
-
-        return V.init;
-    }
-
-    void opIndexAssign(V value, K key)
-    {
-        if (keys_.length == 0)
-        {
-            keys_ = mallocSlice!(Nullable!K)(8);
-            values_ = mallocSlice!V(8);
-            keys_[0] = key;
-            values_[0] = value;
-
-            keys_[1 .. $] = Nullable!K.init;
-
-            return;
-        }
-        else
-        {
-            foreach(i, ref k; keys_)
-            {
-                if (!k.isNull && k == key)
-                {
-                    values_[i] = value;
-                    return;
-                }
-            }
-
-            foreach(i, ref k; keys_)
-            {
-                if (k.isNull)
-                {
-                    k = key;
-                    values_[i] = value;
-                    return;
-                }
-            }
-        }
-
-        Nullable!K[] newKeys = mallocSlice!(Nullable!K)(keys_.length+8);
-        V[] newValues = mallocSlice!V(values_.length+8);
-        newKeys[0 .. $-8] = keys_;
-        newValues[0 .. $-8] = values_;
-
-        newKeys[$-7] = key;
-        newKeys[$-6 .. $] = Nullable!K.init;
-        newValues[$-7] = value;
-
-        freeSlice(keys_);
-        freeSlice(values_);
-
-        keys_ = newKeys;
-        values_ = newValues;
-    }
-
-    void remove(K key)
-    {
-        foreach(i, ref k; keys_)
-        {
-            if (!k.isNull && k == key)
-            {
-                k.nullify;
-                values_[i] = V.init;
-                return;
-            }
-        }
-    }
-
-    bool haveAValue() {
-        foreach(i, ref k; keys_)
-        {
-            if (!k.isNull)
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
 }

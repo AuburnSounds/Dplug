@@ -3,7 +3,7 @@
 
 - **State clearly what your problem is.**
 
-- **Give us a way to reproduce a problem.** If you don't do this, **it will never get fixed.**
+- **Give us a way to reproduce a problem.** If you don't do this, **it might never get fixed.**
 
 - **Have no expectation.** Dplug is there to support existing companies and products first. Because there is no money in bugfixing for people on the Internet, the alloted time for that is effectively zero. **You are basically on your own, and noone owes you a bug fix.**
 
@@ -59,5 +59,18 @@ Always add `TODO` comments for _any_ doubt your may have. Don't sweep subtle dec
 
 ## 5. Breaking changes
 
-Breaking changes are allowed for now.
-When renaming, introduce a `deprecated("Use this symbol instead: foo") alias bar = foo;` line.
+Breaking changes are not allowed unless there is discussion first.
+When just renaming, introduce a `deprecated("Use this symbol instead: foo") alias bar = foo;` line.
+
+
+## 6. Important Design rules
+
+- Dplug's window backend should have the same functionnality.
+
+- Dplug's plugin clients should have the same functionnality.
+
+- Dplug should work the latest D compilers and the largest possible extent of past compilers that fits the need of plug-in development
+
+- In Dplug all plug-in parameters are considered automatable. This could change in the future but this is the current state right now.
+
+- Dplug supports dynamic latency changes, however a plug-in's latency can only depends on the samplerate only, not on a parameter change.

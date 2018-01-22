@@ -10,7 +10,7 @@ import core.stdc.string;
 
 import dplug.core.nogc;
 import dplug.core.math;
-import dplug.core.alignedbuffer;
+import dplug.core.vec;
 
 /// Allow to sample signal back in time.
 struct Delayline(T)

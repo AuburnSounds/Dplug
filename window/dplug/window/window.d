@@ -109,22 +109,45 @@ struct MouseState
     bool altPressed;
 }
 
-// Giving commands to a window
+/// Is this window intended as a plug-in window running inside a host,
+/// or a host window itself possibly hosting a plug-in?
+enum WindowUsage
+{
+    /// This window is intended to be for displaying a plugin UI.
+    /// Event pumping is done by the host (except in the X11 case where it's
+    /// done by an internal thread).
+    plugin,
+
+    /// This window is intended to be top-level, for hosting another OS window.
+    /// Event pumping will be done by the caller manually through
+    /// Important: This case is not the nominal case.
+    ///            Some calls to the `IWindowListener` will make no sense.
+    host
+}
+
+/// Giving commands to a window.
 interface IWindow
 {
 nothrow:
 @nogc:
-    // To put in your message loop
+    /// To put in your message loop.
+    /// This call should only be used if the window was
+    /// created with `WindowUsage.host`.
+    /// Else, event pumping is managed by the host or internally (X11).
     void waitEventAndDispatch();
 
-    // If exit was requested
+    /// If exit was requested.
+    /// This call should only be used if the window was
+    /// created with `WindowUsage.host`.
+    /// In the case of a plug-in, the plugin client will request
+    /// termination of the window through its destructor.
     bool terminated();
 
-    // Profile-purpose: get time in milliseconds.
-    // Use the results of this function for deltas only.
+    /// Profile-purpose: get time in milliseconds.
+    /// Use the results of this function for deltas only.
     uint getTimeMs();
 
-    // Get the OS window handle.
+    /// Gets the window's OS handle.
     void* systemHandle();
 }
 
@@ -135,7 +158,7 @@ enum WindowPixelFormat
     RGBA8
 }
 
-// Receiving commands from a window
+/// Receiving commands from a window.
 interface IWindowListener
 {
 nothrow @nogc:
@@ -174,9 +197,12 @@ nothrow @nogc:
     ImageRef!RGBA onResized(int width, int height);
 
     /// Recompute internally what needs be done for the next onDraw.
-    /// This function MUST be called before calling `onDraw` and `getDirtyRectangle`.
+    /// This function MUST have been called before calling `onDraw` and `getDirtyRectangle`.
     /// This method exists to allow the Window to recompute these draw lists less.
     /// And because cache invalidation was easier on user code than internally in the UI.
+    /// Important: once you've called `recomputeDirtyAreas()` you COMMIT to redraw the
+    /// corresponding area given by `getDirtyRectangle()`.
+    /// Two calls to `recomputeDirtyAreas()` will not yield the same area.
     void recomputeDirtyAreas();
 
     /// Returns: Minimal rectangle that contains dirty UIELement in UI + their graphical extent.
@@ -193,7 +219,7 @@ nothrow @nogc:
     void onAnimate(double dt, double time);
 }
 
-
+/// Various backends for windowing.
 enum WindowBackend
 {
     autodetect,
@@ -204,13 +230,46 @@ enum WindowBackend
 }
 
 
+
 /// Factory function to create windows.
+///
 /// The window is allocated with `mallocNew` and should be destroyed with `destroyFree`.
+///
 /// Returns: null if this backend isn't available on this platform.
-/// Note: controlInfo is only used by Carbon + AU, can be null otherwise
+///
+/// Params:
+///   usage = Intended usage of the window.
+///
+///   parentInfo = OS handle of the parent window.
+///                For `WindowBackend.win32` it's a HWND.
+///                For `WindowBackend.carbon` it's a NSWindow.
+///                For `WindowBackend.x11` it's _unused_.
+///
+///   controlInfo = only used in Carbon Audio Units, an additional parenting information.
+///                 Can be `null` otherwise.
+///
+///   listener = A `IWindowListener` which listens to events by this window. Can be `null` for the moment.
+///              Must outlive the created window.
+///
+///   backend = Which windowing sub-system is used. Only Mac has any choice in this.
+///             Should be `WindowBackend.autodetect` in almost all cases
+///
+///   width = Initial width of the window.
+///
+///   height = Initial height of the window.
+///
 nothrow @nogc
-IWindow createWindow(void* parentInfo, void* controlInfo, IWindowListener listener, WindowBackend backend, int width, int height)
+IWindow createWindow(WindowUsage usage,
+                     void* parentInfo,
+                     void* controlInfo,
+                     IWindowListener listener,
+                     WindowBackend backend,
+                     int width,
+                     int height)
 {
+    //MAYDO  `null` listeners not accepted anymore.
+    //assert(listener !is null);
+
     static WindowBackend autoDetectBackend() nothrow @nogc
     {
         version(Windows)
@@ -254,12 +313,12 @@ IWindow createWindow(void* parentInfo, void* controlInfo, IWindowListener listen
         if (backend == WindowBackend.cocoa)
         {
             import dplug.window.cocoawindow;
-            return mallocNew!CocoaWindow(parentInfo, listener, width, height);
+            return mallocNew!CocoaWindow(usage, parentInfo, listener, width, height);
         }
         else if (backend == WindowBackend.carbon)
         {
             import dplug.window.carbonwindow;
-            return mallocNew!CarbonWindow(parentInfo, controlInfo, listener, width, height);
+            return mallocNew!CarbonWindow(usage, parentInfo, controlInfo, listener, width, height);
         }
         else
             return null;
@@ -269,7 +328,7 @@ IWindow createWindow(void* parentInfo, void* controlInfo, IWindowListener listen
         if (backend == WindowBackend.x11)
         {
             import dplug.window.x11window;
-            return mallocNew!X11Window(null, listener, width, height);
+            return mallocNew!X11Window(parentInfo, listener, width, height);
         }
         else
             return null;
@@ -279,4 +338,3 @@ IWindow createWindow(void* parentInfo, void* controlInfo, IWindowListener listen
         static assert(false, "Unsupported OS.");
     }
 }
-

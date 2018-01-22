@@ -13,7 +13,7 @@ import gfm.math.vector;
 import gfm.math.box;
 import gfm.math.matrix;
 
-import dplug.core.alignedbuffer;
+import dplug.core.vec;
 import dplug.core.nogc;
 import dplug.core.math;
 

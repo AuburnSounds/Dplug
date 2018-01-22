@@ -13,6 +13,8 @@ import std.datetime;
 import colorize;
 import utils;
 
+import dplug.client.daw;
+
 enum Compiler
 {
     ldc,
@@ -52,6 +54,16 @@ string toString(Compiler compiler)
         case dmd: return "dmd";
         case gdc: return "gdc";
         case ldc: return "ldc";
+    }
+}
+
+string toStringUpper(Compiler compiler)
+{
+    final switch(compiler) with (Compiler)
+    {
+        case dmd: return "DMD";
+        case gdc: return "GDC";
+        case ldc: return "LDC";
     }
 }
 
@@ -118,6 +130,14 @@ struct Plugin
     bool receivesMIDI;
     bool isSynth;
 
+    PluginCategory category;
+
+    PACEConfig paceConfig;
+
+    bool hasPACEConfig() pure const nothrow
+    {
+        return paceConfig !is null;
+    }
 
     string prettyName() pure const nothrow
     {
@@ -138,7 +158,7 @@ struct Plugin
     string makePkgInfo(string config) pure const nothrow
     {
         if (configIsAAX(config))
-            return "TDMwPTul";
+            return "TDMwPTul"; // this should actually have no effect on whether or not the AAX plug-ins load
         else
             return "BNDL" ~ vendorUniqueID;
     }
@@ -206,10 +226,25 @@ struct Plugin
     }
 }
 
+
+class DplugBuildBuiltCorrectlyException : Exception
+{
+    public
+    {
+        @safe pure nothrow this(string message,
+                                string file =__FILE__,
+                                size_t line = __LINE__,
+                                Throwable next = null)
+        {
+            super(message, file, line, next);
+        }
+    }
+}
+
 Plugin readPluginDescription()
 {
     if (!exists("dub.json"))
-        throw new Exception("Needs a dub.json file. Please launch 'release' in a D project directory.");
+        throw new Exception("Needs a dub.json file. Please launch 'dplug-build' in a plug-in project directory.");
 
     Plugin result;
 
@@ -225,6 +260,14 @@ Plugin readPluginDescription()
     catch(Exception e)
     {
         throw new Exception("Missing \"name\" in dub.json (eg: \"myplugin\")");
+    }
+
+    // We simply launched `dub` to build dplug-build. So we're not building a plugin.
+    // avoid the embarassment of having a red message that confuses new users.
+    // You've read correctly: you can't name your plugin "dplug-build" as a consequence.
+    if (result.name == "dplug-build")
+    {
+        throw new DplugBuildBuiltCorrectlyException("");
     }
 
     try
@@ -260,7 +303,11 @@ Plugin readPluginDescription()
         result.pluginName = result.name;
     }
 
-    // Note: release parses it but doesn't need hasGUI
+    // TODO: not all characters are allowed in pluginName.
+    //       All characters in pluginName should be able to be in a filename.
+    //       For Orion compatibility is should not have '-' in the file name
+
+    // Note: dplug-build parses it but doesn't need hasGUI
     try
     {
         result.hasGUI = toBool(rawPluginFile["hasGUI"]);
@@ -347,7 +394,11 @@ Plugin readPluginDescription()
     if (result.pluginUniqueID.length != 4)
         throw new Exception("\"pluginUniqueID\" should be a string of 4 characters (eg: \"val8\")");
 
-    // In developpement, should stay at 0.x.y to avoid various AU caches
+    // TODO: check for special characters in pluginUniqueID and vendorUniqueID
+    //       I'm not sure if Audio Unit would take anything not printable, would auval support it?
+
+    // In developement, publicVersion should stay at 0.x.y to avoid various AU caches
+    // (this is only the theory...)
     string publicV;
     try
     {
@@ -398,6 +449,21 @@ Plugin readPluginDescription()
         warning("no \"receivesMIDI\" provided in plugin.json (eg: \"true\")\n         => Using \"false\" instead.");
         result.receivesMIDI = false;
     }
+
+
+    try
+    {
+        result.category = parsePluginCategory(rawPluginFile["category"].str);
+        if (result.category == PluginCategory.invalid)
+            throw new Exception("");
+    }
+    catch(Exception e)
+    {
+        error("Missing or invalid \"category\" provided in plugin.json (eg: \"effectDelay\")");
+        throw new Exception("=> Check dplug/client/daw.d to find a suitable \"category\" for plugin.json.");
+    }
+
+    result.paceConfig = readPACEConfig();
 
     return result;
 }
@@ -451,6 +517,8 @@ string makePListFile(Plugin plugin, string config, bool hasIcon)
     addKeyString("CFBundleVersion", productVersion);
     addKeyString("CFBundleShortVersionString", productVersion);
 
+    // PACE signing need this on Mac to find the executable to sign
+    addKeyString("CFBundleExecutable", plugin.prettyName);
 
     enum isAudioComponentAPIImplemented = false;
 
@@ -467,7 +535,7 @@ string makePListFile(Plugin plugin, string config, bool hasIcon)
         else
             content ~= "                <string>aufx</string>\n";
         content ~= "                <key>subtype</key>\n";
-        content ~= "                <string>dely</string>\n";
+        content ~= "                <string>dely</string>\n"; // TODO: when Audio Component API is implemented, use the right subtype
         content ~= "                <key>manufacturer</key>\n";
         content ~= "                <string>" ~ plugin.vendorUniqueID ~ "</string>\n"; // FUTURE XML escape that
         content ~= "                <key>name</key>\n";
@@ -485,7 +553,9 @@ string makePListFile(Plugin plugin, string config, bool hasIcon)
     addKeyString("CFBundlePackageType", "BNDL");
     addKeyString("CFBundleSignature", plugin.pluginUniqueID); // doesn't matter http://stackoverflow.com/questions/1875912/naming-convention-for-cfbundlesignature-and-cfbundleidentifier
 
+   // Set to 10.7 in case 10.7 is supported by chance
     addKeyString("LSMinimumSystemVersion", "10.7.0");
+
    // content ~= "        <key>VSTWindowCompositing</key><true/>\n";
 
     if (hasIcon)
@@ -573,3 +643,59 @@ string makeRSRC(Plugin plugin, Arch arch, bool verbose)
     cwriteln();
     return rsrcPath;
 }
+
+// <PACE CONFIG>
+
+
+class PACEConfig
+{
+    // The iLok account of the AAX developer
+    string iLokAccount;
+
+    // The iLok password of the AAX developer
+    string iLokPassword;
+
+    // WIndows-only, points to a .p12/.pfx certificate...
+    string keyFileWindows;
+
+    // ...and the password of its private key
+    string keyPasswordWindows;
+
+    // For Mac, only a developer identiyy string is needed
+    string developerIdentityOSX;
+
+    // The wrap configuration GUID (go to PACE Central to create such wrap configurations)
+    string wrapConfigGUID;
+}
+
+PACEConfig readPACEConfig()
+{
+    // It's OK not to have a pace.json, but you have, it must be correct.
+    if (!exists("pace.json"))
+        return null;
+
+    auto config = new PACEConfig;
+    JSONValue dubFile = parseJSON(cast(string)(std.file.read("pace.json")));
+
+    void get(string fieldName, string jsonKey)()
+    {
+        try
+        {
+            mixin("config." ~ fieldName ~ ` = dubFile["` ~ jsonKey ~ `"].str;`);
+        }
+        catch(Exception e)
+        {
+            throw new Exception("Missing \"" ~ jsonKey ~ "\" in pace.json");
+        }
+    }
+    get!("iLokAccount", "iLokAccount");
+    get!("iLokPassword", "iLokPassword");
+    get!("keyFileWindows", "keyFile-windows");
+    get!("keyPasswordWindows", "keyPassword-windows");
+    get!("developerIdentityOSX", "developerIdentity-osx");
+    get!("wrapConfigGUID", "wrapConfigGUID");
+    return config;
+}
+
+
+// </PACE CONFIG>

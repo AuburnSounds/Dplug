@@ -222,7 +222,7 @@ unittest
     assert(popLE!uint(arr) == 0x03020100);
     assert(popBE!int(arr) == 0x00010203);
 
-    import dplug.core.alignedbuffer;
+    import dplug.core.vec;
     auto app = makeVec!ubyte();
     writeBE!float(app, 1.0f);
     writeLE!double(app, 2.0);

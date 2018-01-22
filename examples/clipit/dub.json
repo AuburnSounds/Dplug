@@ -16,6 +16,8 @@
         "/nodefaultlib:vcruntime.lib"
     ],
 
+    "dflags-linux-dmd": ["-defaultlib=libphobos2.a"],
+
     "dependencies":
     {
         "dplug:dsp": { "path": "../.." },

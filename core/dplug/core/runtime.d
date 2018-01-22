@@ -11,62 +11,8 @@ import dplug.core.fpcontrol;
 import dplug.core.nogc;
 import dplug.core.cpuid;
 
-// Helpers to deal with the D runtime.
-version = useShakyWorkaround;
-
 /// When this version is defined, the runtime won't be initialized.
 version = doNotUseRuntime;
-
-version(OSX)
-{
-    __gshared bool didInitRuntime = false;
-
-    version(useShakyWorkaround)
-    {
-        // Workaround Issue #15060
-        // https://issues.dlang.org/show_bug.cgi?id=15060
-        // Found by Martin Nowak and bitwise
-        // Trade-off a crash for a leak :|
-
-        extern(C) int sysctlbyname(const char *, void *, size_t *, void *, size_t);
-
-        alias dyld_image_states = int;
-        enum : dyld_image_states
-        {
-            dyld_image_state_initialized = 50,
-        }        
-
-        extern(C) nothrow
-        {
-            alias dyld_image_state_change_handler = const(char)* function(dyld_image_states state, uint infoCount, void* dyld_image_info);
-        }
-
-        extern(C) const(char)* ignoreImageLoad(dyld_image_states state, uint infoCount, void* dyld_image_info) nothrow
-        {
-            return null;
-        }
-
-        extern(C) void dyld_register_image_state_change_handler(dyld_image_states state, bool batch, dyld_image_state_change_handler handler);
-    }
-
-    // Initializes the runtime if not already initialized
-    void runtimeInitWorkaround15060()
-    {
-        import core.runtime;
-
-        if(!didInitRuntime) // There is a race here, could it possibly be a problem? Until now, no.
-        {
-            Runtime.initialize();
-
-            version(useShakyWorkaround)
-            {
-                dyld_register_image_state_change_handler(dyld_image_state_initialized, false, &ignoreImageLoad);
-            }
-
-            didInitRuntime = true;
-        }
-    }
-}
 
 /// RAII struct to cover callbacks that need attachment and runtime initialized.
 /// This deals with runtime inialization and thread attachment in a very explicit way.
@@ -105,13 +51,8 @@ public:
             // Runtime initialization if needed.
             static if (doInitializeRuntime)
             {
-                version(OSX)
-                    runtimeInitWorkaround15060();
-                else
-                {
-                    import core.runtime;
-                    Runtime.initialize();
-                }
+                import core.runtime;
+                Runtime.initialize();
 
                 // CPUID detection
                 initializeCpuid();

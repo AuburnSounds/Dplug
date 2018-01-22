@@ -60,8 +60,11 @@ private:
     int _lastMouseY;
 
 public:
-    this(void* parentWindow, void* parentControl, IWindowListener listener, int width, int height)
+    this(WindowUsage usage, void* parentWindow, void* parentControl, IWindowListener listener, int width, int height)
     {
+        // Carbon doesn't support the host window case.
+        assert(usage == WindowUsage.plugin);
+
         _ticksPerSecond = machTicksPerSecond();
         _listener = listener;
 

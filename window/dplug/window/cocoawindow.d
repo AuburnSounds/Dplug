@@ -59,13 +59,13 @@ private:
     uint _lastMeasturedTimeInMs;
     bool _dirtyAreasAreNotYetComputed;
 
+    bool _isHostWindow;
+
 public:
 
-    // If listener is null, this window is a host window who doesn't need to register a view
-    // Else it's a client window.
-    this(void* parentWindow, IWindowListener listener, int width, int height)
+    this(WindowUsage usage, void* parentWindow, IWindowListener listener, int width, int height)
     {
-        bool isHostWindow = listener is null;
+        _isHostWindow = (usage == WindowUsage.host);
 
         _listener = listener;
 
@@ -90,7 +90,7 @@ public:
 
         _dirtyAreasAreNotYetComputed = true;
 
-        if (!isHostWindow)
+        if (!_isHostWindow)
         {
             DPlugCustomView.generateClassName();
             DPlugCustomView.registerSubclass();
@@ -114,16 +114,13 @@ public:
             _nsWindow.initWithContentRect(NSMakeRect(0, 0, width, height),
                                             NSBorderlessWindowMask, NSBackingStoreBuffered, NO);
             _nsWindow.makeKeyAndOrderFront();
-
-                _nsApplication.activateIgnoringOtherApps(YES);
+            _nsApplication.activateIgnoringOtherApps(YES);
         }
     }
 
     ~this()
     {
-        bool isHostWindow = _listener is null;
-
-        if (!isHostWindow)
+        if (!_isHostWindow)
         {
             _terminated = true;
 
@@ -148,8 +145,7 @@ public:
     // Implements IWindow
     override void waitEventAndDispatch()
     {
-        bool isHostWindow = _listener is null;
-        if (!isHostWindow)
+        if (!_isHostWindow)
             assert(false); // only valid for a host window
 
         NSEvent event = _nsWindow.nextEventMatchingMask(cast(NSUInteger)-1);
@@ -168,8 +164,7 @@ public:
 
     override void* systemHandle()
     {
-        bool isHostWindow = _listener is null;
-        if (isHostWindow)
+        if (_isHostWindow)
             return _nsWindow.contentView()._id; // return the main NSView
         else
             return _view._id;

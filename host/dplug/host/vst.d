@@ -83,6 +83,9 @@ final class VSTPluginHost : IPluginHost
 
     override void close()
     {
+        if (!_suspended)
+            throw new Exception("Cannot close VST plugin while not suspended");
+
         // close plugin
         _dispatcher(_aeffect, effClose, 0, 0, null, 0.0f);
 
@@ -159,8 +162,6 @@ final class VSTPluginHost : IPluginHost
 
     override void closeUI()
     {
-        if (!_suspended)
-            throw new Exception("Cannot close VST plugin while not suspended");
         _dispatcher(_aeffect, effEditClose, 0, 0, null, 0.0f);
     }
 

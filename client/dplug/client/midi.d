@@ -20,9 +20,9 @@ Permission is granted to anyone to use this software for any purpose, including 
 module dplug.client.midi;
 
 import std.algorithm.mutation;
-import dplug.core.alignedbuffer;
+import dplug.core.vec;
 
-/// It's the same abstraction that in IPlug.
+/// This abstraction is similar to the one in IPlug.
 /// For VST raw MIDI messages are passed.
 /// For AU MIDI messages gets synthesized.
 struct MidiMessage
@@ -31,10 +31,10 @@ pure:
 nothrow:
 @nogc:
 
-    this( int offset, ubyte status, ubyte data1, ubyte data2)
+    this( int offset, ubyte statusByte, ubyte data1, ubyte data2)
     {
         _offset = offset;
-        _status = status;
+        _statusByte = statusByte;
         _data1 = data1;
         _data2 = data2;
     }
@@ -42,31 +42,131 @@ nothrow:
     int offset() const
     {
         return _offset;
-    } 
+    }
 
+    /// Midi channels 1 .. 16
+    ///
+    /// Returns: [0 .. 15]
     int channel() const
     {
-        return status & 0x0F;
+        return _statusByte & 0x0F;
     }
 
-    int status() const
+    /// Status Type
+    ///
+    /// See_Also: dplug.client.midi : MidiStatus
+    deprecated("Use statusType instead") alias status = statusType;
+    int statusType() const
     {
-        return _status >> 4;
+        return _statusByte >> 4;
     }
 
+    // Status type distinction properties
+
+    bool isChannelAftertouch() const
+    {
+        return statusType() == MidiStatus.channelAftertouch;
+    }
+
+    bool isControlChange() const
+    {
+        return statusType() == MidiStatus.controlChange;
+    }
+
+    /// Checks whether the status type of the message is 'Note On'
+    /// _and the velocity value is actually greater than zero_.
+    ///
+    /// IMPORTANT: As per MIDI 1.0, a 'Note On' event with a velocity
+    ///            of zero should be treated like a 'Note Off' event.
+    ///            Which is why this function checks velocity > 0.
+    ///
+    /// See_Also:
+    ///     isNoteOff()
     bool isNoteOn() const
     {
-        return status() == MidiStatus.noteOn;
+        return (statusType() == MidiStatus.noteOn) && (noteVelocity() > 0);
     }
 
+    /// Checks whether the status type of the message is 'Note Off'
+    /// or 'Note On' with a velocity of 0.
+    ///
+    /// IMPORTANT: As per MIDI 1.0, a 'Note On' event with a velocity
+    ///            of zero should be treated like a 'Note Off' event.
+    ///            Which is why this function checks velocity == 0.
+    ///
+    ///            Some devices send a 'Note On' message with a velocity 
+    ///            value of zero instead of a real 'Note Off' message.
+    ///            Many DAWs will automatically convert such ones to 
+    ///            explicit ones, but one cannot rely on this.
+    ///
+    /// See_Also:
+    ///     isNoteOn()
     bool isNoteOff() const
     {
-        return status() == MidiStatus.noteOff;
+        return (statusType() == MidiStatus.noteOff) 
+               || 
+               ( (statusType() == MidiStatus.noteOn) && (noteVelocity() == 0) );
+    }
+
+    bool isPitchBend() const
+    {
+        return statusType() == MidiStatus.pitchWheel;
+    }
+
+    alias isPitchWheel = isPitchBend;
+
+    bool isPolyAftertouch() const
+    {
+        return statusType() == MidiStatus.polyAftertouch;
+    }
+
+    bool isProgramChange() const
+    {
+        return statusType() == MidiStatus.programChange;
+    }
+
+    // Data value properties
+
+    /// Channel pressure
+    int channelAftertouch() const
+    {
+        assert(isChannelAftertouch());
+        return _data1;
+    }
+
+    /// Number of the changed controller
+    MidiControlChange controlChangeControl() const
+    {
+        assert(isControlChange());
+        return cast(MidiControlChange)(_data1);
+    }
+
+    /// Controller's new value
+    ///
+    /// Returns: [1 .. 127]
+    int controlChangeValue() const
+    {
+        assert(isControlChange());
+        return _data2;
+    }
+
+    /// Controller's new value
+    ///
+    /// Returns: [0.0 .. 1.0]
+    float controlChangeValue0to1() const
+    {
+        return cast(float)(controlChangeValue()) / 127.0f;
+    }
+
+    /// Returns: true = on
+    bool controlChangeOnOff() const
+    {
+        return controlChangeValue() >= 64;
     }
 
     int noteNumber() const
     {
-        assert(isNoteOn() || isNoteOff());
+        assert(isNoteOn() || isNoteOff() || isPolyAftertouch());
         return _data1;
     }
 
@@ -76,14 +176,38 @@ nothrow:
         return _data2;
     }
 
+    /// Returns: [-1.0 .. 1.0[
+    float pitchBend() const
+    {
+        assert(isPitchBend());
+        immutable int iVal = (_data2 << 7) + _data1;
+        return cast(float) (iVal - 8192) / 8192.0f;
+    }
+
+    alias pitchWheel = pitchBend;
+
+    /// Amount of pressure
+    int polyAftertouch() const
+    {
+        assert(isPolyAftertouch());
+        return _data2;
+    }
+
+    /// Program number
+    int program() const
+    {
+        assert(isProgramChange());
+        return _data1;
+    }
+
 private:
     int _offset = 0;
 
-    ubyte _status = 0;
+    ubyte _statusByte = 0;
 
     ubyte _data1 = 0;
 
-    ubyte _data2 = 0; 
+    ubyte _data2 = 0;
 }
 
 
@@ -96,7 +220,8 @@ enum MidiStatus : ubyte
     controlChange = 11,
     programChange = 12,
     channelAftertouch = 13,
-    pitchWheel = 14
+    pitchBend = 14,
+    pitchWheel = pitchBend
 };
 
 enum MidiControlChange : ubyte
@@ -141,36 +266,36 @@ enum MidiControlChange : ubyte
 
 nothrow @nogc:
 
-MidiMessage makeMidiMessage(int offset, int channel, MidiStatus status, int data1, int data2)
+MidiMessage makeMidiMessage(int offset, int channel, MidiStatus statusType, int data1, int data2)
 {
     assert(channel >= 0 && channel <= 15);
-    assert(status >= 0 && status <= 15);
+    assert(statusType >= 0 && statusType <= 15);
     assert(data1 >= 0 && data2 <= 255);
     assert(data1 >= 0 && data2 <= 255);
     MidiMessage msg;
     msg._offset = offset;
-    msg._status = cast(ubyte)( channel | (status << 4) );
+    msg._statusByte = cast(ubyte)( channel | (statusType << 4) );
     msg._data1 = cast(ubyte)data1;
     msg._data2 = cast(ubyte)data2;
     return msg;
 }
 
 MidiMessage makeMidiMessageNoteOn(int offset, int channel, int noteNumber, int velocity)
-{    
+{
     return makeMidiMessage(offset, channel, MidiStatus.noteOn, noteNumber, velocity);
 }
 
 MidiMessage makeMidiMessageNoteOff(int offset, int channel, int noteNumber)
-{    
+{
     return makeMidiMessage(offset, channel, MidiStatus.noteOff, noteNumber, 0);
 }
 
 MidiMessage makeMidiMessagePitchWheel(int offset, int channel, float value)
 {
     int ivalue = 8192 + cast(int)(value * 8192.0);
-    if (ivalue < 0) 
+    if (ivalue < 0)
         ivalue = 0;
-    if (ivalue > 16383) 
+    if (ivalue > 16383)
         ivalue = 16383;
     return makeMidiMessage(offset, channel, MidiStatus.pitchWheel, ivalue & 0x7F, ivalue >> 7);
 }
@@ -178,7 +303,7 @@ MidiMessage makeMidiMessagePitchWheel(int offset, int channel, float value)
 MidiMessage makeMidiMessageControlChange(int offset, int channel, MidiControlChange index, float value)
 {
     // MAYDO: mapping is a bit strange here, not sure it can make +127 except exactly for 1.0f
-    return makeMidiMessage(offset, channel, MidiStatus.controlChange, index, cast(int)(value * 127.0f) );    
+    return makeMidiMessage(offset, channel, MidiStatus.controlChange, index, cast(int)(value * 127.0f) );
 }
 
 
@@ -272,7 +397,7 @@ private:
 
     // Useful slots are in 1..QueueCapacity+1
     // means it can contain QueueCapacity items at most
-    MidiMessage[QueueCapacity+1] _heap;    
+    MidiMessage[QueueCapacity+1] _heap;
 
     void insertElement(MidiMessage message)
     {
@@ -287,9 +412,9 @@ private:
             debug
             {
                 // MIDI messages heap is on full capacity.
-                // That can happen because you have forgotten to call `getNextMidiMessages` 
+                // That can happen because you have forgotten to call `getNextMidiMessages`
                 // with the necessary number of frames.
-                assert(false); 
+                assert(false);
             }
             else
             {

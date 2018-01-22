@@ -26,7 +26,7 @@ import std.container;
 
 import dplug.core.nogc;
 import dplug.core.math;
-import dplug.core.alignedbuffer;
+import dplug.core.vec;
 
 import dplug.client.params;
 import dplug.client.preset;
@@ -67,7 +67,14 @@ struct PluginVersion
         assert(major < 256 && minor < 256 && patch < 256);
         return (major << 16) | (minor << 8) | patch;
     }
+
+    int toAAXPackageVersion() pure const nothrow @nogc
+    {
+        // For AAX, considered binary-compatible unless major version change
+        return major;
+    }
 }
+
 
 // Statically known features of the plugin.
 // There is some default for explanation purpose, but you really ought to override them all.
@@ -108,6 +115,18 @@ struct PluginInfo
     /// Warning: receiving MIDI forces you to call `getNextMidiMessages`
     /// with the right number of `frames`, every buffer.
     bool receivesMIDI = false;
+
+    /// Used for being at the right place in list of plug-ins.
+    PluginCategory category;
+
+    /// Used as name of the bundle in VST.
+    string VSTBundleIdentifier;
+
+    /// Used as name of the bundle in AU.
+    string AUBundleIdentifier;
+
+    /// Used as name of the bundle in AAX.
+    string AAXBundleIdentifier;
 }
 
 /// This allows to write things life tempo-synced LFO.
@@ -225,7 +244,7 @@ nothrow:
     }
 
     /// Returns: Array of parameters.
-    final Parameter[] params() nothrow @nogc
+    final inout(Parameter[]) params() inout nothrow @nogc
     {
         return _params;
     }
@@ -261,13 +280,13 @@ nothrow:
     }
 
     /// Returns: The parameter indexed by index.
-    final Parameter param(int index) nothrow @nogc
+    final inout(Parameter) param(int index) inout nothrow @nogc
     {
         return _params.ptr[index];
     }
 
     /// Returns: true if index is a valid parameter index.
-    final bool isValidParamIndex(int index) nothrow @nogc
+    final bool isValidParamIndex(int index) const nothrow @nogc
     {
         return index >= 0 && index < _params.length;
     }
@@ -451,6 +470,26 @@ nothrow:
     final string pluginName() pure const nothrow @nogc
     {
         return _info.pluginName;
+    }
+
+    final PluginCategory pluginCategory() pure const nothrow @nogc
+    {
+        return _info.category;
+    }
+
+    final string VSTBundleIdentifier() pure const nothrow @nogc
+    {
+        return _info.VSTBundleIdentifier;
+    }
+
+    final string AUBundleIdentifier() pure const nothrow @nogc
+    {
+        return _info.AUBundleIdentifier;
+    }
+
+    final string AAXBundleIdentifier() pure const nothrow @nogc
+    {
+        return _info.AAXBundleIdentifier;
     }
 
     /// Returns: Plugin "unique" ID.
@@ -709,5 +748,33 @@ PluginInfo parsePluginInfo(string json)
     info.receivesMIDI = toBoolean(j["receivesMIDI"]);
     info.publicVersion = parsePluginVersion(j["publicVersion"].str);
 
+    string CFBundleIdentifierPrefix = j["CFBundleIdentifierPrefix"].str;
+
+    string sanitizedName = sanitizeBundleString(info.pluginName);
+    info.VSTBundleIdentifier = CFBundleIdentifierPrefix ~ ".vst." ~ sanitizedName;
+    info.AUBundleIdentifier = CFBundleIdentifierPrefix ~ ".audiounit." ~ sanitizedName;
+    info.AAXBundleIdentifier = CFBundleIdentifierPrefix ~ ".aax." ~ sanitizedName;
+
+    PluginCategory category = parsePluginCategory(j["category"].str);
+    if (category == PluginCategory.invalid)
+        throw new Exception("Invalid \"category\" in plugin.json. Check out dplug.client.daw for valid values (eg: \"effectDynamics\").");
+    info.category = category;
     return info;
+}
+
+private string sanitizeBundleString(string s) pure
+{
+    string r = "";
+    foreach(dchar ch; s)
+    {
+        if (ch >= 'A' && ch <= 'Z')
+            r ~= ch;
+        else if (ch >= 'a' && ch <= 'z')
+            r ~= ch;
+        else if (ch == '.')
+            r ~= ch;
+        else
+            r ~= "-";
+    }
+    return r;
 }
