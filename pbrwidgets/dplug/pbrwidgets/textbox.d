@@ -13,12 +13,13 @@ public:
 nothrow:
 @nogc:
     
-    this(UIContext context, Font font, int textSize, RGBA color)
+    this(UIContext context, Font font, int textSize, RGBA textColor = RGBA(200, 200, 200, 255), RGBA backgroundColor = RGBA(0, 0, 0, 255))
     {
         super(context);
         _font = font;
         _textSize = textSize;
-        _color = color;
+        _textColor = textColor;
+		_backgroundColor = backgroundColor;
         charBuffer = mallocNew!CharStack(512);
     }
     
@@ -37,31 +38,22 @@ nothrow:
     {
         float textPosx = position.width * 0.5f;
         float textPosy = position.height * 0.5f;
-        RGBA backgroundDiffuse = RGBA(100, 100, 100, 255);
-        if(_isActive)
-            backgroundDiffuse = RGBA(0, 0, 0, 255);
 
         foreach(dirtyRect; dirtyRects)
         {
             auto croppedDiffuse = diffuseMap.cropImageRef(dirtyRect);
             vec2f positionInDirty = vec2f(textPosx, textPosy) - dirtyRect.min;
 
-			croppedDiffuse.fillAll(backgroundDiffuse);
-            croppedDiffuse.fillText(_font, displayString(), _textSize, 0.5, _color, positionInDirty.x, positionInDirty.y);
+			croppedDiffuse.fillAll(_backgroundColor);
+            croppedDiffuse.fillText(_font, displayString(), _textSize, 0.5, _textColor, positionInDirty.x, positionInDirty.y);
         }
     }
     
     override bool onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
     {
         // Left click
-        if(containsPoint(x, y))
-        {
-            _isActive = true;
-        }
-        else
-        {
-            _isActive = false;
-        }
+        _isActive = true;
+
         setDirtyWhole();
         return true;
     }
@@ -78,6 +70,7 @@ nothrow:
 
     override void onMouseExit()
     {
+		_isActive = false;
         setDirtyWhole();
     }
 
@@ -117,15 +110,24 @@ private:
     
     Font _font;
     int _textSize;
-    RGBA _color;
+    RGBA _textColor;
+	RGBA _backgroundColor;
     bool _isActive;
     char[] stringBuf;
     CharStack charBuffer;
 
     final bool containsPoint(int x, int y)
     {
-        vec2f center = getCenter();
-        return vec2f(x, y).distanceTo(center) < getRadius();
+        box2i subSquare = getSubsquare();
+        float centerx = (subSquare.min.x + subSquare.max.x - 1) * 0.5f;
+        float centery = (subSquare.min.y + subSquare.max.y - 1) * 0.5f;
+
+        float minx = centerx - (_position.width / 2);
+        float maxx = centerx + (_position.width / 2);
+        float miny = centery - (_position.height / 2);
+        float maxy = centery + (_position.height / 2);
+
+        return x > minx && x < maxx && y > miny && y < maxy;
     }
 
     /// Returns: largest square centered in _position
@@ -169,6 +171,16 @@ private char getCharFromKey(Key key) nothrow @nogc
     switch(key)
     {
         case Key.backspace: return '\t';
+        case Key.digit0: return '0';
+        case Key.digit1: return '1';
+        case Key.digit2: return '2';
+        case Key.digit3: return '3';
+        case Key.digit4: return '4';
+        case Key.digit5: return '5';
+        case Key.digit6: return '6';
+        case Key.digit7: return '7';
+        case Key.digit8: return '8';
+        case Key.digit9: return '9';
         case Key.a:  return 'a';
         case Key.b:  return 'b';
         case Key.c:  return 'c';
@@ -282,3 +294,4 @@ private:
     char* buffer;
     size_t actualLength;
 }
+

@@ -177,8 +177,7 @@ version(Windows)
                 {
                     bool handled = false;
 
-                    if(GetKeyState(VK_LSHIFT))
-                        shiftPressed = !shiftPressed;
+                    shiftPressed = GetKeyState(VK_SHIFT) < 0;
 
                     Key key = vkToKey(wParam, shiftPressed);
                     if (uMsg == WM_KEYDOWN)
@@ -497,6 +496,16 @@ version(Windows)
                 case VK_NUMPAD7: return Key.digit7;
                 case VK_NUMPAD8: return Key.digit8;
                 case VK_NUMPAD9: return Key.digit9;
+                case 0x30: return Key.digit0;
+                case 0x31: return Key.digit1;
+                case 0x32: return Key.digit2;
+                case 0x33: return Key.digit3;
+                case 0x34: return Key.digit4;
+                case 0x35: return Key.digit5;
+                case 0x36: return Key.digit6;
+                case 0x37: return Key.digit7;
+                case 0x38: return Key.digit8;
+                case 0x39: return Key.digit9;
                 case 0x41: return shiftPressed ?  Key.A : Key.a;
                 case 0x42: return shiftPressed ?  Key.B : Key.b;
                 case 0x43: return shiftPressed ?  Key.C : Key.c;
