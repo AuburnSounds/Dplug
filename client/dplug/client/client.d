@@ -380,6 +380,7 @@ nothrow:
     /// If you want your latency to depend on a `Parameter` your only choice is to
     /// pessimize the needed latency and compensate in the process callback.
     /// Returns: Plugin latency in samples.
+    /// Note: this can absolutely be called before `reset` was called, be prepared.
     int latencySamples(double sampleRate) pure const nothrow @nogc
     {
         return 0; // By default, no latency introduced by plugin
