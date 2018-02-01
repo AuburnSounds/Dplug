@@ -23,6 +23,7 @@ import dplug.core.math,
 
 // sinc impulse functions
 
+/// Generates a sinc lowpass impulse, centered on floor(output.length / 2).
 void generateLowpassImpulse(T)(T[] output, double cutoff, double samplerate) nothrow @nogc
 {
     checkFilterParams(output.length, cutoff, samplerate);
@@ -41,6 +42,7 @@ void generateLowpassImpulse(T)(T[] output, double cutoff, double samplerate) not
     normalizeImpulse(output);
 }
 
+/// Generates a sinc highpass impulse, centered on floor(output.length / 2).
 void generateHighpassImpulse(T)(T[] output, double cutoff, double samplerate) nothrow @nogc
 {
     checkFilterParams(output.length, cutoff, samplerate);
@@ -59,6 +61,7 @@ void generateHighpassImpulse(T)(T[] output, double cutoff, double samplerate) no
     normalizeImpulse(output);
 }
 
+/// Generates a hilbert transformer impulse, centered on floor(output.length / 2).
 void generateHilbertTransformer(T)(T[] outImpulse, WindowDesc windowDesc, double samplerate) nothrow @nogc
 {
     int size = cast(int)(outImpulse.length);
@@ -181,7 +184,9 @@ unittest
     cdouble[] tempStorage = new cdouble[tempBufferSizeForMinPhase(lp_impulse[])];
     minimumPhaseImpulse!double(lp_impulse[], tempStorage);
 
-    generateHilbertTransformer(lp_impulse[0..$-1], WindowDesc(WindowType.BLACKMANN_HARRIS), 44100.0);
+    generateHilbertTransformer(lp_impulse[0..$-1], 
+        WindowDesc(WindowType.blackmannHarris, 
+                   WindowAlignment.right), 44100.0);
 }
 
 
@@ -254,5 +259,5 @@ unittest
     fir.initialize(32);
     generateLowpassImpulse(fir.impulse(), 40.0, 44100.0);
     fir.makeMinimumPhase();
-    fir.applyWindow(WindowDesc(WindowType.HANN));
+    fir.applyWindow(WindowDesc(WindowType.hann, WindowAlignment.right));
 }

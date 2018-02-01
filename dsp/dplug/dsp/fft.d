@@ -566,10 +566,10 @@ private:
 unittest
 {
     FFTAnalyzer!float a;
-    a.initialize(1024, 2048, 512, WindowDesc(WindowType.HANN), true);
+    a.initialize(1024, 2048, 512, WindowDesc(WindowType.hann, WindowAlignment.left), true);
 
     FFTAnalyzer!double b;
-    b.initialize(1024, 2048, 512, WindowDesc(WindowType.HANN), false);
+    b.initialize(1024, 2048, 512, WindowDesc(WindowType.hann, WindowAlignment.right), false);
 }
 
 
