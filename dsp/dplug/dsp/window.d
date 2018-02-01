@@ -107,6 +107,8 @@ enum WindowAlignment
 struct WindowDesc
 {
 public:
+nothrow:
+@nogc:
 
     /// Construct a window description, with a foolproof constructor.
     this(WindowType type, WindowAlignment alignment, float param = float.nan)
@@ -159,11 +161,6 @@ void generateNormalizedWindow(T)(WindowDesc desc, T[] output) pure nothrow @nogc
         output[i] *= invSum;    
 }
 
-deprecated("This function disappeared.") double secondaryLobeAttenuationInDb(WindowType type) pure nothrow @nogc
-{
-   return double.nan;
-}
-
 // Note: N is the number of output samples, not necessarily the periodicity
 double evalWindow(WindowDesc desc, int n, int N) pure nothrow @nogc
 {
@@ -180,6 +177,7 @@ double evalWindow(WindowDesc desc, int n, int N) pure nothrow @nogc
                 return evalWindowInternal(desc, n + 1, N);
 
         case symmetric:
+            // Symmetric is just a shorter window
             return evalWindowInternal(desc, n, N - 1);
     }
 }
