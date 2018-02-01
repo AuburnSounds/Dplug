@@ -1,3 +1,12 @@
+/**
+ * Widget for displaying an editable textbox.  User must click on widget to edit,
+ * and mouse must be over box while editing.
+ *
+ * Copyright: Copyright Auburn Sounds 2015-2017.
+ * Copyright: Cut Through Recordings 2017.
+ * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
+ * Authors:   Ethan Reker
+ */
 module dplug.pbrwidgets.textbox;
 
 import dplug.gui.element;
@@ -19,7 +28,7 @@ nothrow:
         _font = font;
         _textSize = textSize;
         _textColor = textColor;
-		_backgroundColor = backgroundColor;
+        _backgroundColor = backgroundColor;
         charBuffer = mallocNew!CharStack(512);
     }
     
@@ -27,11 +36,10 @@ nothrow:
     {
         charBuffer.destroyFree();
     }
-    
-    const(char)[] displayString() nothrow @nogc
+
+    @property const(char)[] getText()
     {
-        stringBuf = charBuffer.ptr[0..strlen(charBuffer.ptr)];
-        return stringBuf[0..strlen(charBuffer.ptr)];
+        return displayString();
     }
 
     override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects) nothrow @nogc
@@ -44,7 +52,7 @@ nothrow:
             auto croppedDiffuse = diffuseMap.cropImageRef(dirtyRect);
             vec2f positionInDirty = vec2f(textPosx, textPosy) - dirtyRect.min;
 
-			croppedDiffuse.fillAll(_backgroundColor);
+            croppedDiffuse.fillAll(_backgroundColor);
             croppedDiffuse.fillText(_font, displayString(), _textSize, 0.5, _textColor, positionInDirty.x, positionInDirty.y);
         }
     }
@@ -70,7 +78,7 @@ nothrow:
 
     override void onMouseExit()
     {
-		_isActive = false;
+        _isActive = false;
         setDirtyWhole();
     }
 
@@ -111,10 +119,16 @@ private:
     Font _font;
     int _textSize;
     RGBA _textColor;
-	RGBA _backgroundColor;
+    RGBA _backgroundColor;
     bool _isActive;
     char[] stringBuf;
     CharStack charBuffer;
+
+    const(char)[] displayString() nothrow @nogc
+    {
+        stringBuf = charBuffer.ptr[0..strlen(charBuffer.ptr)];
+        return stringBuf[0..strlen(charBuffer.ptr)];
+    }
 
     final bool containsPoint(int x, int y)
     {
