@@ -92,6 +92,7 @@ void generateHilbertTransformer(T)(T[] outImpulse, WindowDesc windowDesc, double
 
 /// Normalize impulse response.
 /// Scale to make sum = 1.
+/// TODO: normalize by DC, or normalize by unit energy ? Create two functions.
 deprecated void normalizeImpulse(T)(T[] inoutImpulse) nothrow @nogc
 {
     int size = cast(int)(inoutImpulse.length);
@@ -107,19 +108,20 @@ deprecated void normalizeImpulse(T)(T[] inoutImpulse) nothrow @nogc
 /// Returns: Length of temporary buffer needed for `minimumPhaseImpulse`.
 int tempBufferSizeForMinPhase(T)(T[] inputImpulse) nothrow @nogc
 {
-    return cast(int)( nextPowerOf2(inputImpulse.length) );
+    return cast(int)( nextPowerOf2(inputImpulse.length * 4)); // PERF: too much?
 }
+
 
 /// From an impulse, computes a minimum-phase impulse
 /// Courtesy of kasaudio, based on Aleksey Vaneev's algorithm
 /// See: http://www.kvraudio.com/forum/viewtopic.php?t=197881
 /// MAYDO: does it preserve amplitude?
-void minimumPhaseImpulse(T)(T[] inoutImpulse,  BuiltinComplex!T[] tempStorage) nothrow @nogc // alloc free version
+void minimumPhaseImpulse(T)(T[] inoutImpulse, BuiltinComplex!T[] tempStorage) nothrow @nogc // alloc free version
 {
     assert(tempStorage.length >= tempBufferSizeForMinPhase(inoutImpulse));
 
     int N = cast(int)(inoutImpulse.length);
-    int fftSize = cast(int)( nextPowerOf2(inoutImpulse.length) );
+    int fftSize = cast(int)( nextPowerOf2(inoutImpulse.length * 4));
     assert(fftSize >= N);
     int halfFFTSize = fftSize / 2;
 
@@ -128,23 +130,27 @@ void minimumPhaseImpulse(T)(T[] inoutImpulse,  BuiltinComplex!T[] tempStorage) n
 
     auto kernel = tempStorage;
 
+    // Put the real impulse in a larger buffer
     for (int i = 0; i < N; ++i)
         kernel[i] = (inoutImpulse[i] + 0i);
-
     for (int i = N; i < fftSize; ++i)
         kernel[i] = 0+0i;
 
     forwardFFT!T(kernel[]);
 
+    // Take the log-modulus of spectrum
     for (int i = 0; i < fftSize; ++i)
         kernel[i] = log(abs(kernel[i]))+0i;
 
+    // Back to real cepstrum
     inverseFFT!T(kernel[]);
 
+    // Apply a cepstrum window, not sure how this works
+    kernel[0] = kernel[0].re + 0i;
     for (int i = 1; i < halfFFTSize; ++i)
-        kernel[i] *= 2;
-
-    for (int i = halfFFTSize + 1; i < halfFFTSize; ++i)
+        kernel[i] = kernel[i].re * 2 + 0i;
+    kernel[halfFFTSize] = kernel[halfFFTSize].re + 0i;
+    for (int i = halfFFTSize + 1; i < fftSize; ++i)
         kernel[i] = 0+0i;
 
     forwardFFT!T(kernel[]);
@@ -161,7 +167,7 @@ void minimumPhaseImpulse(T)(T[] inoutImpulse,  BuiltinComplex!T[] tempStorage) n
 private BuiltinComplex!T complexExp(T)(BuiltinComplex!T z) nothrow @nogc
 {
     T mag = exp(z.re);
-    return (mag * cos(z.re)) + 1i * (mag * sin(z.im));
+    return (mag * cos(z.im)) + 1i * (mag * sin(z.im));
 }
 
 private static void checkFilterParams(size_t length, double cutoff, double sampleRate) nothrow @nogc
