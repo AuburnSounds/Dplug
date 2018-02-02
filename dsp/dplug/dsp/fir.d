@@ -35,14 +35,14 @@ void generateLowpassImpulse(T)(T[] output, double cutoff, double samplerate) not
     {
         int x = i - (len / 2);
         if (x == 0)
-            output[i] = wc;
+            output[i] = cutoffNormalized * 2.0;
         else
-            output[i] = sin(wc * x) / cast(double)x;
+            output[i] = sin(wc * x) / cast(double)(PI * x);
     }
-    normalizeImpulse(output);
 }
 
 /// Generates a sinc highpass impulse, centered on floor(output.length / 2).
+/// When convolved with, preserve amplitude of the pass-band.
 void generateHighpassImpulse(T)(T[] output, double cutoff, double samplerate) nothrow @nogc
 {
     checkFilterParams(output.length, cutoff, samplerate);
@@ -54,11 +54,10 @@ void generateHighpassImpulse(T)(T[] output, double cutoff, double samplerate) no
     {
         int x = i - (len / 2);
         if (x == 0)
-            output[i] = 1 - wc;
+            output[i] = 1.0 - 2 * cutoffNormalized;
         else
-            output[i] = -sin(wc * x) / cast(double)x;
+            output[i] = sinc(PI * x) / cast(double)(PI * x) - 2.0 * cutoffNormalized * sin(wc * x) / (wc * x);
     }
-    normalizeImpulse(output);
 }
 
 /// Generates a hilbert transformer impulse, centered on floor(output.length / 2).
@@ -93,7 +92,7 @@ void generateHilbertTransformer(T)(T[] outImpulse, WindowDesc windowDesc, double
 
 /// Normalize impulse response.
 /// Scale to make sum = 1.
-void normalizeImpulse(T)(T[] inoutImpulse) nothrow @nogc
+deprecated void normalizeImpulse(T)(T[] inoutImpulse) nothrow @nogc
 {
     int size = cast(int)(inoutImpulse.length);
     double sum = 0;
@@ -165,13 +164,11 @@ private BuiltinComplex!T complexExp(T)(BuiltinComplex!T z) nothrow @nogc
     return (mag * cos(z.re)) + 1i * (mag * sin(z.im));
 }
 
-
 private static void checkFilterParams(size_t length, double cutoff, double sampleRate) nothrow @nogc
 {
     assert((length & 1) == 0, "FIR impulse length must be even");
     assert(cutoff * 2 < sampleRate, "2x the cutoff exceed sampling rate, Nyquist disapproving");
 }
-
 
 unittest
 {
@@ -220,6 +217,14 @@ struct FIR(T)
         for (int i = 0; i < N; ++i)
             sum += _impulse.ptr[i] * _delayline.sampleFull(i);
         return sum;
+    }
+
+    void nextBuffer(T* input, T* output, int samples) nothrow @nogc
+    {
+        for (int i = 0; i < samples; ++i)
+        {
+            output[i] = nextSample(input[i]);
+        }
     }
 
     /// Returns: Impulse response. If you write it, you can call makeMinimumPhase() next.
