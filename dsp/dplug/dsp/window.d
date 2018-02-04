@@ -138,16 +138,29 @@ private:
     float param;
 }
 
-void generateWindow(T)(WindowDesc desc, T[] output) pure nothrow @nogc
+/// Generates a window described by `windowDesc`, with periodicity of 
+/// `outputWindow.length`.
+void generateWindow(T)(WindowDesc desc, T[] outputWindow) pure nothrow @nogc
 {
-    int N = cast(int)(output.length);
+    int N = cast(int)(outputWindow.length);
     for (int i = 0; i < N; ++i)
     {
-        output[i] = cast(T)(evalWindow(desc, i, N));
+        outputWindow[i] = cast(T)(evalWindow(desc, i, N));
     }
 }
 
-void generateNormalizedWindow(T)(WindowDesc desc, T[] output) pure nothrow @nogc
+/// Multiplies the given slice in-place by a window described by `windowDesc`,
+/// whose periodicity is `inoutImpulse.length`.
+void multiplyByWindow(T)(T[] inoutImpulse, WindowDesc windowDesc) pure nothrow @nogc
+{
+    int N = cast(int)(inoutImpulse.length);
+    for (int i = 0; i < N; ++i)
+    {
+        inoutImpulse[i] *= evalWindow(windowDesc, i, N);
+    }
+}
+
+deprecated void generateNormalizedWindow(T)(WindowDesc desc, T[] output) pure nothrow @nogc
 {
     int N = cast(int)(output.length);
     T sum = 0;
