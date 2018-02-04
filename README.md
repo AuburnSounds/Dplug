@@ -41,19 +41,15 @@ Keep up with major changes here: [Release Notes](https://github.com/AuburnSounds
 
 Yes. See simple-mono-synth example.
 
-- Am I forced to use the PBR graphics system?
+- Am I forced to use the PBR rendering system?
 
-No. There are people making [plug-ins with Dplug without using PBR](http://www.modernmetalproduction.com/product/m4-multiband-compressor-vst-au/). How it works is that the physical channel is just filled with 0. Doing that requires a set of custom widgets, which you can find in `dplug:flat-widgets`.
+No. You can make [plug-ins with Dplug without using PBR](http://www.modernmetalproduction.com/product/m4-multiband-compressor-vst-au/). How it works is that the physical channel is just filled with 0. Doing that requires a set of custom widgets, which you can find in `dplug:flat-widgets`.
 
-- How do I build plugins for OS X?
-
-You need to use the `dplug-build` program in the `tools`directory.
-This tool creates Mac bundles and Universal Binaries as needed.
-Like most D programs, you can build it by typing `dub`.
 
 - What is the oldest supported Windows version?
 
-Windows Vista. Users report plug-ins made with both DMD and LDC work on Windows XP. But XP isn't officially supported by D compilers.
+Windows Vista. Windows XP isn't officially supported by D compilers.
+
 
 - What is the oldest supported OS X version?
 
@@ -65,22 +61,35 @@ OS X 10.8+.
 
 - What D compilers are recommended?
 
-   For both macOS and Windows it is recommended that you use LDC 1.2 or later.
+   For releases it is highly recommended that you use LDC >= 1.2.
+   When in development you can use DMD for faster compilation times. 
 
 - Is Dplug stable?
 
-Starting with v5 we'll have issue major or minor version tag for breaking changes.
-If you don't want breaking change, you can pin Dplug to a specific version in your `dub.json`.
-Breaking commits are marked with BREAKING in the commit backlog.
-They are always discussed on Discord before-hand.
+Dplug now has excellent stability.
+
+Dplug documents its breaking changes in the [Changelog](https://github.com/AuburnSounds/Dplug/wiki/) and
+issues major SemVer tags for breaking changes.
+
+If you don't want breaking changes, you can pin Dplug to a major version in your `dub.json`.
+
+But reality is complex, and bug fixes can be breaking too, (eg: "highpass FIR wasn't working").
+In which case we have to make a judgment call as to whether it's a breaking fix, and whether the buggy feature was used.
+
+Breaking commits, when they happen, are marked with BREAKING in the commit backlog.
+They are always discussed on Discord.
 
 - Will you add feature X?
 
 You have to understand that Dplug is a part-time operation, from people who spend much more time working on and releasing plug-ins.
 
-Dplug is there to support existing products and building companies around them, not to be beta software. Being stable and bug-free is much more important to us than implementing every possible feature.
+Dplug is there to support existing products and building companies around them, not to be beta software and make empty promises. 
+Being stable and bug-free is much more important to us than implementing every possible feature.
 
-If you have money to sponsor some sanctionned feature it can definately help though.
+Politically, it's very often than enhancements get postponed in favour of product development, so please be patient!
+
+We're looking for ways to improve governance as more contributors have appeared with contrasted agendas.
+
 
 - Where do I start?
 
@@ -91,7 +100,6 @@ Be sure to read the [Wiki](https://github.com/AuburnSounds/Dplug/wiki/) in depth
 
 Pros:
   - No dispatcher-wide mutex lock. All locks are of a short duration, to avoid blocking the audio thread.
-  - Buffer splitting: ensure your plugin never receive a buffer larger than N samples, and the corresponding MIDI input. This helps with memory consumption for the largest buffer sizes.
   - Plugin parameters implement the Observer pattern.
   - Float parameters can have user-defined mapping.
   - PBR-style rendering lets you have a good visual quality with less disk space.
@@ -109,12 +117,12 @@ Cons:
   - No resizeable UI
   - No HDPI support
   - No modal windows
+  - Latest IPlug has separated graphics from windowing
 
 ## Licenses
 
-Dplug has three different licenses depending on the part you need.
-For an audio plugin, you would typically need all three.
-I recommend that you check individual source files for license information.
+Dplug has different licenses depending on the sub-package you need.
+Please check individual source files for license information.
 
 ### Plugin format wrapping
 
@@ -126,8 +134,6 @@ Important contributors to WDL include:
 - Cockos: http://www.cockos.com/
 - Oliver Larkin: http://www.olilarkin.co.uk/
 
-However Dplug is **far** from a translation of WDL (see FAQ).
-
 
 ### VST SDK translation
 
@@ -137,7 +143,7 @@ VST is a trademark of Steinberg Media Technologies GmbH.
 Please register the SDK via the 3rd party developper license on Steinberg site.
 
 Before you make VST plugins with Dplug, you need to read and agree with the license for the VST3 SDK by Steinberg.
-**If you don't agree with the VST SDK license, don't make plugins with Dplug.**
+**If you don't agree with the VST SDK license, you can't make plugins with Dplug.**
 Find the VST3 SDK there: http://www.steinberg.net/en/company/developers.html
 
 ### Misc
@@ -187,4 +193,7 @@ Other source files fall under the Boost 1.0 license.
 
 ### dplug:x11
    * Static X11 bindings
+
+### dplug-aax (external repositery, see Wiki)
+   * AAX Native and AAX AudioSuite plugin client implementation
 
