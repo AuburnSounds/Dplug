@@ -37,8 +37,9 @@ enum WindowType
 
     flatTopSR785,    // Flat top window
 
-    // Kaiser-Bessel window, this one need a parameter alpha (typical values: 1.0 to 4.0)
-    kaiserBessel,   
+    /// Kaiser-Bessel window, this one need a parameter alpha (typical values: 1.0 to 4.0)
+    /// Note: Kaiser windows are talked about in terms of parameters alpha or beta.
+    kaiserBessel,
 
     // Older names
 
