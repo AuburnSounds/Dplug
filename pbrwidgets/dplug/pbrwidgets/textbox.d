@@ -11,6 +11,8 @@ module dplug.pbrwidgets.textbox;
 
 import dplug.gui.element;
 import dplug.core.nogc;
+import dplug.core.vec;
+import dplug.window.window : getCharFromKey;
 
 private import core.stdc.stdlib : malloc, free;
 private import core.stdc.stdio : snprintf, printf;
@@ -29,12 +31,11 @@ nothrow:
         _textSize = textSize;
         _textColor = textColor;
         _backgroundColor = backgroundColor;
-        charBuffer = mallocNew!CharStack(512);
+        charBuffer = makeVec!char();
     }
     
     ~this()
     {
-        charBuffer.destroyFree();
     }
 
     @property const(char)[] getText()
@@ -102,11 +103,11 @@ nothrow:
     {
         if(_isActive)
         {
-            const char c = getCharFromKey(key);
+            const char c = cast(char)getCharFromKey(key);
             if(c == '\t')
-                charBuffer.pop();
+                charBuffer.popBack();
             else if(c != '\0')
-                charBuffer.push(c);
+                charBuffer.pushBack(c);
             setDirtyWhole();
             return true;
         }
@@ -122,12 +123,12 @@ private:
     RGBA _backgroundColor;
     bool _isActive;
     char[] stringBuf;
-    CharStack charBuffer;
+    Vec!char charBuffer;
 
     const(char)[] displayString() nothrow @nogc
     {
-        stringBuf = charBuffer.ptr[0..strlen(charBuffer.ptr)];
-        return stringBuf[0..strlen(charBuffer.ptr)];
+        stringBuf = charBuffer[0..charBuffer.length];
+        return stringBuf[0..charBuffer.length];
     }
 
     final bool containsPoint(int x, int y)
@@ -179,74 +180,3 @@ private:
     }
     
 }
-
-private char getCharFromKey(Key key) nothrow @nogc
-{
-    switch(key)
-    {
-        case Key.backspace: return '\t';
-        case Key.digit0: .. case Key.digit9: return cast(char)('0' + (key - Key.digit0));
-        case Key.a: .. case Key.z: return cast(char)('a' + (key - Key.a));
-        case Key.A: .. case Key.Z: return cast(char)('A' + (key - Key.A));
-        case Key.space : return ' ';
-        default: return '\0';
-    }
-}
-
-/// Simple stack of chars with the last being the null-terminator
-private class CharStack
-{
-public:
-nothrow:
-@nogc:
-    this(int maxSize)
-    {
-        if(maxSize > 0)
-        {
-            buffer = cast(char*)malloc(char.sizeof * maxSize);
-            buffer[0] = '\0';
-            actualLength = 0;
-            assert(strcmp(buffer, "") == 0);
-        }
-    }
-    
-    ~this()
-    {
-        free(buffer);
-    }
-
-    void push(const char c)
-    {
-        if(actualLength + 1 <= 512)
-        {
-            buffer[actualLength] = c;
-            ++actualLength;
-            buffer[actualLength] = '\0';
-
-        }
-    }
-
-    @property pop()
-    {
-        if(actualLength > 0)
-        {
-            --actualLength;
-            buffer[actualLength] = '\0';
-        }
-    }
-    
-    @property length()
-    {
-        return actualLength;
-    }
-    
-    @property ptr()
-    {
-        return buffer;
-    }
-
-private:
-    char* buffer;
-    size_t actualLength;
-}
-

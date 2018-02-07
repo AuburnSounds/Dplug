@@ -30,63 +30,26 @@ enum Key
     digit7,
     digit8,
     digit9,
-    a,
-    b,
-    c,
-    d,
-    e,
-    f,
-    g,
-    h,
-    i,
-    j,
-    k,
-    l,
-    m,
-    n,
-    o,
-    p,
-    q,
-    r,
-    s,
-    t,
-    u,
-    v,
-    w,
-    x,
-    y,
-    z,
-    A,
-    B,
-    C,
-    D,
-    E,
-    F,
-    G,
-    H,
-    I,
-    J,
-    K,
-    L,
-    M,
-    N,
-    O,
-    P,
-    Q,
-    R,
-    S,
-    T,
-    U,
-    V,
-    W,
-    X,
-    Y,
-    Z,
+    a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z,
+    A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z,
     backspace,
     enter,
     escape,
     unsupported // special value, means "other"
 };
+
+public dchar getCharFromKey(Key key) nothrow @nogc
+{
+    switch(key)
+    {
+        case Key.backspace: return '\t';
+        case Key.digit0: .. case Key.digit9: return cast(dchar)('0' + (key - Key.digit0));
+        case Key.a: .. case Key.z: return cast(dchar)('a' + (key - Key.a));
+        case Key.A: .. case Key.Z: return cast(dchar)('A' + (key - Key.A));
+        case Key.space : return ' ';
+        default: return '\0';
+    }
+}
 
 enum MouseButton
 {
