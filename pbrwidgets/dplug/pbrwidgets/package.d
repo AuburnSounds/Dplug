@@ -16,5 +16,4 @@ public import dplug.pbrwidgets.logo;
 public import dplug.pbrwidgets.bargraph;
 public import dplug.pbrwidgets.paramhint;
 public import dplug.pbrwidgets.pbrbackgroundgui;
-
-
+public import dplug.pbrwidgets.textbox;
