@@ -52,9 +52,6 @@ void* alignedMalloc(size_t size, size_t alignment) nothrow @nogc
 /// Do not mix allocations with different alignment.
 void alignedFree(void* aligned, size_t alignment) nothrow @nogc
 {
-    assert(alignment != 0);
-    assert(isPointerAligned(aligned, alignment));
-
     // Short-cut and use the C allocator to avoid overhead if no alignment
     if (alignment == 1)
         return free(aligned);
@@ -62,6 +59,9 @@ void alignedFree(void* aligned, size_t alignment) nothrow @nogc
     // support for free(NULL)
     if (aligned is null)
         return;
+
+    assert(alignment != 0);
+    assert(isPointerAligned(aligned, alignment));
 
     void** rawLocation = cast(void**)(cast(char*)aligned - size_t.sizeof);
     free(*rawLocation);
@@ -74,11 +74,6 @@ void alignedFree(void* aligned, size_t alignment) nothrow @nogc
 ///            _has_ to be freed with `alignedFree`.
 @nogc void* alignedRealloc(void* aligned, size_t size, size_t alignment) nothrow
 {
-    assert(isPointerAligned(aligned, alignment));
-
-    // If you fail here, it can mean you've used an uninitialized AlignedBuffer.
-    assert(alignment != 0);
-
     // Short-cut and use the C allocator to avoid overhead if no alignment
     if (alignment == 1)
     {
@@ -92,6 +87,9 @@ void alignedFree(void* aligned, size_t alignment) nothrow @nogc
 
     if (aligned is null)
         return alignedMalloc(size, alignment);
+
+    assert(alignment != 0);
+    assert(isPointerAligned(aligned, alignment));
 
     size_t previousSize = *cast(size_t*)(cast(char*)aligned - size_t.sizeof * 2);
 
@@ -435,7 +433,7 @@ struct Vec(T)
         size_t _size;
         T* _data;
         size_t _allocated;
-        size_t _alignment;
+        size_t _alignment = 1; // for an unaligned Vec, you probably are not interested in alignment
     }
 }
 
