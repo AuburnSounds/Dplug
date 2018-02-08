@@ -1,7 +1,7 @@
 /**
 * Basic IIR 1-pole and 2-pole filters through biquads. 
 *
-* Copyright: Copyright Auburn Sounds 2015 and later.
+* Copyright: Copyright Auburn Sounds 2015-2017.
 * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 * Authors:   Guillaume Piolat
 */
@@ -10,6 +10,10 @@ module dplug.dsp.iir;
 import std.math;
 public import gfm.math.vector;
 
+
+// TODO: Rename biquad-generation functions starting with "biquad"
+// TODO: Remove IIRDelay in the general case, only biquads are needed
+// TODO: function to make biquads from poles and zeroes
 
 public
 {
@@ -260,7 +264,13 @@ public
     }
 
 
-    /// Type which hold the biquad coefficients.
+    /// Type which hold the biquad coefficients. 
+    /// Important: Coefficients are considered always normalized by a0.
+    /// Note: coeff[0] is b0,
+    ///       coeff[1] is b1,
+    ///       coeff[2] is b2,
+    ///       coeff[3] is a1,
+    ///       coeff[4] is a2 in the litterature.
     template BiquadCoeff(T)
     {
         alias Vector!(T, 5) BiquadCoeff;
