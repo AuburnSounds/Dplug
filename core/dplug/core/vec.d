@@ -324,6 +324,13 @@ struct Vec(T)
             _data[i] = x;
         }
 
+        ///ditto
+        // support for ~=
+        void opCatAssign(T x) nothrow @nogc
+        {
+            pushBack(x); 
+        }
+
         // Output range support
         alias put = pushBack;
 
