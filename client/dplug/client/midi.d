@@ -94,17 +94,17 @@ nothrow:
     ///            of zero should be treated like a 'Note Off' event.
     ///            Which is why this function checks velocity == 0.
     ///
-    ///            Some devices send a 'Note On' message with a velocity 
+    ///            Some devices send a 'Note On' message with a velocity
     ///            value of zero instead of a real 'Note Off' message.
-    ///            Many DAWs will automatically convert such ones to 
+    ///            Many DAWs will automatically convert such ones to
     ///            explicit ones, but one cannot rely on this.
     ///
     /// See_Also:
     ///     isNoteOn()
     bool isNoteOff() const
     {
-        return (statusType() == MidiStatus.noteOff) 
-               || 
+        return (statusType() == MidiStatus.noteOff)
+               ||
                ( (statusType() == MidiStatus.noteOn) && (noteVelocity() == 0) );
     }
 
@@ -172,7 +172,6 @@ nothrow:
 
     int noteVelocity() const
     {
-        assert(isNoteOn() || isNoteOff());
         return _data2;
     }
 

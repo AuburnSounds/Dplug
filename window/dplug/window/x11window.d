@@ -178,7 +178,7 @@ public:
     }
 
     long windowEventMask() {
-        return ExposureMask | KeyPressMask | StructureNotifyMask |
+        return ExposureMask | StructureNotifyMask |
             KeyReleaseMask | KeyPressMask | ButtonReleaseMask | ButtonPressMask | PointerMotionMask;
     }
 
@@ -341,6 +341,18 @@ void handleEvents(ref XEvent event, X11Window theWindow) nothrow @nogc
 
         switch(event.type)
         {
+            case KeyPress:
+                KeySym symbol;
+                XLookupString(&event.xkey, null, 0, &symbol, null);
+                listener.onKeyDown(convertKeyFromX11(symbol));
+                break;
+
+            case KeyRelease:
+                KeySym symbol;
+                XLookupString(&event.xkey, null, 0, &symbol, null);
+                listener.onKeyUp(convertKeyFromX11(symbol));
+                break;
+
             case MapNotify:
             case Expose:
                 // Resize should trigger Expose event, so we don't need to handle it here
@@ -439,18 +451,6 @@ void handleEvents(ref XEvent event, X11Window theWindow) nothrow @nogc
                 listener.onMouseRelease(newMouseX, newMouseY, button, mouseStateFromX11(event.xbutton.state));
                 break;
 
-            case KeyPress:
-                KeySym symbol;
-                XLookupString(&event.xkey, null, 0, &symbol, null);
-                listener.onKeyDown(convertKeyFromX11(symbol));
-                break;
-
-            case KeyRelease:
-                KeySym symbol;
-                XLookupString(&event.xkey, null, 0, &symbol, null);
-                listener.onKeyUp(convertKeyFromX11(symbol));
-                break;
-
             case DestroyNotify:
                 XDestroyImage(_graphicImage);
                 XFreeGC(_display, _graphicGC);
@@ -500,6 +500,12 @@ Key convertKeyFromX11(KeySym symbol)
         case XK_KP_0: .. case XK_KP_9:
             return cast(Key)(Key.digit0 + (symbol - XK_KP_0));
 
+        case XK_A: .. case XK_Z:
+            return cast(Key)(Key.A + (symbol - XK_A));
+
+        case XK_a: .. case XK_z:
+            return cast(Key)(Key.a + (symbol - XK_a));
+
         case XK_Return:
         case XK_KP_Enter:
             return Key.enter;
@@ -507,6 +513,11 @@ Key convertKeyFromX11(KeySym symbol)
         case XK_Escape:
             return Key.escape;
 
+        case XK_BackSpace:
+            return Key.backspace;
+
+        // case 0x0041:
+        //     return Key.A;
         default:
             return Key.unsupported;
     }
