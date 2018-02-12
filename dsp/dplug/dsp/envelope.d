@@ -13,28 +13,28 @@ import dplug.dsp.smooth;
 
 
 /// Simple envelope follower, filters the envelope with 24db/oct lowpass.
-struct EnvelopeFollower(T) if (is(T == float) || is(T == double))
+struct EnvelopeFollower
 {
 public:
 
     // typical frequency would be is 10-30hz
     void initialize(float cutoffInHz, float samplerate) nothrow @nogc
     {
-        _coeff = lowpassFilterRBJ!double(cutoffInHz, samplerate);
+        _coeff = biquadRBJLowPass(cutoffInHz, samplerate);
         _delay0.initialize();
         _delay1.initialize();
     }
 
     // takes on sample, return mean amplitude
-    T nextSample(T x) nothrow @nogc
+    float nextSample(float x) nothrow @nogc
     {
-        T l = abs(x);
+        float l = abs(x);
         l = _delay0.nextSample(l, _coeff);
         l = _delay1.nextSample(l, _coeff);
         return l;
     }
 
-    void nextBuffer(const(T)* input, T* output, int frames) nothrow @nogc
+    void nextBuffer(const(float)* input, float* output, int frames) nothrow @nogc
     {
         for(int i = 0; i < frames; ++i)
             output[i] = abs(input[i]);
@@ -44,15 +44,9 @@ public:
     }
 
 private:
-    BiquadCoeff!T _coeff;
-    BiquadDelay!T _delay0;
-    BiquadDelay!T _delay1;
-}
-
-unittest
-{
-    EnvelopeFollower!float a;
-    EnvelopeFollower!double b;
+    BiquadCoeff _coeff;
+    BiquadDelay _delay0;
+    BiquadDelay _delay1;
 }
 
 /// Get the module of estimate of analytic signal.
@@ -235,7 +229,7 @@ unittest
 
 /// Sliding RMS computation
 /// To use for coarse grained levels for visual display.
-struct CoarseRMS(T) if (is(T == float) || is(T == double))
+struct CoarseRMS
 {
 public:
     void initialize(double sampleRate) nothrow @nogc
@@ -247,12 +241,12 @@ public:
     }
 
     /// Process a chunk of samples and return a value in dB (could be -infinity)
-    void nextSample(T input) nothrow @nogc
+    void nextSample(float input) nothrow @nogc
     {
         _last = _envelope.nextSample(input * input);
     }
 
-    void nextBuffer(T* input, int frames) nothrow @nogc
+    void nextBuffer(float* input, int frames) nothrow @nogc
     {
         if (frames == 0)
             return;
@@ -263,18 +257,13 @@ public:
         _last = _envelope.nextSample(input[frames - 1] * input[frames - 1]);
     }
 
-    T RMS() nothrow @nogc
+    float RMS() nothrow @nogc
     {
         return sqrt(_last);
     }
 
 private:
-    EnvelopeFollower!T _envelope;
-    T _last;
+    EnvelopeFollower _envelope;
+    float _last;
 }
 
-unittest
-{
-    CoarseRMS!float a;
-    CoarseRMS!double b;
-}

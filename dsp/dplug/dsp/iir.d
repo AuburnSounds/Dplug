@@ -11,27 +11,35 @@ import std.math;
 public import gfm.math.vector;
 
 
-// TODO: Rename biquad-generation functions starting with "biquad"
-// TODO: Remove IIRDelay in the general case, only biquads are needed
-// TODO: function to make biquads from poles and zeroes
+// TODO: function to make biquads from z-plane poles and zeroes
 
 public
 {
 
-    /// Maintain state for a filtering operation.
-    /// To use an IIR filter you need an IIRDelay + one IIRCoeff.
-    struct IIRDelay(T, int order)
-    {
-        alias Vector!(double, order) delay_t;
+    /// Type which hold the biquad coefficients. 
+    /// Important: Coefficients are considered always normalized by a0.
+    /// Note: coeff[0] is b0,
+    ///       coeff[1] is b1,
+    ///       coeff[2] is b2,
+    ///       coeff[3] is a1,
+    ///       coeff[4] is a2 in the litterature.
+    alias BiquadCoeff = Vector!(float, 5);    
 
-        alias Vector!(T, order * 2 + 1) coeff_t; // FUTURE: stop using Vector?
+    /// Maintain state for a biquad state.
+    /// To use an IIR filter you need an IIRDelay + one IIRCoeff.
+    struct BiquadDelay
+    {
+        enum order = 2;
+        alias Vector!(double, 2) delay_t;
+
+        alias coeff_t = Vector!(float, 5); // FUTURE: stop using Vector?
 
         delay_t x;
         delay_t y;
 
         void initialize() nothrow @nogc
         {
-            for (int i = 0; i < order; ++i)
+            for (int i = 0; i < 2; ++i)
             {
                 x[i] = 0;
                 y[i] = 0;
@@ -40,18 +48,18 @@ public
 
         static if (order == 2)
         {
-            T nextSample(T input, const(coeff_t) coeff) nothrow @nogc
+            float nextSample(float input, const(coeff_t) coeff) nothrow @nogc
             {
                 double x1 = x[0],
-                       x2 = x[1],
-                       y1 = y[0],
-                       y2 = y[1];
+                    x2 = x[1],
+                    y1 = y[0],
+                    y2 = y[1];
 
                 double a0 = coeff[0],
-                       a1 = coeff[1],
-                       a2 = coeff[2],
-                       a3 = coeff[3],
-                       a4 = coeff[4];
+                    a1 = coeff[1],
+                    a2 = coeff[2],
+                    a3 = coeff[3],
+                    a4 = coeff[4];
 
                 double current = a0 * input + a1 * x1 + a2 * x2 - a3 * y1 - a4 * y2;
 
@@ -67,12 +75,10 @@ public
                 return current;
             }
 
-            void nextBuffer(const(T)* input, T* output, int frames, const(coeff_t) coeff) nothrow @nogc
+            void nextBuffer(const(float)* input, float* output, int frames, const(coeff_t) coeff) nothrow @nogc
             {
-                static if (is(T == float) && D_InlineAsm_Any)
+                static if (D_InlineAsm_Any)
                 {
-                    static assert(T.sizeof == 4);
-
                     double x0 = x[0],
                         x1 = x[1],
                         y0 = y[0],
@@ -105,36 +111,36 @@ public
                             movq XMM4, qword ptr a0; // XMM4 = 0 a0
 
                             align 16;
-                            loop:
-                                pxor XMM5, XMM5;
-                                cvtss2sd XMM5, dword ptr [EAX];
+                        loop:
+                            pxor XMM5, XMM5;
+                            cvtss2sd XMM5, dword ptr [EAX];
 
-                                movapd XMM6, XMM0;
-                                movapd XMM7, XMM1;
+                            movapd XMM6, XMM0;
+                            movapd XMM7, XMM1;
 
-                                mulpd XMM5, XMM4; // input[i]*a0
-                                mulpd XMM6, XMM2; // x1*a2 x0*a1
-                                mulpd XMM7, XMM3; // y1*a4 y0*a3
+                            mulpd XMM5, XMM4; // input[i]*a0
+                            mulpd XMM6, XMM2; // x1*a2 x0*a1
+                            mulpd XMM7, XMM3; // y1*a4 y0*a3
 
-                                addpd XMM5, XMM6;
-                                subpd XMM5, XMM7; // x1*a2 - y1*a4 | input[i]*a0 + x0*a1 - y0*a3
+                            addpd XMM5, XMM6;
+                            subpd XMM5, XMM7; // x1*a2 - y1*a4 | input[i]*a0 + x0*a1 - y0*a3
 
-                                movapd XMM6, XMM5;
-                                pslldq XMM0, 8;
-                                psrldq XMM6, 8;
+                            movapd XMM6, XMM5;
+                            pslldq XMM0, 8;
+                            psrldq XMM6, 8;
 
-                                cvtss2sd XMM0, dword ptr [EAX]; // XMM0 <- x0 input[i]
-                                addpd XMM5, XMM6; // garbage | input[i]*a0 + x0*a1 - y0*a3 + x1*a2 - y1*a4
+                            cvtss2sd XMM0, dword ptr [EAX]; // XMM0 <- x0 input[i]
+                            addpd XMM5, XMM6; // garbage | input[i]*a0 + x0*a1 - y0*a3 + x1*a2 - y1*a4
 
-                                cvtsd2ss XMM7, XMM5;
-                                punpcklqdq XMM5, XMM1; // XMM5 <- y0 current
-                                add EAX, 4;
-                                movd dword ptr [EDX], XMM7;
-                                add EDX, 4;
-                                movapd XMM1, XMM5;
+                            cvtsd2ss XMM7, XMM5;
+                            punpcklqdq XMM5, XMM1; // XMM5 <- y0 current
+                            add EAX, 4;
+                            movd dword ptr [EDX], XMM7;
+                            add EDX, 4;
+                            movapd XMM1, XMM5;
 
-                                sub ECX, 1;
-                                jnz short loop;
+                            sub ECX, 1;
+                            jnz short loop;
 
                             movlpd qword ptr x0, XMM0;
                             movhpd qword ptr x1, XMM0;
@@ -167,7 +173,7 @@ public
 
                             movq XMM4, qword ptr a0; // XMM4 = 0 a0
 
-                        align 16;
+                            align 16;
                         loop:
                             pxor XMM5, XMM5;
                             cvtss2sd XMM5, dword ptr [RAX];
@@ -228,15 +234,15 @@ public
                 else
                 {
                     double x0 = x[0],
-                           x1 = x[1],
-                           y0 = y[0],
-                           y1 = y[1];
+                        x1 = x[1],
+                        y0 = y[0],
+                        y1 = y[1];
 
                     double a0 = coeff[0],
-                           a1 = coeff[1],
-                           a2 = coeff[2],
-                           a3 = coeff[3],
-                           a4 = coeff[4];
+                        a1 = coeff[1],
+                        a2 = coeff[2],
+                        a3 = coeff[3],
+                        a4 = coeff[4];
 
                     for(int i = 0; i < frames; ++i)
                     {
@@ -263,28 +269,11 @@ public
         }
     }
 
-
-    /// Type which hold the biquad coefficients. 
-    /// Important: Coefficients are considered always normalized by a0.
-    /// Note: coeff[0] is b0,
-    ///       coeff[1] is b1,
-    ///       coeff[2] is b2,
-    ///       coeff[3] is a1,
-    ///       coeff[4] is a2 in the litterature.
-    template BiquadCoeff(T)
-    {
-        alias Vector!(T, 5) BiquadCoeff;
-    }
-
-    template BiquadDelay(T)
-    {
-        alias IIRDelay!(T, 2) BiquadDelay;
-    }
-
-
-    // 1-pole low-pass filter
-    // Not accurate, but coefficient computation is cheap.
-    BiquadCoeff!T lowpassFilter1Pole(T)(double frequency, double samplerate) nothrow @nogc
+    deprecated("This function was renamed to biquadOnePoleLowPassImprecise.") 
+        alias lowpassFilter1Pole = biquadOnePoleLowPassImprecise;
+    /// 1-pole low-pass filter, frequency mapping is not precise.
+    /// Not accurate across sample rates, but coefficient computation is cheap. Not advised.
+    BiquadCoeff biquadOnePoleLowPassImprecise(double frequency, double samplerate) nothrow @nogc
     {
         double t0 = frequency / samplerate;
         if (t0 > 0.5f)
@@ -293,17 +282,20 @@ public
         double t1 = (1 - 2 * t0);
         double t2  = t1 * t1;
 
-        BiquadCoeff!T result;
-        result[0] = cast(T)(1 - t2);
+        BiquadCoeff result;
+        result[0] = cast(float)(1 - t2);
         result[1] = 0;
         result[2] = 0;
-        result[3] = cast(T)(-t2);
+        result[3] = cast(float)(-t2);
         result[4] = 0;
         return result;
     }
 
-    // 1-pole high-pass filter
-    BiquadCoeff!T highpassFilter1Pole(T)(double frequency, double samplerate) nothrow @nogc
+    deprecated("This function was renamed to biquadOnePoleHighPassImprecise.") 
+        alias highpassFilter1Pole = biquadOnePoleHighPassImprecise;
+    /// 1-pole high-pass filter, frequency mapping is not precise.
+    /// Not accurate across sample rates, but coefficient computation is cheap. Not advised.
+    BiquadCoeff biquadOnePoleHighPassImprecise(double frequency, double samplerate) nothrow @nogc
     {
         double t0 = frequency / samplerate;
         if (t0 > 0.5f)
@@ -312,11 +304,11 @@ public
         double t1 = (2 * t0);
         double t2 = t1 * t1;
 
-        BiquadCoeff!T result;
-        result[0] = cast(T)(1 - t2);
+        BiquadCoeff result;
+        result[0] = cast(float)(1 - t2);
         result[1] = 0;
         result[2] = 0;
-        result[3] = cast(T)(t2);
+        result[3] = cast(float)(t2);
         result[4] = 0;
         return result;
     }
@@ -326,12 +318,12 @@ public
     /// http://users.spa.aalto.fi/vpv/publications/vesan_vaitos/ch3_pt3_allpass.pdf
     /// It is recommended to use the range [0.5 .. 1.5] for best phase results.
     /// Also known as Thiran filter.
-    BiquadCoeff!T allpassThiran1stOrder(T)(double fractionalDelay) nothrow @nogc
+    deprecated BiquadCoeff allpassThiran1stOrder(T)(double fractionalDelay) nothrow @nogc
     {
         assert(fractionalDelay >= 0);
         double eta = (1 - fractionalDelay) / (1 + fractionalDelay);
 
-        BiquadCoeff!T result;
+        BiquadCoeff result;
         result[0] = cast(T)(eta);
         result[1] = 1;
         result[2] = 0;
@@ -343,15 +335,15 @@ public
 
     /// Same but 2nd order.
     /// http://users.spa.aalto.fi/vpv/publications/vesan_vaitos/ch3_pt3_allpass.pdf
-    BiquadCoeff!T allpassThiran2ndOrder(T)(double fractionalDelay) nothrow @nogc
+    deprecated BiquadCoeff allpassThiran2ndOrder(T)(double fractionalDelay) nothrow @nogc
     {
         assert(fractionalDelay >= 0);
         double a1 = 2 * (2 - fractionalDelay) / (1 + fractionalDelay);
         double a2 = (fractionalDelay - 1) * (fractionalDelay - 2)
-                                          /
-                    (fractionalDelay + 1) * (fractionalDelay + 2);
+            /
+            (fractionalDelay + 1) * (fractionalDelay + 2);
 
-        BiquadCoeff!T result;
+        BiquadCoeff result;
         result[0] = cast(T)(a1);
         result[1] = 1;
         result[2] = cast(T)(a2);
@@ -363,45 +355,68 @@ public
     // Cookbook formulae for audio EQ biquad filter coefficients
     // by Robert Bristow-Johnson
 
-    BiquadCoeff!T lowpassFilterRBJ(T)(double frequency, double samplerate, double Q = SQRT1_2) nothrow @nogc
+    deprecated("This function was renamed to biquadRBJLowPass.") 
+        alias lowpassFilterRBJ = biquadRBJLowPass;
+    /// Low-pass filter 12 dB/oct as described by Robert Bristow-Johnson.
+    BiquadCoeff biquadRBJLowPass(double frequency, double samplerate, double Q = SQRT1_2) nothrow @nogc
     {
-        return generateBiquad!T(BiquadType.LOW_PASS_FILTER, frequency, samplerate, 0, Q);
+        return generateBiquad(BiquadType.LOW_PASS_FILTER, frequency, samplerate, 0, Q);
     }
 
-    BiquadCoeff!T highpassFilterRBJ(T)(double frequency, double samplerate, double Q = SQRT1_2) nothrow @nogc
+    deprecated("This function was renamed to biquadRBJHighPass.") 
+        alias highpassFilterRBJ = biquadRBJHighPass;
+    /// High-pass filter 12 dB/oct as described by Robert Bristow-Johnson.
+    BiquadCoeff biquadRBJHighPass(double frequency, double samplerate, double Q = SQRT1_2) nothrow @nogc
     {
-        return generateBiquad!T(BiquadType.HIGH_PASS_FILTER, frequency, samplerate, 0, Q);
+        return generateBiquad(BiquadType.HIGH_PASS_FILTER, frequency, samplerate, 0, Q);
     }
 
-    BiquadCoeff!T bandpassFilterRBJ(T)(double frequency, double samplerate, double Q = SQRT1_2) nothrow @nogc
+    deprecated("This function was renamed to biquadRBJBandPass.") 
+        alias bandpassFilterRBJ = biquadRBJBandPass;
+    /// Band-pass filter as described by Robert Bristow-Johnson.
+    BiquadCoeff biquadRBJBandPass(double frequency, double samplerate, double Q = SQRT1_2) nothrow @nogc
     {
-        return generateBiquad!T(BiquadType.BAND_PASS_FILTER, frequency, samplerate, 0, Q);
+        return generateBiquad(BiquadType.BAND_PASS_FILTER, frequency, samplerate, 0, Q);
     }
 
-    BiquadCoeff!T notchFilterRBJ(T)(double frequency, double samplerate, double Q = SQRT1_2) nothrow @nogc
+    deprecated("This function was renamed to biquadRBJNotch.") 
+        alias notchFilterRBJ = biquadRBJNotch;
+    /// Notch filter as described by Robert Bristow-Johnson.
+    BiquadCoeff biquadRBJNotch(double frequency, double samplerate, double Q = SQRT1_2) nothrow @nogc
     {
-        return generateBiquad!T(BiquadType.NOTCH_FILTER, frequency, samplerate, 0, Q);
+        return generateBiquad(BiquadType.NOTCH_FILTER, frequency, samplerate, 0, Q);
     }
 
-    BiquadCoeff!T peakFilterRBJ(T)(double frequency, double samplerate, double gain, double Q = SQRT1_2) nothrow @nogc
+    deprecated("This function was renamed to biquadRBJPeak.") 
+        alias peakFilterRBJ = biquadRBJPeak;
+    /// Peak filter as described by Robert Bristow-Johnson.
+    BiquadCoeff biquadRBJPeak(double frequency, double samplerate, double gain, double Q = SQRT1_2) nothrow @nogc
     {
-        return generateBiquad!T(BiquadType.PEAK_FILTER, frequency, samplerate, gain, Q);
+        return generateBiquad(BiquadType.PEAK_FILTER, frequency, samplerate, gain, Q);
     }
 
-    BiquadCoeff!T lowShelfFilterRBJ(T)(double frequency, double samplerate, double gain, double Q = SQRT1_2) nothrow @nogc
+    deprecated("This function was renamed to biquadRBJLowShelf.") 
+        alias lowShelfFilterRBJ = biquadRBJLowShelf;
+    /// Low-shelf filter as described by Robert Bristow-Johnson.
+    BiquadCoeff biquadRBJLowShelf(double frequency, double samplerate, double gain, double Q = SQRT1_2) nothrow @nogc
     {
-        return generateBiquad!T(BiquadType.LOW_SHELF, frequency, samplerate, gain, Q);
+        return generateBiquad(BiquadType.LOW_SHELF, frequency, samplerate, gain, Q);
     }
 
-    BiquadCoeff!T highShelfFilterRBJ(T)(double frequency, double samplerate, double gain, double Q = SQRT1_2) nothrow @nogc
+    deprecated("This function was renamed to biquadRBJHighShelf.") 
+        alias highShelfFilterRBJ = biquadRBJHighShelf;
+    /// High-shelf filter as described by Robert Bristow-Johnson.
+    BiquadCoeff biquadRBJHighShelf(double frequency, double samplerate, double gain, double Q = SQRT1_2) nothrow @nogc
     {
-        return generateBiquad!T(BiquadType.HIGH_SHELF, frequency, samplerate, gain, Q);
+        return generateBiquad(BiquadType.HIGH_SHELF, frequency, samplerate, gain, Q);
     }
 
-    // Initialize with no-op filter
-    BiquadCoeff!T bypassFilter(T)() nothrow @nogc
+    deprecated("This function was renamed to biquadBypass.") 
+        alias bypassFilter = biquadBypass;
+    /// Identity biquad, pass signal unchanged.
+    BiquadCoeff biquadBypass() nothrow @nogc
     {
-        BiquadCoeff!T result;
+        BiquadCoeff result;
         result[0] = 1;
         result[1] = 0;
         result[2] = 0;
@@ -410,9 +425,12 @@ public
         return result;
     }
 
-    BiquadCoeff!T zeroFilter(T)() nothrow @nogc
+    deprecated("This function was renamed to biquadZero.") 
+        alias zeroFilter = biquadZero;
+    /// Zero biquad, gives zero output.
+    BiquadCoeff biquadZero() nothrow @nogc
     {
-        BiquadCoeff!T result;
+        BiquadCoeff result;
         result[0] = 0;
         result[1] = 0;
         result[2] = 0;
@@ -436,7 +454,7 @@ private
     }
 
     // generates RBJ biquad coefficients
-    BiquadCoeff!T generateBiquad(T)(BiquadType type, double frequency, double samplerate, double gaindB, double Q) nothrow @nogc
+    BiquadCoeff generateBiquad(BiquadType type, double frequency, double samplerate, double gaindB, double Q) nothrow @nogc
     {
         // regardless of the output precision, always compute coefficients in double precision
 
@@ -454,111 +472,94 @@ private
 
         final switch(type)
         {
-        case  BiquadType.LOW_PASS_FILTER:
-            b0 = (1 - cos_w0) / 2;
-            b1 = 1 - cos_w0;
-            b2 = (1 - cos_w0) / 2;
-            a0 = 1 + alpha;
-            a1 = -2 * cos_w0;
-            a2 = 1 - alpha;
-            break;
+            case  BiquadType.LOW_PASS_FILTER:
+                b0 = (1 - cos_w0) / 2;
+                b1 = 1 - cos_w0;
+                b2 = (1 - cos_w0) / 2;
+                a0 = 1 + alpha;
+                a1 = -2 * cos_w0;
+                a2 = 1 - alpha;
+                break;
 
-        case BiquadType.HIGH_PASS_FILTER:
-            b0 = (1 + cos_w0) / 2;
-            b1 = -(1 + cos_w0);
-            b2 = (1 + cos_w0) / 2;
-            a0 = 1 + alpha;
-            a1 = -2 * cos_w0;
-            a2 = 1 - alpha;
-            break;
+            case BiquadType.HIGH_PASS_FILTER:
+                b0 = (1 + cos_w0) / 2;
+                b1 = -(1 + cos_w0);
+                b2 = (1 + cos_w0) / 2;
+                a0 = 1 + alpha;
+                a1 = -2 * cos_w0;
+                a2 = 1 - alpha;
+                break;
 
-        case BiquadType.BAND_PASS_FILTER:
-            b0 = alpha;
-            b1 = 0;
-            b2 = -alpha;
-            a0 = 1 + alpha;
-            a1 = -2 * cos_w0;
-            a2 = 1 - alpha;
-            break;
+            case BiquadType.BAND_PASS_FILTER:
+                b0 = alpha;
+                b1 = 0;
+                b2 = -alpha;
+                a0 = 1 + alpha;
+                a1 = -2 * cos_w0;
+                a2 = 1 - alpha;
+                break;
 
-        case BiquadType.NOTCH_FILTER:
-            b0 = 1;
-            b1 = -2*cos_w0;
-            b2 = 1;
-            a0 = 1 + alpha;
-            a1 = -2*cos(w0);
-            a2 = 1 - alpha;
-            break;
+            case BiquadType.NOTCH_FILTER:
+                b0 = 1;
+                b1 = -2*cos_w0;
+                b2 = 1;
+                a0 = 1 + alpha;
+                a1 = -2*cos(w0);
+                a2 = 1 - alpha;
+                break;
 
-        case BiquadType.PEAK_FILTER:
-            b0 = 1 + alpha * A;
-            b1 = -2 * cos_w0;
-            b2 = 1 - alpha * A;
-            a0 = 1 + alpha / A;
-            a1 = -2 * cos_w0;
-            a2 = 1 - alpha / A;
-            break;
+            case BiquadType.PEAK_FILTER:
+                b0 = 1 + alpha * A;
+                b1 = -2 * cos_w0;
+                b2 = 1 - alpha * A;
+                a0 = 1 + alpha / A;
+                a1 = -2 * cos_w0;
+                a2 = 1 - alpha / A;
+                break;
 
-        case BiquadType.LOW_SHELF:
-            {
-                double ap1 = A + 1;
-                double am1 = A - 1;
-                double M = 2 * sqrt(A) * alpha;
-                b0 = A * (ap1 - am1 * cos_w0 + M);
-                b1 = 2 * A * (am1 - ap1 * cos_w0);
-                b2 = A * (ap1 - am1 * cos_w0 - M);
-                a0 = ap1 + am1 * cos_w0 + M;
-                a1 = -2 * (am1 + ap1 * cos_w0);
-                a2 = ap1 + am1 * cos_w0 - M;
-            }
-            break;
+            case BiquadType.LOW_SHELF:
+                {
+                    double ap1 = A + 1;
+                    double am1 = A - 1;
+                    double M = 2 * sqrt(A) * alpha;
+                    b0 = A * (ap1 - am1 * cos_w0 + M);
+                    b1 = 2 * A * (am1 - ap1 * cos_w0);
+                    b2 = A * (ap1 - am1 * cos_w0 - M);
+                    a0 = ap1 + am1 * cos_w0 + M;
+                    a1 = -2 * (am1 + ap1 * cos_w0);
+                    a2 = ap1 + am1 * cos_w0 - M;
+                }
+                break;
 
-        case BiquadType.HIGH_SHELF:
-            {
-                double ap1 = A + 1;
-                double am1 = A - 1;
-                double M = 2 * sqrt(A) * alpha;
-                b0 = A * (ap1 + am1 * cos_w0 + M);
-                b1 = -2 * A * (am1 + ap1 * cos_w0);
-                b2 = A * (ap1 + am1 * cos_w0 - M);
-                a0 = ap1 - am1 * cos_w0 + M;
-                a1 = 2 * (am1 - ap1 * cos_w0);
-                a2 = ap1 - am1 * cos_w0 - M;
-            }
-            break;
+            case BiquadType.HIGH_SHELF:
+                {
+                    double ap1 = A + 1;
+                    double am1 = A - 1;
+                    double M = 2 * sqrt(A) * alpha;
+                    b0 = A * (ap1 + am1 * cos_w0 + M);
+                    b1 = -2 * A * (am1 + ap1 * cos_w0);
+                    b2 = A * (ap1 + am1 * cos_w0 - M);
+                    a0 = ap1 - am1 * cos_w0 + M;
+                    a1 = 2 * (am1 - ap1 * cos_w0);
+                    a2 = ap1 - am1 * cos_w0 - M;
+                }
+                break;
         }
 
-        BiquadCoeff!T result;
-        result[0] = cast(T)(b0 / a0);
-        result[1] = cast(T)(b1 / a0);
-        result[2] = cast(T)(b2 / a0);
-        result[3] = cast(T)(a1 / a0);
-        result[4] = cast(T)(a2 / a0);
+        BiquadCoeff result;
+        result[0] = cast(float)(b0 / a0);
+        result[1] = cast(float)(b1 / a0);
+        result[2] = cast(float)(b2 / a0);
+        result[3] = cast(float)(a1 / a0);
+        result[4] = cast(float)(a2 / a0);
         return result;
     }
 }
 
-unittest
-{
-    auto a = lowpassFilter1Pole!float(1400.0, 44100.0);
-    auto b = highpassFilter1Pole!float(1400.0, 44100.0);
-    auto c = allpassThiran1stOrder!double(0.5);
-    auto d = allpassThiran2ndOrder!double(0.6);
-    auto e = lowpassFilterRBJ!double(1400.0, 44100.0, 0.6);
-    auto f = highpassFilterRBJ!double(1400.0, 44100.0);
-    auto g = bandpassFilterRBJ!float(10000.0, 44100.0);
-    auto h = notchFilterRBJ!real(3000.0, 44100.0);
-    auto i = peakFilterRBJ!real(3000.0, 44100.0, 6, 0.5);
-    auto j = bypassFilter!float();
-    auto k = zeroFilter!float();
-    auto l = lowShelfFilterRBJ!float(300.0, 44100.0, 0.7);
-    auto m = highShelfFilterRBJ!double(300.0, 44100.0, 0.7);
-}
-
 
 version(D_InlineAsm_X86)
-    private enum D_InlineAsm_Any = true;
+private enum D_InlineAsm_Any = true;
 else version(D_InlineAsm_X86_64)
-    private enum D_InlineAsm_Any = true;
+private enum D_InlineAsm_Any = true;
 else
-    private enum D_InlineAsm_Any = false;
+private enum D_InlineAsm_Any = false;

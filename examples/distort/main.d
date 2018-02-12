@@ -198,7 +198,7 @@ nothrow:
     }
 
 private:
-    CoarseRMS!float[2] _inputRMS;
-    CoarseRMS!float[2] _outputRMS;
+    CoarseRMS[2] _inputRMS;
+    CoarseRMS[2] _outputRMS;
 }
 
