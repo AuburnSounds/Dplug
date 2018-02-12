@@ -452,6 +452,19 @@ nothrow @nogc:
         id result = (cast(fun_t)objc_msgSend)(getClassID(), sel!"currentRunLoop");
         return NSRunLoop(result);
     }
+    
+    static NSRunLoop mainRunLoop()
+    {
+        alias fun_t = extern(C) id function(id, SEL) nothrow @nogc;
+        id result = (cast(fun_t)objc_msgSend)(getClassID(), sel!"mainRunLoop");
+        return NSRunLoop(result);
+    }
+
+    void runUntilDate(NSDate limitDate)
+    {
+        alias fun_t = extern(C) void function(id, SEL, id) nothrow @nogc;
+        (cast(fun_t)objc_msgSend)(_id, sel!"runUntilDate:", limitDate._id);
+    }
 
     void addTimer(NSTimer aTimer, NSString forMode)
     {
@@ -477,14 +490,34 @@ nothrow @nogc:
     {
         alias fun_t = extern(C) NSTimeInterval function(id, SEL) nothrow @nogc;
 
-         version(X86)
+        version(X86)
             return (cast(fun_t)objc_msgSend_fpret)(getClassID(), sel!"timeIntervalSinceReferenceDate");
         else version(X86_64)
             return (cast(fun_t)objc_msgSend)(getClassID(), sel!"timeIntervalSinceReferenceDate");
         else
             static assert(false);
     }
+    
+    static NSDate dateWithTimeIntervalSinceNow(double secs)
+    {
+        alias fun_t = extern(C) id function(id, SEL, double) nothrow @nogc;
+        id res = (cast(fun_t)objc_msgSend)(getClassID(), sel!"dateWithTimeIntervalSinceNow:", secs);
+
+        return NSDate(res);
+    }
+
+    NSString description()
+    {
+        alias fun_t = extern(C) id function(id, SEL) nothrow @nogc;
+        id result = (cast(fun_t)objc_msgSend)(_id, sel!"description");
+
+        return NSString(result);
+    }
+
+    NSString descriptionWithLocale()
+    {
+        alias fun_t = extern(C) id function(id, SEL, void*) nothrow @nogc;
+        id result = (cast(fun_t)objc_msgSend)(_id, sel!"descriptionWithLocale:", null);
+        return NSString(result);
+    }
 }
-
-
-
