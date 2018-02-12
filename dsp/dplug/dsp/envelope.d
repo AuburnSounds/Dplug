@@ -1,11 +1,11 @@
 /**
 * Various envelope followers.
 *
-* Copyright: Copyright Auburn Sounds 2015 and later.
+* Copyright: Copyright Guillaume Piolat 2015-2018.
 * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 * Authors:   Guillaume Piolat
 */
-module dplug.dsp.envelope;
+deprecated module dplug.dsp.envelope;
 
 import std.math;
 import dplug.dsp.iir;
@@ -13,7 +13,7 @@ import dplug.dsp.smooth;
 
 
 /// Simple envelope follower, filters the envelope with 24db/oct lowpass.
-struct EnvelopeFollower
+deprecated("Will be removed, please don't use this.") struct EnvelopeFollower
 {
 public:
 
@@ -52,7 +52,7 @@ private:
 /// Get the module of estimate of analytic signal.
 /// Phase response depends a lot on input signal, it's not great for bass but gets
 /// better in medium frequencies.
-struct AnalyticSignal(T) if (is(T == float) || is(T == double))
+deprecated("Will be removed, please don't use this.") struct AnalyticSignal(T) if (is(T == float) || is(T == double))
 {
 public:
     void initialize(T samplerate) nothrow @nogc
@@ -77,14 +77,6 @@ public:
 private:
     HilbertTransformer!T _hilbert;
 }
-
-unittest
-{
-    AnalyticSignal!float a;
-    AnalyticSignal!double b;
-}
-
-
 /**
 *
 * Copyright 1999, by Sean M. Costello
@@ -99,7 +91,7 @@ unittest
 */
 
 /// Estimate amplitude.
-struct HilbertTransformer(T) if (is(T == float) || is(T == double))
+deprecated("Will be removed, please don't use this.") struct HilbertTransformer(T) if (is(T == float) || is(T == double))
 {
 public:
     void initialize(float sampleRate) nothrow @nogc
@@ -221,15 +213,9 @@ private:
     T[12] _ynm1;
 }
 
-unittest
-{
-    HilbertTransformer!float a;
-    HilbertTransformer!double b;
-}
-
 /// Sliding RMS computation
 /// To use for coarse grained levels for visual display.
-struct CoarseRMS
+deprecated("Will be removed, please don't use this.") struct CoarseRMS
 {
 public:
     void initialize(double sampleRate) nothrow @nogc

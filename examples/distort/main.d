@@ -202,3 +202,82 @@ private:
     CoarseRMS[2] _outputRMS;
 }
 
+
+
+/// Simple envelope follower, filters the envelope with 24db/oct lowpass.
+struct EnvelopeFollower
+{
+public:
+
+    // typical frequency would be is 10-30hz
+    void initialize(float cutoffInHz, float samplerate) nothrow @nogc
+    {
+        _coeff = biquadRBJLowPass(cutoffInHz, samplerate);
+        _delay0.initialize();
+        _delay1.initialize();
+    }
+
+    // takes on sample, return mean amplitude
+    float nextSample(float x) nothrow @nogc
+    {
+        float l = abs(x);
+        l = _delay0.nextSample(l, _coeff);
+        l = _delay1.nextSample(l, _coeff);
+        return l;
+    }
+
+    void nextBuffer(const(float)* input, float* output, int frames) nothrow @nogc
+    {
+        for(int i = 0; i < frames; ++i)
+            output[i] = abs(input[i]);
+
+        _delay0.nextBuffer(output, output, frames, _coeff);
+        _delay1.nextBuffer(output, output, frames, _coeff);
+    }
+
+private:
+    BiquadCoeff _coeff;
+    BiquadDelay _delay0;
+    BiquadDelay _delay1;
+}
+
+/// Sliding RMS computation
+/// To use for coarse grained levels for visual display.
+struct CoarseRMS
+{
+public:
+    void initialize(double sampleRate) nothrow @nogc
+    {
+        // In Reaper, default RMS window is 500 ms
+        _envelope.initialize(20, sampleRate);
+
+        _last = 0;
+    }
+
+    /// Process a chunk of samples and return a value in dB (could be -infinity)
+    void nextSample(float input) nothrow @nogc
+    {
+        _last = _envelope.nextSample(input * input);
+    }
+
+    void nextBuffer(float* input, int frames) nothrow @nogc
+    {
+        if (frames == 0)
+            return;
+
+        for (int i = 0; i < frames - 1; ++i)
+            _envelope.nextSample(input[i] * input[i]);
+
+        _last = _envelope.nextSample(input[frames - 1] * input[frames - 1]);
+    }
+
+    float RMS() nothrow @nogc
+    {
+        return sqrt(_last);
+    }
+
+private:
+    EnvelopeFollower _envelope;
+    float _last;
+}
+
