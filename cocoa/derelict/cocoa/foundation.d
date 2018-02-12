@@ -452,6 +452,19 @@ nothrow @nogc:
         id result = (cast(fun_t)objc_msgSend)(getClassID(), sel!"currentRunLoop");
         return NSRunLoop(result);
     }
+    
+    static NSRunLoop mainRunLoop()
+    {
+        alias fun_t = extern(C) id function(id, SEL) nothrow @nogc;
+        id result = (cast(fun_t)objc_msgSend)(getClassID(), sel!"mainRunLoop");
+        return NSRunLoop(result);
+    }
+
+    void runUntilDate(NSDate limitDate)
+    {
+        alias fun_t = extern(C) void function(id, SEL, id) nothrow @nogc;
+        (cast(fun_t)objc_msgSend)(_id, sel!"runUntilDate:", limitDate._id);
+    }
 
     void addTimer(NSTimer aTimer, NSString forMode)
     {
