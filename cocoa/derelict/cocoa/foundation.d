@@ -309,6 +309,14 @@ nothrow @nogc:
 
     mixin NSObjectTemplate!(NSDictionary, "NSDictionary");
 
+    static NSDictionary dictionaryWithObjectsAndKeys(Args...)(id firstObject, Args args) 
+    {
+        alias fun_t = extern(C) id function(id, SEL, id, ...) nothrow @nogc;
+        auto result = (cast(fun_t) objc_msgSend)(getClassID(), sel!"dictionaryWithObjectsAndKeys:", firstObject, args);
+
+        return NSDictionary(result);
+    }
+    
     id objectForKey(id key)
     {
         alias fun_t = extern(C) id function(id, SEL, id) nothrow @nogc;
