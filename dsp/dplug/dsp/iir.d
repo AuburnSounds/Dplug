@@ -8,8 +8,15 @@
 module dplug.dsp.iir;
 
 import std.math;
-public import gfm.math.vector;
 
+// DMD with a 32-bit target uses the FPU
+version(X86)
+{
+    version(DigitalMars)
+    {
+        version = killDenormals;
+    }
+}
 
 // TODO: function to make biquads from z-plane poles and zeroes
 
@@ -23,37 +30,35 @@ public
     ///       coeff[2] is b2,
     ///       coeff[3] is a1,
     ///       coeff[4] is a2 in the litterature.
-    alias BiquadCoeff = Vector!(float, 5);    
+    alias BiquadCoeff = float[5];
 
     /// Maintain state for a biquad state.
     /// To use an IIR filter you need an IIRDelay + one IIRCoeff.
     struct BiquadDelay
     {
         enum order = 2;
-        alias Vector!(double, 2) delay_t;
 
-        alias coeff_t = Vector!(float, 5); // FUTURE: stop using Vector?
-
-        delay_t x;
-        delay_t y;
+        double _x0;
+        double _x1;
+        double _y0;
+        double _y1;
 
         void initialize() nothrow @nogc
         {
-            for (int i = 0; i < 2; ++i)
-            {
-                x[i] = 0;
-                y[i] = 0;
-            }
+            _x0 = 0;
+            _x1 = 0;
+            _y0 = 0;
+            _y1 = 0;
         }
 
         static if (order == 2)
         {
-            float nextSample(float input, const(coeff_t) coeff) nothrow @nogc
+            float nextSample(float input, const(BiquadCoeff) coeff) nothrow @nogc
             {
-                double x1 = x[0],
-                    x2 = x[1],
-                    y1 = y[0],
-                    y2 = y[1];
+                double x1 = _x0,
+                    x2 = _x1,
+                    y1 = _y0,
+                    y2 = _y1;
 
                 double a0 = coeff[0],
                     a1 = coeff[1],
@@ -65,24 +70,27 @@ public
 
                 // kill denormals,and double values that would be converted
                 // to float denormals
-                current += 1e-18f;
-                current -= 1e-18f;
+                version(killDenormals)
+                {
+                    current += 1e-18f;
+                    current -= 1e-18f;
+                }
 
-                x[0] = input;
-                x[1] = x1;
-                y[0] = current;
-                y[1] = y1;
+                _x0 = input;
+                _x1 = x1;
+                _y0 = current;
+                _y1 = y1;
                 return current;
             }
 
-            void nextBuffer(const(float)* input, float* output, int frames, const(coeff_t) coeff) nothrow @nogc
+            void nextBuffer(const(float)* input, float* output, int frames, const(BiquadCoeff) coeff) nothrow @nogc
             {
                 static if (D_InlineAsm_Any)
                 {
-                    double x0 = x[0],
-                        x1 = x[1],
-                        y0 = y[0],
-                        y1 = y[1];
+                    double x0 = _x0,
+                        x1 = _x1,
+                        y0 = _y0,
+                        y1 = _y1;
 
                     double a0 = coeff[0],
                         a1 = coeff[1],
@@ -217,26 +225,29 @@ public
                         static assert(false, "Not implemented for this platform.");
 
                     // Kill small signals that can cause denormals (no precision loss was measurable)
-                    x0 += 1e-10;
-                    x0 -= 1e-10;
-                    x1 += 1e-10;
-                    x1 -= 1e-10;
-                    y0 += 1e-10;
-                    y0 -= 1e-10;
-                    y1 += 1e-10;
-                    y1 -= 1e-10;
+                    version(killDenormals)
+                    {
+                        x0 += 1e-10;
+                        x0 -= 1e-10;
+                        x1 += 1e-10;
+                        x1 -= 1e-10;
+                        y0 += 1e-10;
+                        y0 -= 1e-10;
+                        y1 += 1e-10;
+                        y1 -= 1e-10;
+                    }
 
-                    x[0] = x0;
-                    x[1] = x1;
-                    y[0] = y0;
-                    y[1] = y1;
+                    _x0 = x0;
+                    _x1 = x1;
+                    _y0 = y0;
+                    _y1 = y1;
                 }
                 else
                 {
-                    double x0 = x[0],
-                        x1 = x[1],
-                        y0 = y[0],
-                        y1 = y[1];
+                    double x0 = _x0,
+                        x1 = _x1,
+                        y0 = _y0,
+                        y1 = _y1;
 
                     double a0 = coeff[0],
                         a1 = coeff[1],
@@ -250,8 +261,11 @@ public
 
                         // kill denormals,and double values that would be converted
                         // to float denormals
-                        current += 1e-18f;
-                        current -= 1e-18f;
+                        version(killDenormals)
+                        {
+                            current += 1e-18f;
+                            current -= 1e-18f;
+                        }
 
                         x1 = x0;
                         x0 = input[i];
@@ -260,10 +274,10 @@ public
                         output[i] = current;
                     }
 
-                    x[0] = x0;
-                    x[1] = x1;
-                    y[0] = y0;
-                    y[1] = y1;
+                    _x0 = x0;
+                    _x1 = x1;
+                    _y0 = y0;
+                    _y1 = y1;
                 }
             }
         }
