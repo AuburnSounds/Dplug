@@ -521,3 +521,20 @@ nothrow @nogc:
         return NSString(result);
     }
 }
+
+struct NSNumber 
+{
+nothrow @nogc:
+    NSObject parent;
+    alias parent this;
+
+    mixin NSObjectTemplate!(NSNumber, "NSNumber");
+
+    static NSNumber numberWithUnsignedInt(uint value)
+    {
+        alias fun_t = extern(C) id function(id, SEL, uint) nothrow @nogc;
+        id result = (cast(fun_t)objc_msgSend)(getClassID(), sel!"numberWithUnsignedInt:", value);
+
+        return NSNumber(result);
+    }
+}
