@@ -309,6 +309,14 @@ nothrow @nogc:
 
     mixin NSObjectTemplate!(NSDictionary, "NSDictionary");
 
+    static NSDictionary dictionaryWithObjectsAndKeys(Args...)(id firstObject, Args args) 
+    {
+        alias fun_t = extern(C) id function(id, SEL, id, ...) nothrow @nogc;
+        auto result = (cast(fun_t) objc_msgSend)(getClassID(), sel!"dictionaryWithObjectsAndKeys:", firstObject, args);
+
+        return NSDictionary(result);
+    }
+    
     id objectForKey(id key)
     {
         alias fun_t = extern(C) id function(id, SEL, id) nothrow @nogc;
@@ -519,5 +527,22 @@ nothrow @nogc:
         alias fun_t = extern(C) id function(id, SEL, void*) nothrow @nogc;
         id result = (cast(fun_t)objc_msgSend)(_id, sel!"descriptionWithLocale:", null);
         return NSString(result);
+    }
+}
+
+struct NSNumber 
+{
+nothrow @nogc:
+    NSObject parent;
+    alias parent this;
+
+    mixin NSObjectTemplate!(NSNumber, "NSNumber");
+
+    static NSNumber numberWithUnsignedInt(uint value)
+    {
+        alias fun_t = extern(C) id function(id, SEL, uint) nothrow @nogc;
+        id result = (cast(fun_t)objc_msgSend)(getClassID(), sel!"numberWithUnsignedInt:", value);
+
+        return NSNumber(result);
     }
 }
