@@ -350,7 +350,6 @@ private:
                         GetEventParameter(pEvent, kEventParamKeyMacCharCodes, typeChar, null, char.sizeof, null, &ch);
 
                         Key key;
-                        bool handled = true;
 
                         switch(k)
                         {
@@ -381,22 +380,21 @@ private:
                                 else if (ch >= 'a' && ch <= 'z')
                                     key = cast(Key)(Key.a + (ch - 'a'));
                                 else
-                                    handled = false;
+                                    key = Key.unsupported;
                             }
                         }
 
-                        if (handled)
+                        bool handled = false;
+
+                        if (eventKind == kEventRawKeyDown)
                         {
-                            if (eventKind == kEventRawKeyDown)
-                            {
-                                if (!_listener.onKeyDown(key))
-                                    handled = false;
-                            }
-                            else
-                            {
-                                if (!_listener.onKeyUp(key))
-                                    handled = false;
-                            }
+                            if (_listener.onKeyDown(key))
+                                handled = true;
+                        }
+                        else
+                        {
+                            if (_listener.onKeyUp(key))
+                                handled = true;
                         }
                         return handled;
                     }

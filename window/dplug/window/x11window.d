@@ -516,8 +516,6 @@ Key convertKeyFromX11(KeySym symbol)
         case XK_BackSpace:
             return Key.backspace;
 
-        // case 0x0041:
-        //     return Key.A;
         default:
             return Key.unsupported;
     }
