@@ -45,7 +45,7 @@ nothrow:
 
         // Note: PBRCompositor default lighting might change in a future version (increase of light to allow white plastics).
         //       So we keep the value.
-        PBRCompositor comp = cast(PBRCompositor)compositor;        
+        PBRCompositor comp = cast(PBRCompositor)compositor;
         comp.light1Color = vec3f(0.26, 0.24, 0.22f) * 0.98f;
         comp.light2Dir = vec3f(-0.5f, 1.0f, 0.23f).normalized;
         comp.light2Color = vec3f(0.36, 0.38f, 0.40) * 1.148;
@@ -56,7 +56,7 @@ nothrow:
 
         // Optional global color correction.
         // Very useful at the end of the UI creating process.
-        {   
+        {
             mat3x4f colorCorrectionMatrix = mat3x4f(- 0.07f, 1.0f , 1.15f, 0.03f,
                                                     + 0.01f, 0.93f, 1.16f, 0.08f,
                                                     + 0.0f , 1.0f , 1.10f, -0.01f);
@@ -70,11 +70,11 @@ nothrow:
 
         // All resources are bundled as a string import.
         // You can avoid resource compilers that way.
-        // The only cost is that each resource is in each binary, this creates overhead with 
+        // The only cost is that each resource is in each binary, this creates overhead with
         _font = mallocNew!Font(cast(ubyte[])( import("VeraBd.ttf") ));
 
         // Builds the UI hierarchy
-        // Note: when Dplug has resizeable UI, all positionning is going 
+        // Note: when Dplug has resizeable UI, all positionning is going
         // to move into a reflow() override.
         // Meanwhile, we hardcode each position.
 
