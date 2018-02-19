@@ -598,6 +598,13 @@ nothrow @nogc:
         return (cast(fun_t)objc_msgSend)(_id, sel!"keyCode");
     }
 
+    NSString charactersIgnoringModifiers()
+    {
+        alias fun_t = extern(C) id function (id, SEL) nothrow @nogc;
+        auto id = (cast(fun_t)objc_msgSend)(_id, sel!"charactersIgnoringModifiers");
+        return NSString(id);
+    }
+
     NSPoint locationInWindow()
     {
         alias fun_t = extern(C) NSPoint function (id, SEL) nothrow @nogc;
