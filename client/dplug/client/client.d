@@ -381,7 +381,7 @@ nothrow:
     /// pessimize the needed latency and compensate in the process callback.
     /// Returns: Plugin latency in samples.
     /// Note: this can absolutely be called before `reset` was called, be prepared.
-    int latencySamples(double sampleRate) pure const nothrow @nogc
+    int latencySamples(double sampleRate) nothrow @nogc
     {
         return 0; // By default, no latency introduced by plugin
     }
@@ -389,7 +389,7 @@ nothrow:
     /// Override to set the plugin tail length in seconds.
     /// This is the amount of time before silence is reached with a silent input.
     /// Returns: Plugin tail size in seconds.
-    float tailSizeInSeconds() pure const nothrow @nogc
+    float tailSizeInSeconds() nothrow @nogc
     {
         return 0.100f; // default: 100ms
     }
@@ -401,7 +401,7 @@ nothrow:
     /// - keeps memory usage low and reuse it
     /// - allow faster-than-buffer-size parameter changes
     /// Returns: Maximum number of samples
-    int maxFramesInProcess() pure const nothrow @nogc
+    int maxFramesInProcess() nothrow @nogc
     {
         return 0; // default returns 0 which means "do not split"
     }
