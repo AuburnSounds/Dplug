@@ -346,9 +346,10 @@ private:
                         UInt32 k;
                         GetEventParameter(pEvent, kEventParamKeyCode, typeUInt32, null, UInt32.sizeof, null, &k);
 
-                        Key key;
+                        char ch;
+                        GetEventParameter(pEvent, kEventParamKeyMacCharCodes, typeChar, null, char.sizeof, null, &ch);
 
-                        bool handled = true;
+                        Key key;
 
                         switch(k)
                         {
@@ -368,22 +369,32 @@ private:
                             case 0x59: key = Key.digit7; break;
                             case 0x5B: key = Key.digit8; break;
                             case 0x5C: key = Key.digit9; break;
+                            case 51:   key = Key.backspace; break;
+
                             default:
-                                handled = false;
+                            {
+                                if (ch >= '0' && ch <= '9')
+                                    key = cast(Key)(Key.digit0 + (ch - '0'));
+                                else if (ch >= 'A' && ch <= 'Z')
+                                    key = cast(Key)(Key.A + (ch - 'A'));
+                                else if (ch >= 'a' && ch <= 'z')
+                                    key = cast(Key)(Key.a + (ch - 'a'));
+                                else
+                                    key = Key.unsupported;
+                            }
                         }
 
-                        if (handled)
+                        bool handled = false;
+
+                        if (eventKind == kEventRawKeyDown)
                         {
-                            if (eventKind == kEventRawKeyDown)
-                            {
-                                if (!_listener.onKeyDown(key))
-                                    handled = false;
-                            }
-                            else
-                            {
-                                if (!_listener.onKeyUp(key))
-                                    handled = false;
-                            }
+                            if (_listener.onKeyDown(key))
+                                handled = true;
+                        }
+                        else
+                        {
+                            if (_listener.onKeyUp(key))
+                                handled = true;
                         }
                         return handled;
                     }
@@ -567,8 +578,8 @@ version(OSX)
 else
 {
     ulong mach_absolute_time() nothrow @nogc
-    { 
-        return 0; 
+    {
+        return 0;
     }
 
     long machTicksPerSecond() nothrow @nogc

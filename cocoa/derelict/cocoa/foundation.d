@@ -216,6 +216,13 @@ nothrow @nogc:
         id result = (cast(fun_t)objc_msgSend)(_id, sel!"stringByAppendingString:", aString._id);
         return NSString(result);
     }
+
+    /// Returns: The character at a given UTF-16 code unit index.
+    wchar characterAtIndex(int index)
+    {
+        alias fun_t = extern(C) wchar function(id, SEL, NSUInteger) nothrow @nogc;
+        return (cast(fun_t)objc_msgSend)(_id, sel!"characterAtIndex:", cast(NSUInteger)index);
+    }
 }
 
 struct NSURL
@@ -309,14 +316,14 @@ nothrow @nogc:
 
     mixin NSObjectTemplate!(NSDictionary, "NSDictionary");
 
-    static NSDictionary dictionaryWithObjectsAndKeys(Args...)(id firstObject, Args args) 
+    static NSDictionary dictionaryWithObjectsAndKeys(Args...)(id firstObject, Args args)
     {
         alias fun_t = extern(C) id function(id, SEL, id, ...) nothrow @nogc;
         auto result = (cast(fun_t) objc_msgSend)(getClassID(), sel!"dictionaryWithObjectsAndKeys:", firstObject, args);
 
         return NSDictionary(result);
     }
-    
+
     id objectForKey(id key)
     {
         alias fun_t = extern(C) id function(id, SEL, id) nothrow @nogc;
@@ -460,7 +467,7 @@ nothrow @nogc:
         id result = (cast(fun_t)objc_msgSend)(getClassID(), sel!"currentRunLoop");
         return NSRunLoop(result);
     }
-    
+
     static NSRunLoop mainRunLoop()
     {
         alias fun_t = extern(C) id function(id, SEL) nothrow @nogc;
@@ -505,7 +512,7 @@ nothrow @nogc:
         else
             static assert(false);
     }
-    
+
     static NSDate dateWithTimeIntervalSinceNow(double secs)
     {
         alias fun_t = extern(C) id function(id, SEL, double) nothrow @nogc;
@@ -530,7 +537,7 @@ nothrow @nogc:
     }
 }
 
-struct NSNumber 
+struct NSNumber
 {
 nothrow @nogc:
     NSObject parent;

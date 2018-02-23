@@ -55,7 +55,6 @@ version = supportCarbonUI;
 // Difference with IPlug
 // - no support for parameters group
 // - no support for multi-output instruments
-// - no support for MIDI
 // - no support for UI resize
 
 // FUTURE: thread safety isn't very fine-grained, and there is 3 mutex lock in the audio thread
@@ -585,6 +584,14 @@ private:
                     case kAudioUnitRemoveRenderNotifySelect:
                         return 1;
 
+                    case kMusicDeviceMIDIEventSelect:
+                    case kMusicDeviceSysExSelect:
+                    case kMusicDeviceStartNoteSelect:
+                    case kMusicDeviceStopNoteSelect:
+                    case kMusicDevicePrepareInstrumentSelect:
+                    case kMusicDeviceReleaseInstrumentSelect:
+                        return _client.receivesMIDI() ? 1 : 0;
+
                     default:
                         return 0;
                 }
@@ -810,6 +817,9 @@ private:
 
             case kMusicDeviceMIDIEventSelect: // 0x0101
             {
+                if (!_client.receivesMIDI)
+                    return kAudioUnitErr_InvalidProperty;
+
                 int offset = params.getCompParam!(uint, 0, 4);
                 ubyte status = cast(ubyte)( params.getCompParam!(uint, 3, 4) );
                 ubyte data1 = cast(ubyte)( params.getCompParam!(uint, 2, 4) );
@@ -821,22 +831,31 @@ private:
 
             case kMusicDeviceSysExSelect: // 0x0102
             {
-                // MAYDO Not supported
+                // MAYDO Not supported yet
+                if (!_client.receivesMIDI)
+                    return kAudioUnitErr_InvalidProperty;
                 return noErr;
             }
 
             case kMusicDevicePrepareInstrumentSelect: // 0x0103
             {
+                if (!_client.receivesMIDI)
+                    return kAudioUnitErr_InvalidProperty;
                 return noErr;
             }
 
             case kMusicDeviceReleaseInstrumentSelect: // 0x0104
             {
+                if (!_client.receivesMIDI)
+                    return kAudioUnitErr_InvalidProperty;
                 return noErr;
             }
 
             case kMusicDeviceStartNoteSelect: // 0x0105
             {
+                if (!_client.receivesMIDI)
+                    return kAudioUnitErr_InvalidProperty;
+
                 NoteInstanceID* pNoteID = params.getCompParam!(NoteInstanceID*, 2, 5);
                 uint offset = params.getCompParam!(uint, 1, 5);
                 MusicDeviceNoteParams* pNoteParams = params.getCompParam!(MusicDeviceNoteParams*, 0, 5);
@@ -860,6 +879,9 @@ private:
 
             case kMusicDeviceStopNoteSelect: // 0x0106
             {
+                if (!_client.receivesMIDI)
+                    return kAudioUnitErr_InvalidProperty;
+
                 NoteInstanceID noteID = params.getCompParam!(NoteInstanceID, 1, 3);
                 uint offset = params.getCompParam!(uint, 0, 3);
                 int channel = 0; // always using channel 0

@@ -113,7 +113,8 @@ enum : int
     typeIEEE32BitFloatingPoint = CCONST('s', 'i', 'n', 'g'),
     typeIEEE64BitFloatingPoint = CCONST('d', 'o', 'u', 'b'),
     type128BitFloatingPoint    = CCONST('l', 'd', 'b', 'l'),
-    typeDecimalStruct          = CCONST('d', 'e', 'c', 'm')
+    typeDecimalStruct          = CCONST('d', 'e', 'c', 'm'),
+    typeChar                   = CCONST('T', 'E', 'X', 'T'),
 }
 
 // <CarbonCore/MacErrors.h>

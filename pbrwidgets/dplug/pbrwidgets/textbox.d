@@ -18,12 +18,15 @@ private import core.stdc.stdlib : malloc, free;
 private import core.stdc.stdio : snprintf, printf;
 private import core.stdc.string : strcmp, strlen;
 
-class UITextbox : UIElement
+deprecated("Use the UITextBox name instead of UITextbox")
+    alias UITextbox = UITextBox;
+
+class UITextBox : UIElement
 {
 public:
 nothrow:
 @nogc:
-    
+
     this(UIContext context, Font font, int textSize, RGBA textColor = RGBA(200, 200, 200, 255), RGBA backgroundColor = RGBA(0, 0, 0, 255))
     {
         super(context);
@@ -33,7 +36,7 @@ nothrow:
         _backgroundColor = backgroundColor;
         charBuffer = makeVec!char();
     }
-    
+
     ~this()
     {
     }
@@ -43,7 +46,7 @@ nothrow:
         return displayString();
     }
 
-    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects) nothrow @nogc
+    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects)
     {
         float textPosx = position.width * 0.5f;
         float textPosy = position.height * 0.5f;
@@ -57,7 +60,7 @@ nothrow:
             croppedDiffuse.fillText(_font, displayString(), _textSize, 0.5, _textColor, positionInDirty.x, positionInDirty.y);
         }
     }
-    
+
     override bool onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
     {
         // Left click
@@ -72,63 +75,45 @@ nothrow:
         setDirtyWhole();
     }
 
-    override void onMouseMove(int x, int y, int dx, int dy, MouseState mstate)
-    {
-        
-    }
-
     override void onMouseExit()
     {
         _isActive = false;
         setDirtyWhole();
     }
 
-    override void onBeginDrag()
-    {
-
-    }
-
-    override void onStopDrag()
-    {
-
-    }
-    
-    override void onMouseDrag(int x, int y, int dx, int dy, MouseState mstate)
-    {
-
-        
-    }
-    
     override bool onKeyDown(Key key)
     {
         if(_isActive)
         {
             const char c = cast(char)getCharFromKey(key);
             if(c == '\t')
-                charBuffer.popBack();
+            {
+                if (charBuffer.length > 0)
+                {
+                    charBuffer.popBack();
+                }
+            }
             else if(c != '\0')
                 charBuffer.pushBack(c);
             setDirtyWhole();
             return true;
         }
-        
+
         return false;
     }
 
 private:
-    
+
     Font _font;
     int _textSize;
     RGBA _textColor;
     RGBA _backgroundColor;
     bool _isActive;
-    char[] stringBuf;
     Vec!char charBuffer;
 
     const(char)[] displayString() nothrow @nogc
     {
-        stringBuf = charBuffer[0..charBuffer.length];
-        return stringBuf[0..charBuffer.length];
+        return charBuffer[];
     }
 
     final bool containsPoint(int x, int y)
@@ -178,5 +163,5 @@ private:
         float centery = (subSquare.min.y + subSquare.max.y - 1) * 0.5f;
         return vec2f(centerx, centery);
     }
-    
+
 }

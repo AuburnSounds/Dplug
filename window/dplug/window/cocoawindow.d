@@ -225,7 +225,27 @@ private:
             case kVK_RightArrow: key = Key.rightArrow; break;
             case kVK_DownArrow: key = Key.downArrow; break;
             case kVK_UpArrow: key = Key.upArrow; break;
-            default: key = Key.unsupported;
+            case kVK_Delete: key = Key.backspace; break;
+            default:
+            {
+                NSString characters = event.charactersIgnoringModifiers();
+                if (characters.length() == 0)
+                {
+                    key = Key.unsupported;
+                }
+                else
+                {
+                    wchar ch = characters.characterAtIndex(0);
+                    if (ch >= '0' && ch <= '9')
+                        key = cast(Key)(Key.digit0 + (ch - '0'));
+                    else if (ch >= 'A' && ch <= 'Z')
+                        key = cast(Key)(Key.A + (ch - 'A'));
+                    else if (ch >= 'a' && ch <= 'z')
+                        key = cast(Key)(Key.a + (ch - 'a'));
+                    else
+                        key = Key.unsupported;
+                }
+            }
         }
 
         bool handled = false;
@@ -553,7 +573,7 @@ extern(C)
         scopedCallback.enter();
 
         DPlugCustomView view = getInstance(self);
-        view._window.handleMouseClicks(NSEvent(event), MouseButton.left, false);        
+        view._window.handleMouseClicks(NSEvent(event), MouseButton.left, false);
     }
 
     void mouseUp(id self, SEL selector, id event) nothrow @nogc
@@ -562,11 +582,11 @@ extern(C)
         scopedCallback.enter();
 
         DPlugCustomView view = getInstance(self);
-        view._window.handleMouseClicks(NSEvent(event), MouseButton.left, true);        
+        view._window.handleMouseClicks(NSEvent(event), MouseButton.left, true);
     }
 
     void rightMouseDown(id self, SEL selector, id event) nothrow @nogc
-    {       
+    {
         CocoaScopedCallback scopedCallback;
         scopedCallback.enter();
 
@@ -575,7 +595,7 @@ extern(C)
     }
 
     void rightMouseUp(id self, SEL selector, id event) nothrow @nogc
-    {        
+    {
         CocoaScopedCallback scopedCallback;
         scopedCallback.enter();
 
@@ -602,7 +622,7 @@ extern(C)
         DPlugCustomView view = getInstance(self);
         auto nsEvent = NSEvent(event);
         if (nsEvent.buttonNumber == 2)
-            view._window.handleMouseClicks(nsEvent, MouseButton.middle, true);    
+            view._window.handleMouseClicks(nsEvent, MouseButton.middle, true);
     }
 
     void mouseMoved(id self, SEL selector, id event) nothrow @nogc
@@ -611,7 +631,7 @@ extern(C)
         scopedCallback.enter();
 
         DPlugCustomView view = getInstance(self);
-        view._window.handleMouseMove(NSEvent(event));        
+        view._window.handleMouseMove(NSEvent(event));
     }
 
     void mouseEntered(id self, SEL selector, id event) nothrow @nogc
@@ -625,7 +645,7 @@ extern(C)
     {
         CocoaScopedCallback scopedCallback;
         scopedCallback.enter();
-        NSCursor.pop();    
+        NSCursor.pop();
     }
 
 
@@ -672,7 +692,7 @@ extern(C)
         scopedCallback.enter();
 
         DPlugCustomView view = getInstance(self);
-        view._window.drawRect(rect);   
+        view._window.drawRect(rect);
     }
 
     void onTimer(id self, SEL selector, id timer) nothrow @nogc

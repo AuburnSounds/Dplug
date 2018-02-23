@@ -6,6 +6,7 @@ dub.selections.json
 *.a
 __test__library__
 __test__vanilla__
+*-test-library
 *.lib
 *.exe
 *.visualdproj
