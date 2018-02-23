@@ -40,7 +40,7 @@ public:
         // Over-allocate to support POW2 delaylines.
         // This wastes memory but allows delay-line of length 0 without tests.
 
-        int toAllocate = nextPowerOf2(numSamples + 1);
+        int toAllocate = nextPow2HigherOrEqual(numSamples + 1);
         _data.reallocBuffer(toAllocate);
         _indexMask = toAllocate - 1;
         _numSamples = numSamples;

@@ -74,8 +74,14 @@ bool isPowerOfTwo(int i) pure nothrow @nogc
     return (i != 0) && ((i & (i - 1)) == 0);
 }
 
+
+deprecated("Use nextPow2HigherOrEqual instead") 
+    alias nextPowerOf2 = nextPow2HigherOrEqual;
+
 /// Computes next power of 2.
-int nextPowerOf2(int i) pure nothrow @nogc
+/// Returns: N so that N is a power of 2 and N >= i.
+/// Note: This function is not equivalent to the builtin `std.math.nextPow2` when the input is a power of 2.
+int nextPow2HigherOrEqual(int i) pure nothrow @nogc
 {
     int v = i - 1;
     v |= v >> 1;
@@ -87,8 +93,8 @@ int nextPowerOf2(int i) pure nothrow @nogc
     return v;
 }
 
-/// Computes next power of 2.
-long nextPowerOf2(long i) pure nothrow @nogc
+///ditto
+long nextPow2HigherOrEqual(long i) pure nothrow @nogc
 {
     long v = i - 1;
     v |= v >> 1;

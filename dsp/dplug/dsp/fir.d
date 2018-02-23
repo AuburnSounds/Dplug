@@ -108,7 +108,7 @@ deprecated void normalizeImpulse(T)(T[] inoutImpulse) nothrow @nogc
 /// Returns: Length of temporary buffer needed for `minimumPhaseImpulse`.
 int tempBufferSizeForMinPhase(T)(T[] inputImpulse) nothrow @nogc
 {
-    return cast(int)( nextPowerOf2(inputImpulse.length * 4)); // PERF: too much?
+    return cast(int)( nextPow2HigherOrEqual(inputImpulse.length * 4)); // PERF: too much?
 }
 
 
@@ -121,7 +121,7 @@ void minimumPhaseImpulse(T)(T[] inoutImpulse, BuiltinComplex!T[] tempStorage) no
     assert(tempStorage.length >= tempBufferSizeForMinPhase(inoutImpulse));
 
     int N = cast(int)(inoutImpulse.length);
-    int fftSize = cast(int)( nextPowerOf2(inoutImpulse.length * 4));
+    int fftSize = cast(int)( nextPow2HigherOrEqual(inoutImpulse.length * 4));
     assert(fftSize >= N);
     int halfFFTSize = fftSize / 2;
 
