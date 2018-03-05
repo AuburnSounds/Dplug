@@ -535,6 +535,7 @@ unittest
 * unpredictably).
 */
 /// gammaenv from Aleksey Vaneev is a better way to have an attack-release smoothing
+deprecated("GammaEnv will go. If you use it please copy it in your private repositery.") 
 struct GammaEnv(T) if (is(T == float) || is(T == double))
 {
 public:
