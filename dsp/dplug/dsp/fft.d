@@ -538,7 +538,15 @@ public:
 
             // perform forward FFT on this slice
             version(useRealFFT)
+            {
+                // If you fail here, you are giving a larger slice than strictly necessary to FFTAnalyzer.
+                // Be cautious in user-code, having a slice too large can cause hard to find memory 
+                // corruption when you read it back.
+                // Give a slice with length of exactly _fftSize/2+1.
+                assert(fftData.length == _fftSize/2+1, "FFTAnalyzer is given too large a slice");
+
                 _rfft.forwardTransform(_timeData[], fftData[0.._fftSize/2+1]);
+            }
             else
                 forwardFFT!T(fftData[0.._fftSize]);
         }
