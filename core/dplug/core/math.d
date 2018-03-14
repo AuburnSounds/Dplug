@@ -354,7 +354,315 @@ float convertFrequencyToNormalizedFrequency(float frequencyHz, float samplingRat
 }
 
 /// Computes a frequency.
-float convertNormalizedFreqyencyToFrequency(float frequencyCyclesPerSample, float samplingRate) pure nothrow @nogc
+float convertNormalizedFrequencyToFrequency(float frequencyCyclesPerSample, float samplingRate) pure nothrow @nogc
 {
     return frequencyCyclesPerSample * samplingRate;
+}
+
+
+
+version(D_InlineAsm_X86)
+    version = hasX86Asm;
+else version(D_InlineAsm_X86_64)
+    version = hasX86Asm;
+else
+    static assert(false, "Unable to implement Real80 on this architecture");
+
+/// `Real80` is a scalar numerical type similar to `real` when using x86 DMD using FPU.
+/// This ensures 80-bit computation, when `double` isn't enough and `real` is a 64-bit
+/// floating-point number.
+/// This can happen in pole/zero computations for some IIR filters.
+// TODO: bug with LDC(???), it seems impossible to have a FPU which works with 80-bit precision!
+//       but works as expected in DMD.
+struct Real80
+{
+public:
+nothrow:
+@nogc:
+
+    /// Builds a `Real80` from an integer type.
+    this(long x)
+    {
+        void* p = valuePtr();
+        version(D_InlineAsm_X86)
+        {            
+            asm nothrow @nogc
+            {
+                fild x;
+                mov EAX, p;
+                fstp real ptr [EAX];
+            }
+        }
+        else version(D_InlineAsm_X86_64)
+        {
+            asm nothrow @nogc
+            {
+                fild x;
+                mov RAX, p;
+                fstp real ptr [RAX];
+            }
+        }
+        else
+            static assert(false);
+    }
+
+    /// Builds a `Real80` from a floating-point type that may be any number of bits.
+    this(double number)
+    {
+        void* p = valuePtr();
+        version(D_InlineAsm_X86)
+        {            
+            asm nothrow @nogc
+            {
+                fld number;
+                mov EAX, p;
+                fstp real ptr [EAX];
+            }
+        }
+        else version(D_InlineAsm_X86_64)
+        {
+            asm nothrow @nogc
+            {
+                fld number;
+                mov RAX, p;
+                fstp real ptr [RAX];
+            }
+        }
+        else
+            static assert(false);
+    }
+
+    Real80 opAssign(Real80 number)
+    {
+        this._value = number._value;
+        return this;
+    }
+
+    /// Casts to `double`.
+    double toDouble()
+    {
+        void* p = valuePtr();
+        double result;
+        version(D_InlineAsm_X86)
+        {
+            asm nothrow @nogc
+            {
+                mov EAX, p;
+                fld real ptr [EAX];
+                fstp result;
+            }
+        }
+        else version(D_InlineAsm_X86_64)
+        {
+            asm nothrow @nogc
+            {
+                mov RAX, p;
+                fld real ptr [RAX];
+                fstp result;
+            }
+        }
+        else
+            static assert(false);
+        return result;
+    }
+
+    /// Casts to `double`.
+    double opCast(T)() if (is(T == double))
+    {
+        return toDouble();
+    }
+
+    /// Computes this * other
+    Real80 opUnary(string op)() if (op == "-")
+    {
+        version(LittleEndian)
+        {
+            Real80 result = this;
+            result. _value[0] ^= 128; // invert sign bit
+            return result;
+        }
+        else
+            static assert(false);
+    }
+
+    /// Promotes double and float operands to Real80 first
+    Real80 opBinary(string op)(real other)
+    {
+        mixin("return this " ~ op ~ "Real80(other);");
+    }
+
+    /// Multiplication of two `Real80` number.
+    Real80 opBinary(string op)(Real80 other) if (op == "*")
+    {
+        void* pA = this.valuePtr();
+        void* pB = other.valuePtr();
+        Real80 result;
+        void* pR = result.valuePtr();
+        version(D_InlineAsm_X86)
+        {
+            asm nothrow @nogc
+            {
+                mov EAX, pA;
+                mov ECX, pB;
+                mov EDX, pR;
+                fld real ptr [EAX];
+                fld real ptr [ECX];
+                fmulp;
+                fstp real ptr [EDX];
+            }
+        }
+        else version(D_InlineAsm_X86_64)
+        {
+            asm nothrow @nogc
+            {
+                mov RAX, pA;
+                mov RCX, pB;
+                mov RDX, pR;
+                fld real ptr [RAX];
+                fld real ptr [RCX];
+                fmulp;
+                fstp real ptr [RDX];
+            }
+        }
+        else
+            static assert(false);
+        return result;
+    }
+
+    /// Addition of two `Real80` number.
+    Real80 opBinary(string op)(Real80 other) if (op == "+")
+    {
+        void* pA = this.valuePtr();
+        void* pB = other.valuePtr();
+        Real80 result;
+        void* pR = result.valuePtr();
+        version(D_InlineAsm_X86)
+        {
+            asm nothrow @nogc
+            {                
+                mov EAX, pA;
+                mov ECX, pB;
+                mov EDX, pR;
+                fld real ptr [EAX];
+                fld real ptr [ECX];
+                faddp;
+                fstp real ptr [EDX];
+            }
+        }
+        else version(D_InlineAsm_X86_64)
+        {
+            asm nothrow @nogc
+            {
+                mov RAX, pA;
+                mov RCX, pB;
+                mov RDX, pR;
+                fld real ptr [RAX];
+                fld real ptr [RCX];
+                faddp;
+                fstp real ptr [RDX];
+                
+            }
+        }
+        else
+            static assert(false);
+        return result;
+    }
+
+    /// Division of two `Real80` number. Computes this / other.
+    Real80 opBinary(string op)(Real80 other) if (op == "/")
+    {
+        void* pA = this.valuePtr();
+        void* pB = other.valuePtr();
+        Real80 result;
+        void* pR = result.valuePtr();
+        version(D_InlineAsm_X86)
+        {
+            asm nothrow @nogc
+            {
+
+                mov EAX, pA;
+                mov ECX, pB;
+                mov EDX, pR;
+                fld real ptr [EAX];
+                fld real ptr [ECX];
+                fdivp;
+                fstp real ptr [EDX];
+            }
+        }
+        else version(D_InlineAsm_X86_64)
+        {
+            asm nothrow @nogc
+            {
+                mov RAX, pA;
+                mov RCX, pB;
+                mov RDX, pR;
+                fld real ptr [RAX];
+                fld real ptr [RCX];
+                fdivp;
+                fstp real ptr [RDX];
+
+            }
+        }
+        else
+            static assert(false);
+        return result;
+    }
+
+    /// Computes this + other
+    Real80 opBinary(string op)(Real80 other) if (op == "-")
+    {
+        return this + (-other);
+    }
+
+private:
+    void* valuePtr()
+    {
+        return _value.ptr;
+    }
+
+    ubyte[10] _value = 
+    [
+        0, 0, 0, 0, 0, 0, 0, 0xa0, 0xff, 0x7f
+    ];
+}
+
+unittest
+{
+    import dplug.core.fpcontrol;
+    FPControl fpControl;
+    fpControl.initialize();
+
+    // take a number with a full mantissa
+    double target = cast(double)PI;
+
+    Real80 x = target;
+    double y = target;
+    Real80 orig = x;
+    
+    assert(cast(double)x == target);
+    
+    //import std.stdio;
+    for(int i = 0; i < 1020; ++i) // TODO: augment this to 4000
+    {
+        x = x / 2;
+        y = y / 2;
+      //  if (i >= 1020)
+      //  writeln("Dec ", x._value, " vs ", orig._value);
+    }
+    for(int i = 0; i < 1020; ++i)  // TODO: augment this to 4000
+    {
+        x = x * 2;
+        y = y * 2;
+    //    if (i <= 10)
+    //    writeln("Inc ", x._value, " vs ", orig._value);
+    }
+
+
+//    writeln(x._value, " vs ", orig._value);
+
+    // Should not have lost any precision though these multiplication since the exponent handles it.
+    assert(x._value == orig._value);
+    assert(target == cast(double)x); // x has maintained the full mantissa
+
+  //  assert(target != y);             // y can not possibly maintain precision
 }
