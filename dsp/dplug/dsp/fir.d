@@ -7,6 +7,8 @@
 */
 module dplug.dsp.fir;
 
+import core.stdc.complex;
+
 import std.range,
        std.math;
 
@@ -140,7 +142,7 @@ void minimumPhaseImpulse(T)(T[] inoutImpulse, BuiltinComplex!T[] tempStorage) no
 
     // Take the log-modulus of spectrum
     for (int i = 0; i < fftSize; ++i)
-        kernel[i] = log(abs(kernel[i]))+0i;
+        kernel[i] = log(cabs(kernel[i]))+0i;
 
     // Back to real cepstrum
     inverseFFT!T(kernel[]);
@@ -187,8 +189,8 @@ unittest
     cdouble[] tempStorage = new cdouble[tempBufferSizeForMinPhase(lp_impulse[])];
     minimumPhaseImpulse!double(lp_impulse[], tempStorage);
 
-    generateHilbertTransformer(lp_impulse[0..$-1], 
-        WindowDesc(WindowType.blackmannHarris, 
+    generateHilbertTransformer(lp_impulse[0..$-1],
+        WindowDesc(WindowType.blackmannHarris,
                    WindowAlignment.right), 44100.0);
 }
 

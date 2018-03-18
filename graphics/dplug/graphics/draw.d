@@ -491,7 +491,7 @@ private template softRoundShape(bool RING)
 						if (frs<fr1s)
 							alpha =  alphafunc(cast(frac)fixdiv(frs-fr0s, fr10));
 						else
-							alpha = ~alphafunc(cast(frac)fixdiv(frs-fr1s, fr21));
+							alpha = cast(ubyte)(~cast(int)alphafunc(cast(frac)fixdiv(frs-fr1s, fr21)));
 						row[cx] = COLOR.op!q{.blend(a, b, c)}(color, row[cx], alpha);
 					}
 				}
@@ -502,7 +502,7 @@ private template softRoundShape(bool RING)
 					else
 					if (frs<fr2s)
 					{
-						frac alpha = ~alphafunc(cast(frac)fixdiv(frs-fr1s, fr21));
+						frac alpha = cast(ubyte)(~cast(int)alphafunc(cast(frac)fixdiv(frs-fr1s, fr21)));
 						row[cx] = COLOR.op!q{.blend(a, b, c)}(color, row[cx], alpha);
 					}
 				}
@@ -548,15 +548,15 @@ template aaPutPixel(bool CHECKED=true, bool USE_ALPHA=true)
 		static if (CHECKED)
 			if (ix>=0 && iy>=0 && ix+1<v.w && iy+1<v.h)
 			{
-				plot!false(ix  , iy  , fracmul(~fixfpart(fx), ~fixfpart(fy)));
-				plot!false(ix  , iy+1, fracmul(~fixfpart(fx),  fixfpart(fy)));
-				plot!false(ix+1, iy  , fracmul( fixfpart(fx), ~fixfpart(fy)));
+				plot!false(ix  , iy  , fracmul(cast(ubyte)(~cast(int)fixfpart(fx)), cast(ubyte)(~cast(int)fixfpart(fy))));
+				plot!false(ix  , iy+1, fracmul(cast(ubyte)(~cast(int)fixfpart(fx)),  fixfpart(fy)));
+				plot!false(ix+1, iy  , fracmul( fixfpart(fx), cast(ubyte)(~cast(int)fixfpart(fy))));
 				plot!false(ix+1, iy+1, fracmul( fixfpart(fx),  fixfpart(fy)));
 				return;
 			}
-		plot!CHECKED(ix  , iy  , fracmul(~fixfpart(fx), ~fixfpart(fy)));
-		plot!CHECKED(ix  , iy+1, fracmul(~fixfpart(fx),  fixfpart(fy)));
-		plot!CHECKED(ix+1, iy  , fracmul( fixfpart(fx), ~fixfpart(fy)));
+		plot!CHECKED(ix  , iy  , fracmul(cast(ubyte)(~cast(int)fixfpart(fx)), cast(ubyte)(~cast(int)fixfpart(fy))));
+		plot!CHECKED(ix  , iy+1, fracmul(cast(ubyte)(~cast(int)fixfpart(fx)),  fixfpart(fy)));
+		plot!CHECKED(ix+1, iy  , fracmul( fixfpart(fx), cast(ubyte)(~cast(int)fixfpart(fy))));
 		plot!CHECKED(ix+1, iy+1, fracmul( fixfpart(fx),  fixfpart(fy)));
 	}
 }
@@ -615,13 +615,14 @@ void aaFillRect(bool CHECKED=true, F:float, V, COLOR)(auto ref V v, F x1, F y1, 
 	fix x2f = tofix(x2); int x2i = fixto!int(x2f);
 	fix y2f = tofix(y2); int y2i = fixto!int(y2f);
 
-	v.vline!CHECKED(x1i, y1i+1, y2i, color, ~fixfpart(x1f));
+	v.vline!CHECKED(x1i, y1i+1, y2i, color, cast(ubyte)(~cast(int)fixfpart(x1f)));
 	v.vline!CHECKED(x2i, y1i+1, y2i, color,  fixfpart(x2f));
-	v.hline!CHECKED(x1i+1, x2i, y1i, color, ~fixfpart(y1f));
+	v.hline!CHECKED(x1i+1, x2i, y1i, color, cast(ubyte)(~cast(int)fixfpart(y1f)));
 	v.hline!CHECKED(x1i+1, x2i, y2i, color,  fixfpart(y2f));
-	v.aaPutPixel!CHECKED(x1i, y1i, color, fracmul(~fixfpart(x1f), ~fixfpart(y1f)));
-	v.aaPutPixel!CHECKED(x1i, y2i, color, fracmul(~fixfpart(x1f),  fixfpart(y2f)));
-	v.aaPutPixel!CHECKED(x2i, y1i, color, fracmul( fixfpart(x2f), ~fixfpart(y1f)));
+	v.aaPutPixel!CHECKED(x1i, y1i, color, fracmul(cast(ubyte)(~cast(int)fixfpart(x1f)) ,
+		                                          cast(ubyte)(~cast(int)fixfpart(y1f))) );
+	v.aaPutPixel!CHECKED(x1i, y2i, color, fracmul(cast(ubyte)(~cast(int)fixfpart(x1f)) ,  fixfpart(y2f)));
+	v.aaPutPixel!CHECKED(x2i, y1i, color, fracmul( fixfpart(x2f), cast(ubyte)(~cast(int)fixfpart(y1f))) );
 	v.aaPutPixel!CHECKED(x2i, y2i, color, fracmul( fixfpart(x2f),  fixfpart(y2f)));
 
 	v.fillRect!CHECKED(x1i+1, y1i+1, x2i, y2i, color);

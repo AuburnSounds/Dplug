@@ -5,7 +5,7 @@
 * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 * Authors:   Guillaume Piolat
 */
-deprecated module dplug.dsp.envelope;
+deprecated("You can ignore this message though.") module dplug.dsp.envelope;
 
 import std.math;
 import dplug.dsp.iir;

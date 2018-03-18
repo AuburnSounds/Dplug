@@ -113,7 +113,7 @@ private void FFT_internal(T, FFTDirection direction)(BuiltinComplex!T[] buffer) 
 unittest
 {
     import std.complex;
-    import std.numeric: approxEqual, fft;
+    import std.numeric: fft;
 
     bool approxEqualArrBuiltin(BuiltinComplex!double[] a, BuiltinComplex!double[] b) pure
     {
@@ -157,7 +157,7 @@ struct Segmenter(T)
 nothrow:
 @nogc:
 
-    int segmentSize() pure const 
+    int segmentSize() pure const
     {
         return _segmentSize;
     }
@@ -338,11 +338,11 @@ nothrow:
 
                 int count = endOfSumming - startOfSumming;
                 assert(count >= 0);
-                
+
                 const(float)* segmentData = desc.buffer.ptr + offset;
 
                 // PERF: this can be optimized further
-                for (int i = startOfSumming; i < endOfSumming; ++i) 
+                for (int i = startOfSumming; i < endOfSumming; ++i)
                 {
                     outAudio[i] += segmentData[i];
                 }
@@ -395,10 +395,10 @@ public:
     /// Basic overlap is achieved with windowSize = 2 * analysisPeriod
     /// if zeroPhaseWindowing = true, "zero phase" windowing is used
     /// (center of window is at first sample, zero-padding happen at center)
-    void initialize(int windowSize, 
-                    int fftSize, 
-                    int analysisPeriod, 
-                    WindowDesc windowDesc, 
+    void initialize(int windowSize,
+                    int fftSize,
+                    int analysisPeriod,
+                    WindowDesc windowDesc,
                     bool zeroPhaseWindowing) nothrow @nogc
     {
         assert(isPowerOfTwo(fftSize));
@@ -653,7 +653,7 @@ nothrow:
     void initialize(int length)
     {
         _length = length;
-        _internal.initialize(length);  
+        _internal.initialize(length);
         _alignment = cast(int)_internal.alignment(length);
 
         _buffer.reallocBuffer(length, _alignment);
@@ -666,11 +666,11 @@ nothrow:
     }
 
     @disable this(this);
- 
+
     void forwardTransform(const(T)[] timeData, BuiltinComplex!T[] outputBins)
     {
         _buffer[] = timeData[];
-   
+
         // Perform real FFT
         _internal.rfft(_buffer);
 
@@ -691,14 +691,14 @@ nothrow:
     * Compute the inverse FFT of the array. Perform post-scaling.
     *
     * Params:
-    *    inputBins = Source arrays (N/2 + 1 frequency bins).    
+    *    inputBins = Source arrays (N/2 + 1 frequency bins).
     *    timeData = Destination array (N time samples).
     *
-    * Note: 
+    * Note:
     *    This transform has the benefit you don't have to conjugate the "mirrored" part of the FFT.
     *    Excess data in imaginary part of DC and Nyquist bins are ignored.
     */
-    void reverseTransform(BuiltinComplex!T[] inputBins, T[] timeData) 
+    void reverseTransform(BuiltinComplex!T[] inputBins, T[] timeData)
     {
         // On inverse transform, scale down result
         T invMultiplier = cast(T)1 / _length;

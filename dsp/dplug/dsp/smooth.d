@@ -30,7 +30,7 @@ public:
         _sampleRate = samplerate;
 
         setAttackReleaseTime(timeAttackRelease);
-        
+
         assert(isFinite(_expFactor));
     }
 
@@ -304,8 +304,8 @@ public:
             _arr[i + 1] = _delay[i];
 
         // sort in place
-        grailSort!T(_arr[],  
-            (a, b) nothrow @nogc 
+        grailSort!T(_arr[],
+            (a, b) nothrow @nogc
             {
                 if (a > b) return 1;
                 else if (a < b) return -1;
@@ -335,7 +335,7 @@ private:
 
 unittest
 {
-    void test() nothrow @nogc 
+    void test() nothrow @nogc
     {
         MedianFilter!float a;
         MedianFilter!double b;
@@ -348,7 +348,7 @@ unittest
 
 /// Simple FIR to smooth things cheaply.
 /// Introduces (samples - 1) / 2 latency.
-/// This one doesn't convert to integers internally so it may 
+/// This one doesn't convert to integers internally so it may
 /// loose precision over time. Meants for finite signals.
 struct UnstableMeanFilter(T) if (is(T == float) || is(T == double))
 {
@@ -467,7 +467,7 @@ private:
 
 unittest
 {
-    void test() nothrow @nogc 
+    void test() nothrow @nogc
     {
         MeanFilter!float a;
         MeanFilter!double b;
@@ -475,322 +475,4 @@ unittest
         b.initialize(44100.0f, 0.001f, 0.001f, 0.0f);
     }
     test();
-}
-
-
-/*
-* Copyright (c) 2016 Aleksey Vaneev
-* 
-* Permission is hereby granted, free of charge, to any person obtaining a
-* copy of this software and associated documentation files (the "Software"),
-* to deal in the Software without restriction, including without limitation
-* the rights to use, copy, modify, merge, publish, distribute, sublicense,
-* and/or sell copies of the Software, and to permit persons to whom the
-* Software is furnished to do so, subject to the following conditions:
-* 
-* The above copyright notice and this permission notice shall be included in
-* all copies or substantial portions of the Software.
-* 
-* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-* DEALINGS IN THE SOFTWARE.
-*/
-/**
-* "gammaenv" produces smoothed-out S-curve envelope signal with the specified
-* attack and release characteristics. The attack and release times can be
-* further adjusted in real-time. Delay parameter is also specified as the
-* percentage of the total time.
-*
-* The S-curve produced by this envelope algorithm closely resembles a
-* sine-wave signal slightly augmented via the tanh() function. Such
-* augmentation makes the shape slightly steeper and in the end allows the
-* algorithm to follow it closer. The name "gammaenv" relates to this
-* algorithm's version.
-*
-* The algorithm's topology is based on 5 sets of "leaky integrators" (the
-* simplest form of 1st order low-pass filters). Each set (except the 5th) use
-* 4 low-pass filters in series. Outputs of all sets are then simply
-* summed/subtracted to produce the final result. The topology is numerically
-* stable for any valid input signal, but may produce envelope overshoots
-* depending on the input signal.
-*
-* Up to 25% of total attack (or release) time can be allocated (via Delay
-* parameters) to the delay stage. The delay is implemented by the same
-* topology: this has the benefit of not requiring additional memory
-* buffering. For example, it is possible to get up to 250 ms delay on
-* a 1-second envelope release stage without buffering.
-*
-* The processSymm() function provides the "perfect" implementation of the
-* algorithm, but it is limited to the same attack and release times. A more
-* universal process() function can work with any attack and release times,
-* but it is about 2 times less efficient and the actual attack stage's
-* envelope can range from the "designed" U to the undesired sharp V shape.
-* Unfortunately, the author was unable to find an approach that could be
-* similar to the processSymm() function while providing differing attack and
-* release times (the best approach found so far lengthens the delay stage
-* unpredictably).
-*/
-/// gammaenv from Aleksey Vaneev is a better way to have an attack-release smoothing
-deprecated("GammaEnv will go. If you use it please copy it in your private repositery.") 
-struct GammaEnv(T) if (is(T == float) || is(T == double))
-{
-public:
-
-    /**
-    * Function initializes or updates the internal variables. All public
-    * variables have to be defined before calling this function.
-    *
-    * @param SampleRate Sample rate.
-    */
-    void initialize(double sampleRate, double Attack, double Release, 
-                                       double AttackDelay, double ReleaseDelay,
-                                       bool isInverse) nothrow @nogc
-    {
-        double a;
-        double adly;
-        double b;
-        double bdly;
-
-        if( Attack < Release )
-        {
-            a = Attack;
-            b = Release;
-            adly = AttackDelay;
-            bdly = ReleaseDelay;
-        }
-        else
-        {
-            b = Attack;
-            a = Release;
-            bdly = AttackDelay;
-            adly = ReleaseDelay;
-        }
-
-        _isInverse = isInverse;
-
-        // FUTURE: move this in processing whenever attack or release changes
-        calcMults( sampleRate, a, adly, enva.ptr, enva5 );
-        calcMults( sampleRate, b, bdly, envb.ptr, envb5 );
-
-        clearState(0);
-    }
-
-    double nextSample( double v ) nothrow @nogc
-    {
-        const double resa = nextSampleSymmetric( v );
-        const double cres = ( _isInverse ? resa <= prevr : resa >= prevr );
-        int i;
-
-        if( cres )
-        {
-            for( i = 0; i < envcount4; i += 4 )
-            {
-                envr[ i + 0 ] = resa;
-                envr[ i + 1 ] = resa;
-                envr[ i + 2 ] = resa;
-                envr[ i + 3 ] = resa;
-            }
-
-            envr5 = resa;
-            prevr = resa;
-
-            return( resa );
-        }
-
-        envr[ 0 ] += ( v - envr[ 0 ]) * envb[ 0 ];
-        envr[ 1 ] += ( envr5 - envr[ 1 ]) * envb[ 1 ];
-        envr[ 2 ] += ( envr[ 4 * 3 + 1 ] - envr[ 2 ]) * envb[ 2 ];
-        envr[ 3 ] += ( envr[ 4 * 3 + 0 ] - envr[ 3 ]) * envb[ 3 ];
-        envr5 += ( envr[ 4 * 3 + 0 ] - envr5 ) * envb5;
-
-        for( i = 4; i < envcount4; i += 4 )
-        {
-            envr[ i + 0 ] += ( envr[ i - 4 ] - envr[ i + 0 ]) * envb[ 0 ];
-            envr[ i + 1 ] += ( envr[ i - 3 ] - envr[ i + 1 ]) * envb[ 1 ];
-            envr[ i + 2 ] += ( envr[ i - 2 ] - envr[ i + 2 ]) * envb[ 2 ];
-            envr[ i + 3 ] += ( envr[ i - 1 ] - envr[ i + 3 ]) * envb[ 3 ];
-        }
-
-        prevr = envr[ i - 4 ] + envr[ i - 3 ] + envr[ i - 2 ] -
-            envr[ i - 1 ] - envr5;
-
-        return( prevr );
-    }
-
-    void nextBuffer(const(T)* input, T* output, int frames) nothrow @nogc
-    {
-        for (int i = 0; i < frames; ++i)
-        {
-            output[i] = nextSample(input[i]);
-        }
-    }
-
-private:
-    enum int envcount = 4; ///< The number of envelopes in use.
-    enum int envcount4 = envcount * 4; ///< =envcount * 4 (fixed).
-    double[ envcount4 ] env; ///< Signal envelope stages 1-4.
-    double[ 4 ] enva; ///< Attack stage envelope multipliers 1-4.
-    double[ 4 ] envb; ///< Release stage envelope multipliers 1-4.
-    double[ envcount4 ] envr; ///< Signal envelope (release) stages 1-4.
-    double env5; ///< Signal envelope stage 5.
-    double enva5; ///< Attack stage envelope multiplier 5.
-    double envb5; ///< Release stage envelope multiplier 5.
-    double envr5; ///< Signal envelope (release) stage 5.
-    double prevr; ///< Previous output (release).
-    bool _isInverse;
-
-    /**
-    * Function clears state of *this object.
-    *
-    * @param initv Initial state value.
-    */
-
-    void clearState( const double initv ) nothrow @nogc
-    {
-        int i;
-
-        for( i = 0; i < envcount4; i += 4 )
-        {
-            env[ i + 0 ] = initv;
-            env[ i + 1 ] = initv;
-            env[ i + 2 ] = initv;
-            env[ i + 3 ] = initv;
-            envr[ i + 0 ] = initv;
-            envr[ i + 1 ] = initv;
-            envr[ i + 2 ] = initv;
-            envr[ i + 3 ] = initv;
-        }
-
-        env5 = initv;
-        envr5 = initv;
-        prevr = initv;
-    }
-
-
-    /**
-    * Function performs 1 sample processing and produces output sample
-    * (symmetric mode, attack and release should be equal).
-    */
-    double nextSampleSymmetric(double v) nothrow @nogc
-    {
-        env[ 0 ] += ( v - env[ 0 ]) * enva[ 0 ];
-        env[ 1 ] += ( env5 - env[ 1 ]) * enva[ 1 ];
-        env[ 2 ] += ( env[ 4 * 3 + 1 ] - env[ 2 ]) * enva[ 2 ];
-        env[ 3 ] += ( env[ 4 * 3 + 0 ] - env[ 3 ]) * enva[ 3 ];
-        env5 += ( env[ 4 * 3 + 0 ] - env5 ) * enva5;
-        int i;
-
-        for( i = 4; i < envcount4; i += 4 )
-        {
-            env[ i + 0 ] += ( env[ i - 4 ] - env[ i + 0 ]) * enva[ 0 ];
-            env[ i + 1 ] += ( env[ i - 3 ] - env[ i + 1 ]) * enva[ 1 ];
-            env[ i + 2 ] += ( env[ i - 2 ] - env[ i + 2 ]) * enva[ 2 ];
-            env[ i + 3 ] += ( env[ i - 1 ] - env[ i + 3 ]) * enva[ 3 ];
-        }
-
-        return( env[ i - 4 ] + env[ i - 3 ] + env[ i - 2 ] -
-                env[ i - 1 ] - env5 );
-    }
-
-
-    static void calcMults( const double SampleRate, const double Time,
-                           const double o, double* envs, ref double envs5 ) nothrow @nogc
-    {
-        const double o2 = o * o;
-
-        if( o <= 0.074 )
-        {
-            envs[ 3 ] = 0.44548 + 0.00920770 * cos( 90.2666 * o ) -
-                3.18551 * o - 0.132021 * cos( 377.561 * o2 ) -
-                90.2666 * o * o2 * cos( 90.2666 * o );
-        }
-        else
-            if( o <= 0.139 )
-            {
-                envs[ 3 ] = 0.00814353 + 3.07059 * o + 0.00356226 *
-                    cos( 879.555 * o2 );
-            }
-            else
-                if( o <= 0.180 )
-                {
-                    envs[ 3 ] = 0.701590 + o2 * ( 824.473 * o * o2 - 11.8404 );
-                }
-                else
-                {
-                    envs[ 3 ] = 1.86814 + o * ( 84.0061 * o2 - 10.8637 ) -
-                        0.0122863 / o2;
-                }
-
-        const double e3 = envs[ 3 ];
-
-        envs[ 0 ] = 0.901351 + o * ( 12.2872 * e3 + o * ( 78.0614 -
-                                                          213.130 * o ) - 9.82962 ) + e3 * ( 0.024808 *
-                                                                                             exp( 7.29048 * e3 ) - 5.4571 * e3 );
-        const double e0 = envs[ 0 ];
-
-        const double e3exp = exp( 1.31354 * e3 + 0.181498 * o );
-        envs[ 1 ] = e3 * ( e0 * ( 2.75054 * o - 1.0 ) - 0.611813 * e3 *
-                           e3exp ) + 0.821369 * e3exp - 0.845698;
-        const double e1 = envs[ 1 ];
-
-        envs[ 2 ] = 0.860352 + e3 * ( 1.17208 - 0.579576 * e0 ) + o * ( e0 *
-                                                                        ( 1.94324 - 1.95438 * o ) + 1.20652 * e3 ) - 1.08482 * e0 -
-            2.14670 * e1;
-
-        if( o >= 0.0750 )
-        {
-            envs5 = 0.00118;
-        }
-        else
-        {
-            envs5 = e0 * ( 2.68318 - 2.08720 * o ) + 0.485294 * log( e3 ) +
-                3.5805e-10 * exp( 27.0504 * e0 ) - 0.851199 - 1.24658 * e3 -
-                0.885938 * log( e0 );
-        }
-
-        const double c = 2 * PI / SampleRate;
-        envs[ 0 ] = calcLP1CoeffLim( c / ( Time * envs[ 0 ]));
-        envs[ 1 ] = calcLP1CoeffLim( c / ( Time * envs[ 1 ]));
-        envs[ 2 ] = calcLP1CoeffLim( c / ( Time * envs[ 2 ]));
-        envs[ 3 ] = calcLP1CoeffLim( c / ( Time * envs[ 3 ]));
-        envs5 = calcLP1CoeffLim( c / ( Time * envs5 ));
-    }
-
-    /**
-    * Function calculates first-order low-pass filter coefficient for the
-    * given Theta frequency (0 to pi, inclusive). Returned coefficient in the
-    * form ( 1.0 - coeff ) can be used as a coefficient for a high-pass
-    * filter. This ( 1.0 - coeff ) can be also used as a gain factor for the
-    * high-pass filter so that when high-passed signal is summed with
-    * low-passed signal at the same Theta frequency the resuling sum signal
-    * is unity.
-    *
-    * @param theta Low-pass filter's circular frequency, >= 0.
-    */
-    static double calcLP1Coeff( const double theta ) nothrow @nogc
-    {
-        const double costheta2 = 2.0 - cos( theta );
-        return( 1.0 - ( costheta2 - sqrt( costheta2 * costheta2 - 1.0 )));
-    }
-
-    /**
-    * Function checks the supplied parameter, limits it to "pi" and calls the
-    * calcLP1Coeff() function.
-    *
-    * @param theta Low-pass filter's circular frequency, >= 0.
-    */
-    static double calcLP1CoeffLim( const double theta ) nothrow @nogc
-    {
-        return( calcLP1Coeff( theta < PI ? theta : PI ));
-    }
-}
-
-unittest
-{
-    GammaEnv!float a;
-    GammaEnv!double b;
 }

@@ -46,19 +46,19 @@ T itpl(T, U)(T low, T high, U r, U rLow, U rHigh)
 auto sqr(T)(T x) { return x*x; }
 
 
-void sort2(T)(ref T x, ref T y) 
-{ 
-    if (x > y) 
-    { 
-        T z = x; 
-        x = y; 
-        y = z; 
-    } 
+void sort2(T)(ref T x, ref T y)
+{
+    if (x > y)
+    {
+        T z = x;
+        x = y;
+        y = z;
+    }
 }
 
-byte sign(T)(T x) 
-{ 
-    return x<0 ? -1 : (x>0 ? 1 : 0); 
+byte sign(T)(T x)
+{
+    return x<0 ? -1 : (x>0 ? 1 : 0);
 }
 
 /// Integer log2.
@@ -493,7 +493,7 @@ unittest
 // ***************************************************************************
 
 T blend(T)(T f, T b, T a) pure nothrow @nogc
-    if (is(typeof(f*a+~b))) 
-{ 
-    return cast(T) ( ((f*a) + (b*~a)) / T.max ); 
+    if (is(typeof(f*a+~b)))
+{
+    return cast(T) ( ((f*a) + (b*(~cast(int)a))) / T.max );
 }

@@ -161,7 +161,7 @@ void horizontalSlope(float curvature = 1.0f, V, COLOR)(auto ref V v, box2i rect,
     int x0 = rect.min.x;
     int x1 = rect.max.x;
     immutable float invX1mX0 = 1.0f / (x1 - x0);
-    
+
     foreach (px; inter.min.x .. inter.max.x)
     {
         float fAlpha =  (px - x0) * invX1mX0;
@@ -339,7 +339,7 @@ if (isWritableView!V && is(COLOR : ViewColor!V))
                     if (frs >= fr2s)
                         alpha = (frs - fr2s) * invfr32;
                     else
-                        alpha = 1 - (frs - fr1s) * invfr21; 
+                        alpha = 1 - (frs - fr1s) * invfr21;
 
                     static if (curvature != 1.0f)
                         alpha = alpha ^^ curvature;
@@ -414,7 +414,7 @@ if (isWritableView!V && is(COLOR : ViewColor!V))
     }
     else
     {
-        alias ChannelType = COLOR.ChannelType;      
+        alias ChannelType = COLOR.ChannelType;
         static ChannelType toAlpha(float fraction) pure nothrow @nogc
         {
             return cast(ChannelType)(cast(int)(0.5f + ChannelType.max * fraction));
@@ -455,15 +455,15 @@ void blendWithAlpha(SRC, DST)(auto ref SRC srcView, auto ref DST dstView, auto r
     static assert(isWritableView!DST);
 
     static ubyte blendByte(ubyte a, ubyte b, ubyte f) nothrow @nogc
-    { 
-        int sum = ( f * a + b * (~f) ) + 127;
+    {
+        int sum = ( f * a + b * (~cast(int)f) ) + 127;
         return cast(ubyte)(sum / 255 );// ((sum+1)*257) >> 16 ); // integer divide by 255
     }
 
     static ushort blendShort(ushort a, ushort b, ubyte f) nothrow @nogc
-    { 
+    {
         ushort ff = (f << 8) | f;
-        int sum = ( ff * a + b * (~ff) ) + 32768;
+        int sum = ( ff * a + b * (~cast(int)ff) ) + 32768;
         return cast(ushort)( sum >> 16 ); // MAYDO: this doesn't map to the full range
     }
 
@@ -479,7 +479,7 @@ void blendWithAlpha(SRC, DST)(auto ref SRC srcView, auto ref DST dstView, auto r
         foreach (x; 0..srcView.w)
         {
             ubyte alpha = alphaScan[x].l;
-            if (alpha == 0) 
+            if (alpha == 0)
                 continue;
             static if (is(COLOR == RGBA))
             {
@@ -539,7 +539,7 @@ nothrow:
 
     mixin DirectView;
 
-    /// Resize the image, the content is lost.  
+    /// Resize the image, the content is lost.
     void size(int w, int h) nothrow @nogc
     {
         this.w = w;
@@ -579,7 +579,7 @@ struct IFImage
     }
 }
 
-IFImage readImageFromMem(const(ubyte[]) imageData, int channels) 
+IFImage readImageFromMem(const(ubyte[]) imageData, int channels)
 {
     static immutable ubyte[8] pngSignature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
     bool isPNG = imageData.length >= 8 && (imageData[0..8] == pngSignature);
@@ -593,7 +593,7 @@ IFImage readImageFromMem(const(ubyte[]) imageData, int channels)
         result.w = width;
         result.h = height;
         result.channels = channels;
-        int size = width * height * channels; 
+        int size = width * height * channels;
         result.pixels = decoded[0..size];
         return result;
     }
