@@ -764,8 +764,8 @@ class GainParameter : FloatParameter
 
     override double toNormalized(double value)
     {
-        double maxAmplitude = deciBelToFloat(_max);
-        double result = ( deciBelToFloat(value) / maxAmplitude ) ^^ (1 / _shape);
+        double maxAmplitude = convertDecibelToLinearGain(_max);
+        double result = ( convertDecibelToLinearGain(value) / maxAmplitude ) ^^ (1 / _shape);
         if (result < 0)
             result = 0;
         if (result > 1)
@@ -776,7 +776,7 @@ class GainParameter : FloatParameter
 
     override double fromNormalized(double normalizedValue)
     {
-        return floatToDeciBel(  (normalizedValue ^^ _shape) * deciBelToFloat(_max));
+        return convertLinearGainToDecibel(  (normalizedValue ^^ _shape) * convertDecibelToLinearGain(_max));
     }
 
 private:
