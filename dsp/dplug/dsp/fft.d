@@ -395,7 +395,11 @@ public:
     /// Basic overlap is achieved with windowSize = 2 * analysisPeriod
     /// if zeroPhaseWindowing = true, "zero phase" windowing is used
     /// (center of window is at first sample, zero-padding happen at center)
-    void initialize(int windowSize, int fftSize, int analysisPeriod, WindowDesc windowDesc, bool zeroPhaseWindowing) nothrow @nogc
+    void initialize(int windowSize, 
+                    int fftSize, 
+                    int analysisPeriod, 
+                    WindowDesc windowDesc, 
+                    bool zeroPhaseWindowing) nothrow @nogc
     {
         assert(isPowerOfTwo(fftSize));
         assert(fftSize >= windowSize);
@@ -540,8 +544,7 @@ public:
             version(useRealFFT)
             {
                 // If you fail here, you are giving a larger slice than strictly necessary to FFTAnalyzer.
-                // Be cautious in user-code, having a slice too large can cause hard to find memory 
-                // corruption when you read it back.
+                // This can cause hard to find memory corruption if you read the slice one bin too far.
                 // Give a slice with length of exactly _fftSize/2+1.
                 assert(fftData.length == _fftSize/2+1, "FFTAnalyzer is given too large a slice");
 
