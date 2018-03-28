@@ -283,6 +283,50 @@ public
         }
     }
 
+    /// 1-pole low-pass filter.
+    /// Note: the cutoff frequency can be >= nyquist, in which case it asymptotically approaches a bypass.
+    ///       the cutoff frequency can be below 0 Hz, in which case it is equal to zero.
+    ///       You always have -3 dB at cutoff in the valid range.
+    ///
+    /// See_also: http://www.earlevel.com/main/2012/12/15/a-one-pole-filter/
+    BiquadCoeff biquadOnePoleLowPass(double frequency, double sampleRate) nothrow @nogc
+    {
+        double fc = frequency / sampleRate;
+        if (fc < 0.0f)
+            fc = 0.0f;
+        double t2 = exp(-2.0 * PI * fc);
+        BiquadCoeff result;
+        result[0] = 1 - t2;
+        result[1] = 0;
+        result[2] = 0;
+        result[3] = -t2;
+        result[4] = 0;
+        return result;
+    }
+
+    /// 1-pole high-pass filter.
+    /// Note: the cutoff frequency can be >= nyquist, in which case it is equal to zero.
+    ///       the cutoff frequency can be below 0 Hz, in which case it asymptotically approaches a bypass.
+    ///       You always have -3 dB at cutoff in the valid range.
+    ///
+    /// See_also: http://www.earlevel.com/main/2012/12/15/a-one-pole-filter/
+    BiquadCoeff biquadOnePoleHighPass(double frequency, double sampleRate) nothrow @nogc
+    {
+        double fc = frequency / sampleRate;
+        if (fc > 0.5f)
+            fc = 0.5f;
+
+        double t2 = exp(-2.0 * PI * (0.5 - fc));
+        BiquadCoeff result;
+        result[0] = 1 - t2;
+        result[1] = 0;
+        result[2] = 0;
+        result[3] = t2;
+        result[4] = 0;
+
+        return result;
+    }
+
     deprecated("This function was renamed to biquadOnePoleLowPassImprecise.") 
         alias lowpassFilter1Pole = biquadOnePoleLowPassImprecise;
     /// 1-pole low-pass filter, frequency mapping is not precise.
