@@ -3,7 +3,6 @@
     "title": "Dplug plugin.json schema",
     "type": "object",
 
-    "additionalProperties": false,
     "required": [ "CFBundleIdentifierPrefix",
                   "hasGUI",
                   "isSynth",
@@ -47,12 +46,12 @@
             "type": "string"
         },
         "pluginUniqueID": {
-            "description": "A four char code identifying your plugin in the VST2 namespace. When breaking save compatibility, you MUST issue a new plugin ID.",
+            "description": "A four char code identifying your plug-in in the VST2 namespace. Nobody knows which one are available or not. When breaking save compatibility, you MUST issue a new plugin ID.",
             "id": "/properties/pluginUniqueID",
             "type": "string"
         },
         "publicVersion": {
-            "description": "Public version of the plugin, of the form major.minor.patch. The implicit meaning is that save compatibility is broken only for major versions.",
+            "description": "Public version of the plug-in, of the form major.minor.patch. The implicit meaning is that save compatibility is broken only for major versions.",
             "id": "/properties/publicVersion",
             "type": "string"
         },
@@ -82,6 +81,7 @@
             "type": "string",
 
             "enum": [
+
                 "effectAnalysisAndMetering",
                 "effectDelay",
                 "effectDistortion",
@@ -92,6 +92,7 @@
                 "effectPitch",
                 "effectReverb",
                 "effectOther",
+
                 "instrumentDrums",
                 "instrumentSampler",
                 "instrumentSynthesizer",
