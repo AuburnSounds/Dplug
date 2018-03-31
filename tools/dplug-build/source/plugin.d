@@ -111,6 +111,7 @@ struct Plugin
     string licensePath;    // can be null
     string iconPath;       // can be null or a path to a (large) .png
     bool hasGUI;
+    string dubTargetPath;  // extracted from dub.json, used to build the dub output file path
 
     string pluginName;     // Prettier name, extracted from plugin.json (eg: 'Distorter')
     string pluginUniqueID;
@@ -187,22 +188,21 @@ struct Plugin
         return r;
     }
 
-    // The destination file name
-    /*string targetFileName() pure const nothrow
-    {
-        version(Windows)
-            return name  ~ ".dll";
-        else
-            return "lib" ~ name ~ ".so";
-    }*/
-
     // The file name DUB outputs
     string dubOutputFileName() pure const nothrow
     {
+        // Note: we're NOT asking to `dub describe` though that may be more robust. 
+        // The (presumed) problem is that dub describe would check the network.
+        string outputFilename;
         version(Windows)
-            return name  ~ ".dll";
+            outputFilename = name  ~ ".dll";
         else
-            return "lib" ~ name ~ ".so";
+            outputFilename = "lib" ~ name ~ ".so";
+
+        if (dubTargetPath is null)
+            return outputFilename;
+        else
+            return std.path.buildPath(dubTargetPath, outputFilename);
     }
 
     string getVSTBundleIdentifier() pure const
@@ -280,6 +280,18 @@ Plugin readPluginDescription()
     {
         warning("Couldln't parse configurations names in dub.json.");
         result.configurations = [];
+    }
+
+    // Support for DUB targetPath
+    try
+    {
+        JSONValue path = dubFile["targetPath"];
+        result.dubTargetPath = path.str;
+    }
+    catch(Exception e)
+    {
+        // silent, targetPath not considered
+        result.dubTargetPath = null;
     }
 
     if (!exists("plugin.json"))
