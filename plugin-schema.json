@@ -1,63 +1,102 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "title": "Dplug plugin.json schema",
+    "type": "object",
 
+    "additionalProperties": false,
+    "required": [ "CFBundleIdentifierPrefix",
+                  "hasGUI",
+                  "isSynth",
+                  "pluginName",
+                  "pluginUniqueID",
+                  "publicVersion",
+                  "receivesMIDI",
+                  "vendorName",
+                  "vendorUniqueID",
+                  "category" ],
 
-    {
-        "$schema": "http://json-schema.org/draft-04/schema#",
-        "definitions": {},
-        "id": "https://raw.githubusercontent.com/AuburnSounds/dplug/master/plugin-schema.json",
-        "properties": {
-            "CFBundleIdentifierPrefix": {
-                "id": "/properties/CFBundleIdentifierPrefix",
-                "type": "string"
-            },
-            "commented-iconPath": {
-                "id": "/properties/commented-iconPath",
-                "type": "string"
-            },
-            "hasGUI": {
-                "id": "/properties/hasGUI",
-                "type": "boolean"
-            },
-            "isSynth": {
-                "id": "/properties/isSynth",
-                "type": "boolean"
-            },
-            "licensePath": {
-                "id": "/properties/licensePath",
-                "type": "string"
-            },
-            "pluginName": {
-                "id": "/properties/pluginName",
-                "type": "string"
-            },
-            "pluginUniqueID": {
-                "id": "/properties/pluginUniqueID",
-                "type": "string"
-            },
-            "publicVersion": {
-                "id": "/properties/publicVersion",
-                "type": "string"
-            },
-            "receivesMIDI": {
-                "id": "/properties/receivesMIDI",
-                "type": "boolean"
-            },
-            "userManualPath": {
-                "id": "/properties/userManualPath",
-                "type": "string"
-            },
-            "vendorName": {
-                "id": "/properties/vendorName",
-                "type": "string"
-            },
-            "vendorUniqueID": {
-                "id": "/properties/vendorUniqueID",
-                "type": "string"
-            },
-            "category": {
-                "id": "/properties/category",
-                "type": "string"
-            }
+    "properties": {
+        "CFBundleIdentifierPrefix": {
+            "description": "Mandatory prefix for macOS bundles.",
+            "id": "/properties/CFBundleIdentifierPrefix",
+            "type": "string"
         },
-        "type": "object"
-    }
+        "iconPath": {
+            "description": "Very optional path to an icon file, to be used for macOS bundles. Not sure if working.",
+            "id": "/properties/commented-iconPath",
+            "type": "string"
+        },
+        "hasGUI": {
+            "description": "true if the plug-in has a GUI. Can be used to disabled the UI of a plug-in.",
+            "id": "/properties/hasGUI",
+            "type": "boolean"
+        },
+        "isSynth": {
+            "description": "true if the plug-in is an instrument. Must match with the choosen category property.",
+            "id": "/properties/isSynth",
+            "type": "boolean"
+        },
+        "licensePath": {
+            "description": "Optional path to a license file, to be bundled with binary releases.",
+            "id": "/properties/licensePath",
+            "type": "string"
+        },
+        "pluginName": {
+            "description": "Full name of the plug-in vendor.",
+            "id": "/properties/pluginName",
+            "type": "string"
+        },
+        "pluginUniqueID": {
+            "description": "A four char code identifying your plugin in the VST2 namespace. When breaking save compatibility, you MUST issue a new plugin ID.",
+            "id": "/properties/pluginUniqueID",
+            "type": "string"
+        },
+        "publicVersion": {
+            "description": "Public version of the plugin, of the form major.minor.patch. The implicit meaning is that save compatibility is broken only for major versions.",
+            "id": "/properties/publicVersion",
+            "type": "string"
+        },
+        "receivesMIDI": {
+            "description": "true if the plug-in reads MIDI input, can be for a synthesizer or an effect taking MIDI.",
+            "id": "/properties/receivesMIDI",
+            "type": "boolean"
+        },
+        "userManualPath": {
+            "description": "Optional path to a user manual file, to be bundled with binary releases.",
+            "id": "/properties/userManualPath",
+            "type": "string"
+        },
+        "vendorName": {
+            "description": "The full name of the plug-in vendor.",
+            "id": "/properties/vendorName",
+            "type": "string"
+        },
+        "vendorUniqueID": {
+            "description": "A four char code for the plug-in vendor.",
+            "id": "/properties/vendorUniqueID",
+            "type": "string"
+        },
+        "category": {
+            "description": "The category of the plug-in. Helps to be listed more prominently in a DAW.",
+            "id": "/properties/category",
+            "type": "string",
 
+            "enum": [
+                "effectAnalysisAndMetering",
+                "effectDelay",
+                "effectDistortion",
+                "effectDynamics",
+                "effectEQ",
+                "effectImaging",
+                "effectModulation",
+                "effectPitch",
+                "effectReverb",
+                "effectOther",
+                "instrumentDrums",
+                "instrumentSampler",
+                "instrumentSynthesizer",
+                "instrumentOther"
+            ]
+        }
+    }
+}
