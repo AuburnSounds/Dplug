@@ -47,7 +47,7 @@ enum ubyte defaultMetalnessMetal = 255;
 /// Base class of the UI widget hierarchy.
 ///
 /// MAYDO: a bunch of stuff in that class is intended specifically for the root element,
-///        there is probably a batter design to find
+///        there is probably a better design to find.
 class UIElement
 {
 public:
