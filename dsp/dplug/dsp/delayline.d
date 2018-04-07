@@ -58,6 +58,9 @@ public:
 
     /// Combined feed + sampleFull.
     /// Uses the delay line as a fixed delay of count samples.
+    ///
+    /// Note: input and output may overlap. 
+    ///       If this was ever optimized, this should preserve that property.
     void nextBuffer(const(T)* input, T* output, int frames) nothrow @nogc
     {
         for(int i = 0; i < frames; ++i)
