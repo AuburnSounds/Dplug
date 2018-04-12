@@ -660,6 +660,13 @@ public:
     override void toStringN(char* buffer, size_t numBytes)
     {
         snprintf(buffer, numBytes, _formatString.ptr, value());
+
+        // DigitalMars's snprintf doesn't always add a terminal zero
+        version(DigitalMars)
+            if (numBytes > 0)
+            {
+                buffer[numBytes-1] = '\0';
+            }
     }
 
     override void stringFromNormalizedValue(double normalizedValue, char* buffer, size_t len)

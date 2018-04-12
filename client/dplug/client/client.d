@@ -505,6 +505,12 @@ nothrow:
         snprintf(p, bufLength, "%.*s %.*s",
                  _info.vendorName.length, _info.vendorName.ptr,
                  _info.pluginName.length, _info.pluginName.ptr);
+
+        // DigitalMars's snprintf doesn't always add a terminal zero
+        if (bufLength > 0)
+        {
+            p[bufLength-1] = '\0';
+        }
     }
 
     /// Returns: Plugin version in x.x.x.x decimal form.
