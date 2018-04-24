@@ -36,7 +36,7 @@ nothrow:
 
         // All resources are bundled as a string import.
         // You can avoid resource compilers that way.
-        // The only cost is that each resource is in each binary, this creates overhead with 
+        // The only cost is that each resource is in each binary, this creates overhead 
         OwnedImage!RGBA knobImage = loadOwnedImage(cast(ubyte[])(import("knob.png")));
         OwnedImage!RGBA switchOnImage = loadOwnedImage(cast(ubyte[])(import("switchOn.png")));
         OwnedImage!RGBA switchOffImage = loadOwnedImage(cast(ubyte[])(import("switchOff.png")));

@@ -495,5 +495,5 @@ unittest
 T blend(T)(T f, T b, T a) pure nothrow @nogc
     if (is(typeof(f*a+~b)))
 {
-    return cast(T) ( ((f*a) + (b*(~cast(int)a))) / T.max );
+    return cast(T) ( ((f*a) + (b*cast(T)(~cast(int)a))) / T.max );
 }
