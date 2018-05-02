@@ -456,14 +456,14 @@ void blendWithAlpha(SRC, DST)(auto ref SRC srcView, auto ref DST dstView, auto r
 
     static ubyte blendByte(ubyte a, ubyte b, ubyte f) nothrow @nogc
     {
-        int sum = ( f * a + b * (~cast(int)f) ) + 127;
+        int sum = ( f * a + b * (cast(ubyte)(~cast(int)f)) ) + 127;
         return cast(ubyte)(sum / 255 );// ((sum+1)*257) >> 16 ); // integer divide by 255
     }
 
     static ushort blendShort(ushort a, ushort b, ubyte f) nothrow @nogc
     {
         ushort ff = (f << 8) | f;
-        int sum = ( ff * a + b * (~cast(int)ff) ) + 32768;
+        int sum = ( ff * a + b * (cast(ushort)(~cast(int)ff)) ) + 32768;
         return cast(ushort)( sum >> 16 ); // MAYDO: this doesn't map to the full range
     }
 
