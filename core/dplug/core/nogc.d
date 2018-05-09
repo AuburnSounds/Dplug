@@ -566,6 +566,24 @@ T unsafeObjectCast(T)(Object obj)
     return cast(T)(cast(void*)(obj));
 }
 
+/// Outputs a debug string in either:
+///  - stdout on POSIX-like (visible in the command-line)
+///  - the Output Windows on Windows (visible withing Visual Studio or with dbgview.exe)
+/// Warning: no end-of-line added!
+void debugLog(const(char)* message) nothrow @nogc
+{
+    version(Windows)
+    {
+        import core.sys.windows.windows;
+        OutputDebugStringA(message);
+    }
+    else
+    {
+        import core.stdc.stdio;
+        printf("%s", message);
+    }
+}
+
 
 /// Inserts a breakpoint instruction. useful to trigger the debugger.
 void debugBreak() nothrow @nogc

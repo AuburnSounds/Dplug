@@ -7,6 +7,8 @@
 */
 module dplug.gui.element;
 
+import core.stdc.stdio;
+
 import std.algorithm.comparison;
 
 public import gfm.math.vector;
@@ -317,13 +319,23 @@ nothrow:
     {
         if (isDragged)
         {
-            // in debug mode, dragging with the right mouse button move elements around
-            // and dragging with shift  + right button resize elements around
+            // EDIT MODE
+            // In debug mode, dragging with the right mouse button move elements around
+            // and dragging with shift  + right button resize elements around.
+            //
+            // Additionally, if CTRL is pressed, the increments are only -1 or +1 pixel.
+            // 
+            // You can see the _position rectangle thanks to `debugLog`.
             bool draggingUsed = false;
             debug
             {
                 if (mstate.rightButtonDown && mstate.shiftPressed)
                 {
+                    if (mstate.ctrlPressed)
+                    {
+                        dx = clamp(dx, -1, +1);
+                        dy = clamp(dy, -1, +1);
+                    }
                     int nx = _position.min.x;
                     int ny = _position.min.y;
                     int w = _position.width + dx;
@@ -334,9 +346,16 @@ nothrow:
                     _position = box2i(nx, ny, nx + w, ny + h);
                     setDirtyWhole();
                     draggingUsed = true;
+
+                    
                 }
                 else if (mstate.rightButtonDown)
                 {
+                    if (mstate.ctrlPressed)
+                    {
+                        dx = clamp(dx, -1, +1);
+                        dy = clamp(dy, -1, +1);
+                    }
                     int nx = _position.min.x + dx;
                     int ny = _position.min.y + dy;
                     if (nx < 0) nx = 0;
@@ -345,6 +364,15 @@ nothrow:
                     _position = box2i(nx, ny, nx + _position.width, ny + _position.height);
                     setDirtyWhole();
                     draggingUsed = true;
+                }
+
+                // Output the latest position
+                // This is helpful when developing a plug-in UI.
+                if (draggingUsed)
+                {
+                    char[128] buf;
+                    snprintf(buf.ptr, 128, "_position = box2i.rectangle(%d, %d, %d, %d)\n", _position.min.x, _position.min.y, _position.width, _position.height);
+                    debugLog(buf.ptr);
                 }
             }
 
