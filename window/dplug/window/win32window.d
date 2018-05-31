@@ -221,6 +221,36 @@ version(Windows)
                         return 0;
                     }
 
+                case WM_SETFOCUS:
+                {
+                    return 0;
+                }
+
+                case WM_KILLFOCUS:
+                {
+                    return 0;
+                }
+
+                case WM_MOUSEWHEEL:
+                    {
+                        int mouseX = ( cast(int)lParam ) & 0xffff;
+                        int mouseY = ( cast(int)lParam ) >> 16;
+
+                        // Mouse positions we are getting are not relative to the client area
+                        RECT r;
+                        GetWindowRect(hwnd, &r);
+                        mouseX -= r.left;
+                        mouseY -= r.top;
+
+                        int wheelDeltaY = cast(short)((wParam & 0xffff0000) >> 16) / WHEEL_DELTA;      
+                        
+                        if (_listener.onMouseWheel(mouseX, mouseY, 0, wheelDeltaY, getMouseState(wParam)))
+                        {
+                            return 0; // handled
+                        }
+                        goto default;
+                    }
+
                 case WM_RBUTTONDOWN:
                 case WM_RBUTTONDBLCLK:
                 {
