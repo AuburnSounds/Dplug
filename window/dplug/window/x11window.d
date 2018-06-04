@@ -50,6 +50,7 @@ extern(C) bool XkbSetDetectableAutoRepeat(Display*, bool, bool*);
 
 __gshared XLibInitialized = false;
 __gshared Display* _display;
+__gshared Visual* _visual;
 __gshared size_t _white_pixel, _black_pixel;
 __gshared int _screen;
 
@@ -169,6 +170,7 @@ public:
                 assert(false);
 
             _screen = DefaultScreen(_display);
+            _visual = XDefaultVisual(_display, _screen);
             _white_pixel = WhitePixel(_display, _screen);
             _black_pixel = BlackPixel(_display, _screen);
             XkbSetDetectableAutoRepeat(_display, true, null);
@@ -194,7 +196,7 @@ public:
                 XDestroyImage(_graphicImage);
             }
 
-            _graphicImage = XCreateImage(_display, cast(Visual*)&_graphicGC, depth, ZPixmap, 0, cast(char*)_bufferData.ptr, width, height, 32, 0);
+            _graphicImage = XCreateImage(_display, _visual, depth, ZPixmap, 0, cast(char*)_bufferData.ptr, width, height, 32, 0);
 
             size_t i;
             foreach(y; 0 .. wfb.h)
