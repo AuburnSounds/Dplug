@@ -8,6 +8,7 @@
 module dplug.dsp.iir;
 
 import std.math;
+import dplug.core.math;
 
 // DMD with a 32-bit target uses the FPU
 version(X86)
@@ -294,7 +295,7 @@ public
         double fc = frequency / sampleRate;
         if (fc < 0.0f)
             fc = 0.0f;
-        double t2 = exp(-2.0 * PI * fc);
+        double t2 = fast_exp(-2.0 * PI * fc);
         BiquadCoeff result;
         result[0] = 1 - t2;
         result[1] = 0;
@@ -316,7 +317,7 @@ public
         if (fc > 0.5f)
             fc = 0.5f;
 
-        double t2 = exp(-2.0 * PI * (0.5 - fc));
+        double t2 = fast_exp(-2.0 * PI * (0.5 - fc));
         BiquadCoeff result;
         result[0] = 1 - t2;
         result[1] = 0;

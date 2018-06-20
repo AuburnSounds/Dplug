@@ -255,16 +255,26 @@ else
 
 version(LDC)
 {
-    // Note: function wouldn't work (depending on inlining), 
-    // it's much more reliable to use alias
+    // Note: wrapper functions wouldn't work (depend on inlining), 
+    //       it's much more reliable to use alias for speed gain.
 
-    alias fast_exp = llvm_exp;
+    // Gives considerable speed improvement over `std.math.exp`.
+    // Exhaustive testing for 32-bit `float` shows
+    // Relative accuracy is within < 0.0002% of std.math.exp
+    // for every possible input.
+    // So a -120 dB inaccuracy, and -140dB the vast majority of the time.
+    alias fast_exp = llvm_exp; 
+
+
     alias fast_log = llvm_log;
     alias fast_pow = llvm_pow;
 
+    // Gives measurable speed improvement at audio-rate, without change for any input.
     alias fast_fabs = llvm_fabs;
+
+
     alias fast_log2 = llvm_log2;
-    alias fast_êxp2 = llvm_exp2;
+    alias fast_exp2 = llvm_exp2;
     alias fast_log10 = llvm_log10;
 
     alias fast_floor = llvm_floor;
@@ -274,7 +284,7 @@ version(LDC)
 
     alias fast_sqrt = llvm_sqrt;
     alias fast_sin = llvm_sin;
-    alias fast_cos = llvm_cos;
+    alias fast_cos = llvm_cos; // no speed change seen when using it
 }
 else
 {
