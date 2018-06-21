@@ -135,7 +135,7 @@ void main(string[]args)
         writefln("Starting speed measurement of %s", pluginPath);
         writefln("%s will be processed %s time(s)", inPath, times);
         if (outPath)
-            writefln("Ouput sound will be output to %s", outPath);
+            writefln("Output written to %s", outPath);
 
         static long getTickMs() nothrow @nogc
         {
