@@ -151,18 +151,22 @@ T sinc(T)(T x) pure nothrow @nogc
         return sin(cast(T)PI * x) / (cast(T)PI * x);
 }
 
-
-/// Gets a factor for making exponential decay curves.
+/// Gets a factor for making exponential decay curves, which are the same thing
+/// as a 6dB/oct lowpass filter.
 ///
-/// Returns: Multiplier for this time constant and sampling rate.
+/// Returns: Multiplier for this RC time constant and sampling rate.
 ///
 /// Params:
 ///    timeConstantInSeconds = Time after which the amplitude is only 37% of the original.
 ///    samplerate = Sampling rate.
+///
+/// Note: Using `fast_exp` yield a decay-factor within -180 dB (at 384000hz) of the one obtained with `expm1`.
+///       The alleged "innacuracies" of plain exp just did not show up so we don't prefer `expm1` anymore.
+///       It doesn't change the length of an iterated envelope like `ExpSmoother`.
+///
 double expDecayFactor(double timeConstantInSeconds, double samplerate) pure nothrow @nogc
 {
-    // 1 - exp(-time * sampleRate) would yield innacuracies
-    return -expm1(-1.0 / (timeConstantInSeconds * samplerate));
+    return 1.0 - fast_exp(-1.0 / (timeConstantInSeconds * samplerate));
 }
 
 /// Give back a phase between -PI and PI
