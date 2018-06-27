@@ -2,6 +2,7 @@ import std.stdio;
 import std.algorithm;
 import std.range;
 import std.conv;
+import std.string;
 
 import waved;
 
@@ -12,7 +13,7 @@ void usage()
 {
     writeln();
     writeln("Auburn Sounds plugin benchmark\n");
-    writeln("usage: process [-i input.wav] [-o output.wav] [-t times] [-h] [-b <bufferSize>] [-preset <index>] plugin.dll\n");
+    writeln("usage: process [-i input.wav] [-o output.wav] [-preroll] [-t times] [-h] [-b <bufferSize>] [-preset <index>] plugin.dll\n");
 
 }
 
@@ -25,6 +26,7 @@ void main(string[]args)
         string inPath = null;
         int bufferSize = 256;
         bool help = false;
+        bool preRoll = false;
         int times = 1;
         int preset = -1; // none
 
@@ -49,6 +51,10 @@ void main(string[]args)
             {
                 ++i;
                 bufferSize = to!int(args[i]);
+            }
+            else if (arg == "-preroll")
+            {
+                preRoll = true;
             }
             else if (arg == "-t")
             {
@@ -137,13 +143,13 @@ void main(string[]args)
         if (outPath)
             writefln("Output written to %s", outPath);
 
-        static long getTickMs() nothrow @nogc
+        static long getTickUs() nothrow @nogc
         {
             import core.time;
-            return convClockFreq(MonoTime.currTime.ticks, MonoTime.ticksPerSecond, 1_000);
+            return convClockFreq(MonoTime.currTime.ticks, MonoTime.ticksPerSecond, 1_000_000);
         }
 
-        long timeBeforeInit = getTickMs();
+        long timeBeforeInit = getTickUs();
         IPluginHost host = createPluginHost(pluginPath);
         host.setSampleRate(sound.sampleRate);
         host.setMaxBufferSize(bufferSize);
@@ -151,9 +157,36 @@ void main(string[]args)
 
         if (preset != -1)
             host.loadPreset(preset);
-        long timeAfterInit = getTickMs();
+        long timeAfterInit = getTickUs();
 
-        writefln("Initialization took %s ms", timeAfterInit - timeBeforeInit);
+        writefln("Initialization took %s", convertMicroSecondsToDisplay(timeAfterInit - timeBeforeInit));
+
+        // Process one second of silence to warm things-up and avoid first buffer effect
+        if (preRoll)
+        {
+            writeln;
+            writefln("Pre-rolling 1 second of silence...");
+            int silenceLength = sound.sampleRate;
+            float[] silenceL = new float[silenceLength];
+            float[] silenceR = new float[silenceLength];
+            silenceL[] = 0;
+            silenceR[] = 0;
+            float*[2] inChannels, outChannels;
+            inChannels[0] = silenceL.ptr;
+            inChannels[1] = silenceR.ptr,
+            outChannels[0] = silenceL.ptr;
+            outChannels[1] = silenceR.ptr;
+            for (int buf = 0; buf < silenceLength / bufferSize; ++buf)
+            {
+                host.processAudioFloat(inChannels.ptr, outChannels.ptr, bufferSize);
+                inChannels[0] += bufferSize;
+                inChannels[1] += bufferSize;
+                outChannels[0] += bufferSize;
+                outChannels[1] += bufferSize;
+            }
+            // remaining samples
+            host.processAudioFloat(inChannels.ptr, outChannels.ptr, silenceLength % bufferSize);
+        }
 
         double[] measures;
 
@@ -161,7 +194,7 @@ void main(string[]args)
         {
             writeln;
             writefln(" * Measure %s: Start processing %s...", t, inPath);
-            long timeA = getTickMs();
+            long timeA = getTickUs();
 
             float*[2] inChannels, outChannels;
             inChannels[0] = leftChannelInput.ptr;
@@ -181,9 +214,9 @@ void main(string[]args)
             // remaining samples
             host.processAudioFloat(inChannels.ptr, outChannels.ptr, N % bufferSize);
 
-            long timeB = getTickMs();
+            long timeB = getTickUs();
             long measure = timeB - timeA;
-            writefln("   Processed %s with %s in %s ms", inPath, pluginPath, measure);
+            writefln("   Processed %s in %s", inPath, convertMicroSecondsToDisplay(measure));
 
             measures ~= cast(double)measure;
         }
@@ -200,9 +233,9 @@ void main(string[]args)
             }
             double medianTime = median(measures);
             double averageTime = average(measures);
-            writefln(" * minimum time: %s ms => %s x real-time", minTime, sampleDurationMs / minTime);
-            writefln(" * median  time: %s ms => %s x real-time", medianTime, sampleDurationMs / medianTime);
-            writefln(" * average time: %s ms => %s x real-time", averageTime, sampleDurationMs / averageTime);
+            writefln(" * minimum time: %s => %.2f x real-time", convertMicroSecondsToDisplay(minTime), 1000.0*sampleDurationMs / minTime);
+            writefln(" * median  time: %s => %.2f x real-time", convertMicroSecondsToDisplay(medianTime), 1000.0*sampleDurationMs / medianTime);
+            writefln(" * average time: %s => %.2f x real-time", convertMicroSecondsToDisplay(averageTime), 1000.0*sampleDurationMs / averageTime);
         }
 
         // write output if necessary
@@ -247,4 +280,11 @@ double median(double[] arr)
     {
         return arr[arr.length/2];
     }
+}
+
+// Returns: "0.1 ms" when given 100 us
+string convertMicroSecondsToDisplay(double us)
+{
+    double ms = (us / 1000.0);
+    return format("%.1f ms", ms);
 }
