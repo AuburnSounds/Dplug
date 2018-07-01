@@ -42,19 +42,21 @@ T hermite(T)(T frac_pos, T xm1, T x0, T x1, T x2) pure nothrow @nogc
 }
 
 /// Convert from dB to float.
+/// Precision: This uses fast_exp which under normal conditions has a peak error under -135dB over the useful range.
 deprecated("Use convertDecibelToLinearGain instead") alias deciBelToFloat = convertDecibelToLinearGain;
 T convertDecibelToLinearGain(T)(T dB) pure nothrow @nogc
 {
     static immutable T ln10_20 = cast(T)LN10 / 20;
-    return exp(dB * ln10_20);
+    return fast_exp(dB * ln10_20);
 }
 
 /// Convert from float to dB
+/// Precision: This uses fast_exp which under normal conditions has a peak error under -135dB over the useful range.
 deprecated("Use convertLinearGainToDecibel instead") alias floatToDeciBel = convertLinearGainToDecibel;
 T convertLinearGainToDecibel(T)(T x) pure nothrow @nogc
 {
     static immutable T f20_ln10 = 20 / cast(T)LN10;
-    return log(x) * f20_ln10;
+    return fast_log(x) * f20_ln10;
 }
 
 /// Is this integer odd?
