@@ -13,8 +13,18 @@ void usage()
 {
     writeln();
     writeln("Auburn Sounds plugin benchmark\n");
-    writeln("usage: process [-i input.wav] [-o output.wav] [-preroll] [-t times] [-h] [-b <bufferSize>] [-preset <index>] plugin.dll\n");
-
+    writeln("usage: process [-i input.wav] [-o output.wav] [-precise] [-preroll] [-t times] [-h] [-buffer <bufferSize>] [-preset <index>] plugin.dll\n");
+    writeln();
+    writeln("Params:");
+    writeln("  -i       Specify an input file (default: process silence)");
+    writeln("  -o       Specify an output file (default: do not output a file)");
+    writeln("  -t       Process the input multiple times (default: 1)");  
+    writeln("  -h       Display this help"); 
+    writeln("  -precise Use experimental time, much more precise measurement (Windows-only)");
+    writeln("  -preroll Process one second of silence before measurement");     
+    writeln("  -buffer  Process audio by given chunk size (default: all-at-once)");
+    writeln("  -preset  Choose preset to process audio with");    
+    writeln;
 }
 
 void main(string[]args)
@@ -27,6 +37,7 @@ void main(string[]args)
         int bufferSize = 256;
         bool help = false;
         bool preRoll = false;
+        bool precise = false;
         int times = 1;
         int preset = -1; // none
 
@@ -47,7 +58,7 @@ void main(string[]args)
                 ++i;
                 outPath = args[i];
             }
-            else if (arg == "-b")
+            else if (arg == "-buffer")
             {
                 ++i;
                 bufferSize = to!int(args[i]);
@@ -55,6 +66,10 @@ void main(string[]args)
             else if (arg == "-preroll")
             {
                 preRoll = true;
+            }
+            else if (arg == "-precise")
+            {
+                precise = true;
             }
             else if (arg == "-t")
             {
@@ -143,13 +158,9 @@ void main(string[]args)
         if (outPath)
             writefln("Output written to %s", outPath);
 
-        static long getTickUs() nothrow @nogc
-        {
-            import core.time;
-            return convClockFreq(MonoTime.currTime.ticks, MonoTime.ticksPerSecond, 1_000_000);
-        }
+        getCurrentThreadHandle();
 
-        long timeBeforeInit = getTickUs();
+        long timeBeforeInit = getTickUs(precise);
         IPluginHost host = createPluginHost(pluginPath);
         host.setSampleRate(sound.sampleRate);
         host.setMaxBufferSize(bufferSize);
@@ -157,7 +168,7 @@ void main(string[]args)
 
         if (preset != -1)
             host.loadPreset(preset);
-        long timeAfterInit = getTickUs();
+        long timeAfterInit = getTickUs(precise);
 
         writefln("Initialization took %s", convertMicroSecondsToDisplay(timeAfterInit - timeBeforeInit));
 
@@ -194,7 +205,7 @@ void main(string[]args)
         {
             writeln;
             writefln(" * Measure %s: Start processing %s...", t, inPath);
-            long timeA = getTickUs();
+            long timeA = getTickUs(precise);
 
             float*[2] inChannels, outChannels;
             inChannels[0] = leftChannelInput.ptr;
@@ -214,7 +225,7 @@ void main(string[]args)
             // remaining samples
             host.processAudioFloat(inChannels.ptr, outChannels.ptr, N % bufferSize);
 
-            long timeB = getTickUs();
+            long timeB = getTickUs(precise);
             long measure = timeB - timeA;
             writefln("   Processed %s in %s", inPath, convertMicroSecondsToDisplay(measure));
 
@@ -287,4 +298,56 @@ string convertMicroSecondsToDisplay(double us)
 {
     double ms = (us / 1000.0);
     return format("%.1f ms", ms);
+}
+
+
+version(Windows)
+{
+    import core.sys.windows.windows;
+    __gshared HANDLE hThread;
+
+    extern(Windows) BOOL QueryThreadCycleTime(HANDLE   ThreadHandle, PULONG64 CycleTime) nothrow @nogc;
+    long qpcFrequency;
+    void getCurrentThreadHandle()
+    {
+        hThread = GetCurrentThread();    
+        QueryPerformanceFrequency(&qpcFrequency);
+    }
+}
+else
+{
+    void getCurrentThreadHandle()
+    {
+    }
+}
+
+static long getTickUs(bool precise) nothrow @nogc
+{
+    version(Windows)
+    {
+        if (precise)
+        {
+            // Note about -precise measurement
+            // We use the undocumented fact that QueryThreadCycleTime
+            // seem to return a counter in QPC units.
+            // That may not be the case everywhere, so -precise is not reliable and should
+            // never be the default.
+            import core.sys.windows.windows;
+            ulong cycles;
+            BOOL res = QueryThreadCycleTime(hThread, &cycles);
+            assert(res != 0);
+            real us = 1000.0 * cast(real)(cycles) / cast(real)(qpcFrequency);
+            return cast(long)(0.5 + us);
+        }
+        else
+        {
+            import core.time;
+            return convClockFreq(MonoTime.currTime.ticks, MonoTime.ticksPerSecond, 1_000_000);
+        }
+    }
+    else
+    {
+        import core.time;
+        return convClockFreq(MonoTime.currTime.ticks, MonoTime.ticksPerSecond, 1_000_000);
+    }
 }
