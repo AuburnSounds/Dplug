@@ -34,7 +34,7 @@ public
     alias BiquadCoeff = float[5];
 
     /// Maintain state for a biquad state.
-    /// To use an IIR filter you need an IIRDelay + one IIRCoeff.
+    /// A biquad is a realization that can model two poles and two zeros.
     struct BiquadDelay
     {
         enum order = 2;
@@ -99,7 +99,50 @@ public
                         a3 = coeff[3],
                         a4 = coeff[4];
 
-                    version(D_InlineAsm_X86)
+                    version(LDC)
+                    {
+                        import inteli.emmintrin;
+
+                        __m128d XMM0 = _mm_set_pd(x1, x0);
+                        __m128d XMM1 = _mm_set_pd(y1, y0);
+                        __m128d XMM2 = _mm_set_pd(a2, a1);
+                        __m128d XMM3 = _mm_set_pd(a4, a3);
+                        __m128d XMM4 = _mm_set_sd(a0);
+
+                        __m128d XMM6 = _mm_undefined_pd();
+                        __m128d XMM7 = _mm_undefined_pd();
+                        __m128d XMM5 = _mm_undefined_pd();
+                        for (int n = 0; n < frames; ++n)
+                        {
+                            __m128 INPUT =  _mm_load_ss(input + n);
+                            XMM5 = _mm_setzero_pd();
+                            XMM5 = _mm_cvtss_sd(XMM5,INPUT);
+
+                            XMM6 = XMM0;
+                            XMM7 = XMM1;
+                            XMM5 = _mm_mul_pd(XMM5, XMM4); // input[i]*a0
+                            XMM6 = _mm_mul_pd(XMM6, XMM2); // x1*a2 x0*a1
+                            XMM7 = _mm_mul_pd(XMM7, XMM3); // y1*a4 y0*a3
+                            XMM5 = _mm_add_pd(XMM5, XMM6);
+                            XMM5 = _mm_sub_pd(XMM5, XMM7); // x1*a2 - y1*a4 | input[i]*a0 + x0*a1 - y0*a3
+                            XMM6 = XMM5;
+
+                            XMM0 = _mm_slli_si128!8(XMM0);
+                            XMM6 = _mm_srli_si128!8(XMM6);
+
+                            XMM0 = _mm_cvtss_sd(XMM0, INPUT);
+                            XMM5 = _mm_add_pd(XMM5, XMM6);
+                            XMM7 = _mm_cvtsd_ss(_mm_undefined_ps(), XMM5);
+                            XMM5 = _mm_unpacklo_pd(XMM5, XMM1);
+                            XMM1 = XMM5;
+                            _mm_store_ss(output + n, XMM7);
+                        }
+                        _mm_storel_pd(&x0, XMM0);
+                        _mm_storeh_pd(&x1, XMM0);
+                        _mm_storel_pd(&y0, XMM1);
+                        _mm_storeh_pd(&y1, XMM1);
+                    }
+                    else version(D_InlineAsm_X86)
                     {
                         asm nothrow @nogc
                         {
