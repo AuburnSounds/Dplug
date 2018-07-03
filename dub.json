@@ -74,7 +74,8 @@
             "importPaths": [ "dsp" ],
             "dependencies": {
                 "dplug:core": "*",
-                "pfft": "~>1.0"
+                "pfft": "~>1.0",
+                "intel-intrinsics": "~>1.0"
             }
         },
         {
