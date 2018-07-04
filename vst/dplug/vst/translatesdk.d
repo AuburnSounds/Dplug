@@ -8,10 +8,8 @@
 module dplug.vst.translatesdk;
 import std.string;
 
-//mixin(translateCppHeaderToD(cast(string) import("aeffect.h") ~ import("aeffectx.h")));
+mixin(translateCppHeaderToD(cast(string) import("aeffect.h") ~ import("aeffectx.h")));
 
-// TODO alignment
-// TODO callbacks...
 string translateCppHeaderToD(string source) @safe
 {
     int index = 0;
@@ -94,26 +92,9 @@ string translateCppHeaderToD(string source) @safe
     result ~= "alias long VstInt64;\n";
     result ~= "alias ptrdiff_t VstIntPtr;\n";
 
-    int numLines = 0;
     for(string line = nextLine(); line !is null; line = nextLine())
     {
-        numLines++;
 
-        if (inMultilineComment)
-        {
-            inMultiline:
-            // look for termination
-            int posTermination = indexOf(line, "*/");
-            if (posTermination != -1)
-            {                
-                inMultilineComment = false;
-                line = line[posTermination+2..$];
-                goto regularLine; // treat the rest of the line like a regular line
-            }
-            continue;
-        }
-
-        regularLine:
   
         // strip spaces and TABs
         while (line.length > 1 && (line[0] == ' ' || line[0] == '\t'))
@@ -136,13 +117,6 @@ string translateCppHeaderToD(string source) @safe
 
         if (line.length == 0)
             continue;
-
-        
-   /*     if ((line.length >= 2) && line[0..2] == "/*")
-        {
-            inMultilineComment = true;
-            goto inMultiline;
-        }*/
 
 
         // passed comments, preprocessor emulation
@@ -214,6 +188,8 @@ string translateCppHeaderToD(string source) @safe
 
             inStruct = true;
             string structName = line[7..$];
+            if (structName == "AEffect") // hackish but else it's a macro job
+                line = "align(8) " ~ line;
             result ~= line ~ "\n";
             continue;
         }
@@ -289,11 +265,16 @@ string translateCppHeaderToD(string source) @safe
                 result ~= "   " ~ line ~ "\n";
         }
     }
-    if (!__ctfe)
-    {
-        import std.stdio;
-        writeln(result);
-    }
+
+    // Parsing C++ function declaration is harder than the rest of the header, deferred
+    result ~= "alias extern(C) nothrow VstIntPtr function(AEffect* effect, VstInt32 opcode, VstInt32 index, VstIntPtr value, void* ptr, float opt) AEffectDispatcherProc;\n";
+    result ~= "alias extern(C) nothrow @nogc VstIntPtr function(AEffect* effect, VstInt32 opcode, VstInt32 index, VstIntPtr value, void* ptr, float opt) HostCallbackFunction;\n";
+    result ~= "alias extern(C) nothrow void function(AEffect* effect, float** inputs, float** outputs, VstInt32 sampleFrames) AEffectProcessProc;\n";
+    result ~= "alias extern(C) nothrow void function(AEffect* effect, double** inputs, double** outputs, VstInt32 sampleFrames) AEffectProcessDoubleProc;\n";
+    result ~= "alias extern(C) nothrow void function(AEffect* effect, VstInt32 index, float parameter) AEffectSetParameterProc;\n";
+    result ~= "alias extern(C) nothrow float function(AEffect* effect, VstInt32 index) AEffectGetParameterProc;";
+
+
     return result;
 }
 

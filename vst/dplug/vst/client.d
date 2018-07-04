@@ -19,7 +19,7 @@ Permission is granted to anyone to use this software for any purpose, including 
 */
 
 module dplug.vst.client;
-/+
+
 import std.string;
 
 import core.stdc.stdlib,
@@ -117,11 +117,8 @@ nothrow:
         _messageQueue = lockedQueue!AudioThreadMessage(queueSize);
 
         _client = client;
-
         _effect = _effect.init;
-
-        _effect.magic = kEffectMagic;
-
+        _effect.magic = CCONST('V', 's', 't', 'P');
 
         int flags = effFlagsCanReplacing | effFlagsCanDoubleReplacing;
 
@@ -1306,4 +1303,3 @@ AudioThreadMessage makeMIDIMessage(MidiMessage midiMessage) pure nothrow @nogc
     msg.midiMessage = midiMessage;
     return msg;
 }
-+/
