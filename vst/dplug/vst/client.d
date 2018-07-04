@@ -17,8 +17,9 @@ Permission is granted to anyone to use this software for any purpose, including 
 /**
     VST plugin client implementation.
 */
-module dplug.vst.client;
 
+module dplug.vst.client;
+/+
 import std.string;
 
 import core.stdc.stdlib,
@@ -42,8 +43,7 @@ import dplug.client.client,
        dplug.client.graphics,
        dplug.client.midi;
 
-import dplug.vst.aeffect;
-import dplug.vst.aeffectx;
+import dplug.vst.translatesdk;
 
 template VSTEntryPoint(alias ClientClass)
 {
@@ -1306,3 +1306,4 @@ AudioThreadMessage makeMIDIMessage(MidiMessage midiMessage) pure nothrow @nogc
     msg.midiMessage = midiMessage;
     return msg;
 }
++/

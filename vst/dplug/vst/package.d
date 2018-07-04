@@ -3,7 +3,6 @@ module dplug.vst;
 
 public
 {
-    import dplug.vst.aeffect,
-           dplug.vst.aeffectx,
-           dplug.vst.client;
+    import dplug.vst.translatesdk;
+    import dplug.vst.client;
 }
