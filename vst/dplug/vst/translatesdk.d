@@ -84,6 +84,7 @@ string translateCppHeaderToD(string source) @safe
     // state machine, very simple
     bool inEnum = false;
     bool inStruct = false;
+    bool inMethod = false;
 
     bool inSharpIf = false;
     bool inSharpElseOrElif = false;
@@ -141,7 +142,7 @@ string translateCppHeaderToD(string source) @safe
         {
             inMultilineComment = true;
             goto inMultiline;
-        }  */
+        }*/
 
 
         // passed comments, preprocessor emulation
@@ -200,10 +201,17 @@ string translateCppHeaderToD(string source) @safe
 
         if (startsWith(line, "typedef"))
         {
-            continue;
+            if (startsWith(line, "typedef struct"))
+                line = line[8..$];
+            else
+                continue;
         }
         if (!inStruct && startsWith(line, "struct "))
         {
+            bool isForward = (line[$-1] == ';');
+            if (isForward)
+                continue;
+
             inStruct = true;
             string structName = line[7..$];
             result ~= line ~ "\n";
@@ -212,14 +220,14 @@ string translateCppHeaderToD(string source) @safe
         else if (!inEnum && startsWith(line, "enum "))
         {
             inEnum = true;
-            string enumName = line[7..$];
+            string enumName = line[5..$];
             result ~= "alias " ~ enumName ~ " = int;\n";
             result ~= "enum : " ~ enumName ~ "\n";
             continue;
         }
         else if (startsWith(line, "{"))
         {
-            if (inEnum || inStruct)
+            if (inEnum || (inStruct && !inMethod))
                 result ~= "{\n";
             continue;
         }
@@ -227,23 +235,36 @@ string translateCppHeaderToD(string source) @safe
         {
             if (inStruct)
             {
-                inStruct = false;
-                result ~= "}\n";
+                if (inMethod)
+                    inMethod = false;
+                else
+                {
+                    inStruct = false;
+                    result ~= "}\n\n";
+                }
             }
 
             if (inEnum)
             {
                 inEnum = false;
-                result ~= "}\n";
+                result ~= "}\n\n";
             }
             continue;
         }
         else if (inEnum)
         {
-            result ~= line ~ "\n";
+            result ~= "   " ~ line ~ "\n";
         }
         else if (inStruct)
         {
+            // is this a method? the line would contain parens
+            if (indexOfChar(line, '(') != -1 
+                || indexOfChar(line, ')') != -1)
+            {
+                inMethod = true;
+                continue;
+            }
+
             // fix up keyword-named fields
             if (line[$-8..$] == "version;")
                 line = line[0..$-8] ~ "version_;";
@@ -263,7 +284,9 @@ string translateCppHeaderToD(string source) @safe
             }
             // replace some unknown types
             line = replace(line, "unsigned char", "char");
-            result ~= line ~ "\n";
+
+            if (!inMethod)
+                result ~= "   " ~ line ~ "\n";
         }
     }
     if (!__ctfe)
@@ -276,5 +299,8 @@ string translateCppHeaderToD(string source) @safe
 
 unittest
 {
-    translateCppHeaderToD(cast(string)( import("aeffect.h") ~ import("aeffectx.h")));
+    auto S = translateCppHeaderToD(cast(string)( import("aeffect.h") ~ import("aeffectx.h")));
+
+  //  enum CT = translateCppHeaderToD(cast(string)( import("aeffect.h") ~ import("aeffectx.h")));
+  //  mixin(CT);
 }
