@@ -273,15 +273,10 @@ string translateCppHeaderToD(string source) @safe
     result ~= "alias extern(C) nothrow void function(AEffect* effect, double** inputs, double** outputs, VstInt32 sampleFrames) AEffectProcessDoubleProc;\n";
     result ~= "alias extern(C) nothrow void function(AEffect* effect, VstInt32 index, float parameter) AEffectSetParameterProc;\n";
     result ~= "alias extern(C) nothrow float function(AEffect* effect, VstInt32 index) AEffectGetParameterProc;";
-
-
     return result;
 }
 
 unittest
 {
     auto S = translateCppHeaderToD(cast(string)( import("aeffect.h") ~ import("aeffectx.h")));
-
-  //  enum CT = translateCppHeaderToD(cast(string)( import("aeffect.h") ~ import("aeffectx.h")));
-  //  mixin(CT);
 }

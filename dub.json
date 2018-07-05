@@ -109,7 +109,7 @@
             "name": "vst",
             "sourcePaths": [ "vst/dplug/vst" ],
             "importPaths": [ "vst" ],
-            "stringImportPaths": [ "VST2_SDK" ],
+            "stringImportPaths": [ "$VST2_SDK/pluginterfaces/vst2.x" ],
             "dependencies": {
                 "dplug:client": "*"
             }
