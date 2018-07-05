@@ -35,7 +35,7 @@ matrix:
 # uncompress encrypted VST SDK
 before_install:
   - openssl aes-256-cbc -K $encrypted_668d6976aadd_key -iv $encrypted_668d6976aadd_iv -in secrets-for-ci.tar.enc -out secrets-for-ci.tar -d
-  - tar xvf secrets.tar
+  - tar xvf secrets-for-ci.tar
 
 env:
   - VST2_SDK=VST2_SDK
