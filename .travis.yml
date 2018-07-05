@@ -32,30 +32,38 @@ matrix:
   - d: ldc-1.4.0
     os: osx
 
-# HOPEFULLY TEMPORARY
-# Things using the VST SDK can't build in the CI for now, disabled with the tag #VST
+# uncompress encrypted VST SDK
+before_install:
+  - openssl aes-256-cbc -K $encrypted_668d6976aadd_key -iv $encrypted_668d6976aadd_iv -in secrets-for-ci.tar.enc -out secrets-for-ci.tar -d
+  - tar xvf secrets.tar
+
+env:
+  - VST2_SDK=VST2_SDK
+
 
 # Note: 32-bit x86 isn't tested for Linux
 script:
-#VST  - cd examples/distort; dub --compiler=${DC}; cd ../..
-#VST  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then cd examples/distort; dub -a x86 --compiler=${DC}; cd ../..; fi
+  - cd examples/distort; dub --compiler=${DC}; cd ../..
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then cd examples/distort; dub -a x86 --compiler=${DC}; cd ../..; fi
+  - cd examples/clipit; dub --compiler=${DC}; cd ../..
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then cd examples/clipit; dub -a x86 --compiler=${DC}; cd ../..; fi
   - cd examples/ms-encode; dub --compiler=${DC}; cd ../..
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then cd examples/ms-encode; dub -a x86 --compiler=${DC}; cd ../..; fi
   - cd tools/pbr-sketch; dub --compiler=${DC}; cd ../..
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then cd tools/pbr-sketch; dub -a x86 --compiler=${DC}; cd ../..; fi
   - cd tools/dplug-build; dub --compiler=${DC}; cd ../..
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then cd tools/dplug-build; dub -a x86 --compiler=${DC}; cd ../..; fi
-#VST  - cd tools/stress-plugin; dub --compiler=${DC}; cd ../..
-#VST  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then cd tools/stress-plugin; dub -a x86 --compiler=${DC}; cd ../..; fi
-#VST  - cd tools/process; dub --compiler=${DC}; cd ../..
-#VST  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then cd tools/process; dub -a x86 --compiler=${DC}; cd ../..; fi
+  - cd tools/stress-plugin; dub --compiler=${DC}; cd ../..
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then cd tools/stress-plugin; dub -a x86 --compiler=${DC}; cd ../..; fi
+  - cd tools/process; dub --compiler=${DC}; cd ../..
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then cd tools/process; dub -a x86 --compiler=${DC}; cd ../..; fi
   - cd tools/wav-compare; dub --compiler=${DC}; cd ../..
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then cd tools/wav-compare; dub -a x86 --compiler=${DC}; cd ../..; fi
   - dub test --compiler=${DC} dplug:core
   - dub test --compiler=${DC} dplug:dsp
   - dub test --compiler=${DC} dplug:client
-#VST  - dub test --compiler=${DC} dplug:host
-#VST  - dub test --compiler=${DC} dplug:vst
+  - dub test --compiler=${DC} dplug:host
+  - dub test --compiler=${DC} dplug:vst
   - dub test --compiler=${DC} dplug:window
   - dub test --compiler=${DC} dplug:cocoa
   - dub test --compiler=${DC} dplug:carbon
@@ -65,8 +73,8 @@ script:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then dub test --compiler=${DC} -a x86 dplug:core ; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then dub test --compiler=${DC} -a x86 dplug:dsp ; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then dub test --compiler=${DC} -a x86 dplug:client ; fi
-#VST  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then dub test --compiler=${DC} -a x86 dplug:host ; fi
-#VST  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then dub test --compiler=${DC} -a x86 dplug:vst ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then dub test --compiler=${DC} -a x86 dplug:host ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then dub test --compiler=${DC} -a x86 dplug:vst ; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then dub test --compiler=${DC} -a x86 dplug:window ; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then dub test --compiler=${DC} -a x86 dplug:cocoa ; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then dub test --compiler=${DC} -a x86 dplug:carbon ; fi
