@@ -6,10 +6,8 @@
 
 [Auto-generated documentation...](http://dplug.dpldocs.info/dplug.html)
 
-**Important: VST2 is in hiatus because of https://github.com/AuburnSounds/Dplug/issues/271. Until a header converter is implemented, support has to be removed in ~master.
-Stay on Dplug v6.x.y until further progress is made.**
 
-**To distribute VST2 plug-ins be sure to sign a VST2 Licence Agreement with Steinberg before October 2018.**
+**IMPORTANT To distribute VST2 plug-ins be sure to sign a VST2 Licence Agreement with Steinberg before October 2018.**
 
 ## Current features
 

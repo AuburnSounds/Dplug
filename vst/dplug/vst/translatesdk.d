@@ -278,5 +278,6 @@ string translateCppHeaderToD(string source) @safe
 
 unittest
 {
+    // For debugging purpose, uses the same parser but at runtime.
     auto S = translateCppHeaderToD(cast(string)( import("aeffect.h") ~ import("aeffectx.h")));
 }
