@@ -34,11 +34,11 @@ matrix:
 
 # uncompress encrypted VST SDK
 before_install:
-  - openssl aes-256-cbc -K $encrypted_668d6976aadd_key -iv $encrypted_668d6976aadd_iv -in secrets-for-ci.tar.enc -out secrets-for-ci.tar -d
+  - openssl aes-256-cbc -K $encrypted_00660bf0ef48_key -iv $encrypted_00660bf0ef48_iv -in secrets-for-ci.tar.enc -out secrets-for-ci.tar -d
   - tar xvf secrets-for-ci.tar
 
 env:
-  - VST2_SDK=VST2_SDK
+  - VST2_SDK=$TRAVIS_BUILD_DIR/VST2_SDK
 
 
 # Note: 32-bit x86 isn't tested for Linux
