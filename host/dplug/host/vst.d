@@ -56,7 +56,7 @@ final class VSTPluginHost : IPluginHost
         reverseMapping[_aeffect] = this;
 
         // various checks
-        if (_aeffect.magic != kEffectMagic)
+        if (_aeffect.magic != 0x50747356) /* 'VstP' */
             throw new Exception("Wrong VST magic number");
         if (_aeffect.dispatcher == null)
             throw new Exception("aeffect.dispatcher is null");
