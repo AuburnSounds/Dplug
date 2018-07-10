@@ -273,6 +273,8 @@ version(LDC)
 
 
     alias fast_log = llvm_log;
+
+    // Note: fast_pow with a float argument (`powf`) can be a lot faster that with a double argument.
     alias fast_pow = llvm_pow;
 
     // Gives measurable speed improvement at audio-rate, without change for any input.

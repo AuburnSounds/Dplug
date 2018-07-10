@@ -24,6 +24,10 @@
 // David Woo
 
 /// PNG loader
+
+// Note: some validity checks are disabled by default for performance reason
+//version = enableImageChecks;
+
 module dplug.graphics.pngload;
 
 // This has been revived for the sake of loading PNG without too much memory usage.
@@ -410,15 +414,18 @@ int expand(zbuf *z, int n)  // need to make room for n bytes
 {
    ubyte *q;
    int cur, limit;
-   if (!z.z_expandable)
-      assert(false, "Output buffer limit, corrupt PNG");
+   version(enableImageChecks)
+       if (!z.z_expandable)
+          assert(false, "Output buffer limit, corrupt PNG");
    cur   = cast(int) (z.zout     - z.zout_start);
    limit = cast(int) (z.zout_end - z.zout_start);
    while (cur + n > limit)
       limit *= 2;
    q = cast(ubyte*) realloc(z.zout_start, limit);
-   if (q == null)
-      assert(false, "Out of memory");
+
+   version(enableImageChecks)
+       if (q == null)
+           assert(false, "Out of memory");
    z.zout_start = q;
    z.zout       = q + cur;
    z.zout_end   = q + limit;
@@ -444,8 +451,9 @@ int parse_huffman_block(zbuf *a)
    for(;;) {
       int z = zhuffman_decode(a, &a.z_length);
       if (z < 256) {
-         if (z < 0)
-             assert(false, "Bad Huffman code, corrupt PNG");
+         version(enableImageChecks)
+             if (z < 0)
+                 assert(false, "Bad Huffman code, corrupt PNG");
          if (a.zout >= a.zout_end) if (!expand(a, 1)) return 0;
          *a.zout++ = cast(ubyte) z;
       } else {
@@ -456,14 +464,26 @@ int parse_huffman_block(zbuf *a)
          len = length_base[z];
          if (length_extra[z]) len += zreceive(a, length_extra[z]);
          z = zhuffman_decode(a, &a.z_distance);
-         if (z < 0) assert(false, "Bad Huffman code, corrupt PNG");
+         version(enableImageChecks)
+             if (z < 0) assert(false, "Bad Huffman code, corrupt PNG");
          dist = dist_base[z];
          if (dist_extra[z]) dist += zreceive(a, dist_extra[z]);
-         if (a.zout - a.zout_start < dist) assert(false, "Bad dist, corrupt PNG");
+         version(enableImageChecks)
+             if (a.zout - a.zout_start < dist) assert(false, "Bad dist, corrupt PNG");
          if (a.zout + len > a.zout_end) if (!expand(a, len)) return 0;
          p = a.zout - dist;
-         while (len--)
-            *a.zout++ = *p++;
+
+         if (dist == 1)
+         {
+            ubyte pvalue = *p;
+            memset(a.zout, pvalue, len);
+            a.zout += len;
+         }
+         else
+         {
+             while (len--)
+                 *a.zout++ = *p++;
+         }   
       }
    }
 }
@@ -533,8 +553,11 @@ int parse_uncompressed_block(zbuf *a)
       header[k++] = cast(ubyte) zget8(a);
    len  = header[1] * 256 + header[0];
    nlen = header[3] * 256 + header[2];
-   if (nlen != (len ^ 0xffff)) assert(false, "Zlib corrupt, corrupt PNG");
-   if (a.zbuffer + len > a.zbuffer_end) assert(false, "Read past buffer, corrupt PNG");
+   version(enableImageChecks)
+   {
+       if (nlen != (len ^ 0xffff)) assert(false, "Zlib corrupt, corrupt PNG");
+       if (a.zbuffer + len > a.zbuffer_end) assert(false, "Read past buffer, corrupt PNG");
+   }
    if (a.zout + len > a.zout_end)
       if (!expand(a, len)) return 0;
    memcpy(a.zout, a.zbuffer, len);
