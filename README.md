@@ -2,10 +2,11 @@
 
 # Dplug [![Build Status](https://travis-ci.org/AuburnSounds/Dplug.svg?branch=master)](https://travis-ci.org/AuburnSounds/Dplug) <a href="https://code.dlang.org/packages/dplug" title="Go to dplug"><img src="https://img.shields.io/dub/v/dplug.svg" alt="Dub version"></a>
 
-`Dplug` is a library for creating audio plug-ins as simply as possible. [Come talk with us!](https://discord.gg/QZtGZUw) if you want to learn more.
+`Dplug` is a library for creating audio plug-ins as simply as possible. 
+
+Come talk with us on Discord!(https://discord.gg/QZtGZUw) if you want to learn more. ![Dplug Discord server](https://discordapp.com/api/guilds/242094594181955585/widget.png?style=shield)
 
 [Auto-generated documentation...](http://dplug.dpldocs.info/dplug.html)
-
 
 **IMPORTANT To distribute VST2 plug-ins be sure to sign a VST2 Licence Agreement with Steinberg before October 2018.**
 
