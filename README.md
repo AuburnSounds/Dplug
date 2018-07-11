@@ -4,7 +4,7 @@
 
 `Dplug` is a library for creating audio plug-ins as simply as possible. 
 
-Come talk with us on Discord!(https://discord.gg/QZtGZUw) if you want to learn more. 
+Come talk with us on the [D Language Discord](https://discord.gg/QZtGZUw) to learn more. 
 
 [Auto-generated documentation...](http://dplug.dpldocs.info/dplug.html)
 
