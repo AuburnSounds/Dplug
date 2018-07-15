@@ -31,7 +31,7 @@ public
     ///       coeff[2] is b2,
     ///       coeff[3] is a1,
     ///       coeff[4] is a2 in the litterature.
-    alias BiquadCoeff = float[5];
+    alias BiquadCoeff = double[5];
 
     /// Maintain state for a biquad state.
     /// A biquad is a realization that can model two poles and two zeros.
