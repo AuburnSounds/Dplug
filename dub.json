@@ -75,7 +75,7 @@
             "dependencies": {
                 "dplug:core": "*",
                 "pfft": "~>1.0",
-                "intel-intrinsics": "~>1.0"
+                "intel-intrinsics": ">=1.0.0 <1.0.10"
             }
         },
         {

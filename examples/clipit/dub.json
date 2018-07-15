@@ -16,6 +16,7 @@
         "/nodefaultlib:vcruntime.lib"
     ],
 
+    "dflags-osx-ldc": ["-static"],
     "dflags-linux-dmd": ["-defaultlib=libphobos2.a"],
 
     "dependencies":

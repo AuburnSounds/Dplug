@@ -27,6 +27,9 @@
         "dplug:pbr-widgets": { "path": "../.." }
     },
 
+    "dflags-osx-ldc": ["-static"],
+    "dflags-linux-dmd": ["-defaultlib=libphobos2.a"],
+
     "configurations": [
         {
             "name": "VST",
