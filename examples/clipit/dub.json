@@ -27,6 +27,8 @@
         "dplug:flat-widgets": { "path": "../.." }
     },
 
+    "dflags-osx-ldc": ["-static"],
+
     "configurations": [
         {
             "name": "VST",

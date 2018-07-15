@@ -17,6 +17,8 @@
 
     "dflags-linux-dmd": ["-defaultlib=libphobos2.a"],
 
+    "dflags-osx-ldc": ["-static"],
+
     "dependencies":
     {
         "dplug:vst": { "path": "../.." }

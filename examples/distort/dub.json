@@ -27,6 +27,8 @@
         "dplug:pbr-widgets": { "path": "../.." }
     },
 
+    "dflags-osx-ldc": ["-static"],
+
     "configurations": [
         {
             "name": "VST",
