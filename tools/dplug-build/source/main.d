@@ -37,7 +37,7 @@ void usage()
     cwriteln();
     cwriteln("FLAGS".white);
     cwriteln();
-    flag("-a --arch", "Selects target architecture.", "x86 | x86_64 | all", "Windows => all   OSX => x86_64");
+    flag("-a --arch", "Selects target architecture.", "x86 | x86_64 | all", "Windows => all   macOS => x86_64    Linux => x86_64");
     flag("-b --build", "Selects build type.", "same ones as dub accepts", "debug");
     flag("--compiler", "Selects D compiler.", "dmd | ldc | gdc", "ldc");
     flag("-c --config", "Adds a build configuration.", "VST | AU | AAX | name starting with \"VST\", \"AU\" or \"AAX\"", "all");
@@ -85,7 +85,7 @@ int main(string[] args)
 
         Arch[] archs = allArchitectureqForThisPlatform();
         version (OSX)
-            archs = [ Arch.x86_64 ];
+            archs = [ Arch.x86_64 ]; // on OSX, we can build 32-bit plug-ins but default to 64-bit only
 
         string build="debug";
         string[] configurations = [];

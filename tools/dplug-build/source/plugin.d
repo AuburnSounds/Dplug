@@ -31,7 +31,11 @@ enum Arch
 
 Arch[] allArchitectureqForThisPlatform()
 {
-    Arch[] archs = [Arch.x86, Arch.x86_64];
+    version(linux)
+        Arch[] archs = [Arch.x86_64]; // we have no support for 32-bit plug-ins on Linux
+    else
+        Arch[] archs = [Arch.x86, Arch.x86_64];
+
     version (OSX)
         archs ~= [Arch.universalBinary]; // only Mac has universal binaries
     return archs;
