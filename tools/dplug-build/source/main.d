@@ -42,7 +42,7 @@ void usage()
     flag("--compiler", "Selects D compiler.", "dmd | ldc | gdc", "ldc");
     flag("-c --config", "Adds a build configuration.", "VST | AU | AAX | name starting with \"VST\", \"AU\" or \"AAX\"", "all");
     flag("-f --force", "Forces rebuild", null, "no");
-    flag("--combined", "Combined build", null, "no");
+    flag("--combined", "Combined build, important for cross-module inlining with LDC!", null, "no");
     flag("-q --quiet", "Quieter output", null, "no");
     flag("-v --verbose", "Verbose output", null, "no");
     flag("-sr --skip-registry", " Skip checking the DUB registry\n                        Avoid network, doesn't update dependencies", null, "no");
@@ -69,7 +69,7 @@ void usage()
     cwriteln("      The configuration name used with " ~ "--config".cyan ~ " must exist in your " ~ "dub.json".cyan ~ " file.");
     cwriteln("      dplug-build".cyan ~ " detects plugin format based on the " ~ "configuration".yellow ~ " name's prefix: " ~ "AU | VST | AAX.".yellow);
     cwriteln();
-    cwriteln("      --combined".cyan ~ " has no effect on code speed, but can avoid DUB flags problems.".grey);
+    cwriteln("      --combined".cyan ~ " has an important effect on code speed, as it can be required for inlining in LDC.".grey);
     cwriteln();
     cwriteln("      dplug-build".cyan ~ " expects a " ~ "plugin.json".cyan ~ " file for proper bundling and will provide help".grey);
     cwriteln("      for populating it. For other informations it reads the " ~ "dub.json".cyan ~ " file.".grey);
