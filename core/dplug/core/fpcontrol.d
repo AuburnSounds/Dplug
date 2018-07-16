@@ -115,7 +115,7 @@ version(isX86)
             return controlWord;
         }
         else
-            assert(0, "Not yet supported");
+            static assert(0, "Not yet supported");
     }
 
     /// Sets SSE control register
@@ -129,7 +129,7 @@ version(isX86)
             }
         }
         else
-            assert(0, "Not yet supported");
+            static assert(0, "Not yet supported");
     }
 }
 

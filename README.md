@@ -66,7 +66,7 @@ OS X 10.8+.
 
 - What D compilers are recommended?
 
-   For releases it is highly recommended that you use LDC >= 1.2.
+   For releases it is highly recommended that you use LDC >= 1.8.
    When in development you can use DMD for faster compilation times. 
 
 - Is Dplug stable?
