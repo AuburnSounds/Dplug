@@ -241,7 +241,7 @@ int main(string[] args)
                 {
                     if (configIsAU(config))
                     {
-                        cwritefln("info: Skipping AU format since building for Windows\n".white, arch);
+                        cwritefln("info: Skipping AU format since building for Windows\n".white);
                         continue;
                     }
                 }
@@ -251,13 +251,13 @@ int main(string[] args)
                 {
                     if (configIsAAX(config))
                     {
-                        cwritefln("info: Skipping AAX format since building for Linux\n".white, arch);
+                        cwriteln("info: Skipping AAX format since building for Linux\n".white);
                         continue;
                     }
 
                     if (configIsAU(config))
                     {
-                        cwritefln("info: Skipping AU format since building for Linux\n".white, arch);
+                        cwriteln("info: Skipping AU format since building for Linux\n".white);
                         continue;
                     }
                 }
@@ -582,6 +582,7 @@ int main(string[] args)
         cwriteln("    Congratulations! ".green ~ "dplug-build".cyan ~ " built successfully.".green);
         cwriteln("    Type " ~ "dplug-build --help".cyan ~ " to know about its usage.");
         cwriteln("    You'll probably want " ~ "dplug-build".cyan ~ " to be in your" ~ " PATH".yellow ~ ".");
+        cwriteln;
         return 0;
     }
     catch(ExternalProgramErrored e)
