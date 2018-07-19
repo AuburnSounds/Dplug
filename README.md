@@ -14,7 +14,7 @@ Come talk with us on the [D Language Discord](https://discord.gg/QZtGZUw) to lea
 
 - Creating VST 2.4 plug-ins for Windows, macOS, and Linux, for 32-bit and 64-bit
 - Creating Audio Unit v2 plug-ins for Mac OS X, 32-bit and 64-bit
-- Creating AAX Native plug-ins for Windows and Mac OS X, 32-bit and 64-bit
+- Creating AAX Native plug-ins for Windows and Mac OS X, 64-bit only
 - Comes with basic music DSP algorithms
 - Comes with a number of `tools` to make plug-in authoring faster (bundling, color correction, regression tests, performance tests)
 - Dplug is using (optional) [rendering](http://www.auburnsounds.com/blog/2016-09-16_PBR-for-Audio-Software-Interfaces.html) to keep installers small
