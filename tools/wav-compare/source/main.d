@@ -181,6 +181,6 @@ string getComment(float rms_dB, float peak_dB)
     }
     else 
     {
-        return "I wouldn't even bother trying to hear this difference. It must be incredibly sublt.";
+        return "I wouldn't even bother trying to hear this difference. It must be incredibly subtle.";
     }
 }
