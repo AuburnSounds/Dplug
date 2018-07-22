@@ -1,9 +1,10 @@
 {
     "name": "wav-compare",
-    "description": "Gives the peak difference between two sounds in dB.",
+    "description": "Compares two sounds.",
     "dependencies": {
         "dplug:core": {"path": "../../"},
-        "wave-d": "~>1.0"
+        "wave-d": "~>1.0",
+        "colorize": "~>1.0"
     },
 
     "sourcePaths": ["source"],
