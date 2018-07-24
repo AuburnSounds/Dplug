@@ -140,8 +140,6 @@ int main(string[] args)
             else if (arg == "-a" || arg == "--arch")
             {
                 ++i;
-                if (args[i] == "x32" || args[i] == "x64" || args[i] == "x86-64")
-                    throw new Exception("This arch switch value has been deprecated (available: x86, x86_64, all)");
 
                 if (args[i] == "x86")
                     archs = [ Arch.x86 ];

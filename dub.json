@@ -36,30 +36,9 @@
     "subPackages": [
         {
             "name": "core",
-            "comment-sourcePaths": 
+            "sourcePaths": 
             [ 
                 "core/dplug/core" 
-            ],
-
-            "sourceFiles" :
-            [
-                "core/dplug/core/package.d",
-                "core/dplug/core/sharedlib.d",
-                "core/dplug/core/traits.d",
-                "core/dplug/core/vec.d",
-                "core/dplug/core/math.d",
-                "core/dplug/core/sync.d",
-                "core/dplug/core/ringbuf.d",
-                "core/dplug/core/lockedqueue.d",
-                "core/dplug/core/fpcontrol.d",
-                "core/dplug/core/runtime.d",
-                "core/dplug/core/nogc.d",
-                "core/dplug/core/random.d",
-                "core/dplug/core/thread.d",
-                "core/dplug/core/file.d",
-                "core/dplug/core/cpuid.d",
-                "core/dplug/core/complex.d",
-                "core/dplug/core/map.d"
             ],
 
             "importPaths": [ "core" ],

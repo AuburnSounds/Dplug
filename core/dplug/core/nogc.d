@@ -130,43 +130,6 @@ void destroyNoGC(T)(ref T obj) nothrow @nogc
 
 /// Allocates and construct a struct or class object.
 /// Returns: Newly allocated object.
-// Note: strangely enough, deprecated alias didn't work for this.
-deprecated("Use mallocNew instead")
-auto mallocEmplace(T, Args...)(Args args)
-{
-    static if (is(T == class))
-        immutable size_t allocSize = __traits(classInstanceSize, T);
-    else
-        immutable size_t allocSize = T.sizeof;
-
-    void* rawMemory = malloc(allocSize);
-    if (!rawMemory)
-        onOutOfMemoryErrorNoGC();
-
-    version(doNotUseRuntime)
-    {
-    }
-    else
-    {
-        static if (hasIndirections!T)
-            GC.addRange(rawMemory, allocSize);
-    }
-
-    static if (is(T == class))
-    {
-        T obj = emplace!T(rawMemory[0 .. allocSize], args);
-    }
-    else
-    {
-        T* obj = cast(T*)rawMemory;
-        emplace!T(obj, args);
-    }
-
-    return obj;
-}
-
-/// Allocates and construct a struct or class object.
-/// Returns: Newly allocated object.
 auto mallocNew(T, Args...)(Args args)
 {
     static if (is(T == class))
@@ -403,56 +366,6 @@ const(char)* assumeZeroTerminated(const(char)[] input) nothrow @nogc
 ///              0 if a == b
 ///              1 if a > b
 alias nogcComparisonFunction(T) = int delegate(in T a, in T b) nothrow @nogc;
-
-/// @nogc quicksort
-/// From the excellent: http://codereview.stackexchange.com/a/77788
-deprecated("Use grailSort() instead, which is faster") void quicksort(T)(T[] array, nogcComparisonFunction!T comparison) nothrow @nogc
-{
-    if (array.length < 2)
-        return;
-
-    static void swapElem(ref T lhs, ref T rhs)
-    {
-        T tmp = lhs;
-        lhs = rhs;
-        rhs = tmp;
-    }
-
-    int partition(T* arr, int left, int right) nothrow @nogc
-    {
-        immutable int mid = left + (right - left) / 2;
-        T pivot = arr[mid];
-        // move the mid point value to the front.
-        swapElem(arr[mid],arr[left]);
-        int i = left + 1;
-        int j = right;
-        while (i <= j)
-        {
-            while(i <= j && comparison(arr[i], pivot) <= 0 )
-                i++;
-
-            while(i <= j && comparison(arr[j], pivot) > 0)
-                j--;
-
-            if (i < j)
-                swapElem(arr[i], arr[j]);
-        }
-        swapElem(arr[i - 1], arr[left]);
-        return i - 1;
-    }
-
-    void doQsort(T* array, int left, int right) nothrow @nogc
-    {
-        if (left >= right)
-            return;
-
-        int part = partition(array, left, right);
-        doQsort(array, left, part - 1);
-        doQsort(array, part + 1, right);
-    }
-
-    doQsort(array.ptr, 0, cast(int)(array.length) - 1);
-}
 
 //
 // STABLE IN-PLACE SORT (implementation is at bottom of file)

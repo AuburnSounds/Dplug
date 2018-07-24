@@ -119,21 +119,12 @@ nothrow:
         this.param = param;
     }
 
-    /// Construct a window description, for support with previous
-    deprecated("Because of subtle issues creeping with window end points, please provide an explicit WindowAlignment. Use the other WindowDesc constructor, see window.d for more information.") 
-        this(WindowType type, float param = float.nan)
-    {
-        this.type = type;
-        this.alignment = WindowAlignment.symmetric; // because it was the default before
-        this.param = param;
-    }
-
 private:
     WindowType type;
 
     // TODO: this is a bad default! You'll probably want WindowAlignment.right instead.
     // Make sure it isn't used implicitely anymore.
-    // Then deprecate WindowAlignment.symmetric.
+    // Then change that default
     WindowAlignment alignment = WindowAlignment.symmetric; 
 
     float param;
@@ -159,20 +150,6 @@ void multiplyByWindow(T)(T[] inoutImpulse, WindowDesc windowDesc) pure nothrow @
     {
         inoutImpulse[i] *= evalWindow(windowDesc, i, N);
     }
-}
-
-deprecated void generateNormalizedWindow(T)(WindowDesc desc, T[] output) pure nothrow @nogc
-{
-    int N = cast(int)(output.length);
-    T sum = 0;
-    for (int i = 0; i < N; ++i)
-    {
-        output[i] = cast(T)(evalWindow(desc, i, N));
-        sum += output[i];
-    }
-    T invSum = 1 / sum;
-    for (int i = 0; i < N; ++i)
-        output[i] *= invSum;    
 }
 
 // Note: N is the number of output samples, not necessarily the periodicity

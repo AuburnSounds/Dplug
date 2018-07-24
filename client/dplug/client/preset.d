@@ -308,7 +308,6 @@ public:
 
     /// Gets a state chunk to save the current state.
     /// The returned state chunk should be freed with `free`.
-    deprecated("Use getStateChunkFromCurrentState() instead") alias getStateChunk = getStateChunkFromCurrentState;
     ubyte[] getStateChunkFromCurrentState() nothrow @nogc
     {
         auto chunk = makeVec!ubyte();

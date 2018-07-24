@@ -254,8 +254,6 @@ public:
         _phaseFractional = 0;
     }
 
-    deprecated alias next = nextSample;
-
     /// Get next sample.
     float nextSample(float frequencyHz) nothrow @nogc
     {

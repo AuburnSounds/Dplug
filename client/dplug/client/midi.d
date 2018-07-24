@@ -55,7 +55,6 @@ nothrow:
     /// Status Type
     ///
     /// See_Also: dplug.client.midi : MidiStatus
-    deprecated("Use statusType instead") alias status = statusType;
     int statusType() const
     {
         return _statusByte >> 4;

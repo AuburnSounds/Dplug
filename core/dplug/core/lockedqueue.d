@@ -12,7 +12,6 @@ import dplug.core.sync;
 import dplug.core.nogc;
 
 
-deprecated("Use makeLockedQueue instead") alias lockedQueue = makeLockedQueue;
 auto makeLockedQueue(T)(size_t capacity) nothrow @nogc
 {
     return LockedQueue!T(capacity);

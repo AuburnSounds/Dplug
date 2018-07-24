@@ -18,9 +18,6 @@ private import core.stdc.stdlib : malloc, free;
 private import core.stdc.stdio : snprintf, printf;
 private import core.stdc.string : strcmp, strlen;
 
-deprecated("Use the UITextBox name instead of UITextbox")
-    alias UITextbox = UITextBox;
-
 class UITextBox : UIElement
 {
 public:

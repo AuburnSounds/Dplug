@@ -102,7 +102,6 @@ struct PluginInfo
     // Note: For AU, 0.x.y is supposed to mean "do not cache", however it is
     //       unknown what it actually changes. AU caching hasn't caused any problem
     //       and can probably be ignored.
-    deprecated("Use publicVersion instead") alias pluginVersion = publicVersion;
     PluginVersion publicVersion = PluginVersion(0, 0, 0);
 
     /// True if the plugin has a graphical UI. Easy way to disable it.
@@ -514,7 +513,6 @@ nothrow:
     }
 
     /// Returns: Plugin version in x.x.x.x decimal form.
-    deprecated("Use getPublicVersion instead") alias getPluginVersion = getPublicVersion;
     final PluginVersion getPublicVersion() pure const nothrow @nogc
     {
         return _info.publicVersion;

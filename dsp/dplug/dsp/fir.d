@@ -91,22 +91,6 @@ void generateHilbertTransformer(T)(T[] outImpulse, WindowDesc windowDesc, double
     outImpulse[center] = 0;
 }
 
-
-/// Normalize impulse response.
-/// Scale to make sum = 1.
-/// TODO: normalize by DC, or normalize by unit energy ? Create two functions.
-deprecated void normalizeImpulse(T)(T[] inoutImpulse) nothrow @nogc
-{
-    int size = cast(int)(inoutImpulse.length);
-    double sum = 0;
-    for (int i = 0; i < size; ++i)
-        sum += inoutImpulse[i];
-
-    double invSum = 1 / sum;
-    for (int i = 0; i < size; ++i)
-        inoutImpulse[i] = cast(T)(inoutImpulse[i] * invSum);
-}
-
 /// Returns: Length of temporary buffer needed for `minimumPhaseImpulse`.
 int tempBufferSizeForMinPhase(T)(T[] inputImpulse) nothrow @nogc
 {

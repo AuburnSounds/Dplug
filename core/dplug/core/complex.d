@@ -48,11 +48,6 @@ double arg(cdouble z)
     return atan2(z.im, z.re);
 }
 
-deprecated("Use the builtin complex syntax x + y * 1i instead") BuiltinComplex!T makeComplex(T)(T re, T im)
-{
-    return re + im * 1i;
-}
-
 /// Returns: The squared modulus of `z`.
 float sqAbs(cfloat z)
 {

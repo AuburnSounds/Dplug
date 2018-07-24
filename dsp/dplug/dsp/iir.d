@@ -371,8 +371,6 @@ public
         return result;
     }
 
-    deprecated("This function was renamed to biquadOnePoleLowPassImprecise.") 
-        alias lowpassFilter1Pole = biquadOnePoleLowPassImprecise;
     /// 1-pole low-pass filter, frequency mapping is not precise.
     /// Not accurate across sample rates, but coefficient computation is cheap. Not advised.
     BiquadCoeff biquadOnePoleLowPassImprecise(double frequency, double samplerate) nothrow @nogc
@@ -393,8 +391,6 @@ public
         return result;
     }
 
-    deprecated("This function was renamed to biquadOnePoleHighPassImprecise.") 
-        alias highpassFilter1Pole = biquadOnePoleHighPassImprecise;
     /// 1-pole high-pass filter, frequency mapping is not precise.
     /// Not accurate across sample rates, but coefficient computation is cheap. Not advised.
     BiquadCoeff biquadOnePoleHighPassImprecise(double frequency, double samplerate) nothrow @nogc
@@ -415,106 +411,51 @@ public
         return result;
     }
 
-    /// Allpass interpolator.
-    /// https://ccrma.stanford.edu/~jos/pasp/First_Order_Allpass_Interpolation.html
-    /// http://users.spa.aalto.fi/vpv/publications/vesan_vaitos/ch3_pt3_allpass.pdf
-    /// It is recommended to use the range [0.5 .. 1.5] for best phase results.
-    /// Also known as Thiran filter.
-    deprecated BiquadCoeff allpassThiran1stOrder(T)(double fractionalDelay) nothrow @nogc
-    {
-        assert(fractionalDelay >= 0);
-        double eta = (1 - fractionalDelay) / (1 + fractionalDelay);
-
-        BiquadCoeff result;
-        result[0] = cast(T)(eta);
-        result[1] = 1;
-        result[2] = 0;
-        result[3] = cast(T)(eta);
-        result[4] = 0;
-        return result;
-    }
-
-
-    /// Same but 2nd order.
-    /// http://users.spa.aalto.fi/vpv/publications/vesan_vaitos/ch3_pt3_allpass.pdf
-    deprecated BiquadCoeff allpassThiran2ndOrder(T)(double fractionalDelay) nothrow @nogc
-    {
-        assert(fractionalDelay >= 0);
-        double a1 = 2 * (2 - fractionalDelay) / (1 + fractionalDelay);
-        double a2 = (fractionalDelay - 1) * (fractionalDelay - 2)
-            /
-            (fractionalDelay + 1) * (fractionalDelay + 2);
-
-        BiquadCoeff result;
-        result[0] = cast(T)(a1);
-        result[1] = 1;
-        result[2] = cast(T)(a2);
-        result[3] = cast(T)(a1);
-        result[4] = cast(T)(a2);
-        return result;
-    }
-
     // Cookbook formulae for audio EQ biquad filter coefficients
     // by Robert Bristow-Johnson
 
-    deprecated("This function was renamed to biquadRBJLowPass.") 
-        alias lowpassFilterRBJ = biquadRBJLowPass;
     /// Low-pass filter 12 dB/oct as described by Robert Bristow-Johnson.
     BiquadCoeff biquadRBJLowPass(double frequency, double samplerate, double Q = SQRT1_2) nothrow @nogc
     {
         return generateBiquad(BiquadType.LOW_PASS_FILTER, frequency, samplerate, 0, Q);
     }
 
-    deprecated("This function was renamed to biquadRBJHighPass.") 
-        alias highpassFilterRBJ = biquadRBJHighPass;
     /// High-pass filter 12 dB/oct as described by Robert Bristow-Johnson.
     BiquadCoeff biquadRBJHighPass(double frequency, double samplerate, double Q = SQRT1_2) nothrow @nogc
     {
         return generateBiquad(BiquadType.HIGH_PASS_FILTER, frequency, samplerate, 0, Q);
     }
 
-    deprecated("This function was renamed to biquadRBJBandPass.") 
-        alias bandpassFilterRBJ = biquadRBJBandPass;
     /// Band-pass filter as described by Robert Bristow-Johnson.
     BiquadCoeff biquadRBJBandPass(double frequency, double samplerate, double Q = SQRT1_2) nothrow @nogc
     {
         return generateBiquad(BiquadType.BAND_PASS_FILTER, frequency, samplerate, 0, Q);
     }
 
-    deprecated("This function was renamed to biquadRBJNotch.") 
-        alias notchFilterRBJ = biquadRBJNotch;
     /// Notch filter as described by Robert Bristow-Johnson.
     BiquadCoeff biquadRBJNotch(double frequency, double samplerate, double Q = SQRT1_2) nothrow @nogc
     {
         return generateBiquad(BiquadType.NOTCH_FILTER, frequency, samplerate, 0, Q);
     }
 
-    deprecated("This function was renamed to biquadRBJPeak.") 
-        alias peakFilterRBJ = biquadRBJPeak;
     /// Peak filter as described by Robert Bristow-Johnson.
     BiquadCoeff biquadRBJPeak(double frequency, double samplerate, double gain, double Q = SQRT1_2) nothrow @nogc
     {
         return generateBiquad(BiquadType.PEAK_FILTER, frequency, samplerate, gain, Q);
     }
 
-    deprecated("This function was renamed to biquadRBJLowShelf.") 
-        alias lowShelfFilterRBJ = biquadRBJLowShelf;
     /// Low-shelf filter as described by Robert Bristow-Johnson.
     BiquadCoeff biquadRBJLowShelf(double frequency, double samplerate, double gain, double Q = SQRT1_2) nothrow @nogc
     {
         return generateBiquad(BiquadType.LOW_SHELF, frequency, samplerate, gain, Q);
     }
 
-    deprecated("This function was renamed to biquadRBJHighShelf.") 
-        alias highShelfFilterRBJ = biquadRBJHighShelf;
     /// High-shelf filter as described by Robert Bristow-Johnson.
     BiquadCoeff biquadRBJHighShelf(double frequency, double samplerate, double gain, double Q = SQRT1_2) nothrow @nogc
     {
         return generateBiquad(BiquadType.HIGH_SHELF, frequency, samplerate, gain, Q);
     }
 
-    deprecated("This function was renamed to biquadBypass.") 
-        alias bypassFilter = biquadBypass;
     /// Identity biquad, pass signal unchanged.
     BiquadCoeff biquadBypass() nothrow @nogc
     {
@@ -527,8 +468,6 @@ public
         return result;
     }
 
-    deprecated("This function was renamed to biquadZero.") 
-        alias zeroFilter = biquadZero;
     /// Zero biquad, gives zero output.
     BiquadCoeff biquadZero() nothrow @nogc
     {
