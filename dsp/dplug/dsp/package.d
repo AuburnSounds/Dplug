@@ -9,10 +9,8 @@ public
 {
     import dplug.dsp.fir,
            dplug.dsp.iir,
-           dplug.dsp.noise,
            dplug.dsp.window,
            dplug.dsp.smooth,
-           dplug.dsp.wavetable,
            dplug.dsp.fft,
            dplug.dsp.delayline;
 }

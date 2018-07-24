@@ -49,7 +49,18 @@
         },
         {
             "name": "dsp",
-            "sourcePaths": [ "dsp/dplug/dsp" ],
+
+            "sourceFiles" :
+            [
+                "dsp/dplug/dsp/package.d",
+                "dsp/dplug/dsp/delayline.d",
+                "dsp/dplug/dsp/fft.d",
+                "dsp/dplug/dsp/iir.d",
+                "dsp/dplug/dsp/fir.d",
+                "dsp/dplug/dsp/smooth.d",
+                "dsp/dplug/dsp/window.d"
+            ],
+
             "importPaths": [ "dsp" ],
             "dependencies": {
                 "dplug:core": "*",

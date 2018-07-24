@@ -5,7 +5,7 @@
 * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 * Authors:   Guillaume Piolat
 */
-module dplug.dsp.noise;
+deprecated("Scheduled for removal in Dplug v8") module dplug.dsp.noise;
 
 import std.random,
        std.math;
@@ -14,7 +14,7 @@ import dplug.core.nogc;
 import dplug.core.random;
 
 /// Generates white gaussian noise.
-struct WhiteNoise(T) if (is(T == float) || is(T == double))
+deprecated("Scheduled for removal in Dplug v8") struct WhiteNoise(T) if (is(T == float) || is(T == double))
 {
 public:
     void initialize() nothrow @nogc
@@ -37,16 +37,9 @@ private:
     Xorshift32 _rng;
 }
 
-unittest
-{
-    WhiteNoise!float a;
-    WhiteNoise!double b;
-}
-
-
 /// Makes a periodic noise for plugins demos.
 /// Simply multiply you signal to footprint by the next() sample.
-struct DemoNoise(T) if (is(T == float) || is(T == double))
+deprecated("Scheduled for removal in Dplug v8") struct DemoNoise(T) if (is(T == float) || is(T == double))
 {
 public:
     enum int PERIOD = 30;
@@ -83,15 +76,9 @@ private:
     WhiteNoise!T _noise;
 }
 
-unittest
-{
-    DemoNoise!float a;
-    DemoNoise!double b;
-}
-
 /// 1D perlin noise octave.
 /// Is useful to slightly move parameters over time.
-struct Perlin1D(T) if (is(T == float) || is(T == double))
+deprecated("Scheduled for removal in Dplug v8") struct Perlin1D(T) if (is(T == float) || is(T == double))
 {
 public:
     void initialize(double frequency, double samplerate) nothrow @nogc
@@ -142,18 +129,12 @@ private:
     Xorshift32 _rng;
 }
 
-unittest
-{
-    Perlin1D!float a;
-    Perlin1D!double b;
-}
-
 /// Pink noise class using the autocorrelated generator method.
 /// Method proposed and described by Larry Trammell "the RidgeRat" --
 /// see http://home.earthlink.net/~ltrammell/tech/newpink.htm
 /// There are no restrictions.
 /// See_also: http://musicdsp.org/showArchiveComment.php?ArchiveID=244
-struct PinkNoise(T) if (is(T == float) || is(T == double))
+deprecated("Scheduled for removal in Dplug v8") struct PinkNoise(T) if (is(T == float) || is(T == double))
 {
 public:
     void initialize() nothrow @nogc
@@ -196,12 +177,6 @@ private:
 
     static immutable int[5] pA = [ 14055, 12759, 10733, 12273, 15716 ];
     static immutable int[5] pPSUM = [ 22347, 27917, 29523, 29942, 30007 ];
-}
-
-unittest
-{
-    PinkNoise!float a;
-    PinkNoise!double b;
 }
 
 private

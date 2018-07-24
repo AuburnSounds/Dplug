@@ -5,7 +5,7 @@
 * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 * Authors:   Guillaume Piolat
 */
-module dplug.dsp.wavetable;
+deprecated("Scheduled for removal in Dplug v8") module dplug.dsp.wavetable;
 
 import std.math;
 
@@ -16,7 +16,7 @@ import dplug.core.vec;
 /// Generate a sine.
 /// It turns out it's very stable, stable enough for table generation at least.
 /// FUTURE: resync method
-struct SineGenerator(T)
+deprecated("Scheduled for removal in Dplug v8") struct SineGenerator(T)
 {
     void initialize(T initPhase, T frequency, T samplerate) nothrow @nogc
     {
@@ -51,7 +51,7 @@ enum WaveformType
 /// Generates anti-aliased waveform generation through
 /// procedurally generated mipmapped tables.
 /// FUTURE: only integer phase
-struct Wavetable
+deprecated("Scheduled for removal in Dplug v8") struct Wavetable
 {
 nothrow:
 @nogc:
@@ -236,7 +236,7 @@ private:
 }
 
 
-struct WavetableOsc
+deprecated("Scheduled for removal in Dplug v8") struct WavetableOsc
 {
 public:
     void initialize(Wavetable* wavetable, float sampleRate) nothrow @nogc
