@@ -114,7 +114,7 @@ nothrow:
     this(Client client, HostCallbackFunction hostCallback)
     {
         int queueSize = 2048;
-        _messageQueue = lockedQueue!AudioThreadMessage(queueSize);
+        _messageQueue = makeLockedQueue!AudioThreadMessage(queueSize);
 
         _client = client;
         _effect = _effect.init;
