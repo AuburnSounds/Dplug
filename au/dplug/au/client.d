@@ -253,7 +253,7 @@ nothrow:
         _componentInstance = componentInstance;
 
         int queueSize = 256;
-        _messageQueue = lockedQueue!AudioThreadMessage(queueSize);
+        _messageQueue = makeLockedQueue!AudioThreadMessage(queueSize);
 
         _maxInputs = _client.maxInputs();
         _maxOutputs = _client.maxOutputs();
