@@ -654,9 +654,17 @@ nothrow:
     {
         _length = length;
         _internal.initialize(length);
-        _alignment = cast(int)_internal.alignment(length);
 
-        _buffer.reallocBuffer(length, _alignment);
+        int newAlignment = cast(int)_internal.alignment(length);
+
+        // if the alignement changes, we can't reuse that buffer
+        if (_alignment != -1 && _alignment != newAlignment)
+        {
+            _buffer.reallocBuffer(0, _alignment);
+        }
+
+        _buffer.reallocBuffer(length, newAlignment);
+        _alignment = newAlignment;
     }
 
     ~this()
@@ -722,7 +730,7 @@ nothrow:
 
 private:
     // Required alignment for RFFT buffers.
-    int _alignment;
+    int _alignment = -1;
 
     // pfft object
     Rfft!T _internal;
@@ -732,4 +740,15 @@ private:
 
     // temporary buffer since pfft is in-place
     T[] _buffer;
+}
+
+
+unittest
+{
+    for (int i = 0; i < 16; ++i)
+    {
+        RFFT!float rfft;
+        rfft.initialize(128);
+        rfft.initialize(2048);
+    }
 }
