@@ -152,9 +152,9 @@ nothrow:
         {
             float alpha = openAnimation;
             ubyte balpha = cast(ubyte)(255.0f*openAnimation + 0.5f);
-            depthOpacity.fill(L8(balpha));
-            materialOpacity.fill(L8(balpha));
-            diffuseOpacity.fill(L8(balpha));
+            depthOpacity.fillAll(L8(balpha));
+            materialOpacity.fillAll(L8(balpha));
+            diffuseOpacity.fillAll(L8(balpha));
         }
     }
 
