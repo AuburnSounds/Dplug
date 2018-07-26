@@ -290,6 +290,11 @@ private:
             _listener.onMouseRelease(mousePos.x, mousePos.y, mb, getMouseState(event));
         else
         {
+            // Fix Issue #281
+            // This resets _lastMouseX and _lastMouseY on new clicks,
+            // necessary if the focus was lost for a while.
+            _firstMouseMove = true;
+
             int clickCount = event.clickCount();
             bool isDoubleClick = clickCount >= 2;
             _listener.onMouseClick(mousePos.x, mousePos.y, mb, isDoubleClick, getMouseState(event));
