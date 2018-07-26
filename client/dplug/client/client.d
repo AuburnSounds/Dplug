@@ -572,6 +572,8 @@ nothrow:
                               TimeInfo timeInfo
                               ) nothrow @nogc
     {
+        // TODO: in debug most, fill output will obviously wrong output
+        // See Issue #279
 
         if (_maxFramesInProcess == 0)
         {
