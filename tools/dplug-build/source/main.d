@@ -412,7 +412,7 @@ int main(string[] args)
                             fileMove(plugin.dubOutputFileName, contentsDir ~ "Win32/" ~ pluginFinalName);
                             signAAXBinaryWithPACE(contentsDir ~ "Win32/" ~ pluginFinalName);
                         }
-                    }                   
+                    }
                     else
                     {
                         string appendBitness(string prettyName, string originalPath)
@@ -434,7 +434,7 @@ int main(string[] args)
                 else version(linux)
                 {
                     string soPath = path ~ "/" ~ plugin.prettyName ~ ".so";
-                    fileMove(plugin.dubOutputFileName, soPath);                    
+                    fileMove(plugin.dubOutputFileName, soPath);
                 }
                 else version(OSX)
                 {
