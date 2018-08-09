@@ -415,7 +415,7 @@ nothrow:
     ///
     /// Number of frames are guaranteed to be less or equal to what the last reset() call said.
     /// Number of inputs and outputs are guaranteed to be exactly what the last reset() call said.
-    /// Warning: Do not modify the pointers!
+    /// Warning: Do not modify the output pointers!
     abstract void processAudio(const(float*)[] inputs,    // array of input channels
                                float*[] outputs,           // array of output channels
                                int frames,                // number of sample in each input & output channel
@@ -572,8 +572,17 @@ nothrow:
                               TimeInfo timeInfo
                               ) nothrow @nogc
     {
-        // TODO: in debug most, fill output will obviously wrong output
-        // See Issue #279
+        // In debug mode, fill all output audio buffers with `float.nan`.
+        // This avoids a plug-in forgetting to fill output buffers, which can happen if you
+        // implement silence detection badly.
+        debug
+        {
+            for (int k = 0; k < outputs.length; ++k)
+            {
+                float* pOut = outputs[k];
+                pOut[0..frames] = float.nan;
+            }
+        }
 
         if (_maxFramesInProcess == 0)
         {
