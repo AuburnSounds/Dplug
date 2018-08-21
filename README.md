@@ -23,6 +23,7 @@ Come talk with us on the [D Language Discord](https://discord.gg/QZtGZUw) to lea
 
 ### Products made with Dplug
 
+- [Couture by Auburn Sounds](https://www.auburnsounds.com/products/Couture.html)
 - [Entropy by Cut Through Recordings](http://www.modernmetalproduction.com/product/entropy-ii-enhanced-stereo-delay-vst-au/)
 - [Graillon by Auburn Sounds](https://www.auburnsounds.com/products/Graillon.html)
 - [M4 Multiband Compressor by Cut Through Recordings](http://www.modernmetalproduction.com/product/m4-multiband-compressor-vst-au/)
