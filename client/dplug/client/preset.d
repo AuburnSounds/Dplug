@@ -177,6 +177,10 @@ public:
         presets = makeVec!Preset(presets_.length);
         foreach(size_t i; 0..presets_.length)
             presets[i] = presets_[i];
+
+        // free input slice with `free`
+        free(presets_.ptr);
+
         _current = 0;
     }
 

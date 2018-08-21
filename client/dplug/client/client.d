@@ -21,6 +21,7 @@ module dplug.client.client;
 import core.atomic;
 import core.stdc.string;
 import core.stdc.stdio;
+import core.stdc.stdlib: free;
 
 import std.container;
 
@@ -437,7 +438,12 @@ nothrow:
         auto values = makeVec!float();
         foreach(param; _params)
             values.pushBack(param.getNormalizedDefault());
-        return mallocNew!Preset("Default", values.releaseData);
+
+        // Perf: one could avoid malloc to copy those arrays again there
+        float[] valuesSlice = values.releaseData;
+        Preset result = mallocNew!Preset("Default", valuesSlice);
+        free(valuesSlice.ptr);
+        return result;
     }
 
     // Getters for fields in _info
