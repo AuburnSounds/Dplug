@@ -16,6 +16,7 @@ import dplug.core.vec;
 import dplug.core.nogc;
 
 import core.stdc.stdio;
+import core.stdc.stdlib: malloc, free;
 
 version( Windows )
 {
@@ -74,9 +75,11 @@ struct UncheckedMutex
         assert(!_created);
         version( Windows )
         {
+            m_hndl = cast(CRITICAL_SECTION*) malloc(CRITICAL_SECTION.sizeof);
+
             // Cargo-culting the spin-count in WTF::Lock
             // See: https://webkit.org/blog/6161/locking-in-webkit/
-            InitializeCriticalSectionAndSpinCount( &m_hndl, 40 );
+            InitializeCriticalSectionAndSpinCount( m_hndl, 40 );
         }
         else version( Posix )
         {
@@ -114,7 +117,8 @@ struct UncheckedMutex
         {
             version( Windows )
             {
-                DeleteCriticalSection( &m_hndl );
+                DeleteCriticalSection( m_hndl );
+                free(m_hndl);
             }
             else version( Posix )
             {
@@ -136,7 +140,7 @@ struct UncheckedMutex
     {
         version( Windows )
         {
-            EnterCriticalSection( &m_hndl );
+            EnterCriticalSection( m_hndl );
         }
         else version( Posix )
         {
@@ -155,7 +159,7 @@ struct UncheckedMutex
     {
         version( Windows )
         {
-            LeaveCriticalSection( &m_hndl );
+            LeaveCriticalSection( m_hndl );
         }
         else version( Posix )
         {
@@ -173,7 +177,7 @@ struct UncheckedMutex
     {
         version( Windows )
         {
-            return TryEnterCriticalSection( &m_hndl ) != 0;
+            return TryEnterCriticalSection( m_hndl ) != 0;
         }
         else version( Posix )
         {
@@ -205,7 +209,7 @@ struct UncheckedMutex
 private:
     version( Windows )
     {
-        CRITICAL_SECTION    m_hndl;
+        CRITICAL_SECTION*    m_hndl;
     }
     else version( Posix )
     {
@@ -215,7 +219,7 @@ private:
     // Work-around for Issue 16636
     // https://issues.dlang.org/show_bug.cgi?id=16636
     // Still crash with LDC somehow
-    long _created;
+    long _created = 0;
 
 package:
     version( Posix )
