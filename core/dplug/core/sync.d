@@ -581,7 +581,9 @@ nothrow:
             m_blockQueue = CreateSemaphoreA( null, 0, int.max, null );
             if( m_blockQueue == m_blockQueue.init )
                 assert(false);
-            InitializeCriticalSection( &m_unblockLock );
+
+            m_unblockLock = cast(CRITICAL_SECTION*) malloc(CRITICAL_SECTION.sizeof);
+            InitializeCriticalSection( m_unblockLock );
         }
         else version( Posix )
         {
@@ -600,7 +602,12 @@ nothrow:
         {
             CloseHandle( m_blockLock );
             CloseHandle( m_blockQueue );
-            DeleteCriticalSection( &m_unblockLock );
+            if (m_unblockLock !is null)
+            {
+                DeleteCriticalSection( m_unblockLock );
+                free(m_unblockLock);
+                m_unblockLock = null;
+            }
         }
         else version( Posix )
         {
@@ -693,7 +700,7 @@ private:
             assert( rc == WAIT_OBJECT_0 || rc == WAIT_TIMEOUT );
             bool timedOut = (rc == WAIT_TIMEOUT);
 
-            EnterCriticalSection( &m_unblockLock );
+            EnterCriticalSection( m_unblockLock );
 
             if( (numSignalsLeft = m_numWaitersToUnblock) != 0 )
             {
@@ -740,7 +747,7 @@ private:
                 m_numWaitersGone = 0;
             }
 
-            LeaveCriticalSection( &m_unblockLock );
+            LeaveCriticalSection( m_unblockLock );
 
             if( numSignalsLeft == 1 )
             {
@@ -769,13 +776,13 @@ private:
         {
             DWORD rc;
 
-            EnterCriticalSection( &m_unblockLock );
+            EnterCriticalSection( m_unblockLock );
 
             if( m_numWaitersToUnblock != 0 )
             {
                 if( m_numWaitersBlocked == 0 )
                 {
-                    LeaveCriticalSection( &m_unblockLock );
+                    LeaveCriticalSection( m_unblockLock );
                     return;
                 }
                 if( all )
@@ -788,7 +795,7 @@ private:
                     m_numWaitersToUnblock++;
                     m_numWaitersBlocked--;
                 }
-                LeaveCriticalSection( &m_unblockLock );
+                LeaveCriticalSection( m_unblockLock );
             }
             else if( m_numWaitersBlocked > m_numWaitersGone )
             {
@@ -809,13 +816,13 @@ private:
                     m_numWaitersToUnblock = 1;
                     m_numWaitersBlocked--;
                 }
-                LeaveCriticalSection( &m_unblockLock );
+                LeaveCriticalSection( m_unblockLock );
                 rc = ReleaseSemaphore( m_blockQueue, 1, null );
                 assert( rc );
             }
             else
             {
-                LeaveCriticalSection( &m_unblockLock );
+                LeaveCriticalSection( m_unblockLock );
             }
         }
 
@@ -825,7 +832,7 @@ private:
         //              browse_frm/thread/1692bdec8040ba40/e7a5f9d40e86503a
         HANDLE              m_blockLock;    // auto-reset event (now semaphore)
         HANDLE              m_blockQueue;   // auto-reset event (now semaphore)
-        CRITICAL_SECTION    m_unblockLock;  // internal mutex/CS
+        CRITICAL_SECTION*   m_unblockLock           = null;  // internal mutex/CS
         int                 m_numWaitersGone        = 0;
         int                 m_numWaitersBlocked     = 0;
         int                 m_numWaitersToUnblock   = 0;
