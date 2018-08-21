@@ -62,14 +62,16 @@ nothrow:
             assert(false, "Couldn't open the shared library.");
     }
 
-    bool hasSymbol(string symbolName)
+    @disable this(this);
+
+    bool hasSymbol(string symbolName) const
     {
         assert(isLoaded());
         void* sym = GetSymbol(_hlib, symbolName);
         return sym != null;
     }
 
-    void* loadSymbol(string symbolName)
+    void* loadSymbol(string symbolName) const
     {
         assert(isLoaded());
 
@@ -101,7 +103,7 @@ nothrow:
     }
 
     /// Returns true if the shared library is currently loaded, false otherwise.
-    bool isLoaded()
+    bool isLoaded() const
     {
         return (_hlib !is null);
     }
@@ -192,7 +194,7 @@ version(Posix)
             dlclose(hlib);
         }
 
-        void* GetSymbol(SharedLibHandle hlib, string symbolName) nothrow @nogc
+        void* GetSymbol(const(SharedLibHandle) hlib, string symbolName) nothrow @nogc
         {
             return dlsym(hlib, CString(symbolName));
         }
@@ -227,9 +229,10 @@ else version(Windows)
         }
 
         nothrow @nogc
-        void* GetSymbol(SharedLibHandle hlib, string symbolName)
+        void* GetSymbol(const(SharedLibHandle) hlib, string symbolName)
         {
-            return GetProcAddress(hlib, CString(symbolName));
+            // const_cast here
+            return GetProcAddress(cast(HMODULE)hlib, CString(symbolName));
         }
 
         nothrow @nogc

@@ -9,6 +9,7 @@ public import dplug.host.host;
 public import dplug.host.vst;
 public import dplug.host.window;
 
+import std.algorithm.mutation;
 
 /// Loads an audio plugin.
 IPluginHost createPluginHost(string dynlibPath)
@@ -23,7 +24,7 @@ IPluginHost createPluginHost(string dynlibPath)
     auto VSTPluginMain = getVSTEntryPoint(lib);
     if (VSTPluginMain != null) // is this is a VST plugin?
     {
-        return new VSTPluginHost(lib);
+        return new VSTPluginHost(move(lib));
     }
     else
         throw new Exception(format("Couldn't load plugin '%s': unknown format", dynlibPath));

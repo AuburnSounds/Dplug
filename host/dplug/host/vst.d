@@ -8,6 +8,7 @@
 module dplug.host.vst;
 
 import std.string;
+import std.algorithm.mutation;
 
 import dplug.core.sharedlib;
 import dplug.core.nogc;
@@ -17,7 +18,7 @@ import dplug.vst;
 
 alias VSTPluginMain_t = extern(C) AEffect* function(HostCallbackFunction fun);
 
-VSTPluginMain_t getVSTEntryPoint(SharedLib lib)
+VSTPluginMain_t getVSTEntryPoint(ref const(SharedLib) lib)
 {
     void* result = null;
 
@@ -47,9 +48,9 @@ final class VSTPluginHost : IPluginHost
 {
     this(SharedLib lib)
     {
-        _lib = lib;
+        _lib = move(lib);
 
-        VSTPluginMain_t VSTPluginMain = getVSTEntryPoint(lib);
+        VSTPluginMain_t VSTPluginMain = getVSTEntryPoint(_lib);
 
         _aeffect = VSTPluginMain(&hostCallback);
 
