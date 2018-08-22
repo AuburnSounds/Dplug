@@ -145,7 +145,8 @@ nothrow:
         _effect.dispatcher = &dispatcherCallback;
         _effect.setParameter = &setParameterCallback;
         _effect.getParameter = &getParameterCallback;
-        _effect.user = cast(void*)(this);
+        _effect.object = cast(void*)(this);
+
         _effect.initialDelay = _client.latencySamples(44100); // Note: we can't have a sample-rate yet
         _effect.object = cast(void*)(this);
         _effect.processDoubleReplacing = &processDoubleReplacingCallback;
@@ -1015,7 +1016,7 @@ extern(C) private nothrow
         version(logVSTDispatcher)
             printf("dispatcher effect %p thread %p opcode %d \n", effect, currentThreadId(), opcode);
 
-        auto plugin = cast(VSTClient)(effect.user);
+        auto plugin = cast(VSTClient)(effect.object);
         result = plugin.dispatcher(opcode, index, value, ptr, opt);
         if (opcode == effClose)
         {
@@ -1030,7 +1031,7 @@ extern(C) private nothrow
         FPControl fpctrl;
         fpctrl.initialize();
 
-        auto plugin = cast(VSTClient)effect.user;
+        auto plugin = cast(VSTClient)effect.object;
         plugin.process(inputs, outputs, sampleFrames);
     }
 
@@ -1040,7 +1041,7 @@ extern(C) private nothrow
         FPControl fpctrl;
         fpctrl.initialize();
 
-        auto plugin = cast(VSTClient)effect.user;
+        auto plugin = cast(VSTClient)effect.object;
         plugin.processReplacing(inputs, outputs, sampleFrames);
     }
 
@@ -1050,7 +1051,7 @@ extern(C) private nothrow
         FPControl fpctrl;
         fpctrl.initialize();
 
-        auto plugin = cast(VSTClient)effect.user;
+        auto plugin = cast(VSTClient)effect.object;
         plugin.processDoubleReplacing(inputs, outputs, sampleFrames);
     }
 
@@ -1060,7 +1061,7 @@ extern(C) private nothrow
         FPControl fpctrl;
         fpctrl.initialize();
 
-        auto plugin = cast(VSTClient)effect.user;
+        auto plugin = cast(VSTClient)effect.object;
         Client client = plugin._client;
 
         if (!plugin.isValidParamIndex(index))
@@ -1075,7 +1076,7 @@ extern(C) private nothrow
         FPControl fpctrl;
         fpctrl.initialize();
 
-        auto plugin = cast(VSTClient)(effect.user);
+        auto plugin = cast(VSTClient)(effect.object);
         Client client = plugin._client;
 
         if (!plugin.isValidParamIndex(index))
