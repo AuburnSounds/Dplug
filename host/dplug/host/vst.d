@@ -18,7 +18,7 @@ import dplug.vst;
 
 alias VSTPluginMain_t = extern(C) AEffect* function(HostCallbackFunction fun);
 
-VSTPluginMain_t getVSTEntryPoint(ref const(SharedLib) lib)
+VSTPluginMain_t getVSTEntryPoint(ref SharedLib lib)
 {
     void* result = null;
 
