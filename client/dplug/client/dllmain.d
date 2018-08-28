@@ -19,7 +19,7 @@ version(Windows)
         template DLLEntryPoint()
         {
             const char[] DLLEntryPoint = q{
-                import std.c.windows.windows;
+                import core.sys.windows.windef;
                 import core.sys.windows.dll;
                 extern (Windows) BOOL DllMain(HINSTANCE hInstance, ULONG ulReason, LPVOID pvReserved)
                 {
@@ -33,7 +33,7 @@ version(Windows)
         template DLLEntryPoint()
         {
             const char[] DLLEntryPoint = q{
-                import std.c.windows.windows;
+                import core.sys.windows.windef;
                 import core.sys.windows.dll;
 
                 extern (Windows) BOOL DllMain(HINSTANCE hInstance, ULONG ulReason, LPVOID pvReserved)
