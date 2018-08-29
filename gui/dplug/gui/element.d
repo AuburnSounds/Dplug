@@ -81,6 +81,16 @@ nothrow:
         // we only consider the part of _position that is actually in the surface
         box2i validPosition = _position.intersection(box2i(0, 0, diffuseMap.w, diffuseMap.h));
 
+        // FUTURE IMPROVEMENT: allow _position outside bounds of a window.
+        //
+        // Currently, _position outside of the extent of the windows are NOT actually allowed.
+        // Specifically the onDraw function seems to operate under the assumtion that they 
+        // receive maps whose points (0,0) is the lop-right of _position
+        //
+        // TL;DR If you fail this assertion, this means you have an UIElement outside the extent
+        //       of the window. Check UI creation code.
+        assert(validPosition == _position);
+
         if (validPosition.empty())
             return; // nothing to draw here
 
@@ -136,6 +146,8 @@ nothrow:
 
     /// Forces the position of the element. It is typically used in the parent
     /// reflow() method
+    /// IMPORTANT: As of today you are not allowed to assign a position outside the extent of
+    //             the window.
     final box2i position(box2i p) nothrow @nogc
     {
         assert(p.isSorted());
