@@ -11,7 +11,7 @@ import core.atomic;
 
 import std.math;
 import std.conv;
-import std.algorithm;
+import std.algorithm.comparison;
 
 import dplug.core;
 import dplug.gui.element;

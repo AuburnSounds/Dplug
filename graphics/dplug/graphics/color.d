@@ -16,7 +16,7 @@ module dplug.graphics.color;
 
 import std.traits;
 import std.math;
-import std.algorithm : min, max, swap;
+import std.algorithm.comparison : min, max;
 
 import dplug.core.math;
 

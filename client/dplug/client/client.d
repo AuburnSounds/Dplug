@@ -23,8 +23,6 @@ import core.stdc.string;
 import core.stdc.stdio;
 import core.stdc.stdlib: free;
 
-import std.container;
-
 import dplug.core.nogc;
 import dplug.core.math;
 import dplug.core.vec;
