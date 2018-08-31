@@ -613,10 +613,10 @@ nothrow:
 
         if (bypassEnabled)
         {
-            // INTERNAL BYPASS IMPLEMENTATION
+            // INTERNAL BYPASS DEFAULT IMPLEMENTATION
 
             // Read messages pending for this buffer.
-            // See #284, this can drop messages whiule the plugin is disabled but alternatives were worse.
+            // See #284, this can drop messages while the plugin is disabled but alternatives were worse.
             if (_info.receivesMIDI)
                getNextMidiMessages(frames);
 
@@ -635,6 +635,8 @@ nothrow:
             // Fill additional output channels with zeroes
             for (int chan = copiedChannels; chan < usedOutputs; ++chan)
                 outputs[chan][0..frames] = 0;
+
+            asm nothrow @nogc{ int 3;}
         }
         else
         {

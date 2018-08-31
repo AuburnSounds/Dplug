@@ -707,14 +707,9 @@ private:
             }
 
             case effSetBypass: // opcode 44
-                if (!_client.hasBypass())
-                    return 0;
-                else
-                {
-                    bool bypassEnabled = (value != 0);
-                    _client.setBypassEnabled(bypassEnabled);
-                }
-                return 1;
+                // Unfortunately, we were unable to find any VST2 hsot that would use effSetBypass
+                // So disable it since it can't be out untested.
+               return 0;
 
             case effGetEffectName: // opcode 45
             {
@@ -758,10 +753,14 @@ private:
                 if (strcmp(str, "receiveVstTimeInfo") == 0)
                     return 1;
 
+                // Unable to find a host that will actually support it.
+                // Have to disable it to avoid being untested.
+                /*
                 if (strcmp(str, "bypass") == 0)
                 {
                     return _client.hasBypass() ? 1 : 0;
                 }
+                */
 
                 if (_client.isSynth())
                 {
