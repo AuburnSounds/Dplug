@@ -336,6 +336,28 @@ nothrow:
         param(index).setFromHost(value);
     }
 
+    /// Enable or disable internal bypass (default is disabled).
+    ///
+    /// Threading:
+    ///     Should be called by either the client or the UI.
+    ///     Any thread can call these, the bypass will be asynchronously set
+    ///     at the next `processAudioFromHost`.
+    ///
+    void setBypassEnabled(bool bypassEnabled)
+    {
+        atomicStore!(MemoryOrder.raw)(_bypassEnabled, bypassEnabled);
+    }
+
+    /// Gets the current value for internal bypass.
+    ///
+    /// Threading:
+    ///     Can be called by anyone.
+    ///
+    bool getBypassEnabled()
+    {
+        return atomicLoad!(MemoryOrder.raw)(_bypassEnabled);
+    }
+
     /// Override if you create a plugin with UI.
     /// The returned IGraphics must be allocated with `mallocEmplace`.
     IGraphics createGraphics() nothrow @nogc
@@ -483,6 +505,15 @@ nothrow:
         return _info.category;
     }
 
+    /// Returns: `true` if this plug-in can bypass with `setBy
+    final bool hasBypass() pure const nothrow @nogc
+    {
+        // Currently, all plug-in can bypass because AU mandates bypass to exist.
+        // However, this bypass can be either a hard one created by Dplug, or it could
+        // be an (unimplemented) soft one through a plugin parameter.
+        return true; 
+    }
+
     final string VSTBundleIdentifier() pure const nothrow @nogc
     {
         return _info.VSTBundleIdentifier;
@@ -578,49 +609,83 @@ nothrow:
                               TimeInfo timeInfo
                               ) nothrow @nogc
     {
-        // In debug mode, fill all output audio buffers with `float.nan`.
-        // This avoids a plug-in forgetting to fill output buffers, which can happen if you
-        // implement silence detection badly.
-        debug
-        {
-            for (int k = 0; k < outputs.length; ++k)
-            {
-                float* pOut = outputs[k];
-                pOut[0..frames] = float.nan;
-            }
-        }
+        bool bypassEnabled = getBypassEnabled();
 
-        if (_maxFramesInProcess == 0)
+        if (bypassEnabled)
         {
-            processAudio(inputs, outputs, frames, timeInfo);
+            // INTERNAL BYPASS IMPLEMENTATION
+
+            // Read messages pending for this buffer.
+            // See #284, this can drop messages whiule the plugin is disabled but alternatives were worse.
+            if (_info.receivesMIDI)
+               getNextMidiMessages(frames);
+
+            // TODO: compensate latency, unfortunately this requires much buffers
+
+            // Copy relevant channels form input to output
+            int usedInputs = cast(int)(inputs.length);
+            int usedOutputs = cast(int)(outputs.length);
+            int copiedChannels = usedInputs < usedOutputs ? usedInputs : usedOutputs;
+
+            for (int chan = 0; chan < copiedChannels; ++chan)
+            {
+                inputs[chan][0..frames] = outputs[chan][0..frames];
+            }
+
+            // Fill additional output channels with zeroes
+            for (int chan = copiedChannels; chan < usedOutputs; ++chan)
+                outputs[chan][0..frames] = 0;
         }
         else
         {
-            // Slice audio in smaller parts
-            while (frames > 0)
+            // NORMAL PROCESSING
+
+            // In debug mode, fill all output audio buffers with `float.nan`.
+            // This avoids a plug-in forgetting to fill output buffers, which can happen if you
+            // implement silence detection badly.
+            debug
             {
-                // Note: the last slice will be smaller than the others
-                int sliceLength = frames;
-                if (sliceLength > _maxFramesInProcess)
-                    sliceLength = _maxFramesInProcess;
-
-                processAudio(inputs, outputs, sliceLength, timeInfo);
-
-                // offset all input buffer pointers
-                for (int i = 0; i < cast(int)inputs.length; ++i)
-                    inputs[i] = inputs[i] + sliceLength;
-
-                // offset all output buffer pointers
-                for (int i = 0; i < cast(int)outputs.length; ++i)
-                    outputs[i] = outputs[i] + sliceLength;
-
-                frames -= sliceLength;
-
-                // timeInfo must be updated
-                timeInfo.timeInSamples += sliceLength;
+                for (int k = 0; k < outputs.length; ++k)
+                {
+                    float* pOut = outputs[k];
+                    pOut[0..frames] = float.nan;
+                }
             }
-            assert(frames == 0);
+
+            if (_maxFramesInProcess == 0)
+            {
+                processAudio(inputs, outputs, frames, timeInfo);
+            }
+            else
+            {
+                // Slice audio in smaller parts
+                while (frames > 0)
+                {
+                    // Note: the last slice will be smaller than the others
+                    int sliceLength = frames;
+                    if (sliceLength > _maxFramesInProcess)
+                        sliceLength = _maxFramesInProcess;
+
+                    processAudio(inputs, outputs, sliceLength, timeInfo);
+
+                    // offset all input buffer pointers
+                    for (int i = 0; i < cast(int)inputs.length; ++i)
+                        inputs[i] = inputs[i] + sliceLength;
+
+                    // offset all output buffer pointers
+                    for (int i = 0; i < cast(int)outputs.length; ++i)
+                        outputs[i] = outputs[i] + sliceLength;
+
+                    frames -= sliceLength;
+
+                    // timeInfo must be updated
+                    timeInfo.timeInSamples += sliceLength;
+                }
+                assert(frames == 0);
+            }
         }
+
+        _lastBypassEnabledSeen = bypassEnabled;
     }
 
     /// For plugin format clients only.
@@ -673,6 +738,10 @@ protected:
 
     // Used as a flag that _graphics can be used (by audio thread or for destruction)
     shared(bool) _graphicsIsAvailable = false;
+
+    // Whether the internal bypass functionnality is enabled or not.
+    shared(bool) _bypassEnabled = false;
+    bool _lastBypassEnabledSeen = false; // only read by the audio thread.
 
     IHostCommand _hostCommand;
 

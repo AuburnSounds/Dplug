@@ -706,6 +706,16 @@ private:
                 return 1;
             }
 
+            case effSetBypass: // opcode 44
+                if (!_client.hasBypass())
+                    return 0;
+                else
+                {
+                    bool bypassEnabled = (value != 0);
+                    _client.setBypassEnabled(bypassEnabled);
+                }
+                return 1;
+
             case effGetEffectName: // opcode 45
             {
                 char* p = cast(char*)ptr;
@@ -747,6 +757,11 @@ private:
 
                 if (strcmp(str, "receiveVstTimeInfo") == 0)
                     return 1;
+
+                if (strcmp(str, "bypass") == 0)
+                {
+                    return _client.hasBypass() ? 1 : 0;
+                }
 
                 if (_client.isSynth())
                 {
@@ -986,14 +1001,14 @@ private:
 
 // This look-up table speed-up unimplemented opcodes
 private static immutable ubyte[64] opcodeShouldReturn0Immediately =
-[ 1, 0, 0, 0, 0, 0, 0, 0,
-  0, 1, 0, 0, 0, 0, 0, 0,
-  1, 1, 1, 1, 1, 1, 0, 0,
-  0, 0, 0, 0, 0, 0, 1, 1,
-  1, 0, 0, 0, 1, 1, 1, 1,
-  1, 1, 0, 1, 1, 0, 1, 0,
-  0, 1, 1, 0, 1, 1, 1, 1,
-  1, 1, 0, 1, 1, 1, 1, 1 ];
+[ 1, 0, 0, 0, 0, 0, 0, 0,   // opcodes  0 to 7
+  0, 1, 0, 0, 0, 0, 0, 0,   // opcodes  8 to 15
+  1, 1, 1, 1, 1, 1, 0, 0,   // opcodes 16 to 23
+  0, 0, 0, 0, 0, 0, 1, 1,   // opcodes 24 to 31
+  1, 0, 0, 0, 1, 1, 1, 1,   // opcodes 32 to 39
+  1, 1, 0, 1, 0, 0, 1, 0,   // opcodes 40 to 47
+  0, 1, 1, 0, 1, 1, 1, 1,   // opcodes 48 to 55
+  1, 1, 0, 1, 1, 1, 1, 1 ]; // opcodes 56 to 63
 
 //
 // VST callbacks
