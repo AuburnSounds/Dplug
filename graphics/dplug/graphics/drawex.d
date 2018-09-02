@@ -60,7 +60,9 @@ void aaFillSector(V, COLOR)(auto ref V v, float x, float y, float r0, float r1, 
     int y0 = cast(int)floor(y - r1 - 1);
     int y1 = cast(int)ceil(y + r1 + 1);
 
-    float r0s = std.algorithm.max(0, r0 - 1) ^^ 2;
+    float r0s = r0-1;
+    if (r0s < 0) r0s = 0;
+    r0s = r0s * r0s;
     float r1s = (r1 + 1) * (r1 + 1);
 
     if (a0 > a1)

@@ -84,8 +84,8 @@ nothrow:
 
         assert(_upAnimation >= 0 && _upAnimation <= 1);
 
-        float openAnimation = std.algorithm.min(1.0f,  _upAnimation * 2.0f);
-        float moveUpAnimation = std.algorithm.max(0.0f,  _upAnimation * 2.0f - 1.0f);
+        float openAnimation = min(1.0f,  _upAnimation * 2.0f);
+        float moveUpAnimation = max(0.0f,  _upAnimation * 2.0f - 1.0f);
 
         box2i fullRect = box2i(0, 0, W, H);
 

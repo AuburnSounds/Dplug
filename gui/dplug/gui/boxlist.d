@@ -6,8 +6,6 @@
 */
 module dplug.gui.boxlist;
 
-import std.algorithm.comparison;
-
 import dplug.core.vec;
 import gfm.math.box;
 
@@ -146,12 +144,16 @@ void tileAreas(in box2i[] areas, int maxWidth, int maxHeight, ref Vec!box2i spli
         foreach (int j; 0..nHeight)
         {
             int y0 = maxHeight * j;
-            int y1 = std.algorithm.min(y0 + maxHeight, area.height);
+            int y1 = y0 + maxHeight;
+            if (y1 > area.height)
+                y1 = area.height;
 
             foreach (int i; 0..nWidth)
             {
                 int x0 = maxWidth * i;
-                int x1 = std.algorithm.min(x0 + maxWidth, area.width);
+                int x1 = x0 + maxWidth;
+                if (x1 > area.width)
+                    x1 = area.width;
 
                 box2i b = box2i(x0, y0, x1, y1).translate(area.min);
                 assert(area.contains(b));

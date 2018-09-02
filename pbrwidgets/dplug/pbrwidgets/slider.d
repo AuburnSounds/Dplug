@@ -155,7 +155,7 @@ nothrow:
             if (isDragged)
             {
                 // lit trail is 50% brighter when dragged      
-                litTrail.a = cast(ubyte) std.algorithm.min(255, 3 * litTrail.a / 2);
+                litTrail.a = cast(ubyte) min(255, 3 * litTrail.a / 2);
             }
 
             paintTrail(0, 1, unlitTrailDiffuse);

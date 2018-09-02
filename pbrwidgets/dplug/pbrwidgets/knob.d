@@ -158,7 +158,7 @@ nothrow:
                 // when dragged, trail is two times brighter
                 if (isDragged)
                 {
-                    litTrail.a = cast(ubyte) std.algorithm.min(255, 2 * litTrail.a);                    
+                    litTrail.a = cast(ubyte) min(255, 2 * litTrail.a);                    
                 }
 
                 croppedDiffuse.aaFillSector(trailCenterX, trailCenterY, radius * trailRadiusMin, radius * trailRadiusMax, 
@@ -187,8 +187,8 @@ nothrow:
             // Draw knob
             //
             float angle = getValueAngle + PI * 0.5f;
-            float depthRadius = std.algorithm.max(knobRadiusPx * 3.0f / 5.0f, 0);
-            float depthRadius2 = std.algorithm.max(knobRadiusPx * 3.0f / 5.0f, 0);
+            float depthRadius = max(knobRadiusPx * 3.0f / 5.0f, 0);
+            float depthRadius2 = max(knobRadiusPx * 3.0f / 5.0f, 0);
 
             float posEdgeX = center.x + sin(angle) * depthRadius2;
             float posEdgeY = center.y - cos(angle) * depthRadius2;
@@ -235,7 +235,7 @@ nothrow:
 
                 float t = -1 + 2 * abs(disp - PI) / PI;
 
-                float LEDRadius = std.algorithm.max(0.0f, lerp(LEDRadiusMin, LEDRadiusMax, t));
+                float LEDRadius = max(0.0f, lerp(LEDRadiusMin, LEDRadiusMax, t));
 
                 float smallRadius = knobRadiusPx * LEDRadius * 0.714f;
                 float largerRadius = knobRadiusPx * LEDRadius;
