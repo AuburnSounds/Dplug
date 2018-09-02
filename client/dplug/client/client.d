@@ -51,23 +51,25 @@ nothrow @nogc:
 // Plugin version in major.minor.patch form.
 struct PluginVersion
 {
+nothrow:
+@nogc:
     int major;
     int minor;
     int patch;
 
-    int toVSTVersion() pure const nothrow @nogc
+    int toVSTVersion() pure const
     {
         assert(major < 10 && minor < 10 && patch < 10);
         return major * 1000 + minor * 100 + patch*10;
     }
 
-    int toAUVersion() pure const nothrow @nogc
+    int toAUVersion() pure const
     {
         assert(major < 256 && minor < 256 && patch < 256);
         return (major << 16) | (minor << 8) | patch;
     }
 
-    int toAAXPackageVersion() pure const nothrow @nogc
+    int toAAXPackageVersion() pure const
     {
         // For AAX, considered binary-compatible unless major version change
         return major;
@@ -179,6 +181,22 @@ nothrow:
 
             // Sets owner reference.
             param.setClientReference(this);
+        }
+
+        // Search for a special bypass parameter.
+        // Such a parameter simply has the name "Bypass".
+        // There can be only one such parameter.
+        // Such a parameter MUST be a BoolParameter.
+        _bypassParameterIndex = -1;
+        foreach(int i, Parameter param; _params)
+        {
+            if (param.name() == "Bypass")
+            {
+                // If you fail on this assertion, you have several "Bypass" parameters.
+                assert(_bypassParameterIndex == -1);
+                _bypassParameterIndex = i;
+                getBypassParameter(); // check that it's a BoolParameter
+            }
         }
 
         // Create presets
@@ -335,25 +353,23 @@ nothrow:
     }
 
     /// Enable or disable internal bypass (default is disabled).
+    /// This function exists for the VST2 and AU wrapper that don't have a concept of bypass parameters.
     ///
     /// Threading:
-    ///     Should be called by either the client or the UI.
-    ///     Any thread can call these, the bypass will be asynchronously set
-    ///     at the next `processAudioFromHost`.
+    ///     Should be called by the host, not a UI widget.
     ///
-    void setBypassEnabled(bool bypassEnabled)
+    void setBypassEnabledFromHost(bool bypassEnabled)
     {
-        atomicStore!(MemoryOrder.raw)(_bypassEnabled, bypassEnabled);
+        BoolParameter bp = getBypassParameter();
+        bp.setFromHost(bypassEnabled ? 1.0 : 0.0);
     }
 
     /// Gets the current value for internal bypass.
-    ///
-    /// Threading:
-    ///     Can be called by anyone.
-    ///
+    /// This function exists for AU wrapper that doesn't have a concept of bypass parameters.
     bool getBypassEnabled()
     {
-        return atomicLoad!(MemoryOrder.raw)(_bypassEnabled);
+        BoolParameter bp = getBypassParameter();
+        return bp.valueAtomic();
     }
 
     /// Override if you create a plugin with UI.
@@ -503,13 +519,15 @@ nothrow:
         return _info.category;
     }
 
-    /// Returns: `true` if this plug-in can bypass with `setBy
+    /// Does this plug-in implement internal soft bypass by itself? 
+    ///
+    /// Returns: `true` if this plug-in has one internal parameter considered as a bypass parameter.
+    ///          In this case the plugin implements bypassing by itself.
+    ///          If true, this plug-in may be bypassed either with `setBypassEnabledFromHost` _or_ setting that parameter.
+    ///          If the format allows it (AAX/VST3) the host will know of this parameter.
     final bool hasBypass() pure const nothrow @nogc
     {
-        // Currently, all plug-in can bypass because AU mandates bypass to exist.
-        // However, this bypass can be either a hard one created by Dplug, or it could
-        // be an (unimplemented) soft one through a plugin parameter.
-        return true; 
+        return _bypassParameterIndex != -1;
     }
 
     final string VSTBundleIdentifier() pure const nothrow @nogc
@@ -607,85 +625,49 @@ nothrow:
                               TimeInfo timeInfo
                               ) nothrow @nogc
     {
-        bool bypassEnabled = getBypassEnabled();
-
-        if (bypassEnabled)
+        // In debug mode, fill all output audio buffers with `float.nan`.
+        // This avoids a plug-in forgetting to fill output buffers, which can happen if you
+        // implement silence detection badly.
+        debug
         {
-            // INTERNAL BYPASS DEFAULT IMPLEMENTATION
-
-            // Read messages pending for this buffer.
-            // See #284, this can drop messages while the plugin is disabled but alternatives were worse.
-            if (_info.receivesMIDI)
-               getNextMidiMessages(frames);
-
-            // TODO: compensate latency, unfortunately this requires much buffers
-
-            // Copy relevant channels form input to output
-            int usedInputs = cast(int)(inputs.length);
-            int usedOutputs = cast(int)(outputs.length);
-            int copiedChannels = usedInputs < usedOutputs ? usedInputs : usedOutputs;
-
-            for (int chan = 0; chan < copiedChannels; ++chan)
+            for (int k = 0; k < outputs.length; ++k)
             {
-                inputs[chan][0..frames] = outputs[chan][0..frames];
+                float* pOut = outputs[k];
+                pOut[0..frames] = float.nan;
             }
+        }
 
-            // Fill additional output channels with zeroes
-            for (int chan = copiedChannels; chan < usedOutputs; ++chan)
-                outputs[chan][0..frames] = 0;
-
-            asm nothrow @nogc{ int 3;}
+        if (_maxFramesInProcess == 0)
+        {
+            processAudio(inputs, outputs, frames, timeInfo);
         }
         else
         {
-            // NORMAL PROCESSING
-
-            // In debug mode, fill all output audio buffers with `float.nan`.
-            // This avoids a plug-in forgetting to fill output buffers, which can happen if you
-            // implement silence detection badly.
-            debug
+            // Slice audio in smaller parts
+            while (frames > 0)
             {
-                for (int k = 0; k < outputs.length; ++k)
-                {
-                    float* pOut = outputs[k];
-                    pOut[0..frames] = float.nan;
-                }
-            }
+                // Note: the last slice will be smaller than the others
+                int sliceLength = frames;
+                if (sliceLength > _maxFramesInProcess)
+                    sliceLength = _maxFramesInProcess;
 
-            if (_maxFramesInProcess == 0)
-            {
-                processAudio(inputs, outputs, frames, timeInfo);
-            }
-            else
-            {
-                // Slice audio in smaller parts
-                while (frames > 0)
-                {
-                    // Note: the last slice will be smaller than the others
-                    int sliceLength = frames;
-                    if (sliceLength > _maxFramesInProcess)
-                        sliceLength = _maxFramesInProcess;
+                processAudio(inputs, outputs, sliceLength, timeInfo);
 
-                    processAudio(inputs, outputs, sliceLength, timeInfo);
+                // offset all input buffer pointers
+                for (int i = 0; i < cast(int)inputs.length; ++i)
+                    inputs[i] = inputs[i] + sliceLength;
 
-                    // offset all input buffer pointers
-                    for (int i = 0; i < cast(int)inputs.length; ++i)
-                        inputs[i] = inputs[i] + sliceLength;
+                // offset all output buffer pointers
+                for (int i = 0; i < cast(int)outputs.length; ++i)
+                    outputs[i] = outputs[i] + sliceLength;
 
-                    // offset all output buffer pointers
-                    for (int i = 0; i < cast(int)outputs.length; ++i)
-                        outputs[i] = outputs[i] + sliceLength;
+                frames -= sliceLength;
 
-                    frames -= sliceLength;
-
-                    // timeInfo must be updated
+                // timeInfo must be updated
                     timeInfo.timeInSamples += sliceLength;
-                }
-                assert(frames == 0);
             }
+            assert(frames == 0);
         }
-
-        _lastBypassEnabledSeen = bypassEnabled;
     }
 
     /// For plugin format clients only.
@@ -739,9 +721,6 @@ protected:
     // Used as a flag that _graphics can be used (by audio thread or for destruction)
     shared(bool) _graphicsIsAvailable = false;
 
-    // Whether the internal bypass functionnality is enabled or not.
-    shared(bool) _bypassEnabled = false;
-    bool _lastBypassEnabledSeen = false; // only read by the audio thread.
 
     IHostCommand _hostCommand;
 
@@ -762,7 +741,26 @@ private:
     // Container for awaiting MIDI messages.
     MidiQueue _midiQueue;
 
-    final void createGraphicsLazily() nothrow @nogc
+    // If `_bypassParameterIndex == -1`, this plug-in has no detected bypass parameter.
+    // The only form of bypass implemented will be for AU.
+    // If `_bypassParameterIndex != -1`, this plug-in has a special bypass parameter, which compensates
+    // latency, and is known to the host in AAX.
+    int _bypassParameterIndex;
+
+    /// Returns: the bypass parameter, or `null` if no such exist.
+    final BoolParameter getBypassParameter()
+    {
+        if (_bypassParameterIndex == -1)
+            return null;
+        else
+        {
+            BoolParameter bp = cast(BoolParameter)(_params[_bypassParameterIndex]);
+            assert(bp !is null); // If you fail on this assertion, the bypass parameter isn't a BoolParameter.
+            return bp;
+        }
+    }
+
+    final void createGraphicsLazily()
     {
         // First GUI opening create the graphics object
         // no need to protect _graphics here since the audio thread

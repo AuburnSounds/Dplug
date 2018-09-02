@@ -1601,7 +1601,7 @@ private:
                 if (!_client.hasBypass())
                     return kAudioUnitErr_PropertyNotWritable;
                 bool bypassed = (*(cast(UInt32*) pData) != 0);
-                _client.setBypassEnabled(bypassed);
+                _client.setBypassEnabledFromHost(bypassed);
                 return noErr;
             }
 
