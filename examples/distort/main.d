@@ -65,7 +65,17 @@ nothrow:
         params.pushBack( mallocNew!GainParameter(paramInput, "input", 6.0, 0.0) );
         params.pushBack( mallocNew!LinearFloatParameter(paramDrive, "drive", "%", 1.0f, 2.0f, 1.0f) );
         params.pushBack( mallocNew!GainParameter(paramOutput, "output", 6.0, 0.0) );
-        params.pushBack( mallocNew!BoolParameter(paramOnOff, "on/off", true) );
+
+        // "Bypass" is a special parameter name that is recognized to be the plug-in master bypass
+        // If you have such a BoolParameter with this name, the host will use it to have "soft bypass".
+        // This has the following advantages:
+        // - you implement it as you wish
+        // - you can eventually fade in/out the bypass
+        // - you can still process pending MIDI messages to avoid dropping them, etc..
+        // IMPORTANT: if you don't have a "Bypass" parameter, you won't be able to get Pro Tools 
+        // to bypass your plug-in.
+        params.pushBack( mallocNew!BoolParameter(paramOnOff, "Bypass", false) );
+
         return params.releaseData();
     }
 
@@ -73,8 +83,6 @@ nothrow:
     {
         auto io = makeVec!LegalIO();
         io.pushBack(LegalIO(1, 1));
-        io.pushBack(LegalIO(1, 2));
-        io.pushBack(LegalIO(2, 1));
         io.pushBack(LegalIO(2, 2));
         return io.releaseData();
     }

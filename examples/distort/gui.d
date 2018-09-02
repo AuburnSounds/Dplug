@@ -109,8 +109,8 @@ nothrow:
         // Add switch
         addChild(onOffSwitch = mallocNew!UIOnOffSwitch(context(), cast(BoolParameter) _client.param(paramOnOff)));
         onOffSwitch.position = box2i.rectangle(90, 177, 30, 40);
-        onOffSwitch.diffuseOn = litTrailDiffuse;
-        onOffSwitch.diffuseOff = unlitTrailDiffuse;
+        onOffSwitch.diffuseOn = unlitTrailDiffuse;
+        onOffSwitch.diffuseOff = litTrailDiffuse;
 
         // Add bargraphs
         addChild(inputBargraph = mallocNew!UIBargraph(context(), 2, -80.0f, 6.0f));
