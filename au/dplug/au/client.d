@@ -355,12 +355,16 @@ private:
     int _maxFrames = 1024;
 
     // From audio thread POV
+    bool _lastBypassed = false;
     int _lastMaxFrames = 0;
     float _lastSamplerate = 0;
     int _lastUsedInputs = 0;
     int _lastUsedOutputs = 0;
 
     double _lastRenderTimestamp = double.nan;
+
+    // When true, buffers gets hard bypassed
+    bool _hardBypassed = false;
 
     bool _active = false;
 
@@ -1224,17 +1228,17 @@ private:
             {
                 if (!isGlobalScope(scope_))
                     return kAudioUnitErr_InvalidScope;
-                if (!_client.hasBypass())
-                {
-                    *pWriteable = false;
-                    *pDataSize = UInt32.sizeof;
-                    *(cast(UInt32*) pData) = 0;
-                    return noErr;
-                }
-                *pWriteable = true;
+                *pWriteable = true; // always implement a bypass option, whether hard or soft
                 *pDataSize = UInt32.sizeof;
                 if (pData)
-                    *(cast(UInt32*) pData) = (_client.getBypassEnabled() ? 1 : 0);
+                {
+                    bool bypassIsEnabled;
+                    if (_client.hasBypass())
+                        bypassIsEnabled = _client.getBypassEnabled();
+                    else
+                        bypassIsEnabled = (_hardBypassed ? 1 : 0);
+                    *(cast(UInt32*) pData) = bypassIsEnabled;
+                }
                 return noErr;
             }
 
@@ -1598,11 +1602,19 @@ private:
 
             case kAudioUnitProperty_BypassEffect: // 21
             {
-                if (!_client.hasBypass())
-                    return kAudioUnitErr_PropertyNotWritable;
-                bool bypassed = (*(cast(UInt32*) pData) != 0);
-                _client.setBypassEnabledFromHost(bypassed);
-                return noErr;
+                 if (_client.hasBypass())
+                 {
+                    // using soft bypass
+                    bool bypassed = (*(cast(UInt32*) pData) != 0);
+                    _client.setBypassEnabledFromHost(bypassed);
+                 }
+                 else
+                 {
+                     // using hard bypass
+                     _hardBypassed = (*(cast(UInt32*) pData) != 0);
+                     _messageQueue.pushBack(makeResetStateMessage());
+                 }
+                 return noErr;
             }
 
             case kAudioUnitProperty_SetRenderCallback: // 23
@@ -1739,7 +1751,7 @@ private:
 
     AudioThreadMessage makeResetStateMessage() pure const nothrow @nogc
     {
-        return AudioThreadMessage(AudioThreadMessage.Type.resetState, _maxFrames, _sampleRate);
+        return AudioThreadMessage(AudioThreadMessage.Type.resetState, _maxFrames, _sampleRate, _hardBypassed);
     }
 
     // Serialize state
@@ -1833,7 +1845,7 @@ private:
             return kAudioUnitErr_InvalidPropertyValue;
 
         // process messages to get newer number of input, samplerate or frame number
-        void processMessages(ref float newSamplerate, ref int newMaxFrames) nothrow @nogc
+        void processMessages(ref float newSamplerate, ref int newMaxFrames, ref bool newBypassed) nothrow @nogc
         {
             // Only the last reset state message is meaningful, so we unwrap them
 
@@ -1847,6 +1859,7 @@ private:
                         // Note: number of input/ouputs is discarded from the message
                         newMaxFrames = msg.maxFrames;
                         newSamplerate = msg.samplerate;
+                        newBypassed = msg.bypassed;
                         break;
 
                     case midi:
@@ -1857,7 +1870,7 @@ private:
         }
         float newSamplerate = _lastSamplerate;
         int newMaxFrames = _lastMaxFrames;
-        processMessages(newSamplerate, newMaxFrames);
+        processMessages(newSamplerate, newMaxFrames, _lastBypassed);
 
         // Must fail when given too much frames
         if (nFrames > newMaxFrames)
@@ -2002,12 +2015,25 @@ private:
                 _lastUsedOutputs = newUsedOutputs;
             }
 
-            
-            TimeInfo timeInfo = getTimeInfo();
-            _client.processAudioFromHost(_inputPointersNoGap[0..newUsedInputs],
-                                            _outputPointersNoGap[0..newUsedOutputs],
-                                            nFrames,
-                                            timeInfo);
+            if (_lastBypassed)
+            {
+                // TODO: should delay by latency when bypassed
+                int minIO = min(newUsedInputs, newUsedOutputs);
+
+                for (int i = 0; i < minIO; ++i)
+                    _outputPointersNoGap[i][0..nFrames] = _inputPointersNoGap[i][0..nFrames];
+
+                for (int i = minIO; i < newUsedOutputs; ++i)
+                    _outputPointersNoGap[i][0..nFrames] = 0;
+            }
+            else
+            {
+                TimeInfo timeInfo = getTimeInfo();
+                _client.processAudioFromHost(_inputPointersNoGap[0..newUsedInputs],
+                                             _outputPointersNoGap[0..newUsedOutputs],
+                                             nFrames,
+                                             timeInfo);
+            }
         }
 
         // post-render
@@ -2202,16 +2228,18 @@ struct AudioThreadMessage
         midi
     }
 
-    this(Type type_, int maxFrames_, float samplerate_) pure const nothrow @nogc
+    this(Type type_, int maxFrames_, float samplerate_, bool bypassed_) pure const nothrow @nogc
     {
         type = type_;
         maxFrames = maxFrames_;
         samplerate = samplerate_;
+        bypassed = bypassed_;
     }
 
     Type type;
     int maxFrames;
     float samplerate;
+    bool bypassed;
     MidiMessage midiMessage;
 }
 
