@@ -28,7 +28,7 @@ Come talk with us on the [D Language Discord](https://discord.gg/QZtGZUw) to lea
 - [Graillon by Auburn Sounds](https://www.auburnsounds.com/products/Graillon.html)
 - [M4 Multiband Compressor by Cut Through Recordings](http://www.modernmetalproduction.com/product/m4-multiband-compressor-vst-au/)
 - [Panagement by Auburn Sounds](https://www.auburnsounds.com/products/Panagement.html)
-
+- [Tarabia Distortion by SMAOLAB](http://smaolab.org/product/tarabia-distortion/)
 
 ### Release notes
 
