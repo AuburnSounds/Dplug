@@ -4,8 +4,6 @@
 
 `Dplug` is a library for creating audio plug-ins as simply as possible. 
 
-Come talk with us on the [D Language Discord](https://discord.gg/QZtGZUw) to learn more. 
-
 [Auto-generated documentation...](http://dplug.dpldocs.info/dplug.html)
 
 **IMPORTANT To distribute VST2 plug-ins be sure to sign a VST2 Licence Agreement with Steinberg before October 2018.**
@@ -21,14 +19,18 @@ Come talk with us on the [D Language Discord](https://discord.gg/QZtGZUw) to lea
 - See the [list of supported hosts...](https://github.com/AuburnSounds/Dplug/wiki/Host-Support)
 
 
-### Products made with Dplug
+### Community and ecosystem
 
-- [Couture by Auburn Sounds](https://www.auburnsounds.com/products/Couture.html)
-- [Entropy by Cut Through Recordings](http://www.modernmetalproduction.com/product/entropy-ii-enhanced-stereo-delay-vst-au/)
-- [Graillon by Auburn Sounds](https://www.auburnsounds.com/products/Graillon.html)
-- [M4 Multiband Compressor by Cut Through Recordings](http://www.modernmetalproduction.com/product/m4-multiband-compressor-vst-au/)
-- [Panagement by Auburn Sounds](https://www.auburnsounds.com/products/Panagement.html)
-- [Tarabia Distortion by SMAOLAB](http://smaolab.org/product/tarabia-distortion/)
+DPlug was successfully leveraged to build the following products:
+
+- [Couture](https://www.auburnsounds.com/products/Couture.html) by Auburn Sounds
+- [Entropy](http://www.modernmetalproduction.com/product/entropy-ii-enhanced-stereo-delay-vst-au/) by Cut Through Recordings
+- [Graillon](https://www.auburnsounds.com/products/Graillon.html) by Auburn Sounds
+- [M4 Multiband Compressor](http://www.modernmetalproduction.com/product/m4-multiband-compressor-vst-au/) by Cut Through Recordings
+- [Panagement](https://www.auburnsounds.com/products/Panagement.html) by Auburn Sounds
+- [Tarabia Distortion](http://smaolab.org/product/tarabia-distortion/) by SMAOLAB
+
+Become one happy [DPlug contributor](https://github.com/AuburnSounds/Dplug/graphs/contributors) by submitting issues and pull-requests, and come talk with us on the [D Language Discord](https://discord.gg/QZtGZUw) to learn more and meet your peers DPlug users!
 
 ### Release notes
 
