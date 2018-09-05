@@ -1232,11 +1232,7 @@ private:
                 *pDataSize = UInt32.sizeof;
                 if (pData)
                 {
-                    bool bypassIsEnabled;
-                    if (_client.hasBypass())
-                        bypassIsEnabled = _client.getBypassEnabled();
-                    else
-                        bypassIsEnabled = (_hardBypassed ? 1 : 0);
+                    bool bypassIsEnabled = (_hardBypassed ? 1 : 0);
                     *(cast(UInt32*) pData) = bypassIsEnabled;
                 }
                 return noErr;
@@ -1602,19 +1598,10 @@ private:
 
             case kAudioUnitProperty_BypassEffect: // 21
             {
-                 if (_client.hasBypass())
-                 {
-                    // using soft bypass
-                    bool bypassed = (*(cast(UInt32*) pData) != 0);
-                    _client.setBypassEnabledFromHost(bypassed);
-                 }
-                 else
-                 {
-                     // using hard bypass
-                     _hardBypassed = (*(cast(UInt32*) pData) != 0);
-                     _messageQueue.pushBack(makeResetStateMessage());
-                 }
-                 return noErr;
+                // using hard bypass
+                _hardBypassed = (*(cast(UInt32*) pData) != 0);
+                _messageQueue.pushBack(makeResetStateMessage());
+                return noErr;
             }
 
             case kAudioUnitProperty_SetRenderCallback: // 23

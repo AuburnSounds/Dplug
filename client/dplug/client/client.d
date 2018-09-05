@@ -183,22 +183,6 @@ nothrow:
             param.setClientReference(this);
         }
 
-        // Search for a special bypass parameter.
-        // Such a parameter simply has the name "Bypass".
-        // There can be only one such parameter.
-        // Such a parameter MUST be a BoolParameter.
-        _bypassParameterIndex = -1;
-        foreach(int i, Parameter param; _params)
-        {
-            if (param.name() == "Bypass")
-            {
-                // If you fail on this assertion, you have several "Bypass" parameters.
-                assert(_bypassParameterIndex == -1);
-                _bypassParameterIndex = i;
-                getBypassParameter(); // check that it's a BoolParameter
-            }
-        }
-
         // Create presets
         _presetBank = mallocNew!PresetBank(this, buildPresets());
 
@@ -352,26 +336,6 @@ nothrow:
         param(index).setFromHost(value);
     }
 
-    /// Enable or disable internal bypass (default is disabled).
-    /// This function exists for the VST2 and AU wrapper that don't have a concept of bypass parameters.
-    ///
-    /// Threading:
-    ///     Should be called by the host, not a UI widget.
-    ///
-    void setBypassEnabledFromHost(bool bypassEnabled)
-    {
-        BoolParameter bp = getBypassParameter();
-        bp.setFromHost(bypassEnabled ? 1.0 : 0.0);
-    }
-
-    /// Gets the current value for internal bypass.
-    /// This function exists for AU wrapper that doesn't have a concept of bypass parameters.
-    bool getBypassEnabled()
-    {
-        BoolParameter bp = getBypassParameter();
-        return bp.valueAtomic();
-    }
-
     /// Override if you create a plugin with UI.
     /// The returned IGraphics must be allocated with `mallocEmplace`.
     IGraphics createGraphics() nothrow @nogc
@@ -517,17 +481,6 @@ nothrow:
     final PluginCategory pluginCategory() pure const nothrow @nogc
     {
         return _info.category;
-    }
-
-    /// Does this plug-in implement internal soft bypass by itself? 
-    ///
-    /// Returns: `true` if this plug-in has one internal parameter considered as a bypass parameter.
-    ///          In this case the plugin implements bypassing by itself.
-    ///          If true, this plug-in may be bypassed either with `setBypassEnabledFromHost` _or_ setting that parameter.
-    ///          If the format allows it (AAX/VST3) the host will know of this parameter.
-    final bool hasBypass() pure const nothrow @nogc
-    {
-        return _bypassParameterIndex != -1;
     }
 
     final string VSTBundleIdentifier() pure const nothrow @nogc
@@ -740,25 +693,6 @@ private:
 
     // Container for awaiting MIDI messages.
     MidiQueue _midiQueue;
-
-    // If `_bypassParameterIndex == -1`, this plug-in has no detected bypass parameter.
-    // The only form of bypass implemented will be for AU.
-    // If `_bypassParameterIndex != -1`, this plug-in has a special bypass parameter, which compensates
-    // latency, and is known to the host in AAX.
-    int _bypassParameterIndex;
-
-    /// Returns: the bypass parameter, or `null` if no such exist.
-    final BoolParameter getBypassParameter()
-    {
-        if (_bypassParameterIndex == -1)
-            return null;
-        else
-        {
-            BoolParameter bp = cast(BoolParameter)(_params[_bypassParameterIndex]);
-            assert(bp !is null); // If you fail on this assertion, the bypass parameter isn't a BoolParameter.
-            return bp;
-        }
-    }
 
     final void createGraphicsLazily()
     {
