@@ -492,8 +492,12 @@ unittest
 
 // ***************************************************************************
 
-T blend(T)(T f, T b, T a) pure nothrow @nogc
-    if (is(typeof(f*a+~b)))
+ushort blend(ushort f, ushort b, ushort a) pure nothrow @nogc
 {
-    return cast(T) ( ((f*a) + (b*cast(T)(~cast(int)a))) / T.max );
+    return cast(ushort) ( ((f*a) + (b*cast(ushort)(~cast(int)a))) / ushort.max );
+}
+
+ubyte blend(ubyte f, ubyte b, ubyte a) pure nothrow @nogc
+{
+    return cast(ubyte) ( ((f*a) + (b*cast(ubyte)(~cast(int)a))) / ubyte.max );
 }
