@@ -2,10 +2,10 @@ import std.math;
 import dplug.core, dplug.client, dplug.vst;
 import synthesis;
 
-// This create the DLL entry point
+// This creates the DLL entry point
 mixin(DLLEntryPoint!());
 
-// This create the VST entry point
+// This creates the VST entry point
 mixin(VSTEntryPoint!PolyAlias);
 
 private

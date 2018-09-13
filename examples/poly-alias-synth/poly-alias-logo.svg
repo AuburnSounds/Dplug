@@ -1,0 +1,16 @@
+<svg width="700" height="70" xmlns="http://www.w3.org/2000/svg">
+    <g>
+        <title>Poly Alias - Open Source Example Synth</title>
+        <g display="none" overflow="visible" y="0" x="0" height="100%" width="100%" id="canvasGrid">
+            <rect fill="url(#gridpattern)" stroke-width="0" y="0" x="0" height="100%" width="100%"/>
+        </g>
+    </g>
+    <g>
+        <line x1="0" y1="0" x2="700" y2="0" stroke-width="4" stroke="#000000"/>
+        <line x1="0" y1="70" x2="700" y2="70" stroke-width="4" stroke="#000000"/>
+        <line x1="0" y1="0" x2="0" y2="70" stroke-width="4" stroke="#000000"/>
+        <line x1="700" y1="0" x2="700" y2="70" stroke-width="4" stroke="#000000"/>
+        <text style="cursor: move;" xml:space="preserve" text-anchor="start" font-family="monospace" font-size="36" x="16" y="47" stroke-width="0" stroke="#C34" fill="#C34">🎹 Poly Alias</text>
+        <text xml:space="preserve" text-anchor="start" font-family="monospace" font-size="22" x="326" y="47" stroke-width="0" stroke="#C97A86" fill="#000000">Open Source Example Synth</text>
+    </g>
+</svg>
