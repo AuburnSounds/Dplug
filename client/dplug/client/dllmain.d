@@ -14,55 +14,16 @@ version = doNotUseRuntime;
 
 version(Windows)
 {
-    version(doNotUseRuntime)
+    template DLLEntryPoint()
     {
-        template DLLEntryPoint()
-        {
-            const char[] DLLEntryPoint = q{
-                import core.sys.windows.windef;
-                import core.sys.windows.dll;
-                extern (Windows) BOOL DllMain(HINSTANCE hInstance, ULONG ulReason, LPVOID pvReserved)
-                {
-                    return true;
-                }
-            };
-        }
-    }
-    else
-    {
-        template DLLEntryPoint()
-        {
-            const char[] DLLEntryPoint = q{
-                import core.sys.windows.windef;
-                import core.sys.windows.dll;
-
-                extern (Windows) BOOL DllMain(HINSTANCE hInstance, ULONG ulReason, LPVOID pvReserved)
-                {
-                    switch (ulReason)
-                    {
-                        case DLL_PROCESS_ATTACH:
-                            dll_process_attach(hInstance, false);
-                            break;
-
-                        case DLL_PROCESS_DETACH:
-                            dll_process_detach(hInstance, true);
-                            break;
-
-                        case DLL_THREAD_ATTACH:
-                            dll_thread_attach(false, true);
-                            break;
-
-                        case DLL_THREAD_DETACH:
-                            dll_thread_detach(false, true); 
-                            break;
-
-                        default:
-                            break;
-                    }
-                    return true;
-                }
-            };
-        }
+        const char[] DLLEntryPoint = q{
+            import core.sys.windows.windef;
+            import core.sys.windows.dll;
+            extern (Windows) BOOL DllMain(HINSTANCE hInstance, ULONG ulReason, LPVOID pvReserved)
+            {
+                return true;
+            }
+        };
     }
 }
 else
