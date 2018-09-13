@@ -345,7 +345,7 @@ public:
     {
         super(index, name, label);
         _name = name;
-        _value = _defaultValue = clampValue!int(defaultValue, min, max);
+        _value = _defaultValue = clamp(defaultValue, min, max);
         _min = min;
         _max = max;
     }
@@ -488,12 +488,12 @@ private:
         else
             rounded = cast(int)(-0.5f + mapped);
 
-        return clampValue!int(rounded, _min, _max);
+        return clamp(rounded, _min, _max);
     }
 
     final double toNormalized(int value) nothrow @nogc
     {
-        return clampValue!double( (cast(double)value - _min) / (_max - _min), 0.0, 1.0);
+        return clamp( (cast(double)value - _min) / (_max - _min), 0.0, 1.0);
     }
 }
 
@@ -542,19 +542,6 @@ public:
 
 private:
     const(string[]) _possibleValues;
-}
-
-private
-{
-    T clampValue(T)(T x, T min, T max) pure nothrow @nogc
-    {
-        if (x < min)
-            return min;
-        else if (x > max)
-            return max;
-        else
-            return x;
-    }
 }
 
 /// A float parameter
@@ -725,12 +712,12 @@ class LinearFloatParameter : FloatParameter
 
     override double toNormalized(double value)
     {
-        return clampValue!double( (value - _min) / (_max - _min), 0.0, 1.0);
+        return clamp( (value - _min) / (_max - _min), 0.0, 1.0);
     }
 
     override double fromNormalized(double normalizedValue)
     {
-        return clampValue!double(_min + (_max - _min) * normalizedValue, _min, _max);
+        return clamp(_min + (_max - _min) * normalizedValue, _min, _max);
     }
 }
 
@@ -801,7 +788,7 @@ class PowFloatParameter : FloatParameter
 
     override double toNormalized(double value)
     {
-        double result = clampValue!double( (value - _min) / (_max - _min), 0.0, 1.0) ^^ (1 / _shape);
+        double result = clamp( (value - _min) / (_max - _min), 0.0, 1.0) ^^ (1 / _shape);
         assert(result >= 0 && result <= 1);
         return result;
     }
@@ -809,7 +796,7 @@ class PowFloatParameter : FloatParameter
     override double fromNormalized(double normalizedValue)
     {
         double v = _min + (normalizedValue ^^ _shape) * (_max - _min);
-        return clampValue!double(v, _min, _max);
+        return clamp(v, _min, _max);
     }
 
 private:
