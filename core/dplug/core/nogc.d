@@ -29,9 +29,7 @@ import std.traits;
 import std.array: empty;
 import std.exception: assumeUnique;
 
-// This module provides many utilities to deal with @nogc
-
-version = doNotUseRuntime;
+// This module provides many utilities to deal with @nogc nothrow, in a situation with the runtime disabled.
 
 //
 // Faking @nogc
@@ -141,15 +139,6 @@ auto mallocNew(T, Args...)(Args args)
     if (!rawMemory)
         onOutOfMemoryErrorNoGC();
 
-    version(doNotUseRuntime)
-    {
-    }
-    else
-    {
-        static if (hasIndirections!T)
-            GC.addRange(rawMemory, allocSize);
-    }
-
     static if (is(T == class))
     {
         T obj = emplace!T(rawMemory[0 .. allocSize], args);
@@ -169,16 +158,6 @@ void destroyFree(T)(T p) if (is(T == class))
     if (p !is null)
     {
         destroyNoGC(p);
-
-        version(doNotUseRuntime)
-        {
-        }
-        else
-        {
-            static if (hasIndirections!T)
-                GC.removeRange(cast(void*)p);
-        }
-
         free(cast(void*)p);
     }
 }
@@ -190,16 +169,6 @@ void destroyFree(T)(T p) if (is(T == interface))
     {
         void* here = cast(void*)(cast(Object)p);
         destroyNoGC(p);
-
-        version(doNotUseRuntime)
-        {
-        }
-        else
-        {
-            static if (hasIndirections!T)
-                GC.removeRange(here);
-        }
-
         free(cast(void*)here);
     }
 }
@@ -210,16 +179,6 @@ void destroyFree(T)(T* p) if (!is(T == class))
     if (p !is null)
     {
         destroyNoGC(p);
-
-        version(doNotUseRuntime)
-        {
-        }
-        else
-        {
-            static if (hasIndirections!T)
-                GC.removeRange(cast(void*)p);
-        }
-
         free(cast(void*)p);
     }
 }

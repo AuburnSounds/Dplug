@@ -8,9 +8,7 @@
 module dplug.client.dllmain;
 
 // Dynamic libraries entry point.
-// Basically only needed on Windows, on OSX we have other entry points.
-
-version = doNotUseRuntime;
+// Basically only needed on Windows, on POSIX the other entry points are sufficient.
 
 version(Windows)
 {
