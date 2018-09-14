@@ -1,0 +1,14 @@
+{
+    "$schema": "https://raw.githubusercontent.com/AuburnSounds/dplug/master/plugin-schema.json",
+
+    "vendorName": "No Name Audio",
+    "vendorUniqueID": "NoAu",
+    "pluginName": "Poly Alias",
+    "pluginUniqueID": "NAps",
+    "publicVersion": "1.0.0",
+    "CFBundleIdentifierPrefix": "com.nonameaudio",
+    "hasGUI": false,
+    "isSynth": true,
+    "receivesMIDI": true,
+    "category": "instrumentSynthesizer"
+}

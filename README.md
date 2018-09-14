@@ -47,7 +47,7 @@ Keep up with major changes here: [Release Notes](https://github.com/AuburnSounds
 
 - Does Dplug support the creation of synthesizer plug-ins?
 
-Yes. See simple-mono-synth example.
+Yes. See [simple-mono-synth](examples/simple-mono-synth) and [Poly Alias](examples/poly-alias-synth) examples.
 
 - Am I forced to use the PBR rendering system?
 
