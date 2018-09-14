@@ -11,7 +11,7 @@ Your DAC will gonna love you. And you're listeners will, too. *(...might depend 
 - **Polyphonic** - up to 4 voices<br/>*...or even more! (if you change `maxVoices` in [polyalias.d](polyalias.d#L14))*
 - **3 different waveforms**<br/>*saw, sine, square* - all modelled after the textbooks  as closely as possible
 - **Simple + focused**<br/>*no (unnecessary) filters or LFOs*
-- **Purity**<br/>*as pure sound as possible - no built-in FX*
+- **Purity**<br/>*sounds as pure as possible - no built-in FX*
 - **Native UI** (matching your host)<br/>*instead of a beatiful GUI crafted with love it will just let your plugin host create the UI*
 
 

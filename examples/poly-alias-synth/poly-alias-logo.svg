@@ -1,10 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.0//EN" "http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd">
 <svg width="700" height="70" xmlns="http://www.w3.org/2000/svg">
-    <g>
-        <title>Poly Alias - Open Source Example Synth</title>
-        <g display="none" overflow="visible" y="0" x="0" height="100%" width="100%" id="canvasGrid">
-            <rect fill="url(#gridpattern)" stroke-width="0" y="0" x="0" height="100%" width="100%"/>
-        </g>
-    </g>
     <g>
         <line x1="0" y1="0" x2="700" y2="0" stroke-width="4" stroke="#000000"/>
         <line x1="0" y1="70" x2="700" y2="70" stroke-width="4" stroke="#000000"/>
