@@ -4,5 +4,5 @@
    * `examples/ms-encode`: simplest plugin for tutorial purpose, without UI
    * `examples/poly-alias-synth`: simple polyphonic wave generator, without UI
    * `examples/simple-mono-synth`: very basic sine-wave generator, without UI
-   * `examples/window`: for windowing testing
+
 
