@@ -7,9 +7,13 @@
  */
 module dplug.core.runtime;
 
+import core.stdc.stdlib;
+import std.traits;
+
 import dplug.core.fpcontrol;
 import dplug.core.nogc;
 import dplug.core.cpuid;
+
 
 /// RAII struct to cover extern callbacks.
 /// This only deals with CPU identification and FPU control words save/restore.
@@ -47,27 +51,85 @@ private:
     debug bool _entered = false;
 }
 
-/// Call a function that is not @nogc.
-/// This is enclosed with runtime initialization and finalization.
-void callRuntimeSection(void delegate() functionThatCanBeGC) @nogc
+template RuntimeSectionReturnType(T)
 {
-    void internalFunc(void delegate() f)
+    alias RuntimeSectionReturnType = SetFunctionAttributes!(T, functionLinkage!T, functionAttributes!T | FunctionAttribute.nogc);
+}
+
+/// This encloses the runtime initialization and finalization.
+/// Returns: a delegate which enables the runtime and call the enclosed delegate.
+RuntimeSectionReturnType!T runtimeSection(T)(T functionOrDelegateThatCanBeGC) nothrow @nogc
+{
+    static if (isDelegate!T)
     {
-        ScopedRuntimeSection section;
-        section.enter();
-        f();
+        enum attrs = functionAttributes!T | FunctionAttribute.nogc;        
 
-        // Leaving runtime here
-        // all GC objects will get collected!
+        static ReturnType!T internalFunc(T fun, Parameters!T params) nothrow
+        {
+            try
+            {
+                ScopedRuntimeSection section;
+                section.enter();
+            }
+            catch(Exception e)
+            {
+                // runtime initialization failed
+                // this should never happen
+                assert(false);
+            }
+
+            return fun(params);            
+
+            // Leaving runtime here
+            // all GC objects will get collected, no reference may escape safely
+        }      
+
+        static ReturnType!T internalDg(SuperContext* thisPointer, Parameters!T params) nothrow @nogc
+        {
+            T dg;
+            dg.funcptr = cast(typeof(dg.funcptr)) (thisPointer.funPointer);
+            dg.ptr = thisPointer.outerContext;
+            return assumeNoGC(&internalFunc)(dg, params);
+        }
+
+        ManualDelegate fakeDg;
+        fakeDg.ptr = cast(SuperContext*) malloc( SuperContext.sizeof );
+        fakeDg.ptr.funPointer = functionOrDelegateThatCanBeGC.funcptr;
+        fakeDg.ptr.outerContext = functionOrDelegateThatCanBeGC.ptr;
+        fakeDg.funcPtr = &internalDg; // static function so no closures
+
+        RuntimeSectionReturnType!T* result = cast(RuntimeSectionReturnType!T*)(&fakeDg);
+        return *result;
     }
+    else
+        static assert(false, "must be a delegate");
+}
 
-    assumeNoGC( (void delegate() fun) 
-                { 
-                    internalFunc(fun); 
-                } )(functionThatCanBeGC);
+void finalizeRuntimeSection(T)(T x)
+{
+    static if (isDelegate!T)
+    {
+        // free the context allocated in `runtimeSection`
+        free(x.ptr);
+    }
+    else
+        static assert(false, "must be a delegate");
 }
 
 private:
+
+static struct SuperContext
+{
+    void* outerContext;
+    void* funPointer;            
+}
+
+static struct ManualDelegate
+{
+    SuperContext* ptr;
+    void* funcPtr;
+}
+
 
 /// RAII struct to ensure Runtime is initialized and usable
 /// => that allow to use GC, TLS etc in a single function.
@@ -108,9 +170,10 @@ public:
         // Finalize Runtime if it was initiliazed by this runtime section
         if (_runtimeWasInitialized)
         {
-            bool terminated = Runtime.terminate();
-            assert(terminated);
-            _runtimeWasInitialized = false;
+            // TODO find something that works
+       //     bool terminated = Runtime.terminate();
+       //     assert(terminated);
+       //     _runtimeWasInitialized = false;
         }
     
         // Ensure enter() was called before.
