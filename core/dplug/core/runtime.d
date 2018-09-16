@@ -84,49 +84,27 @@ auto runtimeSection(F)(F functionOrDelegateThatCanBeGC) nothrow @nogc if (isCall
         }            
     }      
 
-    static struct SuperContext
-    {
-        void* outerContext;
-        void* funPointer;            
-    }
-
-    static ReturnType!T internalDg(SuperContext* thisPointer, Parameters!T params) nothrow @nogc
-    {
-        T dg;
-        dg.funcptr = cast(typeof(dg.funcptr)) (thisPointer.funPointer);
-        dg.ptr = thisPointer.outerContext;
-        return assumeNoGC(&internalFunc)(dg, params);
-    }
-
     // We return this callable Voldemort type, this allow guaranteed clean-up
 
     static struct ManualDelegate
     {
-        SuperContext* ptr;
-        void* funcPtr;
-
+        typeof(myGCDelegate.ptr) ptr;
+        typeof(myGCDelegate.funcptr) funcptr;
+        
         ReturnType!T opCall(Parameters!T params) nothrow @nogc
         {
-            return internalDg(ptr, params);
+            T dg;
+            dg.funcptr = funcptr;
+            dg.ptr = ptr;
+            return assumeNoGC(&internalFunc)(dg, params);
         }
 
         @disable this(this);
-
-        ~this()
-        {
-            if (ptr)
-            {
-                free(ptr);
-                ptr = null;
-            }
-        }
     }
 
     ManualDelegate fakeDg;
-    fakeDg.ptr = cast(SuperContext*) malloc( SuperContext.sizeof );
-    fakeDg.ptr.funPointer = myGCDelegate.funcptr;
-    fakeDg.ptr.outerContext = myGCDelegate.ptr;
-    fakeDg.funcPtr = &internalDg; // static function so no closures
+    fakeDg.funcptr = myGCDelegate.funcptr;
+    fakeDg.ptr = myGCDelegate.ptr;
     return fakeDg;
 }
 
