@@ -1,6 +1,8 @@
 /// This test shows how to use the runtime in a plug-in which
 /// would have an need otherwise disabled runtime
 
+import core.memory;
+import std.stdio;
 import dplug.core, dplug.client, dplug.vst;
 
 // This create the DLL entry point
@@ -11,6 +13,7 @@ mixin(VSTEntryPoint!RuntimeTestPlugin);
 
 final class RuntimeTestPlugin : dplug.client.Client
 {
+
 public:
 nothrow:
 @nogc:
@@ -24,6 +27,13 @@ nothrow:
         _runtime.initialize();
     }
     // </needed for runtime>
+
+    // needed for the removal of _heapObject
+    // this has to be mirrored
+    ~this()
+    {       
+        runtimeSection(&cleanupObject)(_heapObject);
+    }
 
     override PluginInfo buildPluginInfo()
     {
@@ -42,7 +52,7 @@ nothrow:
     {
         // Note: this doesn't need to be `@nogc`.
         // This has to be a delegate, not a raw function pointer.
-        int functionThatUseRuntime() nothrow 
+        int functionThatUseRuntime(ref HeapObject obj) nothrow 
         {
             // Note: here you can call runtime functions and stuff, however
             // keep in mind nothing GC-allocated must escape that function.
@@ -51,19 +61,38 @@ nothrow:
             // If you create garbage, this will be claimed at the end of this function
             // So this one line doesn't leak.
             float[] invalidMemory = new float[13];
-
             assert(invalidMemory.capacity != 0);
+            
+            // Allocate an object on the GC heap
+            if (obj is null) 
+            {
+                obj = new HeapObject;            
+                // Make it survive the end of the Runtime Section by being referenced elsewhere
+                GC.addRoot(cast(void*)obj);
+            }
 
             return 1984;
         }
 
-        // Note: this (FUTURE) returns a callable Voldemort
-        auto runtimeUsingFunction = runtimeSection(&functionThatUseRuntime); 
-
-        foreach(times; 0..10)
+        // Note: this returns a callable Voldemort from a GC-using delegate
+        // However this delegate should not have a GC closure, so you can't refer to _members.
+        auto runtimeUsingFunction = runtimeSection(&functionThatUseRuntime);
+        int result = runtimeUsingFunction(_heapObject);
+        assert(result == 1984);
+    
+        // You can call stand-alone functions or methods
+        try
         {
-            int result = runtimeUsingFunction();
-            assert(result == 1984);
+            size_t len = runtimeSection(&myCarelessFunction)(false);
+            assert(len == 4000);
+            len = runtimeSection(&myCarelessFunction)(true);            
+        }
+        catch(Exception e)
+        {
+            // for some reason the Exception allocated in the runtime section hasn't been 
+            // collected, not sure why
+            // Anyway it's UB to read it
+            //printf("%s\n", e.msg.ptr);
         }
     }
 
@@ -74,4 +103,50 @@ nothrow:
     }
 
     float[] _invalidMemory;
+
+    HeapObject _heapObject;
 }
+
+class HeapObject
+{
+    this() nothrow
+    {
+        try
+        {
+            writeln("Creating a GC object");
+        }
+        catch(Exception e)
+        {
+        }
+    }
+
+    ~this() nothrow
+    {
+        try
+        {
+            writeln("Destroying a GC object");
+        }
+        catch(Exception e)
+        {
+        }
+    }
+}
+
+static void cleanupObject(ref HeapObject obj) nothrow
+{
+    if (obj !is null) 
+    {
+        GC.removeRoot(cast(void*)obj);
+        obj = null;
+    }
+}
+
+size_t myCarelessFunction(bool doThrow)
+{
+    auto A = new ubyte[4000];
+    if (doThrow)
+        throw new Exception("an error!");
+    else
+        return A.length;
+}
+

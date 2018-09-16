@@ -52,9 +52,15 @@ private:
     debug bool _entered = false;
 }
 
-
-
-/// This encloses the runtime initialization and finalization.
+/// "RUNTIME SECTION"
+/// A function or method that can _use_ the runtime thanks to thread attachment.
+///
+/// Runtime initialization must be dealt with externally with a `ScopedRuntime` struct 
+/// (typically long-lived since there can be only one).
+///
+/// Warning: every GC object is reclaimed at the end of the runtime section.
+///          By using GC.addRoot you can make GC object survive the collection.
+///
 /// Returns: a callback Voldement inside which you can use the runtime, but you can't escape GC memory.
 auto runtimeSection(F)(F functionOrDelegateThatCanBeGC) nothrow @nogc if (isCallable!(F))
 {
@@ -62,36 +68,36 @@ auto runtimeSection(F)(F functionOrDelegateThatCanBeGC) nothrow @nogc if (isCall
     auto myGCDelegate = toDelegate(functionOrDelegateThatCanBeGC);
     alias T = typeof(myGCDelegate);
 
-    enum attrs = functionAttributes!T | FunctionAttribute.nogc;        
-
-    static ReturnType!T internalFunc(T fun, Parameters!T params) nothrow
+    static ReturnType!T internalFunc(T fun, Parameters!T params)
     {
+        import core.stdc.stdio;
+        ScopedRuntimeSection section;
+
         try
         {
-            import core.stdc.stdio;
-            ScopedRuntimeSection section;
             section.enter();
-            return fun(params);
-
-            // Leaving runtime here
-            // all GC objects will get collected, no reference may escape safely
         }
         catch(Exception e)
         {
             // runtime initialization failed
             // this should never happen
             assert(false);
-        }            
+        }
+
+        // the nice thing here is that `nothrow` is inferred so GC created Exception 
+        // will traverse the boundaries, albeit collected...
+        // TODO if fun can throw, convert the exception to manually handled Exception and strings
+        return fun(params);
     }      
 
-    // We return this callable Voldemort type, this allow guaranteed clean-up
+    // We return this callable Voldemort type
 
     static struct ManualDelegate
     {
         typeof(myGCDelegate.ptr) ptr;
         typeof(myGCDelegate.funcptr) funcptr;
         
-        ReturnType!T opCall(Parameters!T params) nothrow @nogc
+        ReturnType!T opCall(Parameters!T params) @nogc
         {
             T dg;
             dg.funcptr = funcptr;
@@ -109,6 +115,7 @@ auto runtimeSection(F)(F functionOrDelegateThatCanBeGC) nothrow @nogc if (isCall
 }
 
 /// RAII struct for runtime initialization, to be used once by the plug-in client.
+/// Without underlying `ScopedRuntime`, there can be no `runtimeSection`.
 struct ScopedRuntime
 {
 public:
@@ -173,6 +180,7 @@ struct ScopedRuntimeSection
     import core.thread: thread_attachThis, thread_detachThis;
 
 public:
+nothrow:
     /// Thread that shouldn't be attached are eg. the audio threads.
     void enter()
     {
@@ -180,7 +188,14 @@ public:
         bool alreadyAttached = isThisThreadAttached();
         if (!alreadyAttached)
         {
-            thread_attachThis();
+            try
+            {
+                thread_attachThis();
+            }
+            catch(Exception e)
+            {
+                assert(false, "thread_attachThis is not supposed to fail");
+            }
             _threadWasAttached = true;
         }
     }
@@ -190,14 +205,24 @@ public:
         // Detach current thread if it was attached by this runtime section
         if (_threadWasAttached)
         {
-            thread_detachThis();
+            try
+            {
+                thread_detachThis();
+            }
+            catch(Exception e)
+            {
+                assert(false, "thread_detachThis is not supposed to fail");
+            }
             _threadWasAttached = false;
         }
 
         // By collecting here we avoid correctness by coincidence for someone
         // that would rely on things remaining valid out of the ScopedRuntimeSection
-        import core.memory;
-        GC.collect();
+        debug
+        {
+            import core.memory;
+            GC.collect();
+        }
     }
 
     @disable this(this);
