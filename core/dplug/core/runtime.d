@@ -211,6 +211,11 @@ public:
             thread_detachThis();
             _threadWasAttached = false;
         }
+
+        // By collecting here we avoid correctness by coincidence for someone
+        // that would rely on things remaining valid out of the ScopedRuntimeSection
+        import core.memory;
+        GC.collect();
     }
 
     @disable this(this);

@@ -15,6 +15,8 @@ public:
 nothrow:
 @nogc:
 
+    // TODO check POSIX runtime cleanup and multiple instances
+
     // <needed for runtime> This is required so that the rest of the plug-in can make runtime calls.
     ScopedRuntime _runtime;
     this()
