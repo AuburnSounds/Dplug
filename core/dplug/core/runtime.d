@@ -68,20 +68,20 @@ RuntimeSectionReturnType!T runtimeSection(T)(T functionOrDelegateThatCanBeGC) no
         {
             try
             {
+                import core.stdc.stdio;
                 ScopedRuntimeSection section;
                 section.enter();
+                return fun(params);
+
+                // Leaving runtime here
+                // all GC objects will get collected, no reference may escape safely
             }
             catch(Exception e)
             {
                 // runtime initialization failed
                 // this should never happen
                 assert(false);
-            }
-
-            return fun(params);            
-
-            // Leaving runtime here
-            // all GC objects will get collected, no reference may escape safely
+            }            
         }      
 
         static ReturnType!T internalDg(SuperContext* thisPointer, Parameters!T params) nothrow @nogc
@@ -98,6 +98,7 @@ RuntimeSectionReturnType!T runtimeSection(T)(T functionOrDelegateThatCanBeGC) no
         fakeDg.ptr.outerContext = functionOrDelegateThatCanBeGC.ptr;
         fakeDg.funcPtr = &internalDg; // static function so no closures
 
+        // return this ABI-compatible `delegate` which will be used normally, but comes with a manual lifetime
         RuntimeSectionReturnType!T* result = cast(RuntimeSectionReturnType!T*)(&fakeDg);
         return *result;
     }
@@ -116,6 +117,57 @@ void finalizeRuntimeSection(T)(T x)
         static assert(false, "must be a delegate");
 }
 
+/// RAII struct for runtime initialization, to be used once by the plug-in client.
+struct ScopedRuntime
+{
+public:
+nothrow:
+@nogc:
+    import core.runtime;
+
+    void initialize()
+    {
+        try
+        {
+            bool initOK = assumeNoGC(&Runtime.initialize)();
+
+            if (!initOK)
+                assert(false, "Runtime initialization shouldn't fail");
+        }
+        catch(Exception e)
+        {
+            assert(false, "Runtime initialization shouldn't fail");
+        }
+
+        _initialized = true;
+    }
+
+    ~this()
+    {
+        if (_initialized)
+        {
+            bool terminated;
+            try
+            {
+                terminated = assumeNoGC(&Runtime.terminate)();
+            }
+            catch(Exception e)
+            {
+                terminated = false;
+            }
+            assert(terminated);  
+
+            _initialized = false;
+        }
+    }
+
+    @disable this(this);
+
+private:
+    bool _initialized = false;
+}
+
+
 private:
 
 static struct SuperContext
@@ -131,25 +183,18 @@ static struct ManualDelegate
 }
 
 
-/// RAII struct to ensure Runtime is initialized and usable
+/// RAII struct to ensure thread attacment is initialized and usable
 /// => that allow to use GC, TLS etc in a single function.
 /// This isn't meant to be used directly, and it should certainly only be used in a scoped 
 /// manner without letting a registered thread exit.
 struct ScopedRuntimeSection
 {
-    import core.runtime;
     import core.thread: thread_attachThis, thread_detachThis;
 
 public:
-
     /// Thread that shouldn't be attached are eg. the audio threads.
     void enter()
     {
-        debug _entered = true;
-       
-        // Runtime initialization        
-        _runtimeWasInitialized = Runtime.initialize();
-
         bool alreadyAttached = isThisThreadAttached();
         if (!alreadyAttached)
         {
@@ -166,28 +211,13 @@ public:
             thread_detachThis();
             _threadWasAttached = false;
         }
-
-        // Finalize Runtime if it was initiliazed by this runtime section
-        if (_runtimeWasInitialized)
-        {
-            // TODO find something that works
-       //     bool terminated = Runtime.terminate();
-       //     assert(terminated);
-       //     _runtimeWasInitialized = false;
-        }
-    
-        // Ensure enter() was called before.
-        debug assert(_entered);
     }
 
     @disable this(this);
 
 private:
 
-    bool _runtimeWasInitialized = false;
     bool _threadWasAttached = false;
-
-    debug bool _entered = false;
 
     static bool isThisThreadAttached() nothrow
     {
@@ -200,3 +230,6 @@ private:
             return false;
     }
 }
+
+
+

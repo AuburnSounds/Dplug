@@ -1,7 +1,6 @@
 /// This test shows how to use the runtime in a plug-in which
 /// would have an need otherwise disabled runtime
 
-import core.stdc.stdlib;
 import dplug.core, dplug.client, dplug.vst;
 
 // This create the DLL entry point
@@ -15,6 +14,14 @@ final class RuntimeTestPlugin : dplug.client.Client
 public:
 nothrow:
 @nogc:
+
+    // <needed for runtime> This is required so that the rest of the plug-in can make runtime calls.
+    ScopedRuntime _runtime;
+    this()
+    {
+        _runtime.initialize();
+    }
+    // </needed for runtime>
 
     override PluginInfo buildPluginInfo()
     {
@@ -30,7 +37,7 @@ nothrow:
     }
 
     override void reset(double sampleRate, int maxFrames, int numInputs, int numOutputs) 
-    {      
+    {
         // Note: this doesn't need to be `@nogc`
         int functionThatUseRuntime() nothrow 
         {
@@ -47,17 +54,14 @@ nothrow:
             return 1984;
         }
 
-        // Note: this calls malloc, and need special clean-up
+        // Note: this (FUTURE) returns a Voldemort, that require special clean-up
         auto runtimeUsingFunction = runtimeSection(&functionThatUseRuntime); 
 
         foreach(times; 0..10)
         {
             int result = runtimeUsingFunction();
-            import core.stdc.stdio;
-            assert(result = 1984);
-            printf("%d\n", result);
+            assert(result == 1984);
         }
-
         finalizeRuntimeSection(runtimeUsingFunction); // this free the manual delegate context
     }
 
