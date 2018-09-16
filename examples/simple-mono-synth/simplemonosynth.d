@@ -1,3 +1,4 @@
+import std.complex;
 import std.math;
 import dplug.core, dplug.client, dplug.vst;
 
@@ -44,7 +45,7 @@ nothrow:
 
     override void reset(double sampleRate, int maxFrames, int numInputs, int numOutputs)
     {
-        _phase = 1+0i;
+        _phase = complex(1, 0);
         _sampleRate = sampleRate;
         _voiceStatus.initialize();
     }
@@ -62,14 +63,14 @@ nothrow:
         if (_voiceStatus.isAVoicePlaying)
         {
             float freq = convertMIDINoteToFrequency(_voiceStatus.lastNotePlayed);
-            cfloat phasor = cos(2 * PI * freq / _sampleRate) + 1i * sin(2 * PI * freq / _sampleRate);
+            Complex!float phasor = complex!float(cos(2 * PI * freq / _sampleRate), sin(2 * PI * freq / _sampleRate));
 
             foreach(smp; 0..frames)
             {
                 outputs[0][smp] = _phase.im;
                 _phase *= phasor;
             }
-            _phase /= abs(_phase); // resync oscillator
+            _phase /= abs!float(_phase); // resync oscillator
         }
         else
         {
@@ -83,7 +84,7 @@ nothrow:
 
 private:
     VoicesStatus _voiceStatus;
-    cfloat _phase;
+    Complex!float _phase;
     float _sampleRate;
 }
 
