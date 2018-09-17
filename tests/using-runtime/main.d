@@ -1,5 +1,5 @@
 /// This test shows how to use the runtime in a plug-in which
-/// would have an need otherwise disabled runtime
+/// would have an otherwise disabled runtime
 ///
 /// ============================================================================
 ///
