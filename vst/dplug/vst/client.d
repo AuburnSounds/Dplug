@@ -1104,7 +1104,7 @@ extern(C) private nothrow
 
 /// Access to VST host from the VST client perspective.
 /// The IHostCommand subset is accessible from the plugin client with no knowledge of the format
-class VSTHostFromClientPOV : IHostCommand
+final class VSTHostFromClientPOV : IHostCommand
 {
 public:
 nothrow:
