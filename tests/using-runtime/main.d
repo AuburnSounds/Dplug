@@ -1,5 +1,20 @@
 /// This test shows how to use the runtime in a plug-in which
 /// would have an need otherwise disabled runtime
+///
+/// ============================================================================
+///
+///         VERY IMPORTANT MESSAGE
+///     This is a bit of an experimental feature!
+///
+///     1. You can't use it with DMD + macOS. Because DMD doesn't support 
+///        shared library initialization on macOS.
+///
+///     2. It is yet unknown how far Mac compatibility is broken by using 
+///        the runtime. It is known to work since macOS 10.12 with LDC >= 1.3
+///        but we don't have the data for previous macOS versions.
+///
+/// ============================================================================
+module main;
 
 import core.memory;
 import std.stdio;
@@ -18,8 +33,6 @@ public:
 nothrow:
 @nogc:
 
-    // TODO check POSIX runtime cleanup and multiple instances
-
     // <needed for runtime> This is required so that the rest of the plug-in can make runtime calls.
     ScopedRuntime _runtime;
     this()
@@ -28,8 +41,11 @@ nothrow:
     }
     // </needed for runtime>
 
-    // needed for the removal of _heapObject
-    // this has to be mirrored
+    // Needed for the removal of _heapObject which was added as root.
+    // So this has to be mirrored.
+    //
+    // Note: You are subjected to the classical D limitation with regards
+    //       to the order of finalization of GC objects.
     ~this()
     {       
         runtimeSection(&cleanupObject)(_heapObject);
@@ -58,16 +74,17 @@ nothrow:
             // keep in mind nothing GC-allocated must escape that function.
             // That limits applicability 
 
-            // If you create garbage, this will be claimed at the end of this function
-            // So this one line doesn't leak.
+            // Here you can create garbage
             float[] invalidMemory = new float[13];
             assert(invalidMemory.capacity != 0);
             
-            // Allocate an object on the GC heap
             if (obj is null) 
             {
-                obj = new HeapObject;            
+                // Allocate an object on the GC heap
+                obj = new HeapObject;
+
                 // Make it survive the end of the Runtime Section by being referenced elsewhere
+                // (than the stack of this thread)
                 GC.addRoot(cast(void*)obj);
             }
 
@@ -76,6 +93,7 @@ nothrow:
 
         // Note: this returns a callable Voldemort from a GC-using delegate
         // However this delegate should not have a GC closure, so you can't refer to _members.
+        // This is a stark limitation, sorry.
         auto runtimeUsingFunction = runtimeSection(&functionThatUseRuntime);
         int result = runtimeUsingFunction(_heapObject);
         assert(result == 1984);
@@ -85,13 +103,13 @@ nothrow:
         {
             size_t len = runtimeSection(&myCarelessFunction)(false);
             assert(len == 4000);
-            len = runtimeSection(&myCarelessFunction)(true);            
+            len = runtimeSection(&myCarelessFunction)(true);
         }
         catch(Exception e)
         {
             // for some reason the Exception allocated in the runtime section hasn't been 
             // collected, not sure why
-            // Anyway it's UB to read it
+            // Anyway it's UB to read it and I'm not sure you can really catch it in the first place.
             //printf("%s\n", e.msg.ptr);
         }
     }
@@ -101,8 +119,6 @@ nothrow:
         for (int n = 0; n < frames && n < _invalidMemory.length; ++n)
             outputs[0][n] = _invalidMemory[n];
     }
-
-    float[] _invalidMemory;
 
     HeapObject _heapObject;
 }
