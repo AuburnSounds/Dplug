@@ -13,6 +13,9 @@
 ///        the runtime. It is known to work since macOS 10.12 with LDC >= 1.3
 ///        but we don't have the data for previous macOS versions.
 ///
+///     3. The behaviour on POSIX in presence of multiple instances is yet unknown.
+///        Please let us know.
+///
 /// ============================================================================
 module main;
 
