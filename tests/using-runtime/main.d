@@ -119,8 +119,8 @@ nothrow:
 
     override void processAudio(const(float*)[] inputs, float*[]outputs, int frames, TimeInfo info)
     {    
-        for (int n = 0; n < frames && n < _invalidMemory.length; ++n)
-            outputs[0][n] = _invalidMemory[n];
+        outputs[0][0..frames] = 0;
+        outputs[1][0..frames] = 0;
     }
 
     HeapObject _heapObject;
