@@ -70,7 +70,7 @@ nothrow:
     override void reset(double sampleRate, int maxFrames, int numInputs, int numOutputs) 
     {
         // Note: this doesn't need to be `@nogc`.
-        // This has to be a delegate, not a raw function pointer.
+        // This can be a delegate, or a raw function pointer,.
         int functionThatUseRuntime(ref HeapObject obj) nothrow 
         {
             // Note: here you can call runtime functions and stuff, however
