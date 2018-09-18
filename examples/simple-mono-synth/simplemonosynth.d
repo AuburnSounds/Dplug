@@ -1,3 +1,9 @@
+/**
+Simplest synthesizer example.
+
+Copyright: Guillaume Piolat 2018.
+License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
+*/
 import std.complex;
 import std.math;
 import dplug.core, dplug.client, dplug.vst;
