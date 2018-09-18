@@ -1,21 +1,21 @@
 /**
-*
-* Various @nogc alternatives. This file includes parts of `std.process`, `std.random`, `std.uuid`.
-*
-* Authors:
-*    $(HTTP guillaumepiolat.fr, Guillaume Piolat)
-*    $(LINK2 https://github.com/kyllingstad, Lars Tandle Kyllingstad),
-*    $(LINK2 https://github.com/schveiguy, Steven Schveighoffer),
-*    $(HTTP thecybershadow.net, Vladimir Panteleev)
-*
-* Copyright:
-*   Copyright (c) 2016, Auburn Sounds.
-*   Copyright (c) 2013, Lars Tandle Kyllingstad (std.process).
-*   Copyright (c) 2013, Steven Schveighoffer (std.process).
-*   Copyright (c) 2013, Vladimir Panteleev (std.process).
-*
-* License:
-*   $(HTTP www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
+
+Various @nogc alternatives. This file includes parts of `std.process`, `std.random`, `std.uuid`.
+
+Authors:
+  $(HTTP guillaumepiolat.fr, Guillaume Piolat)
+  $(LINK2 https://github.com/kyllingstad, Lars Tandle Kyllingstad),
+  $(LINK2 https://github.com/schveiguy, Steven Schveighoffer),
+  $(HTTP thecybershadow.net, Vladimir Panteleev)
+
+Copyright:
+ Copyright (c) 2016, Guillaume Piolat.
+ Copyright (c) 2013, Lars Tandle Kyllingstad (std.process).
+ Copyright (c) 2013, Steven Schveighoffer (std.process).
+ Copyright (c) 2013, Vladimir Panteleev (std.process).
+
+ License:
+   $(HTTP www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
 */
 module dplug.core.nogc;
 

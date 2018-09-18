@@ -1,13 +1,12 @@
 /**
- * Copyright: Copyright Sean Kelly 2005 - 2009.
- * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
- * Authors:   Sean Kelly
- */
+Mutexes, semaphores and condition variables.
+
+Copyright: Sean Kelly 2005 - 2009.
+Copyright: Guillaume Piolat 2016 - 2018.
+License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
+*/
 // This contains part of druntime's core.sys.mutex, core.sys.semaphore core.sys.condition and
 // Modified to make it @nogc nothrow
-/**
-    Mutexes, semaphores and condition variables.
-*/
 module dplug.core.sync;
 
 import core.time;

@@ -1,19 +1,18 @@
 /**
-*
-* @nogc random numbers and UUID generation.
-*
-* Authors:
-*    Guillaume Piolat
-*    Johannes Pfau
-*    Andrei Alexandrescu
-*
-* Copyright:
-*   Copyright (c) 2016, Auburn Sounds.
-*   Copyright (c) 2011, Johannes Pfau (std.uuid).
-*   Copyright (c) 2008-2009, Andrei Alexandrescu (std.random)
-*
-* License:
-*   $(HTTP www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
+@nogc random numbers and UUID generation.
+
+Authors:
+   Guillaume Piolat
+   Johannes Pfau
+   Andrei Alexandrescu
+
+Copyright:
+  Copyright (c) 2016, Guillaume Piolat.
+  Copyright (c) 2011, Johannes Pfau (std.uuid).
+  Copyright (c) 2008-2009, Andrei Alexandrescu (std.random)
+
+License:
+  $(HTTP www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
 */
 module dplug.core.random;
 

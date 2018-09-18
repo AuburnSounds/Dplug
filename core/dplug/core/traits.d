@@ -1,4 +1,10 @@
-/// Simple version of traits from std.traits, for the purpose of faster compile times.
+/**
+ * Simple version of traits from std.traits, for the purpose of faster compile times.
+ *
+ * Copyright: Guillaume Piolat 2016.
+ * License: Distributed under the
+ *      $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost Software License 1.0).
+ */
 module dplug.core.traits;
 
 // Like `Unqual` but does not remove "shared" or "inout"

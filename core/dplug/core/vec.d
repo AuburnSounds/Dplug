@@ -1,10 +1,10 @@
 /**
- * Defines `Vec`, `reallocBuffer` and memory functions.
- *
- * Copyright: Copyright Auburn Sounds 2015-2016
- * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
- * Authors:   Guillaume Piolat
- */
+Defines `Vec`, `reallocBuffer` and memory functions.
+
+Copyright: Guillaume Piolat 2015-2016.
+License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
+Authors:   Guillaume Piolat
+*/
 module dplug.core.vec;
 
 import std.traits: hasElaborateDestructor;

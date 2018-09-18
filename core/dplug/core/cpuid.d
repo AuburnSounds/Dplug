@@ -2,7 +2,7 @@
  * This is a quick change of core.cpuid, to be usable in programs without a runtime.
  *
  * Copyright: Copyright Don Clugston 2007 - 2009.
- *            Copyright Auburn Sounds 2017.
+ *            Copyright Guillaume Piolat 2017.
  * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
  * Authors:   Don Clugston, Tomas Lindquist Olsen &lt;tomas@famolsen.dk&gt;
  * Source:    $(DRUNTIMESRC core/_cpuid.d)

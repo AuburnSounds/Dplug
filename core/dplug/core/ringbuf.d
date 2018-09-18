@@ -1,9 +1,8 @@
 /**
-* Home of `RingBufferNoGC` and the mighty `TimedFIFO`.
-*
-* Copyright: Copyright Auburn Sounds 2015-2016
-* License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
-* Authors:   Guillaume Piolat
+Home of `RingBufferNoGC` and the mighty `TimedFIFO`.
+
+Copyright: Auburn Sounds 2015-2016.
+License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 module dplug.core.ringbuf;
 

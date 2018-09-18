@@ -1,10 +1,9 @@
 /**
- * This file provides `ScopedForeignCallback` to be used in every callback, and use to provide runtime initialization (now unused).
- *
- * Copyright: Copyright Auburn Sounds 2015-2016.
- * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
- * Authors:   Guillaume Piolat
- */
+This file provides `ScopedForeignCallback` to be used in every callback, and use to provide runtime initialization (now unused).
+
+Copyright: Guillaume Piolat 2015-2016.
+License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
+*/
 module dplug.core.runtime;
 
 import core.stdc.stdlib;

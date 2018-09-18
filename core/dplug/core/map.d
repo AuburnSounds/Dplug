@@ -1,13 +1,13 @@
 /**
-* This module implements an associative array.
-* @nogc associative array, replacement for std::map and std::set.
-* Implementation of Red Black Tree from Phobos.
-*
-* Copyright: Copyright Auburn Sounds 2015-2016
-* Copyright: Copyright (C) 2008- by Steven Schveighoffer. Other code
-* Copyright: 2010- Andrei Alexandrescu. All rights reserved by the respective holders.
-* License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
-* Authors:   Authors: Steven Schveighoffer, $(HTTP erdani.com, Andrei Alexandrescu), Guillaume Piolat
+This module implements an associative array.
+@nogc associative array, replacement for std::map and std::set.
+Implementation of Red Black Tree from Phobos.
+
+Copyright: Guillaume Piolat 2015-2016.
+Copyright: Copyright (C) 2008- by Steven Schveighoffer. Other code
+Copyright: 2010- Andrei Alexandrescu. All rights reserved by the respective holders.
+License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
+Authors:   Authors: Steven Schveighoffer, $(HTTP erdani.com, Andrei Alexandrescu), Guillaume Piolat
 */
 module dplug.core.map;
 

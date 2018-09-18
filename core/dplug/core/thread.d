@@ -3,7 +3,7 @@
  *
  * Copyright: Copyright Sean Kelly 2005 - 2012.
  * Copyright: Copyright (c) 2009-2011, David Simcha.
- * Copyright: Copyright Auburn Sounds 2016.
+ * Copyright: Copyright Guillaume Piolat 2016.
  * License: Distributed under the
  *      $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost Software License 1.0).
  *    (See accompanying file LICENSE)
