@@ -6,22 +6,22 @@
 
 [Auto-generated documentation...](http://dplug.dpldocs.info/dplug.html)
 
-**IMPORTANT To distribute VST2 plug-ins be sure to sign a VST2 Licence Agreement with Steinberg before October 2018.**
+## Key features
 
-## Current features
-
-- Creating VST 2.4 plug-ins for Windows, macOS, and Linux, for 32-bit and 64-bit
-- Creating Audio Unit v2 plug-ins for Mac OS X, 32-bit and 64-bit
-- Creating AAX Native plug-ins for Windows and Mac OS X, 64-bit only
-- Comes with basic music DSP algorithms
-- Comes with a number of `tools` to make plug-in authoring faster (bundling, color correction, regression tests, performance tests)
-- Dplug is using (optional) [rendering](http://www.auburnsounds.com/blog/2016-09-16_PBR-for-Audio-Software-Interfaces.html) to keep installers small
-- See the [list of supported hosts...](https://github.com/AuburnSounds/Dplug/wiki/Host-Support)
+- Create VST 2.4 plug-ins for Windows, macOS, and Linux, for 32-bit and 64-bit
+  **IMPORTANT To distribute VST2 plug-ins be sure to sign a VST2 Licence Agreement with Steinberg before October 2018.**
+- Create Audio Unit v2 plug-ins for Mac OS X, 32-bit and 64-bit
+- Create AAX Native plug-ins for Windows and Mac OS X, 64-bit only
+- Includes fundamental music DSP algorithms
+- Tools to make your plug-in authoring faster (bundling, color correction, regression tests, performance tests)
+- Build small binaries with (optional) [rendering](http://www.auburnsounds.com/blog/2016-09-16_PBR-for-Audio-Software-Interfaces.html)
+- Support [many DAWs](https://github.com/AuburnSounds/Dplug/wiki/Host-Support)
+- Vibrant community
 
 
 ### Community and ecosystem
 
-DPlug was successfully leveraged to build the following products:
+These products leverage Dplug:
 
 - [Couture](https://www.auburnsounds.com/products/Couture.html) by Auburn Sounds
 - [Entropy](http://www.modernmetalproduction.com/product/entropy-ii-enhanced-stereo-delay-vst-au/) by Cut Through Recordings
@@ -30,7 +30,11 @@ DPlug was successfully leveraged to build the following products:
 - [Panagement](https://www.auburnsounds.com/products/Panagement.html) by Auburn Sounds
 - [Tarabia Distortion](http://smaolab.org/product/tarabia-distortion/) by SMAOLAB
 
-Become one happy [DPlug contributor](https://github.com/AuburnSounds/Dplug/graphs/contributors) by submitting issues and pull-requests, and come talk with us on the [D Language Discord](https://discord.gg/QZtGZUw) to learn more and meet your peers DPlug users!
+Increase quality and reduce time-to-market with commercial audio DSP in the [DSP Asset Store](DSP_Asset_Store.md).
+
+Become one happy [Dplug contributor](https://github.com/AuburnSounds/Dplug/graphs/contributors) by submitting issues and pull-requests, and come talk with us on the [D Language Discord](https://discord.gg/QZtGZUw) to learn more and meet your peers Dplug users!
+
+
 
 ### Release notes
 

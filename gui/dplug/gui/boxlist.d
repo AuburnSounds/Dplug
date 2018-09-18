@@ -1,7 +1,8 @@
 /**
-* Internal. Operations on list of 2D boxes.
-* Copyright: Copyright Auburn Sounds 2015 and later.
-* License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
+Internal. Operations on list of 2D boxes.
+
+Copyright: Guillaume Piolat 2015.
+License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 * Authors:   Guillaume Piolat
 */
 module dplug.gui.boxlist;
