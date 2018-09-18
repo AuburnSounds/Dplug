@@ -2,7 +2,7 @@
 
 A catalog of Digital Signal Processing Assets by and for the Dplug ecosystem. 
 
-This is the place where algorithm developers can buy and sell their finely-crafted audio algorithms.
+This is the place where audio developers can buy and sell their finely-crafted algorithms.
 
 Follow the contact links for more details.
 
