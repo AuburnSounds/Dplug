@@ -1,9 +1,8 @@
 /**
-* Basic IIR 1-pole and 2-pole filters through biquads. 
-*
-* Copyright: Copyright Auburn Sounds 2015-2017.
-* License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
-* Authors:   Guillaume Piolat
+Basic IIR 1-pole and 2-pole filters through biquads. 
+
+Copyright: Guillaume Piolat 2015-2017.
+License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 module dplug.dsp.iir;
 

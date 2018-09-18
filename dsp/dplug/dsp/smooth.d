@@ -1,9 +1,8 @@
 /**
-* Various DSP smoothers.
-*
-* Copyright: Copyright Auburn Sounds 2015 and later.
-* License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
-* Authors:   Guillaume Piolat
+Various DSP smoothers.
+
+Copyright: Guillaume Piolats 2015.
+License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 module dplug.dsp.smooth;
 

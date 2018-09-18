@@ -1,9 +1,8 @@
 /**
-* Various noise sources. 
-*
-* Copyright: Copyright Auburn Sounds 2015 and later.
-* License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
-* Authors:   Guillaume Piolat
+Various noise sources. 
+
+Copyright: Guillaume Piolat 2015.
+License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 deprecated("Scheduled for removal in Dplug v8") module dplug.dsp.noise;
 

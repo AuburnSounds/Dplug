@@ -1,9 +1,8 @@
 /**
-* Naive mipmapped wave-table oscillators.
-*
-* Copyright: Copyright Auburn Sounds 2015 and later.
-* License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
-* Authors:   Guillaume Piolat
+Naive mipmapped wave-table oscillators.
+
+Copyright: Guillaume Piolat 2015.
+License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 deprecated("Scheduled for removal in Dplug v8") module dplug.dsp.wavetable;
 
