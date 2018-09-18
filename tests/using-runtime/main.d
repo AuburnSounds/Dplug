@@ -102,19 +102,9 @@ nothrow:
         assert(result == 1984);
     
         // You can call stand-alone functions or methods
-        try
-        {
-            size_t len = runtimeSection(&myCarelessFunction)(false);
-            assert(len == 4000);
-            len = runtimeSection(&myCarelessFunction)(true);
-        }
-        catch(Exception e)
-        {
-            // for some reason the Exception allocated in the runtime section hasn't been 
-            // collected, not sure why
-            // Anyway it's UB to read it and I'm not sure you can really catch it in the first place.
-            //printf("%s\n", e.msg.ptr);
-        }
+        // but they have to be `nothrow`.
+        size_t len = runtimeSection(&myCarelessFunction)();
+        assert(len == 4000);
     }
 
     override void processAudio(const(float*)[] inputs, float*[]outputs, int frames, TimeInfo info)
@@ -160,12 +150,9 @@ static void cleanupObject(ref HeapObject obj) nothrow
     }
 }
 
-size_t myCarelessFunction(bool doThrow)
+size_t myCarelessFunction() nothrow
 {
     auto A = new ubyte[4000];
-    if (doThrow)
-        throw new Exception("an error!");
-    else
-        return A.length;
+    return A.length;
 }
 

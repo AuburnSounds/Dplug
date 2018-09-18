@@ -67,25 +67,14 @@ auto runtimeSection(F)(F functionOrDelegateThatCanBeGC) nothrow @nogc if (isCall
     auto myGCDelegate = toDelegate(functionOrDelegateThatCanBeGC);
     alias T = typeof(myGCDelegate);
 
-    static ReturnType!T internalFunc(T fun, Parameters!T params)
+    static ReturnType!T internalFunc(T fun, Parameters!T params) nothrow
     {
         import core.stdc.stdio;
         ScopedRuntimeSection section;
+        section.enter();
 
-        try
-        {
-            section.enter();
-        }
-        catch(Exception e)
-        {
-            // runtime initialization failed
-            // this should never happen
-            assert(false);
-        }
-
-        // the nice thing here is that `nothrow` is inferred so GC created Exception 
-        // will traverse the boundaries, albeit collected...
-        // TODO if fun can throw, convert the exception to manually handled Exception and strings
+        // Important: we only support `nothrow` runtime section.
+        // Supporting exception was creating spurious bugs, probably the excpeption being collected.
         return fun(params);
     }      
 
@@ -96,7 +85,7 @@ auto runtimeSection(F)(F functionOrDelegateThatCanBeGC) nothrow @nogc if (isCall
         typeof(myGCDelegate.ptr) ptr;
         typeof(myGCDelegate.funcptr) funcptr;
         
-        ReturnType!T opCall(Parameters!T params) @nogc
+        ReturnType!T opCall(Parameters!T params) nothrow @nogc
         {
             T dg;
             dg.funcptr = funcptr;
