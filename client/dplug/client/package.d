@@ -1,4 +1,5 @@
 // See licenses in individual files.
+/// Generic plugin client interface.
 module dplug.client;
 
 public
