@@ -40,7 +40,7 @@
  * On return, width/height will be set to the image's dimensions, and actual_comps will be set to the either 1 (grayscale) or 3 (RGB).
  * Requesting a 8 or 32bpp image is currently a little faster than 24bpp because the jpeg_decoder class itself currently always unpacks to either 8 or 32bpp.
  */
-/// JPEG loader.
+/// JPEG image loading.
 module dplug.graphics.jpegload;
 
 nothrow:

@@ -1,11 +1,10 @@
 /**
- * The root widget to inherit from for a flat UI.
- *
- * Copyright: Copyright Auburn Sounds 2015-2017.
- * Copyright: Cut Through Recordings 2017.
- * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
- * Authors:   Ethan Reker
- */
+The root widget to inherit from for a flat UI.
+
+Copyright: Guillaume Piolat 2015-2017.
+Copyright: Ethan Reker 2017.
+License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
+*/
 module dplug.flatwidgets.flatbackgroundgui;
 
 import gfm.math.box;

@@ -1,9 +1,9 @@
 /**
-* Film-strip knob for a flat UI.
-* Copyright: Copyright Auburn Sounds 2015
-* Copyright: Copyright Cut Through Recordings 2017
-* License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
-* Authors:   Guillaume Piolat, Ethan Reker
+Film-strip knob for a flat UI.
+
+Copyright: Guillaume Piolat 2015.
+Copyright: Ethan Reker 2017.
+License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 module dplug.flatwidgets.flatknob;
 

@@ -23,11 +23,10 @@
 // Martin "SpartanJ" Golini                     Ryamond Barbiero
 // David Woo
 
-/// PNG loader
-
 // Note: some validity checks are disabled by default for performance reason
 //version = enableImageChecks;
 
+/// PNG image loading.
 module dplug.graphics.pngload;
 
 // This has been revived for the sake of loading PNG without too much memory usage.
