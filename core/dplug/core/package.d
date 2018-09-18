@@ -1,4 +1,6 @@
 /**
+Make shared libraries that are @nogc nothrow.
+
 Copyright: many, see individual files for full copyright information.
 License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */

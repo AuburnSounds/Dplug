@@ -1,7 +1,7 @@
 /**
-* Simple C++ header translation for us with the VST SDK.
-* Copyright: Guillaume Piolat 2018.
-* License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
+Simple C++ header translation for us with the VST SDK.
+Copyright: Guillaume Piolat 2018.
+License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 module dplug.vst.translatesdk;
 import std.string;

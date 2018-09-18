@@ -1,9 +1,9 @@
 /**
-* PBR widget: bargraph.
-*
-* Copyright: Copyright Auburn Sounds 2015 and later.
-* License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
-* Authors:   Guillaume Piolat
+Bargraph.
+
+Copyright: Copyright Auburn Sounds 2015-2017.
+License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
+Authors:   Guillaume Piolat
 */
 module dplug.pbrwidgets.bargraph;
 

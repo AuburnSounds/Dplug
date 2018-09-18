@@ -1,12 +1,12 @@
 /**
- * Widget for displaying an editable textbox.  User must click on widget to edit,
- * and mouse must be over box while editing.
- *
- * Copyright: Copyright Auburn Sounds 2015-2017.
- * Copyright: Cut Through Recordings 2017.
- * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
- * Authors:   Ethan Reker
- */
+Widget for displaying an editable textbox. 
+
+User must click on widget to edit, and mouse must be over box while editing.
+
+Copyright: Ethan Reker 2017.
+Copyright: Copyright Auburn Sounds 2015-2017.
+License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
+*/
 module dplug.pbrwidgets.textbox;
 
 import dplug.gui.element;

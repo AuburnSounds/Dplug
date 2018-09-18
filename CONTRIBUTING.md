@@ -21,8 +21,8 @@ Use your best judgment, and feel free to propose changes to this document in a p
 By contributing to Dplug, you implicitely agree that your work will be redistributed under the Boost license.
 You still keep your copyright over the files you have modified.
 
-When you modify a file, do not forget to add a Copyright DDoc entry with the copyright holder name and year.
-For a significant contribution, do not forget to add youself to the "author" field in `dub.json`.
+When you modify a file, do not forget to **add a Copyright DDoc entry with the copyright holder name and year.**
+
 
 ## 1. Come discuss changes first
 
@@ -38,14 +38,14 @@ Dplug uses the Phobos D style: https://dlang.org/dstyle.html
 In particular that means no TABs and 4 spaces of indentation.
 
 Additionally Dplug uses a "runtime-free" D which entails additional constraints:
+https://github.com/AuburnSounds/Dplug/wiki/Working-in-a-@nogc-environment
 
-
-Tools, plugin host implementation, and unittests not restricted to be runtime-free though.
+Tools, plug-in host implementation, and unittests not restricted to be runtime-free though.
 
 
 ## 3. Don't complicate the build
 
-Dplug should keep being be a *small* 2mb archive downloaded by DUB from time to time, and nothing more.
+Dplug should keep being be a *small* archive downloaded by DUB from time to time, and nothing more.
 
 **Being able to update Dplug over slow network is a feature of the library, this allow to develop while being nomad.**
 
@@ -65,9 +65,9 @@ When just renaming, introduce a `deprecated("Use this symbol instead: foo") alia
 
 ## 6. Important Design rules
 
-- Dplug's window backend should have the same functionnality.
+- Dplug's window backend should have the same functionality.
 
-- Dplug's plugin clients should have the same functionnality.
+- Dplug's plugin clients should have the same functionality.
 
 - Dplug should work the latest D compilers and the largest possible extent of past compilers that fits the need of plug-in development
 

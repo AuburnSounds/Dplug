@@ -1,10 +1,9 @@
 /**
- * Host window creation.
- *
- * Copyright: Copyright Auburn Sounds 2016
- * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
- * Authors:   Guillaume Piolat
- */
+Host window creation.
+
+Copyright: Auburn Sounds 2015-2016.
+License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
+*/
 module dplug.host.window;
 
 import gfm.math.box;
