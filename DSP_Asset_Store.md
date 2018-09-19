@@ -26,5 +26,21 @@ _Add yourself to this page with a PR (sorted by alphabetical order)._
 
 &nbsp;
 
+**Stereo Cross-over Delay**
+- Description: Stereo delay module with cross-over external feedback.
+- Content: D source code
+- Try it: [Entropy II - Enhanced Stereo Delay](https://www.cutthroughrecordings.com/#/product/Entropy%20II%20-%20Enhanced%20Stereo%20Delay)
+- Contact: admin@cutthroughrecordings.com
+
+&nbsp;
+
+**Four-band Split/Sum**
+- Description: 4-band splitter using linkwitz-riley crossovers. 
+- Content: D source code
+- Try it: [M4 - Multiband Compressor](https://www.cutthroughrecordings.com/#/product/M4%20Multiband%20Compressor)
+- Contact: admin@cutthroughrecordings.com
+
+&nbsp;
+
 _Integration, modifying & porting services may be available upon request, depending on the vendor._
 _The exact terms and conditions are unknown to this website, and strictly up to the buyer and seller._
