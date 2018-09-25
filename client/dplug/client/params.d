@@ -35,17 +35,61 @@ import dplug.core.vec;
 import dplug.client.client;
 
 
+
+/// Parameter listeners are called whenever a parameter is changed, start being edited,
+/// or stops being edited.
+/// The most common usage being UI controls calling `setDirty()` (directly or through animation)
+///  as a result.
+interface IParameterListener
+{
+nothrow:
+@nogc:
+
+    /// Called when a parameter value was changed, from an UI control or through the host.
+    /// You'll probably want to call `setDirtyWhole()` or `setDirty()` in it
+    /// to make the graphics respond to host changing a parameter.
+    void onParameterChanged(Parameter sender);
+
+    /// Called when a parameter value _starts_ being changed due to an UI element.
+    void onBeginParameterEdit(Parameter sender);
+
+    /// Called when a parameter value _stops_ being changed.
+    void onEndParameterEdit(Parameter sender);
+}
+
+
+
 /// Plugin parameter.
 /// Implement the Observer pattern for UI support.
 /// Note: Recursive mutexes are needed here because `getNormalized()`
 /// could need locking an already taken mutex.
+///
+/// Listener patter:
+///     Every `Parameter` maintain a list of `
+///     This is typically used by UI elements to update with parameters changes from all 
+///     kinds of sources (UI itself, host automation...).
+///
 class Parameter
 {
 public:
 nothrow:
 @nogc:
 
-    /// Returns: Parameters name. Displayed when the plugin has no UI.
+    /// Adds a parameter listener.
+    void addListener(IParameterListener listener)
+    {
+        _listeners.pushBack(listener);
+    }
+
+    /// Removes a parameter listener.
+    void removeListener(IParameterListener listener)
+    {
+        int index = _listeners.indexOf(listener);
+        if (index != -1)
+            _listeners.removeAndReplaceByLastElement(index);
+    }
+
+    /// Returns: Parameters name. Displayed when the plug-in has no UI.
     string name() pure const
     {
         return _name;
@@ -79,20 +123,6 @@ nothrow:
     void toDisplayN(char* buffer, size_t numBytes)
     {
         toStringN(buffer, numBytes);
-    }
-
-    /// Adds a parameter listener.
-    void addListener(IParameterListener listener)
-    {
-        _listeners.pushBack(listener);
-    }
-
-    /// Removes a parameter listener.
-    void removeListener(IParameterListener listener)
-    {
-        int index = _listeners.indexOf(listener);
-        if (index != -1)
-            _listeners.removeAndReplaceByLastElement(index);
     }
 
     /// Warns the host that a parameter will be edited.
@@ -190,6 +220,8 @@ private:
     int _index;
     string _name;
     string _label;
+
+    /// The list of active `IParameterListener` to receive parameter changes.
     Vec!IParameterListener _listeners;
 
     // Current number of calls into `beginParamEdit()`/`endParamEdit()` pair.
@@ -197,25 +229,6 @@ private:
     debug int _editCount = 0;
 
     UncheckedMutex _valueMutex;
-}
-
-/// Parameter listeners are called whenever a parameter is changed from the host POV.
-/// Intended making GUI controls call `setDirty()` and move with automation.
-interface IParameterListener
-{
-nothrow:
-@nogc:
-
-    /// Called when a parameter value was changed
-    /// You'll probably want to call `setDirtyWhole()` or `setDirty()` in it
-    /// to make the graphics respond to host changing a parameter.
-    void onParameterChanged(Parameter sender);
-
-    /// Called when a parameter value start being changed due to an UI element
-    void onBeginParameterEdit(Parameter sender);
-
-    /// Called when a parameter value stops being changed
-    void onEndParameterEdit(Parameter sender);
 }
 
 
