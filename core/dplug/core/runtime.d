@@ -6,7 +6,10 @@ License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 module dplug.core.runtime;
 
+import core.runtime;
+import core.atomic;
 import core.stdc.stdlib;
+
 import std.traits;
 import std.functional: toDelegate;
 
@@ -54,7 +57,7 @@ private:
 /// "RUNTIME SECTION"
 /// A function or method that can _use_ the runtime thanks to thread attachment.
 ///
-/// Runtime initialization must be dealt with externally with a `ScopedRuntime` struct 
+/// Runtime initialization must be dealt with externally with a `ScopedRuntime` struct
 /// (typically long-lived since there can be only one).
 ///
 /// Warning: every GC object is reclaimed at the end of the runtime section.
@@ -76,7 +79,7 @@ auto runtimeSection(F)(F functionOrDelegateThatCanBeGC) nothrow @nogc if (isCall
         // Important: we only support `nothrow` runtime section.
         // Supporting exception was creating spurious bugs, probably the excpeption being collected.
         return fun(params);
-    }      
+    }
 
     // We return this callable Voldemort type
 
@@ -84,7 +87,7 @@ auto runtimeSection(F)(F functionOrDelegateThatCanBeGC) nothrow @nogc if (isCall
     {
         typeof(myGCDelegate.ptr) ptr;
         typeof(myGCDelegate.funcptr) funcptr;
-        
+
         ReturnType!T opCall(Parameters!T params) nothrow @nogc
         {
             T dg;
@@ -109,7 +112,6 @@ struct ScopedRuntime
 public:
 nothrow:
 @nogc:
-    import core.runtime;
 
     void initialize()
     {
@@ -125,43 +127,85 @@ nothrow:
             assert(false, "Runtime initialization shouldn't fail");
         }
 
-        _initialized = true;
+        version(OSX)
+        {
+            atomicStore(_initialized, true);
+        }
+        else
+        {
+            _initialized = true;
+        }
     }
 
     ~this()
     {
-        if (_initialized)
+        version(OSX){}
+        else
         {
-            bool terminated;
-            try
+            if (_initialized)
             {
-                terminated = assumeNoGC(&Runtime.terminate)();
+                bool terminated;
+                try
+                {
+                    terminated = assumeNoGC(&Runtime.terminate)();
+                }
+                catch(Exception e)
+                {
+                    terminated = false;
+                }
+                assert(terminated);
+                _initialized = false;
             }
-            catch(Exception e)
-            {
-                terminated = false;
-            }
-            assert(terminated);  
-
-            _initialized = false;
         }
     }
 
     @disable this(this);
 
 private:
-    bool _initialized = false;
-}
 
+    version(OSX)
+    {
+        // Note: this is shared across plug-in instantiation
+        // TODO: use zero-init mutex once it exist
+        static shared(bool) _initialized = false;
+    }
+    else
+    {
+        bool _initialized = false;
+    }
+}
 
 private:
 
+version(OSX)
+{
+    // We need that new feature because on OSX shared libraries share their runtime and globals
+    // This is called at termination of the host program
+    pragma(crt_destructor) void deactivateDRuntime()
+    {
+        import core.stdc.stdio;
+
+        bool initialized = atomicLoad(ScopedRuntime._initialized);
+
+        if (initialized)
+        {
+            try
+            {
+                bool terminated = assumeNoGC(&Runtime.terminate)();
+            }
+            catch(Exception e)
+            {
+            }
+            atomicStore(ScopedRuntime._initialized, false); // TODO: this atomic is racey
+        }
+    }
+}
 
 
 
 /// RAII struct to ensure thread attacment is initialized and usable
 /// => that allow to use GC, TLS etc in a single function.
-/// This isn't meant to be used directly, and it should certainly only be used in a scoped 
+/// This isn't meant to be used directly, and it should certainly only be used in a scoped
 /// manner without letting a registered thread exit.
 struct ScopedRuntimeSection
 {
