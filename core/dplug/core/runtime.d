@@ -181,7 +181,7 @@ version(OSX)
 {
     // We need that new feature because on OSX shared libraries share their runtime and globals
     // This is called at termination of the host program
-    pragma(crt_destructor) void deactivateDRuntime()
+    extern(C) pragma(crt_destructor) void deactivateDRuntime()
     {
         import core.stdc.stdio;
 
