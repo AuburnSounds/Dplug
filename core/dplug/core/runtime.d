@@ -179,24 +179,34 @@ private:
 
 version(OSX)
 {
-    // We need that new feature because on OSX shared libraries share their runtime and globals
-    // This is called at termination of the host program
-    extern(C) pragma(crt_destructor) void deactivateDRuntime()
+    version(DigitalMars)
     {
-        import core.stdc.stdio;
-
-        bool initialized = atomicLoad(ScopedRuntime._initialized);
-
-        if (initialized)
+        // Workaround for DMDFE Issue #18456, can't use  pragma(crt_destructor) with -lib
+        // See_also https://issues.dlang.org/show_bug.cgi?id=18456
+        // So we leak the runtime.
+        // this means GC objects' destructors won't be called (not that you should rely on this anyway.
+    }
+    else
+    {
+        // We need that new feature because on OSX shared libraries share their runtime and globals
+        // This is called at termination of the host program
+        extern(C) pragma(crt_destructor) void deactivateDRuntime()
         {
-            try
+            import core.stdc.stdio;
+
+            bool initialized = atomicLoad(ScopedRuntime._initialized);
+
+            if (initialized)
             {
-                bool terminated = assumeNoGC(&Runtime.terminate)();
+                try
+                {
+                    bool terminated = assumeNoGC(&Runtime.terminate)();
+                }
+                catch(Exception e)
+                {
+                }
+                atomicStore(ScopedRuntime._initialized, false); // TODO: this atomic is racey
             }
-            catch(Exception e)
-            {
-            }
-            atomicStore(ScopedRuntime._initialized, false); // TODO: this atomic is racey
         }
     }
 }
