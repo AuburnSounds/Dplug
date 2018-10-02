@@ -148,10 +148,12 @@ nothrow @nogc:
     /// Returns: true if the event was handled.
     bool onKeyUp(Key up);
 
-    /// An image you have to draw to, or return that nothing has changed.
-    /// The location of this image is given before-hand by onResized.
-    /// recomputeDirtyAreas() MUST have been called before.
+    /// Render the window in software in the buffer previously returned by `onResized`.
+    /// At the end of this function, the whole buffer should be a valid, coherent UI.
+    ///
+    /// recomputeDirtyAreas() MUST have been called before this is called.
     /// The pixel format cannot change over the lifetime of the window.
+    ///
     void onDraw(WindowPixelFormat pf);
 
     /// The drawing area size has changed.
@@ -165,7 +167,7 @@ nothrow @nogc:
     /// And because cache invalidation was easier on user code than internally in the UI.
     /// Important: once you've called `recomputeDirtyAreas()` you COMMIT to redraw the
     /// corresponding area given by `getDirtyRectangle()`.
-    /// Two calls to `recomputeDirtyAreas()` will not yield the same area.
+    /// IMPORTANT: Two calls to `recomputeDirtyAreas()` will not yield the same area.
     void recomputeDirtyAreas();
 
     /// Returns: Minimal rectangle that contains dirty UIELement in UI + their graphical extent.
