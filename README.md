@@ -9,7 +9,7 @@
 ## Key features
 
 - Create VST 2.4 plug-ins for Windows, macOS, and Linux, for 32-bit and 64-bit
-  **IMPORTANT To distribute VST2 plug-ins be sure to sign a VST2 Licence Agreement with Steinberg before October 2018.**
+  **IMPORTANT To distribute VST2 plug-ins be sure to sign a VST2 Licence Agreement with Steinberg.**
 - Create Audio Unit v2 plug-ins for Mac OS X, 32-bit and 64-bit
 - Create AAX Native plug-ins for Windows and Mac OS X, 64-bit only
 - Includes fundamental music DSP algorithms
@@ -170,46 +170,4 @@ Find the VST SDK there: http://www.steinberg.net/en/company/developers.html
 Other source files fall under the Boost 1.0 license.
 
 
-## Contents of the tree
-
-### dplug:client
-  * Abstract plugin client interface. Currently implemented for VST and AU.
-
-### dplug:host
-  * Abstract plugin host interface. Basic support for VST hosting.
-
-### dplug:vst
-  * VST 2.4 plugin client implementation
-
-### dplug:au
-  * Audio Unit v2 plugin client implementation
-
-### dplug:window
-  * implements windowing for Win32, X11, Cocoa and Carbon
-
-### dplug:gui
-   * Needed for plugins that do have an UI
-   * Toolkit includes common widgets (knob, slider, switch, logo, level, label...)
-   * Physically Based Renderer for a fully procedural UI
-
-### dplug:dsp
-  * Basic support for audio processing:
-    - Real and Complex FFT, windowing functions (STFT with overlap and zero-phase windowing)
-    - FIR, 1st order IIR filters and RBJ biquads
-    - mipmapped wavetables for antialiased oscillators
-    - noise generation including white/pink/demo noise
-    - various kinds of smoothers and envelopes
-    - delay-line and interpolation
-
-### dplug:carbon
-   * Dynamic Carbon bindings
-
-### dplug:cocoa
-   * Dynamic Cocoa bindings
-
-### dplug:x11
-   * Static X11 bindings
-
-### dplug-aax (external repositery, see Wiki)
-   * AAX Native and AAX AudioSuite plugin client implementation
 
