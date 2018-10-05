@@ -35,7 +35,8 @@ nothrow:
         // FUTURE: do not create it, support no-skybox in rendering
         skybox = mallocNew!(Mipmap!RGBA)(10, 1024, 1024);
 
-        dirtyList = makeDirtyRectList();
+        dirtyListPBR = makeDirtyRectList();
+        dirtyListRaw = makeDirtyRectList();
     }
 
     ~this()
@@ -52,11 +53,14 @@ nothrow:
     /// UI global image used for environment reflections.
     Mipmap!RGBA skybox;
 
-    // This is the global UI list of rectangles that need updating.
-    // This used to be a list of rectangles per UIElement,
-    // but this wasn't workable because of too many races and
-    // inefficiencies.
-    DirtyRectList dirtyList;
+    // This is the UI-global, disjointed list of rectangles that need updating at the PBR level.
+    // Every UIElement touched by those rectangles will have their `onDrawPBR` and `onDrawRaw` 
+    // callbacks called successively.
+    DirtyRectList dirtyListPBR;
+
+    // This is the UI-global, disjointed list of rectangles that need updating at the Raw level.
+    // Every UIElement touched by those rectangles will have its `onDrawRaw` callback called.
+    DirtyRectList dirtyListRaw;
 
     // Note: take ownership of image
     // That image must have been built with `mallocEmplace`
@@ -193,7 +197,8 @@ private:
     Vec!box2i _dirtyRects;
 
     /// This is protected by a mutex, because it is sometimes updated from the host.
-    /// Note: we cannot remove this mutex, as host parameter change call setDirtyWhole directly.ODO: we want to remove this lock, the host thread should never directly.
+    /// Note: we cannot remove this mutex, as host parameter change call setDirtyWhole directly.
+    /// TODO: we want to remove this lock, the host thread may avoid doing it directly.
     UncheckedMutex _dirtyRectMutex;
 }
 

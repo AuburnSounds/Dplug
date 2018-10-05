@@ -46,6 +46,13 @@ enum ubyte defaultMetalnessDielectric = 25; // ~ 0.08
 /// Reasonable metal default value for the Metalness channel.
 enum ubyte defaultMetalnessMetal = 255;
 
+alias UILayer = int;
+enum : UILayer
+{
+    layerRaw = 1,
+    layerPBR = 2
+}
+
 /// Base class of the UI widget hierarchy.
 ///
 /// MAYDO: a bunch of stuff in that class is intended specifically for the root element,
@@ -70,14 +77,54 @@ nothrow:
             child.destroyFree();
     }
 
-    /// Returns: true if was drawn, ie. the buffers have changed.
-    /// This method is called for each item in the drawlist that was visible and dirty.
-    final void render(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, in box2i[] areasToUpdate)
+    /// This method is called for each item in the drawlist that was visible and has a dirty Raw layer.
+    /// This is called after compositin, starting from the buffer output by the Compositor.
+    final void renderRaw(ImageRef!RGBA compositedMap, in box2i[] areasToUpdate)
     {
-        // List of disjointed dirty rectangles intersecting with valid part of _position
-        // A nice thing with intersection is that a disjointed set of rectangles
-        // stays disjointed.
+        // We only consider the part of _position that is actually in the surface
+        box2i validPosition = _position.intersection(box2i(0, 0, compositedMap.w, compositedMap.h));
 
+        // FUTURE IMPROVEMENT: allow _position outside bounds of a window.
+        //
+        // Currently, _position outside of the extent of the windows are NOT actually allowed.
+        // Specifically the onDraw function seems to operate under the assumtion that they 
+        // receive maps whose points (0,0) is the lop-right of _position
+        //
+        // TL;DR If you fail this assertion, this means you have an UIElement outside the extent
+        //       of the window. Check UI creation code.
+        assert(validPosition == _position);
+
+        if (validPosition.empty())
+            return; // nothing to draw here
+
+        _localRectsBuf.clearContents();
+        {
+            foreach(rect; areasToUpdate)
+            {
+                box2i inter = rect.intersection(validPosition);
+
+                if (!inter.empty) // don't consider empty rectangles
+                {
+                    // Express the dirty rect in local coordinates for simplicity
+                    _localRectsBuf.pushBack( inter.translate(-validPosition.min) );
+                }
+            }
+        }
+
+        if (_localRectsBuf.length == 0)
+            return; // nothing to draw here
+
+        // Crop the composited map to the valid part of _position
+        // Drawing outside of _position is disallowed by design.
+        ImageRef!RGBA compositedMapCropped = compositedMap.cropImageRef(validPosition);        
+        assert(compositedMapCropped.w != 0 && compositedMapCropped.h != 0); // Should never be an empty area there
+        onDrawRaw(compositedMapCropped, _localRectsBuf[]);
+    }
+
+    /// Returns: true if was drawn, ie. the buffers have changed.
+    /// This method is called for each item in the drawlist that was visible and has a dirty PBR layer.
+    final void renderPBR(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, in box2i[] areasToUpdate)
+    {
         // we only consider the part of _position that is actually in the surface
         box2i validPosition = _position.intersection(box2i(0, 0, diffuseMap.w, diffuseMap.h));
 
@@ -111,16 +158,15 @@ nothrow:
         if (_localRectsBuf.length == 0)
             return; // nothing to draw here
 
-        // Crop the diffuse and depth to the valid part of _position
-        // This is because drawing outside of _position is disallowed by design.
-        // Never do that!
+        // Crop the diffuse, material and depth to the valid part of _position
+        // Drawing outside of _position is disallowed by design.
         ImageRef!RGBA diffuseMapCropped = diffuseMap.cropImageRef(validPosition);
         ImageRef!L16 depthMapCropped = depthMap.cropImageRef(validPosition);
         ImageRef!RGBA materialMapCropped = materialMap.cropImageRef(validPosition);
 
         // Should never be an empty area there
         assert(diffuseMapCropped.w != 0 && diffuseMapCropped.h != 0);
-        onDraw(diffuseMapCropped, depthMapCropped, materialMapCropped, _localRectsBuf[]);
+        onDrawPBR(diffuseMapCropped, depthMapCropped, materialMapCropped, _localRectsBuf[]);
     }
 
     /// TODO: useless until we have resizeable UIs.
@@ -476,12 +522,20 @@ nothrow:
     }
 
     /// Mark this element as wholly dirty.
-    /// Important: you could call this from the audio thread, however it is
+    ///
+    /// Params:
+    ///     layer which layers need to be redrawn.
+    ///
+    /// Important: you _can_ call this from the audio thread, HOWEVER it is
     ///            much more efficient to mark the widget dirty with an atomic 
-    ///            and call setDirty in animation callback.
-    void setDirtyWhole() nothrow @nogc
+    ///            and call `setDirty` in animation callback.
+    void setDirtyWhole(UILayer layer = layerPBR) nothrow @nogc // TODO: remove that default at one point
     {
-        _context.dirtyList.addRect(_position);
+        assert(layer >= layerRaw && layer <= layerPBR);
+        if ((layer & layerPBR) != 0)
+            _context.dirtyListPBR.addRect(_position);
+        else
+            _context.dirtyListRaw.addRect(_position);
     }
 
     /// Mark a part of the element dirty.
@@ -491,11 +545,15 @@ nothrow:
     /// Important: you could call this from the audio thread, however it is
     ///            much more efficient to mark the widget dirty with an atomic 
     ///            and call setDirty in animation callback.
-    void setDirty(box2i rect) nothrow @nogc
+    void setDirty(box2i rect, UILayer layer = layerPBR) nothrow @nogc // TODO: remove that default at one point
     {
         box2i translatedRect = rect.translate(_position.min);
         assert(_position.contains(translatedRect));
-        _context.dirtyList.addRect(translatedRect);
+        assert(layer >= layerRaw && layer <= layerPBR);
+        if ((layer & layerPBR) != 0)
+            _context.dirtyListPBR.addRect(translatedRect);
+        else
+            _context.dirtyListRaw.addRect(translatedRect);
     }
 
     /// Returns: Parent element. `null` if detached or root element.
@@ -536,7 +594,7 @@ nothrow:
     {
         if (isVisible())
         {
-            list.pushBack(this);
+            list.pushBack(this); // PERF check flags here, push into a PBR and/or a Raw list
             foreach(child; _children[])
                 child.getDrawList(list);
         }
@@ -544,19 +602,32 @@ nothrow:
 
 protected:
 
-    /// Draw method. This gives you 3 surfaces cropped by  _position for drawing.
-    /// Note that you are not forced to draw all the surfaces at all, in which case the
-    /// below background`UIElement` will be displayed.
+    /// Raw layer draw method. This gives you 1 surface cropped by  _position for drawing.
+    /// Note that you are not forced to draw all to the surfacs at all.
+    /// 
+    /// `UIElement` are drawn by increasing z-order, or lexical order if lack thereof.
+    /// Those elements who have non-overlapping `_position` are drawn in parallel.
+    /// Hence you CAN'T draw outside `_position` and receive cropped surfaces.
+    ///
+    /// IMPORTANT: you MUST NOT draw outside `dirtyRects`. This allows more fine-grained updates.
+    /// A `UIElement` that doesn't respect dirtyRects will have PAINFUL display problems.
+    void onDrawRaw(ImageRef!RGBA compositedMap, box2i[] dirtyRects) nothrow @nogc
+    {
+        // empty by default, meaning this UIElement does not work on R       
+    }
+
+    /// PBR layer draw method. This gives you 3 surfaces cropped by  _position for drawing.
+    /// Note that you are not forced to draw all to the surfaces at all, in which case the
+    /// below `UIElement` will be displayed.
     /// 
     /// `UIElement` are drawn by increasing z-order, or lexical order if lack thereof.
     /// Those elements who have non-overlapping `_position` are drawn in parallel.
     /// Hence you CAN'T draw outside `_position` and receive cropped surfaces.
     /// `diffuseMap`, `depthMap` and `materialMap` are made to span _position exactly.
     ///
-    /// IMPORTANT: For better efficiency, you SHALL NOT draw part outside `dirtyRects`. 
-    /// This allows more fine-grained updates.
-    /// A `UIElement` that doesn't respect dirtyRects will have display problems if it overlaps with another `UIElement`.        
-    void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects) nothrow @nogc
+    /// IMPORTANT: you MUST NOT draw outside `dirtyRects`. This allows more fine-grained updates.
+    /// A `UIElement` that doesn't respect dirtyRects will have PAINFUL display problems.
+    void onDrawPBR(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects) nothrow @nogc
     {
         // defaults to filling with a grey pattern
         RGBA darkGrey = RGBA(100, 100, 100, 0);

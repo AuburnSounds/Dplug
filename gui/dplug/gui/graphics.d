@@ -67,15 +67,19 @@ nothrow:
 
         _threadPool = mallocNew!ThreadPool();
 
-        _areasToUpdateNonOverlapping = makeVec!box2i;
-        _areasToUpdateTemp = makeVec!box2i;
+        _areasToUpdateNonOverlappingRaw = makeVec!box2i;
+        _areasToUpdateNonOverlappingPBR = makeVec!box2i;
+        _areasTemp = makeVec!box2i;
 
         _updateRectScratch[0] = makeVec!box2i;
         _updateRectScratch[1] = makeVec!box2i;
 
-        _areasToRender = makeVec!box2i;
-        _areasToRenderNonOverlapping = makeVec!box2i;
-        _areasToRenderNonOverlappingTiled = makeVec!box2i;
+        _areasToComposite = makeVec!box2i;
+        _areasToCompositeNonOverlapping = makeVec!box2i;
+        _areasToCompositeNonOverlappingTiled = makeVec!box2i;
+
+        _areasToDisplay = makeVec!box2i;
+        _areasToDisplayNonOverlapping = makeVec!box2i;
 
         _elemsToDraw = makeVec!UIElement;
 
@@ -105,6 +109,7 @@ nothrow:
         _depthMap.destroyFree();
 
         _windowListener.destroyFree();
+        alignedFree(_compositedBuffer, 16);
         alignedFree(_renderedBuffer, 16);
     }
 
@@ -259,7 +264,7 @@ nothrow:
         /// Returns areas affected by updates.
         override box2i getDirtyRectangle() nothrow @nogc
         {
-            return outer._areasToRender[].boundingBox();
+            return outer._areasToDisplay[].boundingBox();
         }
 
         override ImageRef!RGBA onResized(int width, int height)
@@ -267,8 +272,6 @@ nothrow:
             return outer.doResize(width, height);          
         }
 
-        // Redraw dirtied controls in depth and diffuse maps.
-        // Update composited cache.
         override void onDraw(WindowPixelFormat pf) nothrow @nogc
         {
             return outer.doDraw(pf);
@@ -288,7 +291,7 @@ nothrow:
 
     /// Tune this to tune the trade-off between light quality and speed.
     /// The default value was tuned by hand on very shiny light sources.
-    /// Too high and processing becomes very expensive.
+    /// Too high and processing becomes more expensive.
     /// Too little and the ligth decay doesn't feel natural.
     void setUpdateMargin(int margin = 20) nothrow @nogc
     {
@@ -319,26 +322,28 @@ protected:
     // Depth values for the whole UI.
     Mipmap!RGBA _materialMap;
 
-    // The list of areas whose diffuse/depth data have been changed.
-    Vec!box2i _areasToUpdateNonOverlapping;
+    // The list of areas to be redrawn at the Raw level (composited)
+    Vec!box2i _areasToUpdateNonOverlappingRaw;
 
-    // Used to maintain the _areasToUpdate invariant of no overlap
-    Vec!box2i _areasToUpdateTemp;
+    // The list of areas to be redrawn at the PBR level (diffuse/depth/material)
+    Vec!box2i _areasToUpdateNonOverlappingPBR;
+
+    // Used to maintain the _areasToUpdateXXX invariant of no overlap
+    Vec!box2i _areasTemp;
 
     // Same, but temporary variable for mipmap generation
     Vec!box2i[2] _updateRectScratch;
 
-    // The list of areas that must be effectively updated in the composite buffer
-    // (sligthly larger than _areasToUpdate).
-    Vec!box2i _areasToRender;
+    // The list of areas that must be effectively re-composited.
+    Vec!box2i _areasToComposite;
+    Vec!box2i _areasToCompositeNonOverlapping; // same list, but reorganized to avoid overlap
+    Vec!box2i _areasToCompositeNonOverlappingTiled; // same list, but separated in smaller tiles
 
-    // same list, but reorganized to avoid overlap
-    Vec!box2i _areasToRenderNonOverlapping;
+    // The list of areas that must be effectively redrawn in the Raw layer, and then redisplayed.
+    Vec!box2i _areasToDisplay;
+    Vec!box2i _areasToDisplayNonOverlapping; // same list, but reorganized to avoid overlap
 
-    // same list, but separated in smaller tiles
-    Vec!box2i _areasToRenderNonOverlappingTiled;
-
-    // The list of UIElement to draw
+    // The list of UIElement to draw.
     // Note: AlignedBuffer memory isn't scanned,
     //       but this doesn't matter since UIElement are the UI hierarchy anyway.
     Vec!UIElement _elemsToDraw;
@@ -346,8 +351,11 @@ protected:
     /// Amount of pixels dirty rectangles are extended with.
     int _updateMargin = 20;
 
-    // The fully rendered framebuffer.
-    // This should point into comitted virtual memory for faster (maybe) upload to device
+    /// The composited buffer, before the Raw layer is applied.
+    ubyte* _compositedBuffer = null;
+
+    /// The final rendered framebuffer. 
+    /// This is copied from `_renderedBuffer`, then Raw layer is drawn on top.
     ubyte* _renderedBuffer = null;
 
     version(BenchmarkCompositing)
@@ -357,98 +365,137 @@ protected:
         StopWatch _drawWatch;
     }
 
+    void computeElementToRedraw()
+    {
+        // recompute draw list
+        _elemsToDraw.clearContents();
+        getDrawList(_elemsToDraw);
+
+        // Sort by ascending z-order (high z-order gets drawn last)
+        // This sort must be stable to avoid messing with tree natural order.
+        int compareZOrder(in UIElement a, in UIElement b) nothrow @nogc
+        {
+            return a.zOrder() - b.zOrder();
+        }
+        grailSort!UIElement(_elemsToDraw[], &compareZOrder); // PERF: share this list with PBR and Raw layers
+    }
+
     void doDraw(WindowPixelFormat pf) nothrow @nogc
     {
-        ImageRef!RGBA wfb;
-        wfb.w = _askedWidth;
-        wfb.h = _askedHeight;
-        wfb.pitch = byteStride(_askedWidth);
-        wfb.pixels = cast(RGBA*)_renderedBuffer;
-
         // Composite GUI
         // Most of the cost of rendering is here
+        // A. 1st PASS OF REDRAW
+        // Some UIElements are redrawn at the PBR level
         version(BenchmarkCompositing)
             _drawWatch.start();
-
-        renderElements();
-
+        redrawElementsPBR();
         version(BenchmarkCompositing)
         {
             _drawWatch.stop();
             _drawWatch.displayMean();
         }
 
+        // B. MIPMAPPING
         version(BenchmarkCompositing)
             _mipmapWatch.start();
-
         // Split boxes to avoid overlapped work
         // Note: this is done separately for update areas and render areas
-        _areasToRenderNonOverlapping.clearContents();
-        removeOverlappingAreas(_areasToRender, _areasToRenderNonOverlapping);
-
         regenerateMipmaps();
-
         version(BenchmarkCompositing)
         {
             _mipmapWatch.stop();
             _mipmapWatch.displayMean();
         }
 
+        // C. COMPOSITING
+        ImageRef!RGBA wfb;
+        wfb.w = _askedWidth;
+        wfb.h = _askedHeight;
+        wfb.pitch = byteStride(_askedWidth);
+        wfb.pixels = cast(RGBA*)_compositedBuffer;
         version(BenchmarkCompositing)
-            _compositingWatch.start();
-
-        compositeGUI(wfb, pf);
-
-        // only then is the list of rectangles to update cleared
-        _areasToUpdateNonOverlapping.clearContents();
-
-        // wait for compositing completion
-        //_threadPool.waitForCompletion();
-
+            _compositingWatch.start();        
+        compositeGUI(wfb, pf); // Launch the possibly-expensive Compositor step, which implements PBR rendering
+ 
         version(BenchmarkCompositing)
         {
             _compositingWatch.stop();
             _compositingWatch.displayMean();
         }
+
+        // D. COPY FROM "COMPOSITED" TO "RENDERED" BUFFER
+        // PERF: optimize this copy, should only happen in _areasToCompositeNonOverlapping
+        {
+            size_t size = byteStride(_askedWidth) * _askedHeight;
+            _renderedBuffer[0..size] = _compositedBuffer[0..size];
+        }
+
+        // E. 2nd PASS OF REDRAW
+        // TODO: measure that
+        redrawElementsRaw();
+
+        // Only then is the list of rectangles to update cleared, 
+        // before calling `doDraw` such work accumulates
+        _areasToUpdateNonOverlappingPBR.clearContents();
+        _areasToUpdateNonOverlappingRaw.clearContents();
     }
 
-    // Fills _areasToUpdate and _areasToRender
     void recomputeDirtyAreas() nothrow @nogc
     {
-        // Get areas to update
-        _areasToRender.clearContents();
+        // First we pull dirty rectangles from the UI, for the PBR and Raw layers
+        // Note that there is indeed a race here (the same UIElement could have pushed rectangles in both
+        // at around the same time), but that isn't a problem.
+        context().dirtyListRaw.pullAllRectangles(_areasToUpdateNonOverlappingRaw);
+        context().dirtyListPBR.pullAllRectangles(_areasToUpdateNonOverlappingPBR);
 
-        // First we pull dirty rectangles from the UI
-        context().dirtyList.pullAllRectangles(_areasToUpdateNonOverlapping);
 
         // TECHNICAL DEBT HERE
         // The problem here is that if the window isn't shown there may be duplicates in
-        // _areasToUpdate, so we have to maintain unicity again
-        // The code with dirty rects is a big mess, it needs a severe rewrite.
+        // _areasToUpdateNonOverlappingRaw and _areasToUpdateNonOverlappingPBR
+        // (`recomputeDirtyAreas`called multiple times without clearing those arrays), 
+        //  so we have to maintain unicity again.
         //
-        // SOLUTION
-        // The fundamental problem is that dirtyList should probably be merged with
-        // _areasToUpdateNonOverlapping.
-        // _areasToRender should also be purely derived from _areasToUpdateNonOverlapping
-        // Finally the interface of IWindowListener is poorly defined, this ties the window
-        // to the renderer in a bad way.
         {
-            _areasToUpdateTemp.clearContents();
-            removeOverlappingAreas(_areasToUpdateNonOverlapping, _areasToUpdateTemp);
-            _areasToUpdateNonOverlapping.clearContents();
-            _areasToUpdateNonOverlapping.pushBack(_areasToUpdateTemp);
-        }
-        assert(haveNoOverlap(_areasToUpdateNonOverlapping[]));
+            // Make _areasToUpdateNonOverlappingRaw disjointed
+            _areasTemp.clearContents();
+            removeOverlappingAreas(_areasToUpdateNonOverlappingRaw, _areasTemp);
+            _areasToUpdateNonOverlappingRaw.clearContents();
+            _areasToUpdateNonOverlappingRaw.pushBack(_areasTemp);
+            assert(haveNoOverlap(_areasToUpdateNonOverlappingRaw[]));
 
-        foreach(dirtyRect; _areasToUpdateNonOverlapping)
+            // Make _areasToUpdateNonOverlappingPBR disjointed
+            _areasTemp.clearContents();
+            removeOverlappingAreas(_areasToUpdateNonOverlappingPBR, _areasTemp);
+            _areasToUpdateNonOverlappingPBR.clearContents();
+            _areasToUpdateNonOverlappingPBR.pushBack(_areasTemp);
+            assert(haveNoOverlap(_areasToUpdateNonOverlappingPBR[]));
+        }
+
+        // Compute _areasToRender and _areasToDisplay, purely derived from the above.
+        // Note that they are possibly overlapping collections
+        // _areasToComposite <- margin(_areasToUpdatePBR)
+        // _areasToDisplay <- union(_areasToComposite, _areasToUpdateRaw)        
         {
-            assert(dirtyRect.isSorted);
-            assert(!dirtyRect.empty);
-            _areasToRender.pushBack( extendsDirtyRect(dirtyRect, _askedWidth, _askedHeight) );
+            _areasToComposite.clearContents();            
+            foreach(rect; _areasToUpdateNonOverlappingPBR)
+            {
+                assert(rect.isSorted);
+                assert(!rect.empty);
+                _areasToComposite.pushBack( convertPBRLayerRectToRawLayerRect(rect, _askedWidth, _askedHeight) );
+            }
+
+            _areasToDisplay.clearContents();
+            _areasToDisplay.pushBack(_areasToComposite);
+            foreach(rect; _areasToUpdateNonOverlappingRaw)
+            {
+                assert(rect.isSorted);
+                assert(!rect.empty);
+                _areasToDisplay.pushBack( rect );
+            }
         }
     }
 
-    box2i extendsDirtyRect(box2i rect, int width, int height) nothrow @nogc
+    final box2i convertPBRLayerRectToRawLayerRect(box2i rect, int width, int height) nothrow @nogc
     {
         int xmin = rect.min.x - _updateMargin;
         int ymin = rect.min.y - _updateMargin;
@@ -485,6 +532,7 @@ protected:
 
         // Extends buffer
         size_t sizeNeeded = byteStride(width) * height;
+        _compositedBuffer = cast(ubyte*) alignedRealloc(_renderedBuffer, sizeNeeded, 16);
         _renderedBuffer = cast(ubyte*) alignedRealloc(_renderedBuffer, sizeNeeded, 16);
 
         ImageRef!RGBA wfb;
@@ -495,21 +543,73 @@ protected:
         return wfb;
     }
 
-    /// Redraw UIElements
-    void renderElements() nothrow @nogc
+    /// Draw the Raw layer of `UIElement` widgets
+    void redrawElementsRaw() nothrow @nogc
     {
-        // recompute draw list
-        _elemsToDraw.clearContents();
-        getDrawList(_elemsToDraw);
+        enum bool parallelDraw = true;
 
-        // Sort by ascending z-order (high z-order gets drawn last)
-        // This sort must be stable to avoid messing with tree natural order.
-        int compareZOrder(in UIElement a, in UIElement b) nothrow @nogc
+        ImageRef!RGBA compositeRef;
+        compositeRef.w = _askedWidth;
+        compositeRef.h = _askedHeight;
+        compositeRef.pitch = byteStride(_askedWidth);
+        compositeRef.pixels = cast(RGBA*)(_renderedBuffer);
+
+        _areasToDisplayNonOverlapping.clearContents();
+        removeOverlappingAreas(_areasToDisplay, _areasToDisplayNonOverlapping);
+        
+        static if (parallelDraw)
         {
-            return a.zOrder() - b.zOrder();
-        }
-        grailSort!UIElement(_elemsToDraw[], &compareZOrder);
+            int drawn = 0;
+            int maxParallelElements = 32; // PERF: why this limit of 32??
+            int N = cast(int)_elemsToDraw.length;
 
+            while(drawn < N)
+            {
+                int canBeDrawn = 1; // at least one can be drawn without collision
+
+                // Search max number of parallelizable draws until the end of the list or a collision is found
+                bool foundIntersection = false;
+                for ( ; (canBeDrawn < maxParallelElements) && (drawn + canBeDrawn < N); ++canBeDrawn)
+                {
+                    box2i candidate = _elemsToDraw[drawn + canBeDrawn].position;
+
+                    for (int j = 0; j < canBeDrawn; ++j)
+                    {
+                        if (_elemsToDraw[drawn + j].position.intersects(candidate))
+                        {
+                            foundIntersection = true;
+                            break;
+                        }
+                    }
+                    if (foundIntersection)
+                        break;
+                }
+
+                assert(canBeDrawn >= 1 && canBeDrawn <= maxParallelElements);
+
+                // Draw a number of UIElement in parallel
+                void drawOneItem(int i) nothrow @nogc
+                {
+                    _elemsToDraw[drawn + i].renderRaw(compositeRef, _areasToDisplayNonOverlapping[]);
+                }
+                _threadPool.parallelFor(canBeDrawn, &drawOneItem);
+
+                drawn += canBeDrawn;
+                assert(drawn <= N);
+            }
+            assert(drawn == N);
+        }
+        else
+        {
+            // Render required areas in diffuse and depth maps, base level
+            foreach(elem; _elemsToDraw)
+                elem.renderRaw(compositeRef, _areasToDisplayNonOverlapping[]);
+        }
+    }
+
+    /// Draw the PBR layer of `UIElement` widgets
+    void redrawElementsPBR() nothrow @nogc
+    {
         enum bool parallelDraw = true;
 
         auto diffuseRef = _diffuseMap.levels[0].toRef();
@@ -519,7 +619,7 @@ protected:
         static if (parallelDraw)
         {
             int drawn = 0;
-            int maxParallelElements = 32;
+            int maxParallelElements = 32; // PERF: why this limit of 32??
             int N = cast(int)_elemsToDraw.length;
 
             while(drawn < N)
@@ -549,10 +649,9 @@ protected:
                 // Draw a number of UIElement in parallel
                 void drawOneItem(int i) nothrow @nogc
                 {
-                    _elemsToDraw[drawn + i].render(diffuseRef, depthRef, materialRef, _areasToUpdateNonOverlapping[]);
+                    _elemsToDraw[drawn + i].renderPBR(diffuseRef, depthRef, materialRef, _areasToUpdateNonOverlappingPBR[]);
                 }
-                //_threadPool.waitForCompletion();
-                _threadPool.parallelFor/*Async*/(canBeDrawn, &drawOneItem);
+                _threadPool.parallelFor(canBeDrawn, &drawOneItem);
 
                 drawn += canBeDrawn;
                 assert(drawn <= N);
@@ -563,7 +662,7 @@ protected:
         {
             // Render required areas in diffuse and depth maps, base level
             foreach(elem; _elemsToDraw)
-                elem.render(diffuseRef, depthRef, _areasToUpdate[]);
+                elem.renderPBR(diffuseRef, depthRef, materialRef, _areasToUpdateNonOverlappingPBR[]);
         }
     }
 
@@ -576,18 +675,20 @@ protected:
         enum tileWidth = 64;
         enum tileHeight = 32;
 
-        _areasToRenderNonOverlappingTiled.clearContents();
-        tileAreas(_areasToRenderNonOverlapping[], tileWidth, tileHeight,_areasToRenderNonOverlappingTiled);
+        _areasToCompositeNonOverlapping.clearContents();
+        removeOverlappingAreas(_areasToComposite, _areasToCompositeNonOverlapping);
 
-        int numAreas = cast(int)_areasToRenderNonOverlappingTiled.length;
+        _areasToCompositeNonOverlappingTiled.clearContents();
+        tileAreas(_areasToCompositeNonOverlapping[], tileWidth, tileHeight,_areasToCompositeNonOverlappingTiled);
+
+        int numAreas = cast(int)_areasToCompositeNonOverlappingTiled.length;
 
         void compositeOneTile(int i) nothrow @nogc
         {
-            compositor.compositeTile(wfb, pf, _areasToRenderNonOverlappingTiled[i],
+            compositor.compositeTile(wfb, pf, _areasToCompositeNonOverlappingTiled[i],
                                      _diffuseMap, _materialMap, _depthMap, context.skybox);
         }
-        //_threadPool.waitForCompletion(); // wait for mipmaps to be generated
-        _threadPool.parallelFor/*Async*/(numAreas, &compositeOneTile);
+        _threadPool.parallelFor(numAreas, &compositeOneTile);
     }
 
     /// Compose lighting effects from depth and diffuse into a result.
@@ -595,13 +696,13 @@ protected:
     /// Useful multithreading code.
     void regenerateMipmaps() nothrow @nogc
     {
-        int numAreas = cast(int)_areasToUpdateNonOverlapping.length;
+        int numAreas = cast(int)_areasToUpdateNonOverlappingPBR.length;
 
         // Fill update rect buffer with the content of _areasToUpdateNonOverlapping
         for (int i = 0; i < 2; ++i)
         {
             _updateRectScratch[i].clearContents();
-            _updateRectScratch[i].pushBack(_areasToUpdateNonOverlapping[]);
+            _updateRectScratch[i].pushBack(_areasToUpdateNonOverlappingPBR[]);
         }
 
         // We can't use tiled parallelism for mipmapping here because there is overdraw beyond level 0
@@ -641,8 +742,7 @@ protected:
                 }
             }
         }
-        //_threadPool.waitForCompletion(); // wait for UI widgets to be drawn
-        _threadPool.parallelFor/*Async*/(2, &processOneMipmap);
+        _threadPool.parallelFor(2, &processOneMipmap);
     }
 }
 
