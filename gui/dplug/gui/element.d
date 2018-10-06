@@ -66,17 +66,17 @@ enum : UIFlags
     flagAnimated = 4
 }
 
-/// Used by `setDirty` calls to figure which drawing callback should be invalidated.
+/// Used by `setDirty` calls to figure which layer should be invalidated.
 enum UILayer
 {
     /// Use the `UIElement` flags to figure which layers to invalidate.
+    /// This is what you want most of the time.
     guessFromFlags,
 
     /// Only the Raw layer is invalidated.
-    raw, 
-
-    /// Only the PBR layer is invalidated.
-    PBR,
+    /// This is what you want if your `UIElement` draw to both Raw and PBR layer, but this 
+    /// time you only want to udpate a fast Raw overlay (eg: curve widgets, anything real-time).
+    rawOnly
 }
 
 /// Base class of the UI widget hierarchy.
@@ -518,7 +518,9 @@ nothrow:
     // To be called at top-level periodically.
     void animate(double dt, double time)
     {
-        onAnimate(dt, time);
+        if (isAnimated)
+            onAnimate(dt, time);
+
         foreach(child; _children[])
             child.animate(dt, time);
     }
@@ -624,13 +626,18 @@ nothrow:
     /// You should empty it before calling this function.
     /// Everything visible get into the draw list, but that doesn't mean they
     /// will get drawn if they don't overlap with a dirty area.
-    final void getDrawList(ref Vec!UIElement list)
+    final void getDrawLists(ref Vec!UIElement listRaw, ref Vec!UIElement listPBR)
     {
         if (isVisible())
         {
-            list.pushBack(this); // PERF check flags here, push into a PBR and/or a Raw list
+            if (drawsToRaw())
+                listRaw.pushBack(this);
+
+            if (drawsToPBR())
+                listPBR.pushBack(this);
+
             foreach(child; _children[])
-                child.getDrawList(list);
+                child.getDrawLists(listRaw, listPBR);
         }
     }
 
@@ -758,20 +765,19 @@ private:
             case UILayer.guessFromFlags:
                 if (drawsToPBR())
                 {
-                    // Note: even if UIElement also draws to Raw, not invalidating
-                    // `dirtyListRaw` since the Raw layer is always updated when the PBR layer is.
+                    // Note: even if one UIElement draws to both Raw and PBR layers, we are not 
+                    // adding this rectangle in `dirtyListRaw` since the Raw layer is automatically
+                    // updated when the PBR layer below is.
                     _context.dirtyListPBR.addRect(rect); 
                 }
                 else if (drawsToRaw())
+                {
                     _context.dirtyListRaw.addRect(rect);
+                }
                 break;
 
-            case UILayer.raw:
-                _context.dirtyListRaw.addRect(rect);
-                break;
-
-            case UILayer.PBR:
-                _context.dirtyListPBR.addRect(rect);
+            case UILayer.rawOnly:
+                _context.dirtyListRaw.addRect(rect); 
                 break;
         }
     }

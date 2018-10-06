@@ -81,7 +81,8 @@ nothrow:
         _areasToDisplay = makeVec!box2i;
         _areasToDisplayNonOverlapping = makeVec!box2i;
 
-        _elemsToDraw = makeVec!UIElement;
+        _elemsToDrawRaw = makeVec!UIElement;
+        _elemsToDrawPBR = makeVec!UIElement;
 
         version(BenchmarkCompositing)
         {
@@ -339,14 +340,17 @@ protected:
     Vec!box2i _areasToCompositeNonOverlapping; // same list, but reorganized to avoid overlap
     Vec!box2i _areasToCompositeNonOverlappingTiled; // same list, but separated in smaller tiles
 
-    // The list of areas that must be effectively redrawn in the Raw layer, and then redisplayed.
+    // The list of areas that must be effectively redisplayed.
     Vec!box2i _areasToDisplay;
     Vec!box2i _areasToDisplayNonOverlapping; // same list, but reorganized to avoid overlap
 
-    // The list of UIElement to draw.
-    // Note: AlignedBuffer memory isn't scanned,
-    //       but this doesn't matter since UIElement are the UI hierarchy anyway.
-    Vec!UIElement _elemsToDraw;
+    /// The list of UIElement to potentially call `onDrawPBR` on.
+    // PERF: could be replaced by a range on the UI tree
+    Vec!UIElement _elemsToDrawRaw;
+
+    /// The list of UIElement to potentially call `onDrawPBR` on.
+    // PERF: could be replaced by a range on the UI tree
+    Vec!UIElement _elemsToDrawPBR;
 
     /// Amount of pixels dirty rectangles are extended with.
     int _updateMargin = 20;
@@ -365,11 +369,12 @@ protected:
         StopWatch _drawWatch;
     }
 
-    void computeElementToRedraw()
+    void recomputeDrawLists()
     {
-        // recompute draw list
-        _elemsToDraw.clearContents();
-        getDrawList(_elemsToDraw);
+        // recompute draw lists
+        _elemsToDrawRaw.clearContents();
+        _elemsToDrawPBR.clearContents();
+        getDrawLists(_elemsToDrawRaw, _elemsToDrawPBR);
 
         // Sort by ascending z-order (high z-order gets drawn last)
         // This sort must be stable to avoid messing with tree natural order.
@@ -377,14 +382,19 @@ protected:
         {
             return a.zOrder() - b.zOrder();
         }
-        grailSort!UIElement(_elemsToDraw[], &compareZOrder); // PERF: share this list with PBR and Raw layers
+        grailSort!UIElement(_elemsToDrawRaw[], &compareZOrder);
+        grailSort!UIElement(_elemsToDrawPBR[], &compareZOrder);
     }
 
     void doDraw(WindowPixelFormat pf) nothrow @nogc
     {
+        // A. Recompute draw lists
+        // These are the `UIElement`s that _may_ have their onDrawXXX callbacks called.
+        recomputeDrawLists();
+
         // Composite GUI
         // Most of the cost of rendering is here
-        // A. 1st PASS OF REDRAW
+        // B. 1st PASS OF REDRAW
         // Some UIElements are redrawn at the PBR level
         version(BenchmarkCompositing)
             _drawWatch.start();
@@ -395,7 +405,7 @@ protected:
             _drawWatch.displayMean();
         }
 
-        // B. MIPMAPPING
+        // C. MIPMAPPING
         version(BenchmarkCompositing)
             _mipmapWatch.start();
         // Split boxes to avoid overlapped work
@@ -407,7 +417,7 @@ protected:
             _mipmapWatch.displayMean();
         }
 
-        // C. COMPOSITING
+        // D. COMPOSITING
         ImageRef!RGBA wfb;
         wfb.w = _askedWidth;
         wfb.h = _askedHeight;
@@ -423,14 +433,14 @@ protected:
             _compositingWatch.displayMean();
         }
 
-        // D. COPY FROM "COMPOSITED" TO "RENDERED" BUFFER
+        // E. COPY FROM "COMPOSITED" TO "RENDERED" BUFFER
         // PERF: optimize this copy, should only happen in _areasToCompositeNonOverlapping
         {
             size_t size = byteStride(_askedWidth) * _askedHeight;
             _renderedBuffer[0..size] = _compositedBuffer[0..size];
         }
 
-        // E. 2nd PASS OF REDRAW
+        // F. 2nd PASS OF REDRAW
         // TODO: measure that
         redrawElementsRaw();
 
@@ -447,7 +457,6 @@ protected:
         // at around the same time), but that isn't a problem.
         context().dirtyListRaw.pullAllRectangles(_areasToUpdateNonOverlappingRaw);
         context().dirtyListPBR.pullAllRectangles(_areasToUpdateNonOverlappingPBR);
-
 
         // TECHNICAL DEBT HERE
         // The problem here is that if the window isn't shown there may be duplicates in
@@ -561,7 +570,7 @@ protected:
         {
             int drawn = 0;
             int maxParallelElements = 32; // PERF: why this limit of 32??
-            int N = cast(int)_elemsToDraw.length;
+            int N = cast(int)_elemsToDrawRaw.length;
 
             while(drawn < N)
             {
@@ -571,11 +580,11 @@ protected:
                 bool foundIntersection = false;
                 for ( ; (canBeDrawn < maxParallelElements) && (drawn + canBeDrawn < N); ++canBeDrawn)
                 {
-                    box2i candidate = _elemsToDraw[drawn + canBeDrawn].position;
+                    box2i candidate = _elemsToDrawRaw[drawn + canBeDrawn].position;
 
                     for (int j = 0; j < canBeDrawn; ++j)
                     {
-                        if (_elemsToDraw[drawn + j].position.intersects(candidate))
+                        if (_elemsToDrawRaw[drawn + j].position.intersects(candidate))
                         {
                             foundIntersection = true;
                             break;
@@ -590,7 +599,7 @@ protected:
                 // Draw a number of UIElement in parallel
                 void drawOneItem(int i) nothrow @nogc
                 {
-                    _elemsToDraw[drawn + i].renderRaw(compositeRef, _areasToDisplayNonOverlapping[]);
+                    _elemsToDrawRaw[drawn + i].renderRaw(compositeRef, _areasToDisplayNonOverlapping[]);
                 }
                 _threadPool.parallelFor(canBeDrawn, &drawOneItem);
 
@@ -602,7 +611,7 @@ protected:
         else
         {
             // Render required areas in diffuse and depth maps, base level
-            foreach(elem; _elemsToDraw)
+            foreach(elem; _elemsToDrawRaw)
                 elem.renderRaw(compositeRef, _areasToDisplayNonOverlapping[]);
         }
     }
@@ -620,7 +629,7 @@ protected:
         {
             int drawn = 0;
             int maxParallelElements = 32; // PERF: why this limit of 32??
-            int N = cast(int)_elemsToDraw.length;
+            int N = cast(int)_elemsToDrawPBR.length;
 
             while(drawn < N)
             {
@@ -630,11 +639,11 @@ protected:
                 bool foundIntersection = false;
                 for ( ; (canBeDrawn < maxParallelElements) && (drawn + canBeDrawn < N); ++canBeDrawn)
                 {
-                    box2i candidate = _elemsToDraw[drawn + canBeDrawn].position;
+                    box2i candidate = _elemsToDrawPBR[drawn + canBeDrawn].position;
 
                     for (int j = 0; j < canBeDrawn; ++j)
                     {
-                        if (_elemsToDraw[drawn + j].position.intersects(candidate))
+                        if (_elemsToDrawPBR[drawn + j].position.intersects(candidate))
                         {
                             foundIntersection = true;
                             break;
@@ -649,7 +658,7 @@ protected:
                 // Draw a number of UIElement in parallel
                 void drawOneItem(int i) nothrow @nogc
                 {
-                    _elemsToDraw[drawn + i].renderPBR(diffuseRef, depthRef, materialRef, _areasToUpdateNonOverlappingPBR[]);
+                    _elemsToDrawPBR[drawn + i].renderPBR(diffuseRef, depthRef, materialRef, _areasToUpdateNonOverlappingPBR[]);
                 }
                 _threadPool.parallelFor(canBeDrawn, &drawOneItem);
 
