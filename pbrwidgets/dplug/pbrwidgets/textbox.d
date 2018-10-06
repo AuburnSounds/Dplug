@@ -26,7 +26,7 @@ nothrow:
 
     this(UIContext context, Font font, int textSize, RGBA textColor = RGBA(200, 200, 200, 255), RGBA backgroundColor = RGBA(0, 0, 0, 255))
     {
-        super(context);
+        super(context, flagPBR);
         _font = font;
         _textSize = textSize;
         _textColor = textColor;
@@ -43,7 +43,7 @@ nothrow:
         return displayString();
     }
 
-    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects)
+    override void onDrawPBR(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects)
     {
         float textPosx = position.width * 0.5f;
         float textPosy = position.height * 0.5f;

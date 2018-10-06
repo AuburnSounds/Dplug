@@ -50,7 +50,7 @@ nothrow:
 
     this(UIContext context, Parameter param, Font font)
     {
-        super(context);
+        super(context, flagAnimated | flagPBR);
         _param = param;
         _param.addListener(this);
         _font = font;

@@ -24,7 +24,7 @@ nothrow:
 
     this(UIContext context, Font font, string text = "")
     {
-        super(context);
+        super(context, flagAnimated | flagPBR);
         _text = text;
         _font = font;
     }
@@ -126,7 +126,7 @@ nothrow:
         return false;
     }    
 
-    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects) nothrow @nogc
+    override void onDrawPBR(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects) nothrow @nogc
     {
         float textPosx = position.width * 0.5f;
         float textPosy = position.height * 0.5f;

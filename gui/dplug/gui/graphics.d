@@ -51,10 +51,10 @@ nothrow:
 
     ICompositor compositor;
 
-    this(int initialWidth, int initialHeight)
+    this(int initialWidth, int initialHeight, UIFlags flags)
     {
         _uiContext = mallocNew!UIContext();
-        super(_uiContext);
+        super(_uiContext, flags);
 
         // Don't like the default rendering? Make another compositor.
         compositor = mallocNew!PBRCompositor();
@@ -532,7 +532,7 @@ protected:
 
         // Extends buffer
         size_t sizeNeeded = byteStride(width) * height;
-        _compositedBuffer = cast(ubyte*) alignedRealloc(_renderedBuffer, sizeNeeded, 16);
+        _compositedBuffer = cast(ubyte*) alignedRealloc(_compositedBuffer, sizeNeeded, 16);
         _renderedBuffer = cast(ubyte*) alignedRealloc(_renderedBuffer, sizeNeeded, 16);
 
         ImageRef!RGBA wfb;

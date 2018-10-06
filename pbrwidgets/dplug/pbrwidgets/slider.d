@@ -49,7 +49,7 @@ nothrow:
 
     this(UIContext context, Parameter param)
     {
-        super(context);
+        super(context, flagAnimated | flagPBR);
         _param = param;
         _param.addListener(this);
         _sensivity = 1.0f;

@@ -46,11 +46,37 @@ enum ubyte defaultMetalnessDielectric = 25; // ~ 0.08
 /// Reasonable metal default value for the Metalness channel.
 enum ubyte defaultMetalnessMetal = 255;
 
-alias UILayer = int;
-enum : UILayer
+
+
+/// Each UIElement class has flags which are used to lessen the number of empty virtual calls.
+/// Such flags say which callbacks the `UIElement` need.
+alias UIFlags = uint;
+enum : UIFlags
 {
-    layerRaw = 1,
-    layerPBR = 2
+    // This `UIElement` draws to the Raw layer and as such `onDrawRaw` should be called when dirtied.
+    // When calling `setDirty(0)`, the Raw layer alone will be invalidated.
+    flagRaw = 1,
+
+    // This `UIElement` draws to the PBR layer and as such `onDrawPBR` should be called when dirtied.
+    // When calling `setDirty(0)`, the PBR layer will be invalidated. 
+    // Important: This will lead to BOTH `onDrawPBR` and `onDrawRaw` to be called sucessively.
+    flagPBR = 2,
+
+    // This `UIElement` is animated and as such the `onAnimate` callback should be called should be called when dirtied.
+    flagAnimated = 4
+}
+
+/// Used by `setDirty` calls to figure which drawing callback should be invalidated.
+enum UILayer
+{
+    /// Use the `UIElement` flags to figure which layers to invalidate.
+    guessFromFlags,
+
+    /// Only the Raw layer is invalidated.
+    raw, 
+
+    /// Only the PBR layer is invalidated.
+    PBR,
 }
 
 /// Base class of the UI widget hierarchy.
@@ -63,9 +89,10 @@ public:
 nothrow:
 @nogc:
 
-    this(UIContext context)
+    this(UIContext context, uint flags)
     {
         _context = context;
+        _flags = flags;
         _localRectsBuf = makeVec!box2i();
         _children = makeVec!UIElement();
         _zOrderedChildren = makeVec!UIElement();
@@ -185,7 +212,7 @@ nothrow:
 
     /// Returns: Position of the element, that will be used for rendering. This
     /// position is reset when calling reflow.
-    final box2i position() nothrow @nogc
+    final box2i position()
     {
         return _position;
     }
@@ -194,7 +221,7 @@ nothrow:
     /// reflow() method
     /// IMPORTANT: As of today you are not allowed to assign a position outside the extent of
     //             the window.
-    final box2i position(box2i p) nothrow @nogc
+    final box2i position(box2i p)
     {
         assert(p.isSorted());
         return _position = p;
@@ -489,34 +516,34 @@ nothrow:
     }
 
     // To be called at top-level periodically.
-    void animate(double dt, double time) nothrow @nogc
+    void animate(double dt, double time)
     {
         onAnimate(dt, time);
         foreach(child; _children[])
             child.animate(dt, time);
     }
 
-    final UIContext context() nothrow @nogc
+    final UIContext context()
     {
         return _context;
     }
 
-    final bool isVisible() pure const nothrow @nogc
+    final bool isVisible() pure const
     {
         return _visible;
     }
 
-    final void setVisible(bool visible) pure nothrow @nogc
+    final void setVisible(bool visible) pure
     {
         _visible = visible;
     }
 
-    final int zOrder() pure const nothrow @nogc
+    final int zOrder() pure const
     {
         return _zOrder;
     }
 
-    final void setZOrder(int zOrder) pure nothrow @nogc
+    final void setZOrder(int zOrder) pure
     {
         _zOrder = zOrder;
     }
@@ -529,13 +556,9 @@ nothrow:
     /// Important: you _can_ call this from the audio thread, HOWEVER it is
     ///            much more efficient to mark the widget dirty with an atomic 
     ///            and call `setDirty` in animation callback.
-    void setDirtyWhole(UILayer layer = layerPBR) nothrow @nogc // TODO: remove that default at one point
+    void setDirtyWhole(UILayer layer = UILayer.guessFromFlags)
     {
-        assert(layer >= layerRaw && layer <= layerPBR);
-        if ((layer & layerPBR) != 0)
-            _context.dirtyListPBR.addRect(_position);
-        else
-            _context.dirtyListRaw.addRect(_position);
+        addDirtyRect(_position, layer);
     }
 
     /// Mark a part of the element dirty.
@@ -545,16 +568,12 @@ nothrow:
     /// Important: you could call this from the audio thread, however it is
     ///            much more efficient to mark the widget dirty with an atomic 
     ///            and call setDirty in animation callback.
-    void setDirty(box2i rect, UILayer layer = layerPBR) nothrow @nogc // TODO: remove that default at one point
+    void setDirty(box2i rect, UILayer layer = UILayer.guessFromFlags)
     {
         box2i translatedRect = rect.translate(_position.min);
         assert(_position.contains(translatedRect));
-        assert(layer >= layerRaw && layer <= layerPBR);
-        if ((layer & layerPBR) != 0)
-            _context.dirtyListPBR.addRect(translatedRect);
-        else
-            _context.dirtyListRaw.addRect(translatedRect);
-    }
+        addDirtyRect(translatedRect, layer);
+    }  
 
     /// Returns: Parent element. `null` if detached or root element.
     final UIElement parent() pure nothrow @nogc
@@ -571,26 +590,41 @@ nothrow:
             return _parent.topLevelParent();
     }
 
-    final bool isMouseOver() pure const nothrow @nogc
+    final bool isMouseOver() pure const
     {
         return _mouseOver;
     }
 
-    final bool isDragged() pure const nothrow @nogc
+    final bool isDragged() pure const
     {
         return _context.dragged is this;
     }
 
-    final bool isFocused() pure const nothrow @nogc
+    final bool isFocused() pure const
     {
         return _context.focused is this;
+    }
+
+    final bool drawsToPBR() pure const
+    {
+        return (_flags & flagPBR) != 0;
+    }
+
+    final bool drawsToRaw() pure const
+    {
+        return (_flags & flagRaw) != 0;
+    }
+
+    final bool isAnimated() pure const
+    {
+        return (_flags & flagAnimated) != 0;
     }
 
     /// Appends the Elements that should be drawn, in order.
     /// You should empty it before calling this function.
     /// Everything visible get into the draw list, but that doesn't mean they
     /// will get drawn if they don't overlap with a dirty area.
-    final void getDrawList(ref Vec!UIElement list) nothrow @nogc
+    final void getDrawList(ref Vec!UIElement list)
     {
         if (isVisible())
         {
@@ -611,7 +645,7 @@ protected:
     ///
     /// IMPORTANT: you MUST NOT draw outside `dirtyRects`. This allows more fine-grained updates.
     /// A `UIElement` that doesn't respect dirtyRects will have PAINFUL display problems.
-    void onDrawRaw(ImageRef!RGBA compositedMap, box2i[] dirtyRects) nothrow @nogc
+    void onDrawRaw(ImageRef!RGBA compositedMap, box2i[] dirtyRects)
     {
         // empty by default, meaning this UIElement does not work on R       
     }
@@ -627,7 +661,7 @@ protected:
     ///
     /// IMPORTANT: you MUST NOT draw outside `dirtyRects`. This allows more fine-grained updates.
     /// A `UIElement` that doesn't respect dirtyRects will have PAINFUL display problems.
-    void onDrawPBR(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects) nothrow @nogc
+    void onDrawPBR(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects)
     {
         // defaults to filling with a grey pattern
         RGBA darkGrey = RGBA(100, 100, 100, 0);
@@ -656,7 +690,7 @@ protected:
     /// Warning: Summing `dt` will not lead to a time that increase like `time`.
     ///          `time` can go backwards if the window was reopen.
     ///          `time` is guaranteed to increase as fast as system time but is not synced to audio time.
-    void onAnimate(double dt, double time) nothrow @nogc
+    void onAnimate(double dt, double time)
     {
     }
 
@@ -675,6 +709,9 @@ protected:
     /// If _visible is false, neither the Element nor its children are drawn.
     bool _visible = true;
 
+    /// Flags, for now immutable
+    immutable(uint) _flags;
+
     /// Higher z-order = above other `UIElement`.
     /// By default, every `UIElement` have the same z-order.
     /// Because the sort is stable, tree traversal order is the default order (depth first).
@@ -691,7 +728,7 @@ private:
     /// Dirty rectangles buffer, cropped to _position.
     Vec!box2i _localRectsBuf;
 
-    /// Sported children in Z-lexical-order (sorted by Z, or else increasing index in _children).
+    /// Sorted children in Z-lexical-order (sorted by Z, or else increasing index in _children).
     Vec!UIElement _zOrderedChildren;
 
     // Sort children in ascending z-order
@@ -712,6 +749,31 @@ private:
                                  else if (a.zOrder > b.zOrder) return -1;
                                  else return 0;
                              });
+    }
+
+    final void addDirtyRect(box2i rect, UILayer layer)
+    {
+        final switch(layer)
+        {
+            case UILayer.guessFromFlags:
+                if (drawsToPBR())
+                {
+                    // Note: even if UIElement also draws to Raw, not invalidating
+                    // `dirtyListRaw` since the Raw layer is always updated when the PBR layer is.
+                    _context.dirtyListPBR.addRect(rect); 
+                }
+                else if (drawsToRaw())
+                    _context.dirtyListRaw.addRect(rect);
+                break;
+
+            case UILayer.raw:
+                _context.dirtyListRaw.addRect(rect);
+                break;
+
+            case UILayer.PBR:
+                _context.dirtyListPBR.addRect(rect);
+                break;
+        }
     }
 }
 

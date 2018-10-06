@@ -28,13 +28,13 @@ public:
 nothrow:
 @nogc:
 
-    this(UIContext context)
+    this(UIContext context, uint flags)
     {
-        super(context);
+        super(context, flags);
+
         _diffuseBuf = mallocNew!(OwnedImage!RGBA)();
         _depthBuf = mallocNew!(OwnedImage!L16)();
         _materialBuf = mallocNew!(OwnedImage!RGBA)();
-
         _diffuseOpacityBuf = mallocNew!(OwnedImage!L8)();
         _depthOpacityBuf = mallocNew!(OwnedImage!L8)();
         _materialOpacityBuf = mallocNew!(OwnedImage!L8)();
@@ -51,19 +51,19 @@ nothrow:
         _materialOpacityBuf.destroyFree();
     }
     
-    override void setDirty(box2i rect) nothrow @nogc 
+    override void setDirty(box2i rect, UILayer layer = UILayer.guessFromFlags) nothrow @nogc 
     {
-        super.setDirty(rect);
+        super.setDirty(rect, layer);
         _mustBeRedrawn = true; // the content of the cached buffer will change, need to be redrawn
     }
 
-    override void setDirtyWhole() nothrow @nogc 
+    override void setDirtyWhole(UILayer layer = UILayer.guessFromFlags) nothrow @nogc 
     {
-        super.setDirtyWhole();
+        super.setDirtyWhole(layer);
         _mustBeRedrawn = true; // the content of the cached buffer will change, need to be redrawn
     }
 
-    final override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects) nothrow @nogc
+    final override void onDrawPBR(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects) nothrow @nogc
     {
         // Did the element's size changed?
         int currentWidth = _diffuseBuf.w;

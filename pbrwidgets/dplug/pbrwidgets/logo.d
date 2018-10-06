@@ -29,7 +29,7 @@ nothrow:
     /// Note: once called, the logo now own the diffuse image, and will destroy it.
     this(UIContext context, OwnedImage!RGBA diffuseImage)
     {
-        super(context);
+        super(context, flagAnimated | flagPBR);
         _diffuseImage = diffuseImage;
         _animation = 0;
     }
@@ -52,7 +52,7 @@ nothrow:
         }
     }
 
-    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects) nothrow @nogc
+    override void onDrawPBR(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects) nothrow @nogc
     {
         foreach(dirtyRect; dirtyRects)
         {

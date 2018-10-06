@@ -37,7 +37,7 @@ nothrow:
 
     this(UIContext context, BoolParameter param)
     {
-        super(context);
+        super(context, flagAnimated | flagPBR);
         _param = param;
         _param.addListener(this);
         _animation = 0.0f;
@@ -61,7 +61,7 @@ nothrow:
         }
     }
 
-    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects) nothrow @nogc
+    override void onDrawPBR(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects) nothrow @nogc
     {
         // dig a hole
         depthMap.fillAll(L16(holeDepth));

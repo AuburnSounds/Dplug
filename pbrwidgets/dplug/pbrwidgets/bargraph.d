@@ -32,7 +32,7 @@ nothrow:
     this(UIContext context, int numChannels, float minValue, float maxValue,
          int redLeds = 0, int orangeLeds = 3, int yellowLeds = 0, int magentaLeds = 9)
     {
-        super(context);
+        super(context, flagAnimated | flagPBR);
 
         _values = mallocSliceNoInit!float(numChannels);
         _values[] = 0;
@@ -63,7 +63,7 @@ nothrow:
     }
 
 
-    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects) nothrow @nogc
+    override void onDrawPBR(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects) nothrow @nogc
     {
         int numLeds = cast(int)_leds.length;
         int numChannels = cast(int)_values.length;

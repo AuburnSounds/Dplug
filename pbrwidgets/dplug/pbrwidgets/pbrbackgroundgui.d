@@ -19,6 +19,7 @@ import dplug.graphics.drawex;
 import dplug.window.window;
 
 import dplug.gui.graphics;
+import dplug.gui.element;
 
 /// PBRBackgroundGUI provides a PBR background loaded from PNG or JPEG images.
 /// It's very practical while in development because it let's you reload the six
@@ -40,7 +41,7 @@ nothrow:
 
     this(int width, int height)
     {
-        super(width, height);
+        super(width, height, flagPBR);
         auto basecolorData = cast(ubyte[])(import(baseColorPath));
         auto emissiveData = cast(ubyte[])(import(emissivePath));        
         auto materialData = cast(ubyte[])(import(materialPath));
@@ -79,7 +80,7 @@ nothrow:
         _position = availableSpace;
     }
 
-    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects)
+    override void onDrawPBR(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects)
     {
         // Just blit backgrounds into dirtyRects.
         foreach(dirtyRect; dirtyRects)

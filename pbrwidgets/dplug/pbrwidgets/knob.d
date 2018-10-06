@@ -78,7 +78,7 @@ nothrow:
 
     this(UIContext context, FloatParameter param)
     {
-        super(context);
+        super(context, flagAnimated | flagPBR);
         _param = param;
         _sensivity = defaultSensivity;
         _param.addListener(this);
@@ -116,7 +116,7 @@ nothrow:
         return _sensivity = sensivity;
     }
 
-    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects) nothrow @nogc
+    override void onDrawPBR(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects) nothrow @nogc
     {
         drawTrail(diffuseMap, depthMap, materialMap, dirtyRects);
         drawKnob(diffuseMap, depthMap, materialMap, dirtyRects);
