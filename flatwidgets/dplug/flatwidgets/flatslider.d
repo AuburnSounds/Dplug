@@ -1,7 +1,7 @@
 /**
 Film-strip slider.
 
-Copyright: Guillaume Piolat 2015.
+Copyright: Guillaume Piolat 2015-2018.
 Copyright: Ethan Reker 2017.
 License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
@@ -24,7 +24,7 @@ nothrow:
 
     this(UIContext context, FloatParameter param, OwnedImage!RGBA mipmap, int numFrames, float sensitivity = 0.25)
     {
-        super(context);
+        super(context, flagAnimated | flagRaw);
         _param = param;
         _sensivity = sensitivity;
         _filmstrip = mipmap;
@@ -51,6 +51,7 @@ nothrow:
         return _sensivity = sensivity;
     }
 
+    // TODO: it doesn't seem the animation is used when drawing
     override void onAnimate(double dt, double time) nothrow @nogc
     {
         float target = isDragged() ? 1 : 0;
@@ -62,25 +63,25 @@ nothrow:
         }
     }
 
-    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects) nothrow @nogc
+    override void onDrawRaw(ImageRef!RGBA rawMap, box2i[] dirtyRects)
     {
         setCurrentImage();
         auto _currentImage = _filmstrip.crop(box2i(_imageX1, _imageY1, _imageX2, _imageY2));
-        foreach(dirtyRect; dirtyRects){
-
-            auto croppedDiffuseIn = _currentImage.crop(dirtyRect);
-            auto croppedDiffuseOut = diffuseMap.crop(dirtyRect);
+        foreach(dirtyRect; dirtyRects)
+        {
+            auto croppedRawIn = _currentImage.crop(dirtyRect);
+            auto croppedRawOut = rawMap.crop(dirtyRect);
 
             int w = dirtyRect.width;
             int h = dirtyRect.height;
 
-            for(int j = 0; j < h; ++j){
+            for(int j = 0; j < h; ++j)
+            {
+                RGBA[] input = croppedRawIn.scanline(j);
+                RGBA[] output = croppedRawOut.scanline(j);
 
-                RGBA[] input = croppedDiffuseIn.scanline(j);
-                RGBA[] output = croppedDiffuseOut.scanline(j);
-
-
-                for(int i = 0; i < w; ++i){
+                for(int i = 0; i < w; ++i)
+                {
                     ubyte alpha = input[i].a;
 
                     RGBA color = RGBA.op!q{.blend(a, b, c)} (input[i], output[i], alpha);

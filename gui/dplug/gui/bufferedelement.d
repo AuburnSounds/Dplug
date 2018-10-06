@@ -14,6 +14,10 @@ public import dplug.gui.element;
 enum L8 opacityFullyOpaque = L8(255);
 enum L8 opacityFullyTransparent = L8(0);
 
+
+deprecated("UIBufferedElement has disappeared. Use either UIBufferedElementPBR or UIBufferedElementRaw instead.")
+alias UIBufferedElement = UIBufferedElementPBR;
+
 /// Extending the UIElement with an owned drawing buffer.
 /// This is intended to have easier dirtyrect-compliant widgets.
 /// Also caches expensive drawing, but it's not free at all.
@@ -22,7 +26,7 @@ enum L8 opacityFullyTransparent = L8(0);
 /// The semantic of the opacity channels are:
 ///   opacity left at 0 => pixel untouched
 ///   opacity > 0       => pixel is touched, blending will occur
-class UIBufferedElement : UIElement
+class UIBufferedElementPBR : UIElement
 {
 public:
 nothrow:
@@ -31,6 +35,9 @@ nothrow:
     this(UIContext context, uint flags)
     {
         super(context, flags);
+
+        // It makes no sense to bufferize the PBR impact of an UIElement which would not draw there
+        assert(drawsToPBR());
 
         _diffuseBuf = mallocNew!(OwnedImage!RGBA)();
         _depthBuf = mallocNew!(OwnedImage!L16)();
@@ -45,7 +52,6 @@ nothrow:
         _diffuseBuf.destroyFree();
         _depthBuf.destroyFree();
         _materialBuf.destroyFree();
-
         _diffuseOpacityBuf.destroyFree();
         _depthOpacityBuf.destroyFree();
         _materialOpacityBuf.destroyFree();
@@ -97,10 +103,10 @@ nothrow:
             _depthBuf.fillAll(L16(defaultDepth));
             _materialBuf.fillAll(RGBA(defaultRoughness, defaultMetalnessMetal, defaultSpecular, defaultPhysical));
 
-            onDrawBuffered(_diffuseBuf.toRef(), _depthBuf.toRef(), _materialBuf.toRef(), 
-                           _diffuseOpacityBuf.toRef(),
-                           _depthOpacityBuf.toRef(),
-                           _materialOpacityBuf.toRef());
+            onDrawBufferedPBR(_diffuseBuf.toRef(), _depthBuf.toRef(), _materialBuf.toRef(), 
+                              _diffuseOpacityBuf.toRef(),
+                              _depthOpacityBuf.toRef(),
+                              _materialOpacityBuf.toRef());
 
             // For debug purpose            
             //_diffuseOpacityBuf.fill(opacityFullyOpaque);
@@ -128,12 +134,12 @@ nothrow:
 
     /// Redraws the whole widget without consideration for drawing only in dirty rects.
     /// That is a lot of maps to fill. On the plus side, this happen quite infrequently.
-    abstract void onDrawBuffered(ImageRef!RGBA diffuseMap, 
-                                 ImageRef!L16 depthMap, 
-                                 ImageRef!RGBA materialMap, 
-                                 ImageRef!L8 diffuseOpacity,
-                                 ImageRef!L8 depthOpacity,
-                                 ImageRef!L8 materialOpacity) nothrow @nogc;
+    abstract void onDrawBufferedPBR(ImageRef!RGBA diffuseMap, 
+                                    ImageRef!L16 depthMap, 
+                                    ImageRef!RGBA materialMap, 
+                                    ImageRef!L8 diffuseOpacity,
+                                    ImageRef!L8 depthOpacity,
+                                    ImageRef!L8 materialOpacity) nothrow @nogc;
 
 private:
     OwnedImage!RGBA _diffuseBuf;
@@ -145,3 +151,90 @@ private:
     bool _mustBeRedrawn;
 }
 
+///ditto
+class UIBufferedElementRaw : UIElement
+{
+public:
+nothrow:
+@nogc:
+
+    this(UIContext context, uint flags)
+    {
+        super(context, flags);
+
+        // It makes no sense to bufferize the Raw impact of an UIElement which would not draw there
+        assert(drawsToRaw());
+
+        _rawBuf = mallocNew!(OwnedImage!RGBA)();
+        _opacityBuf = mallocNew!(OwnedImage!L8)();
+    }
+
+    ~this()
+    {
+        _rawBuf.destroyFree();
+        _opacityBuf.destroyFree();        
+    }
+
+    override void setDirty(box2i rect, UILayer layer = UILayer.guessFromFlags)
+    {
+        super.setDirty(rect, layer);
+        _mustBeRedrawn = true; // the content of the cached buffer will change, need to be redrawn
+    }
+
+    override void setDirtyWhole(UILayer layer = UILayer.guessFromFlags)
+    {
+        super.setDirtyWhole(layer);
+        _mustBeRedrawn = true; // the content of the cached buffer will change, need to be redrawn
+    }
+
+    final override void onDrawRaw(ImageRef!RGBA rawMap, box2i[] dirtyRects)
+    {
+        // Did the element's size changed?
+        int currentWidth = _rawBuf.w;
+        int currentHeight = _rawBuf.h;
+        int newWidth = _position.width;
+        int newHeight = _position.height;
+        bool sizeChanged = (currentWidth != newWidth) || (currentHeight != newHeight);
+        if (sizeChanged)
+        {
+            // If the widget size changed, we must redraw it even if it was not dirtied
+            _mustBeRedrawn = true;
+
+            // Change size of buffers
+            _opacityBuf.size(newWidth, newHeight);
+            _rawBuf.size(newWidth, newHeight);
+        }
+
+        if (_mustBeRedrawn)
+        {
+            // opacity buffer originally filled with zeroes
+            _opacityBuf.fillAll(opacityFullyTransparent);
+
+            // RGBA buffer originally filled with black
+            _rawBuf.fillAll(RGBA(0, 0, 0, 255));
+
+            onDrawBufferedRaw(_rawBuf.toRef(), _opacityBuf.toRef());
+
+            // For debug purpose            
+            //_opacityBuf.fill(opacityFullyOpaque);
+
+            _mustBeRedrawn = false;
+        }
+
+        // Blend cached render to given targets
+        foreach(dirtyRect; dirtyRects)
+        {
+            auto sourceRaw = _rawBuf.toRef().cropImageRef(dirtyRect);
+            auto destRaw = rawMap.cropImageRef(dirtyRect);
+            sourceRaw.blendWithAlpha(destRaw, _opacityBuf.toRef().cropImageRef(dirtyRect));
+        }
+    }
+
+    /// Redraws the whole widget without consideration for drawing only in dirty rects.
+    abstract void onDrawBufferedRaw(ImageRef!RGBA rawMap, ImageRef!L8 opacity);
+
+private:
+    OwnedImage!RGBA _rawBuf;
+    OwnedImage!L8 _opacityBuf;
+    bool _mustBeRedrawn;
+}

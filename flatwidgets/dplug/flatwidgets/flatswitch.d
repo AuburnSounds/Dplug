@@ -2,6 +2,7 @@
 Film-strip on/off switch.
 
 Copyright: Ethan Reker 2017.
+Copyright: Guillaume Piolat 2018.
 License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 
@@ -29,7 +30,7 @@ nothrow:
 
     this(UIContext context, BoolParameter param, OwnedImage!RGBA onImage, OwnedImage!RGBA offImage)
     {
-        super(context);
+        super(context, flagRaw);
         _param = param;
         _param.addListener(this);
 
@@ -47,35 +48,35 @@ nothrow:
         _param.removeListener(this);
     }
 
-    bool getState(){
+    bool getState()
+    {
       return unsafeObjectCast!BoolParameter(_param).valueAtomic();
     }
 
-    override void onDraw(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects) nothrow @nogc
+    override void onDrawRaw(ImageRef!RGBA rawMap, box2i[] dirtyRects)
     {
           auto _currentImage = getState() ? _onImage : _offImage;
-          foreach(dirtyRect; dirtyRects){
-
-              auto croppedDiffuseIn = _currentImage.crop(dirtyRect);
-              auto croppedDiffuseOut = diffuseMap.crop(dirtyRect);
+          foreach(dirtyRect; dirtyRects)
+          {
+              auto croppedRawIn = _currentImage.crop(dirtyRect);
+              auto croppedRawOut = rawMap.crop(dirtyRect);
 
               int w = dirtyRect.width;
               int h = dirtyRect.height;
 
-              for(int j = 0; j < h; ++j){
+              for(int j = 0; j < h; ++j)
+              {
+                  RGBA[] input = croppedRawIn.scanline(j);
+                  RGBA[] output = croppedRawOut.scanline(j);
 
-                  RGBA[] input = croppedDiffuseIn.scanline(j);
-                  RGBA[] output = croppedDiffuseOut.scanline(j);
-
-
-                  for(int i = 0; i < w; ++i){
+                  for(int i = 0; i < w; ++i)
+                  {
                       ubyte alpha = input[i].a;
 
                       RGBA color = RGBA.op!q{.blend(a, b, c)} (input[i], output[i], alpha);
                       output[i] = color;
                   }
               }
-
           }
     }
 
@@ -94,8 +95,7 @@ nothrow:
     }
 
     override void onMouseMove(int x, int y, int dx, int dy, MouseState mstate)
-    {
-        
+    {        
     }
 
     override void onMouseExit()
@@ -105,18 +105,14 @@ nothrow:
 
     override void onBeginDrag()
     {
-
     }
 
     override void onStopDrag()
     {
-
     }
     
     override void onMouseDrag(int x, int y, int dx, int dy, MouseState mstate)
-    {
-
-        
+    {        
     }
 
     override void onParameterChanged(Parameter sender) nothrow @nogc
