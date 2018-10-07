@@ -91,6 +91,7 @@ nothrow:
             _mipmapWatch = mallocNew!StopWatch(this, "Mipmap = ");
             _copyWatch = mallocNew!StopWatch(this, "Copy to Raw = ");
             _rawWatch = mallocNew!StopWatch(this, "Draw Raw = ");
+            _reorderWatch = mallocNew!StopWatch(this, "Draw Raw = ");
         }
 
         _diffuseMap = mallocNew!(Mipmap!RGBA)();
@@ -328,6 +329,7 @@ protected:
         StopWatch _drawWatch;
         StopWatch _copyWatch;
         StopWatch _rawWatch;
+        StopWatch _reorderWatch;
     }
 
     void recomputeDrawLists()
@@ -418,7 +420,6 @@ protected:
         }
 
         // F. 2nd PASS OF REDRAW
-        // TODO: measure that
         version(benchmarkGraphics)
             _rawWatch.start();
         redrawElementsRaw();
@@ -429,7 +430,14 @@ protected:
         }
 
         // G. Reorder components to the right pixel format
+        version(benchmarkGraphics)
+            _reorderWatch.start();
         reorderComponents(pf);
+        version(benchmarkGraphics)
+        {
+            _reorderWatch.stop();
+            _reorderWatch.displayMean();
+        }
 
         // Only then is the list of rectangles to update cleared, 
         // before calling `doDraw` such work accumulates
