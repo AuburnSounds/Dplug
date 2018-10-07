@@ -38,7 +38,7 @@ import dplug.gui.compositor;
 alias RMSP = RGBA; // reminder
 
 // Uncomment to benchmark compositing and devise optimizations.
-//version = BenchmarkCompositing;
+//debug = benchmarkGraphics;
 
 // A GUIGraphics is the interface between a plugin client and a IWindow.
 // It is also an UIElement and the root element of the plugin UI hierarchy.
@@ -84,11 +84,13 @@ nothrow:
         _elemsToDrawRaw = makeVec!UIElement;
         _elemsToDrawPBR = makeVec!UIElement;
 
-        version(BenchmarkCompositing)
+        debug(benchmarkGraphics)
         {
-            _compositingWatch = new StopWatch("Compositing = ");
-            _drawWatch = new StopWatch("Draw = ");
-            _mipmapWatch = new StopWatch("Mipmap = ");
+            _compositingWatch = mallocNew!StopWatch(this, "Compositing = ");
+            _drawWatch = mallocNew!StopWatch(this, "Draw PBR = ");
+            _mipmapWatch = mallocNew!StopWatch(this, "Mipmap = ");
+            _copyWatch = mallocNew!StopWatch(this, "Copy to Raw = ");
+            _rawWatch = mallocNew!StopWatch(this, "Draw Raw = ");
         }
 
         _diffuseMap = mallocNew!(Mipmap!RGBA)();
@@ -154,52 +156,6 @@ nothrow:
         *width = _askedWidth;
         *height = _askedHeight;
     }
-
-    version(BenchmarkCompositing)
-    {
-        class StopWatch
-        {
-            this(string title)
-            {
-                _title = title;
-            }
-
-            void start()
-            {
-                _lastTime = _window.getTimeMs();
-            }
-
-            enum WARMUP = 30;
-
-            void stop()
-            {
-                uint now = _window.getTimeMs();
-                int timeDiff = cast(int)(now - _lastTime);
-
-                if (times >= WARMUP)
-                    sum += timeDiff; // first samples are discarded
-
-                times++;
-                string msg = _title ~ to!string(timeDiff) ~ " ms";
-                _window.debugOutput(msg);
-            }
-
-            void displayMean()
-            {
-                if (times > WARMUP)
-                {
-                    string msg = _title ~ to!string(sum / (times - WARMUP)) ~ " ms mean";
-                    _window.debugOutput(msg);
-                }
-            }
-
-            string _title;
-            uint _lastTime;
-            double sum = 0;
-            int times = 0;
-        }
-    }
-
 
     // This class is only here to avoid name conflicts between
     // UIElement and IWindowListener methods :|
@@ -362,11 +318,13 @@ protected:
     /// This is copied from `_renderedBuffer`, then Raw layer is drawn on top.
     ubyte* _renderedBuffer = null;
 
-    version(BenchmarkCompositing)
+    debug(benchmarkGraphics)
     {
         StopWatch _compositingWatch;
         StopWatch _mipmapWatch;
         StopWatch _drawWatch;
+        StopWatch _copyWatch;
+        StopWatch _rawWatch;
     }
 
     void recomputeDrawLists()
@@ -396,22 +354,22 @@ protected:
         // Most of the cost of rendering is here
         // B. 1st PASS OF REDRAW
         // Some UIElements are redrawn at the PBR level
-        version(BenchmarkCompositing)
+        debug(benchmarkGraphics)
             _drawWatch.start();
         redrawElementsPBR();
-        version(BenchmarkCompositing)
+        debug(benchmarkGraphics)
         {
             _drawWatch.stop();
             _drawWatch.displayMean();
         }
 
         // C. MIPMAPPING
-        version(BenchmarkCompositing)
+        debug(benchmarkGraphics)
             _mipmapWatch.start();
         // Split boxes to avoid overlapped work
         // Note: this is done separately for update areas and render areas
         regenerateMipmaps();
-        version(BenchmarkCompositing)
+        debug(benchmarkGraphics)
         {
             _mipmapWatch.stop();
             _mipmapWatch.displayMean();
@@ -423,11 +381,10 @@ protected:
         wfb.h = _askedHeight;
         wfb.pitch = byteStride(_askedWidth);
         wfb.pixels = cast(RGBA*)_compositedBuffer;
-        version(BenchmarkCompositing)
+        version(benchmarkGraphics)
             _compositingWatch.start();        
-        compositeGUI(wfb, pf); // Launch the possibly-expensive Compositor step, which implements PBR rendering
- 
-        version(BenchmarkCompositing)
+        compositeGUI(wfb, pf); // Launch the possibly-expensive Compositor step, which implements PBR rendering 
+        version(benchmarkGraphics)
         {
             _compositingWatch.stop();
             _compositingWatch.displayMean();
@@ -435,14 +392,28 @@ protected:
 
         // E. COPY FROM "COMPOSITED" TO "RENDERED" BUFFER
         // PERF: optimize this copy, should only happen in _areasToCompositeNonOverlapping
+        version(benchmarkGraphics)
+            _copyWatch.start();
         {
             size_t size = byteStride(_askedWidth) * _askedHeight;
             _renderedBuffer[0..size] = _compositedBuffer[0..size];
         }
+        version(benchmarkGraphics)
+        {
+            _copyWatch.stop();
+            _copyWatch.displayMean();
+        }
 
         // F. 2nd PASS OF REDRAW
         // TODO: measure that
+        version(benchmarkGraphics)
+            _rawWatch.start();
         redrawElementsRaw();
+        version(benchmarkGraphics)
+        {
+            _rawWatch.stop();
+            _rawWatch.displayMean();
+        }
 
         // Only then is the list of rectangles to update cleared, 
         // before calling `doDraw` such work accumulates
@@ -763,4 +734,65 @@ int byteStride(int width) pure nothrow @nogc
 {
     int widthInBytes = width * 4;
     return (widthInBytes + (scanLineAlignment - 1)) & ~(scanLineAlignment-1);
+}
+
+
+static class StopWatch
+{
+nothrow:
+@nogc:
+    this(GUIGraphics graphics, string title)
+    {
+        _graphics = graphics;
+        _title = title;
+    }
+
+    void start()
+    {
+        _lastTime = _graphics._window.getTimeMs();
+    }
+
+    enum WARMUP = 30;
+
+    void stop()
+    {
+        uint now = _graphics._window.getTimeMs();
+        int timeDiff = cast(int)(now - _lastTime);
+
+        if (times >= WARMUP)
+            sum += timeDiff; // first samples are discarded
+
+        times++;
+    }
+
+    void displayMean()
+    {
+        if (times > WARMUP)
+        {
+            import core.stdc.stdio;
+            char[128] buf;
+            sprintf(buf.ptr, "%s %2.2f ms mean", _title.ptr, sum / (times - WARMUP));
+            debugOutput(buf.ptr);
+        }
+    }
+
+    void debugOutput(const(char)* a)
+    {
+        version(Posix)
+        {
+            import core.stdc.stdio;
+            printf("%s\n", a);
+        }
+        else version(Windows)
+        {
+            import core.sys.windows.windows;
+            OutputDebugStringA(a);
+        }
+    }
+
+    GUIGraphics _graphics;
+    string _title;
+    uint _lastTime;
+    double sum = 0;
+    int times = 0;
 }
