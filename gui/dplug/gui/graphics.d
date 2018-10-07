@@ -402,17 +402,14 @@ protected:
 
         // E. COPY FROM "COMPOSITED" TO "RENDERED" BUFFER
         // Copy _compositedBuffer onto _renderedBuffer for every rect that will be changed on display
+        auto renderedRef = toImageRef(_renderedBuffer);
         version(benchmarkGraphics)
             _copyWatch.start();
+        foreach(rect; _rectsToDisplayDisjointed[])
         {
-            // Blend cached render to given targets
-            auto renderedRef = toImageRef(_renderedBuffer);
-            foreach(rect; _rectsToDisplayDisjointed[])
-            {
-                auto croppedComposite = compositedRef.crop(rect);
-                auto croppedRendered = renderedRef.crop(rect);
-                croppedComposite.blitTo(croppedRendered);
-            }
+            auto croppedComposite = compositedRef.cropImageRef(rect);
+            auto croppedRendered = renderedRef.cropImageRef(rect);
+            croppedComposite.blitTo(croppedRendered);
         }
         version(benchmarkGraphics)
         {
@@ -431,8 +428,8 @@ protected:
             _rawWatch.displayMean();
         }
 
-        // TODO: convert to right format, for every pixel in _renderedBuffer
-        //       return another buffer, in the right pixel format
+        // G. Reorder components to the right pixel format
+        reorderComponents(pf);
 
         // Only then is the list of rectangles to update cleared, 
         // before calling `doDraw` such work accumulates
@@ -550,16 +547,11 @@ protected:
     {
         enum bool parallelDraw = true;
 
-        ImageRef!RGBA compositeRef;
-        compositeRef.w = _askedWidth;
-        compositeRef.h = _askedHeight;
-        compositeRef.pitch = byteStride(_askedWidth);
-        compositeRef.pixels = cast(RGBA*)(_renderedBuffer);
+        ImageRef!RGBA renderedRef = toImageRef(_renderedBuffer);
 
         static if (parallelDraw)
         {
             int drawn = 0;
-            int maxParallelElements = 32; // PERF: why this limit of 32??
             int N = cast(int)_elemsToDrawRaw.length;
 
             while(drawn < N)
@@ -568,7 +560,7 @@ protected:
 
                 // Search max number of parallelizable draws until the end of the list or a collision is found
                 bool foundIntersection = false;
-                for ( ; (canBeDrawn < maxParallelElements) && (drawn + canBeDrawn < N); ++canBeDrawn)
+                for ( ; (drawn + canBeDrawn < N); ++canBeDrawn)
                 {
                     box2i candidate = _elemsToDrawRaw[drawn + canBeDrawn].position;
 
@@ -584,12 +576,12 @@ protected:
                         break;
                 }
 
-                assert(canBeDrawn >= 1 && canBeDrawn <= maxParallelElements);
+                assert(canBeDrawn >= 1);
 
                 // Draw a number of UIElement in parallel
                 void drawOneItem(int i) nothrow @nogc
                 {
-                    _elemsToDrawRaw[drawn + i].renderRaw(compositeRef, _rectsToDisplayDisjointed[]);
+                    _elemsToDrawRaw[drawn + i].renderRaw(renderedRef, _rectsToDisplayDisjointed[]);
                 }
                 _threadPool.parallelFor(canBeDrawn, &drawOneItem);
 
@@ -600,9 +592,8 @@ protected:
         }
         else
         {
-            // Render required areas in diffuse and depth maps, base level
             foreach(elem; _elemsToDrawRaw)
-                elem.renderRaw(compositeRef, _rectsToDisplayDisjointed[]);
+                elem.renderRaw(renderedRef, _rectsToDisplayDisjointed[]);
         }
     }
 
@@ -618,7 +609,6 @@ protected:
         static if (parallelDraw)
         {
             int drawn = 0;
-            int maxParallelElements = 32; // PERF: why this limit of 32??
             int N = cast(int)_elemsToDrawPBR.length;
 
             while(drawn < N)
@@ -627,7 +617,7 @@ protected:
 
                 // Search max number of parallelizable draws until the end of the list or a collision is found
                 bool foundIntersection = false;
-                for ( ; (canBeDrawn < maxParallelElements) && (drawn + canBeDrawn < N); ++canBeDrawn)
+                for ( ; (drawn + canBeDrawn < N); ++canBeDrawn)
                 {
                     box2i candidate = _elemsToDrawPBR[drawn + canBeDrawn].position;
 
@@ -643,7 +633,7 @@ protected:
                         break;
                 }
 
-                assert(canBeDrawn >= 1 && canBeDrawn <= maxParallelElements);
+                assert(canBeDrawn >= 1);
  
                 // Draw a number of UIElement in parallel
                 void drawOneItem(int i) nothrow @nogc
@@ -740,8 +730,31 @@ protected:
         }
         _threadPool.parallelFor(2, &processOneMipmap);
     }
-}
 
+    void reorderComponents(WindowPixelFormat pf)
+    {
+        auto renderedRef = toImageRef(_renderedBuffer);
+
+        final switch(pf)
+        {
+            case WindowPixelFormat.RGBA8:
+                break; // nothing to do
+
+            case WindowPixelFormat.BGRA8:
+                foreach(rect; _rectsToDisplayDisjointed[])
+                {
+                    shuffleComponentsRGBA8ToBGRA8(renderedRef.cropImageRef(rect));
+                }
+                break;
+            case WindowPixelFormat.ARGB8:
+                foreach(rect; _rectsToDisplayDisjointed[])
+                {
+                    shuffleComponentsRGBA8ToARGB8(renderedRef.cropImageRef(rect));
+                }
+                break;
+        }   
+    }
+}
 
 enum scanLineAlignment = 4; // could be anything
 
@@ -811,4 +824,48 @@ nothrow:
     uint _lastTime;
     double sum = 0;
     int times = 0;
+}
+
+//TODO: optimize this, use intel-intrinsics
+void shuffleComponentsRGBA8ToARGB8(ImageRef!RGBA image) pure nothrow @nogc
+{
+    immutable int w = image.w;
+    immutable int h = image.h;
+    for (int j = 0; j < h; ++j)
+    {
+        ubyte* scan = cast(ubyte*)image.scanline(j).ptr;
+        for (int i = 0; i < w; ++i)
+        {
+            ubyte r = scan[4*i];
+            ubyte g = scan[4*i+1];
+            ubyte b = scan[4*i+2];
+            ubyte a = scan[4*i+2];
+            scan[4*i] = a;
+            scan[4*i+1] = r;
+            scan[4*i+2] = g;
+            scan[4*i+3] = b;
+        }
+    }
+}
+
+//TODO: optimize this, use intel-intrinsics
+void shuffleComponentsRGBA8ToBGRA8(ImageRef!RGBA image) pure nothrow @nogc
+{
+    immutable int w = image.w;
+    immutable int h = image.h;
+    for (int j = 0; j < h; ++j)
+    {
+        ubyte* scan = cast(ubyte*)image.scanline(j).ptr;
+        for (int i = 0; i < w; ++i)
+        {
+            ubyte r = scan[4*i];
+            ubyte g = scan[4*i+1];
+            ubyte b = scan[4*i+2];
+            ubyte a = scan[4*i+2];
+            scan[4*i] = b;
+            scan[4*i+1] = g;
+            scan[4*i+2] = r;
+            scan[4*i+3] = a;
+        }
+    }
 }
