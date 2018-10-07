@@ -24,7 +24,7 @@ enum HandleStyle
     shapeBlock
 }
 
-class UISlider : UIBufferedElement, IParameterListener
+class UISlider : UIBufferedElementPBR, IParameterListener
 {
 public:
 nothrow:
@@ -85,12 +85,12 @@ nothrow:
         }
     }
 
-    override void onDrawBuffered(ImageRef!RGBA diffuseMap, 
-                                 ImageRef!L16 depthMap, 
-                                 ImageRef!RGBA materialMap,
-                                 ImageRef!L8 diffuseOpacity,
-                                 ImageRef!L8 depthOpacity,
-                                 ImageRef!L8 materialOpacity) nothrow @nogc
+    override void onDrawBufferedPBR(ImageRef!RGBA diffuseMap, 
+                                    ImageRef!L16 depthMap, 
+                                    ImageRef!RGBA materialMap,
+                                    ImageRef!L8 diffuseOpacity,
+                                    ImageRef!L8 depthOpacity,
+                                    ImageRef!L8 materialOpacity) nothrow @nogc
     {
         int width = _position.width;
         int height = _position.height;

@@ -22,7 +22,7 @@ import dplug.client.params;
 
 /// Widget that monitors the value of a parameter and
 /// appears whenever it change to display its value.
-class UIParamHint : UIBufferedElement, IParameterListener
+class UIParamHint : UIBufferedElementPBR, IParameterListener
 {
 public:
 nothrow:
@@ -73,12 +73,12 @@ nothrow:
         return _pParamStringBuffer[0..totalLength];
     }
 
-    override void onDrawBuffered(ImageRef!RGBA diffuseMap, 
-                                 ImageRef!L16 depthMap, 
-                                 ImageRef!RGBA materialMap, 
-                                 ImageRef!L8 diffuseOpacity,
-                                 ImageRef!L8 depthOpacity,
-                                 ImageRef!L8 materialOpacity) nothrow @nogc
+    override void onDrawBufferedPBR(ImageRef!RGBA diffuseMap, 
+                                    ImageRef!L16 depthMap, 
+                                    ImageRef!RGBA materialMap, 
+                                    ImageRef!L8 diffuseOpacity,
+                                    ImageRef!L8 depthOpacity,
+                                    ImageRef!L8 materialOpacity) nothrow @nogc
     {
         int W = diffuseMap.w;
         int H = diffuseMap.h;
