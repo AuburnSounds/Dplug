@@ -53,16 +53,16 @@ enum ubyte defaultMetalnessMetal = 255;
 alias UIFlags = uint;
 enum : UIFlags
 {
-    // This `UIElement` draws to the Raw layer and as such `onDrawRaw` should be called when dirtied.
-    // When calling `setDirty(0)`, the Raw layer alone will be invalidated.
+    /// This `UIElement` draws to the Raw layer and as such `onDrawRaw` should be called when dirtied.
+    /// When calling `setDirty(UILayer.guessFromFlags)`, the Raw layer alone will be invalidated.
     flagRaw = 1,
 
-    // This `UIElement` draws to the PBR layer and as such `onDrawPBR` should be called when dirtied.
-    // When calling `setDirty(0)`, the PBR layer will be invalidated. 
-    // Important: This will lead to BOTH `onDrawPBR` and `onDrawRaw` to be called sucessively.
+    /// This `UIElement` draws to the PBR layer and as such `onDrawPBR` should be called when dirtied.
+    /// Important: `setDirty(UILayer.guessFromFlags)` will lead to BOTH `onDrawPBR` and `onDrawRaw` 
+    /// to be called sucessively.
     flagPBR = 2,
 
-    // This `UIElement` is animated and as such the `onAnimate` callback should be called should be called when dirtied.
+    // This `UIElement` is animated and as such the `onAnimate` callback should be called regularly.
     flagAnimated = 4
 }
 
