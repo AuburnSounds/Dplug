@@ -620,7 +620,7 @@ IFImage readImageFromMem(const(ubyte[]) imageData, int channels)
 
 /// The one function you probably want to use.
 /// Loads an image from a static array.
-/// The OwnedImage is allocated with `mallocEmplace` and should be destroyed with `destroyFree`.
+/// The OwnedImage is allocated with `mallocNew` and should be destroyed with `destroyFree`.
 /// Throws: $(D ImageIOException) on error.
 OwnedImage!RGBA loadOwnedImage(in void[] imageData)
 {

@@ -10,6 +10,7 @@ module dplug.pbrwidgets;
 public import dplug.gui.element;
 
 // widgets
+public import dplug.pbrwidgets.colorcorrection;
 public import dplug.pbrwidgets.knob;
 public import dplug.pbrwidgets.label;
 public import dplug.pbrwidgets.onoffswitch;

@@ -33,13 +33,15 @@ nothrow:
     UISlider outputSlider;
     UIOnOffSwitch onOffSwitch;
     UIBargraph inputBargraph, outputBargraph;
+    UIColorCorrection colorCorrection;
 
     Font _font;
 
     this(DistortClient client)
     {
         _client = client;
-        super(620, 330); // size
+        int W = 620, H = 330;
+        super(W, H); // size
 
 
         // Note: PBRCompositor default lighting might change in a future version (increase of light to allow white plastics).
@@ -52,15 +54,6 @@ nothrow:
         comp.light3Color = vec3f(0.2f, 0.2f, 0.2f) * 0.84f;
         comp.ambientLight = 0.042f;
         comp.skyboxAmount = 0.56f;
-
-        // Optional global color correction.
-        // Very useful at the end of the UI creating process.
-        {
-            mat3x4f colorCorrectionMatrix = mat3x4f(- 0.07f, 1.0f , 1.15f, 0.03f,
-                                                    + 0.01f, 0.93f, 1.16f, 0.08f,
-                                                    + 0.0f , 1.0f , 1.10f, -0.01f);
-            comp.setLiftGammaGainContrastRGB(colorCorrectionMatrix);
-        }
 
         // Sets the number of pixels recomputed around dirtied controls.
         // This is a tradeoff between Emissive light accuracy and speed.
@@ -119,6 +112,18 @@ nothrow:
         static immutable float[2] startValues = [0.0f, 0.0f];
         inputBargraph.setValues(startValues);
         outputBargraph.setValues(startValues);
+
+        // Global color correction.
+        // Very useful at the end of the UI creating process.
+        // As the sole Raw-only widget it is always on top and doesn't need zOrder adjustment.
+        {
+            mat3x4f colorCorrectionMatrix = mat3x4f(- 0.07f, 1.0f , 1.15f, 0.03f,
+                                                    + 0.01f, 0.93f, 1.16f, 0.08f,
+                                                    + 0.0f , 1.0f , 1.10f, -0.01f);
+            addChild(colorCorrection = mallocNew!UIColorCorrection(context()));
+            colorCorrection.setLiftGammaGainContrastRGB(colorCorrectionMatrix);
+            colorCorrection.position = box2i.rectangle(0, 0, W, H);
+        }
     }
 
     ~this()
