@@ -11,8 +11,7 @@
         "Guillaume Piolat (original author)",
         "Richard Andrew Cattermole (X11 windowing)",
         "Ethan Reker (compile-time JSON parsing, X11 fixes, Wiki, clipit)",
-        "Andrej Mitrovic",
-        "Sean M. Costello (Hilbert transformer)"
+        "Andrej Mitrovic"
     ],
 
     "dependencies":
