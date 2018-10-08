@@ -153,9 +153,9 @@ void applyColorCorrection(ImageRef!RGBA image, const(ubyte*) rgbTable) pure noth
             ubyte r = scan[4*i];
             ubyte g = scan[4*i+1];
             ubyte b = scan[4*i+2];
-            scan[4*i] = r;//rgbTable[r+512];
-            scan[4*i+1] = r;//rgbTable[g+256];
-            scan[4*i+2] = r;//rgbTable[b+512];
+            scan[4*i]   = rgbTable[r];
+            scan[4*i+1] = rgbTable[g+256];
+            scan[4*i+2] = rgbTable[b+512];
         }
     }
 }
