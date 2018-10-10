@@ -31,9 +31,9 @@ import dplug.gui.compositor;
 /// In the whole package:
 /// The diffuse maps contains:
 ///   RGBA = red/green/blue/emissiveness
-/// The depth maps contains depth.
+/// The depth maps contains depth (0 being lowest, 65535 highest)
 /// The material map contains:
-///   RGBA = roughness / metalness / specular / physical (allows to bypass PBR)
+///   RGBA = roughness / metalness / specular / unused
 
 alias RMSP = RGBA; // reminder
 

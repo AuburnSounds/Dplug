@@ -29,7 +29,6 @@ import dplug.gui.element;
 class PBRBackgroundGUI(string baseColorPath, 
                        string emissivePath, 
                        string materialPath,
-                       string physicalPath,
                        string depthPath,
                        string skyboxPath,
                        string absoluteGfxDirectory // for UI development only
@@ -45,10 +44,9 @@ nothrow:
         auto basecolorData = cast(ubyte[])(import(baseColorPath));
         auto emissiveData = cast(ubyte[])(import(emissivePath));        
         auto materialData = cast(ubyte[])(import(materialPath));
-        auto physicalData = cast(ubyte[])(import(physicalPath));
         auto depthData = cast(ubyte[])(import(depthPath));
         auto skyboxData = cast(ubyte[])(import(skyboxPath));
-        loadImages(basecolorData, emissiveData, materialData, physicalData, depthData, skyboxData);
+        loadImages(basecolorData, emissiveData, materialData, depthData, skyboxData);
     } 
 
     ~this()
@@ -106,7 +104,6 @@ private:
     static immutable string baseColorPathAbs = absoluteGfxDirectory ~ baseColorPath;
     static immutable string emissivePathAbs = absoluteGfxDirectory ~ emissivePath;
     static immutable string materialPathAbs = absoluteGfxDirectory ~ materialPath;
-    static immutable string physicalPathAbs = absoluteGfxDirectory ~ physicalPath;
     static immutable string depthPathAbs = absoluteGfxDirectory ~ depthPath;
     static immutable string skyboxPathAbs = absoluteGfxDirectory ~ skyboxPath;
 
@@ -134,16 +131,15 @@ private:
         ubyte[] basecolorData = readFile(baseColorPathAbs);
         ubyte[] emissiveData = readFile(emissivePathAbs);
         ubyte[] materialData = readFile(materialPathAbs);
-        ubyte[] physicalData = readFile(physicalPathAbs);
         ubyte[] depthData = readFile(depthPathAbs);
         ubyte[] skyboxData = readFile(skyboxPathAbs);
 
         if (basecolorData && emissiveData && materialData
-            && physicalData && depthData && skyboxData) // all valid?
+            && depthData && skyboxData) // all valid?
         {
             // Reload images from disk and update the UI
             freeImages();
-            loadImages(basecolorData, emissiveData, materialData, physicalData, depthData, skyboxData);
+            loadImages(basecolorData, emissiveData, materialData, depthData, skyboxData);
             setDirtyWhole();
         }
 
@@ -151,17 +147,15 @@ private:
         freeSlice(basecolorData);
         freeSlice(emissiveData);
         freeSlice(materialData);
-        freeSlice(physicalData);
         freeSlice(depthData);
         freeSlice(skyboxData);
     }
 
     void loadImages(ubyte[] basecolorData, ubyte[] emissiveData,
-                    ubyte[] materialData, ubyte[] physicalData,
-                    ubyte[] depthData, ubyte[] skyboxData)
+                    ubyte[] materialData, ubyte[] depthData, ubyte[] skyboxData)
     {
         _diffuse = loadImageSeparateAlpha(basecolorData, emissiveData);
-        _material = loadImageSeparateAlpha(materialData, physicalData);
+        _material = loadOwnedImage(materialData);
         OwnedImage!RGBA depthRGBA = loadOwnedImage(depthData);
         scope(exit) depthRGBA.destroyFree();
         assert(_diffuse.w == _material.w);

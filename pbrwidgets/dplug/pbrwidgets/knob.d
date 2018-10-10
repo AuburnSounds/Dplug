@@ -249,7 +249,7 @@ nothrow:
 
                 croppedDepth.aaSoftDisc(x - bx, y - by, 0, largerRadius, L16(LEDDepth));
                 croppedDiffuse.aaSoftDisc(x - bx, y - by, 0, largerRadius, LEDDiffuse);
-                croppedMaterial.aaSoftDisc(x - bx, y - by, smallRadius, largerRadius, RGBA(128, 128, 255, defaultPhysical));
+                croppedMaterial.aaSoftDisc(x - bx, y - by, smallRadius, largerRadius, RGBA(128, 128, 255, 255));
             }
         }
     }

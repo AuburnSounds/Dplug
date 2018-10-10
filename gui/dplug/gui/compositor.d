@@ -118,263 +118,248 @@ nothrow @nogc:
             {
                 RGBA materialHere = materialScan[i];
 
-                // Bypass PBR if Physical == 0
-                if (materialHere.a == 0)
-                {
-                    wfb_scan[i] = diffuseScan[i];
-                }
-                else
-                {
-                    // clamp to existing columns
+                // clamp to existing columns
 
+                {
+                    // Get depth for a 3x3 patch
+                    // Turns out DMD like hand-unrolling:(
+                    for (int k = 0; k < 3; ++k)
                     {
-                        // Get depth for a 3x3 patch
-                        // Turns out DMD like hand-unrolling:(
-                        for (int k = 0; k < 3; ++k)
-                        {
-                            int colIndex = i - 1 + k;
-                            if (colIndex < 0)
-                                colIndex = 0;
-                            if (colIndex > w - 1)
-                                colIndex = w - 1;
+                        int colIndex = i - 1 + k;
+                        if (colIndex < 0)
+                            colIndex = 0;
+                        if (colIndex > w - 1)
+                            colIndex = w - 1;
 
-                            depthPatch[0][k] = depth_scan.ptr[0][colIndex].l;
-                            depthPatch[1][k] = depth_scan.ptr[1][colIndex].l;
-                            depthPatch[2][k] = depth_scan.ptr[2][colIndex].l;
-                        }
+                        depthPatch[0][k] = depth_scan.ptr[0][colIndex].l;
+                        depthPatch[1][k] = depth_scan.ptr[1][colIndex].l;
+                        depthPatch[2][k] = depth_scan.ptr[2][colIndex].l;
                     }
+                }
 
-                    // compute normal
-                    float sx = depthPatch[0][0]
-                        + depthPatch[1][0] * 2
-                        + depthPatch[2][0]
-                        - ( depthPatch[0][2]
-                            + depthPatch[1][2] * 2
-                           + depthPatch[2][2]);
+                // compute normal
+                float sx = depthPatch[0][0]
+                    + depthPatch[1][0] * 2
+                    + depthPatch[2][0]
+                    - ( depthPatch[0][2]
+                        + depthPatch[1][2] * 2
+                        + depthPatch[2][2]);
 
-                   float sy = depthPatch[2][0] + depthPatch[2][1] * 2 + depthPatch[2][2]
-                        - ( depthPatch[0][0] + depthPatch[0][1] * 2 + depthPatch[0][2]);
+                float sy = depthPatch[2][0] + depthPatch[2][1] * 2 + depthPatch[2][2]
+                    - ( depthPatch[0][0] + depthPatch[0][1] * 2 + depthPatch[0][2]);
 
-                    // this factor basically tweak normals to make the UI flatter or not
-                    // if you change normal filtering, retune this
-                    enum float sz = 260.0f * 257.0f / 1.8f; 
+                // this factor basically tweak normals to make the UI flatter or not
+                // if you change normal filtering, retune this
+                enum float sz = 260.0f * 257.0f / 1.8f; 
 
-                    vec3f normal = vec3f(sx, sy, sz);
-                    normal.fastNormalize(); // this makes very, very little difference in output vs normalize
+                vec3f normal = vec3f(sx, sy, sz);
+                normal.fastNormalize(); // this makes very, very little difference in output vs normalize
 
-                    RGBA ibaseColor = diffuseScan[i];
-                    vec3f baseColor = vec3f(ibaseColor.r, ibaseColor.g, ibaseColor.b) * div255;
+                RGBA ibaseColor = diffuseScan[i];
+                vec3f baseColor = vec3f(ibaseColor.r, ibaseColor.g, ibaseColor.b) * div255;
 
-                    vec3f toEye = vec3f(0.5f - i * invW, j * invH - 0.5f, 1.0f);
-                    toEye.fastNormalize(); // this makes very, very little difference in output vs normalize
+                vec3f toEye = vec3f(0.5f - i * invW, j * invH - 0.5f, 1.0f);
+                toEye.fastNormalize(); // this makes very, very little difference in output vs normalize
 
-                    vec3f color = vec3f(0.0f);
+                vec3f color = vec3f(0.0f);
 
-                    float roughness = materialHere.r * div255;
-                    float metalness = materialHere.g * div255;
-                    float specular  = materialHere.b * div255;
+                float roughness = materialHere.r * div255;
+                float metalness = materialHere.g * div255;
+                float specular  = materialHere.b * div255;
 
-                    // Add ambient component
+                // Add ambient component
+                {
+                    float px = i + 0.5f;
+                    float py = j + 0.5f;
+
+                    float avgDepthHere =
+                        ( depthMap.linearSample(1, px, py)
+                            + depthMap.linearSample(2, px, py)
+                            + depthMap.linearSample(3, px, py)
+                            + depthMap.linearSample(4, px, py) ) * 0.25f;
+
+                    float diff = depthPatch[1][1] - avgDepthHere;
+                    float cavity = void;
+                    if (diff >= 0)
+                        cavity = 1;
+                    else if (diff < -23040)
+                        cavity = 0;
+                    else
                     {
-                        float px = i + 0.5f;
-                        float py = j + 0.5f;
+                        static immutable float divider23040 = 1.0f / 23040;
+                        cavity = (diff + 23040) * divider23040;
+                    }
+                    if (cavity > 0)
+                        color += baseColor * (cavity * ambientLight);
+                }
 
-                        float avgDepthHere =
-                            ( depthMap.linearSample(1, px, py)
-                              + depthMap.linearSample(2, px, py)
-                             + depthMap.linearSample(3, px, py)
-                             + depthMap.linearSample(4, px, py) ) * 0.25f;
+                // cast shadows, ie. enlight what isn't in shadows
+                {
+                    enum float fallOff = 0.78f;
 
-                        float diff = depthPatch[1][1] - avgDepthHere;
-                        float cavity = void;
+                    int samples = 11;
+
+                    static immutable float[11] weights =
+                    [
+                        1.0f,
+                        fallOff,
+                        fallOff ^^ 2,
+                        fallOff ^^ 3,
+                        fallOff ^^ 4,
+                        fallOff ^^ 5,
+                        fallOff ^^ 6,
+                        fallOff ^^ 7,
+                        fallOff ^^ 8,
+                        fallOff ^^ 9,
+                        fallOff ^^ 10
+                    ];
+
+                    enum float totalWeights = (1.0f - (fallOff ^^ 11)) / (1.0f - fallOff) - 1;
+                    enum float invTotalWeights = 1 / totalWeights;
+
+                    float lightPassed = 0.0f;
+
+                    OwnedImage!L16 depthLevel0 = depthMap.levels[0];
+
+                    int depthHere = depthPatch[1][1];
+                    for (int sample = 1; sample < samples; ++sample)
+                    {
+                        int x = i + sample;
+                        if (x >= w)
+                            x = w - 1;
+                        int y = j - sample;
+                        if (y < 0)
+                            y = 0;
+                        int z = depthHere + sample;
+                        int diff = z - depthLevel0.scanline(y)[x].l; // FUTURE: use pointer offsets here instead of opIndex
+
+                        float contrib = void;
                         if (diff >= 0)
-                            cavity = 1;
-                        else if (diff < -23040)
-                            cavity = 0;
+                            contrib = 1;
+                        else if (diff < -15360)
+                        {
+                            contrib = 0;
+                            continue;
+                        }
                         else
                         {
-                            static immutable float divider23040 = 1.0f / 23040;
-                            cavity = (diff + 23040) * divider23040;
+                            static immutable float divider15360 = 1.0f / 15360;
+                            contrib = (diff + 15360) * divider15360;
                         }
-                        if (cavity > 0)
-                            color += baseColor * (cavity * ambientLight);
+
+                        lightPassed += contrib * weights[sample];
                     }
-
-                    // cast shadows, ie. enlight what isn't in shadows
-                    {
-                        enum float fallOff = 0.78f;
-
-                        int samples = 11;
-
-                        static immutable float[11] weights =
-                        [
-                            1.0f,
-                            fallOff,
-                            fallOff ^^ 2,
-                            fallOff ^^ 3,
-                            fallOff ^^ 4,
-                            fallOff ^^ 5,
-                            fallOff ^^ 6,
-                            fallOff ^^ 7,
-                            fallOff ^^ 8,
-                            fallOff ^^ 9,
-                            fallOff ^^ 10
-                        ];
-
-                        enum float totalWeights = (1.0f - (fallOff ^^ 11)) / (1.0f - fallOff) - 1;
-                        enum float invTotalWeights = 1 / totalWeights;
-
-                        float lightPassed = 0.0f;
-
-                        OwnedImage!L16 depthLevel0 = depthMap.levels[0];
-
-                        int depthHere = depthPatch[1][1];
-                        for (int sample = 1; sample < samples; ++sample)
-                        {
-                            int x = i + sample;
-                            if (x >= w)
-                                x = w - 1;
-                            int y = j - sample;
-                            if (y < 0)
-                                y = 0;
-                            int z = depthHere + sample;
-                            int diff = z - depthLevel0.scanline(y)[x].l; // FUTURE: use pointer offsets here instead of opIndex
-
-                            float contrib = void;
-                            if (diff >= 0)
-                                contrib = 1;
-                            else if (diff < -15360)
-                            {
-                                contrib = 0;
-                                continue;
-                            }
-                            else
-                            {
-                                static immutable float divider15360 = 1.0f / 15360;
-                                contrib = (diff + 15360) * divider15360;
-                            }
-
-                            lightPassed += contrib * weights[sample];
-                        }
-                        color += baseColor * light1Color * (lightPassed * invTotalWeights);
-                    }
-
-                    // secundary light
-                    {
-                        float diffuseFactor = 0.5f + 0.5f * dot(normal, light2Dir);// + roughness;
-
-                        diffuseFactor = /*cavity * */ linmap!float(diffuseFactor, 0.24f - roughness * 0.5f, 1, 0, 1.0f);
-
-                        if (diffuseFactor > 0)
-                            color += baseColor * light2Color * diffuseFactor;
-                    }
-
-                    // specular reflection
-                    if (specular != 0)
-                    {
-                        vec3f lightReflect = reflect(-light3Dir, normal);
-                        float specularFactor = dot(toEye, lightReflect);
-                        if (specularFactor > 1e-3f)
-                        {
-                            float exponent = _exponentTable[materialHere.r];
-                            specularFactor = specularFactor ^^ exponent;
-                            float roughFactor = 10 * (1.0f - roughness) * (1 - metalness * 0.5f);
-                            specularFactor = specularFactor * roughFactor;
-                            if (specularFactor != 0)
-                                color += baseColor * light3Color * (specularFactor * specular);
-                        }
-                    }
-
-                    // skybox reflection (use the same shininess as specular)
-                    if (metalness != 0)
-                    {
-                        vec3f pureReflection = reflect(toEye, normal);
-
-                        float skyx = 0.5f + ((0.5f - pureReflection.x *0.5f) * (skybox.width - 1));
-                        float skyy = 0.5f + ((0.5f + pureReflection.y *0.5f) * (skybox.height - 1));
-
-                        // 2nd order derivatives
-                        float depthDX = depthPatch[2][0] + depthPatch[2][1] + depthPatch[2][2]
-                            + depthPatch[0][0] + depthPatch[0][1] + depthPatch[0][2]
-                            - 2 * (depthPatch[1][0] + depthPatch[1][1] + depthPatch[1][2]);
-
-                        float depthDY = depthPatch[0][2] + depthPatch[1][2] + depthPatch[2][2]
-                            + depthPatch[0][0] + depthPatch[1][0] + depthPatch[2][0]
-                            - 2 * (depthPatch[0][1] + depthPatch[1][1] + depthPatch[2][1]);
-
-                        depthDX *= (1 / 256.0f);
-                        depthDY *= (1 / 256.0f);
-
-                        float depthDerivSqr = depthDX * depthDX + depthDY * depthDY;
-                        float indexDeriv = depthDerivSqr * skybox.width * skybox.height;
-
-                        // cooking here
-                        // log2 scaling + threshold
-                        float mipLevel = 0.5f * fastlog2(1.0f + indexDeriv * 0.00001f) + 6 * roughness;
-
-                        vec3f skyColor = skybox.linearMipmapSample(mipLevel, skyx, skyy).rgb * (div255 * metalness * skyboxAmount);
-                        color += skyColor * baseColor;
-                    }
-
-                    // Add light emitted by neighbours
-                    {
-                        float ic = i + 0.5f;
-                        float jc = j + 0.5f;
-
-                        // Get alpha-premultiplied, avoids to have to do alpha-aware mipmapping
-                        vec4f colorLevel1 = diffuseMap.linearSample(1, ic, jc);
-                        vec4f colorLevel2 = diffuseMap.linearSample(2, ic, jc);
-                        vec4f colorLevel3 = diffuseMap.linearSample(3, ic, jc);
-                        vec4f colorLevel4 = diffuseMap.linearSample(4, ic, jc);
-                        vec4f colorLevel5 = diffuseMap.linearSample(5, ic, jc);
-                      
-                        vec4f emitted = colorLevel1 * 0.00117647f;
-                        emitted += colorLevel2      * 0.00176471f;
-                        emitted += colorLevel3      * 0.00147059f;
-                        emitted += colorLevel4      * 0.00088235f;
-                        emitted += colorLevel5      * 0.00058823f;
-                        color += emitted.rgb;
-                    }
-
-                    // Partial blending of PBR with diffuse
-                    if (materialHere.a != 255)
-                    {
-                        float physical  = materialHere.a * div255;
-                        color += (baseColor - color) * (1 - physical);
-                    }
-
-                    // Show normals
-                    // color = normal;//vec3f(0.5f) + normal * 0.5f;
-
-                    // Show depth
-                    {
-                        //    float depthColor = depthPatch[1][1] / 65535.0f;
-                        //    color = vec3f(depthColor);
-                    }
-
-                    // Show diffuse
-                    //color = baseColor;
-
-                    //  color = toEye;
-                    //color = vec3f(cavity);
-                    assert(color.x >= 0);
-                    assert(color.y >= 0);
-                    assert(color.z >= 0);
-
-                    if (color.x > 1)
-                        color.x = 1;
-                    if (color.y > 1)
-                        color.y = 1;
-                    if (color.z > 1)
-                        color.z = 1;
-
-                    int r = cast(int)(color.x * 255.99f);
-                    int g = cast(int)(color.y * 255.99f);
-                    int b = cast(int)(color.z * 255.99f);
-
-                    // write composited color
-                    wfb_scan[i] = RGBA(cast(ubyte)r, cast(ubyte)g, cast(ubyte)b, 255);
+                    color += baseColor * light1Color * (lightPassed * invTotalWeights);
                 }
+
+                // secundary light
+                {
+                    float diffuseFactor = 0.5f + 0.5f * dot(normal, light2Dir);
+
+                    diffuseFactor = /*cavity * */ linmap!float(diffuseFactor, 0.24f - roughness * 0.5f, 1, 0, 1.0f);
+
+                    if (diffuseFactor > 0)
+                        color += baseColor * light2Color * diffuseFactor;
+                }
+
+                // specular reflection
+                if (specular != 0)
+                {
+                    vec3f lightReflect = reflect(-light3Dir, normal);
+                    float specularFactor = dot(toEye, lightReflect);
+                    if (specularFactor > 1e-3f)
+                    {
+                        float exponent = _exponentTable[materialHere.r];
+                        specularFactor = specularFactor ^^ exponent;
+                        float roughFactor = 10 * (1.0f - roughness) * (1 - metalness * 0.5f);
+                        specularFactor = specularFactor * roughFactor;
+                        if (specularFactor != 0)
+                            color += baseColor * light3Color * (specularFactor * specular);
+                    }
+                }
+
+                // skybox reflection (use the same shininess as specular)
+                if (metalness != 0)
+                {
+                    vec3f pureReflection = reflect(toEye, normal);
+
+                    float skyx = 0.5f + ((0.5f - pureReflection.x *0.5f) * (skybox.width - 1));
+                    float skyy = 0.5f + ((0.5f + pureReflection.y *0.5f) * (skybox.height - 1));
+
+                    // 2nd order derivatives
+                    float depthDX = depthPatch[2][0] + depthPatch[2][1] + depthPatch[2][2]
+                        + depthPatch[0][0] + depthPatch[0][1] + depthPatch[0][2]
+                        - 2 * (depthPatch[1][0] + depthPatch[1][1] + depthPatch[1][2]);
+
+                    float depthDY = depthPatch[0][2] + depthPatch[1][2] + depthPatch[2][2]
+                        + depthPatch[0][0] + depthPatch[1][0] + depthPatch[2][0]
+                        - 2 * (depthPatch[0][1] + depthPatch[1][1] + depthPatch[2][1]);
+
+                    depthDX *= (1 / 256.0f);
+                    depthDY *= (1 / 256.0f);
+
+                    float depthDerivSqr = depthDX * depthDX + depthDY * depthDY;
+                    float indexDeriv = depthDerivSqr * skybox.width * skybox.height;
+
+                    // cooking here
+                    // log2 scaling + threshold
+                    float mipLevel = 0.5f * fastlog2(1.0f + indexDeriv * 0.00001f) + 6 * roughness;
+
+                    vec3f skyColor = skybox.linearMipmapSample(mipLevel, skyx, skyy).rgb * (div255 * metalness * skyboxAmount);
+                    color += skyColor * baseColor;
+                }
+
+                // Add light emitted by neighbours
+                {
+                    float ic = i + 0.5f;
+                    float jc = j + 0.5f;
+
+                    // Get alpha-premultiplied, avoids to have to do alpha-aware mipmapping
+                    vec4f colorLevel1 = diffuseMap.linearSample(1, ic, jc);
+                    vec4f colorLevel2 = diffuseMap.linearSample(2, ic, jc);
+                    vec4f colorLevel3 = diffuseMap.linearSample(3, ic, jc);
+                    vec4f colorLevel4 = diffuseMap.linearSample(4, ic, jc);
+                    vec4f colorLevel5 = diffuseMap.linearSample(5, ic, jc);
+                      
+                    vec4f emitted = colorLevel1 * 0.00117647f;
+                    emitted += colorLevel2      * 0.00176471f;
+                    emitted += colorLevel3      * 0.00147059f;
+                    emitted += colorLevel4      * 0.00088235f;
+                    emitted += colorLevel5      * 0.00058823f;
+                    color += emitted.rgb;
+                }
+
+                // Show normals
+                // color = normal;//vec3f(0.5f) + normal * 0.5f;
+
+                // Show depth
+                {
+                    //    float depthColor = depthPatch[1][1] / 65535.0f;
+                    //    color = vec3f(depthColor);
+                }
+
+                // Show diffuse
+                //color = baseColor;
+
+                //  color = toEye;
+                //color = vec3f(cavity);
+                assert(color.x >= 0);
+                assert(color.y >= 0);
+                assert(color.z >= 0);
+
+                if (color.x > 1)
+                    color.x = 1;
+                if (color.y > 1)
+                    color.y = 1;
+                if (color.z > 1)
+                    color.z = 1;
+
+                int r = cast(int)(color.x * 255.99f);
+                int g = cast(int)(color.y * 255.99f);
+                int b = cast(int)(color.z * 255.99f);
+
+                // write composited color
+                wfb_scan[i] = RGBA(cast(ubyte)r, cast(ubyte)g, cast(ubyte)b, 255);
             }
         }
     }

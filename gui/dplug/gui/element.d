@@ -38,7 +38,7 @@ enum ubyte defaultRoughness = 128;
 enum ubyte defaultSpecular = 128;
 
 /// Reasonable default value for the Physical channel (completely physical).
-enum ubyte defaultPhysical = 255;
+deprecated enum ubyte defaultPhysical = 255;
 
 /// Reasonable dielectric default value for the Metalness channel.
 enum ubyte defaultMetalnessDielectric = 25; // ~ 0.08
@@ -685,7 +685,7 @@ protected:
                 {
                     diffuseScan.ptr[x] = ( (x >> 3) ^  (y >> 3) ) & 1 ? darkGrey : lighterGrey;
                     depthScan.ptr[x] = L16(defaultDepth);
-                    materialScan.ptr[x] = RGBA(defaultRoughness, defaultMetalnessDielectric, defaultSpecular, defaultPhysical);
+                    materialScan.ptr[x] = RGBA(defaultRoughness, defaultMetalnessDielectric, defaultSpecular, 255);
                 }
             }
         }

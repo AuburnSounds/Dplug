@@ -101,7 +101,7 @@ nothrow:
 
             _diffuseBuf.fillAll(RGBA(128, 128, 128, 0));
             _depthBuf.fillAll(L16(defaultDepth));
-            _materialBuf.fillAll(RGBA(defaultRoughness, defaultMetalnessMetal, defaultSpecular, defaultPhysical));
+            _materialBuf.fillAll(RGBA(defaultRoughness, defaultMetalnessMetal, defaultSpecular, 255));
 
             onDrawBufferedPBR(_diffuseBuf.toRef(), _depthBuf.toRef(), _materialBuf.toRef(), 
                               _diffuseOpacityBuf.toRef(),

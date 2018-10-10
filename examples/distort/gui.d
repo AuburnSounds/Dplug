@@ -16,7 +16,7 @@ import main;
 // Plugin GUI, based on PBRBackgroundGUI.
 // If you don't want to use PBR, you not inherit from it.
 class DistortGUI : PBRBackgroundGUI!("basecolor.jpg", "emissive.png", "material.png",
-                                     "physical.png", "depth.png", "skybox.jpg",
+                                     "depth.png", "skybox.jpg",
 
                                      // Enter here the absolute path to the gfx directory.
                                      // This will allow to reload images at debug-time with the press of ENTER.
