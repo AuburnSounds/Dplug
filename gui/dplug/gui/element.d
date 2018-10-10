@@ -105,11 +105,11 @@ nothrow:
     }
 
     /// This method is called for each item in the drawlist that was visible and has a dirty Raw layer.
-    /// This is called after compositin, starting from the buffer output by the Compositor.
-    final void renderRaw(ImageRef!RGBA compositedMap, in box2i[] areasToUpdate)
+    /// This is called after compositing, starting from the buffer output by the Compositor.
+    final void renderRaw(ImageRef!RGBA rawMap, in box2i[] areasToUpdate)
     {
         // We only consider the part of _position that is actually in the surface
-        box2i validPosition = _position.intersection(box2i(0, 0, compositedMap.w, compositedMap.h));
+        box2i validPosition = _position.intersection(box2i(0, 0, rawMap.w, rawMap.h));
 
         // FUTURE IMPROVEMENT: allow _position outside bounds of a window.
         //
@@ -143,9 +143,9 @@ nothrow:
 
         // Crop the composited map to the valid part of _position
         // Drawing outside of _position is disallowed by design.
-        ImageRef!RGBA compositedMapCropped = compositedMap.cropImageRef(validPosition);        
-        assert(compositedMapCropped.w != 0 && compositedMapCropped.h != 0); // Should never be an empty area there
-        onDrawRaw(compositedMapCropped, _localRectsBuf[]);
+        ImageRef!RGBA rawMapCropped = rawMap.cropImageRef(validPosition);
+        assert(rawMapCropped.w != 0 && rawMapCropped.h != 0); // Should never be an empty area there
+        onDrawRaw(rawMapCropped, _localRectsBuf[]);
     }
 
     /// Returns: true if was drawn, ie. the buffers have changed.
@@ -652,9 +652,9 @@ protected:
     ///
     /// IMPORTANT: you MUST NOT draw outside `dirtyRects`. This allows more fine-grained updates.
     /// A `UIElement` that doesn't respect dirtyRects will have PAINFUL display problems.
-    void onDrawRaw(ImageRef!RGBA compositedMap, box2i[] dirtyRects)
+    void onDrawRaw(ImageRef!RGBA rawMap, box2i[] dirtyRects)
     {
-        // empty by default, meaning this UIElement does not work on R       
+        // empty by default, meaning this UIElement does not draw on the Raw layer
     }
 
     /// PBR layer draw method. This gives you 3 surfaces cropped by  _position for drawing.
