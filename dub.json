@@ -150,7 +150,8 @@
                 "dplug:client": "*",
                 "dplug:window": "*",
                 "dplug:core": "*",
-                "dplug:graphics": "*"
+                "dplug:graphics": "*",
+                "intel-intrinsics": "~>1.0"
             }
         },
         {

@@ -127,27 +127,23 @@ Please check individual source files for license information.
 
 ### Plugin format wrapping
 
-Plugin wrapping is inspired by the WDL library (best represented here: https://github.com/olilarkin/wdl-ol).
+Plugin wrapping is inspired by the IPlug library (best represented here: https://github.com/olilarkin/wdl-ol).
 
 Some files falls under the Cockos WDL license.
 
-Important contributors to WDL include:
+Important contributors to IPlug include:
 - Cockos: http://www.cockos.com/
 - Oliver Larkin: http://www.olilarkin.co.uk/
 
 
+### VST SDK
 
-### VST SDK translation
-
-VST is a trademark of Steinberg Media Technologies GmbH.
-Please register the SDK via the 3rd party developer license on Steinberg site.
-
-Before you make VST plugins with Dplug, you need to read and agree with the license for the VST3 SDK by Steinberg.
-
-If you don't have the VST2 SDK, you can't _make_ plugins with Dplug.
+If you don't have the VST SDK, you can't _make_ plugins with Dplug.
 Find the VST SDK there: http://www.steinberg.net/en/company/developers.html
 
 **If you don't have a licensing agreement with Steinberg**, you can't _distribute_ VST2 or VST3 plug-ins.
+
+
 
 
 ### Misc
