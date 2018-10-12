@@ -393,10 +393,10 @@ protected:
 
         // D. COMPOSITING
         auto compositedRef = toImageRef(_compositedBuffer);
-        version(benchmarkGraphics)
+        debug(benchmarkGraphics)
             _compositingWatch.start();        
         compositeGUI(compositedRef, pf); // Launch the possibly-expensive Compositor step, which implements PBR rendering 
-        version(benchmarkGraphics)
+        debug(benchmarkGraphics)
         {
             _compositingWatch.stop();
             _compositingWatch.displayMean();
@@ -405,7 +405,7 @@ protected:
         // E. COPY FROM "COMPOSITED" TO "RENDERED" BUFFER
         // Copy _compositedBuffer onto _renderedBuffer for every rect that will be changed on display
         auto renderedRef = toImageRef(_renderedBuffer);
-        version(benchmarkGraphics)
+        debug(benchmarkGraphics)
             _copyWatch.start();
         foreach(rect; _rectsToDisplayDisjointed[])
         {
@@ -413,27 +413,27 @@ protected:
             auto croppedRendered = renderedRef.cropImageRef(rect);
             croppedComposite.blitTo(croppedRendered);
         }
-        version(benchmarkGraphics)
+        debug(benchmarkGraphics)
         {
             _copyWatch.stop();
             _copyWatch.displayMean();
         }
 
         // F. 2nd PASS OF REDRAW
-        version(benchmarkGraphics)
+        debug(benchmarkGraphics)
             _rawWatch.start();
         redrawElementsRaw();
-        version(benchmarkGraphics)
+        debug(benchmarkGraphics)
         {
             _rawWatch.stop();
             _rawWatch.displayMean();
         }
 
         // G. Reorder components to the right pixel format
-        version(benchmarkGraphics)
+        debug(benchmarkGraphics)
             _reorderWatch.start();
         reorderComponents(pf);
-        version(benchmarkGraphics)
+        debug(benchmarkGraphics)
         {
             _reorderWatch.stop();
             _reorderWatch.displayMean();
