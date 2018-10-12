@@ -12,6 +12,8 @@ import std.algorithm.comparison;
 import std.algorithm.sorting;
 import std.algorithm.mutation;
 
+import inteli.emmintrin;
+
 import dplug.core.math;
 import dplug.core.thread;
 
@@ -91,7 +93,7 @@ nothrow:
             _mipmapWatch = mallocNew!StopWatch(this, "Mipmap = ");
             _copyWatch = mallocNew!StopWatch(this, "Copy to Raw = ");
             _rawWatch = mallocNew!StopWatch(this, "Draw Raw = ");
-            _reorderWatch = mallocNew!StopWatch(this, "Draw Raw = ");
+            _reorderWatch = mallocNew!StopWatch(this, "Reorder = ");
         }
 
         _diffuseMap = mallocNew!(Mipmap!RGBA)();
@@ -834,7 +836,6 @@ nothrow:
     int times = 0;
 }
 
-//TODO: optimize this, use intel-intrinsics
 void shuffleComponentsRGBA8ToARGB8(ImageRef!RGBA image) pure nothrow @nogc
 {
     immutable int w = image.w;
@@ -842,7 +843,38 @@ void shuffleComponentsRGBA8ToARGB8(ImageRef!RGBA image) pure nothrow @nogc
     for (int j = 0; j < h; ++j)
     {
         ubyte* scan = cast(ubyte*)image.scanline(j).ptr;
-        for (int i = 0; i < w; ++i)
+
+        int i = 0;
+        for( ; i + 3 < w; i += 4)
+        {
+            __m128i inputBytes = _mm_loadu_si128(cast(__m128i*)(&scan[4*i]));
+
+            version(LDC)
+            {
+                import ldc.intrinsics;
+                import ldc.simd;
+                __m128i outputBytes = shufflevector!(byte16, 3, 0,  1,  2, 
+                                                             7, 4,  5,  6,
+                                                            11, 8,  9,  10,
+                                                            15, 12, 13, 14)(inputBytes, inputBytes);
+                _mm_storeu_si128(cast(__m128i*)(&scan[4*i]), outputBytes);
+            }
+            else
+            {
+                // convert to ushort
+                __m128i zero = _mm_setzero_si128();
+                __m128i e0_7 = _mm_unpacklo_epi8(inputBytes, zero);
+                __m128i e8_15 = _mm_unpackhi_epi8(inputBytes, zero);
+
+                enum int swapRB = _MM_SHUFFLE(2, 1, 0, 3);
+                e0_7 = _mm_shufflelo_epi16!swapRB(_mm_shufflehi_epi16!swapRB(e0_7));
+                e8_15 = _mm_shufflelo_epi16!swapRB(_mm_shufflehi_epi16!swapRB(e8_15));
+                __m128i outputBytes = _mm_packus_epi16(e0_7, e8_15);
+                _mm_storeu_si128(cast(__m128i*)(&scan[4*i]), outputBytes);
+            }
+        }
+
+        for(; i < w; i ++)
         {
             ubyte r = scan[4*i];
             ubyte g = scan[4*i+1];
@@ -856,7 +888,6 @@ void shuffleComponentsRGBA8ToARGB8(ImageRef!RGBA image) pure nothrow @nogc
     }
 }
 
-//TODO: optimize this, use intel-intrinsics
 void shuffleComponentsRGBA8ToBGRA8(ImageRef!RGBA image) pure nothrow @nogc
 {
     immutable int w = image.w;
@@ -864,7 +895,39 @@ void shuffleComponentsRGBA8ToBGRA8(ImageRef!RGBA image) pure nothrow @nogc
     for (int j = 0; j < h; ++j)
     {
         ubyte* scan = cast(ubyte*)image.scanline(j).ptr;
-        for (int i = 0; i < w; ++i)
+
+        int i = 0;
+        for( ; i + 3 < w; i += 4)
+        {
+            __m128i inputBytes = _mm_loadu_si128(cast(__m128i*)(&scan[4*i]));
+
+            version(LDC)
+            {
+                import ldc.intrinsics;
+                import ldc.simd;
+                __m128i outputBytes = shufflevector!(byte16, 2,  1,  0,  3,
+                                                              6,  5,  4,  7,
+                                                             10,  9,  8, 11,
+                                                             14, 13, 12, 15)(inputBytes, inputBytes);
+                _mm_storeu_si128(cast(__m128i*)(&scan[4*i]), outputBytes);
+            }
+            else
+            {
+                // convert to ushort
+                __m128i zero = _mm_setzero_si128();
+                __m128i e0_7 = _mm_unpacklo_epi8(inputBytes, zero);
+                __m128i e8_15 = _mm_unpackhi_epi8(inputBytes, zero);
+
+                // swap red and green
+                enum int swapRB = _MM_SHUFFLE(3, 0, 1, 2);
+                e0_7 = _mm_shufflelo_epi16!swapRB(_mm_shufflehi_epi16!swapRB(e0_7));
+                e8_15 = _mm_shufflelo_epi16!swapRB(_mm_shufflehi_epi16!swapRB(e8_15));
+                __m128i outputBytes = _mm_packus_epi16(e0_7, e8_15);
+                _mm_storeu_si128(cast(__m128i*)(&scan[4*i]), outputBytes);
+            }
+        }
+
+        for(; i < w; i ++)
         {
             ubyte r = scan[4*i];
             ubyte g = scan[4*i+1];
