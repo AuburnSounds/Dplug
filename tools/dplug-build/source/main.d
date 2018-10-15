@@ -291,6 +291,9 @@ int main(string[] args)
                         return;
                     }
 
+                    // Get password from the user if "!PROMPT" was used
+                    plugin.paceConfig.promptPasswordsLazily();
+
                     auto paceConfig = plugin.paceConfig;
 
                     version(Windows)

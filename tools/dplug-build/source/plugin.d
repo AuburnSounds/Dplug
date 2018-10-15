@@ -682,6 +682,30 @@ class PACEConfig
 
     // The wrap configuration GUID (go to PACE Central to create such wrap configurations)
     string wrapConfigGUID;
+
+    // Prompt needed passwords
+
+    void promptPasswordsLazily()
+    {
+        if (iLokPassword == "!PROMPT")
+        {
+            cwriteln();
+            cwritefln(`Please enter your iLok password (seen "!PROMPT"):`.cyan);
+            iLokPassword = chomp(readln());
+            cwriteln();
+        }
+
+        version(Windows)
+        {
+            if (keyPasswordWindows == "!PROMPT")
+            {
+                cwriteln();
+                cwritefln(`Please enter your certificate Windows password (seen "!PROMPT"):`.cyan);
+                keyPasswordWindows = chomp(readln());
+                cwriteln();
+            }
+        }
+    }
 }
 
 PACEConfig readPACEConfig()
@@ -693,7 +717,7 @@ PACEConfig readPACEConfig()
     auto config = new PACEConfig;
     JSONValue dubFile = parseJSON(cast(string)(std.file.read("pace.json")));
 
-    void get(string fieldName, string jsonKey)()
+    void get(string fieldName, string jsonKey, bool promptOption)()
     {
         try
         {
@@ -701,15 +725,22 @@ PACEConfig readPACEConfig()
         }
         catch(Exception e)
         {
-            throw new Exception("Missing \"" ~ jsonKey ~ "\" in pace.json");
+            string msg;
+            msg = "Missing \"" ~ jsonKey ~ "\" in pace.json";
+            if (promptOption)
+            {
+                msg ~= ` (note: recommended special value "!PROMPT")`;
+            }
+            throw new Exception(msg);
         }
     }
-    get!("iLokAccount", "iLokAccount");
-    get!("iLokPassword", "iLokPassword");
-    get!("keyFileWindows", "keyFile-windows");
-    get!("keyPasswordWindows", "keyPassword-windows");
-    get!("developerIdentityOSX", "developerIdentity-osx");
-    get!("wrapConfigGUID", "wrapConfigGUID");
+    get!("iLokAccount", "iLokAccount", false);
+    get!("iLokPassword", "iLokPassword", true);
+    get!("keyFileWindows", "keyFile-windows", false);
+    get!("keyPasswordWindows", "keyPassword-windows", true);
+    get!("developerIdentityOSX", "developerIdentity-osx", false);
+    get!("wrapConfigGUID", "wrapConfigGUID", false);  
+
     return config;
 }
 
