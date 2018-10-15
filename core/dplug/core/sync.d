@@ -17,13 +17,30 @@ import dplug.core.nogc;
 import core.stdc.stdio;
 import core.stdc.stdlib: malloc, free;
 
+// emulate conditions variable on Windows
+// (this was originally in Phobos for XP compatibility)
+version = emulateCondVarWin32;
+
 version( Windows )
 {
     import core.sys.windows.windows;
 
+    struct RTL_CONDITION_VARIABLE 
+    {
+        PVOID Ptr;
+    }
+
+    alias CONDITION_VARIABLE = RTL_CONDITION_VARIABLE;
+    alias PCONDITION_VARIABLE = RTL_CONDITION_VARIABLE*;
+
     extern (Windows) export nothrow @nogc
     {
         void InitializeCriticalSectionAndSpinCount(CRITICAL_SECTION * lpCriticalSection, DWORD dwSpinCount);
+
+        VOID InitializeConditionVariable(PCONDITION_VARIABLE ConditionVariable);
+        VOID WakeConditionVariable(PCONDITION_VARIABLE ConditionVariable);
+        VOID WakeAllConditionVariable(PCONDITION_VARIABLE ConditionVariable);
+        BOOL SleepConditionVariableCS(PCONDITION_VARIABLE ConditionVariable, PCRITICAL_SECTION CriticalSection, DWORD dwMilliseconds);
     }
 }
 else version( OSX )
@@ -574,15 +591,20 @@ nothrow:
     {
         version( Windows )
         {
-            m_blockLock = CreateSemaphoreA( null, 1, 1, null );
-            if( m_blockLock == m_blockLock.init )
-                assert(false);
-            m_blockQueue = CreateSemaphoreA( null, 0, int.max, null );
-            if( m_blockQueue == m_blockQueue.init )
-                assert(false);
+            version(emulateCondVarWin32)
+            {
+                m_blockLock = CreateSemaphoreA( null, 1, 1, null );
+                if( m_blockLock == m_blockLock.init )
+                    assert(false);
+                m_blockQueue = CreateSemaphoreA( null, 0, int.max, null );
+                if( m_blockQueue == m_blockQueue.init )
+                    assert(false);
 
-            m_unblockLock = cast(CRITICAL_SECTION*) malloc(CRITICAL_SECTION.sizeof);
-            InitializeCriticalSection( m_unblockLock );
+                m_unblockLock = cast(CRITICAL_SECTION*) malloc(CRITICAL_SECTION.sizeof);
+                InitializeCriticalSection( m_unblockLock );
+            }
+            else
+                InitializeConditionVariable(&_handle);
         }
         else version( Posix )
         {
@@ -599,13 +621,16 @@ nothrow:
     {
         version( Windows )
         {
-            CloseHandle( m_blockLock );
-            CloseHandle( m_blockQueue );
-            if (m_unblockLock !is null)
+            version(emulateCondVarWin32)
             {
-                DeleteCriticalSection( m_unblockLock );
-                free(m_unblockLock);
-                m_unblockLock = null;
+                CloseHandle( m_blockLock );
+                CloseHandle( m_blockQueue );
+                if (m_unblockLock !is null)
+                {
+                    DeleteCriticalSection( m_unblockLock );
+                    free(m_unblockLock);
+                    m_unblockLock = null;
+                }
             }
         }
         else version( Posix )
@@ -626,7 +651,16 @@ nothrow:
     {
         version( Windows )
         {
-            timedWait( INFINITE, assocMutex );
+            version(emulateCondVarWin32)
+            {
+                timedWait( INFINITE, assocMutex );
+            }
+            else
+            {
+                BOOL res = SleepConditionVariableCS(&_handle, assocMutex.m_hndl, INFINITE);
+                if (res == 0)
+                    assert(false); // timeout or failure
+            }
         }
         else version( Posix )
         {
@@ -641,7 +675,14 @@ nothrow:
     {
         version( Windows )
         {
-            notifyImpl( false );
+            version(emulateCondVarWin32)
+            {
+                notifyImpl( false );
+            }
+            else
+            {
+                WakeConditionVariable(&_handle);
+            }
         }
         else version( Posix )
         {
@@ -657,7 +698,14 @@ nothrow:
     {
         version( Windows )
         {
-            notifyImpl( true );
+            version(emulateCondVarWin32)
+            {
+                notifyImpl( true );
+            }
+            else
+            {
+                WakeAllConditionVariable(&_handle);
+            }
         }
         else version( Posix )
         {
@@ -679,162 +727,170 @@ nothrow:
 private:
     version( Windows )
     {
-        bool timedWait( DWORD timeout, UncheckedMutex* assocMutex )
+        version(emulateCondVarWin32)
         {
-            int   numSignalsLeft;
-            int   numWaitersGone;
-            DWORD rc;
 
-            rc = WaitForSingleObject( m_blockLock, INFINITE );
-            assert( rc == WAIT_OBJECT_0 );
-
-            m_numWaitersBlocked++;
-
-            rc = ReleaseSemaphore( m_blockLock, 1, null );
-            assert( rc );
-
-            assocMutex.unlock();
-
-            rc = WaitForSingleObject( m_blockQueue, timeout );
-            assert( rc == WAIT_OBJECT_0 || rc == WAIT_TIMEOUT );
-            bool timedOut = (rc == WAIT_TIMEOUT);
-
-            EnterCriticalSection( m_unblockLock );
-
-            if( (numSignalsLeft = m_numWaitersToUnblock) != 0 )
+            bool timedWait( DWORD timeout, UncheckedMutex* assocMutex )
             {
-                if ( timedOut )
+                int   numSignalsLeft;
+                int   numWaitersGone;
+                DWORD rc;
+
+                rc = WaitForSingleObject( m_blockLock, INFINITE );
+                assert( rc == WAIT_OBJECT_0 );
+
+                m_numWaitersBlocked++;
+
+                rc = ReleaseSemaphore( m_blockLock, 1, null );
+                assert( rc );
+
+                assocMutex.unlock();
+
+                rc = WaitForSingleObject( m_blockQueue, timeout );
+                assert( rc == WAIT_OBJECT_0 || rc == WAIT_TIMEOUT );
+                bool timedOut = (rc == WAIT_TIMEOUT);
+
+                EnterCriticalSection( m_unblockLock );
+
+                if( (numSignalsLeft = m_numWaitersToUnblock) != 0 )
                 {
-                    // timeout (or canceled)
-                    if( m_numWaitersBlocked != 0 )
+                    if ( timedOut )
                     {
-                        m_numWaitersBlocked--;
-                        // do not unblock next waiter below (already unblocked)
-                        numSignalsLeft = 0;
+                        // timeout (or canceled)
+                        if( m_numWaitersBlocked != 0 )
+                        {
+                            m_numWaitersBlocked--;
+                            // do not unblock next waiter below (already unblocked)
+                            numSignalsLeft = 0;
+                        }
+                        else
+                        {
+                            // spurious wakeup pending!!
+                            m_numWaitersGone = 1;
+                        }
+                    }
+                    if( --m_numWaitersToUnblock == 0 )
+                    {
+                        if( m_numWaitersBlocked != 0 )
+                        {
+                            // open the gate
+                            rc = ReleaseSemaphore( m_blockLock, 1, null );
+                            assert( rc );
+                            // do not open the gate below again
+                            numSignalsLeft = 0;
+                        }
+                        else if( (numWaitersGone = m_numWaitersGone) != 0 )
+                        {
+                            m_numWaitersGone = 0;
+                        }
+                    }
+                }
+                else if( ++m_numWaitersGone == int.max / 2 )
+                {
+                    // timeout/canceled or spurious event :-)
+                    rc = WaitForSingleObject( m_blockLock, INFINITE );
+                    assert( rc == WAIT_OBJECT_0 );
+                    // something is going on here - test of timeouts?
+                    m_numWaitersBlocked -= m_numWaitersGone;
+                    rc = ReleaseSemaphore( m_blockLock, 1, null );
+                    assert( rc == WAIT_OBJECT_0 );
+                    m_numWaitersGone = 0;
+                }
+
+                LeaveCriticalSection( m_unblockLock );
+
+                if( numSignalsLeft == 1 )
+                {
+                    // better now than spurious later (same as ResetEvent)
+                    for( ; numWaitersGone > 0; --numWaitersGone )
+                    {
+                        rc = WaitForSingleObject( m_blockQueue, INFINITE );
+                        assert( rc == WAIT_OBJECT_0 );
+                    }
+                    // open the gate
+                    rc = ReleaseSemaphore( m_blockLock, 1, null );
+                    assert( rc );
+                }
+                else if( numSignalsLeft != 0 )
+                {
+                    // unblock next waiter
+                    rc = ReleaseSemaphore( m_blockQueue, 1, null );
+                    assert( rc );
+                }
+                assocMutex.lock();
+                return !timedOut;
+            }
+
+
+            void notifyImpl( bool all )
+            {
+                DWORD rc;
+
+                EnterCriticalSection( m_unblockLock );
+
+                if( m_numWaitersToUnblock != 0 )
+                {
+                    if( m_numWaitersBlocked == 0 )
+                    {
+                        LeaveCriticalSection( m_unblockLock );
+                        return;
+                    }
+                    if( all )
+                    {
+                        m_numWaitersToUnblock += m_numWaitersBlocked;
+                        m_numWaitersBlocked = 0;
                     }
                     else
                     {
-                        // spurious wakeup pending!!
-                        m_numWaitersGone = 1;
+                        m_numWaitersToUnblock++;
+                        m_numWaitersBlocked--;
                     }
+                    LeaveCriticalSection( m_unblockLock );
                 }
-                if( --m_numWaitersToUnblock == 0 )
+                else if( m_numWaitersBlocked > m_numWaitersGone )
                 {
-                    if( m_numWaitersBlocked != 0 )
+                    rc = WaitForSingleObject( m_blockLock, INFINITE );
+                    assert( rc == WAIT_OBJECT_0 );
+                    if( 0 != m_numWaitersGone )
                     {
-                        // open the gate
-                        rc = ReleaseSemaphore( m_blockLock, 1, null );
-                        assert( rc );
-                        // do not open the gate below again
-                        numSignalsLeft = 0;
-                    }
-                    else if( (numWaitersGone = m_numWaitersGone) != 0 )
-                    {
+                        m_numWaitersBlocked -= m_numWaitersGone;
                         m_numWaitersGone = 0;
                     }
+                    if( all )
+                    {
+                        m_numWaitersToUnblock = m_numWaitersBlocked;
+                        m_numWaitersBlocked = 0;
+                    }
+                    else
+                    {
+                        m_numWaitersToUnblock = 1;
+                        m_numWaitersBlocked--;
+                    }
+                    LeaveCriticalSection( m_unblockLock );
+                    rc = ReleaseSemaphore( m_blockQueue, 1, null );
+                    assert( rc );
                 }
-            }
-            else if( ++m_numWaitersGone == int.max / 2 )
-            {
-                // timeout/canceled or spurious event :-)
-                rc = WaitForSingleObject( m_blockLock, INFINITE );
-                assert( rc == WAIT_OBJECT_0 );
-                // something is going on here - test of timeouts?
-                m_numWaitersBlocked -= m_numWaitersGone;
-                rc = ReleaseSemaphore( m_blockLock, 1, null );
-                assert( rc == WAIT_OBJECT_0 );
-                m_numWaitersGone = 0;
-            }
-
-            LeaveCriticalSection( m_unblockLock );
-
-            if( numSignalsLeft == 1 )
-            {
-                // better now than spurious later (same as ResetEvent)
-                for( ; numWaitersGone > 0; --numWaitersGone )
-                {
-                    rc = WaitForSingleObject( m_blockQueue, INFINITE );
-                    assert( rc == WAIT_OBJECT_0 );
-                }
-                // open the gate
-                rc = ReleaseSemaphore( m_blockLock, 1, null );
-                assert( rc );
-            }
-            else if( numSignalsLeft != 0 )
-            {
-                // unblock next waiter
-                rc = ReleaseSemaphore( m_blockQueue, 1, null );
-                assert( rc );
-            }
-            assocMutex.lock();
-            return !timedOut;
-        }
-
-
-        void notifyImpl( bool all )
-        {
-            DWORD rc;
-
-            EnterCriticalSection( m_unblockLock );
-
-            if( m_numWaitersToUnblock != 0 )
-            {
-                if( m_numWaitersBlocked == 0 )
+                else
                 {
                     LeaveCriticalSection( m_unblockLock );
-                    return;
                 }
-                if( all )
-                {
-                    m_numWaitersToUnblock += m_numWaitersBlocked;
-                    m_numWaitersBlocked = 0;
-                }
-                else
-                {
-                    m_numWaitersToUnblock++;
-                    m_numWaitersBlocked--;
-                }
-                LeaveCriticalSection( m_unblockLock );
             }
-            else if( m_numWaitersBlocked > m_numWaitersGone )
-            {
-                rc = WaitForSingleObject( m_blockLock, INFINITE );
-                assert( rc == WAIT_OBJECT_0 );
-                if( 0 != m_numWaitersGone )
-                {
-                    m_numWaitersBlocked -= m_numWaitersGone;
-                    m_numWaitersGone = 0;
-                }
-                if( all )
-                {
-                    m_numWaitersToUnblock = m_numWaitersBlocked;
-                    m_numWaitersBlocked = 0;
-                }
-                else
-                {
-                    m_numWaitersToUnblock = 1;
-                    m_numWaitersBlocked--;
-                }
-                LeaveCriticalSection( m_unblockLock );
-                rc = ReleaseSemaphore( m_blockQueue, 1, null );
-                assert( rc );
-            }
-            else
-            {
-                LeaveCriticalSection( m_unblockLock );
-            }
+
+
+            // NOTE: This implementation uses Algorithm 8c as described here:
+            //       http://groups.google.com/group/comp.programming.threads/
+            //              browse_frm/thread/1692bdec8040ba40/e7a5f9d40e86503a
+            HANDLE              m_blockLock;    // auto-reset event (now semaphore)
+            HANDLE              m_blockQueue;   // auto-reset event (now semaphore)
+            CRITICAL_SECTION*   m_unblockLock           = null;  // internal mutex/CS
+            int                 m_numWaitersGone        = 0;
+            int                 m_numWaitersBlocked     = 0;
+            int                 m_numWaitersToUnblock   = 0;
         }
-
-
-        // NOTE: This implementation uses Algorithm 8c as described here:
-        //       http://groups.google.com/group/comp.programming.threads/
-        //              browse_frm/thread/1692bdec8040ba40/e7a5f9d40e86503a
-        HANDLE              m_blockLock;    // auto-reset event (now semaphore)
-        HANDLE              m_blockQueue;   // auto-reset event (now semaphore)
-        CRITICAL_SECTION*   m_unblockLock           = null;  // internal mutex/CS
-        int                 m_numWaitersGone        = 0;
-        int                 m_numWaitersBlocked     = 0;
-        int                 m_numWaitersToUnblock   = 0;
+        else
+        {
+            CONDITION_VARIABLE _handle;
+        }
     }
     else version( Posix )
     {
