@@ -680,9 +680,10 @@ protected:
     /// Useful multithreading code.
     void compositeGUI(ImageRef!RGBA wfb, WindowPixelFormat pf) nothrow @nogc
     {
-        // Was tuned for performance, maybe the tradeoff has changed now that we use LDC.
-        enum tileWidth = 64;
-        enum tileHeight = 32;
+        // Difficult trade-off: we canted the medium size knob to be only one tile.
+        // This avoid launching threads for the PBR compositor in this case.
+        enum tileWidth = 128;
+        enum tileHeight = 128;
 
         _rectsToCompositeDisjointedTiled.clearContents();
         tileAreas(_rectsToCompositeDisjointed[], tileWidth, tileHeight,_rectsToCompositeDisjointedTiled);
