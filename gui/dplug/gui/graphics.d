@@ -67,7 +67,9 @@ nothrow:
         _askedWidth = initialWidth;
         _askedHeight = initialHeight;
 
-        _threadPool = mallocNew!ThreadPool();
+        int numThreads = 0; // auto
+        int maxThreads = 2;
+        _threadPool = mallocNew!ThreadPool(numThreads, maxThreads);
 
         _rectsToUpdateDisjointedRaw = makeVec!box2i;
         _rectsToUpdateDisjointedPBR = makeVec!box2i;
