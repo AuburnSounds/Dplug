@@ -312,7 +312,11 @@ nothrow:
 @nogc:
 
     /// Creates a thread-pool.
-    this(int numThreads = 0, size_t stackSize = 0)
+    /// Params:
+    ///     numThreads Number of threads to create (0 = auto).
+    ///     maxThreads A maximum number of threads to create (0 = none).
+    ///     stackSize Stack size to create threads with (0 = auto).
+    this(int numThreads = 0, int maxThreads = 0, size_t stackSize = 0)
     {
         // Create sync first
         _workMutex = makeMutex();
@@ -324,6 +328,17 @@ nothrow:
         // Create threads
         if (numThreads == 0)
             numThreads = getTotalNumberOfCPUs();
+
+        // Limit number of threads eventually (this is done to give other software some leeway
+        // in a soft real-time OS)
+        if (maxThreads != 0)
+        {
+            if (numThreads > maxThreads)
+                numThreads = maxThreads;
+        }
+
+        assert(numThreads >= 1);
+
         _threads = mallocSlice!Thread(numThreads);
         foreach(ref thread; _threads)
         {
@@ -401,9 +416,18 @@ nothrow:
 
         _workMutex.unlock();
 
-        // wake up all threads
-        // FUTURE: if number of tasks < number of threads only wake up the necessary amount of threads
-        _workCondition.notifyAll();
+        if (count >= _threads.length)
+        {
+            // wake up all threads
+            // FUTURE: if number of tasks < number of threads only wake up the necessary amount of threads
+            _workCondition.notifyAll();
+        }
+        else
+        {
+            // Less tasks than threads in the pool: only wake-up some threads.
+            for (int t = 0; t < count; ++t)
+                _workCondition.notifyOne();
+        }
 
         _state = State.parallelForInProgress;
     }
@@ -515,9 +539,9 @@ unittest
     {
         ThreadPool _pool;
 
-        this(int dummy)
+        this(int numThreads, int maxThreads = 0, int stackSize = 0)
         {
-            _pool = mallocNew!ThreadPool();
+            _pool = mallocNew!ThreadPool(numThreads, maxThreads, stackSize);
         }
 
         ~this()
@@ -544,21 +568,24 @@ unittest
         shared(int) counter = 0;
     }
 
-    auto a = A(4);
-    a.launch(10, false);
-    assert(a.counter == 10);
+    foreach (numThreads;  [0, 1, 2, 4, 8, 16, 32])
+    {
+        auto a = A(numThreads);
+        a.launch(10, false);
+        assert(a.counter == 10);
 
-    a.launch(500, true);
-    assert(a.counter == 510);
+        a.launch(500, true);
+        assert(a.counter == 510);
 
-    a.launch(1, false);
-    assert(a.counter == 511);
+        a.launch(1, false);
+        assert(a.counter == 511);
 
-    a.launch(1, true);
-    assert(a.counter == 512);
+        a.launch(1, true);
+        assert(a.counter == 512);
 
-    a.launch(0, true);
-    assert(a.counter == 512);
-    a.launch(0, false);
-    assert(a.counter == 512);
+        a.launch(0, true);
+        assert(a.counter == 512);
+        a.launch(0, false);
+        assert(a.counter == 512);
+    }
 }
