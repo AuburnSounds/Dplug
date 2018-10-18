@@ -28,6 +28,7 @@ import gfm.math.box;
 
 import dplug.core.runtime;
 import dplug.core.nogc;
+import dplug.core.vec;
 
 import dplug.graphics.image;
 import dplug.graphics.view;
@@ -99,6 +100,11 @@ version(Windows)
                 assert(false, "Couldn't create a Win32 window");
             }
 
+            // Create update region
+            _updateRegion = CreateRectRgn(0, 0, 0, 0);
+            _updateRgbBuf = makeVec!ubyte();
+            _updateRects = makeVec!box2i();
+
             _listener = listener;
             // Sets this as user data
             SetWindowLongPtrA(_hwnd, GWLP_USERDATA, cast(LONG_PTR)( cast(void*)this ));
@@ -132,6 +138,12 @@ version(Windows)
 
                 // Unregister the window class, which was unique
                 UnregisterClassW(_wndClass.lpszClassName, getModuleHandle());
+            }
+
+            if (_updateRegion != null)
+            {
+                DeleteObject(_updateRegion);
+                _updateRegion = null;
             }
         }
 
@@ -313,21 +325,38 @@ version(Windows)
 
                 case WM_PAINT:
                 {
-                    RECT r;
-                    if (GetUpdateRect(hwnd, &r, FALSE))
+                    int type = GetUpdateRgn(hwnd, _updateRegion, FALSE);
+                    assert (type != ERROR);
+
+                    // Get needed number of bytes
+                    DWORD bytes = GetRegionData(_updateRegion, 0, null);
+                    _updateRgbBuf.resize(bytes);
+
+                    if (bytes == GetRegionData(_updateRegion, bytes, cast(RGNDATA*)(_updateRgbBuf.ptr)))
                     {
+                        // Get rectangles to update visually from the update region
+                        ubyte* buf = _updateRgbBuf.ptr;
+                        RGNDATAHEADER* header = cast(RGNDATAHEADER*)buf;
+                        assert(header.iType == RDH_RECTANGLES);
+                        _updateRects.clearContents();
+                        RECT* pRect = cast(RECT*)(buf + RGNDATAHEADER.sizeof);
+                        for(int r = 0; r < header.nCount; ++r)
+                            _updateRects.pushBack(box2i(pRect[r].left, pRect[r].top, pRect[r].right, pRect[r].bottom));
+                               
                         bool sizeChanged = updateSizeIfNeeded();
 
                         // FUTURE: check resize work
 
                         // For efficiency purpose, render in BGRA for Windows
+                        // We do it here, but note that redrawing has nothing to do with WM_PAINT specifically,
+                        // we just need to wait for it here.
                         _listener.onDraw(WindowPixelFormat.BGRA8);
 
-                        box2i areaToRedraw = box2i(r.left, r.top, r.right, r.bottom);
-
-                        box2i[] areasToRedraw = (&areaToRedraw)[0..1];
-                        swapBuffers(_wfb, areasToRedraw);
+                        swapBuffers(_wfb, _updateRects[]);
                     }
+                    else
+                        assert(false);
+
                     return 0;
                 }
 
@@ -429,6 +458,10 @@ version(Windows)
         HWND _hwnd;
 
         WNDCLASSW _wndClass;
+
+        HRGN _updateRegion;
+        Vec!ubyte _updateRgbBuf;
+        Vec!box2i _updateRects;
 
         long _performanceCounterDivider;
         uint _timeAtCreationInMs;
