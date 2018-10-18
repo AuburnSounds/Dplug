@@ -415,7 +415,7 @@ protected:
         {
             auto croppedComposite = compositedRef.cropImageRef(rect);
             auto croppedRendered = renderedRef.cropImageRef(rect);
-            croppedComposite.blitTo(croppedRendered);
+            croppedComposite.blitTo(croppedRendered); // failure to optimize this: 1
         }
         debug(benchmarkGraphics)
         {
