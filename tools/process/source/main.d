@@ -13,17 +13,18 @@ void usage()
 {
     writeln();
     writeln("Auburn Sounds plugin benchmark\n");
-    writeln("usage: process [-i input.wav] [-o output.wav] [-precise] [-preroll] [-t times] [-h] [-buffer <bufferSize>] [-preset <index>] plugin.dll\n");
+    writeln("usage: process [-i input.wav] [-o output.wav] [-precise] [-preroll] [-t times] [-h] [-buffer <bufferSize>] [-preset <index>] [-param <index> <value>] plugin.dll\n");
     writeln();
     writeln("Params:");
     writeln("  -i       Specify an input file (default: process silence)");
     writeln("  -o       Specify an output file (default: do not output a file)");
-    writeln("  -t       Process the input multiple times (default: 1)");  
-    writeln("  -h       Display this help"); 
+    writeln("  -t       Process the input multiple times (default: 1)");
+    writeln("  -h       Display this help");
     writeln("  -precise Use experimental time, much more precise measurement (Windows-only)");
-    writeln("  -preroll Process one second of silence before measurement");     
+    writeln("  -preroll Process one second of silence before measurement");
     writeln("  -buffer  Process audio by given chunk size (default: all-at-once)");
     writeln("  -preset  Choose preset to process audio with");    
+    writeln("  -param   Set parameter value after loading preset");
     writeln;
 }
 
@@ -40,6 +41,7 @@ void main(string[]args)
         bool precise = false;
         int times = 1;
         int preset = -1; // none
+        float[int] parameterValues;
 
         for(int i = 1; i < args.length; ++i)
         {
@@ -78,8 +80,16 @@ void main(string[]args)
             }
             else if (arg == "-preset")
             {
-                 ++i;
+                ++i;
                 preset = to!int(args[i]);
+            }
+            else if (arg == "-param")
+            {
+                ++i;
+                int paramIndex = to!int(args[i]);
+                ++i;
+                float paramValue = to!float(args[i]);
+                parameterValues[paramIndex] = paramValue;
             }
             else if (arg == "-h")
             {
@@ -168,6 +178,12 @@ void main(string[]args)
 
         if (preset != -1)
             host.loadPreset(preset);
+        
+        foreach (int paramIndex, float paramvalue; parameterValues)
+        {
+            host.setParameter(paramIndex, paramvalue);
+        }
+
         long timeAfterInit = getTickUs(precise);
 
         writefln("Initialization took %s", convertMicroSecondsToDisplay(timeAfterInit - timeBeforeInit));
