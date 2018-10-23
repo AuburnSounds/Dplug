@@ -3,7 +3,9 @@ import std.algorithm;
 import std.range;
 import std.conv;
 import std.string;
+import std.path;
 
+import arsd.dom;
 import waved;
 
 import dplug.host;
@@ -13,19 +15,47 @@ void usage()
 {
     writeln();
     writeln("Auburn Sounds plugin benchmark\n");
-    writeln("usage: process [-i input.wav] [-o output.wav] [-precise] [-preroll] [-t times] [-h] [-buffer <bufferSize>] [-preset <index>] plugin.dll\n");
+    writeln("Usage: process [-i input.wav] [-o output.wav] [-precise] [-preroll] [-t times] [-h] [-buffer <bufferSize>] [-preset <index>] [-param <index> <value>] [-output-xml <filename>] plugin.dll\n");
     writeln();
     writeln("Params:");
-    writeln("  -i       Specify an input file (default: process silence)");
-    writeln("  -o       Specify an output file (default: do not output a file)");
-    writeln("  -t       Process the input multiple times (default: 1)");  
-    writeln("  -h       Display this help"); 
-    writeln("  -precise Use experimental time, much more precise measurement (Windows-only)");
-    writeln("  -preroll Process one second of silence before measurement");     
-    writeln("  -buffer  Process audio by given chunk size (default: all-at-once)");
-    writeln("  -preset  Choose preset to process audio with");    
+    writeln("  -i          Specify an input file (default: process silence)");
+    writeln("  -o          Specify an output file (default: do not output a file)");
+    writeln("  -t          Process the input multiple times (default: 1)");
+    writeln("  -h          Display this help");
+    writeln("  -precise    Use experimental time, much more precise measurement (Windows-only)");
+    writeln("  -preroll    Process one second of silence before measurement");
+    writeln("  -buffer     Process audio by given chunk size (default: all-at-once)");
+    writeln("  -preset     Choose preset to process audio with");    
+    writeln("  -param      Set parameter value after loading preset");
+    writeln("  -output-xml Write measurements into an xml file instead of stdout");
     writeln;
 }
+
+// XML output format:
+/*
+<?xml version="1.0" encoding="UTF-8"?>
+<measurements>
+    <parameters>
+        <input>bass.wav</input>
+        <output>our-bass.wav</output>
+        <times>1</times>
+        <precise/>
+        <preroll/>
+        <buffer>256</buffer>
+        <preset>1</preset>
+        <param index="0" value="0.4" />
+        <param index="1" value="0.8" />
+        <plugin>cool_effect.dll</plugin>
+    </parameters>
+    <min_seconds>0.11</min_seconds>
+    <avg_seconds>0.11</avg_seconds>
+    <median_seconds>0.11</median_seconds>
+    <run_seconds>0.15</run_seconds>
+    <run_seconds>0.13</run_seconds>
+    <run_seconds>0.19</run_seconds>
+    <run_seconds>0.16</run_seconds>
+</measurements>
+*/
 
 void main(string[]args)
 {
@@ -38,8 +68,16 @@ void main(string[]args)
         bool help = false;
         bool preRoll = false;
         bool precise = false;
+        bool verbose = true;
         int times = 1;
         int preset = -1; // none
+        float[int] parameterValues;
+        string xmlFilename;
+
+        Document xmlOutput = new Document;
+        xmlOutput.setProlog(`<?xml version="1.0" encoding="UTF-8"?>`);
+        xmlOutput.root = xmlOutput.createElement("measurements");
+        Element parametersXml = xmlOutput.root.addChild("parameters");
 
         for(int i = 1; i < args.length; ++i)
         {
@@ -78,8 +116,27 @@ void main(string[]args)
             }
             else if (arg == "-preset")
             {
-                 ++i;
+                ++i;
                 preset = to!int(args[i]);
+            }
+            else if (arg == "-param")
+            {
+                ++i;
+                int paramIndex = to!int(args[i]);
+                ++i;
+                float paramValue = to!float(args[i]);
+                parameterValues[paramIndex] = paramValue;
+
+                parametersXml
+                    .addChild("param")
+                    .setAttribute("index", paramIndex.to!string)
+                    .setAttribute("value", paramValue.to!string);
+            }
+            else if (arg == "-output-xml")
+            {
+                ++i;
+                xmlFilename = args[i];
+                verbose = false;
             }
             else if (arg == "-h")
             {
@@ -92,6 +149,17 @@ void main(string[]args)
                 pluginPath = arg;
             }
         }
+
+        // store singular parameters
+        parametersXml.addChild("input").innerText = inPath;
+        parametersXml.addChild("output").innerText = outPath;
+        parametersXml.addChild("buffer").innerText = bufferSize.to!string;
+        if (preRoll) parametersXml.addChild("preroll");
+        if (precise) parametersXml.addChild("precise");
+        parametersXml.addChild("times").innerText = times.to!string;
+        parametersXml.addChild("preset").innerText = preset.to!string;
+        parametersXml.addChild("plugin").innerText = pluginPath.absolutePath.buildNormalizedPath;
+
         if (help)
         {
             usage();
@@ -132,14 +200,14 @@ void main(string[]args)
         if (bufferSize > 16384) // 370ms @ 44100hz
         {
             bufferSize = 16384;
-            writefln("Buffer clamped to 16384.");
+            if (verbose) writefln("Buffer clamped to 16384.");
         }
 
         int N = sound.lengthInFrames();
 
         double sampleDurationMs = (1000.0 * N) / sound.sampleRate;
 
-        writefln("This sounds lasts %s ms at a sampling-rate of %s Hz.", sampleDurationMs, sound.sampleRate);
+        if (verbose) writefln("This sounds lasts %s ms at a sampling-rate of %s Hz.", sampleDurationMs, sound.sampleRate);
 
         leftChannelInput.length = N;
         rightChannelInput.length = N;
@@ -152,11 +220,14 @@ void main(string[]args)
             rightChannelInput[i] = sound.samples[i * 2 + 1];
         }
 
-        writeln;
-        writefln("Starting speed measurement of %s", pluginPath);
-        writefln("%s will be processed %s time(s)", inPath, times);
-        if (outPath)
-            writefln("Output written to %s", outPath);
+        if (verbose)
+        {
+            writeln;
+            writefln("Starting speed measurement of %s", pluginPath);
+            writefln("%s will be processed %s time(s)", inPath, times);
+            if (outPath)
+                writefln("Output written to %s", outPath);
+        }
 
         getCurrentThreadHandle();
 
@@ -168,15 +239,21 @@ void main(string[]args)
 
         if (preset != -1)
             host.loadPreset(preset);
+        
+        foreach (int paramIndex, float paramvalue; parameterValues)
+        {
+            host.setParameter(paramIndex, paramvalue);
+        }
+
         long timeAfterInit = getTickUs(precise);
 
-        writefln("Initialization took %s", convertMicroSecondsToDisplay(timeAfterInit - timeBeforeInit));
+        if (verbose) writefln("Initialization took %s", convertMicroSecondsToDisplay(timeAfterInit - timeBeforeInit));
 
         // Process one second of silence to warm things-up and avoid first buffer effect
         if (preRoll)
         {
-            writeln;
-            writefln("Pre-rolling 1 second of silence...");
+            if (verbose) writeln;
+            if (verbose) writefln("Pre-rolling 1 second of silence...");
             int silenceLength = sound.sampleRate;
             float[] silenceL = new float[silenceLength];
             float[] silenceR = new float[silenceLength];
@@ -203,8 +280,8 @@ void main(string[]args)
 
         for (int t = 0; t < times; ++t)
         {
-            writeln;
-            writefln(" * Measure %s: Start processing %s...", t, inPath);
+            if (verbose) writeln;
+            if (verbose) writefln(" * Measure %s: Start processing %s...", t, inPath);
             long timeA = getTickUs(precise);
 
             float*[2] inChannels, outChannels;
@@ -226,28 +303,38 @@ void main(string[]args)
             host.processAudioFloat(inChannels.ptr, outChannels.ptr, N % bufferSize);
 
             long timeB = getTickUs(precise);
-            long measure = timeB - timeA;
-            writefln("   Processed %s in %s", inPath, convertMicroSecondsToDisplay(measure));
+            long measureUs = timeB - timeA;
+            if (verbose) writefln("   Processed %s in %s", inPath, convertMicroSecondsToDisplay(measureUs));
 
-            measures ~= cast(double)measure;
+            measures ~= cast(double)measureUs;
+
+            xmlOutput.root.addChild("run_seconds").innerText = (measureUs / 1_000_000.0).to!string;
         }
+
+        double minTime = measures[0];
+        double medianTime = measures[0];
+        double averageTime = measures[0];
 
         if (times > 1)
         {
-            writeln;
-            writefln("Results:");
+            if (verbose) writeln;
+            if (verbose) writefln("Results:");
 
-            double minTime = double.infinity;
+            minTime = double.infinity;
             foreach(m; measures)
             {
                 minTime = min(minTime, m);
             }
-            double medianTime = median(measures);
-            double averageTime = average(measures);
-            writefln(" * minimum time: %s => %.2f x real-time", convertMicroSecondsToDisplay(minTime), 1000.0*sampleDurationMs / minTime);
-            writefln(" * median  time: %s => %.2f x real-time", convertMicroSecondsToDisplay(medianTime), 1000.0*sampleDurationMs / medianTime);
-            writefln(" * average time: %s => %.2f x real-time", convertMicroSecondsToDisplay(averageTime), 1000.0*sampleDurationMs / averageTime);
+            medianTime = median(measures);
+            averageTime = average(measures);
+            if (verbose) writefln(" * minimum time: %s => %.2f x real-time", convertMicroSecondsToDisplay(minTime), 1000.0*sampleDurationMs / minTime);
+            if (verbose) writefln(" * median  time: %s => %.2f x real-time", convertMicroSecondsToDisplay(medianTime), 1000.0*sampleDurationMs / medianTime);
+            if (verbose) writefln(" * average time: %s => %.2f x real-time", convertMicroSecondsToDisplay(averageTime), 1000.0*sampleDurationMs / averageTime);
         }
+
+        xmlOutput.root.addChild("min_seconds").innerText = (minTime / 1_000_000.0).to!string;
+        xmlOutput.root.addChild("avg_seconds").innerText = (averageTime / 1_000_000.0).to!string;
+        xmlOutput.root.addChild("median_seconds").innerText = (medianTime / 1_000_000.0).to!string;
 
         // write output if necessary
         if (outPath)
@@ -258,6 +345,9 @@ void main(string[]args)
 
         host.endAudioProcessing();
         host.close();
+
+        // Dump xml
+        if (xmlFilename) xmlOutput.getData.toFile(xmlFilename);
     }
     catch(Exception e)
     {
