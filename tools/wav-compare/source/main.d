@@ -20,7 +20,8 @@ void usage()
     writeln;
     writeln("Flags:");
     writeln("        -h, --help   Shows this help");
-    writeln("        -o <file>    Write instantaneous peak difference in a WAV file (default: wav-diff.wav)");
+    writeln("        -o <file>    Write instantaneous peak difference in a WAV file (default: no)");
+    writeln("        --quiet      Less verbose output, just output RMS error (default: verbose)");    
     writeln;
 }
 
@@ -30,13 +31,18 @@ int main(string[] args)
     {
         bool help = false;
         string[] files = null;
-        string outDiffFile = "wav-diff.wav";
+        string outDiffFile = null;
+        bool quiet = false;
 
         for (int i = 1; i < args.length; ++i)
         {
             string arg = args[i];
             if (arg == "-h")
                 help = true;
+            else if (arg == "--quiet")
+            {
+                quiet = true;
+            }
             else if (arg == "-o")
             {
                 i += 1;
@@ -106,28 +112,42 @@ int main(string[] args)
         real peak_dB = convertLinearGainToDecibel(maxPeakDifference);
         real rms_dB = convertLinearGainToDecibel(rms);
 
-        cwriteln;
-        cwritefln(" Comparing %s vs %s", fileA.color(fg.light_white), fileB.color(fg.light_white));
-        writeln();
-        cwriteln ("    =================================".color(fg.light_white));
-        cwritefln("        RMS difference = %s", format("%.2f dB", rms_dB).color(fg.light_yellow));
-        cwriteln ("    =================================".color(fg.light_white));
-        writeln();
+        if (!quiet)
+        {
+            cwriteln;
+            cwritefln(" Comparing %s vs %s", fileA.color(fg.light_white), fileB.color(fg.light_white));
+            writeln();
+            cwriteln ("    =================================".color(fg.light_white));
+            cwritefln("        RMS difference = %s", format("%.2f dB", rms_dB).color(fg.light_yellow));
+            cwriteln ("    =================================".color(fg.light_white));
+            writeln();
 
-        cwriteln(" An opinion from the comparison program:");
-        cwriteln(format("    \"%s\"", getComment(rms_dB, peak_dB)).color(fg.light_cyan));
-        writeln();
+            cwriteln(" An opinion from the comparison program:");
+            cwriteln(format("    \"%s\"", getComment(rms_dB, peak_dB)).color(fg.light_cyan));
+            writeln();
 
-        if (isFinite(peak_dB - rms_dB))
-            cwritefln(" => (Peak - RMS) Crest difference = %s", format("%.2f dB", peak_dB - rms_dB).color(fg.light_green));
+            if (isFinite(peak_dB - rms_dB))
+                cwritefln(" => (Peak - RMS) Crest difference = %s", format("%.2f dB", peak_dB - rms_dB).color(fg.light_green));
+        }
+        else
+        {
+            writefln(format("%.2f dB", rms_dB));
+        }
 
         // write absolute difference into
-        Sound(soundA.sampleRate, channels, diffFileContent).encodeWAV(outDiffFile);
-        cwritefln(" => Difference written in %s (max rel. peak = %s)", 
-                  outDiffFile.color(fg.light_white),
-                  format("%.2f dB", peak_dB).color(fg.light_green));
+        if (outDiffFile)
+        {
+            Sound(soundA.sampleRate, channels, diffFileContent).encodeWAV(outDiffFile);
 
-        cwriteln;
+            if (!quiet)
+            {
+                cwritefln(" => Difference written in %s (max rel. peak = %s)", 
+                          outDiffFile.color(fg.light_white),
+                          format("%.2f dB", peak_dB).color(fg.light_green));
+            }
+        }
+
+        if (!quiet) cwriteln;
         return 0;
     }
     catch(Exception e)
