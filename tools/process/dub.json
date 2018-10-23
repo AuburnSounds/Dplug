@@ -3,7 +3,8 @@
     "description": "Very barebones VST host to test speed of processing on a stereo file.",
     "dependencies": {
         "dplug:host": {"path": "../../"},
-         "wave-d": "~>1.0"
+        "arsd-official:dom": "~>2.1.0",
+        "wave-d": "~>1.0"
     },
 
     "sourcePaths": ["source"],
