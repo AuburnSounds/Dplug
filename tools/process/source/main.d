@@ -3,6 +3,7 @@ import std.algorithm;
 import std.range;
 import std.conv;
 import std.string;
+import std.file;
 import std.path;
 
 import arsd.dom;
@@ -46,6 +47,7 @@ void usage()
         <param index="0" value="0.4" />
         <param index="1" value="0.8" />
         <plugin>cool_effect.dll</plugin>
+        <plugin_timestamp>YYYY-MM-DDTHH:MM:SS.FFFFFFFTZ</plugin_timestamp>
     </parameters>
     <min_seconds>0.11</min_seconds>
     <avg_seconds>0.11</avg_seconds>
@@ -150,6 +152,8 @@ void main(string[]args)
             }
         }
 
+        pluginPath = pluginPath.absolutePath.buildNormalizedPath;
+
         // store singular parameters
         parametersXml.addChild("input").innerText = inPath;
         parametersXml.addChild("output").innerText = outPath;
@@ -158,7 +162,8 @@ void main(string[]args)
         if (precise) parametersXml.addChild("precise");
         parametersXml.addChild("times").innerText = times.to!string;
         parametersXml.addChild("preset").innerText = preset.to!string;
-        parametersXml.addChild("plugin").innerText = pluginPath.absolutePath.buildNormalizedPath;
+        parametersXml.addChild("plugin").innerText = pluginPath;
+        parametersXml.addChild("plugin_timestamp").innerText = pluginPath.timeLastModified.toISOExtString;
 
         if (help)
         {
