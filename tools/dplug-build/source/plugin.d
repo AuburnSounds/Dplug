@@ -195,7 +195,7 @@ struct Plugin
     // The file name DUB outputs
     string dubOutputFileName() pure const nothrow
     {
-        // Note: we're NOT asking to `dub describe` though that may be more robust. 
+        // Note: we're NOT asking to `dub describe` though that may be more robust.
         // The (presumed) problem is that dub describe would check the network.
         string outputFilename;
         version(Windows)
@@ -224,9 +224,40 @@ struct Plugin
         return CFBundleIdentifierPrefix ~ ".aax." ~ sanitizeBundleString(pluginName);
     }
 
-    string[] getAllConfigurations()
+    string getFirstConfiguration()
     {
-        return configurations;
+        if (configurations.length == 0)
+            throw new Exception("Missing configurations, can't build");
+        return configurations[0];
+    }
+
+    bool configExists(string config)
+    {
+        foreach(c; configurations)
+            if (config == c)
+                return true;
+        return false;
+    }
+
+    string[] getMatchingConfigurations(string pattern)
+    {
+        string[] results;
+
+        auto reg = regex(pattern);
+        foreach(c; configurations)
+        {
+            if (c == pattern)
+            {
+                results ~= c;
+            }
+            else if (auto captures = matchAll(c, reg))
+            {
+                results ~= c;
+            }
+        }
+        if (results.length == 0)
+            throw new Exception(format("No configuration matches: '%s'", pattern));
+        return results;
     }
 }
 
@@ -277,8 +308,19 @@ Plugin readPluginDescription()
     try
     {
         JSONValue[] config = dubFile["configurations"].array();
+
         foreach(c; config)
-            result.configurations ~= c["name"].str;
+        {
+            string cname = c["name"].str;
+            if (!configIsAAX(cname)
+              &&!configIsVST(cname)
+              &&!configIsAU(cname))
+                throw new Exception(format("Configuration name should start with \"VST\", \"AU\" or \"AAX\". '%s' is not a valid configuration name.", cname));
+            result.configurations ~= cname;
+        }
+
+        // Check configuration names, they must be valid
+
     }
     catch(Exception e)
     {
@@ -358,7 +400,7 @@ Plugin readPluginDescription()
     }
     catch(Exception e)
     {
-        info("Missing \"iconPath\" in plugin.json (eg: \"gfx/myIcon.png\")");
+        //info("Missing \"iconPath\" in plugin.json (eg: \"gfx/myIcon.png\")");
     }
 
     // Mandatory keys, but with workarounds
@@ -739,7 +781,7 @@ PACEConfig readPACEConfig()
     get!("keyFileWindows", "keyFile-windows", false);
     get!("keyPasswordWindows", "keyPassword-windows", true);
     get!("developerIdentityOSX", "developerIdentity-osx", false);
-    get!("wrapConfigGUID", "wrapConfigGUID", false);  
+    get!("wrapConfigGUID", "wrapConfigGUID", false);
 
     return config;
 }

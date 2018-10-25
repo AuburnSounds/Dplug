@@ -42,6 +42,7 @@ void usage()
     flag("--compiler", "Selects D compiler.", "dmd | ldc | gdc", "ldc");
     flag("-c --config", "Adds a build configuration.", "VST | AU | AAX | name starting with \"VST\", \"AU\" or \"AAX\"", "all");
     flag("-f --force", "Forces rebuild", null, "no");
+    flag("   --final", "Shortcut for --force --combined -b release-nobounds", null, null);
     flag("--combined", "Combined build, important for cross-module inlining with LDC!", null, "no");
     flag("-q --quiet", "Quieter output", null, "no");
     flag("-v --verbose", "Verbose output", null, "no");
@@ -54,11 +55,11 @@ void usage()
     cwriteln();
     cwriteln("EXAMPLES".white);
     cwriteln();
-    cwriteln("        # Releases a final VST plugin for 32-bit and 64-bit".green);
-    cwriteln("        dplug-build --compiler ldc -a all -b release-nobounds --combined".cyan);
+    cwriteln("        # Releases an optimized VST/AU plugin for all supported architecture".green);
+    cwriteln("        dplug-build --final -c VST-CONFIG -c AU-CONFIG".cyan);
     cwriteln();
-    cwriteln("        # Builds a 32-bit Audio Unit plugin for profiling".green);
-    cwriteln("        dplug-build --compiler dmd -a x86 --config AU -b release-debug".cyan);
+    cwriteln("        # Builds a 64-bit Audio Unit plugin for profiling with DMD".green);
+    cwriteln("        dplug-build --compiler dmd -a x86_64 --config AU -b release-debug".cyan);
     cwriteln();
     cwriteln("        # Shows help".green);
     cwriteln("        dplug-build -h".cyan);
@@ -81,14 +82,16 @@ int main(string[] args)
 {
     try
     {
-        Compiler compiler = Compiler.ldc; // use LDC by default
+        string compiler = "ldc2"; // use LDC by default
 
         Arch[] archs = allArchitectureqForThisPlatform();
-        version (OSX)
-            archs = [ Arch.x86_64 ]; // on OSX, we can build 32-bit plug-ins but default to 64-bit only
+
+        // Until 32-bit is eventually fixed for macOS, remove it from default arch
+        version(OSX)
+            archs = [ Arch.x86_64 ];
 
         string build="debug";
-        string[] configurations = [];
+        string[] configurationPatterns = [];
         bool verbose = false;
         bool quiet = false;
         bool force = false;
@@ -107,6 +110,21 @@ int main(string[] args)
         else version(Windows)
             osString = "Windows";
 
+        // Expand macro arguments
+        for (int i = 1; i < args.length; )
+        {
+            string arg = args[i];
+            if (arg == "--final")
+            {
+                args = args[0..i] ~ ["--force",
+                                     "--combined",
+                                     "-b",
+                                     "release-nobounds"] ~ args[i+1..$];
+            }
+            else
+                ++i;
+        }
+
 
         for (int i = 1; i < args.length; ++i)
         {
@@ -118,18 +136,12 @@ int main(string[] args)
             else if (arg == "--compiler")
             {
                 ++i;
-                if (args[i] == "dmd")
-                    compiler = Compiler.dmd;
-                else if (args[i] == "gdc")
-                    compiler = Compiler.gdc;
-                else if (args[i] == "ldc")
-                    compiler = Compiler.ldc;
-                else throw new Exception("Unrecognized compiler (available: dmd, ldc, gdc)");
+                compiler = args[i];
             }
             else if (arg == "-c" || arg == "--config")
             {
                 ++i;
-                configurations ~= args[i];
+                configurationPatterns ~= args[i];
             }
             else if (arg == "-sr" || arg == "--skip-registry")
             {
@@ -181,12 +193,24 @@ int main(string[] args)
         }
 
         //cwriteln("*** Reading dub.json and plugin.json...".white);
-
         Plugin plugin = readPluginDescription();
 
-        // If no configurations provided, take all
+        // Get configurations from regexp patterns
+        string[] configurations;
+        foreach(pattern; configurationPatterns)
+            configurations ~= plugin.getMatchingConfigurations(pattern);
+
+        // Error on duplicate configurations
+        for(int confA = 0; confA < configurations.length; ++confA)
+            for(int confB = confA+1; confB < configurations.length; ++confB)
+                if (configurations[confA] == configurations[confB])
+                {
+                    throw new Exception(format("configuration specified twice: '%s'", configurations[confA]));
+                }
+
+        // If no configuration provided, take the first one like DUB
         if (configurations == [])
-            configurations = plugin.getAllConfigurations();
+            configurations = [ plugin.getFirstConfiguration() ];
 
         string dirName = "builds";
 
@@ -207,12 +231,13 @@ int main(string[] args)
 
         if (!quiet)
         {
-            string dot = ".".green;
-            cwritefln("=> The task is to bundle plugin ".green ~ "%s".yellow ~ " from ".green ~ "%s".yellow ~ dot, plugin.pluginName, plugin.vendorName);
-            cwritefln("   This plugin will be working in ".green ~ "%s".yellow~dot, toStringArchs(archs));
-            cwritefln("   The choosen configurations are ".green ~ "%s".yellow~dot, configurations);
-            cwritefln("   The choosen build type is ".green ~ "%s".yellow ~ dot, build);
-            cwritefln("   The choosen compiler is ".green ~ "%s".yellow ~ dot, toStringUpper(compiler));
+            cwritefln("=> Bundling plug-in ".green ~ "%s".yellow ~ " from ".green ~ "%s".yellow
+                      ~ ", archs ".green ~ "%s".yellow,
+                plugin.pluginName, plugin.vendorName, toStringArchs(archs));
+            cwritefln("   configurations: ".green ~ "%s".yellow
+                       ~ ", build type ".green ~ "%s".yellow
+                       ~ ", compiler ".green ~ "%s".yellow,
+                       configurations, build, compiler);
             if (publish)
                 cwritefln("   The binaries will be copied to standard plugin directories.".green);
             if (auval)
@@ -220,9 +245,8 @@ int main(string[] args)
             cwriteln();
         }
 
-        void buildAndPackage(string compiler, string config, Arch[] architectures, string iconPath)
+        void buildAndPackage(string config, Arch[] architectures, string iconPath)
         {
-
             foreach (int archCount, arch; architectures)
             {
                 bool is64b = arch == Arch.x86_64;
@@ -258,16 +282,6 @@ int main(string[] args)
                         cwriteln("info: Skipping AU format since building for Linux\n".white);
                         continue;
                     }
-                }
-
-                version(Windows)
-                {
-                    // FUTURE: remove when LDC on Windows is a single archive (should happen for 1.0.0)
-                    // then fiddling with PATH will be useless
-                    if (compiler == "ldc" && !is64b)
-                        environment["PATH"] = `c:\d\ldc-32b\bin` ~ ";" ~ oldpath;
-                    if (compiler == "ldc" && is64b)
-                        environment["PATH"] = `c:\d\ldc-64b\bin` ~ ";" ~ oldpath;
                 }
 
                 string path = outputDirectory(dirName, osString, arch, config);
@@ -574,7 +588,7 @@ int main(string[] args)
 
         // Build various configuration
         foreach(config; configurations)
-            buildAndPackage(toString(compiler), config, archs, iconPath);
+            buildAndPackage(config, archs, iconPath);
         return 0;
     }
     catch(DplugBuildBuiltCorrectlyException e)
@@ -600,16 +614,7 @@ int main(string[] args)
 
 void buildPlugin(string compiler, string config, string build, bool is64b, bool verbose, bool force, bool combined, bool quiet, bool skipRegistry)
 {
-    if (compiler == "ldc")
-        compiler = "ldc2";
-
-    // Note: unfortunately --combined builds crash with LDC on Linux, -FPIC is probably fixed in Dub now?
-    /*version(linux)
-    {
-        combined = true; // for -FPIC
-    }*/
-
-    cwritefln("*** Building configuration %s with %s, %s arch...".white, config, compiler, is64b ? "64-bit" : "32-bit");
+     cwritefln("*** Building configuration %s with %s, %s arch...".white, config, compiler, is64b ? "64-bit" : "32-bit");
     // build the output file
     string arch = is64b ? "x86_64" : "x86";
 
