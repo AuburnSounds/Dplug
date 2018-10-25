@@ -45,9 +45,9 @@ string toString(Arch arch)
 {
     final switch(arch) with (Arch)
     {
-        case x86: return "32-bit";
-        case x86_64: return "64-bit";
-        case universalBinary: return "Universal-Binary";
+        case x86: return "32b";
+        case x86_64: return "64b";
+        case universalBinary: return "";
     }
 }
 

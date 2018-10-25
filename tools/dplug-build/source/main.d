@@ -212,7 +212,7 @@ int main(string[] args)
         if (configurations == [])
             configurations = [ plugin.getFirstConfiguration() ];
 
-        string dirName = "builds";
+        string outputDir = "builds";
 
         void fileMove(string source, string dest)
         {
@@ -222,9 +222,23 @@ int main(string[] args)
 
         auto oldpath = environment["PATH"];
 
-        static string outputDirectory(string dirName, string osString, Arch arch, string config)
+        static string outputDirectory(string outputDir, bool temp, string osString, Arch arch, string config)
         {
-            return format("%s/%s-%s-%s", dirName, osString, toString(arch), config); // no spaces because of lipo call
+            static string toString(Arch arch)
+            {
+                final switch(arch) with (Arch)
+                {
+                    case x86: return "32b-";
+                    case x86_64: return "64b-";
+                    case universalBinary: return "";
+                }
+            }
+            return format("%s%s/%s-%s%s",
+                          outputDir,
+                          temp ? "/temp" : "",
+                          osString,
+                          toString(arch),
+                          config); // no spaces because of lipo call
         }
 
         cwriteln();
@@ -247,6 +261,14 @@ int main(string[] args)
 
         void buildAndPackage(string config, Arch[] architectures, string iconPath)
         {
+            // Is one of those arch Universal Binary?
+            bool oneOfTheArchIsUB = false;
+            foreach (arch; architectures)
+            {
+                if (arch == Arch.universalBinary)
+                    oneOfTheArchIsUB = true;
+            }
+
             foreach (int archCount, arch; architectures)
             {
                 bool is64b = arch == Arch.x86_64;
@@ -262,29 +284,35 @@ int main(string[] args)
                 version(Windows)
                 {
                     if (configIsAU(config))
-                    {
-                        cwritefln("info: Skipping AU format since building for Windows\n".white);
-                        continue;
-                    }
+                        throw new Exception("Can't build AU format on Windows");
                 }
 
                 // Does not try to build AAX or AU under Linux
                 version(linux)
                 {
                     if (configIsAAX(config))
-                    {
-                        cwriteln("info: Skipping AAX format since building for Linux\n".white);
-                        continue;
-                    }
-
+                        throw new Exception("Can't build AAX format on Linux");
                     if (configIsAU(config))
+                        throw new Exception("Can't build AU format on Linux");
+                }
+
+                // Do we need this build in the installer?
+                // isTemp is true for plugin build that are only there to jumpstart
+                // the creation of universal binaries.
+                // As such their content shouln't be mistaken for something that would be redistributed
+                bool isTemp = false;
+                version(OSX)
+                {
+                    if (!configIsAAX(config) && oneOfTheArchIsUB)
                     {
-                        cwriteln("info: Skipping AU format since building for Linux\n".white);
-                        continue;
+                        if (arch == Arch.x86)
+                            isTemp = true;
+                        else if (arch == Arch.x86_64)
+                            isTemp = true;
                     }
                 }
 
-                string path = outputDirectory(dirName, osString, arch, config);
+                string path = outputDirectory(outputDir, isTemp, osString, arch, config);
 
                 mkdirRecurse(path);
 
@@ -504,10 +532,10 @@ int main(string[] args)
 
                     if (arch == Arch.universalBinary)
                     {
-                        string path32 = outputDirectory(dirName, osString, Arch.x86, config)
+                        string path32 = outputDirectory(outputDir, true, osString, Arch.x86, config)
                         ~ "/" ~ pluginDir ~ "/Contents/MacOS/" ~ plugin.prettyName;
 
-                        string path64 = outputDirectory(dirName, osString, Arch.x86_64, config)
+                        string path64 = outputDirectory(outputDir, true, osString, Arch.x86_64, config)
                         ~ "/" ~ pluginDir ~ "/Contents/MacOS/" ~ plugin.prettyName;
 
                         cwritefln("*** Making an universal binary with lipo".white);
@@ -566,7 +594,8 @@ int main(string[] args)
             }
         }
 
-        mkdirRecurse(dirName);
+        mkdirRecurse(outputDir);
+        mkdirRecurse(outputDir ~ "/temp");
 
         string iconPath = null;
         version(OSX)
@@ -580,11 +609,11 @@ int main(string[] args)
 
         // Copy license (if any provided in plugin.json)
         if (plugin.licensePath)
-            std.file.copy(plugin.licensePath, dirName ~ "/" ~ baseName(plugin.licensePath));
+            std.file.copy(plugin.licensePath, outputDir ~ "/" ~ baseName(plugin.licensePath));
 
         // Copy user manual (if any provided in plugin.json)
         if (plugin.userManualPath)
-            std.file.copy(plugin.userManualPath, dirName ~ "/" ~ baseName(plugin.userManualPath));
+            std.file.copy(plugin.userManualPath, outputDir ~ "/" ~ baseName(plugin.userManualPath));
 
         // Build various configuration
         foreach(config; configurations)
