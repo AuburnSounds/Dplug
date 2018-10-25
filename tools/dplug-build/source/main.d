@@ -15,6 +15,9 @@ import colorize;
 import utils;
 import plugin;
 
+string GLOBAL_VST_DIR = "/Library/Audio/Plug-Ins/VST";
+string GLOBAL_AU_DIR = "/Library/Audio/Plug-Ins/Components";
+
 void usage()
 {
 
@@ -42,11 +45,12 @@ void usage()
     flag("--compiler", "Selects D compiler.", "dmd | ldc | gdc", "ldc");
     flag("-c --config", "Adds a build configuration.", "VST | AU | AAX | name starting with \"VST\", \"AU\" or \"AAX\"", "all");
     flag("-f --force", "Forces rebuild", null, "no");
-    flag("   --final", "Shortcut for --force --combined -b release-nobounds", null, null);
     flag("--combined", "Combined build, important for cross-module inlining with LDC!", null, "no");
     flag("-q --quiet", "Quieter output", null, "no");
     flag("-v --verbose", "Verbose output", null, "no");
     flag("-sr --skip-registry", " Skip checking the DUB registry\n                        Avoid network, doesn't update dependencies", null, "no");
+    flag("--final", "Shortcut for --force --combined -b release-nobounds", null, null);
+    flag("--installer", "Make an installer " ~ "(OSX only)".red, null, "no");
     flag("--publish", "Make the plugin available in standard directories " ~ "(OSX only, DOESN'T WORK)".red, null, "no");
     flag("--auval", "Check Audio Unit validation with auval " ~ "(OSX only, DOESN'T WORK)".red, null, "no");
     flag("-h --help", "Shows this help", null, null);
@@ -99,8 +103,10 @@ int main(string[] args)
         bool help = false;
         bool publish = false;
         bool auval = false;
+        bool makeInstaller = false;
         bool skipRegistry = false;
         string prettyName = null;
+
 
         string osString = "";
         version (OSX)
@@ -144,9 +150,9 @@ int main(string[] args)
                 configurationPatterns ~= args[i];
             }
             else if (arg == "-sr" || arg == "--skip-registry")
-            {
                 skipRegistry = true;
-            }
+            else if (arg == "--installer")
+                makeInstaller = true;
             else if (arg == "--combined")
                 combined = true;
             else if (arg == "-a" || arg == "--arch")
@@ -563,9 +569,9 @@ int main(string[] args)
                     {
                         string destPath;
                         if (configIsVST(config))
-                            destPath = "/Library/Audio/Plug-Ins/VST"; // This need elevated privileges
+                            destPath = GLOBAL_VST_DIR; // This need elevated privileges
                         else if (configIsAU(config))
-                            destPath = "/Library/Audio/Plug-Ins/Components"; // This need elevated privileges
+                            destPath = GLOBAL_AU_DIR; // This need elevated privileges
                         else
                             assert(false);
                         cwritefln("*** Publishing to %s...".white, destPath);
