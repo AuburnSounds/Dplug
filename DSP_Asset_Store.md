@@ -1,6 +1,6 @@
 # 🎛️ DSP Asset Store 💰
 
-A catalog of Digital Signal Processing Assets by and for the Dplug ecosystem. 
+A catalog of Digital Signal Processing Assets.
 
 This is the place where audio developers can buy and sell their finely-crafted algorithms.
 
