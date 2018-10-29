@@ -155,7 +155,12 @@ int main(string[] args)
             else if (arg == "-sr" || arg == "--skip-registry")
                 skipRegistry = true;
             else if (arg == "--installer")
-                makeInstaller = true;
+            {
+                version(OSX)
+                    makeInstaller = true;
+                else
+                    warning("--installer not supported on that OS");
+            }
             else if (arg == "--combined")
                 combined = true;
             else if (arg == "-a" || arg == "--arch")
@@ -248,6 +253,12 @@ int main(string[] args)
                           osString,
                           toString(arch),
                           config); // no spaces because of lipo call
+        }
+
+        version(OSX)
+        {
+            // A path to .pkg artifacts to distribute together
+            MacPackage[] macInstallerPackages;
         }
 
         cwriteln();
@@ -603,7 +614,7 @@ int main(string[] args)
                         }
                     }
 
-                    if (makeInstaller)
+                    if (!isTemp && makeInstaller) // is this eligible to make it in the installer?
                     {
                         string pkgIdentifier;
                         string pkgFilename;
@@ -628,8 +639,9 @@ int main(string[] args)
                         string versionStr = plugin.publicVersionString();
                         string pathToPkg = path ~ "/" ~ pkgFilename;
 
-                        // TODO: signature? timestamp?
-                        //       include major in bundle identifier for upgrade path?
+                        macInstallerPackages ~= MacPackage(pkgIdentifier, pathToPkg);
+
+                        // TODO: include major in bundle identifier for upgrade path?
 
                         // Create individual .pkg installer for each VST, AU or AAX given
                         string cmd = format("pkgbuild --install-location %s --identifier %s --version %s --component %s %s",
@@ -668,6 +680,17 @@ int main(string[] args)
         // Build various configuration
         foreach(config; configurations)
             buildAndPackage(config, archs, iconPath);
+
+        version(OSX)
+        {
+            if (makeInstaller)
+            {
+                cwriteln("*** Generating Mac installer...".white);
+
+                string finalPkgPath = plugin.finalPkgFilename(configurations[0]);
+                generateMacInstaller(outputDir, plugin, macInstallerPackages, finalPkgPath);
+            }
+        }
         return 0;
     }
     catch(DplugBuildBuiltCorrectlyException e)
@@ -717,5 +740,56 @@ void buildPlugin(string compiler, string config, string build, bool is64b, bool 
     safeCommand(cmd);
 }
 
+struct MacPackage
+{
+    string identifier;
+    string pathToPkg;
+}
 
+void generateMacInstaller(string outputDir,
+                          Plugin plugin,
+                          MacPackage[] packs,
+                          string outPkgPath)
+{
+    string distribPath = outputDir ~ "/" ~ "mac-distribution.txt";
 
+    string content = "";
+
+    content ~= `<?xml version="1.0" encoding="utf-8"?>` ~ "\n";
+    content ~= `<installer-gui-script minSpecVersion="1">` ~ "\n";
+    foreach(p; packs)
+        content ~= format(`<pkg-ref id="%s"/>` ~ "\n", p.identifier);
+
+    content ~= `<options customize="never" require-scripts="false"/>` ~ "\n";
+
+    content ~= `<choices-outline>` ~ "\n";
+    content ~= `    <line choice="default">` ~ "\n";
+    foreach(p; packs)
+        content ~= format(`        <line choice="%s"/>` ~ "\n", p.identifier);
+    content ~= `    </line>` ~ "\n";
+    content ~= `</choices-outline>` ~ "\n";
+    content ~= `</installer-gui-script>` ~ "\n";
+
+    std.file.write(distribPath, cast(void[])content);
+
+/*
+    <choices-outline>
+        <line choice="default">
+            <line choice="com.auburnsounds.Couture-vst.pkg"/>
+            <line choice="com.auburnsounds.Couture-au.pkg"/>
+        </line>
+    </choices-outline>
+    <choice id="default"/>
+    <choice id="com.auburnsounds.Couture-vst.pkg" visible="false">
+        <pkg-ref id="com.auburnsounds.Couture-vst.pkg"/>
+    </choice>
+    <pkg-ref id="com.auburnsounds.Couture-vst.pkg" version="1.1.1" onConclusion="none">Couture-vst.pkg</pkg-ref>
+    <choice id="com.auburnsounds.Couture-au.pkg" visible="false">
+        <pkg-ref id="com.auburnsounds.Couture-au.pkg"/>
+    </choice>
+    <pkg-ref id="com.auburnsounds.Couture-au.pkg" version="1.1.1" onConclusion="none">Couture-au.pkg</pkg-ref>
+*/
+    string cmd = format("productbuild --distribution %s %s",
+                        escapeShellArgument(distribPath), escapeShellArgument(outPkgPath));
+    safeCommand(cmd);
+}

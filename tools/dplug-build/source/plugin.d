@@ -84,6 +84,19 @@ string toStringArchs(Arch[] archs)
     return r;
 }
 
+// from a valid configuration name, extracts the rest of the name.
+// Typically configuration would be like: "VST-FULL" or "AAX-FREE".
+string stripConfig(string config) pure nothrow @nogc
+{
+    if (config.length >= 4 && config[0..4] == "VST-")
+        return config[4..$];
+    if (config.length >= 3 && config[0..3] == "AU-")
+        return config[3..$];
+    if (config.length >= 4 && config[0..4] == "AAX-")
+        return config[4..$];
+    return null;
+}
+
 bool configIsVST(string config) pure nothrow @nogc
 {
     return config.length >= 3 && config[0..3] == "VST";
@@ -218,6 +231,20 @@ struct Plugin
 
     version(OSX)
     {
+        // filename of the final installer
+        // give a config to extract a configuration name in case of multiple configurations
+        string finalPkgFilename(string config) pure const
+        {
+            string verName = stripConfig(config);
+            if (verName)
+                verName = "-" ~ verName;
+            else
+                verName = "";
+            return format("%s%s-%s.pkg", sanitizeBundleString(pluginName),
+                                         verName,
+                                         publicVersionString);
+        }
+
         string pkgFilenameVST() pure const
         {
             return sanitizeBundleString(pluginName) ~ "-vst.pkg";
