@@ -216,6 +216,39 @@ struct Plugin
         return CFBundleIdentifierPrefix ~ ".aax." ~ sanitizeBundleString(pluginName);
     }
 
+    version(OSX)
+    {
+        string pkgFilenameVST() pure const
+        {
+            return sanitizeBundleString(pluginName) ~ "-vst.pkg";
+        }
+
+        string pkgFilenameAU() pure const
+        {
+            return sanitizeBundleString(pluginName) ~ "-au.pkg";
+        }
+
+        string pkgFilenameAAX() pure const
+        {
+            return sanitizeBundleString(pluginName) ~ "-aax.pkg";
+        }
+
+        string pkgBundleVST() pure const
+        {
+            return CFBundleIdentifierPrefix ~ "." ~ pkgFilenameVST();
+        }
+
+        string pkgBundleAU() pure const
+        {
+            return CFBundleIdentifierPrefix ~ "." ~ pkgFilenameAU();
+        }
+
+        string pkgBundleAAX() pure const
+        {
+            return CFBundleIdentifierPrefix ~ "." ~ pkgFilenameAAX();
+        }
+    }
+
     string getFirstConfiguration()
     {
         if (configurations.length == 0)

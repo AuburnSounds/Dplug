@@ -15,8 +15,11 @@ import colorize;
 import utils;
 import plugin;
 
-string GLOBAL_VST_DIR = "/Library/Audio/Plug-Ins/VST";
-string GLOBAL_AU_DIR = "/Library/Audio/Plug-Ins/Components";
+// This define the paths to install plugins on macOS
+string MAC_VST_DIR = "/Library/Audio/Plug-Ins/VST";
+string MAC_AU_DIR  = "/Library/Audio/Plug-Ins/Components";
+string MAC_AAX_DIR = "/Library/Application Support/Avid/Audio/Plug-Ins";
+
 
 void usage()
 {
@@ -491,14 +494,24 @@ int main(string[] args)
                 {
                     // Only accepts two configurations: VST and AudioUnit
                     string pluginDir;
+                    string installDir;
                     if (configIsVST(config))
+                    {
                         pluginDir = plugin.prettyName ~ ".vst";
+                        installDir = MAC_VST_DIR;
+                    }
                     else if (configIsAU(config))
+                    {
                         pluginDir = plugin.prettyName ~ ".component";
+                        installDir = MAC_AU_DIR;
+                    }
                     else if (configIsAAX(config))
+                    {
                         pluginDir = plugin.prettyName ~ ".aaxplugin";
+                        installDir = MAC_AAX_DIR;
+                    }
                     else
-                        assert(false);
+                        assert(false, "unsupported plugin format");
 
                     // On Mac, make a bundle directory
                     string bundleDir = path ~ "/" ~ pluginDir;
@@ -567,15 +580,8 @@ int main(string[] args)
                     // it's the last architecture in the list (to avoid overwrite)
                     if (publish && (archCount + 1 == architectures.length))
                     {
-                        string destPath;
-                        if (configIsVST(config))
-                            destPath = GLOBAL_VST_DIR; // This need elevated privileges
-                        else if (configIsAU(config))
-                            destPath = GLOBAL_AU_DIR; // This need elevated privileges
-                        else
-                            assert(false);
-                        cwritefln("*** Publishing to %s...".white, destPath);
-                        int filesCopied = copyRecurse(path ~ "/" ~ pluginDir, destPath ~ "/" ~ pluginDir, verbose);
+                        cwritefln("*** Publishing to %s...".white, installDir);
+                        int filesCopied = copyRecurse(path ~ "/" ~ pluginDir, installDir ~ "/" ~ pluginDir, verbose);
                         cwritefln("    => %s files copied.".green, filesCopied);
                         cwriteln();
 
@@ -595,6 +601,44 @@ int main(string[] args)
                             cwriteln("    => Audio Unit passed validation.".green);
                             cwriteln();
                         }
+                    }
+
+                    if (makeInstaller)
+                    {
+                        string pkgIdentifier;
+                        string pkgFilename;
+                        if (configIsVST(config))
+                        {
+                            pkgIdentifier = plugin.pkgBundleVST();
+                            pkgFilename   = plugin.pkgFilenameVST();
+                        }
+                        else if (configIsAU(config))
+                        {
+                            pkgIdentifier = plugin.pkgBundleAU();
+                            pkgFilename   = plugin.pkgFilenameAU();
+                        }
+                        else if (configIsAAX(config))
+                        {
+                            pkgIdentifier = plugin.pkgBundleAAX();
+                            pkgFilename   = plugin.pkgFilenameAAX();
+                        }
+                        else
+                            assert(false, "unsupported plugin format");
+
+                        string versionStr = plugin.publicVersionString();
+                        string pathToPkg = path ~ "/" ~ pkgFilename;
+
+                        // TODO: signature? timestamp?
+                        //       include major in bundle identifier for upgrade path?
+
+                        // Create individual .pkg installer for each VST, AU or AAX given
+                        string cmd = format("pkgbuild --install-location %s --identifier %s --version %s --component %s %s",
+                            installDir,
+                            pkgIdentifier,
+                            plugin.publicVersionString,
+                            escapeShellArgument(bundleDir),
+                            escapeShellArgument(pathToPkg));
+                        safeCommand(cmd);
                     }
                 }
             }
