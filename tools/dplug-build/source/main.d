@@ -789,7 +789,19 @@ void generateMacInstaller(string outputDir,
     </choice>
     <pkg-ref id="com.auburnsounds.Couture-au.pkg" version="1.1.1" onConclusion="none">Couture-au.pkg</pkg-ref>
 */
-    string cmd = format("productbuild --distribution %s %s",
-                        escapeShellArgument(distribPath), escapeShellArgument(outPkgPath));
+
+    string signStr = "";
+    if (plugin.developerIdentityInstaller !is null)
+    {
+        signStr = format(" --sign %s", escapeShellArgument(plugin.developerIdentityInstaller));
+    }
+    else
+    {
+        warning("Can't sign the installer. Please provide a key \"developerIdentityInstaller-osx\" in your plugin.json. Users computers will reject this installer.");
+    }
+    string cmd = format("productbuild --distribution %s%s %s",
+                        escapeShellArgument(distribPath),
+                        signStr,
+                        escapeShellArgument(outPkgPath));
     safeCommand(cmd);
 }

@@ -136,6 +136,9 @@ struct Plugin
     int publicVersionMinor;
     int publicVersionPatch;
 
+    // The certificate identity to be used for Mac installer
+    string developerIdentityInstaller = null;
+
 
     bool receivesMIDI;
     bool isSynth;
@@ -444,6 +447,15 @@ Plugin readPluginDescription()
     catch(Exception e)
     {
         info("Missing \"licensePath\" in plugin.json (eg: \"license.txt\")");
+    }
+
+    try
+    {
+        result.developerIdentityInstaller = rawPluginFile["developerIdentityInstaller-osx"].str;
+    }
+    catch(Exception e)
+    {
+        result.developerIdentityInstaller = null;
     }
 
     try
