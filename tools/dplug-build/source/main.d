@@ -206,7 +206,6 @@ int main(string[] args)
             return 0;
         }
 
-        //cwriteln("*** Reading dub.json and plugin.json...".white);
         Plugin plugin = readPluginDescription();
 
         // Get configurations from regexp patterns
@@ -276,6 +275,8 @@ int main(string[] args)
                 cwritefln("   The binaries will be copied to standard plugin directories.".green);
             if (auval)
                 cwritefln("   Then Audio Unit validation with auval will be performed for arch %s.".green, archs[$-1]);
+            if (makeInstaller)
+                cwritefln("   Then a Mac installer will be created for distribution outside of the App Store.".green);
             cwriteln();
         }
 
@@ -381,6 +382,7 @@ int main(string[] args)
                                             escapeShellArgument(binaryPathInOut),
                                             escapeShellArgument(binaryPathInOut));
                         safeCommand(cmd);
+                        writeln();
                     }
                     else
                         assert(false);
@@ -638,10 +640,9 @@ int main(string[] args)
 
                         string versionStr = plugin.publicVersionString();
                         string pathToPkg = path ~ "/" ~ pkgFilename;
+                        string distributionId = to!string(macInstallerPackages.length);
 
-                        macInstallerPackages ~= MacPackage(pkgIdentifier, pathToPkg);
-
-                        // TODO: include major in bundle identifier for upgrade path?
+                        macInstallerPackages ~= MacPackage(pkgIdentifier, pathToPkg, pkgFilename, distributionId);
 
                         // Create individual .pkg installer for each VST, AU or AAX given
                         string cmd = format("pkgbuild --install-location %s --identifier %s --version %s --component %s %s",
@@ -651,6 +652,7 @@ int main(string[] args)
                             escapeShellArgument(bundleDir),
                             escapeShellArgument(pathToPkg));
                         safeCommand(cmd);
+                        cwriteln;
                     }
                 }
             }
@@ -686,8 +688,7 @@ int main(string[] args)
             if (makeInstaller)
             {
                 cwriteln("*** Generating Mac installer...".white);
-
-                string finalPkgPath = plugin.finalPkgFilename(configurations[0]);
+                string finalPkgPath = outputDir ~ "/" ~ plugin.finalPkgFilename(configurations[0]);
                 generateMacInstaller(outputDir, plugin, macInstallerPackages, finalPkgPath);
             }
         }
@@ -744,6 +745,8 @@ struct MacPackage
 {
     string identifier;
     string pathToPkg;
+    string pkgFilename;
+    string distributionId; // ID for the distribution.txt
 }
 
 void generateMacInstaller(string outputDir,
@@ -751,57 +754,69 @@ void generateMacInstaller(string outputDir,
                           MacPackage[] packs,
                           string outPkgPath)
 {
-    string distribPath = outputDir ~ "/" ~ "mac-distribution.txt";
+    string distribPath = "mac-distribution.txt";
 
     string content = "";
 
     content ~= `<?xml version="1.0" encoding="utf-8"?>` ~ "\n";
     content ~= `<installer-gui-script minSpecVersion="1">` ~ "\n";
-    foreach(p; packs)
-        content ~= format(`<pkg-ref id="%s"/>` ~ "\n", p.identifier);
 
-    content ~= `<options customize="never" require-scripts="false"/>` ~ "\n";
+    content ~= format(`<title>%s</title>` ~ "\n", plugin.prettyName);
+
+    if (plugin.licensePath)
+    {
+        string licenceMIME = "text/plain";
+        content ~= format(`<license file="%s" mime-type="%s"/>` ~ "\n",
+            plugin.licensePath, licenceMIME);
+    }
+
+    // This is a kind of forward declaration <pkg-ref> are merged
+    foreach(p; packs)
+        content ~= format(`<pkg-ref id="%s"/>` ~ "\n", p.distributionId);
+
+    content ~= `<options customize="allow" require-scripts="false"/>` ~ "\n";
 
     content ~= `<choices-outline>` ~ "\n";
     content ~= `    <line choice="default">` ~ "\n";
+
     foreach(p; packs)
-        content ~= format(`        <line choice="%s"/>` ~ "\n", p.identifier);
+        content ~= format(`        <line choice="%s"/>` ~ "\n", p.distributionId);
     content ~= `    </line>` ~ "\n";
     content ~= `</choices-outline>` ~ "\n";
+    content ~= `<choice id="default"/>` ~ "\n";
+
+    foreach(p; packs)
+    {
+        content ~= format(`<choice id="%s" visible="true" title="a title">` ~ "\n", p.distributionId);
+        content ~= format(`    <pkg-ref id="%s"/>` ~ "\n", p.distributionId);
+        content ~= format(`</choice>` ~ "\n");
+
+        // TODO: is this path relative to distribution.xml?
+        content ~= format(`<pkg-ref id="%s" version="%s">%s</pkg-ref>` ~ "\n",
+                          p.distributionId, plugin.publicVersionString(), p.pkgFilename);
+    }
+
     content ~= `</installer-gui-script>` ~ "\n";
 
     std.file.write(distribPath, cast(void[])content);
 
-/*
-    <choices-outline>
-        <line choice="default">
-            <line choice="com.auburnsounds.Couture-vst.pkg"/>
-            <line choice="com.auburnsounds.Couture-au.pkg"/>
-        </line>
-    </choices-outline>
-    <choice id="default"/>
-    <choice id="com.auburnsounds.Couture-vst.pkg" visible="false">
-        <pkg-ref id="com.auburnsounds.Couture-vst.pkg"/>
-    </choice>
-    <pkg-ref id="com.auburnsounds.Couture-vst.pkg" version="1.1.1" onConclusion="none">Couture-vst.pkg</pkg-ref>
-    <choice id="com.auburnsounds.Couture-au.pkg" visible="false">
-        <pkg-ref id="com.auburnsounds.Couture-au.pkg"/>
-    </choice>
-    <pkg-ref id="com.auburnsounds.Couture-au.pkg" version="1.1.1" onConclusion="none">Couture-au.pkg</pkg-ref>
-*/
-
     string signStr = "";
     if (plugin.developerIdentityInstaller !is null)
     {
-        signStr = format(" --sign %s", escapeShellArgument(plugin.developerIdentityInstaller));
+        signStr = format(" --sign %s --timestamp", escapeShellArgument(plugin.developerIdentityInstaller));
     }
     else
     {
         warning("Can't sign the installer. Please provide a key \"developerIdentityInstaller-osx\" in your plugin.json. Users computers will reject this installer.");
     }
-    string cmd = format("productbuild --distribution %s%s %s",
-                        escapeShellArgument(distribPath),
+
+    string packagePaths = "";
+    foreach(p; packs)
+       packagePaths ~= format(` --package-path %s`, escapeShellArgument(dirName(p.pathToPkg)));
+    string cmd = format("productbuild%s --distribution %s%s %s",
                         signStr,
+                        escapeShellArgument(distribPath),
+                        packagePaths,
                         escapeShellArgument(outPkgPath));
     safeCommand(cmd);
 }
