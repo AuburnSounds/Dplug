@@ -6,6 +6,7 @@
     "dependencies":
     {
         "colorize": "~>1.0",
+        "dmarkdown": "~>0.2",
         "dplug:client": { "path": "../.." }
     }
 }

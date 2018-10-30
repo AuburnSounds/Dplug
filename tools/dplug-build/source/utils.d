@@ -5,6 +5,7 @@ import std.string;
 import std.file;
 import std.path;
 
+import dmarkdown;
 import colorize;
 
 string white(string s) @property
@@ -70,6 +71,12 @@ class ExternalProgramErrored : Exception
     }
 }
 
+string convertMarkdownFileToHTML(string markdownFile)
+{
+    string res = `<!DOCTYPE html><html><head><title></title><meta charset="utf-8"></head><body>`
+    ~ filterMarkdown(markdownFile) ~ `</body></html>`;
+    return res;
+}
 
 void safeCommand(string cmd)
 {

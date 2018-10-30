@@ -226,6 +226,7 @@ int main(string[] args)
             configurations = [ plugin.getFirstConfiguration() ];
 
         string outputDir = "builds";
+        string resDir    = "builds/res-install"; // A directory for the Mac installer
 
         void fileMove(string source, string dest)
         {
@@ -660,6 +661,8 @@ int main(string[] args)
 
         mkdirRecurse(outputDir);
         mkdirRecurse(outputDir ~ "/temp");
+        if (makeInstaller)
+            mkdirRecurse(outputDir ~ "/res-install");
 
         string iconPath = null;
         version(OSX)
@@ -689,7 +692,7 @@ int main(string[] args)
             {
                 cwriteln("*** Generating Mac installer...".white);
                 string finalPkgPath = outputDir ~ "/" ~ plugin.finalPkgFilename(configurations[0]);
-                generateMacInstaller(outputDir, plugin, macInstallerPackages, finalPkgPath);
+                generateMacInstaller(outputDir, resDir, plugin, macInstallerPackages, finalPkgPath,);
             }
         }
         return 0;
@@ -750,6 +753,7 @@ struct MacPackage
 }
 
 void generateMacInstaller(string outputDir,
+                          string resDir,
                           Plugin plugin,
                           MacPackage[] packs,
                           string outPkgPath)
@@ -765,9 +769,18 @@ void generateMacInstaller(string outputDir,
 
     if (plugin.licensePath)
     {
-        string licenceMIME = "text/plain";
-        content ~= format(`<license file="%s" mime-type="%s"/>` ~ "\n",
-            plugin.licensePath, licenceMIME);
+        if (extension(plugin.licensePath) != ".md")
+            throw new Exception("Licence file should be a Markdown .md file");
+
+        // Convert licence markdown to HTML
+        cwritef("    Converting licence file to HTML... ");
+        string licenceFile = resDir ~ "/licence.html";
+        string markdown = cast(string)std.file.read(plugin.licensePath);
+        string html = convertMarkdownFileToHTML(markdown);
+        std.file.write(licenceFile, html);
+        cwritefln(" => OK".green);
+
+        content ~= format(`<license file="licence.html" mime-type="text/html"/>` ~ "\n");
     }
 
     // This is a kind of forward declaration <pkg-ref> are merged
@@ -813,8 +826,9 @@ void generateMacInstaller(string outputDir,
     string packagePaths = "";
     foreach(p; packs)
        packagePaths ~= format(` --package-path %s`, escapeShellArgument(dirName(p.pathToPkg)));
-    string cmd = format("productbuild%s --distribution %s%s %s",
+    string cmd = format("productbuild%s --resources %s --distribution %s%s %s",
                         signStr,
+                        escapeShellArgument(resDir),
                         escapeShellArgument(distribPath),
                         packagePaths,
                         escapeShellArgument(outPkgPath));
