@@ -689,15 +689,15 @@ int main(string[] args)
             }
             else if (extension(plugin.licensePath) == ".md")
             {
-                // Convert licence markdown to HTML
-                cwritef("    Converting licence file to HTML... ");
+                // Convert license markdown to HTML
+                cwritef("    Converting license file to HTML... ");
                 string markdown = cast(string)std.file.read(plugin.licensePath);
                 string html = convertMarkdownFileToHTML(markdown);
                 std.file.write(licensePath, html);
                 cwritefln(" => OK".green);
             }
             else
-                throw new Exception("Licence file should be a Markdown .md or HTML .html file");
+                throw new Exception("License file should be a Markdown .md or HTML .html file");
         }
 
         // Copy user manual (if any provided in plugin.json)
@@ -794,7 +794,7 @@ void generateMacInstaller(string outputDir,
     {
         string backgroundPath = resDir ~ "/background.png";
         std.file.copy(plugin.installerPNGPath, backgroundPath);
-        content ~= format(`<background file="background.png" alignment="topleft" scaling="none"/>` ~ "\n");
+        content ~= format(`<background file="background.png" alignment="center" scaling="proportional"/>` ~ "\n");
     }
     else
     {
@@ -805,9 +805,9 @@ void generateMacInstaller(string outputDir,
     {
         // this file should exist at this point
         string licensePath = outputDir ~ "/license.html";
-        string reslicencePath = resDir ~ "/license.html";
-        std.file.copy(licensePath, reslicencePath);
-        content ~= format(`<license file="licence.html" mime-type="text/html"/>` ~ "\n");
+        string reslicensePath = resDir ~ "/license.html";
+        std.file.copy(licensePath, reslicensePath);
+        content ~= format(`<license file="license.html" mime-type="text/html"/>` ~ "\n");
     }
 
     // This is a kind of forward declaration <pkg-ref> are merged
