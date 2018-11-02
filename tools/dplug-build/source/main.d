@@ -621,20 +621,24 @@ int main(string[] args)
                     {
                         string pkgIdentifier;
                         string pkgFilename;
+                        string title;
                         if (configIsVST(config))
                         {
                             pkgIdentifier = plugin.pkgBundleVST();
                             pkgFilename   = plugin.pkgFilenameVST();
+                            title = "VST plug-in";
                         }
                         else if (configIsAU(config))
                         {
                             pkgIdentifier = plugin.pkgBundleAU();
                             pkgFilename   = plugin.pkgFilenameAU();
+                            title = "AU plug-in";
                         }
                         else if (configIsAAX(config))
                         {
                             pkgIdentifier = plugin.pkgBundleAAX();
                             pkgFilename   = plugin.pkgFilenameAAX();
+                            title = "AAX plug-in";
                         }
                         else
                             assert(false, "unsupported plugin format");
@@ -643,7 +647,7 @@ int main(string[] args)
                         string pathToPkg = path ~ "/" ~ pkgFilename;
                         string distributionId = to!string(macInstallerPackages.length);
 
-                        macInstallerPackages ~= MacPackage(pkgIdentifier, pathToPkg, pkgFilename, distributionId);
+                        macInstallerPackages ~= MacPackage(pkgIdentifier, pathToPkg, pkgFilename, distributionId, title);
 
                         // Create individual .pkg installer for each VST, AU or AAX given
                         string cmd = format("pkgbuild --install-location %s --identifier %s --version %s --component %s %s",
@@ -675,8 +679,26 @@ int main(string[] args)
         }
 
         // Copy license (if any provided in plugin.json)
+        // Ensure it is HTML.
         if (plugin.licensePath)
-            std.file.copy(plugin.licensePath, outputDir ~ "/" ~ baseName(plugin.licensePath));
+        {
+            string licensePath = outputDir ~ "/license.html";
+            if (extension(plugin.licensePath) == ".html")
+            {
+                std.file.copy(plugin.licensePath, licensePath);
+            }
+            else if (extension(plugin.licensePath) == ".md")
+            {
+                // Convert licence markdown to HTML
+                cwritef("    Converting licence file to HTML... ");
+                string markdown = cast(string)std.file.read(plugin.licensePath);
+                string html = convertMarkdownFileToHTML(markdown);
+                std.file.write(licensePath, html);
+                cwritefln(" => OK".green);
+            }
+            else
+                throw new Exception("Licence file should be a Markdown .md or HTML .html file");
+        }
 
         // Copy user manual (if any provided in plugin.json)
         if (plugin.userManualPath)
@@ -750,6 +772,7 @@ struct MacPackage
     string pathToPkg;
     string pkgFilename;
     string distributionId; // ID for the distribution.txt
+    string title;
 }
 
 void generateMacInstaller(string outputDir,
@@ -765,21 +788,25 @@ void generateMacInstaller(string outputDir,
     content ~= `<?xml version="1.0" encoding="utf-8"?>` ~ "\n";
     content ~= `<installer-gui-script minSpecVersion="1">` ~ "\n";
 
-    content ~= format(`<title>%s</title>` ~ "\n", plugin.prettyName);
+    content ~= format(`<title>%s</title>` ~ "\n", plugin.prettyName ~ " v" ~ plugin.publicVersionString);
+
+    if (plugin.installerPNGPath)
+    {
+        string backgroundPath = resDir ~ "/background.png";
+        std.file.copy(plugin.installerPNGPath, backgroundPath);
+        content ~= format(`<background file="background.png" alignment="topleft" scaling="none"/>` ~ "\n");
+    }
+    else
+    {
+        warning("No PNG background provided. Add a key \"installerPNGPath\" in your plugin.json to have one.");
+    }
 
     if (plugin.licensePath)
     {
-        if (extension(plugin.licensePath) != ".md")
-            throw new Exception("Licence file should be a Markdown .md file");
-
-        // Convert licence markdown to HTML
-        cwritef("    Converting licence file to HTML... ");
-        string licenceFile = resDir ~ "/licence.html";
-        string markdown = cast(string)std.file.read(plugin.licensePath);
-        string html = convertMarkdownFileToHTML(markdown);
-        std.file.write(licenceFile, html);
-        cwritefln(" => OK".green);
-
+        // this file should exist at this point
+        string licensePath = outputDir ~ "/license.html";
+        string reslicencePath = resDir ~ "/license.html";
+        std.file.copy(licensePath, reslicencePath);
         content ~= format(`<license file="licence.html" mime-type="text/html"/>` ~ "\n");
     }
 
@@ -787,7 +814,7 @@ void generateMacInstaller(string outputDir,
     foreach(p; packs)
         content ~= format(`<pkg-ref id="%s"/>` ~ "\n", p.distributionId);
 
-    content ~= `<options customize="allow" require-scripts="false"/>` ~ "\n";
+    content ~= `<options customize="always" require-scripts="false"/>` ~ "\n";
 
     content ~= `<choices-outline>` ~ "\n";
     content ~= `    <line choice="default">` ~ "\n";
@@ -796,11 +823,12 @@ void generateMacInstaller(string outputDir,
         content ~= format(`        <line choice="%s"/>` ~ "\n", p.distributionId);
     content ~= `    </line>` ~ "\n";
     content ~= `</choices-outline>` ~ "\n";
-    content ~= `<choice id="default"/>` ~ "\n";
+    content ~= format(`<choice id="default" title="%s"/>` ~ "\n", plugin.prettyName ~ " v" ~ plugin.publicVersionString);
 
     foreach(p; packs)
     {
-        content ~= format(`<choice id="%s" visible="true" title="a title">` ~ "\n", p.distributionId);
+        content ~= format(`<choice id="%s" visible="true" title="%s">` ~ "\n",
+            p.distributionId, p.title);
         content ~= format(`    <pkg-ref id="%s"/>` ~ "\n", p.distributionId);
         content ~= format(`</choice>` ~ "\n");
 
@@ -823,6 +851,8 @@ void generateMacInstaller(string outputDir,
         warning("Can't sign the installer. Please provide a key \"developerIdentityInstaller-osx\" in your plugin.json. Users computers will reject this installer.");
     }
 
+
+    // missing --version and --identifier?
     string packagePaths = "";
     foreach(p; packs)
        packagePaths ~= format(` --package-path %s`, escapeShellArgument(dirName(p.pathToPkg)));

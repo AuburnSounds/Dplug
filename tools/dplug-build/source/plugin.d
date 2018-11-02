@@ -139,6 +139,9 @@ struct Plugin
     // The certificate identity to be used for Mac installer
     string developerIdentityInstaller = null;
 
+    // relative path to a .png for the Mac installer
+    string installerPNGPath;
+
 
     bool receivesMIDI;
     bool isSynth;
@@ -159,7 +162,7 @@ struct Plugin
 
     string publicVersionString() pure const nothrow
     {
-        return to!string(publicVersionMajor) ~ "." ~ to!string(publicVersionMinor) ~ "." ~ to!string(publicVersionMinor);
+        return to!string(publicVersionMajor) ~ "." ~ to!string(publicVersionMinor) ~ "." ~ to!string(publicVersionPatch);
     }
 
     // AU version integer
@@ -456,6 +459,15 @@ Plugin readPluginDescription()
     catch(Exception e)
     {
         result.developerIdentityInstaller = null;
+    }
+
+    try
+    {
+        result.installerPNGPath = rawPluginFile["installerPNGPath"].str;
+    }
+    catch(Exception e)
+    {
+        result.installerPNGPath = null;
     }
 
     try
