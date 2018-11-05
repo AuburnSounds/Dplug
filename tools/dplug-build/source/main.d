@@ -589,6 +589,26 @@ int main(string[] args)
                     // Note: on Mac, the bundle path is passed instead, since wraptool won't accept the executable only
                     if (configIsAAX(config))
                         signAAXBinaryWithPACE(bundleDir);
+                    else
+                    {
+                        enum SIGN_MAC_BUNDLES = true;
+                        if (SIGN_MAC_BUNDLES && !isTemp && makeInstaller)
+                        {
+                            // eventually sign with codesign
+                            cwritefln("*** Signing bundle %s...".white, bundleDir);
+                            if (plugin.developerIdentityInstaller !is null)
+                            {
+                                string signStr = format(" --sign %s --timestamp", escapeShellArgument(plugin.developerIdentityInstaller));
+                                string command = format(`codesign -d --deep -f%s -s %s %s`, signStr, plugin.developerIdentityInstaller, escapeShellArgument(bundleDir));
+                                safeCommand(command);
+                            }
+                            else
+                            {
+                                warning("Can't sign the bundle. Please provide a key \"developerIdentityInstaller-osx\" in your plugin.json. Users computers may reject this bundle.");
+                            }
+                            cwriteln;
+                        }
+                    }
 
                     // Should this arch be published? Only if the --publish arg was given and
                     // it's the last architecture in the list (to avoid overwrite)
@@ -649,8 +669,24 @@ int main(string[] args)
 
                         macInstallerPackages ~= MacPackage(pkgIdentifier, pathToPkg, pkgFilename, distributionId, title);
 
+                        string signStr = "";
+                        enum SIGN_MAC_INDIVIDUAL_PKG = true;
+                        static if (SIGN_MAC_INDIVIDUAL_PKG)
+                        {
+                            if (plugin.developerIdentityInstaller !is null)
+                            {
+                                signStr = format(" --sign %s --timestamp", escapeShellArgument(plugin.developerIdentityInstaller));
+                            }
+                            else
+                            {
+                                warning("Can't sign the installer. Please provide a key \"developerIdentityInstaller-osx\" in your plugin.json. Users computers will reject this installer.");
+                            }
+                        }
+
+
                         // Create individual .pkg installer for each VST, AU or AAX given
-                        string cmd = format("pkgbuild --install-location %s --identifier %s --version %s --component %s %s",
+                        string cmd = format("pkgbuild%s --install-location %s --identifier %s --version %s --component %s %s",
+                            signStr,
                             installDir,
                             pkgIdentifier,
                             plugin.publicVersionString,
