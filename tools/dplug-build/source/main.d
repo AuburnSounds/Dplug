@@ -596,15 +596,15 @@ int main(string[] args)
                         {
                             // eventually sign with codesign
                             cwritefln("*** Signing bundle %s...".white, bundleDir);
-                            if (plugin.developerIdentityInstaller !is null)
+                            if (plugin.developerIdentity !is null)
                             {
-                                string signStr = format(" --sign %s --timestamp", escapeShellArgument(plugin.developerIdentityInstaller));
-                                string command = format(`codesign -d --deep -f%s -s %s %s`, signStr, plugin.developerIdentityInstaller, escapeShellArgument(bundleDir));
+                                string command = format(`codesign --strict -f -s %s --timestamp %s`,
+                                    escapeShellArgument(plugin.developerIdentity), escapeShellArgument(bundleDir));
                                 safeCommand(command);
                             }
                             else
                             {
-                                warning("Can't sign the bundle. Please provide a key \"developerIdentityInstaller-osx\" in your plugin.json. Users computers may reject this bundle.");
+                                warning("Can't sign the bundle. Please provide a key \"developerIdentity-osx\" in your plugin.json. Users computers may reject this bundle.");
                             }
                             cwriteln;
                         }
@@ -673,13 +673,13 @@ int main(string[] args)
                         enum SIGN_MAC_INDIVIDUAL_PKG = true;
                         static if (SIGN_MAC_INDIVIDUAL_PKG)
                         {
-                            if (plugin.developerIdentityInstaller !is null)
+                            if (plugin.developerIdentity !is null)
                             {
-                                signStr = format(" --sign %s --timestamp", escapeShellArgument(plugin.developerIdentityInstaller));
+                                signStr = format(" --sign %s --timestamp", escapeShellArgument(plugin.developerIdentity));
                             }
                             else
                             {
-                                warning("Can't sign the installer. Please provide a key \"developerIdentityInstaller-osx\" in your plugin.json. Users computers will reject this installer.");
+                                warning("Can't sign the installer. Please provide a key \"developerIdentity-osx\" in your plugin.json. Users computers will reject this installer.");
                             }
                         }
 
@@ -878,13 +878,13 @@ void generateMacInstaller(string outputDir,
     std.file.write(distribPath, cast(void[])content);
 
     string signStr = "";
-    if (plugin.developerIdentityInstaller !is null)
+    if (plugin.developerIdentity !is null)
     {
-        signStr = format(" --sign %s --timestamp", escapeShellArgument(plugin.developerIdentityInstaller));
+        signStr = format(" --sign %s --timestamp", escapeShellArgument(plugin.developerIdentity));
     }
     else
     {
-        warning("Can't sign the installer. Please provide a key \"developerIdentityInstaller-osx\" in your plugin.json. Users computers will reject this installer.");
+        warning("Can't sign the installer. Please provide a key \"developerIdentity-osx\" in your plugin.json. Users computers will reject this installer.");
     }
 
 

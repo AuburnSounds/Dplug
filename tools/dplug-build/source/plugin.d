@@ -136,8 +136,8 @@ struct Plugin
     int publicVersionMinor;
     int publicVersionPatch;
 
-    // The certificate identity to be used for Mac installer
-    string developerIdentityInstaller = null;
+    // The certificate identity to be used for Mac installer or application signing
+    string developerIdentity = null;
 
     // relative path to a .png for the Mac installer
     string installerPNGPath;
@@ -454,11 +454,11 @@ Plugin readPluginDescription()
 
     try
     {
-        result.developerIdentityInstaller = rawPluginFile["developerIdentityInstaller-osx"].str;
+        result.developerIdentity = rawPluginFile["developerIdentity-osx"].str;
     }
     catch(Exception e)
     {
-        result.developerIdentityInstaller = null;
+        result.developerIdentity = null;
     }
 
     try
