@@ -538,10 +538,8 @@ int main(string[] args)
                     if (configIsAAX(config))
                         extractAAXPresetsFromBinary(plugin.dubOutputFileName, contentsDir, is64b);
 
-                    cwriteln("*** Generating Info.plist...".white);
+                    // Generate Plist
                     string plist = makePListFile(plugin, config, iconPath != null);
-                    cwritefln("    => Generated %s bytes.".green, plist.length);
-                    cwriteln();
                     std.file.write(contentsDir ~ "Info.plist", cast(void[])plist);
 
                     void[] pkgInfo = cast(void[]) plugin.makePkgInfo(config);
@@ -683,10 +681,13 @@ int main(string[] args)
                             }
                         }
 
+                        string quietStr = verbose ? "" : " --quiet";
+
 
                         // Create individual .pkg installer for each VST, AU or AAX given
-                        string cmd = format("pkgbuild%s --install-location %s --identifier %s --version %s --component %s %s",
+                        string cmd = format("pkgbuild%s%s --install-location %s --identifier %s --version %s --component %s %s",
                             signStr,
+                            quietStr,
                             installDir,
                             pkgIdentifier,
                             plugin.publicVersionString,
@@ -726,11 +727,11 @@ int main(string[] args)
             else if (extension(plugin.licensePath) == ".md")
             {
                 // Convert license markdown to HTML
-                cwritef("    Converting license file to HTML... ");
+                cwritefln("*** Converting license file to HTML... ".white);
                 string markdown = cast(string)std.file.read(plugin.licensePath);
                 string html = convertMarkdownFileToHTML(markdown);
                 std.file.write(licensePath, html);
-                cwritefln(" => OK".green);
+                cwritefln(" => OK\n".green);
             }
             else
                 throw new Exception("License file should be a Markdown .md or HTML .html file");
@@ -748,9 +749,11 @@ int main(string[] args)
         {
             if (makeInstaller)
             {
-                cwriteln("*** Generating Mac installer...".white);
+                cwriteln("*** Generating final Mac installer...".white);
                 string finalPkgPath = outputDir ~ "/" ~ plugin.finalPkgFilename(configurations[0]);
-                generateMacInstaller(outputDir, resDir, plugin, macInstallerPackages, finalPkgPath,);
+                generateMacInstaller(outputDir, resDir, plugin, macInstallerPackages, finalPkgPath, verbose);
+                cwriteln("    => OK".green);
+                cwriteln;
             }
         }
         return 0;
@@ -815,7 +818,8 @@ void generateMacInstaller(string outputDir,
                           string resDir,
                           Plugin plugin,
                           MacPackage[] packs,
-                          string outPkgPath)
+                          string outPkgPath,
+                          bool verbose)
 {
     string distribPath = "mac-distribution.txt";
 
@@ -888,12 +892,15 @@ void generateMacInstaller(string outputDir,
     }
 
 
+    string quietStr = verbose ? "" : " --quiet";
+
     // missing --version and --identifier?
     string packagePaths = "";
     foreach(p; packs)
        packagePaths ~= format(` --package-path %s`, escapeShellArgument(dirName(p.pathToPkg)));
-    string cmd = format("productbuild%s --resources %s --distribution %s%s %s",
+    string cmd = format("productbuild%s%s --resources %s --distribution %s%s %s",
                         signStr,
+                        quietStr,
                         escapeShellArgument(resDir),
                         escapeShellArgument(distribPath),
                         packagePaths,
