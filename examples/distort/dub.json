@@ -53,7 +53,7 @@
             "name": "VST3",
             "versions": ["VST3"],
             "targetType": "dynamicLibrary",
-            "TODO-lflags-osx-ldc": [ "" ]
+            "lflags-osx-ldc": [ "-exported_symbols_list", "module-vst3.lst", "-dead_strip" ]
         }
     ]
 }
