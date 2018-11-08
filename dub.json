@@ -22,6 +22,7 @@
         "dplug:graphics": "*",
         "dplug:host": "*",
         "dplug:vst": "*",
+        "dplug:vst3": "*",
         "dplug:au": "*",
         "dplug:window": "*",
         "dplug:gui": "*",
@@ -104,6 +105,14 @@
             }
         },
         {
+            "name": "vst3",
+            "sourcePaths": [ "vst3/dplug/vst3" ],
+            "importPaths": [ "vst3" ],
+            "dependencies": {
+                "dplug:client": "*"
+            }
+        },
+        {
             "name": "au",
             "sourcePaths": [ "au/dplug/au" ],
             "importPaths": [ "au" ],
@@ -137,8 +146,6 @@
             "dependencies-linux": {
                 "dplug:x11": "*"
             }
-
-                            
         },
         {
             "name": "gui",
