@@ -10,6 +10,15 @@ _Add yourself to this page with a PR (sorted by alphabetical order)._
 
 &nbsp;
 
+**Dynamics-Preserving Distortion**
+- Description: Apparatus for implementing dynamics-preserving distortion.
+- Content: D source code
+- Try it: [Couture - Transient Shaper](https://www.auburnsounds.com/products/Couture.html)
+- Contact: contact@auburnsounds.com
+
+&nbsp;
+
+
 **Four-band Split/Sum**
 - Description: 4-band splitter using linkwitz-riley crossovers. 
 - Content: D source code
@@ -21,7 +30,7 @@ _Add yourself to this page with a PR (sorted by alphabetical order)._
 **Phase-vocoder pitch-shifter**
 - Description: Pitch-shifting algorithm, spectral.
 - Content: D source code
-- Try it: https://www.auburnsounds.com/products/Graillon.html
+- Try it: [Graillon - Pitch Correction](https://www.auburnsounds.com/products/Graillon.html)
 - Contact: contact@auburnsounds.com
 
 &nbsp;
@@ -37,7 +46,7 @@ _Add yourself to this page with a PR (sorted by alphabetical order)._
 **Two-band Envelope follower**
 - Description: RMS 2-band spectral envelope follower.
 - Content: D source code
-- Try it: https://www.auburnsounds.com/products/Couture.html
+- Try it: [Couture - Transient Shaper](https://www.auburnsounds.com/products/Couture.html)
 - Contact: contact@auburnsounds.com
 
 &nbsp;

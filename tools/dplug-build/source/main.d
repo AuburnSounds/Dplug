@@ -538,10 +538,8 @@ int main(string[] args)
                     if (configIsAAX(config))
                         extractAAXPresetsFromBinary(plugin.dubOutputFileName, contentsDir, is64b);
 
-                    cwriteln("*** Generating Info.plist...".white);
+                    // Generate Plist
                     string plist = makePListFile(plugin, config, iconPath != null);
-                    cwritefln("    => Generated %s bytes.".green, plist.length);
-                    cwriteln();
                     std.file.write(contentsDir ~ "Info.plist", cast(void[])plist);
 
                     void[] pkgInfo = cast(void[]) plugin.makePkgInfo(config);
@@ -589,6 +587,26 @@ int main(string[] args)
                     // Note: on Mac, the bundle path is passed instead, since wraptool won't accept the executable only
                     if (configIsAAX(config))
                         signAAXBinaryWithPACE(bundleDir);
+                    else
+                    {
+                        enum SIGN_MAC_BUNDLES = true;
+                        if (SIGN_MAC_BUNDLES && !isTemp && makeInstaller)
+                        {
+                            // eventually sign with codesign
+                            cwritefln("*** Signing bundle %s...".white, bundleDir);
+                            if (plugin.developerIdentity !is null)
+                            {
+                                string command = format(`codesign --strict -f -s %s --timestamp %s`,
+                                    escapeShellArgument(plugin.developerIdentity), escapeShellArgument(bundleDir));
+                                safeCommand(command);
+                            }
+                            else
+                            {
+                                warning("Can't sign the bundle. Please provide a key \"developerIdentity-osx\" in your plugin.json. Users computers may reject this bundle.");
+                            }
+                            cwriteln;
+                        }
+                    }
 
                     // Should this arch be published? Only if the --publish arg was given and
                     // it's the last architecture in the list (to avoid overwrite)
@@ -621,20 +639,24 @@ int main(string[] args)
                     {
                         string pkgIdentifier;
                         string pkgFilename;
+                        string title;
                         if (configIsVST(config))
                         {
                             pkgIdentifier = plugin.pkgBundleVST();
                             pkgFilename   = plugin.pkgFilenameVST();
+                            title = "VST plug-in";
                         }
                         else if (configIsAU(config))
                         {
                             pkgIdentifier = plugin.pkgBundleAU();
                             pkgFilename   = plugin.pkgFilenameAU();
+                            title = "AU plug-in";
                         }
                         else if (configIsAAX(config))
                         {
                             pkgIdentifier = plugin.pkgBundleAAX();
                             pkgFilename   = plugin.pkgFilenameAAX();
+                            title = "AAX plug-in";
                         }
                         else
                             assert(false, "unsupported plugin format");
@@ -643,10 +665,29 @@ int main(string[] args)
                         string pathToPkg = path ~ "/" ~ pkgFilename;
                         string distributionId = to!string(macInstallerPackages.length);
 
-                        macInstallerPackages ~= MacPackage(pkgIdentifier, pathToPkg, pkgFilename, distributionId);
+                        macInstallerPackages ~= MacPackage(pkgIdentifier, pathToPkg, pkgFilename, distributionId, title);
+
+                        string signStr = "";
+                        enum SIGN_MAC_INDIVIDUAL_PKG = true;
+                        static if (SIGN_MAC_INDIVIDUAL_PKG)
+                        {
+                            if (plugin.developerIdentity !is null)
+                            {
+                                signStr = format(" --sign %s --timestamp", escapeShellArgument(plugin.developerIdentity));
+                            }
+                            else
+                            {
+                                warning("Can't sign the installer. Please provide a key \"developerIdentity-osx\" in your plugin.json. Users computers will reject this installer.");
+                            }
+                        }
+
+                        string quietStr = verbose ? "" : " --quiet";
+
 
                         // Create individual .pkg installer for each VST, AU or AAX given
-                        string cmd = format("pkgbuild --install-location %s --identifier %s --version %s --component %s %s",
+                        string cmd = format("pkgbuild%s%s --install-location %s --identifier %s --version %s --component %s %s",
+                            signStr,
+                            quietStr,
                             installDir,
                             pkgIdentifier,
                             plugin.publicVersionString,
@@ -675,8 +716,26 @@ int main(string[] args)
         }
 
         // Copy license (if any provided in plugin.json)
+        // Ensure it is HTML.
         if (plugin.licensePath)
-            std.file.copy(plugin.licensePath, outputDir ~ "/" ~ baseName(plugin.licensePath));
+        {
+            string licensePath = outputDir ~ "/license.html";
+            if (extension(plugin.licensePath) == ".html")
+            {
+                std.file.copy(plugin.licensePath, licensePath);
+            }
+            else if (extension(plugin.licensePath) == ".md")
+            {
+                // Convert license markdown to HTML
+                cwritefln("*** Converting license file to HTML... ".white);
+                string markdown = cast(string)std.file.read(plugin.licensePath);
+                string html = convertMarkdownFileToHTML(markdown);
+                std.file.write(licensePath, html);
+                cwritefln(" => OK\n".green);
+            }
+            else
+                throw new Exception("License file should be a Markdown .md or HTML .html file");
+        }
 
         // Copy user manual (if any provided in plugin.json)
         if (plugin.userManualPath)
@@ -690,9 +749,11 @@ int main(string[] args)
         {
             if (makeInstaller)
             {
-                cwriteln("*** Generating Mac installer...".white);
+                cwriteln("*** Generating final Mac installer...".white);
                 string finalPkgPath = outputDir ~ "/" ~ plugin.finalPkgFilename(configurations[0]);
-                generateMacInstaller(outputDir, resDir, plugin, macInstallerPackages, finalPkgPath,);
+                generateMacInstaller(outputDir, resDir, plugin, macInstallerPackages, finalPkgPath, verbose);
+                cwriteln("    => OK".green);
+                cwriteln;
             }
         }
         return 0;
@@ -750,13 +811,15 @@ struct MacPackage
     string pathToPkg;
     string pkgFilename;
     string distributionId; // ID for the distribution.txt
+    string title;
 }
 
 void generateMacInstaller(string outputDir,
                           string resDir,
                           Plugin plugin,
                           MacPackage[] packs,
-                          string outPkgPath)
+                          string outPkgPath,
+                          bool verbose)
 {
     string distribPath = "mac-distribution.txt";
 
@@ -765,29 +828,33 @@ void generateMacInstaller(string outputDir,
     content ~= `<?xml version="1.0" encoding="utf-8"?>` ~ "\n";
     content ~= `<installer-gui-script minSpecVersion="1">` ~ "\n";
 
-    content ~= format(`<title>%s</title>` ~ "\n", plugin.prettyName);
+    content ~= format(`<title>%s</title>` ~ "\n", plugin.prettyName ~ " v" ~ plugin.publicVersionString);
+
+    if (plugin.installerPNGPath)
+    {
+        string backgroundPath = resDir ~ "/background.png";
+        std.file.copy(plugin.installerPNGPath, backgroundPath);
+        content ~= format(`<background file="background.png" alignment="center" scaling="proportional"/>` ~ "\n");
+    }
+    else
+    {
+        warning("No PNG background provided. Add a key \"installerPNGPath\" in your plugin.json to have one.");
+    }
 
     if (plugin.licensePath)
     {
-        if (extension(plugin.licensePath) != ".md")
-            throw new Exception("Licence file should be a Markdown .md file");
-
-        // Convert licence markdown to HTML
-        cwritef("    Converting licence file to HTML... ");
-        string licenceFile = resDir ~ "/licence.html";
-        string markdown = cast(string)std.file.read(plugin.licensePath);
-        string html = convertMarkdownFileToHTML(markdown);
-        std.file.write(licenceFile, html);
-        cwritefln(" => OK".green);
-
-        content ~= format(`<license file="licence.html" mime-type="text/html"/>` ~ "\n");
+        // this file should exist at this point
+        string licensePath = outputDir ~ "/license.html";
+        string reslicensePath = resDir ~ "/license.html";
+        std.file.copy(licensePath, reslicensePath);
+        content ~= format(`<license file="license.html" mime-type="text/html"/>` ~ "\n");
     }
 
     // This is a kind of forward declaration <pkg-ref> are merged
     foreach(p; packs)
         content ~= format(`<pkg-ref id="%s"/>` ~ "\n", p.distributionId);
 
-    content ~= `<options customize="allow" require-scripts="false"/>` ~ "\n";
+    content ~= `<options customize="always" require-scripts="false"/>` ~ "\n";
 
     content ~= `<choices-outline>` ~ "\n";
     content ~= `    <line choice="default">` ~ "\n";
@@ -796,11 +863,12 @@ void generateMacInstaller(string outputDir,
         content ~= format(`        <line choice="%s"/>` ~ "\n", p.distributionId);
     content ~= `    </line>` ~ "\n";
     content ~= `</choices-outline>` ~ "\n";
-    content ~= `<choice id="default"/>` ~ "\n";
+    content ~= format(`<choice id="default" title="%s"/>` ~ "\n", plugin.prettyName ~ " v" ~ plugin.publicVersionString);
 
     foreach(p; packs)
     {
-        content ~= format(`<choice id="%s" visible="true" title="a title">` ~ "\n", p.distributionId);
+        content ~= format(`<choice id="%s" visible="true" title="%s">` ~ "\n",
+            p.distributionId, p.title);
         content ~= format(`    <pkg-ref id="%s"/>` ~ "\n", p.distributionId);
         content ~= format(`</choice>` ~ "\n");
 
@@ -814,20 +882,25 @@ void generateMacInstaller(string outputDir,
     std.file.write(distribPath, cast(void[])content);
 
     string signStr = "";
-    if (plugin.developerIdentityInstaller !is null)
+    if (plugin.developerIdentity !is null)
     {
-        signStr = format(" --sign %s --timestamp", escapeShellArgument(plugin.developerIdentityInstaller));
+        signStr = format(" --sign %s --timestamp", escapeShellArgument(plugin.developerIdentity));
     }
     else
     {
-        warning("Can't sign the installer. Please provide a key \"developerIdentityInstaller-osx\" in your plugin.json. Users computers will reject this installer.");
+        warning("Can't sign the installer. Please provide a key \"developerIdentity-osx\" in your plugin.json. Users computers will reject this installer.");
     }
 
+
+    string quietStr = verbose ? "" : " --quiet";
+
+    // missing --version and --identifier?
     string packagePaths = "";
     foreach(p; packs)
        packagePaths ~= format(` --package-path %s`, escapeShellArgument(dirName(p.pathToPkg)));
-    string cmd = format("productbuild%s --resources %s --distribution %s%s %s",
+    string cmd = format("productbuild%s%s --resources %s --distribution %s%s %s",
                         signStr,
+                        quietStr,
                         escapeShellArgument(resDir),
                         escapeShellArgument(distribPath),
                         packagePaths,
