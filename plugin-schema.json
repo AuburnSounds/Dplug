@@ -20,9 +20,19 @@
             "id": "/properties/CFBundleIdentifierPrefix",
             "type": "string"
         },
+        "developerIdentity-osx" : {
+            "description": "The signing identity used when code-signing for macOS. Mandatory for Mac installers.",
+            "id": "/properties/developerIdentity-osx",
+            "type": "string"
+        },
         "iconPath": {
             "description": "Very optional path to an icon file, to be used for macOS bundles. Not sure if working.",
             "id": "/properties/commented-iconPath",
+            "type": "string"
+        },
+        "installerPNGPath" : {
+            "description": "The .png background path used for Mac installers. Optional.",
+            "id": "/properties/installerPNGPath",
             "type": "string"
         },
         "hasGUI": {
