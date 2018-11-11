@@ -41,6 +41,9 @@ b) General Public License (GPL) Version 3
 Details of these licenses can be found at: www.gnu.org/licenses/gpl-3.0.html
 //----------------------------------------------------------------------------------
 */
+/*
+Copyright: Guillaume Piolat 2018.
+*/
 module dplug.vst3.vst3main;
 
 alias IPluginFactory = void*; // TODO
@@ -50,10 +53,12 @@ import dplug.core.nogc;
 
 template VST3EntryPoint(alias ClientClass)
 {
-    enum entry_InitDll = `export extern(System) bool InitDLL() nothrow @nogc { return true; }`;
-    enum entry_ExitDll = `export extern(System) bool ExitDll() nothrow @nogc { return true; }`;
+    // Those exports are optional, but could be useful in the future
+    enum entry_InitDll = `export extern(C) bool InitDLL() nothrow @nogc { return true; }`;
+    enum entry_ExitDll = `export extern(C) bool ExitDll() nothrow @nogc { return true; }`;
+
     enum entry_GetPluginFactory =
-        "export extern(System) IPluginFactory GetPluginFactory() nothrow @nogc" ~
+        "export extern(C) IPluginFactory GetPluginFactory() nothrow @nogc" ~
         "{" ~
         "    return GetPluginFactoryInternal!" ~ ClientClass.stringof ~ ";" ~
         "}";
@@ -63,9 +68,11 @@ template VST3EntryPoint(alias ClientClass)
 
 IPluginFactory GetPluginFactoryInternal(ClientClass)() nothrow @nogc 
 {
+    import core.stdc.stdio;
+    printf("Wow\n");
     ScopedForeignCallback!(false, true) scopedCallback;
     scopedCallback.enter();
-    auto client = mallocNew!ClientClass();
+  //  auto client = mallocNew!ClientClass();
 
     return null;
 }

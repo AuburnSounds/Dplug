@@ -41,6 +41,10 @@ b) General Public License (GPL) Version 3
 Details of these licenses can be found at: www.gnu.org/licenses/gpl-3.0.html
 //----------------------------------------------------------------------------------
 */
+/*
+Copyright: Guillaume Piolat 2018.
+*/
+/// VST3 plug-in client.
 module dplug.vst3;
 
 public import dplug.vst3.vst3main;
