@@ -16,8 +16,13 @@
 
 module dplug.vst3.fstrdefs;
 
+
+import dplug.vst3.ftypes;
+
+nothrow:
+@nogc:
+
 /+
-#include "ftypes.h"
 
 //----------------------------------------------------------------------------
 // string methods defines unicode / ASCII
@@ -207,10 +212,10 @@ inline T* _tstrcpy (T* dst, const T* src)
 inline tchar* tstrcpy (tchar* dst, const tchar* src) {return _tstrcpy (dst, src);}
 inline char8* strcpy8 (char8* dst, const char8* src) {return _tstrcpy (dst, src);}
 inline char16* strcpy16 (char16* dst, const char16* src) {return _tstrcpy (dst, src);}
-
++/
 //----------------------------------------------------------------------------
-template <class T>
-inline T* _tstrncpy (T* dest, const T* source, uint32 count)
+
+T* _tstrncpy(T) (T* dest, const(T)* source, uint32 count)
 {
 	T* start = dest;
 	while (count && (*dest++ = *source++) != 0) // copy string
@@ -224,10 +229,21 @@ inline T* _tstrncpy (T* dest, const T* source, uint32 count)
 	return start;
 }
 
-inline tchar* tstrncpy (tchar* dest, const tchar* source, uint32 count) {return _tstrncpy (dest, source, count);}
-inline char8* strncpy8 (char8* dest, const char8* source, uint32 count) {return _tstrncpy (dest, source, count);}
-inline char16* strncpy16 (char16* dest, const char16* source, uint32 count) {return _tstrncpy (dest, source, count);}
+tchar* tstrncpy (tchar* dest, const(tchar)* source, uint32 count) 
+{
+    return _tstrncpy!tchar(dest, source, count);
+}
 
+char8* strncpy8 (char8* dest, const(char8)* source, uint32 count) 
+{
+    return _tstrncpy!char8(dest, source, count);
+}
+
+char16* strncpy16 (char16* dest, const(char16)* source, uint32 count) 
+{
+    return _tstrncpy!char16(dest, source, count);
+}
+/+
 //----------------------------------------------------------------------------
 template <class T>
 inline T* _tstrcat (T* dst, const T* src)

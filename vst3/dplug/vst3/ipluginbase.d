@@ -17,9 +17,7 @@ module dplug.vst3.ipluginbase;
 
 import dplug.vst3.funknown;
 import dplug.vst3.ftypes;
-
-
-//#include "fstrdefs.h"
+import dplug.vst3.fstrdefs;
 
 //------------------------------------------------------------------------
 /**  Basic interface to a Plug-in component.
@@ -50,58 +48,52 @@ static immutable TUID IPluginBase_iid = INLINE_UID(0x22888DDB, 0x156E45AE, 0x835
 
 
 // Basic Information about the class factory of the Plug-in.
-/*
+
 struct PFactoryInfo
 {
-//------------------------------------------------------------------------
-	enum FactoryFlags
+nothrow:
+@nogc:
+    alias FactoryFlags = int;
+	enum : FactoryFlags
 	{
 		kNoFlags					= 0,		///< Nothing
 		kClassesDiscardable			= 1 << 0,	///< The number of exported classes can change each time the Module is loaded. If this flag is set, the host does not cache class information. This leads to a longer startup time because the host always has to load the Module to get the current class information.
 		kLicenseCheck				= 1 << 1,	///< Class IDs of components are interpreted as Syncrosoft-License (LICENCE_UID). Loaded in a Steinberg host, the module will not be loaded when the license is not valid
 		kComponentNonDiscardable	= 1 << 3,	///< Component won't be unloaded until process exit
 		kUnicode                    = 1 << 4    ///< Components have entirely unicode encoded strings. (True for VST 3 Plug-ins so far)
-	};
+	}
 
 	enum
 	{
 		kURLSize = 256,
 		kEmailSize = 128,
 		kNameSize = 64
-	};
-
-//------------------------------------------------------------------------
-	char8 vendor[kNameSize];		///< e.g. "Steinberg Media Technologies"
-	char8 url[kURLSize];			///< e.g. "http://www.steinberg.de"
-	char8 email[kEmailSize];		///< e.g. "info@steinberg.de"
-	int32 flags;				///< (see above)
-//------------------------------------------------------------------------
-	PFactoryInfo (const char8* _vendor, const char8* _url, const char8* _email, int32 _flags)
-	{
-		strncpy8 (vendor, _vendor, kNameSize);
-		strncpy8 (url, _url, kURLSize);
-		strncpy8 (email, _email, kEmailSize);
-		flags = _flags;
-#ifdef UNICODE
-		flags |= kUnicode;
-#endif
 	}
-#if SMTG_CPP11
-	constexpr PFactoryInfo () : vendor (), url (), email (), flags () {}
-#else
-	PFactoryInfo () { memset (this, 0, sizeof (PFactoryInfo)); }
-#endif
-};*/
+
+	char8[kNameSize] vendor;		///< e.g. "Steinberg Media Technologies"
+	char8[kURLSize] url;			///< e.g. "http://www.steinberg.de"
+	char8[kEmailSize] email;		///< e.g. "info@steinberg.de"
+	int32 flags;				///< (see above)
+
+	this (const(char8)* _vendor, const(char8)* _url, const(char8)* _email, int32 _flags)
+	{
+		strncpy8 (vendor.ptr, _vendor, kNameSize);
+		strncpy8 (url.ptr, _url, kURLSize);
+		strncpy8 (email.ptr, _email, kEmailSize);
+		flags = _flags;
+		flags |= kUnicode;
+	}
+}
 
 //------------------------------------------------------------------------
 /**  Basic Information about a class provided by the Plug-in.
 \ingroup pluginBase
 */
 //------------------------------------------------------------------------
-/*
 struct PClassInfo
 {
-//------------------------------------------------------------------------
+nothrow:
+@nogc:
 	enum ClassCardinality
 	{
 		kManyInstances = 0x7FFFFFFF
@@ -112,30 +104,28 @@ struct PClassInfo
 		kCategorySize = 32,
 		kNameSize = 64
 	};
-//------------------------------------------------------------------------
+
 	TUID cid;                       ///< Class ID 16 Byte class GUID
 	int32 cardinality;              ///< cardinality of the class, set to kManyInstances (see \ref ClassCardinality)
-	char8 category[kCategorySize];  ///< class category, host uses this to categorize interfaces
-	char8 name[kNameSize];          ///< class name, visible to the user
-//------------------------------------------------------------------------
+	char8[kCategorySize] category;  ///< class category, host uses this to categorize interfaces
+	char8[kNameSize] name;          ///< class name, visible to the user
 
-	PClassInfo (const TUID _cid, int32 _cardinality, const char8* _category, const char8* _name)
+	this(const TUID _cid, int32 _cardinality, const(char8)* _category, const(char8)* _name)
 	{
-		memset (this, 0, sizeof (PClassInfo));
-		memcpy (cid, _cid, sizeof (TUID));
+        cid[] = 0;
+        cardinality = 0;
+        category[] = '\0';
+        name[] = '\0';
+        cid = _cid;
+
 		if (_category)
-			strncpy8 (category, _category, kCategorySize);
+			strncpy8 (category.ptr, _category, kCategorySize);
 		if (_name)
-			strncpy8 (name, _name, kNameSize);
+			strncpy8 (name.ptr, _name, kNameSize);
 		cardinality = _cardinality;
 	}
-#if SMTG_CPP11
-	constexpr PClassInfo () : cid (), cardinality (), category (), name () {}
-#else
-	PClassInfo () { memset (this, 0, sizeof (PClassInfo)); }
-#endif
-};
-*/
+}
+
 
 //------------------------------------------------------------------------
 //  IPluginFactory interface declaration
@@ -152,7 +142,7 @@ mechanism to create instances of these classes (that usually define the IPluginB
 <b> An implementation is provided in public.sdk/source/common/pluginfactory.cpp </b>
 \see GetPluginFactory
 */
-/+
+
 interface IPluginFactory : IUnknown
 {
 public:
@@ -171,24 +161,19 @@ nothrow:
 	/** Create a new class instance. */
 	tresult createInstance (FIDString cid, FIDString _iid, void** obj);
 
-    __gshared immutable FUID iid = FUID(IPluginFactory_iid); // TODO: why both?
+    __gshared immutable FUID iid = FUID(IPluginFactory_iid);
 }
 
  static immutable TUID IPluginFactory_iid = INLINE_UID(0x7A4D811C, 0x52114A1F, 0xAED9D2EE, 0x0B43BF9F);
-+/
 
-//------------------------------------------------------------------------
-/**  Version 2 of Basic Information about a class provided by the Plug-in.
-\ingroup pluginBase
-*/
-/*
+
+//  Version 2 of Basic Information about a class provided by the Plug-in.
 struct PClassInfo2
 {
-//------------------------------------------------------------------------
 	TUID cid;									///< Class ID 16 Byte class GUID
 	int32 cardinality;							///< cardinality of the class, set to kManyInstances (see \ref ClassCardinality)
-	char8 category[PClassInfo::kCategorySize];	///< class category, host uses this to categorize interfaces
-	char8 name[PClassInfo::kNameSize];			///< class name, visible to the user
+	char8[PClassInfo.kCategorySize] category;	///< class category, host uses this to categorize interfaces
+	char8[PClassInfo.kNameSize] name;			///< class name, visible to the user
 
 	enum {
 		kVendorSize = 64,
@@ -197,73 +182,55 @@ struct PClassInfo2
 	};
 
 	uint32 classFlags;				///< flags used for a specific category, must be defined where category is defined
-	char8 subCategories[kSubCategoriesSize];	///< module specific subcategories, can be more than one, logically added by the \c OR operator
-	char8 vendor[kVendorSize];		///< overwrite vendor information from factory info
-	char8 version[kVersionSize];	///< Version string (e.g. "1.0.0.512" with Major.Minor.Subversion.Build)
-	char8 sdkVersion[kVersionSize];	///< SDK version used to build this class (e.g. "VST 3.0")
+	char8[kSubCategoriesSize] subCategories;	///< module specific subcategories, can be more than one, logically added by the \c OR operator
+	char8[kVendorSize] vendor;		///< overwrite vendor information from factory info
+	char8[kVersionSize] version_;	///< Version string (e.g. "1.0.0.512" with Major.Minor.Subversion.Build)
+	char8[kVersionSize] sdkVersion;	///< SDK version used to build this class (e.g. "VST 3.0")
 
-//------------------------------------------------------------------------
-
-	PClassInfo2 (const TUID _cid, int32 _cardinality, const char8* _category, const char8* _name,
-		int32 _classFlags, const char8* _subCategories, const char8* _vendor, const char8* _version,
-		const char8* _sdkVersion)
+	this (const TUID _cid, int32 _cardinality, const(char8)* _category, const(char8)* _name,
+		int32 _classFlags, const(char8)* _subCategories, const(char8)* _vendor, const(char8)* _version,
+		const(char8)* _sdkVersion)
 	{
-		memset (this, 0, sizeof (PClassInfo2));
-		memcpy (cid, _cid, sizeof (TUID));
+        cardinality = 0;
+        category[] = '\0';
+        name[] = '\0';
+        classFlags = 0;
+        subCategories[] = '\0';
+        vendor[] = '\0';
+        version_[] = '\0';
+        sdkVersion[] = '\0';
+        cid = _cid;
+		
 		cardinality = _cardinality;
 		if (_category)
-			strncpy8 (category, _category, PClassInfo::kCategorySize);
+			strncpy8 (category.ptr, _category, PClassInfo.kCategorySize);
 		if (_name)
-			strncpy8 (name, _name, PClassInfo::kNameSize);
-		classFlags = static_cast<uint32> (_classFlags);
+			strncpy8 (name.ptr, _name, PClassInfo.kNameSize);
+		classFlags = cast(uint)(_classFlags);
 		if (_subCategories)
-			strncpy8 (subCategories, _subCategories, kSubCategoriesSize);
+			strncpy8 (subCategories.ptr, _subCategories, kSubCategoriesSize);
 		if (_vendor)
-			strncpy8 (vendor, _vendor, kVendorSize);
+			strncpy8 (vendor.ptr, _vendor, kVendorSize);
 		if (_version)
-			strncpy8 (version, _version, kVersionSize);
+			strncpy8 (version_.ptr, _version, kVersionSize);
 		if (_sdkVersion)
-			strncpy8 (sdkVersion, _sdkVersion, kVersionSize);
+			strncpy8 (sdkVersion.ptr, _sdkVersion, kVersionSize);
 	}
-#if SMTG_CPP11
-	constexpr PClassInfo2 ()
-	: cid ()
-	, cardinality ()
-	, category ()
-	, name ()
-	, classFlags ()
-	, subCategories ()
-	, vendor ()
-	, version ()
-	, sdkVersion ()
-	{
-	}
-#else
-	PClassInfo2 () { memset (this, 0, sizeof (PClassInfo2)); }
-#endif
-};
-*/
-//------------------------------------------------------------------------
-//  IPluginFactory2 interface declaration
-//------------------------------------------------------------------------
-/**	Version 2 of class factory supporting PClassInfo2.
-\ingroup pluginBase
-\copydoc IPluginFactory
-*/
+}
 
- /+
-//------------------------------------------------------------------------
-class IPluginFactory2 : public IPluginFactory
+
+interface IPluginFactory2 : IPluginFactory
 {
 public:
-//------------------------------------------------------------------------
+nothrow:
+@nogc:
 	/** Returns the class info (version 2) for a given index. */
-	virtual tresult PLUGIN_API getClassInfo2 (int32 index, PClassInfo2* info) = 0;
+	tresult getClassInfo2 (int32 index, PClassInfo2* info);
 
-//------------------------------------------------------------------------
-	static const FUID iid;
-};
-DECLARE_CLASS_IID (IPluginFactory2, 0x0007B650, 0xF24B4C0B, 0xA464EDB9, 0xF00B2ABB)
+   __gshared immutable FUID iid = FUID(IPluginFactory2_iid);
+}
+
+static immutable TUID IPluginFactory2_iid = INLINE_UID(0x0007B650, 0xF24B4C0B, 0xA464EDB9, 0xF00B2ABB);
 
 
 //------------------------------------------------------------------------
@@ -271,62 +238,52 @@ DECLARE_CLASS_IID (IPluginFactory2, 0x0007B650, 0xF24B4C0B, 0xA464EDB9, 0xF00B2A
 //------------------------------------------------------------------------
 struct PClassInfoW
 {
-//------------------------------------------------------------------------
+nothrow:
+@nogc:
 	TUID cid;							///< see \ref PClassInfo
 	int32 cardinality;					///< see \ref PClassInfo
-	char8 category[PClassInfo::kCategorySize];	///< see \ref PClassInfo
-	char16 name[PClassInfo::kNameSize];	///< see \ref PClassInfo
+	char8[PClassInfo.kCategorySize] category;	///< see \ref PClassInfo
+	char16[PClassInfo.kNameSize] name;	///< see \ref PClassInfo
 
-	enum {
+	enum 
+    {
 		kVendorSize = 64,
 		kVersionSize = 64,
 		kSubCategoriesSize = 128
-	};
+	}
 
-	uint32 classFlags;					///< flags used for a specific category, must be defined where category is defined
-	char8 subCategories[kSubCategoriesSize];///< module specific subcategories, can be more than one, logically added by the \c OR operator
-	char16 vendor[kVendorSize];			///< overwrite vendor information from factory info
-	char16 version[kVersionSize];		///< Version string (e.g. "1.0.0.512" with Major.Minor.Subversion.Build)
-	char16 sdkVersion[kVersionSize];	///< SDK version used to build this class (e.g. "VST 3.0")
+	uint32 classFlags = 0;					///< flags used for a specific category, must be defined where category is defined
+	char8[kSubCategoriesSize] subCategories;///< module specific subcategories, can be more than one, logically added by the \c OR operator
+	char16[kVendorSize] vendor;			///< overwrite vendor information from factory info
+	char16[kVersionSize] version_;		///< Version string (e.g. "1.0.0.512" with Major.Minor.Subversion.Build)
+	char16[kVersionSize] sdkVersion;	///< SDK version used to build this class (e.g. "VST 3.0")
 
-//------------------------------------------------------------------------
-	PClassInfoW (const TUID _cid, int32 _cardinality, const char8* _category, const char16* _name,
-		int32 _classFlags, const char8* _subCategories, const char16* _vendor, const char16* _version,
-		const char16* _sdkVersion)
+	this (const TUID _cid, int32 _cardinality, const(char8)* _category, const(char16)* _name,
+		int32 _classFlags, const(char8)* _subCategories, const(char16)* _vendor, const(char16)* _version,
+		const(char16)* _sdkVersion)
 	{
-		memset (this, 0, sizeof (PClassInfoW));
-		memcpy (cid, _cid, sizeof (TUID));
-		cardinality = _cardinality;
+        cid = _cid;
+        cardinality = _cardinality;
+        category[] = '\0';
+        name[] = '\0';
+        vendor[] = '\0';
+        version_[] = '\0';
+        sdkVersion[] = '\0';		
 		if (_category)
-			strncpy8 (category, _category, PClassInfo::kCategorySize);
+			strncpy8 (category.ptr, _category, PClassInfo.kCategorySize);
 		if (_name)
-			strncpy16 (name, _name, PClassInfo::kNameSize);
-		classFlags = static_cast<uint32> (_classFlags);
+			strncpy16 (name.ptr, _name, PClassInfo.kNameSize);
+		classFlags = cast(uint)(_classFlags);
 		if (_subCategories)
-			strncpy8 (subCategories, _subCategories, kSubCategoriesSize);
+			strncpy8 (subCategories.ptr, _subCategories, kSubCategoriesSize);
 		if (_vendor)
-			strncpy16 (vendor, _vendor, kVendorSize);
+			strncpy16 (vendor.ptr, _vendor, kVendorSize);
 		if (_version)
-			strncpy16 (version, _version, kVersionSize);
+			strncpy16 (version_.ptr, _version, kVersionSize);
 		if (_sdkVersion)
-			strncpy16 (sdkVersion, _sdkVersion, kVersionSize);
+			strncpy16 (sdkVersion.ptr, _sdkVersion, kVersionSize);
 	}
-#if SMTG_CPP11
-	constexpr PClassInfoW ()
-	: cid ()
-	, cardinality ()
-	, category ()
-	, name ()
-	, classFlags ()
-	, subCategories ()
-	, vendor ()
-	, version ()
-	, sdkVersion ()
-	{
-	}
-#else
-	PClassInfoW () { memset (this, 0, sizeof (PClassInfoW)); }
-#endif
+    /*
 
 	void fromAscii (const PClassInfo2& ci2)
 	{
@@ -341,34 +298,26 @@ struct PClassInfoW
 		str8ToStr16 (version, ci2.version, kVersionSize);
 		str8ToStr16 (sdkVersion, ci2.sdkVersion, kVersionSize);
 	}
-};
+    */
+}
 
-
-//------------------------------------------------------------------------
-//  IPluginFactory3 interface declaration
-//------------------------------------------------------------------------
-/**	Version 3 of class factory supporting PClassInfoW.
-\ingroup pluginBase
-\copydoc IPluginFactory
-*/
-//------------------------------------------------------------------------
-class IPluginFactory3 : public IPluginFactory2
+interface IPluginFactory3 : IPluginFactory2
 {
 public:
-//------------------------------------------------------------------------
+nothrow:
+@nogc:
+
 	/** Returns the unicode class info for a given index. */
-	virtual tresult PLUGIN_API getClassInfoUnicode (int32 index, PClassInfoW* info) = 0;
+	tresult getClassInfoUnicode (int32 index, PClassInfoW* info);
 
 	/** Receives information about host*/
-	virtual tresult PLUGIN_API setHostContext (FUnknown* context) = 0;
+	tresult setHostContext (FUnknown* context);
 
-//------------------------------------------------------------------------
-	static const FUID iid;
-};
-DECLARE_CLASS_IID (IPluginFactory3, 0x4555A2AB, 0xC1234E57, 0x9B122910, 0x36878931)
-//------------------------------------------------------------------------
-} // namespace Steinberg
+	__gshared immutable FUID iid = FUID(IPluginFactory3_iid);
+}
+static immutable TUID IPluginFactory3_iid = INLINE_UID(0x4555A2AB, 0xC1234E57, 0x9B122910, 0x36878931);
 
+/*
 
 //------------------------------------------------------------------------
 #define LICENCE_UID(l1, l2, l3, l4) \
@@ -382,6 +331,7 @@ DECLARE_CLASS_IID (IPluginFactory3, 0x4555A2AB, 0xC1234E57, 0x9B122910, 0x368789
 	(int8)((l4 & 0xFF000000) >> 24), (int8)((l4 & 0x00FF0000) >> 16), \
 	(int8)((l4 & 0x0000FF00) >>  8), (int8)((l4 & 0x000000FF)      )  \
 }
+*/
 
 
 //------------------------------------------------------------------------
@@ -424,10 +374,3 @@ A typical implementation of GetPluginFactory looks like this
 					\endcode
 \see \ref loadPlugin
 */
-//------------------------------------------------------------------------
-extern "C"
-{
-	Steinberg::IPluginFactory* PLUGIN_API GetPluginFactory ();
-	typedef Steinberg::IPluginFactory* (PLUGIN_API *GetFactoryProc) ();
-}
-+/

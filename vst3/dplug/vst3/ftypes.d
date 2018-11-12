@@ -79,13 +79,15 @@ bool str16Empty (const(char16)* str)
     return (!str || *str == '\0'); 
 }
 
-/+
-	typedef const char8* FIDString; // identifier as string (used for attributes, messages)
+alias FIDString = const(char8); // identifier as string (used for attributes, messages)
 
+/+
 	const FIDString kPlatformStringWin = "WIN";
 	const FIDString kPlatformStringMac = "MAC";
 	const FIDString kPlatformStringIOS = "IOS";
 	const FIDString kPlatformStringLinux = "Linux";
+
+
     #if SMTG_OS_WINDOWS
 	const FIDString kPlatformString = kPlatformStringWin;
     #elif SMTG_OS_IOS
