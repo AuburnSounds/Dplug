@@ -317,60 +317,110 @@ nothrow:
 }
 static immutable TUID IPluginFactory3_iid = INLINE_UID(0x4555A2AB, 0xC1234E57, 0x9B122910, 0x36878931);
 
-/*
-
-//------------------------------------------------------------------------
-#define LICENCE_UID(l1, l2, l3, l4) \
-{ \
-	(int8)((l1 & 0xFF000000) >> 24), (int8)((l1 & 0x00FF0000) >> 16), \
-	(int8)((l1 & 0x0000FF00) >>  8), (int8)((l1 & 0x000000FF)      ), \
-	(int8)((l2 & 0xFF000000) >> 24), (int8)((l2 & 0x00FF0000) >> 16), \
-	(int8)((l2 & 0x0000FF00) >>  8), (int8)((l2 & 0x000000FF)      ), \
-	(int8)((l3 & 0xFF000000) >> 24), (int8)((l3 & 0x00FF0000) >> 16), \
-	(int8)((l3 & 0x0000FF00) >>  8), (int8)((l3 & 0x000000FF)      ), \
-	(int8)((l4 & 0xFF000000) >> 24), (int8)((l4 & 0x00FF0000) >> 16), \
-	(int8)((l4 & 0x0000FF00) >>  8), (int8)((l4 & 0x000000FF)      )  \
-}
-*/
 
 
-//------------------------------------------------------------------------
-// GetPluginFactory
-//------------------------------------------------------------------------
-/**  Plug-in entry point.
-\ingroup pluginBase
-Any Plug-in must define and export this function. \n
-A typical implementation of GetPluginFactory looks like this
-						\code
-	IPluginFactory* PLUGIN_API GetPluginFactory ()
+class CPluginFactory : IPluginFactory3
+{
+public:
+nothrow:
+@nogc:
+
+    this(ref const PFactoryInfo info)
+    {
+        assert(false); // TODO
+    }
+
+	~this ()
+    {
+        assert(false); // TODO
+    }
+
+	/** Registers a Plug-in class with classInfo version 1, returns true for success. */
+	bool registerClass (const(PClassInfo)* info,
+						FUnknown (*createFunc)(void*),
+						void* context = nullptr)
+    {
+        assert(false); // TODO
+    }
+
+	/** Registers a Plug-in class with classInfo version 2, returns true for success. */
+	bool registerClass (const(PClassInfo2)* info,
+						FUnknown (*createFunc)(void*),
+						void* context = nullptr)
+    {
+        assert(false); // TODO
+    }
+
+	/** Registers a Plug-in class with classInfo Unicode version, returns true for success. */
+	bool registerClass (const(PClassInfoW)* info,
+						FUnknown (*createFunc)(void*),
+						void* context = nullptr)
+    {
+        assert(false); // TODO
+    }
+
+
+	/** Check if a class for a given classId is already registered. */
+	bool isClassRegistered (ref const FUID cid)
+    {
+        assert(false); // TODO
+    }
+
+	mixin IMPLEMENT_REFCOUNT;
+
+	//---from IPluginFactory------
+	override tresult getFactoryInfo (PFactoryInfo* info)
+    {
+        assert(false); // TODO
+    }
+
+	override int32 countClasses ()
+    {
+        assert(false); // TODO
+    }
+
+	override tresult getClassInfo (int32 index, PClassInfo* info)
+    {
+        assert(false); // TODO
+    }
+
+	override tresult createInstance (FIDString cid, FIDString _iid, void** obj)
+    {
+        assert(false); // TODO
+    }
+
+	//---from IPluginFactory2-----
+	override tresult getClassInfo2 (int32 index, PClassInfo2* info)
+    {
+        assert(false); // TODO
+    }
+
+	//---from IPluginFactory3-----
+	override tresult getClassInfoUnicode (int32 index, PClassInfoW* info)
+    {
+        assert(false); // TODO
+    }
+
+	override tresult setHostContext (FUnknown* context)
+    {
+        assert(false); // TODO
+    }
+
+protected:
+	static struct PClassEntry
 	{
-		if (!gPluginFactory)
-		{
-			static PFactoryInfo factoryInfo =
-			{
-				"My Company Name",
-				"http://www.mywebpage.com",
-				"mailto:myemail@address.com",
-				PFactoryInfo::kNoFlags
-			};
+		PClassInfo2 info8;
+		PClassInfoW info16;
 
-			gPluginFactory = new CPluginFactory (factoryInfo);
-
-			static PClassInfo componentClass =
-			{
-				INLINE_UID (0x00000000, 0x00000000, 0x00000000, 0x00000000), // replace by a valid uid
-				1,
-				"Service",    // category
-				"Name"
-			};
-
-			gPluginFactory->registerClass (&componentClass, MyComponentClass::newInstance);
-		}
-		else
-			gPluginFactory->addRef ();
-
-		return gPluginFactory;
+		FUnknown function(void*) createFunc;
+		void* context;
+		bool isUnicode;
 	}
-					\endcode
-\see \ref loadPlugin
-*/
+
+	PFactoryInfo factoryInfo;
+	PClassEntry* classes;
+	int32 classCount;
+	int32 maxClassCount;
+
+	bool growClasses();
+}

@@ -46,10 +46,10 @@ Copyright: Guillaume Piolat 2018.
 */
 module dplug.vst3.vst3main;
 
-alias IPluginFactory = void*; // TODO
 
 import dplug.core.runtime;
 import dplug.core.nogc;
+import dplug.vst3.ipluginbase;
 
 template VST3EntryPoint(alias ClientClass)
 {
@@ -66,13 +66,42 @@ template VST3EntryPoint(alias ClientClass)
     const char[] VST3EntryPoint = entry_InitDll ~ entry_ExitDll ~ entry_GetPluginFactory;
 }
 
+__gshared IPluginFactory gPluginFactory = null;
+
 IPluginFactory GetPluginFactoryInternal(ClientClass)() nothrow @nogc 
 {
     import core.stdc.stdio;
-    printf("Wow\n");
     ScopedForeignCallback!(false, true) scopedCallback;
     scopedCallback.enter();
-  //  auto client = mallocNew!ClientClass();
 
-    return null;
+    if (!gPluginFactory)
+    {
+        // Create a client just for the purpose of creating the factory 
+        ClientClass client = mallocNew!ClientClass();
+        scope(exit) client.destroyFree();
+
+        PFactoryInfo factoryInfo = PFactoryInfo("Witty Audio",  // TODO
+                                                "https://example.com",  // TODO
+                                                "support@wittyaudio.fake", // TODO
+                                                kUnicode);
+
+        gPluginFactory = mallocNew!CPluginFactory(factoryInfo);
+
+        /*
+        static PClassInfo componentClass =
+        {
+            INLINE_UID (0x00000000, 0x00000000, 0x00000000, 0x00000000), // replace by a valid uid
+            1
+            "Service",    // category
+            "Name"
+        };
+
+        gPluginFactory.registerClass (&componentClass, MyComponentClass::newInstance);
+        */
+
+    }
+    else
+        gPluginFactory.addRef();
+
+    return gPluginFactory;
 }

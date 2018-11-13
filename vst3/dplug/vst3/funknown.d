@@ -88,42 +88,51 @@ const ::Steinberg::FUID ClassName::iid (ClassName##_iid);
 //------------------------------------------------------------------------
 //  FUnknown implementation macros
 //------------------------------------------------------------------------
++/
+/*
+mixin template DECLARE_FUNKNOWN_METHODS()
+{
+    public nothrow @nogc
+    {
+        override tresult queryInterface (const ::Steinberg::TUID _iid, void** obj)
+        override uint addRef ()
+        override uint release ()
 
-#define DECLARE_FUNKNOWN_METHODS                                                                      \
-public:                                                                                               \
-    virtual ::Steinberg::tresult PLUGIN_API queryInterface (const ::Steinberg::TUID _iid, void** obj) SMTG_OVERRIDE; \
-    virtual ::Steinberg::uint32 PLUGIN_API addRef () SMTG_OVERRIDE;                                   \
-    virtual ::Steinberg::uint32 PLUGIN_API release () SMTG_OVERRIDE;                                  \
-protected :                                                                                           \
-    ::Steinberg::int32 __funknownRefCount;                                                            \
-public:
+    }
+    
+}*/
 
-//------------------------------------------------------------------------
 
+/+
 #define DELEGATE_REFCOUNT(ClassName)                                                    \
 public:                                                                                 \
     virtual ::Steinberg::uint32 PLUGIN_API addRef () SMTG_OVERRIDE { return ClassName::addRef ();  } \
     virtual ::Steinberg::uint32 PLUGIN_API release () SMTG_OVERRIDE { return ClassName::release (); }
 
-//------------------------------------------------------------------------
-#define IMPLEMENT_REFCOUNT(ClassName)                                          \
-::Steinberg::uint32 PLUGIN_API ClassName::addRef ()                            \
-{                                                                              \
-    return ::Steinberg::FUnknownPrivate::atomicAdd (__funknownRefCount, 1);    \
-}                                                                              \
-::Steinberg::uint32 PLUGIN_API ClassName::release ()                           \
-{                                                                              \
-    if (::Steinberg::FUnknownPrivate::atomicAdd (__funknownRefCount, -1) == 0) \
-    {                                                                          \
-        delete this;                                                           \
-        return 0;                                                              \
-    }                                                                          \
-    return __funknownRefCount;                                                 \
++/
+
+mixin template IMPLEMENT_REFCOUNT()
+{
+    public nothrow @nogc
+    {
+        override uint addRef()
+        {
+            return atomicAdd(_funknownRefCount, 1);
+        }
+
+        override uint release()
+        {
+            int decremented = atomicAdd(_funknownRefCount, -1);
+            if (decremented == 0)
+                destroyFree(this);
+            return decremented;
+        }
+    }
+
+    protected int _funknownRefCount = 1; // when constructed, first value is 1
 }
 
-//------------------------------------------------------------------------
-#define FUNKNOWN_CTOR   { __funknownRefCount = 1; }
-#define FUNKNOWN_DTOR
+/+
 
 //------------------------------------------------------------------------
 #define QUERY_INTERFACE(iid, obj, InterfaceIID, InterfaceName)  \
@@ -610,29 +619,16 @@ static void toString8 (char8* string, const char* data, int32 i1, int32 i2);
 static void fromString8 (const char8* string, char* data, int32 i1, int32 i2);
 static uint32 makeLong (uint8 b1, uint8 b2, uint8 b3, uint8 b4);
 
-//------------------------------------------------------------------------
-//  FUnknownPrivate
-//------------------------------------------------------------------------
-namespace FUnknownPrivate {
-//------------------------------------------------------------------------
-int32 PLUGIN_API atomicAdd (int32& var, int32 d)
++/
+
+
+int atomicAdd(ref shared(int) var, int32 d)
 {
-#if SMTG_OS_WINDOWS
-return InterlockedExchangeAdd (&var, d) + d;
-#elif SMTG_OS_MACOS
-return OSAtomicAdd32Barrier (d, (int32_t*)&var);
-#elif SMTG_OS_LINUX
-__gnu_cxx::__atomic_add (&var, d);
-return var;
-#else
-#warning implement me!
-var += d;
-return var;
-#endif
+    import core.atomic;
+    return atomicOp!"+="(var, d); // Note: return the new value
 }
-} // FUnknownPrivate
 
-
+/+
 
 
 
