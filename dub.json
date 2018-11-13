@@ -140,7 +140,7 @@
 
             "dependencies-osx": {
                 "dplug:cocoa": "*",
-                "dplug:carbon": "*",
+                "dplug:carbon": "*"
             },
 
             "dependencies-linux": {
@@ -171,7 +171,7 @@
                 "dplug:graphics": "*",
                 "dplug:window": "*",
                 "dplug:client": "*",
-                "dplug:gui": "*",
+                "dplug:gui": "*"
             }
         },
         {
@@ -184,7 +184,7 @@
                 "dplug:graphics": "*",
                 "dplug:window": "*",
                 "dplug:client": "*",
-                "dplug:gui": "*",
+                "dplug:gui": "*"
             }
         },
         {
