@@ -337,24 +337,24 @@ nothrow:
 
 	/** Registers a Plug-in class with classInfo version 1, returns true for success. */
 	bool registerClass (const(PClassInfo)* info,
-						FUnknown (*createFunc)(void*),
-						void* context = nullptr)
+						FUnknown function(void*) nothrow @nogc createFunc,
+						void* context = null)
     {
         assert(false); // TODO
     }
 
 	/** Registers a Plug-in class with classInfo version 2, returns true for success. */
 	bool registerClass (const(PClassInfo2)* info,
-						FUnknown (*createFunc)(void*),
-						void* context = nullptr)
+						FUnknown function(void*) nothrow @nogc  createFunc,
+						void* context = null)
     {
         assert(false); // TODO
     }
 
 	/** Registers a Plug-in class with classInfo Unicode version, returns true for success. */
 	bool registerClass (const(PClassInfoW)* info,
-						FUnknown (*createFunc)(void*),
-						void* context = nullptr)
+						FUnknown function(void*) nothrow @nogc createFunc,
+						void* context = null)
     {
         assert(false); // TODO
     }
@@ -365,6 +365,8 @@ nothrow:
     {
         assert(false); // TODO
     }
+
+    mixin QUERY_INTERFACE_SPECIAL_CASE_IUNKNOWN!(IPluginFactory, IPluginFactory2, IPluginFactory3);
 
 	mixin IMPLEMENT_REFCOUNT;
 
@@ -422,5 +424,9 @@ protected:
 	int32 classCount;
 	int32 maxClassCount;
 
-	bool growClasses();
+	bool growClasses()
+    {
+        // TODO
+        assert(false);
+    }
 }

@@ -58,9 +58,9 @@ template VST3EntryPoint(alias ClientClass)
     enum entry_ExitDll = `export extern(C) bool ExitDll() nothrow @nogc { return true; }`;
 
     enum entry_GetPluginFactory =
-        "export extern(C) IPluginFactory GetPluginFactory() nothrow @nogc" ~
+        "export extern(C) void* GetPluginFactory() nothrow @nogc" ~
         "{" ~
-        "    return GetPluginFactoryInternal!" ~ ClientClass.stringof ~ ";" ~
+        "    return cast(void*)(GetPluginFactoryInternal!" ~ ClientClass.stringof ~ ");" ~
         "}";
 
     const char[] VST3EntryPoint = entry_InitDll ~ entry_ExitDll ~ entry_GetPluginFactory;
@@ -83,7 +83,7 @@ IPluginFactory GetPluginFactoryInternal(ClientClass)() nothrow @nogc
         PFactoryInfo factoryInfo = PFactoryInfo("Witty Audio",  // TODO
                                                 "https://example.com",  // TODO
                                                 "support@wittyaudio.fake", // TODO
-                                                kUnicode);
+                                                PFactoryInfo.kUnicode);
 
         gPluginFactory = mallocNew!CPluginFactory(factoryInfo);
 

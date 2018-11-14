@@ -79,7 +79,7 @@ bool str16Empty (const(char16)* str)
     return (!str || *str == '\0'); 
 }
 
-alias FIDString = const(char8); // identifier as string (used for attributes, messages)
+alias FIDString = const(char8)*; // identifier as string (used for attributes, messages)
 
 /+
 	const FIDString kPlatformStringWin = "WIN";

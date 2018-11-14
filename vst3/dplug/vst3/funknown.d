@@ -122,6 +122,8 @@ mixin template IMPLEMENT_REFCOUNT()
 
         override uint release()
         {
+            import dplug.core.nogc: destroyFree;
+
             int decremented = atomicAdd(_funknownRefCount, -1);
             if (decremented == 0)
                 destroyFree(this);
@@ -129,20 +131,56 @@ mixin template IMPLEMENT_REFCOUNT()
         }
     }
 
-    protected int _funknownRefCount = 1; // when constructed, first value is 1
+    protected shared(int) _funknownRefCount = 1; // when constructed, first value is 1
 }
+
+mixin template QUERY_INTERFACE(Interfaces...)// interfaces)
+{
+    override tresult queryInterface (ref const TUID _iid, void** obj)
+    {
+        foreach(initer; Interfaces)
+        {
+            if (iidEqual (_iid, initer.iid.toTUID))
+            {
+                addRef();
+                *obj = cast(void*)( cast(initer)(this) );
+                return kResultOk;
+            }
+        }
+        *obj = null;
+        return kNoInterface;
+    }
+}
+
+// speical case, when asking for a IUnknown return a richer interface
+mixin template QUERY_INTERFACE_SPECIAL_CASE_IUNKNOWN(Interfaces...)// interfaces)
+{
+    override tresult queryInterface (ref const TUID _iid, void** obj)
+    {
+        foreach(initer; Interfaces)
+        {
+            if (iidEqual (_iid, initer.iid.toTUID))
+            {
+                addRef();
+                *obj = cast(void*)( cast(initer)(this) );
+                return kResultOk;
+            }
+        }
+
+        if (iidEqual (_iid, FUnknown_iid))
+        {
+            addRef();
+            *obj = cast(void*)( cast(Interfaces[0])(this) );
+            return kResultOk;
+        }
+
+        *obj = null;
+        return kNoInterface;
+    }
+}
+
 
 /+
-
-//------------------------------------------------------------------------
-#define QUERY_INTERFACE(iid, obj, InterfaceIID, InterfaceName)  \
-if (::Steinberg::FUnknownPrivate::iidEqual (iid, InterfaceIID)) \
-{                                                               \
-    addRef ();                                                  \
-    *obj = static_cast< InterfaceName* >(this);                 \
-    return ::Steinberg::kResultOk;                              \
-}
-
 //------------------------------------------------------------------------
 #define IMPLEMENT_QUERYINTERFACE(ClassName, InterfaceName, ClassIID)                                \
 ::Steinberg::tresult PLUGIN_API ClassName::queryInterface (const ::Steinberg::TUID _iid, void** obj)\
@@ -225,11 +263,9 @@ alias TUID = byte[16]; ///< plain UID type
 /* FUnknown private */
 
 
-private bool iidEqual (const(void)* iid1, const(void)* iid2) pure
+public bool iidEqual (const(TUID) iid1, const(TUID) iid2) pure
 {
-    const(uint64)* p1 = cast(const(uint64)*)iid1;
-    const(uint64)* p2 = cast(const(uint64)*)iid2;
-    return p1[0] == p2[0] && p1[1] == p2[1];
+    return iid1 == iid2;
 }
 
 //int32 PLUGIN_API atomicAdd (int32& value, int32 amount);
@@ -486,13 +522,13 @@ interface IUnknown
 @nogc:
 nothrow:
     tresult queryInterface(ref const(TUID) _iid, void** obj);
-    uint AddRef();
-    uint Release();
+    uint addRef();
+    uint release();
 }
 
 
 //------------------------------------------------------------------------
-abstract class FUnknown : IUnknown
+interface FUnknown : IUnknown
 {
 public:
     __gshared immutable FUID iid = FUID(FUnknown_iid); // TODO: why both?
