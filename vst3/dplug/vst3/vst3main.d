@@ -46,6 +46,8 @@ Copyright: Guillaume Piolat 2018.
 */
 module dplug.vst3.vst3main;
 
+nothrow @nogc:
+
 
 import dplug.core.runtime;
 import dplug.core.nogc;
@@ -66,9 +68,7 @@ template VST3EntryPoint(alias ClientClass)
     const char[] VST3EntryPoint = entry_InitDll ~ entry_ExitDll ~ entry_GetPluginFactory;
 }
 
-__gshared IPluginFactory gPluginFactory = null;
-
-IPluginFactory GetPluginFactoryInternal(ClientClass)() nothrow @nogc 
+IPluginFactory GetPluginFactoryInternal(ClientClass)() 
 {
     import core.stdc.stdio;
     ScopedForeignCallback!(false, true) scopedCallback;
@@ -87,21 +87,26 @@ IPluginFactory GetPluginFactoryInternal(ClientClass)() nothrow @nogc
 
         gPluginFactory = mallocNew!CPluginFactory(factoryInfo);
 
-        /*
-        static PClassInfo componentClass =
-        {
-            INLINE_UID (0x00000000, 0x00000000, 0x00000000, 0x00000000), // replace by a valid uid
-            1
-            "Service",    // category
-            "Name"
-        };
 
-        gPluginFactory.registerClass (&componentClass, MyComponentClass::newInstance);
-        */
+        PClassInfo componentClass = PClassInfo( [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  // TODO: replace by a valid uid
+                                                1, // TODO category
+                                                "Service", // TODO category
+                                                "Name"); // TODO category
+                                                
+        
+     //   gPluginFactory.registerClass (&componentClass, &(createVST3Client!ClientClass));
 
     }
     else
         gPluginFactory.addRef();
 
     return gPluginFactory;
+}
+
+
+FUnknown createVST3Client(ClientClass)(void*) nothrow @nogc
+{
+    assert(false);
+    //TODO
+
 }

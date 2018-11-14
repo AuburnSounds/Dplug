@@ -3,6 +3,8 @@
 //
 // Category    : SDK Core Interfaces
 // Filename    : pluginterfaces/base/ipluginbase.h
+//               public.sdk/source/main/pluginfactoryvst3.h
+//               public.sdk/source/main/pluginfactoryvst3.cpp
 // Created by  : Steinberg, 01/2004
 // Description : Basic Plug-in Interfaces
 //
@@ -14,6 +16,9 @@
 // or distributed except according to the terms contained in the LICENSE file.
 //-----------------------------------------------------------------------------
 module dplug.vst3.ipluginbase;
+
+import core.stdc.stdlib;
+import core.stdc.string;
 
 import dplug.vst3.funknown;
 import dplug.vst3.ftypes;
@@ -164,7 +169,7 @@ nothrow:
     __gshared immutable FUID iid = FUID(IPluginFactory_iid);
 }
 
- static immutable TUID IPluginFactory_iid = INLINE_UID(0x7A4D811C, 0x52114A1F, 0xAED9D2EE, 0x0B43BF9F);
+static immutable TUID IPluginFactory_iid = INLINE_UID(0x7A4D811C, 0x52114A1F, 0xAED9D2EE, 0x0B43BF9F);
 
 
 //  Version 2 of Basic Information about a class provided by the Plug-in.
@@ -283,22 +288,20 @@ nothrow:
 		if (_sdkVersion)
 			strncpy16 (sdkVersion.ptr, _sdkVersion, kVersionSize);
 	}
-    /*
+    
 
-	void fromAscii (const PClassInfo2& ci2)
+	void fromAscii (ref const(PClassInfo2) ci2)
 	{
-		memcpy (cid, ci2.cid, sizeof (TUID));
+		cid = ci2.cid;
 		cardinality = ci2.cardinality;
-		strncpy8 (category, ci2.category, PClassInfo::kCategorySize);
-		str8ToStr16 (name, ci2.name, PClassInfo::kNameSize);
+		strncpy8 (category.ptr, ci2.category.ptr, PClassInfo.kCategorySize);
+		str8ToStr16 (name.ptr, ci2.name.ptr, PClassInfo.kNameSize);
 		classFlags = ci2.classFlags;
-		strncpy8 (subCategories, ci2.subCategories, kSubCategoriesSize);
-
-		str8ToStr16 (vendor, ci2.vendor, kVendorSize);
-		str8ToStr16 (version, ci2.version, kVersionSize);
-		str8ToStr16 (sdkVersion, ci2.sdkVersion, kVersionSize);
+		strncpy8 (subCategories.ptr, ci2.subCategories.ptr, kSubCategoriesSize);
+		str8ToStr16 (vendor.ptr, ci2.vendor.ptr, kVendorSize);
+		str8ToStr16 (version_.ptr, ci2.version_.ptr, kVersionSize);
+		str8ToStr16 (sdkVersion.ptr, ci2.sdkVersion.ptr, kVersionSize);
 	}
-    */
 }
 
 interface IPluginFactory3 : IPluginFactory2
@@ -318,6 +321,7 @@ nothrow:
 static immutable TUID IPluginFactory3_iid = INLINE_UID(0x4555A2AB, 0xC1234E57, 0x9B122910, 0x36878931);
 
 
+__gshared IPluginFactory gPluginFactory = null;
 
 class CPluginFactory : IPluginFactory3
 {
@@ -327,12 +331,19 @@ nothrow:
 
     this(ref const PFactoryInfo info)
     {
-        assert(false); // TODO
+        factoryInfo = info;
     }
 
 	~this ()
     {
-        assert(false); // TODO
+        if (gPluginFactory is this)
+            gPluginFactory = null;
+
+        if (classes)
+        {
+            free (classes);
+            classes = null;
+        }
     }
 
 	/** Registers a Plug-in class with classInfo version 1, returns true for success. */
@@ -340,15 +351,37 @@ nothrow:
 						FUnknown function(void*) nothrow @nogc createFunc,
 						void* context = null)
     {
-        assert(false); // TODO
+        if (!info || !createFunc)
+            return false;
+
+        PClassInfo2 info2;
+        memcpy (&info2, info, PClassInfo.sizeof);
+        return registerClass(&info2, createFunc, context);
     }
+
 
 	/** Registers a Plug-in class with classInfo version 2, returns true for success. */
 	bool registerClass (const(PClassInfo2)* info,
 						FUnknown function(void*) nothrow @nogc  createFunc,
 						void* context = null)
-    {
-        assert(false); // TODO
+    {        
+        if (!info || !createFunc)
+            return false;
+
+        if (classCount >= maxClassCount)
+        {
+            if (!growClasses ())
+                return false;
+        }
+
+        PClassEntry* entry = &classes[classCount];
+        entry.info8 = *info;
+        entry.info16.fromAscii (*info);
+        entry.createFunc = createFunc;
+        entry.context = context;
+        entry.isUnicode = false;
+        classCount++;
+        return true;
     }
 
 	/** Registers a Plug-in class with classInfo Unicode version, returns true for success. */
@@ -356,14 +389,34 @@ nothrow:
 						FUnknown function(void*) nothrow @nogc createFunc,
 						void* context = null)
     {
-        assert(false); // TODO
+        if (!info || !createFunc)
+            return false;
+
+        if (classCount >= maxClassCount)
+        {
+            if (!growClasses ())
+                return false;
+        }
+
+        PClassEntry* entry = &classes[classCount];
+        entry.info16 = *info;
+        entry.createFunc = createFunc;
+        entry.context = context;
+        entry.isUnicode = true;
+        classCount++;
+        return true;
     }
 
 
 	/** Check if a class for a given classId is already registered. */
-	bool isClassRegistered (ref const FUID cid)
+	bool isClassRegistered (ref const(FUID) cid)
     {
-        assert(false); // TODO
+        for (int32 i = 0; i < classCount; i++)
+        {
+            if (iidEqual(cid.toTUID, classes[i].info16.cid))
+                return true;
+        }
+        return false;
     }
 
     mixin QUERY_INTERFACE_SPECIAL_CASE_IUNKNOWN!(IPluginFactory, IPluginFactory2, IPluginFactory3);
@@ -373,39 +426,89 @@ nothrow:
 	//---from IPluginFactory------
 	override tresult getFactoryInfo (PFactoryInfo* info)
     {
-        assert(false); // TODO
+        if (info)
+            memcpy (info, &factoryInfo, PFactoryInfo.sizeof);
+        return kResultOk;
     }
 
 	override int32 countClasses ()
     {
-        assert(false); // TODO
+        return classCount;
     }
 
 	override tresult getClassInfo (int32 index, PClassInfo* info)
     {
-        assert(false); // TODO
+        if (info && (index >= 0 && index < classCount))
+        {
+            if (classes[index].isUnicode)
+            {
+                memset (info, 0, PClassInfo.sizeof);
+                return kResultFalse;
+            }
+
+            memcpy (info, &classes[index].info8, PClassInfo.sizeof);
+            return kResultOk;
+        }
+        return kInvalidArgument;
     }
 
 	override tresult createInstance (FIDString cid, FIDString _iid, void** obj)
     {
-        assert(false); // TODO
+        for (int32 i = 0; i < classCount; i++)
+        {
+            if (memcmp (classes[i].info16.cid.ptr, cid, TUID.sizeof ) == 0)
+            {
+                FUnknown instance = classes[i].createFunc (classes[i].context);
+                if (instance)
+                {
+                    TUID* iid = cast(TUID*)_iid;
+                    if (instance.queryInterface(*iid, obj) == kResultOk)
+                    {
+                        instance.release ();
+                        return kResultOk;
+                    }
+                    else
+                        instance.release ();
+                }
+                break;
+            }
+        }
+
+        *obj = null;
+        return kNoInterface;
     }
 
 	//---from IPluginFactory2-----
 	override tresult getClassInfo2 (int32 index, PClassInfo2* info)
     {
-        assert(false); // TODO
+        if (info && (index >= 0 && index < classCount))
+        {
+            if (classes[index].isUnicode)
+            {
+                memset (info, 0, PClassInfo2.sizeof);
+                return kResultFalse;
+            }
+
+            memcpy (info, &classes[index].info8, PClassInfo2.sizeof);
+            return kResultOk;
+        }
+        return kInvalidArgument;
     }
 
 	//---from IPluginFactory3-----
 	override tresult getClassInfoUnicode (int32 index, PClassInfoW* info)
     {
-        assert(false); // TODO
+        if (info && (index >= 0 && index < classCount))
+        {
+            memcpy (info, &classes[index].info16, PClassInfoW.sizeof);
+            return kResultOk;
+        }
+        return kInvalidArgument;
     }
 
 	override tresult setHostContext (FUnknown* context)
     {
-        assert(false); // TODO
+        return kNotImplemented;
     }
 
 protected:
@@ -414,19 +517,34 @@ protected:
 		PClassInfo2 info8;
 		PClassInfoW info16;
 
-		FUnknown function(void*) createFunc;
+		FUnknown function(void*) nothrow @nogc createFunc;
 		void* context;
 		bool isUnicode;
 	}
 
 	PFactoryInfo factoryInfo;
-	PClassEntry* classes;
-	int32 classCount;
-	int32 maxClassCount;
+	PClassEntry* classes = null;
+	int32 classCount = 0;
+	int32 maxClassCount = 0;
 
 	bool growClasses()
     {
-        // TODO
-        assert(false);
+        static const int32 delta = 10;
+
+        size_t size = (maxClassCount + delta) * PClassEntry.sizeof;
+        void* memory = classes;
+
+        if (!memory)
+            memory = malloc (size);
+        else
+            memory = realloc (memory, size);
+
+        if (!memory)
+            return false;
+
+        classes = cast(PClassEntry*)memory;
+        maxClassCount += delta;
+        return true;
     }
 }
+

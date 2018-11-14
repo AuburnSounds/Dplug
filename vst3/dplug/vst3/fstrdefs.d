@@ -262,9 +262,9 @@ inline T* _tstrcat (T* dst, const T* src)
 inline tchar* tstrcat (tchar* dst, const tchar* src) {return _tstrcat (dst, src); }
 inline char8* strcat8 (char8* dst, const char8* src) {return _tstrcat (dst, src); }
 inline char16* strcat16 (char16* dst, const char16* src) {return _tstrcat (dst, src); }
++/
 
-//----------------------------------------------------------------------------
-inline void str8ToStr16 (char16* dst, const char8* src, int32 n = -1)
+void str8ToStr16 (char16* dst, const(char8)* src, int32 n = -1)
 {
 	int32 i = 0;
 	for (;;)
@@ -275,13 +275,16 @@ inline void str8ToStr16 (char16* dst, const char8* src, int32 n = -1)
 			return;
 		}
 
-#if BYTEORDER == kBigEndian
-		char8* pChr = (char8*)&dst[i];
-		pChr[0] = 0;
-		pChr[1] = src[i];
-#else
-		dst[i] = static_cast<char16> (src[i]);
-#endif
+        version(BigEndian)
+        {
+		    char8* pChr = cast(char8*)&dst[i];
+		    pChr[0] = 0;
+		    pChr[1] = src[i];
+        }
+        else
+        {
+		    dst[i] = cast(char16)(src[i]);
+        }
 
 		if (src[i] == 0)
 			break;
@@ -295,15 +298,12 @@ inline void str8ToStr16 (char16* dst, const char8* src, int32 n = -1)
 		i++;
 	}
 }
-
+/*
 //------------------------------------------------------------------------
-inline bool FIDStringsEqual (FIDString id1, FIDString id2)
+bool FIDStringsEqual (FIDString id1, FIDString id2)
 {
 	return (id1 && id2) ? (strcmp8 (id1, id2) == 0) : false;
 }
 
 static const uint32 kPrintfBufferSize = 4096;
-
-//------------------------------------------------------------------------
-} // namespace Steinberg
-+/
+*/
