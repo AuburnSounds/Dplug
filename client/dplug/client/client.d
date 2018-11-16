@@ -74,6 +74,15 @@ nothrow:
         // For AAX, considered binary-compatible unless major version change
         return major;
     }
+
+    void toVST3VersionString(char* outBuffer, int bufLength) const
+    {
+        snprintf(outBuffer, bufLength, "%d.%d.%d", major, minor, patch);
+
+        // DigitalMars's snprintf doesn't always add a terminal zero
+        if (bufLength > 0)
+            outBuffer[bufLength-1] = '\0';
+    }
 }
 
 

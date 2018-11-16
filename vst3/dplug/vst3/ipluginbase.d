@@ -99,16 +99,16 @@ struct PClassInfo
 {
 nothrow:
 @nogc:
-	enum ClassCardinality
+	enum // ClassCardinality
 	{
 		kManyInstances = 0x7FFFFFFF
-	};
+	}
 
 	enum
 	{
 		kCategorySize = 32,
 		kNameSize = 64
-	};
+	}
 
 	TUID cid;                       ///< Class ID 16 Byte class GUID
 	int32 cardinality;              ///< cardinality of the class, set to kManyInstances (see \ref ClassCardinality)
@@ -175,6 +175,8 @@ static immutable TUID IPluginFactory_iid = INLINE_UID(0x7A4D811C, 0x52114A1F, 0x
 //  Version 2 of Basic Information about a class provided by the Plug-in.
 struct PClassInfo2
 {
+nothrow:
+@nogc:
 	TUID cid;									///< Class ID 16 Byte class GUID
 	int32 cardinality;							///< cardinality of the class, set to kManyInstances (see \ref ClassCardinality)
 	char8[PClassInfo.kCategorySize] category;	///< class category, host uses this to categorize interfaces

@@ -51,7 +51,10 @@ nothrow @nogc:
 
 import dplug.core.runtime;
 import dplug.core.nogc;
+import dplug.vst3.funknown;
 import dplug.vst3.ipluginbase;
+import dplug.vst3.ftypes;
+import dplug.vst3.ivstaudioprocessor;
 
 template VST3EntryPoint(alias ClientClass)
 {
@@ -85,16 +88,31 @@ IPluginFactory GetPluginFactoryInternal(ClientClass)()
                                                 "support@wittyaudio.fake", // TODO
                                                 PFactoryInfo.kUnicode);
 
-        gPluginFactory = mallocNew!CPluginFactory(factoryInfo);
+        auto pluginFactory = mallocNew!CPluginFactory(factoryInfo);
+        gPluginFactory = pluginFactory;
 
+        enum uint DPLUG_MAGIC  = 0xB20BA92;
+        enum uint DPLUG_MAGIC2 = 0xCE0B145;
+        char[4] vid = client.getVendorUniqueID();
+        char[4] pid = client.getPluginUniqueID();
+        TUID classId = INLINE_UID(DPLUG_MAGIC, DPLUG_MAGIC2, *cast(uint*)(vid.ptr), *cast(uint*)(pid.ptr));
 
-        PClassInfo componentClass = PClassInfo( [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  // TODO: replace by a valid uid
-                                                1, // TODO category
-                                                "Service", // TODO category
-                                                "Name"); // TODO category
-                                                
-        
-     //   gPluginFactory.registerClass (&componentClass, &(createVST3Client!ClientClass));
+        auto pluginNameZ = CString(client.pluginName());
+        auto vendorNameZ = CString(client.vendorName());
+
+        char[64] versionString;
+        client.getPublicVersion().toVST3VersionString(versionString.ptr, 64);
+
+        PClassInfo2 componentClass = PClassInfo2(classId,
+                                                 PClassInfo.kManyInstances, // cardinality
+                                                 kVstAudioEffectClass.ptr,
+                                                 pluginNameZ,
+                                                 kSimpleModeSupported,
+                                                 PlugType.kFx.ptr, // TODO proper categories
+                                                 vendorNameZ,
+                                                 versionString.ptr,
+                                                 kVstVersionString.ptr);        
+        pluginFactory.registerClass(&componentClass, &(createVST3Client!ClientClass));
 
     }
     else
@@ -104,9 +122,9 @@ IPluginFactory GetPluginFactoryInternal(ClientClass)()
 }
 
 
-FUnknown createVST3Client(ClientClass)(void*) nothrow @nogc
+extern(Windows) FUnknown createVST3Client(ClientClass)(void*) nothrow @nogc
 {
-    assert(false);
-    //TODO
-
+    import core.stdc.stdio;
+    printf("createVST3Client\n");
+    return null;
 }
