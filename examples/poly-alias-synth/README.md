@@ -12,7 +12,7 @@ Your DAC will gonna love you. And you're listeners will, too. *(...might depend 
 - **3 different waveforms**<br/>*saw, sine, square* - all modelled after the textbooks  as closely as possible
 - **Simple + focused**<br/>*no (unnecessary) filters or LFOs*
 - **Purity**<br/>*sounds as pure as possible - no built-in FX*
-- **Native UI** (matching your host)<br/>*instead of a beatiful GUI crafted with love it will just let your plugin host create the UI*
+- **Native UI** (matching your host)<br/>*instead of a beautiful GUI crafted with love it will just let your plugin host create the UI*
 
 
 ## Extras
