@@ -51,6 +51,10 @@ nothrow @nogc:
 
 import dplug.core.runtime;
 import dplug.core.nogc;
+
+import dplug.client.client;
+import dplug.client.daw;
+
 import dplug.vst3.funknown;
 import dplug.vst3.ipluginbase;
 import dplug.vst3.ftypes;
@@ -103,17 +107,36 @@ IPluginFactory GetPluginFactoryInternal(ClientClass)()
         char[64] versionString;
         client.getPublicVersion().toVST3VersionString(versionString.ptr, 64);
 
+        string vst3Category;
+        final switch(client.pluginCategory()) with (PluginCategory)
+        {
+            case effectAnalysisAndMetering: vst3Category = PlugType.kFxAnalyzer; break;
+            case effectDelay:               vst3Category = PlugType.kFxDelay; break;
+            case effectDistortion:          vst3Category = PlugType.kFxDistortion; break;
+            case effectDynamics:            vst3Category = PlugType.kFxDynamics; break;
+            case effectEQ:                  vst3Category = PlugType.kFxEQ; break;
+            case effectImaging:             vst3Category = PlugType.kFxSpatial; break;
+            case effectModulation:          vst3Category = PlugType.kFxModulation; break;
+            case effectPitch:               vst3Category = PlugType.kFxPitchShift; break;
+            case effectReverb:              vst3Category = PlugType.kFxReverb; break;
+            case effectOther:               vst3Category = PlugType.kFx; break;
+            case instrumentDrums:           vst3Category = PlugType.kInstrumentDrum; break;
+            case instrumentSampler:         vst3Category = PlugType.kInstrumentSampler; break;
+            case instrumentSynthesizer:     vst3Category = PlugType.kInstrumentSynth; break;
+            case instrumentOther:           vst3Category = PlugType.kInstrumentSynth; break;
+            case invalid:                   assert(false);
+        }
+
         PClassInfo2 componentClass = PClassInfo2(classId,
                                                  PClassInfo.kManyInstances, // cardinality
                                                  kVstAudioEffectClass.ptr,
                                                  pluginNameZ,
                                                  kSimpleModeSupported,
-                                                 PlugType.kFx.ptr, // TODO proper categories
+                                                 vst3Category.ptr,
                                                  vendorNameZ,
                                                  versionString.ptr,
                                                  kVstVersionString.ptr);        
         pluginFactory.registerClass(&componentClass, &(createVST3Client!ClientClass));
-
     }
     else
         gPluginFactory.addRef();
@@ -121,7 +144,7 @@ IPluginFactory GetPluginFactoryInternal(ClientClass)()
     return gPluginFactory;
 }
 
-
+// must return a IAudioProcessor
 extern(Windows) FUnknown createVST3Client(ClientClass)(void*) nothrow @nogc
 {
     import core.stdc.stdio;
