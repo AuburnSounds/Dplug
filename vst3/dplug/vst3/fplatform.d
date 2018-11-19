@@ -3,6 +3,7 @@
 //
 // Category    : SDK Core Interfaces
 // Filename    : pluginterfaces/base/fplatform.h
+//               pluginterfaces/base/falignpush.h
 // Created by  : Steinberg, 01/2004
 // Description : Detect platform and set define
 //
@@ -30,3 +31,36 @@ else
 }
 
 
+// #pragma pack translation
+// use align(vst3Alignment): inside structs
+version(OSX)
+{
+    static if ((void*).sizeof == 8)
+    {
+        // 64-bit macOS
+        // no need in packing here
+        // MAYDO verify what it means because we shouldn't use align in the first place here
+        enum vst3Alignment = 1;
+    }
+    else
+    {
+        enum vst3Alignment = 1;
+    }
+}
+else version(Windows)
+{
+    static if ((void*).sizeof == 8)
+    {
+        // no need in packing here
+        // MAYDO verify what it means because we shouldn't use align in the first place here
+        enum vst3Alignment = 16;
+    }
+    else
+    {
+        enum vst3Alignment = 8;
+    }
+}
+else
+{
+    enum vst3Alignment = 0;
+}

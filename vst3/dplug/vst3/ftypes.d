@@ -20,7 +20,7 @@ enum UNICODE = 1;
 
 import core.stdc.stdint;
 
-//#include "fplatform.h"
+
 
 nothrow:
 @nogc:
@@ -192,7 +192,9 @@ typedef const char8* CString;	///< C-String
 // General
 //------------------------------------------------------------------------
 typedef int32 MediaType;		///< media type (audio/event)
-typedef int32 BusDirection;		///< bus direction (in/out)
++/
+alias BusDirection = int; ///< bus direction (in/out)
+/+
 typedef int32 BusType;			///< bus type (main/aux)
 typedef int32 IoMode;			///< I/O mode (see \ref vst3IoMode)
 typedef int32 UnitID;			///< unit identifier
@@ -209,18 +211,23 @@ typedef uint32 ColorSpec;		///< color defining by 4 component ARGB value (Alpha/
 //------------------------------------------------------------------------
 static const ParamID kNoParamId = 0xffffffff;	///< default for uninitialized parameter ID
 // static const ParamID kNoParamId = std::numeric_limits<ParamID>::max ();
++/
 
 //------------------------------------------------------------------------
 // Audio Types
 //------------------------------------------------------------------------
-typedef float Sample32;				///< 32-bit precision audio sample
-typedef double Sample64;			///< 64-bit precision audio sample
-typedef double SampleRate;			///< sample rate
+alias Sample32 = float;				///< 32-bit precision audio sample
+alias Sample64 = double;			///< 64-bit precision audio sample
+
+alias SampleRate = double; ///< sample rate
+
 
 //------------------------------------------------------------------------
 // Speaker Arrangements Types
 //------------------------------------------------------------------------
-typedef uint64 SpeakerArrangement;	///< Bitset of speakers
-typedef uint64 Speaker;	            ///< Bit for one speaker
+alias SpeakerArrangement = uint64 ;	///< Bitset of speakers
+alias Speaker = uint64 ; ///< Bit for one speaker
 
-+/
+
+
+

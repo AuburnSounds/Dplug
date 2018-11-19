@@ -15,10 +15,13 @@
 //-----------------------------------------------------------------------------
 module dplug.vst3.ivstaudioprocessor;
 
+import dplug.vst3.fplatform;
+import dplug.vst3.funknown;
+import dplug.vst3.ftypes;
+
 //#include "ivstcomponent.h"
 //#include "vstspeaker.h"
 
-//#include "pluginterfaces/base/falignpush.h"
 
 immutable string kVstAudioEffectClass = "Audio Module Class";
 
@@ -75,19 +78,15 @@ enum : ComponentFlags
     kSimpleModeSupported    = 1 << 1    ///< Component supports simple IO mode (or works in simple mode anyway) see \ref vst3IoMode
 }
 
-/+
 
-//------------------------------------------------------------------------
-/** Symbolic sample size.
-\see ProcessSetup, ProcessData */
-//------------------------------------------------------------------------
-enum SymbolicSampleSizes
+// Symbolic sample size.
+alias SymbolicSampleSizes = int;
+enum : SymbolicSampleSizes
 {
     kSample32,      ///< 32-bit precision
     kSample64       ///< 64-bit precision
-};
+}
 
-//------------------------------------------------------------------------
 /** Processing mode informs the Plug-in about the context and at which frequency the process call is called.
 VST3 defines 3 modes:
 - kRealtime: each process call is called at a realtime frequency (defined by [numSamples of ProcessData] / samplerate).
@@ -105,47 +104,38 @@ Note about Process Modes switching:
      IAudioProcessor::setupProcessing, the Plug-in should check in process call the member processMode of ProcessData
      in order to know in which mode it is processed.
     -Switching between kRealtime (or kPrefetch) and kOffline requires that the host calls IAudioProcessor::setupProcessing
-     in order to inform the Plug-in about this mode change.
-.
-\see ProcessSetup, ProcessData */
-//------------------------------------------------------------------------
-enum ProcessModes
+     in order to inform the Plug-in about this mode change. */
+alias ProcessModes = int;
+enum : ProcessModes
 {
     kRealtime,      ///< realtime processing
     kPrefetch,      ///< prefetch processing
     kOffline        ///< offline processing
-};
+}
 
-//------------------------------------------------------------------------
 /** kNoTail
  *
  * to be returned by getTailSamples when no tail is wanted
  \see IAudioProcessor::getTailSamples */
-//------------------------------------------------------------------------
-static const uint32 kNoTail = 0;
-//------------------------------------------------------------------------
+enum uint kNoTail = 0;
+
 /** kInfiniteTail
  *
  * to be returned by getTailSamples when infinite tail is wanted
  \see IAudioProcessor::getTailSamples */
-//------------------------------------------------------------------------
-static const uint32 kInfiniteTail = kMaxInt32u;
+enum uint kInfiniteTail = uint.max;
 
-//------------------------------------------------------------------------
 /** Audio processing setup.
 \see IAudioProcessor::setupProcessing */
-//------------------------------------------------------------------------
 struct ProcessSetup
 {
-//------------------------------------------------------------------------
+    align(vst3Alignment):
     int32 processMode;          ///< \ref ProcessModes
     int32 symbolicSampleSize;   ///< \ref SymbolicSampleSizes
     int32 maxSamplesPerBlock;   ///< maximum number of samples per audio block
     SampleRate sampleRate;      ///< sample rate
-//------------------------------------------------------------------------
-};
+}
 
-//------------------------------------------------------------------------
 /** Processing buffers of an audio bus.
 This structure contains the processing buffer for each channel of an audio bus.
 - The number of channels (numChannels) must always match the current bus arrangement.
@@ -160,67 +150,55 @@ This structure contains the processing buffer for each channel of an audio bus.
   This flag is optional. A host is free to support it or not.
 .
 \see ProcessData */
-//------------------------------------------------------------------------
 struct AudioBusBuffers
 {
-    AudioBusBuffers () : numChannels (0), silenceFlags (0), channelBuffers64 (0) {}
+    align(vst3Alignment):
 
-//------------------------------------------------------------------------
-    int32 numChannels;      ///< number of audio channels in bus
-    uint64 silenceFlags;    ///< Bitset of silence state per channel
+    int32 numChannels = 0;      ///< number of audio channels in bus
+    uint64 silenceFlags = 0;    ///< Bitset of silence state per channel
     union
     {
-        Sample32** channelBuffers32;    ///< sample buffers to process with 32-bit precision
+        Sample32** channelBuffers32 = null;    ///< sample buffers to process with 32-bit precision
         Sample64** channelBuffers64;    ///< sample buffers to process with 64-bit precision
-    };
-//------------------------------------------------------------------------
-};
+    }
+}
 
-//------------------------------------------------------------------------
+alias IParameterChanges = void*; // TODO
+alias IEventList = void*; // TODO
+alias ProcessContext = void*;//TODO
+
 /** Any data needed in audio processing.
     The host prepares AudioBusBuffers for each input/output bus,
     regardless of the bus activation state. Bus buffer indices always match
     with bus indices used in IComponent::getBusInfo of media type kAudio.
 \see AudioBusBuffers, IParameterChanges, IEventList, ProcessContext */
-//------------------------------------------------------------------------
 struct ProcessData
 {
-    ProcessData ()
-    : processMode (0), symbolicSampleSize (kSample32), numSamples (0), numInputs (0)
-    , numOutputs (0), inputs (0), outputs (0), inputParameterChanges (0), outputParameterChanges (0)
-    , inputEvents (0), outputEvents (0), processContext (0) {}
+    align(vst3Alignment):
 
-//------------------------------------------------------------------------
-    int32 processMode;          ///< processing mode - value of \ref ProcessModes
-    int32 symbolicSampleSize;   ///< sample size - value of \ref SymbolicSampleSizes
-    int32 numSamples;           ///< number of samples to process
-    int32 numInputs;            ///< number of audio input buses
-    int32 numOutputs;           ///< number of audio output buses
-    AudioBusBuffers* inputs;    ///< buffers of input buses
-    AudioBusBuffers* outputs;   ///< buffers of output buses
+    int32 processMode = 0;          ///< processing mode - value of \ref ProcessModes
+    int32 symbolicSampleSize = kSample32;   ///< sample size - value of \ref SymbolicSampleSizes
+    int32 numSamples = 0;           ///< number of samples to process
+    int32 numInputs = 0;            ///< number of audio input buses
+    int32 numOutputs = 0;           ///< number of audio output buses
+    AudioBusBuffers* inputs = null;  ///< buffers of input buses
+    AudioBusBuffers* outputs = null; ///< buffers of output buses
 
-    IParameterChanges* inputParameterChanges;   ///< incoming parameter changes for this block
-    IParameterChanges* outputParameterChanges;  ///< outgoing parameter changes for this block (optional)
-    IEventList* inputEvents;                ///< incoming events for this block (optional)
-    IEventList* outputEvents;               ///< outgoing events for this block (optional)
-    ProcessContext* processContext;         ///< processing context (optional, but most welcome)
-//------------------------------------------------------------------------
-};
+    IParameterChanges* inputParameterChanges = null;   ///< incoming parameter changes for this block
+    IParameterChanges* outputParameterChanges = null;  ///< outgoing parameter changes for this block (optional)
+    IEventList* inputEvents = null;                ///< incoming events for this block (optional)
+    IEventList* outputEvents = null;               ///< outgoing events for this block (optional)
+    ProcessContext* processContext = null;         ///< processing context (optional, but most welcome)
+}
 
-//------------------------------------------------------------------------
 /** Audio Processing Interface.
-\ingroup vstIPlug vst300
-- [plug imp]
-- [extends IComponent]
-- [released: 3.0.0]
-- [mandatory]
-
 This interface must always be supported by audio processing Plug-ins. */
-//------------------------------------------------------------------------
-class IAudioProcessor: public FUnknown
+interface IAudioProcessor: FUnknown
 {
 public:
-//------------------------------------------------------------------------
+nothrow:
+@nogc:
+
     /** Try to set (from host) a predefined arrangement for inputs and outputs.
         The host should always deliver the same number of input and output buses than the Plug-in needs 
         (see \ref IComponent::getBusCount).
@@ -229,16 +207,15 @@ public:
         (asked by the host with IComponent::getInfo () or IAudioProcessor::getBusArrangement ()) and then return kResultTrue.
         If the Plug-in does not accept these arrangements, but can adapt its current arrangements (according to the wanted ones),
         it should modify its buses arrangements and return kResultFalse. */
-    virtual tresult PLUGIN_API setBusArrangements (SpeakerArrangement* inputs, int32 numIns,
-                                                   SpeakerArrangement* outputs, int32 numOuts) = 0;
+    tresult setBusArrangements (SpeakerArrangement* inputs, int32 numIns,  SpeakerArrangement* outputs, int32 numOuts);
 
     /** Gets the bus arrangement for a given direction (input/output) and index.
         Note: IComponent::getInfo () and IAudioProcessor::getBusArrangement () should be always return the same 
         information about the buses arrangements. */
-    virtual tresult PLUGIN_API getBusArrangement (BusDirection dir, int32 index, SpeakerArrangement& arr) = 0;
+    tresult getBusArrangement (BusDirection dir, int32 index, ref SpeakerArrangement arr);
 
     /** Asks if a given sample size is supported see \ref SymbolicSampleSizes. */
-    virtual tresult PLUGIN_API canProcessSampleSize (int32 symbolicSampleSize) = 0;
+    tresult canProcessSampleSize (int32 symbolicSampleSize);
 
     /** Gets the current Latency in samples.
         The returned value defines the group delay or the latency of the Plug-in. For example, if the Plug-in internally needs
@@ -247,19 +224,19 @@ public:
         using IComponentHandler::restartComponent (kLatencyChanged), this could lead to audio playback interruption
         because the host has to recompute its internal mixer delay compensation.
         Note that for player live recording this latency should be zero or small. */
-    virtual uint32 PLUGIN_API getLatencySamples () = 0;
+    uint32 getLatencySamples ();
 
     /** Called in disable state (not active) before processing will begin. */
-    virtual tresult PLUGIN_API setupProcessing (ProcessSetup& setup) = 0;
+    tresult setupProcessing (ref ProcessSetup setup);
 
     /** Informs the Plug-in about the processing state. This will be called before any process calls start with true and after with false.
         Note that setProcessing (false) may be called after setProcessing (true) without any process calls.
         In this call the Plug-in should do only light operation (no memory allocation or big setup reconfiguration), 
         this could be used to reset some buffers (like Delay line or Reverb). */
-    virtual tresult PLUGIN_API setProcessing (TBool state) = 0;
+    tresult setProcessing (TBool state);
 
     /** The Process call, where all information (parameter changes, event, audio buffer) are passed. */
-    virtual tresult PLUGIN_API process (ProcessData& data) = 0;
+    tresult process (ref ProcessData data);
 
     /** Gets tail size in samples. For example, if the Plug-in is a Reverb Plug-in and it knows that
         the maximum length of the Reverb is 2sec, then it has to return in getTailSamples() 
@@ -270,14 +247,16 @@ public:
          - kNoTail when no tail
          - x * sampleRate when x Sec tail.
          - kInfiniteTail when infinite tail. */
-    virtual uint32 PLUGIN_API getTailSamples () = 0;
+    uint32 getTailSamples ();
 
-//------------------------------------------------------------------------
-    static const FUID iid;
-};
+    __gshared immutable FUID iid = FUID(IAudioProcessor_iid);
+}
 
-DECLARE_CLASS_IID (IAudioProcessor, 0x42043F99, 0xB7DA453C, 0xA569E79D, 0x9AAEC33D)
+static immutable TUID IAudioProcessor_iid = INLINE_UID(0x42043F99, 0xB7DA453C, 0xA569E79D, 0x9AAEC33D);
 
+
+
+/+
 //------------------------------------------------------------------------
 /** Extended IAudioProcessor interface for a component.
 \ingroup vstIPlug vst310
@@ -307,7 +286,7 @@ of the previous Plug-ins.
 \see IAudioProcessor
 \see IComponent*/
 //------------------------------------------------------------------------
-class IAudioPresentationLatency: public FUnknown
+class IAudioPresentationLatency: FUnknown
 {
 public:
     //------------------------------------------------------------------------
@@ -320,11 +299,4 @@ public:
 
 DECLARE_CLASS_IID (IAudioPresentationLatency, 0x309ECE78, 0xEB7D4fae, 0x8B2225D9, 0x09FD08B6)
 
-//------------------------------------------------------------------------
-} // namespace Vst
-} // namespace Steinberg
-
-//------------------------------------------------------------------------
-#include "pluginterfaces/base/falignpop.h"
-//------------------------------------------------------------------------
 +/
