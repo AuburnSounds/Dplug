@@ -51,53 +51,53 @@ enum PluginCategory
     /// FFT analyzers, phase display, waveform display, meters...
     effectAnalysisAndMetering,
 
-        /// Any kind of delay, but not chorus/flanger types.
-        effectDelay,
+    /// Any kind of delay, but not chorus/flanger types.
+    effectDelay,
 
-        /// Any kind of distortion: amp simulations, octavers, wave-shapers, 
-        /// clippers, tape simulations...
-        effectDistortion,
+    /// Any kind of distortion: amp simulations, octavers, wave-shapers, 
+    /// clippers, tape simulations...
+    effectDistortion,
 
-        /// Compressors, limiters, gates, transient designers...
-        effectDynamics,
+    /// Compressors, limiters, gates, transient designers...
+    effectDynamics,
 
-        /// Any kind of equalization.
-        effectEQ,
+    /// Any kind of equalization.
+    effectEQ,
 
-        /// Stereoizers, panners, stereo manipulation, spatial modeling...
-        effectImaging,
+    /// Stereoizers, panners, stereo manipulation, spatial modeling...
+    effectImaging,
 
-        /// Chorus, flanger, any kind of modulation effect...
-        effectModulation,
+    /// Chorus, flanger, any kind of modulation effect...
+    effectModulation,
 
-        /// Any kind of pitch processing: shifters, pitch correction, 
-        /// vocoder, formant shifting...
-        effectPitch,
+    /// Any kind of pitch processing: shifters, pitch correction, 
+    /// vocoder, formant shifting...
+    effectPitch,
 
-        /// Any kind of reverb: algorithmic, early reflections, convolution...
-        effectReverb,
+    /// Any kind of reverb: algorithmic, early reflections, convolution...
+    effectReverb,
 
-        /// Effects that don't fit in any other category.
-        /// eg: Dither, noise reduction...
-        effectOther,
+    /// Effects that don't fit in any other category.
+    /// eg: Dither, noise reduction...
+    effectOther,
 
 
-        // ### Instruments
+    // ### Instruments
 
-        /// Source that generates sound primarily from drum samples/drum synthesis.
-        instrumentDrums,
+    /// Source that generates sound primarily from drum samples/drum synthesis.
+    instrumentDrums,
 
-        /// Source that generates sound primarily from samples, romplers...
-        instrumentSampler,
+    /// Source that generates sound primarily from samples, romplers...
+    instrumentSampler,
 
-        /// Source that generates sound primarily from synthesis.
-        instrumentSynthesizer,
+    /// Source that generates sound primarily from synthesis.
+    instrumentSynthesizer,
 
-        /// Generates sound, but doesn't fit in any other category.
-        instrumentOther,
+    /// Generates sound, but doesn't fit in any other category.
+    instrumentOther,
 
-        // Should never be used, except for parsing.
-        invalid = -1,
+    // Should never be used, except for parsing.
+    invalid = -1,
 }
 
 /// From a string, return the PluginCategory enumeration.
