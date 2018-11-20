@@ -57,7 +57,8 @@ import dplug.client.client;
 //     * IEditController2
 // TODO: call IComponentHandler::restartComponent (kLatencyChanged) after a latency change
 // TODO buffer split
-class VST3Client : IAudioProcessor, IComponent
+// Note: assumes shared memory
+class VST3Client : IAudioProcessor, IComponent, IEditController
 {
 public:
 nothrow:
@@ -66,8 +67,7 @@ nothrow:
     this(Client client, IUnknown hostCallback)
     {
         _client = client;
-        // TODO do something with host callback           
-
+        // TODO do something with host callback
     }
 
     ~this()
@@ -80,7 +80,7 @@ nothrow:
     }
 
     // Implements FUnknown
-    mixin QUERY_INTERFACE_SPECIAL_CASE_IUNKNOWN!(IAudioProcessor, IComponent);
+    mixin QUERY_INTERFACE_SPECIAL_CASE_IUNKNOWN!(IAudioProcessor, IComponent, IEditController, IPluginBase);
 	mixin IMPLEMENT_REFCOUNT;
 
 
@@ -324,6 +324,104 @@ nothrow:
         return cast(int)(0.5f + _client.tailSizeInSeconds() * atomicLoad(_sampleRateHostPOV));
     }
 
+
+    // Implements IEditController
+
+    tresult setComponentState (IBStream* state)
+    {
+        // TODO
+        // Why duplicate?
+        return kNotImplemented;
+    }
+
+    tresult setState (IBStream* state)
+    {
+        // TODO
+        // Why duplicate?
+        return kNotImplemented;
+    }
+
+    tresult getState (IBStream* state)
+    {
+        // TODO
+        // Why duplicate?
+        return kNotImplemented;
+    }
+
+    int32 getParameterCount()
+    {
+        return cast(int)(_client.params.length);
+    }
+
+    tresult getParameterInfo (int32 paramIndex, ref ParameterInfo info)
+    {
+        if (!_client.isValidParamIndex(paramIndex))
+            return kResultFalse;
+
+        Parameter param = _client.param(paramIndex);
+       
+        info.id = convertParamIndexToParamID(paramIndex);
+        str8ToStr16(info.title, param.name, 128);
+        str8ToStr16(info.shortTitle, param.name(), 128);
+        str8ToStr16(info.units, param.label(), 128);
+        info.stepCount = 0; // continuous
+        info.defaultNormalizedValue = param.getNormalizedDefault();
+        info.unitId = 0; // root, TODO understand what "units" are for
+        info.flags = ParameterInfo.ParameterFlags.kCanAutomate; // Dplug assumption: all parameters automatable.
+        return kResultTrue;
+    }
+
+    /** Gets for a given paramID and normalized value its associated string representation. */
+    tresult getParamStringByValue (ParamID id, ParamValue valueNormalized, String128 string_ )
+    {
+        int paramIndex = convertParamIDToParamIndex(id);
+        if (!_client.isValidParamIndex(paramIndex))
+            return kResultFalse;
+        Parameter param = _client.param(paramIndex);
+        char[128] buf;
+        param.stringFromNormalizedValue(valueNormalized, buf.ptr, 128);
+        str8ToStr16(string_.ptr, buf.ptr, 128);
+        return kResultTrue;
+    }
+
+    /** Gets for a given paramID and string its normalized value. */
+    tresult getParamValueByString (ParamID id, TChar* string_, ref ParamValue valueNormalized )
+    {
+        int paramIndex = convertParamIDToParamIndex(id);
+        if (!_client.isValidParamIndex(paramIndex))
+            return kResultFalse;
+        Parameter param = _client.param(paramIndex);
+        // TODO convert from UTF-16 to UTF-8
+        if (param.normalizedValueFromString( bufgvalueNormalized, buf.ptr, 128);
+        str8ToStr16(string_.ptr, buf.ptr, 128);
+        return kResultTrue;
+    }
+
+    /** Returns for a given paramID and a normalized value its plain representation
+    (for example 90 for 90db - see \ref vst3AutomationIntro). */
+    ParamValue normalizedParamToPlain (ParamID id, ParamValue valueNormalized);
+
+    /** Returns for a given paramID and a plain value its normalized value. (see \ref vst3AutomationIntro) */
+    ParamValue plainParamToNormalized (ParamID id, ParamValue plainValue);
+
+    /** Returns the normalized value of the parameter associated to the paramID. */
+    ParamValue getParamNormalized (ParamID id);
+
+    /** Sets the normalized value to the parameter associated to the paramID. The controller must never
+    pass this value-change back to the host via the IComponentHandler. It should update the according
+    GUI element(s) only!*/
+    tresult setParamNormalized (ParamID id, ParamValue value);
+
+    // handler ----------------------------
+    /** Gets from host a handler. */
+    tresult setComponentHandler (IComponentHandler* handler);
+
+    // view -------------------------------
+    /** Creates the editor view of the Plug-in, currently only "editor" is supported, see \ref ViewType.
+    The life time of the editor view will never exceed the life time of this controller instance. */
+    IPlugView createView (FIDString name);
+
+
 private:
     Client _client;
 
@@ -361,4 +459,19 @@ private:
         }
         return null;
     }
+}
+
+private:
+nothrow:
+pure:
+@nogc:
+
+int convertParamIndexToParamID(int index)
+{
+    return index;
+}
+
+int convertParamIDToParamIndex(int index)
+{
+    return index;
 }

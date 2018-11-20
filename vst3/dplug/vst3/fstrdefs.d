@@ -264,6 +264,48 @@ inline char8* strcat8 (char8* dst, const char8* src) {return _tstrcat (dst, src)
 inline char16* strcat16 (char16* dst, const char16* src) {return _tstrcat (dst, src); }
 +/
 
+
+void str8ToStr16 (char16* dst, string src, int32 n = -1)
+{
+    int32 i = 0;
+	for (;;)
+	{
+        if (i == src.length)
+        {
+            dst[i] = 0;
+            return;
+        }
+
+		if (i == n)
+		{
+			dst[i] = 0;
+			return;
+		}
+
+        version(BigEndian)
+        {
+		    char8* pChr = cast(char8*)&dst[i];
+		    pChr[0] = 0;
+		    pChr[1] = src[i];
+        }
+        else
+        {
+		    dst[i] = cast(char16)(src[i]);
+        }
+
+		if (src[i] == 0)
+			break;
+
+		i++;
+	}
+
+	while (n > i)
+	{
+		dst[i] = 0;
+		i++;
+	}
+}
+
 void str8ToStr16 (char16* dst, const(char8)* src, int32 n = -1)
 {
 	int32 i = 0;
