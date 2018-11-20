@@ -65,7 +65,8 @@ nothrow:
     this(Client client, IUnknown hostCallback)
     {
         _client = client;
-        // TODO do something with host callback
+        // TODO do something with host callback           
+
     }
 
     ~this()
@@ -89,7 +90,66 @@ nothrow:
     If the method does NOT return kResultOk, the object is released immediately. In this case terminate is not called! */
 	override tresult initialize(FUnknown context)
     {
-        // TODO: do something with that context?
+        // Create buses
+        int maxInputs = _client.maxInputs();
+        int maxOutputs = _client.maxOutputs();
+        bool receivesMIDI = _client.receivesMIDI();
+
+        _audioInputs = makeVec!BusInfo;
+        _audioOutputs = makeVec!BusInfo;
+        _eventInputs = makeVec!BusInfo;
+
+        if (maxInputs)
+        {
+            Bus busAudioIn;
+            busAudioIn.active = false;
+            busAudioIn.speakerArrangement = kStereo; // TODO right arrangement for input audio
+            with(busAudioIn.info)
+            {
+                mediaType = kAudio;
+                direction = kInput;
+                channelCount = maxInputs;
+                name = "Audio Input"w;
+                busType = kMain;
+                uint32 flags = BusInfo.BusFlags.kDefaultActive;
+            }
+            _audioInputs.push_Back(busAudioIn);
+        }
+
+        if (maxOutputs)
+        {
+            Bus busAudioOut;
+            busAudioOut.active = false;
+            busAudioOut.speakerArrangement = kStereo; // TODO right arrangement for output audio
+            with(busAudioOut.info)
+            {
+                mediaType = kAudio;
+                direction = kOutput;
+                channelCount = maxInputs;
+                name = "Audio Output"w;
+                busType = kMain;
+                uint32 flags = BusInfo.BusFlags.kDefaultActive;
+            }
+            _audioOutputs.push_Back(busAudioOut);
+        }
+
+        if (receivesMIDI)
+        {
+            Bus busEventsIn;
+            busEventsIn.active = false;
+            busEventsIn.speakerArrangement = 0; // whatever
+            with(busEventsIn.info)
+            {
+                mediaType = kEvent;
+                direction = kInput;
+                channelCount = 1;
+                name = "MIDI Input"w;
+                busType = kMain;
+                uint32 flags = BusInfo.BusFlags.kDefaultActive;
+            }
+            _eventInputs.push_Back(busEventsIn);
+        }
+
         return kResultOk;
     }
 
@@ -97,7 +157,8 @@ nothrow:
     cleanups. You have to release all references to any host application interfaces. */
 	override tresult terminate()
     {
-        // TODO clean-up reference to host interface
+        _audioInputs.();
+        removeAllBusses ();
         return kResultOk;
     }
 
@@ -111,62 +172,99 @@ nothrow:
 
     override tresult setIoMode (IoMode mode)
     {
-        // TODO
+        // Unused in every VST3 SDK example
         return kNotImplemented;
     }
 
     override int32 getBusCount (MediaType type, BusDirection dir)
     {
-        // TODO
-        return kNotImplemented;
+        Vec!Bus* busList = getBusList(type, dir);
+        if (busList is null)
+            return 0;
+        return cast(int)( *busList.length );
     }
 
     override tresult getBusInfo (MediaType type, BusDirection dir, int32 index, ref BusInfo bus /*out*/)
     {
-        // TODO
-        return kNotImplemented;
+        Vec!Bus* busList = getBusList(type, dir);
+        if (busList is null)
+            return kInvalidArgument;
+        if (index >= busList.length)
+            return kResultFalse;
+        bus = busList[index].info;
+        return kResultTrue;
     }
 
     override tresult getRoutingInfo (ref RoutingInfo inInfo, ref RoutingInfo outInfo /*out*/)
     {
-        // TODO
+        // Apparently not needed in any SDK examples
         return kNotImplemented;
     }
 
     override tresult activateBus (MediaType type, BusDirection dir, int32 index, TBool state)
     {
-        // TODO
-        return kNotImplemented;
+        Vec!Bus* busList = getBusList(type, dir);
+        if (busList is null)
+            return kInvalidArgument;
+        if (index >= busList.length)
+            return kResultFalse;
+        busList[index].active = (state != 0);
+        return kResultTrue;
     }
 
     override tresult setActive (TBool state)
     {
-        // TODO
-        return kNotImplemented;
+        // In some VST3 examples, this place is used to initialize buffers.
+        return kResultOk;
     }
 
     override tresult setState (IBStream state)
     {
-        // TODO
+        // TODO deserialize
         return kNotImplemented;
     }
 
     override tresult getState (IBStream state)
     {
-        // TODO
+        // TODO serialize
         return kNotImplemented;
     }
 
-
     // Implements IAudioProcessor
-    override tresult setBusArrangements (SpeakerArrangement* inputs, int32 numIns,  SpeakerArrangement* outputs, int32 numOuts)
+    override tresult setBusArrangements (SpeakerArrangement* inputs, int32 numIns, SpeakerArrangement* outputs, int32 numOuts)
     {
-        assert(false, "TODO");
+        if (numIns < 0 || numOuts < 0)
+            return kInvalidArgument;
+
+        int busIn = cast(int) (_audioInputs.length);
+        int busOut = cast(int) (_audioOutputs.length);
+
+        if (numIns > busIn || numOuts > busOut)
+            return kResultFalse;
+
+        foreach(index; 0..busIn)
+        {
+            if (index >= numIns)
+                break;
+            _audioInputs[index].speakerArrangement = inputs[index];
+        }
+
+        foreach(index; 0..busOut)
+        {
+            if (index >= numOuts)
+                break;
+            _audioOutputs[index].speakerArrangement = outputs[index];
+        }
+        return kResultTrue;
     }
 
     override tresult getBusArrangement (BusDirection dir, int32 index, ref SpeakerArrangement arr)
     {
-        assert(false, "TODO");
+        Vec!Bus* busList = getBusList(kAudio, dir);
+        if (busList is null || index >= cast(int)(busList.length))
+            return kInvalidArgument;
+        arr = busList[index].speakerArrangement;
+        return kResultTrue;;
     }
 
     override tresult canProcessSampleSize (int32 symbolicSampleSize)
@@ -239,4 +337,31 @@ private:
     
     shared(int) _maxSamplesPerBlockHostPOV = -1;
     int _maxSamplesPerBlockDSPPOV = -1;
+
+    static struct Bus
+    {
+        bool active;
+        SpeakerArrangement speakerArrangement;
+        BusInfo info;
+    }
+
+    Vec!Bus _audioInputs;
+    Vec!Bus _audioOutputs;
+    Vec!Bus _eventInputs;
+    Vec!Bus _eventOutputs;
+
+    Vec!Bus* getBusList(MediaType type, BusDirection dir)
+    {
+        if (type == kAudio)
+        {
+            if (dir == kInput) return &_audioInputs;
+            if (dir == kOutput) return &_audioOutputs;
+        }
+        else if (type == kEvent)
+        {
+            if (dir == kInput) return &_eventInputs;
+            if (dir == kOutput) return &_eventOutputs;
+        }
+        return null;
+    }
 }

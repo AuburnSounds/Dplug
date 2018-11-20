@@ -48,8 +48,7 @@ enum : MediaTypes
 }
 
 /** Bus directions */
-alias BusDirections = int;
-enum : BusDirections
+enum : BusDirection
 {
     kInput = 0,     ///< input bus
     kOutput         ///< output bus
