@@ -101,7 +101,9 @@ nothrow:
         return kResultOk;
     }
 
-    override tresult getControllerClassId (TUID classId)
+    // Implements IComponent
+
+    override tresult getControllerClassId (TUID* classId)
     {
         // TODO
         return kNotImplemented;

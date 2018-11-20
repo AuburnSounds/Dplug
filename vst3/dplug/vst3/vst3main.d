@@ -78,7 +78,6 @@ template VST3EntryPoint(alias ClientClass)
 
 IPluginFactory GetPluginFactoryInternal(ClientClass)() 
 {
-    import core.stdc.stdio;
     ScopedForeignCallback!(false, true) scopedCallback;
     scopedCallback.enter();
 

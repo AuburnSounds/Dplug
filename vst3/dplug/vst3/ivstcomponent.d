@@ -126,7 +126,7 @@ public:
 nothrow:
 @nogc:
     /** Called before initializing the component to get information about the controller class. */
-    tresult getControllerClassId (TUID classId);
+    tresult getControllerClassId (TUID* classId);
 
     /** Called before 'initialize' to set the component usage (optional). See \ref IoModes */
     tresult setIoMode (IoMode mode);
