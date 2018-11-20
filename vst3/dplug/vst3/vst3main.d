@@ -59,6 +59,7 @@ import dplug.vst3.funknown;
 import dplug.vst3.ipluginbase;
 import dplug.vst3.ftypes;
 import dplug.vst3.ivstaudioprocessor;
+import dplug.vst3.client;
 
 template VST3EntryPoint(alias ClientClass)
 {
@@ -145,9 +146,11 @@ IPluginFactory GetPluginFactoryInternal(ClientClass)()
 }
 
 // must return a IAudioProcessor
-extern(Windows) FUnknown createVST3Client(ClientClass)(void*) nothrow @nogc
+extern(Windows) FUnknown createVST3Client(ClientClass)(void* hostInterface) nothrow @nogc
 {
-    import core.stdc.stdio;
-    printf("createVST3Client\n");
-    return null;
+    ScopedForeignCallback!(false, true) scopedCallback;
+    scopedCallback.enter();
+    ClientClass client = mallocNew!ClientClass();
+    VST3Client plugin = mallocNew!VST3Client(client, cast(FUnknown) hostInterface);
+    return /*cast(IAudioProcessor)*/plugin;
 }

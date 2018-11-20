@@ -37,10 +37,12 @@ of a specific category. */
 interface IPluginBase: IUnknown
 {
 public:
+nothrow:
+@nogc:
 	/** The host passes a number of interfaces as context to initialize the Plug-in class.
 		@note Extensive memory allocations etc. should be performed in this method rather than in the class' constructor!
 		If the method does NOT return kResultOk, the object is released immediately. In this case terminate is not called! */
-	tresult initialize(FUnknown* context);
+	tresult initialize(FUnknown context);
 
 	/** This function is called before the Plug-in is unloaded and can be used for
 	    cleanups. You have to release all references to any host application interfaces. */

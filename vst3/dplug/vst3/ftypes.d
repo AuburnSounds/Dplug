@@ -3,6 +3,7 @@
 //
 // Category    : SDK Core Interfaces
 // Filename    : pluginterfaces/base/ftypes.h
+// Filename    : pluginterfaces/base/fplatform.h
 // Created by  : Steinberg, 01/2004
 // Description : Basic data types
 //
@@ -19,8 +20,6 @@ module dplug.vst3.ftypes;
 enum UNICODE = 1;
 
 import core.stdc.stdint;
-
-
 
 nothrow:
 @nogc:
@@ -82,28 +81,28 @@ bool str16Empty (const(char16)* str)
 alias FIDString = const(char8)*; // identifier as string (used for attributes, messages)
 
 /+
-	const FIDString kPlatformStringWin = "WIN";
-	const FIDString kPlatformStringMac = "MAC";
-	const FIDString kPlatformStringIOS = "IOS";
-	const FIDString kPlatformStringLinux = "Linux";
+    const FIDString kPlatformStringWin = "WIN";
+    const FIDString kPlatformStringMac = "MAC";
+    const FIDString kPlatformStringIOS = "IOS";
+    const FIDString kPlatformStringLinux = "Linux";
 
 
     #if SMTG_OS_WINDOWS
-	const FIDString kPlatformString = kPlatformStringWin;
+    const FIDString kPlatformString = kPlatformStringWin;
     #elif SMTG_OS_IOS
-	const FIDString kPlatformString = kPlatformStringIOS;
+    const FIDString kPlatformString = kPlatformStringIOS;
     #elif SMTG_OS_MACOS
-	const FIDString kPlatformString = kPlatformStringMac;
+    const FIDString kPlatformString = kPlatformStringMac;
     #elif SMTG_OS_LINUX
-	const FIDString kPlatformString = kPlatformStringLinux;
+    const FIDString kPlatformString = kPlatformStringLinux;
     #endif
 
     //------------------------------------------------------------------------
-    /** Coordinates	*/
-	typedef int32 UCoord;
-	static const UCoord kMaxCoord = ((UCoord)0x7FFFFFFF);
-	static const UCoord kMinCoord = ((UCoord)-0x7FFFFFFF);
-}	// namespace Steinberg
+    /** Coordinates */
+    typedef int32 UCoord;
+    static const UCoord kMaxCoord = ((UCoord)0x7FFFFFFF);
+    static const UCoord kMinCoord = ((UCoord)-0x7FFFFFFF);
+}   // namespace Steinberg
 
 
 //----------------------------------------------------------------------------
@@ -127,30 +126,30 @@ t = p[2]; p[2] = p[5]; p[5] = t; t = p[3]; p[3] = p[4]; p[4] = t;}
 
 namespace Steinberg
 {
-	static inline void FSwap (int8&) {}
-	static inline void FSwap (uint8&) {}
-	static inline void FSwap (int16& i16) { SWAP_16 (i16) }
-	static inline void FSwap (uint16& i16) { SWAP_16 (i16) }
-	static inline void FSwap (int32& i32) { SWAP_32 (i32) }
-	static inline void FSwap (uint32& i32) { SWAP_32 (i32) }
-	static inline void FSwap (int64& i64) { SWAP_64 (i64) }
-	static inline void FSwap (uint64& i64) { SWAP_64 (i64) }
+    static inline void FSwap (int8&) {}
+    static inline void FSwap (uint8&) {}
+    static inline void FSwap (int16& i16) { SWAP_16 (i16) }
+    static inline void FSwap (uint16& i16) { SWAP_16 (i16) }
+    static inline void FSwap (int32& i32) { SWAP_32 (i32) }
+    static inline void FSwap (uint32& i32) { SWAP_32 (i32) }
+    static inline void FSwap (int64& i64) { SWAP_64 (i64) }
+    static inline void FSwap (uint64& i64) { SWAP_64 (i64) }
 }
 
 // always inline macros (only when RELEASE is 1)
 //----------------------------------------------------------------------------
 #if RELEASE
 #if SMTG_OS_MACOS || SMTG_OS_LINUX
-#define SMTG_ALWAYS_INLINE	__inline__ __attribute__((__always_inline__))
+#define SMTG_ALWAYS_INLINE  __inline__ __attribute__((__always_inline__))
 #define SMTG_NEVER_INLINE __attribute__((noinline))
 #elif SMTG_OS_WINDOWS
-#define SMTG_ALWAYS_INLINE	__forceinline
+#define SMTG_ALWAYS_INLINE  __forceinline
 #define SMTG_NEVER_INLINE __declspec(noinline)
 #endif
 #endif
 
 #ifndef SMTG_ALWAYS_INLINE
-#define SMTG_ALWAYS_INLINE	inline
+#define SMTG_ALWAYS_INLINE  inline
 #endif
 #ifndef SMTG_NEVER_INLINE
 #define SMTG_NEVER_INLINE
@@ -170,54 +169,50 @@ namespace Steinberg
 static immutable string kVstVersionString = "VST 3.6.11";
 
 /+
-#define kVstVersionMajor	3
-#define kVstVersionMinor	6
-#define kVstVersionSub		11
+#define kVstVersionMajor    3
+#define kVstVersionMinor    6
+#define kVstVersionSub      11
 
 // this allows to write things like: #if VST_VERSION >= 0x030500 // note that 3.10.0 is 0x030a00
 #define VST_VERSION ((kVstVersionMajor << 16) | (kVstVersionMinor << 8) | kVstVersionSub)
++/
 
-//------------------------------------------------------------------------
-/** \defgroup vst3typedef VST 3 Data Types
-*/
-/*@{*/
-//------------------------------------------------------------------------
-// String Types
-//------------------------------------------------------------------------
-typedef char16 TChar;			///< UTF-16 character
-typedef TChar String128[128];	///< 128 character UTF-16 string
-typedef const char8* CString;	///< C-String
+alias TChar = char16;           ///< UTF-16 character
+alias String128 = TChar[128];   ///< 128 character UTF-16 string
+
+// This conflicts with dplug.core.nogc.CString
+//alias CString = const(char8)* ;   ///< C-String
 
 //------------------------------------------------------------------------
 // General
 //------------------------------------------------------------------------
-typedef int32 MediaType;		///< media type (audio/event)
-+/
+alias MediaType = int; ///< media type (audio/event)
+
 alias BusDirection = int; ///< bus direction (in/out)
-/+
-typedef int32 BusType;			///< bus type (main/aux)
-typedef int32 IoMode;			///< I/O mode (see \ref vst3IoMode)
-typedef int32 UnitID;			///< unit identifier
-typedef double ParamValue;		///< parameter value type
-typedef uint32 ParamID;			///< parameter identifier
-typedef int32 ProgramListID;	///< program list identifier
-typedef int16 CtrlNumber;		///< MIDI controller number (see \ref ControllerNumbers for allowed values)
 
-typedef double TQuarterNotes;	///< time expressed in quarter notes
-typedef int64 TSamples;			///< time expressed in audio samples
+alias BusType = int32;          ///< bus type (main/aux)
+alias IoMode = int32;           ///< I/O mode (see \ref vst3IoMode)
+alias UnitID = int32;           ///< unit identifier
+alias ParamValue = double;      ///< parameter value type
+alias ParamID = uint32;         ///< parameter identifier
+alias ProgramListID = int32;    ///< program list identifier
+alias CtrlNumber = int16;       ///< MIDI controller number (see \ref ControllerNumbers for allowed values)
 
-typedef uint32 ColorSpec;		///< color defining by 4 component ARGB value (Alpha/Red/Green/Blue)
+alias TQuarterNotes = double;   ///< time expressed in quarter notes
+alias TSamples = int64;         ///< time expressed in audio samples
+
+alias ColorSpec = uint32;       ///< color defining by 4 component ARGB value (Alpha/Red/Green/Blue)
 
 //------------------------------------------------------------------------
-static const ParamID kNoParamId = 0xffffffff;	///< default for uninitialized parameter ID
+static const ParamID kNoParamId = 0xffffffff;   ///< default for uninitialized parameter ID
 // static const ParamID kNoParamId = std::numeric_limits<ParamID>::max ();
-+/
+
 
 //------------------------------------------------------------------------
 // Audio Types
 //------------------------------------------------------------------------
-alias Sample32 = float;				///< 32-bit precision audio sample
-alias Sample64 = double;			///< 64-bit precision audio sample
+alias Sample32 = float;             ///< 32-bit precision audio sample
+alias Sample64 = double;            ///< 64-bit precision audio sample
 
 alias SampleRate = double; ///< sample rate
 
@@ -225,9 +220,54 @@ alias SampleRate = double; ///< sample rate
 //------------------------------------------------------------------------
 // Speaker Arrangements Types
 //------------------------------------------------------------------------
-alias SpeakerArrangement = uint64 ;	///< Bitset of speakers
+alias SpeakerArrangement = uint64 ; ///< Bitset of speakers
 alias Speaker = uint64 ; ///< Bit for one speaker
 
 
 
 
+deprecated enum kLittleEndian = 0;
+deprecated enum kBigEndian = 1;
+
+version(Windows)
+{
+    enum COM_COMPATIBLE = 1;
+}
+else
+{
+    enum COM_COMPATIBLE = 0;
+}
+
+// #pragma pack translation
+// use align(vst3Alignment): inside structs
+version(OSX)
+{
+    static if ((void*).sizeof == 8)
+    {
+        // 64-bit macOS
+        // no need in packing here
+        // MAYDO verify what it means because we shouldn't use align in the first place here
+        enum vst3Alignment = 1;
+    }
+    else
+    {
+        enum vst3Alignment = 1;
+    }
+}
+else version(Windows)
+{
+    static if ((void*).sizeof == 8)
+    {
+        // no need in packing here
+        // MAYDO verify what it means because we shouldn't use align in the first place here
+        enum vst3Alignment = 16;
+    }
+    else
+    {
+        enum vst3Alignment = 8;
+    }
+}
+else
+{
+    enum vst3Alignment = 0;
+}
