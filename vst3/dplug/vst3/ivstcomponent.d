@@ -67,7 +67,9 @@ This is the structure used with getBusInfo, informing the host about what is a s
 \n See also: IComponent::getBusInfo */
 struct BusInfo
 {
-    align(vst3Alignment):
+nothrow:
+@nogc:
+//align(vst3Alignment):
 
     MediaType mediaType;    ///< Media type - has to be a value of \ref MediaTypes
     BusDirection direction; ///< input or output \ref BusDirections
@@ -81,6 +83,14 @@ struct BusInfo
     enum BusFlags
     {
         kDefaultActive = 1 << 0 ///< bus active per default
+    }
+
+    void setName(wstring newName)
+    {
+        name[] = '\0';
+        int len = cast(int)(newName.length);
+        if (len > 127) len = 127;
+        name[0..len] = newName[0..len];
     }
 }
 
@@ -100,7 +110,7 @@ relation of an event-input-channel to an audio-output-bus in particular is of in
 \n See also: IComponent::getRoutingInfo, \ref vst3Routing */
 struct RoutingInfo
 {
-    align(vst3Alignment):
+//    align(vst3Alignment):
 
     MediaType mediaType;    ///< media type see \ref MediaTypes
     int32 busIndex;         ///< bus index

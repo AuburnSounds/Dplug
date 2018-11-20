@@ -129,7 +129,7 @@ enum uint kInfiniteTail = uint.max;
 \see IAudioProcessor::setupProcessing */
 struct ProcessSetup
 {
-    align(vst3Alignment):
+//    align(vst3Alignment):
     int32 processMode;          ///< \ref ProcessModes
     int32 symbolicSampleSize;   ///< \ref SymbolicSampleSizes
     int32 maxSamplesPerBlock;   ///< maximum number of samples per audio block
@@ -152,7 +152,7 @@ This structure contains the processing buffer for each channel of an audio bus.
 \see ProcessData */
 struct AudioBusBuffers
 {
-    align(vst3Alignment):
+//    align(vst3Alignment):
 
     int32 numChannels = 0;      ///< number of audio channels in bus
     uint64 silenceFlags = 0;    ///< Bitset of silence state per channel
@@ -174,7 +174,7 @@ alias ProcessContext = void*;//TODO
 \see AudioBusBuffers, IParameterChanges, IEventList, ProcessContext */
 struct ProcessData
 {
-    align(vst3Alignment):
+//    align(vst3Alignment):
 
     int32 processMode = 0;          ///< processing mode - value of \ref ProcessModes
     int32 symbolicSampleSize = kSample32;   ///< sample size - value of \ref SymbolicSampleSizes

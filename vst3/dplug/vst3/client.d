@@ -39,6 +39,7 @@ module dplug.vst3.client;
 import core.atomic;
 
 import dplug.core.nogc;
+import dplug.core.vec;
 import dplug.core.runtime;
 import dplug.vst3.ftypes;
 import dplug.vst3.funknown;
@@ -95,42 +96,42 @@ nothrow:
         int maxOutputs = _client.maxOutputs();
         bool receivesMIDI = _client.receivesMIDI();
 
-        _audioInputs = makeVec!BusInfo;
-        _audioOutputs = makeVec!BusInfo;
-        _eventInputs = makeVec!BusInfo;
+        _audioInputs = makeVec!Bus;
+        _audioOutputs = makeVec!Bus;
+        _eventInputs = makeVec!Bus;
 
         if (maxInputs)
         {
             Bus busAudioIn;
             busAudioIn.active = false;
-            busAudioIn.speakerArrangement = kStereo; // TODO right arrangement for input audio
+            busAudioIn.speakerArrangement = 3; // TODO right arrangement for input audio
             with(busAudioIn.info)
             {
                 mediaType = kAudio;
                 direction = kInput;
                 channelCount = maxInputs;
-                name = "Audio Input"w;
+                setName("Audio Input"w);
                 busType = kMain;
                 uint32 flags = BusInfo.BusFlags.kDefaultActive;
             }
-            _audioInputs.push_Back(busAudioIn);
+            _audioInputs.pushBack(busAudioIn);
         }
 
         if (maxOutputs)
         {
             Bus busAudioOut;
             busAudioOut.active = false;
-            busAudioOut.speakerArrangement = kStereo; // TODO right arrangement for output audio
+            busAudioOut.speakerArrangement = 3; // TODO right arrangement for output audio
             with(busAudioOut.info)
             {
                 mediaType = kAudio;
                 direction = kOutput;
                 channelCount = maxInputs;
-                name = "Audio Output"w;
+                setName("Audio Output"w);
                 busType = kMain;
                 uint32 flags = BusInfo.BusFlags.kDefaultActive;
             }
-            _audioOutputs.push_Back(busAudioOut);
+            _audioOutputs.pushBack(busAudioOut);
         }
 
         if (receivesMIDI)
@@ -143,11 +144,11 @@ nothrow:
                 mediaType = kEvent;
                 direction = kInput;
                 channelCount = 1;
-                name = "MIDI Input"w;
+                setName("MIDI Input"w);
                 busType = kMain;
                 uint32 flags = BusInfo.BusFlags.kDefaultActive;
             }
-            _eventInputs.push_Back(busEventsIn);
+            _eventInputs.pushBack(busEventsIn);
         }
 
         return kResultOk;
@@ -157,8 +158,6 @@ nothrow:
     cleanups. You have to release all references to any host application interfaces. */
 	override tresult terminate()
     {
-        _audioInputs.();
-        removeAllBusses ();
         return kResultOk;
     }
 
@@ -181,7 +180,7 @@ nothrow:
         Vec!Bus* busList = getBusList(type, dir);
         if (busList is null)
             return 0;
-        return cast(int)( *busList.length );
+        return cast(int)( busList.length );
     }
 
     override tresult getBusInfo (MediaType type, BusDirection dir, int32 index, ref BusInfo bus /*out*/)
@@ -191,7 +190,7 @@ nothrow:
             return kInvalidArgument;
         if (index >= busList.length)
             return kResultFalse;
-        bus = busList[index].info;
+        bus = (*busList)[index].info;
         return kResultTrue;
     }
 
@@ -208,7 +207,7 @@ nothrow:
             return kInvalidArgument;
         if (index >= busList.length)
             return kResultFalse;
-        busList[index].active = (state != 0);
+        (*busList)[index].active = (state != 0);
         return kResultTrue;
     }
 
@@ -263,8 +262,8 @@ nothrow:
         Vec!Bus* busList = getBusList(kAudio, dir);
         if (busList is null || index >= cast(int)(busList.length))
             return kInvalidArgument;
-        arr = busList[index].speakerArrangement;
-        return kResultTrue;;
+        arr = (*busList)[index].speakerArrangement;
+        return kResultTrue;
     }
 
     override tresult canProcessSampleSize (int32 symbolicSampleSize)
@@ -283,12 +282,10 @@ nothrow:
     {
         ScopedForeignCallback!(false, true) scopedCallback;
         scopedCallback.enter();
-
         atomicStore(_sampleRateHostPOV, setup.sampleRate);
         atomicStore(_maxSamplesPerBlockHostPOV, setup.maxSamplesPerBlock);
-
-        // TODO setup input and output?
-
+        if (setup.symbolicSampleSize != kSample32)
+            return kResultFalse;
         return kResultOk;
     }
 
@@ -310,11 +307,11 @@ nothrow:
         bool sampleRateChanged = (newSampleRate != _sampleRateDSPPOV);
         bool maxSamplesChanged = (newMaxSamplesPerBlock != _maxSamplesPerBlockDSPPOV);
 
-        if (shouldReinit || sampleRateChanged)
+        if (shouldReinit || sampleRateChanged || maxSamplesChanged)
         {
             _sampleRateDSPPOV = newSampleRate;
             _maxSamplesPerBlockDSPPOV = newMaxSamplesPerBlock;
-            _client.resetFromHost(_sampleRateDSPPOV, _maxSamplesPerBlockDSPPOV, 2, 2);//int numInputs, int numOutputs);
+            _client.resetFromHost(_sampleRateDSPPOV, _maxSamplesPerBlockDSPPOV, 2, 2); // TODO
         }
 
         // TODO call processFromHost
