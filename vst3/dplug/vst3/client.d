@@ -282,7 +282,7 @@ nothrow:
     {
         ScopedForeignCallback!(false, true) scopedCallback;
         scopedCallback.enter();
-        atomicStore(_sampleRateHostPOV, setup.sampleRate);
+        atomicStore(_sampleRateHostPOV, cast(float)(setup.sampleRate));
         atomicStore(_maxSamplesPerBlockHostPOV, setup.maxSamplesPerBlock);
         if (setup.symbolicSampleSize != kSample32)
             return kResultFalse;
