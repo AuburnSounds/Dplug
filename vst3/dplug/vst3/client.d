@@ -45,16 +45,18 @@ import dplug.vst3.ftypes;
 import dplug.vst3.funknown;
 import dplug.vst3.fplatform;
 import dplug.vst3.ivstaudioprocessor;
+import dplug.vst3.ivsteditcontroller;
+import dplug.vst3.iplugview;
 import dplug.vst3.ivstcomponent;
 import dplug.vst3.ipluginbase;
+import dplug.vst3.fstrdefs;
 import dplug.vst3.ibstream;
 
 import dplug.client.client;
+import dplug.client.params;
 
 // TODO: implement more interfaces 
 //     * ComponentBase,
-//     * IEditController,
-//     * IEditController2
 // TODO: call IComponentHandler::restartComponent (kLatencyChanged) after a latency change
 // TODO buffer split
 // Note: assumes shared memory
@@ -165,7 +167,7 @@ nothrow:
 
     override tresult getControllerClassId (TUID* classId)
     {
-        // TODO
+        // No need to implement since we "did not succeed to separate component from controller"
         return kNotImplemented;
     }
 
@@ -361,9 +363,9 @@ nothrow:
         Parameter param = _client.param(paramIndex);
        
         info.id = convertParamIndexToParamID(paramIndex);
-        str8ToStr16(info.title, param.name, 128);
-        str8ToStr16(info.shortTitle, param.name(), 128);
-        str8ToStr16(info.units, param.label(), 128);
+        str8ToStr16(info.title.ptr, param.name, 128);
+        str8ToStr16(info.shortTitle.ptr, param.name(), 128);
+        str8ToStr16(info.units.ptr, param.label(), 128);
         info.stepCount = 0; // continuous
         info.defaultNormalizedValue = param.getNormalizedDefault();
         info.unitId = 0; // root, TODO understand what "units" are for
@@ -391,35 +393,84 @@ nothrow:
         if (!_client.isValidParamIndex(paramIndex))
             return kResultFalse;
         Parameter param = _client.param(paramIndex);
-        // TODO convert from UTF-16 to UTF-8
-        if (param.normalizedValueFromString( bufgvalueNormalized, buf.ptr, 128);
-        str8ToStr16(string_.ptr, buf.ptr, 128);
-        return kResultTrue;
+
+        char[128] valueUTF8;
+        int len = 0;
+        for(int i = 0; i < 128; ++i)
+        {
+            // Note: no surrogates supported in this UTF-16 to UTF8 conversion
+            valueUTF8[i] = cast(char)string_[i];
+            if (!string_[i])
+                break;
+            else
+                len++;
+        }
+        if (param.normalizedValueFromString( valueUTF8[0..len], valueNormalized))
+            return kResultTrue;
+        else
+            return kResultFalse;
     }
 
     /** Returns for a given paramID and a normalized value its plain representation
     (for example 90 for 90db - see \ref vst3AutomationIntro). */
-    ParamValue normalizedParamToPlain (ParamID id, ParamValue valueNormalized);
+    ParamValue normalizedParamToPlain (ParamID id, ParamValue valueNormalized)
+    {
+        // TODO: correct thing to do? SDK examples expose remapped integers and floats
+        int paramIndex = convertParamIDToParamIndex(id);
+        if (!_client.isValidParamIndex(paramIndex))
+            return 0;
+        Parameter param = _client.param(paramIndex);
+        return valueNormalized; // Note: the host don't need to know we do not deal with normalized values internally
+    }
 
     /** Returns for a given paramID and a plain value its normalized value. (see \ref vst3AutomationIntro) */
-    ParamValue plainParamToNormalized (ParamID id, ParamValue plainValue);
+    ParamValue plainParamToNormalized (ParamID id, ParamValue plainValue)
+    {
+        // TODO: correct thing to do? SDK examples expose remapped integers and floats
+        int paramIndex = convertParamIDToParamIndex(id);
+        if (!_client.isValidParamIndex(paramIndex))
+            return 0;
+        Parameter param = _client.param(paramIndex);
+        return plainValue; // Note: the host don't need to know we do not deal with normalized values internally
+    }
 
     /** Returns the normalized value of the parameter associated to the paramID. */
-    ParamValue getParamNormalized (ParamID id);
+    ParamValue getParamNormalized (ParamID id)
+    {
+        int paramIndex = convertParamIDToParamIndex(id);
+        if (!_client.isValidParamIndex(paramIndex))
+            return 0;
+        Parameter param = _client.param(paramIndex);
+        return param.getForHost();
+    }
 
     /** Sets the normalized value to the parameter associated to the paramID. The controller must never
     pass this value-change back to the host via the IComponentHandler. It should update the according
     GUI element(s) only!*/
-    tresult setParamNormalized (ParamID id, ParamValue value);
+    tresult setParamNormalized (ParamID id, ParamValue value)
+    {
+        int paramIndex = convertParamIDToParamIndex(id);
+        if (!_client.isValidParamIndex(paramIndex))
+            return kResultFalse;
+        Parameter param = _client.param(paramIndex);
+        param.setFromHost(value);
+        return kResultTrue;
+    }
 
-    // handler ----------------------------
     /** Gets from host a handler. */
-    tresult setComponentHandler (IComponentHandler* handler);
+    tresult setComponentHandler (IComponentHandler* handler)
+    {
+        // TODO: keep a reference on it
+        return kNotImplemented;
+    }
 
-    // view -------------------------------
+    // view
     /** Creates the editor view of the Plug-in, currently only "editor" is supported, see \ref ViewType.
     The life time of the editor view will never exceed the life time of this controller instance. */
-    IPlugView createView (FIDString name);
+    IPlugView createView (FIDString name)
+    {
+        return null; // TODO
+    }
 
 
 private:
