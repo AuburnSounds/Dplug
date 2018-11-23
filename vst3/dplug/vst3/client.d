@@ -37,6 +37,7 @@
 module dplug.vst3.client;
 
 import core.atomic;
+import core.stdc.stdlib: free;
 
 import dplug.core.nogc;
 import dplug.core.vec;
@@ -46,6 +47,7 @@ import dplug.vst3.funknown;
 import dplug.vst3.fplatform;
 import dplug.vst3.ivstaudioprocessor;
 import dplug.vst3.ivsteditcontroller;
+import dplug.vst3.ihostapplication;
 import dplug.vst3.iplugview;
 import dplug.vst3.ivstcomponent;
 import dplug.vst3.ipluginbase;
@@ -93,6 +95,8 @@ nothrow:
     If the method does NOT return kResultOk, the object is released immediately. In this case terminate is not called! */
 	override tresult initialize(FUnknown context)
     {
+        setHostApplication(context);
+
         // Create buses
         int maxInputs = _client.maxInputs();
         int maxOutputs = _client.maxOutputs();
@@ -160,6 +164,11 @@ nothrow:
     cleanups. You have to release all references to any host application interfaces. */
 	override tresult terminate()
     {
+        if (_hostApplication !is null)
+        {
+            _hostApplication.release();
+            _hostApplication = null;
+        }
         return kResultOk;
     }
 
@@ -219,13 +228,13 @@ nothrow:
         return kResultOk;
     }
 
-    override tresult setState (IBStream state)
+    override tresult setStateController (IBStream state)
     {
         // TODO deserialize
         return kNotImplemented;
     }
 
-    override tresult getState (IBStream state)
+    override tresult getStateController (IBStream state)
     {
         // TODO serialize
         return kNotImplemented;
@@ -329,25 +338,61 @@ nothrow:
 
     // Implements IEditController
 
-    tresult setComponentState (IBStream* state)
+    override tresult setComponentState (IBStream state)
     {
         // TODO
         // Why duplicate?
         return kNotImplemented;
     }
 
-    tresult setState (IBStream* state)
+    override tresult setState(IBStream state)
     {
-        // TODO
-        // Why duplicate?
-        return kNotImplemented;
+        int size;
+
+        // Try to use 
+
+        // Try to find current position with seeking to the end
+        {
+            long curPos;
+            if (state.tell(&curPos) != kResultOk)
+                return kResultFalse;
+
+            long newPos;
+            if (state.seek(0, IBStream.kIBSeekEnd, &newPos) != kResultOk)
+                return kResultFalse;
+
+            size = cast(int)(newPos - curPos);
+
+            if (state.seek(curPos, IBStream.kIBSeekSet, null) != kResultOk)
+                return kResultFalse;
+        }
+
+        ubyte[] chunk = mallocSlice!ubyte(size);
+        scope(exit) chunk.freeSlice();
+
+        int bytesRead;
+        if (state.read (chunk.ptr, size, &bytesRead) != kResultOk)
+            return kResultFalse;
+
+        try
+        {
+            auto presetBank = _client.presetBank();
+            presetBank.loadStateChunk(chunk);
+            return kResultTrue;
+        }
+        catch(Exception e)
+        {
+            e.destroyFree();
+            return kResultFalse;
+        }
     }
 
-    tresult getState (IBStream* state)
+    override tresult getState(IBStream state)
     {
-        // TODO
-        // Why duplicate?
-        return kNotImplemented;
+        auto presetBank = _client.presetBank();
+        ubyte[] chunk = presetBank.getStateChunkFromCurrentState();
+        scope(exit) free(chunk.ptr);
+        return state.write(chunk.ptr, cast(int)(chunk.length), null);
     }
 
     int32 getParameterCount()
@@ -509,6 +554,29 @@ private:
             if (dir == kOutput) return &_eventOutputs;
         }
         return null;
+    }
+
+    // host application reference
+    IHostApplication _hostApplication = null;
+
+    void setHostApplication(FUnknown context)
+    {
+        IHostApplication hostApplication = null;
+        if (context.queryInterface(IHostApplicatio.iid.toTUID, cast(void**)(&hostApplication)) != kResultOk)
+            hostApplication = null;
+
+        // clean-up _hostApplication former if any
+        if (_hostApplication !is null)
+        {
+            _hostApplication.release();
+            _hostApplication = null;
+        }
+
+        if (hostApplication !is null)
+        {
+            hostApplication.addRef();
+            _hostApplication = hostApplication;
+        }
     }
 }
 

@@ -147,9 +147,10 @@ IPluginFactory GetPluginFactoryInternal(ClientClass)()
 // must return a IAudioProcessor
 extern(Windows) FUnknown createVST3Client(ClientClass)(void* hostInterface) nothrow @nogc
 {
+    // Note: hostInterface is ignored in VST3 examples
     ScopedForeignCallback!(false, true) scopedCallback;
     scopedCallback.enter();
     ClientClass client = mallocNew!ClientClass();
     VST3Client plugin = mallocNew!VST3Client(client, cast(FUnknown) hostInterface);
-    return /*cast(IAudioProcessor)*/plugin;
+    return plugin;
 }

@@ -125,13 +125,13 @@ nothrow:
 @nogc:
 
     /** Receives the component state. */
-    tresult setComponentState (IBStream* state);
+    tresult setComponentState (IBStream state);
 
     /** Sets the controller state. */
-    tresult setState (IBStream* state);
+    tresult setStateController (IBStream state); // Note: renamed to disambiguate with IVstComponent.setState
 
     /** Gets the controller state. */
-    tresult getState (IBStream* state);
+    tresult getStateController (IBStream state); // Note: renamed to disambiguate with IVstComponent.getState
 
     // parameters -------------------------
     /** Returns the number of parameters exported. */
