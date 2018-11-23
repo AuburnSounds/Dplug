@@ -38,8 +38,16 @@ module dplug.vst3.client;
 
 import core.atomic;
 import core.stdc.stdlib: free;
+import core.stdc.string: strcmp;
+
+import dplug.window.window;
+
+import dplug.client.client;
+import dplug.client.params;
+import dplug.client.graphics;
 
 import dplug.core.nogc;
+import dplug.core.sync;
 import dplug.core.vec;
 import dplug.core.runtime;
 import dplug.vst3.ftypes;
@@ -53,9 +61,6 @@ import dplug.vst3.ivstcomponent;
 import dplug.vst3.ipluginbase;
 import dplug.vst3.fstrdefs;
 import dplug.vst3.ibstream;
-
-import dplug.client.client;
-import dplug.client.params;
 
 // TODO: implement more interfaces 
 //     * ComponentBase,
@@ -514,7 +519,7 @@ nothrow:
     The life time of the editor view will never exceed the life time of this controller instance. */
     IPlugView createView (FIDString name)
     {
-        return null; // TODO
+        return mallocNew!DplugView(this);
     }
 
 
@@ -562,7 +567,7 @@ private:
     void setHostApplication(FUnknown context)
     {
         IHostApplication hostApplication = null;
-        if (context.queryInterface(IHostApplicatio.iid.toTUID, cast(void**)(&hostApplication)) != kResultOk)
+        if (context.queryInterface(IHostApplication.iid.toTUID, cast(void**)(&hostApplication)) != kResultOk)
             hostApplication = null;
 
         // clean-up _hostApplication former if any
@@ -593,4 +598,173 @@ int convertParamIndexToParamID(int index)
 int convertParamIDToParamIndex(int index)
 {
     return index;
+}
+
+class DplugView : IPlugView
+{
+public:
+nothrow:
+@nogc:
+
+    this(VST3Client vst3Client)
+    {
+        _vst3Client = vst3Client;
+        _graphicsMutex = makeMutex();
+    }
+
+    ~this()
+    {
+    }
+
+    // Implements FUnknown
+    mixin QUERY_INTERFACE_SPECIAL_CASE_IUNKNOWN!(IPlugView);
+    mixin IMPLEMENT_REFCOUNT;
+
+    // IPlugView
+
+    /** Is Platform UI Type supported
+    \param type : IDString of \ref platformUIType */
+    // MAYDO: there is considerable coupling with dplug:window here.
+    override tresult isPlatformTypeSupported (FIDString type)
+    {
+        WindowBackend backend;
+        if (convertPlatformToWindowBackend(type, &backend))
+            return isWindowBackendSupported(backend) ? kResultTrue : kResultFalse;
+        return kResultFalse;
+    }
+
+    /** The parent window of the view has been created, the (platform) representation of the view
+    should now be created as well.
+    Note that the parent is owned by the caller and you are not allowed to alter it in any way
+    other than adding your own views.
+    Note that in this call the Plug-in could call a IPlugFrame::resizeView ()!
+    \param parent : platform handle of the parent window or view
+    \param type : \ref platformUIType which should be created */
+    tresult attached (void* parent, FIDString type)
+    {
+        WindowBackend backend = WindowBackend.autodetect;
+        convertPlatformToWindowBackend(type, &backend);        
+        if (_vst3Client._client.hasGUI() )
+        {
+            _graphicsMutex.lock();
+            scope(exit) _graphicsMutex.unlock();
+            _vst3Client._client.openGUI(parent, null, cast(GraphicsBackend)backend);
+        }
+        return kResultOk;
+    }
+
+    /** The parent window of the view is about to be destroyed.
+    You have to remove all your own views from the parent window or view. */
+    tresult removed ()
+    {
+        if (_vst3Client._client.hasGUI() )
+        {
+            _graphicsMutex.lock();
+            scope(exit) _graphicsMutex.unlock();
+            _vst3Client._client.closeGUI();
+        }
+        return kResultOk;
+    }
+
+    /** Handling of mouse wheel. */
+    tresult onWheel (float distance)
+    {
+        return kResultFalse;
+    }
+
+    /** Handling of keyboard events : Key Down.
+    \param key : unicode code of key
+    \param keyCode : virtual keycode for non ascii keys - see \ref VirtualKeyCodes in keycodes.h
+    \param modifiers : any combination of modifiers - see \ref KeyModifier in keycodes.h
+    \return kResultTrue if the key is handled, otherwise kResultFalse. \n
+    <b> Please note that kResultTrue must only be returned if the key has really been
+    handled. </b> Otherwise key command handling of the host might be blocked! */
+    tresult onKeyDown (char16 key, int16 keyCode, int16 modifiers)
+    {
+        return kResultFalse;
+    }
+
+    /** Handling of keyboard events : Key Up.
+    \param key : unicode code of key
+    \param keyCode : virtual keycode for non ascii keys - see \ref VirtualKeyCodes in keycodes.h
+    \param modifiers : any combination of KeyModifier - see \ref KeyModifier in keycodes.h
+    \return kResultTrue if the key is handled, otherwise return kResultFalse. */
+    tresult onKeyUp (char16 key, int16 keyCode, int16 modifiers)
+    {
+        return kResultFalse;
+    }
+
+    /** Returns the size of the platform representation of the view. */
+    tresult getSize (ViewRect* size)
+    {
+        _graphicsMutex.lock();
+        scope(exit) _graphicsMutex.unlock();
+
+        int w, h;
+        if (_vst3Client._client.getGUISize(&w, &h))
+        {
+            size.left = 0;
+            size.top = 0;
+            size.right = w;
+            size.bottom = h;
+            return kResultTrue;
+        }
+        return kResultFalse;        
+    }
+
+    /** Resizes the platform representation of the view to the given rect. Note that if the Plug-in
+    *  requests a resize (IPlugFrame::resizeView ()) onSize has to be called afterward. */
+    tresult onSize (ViewRect* newSize)
+    {
+        return kResultOk;
+    }
+
+    /** Focus changed message. */
+    tresult onFocus (TBool state)
+    {
+        return kResultOk;
+    }
+
+    /** Sets IPlugFrame object to allow the Plug-in to inform the host about resizing. */
+    tresult setFrame (IPlugFrame frame)
+    {
+        return kResultOk;
+    }
+
+    /** Is view sizable by user. */
+    tresult canResize ()
+    {
+        return kResultFalse;
+    }
+
+    /** On live resize this is called to check if the view can be resized to the given rect, if not
+    *  adjust the rect to the allowed size. */
+    tresult checkSizeConstraint (ViewRect* rect)
+    {
+        return kResultTrue;
+    }
+
+private:
+    VST3Client _vst3Client;
+    UncheckedMutex _graphicsMutex;
+
+    static bool convertPlatformToWindowBackend(FIDString type, WindowBackend* backend)
+    {
+        if (strcmp(type, kPlatformTypeHWND.ptr) == 0)
+        {
+            *backend = WindowBackend.win32;
+            return true;
+        }
+        if (strcmp(type, kPlatformTypeNSView.ptr) == 0)
+        {
+            *backend = WindowBackend.cocoa;
+            return true;
+        }
+        if (strcmp(type, kPlatformTypeX11EmbedWindowID.ptr) == 0)
+        {
+            *backend = WindowBackend.x11;
+            return true;
+        }
+        return false;
+    }
 }

@@ -109,7 +109,8 @@
             "sourcePaths": [ "vst3/dplug/vst3" ],
             "importPaths": [ "vst3" ],
             "dependencies": {
-                "dplug:client": "*"
+                "dplug:client": "*",
+                "dplug:window": "*"
             }
         },
         {

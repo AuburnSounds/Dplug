@@ -194,6 +194,26 @@ enum WindowBackend
     x11
 }
 
+/// Returns: `true` if that windowing backend is supported on this platform.
+static isWindowBackendSupported(WindowBackend backend) nothrow @nogc
+{
+    version(Windows)
+        return (backend == WindowBackend.win32);
+    else version(OSX)
+    {
+        version(X86_64)
+            return (backend == WindowBackend.cocoa);
+        else version(X86)
+            return (backend == WindowBackend.cocoa) || (backend == WindowBackend.carbon); // Cocoa supported in 32-bit also
+        else
+            static assert(false, "unsupported arch");
+    }
+    else version(linux)
+        return (backend == WindowBackend.x11);
+    else
+        static assert(false, "Unsupported OS");
+}
+
 
 
 /// Factory function to create windows.

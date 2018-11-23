@@ -38,7 +38,6 @@ static assert(ViewRect.sizeof == 16);
 List of Platform UI types for IPlugView. This list is used to match the GUI-System between
 the host and a Plug-in in case that an OS provides multiple GUI-APIs.
 */
-/*@{*/
 /** The parent parameter in IPlugView::attached() is a HWND handle.
  *  You should attach a child window to it. */
 static immutable kPlatformTypeHWND = "HWND"; ///< HWND handle. (Microsoft Windows)
@@ -59,10 +58,6 @@ static immutable kPlatformTypeUIView = "UIView"; ///< UIView pointer. (iOS)
  * You should attach a Window to it that supports the XEmbed extension. */
 static immutable kPlatformTypeX11EmbedWindowID = "X11EmbedWindowID"; ///< X11 Window ID. (X11)
 
-/*@}*/
-//------------------------------------------------------------------------
-
-//------------------------------------------------------------------------
 /**  Plug-in definition of a view.
 \ingroup pluginGUI vstIPlug vst300
 - [plug imp]
@@ -167,11 +162,6 @@ nothrow:
 static immutable TUID IPlugView_iid = INLINE_UID(0x5BC32507, 0xD06049EA, 0xA6151B52, 0x2B755B29);
 
 
-interface IPlugFrame
-{
-}
-
-/+
 /** Callback interface passed to IPlugView.
 \ingroup pluginGUI vstIHost vst300
 - [host imp]
@@ -179,15 +169,16 @@ interface IPlugFrame
 
 Enables a Plug-in to resize the view and cause the host to resize the window.
 */
-class IPlugFrame : public FUnknown
+interface IPlugFrame : FUnknown
 {
 public:
+nothrow:
+@nogc:
     /** Called to inform the host about the resize of a given view.
      *  Afterwards the host has to call IPlugView::onSize (). */
-    virtual tresult PLUGIN_API resizeView (IPlugView* view, ViewRect* newSize) = 0;
-    static const FUID iid;
-};
+    tresult resizeView (IPlugView view, ViewRect* newSize);
 
-DECLARE_CLASS_IID (IPlugFrame, 0x367FAF01, 0xAFA94693, 0x8D4DA2A0, 0xED0882A3)
+    immutable __gshared FUID iid = FUID(IIPlugFrame_iid);
+}
 
-+/
+static immutable TUID IIPlugFrame_iid = INLINE_UID(0x367FAF01, 0xAFA94693, 0x8D4DA2A0, 0xED0882A3);
