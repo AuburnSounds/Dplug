@@ -3,6 +3,11 @@
 //
 // Category    : Interfaces
 // Filename    : pluginterfaces/vst/ivstaudioprocessor.h
+//               pluginterfaces/vst/ivstparameterchanges.h
+//               pluginterfaces/vst/ivstprocessorcontext.h
+//               pluginterfaces/vst/ivstevents.h
+//               pluginterfaces/vst/ivstnoteexpression.h
+//
 // Created by  : Steinberg, 10/2005
 // Description : VST Audio Processing Interfaces
 //
@@ -18,9 +23,6 @@ module dplug.vst3.ivstaudioprocessor;
 import dplug.vst3.fplatform;
 import dplug.vst3.funknown;
 import dplug.vst3.ftypes;
-
-//#include "ivstcomponent.h"
-//#include "vstspeaker.h"
 
 
 immutable string kVstAudioEffectClass = "Audio Module Class";
@@ -163,10 +165,6 @@ struct AudioBusBuffers
     }
 }
 
-alias IParameterChanges = void*; // TODO
-alias IEventList = void*; // TODO
-alias ProcessContext = void*;//TODO
-
 /** Any data needed in audio processing.
     The host prepares AudioBusBuffers for each input/output bus,
     regardless of the bus activation state. Bus buffer indices always match
@@ -184,10 +182,10 @@ struct ProcessData
     AudioBusBuffers* inputs = null;  ///< buffers of input buses
     AudioBusBuffers* outputs = null; ///< buffers of output buses
 
-    IParameterChanges* inputParameterChanges = null;   ///< incoming parameter changes for this block
-    IParameterChanges* outputParameterChanges = null;  ///< outgoing parameter changes for this block (optional)
-    IEventList* inputEvents = null;                ///< incoming events for this block (optional)
-    IEventList* outputEvents = null;               ///< outgoing events for this block (optional)
+    IParameterChanges inputParameterChanges = null;   ///< incoming parameter changes for this block
+    IParameterChanges outputParameterChanges = null;  ///< outgoing parameter changes for this block (optional)
+    IEventList inputEvents = null;                ///< incoming events for this block (optional)
+    IEventList outputEvents = null;               ///< outgoing events for this block (optional)
     ProcessContext* processContext = null;         ///< processing context (optional, but most welcome)
 }
 
@@ -256,47 +254,380 @@ static immutable TUID IAudioProcessor_iid = INLINE_UID(0x42043F99, 0xB7DA453C, 0
 
 
 
-/+
-//------------------------------------------------------------------------
-/** Extended IAudioProcessor interface for a component.
-\ingroup vstIPlug vst310
-- [plug imp]
-- [extends IAudioProcessor]
-- [released: 3.1.0]
+// ivstparameterchanges.h
 
-Inform the Plug-in about how long from the moment of generation/acquiring (from file or from Input)
-it will take for its input to arrive, and how long it will take for its output to be presented (to output or to Speaker).
+//----------------------------------------------------------------------
+/** Queue of changes for a specific parameter.
+\ingroup vstIHost vst300
+- [host imp]
+- [released: 3.0.0]
 
-Note for Input Presentation Latency: when reading from file, the first Plug-in will have an input presentation latency set to zero.
-When monitoring audio input from a Audio Device, then this initial input latency will be the input latency of the Audio Device itself.
+The change queue can be interpreted as segment of an automation curve. For each
+processing block a segment with the size of the block is transmitted to the processor.
+The curve is expressed as sampling points of a linear approximation of
+the original automation curve. If the original already is a linear curve it can
+be transmitted precisely. A non-linear curve has to be converted to a linear
+approximation by the host. Every point of the value queue defines a linear
+section of the curve as a straight line from the previous point of a block to
+the new one. So the Plug-in can calculate the value of the curve for any sample
+position in the block.
 
-Note for Output Presentation Latency: when writing to a file, the last Plug-in will have an output presentation latency set to zero.
-When the output of this Plug-in is connected to a Audio Device then this initial output latency will be the output
-latency of the Audio Device itself.
+<b>Implicit Points:</b> \n
+In each processing block the section of the curve for each parameter is transmitted.
+In order to reduce the amount of points, the point at block position 0 can be omitted.
+- If the curve has a slope of 0 over a period of multiple blocks, only one point is
+transmitted for the block where the constant curve section starts. The queue for the following
+blocks will be empty as long as the curve slope is 0.
+- If the curve has a constant slope other than 0 over the period of several blocks, only
+the value for the last sample of the block is transmitted. In this case the last valid point
+is at block position -1. The processor can calculate the value for each sample in the block
+by using a linear interpolation:
+\code
+double x1 = -1; // position of last point related to current buffer
+double y1 = currentParameterValue; // last transmitted value
 
-A value of zero means either no latency or an unknown latency.
+int32 pointTime = 0;
+ParamValue pointValue = 0;
+IParamValueQueue::getPoint (0, pointTime, pointValue);
 
-Each Plug-in adding a latency (returning a none zero value for IAudioProcessor::getLatencySamples) will modify the input 
-presentation latency of the next Plug-ins in the mixer routing graph and will modify the output presentation latency 
-of the previous Plug-ins.
+double x2 = pointTime;
+double y2 = pointValue;
 
-\n
-\image html "iaudiopresentationlatency_usage.png"
-\n
-\see IAudioProcessor
-\see IComponent*/
-//------------------------------------------------------------------------
-class IAudioPresentationLatency: FUnknown
+double slope = (y2 - y1) / (x2 - x1);
+double offset = y1 - (slope * x1);
+
+double curveValue = (slope * bufferTime) + offset; // bufferTime is any position in buffer
+\endcode
+
+<b>Jumps:</b> \n
+A jump in the automation curve has to be transmitted as two points: one with the
+old value and one with the new value at the next sample position.
+
+\image html "automation.jpg"
+\see IParameterChanges, ProcessData
+*/
+interface IParamValueQueue: FUnknown
 {
 public:
-    //------------------------------------------------------------------------
-    /** Informs the Plug-in about the Audio Presentation Latency in samples for a given direction (kInput/kOutput) and bus index. */
-    virtual tresult PLUGIN_API setAudioPresentationLatencySamples (BusDirection dir, int32 busIndex, uint32 latencyInSamples) = 0;
+nothrow:
+@nogc:
+	/** Returns its associated ID. */
+	ParamID getParameterId ();
 
-    //------------------------------------------------------------------------
-    static const FUID iid;
-};
+	/** Returns count of points in the queue. */
+	int32 getPointCount ();
 
-DECLARE_CLASS_IID (IAudioPresentationLatency, 0x309ECE78, 0xEB7D4fae, 0x8B2225D9, 0x09FD08B6)
+	/** Gets the value and offset at a given index. */
+	tresult getPoint (int32 index, ref int32 sampleOffset /*out*/, ref ParamValue value /*out*/);
 
-+/
+	/** Adds a new value at the end of the queue, its index is returned. */
+	tresult addPoint (int32 sampleOffset, ParamValue value, ref int32 index /*out*/);
+
+    __gshared immutable FUID iid = FUID(IParamValueQueue_iid);
+}
+
+static immutable TUID IParamValueQueue_iid = INLINE_UID(0x01263A18, 0xED074F6F, 0x98C9D356, 0x4686F9BA);
+
+
+//----------------------------------------------------------------------
+/** All parameter changes of a processing block.
+\ingroup vstIHost vst300
+- [host imp]
+- [released: 3.0.0]
+
+This interface is used to transmit any changes that shall be applied to parameters
+in the current processing block. A change can be caused by GUI interaction as
+well as automation. They are transmitted as a list of queues (IParamValueQueue)
+containing only queues for parameters that actually did change.
+\see IParamValueQueue, ProcessData */
+//----------------------------------------------------------------------
+interface IParameterChanges: FUnknown
+{
+public:
+nothrow:
+@nogc:
+	/** Returns count of Parameter changes in the list. */
+	int32 getParameterCount () ;
+
+	/** Returns the queue at a given index. */
+	IParamValueQueue* getParameterData (int32 index);
+
+	/** Adds a new parameter queue with a given ID at the end of the list,
+	returns it and its index in the parameter changes list. */
+	IParamValueQueue* addParameterData (ref const(ParamID) id, ref int32 index /*out*/);
+
+	__gshared immutable FUID iid = FUID(IParameterChanges_iid);
+}
+
+static immutable TUID IParameterChanges_iid = INLINE_UID(0xA4779663, 0x0BB64A56, 0xB44384A8, 0x466FEB9D);
+
+
+
+
+// ivstprocesscontext.h
+
+/** Audio processing context.
+For each processing block the host provides timing information and
+musical parameters that can change over time. For a host that supports jumps
+(like cycle) it is possible to split up a processing block into multiple parts in
+order to provide a correct project time inside of every block, but this behaviour
+is not mandatory. Since the timing will be correct at the beginning of the next block
+again, a host that is dependent on a fixed processing block size can choose to neglect
+this problem.
+\see IAudioProcessor, ProcessData*/
+struct ProcessContext
+{
+    //version(vst3Alignment):
+    /** Transport state & other flags */
+    alias StatesAndFlags = int;
+    enum : StatesAndFlags
+    {
+        kPlaying          = 1 << 1,     ///< currently playing
+        kCycleActive      = 1 << 2,     ///< cycle is active
+        kRecording        = 1 << 3,     ///< currently recording
+
+        kSystemTimeValid  = 1 << 8,     ///< systemTime contains valid information
+        kContTimeValid    = 1 << 17,    ///< continousTimeSamples contains valid information
+
+        kProjectTimeMusicValid = 1 << 9,///< projectTimeMusic contains valid information
+        kBarPositionValid = 1 << 11,    ///< barPositionMusic contains valid information
+        kCycleValid       = 1 << 12,    ///< cycleStartMusic and barPositionMusic contain valid information
+
+        kTempoValid       = 1 << 10,    ///< tempo contains valid information
+        kTimeSigValid     = 1 << 13,    ///< timeSigNumerator and timeSigDenominator contain valid information
+        kChordValid       = 1 << 18,    ///< chord contains valid information
+
+        kSmpteValid       = 1 << 14,    ///< smpteOffset and frameRate contain valid information
+        kClockValid       = 1 << 15     ///< samplesToNextClock valid
+    };
+
+    uint32 state;                   ///< a combination of the values from \ref StatesAndFlags
+
+    double sampleRate;              ///< current sample rate (always valid)
+    TSamples projectTimeSamples;    ///< project time in samples (always valid)
+
+    int64 systemTime;               ///< system time in nanoseconds (optional)
+    TSamples continousTimeSamples;  ///< project time, without loop (optional)
+
+    TQuarterNotes projectTimeMusic; ///< musical position in quarter notes (1.0 equals 1 quarter note)
+    TQuarterNotes barPositionMusic; ///< last bar start position, in quarter notes
+    TQuarterNotes cycleStartMusic;  ///< cycle start in quarter notes
+    TQuarterNotes cycleEndMusic;    ///< cycle end in quarter notes
+
+    double tempo;                   ///< tempo in BPM (Beats Per Minute)
+    int32 timeSigNumerator;         ///< time signature numerator (e.g. 3 for 3/4)
+    int32 timeSigDenominator;       ///< time signature denominator (e.g. 4 for 3/4)
+
+    Chord chord;                    ///< musical info
+
+    int32 smpteOffsetSubframes;     ///< SMPTE (sync) offset in subframes (1/80 of frame)
+    FrameRate frameRate;            ///< frame rate
+
+    int32 samplesToNextClock;       ///< MIDI Clock Resolution (24 Per Quarter Note), can be negative (nearest)
+}
+
+struct FrameRate
+{
+    //version(vst3Alignment):
+
+    enum FrameRateFlags
+    {
+        kPullDownRate = 1 << 0, ///< for ex. HDTV: 23.976 fps with 24 as frame rate
+        kDropRate     = 1 << 1  ///< for ex. 29.97 fps drop with 30 as frame rate
+    };
+    uint32 framesPerSecond;     ///< frame rate
+    uint32 flags;               ///< flags #FrameRateFlags
+}
+
+/** Description of a chord.
+A chord is described with a key note, a root note and the
+\copydoc chordMask
+\see ProcessContext*/
+
+struct Chord
+{
+    //version(vst3Alignment):
+
+    uint8 keyNote;      ///< key note in chord
+    uint8 rootNote;     ///< lowest note in chord
+
+    /** Bitmask of a chord.
+        1st bit set: minor second; 2nd bit set: major second, and so on. \n
+        There is \b no bit for the keynote (root of the chord) because it is inherently always present. \n
+        Examples:
+        - XXXX 0000 0100 1000 (= 0x0048) -> major chord\n
+        - XXXX 0000 0100 0100 (= 0x0044) -> minor chord\n
+        - XXXX 0010 0100 0100 (= 0x0244) -> minor chord with minor seventh  */
+    int16 chordMask;
+
+    enum Masks {
+        kChordMask = 0x0FFF,    ///< mask for chordMask
+        kReservedMask = 0xF000  ///< reserved for future use
+    }
+}
+
+
+/** Note-on event specific data. Used in \ref Event (union)*/
+struct NoteOnEvent
+{
+    //version(vst3Alignment):
+    int16 channel;			///< channel index in event bus
+    int16 pitch;			///< range [0, 127] = [C-2, G8] with A3=440Hz
+    float tuning;			///< 1.f = +1 cent, -1.f = -1 cent
+    float velocity;			///< range [0.0, 1.0]
+    int32 length;           ///< in sample frames (optional, Note Off has to follow in any case!)
+    int32 noteId;			///< note identifier (if not available then -1)
+}
+
+/** Note-off event specific data. Used in \ref Event (union)*/
+struct NoteOffEvent
+{
+    //version(vst3Alignment):
+    int16 channel;			///< channel index in event bus
+    int16 pitch;			///< range [0, 127] = [C-2, G8] with A3=440Hz
+    float velocity;			///< range [0.0, 1.0]
+    int32 noteId;			///< associated noteOn identifier (if not available then -1)
+    float tuning;			///< 1.f = +1 cent, -1.f = -1 cent
+}
+
+/** Data event specific data. Used in \ref Event (union)*/
+struct DataEvent
+{
+    //version(vst3Alignment):
+    uint32 size;			///< size in bytes of the data block bytes
+    uint32 type;			///< type of this data block (see \ref DataTypes)
+    const uint8* bytes;		///< pointer to the data block
+
+    /** Value for DataEvent::type */
+    enum DataTypes
+    {
+        kMidiSysEx = 0		///< for MIDI system exclusive message
+    };
+}
+
+/** PolyPressure event specific data. Used in \ref Event (union)*/
+struct PolyPressureEvent
+{
+    //version(vst3Alignment):
+    int16 channel;			///< channel index in event bus
+    int16 pitch;			///< range [0, 127] = [C-2, G8] with A3=440Hz
+    float pressure;			///< range [0.0, 1.0]
+    int32 noteId;			///< event should be applied to the noteId (if not -1)
+}
+
+/** Chord event specific data. Used in \ref Event (union)*/
+struct ChordEvent
+{
+    //version(vst3Alignment):
+    int16 root;				///< range [0, 127] = [C-2, G8] with A3=440Hz
+    int16 bassNote;			///< range [0, 127] = [C-2, G8] with A3=440Hz
+    int16 mask;				///< root is bit 0
+    uint16 textLen;			///< the number of characters (TChar) between the beginning of text and the terminating
+    ///< null character (without including the terminating null character itself)
+    const TChar* text;		///< UTF-16, null terminated Hosts Chord Name
+}
+
+/** Scale event specific data. Used in \ref Event (union)*/
+struct ScaleEvent
+{
+    //version(vst3Alignment):
+    int16 root;				///< range [0, 127] = root Note/Transpose Factor
+    int16 mask;				///< Bit 0 =  C,  Bit 1 = C#, ... (0x5ab5 = Major Scale)
+    uint16 textLen;			///< the number of characters (TChar) between the beginning of text and the terminating
+    ///< null character (without including the terminating null character itself)
+    const TChar* text;		///< UTF-16, null terminated, Hosts Scale Name
+}
+
+/** Event */
+struct Event
+{
+    //version(vst3Alignment):
+    int32 busIndex;				///< event bus index
+    int32 sampleOffset;			///< sample frames related to the current block start sample position
+    TQuarterNotes ppqPosition;	///< position in project
+    uint16 flags;				///< combination of \ref EventFlags
+
+    /** Event Flags - used for Event::flags */
+    enum EventFlags
+    {
+        kIsLive = 1 << 0,			///< indicates that the event is played live (directly from keyboard)
+
+        kUserReserved1 = 1 << 14,	///< reserved for user (for internal use)
+        kUserReserved2 = 1 << 15	///< reserved for user (for internal use)
+    }
+
+    /**  Event Types - used for Event::type */
+    enum EventTypes
+    {
+        kNoteOnEvent = 0,			///< is \ref NoteOnEvent
+        kNoteOffEvent,				///< is \ref NoteOffEvent
+        kDataEvent,					///< is \ref DataEvent
+        kPolyPressureEvent,			///< is \ref PolyPressureEvent
+        kNoteExpressionValueEvent,	///< is \ref NoteExpressionValueEvent
+        kNoteExpressionTextEvent,	///< is \ref NoteExpressionTextEvent
+        kChordEvent,				///< is \ref ChordEvent
+        kScaleEvent					///< is \ref ScaleEvent
+    }
+
+    uint16 type;				///< a value from \ref EventTypes
+    union
+    {
+        NoteOnEvent noteOn;								///< type == kNoteOnEvent
+        NoteOffEvent noteOff;							///< type == kNoteOffEvent
+        DataEvent data;									///< type == kDataEvent
+        PolyPressureEvent polyPressure;					///< type == kPolyPressureEvent
+        NoteExpressionValueEvent noteExpressionValue;	///< type == kNoteExpressionValueEvent
+        NoteExpressionTextEvent noteExpressionText;		///< type == kNoteExpressionTextEvent
+        ChordEvent chord;								///< type == kChordEvent
+        ScaleEvent scale;								///< type == kScaleEvent
+    }
+}
+
+        /** List of events to process.
+\ingroup vstIHost vst300
+- [host imp]
+- [released: 3.0.0]
+
+\see ProcessData, Event */
+interface IEventList : FUnknown
+{
+public:
+nothrow:
+@nogc:
+    /** Returns the count of events. */
+    int32 getEventCount ();
+
+    /** Gets parameter by index. */
+    tresult getEvent (int32 index, ref Event e /*out*/);
+
+    /** Adds a new event. */
+    tresult addEvent (ref Event e /*in*/);
+
+    __gshared immutable FUID iid = FUID(IEventList_iid);
+}
+
+static immutable TUID IEventList_iid = INLINE_UID(0x3A2C4214, 0x346349FE, 0xB2C4F397, 0xB9695A44);
+
+
+alias NoteExpressionTypeID = uint;
+alias NoteExpressionValue = double;
+
+struct NoteExpressionValueEvent
+{
+    NoteExpressionTypeID typeId;	///< see \ref NoteExpressionTypeID
+    int32 noteId;					///< associated note identifier to apply the change
+
+    NoteExpressionValue value;		///< normalized value [0.0, 1.0].
+}
+
+struct NoteExpressionTextEvent
+{
+    //align(vst3Alignment):
+    NoteExpressionTypeID typeId;	///< see \ref NoteExpressionTypeID (kTextTypeID or kPhoneticTypeID)
+    int32 noteId;					///< associated note identifier to apply the change
+
+    uint32 textLen;					///< the number of characters (TChar) between the beginning of text and the terminating
+    ///< null character (without including the terminating null character itself)
+
+    const TChar* text;				///< UTF-16, null terminated
+}

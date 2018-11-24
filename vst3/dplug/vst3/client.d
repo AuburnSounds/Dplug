@@ -400,12 +400,12 @@ nothrow:
         return state.write(chunk.ptr, cast(int)(chunk.length), null);
     }
 
-    int32 getParameterCount()
+    override int32 getParameterCount()
     {
         return cast(int)(_client.params.length);
     }
 
-    tresult getParameterInfo (int32 paramIndex, ref ParameterInfo info)
+    override tresult getParameterInfo (int32 paramIndex, ref ParameterInfo info)
     {
         if (!_client.isValidParamIndex(paramIndex))
             return kResultFalse;
@@ -424,7 +424,7 @@ nothrow:
     }
 
     /** Gets for a given paramID and normalized value its associated string representation. */
-    tresult getParamStringByValue (ParamID id, ParamValue valueNormalized, String128 string_ )
+    override tresult getParamStringByValue (ParamID id, ParamValue valueNormalized, String128 string_ )
     {
         int paramIndex = convertParamIDToParamIndex(id);
         if (!_client.isValidParamIndex(paramIndex))
@@ -437,7 +437,7 @@ nothrow:
     }
 
     /** Gets for a given paramID and string its normalized value. */
-    tresult getParamValueByString (ParamID id, TChar* string_, ref ParamValue valueNormalized )
+    override tresult getParamValueByString (ParamID id, TChar* string_, ref ParamValue valueNormalized )
     {
         int paramIndex = convertParamIDToParamIndex(id);
         if (!_client.isValidParamIndex(paramIndex))
@@ -463,7 +463,7 @@ nothrow:
 
     /** Returns for a given paramID and a normalized value its plain representation
     (for example 90 for 90db - see \ref vst3AutomationIntro). */
-    ParamValue normalizedParamToPlain (ParamID id, ParamValue valueNormalized)
+    override ParamValue normalizedParamToPlain (ParamID id, ParamValue valueNormalized)
     {
         // TODO: correct thing to do? SDK examples expose remapped integers and floats
         int paramIndex = convertParamIDToParamIndex(id);
@@ -474,7 +474,7 @@ nothrow:
     }
 
     /** Returns for a given paramID and a plain value its normalized value. (see \ref vst3AutomationIntro) */
-    ParamValue plainParamToNormalized (ParamID id, ParamValue plainValue)
+    override ParamValue plainParamToNormalized (ParamID id, ParamValue plainValue)
     {
         // TODO: correct thing to do? SDK examples expose remapped integers and floats
         int paramIndex = convertParamIDToParamIndex(id);
@@ -485,7 +485,7 @@ nothrow:
     }
 
     /** Returns the normalized value of the parameter associated to the paramID. */
-    ParamValue getParamNormalized (ParamID id)
+    override ParamValue getParamNormalized (ParamID id)
     {
         int paramIndex = convertParamIDToParamIndex(id);
         if (!_client.isValidParamIndex(paramIndex))
@@ -497,7 +497,7 @@ nothrow:
     /** Sets the normalized value to the parameter associated to the paramID. The controller must never
     pass this value-change back to the host via the IComponentHandler. It should update the according
     GUI element(s) only!*/
-    tresult setParamNormalized (ParamID id, ParamValue value)
+    override tresult setParamNormalized (ParamID id, ParamValue value)
     {
         int paramIndex = convertParamIDToParamIndex(id);
         if (!_client.isValidParamIndex(paramIndex))
@@ -508,23 +508,36 @@ nothrow:
     }
 
     /** Gets from host a handler. */
-    tresult setComponentHandler (IComponentHandler* handler)
+    override tresult setComponentHandler (IComponentHandler handler)
     {
-        // TODO: keep a reference on it
-        return kNotImplemented;
+        if (_handler is handler)
+            return kResultTrue;
+
+        if (_handler)
+        {
+            _handler.release();
+            _handler = null;
+        }
+
+        _handler = handler;
+        if (_handler)
+        {
+            _handler.addRef();
+        }
+        return kResultTrue;
     }
 
     // view
     /** Creates the editor view of the Plug-in, currently only "editor" is supported, see \ref ViewType.
     The life time of the editor view will never exceed the life time of this controller instance. */
-    IPlugView createView (FIDString name)
+    override IPlugView createView (FIDString name)
     {
         return mallocNew!DplugView(this);
     }
 
-
 private:
     Client _client;
+    IComponentHandler _handler;
 
     shared(bool) _shouldInitialize = true;
 
@@ -642,10 +655,10 @@ nothrow:
     \param type : \ref platformUIType which should be created */
     tresult attached (void* parent, FIDString type)
     {
-        WindowBackend backend = WindowBackend.autodetect;
-        convertPlatformToWindowBackend(type, &backend);        
         if (_vst3Client._client.hasGUI() )
         {
+            WindowBackend backend = WindowBackend.autodetect;
+            convertPlatformToWindowBackend(type, &backend);  
             _graphicsMutex.lock();
             scope(exit) _graphicsMutex.unlock();
             _vst3Client._client.openGUI(parent, null, cast(GraphicsBackend)backend);
@@ -697,6 +710,9 @@ nothrow:
     /** Returns the size of the platform representation of the view. */
     tresult getSize (ViewRect* size)
     {
+        if (!_vst3Client._client.hasGUI())
+            return kResultFalse;
+
         _graphicsMutex.lock();
         scope(exit) _graphicsMutex.unlock();
 

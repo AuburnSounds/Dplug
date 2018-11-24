@@ -163,7 +163,7 @@ nothrow:
 
     // handler ----------------------------
     /** Gets from host a handler. */
-    tresult setComponentHandler (IComponentHandler* handler);
+    tresult setComponentHandler (IComponentHandler handler);
 
     // view -------------------------------
     /** Creates the editor view of the Plug-in, currently only "editor" is supported, see \ref ViewType.
