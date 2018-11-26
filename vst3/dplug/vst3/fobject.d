@@ -205,7 +205,7 @@ nothrow:
         FObject object = null;
         if (unknown) 
         {
-            unknown.queryInterface(iid.toTUID, cast(void**)&object);
+            unknown.queryInterface(iid, cast(void**)&object);
             if (object)
                 object.release (); // queryInterface has added ref     
         }
@@ -213,7 +213,7 @@ nothrow:
     }
 
     /** Special UID that is used to cast an FUnknown pointer to a FObject */
-    static const FUID iid;
+    //static const FUID iid;
 
 //------------------------------------------------------------------------
 protected:

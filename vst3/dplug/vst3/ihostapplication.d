@@ -36,7 +36,5 @@ nothrow:
     /** Creates host object (e.g. Vst::IMessage). */
     tresult createInstance (TUID cid, TUID _iid, void** obj);
 
-    __gshared immutable FUID iid = FUID(IHostApplication_iid);
+    __gshared immutable TUID iid = INLINE_UID(0x58E595CC, 0xDB2D4969, 0x8B6AAF8C, 0x36A664E5);
 }
-
-static immutable TUID IHostApplication_iid = INLINE_UID(0x58E595CC, 0xDB2D4969, 0x8B6AAF8C, 0x36A664E5);

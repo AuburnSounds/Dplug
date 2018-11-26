@@ -156,11 +156,8 @@ nothrow:
      *  adjust the rect to the allowed size. */
     tresult checkSizeConstraint (ViewRect* rect);
 
-	immutable __gshared FUID iid = FUID(IPlugView_iid);
+	immutable __gshared TUID iid = INLINE_UID(0x5BC32507, 0xD06049EA, 0xA6151B52, 0x2B755B29);
 }
-
-static immutable TUID IPlugView_iid = INLINE_UID(0x5BC32507, 0xD06049EA, 0xA6151B52, 0x2B755B29);
-
 
 /** Callback interface passed to IPlugView.
 \ingroup pluginGUI vstIHost vst300
@@ -178,7 +175,5 @@ nothrow:
      *  Afterwards the host has to call IPlugView::onSize (). */
     tresult resizeView (IPlugView view, ViewRect* newSize);
 
-    immutable __gshared FUID iid = FUID(IIPlugFrame_iid);
+    //immutable __gshared FUID iid = INLINE_UID(0x367FAF01, 0xAFA94693, 0x8D4DA2A0, 0xED0882A3);
 }
-
-static immutable TUID IIPlugFrame_iid = INLINE_UID(0x367FAF01, 0xAFA94693, 0x8D4DA2A0, 0xED0882A3);

@@ -105,10 +105,8 @@ nothrow:
     \param flags is a combination of RestartFlags */
     tresult restartComponent (int32 flags);
 
-    __gshared immutable FUID iid = FUID(IComponentHandler_iid);
+    __gshared immutable TUID iid = INLINE_UID(0x93A0BEA3, 0x0BD045DB, 0x8E890B0C, 0xC1E46AC6);
 }
-
-static immutable TUID IComponentHandler_iid = INLINE_UID(0x93A0BEA3, 0x0BD045DB, 0x8E890B0C, 0xC1E46AC6);
 
 
 /** Edit controller component interface.
@@ -170,10 +168,8 @@ nothrow:
         The life time of the editor view will never exceed the life time of this controller instance. */
     IPlugView createView (FIDString name);
 
-    __gshared immutable FUID iid = FUID(IEditController_iid);
+    __gshared immutable TUID iid = INLINE_UID(0xDCD7BBE3, 0x7742448D, 0xA874AACC, 0x979C759E);
 }
-
-static immutable TUID IEditController_iid = INLINE_UID(0xDCD7BBE3, 0x7742448D, 0xA874AACC, 0x979C759E);
 
 //------------------------------------------------------------------------
 /** Knob Mode */

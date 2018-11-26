@@ -163,8 +163,6 @@ nothrow:
     /** Retrieves complete state of component. */
     tresult getState (IBStream state);
 
-    __gshared immutable FUID iid = FUID(IComponent_iid);
+    __gshared immutable TUID iid = INLINE_UID(0xE831FF31, 0xF2D54301, 0x928EBBEE, 0x25697802);
 }
-
-static immutable TUID IComponent_iid = INLINE_UID(0xE831FF31, 0xF2D54301, 0x928EBBEE, 0x25697802);
 

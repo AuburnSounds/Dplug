@@ -59,10 +59,8 @@ nothrow:
 	\param pos : is assigned the current position if function succeeds */
 	tresult tell (int64* pos);
 
-    __gshared immutable FUID iid = FUID(IBStream_iid);
+    __gshared immutable TUID iid = INLINE_UID(0xC3BF6EA2, 0x30994752, 0x9B6BF990, 0x1EE33E9B);
 }
-
-static immutable TUID IBStream_iid = INLINE_UID(0xC3BF6EA2, 0x30994752, 0x9B6BF990, 0x1EE33E9B);
 
 /+
 /** Stream with a size. 

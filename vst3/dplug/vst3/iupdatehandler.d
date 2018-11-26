@@ -42,10 +42,8 @@ nothrow:
     /** Same as triggerUpdates, but delivered in idle (usefull to collect updates).*/
     tresult deferUpdates (FUnknown object, int32 message);
 
-    immutable __gshared FUID iid = FUID(IUpdateHandler_iid);
+    immutable __gshared TUID iid = INLINE_UID(0xF5246D56, 0x86544d60, 0xB026AFB5, 0x7B697B37);
 }
-
-static immutable TUID IUpdateHandler_iid = INLINE_UID(0xF5246D56, 0x86544d60, 0xB026AFB5, 0x7B697B37);
 
 
 interface IDependent: FUnknown
@@ -66,8 +64,8 @@ nothrow:
 
         kStdChangeMessageLast = kWillDestroy
     }
-    
-    immutable __gshared FUID iid = FUID(IDependent_iid);
+   
+    __gshared immutable TUID iid = INLINE_UID(0xF52B7AAE, 0xDE72416d, 0x8AF18ACE, 0x9DD7BD5E);
 }
 
-static immutable TUID IDependent_iid = INLINE_UID(0xF52B7AAE, 0xDE72416d, 0x8AF18ACE, 0x9DD7BD5E);
+

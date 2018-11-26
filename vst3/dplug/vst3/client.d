@@ -86,6 +86,9 @@ nothrow:
             destroyFree(_client);
             _client = null;
         }
+
+        _inputPointers.reallocBuffer(0);
+        _outputPointers.reallocBuffer(0);
     }
 
     // Implements FUnknown
@@ -316,22 +319,50 @@ nothrow:
 
     override tresult process (ref ProcessData data)
     {
+        assert(data.symbolicSampleSize == kSample32); // no conversion to 64-bit supported
+
         // Call initialize if needed
         float newSampleRate = atomicLoad!(MemoryOrder.raw)(_sampleRateHostPOV);
         int newMaxSamplesPerBlock = atomicLoad!(MemoryOrder.raw)(_maxSamplesPerBlockHostPOV);
+
+        // find current number of inputs audio channels
+        int numInputs = 0;
+        if (data.numInputs != 0) // 0 or 1 output audio bus in a Dplug plugin
+            numInputs = data.inputs[0].numChannels;
+
+        // find current number of inputs audio channels
+        int numOutputs = 0;
+        if (data.numOutputs != 0) // 0 or 1 output audio bus in a Dplug plugin
+            numOutputs = data.outputs[0].numChannels;
+
         bool shouldReinit = cas(&_shouldInitialize, true, false);
         bool sampleRateChanged = (newSampleRate != _sampleRateDSPPOV);
         bool maxSamplesChanged = (newMaxSamplesPerBlock != _maxSamplesPerBlockDSPPOV);
+        bool inputChanged = (_numInputChannels != numInputs);
+        bool outputChanged = (_numOutputChannels != numOutputs);
 
-        if (shouldReinit || sampleRateChanged || maxSamplesChanged)
+        if (shouldReinit || sampleRateChanged || maxSamplesChanged || inputChanged || outputChanged)
         {
             _sampleRateDSPPOV = newSampleRate;
             _maxSamplesPerBlockDSPPOV = newMaxSamplesPerBlock;
-            _client.resetFromHost(_sampleRateDSPPOV, _maxSamplesPerBlockDSPPOV, 2, 2); // TODO
+            _numInputChannels = numInputs;
+            _numOutputChannels = numOutputs;
+            _client.resetFromHost(_sampleRateDSPPOV, _maxSamplesPerBlockDSPPOV, _numInputChannels, _numOutputChannels);
+
+            _inputPointers.reallocBuffer(_numInputChannels);
+            _outputPointers.reallocBuffer(_numOutputChannels);
         }
 
-        // TODO call processFromHost
+        // Gather all I/O pointers
+        foreach(chan; 0.._numInputChannels)
+            _inputPointers[chan] = data.inputs[0].channelBuffers32[chan];
 
+        foreach(chan; 0.._numOutputChannels)
+            _outputPointers[chan] = data.outputs[0].channelBuffers32[chan];
+
+        // TODO fill TimeInfo
+        TimeInfo info;
+        _client.processAudioFromHost(_inputPointers[], _outputPointers[], data.numSamples, info);
         return kResultOk;
     }
 
@@ -418,7 +449,7 @@ nothrow:
         str8ToStr16(info.units.ptr, param.label(), 128);
         info.stepCount = 0; // continuous
         info.defaultNormalizedValue = param.getNormalizedDefault();
-        info.unitId = 0; // root, TODO understand what "units" are for
+        info.unitId = 0; // root, unit 0 is always here
         info.flags = ParameterInfo.ParameterFlags.kCanAutomate; // Dplug assumption: all parameters automatable.
         return kResultTrue;
     }
@@ -547,6 +578,12 @@ private:
     shared(int) _maxSamplesPerBlockHostPOV = -1;
     int _maxSamplesPerBlockDSPPOV = -1;
 
+    int _numInputChannels = -1; /// Number of input channels from the DSP point of view
+    int _numOutputChannels = -1; /// Number of output channels from the DSP point of view
+
+    float*[] _inputPointers;
+    float*[] _outputPointers;
+
     static struct Bus
     {
         bool active;
@@ -580,7 +617,7 @@ private:
     void setHostApplication(FUnknown context)
     {
         IHostApplication hostApplication = null;
-        if (context.queryInterface(IHostApplication.iid.toTUID, cast(void**)(&hostApplication)) != kResultOk)
+        if (context.queryInterface(IHostApplication.iid, cast(void**)(&hostApplication)) != kResultOk)
             hostApplication = null;
 
         // clean-up _hostApplication former if any

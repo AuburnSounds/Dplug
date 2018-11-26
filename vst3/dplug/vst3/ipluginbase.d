@@ -48,10 +48,8 @@ nothrow:
 	    cleanups. You have to release all references to any host application interfaces. */
 	tresult terminate();
 
-	immutable __gshared FUID iid = FUID(IPluginBase_iid);
+	immutable __gshared TUID iid = INLINE_UID(0x22888DDB, 0x156E45AE, 0x8358B348, 0x08190625);
 }
-
-static immutable TUID IPluginBase_iid = INLINE_UID(0x22888DDB, 0x156E45AE, 0x8358B348, 0x08190625);
 
 
 // Basic Information about the class factory of the Plug-in.
@@ -168,11 +166,8 @@ nothrow:
 	/** Create a new class instance. */
 	tresult createInstance (FIDString cid, FIDString _iid, void** obj);
 
-    __gshared immutable FUID iid = FUID(IPluginFactory_iid);
+    __gshared immutable TUID iid = INLINE_UID(0x7A4D811C, 0x52114A1F, 0xAED9D2EE, 0x0B43BF9F);
 }
-
-static immutable TUID IPluginFactory_iid = INLINE_UID(0x7A4D811C, 0x52114A1F, 0xAED9D2EE, 0x0B43BF9F);
-
 
 //  Version 2 of Basic Information about a class provided by the Plug-in.
 struct PClassInfo2
@@ -236,11 +231,8 @@ nothrow:
 	/** Returns the class info (version 2) for a given index. */
 	tresult getClassInfo2 (int32 index, PClassInfo2* info);
 
-   __gshared immutable FUID iid = FUID(IPluginFactory2_iid);
+   __gshared immutable TUID iid = INLINE_UID(0x0007B650, 0xF24B4C0B, 0xA464EDB9, 0xF00B2ABB);
 }
-
-static immutable TUID IPluginFactory2_iid = INLINE_UID(0x0007B650, 0xF24B4C0B, 0xA464EDB9, 0xF00B2ABB);
-
 
 //------------------------------------------------------------------------
 /** Unicode Version of Basic Information about a class provided by the Plug-in */
@@ -320,10 +312,8 @@ nothrow:
 	/** Receives information about host*/
 	tresult setHostContext (FUnknown* context);
 
-	__gshared immutable FUID iid = FUID(IPluginFactory3_iid);
+	__gshared immutable TUID iid = INLINE_UID(0x4555A2AB, 0xC1234E57, 0x9B122910, 0x36878931);
 }
-static immutable TUID IPluginFactory3_iid = INLINE_UID(0x4555A2AB, 0xC1234E57, 0x9B122910, 0x36878931);
-
 
 __gshared IPluginFactory gPluginFactory = null;
 
@@ -413,7 +403,7 @@ nothrow:
 
 
 	/** Check if a class for a given classId is already registered. */
-	bool isClassRegistered (ref const(FUID) cid)
+	/*deprecated bool isClassRegistered (ref const(FUID) cid)
     {
         for (int32 i = 0; i < classCount; i++)
         {
@@ -421,7 +411,7 @@ nothrow:
                 return true;
         }
         return false;
-    }
+    }*/
 
     mixin QUERY_INTERFACE_SPECIAL_CASE_IUNKNOWN!(IPluginFactory, IPluginFactory2, IPluginFactory3);
 
