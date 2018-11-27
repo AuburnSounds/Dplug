@@ -32,7 +32,6 @@ struct ViewRect
 
 static assert(ViewRect.sizeof == 16);
 
-//------------------------------------------------------------------------
 /**  \defgroup platformUIType Platform UI Types
 \ingroup pluginGUI
 List of Platform UI types for IPlugView. This list is used to match the GUI-System between
@@ -175,5 +174,5 @@ nothrow:
      *  Afterwards the host has to call IPlugView::onSize (). */
     tresult resizeView (IPlugView view, ViewRect* newSize);
 
-    //immutable __gshared FUID iid = INLINE_UID(0x367FAF01, 0xAFA94693, 0x8D4DA2A0, 0xED0882A3);
+    immutable __gshared FUID iid = INLINE_UID(0x367FAF01, 0xAFA94693, 0x8D4DA2A0, 0xED0882A3);
 }

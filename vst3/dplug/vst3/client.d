@@ -64,8 +64,8 @@ import dplug.vst3.fstrdefs;
 import dplug.vst3.ibstream;
 import dplug.vst3.ivstunit;
 
-version(Windows)
-    debug = logVST3Client;
+//version(Windows)
+//    debug = logVST3Client;
 
 debug(logVST3Client)
     import core.sys.windows.windows: OutputDebugStringA;
@@ -110,6 +110,7 @@ nothrow:
     If the method does NOT return kResultOk, the object is released immediately. In this case terminate is not called! */
 	override tresult initialize(FUnknown context)
     {
+        debug(logVST3Client) OutputDebugStringA("initialize()".ptr);
         setHostApplication(context);
 
         // Create buses
@@ -179,6 +180,7 @@ nothrow:
     cleanups. You have to release all references to any host application interfaces. */
 	override tresult terminate()
     {
+        debug(logVST3Client) OutputDebugStringA("terminate()".ptr);
         if (_hostApplication !is null)
         {
             _hostApplication.release();
@@ -280,9 +282,15 @@ nothrow:
             return kResultFalse;
 
         if (numIns == 1)
+        {
             _audioInputs[0].speakerArrangement = inputs[0];
+            _audioInputs[0].info.channelCount = reqInputs;
+        }
         if (numOuts == 1)
+        {
             _audioOutputs[0].speakerArrangement = outputs[0];
+            _audioOutputs[0].info.channelCount = reqOutputs;
+        }
         return kResultTrue;
     }
 
@@ -892,7 +900,8 @@ nothrow:
     /** Sets IPlugFrame object to allow the Plug-in to inform the host about resizing. */
     tresult setFrame (IPlugFrame frame)
     {
-        return kResultOk;
+        _plugFrame = frame;
+        return kResultTrue;
     }
 
     /** Is view sizable by user. */
@@ -911,6 +920,7 @@ nothrow:
 private:
     VST3Client _vst3Client;
     UncheckedMutex _graphicsMutex;
+    IPlugFrame _plugFrame;
 
     static bool convertPlatformToWindowBackend(FIDString type, WindowBackend* backend)
     {
@@ -943,28 +953,35 @@ public:
 nothrow:
 @nogc:
 
-    this()
+    this(VST3Client vst3Client)
     {
+        _vst3client = vst3Client;
     }
 
     override void beginParamEdit(int paramIndex)
     {
-        // TODO
+        auto handler = _vst3client._handler;
+        if (handler)
+            handler.beginEdit(convertParamIndexToParamID(paramIndex));
     }
 
     override void paramAutomate(int paramIndex, float value)
     {
-        // TODO
+        auto handler = _vst3client._handler;
+        if (handler)
+            handler.performEdit(convertParamIndexToParamID(paramIndex), value);
     }
 
     override void endParamEdit(int paramIndex)
     {
-        // TODO
+        auto handler = _vst3client._handler;
+        if (handler)
+            handler.endEdit(convertParamIndexToParamID(paramIndex));
     }
 
     override bool requestResize(int width, int height)
     {
-        // TODO
+        // TODO, need to keep an instance pointer of the current IPluginView
         return false;
     }
 
