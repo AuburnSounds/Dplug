@@ -87,7 +87,9 @@ IPluginFactory GetPluginFactoryInternal(ClientClass)()
         ClientClass client = mallocNew!ClientClass();
         scope(exit) client.destroyFree();
 
-        PFactoryInfo factoryInfo = PFactoryInfo("Witty Audio",  // TODO
+        auto vendorNameZ = CString(client.vendorName);
+
+        PFactoryInfo factoryInfo = PFactoryInfo(vendorNameZ,
                                                 "https://example.com",  // TODO
                                                 "support@wittyaudio.fake", // TODO
                                                 PFactoryInfo.kUnicode);
@@ -102,8 +104,6 @@ IPluginFactory GetPluginFactoryInternal(ClientClass)()
         TUID classId = INLINE_UID(DPLUG_MAGIC, DPLUG_MAGIC2, *cast(uint*)(vid.ptr), *cast(uint*)(pid.ptr));
 
         auto pluginNameZ = CString(client.pluginName());
-        auto vendorNameZ = CString(client.vendorName());
-
         char[64] versionString;
         client.getPublicVersion().toVST3VersionString(versionString.ptr, 64);
 

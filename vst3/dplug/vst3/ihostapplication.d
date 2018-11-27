@@ -31,7 +31,7 @@ public:
 nothrow:
 @nogc:
     /** Gets host application name. */
-    tresult getName (String128 name);
+    tresult getName (String128* name);
 
     /** Creates host object (e.g. Vst::IMessage). */
     tresult createInstance (TUID cid, TUID _iid, void** obj);

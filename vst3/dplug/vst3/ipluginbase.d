@@ -39,16 +39,16 @@ interface IPluginBase: IUnknown
 public:
 nothrow:
 @nogc:
-	/** The host passes a number of interfaces as context to initialize the Plug-in class.
-		@note Extensive memory allocations etc. should be performed in this method rather than in the class' constructor!
-		If the method does NOT return kResultOk, the object is released immediately. In this case terminate is not called! */
-	tresult initialize(FUnknown context);
+    /** The host passes a number of interfaces as context to initialize the Plug-in class.
+        @note Extensive memory allocations etc. should be performed in this method rather than in the class' constructor!
+        If the method does NOT return kResultOk, the object is released immediately. In this case terminate is not called! */
+    tresult initialize(FUnknown context);
 
-	/** This function is called before the Plug-in is unloaded and can be used for
-	    cleanups. You have to release all references to any host application interfaces. */
-	tresult terminate();
+    /** This function is called before the Plug-in is unloaded and can be used for
+        cleanups. You have to release all references to any host application interfaces. */
+    tresult terminate();
 
-	immutable __gshared TUID iid = INLINE_UID(0x22888DDB, 0x156E45AE, 0x8358B348, 0x08190625);
+    immutable __gshared TUID iid = INLINE_UID(0x22888DDB, 0x156E45AE, 0x8358B348, 0x08190625);
 }
 
 
@@ -59,35 +59,35 @@ struct PFactoryInfo
 nothrow:
 @nogc:
     alias FactoryFlags = int;
-	enum : FactoryFlags
-	{
-		kNoFlags					= 0,		///< Nothing
-		kClassesDiscardable			= 1 << 0,	///< The number of exported classes can change each time the Module is loaded. If this flag is set, the host does not cache class information. This leads to a longer startup time because the host always has to load the Module to get the current class information.
-		kLicenseCheck				= 1 << 1,	///< Class IDs of components are interpreted as Syncrosoft-License (LICENCE_UID). Loaded in a Steinberg host, the module will not be loaded when the license is not valid
-		kComponentNonDiscardable	= 1 << 3,	///< Component won't be unloaded until process exit
-		kUnicode                    = 1 << 4    ///< Components have entirely unicode encoded strings. (True for VST 3 Plug-ins so far)
-	}
+    enum : FactoryFlags
+    {
+        kNoFlags                    = 0,        ///< Nothing
+        kClassesDiscardable         = 1 << 0,   ///< The number of exported classes can change each time the Module is loaded. If this flag is set, the host does not cache class information. This leads to a longer startup time because the host always has to load the Module to get the current class information.
+        kLicenseCheck               = 1 << 1,   ///< Class IDs of components are interpreted as Syncrosoft-License (LICENCE_UID). Loaded in a Steinberg host, the module will not be loaded when the license is not valid
+        kComponentNonDiscardable    = 1 << 3,   ///< Component won't be unloaded until process exit
+        kUnicode                    = 1 << 4    ///< Components have entirely unicode encoded strings. (True for VST 3 Plug-ins so far)
+    }
 
-	enum
-	{
-		kURLSize = 256,
-		kEmailSize = 128,
-		kNameSize = 64
-	}
+    enum
+    {
+        kURLSize = 256,
+        kEmailSize = 128,
+        kNameSize = 64
+    }
 
-	char8[kNameSize] vendor;		///< e.g. "Steinberg Media Technologies"
-	char8[kURLSize] url;			///< e.g. "http://www.steinberg.de"
-	char8[kEmailSize] email;		///< e.g. "info@steinberg.de"
-	int32 flags;				///< (see above)
+    char8[kNameSize] vendor;        ///< e.g. "Steinberg Media Technologies"
+    char8[kURLSize] url;            ///< e.g. "http://www.steinberg.de"
+    char8[kEmailSize] email;        ///< e.g. "info@steinberg.de"
+    int32 flags;                ///< (see above)
 
-	this (const(char8)* _vendor, const(char8)* _url, const(char8)* _email, int32 _flags)
-	{
-		strncpy8 (vendor.ptr, _vendor, kNameSize);
-		strncpy8 (url.ptr, _url, kURLSize);
-		strncpy8 (email.ptr, _email, kEmailSize);
-		flags = _flags;
-		flags |= kUnicode;
-	}
+    this (const(char8)* _vendor, const(char8)* _url, const(char8)* _email, int32 _flags)
+    {
+        strncpy8 (vendor.ptr, _vendor, kNameSize);
+        strncpy8 (url.ptr, _url, kURLSize);
+        strncpy8 (email.ptr, _email, kEmailSize);
+        flags = _flags;
+        flags |= kUnicode;
+    }
 }
 
 //------------------------------------------------------------------------
@@ -99,43 +99,43 @@ struct PClassInfo
 {
 nothrow:
 @nogc:
-	enum // ClassCardinality
-	{
-		kManyInstances = 0x7FFFFFFF
-	}
+    enum // ClassCardinality
+    {
+        kManyInstances = 0x7FFFFFFF
+    }
 
-	enum
-	{
-		kCategorySize = 32,
-		kNameSize = 64
-	}
+    enum
+    {
+        kCategorySize = 32,
+        kNameSize = 64
+    }
 
-	TUID cid;                       ///< Class ID 16 Byte class GUID
-	int32 cardinality;              ///< cardinality of the class, set to kManyInstances (see \ref ClassCardinality)
-	char8[kCategorySize] category;  ///< class category, host uses this to categorize interfaces
-	char8[kNameSize] name;          ///< class name, visible to the user
+    TUID cid;                       ///< Class ID 16 Byte class GUID
+    int32 cardinality;              ///< cardinality of the class, set to kManyInstances (see \ref ClassCardinality)
+    char8[kCategorySize] category;  ///< class category, host uses this to categorize interfaces
+    char8[kNameSize] name;          ///< class name, visible to the user
 
-	this(const TUID _cid, int32 _cardinality, const(char8)* _category, const(char8)* _name)
-	{
+    this(const TUID _cid, int32 _cardinality, const(char8)* _category, const(char8)* _name)
+    {
         cid[] = 0;
         cardinality = 0;
         category[] = '\0';
         name[] = '\0';
         cid = _cid;
 
-		if (_category)
-			strncpy8 (category.ptr, _category, kCategorySize);
-		if (_name)
-			strncpy8 (name.ptr, _name, kNameSize);
-		cardinality = _cardinality;
-	}
+        if (_category)
+            strncpy8 (category.ptr, _category, kCategorySize);
+        if (_name)
+            strncpy8 (name.ptr, _name, kNameSize);
+        cardinality = _cardinality;
+    }
 }
 
 
 //------------------------------------------------------------------------
 //  IPluginFactory interface declaration
 //------------------------------------------------------------------------
-/**	Class factory that any Plug-in defines for creating class instances.
+/** Class factory that any Plug-in defines for creating class instances.
 \ingroup pluginBase
 - [plug imp]
 
@@ -153,18 +153,18 @@ interface IPluginFactory : IUnknown
 public:
 nothrow:
 @nogc:
-	/** Fill a PFactoryInfo structure with information about the Plug-in vendor. */
-	tresult getFactoryInfo (PFactoryInfo* info);
+    /** Fill a PFactoryInfo structure with information about the Plug-in vendor. */
+    tresult getFactoryInfo (PFactoryInfo* info);
 
-	/** Returns the number of exported classes by this factory.
-	If you are using the CPluginFactory implementation provided by the SDK, it returns the number of classes you registered with CPluginFactory::registerClass. */
-	int32 countClasses ();
+    /** Returns the number of exported classes by this factory.
+    If you are using the CPluginFactory implementation provided by the SDK, it returns the number of classes you registered with CPluginFactory::registerClass. */
+    int32 countClasses ();
 
-	/** Fill a PClassInfo structure with information about the class at the specified index. */
-	tresult getClassInfo (int32 index, PClassInfo* info);
+    /** Fill a PClassInfo structure with information about the class at the specified index. */
+    tresult getClassInfo (int32 index, PClassInfo* info);
 
-	/** Create a new class instance. */
-	tresult createInstance (FIDString cid, FIDString _iid, void** obj);
+    /** Create a new class instance. */
+    tresult createInstance (FIDString cid, FIDString _iid, void** obj);
 
     __gshared immutable TUID iid = INLINE_UID(0x7A4D811C, 0x52114A1F, 0xAED9D2EE, 0x0B43BF9F);
 }
@@ -174,27 +174,27 @@ struct PClassInfo2
 {
 nothrow:
 @nogc:
-	TUID cid;									///< Class ID 16 Byte class GUID
-	int32 cardinality;							///< cardinality of the class, set to kManyInstances (see \ref ClassCardinality)
-	char8[PClassInfo.kCategorySize] category;	///< class category, host uses this to categorize interfaces
-	char8[PClassInfo.kNameSize] name;			///< class name, visible to the user
+    TUID cid;                                   ///< Class ID 16 Byte class GUID
+    int32 cardinality;                          ///< cardinality of the class, set to kManyInstances (see \ref ClassCardinality)
+    char8[PClassInfo.kCategorySize] category;   ///< class category, host uses this to categorize interfaces
+    char8[PClassInfo.kNameSize] name;           ///< class name, visible to the user
 
-	enum {
-		kVendorSize = 64,
-		kVersionSize = 64,
-		kSubCategoriesSize = 128
-	};
+    enum {
+        kVendorSize = 64,
+        kVersionSize = 64,
+        kSubCategoriesSize = 128
+    };
 
-	uint32 classFlags;				///< flags used for a specific category, must be defined where category is defined
-	char8[kSubCategoriesSize] subCategories;	///< module specific subcategories, can be more than one, logically added by the \c OR operator
-	char8[kVendorSize] vendor;		///< overwrite vendor information from factory info
-	char8[kVersionSize] version_;	///< Version string (e.g. "1.0.0.512" with Major.Minor.Subversion.Build)
-	char8[kVersionSize] sdkVersion;	///< SDK version used to build this class (e.g. "VST 3.0")
+    uint32 classFlags;              ///< flags used for a specific category, must be defined where category is defined
+    char8[kSubCategoriesSize] subCategories;    ///< module specific subcategories, can be more than one, logically added by the \c OR operator
+    char8[kVendorSize] vendor;      ///< overwrite vendor information from factory info
+    char8[kVersionSize] version_;   ///< Version string (e.g. "1.0.0.512" with Major.Minor.Subversion.Build)
+    char8[kVersionSize] sdkVersion; ///< SDK version used to build this class (e.g. "VST 3.0")
 
-	this (const TUID _cid, int32 _cardinality, const(char8)* _category, const(char8)* _name,
-		int32 _classFlags, const(char8)* _subCategories, const(char8)* _vendor, const(char8)* _version,
-		const(char8)* _sdkVersion)
-	{
+    this (const TUID _cid, int32 _cardinality, const(char8)* _category, const(char8)* _name,
+        int32 _classFlags, const(char8)* _subCategories, const(char8)* _vendor, const(char8)* _version,
+        const(char8)* _sdkVersion)
+    {
         cardinality = 0;
         category[] = '\0';
         name[] = '\0';
@@ -204,22 +204,22 @@ nothrow:
         version_[] = '\0';
         sdkVersion[] = '\0';
         cid = _cid;
-		
-		cardinality = _cardinality;
-		if (_category)
-			strncpy8 (category.ptr, _category, PClassInfo.kCategorySize);
-		if (_name)
-			strncpy8 (name.ptr, _name, PClassInfo.kNameSize);
-		classFlags = cast(uint)(_classFlags);
-		if (_subCategories)
-			strncpy8 (subCategories.ptr, _subCategories, kSubCategoriesSize);
-		if (_vendor)
-			strncpy8 (vendor.ptr, _vendor, kVendorSize);
-		if (_version)
-			strncpy8 (version_.ptr, _version, kVersionSize);
-		if (_sdkVersion)
-			strncpy8 (sdkVersion.ptr, _sdkVersion, kVersionSize);
-	}
+        
+        cardinality = _cardinality;
+        if (_category)
+            strncpy8 (category.ptr, _category, PClassInfo.kCategorySize);
+        if (_name)
+            strncpy8 (name.ptr, _name, PClassInfo.kNameSize);
+        classFlags = cast(uint)(_classFlags);
+        if (_subCategories)
+            strncpy8 (subCategories.ptr, _subCategories, kSubCategoriesSize);
+        if (_vendor)
+            strncpy8 (vendor.ptr, _vendor, kVendorSize);
+        if (_version)
+            strncpy8 (version_.ptr, _version, kVersionSize);
+        if (_sdkVersion)
+            strncpy8 (sdkVersion.ptr, _sdkVersion, kVersionSize);
+    }
 }
 
 
@@ -228,8 +228,8 @@ interface IPluginFactory2 : IPluginFactory
 public:
 nothrow:
 @nogc:
-	/** Returns the class info (version 2) for a given index. */
-	tresult getClassInfo2 (int32 index, PClassInfo2* info);
+    /** Returns the class info (version 2) for a given index. */
+    tresult getClassInfo2 (int32 index, PClassInfo2* info);
 
    __gshared immutable TUID iid = INLINE_UID(0x0007B650, 0xF24B4C0B, 0xA464EDB9, 0xF00B2ABB);
 }
@@ -241,63 +241,63 @@ struct PClassInfoW
 {
 nothrow:
 @nogc:
-	TUID cid;							///< see \ref PClassInfo
-	int32 cardinality;					///< see \ref PClassInfo
-	char8[PClassInfo.kCategorySize] category;	///< see \ref PClassInfo
-	char16[PClassInfo.kNameSize] name;	///< see \ref PClassInfo
+    TUID cid;                           ///< see \ref PClassInfo
+    int32 cardinality;                  ///< see \ref PClassInfo
+    char8[PClassInfo.kCategorySize] category;   ///< see \ref PClassInfo
+    char16[PClassInfo.kNameSize] name;  ///< see \ref PClassInfo
 
-	enum 
+    enum 
     {
-		kVendorSize = 64,
-		kVersionSize = 64,
-		kSubCategoriesSize = 128
-	}
+        kVendorSize = 64,
+        kVersionSize = 64,
+        kSubCategoriesSize = 128
+    }
 
-	uint32 classFlags = 0;					///< flags used for a specific category, must be defined where category is defined
-	char8[kSubCategoriesSize] subCategories;///< module specific subcategories, can be more than one, logically added by the \c OR operator
-	char16[kVendorSize] vendor;			///< overwrite vendor information from factory info
-	char16[kVersionSize] version_;		///< Version string (e.g. "1.0.0.512" with Major.Minor.Subversion.Build)
-	char16[kVersionSize] sdkVersion;	///< SDK version used to build this class (e.g. "VST 3.0")
+    uint32 classFlags = 0;                  ///< flags used for a specific category, must be defined where category is defined
+    char8[kSubCategoriesSize] subCategories;///< module specific subcategories, can be more than one, logically added by the \c OR operator
+    char16[kVendorSize] vendor;         ///< overwrite vendor information from factory info
+    char16[kVersionSize] version_;      ///< Version string (e.g. "1.0.0.512" with Major.Minor.Subversion.Build)
+    char16[kVersionSize] sdkVersion;    ///< SDK version used to build this class (e.g. "VST 3.0")
 
-	this (const TUID _cid, int32 _cardinality, const(char8)* _category, const(char16)* _name,
-		int32 _classFlags, const(char8)* _subCategories, const(char16)* _vendor, const(char16)* _version,
-		const(char16)* _sdkVersion)
-	{
+    this (const TUID _cid, int32 _cardinality, const(char8)* _category, const(char16)* _name,
+        int32 _classFlags, const(char8)* _subCategories, const(char16)* _vendor, const(char16)* _version,
+        const(char16)* _sdkVersion)
+    {
         cid = _cid;
         cardinality = _cardinality;
         category[] = '\0';
         name[] = '\0';
         vendor[] = '\0';
         version_[] = '\0';
-        sdkVersion[] = '\0';		
-		if (_category)
-			strncpy8 (category.ptr, _category, PClassInfo.kCategorySize);
-		if (_name)
-			strncpy16 (name.ptr, _name, PClassInfo.kNameSize);
-		classFlags = cast(uint)(_classFlags);
-		if (_subCategories)
-			strncpy8 (subCategories.ptr, _subCategories, kSubCategoriesSize);
-		if (_vendor)
-			strncpy16 (vendor.ptr, _vendor, kVendorSize);
-		if (_version)
-			strncpy16 (version_.ptr, _version, kVersionSize);
-		if (_sdkVersion)
-			strncpy16 (sdkVersion.ptr, _sdkVersion, kVersionSize);
-	}
+        sdkVersion[] = '\0';        
+        if (_category)
+            strncpy8 (category.ptr, _category, PClassInfo.kCategorySize);
+        if (_name)
+            strncpy16 (name.ptr, _name, PClassInfo.kNameSize);
+        classFlags = cast(uint)(_classFlags);
+        if (_subCategories)
+            strncpy8 (subCategories.ptr, _subCategories, kSubCategoriesSize);
+        if (_vendor)
+            strncpy16 (vendor.ptr, _vendor, kVendorSize);
+        if (_version)
+            strncpy16 (version_.ptr, _version, kVersionSize);
+        if (_sdkVersion)
+            strncpy16 (sdkVersion.ptr, _sdkVersion, kVersionSize);
+    }
     
 
-	void fromAscii (ref const(PClassInfo2) ci2)
-	{
-		cid = ci2.cid;
-		cardinality = ci2.cardinality;
-		strncpy8 (category.ptr, ci2.category.ptr, PClassInfo.kCategorySize);
-		str8ToStr16 (name.ptr, ci2.name.ptr, PClassInfo.kNameSize);
-		classFlags = ci2.classFlags;
-		strncpy8 (subCategories.ptr, ci2.subCategories.ptr, kSubCategoriesSize);
-		str8ToStr16 (vendor.ptr, ci2.vendor.ptr, kVendorSize);
-		str8ToStr16 (version_.ptr, ci2.version_.ptr, kVersionSize);
-		str8ToStr16 (sdkVersion.ptr, ci2.sdkVersion.ptr, kVersionSize);
-	}
+    void fromAscii (ref const(PClassInfo2) ci2)
+    {
+        cid = ci2.cid;
+        cardinality = ci2.cardinality;
+        strncpy8 (category.ptr, ci2.category.ptr, PClassInfo.kCategorySize);
+        str8ToStr16 (name.ptr, ci2.name.ptr, PClassInfo.kNameSize);
+        classFlags = ci2.classFlags;
+        strncpy8 (subCategories.ptr, ci2.subCategories.ptr, kSubCategoriesSize);
+        str8ToStr16 (vendor.ptr, ci2.vendor.ptr, kVendorSize);
+        str8ToStr16 (version_.ptr, ci2.version_.ptr, kVersionSize);
+        str8ToStr16 (sdkVersion.ptr, ci2.sdkVersion.ptr, kVersionSize);
+    }
 }
 
 interface IPluginFactory3 : IPluginFactory2
@@ -306,13 +306,13 @@ public:
 nothrow:
 @nogc:
 
-	/** Returns the unicode class info for a given index. */
-	tresult getClassInfoUnicode (int32 index, PClassInfoW* info);
+    /** Returns the unicode class info for a given index. */
+    tresult getClassInfoUnicode (int32 index, PClassInfoW* info);
 
-	/** Receives information about host*/
-	tresult setHostContext (FUnknown* context);
+    /** Receives information about host*/
+    tresult setHostContext (FUnknown* context);
 
-	__gshared immutable TUID iid = INLINE_UID(0x4555A2AB, 0xC1234E57, 0x9B122910, 0x36878931);
+    __gshared immutable TUID iid = INLINE_UID(0x4555A2AB, 0xC1234E57, 0x9B122910, 0x36878931);
 }
 
 __gshared IPluginFactory gPluginFactory = null;
@@ -328,7 +328,7 @@ nothrow:
         factoryInfo = info;
     }
 
-	~this ()
+    ~this ()
     {
         if (gPluginFactory is this)
             gPluginFactory = null;
@@ -340,10 +340,10 @@ nothrow:
         }
     }
 
-	/** Registers a Plug-in class with classInfo version 1, returns true for success. */
-	bool registerClass (const(PClassInfo)* info,
-						FUnknown function(void*) nothrow @nogc createFunc,
-						void* context = null)
+    /** Registers a Plug-in class with classInfo version 1, returns true for success. */
+    bool registerClass (const(PClassInfo)* info,
+                        FUnknown function(void*) nothrow @nogc createFunc,
+                        void* context = null)
     {
         if (!info || !createFunc)
             return false;
@@ -354,10 +354,10 @@ nothrow:
     }
 
 
-	/** Registers a Plug-in class with classInfo version 2, returns true for success. */
-	bool registerClass (const(PClassInfo2)* info,
-						FUnknown function(void*) nothrow @nogc  createFunc,
-						void* context = null)
+    /** Registers a Plug-in class with classInfo version 2, returns true for success. */
+    bool registerClass (const(PClassInfo2)* info,
+                        FUnknown function(void*) nothrow @nogc  createFunc,
+                        void* context = null)
     {        
         if (!info || !createFunc)
             return false;
@@ -378,10 +378,10 @@ nothrow:
         return true;
     }
 
-	/** Registers a Plug-in class with classInfo Unicode version, returns true for success. */
-	bool registerClass (const(PClassInfoW)* info,
-						FUnknown function(void*) nothrow @nogc createFunc,
-						void* context = null)
+    /** Registers a Plug-in class with classInfo Unicode version, returns true for success. */
+    bool registerClass (const(PClassInfoW)* info,
+                        FUnknown function(void*) nothrow @nogc createFunc,
+                        void* context = null)
     {
         if (!info || !createFunc)
             return false;
@@ -401,36 +401,24 @@ nothrow:
         return true;
     }
 
-
-	/** Check if a class for a given classId is already registered. */
-	/*deprecated bool isClassRegistered (ref const(FUID) cid)
-    {
-        for (int32 i = 0; i < classCount; i++)
-        {
-            if (iidEqual(cid.toTUID, classes[i].info16.cid))
-                return true;
-        }
-        return false;
-    }*/
-
     mixin QUERY_INTERFACE_SPECIAL_CASE_IUNKNOWN!(IPluginFactory, IPluginFactory2, IPluginFactory3);
 
-	mixin IMPLEMENT_REFCOUNT;
+    mixin IMPLEMENT_REFCOUNT;
 
-	//---from IPluginFactory------
-	override tresult getFactoryInfo (PFactoryInfo* info)
+    //---from IPluginFactory------
+    override tresult getFactoryInfo (PFactoryInfo* info)
     {
         if (info)
             memcpy (info, &factoryInfo, PFactoryInfo.sizeof);
         return kResultOk;
     }
 
-	override int32 countClasses ()
+    override int32 countClasses ()
     {
         return classCount;
     }
 
-	override tresult getClassInfo (int32 index, PClassInfo* info)
+    override tresult getClassInfo (int32 index, PClassInfo* info)
     {
         if (info && (index >= 0 && index < classCount))
         {
@@ -446,7 +434,7 @@ nothrow:
         return kInvalidArgument;
     }
 
-	override tresult createInstance (FIDString cid, FIDString _iid, void** obj)
+    override tresult createInstance (FIDString cid, FIDString _iid, void** obj)
     {
         for (int32 i = 0; i < classCount; i++)
         {
@@ -472,8 +460,8 @@ nothrow:
         return kNoInterface;
     }
 
-	//---from IPluginFactory2-----
-	override tresult getClassInfo2 (int32 index, PClassInfo2* info)
+    //---from IPluginFactory2-----
+    override tresult getClassInfo2 (int32 index, PClassInfo2* info)
     {
         if (info && (index >= 0 && index < classCount))
         {
@@ -489,8 +477,8 @@ nothrow:
         return kInvalidArgument;
     }
 
-	//---from IPluginFactory3-----
-	override tresult getClassInfoUnicode (int32 index, PClassInfoW* info)
+    //---from IPluginFactory3-----
+    override tresult getClassInfoUnicode (int32 index, PClassInfoW* info)
     {
         if (info && (index >= 0 && index < classCount))
         {
@@ -500,28 +488,28 @@ nothrow:
         return kInvalidArgument;
     }
 
-	override tresult setHostContext (FUnknown* context)
+    override tresult setHostContext (FUnknown* context)
     {
         return kNotImplemented;
     }
 
 protected:
-	static struct PClassEntry
-	{
-		PClassInfo2 info8;
-		PClassInfoW info16;
+    static struct PClassEntry
+    {
+        PClassInfo2 info8;
+        PClassInfoW info16;
 
-		FUnknown function(void*) nothrow @nogc createFunc;
-		void* context;
-		bool isUnicode;
-	}
+        FUnknown function(void*) nothrow @nogc createFunc;
+        void* context;
+        bool isUnicode;
+    }
 
-	PFactoryInfo factoryInfo;
-	PClassEntry* classes = null;
-	int32 classCount = 0;
-	int32 maxClassCount = 0;
+    PFactoryInfo factoryInfo;
+    PClassEntry* classes = null;
+    int32 classCount = 0;
+    int32 maxClassCount = 0;
 
-	bool growClasses()
+    bool growClasses()
     {
         static const int32 delta = 10;
 

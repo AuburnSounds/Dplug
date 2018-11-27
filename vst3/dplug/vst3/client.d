@@ -72,7 +72,7 @@ debug(logVST3Client)
 
 // TODO: call IComponentHandler::restartComponent (kLatencyChanged) after a latency change
 // Note: the VST3 client assumes shared memory
-class VST3Client : IAudioProcessor, IComponent, IEditController, IUnitInfo
+class VST3Client : IAudioProcessor, IComponent, IEditController //, IUnitInfo
 {
 public:
 nothrow:
@@ -82,7 +82,7 @@ nothrow:
     {
         _client = client;
 
-        _hostCommand = mallocNew!VST3HostCommand();
+        _hostCommand = mallocNew!VST3HostCommand(this);
         _client.setHostCommand(_hostCommand);
     }
 
@@ -99,8 +99,8 @@ nothrow:
     }
 
     // Implements FUnknown
-    mixin QUERY_INTERFACE_SPECIAL_CASE_IUNKNOWN!(IAudioProcessor, IComponent, IEditController, IPluginBase, IUnitInfo);
-	mixin IMPLEMENT_REFCOUNT;
+    mixin QUERY_INTERFACE_SPECIAL_CASE_IUNKNOWN!(IAudioProcessor, IComponent, IEditController, IPluginBase /*, IUnitInfo*/);
+    mixin IMPLEMENT_REFCOUNT;
 
 
     // Implements IPluginBase
@@ -108,7 +108,7 @@ nothrow:
     /** The host passes a number of interfaces as context to initialize the Plug-in class.
     @note Extensive memory allocations etc. should be performed in this method rather than in the class' constructor!
     If the method does NOT return kResultOk, the object is released immediately. In this case terminate is not called! */
-	override tresult initialize(FUnknown context)
+    override tresult initialize(FUnknown context)
     {
         debug(logVST3Client) OutputDebugStringA("initialize()".ptr);
         setHostApplication(context);
@@ -176,9 +176,9 @@ nothrow:
         return kResultOk;
     }
 
-	/** This function is called before the Plug-in is unloaded and can be used for
+    /** This function is called before the Plug-in is unloaded and can be used for
     cleanups. You have to release all references to any host application interfaces. */
-	override tresult terminate()
+    override tresult terminate()
     {
         debug(logVST3Client) OutputDebugStringA("terminate()".ptr);
         if (_hostApplication !is null)
@@ -588,7 +588,7 @@ nothrow:
 
     // implements IUnitInfo
 
-    override int32 getUnitCount ()
+ /+   override int32 getUnitCount ()
     {
         return 1;
     }
@@ -677,6 +677,7 @@ nothrow:
     {
         return kResultFalse; // TODO
     }
++/
 
 private:
     Client _client;
@@ -696,6 +697,9 @@ private:
 
     float*[] _inputPointers;
     float*[] _outputPointers;
+
+    DAW _daw = DAW.Unknown;
+    char[128] _hostName;
 
     static struct Bus
     {
@@ -744,6 +748,14 @@ private:
         {
             hostApplication.addRef();
             _hostApplication = hostApplication;
+
+            // Identify host
+            String128 name;
+            if (_hostApplication.getName(&name) == kResultOk)
+            {
+                str16ToStr8(_hostName.ptr, name.ptr, 128);
+                _daw = identifyDAW(_hostName.ptr);
+            }
         }
     }
 }
@@ -955,38 +967,41 @@ nothrow:
 
     this(VST3Client vst3Client)
     {
-        _vst3client = vst3Client;
+        _vst3Client = vst3Client;
     }
 
     override void beginParamEdit(int paramIndex)
     {
-        auto handler = _vst3client._handler;
+        auto handler = _vst3Client._handler;
         if (handler)
             handler.beginEdit(convertParamIndexToParamID(paramIndex));
     }
 
     override void paramAutomate(int paramIndex, float value)
     {
-        auto handler = _vst3client._handler;
+        auto handler = _vst3Client._handler;
         if (handler)
             handler.performEdit(convertParamIndexToParamID(paramIndex), value);
     }
 
     override void endParamEdit(int paramIndex)
     {
-        auto handler = _vst3client._handler;
+        auto handler = _vst3Client._handler;
         if (handler)
             handler.endEdit(convertParamIndexToParamID(paramIndex));
     }
 
     override bool requestResize(int width, int height)
     {
-        // TODO, need to keep an instance pointer of the current IPluginView
+        // FUTURE, will need to keep an instance pointer of the current IPluginView
         return false;
     }
 
     DAW getDAW()
     {
-        return DAW.Cubase; // there are no host-related workarounds for now
+        return _vst3Client._daw;
     }
+
+private:
+    VST3Client _vst3Client;
 }

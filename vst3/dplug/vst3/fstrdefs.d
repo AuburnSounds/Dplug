@@ -29,25 +29,25 @@ nothrow:
 //----------------------------------------------------------------------------
 
 // 16 bit string operations
-#if SMTG_CPP11	// if c++11 unicode string literals
-	#define SMTG_CPP11_CAT_PRIVATE_DONT_USE(a,b)			a ## b
-	#if SMTG_OS_WINDOWS
-		#define STR16(x) SMTG_CPP11_CAT_PRIVATE_DONT_USE(L,x)
-	#else
-		#define STR16(x) SMTG_CPP11_CAT_PRIVATE_DONT_USE(u,x)
-	#endif
+#if SMTG_CPP11  // if c++11 unicode string literals
+    #define SMTG_CPP11_CAT_PRIVATE_DONT_USE(a,b)            a ## b
+    #if SMTG_OS_WINDOWS
+        #define STR16(x) SMTG_CPP11_CAT_PRIVATE_DONT_USE(L,x)
+    #else
+        #define STR16(x) SMTG_CPP11_CAT_PRIVATE_DONT_USE(u,x)
+    #endif
 #else
-	#include "conststringtable.h"
-	#define STR16(x) Steinberg::ConstStringTable::instance ()->getString (x)
+    #include "conststringtable.h"
+    #define STR16(x) Steinberg::ConstStringTable::instance ()->getString (x)
 #endif
 
 #ifdef UNICODE
-	#define STR(x) STR16(x)
-	#define tStrBufferSize(buffer) (sizeof(buffer)/sizeof(Steinberg::tchar))
+    #define STR(x) STR16(x)
+    #define tStrBufferSize(buffer) (sizeof(buffer)/sizeof(Steinberg::tchar))
 
 #else
-	#define STR(x) x
-	#define tStrBufferSize(buffer) (sizeof(buffer))
+    #define STR(x) x
+    #define tStrBufferSize(buffer) (sizeof(buffer))
 #endif
 
 #define str8BufferSize(buffer) (sizeof(buffer)/sizeof(Steinberg::char8))
@@ -60,8 +60,8 @@ nothrow:
 #elif SMTG_OS_MACOS || SMTG_OS_LINUX
 #define FORMAT_INT64A  "lld"
 #define FORMAT_UINT64A "llu"
-#define stricmp		strcasecmp
-#define strnicmp	strncasecmp
+#define stricmp     strcasecmp
+#define strnicmp    strncasecmp
 #endif
 
 #ifdef UNICODE
@@ -119,12 +119,12 @@ static const tchar* const kInfiniteSymbol = STR ("oo");
 template <class T>
 inline int32 _tstrlen (const T* wcs)
 {
-	const T* eos = wcs;
+    const T* eos = wcs;
 
-	while (*eos++)
-		;
+    while (*eos++)
+        ;
 
-	return (int32) (eos - wcs - 1);
+    return (int32) (eos - wcs - 1);
 }
 
 inline int32 tstrlen (const tchar* str) {return _tstrlen (str);}
@@ -135,20 +135,20 @@ inline int32 strlen16 (const char16* str) {return _tstrlen (str);}
 template <class T>
 inline int32 _tstrcmp (const T* src, const T* dst)
 {
-	while (*src == *dst && *dst)
-	{
-		src++;
-		dst++;
-	}
+    while (*src == *dst && *dst)
+    {
+        src++;
+        dst++;
+    }
 
-	if (*src == 0 && *dst == 0)
-		return 0;
-	else if (*src == 0)
-		return -1;
-	else if (*dst == 0)
-		return 1;
-	else
-		return (int32) (*src - *dst);
+    if (*src == 0 && *dst == 0)
+        return 0;
+    else if (*src == 0)
+        return -1;
+    else if (*dst == 0)
+        return 1;
+    else
+        return (int32) (*src - *dst);
 }
 
 inline int32 tstrcmp (const tchar* src, const tchar* dst) {return _tstrcmp (src, dst);}
@@ -168,23 +168,23 @@ inline int32 strcmpT<char16> (const char16* first, const char16* last) { return 
 template <class T>
 inline int32 _tstrncmp (const T* first, const T* last, uint32 count)
 {
-	if (count == 0)
-		return 0;
+    if (count == 0)
+        return 0;
 
-	while (--count && *first && *first == *last)
-	{
-		first++;
-		last++;
-	}
+    while (--count && *first && *first == *last)
+    {
+        first++;
+        last++;
+    }
 
-	if (*first == 0 && *last == 0)
-		return 0;
-	else if (*first == 0)
-		return -1;
-	else if (*last == 0)
-		return 1;
-	else
-		return (int32) (*first - *last);
+    if (*first == 0 && *last == 0)
+        return 0;
+    else if (*first == 0)
+        return -1;
+    else if (*last == 0)
+        return 1;
+    else
+        return (int32) (*first - *last);
 }
 
 inline int32 tstrncmp (const tchar* first, const tchar* last, uint32 count) {return _tstrncmp (first, last, count);}
@@ -204,10 +204,10 @@ inline int32 strncmpT<char16> (const char16* first, const char16* last, uint32 c
 template <class T>
 inline T* _tstrcpy (T* dst, const T* src)
 {
-	T* cp = dst;
-	while ((*cp++ = *src++) != 0) // copy string
-		;
-	return dst;
+    T* cp = dst;
+    while ((*cp++ = *src++) != 0) // copy string
+        ;
+    return dst;
 }
 inline tchar* tstrcpy (tchar* dst, const tchar* src) {return _tstrcpy (dst, src);}
 inline char8* strcpy8 (char8* dst, const char8* src) {return _tstrcpy (dst, src);}
@@ -217,16 +217,16 @@ inline char16* strcpy16 (char16* dst, const char16* src) {return _tstrcpy (dst, 
 
 T* _tstrncpy(T) (T* dest, const(T)* source, uint32 count)
 {
-	T* start = dest;
-	while (count && (*dest++ = *source++) != 0) // copy string
-		count--;
+    T* start = dest;
+    while (count && (*dest++ = *source++) != 0) // copy string
+        count--;
 
-	if (count) // pad out with zeros
-	{
-		while (--count)
-			*dest++ = 0;
-	}
-	return start;
+    if (count) // pad out with zeros
+    {
+        while (--count)
+            *dest++ = 0;
+    }
+    return start;
 }
 
 tchar* tstrncpy (tchar* dest, const(tchar)* source, uint32 count) 
@@ -248,15 +248,15 @@ char16* strncpy16 (char16* dest, const(char16)* source, uint32 count)
 template <class T>
 inline T* _tstrcat (T* dst, const T* src)
 {
-	T* cp = dst;
+    T* cp = dst;
 
-	while (*cp)
-		cp++; // find end of dst
+    while (*cp)
+        cp++; // find end of dst
 
-	while ((*cp++ = *src++) != 0) // Copy src to end of dst
-		;
+    while ((*cp++ = *src++) != 0) // Copy src to end of dst
+        ;
 
-	return dst;
+    return dst;
 }
 
 inline tchar* tstrcat (tchar* dst, const tchar* src) {return _tstrcat (dst, src); }
@@ -264,87 +264,116 @@ inline char8* strcat8 (char8* dst, const char8* src) {return _tstrcat (dst, src)
 inline char16* strcat16 (char16* dst, const char16* src) {return _tstrcat (dst, src); }
 +/
 
+/// Convert UTF-16 to UTF-8
+void str16ToStr8 (char* dst, wchar* src, int32 n = -1)
+{
+    int32 i = 0;
+    for (;;)
+    {
+        if (i == n)
+        {
+            dst[i] = 0;
+            return;
+        }
+
+        wchar codeUnit = src[i];
+        if (codeUnit >= 127)
+            codeUnit = '?';
+
+        dst[i] = cast(char)(codeUnit); // FUTURE: proper unicode conversion, this is US-ASCII only
+
+        if (src[i] == 0)
+            break;
+        i++;
+    }
+
+    while (n > i)
+    {
+        dst[i] = 0;
+        i++;
+    }
+}
 
 void str8ToStr16 (char16* dst, string src, int32 n = -1)
 {
     int32 i = 0;
-	for (;;)
-	{
+    for (;;)
+    {
         if (i == src.length)
         {
             dst[i] = 0;
             return;
         }
 
-		if (i == n)
-		{
-			dst[i] = 0;
-			return;
-		}
+        if (i == n)
+        {
+            dst[i] = 0;
+            return;
+        }
 
         version(BigEndian)
         {
-		    char8* pChr = cast(char8*)&dst[i];
-		    pChr[0] = 0;
-		    pChr[1] = src[i];
+            char8* pChr = cast(char8*)&dst[i];
+            pChr[0] = 0;
+            pChr[1] = src[i];
         }
         else
         {
-		    dst[i] = cast(char16)(src[i]);
+            dst[i] = cast(char16)(src[i]);
         }
 
-		if (src[i] == 0)
-			break;
+        if (src[i] == 0)
+            break;
 
-		i++;
-	}
+        i++;
+    }
 
-	while (n > i)
-	{
-		dst[i] = 0;
-		i++;
-	}
+    while (n > i)
+    {
+        dst[i] = 0;
+        i++;
+    }
 }
 
 void str8ToStr16 (char16* dst, const(char8)* src, int32 n = -1)
 {
-	int32 i = 0;
-	for (;;)
-	{
-		if (i == n)
-		{
-			dst[i] = 0;
-			return;
-		}
+    int32 i = 0;
+    for (;;)
+    {
+        if (i == n)
+        {
+            dst[i] = 0;
+            return;
+        }
 
         version(BigEndian)
         {
-		    char8* pChr = cast(char8*)&dst[i];
-		    pChr[0] = 0;
-		    pChr[1] = src[i];
+            char8* pChr = cast(char8*)&dst[i];
+            pChr[0] = 0;
+            pChr[1] = src[i];
         }
         else
         {
-		    dst[i] = cast(char16)(src[i]);
+            dst[i] = cast(char16)(src[i]);
         }
 
-		if (src[i] == 0)
-			break;
+        if (src[i] == 0)
+            break;
 
-		i++;
-	}
+        i++;
+    }
 
-	while (n > i)
-	{
-		dst[i] = 0;
-		i++;
-	}
+    while (n > i)
+    {
+        dst[i] = 0;
+        i++;
+    }
 }
 /*
 //------------------------------------------------------------------------
 bool FIDStringsEqual (FIDString id1, FIDString id2)
 {
-	return (id1 && id2) ? (strcmp8 (id1, id2) == 0) : false;
+    return (id1 && id2) ? (strcmp8 (id1, id2) == 0) : false;
 }
 
 static const uint32 kPrintfBufferSize = 4096;
