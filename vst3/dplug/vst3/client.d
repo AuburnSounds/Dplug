@@ -61,13 +61,11 @@ import dplug.vst3.ivstcomponent;
 import dplug.vst3.ipluginbase;
 import dplug.vst3.fstrdefs;
 import dplug.vst3.ibstream;
+import dplug.vst3.ivstunit;
 
-// TODO: implement more interfaces 
-//     * ComponentBase,
 // TODO: call IComponentHandler::restartComponent (kLatencyChanged) after a latency change
-// TODO buffer split
-// Note: assumes shared memory
-class VST3Client : IAudioProcessor, IComponent, IEditController
+// Note: the VST3 client assumes shared memory
+class VST3Client : IAudioProcessor, IComponent, IEditController, IUnitInfo
 {
 public:
 nothrow:
@@ -76,7 +74,6 @@ nothrow:
     this(Client client, IUnknown hostCallback)
     {
         _client = client;
-        // TODO do something with host callback
     }
 
     ~this()
@@ -92,7 +89,7 @@ nothrow:
     }
 
     // Implements FUnknown
-    mixin QUERY_INTERFACE_SPECIAL_CASE_IUNKNOWN!(IAudioProcessor, IComponent, IEditController, IPluginBase);
+    mixin QUERY_INTERFACE_SPECIAL_CASE_IUNKNOWN!(IAudioProcessor, IComponent, IEditController, IPluginBase, IUnitInfo);
 	mixin IMPLEMENT_REFCOUNT;
 
 
@@ -371,7 +368,6 @@ nothrow:
         return cast(int)(0.5f + _client.tailSizeInSeconds() * atomicLoad(_sampleRateHostPOV));
     }
 
-
     // Implements IEditController
 
     override tresult setComponentState (IBStream state)
@@ -564,6 +560,99 @@ nothrow:
     override IPlugView createView (FIDString name)
     {
         return mallocNew!DplugView(this);
+    }
+
+
+    // implements IUnitInfo
+
+    override int32 getUnitCount ()
+    {
+        return 1;
+    }
+
+    /** Gets UnitInfo for a given index in the flat list of unit. */
+    override tresult getUnitInfo (int32 unitIndex, ref UnitInfo info /*out*/)
+    {
+        if (unitIndex == 0)
+        {
+            info.id = kRootUnitId;
+            info.parentUnitId = kNoParentUnitId;
+            str8ToStr16(info.name.ptr, "Root Unit", 128);
+            info.programListId = kNoProgramListId;
+            return kResultTrue;
+        }
+        return kResultFalse;
+    }
+
+    /** Component intern program structure. */
+    /** Gets the count of Program List. */
+    int32 getProgramListCount ()
+    {
+        return 0;
+    }
+
+    /** Gets for a given index the Program List Info. */
+    tresult getProgramListInfo (int32 listIndex, ref ProgramListInfo info /*out*/)
+    {
+        return kResultFalse; // TODO
+    }
+
+    /** Gets for a given program list ID and program index its program name. */
+    tresult getProgramName (ProgramListID listId, int32 programIndex, String128 name /*out*/)
+    {
+        return kResultFalse; // TODO
+    }
+
+    /** Gets for a given program list ID, program index and attributeId the associated attribute value. */
+    tresult getProgramInfo (ProgramListID listId, int32 programIndex,
+                            const(wchar)* attributeId /*in*/, String128 attributeValue /*out*/)
+    {
+        return kResultFalse; // TODO
+    }
+
+    /** Returns kResultTrue if the given program index of a given program list ID supports PitchNames. */
+    tresult hasProgramPitchNames (ProgramListID listId, int32 programIndex)
+    {
+        return kResultFalse; // TODO
+    }
+
+    /** Gets the PitchName for a given program list ID, program index and pitch.
+    If PitchNames are changed the Plug-in should inform the host with IUnitHandler::notifyProgramListChange. */
+    tresult getProgramPitchName (ProgramListID listId, int32 programIndex,
+                                 int16 midiPitch, String128 name /*out*/)
+    {
+        return kResultFalse; // TODO
+    }
+
+    // units selection --------------------
+    /** Gets the current selected unit. */
+    UnitID getSelectedUnit ()
+    {
+        return 0;
+    }
+
+    /** Sets a new selected unit. */
+    tresult selectUnit (UnitID unitId)
+    {
+        return kResultTrue; // TODO
+    }
+
+    /** Gets the according unit if there is an unambiguous relation between a channel or a bus and a unit.
+    This method mainly is intended to find out which unit is related to a given MIDI input channel. */
+    tresult getUnitByBus (MediaType type, BusDirection dir, int32 busIndex,
+                          int32 channel, ref UnitID unitId /*out*/)
+    {
+        return kResultFalse; // TODO
+    }
+
+    /** Receives a preset data stream.
+    - If the component supports program list data (IProgramListData), the destination of the data
+    stream is the program specified by list-Id and program index (first and second parameter)
+    - If the component supports unit data (IUnitData), the destination is the unit specified by the first
+    parameter - in this case parameter programIndex is < 0). */
+    tresult setUnitProgramData (int32 listOrUnitId, int32 programIndex, IBStream data)
+    {
+        return kResultFalse; // TODO
     }
 
 private:
@@ -796,6 +885,8 @@ nothrow:
     {
         return kResultTrue;
     }
+
+
 
 private:
     VST3Client _vst3Client;

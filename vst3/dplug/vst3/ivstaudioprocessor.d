@@ -247,11 +247,8 @@ nothrow:
          - kInfiniteTail when infinite tail. */
     uint32 getTailSamples ();
 
-    __gshared immutable FUID iid = FUID(IAudioProcessor_iid);
+    __gshared immutable TUID iid = INLINE_UID(0x42043F99, 0xB7DA453C, 0xA569E79D, 0x9AAEC33D);
 }
-
-static immutable TUID IAudioProcessor_iid = INLINE_UID(0x42043F99, 0xB7DA453C, 0xA569E79D, 0x9AAEC33D);
-
 
 
 // ivstparameterchanges.h
@@ -323,11 +320,8 @@ nothrow:
     /** Adds a new value at the end of the queue, its index is returned. */
     tresult addPoint (int32 sampleOffset, ParamValue value, ref int32 index /*out*/);
 
-    __gshared immutable FUID iid = FUID(IParamValueQueue_iid);
+    __gshared immutable TUID iid = INLINE_UID(0x01263A18, 0xED074F6F, 0x98C9D356, 0x4686F9BA);
 }
-
-static immutable TUID IParamValueQueue_iid = INLINE_UID(0x01263A18, 0xED074F6F, 0x98C9D356, 0x4686F9BA);
-
 
 //----------------------------------------------------------------------
 /** All parameter changes of a processing block.
@@ -356,13 +350,8 @@ nothrow:
     returns it and its index in the parameter changes list. */
     IParamValueQueue* addParameterData (ref const(ParamID) id, ref int32 index /*out*/);
 
-    __gshared immutable FUID iid = FUID(IParameterChanges_iid);
+    __gshared immutable TUID iid = INLINE_UID(0xA4779663, 0x0BB64A56, 0xB44384A8, 0x466FEB9D);
 }
-
-static immutable TUID IParameterChanges_iid = INLINE_UID(0xA4779663, 0x0BB64A56, 0xB44384A8, 0x466FEB9D);
-
-
-
 
 // ivstprocesscontext.h
 
@@ -603,10 +592,8 @@ nothrow:
     /** Adds a new event. */
     tresult addEvent (ref Event e /*in*/);
 
-    __gshared immutable FUID iid = FUID(IEventList_iid);
+    __gshared immutable TUID iid = INLINE_UID(0x3A2C4214, 0x346349FE, 0xB2C4F397, 0xB9695A44);
 }
-
-static immutable TUID IEventList_iid = INLINE_UID(0x3A2C4214, 0x346349FE, 0xB2C4F397, 0xB9695A44);
 
 
 alias NoteExpressionTypeID = uint;
