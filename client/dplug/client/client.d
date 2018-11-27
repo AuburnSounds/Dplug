@@ -317,6 +317,7 @@ nothrow:
     final void* openGUI(void* parentInfo, void* controlInfo, GraphicsBackend backend) nothrow @nogc
     {
         createGraphicsLazily();
+        assert(_hostCommand !is null);
         return (cast(IGraphics)_graphics).openUI(parentInfo, controlInfo, _hostCommand.getDAW(), backend);
     }
 
@@ -683,8 +684,9 @@ protected:
     // Used as a flag that _graphics can be used (by audio thread or for destruction)
     shared(bool) _graphicsIsAvailable = false;
 
-
-    IHostCommand _hostCommand;
+    // Note: when implementing a new plug-in format, the format wrapper has to call
+    // `setHostCommand` and implement `IHostCommand`.
+    IHostCommand _hostCommand = null; 
 
     PluginInfo _info;
 

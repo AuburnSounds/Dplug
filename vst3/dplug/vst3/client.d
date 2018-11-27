@@ -45,6 +45,7 @@ import dplug.window.window;
 import dplug.client.client;
 import dplug.client.params;
 import dplug.client.graphics;
+import dplug.client.daw;
 
 import dplug.core.nogc;
 import dplug.core.sync;
@@ -63,6 +64,12 @@ import dplug.vst3.fstrdefs;
 import dplug.vst3.ibstream;
 import dplug.vst3.ivstunit;
 
+version(Windows)
+    debug = logVST3Client;
+
+debug(logVST3Client)
+    import core.sys.windows.windows: OutputDebugStringA;
+
 // TODO: call IComponentHandler::restartComponent (kLatencyChanged) after a latency change
 // Note: the VST3 client assumes shared memory
 class VST3Client : IAudioProcessor, IComponent, IEditController, IUnitInfo
@@ -74,15 +81,18 @@ nothrow:
     this(Client client, IUnknown hostCallback)
     {
         _client = client;
+
+        _hostCommand = mallocNew!VST3HostCommand();
+        _client.setHostCommand(_hostCommand);
     }
 
     ~this()
     {
-        if (_client !is null)
-        {
-            destroyFree(_client);
-            _client = null;
-        }
+        destroyFree(_client);
+        _client = null;
+
+        destroyFree(_hostCommand);
+        _hostCommand = null;
 
         _inputPointers.reallocBuffer(0);
         _outputPointers.reallocBuffer(0);
@@ -115,7 +125,7 @@ nothrow:
         {
             Bus busAudioIn;
             busAudioIn.active = false;
-            busAudioIn.speakerArrangement = 3; // TODO right arrangement for input audio
+            busAudioIn.speakerArrangement = getSpeakerArrangement(maxInputs); // TODO right arrangement for input audio
             with(busAudioIn.info)
             {
                 mediaType = kAudio;
@@ -132,7 +142,7 @@ nothrow:
         {
             Bus busAudioOut;
             busAudioOut.active = false;
-            busAudioOut.speakerArrangement = 3; // TODO right arrangement for output audio
+            busAudioOut.speakerArrangement = getSpeakerArrangement(maxOutputs); // TODO right arrangement for output audio
             with(busAudioOut.info)
             {
                 mediaType = kAudio;
@@ -246,30 +256,33 @@ nothrow:
     }
 
     // Implements IAudioProcessor
+
     override tresult setBusArrangements (SpeakerArrangement* inputs, int32 numIns, SpeakerArrangement* outputs, int32 numOuts)
     {
         if (numIns < 0 || numOuts < 0)
             return kInvalidArgument;
-
-        int busIn = cast(int) (_audioInputs.length);
-        int busOut = cast(int) (_audioOutputs.length);
-
+        int busIn = cast(int) (_audioInputs.length);   // 0 or 1
+        int busOut = cast(int) (_audioOutputs.length); // 0 or 1
         if (numIns > busIn || numOuts > busOut)
             return kResultFalse;
+        assert(numIns == 0 || numIns == 1);
+        assert(numOuts == 0 || numOuts == 1);
 
-        foreach(index; 0..busIn)
-        {
-            if (index >= numIns)
-                break;
-            _audioInputs[index].speakerArrangement = inputs[index];
-        }
+        int reqInputs = 0;
+        int reqOutputs = 0;
 
-        foreach(index; 0..busOut)
-        {
-            if (index >= numOuts)
-                break;
-            _audioOutputs[index].speakerArrangement = outputs[index];
-        }
+        if (numIns == 1)
+            reqInputs = getChannelCount(inputs[0]);
+        if (numOuts == 1)
+            reqOutputs = getChannelCount(outputs[0]);
+
+        if (!_client.isLegalIO(reqInputs, reqOutputs))
+            return kResultFalse;
+
+        if (numIns == 1)
+            _audioInputs[0].speakerArrangement = inputs[0];
+        if (numOuts == 1)
+            _audioOutputs[0].speakerArrangement = outputs[0];
         return kResultTrue;
     }
 
@@ -559,7 +572,9 @@ nothrow:
     The life time of the editor view will never exceed the life time of this controller instance. */
     override IPlugView createView (FIDString name)
     {
-        return mallocNew!DplugView(this);
+        if (name !is null && strcmp(name, "editor") == 0)
+            return mallocNew!DplugView(this);
+        return null;
     }
 
 
@@ -658,6 +673,7 @@ nothrow:
 private:
     Client _client;
     IComponentHandler _handler;
+    IHostCommand _hostCommand;
 
     shared(bool) _shouldInitialize = true;
 
@@ -781,21 +797,27 @@ nothrow:
     \param type : \ref platformUIType which should be created */
     tresult attached (void* parent, FIDString type)
     {
+        debug(logVST3Client) OutputDebugStringA("attached".ptr);
+
         if (_vst3Client._client.hasGUI() )
         {
             WindowBackend backend = WindowBackend.autodetect;
             convertPlatformToWindowBackend(type, &backend);  
             _graphicsMutex.lock();
             scope(exit) _graphicsMutex.unlock();
+
             _vst3Client._client.openGUI(parent, null, cast(GraphicsBackend)backend);
+            return kResultTrue;
         }
-        return kResultOk;
+        return kResultFalse;
+        
     }
 
     /** The parent window of the view is about to be destroyed.
     You have to remove all your own views from the parent window or view. */
     tresult removed ()
     {
+        debug(logVST3Client) OutputDebugStringA("removed".ptr);
         if (_vst3Client._client.hasGUI() )
         {
             _graphicsMutex.lock();
@@ -886,8 +908,6 @@ nothrow:
         return kResultTrue;
     }
 
-
-
 private:
     VST3Client _vst3Client;
     UncheckedMutex _graphicsMutex;
@@ -910,5 +930,46 @@ private:
             return true;
         }
         return false;
+    }
+}
+
+
+
+// Host commands
+
+class VST3HostCommand : IHostCommand
+{
+public:
+nothrow:
+@nogc:
+
+    this()
+    {
+    }
+
+    override void beginParamEdit(int paramIndex)
+    {
+        // TODO
+    }
+
+    override void paramAutomate(int paramIndex, float value)
+    {
+        // TODO
+    }
+
+    override void endParamEdit(int paramIndex)
+    {
+        // TODO
+    }
+
+    override bool requestResize(int width, int height)
+    {
+        // TODO
+        return false;
+    }
+
+    DAW getDAW()
+    {
+        return DAW.Cubase; // there are no host-related workarounds for now
     }
 }
