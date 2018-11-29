@@ -55,7 +55,6 @@ import dplug.core.runtime;
 import dplug.vst3.ftypes;
 import dplug.vst3.ivstaudioprocessor;
 import dplug.vst3.ivsteditcontroller;
-import dplug.vst3.ihostapplication;
 import dplug.vst3.iplugview;
 import dplug.vst3.ivstcomponent;
 import dplug.vst3.ipluginbase;
