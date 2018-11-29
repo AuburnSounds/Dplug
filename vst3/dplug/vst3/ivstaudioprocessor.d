@@ -388,7 +388,7 @@ struct ProcessContext
 
         kSmpteValid       = 1 << 14,    ///< smpteOffset and frameRate contain valid information
         kClockValid       = 1 << 15     ///< samplesToNextClock valid
-    };
+    }
 
     uint32 state;                   ///< a combination of the values from \ref StatesAndFlags
 

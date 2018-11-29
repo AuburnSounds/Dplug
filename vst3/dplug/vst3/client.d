@@ -416,10 +416,24 @@ nothrow:
             }
         }
 
-        // TODO fill TimeInfo
-        TimeInfo info;
-        _client.processAudioFromHost(_inputPointers[], _outputPointers[], data.numSamples, info);
+        updateTimeInfo(data.processContext, data.numSamples);
+        _client.processAudioFromHost(_inputPointers[], _outputPointers[], data.numSamples, _timeInfo);
         return kResultOk;
+    }
+
+    void updateTimeInfo(ProcessContext* context, int frames)
+    {
+        if (context !is null)
+        {
+            if (context.state & ProcessContext.kTempoValid)
+                _timeInfo.tempo = context.tempo;
+            _timeInfo.timeInSamples = context.projectTimeSamples;
+            _timeInfo.hostIsPlaying = (context.state & ProcessContext.kPlaying) != 0;
+        }
+        else
+        {
+            _timeInfo.timeInSamples += frames;
+        }
     }
 
     override uint32 getTailSamples()
@@ -725,7 +739,7 @@ private:
     float _sampleRate;
     shared(float) _sampleRateHostPOV = 44100.0f;
     float _sampleRateDSPPOV = 0.0f;
-    
+
     shared(int) _maxSamplesPerBlockHostPOV = -1;
     int _maxSamplesPerBlockDSPPOV = -1;
 
@@ -737,6 +751,8 @@ private:
 
     DAW _daw = DAW.Unknown;
     char[128] _hostName;
+
+    TimeInfo _timeInfo;
 
     static struct Bus
     {
