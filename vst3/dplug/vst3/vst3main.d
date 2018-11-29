@@ -55,7 +55,6 @@ import dplug.core.nogc;
 import dplug.client.client;
 import dplug.client.daw;
 
-import dplug.vst3.funknown;
 import dplug.vst3.ipluginbase;
 import dplug.vst3.ftypes;
 import dplug.vst3.ivstaudioprocessor;

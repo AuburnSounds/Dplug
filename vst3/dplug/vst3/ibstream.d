@@ -16,7 +16,6 @@
 module dplug.vst3.ibstream;
 
 import dplug.vst3.ftypes;
-import dplug.vst3.funknown;
 
 /** Base class for streams.
 \ingroup pluginBase

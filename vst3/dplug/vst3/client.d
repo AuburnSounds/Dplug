@@ -53,8 +53,6 @@ import dplug.core.sync;
 import dplug.core.vec;
 import dplug.core.runtime;
 import dplug.vst3.ftypes;
-import dplug.vst3.funknown;
-import dplug.vst3.fplatform;
 import dplug.vst3.ivstaudioprocessor;
 import dplug.vst3.ivsteditcontroller;
 import dplug.vst3.ihostapplication;

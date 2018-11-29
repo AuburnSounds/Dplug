@@ -15,9 +15,7 @@
 //-----------------------------------------------------------------------------
 module dplug.vst3.ivstcomponent;
 
-import dplug.vst3.fplatform;
 import dplug.vst3.ftypes;
-import dplug.vst3.funknown;
 import dplug.vst3.ipluginbase;
 import dplug.vst3.ibstream;
 

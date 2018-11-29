@@ -15,7 +15,6 @@
 //-----------------------------------------------------------------------------
 module dplug.vst3.ivstunit;
 
-import dplug.vst3.funknown;
 import dplug.vst3.ftypes;
 import dplug.vst3.ibstream;
 

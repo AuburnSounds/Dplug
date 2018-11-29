@@ -20,7 +20,6 @@ module dplug.vst3.ipluginbase;
 import core.stdc.stdlib;
 import core.stdc.string;
 
-import dplug.vst3.funknown;
 import dplug.vst3.ftypes;
 import dplug.vst3.fstrdefs;
 

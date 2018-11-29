@@ -15,7 +15,6 @@
 //-----------------------------------------------------------------------------
 module dplug.vst3.ihostapplication;
 
-import dplug.vst3.funknown;
 import dplug.vst3.ftypes;
 
 /** Basic Host Callback Interface.

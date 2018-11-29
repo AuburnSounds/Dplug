@@ -20,8 +20,6 @@
 //-----------------------------------------------------------------------------
 module dplug.vst3.ivstaudioprocessor;
 
-import dplug.vst3.fplatform;
-import dplug.vst3.funknown;
 import dplug.vst3.ftypes;
 
 

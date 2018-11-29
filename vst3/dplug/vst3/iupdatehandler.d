@@ -16,7 +16,6 @@
 module dplug.vst3.iupdatehandler;
 
 import dplug.vst3.ftypes;
-import dplug.vst3.funknown;
 
 interface IUpdateHandler : FUnknown
 {
