@@ -345,11 +345,11 @@ nothrow:
     int32 getParameterCount () ;
 
     /** Returns the queue at a given index. */
-    IParamValueQueue* getParameterData (int32 index);
+    IParamValueQueue getParameterData (int32 index);
 
     /** Adds a new parameter queue with a given ID at the end of the list,
     returns it and its index in the parameter changes list. */
-    IParamValueQueue* addParameterData (ref const(ParamID) id, ref int32 index /*out*/);
+    IParamValueQueue addParameterData (ref const(ParamID) id, ref int32 index /*out*/);
 
     __gshared immutable TUID iid = INLINE_UID(0xA4779663, 0x0BB64A56, 0xB44384A8, 0x466FEB9D);
 }

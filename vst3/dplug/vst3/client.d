@@ -389,6 +389,33 @@ nothrow:
         foreach(chan; 0.._numOutputChannels)
             _outputPointers[chan] = data.outputs[0].channelBuffers32[chan];
 
+        //
+        // Read parameter changes, sets them.
+        //
+        IParameterChanges paramChanges = data.inputParameterChanges;
+        if (paramChanges !is null)
+        {
+            int numParamChanges = paramChanges.getParameterCount();
+            foreach(index; 0..numParamChanges)
+            {
+                IParamValueQueue queue = paramChanges.getParameterData(index);
+
+                ParamID id = queue.getParameterId();
+                int pointCount = queue.getPointCount();
+                if (pointCount > 0)
+                {
+                    int offset;
+                    ParamValue value;
+                    if (kResultTrue == queue.getPoint(pointCount-1, offset, value))
+                    {
+                        // Dplug assume parameter do not change over a single buffer, and parameter smoothing is handled
+                        // inside the plugin itself. So we take the most future point (inside this buffer) and applies it now.
+                        _client.setParameterFromHost(convertParamIDToParamIndex(id), value);
+                    }
+                }
+            }
+        }
+
         // TODO fill TimeInfo
         TimeInfo info;
         _client.processAudioFromHost(_inputPointers[], _outputPointers[], data.numSamples, info);
