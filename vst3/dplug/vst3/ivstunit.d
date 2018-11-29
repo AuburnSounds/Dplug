@@ -30,22 +30,24 @@ enum ProgramListID kNoProgramListId = -1;   ///< no programs are used in the uni
 \see IUnitInfo */
 struct UnitInfo
 {
-    // align(vst3Alignment):
     UnitID id;                      ///< unit identifier
     UnitID parentUnitId;            ///< identifier of parent unit (kNoParentUnitId: does not apply, this unit is the root)
     String128 name;                 ///< name, optional for the root component, required otherwise
     ProgramListID programListId;    ///< id of program list used in unit (kNoProgramListId = no programs used in this unit)
 }
 
+mixin SMTG_TYPE_SIZE_CHECK!(UnitInfo, 268, 268, 268);
+
 /** Basic Program List Description.
 \see IUnitInfo */
 struct ProgramListInfo
 {
-    // align(vst3Alignment):
     ProgramListID id;               ///< program list identifier
     String128 name;                 ///< name of program list
     int32 programCount;             ///< number of programs in this list
 }
+
+mixin SMTG_TYPE_SIZE_CHECK!(ProgramListInfo, 264, 264, 264);
 
 /** Special programIndex value for IUnitHandler::notifyProgramListChange */
 enum int32 kAllProgramInvalid = -1;     ///< all program information is invalid

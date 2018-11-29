@@ -69,8 +69,6 @@ struct BusInfo
 {
 nothrow:
 @nogc:
-//align(vst3Alignment):
-
     MediaType mediaType;    ///< Media type - has to be a value of \ref MediaTypes
     BusDirection direction; ///< input or output \ref BusDirections
     int32 channelCount;     ///< number of channels (if used then need to be recheck after \ref
@@ -94,6 +92,8 @@ nothrow:
     }
 }
 
+mixin SMTG_TYPE_SIZE_CHECK!(BusInfo, 276, 276, 276);
+
 /** I/O modes */
 alias IoModes = int;
 enum : IoModes
@@ -110,12 +110,12 @@ relation of an event-input-channel to an audio-output-bus in particular is of in
 \n See also: IComponent::getRoutingInfo, \ref vst3Routing */
 struct RoutingInfo
 {
-//    align(vst3Alignment):
-
     MediaType mediaType;    ///< media type see \ref MediaTypes
     int32 busIndex;         ///< bus index
     int32 channel;          ///< channel (-1 for all channels)
-};
+}
+
+mixin SMTG_TYPE_SIZE_CHECK!(RoutingInfo, 12, 12, 12);
 
 // IComponent Interface
 /** Component Base Interface

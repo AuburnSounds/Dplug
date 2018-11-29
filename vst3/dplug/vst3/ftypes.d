@@ -174,36 +174,26 @@ else
     enum COM_COMPATIBLE = 0;
 }
 
-// #pragma pack translation
-// use align(vst3Alignment): inside structs
-version(OSX)
+// vststructsizecheck.h
+
+// necessary because D doesn't have the equivalent of #pragma(pack)
+
+template SMTG_TYPE_SIZE_CHECK(T, size_t Platform64Size, size_t MacOS32Size, size_t Win32Size)
 {
+    enum size = T.sizeof;
     static if ((void*).sizeof == 8)
     {
-        // 64-bit macOS
-        // no need in packing here
-        // MAYDO verify what it means because we shouldn't use align in the first place here
-        enum vst3Alignment = 1;
+        // 64-bit
+        static assert(size == Platform64Size, "bad size for " ~ T.stringof);
     }
-    else
+    else version(OSX)
     {
-        enum vst3Alignment = 1;
+        // OSX 32-bit
+        static assert(size == MacOS32Size, "bad size for " ~ T.stringof);
     }
-}
-else version(Windows)
-{
-    static if ((void*).sizeof == 8)
-    {
-        // no need in packing here
-        // MAYDO verify what it means because we shouldn't use align in the first place here
-        enum vst3Alignment = 16;
+    else version(Windows)
+    {        
+        // Windows 32-bit
+        static assert(size == Win32Size, "bad size for " ~ T.stringof);
     }
-    else
-    {
-        enum vst3Alignment = 8;
-    }
-}
-else
-{
-    enum vst3Alignment = 0;
 }

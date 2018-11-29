@@ -25,7 +25,6 @@ static immutable string kVstComponentControllerClass = "Component Controller Cla
 
 struct ParameterInfo
 {
-//align(vst3Alignment):
     ParamID id;             ///< unique identifier of this parameter (named tag too)
     String128 title;        ///< parameter title (e.g. "Volume")
     String128 shortTitle;   ///< parameter shortTitle (e.g. "Vol")
@@ -49,6 +48,8 @@ struct ParameterInfo
                                     ///< (highly recommended to export a bypass parameter for effect Plug-in)
     }
 }
+
+mixin SMTG_TYPE_SIZE_CHECK!(ParameterInfo, 792, 792, 792);
 
 //------------------------------------------------------------------------
 /** View Types used for IEditController::createView */

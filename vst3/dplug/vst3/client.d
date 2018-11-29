@@ -70,7 +70,6 @@ import dplug.vst3.ivstunit;
 debug(logVST3Client)
     import core.sys.windows.windows: OutputDebugStringA;
 
-// TODO: call IComponentHandler::restartComponent (kLatencyChanged) after a latency change
 // Note: the VST3 client assumes shared memory
 class VST3Client : IAudioProcessor, IComponent, IEditController //, IUnitInfo
 {
@@ -78,10 +77,9 @@ public:
 nothrow:
 @nogc:
 
-    this(Client client, IUnknown hostCallback)
+    this(Client client)
     {
         _client = client;
-
         _hostCommand = mallocNew!VST3HostCommand(this);
         _client.setHostCommand(_hostCommand);
     }
@@ -122,11 +120,13 @@ nothrow:
         _audioOutputs = makeVec!Bus;
         _eventInputs = makeVec!Bus;
 
+        _sampleRate = -42.0f; // so that a latency changed is sent at next `setupProcessing`
+
         if (maxInputs)
         {
             Bus busAudioIn;
             busAudioIn.active = false;
-            busAudioIn.speakerArrangement = getSpeakerArrangement(maxInputs); // TODO right arrangement for input audio
+            busAudioIn.speakerArrangement = getSpeakerArrangement(maxInputs);
             with(busAudioIn.info)
             {
                 mediaType = kAudio;
@@ -143,7 +143,7 @@ nothrow:
         {
             Bus busAudioOut;
             busAudioOut.active = false;
-            busAudioOut.speakerArrangement = getSpeakerArrangement(maxOutputs); // TODO right arrangement for output audio
+            busAudioOut.speakerArrangement = getSpeakerArrangement(maxOutputs);
             with(busAudioOut.info)
             {
                 mediaType = kAudio;
@@ -283,13 +283,15 @@ nothrow:
 
         if (numIns == 1)
         {
-            _audioInputs[0].speakerArrangement = inputs[0];
-            _audioInputs[0].info.channelCount = reqInputs;
+            Bus* pbus = _audioInputs.ptr;
+            pbus[0].speakerArrangement = inputs[0];
+            pbus[0].info.channelCount = reqInputs;
         }
         if (numOuts == 1)
         {
-            _audioOutputs[0].speakerArrangement = outputs[0];
-            _audioOutputs[0].info.channelCount = reqOutputs;
+            Bus* pbus = _audioOutputs.ptr;
+            pbus[0].speakerArrangement = outputs[0];
+            pbus[0].info.channelCount = reqOutputs;
         }
         return kResultTrue;
     }
@@ -319,6 +321,15 @@ nothrow:
     {
         ScopedForeignCallback!(false, true) scopedCallback;
         scopedCallback.enter();
+
+        // Find out if this is a new latency, and inform host of latency change if yes.
+        // That is an implicit assumption in Dplug that latency is dependent upon sample-rate.
+        bool sampleRateChanged = (_sampleRate != setup.sampleRate);
+        _sampleRate = setup.sampleRate;
+        if (sampleRateChanged && _handler)
+            _handler.restartComponent(kLatencyChanged);
+
+        // Pass these new values to the audio thread
         atomicStore(_sampleRateHostPOV, cast(float)(setup.sampleRate));
         atomicStore(_maxSamplesPerBlockHostPOV, setup.maxSamplesPerBlock);
         if (setup.symbolicSampleSize != kSample32)
@@ -513,7 +524,6 @@ nothrow:
     (for example 90 for 90db - see \ref vst3AutomationIntro). */
     override ParamValue normalizedParamToPlain (ParamID id, ParamValue valueNormalized)
     {
-        // TODO: correct thing to do? SDK examples expose remapped integers and floats
         int paramIndex = convertParamIDToParamIndex(id);
         if (!_client.isValidParamIndex(paramIndex))
             return 0;
@@ -524,7 +534,6 @@ nothrow:
     /** Returns for a given paramID and a plain value its normalized value. (see \ref vst3AutomationIntro) */
     override ParamValue plainParamToNormalized (ParamID id, ParamValue plainValue)
     {
-        // TODO: correct thing to do? SDK examples expose remapped integers and floats
         int paramIndex = convertParamIDToParamIndex(id);
         if (!_client.isValidParamIndex(paramIndex))
             return 0;
@@ -686,6 +695,7 @@ private:
 
     shared(bool) _shouldInitialize = true;
 
+    float _sampleRate;
     shared(float) _sampleRateHostPOV = 44100.0f;
     float _sampleRateDSPPOV = 0.0f;
     

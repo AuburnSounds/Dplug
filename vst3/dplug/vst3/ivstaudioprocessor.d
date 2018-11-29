@@ -131,12 +131,13 @@ enum uint kInfiniteTail = uint.max;
 \see IAudioProcessor::setupProcessing */
 struct ProcessSetup
 {
-//    align(vst3Alignment):
     int32 processMode;          ///< \ref ProcessModes
     int32 symbolicSampleSize;   ///< \ref SymbolicSampleSizes
     int32 maxSamplesPerBlock;   ///< maximum number of samples per audio block
     SampleRate sampleRate;      ///< sample rate
 }
+
+mixin SMTG_TYPE_SIZE_CHECK!(ProcessSetup, 24, 20, 24);
 
 /** Processing buffers of an audio bus.
 This structure contains the processing buffer for each channel of an audio bus.
@@ -154,8 +155,6 @@ This structure contains the processing buffer for each channel of an audio bus.
 \see ProcessData */
 struct AudioBusBuffers
 {
-//    align(vst3Alignment):
-
     int32 numChannels = 0;      ///< number of audio channels in bus
     uint64 silenceFlags = 0;    ///< Bitset of silence state per channel
     union
@@ -165,6 +164,8 @@ struct AudioBusBuffers
     }
 }
 
+mixin SMTG_TYPE_SIZE_CHECK!(AudioBusBuffers, 24, 16, 24);
+
 /** Any data needed in audio processing.
     The host prepares AudioBusBuffers for each input/output bus,
     regardless of the bus activation state. Bus buffer indices always match
@@ -172,8 +173,6 @@ struct AudioBusBuffers
 \see AudioBusBuffers, IParameterChanges, IEventList, ProcessContext */
 struct ProcessData
 {
-//    align(vst3Alignment):
-
     int32 processMode = 0;          ///< processing mode - value of \ref ProcessModes
     int32 symbolicSampleSize = kSample32;   ///< sample size - value of \ref SymbolicSampleSizes
     int32 numSamples = 0;           ///< number of samples to process
@@ -188,6 +187,8 @@ struct ProcessData
     IEventList outputEvents = null;               ///< outgoing events for this block (optional)
     ProcessContext* processContext = null;         ///< processing context (optional, but most welcome)
 }
+
+mixin SMTG_TYPE_SIZE_CHECK!(ProcessData, 80, 48, 48);
 
 /** Audio Processing Interface.
 This interface must always be supported by audio processing Plug-ins. */
@@ -366,7 +367,6 @@ this problem.
 \see IAudioProcessor, ProcessData*/
 struct ProcessContext
 {
-    //version(vst3Alignment):
     /** Transport state & other flags */
     alias StatesAndFlags = int;
     enum : StatesAndFlags
@@ -415,10 +415,10 @@ struct ProcessContext
     int32 samplesToNextClock;       ///< MIDI Clock Resolution (24 Per Quarter Note), can be negative (nearest)
 }
 
+mixin SMTG_TYPE_SIZE_CHECK!(ProcessContext, 112, 104, 112);
+
 struct FrameRate
 {
-    //version(vst3Alignment):
-
     enum FrameRateFlags
     {
         kPullDownRate = 1 << 0, ///< for ex. HDTV: 23.976 fps with 24 as frame rate
@@ -428,6 +428,8 @@ struct FrameRate
     uint32 flags;               ///< flags #FrameRateFlags
 }
 
+mixin SMTG_TYPE_SIZE_CHECK!(FrameRate, 8, 8, 8);
+
 /** Description of a chord.
 A chord is described with a key note, a root note and the
 \copydoc chordMask
@@ -435,8 +437,6 @@ A chord is described with a key note, a root note and the
 
 struct Chord
 {
-    //version(vst3Alignment):
-
     uint8 keyNote;      ///< key note in chord
     uint8 rootNote;     ///< lowest note in chord
 
@@ -455,23 +455,24 @@ struct Chord
     }
 }
 
+mixin SMTG_TYPE_SIZE_CHECK!(Chord, 4, 4, 4);
 
 /** Note-on event specific data. Used in \ref Event (union)*/
 struct NoteOnEvent
 {
-    //version(vst3Alignment):
-    int16 channel;          ///< channel index in event bus
-    int16 pitch;            ///< range [0, 127] = [C-2, G8] with A3=440Hz
+    short channel;          ///< channel index in event bus
+    short pitch;            ///< range [0, 127] = [C-2, G8] with A3=440Hz
     float tuning;           ///< 1.f = +1 cent, -1.f = -1 cent
     float velocity;         ///< range [0.0, 1.0]
-    int32 length;           ///< in sample frames (optional, Note Off has to follow in any case!)
-    int32 noteId;           ///< note identifier (if not available then -1)
+    int length;           ///< in sample frames (optional, Note Off has to follow in any case!)
+    int noteId;           ///< note identifier (if not available then -1)
 }
+
+mixin SMTG_TYPE_SIZE_CHECK!(NoteOnEvent, 20, 20, 20);
 
 /** Note-off event specific data. Used in \ref Event (union)*/
 struct NoteOffEvent
 {
-    //version(vst3Alignment):
     int16 channel;          ///< channel index in event bus
     int16 pitch;            ///< range [0, 127] = [C-2, G8] with A3=440Hz
     float velocity;         ///< range [0.0, 1.0]
@@ -479,10 +480,11 @@ struct NoteOffEvent
     float tuning;           ///< 1.f = +1 cent, -1.f = -1 cent
 }
 
+mixin SMTG_TYPE_SIZE_CHECK!(NoteOffEvent, 16, 16, 16);
+
 /** Data event specific data. Used in \ref Event (union)*/
 struct DataEvent
 {
-    //version(vst3Alignment):
     uint32 size;            ///< size in bytes of the data block bytes
     uint32 type;            ///< type of this data block (see \ref DataTypes)
     const uint8* bytes;     ///< pointer to the data block
@@ -494,20 +496,22 @@ struct DataEvent
     };
 }
 
+mixin SMTG_TYPE_SIZE_CHECK!(DataEvent, 16, 12, 12);
+
 /** PolyPressure event specific data. Used in \ref Event (union)*/
 struct PolyPressureEvent
 {
-    //version(vst3Alignment):
     int16 channel;          ///< channel index in event bus
     int16 pitch;            ///< range [0, 127] = [C-2, G8] with A3=440Hz
     float pressure;         ///< range [0.0, 1.0]
     int32 noteId;           ///< event should be applied to the noteId (if not -1)
 }
 
+mixin SMTG_TYPE_SIZE_CHECK!(PolyPressureEvent, 12, 12, 12);
+
 /** Chord event specific data. Used in \ref Event (union)*/
 struct ChordEvent
 {
-    //version(vst3Alignment):
     int16 root;             ///< range [0, 127] = [C-2, G8] with A3=440Hz
     int16 bassNote;         ///< range [0, 127] = [C-2, G8] with A3=440Hz
     int16 mask;             ///< root is bit 0
@@ -516,10 +520,11 @@ struct ChordEvent
     const TChar* text;      ///< UTF-16, null terminated Hosts Chord Name
 }
 
+mixin SMTG_TYPE_SIZE_CHECK!(ChordEvent, 16, 12, 12);
+
 /** Scale event specific data. Used in \ref Event (union)*/
 struct ScaleEvent
 {
-    //version(vst3Alignment):
     int16 root;             ///< range [0, 127] = root Note/Transpose Factor
     int16 mask;             ///< Bit 0 =  C,  Bit 1 = C#, ... (0x5ab5 = Major Scale)
     uint16 textLen;         ///< the number of characters (TChar) between the beginning of text and the terminating
@@ -527,10 +532,12 @@ struct ScaleEvent
     const TChar* text;      ///< UTF-16, null terminated, Hosts Scale Name
 }
 
+mixin SMTG_TYPE_SIZE_CHECK!(ScaleEvent, 16, 10, 12);
+
 /** Event */
 struct Event
 {
-    //version(vst3Alignment):
+align(1):
     int32 busIndex;             ///< event bus index
     int32 sampleOffset;         ///< sample frames related to the current block start sample position
     TQuarterNotes ppqPosition;  ///< position in project
@@ -558,6 +565,9 @@ struct Event
         kScaleEvent                 ///< is \ref ScaleEvent
     }
 
+    static if (size_t.sizeof == 8)
+        ubyte[2] padding0;
+
     uint16 type;                ///< a value from \ref EventTypes
     union
     {
@@ -570,7 +580,14 @@ struct Event
         ChordEvent chord;                               ///< type == kChordEvent
         ScaleEvent scale;                               ///< type == kScaleEvent
     }
+
+    static if (size_t.sizeof == 8)
+        ubyte[2] padding1;
 }
+
+//pragma(msg.
+mixin SMTG_TYPE_SIZE_CHECK!(Event, 48, 40, 40);
+
 
         /** List of events to process.
 \ingroup vstIHost vst300
@@ -607,9 +624,10 @@ struct NoteExpressionValueEvent
     NoteExpressionValue value;      ///< normalized value [0.0, 1.0].
 }
 
+mixin SMTG_TYPE_SIZE_CHECK!(NoteExpressionValueEvent, 16, 16, 16);
+
 struct NoteExpressionTextEvent
 {
-    //align(vst3Alignment):
     NoteExpressionTypeID typeId;    ///< see \ref NoteExpressionTypeID (kTextTypeID or kPhoneticTypeID)
     int32 noteId;                   ///< associated note identifier to apply the change
 
@@ -618,3 +636,5 @@ struct NoteExpressionTextEvent
 
     const TChar* text;              ///< UTF-16, null terminated
 }
+
+mixin SMTG_TYPE_SIZE_CHECK!(NoteExpressionTextEvent, 24, 16, 16);
