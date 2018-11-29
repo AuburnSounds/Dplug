@@ -7,6 +7,7 @@
 //               pluginterfaces/vst/ivstprocessorcontext.h
 //               pluginterfaces/vst/ivstevents.h
 //               pluginterfaces/vst/ivstnoteexpression.h
+//               pluginterfaces/vst/ivsthostapplication.h
 //
 // Created by  : Steinberg, 10/2005
 // Description : VST Audio Processing Interfaces
@@ -636,3 +637,25 @@ struct NoteExpressionTextEvent
 }
 
 mixin SMTG_TYPE_SIZE_CHECK!(NoteExpressionTextEvent, 24, 16, 16);
+
+
+/** Basic Host Callback Interface.
+\ingroup vstIHost vst300
+- [host imp]
+- [passed as 'context' in to IPluginBase::initialize () ]
+- [released: 3.0.0]
+
+Basic VST host application interface. */
+interface IHostApplication: FUnknown
+{
+public:
+nothrow:
+@nogc:
+    /** Gets host application name. */
+    tresult getName (String128* name);
+
+    /** Creates host object (e.g. Vst::IMessage). */
+    tresult createInstance (TUID cid, TUID _iid, void** obj);
+
+    __gshared immutable TUID iid = INLINE_UID(0x58E595CC, 0xDB2D4969, 0x8B6AAF8C, 0x36A664E5);
+}

@@ -21,7 +21,6 @@ import core.stdc.stdlib;
 import core.stdc.string;
 
 import dplug.vst3.ftypes;
-import dplug.vst3.fstrdefs;
 
 //------------------------------------------------------------------------
 /**  Basic interface to a Plug-in component.

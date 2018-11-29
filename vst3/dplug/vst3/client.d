@@ -59,7 +59,6 @@ import dplug.vst3.ihostapplication;
 import dplug.vst3.iplugview;
 import dplug.vst3.ivstcomponent;
 import dplug.vst3.ipluginbase;
-import dplug.vst3.fstrdefs;
 import dplug.vst3.ibstream;
 import dplug.vst3.ivstunit;
 
