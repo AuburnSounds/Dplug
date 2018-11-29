@@ -381,6 +381,8 @@ struct Vec(T)
             return _data;
         }
 
+        // WARNING: NO `ref` return here, so vec[i] is NOT assignable, it mutates a local copy.
+
         inout(T) opIndex(size_t i) pure nothrow inout @nogc
         {
             return _data[i];
