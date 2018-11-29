@@ -493,7 +493,7 @@ struct DataEvent
     enum DataTypes
     {
         kMidiSysEx = 0      ///< for MIDI system exclusive message
-    };
+    }
 }
 
 mixin SMTG_TYPE_SIZE_CHECK!(DataEvent, 16, 12, 12);

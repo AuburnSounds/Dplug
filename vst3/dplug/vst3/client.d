@@ -46,6 +46,7 @@ import dplug.client.client;
 import dplug.client.params;
 import dplug.client.graphics;
 import dplug.client.daw;
+import dplug.client.midi;
 
 import dplug.core.nogc;
 import dplug.core.sync;
@@ -411,6 +412,41 @@ nothrow:
                         // Dplug assume parameter do not change over a single buffer, and parameter smoothing is handled
                         // inside the plugin itself. So we take the most future point (inside this buffer) and applies it now.
                         _client.setParameterFromHost(convertParamIDToParamIndex(id), value);
+                    }
+                }
+            }
+        }
+
+        // Deal with input MIDI events (only note on and note off supported so far)
+        if (data.inputEvents !is null && _client.receivesMIDI())
+        {
+            IEventList eventList = data.inputEvents;
+            int numEvents = eventList.getEventCount();
+            foreach(index; 0..numEvents)
+            {
+                Event e;
+                if (eventList.getEvent(index, e) == kResultOk)
+                {
+                    int offset = e.sampleOffset;
+                    switch(e.type)
+                    {
+                        case Event.EventTypes.kNoteOnEvent:
+                        {
+                            ubyte velocity = cast(ubyte)(0.5f + 127.0f * e.noteOn.velocity);
+                            ubyte noteNumber = cast(ubyte)(e.noteOn.pitch);
+                            _client.enqueueMIDIFromHost( makeMidiMessageNoteOn(offset, e.noteOn.channel, noteNumber, velocity));
+                            break;
+                        }
+
+                        case Event.EventTypes.kNoteOffEvent:
+                        {
+                            ubyte noteNumber = cast(ubyte)(e.noteOff.pitch);
+                            _client.enqueueMIDIFromHost( makeMidiMessageNoteOff(offset, e.noteOff.channel, noteNumber));
+                            break;
+                        }
+
+                        default:
+                            // unsupported events
                     }
                 }
             }
