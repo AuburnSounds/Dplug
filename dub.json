@@ -21,6 +21,7 @@
         "dplug:client": "*",
         "dplug:graphics": "*",
         "dplug:host": "*",
+        "dplug:lv2": "*",
         "dplug:vst": "*",
         "dplug:vst3": "*",
         "dplug:au": "*",
@@ -93,6 +94,14 @@
                 "dplug:core": "*",
                 "dplug:vst": "*",
                 "dplug:window": "*"
+            }
+        },
+        {
+            "name": "lv2",
+            "sourcePaths": [ "lv2/dplug/lv2" ],
+            "importPaths": [ "lv2" ],
+            "dependencies": {
+                "dplug:client": "*"
             }
         },
         {
