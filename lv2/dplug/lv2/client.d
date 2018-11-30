@@ -1,3 +1,11 @@
+/**
+* LV2 Client implementation
+*
+* Copyright: Cut Through Recordings 2018 and later.
+* Copyright: Copyright Auburn Sounds 2018 and later.
+* License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
+* Authors:   Ethan Reker
+*/
 module dplug.lv2.client;
 
 import std.string;

@@ -13,6 +13,13 @@
   ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
   OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
+/**
+* atom/util.h translation to D
+* Copyright: Cut Through Recordings 2018.
+* Copyright: Copyright Auburn Sounds 2018.
+* License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
+* Authors:   Ethan Reker
+*/
 
 /**
    @file util.h Helper functions for the LV2 Atom extension.

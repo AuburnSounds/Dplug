@@ -18,6 +18,13 @@ module dplug.lv2.lv2;
   ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
   OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
+/**
+* lv2core/lv2.h translation to D
+* Copyright: Cut Through Recordings 2018.
+* Copyright: Copyright Auburn Sounds 2018.
+* License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
+* Authors:   Ethan Reker
+*/
 
 /**
    @defgroup lv2core LV2 Core

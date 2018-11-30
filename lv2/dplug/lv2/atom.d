@@ -14,6 +14,13 @@ module dplug.lv2.atom;
   ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
   OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
+/**
+* atom/atom.h translation to D
+* Copyright: Cut Through Recordings 2018.
+* Copyright: Copyright Auburn Sounds 2018.
+* License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
+* Authors:   Ethan Reker
+*/
 
 /**
    @defgroup atom Atom
