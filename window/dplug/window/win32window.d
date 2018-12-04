@@ -380,13 +380,6 @@ version(Windows)
                     return 0;
                 }
 
-                case WM_SIZE:
-                {
-                    _width = LOWORD(lParam);
-                    _height = HIWORD(lParam);
-                    return DefWindowProcA(hwnd, uMsg, wParam, lParam);
-                }
-
                 default:
                     return DefWindowProcA(hwnd, uMsg, wParam, lParam);
             }
