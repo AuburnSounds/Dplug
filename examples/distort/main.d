@@ -32,6 +32,12 @@ version(VST3)
     mixin(VST3EntryPoint!DistortClient);
 }
 
+version(LV2)
+{
+    import dplug.lv2;
+    mixin(LV2EntryPoint!DistortClient);
+}
+
 enum : int
 {
     paramInput,

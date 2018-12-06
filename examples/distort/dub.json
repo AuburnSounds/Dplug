@@ -30,6 +30,7 @@
         "dplug:vst": { "path": "../.." },
         "dplug:vst3": { "path": "../.." },
         "dplug:au": { "path": "../.." },
+        "dplug:lv2": { "path": "../.."},
         "dplug:gui": { "path": "../.." },
         "dplug:pbr-widgets": { "path": "../.." }
     },
@@ -54,6 +55,11 @@
             "versions": ["VST3"],
             "targetType": "dynamicLibrary",
             "lflags-osx-ldc": [ "-exported_symbols_list", "module-vst3.lst", "-dead_strip" ]
+        },
+        {
+            "name": "LV2",
+            "versions": ["LV2"],
+            "targetType": "dynamicLibrary"
         }
     ]
 }
