@@ -18,8 +18,6 @@
 /**
    @file util.h Helper functions for the LV2 Atom extension.
 
-   Note these functions are all static inline, do not take their address.
-
    This header is non-normative, it is provided for convenience.
 */
 
@@ -39,7 +37,7 @@ import dplug.lv2.atom;
 extern(C) {
 
     /** Pad a size to 64 bits. */
-    pragma(inline):
+    
     static uint32_t
     lv2_atom_pad_size(uint32_t size)
     {
@@ -47,7 +45,7 @@ extern(C) {
     }
 
     /** Return the total size of `atom`, including the header. */
-    pragma(inline):
+    
     static uint32_t
     lv2_atom_total_size(const LV2_Atom* atom)
     {
@@ -55,7 +53,7 @@ extern(C) {
     }
 
     /** Return true iff `atom` is null. */
-    pragma(inline):
+    
     static bool
     lv2_atom_is_null(const LV2_Atom* atom)
     {
@@ -63,7 +61,7 @@ extern(C) {
     }
 
     /** Return true iff `a` is equal to `b`. */
-    pragma(inline):
+    
     static bool
     lv2_atom_equals(const LV2_Atom* a, const LV2_Atom* b)
     {
@@ -78,7 +76,7 @@ extern(C) {
     */
 
     /** Get an iterator pointing to the first event in a Sequence body. */
-    pragma(inline):
+    
     static LV2_Atom_Event*
     lv2_atom_sequence_begin(const LV2_Atom_Sequence_Body* body)
     {
@@ -86,7 +84,7 @@ extern(C) {
     }
 
     /** Get an iterator pointing to the end of a Sequence body. */
-    pragma(inline):
+    
     static LV2_Atom_Event*
     lv2_atom_sequence_end(const LV2_Atom_Sequence_Body* body, uint32_t size)
     {
@@ -94,7 +92,7 @@ extern(C) {
     }
 
     /** Return true iff `i` has reached the end of `body`. */
-    pragma(inline):
+    
     static bool
     lv2_atom_sequence_is_end(const LV2_Atom_Sequence_Body* body,
                             uint32_t                      size,
@@ -104,7 +102,7 @@ extern(C) {
     }
 
     /** Return an iterator to the element following `i`. */
-    pragma(inline):
+    
     static LV2_Atom_Event*
     lv2_atom_sequence_next(const LV2_Atom_Event* i)
     {
@@ -153,7 +151,7 @@ extern(C) {
 
     This simply resets the size field, the other fields are left untouched.
     */
-    pragma(inline):
+    
     static void
     lv2_atom_sequence_clear(LV2_Atom_Sequence* seq)
     {
@@ -171,7 +169,7 @@ extern(C) {
     @return A pointer to the newly written event in `seq`,
     or NULL on failure (insufficient space).
     */
-    pragma(inline):
+    
     static LV2_Atom_Event*
     lv2_atom_sequence_append_event(LV2_Atom_Sequence*    seq,
                                 uint32_t              capacity,
@@ -197,7 +195,7 @@ extern(C) {
     */
 
     /** Get an iterator pointing to the first element in `tup`. */
-    pragma(inline):
+    
     static LV2_Atom*
     lv2_atom_tuple_begin(const (LV2_Atom_Tuple)* tup)
     {
@@ -205,7 +203,7 @@ extern(C) {
     }
 
     /** Return true iff `i` has reached the end of `body`. */
-    pragma(inline):
+    
     static bool
     lv2_atom_tuple_is_end(const void* body, uint32_t size, const LV2_Atom* i)
     {
@@ -213,7 +211,7 @@ extern(C) {
     }
 
     /** Return an iterator to the element following `i`. */
-    pragma(inline):
+    
     static LV2_Atom*
     lv2_atom_tuple_next(const LV2_Atom* i)
     {
@@ -228,7 +226,7 @@ extern(C) {
     */
 
     /** Return a pointer to the first property in `body`. */
-    pragma(inline):
+    
     static LV2_Atom_Property_Body*
     lv2_atom_object_begin(const LV2_Atom_Object_Body* body)
     {
@@ -236,7 +234,7 @@ extern(C) {
     }
 
     /** Return true iff `i` has reached the end of `obj`. */
-    pragma(inline):
+    
     static bool
     lv2_atom_object_is_end(const LV2_Atom_Object_Body*   body,
                         uint32_t                      size,
@@ -246,7 +244,7 @@ extern(C) {
     }
 
     /** Return an iterator to the property following `i`. */
-    pragma(inline):
+    
     static LV2_Atom_Property_Body*
     lv2_atom_object_next(const LV2_Atom_Property_Body* i)
     {
@@ -309,7 +307,7 @@ extern(C) {
     // name and age are now set to the appropriate values in obj, or NULL.
     @endcode
     */
-    pragma(inline):
+    
     static int
     lv2_atom_object_query(const LV2_Atom_Object* object,
                         LV2_Atom_Object_Query* query)
@@ -342,7 +340,7 @@ extern(C) {
     /**
     Body only version of lv2_atom_object_get().
     */
-    pragma(inline):
+    
     static int
     lv2_atom_object_body_get(uint32_t size, const LV2_Atom_Object_Body* body, ...)
     {
@@ -399,7 +397,7 @@ extern(C) {
                         0);
     @endcode
     */
-    pragma(inline):
+    
     static int
     lv2_atom_object_get(const LV2_Atom_Object* object, ...)
     {

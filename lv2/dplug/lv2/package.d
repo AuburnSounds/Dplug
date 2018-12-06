@@ -10,4 +10,7 @@ public
   import dplug.lv2.urid;
   import dplug.lv2.midi;
   import dplug.lv2.ui;
+  import dplug.lv2.options;
+  import dplug.lv2.lv2_init;
+  import dplug.lv2.state;
 }

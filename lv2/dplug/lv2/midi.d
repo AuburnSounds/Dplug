@@ -187,7 +187,6 @@ extern(C) {
     /**
     Return true iff `msg` is a MIDI voice message (which has a channel).
     */
-    pragma(inline):
     static bool
     lv2_midi_is_voice_message(const uint8_t* msg) {
         return msg[0] >= 0x80 && msg[0] < 0xF0;
@@ -196,7 +195,6 @@ extern(C) {
     /**
     Return true iff `msg` is a MIDI system message (which has no channel).
     */
-    pragma(inline):
     static bool
     lv2_midi_is_system_message(const uint8_t* msg) {
         switch (msg[0]) {
@@ -211,7 +209,6 @@ extern(C) {
     Return the type of a MIDI message.
     @param msg Pointer to the start (status byte) of a MIDI message.
     */
-    pragma(inline):
     static LV2_Midi_Message_Type
     lv2_midi_message_type(const uint8_t* msg) {
         if (lv2_midi_is_voice_message(msg)) {

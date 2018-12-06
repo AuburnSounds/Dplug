@@ -35,7 +35,6 @@ extern(C) {
     only useful for features with data, and can not detect features that are
     present but have NULL data.
     */
-    pragma(inline):
     static void*
     lv2_features_data(const (LV2_Feature*)* features,
                     const char*        uri)
@@ -72,7 +71,6 @@ extern(C) {
 
     @return NULL on success, otherwise the URI of this missing feature.
     */
-    pragma(inline):
     static const (char*)
     lv2_features_query(const (LV2_Feature*)* features, ...)
     {

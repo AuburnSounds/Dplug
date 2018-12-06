@@ -43,6 +43,9 @@ import derelict.x11.keysymdef;
 import derelict.x11.Xutil;
 import derelict.x11.extensions.Xrandr;
 import derelict.x11.extensions.randr;
+import core.stdc.stdio;
+
+// debug = logX11Window;
 
 // This is an extension to X11, almost always should exist on modern systems
 // If it becomes a problem, version out its usage, it'll work just won't be as nice event wise
@@ -85,7 +88,7 @@ private:
 public:
     this(void* parentWindow, IWindowListener listener, int width, int height)
     {
-        drawMutex = makeMutex();
+        debug(logX11Window) fprintf(stderr, "X11Window: constructor\n");
 
         initializeXLib();
 
@@ -241,6 +244,7 @@ public:
     // Implements IWindow
     override void waitEventAndDispatch() nothrow @nogc
     {
+        // fprintf(stderr, "X11Window: waitEventAndDispatch()\n");
         XEvent event;
         // Wait for events for current window
         XWindowEvent(_display, _windowId, windowEventMask(), &event);
@@ -249,6 +253,7 @@ public:
 
     void eventLoop() nothrow @nogc
     {
+        // fprintf(stderr, "X11Window: eventLoop()\n");
         while (!terminated()) {
             waitEventAndDispatch();
         }
@@ -266,8 +271,6 @@ public:
         box2i dirtyRect = listener.getDirtyRectangle();
         if (!dirtyRect.empty())
         {
-            drawMutex.lock();
-
             prevMergedDirtyRect = mergedDirtyRect;
             mergedDirtyRect = mergedDirtyRect.expand(dirtyRect);
             // If everything has been drawn by Expose event handler, send Expose event.
@@ -291,13 +294,12 @@ public:
                 XSendEvent(_display, _windowId, False, ExposureMask, &evt);
                 XFlush(_display);
             }
-
-            drawMutex.unlock();
         }
     }
 
     void timerLoop() nothrow @nogc
     {
+        debug(logX11Window) fprintf(stderr, "X11Window: timerLoop()\n");
         while(!terminated())
         {
             currentTime = getTimeMs();
@@ -314,6 +316,7 @@ public:
 
     override bool terminated()
     {
+        debug(logX11Window) fprintf(stderr, "X11Window: terminated()\n");
         return atomicLoad(_terminated);
     }
 
@@ -338,6 +341,7 @@ public:
 
 void handleEvents(ref XEvent event, X11Window theWindow) nothrow @nogc
 {
+    debug(logX11Window) fprintf(stderr, "X11Window: handleEvents()\n");
     with(theWindow)
     {
 

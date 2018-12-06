@@ -817,7 +817,6 @@ string makePListFile(Plugin plugin, string config, bool hasIcon)
     return content;
 }
 
-
 // return path of newly made icon
 string makeMacIcon(string pluginName, string pngPath)
 {
