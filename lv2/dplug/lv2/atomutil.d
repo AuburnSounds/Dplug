@@ -1,5 +1,6 @@
 /*
   Copyright 2008-2015 David Robillard <http://drobilla.net>
+  Copyright 2018 Ethan Reker <http://cutthroughrecordings.com>
 
   Permission to use, copy, modify, and/or distribute this software for any
   purpose with or without fee is hereby granted, provided that the above
@@ -12,13 +13,6 @@
   WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
   ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
   OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-*/
-/**
-* atom/util.h translation to D
-* Copyright: Cut Through Recordings 2018.
-* Copyright: Copyright Auburn Sounds 2018.
-* License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
-* Authors:   Ethan Reker
 */
 
 /**

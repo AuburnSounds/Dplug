@@ -2,6 +2,7 @@
   LV2 UI Extension
   Copyright 2009-2016 David Robillard <d@drobilla.net>
   Copyright 2006-2011 Lars Luthman <lars.luthman@gmail.com>
+  Copyright 2018 Ethan Reker <http://cutthroughrecordings.com>
 
   Permission to use, copy, modify, and/or distribute this software for any
   purpose with or without fee is hereby granted, provided that the above
@@ -15,13 +16,7 @@
   ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
   OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
-/**
-* ui/ui.h translation to D
-* Copyright: Cut Through Recordings 2018.
-* Copyright: Copyright Auburn Sounds 2018.
-* License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
-* Authors:   Ethan Reker
-*/
+module dplug.lv2.ui;
 
 /**
    @defgroup ui User Interfaces
@@ -31,7 +26,6 @@
 
    @{
 */
-module dplug.lv2.ui;
 
 import core.stdc.stdint;
 

@@ -1,10 +1,8 @@
 /**
 * LV2 Client implementation
 *
-* Copyright: Cut Through Recordings 2018 and later.
-* Copyright: Copyright Auburn Sounds 2018 and later.
+* Copyright: Ethan Reker 2018.
 * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
-* Authors:   Ethan Reker
 */
 module dplug.lv2.client;
 
@@ -42,7 +40,7 @@ import dplug.lv2.lv2,
        dplug.lv2.ui,
        dplug.lv2.urid;
 
-enum PLUGIN_URI = "dplug:destructorizer";
+static immutable enum PLUGIN_URI = "dplug:destructorizer";
 
 static LV2Client* instancePtr;
 
@@ -51,8 +49,8 @@ static LV2Client* instancePtr;
  */
 template LV2EntryPoint(alias ClientClass)
 {
-    enum importStdint = "import core.stdc.stdint;";
-    enum entryPoint = "export extern(C) static LV2_Handle instantiate(const LV2_Descriptor* descriptor," ~
+    static immutable enum importStdint = "import core.stdc.stdint;";
+    static immutable enum entryPoint = "export extern(C) static LV2_Handle instantiate(const LV2_Descriptor* descriptor," ~
                       "                                               double rate," ~
                       "                                               const char* bundle_path," ~
                       "                                               const(LV2_Feature*)* features)" ~
@@ -60,7 +58,7 @@ template LV2EntryPoint(alias ClientClass)
                       "    return myLV2EntryPoint!" ~ ClientClass.stringof ~ "(descriptor, rate, bundle_path, features);" ~
                       "}\n";
 
-    enum descriptor = "static const LV2_Descriptor descriptor = {" ~
+    static immutable enum descriptor = "static const LV2_Descriptor descriptor = {" ~
                             "PLUGIN_URI," ~
                             "&instantiate," ~
                             "&connect_port," ~
@@ -70,16 +68,16 @@ template LV2EntryPoint(alias ClientClass)
                             "&cleanup," ~
                             "&extension_data" ~
                         "};\n";
-    enum descriptorUI = "static const LV2UI_Descriptor descriptorUI = " ~ 
+    static immutable enum descriptorUI = "static const LV2UI_Descriptor descriptorUI = " ~ 
                         "{" ~
-                            "\"dplug:destructorizer#ui\"," ~
+                            "cast(const(char*))(PLUGIN_URI ~ \"#ui\")," ~
                             "&instantiateUI," ~
                             "&cleanupUI," ~
                             "&port_event," ~
                             "&extension_dataUI" ~
                         "};\n";
 
-    enum lv2ui_descripor = "extern(C) const (LV2UI_Descriptor)* lv2ui_descriptor(uint32_t index)" ~ 
+    static immutable enum lv2ui_descripor = "extern(C) const (LV2UI_Descriptor)* lv2ui_descriptor(uint32_t index)" ~ 
                             "{" ~
                             "    switch(index) {" ~
                             "        case 0: return &descriptorUI;" ~
@@ -87,7 +85,7 @@ template LV2EntryPoint(alias ClientClass)
                             "    }" ~ 
                             "}\n";
 
-    enum lv2_descriptor = "extern(C) const (LV2_Descriptor)*" ~ 
+    static immutable enum lv2_descriptor = "extern(C) const (LV2_Descriptor)*" ~ 
                             "lv2_descriptor(uint32_t index)" ~ 
                             "{" ~ 
                             "    switch (index) {" ~ 

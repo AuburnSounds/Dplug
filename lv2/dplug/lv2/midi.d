@@ -1,5 +1,6 @@
 /*
   Copyright 2012-2016 David Robillard <http://drobilla.net>
+  Copyright 2018 Ethan Reker <http://cutthroughrecordings.com>
 
   Permission to use, copy, modify, and/or distribute this software for any
   purpose with or without fee is hereby granted, provided that the above
@@ -13,13 +14,7 @@
   ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
   OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
-/**
-* midi/midi.h translation to D
-* Copyright: Cut Through Recordings 2018.
-* Copyright: Copyright Auburn Sounds 2018.
-* License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
-* Authors:   Ethan Reker
-*/
+module dplug.lv2.midi;
 
 /**
    @defgroup midi MIDI
@@ -29,7 +24,6 @@
 
    @{
 */
-module dplug.lv2.midi;
 
 import core.stdc.stdint;
 
