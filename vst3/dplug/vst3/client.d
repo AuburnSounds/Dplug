@@ -61,11 +61,8 @@ import dplug.vst3.ipluginbase;
 import dplug.vst3.ibstream;
 import dplug.vst3.ivstunit;
 
-//version(Windows)
-//    debug = logVST3Client;
+//debug = logVST3Client;
 
-debug(logVST3Client)
-    import core.sys.windows.windows: OutputDebugStringA;
 
 // Note: the VST3 client assumes shared memory
 class VST3Client : IAudioProcessor, IComponent, IEditController //, IUnitInfo
@@ -76,6 +73,8 @@ nothrow:
 
     this(Client client)
     {
+        debug(logVST3Client) debugLog(">VST3Client.this()");
+        debug(logVST3Client) scope(exit) debugLog("<VST3Client.this()");
         _client = client;
         _hostCommand = mallocNew!VST3HostCommand(this);
         _client.setHostCommand(_hostCommand);
@@ -83,6 +82,8 @@ nothrow:
 
     ~this()
     {
+        debug(logVST3Client) debugLog(">VST3Client.~this()");
+        debug(logVST3Client) scope(exit) debugLog("<VST3Client.~this()");
         destroyFree(_client);
         _client = null;
 
@@ -105,7 +106,9 @@ nothrow:
     If the method does NOT return kResultOk, the object is released immediately. In this case terminate is not called! */
     override tresult initialize(FUnknown context)
     {
-        debug(logVST3Client) OutputDebugStringA("initialize()".ptr);
+        debug(logVST3Client) debugLog(">initialize()".ptr);
+        debug(logVST3Client) scope(exit) debugLog("<initialize()".ptr);
+
         setHostApplication(context);
 
         // Create buses
@@ -177,7 +180,8 @@ nothrow:
     cleanups. You have to release all references to any host application interfaces. */
     override tresult terminate()
     {
-        debug(logVST3Client) OutputDebugStringA("terminate()".ptr);
+        debug(logVST3Client) debugLog("terminate()".ptr);
+        debug(logVST3Client) scope(exit) debugLog("terminate()".ptr);
         if (_hostApplication !is null)
         {
             _hostApplication.release();
@@ -227,6 +231,8 @@ nothrow:
 
     override tresult activateBus (MediaType type, BusDirection dir, int32 index, TBool state)
     {
+        debug(logVST3Client) debugLog(">activateBus".ptr);
+        debug(logVST3Client) scope(exit) debugLog("<activateBus".ptr);
         Vec!Bus* busList = getBusList(type, dir);
         if (busList is null)
             return kInvalidArgument;
@@ -244,12 +250,17 @@ nothrow:
 
     override tresult setStateController (IBStream state)
     {
+        debug(logVST3Client) debugLog(">setStateController".ptr);
+        debug(logVST3Client) scope(exit) debugLog("<setStateController".ptr);
+
         // TODO deserialize
         return kNotImplemented;
     }
 
     override tresult getStateController (IBStream state)
     {
+        debug(logVST3Client) debugLog(">getStateController".ptr);
+        debug(logVST3Client) scope(exit) debugLog("<getStateController".ptr);
         // TODO serialize
         return kNotImplemented;
     }
@@ -258,6 +269,9 @@ nothrow:
 
     override tresult setBusArrangements (SpeakerArrangement* inputs, int32 numIns, SpeakerArrangement* outputs, int32 numOuts)
     {
+        debug(logVST3Client) debugLog(">setBusArrangements".ptr);
+        debug(logVST3Client) scope(exit) debugLog("<setBusArrangements".ptr);
+
         if (numIns < 0 || numOuts < 0)
             return kInvalidArgument;
         int busIn = cast(int) (_audioInputs.length);   // 0 or 1
@@ -295,6 +309,9 @@ nothrow:
 
     override tresult getBusArrangement (BusDirection dir, int32 index, ref SpeakerArrangement arr)
     {
+        debug(logVST3Client) debugLog(">getBusArrangement".ptr);
+        debug(logVST3Client) scope(exit) debugLog("<getBusArrangement".ptr);
+
         Vec!Bus* busList = getBusList(kAudio, dir);
         if (busList is null || index >= cast(int)(busList.length))
             return kInvalidArgument;
@@ -311,11 +328,14 @@ nothrow:
     {
         ScopedForeignCallback!(false, true) scopedCallback;
         scopedCallback.enter();
-        return _client.latencySamples(_sampleRateHostPOV);
+        return _client.latencySamples(44100.0f);//_sampleRateHostPOV);
     }
 
     override tresult setupProcessing (ref ProcessSetup setup)
     {
+        debug(logVST3Client) debugLog(">setupProcessing".ptr);
+        debug(logVST3Client) scope(exit) debugLog("<setupProcessing".ptr);
+
         ScopedForeignCallback!(false, true) scopedCallback;
         scopedCallback.enter();
 
@@ -336,6 +356,8 @@ nothrow:
 
     override tresult setProcessing (TBool state)
     {
+        debug(logVST3Client) debugLog(">setProcessing".ptr);
+        debug(logVST3Client) scope(exit) debugLog("<setProcessing".ptr);
         if (state)
         {
             atomicStore(_shouldInitialize, true);
@@ -350,7 +372,6 @@ nothrow:
         // Call initialize if needed
         float newSampleRate = atomicLoad!(MemoryOrder.raw)(_sampleRateHostPOV);
         int newMaxSamplesPerBlock = atomicLoad!(MemoryOrder.raw)(_maxSamplesPerBlockHostPOV);
-
         // find current number of inputs audio channels
         int numInputs = 0;
         if (data.numInputs != 0) // 0 or 1 output audio bus in a Dplug plugin
@@ -484,6 +505,9 @@ nothrow:
 
     override tresult setState(IBStream state)
     {
+        debug(logVST3Client) debugLog(">setState".ptr);
+        debug(logVST3Client) scope(exit) debugLog("<setState".ptr);
+
         int size;
 
         // Try to use 
@@ -526,6 +550,9 @@ nothrow:
 
     override tresult getState(IBStream state)
     {
+        debug(logVST3Client) debugLog(">getState".ptr);
+        debug(logVST3Client) scope(exit) debugLog("<getState".ptr);
+
         auto presetBank = _client.presetBank();
         ubyte[] chunk = presetBank.getStateChunkFromCurrentState();
         scope(exit) free(chunk.ptr);
@@ -539,6 +566,8 @@ nothrow:
 
     override tresult getParameterInfo (int32 paramIndex, ref ParameterInfo info)
     {
+        debug(logVST3Client) debugLog(">getParameterInfo".ptr);
+        debug(logVST3Client) scope(exit) debugLog("<getParameterInfo".ptr);
         if (!_client.isValidParamIndex(paramIndex))
             return kResultFalse;
 
@@ -556,25 +585,44 @@ nothrow:
     }
 
     /** Gets for a given paramID and normalized value its associated string representation. */
-    override tresult getParamStringByValue (ParamID id, ParamValue valueNormalized, String128 string_ )
+    override tresult getParamStringByValue (ParamID id, ParamValue valueNormalized, String128* string_ )
     {
+        debug(logVST3Client) debugLog(">getParamStringByValue".ptr);
         int paramIndex = convertParamIDToParamIndex(id);
         if (!_client.isValidParamIndex(paramIndex))
+        {
             return kResultFalse;
+        }
+
+        if (string_ is null)
+            return kResultFalse;
+
         Parameter param = _client.param(paramIndex);
         char[128] buf;
         param.stringFromNormalizedValue(valueNormalized, buf.ptr, 128);
         str8ToStr16(string_.ptr, buf.ptr, 128);
+
+        debug(logVST3Client) debugLog("<getParamStringByValue".ptr);
         return kResultTrue;
     }
 
     /** Gets for a given paramID and string its normalized value. */
     override tresult getParamValueByString (ParamID id, TChar* string_, ref ParamValue valueNormalized )
     {
+        debug(logVST3Client) debugLog(">getParamValueByString".ptr);
+        
         int paramIndex = convertParamIDToParamIndex(id);
         if (!_client.isValidParamIndex(paramIndex))
+        {
+            debug(logVST3Client) debugLog("getParamValueByString got a wrong parameter index".ptr);
             return kResultFalse;
+        }
         Parameter param = _client.param(paramIndex);
+
+        valueNormalized = 0;
+        return kResultTrue;
+/+
+
 
         char[128] valueUTF8;
         int len = 0;
@@ -587,16 +635,33 @@ nothrow:
             else
                 len++;
         }
+
+        
+
+        string_[0] = 'l';
+        string_[1] = 'o';
+        string_[2] = 'l';
+        string_[3] = '\0';
+
         if (param.normalizedValueFromString( valueUTF8[0..len], valueNormalized))
+        {
+            debug(logVST3Client) scope(exit) debugLog("<getParamValueByString".ptr);
             return kResultTrue;
+        }
         else
+        {
+            debug(logVST3Client) scope(exit) debugLog("<getParamValueByString".ptr);
             return kResultFalse;
+        }+/
     }
 
     /** Returns for a given paramID and a normalized value its plain representation
     (for example 90 for 90db - see \ref vst3AutomationIntro). */
     override ParamValue normalizedParamToPlain (ParamID id, ParamValue valueNormalized)
     {
+        debug(logVST3Client) debugLog(">normalizedParamToPlain".ptr);
+        debug(logVST3Client) debugLog("<normalizedParamToPlain".ptr);
+
         int paramIndex = convertParamIDToParamIndex(id);
         if (!_client.isValidParamIndex(paramIndex))
             return 0;
@@ -607,6 +672,9 @@ nothrow:
     /** Returns for a given paramID and a plain value its normalized value. (see \ref vst3AutomationIntro) */
     override ParamValue plainParamToNormalized (ParamID id, ParamValue plainValue)
     {
+        debug(logVST3Client) debugLog(">plainParamToNormalized".ptr);
+        debug(logVST3Client) scope(exit) debugLog("<plainParamToNormalized".ptr);
+
         int paramIndex = convertParamIDToParamIndex(id);
         if (!_client.isValidParamIndex(paramIndex))
             return 0;
@@ -617,6 +685,8 @@ nothrow:
     /** Returns the normalized value of the parameter associated to the paramID. */
     override ParamValue getParamNormalized (ParamID id)
     {
+        debug(logVST3Client) debugLog(">getParamNormalized".ptr);
+        debug(logVST3Client) scope(exit) debugLog("<getParamNormalized".ptr);
         int paramIndex = convertParamIDToParamIndex(id);
         if (!_client.isValidParamIndex(paramIndex))
             return 0;
@@ -629,6 +699,8 @@ nothrow:
     GUI element(s) only!*/
     override tresult setParamNormalized (ParamID id, ParamValue value)
     {
+        debug(logVST3Client) debugLog(">setParamNormalized".ptr);
+        debug(logVST3Client) scope(exit) debugLog("<setParamNormalized".ptr);
         int paramIndex = convertParamIDToParamIndex(id);
         if (!_client.isValidParamIndex(paramIndex))
             return kResultFalse;
@@ -640,6 +712,8 @@ nothrow:
     /** Gets from host a handler. */
     override tresult setComponentHandler (IComponentHandler handler)
     {
+        debug(logVST3Client) debugLog(">setComponentHandler".ptr);
+        debug(logVST3Client) scope(exit) debugLog("<setComponentHandler".ptr);
         if (_handler is handler)
             return kResultTrue;
 
@@ -662,6 +736,8 @@ nothrow:
     The life time of the editor view will never exceed the life time of this controller instance. */
     override IPlugView createView (FIDString name)
     {
+        debug(logVST3Client) debugLog(">createView".ptr);
+        debug(logVST3Client) scope(exit) debugLog("<createView".ptr);
         if (name !is null && strcmp(name, "editor") == 0)
             return mallocNew!DplugView(this);
         return null;
@@ -703,14 +779,14 @@ nothrow:
     }
 
     /** Gets for a given program list ID and program index its program name. */
-    tresult getProgramName (ProgramListID listId, int32 programIndex, String128 name /*out*/)
+    tresult getProgramName (ProgramListID listId, int32 programIndex, String128* name /*out*/)
     {
         return kResultFalse; // TODO
     }
 
     /** Gets for a given program list ID, program index and attributeId the associated attribute value. */
     tresult getProgramInfo (ProgramListID listId, int32 programIndex,
-                            const(wchar)* attributeId /*in*/, String128 attributeValue /*out*/)
+                            const(wchar)* attributeId /*in*/, String128* attributeValue /*out*/)
     {
         return kResultFalse; // TODO
     }
@@ -724,7 +800,7 @@ nothrow:
     /** Gets the PitchName for a given program list ID, program index and pitch.
     If PitchNames are changed the Plug-in should inform the host with IUnitHandler::notifyProgramListChange. */
     tresult getProgramPitchName (ProgramListID listId, int32 programIndex,
-                                 int16 midiPitch, String128 name /*out*/)
+                                 int16 midiPitch, String128* name /*out*/)
     {
         return kResultFalse; // TODO
     }
@@ -818,6 +894,8 @@ private:
 
     void setHostApplication(FUnknown context)
     {
+        debug(logVST3Client) debugLog(">setHostApplication".ptr);
+        debug(logVST3Client) scope(exit) debugLog("<setHostApplication".ptr);
         IHostApplication hostApplication = null;
         if (context.queryInterface(IHostApplication.iid, cast(void**)(&hostApplication)) != kResultOk)
             hostApplication = null;
@@ -887,6 +965,8 @@ nothrow:
     // MAYDO: there is considerable coupling with dplug:window here.
     override tresult isPlatformTypeSupported (FIDString type)
     {
+        debug(logVST3Client) debugLog(">isPlatformTypeSupported".ptr);
+        debug(logVST3Client) scope(exit) debugLog("<isPlatformTypeSupported".ptr);
         WindowBackend backend;
         if (convertPlatformToWindowBackend(type, &backend))
             return isWindowBackendSupported(backend) ? kResultTrue : kResultFalse;
@@ -902,12 +982,17 @@ nothrow:
     \param type : \ref platformUIType which should be created */
     tresult attached (void* parent, FIDString type)
     {
-        debug(logVST3Client) OutputDebugStringA("attached".ptr);
+        debug(logVST3Client) debugLog(">attached".ptr);
+        debug(logVST3Client) scope(exit) debugLog("<attached".ptr);
 
         if (_vst3Client._client.hasGUI() )
         {
+            if (kResultTrue != isPlatformTypeSupported(type))
+                return kResultFalse;
+
             WindowBackend backend = WindowBackend.autodetect;
-            convertPlatformToWindowBackend(type, &backend);  
+            if (!convertPlatformToWindowBackend(type, &backend))
+                return kResultFalse;
             _graphicsMutex.lock();
             scope(exit) _graphicsMutex.unlock();
 
@@ -922,19 +1007,24 @@ nothrow:
     You have to remove all your own views from the parent window or view. */
     tresult removed ()
     {
-        debug(logVST3Client) OutputDebugStringA("removed".ptr);
+        debug(logVST3Client) debugLog(">removed".ptr);
+
         if (_vst3Client._client.hasGUI() )
         {
             _graphicsMutex.lock();
             scope(exit) _graphicsMutex.unlock();
             _vst3Client._client.closeGUI();
+            debug(logVST3Client) debugLog("<removed".ptr);
+            return kResultTrue;
         }
-        return kResultOk;
+        return kResultFalse;
     }
 
     /** Handling of mouse wheel. */
     tresult onWheel (float distance)
     {
+        debug(logVST3Client) debugLog(">onWheel".ptr);
+        debug(logVST3Client) scope(exit) debugLog("<onWheel".ptr);
         return kResultFalse;
     }
 
@@ -947,6 +1037,8 @@ nothrow:
     handled. </b> Otherwise key command handling of the host might be blocked! */
     tresult onKeyDown (char16 key, int16 keyCode, int16 modifiers)
     {
+        debug(logVST3Client) debugLog(">onKeyDown".ptr);
+        debug(logVST3Client) scope(exit) debugLog("<onKeyDown".ptr);
         return kResultFalse;
     }
 
@@ -957,12 +1049,16 @@ nothrow:
     \return kResultTrue if the key is handled, otherwise return kResultFalse. */
     tresult onKeyUp (char16 key, int16 keyCode, int16 modifiers)
     {
+        debug(logVST3Client) debugLog(">onKeyUp".ptr);
+        debug(logVST3Client) scope(exit) debugLog("<onKeyUp".ptr);
         return kResultFalse;
     }
 
     /** Returns the size of the platform representation of the view. */
     tresult getSize (ViewRect* size)
     {
+        debug(logVST3Client) debugLog(">getSize".ptr);
+        debug(logVST3Client) scope(exit) debugLog("<getSize".ptr);
         if (!_vst3Client._client.hasGUI())
             return kResultFalse;
 
@@ -997,6 +1093,8 @@ nothrow:
     /** Sets IPlugFrame object to allow the Plug-in to inform the host about resizing. */
     tresult setFrame (IPlugFrame frame)
     {
+        debug(logVST3Client) debugLog(">setFrame".ptr);
+        debug(logVST3Client) scope(exit) debugLog("<setFrame".ptr);
         _plugFrame = frame;
         return kResultTrue;
     }

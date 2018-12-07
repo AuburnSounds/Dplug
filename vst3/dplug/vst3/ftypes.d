@@ -19,7 +19,7 @@
 
 module dplug.vst3.ftypes;
 
-enum UNICODE = 1;
+//debug = logVST3Client;
 
 import core.stdc.stdint;
 
@@ -249,11 +249,15 @@ mixin template IMPLEMENT_REFCOUNT()
 
         override uint release()
         {
-            import dplug.core.nogc: destroyFree;
+            import dplug.core.nogc: destroyFree, debugLog;
+            debug(logVST3Client) debugLog(">release".ptr);
+
 
             int decremented = atomicAdd(_funknownRefCount, -1);
             if (decremented == 0)
                 destroyFree(this);
+
+            debug(logVST3Client) debugLog("<release".ptr);
             return decremented;
         }
     }
@@ -265,15 +269,21 @@ mixin template QUERY_INTERFACE(Interfaces...)// interfaces)
 {
     override tresult queryInterface (ref const TUID _iid, void** obj)
     {
+        import dplug.core.nogc: destroyFree, debugLog;
+        debug(logVST3Client) debugLog(">queryInterface".ptr);
+
         foreach(initer; Interfaces)
         {
             if (iidEqual (_iid, initer.iid))
             {
                 addRef();
                 *obj = cast(void*)( cast(initer)(this) );
+
+                debug(logVST3Client) debugLog("<queryInterface OK".ptr);
                 return kResultOk;
             }
         }
+        debug(logVST3Client) debugLog("<queryInterface NULL".ptr);
         *obj = null;
         return kNoInterface;
     }

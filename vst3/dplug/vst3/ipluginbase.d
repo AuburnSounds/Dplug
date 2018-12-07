@@ -20,7 +20,12 @@ module dplug.vst3.ipluginbase;
 import core.stdc.stdlib;
 import core.stdc.string;
 
+import dplug.core.nogc;
+
 import dplug.vst3.ftypes;
+
+
+//debug = logVST3Client;
 
 //------------------------------------------------------------------------
 /**  Basic interface to a Plug-in component.
@@ -323,11 +328,16 @@ nothrow:
 
     this(ref const PFactoryInfo info)
     {
+        debug(logVST3Client) debugLog(">CPluginFactory.this".ptr);
+        debug(logVST3Client) scope(exit) debugLog("<CPluginFactory.this".ptr);
         factoryInfo = info;
     }
 
     ~this ()
     {
+        debug(logVST3Client) debugLog(">CPluginFactory.~this".ptr);
+        debug(logVST3Client) scope(exit) debugLog("<CPluginFactory.~this".ptr);
+
         if (gPluginFactory is this)
             gPluginFactory = null;
 
@@ -343,6 +353,9 @@ nothrow:
                         FUnknown function(void*) nothrow @nogc createFunc,
                         void* context = null)
     {
+        debug(logVST3Client) debugLog(">registerClass".ptr);
+        debug(logVST3Client) scope(exit) debugLog("<registerClass".ptr);
+
         if (!info || !createFunc)
             return false;
 
@@ -406,6 +419,8 @@ nothrow:
     //---from IPluginFactory------
     override tresult getFactoryInfo (PFactoryInfo* info)
     {
+        debug(logVST3Client) debugLog(">getFactoryInfo".ptr);
+        debug(logVST3Client) scope(exit) debugLog("<getFactoryInfo".ptr);
         if (info)
             memcpy (info, &factoryInfo, PFactoryInfo.sizeof);
         return kResultOk;
@@ -418,6 +433,8 @@ nothrow:
 
     override tresult getClassInfo (int32 index, PClassInfo* info)
     {
+        debug(logVST3Client) debugLog(">getClassInfo".ptr);
+        debug(logVST3Client) scope(exit) debugLog("<getClassInfo".ptr);
         if (info && (index >= 0 && index < classCount))
         {
             if (classes[index].isUnicode)
@@ -434,6 +451,9 @@ nothrow:
 
     override tresult createInstance (FIDString cid, FIDString _iid, void** obj)
     {
+        debug(logVST3Client) debugLog(">createInstance".ptr);
+        debug(logVST3Client) scope(exit) debugLog("<createInstance".ptr);
+
         for (int32 i = 0; i < classCount; i++)
         {
             if (memcmp (classes[i].info16.cid.ptr, cid, TUID.sizeof ) == 0)
@@ -461,6 +481,9 @@ nothrow:
     //---from IPluginFactory2-----
     override tresult getClassInfo2 (int32 index, PClassInfo2* info)
     {
+        debug(logVST3Client) debugLog(">getClassInfo2".ptr);
+        debug(logVST3Client) scope(exit) debugLog("<getClassInfo2".ptr);
+
         if (info && (index >= 0 && index < classCount))
         {
             if (classes[index].isUnicode)
@@ -478,6 +501,9 @@ nothrow:
     //---from IPluginFactory3-----
     override tresult getClassInfoUnicode (int32 index, PClassInfoW* info)
     {
+        debug(logVST3Client) debugLog(">getClassInfoUnicode".ptr);
+        debug(logVST3Client) scope(exit) debugLog("<getClassInfoUnicode".ptr);
+
         if (info && (index >= 0 && index < classCount))
         {
             memcpy (info, &classes[index].info16, PClassInfoW.sizeof);
