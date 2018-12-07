@@ -85,21 +85,38 @@ string toStringArchs(Arch[] archs)
 }
 
 // from a valid configuration name, extracts the rest of the name.
-// Typically configuration would be like: "VST-FULL" or "AAX-FREE".
+// Typically configuration would be like: "VST-FULL" => "FULL" or "AAX-FREE" => "FREE".
+// Used for installer file name.
 string stripConfig(string config) pure nothrow @nogc
 {
+    if (config.length >= 5 && config[0..5] == "VST3-")
+        return config[5..$];
     if (config.length >= 4 && config[0..4] == "VST-")
         return config[4..$];
     if (config.length >= 3 && config[0..3] == "AU-")
         return config[3..$];
     if (config.length >= 4 && config[0..4] == "AAX-")
         return config[4..$];
+    if (config.length >= 4 && config[0..4] == "LV2-")
+        return config[4..$];
     return null;
+}
+
+bool configIsVST3(string config) pure nothrow @nogc
+{
+    return config.length >= 4 && config[0..4] == "VST3";
 }
 
 bool configIsVST(string config) pure nothrow @nogc
 {
+    if (configIsVST3(config))
+        return false;
     return config.length >= 3 && config[0..3] == "VST";
+}
+
+bool configIsAU(string config) pure nothrow @nogc
+{
+    return config.length >= 2 && config[0..2] == "AU";
 }
 
 bool configIsAAX(string config) pure nothrow @nogc
@@ -107,10 +124,11 @@ bool configIsAAX(string config) pure nothrow @nogc
     return config.length >= 3 && config[0..3] == "AAX";
 }
 
-bool configIsAU(string config) pure nothrow @nogc
+bool configIsLV2(string config) pure nothrow @nogc
 {
-    return config.length >= 2 && config[0..2] == "AU";
+    return config.length >= 3 && config[0..3] == "LV2";
 }
+
 
 struct Plugin
 {
@@ -220,6 +238,11 @@ struct Plugin
             return std.path.buildPath(dubTargetPath, outputFilename);
     }
 
+    string getVST3BundleIdentifier() pure const
+    {
+        return CFBundleIdentifierPrefix ~ ".vst3." ~ sanitizeBundleString(pluginName);
+    }
+
     string getVSTBundleIdentifier() pure const
     {
         return CFBundleIdentifierPrefix ~ ".vst." ~ sanitizeBundleString(pluginName);
@@ -233,6 +256,11 @@ struct Plugin
     string getAAXBundleIdentifier() pure const
     {
         return CFBundleIdentifierPrefix ~ ".aax." ~ sanitizeBundleString(pluginName);
+    }
+
+    string getLV2BundleIdentifier() pure const
+    {
+        return CFBundleIdentifierPrefix ~ ".lv2." ~ sanitizeBundleString(pluginName);
     }
 
     version(OSX)
@@ -251,6 +279,11 @@ struct Plugin
                                          publicVersionString);
         }
 
+        string pkgFilenameVST3() pure const
+        {
+            return sanitizeBundleString(pluginName) ~ "-vst3.pkg";
+        }
+
         string pkgFilenameVST() pure const
         {
             return sanitizeBundleString(pluginName) ~ "-vst.pkg";
@@ -264,6 +297,11 @@ struct Plugin
         string pkgFilenameAAX() pure const
         {
             return sanitizeBundleString(pluginName) ~ "-aax.pkg";
+        }
+
+        string pkgFilenameLV2() pure const
+        {
+            return sanitizeBundleString(pluginName) ~ "-lv2.pkg";
         }
 
         string pkgBundleVST() pure const
@@ -372,7 +410,9 @@ Plugin readPluginDescription()
             string cname = c["name"].str;
             if (!configIsAAX(cname)
               &&!configIsVST(cname)
-              &&!configIsAU(cname))
+              &&!configIsVST3(cname)
+              &&!configIsAU(cname)
+              &&!configIsLV2(cname))
                 throw new Exception(format("Configuration name should start with \"VST\", \"AU\" or \"AAX\". '%s' is not a valid configuration name.", cname));
             result.configurations ~= cname;
         }

@@ -15,11 +15,13 @@ import colorize;
 import utils;
 import plugin;
 
-// This define the paths to install plugins on macOS
+// This define the paths to install plug-ins on macOS
+string MAC_VST3_DIR = "/Library/Audio/Plug-Ins/VST3";
 string MAC_VST_DIR = "/Library/Audio/Plug-Ins/VST";
 string MAC_AU_DIR  = "/Library/Audio/Plug-Ins/Components";
 string MAC_AAX_DIR = "/Library/Application Support/Avid/Audio/Plug-Ins";
-
+string MAC_LV2_DIR = "/Library/Audio/Plug-Ins/LV2";
+ 
 
 void usage()
 {
@@ -46,7 +48,7 @@ void usage()
     flag("-a --arch", "Selects target architecture.", "x86 | x86_64 | all", "Windows => all   macOS => x86_64    Linux => x86_64");
     flag("-b --build", "Selects build type.", "same ones as dub accepts", "debug");
     flag("--compiler", "Selects D compiler.", "dmd | ldc | gdc", "ldc");
-    flag("-c --config", "Adds a build configuration.", "VST | AU | AAX | name starting with \"VST\", \"AU\" or \"AAX\"", "all");
+    flag("-c --config", "Adds a build configuration.", "VST | VST3 | AU | AAX | LV2 | name starting with \"VST\", \"VST3\",\"AU\", \"AAX\", or \"LV2\"", "all");
     flag("-f --force", "Forces rebuild", null, "no");
     flag("--combined", "Combined build, important for cross-module inlining with LDC!", null, "no");
     flag("-q --quiet", "Quieter output", null, "no");
@@ -75,7 +77,7 @@ void usage()
     cwriteln("NOTES".white);
     cwriteln();
     cwriteln("      The configuration name used with " ~ "--config".cyan ~ " must exist in your " ~ "dub.json".cyan ~ " file.");
-    cwriteln("      dplug-build".cyan ~ " detects plugin format based on the " ~ "configuration".yellow ~ " name's prefix: " ~ "AU | VST | AAX.".yellow);
+    cwriteln("      dplug-build".cyan ~ " detects plugin format based on the " ~ "configuration".yellow ~ " name's prefix: " ~ "VST | VST3 | AU | AAX | LV2.".yellow);
     cwriteln();
     cwriteln("      --combined".cyan ~ " has an important effect on code speed, as it can be required for inlining in LDC.".grey);
     cwriteln();
@@ -316,6 +318,8 @@ int main(string[] args)
                         throw new Exception("Can't build AAX format on Linux");
                     if (configIsAU(config))
                         throw new Exception("Can't build AU format on Linux");
+                    if (configIsVST3(config))
+                        throw new Exception("Can't build VST3 format on Linux"); // not supported in Dplug
                 }
 
                 // Do we need this build in the installer?
@@ -327,6 +331,8 @@ int main(string[] args)
                 {
                     if (!configIsAAX(config) && oneOfTheArchIsUB)
                     {
+                        // In short: this build is deemed "temporary" if it's only a step toward building a 
+                        // multi-arch Universal Binary on macOS.
                         if (arch == Arch.x86)
                             isTemp = true;
                         else if (arch == Arch.x86_64)
@@ -481,6 +487,22 @@ int main(string[] args)
                             signAAXBinaryWithPACE(contentsDir ~ "Win32/" ~ pluginFinalName);
                         }
                     }
+                    else if (configIsVST3(config)) // VST3 special case, needs to be named .vst3 (but can't be _linked_ as .vst3)
+                    {
+                        string appendBitnessVST3(string prettyName, string originalPath)
+                        {
+                            if (is64b)
+                            {
+                                // Issue #84
+                                // Rename 64-bit binary on Windows to get Reaper to list both 32-bit and 64-bit plugins if in the same directory
+                                return prettyName ~ "-64.vst3";
+                            }
+                            else
+                                return prettyName ~ ".vst3";
+                        }
+                        // Simply copy the file
+                        fileMove(plugin.dubOutputFileName, path ~ "/" ~ appendBitnessVST3(plugin.prettyName, plugin.dubOutputFileName));
+                    }
                     else
                     {
                         string appendBitness(string prettyName, string originalPath)
@@ -495,7 +517,7 @@ int main(string[] args)
                                 return prettyName ~ extension(originalPath);
                         }
 
-                        // On Windows, simply copy the file
+                        // Simply copy the file
                         fileMove(plugin.dubOutputFileName, path ~ "/" ~ appendBitness(plugin.prettyName, plugin.dubOutputFileName));
                     }
                 }
@@ -513,6 +535,11 @@ int main(string[] args)
                     {
                         pluginDir = plugin.prettyName ~ ".vst";
                         installDir = MAC_VST_DIR;
+                    }
+                    else if (configIsVST3(config))
+                    {
+                        pluginDir = plugin.prettyName ~ ".vst3";
+                        installDir = MAC_VST3_DIR;
                     }
                     else if (configIsAU(config))
                     {
@@ -646,6 +673,12 @@ int main(string[] args)
                             pkgFilename   = plugin.pkgFilenameVST();
                             title = "VST plug-in";
                         }
+                        else if (configIsVST3(config))
+                        {
+                            pkgIdentifier = plugin.pkgBundleVST3();
+                            pkgFilename   = plugin.pkgFilenameVST3();
+                            title = "VST3 plug-in";
+                        }
                         else if (configIsAU(config))
                         {
                             pkgIdentifier = plugin.pkgBundleAU();
@@ -657,6 +690,12 @@ int main(string[] args)
                             pkgIdentifier = plugin.pkgBundleAAX();
                             pkgFilename   = plugin.pkgFilenameAAX();
                             title = "AAX plug-in";
+                        }
+                        else if (configIsLV2(config))
+                        {
+                            pkgIdentifier = plugin.pkgBundleLV2();
+                            pkgFilename   = plugin.pkgFilenameLV2();
+                            title = "LV2 plug-in";
                         }
                         else
                             assert(false, "unsupported plugin format");
