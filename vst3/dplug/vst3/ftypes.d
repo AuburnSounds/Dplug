@@ -12,7 +12,7 @@
 //-----------------------------------------------------------------------------
 // This file is part of a Steinberg SDK. It is subject to the license terms
 // in the LICENSE file found in the top-level directory of this distribution
-// and at www.steinberg.net/sdklicenses. 
+// and at www.steinberg.net/sdklicenses.
 // No part of the SDK, including this file, may be copied, modified, propagated,
 // or distributed except according to the terms contained in the LICENSE file.
 //-----------------------------------------------------------------------------
@@ -65,19 +65,19 @@ alias CStringA = const(char8)*;
 alias CStringW = const(char16)*;
 //alias CString = const(tchar)*;
 
-bool strEmpty (const(tchar)* str) 
-{ 
-    return (!str || *str == '\0'); 
+bool strEmpty (const(tchar)* str)
+{
+    return (!str || *str == '\0');
 }
 
-bool str8Empty (const(char8)* str) 
+bool str8Empty (const(char8)* str)
 {
-    return (!str || *str == '\0'); 
+    return (!str || *str == '\0');
 }
 
-bool str16Empty (const(char16)* str) 
+bool str16Empty (const(char16)* str)
 {
-    return (!str || *str == '\0'); 
+    return (!str || *str == '\0');
 }
 
 alias FIDString = const(char8)*; // identifier as string (used for attributes, messages)
@@ -194,7 +194,7 @@ template SMTG_TYPE_SIZE_CHECK(T, size_t Platform64Size, size_t MacOS32Size, size
         static assert(size == MacOS32Size, "bad size for " ~ T.stringof);
     }
     else version(Windows)
-    {        
+    {
         // Windows 32-bit
         static assert(size == Win32Size, "bad size for " ~ T.stringof);
     }
@@ -207,7 +207,7 @@ static if (COM_COMPATIBLE)
 {
     TUID INLINE_UID(uint l1, uint l2, uint l3, uint l4) pure @safe
     {
-        return 
+        return
         [
             cast(byte)((l1 & 0x000000FF)      ), cast(byte)((l1 & 0x0000FF00) >>  8),
             cast(byte)((l1 & 0x00FF0000) >> 16), cast(byte)((l1 & 0xFF000000) >> 24),
@@ -216,7 +216,7 @@ static if (COM_COMPATIBLE)
             cast(byte)((l3 & 0xFF000000) >> 24), cast(byte)((l3 & 0x00FF0000) >> 16),
             cast(byte)((l3 & 0x0000FF00) >>  8), cast(byte)((l3 & 0x000000FF)      ),
             cast(byte)((l4 & 0xFF000000) >> 24), cast(byte)((l4 & 0x00FF0000) >> 16),
-            cast(byte)((l4 & 0x0000FF00) >>  8), cast(byte)((l4 & 0x000000FF)      ) 
+            cast(byte)((l4 & 0x0000FF00) >>  8), cast(byte)((l4 & 0x000000FF)      )
         ];
     }
 }
@@ -224,7 +224,7 @@ else
 {
     TUID INLINE_UID(uint l1, uint l2, uint l3, uint l4) pure @safe
     {
-        return 
+        return
         [
             cast(byte)((l1 & 0xFF000000) >> 24), cast(byte)((l1 & 0x00FF0000) >> 16),
             cast(byte)((l1 & 0x0000FF00) >>  8), cast(byte)((l1 & 0x000000FF)      ),
@@ -233,7 +233,7 @@ else
             cast(byte)((l3 & 0xFF000000) >> 24), cast(byte)((l3 & 0x00FF0000) >> 16),
             cast(byte)((l3 & 0x0000FF00) >>  8), cast(byte)((l3 & 0x000000FF)      ),
             cast(byte)((l4 & 0xFF000000) >> 24), cast(byte)((l4 & 0x00FF0000) >> 16),
-            cast(byte)((l4 & 0x0000FF00) >>  8), cast(byte)((l4 & 0x000000FF)      ) 
+            cast(byte)((l4 & 0x0000FF00) >>  8), cast(byte)((l4 & 0x000000FF)      )
         ];
     }
 }
@@ -242,12 +242,12 @@ mixin template IMPLEMENT_REFCOUNT()
 {
     public nothrow @nogc
     {
-        override uint addRef()
+        extern(Windows) override uint addRef()
         {
             return atomicAdd(_funknownRefCount, 1);
         }
 
-        override uint release()
+        extern(Windows) override uint release()
         {
             import dplug.core.nogc: destroyFree, debugLog;
             debug(logVST3Client) debugLog(">release".ptr);
@@ -292,7 +292,7 @@ mixin template QUERY_INTERFACE(Interfaces...)// interfaces)
 // speical case, when asking for a IUnknown return a richer interface
 mixin template QUERY_INTERFACE_SPECIAL_CASE_IUNKNOWN(Interfaces...)// interfaces)
 {
-    override tresult queryInterface (ref const TUID _iid, void** obj)
+    extern(Windows) override tresult queryInterface (ref const TUID _iid, void** obj)
     {
         foreach(initer; Interfaces)
         {
@@ -375,7 +375,7 @@ public bool iidEqual (const(TUID) iid1, const(TUID) iid2) pure
     return iid1 == iid2;
 }
 
-interface IUnknown 
+interface IUnknown
 {
 public:
 @nogc:
@@ -413,12 +413,12 @@ T* _tstrncpy(T) (T* dest, const(T)* source, uint32 count)
     return start;
 }
 
-char8* strncpy8 (char8* dest, const(char8)* source, uint32 count) 
+char8* strncpy8 (char8* dest, const(char8)* source, uint32 count)
 {
     return _tstrncpy!char8(dest, source, count);
 }
 
-char16* strncpy16 (char16* dest, const(char16)* source, uint32 count) 
+char16* strncpy16 (char16* dest, const(char16)* source, uint32 count)
 {
     return _tstrncpy!char16(dest, source, count);
 }
