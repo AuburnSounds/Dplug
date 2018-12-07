@@ -57,6 +57,8 @@ script:
   - dub test --compiler=${DC} dplug:au
   - dub test --compiler=${DC} dplug:pbr-widgets
   - dub test --compiler=${DC} dplug:flat-widgets
+  - dub test --compiler=${DC} dplug:lv2
+  - dub test --compiler=${DC} dplug:vst3
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then dub test --compiler=${DC} -a x86 dplug:core ; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then dub test --compiler=${DC} -a x86 dplug:dsp ; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then dub test --compiler=${DC} -a x86 dplug:client ; fi
@@ -68,4 +70,6 @@ script:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then dub test --compiler=${DC} -a x86 dplug:au ; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then dub test --compiler=${DC} -a x86 dplug:pbr-widgets ; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then dub test --compiler=${DC} -a x86 dplug:flat-widgets ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then dub test --compiler=${DC} -a x86 dplug:lv2 ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then dub test --compiler=${DC} -a x86 dplug:vst3 ; fi
 
