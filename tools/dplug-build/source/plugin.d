@@ -304,6 +304,11 @@ struct Plugin
             return sanitizeBundleString(pluginName) ~ "-lv2.pkg";
         }
 
+        string pkgBundleVST3() pure const
+        {
+            return CFBundleIdentifierPrefix ~ "." ~ pkgFilenameVST3();
+        }
+
         string pkgBundleVST() pure const
         {
             return CFBundleIdentifierPrefix ~ "." ~ pkgFilenameVST();
@@ -317,6 +322,11 @@ struct Plugin
         string pkgBundleAAX() pure const
         {
             return CFBundleIdentifierPrefix ~ "." ~ pkgFilenameAAX();
+        }
+
+        string pkgBundleLV2() pure const
+        {
+            return CFBundleIdentifierPrefix ~ "." ~ pkgFilenameLV2();
         }
     }
 
