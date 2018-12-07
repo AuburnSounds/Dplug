@@ -139,7 +139,7 @@ nothrow:
     tresult getParameterInfo (int32 paramIndex, ref ParameterInfo info /*out*/);
 
     /** Gets for a given paramID and normalized value its associated string representation. */
-    tresult getParamStringByValue (ParamID id, ParamValue valueNormalized /*in*/, String128 string_ /*out*/);
+    tresult getParamStringByValue (ParamID id, ParamValue valueNormalized /*in*/, String128* string_ /*out*/);
 
     /** Gets for a given paramID and string its normalized value. */
     tresult getParamValueByString (ParamID id, TChar* string_ /*in*/, ref ParamValue valueNormalized /*out*/);
