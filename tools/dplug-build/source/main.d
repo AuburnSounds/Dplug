@@ -21,11 +21,10 @@ string MAC_VST_DIR = "/Library/Audio/Plug-Ins/VST";
 string MAC_AU_DIR  = "/Library/Audio/Plug-Ins/Components";
 string MAC_AAX_DIR = "/Library/Application Support/Avid/Audio/Plug-Ins";
 string MAC_LV2_DIR = "/Library/Audio/Plug-Ins/LV2";
- 
+
 
 void usage()
 {
-
     void flag(string arg, string desc, string possibleValues, string defaultDesc)
     {
         string argStr = format("        %s", arg);
@@ -210,7 +209,7 @@ int main(string[] args)
 
         Plugin plugin = readPluginDescription();
 
-        // Get configurations from regexp patterns
+        // Get configurations
         string[] configurations;
         foreach(pattern; configurationPatterns)
             configurations ~= plugin.getMatchingConfigurations(pattern);
@@ -331,7 +330,7 @@ int main(string[] args)
                 {
                     if (!configIsAAX(config) && oneOfTheArchIsUB)
                     {
-                        // In short: this build is deemed "temporary" if it's only a step toward building a 
+                        // In short: this build is deemed "temporary" if it's only a step toward building a
                         // multi-arch Universal Binary on macOS.
                         if (arch == Arch.x86)
                             isTemp = true;

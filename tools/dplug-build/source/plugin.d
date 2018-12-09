@@ -356,13 +356,12 @@ struct Plugin
             {
                 results ~= c;
             }
-            else if (auto captures = matchAll(c, reg))
-            {
-                results ~= c;
-            }
         }
         if (results.length == 0)
-            throw new Exception(format("No configuration matches: '%s'", pattern));
+        {
+            string availConfig = format("%s", configurations);
+            throw new Exception(format("No configuration matches: '%s'. Available: %s", pattern, availConfig.yellow));
+        }
         return results;
     }
 }
