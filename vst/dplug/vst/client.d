@@ -864,7 +864,7 @@ private:
         int hostOutputs = _hostIOFromAudioThread.outputs;
         int usedInputs = _processingIOFromAudioThread.inputs;
         int usedOutputs = _processingIOFromAudioThread.outputs;
-        int minOutputs = std.algorithm.comparison.min(usedOutputs, hostOutputs);
+        int minOutputs = (usedOutputs < hostOutputs) ? usedOutputs : hostOutputs;
 
         // Not sure if the hosts would support an overwriting of these pointers, so copy them
         for (int i = 0; i < usedInputs; ++i)

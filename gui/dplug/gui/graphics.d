@@ -868,14 +868,14 @@ void shuffleComponentsRGBA8ToARGB8(ImageRef!RGBA image) pure nothrow @nogc
             {
                 import ldc.intrinsics;
                 import ldc.simd;
-                __m128i outputBytes = shufflevector!(byte16, 3, 0,  1,  2, 
+                __m128i outputBytes = shufflevector!(byte16, 3, 0,  1,  2,
                                                              7, 4,  5,  6,
                                                             11, 8,  9,  10,
                                                             15, 12, 13, 14)(inputBytes, inputBytes);
                 _mm_storeu_si128(cast(__m128i*)(&scan[4*i]), outputBytes);
             }
             else
-            {            
+            {
                 // convert to ushort
                 __m128i zero = _mm_setzero_si128();
                 __m128i e0_7 = _mm_unpacklo_epi8(inputBytes, zero);
@@ -886,7 +886,7 @@ void shuffleComponentsRGBA8ToARGB8(ImageRef!RGBA image) pure nothrow @nogc
                 e8_15 = _mm_shufflelo_epi16!swapRB(_mm_shufflehi_epi16!swapRB(e8_15));
                 __m128i outputBytes = _mm_packus_epi16(e0_7, e8_15);
                 _mm_storeu_si128(cast(__m128i*)(&scan[4*i]), outputBytes);
-            }            
+            }
         }
 
         for(; i < w; i ++)
@@ -894,7 +894,7 @@ void shuffleComponentsRGBA8ToARGB8(ImageRef!RGBA image) pure nothrow @nogc
             ubyte r = scan[4*i];
             ubyte g = scan[4*i+1];
             ubyte b = scan[4*i+2];
-            ubyte a = scan[4*i+2];
+            ubyte a = scan[4*i+3];
             scan[4*i] = a;
             scan[4*i+1] = r;
             scan[4*i+2] = g;
@@ -927,7 +927,7 @@ void shuffleComponentsRGBA8ToBGRA8(ImageRef!RGBA image) pure nothrow @nogc
                 _mm_storeu_si128(cast(__m128i*)(&scan[4*i]), outputBytes);
             }
             else
-            {            
+            {
                 // convert to ushort
                 __m128i zero = _mm_setzero_si128();
                 __m128i e0_7 = _mm_unpacklo_epi8(inputBytes, zero);
@@ -939,7 +939,7 @@ void shuffleComponentsRGBA8ToBGRA8(ImageRef!RGBA image) pure nothrow @nogc
                 e8_15 = _mm_shufflelo_epi16!swapRB(_mm_shufflehi_epi16!swapRB(e8_15));
                 __m128i outputBytes = _mm_packus_epi16(e0_7, e8_15);
                 _mm_storeu_si128(cast(__m128i*)(&scan[4*i]), outputBytes);
-            }            
+            }
         }
 
         for(; i < w; i ++)
@@ -947,7 +947,7 @@ void shuffleComponentsRGBA8ToBGRA8(ImageRef!RGBA image) pure nothrow @nogc
             ubyte r = scan[4*i];
             ubyte g = scan[4*i+1];
             ubyte b = scan[4*i+2];
-            ubyte a = scan[4*i+2];
+            ubyte a = scan[4*i+3];
             scan[4*i] = b;
             scan[4*i+1] = g;
             scan[4*i+2] = r;
