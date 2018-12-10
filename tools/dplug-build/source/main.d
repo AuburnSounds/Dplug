@@ -339,6 +339,10 @@ int main(string[] args)
                     }
                 }
 
+                // VST3-related warning in case of missing keys
+                if (configIsVST3(config))
+                    plugin.vst3RelatedChecks();
+
                 string path = outputDirectory(outputDir, isTemp, osString, arch, config);
 
                 mkdirRecurse(path);

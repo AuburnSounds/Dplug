@@ -55,6 +55,11 @@
             "id": "/properties/pluginName",
             "type": "string"
         },
+        "pluginHomepage": {
+            "description": "Web URL for plug-in homepage. Optional, used for VST3.",
+            "id": "/properties/pluginHomepage",
+            "type": "string"
+        },
         "pluginUniqueID": {
             "description": "A four char code identifying your plug-in in the VST2 namespace. Nobody knows which one are available or not. When breaking save compatibility, you MUST issue a new plugin ID.",
             "id": "/properties/pluginUniqueID",
@@ -83,6 +88,11 @@
         "vendorUniqueID": {
             "description": "A four char code for the plug-in vendor.",
             "id": "/properties/vendorUniqueID",
+            "type": "string"
+        },
+        "vendorSupportEmail": {
+            "description": "An email address for support. Optional, used for VST3.",
+            "id": "/properties/vendorSupportEmail",
             "type": "string"
         },
         "category": {

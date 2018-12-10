@@ -91,10 +91,17 @@ struct PluginInfo
 {
     string vendorName = "Witty Audio";
 
-    /// Used in AU only.
+    /// A four char vendor "unique" ID
     char[4] vendorUniqueID = "Wity";
 
+    /// The vendor email adress for support. Can be null.
+    string vendorSupportEmail = null;
+
+    /// Plugin name.
     string pluginName = "Destructatorizer";
+
+    /// Plugin web page. Can be null.
+    string pluginHomepage = null;
 
     /// Used for both VST and AU.
     /// In AU it is namespaced by the manufacturer. In VST it
@@ -475,9 +482,19 @@ nothrow:
         return _info.vendorUniqueID;
     }
 
+    final string getVendorSupportEmail() pure const nothrow @nogc
+    {
+        return _info.vendorSupportEmail;
+    }
+
     final string pluginName() pure const nothrow @nogc
     {
         return _info.pluginName;
+    }
+
+    final string pluginHomepage() pure const nothrow @nogc
+    {
+        return _info.pluginHomepage;
     }
 
     final PluginCategory pluginCategory() pure const nothrow @nogc
@@ -771,6 +788,13 @@ PluginInfo parsePluginInfo(string json)
     info.vendorUniqueID = j["vendorUniqueID"].str;
     info.pluginName = j["pluginName"].str;
     info.pluginUniqueID = j["pluginUniqueID"].str;
+
+    if ("vendorSupportEmail" in j)
+        info.vendorSupportEmail= j["vendorSupportEmail"].str;
+
+    if ("pluginHomepage" in j)
+        info.pluginHomepage = j["pluginHomepage"].str;
+
     info.isSynth = toBoolean(j["isSynth"]);
     info.hasGUI = toBoolean(j["hasGUI"]);
     info.receivesMIDI = toBoolean(j["receivesMIDI"]);

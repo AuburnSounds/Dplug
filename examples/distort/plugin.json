@@ -3,7 +3,10 @@
 
     "vendorName": "Witty Audio",
     "vendorUniqueID": "Wity",
+    "vendorSupportEmail": "support@wittyaudio.com",
+
     "pluginName": "Destructatorizer",
+    "pluginHomepage": "https://www.wittyaudio.com/Destructatorizer",
     "pluginUniqueID": "WiDi",
     "publicVersion": "1.0.0",
     "CFBundleIdentifierPrefix": "com.wittyaudio",

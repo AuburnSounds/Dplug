@@ -88,9 +88,18 @@ IPluginFactory GetPluginFactoryInternal(ClientClass)()
 
         auto vendorNameZ = CString(client.vendorName);
 
+        string vendorEmail = client.getVendorSupportEmail();
+        if (!vendorEmail) vendorEmail = "support@example.com";
+
+        string pluginHomepage = client.pluginHomepage();
+        if (!pluginHomepage) pluginHomepage = "https://google.com";
+
+        auto pluginHomepageZ = CString(pluginHomepage);
+        auto vendorEmailZ = CString(pluginHomepage);
+
         PFactoryInfo factoryInfo = PFactoryInfo(vendorNameZ,
-                                                "https://example.com",  // TODO
-                                                "support@wittyaudio.fake", // TODO
+                                                pluginHomepageZ,
+                                                vendorEmailZ,
                                                 PFactoryInfo.kUnicode);
 
         auto pluginFactory = mallocNew!CPluginFactory(factoryInfo);

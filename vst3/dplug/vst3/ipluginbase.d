@@ -320,6 +320,11 @@ nothrow:
 
 __gshared IPluginFactory gPluginFactory = null;
 
+extern(C)
+{
+    alias PCreateFun = FUnknown function(void*) nothrow @nogc;
+}
+
 class CPluginFactory : IPluginFactory3
 {
 public:
@@ -350,7 +355,7 @@ nothrow:
 
     /** Registers a Plug-in class with classInfo version 1, returns true for success. */
     bool registerClass (const(PClassInfo)* info,
-                        FUnknown function(void*) nothrow @nogc createFunc,
+                        PCreateFun createFunc,
                         void* context = null)
     {
         debug(logVST3Client) debugLog(">registerClass".ptr);
@@ -364,10 +369,9 @@ nothrow:
         return registerClass(&info2, createFunc, context);
     }
 
-
     /** Registers a Plug-in class with classInfo version 2, returns true for success. */
     bool registerClass (const(PClassInfo2)* info,
-                        FUnknown function(void*) nothrow @nogc  createFunc,
+                        PCreateFun createFunc,
                         void* context = null)
     {
         if (!info || !createFunc)
@@ -391,7 +395,7 @@ nothrow:
 
     /** Registers a Plug-in class with classInfo Unicode version, returns true for success. */
     bool registerClass (const(PClassInfoW)* info,
-                        FUnknown function(void*) nothrow @nogc createFunc,
+                        PCreateFun createFunc,
                         void* context = null)
     {
         if (!info || !createFunc)

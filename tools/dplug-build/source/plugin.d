@@ -142,8 +142,10 @@ struct Plugin
 
     string pluginName;     // Prettier name, extracted from plugin.json (eg: 'Distorter')
     string pluginUniqueID;
+    string pluginHomepage;
     string vendorName;
     string vendorUniqueID;
+    string vendorSupportEmail;
 
     // Available configurations, taken from dub.json
     string[] configurations;
@@ -363,6 +365,14 @@ struct Plugin
             throw new Exception(format("No configuration matches: '%s'. Available: %s", pattern, availConfig.yellow));
         }
         return results;
+    }
+
+    void vst3RelatedChecks()
+    {
+        if (vendorSupportEmail is null)
+            warning(`Missing "vendorSupportEmail" in plugin.json. Email address will be wrong in VST3 format.`);
+        if (pluginHomepage is null)
+            warning(`Missing "pluginHomepage" in plugin.json. Plugin homepage will be wrong in VST3 format.`);
     }
 }
 
@@ -647,6 +657,27 @@ Plugin readPluginDescription()
     }
 
     result.paceConfig = readPACEConfig();
+
+
+    try
+    {
+        result.pluginHomepage = rawPluginFile["pluginHomepage"].str;
+    }
+    catch(Exception e)
+    {
+        // Only warn on VST3 build if pluginHomepage is missing
+        result.pluginHomepage = null;
+    }
+
+    try
+    {
+        result.vendorSupportEmail = rawPluginFile["vendorSupportEmail"].str;
+    }
+    catch(Exception e)
+    {
+        // Only warn on VST3 build if vendorSupportEmail is missing
+        result.vendorSupportEmail = null;
+    }
 
     return result;
 }
