@@ -12,24 +12,24 @@
 //-----------------------------------------------------------------------------
 // Redistribution and use in source and binary forms, with or without modification,
 // are permitted provided that the following conditions are met:
-// 
-//   * Redistributions of source code must retain the above copyright notice, 
+//
+//   * Redistributions of source code must retain the above copyright notice,
 //     this list of conditions and the following disclaimer.
 //   * Redistributions in binary form must reproduce the above copyright notice,
-//     this list of conditions and the following disclaimer in the documentation 
+//     this list of conditions and the following disclaimer in the documentation
 //     and/or other materials provided with the distribution.
 //   * Neither the name of the Steinberg Media Technologies nor the names of its
-//     contributors may be used to endorse or promote products derived from this 
+//     contributors may be used to endorse or promote products derived from this
 //     software without specific prior written permission.
-// 
+//
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED 
-// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. 
-// IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, 
-// INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, 
-// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, 
-// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF 
-// LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE 
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+// IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+// INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+// LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
 // OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE  OF THIS SOFTWARE, EVEN IF ADVISED
 // OF THE POSSIBILITY OF SUCH DAMAGE.
 //-----------------------------------------------------------------------------
@@ -104,7 +104,7 @@ nothrow:
     /** The host passes a number of interfaces as context to initialize the Plug-in class.
     @note Extensive memory allocations etc. should be performed in this method rather than in the class' constructor!
     If the method does NOT return kResultOk, the object is released immediately. In this case terminate is not called! */
-    override tresult initialize(FUnknown context)
+    extern(Windows) override tresult initialize(FUnknown context)
     {
         debug(logVST3Client) debugLog(">initialize()".ptr);
         debug(logVST3Client) scope(exit) debugLog("<initialize()".ptr);
@@ -178,7 +178,7 @@ nothrow:
 
     /** This function is called before the Plug-in is unloaded and can be used for
     cleanups. You have to release all references to any host application interfaces. */
-    override tresult terminate()
+    extern(Windows) override tresult terminate()
     {
         debug(logVST3Client) debugLog("terminate()".ptr);
         debug(logVST3Client) scope(exit) debugLog("terminate()".ptr);
@@ -192,19 +192,19 @@ nothrow:
 
     // Implements IComponent
 
-    override tresult getControllerClassId (TUID* classId)
+    extern(Windows) override tresult getControllerClassId (TUID* classId)
     {
         // No need to implement since we "did not succeed to separate component from controller"
         return kNotImplemented;
     }
 
-    override tresult setIoMode (IoMode mode)
+    extern(Windows) override tresult setIoMode (IoMode mode)
     {
         // Unused in every VST3 SDK example
         return kNotImplemented;
     }
 
-    override int32 getBusCount (MediaType type, BusDirection dir)
+    extern(Windows) override int32 getBusCount (MediaType type, BusDirection dir)
     {
         Vec!Bus* busList = getBusList(type, dir);
         if (busList is null)
@@ -212,7 +212,7 @@ nothrow:
         return cast(int)( busList.length );
     }
 
-    override tresult getBusInfo (MediaType type, BusDirection dir, int32 index, ref BusInfo bus /*out*/)
+    extern(Windows) override tresult getBusInfo (MediaType type, BusDirection dir, int32 index, ref BusInfo bus /*out*/)
     {
         Vec!Bus* busList = getBusList(type, dir);
         if (busList is null)
@@ -223,13 +223,13 @@ nothrow:
         return kResultTrue;
     }
 
-    override tresult getRoutingInfo (ref RoutingInfo inInfo, ref RoutingInfo outInfo /*out*/)
+    extern(Windows) override tresult getRoutingInfo (ref RoutingInfo inInfo, ref RoutingInfo outInfo /*out*/)
     {
         // Apparently not needed in any SDK examples
         return kNotImplemented;
     }
 
-    override tresult activateBus (MediaType type, BusDirection dir, int32 index, TBool state)
+    extern(Windows) override tresult activateBus (MediaType type, BusDirection dir, int32 index, TBool state)
     {
         debug(logVST3Client) debugLog(">activateBus".ptr);
         debug(logVST3Client) scope(exit) debugLog("<activateBus".ptr);
@@ -242,13 +242,13 @@ nothrow:
         return kResultTrue;
     }
 
-    override tresult setActive (TBool state)
+    extern(Windows) override tresult setActive (TBool state)
     {
         // In some VST3 examples, this place is used to initialize buffers.
         return kResultOk;
     }
 
-    override tresult setStateController (IBStream state)
+    extern(Windows) override tresult setStateController (IBStream state)
     {
         debug(logVST3Client) debugLog(">setStateController".ptr);
         debug(logVST3Client) scope(exit) debugLog("<setStateController".ptr);
@@ -257,7 +257,7 @@ nothrow:
         return kNotImplemented;
     }
 
-    override tresult getStateController (IBStream state)
+    extern(Windows) override tresult getStateController (IBStream state)
     {
         debug(logVST3Client) debugLog(">getStateController".ptr);
         debug(logVST3Client) scope(exit) debugLog("<getStateController".ptr);
@@ -267,7 +267,7 @@ nothrow:
 
     // Implements IAudioProcessor
 
-    override tresult setBusArrangements (SpeakerArrangement* inputs, int32 numIns, SpeakerArrangement* outputs, int32 numOuts)
+    extern(Windows) override tresult setBusArrangements (SpeakerArrangement* inputs, int32 numIns, SpeakerArrangement* outputs, int32 numOuts)
     {
         debug(logVST3Client) debugLog(">setBusArrangements".ptr);
         debug(logVST3Client) scope(exit) debugLog("<setBusArrangements".ptr);
@@ -307,7 +307,7 @@ nothrow:
         return kResultTrue;
     }
 
-    override tresult getBusArrangement (BusDirection dir, int32 index, ref SpeakerArrangement arr)
+    extern(Windows) override tresult getBusArrangement (BusDirection dir, int32 index, ref SpeakerArrangement arr)
     {
         debug(logVST3Client) debugLog(">getBusArrangement".ptr);
         debug(logVST3Client) scope(exit) debugLog("<getBusArrangement".ptr);
@@ -319,19 +319,19 @@ nothrow:
         return kResultTrue;
     }
 
-    override tresult canProcessSampleSize (int32 symbolicSampleSize)
+    extern(Windows) override tresult canProcessSampleSize (int32 symbolicSampleSize)
     {
         return symbolicSampleSize == kSample32 ? kResultTrue : kResultFalse;
     }
 
-    override uint32 getLatencySamples ()
+    extern(Windows) override uint32 getLatencySamples ()
     {
         ScopedForeignCallback!(false, true) scopedCallback;
         scopedCallback.enter();
         return _client.latencySamples(44100.0f);//_sampleRateHostPOV);
     }
 
-    override tresult setupProcessing (ref ProcessSetup setup)
+    extern(Windows) override tresult setupProcessing (ref ProcessSetup setup)
     {
         debug(logVST3Client) debugLog(">setupProcessing".ptr);
         debug(logVST3Client) scope(exit) debugLog("<setupProcessing".ptr);
@@ -354,7 +354,7 @@ nothrow:
         return kResultOk;
     }
 
-    override tresult setProcessing (TBool state)
+    extern(Windows) override tresult setProcessing (TBool state)
     {
         debug(logVST3Client) debugLog(">setProcessing".ptr);
         debug(logVST3Client) scope(exit) debugLog("<setProcessing".ptr);
@@ -365,7 +365,7 @@ nothrow:
         return kResultOk;
     }
 
-    override tresult process (ref ProcessData data)
+    extern(Windows) override tresult process (ref ProcessData data)
     {
         assert(data.symbolicSampleSize == kSample32); // no conversion to 64-bit supported
 
@@ -489,28 +489,28 @@ nothrow:
         }
     }
 
-    override uint32 getTailSamples()
+    extern(Windows) override uint32 getTailSamples()
     {
         return cast(int)(0.5f + _client.tailSizeInSeconds() * atomicLoad(_sampleRateHostPOV));
     }
 
     // Implements IEditController
 
-    override tresult setComponentState (IBStream state)
+    extern(Windows) override tresult setComponentState (IBStream state)
     {
         // TODO
         // Why duplicate?
         return kNotImplemented;
     }
 
-    override tresult setState(IBStream state)
+    extern(Windows) override tresult setState(IBStream state)
     {
         debug(logVST3Client) debugLog(">setState".ptr);
         debug(logVST3Client) scope(exit) debugLog("<setState".ptr);
 
         int size;
 
-        // Try to use 
+        // Try to use
 
         // Try to find current position with seeking to the end
         {
@@ -548,7 +548,7 @@ nothrow:
         }
     }
 
-    override tresult getState(IBStream state)
+    extern(Windows) override tresult getState(IBStream state)
     {
         debug(logVST3Client) debugLog(">getState".ptr);
         debug(logVST3Client) scope(exit) debugLog("<getState".ptr);
@@ -559,12 +559,12 @@ nothrow:
         return state.write(chunk.ptr, cast(int)(chunk.length), null);
     }
 
-    override int32 getParameterCount()
+    extern(Windows) override int32 getParameterCount()
     {
         return cast(int)(_client.params.length);
     }
 
-    override tresult getParameterInfo (int32 paramIndex, ref ParameterInfo info)
+    extern(Windows) override tresult getParameterInfo (int32 paramIndex, ref ParameterInfo info)
     {
         debug(logVST3Client) debugLog(">getParameterInfo".ptr);
         debug(logVST3Client) scope(exit) debugLog("<getParameterInfo".ptr);
@@ -572,7 +572,7 @@ nothrow:
             return kResultFalse;
 
         Parameter param = _client.param(paramIndex);
-       
+
         info.id = convertParamIndexToParamID(paramIndex);
         str8ToStr16(info.title.ptr, param.name, 128);
         str8ToStr16(info.shortTitle.ptr, param.name(), 128);
@@ -585,7 +585,7 @@ nothrow:
     }
 
     /** Gets for a given paramID and normalized value its associated string representation. */
-    override tresult getParamStringByValue (ParamID id, ParamValue valueNormalized, String128* string_ )
+    extern(Windows) override tresult getParamStringByValue (ParamID id, ParamValue valueNormalized, String128* string_ )
     {
         debug(logVST3Client) debugLog(">getParamStringByValue".ptr);
         int paramIndex = convertParamIDToParamIndex(id);
@@ -607,10 +607,10 @@ nothrow:
     }
 
     /** Gets for a given paramID and string its normalized value. */
-    override tresult getParamValueByString (ParamID id, TChar* string_, ref ParamValue valueNormalized )
+    extern(Windows) override tresult getParamValueByString (ParamID id, TChar* string_, ref ParamValue valueNormalized )
     {
         debug(logVST3Client) debugLog(">getParamValueByString".ptr);
-        
+
         int paramIndex = convertParamIDToParamIndex(id);
         if (!_client.isValidParamIndex(paramIndex))
         {
@@ -636,7 +636,7 @@ nothrow:
                 len++;
         }
 
-        
+
 
         string_[0] = 'l';
         string_[1] = 'o';
@@ -657,7 +657,7 @@ nothrow:
 
     /** Returns for a given paramID and a normalized value its plain representation
     (for example 90 for 90db - see \ref vst3AutomationIntro). */
-    override ParamValue normalizedParamToPlain (ParamID id, ParamValue valueNormalized)
+    extern(Windows) override ParamValue normalizedParamToPlain (ParamID id, ParamValue valueNormalized)
     {
         debug(logVST3Client) debugLog(">normalizedParamToPlain".ptr);
         debug(logVST3Client) debugLog("<normalizedParamToPlain".ptr);
@@ -670,7 +670,7 @@ nothrow:
     }
 
     /** Returns for a given paramID and a plain value its normalized value. (see \ref vst3AutomationIntro) */
-    override ParamValue plainParamToNormalized (ParamID id, ParamValue plainValue)
+    extern(Windows) override ParamValue plainParamToNormalized (ParamID id, ParamValue plainValue)
     {
         debug(logVST3Client) debugLog(">plainParamToNormalized".ptr);
         debug(logVST3Client) scope(exit) debugLog("<plainParamToNormalized".ptr);
@@ -683,7 +683,7 @@ nothrow:
     }
 
     /** Returns the normalized value of the parameter associated to the paramID. */
-    override ParamValue getParamNormalized (ParamID id)
+    extern(Windows) override ParamValue getParamNormalized (ParamID id)
     {
         debug(logVST3Client) debugLog(">getParamNormalized".ptr);
         debug(logVST3Client) scope(exit) debugLog("<getParamNormalized".ptr);
@@ -697,7 +697,7 @@ nothrow:
     /** Sets the normalized value to the parameter associated to the paramID. The controller must never
     pass this value-change back to the host via the IComponentHandler. It should update the according
     GUI element(s) only!*/
-    override tresult setParamNormalized (ParamID id, ParamValue value)
+    extern(Windows) override tresult setParamNormalized (ParamID id, ParamValue value)
     {
         debug(logVST3Client) debugLog(">setParamNormalized".ptr);
         debug(logVST3Client) scope(exit) debugLog("<setParamNormalized".ptr);
@@ -710,7 +710,7 @@ nothrow:
     }
 
     /** Gets from host a handler. */
-    override tresult setComponentHandler (IComponentHandler handler)
+    extern(Windows) override tresult setComponentHandler (IComponentHandler handler)
     {
         debug(logVST3Client) debugLog(">setComponentHandler".ptr);
         debug(logVST3Client) scope(exit) debugLog("<setComponentHandler".ptr);
@@ -734,7 +734,7 @@ nothrow:
     // view
     /** Creates the editor view of the Plug-in, currently only "editor" is supported, see \ref ViewType.
     The life time of the editor view will never exceed the life time of this controller instance. */
-    override IPlugView createView (FIDString name)
+    extern(Windows) override IPlugView createView (FIDString name)
     {
         debug(logVST3Client) debugLog(">createView".ptr);
         debug(logVST3Client) scope(exit) debugLog("<createView".ptr);
@@ -963,7 +963,7 @@ nothrow:
     /** Is Platform UI Type supported
     \param type : IDString of \ref platformUIType */
     // MAYDO: there is considerable coupling with dplug:window here.
-    override tresult isPlatformTypeSupported (FIDString type)
+    extern(Windows) override tresult isPlatformTypeSupported (FIDString type)
     {
         debug(logVST3Client) debugLog(">isPlatformTypeSupported".ptr);
         debug(logVST3Client) scope(exit) debugLog("<isPlatformTypeSupported".ptr);
@@ -980,7 +980,7 @@ nothrow:
     Note that in this call the Plug-in could call a IPlugFrame::resizeView ()!
     \param parent : platform handle of the parent window or view
     \param type : \ref platformUIType which should be created */
-    tresult attached (void* parent, FIDString type)
+    extern(Windows) tresult attached (void* parent, FIDString type)
     {
         debug(logVST3Client) debugLog(">attached".ptr);
         debug(logVST3Client) scope(exit) debugLog("<attached".ptr);
@@ -1000,12 +1000,12 @@ nothrow:
             return kResultTrue;
         }
         return kResultFalse;
-        
+
     }
 
     /** The parent window of the view is about to be destroyed.
     You have to remove all your own views from the parent window or view. */
-    tresult removed ()
+    extern(Windows) tresult removed ()
     {
         debug(logVST3Client) debugLog(">removed".ptr);
 
@@ -1021,7 +1021,7 @@ nothrow:
     }
 
     /** Handling of mouse wheel. */
-    tresult onWheel (float distance)
+    extern(Windows) tresult onWheel (float distance)
     {
         debug(logVST3Client) debugLog(">onWheel".ptr);
         debug(logVST3Client) scope(exit) debugLog("<onWheel".ptr);
@@ -1035,7 +1035,7 @@ nothrow:
     \return kResultTrue if the key is handled, otherwise kResultFalse. \n
     <b> Please note that kResultTrue must only be returned if the key has really been
     handled. </b> Otherwise key command handling of the host might be blocked! */
-    tresult onKeyDown (char16 key, int16 keyCode, int16 modifiers)
+    extern(Windows) tresult onKeyDown (char16 key, int16 keyCode, int16 modifiers)
     {
         debug(logVST3Client) debugLog(">onKeyDown".ptr);
         debug(logVST3Client) scope(exit) debugLog("<onKeyDown".ptr);
@@ -1047,7 +1047,7 @@ nothrow:
     \param keyCode : virtual keycode for non ascii keys - see \ref VirtualKeyCodes in keycodes.h
     \param modifiers : any combination of KeyModifier - see \ref KeyModifier in keycodes.h
     \return kResultTrue if the key is handled, otherwise return kResultFalse. */
-    tresult onKeyUp (char16 key, int16 keyCode, int16 modifiers)
+    extern(Windows) tresult onKeyUp (char16 key, int16 keyCode, int16 modifiers)
     {
         debug(logVST3Client) debugLog(">onKeyUp".ptr);
         debug(logVST3Client) scope(exit) debugLog("<onKeyUp".ptr);
@@ -1055,7 +1055,7 @@ nothrow:
     }
 
     /** Returns the size of the platform representation of the view. */
-    tresult getSize (ViewRect* size)
+    extern(Windows) tresult getSize (ViewRect* size)
     {
         debug(logVST3Client) debugLog(">getSize".ptr);
         debug(logVST3Client) scope(exit) debugLog("<getSize".ptr);
@@ -1074,24 +1074,24 @@ nothrow:
             size.bottom = h;
             return kResultTrue;
         }
-        return kResultFalse;        
+        return kResultFalse;
     }
 
     /** Resizes the platform representation of the view to the given rect. Note that if the Plug-in
     *  requests a resize (IPlugFrame::resizeView ()) onSize has to be called afterward. */
-    tresult onSize (ViewRect* newSize)
+    extern(Windows) tresult onSize (ViewRect* newSize)
     {
         return kResultOk;
     }
 
     /** Focus changed message. */
-    tresult onFocus (TBool state)
+    extern(Windows) tresult onFocus (TBool state)
     {
         return kResultOk;
     }
 
     /** Sets IPlugFrame object to allow the Plug-in to inform the host about resizing. */
-    tresult setFrame (IPlugFrame frame)
+    extern(Windows) tresult setFrame (IPlugFrame frame)
     {
         debug(logVST3Client) debugLog(">setFrame".ptr);
         debug(logVST3Client) scope(exit) debugLog("<setFrame".ptr);
@@ -1100,14 +1100,14 @@ nothrow:
     }
 
     /** Is view sizable by user. */
-    tresult canResize ()
+    extern(Windows) tresult canResize ()
     {
         return kResultFalse;
     }
 
     /** On live resize this is called to check if the view can be resized to the given rect, if not
     *  adjust the rect to the allowed size. */
-    tresult checkSizeConstraint (ViewRect* rect)
+    extern(Windows) tresult checkSizeConstraint (ViewRect* rect)
     {
         return kResultTrue;
     }

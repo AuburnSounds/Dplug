@@ -11,7 +11,7 @@
 //-----------------------------------------------------------------------------
 // This file is part of a Steinberg SDK. It is subject to the license terms
 // in the LICENSE file found in the top-level directory of this distribution
-// and at www.steinberg.net/sdklicenses. 
+// and at www.steinberg.net/sdklicenses.
 // No part of the SDK, including this file, may be copied, modified, propagated,
 // or distributed except according to the terms contained in the LICENSE file.
 //-----------------------------------------------------------------------------
@@ -207,7 +207,7 @@ nothrow:
         version_[] = '\0';
         sdkVersion[] = '\0';
         cid = _cid;
-        
+
         cardinality = _cardinality;
         if (_category)
             strncpy8 (category.ptr, _category, PClassInfo.kCategorySize);
@@ -249,7 +249,7 @@ nothrow:
     char8[PClassInfo.kCategorySize] category;   ///< see \ref PClassInfo
     char16[PClassInfo.kNameSize] name;  ///< see \ref PClassInfo
 
-    enum 
+    enum
     {
         kVendorSize = 64,
         kVersionSize = 64,
@@ -272,7 +272,7 @@ nothrow:
         name[] = '\0';
         vendor[] = '\0';
         version_[] = '\0';
-        sdkVersion[] = '\0';        
+        sdkVersion[] = '\0';
         if (_category)
             strncpy8 (category.ptr, _category, PClassInfo.kCategorySize);
         if (_name)
@@ -287,7 +287,7 @@ nothrow:
         if (_sdkVersion)
             strncpy16 (sdkVersion.ptr, _sdkVersion, kVersionSize);
     }
-    
+
 
     void fromAscii (ref const(PClassInfo2) ci2)
     {
@@ -369,7 +369,7 @@ nothrow:
     bool registerClass (const(PClassInfo2)* info,
                         FUnknown function(void*) nothrow @nogc  createFunc,
                         void* context = null)
-    {        
+    {
         if (!info || !createFunc)
             return false;
 
@@ -417,7 +417,7 @@ nothrow:
     mixin IMPLEMENT_REFCOUNT;
 
     //---from IPluginFactory------
-    override tresult getFactoryInfo (PFactoryInfo* info)
+    extern(Windows) override tresult getFactoryInfo (PFactoryInfo* info)
     {
         debug(logVST3Client) debugLog(">getFactoryInfo".ptr);
         debug(logVST3Client) scope(exit) debugLog("<getFactoryInfo".ptr);
@@ -426,12 +426,12 @@ nothrow:
         return kResultOk;
     }
 
-    override int32 countClasses ()
+    extern(Windows) override int32 countClasses ()
     {
         return classCount;
     }
 
-    override tresult getClassInfo (int32 index, PClassInfo* info)
+    extern(Windows) override tresult getClassInfo (int32 index, PClassInfo* info)
     {
         debug(logVST3Client) debugLog(">getClassInfo".ptr);
         debug(logVST3Client) scope(exit) debugLog("<getClassInfo".ptr);
@@ -449,7 +449,7 @@ nothrow:
         return kInvalidArgument;
     }
 
-    override tresult createInstance (FIDString cid, FIDString _iid, void** obj)
+    extern(Windows) override tresult createInstance (FIDString cid, FIDString _iid, void** obj)
     {
         debug(logVST3Client) debugLog(">createInstance".ptr);
         debug(logVST3Client) scope(exit) debugLog("<createInstance".ptr);
@@ -479,7 +479,7 @@ nothrow:
     }
 
     //---from IPluginFactory2-----
-    override tresult getClassInfo2 (int32 index, PClassInfo2* info)
+    extern(Windows) override tresult getClassInfo2 (int32 index, PClassInfo2* info)
     {
         debug(logVST3Client) debugLog(">getClassInfo2".ptr);
         debug(logVST3Client) scope(exit) debugLog("<getClassInfo2".ptr);
@@ -499,7 +499,7 @@ nothrow:
     }
 
     //---from IPluginFactory3-----
-    override tresult getClassInfoUnicode (int32 index, PClassInfoW* info)
+    extern(Windows) override tresult getClassInfoUnicode (int32 index, PClassInfoW* info)
     {
         debug(logVST3Client) debugLog(">getClassInfoUnicode".ptr);
         debug(logVST3Client) scope(exit) debugLog("<getClassInfoUnicode".ptr);
@@ -512,7 +512,7 @@ nothrow:
         return kInvalidArgument;
     }
 
-    override tresult setHostContext (FUnknown* context)
+    extern(Windows) override tresult setHostContext (FUnknown* context)
     {
         return kNotImplemented;
     }
@@ -523,7 +523,7 @@ protected:
         PClassInfo2 info8;
         PClassInfoW info16;
 
-        FUnknown function(void*) nothrow @nogc createFunc;
+        extern(C) FUnknown function(void*) nothrow @nogc createFunc;
         void* context;
         bool isUnicode;
     }

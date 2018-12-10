@@ -63,7 +63,7 @@ import dplug.vst3.client;
 template VST3EntryPoint(alias ClientClass)
 {
     // Those exports are optional, but could be useful in the future
-    enum entry_InitDll = `export extern(C) bool InitDLL() nothrow @nogc { return true; }`;
+    enum entry_InitDll = `export extern(C) bool InitDll() nothrow @nogc { return true; }`;
     enum entry_ExitDll = `export extern(C) bool ExitDll() nothrow @nogc { return true; }`;
 
     enum entry_GetPluginFactory =
@@ -75,14 +75,14 @@ template VST3EntryPoint(alias ClientClass)
     const char[] VST3EntryPoint = entry_InitDll ~ entry_ExitDll ~ entry_GetPluginFactory;
 }
 
-IPluginFactory GetPluginFactoryInternal(ClientClass)() 
+IPluginFactory GetPluginFactoryInternal(ClientClass)()
 {
     ScopedForeignCallback!(false, true) scopedCallback;
     scopedCallback.enter();
 
     if (!gPluginFactory)
     {
-        // Create a client just for the purpose of creating the factory 
+        // Create a client just for the purpose of creating the factory
         ClientClass client = mallocNew!ClientClass();
         scope(exit) client.destroyFree();
 
@@ -134,7 +134,7 @@ IPluginFactory GetPluginFactoryInternal(ClientClass)()
                                                  vst3Category.ptr,
                                                  vendorNameZ,
                                                  versionString.ptr,
-                                                 kVstVersionString.ptr);        
+                                                 kVstVersionString.ptr);
         pluginFactory.registerClass(&componentClass, &(createVST3Client!ClientClass));
     }
     else
@@ -144,7 +144,7 @@ IPluginFactory GetPluginFactoryInternal(ClientClass)()
 }
 
 // must return a IAudioProcessor
-extern(Windows) FUnknown createVST3Client(ClientClass)(void* useless) nothrow @nogc
+extern(C) FUnknown createVST3Client(ClientClass)(void* useless) nothrow @nogc
 {
     ScopedForeignCallback!(false, true) scopedCallback;
     scopedCallback.enter();
