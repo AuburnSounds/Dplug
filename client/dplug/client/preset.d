@@ -27,7 +27,7 @@ import dplug.client.params;
 // - "preset" and "bank" chunks are used by VST2. The whole preset "bank" structure exists for VST2.
 //   Changing a preset and loading another changes the bank. VST2 is the only format that could
 //   store unused presets.
-// - AU and AAX uses "state chunks" which are storing a single preset and a preset index.
+// - AU, VST3 and AAX uses "state chunks" which are storing a single preset and a preset index.
 //   On load, the bank from factory is restored but the single preset stored will be changed.
 //   However, in AU and AAX the whole concept of the preset bank is there for nothing.
 
