@@ -34,8 +34,6 @@ import dplug.client.graphics;
 import dplug.client.daw;
 
 
-version = lazyGraphicsCreation;
-
 /// A plugin client can send commands to the host.
 /// This interface is injected after the client creation though.
 interface IHostCommand
@@ -208,12 +206,6 @@ nothrow:
                 _maxOutputs = legalIO.numOutputChannels;
         }
 
-        version (lazyGraphicsCreation) {}
-        else
-        {
-            createGraphicsLazily();
-        }
-
         _midiQueue = makeMidiQueue();
     }
 
@@ -347,7 +339,8 @@ nothrow:
     }
 
     /// Override if you create a plugin with UI.
-    /// The returned IGraphics must be allocated with `mallocEmplace`.
+    /// The returned IGraphics must be allocated with `mallocNew`.
+    /// `plugin.json` needs to have a "hasGUI" key equal to true, else this callback is never called.
     IGraphics createGraphics() nothrow @nogc
     {
         return null;
@@ -381,8 +374,7 @@ nothrow:
     }
 
     /// Override to clear state (eg: resize and clear delay lines) and allocate buffers.
-    /// Important: This will be called by the audio thread.
-    ///            So you should not use the GC in this callback.
+    /// Note: `reset` should not be called directly by plug-in format implementations. Use `resetFromHost` if you write a new client.
     abstract void reset(double sampleRate, int maxFrames, int numInputs, int numOutputs) nothrow @nogc;
 
     /// Override to set the plugin latency in samples.
@@ -673,6 +665,8 @@ protected:
 
     /// Override this method to tell what plugin you are.
     /// Mandatory override, fill the fields with care.
+    /// Note: this should not be called by a plugin client implementation directly. 
+    ///       Access the content of PluginInfo through the various accessors.
     abstract PluginInfo buildPluginInfo();
 
     /// Override this method to tell which I/O are legal.
