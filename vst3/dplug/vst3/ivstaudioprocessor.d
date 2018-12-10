@@ -521,17 +521,6 @@ struct ChordEvent
 
 mixin SMTG_TYPE_SIZE_CHECK!(ChordEvent, 16, 12, 12);
 
-/** Scale event specific data. Used in \ref Event (union)*/
-struct ScaleEvent
-{
-    int16 root;             ///< range [0, 127] = root Note/Transpose Factor
-    int16 mask;             ///< Bit 0 =  C,  Bit 1 = C#, ... (0x5ab5 = Major Scale)
-    uint16 textLen;         ///< the number of characters (TChar) between the beginning of text and the terminating
-    ///< null character (without including the terminating null character itself)
-    const TChar* text;      ///< UTF-16, null terminated, Hosts Scale Name
-}
-
-mixin SMTG_TYPE_SIZE_CHECK!(ScaleEvent, 16, 10, 12);
 
 /** Event */
 struct Event
@@ -577,7 +566,7 @@ align(1):
         NoteExpressionValueEvent noteExpressionValue;   ///< type == kNoteExpressionValueEvent
         NoteExpressionTextEvent noteExpressionText;     ///< type == kNoteExpressionTextEvent
         ChordEvent chord;                               ///< type == kChordEvent
-        ScaleEvent scale;                               ///< type == kScaleEvent
+        //ScaleEvent scale;                               ///< type == kScaleEvent
     }
 
     static if (size_t.sizeof == 8)
