@@ -110,11 +110,11 @@ nothrow:
     tresult getProgramListInfo (int32 listIndex, ref ProgramListInfo info /*out*/);
 
     /** Gets for a given program list ID and program index its program name. */
-    tresult getProgramName (ProgramListID listId, int32 programIndex, String128 name /*out*/);
+    tresult getProgramName (ProgramListID listId, int32 programIndex, String128* name /*out*/);
 
     /** Gets for a given program list ID, program index and attributeId the associated attribute value. */
     tresult getProgramInfo (ProgramListID listId, int32 programIndex,
-        const(wchar)* attributeId /*in*/, String128 attributeValue /*out*/);
+        const(wchar)* attributeId /*in*/, String128* attributeValue /*out*/);
 
     /** Returns kResultTrue if the given program index of a given program list ID supports PitchNames. */
     tresult hasProgramPitchNames (ProgramListID listId, int32 programIndex);
@@ -122,7 +122,7 @@ nothrow:
     /** Gets the PitchName for a given program list ID, program index and pitch.
         If PitchNames are changed the Plug-in should inform the host with IUnitHandler::notifyProgramListChange. */
     tresult getProgramPitchName (ProgramListID listId, int32 programIndex,
-        int16 midiPitch, String128 name /*out*/);
+        int16 midiPitch, String128* name /*out*/);
 
     // units selection --------------------
     /** Gets the current selected unit. */
