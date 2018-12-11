@@ -90,7 +90,7 @@ nothrow:
     }
 }
 
-mixin SMTG_TYPE_SIZE_CHECK!(BusInfo, 276, 276, 276);
+debug(vst3SizeChecks) mixin SMTG_TYPE_SIZE_CHECK!(BusInfo, 276, 276, 276);
 
 /** I/O modes */
 alias IoModes = int;
@@ -113,7 +113,7 @@ struct RoutingInfo
     int32 channel;          ///< channel (-1 for all channels)
 }
 
-mixin SMTG_TYPE_SIZE_CHECK!(RoutingInfo, 12, 12, 12);
+debug(vst3SizeChecks) mixin SMTG_TYPE_SIZE_CHECK!(RoutingInfo, 12, 12, 12);
 
 // IComponent Interface
 /** Component Base Interface

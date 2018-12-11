@@ -35,7 +35,7 @@ struct UnitInfo
     ProgramListID programListId;    ///< id of program list used in unit (kNoProgramListId = no programs used in this unit)
 }
 
-mixin SMTG_TYPE_SIZE_CHECK!(UnitInfo, 268, 268, 268);
+debug(vst3SizeChecks) mixin SMTG_TYPE_SIZE_CHECK!(UnitInfo, 268, 268, 268);
 
 /** Basic Program List Description.
 \see IUnitInfo */
@@ -46,7 +46,7 @@ struct ProgramListInfo
     int32 programCount;             ///< number of programs in this list
 }
 
-mixin SMTG_TYPE_SIZE_CHECK!(ProgramListInfo, 264, 264, 264);
+debug(vst3SizeChecks) mixin SMTG_TYPE_SIZE_CHECK!(ProgramListInfo, 264, 264, 264);
 
 /** Special programIndex value for IUnitHandler::notifyProgramListChange */
 enum int32 kAllProgramInvalid = -1;     ///< all program information is invalid

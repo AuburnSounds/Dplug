@@ -136,7 +136,7 @@ struct ProcessSetup
     SampleRate sampleRate;      ///< sample rate
 }
 
-mixin SMTG_TYPE_SIZE_CHECK!(ProcessSetup, 24, 20, 24);
+debug(vst3SizeChecks) mixin SMTG_TYPE_SIZE_CHECK!(ProcessSetup, 24, 20, 24);
 
 /** Processing buffers of an audio bus.
 This structure contains the processing buffer for each channel of an audio bus.
@@ -163,7 +163,7 @@ struct AudioBusBuffers
     }
 }
 
-mixin SMTG_TYPE_SIZE_CHECK!(AudioBusBuffers, 24, 16, 24);
+debug(vst3SizeChecks) mixin SMTG_TYPE_SIZE_CHECK!(AudioBusBuffers, 24, 16, 24);
 
 /** Any data needed in audio processing.
     The host prepares AudioBusBuffers for each input/output bus,
@@ -187,7 +187,7 @@ struct ProcessData
     ProcessContext* processContext = null;         ///< processing context (optional, but most welcome)
 }
 
-mixin SMTG_TYPE_SIZE_CHECK!(ProcessData, 80, 48, 48);
+debug(vst3SizeChecks) mixin SMTG_TYPE_SIZE_CHECK!(ProcessData, 80, 48, 48);
 
 /** Audio Processing Interface.
 This interface must always be supported by audio processing Plug-ins. */
@@ -414,7 +414,7 @@ struct ProcessContext
     int32 samplesToNextClock;       ///< MIDI Clock Resolution (24 Per Quarter Note), can be negative (nearest)
 }
 
-mixin SMTG_TYPE_SIZE_CHECK!(ProcessContext, 112, 104, 112);
+debug(vst3SizeChecks) mixin SMTG_TYPE_SIZE_CHECK!(ProcessContext, 112, 104, 112);
 
 struct FrameRate
 {
@@ -427,7 +427,7 @@ struct FrameRate
     uint32 flags;               ///< flags #FrameRateFlags
 }
 
-mixin SMTG_TYPE_SIZE_CHECK!(FrameRate, 8, 8, 8);
+debug(vst3SizeChecks) mixin SMTG_TYPE_SIZE_CHECK!(FrameRate, 8, 8, 8);
 
 /** Description of a chord.
 A chord is described with a key note, a root note and the
@@ -454,7 +454,7 @@ struct Chord
     }
 }
 
-mixin SMTG_TYPE_SIZE_CHECK!(Chord, 4, 4, 4);
+debug(vst3SizeChecks) mixin SMTG_TYPE_SIZE_CHECK!(Chord, 4, 4, 4);
 
 /** Note-on event specific data. Used in \ref Event (union)*/
 struct NoteOnEvent
@@ -467,7 +467,7 @@ struct NoteOnEvent
     int noteId;           ///< note identifier (if not available then -1)
 }
 
-mixin SMTG_TYPE_SIZE_CHECK!(NoteOnEvent, 20, 20, 20);
+debug(vst3SizeChecks) mixin SMTG_TYPE_SIZE_CHECK!(NoteOnEvent, 20, 20, 20);
 
 /** Note-off event specific data. Used in \ref Event (union)*/
 struct NoteOffEvent
@@ -479,7 +479,7 @@ struct NoteOffEvent
     float tuning;           ///< 1.f = +1 cent, -1.f = -1 cent
 }
 
-mixin SMTG_TYPE_SIZE_CHECK!(NoteOffEvent, 16, 16, 16);
+debug(vst3SizeChecks) mixin SMTG_TYPE_SIZE_CHECK!(NoteOffEvent, 16, 16, 16);
 
 /** Data event specific data. Used in \ref Event (union)*/
 struct DataEvent
@@ -495,7 +495,7 @@ struct DataEvent
     }
 }
 
-mixin SMTG_TYPE_SIZE_CHECK!(DataEvent, 16, 12, 12);
+debug(vst3SizeChecks) mixin SMTG_TYPE_SIZE_CHECK!(DataEvent, 16, 12, 12);
 
 /** PolyPressure event specific data. Used in \ref Event (union)*/
 struct PolyPressureEvent
@@ -506,7 +506,7 @@ struct PolyPressureEvent
     int32 noteId;           ///< event should be applied to the noteId (if not -1)
 }
 
-mixin SMTG_TYPE_SIZE_CHECK!(PolyPressureEvent, 12, 12, 12);
+debug(vst3SizeChecks) mixin SMTG_TYPE_SIZE_CHECK!(PolyPressureEvent, 12, 12, 12);
 
 /** Chord event specific data. Used in \ref Event (union)*/
 struct ChordEvent
@@ -519,7 +519,7 @@ struct ChordEvent
     const TChar* text;      ///< UTF-16, null terminated Hosts Chord Name
 }
 
-mixin SMTG_TYPE_SIZE_CHECK!(ChordEvent, 16, 12, 12);
+debug(vst3SizeChecks) mixin SMTG_TYPE_SIZE_CHECK!(ChordEvent, 16, 12, 12);
 
 
 /** Event */
@@ -574,7 +574,7 @@ align(1):
 }
 
 //pragma(msg.
-mixin SMTG_TYPE_SIZE_CHECK!(Event, 48, 40, 40);
+debug(vst3SizeChecks) mixin SMTG_TYPE_SIZE_CHECK!(Event, 48, 40, 40);
 
 
         /** List of events to process.
@@ -612,7 +612,7 @@ struct NoteExpressionValueEvent
     NoteExpressionValue value;      ///< normalized value [0.0, 1.0].
 }
 
-mixin SMTG_TYPE_SIZE_CHECK!(NoteExpressionValueEvent, 16, 16, 16);
+debug(vst3SizeChecks) mixin SMTG_TYPE_SIZE_CHECK!(NoteExpressionValueEvent, 16, 16, 16);
 
 struct NoteExpressionTextEvent
 {
@@ -625,7 +625,7 @@ struct NoteExpressionTextEvent
     const TChar* text;              ///< UTF-16, null terminated
 }
 
-mixin SMTG_TYPE_SIZE_CHECK!(NoteExpressionTextEvent, 24, 16, 16);
+debug(vst3SizeChecks) mixin SMTG_TYPE_SIZE_CHECK!(NoteExpressionTextEvent, 24, 16, 16);
 
 
 /** Basic Host Callback Interface.

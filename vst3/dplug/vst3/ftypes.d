@@ -179,7 +179,8 @@ else
 // vststructsizecheck.h
 
 // necessary because D doesn't have the equivalent of #pragma(pack)
-
+// Note that such type check highly slow down build by about 1 sec.
+debug(vst3SizeChecks)
 template SMTG_TYPE_SIZE_CHECK(T, size_t Platform64Size, size_t MacOS32Size, size_t Win32Size)
 {
     enum size = T.sizeof;
@@ -209,14 +210,14 @@ static if (COM_COMPATIBLE)
     {
         return
         [
-            cast(byte)((l1 & 0x000000FF)      ), cast(byte)((l1 & 0x0000FF00) >>  8),
-            cast(byte)((l1 & 0x00FF0000) >> 16), cast(byte)((l1 & 0xFF000000) >> 24),
-            cast(byte)((l2 & 0x00FF0000) >> 16), cast(byte)((l2 & 0xFF000000) >> 24),
-            cast(byte)((l2 & 0x000000FF)      ), cast(byte)((l2 & 0x0000FF00) >>  8),
-            cast(byte)((l3 & 0xFF000000) >> 24), cast(byte)((l3 & 0x00FF0000) >> 16),
-            cast(byte)((l3 & 0x0000FF00) >>  8), cast(byte)((l3 & 0x000000FF)      ),
-            cast(byte)((l4 & 0xFF000000) >> 24), cast(byte)((l4 & 0x00FF0000) >> 16),
-            cast(byte)((l4 & 0x0000FF00) >>  8), cast(byte)((l4 & 0x000000FF)      )
+            (l1 & 0x000000FF)      , (l1 & 0x0000FF00) >>  8,
+            (l1 & 0x00FF0000) >> 16, (l1 & 0xFF000000) >> 24,
+            (l2 & 0x00FF0000) >> 16, (l2 & 0xFF000000) >> 24,
+            (l2 & 0x000000FF)      , (l2 & 0x0000FF00) >>  8,
+            (l3 & 0xFF000000) >> 24, (l3 & 0x00FF0000) >> 16,
+            (l3 & 0x0000FF00) >>  8, (l3 & 0x000000FF)      ,
+            (l4 & 0xFF000000) >> 24, (l4 & 0x00FF0000) >> 16,
+            (l4 & 0x0000FF00) >>  8, (l4 & 0x000000FF)
         ];
     }
 }
@@ -226,14 +227,14 @@ else
     {
         return
         [
-            cast(byte)((l1 & 0xFF000000) >> 24), cast(byte)((l1 & 0x00FF0000) >> 16),
-            cast(byte)((l1 & 0x0000FF00) >>  8), cast(byte)((l1 & 0x000000FF)      ),
-            cast(byte)((l2 & 0xFF000000) >> 24), cast(byte)((l2 & 0x00FF0000) >> 16),
-            cast(byte)((l2 & 0x0000FF00) >>  8), cast(byte)((l2 & 0x000000FF)      ),
-            cast(byte)((l3 & 0xFF000000) >> 24), cast(byte)((l3 & 0x00FF0000) >> 16),
-            cast(byte)((l3 & 0x0000FF00) >>  8), cast(byte)((l3 & 0x000000FF)      ),
-            cast(byte)((l4 & 0xFF000000) >> 24), cast(byte)((l4 & 0x00FF0000) >> 16),
-            cast(byte)((l4 & 0x0000FF00) >>  8), cast(byte)((l4 & 0x000000FF)      )
+            (l1 & 0xFF000000) >> 24, (l1 & 0x00FF0000) >> 16,
+            (l1 & 0x0000FF00) >>  8, (l1 & 0x000000FF)      ,
+            (l2 & 0xFF000000) >> 24, (l2 & 0x00FF0000) >> 16,
+            (l2 & 0x0000FF00) >>  8, (l2 & 0x000000FF)      ,
+            (l3 & 0xFF000000) >> 24, (l3 & 0x00FF0000) >> 16,
+            (l3 & 0x0000FF00) >>  8, (l3 & 0x000000FF)      ,
+            (l4 & 0xFF000000) >> 24, (l4 & 0x00FF0000) >> 16,
+            (l4 & 0x0000FF00) >>  8, (l4 & 0x000000FF)
         ];
     }
 }
@@ -368,7 +369,7 @@ enum : tresult
 
 alias LARGE_INT = int64 ; // obsolete
 
-alias TUID = byte[16]; ///< plain UID type
+alias TUID = ubyte[16]; ///< plain UID type
 
 public bool iidEqual (const(TUID) iid1, const(TUID) iid2) pure
 {
