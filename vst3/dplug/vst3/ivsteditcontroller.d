@@ -185,5 +185,24 @@ enum : KnobModes
 alias KnobMode = int;     ///< Knob Mode
 
 
+interface IEditController2 : FUnknown
+{
+public:
+nothrow:
+@nogc:
 
+    /** Host could set the Knob Mode for the Plug-in. Return kResultFalse means not supported mode. \see KnobModes. */
+    tresult setKnobMode (KnobMode mode);
 
+    /** Host could ask to open the Plug-in help (could be: opening a PDF document or link to a web page).
+    The host could call it with onlyCheck set to true for testing support of open Help. 
+    Return kResultFalse means not supported function. */
+    tresult openHelp (TBool onlyCheck);
+
+    /** Host could ask to open the Plug-in about box.
+    The host could call it with onlyCheck set to true for testing support of open AboutBox. 
+    Return kResultFalse means not supported function. */
+    tresult openAboutBox (TBool onlyCheck);
+
+    __gshared immutable TUID iid = INLINE_UID(0x7F4EFE59, 0xF3204967, 0xAC27A3AE, 0xAFB63038);
+}

@@ -48,6 +48,7 @@ module dplug.vst3.vst3main;
 
 nothrow @nogc:
 
+import core.stdc.stdio: snprintf;
 
 import dplug.core.runtime;
 import dplug.core.nogc;
@@ -95,7 +96,7 @@ IPluginFactory GetPluginFactoryInternal(ClientClass)()
         if (!pluginHomepage) pluginHomepage = "https://google.com";
 
         auto pluginHomepageZ = CString(pluginHomepage);
-        auto vendorEmailZ = CString(pluginHomepage);
+        auto vendorEmailZ = CString(vendorEmail);
 
         PFactoryInfo factoryInfo = PFactoryInfo(vendorNameZ,
                                                 pluginHomepageZ,

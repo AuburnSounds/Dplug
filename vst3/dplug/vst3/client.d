@@ -65,7 +65,7 @@ import dplug.vst3.ivstunit;
 
 
 // Note: the VST3 client assumes shared memory
-class VST3Client : IAudioProcessor, IComponent, IEditController //, IUnitInfo
+class VST3Client : IAudioProcessor, IComponent, IEditController, IEditController2 //, IUnitInfo
 {
 public:
 nothrow:
@@ -95,7 +95,7 @@ nothrow:
     }
 
     // Implements FUnknown
-    mixin QUERY_INTERFACE_SPECIAL_CASE_IUNKNOWN!(IAudioProcessor, IComponent, IEditController, IPluginBase /*, IUnitInfo*/);
+    mixin QUERY_INTERFACE_SPECIAL_CASE_IUNKNOWN!(IAudioProcessor, IComponent, IEditController, IEditController2, IPluginBase /*, IUnitInfo*/);
     mixin IMPLEMENT_REFCOUNT;
 
 
@@ -125,7 +125,7 @@ nothrow:
         if (maxInputs)
         {
             Bus busAudioIn;
-            busAudioIn.active = false;
+            busAudioIn.active = true;
             busAudioIn.speakerArrangement = getSpeakerArrangement(maxInputs);
             with(busAudioIn.info)
             {
@@ -134,7 +134,7 @@ nothrow:
                 channelCount = maxInputs;
                 setName("Audio Input"w);
                 busType = kMain;
-                uint32 flags = BusInfo.BusFlags.kDefaultActive;
+                flags = BusInfo.BusFlags.kDefaultActive;
             }
             _audioInputs.pushBack(busAudioIn);
         }
@@ -142,7 +142,7 @@ nothrow:
         if (maxOutputs)
         {
             Bus busAudioOut;
-            busAudioOut.active = false;
+            busAudioOut.active = true;
             busAudioOut.speakerArrangement = getSpeakerArrangement(maxOutputs);
             with(busAudioOut.info)
             {
@@ -151,7 +151,7 @@ nothrow:
                 channelCount = maxInputs;
                 setName("Audio Output"w);
                 busType = kMain;
-                uint32 flags = BusInfo.BusFlags.kDefaultActive;
+                flags = BusInfo.BusFlags.kDefaultActive;
             }
             _audioOutputs.pushBack(busAudioOut);
         }
@@ -159,7 +159,7 @@ nothrow:
         if (receivesMIDI)
         {
             Bus busEventsIn;
-            busEventsIn.active = false;
+            busEventsIn.active = true;
             busEventsIn.speakerArrangement = 0; // whatever
             with(busEventsIn.info)
             {
@@ -168,7 +168,7 @@ nothrow:
                 channelCount = 1;
                 setName("MIDI Input"w);
                 busType = kMain;
-                uint32 flags = BusInfo.BusFlags.kDefaultActive;
+                flags = BusInfo.BusFlags.kDefaultActive;
             }
             _eventInputs.pushBack(busEventsIn);
         }
@@ -619,11 +619,6 @@ nothrow:
         }
         Parameter param = _client.param(paramIndex);
 
-        valueNormalized = 0;
-        return kResultTrue;
-/+
-
-
         char[128] valueUTF8;
         int len = 0;
         for(int i = 0; i < 128; ++i)
@@ -636,13 +631,6 @@ nothrow:
                 len++;
         }
 
-
-
-        string_[0] = 'l';
-        string_[1] = 'o';
-        string_[2] = 'l';
-        string_[3] = '\0';
-
         if (param.normalizedValueFromString( valueUTF8[0..len], valueNormalized))
         {
             debug(logVST3Client) scope(exit) debugLog("<getParamValueByString".ptr);
@@ -652,7 +640,7 @@ nothrow:
         {
             debug(logVST3Client) scope(exit) debugLog("<getParamValueByString".ptr);
             return kResultFalse;
-        }+/
+        }
     }
 
     /** Returns for a given paramID and a normalized value its plain representation
@@ -741,6 +729,23 @@ nothrow:
         if (name !is null && strcmp(name, "editor") == 0)
             return mallocNew!DplugView(this);
         return null;
+    }
+
+    // implements IEditController2
+
+    extern(Windows) override tresult setKnobMode (KnobMode mode)
+    {
+        return (mode == kLinearMode) ? kResultTrue : kResultFalse;
+    }
+
+    extern(Windows) override tresult openHelp (TBool onlyCheck)
+    {
+        return kResultFalse;
+    }
+
+    extern(Windows) override tresult openAboutBox (TBool onlyCheck)
+    {
+        return kResultFalse;
     }
 
 
