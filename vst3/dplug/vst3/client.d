@@ -769,7 +769,7 @@ nothrow:
         {
             info.id = kRootUnitId;
             info.parentUnitId = kNoParentUnitId;
-            str8ToStr16(info.name.ptr, "Root Unit", 128);
+            str8ToStr16(info.name.ptr, "Root Unit".ptr, 128);
             info.programListId = kNoProgramListId;
             return kResultTrue;
         }
@@ -780,32 +780,43 @@ nothrow:
     /** Gets the count of Program List. */
     extern(Windows) override int32 getProgramListCount ()
     {
-        return 0;
+        return 1;
     }
 
     /** Gets for a given index the Program List Info. */
     extern(Windows) override tresult getProgramListInfo (int32 listIndex, ref ProgramListInfo info /*out*/)
     {
-        return kResultFalse; // TODO
+        ProgramListInfo result;
+        result.id = 0;
+        result.programCount = _client.presetBank().numPresets();
+        str8ToStr16(result.name.ptr, "Factory Presets".ptr, 128);
+        info = result;
+        return kResultTrue;
     }
 
     /** Gets for a given program list ID and program index its program name. */
     extern(Windows) override tresult getProgramName (ProgramListID listId, int32 programIndex, String128* name /*out*/)
     {
-        return kResultFalse; // TODO
+        if (listId != 0)
+            return kResultFalse;
+        auto presetBank = _client.presetBank();
+        if (!presetBank.isValidPresetIndex(programIndex))
+            return kResultFalse;
+        str8ToStr16((*name).ptr, presetBank.preset(programIndex).name, 128);
+        return kResultTrue;
     }
 
     /** Gets for a given program list ID, program index and attributeId the associated attribute value. */
     extern(Windows) override tresult getProgramInfo (ProgramListID listId, int32 programIndex,
                             const(wchar)* attributeId /*in*/, String128* attributeValue /*out*/)
     {
-        return kResultFalse; // TODO
+        return kResultFalse; // I don't understand what these "attributes" could be
     }
 
     /** Returns kResultTrue if the given program index of a given program list ID supports PitchNames. */
     extern(Windows) override tresult hasProgramPitchNames (ProgramListID listId, int32 programIndex)
     {
-        return kResultFalse; // TODO
+        return kResultFalse;
     }
 
     /** Gets the PitchName for a given program list ID, program index and pitch.
@@ -813,7 +824,7 @@ nothrow:
     extern(Windows) override tresult getProgramPitchName (ProgramListID listId, int32 programIndex,
                                  int16 midiPitch, String128* name /*out*/)
     {
-        return kResultFalse; // TODO
+        return kResultFalse;
     }
 
     // units selection --------------------
@@ -835,7 +846,7 @@ nothrow:
                                                    int32 channel, ref UnitID unitId /*out*/)
     {
         unitId = 0;
-        return kResultTrue; // TODO
+        return kResultTrue;
     }
 
     /** Receives a preset data stream.
@@ -847,7 +858,6 @@ nothrow:
     {
         return kResultFalse; // TODO
     }
-
 
 private:
     Client _client;

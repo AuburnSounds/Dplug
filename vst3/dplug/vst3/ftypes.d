@@ -454,7 +454,7 @@ void str16ToStr8 (char* dst, wchar* src, int32 n = -1)
     }
 }
 
-void str8ToStr16 (char16* dst, string src, int32 n = -1)
+void str8ToStr16 (char16* dst, const(char)[] src, int32 n = -1)
 {
     int32 i = 0;
     for (;;)
