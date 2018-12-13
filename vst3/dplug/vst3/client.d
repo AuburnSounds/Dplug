@@ -810,7 +810,7 @@ nothrow:
     extern(Windows) override tresult getProgramInfo (ProgramListID listId, int32 programIndex,
                             const(wchar)* attributeId /*in*/, String128* attributeValue /*out*/)
     {
-        return kResultFalse; // I don't understand what these "attributes" could be
+        return kNotImplemented; // I don't understand what these "attributes" could be
     }
 
     /** Returns kResultTrue if the given program index of a given program list ID supports PitchNames. */
@@ -856,7 +856,7 @@ nothrow:
     parameter - in this case parameter programIndex is < 0). */
     extern(Windows) tresult setUnitProgramData (int32 listOrUnitId, int32 programIndex, IBStream data)
     {
-        return kResultFalse; // TODO
+        return kNotImplemented;
     }
 
 private:
