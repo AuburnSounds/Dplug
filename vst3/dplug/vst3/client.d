@@ -902,7 +902,7 @@ nothrow:
             info.id = kRootUnitId;
             info.parentUnitId = kNoParentUnitId;
             str8ToStr16(info.name.ptr, "Root Unit".ptr, 128);
-            info.programListId = kNoProgramListId;
+            info.programListId = PARAM_ID_PROGRAM_CHANGE;
             return kResultTrue;
         }
         return kResultFalse;
