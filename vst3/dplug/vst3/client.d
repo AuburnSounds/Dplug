@@ -78,6 +78,10 @@ nothrow:
         _client = client;
         _hostCommand = mallocNew!VST3HostCommand(this);
         _client.setHostCommand(_hostCommand);
+
+        // if no preset, pretend to be a continuous parameter
+        _presetStepCount = _client.presetBank.numPresets() - 1;
+        if (_presetStepCount < 0) _presetStepCount = 0; 
     }
 
     ~this()
@@ -258,8 +262,6 @@ nothrow:
     {
         debug(logVST3Client) debugLog(">setStateController".ptr);
         debug(logVST3Client) scope(exit) debugLog("<setStateController".ptr);
-
-        // TODO deserialize
         return kNotImplemented;
     }
 
@@ -267,7 +269,6 @@ nothrow:
     {
         debug(logVST3Client) debugLog(">getStateController".ptr);
         debug(logVST3Client) scope(exit) debugLog("<getStateController".ptr);
-        // TODO serialize
         return kNotImplemented;
     }
 
@@ -432,9 +433,24 @@ nothrow:
                     ParamValue value;
                     if (kResultTrue == queue.getPoint(pointCount-1, offset, value))
                     {
-                        // Dplug assume parameter do not change over a single buffer, and parameter smoothing is handled
-                        // inside the plugin itself. So we take the most future point (inside this buffer) and applies it now.
-                        _client.setParameterFromHost(convertParamIDToParamIndex(id), value);
+                        if (id == PARAM_ID_BYPASS)
+                        {
+                            atomicStore(_bypassed, (value >= 0.5f));
+                        }
+                        else if (id == PARAM_ID_PROGRAM_CHANGE)
+                        {
+                            int presetIndex;
+                            if (convertPresetParamToPlain(value, &presetIndex))
+                            {
+                                _client.presetBank.loadPresetFromHost(presetIndex);
+                            }
+                        }
+                        else
+                        {
+                            // Dplug assume parameter do not change over a single buffer, and parameter smoothing is handled
+                            // inside the plugin itself. So we take the most future point (inside this buffer) and applies it now.
+                            _client.setParameterFromHost(convertVST3ParamIndexToParamID(id), value);
+                        }
                     }
                 }
             }
@@ -476,6 +492,11 @@ nothrow:
         }
 
         updateTimeInfo(data.processContext, data.numSamples);
+
+        bool bypassed = atomicLoad!(MemoryOrder.raw)(_bypassed);
+
+        // TODO implement bypass
+
         _client.processAudioFromHost(_inputPointers[], _outputPointers[], data.numSamples, _timeInfo);
         return kResultOk;
     }
@@ -567,7 +588,7 @@ nothrow:
 
     extern(Windows) override int32 getParameterCount()
     {
-        return cast(int)(_client.params.length);
+        return cast(int)(_client.params.length) + 2; // 2 because bypass and program change fake parameters
     }
 
     extern(Windows) override tresult getParameterInfo (int32 paramIndex, ref ParameterInfo info)
@@ -577,24 +598,79 @@ nothrow:
         if (!_client.isValidParamIndex(paramIndex))
             return kResultFalse;
 
-        Parameter param = _client.param(paramIndex);
-
-        info.id = convertParamIndexToParamID(paramIndex);
-        str8ToStr16(info.title.ptr, param.name, 128);
-        str8ToStr16(info.shortTitle.ptr, param.name(), 128);
-        str8ToStr16(info.units.ptr, param.label(), 128);
-        info.stepCount = 0; // continuous
-        info.defaultNormalizedValue = param.getNormalizedDefault();
-        info.unitId = 0; // root, unit 0 is always here
-        info.flags = ParameterInfo.ParameterFlags.kCanAutomate; // Dplug assumption: all parameters automatable.
-        return kResultTrue;
+        if (paramIndex == 0)
+        {
+            Parameter param = _client.param(paramIndex);
+            info.id = PARAM_ID_BYPASS;
+            str8ToStr16(info.title.ptr, "Bypass".ptr, 128);
+            str8ToStr16(info.shortTitle.ptr, "Byp".ptr, 128);
+            str8ToStr16(info.units.ptr, "".ptr, 128);
+            info.stepCount = 1;
+            info.defaultNormalizedValue = 0.0f;
+            info.unitId = 0; // root, unit 0 is always here
+            info.flags = ParameterInfo.ParameterFlags.kCanAutomate 
+                       | ParameterInfo.ParameterFlags.kIsBypass
+                       | ParameterInfo.ParameterFlags.kIsList;
+            return kResultTrue;
+        }
+        else if (paramIndex == 1)
+        {
+            Parameter param = _client.param(paramIndex);
+            info.id = PARAM_ID_PROGRAM_CHANGE;
+            str8ToStr16(info.title.ptr, "Preset".ptr, 128);
+            str8ToStr16(info.shortTitle.ptr, "Pre".ptr, 128);
+            str8ToStr16(info.units.ptr, "".ptr, 128);
+            info.stepCount = _presetStepCount;
+            info.defaultNormalizedValue = 0.0f;
+            info.unitId = 0; // root, unit 0 is always here
+            info.flags = ParameterInfo.ParameterFlags.kIsProgramChange;
+            return kResultTrue;
+        }
+        else
+        {
+            info.id = convertVST3ParamIndexToParamID(paramIndex);
+            Parameter param = _client.param(convertParamIDToClientParamIndex(info.id));
+            str8ToStr16(info.title.ptr, param.name, 128);
+            str8ToStr16(info.shortTitle.ptr, param.name(), 128);
+            str8ToStr16(info.units.ptr, param.label(), 128);
+            info.stepCount = 0; // continuous
+            info.defaultNormalizedValue = param.getNormalizedDefault();
+            info.unitId = 0; // root, unit 0 is always here
+            info.flags = ParameterInfo.ParameterFlags.kCanAutomate; // Dplug assumption: all parameters automatable.
+            return kResultTrue;
+        }
     }
 
     /** Gets for a given paramID and normalized value its associated string representation. */
     extern(Windows) override tresult getParamStringByValue (ParamID id, ParamValue valueNormalized, String128* string_ )
     {
         debug(logVST3Client) debugLog(">getParamStringByValue".ptr);
-        int paramIndex = convertParamIDToParamIndex(id);
+        if (id == PARAM_ID_BYPASS)
+        {
+            if (valueNormalized < 0.5f)
+                str8ToStr16(string_.ptr, "No".ptr, 128);
+            else
+                str8ToStr16(string_.ptr, "Yes".ptr, 128);
+            return kResultTrue;
+        }
+
+        if (id == PARAM_ID_PROGRAM_CHANGE)
+        {
+            int presetIndex;
+            if (convertPresetParamToPlain(valueNormalized, &presetIndex))
+            {
+                // Gives back name of preset
+                str8ToStr16(string_.ptr, _client.presetBank.preset(presetIndex).name, 128);
+                return kResultTrue;
+            }
+            else
+            {
+                str8ToStr16(string_.ptr, "None".ptr, 128);
+                return kResultTrue;
+            }
+        }
+
+        int paramIndex = convertParamIDToClientParamIndex(id);
         if (!_client.isValidParamIndex(paramIndex))
         {
             return kResultFalse;
@@ -617,7 +693,10 @@ nothrow:
     {
         debug(logVST3Client) debugLog(">getParamValueByString".ptr);
 
-        int paramIndex = convertParamIDToParamIndex(id);
+        if (id == PARAM_ID_BYPASS || id == PARAM_ID_PROGRAM_CHANGE)
+            return kResultFalse; // TODO, eventually
+
+        int paramIndex = convertParamIDToClientParamIndex(id);
         if (!_client.isValidParamIndex(paramIndex))
         {
             debug(logVST3Client) debugLog("getParamValueByString got a wrong parameter index".ptr);
@@ -656,11 +735,24 @@ nothrow:
         debug(logVST3Client) debugLog(">normalizedParamToPlain".ptr);
         debug(logVST3Client) debugLog("<normalizedParamToPlain".ptr);
 
-        int paramIndex = convertParamIDToParamIndex(id);
-        if (!_client.isValidParamIndex(paramIndex))
-            return 0;
-        Parameter param = _client.param(paramIndex);
-        return valueNormalized; // Note: the host don't need to know we do not deal with normalized values internally
+        if (id == PARAM_ID_BYPASS)
+        {
+            return convertBypassParamToPlain(valueNormalized);
+        }
+        else if (id == PARAM_ID_PROGRAM_CHANGE)
+        {
+            int presetIndex = 0;
+            convertPresetParamToPlain(valueNormalized, &presetIndex);
+            return presetIndex;
+        }
+        else
+        {
+            int paramIndex = convertParamIDToClientParamIndex(id);
+            if (!_client.isValidParamIndex(paramIndex))
+                return 0;
+            Parameter param = _client.param(paramIndex);
+            return valueNormalized; // Note: the host don't need to know we do not deal with normalized values internally
+        }
     }
 
     /** Returns for a given paramID and a plain value its normalized value. (see \ref vst3AutomationIntro) */
@@ -669,11 +761,22 @@ nothrow:
         debug(logVST3Client) debugLog(">plainParamToNormalized".ptr);
         debug(logVST3Client) scope(exit) debugLog("<plainParamToNormalized".ptr);
 
-        int paramIndex = convertParamIDToParamIndex(id);
-        if (!_client.isValidParamIndex(paramIndex))
-            return 0;
-        Parameter param = _client.param(paramIndex);
-        return plainValue; // Note: the host don't need to know we do not deal with normalized values internally
+        if (id == PARAM_ID_BYPASS)
+        {
+            return convertBypassParamToNormalized(plainValue);
+        }
+        else if (id == PARAM_ID_PROGRAM_CHANGE)
+        {
+            return convertPresetParamToNormalized(plainValue);
+        }
+        else
+        {
+            int paramIndex = convertParamIDToClientParamIndex(id);
+            if (!_client.isValidParamIndex(paramIndex))
+                return 0;
+            Parameter param = _client.param(paramIndex);
+            return plainValue; // Note: the host don't need to know we do not deal with normalized values internally
+        }
     }
 
     /** Returns the normalized value of the parameter associated to the paramID. */
@@ -681,11 +784,24 @@ nothrow:
     {
         debug(logVST3Client) debugLog(">getParamNormalized".ptr);
         debug(logVST3Client) scope(exit) debugLog("<getParamNormalized".ptr);
-        int paramIndex = convertParamIDToParamIndex(id);
-        if (!_client.isValidParamIndex(paramIndex))
-            return 0;
-        Parameter param = _client.param(paramIndex);
-        return param.getForHost();
+
+        if (id == PARAM_ID_BYPASS)
+        {
+            return atomicLoad(_bypassed) ? 1.0f : 0.0f;
+        }
+        else if (id == PARAM_ID_PROGRAM_CHANGE)
+        {
+            int currentPreset = _client.presetBank.currentPresetIndex();
+            return convertPresetParamToNormalized(currentPreset);
+        }
+        else
+        {
+            int paramIndex = convertParamIDToClientParamIndex(id);
+            if (!_client.isValidParamIndex(paramIndex))
+                return 0;
+            Parameter param = _client.param(paramIndex);
+            return param.getForHost();
+        }
     }
 
     /** Sets the normalized value to the parameter associated to the paramID. The controller must never
@@ -695,12 +811,30 @@ nothrow:
     {
         debug(logVST3Client) debugLog(">setParamNormalized".ptr);
         debug(logVST3Client) scope(exit) debugLog("<setParamNormalized".ptr);
-        int paramIndex = convertParamIDToParamIndex(id);
-        if (!_client.isValidParamIndex(paramIndex))
-            return kResultFalse;
-        Parameter param = _client.param(paramIndex);
-        param.setFromHost(value);
-        return kResultTrue;
+
+        if (id == PARAM_ID_BYPASS)
+        {
+            atomicStore(_bypassed, (value >= 0.5f));
+            return kResultTrue;
+        }
+        else if (id == PARAM_ID_PROGRAM_CHANGE)
+        {
+            int presetIndex;
+            if (convertPresetParamToPlain(value, &presetIndex))
+            {
+                _client.presetBank.loadPresetFromHost(presetIndex);
+            }
+            return kResultTrue;
+        }
+        else
+        {
+            int paramIndex = convertParamIDToClientParamIndex(id);
+            if (!_client.isValidParamIndex(paramIndex))
+                return kResultFalse;
+            Parameter param = _client.param(paramIndex);
+            param.setFromHost(value);
+            return kResultTrue;
+        }
     }
 
     /** Gets from host a handler. */
@@ -787,7 +921,7 @@ nothrow:
     extern(Windows) override tresult getProgramListInfo (int32 listIndex, ref ProgramListInfo info /*out*/)
     {
         ProgramListInfo result;
-        result.id = 0;
+        result.id = PARAM_ID_PROGRAM_CHANGE;
         result.programCount = _client.presetBank().numPresets();
         str8ToStr16(result.name.ptr, "Factory Presets".ptr, 128);
         info = result;
@@ -797,7 +931,7 @@ nothrow:
     /** Gets for a given program list ID and program index its program name. */
     extern(Windows) override tresult getProgramName (ProgramListID listId, int32 programIndex, String128* name /*out*/)
     {
-        if (listId != 0)
+        if (listId != PARAM_ID_PROGRAM_CHANGE)
             return kResultFalse;
         auto presetBank = _client.presetBank();
         if (!presetBank.isValidPresetIndex(programIndex))
@@ -865,6 +999,12 @@ private:
     IHostCommand _hostCommand;
 
     shared(bool) _shouldInitialize = true;
+    shared(bool) _bypassed = false;
+
+    // This is number of preset - 1, but 0 if no presets
+    // "stepcount" is offset by 1 in VST3 Parameter parlance
+    // stepcount = 1 gives 2 different values
+    int _presetStepCount;
 
     float _sampleRate;
     shared(float) _sampleRateHostPOV = 44100.0f;
@@ -943,6 +1083,35 @@ private:
             }
         }
     }
+
+    double convertBypassParamToNormalized(double plainValue) const
+    {
+        return plainValue / cast(double)1;
+    }
+
+    double convertBypassParamToPlain(double normalizedValue) const
+    {
+        double v = cast(int)(normalizedValue * 2);
+        if (v > 1)
+            v = 1;
+        return v;
+    }
+
+    double convertPresetParamToNormalized(double presetPlainValue) const
+    {
+        if (_presetStepCount == 0) // 0 or 1 preset
+            return 0;
+        return presetPlainValue / cast(double)_presetStepCount;
+    }
+
+    bool convertPresetParamToPlain(double presetNormalizedValue, int* presetIndex)
+    {
+        int index = cast(int)(presetNormalizedValue * (_presetStepCount + 1));
+        if (index > _presetStepCount)
+            index = _presetStepCount;
+        *presetIndex = index;
+        return _client.presetBank.isValidPresetIndex(_presetStepCount);
+    }
 }
 
 private:
@@ -950,14 +1119,54 @@ nothrow:
 pure:
 @nogc:
 
-int convertParamIndexToParamID(int index)
+enum int PARAM_ID_BYPASS = 998;
+enum int PARAM_ID_PROGRAM_CHANGE = 999;
+
+// Convert from VST3 index to VST3 ParamID
+int convertVST3ParamIndexToParamID(int index)
 {
-    return index;
+    // Parameter with VST3 index 0 is a fake Bypass parameter
+    if (index == 0)
+        return PARAM_ID_BYPASS;
+
+    // Parameter with VST3 index 1 is a fake Program Change parameter
+    if (index == 1)
+        return PARAM_ID_PROGRAM_CHANGE;
+
+    // Parameter with VST3 index 2 is the first client Parameter
+    return index - 2;
 }
 
-int convertParamIDToParamIndex(int index)
+// Convert from VST3 ParamID to VST3 index
+int convertParamIDToVST3ParamIndex(int index)
 {
-    return index;
+    // Parameter with VST3 index 0 is a fake Bypass parameter
+    if (index == PARAM_ID_BYPASS)
+        return 0;
+
+    // Parameter with VST3 index 1 is a fake Program Change parameter
+    if (index == PARAM_ID_PROGRAM_CHANGE)
+        return 1;
+
+    // Parameter with VST3 index 2 is the first client Parameter
+    return index + 2;
+}
+
+/// Convert from VST3 ParamID to Client Parameter index
+int convertParamIDToClientParamIndex(int paramID)
+{
+    // Shouldn't be here if this is a fake parameter
+    assert (paramID != PARAM_ID_BYPASS);
+    assert (paramID != PARAM_ID_PROGRAM_CHANGE);
+
+    // Parameter with VST3 index 2 is the first client Parameter
+    return paramID - 2;
+}
+
+/// Convert from Client Parameter index to VST3 ParamID
+int convertClientParamIndexToParamID(int clientIndex)
+{
+    return clientIndex + 2;
 }
 
 class DplugView : IPlugView
@@ -1179,21 +1388,21 @@ nothrow:
     {
         auto handler = _vst3Client._handler;
         if (handler)
-            handler.beginEdit(convertParamIndexToParamID(paramIndex));
+            handler.beginEdit(convertClientParamIndexToParamID(paramIndex));
     }
 
     override void paramAutomate(int paramIndex, float value)
     {
         auto handler = _vst3Client._handler;
         if (handler)
-            handler.performEdit(convertParamIndexToParamID(paramIndex), value);
+            handler.performEdit(convertClientParamIndexToParamID(paramIndex), value);
     }
 
     override void endParamEdit(int paramIndex)
     {
         auto handler = _vst3Client._handler;
         if (handler)
-            handler.endEdit(convertParamIndexToParamID(paramIndex));
+            handler.endEdit(convertClientParamIndexToParamID(paramIndex));
     }
 
     override bool requestResize(int width, int height)
@@ -1210,3 +1419,4 @@ nothrow:
 private:
     VST3Client _vst3Client;
 }
+
