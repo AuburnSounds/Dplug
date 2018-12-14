@@ -449,7 +449,7 @@ nothrow:
                         {
                             // Dplug assume parameter do not change over a single buffer, and parameter smoothing is handled
                             // inside the plugin itself. So we take the most future point (inside this buffer) and applies it now.
-                            _client.setParameterFromHost(convertVST3ParamIndexToParamID(id), value);
+                            _client.setParameterFromHost(convertParamIDToClientParamIndex(id), value);
                         }
                     }
                 }
@@ -593,9 +593,7 @@ nothrow:
 
     extern(Windows) override tresult getParameterInfo (int32 paramIndex, ref ParameterInfo info)
     {
-        debug(logVST3Client) debugLog(">getParameterInfo".ptr);
-        debug(logVST3Client) scope(exit) debugLog("<getParameterInfo".ptr);
-        if (!_client.isValidParamIndex(paramIndex))
+        if (paramIndex >= (cast(uint)(_client.params.length) + 2))
             return kResultFalse;
 
         if (paramIndex == 0)
@@ -1160,13 +1158,13 @@ int convertParamIDToClientParamIndex(int paramID)
     assert (paramID != PARAM_ID_PROGRAM_CHANGE);
 
     // Parameter with VST3 index 2 is the first client Parameter
-    return paramID - 2;
+    return paramID;
 }
 
 /// Convert from Client Parameter index to VST3 ParamID
 int convertClientParamIndexToParamID(int clientIndex)
 {
-    return clientIndex + 2;
+    return clientIndex;
 }
 
 class DplugView : IPlugView
