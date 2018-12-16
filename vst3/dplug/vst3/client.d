@@ -491,13 +491,26 @@ nothrow:
             }
         }
 
-        updateTimeInfo(data.processContext, data.numSamples);
+        int frames = data.numSamples;
+        updateTimeInfo(data.processContext, frames);
 
+        // Support bypass
         bool bypassed = atomicLoad!(MemoryOrder.raw)(_bypassed);
+        if (bypassed)
+        {
+            int minIO = numInputs;
+            if (minIO > numOutputs) minIO = numOutputs;
 
-        // TODO implement bypass
+            for (int i = 0; i < minIO; ++i)
+                _outputPointers[i][0..frames] = _inputPointers[i][0..frames];
 
-        _client.processAudioFromHost(_inputPointers[], _outputPointers[], data.numSamples, _timeInfo);
+            for (int i = minIO; i < numOutputs; ++i)
+                _outputPointers[i][0..frames] = 0;
+        }
+        else
+        {
+            _client.processAudioFromHost(_inputPointers[], _outputPointers[], frames, _timeInfo);
+        }
         return kResultOk;
     }
 
