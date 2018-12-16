@@ -91,6 +91,9 @@ nothrow:
         destroyFree(_client);
         _client = null;
 
+        _zeroesBuffer.reallocBuffer(0);
+        _outputScratchBuffer.reallocBuffer(0);
+
         destroyFree(_hostCommand);
         _hostCommand = null;
 
@@ -248,7 +251,8 @@ nothrow:
             return kInvalidArgument;
         if (index >= busList.length)
             return kResultFalse;
-        (*busList)[index].active = (state != 0);
+        Bus* buses = (*busList).ptr;
+        buses[index].active = (state != 0);
         return kResultTrue;
     }
 
@@ -402,6 +406,7 @@ nothrow:
             _numInputChannels = numInputs;
             _numOutputChannels = numOutputs;
             _client.resetFromHost(_sampleRateDSPPOV, _maxSamplesPerBlockDSPPOV, _numInputChannels, _numOutputChannels);
+            resizeScratchBuffers(_maxSamplesPerBlockDSPPOV);
 
             _inputPointers.reallocBuffer(_numInputChannels);
             _outputPointers.reallocBuffer(_numOutputChannels);
@@ -409,10 +414,25 @@ nothrow:
 
         // Gather all I/O pointers
         foreach(chan; 0.._numInputChannels)
-            _inputPointers[chan] = data.inputs[0].channelBuffers32[chan];
+        {
+            float* pInput = data.inputs[0].channelBuffers32[chan];
+
+            // May be null in case of deactivated bus, in which case we feed zero instead
+            if (pInput is null) 
+                pInput = _zeroesBuffer.ptr;
+            _inputPointers[chan] = pInput;
+        }
 
         foreach(chan; 0.._numOutputChannels)
-            _outputPointers[chan] = data.outputs[0].channelBuffers32[chan];
+        {
+            float* pOutput = data.outputs[0].channelBuffers32[chan];
+
+            // May be null in case of deactivated bus, in which case we use a garbage buffer instead
+            if (pOutput is null)
+                pOutput = _outputScratchBuffer.ptr;
+
+            _outputPointers[chan] = pOutput;
+        }
 
         //
         // Read parameter changes, sets them.
@@ -501,11 +521,24 @@ nothrow:
             int minIO = numInputs;
             if (minIO > numOutputs) minIO = numOutputs;
 
-            for (int i = 0; i < minIO; ++i)
-                _outputPointers[i][0..frames] = _inputPointers[i][0..frames];
+            for (int chan = 0; chan < minIO; ++chan)
+            {
+                float* pOut = _outputPointers[chan];
+                float* pIn = _inputPointers[chan];
+                for(int i = 0; i < frames; ++i)
+                {
+                    pOut[i] = pIn[i];
+                }
+            }
 
-            for (int i = minIO; i < numOutputs; ++i)
-                _outputPointers[i][0..frames] = 0;
+            for (int chan = minIO; chan < numOutputs; ++chan)
+            {
+                float* pOut = _outputPointers[chan];
+                for(int i = 0; i < frames; ++i)
+                {
+                    pOut[i] = 0.0f;
+                }
+            }
         }
         else
         {
@@ -1060,6 +1093,16 @@ private:
             if (dir == kOutput) return &_eventOutputs;
         }
         return null;
+    }
+
+    // Scratch buffers
+    float[] _zeroesBuffer; // for deactivated input bus
+    float[] _outputScratchBuffer; // for deactivated output bus
+    void resizeScratchBuffers(int maxFrames) nothrow @nogc
+    {
+        _outputScratchBuffer.reallocBuffer(maxFrames);
+        _zeroesBuffer.reallocBuffer(maxFrames);
+        _zeroesBuffer[0..maxFrames] = 0;
     }
 
     // host application reference
