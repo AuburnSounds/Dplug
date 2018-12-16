@@ -29,6 +29,7 @@
         "dplug:dsp": { "path": "../.." },
         "dplug:vst": { "path": "../.." },
         "dplug:au": { "path": "../.." },
+        "dplug:vst3": { "path": "../.." },
         "dplug:gui": { "path": "../.." },
         "dplug:flat-widgets": { "path": "../.." }
     },
@@ -47,6 +48,12 @@
             "versions": ["AU"],
             "targetType": "dynamicLibrary",
             "lflags-osx-ldc": [ "-exported_symbols_list", "module-au.lst", "-dead_strip" ]
+        },
+        {
+            "name": "VST3",
+            "versions": ["VST3"],
+            "targetType": "dynamicLibrary",
+            "lflags-osx-ldc": [ "-exported_symbols_list", "module-vst3.lst", "-dead_strip" ]
         }
     ]
 }

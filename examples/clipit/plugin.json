@@ -3,7 +3,10 @@
 
     "vendorName": "Witty Audio",
     "vendorUniqueID": "Wity",
+    "vendorSupportEmail": "support@wittyaudio.com",
+
     "pluginName": "CLIP It",
+    "pluginHomepage": "https://www.wittyaudio.com/CLIPIt",
     "pluginUniqueID": "WiDi",
     "publicVersion": "1.0.0",
     "CFBundleIdentifierPrefix": "com.wittyaudio",
