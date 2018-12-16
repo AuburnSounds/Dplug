@@ -600,6 +600,7 @@ nothrow:
         // In debug mode, fill all output audio buffers with `float.nan`.
         // This avoids a plug-in forgetting to fill output buffers, which can happen if you
         // implement silence detection badly.
+        // CAUTION: this assumes inputs and outputs buffers do not point into the same memory areas
         debug
         {
             for (int k = 0; k < outputs.length; ++k)
@@ -636,7 +637,7 @@ nothrow:
                 frames -= sliceLength;
 
                 // timeInfo must be updated
-                    timeInfo.timeInSamples += sliceLength;
+                timeInfo.timeInSamples += sliceLength;
             }
             assert(frames == 0);
         }

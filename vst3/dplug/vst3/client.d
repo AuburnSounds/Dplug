@@ -82,6 +82,11 @@ nothrow:
         // if no preset, pretend to be a continuous parameter
         _presetStepCount = _client.presetBank.numPresets() - 1;
         if (_presetStepCount < 0) _presetStepCount = 0; 
+
+        _maxInputs = client.maxInputs();
+        _inputScratchBuffers = mallocSlice!(Vec!float)(_maxInputs);
+        for (int i = 0; i < _maxInputs; ++i)
+            _inputScratchBuffers[i] = makeVec!float();
     }
 
     ~this()
@@ -90,6 +95,10 @@ nothrow:
         debug(logVST3Client) scope(exit) debugLog("<VST3Client.~this()");
         destroyFree(_client);
         _client = null;
+
+        for (int i = 0; i < _maxInputs; ++i)
+            _inputScratchBuffers[i].destroy();
+        _inputScratchBuffers.freeSlice();
 
         _zeroesBuffer.reallocBuffer(0);
         _outputScratchBuffer.reallocBuffer(0);
@@ -542,7 +551,26 @@ nothrow:
         }
         else
         {
-            _client.processAudioFromHost(_inputPointers[], _outputPointers[], frames, _timeInfo);
+            // Regular processing
+
+            // Hosts like Cubase gives input and output buffer which are identical.
+            // This creates problems since Dplug assumes the contrary.
+            // Copy the input to scratch buffers to avoid overwrite.
+            for (int chan = 0; chan < numInputs; ++chan)
+            {
+                float* pCopy = _inputScratchBuffers[chan].ptr;
+                float* pInput = _inputPointers[chan];
+                for(int i = 0; i < frames; ++i)
+                {
+                    pCopy[i] = pInput[i];
+                }
+                _inputPointers[chan] = pCopy;
+            }
+
+            _client.processAudioFromHost(_inputPointers[0..numInputs], 
+                                         _outputPointers[0..numOutputs], 
+                                         frames, 
+                                         _timeInfo);
         }
         return kResultOk;
     }
@@ -1098,8 +1126,13 @@ private:
     // Scratch buffers
     float[] _zeroesBuffer; // for deactivated input bus
     float[] _outputScratchBuffer; // for deactivated output bus
+    Vec!float[] _inputScratchBuffers; // for input safe copy
+    int _maxInputs;
+
     void resizeScratchBuffers(int maxFrames) nothrow @nogc
     {
+        for (int i = 0; i < _maxInputs; ++i)
+            _inputScratchBuffers[i].resize(maxFrames);
         _outputScratchBuffer.reallocBuffer(maxFrames);
         _zeroesBuffer.reallocBuffer(maxFrames);
         _zeroesBuffer[0..maxFrames] = 0;
