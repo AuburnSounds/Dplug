@@ -599,8 +599,6 @@ nothrow:
 
     extern(Windows) override tresult setComponentState (IBStream state)
     {
-        // TODO
-        // Why duplicate?
         return kNotImplemented;
     }
 
@@ -766,7 +764,7 @@ nothrow:
         debug(logVST3Client) debugLog(">getParamValueByString".ptr);
 
         if (id == PARAM_ID_BYPASS || id == PARAM_ID_PROGRAM_CHANGE)
-            return kResultFalse; // TODO, eventually
+            return kResultFalse; // MAYDO, eventually
 
         int paramIndex = convertParamIDToClientParamIndex(id);
         if (!_client.isValidParamIndex(paramIndex))
