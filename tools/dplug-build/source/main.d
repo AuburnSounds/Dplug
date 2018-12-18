@@ -317,8 +317,6 @@ int main(string[] args)
                         throw new Exception("Can't build AAX format on Linux");
                     if (configIsAU(config))
                         throw new Exception("Can't build AU format on Linux");
-                    if (configIsVST3(config))
-                        throw new Exception("Can't build VST3 format on Linux"); // not supported in Dplug
                 }
 
                 // Do we need this build in the installer?
@@ -578,14 +576,10 @@ int main(string[] args)
                     string exePath = macosDir ~ "/" ~ plugin.prettyName;
 
                     // Create a .rsrc for this set of architecture when building an AU
-                    version(OSX)
+                    if (configIsAU(config))
                     {
-                        // Make a rsrc file and copy it (if needed)
-                        if (configIsAU(config))
-                        {
-                            string rsrcPath = makeRSRC(plugin, arch, verbose);
-                            std.file.copy(rsrcPath, contentsDir ~ "Resources/" ~ baseName(exePath) ~ ".rsrc");
-                        }
+                        string rsrcPath = makeRSRC(plugin, arch, verbose);
+                        std.file.copy(rsrcPath, contentsDir ~ "Resources/" ~ baseName(exePath) ~ ".rsrc");
                     }
 
                     if (iconPath)
