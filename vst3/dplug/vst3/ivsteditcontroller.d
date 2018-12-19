@@ -48,7 +48,7 @@ struct ParameterInfo
     }
 }
 
-debug(vst3SizeChecks) mixin SMTG_TYPE_SIZE_CHECK!(ParameterInfo, 792, 792, 792);
+mixin SMTG_TYPE_SIZE_CHECK!(ParameterInfo, 792, 792, 792);
 
 //------------------------------------------------------------------------
 /** View Types used for IEditController::createView */

@@ -180,7 +180,7 @@ else
 
 // necessary because D doesn't have the equivalent of #pragma(pack)
 // Note that such type check highly slow down build by about 1 sec.
-debug(vst3SizeChecks)
+
 template SMTG_TYPE_SIZE_CHECK(T, size_t Platform64Size, size_t MacOS32Size, size_t Win32Size)
 {
     enum size = T.sizeof;

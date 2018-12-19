@@ -647,6 +647,8 @@ nothrow:
         }
     }
 
+    // TODO: we're supposed to save and restore the fake Bypass parameter here
+
     extern(Windows) override tresult getState(IBStream state)
     {
         debug(logVST3Client) debugLog(">getState".ptr);
