@@ -1,23 +1,13 @@
-//------------------------------------------------------------------------
-// Project     : VST SDK
-//
-// Category    : Interfaces
-// Filename    : pluginterfaces/vst/ivstaudioprocessor.h
-//               pluginterfaces/vst/ivstparameterchanges.h
-//               pluginterfaces/vst/ivstprocessorcontext.h
-//               pluginterfaces/vst/ivstevents.h
-//               pluginterfaces/vst/ivstnoteexpression.h
-//               pluginterfaces/vst/ivsthostapplication.h
-//
-// Created by  : Steinberg, 10/2005
-// Description : VST Audio Processing Interfaces
-//
 //-----------------------------------------------------------------------------
-// This file is part of a Steinberg SDK. It is subject to the license terms
-// in the LICENSE file found in the top-level directory of this distribution
-// and at www.steinberg.net/sdklicenses. 
-// No part of the SDK, including this file, may be copied, modified, propagated,
-// or distributed except according to the terms contained in the LICENSE file.
+// LICENSE
+// (c) 2005-2018, Steinberg Media Technologies GmbH, All Rights Reserved
+// (c) 2018, Guillaume Piolat (contact@auburnsounds.com)
+//-----------------------------------------------------------------------------
+// 
+// This Software Development Kit is licensed under the terms of the General 
+// Public License (GPL) Version 3.
+// 
+// Details of that license can be found at: www.gnu.org/licenses/gpl-3.0.html
 //-----------------------------------------------------------------------------
 module dplug.vst3.ivstaudioprocessor;
 
