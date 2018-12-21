@@ -49,14 +49,10 @@ else version( OSX )
     import core.sync.config;
     import core.stdc.errno;
     import core.sys.posix.time;
-    import core.sys.osx.mach.semaphore;
-
-    /+
-    extern (C):
-    nothrow:
-    @nogc:
-    int pthread_mutexattr_setpolicy_np(pthread_mutexattr_t* attr, int);
-    +/
+    static if (__VERSION__ < 2084)
+        import core.sys.osx.mach.semaphore; // was removed with DMDFE 2.084
+    else 
+        import core.sys.darwin.mach.semaphore;
 }
 else version( Posix )
 {
