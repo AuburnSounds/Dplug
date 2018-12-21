@@ -9,8 +9,6 @@
 // 
 // Details of that license can be found at: www.gnu.org/licenses/gpl-3.0.html
 //-----------------------------------------------------------------------------
-
-
 module dplug.vst3.ftypes;
 
 //debug = logVST3Client;

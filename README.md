@@ -8,9 +8,11 @@ Documentation here: [Dplug Wiki...](https://github.com/AuburnSounds/Dplug/wiki)
 
 ## Features
 
-- Create VST 2.4 plug-ins for macOS, Windows, and Linux (to distribute VST2 plug-ins be sure to sign a VST2 Licence Agreement with Steinberg)
+- Create VST2 plug-ins for macOS, Windows, and Linux (to distribute VST2 plug-ins be sure to sign a VST2 Licence Agreement with Steinberg)
 - Create Audio Unit v2 plug-ins for macOS
+- Create VST3 plug-ins for macOS, Windows, and Linux (to distribute VST3 plug-ins be sure to sign a VST2 Licence Agreement with Steinberg)
 - Create AAX64 Native plug-ins for macOS and Windows
+- Create LV2 plug-ins for macOS, Windows, and Linux (64-bit only)
 - Build plug-ins faster and with less pain: D language, plug-in bundling, color correction, performance tests...
 - Small binaries with (optional) [rendering](http://www.auburnsounds.com/blog/2016-09-16_PBR-for-Audio-Software-Interfaces.html)
 - Support [major DAWs](https://github.com/AuburnSounds/Dplug/wiki/Host-Support)
@@ -86,11 +88,11 @@ But reality is complex, and bug fixes can be breaking too, (eg: "highpass FIR wa
 In which case we have to make a judgment call as to whether it's a breaking fix, and whether the buggy feature was used.
 
 Breaking commits, when they happen, are marked with BREAKING in the commit backlog.
-They are discussed on Discord to assess the impact.
+They are discussed on Discord to assess the impact. Make yourself known!
 
 - Will you add feature X?
 
-You have to understand that Dplug is a part-time operation, from people who spend much more time working on and releasing plug-ins.
+You have to understand that Dplug is a part-time operation, from people who spend much more time working on and releasing commercial plug-ins.
 
 **Dplug is there to support existing products and building commercial companies around them**, not to be beta software and make empty promises. 
 Being stable and bug-free is much more important to us than implement every possible feature.
@@ -118,24 +120,6 @@ Be sure to read the [Wiki](https://github.com/AuburnSounds/Dplug/wiki/) in depth
   - Constant push to fight complexity and minimize LOC
 
 
-## Licenses
-
-Dplug has different licenses depending on the sub-package you need.
-Please check individual source files for license information.
-**Please respect the individual licences when releasing a plug-in.**
-
-
-### Plugin format wrapping
-
-Plugin wrapping is inspired by the IPlug library (best represented here: https://github.com/olilarkin/wdl-ol).
-
-Some files falls under the Cockos WDL license.
-
-Important contributors to IPlug include:
-- Cockos: http://www.cockos.com/
-- Oliver Larkin: http://www.olilarkin.co.uk/
-
-
 ### VST SDK
 
 If you don't have the VST SDK, you can't _make_ plugins with Dplug.
@@ -144,11 +128,12 @@ Find the VST SDK there: http://www.steinberg.net/en/company/developers.html
 **If you don't have a licensing agreement with Steinberg**, you can't _distribute_ VST2 or VST3 plug-ins.
 
 
+## Licenses
 
+Dplug has many different licenses depending on the sub-package you need.
+Please check individual source files for license information.
+**Please do your homework and respect the individual licences when releasing a plug-in.**
 
-### Misc
-
-Other source files fall under the Boost 1.0 license.
-
-
+- [Dplug AAX Guide](https://github.com/AuburnSounds/Dplug/wiki/Dplug-AAX-Guide)
+- [Dplug VST3 Guide](https://github.com/AuburnSounds/Dplug/wiki/Dplug-VST3-Guide)
 
