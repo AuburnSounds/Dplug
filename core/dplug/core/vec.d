@@ -381,9 +381,8 @@ struct Vec(T)
             return _data;
         }
 
-        // WARNING: NO `ref` return here, so vec[i] is NOT assignable, it mutates a local copy.
-
-        inout(T) opIndex(size_t i) pure nothrow inout @nogc
+        /// Returns: n-th element.
+        ref inout(T) opIndex(size_t i) pure nothrow inout @nogc
         {
             return _data[i];
         }
@@ -393,7 +392,7 @@ struct Vec(T)
             return _data[i] = x;
         }
 
-        /// Sets size to zero.
+        /// Sets size to zero, but keeps allocated buffers.
         void clearContents() nothrow @nogc
         {
             _size = 0;
@@ -522,4 +521,18 @@ unittest
     assert(vec == vec.init);
     vec.fill("filler");
     assert(vec.ptr is null);
+}
+
+// Issue #312: vec.opIndex not returning ref which break struct assignment
+unittest
+{
+    static struct A
+    {
+        int x;
+    }
+    Vec!A vec = makeVec!A();
+    A a;
+    vec.pushBack(a);
+    vec[0].x = 42; // vec[0] needs to return a ref
+    assert(vec[0].x == 42);
 }
