@@ -582,11 +582,23 @@ nothrow:
         debug(logVST3Client) debugLog(">setState".ptr);
         debug(logVST3Client) scope(exit) debugLog("<setState".ptr);
 
-        int size;
+        // Manage VST3 state versionning.
+        // First byte of the state is the major VST3 chunk parsing method (we need versionning just in case)
+        ubyte version_;
+        int bytesRead;
+        if (state.read (&version_, 1, &bytesRead) != kResultOk)
+            return kResultFalse;
+        if (version_ != 0)
+            return kResultFalse; // Only version zero is supported
 
-        // Try to use
+        // (version 0) Second byte of the state is the bypass parameter
+        ubyte bypass;
+        if (state.read (&bypass, 1, &bytesRead) != kResultOk)
+            return kResultFalse;
+        atomicStore(_bypassed, bypass != 0);
 
         // Try to find current position with seeking to the end
+        int size;
         {
             long curPos;
             if (state.tell(&curPos) != kResultOk)
@@ -605,7 +617,6 @@ nothrow:
         ubyte[] chunk = mallocSlice!ubyte(size);
         scope(exit) chunk.freeSlice();
 
-        int bytesRead;
         if (state.read (chunk.ptr, size, &bytesRead) != kResultOk)
             return kResultFalse;
 
@@ -622,12 +633,20 @@ nothrow:
         }
     }
 
-    // TODO: we're supposed to save and restore the fake Bypass parameter here
-
     extern(Windows) override tresult getState(IBStream state)
     {
         debug(logVST3Client) debugLog(">getState".ptr);
         debug(logVST3Client) scope(exit) debugLog("<getState".ptr);
+
+        // First byte of the state is the major VST3 chunk parsing method (we need versionning just in case)
+        ubyte CURRENT_VST3_STATE_VERSION = 0;
+        if (state.write(&CURRENT_VST3_STATE_VERSION, 1, null) != kResultTrue)
+            return kResultFalse;
+
+        // (version 0) Second byte of the state is the bypass parameter
+        ubyte bypass = atomicLoad(_bypassed) ? 1 : 0;
+        if (state.write(&bypass, 1, null) != kResultTrue)
+            return kResultFalse;
 
         auto presetBank = _client.presetBank();
         ubyte[] chunk = presetBank.getStateChunkFromCurrentState();
