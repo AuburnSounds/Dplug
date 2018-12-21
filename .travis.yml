@@ -5,15 +5,26 @@ os:
   - linux
 
 d:
+ - ldc-beta
+ - ldc-1.12.0
+ - ldc-1.11.0
  - ldc-1.10.0
  - ldc-1.9.0
  - ldc-1.8.0
  - dmd-beta
+ - dmd-2.083.1
+ - dmd-2.082.1
  - dmd-2.081.2
  - dmd-2.080.1 
  - dmd-2.079.1 
  - dmd-2.078.2
+ - gdc
 
+matrix:
+  allow_failures:
+   - d: gdc
+   - d: ldc-beta
+   - d: dmd-beta
 
 # uncompress encrypted VST SDK
 before_install:
