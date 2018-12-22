@@ -7,6 +7,7 @@ module dplug.graphics.stb_truetype;
 
 import core.stdc.stdlib : malloc, free, qsort;
 import core.stdc.string : memcpy, memset;
+import core.stdc.math : floorf, ceilf;
 
 import std.math : ceil, floor, sqrt;
 
@@ -14,12 +15,12 @@ import dplug.core.nogc;
 
 int ifloor(float x) nothrow @nogc
 {
-   return cast(int)(floor(x));
+   return cast(int)(floorf(x));
 }
 
 int iceil(float x) nothrow @nogc
 {
-   return cast(int)(ceil(x));
+   return cast(int)(ceilf(x));
 }
 
 /// The following structure is defined publically so you can declare one on

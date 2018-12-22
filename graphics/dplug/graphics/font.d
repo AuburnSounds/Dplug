@@ -6,6 +6,7 @@ License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 module dplug.graphics.font;
 
+import core.stdc.math: floorf;
 import core.stdc.stdlib;
 import std.conv;
 import std.math;
@@ -133,12 +134,14 @@ private:
 
             int advance,lsb,x0,y0,x1,y1;
 
-            int ixpos = cast(int) floor(xpos);
-            int iypos = cast(int) floor(ypos);
+            const float fxpos = floorf(xpos);
+            const float fypos = floorf(ypos);
 
+            int ixpos = cast(int) fxpos;
+            int iypos = cast(int) fypos;
 
-            float xShift = xpos - floor(xpos);
-            float yShift = ypos - floor(ypos);
+            float xShift = xpos - fxpos;
+            float yShift = ypos - fypos;
 
             // Round position sub-pixel to 1/4th of pixels, to make more use of the glyph cache.
             // That means for a codepoint at a particular size, up to 16 different glyph can potentially
@@ -198,8 +201,8 @@ void fillText(V, StringType)(auto ref V surface, Font font, StringType s, float 
     scope(exit) font._mutex.unlock();
 
     // Decompose in fractional and integer position
-    int ipositionx = cast(int)floor(positionX);
-    int ipositiony = cast(int)floor(positionY);
+    int ipositionx = cast(int)floorf(positionX);
+    int ipositiony = cast(int)floorf(positionY);
     float fractionalPosX = positionX - ipositionx;
     float fractionalPosY = positionY - ipositiony;
 

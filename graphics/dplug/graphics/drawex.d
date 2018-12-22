@@ -7,6 +7,7 @@ License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 module dplug.graphics.drawex;
 
 import core.stdc.stdlib: free;
+import core.stdc.math: floorf, ceilf;
 
 import std.algorithm.comparison;
 import std.math;
@@ -54,11 +55,11 @@ void aaFillSector(V, COLOR)(auto ref V v, float x, float y, float r0, float r1, 
     if (a0 == a1)
         return;
 
-    int x0 = cast(int)floor(x - r1 - 1);
-    int x1 = cast(int)ceil(x + r1 + 1);
+    int x0 = cast(int)floorf(x - r1 - 1);
+    int x1 = cast(int)ceilf(x + r1 + 1);
 
-    int y0 = cast(int)floor(y - r1 - 1);
-    int y1 = cast(int)ceil(y + r1 + 1);
+    int y0 = cast(int)floorf(y - r1 - 1);
+    int y1 = cast(int)ceilf(y + r1 + 1);
 
     float r0s = r0-1;
     if (r0s < 0) r0s = 0;
@@ -364,10 +365,10 @@ void aaFillRectFloat(bool CHECKED=true, V, COLOR)(auto ref V v, float x1, float 
     sort2(x1, x2);
     sort2(y1, y2);
 
-    int ix1 = cast(int)(floor(x1));
-    int iy1 = cast(int)(floor(y1));
-    int ix2 = cast(int)(floor(x2));
-    int iy2 = cast(int)(floor(y2));
+    int ix1 = cast(int)(floorf(x1));
+    int iy1 = cast(int)(floorf(y1));
+    int ix2 = cast(int)(floorf(x2));
+    int iy2 = cast(int)(floorf(y2));
     float fx1 = x1 - ix1;
     float fy1 = y1 - iy1;
     float fx2 = x2 - ix2;

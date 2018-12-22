@@ -2,7 +2,7 @@
 
 # Dplug [![Build Status](https://travis-ci.org/AuburnSounds/Dplug.svg?branch=master)](https://travis-ci.org/AuburnSounds/Dplug) <a href="https://code.dlang.org/packages/dplug" title="Go to dplug"><img src="https://img.shields.io/dub/v/dplug.svg" alt="Dub version"></a> ![Dplug Discord server](https://discordapp.com/api/guilds/242094594181955585/widget.png?style=shield)
 
-`Dplug` lets you create professional audio plug-ins (VST / AU / AAX, macOS/Windows/Linux, 32&64-bit) with D, with unmatched simplicity and speed.
+`Dplug` lets you create professional audio plug-ins (VST2 / AU / VST3 / AAX / LV2), macOS/Windows/Linux, 32&64-bit) with D, with unmatched simplicity and speed.
 
 Documentation here: [Dplug Wiki...](https://github.com/AuburnSounds/Dplug/wiki)
 
