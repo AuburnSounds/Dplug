@@ -1569,7 +1569,7 @@ private:
                 // or if the plugin supports mono channels (meaning it's flexible about how many inputs to expect)
                 // and the plugin supports at least as many channels as the host is attempting to connect.
                 bool moreThanOneChannel = (nHostChannels > 0);
-                bool isLegalIO = checkLegalIO(scope_, element, nHostChannels);
+                bool isLegalIO = checkLegalIO(scope_, element, nHostChannels) == noErr;
                 bool compatibleFormat = (pASBD.mFormatID == kAudioFormatLinearPCM) && (pASBD.mFormatFlags & kAudioFormatFlagsNativeFloatPacked);
                 bool connectionOK = moreThanOneChannel && isLegalIO && compatibleFormat;
 
@@ -1694,21 +1694,26 @@ private:
         _messageQueue.pushBack(makeResetStateMessage());
     }
 
-    bool checkLegalIO(AudioUnitScope scope_, int busIdx, int nChannels) nothrow
+    ComponentResult checkLegalIO(AudioUnitScope scope_, int busIdx, int nChannels) nothrow
     {
-        assert(scope_ == kAudioUnitScope_Input || scope_ == kAudioUnitScope_Output);
+        ComponentResult componentResult;
+        if (!(scope_ == kAudioUnitScope_Input || scope_ == kAudioUnitScope_Output))
+        {
+            componentResult = kAudioUnitErr_InvalidScope;
+        }
         if (scope_ == kAudioUnitScope_Input)
         {
             int nIn = max(numHostChannelsConnected(_inBuses, busIdx), 0);
             int nOut = _active ? numHostChannelsConnected(_outBuses) : -1;
-            return _client.isLegalIO(nIn + nChannels, nOut);
+            componentResult = _client.isLegalIO(nIn + nChannels, nOut) ? noErr : kAudioUnitErr_InvalidScope;
         }
         else
         {
             int nIn = _active ? numHostChannelsConnected(_inBuses) : -1;
             int nOut = max(numHostChannelsConnected(_outBuses, busIdx), 0);
-            return _client.isLegalIO(nIn, nOut + nChannels);
+            componentResult = _client.isLegalIO(nIn, nOut + nChannels) ? noErr : kAudioUnitErr_InvalidScope;
         }
+        return componentResult;
     }
 
     static int numHostChannelsConnected(BusChannels[] pBuses, int excludeIdx = -1) pure nothrow @nogc
