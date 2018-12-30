@@ -225,8 +225,8 @@ struct Plugin
 
     // The file name DUB outputs.
     // The real filename is found lazily, since DUB may change its method of naming over time,
-    // but we don't want to rely on which has untractable problem with:
-    // `dub describe` being low and `dub describe --skip-registry=all` not terminating
+    // but we don't want to rely on `dub describe` which has untractable problem with:
+    // `dub describe` being slow on bad network conditions, and `dub describe --skip-registry=all` possibly not terminating
     // Uses an heuristic for DUB naming, which might get wrong eventually.
     string dubOutputFileName()
     {
