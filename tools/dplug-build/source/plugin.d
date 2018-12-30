@@ -223,22 +223,56 @@ struct Plugin
         return r;
     }
 
-    // The file name DUB outputs
-    string dubOutputFileName() pure const nothrow
+    // The file name DUB outputs.
+    // The real filename is found lazily, since DUB may change its method of naming over time,
+    // but we don't want to rely on which has untractable problem with:
+    // `dub describe` being low and `dub describe --skip-registry=all` not terminating
+    // Uses an heuristic for DUB naming, which might get wrong eventually.
+    string dubOutputFileName()
     {
-        // Note: we're NOT asking to `dub describe` though that may be more robust.
-        // The (presumed) problem is that dub describe would check the network.
-        string outputFilename;
-        version(Windows)
-            outputFilename = name  ~ ".dll";
-        else
-            outputFilename = "lib" ~ name ~ ".so";
+        if (dubOutputFileNameCached !is null)
+            return dubOutputFileNameCached;
 
-        if (dubTargetPath is null)
-            return outputFilename;
-        else
-            return std.path.buildPath(dubTargetPath, outputFilename);
+        // We assume a build has been made, now find the name of the output file
+
+        string[] getPotentialPathes()
+        {
+            string[] possiblePathes;
+            version(Windows)
+                possiblePathes ~= [name  ~ ".dll"];
+            else version(OSX)
+            {
+                // support multiple DUB versions, this name changed to .dylib in Aug 2018
+                // newer names goes first to avoid clashes
+                possiblePathes ~= ["lib" ~ name ~ ".dylib", "lib" ~ name ~ ".so"];
+            }
+            else version(linux)
+                 possiblePathes ~= ["lib" ~ name ~ ".so"];
+            else
+                static assert(false, "unsupported OS");
+
+            if (dubTargetPath !is null)
+            {
+                foreach(ref path; possiblePathes)
+                    path = std.path.buildPath(dubTargetPath, path);
+            }
+            return possiblePathes;
+        }
+
+        auto possiblePaths = getPotentialPathes();
+
+        // Find the possible path for which the file exists
+        foreach(path; possiblePaths)
+        {
+            if (std.file.exists(path))
+            {
+                dubOutputFileNameCached = path;
+                return path;
+            }
+        }
+        throw new Exception("Didn't found a plug-in file in %s . See dplug-build source to check the heuristic for DUB naming in `dubOutputFileName()`.");
     }
+    string dubOutputFileNameCached = null;
 
     string getVST3BundleIdentifier() pure const
     {
