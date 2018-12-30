@@ -28,8 +28,6 @@ import core.stdc.stdlib,
        core.stdc.string,
        core.stdc.stdio;
 
-import std.algorithm.comparison;
-
 import dplug.core.vec,
        dplug.core.nogc,
        dplug.core.math,
@@ -902,7 +900,7 @@ private:
         int hostOutputs = _hostIOFromAudioThread.outputs;
         int usedInputs = _processingIOFromAudioThread.inputs;
         int usedOutputs = _processingIOFromAudioThread.outputs;
-        int minOutputs = std.algorithm.comparison.min(usedOutputs, hostOutputs);
+        int minOutputs = (usedOutputs < hostOutputs) ? usedOutputs : hostOutputs;
 
         // Some hosts (Live, Orion, and others) send identical input and output pointers.
         // This is actually legal in VST.
@@ -952,7 +950,7 @@ private:
         int hostOutputs = _hostIOFromAudioThread.outputs;
         int usedInputs = _processingIOFromAudioThread.inputs;
         int usedOutputs = _processingIOFromAudioThread.outputs;
-        int minOutputs = std.algorithm.comparison.min(usedOutputs, hostOutputs);
+        int minOutputs = (usedOutputs < hostOutputs) ? usedOutputs : hostOutputs;
 
         // Existing inputs gets converted to double
         // Non-connected inputs are zeroes
