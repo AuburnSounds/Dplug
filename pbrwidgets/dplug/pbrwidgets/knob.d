@@ -262,7 +262,7 @@ nothrow:
             return false;
 
         // double-click => set to default
-        if (isDoubleClick)
+        if (isDoubleClick || mstate.altPressed)
         {
             _param.beginParamEdit();
             _param.setFromGUI(_param.defaultValue());

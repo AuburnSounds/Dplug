@@ -103,10 +103,21 @@ nothrow:
 
     override bool onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
     {
-        // double-click => set to default
-        _param.beginParamEdit();
-        _param.setFromGUI(!_param.value());
-        _param.endParamEdit();
+        // ALT + click => set it to default
+        if (mstate.altPressed) // reset on ALT + click
+        {
+            _param.beginParamEdit();
+            _param.setFromGUI(_param.defaultValue());
+            _param.endParamEdit();
+        }
+        else
+        {
+            // Any click => invert
+            // Note: double-click doesn't reset to default, would be annoying
+            _param.beginParamEdit();
+            _param.setFromGUI(!_param.value());
+            _param.endParamEdit();
+        }
         return true;
     }
 

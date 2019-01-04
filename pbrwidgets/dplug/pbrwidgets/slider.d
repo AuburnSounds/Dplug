@@ -230,7 +230,7 @@ nothrow:
     override bool onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
     {
         // double-click => set to default
-        if (isDoubleClick)
+        if (isDoubleClick || mstate.altPressed)
         {
             if (auto p = cast(FloatParameter)_param)
             {
