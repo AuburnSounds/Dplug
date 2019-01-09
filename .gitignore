@@ -25,5 +25,4 @@ tools/wav-compare/wav-compare
 builds
 repro*.sh
 *.sh
-!tests/lv2-plugin/install.sh
 .vscode

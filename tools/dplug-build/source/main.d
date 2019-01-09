@@ -462,6 +462,47 @@ int main(string[] args)
                     }
                 }
 
+                void extractLV2ManifestFromBinary(string binaryPath, string contentsDir, bool is64b, string binaryName)
+                {
+                    // Extract ports from LV2 Binary
+                    // Because of this release itself must be 64-bit.
+                    // To avoid this coupling, presets should be stored outside of the binary in the future.
+                    if ((void*).sizeof == 4 && is64b)
+                        warning("Can't extract ports from a 64-bit LV2 plug-in when dplug-build is built as a 32-bit program.");
+                    else if ((void*).sizeof == 8 && !is64b)
+                        warning("Can't extract ports from a 32-bit LV2 plug-in when dplug-build is built as a 64-bit program.");
+                    else
+                    {
+                        cwriteln(binaryPath);
+                        SharedLib lib;
+                        lib.load(binaryPath);
+                        if (!lib.hasSymbol("GenerateManifestFromClient"))
+                            throw new Exception("Couldn't find the symbol ExtractPortConfiguration in the plug-in");
+
+                        // Note: this is duplicated in dplug-aax in aax_init.d
+                        // This callback is called with:
+                        // - name a zero-terminated C string
+                        // - a buffer representing the .tfx content
+                        // - a user-provided pointer
+                        alias generateManifestFromClientCallback = extern(C) void function(const(ubyte)* fileContents, size_t len, const(char)[] path); 
+                        alias generateManifest = extern(C) void function(generateManifestFromClientCallback, const(char)[] binaryFileName, const(char)[] licensePath, const(char)[] buildDir);
+
+                        static extern(C) void processManifest(const(ubyte*) fileContents, size_t len, const(char)[] path)
+                        {
+                            const(char)[] manifest = cast(const(char)[])fileContents[0..len];
+                            cwriteln(manifest);
+                            std.file.write(path ~ "/manifest.ttl", fileContents[0..len]);
+                        }
+
+                        generateManifest ptrGenerateManifest = cast(generateManifest) lib.loadSymbol("GenerateManifestFromClient");
+                        ptrGenerateManifest(&processManifest, binaryName, plugin.licensePath, path);
+                        lib.unload();
+
+                        cwritefln("    => Extracted LV2 manifest from binary".green);
+                        cwriteln();
+                    }
+                }
+
                 version(Windows)
                 {
                     // Special case for AAX need its own directory, but according to Voxengo releases,
@@ -526,6 +567,10 @@ int main(string[] args)
                 {
                     string soPath = path ~ "/" ~ plugin.prettyName ~ ".so";
                     fileMove(plugin.dubOutputFileName, soPath);
+                    if(configIsLV2(config))
+                    {
+                        extractLV2ManifestFromBinary(soPath, "", is64b, plugin.prettyName ~ ".so");
+                    }
                 }
                 else version(OSX)
                 {

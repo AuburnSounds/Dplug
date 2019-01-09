@@ -27,6 +27,12 @@ version(AU)
     mixin(AUEntryPoint!ClipitClient);
 }
 
+version(LV2)
+{
+    import dplug.lv2;
+    mixin(LV2EntryPoint!ClipitClient);
+}
+
 enum : int
 {
     paramInputGain,
