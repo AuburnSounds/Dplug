@@ -7,7 +7,7 @@
 
     "pluginName": "CLIP It",
     "pluginHomepage": "https://www.wittyaudio.com/CLIPIt",
-    "pluginUniqueID": "WiDi",
+    "pluginUniqueID": "ClPi",
     "publicVersion": "1.0.0",
     "CFBundleIdentifierPrefix": "com.wittyaudio",
     "hasGUI": true,

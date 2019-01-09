@@ -132,7 +132,7 @@ extern(C) {
         /**
         The URI for this UI (not for the plugin it controls).
         */
-        const char* URI;
+        char* URI;
 
         /**
         Create a new UI and return a handle to it.  This function works

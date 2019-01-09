@@ -28,7 +28,7 @@
     {
         "dplug:dsp": { "path": "../.." },
         "dplug:vst": { "path": "../.." },
-        "dplug:vst3": { "path": "../.." },
+        "dplug:vst3": { "path": "../.."},
         "dplug:au": { "path": "../.." },
         "dplug:lv2": { "path": "../.."},
         "dplug:gui": { "path": "../.." },

@@ -4,17 +4,33 @@
 * Copyright: Ethan Reker 2018.
 * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
+
+/*
+ * DISTRHO Plugin Framework (DPF)
+ * Copyright (C) 2012-2018 Filipe Coelho <falktx@falktx.com>
+ *
+ * Permission to use, copy, modify, and/or distribute this software for any purpose with
+ * or without fee is hereby granted, provided that the above copyright notice and this
+ * permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD
+ * TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN
+ * NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER
+ * IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+ * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
 module dplug.lv2.client;
 
-import std.string;
+import std.string,
+       std.algorithm.comparison;
 
-import  core.stdc.stdlib,
-        core.stdc.string,
-        core.stdc.stdio,
-        core.stdc.math,
-        core.stdc.stdint;
-
-import std.algorithm.comparison;
+import core.stdc.stdlib,
+       core.stdc.string,
+       core.stdc.stdio,
+       core.stdc.math,
+       core.stdc.stdint;
 
 import dplug.core.vec,
        dplug.core.nogc,
@@ -23,7 +39,8 @@ import dplug.core.vec,
        dplug.core.runtime,
        dplug.core.fpcontrol,
        dplug.core.thread,
-       dplug.core.sync;
+       dplug.core.sync,
+       dplug.core.map;
 
 import dplug.client.client,
        dplug.client.daw,
@@ -33,77 +50,19 @@ import dplug.client.client,
        dplug.client.params;
 
 import dplug.lv2.lv2,
-       dplug.lv2.atom,
-       dplug.lv2.atomutil,
        dplug.lv2.lv2util,
        dplug.lv2.midi,
        dplug.lv2.ui,
-       dplug.lv2.urid;
+       dplug.lv2.options,
+       dplug.lv2.urid,
+       dplug.lv2.bufsize;
 
-static immutable enum PLUGIN_URI = "dplug:destructorizer";
-
-static LV2Client* instancePtr;
-
-/**
- * Main entry point for LV2 plugins.
- */
-template LV2EntryPoint(alias ClientClass)
+// __gshared Map!(string, int) uriMap;
+extern(C)
 {
-    static immutable enum importStdint = "import core.stdc.stdint;";
-    static immutable enum entryPoint = "export extern(C) static LV2_Handle instantiate(const LV2_Descriptor* descriptor," ~
-                      "                                               double rate," ~
-                      "                                               const char* bundle_path," ~
-                      "                                               const(LV2_Feature*)* features)" ~
-                      "{" ~
-                      "    return myLV2EntryPoint!" ~ ClientClass.stringof ~ "(descriptor, rate, bundle_path, features);" ~
-                      "}\n";
-
-    static immutable enum descriptor = "static const LV2_Descriptor descriptor = {" ~
-                            "PLUGIN_URI," ~
-                            "&instantiate," ~
-                            "&connect_port," ~
-                            "&activate," ~
-                            "&run," ~
-                            "&deactivate," ~
-                            "&cleanup," ~
-                            "&extension_data" ~
-                        "};\n";
-    static immutable enum descriptorUI = "static const LV2UI_Descriptor descriptorUI = " ~ 
-                        "{" ~
-                            "cast(const(char*))(PLUGIN_URI ~ \"#ui\")," ~
-                            "&instantiateUI," ~
-                            "&cleanupUI," ~
-                            "&port_event," ~
-                            "&extension_dataUI" ~
-                        "};\n";
-
-    static immutable enum lv2ui_descripor = "extern(C) const (LV2UI_Descriptor)* lv2ui_descriptor(uint32_t index)" ~ 
-                            "{" ~
-                            "    switch(index) {" ~
-                            "        case 0: return &descriptorUI;" ~
-                            "        default: return null;" ~
-                            "    }" ~ 
-                            "}\n";
-
-    static immutable enum lv2_descriptor = "extern(C) const (LV2_Descriptor)*" ~ 
-                            "lv2_descriptor(uint32_t index)" ~ 
-                            "{" ~ 
-                            "    switch (index) {" ~ 
-                            "       case 0:  return &descriptor;" ~ 
-                            "       default: return null;" ~ 
-                            "    }" ~ 
-                            "}\n";
-
-    const char[] LV2EntryPoint = importStdint ~ entryPoint ~ descriptor ~ descriptorUI  ~ lv2ui_descripor ~ lv2_descriptor;
+    __gshared Map!(string, int) uriMap;
 }
 
-nothrow LV2_Handle myLV2EntryPoint(alias ClientClass)(const LV2_Descriptor* descriptor, double rate, const char* bundle_path, const(LV2_Feature*)* features)
-{
-    auto client = mallocNew!ClientClass();
-    lv2client = mallocNew!LV2Client(client, descriptor, rate, bundle_path, features);
-    instancePtr = &lv2client;
-    return cast(LV2_Handle)&lv2client;
-}
 
 class LV2Client : IHostCommand
 {
@@ -111,127 +70,100 @@ nothrow:
 @nogc:
 
     Client _client;
-
-    this(Client client, const LV2_Descriptor* descriptor, double rate, const char* bundle_path, const(LV2_Feature*)* features)
+    this(Client client)
     {
         _client = client;
         _client.setHostCommand(this);
-        _maxInputs = _client.maxInputs();
-        _maxOutputs = _client.maxOutputs();
+        _graphicsMutex = makeMutex();
+    }
+
+    void instantiate(const LV2_Descriptor* descriptor, double rate, const char* bundle_path, const(LV2_Feature*)* features)
+    {
+        LV2_Options_Option* options = null;
+        LV2_URID_Map* uridMap = null;
+        for(int i = 0; features[i] != null; ++i)
+        {
+            if (strcmp(features[i].URI, LV2_OPTIONS__options) == 0)
+                options = cast(LV2_Options_Option*)features[i].data;
+            else if (strcmp(features[i].URI, LV2_URID__map) == 0)
+                uridMap = cast(LV2_URID_Map*)features[i].data;
+        }
+
+        // Retrieve max buffer size from options
+        for (int i=0; options[i].key != 0; ++i)
+        {
+            if (options[i].key == assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_BUF_SIZE__maxBlockLength))
+            {
+                _maxBufferSize = *cast(const(int)*)options[i].value;
+                _callResetOnNextRun = true;
+            }
+        }
+
+        // Retrieve index of legalIO that was stored in the uriMap
+        string uri = cast(string)descriptor.URI[0..strlen(descriptor.URI)];
+        int legalIOIndex = uriMap[uri];
+
+        LegalIO selectedIO = _client.legalIOs()[legalIOIndex];
+
+        _maxInputs = selectedIO.numInputChannels;
+        _maxOutputs = selectedIO.numOutputChannels;
         _numParams = cast(uint)_client.params().length;
         _sampleRate = cast(float)rate;
 
-        _lv2Ports = makeVec!LV2Port();
-        foreach(param; _client.params)
-        {
-            LV2ParamPort port = mallocNew!LV2ParamPort();
-            if(cast(FloatParameter)param)
-                port.paramType = Float;
-            else if(cast(BoolParameter)param)
-                port.paramType = Bool;
-            else if(cast(EnumParameter)param)
-                port.paramType = Enum;
-            else if(cast(IntegerParameter)param)
-                port.paramType = Integer;
-            else
-                assert(false, "Unsupported param type");
-
-            _lv2Ports.pushBack(port);
-        }
-
-        foreach(input; 0..cast(uint)(_maxInputs))
-        {
-            LV2InputPort port = mallocNew!LV2InputPort();
-            _lv2Ports.pushBack(port);
-        }
-
-        foreach(output; 0..cast(uint)(_maxOutputs))
-        {
-            LV2OutputPort port = mallocNew!LV2OutputPort();
-            _lv2Ports.pushBack(port);
-        }
+        _params = cast(float**)mallocSlice!(float*)(_client.params.length);
+        _inputs = mallocSlice!(float*)(_maxInputs);
+        _outputs = mallocSlice!(float*)(_maxOutputs);
     }
 
     void cleanup()
     {
-        foreach(port; _lv2Ports)
-            port.destroyFree();
     }
 
     void updateParamFromHost(uint32_t port_index)
     {
-        LV2ParamPort port = cast(LV2ParamPort)_lv2Ports[port_index];
-        float paramValue = *(port.data);
-        switch(port.paramType)
-        {
-            case Bool:
-                _client.setParameterFromHost(port_index, paramValue > 0 ? true : false);
-                break;
-            case Enum:
-                _client.setParameterFromHost(port_index, cast(int)paramValue);
-                break;
-            case Integer:
-                _client.setParameterFromHost(port_index, cast(int)paramValue);
-                break;
-            case Float:
-                _client.setParameterFromHost(port_index, paramValue);
-                break;
-            default:
-                assert(false, "Unsupported param type");
-        }
+        float* port = _params[port_index];
+        float paramValue = *port;
+        _client.setParameterFromHost(port_index, paramValue);
     }
 
     void updatePortFromClient(uint32_t port_index, float value)
     {
-        LV2ParamPort port = cast(LV2ParamPort)_lv2Ports[port_index];
-        *port.data = value;
+        float* port = _params[port_index];
+        *port = value;
     }
 
     void connect_port(uint32_t port, void* data)
     {
-        LV2Port lv2Port = _lv2Ports[port];
-        switch(cast(LV2PortType)lv2Port.lv2PortType)
+        if(port < _client.params.length)
         {
-            case Param:
-                (cast(LV2ParamPort)lv2Port).data = cast(float*)data;
-                break;
-            case InputPort:
-                (cast(LV2InputPort)lv2Port).data = cast(float*)data;
-                break;
-            case OutputPort:
-                (cast(LV2OutputPort)lv2Port).data = cast(float*) data;
-                break;
-            default:
-                break;
+            _params[port] = cast(float*)data;
         }
+        else if(port < _maxInputs + _client.params.length)
+        {
+            _inputs[port - _client.params.length] = cast(float*)data;
+        }
+        else if(port < _maxOutputs + _maxInputs + _client.params.length)
+        {
+            _outputs[port - _client.params.length - _maxInputs] = cast(float*)data;
+        }
+        else
+            assert(false, "Error unknown port index");
     }
 
     void activate()
     {
-        _client.reset(_sampleRate, 0, _maxInputs, _maxOutputs);
+        _callResetOnNextRun = true;
     }
 
     void run(uint32_t n_samples)
     {
         TimeInfo timeInfo;
-        Vec!(float*) inputs = makeVec!(float*)();
-        Vec!(float*) outputs = makeVec!(float*)();
-        foreach(port; _lv2Ports)
+        if(_callResetOnNextRun)
         {
-            switch(port.lv2PortType)
-            {
-                case InputPort:
-                    inputs.pushBack((cast(LV2InputPort)port).data);
-                    break;
-                case OutputPort:
-                    outputs.pushBack((cast(LV2OutputPort)port).data);
-                    break;
-                default:
-                    break;
-            }
+            _callResetOnNextRun = false;
+            _client.resetFromHost(_sampleRate, _maxBufferSize, _maxInputs, _maxOutputs);
         }
-
-        _client.processAudioFromHost(inputs.releaseData(), outputs.releaseData(), n_samples, timeInfo);
+        _client.processAudioFromHost(_inputs, _outputs, n_samples, timeInfo);
     }
 
     void deactivate()
@@ -240,29 +172,38 @@ nothrow:
     }
 
     void instantiateUI(const LV2UI_Descriptor* descriptor,
-									const char*                     plugin_uri,
-									const char*                     bundle_path,
-									LV2UI_Write_Function            write_function,
-									LV2UI_Controller                controller,
-									LV2UI_Widget*                   widget,
-									const (LV2_Feature*)*       features)
+                       const char*                     plugin_uri,
+                       const char*                     bundle_path,
+                       LV2UI_Write_Function            write_function,
+                       LV2UI_Controller                controller,
+                       LV2UI_Widget*                   widget,
+                       const (LV2_Feature*)*       features)
     {
-        // _graphicsMutex.lock();
-        *widget = cast(LV2UI_Widget)_client.openGUI(null, null, GraphicsBackend.x11);
-        // _graphicsMutex.unlock();
+        if (widget != null)
+        {
+            _graphicsMutex.lock();
+            int* windowHandle;
+            _client.openGUI(windowHandle, null, GraphicsBackend.x11);
+            *widget = cast(LV2UI_Widget)windowHandle;
+            _graphicsMutex.unlock();
+        }
     }
 
     void port_event(uint32_t     port_index,
-						uint32_t     buffer_size,
-						uint32_t     format,
-						const void*  buffer)
+                    uint32_t     buffer_size,
+                    uint32_t     format,
+                    const void*  buffer)
     {
+        _graphicsMutex.lock();
         updateParamFromHost(port_index);
+        _graphicsMutex.unlock();
     }
 
     void cleanupUI()
     {
+        _graphicsMutex.lock();
         _client.closeGUI();
+        _graphicsMutex.unlock();
     }
 
     override void beginParamEdit(int paramIndex)
@@ -296,152 +237,14 @@ private:
     uint _maxInputs;
     uint _maxOutputs;
     uint _numParams;
+    int _maxBufferSize;
+    bool _callResetOnNextRun;
+
+    float** _params;
+    float*[] _inputs;
+    float*[] _outputs;
 
     float _sampleRate;
 
-    Vec!LV2Port _lv2Ports;
-}
-
-alias LV2PortType = int;
-enum
-{
-    Param = 0,
-    InputPort = 1,
-    OutputPort = 2
-}
-
-class LV2Port
-{
-public:
-    LV2PortType lv2PortType;
-}
-
-alias ParamType = int;
-enum : int
-{
-    Bool = 0,
-    Enum = 1,
-    Integer = 2,
-    Float = 3
-}
-class LV2ParamPort : LV2Port
-{
-    this() nothrow @nogc
-    {
-        lv2PortType = Param;
-    }
-    float* data;
-    ParamType paramType;
-}
-
-class LV2InputPort : LV2Port
-{
-    this() nothrow @nogc
-    {
-        lv2PortType = InputPort;
-    }
-    float* data;
-}
-
-class LV2OutputPort : LV2Port
-{
-    this() nothrow @nogc
-    {
-        lv2PortType = OutputPort;
-    }
-    float* data;
-}
-
-static LV2Client lv2client;
-
-/*
-    LV2 Callback funtion implementations
-    note that instatiate is a template mixin. 
-*/
-extern(C)
-{
-    static void
-    connect_port(LV2_Handle instance,
-                uint32_t   port,
-                void*      data)
-    {
-        LV2Client lv2client = *cast(LV2Client*)instance;
-        lv2client.connect_port(port, data);
-    }
-
-    static void
-    activate(LV2_Handle instance)
-    {
-        LV2Client lv2client = *cast(LV2Client*)instance;
-        lv2client.activate();
-    }
-
-    static void
-    run(LV2_Handle instance, uint32_t n_samples)
-    {
-        LV2Client lv2client = *cast(LV2Client*)instance;
-        lv2client.run(n_samples);
-    }
-
-    static void
-    deactivate(LV2_Handle instance)
-    {
-        LV2Client lv2client = *cast(LV2Client*)instance;
-        lv2client.deactivate();
-    }
-
-    static void
-    cleanup(LV2_Handle instance)
-    {
-        // free(cast(LV2Client*)instance);
-        LV2Client lv2client = *cast(LV2Client*)instance;
-        lv2client.cleanup();
-        lv2client.destroyFree();
-    }
-
-    static const (void)*
-    extension_data(const char* uri)
-    {
-        return null;
-    }
-
-    LV2UI_Handle instantiateUI(const LV2UI_Descriptor* descriptor,
-									const char*                     plugin_uri,
-									const char*                     bundle_path,
-									LV2UI_Write_Function            write_function,
-									LV2UI_Controller                controller,
-									LV2UI_Widget*                   widget,
-									const (LV2_Feature*)*       features)
-    {
-        instancePtr.instantiateUI(descriptor, plugin_uri, bundle_path, write_function, controller, widget, features);
-        return cast(LV2UI_Handle)instancePtr;
-    }
-
-    void write_function(LV2UI_Controller controller,
-										uint32_t         port_index,
-										uint32_t         buffer_size,
-										uint32_t         port_protocol,
-										const void*      buffer)
-    {
-        
-    }
-
-    void cleanupUI(LV2UI_Handle ui)
-    {
-        instancePtr.cleanupUI();
-    }
-
-    void port_event(LV2UI_Handle ui,
-						uint32_t     port_index,
-						uint32_t     buffer_size,
-						uint32_t     format,
-						const void*  buffer)
-    {
-        instancePtr.port_event(port_index, buffer_size, format, buffer);
-    }
-
-    const (void)* extension_dataUI(const char* uri)
-    {
-        return null;
-    }
+    UncheckedMutex _graphicsMutex;
 }

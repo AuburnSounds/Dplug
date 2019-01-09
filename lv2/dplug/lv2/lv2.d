@@ -170,7 +170,7 @@ struct _LV2_Descriptor {
 	   the same URI MUST be compatible to some degree, see
 	   http://lv2plug.in/ns/lv2core for details.
 	*/
-	const char * URI;
+	const(char) * URI;
 
 	/**
 	   Instantiate the plugin.
