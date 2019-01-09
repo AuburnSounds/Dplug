@@ -18,6 +18,9 @@ interface IPluginHost
     /// Sets the maximum buffer size
     void setMaxBufferSize(int samples);
 
+    /// Sets I/O arrangement (simple right now).
+    bool setIO(int numInputs, int numOutputs);
+
     /// Sets a parameter's value.
     void setParameter(int paramIndex, float normalizedValue);
 

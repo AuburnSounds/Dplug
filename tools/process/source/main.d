@@ -175,19 +175,13 @@ void main(string[]args)
         if (times < 1)
             throw new Exception("Sound must be processed at least 1 time");
 
-        float[] leftChannelInput;
-        float[] rightChannelInput;
-        float[] leftChannelOutput;
-        float[] rightChannelOutput;
-
-
         Sound sound;
 
         if (inPath)
             sound = decodeSound(inPath);
         else
         {
-            // ten seconds of silence
+            // ten seconds of stereo silence
             sound.channels = 2;
             sound.sampleRate = 44100;
             sound.samples = new float[44100 * 2 * 10];
@@ -196,8 +190,6 @@ void main(string[]args)
             inPath = "10 seconds of silence";
         }
 
-        if (sound.channels != 2)
-            throw new Exception("Only support stereo inputs");
         if (bufferSize < 1)
             throw new Exception("bufferSize is < 1");
 
@@ -214,15 +206,26 @@ void main(string[]args)
 
         if (verbose) writefln("This sounds lasts %s ms at a sampling-rate of %s Hz.", sampleDurationMs, sound.sampleRate);
 
-        leftChannelInput.length = N;
-        rightChannelInput.length = N;
-        leftChannelOutput.length = N;
-        rightChannelOutput.length = N;
+        int numChannels = sound.channels;
 
-        for (int i = 0; i < N; ++i)
+        float[][] inputChannels;
+        float[][] outputChannels;
+        inputChannels.length = numChannels;
+        outputChannels.length = numChannels;
+
+        foreach(chan; 0..numChannels)
         {
-            leftChannelInput[i] = sound.samples[i * 2];
-            rightChannelInput[i] = sound.samples[i * 2 + 1];
+            inputChannels[chan].length = N;
+            outputChannels[chan].length = N;
+        }
+
+        // Copy input to inputChannels
+        foreach(chan; 0..numChannels)
+        {
+            for (int i = 0; i < N; ++i)
+            {
+                inputChannels[chan][i] = sound.samples[i * numChannels + chan];
+            }
         }
 
         if (verbose)
@@ -240,6 +243,8 @@ void main(string[]args)
         IPluginHost host = createPluginHost(pluginPath);
         host.setSampleRate(sound.sampleRate);
         host.setMaxBufferSize(bufferSize);
+        if (!host.setIO(numChannels, numChannels))
+            throw new Exception(format("Unsupported I/O: %s inputs, %s outputs", numChannels, numChannels));
         host.beginAudioProcessing();
 
         if (preset != -1)
@@ -254,34 +259,46 @@ void main(string[]args)
 
         if (verbose) writefln("Initialization took %s", convertMicroSecondsToDisplay(timeAfterInit - timeBeforeInit));
 
+        float*[] inputPointers = new float*[numChannels];
+        float*[] outputPointers = new float*[numChannels];
+
+        float[][] silence = new float[][numChannels];
+        float[][] dummyOut = new float[][numChannels];
+        foreach(chan; 0..numChannels)
+        {
+            silence[chan].length = N;
+            silence[chan][0..N] = 0;
+            dummyOut[chan].length = N; // will be filled with NaNs
+        }
+
         // Process one second of silence to warm things-up and avoid first buffer effect
         if (preRoll)
         {
             if (verbose) writeln;
             if (verbose) writefln("Pre-rolling 1 second of silence...");
             int silenceLength = sound.sampleRate;
-            float[] silenceL = new float[silenceLength];
-            float[] silenceR = new float[silenceLength];
-            silenceL[] = 0;
-            silenceR[] = 0;
-            float*[2] inChannels, outChannels;
-            inChannels[0] = silenceL.ptr;
-            inChannels[1] = silenceR.ptr,
-            outChannels[0] = silenceL.ptr;
-            outChannels[1] = silenceR.ptr;
+
+            foreach(chan; 0..numChannels)
+            {
+                inputPointers[chan] = silence[chan].ptr;
+                outputPointers[chan] = dummyOut[chan].ptr;
+            }
+
             for (int buf = 0; buf < silenceLength / bufferSize; ++buf)
             {
-                host.processAudioFloat(inChannels.ptr, outChannels.ptr, bufferSize);
-                inChannels[0] += bufferSize;
-                inChannels[1] += bufferSize;
-                outChannels[0] += bufferSize;
-                outChannels[1] += bufferSize;
+                host.processAudioFloat(inputPointers.ptr, outputPointers.ptr, bufferSize);
+                foreach(chan; 0..numChannels)
+                {
+                    inputPointers[chan] += bufferSize;
+                    outputPointers[chan] += bufferSize;
+                }
             }
             // remaining samples
-            host.processAudioFloat(inChannels.ptr, outChannels.ptr, silenceLength % bufferSize);
+            host.processAudioFloat(inputPointers.ptr, outputPointers.ptr, silenceLength % bufferSize);
         }
 
         double[] measures;
+
 
         for (int t = 0; t < times; ++t)
         {
@@ -289,23 +306,24 @@ void main(string[]args)
             if (verbose) writefln(" * Measure %s: Start processing %s...", t, inPath);
             long timeA = getTickUs(precise);
 
-            float*[2] inChannels, outChannels;
-            inChannels[0] = leftChannelInput.ptr;
-            inChannels[1] = rightChannelInput.ptr,
-            outChannels[0] = leftChannelOutput.ptr;
-            outChannels[1] = rightChannelOutput.ptr;
+            foreach(chan; 0..numChannels)
+            {
+                inputPointers[chan] = inputChannels[chan].ptr;
+                outputPointers[chan] = outputChannels[chan].ptr;
+            }
 
             for (int buf = 0; buf < N / bufferSize; ++buf)
             {
-                host.processAudioFloat(inChannels.ptr, outChannels.ptr, bufferSize);
-                inChannels[0] += bufferSize;
-                inChannels[1] += bufferSize;
-                outChannels[0] += bufferSize;
-                outChannels[1] += bufferSize;
+                host.processAudioFloat(inputPointers.ptr, outputPointers.ptr, bufferSize);
+                foreach(chan; 0..numChannels)
+                {
+                    inputPointers[chan] += bufferSize;
+                    outputPointers[chan] += bufferSize;
+                }
             }
 
             // remaining samples
-            host.processAudioFloat(inChannels.ptr, outChannels.ptr, N % bufferSize);
+            host.processAudioFloat(inputPointers.ptr, outputPointers.ptr, N % bufferSize);
 
             long timeB = getTickUs(precise);
             long measureUs = timeB - timeA;
@@ -344,7 +362,14 @@ void main(string[]args)
         // write output if necessary
         if (outPath)
         {
-            sound.samples = interleave(leftChannelOutput, rightChannelOutput).array;
+            // Copy processed output back into `sound`
+            foreach(chan; 0..numChannels)
+            {
+                for (int i = 0; i < N; ++i)
+                {
+                    sound.samples[i * numChannels + chan] = outputChannels[chan][i];
+                }
+            }
             encodeWAV(sound, outPath);
         }
 

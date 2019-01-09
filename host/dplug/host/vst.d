@@ -6,6 +6,8 @@ License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 module dplug.host.vst;
 
+import core.stdc.string;
+
 import std.string;
 import std.algorithm.mutation;
 
@@ -134,6 +136,26 @@ final class VSTPluginHost : IPluginHost
     {
         _dispatcher(_aeffect, effMainsChanged, 0, 0, null, 0.0f);
         _suspended = true;
+    }
+
+    override bool setIO(int numInputs, int numOutputs)
+    {
+        assert(numInputs <= 8 && numOutputs <= 8);
+        VstSpeakerArrangement pInputArr, pOutputArr;
+        memset(&pInputArr, 0, pInputArr.sizeof);
+        memset(&pOutputArr, 0, pOutputArr.sizeof);
+        pInputArr.type = kSpeakerArrEmpty;
+        pOutputArr.type = kSpeakerArrEmpty;
+        pInputArr.numChannels = numInputs;
+        pOutputArr.numChannels = numOutputs;
+
+        size_t value = cast(size_t)(&pInputArr);
+        void* ptr = cast(void*)(&pOutputArr);
+        _dispatcher(_aeffect, effSetSpeakerArrangement, 0, value, ptr, 0.0f);
+
+        // Dplug Issue #186: effSetSpeakerArrangement always says no
+        // so we return "yes" here, compunded bug
+        return true;
     }
 
     override void setSampleRate(float sampleRate)
