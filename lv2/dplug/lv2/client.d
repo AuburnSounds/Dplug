@@ -57,24 +57,20 @@ import dplug.lv2.lv2,
        dplug.lv2.urid,
        dplug.lv2.bufsize;
 
-// __gshared Map!(string, int) uriMap;
-extern(C)
-{
-    __gshared Map!(string, int) uriMap;
-}
-
-
 class LV2Client : IHostCommand
 {
 nothrow:
 @nogc:
 
     Client _client;
-    this(Client client)
+    Map!(string, int)* _uriMap;
+
+    this(Client client, Map!(string, int)* uriMapPtr)
     {
         _client = client;
         _client.setHostCommand(this);
         _graphicsMutex = makeMutex();
+        _uriMap = uriMapPtr;
     }
 
     void instantiate(const LV2_Descriptor* descriptor, double rate, const char* bundle_path, const(LV2_Feature*)* features)
@@ -101,7 +97,7 @@ nothrow:
 
         // Retrieve index of legalIO that was stored in the uriMap
         string uri = cast(string)descriptor.URI[0..strlen(descriptor.URI)];
-        int legalIOIndex = uriMap[uri];
+        int legalIOIndex = (*_uriMap)[uri];
 
         LegalIO selectedIO = _client.legalIOs()[legalIOIndex];
 
