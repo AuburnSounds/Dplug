@@ -91,7 +91,7 @@ extern(C)
 nothrow LV2Client myLV2EntryPoint(alias ClientClass)(const LV2_Descriptor* descriptor, double rate, const char* bundle_path, const(LV2_Feature*)* features)
 {
     auto client = mallocNew!ClientClass();
-    auto lv2client = mallocNew!LV2Client(client);
+    auto lv2client = mallocNew!LV2Client(client, &uriMap);
     lv2client.instantiate(descriptor, rate, bundle_path, features);
     return lv2client;
 }
