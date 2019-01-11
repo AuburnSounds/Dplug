@@ -192,7 +192,7 @@ void GenerateManifestFromClientInternal(alias ClientClass)(generateManifestFromC
             {
                 manifest ~= "    ui:ui <" ~ baseURI ~ "#ui>;\n";
             }
-            manifest ~= buildParamPortConfiguration(client.params(), legalIO);
+            manifest ~= buildParamPortConfiguration(client.params(), legalIO, pluginInfo.receivesMIDI);
             // auto presetBank = client.presetBank();
             // for(int i = 0; i < presetBank.numPresets(); ++i)
             // {
@@ -295,7 +295,7 @@ const(char)[] uriFromIOConfiguration(char* baseURI, LegalIO legalIO) nothrow @no
     return uriBuf;
 }
 
-const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO)
+const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, bool hasMIDIInput)
 {
     import std.conv: to;
     import std.string: replace;
@@ -340,10 +340,24 @@ const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO)
         paramString ~= "        lv2:symbol \"Output" ~ to!string(output) ~ "\" ;\n";
         paramString ~= "        lv2:name \"Output" ~ to!string(output) ~ "\" ;\n";
         paramString ~= "    ]";
-        if(output < legalIO.numOutputChannels - 1)
+        if(output < legalIO.numOutputChannels - 1 || hasMIDIInput)
             paramString ~= " , ";
         else
             paramString ~= " . \n";
+    }
+
+    if(hasMIDIInput)
+    {
+        paramString ~= "    [ \n";
+        paramString ~= "        a lv2:InputPort , atom:AtomPort ;\n";
+        paramString ~= "        atom:bufferType atom:Sequence ;\n";
+        paramString ~= "        atom:supports midi:MidiEvent ;\n";
+        paramString ~= "        lv2:designation lv2:control ;\n";
+        paramString ~= "        lv2:index " ~ to!string(params.length + legalIO.numInputChannels + legalIO.numOutputChannels) ~ ";\n";
+        paramString ~= "        lv2:symbol \"midiinput\" ;\n";
+        paramString ~= "        lv2:name \"MIDI Input\"\n";
+        paramString ~= "    ]";
+        paramString ~= " . \n";
     }
 
     return paramString;
