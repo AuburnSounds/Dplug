@@ -188,10 +188,12 @@ void GenerateManifestFromClientInternal(alias ClientClass)(generateManifestFromC
             manifest ~= "    doap:license <" ~ licensePath[0..$] ~ "> ;\n";
             manifest ~= "    lv2:project <" ~ pluginInfo.pluginHomepage ~ "> ;\n";
             manifest ~= "    lv2:extensionData <" ~ LV2_OPTIONS__interface ~ "> ; \n";
+
             if(pluginInfo.hasGUI)
             {
                 manifest ~= "    ui:ui <" ~ baseURI ~ "#ui>;\n";
             }
+
             manifest ~= buildParamPortConfiguration(client.params(), legalIO, pluginInfo.receivesMIDI);
             // auto presetBank = client.presetBank();
             // for(int i = 0; i < presetBank.numPresets(); ++i)
@@ -299,6 +301,10 @@ const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, b
 {
     import std.conv: to;
     import std.string: replace;
+    import std.regex;
+    import std.uni: toLower;
+
+    auto re = regex(r"(\s+|@|&|'|\(|\)|<|>|#|:)");
 
     string paramString = "    lv2:port\n";
     foreach(index, param; params)
@@ -306,7 +312,7 @@ const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, b
         paramString ~= "    [ \n";
         paramString ~= "        a lv2:InputPort , lv2:ControlPort ;\n";
         paramString ~= "        lv2:index " ~ to!string(index) ~ " ;\n";
-        paramString ~= "        lv2:symbol \"" ~ param.name.replace(" ", "") ~ "\" ;\n";
+        paramString ~= "        lv2:symbol \"" ~ replaceAll(param.name, re, "").toLower() ~ "\" ;\n";
         paramString ~= "        lv2:name \"" ~ param.name ~ "\" ;\n";
         paramString ~= "        lv2:default " ~ to!string(param.getNormalized()) ~ " ;\n";
         paramString ~= "        lv2:minimum 0.0 ;\n";

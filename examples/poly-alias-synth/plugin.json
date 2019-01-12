@@ -4,6 +4,7 @@
     "vendorName": "No Name Audio",
     "vendorUniqueID": "NoAu",
     "pluginName": "Poly Alias",
+    "pluginHomepage": "https://www.wittyaudio.com/PolyAlias",
     "pluginUniqueID": "NAps",
     "publicVersion": "1.0.0",
     "CFBundleIdentifierPrefix": "com.nonameaudio",
