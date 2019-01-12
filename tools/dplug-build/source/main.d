@@ -402,9 +402,9 @@ int main(string[] args)
                     // Because of this release itself must be 64-bit.
                     // To avoid this coupling, presets should be stored outside of the binary in the future.
                     if ((void*).sizeof == 4 && is64b)
-                        warning("Can't extract presets from a 64-bit AAX plug-in when dplug-build is built as a 32-bit program.");
+                        warning("Can't extract presets from a 64-bit AAX plug-in when dplug-build is built as a 32-bit program.\n");
                     else if ((void*).sizeof == 8 && !is64b)
-                        warning("Can't extract presets from a 32-bit AAX plug-in when dplug-build is built as a 64-bit program.");
+                        warning("Can't extract presets from a 32-bit AAX plug-in when dplug-build is built as a 64-bit program.\n");
                     else
                     {
                         // We need to have a sub-directory of vendorName else the presets aren't found.
@@ -462,28 +462,23 @@ int main(string[] args)
                     }
                 }
 
-                void extractLV2ManifestFromBinary(string binaryPath, string contentsDir, bool is64b, string binaryName)
+                void extractLV2ManifestFromBinary(string binaryPath, string outputDir, bool is64b, string binaryName)
                 {
                     // Extract ports from LV2 Binary
                     // Because of this release itself must be 64-bit.
                     // To avoid this coupling, presets should be stored outside of the binary in the future.
                     if ((void*).sizeof == 4 && is64b)
-                        warning("Can't extract ports from a 64-bit LV2 plug-in when dplug-build is built as a 32-bit program.");
+                        warning("Can't extract ports from a 64-bit LV2 plug-in when dplug-build is built as a 32-bit program.\n");
                     else if ((void*).sizeof == 8 && !is64b)
-                        warning("Can't extract ports from a 32-bit LV2 plug-in when dplug-build is built as a 64-bit program.");
+                        warning("Can't extract ports from a 32-bit LV2 plug-in when dplug-build is built as a 64-bit program.\n");
                     else
                     {
-                        cwriteln(binaryPath);
                         SharedLib lib;
                         lib.load(binaryPath);
                         if (!lib.hasSymbol("GenerateManifestFromClient"))
                             throw new Exception("Couldn't find the symbol ExtractPortConfiguration in the plug-in");
 
-                        // Note: this is duplicated in dplug-aax in aax_init.d
-                        // This callback is called with:
-                        // - name a zero-terminated C string
-                        // - a buffer representing the .tfx content
-                        // - a user-provided pointer
+                        // Note: this is duplicated in dplug:lv2 in lv2_init.d
                         alias generateManifestFromClientCallback = extern(C) void function(const(ubyte)* fileContents, size_t len, const(char)[] path); 
                         alias generateManifest = extern(C) void function(generateManifestFromClientCallback, const(char)[] binaryFileName, const(char)[] licensePath, const(char)[] buildDir);
 
@@ -493,9 +488,8 @@ int main(string[] args)
                             cwriteln(manifest);
                             std.file.write(path ~ "/manifest.ttl", fileContents[0..len]);
                         }
-
                         generateManifest ptrGenerateManifest = cast(generateManifest) lib.loadSymbol("GenerateManifestFromClient");
-                        ptrGenerateManifest(&processManifest, binaryName, plugin.licensePath, path);
+                        ptrGenerateManifest(&processManifest, binaryName, plugin.licensePath, outputDir);
                         lib.unload();
 
                         cwritefln("    => Extracted LV2 manifest from binary".green);
@@ -528,6 +522,17 @@ int main(string[] args)
                             fileMove(plugin.dubOutputFileName, contentsDir ~ "Win32/" ~ pluginFinalName);
                             signAAXBinaryWithPACE(contentsDir ~ "Win32/" ~ pluginFinalName);
                         }
+                    }
+                    else if (configIsLV2(config))
+                    {
+                        // must create TTL, and a .lv2 directory
+                        string pluginFinalName = plugin.prettyName ~ ".dll";
+                        string pluginDirectory = path ~ "/" ~ plugin.prettyName ~ ".lv2";
+                        string pluginFinalPath = pluginDirectory ~ "/" ~ pluginFinalName;
+
+                        mkdirRecurse(pluginDirectory);
+                        fileMove(plugin.dubOutputFileName, pluginFinalPath);
+                        extractLV2ManifestFromBinary(pluginFinalPath, pluginDirectory, is64b, pluginFinalName);
                     }
                     else if (configIsVST3(config)) // VST3 special case, needs to be named .vst3 (but can't be _linked_ as .vst3)
                     {
@@ -569,7 +574,7 @@ int main(string[] args)
                     fileMove(plugin.dubOutputFileName, soPath);
                     if(configIsLV2(config))
                     {
-                        extractLV2ManifestFromBinary(soPath, "", is64b, plugin.prettyName ~ ".so");
+                        extractLV2ManifestFromBinary(soPath, path, is64b, plugin.prettyName ~ ".so");
                     }
                 }
                 else version(OSX)
