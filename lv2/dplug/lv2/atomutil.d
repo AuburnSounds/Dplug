@@ -133,6 +133,10 @@ extern(C) {
     //         !lv2_atom_sequence_is_end(&(seq).body, (seq).atom.size, (iter))
     //         (iter) = lv2_atom_sequence_next(iter))");
     // }
+    template LV2_ATOM_SEQUENCE_FOREACH(seq, iter)
+    {
+        const(char[]) LV2_ATOM_SEQUENCE_FOREACH = "for(int i = 0; i < 10; ++i)";
+    }
 
     // /** Like LV2_ATOM_SEQUENCE_FOREACH but for a headerless sequence body. */
     // #define LV2_ATOM_SEQUENCE_BODY_FOREACH(body, size, iter) \

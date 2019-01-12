@@ -73,26 +73,26 @@ nothrow:
         _client.setHostCommand(this);
         _graphicsMutex = makeMutex();
         _uriMap = uriMapPtr;
+        _options = null;
+        _uridMap = null;
     }
 
     void instantiate(const LV2_Descriptor* descriptor, double rate, const char* bundle_path, const(LV2_Feature*)* features)
     {
-        LV2_Options_Option* options = null;
-        LV2_URID_Map* uridMap = null;
         for(int i = 0; features[i] != null; ++i)
         {
             if (strcmp(features[i].URI, LV2_OPTIONS__options) == 0)
-                options = cast(LV2_Options_Option*)features[i].data;
+                _options = cast(LV2_Options_Option*)features[i].data;
             else if (strcmp(features[i].URI, LV2_URID__map) == 0)
-                uridMap = cast(LV2_URID_Map*)features[i].data;
+                _uridMap = cast(LV2_URID_Map*)features[i].data;
         }
 
         // Retrieve max buffer size from options
-        for (int i=0; options[i].key != 0; ++i)
+        for (int i=0; _options[i].key != 0; ++i)
         {
-            if (options[i].key == assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_BUF_SIZE__maxBlockLength))
+            if (_options[i].key == assumeNothrowNoGC(_uridMap.map)(_uridMap.handle, LV2_BUF_SIZE__maxBlockLength))
             {
-                _maxBufferSize = *cast(const(int)*)options[i].value;
+                _maxBufferSize = *cast(const(int)*)_options[i].value;
                 _callResetOnNextRun = true;
             }
         }
@@ -144,6 +144,10 @@ nothrow:
         {
             _outputs[port - _client.params.length - _maxInputs] = cast(float*)data;
         }
+        else if(port < _maxOutputs + _maxInputs + _client.params.length + 1)
+        {
+            _midiInput = cast(LV2_Atom_Sequence*)data;    
+        }
         else
             assert(false, "Error unknown port index");
     }
@@ -161,6 +165,38 @@ nothrow:
             _callResetOnNextRun = false;
             _client.resetFromHost(_sampleRate, _maxBufferSize, _maxInputs, _maxOutputs);
         }
+
+        uint32_t  offset = 0;
+
+        // LV2_ATOM_SEQUENCE_FOREACH Macro from atom.util. Only used once so no need to write a template for it.
+        for(LV2_Atom_Event* ev = assumeNothrowNoGC(&lv2_atom_sequence_begin)(&(_midiInput.body)); 
+            !assumeNothrowNoGC(&lv2_atom_sequence_is_end)(&(this._midiInput).body, this._midiInput.atom.size, ev); 
+            ev = assumeNothrowNoGC(&lv2_atom_sequence_next)(ev))
+        {
+            if (ev.body.type == _midiEvent) {
+                MidiMessage message;
+                const (uint8_t)* msg = cast(const (uint8_t)*)(ev + 1);
+                switch (assumeNothrowNoGC(&lv2_midi_message_type)(msg)) {
+                case LV2_MIDI_MSG_NOTE_ON:
+                    // ++n_active_notes;
+                    break;
+                case LV2_MIDI_MSG_NOTE_OFF:
+                    // --n_active_notes;
+                    break;
+                default: break;
+                }
+                _client.enqueueMIDIFromHost(message);
+            }
+
+            if (ev.body.type == _atomBlank || ev.body.type == _atomObject)
+            {
+                LV2_Atom* frame = null;
+            }           
+
+        //     write_output(self, offset, ev.time.frames - offset);
+            // offset = cast(uint32_t)(ev.time.frames);
+        }
+
         _client.processAudioFromHost(_inputs, _outputs, n_samples, timeInfo);
     }
 
@@ -177,6 +213,33 @@ nothrow:
                        LV2UI_Widget*                   widget,
                        const (LV2_Feature*)*       features)
     {
+        const LV2_URID uridWindowTitle(_uridMap.map(_uridMap.handle, LV2_UI__windowTitle));
+        const LV2_URID uridTransientWinId(_uridMap.map(_uridMap.handle, LV2_KXSTUDIO_PROPERTIES__TransientWindowId));
+        for (int i=0; _options[i].key != 0; ++i)
+        {
+            if (_options[i].key == LV2_UI__parent)
+            {
+                if (_options[i].type == _uridMap.map(_uridMap.handle, LV2_ATOM__Long))
+                {
+                    if (const int64_t transientWinId = *cast(const int64_t*)_options[i].value)
+                        void* parentWindow = cast(void*)(transientWinId);
+                }
+                
+            }
+            // else if (options[i].key == uridWindowTitle)
+            // {
+            //     if (options[i].type == uridMap->map(uridMap->handle, LV2_ATOM__String))
+            //     {
+            //         if (const char* const windowTitle = (const char*)options[i].value)
+            //         {
+            //             hasTitle = true;
+            //             fUI.setWindowTitle(windowTitle);
+            //         }
+            //     }
+            //     else
+            //         d_stderr("Host provides windowTitle but has wrong value type");
+            // }
+        }
         if (widget != null)
         {
             _graphicsMutex.lock();
@@ -241,9 +304,15 @@ private:
     float** _params;
     float*[] _inputs;
     float*[] _outputs;
-    LV2_Atom_Sequence* control;
+    LV2_Atom_Sequence* _midiInput;
 
     float _sampleRate;
+    
+    LV2_URID _midiEvent;
+    LV2_URID _atomBlank;
+    LV2_URID _atomObject;
+    LV2_Options_Option* _options;
+    LV2_URID_Map* _uridMap;
 
     UncheckedMutex _graphicsMutex;
 }
