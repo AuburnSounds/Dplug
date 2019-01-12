@@ -59,7 +59,8 @@
         {
             "name": "LV2",
             "versions": ["LV2"],
-            "targetType": "dynamicLibrary"
+            "targetType": "dynamicLibrary",
+            "lflags-osx-ldc": [ "-exported_symbols_list", "module-lv2.lst", "-dead_strip" ]
         }
     ]
 }
