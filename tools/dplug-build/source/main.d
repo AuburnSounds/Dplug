@@ -237,6 +237,12 @@ int main(string[] args)
 
         auto oldpath = environment["PATH"];
 
+        // Fix Issue #328
+        // Setting this envvar to a non-existing path forces LDC >= 1.13 to 
+        // auto-detect a version of Visual Studio, like it was before.
+        // This avoids the mingw linker, which breaks static linking the C runtime.
+        environment["LDC_VSDIR"] = "a-non-existing-path";
+
         static string outputDirectory(string outputDir, bool temp, string osString, Arch arch, string config)
         {
             static string toString(Arch arch)
