@@ -214,20 +214,24 @@ nothrow:
                        const (LV2_Feature*)*       features)
     {
         void* parentId = null;
+        LV2UI_Resize* uiResize = null;
+        int width, height;
 
         for (int i=0; features[i] != null; ++i)
         {
             if (strcmp(features[i].URI, LV2_UI__parent) == 0)
                 parentId = cast(void*)features[i].data;
+            if (strcmp(features[i].URI, LV2_UI__resize) == 0)
+                uiResize = cast(LV2UI_Resize*)features[i].data;
         }
 
         if (widget != null)
         {
             _graphicsMutex.lock();
-            int* windowHandle;
-            _client.openGUI(parentId, null, GraphicsBackend.x11);
-            *widget = cast(LV2UI_Widget)windowHandle;
+            *widget = cast(LV2UI_Widget)_client.openGUI(parentId, null, GraphicsBackend.autodetect);
+            _client.getGUISize(&width, &height);
             _graphicsMutex.unlock();
+            assumeNothrowNoGC(uiResize.ui_resize)(uiResize.handle, width, height);
         }
     }
 

@@ -127,27 +127,11 @@ nothrow @nogc const(char)* pluginURIFromClient(alias ClientClass)(int index)
 
     if(pluginInfo.hasGUI)
     {
-        buildUIDescriptor(baseURI);
+        buildUIDescriptor(baseURI.ptr);
     }
 
     client.destroyFree();
     return uri.ptr;
-}
-
-void buildUIDescriptor(const(char)[] baseURI) nothrow @nogc
-{
-    char[] uiURI = mallocSlice!char(baseURI.length + 3);
-    uiURI[0..baseURI.length] = baseURI;
-    uiURI[baseURI.length..$] = "#ui";
-    fprintf(stderr, "UI URI: %s", uiURI.ptr);
-    LV2UI_Descriptor descriptor = {
-        URI: uiURI.ptr, 
-        instantiate: &instantiateUI, 
-        cleanup: &cleanupUI, 
-        port_event: &port_event, 
-        extension_data: &extension_dataUI
-    };
-    lv2UIDescriptor = descriptor;
 }
 
 void GenerateManifestFromClientInternal(alias ClientClass)(generateManifestFromClientCallback callback, const(char)[] binaryFileName, const(char)[] licensePath, const(char)[] buildDir)
@@ -280,30 +264,25 @@ string lv2PluginCategory(PluginCategory category)
     return lv2Category;
 }
 
-const(char)[] uriFromIOConfiguration(char* baseURI, LegalIO legalIO) nothrow @nogc
+char[] uriFromIOConfiguration(char* baseURI, LegalIO legalIO) nothrow @nogc
 {
-    const(char)[] inputLabel = "In";
-    const(char)[] outputLabel = "Out"; 
-    size_t inputLabelLen = strlen(inputLabel.ptr);
-    size_t outputLabelLen = strlen(outputLabel.ptr);
-    size_t baseURILen = strlen(baseURI);
-    size_t totalLen = baseURILen + inputLabelLen + outputLabelLen + 2;
-    char[] uriBuf = mallocSlice!char(totalLen);
-    char[2] inputsBuf;
-    char[2] outputsBuf;
-    sprintf(inputsBuf.ptr, "%d", legalIO.numInputChannels);
-    sprintf(outputsBuf.ptr, "%d", legalIO.numOutputChannels);
-    
-    size_t pos = baseURILen;
-    uriBuf[0..pos] = baseURI[0..strlen(baseURI)];
-    uriBuf[pos..pos+1] = inputsBuf[0];
-    pos += 1;
-    uriBuf[pos..pos+inputLabelLen] = inputLabel;
-    pos += inputLabelLen;
-    uriBuf[pos..pos+1] = outputsBuf[0];
-    pos += 1;
-    uriBuf[pos..pos+outputLabelLen] = outputLabel;
-    return uriBuf;
+    char[256] buf;
+    snprintf(buf.ptr, 256, "%s%dIn%dOut", baseURI, legalIO.numInputChannels, legalIO.numOutputChannels);
+    return stringDup(buf.ptr); // has to be free somewhere
+}
+
+void buildUIDescriptor(char* baseURI) nothrow @nogc
+{
+    char[256] buf;
+    snprintf(buf.ptr, 260, "%s%s", baseURI, "#ui".ptr);
+    LV2UI_Descriptor descriptor = {
+        URI: stringDup(buf.ptr).ptr, 
+        instantiate: &instantiateUI, 
+        cleanup: &cleanupUI, 
+        port_event: &port_event, 
+        extension_data: &extension_dataUI
+    };
+    lv2UIDescriptor = descriptor;
 }
 
 const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, bool hasMIDIInput)

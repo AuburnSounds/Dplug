@@ -152,6 +152,7 @@ public:
         _graphicGC = XCreateGC(_display, _windowId, 0, null);
         XSetBackground(_display, _graphicGC, _white_pixel);
         XSetForeground(_display, _graphicGC, _black_pixel);
+        drawMutex.unlock();
 
         _wfb = listener.onResized(width, height);
 
@@ -165,6 +166,7 @@ public:
 
         _eventLoop = makeThread(&eventLoop);
         _eventLoop.start();
+        
     }
 
     ~this()
@@ -176,6 +178,7 @@ public:
     }
 
     void initializeXLib() {
+        drawMutex.lock();
         if (!XLibInitialized) {
             XInitThreads();
 
@@ -191,6 +194,7 @@ public:
 
             XLibInitialized = true;
         }
+        drawMutex.unlock();
     }
 
     long windowEventMask() {
@@ -355,9 +359,10 @@ public:
 void handleEvents(ref XEvent event, X11Window theWindow) nothrow @nogc
 {
     debug(logX11Window) fprintf(stderr, "X11Window: handleEvents()\n");
+    theWindow.drawMutex.lock();
     with(theWindow)
     {
-
+        
         switch(event.type)
         {
             case KeyPress:
@@ -375,7 +380,7 @@ void handleEvents(ref XEvent event, X11Window theWindow) nothrow @nogc
             case MapNotify:
             case Expose:
                 // Resize should trigger Expose event, so we don't need to handle it here
-                drawMutex.lock();
+                
 
                 box2i areaToRedraw = mergedDirtyRect;
                 box2i eventAreaToRedraw = box2i(event.xexpose.x, event.xexpose.y, event.xexpose.x + event.xexpose.width, event.xexpose.y + event.xexpose.height);
@@ -383,7 +388,7 @@ void handleEvents(ref XEvent event, X11Window theWindow) nothrow @nogc
 
                 emptyMergedBoxes();
 
-                drawMutex.unlock();
+                
 
                 if (!areaToRedraw.empty()) {
                     listener.onDraw(WindowPixelFormat.RGBA8);
@@ -492,6 +497,7 @@ void handleEvents(ref XEvent event, X11Window theWindow) nothrow @nogc
                 break;
         }
     }
+    theWindow.drawMutex.unlock();
 }
 
 Key convertKeyFromX11(KeySym symbol)
