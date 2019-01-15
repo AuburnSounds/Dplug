@@ -67,6 +67,15 @@ template LV2EntryPoint(alias ClientClass)
                                             "    return &lv2Descriptors[index];" ~
                                             "}\n";
 
+    static immutable enum lv2_ui_descriptor = "export extern(C) const (LV2UI_Descriptor)* lv2ui_descriptor(uint32_t index)\n" ~
+                                               "{" ~
+                                               "    switch(index) {" ~
+                                               "        case 0:" ~
+                                               "            return &lv2UIDescriptor;" ~
+                                               "        default: return null;" ~
+                                               "    }" ~
+                                               "}\n";
+
     static immutable enum build_descriptor =  "nothrow void buildDescriptor(uint32_t index) {" ~
                                               "    const(char)* uri = pluginURIFromClient!" ~ ClientClass.stringof ~ "(index);" ~
                                               "    LV2_Descriptor descriptor = { uri, &instantiate, &connect_port, &activate, &run, &deactivate, &cleanup, &extension_data };" ~
@@ -78,7 +87,7 @@ template LV2EntryPoint(alias ClientClass)
                                                        "    GenerateManifestFromClientInternal!" ~ ClientClass.stringof ~ "(callback, binaryFileName, licensePath, buildDir);" ~
                                                        "}\n";
 
-    const char[] LV2EntryPoint = instantiate ~ lv2_descriptor ~ build_descriptor ~ generate_manifest_from_client;
+    const char[] LV2EntryPoint = instantiate ~ lv2_descriptor ~ lv2_ui_descriptor ~ build_descriptor ~ generate_manifest_from_client;
 }
 
 extern(C)
@@ -116,7 +125,7 @@ nothrow @nogc const(char)* pluginURIFromClient(alias ClientClass)(int index)
     auto uri = uriFromIOConfiguration(cast(char*)baseURI, legalIOs[index]);
     uriMap[cast(string)uri] = index;
 
-    if(pluginInfo.hasGUI && !lv2UIDescriptor.URI)
+    if(pluginInfo.hasGUI)
     {
         buildUIDescriptor(baseURI);
     }
@@ -420,14 +429,14 @@ extern(C)
         return null;
     }
 
-    export const (LV2UI_Descriptor)* lv2ui_descriptor(uint32_t index)
-    {
-        switch(index) {
-            case 0: 
-                return &lv2UIDescriptor;
-            default: return null;
-        }
-    }
+    // export const (LV2UI_Descriptor)* lv2ui_descriptor(uint32_t index)
+    // {
+    //     switch(index) {
+    //         case 0: 
+    //             return &lv2UIDescriptor;
+    //         default: return null;
+    //     }
+    // }
 
     LV2UI_Handle instantiateUI(const LV2UI_Descriptor* descriptor,
 									const char*                     plugin_uri,

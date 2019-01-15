@@ -166,36 +166,36 @@ nothrow:
             _client.resetFromHost(_sampleRate, _maxBufferSize, _maxInputs, _maxOutputs);
         }
 
-        uint32_t  offset = 0;
+        // uint32_t  offset = 0;
 
-        // LV2_ATOM_SEQUENCE_FOREACH Macro from atom.util. Only used once so no need to write a template for it.
-        for(LV2_Atom_Event* ev = assumeNothrowNoGC(&lv2_atom_sequence_begin)(&(_midiInput.body)); 
-            !assumeNothrowNoGC(&lv2_atom_sequence_is_end)(&(this._midiInput).body, this._midiInput.atom.size, ev); 
-            ev = assumeNothrowNoGC(&lv2_atom_sequence_next)(ev))
-        {
-            if (ev.body.type == _midiEvent) {
-                MidiMessage message;
-                const (uint8_t)* msg = cast(const (uint8_t)*)(ev + 1);
-                switch (assumeNothrowNoGC(&lv2_midi_message_type)(msg)) {
-                case LV2_MIDI_MSG_NOTE_ON:
-                    // ++n_active_notes;
-                    break;
-                case LV2_MIDI_MSG_NOTE_OFF:
-                    // --n_active_notes;
-                    break;
-                default: break;
-                }
-                _client.enqueueMIDIFromHost(message);
-            }
+        // // LV2_ATOM_SEQUENCE_FOREACH Macro from atom.util. Only used once so no need to write a template for it.
+        // for(LV2_Atom_Event* ev = assumeNothrowNoGC(&lv2_atom_sequence_begin)(&(_midiInput.body)); 
+        //     !assumeNothrowNoGC(&lv2_atom_sequence_is_end)(&(this._midiInput).body, this._midiInput.atom.size, ev); 
+        //     ev = assumeNothrowNoGC(&lv2_atom_sequence_next)(ev))
+        // {
+        //     if (ev.body.type == _midiEvent) {
+        //         MidiMessage message;
+        //         const (uint8_t)* msg = cast(const (uint8_t)*)(ev + 1);
+        //         switch (assumeNothrowNoGC(&lv2_midi_message_type)(msg)) {
+        //         case LV2_MIDI_MSG_NOTE_ON:
+        //             // ++n_active_notes;
+        //             break;
+        //         case LV2_MIDI_MSG_NOTE_OFF:
+        //             // --n_active_notes;
+        //             break;
+        //         default: break;
+        //         }
+        //         _client.enqueueMIDIFromHost(message);
+        //     }
 
-            if (ev.body.type == _atomBlank || ev.body.type == _atomObject)
-            {
-                LV2_Atom* frame = null;
-            }           
+        //     if (ev.body.type == _atomBlank || ev.body.type == _atomObject)
+        //     {
+        //         LV2_Atom* frame = null;
+        //     }           
 
-        //     write_output(self, offset, ev.time.frames - offset);
-            // offset = cast(uint32_t)(ev.time.frames);
-        }
+        // //     write_output(self, offset, ev.time.frames - offset);
+        //     // offset = cast(uint32_t)(ev.time.frames);
+        // }
 
         _client.processAudioFromHost(_inputs, _outputs, n_samples, timeInfo);
     }
@@ -213,38 +213,19 @@ nothrow:
                        LV2UI_Widget*                   widget,
                        const (LV2_Feature*)*       features)
     {
-        const LV2_URID uridWindowTitle(_uridMap.map(_uridMap.handle, LV2_UI__windowTitle));
-        const LV2_URID uridTransientWinId(_uridMap.map(_uridMap.handle, LV2_KXSTUDIO_PROPERTIES__TransientWindowId));
-        for (int i=0; _options[i].key != 0; ++i)
+        void* parentId = null;
+
+        for (int i=0; features[i] != null; ++i)
         {
-            if (_options[i].key == LV2_UI__parent)
-            {
-                if (_options[i].type == _uridMap.map(_uridMap.handle, LV2_ATOM__Long))
-                {
-                    if (const int64_t transientWinId = *cast(const int64_t*)_options[i].value)
-                        void* parentWindow = cast(void*)(transientWinId);
-                }
-                
-            }
-            // else if (options[i].key == uridWindowTitle)
-            // {
-            //     if (options[i].type == uridMap->map(uridMap->handle, LV2_ATOM__String))
-            //     {
-            //         if (const char* const windowTitle = (const char*)options[i].value)
-            //         {
-            //             hasTitle = true;
-            //             fUI.setWindowTitle(windowTitle);
-            //         }
-            //     }
-            //     else
-            //         d_stderr("Host provides windowTitle but has wrong value type");
-            // }
+            if (strcmp(features[i].URI, LV2_UI__parent) == 0)
+                parentId = cast(void*)features[i].data;
         }
+
         if (widget != null)
         {
             _graphicsMutex.lock();
             int* windowHandle;
-            _client.openGUI(windowHandle, null, GraphicsBackend.x11);
+            _client.openGUI(parentId, null, GraphicsBackend.x11);
             *widget = cast(LV2UI_Widget)windowHandle;
             _graphicsMutex.unlock();
         }
