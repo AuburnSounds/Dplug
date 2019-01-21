@@ -1,4 +1,6 @@
+/// LV2 plug-in client implementation.
 module dplug.lv2;
+
 
 public
 {

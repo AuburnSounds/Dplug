@@ -9,6 +9,7 @@
 // 
 // Details of that license can be found at: www.gnu.org/licenses/gpl-3.0.html
 //-----------------------------------------------------------------------------
+/// VST3 plug-in client implementation.
 module dplug.vst3;
 
 public import dplug.vst3.vst3main;
