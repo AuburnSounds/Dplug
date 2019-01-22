@@ -152,7 +152,6 @@ public:
         _graphicGC = XCreateGC(_display, _windowId, 0, null);
         XSetBackground(_display, _graphicGC, _white_pixel);
         XSetForeground(_display, _graphicGC, _black_pixel);
-        drawMutex.unlock();
 
         _wfb = listener.onResized(width, height);
 
@@ -556,3 +555,4 @@ MouseState mouseStateFromX11(uint state) {
         (state & ShiftMask) == ShiftMask,
         (state & Mod1Mask) == Mod1Mask);
 }
+

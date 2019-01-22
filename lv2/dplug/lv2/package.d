@@ -15,4 +15,5 @@ public
   import dplug.lv2.options;
   import dplug.lv2.lv2_init;
   import dplug.lv2.state;
+  import dplug.lv2.kxstudio;
 }

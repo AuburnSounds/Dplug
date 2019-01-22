@@ -57,7 +57,8 @@ import dplug.lv2.lv2,
        dplug.lv2.urid,
        dplug.lv2.bufsize,
        dplug.lv2.atom,
-       dplug.lv2.atomutil;
+       dplug.lv2.atomutil,
+       dplug.lv2.kxstudio;
 
 class LV2Client : IHostCommand
 {
@@ -225,13 +226,19 @@ nothrow:
                 uiResize = cast(LV2UI_Resize*)features[i].data;
         }
 
+        LV2_URID uridWindowTitle = assumeNothrowNoGC(_uridMap.map)(_uridMap.handle, LV2_UI__windowTitle);
+        LV2_URID uridTransientWinId = assumeNothrowNoGC(_uridMap.map)(_uridMap.handle, LV2_KXSTUDIO_PROPERTIES__TransientWindowId);
+
         if (widget != null)
         {
+            void* pluginWindow;
             _graphicsMutex.lock();
-            *widget = cast(LV2UI_Widget)_client.openGUI(parentId, null, GraphicsBackend.autodetect);
+            pluginWindow = cast(LV2UI_Widget)_client.openGUI(parentId, null, GraphicsBackend.autodetect);
             _client.getGUISize(&width, &height);
             _graphicsMutex.unlock();
             assumeNothrowNoGC(uiResize.ui_resize)(uiResize.handle, width, height);
+
+            *widget = pluginWindow;
         }
     }
 
