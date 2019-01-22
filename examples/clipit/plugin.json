@@ -11,6 +11,6 @@
     "CFBundleIdentifierPrefix": "com.wittyaudio",
     "hasGUI": true,
     "isSynth": false,
-    "receivesMIDI": false,
+    "receivesMIDI": true,
     "category": "effectDistortion"
 }

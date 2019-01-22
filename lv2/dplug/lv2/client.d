@@ -58,7 +58,8 @@ import dplug.lv2.lv2,
        dplug.lv2.bufsize,
        dplug.lv2.atom,
        dplug.lv2.atomutil,
-       dplug.lv2.kxstudio;
+       dplug.lv2.kxstudio,
+       dplug.lv2.time;
 
 class LV2Client : IHostCommand
 {
@@ -97,6 +98,8 @@ nothrow:
                 _callResetOnNextRun = true;
             }
         }
+
+        fURIDs = URIDs(_uridMap);
 
         // Retrieve index of legalIO that was stored in the uriMap
         string uri = cast(string)descriptor.URI[0..strlen(descriptor.URI)];
@@ -167,36 +170,36 @@ nothrow:
             _client.resetFromHost(_sampleRate, _maxBufferSize, _maxInputs, _maxOutputs);
         }
 
-        // uint32_t  offset = 0;
+        uint32_t  offset = 0;
 
-        // // LV2_ATOM_SEQUENCE_FOREACH Macro from atom.util. Only used once so no need to write a template for it.
-        // for(LV2_Atom_Event* ev = assumeNothrowNoGC(&lv2_atom_sequence_begin)(&(_midiInput.body)); 
-        //     !assumeNothrowNoGC(&lv2_atom_sequence_is_end)(&(this._midiInput).body, this._midiInput.atom.size, ev); 
-        //     ev = assumeNothrowNoGC(&lv2_atom_sequence_next)(ev))
-        // {
-        //     if (ev.body.type == _midiEvent) {
-        //         MidiMessage message;
-        //         const (uint8_t)* msg = cast(const (uint8_t)*)(ev + 1);
-        //         switch (assumeNothrowNoGC(&lv2_midi_message_type)(msg)) {
-        //         case LV2_MIDI_MSG_NOTE_ON:
-        //             // ++n_active_notes;
-        //             break;
-        //         case LV2_MIDI_MSG_NOTE_OFF:
-        //             // --n_active_notes;
-        //             break;
-        //         default: break;
-        //         }
-        //         _client.enqueueMIDIFromHost(message);
-        //     }
+        // LV2_ATOM_SEQUENCE_FOREACH Macro from atom.util. Only used once so no need to write a template for it.
+        for(LV2_Atom_Event* ev = assumeNothrowNoGC(&lv2_atom_sequence_begin)(&(_midiInput.body)); 
+            !assumeNothrowNoGC(&lv2_atom_sequence_is_end)(&(this._midiInput).body, this._midiInput.atom.size, ev); 
+            ev = assumeNothrowNoGC(&lv2_atom_sequence_next)(ev))
+        {
+            if (ev.body.type == fURIDs.midiEvent) {
+                MidiMessage message;
+                const (uint8_t)* msg = cast(const (uint8_t)*)(ev + 1);
+                switch (assumeNothrowNoGC(&lv2_midi_message_type)(msg)) {
+                case LV2_MIDI_MSG_NOTE_ON:
+                    message = makeMidiMessageNoteOn(offset, 0, msg[0], msg[1]);
+                    break;
+                case LV2_MIDI_MSG_NOTE_OFF:
+                    message = makeMidiMessageNoteOff(offset, 0, msg[0]);
+                    break;
+                default: break;
+                }
+                _client.enqueueMIDIFromHost(message);
+            }
 
-        //     if (ev.body.type == _atomBlank || ev.body.type == _atomObject)
-        //     {
-        //         LV2_Atom* frame = null;
-        //     }           
+            if (ev.body.type == _atomBlank || ev.body.type == _atomObject)
+            {
+                LV2_Atom* frame = null;
+            }           
 
-        // //     write_output(self, offset, ev.time.frames - offset);
-        //     // offset = cast(uint32_t)(ev.time.frames);
-        // }
+        //     write_output(self, offset, ev.time.frames - offset);
+            // offset = cast(uint32_t)(ev.time.frames);
+        }
 
         _client.processAudioFromHost(_inputs, _outputs, n_samples, timeInfo);
     }
@@ -216,6 +219,8 @@ nothrow:
     {
         void* parentId = null;
         LV2UI_Resize* uiResize = null;
+        char* windowTitle = null;
+        void* transientWin = null;
         int width, height;
 
         for (int i=0; features[i] != null; ++i)
@@ -224,20 +229,35 @@ nothrow:
                 parentId = cast(void*)features[i].data;
             if (strcmp(features[i].URI, LV2_UI__resize) == 0)
                 uiResize = cast(LV2UI_Resize*)features[i].data;
+            if (strcmp(features[i].URI, LV2_OPTIONS__options) == 0)
+                _options = cast(LV2_Options_Option*)features[i].data;
         }
 
         LV2_URID uridWindowTitle = assumeNothrowNoGC(_uridMap.map)(_uridMap.handle, LV2_UI__windowTitle);
         LV2_URID uridTransientWinId = assumeNothrowNoGC(_uridMap.map)(_uridMap.handle, LV2_KXSTUDIO_PROPERTIES__TransientWindowId);
 
+        for (int i=0; _options[i].key != 0; ++i)
+        {
+            if (_options[i].key == assumeNothrowNoGC(_uridMap.map)(_uridMap.handle, LV2_UI__windowTitle))
+            {
+                windowTitle = cast(char*)_options[i].value;   
+            }
+            else if (_options[i].key == assumeNothrowNoGC(_uridMap.map)(_uridMap.handle, LV2_KXSTUDIO_PROPERTIES__TransientWindowId))
+            {
+                transientWin = cast(void*)_options[i].value;   
+            }
+        }
+
+
         if (widget != null)
         {
             void* pluginWindow;
             _graphicsMutex.lock();
-            pluginWindow = cast(LV2UI_Widget)_client.openGUI(parentId, null, GraphicsBackend.autodetect);
+            pluginWindow = cast(LV2UI_Widget)_client.openGUI(parentId, windowTitle, GraphicsBackend.autodetect);
             _client.getGUISize(&width, &height);
             _graphicsMutex.unlock();
-            assumeNothrowNoGC(uiResize.ui_resize)(uiResize.handle, width, height);
 
+            assumeNothrowNoGC(uiResize.ui_resize)(uiResize.handle, width, height);
             *widget = pluginWindow;
         }
     }
@@ -307,4 +327,32 @@ private:
     LV2_URID_Map* _uridMap;
 
     UncheckedMutex _graphicsMutex;
+
+    URIDs fURIDs;
+}
+
+struct URIDs {
+    LV2_URID atomBlank;
+    LV2_URID atomObject;
+    LV2_URID atomSequence;
+    LV2_URID midiEvent;
+    LV2_URID timePosition;
+    LV2_URID timeBar;
+    LV2_URID timeBarBeat;
+    LV2_URID timeBeatUnit;
+    LV2_URID timeBeatsPerBar;
+    LV2_URID timeBeatsPerMinute;
+    LV2_URID timeTicksPerBeat;
+    LV2_URID timeFrame;
+    LV2_URID timeSpeed;
+
+    this(LV2_URID_Map* uridMap) nothrow @nogc
+    {
+        atomBlank = assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_ATOM__Blank);
+        atomObject = assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_ATOM__Object);
+        atomSequence = assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_ATOM__Sequence);
+        midiEvent = assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_MIDI__MidiEvent);
+        timePosition = assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_TIME__Position);
+        timeBar = assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_TIME__bar);
+    }
 }
