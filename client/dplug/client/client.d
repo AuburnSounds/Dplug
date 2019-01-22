@@ -396,11 +396,13 @@ nothrow:
     }
 
     /// Override to set the plugin tail length in seconds.
-    /// This is the amount of time before silence is reached with a silent input.
+    /// This is the amount of time before silence is reached with a silent input, on the worst
+    /// possible settings.
     /// Returns: Plugin tail size in seconds.
     float tailSizeInSeconds() nothrow @nogc
     {
-        return 0.100f; // default: 100ms
+        // Default: 800ms, which shoukld be safe for most plugins except delay or reverb
+        return 0.800f; 
     }
 
     /// Override to declare the maximum number of samples to accept
