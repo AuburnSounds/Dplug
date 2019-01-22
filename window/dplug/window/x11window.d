@@ -57,6 +57,8 @@ __gshared Visual* _visual;
 __gshared size_t _white_pixel, _black_pixel;
 __gshared int _screen;
 
+enum XA_CARDINAL = 6;
+
 final class X11Window : IWindow
 {
 nothrow:
@@ -85,11 +87,16 @@ private:
 
     shared(bool) _terminated = false;
 
+    Atom _XEMBED;
+    Atom _XEMBED_INFO;
+    enum int XEMBED_VERSION = 0;
+    enum int XEMBED_MAPPED = (1 << 0);
+
 public:
     this(void* parentWindow, IWindowListener listener, int width, int height)
     {
         debug(logX11Window) fprintf(stderr, "X11Window: constructor\n");
-
+        drawMutex = makeMutex();
         initializeXLib();
 
         int x, y;
@@ -110,8 +117,6 @@ public:
         this.height = height;
         depth = 24;
 
-        //
-
         _windowId = XCreateSimpleWindow(_display, _parentWindowId, x, y, width, height, 0, 0, _black_pixel);
         XStoreName(_display, _windowId, cast(char*)" ".ptr);
 
@@ -124,14 +129,20 @@ public:
 
         XSetWMNormalHints(_display, _windowId, &sizeHints);
 
-        //
+        //Setup XEMBED atoms
+        _XEMBED = XInternAtom(_display, "_XEMBED", false);
+        _XEMBED_INFO = XInternAtom(_display, "_XEMBED_INFO", false);
+        uint[2] data = [XEMBED_VERSION, XEMBED_MAPPED];
+        XChangeProperty(_display, _windowId, _XEMBED_INFO,
+                        XA_CARDINAL, 32, PropModeReplace,
+                        cast(ubyte*) data, 2);
 
         _closeAtom = XInternAtom(_display, cast(char*)("WM_DELETE_WINDOW".ptr), cast(Bool)false);
         XSetWMProtocols(_display, _windowId, &_closeAtom, 1);
 
         if (parentWindow) {
-          // Embed the window in parent (most VST hosts expose some area for embedding a VST client)
-          XReparentWindow(_display, _windowId, _parentWindowId, 0, 0);
+            // Embed the window in parent (most VST hosts expose some area for embedding a VST client)
+            XReparentWindow(_display, _windowId, _parentWindowId, 0, 0);
         }
 
         XMapWindow(_display, _windowId);

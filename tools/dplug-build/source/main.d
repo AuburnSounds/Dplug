@@ -22,7 +22,6 @@ string MAC_AU_DIR  = "/Library/Audio/Plug-Ins/Components";
 string MAC_AAX_DIR = "/Library/Application Support/Avid/Audio/Plug-Ins";
 string MAC_LV2_DIR = "/Library/Audio/Plug-Ins/LV2";
 
-
 void usage()
 {
     void flag(string arg, string desc, string possibleValues, string defaultDesc)
@@ -242,6 +241,7 @@ int main(string[] args)
         // auto-detect a version of Visual Studio, like it was before.
         // This avoids the mingw linker, which breaks static linking the C runtime.
         environment["LDC_VSDIR"] = "a-non-existing-path";
+
 
         static string outputDirectory(string outputDir, bool temp, string osString, Arch arch, string config)
         {
@@ -576,11 +576,28 @@ int main(string[] args)
                 }
                 else version(linux)
                 {
-                    string soPath = path ~ "/" ~ plugin.prettyName ~ ".so";
-                    fileMove(plugin.dubOutputFileName, soPath);
                     if(configIsLV2(config))
                     {
+                        string soPath = path ~ "/" ~ plugin.prettyName ~ ".so";
+                        fileMove(plugin.dubOutputFileName, soPath);
                         extractLV2ManifestFromBinary(soPath, path, is64b, plugin.prettyName ~ ".so");
+                    }
+
+                    if (configIsVST3(config)) // VST3 special case, needs to be named .vst3 (but can't be _linked_ as .vst3)
+                    {
+                        string appendBitnessVST3(string prettyName, string originalPath)
+                        {
+                            if (is64b)
+                            {
+                                // Issue #84
+                                // Rename 64-bit binary to get Reaper to list both 32-bit and 64-bit plugins if in the same directory
+                                return prettyName ~ "-64.vst3";
+                            }
+                            else
+                                return prettyName ~ ".vst3";
+                        }
+                        // Simply copy the file
+                        fileMove(plugin.dubOutputFileName, path ~ "/" ~ appendBitnessVST3(plugin.prettyName, plugin.dubOutputFileName));
                     }
                 }
                 else version(OSX)
