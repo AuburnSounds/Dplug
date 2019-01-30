@@ -582,22 +582,15 @@ int main(string[] args)
                         fileMove(plugin.dubOutputFileName, soPath);
                         extractLV2ManifestFromBinary(soPath, path, is64b, plugin.prettyName ~ ".so");
                     }
-
-                    if (configIsVST3(config)) // VST3 special case, needs to be named .vst3 (but can't be _linked_ as .vst3)
+                    else if (configIsVST3(config)) // VST3 special case, needs to be named .vst3 (but can't be _linked_ as .vst3)
                     {
-                        string appendBitnessVST3(string prettyName, string originalPath)
-                        {
-                            if (is64b)
-                            {
-                                // Issue #84
-                                // Rename 64-bit binary to get Reaper to list both 32-bit and 64-bit plugins if in the same directory
-                                return prettyName ~ "-64.vst3";
-                            }
-                            else
-                                return prettyName ~ ".vst3";
-                        }
                         // Simply copy the file
-                        fileMove(plugin.dubOutputFileName, path ~ "/" ~ appendBitnessVST3(plugin.prettyName, plugin.dubOutputFileName));
+                        fileMove(plugin.dubOutputFileName, path ~ "/" ~ plugin.prettyName ~ ".vst3");
+                    }
+                    else if (configIsVST2(config)) // VST2 special case, needs to be named .vst
+                    {
+                        // Simply copy the file
+                        fileMove(plugin.dubOutputFileName, path ~ "/" ~ plugin.prettyName ~ ".so");
                     }
                 }
                 else version(OSX)
