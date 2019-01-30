@@ -2,7 +2,7 @@
 
 # Dplug [![Build Status](https://travis-ci.org/AuburnSounds/Dplug.svg?branch=master)](https://travis-ci.org/AuburnSounds/Dplug) <a href="https://code.dlang.org/packages/dplug" title="Go to dplug"><img src="https://img.shields.io/dub/v/dplug.svg" alt="Dub version"></a> ![Dplug Discord server](https://discordapp.com/api/guilds/242094594181955585/widget.png?style=shield)
 
-`Dplug` lets you create professional audio plug-ins (VST2 / AU / VST3 / AAX / LV2), macOS/Windows/Linux, 32&64-bit) with D, with unmatched simplicity and speed.
+`Dplug` lets you create professional audio plug-ins (VST2 / AU / VST3 / AAX / LV2), Windows/Mac/Linux, 32&64-bit) with D, with unmatched simplicity and speed.
 
 Documentation here: [Dplug Wiki...](https://github.com/AuburnSounds/Dplug/wiki)
 
@@ -10,7 +10,7 @@ Documentation here: [Dplug Wiki...](https://github.com/AuburnSounds/Dplug/wiki)
 
 - Create VST2 plug-ins for macOS, Windows, and Linux (to distribute VST2 plug-ins be sure to sign a VST2 Licence Agreement with Steinberg)
 - Create Audio Unit v2 plug-ins for macOS
-- Create VST3 plug-ins for macOS, Windows, and Linux (to distribute VST3 plug-ins be sure to sign a VST2 Licence Agreement with Steinberg)
+- Create VST3 plug-ins for macOS, Windows, and Linux (to distribute VST3 plug-ins be sure to sign a VST3 Licence Agreement with Steinberg)
 - Create AAX64 Native plug-ins for macOS and Windows
 - Create LV2 plug-ins for macOS, Windows, and Linux (64-bit only)
 - Build plug-ins faster and with less pain: D language, plug-in bundling, color correction, performance tests...
