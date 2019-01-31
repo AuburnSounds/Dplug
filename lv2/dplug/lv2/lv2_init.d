@@ -143,6 +143,8 @@ void buildUIDescriptor(const(char)[] baseURI) nothrow @nogc
 
 void GenerateManifestFromClientInternal(alias ClientClass)(generateManifestFromClientCallback callback, const(char)[] binaryFileName, const(char)[] licensePath, const(char)[] buildDir)
 {
+    // Note: this function is called by D, so it reuses the runtime from dplug-build!
+
     import core.stdc.stdio;
     import std.string: toStringz;
     import std.string: fromStringz;
@@ -158,6 +160,7 @@ void GenerateManifestFromClientInternal(alias ClientClass)(generateManifestFromC
     Parameter[] params = client.params();
     string manifest = "";
 
+    //  BUG: this line crashes on Windows
     string baseURI = cast(string)(pluginInfo.pluginHomepage ~ ":" ~ pluginInfo.pluginUniqueID);
     manifest ~= "@prefix lv2:  <http://lv2plug.in/ns/lv2core#> .\n";
     manifest ~= "@prefix atom: <http://lv2plug.in/ns/ext/atom#> .\n";

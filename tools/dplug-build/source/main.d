@@ -479,6 +479,7 @@ int main(string[] args)
                         warning("Can't extract ports from a 32-bit LV2 plug-in when dplug-build is built as a 64-bit program.\n");
                     else
                     {
+                        cwritefln("*** Extract LV2 manifest from binary...".white);
                         SharedLib lib;
                         lib.load(binaryPath);
                         if (!lib.hasSymbol("GenerateManifestFromClient"))
@@ -498,7 +499,7 @@ int main(string[] args)
                         ptrGenerateManifest(&processManifest, binaryName, plugin.licensePath, outputDir);
                         lib.unload();
 
-                        cwritefln("    => Extracted LV2 manifest from binary".green);
+                        cwritefln(" => OK".green);
                         cwriteln();
                     }
                 }
