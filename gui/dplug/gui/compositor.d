@@ -215,7 +215,7 @@ nothrow @nogc:
                     ];
 
                     enum float totalWeights = (1.0f - (fallOff ^^ 11)) / (1.0f - fallOff) - 1;
-                    enum float invTotalWeights = 1 / totalWeights;
+                    enum float invTotalWeights = 1 / (1.7f * totalWeights);
 
                     float lightPassed = 0.0f;
 
@@ -224,30 +224,40 @@ nothrow @nogc:
                     int depthHere = depthPatch[1][1];
                     for (int sample = 1; sample < samples; ++sample)
                     {
-                        int x = i + sample;
-                        if (x >= w)
-                            x = w - 1;
+                        int x1 = i + sample;
+                        if (x1 >= w)
+                            x1 = w - 1;
+                        int x2 = i - sample;
+                        if (x2 < 0)
+                            x2 = 0;
                         int y = j - sample;
                         if (y < 0)
                             y = 0;
-                        int z = depthHere + sample;
-                        int diff = z - depthLevel0.scanline(y)[x].l; // FUTURE: use pointer offsets here instead of opIndex
+                        int z = depthHere + sample; // ???
+                        L16* scan = depthLevel0.scanline(y).ptr;
+                        int diff1 = z - scan[x1].l; // FUTURE: use pointer offsets here instead of opIndex
+                        int diff2 = z - scan[x2].l;
 
-                        float contrib = void;
-                        if (diff >= 0)
-                            contrib = 1;
-                        else if (diff < -15360)
-                        {
-                            contrib = 0;
-                            continue;
-                        }
+                        float contrib1 = void, 
+                              contrib2 = void;
+
+                        static immutable float divider15360 = 1.0f / 15360;
+
+                        if (diff1 >= 0)
+                            contrib1 = 1;
+                        else if (diff1 < -15360)
+                            contrib1 = 0;
                         else
-                        {
-                            static immutable float divider15360 = 1.0f / 15360;
-                            contrib = (diff + 15360) * divider15360;
-                        }
+                            contrib1 = (diff1 + 15360) * divider15360;
 
-                        lightPassed += contrib * weights[sample];
+                        if (diff2 >= 0)
+                            contrib2 = 1;
+                        else if (diff2 < -15360)
+                            contrib2 = 0;
+                        else
+                            contrib2 = (diff2 + 15360) * divider15360;
+
+                        lightPassed += (contrib1 + contrib2 * 0.7f) * weights[sample];
                     }
                     color += baseColor * light1Color * (lightPassed * invTotalWeights);
                 }
