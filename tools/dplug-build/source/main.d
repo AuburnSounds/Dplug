@@ -588,7 +588,7 @@ int main(string[] args)
                         // Simply copy the file
                         fileMove(plugin.dubOutputFileName, path ~ "/" ~ plugin.prettyName ~ ".vst3");
                     }
-                    else if (configIsVST2(config)) // VST2 special case, needs to be named .vst
+                    else if (configIsVST(config)) // VST2 special case
                     {
                         // Simply copy the file
                         fileMove(plugin.dubOutputFileName, path ~ "/" ~ plugin.prettyName ~ ".so");
