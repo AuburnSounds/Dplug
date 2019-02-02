@@ -5,11 +5,9 @@ License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 import std.math;
 import dplug.core, dplug.client, dplug.vst;
 
-// This create the DLL entry point
-mixin(DLLEntryPoint!());
-
-// This create the VST entry point
-mixin(VSTEntryPoint!MSEncode);
+// This define entry points for plugin formats, 
+// depending on which version identifiers are defined.
+mixin(pluginEntryPoints!MSEncode);
 
 enum : int
 {

@@ -12,31 +12,9 @@ import dplug.core,
 
 import gui;
 
-mixin(DLLEntryPoint!());
-
-version(VST)
-{
-    import dplug.vst;
-    mixin(VSTEntryPoint!DistortClient);
-}
-
-version(AU)
-{
-    import dplug.au;
-    mixin(AUEntryPoint!DistortClient);
-}
-
-version(VST3)
-{
-    import dplug.vst3;
-    mixin(VST3EntryPoint!DistortClient);
-}
-
-version(LV2)
-{
-    import dplug.lv2;
-    mixin(LV2EntryPoint!DistortClient);
-}
+// This define entry points for plugin formats, 
+// depending on which version identifiers are defined.
+mixin(pluginEntryPoints!DistortClient);
 
 enum : int
 {
@@ -45,7 +23,6 @@ enum : int
     paramOutput,
     paramOnOff,
 }
-
 
 /// Example mono/stereo distortion plugin.
 final class DistortClient : dplug.client.Client

@@ -13,25 +13,9 @@ import dplug.core,
 
 import gui;
 
-mixin(DLLEntryPoint!());
-
-version(VST)
-{
-    import dplug.vst;
-    mixin(VSTEntryPoint!ClipitClient);
-}
-
-version(AU)
-{
-    import dplug.au;
-    mixin(AUEntryPoint!ClipitClient);
-}
-
-version(LV2)
-{
-    import dplug.lv2;
-    mixin(LV2EntryPoint!ClipitClient);
-}
+// This define entry points for plugin formats, 
+// depending on which version identifiers are defined.
+mixin(pluginEntryPoints!ClipitClient);
 
 enum : int
 {

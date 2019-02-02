@@ -8,11 +8,9 @@ import std.math;
 import dplug.core, dplug.client, dplug.vst;
 import synthesis;
 
-// This creates the DLL entry point
-mixin(DLLEntryPoint!());
-
-// This creates the VST entry point
-mixin(VSTEntryPoint!PolyAlias);
+// This define entry points for plugin formats, 
+// depending on which version identifiers are defined.
+mixin(pluginEntryPoints!PolyAlias);
 
 private
 {
