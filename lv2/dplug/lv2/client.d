@@ -164,6 +164,7 @@ nothrow:
     void run(uint32_t n_samples)
     {
         TimeInfo timeInfo;
+
         if(_callResetOnNextRun)
         {
             _callResetOnNextRun = false;
@@ -173,32 +174,56 @@ nothrow:
         uint32_t  offset = 0;
 
         // LV2_ATOM_SEQUENCE_FOREACH Macro from atom.util. Only used once so no need to write a template for it.
-        for(LV2_Atom_Event* ev = assumeNothrowNoGC(&lv2_atom_sequence_begin)(&(_midiInput.body)); 
-            !assumeNothrowNoGC(&lv2_atom_sequence_is_end)(&(this._midiInput).body, this._midiInput.atom.size, ev); 
-            ev = assumeNothrowNoGC(&lv2_atom_sequence_next)(ev))
+        for(LV2_Atom_Event* event = assumeNothrowNoGC(&lv2_atom_sequence_begin)(&(_midiInput.body)); 
+            !assumeNothrowNoGC(&lv2_atom_sequence_is_end)(&(this._midiInput).body, this._midiInput.atom.size, event); 
+            event = assumeNothrowNoGC(&lv2_atom_sequence_next)(event))
         {
-            if (ev.body.type == fURIDs.midiEvent) {
+            if (event.body.type == fURIDs.midiEvent) {
                 MidiMessage message;
-                const (uint8_t)* msg = cast(const (uint8_t)*)(ev + 1);
-                switch (assumeNothrowNoGC(&lv2_midi_message_type)(msg)) {
+                const (uint8_t)* msg = cast(const (uint8_t)*)(event + 1);
+                byte type = assumeNothrowNoGC(&lv2_midi_message_type)(msg);
+                switch (msg[0]) {
+                // message = makeMidiMessage(offset, 0, msg[0], msg[1]);
                 case LV2_MIDI_MSG_NOTE_ON:
-                    message = makeMidiMessageNoteOn(offset, 0, msg[0], msg[1]);
+                    message = makeMidiMessageNoteOn(offset, 0, _midiInput.data);
                     break;
                 case LV2_MIDI_MSG_NOTE_OFF:
-                    message = makeMidiMessageNoteOff(offset, 0, msg[0]);
+                    message = makeMidiMessageNoteOff(offset, 0, _midiInput.data);
                     break;
                 default: break;
                 }
                 _client.enqueueMIDIFromHost(message);
             }
 
-            if (ev.body.type == _atomBlank || ev.body.type == _atomObject)
+            if (event.body.type == fURIDs.atomBlank || event.body.type == fURIDs.atomObject)
             {
+                const LV2_Atom_Object* obj = cast(LV2_Atom_Object*)&event.body;
+                
+                if (obj.body.otype != fURIDs.timePosition)
+                    continue;
+
+                LV2_Atom* bar     = null;
+                LV2_Atom* barBeat = null;
+                LV2_Atom* beatUnit = null;
+                LV2_Atom* beatsPerBar = null;
+                LV2_Atom* beatsPerMinute = null;
                 LV2_Atom* frame = null;
+                LV2_Atom* speed = null;
+                LV2_Atom* ticksPerBeat = null;
+
+                assumeNothrowNoGC(&lv2_atom_object_get)(obj,
+                                   fURIDs.timeBar, &bar,
+                                   fURIDs.timeBarBeat, &barBeat,
+                                   fURIDs.timeBeatUnit, &beatUnit,
+                                   fURIDs.timeBeatsPerBar, &beatsPerBar,
+                                   fURIDs.timeBeatsPerMinute, &beatsPerMinute,
+                                   fURIDs.timeFrame, &frame,
+                                   fURIDs.timeSpeed, &speed,
+                                   fURIDs.timeTicksPerBeat, &ticksPerBeat,
+                                   0);
             }           
 
-        //     write_output(self, offset, ev.time.frames - offset);
-            // offset = cast(uint32_t)(ev.time.frames);
+            offset = cast(uint32_t)(event.time.frames);
         }
 
         _client.processAudioFromHost(_inputs, _outputs, n_samples, timeInfo);
