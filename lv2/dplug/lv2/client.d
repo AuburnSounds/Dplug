@@ -191,6 +191,7 @@ nothrow:
                     default: break;
                 }
                 _client.enqueueMIDIFromHost(message);
+                continue;
             }
 
             if (event.body.type == fURIDs.atomBlank || event.body.type == fURIDs.atomObject)

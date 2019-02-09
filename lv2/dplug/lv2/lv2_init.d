@@ -165,6 +165,7 @@ void GenerateManifestFromClientInternal(alias ClientClass)(generateManifestFromC
     manifest ~= "@prefix units: <http://lv2plug.in/ns/extensions/units#> .\n";
     manifest ~= "@prefix ui:    <http://lv2plug.in/ns/extensions/ui#>.\n";
     manifest ~= "@prefix bufsz:   <http://lv2plug.in/ns/ext/buf-size#> .\n";
+    manifest ~= "@prefix time: <http://lv2plug.in/ns/ext/time#> .\n";
     manifest ~= "@prefix eg: <http://example.org/> .\n\n";
 
     if(legalIOs.length > 0)
@@ -346,6 +347,7 @@ const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, b
         paramString ~= "        a lv2:InputPort , atom:AtomPort ;\n";
         paramString ~= "        atom:bufferType atom:Sequence ;\n";
         paramString ~= "        atom:supports midi:MidiEvent ;\n";
+        paramString ~= "        atom:supports time:Position ;\n";
         paramString ~= "        lv2:designation lv2:control ;\n";
         paramString ~= "        lv2:index " ~ to!string(params.length + legalIO.numInputChannels + legalIO.numOutputChannels) ~ ";\n";
         paramString ~= "        lv2:symbol \"midiinput\" ;\n";
