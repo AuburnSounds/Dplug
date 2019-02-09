@@ -180,17 +180,15 @@ nothrow:
         {
             if (event.body.type == fURIDs.midiEvent) {
                 MidiMessage message;
-                const (uint8_t)* msg = cast(const (uint8_t)*)(event + 1);
-                byte type = assumeNothrowNoGC(&lv2_midi_message_type)(msg);
-                switch (msg[0]) {
-                // message = makeMidiMessage(offset, 0, msg[0], msg[1]);
-                case LV2_MIDI_MSG_NOTE_ON:
-                    message = makeMidiMessageNoteOn(offset, 0, _midiInput.data);
-                    break;
-                case LV2_MIDI_MSG_NOTE_OFF:
-                    message = makeMidiMessageNoteOff(offset, 0, _midiInput.data);
-                    break;
-                default: break;
+                uint8_t* data = cast(uint8_t*)(event + 1);
+                switch(data[0]) {
+                    case LV2_MIDI_MSG_NOTE_ON:
+                        message = makeMidiMessageNoteOn(offset, 0, cast(int)data[1], cast(int)data[2]);
+                        break;
+                    case LV2_MIDI_MSG_NOTE_OFF:
+                        message = makeMidiMessageNoteOff(offset, 0, cast(int)data[1]);
+                        break;
+                    default: break;
                 }
                 _client.enqueueMIDIFromHost(message);
             }
@@ -370,6 +368,9 @@ struct URIDs {
     LV2_URID timeTicksPerBeat;
     LV2_URID timeFrame;
     LV2_URID timeSpeed;
+    LV2_URID noteOn;
+    LV2_URID noteOff;
+    LV2_URID velocity;
 
     this(LV2_URID_Map* uridMap) nothrow @nogc
     {
@@ -377,6 +378,9 @@ struct URIDs {
         atomObject = assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_ATOM__Object);
         atomSequence = assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_ATOM__Sequence);
         midiEvent = assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_MIDI__MidiEvent);
+        noteOn = assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_MIDI__NoteOn);
+        noteOff = assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_MIDI__NoteOff);
+        velocity = assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_MIDI__velocity);
         timePosition = assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_TIME__Position);
         timeBar = assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_TIME__bar);
     }
