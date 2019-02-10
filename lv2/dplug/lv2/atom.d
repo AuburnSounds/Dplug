@@ -80,9 +80,9 @@ extern(C) {
     */
     // #define LV2_ATOM_CONTENTS(type, atom) \
     //     ((void*)((uint8_t*)(atom) + sizeof(type)))
-    template LV2_ATOM_CONTENTS(alias type, alias atom)
+    void* LV2_ATOM_CONTENTS(alias type)(void* atom)
     {
-        auto LV2_ATOM_CONTENTS = (cast(void*)(cast(uint8_t*)(atom) + sizeof(type)));
+        return cast(void*)(cast(uint8_t*)(cast(void*)atom) + type.sizeof);
     }
 
     // /**

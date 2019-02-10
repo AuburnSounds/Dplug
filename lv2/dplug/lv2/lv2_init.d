@@ -46,6 +46,8 @@ import core.stdc.string;
 import core.stdc.stdint;
 
 import dplug.lv2.client;
+import dplug.lv2.urid;
+import dplug.lv2.options;
 
 extern(C) alias generateManifestFromClientCallback = void function(const(ubyte)* fileContents, size_t len, const(char)[] buildDir);
 
@@ -166,7 +168,9 @@ void GenerateManifestFromClientInternal(alias ClientClass)(generateManifestFromC
     manifest ~= "@prefix ui:    <http://lv2plug.in/ns/extensions/ui#>.\n";
     manifest ~= "@prefix bufsz:   <http://lv2plug.in/ns/ext/buf-size#> .\n";
     manifest ~= "@prefix time: <http://lv2plug.in/ns/ext/time#> .\n";
-    manifest ~= "@prefix eg: <http://example.org/> .\n\n";
+    manifest ~= "@prefix opts:  <http://lv2plug.in/ns/ext/options#> .\n";
+    manifest ~= "@prefix eg: <" ~ pluginInfo.pluginHomepage ~ "> .\n\n";
+    
 
     if(legalIOs.length > 0)
     {
@@ -208,6 +212,11 @@ void GenerateManifestFromClientInternal(alias ClientClass)(generateManifestFromC
     {
         manifest ~= "\n<" ~ baseURI~ "#ui>\n";
         manifest ~= "    a ui:X11UI;\n";
+        manifest ~= "    lv2:optionalFeature ui:noUserResize ,\n";
+        manifest ~= "                        ui:resize ,\n";
+        manifest ~= "                        ui:touch ;\n";
+        manifest ~= "    lv2:requiredFeature <" ~ LV2_OPTIONS__options ~ "> ,\n";
+        manifest ~= "                        <" ~ LV2_URID__map ~ "> ;\n";
         manifest ~= "    ui:binary <"  ~ binaryFileName[0..$].replace(" ", "%20") ~ "> .\n";
     }
     
@@ -290,7 +299,7 @@ const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, b
 {
     import std.conv: to;
     import std.string: replace;
-    import std.regex;
+    import std.regex: regex, replaceAll;
     import std.uni: toLower;
 
     auto re = regex(r"(\s+|@|&|'|\(|\)|<|>|#|:)");
@@ -341,20 +350,20 @@ const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, b
             paramString ~= " . \n";
     }
 
+    paramString ~= "    [ \n";
+    paramString ~= "        a lv2:InputPort , atom:AtomPort ;\n";
+    paramString ~= "        atom:bufferType atom:Sequence ;\n";
+    
     if(hasMIDIInput)
-    {
-        paramString ~= "    [ \n";
-        paramString ~= "        a lv2:InputPort , atom:AtomPort ;\n";
-        paramString ~= "        atom:bufferType atom:Sequence ;\n";
         paramString ~= "        atom:supports midi:MidiEvent ;\n";
-        paramString ~= "        atom:supports time:Position ;\n";
-        paramString ~= "        lv2:designation lv2:control ;\n";
-        paramString ~= "        lv2:index " ~ to!string(params.length + legalIO.numInputChannels + legalIO.numOutputChannels) ~ ";\n";
-        paramString ~= "        lv2:symbol \"midiinput\" ;\n";
-        paramString ~= "        lv2:name \"MIDI Input\"\n";
-        paramString ~= "    ]";
-        paramString ~= " . \n";
-    }
+
+    paramString ~= "        atom:supports time:Position ;\n";
+    paramString ~= "        lv2:designation lv2:control ;\n";
+    paramString ~= "        lv2:index " ~ to!string(params.length + legalIO.numInputChannels + legalIO.numOutputChannels) ~ ";\n";
+    paramString ~= "        lv2:symbol \"midiinput\" ;\n";
+    paramString ~= "        lv2:name \"MIDI Input\"\n";
+    paramString ~= "    ]";
+    paramString ~= " . \n";
 
     return paramString;
 }

@@ -89,6 +89,11 @@ nothrow:
                 _uridMap = cast(LV2_URID_Map*)features[i].data;
         }
 
+        for(int i = 0; features[i] != null; ++i)
+        {
+
+        }
+
         // Retrieve max buffer size from options
         for (int i=0; _options[i].key != 0; ++i)
         {
@@ -196,30 +201,30 @@ nothrow:
 
             if (event.body.type == fURIDs.atomBlank || event.body.type == fURIDs.atomObject)
             {
-                const LV2_Atom_Object* obj = cast(LV2_Atom_Object*)&event.body;
+                LV2_Atom_Object* obj = cast(LV2_Atom_Object*)&event.body;
                 
                 if (obj.body.otype != fURIDs.timePosition)
                     continue;
 
-                LV2_Atom* bar     = null;
-                LV2_Atom* barBeat = null;
-                LV2_Atom* beatUnit = null;
-                LV2_Atom* beatsPerBar = null;
                 LV2_Atom* beatsPerMinute = null;
                 LV2_Atom* frame = null;
                 LV2_Atom* speed = null;
-                LV2_Atom* ticksPerBeat = null;
 
                 assumeNothrowNoGC(&lv2_atom_object_get)(obj,
-                                   fURIDs.timeBar, &bar,
-                                   fURIDs.timeBarBeat, &barBeat,
-                                   fURIDs.timeBeatUnit, &beatUnit,
-                                   fURIDs.timeBeatsPerBar, &beatsPerBar,
                                    fURIDs.timeBeatsPerMinute, &beatsPerMinute,
                                    fURIDs.timeFrame, &frame,
                                    fURIDs.timeSpeed, &speed,
-                                   fURIDs.timeTicksPerBeat, &ticksPerBeat,
                                    0);
+
+                if(beatsPerMinute != null) {
+                    timeInfo.tempo = cast(double)LV2_ATOM_CONTENTS!(LV2_Atom_Double)(beatsPerMinute);
+                }
+                if(frame != null) {
+                    timeInfo.timeInSamples = cast(long)LV2_ATOM_CONTENTS!(LV2_Atom_Double)(frame);
+                }
+                if(speed != null) {
+                    timeInfo.hostIsPlaying = cast(double)LV2_ATOM_CONTENTS!(LV2_Atom_Double)(speed) > 0.0f;
+                }
             }           
 
             offset = cast(uint32_t)(event.time.frames);
@@ -361,17 +366,9 @@ struct URIDs {
     LV2_URID atomSequence;
     LV2_URID midiEvent;
     LV2_URID timePosition;
-    LV2_URID timeBar;
-    LV2_URID timeBarBeat;
-    LV2_URID timeBeatUnit;
-    LV2_URID timeBeatsPerBar;
-    LV2_URID timeBeatsPerMinute;
-    LV2_URID timeTicksPerBeat;
     LV2_URID timeFrame;
+    LV2_URID timeBeatsPerMinute;
     LV2_URID timeSpeed;
-    LV2_URID noteOn;
-    LV2_URID noteOff;
-    LV2_URID velocity;
 
     this(LV2_URID_Map* uridMap) nothrow @nogc
     {
@@ -379,10 +376,9 @@ struct URIDs {
         atomObject = assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_ATOM__Object);
         atomSequence = assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_ATOM__Sequence);
         midiEvent = assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_MIDI__MidiEvent);
-        noteOn = assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_MIDI__NoteOn);
-        noteOff = assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_MIDI__NoteOff);
-        velocity = assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_MIDI__velocity);
         timePosition = assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_TIME__Position);
-        timeBar = assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_TIME__bar);
+        timeFrame = assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_TIME__frame);
+        timeBeatsPerMinute = assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_TIME__beatsPerMinute);
+        timeSpeed = assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_TIME__speed);
     }
 }
