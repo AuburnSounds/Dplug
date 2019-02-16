@@ -83,7 +83,8 @@
             "importPaths": [ "graphics" ],
             "dependencies": {
                 "dplug:core": "*",
-                "gfm:math": "~>6.0"
+                "gfm:math": "~>6.0",
+                "intel-intrinsics": "~>1.0"
             }
         },
         {

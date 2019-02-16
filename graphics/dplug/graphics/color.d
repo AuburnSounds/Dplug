@@ -17,6 +17,8 @@ import std.traits;
 import std.math;
 import std.algorithm.comparison : min, max;
 
+import inteli.emmintrin;
+
 import dplug.core.math;
 
 
@@ -503,14 +505,40 @@ deprecated("use blendColor instead") ubyte blend(ubyte f, ubyte b, ubyte a) pure
 
 RGBA blendColor(RGBA fg, RGBA bg, ubyte alpha) pure nothrow @nogc
 {
-    // PERF should be a lot to optimize there
     ubyte invAlpha = cast(ubyte)(~cast(int)alpha);
-    RGBA c = void;
-    c.r = cast(ubyte) ( ( (fg.r * alpha) + (bg.r * invAlpha)  ) / ubyte.max );
-    c.g = cast(ubyte) ( ( (fg.g * alpha) + (bg.g * invAlpha)  ) / ubyte.max );
-    c.b = cast(ubyte) ( ( (fg.b * alpha) + (bg.b * invAlpha)  ) / ubyte.max );
-    c.a = cast(ubyte) ( ( (fg.a * alpha) + (bg.a * invAlpha)  ) / ubyte.max );
-    return c;
+    version(LDC)
+    {
+        __m128i alphaMask = _mm_set1_epi32( (invAlpha << 16) | alpha ); // [ alpha invAlpha... (4x)]
+        __m128i mmfg = _mm_cvtsi32_si128( *cast(int*)(&fg) );
+        __m128i mmbg = _mm_cvtsi32_si128( *cast(int*)(&bg) );
+        __m128i zero = _mm_setzero_si128();
+        __m128i colorMask = _mm_unpacklo_epi8(mmfg, mmbg); // [fg.r bg.r fg.g bg.g fg.b bg.b fg.a bg.a 0 (8x) ]
+        colorMask = _mm_unpacklo_epi8(colorMask, zero); // [fg.r bg.r fg.g bg.g fg.b bg.b fg.a bg.a ]
+        __m128i product = _mm_madd_epi16(colorMask, alphaMask); // [ fg[i]*alpha+bg[i]*invAlpha (4x) ]
+
+        // To divide a ushort by 255, LLVM suggests to
+        // * sign multiply by 32897
+        // * right-shift logically by 23
+        // Thanks https://godbolt.org/
+        product *= _mm_set1_epi32(32897);
+        product = _mm_srli_epi32(product, 23);
+        __m128i c = _mm_packs_epi32(product, zero);
+        c = _mm_packus_epi16(c, zero);
+        RGBA result = void;
+        *cast(int*)(&result) = c[0];
+        return result;
+    }
+    else
+    {
+        // PERF should be a lot to optimize there
+        
+        RGBA c = void;
+        c.r = cast(ubyte) ( ( (fg.r * alpha) + (bg.r * invAlpha)  ) / ubyte.max );
+        c.g = cast(ubyte) ( ( (fg.g * alpha) + (bg.g * invAlpha)  ) / ubyte.max );
+        c.b = cast(ubyte) ( ( (fg.b * alpha) + (bg.b * invAlpha)  ) / ubyte.max );
+        c.a = cast(ubyte) ( ( (fg.a * alpha) + (bg.a * invAlpha)  ) / ubyte.max );
+        return c;
+    }
 }
 
 L16 blendColor(L16 fg, L16 bg, ushort alpha) pure nothrow @nogc
