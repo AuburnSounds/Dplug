@@ -84,7 +84,7 @@ nothrow:
                 {
                     ubyte alpha = input[i].a;
 
-                    RGBA color = RGBA.op!q{.blend(a, b, c)} (input[i], output[i], alpha);
+                    RGBA color = blendColor(input[i], output[i], alpha);
                     output[i] = color;
                 }
             }

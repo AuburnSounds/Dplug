@@ -72,7 +72,7 @@ nothrow:
                 for(int i = 0; i < w; ++i)
                 {
                     ubyte alpha = input[i].a;
-                    RGBA color = RGBA.op!q{.blend(a, b, c)}(input[i], output[i], alpha);
+                    RGBA color = blendColor(input[i], output[i], alpha);
 
                     // emissive has to be multiplied by alpha, and added to the default background emissive
                     color.a = cast(ubyte)( (128 + defaultEmissive * 256 + (emissive * color.a) ) >> 8);

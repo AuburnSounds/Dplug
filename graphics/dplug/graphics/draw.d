@@ -487,7 +487,7 @@ private template softRoundShape(bool RING)
 							alpha =  alphafunc(cast(frac)fixdiv(frs-fr0s, fr10));
 						else
 							alpha = cast(ubyte)(~cast(int)alphafunc(cast(frac)fixdiv(frs-fr1s, fr21)));
-						row[cx] = COLOR.op!q{.blend(a, b, c)}(color, row[cx], alpha);
+						row[cx] = blendColor(color, row[cx], alpha);
 					}
 				}
 				else
@@ -498,7 +498,7 @@ private template softRoundShape(bool RING)
 					if (frs<fr2s)
 					{
 						frac alpha = cast(ubyte)(~cast(int)alphafunc(cast(frac)fixdiv(frs-fr1s, fr21)));
-						row[cx] = COLOR.op!q{.blend(a, b, c)}(color, row[cx], alpha);
+						row[cx] = blendColor(color, row[cx], alpha);
 					}
 				}
 			}
@@ -533,7 +533,7 @@ template aaPutPixel(bool CHECKED=true, bool USE_ALPHA=true)
 
 			COLOR* p = v.pixelPtr(x, y);
 			static if (USE_ALPHA) f = fracmul(f, cast(frac)alpha);
-			*p = COLOR.op!q{.blend(a, b, c)}(color, *p, f);
+			*p = blendColor(color, *p, f);
 		}
 
 		fix fx = tofix(x);
@@ -576,7 +576,7 @@ void hline(bool CHECKED=true, V, COLOR, frac)(auto ref V v, int x1, int x2, int 
 		v.scanline(y)[x1..x2] = color;
 	else
 		foreach (ref p; v.scanline(y)[x1..x2])
-			p = COLOR.op!q{.blend(a, b, c)}(color, p, alpha);
+			p = blendColor(color, p, alpha);
 }
 
 void vline(bool CHECKED=true, V, COLOR, frac)(auto ref V v, int x, int y1, int y2, COLOR color, frac alpha)
@@ -594,7 +594,7 @@ void vline(bool CHECKED=true, V, COLOR, frac)(auto ref V v, int x, int y1, int y
 		foreach (y; y1..y2)
 		{
 			auto p = v.pixelPtr(x, y);
-			*p = COLOR.op!q{.blend(a, b, c)}(color, *p, alpha);
+			*p = blendColor(color, *p, alpha);
 		}
 }
 

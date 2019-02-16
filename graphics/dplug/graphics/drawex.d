@@ -129,7 +129,7 @@ void aaFillSector(V, COLOR)(auto ref V v, float x, float y, float r0, float r1, 
                             alpha2 *= (a1 - a)/aTransition;
 
                         auto p = v.pixelPtr(px, py);
-                        *p = COLOR.op!q{.blend(a, b, c)}(c, *p, cast(ChannelType)(0.5f + alpha2 * ChannelType.max));
+                        *p = blendColor(c, *p, cast(ChannelType)(0.5f + alpha2 * ChannelType.max));
                     }
                     else
                     {
@@ -144,7 +144,7 @@ void aaFillSector(V, COLOR)(auto ref V v, float x, float y, float r0, float r1, 
                                 alpha2 *= (a1 - a)/aTransition;
 
                             auto p = v.pixelPtr(px, py);
-                            *p = COLOR.op!q{.blend(a, b, c)}(c, *p, cast(ChannelType)(0.5f + alpha2 * ChannelType.max));
+                            *p = blendColor(c, *p, cast(ChannelType)(0.5f + alpha2 * ChannelType.max));
                         }
                     }
                 }
@@ -171,7 +171,7 @@ void horizontalSlope(float curvature = 1.0f, V, COLOR)(auto ref V v, box2i rect,
         static if (curvature != 1.0f)
             fAlpha = fAlpha ^^ curvature;
         ChannelType alpha = cast(ChannelType)( 0.5f + ChannelType.max * fAlpha );  // Not being generic here
-        COLOR c = COLOR.op!q{.blend(a, b, c)}(c1, c0, alpha); // warning .blend is confusing, c1 comes first
+        COLOR c = blendColor(c1, c0, alpha); // warning .blend is confusing, c1 comes first
         vline(v, px, inter.min.y, inter.max.y, c);
     }
 }
@@ -196,7 +196,7 @@ if (isWritableView!V && is(COLOR : ViewColor!V))
         static if (curvature != 1.0f)
             fAlpha = fAlpha ^^ curvature;
         ChannelType alpha = cast(ChannelType)( 0.5f + ChannelType.max * fAlpha );  // Not being generic here
-        COLOR c = COLOR.op!q{.blend(a, b, c)}(c1, c0, alpha); // warning .blend is confusing, c1 comes first
+        COLOR c = blendColor(c1, c0, alpha); // warning .blend is confusing, c1 comes first
         hline(v, inter.min.x, inter.max.x, py, c);
     }
 }
@@ -234,7 +234,7 @@ if (isWritableView!V && is(COLOR : ViewColor!V))
             float frs = dx*dx + dy*dy;
 
             if (frs<fr1s)
-                row[cx] = COLOR.op!q{.blend(a, b, c)}(color, row[cx], cast(ChannelType)(0.5f + ChannelType.max * globalAlpha));
+                row[cx] = blendColor(color, row[cx], cast(ChannelType)(0.5f + ChannelType.max * globalAlpha));
             else
             {
                 if (frs<fr2s)
@@ -242,7 +242,7 @@ if (isWritableView!V && is(COLOR : ViewColor!V))
                     float alpha = (frs-fr1s) * invfr21;
                     static if (curvature != 1.0f)
                         alpha = alpha ^^ curvature;
-                    row[cx] = COLOR.op!q{.blend(a, b, c)}(color, row[cx], cast(ChannelType)(0.5f + ChannelType.max * (1-alpha) * globalAlpha));
+                    row[cx] = blendColor(color, row[cx], cast(ChannelType)(0.5f + ChannelType.max * (1-alpha) * globalAlpha));
                 }
             }
         }
@@ -284,7 +284,7 @@ if (isWritableView!V && is(COLOR : ViewColor!V))
             float frs = dx*dx + dy*dy;
 
             if (frs<fr1s)
-                row[cx] = COLOR.op!q{.blend(a, b, c)}(color, row[cx], cast(ChannelType)(0.5f + ChannelType.max * globalAlpha));
+                row[cx] = blendColor(color, row[cx], cast(ChannelType)(0.5f + ChannelType.max * globalAlpha));
             else
             {
                 if (frs<fr2s)
@@ -292,7 +292,7 @@ if (isWritableView!V && is(COLOR : ViewColor!V))
                     float alpha = (frs-fr1s) * invfr21;
                     static if (curvature != 1.0f)
                         alpha = alpha ^^ curvature;
-                    row[cx] = COLOR.op!q{.blend(a, b, c)}(color, row[cx], cast(ChannelType)(0.5f + ChannelType.max * (1-alpha) * globalAlpha));
+                    row[cx] = blendColor(color, row[cx], cast(ChannelType)(0.5f + ChannelType.max * (1-alpha) * globalAlpha));
                 }
             }
         }
@@ -346,7 +346,7 @@ if (isWritableView!V && is(COLOR : ViewColor!V))
 
                     static if (curvature != 1.0f)
                         alpha = alpha ^^ curvature;
-                    row[cx] = COLOR.op!q{.blend(a, b, c)}(color, row[cx], cast(ChannelType)(0.5f + ChannelType.max * (1-alpha) * globalAlpha));
+                    row[cx] = blendColor(color, row[cx], cast(ChannelType)(0.5f + ChannelType.max * (1-alpha) * globalAlpha));
                 }
             }
         }
@@ -430,7 +430,7 @@ if (isWritableView!V && is(COLOR : ViewColor!V))
             COLOR[] scan = v.scanline(y);
             foreach (x; x1..x2)
             {
-                scan[x] = COLOR.op!q{.blend(a, b, c)}(b, scan[x], alpha);
+                scan[x] = blendColor(b, scan[x], alpha);
             }
         }
     }
@@ -444,7 +444,7 @@ void aaPutPixelFloat(bool CHECKED=true, V, COLOR, A)(auto ref V v, int x, int y,
             return;
 
     COLOR* p = v.pixelPtr(x, y);
-    *p = COLOR.op!q{.blend(a, b, c)}(color, *p, alpha);
+    *p = blendColor(color, *p, alpha);
 }
 
 

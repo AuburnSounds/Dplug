@@ -194,7 +194,7 @@ struct Color(FieldTuple...)
 	}
 
 	/// Alpha-blend two colors.
-	static typeof(this) blend()(typeof(this) c0, typeof(this) c1)
+	deprecated("use blendColor instead") static typeof(this) blend()(typeof(this) c0, typeof(this) c1)
 		if (is(typeof(a)))
 	{
 		alias A = typeof(c0.a);
@@ -303,7 +303,6 @@ struct Color(FieldTuple...)
 
 		typeof(this) r;
 		foreach (i, f; r.tupleof)
-			static if(r.tupleof[i].stringof != "r.x") // skip padding
 			{
 				mixin(genVars(r.tupleof[i].stringof[2..$]));
 				r.tupleof[i] = mixin(expr);
@@ -491,12 +490,33 @@ unittest
 
 // ***************************************************************************
 
-ushort blend(ushort f, ushort b, ushort a) pure nothrow @nogc
+deprecated("use blendColor instead") ushort blend(ushort f, ushort b, ushort a) pure nothrow @nogc
 {
     return cast(ushort) ( ((f*a) + (b*cast(ushort)(~cast(int)a))) / ushort.max );
 }
 
-ubyte blend(ubyte f, ubyte b, ubyte a) pure nothrow @nogc
+deprecated("use blendColor instead") ubyte blend(ubyte f, ubyte b, ubyte a) pure nothrow @nogc
 {
     return cast(ubyte) ( ((f*a) + (b*cast(ubyte)(~cast(int)a))) / ubyte.max );
 }
+
+
+RGBA blendColor(RGBA fg, RGBA bg, ubyte alpha) pure nothrow @nogc
+{
+    // PERF should be a lot to optimize there
+    ubyte invAlpha = cast(ubyte)(~cast(int)alpha);
+    RGBA c = void;
+    c.r = cast(ubyte) ( ( (fg.r * alpha) + (bg.r * invAlpha)  ) / ubyte.max );
+    c.g = cast(ubyte) ( ( (fg.g * alpha) + (bg.g * invAlpha)  ) / ubyte.max );
+    c.b = cast(ubyte) ( ( (fg.b * alpha) + (bg.b * invAlpha)  ) / ubyte.max );
+    c.a = cast(ubyte) ( ( (fg.a * alpha) + (bg.a * invAlpha)  ) / ubyte.max );
+    return c;
+}
+
+L16 blendColor(L16 fg, L16 bg, ushort alpha) pure nothrow @nogc
+{
+    ushort v = cast(ushort) ( ((fg.l * alpha) + (bg.l * cast(ushort)(~cast(int)alpha))) / ushort.max );
+    return L16(v);
+}
+
+
