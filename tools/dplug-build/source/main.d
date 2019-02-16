@@ -237,7 +237,7 @@ int main(string[] args)
         auto oldpath = environment["PATH"];
 
         // Fix Issue #328
-        // Setting this envvar to a non-existing path forces LDC >= 1.13 to 
+        // Setting this envvar to a non-existing path forces LDC >= 1.13 to
         // auto-detect a version of Visual Studio, like it was before.
         // This avoids the mingw linker, which breaks static linking the C runtime.
         environment["LDC_VSDIR"] = "a-non-existing-path";
@@ -486,7 +486,7 @@ int main(string[] args)
                             throw new Exception("Couldn't find the symbol ExtractPortConfiguration in the plug-in");
 
                         // Note: this is duplicated in dplug:lv2 in lv2_init.d
-                        alias generateManifestFromClientCallback = extern(C) void function(const(ubyte)* fileContents, size_t len, const(char)[] path); 
+                        alias generateManifestFromClientCallback = extern(C) void function(const(ubyte)* fileContents, size_t len, const(char)[] path);
                         alias generateManifest = extern(C) void function(generateManifestFromClientCallback, const(char)[] binaryFileName, const(char)[] licensePath, const(char)[] buildDir);
 
                         static extern(C) void processManifest(const(ubyte*) fileContents, size_t len, const(char)[] path)
@@ -791,7 +791,7 @@ int main(string[] args)
                         string cmd = format("pkgbuild%s%s --install-location %s --identifier %s --version %s --component %s %s",
                             signStr,
                             quietStr,
-                            installDir,
+                            escapeShellArgument(installDir),
                             pkgIdentifier,
                             plugin.publicVersionString,
                             escapeShellArgument(bundleDir),
