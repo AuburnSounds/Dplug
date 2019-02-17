@@ -520,7 +520,7 @@ RGBA blendColor(RGBA fg, RGBA bg, ubyte alpha) pure nothrow @nogc
         // * sign multiply by 32897
         // * right-shift logically by 23
         // Thanks https://godbolt.org/
-        product *= _mm_set1_epi32(32897);
+        product *= _mm_set1_epi32(32897); // PERF: this leads to inefficient code with several pmul
         product = _mm_srli_epi32(product, 23);
         __m128i c = _mm_packs_epi32(product, zero);
         c = _mm_packus_epi16(c, zero);
