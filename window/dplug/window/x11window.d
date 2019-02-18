@@ -212,6 +212,7 @@ public:
 
             _graphicImage = XCreateImage(_display, _visual, depth, ZPixmap, 0, cast(char*)_bufferData.ptr, width, height, 32, 0);
 
+            // PERF: there is no reason to do reordering here, since pixels can be requested to be BGRA8 in the onDraw call
             size_t i;
             foreach(y; 0 .. wfb.h)
             {
@@ -228,6 +229,7 @@ public:
         }
         else
         {
+            // PERF: there is no reason to do reordering here, since pixels can be requested to be BGRA8 in the onDraw call
             foreach(box2i area; areasToRedraw)
             {
                 foreach(y; area.min.y .. area.max.y)

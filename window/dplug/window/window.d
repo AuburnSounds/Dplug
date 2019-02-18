@@ -154,6 +154,8 @@ nothrow @nogc:
     /// recomputeDirtyAreas() MUST have been called before this is called.
     /// The pixel format cannot change over the lifetime of the window.
     ///
+    /// `onDraw` guarantees the pixels to be in the format requested by `pf`, and it also
+    /// guarantees that the alpha channel will be filled with 255.
     void onDraw(WindowPixelFormat pf);
 
     /// The drawing area size has changed.

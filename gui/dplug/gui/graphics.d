@@ -763,18 +763,22 @@ protected:
         final switch(pf)
         {
             case WindowPixelFormat.RGBA8:
-                break; // nothing to do
+                foreach(rect; _rectsToDisplayDisjointed[])
+                {
+                    shuffleComponentsRGBA8ToRGBA8AndForceAlphaTo255(renderedRef.cropImageRef(rect));
+                }
+                break;
 
             case WindowPixelFormat.BGRA8:
                 foreach(rect; _rectsToDisplayDisjointed[])
                 {
-                    shuffleComponentsRGBA8ToBGRA8(renderedRef.cropImageRef(rect));
+                    shuffleComponentsRGBA8ToBGRA8AndForceAlphaTo255(renderedRef.cropImageRef(rect));
                 }
                 break;
             case WindowPixelFormat.ARGB8:
                 foreach(rect; _rectsToDisplayDisjointed[])
                 {
-                    shuffleComponentsRGBA8ToARGB8(renderedRef.cropImageRef(rect));
+                    shuffleComponentsRGBA8ToARGB8AndForceAlphaTo255(renderedRef.cropImageRef(rect));
                 }
                 break;
         }   
@@ -851,7 +855,7 @@ nothrow:
     int times = 0;
 }
 
-void shuffleComponentsRGBA8ToARGB8(ImageRef!RGBA image) pure nothrow @nogc
+void shuffleComponentsRGBA8ToARGB8AndForceAlphaTo255(ImageRef!RGBA image) pure nothrow @nogc
 {
     immutable int w = image.w;
     immutable int h = image.h;
@@ -863,6 +867,7 @@ void shuffleComponentsRGBA8ToARGB8(ImageRef!RGBA image) pure nothrow @nogc
         for( ; i + 3 < w; i += 4)
         {
             __m128i inputBytes = _mm_loadu_si128(cast(__m128i*)(&scan[4*i]));
+            inputBytes = _mm_or_si128(inputBytes, _mm_set1_epi32(0xff000000));
 
             version(LDC)
             {
@@ -894,8 +899,7 @@ void shuffleComponentsRGBA8ToARGB8(ImageRef!RGBA image) pure nothrow @nogc
             ubyte r = scan[4*i];
             ubyte g = scan[4*i+1];
             ubyte b = scan[4*i+2];
-            ubyte a = scan[4*i+3];
-            scan[4*i] = a;
+            scan[4*i] = 255;
             scan[4*i+1] = r;
             scan[4*i+2] = g;
             scan[4*i+3] = b;
@@ -903,7 +907,7 @@ void shuffleComponentsRGBA8ToARGB8(ImageRef!RGBA image) pure nothrow @nogc
     }
 }
 
-void shuffleComponentsRGBA8ToBGRA8(ImageRef!RGBA image) pure nothrow @nogc
+void shuffleComponentsRGBA8ToBGRA8AndForceAlphaTo255(ImageRef!RGBA image) pure nothrow @nogc
 {
     immutable int w = image.w;
     immutable int h = image.h;
@@ -915,6 +919,7 @@ void shuffleComponentsRGBA8ToBGRA8(ImageRef!RGBA image) pure nothrow @nogc
         for( ; i + 3 < w; i += 4)
         {
             __m128i inputBytes = _mm_loadu_si128(cast(__m128i*)(&scan[4*i]));
+            inputBytes = _mm_or_si128(inputBytes, _mm_set1_epi32(0xff000000));
 
             version(LDC)
             {
@@ -947,11 +952,34 @@ void shuffleComponentsRGBA8ToBGRA8(ImageRef!RGBA image) pure nothrow @nogc
             ubyte r = scan[4*i];
             ubyte g = scan[4*i+1];
             ubyte b = scan[4*i+2];
-            ubyte a = scan[4*i+3];
             scan[4*i] = b;
             scan[4*i+1] = g;
             scan[4*i+2] = r;
-            scan[4*i+3] = a;
+            scan[4*i+3] = 255;
+        }
+    }
+}
+
+void shuffleComponentsRGBA8ToRGBA8AndForceAlphaTo255(ImageRef!RGBA image) pure nothrow @nogc
+{
+    immutable int w = image.w;
+    immutable int h = image.h;
+    for (int j = 0; j < h; ++j)
+    {
+        ubyte* scan = cast(ubyte*)image.scanline(j).ptr;
+
+        int i = 0;
+        for( ; i + 3 < w; i += 4)
+        {
+            __m128i inputBytes = _mm_loadu_si128(cast(__m128i*)(&scan[4*i]));
+            inputBytes = _mm_or_si128(inputBytes, _mm_set1_epi32(0xff000000));
+            // No reordering to do
+            _mm_storeu_si128(cast(__m128i*)(&scan[4*i]), inputBytes);
+        }
+
+        for(; i < w; i ++)
+        {
+            scan[4*i+3] = 255;
         }
     }
 }
