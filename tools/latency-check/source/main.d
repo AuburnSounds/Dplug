@@ -14,14 +14,15 @@ import waved;
 void usage()
 {
     writeln("Usage:");
-    writeln("        latency-check <plugin-file>");
+    writeln("        latency-check [-preset n] [-param n value] <plugin-path>");
     writeln();
     writeln("Description:");
     writeln("        This measures latency on a stereo plug-in.");
     writeln;
     writeln("Flags:");
     writeln("        -h, --help  Shows this help");
-    writeln("        -preset     Choose preset to process audio with.");    
+    writeln("        -preset     Choose preset to process audio with.");
+    writeln("        -param      Set parameter value after loading preset");
     writeln;
 }
 
@@ -35,6 +36,7 @@ int main(string[] args)
         bool help = false;
         string pluginPath = null;
         int preset = -1; // none
+        float[int] parameterValues;
 
         for (int i = 1; i < args.length; ++i)
         {
@@ -45,6 +47,14 @@ int main(string[] args)
             {
                 ++i;
                 preset = to!int(args[i]);
+            }
+            else if (arg == "-param")
+            {
+                ++i;
+                int paramIndex = to!int(args[i]);
+                ++i;
+                float paramValue = to!float(args[i]);
+                parameterValues[paramIndex] = paramValue;
             }
             else 
             {
@@ -67,6 +77,11 @@ int main(string[] args)
         IPluginHost host = createPluginHost(pluginPath);
         if (preset != -1)
             host.loadPreset(preset);
+
+        foreach (int paramIndex, float paramvalue; parameterValues)
+        {
+            host.setParameter(paramIndex, paramvalue);
+        }
 
         int N = 192000 * 10; // 10 seconds at 192000
 
