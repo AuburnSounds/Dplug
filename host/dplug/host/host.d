@@ -67,6 +67,12 @@ interface IPluginHost
 
     /// Switch off the plugin. Call it after processing.
     void endAudioProcessing();
+
+    /// Get current plug-in latency in samples.
+    /// Because of VST2 limitations, this number of only valid between a 
+    /// `beginAudioProcessing` and `endAudioProcessing` call, and won't move while
+    /// processing.
+    int getLatencySamples();
 }
 
 

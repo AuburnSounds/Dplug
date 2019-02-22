@@ -71,6 +71,9 @@ final class VSTPluginHost : IPluginHost
 
         // open plugin
         _dispatcher(_aeffect, effOpen, 0, 0, null, 0.0f);
+
+        // get initial latency
+        updateLatency();
     }
 
     override void setParameter(int paramIndex, float normalizedValue)
@@ -130,6 +133,7 @@ final class VSTPluginHost : IPluginHost
     {
         _dispatcher(_aeffect, effMainsChanged, 0, 1, null, 0.0f);
         _suspended = false;
+        updateLatency();
     }
 
     override void endAudioProcessing()
@@ -226,6 +230,11 @@ final class VSTPluginHost : IPluginHost
         return cast(int)( _dispatcher(_aeffect, effGetProgram, 0, 0, null, 0.0f) );
     }
 
+    override int getLatencySamples()
+    {
+        return _currentLatencySamples;
+    }
+
 private:
     SharedLib _lib;
     AEffect* _aeffect;
@@ -233,6 +242,12 @@ private:
     long _processedSamples;
     VstTimeInfo timeInfo;
     bool _suspended = true;
+    int _currentLatencySamples;
+
+    void updateLatency()
+    {
+        _currentLatencySamples = _aeffect.initialDelay;
+    }
 }
 
 extern(C) nothrow @nogc VstIntPtr hostCallback(AEffect* effect, VstInt32 opcode, VstInt32 index, VstIntPtr value, void* ptr, float opt)

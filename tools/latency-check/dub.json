@@ -1,0 +1,11 @@
+{
+    "name": "latency-check",
+    "description": "Check the truthness of reported latency in VST2 plug-ins.",
+    "dependencies": {
+        "dplug:host": {"path": "../../"},
+        "colorize": "~>1.0"
+    },
+
+    "sourcePaths": ["source"],
+    "importPaths": ["source"]
+}
