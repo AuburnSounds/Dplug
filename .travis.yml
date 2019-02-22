@@ -47,8 +47,6 @@ script:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then cd examples/simple-mono-synth; dub -a x86 --compiler=${DC}; cd ../..; fi
   - cd examples/poly-alias-synth; dub --compiler=${DC}; cd ../..
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then cd examples/poly-alias-synth; dub -a x86 --compiler=${DC}; cd ../..; fi
-  - cd tools/pbr-sketch; dub --compiler=${DC}; cd ../..
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then cd tools/pbr-sketch; dub -a x86 --compiler=${DC}; cd ../..; fi
   - cd tools/dplug-build; dub --compiler=${DC}; cd ../..
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then cd tools/dplug-build; dub -a x86 --compiler=${DC}; cd ../..; fi
   - cd tools/stress-plugin; dub --compiler=${DC}; cd ../..

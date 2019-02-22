@@ -1,9 +1,0 @@
-{
-	"name": "pbr-sketch",
-	"description": "Tool to create the background images of a plugin quickly",
-	"dependencies": 
-	{
-		"dplug:gui": {"path": "../../"},
-		"imageformats": "~>6.0"
-	}
-}
