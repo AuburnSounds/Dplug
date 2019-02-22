@@ -19,7 +19,8 @@ void usage()
     writeln("        This measures latency on a stereo plug-in.");
     writeln;
     writeln("Flags:");
-    writeln("        -h, --help   Shows this help");
+    writeln("        -h, --help  Shows this help");
+    writeln("        -preset     Choose preset to process audio with.");    
     writeln;
 }
 
@@ -29,12 +30,18 @@ int main(string[] args)
     {
         bool help = false;
         string pluginPath = null;
+        int preset = -1; // none
 
         for (int i = 1; i < args.length; ++i)
         {
             string arg = args[i];
             if (arg == "-h" || arg == "--help")
                 help = true;
+            else if (arg == "-preset")
+            {
+                ++i;
+                preset = to!int(args[i]);
+            }
             else 
             {
                 if (pluginPath is null)
@@ -54,6 +61,8 @@ int main(string[] args)
         }
 
         IPluginHost host = createPluginHost(pluginPath);
+        if (preset != -1)
+            host.loadPreset(preset);
 
         int N = 192000 * 10; // 10 seconds at 192000
 

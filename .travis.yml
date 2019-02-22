@@ -53,6 +53,8 @@ script:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then cd tools/stress-plugin; dub -a x86 --compiler=${DC}; cd ../..; fi
   - cd tools/process; dub --compiler=${DC}; cd ../..
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then cd tools/process; dub -a x86 --compiler=${DC}; cd ../..; fi
+  - cd tools/latency-check; dub --compiler=${DC}; cd ../..
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then cd tools/latency-check; dub -a x86 --compiler=${DC}; cd ../..; fi
   - cd tools/wav-compare; dub --compiler=${DC}; cd ../..
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then cd tools/wav-compare; dub -a x86 --compiler=${DC}; cd ../..; fi
   - dub test --compiler=${DC} dplug:core
