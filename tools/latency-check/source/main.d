@@ -9,6 +9,7 @@ import dplug.core;
 import dplug.host;
 
 import colorize;
+import waved;
 
 void usage()
 {
@@ -24,6 +25,9 @@ void usage()
     writeln;
 }
 
+// Note: use a preset that "does nothing" for measurement.
+// If you use a preset which does a 7 second reverb sound, then it doesn't make sense to measure such "latency",
+// since it doesn't have to be compensated for.
 int main(string[] args)
 {
     try
@@ -87,12 +91,10 @@ int main(string[] args)
 
         writeln;
 
-        // Note: default preset is assumed to be nearly "do nothing"
-
         double[] ALL_SAMPLE_RATES = [44100, 48000, 88200, 96000, 192000];
         foreach (sampleRate ; ALL_SAMPLE_RATES)
         {
-            cwritefln("*** Testing at sample rate %s".color(fg.white), sampleRate);
+            cwritefln("*** Testing at sample rate %s".color(fg.light_white), sampleRate);
             host.setSampleRate(sampleRate);
             host.setMaxBufferSize(N);
             if (!host.setIO(numChannels, numChannels))
@@ -107,6 +109,14 @@ int main(string[] args)
             diracR[E] = 1;
 
             host.processAudioFloat(inputPointers.ptr, outputPointers.ptr, N);
+
+            // write output to WAV
+            {
+                string filename = format("processed-%s.wav", sampleRate);
+                writefln("  Output written to %s", filename);
+                Sound s = Sound(cast(int)(0.5f+sampleRate), 1, processedL);
+                encodeWAV(s, filename);
+            }
 
             // NaN check!= of the output
             foreach(n; 0..N)
@@ -126,7 +136,7 @@ int main(string[] args)
             }
 
             if (energy == 0)
-                throw new Exception("Processing a dirac yields silent output");
+                throw new Exception("Processing a dirac yields silent output, written to zero-output.wav");
 
             float latencyMeasured = firstMoment / energy;
             
