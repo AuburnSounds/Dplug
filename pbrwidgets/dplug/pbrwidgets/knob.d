@@ -31,7 +31,7 @@ public:
 nothrow:
 @nogc:
 
-    // This will change to 1.0f at one point for consistency, so better express your knob 
+    // This will change to 1.0f at one point for consistency, so better express your knob
     // sensivity with that.
     enum defaultSensivity = 0.25f;
 
@@ -66,7 +66,7 @@ nothrow:
     float trailMaxAngle = +PI * 0.75f;
 
     // alternate trail is for values below base angle
-    // For example, knob trails can be blue for positive values, 
+    // For example, knob trails can be blue for positive values,
     // and orange for negative.
     RGBA litTrailDiffuseAlt = RGBA(43, 80, 230, 192);
     bool hasAlternateTrail = false;
@@ -159,10 +159,10 @@ nothrow:
                 // when dragged, trail is two times brighter
                 if (isDragged)
                 {
-                    litTrail.a = cast(ubyte) min(255, 2 * litTrail.a);                    
+                    litTrail.a = cast(ubyte) min(255, 2 * litTrail.a);
                 }
 
-                croppedDiffuse.aaFillSector(trailCenterX, trailCenterY, radius * trailRadiusMin, radius * trailRadiusMax, 
+                croppedDiffuse.aaFillSector(trailCenterX, trailCenterY, radius * trailRadiusMin, radius * trailRadiusMax,
                                             min(getBaseAngle, getValueAngle), max(getBaseAngle, getValueAngle), litTrail);
             }
         }
@@ -255,7 +255,7 @@ nothrow:
     }
 
 
-    
+
     override bool onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
     {
         if (!containsPoint(x, y))
@@ -284,6 +284,8 @@ nothrow:
         double oldParamValue = _param.getNormalized();
 
         double newParamValue = oldParamValue - displacementInHeight * modifier * _sensivity;
+        if (mstate.altPressed)
+            newParamValue = _param.getNormalizedDefault();
 
         if (y > _mousePosOnLast0Cross)
             return;
@@ -295,7 +297,7 @@ nothrow:
 
         if (newParamValue >= 1 && oldParamValue < 1)
             _mousePosOnLast1Cross = y;
-        
+
         if (newParamValue < 0)
             newParamValue = 0;
         if (newParamValue > 1)
@@ -366,8 +368,8 @@ protected:
     float _mousePosOnLast0Cross;
     float _mousePosOnLast1Cross;
 
-    /// Exists because public angle properties are given in a 
-    /// different referential, where 0 is at the top 
+    /// Exists because public angle properties are given in a
+    /// different referential, where 0 is at the top
     static float angleConvert(float angle) nothrow @nogc pure
     {
         return angle + PI * 1.5f;
@@ -395,7 +397,7 @@ protected:
     float getValueAngle() nothrow @nogc
     {
         return lerp(getMinAngle, getMaxAngle, _param.getNormalized());
-    }    
+    }
 
     void clearCrosspoints() nothrow @nogc
     {

@@ -77,7 +77,7 @@ public:
     void saveFromHost(Client client) nothrow @nogc
     {
         auto params = client.params();
-        foreach(int i, param; params)
+        foreach(size_t i, param; params)
         {
             _normalizedParams[i] = param.getNormalized();
         }
@@ -86,7 +86,7 @@ public:
     void loadFromHost(Client client) nothrow @nogc
     {
         auto params = client.params();
-        foreach(int i, param; params)
+        foreach(size_t i, param; params)
         {
             if (i < _normalizedParams.length)
                 param.setFromHost(_normalizedParams[i]);
@@ -232,9 +232,9 @@ public:
 
     void loadPresetByNameFromHost(string name) nothrow @nogc
     {
-        foreach(int index, preset; presets)
+        foreach(size_t index, preset; presets)
             if (preset.name == name)
-                loadPresetFromHost(index);
+                loadPresetFromHost(cast(int)index);
     }
 
     void loadPresetFromHost(int index) nothrow @nogc
@@ -251,7 +251,7 @@ public:
         float[] values = mallocSlice!float(params.length);
         scope(exit) values.freeSlice();
 
-        foreach(int i, param; _client.params)
+        foreach(size_t i, param; _client.params)
             values[i] = param.getNormalizedDefault();
 
         presets.pushBack(mallocNew!Preset(presetName, values));
@@ -291,7 +291,7 @@ public:
         // write number of presets
         chunk.writeLE!int(cast(int)(presets.length));
 
-        foreach(int i, preset; presets)
+        foreach(size_t i, preset; presets)
             preset.serializeBinary(chunk);
         return chunk.releaseData();
     }
@@ -327,7 +327,7 @@ public:
         return chunk.releaseData;
     }
 
-    /// Gets a state chunk that would be the current state _if_ 
+    /// Gets a state chunk that would be the current state _if_
     /// preset `presetIndex` was made current first. So it's not
     /// changing the client state.
     /// The returned state chunk should be freed with `free()`.

@@ -110,7 +110,7 @@ struct PluginInfo
     /// is to try to get a sufficiently random one.
     char[4] pluginUniqueID = "WiDi";
 
-    // Plugin version information. 
+    // Plugin version information.
     // It's important that the version you fill at runtime is identical to the
     // one in `plugin.json` else you won't pass AU validation.
     //
@@ -185,7 +185,7 @@ nothrow:
 
         // Check parameter consistency
         // This avoid mistake when adding/reordering parameters in a plugin.
-        foreach(int i, Parameter param; _params)
+        foreach(size_t i, Parameter param; _params)
         {
             // If you fail here, this means your buildParameter() override is incorrect.
             // Check the values of the index you're giving.
@@ -402,7 +402,7 @@ nothrow:
     float tailSizeInSeconds() nothrow @nogc
     {
         // Default: 800ms, which shoukld be safe for most plugins except delay or reverb
-        return 0.800f; 
+        return 0.800f;
     }
 
     /// Override to declare the maximum number of samples to accept
@@ -685,7 +685,7 @@ protected:
 
     /// Override this method to tell what plugin you are.
     /// Mandatory override, fill the fields with care.
-    /// Note: this should not be called by a plugin client implementation directly. 
+    /// Note: this should not be called by a plugin client implementation directly.
     ///       Access the content of PluginInfo through the various accessors.
     abstract PluginInfo buildPluginInfo();
 
@@ -700,7 +700,7 @@ protected:
 
     // Note: when implementing a new plug-in format, the format wrapper has to call
     // `setHostCommand` and implement `IHostCommand`.
-    IHostCommand _hostCommand = null; 
+    IHostCommand _hostCommand = null;
 
     PluginInfo _info;
 

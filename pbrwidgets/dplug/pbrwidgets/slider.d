@@ -85,8 +85,8 @@ nothrow:
         }
     }
 
-    override void onDrawBufferedPBR(ImageRef!RGBA diffuseMap, 
-                                    ImageRef!L16 depthMap, 
+    override void onDrawBufferedPBR(ImageRef!RGBA diffuseMap,
+                                    ImageRef!L16 depthMap,
                                     ImageRef!RGBA materialMap,
                                     ImageRef!L8 diffuseOpacity,
                                     ImageRef!L8 depthOpacity,
@@ -100,7 +100,7 @@ nothrow:
 
         int handleHeightUnpushed = cast(int)(0.5f + this.handleHeightRatio * height);
         int trailMargin = cast(int)(0.5f + (handleHeightUnpushed - trailWidth) * 0.5f);
-        if (trailMargin < 0) 
+        if (trailMargin < 0)
             trailMargin = 0;
 
         int trailX = cast(int)(0.5 + (width - trailWidth) * 0.5f);
@@ -149,12 +149,12 @@ nothrow:
                 diffuseMap.cropImageRef(b).fillAll(diffuse);
             }
 
-            
-        
-            RGBA litTrail = (value >= trailBase) ? litTrailDiffuse : litTrailDiffuseAlt;                  
+
+
+            RGBA litTrail = (value >= trailBase) ? litTrailDiffuse : litTrailDiffuseAlt;
             if (isDragged)
             {
-                // lit trail is 50% brighter when dragged      
+                // lit trail is 50% brighter when dragged
                 litTrail.a = cast(ubyte) min(255, 3 * litTrail.a / 2);
             }
 
@@ -169,7 +169,7 @@ nothrow:
         if (emissive > 255)
             emissive = 255;
 
-        RGBA handleDiffuseLit = RGBA(handleDiffuse.r, handleDiffuse.g, handleDiffuse.b, cast(ubyte)emissive);        
+        RGBA handleDiffuseLit = RGBA(handleDiffuse.r, handleDiffuse.g, handleDiffuse.b, cast(ubyte)emissive);
 
         diffuseMap.cropImageRef(handleRect).fillAll(handleDiffuseLit);
 
@@ -255,7 +255,7 @@ nothrow:
     override void onMouseDrag(int x, int y, int dx, int dy, MouseState mstate)
     {
         // FUTURE: replace by actual trail height instead of total height
-        float displacementInHeight = cast(float)(dy) / _position.height; 
+        float displacementInHeight = cast(float)(dy) / _position.height;
 
         float modifier = 1.0f;
         if (mstate.shiftPressed || mstate.ctrlPressed)
@@ -263,6 +263,8 @@ nothrow:
 
         double oldParamValue = _param.getNormalized() + _draggingDebt;
         double newParamValue = oldParamValue - displacementInHeight * modifier * _sensivity;
+        if (mstate.altPressed)
+            newParamValue = _param.getNormalizedDefault();
 
         if (y > _mousePosOnLast0Cross)
             return;
@@ -353,7 +355,7 @@ protected:
     float _mousePosOnLast0Cross;
     float _mousePosOnLast1Cross;
 
-    // Exists because small mouse drags for integer parameters may not 
+    // Exists because small mouse drags for integer parameters may not
     // lead to a parameter value change, hence a need to accumulate those drags.
     float _draggingDebt = 0.0f;
 

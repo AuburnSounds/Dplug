@@ -18,7 +18,7 @@ import dplug.gui.element;
 import dplug.client.params;
 
 /**
-* 
+*
 */
 class UIFilmstripKnob : UIElement, IParameterListener
 {
@@ -143,8 +143,9 @@ nothrow:
                 modifier *= 0.1f;
 
             double oldParamValue = _param.getNormalized();
-
             double newParamValue = oldParamValue - displacementInHeight * modifier * _sensitivity;
+            if (mstate.altPressed)
+                newParamValue = _param.getNormalizedDefault();
 
             if (y > _mousePosOnLast0Cross)
                 return;
@@ -190,7 +191,7 @@ nothrow:
 
     override void onMouseMove(int x, int y, int dx, int dy, MouseState mstate)
     {
-        
+
     }
 
     override void onMouseExit()

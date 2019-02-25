@@ -132,7 +132,7 @@ nothrow:
         // FUTURE: replace by actual trail height instead of total height
         if(!_disabled)
         {
-            float displacementInHeight = cast(float)(dy) / _position.height; 
+            float displacementInHeight = cast(float)(dy) / _position.height;
 
             float modifier = 1.0f;
             if (mstate.shiftPressed || mstate.ctrlPressed)
@@ -140,6 +140,8 @@ nothrow:
 
             double oldParamValue = _param.getNormalized() + _draggingDebt;
             double newParamValue = oldParamValue - displacementInHeight * modifier * _sensivity;
+            if (mstate.altPressed)
+                newParamValue = _param.getNormalizedDefault();
 
             if (y > _mousePosOnLast0Cross)
                 return;
@@ -243,7 +245,7 @@ protected:
     float _mousePosOnLast0Cross;
     float _mousePosOnLast1Cross;
 
-    // Exists because small mouse drags for integer parameters may not 
+    // Exists because small mouse drags for integer parameters may not
     // lead to a parameter value change, hence a need to accumulate those drags.
     float _draggingDebt = 0.0f;
 
