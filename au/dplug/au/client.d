@@ -1118,7 +1118,7 @@ private:
                 if (pData)
                 {
                     AUChannelInfo* pChInfo = cast(AUChannelInfo*) pData;
-                    foreach(int i, ref legalIO; legalIOs)
+                    foreach(size_t i, ref legalIO; legalIOs)
                     {
                         pChInfo[i].inChannels = cast(short)legalIO.numInputChannels;
                         pChInfo[i].outChannels = cast(short)legalIO.numOutputChannels;
@@ -1912,7 +1912,7 @@ private:
                 _inputPointers[] = null;
 
                 // call render for each upstream units
-                foreach(int inputBusIdx, ref pInBus; _inBuses)
+                foreach(size_t inputBusIdx, ref pInBus; _inBuses)
                 {
                     InputBusConnection* pInBusConn = &_inBusConnections[inputBusIdx];
 
@@ -1930,7 +1930,7 @@ private:
                             pBuffer.mDataByteSize = cast(uint)(nFrames * AudioSampleType.sizeof);
                         }
                         AudioUnitRenderActionFlags flags = 0;
-                        ComponentResult r = pInBusConn.callUpstreamRender(&flags, pTimestamp, nFrames, pInBufList, inputBusIdx);
+                        ComponentResult r = pInBusConn.callUpstreamRender(&flags, pTimestamp, nFrames, pInBufList, cast(int)inputBusIdx);
                         if (r != noErr)
                             return r;   // Something went wrong upstream.
 
