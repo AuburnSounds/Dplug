@@ -72,7 +72,16 @@ nothrow:
 
     final void setFocused(UIElement focused) nothrow @nogc
     {
-        this.focused = focused;
+        UIElement old = this.focused;
+        UIElement new_ = focused;
+        if (old is new_)
+            return;
+
+        if (old !is null)
+            old.onFocusExit();
+        this.focused = new_;
+        if (new_ !is null)
+            new_.onFocusEnter();
     }
 
     final void beginDragging(UIElement element) nothrow @nogc

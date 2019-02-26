@@ -178,7 +178,13 @@ nothrow:
 
         override bool onMouseClick(int x, int y, MouseButton mb, bool isDoubleClick, MouseState mstate)
         {
-            return outer.mouseClick(x, y, mb, isDoubleClick, mstate);
+            bool hitSomething = outer.mouseClick(x, y, mb, isDoubleClick, mstate);
+            if (!hitSomething)
+            {
+                // Nothing was clicked, nothing is focused anymore
+                outer._uiContext.setFocused(null);
+            }
+            return hitSomething;
         }
 
         override bool onMouseRelease(int x, int y, MouseButton mb, MouseState mstate)

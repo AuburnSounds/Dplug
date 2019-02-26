@@ -307,6 +307,18 @@ nothrow:
     {
     }
 
+    // Called when this Element is clicked and get the focus.
+    // This function is meant to be overriden.
+    void onFocusEnter()
+    {
+    }
+
+    // Called when focus is lost because another Element was clicked.
+    // This function is meant to be overriden.
+    void onFocusExit()
+    {
+    }
+
     // Called when a key is pressed. This event bubbles down-up until being processed.
     // Return true if treating the message.
     bool onKeyDown(Key key)
