@@ -3,10 +3,10 @@
 // (c) 2018, Steinberg Media Technologies GmbH, All Rights Reserved
 // (c) 2018, Guillaume Piolat (contact@auburnsounds.com)
 //-----------------------------------------------------------------------------
-// 
-// This Software Development Kit is licensed under the terms of the General 
+//
+// This Software Development Kit is licensed under the terms of the General
 // Public License (GPL) Version 3.
-// 
+//
 // Details of that license can be found at: www.gnu.org/licenses/gpl-3.0.html
 //-----------------------------------------------------------------------------
 module dplug.vst3.vst3main;
@@ -38,7 +38,14 @@ template VST3EntryPoint(alias ClientClass)
         "    return cast(void*)(GetPluginFactoryInternal!" ~ ClientClass.stringof ~ ");" ~
         "}";
 
-    const char[] VST3EntryPoint = entry_InitDll ~ entry_ExitDll ~ entry_GetPluginFactory;
+    // macOS has different "shared libraries" and "bundle"
+    // For Cubase, VST3 validator and Nuendo, the VST3 binary must be a macOS "bundle".
+    // Other hosts don't seem to care.
+    // This fake a macOS bundle with special entry points.
+    enum entry_bundleEntry = `export extern(C) bool bundleEntry(void*) nothrow @nogc { return true; }`;
+    enum entry_bundleExit = `export extern(C) bool bundleExit() nothrow @nogc { return true; }`;
+
+    const char[] VST3EntryPoint = entry_InitDll ~ entry_ExitDll ~ entry_GetPluginFactory ~ entry_bundleEntry ~ entry_bundleExit;
 }
 
 IPluginFactory GetPluginFactoryInternal(ClientClass)()
