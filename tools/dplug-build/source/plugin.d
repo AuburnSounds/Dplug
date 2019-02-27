@@ -205,7 +205,27 @@ struct Plugin
         return format("Copyright %s, %s", vendorName, time.year);
     }
 
-    // only a handful of characters are accepter in bundle identifiers
+    // Allows anything permitted in a filename
+    static string sanitizeFilenameString(string s) pure
+    {
+        string r = "";
+        foreach(dchar ch; s)
+        {
+            if (ch >= 'A' && ch <= 'Z')
+                r ~= ch;
+            else if (ch >= 'a' && ch <= 'z')
+                r ~= ch;
+            if (ch >= '0' && ch <= '9')
+                r ~= ch;
+            else if (ch == '.')
+                r ~= ch;
+            else
+                r ~= "-";
+        }
+        return r;
+    }
+
+    // Make a proper bundle identifier from a string
     static string sanitizeBundleString(string s) pure
     {
         string r = "";
@@ -310,59 +330,59 @@ struct Plugin
                 verName = "-" ~ verName;
             else
                 verName = "";
-            return format("%s%s-%s.pkg", sanitizeBundleString(pluginName),
+            return format("%s%s-%s.pkg", sanitizeFilenameString(pluginName),
                                          verName,
                                          publicVersionString);
         }
 
         string pkgFilenameVST3() pure const
         {
-            return sanitizeBundleString(pluginName) ~ "-vst3.pkg";
+            return sanitizeFilenameString(pluginName) ~ "-vst3.pkg";
         }
 
         string pkgFilenameVST() pure const
         {
-            return sanitizeBundleString(pluginName) ~ "-vst.pkg";
+            return sanitizeFilenameString(pluginName) ~ "-vst.pkg";
         }
 
         string pkgFilenameAU() pure const
         {
-            return sanitizeBundleString(pluginName) ~ "-au.pkg";
+            return sanitizeFilenameString(pluginName) ~ "-au.pkg";
         }
 
         string pkgFilenameAAX() pure const
         {
-            return sanitizeBundleString(pluginName) ~ "-aax.pkg";
+            return sanitizeFilenameString(pluginName) ~ "-aax.pkg";
         }
 
         string pkgFilenameLV2() pure const
         {
-            return sanitizeBundleString(pluginName) ~ "-lv2.pkg";
+            return sanitizeFilenameString(pluginName) ~ "-lv2.pkg";
         }
 
         string pkgBundleVST3() pure const
         {
-            return CFBundleIdentifierPrefix ~ "." ~ pkgFilenameVST3();
+            return CFBundleIdentifierPrefix ~ "." ~ sanitizeBundleString(pkgFilenameVST3());
         }
 
         string pkgBundleVST() pure const
         {
-            return CFBundleIdentifierPrefix ~ "." ~ pkgFilenameVST();
+            return CFBundleIdentifierPrefix ~ "." ~ sanitizeBundleString(pkgFilenameVST());
         }
 
         string pkgBundleAU() pure const
         {
-            return CFBundleIdentifierPrefix ~ "." ~ pkgFilenameAU();
+            return CFBundleIdentifierPrefix ~ "." ~ sanitizeBundleString(pkgFilenameAU());
         }
 
         string pkgBundleAAX() pure const
         {
-            return CFBundleIdentifierPrefix ~ "." ~ pkgFilenameAAX();
+            return CFBundleIdentifierPrefix ~ "." ~ sanitizeBundleString(pkgFilenameAAX());
         }
 
         string pkgBundleLV2() pure const
         {
-            return CFBundleIdentifierPrefix ~ "." ~ pkgFilenameLV2();
+            return CFBundleIdentifierPrefix ~ "." ~ sanitizeBundleString(pkgFilenameLV2());
         }
     }
 
