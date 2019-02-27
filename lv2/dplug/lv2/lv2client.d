@@ -21,7 +21,7 @@
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-module dplug.lv2.client;
+module dplug.lv2.lv2client;
 
 import std.string,
        std.algorithm.comparison;
@@ -201,7 +201,7 @@ nothrow:
 
             if (event.body.type == fURIDs.atomBlank || event.body.type == fURIDs.atomObject)
             {
-                LV2_Atom_Object* obj = cast(LV2_Atom_Object*)&event.body;
+                const (LV2_Atom_Object*) obj = cast(LV2_Atom_Object*)&event.body;
                 
                 if (obj.body.otype != fURIDs.timePosition)
                     continue;
@@ -210,21 +210,42 @@ nothrow:
                 LV2_Atom* frame = null;
                 LV2_Atom* speed = null;
 
-                assumeNothrowNoGC(&lv2_atom_object_get)(obj,
+                assumeNothrowNoGC(&lv2AtomObjectExtractTimeInfo)(obj,
                                    fURIDs.timeBeatsPerMinute, &beatsPerMinute,
                                    fURIDs.timeFrame, &frame,
-                                   fURIDs.timeSpeed, &speed,
-                                   0);
+                                   fURIDs.timeSpeed, &speed);
 
                 if(beatsPerMinute != null) {
-                    timeInfo.tempo = cast(double)LV2_ATOM_CONTENTS!(LV2_Atom_Double)(beatsPerMinute);
+                    if (beatsPerMinute.type == fURIDs.atomDouble)
+                        timeInfo.tempo = (cast(LV2_Atom_Double*)beatsPerMinute).body;
+                    else if (beatsPerMinute.type == fURIDs.atomFloat)
+                        timeInfo.tempo = (cast(LV2_Atom_Float*)beatsPerMinute).body;
+                    else if (beatsPerMinute.type == fURIDs.atomInt)
+                        timeInfo.tempo = (cast(LV2_Atom_Int*)beatsPerMinute).body;
+                    else if (beatsPerMinute.type == fURIDs.atomLong)
+                        timeInfo.tempo = (cast(LV2_Atom_Long*)beatsPerMinute).body;
                 }
                 if(frame != null) {
-                    timeInfo.timeInSamples = cast(long)LV2_ATOM_CONTENTS!(LV2_Atom_Double)(frame);
+                    if (beatsPerMinute.type == fURIDs.atomDouble)
+                        timeInfo.timeInSamples = cast(long)(cast(LV2_Atom_Double*)frame).body;
+                    else if (beatsPerMinute.type == fURIDs.atomFloat)
+                        timeInfo.timeInSamples = cast(long)(cast(LV2_Atom_Float*)frame).body;
+                    else if (beatsPerMinute.type == fURIDs.atomInt)
+                        timeInfo.timeInSamples = (cast(LV2_Atom_Int*)frame).body;
+                    else if (beatsPerMinute.type == fURIDs.atomLong)
+                        timeInfo.timeInSamples = (cast(LV2_Atom_Long*)frame).body;
                 }
                 if(speed != null) {
-                    timeInfo.hostIsPlaying = cast(double)LV2_ATOM_CONTENTS!(LV2_Atom_Double)(speed) > 0.0f;
+                    if (beatsPerMinute.type == fURIDs.atomDouble)
+                        timeInfo.hostIsPlaying = (cast(LV2_Atom_Double*)speed).body > 0.0f;
+                    else if (beatsPerMinute.type == fURIDs.atomFloat)
+                        timeInfo.hostIsPlaying = (cast(LV2_Atom_Float*)speed).body > 0.0f;
+                    else if (beatsPerMinute.type == fURIDs.atomInt)
+                        timeInfo.hostIsPlaying = (cast(LV2_Atom_Int*)speed).body > 0.0f;
+                    else if (beatsPerMinute.type == fURIDs.atomLong)
+                        timeInfo.hostIsPlaying = (cast(LV2_Atom_Long*)speed).body > 0.0f;
                 }
+                fprintf(stdout, "test");
             }           
 
             offset = cast(uint32_t)(event.time.frames);
@@ -256,10 +277,12 @@ nothrow:
         {
             if (strcmp(features[i].URI, LV2_UI__parent) == 0)
                 parentId = cast(void*)features[i].data;
-            if (strcmp(features[i].URI, LV2_UI__resize) == 0)
+            else if (strcmp(features[i].URI, LV2_UI__resize) == 0)
                 uiResize = cast(LV2UI_Resize*)features[i].data;
-            if (strcmp(features[i].URI, LV2_OPTIONS__options) == 0)
+            else if (strcmp(features[i].URI, LV2_OPTIONS__options) == 0)
                 _options = cast(LV2_Options_Option*)features[i].data;
+            else if (strcmp(features[i].URI, LV2_URID__map) == 0)
+                _uridMap = cast(LV2_URID_Map*)features[i].data;
         }
 
         LV2_URID uridWindowTitle = assumeNothrowNoGC(_uridMap.map)(_uridMap.handle, LV2_UI__windowTitle);
@@ -361,6 +384,10 @@ private:
 }
 
 struct URIDs {
+    LV2_URID atomDouble;
+    LV2_URID atomFloat;
+    LV2_URID atomInt;
+    LV2_URID atomLong;
     LV2_URID atomBlank;
     LV2_URID atomObject;
     LV2_URID atomSequence;
@@ -372,6 +399,10 @@ struct URIDs {
 
     this(LV2_URID_Map* uridMap) nothrow @nogc
     {
+        atomDouble = assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_ATOM__Double);
+        atomFloat = assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_ATOM__Float);
+        atomInt = assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_ATOM__Int);
+        atomLong = assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_ATOM__Long);
         atomBlank = assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_ATOM__Blank);
         atomObject = assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_ATOM__Object);
         atomSequence = assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_ATOM__Sequence);
@@ -381,4 +412,44 @@ struct URIDs {
         timeBeatsPerMinute = assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_TIME__beatsPerMinute);
         timeSpeed = assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_TIME__speed);
     }
+}
+
+
+int lv2AtomObjectExtractTimeInfo(const (LV2_Atom_Object*) object, 
+                                 LV2_URID tempoURID, LV2_Atom** tempoAtom, 
+                                 LV2_URID frameURID, LV2_Atom** frameAtom, 
+                                 LV2_URID speedURID, LV2_Atom** speedAtom)
+{
+    int n_queries = 3;
+    int matches = 0;
+    // #define LV2_ATOM_OBJECT_FOREACH(obj, iter)
+    for (LV2_Atom_Property_Body* prop = lv2_atom_object_begin(&object.body);
+        !lv2_atom_object_is_end(&object.body, object.atom.size, prop);
+        prop = lv2_atom_object_next(prop))
+    {
+        for (int i = 0; i < n_queries; ++i) {
+            // uint32_t         qkey = va_arg!(uint32_t)(args);
+            // LV2_Atom** qval = va_arg!(LV2_Atom**)(args);
+            // if (qkey == prop.key && !*qval) {
+            //     *qval = &prop.value;
+            //     if (++matches == n_queries) {
+            //         return matches;
+            //     }
+            //     break;
+            // }
+            if(tempoURID == prop.key && tempoAtom) {
+                *tempoAtom = &prop.value;
+                ++matches;
+            }
+            else if(frameURID == prop.key && frameAtom) {
+                *frameAtom = &prop.value;
+                ++matches;
+            }
+            else if(speedURID == prop.key && speedAtom) {
+                *speedAtom = &prop.value;
+                ++matches;
+            }
+        }
+    }
+    return matches;
 }

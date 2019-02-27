@@ -269,14 +269,8 @@ extern (C) {
     }
     @endcode
     */
-    // #define LV2_ATOM_OBJECT_FOREACH(obj, iter) \
-    //     for (LV2_Atom_Property_Body* (iter) = lv2_atom_object_begin(&(obj).body); \
-    //         !lv2_atom_object_is_end(&(obj).body, (obj).atom.size, (iter)); \
-    //         (iter) = lv2_atom_object_next(iter))
-    // template LV2_ATOM_OBJECT_FOREACH(alias obj, LV2_Atom_Property_Body* iter)
-    // {
-    //     const char[] LV2_ATOM_OBJECT_FOREACH = "for(int i = 0; i < 10; ++i)\n";
-    // }
+    
+    
 
     // /** Like LV2_ATOM_OBJECT_FOREACH but for a headerless object body. */
     // #define LV2_ATOM_OBJECT_BODY_FOREACH(body, size, iter) \
@@ -406,14 +400,14 @@ extern (C) {
     @endcode
     */
     static int
-    lv2_atom_object_get(LV2_Atom_Object* object, ...)
+    lv2_atom_object_get(const (LV2_Atom_Object*) object, ...)
     {
         int matches   = 0;
         int n_queries = 0;
 
         /* Count number of keys so we can short-circuit when done */
         va_list args;
-        va_start!(const LV2_Atom_Object*)(args, object);
+        va_start!(const (LV2_Atom_Object*))(args, object);
         for (n_queries = 0; va_arg!(uint32_t)(args); ++n_queries) {
             if (!va_arg!(LV2_Atom**)(args)) {
                 return -1;
@@ -422,25 +416,34 @@ extern (C) {
         va_end(args);
 
         // #define LV2_ATOM_OBJECT_FOREACH(obj, iter)
-        for (LV2_Atom_Property_Body* prop = lv2_atom_object_begin(&object.body);
-            !lv2_atom_object_is_end(&object.body, object.atom.size, prop);
-            prop = lv2_atom_object_next(prop))
+        LV2_ATOM_OBJECT_FOREACH(object, delegate(LV2_Atom_Property_Body* prop)
         {
-            va_start!(LV2_Atom_Object*)(args, object);
+            va_start!(const(LV2_Atom_Object*))(args, object);
             for (int i = 0; i < n_queries; ++i) {
                 uint32_t         qkey = va_arg!(uint32_t)(args);
                 LV2_Atom** qval = va_arg!(LV2_Atom**)(args);
                 if (qkey == prop.key && !*qval) {
                     *qval = &prop.value;
                     if (++matches == n_queries) {
-                        return matches;
+                        // return matches;
                     }
                     break;
                 }
             }
             va_end(args);
-        }
+        });
+
         return matches;
     }
 }  /* extern "C" */
+
+void LV2_ATOM_OBJECT_FOREACH(const (LV2_Atom_Object*) obj, void delegate(LV2_Atom_Property_Body* prop) iterDelegate) 
+{
+    for (LV2_Atom_Property_Body* iter = lv2_atom_object_begin(&obj.body);
+        !lv2_atom_object_is_end(&obj.body, obj.atom.size, iter);
+        iter = lv2_atom_object_next(iter))
+    {
+        iterDelegate(iter);
+    }
+}
 

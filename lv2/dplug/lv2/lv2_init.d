@@ -45,7 +45,7 @@ import core.stdc.stdio;
 import core.stdc.string;
 import core.stdc.stdint;
 
-import dplug.lv2.client;
+import dplug.lv2.lv2client;
 import dplug.lv2.urid;
 import dplug.lv2.options;
 

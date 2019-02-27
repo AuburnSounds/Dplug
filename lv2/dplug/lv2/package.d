@@ -4,7 +4,7 @@ module dplug.lv2;
 
 public
 {
-  import dplug.lv2.client;
+  import dplug.lv2.lv2client;
   import dplug.lv2.lv2;
   import dplug.lv2.lv2util;
   import dplug.lv2.atom;
