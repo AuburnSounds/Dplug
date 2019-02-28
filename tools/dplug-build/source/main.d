@@ -298,7 +298,7 @@ int main(string[] args)
                     oneOfTheArchIsUB = true;
             }
 
-            foreach (int archCount, arch; architectures)
+            foreach (size_t archCount, arch; architectures)
             {
                 bool is64b = arch == Arch.x86_64;
 

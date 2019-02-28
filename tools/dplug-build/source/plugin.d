@@ -66,7 +66,7 @@ string toStringUpper(Compiler compiler)
 string toStringArchs(Arch[] archs)
 {
     string r = "";
-    foreach(int i, arch; archs)
+    foreach(size_t i, arch; archs)
     {
         final switch(arch) with (Arch)
         {
@@ -215,7 +215,7 @@ struct Plugin
                 r ~= ch;
             else if (ch >= 'a' && ch <= 'z')
                 r ~= ch;
-            if (ch >= '0' && ch <= '9')
+            else if (ch >= '0' && ch <= '9')
                 r ~= ch;
             else if (ch == '.')
                 r ~= ch;
