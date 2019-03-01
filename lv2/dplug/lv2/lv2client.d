@@ -226,31 +226,29 @@ nothrow:
                         timeInfo.tempo = (cast(LV2_Atom_Long*)beatsPerMinute).body;
                 }
                 if(frame != null) {
-                    if (beatsPerMinute.type == fURIDs.atomDouble)
+                    if (frame.type == fURIDs.atomDouble)
                         timeInfo.timeInSamples = cast(long)(cast(LV2_Atom_Double*)frame).body;
-                    else if (beatsPerMinute.type == fURIDs.atomFloat)
+                    else if (frame.type == fURIDs.atomFloat)
                         timeInfo.timeInSamples = cast(long)(cast(LV2_Atom_Float*)frame).body;
-                    else if (beatsPerMinute.type == fURIDs.atomInt)
+                    else if (frame.type == fURIDs.atomInt)
                         timeInfo.timeInSamples = (cast(LV2_Atom_Int*)frame).body;
-                    else if (beatsPerMinute.type == fURIDs.atomLong)
+                    else if (frame.type == fURIDs.atomLong)
                         timeInfo.timeInSamples = (cast(LV2_Atom_Long*)frame).body;
                 }
                 if(speed != null) {
-                    if (beatsPerMinute.type == fURIDs.atomDouble)
+                    if (speed.type == fURIDs.atomDouble)
                         timeInfo.hostIsPlaying = (cast(LV2_Atom_Double*)speed).body > 0.0f;
-                    else if (beatsPerMinute.type == fURIDs.atomFloat)
+                    else if (speed.type == fURIDs.atomFloat)
                         timeInfo.hostIsPlaying = (cast(LV2_Atom_Float*)speed).body > 0.0f;
-                    else if (beatsPerMinute.type == fURIDs.atomInt)
+                    else if (speed.type == fURIDs.atomInt)
                         timeInfo.hostIsPlaying = (cast(LV2_Atom_Int*)speed).body > 0.0f;
-                    else if (beatsPerMinute.type == fURIDs.atomLong)
+                    else if (speed.type == fURIDs.atomLong)
                         timeInfo.hostIsPlaying = (cast(LV2_Atom_Long*)speed).body > 0.0f;
                 }
-                fprintf(stdout, "test");
             }           
-
             offset = cast(uint32_t)(event.time.frames);
         }
-
+        
         _client.processAudioFromHost(_inputs, _outputs, n_samples, timeInfo);
     }
 

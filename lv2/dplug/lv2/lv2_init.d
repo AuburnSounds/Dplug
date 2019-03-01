@@ -141,6 +141,7 @@ void GenerateManifestFromClientInternal(alias ClientClass)(generateManifestFromC
     // Note: this function is called by D, so it reuses the runtime from dplug-build!
 
     import core.stdc.stdio;
+    import core.stdc.stdlib: free;
     import std.string: toStringz;
     import std.string: fromStringz;
     import std.string: replace;
@@ -155,22 +156,24 @@ void GenerateManifestFromClientInternal(alias ClientClass)(generateManifestFromC
     Parameter[] params = client.params();
     string manifest = "";
 
-    //  BUG: this line crashes on Windows
-    string baseURI = cast(string)(pluginInfo.pluginHomepage ~ ":" ~ pluginInfo.pluginUniqueID);
-    manifest ~= "@prefix lv2:  <http://lv2plug.in/ns/lv2core#> .\n";
-    manifest ~= "@prefix atom: <http://lv2plug.in/ns/ext/atom#> .\n";
-    manifest ~= "@prefix doap: <http://usefulinc.com/ns/doap#> .\n";
-    manifest ~= "@prefix midi: <http://lv2plug.in/ns/ext/midi#> .\n";
-    manifest ~= "@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .\n";
-    manifest ~= "@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n";
-    manifest ~= "@prefix urid: <http://lv2plug.in/ns/ext/urid#> .\n";
-    manifest ~= "@prefix units: <http://lv2plug.in/ns/extensions/units#> .\n";
-    manifest ~= "@prefix ui:    <http://lv2plug.in/ns/extensions/ui#>.\n";
+
+    auto pid = pluginInfo.pluginUniqueID;
+    char[256] baseURI;
+    snprintf(baseURI.ptr, 256, "%s/%2X%2X%2X%2X%2x", pluginInfo.pluginHomepage.ptr, pid[0], pid[1], pid[2], pid[3]);
+
+    manifest ~= "@prefix lv2:     <http://lv2plug.in/ns/lv2core#> .\n";
+    manifest ~= "@prefix atom:    <http://lv2plug.in/ns/ext/atom#> .\n";
+    manifest ~= "@prefix doap:    <http://usefulinc.com/ns/doap#> .\n";
+    manifest ~= "@prefix midi:    <http://lv2plug.in/ns/ext/midi#> .\n";
+    manifest ~= "@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .\n";
+    manifest ~= "@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .\n";
+    manifest ~= "@prefix urid:    <http://lv2plug.in/ns/ext/urid#> .\n";
+    manifest ~= "@prefix units:   <http://lv2plug.in/ns/extensions/units#> .\n";
+    manifest ~= "@prefix ui:      <http://lv2plug.in/ns/extensions/ui#>.\n";
     manifest ~= "@prefix bufsz:   <http://lv2plug.in/ns/ext/buf-size#> .\n";
-    manifest ~= "@prefix time: <http://lv2plug.in/ns/ext/time#> .\n";
-    manifest ~= "@prefix opts:  <http://lv2plug.in/ns/ext/options#> .\n";
-    manifest ~= "@prefix eg: <" ~ pluginInfo.pluginHomepage ~ "> .\n\n";
-    
+    manifest ~= "@prefix time:    <http://lv2plug.in/ns/ext/time#> .\n";
+    manifest ~= "@prefix opts:    <http://lv2plug.in/ns/ext/options#> .\n\n";
+    // manifest ~= "@prefix eg:      <" ~ pluginInfo.pluginHomepage ~ "> .\n\n";
 
     if(legalIOs.length > 0)
     {
@@ -189,7 +192,7 @@ void GenerateManifestFromClientInternal(alias ClientClass)(generateManifestFromC
 
             if(pluginInfo.hasGUI)
             {
-                manifest ~= "    ui:ui <" ~ baseURI ~ "#ui>;\n";
+                manifest ~= "    ui:ui <" ~ stringDup(baseURI.ptr) ~ "/ui/>;\n";
             }
 
             manifest ~= buildParamPortConfiguration(client.params(), legalIO, pluginInfo.receivesMIDI);
@@ -204,13 +207,14 @@ void GenerateManifestFromClientInternal(alias ClientClass)(generateManifestFromC
             //     foreach()
             //     // Set up preset values here
             // }
+            free(pluginURI.ptr);
         }
     }
 
     // describe UI
     if(pluginInfo.hasGUI)
     {
-        manifest ~= "\n<" ~ baseURI~ "#ui>\n";
+        manifest ~= "\n<" ~ stringDup(baseURI.ptr) ~ "/ui/>\n";
         manifest ~= "    a ui:X11UI;\n";
         manifest ~= "    lv2:optionalFeature ui:noUserResize ,\n";
         manifest ~= "                        ui:resize ,\n";
@@ -277,14 +281,21 @@ string lv2PluginCategory(PluginCategory category)
 char[] uriFromIOConfiguration(char* baseURI, LegalIO legalIO) nothrow @nogc
 {
     char[256] buf;
-    snprintf(buf.ptr, 256, "%s%dIn%dOut", baseURI, legalIO.numInputChannels, legalIO.numOutputChannels);
+
+    //Check for special cases e.g. Mono or stereo"
+    if(legalIO.numInputChannels == 1 && legalIO.numOutputChannels == 1)
+        snprintf(buf.ptr, 256, "%s/%s/", baseURI, "mono".ptr);
+    else if(legalIO.numInputChannels == 2 && legalIO.numOutputChannels == 2)
+        snprintf(buf.ptr, 256, "%s/%s/", baseURI, "stereo".ptr);
+    else
+        snprintf(buf.ptr, 256, "%s/%dIn%dOut/", baseURI, legalIO.numInputChannels, legalIO.numOutputChannels);
     return stringDup(buf.ptr); // has to be free somewhere
 }
 
 void buildUIDescriptor(char* baseURI) nothrow @nogc
 {
     char[256] buf;
-    snprintf(buf.ptr, 260, "%s%s", baseURI, "#ui".ptr);
+    snprintf(buf.ptr, 260, "%s%s", baseURI, "/ui/".ptr);
     LV2UI_Descriptor descriptor = {
         URI: stringDup(buf.ptr).ptr, 
         instantiate: &instantiateUI, 
@@ -418,15 +429,6 @@ extern(C)
     {
         return null;
     }
-
-    // export const (LV2UI_Descriptor)* lv2ui_descriptor(uint32_t index)
-    // {
-    //     switch(index) {
-    //         case 0: 
-    //             return &lv2UIDescriptor;
-    //         default: return null;
-    //     }
-    // }
 
     LV2UI_Handle instantiateUI(const LV2UI_Descriptor* descriptor,
 									const char*                     plugin_uri,
