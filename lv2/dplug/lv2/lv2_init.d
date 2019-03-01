@@ -65,7 +65,8 @@ template LV2EntryPoint(alias ClientClass)
     static immutable enum lv2_descriptor =  "import core.stdc.stdint; import core.stdc.stdio; import core.stdc.string;\n" ~
                                             "export extern(C) const (LV2_Descriptor)* lv2_descriptor(uint32_t index)" ~
                                             "{" ~
-                                            "    buildDescriptor(index);" ~
+                                            "    int result = buildDescriptor(index);" ~
+                                            "    if(result > 0) return null;" ~
                                             "    return &lv2Descriptors[index];" ~
                                             "}\n";
 
@@ -78,10 +79,12 @@ template LV2EntryPoint(alias ClientClass)
                                                "    }" ~
                                                "}\n";
 
-    static immutable enum build_descriptor =  "nothrow void buildDescriptor(uint32_t index) {" ~
+    static immutable enum build_descriptor =  "nothrow int buildDescriptor(uint32_t index) {" ~
                                               "    const(char)* uri = pluginURIFromClient!" ~ ClientClass.stringof ~ "(index);" ~
+                                              "    if(uri == null) return 1;" ~
                                               "    LV2_Descriptor descriptor = { uri, &instantiate, &connect_port, &activate, &run, &deactivate, &cleanup, &extension_data };" ~
                                               "    lv2Descriptors[index] = descriptor;" ~
+                                              "    return 0;" ~
                                               "}\n";
 
     static immutable enum generate_manifest_from_client = "export extern(C) void GenerateManifestFromClient(generateManifestFromClientCallback callback, const(char)[] binaryFileName, const(char)[] licensePath, const(char)[] buildDir)"  ~
@@ -109,29 +112,37 @@ nothrow LV2Client myLV2EntryPoint(alias ClientClass)(const LV2_Descriptor* descr
 
 nothrow @nogc const(char)* pluginURIFromClient(alias ClientClass)(int index)
 {
+    import std.string: toStringz;
+
     uriMap = makeMap!(string, int);
     auto client = mallocNew!ClientClass();
     auto legalIOs = client.buildLegalIO();
+    if(index >= legalIOs.length)
+        return null;
     lv2Descriptors = mallocSlice!LV2_Descriptor(legalIOs.length);
     PluginInfo pluginInfo = client.buildPluginInfo();
 
-    size_t baseURILen = pluginInfo.pluginHomepage.length + pluginInfo.pluginUniqueID.length + 1;
-    char[] baseURI = mallocSlice!char(baseURILen);
+    auto pid = pluginInfo.pluginUniqueID;
+    char[256] baseURI;
+    snprintf(baseURI.ptr, 256, "%s", pluginInfo.pluginHomepage.ptr);
 
-    baseURI[0..pluginInfo.pluginHomepage.length] = pluginInfo.pluginHomepage;
-    size_t pos = pluginInfo.pluginHomepage.length;
-    baseURI[pos..pos+1] = ":";
-    pos += 1;
-    baseURI[pos..pos+pluginInfo.pluginUniqueID.length] = pluginInfo.pluginUniqueID;
+    // size_t baseURILen = pluginInfo.pluginHomepage.length + pluginInfo.pluginUniqueID.length + 1;
+    // char[] baseURI = mallocSlice!char(baseURILen);
+
+    // baseURI[0..pluginInfo.pluginHomepage.length] = pluginInfo.pluginHomepage;
+    // size_t pos = pluginInfo.pluginHomepage.length;
+    // baseURI[pos..pos+1] = "/";
+    // pos += 1;
+    // baseURI[pos..pos+pluginInfo.pluginUniqueID.length] = pluginInfo.pluginUniqueID;
 
     auto uri = uriFromIOConfiguration(cast(char*)baseURI, legalIOs[index]);
-    uriMap[cast(string)uri] = index;
+    // uriMap[cast(string)uri] = index;
 
     if(pluginInfo.hasGUI)
     {
         buildUIDescriptor(baseURI.ptr);
     }
-
+    
     client.destroyFree();
     return uri.ptr;
 }
@@ -146,8 +157,8 @@ void GenerateManifestFromClientInternal(alias ClientClass)(generateManifestFromC
     import std.string: fromStringz;
     import std.string: replace;
 
-    ScopedForeignCallback!(false, true) scopedCallback;
-    scopedCallback.enter();
+    // ScopedForeignCallback!(false, true) scopedCallback;
+    // scopedCallback.enter();
 
     ClientClass client = mallocNew!ClientClass();
     scope(exit) client.destroyFree();
@@ -159,7 +170,7 @@ void GenerateManifestFromClientInternal(alias ClientClass)(generateManifestFromC
 
     auto pid = pluginInfo.pluginUniqueID;
     char[256] baseURI;
-    snprintf(baseURI.ptr, 256, "%s/%2X%2X%2X%2X%2x", pluginInfo.pluginHomepage.ptr, pid[0], pid[1], pid[2], pid[3]);
+    snprintf(baseURI.ptr, 256, "%s", toStringz(pluginInfo.pluginHomepage));
 
     manifest ~= "@prefix lv2:     <http://lv2plug.in/ns/lv2core#> .\n";
     manifest ~= "@prefix atom:    <http://lv2plug.in/ns/ext/atom#> .\n";
@@ -184,7 +195,7 @@ void GenerateManifestFromClientInternal(alias ClientClass)(generateManifestFromC
             auto pluginURI = uriFromIOConfiguration(cast(char*)baseURI, legalIO);
             manifest ~= "<" ~ pluginURI ~ ">\n";
             manifest ~= "    a lv2:Plugin" ~ lv2PluginCategory(pluginInfo.category) ~ " ;\n";
-            manifest ~= "    lv2:binary <" ~ binaryFileName[0..$].replace(" ", "%20") ~ "> ;\n";
+            manifest ~= "    lv2:binary <" ~ binaryFileName[0..$].replace(" ", "") ~ "> ;\n";
             manifest ~= "    doap:name \"" ~ pluginInfo.pluginName ~ "\" ;\n";
             manifest ~= "    doap:license <" ~ licensePath[0..$] ~ "> ;\n";
             manifest ~= "    lv2:project <" ~ pluginInfo.pluginHomepage ~ "> ;\n";
@@ -221,7 +232,7 @@ void GenerateManifestFromClientInternal(alias ClientClass)(generateManifestFromC
         manifest ~= "                        ui:touch ;\n";
         manifest ~= "    lv2:requiredFeature <" ~ LV2_OPTIONS__options ~ "> ,\n";
         manifest ~= "                        <" ~ LV2_URID__map ~ "> ;\n";
-        manifest ~= "    ui:binary <"  ~ binaryFileName[0..$].replace(" ", "%20") ~ "> .\n";
+        manifest ~= "    ui:binary <"  ~ binaryFileName[0..$].replace(" ", "") ~ "> .\n";
     }
     
     callback(cast(const(ubyte)*)manifest, manifest.length, buildDir);
@@ -371,8 +382,8 @@ const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, b
     paramString ~= "        atom:supports time:Position ;\n";
     paramString ~= "        lv2:designation lv2:control ;\n";
     paramString ~= "        lv2:index " ~ to!string(params.length + legalIO.numInputChannels + legalIO.numOutputChannels) ~ ";\n";
-    paramString ~= "        lv2:symbol \"midiinput\" ;\n";
-    paramString ~= "        lv2:name \"MIDI Input\"\n";
+    paramString ~= "        lv2:symbol \"control\" ;\n";
+    paramString ~= "        lv2:name \"Control\"\n";
     paramString ~= "    ]";
     paramString ~= " . \n";
 
