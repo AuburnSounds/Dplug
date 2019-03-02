@@ -8,7 +8,7 @@
     "pluginUniqueID": "ClPi",
     "publicVersion": "1.0.0",
     "CFBundleIdentifierPrefix": "com.wittyaudio",
-    "hasGUI": true,
+    "hasGUI": false,
     "isSynth": false,
     "receivesMIDI": true,
     "category": "effectDistortion"

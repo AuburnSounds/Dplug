@@ -79,6 +79,14 @@ nothrow:
         _uridMap = null;
     }
 
+    ~this()
+    {
+        _client.destroyFree();
+
+        _inputPointers.freeSlice();
+        _outputPointers.freeSlice();
+    }
+
     void instantiate(const LV2_Descriptor* descriptor, double rate, const char* bundle_path, const(LV2_Feature*)* features)
     {
         for(int i = 0; features[i] != null; ++i)
@@ -118,8 +126,9 @@ nothrow:
         _sampleRate = cast(float)rate;
 
         _params = cast(float**)mallocSlice!(float*)(_client.params.length);
-        _inputs = mallocSlice!(float*)(_maxInputs);
-        _outputs = mallocSlice!(float*)(_maxOutputs);
+
+        _inputPointers = mallocSlice!(float*)(_maxInputs);
+        _outputPointers = mallocSlice!(float*)(_maxOutputs);
     }
 
     void cleanup()
@@ -147,11 +156,11 @@ nothrow:
         }
         else if(port < _maxInputs + _client.params.length)
         {
-            _inputs[port - _client.params.length] = cast(float*)data;
+            _inputPointers[port - _client.params.length] = cast(float*)data;
         }
         else if(port < _maxOutputs + _maxInputs + _client.params.length)
         {
-            _outputs[port - _client.params.length - _maxInputs] = cast(float*)data;
+            _outputPointers[port - _client.params.length - _maxInputs] = cast(float*)data;
         }
         else if(port < _maxOutputs + _maxInputs + _client.params.length + 1)
         {
@@ -248,8 +257,19 @@ nothrow:
             }           
             offset = cast(uint32_t)(event.time.frames);
         }
+
+        for(int input = 0; input < _maxInputs; ++input)
+        {
+            if(_inputPointers[input].sizeof/float.sizeof == 0)
+                _inputPointers[input] = cast(float*)mallocSlice!(float)(n_samples);
+        }
+        for(int output = 0; output < _maxOutputs; ++output)
+        {
+            if(_outputPointers[output].sizeof/float.sizeof == 0)
+                _outputPointers[output] = cast(float*)mallocSlice!(float)(n_samples);
+        }
         
-        _client.processAudioFromHost(_inputs, _outputs, n_samples, timeInfo);
+        _client.processAudioFromHost(_inputPointers, _outputPointers, n_samples, timeInfo);
     }
 
     void deactivate()
@@ -364,15 +384,15 @@ private:
     bool _callResetOnNextRun;
 
     float** _params;
-    float*[] _inputs;
-    float*[] _outputs;
+    Vec!float[] _inputScratchBuffer;
+    Vec!float[] _outputScratchBuffer;
+    Vec!float   _zeroesBuffer; 
+    float*[] _inputPointers;
+    float*[] _outputPointers;
     LV2_Atom_Sequence* _midiInput;
 
     float _sampleRate;
     
-    LV2_URID _midiEvent;
-    LV2_URID _atomBlank;
-    LV2_URID _atomObject;
     LV2_Options_Option* _options;
     LV2_URID_Map* _uridMap;
 

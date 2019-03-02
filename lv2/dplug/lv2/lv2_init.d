@@ -112,7 +112,7 @@ nothrow LV2Client myLV2EntryPoint(alias ClientClass)(const LV2_Descriptor* descr
 
 nothrow @nogc const(char)* pluginURIFromClient(alias ClientClass)(int index)
 {
-    import std.string: toStringz;
+    import core.stdc.stdlib: free;
 
     uriMap = makeMap!(string, int);
     auto client = mallocNew!ClientClass();
@@ -124,25 +124,16 @@ nothrow @nogc const(char)* pluginURIFromClient(alias ClientClass)(int index)
 
     auto pid = pluginInfo.pluginUniqueID;
     char[256] baseURI;
-    snprintf(baseURI.ptr, 256, "%s", pluginInfo.pluginHomepage.ptr);
-
-    // size_t baseURILen = pluginInfo.pluginHomepage.length + pluginInfo.pluginUniqueID.length + 1;
-    // char[] baseURI = mallocSlice!char(baseURILen);
-
-    // baseURI[0..pluginInfo.pluginHomepage.length] = pluginInfo.pluginHomepage;
-    // size_t pos = pluginInfo.pluginHomepage.length;
-    // baseURI[pos..pos+1] = "/";
-    // pos += 1;
-    // baseURI[pos..pos+pluginInfo.pluginUniqueID.length] = pluginInfo.pluginUniqueID;
+    snprintf(baseURI.ptr, 256, "%s%2X%2X%2X%2X", pluginInfo.pluginHomepage.ptr, pid[0], pid[1], pid[2], pid[3]);
 
     auto uri = uriFromIOConfiguration(cast(char*)baseURI, legalIOs[index]);
-    // uriMap[cast(string)uri] = index;
+    uriMap[cast(string)uri] = index;
 
     if(pluginInfo.hasGUI)
     {
         buildUIDescriptor(baseURI.ptr);
     }
-    
+
     client.destroyFree();
     return uri.ptr;
 }
@@ -170,7 +161,7 @@ void GenerateManifestFromClientInternal(alias ClientClass)(generateManifestFromC
 
     auto pid = pluginInfo.pluginUniqueID;
     char[256] baseURI;
-    snprintf(baseURI.ptr, 256, "%s", toStringz(pluginInfo.pluginHomepage));
+    snprintf(baseURI.ptr, 256, "%s%2X%2X%2X%2X", pluginInfo.pluginHomepage.ptr, pid[0], pid[1], pid[2], pid[3]);
 
     manifest ~= "@prefix lv2:     <http://lv2plug.in/ns/lv2core#> .\n";
     manifest ~= "@prefix atom:    <http://lv2plug.in/ns/ext/atom#> .\n";
