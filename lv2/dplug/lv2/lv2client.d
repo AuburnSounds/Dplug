@@ -85,6 +85,8 @@ nothrow:
 
         _inputPointers.freeSlice();
         _outputPointers.freeSlice();
+        _inputPointersUsed.freeSlice();
+        _outputPointersUsed.freeSlice();
     }
 
     void instantiate(const LV2_Descriptor* descriptor, double rate, const char* bundle_path, const(LV2_Feature*)* features)
@@ -129,6 +131,8 @@ nothrow:
 
         _inputPointers = mallocSlice!(float*)(_maxInputs);
         _outputPointers = mallocSlice!(float*)(_maxOutputs);
+        _inputPointersUsed = mallocSlice!(bool)(_maxInputs);
+        _outputPointersUsed = mallocSlice!(bool)(_maxOutputs);
     }
 
     void cleanup()
@@ -156,11 +160,15 @@ nothrow:
         }
         else if(port < _maxInputs + _client.params.length)
         {
-            _inputPointers[port - _client.params.length] = cast(float*)data;
+            ulong input = port - _client.params.length;
+            _inputPointers[input] = cast(float*)data;
+            _inputPointersUsed[input] = false;
         }
         else if(port < _maxOutputs + _maxInputs + _client.params.length)
         {
-            _outputPointers[port - _client.params.length - _maxInputs] = cast(float*)data;
+            ulong output = port - _client.params.length - _maxInputs;
+            _outputPointers[output] = cast(float*)data;
+            _outputPointersUsed[output] = false;
         }
         else if(port < _maxOutputs + _maxInputs + _client.params.length + 1)
         {
@@ -260,16 +268,21 @@ nothrow:
 
         for(int input = 0; input < _maxInputs; ++input)
         {
-            if(_inputPointers[input].sizeof/float.sizeof == 0)
+            if(_inputPointersUsed[input])
                 _inputPointers[input] = cast(float*)mallocSlice!(float)(n_samples);
         }
         for(int output = 0; output < _maxOutputs; ++output)
         {
-            if(_outputPointers[output].sizeof/float.sizeof == 0)
+            if(_outputPointersUsed[output])
                 _outputPointers[output] = cast(float*)mallocSlice!(float)(n_samples);
         }
         
         _client.processAudioFromHost(_inputPointers, _outputPointers, n_samples, timeInfo);
+
+        for(int input = 0; input < _maxInputs; ++input)
+            _inputPointersUsed[input] = true;
+        for(int output = 0; output < _maxOutputs; ++output)
+            _outputPointersUsed[output] = true;
     }
 
     void deactivate()
@@ -389,6 +402,8 @@ private:
     Vec!float   _zeroesBuffer; 
     float*[] _inputPointers;
     float*[] _outputPointers;
+    bool[] _inputPointersUsed;
+    bool[] _outputPointersUsed;
     LV2_Atom_Sequence* _midiInput;
 
     float _sampleRate;
