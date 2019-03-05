@@ -577,9 +577,11 @@ int main(string[] args)
                 }
                 else version(linux)
                 {
+                    import std.string: replace;
+
                     if(configIsLV2(config))
                     {
-                        string soPath = path ~ "/" ~ plugin.prettyName ~ ".so";
+                        string soPath = path ~ "/" ~ plugin.prettyName.replace(" ", "") ~ ".so";
                         fileMove(plugin.dubOutputFileName, soPath);
                         extractLV2ManifestFromBinary(soPath, path, is64b, plugin.prettyName ~ ".so");
                     }

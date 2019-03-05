@@ -93,7 +93,7 @@ private:
     enum int XEMBED_MAPPED = (1 << 0);
 
 public:
-    this(void* parentWindow, IWindowListener listener, int width, int height)
+    this(void* parentWindow, void* transientWindowId, IWindowListener listener, int width, int height)
     {
         debug(logX11Window) fprintf(stderr, "X11Window: constructor\n");
         drawMutex = makeMutex();
@@ -118,7 +118,7 @@ public:
         depth = 24;
 
         _windowId = XCreateSimpleWindow(_display, _parentWindowId, x, y, width, height, 0, 0, _black_pixel);
-        XStoreName(_display, _windowId, cast(char*)" ".ptr);
+        XStoreName(_display, _windowId, cast(char*)transientWindowId);
 
         XSizeHints sizeHints;
         sizeHints.flags = PMinSize | PMaxSize;
@@ -145,6 +145,11 @@ public:
             XReparentWindow(_display, _windowId, _parentWindowId, 0, 0);
         }
 
+        if(transientWindowId)
+        {
+            XSetTransientForHint(_display, _windowId, cast(Window)transientWindowId);
+        }
+
         XMapWindow(_display, _windowId);
         XFlush(_display);
 
@@ -165,6 +170,7 @@ public:
 
         _eventLoop = makeThread(&eventLoop);
         _eventLoop.start();
+        
     }
 
     ~this()
@@ -176,6 +182,7 @@ public:
     }
 
     void initializeXLib() {
+        drawMutex.lock();
         if (!XLibInitialized) {
             XInitThreads();
 
@@ -191,6 +198,7 @@ public:
 
             XLibInitialized = true;
         }
+        drawMutex.unlock();
     }
 
     long windowEventMask() {
@@ -355,9 +363,10 @@ public:
 void handleEvents(ref XEvent event, X11Window theWindow) nothrow @nogc
 {
     debug(logX11Window) fprintf(stderr, "X11Window: handleEvents()\n");
+    theWindow.drawMutex.lock();
     with(theWindow)
     {
-
+        
         switch(event.type)
         {
             case KeyPress:
@@ -375,7 +384,7 @@ void handleEvents(ref XEvent event, X11Window theWindow) nothrow @nogc
             case MapNotify:
             case Expose:
                 // Resize should trigger Expose event, so we don't need to handle it here
-                drawMutex.lock();
+                
 
                 box2i areaToRedraw = mergedDirtyRect;
                 box2i eventAreaToRedraw = box2i(event.xexpose.x, event.xexpose.y, event.xexpose.x + event.xexpose.width, event.xexpose.y + event.xexpose.height);
@@ -383,7 +392,7 @@ void handleEvents(ref XEvent event, X11Window theWindow) nothrow @nogc
 
                 emptyMergedBoxes();
 
-                drawMutex.unlock();
+                
 
                 if (!areaToRedraw.empty()) {
                     listener.onDraw(WindowPixelFormat.RGBA8);
@@ -492,6 +501,7 @@ void handleEvents(ref XEvent event, X11Window theWindow) nothrow @nogc
                 break;
         }
     }
+    theWindow.drawMutex.unlock();
 }
 
 Key convertKeyFromX11(KeySym symbol)
@@ -550,3 +560,4 @@ MouseState mouseStateFromX11(uint state) {
         (state & ShiftMask) == ShiftMask,
         (state & Mod1Mask) == Mod1Mask);
 }
+

@@ -4,7 +4,7 @@ module dplug.lv2;
 
 public
 {
-  import dplug.lv2.client;
+  import dplug.lv2.lv2client;
   import dplug.lv2.lv2;
   import dplug.lv2.lv2util;
   import dplug.lv2.atom;
@@ -15,4 +15,5 @@ public
   import dplug.lv2.options;
   import dplug.lv2.lv2_init;
   import dplug.lv2.state;
+  import dplug.lv2.kxstudio;
 }

@@ -1,9 +1,10 @@
 {
     "$schema": "https://raw.githubusercontent.com/AuburnSounds/dplug/master/plugin-schema.json",
-
     "vendorName": "No Name Audio",
     "vendorUniqueID": "NoAu",
+    "vendorSupportEmail": "support@wittyaudio.com",
     "pluginName": "Poly Alias",
+    "pluginHomepage": "https://www.wittyaudio.com/PolyAlias",
     "pluginUniqueID": "NAps",
     "publicVersion": "1.0.0",
     "CFBundleIdentifierPrefix": "com.nonameaudio",

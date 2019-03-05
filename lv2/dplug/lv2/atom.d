@@ -80,9 +80,9 @@ extern(C) {
     */
     // #define LV2_ATOM_CONTENTS(type, atom) \
     //     ((void*)((uint8_t*)(atom) + sizeof(type)))
-    template LV2_ATOM_CONTENTS(alias type, alias atom)
+    void* LV2_ATOM_CONTENTS(alias type)(LV2_Atom* atom)
     {
-        auto LV2_ATOM_CONTENTS = (cast(void*)(cast(uint8_t*)(atom) + sizeof(type)));
+        return cast(void*)(cast(uint8_t*)(cast(void*)atom) + type.sizeof);
     }
 
     // /**
@@ -216,10 +216,11 @@ extern(C) {
     /** The header of an atom:Event.  Note this type is NOT an LV2_Atom. */
     struct LV2_Atom_Event {
         /** Time stamp.  Which type is valid is determined by context. */
-        union time {
+        union Time {
             int64_t frames;  /**< Time in audio frames. */
             double  beats;   /**< Time in beats. */
         }
+        Time time;
         LV2_Atom body;  /**< Event body atom header. */
         /* Body atom contents follow here. */
     }
