@@ -140,7 +140,12 @@ nothrow @nogc const(char)* pluginURIFromClient(alias ClientClass)(int index)
 
 void GenerateManifestFromClientInternal(alias ClientClass)(generateManifestFromClientCallback callback, const(char)[] binaryFileName, const(char)[] licensePath, const(char)[] buildDir)
 {
-    // Note: this function is called by D, so it reuses the runtime from dplug-build!
+    // Note: this function is called by D, so it reuses the runtime from dplug-build on POSIX
+    version(Windows)
+    {
+        import core.runtime;
+        Runtime.initialize();
+    }
 
     import core.stdc.stdio;
     import core.stdc.stdlib: free;
@@ -217,7 +222,16 @@ void GenerateManifestFromClientInternal(alias ClientClass)(generateManifestFromC
     if(pluginInfo.hasGUI)
     {
         manifest ~= "\n<" ~ stringDup(baseURI.ptr) ~ "/ui/>\n";
-        manifest ~= "    a ui:X11UI;\n";
+
+        version(OSX)
+            manifest ~= "    a ui:CocoaUI;\n";
+        else version(Windows)
+            manifest ~= "    a ui:WindowsUI;\n";
+        else version(linux)
+            manifest ~= "    a ui:X11UI;\n";
+        else
+            static assert("unsupported OS");
+
         manifest ~= "    lv2:optionalFeature ui:noUserResize ,\n";
         manifest ~= "                        ui:resize ,\n";
         manifest ~= "                        ui:touch ;\n";
