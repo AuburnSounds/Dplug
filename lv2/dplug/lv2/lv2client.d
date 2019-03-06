@@ -160,13 +160,13 @@ nothrow:
         }
         else if(port < _maxInputs + _client.params.length)
         {
-            ulong input = port - _client.params.length;
+            uint input = port - cast(uint)(_client.params.length);
             _inputPointers[input] = cast(float*)data;
             _inputPointersUsed[input] = false;
         }
         else if(port < _maxOutputs + _maxInputs + _client.params.length)
         {
-            ulong output = port - _client.params.length - _maxInputs;
+            uint output = port - cast(uint)(_client.params.length) - _maxInputs;
             _outputPointers[output] = cast(float*)data;
             _outputPointersUsed[output] = false;
         }
