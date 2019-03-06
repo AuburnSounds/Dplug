@@ -321,6 +321,33 @@ void buildUIDescriptor(char* baseURI) nothrow @nogc
     lv2UIDescriptor = descriptor;
 }
 
+/// escape a UTF-8 string for UTF-8 RDF
+/// See_also: https://www.w3.org/TR/turtle/
+string escapeRDFString(string s)
+{
+    string r = "\"";
+
+    foreach(char ch; s)
+    {
+        switch(ch)
+        {
+           // escape some whitespace chars
+           case '\t': r ~= `\t`; break;
+           case '\b': r ~= `\b`; break;
+           case '\n': r ~= `\n`; break;
+           case '\r': r ~= `\r`; break;
+           case '\f': r ~= `\f`; break;
+           case '\"': r ~= `\"`; break;
+           case '\'': r ~= `\'`; break;
+           case '\\': r ~= `\\`; break;
+           default:
+               r ~= ch;
+        }
+    }
+    r ~= "\"";
+    return r;
+}
+
 const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, bool hasMIDIInput)
 {
     import std.conv: to;
@@ -328,16 +355,14 @@ const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, b
     import std.regex: regex, replaceAll;
     import std.uni: toLower;
 
-    auto re = regex(r"(\s+|@|&|'|\(|\)|<|>|#|:)");
-
     string paramString = "    lv2:port\n";
     foreach(index, param; params)
     {
         paramString ~= "    [ \n";
         paramString ~= "        a lv2:InputPort , lv2:ControlPort ;\n";
         paramString ~= "        lv2:index " ~ to!string(index) ~ " ;\n";
-        paramString ~= "        lv2:symbol \"" ~ replaceAll(param.name, re, "").toLower() ~ "\" ;\n";
-        paramString ~= "        lv2:name \"" ~ param.name ~ "\" ;\n";
+        paramString ~= "        lv2:symbol " ~ escapeRDFString(param.name).toLower() ~ " ;\n";
+        paramString ~= "        lv2:name " ~ escapeRDFString(param.name) ~ " ;\n";
         paramString ~= "        lv2:default " ~ to!string(param.getNormalized()) ~ " ;\n";
         paramString ~= "        lv2:minimum 0.0 ;\n";
         paramString ~= "        lv2:maximum 1.0 ;\n";
