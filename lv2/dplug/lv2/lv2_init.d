@@ -187,7 +187,6 @@ void GenerateManifestFromClientInternal(alias ClientClass)(generateManifestFromC
 
         foreach(legalIO; legalIOs)
         {
-            fprintf(stderr, "Configuration: %d Inputs, %d Outputs\n", legalIO.numInputChannels, legalIO.numOutputChannels);
             auto pluginURI = uriFromIOConfiguration(cast(char*)baseURI, legalIO);
             manifest ~= "<" ~ pluginURI ~ ">\n";
             manifest ~= "    a lv2:Plugin" ~ lv2PluginCategory(pluginInfo.category) ~ " ;\n";
