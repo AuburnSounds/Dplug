@@ -492,14 +492,18 @@ int main(string[] args)
                         static extern(C) void processManifest(const(ubyte*) fileContents, size_t len, const(char)[] path)
                         {
                             const(char)[] manifest = cast(const(char)[])fileContents[0..len];
-                            cwriteln(manifest);
                             std.file.write(path ~ "/manifest.ttl", fileContents[0..len]);
                         }
                         generateManifest ptrGenerateManifest = cast(generateManifest) lib.loadSymbol("GenerateManifestFromClient");
                         ptrGenerateManifest(&processManifest, binaryName, plugin.licensePath, outputDir);
                         lib.unload();
 
-                        cwritefln(" => OK".green);
+                        string manifestPath = outputDir ~ "/manifest.ttl";
+                        if (!exists(manifestPath))
+                            throw new Exception(format("%s wasn't created", manifestPath));
+                        if (getSize(manifestPath) == 0)
+                            throw new Exception(format("%s is an empty file", manifestPath));
+                        cwritefln("    => Written %s bytes to manifest.ttl.".green, getSize(manifestPath));
                         cwriteln();
                     }
                 }
