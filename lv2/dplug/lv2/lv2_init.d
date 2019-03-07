@@ -42,12 +42,15 @@ import dplug.core.vec,
 import dplug.client;
 
 import core.stdc.stdio;
+import core.stdc.stdlib;
 import core.stdc.string;
 import core.stdc.stdint;
 
 import dplug.lv2.lv2client;
 import dplug.lv2.urid;
 import dplug.lv2.options;
+
+//debug = debugLV2Client;
 
 extern(C) alias generateManifestFromClientCallback = void function(const(ubyte)* fileContents, size_t len, const(char)[] buildDir);
 
@@ -56,62 +59,93 @@ extern(C) alias generateManifestFromClientCallback = void function(const(ubyte)*
  */
 template LV2EntryPoint(alias ClientClass)
 {
+    static immutable enum lv2_descriptor =  
+        "export extern(C) const (LV2_Descriptor)* lv2_descriptor(uint index) nothrow @nogc" ~
+        "{" ~
+        "    int result = build_lv2_descriptor!" ~ ClientClass.stringof ~ "(index);" ~
+        "    if(result > 0) return null;" ~
+        "    return &lv2Descriptors[index];" ~
+        "}\n";
 
-    static immutable enum instantiate = "export extern(C) static LV2_Handle instantiate (const LV2_Descriptor* descriptor, double rate, const char* bundle_path, const(LV2_Feature*)* features)" ~
-                                        "{" ~
-                                        "    return cast(LV2_Handle)myLV2EntryPoint!" ~ ClientClass.stringof ~ "(descriptor, rate, bundle_path, features);" ~
-                                        "}\n";
+    // BUG: this doesn't build the UI descriptor, this assume lv2_ui_descriptor will be called after lv2_descriptor
+    static immutable enum lv2_ui_descriptor = 
+        "export extern(C) const (LV2UI_Descriptor)* lv2ui_descriptor(uint index)nothrow @nogc" ~
+        "{" ~
+        "    switch(index) {" ~
+        "        case 0:" ~
+        "            return &lv2UIDescriptor;" ~
+        "        default: return null;" ~
+        "    }" ~
+        "}\n";
 
-    static immutable enum lv2_descriptor =  "import core.stdc.stdint; import core.stdc.stdio; import core.stdc.string;\n" ~
-                                            "export extern(C) const (LV2_Descriptor)* lv2_descriptor(uint32_t index)" ~
-                                            "{" ~
-                                            "    int result = buildDescriptor(index);" ~
-                                            "    if(result > 0) return null;" ~
-                                            "    return &lv2Descriptors[index];" ~
-                                            "}\n";
+    static immutable enum generate_manifest_from_client = 
+        "export extern(C) void GenerateManifestFromClient(generateManifestFromClientCallback callback, const(char)[] binaryFileName, const(char)[] licensePath, const(char)[] buildDir)"  ~
+        "{" ~
+        "    GenerateManifestFromClientInternal!" ~ ClientClass.stringof ~ "(callback, binaryFileName, licensePath, buildDir);" ~
+        "}\n";
 
-    static immutable enum lv2_ui_descriptor = "export extern(C) const (LV2UI_Descriptor)* lv2ui_descriptor(uint32_t index)\n" ~
-                                               "{" ~
-                                               "    switch(index) {" ~
-                                               "        case 0:" ~
-                                               "            return &lv2UIDescriptor;" ~
-                                               "        default: return null;" ~
-                                               "    }" ~
-                                               "}\n";
-
-    static immutable enum build_descriptor =  "nothrow int buildDescriptor(uint32_t index) {" ~
-                                              "    const(char)* uri = pluginURIFromClient!" ~ ClientClass.stringof ~ "(index);" ~
-                                              "    if(uri == null) return 1;" ~
-                                              "    LV2_Descriptor descriptor = { uri, &instantiate, &connect_port, &activate, &run, &deactivate, &cleanup, &extension_data };" ~
-                                              "    lv2Descriptors[index] = descriptor;" ~
-                                              "    return 0;" ~
-                                              "}\n";
-
-    static immutable enum generate_manifest_from_client = "export extern(C) void GenerateManifestFromClient(generateManifestFromClientCallback callback, const(char)[] binaryFileName, const(char)[] licensePath, const(char)[] buildDir)"  ~
-                                                       "{" ~
-                                                       "    GenerateManifestFromClientInternal!" ~ ClientClass.stringof ~ "(callback, binaryFileName, licensePath, buildDir);" ~
-                                                       "}\n";
-
-    const char[] LV2EntryPoint = instantiate ~ lv2_descriptor ~ lv2_ui_descriptor ~ build_descriptor ~ generate_manifest_from_client;
+    const char[] LV2EntryPoint = lv2_descriptor ~ lv2_ui_descriptor ~ generate_manifest_from_client;
 }
 
-extern(C)
+extern(C) static LV2_Handle instantiate(ClientClass)(const(LV2_Descriptor)* descriptor, 
+                                                     double rate, 
+                                                     const(char)* bundle_path, 
+                                                     const(LV2_Feature*)* features)
 {
-    __gshared Map!(string, int) uriMap;
-    __gshared LV2_Descriptor[] lv2Descriptors;
-    __gshared LV2UI_Descriptor lv2UIDescriptor;
+    return cast(LV2_Handle)myLV2EntryPoint!ClientClass(descriptor, rate, bundle_path, features);
 }
+
+// build a LV2_Descriptor lazily
+int build_lv2_descriptor(ClientClass)(uint index) nothrow @nogc
+{
+    const(char)* uri = pluginURIFromClient!ClientClass(index);
+    if (uri is null) 
+        return 1;
+    LV2_Descriptor descriptor = 
+    { 
+        uri, 
+        &instantiate!ClientClass, 
+        &connect_port, 
+        &activate, &run, 
+        &deactivate, 
+        &cleanup, 
+        &extension_data 
+    };
+    lv2Descriptors[index] = descriptor;
+    return 0;
+}
+
+void buildUIDescriptor(char* baseURI) nothrow @nogc
+{
+    char[256] buf;
+    snprintf(buf.ptr, 260, "%s%s", baseURI, "/ui/".ptr);
+    LV2UI_Descriptor descriptor = {
+    URI: stringDup(buf.ptr).ptr, 
+    instantiate: &instantiateUI, 
+    cleanup: &cleanupUI, 
+    port_event: &port_event, 
+    extension_data: &extension_dataUI
+    };
+    lv2UIDescriptor = descriptor;
+}
+
+__gshared Map!(string, int) uriMap;
+__gshared LV2_Descriptor[] lv2Descriptors;
+__gshared LV2UI_Descriptor lv2UIDescriptor;
 
 nothrow LV2Client myLV2EntryPoint(alias ClientClass)(const LV2_Descriptor* descriptor, double rate, const char* bundle_path, const(LV2_Feature*)* features)
 {
+    debug(debugLV2Client) debugLog(">myLV2EntryPoint");
     auto client = mallocNew!ClientClass();
     auto lv2client = mallocNew!LV2Client(client, &uriMap);
     lv2client.instantiate(descriptor, rate, bundle_path, features);
+    debug(debugLV2Client) debugLog("<myLV2EntryPoint");
     return lv2client;
 }
 
 nothrow @nogc const(char)* pluginURIFromClient(alias ClientClass)(int index)
 {
+    debug(debugLV2Client) debugLog(">pluginURIFromClient");
     import core.stdc.stdlib: free;
 
     uriMap = makeMap!(string, int);
@@ -135,6 +169,7 @@ nothrow @nogc const(char)* pluginURIFromClient(alias ClientClass)(int index)
     }
 
     client.destroyFree();
+    debug(debugLV2Client) debugLog("<pluginURIFromClient");
     return uri.ptr;
 }
 
@@ -150,11 +185,6 @@ void GenerateManifestFromClientInternal(alias ClientClass)(generateManifestFromC
         import core.runtime;
         Runtime.initialize();
     }
-
-    import core.stdc.stdio;
-    import core.stdc.stdlib: free;
-    import std.string: toStringz;
-    import std.string: fromStringz;
 
     ClientClass client = mallocNew!ClientClass();
     scope(exit) client.destroyFree();
@@ -306,20 +336,6 @@ char[] uriFromIOConfiguration(char* baseURI, LegalIO legalIO) nothrow @nogc
     return stringDup(buf.ptr); // has to be free somewhere, TODO remove leak
 }
 
-void buildUIDescriptor(char* baseURI) nothrow @nogc
-{
-    char[256] buf;
-    snprintf(buf.ptr, 260, "%s%s", baseURI, "/ui/".ptr);
-    LV2UI_Descriptor descriptor = {
-        URI: stringDup(buf.ptr).ptr, 
-        instantiate: &instantiateUI, 
-        cleanup: &cleanupUI, 
-        port_event: &port_event, 
-        extension_data: &extension_dataUI
-    };
-    lv2UIDescriptor = descriptor;
-}
-
 /// escape a UTF-8 string for UTF-8 RDF
 /// See_also: https://www.w3.org/TR/turtle/
 string escapeRDFString(string s)
@@ -449,7 +465,7 @@ const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, b
 
 /*
     LV2 Callback funtion implementations
-    note that instatiate is a template mixin. 
+    note that instantiate is a template mixin. 
 */
 extern(C)
 {
@@ -506,16 +522,18 @@ extern(C)
 									LV2UI_Widget*                   widget,
 									const (LV2_Feature*)*       features)
     {
+        debug(debugLV2Client) debugLog(">instantiateUI");
         void* instance_access = cast(char*)assumeNothrowNoGC(&lv2_features_data)(features, "http://lv2plug.in/ns/ext/instance-access");
         if(instance_access)
         {
             LV2Client lv2client = cast(LV2Client)instance_access;
             lv2client.instantiateUI(descriptor, plugin_uri, bundle_path, write_function, controller, widget, features);
+            debug(debugLV2Client) debugLog("<instantiateUI");
             return cast(LV2UI_Handle)instance_access;
         }
         else
         {
-            printf("Error: Instance access is not available\n");
+            debug(debugLV2Client) debugLog("Error: Instance access is not available\n");
             return null;
         }
     }
@@ -531,8 +549,10 @@ extern(C)
 
     void cleanupUI(LV2UI_Handle ui)
     {
+        debug(debugLV2Client) debugLog(">cleanupUI");
         LV2Client lv2client = cast(LV2Client)ui;
         lv2client.cleanupUI();
+        debug(debugLV2Client) debugLog("<cleanupUI");
     }
 
     void port_event(LV2UI_Handle ui,
@@ -541,8 +561,10 @@ extern(C)
 						uint32_t     format,
 						const void*  buffer)
     {
+        debug(debugLV2Client) debugLog(">port_event");
         LV2Client lv2client = cast(LV2Client)ui;
         lv2client.port_event(port_index, buffer_size, format, buffer);
+        debug(debugLV2Client) debugLog("<port_event");
     }
 
     const (void)* extension_dataUI(const char* uri)
