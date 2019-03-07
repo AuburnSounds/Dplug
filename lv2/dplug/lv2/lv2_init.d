@@ -138,9 +138,13 @@ nothrow @nogc const(char)* pluginURIFromClient(alias ClientClass)(int index)
     return uri.ptr;
 }
 
-void GenerateManifestFromClientInternal(alias ClientClass)(generateManifestFromClientCallback callback, const(char)[] binaryFileName, const(char)[] licensePath, const(char)[] buildDir)
+void GenerateManifestFromClientInternal(alias ClientClass)(generateManifestFromClientCallback callback, 
+                                                           const(char)[] binaryFileName, 
+                                                           const(char)[] licensePath, 
+                                                           const(char)[] buildDir)
 {
     // Note: this function is called by D, so it reuses the runtime from dplug-build on POSIX
+    // FUTURE: make this function nothrow @nogc, to avoid relying on dplug-build runtime
     version(Windows)
     {
         import core.runtime;
@@ -151,10 +155,6 @@ void GenerateManifestFromClientInternal(alias ClientClass)(generateManifestFromC
     import core.stdc.stdlib: free;
     import std.string: toStringz;
     import std.string: fromStringz;
-    import std.string: replace;
-
-    // ScopedForeignCallback!(false, true) scopedCallback;
-    // scopedCallback.enter();
 
     ClientClass client = mallocNew!ClientClass();
     scope(exit) client.destroyFree();
@@ -180,7 +180,6 @@ void GenerateManifestFromClientInternal(alias ClientClass)(generateManifestFromC
     manifest ~= "@prefix bufsz:   <http://lv2plug.in/ns/ext/buf-size#> .\n";
     manifest ~= "@prefix time:    <http://lv2plug.in/ns/ext/time#> .\n";
     manifest ~= "@prefix opts:    <http://lv2plug.in/ns/ext/options#> .\n\n";
-    // manifest ~= "@prefix eg:      <" ~ pluginInfo.pluginHomepage ~ "> .\n\n";
 
     if(legalIOs.length > 0)
     {
@@ -190,10 +189,10 @@ void GenerateManifestFromClientInternal(alias ClientClass)(generateManifestFromC
             auto pluginURI = uriFromIOConfiguration(cast(char*)baseURI, legalIO);
             manifest ~= "<" ~ pluginURI ~ ">\n";
             manifest ~= "    a lv2:Plugin" ~ lv2PluginCategory(pluginInfo.category) ~ " ;\n";
-            manifest ~= "    lv2:binary <" ~ binaryFileName[0..$].replace(" ", "") ~ "> ;\n";
-            manifest ~= "    doap:name \"" ~ pluginInfo.pluginName ~ "\" ;\n";
-            manifest ~= "    doap:license <" ~ licensePath[0..$] ~ "> ;\n";
-            manifest ~= "    lv2:project <" ~ pluginInfo.pluginHomepage ~ "> ;\n";
+            manifest ~= "    lv2:binary " ~ escapeRDF_IRI(binaryFileName) ~ " ;\n";
+            manifest ~= "    doap:name " ~ escapeRDFString(pluginInfo.pluginName) ~ " ;\n";
+            manifest ~= "    doap:license " ~ escapeRDF_IRI(licensePath) ~ " ;\n";
+            manifest ~= "    lv2:project " ~ escapeRDF_IRI(pluginInfo.pluginHomepage) ~ " ;\n";
             manifest ~= "    lv2:extensionData <" ~ LV2_OPTIONS__interface ~ "> ; \n";
 
             if(pluginInfo.hasGUI)
@@ -236,7 +235,7 @@ void GenerateManifestFromClientInternal(alias ClientClass)(generateManifestFromC
         manifest ~= "                        ui:touch ;\n";
         manifest ~= "    lv2:requiredFeature <" ~ LV2_OPTIONS__options ~ "> ,\n";
         manifest ~= "                        <" ~ LV2_URID__map ~ "> ;\n";
-        manifest ~= "    ui:binary <"  ~ binaryFileName[0..$].replace(" ", "") ~ "> .\n";
+        manifest ~= "    ui:binary "  ~ escapeRDF_IRI(binaryFileName) ~ " .\n";
     }
     
     callback(cast(const(ubyte)*)manifest, manifest.length, buildDir);
@@ -304,7 +303,7 @@ char[] uriFromIOConfiguration(char* baseURI, LegalIO legalIO) nothrow @nogc
         snprintf(buf.ptr, 256, "%s/%s/", baseURI, "stereo".ptr);
     else
         snprintf(buf.ptr, 256, "%s/%dIn%dOut/", baseURI, legalIO.numInputChannels, legalIO.numOutputChannels);
-    return stringDup(buf.ptr); // has to be free somewhere
+    return stringDup(buf.ptr); // has to be free somewhere, TODO remove leak
 }
 
 void buildUIDescriptor(char* baseURI) nothrow @nogc
@@ -348,11 +347,40 @@ string escapeRDFString(string s)
     return r;
 }
 
+/// Escape a UTF-8 string for UTF-8 IRI literal
+/// See_also: https://www.w3.org/TR/turtle/
+string escapeRDF_IRI(const(char)[] s)
+{
+    // We actually remove all characters, because it seems not all hosts properly decode escape sequences
+    string r = "<";
+
+    foreach(char ch; s)
+    {
+        switch(ch)
+        {
+            // escape some whitespace chars
+            case '\0': .. case ' ':
+            case '<':
+            case '>':
+            case '"':
+            case '{':
+            case '}':
+            case '|':
+            case '^':
+            case '`':
+            case '\\':
+                break; // skip that character
+            default:
+                r ~= ch;
+        }
+    }
+    r ~= ">";
+    return r;
+}
+
 const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, bool hasMIDIInput)
 {
     import std.conv: to;
-    import std.string: replace;
-    import std.regex: regex, replaceAll;
     import std.uni: toLower;
 
     string paramString = "    lv2:port\n";
@@ -361,7 +389,7 @@ const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, b
         paramString ~= "    [ \n";
         paramString ~= "        a lv2:InputPort , lv2:ControlPort ;\n";
         paramString ~= "        lv2:index " ~ to!string(index) ~ " ;\n";
-        paramString ~= "        lv2:symbol " ~ escapeRDFString(param.name).toLower() ~ " ;\n";
+        paramString ~= "        lv2:symbol " ~ escapeRDFString(param.name).toLower() ~ " ;\n"; // TODO: needed?
         paramString ~= "        lv2:name " ~ escapeRDFString(param.name) ~ " ;\n";
         paramString ~= "        lv2:default " ~ to!string(param.getNormalized()) ~ " ;\n";
         paramString ~= "        lv2:minimum 0.0 ;\n";
