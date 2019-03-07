@@ -386,6 +386,15 @@ struct Plugin
         }
     }
 
+    string getLV2PrettyName()
+    {
+        // Note: Carla doesn't support IRI with escaped character, so we have to remove
+        // spaces in LV2 else the binaries aren't found.
+        // This function is only used for the final binary name.
+        // See_also: the LV2 client.
+        return prettyName.replace(" ", "");
+    }
+
     string getFirstConfiguration()
     {
         if (configurations.length == 0)

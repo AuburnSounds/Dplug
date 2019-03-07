@@ -15,7 +15,7 @@ import colorize;
 import utils;
 import plugin;
 
-// This define the paths to install plug-ins on macOS
+// This define the paths to install plug-ins in on macOS
 string MAC_VST3_DIR = "/Library/Audio/Plug-Ins/VST3";
 string MAC_VST_DIR = "/Library/Audio/Plug-Ins/VST";
 string MAC_AU_DIR  = "/Library/Audio/Plug-Ins/Components";
@@ -537,7 +537,7 @@ int main(string[] args)
                     else if (configIsLV2(config))
                     {
                         // must create TTL, and a .lv2 directory
-                        string pluginFinalName = plugin.prettyName ~ ".dll";
+                        string pluginFinalName = plugin.getLV2PrettyName() ~ ".dll";
                         string pluginDirectory = path ~ "/" ~ plugin.prettyName ~ ".lv2";
                         string pluginFinalPath = pluginDirectory ~ "/" ~ pluginFinalName;
 
@@ -581,13 +581,12 @@ int main(string[] args)
                 }
                 else version(linux)
                 {
-                    import std.string: replace;
-
                     if(configIsLV2(config))
                     {
-                        string soPath = path ~ "/" ~ plugin.prettyName.replace(" ", "") ~ ".so";
+                        string pluginFinalPath = plugin.getLV2PrettyName() ~ ".so";
+                        string soPath = path ~ "/" ~ pluginFinalPath;
                         fileMove(plugin.dubOutputFileName, soPath);
-                        extractLV2ManifestFromBinary(soPath, path, is64b, plugin.prettyName ~ ".so");
+                        extractLV2ManifestFromBinary(soPath, path, is64b, pluginFinalPath);
                     }
                     else if (configIsVST3(config)) // VST3 special case, needs to be named .vst3 (but can't be _linked_ as .vst3)
                     {
