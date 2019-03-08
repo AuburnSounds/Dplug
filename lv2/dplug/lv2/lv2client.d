@@ -39,8 +39,7 @@ import dplug.core.vec,
        dplug.core.runtime,
        dplug.core.fpcontrol,
        dplug.core.thread,
-       dplug.core.sync,
-       dplug.core.map;
+       dplug.core.sync;
 
 import dplug.client.client,
        dplug.client.daw,
@@ -67,16 +66,15 @@ nothrow:
 @nogc:
 
     Client _client;
-    Map!(string, int)* _uriMap;
 
-    this(Client client, Map!(string, int)* uriMapPtr)
+    this(Client client, int legalIOIndex)
     {
         _client = client;
         _client.setHostCommand(this);
         _graphicsMutex = makeMutex();
-        _uriMap = uriMapPtr;
         _options = null;
         _uridMap = null;
+        _legalIOIndex = legalIOIndex;
     }
 
     ~this()
@@ -116,11 +114,8 @@ nothrow:
 
         fURIDs = URIDs(_uridMap);
 
-        // Retrieve index of legalIO that was stored in the uriMap
-        string uri = cast(string)descriptor.URI[0..strlen(descriptor.URI)];
-        int legalIOIndex = (*_uriMap)[uri];
 
-        LegalIO selectedIO = _client.legalIOs()[legalIOIndex];
+        LegalIO selectedIO = _client.legalIOs()[_legalIOIndex];
 
         _maxInputs = selectedIO.numInputChannels;
         _maxOutputs = selectedIO.numOutputChannels;
@@ -414,6 +409,8 @@ private:
     UncheckedMutex _graphicsMutex;
 
     URIDs fURIDs;
+
+    int _legalIOIndex;
 }
 
 struct URIDs {

@@ -60,31 +60,41 @@ extern(C) alias generateManifestFromClientCallback = void function(const(ubyte)*
 template LV2EntryPoint(alias ClientClass)
 {
     static immutable enum lv2_descriptor =  
-        "export extern(C) const (LV2_Descriptor)* lv2_descriptor(uint index) nothrow @nogc" ~
+        "export extern(C) const(void)* lv2_descriptor(uint index) nothrow @nogc" ~
         "{" ~
-        "    int result = build_lv2_descriptor!" ~ ClientClass.stringof ~ "(index);" ~
-        "    if(result > 0) return null;" ~
-        "    return &lv2Descriptors[index];" ~
+        "    return lv2_descriptor_templated!" ~ ClientClass.stringof ~ "(index);" ~
         "}\n";
 
-    // BUG: this doesn't build the UI descriptor, this assume lv2_ui_descriptor will be called after lv2_descriptor
     static immutable enum lv2_ui_descriptor = 
-        "export extern(C) const (LV2UI_Descriptor)* lv2ui_descriptor(uint index)nothrow @nogc" ~
+        "export extern(C) const(void)* lv2ui_descriptor(uint index)nothrow @nogc" ~
         "{" ~
-        "    switch(index) {" ~
-        "        case 0:" ~
-        "            return &lv2UIDescriptor;" ~
-        "        default: return null;" ~
-        "    }" ~
+        "    return lv2ui_descriptor_templated!" ~ ClientClass.stringof ~ "(index);" ~
         "}\n";
 
     static immutable enum generate_manifest_from_client = 
         "export extern(C) void GenerateManifestFromClient(generateManifestFromClientCallback callback, const(char)[] binaryFileName, const(char)[] licensePath, const(char)[] buildDir)"  ~
         "{" ~
-        "    GenerateManifestFromClientInternal!" ~ ClientClass.stringof ~ "(callback, binaryFileName, licensePath, buildDir);" ~
+        "    GenerateManifestFromClient_templated!" ~ ClientClass.stringof ~ "(callback, binaryFileName, licensePath, buildDir);" ~
         "}\n";
 
     const char[] LV2EntryPoint = lv2_descriptor ~ lv2_ui_descriptor ~ generate_manifest_from_client;
+}
+
+const(LV2_Descriptor)* lv2_descriptor_templated(ClientClass)(uint index) nothrow @nogc
+{
+    build_all_lv2_descriptors!ClientClass();
+    if(index >= cast(int)(lv2Descriptors.length)) 
+        return null;
+    return &lv2Descriptors[index];
+}
+
+const (LV2UI_Descriptor)* lv2ui_descriptor_templated(ClientClass)(uint index) nothrow @nogc
+{
+    build_all_lv2_descriptors!ClientClass();
+    if (hasUI && index == 0)
+        return &lv2UIDescriptor;
+    else
+        return null;
 }
 
 extern(C) static LV2_Handle instantiate(ClientClass)(const(LV2_Descriptor)* descriptor, 
@@ -95,88 +105,134 @@ extern(C) static LV2_Handle instantiate(ClientClass)(const(LV2_Descriptor)* desc
     return cast(LV2_Handle)myLV2EntryPoint!ClientClass(descriptor, rate, bundle_path, features);
 }
 
-// build a LV2_Descriptor lazily
-int build_lv2_descriptor(ClientClass)(uint index) nothrow @nogc
-{
-    const(char)* uri = pluginURIFromClient!ClientClass(index);
-    if (uri is null) 
-        return 1;
-    LV2_Descriptor descriptor = 
-    { 
-        uri, 
-        &instantiate!ClientClass, 
-        &connect_port, 
-        &activate, &run, 
-        &deactivate, 
-        &cleanup, 
-        &extension_data 
-    };
-    lv2Descriptors[index] = descriptor;
-    return 0;
-}
 
-void buildUIDescriptor(char* baseURI) nothrow @nogc
-{
-    char[256] buf;
-    snprintf(buf.ptr, 260, "%s%s", baseURI, "/ui/".ptr);
-    LV2UI_Descriptor descriptor = {
-    URI: stringDup(buf.ptr).ptr, 
-    instantiate: &instantiateUI, 
-    cleanup: &cleanupUI, 
-    port_event: &port_event, 
-    extension_data: &extension_dataUI
-    };
-    lv2UIDescriptor = descriptor;
-}
+private:
 
-__gshared Map!(string, int) uriMap;
+// These are initialized lazily by `build_all_lv2_descriptors`
+__gshared bool descriptorsAreInitialized = false;
 __gshared LV2_Descriptor[] lv2Descriptors;
+__gshared bool hasUI;
 __gshared LV2UI_Descriptor lv2UIDescriptor;
 
-nothrow LV2Client myLV2EntryPoint(alias ClientClass)(const LV2_Descriptor* descriptor, double rate, const char* bundle_path, const(LV2_Feature*)* features)
+// build all needed LV2_Descriptors and LV2UI_Descriptor lazily
+void build_all_lv2_descriptors(ClientClass)() nothrow @nogc
+{
+    if (descriptorsAreInitialized)
+        return;
+
+    // Build a client
+    auto client = mallocNew!ClientClass();
+    scope(exit) client.destroyFree();
+
+    LegalIO[] legalIOs = client.legalIOs();
+
+    lv2Descriptors = mallocSlice!LV2_Descriptor(legalIOs.length); // Note: leaked
+
+    char[256] uriBuf;
+
+    for(int io = 0; io < cast(int)(legalIOs.length); io++)
+    {
+        // Make an URI for this I/O configuration
+        sprintPluginURI_IO(uriBuf.ptr, 256, client.pluginHomepage(), client.getPluginUniqueID(), legalIOs[io]);
+        
+        lv2Descriptors[io] = LV2_Descriptor.init;
+
+        lv2Descriptors[io].URI = stringDup(uriBuf.ptr).ptr;
+        lv2Descriptors[io].instantiate = &instantiate!ClientClass;
+        lv2Descriptors[io].connect_port = &connect_port;
+        lv2Descriptors[io].activate = &activate;
+        lv2Descriptors[io].run = &run;
+        lv2Descriptors[io].deactivate = &deactivate;
+        lv2Descriptors[io].cleanup = &cleanup;
+        lv2Descriptors[io].extension_data = &extension_data;
+    }
+
+
+    if (client.hasGUI())
+    {
+        hasUI = true;
+
+        // Make an URI for this the UI
+        sprintPluginURI_UI(uriBuf.ptr, 256, client.pluginHomepage(), client.getPluginUniqueID());
+
+        LV2UI_Descriptor descriptor = 
+        {
+            URI:            stringDup(uriBuf.ptr).ptr, 
+            instantiate:    &instantiateUI, 
+            cleanup:        &cleanupUI, 
+            port_event:     &port_event, 
+            extension_data: &extension_dataUI
+        };
+        lv2UIDescriptor = descriptor;
+    }
+    else
+    {
+        hasUI = false;
+    }   
+
+    descriptorsAreInitialized = true;
+}
+
+
+
+LV2Client myLV2EntryPoint(alias ClientClass)(const LV2_Descriptor* descriptor, 
+                                             double rate, 
+                                             const char* bundle_path, 
+                                             const(LV2_Feature*)* features) nothrow @nogc
 {
     debug(debugLV2Client) debugLog(">myLV2EntryPoint");
     auto client = mallocNew!ClientClass();
-    auto lv2client = mallocNew!LV2Client(client, &uriMap);
+
+    // Find which decsriptor was used using pointer offset
+    int legalIOIndex = cast(int)(descriptor - lv2Descriptors.ptr);
+    auto lv2client = mallocNew!LV2Client(client, legalIOIndex);
+
     lv2client.instantiate(descriptor, rate, bundle_path, features);
     debug(debugLV2Client) debugLog("<myLV2EntryPoint");
     return lv2client;
 }
 
-nothrow @nogc const(char)* pluginURIFromClient(alias ClientClass)(int index)
+void sprintPluginURI(char* buf, size_t maxChars, string pluginHomepage, char[4] pluginID) nothrow @nogc
 {
-    debug(debugLV2Client) debugLog(">pluginURIFromClient");
-    import core.stdc.stdlib: free;
-
-    uriMap = makeMap!(string, int);
-    auto client = mallocNew!ClientClass();
-    auto legalIOs = client.buildLegalIO();
-    if(index >= legalIOs.length)
-        return null;
-    lv2Descriptors = mallocSlice!LV2_Descriptor(legalIOs.length);
-    PluginInfo pluginInfo = client.buildPluginInfo();
-
-    auto pid = pluginInfo.pluginUniqueID;
-    char[256] baseURI;
-    snprintf(baseURI.ptr, 256, "%s%2X%2X%2X%2X", pluginInfo.pluginHomepage.ptr, pid[0], pid[1], pid[2], pid[3]);
-
-    auto uri = uriFromIOConfiguration(cast(char*)baseURI, legalIOs[index]);
-    uriMap[cast(string)uri] = index;
-
-    if(pluginInfo.hasGUI)
-    {
-        buildUIDescriptor(baseURI.ptr);
-    }
-
-    client.destroyFree();
-    debug(debugLV2Client) debugLog("<pluginURIFromClient");
-    return uri.ptr;
+    CString pluginHomepageZ = CString(pluginHomepage);
+    snprintf(buf, maxChars, "%s%2X%2X%2X%2X", pluginHomepageZ.storage, pluginID[0], pluginID[1], pluginID[2], pluginID[3]);
 }
 
-void GenerateManifestFromClientInternal(alias ClientClass)(generateManifestFromClientCallback callback, 
-                                                           const(char)[] binaryFileName, 
-                                                           const(char)[] licensePath, 
-                                                           const(char)[] buildDir)
+void sprintPluginURI_UI(char* buf, size_t maxChars, string pluginHomepage, char[4] pluginID) nothrow @nogc
+{
+    CString pluginHomepageZ = CString(pluginHomepage);
+    snprintf(buf, maxChars, "%s%2X%2X%2X%2X/ui", pluginHomepageZ.storage, pluginID[0], pluginID[1], pluginID[2], pluginID[3]);
+}
+
+void sprintPluginURI_IO(char* buf, size_t maxChars, string pluginHomepage, char[4] pluginID, LegalIO io) nothrow @nogc
+{
+    CString pluginHomepageZ = CString(pluginHomepage);
+    int ins = io.numInputChannels;
+    int outs = io.numOutputChannels;
+
+    // give user-friendly names
+    if (ins == 1 && outs == 1)
+    {
+        snprintf(buf, maxChars, "%s%2X%2X%2X%2X/mono", pluginHomepageZ.storage, 
+                 pluginID[0], pluginID[1], pluginID[2], pluginID[3]);
+    }
+    else if (ins == 2 && outs == 2)
+    {
+        snprintf(buf, maxChars, "%s%2X%2X%2X%2X/stereo", pluginHomepageZ.storage, 
+                 pluginID[0], pluginID[1], pluginID[2], pluginID[3]);
+    }
+    else
+    {
+        snprintf(buf, maxChars, "%s%2X%2X%2X%2X/%din%dout", pluginHomepageZ.storage, 
+                                                            pluginID[0], pluginID[1], pluginID[2], pluginID[3],
+                                                            ins, outs);
+    }
+}
+
+public void GenerateManifestFromClient_templated(alias ClientClass)(generateManifestFromClientCallback callback, 
+                                                                    const(char)[] binaryFileName, 
+                                                                    const(char)[] licensePath, 
+                                                                    const(char)[] buildDir)
 {
     // Note: this function is called by D, so it reuses the runtime from dplug-build on POSIX
     // FUTURE: make this function nothrow @nogc, to avoid relying on dplug-build runtime
@@ -188,15 +244,10 @@ void GenerateManifestFromClientInternal(alias ClientClass)(generateManifestFromC
 
     ClientClass client = mallocNew!ClientClass();
     scope(exit) client.destroyFree();
+
     LegalIO[] legalIOs = client.legalIOs();
-    PluginInfo pluginInfo = client.buildPluginInfo();
     Parameter[] params = client.params();
     string manifest = "";
-
-
-    auto pid = pluginInfo.pluginUniqueID;
-    char[256] baseURI;
-    snprintf(baseURI.ptr, 256, "%s%2X%2X%2X%2X", pluginInfo.pluginHomepage.ptr, pid[0], pid[1], pid[2], pid[3]);
 
     manifest ~= "@prefix lv2:     <http://lv2plug.in/ns/lv2core#> .\n";
     manifest ~= "@prefix atom:    <http://lv2plug.in/ns/ext/atom#> .\n";
@@ -211,45 +262,53 @@ void GenerateManifestFromClientInternal(alias ClientClass)(generateManifestFromC
     manifest ~= "@prefix time:    <http://lv2plug.in/ns/ext/time#> .\n";
     manifest ~= "@prefix opts:    <http://lv2plug.in/ns/ext/options#> .\n\n";
 
-    if(legalIOs.length > 0)
+    // Make an URI for the GUI
+    char[256] uriBuf;
+
+    string uriGUI = null;
+    if(client.hasGUI)
     {
+        sprintPluginURI_UI(uriBuf.ptr, 256, client.pluginHomepage(), client.getPluginUniqueID());
+        uriGUI = stringIDup(uriBuf.ptr);
+    }    
 
-        foreach(legalIO; legalIOs)
+    foreach(legalIO; legalIOs)
+    {
+        // Make an URI for this I/O configuration
+        sprintPluginURI_IO(uriBuf.ptr, 256, client.pluginHomepage(), client.getPluginUniqueID(), legalIO);
+        string uriIO = stringIDup(uriBuf.ptr);
+
+        manifest ~= escapeRDF_IRI(uriIO) ~ "\n";
+        manifest ~= "    a lv2:Plugin" ~ lv2PluginCategory(client.pluginCategory) ~ " ;\n";
+        manifest ~= "    lv2:binary " ~ escapeRDF_IRI(binaryFileName) ~ " ;\n";
+        manifest ~= "    doap:name " ~ escapeRDFString(client.pluginName) ~ " ;\n";
+        manifest ~= "    doap:license " ~ escapeRDF_IRI(licensePath) ~ " ;\n";
+        manifest ~= "    lv2:project " ~ escapeRDF_IRI(client.pluginHomepage) ~ " ;\n";
+        manifest ~= "    lv2:extensionData <" ~ LV2_OPTIONS__interface ~ "> ; \n";
+
+        if(client.hasGUI)
         {
-            auto pluginURI = uriFromIOConfiguration(cast(char*)baseURI, legalIO);
-            manifest ~= "<" ~ pluginURI ~ ">\n";
-            manifest ~= "    a lv2:Plugin" ~ lv2PluginCategory(pluginInfo.category) ~ " ;\n";
-            manifest ~= "    lv2:binary " ~ escapeRDF_IRI(binaryFileName) ~ " ;\n";
-            manifest ~= "    doap:name " ~ escapeRDFString(pluginInfo.pluginName) ~ " ;\n";
-            manifest ~= "    doap:license " ~ escapeRDF_IRI(licensePath) ~ " ;\n";
-            manifest ~= "    lv2:project " ~ escapeRDF_IRI(pluginInfo.pluginHomepage) ~ " ;\n";
-            manifest ~= "    lv2:extensionData <" ~ LV2_OPTIONS__interface ~ "> ; \n";
-
-            if(pluginInfo.hasGUI)
-            {
-                manifest ~= "    ui:ui <" ~ stringDup(baseURI.ptr) ~ "/ui/>;\n";
-            }
-
-            manifest ~= buildParamPortConfiguration(client.params(), legalIO, pluginInfo.receivesMIDI);
-            // auto presetBank = client.presetBank();
-            // for(int i = 0; i < presetBank.numPresets(); ++i)
-            // {
-            //     auto preset = presetBank.preset(i);
-            //     manifest ~= "    eg:" ~ preset.name() ~ "\n";
-            //     manifest ~= "        a pset:Preset ;\n";
-            //     manifest ~= "        rdfs:label \"" ~ preset.name() ~ "\" ;\n";
-            //     manifest ~= "        lv2:appliesTo eg:" ~ pluginURI ~ ";\n";
-            //     foreach()
-            //     // Set up preset values here
-            // }
-            free(pluginURI.ptr);
+            manifest ~= "    ui:ui " ~ escapeRDF_IRI(uriGUI) ~ ";\n";
         }
+
+        manifest ~= buildParamPortConfiguration(client.params(), legalIO, client.receivesMIDI);
+        // auto presetBank = client.presetBank();
+        // for(int i = 0; i < presetBank.numPresets(); ++i)
+        // {
+        //     auto preset = presetBank.preset(i);
+        //     manifest ~= "    eg:" ~ preset.name() ~ "\n";
+        //     manifest ~= "        a pset:Preset ;\n";
+        //     manifest ~= "        rdfs:label \"" ~ preset.name() ~ "\" ;\n";
+        //     manifest ~= "        lv2:appliesTo eg:" ~ pluginURI ~ ";\n";
+        //     foreach()
+        //     // Set up preset values here
+        // }
     }
 
     // describe UI
-    if(pluginInfo.hasGUI)
+    if(client.hasGUI)
     {
-        manifest ~= "\n<" ~ stringDup(baseURI.ptr) ~ "/ui/>\n";
+        manifest ~= "\n" ~ escapeRDF_IRI(uriGUI) ~ "\n";
 
         version(OSX)
             manifest ~= "    a ui:CocoaUI;\n";
@@ -320,20 +379,6 @@ string lv2PluginCategory(PluginCategory category)
         }
     }
     return lv2Category;
-}
-
-char[] uriFromIOConfiguration(char* baseURI, LegalIO legalIO) nothrow @nogc
-{
-    char[256] buf;
-
-    //Check for special cases e.g. Mono or stereo"
-    if(legalIO.numInputChannels == 1 && legalIO.numOutputChannels == 1)
-        snprintf(buf.ptr, 256, "%s/%s/", baseURI, "mono".ptr);
-    else if(legalIO.numInputChannels == 2 && legalIO.numOutputChannels == 2)
-        snprintf(buf.ptr, 256, "%s/%s/", baseURI, "stereo".ptr);
-    else
-        snprintf(buf.ptr, 256, "%s/%dIn%dOut/", baseURI, legalIO.numInputChannels, legalIO.numOutputChannels);
-    return stringDup(buf.ptr); // has to be free somewhere, TODO remove leak
 }
 
 /// escape a UTF-8 string for UTF-8 RDF
