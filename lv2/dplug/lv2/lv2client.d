@@ -56,7 +56,6 @@ import dplug.lv2.lv2,
        dplug.lv2.urid,
        dplug.lv2.bufsize,
        dplug.lv2.atom,
-       dplug.lv2.atomutil,
        dplug.lv2.kxstudio,
        dplug.lv2.time;
 

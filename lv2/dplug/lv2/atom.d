@@ -27,6 +27,8 @@ module dplug.lv2.atom;
 
 import core.stdc.stdint;
 import core.stdc.stddef;
+import core.stdc.string;
+
 
 enum LV2_ATOM_URI  =  "http://lv2plug.in/ns/ext/atom";        ///< http://lv2plug.in/ns/ext/atom
 enum LV2_ATOM_PREFIX = LV2_ATOM_URI ~ "#";                    ///< http://lv2plug.in/ns/ext/atom#
@@ -253,4 +255,67 @@ extern(C) {
         LV2_Atom_Sequence_Body body_;  /**< Body. */
     }
 
+}
+
+
+nothrow:
+@nogc:
+
+/** Pad a size to 64 bits. */
+uint32_t lv2_atom_pad_size(uint32_t size)
+{
+    return (size + 7U) & (~7U);
+}
+
+/** Get an iterator pointing to the first event in a Sequence body. */
+LV2_Atom_Event* lv2_atom_sequence_begin(const LV2_Atom_Sequence_Body* body_)
+{
+    return cast(LV2_Atom_Event*)(body_ + 1);
+}
+
+/** Get an iterator pointing to the end of a Sequence body. */
+LV2_Atom_Event* lv2_atom_sequence_end(const LV2_Atom_Sequence_Body* body_, uint32_t size)
+{
+    return cast(LV2_Atom_Event*)(cast(const uint8_t*)body_ + lv2_atom_pad_size(size));
+}
+
+/** Return true iff `i` has reached the end of `body`. */
+bool lv2_atom_sequence_is_end(const LV2_Atom_Sequence_Body* body_,
+                              uint32_t                      size,
+                              const LV2_Atom_Event*         i)
+{
+    return cast(const uint8_t*)i >= (cast(const uint8_t*)body_ + size);
+}
+
+/** Return an iterator to the element following `i`. */
+LV2_Atom_Event* lv2_atom_sequence_next(const LV2_Atom_Event* i)
+{
+    return cast(LV2_Atom_Event*)(cast(const uint8_t*)i
+                                 + LV2_Atom_Event.sizeof
+        + lv2_atom_pad_size(i.body_.size));
+}
+
+
+/** Return a pointer to the first property in `body`. */
+LV2_Atom_Property_Body* lv2_atom_object_begin(const LV2_Atom_Object_Body* body_)
+{
+    return cast(LV2_Atom_Property_Body*)(body_ + 1);
+}
+
+/** Return true iff `i` has reached the end of `obj`. */
+bool lv2_atom_object_is_end(const LV2_Atom_Object_Body*   body_,
+                            uint32_t                      size,
+                            const LV2_Atom_Property_Body* i)
+{
+    return cast(const uint8_t*)i >= (cast(const uint8_t*)body_ + size);
+}
+
+/** Return an iterator to the property following `i`. */
+LV2_Atom_Property_Body* lv2_atom_object_next(const LV2_Atom_Property_Body* i)
+{
+    const (LV2_Atom*) value = cast(const LV2_Atom*)(
+                                                    cast(const uint8_t*)i + 2 * uint32_t.sizeof);
+    return cast(LV2_Atom_Property_Body*)(
+                                         cast(const uint8_t*)i + lv2_atom_pad_size(
+                                                                                   cast(uint32_t)LV2_Atom_Property_Body.sizeof + value.size));
 }
