@@ -503,17 +503,17 @@ const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, b
     }
 
     paramString ~= "    [ \n";
-    paramString ~= "        a lv2:InputPort , atom:AtomPort ;\n";
+    paramString ~= "        a lv2:InputPort, atom:AtomPort ;\n";
     paramString ~= "        atom:bufferType atom:Sequence ;\n";
     
     if(hasMIDIInput)
-        paramString ~= "        atom:supports midi:MidiEvent ;\n";
+        paramString ~= "        atom:supports <http://lv2plug.in/ns/ext/midi#MidiEvent> ;\n";
 
-    paramString ~= "        atom:supports time:Position ;\n";
+    paramString ~= "        atom:supports <http://lv2plug.in/ns/ext/time#Position> ;\n";
     paramString ~= "        lv2:designation lv2:control ;\n";
     paramString ~= "        lv2:index " ~ to!string(params.length + legalIO.numInputChannels + legalIO.numOutputChannels) ~ ";\n";
-    paramString ~= "        lv2:symbol \"control\" ;\n";
-    paramString ~= "        lv2:name \"Control\"\n";
+    paramString ~= "        lv2:symbol \"lv2_events_in\" ;\n";
+    paramString ~= "        lv2:name \"Events Input\"\n";
     paramString ~= "    ]";
     paramString ~= " . \n";
 
@@ -579,7 +579,7 @@ extern(C)
 									const (LV2_Feature*)*       features)
     {
         debug(debugLV2Client) debugLog(">instantiateUI");
-        void* instance_access = cast(char*)assumeNothrowNoGC(&lv2_features_data)(features, "http://lv2plug.in/ns/ext/instance-access");
+        void* instance_access = cast(char*)lv2_features_data(features, "http://lv2plug.in/ns/ext/instance-access");
         if(instance_access)
         {
             LV2Client lv2client = cast(LV2Client)instance_access;

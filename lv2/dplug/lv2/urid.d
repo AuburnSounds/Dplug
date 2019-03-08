@@ -87,7 +87,7 @@ extern(C) {
         @param handle Must be the callback_data member of this struct.
         @param uri The URI to be mapped to an integer ID.
         */
-        LV2_URID function(LV2_URID_Map_Handle handle,
+        nothrow @nogc LV2_URID function(LV2_URID_Map_Handle handle,
                         const char*         uri) map;
     }
     alias LV2_URID_Map = _LV2_URID_Map;

@@ -118,25 +118,25 @@ extern(C) {
     /** An atom:Int or atom:Bool.  May be cast to LV2_Atom. */
     struct LV2_Atom_Int {
         LV2_Atom atom;  /**< Atom header. */
-        int32_t  body;  /**< Integer value. */
+        int32_t  body_;  /**< Integer value. */
     }
 
     /** An atom:Long.  May be cast to LV2_Atom. */
     struct LV2_Atom_Long {
         LV2_Atom atom;  /**< Atom header. */
-        int64_t  body;  /**< Integer value. */
+        int64_t  body_;  /**< Integer value. */
     }
 
     /** An atom:Float.  May be cast to LV2_Atom. */
     struct LV2_Atom_Float {
         LV2_Atom atom;  /**< Atom header. */
-        float    body;  /**< Floating point value. */
+        float    body_;  /**< Floating point value. */
     }
 
     /** An atom:Double.  May be cast to LV2_Atom. */
     struct LV2_Atom_Double {
         LV2_Atom atom;  /**< Atom header. */
-        double   body;  /**< Floating point value. */
+        double   body_;  /**< Floating point value. */
     }
 
     /** An atom:Bool.  May be cast to LV2_Atom. */
@@ -145,7 +145,7 @@ extern(C) {
     /** An atom:URID.  May be cast to LV2_Atom. */
     struct LV2_Atom_URID {
         LV2_Atom atom;  /**< Atom header. */
-        uint32_t body;  /**< URID. */
+        uint32_t body_;  /**< URID. */
     }
 
     /** An atom:String.  May be cast to LV2_Atom. */
@@ -164,7 +164,7 @@ extern(C) {
     /** An atom:Literal.  May be cast to LV2_Atom. */
     struct LV2_Atom_Literal {
         LV2_Atom              atom;  /**< Atom header. */
-        LV2_Atom_Literal_Body body;  /**< Body. */
+        LV2_Atom_Literal_Body body_;  /**< Body. */
     }
 
     /** An atom:Tuple.  May be cast to LV2_Atom. */
@@ -183,7 +183,7 @@ extern(C) {
     /** An atom:Vector.  May be cast to LV2_Atom. */
     struct LV2_Atom_Vector {
         LV2_Atom             atom;  /**< Atom header. */
-        LV2_Atom_Vector_Body body;  /**< Body. */
+        LV2_Atom_Vector_Body body_;  /**< Body. */
     }
 
     /** The body of an atom:Property (e.g. in an atom:Object). */
@@ -197,7 +197,7 @@ extern(C) {
     /** An atom:Property.  May be cast to LV2_Atom. */
     struct LV2_Atom_Property {
         LV2_Atom               atom;  /**< Atom header. */
-        LV2_Atom_Property_Body body;  /**< Body. */
+        LV2_Atom_Property_Body body_;  /**< Body. */
     }
 
     /** The body of an atom:Object. May be cast to LV2_Atom. */
@@ -210,7 +210,7 @@ extern(C) {
     /** An atom:Object.  May be cast to LV2_Atom. */
     struct LV2_Atom_Object {
         LV2_Atom             atom;  /**< Atom header. */
-        LV2_Atom_Object_Body body;  /**< Body. */
+        LV2_Atom_Object_Body body_;  /**< Body. */
     }
 
     /** The header of an atom:Event.  Note this type is NOT an LV2_Atom. */
@@ -221,7 +221,7 @@ extern(C) {
             double  beats;   /**< Time in beats. */
         }
         Time time;
-        LV2_Atom body;  /**< Event body atom header. */
+        LV2_Atom body_;  /**< Event body atom header. */
         /* Body atom contents follow here. */
     }
 
@@ -250,7 +250,7 @@ extern(C) {
     /** An atom:Sequence. */
     struct LV2_Atom_Sequence {
         LV2_Atom               atom;  /**< Atom header. */
-        LV2_Atom_Sequence_Body body;  /**< Body. */
+        LV2_Atom_Sequence_Body body_;  /**< Body. */
     }
 
 }

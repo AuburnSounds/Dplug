@@ -35,32 +35,31 @@ import core.stdc.string;
 
 import dplug.lv2.atom;
 
+nothrow:
+@nogc:
+
 extern (C) {
 
     /** Pad a size to 64 bits. */
-    static uint32_t
-    lv2_atom_pad_size(uint32_t size)
+    uint32_t lv2_atom_pad_size(uint32_t size)
     {
         return (size + 7U) & (~7U);
     }
 
     /** Return the total size of `atom`, including the header. */
-    static uint32_t
-    lv2_atom_total_size(const LV2_Atom* atom)
+    uint32_t lv2_atom_total_size(const LV2_Atom* atom)
     {
         return cast(uint32_t)LV2_Atom.sizeof + atom.size;
     }
 
     /** Return true iff `atom` is null. */
-    static bool
-    lv2_atom_is_null(const LV2_Atom* atom)
+    bool lv2_atom_is_null(const LV2_Atom* atom)
     {
         return !atom || (atom.type == 0 && atom.size == 0);
     }
 
     /** Return true iff `a` is equal to `b`. */
-    static bool
-    lv2_atom_equals(const LV2_Atom* a, const LV2_Atom* b)
+    bool lv2_atom_equals(const LV2_Atom* a, const LV2_Atom* b)
     {
         return (a == b) || ((a.type == b.type) &&
                             (a.size == b.size) &&
@@ -73,35 +72,31 @@ extern (C) {
     */
 
     /** Get an iterator pointing to the first event in a Sequence body. */
-    static LV2_Atom_Event*
-    lv2_atom_sequence_begin(const LV2_Atom_Sequence_Body* body)
+    LV2_Atom_Event* lv2_atom_sequence_begin(const LV2_Atom_Sequence_Body* body_)
     {
-        return cast(LV2_Atom_Event*)(body + 1);
+        return cast(LV2_Atom_Event*)(body_ + 1);
     }
 
     /** Get an iterator pointing to the end of a Sequence body. */
-    static LV2_Atom_Event*
-    lv2_atom_sequence_end(const LV2_Atom_Sequence_Body* body, uint32_t size)
+    LV2_Atom_Event* lv2_atom_sequence_end(const LV2_Atom_Sequence_Body* body_, uint32_t size)
     {
-        return cast(LV2_Atom_Event*)(cast(const uint8_t*)body + lv2_atom_pad_size(size));
+        return cast(LV2_Atom_Event*)(cast(const uint8_t*)body_ + lv2_atom_pad_size(size));
     }
 
     /** Return true iff `i` has reached the end of `body`. */
-    static bool
-    lv2_atom_sequence_is_end(const LV2_Atom_Sequence_Body* body,
-                            uint32_t                      size,
-                            const LV2_Atom_Event*         i)
+    bool lv2_atom_sequence_is_end(const LV2_Atom_Sequence_Body* body_,
+                                  uint32_t                      size,
+                                  const LV2_Atom_Event*         i)
     {
-        return cast(const uint8_t*)i >= (cast(const uint8_t*)body + size);
+        return cast(const uint8_t*)i >= (cast(const uint8_t*)body_ + size);
     }
 
     /** Return an iterator to the element following `i`. */
-    static LV2_Atom_Event*
-    lv2_atom_sequence_next(const LV2_Atom_Event* i)
+    LV2_Atom_Event* lv2_atom_sequence_next(const LV2_Atom_Event* i)
     {
         return cast(LV2_Atom_Event*)(cast(const uint8_t*)i
                                 + LV2_Atom_Event.sizeof
-                                + lv2_atom_pad_size(i.body.size));
+                                + lv2_atom_pad_size(i.body_.size));
     }
 
     /**
@@ -138,8 +133,7 @@ extern (C) {
 
     This simply resets the size field, the other fields are left untouched.
     */
-    static void
-    lv2_atom_sequence_clear(LV2_Atom_Sequence* seq)
+    void lv2_atom_sequence_clear(LV2_Atom_Sequence* seq)
     {
         seq.atom.size = LV2_Atom_Sequence_Body.sizeof;
     }
@@ -155,17 +149,16 @@ extern (C) {
     @return A pointer to the newly written event in `seq`,
     or null on failure (insufficient space).
     */
-    static LV2_Atom_Event*
-    lv2_atom_sequence_append_event(LV2_Atom_Sequence*    seq,
-                                uint32_t              capacity,
-                                const LV2_Atom_Event* event)
+    LV2_Atom_Event* lv2_atom_sequence_append_event(LV2_Atom_Sequence*    seq,
+                                                   uint32_t              capacity,
+                                                   const LV2_Atom_Event* event)
     {
-        const uint32_t total_size = cast(uint32_t)(*event).sizeof + event.body.size;
+        const uint32_t total_size = cast(uint32_t)(*event).sizeof + event.body_.size;
         if (capacity - seq.atom.size < total_size) {
             return null;
         }
 
-        LV2_Atom_Event* e = lv2_atom_sequence_end(&seq.body, seq.atom.size);
+        LV2_Atom_Event* e = lv2_atom_sequence_end(&seq.body_, seq.atom.size);
         memcpy(e, event, total_size);
 
         seq.atom.size += lv2_atom_pad_size(total_size);
@@ -187,15 +180,13 @@ extern (C) {
     // }
 
     /** Return true iff `i` has reached the end of `body`. */
-    static bool
-    lv2_atom_tuple_is_end(const void* body, uint32_t size, const LV2_Atom* i)
+    bool lv2_atom_tuple_is_end(const void* body_, uint32_t size, const LV2_Atom* i)
     {
-        return cast(const uint8_t*)i >= (cast(const uint8_t*)body + size);
+        return cast(const uint8_t*)i >= (cast(const uint8_t*)body_ + size);
     }
 
     /** Return an iterator to the element following `i`. */
-    static LV2_Atom*
-    lv2_atom_tuple_next(const LV2_Atom* i)
+    LV2_Atom* lv2_atom_tuple_next(const LV2_Atom* i)
     {
         return cast(LV2_Atom*)(
             cast(const uint8_t*)i + LV2_Atom.sizeof + lv2_atom_pad_size(i.size));
@@ -231,24 +222,21 @@ extern (C) {
     */
 
     /** Return a pointer to the first property in `body`. */
-    static LV2_Atom_Property_Body*
-    lv2_atom_object_begin(const LV2_Atom_Object_Body* body)
+    LV2_Atom_Property_Body* lv2_atom_object_begin(const LV2_Atom_Object_Body* body_)
     {
-        return cast(LV2_Atom_Property_Body*)(body + 1);
+        return cast(LV2_Atom_Property_Body*)(body_ + 1);
     }
 
     /** Return true iff `i` has reached the end of `obj`. */
-    static bool
-    lv2_atom_object_is_end(const LV2_Atom_Object_Body*   body,
-                        uint32_t                      size,
-                        const LV2_Atom_Property_Body* i)
+    bool lv2_atom_object_is_end(const LV2_Atom_Object_Body*   body_,
+                                uint32_t                      size,
+                                const LV2_Atom_Property_Body* i)
     {
-        return cast(const uint8_t*)i >= (cast(const uint8_t*)body + size);
+        return cast(const uint8_t*)i >= (cast(const uint8_t*)body_ + size);
     }
 
     /** Return an iterator to the property following `i`. */
-    static LV2_Atom_Property_Body*
-    lv2_atom_object_next(const LV2_Atom_Property_Body* i)
+    LV2_Atom_Property_Body* lv2_atom_object_next(const LV2_Atom_Property_Body* i)
     {
         const (LV2_Atom*) value = cast(const LV2_Atom*)(
             cast(const uint8_t*)i + 2 * uint32_t.sizeof);
@@ -342,19 +330,19 @@ extern (C) {
         // }
         return matches;
     }
-
+/+
     /**
     Body only version of lv2_atom_object_get().
     */
     static int
-    lv2_atom_object_body_get(uint32_t size, LV2_Atom_Object_Body* body, ...)
+    lv2_atom_object_body_get(uint32_t size, LV2_Atom_Object_Body* body_, ...)
     {
         int matches   = 0;
         int n_queries = 0;
 
         /* Count number of keys so we can short-circuit when done */
         va_list args;
-        va_start!(LV2_Atom_Object_Body*)(args, body);
+        va_start!(LV2_Atom_Object_Body*)(args, body_);
         for (n_queries = 0; va_arg!(uint32_t)(args); ++n_queries) {
             if (!va_arg!(LV2_Atom**)(args)) {
                 return -1;
@@ -379,7 +367,7 @@ extern (C) {
         // }
         return matches;
     }
-
++/
     /**
     Variable argument version of lv2_atom_object_query().
 
@@ -399,6 +387,7 @@ extern (C) {
                         0);
     @endcode
     */
+/+
     static int
     lv2_atom_object_get(const (LV2_Atom_Object*) object, ...)
     {
@@ -434,16 +423,17 @@ extern (C) {
         });
 
         return matches;
-    }
+    }+/
 }  /* extern "C" */
-
+/+
 void LV2_ATOM_OBJECT_FOREACH(const (LV2_Atom_Object*) obj, void delegate(LV2_Atom_Property_Body* prop) iterDelegate) 
 {
-    for (LV2_Atom_Property_Body* iter = lv2_atom_object_begin(&obj.body);
-        !lv2_atom_object_is_end(&obj.body, obj.atom.size, iter);
+    for (LV2_Atom_Property_Body* iter = lv2_atom_object_begin(&obj.body_);
+        !lv2_atom_object_is_end(&obj.body_, obj.atom.size, iter);
         iter = lv2_atom_object_next(iter))
     {
         iterDelegate(iter);
     }
 }
 
++/

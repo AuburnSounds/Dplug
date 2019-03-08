@@ -219,7 +219,11 @@ extern(C) {
     LV2UI_Descriptor::instantiate(), or as an interface provided by a UI via
     LV2UI_Descriptor::extension_data()).
     */
-    struct _LV2UI_Resize {
+    struct LV2UI_Resize 
+    {
+        nothrow:
+        @nogc:
+
         /**
         Pointer to opaque data which must be passed to ui_resize().
         */
@@ -239,7 +243,6 @@ extern(C) {
         */
         int function(LV2UI_Feature_Handle handle, int width, int height) ui_resize;
     }
-    alias LV2UI_Resize = _LV2UI_Resize;
 
     /**
     Feature to map port symbols to UIs.
@@ -248,7 +251,8 @@ extern(C) {
     symbol.  This makes it possible to implement and distribute a UI separately
     from the plugin (since symbol, unlike index, is a stable port identifier).
     */
-    struct _LV2UI_Port_Map {
+    struct LV2UI_Port_Map 
+    {
         /**
         Pointer to opaque data which must be passed to port_index().
         */
@@ -262,12 +266,12 @@ extern(C) {
         */
         uint32_t function(LV2UI_Feature_Handle handle, const char* symbol) port_index;
     }
-    alias LV2UI_Port_Map = _LV2UI_Port_Map;
 
     /**
     Feature to subscribe to port updates (LV2_UI__portSubscribe).
     */
-    struct _LV2UI_Port_Subscribe {
+    struct LV2UI_Port_Subscribe 
+    {
         /**
         Pointer to opaque data which must be passed to subscribe() and
         unsubscribe().
@@ -314,12 +318,12 @@ extern(C) {
                                 uint32_t                  port_protocol,
                                 const (LV2_Feature*)* features) unsubscribe;
     }
-    alias LV2UI_Port_Subscribe = _LV2UI_Port_Subscribe;
 
     /**
     A feature to notify the host that the user has grabbed a UI control.
     */
-    struct _LV2UI_Touch {
+    struct LV2UI_Touch 
+    {
         /**
         Pointer to opaque data which must be passed to ui_resize().
         */
@@ -340,7 +344,6 @@ extern(C) {
                     uint32_t             port_index,
                     bool                 grabbed) touch;
     }
-    alias LV2UI_Touch = _LV2UI_Touch;
 
     /**
     UI Idle Interface (LV2_UI__idleInterface)
@@ -348,7 +351,8 @@ extern(C) {
     UIs can provide this interface to have an idle() callback called by the host
     rapidly to update the UI.
     */
-    struct _LV2UI_Idle_Interface {
+    struct LV2UI_Idle_Interface 
+    {
         /**
         Run a single iteration of the UI's idle loop.
 
@@ -363,7 +367,6 @@ extern(C) {
         */
         int function(LV2UI_Handle ui) idle;
     }
-    alias LV2UI_Idle_Interface = _LV2UI_Idle_Interface;
 
     /**
     UI Show Interface (LV2_UI__showInterface)
@@ -378,7 +381,8 @@ extern(C) {
     - If idle() returns non-zero, the host MUST call hide() and stop calling
         idle().  It MAY later call show() then resume calling idle().
     */
-    struct _LV2UI_Show_Interface {
+    struct LV2UI_Show_Interface 
+    {
         /**
         Show a window for this UI.
 
@@ -397,12 +401,12 @@ extern(C) {
         */
         int function(LV2UI_Handle ui) hide;
     }
-    alias LV2UI_Show_Interface = _LV2UI_Show_Interface;
 
     /**
     Peak data for a slice of time, the update format for ui:peakProtocol.
     */
-    struct _LV2UI_Peak_Data {
+    struct LV2UI_Peak_Data 
+    {
         /**
         The start of the measurement period.  This is just a running counter
         that is only meaningful in comparison to previous values and must not be
@@ -421,7 +425,6 @@ extern(C) {
         */
         float peak;
     }
-    alias LV2UI_Peak_Data = _LV2UI_Peak_Data;
 
     /**
     Prototype for UI accessor function.

@@ -62,6 +62,9 @@ import dplug.lv2.lv2,
 
 //debug = debugLV2Client;
 
+nothrow:
+@nogc:
+
 class LV2Client : IHostCommand
 {
 nothrow:
@@ -77,6 +80,7 @@ nothrow:
         _options = null;
         _uridMap = null;
         _legalIOIndex = legalIOIndex;
+        _eventsInput = null;
     }
 
     ~this()
@@ -99,15 +103,10 @@ nothrow:
                 _uridMap = cast(LV2_URID_Map*)features[i].data;
         }
 
-        for(int i = 0; features[i] != null; ++i)
-        {
-
-        }
-
         // Retrieve max buffer size from options
         for (int i=0; _options[i].key != 0; ++i)
         {
-            if (_options[i].key == assumeNothrowNoGC(_uridMap.map)(_uridMap.handle, LV2_BUF_SIZE__maxBlockLength))
+            if (_options[i].key == _uridMap.map(_uridMap.handle, LV2_BUF_SIZE__maxBlockLength))
             {
                 _maxBufferSize = *cast(const(int)*)_options[i].value;
                 _callResetOnNextRun = true;
@@ -119,17 +118,17 @@ nothrow:
 
         LegalIO selectedIO = _client.legalIOs()[_legalIOIndex];
 
-        _maxInputs = selectedIO.numInputChannels;
-        _maxOutputs = selectedIO.numOutputChannels;
+        _numInputs = selectedIO.numInputChannels;
+        _numOutputs = selectedIO.numOutputChannels;
         _numParams = cast(uint)_client.params().length;
         _sampleRate = cast(float)rate;
 
         _params = cast(float**)mallocSlice!(float*)(_client.params.length);
 
-        _inputPointers = mallocSlice!(float*)(_maxInputs);
-        _outputPointers = mallocSlice!(float*)(_maxOutputs);
-        _inputPointersUsed = mallocSlice!(bool)(_maxInputs);
-        _outputPointersUsed = mallocSlice!(bool)(_maxOutputs);
+        _inputPointers = mallocSlice!(float*)(_numInputs);
+        _outputPointers = mallocSlice!(float*)(_numOutputs);
+        _inputPointersUsed = mallocSlice!(bool)(_numInputs);
+        _outputPointersUsed = mallocSlice!(bool)(_numOutputs);
     }
 
     void cleanup()
@@ -151,25 +150,26 @@ nothrow:
 
     void connect_port(uint32_t port, void* data)
     {
+        int numParams = cast(int)(_client.params.length);
         if(port < _client.params.length)
         {
             _params[port] = cast(float*)data;
         }
-        else if(port < _maxInputs + _client.params.length)
+        else if(port < _numInputs + numParams)
         {
-            uint input = port - cast(uint)(_client.params.length);
+            uint input = port - numParams;
             _inputPointers[input] = cast(float*)data;
             _inputPointersUsed[input] = false;
         }
-        else if(port < _maxOutputs + _maxInputs + _client.params.length)
+        else if(port < _numOutputs + _numInputs + numParams)
         {
-            uint output = port - cast(uint)(_client.params.length) - _maxInputs;
+            uint output = port - numParams - _numInputs;
             _outputPointers[output] = cast(float*)data;
             _outputPointersUsed[output] = false;
         }
-        else if(port < _maxOutputs + _maxInputs + _client.params.length + 1)
+        else if(port < 1 + _numOutputs + _numInputs + numParams)
         {
-            _midiInput = cast(LV2_Atom_Sequence*)data;    
+            _eventsInput = cast(LV2_Atom_Sequence*)data;    
         }
         else
             assert(false, "Error unknown port index");
@@ -188,90 +188,102 @@ nothrow:
         if(_callResetOnNextRun)
         {
             _callResetOnNextRun = false;
-            _client.resetFromHost(_sampleRate, _maxBufferSize, _maxInputs, _maxOutputs);
+            _client.resetFromHost(_sampleRate, _maxBufferSize, _numInputs, _numOutputs);
         }
 
-        uint32_t  offset = 0;
+        // TODO: Carla receives no TimeInfo
 
-        // TODO: this block crash Carla
 
-        // LV2_ATOM_SEQUENCE_FOREACH Macro from atom.util. Only used once so no need to write a template for it.
-        for(LV2_Atom_Event* event = assumeNothrowNoGC(&lv2_atom_sequence_begin)(&(_midiInput.body)); 
-            !assumeNothrowNoGC(&lv2_atom_sequence_is_end)(&(this._midiInput).body, this._midiInput.atom.size, event); 
-            event = assumeNothrowNoGC(&lv2_atom_sequence_next)(event))
+        if (_eventsInput !is null)
         {
-            if (event.body.type == fURIDs.midiEvent) {
-                MidiMessage message;
-                uint8_t* data = cast(uint8_t*)(event + 1);
-                switch(data[0]) {
-                    case LV2_MIDI_MSG_NOTE_ON:
-                        message = makeMidiMessageNoteOn(offset, 0, cast(int)data[1], cast(int)data[2]);
-                        break;
-                    case LV2_MIDI_MSG_NOTE_OFF:
-                        message = makeMidiMessageNoteOff(offset, 0, cast(int)data[1]);
-                        break;
-                    default: break;
-                }
-                _client.enqueueMIDIFromHost(message);
-                continue;
-            }
-
-            if (event.body.type == fURIDs.atomBlank || event.body.type == fURIDs.atomObject)
+            for(LV2_Atom_Event* event = lv2_atom_sequence_begin(&_eventsInput.body_); 
+                !lv2_atom_sequence_is_end(&_eventsInput.body_, _eventsInput.atom.size, event); 
+                event = lv2_atom_sequence_next(event))
             {
-                const (LV2_Atom_Object*) obj = cast(LV2_Atom_Object*)&event.body;
+                if (event is null)
+                    break;
+
+                if (_client.receivesMIDI() && event.body_.type == fURIDs.midiEvent) 
+                {
+                    // Get offset of MIDI message in that buffer
+                    int offset = cast(int)(event.time.frames);
+                    if (offset < 0) 
+                        offset = 0;
+
+                    MidiMessage message;
+                    uint8_t* data = cast(uint8_t*)(event + 1);
+                    switch(data[0]) {
+                        case LV2_MIDI_MSG_NOTE_ON:
+                            message = makeMidiMessageNoteOn(offset, 0, cast(int)data[1], cast(int)data[2]);
+                            break;
+                        case LV2_MIDI_MSG_NOTE_OFF:
+                            message = makeMidiMessageNoteOff(offset, 0, cast(int)data[1]);
+                            break;
+                        default: break;
+                    }
+                    _client.enqueueMIDIFromHost(message);
+                }
+                else if (event.body_.type == fURIDs.atomBlank || event.body_.type == fURIDs.atomObject)
+                {
+
+                    const (LV2_Atom_Object*) obj = cast(LV2_Atom_Object*)&event.body_;
                 
-                if (obj.body.otype != fURIDs.timePosition)
-                    continue;
+                    if (obj.body_.otype == fURIDs.timePosition)
+                    {
+                        LV2_Atom* beatsPerMinute = null;
+                        LV2_Atom* frame = null;
+                        LV2_Atom* speed = null;
 
-                LV2_Atom* beatsPerMinute = null;
-                LV2_Atom* frame = null;
-                LV2_Atom* speed = null;
+                        lv2AtomObjectExtractTimeInfo(obj,
+                                           fURIDs.timeBeatsPerMinute, &beatsPerMinute,
+                                           fURIDs.timeFrame, &frame,
+                                           fURIDs.timeSpeed, &speed);
 
-                assumeNothrowNoGC(&lv2AtomObjectExtractTimeInfo)(obj,
-                                   fURIDs.timeBeatsPerMinute, &beatsPerMinute,
-                                   fURIDs.timeFrame, &frame,
-                                   fURIDs.timeSpeed, &speed);
-
-                if(beatsPerMinute != null) {
-                    if (beatsPerMinute.type == fURIDs.atomDouble)
-                        timeInfo.tempo = (cast(LV2_Atom_Double*)beatsPerMinute).body;
-                    else if (beatsPerMinute.type == fURIDs.atomFloat)
-                        timeInfo.tempo = (cast(LV2_Atom_Float*)beatsPerMinute).body;
-                    else if (beatsPerMinute.type == fURIDs.atomInt)
-                        timeInfo.tempo = (cast(LV2_Atom_Int*)beatsPerMinute).body;
-                    else if (beatsPerMinute.type == fURIDs.atomLong)
-                        timeInfo.tempo = (cast(LV2_Atom_Long*)beatsPerMinute).body;
+                        if (beatsPerMinute != null) 
+                        {
+                            if (beatsPerMinute.type == fURIDs.atomDouble)
+                                timeInfo.tempo = (cast(LV2_Atom_Double*)beatsPerMinute).body_;
+                            else if (beatsPerMinute.type == fURIDs.atomFloat)
+                                timeInfo.tempo = (cast(LV2_Atom_Float*)beatsPerMinute).body_;
+                            else if (beatsPerMinute.type == fURIDs.atomInt)
+                                timeInfo.tempo = (cast(LV2_Atom_Int*)beatsPerMinute).body_;
+                            else if (beatsPerMinute.type == fURIDs.atomLong)
+                                timeInfo.tempo = (cast(LV2_Atom_Long*)beatsPerMinute).body_;
+                        }
+                        if (frame != null) 
+                        {
+                            if (frame.type == fURIDs.atomDouble)
+                                timeInfo.timeInSamples = cast(long)(cast(LV2_Atom_Double*)frame).body_;
+                            else if (frame.type == fURIDs.atomFloat)
+                                timeInfo.timeInSamples = cast(long)(cast(LV2_Atom_Float*)frame).body_;
+                            else if (frame.type == fURIDs.atomInt)
+                                timeInfo.timeInSamples = (cast(LV2_Atom_Int*)frame).body_;
+                            else if (frame.type == fURIDs.atomLong)
+                                timeInfo.timeInSamples = (cast(LV2_Atom_Long*)frame).body_;
+                        }
+                        if (speed != null) 
+                        {
+                            if (speed.type == fURIDs.atomDouble)
+                                timeInfo.hostIsPlaying = (cast(LV2_Atom_Double*)speed).body_ > 0.0f;
+                            else if (speed.type == fURIDs.atomFloat)
+                                timeInfo.hostIsPlaying = (cast(LV2_Atom_Float*)speed).body_ > 0.0f;
+                            else if (speed.type == fURIDs.atomInt)
+                                timeInfo.hostIsPlaying = (cast(LV2_Atom_Int*)speed).body_ > 0.0f;
+                            else if (speed.type == fURIDs.atomLong)
+                                timeInfo.hostIsPlaying = (cast(LV2_Atom_Long*)speed).body_ > 0.0f;
+                        }
+                    }
                 }
-                if(frame != null) {
-                    if (frame.type == fURIDs.atomDouble)
-                        timeInfo.timeInSamples = cast(long)(cast(LV2_Atom_Double*)frame).body;
-                    else if (frame.type == fURIDs.atomFloat)
-                        timeInfo.timeInSamples = cast(long)(cast(LV2_Atom_Float*)frame).body;
-                    else if (frame.type == fURIDs.atomInt)
-                        timeInfo.timeInSamples = (cast(LV2_Atom_Int*)frame).body;
-                    else if (frame.type == fURIDs.atomLong)
-                        timeInfo.timeInSamples = (cast(LV2_Atom_Long*)frame).body;
-                }
-                if(speed != null) {
-                    if (speed.type == fURIDs.atomDouble)
-                        timeInfo.hostIsPlaying = (cast(LV2_Atom_Double*)speed).body > 0.0f;
-                    else if (speed.type == fURIDs.atomFloat)
-                        timeInfo.hostIsPlaying = (cast(LV2_Atom_Float*)speed).body > 0.0f;
-                    else if (speed.type == fURIDs.atomInt)
-                        timeInfo.hostIsPlaying = (cast(LV2_Atom_Int*)speed).body > 0.0f;
-                    else if (speed.type == fURIDs.atomLong)
-                        timeInfo.hostIsPlaying = (cast(LV2_Atom_Long*)speed).body > 0.0f;
-                }
-            }           
-            offset = cast(uint32_t)(event.time.frames);
+            }
         }
 
-        for(int input = 0; input < _maxInputs; ++input)
+        // Allocate dummy buffers if need be
+        for(int input = 0; input < _numInputs; ++input)
         {
             if(_inputPointersUsed[input])
                 _inputPointers[input] = cast(float*)mallocSlice!(float)(n_samples);
         }
-        for(int output = 0; output < _maxOutputs; ++output)
+        for(int output = 0; output < _numOutputs; ++output)
         {
             if(_outputPointersUsed[output])
                 _outputPointers[output] = cast(float*)mallocSlice!(float)(n_samples);
@@ -279,9 +291,9 @@ nothrow:
         
         _client.processAudioFromHost(_inputPointers, _outputPointers, n_samples, timeInfo);
 
-        for(int input = 0; input < _maxInputs; ++input)
+        for(int input = 0; input < _numInputs; ++input)
             _inputPointersUsed[input] = true;
-        for(int output = 0; output < _maxOutputs; ++output)
+        for(int output = 0; output < _numOutputs; ++output)
             _outputPointersUsed[output] = true;
 
         debug(debugLV2Client) debugLog("<run");
@@ -314,16 +326,16 @@ nothrow:
                 _uridMap = cast(LV2_URID_Map*)features[i].data;
         }
 
-        LV2_URID uridWindowTitle = assumeNothrowNoGC(_uridMap.map)(_uridMap.handle, LV2_UI__windowTitle);
-        LV2_URID uridTransientWinId = assumeNothrowNoGC(_uridMap.map)(_uridMap.handle, LV2_KXSTUDIO_PROPERTIES__TransientWindowId);
+        LV2_URID uridWindowTitle = _uridMap.map(_uridMap.handle, LV2_UI__windowTitle);
+        LV2_URID uridTransientWinId = _uridMap.map(_uridMap.handle, LV2_KXSTUDIO_PROPERTIES__TransientWindowId);
 
         for (int i=0; _options[i].key != 0; ++i)
         {
-            if (_options[i].key == assumeNothrowNoGC(_uridMap.map)(_uridMap.handle, LV2_UI__windowTitle))
+            if (_options[i].key == _uridMap.map(_uridMap.handle, LV2_UI__windowTitle))
             {
                 windowTitle = cast(char*)_options[i].value;   
             }
-            else if (_options[i].key == assumeNothrowNoGC(_uridMap.map)(_uridMap.handle, LV2_KXSTUDIO_PROPERTIES__TransientWindowId))
+            else if (_options[i].key == _uridMap.map(_uridMap.handle, LV2_KXSTUDIO_PROPERTIES__TransientWindowId))
             {
                 transientWin = cast(void*)_options[i].value;   
             }
@@ -338,7 +350,7 @@ nothrow:
             _client.getGUISize(&width, &height);
             _graphicsMutex.unlock();
 
-            assumeNothrowNoGC(uiResize.ui_resize)(uiResize.handle, width, height);
+            uiResize.ui_resize(uiResize.handle, width, height);
             *widget = pluginWindow;
         }
         debug(debugLV2Client) debugLog("<instantiateUI");
@@ -393,8 +405,8 @@ nothrow:
 
 private:
 
-    uint _maxInputs;
-    uint _maxOutputs;
+    uint _numInputs;
+    uint _numOutputs;
     uint _numParams;
     int _maxBufferSize;
     bool _callResetOnNextRun;
@@ -407,7 +419,7 @@ private:
     float*[] _outputPointers;
     bool[] _inputPointersUsed;
     bool[] _outputPointersUsed;
-    LV2_Atom_Sequence* _midiInput;
+    LV2_Atom_Sequence* _eventsInput;
 
     float _sampleRate;
     
@@ -421,7 +433,11 @@ private:
     int _legalIOIndex;
 }
 
-struct URIDs {
+struct URIDs 
+{
+nothrow:
+@nogc:
+
     LV2_URID atomDouble;
     LV2_URID atomFloat;
     LV2_URID atomInt;
@@ -435,20 +451,20 @@ struct URIDs {
     LV2_URID timeBeatsPerMinute;
     LV2_URID timeSpeed;
 
-    this(LV2_URID_Map* uridMap) nothrow @nogc
+    this(LV2_URID_Map* uridMap) 
     {
-        atomDouble = assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_ATOM__Double);
-        atomFloat = assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_ATOM__Float);
-        atomInt = assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_ATOM__Int);
-        atomLong = assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_ATOM__Long);
-        atomBlank = assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_ATOM__Blank);
-        atomObject = assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_ATOM__Object);
-        atomSequence = assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_ATOM__Sequence);
-        midiEvent = assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_MIDI__MidiEvent);
-        timePosition = assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_TIME__Position);
-        timeFrame = assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_TIME__frame);
-        timeBeatsPerMinute = assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_TIME__beatsPerMinute);
-        timeSpeed = assumeNothrowNoGC(uridMap.map)(uridMap.handle, LV2_TIME__speed);
+        atomDouble = uridMap.map(uridMap.handle, LV2_ATOM__Double);
+        atomFloat = uridMap.map(uridMap.handle, LV2_ATOM__Float);
+        atomInt = uridMap.map(uridMap.handle, LV2_ATOM__Int);
+        atomLong = uridMap.map(uridMap.handle, LV2_ATOM__Long);
+        atomBlank = uridMap.map(uridMap.handle, LV2_ATOM__Blank);
+        atomObject = uridMap.map(uridMap.handle, LV2_ATOM__Object);
+        atomSequence = uridMap.map(uridMap.handle, LV2_ATOM__Sequence);
+        midiEvent = uridMap.map(uridMap.handle, LV2_MIDI__MidiEvent);
+        timePosition = uridMap.map(uridMap.handle, LV2_TIME__Position);
+        timeFrame = uridMap.map(uridMap.handle, LV2_TIME__frame);
+        timeBeatsPerMinute = uridMap.map(uridMap.handle, LV2_TIME__beatsPerMinute);
+        timeSpeed = uridMap.map(uridMap.handle, LV2_TIME__speed);
     }
 }
 
@@ -461,8 +477,8 @@ int lv2AtomObjectExtractTimeInfo(const (LV2_Atom_Object*) object,
     int n_queries = 3;
     int matches = 0;
     // #define LV2_ATOM_OBJECT_FOREACH(obj, iter)
-    for (LV2_Atom_Property_Body* prop = lv2_atom_object_begin(&object.body);
-        !lv2_atom_object_is_end(&object.body, object.atom.size, prop);
+    for (LV2_Atom_Property_Body* prop = lv2_atom_object_begin(&object.body_);
+        !lv2_atom_object_is_end(&object.body_, object.atom.size, prop);
         prop = lv2_atom_object_next(prop))
     {
         for (int i = 0; i < n_queries; ++i) {

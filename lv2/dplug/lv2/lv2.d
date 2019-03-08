@@ -355,53 +355,7 @@ struct _LV2_Descriptor {
 }
 alias LV2_Descriptor = _LV2_Descriptor;
 
-/**
-   Helper macro needed for LV2_SYMBOL_EXPORT when using C++.
-*/
-// #ifdef __cplusplus
-// #    define LV2_SYMBOL_EXTERN extern "C"
-// #else
-// #    define LV2_SYMBOL_EXTERN
-// #endif
-
-/**
-   Put this (LV2_SYMBOL_EXPORT) before any functions that are to be loaded
-   by the host as a symbol from the dynamic library.
-*/
-// #ifdef _WIN32
-// #    define LV2_SYMBOL_EXPORT LV2_SYMBOL_EXTERN __declspec(dllexport)
-// #else
-// #    define LV2_SYMBOL_EXPORT LV2_SYMBOL_EXTERN __attribute__((visibility("default")))
-// #endif
-
-/+ LV2_SYMBOL_EXPORT = extern(C)  __attribute__((visibility("default")))+/
-
-/**
-   Prototype for plugin accessor function.
-
-   Plugins are discovered by hosts using RDF data (not by loading libraries).
-   See http://lv2plug.in for details on the discovery process, though most
-   hosts should use an existing library to implement this functionality.
-
-   This is the simple plugin discovery API, suitable for most statically
-   defined plugins.  Advanced plugins that need access to their bundle during
-   discovery can use lv2_lib_descriptor() instead.  Plugin libraries MUST
-   include a function called "lv2_descriptor" or "lv2_lib_descriptor" with
-   C-style linkage, but SHOULD provide "lv2_descriptor" wherever possible.
-
-   When it is time to load a plugin (designated by its URI), the host loads the
-   plugin's library, gets the lv2_descriptor() function from it, and uses this
-   function to find the LV2_Descriptor for the desired plugin.  Plugins are
-   accessed by index using values from 0 upwards.  This function MUST return
-   NULL for out of range indices, so the host can enumerate plugins by
-   increasing `index` until NULL is returned.
-
-   Note that `index` has no meaning, hosts MUST NOT depend on it remaining
-   consistent between loads of the plugin library.
-*/
-// LV2_SYMBOL_EXPORT
-// const LV2_Descriptor * lv2_descriptor(uint32_t index);
-extern(C) const (LV2_Descriptor)* lv2_descriptor(uint32_t index);
+//extern(C) const (LV2_Descriptor)* lv2_descriptor(uint32_t index);
 
 /**
    Type of the lv2_descriptor() function in a library (old discovery API).
