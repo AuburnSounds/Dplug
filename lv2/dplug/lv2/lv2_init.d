@@ -82,17 +82,24 @@ template LV2EntryPoint(alias ClientClass)
 
 const(LV2_Descriptor)* lv2_descriptor_templated(ClientClass)(uint index) nothrow @nogc
 {
+    debug(debugLV2Client) debugLog(">lv2_descriptor_templated");
     build_all_lv2_descriptors!ClientClass();
     if(index >= cast(int)(lv2Descriptors.length)) 
         return null;
+
+    debug(debugLV2Client) debugLog("<lv2_descriptor_templated");
     return &lv2Descriptors[index];
 }
 
 const (LV2UI_Descriptor)* lv2ui_descriptor_templated(ClientClass)(uint index) nothrow @nogc
 {
+    debug(debugLV2Client) debugLog(">lv2ui_descriptor_templated");
     build_all_lv2_descriptors!ClientClass();
     if (hasUI && index == 0)
+    {
+        debug(debugLV2Client) debugLog("<lv2ui_descriptor_templated");
         return &lv2UIDescriptor;
+    }
     else
         return null;
 }
@@ -102,7 +109,10 @@ extern(C) static LV2_Handle instantiate(ClientClass)(const(LV2_Descriptor)* desc
                                                      const(char)* bundle_path, 
                                                      const(LV2_Feature*)* features)
 {
-    return cast(LV2_Handle)myLV2EntryPoint!ClientClass(descriptor, rate, bundle_path, features);
+    debug(debugLV2Client) debugLog(">instantiate");
+    LV2_Handle handle = cast(LV2_Handle)myLV2EntryPoint!ClientClass(descriptor, rate, bundle_path, features);
+    debug(debugLV2Client) debugLog("<instantiate");
+    return handle;
 }
 
 
@@ -119,6 +129,8 @@ void build_all_lv2_descriptors(ClientClass)() nothrow @nogc
 {
     if (descriptorsAreInitialized)
         return;
+
+    debug(debugLV2Client) debugLog(">build_all_lv2_descriptors");
 
     // Build a client
     auto client = mallocNew!ClientClass();
@@ -168,9 +180,9 @@ void build_all_lv2_descriptors(ClientClass)() nothrow @nogc
     else
     {
         hasUI = false;
-    }   
-
+    }
     descriptorsAreInitialized = true;
+    debug(debugLV2Client) debugLog("<build_all_lv2_descriptors");
 }
 
 
@@ -514,48 +526,47 @@ const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, b
 */
 extern(C)
 {
-    static void
-    connect_port(LV2_Handle instance,
-                uint32_t   port,
-                void*      data)
+    void connect_port(LV2_Handle instance, uint32_t   port, void* data)
     {
+        debug(debugLV2Client) debugLog(">connect_port");
         LV2Client lv2client = cast(LV2Client)instance;
         lv2client.connect_port(port, data);
+        debug(debugLV2Client) debugLog("<connect_port");
     }
 
-
-    static void
-    activate(LV2_Handle instance)
+    void activate(LV2_Handle instance)
     {
+        debug(debugLV2Client) debugLog(">activate");
         LV2Client lv2client = cast(LV2Client)instance;
         lv2client.activate();
+        debug(debugLV2Client) debugLog("<activate");
     }
 
-    static void
-    run(LV2_Handle instance, uint32_t n_samples)
+    void run(LV2_Handle instance, uint32_t n_samples)
     {
         LV2Client lv2client = cast(LV2Client)instance;
         lv2client.run(n_samples);
     }
 
-    static void
-    deactivate(LV2_Handle instance)
+    void deactivate(LV2_Handle instance)
     {
-        LV2Client lv2client = cast(LV2Client)instance;
-        lv2client.deactivate();
+        debug(debugLV2Client) debugLog(">deactivate");
+        debug(debugLV2Client) debugLog("<deactivate");
     }
 
-    static void
-    cleanup(LV2_Handle instance)
+    void cleanup(LV2_Handle instance)
     {
+        debug(debugLV2Client) debugLog(">cleanup");
         LV2Client lv2client = cast(LV2Client)instance;
         lv2client.cleanup();
         lv2client.destroyFree();
+        debug(debugLV2Client) debugLog("<cleanup");
     }
 
-    static const (void)*
-    extension_data(const char* uri)
+    const (void)* extension_data(const char* uri)
     {
+        debug(debugLV2Client) debugLog(">extension_data");
+        debug(debugLV2Client) debugLog("<extension_data");
         return null;
     }
 
@@ -589,7 +600,8 @@ extern(C)
 										uint32_t         port_protocol,
 										const void*      buffer)
     {
-        
+        debug(debugLV2Client) debugLog(">write_function");
+        debug(debugLV2Client) debugLog("<write_function");        
     }
 
     void cleanupUI(LV2UI_Handle ui)
@@ -614,6 +626,8 @@ extern(C)
 
     const (void)* extension_dataUI(const char* uri)
     {
+        debug(debugLV2Client) debugLog(">extension_dataUI");
+        debug(debugLV2Client) debugLog("<extension_dataUI");
         return null;
     }
 }

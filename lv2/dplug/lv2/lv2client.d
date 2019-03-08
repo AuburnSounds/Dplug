@@ -60,6 +60,8 @@ import dplug.lv2.lv2,
        dplug.lv2.kxstudio,
        dplug.lv2.time;
 
+//debug = debugLV2Client;
+
 class LV2Client : IHostCommand
 {
 nothrow:
@@ -180,6 +182,7 @@ nothrow:
 
     void run(uint32_t n_samples)
     {
+        debug(debugLV2Client) debugLog(">run");
         TimeInfo timeInfo;
 
         if(_callResetOnNextRun)
@@ -189,6 +192,8 @@ nothrow:
         }
 
         uint32_t  offset = 0;
+
+        // TODO: this block crash Carla
 
         // LV2_ATOM_SEQUENCE_FOREACH Macro from atom.util. Only used once so no need to write a template for it.
         for(LV2_Atom_Event* event = assumeNothrowNoGC(&lv2_atom_sequence_begin)(&(_midiInput.body)); 
@@ -278,11 +283,8 @@ nothrow:
             _inputPointersUsed[input] = true;
         for(int output = 0; output < _maxOutputs; ++output)
             _outputPointersUsed[output] = true;
-    }
 
-    void deactivate()
-    {
-
+        debug(debugLV2Client) debugLog("<run");
     }
 
     void instantiateUI(const LV2UI_Descriptor* descriptor,
@@ -293,6 +295,7 @@ nothrow:
                        LV2UI_Widget*                   widget,
                        const (LV2_Feature*)*       features)
     {
+        debug(debugLV2Client) debugLog(">instantiateUI");
         void* parentId = null;
         LV2UI_Resize* uiResize = null;
         char* windowTitle = null;
@@ -338,6 +341,7 @@ nothrow:
             assumeNothrowNoGC(uiResize.ui_resize)(uiResize.handle, width, height);
             *widget = pluginWindow;
         }
+        debug(debugLV2Client) debugLog("<instantiateUI");
     }
 
     void port_event(uint32_t     port_index,
@@ -345,16 +349,20 @@ nothrow:
                     uint32_t     format,
                     const void*  buffer)
     {
+        debug(debugLV2Client) debugLog(">port_event");
         _graphicsMutex.lock();
         updateParamFromHost(port_index);
         _graphicsMutex.unlock();
+        debug(debugLV2Client) debugLog("<port_event");
     }
 
     void cleanupUI()
     {
+        debug(debugLV2Client) debugLog(">cleanupUI");
         _graphicsMutex.lock();
         _client.closeGUI();
         _graphicsMutex.unlock();
+        debug(debugLV2Client) debugLog("<cleanupUI");
     }
 
     override void beginParamEdit(int paramIndex)
