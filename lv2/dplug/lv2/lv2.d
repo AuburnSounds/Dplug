@@ -449,3 +449,48 @@ const (LV2_Lib_Descriptor)* function(const char *               bundle_path,
    @}
 */
 }
+
+
+// Some extensions
+
+// bufsize.h
+
+enum LV2_BUF_SIZE_URI    = "http://lv2plug.in/ns/ext/buf-size";  ///< http://lv2plug.in/ns/ext/buf-size
+enum LV2_BUF_SIZE_PREFIX = LV2_BUF_SIZE_URI ~ "#"; ///< http://lv2plug.in/ns/ext/buf-size#
+
+enum LV2_BUF_SIZE__boundedBlockLength  = LV2_BUF_SIZE_PREFIX ~ "boundedBlockLength";   ///< http://lv2plug.in/ns/ext/buf-size#boundedBlockLength
+enum LV2_BUF_SIZE__fixedBlockLength    = LV2_BUF_SIZE_PREFIX ~ "fixedBlockLength";     ///< http://lv2plug.in/ns/ext/buf-size#fixedBlockLength
+enum LV2_BUF_SIZE__maxBlockLength      = LV2_BUF_SIZE_PREFIX ~ "maxBlockLength";       ///< http://lv2plug.in/ns/ext/buf-size#maxBlockLength
+enum LV2_BUF_SIZE__minBlockLength      = LV2_BUF_SIZE_PREFIX ~ "minBlockLength";       ///< http://lv2plug.in/ns/ext/buf-size#minBlockLength
+enum LV2_BUF_SIZE__nominalBlockLength  = LV2_BUF_SIZE_PREFIX ~ "nominalBlockLength";   ///< http://lv2plug.in/ns/ext/buf-size#nominalBlockLength
+enum LV2_BUF_SIZE__powerOf2BlockLength = LV2_BUF_SIZE_PREFIX ~ "powerOf2BlockLength";  ///< http://lv2plug.in/ns/ext/buf-size#powerOf2BlockLength
+enum LV2_BUF_SIZE__sequenceSize        = LV2_BUF_SIZE_PREFIX ~ "sequenceSize";         ///< http://lv2plug.in/ns/ext/buf-size#sequenceSize
+
+
+// kxstudio.h
+
+enum LV2_KXSTUDIO_PROPERTIES_URI  =  "http://kxstudio.sf.net/ns/lv2ext/props";
+enum LV2_KXSTUDIO_PROPERTIES_PREFIX = LV2_KXSTUDIO_PROPERTIES_URI ~ "#";
+
+enum LV2_KXSTUDIO_PROPERTIES__NonAutomable             = LV2_KXSTUDIO_PROPERTIES_PREFIX ~ "NonAutomable";
+enum LV2_KXSTUDIO_PROPERTIES__TimePositionTicksPerBeat = LV2_KXSTUDIO_PROPERTIES_PREFIX ~ "TimePositionTicksPerBeat";
+enum LV2_KXSTUDIO_PROPERTIES__TransientWindowId        = LV2_KXSTUDIO_PROPERTIES_PREFIX ~ "TransientWindowId";
+
+// time.h
+
+enum LV2_TIME_URI    = "http://lv2plug.in/ns/ext/time";    ///< http://lv2plug.in/ns/ext/time
+enum LV2_TIME_PREFIX = LV2_TIME_URI ~ "#";                 ///< http://lv2plug.in/ns/ext/time#
+
+enum LV2_TIME__Time            = LV2_TIME_PREFIX ~ "Time";             ///< http://lv2plug.in/ns/ext/time#Time
+enum LV2_TIME__Position        = LV2_TIME_PREFIX ~ "Position";         ///< http://lv2plug.in/ns/ext/time#Position
+enum LV2_TIME__Rate            = LV2_TIME_PREFIX ~ "Rate";             ///< http://lv2plug.in/ns/ext/time#Rate
+enum LV2_TIME__position        = LV2_TIME_PREFIX ~ "position";         ///< http://lv2plug.in/ns/ext/time#position
+enum LV2_TIME__barBeat         = LV2_TIME_PREFIX ~ "barBeat";          ///< http://lv2plug.in/ns/ext/time#barBeat
+enum LV2_TIME__bar             = LV2_TIME_PREFIX ~ "bar";              ///< http://lv2plug.in/ns/ext/time#bar
+enum LV2_TIME__beat            = LV2_TIME_PREFIX ~ "beat";             ///< http://lv2plug.in/ns/ext/time#beat
+enum LV2_TIME__beatUnit        = LV2_TIME_PREFIX ~ "beatUnit";         ///< http://lv2plug.in/ns/ext/time#beatUnit
+enum LV2_TIME__beatsPerBar     = LV2_TIME_PREFIX ~ "beatsPerBar";      ///< http://lv2plug.in/ns/ext/time#beatsPerBar
+enum LV2_TIME__beatsPerMinute  = LV2_TIME_PREFIX ~ "beatsPerMinute";   ///< http://lv2plug.in/ns/ext/time#beatsPerMinute
+enum LV2_TIME__frame           = LV2_TIME_PREFIX ~ "frame";            ///< http://lv2plug.in/ns/ext/time#frame
+enum LV2_TIME__framesPerSecond = LV2_TIME_PREFIX ~ "framesPerSecond";  ///< http://lv2plug.in/ns/ext/time#framesPerSecond
+enum LV2_TIME__speed           = LV2_TIME_PREFIX ~ "speed";            ///< http://lv2plug.in/ns/ext/time#speed

@@ -1,6 +1,7 @@
 /*
   Copyright 2008-2016 David Robillard <http://drobilla.net>
   Copyright 2018 Ethan Reker <http://cutthroughrecordings.com>
+  Copyright 2019 Guillaume Piolat <http://www.auburnsounds.com>
 
   Permission to use, copy, modify, and/or distribute this software for any
   purpose with or without fee is hereby granted, provided that the above

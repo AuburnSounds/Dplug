@@ -2,9 +2,9 @@
 * LV2 Client implementation
 *
 * Copyright: Ethan Reker 2018.
+*            Guillaume Piolat 2019.
 * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
-
 /*
  * DISTRHO Plugin Framework (DPF)
  * Copyright (C) 2012-2018 Filipe Coelho <falktx@falktx.com>
@@ -54,10 +54,7 @@ import dplug.lv2.lv2,
        dplug.lv2.ui,
        dplug.lv2.options,
        dplug.lv2.urid,
-       dplug.lv2.bufsize,
-       dplug.lv2.atom,
-       dplug.lv2.kxstudio,
-       dplug.lv2.time;
+       dplug.lv2.atom;
 
 //debug = debugLV2Client;
 

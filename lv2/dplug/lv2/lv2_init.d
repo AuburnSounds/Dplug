@@ -2,6 +2,7 @@
 * LV2 Client implementation
 *
 * Copyright: Ethan Reker 2018.
+*            Guillaume Piolat 2019.
 * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 
@@ -579,7 +580,7 @@ extern(C)
 									const (LV2_Feature*)*       features)
     {
         debug(debugLV2Client) debugLog(">instantiateUI");
-        void* instance_access = cast(char*)lv2_features_data(features, "http://lv2plug.in/ns/ext/instance-access");
+        void* instance_access = lv2_features_data(features, "http://lv2plug.in/ns/ext/instance-access");
         if(instance_access)
         {
             LV2Client lv2client = cast(LV2Client)instance_access;
