@@ -296,8 +296,12 @@ public void GenerateManifestFromClient_templated(alias ClientClass)(generateMani
         manifest ~= "    lv2:binary " ~ escapeRDF_IRI(binaryFileName) ~ " ;\n";
         manifest ~= "    doap:name " ~ escapeRDFString(client.pluginName) ~ " ;\n";
         manifest ~= "    doap:license " ~ escapeRDF_IRI(licensePath) ~ " ;\n";
+        manifest ~= "    lv2:requiredFeature opts:options ,\n";
+        manifest ~= "                        urid:map ;\n";
         manifest ~= "    lv2:project " ~ escapeRDF_IRI(client.pluginHomepage) ~ " ;\n";
-        manifest ~= "    lv2:extensionData <" ~ LV2_OPTIONS__interface ~ "> ; \n";
+
+        // We do not provide such an interface
+        //manifest ~= "    lv2:extensionData <" ~ LV2_OPTIONS__interface ~ "> ; \n";
 
         if(client.hasGUI)
         {
@@ -335,8 +339,8 @@ public void GenerateManifestFromClient_templated(alias ClientClass)(generateMani
         manifest ~= "    lv2:optionalFeature ui:noUserResize ,\n";
         manifest ~= "                        ui:resize ,\n";
         manifest ~= "                        ui:touch ;\n";
-        manifest ~= "    lv2:requiredFeature <" ~ LV2_OPTIONS__options ~ "> ,\n";
-        manifest ~= "                        <" ~ LV2_URID__map ~ "> ;\n";
+        manifest ~= "    lv2:requiredFeature opts:options ,\n";
+        manifest ~= "                        urid:map ;\n";
         manifest ~= "    ui:binary "  ~ escapeRDF_IRI(binaryFileName) ~ " .\n";
     }
     

@@ -37,91 +37,58 @@ enum LV2_URID_UNMAP_URI = LV2_URID__unmap;  ///< Legacy
 
 import core.stdc.stdint;
 
-extern(C) {
+
+/**
+Opaque pointer to host data for LV2_URID_Map.
+*/
+alias LV2_URID_Map_Handle = void*;
+
+/**
+Opaque pointer to host data for LV2_URID_Unmap.
+*/
+alias LV2_URID_Unmap_Handle = void*;
+
+/**
+URI mapped to an integer.
+*/
+alias LV2_URID = uint32_t;
+
+/**
+URID Map Feature (LV2_URID__map)
+*/
+struct LV2_URID_Map 
+{
+    nothrow:
+    @nogc:
+    extern(C):
+    /**
+    Opaque pointer to host data.
+
+    This MUST be passed to map_uri() whenever it is called.
+    Otherwise, it must not be interpreted in any way.
+    */
+    LV2_URID_Map_Handle handle;
 
     /**
-    Opaque pointer to host data for LV2_URID_Map.
+    Get the numeric ID of a URI.
+
+    If the ID does not already exist, it will be created.
+
+    This function is referentially transparent; any number of calls with the
+    same arguments is guaranteed to return the same value over the life of a
+    plugin instance.  Note, however, that several URIs MAY resolve to the
+    same ID if the host considers those URIs equivalent.
+
+    This function is not necessarily very fast or RT-safe: plugins SHOULD
+    cache any IDs they might need in performance critical situations.
+
+    The return value 0 is reserved and indicates that an ID for that URI
+    could not be created for whatever reason.  However, hosts SHOULD NOT
+    return 0 from this function in non-exceptional circumstances (i.e. the
+    URI map SHOULD be dynamic).
+
+    @param handle Must be the callback_data member of this struct.
+    @param uri The URI to be mapped to an integer ID.
     */
-    alias LV2_URID_Map_Handle = void*;
-
-    /**
-    Opaque pointer to host data for LV2_URID_Unmap.
-    */
-    alias LV2_URID_Unmap_Handle = void*;
-
-    /**
-    URI mapped to an integer.
-    */
-    alias LV2_URID = uint32_t;
-
-    /**
-    URID Map Feature (LV2_URID__map)
-    */
-    struct _LV2_URID_Map {
-        /**
-        Opaque pointer to host data.
-
-        This MUST be passed to map_uri() whenever it is called.
-        Otherwise, it must not be interpreted in any way.
-        */
-        LV2_URID_Map_Handle handle;
-
-        /**
-        Get the numeric ID of a URI.
-
-        If the ID does not already exist, it will be created.
-
-        This function is referentially transparent; any number of calls with the
-        same arguments is guaranteed to return the same value over the life of a
-        plugin instance.  Note, however, that several URIs MAY resolve to the
-        same ID if the host considers those URIs equivalent.
-
-        This function is not necessarily very fast or RT-safe: plugins SHOULD
-        cache any IDs they might need in performance critical situations.
-
-        The return value 0 is reserved and indicates that an ID for that URI
-        could not be created for whatever reason.  However, hosts SHOULD NOT
-        return 0 from this function in non-exceptional circumstances (i.e. the
-        URI map SHOULD be dynamic).
-
-        @param handle Must be the callback_data member of this struct.
-        @param uri The URI to be mapped to an integer ID.
-        */
-        nothrow @nogc LV2_URID function(LV2_URID_Map_Handle handle,
-                        const char*         uri) map;
-    }
-    alias LV2_URID_Map = _LV2_URID_Map;
-
-    /**
-    URI Unmap Feature (LV2_URID__unmap)
-    */
-    struct _LV2_URID_Unmap {
-        /**
-        Opaque pointer to host data.
-
-        This MUST be passed to unmap() whenever it is called.
-        Otherwise, it must not be interpreted in any way.
-        */
-        LV2_URID_Unmap_Handle handle;
-
-        /**
-        Get the URI for a previously mapped numeric ID.
-
-        Returns NULL if `urid` is not yet mapped.  Otherwise, the corresponding
-        URI is returned in a canonical form.  This MAY not be the exact same
-        string that was originally passed to LV2_URID_Map::map(), but it MUST be
-        an identical URI according to the URI syntax specification (RFC3986).  A
-        non-NULL return for a given `urid` will always be the same for the life
-        of the plugin.  Plugins that intend to perform string comparison on
-        unmapped URIs SHOULD first canonicalise URI strings with a call to
-        map_uri() followed by a call to unmap_uri().
-
-        @param handle Must be the callback_data member of this struct.
-        @param urid The ID to be mapped back to the URI string.
-        */
-        const char* function(LV2_URID_Unmap_Handle handle,
-                            LV2_URID              urid) unmap;
-    }
-    alias LV2_URID_Unmap = _LV2_URID_Unmap;
-
+    LV2_URID function(LV2_URID_Map_Handle handle, const(char)* uri) map;
 }

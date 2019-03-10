@@ -73,8 +73,6 @@ nothrow:
         _client = client;
         _client.setHostCommand(this);
         _graphicsMutex = makeMutex();
-        _options = null;
-        _uridMap = null;
         _legalIOIndex = legalIOIndex;
         _eventsInput = null;
     }
@@ -92,32 +90,38 @@ nothrow:
 
     void instantiate(const LV2_Descriptor* descriptor, double rate, const char* bundle_path, const(LV2_Feature*)* features)
     {
+        LV2_Options_Option* options = null;
+        LV2_URID_Map* uridMap = null;
+
         for(int i = 0; features[i] != null; ++i)
         {
-            if (strcmp(features[i].URI, LV2_OPTIONS__options) == 0)
-                _options = cast(LV2_Options_Option*)features[i].data;
-            else if (strcmp(features[i].URI, LV2_URID__map) == 0)
-                _uridMap = cast(LV2_URID_Map*)features[i].data;
+            if (strcmp(features[i].URI, "http://lv2plug.in/ns/ext/options#options") == 0)
+                options = cast(LV2_Options_Option*)features[i].data;
+            else if (strcmp(features[i].URI, "http://lv2plug.in/ns/ext/urid#map") == 0)
+                uridMap = cast(LV2_URID_Map*)features[i].data;
         }
 
+        // Some default value to initialize with in case we don't find an option with the max buffer size
+        _maxBufferSize = 1024;
+
         // Retrieve max buffer size from options
-        for (int i=0; _options[i].key != 0; ++i)
+        if (options && uridMap)
         {
-            if (_options[i].key == _uridMap.map(_uridMap.handle, LV2_BUF_SIZE__maxBlockLength))
+            for (int i = 0; options[i].key != 0; ++i)
             {
-                _maxBufferSize = *cast(const(int)*)_options[i].value;
-                _callResetOnNextRun = true;
+                if (options[i].key == uridMap.map(uridMap.handle, LV2_BUF_SIZE__maxBlockLength))
+                    _maxBufferSize = *cast(const(int)*)options[i].value;
             }
         }
 
-        fURIDs = URIDs(_uridMap);
+        _callResetOnNextRun = true;
 
+        _mappedURIs.initialize(uridMap);
 
         LegalIO selectedIO = _client.legalIOs()[_legalIOIndex];
 
         _numInputs = selectedIO.numInputChannels;
         _numOutputs = selectedIO.numOutputChannels;
-        _numParams = cast(uint)_client.params().length;
         _sampleRate = cast(float)rate;
 
         _params.reallocBuffer(_client.params.length);
@@ -165,6 +169,12 @@ nothrow:
     {
         TimeInfo timeInfo;
 
+        if (_maxBufferSize < n_samples)
+        {
+            _callResetOnNextRun = true;
+            _maxBufferSize = n_samples; // in case the max buffer value wasn't found within options
+        }
+
         if(_callResetOnNextRun)
         {
             _callResetOnNextRun = false;
@@ -183,7 +193,7 @@ nothrow:
                 if (event is null)
                     break;
 
-                if (_client.receivesMIDI() && event.body_.type == fURIDs.midiEvent) 
+                if (_client.receivesMIDI() && event.body_.type == _mappedURIs.midiEvent) 
                 {
                     // Get offset of MIDI message in that buffer
                     int offset = cast(int)(event.time.frames);
@@ -203,53 +213,53 @@ nothrow:
                     }
                     _client.enqueueMIDIFromHost(message);
                 }
-                else if (event.body_.type == fURIDs.atomBlank || event.body_.type == fURIDs.atomObject)
+                else if (event.body_.type == _mappedURIs.atomBlank || event.body_.type == _mappedURIs.atomObject)
                 {
 
                     const (LV2_Atom_Object*) obj = cast(LV2_Atom_Object*)&event.body_;
                 
-                    if (obj.body_.otype == fURIDs.timePosition)
+                    if (obj.body_.otype == _mappedURIs.timePosition)
                     {
                         LV2_Atom* beatsPerMinute = null;
                         LV2_Atom* frame = null;
                         LV2_Atom* speed = null;
 
                         lv2AtomObjectExtractTimeInfo(obj,
-                                           fURIDs.timeBeatsPerMinute, &beatsPerMinute,
-                                           fURIDs.timeFrame, &frame,
-                                           fURIDs.timeSpeed, &speed);
+                                           _mappedURIs.timeBeatsPerMinute, &beatsPerMinute,
+                                           _mappedURIs.timeFrame, &frame,
+                                           _mappedURIs.timeSpeed, &speed);
 
                         if (beatsPerMinute != null) 
                         {
-                            if (beatsPerMinute.type == fURIDs.atomDouble)
+                            if (beatsPerMinute.type == _mappedURIs.atomDouble)
                                 timeInfo.tempo = (cast(LV2_Atom_Double*)beatsPerMinute).body_;
-                            else if (beatsPerMinute.type == fURIDs.atomFloat)
+                            else if (beatsPerMinute.type == _mappedURIs.atomFloat)
                                 timeInfo.tempo = (cast(LV2_Atom_Float*)beatsPerMinute).body_;
-                            else if (beatsPerMinute.type == fURIDs.atomInt)
+                            else if (beatsPerMinute.type == _mappedURIs.atomInt)
                                 timeInfo.tempo = (cast(LV2_Atom_Int*)beatsPerMinute).body_;
-                            else if (beatsPerMinute.type == fURIDs.atomLong)
+                            else if (beatsPerMinute.type == _mappedURIs.atomLong)
                                 timeInfo.tempo = (cast(LV2_Atom_Long*)beatsPerMinute).body_;
                         }
                         if (frame != null) 
                         {
-                            if (frame.type == fURIDs.atomDouble)
+                            if (frame.type == _mappedURIs.atomDouble)
                                 timeInfo.timeInSamples = cast(long)(cast(LV2_Atom_Double*)frame).body_;
-                            else if (frame.type == fURIDs.atomFloat)
+                            else if (frame.type == _mappedURIs.atomFloat)
                                 timeInfo.timeInSamples = cast(long)(cast(LV2_Atom_Float*)frame).body_;
-                            else if (frame.type == fURIDs.atomInt)
+                            else if (frame.type == _mappedURIs.atomInt)
                                 timeInfo.timeInSamples = (cast(LV2_Atom_Int*)frame).body_;
-                            else if (frame.type == fURIDs.atomLong)
+                            else if (frame.type == _mappedURIs.atomLong)
                                 timeInfo.timeInSamples = (cast(LV2_Atom_Long*)frame).body_;
                         }
                         if (speed != null) 
                         {
-                            if (speed.type == fURIDs.atomDouble)
+                            if (speed.type == _mappedURIs.atomDouble)
                                 timeInfo.hostIsPlaying = (cast(LV2_Atom_Double*)speed).body_ > 0.0f;
-                            else if (speed.type == fURIDs.atomFloat)
+                            else if (speed.type == _mappedURIs.atomFloat)
                                 timeInfo.hostIsPlaying = (cast(LV2_Atom_Float*)speed).body_ > 0.0f;
-                            else if (speed.type == fURIDs.atomInt)
+                            else if (speed.type == _mappedURIs.atomInt)
                                 timeInfo.hostIsPlaying = (cast(LV2_Atom_Int*)speed).body_ > 0.0f;
-                            else if (speed.type == fURIDs.atomLong)
+                            else if (speed.type == _mappedURIs.atomLong)
                                 timeInfo.hostIsPlaying = (cast(LV2_Atom_Long*)speed).body_ > 0.0f;
                         }
                     }
@@ -261,12 +271,12 @@ nothrow:
         for(int input = 0; input < _numInputs; ++input)
         {
             if(_inputPointersUsed[input])
-                _inputPointers[input] = cast(float*)mallocSlice!(float)(n_samples);
+                _inputPointers[input] = cast(float*)mallocSlice!(float)(n_samples); // LEAK here
         }
         for(int output = 0; output < _numOutputs; ++output)
         {
             if(_outputPointersUsed[output])
-                _outputPointers[output] = cast(float*)mallocSlice!(float)(n_samples);
+                _outputPointers[output] = cast(float*)mallocSlice!(float)(n_samples); // LEAK here
         }
         
         _client.processAudioFromHost(_inputPointers, _outputPointers, n_samples, timeInfo);
@@ -275,8 +285,6 @@ nothrow:
             _inputPointersUsed[input] = true;
         for(int output = 0; output < _numOutputs; ++output)
             _outputPointersUsed[output] = true;
-
-       // debug(debugLV2Client) debugLog("<run");
     }
 
     void instantiateUI(const LV2UI_Descriptor* descriptor,
@@ -288,11 +296,12 @@ nothrow:
                        const (LV2_Feature*)*       features)
     {
         debug(debugLV2Client) debugLog(">instantiateUI");
-        void* parentId = null;
-        LV2UI_Resize* uiResize = null;
-        char* windowTitle = null;
+
         void* transientWin = null;
-        int width, height;
+        void* parentId = null;
+        LV2_Options_Option* options = null;
+        LV2UI_Resize* uiResize = null;
+        LV2_URID_Map* uridMap = null;
 
         for (int i=0; features[i] != null; ++i)
         {
@@ -301,37 +310,39 @@ nothrow:
             else if (strcmp(features[i].URI, LV2_UI__resize) == 0)
                 uiResize = cast(LV2UI_Resize*)features[i].data;
             else if (strcmp(features[i].URI, LV2_OPTIONS__options) == 0)
-                _options = cast(LV2_Options_Option*)features[i].data;
+                options = cast(LV2_Options_Option*)features[i].data;
             else if (strcmp(features[i].URI, LV2_URID__map) == 0)
-                _uridMap = cast(LV2_URID_Map*)features[i].data;
+                uridMap = cast(LV2_URID_Map*)features[i].data;
         }
 
-        LV2_URID uridWindowTitle = _uridMap.map(_uridMap.handle, LV2_UI__windowTitle);
-        LV2_URID uridTransientWinId = _uridMap.map(_uridMap.handle, LV2_KXSTUDIO_PROPERTIES__TransientWindowId);
-
-        for (int i=0; _options[i].key != 0; ++i)
+        // Not transmitted yet
+        /*
+        if (options && uridMap)
         {
-            if (_options[i].key == _uridMap.map(_uridMap.handle, LV2_UI__windowTitle))
+            for (int i = 0; options[i].key != 0; ++i)
             {
-                windowTitle = cast(char*)_options[i].value;   
+                if (options[i].key == uridTransientWinId)
+                {
+                    transientWin = cast(void*)(options[i].value);    // sound like it lacks a dereferencing
+                }
             }
-            else if (_options[i].key == _uridMap.map(_uridMap.handle, LV2_KXSTUDIO_PROPERTIES__TransientWindowId))
-            {
-                transientWin = cast(void*)_options[i].value;   
-            }
-        }
-
+        }*/
 
         if (widget != null)
         {
-            void* pluginWindow;
             _graphicsMutex.lock();
-            pluginWindow = cast(LV2UI_Widget)_client.openGUI(parentId, windowTitle, GraphicsBackend.autodetect);
-            _client.getGUISize(&width, &height);
+            void* pluginWindow = cast(LV2UI_Widget)_client.openGUI(parentId, null, GraphicsBackend.autodetect);
             _graphicsMutex.unlock();
 
-            uiResize.ui_resize(uiResize.handle, width, height);
-            *widget = pluginWindow;
+            int width, height;
+            if (_client.getGUISize(&width, &height))
+            {
+                _graphicsMutex.lock();
+                uiResize.ui_resize(uiResize.handle, width, height);
+                _graphicsMutex.unlock();
+            }
+
+            *widget = cast(LV2UI_Widget)pluginWindow;
         }
         debug(debugLV2Client) debugLog("<instantiateUI");
     }
@@ -357,7 +368,7 @@ nothrow:
     {
         debug(debugLV2Client) debugLog(">cleanupUI");
         _graphicsMutex.lock();
-        assert (_client.hasGUI() )
+        assert(_client.hasGUI());
         _client.closeGUI();
         _graphicsMutex.unlock();
         debug(debugLV2Client) debugLog("<cleanupUI");
@@ -365,7 +376,7 @@ nothrow:
 
     override void beginParamEdit(int paramIndex)
     {
-        
+        // TODO: use the "touch" extension
     }
 
     override void paramAutomate(int paramIndex, float value)
@@ -376,7 +387,7 @@ nothrow:
 
     override void endParamEdit(int paramIndex)
     {
-
+        // TODO: use the "touch" extension
     }
 
     override bool requestResize(int width, int height)
@@ -394,8 +405,11 @@ private:
 
     uint _numInputs;
     uint _numOutputs;
-    uint _numParams;
+
+    // the maximum buffer size we've found, from either the options or reality of incoming buffers
     int _maxBufferSize;
+
+    // whether the plugin should call resetFromHost at next `run()`
     bool _callResetOnNextRun;
 
     float*[] _params;
@@ -409,18 +423,16 @@ private:
     LV2_Atom_Sequence* _eventsInput;
 
     float _sampleRate;
-    
-    LV2_Options_Option* _options;
-    LV2_URID_Map* _uridMap;
 
     UncheckedMutex _graphicsMutex;
 
-    URIDs fURIDs;
+    // Set at instantiation
+    MappedURIs _mappedURIs;
 
     int _legalIOIndex;
 }
 
-struct URIDs 
+struct MappedURIs 
 {
 nothrow:
 @nogc:
@@ -438,7 +450,7 @@ nothrow:
     LV2_URID timeBeatsPerMinute;
     LV2_URID timeSpeed;
 
-    this(LV2_URID_Map* uridMap) 
+    void initialize(LV2_URID_Map* uridMap) 
     {
         atomDouble = uridMap.map(uridMap.handle, LV2_ATOM__Double);
         atomFloat = uridMap.map(uridMap.handle, LV2_ATOM__Float);

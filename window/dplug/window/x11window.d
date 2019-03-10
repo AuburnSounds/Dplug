@@ -93,7 +93,7 @@ private:
     enum int XEMBED_MAPPED = (1 << 0);
 
 public:
-    this(void* parentWindow, void* transientWindowId, IWindowListener listener, int width, int height)
+    this(void* parentWindow, /* void* transientWindowId,*/ IWindowListener listener, int width, int height)
     {
         debug(logX11Window) fprintf(stderr, "X11Window: constructor\n");
         drawMutex = makeMutex();
@@ -118,7 +118,7 @@ public:
         depth = 24;
 
         _windowId = XCreateSimpleWindow(_display, _parentWindowId, x, y, width, height, 0, 0, _black_pixel);
-        XStoreName(_display, _windowId, cast(char*)transientWindowId);
+        //XStoreName(_display, _windowId, cast(char*)transientWindowId);
 
         XSizeHints sizeHints;
         sizeHints.flags = PMinSize | PMaxSize;
@@ -145,10 +145,10 @@ public:
             XReparentWindow(_display, _windowId, _parentWindowId, 0, 0);
         }
 
-        if(transientWindowId)
+        /*if(transientWindowId)
         {
             XSetTransientForHint(_display, _windowId, cast(Window)transientWindowId);
-        }
+        }*/
 
         XMapWindow(_display, _windowId);
         XFlush(_display);
