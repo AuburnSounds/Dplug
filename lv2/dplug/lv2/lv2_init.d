@@ -157,7 +157,7 @@ void build_all_lv2_descriptors(ClientClass)() nothrow @nogc
         lv2Descriptors[io].run = &run;
         lv2Descriptors[io].deactivate = &deactivate;
         lv2Descriptors[io].cleanup = &cleanup;
-        lv2Descriptors[io].extension_data = &extension_data;
+        lv2Descriptors[io].extension_data = null;//extension_data; support it for real
     }
 
 
@@ -173,8 +173,8 @@ void build_all_lv2_descriptors(ClientClass)() nothrow @nogc
             URI:            stringDup(uriBuf.ptr).ptr, 
             instantiate:    &instantiateUI, 
             cleanup:        &cleanupUI, 
-            port_event:     &port_event, 
-            extension_data: &extension_dataUI
+            port_event:     &port_eventUI, 
+            extension_data: null// &extension_dataUI TODO support it for real
         };
         lv2UIDescriptor = descriptor;
     }
@@ -559,7 +559,6 @@ extern(C)
     {
         debug(debugLV2Client) debugLog(">cleanup");
         LV2Client lv2client = cast(LV2Client)instance;
-        lv2client.cleanup();
         lv2client.destroyFree();
         debug(debugLV2Client) debugLog("<cleanup");
     }
@@ -581,7 +580,7 @@ extern(C)
     {
         debug(debugLV2Client) debugLog(">instantiateUI");
         void* instance_access = lv2_features_data(features, "http://lv2plug.in/ns/ext/instance-access");
-        if(instance_access)
+        if (instance_access)
         {
             LV2Client lv2client = cast(LV2Client)instance_access;
             lv2client.instantiateUI(descriptor, plugin_uri, bundle_path, write_function, controller, widget, features);
@@ -596,13 +595,13 @@ extern(C)
     }
 
     void write_function(LV2UI_Controller controller,
-										uint32_t         port_index,
-										uint32_t         buffer_size,
-										uint32_t         port_protocol,
-										const void*      buffer)
+                              uint32_t         port_index,
+                              uint32_t         buffer_size,
+                              uint32_t         port_protocol,
+                              const void*      buffer)
     {
         debug(debugLV2Client) debugLog(">write_function");
-        debug(debugLV2Client) debugLog("<write_function");        
+        debug(debugLV2Client) debugLog("<write_function");
     }
 
     void cleanupUI(LV2UI_Handle ui)
@@ -613,20 +612,26 @@ extern(C)
         debug(debugLV2Client) debugLog("<cleanupUI");
     }
 
-    void port_event(LV2UI_Handle ui,
-						uint32_t     port_index,
-						uint32_t     buffer_size,
-						uint32_t     format,
-						const void*  buffer)
+    void port_eventUI(LV2UI_Handle ui,
+                      uint32_t     port_index,
+                      uint32_t     buffer_size,
+                      uint32_t     format,
+                      const void*  buffer)
     {
         debug(debugLV2Client) debugLog(">port_event");
         LV2Client lv2client = cast(LV2Client)ui;
-        lv2client.port_event(port_index, buffer_size, format, buffer);
+        lv2client.portEventUI(port_index, buffer_size, format, buffer);
         debug(debugLV2Client) debugLog("<port_event");
     }
 
     const (void)* extension_dataUI(const char* uri)
     {
+/*
+        if (strcmp(uri, "http://lv2plug.in/ns/extensions/ui#idleInterface"))
+        {
+
+        }
+*/
         debug(debugLV2Client) debugLog(">extension_dataUI");
         debug(debugLV2Client) debugLog("<extension_dataUI");
         return null;

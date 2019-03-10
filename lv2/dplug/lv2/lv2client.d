@@ -83,6 +83,7 @@ nothrow:
     {
         _client.destroyFree();
 
+        _params.reallocBuffer(0);
         _inputPointers.freeSlice();
         _outputPointers.freeSlice();
         _inputPointersUsed.freeSlice();
@@ -119,29 +120,13 @@ nothrow:
         _numParams = cast(uint)_client.params().length;
         _sampleRate = cast(float)rate;
 
-        _params = cast(float**)mallocSlice!(float*)(_client.params.length);
+        _params.reallocBuffer(_client.params.length);
+        _params[] = null;
 
         _inputPointers = mallocSlice!(float*)(_numInputs);
         _outputPointers = mallocSlice!(float*)(_numOutputs);
         _inputPointersUsed = mallocSlice!(bool)(_numInputs);
         _outputPointersUsed = mallocSlice!(bool)(_numOutputs);
-    }
-
-    void cleanup()
-    {
-    }
-
-    void updateParamFromHost(uint32_t port_index)
-    {
-        float* port = _params[port_index];
-        float paramValue = *port;
-        _client.setParameterFromHost(port_index, paramValue);
-    }
-
-    void updatePortFromClient(uint32_t port_index, float value)
-    {
-        float* port = _params[port_index];
-        *port = value;
     }
 
     void connect_port(uint32_t port, void* data)
@@ -178,7 +163,6 @@ nothrow:
 
     void run(uint32_t n_samples)
     {
-        debug(debugLV2Client) debugLog(">run");
         TimeInfo timeInfo;
 
         if(_callResetOnNextRun)
@@ -292,7 +276,7 @@ nothrow:
         for(int output = 0; output < _numOutputs; ++output)
             _outputPointersUsed[output] = true;
 
-        debug(debugLV2Client) debugLog("<run");
+       // debug(debugLV2Client) debugLog("<run");
     }
 
     void instantiateUI(const LV2UI_Descriptor* descriptor,
@@ -352,15 +336,20 @@ nothrow:
         debug(debugLV2Client) debugLog("<instantiateUI");
     }
 
-    void port_event(uint32_t     port_index,
-                    uint32_t     buffer_size,
-                    uint32_t     format,
-                    const void*  buffer)
+    void portEventUI(uint32_t     port_index,
+                     uint32_t     buffer_size,
+                     uint32_t     format,
+                     const void*  buffer)
     {
         debug(debugLV2Client) debugLog(">port_event");
-        _graphicsMutex.lock();
-        updateParamFromHost(port_index);
-        _graphicsMutex.unlock();
+        if (port_index >= _params.length)
+            return;
+        if (format == 0)
+        {
+            float* port = _params[port_index];
+            float paramValue = *port;
+            _client.setParameterFromHost(port_index, paramValue);
+        }
         debug(debugLV2Client) debugLog("<port_event");
     }
 
@@ -368,6 +357,7 @@ nothrow:
     {
         debug(debugLV2Client) debugLog(">cleanupUI");
         _graphicsMutex.lock();
+        assert (_client.hasGUI() )
         _client.closeGUI();
         _graphicsMutex.unlock();
         debug(debugLV2Client) debugLog("<cleanupUI");
@@ -380,7 +370,8 @@ nothrow:
 
     override void paramAutomate(int paramIndex, float value)
     {
-        updatePortFromClient(paramIndex, value);
+        float* port = _params[paramIndex];
+        *port = value;
     }
 
     override void endParamEdit(int paramIndex)
@@ -407,7 +398,7 @@ private:
     int _maxBufferSize;
     bool _callResetOnNextRun;
 
-    float** _params;
+    float*[] _params;
     Vec!float[] _inputScratchBuffer;
     Vec!float[] _outputScratchBuffer;
     Vec!float   _zeroesBuffer; 
