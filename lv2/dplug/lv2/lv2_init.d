@@ -60,22 +60,22 @@ extern(C) alias generateManifestFromClientCallback = void function(const(ubyte)*
  */
 template LV2EntryPoint(alias ClientClass)
 {
-    static immutable enum lv2_descriptor =  
+    static immutable enum lv2_descriptor =
         "export extern(C) const(void)* lv2_descriptor(uint index) nothrow @nogc" ~
         "{" ~
         "    return lv2_descriptor_templated!" ~ ClientClass.stringof ~ "(index);" ~
         "}\n";
 
-    static immutable enum lv2_ui_descriptor = 
+    static immutable enum lv2_ui_descriptor =
         "export extern(C) const(void)* lv2ui_descriptor(uint index)nothrow @nogc" ~
         "{" ~
         "    return lv2ui_descriptor_templated!" ~ ClientClass.stringof ~ "(index);" ~
         "}\n";
 
-    static immutable enum generate_manifest_from_client = 
-        "export extern(C) void GenerateManifestFromClient(generateManifestFromClientCallback callback, const(char)[] binaryFileName, const(char)[] licensePath, const(char)[] buildDir)"  ~
+    static immutable enum generate_manifest_from_client =
+        "export extern(C) void GenerateManifestFromClient(generateManifestFromClientCallback callback, const(char)[] binaryFileName, const(char)[] buildDir)"  ~
         "{" ~
-        "    GenerateManifestFromClient_templated!" ~ ClientClass.stringof ~ "(callback, binaryFileName, licensePath, buildDir);" ~
+        "    GenerateManifestFromClient_templated!" ~ ClientClass.stringof ~ "(callback, binaryFileName, buildDir);" ~
         "}\n";
 
     const char[] LV2EntryPoint = lv2_descriptor ~ lv2_ui_descriptor ~ generate_manifest_from_client;
@@ -85,7 +85,7 @@ const(LV2_Descriptor)* lv2_descriptor_templated(ClientClass)(uint index) nothrow
 {
     debug(debugLV2Client) debugLog(">lv2_descriptor_templated");
     build_all_lv2_descriptors!ClientClass();
-    if(index >= cast(int)(lv2Descriptors.length)) 
+    if(index >= cast(int)(lv2Descriptors.length))
         return null;
 
     debug(debugLV2Client) debugLog("<lv2_descriptor_templated");
@@ -105,9 +105,9 @@ const (LV2UI_Descriptor)* lv2ui_descriptor_templated(ClientClass)(uint index) no
         return null;
 }
 
-extern(C) static LV2_Handle instantiate(ClientClass)(const(LV2_Descriptor)* descriptor, 
-                                                     double rate, 
-                                                     const(char)* bundle_path, 
+extern(C) static LV2_Handle instantiate(ClientClass)(const(LV2_Descriptor)* descriptor,
+                                                     double rate,
+                                                     const(char)* bundle_path,
                                                      const(LV2_Feature*)* features)
 {
     debug(debugLV2Client) debugLog(">instantiate");
@@ -147,7 +147,7 @@ void build_all_lv2_descriptors(ClientClass)() nothrow @nogc
     {
         // Make an URI for this I/O configuration
         sprintPluginURI_IO(uriBuf.ptr, 256, client.pluginHomepage(), client.getPluginUniqueID(), legalIOs[io]);
-        
+
         lv2Descriptors[io] = LV2_Descriptor.init;
 
         lv2Descriptors[io].URI = stringDup(uriBuf.ptr).ptr;
@@ -168,12 +168,12 @@ void build_all_lv2_descriptors(ClientClass)() nothrow @nogc
         // Make an URI for this the UI
         sprintPluginURI_UI(uriBuf.ptr, 256, client.pluginHomepage(), client.getPluginUniqueID());
 
-        LV2UI_Descriptor descriptor = 
+        LV2UI_Descriptor descriptor =
         {
-            URI:            stringDup(uriBuf.ptr).ptr, 
-            instantiate:    &instantiateUI, 
-            cleanup:        &cleanupUI, 
-            port_event:     &port_eventUI, 
+            URI:            stringDup(uriBuf.ptr).ptr,
+            instantiate:    &instantiateUI,
+            cleanup:        &cleanupUI,
+            port_event:     &port_eventUI,
             extension_data: null// &extension_dataUI TODO support it for real
         };
         lv2UIDescriptor = descriptor;
@@ -188,9 +188,9 @@ void build_all_lv2_descriptors(ClientClass)() nothrow @nogc
 
 
 
-LV2Client myLV2EntryPoint(alias ClientClass)(const LV2_Descriptor* descriptor, 
-                                             double rate, 
-                                             const char* bundle_path, 
+LV2Client myLV2EntryPoint(alias ClientClass)(const LV2_Descriptor* descriptor,
+                                             double rate,
+                                             const char* bundle_path,
                                              const(LV2_Feature*)* features) nothrow @nogc
 {
     debug(debugLV2Client) debugLog(">myLV2EntryPoint");
@@ -226,30 +226,35 @@ void sprintPluginURI_IO(char* buf, size_t maxChars, string pluginHomepage, char[
     // give user-friendly names
     if (ins == 1 && outs == 1)
     {
-        snprintf(buf, maxChars, "%s%2X%2X%2X%2X/mono", pluginHomepageZ.storage, 
+        snprintf(buf, maxChars, "%s%2X%2X%2X%2X/mono", pluginHomepageZ.storage,
                  pluginID[0], pluginID[1], pluginID[2], pluginID[3]);
     }
     else if (ins == 2 && outs == 2)
     {
-        snprintf(buf, maxChars, "%s%2X%2X%2X%2X/stereo", pluginHomepageZ.storage, 
+        snprintf(buf, maxChars, "%s%2X%2X%2X%2X/stereo", pluginHomepageZ.storage,
                  pluginID[0], pluginID[1], pluginID[2], pluginID[3]);
     }
     else
     {
-        snprintf(buf, maxChars, "%s%2X%2X%2X%2X/%din%dout", pluginHomepageZ.storage, 
+        snprintf(buf, maxChars, "%s%2X%2X%2X%2X/%din%dout", pluginHomepageZ.storage,
                                                             pluginID[0], pluginID[1], pluginID[2], pluginID[3],
                                                             ins, outs);
     }
 }
 
-public void GenerateManifestFromClient_templated(alias ClientClass)(generateManifestFromClientCallback callback, 
-                                                                    const(char)[] binaryFileName, 
-                                                                    const(char)[] licensePath, 
+public void GenerateManifestFromClient_templated(alias ClientClass)(generateManifestFromClientCallback callback,
+                                                                    const(char)[] binaryFileName,
                                                                     const(char)[] buildDir)
 {
-    // Note: this function is called by D, so it reuses the runtime from dplug-build on POSIX
+    // Note: this function is called by D, so it reuses the runtime from dplug-build on Linux
     // FUTURE: make this function nothrow @nogc, to avoid relying on dplug-build runtime
     version(Windows)
+    {
+        import core.runtime;
+        Runtime.initialize();
+    }
+
+    version(OSX)
     {
         import core.runtime;
         Runtime.initialize();
@@ -283,7 +288,7 @@ public void GenerateManifestFromClient_templated(alias ClientClass)(generateMani
     {
         sprintPluginURI_UI(uriBuf.ptr, 256, client.pluginHomepage(), client.getPluginUniqueID());
         uriGUI = stringIDup(uriBuf.ptr);
-    }    
+    }
 
     foreach(legalIO; legalIOs)
     {
@@ -295,7 +300,6 @@ public void GenerateManifestFromClient_templated(alias ClientClass)(generateMani
         manifest ~= "    a lv2:Plugin" ~ lv2PluginCategory(client.pluginCategory) ~ " ;\n";
         manifest ~= "    lv2:binary " ~ escapeRDF_IRI(binaryFileName) ~ " ;\n";
         manifest ~= "    doap:name " ~ escapeRDFString(client.pluginName) ~ " ;\n";
-        manifest ~= "    doap:license " ~ escapeRDF_IRI(licensePath) ~ " ;\n";
         manifest ~= "    lv2:requiredFeature opts:options ,\n";
         manifest ~= "                        urid:map ;\n";
         manifest ~= "    lv2:project " ~ escapeRDF_IRI(client.pluginHomepage) ~ " ;\n";
@@ -343,7 +347,7 @@ public void GenerateManifestFromClient_templated(alias ClientClass)(generateMani
         manifest ~= "                        urid:map ;\n";
         manifest ~= "    ui:binary "  ~ escapeRDF_IRI(binaryFileName) ~ " .\n";
     }
-    
+
     callback(cast(const(ubyte)*)manifest, manifest.length, buildDir);
 }
 
@@ -510,7 +514,7 @@ const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, b
     paramString ~= "    [ \n";
     paramString ~= "        a lv2:InputPort, atom:AtomPort ;\n";
     paramString ~= "        atom:bufferType atom:Sequence ;\n";
-    
+
     if(hasMIDIInput)
         paramString ~= "        atom:supports <http://lv2plug.in/ns/ext/midi#MidiEvent> ;\n";
 
@@ -527,7 +531,7 @@ const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, b
 
 /*
     LV2 Callback funtion implementations
-    note that instantiate is a template mixin. 
+    note that instantiate is a template mixin.
 */
 extern(C)
 {

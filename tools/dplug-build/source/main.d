@@ -487,7 +487,7 @@ int main(string[] args)
 
                         // Note: this is duplicated in dplug:lv2 in lv2_init.d
                         alias generateManifestFromClientCallback = extern(C) void function(const(ubyte)* fileContents, size_t len, const(char)[] path);
-                        alias generateManifest = extern(C) void function(generateManifestFromClientCallback, const(char)[] binaryFileName, const(char)[] licensePath, const(char)[] buildDir);
+                        alias generateManifest = extern(C) void function(generateManifestFromClientCallback, const(char)[] binaryFileName, const(char)[] buildDir);
 
                         static extern(C) void processManifest(const(ubyte*) fileContents, size_t len, const(char)[] path)
                         {
@@ -495,7 +495,7 @@ int main(string[] args)
                             std.file.write(path ~ "/manifest.ttl", fileContents[0..len]);
                         }
                         generateManifest ptrGenerateManifest = cast(generateManifest) lib.loadSymbol("GenerateManifestFromClient");
-                        ptrGenerateManifest(&processManifest, binaryName, plugin.licensePath, outputDir);
+                        ptrGenerateManifest(&processManifest, binaryName, outputDir);
                         lib.unload();
 
                         string manifestPath = outputDir ~ "/manifest.ttl";
@@ -624,60 +624,88 @@ int main(string[] args)
                         pluginDir = plugin.prettyName ~ ".aaxplugin";
                         installDir = MAC_AAX_DIR;
                     }
+                    else if (configIsLV2(config))
+                    {
+                        pluginDir = plugin.prettyName ~ ".lv2";
+                        installDir = MAC_LV2_DIR;
+                    }
                     else
                         assert(false, "unsupported plugin format");
 
                     // On Mac, make a bundle directory
                     string bundleDir = path ~ "/" ~ pluginDir;
-                    string contentsDir = path ~ "/" ~ pluginDir ~ "/Contents/";
-                    string ressourcesDir = contentsDir ~ "Resources";
-                    string macosDir = contentsDir ~ "MacOS";
-                    mkdirRecurse(ressourcesDir);
-                    mkdirRecurse(macosDir);
 
-                    if (configIsAAX(config))
-                        extractAAXPresetsFromBinary(plugin.dubOutputFileName, contentsDir, is64b);
-
-                    // Generate Plist
-                    string plist = makePListFile(plugin, config, iconPath != null);
-                    std.file.write(contentsDir ~ "Info.plist", cast(void[])plist);
-
-                    void[] pkgInfo = cast(void[]) plugin.makePkgInfo(config);
-                    std.file.write(contentsDir ~ "PkgInfo", pkgInfo);
-
-                    string exePath = macosDir ~ "/" ~ plugin.prettyName;
-
-                    // Create a .rsrc for this set of architecture when building an AU
-                    if (configIsAU(config))
+                    if (configIsLV2(config))
                     {
-                        string rsrcPath = makeRSRC(plugin, arch, verbose);
-                        std.file.copy(rsrcPath, contentsDir ~ "Resources/" ~ baseName(exePath) ~ ".rsrc");
-                    }
+                        // LV2 is special on Mac, because it only need this structure:
+                        //
+                        // directory.lv2/
+                        //     manifest.ttl
+                        //     binary.dylib
+                        //
+                        // So in LV2 it's not an actual bundle with a plist and all
 
-                    if (iconPath)
-                        std.file.copy(iconPath, contentsDir ~ "Resources/icon.icns");
+                        // must create TTL, and a .lv2 directory
+                        string pluginFinalName = plugin.getLV2PrettyName() ~ ".dylib";
+                        string pluginFinalPath = bundleDir ~ "/" ~ pluginFinalName;
+                        mkdirRecurse(bundleDir);
+                        fileMove(plugin.dubOutputFileName, pluginFinalPath);
+                        extractLV2ManifestFromBinary(pluginFinalPath, bundleDir, is64b, pluginFinalName);
 
-                    if (arch == Arch.universalBinary)
-                    {
-                        string path32 = outputDirectory(outputDir, true, osString, Arch.x86, config)
-                        ~ "/" ~ pluginDir ~ "/Contents/MacOS/" ~ plugin.prettyName;
-
-                        string path64 = outputDirectory(outputDir, true, osString, Arch.x86_64, config)
-                        ~ "/" ~ pluginDir ~ "/Contents/MacOS/" ~ plugin.prettyName;
-
-                        cwritefln("*** Making an universal binary with lipo".white);
-
-                        string cmd = format("lipo -create %s %s -output %s",
-                                            escapeShellArgument(path32),
-                                            escapeShellArgument(path64),
-                                            escapeShellArgument(exePath));
-                        safeCommand(cmd);
-                        cwritefln("    => Universal build OK, available in ./%s".green, path);
-                        cwriteln();
+                        // Note: there is no support for Universal Binary in LV2
                     }
                     else
                     {
-                        fileMove(plugin.dubOutputFileName, exePath);
+                        string contentsDir = path ~ "/" ~ pluginDir ~ "/Contents/";
+                        string ressourcesDir = contentsDir ~ "Resources";
+                        string macosDir = contentsDir ~ "MacOS";
+                        mkdirRecurse(ressourcesDir);
+                        mkdirRecurse(macosDir);
+
+                        if (configIsAAX(config))
+                            extractAAXPresetsFromBinary(plugin.dubOutputFileName, contentsDir, is64b);
+
+                        // Generate Plist
+                        string plist = makePListFile(plugin, config, iconPath != null);
+                        std.file.write(contentsDir ~ "Info.plist", cast(void[])plist);
+
+                        void[] pkgInfo = cast(void[]) plugin.makePkgInfo(config);
+                        std.file.write(contentsDir ~ "PkgInfo", pkgInfo);
+
+                        string exePath = macosDir ~ "/" ~ plugin.prettyName;
+
+                        // Create a .rsrc for this set of architecture when building an AU
+                        if (configIsAU(config))
+                        {
+                            string rsrcPath = makeRSRC(plugin, arch, verbose);
+                            std.file.copy(rsrcPath, contentsDir ~ "Resources/" ~ baseName(exePath) ~ ".rsrc");
+                        }
+
+                        if (iconPath)
+                            std.file.copy(iconPath, contentsDir ~ "Resources/icon.icns");
+
+                        if (arch == Arch.universalBinary)
+                        {
+                            string path32 = outputDirectory(outputDir, true, osString, Arch.x86, config)
+                            ~ "/" ~ pluginDir ~ "/Contents/MacOS/" ~ plugin.prettyName;
+
+                            string path64 = outputDirectory(outputDir, true, osString, Arch.x86_64, config)
+                            ~ "/" ~ pluginDir ~ "/Contents/MacOS/" ~ plugin.prettyName;
+
+                            cwritefln("*** Making an universal binary with lipo".white);
+
+                            string cmd = format("lipo -create %s %s -output %s",
+                                                escapeShellArgument(path32),
+                                                escapeShellArgument(path64),
+                                                escapeShellArgument(exePath));
+                            safeCommand(cmd);
+                            cwritefln("    => Universal build OK, available in ./%s".green, path);
+                            cwriteln();
+                        }
+                        else
+                        {
+                            fileMove(plugin.dubOutputFileName, exePath);
+                        }
                     }
 
                     // Note: on Mac, the bundle path is passed instead, since wraptool won't accept the executable only
