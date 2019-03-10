@@ -303,7 +303,7 @@ unittest
     freeSlice(slice);
 }
 
-/// Semantic function to check that a D string implicitely conveys a 
+/// Semantic function to check that a D string implicitely conveys a
 /// termination byte after the slice.
 /// (typically those comes from string literals or `stringDup`/`stringIDup`)
 const(char)* assumeZeroTerminated(const(char)[] input) nothrow @nogc
@@ -452,7 +452,7 @@ void debugLog(const(char)* message) nothrow @nogc
     else
     {
         import core.stdc.stdio;
-        printf("%s", message);
+        printf("%s\n", message);
     }
 }
 
@@ -627,19 +627,19 @@ void browseNoGC(string url) nothrow @nogc
 // GRAIL SORT IMPLEMENTATION BELOW
 //
 // The MIT License (MIT)
-// 
+//
 // Copyright (c) 2013 Andrey Astrelin
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy of
 // this software and associated documentation files (the "Software"), to deal in
 // the Software without restriction, including without limitation the rights to
 // use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
 // the Software, and to permit persons to whom the Software is furnished to do so,
 // subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
 // FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
@@ -779,7 +779,7 @@ void grail_SmartMergeWithBuffer(T)(T *arr,int *alen1,int *atype,int len2,int lke
 }
 void grail_SmartMergeWithoutBuffer(T)(T *arr,int *alen1,int *atype,int _len2, nogcComparisonFunction!T comparison){
     int len1,len2,ftype,h;
-    
+
     if(!_len2) return;
     len1=*alen1;
     len2=_len2;
@@ -954,7 +954,7 @@ void grail_BuildBlocks(T)(T *arr,int L,int K,T *extbuf,int LExtBuf, nogcComparis
 // llast=0 requires nblock2=0 (no irregular blocks). llast>0, nblock2=0 is possible.
 void grail_MergeBuffersLeft(T)(T *keys,T *midkey,T *arr,int nblock,int lblock,bool havebuf,int nblock2,int llast, nogcComparisonFunction!T comparison){
     int l,prest,lrest,frest,pidx,cidx,fnext,plast;
-    
+
     if(nblock==0){
         l=nblock2*lblock;
         if(havebuf) grail_MergeLeft!T(arr,l,llast,-lblock, comparison);
@@ -1029,7 +1029,7 @@ void grail_LazyStableSort(T)(T *arr,int L, nogcComparisonFunction!T comparison){
 void grail_CombineBlocks(T)(T *keys,T *arr,int len,int LL,int lblock,bool havebuf,T *xbuf, nogcComparisonFunction!T comparison){
     int M,nkeys,b,NBlk,midkey,lrest,u,p,v,kc,nbl2,llast;
     T *arr1;
-    
+
     M=len/(2*LL);
     lrest=len%(2*LL);
     nkeys=(2*LL)/lblock;
@@ -1075,7 +1075,7 @@ void grail_commonSort(T)(T *arr,int Len,T *extbuf,int LExtBuf, nogcComparisonFun
     int lblock,nkeys,findkeys,ptr,cbuf,lb,nk;
     bool havebuf,chavebuf;
     long s;
-    
+
     if(Len<16){
         grail_SortIns!T(arr,Len, comparison);
         return;

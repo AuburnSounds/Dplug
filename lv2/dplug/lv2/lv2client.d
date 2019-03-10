@@ -154,7 +154,7 @@ nothrow:
         }
         else if(port < 1 + _numOutputs + _numInputs + numParams)
         {
-            _eventsInput = cast(LV2_Atom_Sequence*)data;    
+            _eventsInput = cast(LV2_Atom_Sequence*)data;
         }
         else
             assert(false, "Error unknown port index");
@@ -186,18 +186,18 @@ nothrow:
 
         if (_eventsInput !is null)
         {
-            for(LV2_Atom_Event* event = lv2_atom_sequence_begin(&_eventsInput.body_); 
-                !lv2_atom_sequence_is_end(&_eventsInput.body_, _eventsInput.atom.size, event); 
+            for(LV2_Atom_Event* event = lv2_atom_sequence_begin(&_eventsInput.body_);
+                !lv2_atom_sequence_is_end(&_eventsInput.body_, _eventsInput.atom.size, event);
                 event = lv2_atom_sequence_next(event))
             {
                 if (event is null)
                     break;
 
-                if (_client.receivesMIDI() && event.body_.type == _mappedURIs.midiEvent) 
+                if (_client.receivesMIDI() && event.body_.type == _mappedURIs.midiEvent)
                 {
                     // Get offset of MIDI message in that buffer
                     int offset = cast(int)(event.time.frames);
-                    if (offset < 0) 
+                    if (offset < 0)
                         offset = 0;
 
                     MidiMessage message;
@@ -217,7 +217,7 @@ nothrow:
                 {
 
                     const (LV2_Atom_Object*) obj = cast(LV2_Atom_Object*)&event.body_;
-                
+
                     if (obj.body_.otype == _mappedURIs.timePosition)
                     {
                         LV2_Atom* beatsPerMinute = null;
@@ -229,7 +229,7 @@ nothrow:
                                            _mappedURIs.timeFrame, &frame,
                                            _mappedURIs.timeSpeed, &speed);
 
-                        if (beatsPerMinute != null) 
+                        if (beatsPerMinute != null)
                         {
                             if (beatsPerMinute.type == _mappedURIs.atomDouble)
                                 timeInfo.tempo = (cast(LV2_Atom_Double*)beatsPerMinute).body_;
@@ -240,7 +240,7 @@ nothrow:
                             else if (beatsPerMinute.type == _mappedURIs.atomLong)
                                 timeInfo.tempo = (cast(LV2_Atom_Long*)beatsPerMinute).body_;
                         }
-                        if (frame != null) 
+                        if (frame != null)
                         {
                             if (frame.type == _mappedURIs.atomDouble)
                                 timeInfo.timeInSamples = cast(long)(cast(LV2_Atom_Double*)frame).body_;
@@ -251,7 +251,7 @@ nothrow:
                             else if (frame.type == _mappedURIs.atomLong)
                                 timeInfo.timeInSamples = (cast(LV2_Atom_Long*)frame).body_;
                         }
-                        if (speed != null) 
+                        if (speed != null)
                         {
                             if (speed.type == _mappedURIs.atomDouble)
                                 timeInfo.hostIsPlaying = (cast(LV2_Atom_Double*)speed).body_ > 0.0f;
@@ -278,7 +278,7 @@ nothrow:
             if(_outputPointersUsed[output])
                 _outputPointers[output] = cast(float*)mallocSlice!(float)(n_samples); // LEAK here
         }
-        
+
         _client.processAudioFromHost(_inputPointers, _outputPointers, n_samples, timeInfo);
 
         for(int input = 0; input < _numInputs; ++input)
@@ -415,7 +415,7 @@ private:
     float*[] _params;
     Vec!float[] _inputScratchBuffer;
     Vec!float[] _outputScratchBuffer;
-    Vec!float   _zeroesBuffer; 
+    Vec!float   _zeroesBuffer;
     float*[] _inputPointers;
     float*[] _outputPointers;
     bool[] _inputPointersUsed;
@@ -432,7 +432,7 @@ private:
     int _legalIOIndex;
 }
 
-struct MappedURIs 
+struct MappedURIs
 {
 nothrow:
 @nogc:
@@ -450,7 +450,7 @@ nothrow:
     LV2_URID timeBeatsPerMinute;
     LV2_URID timeSpeed;
 
-    void initialize(LV2_URID_Map* uridMap) 
+    void initialize(LV2_URID_Map* uridMap)
     {
         atomDouble = uridMap.map(uridMap.handle, LV2_ATOM__Double);
         atomFloat = uridMap.map(uridMap.handle, LV2_ATOM__Float);
@@ -468,9 +468,9 @@ nothrow:
 }
 
 
-int lv2AtomObjectExtractTimeInfo(const (LV2_Atom_Object*) object, 
-                                 LV2_URID tempoURID, LV2_Atom** tempoAtom, 
-                                 LV2_URID frameURID, LV2_Atom** frameAtom, 
+int lv2AtomObjectExtractTimeInfo(const (LV2_Atom_Object*) object,
+                                 LV2_URID tempoURID, LV2_Atom** tempoAtom,
+                                 LV2_URID frameURID, LV2_Atom** frameAtom,
                                  LV2_URID speedURID, LV2_Atom** speedAtom)
 {
     int n_queries = 3;

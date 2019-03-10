@@ -344,7 +344,8 @@ public void GenerateManifestFromClient_templated(alias ClientClass)(generateMani
         manifest ~= "                        ui:resize ,\n";
         manifest ~= "                        ui:touch ;\n";
         manifest ~= "    lv2:requiredFeature opts:options ,\n";
-        manifest ~= "                        urid:map ;\n";
+        manifest ~= "                        urid:map ,\n";
+        manifest ~= "                        <http://lv2plug.in/ns/ext/instance-access> ;\n";
         manifest ~= "    ui:binary "  ~ escapeRDF_IRI(binaryFileName) ~ " .\n";
     }
 
@@ -579,12 +580,12 @@ extern(C)
     }
 
     LV2UI_Handle instantiateUI(const LV2UI_Descriptor* descriptor,
-									const char*                     plugin_uri,
-									const char*                     bundle_path,
-									LV2UI_Write_Function            write_function,
-									LV2UI_Controller                controller,
-									LV2UI_Widget*                   widget,
-									const (LV2_Feature*)*       features)
+                               const char*             plugin_uri,
+                               const char*             bundle_path,
+                               LV2UI_Write_Function    write_function,
+                               LV2UI_Controller        controller,
+                               LV2UI_Widget*           widget,
+                               const (LV2_Feature*)*   features)
     {
         debug(debugLV2Client) debugLog(">instantiateUI");
         void* instance_access = lv2_features_data(features, "http://lv2plug.in/ns/ext/instance-access");
