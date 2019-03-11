@@ -359,7 +359,7 @@ nothrow:
     {
         debug(debugLV2Client) debugLog(">instantiateUI");
 
-        void* transientWin = null;
+        int transientWinId;
         void* parentId = null;
         LV2_Options_Option* options = null;
         LV2UI_Resize* uiResize = null;
