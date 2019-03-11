@@ -151,6 +151,9 @@ nothrow:
         resizeScratchBuffers(_maxBufferSize);
 
         _write_function = null;
+
+        _currentTimeInfo = TimeInfo.init;
+        _currentTimeInfo.hostIsPlaying = true;
     }
 
     void connect_port(uint32_t port, void* data)
@@ -198,8 +201,6 @@ nothrow:
 
     void run(uint32_t n_samples)
     {
-        TimeInfo timeInfo;
-
         if (_maxBufferSize < n_samples)
         {
             _callResetOnNextRun = true;
@@ -212,9 +213,6 @@ nothrow:
             _callResetOnNextRun = false;
             _client.resetFromHost(_sampleRate, _maxBufferSize, _numInputs, _numOutputs);
         }
-
-        // TODO: Carla receives no TimeInfo
-
 
         if (_eventsInput !is null)
         {
@@ -231,19 +229,17 @@ nothrow:
                     int offset = cast(int)(event.time.frames);
                     if (offset < 0)
                         offset = 0;
+                    int bytes = event.body_.size;
+                    ubyte* data = cast(ubyte*)(event + 1);
 
-                    MidiMessage message;
-                    uint8_t* data = cast(uint8_t*)(event + 1);
-                    switch(data[0]) {
-                        case LV2_MIDI_MSG_NOTE_ON:
-                            message = makeMidiMessageNoteOn(offset, 0, cast(int)data[1], cast(int)data[2]);
-                            break;
-                        case LV2_MIDI_MSG_NOTE_OFF:
-                            message = makeMidiMessageNoteOff(offset, 0, cast(int)data[1]);
-                            break;
-                        default: break;
+                    if (bytes >= 1 && bytes <= 3) // else doesn't fit in a Dplug MidiMessage
+                    {
+                        ubyte byte0 = data[0];
+                        ubyte byte1 = (bytes >= 2) ? data[1] : 0;
+                        ubyte byte2 = (bytes >= 3) ? data[2] : 0;
+                        MidiMessage message = MidiMessage(offset, byte0, byte1, byte2);
+                        _client.enqueueMIDIFromHost(message);
                     }
-                    _client.enqueueMIDIFromHost(message);
                 }
                 else if (event.body_.type == _mappedURIs.atomBlank || event.body_.type == _mappedURIs.atomObject)
                 {
@@ -264,35 +260,35 @@ nothrow:
                         if (beatsPerMinute != null)
                         {
                             if (beatsPerMinute.type == _mappedURIs.atomDouble)
-                                timeInfo.tempo = (cast(LV2_Atom_Double*)beatsPerMinute).body_;
+                                _currentTimeInfo.tempo = (cast(LV2_Atom_Double*)beatsPerMinute).body_;
                             else if (beatsPerMinute.type == _mappedURIs.atomFloat)
-                                timeInfo.tempo = (cast(LV2_Atom_Float*)beatsPerMinute).body_;
+                                _currentTimeInfo.tempo = (cast(LV2_Atom_Float*)beatsPerMinute).body_;
                             else if (beatsPerMinute.type == _mappedURIs.atomInt)
-                                timeInfo.tempo = (cast(LV2_Atom_Int*)beatsPerMinute).body_;
+                                _currentTimeInfo.tempo = (cast(LV2_Atom_Int*)beatsPerMinute).body_;
                             else if (beatsPerMinute.type == _mappedURIs.atomLong)
-                                timeInfo.tempo = (cast(LV2_Atom_Long*)beatsPerMinute).body_;
+                                _currentTimeInfo.tempo = (cast(LV2_Atom_Long*)beatsPerMinute).body_;
                         }
                         if (frame != null)
                         {
                             if (frame.type == _mappedURIs.atomDouble)
-                                timeInfo.timeInSamples = cast(long)(cast(LV2_Atom_Double*)frame).body_;
+                                _currentTimeInfo.timeInSamples = cast(long)(cast(LV2_Atom_Double*)frame).body_;
                             else if (frame.type == _mappedURIs.atomFloat)
-                                timeInfo.timeInSamples = cast(long)(cast(LV2_Atom_Float*)frame).body_;
+                                _currentTimeInfo.timeInSamples = cast(long)(cast(LV2_Atom_Float*)frame).body_;
                             else if (frame.type == _mappedURIs.atomInt)
-                                timeInfo.timeInSamples = (cast(LV2_Atom_Int*)frame).body_;
+                                _currentTimeInfo.timeInSamples = (cast(LV2_Atom_Int*)frame).body_;
                             else if (frame.type == _mappedURIs.atomLong)
-                                timeInfo.timeInSamples = (cast(LV2_Atom_Long*)frame).body_;
+                                _currentTimeInfo.timeInSamples = (cast(LV2_Atom_Long*)frame).body_;
                         }
                         if (speed != null)
                         {
                             if (speed.type == _mappedURIs.atomDouble)
-                                timeInfo.hostIsPlaying = (cast(LV2_Atom_Double*)speed).body_ > 0.0f;
+                                _currentTimeInfo.hostIsPlaying = (cast(LV2_Atom_Double*)speed).body_ > 0.0f;
                             else if (speed.type == _mappedURIs.atomFloat)
-                                timeInfo.hostIsPlaying = (cast(LV2_Atom_Float*)speed).body_ > 0.0f;
+                                _currentTimeInfo.hostIsPlaying = (cast(LV2_Atom_Float*)speed).body_ > 0.0f;
                             else if (speed.type == _mappedURIs.atomInt)
-                                timeInfo.hostIsPlaying = (cast(LV2_Atom_Int*)speed).body_ > 0.0f;
+                                _currentTimeInfo.hostIsPlaying = (cast(LV2_Atom_Int*)speed).body_ > 0.0f;
                             else if (speed.type == _mappedURIs.atomLong)
-                                timeInfo.hostIsPlaying = (cast(LV2_Atom_Long*)speed).body_ > 0.0f;
+                                _currentTimeInfo.hostIsPlaying = (cast(LV2_Atom_Long*)speed).body_ > 0.0f;
                         }
                     }
                 }
@@ -309,7 +305,9 @@ nothrow:
             _outputPointersProcessing[output] = _outputPointersProvided[output] ? _outputPointersProvided[output] : _outputScratchBuffer[output].ptr;
         }
 
-        _client.processAudioFromHost(_inputPointersProcessing, _outputPointersProcessing, n_samples, timeInfo);
+        _client.processAudioFromHost(_inputPointersProcessing, _outputPointersProcessing, n_samples, _currentTimeInfo);
+
+        _currentTimeInfo.timeInSamples += n_samples;
     }
 
     void instantiateUI(const LV2UI_Descriptor* descriptor,
@@ -454,9 +452,6 @@ private:
     // Scratch output buffers in case the host doesn't provide ones.
     Vec!float[] _outputScratchBuffer;
 
-    // Sratch zero buffer.
-    /*Vec!float   _zeroesBuffer;*/
-
     // Input pointers that were provided by the host, `null` if not provided.
     float*[] _inputPointersProvided;
 
@@ -483,6 +478,9 @@ private:
     LV2UI_Write_Function _write_function;
     LV2UI_Controller _controller;
     LV2UI_Touch* _uiTouch;
+
+    // Current time info, eventually extrapolated when data is missing.
+    TimeInfo _currentTimeInfo;
 }
 
 struct MappedURIs
