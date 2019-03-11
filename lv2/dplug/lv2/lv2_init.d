@@ -633,12 +633,6 @@ extern(C) nothrow @nogc
 
     const (void)* extension_dataUI(const char* uri)
     {
-/*
-        if (strcmp(uri, "http://lv2plug.in/ns/extensions/ui#idleInterface"))
-        {
-
-        }
-*/
         debug(debugLV2Client) debugLog(">extension_dataUI");
         debug(debugLV2Client) debugLog("<extension_dataUI");
         return null;
