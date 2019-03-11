@@ -82,7 +82,9 @@ nothrow:
     {
         _client.destroyFree();
 
-        _params.reallocBuffer(0);
+        _paramsPointers.reallocBuffer(0);
+        _paramsLastValue.reallocBuffer(0);
+
         _inputPointersProvided.freeSlice();
         _outputPointersProvided.freeSlice();
         _inputPointersProcessing.freeSlice();
@@ -133,8 +135,15 @@ nothrow:
         _numOutputs = selectedIO.numOutputChannels;
         _sampleRate = cast(float)rate;
 
-        _params.reallocBuffer(_client.params.length);
-        _params[] = null;
+        _numParams = cast(int)(_client.params.length);
+
+        _paramsPointers.reallocBuffer(_numParams);
+        _paramsPointers[] = null;
+
+        _paramsLastValue.reallocBuffer(_numParams);
+        for (int i = 0; i < _numParams; ++i)
+            _paramsLastValue[i] = _client.param(i).getNormalized();
+
 
         _inputPointersProcessing  = mallocSlice!(float*)(_numInputs);
         _outputPointersProcessing = mallocSlice!(float*)(_numOutputs);
@@ -161,7 +170,7 @@ nothrow:
         int numParams = cast(int)(_client.params.length);
         if(port < _client.params.length)
         {
-            _params[port] = cast(float*)data;
+            _paramsPointers[port] = cast(float*)data;
         }
         else if(port < _numInputs + numParams)
         {
@@ -295,6 +304,27 @@ nothrow:
             }
         }
 
+        // Update changed parameters
+        {
+            for (int i = 0; i < _numParams; ++i)
+            {
+                if (_paramsPointers[i])
+                {
+                    float currentValue = *_paramsPointers[i];
+
+                    // Force normalization in case host sends invalid parameter values
+                    if (currentValue < 0) currentValue = 0;
+                    if (currentValue > 1) currentValue = 1;
+
+                    if (currentValue != _paramsLastValue[i])
+                    {
+                        _paramsLastValue[i] = currentValue;
+                        _client.setParameterFromHost(i, currentValue);
+                    }
+                }
+            }
+        }
+
         // Fill input and output pointers for this block, based on what we have received
         for(int input = 0; input < _numInputs; ++input)
         {
@@ -382,11 +412,7 @@ nothrow:
                      uint32_t     format,
                      const void*  buffer)
     {
-        debug(debugLV2Client) debugLog(">port_event");
-        if (port_index >= _params.length)
-            return;
         // Nothing to do since parameter changes already dirty the UI?
-        debug(debugLV2Client) debugLog("<port_event");
     }
 
     void cleanupUI()
@@ -444,7 +470,9 @@ private:
     // whether the plugin should call resetFromHost at next `run()`
     bool _callResetOnNextRun;
 
-    float*[] _params;
+    int _numParams;
+    float*[] _paramsPointers;
+    float[] _paramsLastValue;
 
     // Scratch input buffers in case the host doesn't provide ones.
     Vec!float[] _inputScratchBuffer;
