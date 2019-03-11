@@ -269,14 +269,11 @@ public void GenerateManifestFromClient_templated(alias ClientClass)(generateMani
     manifest ~= "@prefix lv2:     <http://lv2plug.in/ns/lv2core#> .\n";
     manifest ~= "@prefix atom:    <http://lv2plug.in/ns/ext/atom#> .\n";
     manifest ~= "@prefix doap:    <http://usefulinc.com/ns/doap#> .\n";
-    manifest ~= "@prefix midi:    <http://lv2plug.in/ns/ext/midi#> .\n";
+    manifest ~= "@prefix foaf:    <http://xmlns.com/foaf/0.1/> .\n";
     manifest ~= "@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .\n";
     manifest ~= "@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .\n";
     manifest ~= "@prefix urid:    <http://lv2plug.in/ns/ext/urid#> .\n";
-    manifest ~= "@prefix units:   <http://lv2plug.in/ns/extensions/units#> .\n";
     manifest ~= "@prefix ui:      <http://lv2plug.in/ns/extensions/ui#>.\n";
-    manifest ~= "@prefix bufsz:   <http://lv2plug.in/ns/ext/buf-size#> .\n";
-    manifest ~= "@prefix time:    <http://lv2plug.in/ns/ext/time#> .\n";
     manifest ~= "@prefix opts:    <http://lv2plug.in/ns/ext/options#> .\n\n";
 
     // Make an URI for the GUI
@@ -299,9 +296,9 @@ public void GenerateManifestFromClient_templated(alias ClientClass)(generateMani
         manifest ~= "    a lv2:Plugin" ~ lv2PluginCategory(client.pluginCategory) ~ " ;\n";
         manifest ~= "    lv2:binary " ~ escapeRDF_IRI(binaryFileName) ~ " ;\n";
         manifest ~= "    doap:name " ~ escapeRDFString(client.pluginName) ~ " ;\n";
+        manifest ~= "    doap:maintainer [ foaf:name " ~ escapeRDFString(client.vendorName) ~ " ] ;\n";
         manifest ~= "    lv2:requiredFeature opts:options ,\n";
         manifest ~= "                        urid:map ;\n";
-        manifest ~= "    lv2:project " ~ escapeRDF_IRI(client.pluginHomepage) ~ " ;\n";
 
         // We do not provide such an interface
         //manifest ~= "    lv2:extensionData <" ~ LV2_OPTIONS__interface ~ "> ; \n";
