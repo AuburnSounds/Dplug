@@ -341,7 +341,10 @@ public void GenerateManifestFromClient_templated(alias ClientClass)(generateMani
         manifest ~= "                        ui:touch ;\n";
         manifest ~= "    lv2:requiredFeature opts:options ,\n";
         manifest ~= "                        urid:map ,\n";
+
+        // No DSP separated from UI for us
         manifest ~= "                        <http://lv2plug.in/ns/ext/instance-access> ;\n";
+
         manifest ~= "    ui:binary "  ~ escapeRDF_IRI(binaryFileName) ~ " .\n";
     }
 

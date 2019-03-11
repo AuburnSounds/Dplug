@@ -331,6 +331,7 @@ nothrow:
         // Useful to record automation
         _write_function = write_function;
         _controller = controller;
+        _uiTouch = null;
 
         for (int i=0; features[i] != null; ++i)
         {
@@ -342,6 +343,8 @@ nothrow:
                 options = cast(LV2_Options_Option*)features[i].data;
             else if (strcmp(features[i].URI, LV2_URID__map) == 0)
                 uridMap = cast(LV2_URID_Map*)features[i].data;
+            else if (strcmp(features[i].URI, LV2_UI__touch) == 0)
+                _uiTouch = cast(LV2UI_Touch*)features[i].data;
         }
 
         // Not transmitted yet
@@ -400,7 +403,10 @@ nothrow:
 
     override void beginParamEdit(int paramIndex)
     {
-        // TODO: use the "touch" extension
+        // Note: this is untested, since it appears DISTRHO doesn't really ask 
+        // for this interface, and Carla doesn't provide one.
+        if ( (_uiTouch !is null) && (_uiTouch.touch !is null) )
+            _uiTouch.touch(_uiTouch.handle, paramIndex, true);
     }
 
     override void paramAutomate(int paramIndex, float value)
@@ -412,7 +418,10 @@ nothrow:
 
     override void endParamEdit(int paramIndex)
     {
-        // TODO: use the "touch" extension
+        // Note: this is untested, since it appears DISTRHO doesn't really ask 
+        // for this interface, and Carla doesn't provide one.
+        if ( (_uiTouch !is null) && (_uiTouch.touch !is null) )
+            _uiTouch.touch(_uiTouch.handle, paramIndex, false);
     }
 
     override bool requestResize(int width, int height)
@@ -473,6 +482,7 @@ private:
 
     LV2UI_Write_Function _write_function;
     LV2UI_Controller _controller;
+    LV2UI_Touch* _uiTouch;
 }
 
 struct MappedURIs
