@@ -49,7 +49,6 @@ import dplug.client.client,
        dplug.client.params;
 
 import dplug.lv2.lv2,
-       dplug.lv2.lv2util,
        dplug.lv2.midi,
        dplug.lv2.ui,
        dplug.lv2.options,
@@ -71,6 +70,8 @@ nothrow:
     this(Client client, int legalIOIndex)
     {
         _client = client;
+
+        // Implement IHostCommand itself
         _client.setHostCommand(this);
         _graphicsMutex = makeMutex();
         _legalIOIndex = legalIOIndex;
@@ -82,10 +83,18 @@ nothrow:
         _client.destroyFree();
 
         _params.reallocBuffer(0);
-        _inputPointers.freeSlice();
-        _outputPointers.freeSlice();
-        _inputPointersUsed.freeSlice();
-        _outputPointersUsed.freeSlice();
+        _inputPointersProvided.freeSlice();
+        _outputPointersProvided.freeSlice();
+        _inputPointersProcessing.freeSlice();
+        _outputPointersProcessing.freeSlice();
+
+        // destroy scratch buffers
+        for (int i = 0; i < _numInputs; ++i)
+            _inputScratchBuffer[i].destroy();
+        for (int i = 0; i < _numOutputs; ++i)
+            _outputScratchBuffer[i].destroy();
+        _inputScratchBuffer.freeSlice();
+        _outputScratchBuffer.freeSlice();
     }
 
     void instantiate(const LV2_Descriptor* descriptor, double rate, const char* bundle_path, const(LV2_Feature*)* features)
@@ -102,7 +111,7 @@ nothrow:
         }
 
         // Some default value to initialize with in case we don't find an option with the max buffer size
-        _maxBufferSize = 1024;
+        _maxBufferSize = 512;
 
         // Retrieve max buffer size from options
         if (options && uridMap)
@@ -127,10 +136,21 @@ nothrow:
         _params.reallocBuffer(_client.params.length);
         _params[] = null;
 
-        _inputPointers = mallocSlice!(float*)(_numInputs);
-        _outputPointers = mallocSlice!(float*)(_numOutputs);
-        _inputPointersUsed = mallocSlice!(bool)(_numInputs);
-        _outputPointersUsed = mallocSlice!(bool)(_numOutputs);
+        _inputPointersProcessing  = mallocSlice!(float*)(_numInputs);
+        _outputPointersProcessing = mallocSlice!(float*)(_numOutputs);
+        _inputPointersProvided    = mallocSlice!(float*)(_numInputs);
+        _outputPointersProvided   = mallocSlice!(float*)(_numOutputs);
+
+        _inputScratchBuffer = mallocSlice!(Vec!float)(_numInputs);
+        _outputScratchBuffer = mallocSlice!(Vec!float)(_numOutputs);
+        for (int i = 0; i < _numInputs; ++i)
+            _inputScratchBuffer[i] = makeVec!float();
+        for (int i = 0; i < _numOutputs; ++i)
+            _outputScratchBuffer[i] = makeVec!float();
+        
+        resizeScratchBuffers(_maxBufferSize);
+
+        _write_function = null;
     }
 
     void connect_port(uint32_t port, void* data)
@@ -143,14 +163,12 @@ nothrow:
         else if(port < _numInputs + numParams)
         {
             uint input = port - numParams;
-            _inputPointers[input] = cast(float*)data;
-            _inputPointersUsed[input] = false;
+            _inputPointersProvided[input] = cast(float*)data;
         }
         else if(port < _numOutputs + _numInputs + numParams)
         {
             uint output = port - numParams - _numInputs;
-            _outputPointers[output] = cast(float*)data;
-            _outputPointersUsed[output] = false;
+            _outputPointersProvided[output] = cast(float*)data;
         }
         else if(port < 1 + _numOutputs + _numInputs + numParams)
         {
@@ -165,6 +183,19 @@ nothrow:
         _callResetOnNextRun = true;
     }
 
+    void resizeScratchBuffers(int numSamples)
+    {
+        for (int i = 0; i < _numInputs; ++i)
+        {
+            _inputScratchBuffer[i].resize(numSamples);
+            _inputScratchBuffer[i].fill(0);
+        }
+        for (int i = 0; i < _numOutputs; ++i)
+        {
+            _outputScratchBuffer[i].resize(numSamples);
+        }
+    }
+
     void run(uint32_t n_samples)
     {
         TimeInfo timeInfo;
@@ -173,6 +204,7 @@ nothrow:
         {
             _callResetOnNextRun = true;
             _maxBufferSize = n_samples; // in case the max buffer value wasn't found within options
+            resizeScratchBuffers(_maxBufferSize);
         }
 
         if(_callResetOnNextRun)
@@ -267,24 +299,17 @@ nothrow:
             }
         }
 
-        // Allocate dummy buffers if need be
+        // Fill input and output pointers for this block, based on what we have received
         for(int input = 0; input < _numInputs; ++input)
         {
-            if(_inputPointersUsed[input])
-                _inputPointers[input] = cast(float*)mallocSlice!(float)(n_samples); // LEAK here
+            _inputPointersProcessing[input] = _inputPointersProvided[input] ? _inputPointersProvided[input] : _inputScratchBuffer[input].ptr;
         }
         for(int output = 0; output < _numOutputs; ++output)
         {
-            if(_outputPointersUsed[output])
-                _outputPointers[output] = cast(float*)mallocSlice!(float)(n_samples); // LEAK here
+            _outputPointersProcessing[output] = _outputPointersProvided[output] ? _outputPointersProvided[output] : _outputScratchBuffer[output].ptr;
         }
 
-        _client.processAudioFromHost(_inputPointers, _outputPointers, n_samples, timeInfo);
-
-        for(int input = 0; input < _numInputs; ++input)
-            _inputPointersUsed[input] = true;
-        for(int output = 0; output < _numOutputs; ++output)
-            _outputPointersUsed[output] = true;
+        _client.processAudioFromHost(_inputPointersProcessing, _outputPointersProcessing, n_samples, timeInfo);
     }
 
     void instantiateUI(const LV2UI_Descriptor* descriptor,
@@ -302,6 +327,10 @@ nothrow:
         LV2_Options_Option* options = null;
         LV2UI_Resize* uiResize = null;
         LV2_URID_Map* uridMap = null;
+
+        // Useful to record automation
+        _write_function = write_function;
+        _controller = controller;
 
         for (int i=0; features[i] != null; ++i)
         {
@@ -355,12 +384,7 @@ nothrow:
         debug(debugLV2Client) debugLog(">port_event");
         if (port_index >= _params.length)
             return;
-        if (format == 0)
-        {
-            float* port = _params[port_index];
-            float paramValue = *port;
-            _client.setParameterFromHost(port_index, paramValue);
-        }
+        // Nothing to do since parameter changes already dirty the UI?
         debug(debugLV2Client) debugLog("<port_event");
     }
 
@@ -381,8 +405,9 @@ nothrow:
 
     override void paramAutomate(int paramIndex, float value)
     {
-        float* port = _params[paramIndex];
-        *port = value;
+        // write back automation to host
+        assert(_write_function !is null);
+        _write_function(_controller, paramIndex, float.sizeof, 0, &value);
     }
 
     override void endParamEdit(int paramIndex)
@@ -413,13 +438,28 @@ private:
     bool _callResetOnNextRun;
 
     float*[] _params;
+
+    // Scratch input buffers in case the host doesn't provide ones.
     Vec!float[] _inputScratchBuffer;
+
+    // Scratch output buffers in case the host doesn't provide ones.
     Vec!float[] _outputScratchBuffer;
-    Vec!float   _zeroesBuffer;
-    float*[] _inputPointers;
-    float*[] _outputPointers;
-    bool[] _inputPointersUsed;
-    bool[] _outputPointersUsed;
+
+    // Sratch zero buffer.
+    /*Vec!float   _zeroesBuffer;*/
+
+    // Input pointers that were provided by the host, `null` if not provided.
+    float*[] _inputPointersProvided;
+
+    // Output input used by processing, recomputed at each run().
+    float*[] _inputPointersProcessing;
+
+    // Output pointers that were provided by the host, `null` if not provided.
+    float*[] _outputPointersProvided;
+
+    // Output pointers used by processing, recomputed at each run().
+    float*[] _outputPointersProcessing;
+
     LV2_Atom_Sequence* _eventsInput;
 
     float _sampleRate;
@@ -430,6 +470,9 @@ private:
     MappedURIs _mappedURIs;
 
     int _legalIOIndex;
+
+    LV2UI_Write_Function _write_function;
+    LV2UI_Controller _controller;
 }
 
 struct MappedURIs

@@ -24,7 +24,6 @@
 module dplug.lv2.lv2_init;
 
 import dplug.lv2.lv2,
-       dplug.lv2.lv2util,
        dplug.lv2.midi,
        dplug.lv2.ui,
        dplug.lv2.options,
@@ -532,9 +531,8 @@ const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, b
 
 /*
     LV2 Callback funtion implementations
-    note that instantiate is a template mixin.
 */
-extern(C)
+extern(C) nothrow @nogc
 {
     void connect_port(LV2_Handle instance, uint32_t   port, void* data)
     {

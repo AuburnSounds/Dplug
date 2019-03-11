@@ -20,15 +20,8 @@
 */
 module dplug.lv2.lv2;
 
-/**
-   @defgroup lv2core LV2 Core
-
-   Core LV2 specification, see <http://lv2plug.in/ns/lv2core> for details.
-
-   @{
-*/
-// #include <stdint.h>
 import core.stdc.stdint;
+import core.stdc.string;
 
 enum LV2_CORE_URI  =  "http://lv2plug.in/ns/lv2core";  ///< http://lv2plug.in/ns/lv2core
 enum LV2_CORE_PREFIX = LV2_CORE_URI ~ "#";                ///< http://lv2plug.in/ns/lv2core#
@@ -118,7 +111,9 @@ enum LV2_CORE__scalePoint       =  LV2_CORE_PREFIX ~ "scalePoint"        ;  ///<
 enum LV2_CORE__symbol           =  LV2_CORE_PREFIX ~ "symbol"            ;  ///< http://lv2plug.in/ns/lv2core#symbol
 enum LV2_CORE__toggled          =  LV2_CORE_PREFIX ~ "toggled"           ;  ///< http://lv2plug.in/ns/lv2core#toggled
 
-extern(C) {
+extern(C):
+nothrow:
+@nogc:
 
 /**
    Plugin Instance Handle.
@@ -137,13 +132,14 @@ alias LV2_Handle = void *;
    features and specify the `URI` and `data` to be used if necessary.
    Some features, such as lv2:isLive, do not require the host to pass data.
 */
-struct _LV2_Feature {
+struct LV2_Feature 
+{
 	/**
 	   A globally unique, case-sensitive identifier (URI) for this feature.
 
 	   This MUST be a valid URI string as defined by RFC 3986.
 	*/
-	const char * URI;
+	const(char)* URI;
 
 	/**
 	   Pointer to arbitrary data.
@@ -154,15 +150,17 @@ struct _LV2_Feature {
 	void * data;
 }
 
-alias LV2_Feature = _LV2_Feature;
-
 /**
    Plugin Descriptor.
 
    This structure provides the core functions necessary to instantiate and use
    a plugin.
 */
-struct _LV2_Descriptor {
+struct LV2_Descriptor 
+{
+nothrow:
+@nogc:
+extern(C):
 	/**
 	   A globally unique, case-sensitive identifier for this plugin.
 
@@ -204,10 +202,10 @@ struct _LV2_Descriptor {
 	//                           double                         sample_rate,
 	//                           const char *                   bundle_path,
 	//                           const LV2_Feature *const *     features);
-	LV2_Handle function(const _LV2_Descriptor * descriptor,
+	LV2_Handle function(const LV2_Descriptor * descriptor,
 	                          double                         sample_rate,
 	                          const char *                   bundle_path,
-	                          const(LV2_Feature*)* features) instantiate;
+	                          const(LV2_Feature*)* features) nothrow @nogc instantiate;
 
 	/**
 	   Connect a port on a plugin instance to a memory location.
@@ -353,102 +351,14 @@ struct _LV2_Descriptor {
 	// const void * (*extension_data)(const char * uri);
 	const (void) * function(const char * uri) extension_data;
 }
-alias LV2_Descriptor = _LV2_Descriptor;
 
 //extern(C) const (LV2_Descriptor)* lv2_descriptor(uint32_t index);
 
 /**
    Type of the lv2_descriptor() function in a library (old discovery API).
 */
-// typedef const LV2_Descriptor *
-// (*LV2_Descriptor_Function)(uint32_t index);
 const LV2_Descriptor * function(uint32_t index) LV2_Descriptor_Function;
 
-/**
-   Handle for a library descriptor.
-*/
-// typedef void* LV2_Lib_Handle;
-alias LV2_Lib_Handle = void*;
-
-/**
-   Descriptor for a plugin library.
-
-   To access a plugin library, the host creates an LV2_Lib_Descriptor via the
-   lv2_lib_descriptor() function in the shared object.
-*/
-struct LV2_Lib_Descriptor {
-	/**
-	   Opaque library data which must be passed as the first parameter to all
-	   the methods of this struct.
-	*/
-	LV2_Lib_Handle handle;
-
-	/**
-	   The total size of this struct.  This allows for this struct to be
-	   expanded in the future if necessary.  This MUST be set by the library to
-	   sizeof(LV2_Lib_Descriptor).  The host MUST NOT access any fields of this
-	   struct beyond get_plugin() unless this field indicates they are present.
-	*/
-	uint32_t size;
-
-	/**
-	   Destroy this library descriptor and free all related resources.
-	*/
-	// void (*cleanup)(LV2_Lib_Handle handle);
-	void function(LV2_Lib_Handle handle) cleanup;
-
-	/**
-	   Plugin accessor.
-
-	   Plugins are accessed by index using values from 0 upwards.  Out of range
-	   indices MUST result in this function returning NULL, so the host can
-	   enumerate plugins by increasing `index` until NULL is returned.
-	*/
-	// const LV2_Descriptor * (*get_plugin)(LV2_Lib_Handle handle,
-	//                                      uint32_t       index);
-	const LV2_Descriptor * function(LV2_Lib_Handle handle,
-	                                     uint32_t       index) get_plugin;
-}
-
-/**
-   Prototype for library accessor function.
-
-   This is the more advanced discovery API, which allows plugin libraries to
-   access their bundles during discovery, which makes it possible for plugins to
-   be dynamically defined by files in their bundle.  This API also has an
-   explicit cleanup function, removing any need for non-portable shared library
-   destructors.  Simple plugins that do not require these features may use
-   lv2_descriptor() instead.
-
-   This is the entry point for a plugin library.  Hosts load this symbol from
-   the library and call this function to obtain a library descriptor which can
-   be used to access all the contained plugins.  The returned object must not
-   be destroyed (using LV2_Lib_Descriptor::cleanup()) until all plugins loaded
-   from that library have been destroyed.
-*/
-// LV2_SYMBOL_EXPORT
-// const LV2_Lib_Descriptor *
-// lv2_lib_descriptor(const char *               bundle_path,
-//                    const LV2_Feature *const * features);
-extern(C) const (LV2_Lib_Descriptor)*
-lv2_lib_descriptor(const char *               bundle_path,
-                   const(LV2_Feature*)* features);
-
-/**
-   Type of the lv2_lib_descriptor() function in an LV2 library.
-*/
-// typedef const LV2_Lib_Descriptor *
-// (*LV2_Lib_Descriptor_Function)(const char *               bundle_path,
-//                                const LV2_Feature *const * features);
-const (LV2_Lib_Descriptor)* function(const char *               bundle_path,
-                               const(LV2_Feature*)* features) LV2_Lib_Descriptor_Function;
-
-/* LV2_H_INCLUDED */
-
-/**
-   @}
-*/
-}
 
 
 // Some extensions
@@ -494,3 +404,25 @@ enum LV2_TIME__beatsPerMinute  = LV2_TIME_PREFIX ~ "beatsPerMinute";   ///< http
 enum LV2_TIME__frame           = LV2_TIME_PREFIX ~ "frame";            ///< http://lv2plug.in/ns/ext/time#frame
 enum LV2_TIME__framesPerSecond = LV2_TIME_PREFIX ~ "framesPerSecond";  ///< http://lv2plug.in/ns/ext/time#framesPerSecond
 enum LV2_TIME__speed           = LV2_TIME_PREFIX ~ "speed";            ///< http://lv2plug.in/ns/ext/time#speed
+
+
+// lv2util.h
+
+/**
+Return the data for a feature in a features array.
+
+If the feature is not found, NULL is returned.  Note that this function is
+only useful for features with data, and can not detect features that are
+present but have NULL data.
+*/
+void* lv2_features_data(const (LV2_Feature*)* features, const char*        uri) nothrow @nogc
+{
+    if (features) {
+        for (const (LV2_Feature*)* f = features; *f; ++f) {
+            if (!strcmp(uri, (*f).URI)) {
+                return cast(void*)(*f).data;
+            }
+        }
+    }
+    return null;
+}
