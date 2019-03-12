@@ -131,10 +131,9 @@ void GenerateManifestFromClient_templated(alias ClientClass)(generateManifestFro
         for (int p = 0; p < paramValues.length; ++p)
         {
             string paramSymbol = "p" ~ to!string(p);
-            manifest ~= "            lv2:symbol " ~ paramSymbol ~ " ;\n";
-            manifest ~= "            pset:value " ~ to!string(paramValues[p]) ~ " \n";
+            manifest ~= "            lv2:symbol \"" ~ paramSymbol ~ "\"; pset:value " ~ to!string(paramValues[p]) ~ " \n";
             if (p + 1 == paramValues.length)
-                manifest ~= "        ] .\n";
+                manifest ~= "        ] ;\n";
             else
                 manifest ~= "        ] , [\n";
         }
