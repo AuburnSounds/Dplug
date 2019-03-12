@@ -144,6 +144,11 @@ public:
         return (isFinite(f) && f >= 0 && f <= 1);
     }
 
+    inout(float)[] getNormalizedParamValues() inout nothrow @nogc
+    {
+        return _normalizedParams;
+    }
+
 private:
     char[] _name;
     float[] _normalizedParams;

@@ -25,6 +25,8 @@
 module dplug.lv2.ttl;
 
 import core.stdc.stdio;
+import std.conv;
+
 import dplug.core.nogc;
 
 import dplug.client.client;
@@ -62,7 +64,7 @@ void GenerateManifestFromClient_templated(alias ClientClass)(generateManifestFro
     // Make an URI for the GUI
     char[256] uriBuf;
     sprintVendorPrefix(uriBuf.ptr, 256, client.pluginHomepage(), client.getPluginUniqueID());
-    string uriVendor = stringIDup(uriBuf.ptr);
+    string uriVendor = stringIDup(uriBuf.ptr); // TODO leak here
 
     manifest ~= "@prefix lv2:  <http://lv2plug.in/ns/lv2core#>.\n";
     manifest ~= "@prefix atom: <http://lv2plug.in/ns/ext/atom#>.\n";
@@ -82,14 +84,14 @@ void GenerateManifestFromClient_templated(alias ClientClass)(generateManifestFro
     if(client.hasGUI)
     {
         sprintPluginURI_UI(uriBuf.ptr, 256, client.pluginHomepage(), client.getPluginUniqueID());
-        uriGUI = stringIDup(uriBuf.ptr);
+        uriGUI = stringIDup(uriBuf.ptr); // TODO leak here
     }
 
     foreach(legalIO; legalIOs)
     {
         // Make an URI for this I/O configuration
         sprintPluginURI_IO_short(uriBuf.ptr, 256, legalIO);
-        string uriIO = stringIDup(uriBuf.ptr);
+        string uriIO = stringIDup(uriBuf.ptr); // TODO leak here
 
         manifest ~= uriIO ~ "\n";
         manifest ~= "    a lv2:Plugin" ~ lv2PluginCategory(client.pluginCategory) ~ " ;\n";
@@ -110,7 +112,7 @@ void GenerateManifestFromClient_templated(alias ClientClass)(generateManifestFro
         manifest ~= buildParamPortConfiguration(client.params(), legalIO, client.receivesMIDI);
     }
 
-    // add preset information
+    // add presets information
 
     auto presetBank = client.presetBank();
     for(int presetIndex = 0; presetIndex < presetBank.numPresets(); ++presetIndex)
@@ -118,13 +120,24 @@ void GenerateManifestFromClient_templated(alias ClientClass)(generateManifestFro
         // Make an URI for this preset
         sprintPluginURI_preset_short(uriBuf.ptr, 256, presetIndex);
         auto preset = presetBank.preset(presetIndex);
-        manifest ~= "\n" ~ stringIDup(uriBuf.ptr) ~ "\n";
+        manifest ~= "\n" ~ stringIDup(uriBuf.ptr) ~ "\n"; // TODO leak here
         manifest ~= "        a pset:Preset ;\n";
         manifest ~= "        rdfs:label " ~ escapeRDFString(preset.name) ~ " ;\n";
 
-        // Set up preset values here
+        manifest ~= "        lv2:port [\n";     
 
-        //TODO
+        const(float)[] paramValues = preset.getNormalizedParamValues();
+
+        for (int p = 0; p < paramValues.length; ++p)
+        {
+            string paramSymbol = "p" ~ to!string(p);
+            manifest ~= "            lv2:symbol " ~ paramSymbol ~ " ;\n";
+            manifest ~= "            pset:value " ~ to!string(paramValues[p]) ~ " \n";
+            if (p + 1 == paramValues.length)
+                manifest ~= "        ] .\n";
+            else
+                manifest ~= "        ] , [\n";
+        }
 
         // Each preset applies to every plugin I/O configuration
         manifest ~= "        lv2:appliesTo ";
@@ -132,12 +145,12 @@ void GenerateManifestFromClient_templated(alias ClientClass)(generateManifestFro
         {
             // Make an URI for this I/O configuration
             sprintPluginURI_IO_short(uriBuf.ptr, 256, legalIO);
-            string uriIO = stringIDup(uriBuf.ptr);
-            manifest ~= escapeRDF_IRI(uriIO);
+            string uriIO = stringIDup(uriBuf.ptr); // TODO leak here
+            manifest ~= uriIO;
             if (n + 1 == legalIOs.length)
-                manifest ~= ".\n";
+                manifest ~= " . \n";
             else
-                manifest ~= ",";
+                manifest ~= " , ";
         }
     }
 
@@ -217,7 +230,7 @@ void sprintPluginURI_IO_short(char* buf, size_t maxChars, LegalIO io) nothrow @n
     }
     else
     {
-        snprintf(buf, maxChars, "vendor:%din%dout", ins, outs);
+        snprintf(buf, maxChars, "vendor:in%dout%d", ins, outs);
     }
 }
 
@@ -240,7 +253,7 @@ void sprintPluginURI_IO(char* buf, size_t maxChars, string pluginHomepage, char[
     }
     else
     {
-        snprintf(buf, maxChars, "%s%2X%2X%2X%2X#%din%dout", pluginHomepageZ.storage,
+        snprintf(buf, maxChars, "%s%2X%2X%2X%2X#in%dout%d", pluginHomepageZ.storage,
                                                             pluginID[0], pluginID[1], pluginID[2], pluginID[3],
                                                             ins, outs);
     }
