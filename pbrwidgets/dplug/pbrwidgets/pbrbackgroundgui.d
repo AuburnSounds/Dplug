@@ -75,7 +75,49 @@ nothrow:
 
     override void reflow(box2i availableSpace)
     {
+        // Note: the position is entirely decorrelated from the size of background images
+        // IMPORTANT technically we don't need to take all space, since we'll never draw outside a subrect
+        //           this is for the future where we may resize the images.
         _position = availableSpace;
+
+        // Compute which rect of _backgroundImage goes into which rect of _position
+        // if the full element was entirely dirty
+        // The image is not resized to fit, instead it is cropped.
+        int sourceX;
+        int sourceY;
+        int destX;
+        int destY;
+        int width;
+        int height;
+        if (_position.width >= _diffuse.w)
+        {
+            width = _diffuse.w;
+            sourceX = 0;
+            destX = 0;
+        }
+        else
+        {
+            width = _position.width;
+            sourceX = 0;
+            destX = 0;
+        }
+
+        if (_position.height >= _diffuse.h)
+        {
+            height = _diffuse.h;
+            sourceY = 0;
+            destY = 0;
+        }
+        else
+        {
+            height = _position.height;
+            sourceY = 0;
+            destY = 0;
+        }
+
+        _sourceRect = box2i.rectangle(sourceX, sourceY, width, height);
+        _destRect = box2i.rectangle(destX, destY, width, height);
+        _offset = vec2i(destX - sourceX, destY - sourceY);
     }
 
     override void onDrawPBR(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects)
@@ -83,14 +125,25 @@ nothrow:
         // Just blit backgrounds into dirtyRects.
         foreach(dirtyRect; dirtyRects)
         {
-            auto croppedDiffuseIn = _diffuse.crop(dirtyRect);
-            auto croppedDiffuseOut = diffuseMap.crop(dirtyRect);
+            // Compute source and dest
+            box2i source = _sourceRect.intersection(dirtyRect.translate(_offset));
+            box2i dest = _destRect.intersection(dirtyRect); // since dirtyRect is relative to _position 
+            if (source.empty())
+                continue;
+            if (dest.empty())
+                continue;
 
-            auto croppedDepthIn = _depth.crop(dirtyRect);
-            auto croppedDepthOut = depthMap.crop(dirtyRect);
+            assert(source.width == dest.width);
+            assert(source.height == dest.height);
 
-            auto croppedMaterialIn = _material.crop(dirtyRect);
-            auto croppedMaterialOut = materialMap.crop(dirtyRect);
+            auto croppedDiffuseIn = _diffuse.crop(source);
+            auto croppedDiffuseOut = diffuseMap.crop(dest);
+
+            auto croppedDepthIn = _depth.crop(source);
+            auto croppedDepthOut = depthMap.crop(dest);
+
+            auto croppedMaterialIn = _material.crop(source);
+            auto croppedMaterialOut = materialMap.crop(dest);
 
             croppedDiffuseIn.blitTo(croppedDiffuseOut);
             croppedDepthIn.blitTo(croppedDepthOut);
@@ -111,6 +164,15 @@ private:
     OwnedImage!RGBA _diffuse;
     OwnedImage!RGBA _material;
     OwnedImage!L16 _depth;
+
+    /// Where pixel data is taken in the image, expressed in _background coordinates.
+    box2i _sourceRect;
+
+    /// Where it is deposited. Same size than _sourceRect. Expressed in _position coordinates.
+    box2i _destRect;
+
+    /// Offset from source to dest.
+    vec2i _offset;
 
     void freeImages()
     {
@@ -186,3 +248,4 @@ private:
         context.setSkybox(skybox);
     }
 }
+
