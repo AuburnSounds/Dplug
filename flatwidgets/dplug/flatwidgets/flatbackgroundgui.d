@@ -42,7 +42,7 @@ nothrow:
     
     override void reflow(box2i availableSpace)
     {
-"       // Note: the position is entirely decorrelated from the size of _backgroundImage
+        // Note: the position is entirely decorrelated from the size of _backgroundImage
         // IMPORTANT technically we don't need to take all space, since we'll never draw outside a subrect
         //           this is for the future where we may resize the image.
         _position = availableSpace;
