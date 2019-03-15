@@ -619,6 +619,14 @@ void browseNoGC(string url) nothrow @nogc
         if (browser)
             free(cast(void*)browser);
     }
+    version(linux)
+    {
+        import core.sys.posix.stdlib;
+        import core.stdc.stdio;
+        char[256] curl;
+        sprintf(curl.ptr, "%s %s", "xdg-open".ptr, CString(url).storage);
+        system(curl.ptr);
+    }
 }
 
 
