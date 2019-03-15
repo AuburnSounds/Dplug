@@ -328,13 +328,22 @@ nothrow:
         // Fill input and output pointers for this block, based on what we have received
         for(int input = 0; input < _numInputs; ++input)
         {
-            _inputPointersProcessing[input] = _inputPointersProvided[input] ? _inputPointersProvided[input] : _inputScratchBuffer[input].ptr;
+            // Copy each available input to a scrach buffer, because some hosts (Mixbus/Ardour)
+            // give identical pointers for input and output buffers.
+            if (_inputPointersProvided[input])
+            {
+                const(float)* source = _inputPointersProvided[input];
+                float* dest = _inputScratchBuffer[input].ptr;
+                dest[0..n_samples] = source[0..n_samples];
+            }
+            _inputPointersProcessing[input] = _inputScratchBuffer[input].ptr;
         }
         for(int output = 0; output < _numOutputs; ++output)
         {
             _outputPointersProcessing[output] = _outputPointersProvided[output] ? _outputPointersProvided[output] : _outputScratchBuffer[output].ptr;
         }
 
+        // Process audio
         _client.processAudioFromHost(_inputPointersProcessing, _outputPointersProcessing, n_samples, _currentTimeInfo);
 
         _currentTimeInfo.timeInSamples += n_samples;
