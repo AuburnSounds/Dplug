@@ -73,12 +73,12 @@ private:
     int depth;
     // Threads
     Thread _eventLoop, _timerLoop;
-    // UncheckedMutex drawMutex;
+
     //Other
     IWindowListener _listener;
+    bool _usingXEmbed = false;
 
     ImageRef!RGBA _wfb; // framebuffer reference
-    ubyte[4][] _bufferData;
     
     uint _timeAtCreationInMs;
     uint _lastMeasturedTimeInMs;
@@ -90,8 +90,6 @@ private:
     uint currentTime;
     int lastMouseX, lastMouseY;
 
-    box2i prevMergedDirtyRect, mergedDirtyRect;
-
     shared(bool) _terminated = false;
 
     Atom _XEMBED;
@@ -100,85 +98,41 @@ private:
     enum int XEMBED_MAPPED = (1 << 0);
 
 public:
-    this(void* parentWindow, /* void* transientWindowId,*/ IWindowListener listener, int width, int height)
+    this(void* parentWindow, IWindowListener listener, int width, int height)
     {
         debug(logX11Window) printf("X11Window: constructor\n");
         initializeXLib();
 
-        int x, y;
         _listener = listener;
 
-        if (parentWindow is null)
-        {
-            _parentWindowId = RootWindow(_display, _screen);
-        }
-        else
-        {
-            _parentWindowId = cast(Window)parentWindow;
-        }
-
-        x = (DisplayWidth(_display, _screen) - width) / 2;
-        y = (DisplayHeight(_display, _screen) - height) / 3;
         _width = width;
         _height = height;
         _wfb = _listener.onResized(_width, _height);
-        depth = 24;
 
-        _windowId = XCreateSimpleWindow(_display, _parentWindowId, x, y, _width, _height, 0, 0, _black_pixel);
-        //XStoreName(_display, _windowId, cast(char*)transientWindowId);
-
-        XSizeHints sizeHints;
-        sizeHints.flags = PMinSize | PMaxSize;
-        sizeHints.min_width = _width;
-        sizeHints.max_width = _width;
-        sizeHints.min_height = _height;
-        sizeHints.max_height = _height;
-
-        XSetWMNormalHints(_display, _windowId, &sizeHints);
-
-        //Setup XEMBED atoms
-        _XEMBED = XInternAtom(_display, "_XEMBED", false);
-        _XEMBED_INFO = XInternAtom(_display, "_XEMBED_INFO", false);
-        uint[2] data = [XEMBED_VERSION, XEMBED_MAPPED];
-        XChangeProperty(_display, _windowId, _XEMBED_INFO,
-                        XA_CARDINAL, 32, PropModeReplace,
-                        cast(ubyte*) data, 2);
-
-        _closeAtom = XInternAtom(_display, cast(char*)("WM_DELETE_WINDOW".ptr), cast(Bool)false);
-        XSetWMProtocols(_display, _windowId, &_closeAtom, 1);
-
-        if (parentWindow) {
-            // Embed the window in parent (most VST hosts expose some area for embedding a VST client)
-            XReparentWindow(_display, _windowId, _parentWindowId, 0, 0);
-        }
-
-        XMapWindow(_display, _windowId);
-        XFlush(_display);
-
-        XSelectInput(_display, _windowId, windowEventMask());
-        _graphicGC = XCreateGC(_display, _windowId, 0, null);
-        XSetBackground(_display, _graphicGC, _white_pixel);
-        XSetForeground(_display, _graphicGC, _black_pixel);
+        version(VST3) _usingXEmbed = true;
+        createWindow(parentWindow);
 
         _lastMeasturedTimeInMs = _timeAtCreationInMs = getTimeMs();
 
         _dirtyAreasAreNotYetComputed = true;
-
-        emptyMergedBoxes();
 
         _timerLoop = makeThread(&timerLoop);
         _timerLoop.start();
 
         _eventLoop = makeThread(&eventLoop);
         _eventLoop.start();
-        
     }
 
     ~this()
     { 
-        XDestroyWindow(_display, _windowId);
-        XFlush(_display);
         _terminated = true;
+
+        XDestroyWindow(_display, _windowId);
+        _graphicImage.data = null;
+        XDestroyImage(_graphicImage);
+        XFreeGC(_display, _graphicGC);
+        XFlush(_display);
+
         _timerLoop.join();
         _eventLoop.join();
     }
@@ -199,6 +153,71 @@ public:
 
             XLibInitialized = true;
         }
+    }
+
+    void createWindow(void* parentWindow)
+    {
+        if (parentWindow is null)
+        {
+            _parentWindowId = RootWindow(_display, _screen);
+        }
+        else
+        {
+            _parentWindowId = cast(Window)parentWindow;
+        }
+
+        depth = 24;
+
+        Colormap cmap = XCreateColormap(_display, _parentWindowId, _visual, AllocNone);
+
+        XSetWindowAttributes attr;
+        memset(&attr, 0, XSetWindowAttributes.sizeof);
+        attr.border_pixel = BlackPixel(_display, _screen);
+        attr.colormap     = cmap;
+        attr.event_mask   = (ExposureMask | StructureNotifyMask |
+                            EnterWindowMask | LeaveWindowMask |
+                            KeyPressMask | KeyReleaseMask |
+                            ButtonPressMask | ButtonReleaseMask |
+                            PointerMotionMask | FocusChangeMask);
+
+        _windowId = XCreateWindow(_display, _parentWindowId, 0, 0, _width, _height, 0, depth, InputOutput, _visual, CWBorderPixel | CWColormap | CWEventMask, &attr);
+
+        if(_width > 1 || _height > 1)
+            XResizeWindow(_display, _windowId, _width, _height);
+
+        if(_usingXEmbed)
+        {
+            //Setup XEMBED atoms
+            _XEMBED = XInternAtom(_display, "_XEMBED", false);
+            _XEMBED_INFO = XInternAtom(_display, "_XEMBED_INFO", false);
+            uint[2] data = [XEMBED_VERSION, XEMBED_MAPPED];
+            XChangeProperty(_display, _windowId, _XEMBED_INFO,
+                            XA_CARDINAL, 32, PropModeReplace,
+                            cast(ubyte*) data, 2);
+
+            _closeAtom = XInternAtom(_display, cast(char*)("WM_DELETE_WINDOW".ptr), cast(Bool)false);
+            XSetWMProtocols(_display, _windowId, &_closeAtom, 1);
+
+            if(parentWindow)
+            {
+                XReparentWindow(_display, _windowId, _parentWindowId, 0, 0);
+            }
+        }
+
+        if(parentWindow)
+        {
+            XMapRaised(_display, _windowId);
+        }
+        else
+        {
+            Atom wmDelete = XInternAtom(_display, "WM_DELETE_WINDOW", True);
+            XSetWMProtocols(_display, _windowId, &wmDelete, 1);
+        }
+
+        XSelectInput(_display, _windowId, windowEventMask());
+        _graphicGC = XCreateGC(_display, _windowId, 0, null);
+
+        XFlush(_display);
     }
 
     long windowEventMask() {
@@ -224,14 +243,6 @@ public:
             waitEventAndDispatch();
         }
         debug(logX11Window) printf("> eventLoop\n");
-    }
-
-    void emptyMergedBoxes() nothrow @nogc
-    {
-        debug(logX11Window) printf("< emptyMergedBoxes\n");
-        prevMergedDirtyRect = box2i(0,0,0,0);
-        mergedDirtyRect = box2i(0,0,0,0);
-        debug(logX11Window) printf("> emptyMergedBoxes\n");
     }
 
     void sendRepaintIfUIDirty() nothrow @nogc
@@ -338,9 +349,13 @@ void handleEvents(ref XEvent event, X11Window theWindow) nothrow @nogc
                 
                 if(_graphicImage is null)
                     _graphicImage = XCreateImage(_display, _visual, depth, ZPixmap, 0, cast(char*)_wfb.pixels, _width, _height, 32, 0);
+
                 XLockDisplay(_display);
+                
                 _listener.onDraw(WindowPixelFormat.BGRA8);
                 XPutImage(_display, _windowId, _graphicGC, _graphicImage, 0, 0, 0, 0, cast(uint)_width, cast(uint)_height);
+                XFlush(_display);
+                
                 XUnlockDisplay(_display);
                 break;
 
