@@ -79,6 +79,8 @@ private:
     bool _usingXEmbed = false;
 
     ImageRef!RGBA _wfb; // framebuffer reference
+
+    UncheckedMutex _dirtyMutex;
     
     uint _timeAtCreationInMs;
     uint _lastMeasturedTimeInMs;
@@ -104,6 +106,7 @@ public:
         initializeXLib();
 
         _listener = listener;
+        _dirtyMutex = makeMutex();
 
         _width = width;
         _height = height;
@@ -128,9 +131,6 @@ public:
         _terminated = true;
 
         XDestroyWindow(_display, _windowId);
-        _graphicImage.data = null;
-        XDestroyImage(_graphicImage);
-        XFreeGC(_display, _graphicGC);
         XFlush(_display);
 
         _timerLoop.join();
@@ -203,15 +203,14 @@ public:
                 XReparentWindow(_display, _windowId, _parentWindowId, 0, 0);
             }
         }
-
         if(parentWindow)
         {
             XMapRaised(_display, _windowId);
         }
         else
         {
-            Atom wmDelete = XInternAtom(_display, "WM_DELETE_WINDOW", True);
-            XSetWMProtocols(_display, _windowId, &wmDelete, 1);
+            _closeAtom = XInternAtom(_display, "WM_DELETE_WINDOW", True);
+            XSetWMProtocols(_display, _windowId, &_closeAtom , 1);
         }
 
         XSelectInput(_display, _windowId, windowEventMask());
@@ -248,8 +247,13 @@ public:
     void sendRepaintIfUIDirty() nothrow @nogc
     {
         debug(logX11Window) printf("< sendRepaintIfUIDirty\n");
+
+        _dirtyMutex.lock();
         _listener.recomputeDirtyAreas();
+        _dirtyAreasAreNotYetComputed = false;
         box2i dirtyRect = _listener.getDirtyRectangle();
+        _dirtyMutex.unlock();
+
         if (!dirtyRect.empty())
         {
             XEvent evt;
@@ -283,9 +287,6 @@ public:
         while(!terminated())
         {
             doAnimation();
-
-            _listener.recomputeDirtyAreas();
-            _dirtyAreasAreNotYetComputed = false;
 
             sendRepaintIfUIDirty();
             sleep(1 / 60);
@@ -341,6 +342,7 @@ void handleEvents(ref XEvent event, X11Window theWindow) nothrow @nogc
 
             case MapNotify:
             case Expose:
+                _dirtyMutex.lock();
                 if (_dirtyAreasAreNotYetComputed)
                 {
                     _dirtyAreasAreNotYetComputed = false;
@@ -349,14 +351,11 @@ void handleEvents(ref XEvent event, X11Window theWindow) nothrow @nogc
                 
                 if(_graphicImage is null)
                     _graphicImage = XCreateImage(_display, _visual, depth, ZPixmap, 0, cast(char*)_wfb.pixels, _width, _height, 32, 0);
-
-                XLockDisplay(_display);
                 
                 _listener.onDraw(WindowPixelFormat.BGRA8);
+                _dirtyMutex.unlock();
+
                 XPutImage(_display, _windowId, _graphicGC, _graphicImage, 0, 0, 0, 0, cast(uint)_width, cast(uint)_height);
-                XFlush(_display);
-                
-                XUnlockDisplay(_display);
                 break;
 
             case ConfigureNotify:
