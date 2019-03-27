@@ -248,6 +248,7 @@ public:
     void sendRepaintIfUIDirty() nothrow @nogc
     {
         debug(logX11Window) printf("< sendRepaintIfUIDirty\n");
+        XLockDisplay(_display);
         _listener.recomputeDirtyAreas();
         box2i dirtyRect = _listener.getDirtyRectangle();
         if (!dirtyRect.empty())
@@ -262,9 +263,11 @@ public:
             evt.xexpose.width = dirtyRect.width;
             evt.xexpose.height = dirtyRect.height;
 
+            
             XSendEvent(_display, _windowId, False, ExposureMask, &evt);
             XFlush(_display);
         }
+        XUnlockDisplay(_display);
         debug(logX11Window) printf("> sendRepaintIfUIDirty\n");
     }
 
@@ -274,7 +277,9 @@ public:
         double dt = (now - _lastMeasturedTimeInMs) * 0.001;
         double time = (now - _timeAtCreationInMs) * 0.001; // hopefully no plug-in will be open more than 49 days
         _lastMeasturedTimeInMs = now;
+        XLockDisplay(_display);
         _listener.onAnimate(dt, time);
+        XUnlockDisplay(_display);
     }
 
     void timerLoop() nothrow @nogc
@@ -341,6 +346,7 @@ void handleEvents(ref XEvent event, X11Window theWindow) nothrow @nogc
 
             case MapNotify:
             case Expose:
+                XLockDisplay(_display);
                 if (_dirtyAreasAreNotYetComputed)
                 {
                     _dirtyAreasAreNotYetComputed = false;
@@ -349,8 +355,6 @@ void handleEvents(ref XEvent event, X11Window theWindow) nothrow @nogc
                 
                 if(_graphicImage is null)
                     _graphicImage = XCreateImage(_display, _visual, depth, ZPixmap, 0, cast(char*)_wfb.pixels, _width, _height, 32, 0);
-
-                XLockDisplay(_display);
                 
                 _listener.onDraw(WindowPixelFormat.BGRA8);
                 XPutImage(_display, _windowId, _graphicGC, _graphicImage, 0, 0, 0, 0, cast(uint)_width, cast(uint)_height);
