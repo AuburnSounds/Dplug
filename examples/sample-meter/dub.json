@@ -1,0 +1,40 @@
+{
+    "$schema": "https://raw.githubusercontent.com/Pure-D/code-d/master/json-validation/dub.schema.json",
+
+    "name": "sample-meter",
+
+    "importPaths": [ "." ],
+    "sourcePaths": [ "." ],
+    "stringImportPaths": [ "." ],
+
+    "targetType": "dynamicLibrary",
+
+    "lflags-windows-ldc": [
+        "libcmt.lib",
+        "/nodefaultlib:msvcrt.lib",
+        "/nodefaultlib:vcruntime.lib"
+    ],
+
+    "dflags-linux-dmd": ["-defaultlib=libphobos2.a"],
+
+    "dflags-osx-ldc": ["-static"],
+
+    "comment-WARNING-READ-THIS-IS-IMPORTANT": [
+        "    When making your own plug-in you have to CHANGE THESE DEPENDENCY    ",
+        "    SPECIFICATIONS below from path-based to ~>MAJOR.MINOR               ",
+        "      Example: ~>8.0                                                    ",
+        "    See also the DUB documentation:                                     ",
+        "         https://code.dlang.org/package-format?lang=json#version-specs  "],
+    "dependencies":
+    {
+        "dplug:vst": { "path": "../.." }
+    },
+
+    "configurations": [
+        {
+            "name": "VST",
+            "versions": ["VST"],
+            "targetType": "dynamicLibrary"
+        }
+    ]
+}

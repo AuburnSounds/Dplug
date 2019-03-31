@@ -3,6 +3,7 @@
    * `examples/clipit`: mandatory distortion plugin, with a flat UI
    * `examples/ms-encode`: simplest plugin for tutorial purpose, without UI
    * `examples/poly-alias-synth`: simple polyphonic wave generator, without UI
+   * `examples/sample-meter`: very simple logger using C runtime's file IO, without UI
    * `examples/simple-mono-synth`: very basic sine-wave generator, without UI
 
 
