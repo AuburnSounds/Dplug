@@ -455,6 +455,13 @@ public
         return generateBiquad(BiquadType.HIGH_SHELF, frequency, samplerate, gain, Q);
     }
 
+    /// 2nd order All-pass filter as described by Robert Bristow-Johnson.
+    /// This is helpful to introduce the exact same phase response as the RBJ low-pass, but doesn't affect magnitude.
+    BiquadCoeff biquadRBJAllPass(double frequency, double samplerate, double Q = SQRT1_2) nothrow @nogc
+    {
+        return generateBiquad(BiquadType.ALL_PASS_FILTER, frequency, samplerate, 0, Q);
+    }
+
     /// Identity biquad, pass signal unchanged.
     BiquadCoeff biquadBypass() nothrow @nogc
     {
@@ -490,7 +497,8 @@ private
         NOTCH_FILTER,
         PEAK_FILTER,
         LOW_SHELF,
-        HIGH_SHELF
+        HIGH_SHELF,
+        ALL_PASS_FILTER
     }
 
     // generates RBJ biquad coefficients
@@ -582,6 +590,17 @@ private
                     a0 = ap1 - am1 * cos_w0 + M;
                     a1 = 2 * (am1 - ap1 * cos_w0);
                     a2 = ap1 - am1 * cos_w0 - M;
+                }
+                break;
+
+            case BiquadType.ALL_PASS_FILTER:
+                {
+                    b0 = 1 - alpha;
+                    b1 = -2 * cos_w0;
+                    b2 = 1 + alpha;
+                    a0 = 1 + alpha;
+                    a1 = -2 * cos_w0;
+                    a2 = 1 - alpha;
                 }
                 break;
         }
