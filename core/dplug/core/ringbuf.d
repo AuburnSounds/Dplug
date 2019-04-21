@@ -135,14 +135,13 @@ struct RingBufferNoGC(T)
         }
 
         ///
-        int opApply(scope int delegate(ref T) dg)
+        int opApply(scope int delegate(T) dg)
         {
             int result = 0;
 
             for (size_t i = 0; i < length(); i++)
             {
-                T x = this[i];
-                result = dg(x);
+                result = dg(this[i]);
                 if (result)
                     break;
             }
