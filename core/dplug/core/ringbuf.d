@@ -128,8 +128,12 @@ struct RingBufferNoGC(T)
         T opIndex(size_t index) nothrow @nogc
         {
             // crash if index out-of-bounds (not recoverable)
-            if (index > _count)
-                assert(0);
+            version(D_NoBoundsChecks) {}
+            else
+            {
+                if (index >= _count)
+                    assert(0);
+            }
 
             return _data.ptr[(_first + index) % _data.length];
         }
