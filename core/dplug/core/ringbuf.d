@@ -138,22 +138,6 @@ struct RingBufferNoGC(T)
             return _data.ptr[(_first + index) % _data.length];
         }
 
-        /// Sets the item with the corresponding index in the queue to the passed value.
-        ///
-        /// Caution: Circumvents the purpose of a buffer.
-        void opIndexAssign(T value, size_t index)
-        {
-            // crash if index out-of-bounds (not recoverable)
-            version(D_NoBoundsChecks) {}
-            else
-            {
-                if (index >= _count)
-                    assert(0);
-            }
-
-            _data.ptr[(_first + index) % _data.length] = value;
-        }
-
         ///
         int opApply(scope int delegate(T) dg)
         {
@@ -209,11 +193,6 @@ unittest
         vec.pushBack(i);
     }
     assert(vec.releaseData() == [100, 300]);
-
-    rb[1] = 500;
-    rb[0] = 400;
-    assert(rb[0] == 400);
-    assert(rb[1] == 500);
 }
 
 /// Reusable mechanism to provide the UI with continuously available non-critical data from the audio thread.
