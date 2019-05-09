@@ -42,17 +42,9 @@ void GenerateManifestFromClient_templated(alias ClientClass)(generateManifestFro
 {
     // Note: this function is called by D, so it reuses the runtime from dplug-build on Linux
     // FUTURE: make this function nothrow @nogc, to avoid relying on dplug-build runtime
-    version(Windows)
-    {
-        import core.runtime;
-        Runtime.initialize();
-    }
 
-    version(OSX)
-    {
-        import core.runtime;
-        Runtime.initialize();
-    }
+    import core.runtime;
+    Runtime.initialize();
 
     ClientClass client = mallocNew!ClientClass();
     scope(exit) client.destroyFree();
