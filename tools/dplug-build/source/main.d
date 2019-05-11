@@ -22,6 +22,11 @@ string MAC_AU_DIR  = "/Library/Audio/Plug-Ins/Components";
 string MAC_AAX_DIR = "/Library/Application Support/Avid/Audio/Plug-Ins";
 string MAC_LV2_DIR = "/Library/Audio/Plug-Ins/LV2";
 
+string WIN_VST3_DIR = "C:\\Program Files\\Common Files\\VST3";
+string WIN_VST_DIR = "C:\\Program Files\\VSTPlugins";
+string WIN_LV2_DIR = "%APPDATA%\\LV2";
+string WIN_AAX_DIR = "";
+
 void usage()
 {
     void flag(string arg, string desc, string possibleValues, string defaultDesc)
@@ -939,6 +944,36 @@ void buildPlugin(string compiler, string config, string build, bool is64b, bool 
         skipRegistry ? " --skip-registry=all" : ""
         );
     safeCommand(cmd);
+}
+
+struct WindowsPackage
+{
+    string pathToContents;
+    string blobName;
+    string title;
+}
+
+void generateWindowsInstaller(string outputDir,
+                              string resDir,
+                              Plugin plugin,
+                              WindowsPackage[] packs,
+                              string outExePath,
+                              bool verbose)
+{
+    string nsisPath = "makeInstaller.nsi";
+
+    string content = "";
+
+    content ~= `!include "MUI2.nsh"
+                !define MUI_ABORTWARNING
+                !insertmacro MUI_PAGE_LICENSE "${NSISDIR}\Docs\Modern UI\License.txt"
+                !insertmacro MUI_PAGE_COMPONENTS
+                !insertmacro MUI_UNPAGE_CONFIRM
+                !insertmacro MUI_UNPAGE_INSTFILES\n`;
+
+    content ~= `OutFile "` ~ outExePath ~ `"`;
+
+    std.file.write(nsisPath, cast(void[])content);
 }
 
 struct MacPackage
