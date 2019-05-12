@@ -12,8 +12,10 @@ import dplug.core.sync;
 import dplug.core.nogc;
 import dplug.core.vec;
 
+deprecated("Use makeRingBufferNoGC instead.") // unfortunately no warning because of https://issues.dlang.org/show_bug.cgi?id=19780
+alias ringBufferNoGC = makeRingBufferNoGC;
 
-RingBufferNoGC!T ringBufferNoGC(T)(size_t initialCapacity) nothrow @nogc
+RingBufferNoGC!T makeRingBufferNoGC(T)(size_t initialCapacity) nothrow @nogc
 {
     return RingBufferNoGC!T(initialCapacity);
 }
@@ -108,14 +110,46 @@ struct RingBufferNoGC(T)
             return _data.ptr[(_first + _count + _data.length - 1) % _data.length];
         }
 
+        // Returns: true if there are no items in the queue.
+        bool empty() @safe pure nothrow @nogc
+        {
+            return length() == 0;
+        }
+
+        /// Implements the assignment operator using .pushBack()
+        ///
+        /// See_Also: pushBack
+        void opOpAssign(string op : "~")(T x)
+        {
+            pushBack(x);
+        }
+
         /// Returns: item index from the queue.
         T opIndex(size_t index) nothrow @nogc
         {
             // crash if index out-of-bounds (not recoverable)
-            if (index > _count)
-                assert(0);
+            version(D_NoBoundsChecks) {}
+            else
+            {
+                if (index >= _count)
+                    assert(0);
+            }
 
             return _data.ptr[(_first + index) % _data.length];
+        }
+
+        ///
+        int opApply(scope int delegate(T) dg)
+        {
+            int result = 0;
+
+            for (size_t i = 0; i < length(); i++)
+            {
+                result = dg(this[i]);
+                if (result)
+                    break;
+            }
+            return result;
         }
     }
 
@@ -138,6 +172,27 @@ struct RingBufferNoGC(T)
 unittest
 {
     RingBufferNoGC!float a;
+}
+
+unittest
+{
+    auto rb = makeRingBufferNoGC!int(2);
+
+    rb ~= 100;
+    assert(rb.length == 1);
+    assert(rb[0] == 100);
+
+    rb.pushFront(200);
+    assert(rb[0] == 200);
+    assert(rb[1] == 100);
+
+    rb.pushBack(300);
+    Vec!int vec = makeVec!int();
+    foreach(i; rb)
+    {
+        vec.pushBack(i);
+    }
+    assert(vec.releaseData() == [100, 300]);
 }
 
 /// Reusable mechanism to provide the UI with continuously available non-critical data from the audio thread.
