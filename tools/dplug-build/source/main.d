@@ -163,6 +163,8 @@ int main(string[] args)
             {
                 version(OSX)
                     makeInstaller = true;
+                version(Windows)
+                    makeInstaller = true;
                 else
                     warning("--installer not supported on that OS");
             }
@@ -273,6 +275,11 @@ int main(string[] args)
             MacPackage[] macInstallerPackages;
         }
 
+        version(Windows)
+        {
+            WindowsPackage[] windowsPackages;
+        }
+
         cwriteln();
 
         if (!quiet)
@@ -289,7 +296,12 @@ int main(string[] args)
             if (auval)
                 cwritefln("   Then Audio Unit validation with auval will be performed for arch %s.".green, archs[$-1]);
             if (makeInstaller)
-                cwritefln("   Then a Mac installer will be created for distribution outside of the App Store.".green);
+            {
+                version(OSX)
+                    cwritefln("   Then a Mac installer will be created for distribution outside of the App Store.".green);
+                version(Windows)
+                    cwritefln("   Then a Windows installer will be created for distribution.".green);
+            }
             cwriteln();
         }
 
@@ -582,6 +594,38 @@ int main(string[] args)
 
                         // Simply copy the file
                         fileMove(plugin.dubOutputFileName, path ~ "/" ~ appendBitness(plugin.prettyName, plugin.dubOutputFileName));
+                    }
+
+                    if(!isTemp && makeInstaller)
+                    {
+                        string pathToContents;
+                        string title;
+                        string format;
+
+                        if(configIsVST(config))
+                        {
+                            format = "VST";
+                            title = "VST plugin-in";
+                        }
+                        else if (configIsVST3(config))
+                        {
+                            format = "VST3";
+                            title = "VST3 plugin-in";
+                        }
+                        else if (configIsAAX(config))
+                        {
+                            format = "AAX";
+                            title = "AAX plugin-in";
+                        }
+                        else if (configIsLV2(config))
+                        {
+                            format = "LV2";
+                            title = "LV2 plugin-in";
+                        }
+
+                        string blobName = path ~ "/" ~ plugin.dubTargetPath ~ "\\*.*";
+
+                        windowsPackages ~= WindowsPackage(format, pathToContents, blobName, title);
                     }
                 }
                 else version(linux)
@@ -897,6 +941,17 @@ int main(string[] args)
                 cwriteln;
             }
         }
+
+        version(Windows)
+        {
+            if (makeInstaller)
+            {
+                cwriteln("*** Generating Windows installer...".white);
+                string windowsInstallerPath = outputDir ~ "/" ~ plugin.windowsInstallerName(configurations[0]);
+                generateWindowsInstaller(outputDir, resDir, plugin, windowsPackages, windowsInstallerPath, verbose);
+            }
+        }
+
         return 0;
     }
     catch(DplugBuildBuiltCorrectlyException e)
@@ -948,6 +1003,7 @@ void buildPlugin(string compiler, string config, string build, bool is64b, bool 
 
 struct WindowsPackage
 {
+    string format;
     string pathToContents;
     string blobName;
     string title;
@@ -964,15 +1020,62 @@ void generateWindowsInstaller(string outputDir,
 
     string content = "";
 
-    content ~= `!include "MUI2.nsh"
-                !define MUI_ABORTWARNING
-                !insertmacro MUI_PAGE_LICENSE "${NSISDIR}\Docs\Modern UI\License.txt"
-                !insertmacro MUI_PAGE_COMPONENTS
-                !insertmacro MUI_UNPAGE_CONFIRM
-                !insertmacro MUI_UNPAGE_INSTFILES\n`;
+    content ~= "!include \"MUI2.nsh\"\n";
+    content ~= "!define MUI_ABORTWARNING\n";
+    content ~= "!insertmacro MUI_PAGE_LICENSE \"${NSISDIR}\\Docs\\Modern UI\\License.txt\"\n";
+    content ~= "!insertmacro MUI_PAGE_COMPONENTS\n";
+    content ~= "!insertmacro MUI_UNPAGE_CONFIRM\n";
+    content ~= "!insertmacro MUI_UNPAGE_INSTFILES\n\n";
 
-    content ~= `OutFile "` ~ outExePath ~ `"`;
+    content ~= `OutFile "` ~ outExePath ~ `"` ~ "\n";
+    
 
+    foreach(p; packs)
+    {
+        content ~= `Section "` ~ p.format ~ `" Sec` ~ p.format ~ "\n";
+        content ~= "SectionEnd\n\n";
+    }
+
+    foreach(p; packs)
+        content ~= `Var InstDir` ~ p.format ~ "\n";
+
+    content ~= "Var PartName\n";
+    content ~= `Name "$PartName"` ~ "\n\n";
+
+    foreach(p; packs)
+    {
+        content ~= "PageEx directory\n";
+        content ~= "  PageCallbacks defaultInstDir" ~ p.format ~ ` "" getInstDir` ~ p.format ~ "\n";
+        content ~= `  Caption ": ` ~ p.format ~ `Directory"` ~ "\n";
+        content ~= "PageExEnd\n";
+    }
+    content ~= "Page instfiles\n";
+
+    foreach(p; packs)
+    {
+        content ~= "Function defaultInstDir" ~ p.format ~ "\n";
+        content ~= "  ${IfNot} ${SectionIsSelected} ${Sec" ~ p.format ~ "}\n";
+        content ~= "    Abort\n";
+        content ~= "  ${Else}\n";
+        content ~= `    StrCpy $INSTDIR "C:\temp\1"` ~ "\n";
+        content ~= `    StrCpy $PartName "` ~ p.title ~ `"` ~ "\n";
+        content ~= "  ${EndIf}\n";
+        content ~= "FunctionEnd\n\n";
+        content ~= "Function getInstDir" ~ p.format ~ "\n";
+        content ~= "  StrCpy $InstDir" ~ p.format ~ " $INSTDIR\n";
+        content ~= "FunctionEnd\n\n";
+    }
+
+    content ~= "Section\n";
+
+    foreach(p; packs)
+    {
+        content ~= "  SetOutPath $InstDir" ~ p.format ~ "\n";
+        content ~= "  File /r \"" ~ p.blobName ~ "\"\n";
+    }
+
+    content ~= "SectionEnd\n\n";
+    
     std.file.write(nsisPath, cast(void[])content);
 }
 

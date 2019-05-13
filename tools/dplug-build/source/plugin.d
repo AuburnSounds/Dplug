@@ -386,6 +386,21 @@ struct Plugin
         }
     }
 
+    version(Windows)
+    {
+        string windowsInstallerName(string config) pure const
+        {
+            string verName = stripConfig(config);
+            if(verName)
+                verName = "-" ~ verName;
+            else
+                verName = "";
+            return format("%s%s-%s.exe", sanitizeFilenameString(pluginName),
+                                         verName,
+                                         publicVersionString);
+        }
+    }
+
     string getLV2PrettyName()
     {
         // Note: Carla doesn't support IRI with escaped character, so we have to remove
