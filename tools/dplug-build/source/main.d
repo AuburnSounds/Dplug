@@ -905,9 +905,38 @@ int main(string[] args)
         if (plugin.licensePath)
         {
             string licensePath = outputDir ~ "/license.html";
-            if (extension(plugin.licensePath) == ".html")
+            
+            bool convertToText = false;
+            version(Windows)
+            {
+                if (makeInstaller) {
+                    convertToText = true;
+                    licensePath = outputDir ~ "/license.txt";
+                }
+            }
+
+            if (extension(plugin.licensePath) == ".html" && convertToText)
+            {
+                // Convert license HTML file to text
+                cwritefln("*** Converting license file to TEXT... ".white);
+                string html = cast(string)std.file.read(plugin.licensePath);
+                string text = convertHTMLFileToText(html);
+                std.file.write(licensePath, text);
+                cwritefln(" => OK\n".green);
+            }
+            else if (extension(plugin.licensePath) == ".html")
             {
                 std.file.copy(plugin.licensePath, licensePath);
+            }
+            else if (extension(plugin.licensePath) == ".md" && convertToText)
+            {
+                // Convert license markdown to HTML and then text
+                cwritefln("*** Converting license file to TEXT... ".white);
+                string markdown = cast(string)std.file.read(plugin.licensePath);
+                string html = convertMarkdownFileToHTML(markdown);
+                string text = convertHTMLFileToText(html);
+                std.file.write(licensePath, text);
+                cwritefln(" => OK\n".green);
             }
             else if (extension(plugin.licensePath) == ".md")
             {
