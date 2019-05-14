@@ -25,7 +25,9 @@ string MAC_LV2_DIR = "/Library/Audio/Plug-Ins/LV2";
 string WIN_VST3_DIR = "C:\\Program Files\\Common Files\\VST3";
 string WIN_VST_DIR = "C:\\Program Files\\VSTPlugins";
 string WIN_LV2_DIR = "%APPDATA%\\LV2";
-string WIN_AAX_DIR = "";
+string WIN_AAX_DIR = "C:\\Program Files\\Common Files\\Avid\\Audio\\Plug-Ins";
+string WIN_VST3_DIR_X86 = "C:\\Program Files\\Common Files\\VST3";
+string WIN_VST_DIR_X86 = "C:\\Program Files\\VSTPlugins";
 
 void usage()
 {
@@ -601,31 +603,41 @@ int main(string[] args)
                         string pathToContents;
                         string title;
                         string format;
-
+                        string installDir;
                         if(configIsVST(config))
                         {
                             format = "VST";
                             title = "VST plugin-in";
+                            if(arch == Arch.x86_64)
+                                installDir = WIN_VST_DIR;
+                            else
+                                installDir = WIN_VST_DIR_X86;
                         }
                         else if (configIsVST3(config))
                         {
                             format = "VST3";
                             title = "VST3 plugin-in";
+                            if(arch == Arch.x86_64)
+                                installDir = WIN_VST3_DIR;
+                            else
+                                installDir = WIN_VST3_DIR_X86;
                         }
                         else if (configIsAAX(config))
                         {
                             format = "AAX";
                             title = "AAX plugin-in";
+                            installDir = WIN_AAX_DIR;
                         }
                         else if (configIsLV2(config))
                         {
                             format = "LV2";
                             title = "LV2 plugin-in";
+                            installDir = WIN_LV2_DIR;
                         }
 
                         string blobName = path ~ "/" ~ plugin.dubTargetPath ~ "\\*.*";
 
-                        windowsPackages ~= WindowsPackage(format, pathToContents, blobName, title);
+                        windowsPackages ~= WindowsPackage(format, pathToContents, blobName, title, installDir);
                     }
                 }
                 else version(linux)
@@ -813,8 +825,10 @@ int main(string[] args)
                         string pkgIdentifier;
                         string pkgFilename;
                         string title;
+
                         if (configIsVST(config))
                         {
+                            
                             pkgIdentifier = plugin.pkgBundleVST();
                             pkgFilename   = plugin.pkgFilenameVST();
                             title = "VST plug-in";
@@ -1036,6 +1050,7 @@ struct WindowsPackage
     string pathToContents;
     string blobName;
     string title;
+    string installDir;
 }
 
 void generateWindowsInstaller(string outputDir,
@@ -1046,24 +1061,27 @@ void generateWindowsInstaller(string outputDir,
                               bool verbose)
 {
     string nsisPath = "makeInstaller.nsi";
+    string licensePath = outputDir ~ "/license.txt";
 
     string content = "";
 
     content ~= "!include \"MUI2.nsh\"\n";
     content ~= "!define MUI_ABORTWARNING\n";
-    content ~= "!insertmacro MUI_PAGE_LICENSE \"${NSISDIR}\\Docs\\Modern UI\\License.txt\"\n";
+    content ~= "!insertmacro MUI_PAGE_LICENSE \"" ~ licensePath ~ "\"\n";
     content ~= "!insertmacro MUI_PAGE_COMPONENTS\n";
     content ~= "!insertmacro MUI_UNPAGE_CONFIRM\n";
     content ~= "!insertmacro MUI_UNPAGE_INSTFILES\n\n";
 
-    content ~= `OutFile "` ~ outExePath ~ `"` ~ "\n";
+    content ~= `OutFile "` ~ outExePath ~ `"` ~ "\n\n";
     
 
     foreach(p; packs)
     {
         content ~= `Section "` ~ p.format ~ `" Sec` ~ p.format ~ "\n";
-        content ~= "SectionEnd\n\n";
+        content ~= "SectionEnd\n";
     }
+
+    content ~= "\n";
 
     foreach(p; packs)
         content ~= `Var InstDir` ~ p.format ~ "\n";
@@ -1073,34 +1091,42 @@ void generateWindowsInstaller(string outputDir,
 
     foreach(p; packs)
     {
-        content ~= "PageEx directory\n";
-        content ~= "  PageCallbacks defaultInstDir" ~ p.format ~ ` "" getInstDir` ~ p.format ~ "\n";
-        content ~= `  Caption ": ` ~ p.format ~ `Directory"` ~ "\n";
-        content ~= "PageExEnd\n";
+        if(p.format == "VST")
+        {
+            content ~= "PageEx directory\n";
+            content ~= "  PageCallbacks defaultInstDir" ~ p.format ~ ` "" getInstDir` ~ p.format ~ "\n";
+            content ~= `  Caption ": ` ~ p.format ~ ` Directory"` ~ "\n";
+            content ~= "PageExEnd\n";
+        }
     }
     content ~= "Page instfiles\n";
 
     foreach(p; packs)
     {
-        content ~= "Function defaultInstDir" ~ p.format ~ "\n";
-        content ~= "  ${IfNot} ${SectionIsSelected} ${Sec" ~ p.format ~ "}\n";
-        content ~= "    Abort\n";
-        content ~= "  ${Else}\n";
-        content ~= `    StrCpy $INSTDIR "C:\temp\1"` ~ "\n";
-        content ~= `    StrCpy $PartName "` ~ p.title ~ `"` ~ "\n";
-        content ~= "  ${EndIf}\n";
-        content ~= "FunctionEnd\n\n";
-        content ~= "Function getInstDir" ~ p.format ~ "\n";
-        content ~= "  StrCpy $InstDir" ~ p.format ~ " $INSTDIR\n";
-        content ~= "FunctionEnd\n\n";
+        if(p.format == "VST")
+        {
+            content ~= "Function defaultInstDir" ~ p.format ~ "\n";
+            content ~= "  ${IfNot} ${SectionIsSelected} ${Sec" ~ p.format ~ "}\n";
+            content ~= "    Abort\n";
+            content ~= "  ${Else}\n";
+            content ~= `    StrCpy $INSTDIR "` ~ p.installDir ~ `"` ~ "\n";
+            content ~= `    StrCpy $PartName "` ~ p.title ~ `"` ~ "\n";
+            content ~= "  ${EndIf}\n";
+            content ~= "FunctionEnd\n\n";
+            content ~= "Function getInstDir" ~ p.format ~ "\n";
+            content ~= "  StrCpy $InstDir" ~ p.format ~ " $INSTDIR\n";
+            content ~= "FunctionEnd\n\n";
+        }
     }
 
     content ~= "Section\n";
 
     foreach(p; packs)
     {
-        content ~= "  SetOutPath $InstDir" ~ p.format ~ "\n";
-        content ~= "  File /r \"" ~ p.blobName ~ "\"\n";
+        content ~= "  ${If} ${SectionIsSelected} ${Sec" ~ p.format ~ "}\n";
+        content ~= "    SetOutPath \"" ~ p.installDir ~ "\"\n";
+        content ~= "    File /r \"" ~ p.blobName ~ "\"\n";
+        content ~= "  ${EndIf}\n";
     }
 
     content ~= "SectionEnd\n\n";
