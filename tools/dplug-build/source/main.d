@@ -26,8 +26,8 @@ string WIN_VST3_DIR = "C:\\Program Files\\Common Files\\VST3";
 string WIN_VST_DIR = "C:\\Program Files\\VSTPlugins";
 string WIN_LV2_DIR = "%APPDATA%\\LV2";
 string WIN_AAX_DIR = "C:\\Program Files\\Common Files\\Avid\\Audio\\Plug-Ins";
-string WIN_VST3_DIR_X86 = "C:\\Program Files\\Common Files\\VST3";
-string WIN_VST_DIR_X86 = "C:\\Program Files\\VSTPlugins";
+string WIN_VST3_DIR_X86 = "C:\\Program Files (x86)\\Common Files\\VST3";
+string WIN_VST_DIR_X86 = "C:\\Program Files (x86)\\VSTPlugins";
 
 void usage()
 {
@@ -604,11 +604,13 @@ int main(string[] args)
                         string title;
                         string format;
                         string installDir;
+                        string blobName = path ~ "/" ~ plugin.dubTargetPath ~ "\\*.*";
+
                         if(configIsVST(config))
                         {
                             format = "VST";
                             title = "VST plugin-in";
-                            if(arch == Arch.x86_64)
+                            if (arch == arch.x86_64)
                                 installDir = WIN_VST_DIR;
                             else
                                 installDir = WIN_VST_DIR_X86;
@@ -617,7 +619,7 @@ int main(string[] args)
                         {
                             format = "VST3";
                             title = "VST3 plugin-in";
-                            if(arch == Arch.x86_64)
+                            if (arch == arch.x86_64)
                                 installDir = WIN_VST3_DIR;
                             else
                                 installDir = WIN_VST3_DIR_X86;
@@ -634,10 +636,7 @@ int main(string[] args)
                             title = "LV2 plugin-in";
                             installDir = WIN_LV2_DIR;
                         }
-
-                        string blobName = path ~ "/" ~ plugin.dubTargetPath ~ "\\*.*";
-
-                        windowsPackages ~= WindowsPackage(format, pathToContents, blobName, title, installDir);
+                        windowsPackages ~= WindowsPackage(format, pathToContents, blobName, title, installDir, arch == arch.x86_64);
                     }
                 }
                 else version(linux)
@@ -992,6 +991,8 @@ int main(string[] args)
                 cwriteln("*** Generating Windows installer...".white);
                 string windowsInstallerPath = outputDir ~ "/" ~ plugin.windowsInstallerName(configurations[0]);
                 generateWindowsInstaller(outputDir, resDir, plugin, windowsPackages, windowsInstallerPath, verbose);
+                cwriteln("    => OK".green);
+                cwriteln;
             }
         }
 
@@ -1051,6 +1052,7 @@ struct WindowsPackage
     string blobName;
     string title;
     string installDir;
+    bool is64b;
 }
 
 void generateWindowsInstaller(string outputDir,
@@ -1060,13 +1062,24 @@ void generateWindowsInstaller(string outputDir,
                               string outExePath,
                               bool verbose)
 {
-    string nsisPath = "makeInstaller.nsi";
+    string formatSectionDisplayName(WindowsPackage pack)
+    {
+        return format("%s %s", pack.format, pack.is64b ? "(64 bit)" : "(32 bit)");
+    }
+
+    string formatSectionIdentifier(WindowsPackage pack)
+    {
+        return format("%s%s", pack.format, pack.is64b ? "64b" : "32b");
+    }
+
+    string nsisPath = "WindowsInstaller.nsi";
     string licensePath = outputDir ~ "/license.txt";
 
     string content = "";
 
     content ~= "!include \"MUI2.nsh\"\n";
     content ~= "!define MUI_ABORTWARNING\n";
+    content ~= "!define MUI_ICON \"" ~ plugin.iconPath ~ "\"\n";
     content ~= "!insertmacro MUI_PAGE_LICENSE \"" ~ licensePath ~ "\"\n";
     content ~= "!insertmacro MUI_PAGE_COMPONENTS\n";
     content ~= "!insertmacro MUI_UNPAGE_CONFIRM\n";
@@ -1077,14 +1090,14 @@ void generateWindowsInstaller(string outputDir,
 
     foreach(p; packs)
     {
-        content ~= `Section "` ~ p.format ~ `" Sec` ~ p.format ~ "\n";
+        content ~= `Section "` ~ formatSectionDisplayName(p) ~ `" Sec` ~ formatSectionIdentifier(p) ~ "\n";
         content ~= "SectionEnd\n";
     }
 
     content ~= "\n";
 
     foreach(p; packs)
-        content ~= `Var InstDir` ~ p.format ~ "\n";
+        content ~= `Var InstDir` ~ formatSectionIdentifier(p) ~ "\n";
 
     content ~= "Var PartName\n";
     content ~= `Name "$PartName"` ~ "\n\n";
@@ -1093,9 +1106,11 @@ void generateWindowsInstaller(string outputDir,
     {
         if(p.format == "VST")
         {
+            string identifer = formatSectionIdentifier(p);
+            string formatNiceName = formatSectionDisplayName(p);
             content ~= "PageEx directory\n";
-            content ~= "  PageCallbacks defaultInstDir" ~ p.format ~ ` "" getInstDir` ~ p.format ~ "\n";
-            content ~= `  Caption ": ` ~ p.format ~ ` Directory"` ~ "\n";
+            content ~= "  PageCallbacks defaultInstDir" ~ identifer ~ ` "" getInstDir` ~ identifer ~ "\n";
+            content ~= `  Caption ": ` ~ formatNiceName ~ ` Directory"` ~ "\n";
             content ~= "PageExEnd\n";
         }
     }
@@ -1105,16 +1120,18 @@ void generateWindowsInstaller(string outputDir,
     {
         if(p.format == "VST")
         {
-            content ~= "Function defaultInstDir" ~ p.format ~ "\n";
-            content ~= "  ${IfNot} ${SectionIsSelected} ${Sec" ~ p.format ~ "}\n";
+            string identifer = formatSectionIdentifier(p);
+
+            content ~= "Function defaultInstDir" ~ identifer ~ "\n";
+            content ~= "  ${IfNot} ${SectionIsSelected} ${Sec" ~ identifer ~ "}\n";
             content ~= "    Abort\n";
             content ~= "  ${Else}\n";
             content ~= `    StrCpy $INSTDIR "` ~ p.installDir ~ `"` ~ "\n";
             content ~= `    StrCpy $PartName "` ~ p.title ~ `"` ~ "\n";
             content ~= "  ${EndIf}\n";
             content ~= "FunctionEnd\n\n";
-            content ~= "Function getInstDir" ~ p.format ~ "\n";
-            content ~= "  StrCpy $InstDir" ~ p.format ~ " $INSTDIR\n";
+            content ~= "Function getInstDir" ~ identifer ~ "\n";
+            content ~= "  StrCpy $InstDir" ~ identifer ~ " $INSTDIR\n";
             content ~= "FunctionEnd\n\n";
         }
     }
@@ -1123,15 +1140,29 @@ void generateWindowsInstaller(string outputDir,
 
     foreach(p; packs)
     {
-        content ~= "  ${If} ${SectionIsSelected} ${Sec" ~ p.format ~ "}\n";
+        content ~= "  ${If} ${SectionIsSelected} ${Sec" ~ formatSectionIdentifier(p) ~ "}\n";
         content ~= "    SetOutPath \"" ~ p.installDir ~ "\"\n";
         content ~= "    File /r \"" ~ p.blobName ~ "\"\n";
         content ~= "  ${EndIf}\n";
     }
 
     content ~= "SectionEnd\n\n";
-    
+
     std.file.write(nsisPath, cast(void[])content);
+
+    string makeNsiCommand = format("makensis.exe %s", nsisPath);
+    safeCommand(makeNsiCommand);
+
+    // reusing fields already set in paceConfig to sign the output exe.
+    // TODO: move keyPassword-windows and keyFile-windows to plugin.json
+    auto paceConfig = plugin.paceConfig;
+
+    string cmd = format("signtool sign /f %s /p %s /tr http://timestamp.comodoca.com  /td %s", 
+                        paceConfig.keyFileWindows, 
+                        paceConfig.keyPasswordWindows,
+                        outExePath);
+    
+    safeCommand(cmd);
 }
 
 struct MacPackage
