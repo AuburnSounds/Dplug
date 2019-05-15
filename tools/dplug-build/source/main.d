@@ -1157,7 +1157,7 @@ void generateWindowsInstaller(string outputDir,
     // TODO: move keyPassword-windows and keyFile-windows to plugin.json
     auto paceConfig = plugin.paceConfig;
 
-    string cmd = format("signtool sign /f %s /p %s /tr http://timestamp.comodoca.com  /td %s", 
+    string cmd = format("signtool sign /f %s /p %s /tr http://timestamp.comodoca.com/authenticode /td sha256 /fd sha256 /v %s", 
                         paceConfig.keyFileWindows, 
                         paceConfig.keyPasswordWindows,
                         outExePath);
