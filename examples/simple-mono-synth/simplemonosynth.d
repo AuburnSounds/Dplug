@@ -37,8 +37,8 @@ nothrow:
     override LegalIO[] buildLegalIO()
     {
         auto io = makeVec!LegalIO();
-        io.pushBack(LegalIO(0, 1));
-        io.pushBack(LegalIO(0, 2));
+        io ~= LegalIO(0, 1);
+        io ~= LegalIO(0, 2);
         return io.releaseData();
     }
 

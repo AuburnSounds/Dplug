@@ -63,15 +63,15 @@ nothrow @nogc:
         override Parameter[] buildParameters()
         {
             auto params = makeVec!Parameter();
-            params.pushBack(mallocNew!EnumParameter(Params.osc1WaveForm, "Osc 1: Waveform", waveFormNames, 0));
+            params ~= mallocNew!EnumParameter(Params.osc1WaveForm, "Osc 1: Waveform", waveFormNames, 0);
             return params.releaseData();
         }
 
         override LegalIO[] buildLegalIO()
         {
             auto io = makeVec!LegalIO();
-            io.pushBack(LegalIO(0, 1));
-            io.pushBack(LegalIO(0, 2));
+            io ~= LegalIO(0, 1);
+            io ~= LegalIO(0, 2);
             return io.releaseData();
         }
 

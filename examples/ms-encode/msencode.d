@@ -31,14 +31,14 @@ public:
     override Parameter[] buildParameters()
     {
         auto params = makeVec!Parameter();
-        params.pushBack( mallocNew!BoolParameter(paramOnOff, "on/off", true) );
+        params ~= mallocNew!BoolParameter(paramOnOff, "on/off", true);
         return params.releaseData();
     }
 
     override LegalIO[] buildLegalIO()
     {
         auto io = makeVec!LegalIO();
-        io.pushBack(LegalIO(2, 2));
+        io ~= LegalIO(2, 2);
         return io.releaseData();
     }
 

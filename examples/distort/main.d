@@ -50,19 +50,18 @@ nothrow:
     override Parameter[] buildParameters()
     {
         auto params = makeVec!Parameter();
-        params.pushBack( mallocNew!GainParameter(paramInput, "input", 6.0, 0.0) );
-        params.pushBack( mallocNew!LinearFloatParameter(paramDrive, "drive", "%", 1.0f, 2.0f, 1.0f) );
-        params.pushBack( mallocNew!GainParameter(paramOutput, "output", 6.0, 0.0) );
-        params.pushBack( mallocNew!BoolParameter(paramOnOff, "enabled", true) );
-
+        params ~= mallocNew!GainParameter(paramInput, "input", 6.0, 0.0);
+        params ~= mallocNew!LinearFloatParameter(paramDrive, "drive", "%", 1.0f, 2.0f, 1.0f);
+        params ~= mallocNew!GainParameter(paramOutput, "output", 6.0, 0.0);
+        params ~= mallocNew!BoolParameter(paramOnOff, "enabled", true);
         return params.releaseData();
     }
 
     override LegalIO[] buildLegalIO()
     {
         auto io = makeVec!LegalIO();
-        io.pushBack(LegalIO(1, 1));
-        io.pushBack(LegalIO(2, 2));
+        io ~= LegalIO(1, 1);
+        io ~= LegalIO(2, 2);
         return io.releaseData();
     }
 
@@ -78,13 +77,13 @@ nothrow:
     override Preset[] buildPresets() nothrow @nogc
     {
         auto presets = makeVec!Preset();
-        presets.pushBack( makeDefaultPreset() );
+        presets ~= makeDefaultPreset();
 
         static immutable float[] silenceParams = [0.0f, 0.0f, 0.0f, 1.0f, 0];
-        presets.pushBack( mallocNew!Preset("Silence", silenceParams) );
+        presets ~= mallocNew!Preset("Silence", silenceParams);
 
         static immutable float[] fullOnParams = [1.0f, 1.0f, 0.4f, 1.0f, 0];
-        presets.pushBack( mallocNew!Preset("Full-on", fullOnParams) );
+        presets ~= mallocNew!Preset("Full-on", fullOnParams);
         return presets.releaseData();
     }
 

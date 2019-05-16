@@ -53,21 +53,21 @@ nothrow:
     override Parameter[] buildParameters()
     {
         auto params = makeVec!Parameter();
-        params.pushBack( mallocNew!LinearFloatParameter(paramInputGain, "input gain", "dB", -12.0f, 12.0f, 0.0f) );
-        params.pushBack( mallocNew!LinearFloatParameter(paramClip, "clip", "%", 0.0f, 100.0f, 0.0f) );
-        params.pushBack( mallocNew!LinearFloatParameter(paramOutputGain, "output gain", "db", -12.0f, 12.0f, 0.0f) );
-        params.pushBack( mallocNew!LinearFloatParameter(paramMix, "mix", "%", 0.0f, 100.0f, 100.0f) );
-        params.pushBack( mallocNew!BoolParameter(paramMode, "mode", false));
+        params ~= mallocNew!LinearFloatParameter(paramInputGain, "input gain", "dB", -12.0f, 12.0f, 0.0f) ;
+        params ~= mallocNew!LinearFloatParameter(paramClip, "clip", "%", 0.0f, 100.0f, 0.0f) ;
+        params ~= mallocNew!LinearFloatParameter(paramOutputGain, "output gain", "db", -12.0f, 12.0f, 0.0f) ;
+        params ~= mallocNew!LinearFloatParameter(paramMix, "mix", "%", 0.0f, 100.0f, 100.0f) ;
+        params ~= mallocNew!BoolParameter(paramMode, "mode", false);
         return params.releaseData();
     }
 
     override LegalIO[] buildLegalIO()
     {
         auto io = makeVec!LegalIO();
-        io.pushBack(LegalIO(1, 1));
-        io.pushBack(LegalIO(1, 2));
-        io.pushBack(LegalIO(2, 1));
-        io.pushBack(LegalIO(2, 2));
+        io ~= LegalIO(1, 1);
+        io ~= LegalIO(1, 2);
+        io ~= LegalIO(2, 1);
+        io ~= LegalIO(2, 2);
         return io.releaseData();
     }
 
@@ -76,7 +76,7 @@ nothrow:
     override Preset[] buildPresets() nothrow @nogc
     {
         auto presets = makeVec!Preset();
-        presets.pushBack( makeDefaultPreset() );
+        presets ~= makeDefaultPreset();
         return presets.releaseData();
     }
 
