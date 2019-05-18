@@ -1083,6 +1083,8 @@ void generateWindowsInstaller(string outputDir,
     string content = "";
 
     content ~= "!include \"MUI2.nsh\"\n";
+    content ~= "!include \"LogicLib.nsh\"\n";
+    content ~= "!include \"x64.nsh\"\n";
     content ~= `OutFile "` ~ outExePath ~ `"` ~ "\n\n";
 
     if (plugin.windowsInstallerHeaderBmp != null)
@@ -1156,10 +1158,10 @@ void generateWindowsInstaller(string outputDir,
     {
         if(p.format == "LV2")
         {
-            if(p.is64b)
+            if(!p.is64b)
             {
                 content ~= "  ${If} ${SectionIsSelected} ${Sec" ~ p.format ~ "}\n";
-                content ~= "    ${AndIf} ${RunningX64}\n";
+                content ~= "    ${AndIfNot} ${RunningX64}\n";
                 content ~= "      SetOutPath $InstDir" ~ formatSectionIdentifier(p) ~ "\n";
                 content ~= "      SetOutPath \"" ~ p.installDir ~ "\"\n";
                 content ~= "      File /r \"" ~ p.blobName ~ "\"\n";
