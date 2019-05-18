@@ -24,7 +24,7 @@ string MAC_LV2_DIR = "/Library/Audio/Plug-Ins/LV2";
 
 string WIN_VST3_DIR = "C:\\Program Files\\Common Files\\VST3";
 string WIN_VST_DIR = "C:\\Program Files\\VSTPlugins";
-string WIN_LV2_DIR = "%APPDATA%\\LV2";
+string WIN_LV2_DIR = "$APPDATA\\LV2";
 string WIN_AAX_DIR = "C:\\Program Files\\Common Files\\Avid\\Audio\\Plug-Ins";
 string WIN_VST3_DIR_X86 = "C:\\Program Files (x86)\\Common Files\\VST3";
 string WIN_VST_DIR_X86 = "C:\\Program Files (x86)\\VSTPlugins";
@@ -1062,6 +1062,11 @@ void generateWindowsInstaller(string outputDir,
                               string outExePath,
                               bool verbose)
 {
+    import std.algorithm.iteration : uniq;
+    import std.regex: regex, replaceAll;
+
+    string headerImagePage = plugin.windowsInstallerHeaderBmp.replaceAll(r"^./".regex, "");
+
     string formatSectionDisplayName(WindowsPackage pack)
     {
         return format("%s %s", pack.format, pack.is64b ? "(64 bit)" : "(32 bit)");
@@ -1078,26 +1083,35 @@ void generateWindowsInstaller(string outputDir,
     string content = "";
 
     content ~= "!include \"MUI2.nsh\"\n";
+    content ~= `OutFile "` ~ outExePath ~ `"` ~ "\n\n";
+
+    if (plugin.windowsInstallerHeaderBmp != null)
+    {
+        content ~= "!define MUI_HEADERIMAGE\n";
+        content ~= "!define MUI_HEADERIMAGE_BITMAP \"" ~ headerImagePage ~ "\"\n";
+    }
+
     content ~= "!define MUI_ABORTWARNING\n";
     content ~= "!define MUI_ICON \"" ~ plugin.iconPath ~ "\"\n";
     content ~= "!insertmacro MUI_PAGE_LICENSE \"" ~ licensePath ~ "\"\n";
     content ~= "!insertmacro MUI_PAGE_COMPONENTS\n";
-    content ~= "!insertmacro MUI_UNPAGE_CONFIRM\n";
-    content ~= "!insertmacro MUI_UNPAGE_INSTFILES\n\n";
+    content ~= "!insertmacro MUI_LANGUAGE \"English\"\n\n";
 
-    content ~= `OutFile "` ~ outExePath ~ `"` ~ "\n\n";
-    
-
-    foreach(p; packs)
+    foreach(p; packs.uniq!((p1, p2) => p1.format == p2.format))
     {
-        content ~= `Section "` ~ formatSectionDisplayName(p) ~ `" Sec` ~ formatSectionIdentifier(p) ~ "\n";
+        content ~= `Section "` ~ p.format ~ `" Sec` ~ p.format ~ "\n";
         content ~= "SectionEnd\n";
     }
 
     content ~= "\n";
 
     foreach(p; packs)
-        content ~= `Var InstDir` ~ formatSectionIdentifier(p) ~ "\n";
+    {
+        if(p.format == "VST")
+        {
+            content ~= `Var InstDir` ~ formatSectionIdentifier(p) ~ "\n";
+        }
+    }
 
     content ~= "Var PartName\n";
     content ~= `Name "$PartName"` ~ "\n\n";
@@ -1123,7 +1137,7 @@ void generateWindowsInstaller(string outputDir,
             string identifer = formatSectionIdentifier(p);
 
             content ~= "Function defaultInstDir" ~ identifer ~ "\n";
-            content ~= "  ${IfNot} ${SectionIsSelected} ${Sec" ~ identifer ~ "}\n";
+            content ~= "  ${IfNot} ${SectionIsSelected} ${Sec" ~ p.format ~ "}\n";
             content ~= "    Abort\n";
             content ~= "  ${Else}\n";
             content ~= `    StrCpy $INSTDIR "` ~ p.installDir ~ `"` ~ "\n";
@@ -1140,10 +1154,35 @@ void generateWindowsInstaller(string outputDir,
 
     foreach(p; packs)
     {
-        content ~= "  ${If} ${SectionIsSelected} ${Sec" ~ formatSectionIdentifier(p) ~ "}\n";
-        content ~= "    SetOutPath \"" ~ p.installDir ~ "\"\n";
-        content ~= "    File /r \"" ~ p.blobName ~ "\"\n";
-        content ~= "  ${EndIf}\n";
+        if(p.format == "LV2")
+        {
+            if(p.is64b)
+            {
+                content ~= "  ${If} ${SectionIsSelected} ${Sec" ~ p.format ~ "}\n";
+                content ~= "    ${AndIf} ${RunningX64}\n";
+                content ~= "      SetOutPath $InstDir" ~ formatSectionIdentifier(p) ~ "\n";
+                content ~= "      SetOutPath \"" ~ p.installDir ~ "\"\n";
+                content ~= "      File /r \"" ~ p.blobName ~ "\"\n";
+            }
+            else
+            {
+                content ~= "  ${ElseIf} ${SectionIsSelected} ${Sec" ~ p.format ~ "}\n";
+                content ~= "      SetOutPath $InstDir" ~ formatSectionIdentifier(p) ~ "\n";
+                content ~= "      SetOutPath \"" ~ p.installDir ~ "\"\n";
+                content ~= "      File /r \"" ~ p.blobName ~ "\"\n";
+                content ~= "  ${EndIf}\n";
+            }
+        }
+        else
+        {
+            content ~= "  ${If} ${SectionIsSelected} ${Sec" ~ p.format ~ "}\n";
+            if (p.format == "VST")
+                content ~= "    SetOutPath $InstDir" ~ formatSectionIdentifier(p) ~ "\n";
+            else
+                content ~= "    SetOutPath \"" ~ p.installDir ~ "\"\n";
+            content ~= "    File /r \"" ~ p.blobName ~ "\"\n";
+            content ~= "  ${EndIf}\n";
+        }
     }
 
     content ~= "SectionEnd\n\n";

@@ -162,6 +162,8 @@ struct Plugin
     // relative path to a .png for the Mac installer
     string installerPNGPath;
 
+    string windowsInstallerHeaderBmp;
+
 
     bool receivesMIDI;
     bool isSynth;
@@ -605,6 +607,15 @@ Plugin readPluginDescription()
     catch(Exception e)
     {
         result.installerPNGPath = null;
+    }
+
+    try
+    {
+        result.windowsInstallerHeaderBmp = rawPluginFile["windowsInstallerHeaderBmp"].str;
+    }
+    catch(Exception e)
+    {
+        result.windowsInstallerHeaderBmp = null;
     }
 
     try
