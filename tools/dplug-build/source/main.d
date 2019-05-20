@@ -603,7 +603,6 @@ int main(string[] args)
 
                     if(!isTemp && makeInstaller)
                     {
-                        string pathToContents;
                         string title;
                         string format;
                         string installDir;
@@ -640,7 +639,7 @@ int main(string[] args)
                             installDir = WIN_LV2_DIR;
                         }
                         
-                        windowsPackages ~= WindowsPackage(format, pathToContents, blobName, title, installDir, sizeInKiloBytes, arch == arch.x86_64);
+                        windowsPackages ~= WindowsPackage(format, blobName, title, installDir, sizeInKiloBytes, arch == arch.x86_64);
                     }
                 }
                 else version(linux)
@@ -966,7 +965,7 @@ int main(string[] args)
             {
                 cwriteln("*** Generating Windows installer...".white);
                 string windowsInstallerPath = outputDir ~ "/" ~ plugin.windowsInstallerName(configurations[0]);
-                generateWindowsInstaller(outputDir, resDir, plugin, windowsPackages, windowsInstallerPath, verbose);
+                generateWindowsInstaller(outputDir, plugin, windowsPackages, windowsInstallerPath, verbose);
                 cwriteln("    => OK".green);
                 cwriteln;
             }
@@ -1024,7 +1023,6 @@ void buildPlugin(string compiler, string config, string build, bool is64b, bool 
 struct WindowsPackage
 {
     string format;
-    string pathToContents;
     string blobName;
     string title;
     string installDir;
@@ -1033,7 +1031,6 @@ struct WindowsPackage
 }
 
 void generateWindowsInstaller(string outputDir,
-                              string resDir,
                               Plugin plugin,
                               WindowsPackage[] packs,
                               string outExePath,
@@ -1107,7 +1104,6 @@ void generateWindowsInstaller(string outputDir,
         }
     }
 
-    content ~= "Var PartName\n";
     content ~= "Name \"" ~ plugin.pluginName ~ " v" ~ plugin.publicVersionString ~ "\"\n\n";
 
     foreach(p; packs)
@@ -1135,7 +1131,6 @@ void generateWindowsInstaller(string outputDir,
             content ~= "    Abort\n";
             content ~= "  ${Else}\n";
             content ~= `    StrCpy $INSTDIR "` ~ p.installDir ~ `"` ~ "\n";
-            // content ~= `    StrCpy $PartName "` ~ p.title ~ `"` ~ "\n";
             content ~= "  ${EndIf}\n";
             content ~= "FunctionEnd\n\n";
             content ~= "Function getInstDir" ~ identifer ~ "\n";
