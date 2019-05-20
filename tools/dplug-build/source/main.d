@@ -529,6 +529,9 @@ int main(string[] args)
 
                 version(Windows)
                 {
+                    // size used in installer
+                    int sizeInKiloBytes = cast(int) (getSize(plugin.dubOutputFileName) / (1024.0));
+
                     // Special case for AAX need its own directory, but according to Voxengo releases,
                     // its more minimal than either JUCE or IPlug builds.
                     // Only one file (.dll even) seems to be needed in <plugin-name>.aaxplugin\Contents\x64
@@ -636,7 +639,8 @@ int main(string[] args)
                             title = "LV2 plugin-in";
                             installDir = WIN_LV2_DIR;
                         }
-                        windowsPackages ~= WindowsPackage(format, pathToContents, blobName, title, installDir, arch == arch.x86_64);
+                        
+                        windowsPackages ~= WindowsPackage(format, pathToContents, blobName, title, installDir, sizeInKiloBytes, arch == arch.x86_64);
                     }
                 }
                 else version(linux)
@@ -918,38 +922,10 @@ int main(string[] args)
         if (plugin.licensePath)
         {
             string licensePath = outputDir ~ "/license.html";
-            
-            bool convertToText = false;
-            version(Windows)
-            {
-                if (makeInstaller) {
-                    convertToText = true;
-                    licensePath = outputDir ~ "/license.txt";
-                }
-            }
 
-            if (extension(plugin.licensePath) == ".html" && convertToText)
-            {
-                // Convert license HTML file to text
-                cwritefln("*** Converting license file to TEXT... ".white);
-                string html = cast(string)std.file.read(plugin.licensePath);
-                string text = convertHTMLFileToText(html);
-                std.file.write(licensePath, text);
-                cwritefln(" => OK\n".green);
-            }
-            else if (extension(plugin.licensePath) == ".html")
+            if (extension(plugin.licensePath) == ".html")
             {
                 std.file.copy(plugin.licensePath, licensePath);
-            }
-            else if (extension(plugin.licensePath) == ".md" && convertToText)
-            {
-                // Convert license markdown to HTML and then text
-                cwritefln("*** Converting license file to TEXT... ".white);
-                string markdown = cast(string)std.file.read(plugin.licensePath);
-                string html = convertMarkdownFileToHTML(markdown);
-                string text = convertHTMLFileToText(html);
-                std.file.write(licensePath, text);
-                cwritefln(" => OK\n".green);
             }
             else if (extension(plugin.licensePath) == ".md")
             {
@@ -1052,6 +1028,7 @@ struct WindowsPackage
     string blobName;
     string title;
     string installDir;
+    double bytes;
     bool is64b;
 }
 
@@ -1085,6 +1062,7 @@ void generateWindowsInstaller(string outputDir,
     content ~= "!include \"MUI2.nsh\"\n";
     content ~= "!include \"LogicLib.nsh\"\n";
     content ~= "!include \"x64.nsh\"\n";
+    content ~= "BrandingText \"" ~ plugin.vendorName ~ "\"\n";
     content ~= `OutFile "` ~ outExePath ~ `"` ~ "\n\n";
 
     if (plugin.windowsInstallerHeaderBmp != null)
@@ -1099,13 +1077,27 @@ void generateWindowsInstaller(string outputDir,
     content ~= "!insertmacro MUI_PAGE_COMPONENTS\n";
     content ~= "!insertmacro MUI_LANGUAGE \"English\"\n\n";
 
-    foreach(p; packs.uniq!((p1, p2) => p1.format == p2.format))
+    auto sections = packs.uniq!((p1, p2) => p1.format == p2.format);
+    foreach(p; sections)
     {
+        
         content ~= `Section "` ~ p.format ~ `" Sec` ~ p.format ~ "\n";
+        content ~= "AddSize " ~ p.bytes.to!string ~ "\n";
         content ~= "SectionEnd\n";
     }
 
-    content ~= "\n";
+    foreach(p; sections)
+    {
+        content ~= "LangString DESC_" ~ p.format ~ " ${LANG_ENGLISH} \"" ~ p.format ~ " Format\"\n";
+    }
+
+    content ~= "!insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN\n";
+    foreach(p; sections)
+    {
+        
+        content ~= "!insertmacro MUI_DESCRIPTION_TEXT ${Sec" ~ p.format ~ "} $(DESC_" ~ p.format ~ ")\n";
+    }
+    content ~= "!insertmacro MUI_FUNCTION_DESCRIPTION_END\n\n";
 
     foreach(p; packs)
     {
@@ -1116,7 +1108,7 @@ void generateWindowsInstaller(string outputDir,
     }
 
     content ~= "Var PartName\n";
-    content ~= `Name "$PartName"` ~ "\n\n";
+    content ~= "Name \"" ~ plugin.pluginName ~ " v" ~ plugin.publicVersionString ~ "\"\n\n";
 
     foreach(p; packs)
     {
@@ -1143,7 +1135,7 @@ void generateWindowsInstaller(string outputDir,
             content ~= "    Abort\n";
             content ~= "  ${Else}\n";
             content ~= `    StrCpy $INSTDIR "` ~ p.installDir ~ `"` ~ "\n";
-            content ~= `    StrCpy $PartName "` ~ p.title ~ `"` ~ "\n";
+            // content ~= `    StrCpy $PartName "` ~ p.title ~ `"` ~ "\n";
             content ~= "  ${EndIf}\n";
             content ~= "FunctionEnd\n\n";
             content ~= "Function getInstDir" ~ identifer ~ "\n";
@@ -1191,19 +1183,28 @@ void generateWindowsInstaller(string outputDir,
 
     std.file.write(nsisPath, cast(void[])content);
 
-    string makeNsiCommand = format("makensis.exe %s", nsisPath);
+    // run makensis on the generated WindowsInstaller.nsi with verbosity set to errors only
+    string makeNsiCommand = format("makensis.exe /V1 %s", nsisPath);
     safeCommand(makeNsiCommand);
 
     // reusing fields already set in paceConfig to sign the output exe.
     // TODO: move keyPassword-windows and keyFile-windows to plugin.json
     auto paceConfig = plugin.paceConfig;
 
-    string cmd = format("signtool sign /f %s /p %s /tr http://timestamp.comodoca.com/authenticode /td sha256 /fd sha256 /v %s", 
-                        paceConfig.keyFileWindows, 
-                        paceConfig.keyPasswordWindows,
-                        outExePath);
-    
-    safeCommand(cmd);
+    if(paceConfig.keyFileWindows !is null && paceConfig.keyPasswordWindows !is null)
+    {
+        // use windows signtool to sign the installer for distribution
+        string cmd = format("signtool sign /f %s /p %s /tr http://timestamp.comodoca.com/authenticode /td sha256 /fd sha256 /q %s", 
+                            paceConfig.keyFileWindows, 
+                            paceConfig.keyPasswordWindows,
+                            escapeShellArgument(outExePath));
+        
+        safeCommand(cmd);
+    }
+    else
+    {
+        warning("Installer will not be signed because keyFileWindows or keyPasswordWindows is missing from paceConfig.json");
+    }
 }
 
 struct MacPackage

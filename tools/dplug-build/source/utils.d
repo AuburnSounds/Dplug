@@ -78,12 +78,6 @@ string convertMarkdownFileToHTML(string markdownFile)
     return res;
 }
 
-string convertHTMLFileToText(string htmlFile)
-{
-    import std.regex;
-    return replaceAll(htmlFile, r"<[^>]*>".regex, "");
-}
-
 void safeCommand(string cmd)
 {
     cwritefln("$ %s".cyan, cmd);
