@@ -2,9 +2,9 @@
 
 # Dplug [![Build Status](https://travis-ci.org/AuburnSounds/Dplug.svg?branch=master)](https://travis-ci.org/AuburnSounds/Dplug) <a href="https://code.dlang.org/packages/dplug" title="Go to dplug"><img src="https://img.shields.io/dub/v/dplug.svg" alt="Dub version"></a> ![Dplug Discord server](https://discordapp.com/api/guilds/242094594181955585/widget.png?style=shield)
 
-`Dplug` lets you create professional audio plug-ins (VST2 / AU / VST3 / AAX / LV2, Windows/Mac/Linux, 32&64-bit) with D, with unmatched simplicity and speed.
+`Dplug` lets you create professional audio plug-ins with unmatched simplicity and speed, using the D language.
 
-Documentation here: [Dplug Wiki...](https://github.com/AuburnSounds/Dplug/wiki)
+[READ THE WIKI](https://github.com/AuburnSounds/Dplug/wiki)
 
 ## Features
 
@@ -19,7 +19,9 @@ Documentation here: [Dplug Wiki...](https://github.com/AuburnSounds/Dplug/wiki)
 
 - Automated Mac and Windows installers
 - Build plug-ins with less pain using the D language, possibly the most [powerful](https://dlang.org/orgs-using-d.html) native language available today
+- Leverage package-based dependencies using DUB, the D language's package manager
 - Small binaries with (optional) [rendering](http://www.auburnsounds.com/blog/2016-09-16_PBR-for-Audio-Software-Interfaces.html)
+- Static link with the MSCRT runtime libraries to distribute only one single file
 - Support [major DAWs](https://github.com/AuburnSounds/Dplug/wiki/Host-Support)
 - Small, tight-knit community
 
