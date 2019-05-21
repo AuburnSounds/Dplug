@@ -2,18 +2,23 @@
 
 # Dplug [![Build Status](https://travis-ci.org/AuburnSounds/Dplug.svg?branch=master)](https://travis-ci.org/AuburnSounds/Dplug) <a href="https://code.dlang.org/packages/dplug" title="Go to dplug"><img src="https://img.shields.io/dub/v/dplug.svg" alt="Dub version"></a> ![Dplug Discord server](https://discordapp.com/api/guilds/242094594181955585/widget.png?style=shield)
 
-`Dplug` lets you create professional audio plug-ins (VST2 / AU / VST3 / AAX / LV2), Windows/Mac/Linux, 32&64-bit) with D, with unmatched simplicity and speed.
+`Dplug` lets you create professional audio plug-ins (VST2 / AU / VST3 / AAX / LV2, Windows/Mac/Linux, 32&64-bit) with D, with unmatched simplicity and speed.
 
 Documentation here: [Dplug Wiki...](https://github.com/AuburnSounds/Dplug/wiki)
 
 ## Features
 
-- Create VST2 plug-ins for macOS, Windows, and Linux (to distribute VST2 plug-ins be sure to sign a VST2 Licence Agreement with Steinberg)
-- Create Audio Unit v2 plug-ins for macOS
-- Create VST3 plug-ins for macOS, Windows, and Linux (to distribute VST3 plug-ins be sure to sign a VST3 Licence Agreement with Steinberg)
-- Create AAX64 Native plug-ins for macOS and Windows
-- Create LV2 plug-ins for macOS, Windows, and Linux (64-bit only)
-- Build plug-ins faster and with less pain: D language, plug-in bundling, color correction, performance tests...
+|  Plug-in format supported | Mac 64b | Windows 32b | Windows 64b | Linux 64b |
+|---------------------------|---------|-------------|-------------|-----------|
+| VST2                      | Yes     | Yes         | Yes         | Yes       |
+| VST3                      | Yes     | Yes         | Yes         | Yes       |
+| AUv2                      | Yes     | NA          | NA          | NA        |
+| AAX                       | Yes     | No          | Yes         | No        |
+| LV2                       | Yes     | No          | Yes         | Yes       |
+
+
+- Automated Mac and Windows installers
+- Build plug-ins with less pain using the D language, possibly the most [powerful](https://dlang.org/orgs-using-d.html) native language available today
 - Small binaries with (optional) [rendering](http://www.auburnsounds.com/blog/2016-09-16_PBR-for-Audio-Software-Interfaces.html)
 - Support [major DAWs](https://github.com/AuburnSounds/Dplug/wiki/Host-Support)
 - Small, tight-knit community
@@ -59,12 +64,12 @@ No. And if you don't use it, you don't pay for it.
 
 - What is the oldest supported Windows version?
 
-Windows Vista. 
+Windows 7. 
 
 
 - What is the oldest supported OS X version?
 
-OS X 10.8+.
+OS X 10.9+.
 
 - What D compiler can possibly be used?
 
@@ -82,7 +87,7 @@ Dplug has excellent stability.
 Dplug documents all breaking changes in the [Changelog](https://github.com/AuburnSounds/Dplug/wiki/) and
 issues major SemVer tags for breaking changes.
 
-If you don't want breaking changes, you can pin Dplug to a major version in your `dub.json`.
+If you don't want any breaking changes, you can pin Dplug to a major version in your `dub.json`.
 
 But reality is complex, and bug fixes can be breaking too, (eg: "highpass FIR wasn't working").
 In which case we have to make a judgment call as to whether it's a breaking fix, and whether the buggy feature was used.
@@ -92,7 +97,7 @@ They are discussed on Discord to assess the impact. Make yourself known!
 
 - Will you add feature X?
 
-You have to understand that Dplug is a part-time operation, from people who spend much more time working on and releasing commercial plug-ins.
+Dplug is a part-time operation, from people who spend time working on and releasing commercial plug-ins.
 
 **Dplug is there to support existing products and building commercial companies around them**, not to be beta software and make empty promises. 
 Being stable and bug-free is much more important to us than implement every possible feature.
@@ -117,7 +122,7 @@ Be sure to read the [Wiki](https://github.com/AuburnSounds/Dplug/wiki/) in depth
   - PBR-style rendering lets you have a good visual quality with less disk space. If you don't use it, you don't pay for it.
   - No dealing with resource compilers: D can `import("filename.ext")` them
   - Easy to install and update
-  - Constant push to fight complexity and minimize LOC
+  - Constant push to fight complexity
 
 
 ### VST SDK
@@ -134,6 +139,7 @@ Dplug has many different licenses depending on the sub-package you need.
 Please check individual source files for license information.
 **Please do your homework and respect the individual licences when releasing a plug-in.**
 
+- [Dplug VST2 Guide](https://github.com/AuburnSounds/Dplug/wiki/Dplug-VST2-Guide)
 - [Dplug AAX Guide](https://github.com/AuburnSounds/Dplug/wiki/Dplug-AAX-Guide)
 - [Dplug VST3 Guide](https://github.com/AuburnSounds/Dplug/wiki/Dplug-VST3-Guide)
 
