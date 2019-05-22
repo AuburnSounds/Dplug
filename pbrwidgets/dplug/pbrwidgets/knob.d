@@ -49,6 +49,7 @@ nothrow:
     float LEDRadiusMax = 0.127f;
     RGBA LEDDiffuseLit = RGBA(255, 140, 220, 215);
     RGBA LEDDiffuseUnlit = RGBA(255, 140, 220, 40);
+    RGBA LEDMaterial = RGBA(128, 128, 255, 255);
     float LEDDistanceFromCenter = 0.8f;
     float LEDDistanceFromCenterDragged = 0.7f;
     ushort LEDDepth = 65000;
@@ -249,7 +250,7 @@ nothrow:
 
                 croppedDepth.aaSoftDisc(x - bx, y - by, 0, largerRadius, L16(LEDDepth));
                 croppedDiffuse.aaSoftDisc(x - bx, y - by, 0, largerRadius, LEDDiffuse);
-                croppedMaterial.aaSoftDisc(x - bx, y - by, smallRadius, largerRadius, RGBA(128, 128, 255, 255));
+                croppedMaterial.aaSoftDisc(x - bx, y - by, smallRadius, largerRadius, LEDMaterial);
             }
         }
     }
