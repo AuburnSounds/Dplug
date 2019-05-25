@@ -1189,16 +1189,12 @@ void generateWindowsInstaller(string outputDir,
     string makeNsiCommand = format("makensis.exe /V1 %s", nsisPath);
     safeCommand(makeNsiCommand);
 
-    // reusing fields already set in paceConfig to sign the output exe.
-    // TODO: move keyPassword-windows and keyFile-windows to plugin.json
-    auto paceConfig = plugin.paceConfig;
-
-    if(paceConfig.keyFileWindows !is null && paceConfig.keyPasswordWindows !is null)
+    if(plugin.keyFileWindows !is null && plugin.keyPasswordWindows !is null)
     {
         // use windows signtool to sign the installer for distribution
         string cmd = format("signtool sign /f %s /p %s /tr http://timestamp.comodoca.com/authenticode /td sha256 /fd sha256 /q %s", 
-                            paceConfig.keyFileWindows, 
-                            paceConfig.keyPasswordWindows,
+                            plugin.keyFileWindows, 
+                            plugin.keyPasswordWindows,
                             escapeShellArgument(outExePath));
         
         safeCommand(cmd);
