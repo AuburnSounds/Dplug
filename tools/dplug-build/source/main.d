@@ -1040,18 +1040,32 @@ void generateWindowsInstaller(string outputDir,
     import std.regex: regex, replaceAll;
     import std.array : array;
 
-    string headerImagePage = plugin.windowsInstallerHeaderBmp.replaceAll(r"^./".regex, "");
-
-    string formatSectionDisplayName(WindowsPackage pack)
+    string formatSectionDisplayName(WindowsPackage pack) pure
     {
         return format("%s %s", pack.format, pack.is64b ? "(64 bit)" : "(32 bit)");
     }
 
-    string formatSectionIdentifier(WindowsPackage pack)
+    string formatSectionIdentifier(WindowsPackage pack) pure
     {
         return format("%s%s", pack.format, pack.is64b ? "64b" : "32b");
     }
 
+    string sectionDescription(WindowsPackage pack) pure 
+    {
+        if (pack.format == "VST")
+            return "For VST 2.4 hosts like Live, FL Studio, Bitwig, Reason, etc. Includes both 32bit and 64bit components.";
+        else if(pack.format == "VST3")
+            return "For VST3 hosts like Cubase, Digital Performer, Wavelab., etc. Includes both 32bit and 64bit components.";
+        else if(pack.format == "AAX")
+            return "For Pro Tools 11 or later";
+        else if(pack.format == "LV2")
+            return "For LV2 hosts like Mixbus and Ardour";
+        else
+            return "";
+    }
+
+    //remove ./ if it occurs at the beginning of windowsInstallerHeaderBmp
+    string headerImagePage = plugin.windowsInstallerHeaderBmp.replaceAll(r"^./".regex, "");
     string nsisPath = "WindowsInstaller.nsi";
     string licensePath = plugin.licensePath;
 
@@ -1086,7 +1100,7 @@ void generateWindowsInstaller(string outputDir,
 
     foreach(p; sections)
     {
-        content ~= "LangString DESC_" ~ p.format ~ " ${LANG_ENGLISH} \"" ~ p.format ~ " Format\"\n";
+        content ~= "LangString DESC_" ~ p.format ~ " ${LANG_ENGLISH} \"" ~ sectionDescription(p) ~ "\"\n";
     }
 
     content ~= "!insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN\n";
