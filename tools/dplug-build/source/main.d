@@ -1036,8 +1036,9 @@ void generateWindowsInstaller(string outputDir,
                               string outExePath,
                               bool verbose)
 {
-    import std.algorithm.iteration : uniq;
+    import std.algorithm.iteration : uniq, filter;
     import std.regex: regex, replaceAll;
+    import std.array : array;
 
     string headerImagePage = plugin.windowsInstallerHeaderBmp.replaceAll(r"^./".regex, "");
 
@@ -1052,7 +1053,7 @@ void generateWindowsInstaller(string outputDir,
     }
 
     string nsisPath = "WindowsInstaller.nsi";
-    string licensePath = outputDir ~ "/license.txt";
+    string licensePath = plugin.licensePath;
 
     string content = "";
 
@@ -1141,9 +1142,14 @@ void generateWindowsInstaller(string outputDir,
 
     content ~= "Section\n";
 
+    auto lv2Packs = packs.filter!((p) => p.format == "LV2").array();
     foreach(p; packs)
     {
-        if(p.format == "LV2")
+        // Handle special case for LV2 if both 32bit and 64bit are built, create check in the installer
+        // to install the correct version for the user's OS
+        // TODO: The manifest is only generated for the bitness that dplug-build is built in. We could take advantage
+        // of the installer to install the manifest for 32bit and 64bit
+        if(p.format == "LV2" && lv2Packs.length > 1)
         {
             if(!p.is64b)
             {
@@ -1162,6 +1168,7 @@ void generateWindowsInstaller(string outputDir,
                 content ~= "  ${EndIf}\n";
             }
         }
+        // For all other formats
         else
         {
             content ~= "  ${If} ${SectionIsSelected} ${Sec" ~ p.format ~ "}\n";
