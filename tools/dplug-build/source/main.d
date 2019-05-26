@@ -1085,6 +1085,7 @@ void generateWindowsInstaller(string outputDir,
     content ~= "!include \"LogicLib.nsh\"\n";
     content ~= "!include \"x64.nsh\"\n";
     content ~= "BrandingText \"" ~ plugin.vendorName ~ "\"\n";
+    content ~= "SpaceTexts none\n";
     content ~= `OutFile "` ~ outExePath ~ `"` ~ "\n\n";
 
     if (plugin.windowsInstallerHeaderBmp != null)
