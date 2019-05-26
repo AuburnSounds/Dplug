@@ -1064,6 +1064,16 @@ void generateWindowsInstaller(string outputDir,
             return "";
     }
 
+    string vstInstallDirDescription(bool is64b) pure
+    {
+        string description = "";
+        description ~= "Setup will install VST (";
+        description ~= is64b ? "64" : "32";
+        description ~= " bit) in the following folder.  To install in a different folder, ";
+        description ~= "click Browse and select another folder.  Click install to start the installation.";
+        return description;
+    }
+
     //remove ./ if it occurs at the beginning of windowsInstallerHeaderBmp
     string headerImagePage = plugin.windowsInstallerHeaderBmp.replaceAll(r"^./".regex, "");
     string nsisPath = "WindowsInstaller.nsi";
@@ -1129,6 +1139,7 @@ void generateWindowsInstaller(string outputDir,
             string formatNiceName = formatSectionDisplayName(p);
             content ~= "PageEx directory\n";
             content ~= "  PageCallbacks defaultInstDir" ~ identifer ~ ` "" getInstDir` ~ identifer ~ "\n";
+            content ~= "  DirText \"" ~ vstInstallDirDescription(p.is64b) ~ "\" \"\" \"\" \"\"\n";
             content ~= `  Caption ": ` ~ formatNiceName ~ ` Directory"` ~ "\n";
             content ~= "PageExEnd\n";
         }
