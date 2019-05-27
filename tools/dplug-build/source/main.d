@@ -22,6 +22,13 @@ string MAC_AU_DIR  = "/Library/Audio/Plug-Ins/Components";
 string MAC_AAX_DIR = "/Library/Application Support/Avid/Audio/Plug-Ins";
 string MAC_LV2_DIR = "/Library/Audio/Plug-Ins/LV2";
 
+string WIN_VST3_DIR = "C:\\Program Files\\Common Files\\VST3";
+string WIN_VST_DIR = "C:\\Program Files\\VSTPlugins";
+string WIN_LV2_DIR = "$APPDATA\\LV2";
+string WIN_AAX_DIR = "C:\\Program Files\\Common Files\\Avid\\Audio\\Plug-Ins";
+string WIN_VST3_DIR_X86 = "C:\\Program Files (x86)\\Common Files\\VST3";
+string WIN_VST_DIR_X86 = "C:\\Program Files (x86)\\VSTPlugins";
+
 void usage()
 {
     void flag(string arg, string desc, string possibleValues, string defaultDesc)
@@ -158,6 +165,8 @@ int main(string[] args)
             {
                 version(OSX)
                     makeInstaller = true;
+                version(Windows)
+                    makeInstaller = true;
                 else
                     warning("--installer not supported on that OS");
             }
@@ -268,6 +277,11 @@ int main(string[] args)
             MacPackage[] macInstallerPackages;
         }
 
+        version(Windows)
+        {
+            WindowsPackage[] windowsPackages;
+        }
+
         cwriteln();
 
         if (!quiet)
@@ -284,7 +298,12 @@ int main(string[] args)
             if (auval)
                 cwritefln("   Then Audio Unit validation with auval will be performed for arch %s.".green, archs[$-1]);
             if (makeInstaller)
-                cwritefln("   Then a Mac installer will be created for distribution outside of the App Store.".green);
+            {
+                version(OSX)
+                    cwritefln("   Then a Mac installer will be created for distribution outside of the App Store.".green);
+                version(Windows)
+                    cwritefln("   Then a Windows installer will be created for distribution.".green);
+            }
             cwriteln();
         }
 
@@ -510,6 +529,9 @@ int main(string[] args)
 
                 version(Windows)
                 {
+                    // size used in installer
+                    int sizeInKiloBytes = cast(int) (getSize(plugin.dubOutputFileName) / (1024.0));
+
                     // Special case for AAX need its own directory, but according to Voxengo releases,
                     // its more minimal than either JUCE or IPlug builds.
                     // Only one file (.dll even) seems to be needed in <plugin-name>.aaxplugin\Contents\x64
@@ -577,6 +599,47 @@ int main(string[] args)
 
                         // Simply copy the file
                         fileMove(plugin.dubOutputFileName, path ~ "/" ~ appendBitness(plugin.prettyName, plugin.dubOutputFileName));
+                    }
+
+                    if(!isTemp && makeInstaller)
+                    {
+                        string title;
+                        string format;
+                        string installDir;
+                        string blobName = path ~ "/" ~ plugin.dubTargetPath ~ "\\*.*";
+
+                        if(configIsVST(config))
+                        {
+                            format = "VST";
+                            title = "VST plugin-in";
+                            if (arch == arch.x86_64)
+                                installDir = WIN_VST_DIR;
+                            else
+                                installDir = WIN_VST_DIR_X86;
+                        }
+                        else if (configIsVST3(config))
+                        {
+                            format = "VST3";
+                            title = "VST3 plugin-in";
+                            if (arch == arch.x86_64)
+                                installDir = WIN_VST3_DIR;
+                            else
+                                installDir = WIN_VST3_DIR_X86;
+                        }
+                        else if (configIsAAX(config))
+                        {
+                            format = "AAX";
+                            title = "AAX plugin-in";
+                            installDir = WIN_AAX_DIR;
+                        }
+                        else if (configIsLV2(config))
+                        {
+                            format = "LV2";
+                            title = "LV2 plugin-in";
+                            installDir = WIN_LV2_DIR;
+                        }
+                        
+                        windowsPackages ~= WindowsPackage(format, blobName, title, installDir, sizeInKiloBytes, arch == arch.x86_64);
                     }
                 }
                 else version(linux)
@@ -764,8 +827,10 @@ int main(string[] args)
                         string pkgIdentifier;
                         string pkgFilename;
                         string title;
+
                         if (configIsVST(config))
                         {
+                            
                             pkgIdentifier = plugin.pkgBundleVST();
                             pkgFilename   = plugin.pkgFilenameVST();
                             title = "VST plug-in";
@@ -856,6 +921,7 @@ int main(string[] args)
         if (plugin.licensePath)
         {
             string licensePath = outputDir ~ "/license.html";
+
             if (extension(plugin.licensePath) == ".html")
             {
                 std.file.copy(plugin.licensePath, licensePath);
@@ -892,6 +958,19 @@ int main(string[] args)
                 cwriteln;
             }
         }
+
+        version(Windows)
+        {
+            if (makeInstaller)
+            {
+                cwriteln("*** Generating Windows installer...".white);
+                string windowsInstallerPath = outputDir ~ "/" ~ plugin.windowsInstallerName(configurations[0]);
+                generateWindowsInstaller(outputDir, plugin, windowsPackages, windowsInstallerPath, verbose);
+                cwriteln("    => OK".green);
+                cwriteln;
+            }
+        }
+
         return 0;
     }
     catch(DplugBuildBuiltCorrectlyException e)
@@ -939,6 +1018,217 @@ void buildPlugin(string compiler, string config, string build, bool is64b, bool 
         skipRegistry ? " --skip-registry=all" : ""
         );
     safeCommand(cmd);
+}
+
+struct WindowsPackage
+{
+    string format;
+    string blobName;
+    string title;
+    string installDir;
+    double bytes;
+    bool is64b;
+}
+
+void generateWindowsInstaller(string outputDir,
+                              Plugin plugin,
+                              WindowsPackage[] packs,
+                              string outExePath,
+                              bool verbose)
+{
+    import std.algorithm.iteration : uniq, filter;
+    import std.regex: regex, replaceAll;
+    import std.array : array;
+
+    string formatSectionDisplayName(WindowsPackage pack) pure
+    {
+        return format("%s %s", pack.format, pack.is64b ? "(64 bit)" : "(32 bit)");
+    }
+
+    string formatSectionIdentifier(WindowsPackage pack) pure
+    {
+        return format("%s%s", pack.format, pack.is64b ? "64b" : "32b");
+    }
+
+    string sectionDescription(WindowsPackage pack) pure 
+    {
+        if (pack.format == "VST")
+            return "For VST 2.4 hosts like Live, FL Studio, Bitwig, Reason, etc. Includes both 32bit and 64bit components.";
+        else if(pack.format == "VST3")
+            return "For VST3 hosts like Cubase, Digital Performer, Wavelab., etc. Includes both 32bit and 64bit components.";
+        else if(pack.format == "AAX")
+            return "For Pro Tools 11 or later";
+        else if(pack.format == "LV2")
+            return "For LV2 hosts like Mixbus and Ardour";
+        else
+            return "";
+    }
+
+    string vstInstallDirDescription(bool is64b) pure
+    {
+        string description = "";
+        description ~= "Setup will install VST (";
+        description ~= is64b ? "64" : "32";
+        description ~= " bit) in the following folder.  To install in a different folder, ";
+        description ~= "click Browse and select another folder.  Click install to start the installation.";
+        return description;
+    }
+
+    //remove ./ if it occurs at the beginning of windowsInstallerHeaderBmp
+    string headerImagePage = plugin.windowsInstallerHeaderBmp.replaceAll(r"^./".regex, "");
+    string nsisPath = "WindowsInstaller.nsi";
+    string licensePath = plugin.licensePath;
+
+    string content = "";
+
+    content ~= "!include \"MUI2.nsh\"\n";
+    content ~= "!include \"LogicLib.nsh\"\n";
+    content ~= "!include \"x64.nsh\"\n";
+    content ~= "BrandingText \"" ~ plugin.vendorName ~ "\"\n";
+    content ~= "SpaceTexts none\n";
+    content ~= `OutFile "` ~ outExePath ~ `"` ~ "\n\n";
+
+    if (plugin.windowsInstallerHeaderBmp != null)
+    {
+        content ~= "!define MUI_HEADERIMAGE\n";
+        content ~= "!define MUI_HEADERIMAGE_BITMAP \"" ~ headerImagePage ~ "\"\n";
+    }
+
+    content ~= "!define MUI_ABORTWARNING\n";
+    content ~= "!define MUI_ICON \"" ~ plugin.iconPath ~ "\"\n";
+    content ~= "!insertmacro MUI_PAGE_LICENSE \"" ~ licensePath ~ "\"\n";
+    content ~= "!insertmacro MUI_PAGE_COMPONENTS\n";
+    content ~= "!insertmacro MUI_LANGUAGE \"English\"\n\n";
+
+    auto sections = packs.uniq!((p1, p2) => p1.format == p2.format);
+    foreach(p; sections)
+    {
+        
+        content ~= `Section "` ~ p.format ~ `" Sec` ~ p.format ~ "\n";
+        content ~= "AddSize " ~ p.bytes.to!string ~ "\n";
+        content ~= "SectionEnd\n";
+    }
+
+    foreach(p; sections)
+    {
+        content ~= "LangString DESC_" ~ p.format ~ " ${LANG_ENGLISH} \"" ~ sectionDescription(p) ~ "\"\n";
+    }
+
+    content ~= "!insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN\n";
+    foreach(p; sections)
+    {
+        
+        content ~= "!insertmacro MUI_DESCRIPTION_TEXT ${Sec" ~ p.format ~ "} $(DESC_" ~ p.format ~ ")\n";
+    }
+    content ~= "!insertmacro MUI_FUNCTION_DESCRIPTION_END\n\n";
+
+    foreach(p; packs)
+    {
+        if(p.format == "VST")
+        {
+            content ~= `Var InstDir` ~ formatSectionIdentifier(p) ~ "\n";
+        }
+    }
+
+    content ~= "Name \"" ~ plugin.pluginName ~ " v" ~ plugin.publicVersionString ~ "\"\n\n";
+
+    foreach(p; packs)
+    {
+        if(p.format == "VST")
+        {
+            string identifer = formatSectionIdentifier(p);
+            string formatNiceName = formatSectionDisplayName(p);
+            content ~= "PageEx directory\n";
+            content ~= "  PageCallbacks defaultInstDir" ~ identifer ~ ` "" getInstDir` ~ identifer ~ "\n";
+            content ~= "  DirText \"" ~ vstInstallDirDescription(p.is64b) ~ "\" \"\" \"\" \"\"\n";
+            content ~= `  Caption ": ` ~ formatNiceName ~ ` Directory"` ~ "\n";
+            content ~= "PageExEnd\n";
+        }
+    }
+    content ~= "Page instfiles\n";
+
+    foreach(p; packs)
+    {
+        if(p.format == "VST")
+        {
+            string identifer = formatSectionIdentifier(p);
+
+            content ~= "Function defaultInstDir" ~ identifer ~ "\n";
+            content ~= "  ${IfNot} ${SectionIsSelected} ${Sec" ~ p.format ~ "}\n";
+            content ~= "    Abort\n";
+            content ~= "  ${Else}\n";
+            content ~= `    StrCpy $INSTDIR "` ~ p.installDir ~ `"` ~ "\n";
+            content ~= "  ${EndIf}\n";
+            content ~= "FunctionEnd\n\n";
+            content ~= "Function getInstDir" ~ identifer ~ "\n";
+            content ~= "  StrCpy $InstDir" ~ identifer ~ " $INSTDIR\n";
+            content ~= "FunctionEnd\n\n";
+        }
+    }
+
+    content ~= "Section\n";
+
+    auto lv2Packs = packs.filter!((p) => p.format == "LV2").array();
+    foreach(p; packs)
+    {
+        // Handle special case for LV2 if both 32bit and 64bit are built, create check in the installer
+        // to install the correct version for the user's OS
+        // TODO: The manifest is only generated for the bitness that dplug-build is built in. We could take advantage
+        // of the installer to install the manifest for 32bit and 64bit
+        if(p.format == "LV2" && lv2Packs.length > 1)
+        {
+            if(!p.is64b)
+            {
+                content ~= "  ${If} ${SectionIsSelected} ${Sec" ~ p.format ~ "}\n";
+                content ~= "    ${AndIfNot} ${RunningX64}\n";
+                content ~= "      SetOutPath $InstDir" ~ formatSectionIdentifier(p) ~ "\n";
+                content ~= "      SetOutPath \"" ~ p.installDir ~ "\"\n";
+                content ~= "      File /r \"" ~ p.blobName ~ "\"\n";
+            }
+            else
+            {
+                content ~= "  ${ElseIf} ${SectionIsSelected} ${Sec" ~ p.format ~ "}\n";
+                content ~= "      SetOutPath $InstDir" ~ formatSectionIdentifier(p) ~ "\n";
+                content ~= "      SetOutPath \"" ~ p.installDir ~ "\"\n";
+                content ~= "      File /r \"" ~ p.blobName ~ "\"\n";
+                content ~= "  ${EndIf}\n";
+            }
+        }
+        // For all other formats
+        else
+        {
+            content ~= "  ${If} ${SectionIsSelected} ${Sec" ~ p.format ~ "}\n";
+            if (p.format == "VST")
+                content ~= "    SetOutPath $InstDir" ~ formatSectionIdentifier(p) ~ "\n";
+            else
+                content ~= "    SetOutPath \"" ~ p.installDir ~ "\"\n";
+            content ~= "    File /r \"" ~ p.blobName ~ "\"\n";
+            content ~= "  ${EndIf}\n";
+        }
+    }
+
+    content ~= "SectionEnd\n\n";
+
+    std.file.write(nsisPath, cast(void[])content);
+
+    // run makensis on the generated WindowsInstaller.nsi with verbosity set to errors only
+    string makeNsiCommand = format("makensis.exe /V1 %s", nsisPath);
+    safeCommand(makeNsiCommand);
+
+    if(plugin.keyFileWindows !is null && plugin.keyPasswordWindows !is null)
+    {
+        // use windows signtool to sign the installer for distribution
+        string cmd = format("signtool sign /f %s /p %s /tr http://timestamp.comodoca.com/authenticode /td sha256 /fd sha256 /q %s", 
+                            plugin.keyFileWindows, 
+                            plugin.keyPasswordWindows,
+                            escapeShellArgument(outExePath));
+        
+        safeCommand(cmd);
+    }
+    else
+    {
+        warning("Installer will not be signed because keyFileWindows or keyPasswordWindows is missing from paceConfig.json");
+    }
 }
 
 struct MacPackage

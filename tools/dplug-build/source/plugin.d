@@ -162,6 +162,17 @@ struct Plugin
     // relative path to a .png for the Mac installer
     string installerPNGPath;
 
+    // relative path to .bmp image for Windows installer header
+    string windowsInstallerHeaderBmp;
+
+    // WIndows-only, points to a .p12/.pfx certificate...
+    // duplicate key in pace.json
+    string keyFileWindows;
+
+    // ...and the password of its private key
+    // duplicate key in pace.json
+    string keyPasswordWindows;
+
 
     bool receivesMIDI;
     bool isSynth;
@@ -386,6 +397,21 @@ struct Plugin
         }
     }
 
+    version(Windows)
+    {
+        string windowsInstallerName(string config) pure const
+        {
+            string verName = stripConfig(config);
+            if(verName)
+                verName = "-" ~ verName;
+            else
+                verName = "";
+            return format("%s%s-%s.exe", sanitizeFilenameString(pluginName),
+                                         verName,
+                                         publicVersionString);
+        }
+    }
+
     string getLV2PrettyName()
     {
         // Note: Carla doesn't support IRI with escaped character, so we have to remove
@@ -594,11 +620,38 @@ Plugin readPluginDescription()
 
     try
     {
+        result.windowsInstallerHeaderBmp = rawPluginFile["windowsInstallerHeaderBmp"].str;
+    }
+    catch(Exception e)
+    {
+        result.windowsInstallerHeaderBmp = null;
+    }
+
+    try
+    {
+        result.keyFileWindows = rawPluginFile["keyFile-windows"].str;
+    }
+    catch(Exception e)
+    {
+        result.keyFileWindows = null;
+    }
+
+    try
+    {
+        result.keyPasswordWindows = rawPluginFile["keyPassword-windows"].str;
+    }
+    catch(Exception e)
+    {
+        result.keyPasswordWindows = null;
+    }
+
+    try
+    {
         result.iconPath = rawPluginFile["iconPath"].str;
     }
     catch(Exception e)
     {
-        //info("Missing \"iconPath\" in plugin.json (eg: \"gfx/myIcon.png\")");
+        info("Missing \"iconPath\" in plugin.json (eg: \"gfx/myIcon.ico\")");
     }
 
     // Mandatory keys, but with workarounds
