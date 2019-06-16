@@ -108,24 +108,24 @@ nothrow:
 
         /// Read parameter values
         /// Convert decibel values to floating point
-        immutable float inputGain = pow(10, readFloatParamValue(paramInputGain) /20);
-        immutable float outputGain = pow(10, readFloatParamValue(paramOutputGain) /20);
+        immutable float inputGain = pow(10, readParam!float(paramInputGain) /20);
+        immutable float outputGain = pow(10, readParam!float(paramOutputGain) /20);
 
-        immutable float mix = readFloatParamValue(paramMix) / 100.0f;
+        immutable float mix = readParam!float(paramMix) / 100.0f;
 
-        immutable bool hardClip = readBoolParamValue(paramMode);
+        immutable bool hardClip = readParam!bool(paramMode);
 
         float clipAmount;
         float clipInv;
         if(hardClip)
         {
-            clipAmount = 1 - (readFloatParamValue(paramClip) / 100.0f);
+            clipAmount = 1 - (readParam!float(paramClip) / 100.0f);
             /// Clamp clipAmount to ensure it is never 0
             clipAmount = clamp(clipAmount, 0.1, 1);
         }
         else
         {
-            clipAmount = readFloatParamValue(paramClip) / 3;
+            clipAmount = readParam!float(paramClip) / 3;
             clipInv = 1 / clipAmount;
         }
 
