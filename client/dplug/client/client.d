@@ -546,7 +546,8 @@ nothrow:
     }
 
     /// Boilerplate function to get the value of a `FloatParameter`, for use in `processAudio`.
-    final float readFloatParamValue(int paramIndex) nothrow @nogc
+    final T readParam(T)(int paramIndex) nothrow @nogc
+        if (is(T == float))
     {
         auto p = param(paramIndex);
         assert(cast(FloatParameter)p !is null); // check it's a FloatParameter
@@ -554,22 +555,25 @@ nothrow:
     }
 
     /// Boilerplate function to get the value of an `IntParameter`, for use in `processAudio`.
-    final int readIntegerParamValue(int paramIndex) nothrow @nogc
+    final T readParam(T)(int paramIndex) nothrow @nogc
+        if (is(T == int) && !is(T == enum))
     {
         auto p = param(paramIndex);
         assert(cast(IntegerParameter)p !is null); // check it's an IntParameter
         return unsafeObjectCast!IntegerParameter(p).valueAtomic();
     }
 
-    final int readEnumParamValue(int paramIndex) nothrow @nogc
+    final T readParam(T)(int paramIndex) nothrow @nogc
+        if (is(T == enum))
     {
         auto p = param(paramIndex);
         assert(cast(EnumParameter)p !is null); // check it's an EnumParameter
-        return unsafeObjectCast!EnumParameter(p).valueAtomic();
+        return cast(T)(unsafeObjectCast!EnumParameter(p).valueAtomic());
     }
 
     /// Boilerplate function to get the value of a `BoolParameter`,for use in `processAudio`.
-    final bool readBoolParamValue(int paramIndex) nothrow @nogc
+    final T readParam(T)(int paramIndex) nothrow @nogc
+        if (is(T == bool))
     {
         auto p = param(paramIndex);
         assert(cast(BoolParameter)p !is null); // check it's a BoolParameter
