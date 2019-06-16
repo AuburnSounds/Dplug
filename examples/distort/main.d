@@ -119,11 +119,11 @@ nothrow:
 
         int minChan = numInputs > numOutputs ? numOutputs : numInputs;
 
-        float inputGain = convertDecibelToLinearGain(readFloatParamValue(paramInput));
-        float drive = readFloatParamValue(paramDrive);
-        float outputGain = convertDecibelToLinearGain(readFloatParamValue(paramOutput));
+        float inputGain = convertDecibelToLinearGain(readParam!float(paramInput));
+        float drive = readParam!float(paramDrive);
+        float outputGain = convertDecibelToLinearGain(readParam!float(paramOutput));
 
-        bool enabled = readBoolParamValue(paramOnOff);
+        bool enabled = readParam!bool(paramOnOff);
 
         float[2] RMS = 0;
 

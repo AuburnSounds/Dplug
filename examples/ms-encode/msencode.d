@@ -48,7 +48,7 @@ public:
 
     override void processAudio(const(float*)[] inputs, float*[]outputs, int frames, TimeInfo info) nothrow @nogc
     {
-        if (readBoolParamValue(paramOnOff))
+        if (readParam!bool(paramOnOff))
         {
             outputs[0][0..frames] = ( (inputs[0][0..frames] + inputs[1][0..frames]) ) * SQRT1_2;
             outputs[1][0..frames] = ( (inputs[0][0..frames] - inputs[1][0..frames]) ) * SQRT1_2;
