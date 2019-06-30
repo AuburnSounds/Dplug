@@ -75,7 +75,7 @@ enum UILayer
 
     /// Only the Raw layer is invalidated.
     /// This is what you want if your `UIElement` draw to both Raw and PBR layer, but this 
-    /// time you only want to udpate a fast Raw overlay (eg: curve widgets, anything real-time).
+    /// time you only want to udpate a fast Raw overlay (ie: any PBR widget that still need to be real-time)
     rawOnly
 }
 
@@ -656,7 +656,7 @@ nothrow:
 protected:
 
     /// Raw layer draw method. This gives you 1 surface cropped by  _position for drawing.
-    /// Note that you are not forced to draw all to the surfacs at all.
+    /// Note that you are not forced to draw to the surfaces at all.
     /// 
     /// `UIElement` are drawn by increasing z-order, or lexical order if lack thereof.
     /// Those elements who have non-overlapping `_position` are drawn in parallel.
