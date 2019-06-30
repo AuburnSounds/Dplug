@@ -132,6 +132,24 @@ nothrow:
 
         vec2f trailOffset = vec2f(knobRadiusPx * trailOffsetX, knobRadiusPx * trailOffsetY);
 
+        // Eventually, use the alternative trail color
+        RGBA litTrail = litTrailDiffuse;
+        bool alternateTrail = false;
+        if (getValueAngle < getBaseAngle)
+        {
+            alternateTrail = true;
+            if (hasAlternateTrail)
+            {
+                litTrail = litTrailDiffuseAlt;
+            }
+        }
+
+        // when dragged, trail is two times brighter
+        if (isDragged)
+        {
+            litTrail.a = cast(ubyte) min(255, 2 * litTrail.a);
+        }
+
         foreach(dirtyRect; dirtyRects)
         {
             auto croppedDiffuse = diffuseMap.cropImageRef(dirtyRect);
@@ -148,23 +166,37 @@ nothrow:
                 float trailCenterX = center.x - bx + trailOffset.x;
                 float trailCenterY = center.y - by + trailOffset.y;
 
-                croppedDiffuse.aaFillSector(trailCenterX, trailCenterY,
-                                            radius * trailRadiusMin, radius * trailRadiusMax,
-                                            getMinAngle, getMaxAngle, unlitTrailDiffuse);
+                float valueAngle = getValueAngle();
+                float minAngle = getMinAngle();
+                float maxAngle = getMaxAngle();
+                float baseAngle = getBaseAngle();
 
-                // Eventually, use the alternative trail color
-                RGBA litTrail = litTrailDiffuse;
-                if (hasAlternateTrail && getValueAngle < getBaseAngle)
-                    litTrail = litTrailDiffuseAlt;
+                // Order is minAngle <= valueAngle-when-alt <= baseAngle <= valueAngle-when-not-alt <= maxAngle
 
-                // when dragged, trail is two times brighter
-                if (isDragged)
+                float rmin = radius * trailRadiusMin;
+                float rmax = radius * trailRadiusMax;
+
+                // trail below baseAngle
+                if (alternateTrail)
                 {
-                    litTrail.a = cast(ubyte) min(255, 2 * litTrail.a);
+                    croppedDiffuse.aaFillSector(trailCenterX, trailCenterY, rmin, rmax, minAngle, valueAngle, unlitTrailDiffuse);
+                    croppedDiffuse.aaFillSector(trailCenterX, trailCenterY, rmin, rmax, valueAngle, baseAngle, litTrail);
+                }
+                else
+                {
+                    croppedDiffuse.aaFillSector(trailCenterX, trailCenterY, rmin, rmax, minAngle, baseAngle, unlitTrailDiffuse);
                 }
 
-                croppedDiffuse.aaFillSector(trailCenterX, trailCenterY, radius * trailRadiusMin, radius * trailRadiusMax,
-                                            min(getBaseAngle, getValueAngle), max(getBaseAngle, getValueAngle), litTrail);
+                // trail above baseAngle
+                if (alternateTrail)
+                {
+                    croppedDiffuse.aaFillSector(trailCenterX, trailCenterY, rmin, rmax, baseAngle, maxAngle, unlitTrailDiffuse);
+                }
+                else
+                {
+                    croppedDiffuse.aaFillSector(trailCenterX, trailCenterY, rmin, rmax, baseAngle, valueAngle, litTrail);
+                    croppedDiffuse.aaFillSector(trailCenterX, trailCenterY, rmin, rmax, valueAngle, maxAngle, unlitTrailDiffuse);
+                }
             }
         }
     }
