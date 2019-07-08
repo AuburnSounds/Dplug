@@ -410,3 +410,127 @@ private:
         int pluginVersion = input.popLE!int();
     }
 }
+
+/// Loads an array of `Preset` from a FBX file content.
+/// Gives ownership of the result, in a way that can be returned by `buildPresets`.
+/// IMPORTANT: if you store your presets in FBX form, the following limitations 
+///   * One _add_ new parameters to the plug-in, no reorder or deletion
+///   * Don't remap the parameter (in a way that changes its normalized value)
+/// They are the same limitations that exist in Dplug in minor plugin version.
+///
+/// Params:
+///    maxCount Maximum number of presets to take, -1 for all of them
+///
+/// Example:
+///       override Preset[] buildPresets()
+///       {
+///           return loadPresetsFromFXB(this, import("factory-presets.fxb"));
+///       }
+///
+Preset[] loadPresetsFromFXB(Client client, string inputFBXData, int maxCount = -1) nothrow @nogc
+{
+    ubyte[] inputFXB = cast(ubyte[]) mallocDup(inputFBXData);
+    scope(exit) free(inputFXB.ptr);
+
+    Vec!Preset result = makeVec!Preset();
+
+    static int CCONST(int a, int b, int c, int d) pure nothrow @nogc
+    {
+        return (a << 24) | (b << 16) | (c << 8) | (d << 0);
+    }
+
+    try
+    {
+        uint bankChunkID;
+        uint bankChunkLen;
+        inputFXB.readRIFFChunkHeader(bankChunkID, bankChunkLen);
+
+        void error() @nogc
+        {
+            throw mallocNew!Exception("Error in parsing FXB");
+        }
+
+        if (bankChunkID != CCONST('C', 'c', 'n', 'K')) error;
+        inputFXB.skipBytes(bankChunkLen);
+        uint fbxChunkID = inputFXB.popBE!uint();
+        if (fbxChunkID != CCONST('F', 'x', 'B', 'k')) error;
+        inputFXB.skipBytes(4); // fxVersion
+
+        // if uniqueID has changed, then the bank is not compatible and should error
+        char[4] uid = client.getPluginUniqueID();
+        if (inputFXB.popBE!uint() != CCONST(uid[0], uid[1], uid[2], uid[3])) error;
+
+        // fxVersion. We ignore it, since compat is supposed
+        // to be encoded in the unique ID already
+        inputFXB.popBE!uint();
+
+        int numPresets = inputFXB.popBE!int();
+        if ((maxCount != -1) && (numPresets > maxCount))
+            numPresets = maxCount;
+        if (numPresets < 1) error; // no preset in band, probably not what you want
+
+        inputFXB.skipBytes(128);
+
+        // Create presets
+        for(int presetIndex = 0; presetIndex < numPresets; ++presetIndex)
+        {
+            Preset p = client.makeDefaultPreset();
+            uint presetChunkID;
+            uint presetChunkLen;
+            inputFXB.readRIFFChunkHeader(presetChunkID, presetChunkLen);
+            if (presetChunkID != CCONST('C', 'c', 'n', 'K')) error;
+            inputFXB.skipBytes(presetChunkLen);
+
+            presetChunkID = inputFXB.popBE!uint();
+            if (presetChunkID != CCONST('F', 'x', 'C', 'k')) error;
+            int presetVersion = inputFXB.popBE!uint();
+            if (presetVersion != 1) error;
+            if (inputFXB.popBE!uint() != CCONST(uid[0], uid[1], uid[2], uid[3])) error;
+
+            // fxVersion. We ignore it, since compat is supposed
+            // to be encoded in the unique ID already
+            inputFXB.skipBytes(4);
+
+            int numParams = inputFXB.popBE!int();
+            if (numParams < 0) error;
+
+            // parse name
+            char[28] nameBuf;
+            int nameLen = 28;
+            foreach(nch; 0..28)
+            {
+                char c = inputFXB.front;
+                nameBuf[nch] = c;
+                inputFXB.popFront();
+                if (c == '\0' && nameLen == 28) 
+                    nameLen = nch;
+            }
+            p.setName(nameBuf[0..nameLen]);
+
+            // parse parameter normalized values
+            int paramRead = numParams;
+            if (paramRead > cast(int)(client.params.length))
+                paramRead = cast(int)(client.params.length);
+            for (int param = 0; param < paramRead; ++param)
+            {
+                p.setNormalized(param, inputFXB.popBE!float());
+            }
+
+            // skip excess parameters (this case should never happen so not sure if it's to be handled)
+            for (int param = paramRead; param < numParams; ++param)
+                inputFXB.skipBytes(4);
+
+            result.pushBack(p);
+        }
+    }
+    catch(Exception e)
+    {
+        destroyFree(e);
+
+        // Your preset file for the plugin is not meant to be invalid, so this is a bug.
+        // If you fail here, parsing has created an `error()` call.
+        assert(false); 
+    }
+
+    return result.releaseData();
+}
