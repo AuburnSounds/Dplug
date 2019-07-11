@@ -429,8 +429,9 @@ private:
 ///
 Preset[] loadPresetsFromFXB(Client client, string inputFBXData, int maxCount = -1) nothrow @nogc
 {
-    ubyte[] inputFXB = cast(ubyte[]) mallocDup(inputFBXData);
-    scope(exit) free(inputFXB.ptr);
+    ubyte[] fbxCopy = cast(ubyte[]) mallocDup(inputFBXData);
+    ubyte[] inputFXB = fbxCopy;
+    scope(exit) free(fbxCopy.ptr);
 
     Vec!Preset result = makeVec!Preset();
 
