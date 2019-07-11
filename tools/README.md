@@ -4,4 +4,5 @@
    * `tools/wav-compare`: comparison of WAV files
    * `tools/latency-check`: report errors for wrong latencies
    * `tools/stress-plugin`: makes multiple load of plugins while processing audio mainly to test GUI opening speed
+   * `tools/presetbank`: Synthesize a FXB file out of a number of individual FXP files.
    * `Lift-Gamma-Gain-Contrast`: adjust color correction curves on a finished UI http://www.gamesfrommars.fr/lift-gamma-gain-contrast/
