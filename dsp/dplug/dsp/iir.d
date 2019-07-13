@@ -323,6 +323,46 @@ public
                     _y1 = y1;
                 }
             }
+
+            /// Special version of biquad processing, for a constant DC input.
+            void nextBuffer(float input, float* output, int frames, const(BiquadCoeff) coeff) nothrow @nogc
+            {
+                // Note: this naive version performs better than an intel-intrinsics one
+                double x0 = _x0,
+                    x1 = _x1,
+                    y0 = _y0,
+                    y1 = _y1;
+
+                double a0 = coeff[0],
+                    a1 = coeff[1],
+                    a2 = coeff[2],
+                    a3 = coeff[3],
+                    a4 = coeff[4];
+
+                for(int i = 0; i < frames; ++i)
+                {
+                    double current = a0 * input + a1 * x0 + a2 * x1 - a3 * y0 - a4 * y1;
+
+                    // kill denormals,and double values that would be converted
+                    // to float denormals
+                    version(killDenormals)
+                    {
+                        current += 1e-18f;
+                        current -= 1e-18f;
+                    }
+
+                    x1 = x0;
+                    x0 = input;
+                    y1 = y0;
+                    y0 = current;
+                    output[i] = current;
+                }
+
+                _x0 = x0;
+                _x1 = x1;
+                _y0 = y0;
+                _y1 = y1;
+            }
         }
     }
 
