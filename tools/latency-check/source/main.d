@@ -106,7 +106,8 @@ int main(string[] args)
 
         writeln;
 
-        double[] ALL_SAMPLE_RATES = [44100, 48000, 88200, 96000, 192000];
+        // Note: 11025 and 22050 are mandatory for auval
+        double[] ALL_SAMPLE_RATES = [11025, 22050, 44100, 48000, 88200, 96000, 192000];
         foreach (sampleRate ; ALL_SAMPLE_RATES)
         {
             cwritefln("*** Testing at sample rate %s".color(fg.light_white), sampleRate);
