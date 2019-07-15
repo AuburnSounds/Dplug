@@ -202,19 +202,45 @@ nothrow:
             int iPart;
             float fPart;
             decomposeFractionalDelay(delay, iPart, fPart);
+
+            align(16) __gshared static immutable float[8][5] MAT = 
+            [
+                [  2.0f / 24, -16.0f / 24,   0.0f / 24,   16.0f / 24,  -2.0f / 24,   0.0f / 24, 0.0f, 0.0f ],
+                [ -1.0f / 24,  16.0f / 24, -30.0f / 24,   16.0f / 24,  -1.0f / 24,   0.0f / 24, 0.0f, 0.0f ],
+                [ -9.0f / 24,  39.0f / 24, -70.0f / 24,   66.0f / 24, -33.0f / 24,   7.0f / 24, 0.0f, 0.0f ],
+                [ 13.0f / 24, -64.0f / 24, 126.0f / 24, -124.0f / 24,  61.0f / 24, -12.0f / 24, 0.0f, 0.0f ],
+                [ -5.0f / 24,  25.0f / 24, -50.0f / 24,   50.0f / 24, -25.0f / 24,   5.0f / 24, 0.0f, 0.0f ]
+            ];
+            import inteli.emmintrin;
+            __m128 pFactor0_3 = _mm_setr_ps(0.0f, 0.0f, 1.0f, 0.0f);
+            __m128 pFactor4_7 = _mm_setzero_ps();
+
+            __m128 XMM_fPart = _mm_set1_ps(fPart);
+            __m128 weight = XMM_fPart;
+            pFactor0_3 = _mm_add_ps(pFactor0_3, _mm_load_ps(&MAT[0][0]) * weight);
+            pFactor4_7 = _mm_add_ps(pFactor4_7, _mm_load_ps(&MAT[0][4]) * weight);
+            weight = _mm_mul_ps(weight, XMM_fPart);
+            pFactor0_3 = _mm_add_ps(pFactor0_3, _mm_load_ps(&MAT[1][0]) * weight);
+            pFactor4_7 = _mm_add_ps(pFactor4_7, _mm_load_ps(&MAT[1][4]) * weight);
+            weight = _mm_mul_ps(weight, XMM_fPart);
+            pFactor0_3 = _mm_add_ps(pFactor0_3, _mm_load_ps(&MAT[2][0]) * weight);
+            pFactor4_7 = _mm_add_ps(pFactor4_7, _mm_load_ps(&MAT[2][4]) * weight);
+            weight = _mm_mul_ps(weight, XMM_fPart);
+            pFactor0_3 = _mm_add_ps(pFactor0_3, _mm_load_ps(&MAT[3][0]) * weight);
+            pFactor4_7 = _mm_add_ps(pFactor4_7, _mm_load_ps(&MAT[3][4]) * weight);
+            weight = _mm_mul_ps(weight, XMM_fPart);
+            pFactor0_3 = _mm_add_ps(pFactor0_3, _mm_load_ps(&MAT[4][0]) * weight);
+            pFactor4_7 = _mm_add_ps(pFactor4_7, _mm_load_ps(&MAT[4][4]) * weight);
+
+            float[8] pfactor = void;
+            _mm_storeu_ps(&pfactor[0], pFactor0_3); 
+            _mm_storeu_ps(&pfactor[4], pFactor4_7);
+
+            T result = 0;
             const(T)* pData = readPointer();
-            T p0 = pData[iPart-2];
-            T p1 = pData[iPart-1];
-            T p2 = pData[iPart  ];
-            T p3 = pData[iPart+1];
-            T p4 = pData[iPart+2];
-            T p5 = pData[iPart+3];
-            
-            return p2 + 0.04166666666f * fPart * ((p3 - p1) * 16 + (p0 - p4) * 2
-            + fPart * ((p3 + p1) * 16 - p0 - p2 * 30 - p4
-            + fPart * (p3 * 66 - p2 * 70 - p4 * 33 + p1 * 39 + p5 * 7- p0 * 9
-            + fPart * ( p2 * 126 - p3 * 124 + p4 * 61 - p1 * 64 - p5 * 12 + p0 * 13
-            + fPart * ((p3-p2) * 50 + (p1-p4) * 25 + (p5-p0)*5)))));
+            foreach(n; 0..6)
+                result += pData[iPart-2 + n] * pfactor[n];
+            return result;
         };
     }
 
