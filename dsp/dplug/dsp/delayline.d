@@ -129,6 +129,17 @@ nothrow:
         return readPointer()[-delay];
     }
 
+    /// Random access sampling of the delay-line at integer points, extract a time slice.
+    /// Delay 0 = last entered sample with feed().
+    void sampleFullBuffer(int delayOfMostRecentSample, float* outBuffer, int frames) pure
+    {
+        assert(delayOfMostRecentSample >= 0);
+        const(T*) p = readPointer();
+        const(T*) source = &readPointer[-delayOfMostRecentSample - frames + 1];
+        size_t numBytes = frames * T.sizeof;
+        memcpy(outBuffer, source, numBytes);
+    }
+
     static if (is(T == float) || is(T == double))
     {
         /// Random access sampling of the delay-line with linear interpolation.
