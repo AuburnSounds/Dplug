@@ -1000,11 +1000,10 @@ void buildPlugin(string compiler, string config, string build, bool is64b, bool 
     // build the output file
     string arch = is64b ? "x86_64" : "x86";
 
-    // Produce output compatible with earlier OSX
-    // LDC >= 1.1 does not support earlier than 10.8
+    // If we want to support Notarization, we can't target earlier than 10.9
     version(OSX)
     {
-        environment["MACOSX_DEPLOYMENT_TARGET"] = "10.8";
+        environment["MACOSX_DEPLOYMENT_TARGET"] = "10.9";
     }
 
     string cmd = format("dub build --build=%s --arch=%s --compiler=%s%s%s%s%s%s%s",
