@@ -118,6 +118,25 @@
                 "instrumentSynthesizer",
                 "instrumentOther"
             ]
+        },
+
+       "windowsInstallerHeaderBmp": {
+            "description": "Optional relative path to a 150x57 BMP, for use in the Windows installer.",
+            "id": "/properties/windowsInstallerHeaderBmp",
+            "type": "string"
+        },
+
+        "keyPassword-windows": {
+            "description": "A relative path to a Windows certificate, to be used for installer creation.",
+            "id": "/properties/keyFile-windows",
+            "type": "string"
+        },
+
+        "keyPassword-windows": {
+            "description": "The password for the Windows certificate. Can be !PROMPT to be prompted on first use.",
+            "id": "/properties/keyPassword-windows",
+            "type": "string"
         }
+
     }
 }
