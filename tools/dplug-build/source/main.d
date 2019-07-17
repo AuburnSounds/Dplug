@@ -611,7 +611,7 @@ int main(string[] args)
                         if(configIsVST(config))
                         {
                             format = "VST";
-                            title = "VST plugin-in";
+                            title = "VST 2.4 plugin-in";
                             if (arch == arch.x86_64)
                                 installDir = WIN_VST_DIR;
                             else
@@ -833,7 +833,7 @@ int main(string[] args)
                             
                             pkgIdentifier = plugin.pkgBundleVST();
                             pkgFilename   = plugin.pkgFilenameVST();
-                            title = "VST plug-in";
+                            title = "VST 2.4 plug-in";
                         }
                         else if (configIsVST3(config))
                         {
@@ -1048,6 +1048,8 @@ void generateWindowsInstaller(string outputDir,
 
     string formatSectionDisplayName(WindowsPackage pack) pure
     {
+        if (pack.format == "VST")
+            return format("%s %s", "VST 2.4", pack.is64b ? "(64 bit)" : "(32 bit)");
         return format("%s %s", pack.format, pack.is64b ? "(64 bit)" : "(32 bit)");
     }
 
@@ -1073,7 +1075,7 @@ void generateWindowsInstaller(string outputDir,
     string vstInstallDirDescription(bool is64b) pure
     {
         string description = "";
-        description ~= "Setup will install VST (";
+        description ~= "Setup will install VST 2.4 (";
         description ~= is64b ? "64" : "32";
         description ~= " bit) in the following folder.  To install in a different folder, ";
         description ~= "click Browse and select another folder.  Click install to start the installation.";
