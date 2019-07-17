@@ -1222,6 +1222,9 @@ void generateWindowsInstaller(string outputDir,
     string makeNsiCommand = format("makensis.exe /V1 %s", nsisPath);
     safeCommand(makeNsiCommand);
 
+    // Prompt password if needed
+    plugin.promptWindowsInstallerPasswordLazily();
+
     if(plugin.keyFileWindows !is null && plugin.keyPasswordWindows !is null)
     {
         // use windows signtool to sign the installer for distribution

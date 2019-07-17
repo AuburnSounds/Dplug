@@ -165,12 +165,12 @@ struct Plugin
     // relative path to .bmp image for Windows installer header
     string windowsInstallerHeaderBmp;
 
-    // WIndows-only, points to a .p12/.pfx certificate...
-    // duplicate key in pace.json
+    /// Windows-only, points to a .p12/.pfx certificate...
+    /// duplicate key in pace.json.
     string keyFileWindows;
 
     // ...and the password of its private key
-    // duplicate key in pace.json
+    // duplicate key in pace.json. Also support "!PROMPT" as special value.
     string keyPasswordWindows;
 
 
@@ -409,6 +409,20 @@ struct Plugin
             return format("%s%s-%s.exe", sanitizeFilenameString(pluginName),
                                          verName,
                                          publicVersionString);
+        }
+    }
+
+    void promptWindowsInstallerPasswordLazily()
+    {
+        version(Windows)
+        {
+            if (keyPasswordWindows == "!PROMPT")
+            {
+                cwriteln();
+                cwritefln(`Please enter your certificate Windows password (seen "!PROMPT"):`.cyan);
+                keyPasswordWindows = chomp(readln());
+                cwriteln();
+            }
         }
     }
 
