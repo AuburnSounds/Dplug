@@ -1040,6 +1040,12 @@ void generateWindowsInstaller(string outputDir,
     import std.regex: regex, replaceAll;
     import std.array : array;
 
+    // changes slashes in path to backslashes, which are the only supported within NSIS
+    string escapeNSISPath(string path)
+    {
+        return path.replace("/", "\\");
+    }
+
     string formatSectionDisplayName(WindowsPackage pack) pure
     {
         return format("%s %s", pack.format, pack.is64b ? "(64 bit)" : "(32 bit)");
@@ -1091,11 +1097,12 @@ void generateWindowsInstaller(string outputDir,
     if (plugin.windowsInstallerHeaderBmp != null)
     {
         content ~= "!define MUI_HEADERIMAGE\n";
-        content ~= "!define MUI_HEADERIMAGE_BITMAP \"" ~ headerImagePage ~ "\"\n";
+        content ~= "!define MUI_HEADERIMAGE_BITMAP \"" ~ escapeNSISPath(headerImagePage) ~ "\"\n";
     }
 
     content ~= "!define MUI_ABORTWARNING\n";
-    content ~= "!define MUI_ICON \"" ~ plugin.iconPath ~ "\"\n";
+    if (plugin.iconPath)
+        content ~= "!define MUI_ICON \"" ~ escapeNSISPath(plugin.iconPath) ~ "\"\n";
     content ~= "!insertmacro MUI_PAGE_LICENSE \"" ~ licensePath ~ "\"\n";
     content ~= "!insertmacro MUI_PAGE_COMPONENTS\n";
     content ~= "!insertmacro MUI_LANGUAGE \"English\"\n\n";
@@ -1136,10 +1143,10 @@ void generateWindowsInstaller(string outputDir,
     {
         if(p.format == "VST")
         {
-            string identifer = formatSectionIdentifier(p);
+            string identifier = formatSectionIdentifier(p);
             string formatNiceName = formatSectionDisplayName(p);
             content ~= "PageEx directory\n";
-            content ~= "  PageCallbacks defaultInstDir" ~ identifer ~ ` "" getInstDir` ~ identifer ~ "\n";
+            content ~= "  PageCallbacks defaultInstDir" ~ identifier ~ ` "" getInstDir` ~ identifier ~ "\n";
             content ~= "  DirText \"" ~ vstInstallDirDescription(p.is64b) ~ "\" \"\" \"\" \"\"\n";
             content ~= `  Caption ": ` ~ formatNiceName ~ ` Directory"` ~ "\n";
             content ~= "PageExEnd\n";
@@ -1151,17 +1158,17 @@ void generateWindowsInstaller(string outputDir,
     {
         if(p.format == "VST")
         {
-            string identifer = formatSectionIdentifier(p);
+            string identifier = formatSectionIdentifier(p);
 
-            content ~= "Function defaultInstDir" ~ identifer ~ "\n";
+            content ~= "Function defaultInstDir" ~ identifier ~ "\n";
             content ~= "  ${IfNot} ${SectionIsSelected} ${Sec" ~ p.format ~ "}\n";
             content ~= "    Abort\n";
             content ~= "  ${Else}\n";
             content ~= `    StrCpy $INSTDIR "` ~ p.installDir ~ `"` ~ "\n";
             content ~= "  ${EndIf}\n";
             content ~= "FunctionEnd\n\n";
-            content ~= "Function getInstDir" ~ identifer ~ "\n";
-            content ~= "  StrCpy $InstDir" ~ identifer ~ " $INSTDIR\n";
+            content ~= "Function getInstDir" ~ identifier ~ "\n";
+            content ~= "  StrCpy $InstDir" ~ identifier ~ " $INSTDIR\n";
             content ~= "FunctionEnd\n\n";
         }
     }
