@@ -155,7 +155,6 @@ nothrow:
     abstract void stringFromNormalizedValue(double normalizedValue, char* buffer, size_t len);
 
     /// Returns: A normalized value associated with the string.
-    /// Can throw Exceptions.
     abstract bool normalizedValueFromString(const(char)[] valueString, out double result);
 
     /// Returns: `true` if the parameters has only discrete values, `false` if continuous.
@@ -406,7 +405,7 @@ public:
         snprintf(buf.ptr, buf.length, "%.*s", valueString.length, valueString.ptr);
 
         int denorm;
-        if (1 == sscanf(buf.ptr, "%d", denorm))
+        if (1 == sscanf(buf.ptr, "%d", &denorm))
         {
             result = toNormalized(denorm);
             return true;
@@ -684,8 +683,8 @@ public:
         char[64] buf;
         snprintf(buf.ptr, buf.length, "%.*s", valueString.length, valueString.ptr);
 
-        int denorm;
-        if (1 == sscanf(buf.ptr, "%f", denorm))
+        double denorm;
+        if (1 == sscanf(buf.ptr, "%f", &denorm))
         {
             result = toNormalized(denorm);
             return true;
