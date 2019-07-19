@@ -165,7 +165,7 @@ int main(string[] args)
             {
                 version(OSX)
                     makeInstaller = true;
-                version(Windows)
+                else version(Windows)
                     makeInstaller = true;
                 else
                     warning("--installer not supported on that OS");
@@ -638,7 +638,7 @@ int main(string[] args)
                             title = "LV2 plugin-in";
                             installDir = WIN_LV2_DIR;
                         }
-                        
+
                         windowsPackages ~= WindowsPackage(format, blobName, title, installDir, sizeInKiloBytes, arch == arch.x86_64);
                     }
                 }
@@ -830,7 +830,7 @@ int main(string[] args)
 
                         if (configIsVST(config))
                         {
-                            
+
                             pkgIdentifier = plugin.pkgBundleVST();
                             pkgFilename   = plugin.pkgFilenameVST();
                             title = "VST 2.4 plug-in";
@@ -1000,11 +1000,10 @@ void buildPlugin(string compiler, string config, string build, bool is64b, bool 
     // build the output file
     string arch = is64b ? "x86_64" : "x86";
 
-    // Produce output compatible with earlier OSX
-    // LDC >= 1.1 does not support earlier than 10.8
+    // If we want to support Notarization, we can't target earlier than 10.9
     version(OSX)
     {
-        environment["MACOSX_DEPLOYMENT_TARGET"] = "10.8";
+        environment["MACOSX_DEPLOYMENT_TARGET"] = "10.9";
     }
 
     string cmd = format("dub build --build=%s --arch=%s --compiler=%s%s%s%s%s%s%s",
@@ -1058,7 +1057,7 @@ void generateWindowsInstaller(string outputDir,
         return format("%s%s", pack.format, pack.is64b ? "64b" : "32b");
     }
 
-    string sectionDescription(WindowsPackage pack) pure 
+    string sectionDescription(WindowsPackage pack) pure
     {
         if (pack.format == "VST")
             return "For VST 2.4 hosts like Live, FL Studio, Bitwig, Reason, etc. Includes both 32bit and 64bit components.";
@@ -1112,7 +1111,7 @@ void generateWindowsInstaller(string outputDir,
     auto sections = packs.uniq!((p1, p2) => p1.format == p2.format);
     foreach(p; sections)
     {
-        
+
         content ~= `Section "` ~ p.format ~ `" Sec` ~ p.format ~ "\n";
         content ~= "AddSize " ~ p.bytes.to!string ~ "\n";
         content ~= "SectionEnd\n";
@@ -1126,7 +1125,7 @@ void generateWindowsInstaller(string outputDir,
     content ~= "!insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN\n";
     foreach(p; sections)
     {
-        
+
         content ~= "!insertmacro MUI_DESCRIPTION_TEXT ${Sec" ~ p.format ~ "} $(DESC_" ~ p.format ~ ")\n";
     }
     content ~= "!insertmacro MUI_FUNCTION_DESCRIPTION_END\n\n";
@@ -1230,11 +1229,11 @@ void generateWindowsInstaller(string outputDir,
     if(plugin.keyFileWindows !is null && plugin.keyPasswordWindows !is null)
     {
         // use windows signtool to sign the installer for distribution
-        string cmd = format("signtool sign /f %s /p %s /tr http://timestamp.comodoca.com/authenticode /td sha256 /fd sha256 /q %s", 
-                            plugin.keyFileWindows, 
+        string cmd = format("signtool sign /f %s /p %s /tr http://timestamp.comodoca.com/authenticode /td sha256 /fd sha256 /q %s",
+                            plugin.keyFileWindows,
                             plugin.keyPasswordWindows,
                             escapeShellArgument(outExePath));
-        
+
         safeCommand(cmd);
     }
     else
