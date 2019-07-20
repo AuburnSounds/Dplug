@@ -360,6 +360,13 @@ version(Windows)
                     return 0;
                 }
 
+                case WM_ERASEBKGND:
+                {
+                    // This fails, so cause this window's WM_PAINT to be responsible for erasing background, 
+                    // hence saving a bit of performance.
+                    return 1;
+                }
+
                 case WM_CLOSE:
                 {
                     this.destroyNoGC();
