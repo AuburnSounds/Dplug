@@ -102,6 +102,7 @@ version(Windows)
 
             // Create update region
             _updateRegion = CreateRectRgn(0, 0, 0, 0);
+            _clipRegion = CreateRectRgn(0, 0, 0, 0);
             _updateRgbBuf = makeVec!ubyte();
             _updateRects = makeVec!box2i();
 
@@ -127,6 +128,20 @@ version(Windows)
             // Get reference time
             _timeAtCreationInMs = getTimeMs();
             _lastMeasturedTimeInMs = _timeAtCreationInMs;
+
+            // Do we need the FLStudio bridge work-around?
+            // Detect if we are under FLStudio's bridge.
+            _useFLStudioBridgeWorkaround = false;
+            HMODULE hmodule = GetModuleHandle(NULL);
+            if (hmodule !is NULL)
+            {
+                char[256] path;
+                int len = GetModuleFileNameA(hmodule, path.ptr, 256);
+                if (len >= 12)
+                {
+                    _useFLStudioBridgeWorkaround = path[len - 12 .. len] == "ilbridge.exe";
+                }
+            }
         }
 
         ~this()
@@ -144,6 +159,12 @@ version(Windows)
             {
                 DeleteObject(_updateRegion);
                 _updateRegion = null;
+            }
+
+            if (_clipRegion != null)
+            {
+                DeleteObject(_clipRegion);
+                _clipRegion = null;
             }
         }
 
@@ -325,14 +346,38 @@ version(Windows)
 
                 case WM_PAINT:
                 {
+                    updateSizeIfNeeded();
+
+                    // Renders UI. 
+                    // FUTURE: This could be done in a separate thread?
+                    // For efficiency purpose, render in BGRA for Windows
+                    // We do it here, but note that redrawing has nothing to do with WM_PAINT specifically,
+                    // we just need to wait for it here.
+                    _listener.onDraw(WindowPixelFormat.BGRA8);
+
+                    // Get the update region
                     int type = GetUpdateRgn(hwnd, _updateRegion, FALSE);
                     assert (type != ERROR);
 
+                    // Begin painting
+                    PAINTSTRUCT paintStruct;
+                    HDC hdc = BeginPaint(_hwnd, &paintStruct);
+
+                    HRGN regionToUpdate = _updateRegion;
+
+                    // FLStudio compatibility
+                    // Try to get the DC's clipping region, which may be larger in the case of FLStudio's bridge.
+                    if (_useFLStudioBridgeWorkaround)
+                    {
+                        if ( GetClipRgn(hdc, _clipRegion) == 1)
+                            regionToUpdate = _clipRegion;
+                    }
+
                     // Get needed number of bytes
-                    DWORD bytes = GetRegionData(_updateRegion, 0, null);
+                    DWORD bytes = GetRegionData(regionToUpdate, 0, null);
                     _updateRgbBuf.resize(bytes);
 
-                    if (bytes == GetRegionData(_updateRegion, bytes, cast(RGNDATA*)(_updateRgbBuf.ptr)))
+                    if (bytes == GetRegionData(regionToUpdate, bytes, cast(RGNDATA*)(_updateRgbBuf.ptr)))
                     {
                         // Get rectangles to update visually from the update region
                         ubyte* buf = _updateRgbBuf.ptr;
@@ -340,23 +385,45 @@ version(Windows)
                         assert(header.iType == RDH_RECTANGLES);
                         _updateRects.clearContents();
                         RECT* pRect = cast(RECT*)(buf + RGNDATAHEADER.sizeof);
-                        for(int r = 0; r < header.nCount; ++r)
-                            _updateRects.pushBack(box2i(pRect[r].left, pRect[r].top, pRect[r].right, pRect[r].bottom));
-                               
-                        bool sizeChanged = updateSizeIfNeeded();
 
-                        // FUTURE: check resize work
+                        alias wfb = _wfb;
+                        for (int r = 0; r < header.nCount; ++r)
+                        {
+                            int left = pRect[r].left;
+                            int top = pRect[r].top;
+                            int right = pRect[r].right;
+                            int bottom = pRect[r].bottom;
+                            _updateRects.pushBack(box2i(left, top, right, bottom));
+                        }
 
-                        // For efficiency purpose, render in BGRA for Windows
-                        // We do it here, but note that redrawing has nothing to do with WM_PAINT specifically,
-                        // we just need to wait for it here.
-                        _listener.onDraw(WindowPixelFormat.BGRA8);
+                        BITMAPINFOHEADER bmi = BITMAPINFOHEADER.init; // fill with zeroes
+                        with (bmi)
+                        {
+                            biSize          = BITMAPINFOHEADER.sizeof;
+                            biWidth         = wfb.w;
+                            biHeight        = -wfb.h;
+                            biPlanes        = 1;
+                            biCompression = BI_RGB;
+                            biXPelsPerMeter = 72;
+                            biYPelsPerMeter = 72;
+                            biBitCount      = 32;
+                            biSizeImage     = cast(int)(wfb.pitch) * wfb.h;
+                        }
+                        
+                        foreach(box2i area; _updateRects)
+                        {
+                            if (area.width() <= 0 || area.height() <= 0)
+                                continue; // nothing to update
 
-                        swapBuffers(_wfb, _updateRects[]);
+                            SetDIBitsToDevice(hdc, area.min.x, area.min.y, area.width, area.height,
+                                                area.min.x, -area.min.y - area.height + wfb.h, 
+                                                0, wfb.h, wfb.pixels, cast(BITMAPINFO *)&bmi, DIB_RGB_COLORS);
+                        }
                     }
                     else
                         assert(false);
 
+                    EndPaint(_hwnd, &paintStruct);
                     return 0;
                 }
 
@@ -392,35 +459,7 @@ version(Windows)
             }
         }
 
-        void swapBuffers(ImageRef!RGBA wfb, box2i[] areasToRedraw)
-        {
-            PAINTSTRUCT paintStruct;
-            HDC hdc = BeginPaint(_hwnd, &paintStruct);
 
-            foreach(box2i area; areasToRedraw)
-            {
-                if (area.width() <= 0 || area.height() <= 0)
-                    continue; // nothing to update
-
-                BITMAPINFOHEADER bmi = BITMAPINFOHEADER.init; // fill with zeroes
-                with (bmi)
-                {
-                    biSize          = BITMAPINFOHEADER.sizeof;
-                    biWidth         = wfb.w;
-                    biHeight        = -wfb.h;
-                    biPlanes        = 1;
-                    biCompression = BI_RGB;
-                    biXPelsPerMeter = 72;
-                    biYPelsPerMeter = 72;
-                    biBitCount      = 32;
-                    biSizeImage     = cast(int)(wfb.pitch) * wfb.h;
-                    SetDIBitsToDevice(hdc, area.min.x, area.min.y, area.width, area.height,
-                                      area.min.x, -area.min.y - area.height + wfb.h, 0, wfb.h, wfb.pixels, cast(BITMAPINFO *)&bmi, DIB_RGB_COLORS);
-                }
-            }
-
-            EndPaint(_hwnd, &paintStruct);
-        }
 
         // Implements IWindow
         override void waitEventAndDispatch()
@@ -460,6 +499,9 @@ version(Windows)
         WNDCLASSW _wndClass;
 
         HRGN _updateRegion;
+        HRGN _clipRegion;
+        bool _useFLStudioBridgeWorkaround;
+
         Vec!ubyte _updateRgbBuf;
         Vec!box2i _updateRects;
 
