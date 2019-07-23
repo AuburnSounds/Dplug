@@ -37,6 +37,9 @@
 
     "dflags-osx-ldc": ["-static"],
 
+    "comment": "Example of configuration options",
+    "versions": ["futureMouseOver"],
+
     "configurations": [
         {
             "name": "VST",

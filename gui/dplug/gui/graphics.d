@@ -200,7 +200,19 @@ nothrow:
 
         override void onMouseMove(int x, int y, int dx, int dy, MouseState mstate)
         {
-            outer.mouseMove(x, y, dx, dy, mstate);
+            version(futureMouseOver)
+            {
+                bool hitSomething = outer.mouseMove(x, y, dx, dy, mstate, false);
+                if (!hitSomething)
+                {
+                    // Nothing was mouse-over'ed, nothing is `isMouseOver()` anymore
+                    outer._uiContext.setMouseOver(null);
+                }
+            }
+            else
+            {
+                outer.mouseMove(x, y, dx, dy, mstate);
+            }
         }
 
         override void recomputeDirtyAreas()

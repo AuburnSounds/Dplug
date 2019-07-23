@@ -333,11 +333,18 @@ nothrow:
         return false;
     }
 
-    // Check if given pixel is within the widget.
-    // FUTURE: This will be used to avoid making onMouseClick both the test and the event.
-    final bool contains(vec2i pt)
+    /// Check if given point is within the widget. 
+    /// Override this to disambiguate clicks and mouse-over between widgets that 
+    /// would otherwise partially overlap.
+    /// 
+    /// `x` and `y` are given in local widget coordinates.
+    /// IMPORTANT: a widget CANNOT be clickable beyond its _position.
+    ///            For now, there is no good reason for that, but it could be useful
+    ///            in the future if we get acceleration structure for picking elements.
+    bool contains(int x, int y)
     {
-        return _position.contains(pt);
+        return (x < cast(uint)(_position.width ) )
+            && (y < cast(uint)(_position.height) );
     }
 
     // to be called at top-level when the mouse clicked
@@ -354,9 +361,9 @@ nothrow:
         }
 
         // Test for collision with this element
-        if (contains(vec2i(x, y)))
+        if (contains(x - _position.min.x, y - _position.min.y))
         {
-            if(onMouseClick(x - _position.min.x, y - _position.min.y, button, isDoubleClick, mstate))
+            if (onMouseClick(x - _position.min.x, y - _position.min.y, button, isDoubleClick, mstate))
             {
                 _context.beginDragging(this);
                 _context.setFocused(this);
@@ -394,7 +401,7 @@ nothrow:
                     return true;
         }
 
-        if (contains(vec2i(x, y)))
+        if (contains(x - _position.min.x, y - _position.min.y))
         {
             if (onMouseWheel(x - _position.min.x, y - _position.min.y, wheelDeltaX, wheelDeltaY, mstate))
                 return true;
@@ -411,91 +418,204 @@ nothrow:
         return false;
     }
 
-    // to be called when the mouse moved
-    final void mouseMove(int x, int y, int dx, int dy, MouseState mstate)
+    version (futureMouseOver)
     {
-        if (isDragged)
+
+        // To be called when the mouse moved
+        // Returns: `true` if one child has taken the mouse-over role globally.
+        // UNSOLVED QUESTION: should elements receive onMouseMove even if one of the 
+        // elements above in zOrder is officially "mouse-over"? Should only the mouseOver'd elements receive onMouseMove?
+        final bool mouseMove(int x, int y, int dx, int dy, MouseState mstate, bool alreadyFoundMouseOver)
         {
-            // EDIT MODE
-            // In debug mode, dragging with the right mouse button move elements around
-            // and dragging with shift  + right button resize elements around.
-            //
-            // Additionally, if CTRL is pressed, the increments are only -1 or +1 pixel.
-            // 
-            // You can see the _position rectangle thanks to `debugLog`.
-            bool draggingUsed = false;
-            debug
+            recomputeZOrderedChildren();
+
+            bool foundMouseOver = alreadyFoundMouseOver;
+
+            // Test children that are displayed above this element first
+            foreach(child; _zOrderedChildren[])
             {
-                if (mstate.rightButtonDown && mstate.shiftPressed)
+                if (child.zOrder >= zOrder)
                 {
-                    if (mstate.ctrlPressed)
-                    {
-                        dx = clamp(dx, -1, +1);
-                        dy = clamp(dy, -1, +1);
-                    }
-                    int nx = _position.min.x;
-                    int ny = _position.min.y;
-                    int w = _position.width + dx;
-                    int h = _position.height + dy;
-                    if (w < 5) w = 5;
-                    if (h < 5) h = 5;
-                    setDirtyWhole();
-                    _position = box2i(nx, ny, nx + w, ny + h);
-                    setDirtyWhole();
-                    draggingUsed = true;
-
-                    
-                }
-                else if (mstate.rightButtonDown)
-                {
-                    if (mstate.ctrlPressed)
-                    {
-                        dx = clamp(dx, -1, +1);
-                        dy = clamp(dy, -1, +1);
-                    }
-                    int nx = _position.min.x + dx;
-                    int ny = _position.min.y + dy;
-                    if (nx < 0) nx = 0;
-                    if (ny < 0) ny = 0;
-                    setDirtyWhole();
-                    _position = box2i(nx, ny, nx + _position.width, ny + _position.height);
-                    setDirtyWhole();
-                    draggingUsed = true;
-                }
-
-                // Output the latest position
-                // This is helpful when developing a plug-in UI.
-                if (draggingUsed)
-                {
-                    char[128] buf;
-                    snprintf(buf.ptr, 128, "_position = box2i.rectangle(%d, %d, %d, %d)\n", _position.min.x, _position.min.y, _position.width, _position.height);
-                    debugLog(buf.ptr);
+                    bool found = child.mouseMove(x, y, dx, dy, mstate, foundMouseOver);
+                    foundMouseOver = foundMouseOver || found;
                 }
             }
 
-            if (!draggingUsed)
-                onMouseDrag(x - _position.min.x, y - _position.min.y, dx, dy, mstate);
-        }
+            if (isDragged())
+            {
+                // EDIT MODE
+                // In debug mode, dragging with the right mouse button move elements around
+                // and dragging with shift  + right button resize elements around.
+                //
+                // Additionally, if CTRL is pressed, the increments are only -1 or +1 pixel.
+                // 
+                // You can see the _position rectangle thanks to `debugLog`.
+                bool draggingUsed = false;
+                debug
+                {
+                    if (mstate.rightButtonDown && mstate.shiftPressed)
+                    {
+                        if (mstate.ctrlPressed)
+                        {
+                            dx = clamp(dx, -1, +1);
+                            dy = clamp(dy, -1, +1);
+                        }
+                        int nx = _position.min.x;
+                        int ny = _position.min.y;
+                        int w = _position.width + dx;
+                        int h = _position.height + dy;
+                        if (w < 5) w = 5;
+                        if (h < 5) h = 5;
+                        setDirtyWhole();
+                        _position = box2i(nx, ny, nx + w, ny + h);
+                        setDirtyWhole();
+                        draggingUsed = true;
 
-        // Note: no z-order for mouse-move, it's called for everything. Is it right? What would the DOM do?
 
-        foreach(child; _children[])
-        {
-            child.mouseMove(x, y, dx, dy, mstate);
-        }
+                    }
+                    else if (mstate.rightButtonDown)
+                    {
+                        if (mstate.ctrlPressed)
+                        {
+                            dx = clamp(dx, -1, +1);
+                            dy = clamp(dy, -1, +1);
+                        }
+                        int nx = _position.min.x + dx;
+                        int ny = _position.min.y + dy;
+                        if (nx < 0) nx = 0;
+                        if (ny < 0) ny = 0;
+                        setDirtyWhole();
+                        _position = box2i(nx, ny, nx + _position.width, ny + _position.height);
+                        setDirtyWhole();
+                        draggingUsed = true;
+                    }
 
-        if (contains(vec2i(x, y))) // FUTURE: something more fine-grained?
-        {
-            if (!_mouseOver)
-                onMouseEnter();
-            onMouseMove(x - _position.min.x, y - _position.min.y, dx, dy, mstate);
-            _mouseOver = true;
+                    // Output the latest position
+                    // This is helpful when developing a plug-in UI.
+                    if (draggingUsed)
+                    {
+                        char[128] buf;
+                        snprintf(buf.ptr, 128, "_position = box2i.rectangle(%d, %d, %d, %d)\n", _position.min.x, _position.min.y, _position.width, _position.height);
+                        debugLog(buf.ptr);
+                    }
+                }
+
+                if (!draggingUsed)
+                    onMouseDrag(x - _position.min.x, y - _position.min.y, dx, dy, mstate);
+            }
+
+            if (contains(x - _position.min.x, y - _position.min.y)) // FUTURE: something more fine-grained?
+            {
+                // Get the mouse-over crown if not taken
+                if (!foundMouseOver)
+                {
+                    foundMouseOver = true;
+                    _context.setMouseOver(this);
+                }
+
+                onMouseMove(x - _position.min.x, y - _position.min.y, dx, dy, mstate);
+            }
+
+            // Test children that are displayed below this element
+            foreach(child; _zOrderedChildren[])
+            {
+                if (child.zOrder < zOrder)
+                {
+                    bool found = child.mouseMove(x, y, dx, dy, mstate, foundMouseOver);
+                    foundMouseOver = foundMouseOver || found;
+                }
+            }
+            return foundMouseOver;
         }
-        else
+    }
+    else
+    {
+        // to be called when the mouse moved
+        final void mouseMove(int x, int y, int dx, int dy, MouseState mstate)
         {
-            if (_mouseOver)
-                onMouseExit();
-            _mouseOver = false;
+            if (isDragged)
+            {
+                // EDIT MODE
+                // In debug mode, dragging with the right mouse button move elements around
+                // and dragging with shift  + right button resize elements around.
+                //
+                // Additionally, if CTRL is pressed, the increments are only -1 or +1 pixel.
+                // 
+                // You can see the _position rectangle thanks to `debugLog`.
+                bool draggingUsed = false;
+                debug
+                {
+                    if (mstate.rightButtonDown && mstate.shiftPressed)
+                    {
+                        if (mstate.ctrlPressed)
+                        {
+                            dx = clamp(dx, -1, +1);
+                            dy = clamp(dy, -1, +1);
+                        }
+                        int nx = _position.min.x;
+                        int ny = _position.min.y;
+                        int w = _position.width + dx;
+                        int h = _position.height + dy;
+                        if (w < 5) w = 5;
+                        if (h < 5) h = 5;
+                        setDirtyWhole();
+                        _position = box2i(nx, ny, nx + w, ny + h);
+                        setDirtyWhole();
+                        draggingUsed = true;
+
+                    
+                    }
+                    else if (mstate.rightButtonDown)
+                    {
+                        if (mstate.ctrlPressed)
+                        {
+                            dx = clamp(dx, -1, +1);
+                            dy = clamp(dy, -1, +1);
+                        }
+                        int nx = _position.min.x + dx;
+                        int ny = _position.min.y + dy;
+                        if (nx < 0) nx = 0;
+                        if (ny < 0) ny = 0;
+                        setDirtyWhole();
+                        _position = box2i(nx, ny, nx + _position.width, ny + _position.height);
+                        setDirtyWhole();
+                        draggingUsed = true;
+                    }
+
+                    // Output the latest position
+                    // This is helpful when developing a plug-in UI.
+                    if (draggingUsed)
+                    {
+                        char[128] buf;
+                        snprintf(buf.ptr, 128, "_position = box2i.rectangle(%d, %d, %d, %d)\n", _position.min.x, _position.min.y, _position.width, _position.height);
+                        debugLog(buf.ptr);
+                    }
+                }
+
+                if (!draggingUsed)
+                    onMouseDrag(x - _position.min.x, y - _position.min.y, dx, dy, mstate);
+            }
+
+            // Note: no z-order for mouse-move, it's called for everything. Is it right? What would the DOM do?
+
+            foreach(child; _children[])
+            {
+                child.mouseMove(x, y, dx, dy, mstate);
+            }
+
+            if (contains(x - _position.min.x, y - _position.min.y)) // FUTURE: something more fine-grained?
+            {
+                if (!_mouseOver)
+                    onMouseEnter();
+                onMouseMove(x - _position.min.x, y - _position.min.y, dx, dy, mstate);
+                _mouseOver = true;
+            }
+            else
+            {
+                if (_mouseOver)
+                    onMouseExit();
+                _mouseOver = false;
+            }
         }
     }
 
@@ -604,9 +724,22 @@ nothrow:
             return _parent.topLevelParent();
     }
 
+    version(futureMouseOver)
+    {
+    
+    /// Returns: `true` is this element is hovered by the mouse, and 
+    final bool isMouseOver() pure const
+    {
+        return _context.mouseOver is this;
+    }
+    
+    }
+    else
+    {
     final bool isMouseOver() pure const
     {
         return _mouseOver;
+    }
     }
 
     final bool isDragged() pure const
@@ -742,7 +875,8 @@ private:
     UIContext _context;
 
     /// Flag: whether this UIElement has mouse over it or not.
-    bool _mouseOver = false;
+
+    version(futureMouseOver){} else bool _mouseOver = false;
 
     /// Dirty rectangles buffer, cropped to _position.
     Vec!box2i _localRectsBuf;

@@ -50,6 +50,13 @@ nothrow:
     /// Currently dragged element.
     UIElement dragged = null;
 
+
+    version(futureMouseOver)
+    {
+        /// Currently mouse-over'd element.
+        UIElement mouseOver = null;
+    }
+
     /// UI global image used for environment reflections.
     Mipmap!RGBA skybox;
 
@@ -68,6 +75,23 @@ nothrow:
     {
         skybox.destroyFree();
         skybox = mallocNew!(Mipmap!RGBA)(12, image);
+    }
+
+    version(futureMouseOver)
+    {
+        final void setMouseOver(UIElement elem) nothrow @nogc
+        {
+            UIElement old = this.mouseOver;
+            UIElement new_ = elem;
+            if (old is new_)
+                return;
+
+            if (old !is null)
+                old.onMouseExit();
+            this.mouseOver = new_;
+            if (new_ !is null)
+                new_.onMouseEnter();
+        }
     }
 
     final void setFocused(UIElement focused) nothrow @nogc
