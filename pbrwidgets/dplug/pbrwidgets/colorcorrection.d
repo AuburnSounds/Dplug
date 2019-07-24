@@ -133,6 +133,16 @@ nothrow:
         }
     }
 
+    override bool contains(int x, int y)
+    {
+        // HACK: this is just a way to avoid taking mouseOver.
+        // As this widget is often a top widget, 
+        // this avoids capturing mouse instead 
+        // of all below widgets.
+        return false; 
+    }
+
+
 private:
     ubyte[] _tableArea = null;
     ubyte* _redTransferTable = null;
