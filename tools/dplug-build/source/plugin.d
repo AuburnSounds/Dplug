@@ -136,7 +136,8 @@ struct Plugin
     string CFBundleIdentifierPrefix;
     string userManualPath; // can be null
     string licensePath;    // can be null
-    string iconPath;       // can be null or a path to a (large) .png
+    string iconPathWindows;       // can be null or a path to a .ico
+    string iconPathOSX;       // can be null or a path to a (large) .png
     bool hasGUI;
     string dubTargetPath;  // extracted from dub.json, used to build the dub output file path
 
@@ -661,11 +662,20 @@ Plugin readPluginDescription()
 
     try
     {
-        result.iconPath = rawPluginFile["iconPath"].str;
+        result.iconPathWindows = rawPluginFile["iconPath-windows"].str;
     }
     catch(Exception e)
     {
-        info("Missing \"iconPath\" in plugin.json (eg: \"gfx/myIcon.ico\")");
+        info("Missing \"iconPath-windows\" in plugin.json (eg: \"gfx/myIcon.ico\")");
+    }
+
+    try
+    {
+        result.iconPathOSX = rawPluginFile["iconPath-osx"].str;
+    }
+    catch(Exception e)
+    {
+        info("Missing \"iconPath-osx\" in plugin.json (eg: \"gfx/myIcon.png\")");
     }
 
     // Mandatory keys, but with workarounds
