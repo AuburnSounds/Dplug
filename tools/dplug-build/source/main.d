@@ -307,7 +307,7 @@ int main(string[] args)
             cwriteln();
         }
 
-        void buildAndPackage(string config, Arch[] architectures, string iconPath)
+        void buildAndPackage(string config, Arch[] architectures, string iconPathOSX)
         {
             // Is one of those arch Universal Binary?
             bool oneOfTheArchIsUB = false;
@@ -729,7 +729,7 @@ int main(string[] args)
                             extractAAXPresetsFromBinary(plugin.dubOutputFileName, contentsDir, is64b);
 
                         // Generate Plist
-                        string plist = makePListFile(plugin, config, iconPath != null);
+                        string plist = makePListFile(plugin, config, iconPathOSX != null);
                         std.file.write(contentsDir ~ "Info.plist", cast(void[])plist);
 
                         void[] pkgInfo = cast(void[]) plugin.makePkgInfo(config);
@@ -744,8 +744,8 @@ int main(string[] args)
                             std.file.copy(rsrcPath, contentsDir ~ "Resources/" ~ baseName(exePath) ~ ".rsrc");
                         }
 
-                        if (iconPath)
-                            std.file.copy(iconPath, contentsDir ~ "Resources/icon.icns");
+                        if (iconPathOSX)
+                            std.file.copy(iconPathOSX, contentsDir ~ "Resources/icon.icns");
 
                         if (arch == Arch.universalBinary)
                         {
@@ -906,13 +906,13 @@ int main(string[] args)
         if (makeInstaller)
             mkdirRecurse(outputDir ~ "/res-install");
 
-        string iconPath = null;
+        string iconPathOSX = null;
         version(OSX)
         {
             // Make icns and copy it (if any provided in plugin.json)
-            if (plugin.iconPath)
+            if (plugin.iconPathOSX)
             {
-                iconPath = makeMacIcon(plugin.name, plugin.iconPath); // FUTURE: this should be lazy
+                iconPathOSX = makeMacIcon(plugin.name, plugin.iconPathOSX); // FUTURE: this should be lazy
             }
         }
 
@@ -945,7 +945,7 @@ int main(string[] args)
 
         // Build various configuration
         foreach(config; configurations)
-            buildAndPackage(config, archs, iconPath);
+            buildAndPackage(config, archs, iconPathOSX);
 
         version(OSX)
         {
