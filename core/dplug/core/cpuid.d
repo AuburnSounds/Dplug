@@ -444,7 +444,8 @@ void getcacheinfoCPUID2()
         }
     }
 
-    uint[4] a;
+    uint A, B, C, D;
+
     bool firstTime = true;
     // On a multi-core system, this could theoretically fail, but it's only used
     // for old single-core CPUs.
@@ -453,13 +454,13 @@ void getcacheinfoCPUID2()
         asm pure nothrow @nogc {
             mov EAX, 2;
             cpuid;
-            mov a, EAX;
-            mov a+4, EBX;
-            mov a+8, ECX;
-            mov a+12, EDX;
+            mov A, EAX;
+            mov B, EBX;
+            mov C, ECX;
+            mov D, EDX;
         }
         if (firstTime) {
-            if (a[0]==0x0000_7001 && a[3]==0x80 && a[1]==0 && a[2]==0) {
+            if (A == 0x0000_7001 && D == 0x80 && B==0 && C==0) {
         // Cyrix MediaGX MMXEnhanced returns: EAX= 00007001, EDX=00000080.
         // These are NOT standard Intel values
         // (TLB = 32 entry, 4 way associative, 4K pages)
@@ -470,11 +471,16 @@ void getcacheinfoCPUID2()
                 return;
             }
             // lsb of a is how many times to loop.
-            numinfos = a[0] & 0xFF;
+            numinfos = A & 0xFF;
             // and otherwise it should be ignored
-            a[0] &= 0xFFFF_FF00;
+            A &= 0xFFFF_FF00;
             firstTime = false;
         }
+        uint[4] a;
+        a[0] = A;
+        a[1] = B;
+        a[2] = C;
+        a[3] = D;
         for (int c=0; c<4;++c) {
             // high bit set == no info.
             if (a[c] & 0x8000_0000) continue;
@@ -883,46 +889,6 @@ bool hasCPUID()
             datacache[0].lineSize = 32;
     }
 }
-
-/*
-// TODO: Implement this function with OS support
-void cpuidPPC()
-{
-    enum :int  { PPC601, PPC603, PPC603E, PPC604,
-                 PPC604E, PPC620, PPCG3, PPCG4, PPCG5 }
-
-    // TODO:
-    // asm { mfpvr; } returns the CPU version but unfortunately it can
-    // only be used in kernel mode. So OS support is required.
-    int cputype = PPC603;
-
-    // 601 has a 8KB combined data & code L1 cache.
-    uint sizes[] = [4, 8, 16, 16, 32, 32, 32, 32, 64];
-    ubyte ways[] = [8, 2,  4,  4,  4,  8,  8,  8,  8];
-    uint L2size[]= [0, 0,  0,  0,  0,  0,  0,  256,  512];
-    uint L3size[]= [0, 0,  0,  0,  0,  0,  0,  2048,  0];
-
-    datacache[0].size = sizes[cputype];
-    datacache[0].associativity = ways[cputype];
-    datacache[0].lineSize = (cputype==PPCG5)? 128 :
-        (cputype == PPC620 || cputype == PPCG3)? 64 : 32;
-    datacache[1].size = L2size[cputype];
-    datacache[2].size = L3size[cputype];
-    datacache[1].lineSize = datacache[0].lineSize;
-    datacache[2].lineSize = datacache[0].lineSize;
-}
-
-// TODO: Implement this function with OS support
-void cpuidSparc()
-{
-    // UltaSparcIIi  : L1 = 16,  2way. L2 = 512, 4 way.
-    // UltraSparcIII : L1 = 64,  4way. L2= 4096 or 8192.
-    // UltraSparcIIIi: L1 = 64,  4way. L2= 1024, 4 way
-    // UltraSparcIV  : L1 = 64,  4way. L2 = 16*1024.
-    // UltraSparcIV+ : L1 = 64,  4way. L2 = 2048, L3=32*1024.
-    // Sparc64V      : L1 = 128, 2way. L2 = 4096 4way.
-}
-*/
 
 __gshared initializedCpuid = false;
 
