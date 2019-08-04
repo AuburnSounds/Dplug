@@ -6,12 +6,20 @@ os:
 
 d:
  - ldc-beta
+ - ldc-1.16.0
+ - ldc-1.15.0
+ - ldc-1.14.0
+ - ldc-1.13.0
  - ldc-1.12.0
  - ldc-1.11.0
  - ldc-1.10.0
  - ldc-1.9.0
  - ldc-1.8.0
  - dmd-beta
+ - dmd-2.087.0
+ - dmd-2.086.1
+ - dmd-2.085.1
+ - dmd-2.084.1
  - dmd-2.083.1
  - dmd-2.082.1
  - dmd-2.081.2
@@ -35,28 +43,18 @@ env:
   - VST2_SDK=$TRAVIS_BUILD_DIR/VST2_SDK
 
 
-# Note: 32-bit x86 isn't tested for Linux
+# Note: 32-bit x86 isn't tested anymore in the CI
 script:
   - cd examples/distort; dub --compiler=${DC}; cd ../..
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then cd examples/distort; dub -a x86 --compiler=${DC}; cd ../..; fi
   - cd examples/clipit; dub --compiler=${DC}; cd ../..
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then cd examples/clipit; dub -a x86 --compiler=${DC}; cd ../..; fi
   - cd examples/ms-encode; dub --compiler=${DC}; cd ../..
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then cd examples/ms-encode; dub -a x86 --compiler=${DC}; cd ../..; fi
   - cd examples/simple-mono-synth; dub --compiler=${DC}; cd ../..
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then cd examples/simple-mono-synth; dub -a x86 --compiler=${DC}; cd ../..; fi
   - cd examples/poly-alias-synth; dub --compiler=${DC}; cd ../..
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then cd examples/poly-alias-synth; dub -a x86 --compiler=${DC}; cd ../..; fi
   - cd tools/dplug-build; dub --compiler=${DC}; cd ../..
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then cd tools/dplug-build; dub -a x86 --compiler=${DC}; cd ../..; fi
   - cd tools/stress-plugin; dub --compiler=${DC}; cd ../..
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then cd tools/stress-plugin; dub -a x86 --compiler=${DC}; cd ../..; fi
   - cd tools/process; dub --compiler=${DC}; cd ../..
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then cd tools/process; dub -a x86 --compiler=${DC}; cd ../..; fi
   - cd tools/latency-check; dub --compiler=${DC}; cd ../..
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then cd tools/latency-check; dub -a x86 --compiler=${DC}; cd ../..; fi
   - cd tools/wav-compare; dub --compiler=${DC}; cd ../..
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then cd tools/wav-compare; dub -a x86 --compiler=${DC}; cd ../..; fi
   - dub test --compiler=${DC} dplug:core
   - dub test --compiler=${DC} dplug:dsp
   - dub test --compiler=${DC} dplug:client
@@ -70,17 +68,3 @@ script:
   - dub test --compiler=${DC} dplug:flat-widgets
   - dub test --compiler=${DC} dplug:lv2
   - dub test --compiler=${DC} dplug:vst3
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then dub test --compiler=${DC} -a x86 dplug:core ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then dub test --compiler=${DC} -a x86 dplug:dsp ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then dub test --compiler=${DC} -a x86 dplug:client ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then dub test --compiler=${DC} -a x86 dplug:host ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then dub test --compiler=${DC} -a x86 dplug:vst ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then dub test --compiler=${DC} -a x86 dplug:window ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then dub test --compiler=${DC} -a x86 dplug:cocoa ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then dub test --compiler=${DC} -a x86 dplug:carbon ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then dub test --compiler=${DC} -a x86 dplug:au ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then dub test --compiler=${DC} -a x86 dplug:pbr-widgets ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then dub test --compiler=${DC} -a x86 dplug:flat-widgets ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then dub test --compiler=${DC} -a x86 dplug:lv2 ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then dub test --compiler=${DC} -a x86 dplug:vst3 ; fi
-
