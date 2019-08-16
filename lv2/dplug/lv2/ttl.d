@@ -25,6 +25,8 @@
 module dplug.lv2.ttl;
 
 import core.stdc.stdio;
+import core.stdc.stdlib;
+import core.stdc.string;
 import std.conv;
 
 import dplug.core.nogc;
@@ -34,41 +36,39 @@ import dplug.client.params;
 import dplug.client.daw;
 
 
-extern(C) alias generateManifestFromClientCallback = void function(const(ubyte)* fileContents, size_t len, const(char)[] buildDir);
+extern(C) alias generateManifestFromClientCallback = void function(const(ubyte)* fileContents, size_t len, const(char)[] buildDir) nothrow @nogc;
 
 void GenerateManifestFromClient_templated(alias ClientClass)(generateManifestFromClientCallback callback,
                                                              const(char)[] binaryFileName,
-                                                             const(char)[] buildDir)
+                                                             const(char)[] buildDir) nothrow @nogc
 {
-    // Note: this function is called by D, so it reuses the runtime from dplug-build on Linux
-    // FUTURE: make this function nothrow @nogc, to avoid relying on dplug-build runtime
-
-    import core.runtime;
-    Runtime.initialize();
-
     ClientClass client = mallocNew!ClientClass();
     scope(exit) client.destroyFree();
 
     LegalIO[] legalIOs = client.legalIOs();
     Parameter[] params = client.params();
-    string manifest = "";
+    const int manifestMaxSize = 0 >> 16;
+    char[] manifest = cast(char[])malloc(char.sizeof * manifestMaxSize)[0..manifestMaxSize];
+    manifest[0] = '\0';
 
     // Make an URI for the GUI
     char[256] uriBuf;
     sprintVendorPrefix(uriBuf.ptr, 256, client.pluginHomepage(), client.getPluginUniqueID());
     string uriVendor = stringIDup(uriBuf.ptr); // TODO leak here
 
-    manifest ~= "@prefix lv2:  <http://lv2plug.in/ns/lv2core#>.\n";
-    manifest ~= "@prefix atom: <http://lv2plug.in/ns/ext/atom#>.\n";
-    manifest ~= "@prefix doap: <http://usefulinc.com/ns/doap#>.\n";
-    manifest ~= "@prefix foaf: <http://xmlns.com/foaf/0.1/>.\n";
-    manifest ~= "@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.\n";
-    manifest ~= "@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.\n";
-    manifest ~= "@prefix urid: <http://lv2plug.in/ns/ext/urid#>.\n";
-    manifest ~= "@prefix ui:   <http://lv2plug.in/ns/extensions/ui#>.\n";
-    manifest ~= "@prefix pset: <http://lv2plug.in/ns/ext/presets#>.\n";
-    manifest ~= "@prefix opts: <http://lv2plug.in/ns/ext/options#>.\n";
-    manifest ~= "@prefix vendor: " ~ escapeRDF_IRI(uriVendor) ~ ".\n\n"; // this prefix abbreviate the ttl with our own URL base
+    strcat(manifest.ptr, "@prefix lv2:  <http://lv2plug.in/ns/lv2core#>.\n".ptr);
+    strcat(manifest.ptr, "@prefix atom: <http://lv2plug.in/ns/ext/atom#>.\n".ptr);
+    strcat(manifest.ptr, "@prefix doap: <http://usefulinc.com/ns/doap#>.\n".ptr);
+    strcat(manifest.ptr, "@prefix foaf: <http://xmlns.com/foaf/0.1/>.\n".ptr);
+    strcat(manifest.ptr, "@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.\n".ptr);
+    strcat(manifest.ptr, "@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.\n".ptr);
+    strcat(manifest.ptr, "@prefix urid: <http://lv2plug.in/ns/ext/urid#>.\n".ptr);
+    strcat(manifest.ptr, "@prefix ui:   <http://lv2plug.in/ns/extensions/ui#>.\n".ptr);
+    strcat(manifest.ptr, "@prefix pset: <http://lv2plug.in/ns/ext/presets#>.\n".ptr);
+    strcat(manifest.ptr, "@prefix opts: <http://lv2plug.in/ns/ext/options#>.\n".ptr);
+    strcat(manifest.ptr, "@prefix vendor: ".ptr); // this prefix abbreviate the ttl with our own URL base
+    strcat(manifest.ptr, escapeRDF_IRI(uriVendor).ptr);
+    strcat(manifest.ptr, ".\n\n".ptr);
 
     
 
@@ -85,23 +85,32 @@ void GenerateManifestFromClient_templated(alias ClientClass)(generateManifestFro
         sprintPluginURI_IO_short(uriBuf.ptr, 256, legalIO);
         string uriIO = stringIDup(uriBuf.ptr); // TODO leak here
 
-        manifest ~= uriIO ~ "\n";
-        manifest ~= "    a lv2:Plugin" ~ lv2PluginCategory(client.pluginCategory) ~ " ;\n";
-        manifest ~= "    lv2:binary " ~ escapeRDF_IRI(binaryFileName) ~ " ;\n";
-        manifest ~= "    doap:name " ~ escapeRDFString(client.pluginName) ~ " ;\n";
-        manifest ~= "    doap:maintainer [ foaf:name " ~ escapeRDFString(client.vendorName) ~ " ] ;\n";
-        manifest ~= "    lv2:requiredFeature opts:options ,\n";
-        manifest ~= "                        urid:map ;\n";
+        strcat(manifest.ptr, uriIO.ptr);
+        strcat(manifest.ptr, "\n".ptr);
+        strcat(manifest.ptr, "    a lv2:Plugin");
+        strcat(manifest.ptr, lv2PluginCategory(client.pluginCategory).ptr);
+        strcat(manifest.ptr, " ;\n".ptr);
+        strcat(manifest.ptr, "    lv2:binary ".ptr);
+        strcat(manifest.ptr, escapeRDF_IRI(binaryFileName).ptr);
+        strcat(manifest.ptr, " ;\n".ptr);
+        strcat(manifest.ptr, "    doap:name ".ptr);
+        strcat(manifest.ptr, escapeRDFString(client.pluginName).ptr);
+        strcat(manifest.ptr, " ;\n".ptr);
+        strcat(manifest.ptr, "    doap:maintainer [ foaf:name ".ptr);
+        strcat(manifest.ptr, escapeRDFString(client.vendorName).ptr);
+        strcat(manifest.ptr, " ] ;\n".ptr);
+        strcat(manifest.ptr, "    lv2:requiredFeature opts:options ,\n".ptr);
+        strcat(manifest.ptr, "                        urid:map ;\n".ptr);
 
         // We do not provide such an interface
         //manifest ~= "    lv2:extensionData <" ~ LV2_OPTIONS__interface ~ "> ; \n";
 
         if(client.hasGUI)
         {
-            manifest ~= "    ui:ui vendor:ui;\n";
+            strcat(manifest.ptr, "    ui:ui vendor:ui;\n".ptr);
         }
 
-        manifest ~= buildParamPortConfiguration(client.params(), legalIO, client.receivesMIDI);
+        strcat(manifest.ptr, buildParamPortConfiguration(client.params(), legalIO, client.receivesMIDI).ptr);
     }
 
     // add presets information
@@ -112,63 +121,77 @@ void GenerateManifestFromClient_templated(alias ClientClass)(generateManifestFro
         // Make an URI for this preset
         sprintPluginURI_preset_short(uriBuf.ptr, 256, presetIndex);
         auto preset = presetBank.preset(presetIndex);
-        manifest ~= "\n" ~ stringIDup(uriBuf.ptr) ~ "\n"; // TODO leak here
-        manifest ~= "        a pset:Preset ;\n";
-        manifest ~= "        rdfs:label " ~ escapeRDFString(preset.name) ~ " ;\n";
+        strcat(manifest.ptr, "\n".ptr);
+        strcat(manifest.ptr, stringIDup(uriBuf.ptr).ptr);
+        strcat(manifest.ptr, "\n".ptr); // TODO leak here
+        strcat(manifest.ptr, "        a pset:Preset ;\n".ptr);
+        strcat(manifest.ptr, "        rdfs:label ".ptr);
+        strcat(manifest.ptr, escapeRDFString(preset.name).ptr);
+        strcat(manifest.ptr, " ;\n".ptr);
 
-        manifest ~= "        lv2:port [\n";     
+        strcat(manifest.ptr, "        lv2:port [\n".ptr);     
 
         const(float)[] paramValues = preset.getNormalizedParamValues();
 
         for (int p = 0; p < paramValues.length; ++p)
         {
-            string paramSymbol = "p" ~ to!string(p);
-            manifest ~= "            lv2:symbol \"" ~ paramSymbol ~ "\"; pset:value " ~ to!string(paramValues[p]) ~ " \n";
+            char[] paramSymbol = cast(char[])malloc(char.sizeof * 256)[0..256];
+            sprintf(paramSymbol.ptr, "p%s", p);
+            char[] paramValue = cast(char[])malloc(char.sizeof * 256)[0..256];
+            sprintf(paramValue.ptr, "%s", paramValues[p]);
+
+            strcat(manifest.ptr, "            lv2:symbol \"".ptr);
+            strcat(manifest.ptr, paramSymbol.ptr);
+            strcat(manifest.ptr, "\"; pset:value ".ptr);
+            strcat(manifest.ptr, paramValue.ptr);
+            strcat(manifest.ptr, " \n".ptr);
             if (p + 1 == paramValues.length)
-                manifest ~= "        ] ;\n";
+                strcat(manifest.ptr, "        ] ;\n".ptr);
             else
-                manifest ~= "        ] , [\n";
+                strcat(manifest.ptr, "        ] , [\n".ptr);
         }
 
         // Each preset applies to every plugin I/O configuration
-        manifest ~= "        lv2:appliesTo ";
+        strcat(manifest.ptr, "        lv2:appliesTo ".ptr);
         foreach(size_t n, legalIO; legalIOs)
         {
             // Make an URI for this I/O configuration
             sprintPluginURI_IO_short(uriBuf.ptr, 256, legalIO);
             string uriIO = stringIDup(uriBuf.ptr); // TODO leak here
-            manifest ~= uriIO;
+            strcat(manifest.ptr, uriIO.ptr);
             if (n + 1 == legalIOs.length)
-                manifest ~= " . \n";
+                strcat(manifest.ptr, " . \n".ptr);
             else
-                manifest ~= " , ";
+                strcat(manifest.ptr, " , ".ptr);
         }
     }
 
     // describe UI
     if(client.hasGUI)
     {
-        manifest ~= "\nvendor:ui\n";
+        strcat(manifest.ptr, "\nvendor:ui\n".ptr);
 
         version(OSX)
-            manifest ~= "    a ui:CocoaUI;\n";
+            strcat(manifest.ptr, "    a ui:CocoaUI;\n".ptr);
         else version(Windows)
-            manifest ~= "    a ui:WindowsUI;\n";
+            strcat(manifest.ptr, "    a ui:WindowsUI;\n".ptr);
         else version(linux)
-            manifest ~= "    a ui:X11UI;\n";
+            strcat(manifest.ptr, "    a ui:X11UI;\n".ptr);
         else
             static assert("unsupported OS");
 
-        manifest ~= "    lv2:optionalFeature ui:noUserResize ,\n";
-        manifest ~= "                        ui:resize ,\n";
-        manifest ~= "                        ui:touch ;\n";
-        manifest ~= "    lv2:requiredFeature opts:options ,\n";
-        manifest ~= "                        urid:map ,\n";
+        strcat(manifest.ptr, "    lv2:optionalFeature ui:noUserResize ,\n".ptr);
+        strcat(manifest.ptr, "                        ui:resize ,\n".ptr);
+        strcat(manifest.ptr, "                        ui:touch ;\n".ptr);
+        strcat(manifest.ptr, "    lv2:requiredFeature opts:options ,\n".ptr);
+        strcat(manifest.ptr, "                        urid:map ,\n".ptr);
 
         // No DSP separated from UI for us
-        manifest ~= "                        <http://lv2plug.in/ns/ext/instance-access> ;\n";
+        strcat(manifest.ptr, "                        <http://lv2plug.in/ns/ext/instance-access> ;\n".ptr);
 
-        manifest ~= "    ui:binary "  ~ escapeRDF_IRI(binaryFileName) ~ " .\n";
+        strcat(manifest.ptr, "    ui:binary ".ptr);
+        strcat(manifest.ptr, escapeRDF_IRI(binaryFileName).ptr);
+        strcat(manifest.ptr, " .\n".ptr);
     }
 
     callback(cast(const(ubyte)*)manifest, manifest.length, buildDir);
@@ -250,48 +273,49 @@ void sprintPluginURI_IO(char* buf, size_t maxChars, string pluginHomepage, char[
     }
 }
 
-string lv2PluginCategory(PluginCategory category)
+const(char)[] lv2PluginCategory(PluginCategory category) nothrow @nogc
 {
-    string lv2Category = ", lv2:";
+    char[] lv2Category = cast(char[])malloc(char.sizeof * 30)[0..30];
+    lv2Category[0..6] = ", lv2:";
     with(PluginCategory)
     {
         switch(category)
         {
             case effectAnalysisAndMetering:
-                lv2Category ~= "AnalyserPlugin";
+                strcat(lv2Category.ptr, "AnalyserPlugin");
                 break;
             case effectDelay:
-                lv2Category ~= "DelayPlugin";
+                strcat(lv2Category.ptr, "DelayPlugin");
                 break;
             case effectDistortion:
-                lv2Category ~= "DistortionPlugin";
+                strcat(lv2Category.ptr, "DistortionPlugin");
                 break;
             case effectDynamics:
-                lv2Category ~= "DynamicsPlugin";
+                strcat(lv2Category.ptr, "DynamicsPlugin");
                 break;
             case effectEQ:
-                lv2Category ~= "EQPlugin";
+                strcat(lv2Category.ptr, "EQPlugin");
                 break;
             case effectImaging:
-                lv2Category ~= "SpatialPlugin";
+                strcat(lv2Category.ptr, "SpatialPlugin");
                 break;
             case effectModulation:
-                lv2Category ~= "ModulatorPlugin";
+                strcat(lv2Category.ptr, "ModulatorPlugin");
                 break;
             case effectPitch:
-                lv2Category ~= "PitchPlugin";
+                strcat(lv2Category.ptr, "PitchPlugin");
                 break;
             case effectReverb:
-                lv2Category ~= "ReverbPlugin";
+                strcat(lv2Category.ptr, "ReverbPlugin");
                 break;
             case effectOther:
-                lv2Category ~= "UtilityPlugin";
+                strcat(lv2Category.ptr, "UtilityPlugin");
                 break;
             case instrumentDrums:
             case instrumentSampler:
             case instrumentSynthesizer:
             case instrumentOther:
-                lv2Category ~= "InstrumentPlugin";
+                strcat(lv2Category.ptr, "InstrumentPlugin");
                 break;
             case invalid:
             default:
@@ -303,39 +327,43 @@ string lv2PluginCategory(PluginCategory category)
 
 /// escape a UTF-8 string for UTF-8 RDF
 /// See_also: https://www.w3.org/TR/turtle/
-string escapeRDFString(const(char)[] s)
+const(char)[] escapeRDFString(const(char)[] s) nothrow @nogc
 {
-    string r = "\"";
+    char[] r = cast(char[])malloc(char.sizeof * s.length)[0..s.length];
+    r[0] = '\"';
 
-    foreach(char ch; s)
+    foreach(char ch, int i; s)
     {
         switch(ch)
         {
            // escape some whitespace chars
-           case '\t': r ~= `\t`; break;
-           case '\b': r ~= `\b`; break;
-           case '\n': r ~= `\n`; break;
-           case '\r': r ~= `\r`; break;
-           case '\f': r ~= `\f`; break;
-           case '\"': r ~= `\"`; break;
-           case '\'': r ~= `\'`; break;
-           case '\\': r ~= `\\`; break;
+           // NOTE - Not sure what this does
+           case '\t': r[i] = '\t'; break;
+           case '\b': r[i] = '\b'; break;
+           case '\n': r[i] = '\n'; break;
+           case '\r': r[i] = '\r'; break;
+           case '\f': r[i] = '\f'; break;
+           case '\"': r[i] = '\"'; break;
+           case '\'': r[i] = '\''; break;
+           case '\\': r[i] = '\\'; break;
            default:
-               r ~= ch;
+               r[i] = ch;
         }
     }
-    r ~= "\"";
+    r[s.length - 1] = '\"';
     return r;
 }
 
 /// Escape a UTF-8 string for UTF-8 IRI literal
 /// See_also: https://www.w3.org/TR/turtle/
-string escapeRDF_IRI(const(char)[] s)
+const(char)[] escapeRDF_IRI(const(char)[] s) nothrow @nogc
 {
+    char[] escapedRDF_IRI = cast(char[])malloc(char.sizeof * s.length)[0..s.length];
+    
     // We actually remove all characters, because it seems not all hosts properly decode escape sequences
-    string r = "<";
+    escapedRDF_IRI[0] = '<';
 
-    foreach(char ch; s)
+    foreach(char ch, int index; s)
     {
         switch(ch)
         {
@@ -352,17 +380,20 @@ string escapeRDF_IRI(const(char)[] s)
             case '\\':
                 break; // skip that character
             default:
-                r ~= ch;
+                escapedRDF_IRI[index] = ch;
         }
     }
-    r ~= ">";
-    return r;
+    escapedRDF_IRI[s.length - 1] = '>';
+    return escapedRDF_IRI;
 }
 
-const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, bool hasMIDIInput)
+const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, bool hasMIDIInput) nothrow @nogc
 {
     import std.conv: to;
     import std.uni: toLower;
+
+    const paramStringLen = 0 >> 16;
+    char[] paramString = cast(char[])malloc(char.sizeof * paramStringLen)[0..paramStringLen];
 
     // Note: parameters symbols should be consistent across versions
     // Can't change them without issuing a major version change.
@@ -370,67 +401,107 @@ const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, b
     // We choose to have symbol "input_<n>" for input channel n
     // We choose to have symbol "output_<n>" for output channel n
 
-    string paramString = "    lv2:port\n";
+    strcat(paramString.ptr, "    lv2:port\n".ptr);
     foreach(index, param; params)
     {
-        string paramSymbol = "p" ~ to!string(index);
-        paramString ~= "    [ \n";
-        paramString ~= "        a lv2:InputPort , lv2:ControlPort ;\n";
-        paramString ~= "        lv2:index " ~ to!string(index) ~ " ;\n";
-        paramString ~= "        lv2:symbol \"p" ~ to!string(index) ~ "\" ;\n";
-        paramString ~= "        lv2:name " ~ escapeRDFString(param.name) ~ " ;\n";
-        paramString ~= "        lv2:default " ~ to!string(param.getNormalized()) ~ " ;\n";
-        paramString ~= "        lv2:minimum 0.0 ;\n";
-        paramString ~= "        lv2:maximum 1.0 ;\n";
-        paramString ~= "    ]";
+        char[] paramSymbol = cast(char[])malloc(char.sizeof * 256)[0..256];
+        sprintf(paramString.ptr, "p%s".ptr, index);
+        strcat(paramString.ptr, "    [ \n".ptr);
+        strcat(paramString.ptr, "        a lv2:InputPort , lv2:ControlPort ;\n".ptr);
+        strcat(paramString.ptr, "        lv2:index ".ptr);
+        strcat(paramString.ptr, paramSymbol.ptr);
+        strcat(paramString.ptr, " ;\n".ptr);
+        strcat(paramString.ptr, "        lv2:symbol \"p".ptr);
+        strcat(paramString.ptr, paramSymbol.ptr);
+        strcat(paramString.ptr, "\" ;\n".ptr);
+        strcat(paramString.ptr, "        lv2:name ".ptr);
+        strcat(paramString.ptr, escapeRDFString(param.name).ptr);
+        strcat(paramString.ptr, " ;\n".ptr);
+        strcat(paramString.ptr, "        lv2:default ".ptr);
+
+        char[] paramNormalized = cast(char[])malloc(char.sizeof * 256)[0..256];
+        sprintf(paramNormalized.ptr, "%s", param.getNormalized());
+
+        strcat(paramString.ptr, paramNormalized.ptr);
+        strcat(paramString.ptr, " ;\n".ptr);
+        strcat(paramString.ptr, "        lv2:minimum 0.0 ;\n".ptr);
+        strcat(paramString.ptr, "        lv2:maximum 1.0 ;\n".ptr);
+        strcat(paramString.ptr, "    ]".ptr);
         if(index < params.length -1 || legalIO.numInputChannels > 0 || legalIO.numOutputChannels > 0)
-            paramString ~= " , ";
+            strcat(paramString.ptr, " , ".ptr);
         else
-            paramString ~= " . \n";
+            strcat(paramString.ptr, " . \n".ptr);
     }
 
     foreach(input; 0..legalIO.numInputChannels)
     {
-        paramString ~= "    [ \n";
-        paramString ~= "        a lv2:AudioPort , lv2:InputPort ;\n";
-        paramString ~= "        lv2:index " ~ to!string(params.length + input) ~ ";\n";
-        paramString ~= "        lv2:symbol \"input_" ~ to!string(input) ~ "\" ;\n";
-        paramString ~= "        lv2:name \"Input" ~ to!string(input) ~ "\" ;\n";
-        paramString ~= "    ]";
+        char[] paramsLengthPlusInput = cast(char[])malloc(char.sizeof * 256)[0..256];
+        sprintf(paramsLengthPlusInput.ptr, "%s", params.length + input);
+        char[] inputString = cast(char[])malloc(char.sizeof * 256)[0..256];
+        sprintf(inputString.ptr, "%s", params.length + input);
+
+        strcat(paramString.ptr, "    [ \n".ptr);
+        strcat(paramString.ptr, "        a lv2:AudioPort , lv2:InputPort ;\n".ptr);
+        strcat(paramString.ptr, "        lv2:index ".ptr);
+        strcat(paramString.ptr, paramsLengthPlusInput.ptr);
+        strcat(paramString.ptr, ";\n".ptr);
+        strcat(paramString.ptr, "        lv2:symbol \"input_".ptr);
+        strcat(paramString.ptr, inputString.ptr);
+        strcat(paramString.ptr, "\" ;\n".ptr);
+        strcat(paramString.ptr, "        lv2:name \"Input".ptr);
+        strcat(paramString.ptr, inputString.ptr);
+        strcat(paramString.ptr, "\" ;\n".ptr);
+        strcat(paramString.ptr, "    ]".ptr);
         if(input < legalIO.numInputChannels - 1 || legalIO.numOutputChannels > 0)
-            paramString ~= " , ";
+            strcat(paramString.ptr, " , ".ptr);
         else
-            paramString ~= " . \n";
+            strcat(paramString.ptr, " . \n".ptr);
     }
 
     foreach(output; 0..legalIO.numOutputChannels)
     {
-        paramString ~= "    [ \n";
-        paramString ~= "        a lv2:AudioPort , lv2:OutputPort ;\n";
-        paramString ~= "        lv2:index " ~ to!string(params.length + legalIO.numInputChannels + output) ~ ";\n";
-        paramString ~= "        lv2:symbol \"output_" ~ to!string(output) ~ "\" ;\n";
-        paramString ~= "        lv2:name \"Output" ~ to!string(output) ~ "\" ;\n";
-        paramString ~= "    ]";
+        char[] indexString = cast(char[])malloc(char.sizeof * 256)[0..256];
+        sprintf(indexString.ptr, "%s", params.length + legalIO.numInputChannels + output);
+        char[] outputString = cast(char[])malloc(char.sizeof * 256)[0..256];
+        sprintf(outputString.ptr, "%s", output);
+        
+        strcat(paramString.ptr, "    [ \n".ptr);
+        strcat(paramString.ptr, "        a lv2:AudioPort , lv2:OutputPort ;\n".ptr);
+        strcat(paramString.ptr, "        lv2:index ".ptr);
+        strcat(paramString.ptr, indexString.ptr);
+        strcat(paramString.ptr, ";\n".ptr);
+        strcat(paramString.ptr, "        lv2:symbol \"output_".ptr);
+        strcat(paramString.ptr, outputString.ptr);
+        strcat(paramString.ptr, "\" ;\n".ptr);
+        strcat(paramString.ptr, "        lv2:name \"Output".ptr);
+        strcat(paramString.ptr, outputString.ptr);
+        strcat(paramString.ptr, "\" ;\n".ptr);
+        strcat(paramString.ptr, "    ]".ptr);
         if(output < legalIO.numOutputChannels - 1 || hasMIDIInput)
-            paramString ~= " , ";
+            strcat(paramString.ptr, " , ".ptr);
         else
-            paramString ~= " . \n";
+            strcat(paramString.ptr, " . \n".ptr);
     }
 
-    paramString ~= "    [ \n";
-    paramString ~= "        a lv2:InputPort, atom:AtomPort ;\n";
-    paramString ~= "        atom:bufferType atom:Sequence ;\n";
+    strcat(paramString.ptr, "    [ \n".ptr);
+    strcat(paramString.ptr, "        a lv2:InputPort, atom:AtomPort ;\n".ptr);
+    strcat(paramString.ptr, "        atom:bufferType atom:Sequence ;\n".ptr);
 
     if(hasMIDIInput)
-        paramString ~= "        atom:supports <http://lv2plug.in/ns/ext/midi#MidiEvent> ;\n";
+        strcat(paramString.ptr, "        atom:supports <http://lv2plug.in/ns/ext/midi#MidiEvent> ;\n".ptr);
 
-    paramString ~= "        atom:supports <http://lv2plug.in/ns/ext/time#Position> ;\n";
-    paramString ~= "        lv2:designation lv2:control ;\n";
-    paramString ~= "        lv2:index " ~ to!string(params.length + legalIO.numInputChannels + legalIO.numOutputChannels) ~ ";\n";
-    paramString ~= "        lv2:symbol \"lv2_events_in\" ;\n";
-    paramString ~= "        lv2:name \"Events Input\"\n";
-    paramString ~= "    ]";
-    paramString ~= " . \n";
+    char[] indexString = cast(char[])malloc(char.sizeof * 256)[0..256];
+    sprintf(indexString.ptr, "%s", params.length + legalIO.numInputChannels + legalIO.numOutputChannels);
+
+    strcat(paramString.ptr, "        atom:supports <http://lv2plug.in/ns/ext/time#Position> ;\n".ptr);
+    strcat(paramString.ptr, "        lv2:designation lv2:control ;\n".ptr);
+    strcat(paramString.ptr, "        lv2:index ".ptr);
+    strcat(paramString.ptr, indexString.ptr);
+    strcat(paramString.ptr, ";\n".ptr);
+    strcat(paramString.ptr, "        lv2:symbol \"lv2_events_in\" ;\n".ptr);
+    strcat(paramString.ptr, "        lv2:name \"Events Input\"\n".ptr);
+    strcat(paramString.ptr, "    ]".ptr);
+    strcat(paramString.ptr, " . \n".ptr);
 
     return paramString;
 }
