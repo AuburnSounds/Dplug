@@ -47,7 +47,7 @@ void GenerateManifestFromClient_templated(alias ClientClass)(generateManifestFro
 
     LegalIO[] legalIOs = client.legalIOs();
     Parameter[] params = client.params();
-    const int manifestMaxSize = 0 >> 16;
+    const int manifestMaxSize = 1_000_000;
     char[] manifest = cast(char[])malloc(char.sizeof * manifestMaxSize)[0..manifestMaxSize];
     manifest[0] = '\0';
 
@@ -136,7 +136,7 @@ void GenerateManifestFromClient_templated(alias ClientClass)(generateManifestFro
         for (int p = 0; p < paramValues.length; ++p)
         {
             char[] paramSymbol = cast(char[])malloc(char.sizeof * 256)[0..256];
-            sprintf(paramSymbol.ptr, "p%s", p);
+            sprintf(paramSymbol.ptr, "p%d", p);
             char[] paramValue = cast(char[])malloc(char.sizeof * 256)[0..256];
             sprintf(paramValue.ptr, "%s", paramValues[p]);
 
@@ -194,7 +194,8 @@ void GenerateManifestFromClient_templated(alias ClientClass)(generateManifestFro
         strcat(manifest.ptr, " .\n".ptr);
     }
 
-    callback(cast(const(ubyte)*)manifest, manifest.length, buildDir);
+    const int manifestFinalLength = cast(int)strlen(manifest.ptr);
+    callback(cast(const(ubyte)*)strdup(manifest[0..manifestFinalLength].ptr), manifestFinalLength, buildDir);
 }
 
 package:
@@ -332,7 +333,7 @@ const(char)[] escapeRDFString(const(char)[] s) nothrow @nogc
     char[] r = cast(char[])malloc(char.sizeof * s.length)[0..s.length];
     r[0] = '\"';
 
-    foreach(char ch, int i; s)
+    foreach(int i, char ch; s)
     {
         switch(ch)
         {
@@ -363,7 +364,7 @@ const(char)[] escapeRDF_IRI(const(char)[] s) nothrow @nogc
     // We actually remove all characters, because it seems not all hosts properly decode escape sequences
     escapedRDF_IRI[0] = '<';
 
-    foreach(char ch, int index; s)
+    foreach(int index, char ch; s)
     {
         switch(ch)
         {
@@ -392,7 +393,7 @@ const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, b
     import std.conv: to;
     import std.uni: toLower;
 
-    const paramStringLen = 0 >> 16;
+    const paramStringLen = 10_000;
     char[] paramString = cast(char[])malloc(char.sizeof * paramStringLen)[0..paramStringLen];
 
     // Note: parameters symbols should be consistent across versions
@@ -405,7 +406,7 @@ const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, b
     foreach(index, param; params)
     {
         char[] paramSymbol = cast(char[])malloc(char.sizeof * 256)[0..256];
-        sprintf(paramString.ptr, "p%s".ptr, index);
+        sprintf(paramSymbol.ptr, "p%d", index);
         strcat(paramString.ptr, "    [ \n".ptr);
         strcat(paramString.ptr, "        a lv2:InputPort , lv2:ControlPort ;\n".ptr);
         strcat(paramString.ptr, "        lv2:index ".ptr);
@@ -420,7 +421,7 @@ const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, b
         strcat(paramString.ptr, "        lv2:default ".ptr);
 
         char[] paramNormalized = cast(char[])malloc(char.sizeof * 256)[0..256];
-        sprintf(paramNormalized.ptr, "%s", param.getNormalized());
+        sprintf(paramNormalized.ptr, "%d", param.getNormalized());
 
         strcat(paramString.ptr, paramNormalized.ptr);
         strcat(paramString.ptr, " ;\n".ptr);
@@ -436,9 +437,9 @@ const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, b
     foreach(input; 0..legalIO.numInputChannels)
     {
         char[] paramsLengthPlusInput = cast(char[])malloc(char.sizeof * 256)[0..256];
-        sprintf(paramsLengthPlusInput.ptr, "%s", params.length + input);
+        sprintf(paramsLengthPlusInput.ptr, "%d", params.length + input);
         char[] inputString = cast(char[])malloc(char.sizeof * 256)[0..256];
-        sprintf(inputString.ptr, "%s", params.length + input);
+        sprintf(inputString.ptr, "%d", params.length + input);
 
         strcat(paramString.ptr, "    [ \n".ptr);
         strcat(paramString.ptr, "        a lv2:AudioPort , lv2:InputPort ;\n".ptr);
@@ -461,9 +462,9 @@ const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, b
     foreach(output; 0..legalIO.numOutputChannels)
     {
         char[] indexString = cast(char[])malloc(char.sizeof * 256)[0..256];
-        sprintf(indexString.ptr, "%s", params.length + legalIO.numInputChannels + output);
+        sprintf(indexString.ptr, "%d", params.length + legalIO.numInputChannels + output);
         char[] outputString = cast(char[])malloc(char.sizeof * 256)[0..256];
-        sprintf(outputString.ptr, "%s", output);
+        sprintf(outputString.ptr, "%d", output);
         
         strcat(paramString.ptr, "    [ \n".ptr);
         strcat(paramString.ptr, "        a lv2:AudioPort , lv2:OutputPort ;\n".ptr);
@@ -491,7 +492,7 @@ const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, b
         strcat(paramString.ptr, "        atom:supports <http://lv2plug.in/ns/ext/midi#MidiEvent> ;\n".ptr);
 
     char[] indexString = cast(char[])malloc(char.sizeof * 256)[0..256];
-    sprintf(indexString.ptr, "%s", params.length + legalIO.numInputChannels + legalIO.numOutputChannels);
+    sprintf(indexString.ptr, "%d", params.length + legalIO.numInputChannels + legalIO.numOutputChannels);
 
     strcat(paramString.ptr, "        atom:supports <http://lv2plug.in/ns/ext/time#Position> ;\n".ptr);
     strcat(paramString.ptr, "        lv2:designation lv2:control ;\n".ptr);
