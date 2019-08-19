@@ -47,6 +47,8 @@ void GenerateManifestFromClient_templated(alias ClientClass)(generateManifestFro
 
     LegalIO[] legalIOs = client.legalIOs();
     Parameter[] params = client.params();
+
+    // set max manifest size to 1 Million characters/bytes.  We whould never exceed this I hope
     const int manifestMaxSize = 1_000_000;
     char[] manifest = cast(char[])malloc(char.sizeof * manifestMaxSize)[0..manifestMaxSize];
     manifest[0] = '\0';
@@ -136,14 +138,15 @@ void GenerateManifestFromClient_templated(alias ClientClass)(generateManifestFro
         for (int p = 0; p < paramValues.length; ++p)
         {
             char[] paramSymbol = cast(char[])malloc(char.sizeof * 256)[0..256];
+            paramSymbol[0] = '\0';
             sprintf(paramSymbol.ptr, "p%d", p);
-            char[] paramValue = cast(char[])malloc(char.sizeof * 256)[0..256];
-            sprintf(paramValue.ptr, "%s", paramValues[p]);
+            char[] paramValue = cast(char[])malloc(char.sizeof * 10)[0..10];
+            snprintf(paramValue.ptr, 10, "%f", paramValues[p]);
 
             strcat(manifest.ptr, "            lv2:symbol \"".ptr);
             strcat(manifest.ptr, paramSymbol.ptr);
             strcat(manifest.ptr, "\"; pset:value ".ptr);
-            strcat(manifest.ptr, paramValue.ptr);
+            strcat(manifest.ptr, paramValue[0..strlen(paramValue.ptr)].ptr);
             strcat(manifest.ptr, " \n".ptr);
             if (p + 1 == paramValues.length)
                 strcat(manifest.ptr, "        ] ;\n".ptr);
@@ -330,28 +333,31 @@ const(char)[] lv2PluginCategory(PluginCategory category) nothrow @nogc
 /// See_also: https://www.w3.org/TR/turtle/
 const(char)[] escapeRDFString(const(char)[] s) nothrow @nogc
 {
-    char[] r = cast(char[])malloc(char.sizeof * s.length)[0..s.length];
+    const int len = cast(int)s.length + 3;
+    char[] r = cast(char[])malloc(char.sizeof * len)[0..len];
     r[0] = '\"';
 
     foreach(int i, char ch; s)
     {
+        int index = i + 1;
         switch(ch)
         {
            // escape some whitespace chars
            // NOTE - Not sure what this does
-           case '\t': r[i] = '\t'; break;
-           case '\b': r[i] = '\b'; break;
-           case '\n': r[i] = '\n'; break;
-           case '\r': r[i] = '\r'; break;
-           case '\f': r[i] = '\f'; break;
-           case '\"': r[i] = '\"'; break;
-           case '\'': r[i] = '\''; break;
-           case '\\': r[i] = '\\'; break;
+           case '\t': r[index] = '\t'; break;
+           case '\b': r[index] = '\b'; break;
+           case '\n': r[index] = '\n'; break;
+           case '\r': r[index] = '\r'; break;
+           case '\f': r[index] = '\f'; break;
+           case '\"': r[index] = '\"'; break;
+           case '\'': r[index] = '\''; break;
+           case '\\': r[index] = '\\'; break;
            default:
-               r[i] = ch;
+               r[index] = ch;
         }
     }
-    r[s.length - 1] = '\"';
+    r[len - 2] = '\"';
+    r[len - 1] = '\0';
     return r;
 }
 
@@ -359,13 +365,15 @@ const(char)[] escapeRDFString(const(char)[] s) nothrow @nogc
 /// See_also: https://www.w3.org/TR/turtle/
 const(char)[] escapeRDF_IRI(const(char)[] s) nothrow @nogc
 {
-    char[] escapedRDF_IRI = cast(char[])malloc(char.sizeof * s.length)[0..s.length];
+    const int len = cast(int)s.length + 3;
+    char[] escapedRDF_IRI = cast(char[])malloc(char.sizeof * len)[0..len];
     
     // We actually remove all characters, because it seems not all hosts properly decode escape sequences
     escapedRDF_IRI[0] = '<';
 
-    foreach(int index, char ch; s)
+    foreach(int i, char ch; s)
     {
+        const int index = i + 1;
         switch(ch)
         {
             // escape some whitespace chars
@@ -384,7 +392,8 @@ const(char)[] escapeRDF_IRI(const(char)[] s) nothrow @nogc
                 escapedRDF_IRI[index] = ch;
         }
     }
-    escapedRDF_IRI[s.length - 1] = '>';
+    escapedRDF_IRI[len - 2] = '>';
+    escapedRDF_IRI[len - 1] = '\0';
     return escapedRDF_IRI;
 }
 
@@ -395,6 +404,7 @@ const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, b
 
     const paramStringLen = 10_000;
     char[] paramString = cast(char[])malloc(char.sizeof * paramStringLen)[0..paramStringLen];
+    paramString[0] = '\0';
 
     // Note: parameters symbols should be consistent across versions
     // Can't change them without issuing a major version change.
@@ -410,9 +420,9 @@ const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, b
         strcat(paramString.ptr, "    [ \n".ptr);
         strcat(paramString.ptr, "        a lv2:InputPort , lv2:ControlPort ;\n".ptr);
         strcat(paramString.ptr, "        lv2:index ".ptr);
-        strcat(paramString.ptr, paramSymbol.ptr);
+        strcat(paramString.ptr, paramSymbol[1..$].ptr);
         strcat(paramString.ptr, " ;\n".ptr);
-        strcat(paramString.ptr, "        lv2:symbol \"p".ptr);
+        strcat(paramString.ptr, "        lv2:symbol \"".ptr);
         strcat(paramString.ptr, paramSymbol.ptr);
         strcat(paramString.ptr, "\" ;\n".ptr);
         strcat(paramString.ptr, "        lv2:name ".ptr);
@@ -420,8 +430,8 @@ const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, b
         strcat(paramString.ptr, " ;\n".ptr);
         strcat(paramString.ptr, "        lv2:default ".ptr);
 
-        char[] paramNormalized = cast(char[])malloc(char.sizeof * 256)[0..256];
-        sprintf(paramNormalized.ptr, "%d", param.getNormalized());
+        char[] paramNormalized = cast(char[])malloc(char.sizeof * 10)[0..10];
+        snprintf(paramNormalized.ptr, 10, "%f", param.getNormalized());
 
         strcat(paramString.ptr, paramNormalized.ptr);
         strcat(paramString.ptr, " ;\n".ptr);
@@ -436,10 +446,10 @@ const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, b
 
     foreach(input; 0..legalIO.numInputChannels)
     {
-        char[] paramsLengthPlusInput = cast(char[])malloc(char.sizeof * 256)[0..256];
-        sprintf(paramsLengthPlusInput.ptr, "%d", params.length + input);
-        char[] inputString = cast(char[])malloc(char.sizeof * 256)[0..256];
-        sprintf(inputString.ptr, "%d", params.length + input);
+        char[] paramsLengthPlusInput = cast(char[])malloc(char.sizeof * 10)[0..10];
+        snprintf(paramsLengthPlusInput.ptr, 10, "%d", params.length + input);
+        char[] inputString = cast(char[])malloc(char.sizeof * 10)[0..10];
+        snprintf(inputString.ptr, 10, "%d", params.length + input);
 
         strcat(paramString.ptr, "    [ \n".ptr);
         strcat(paramString.ptr, "        a lv2:AudioPort , lv2:InputPort ;\n".ptr);
