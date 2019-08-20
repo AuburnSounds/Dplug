@@ -55,9 +55,9 @@ template LV2EntryPoint(alias ClientClass)
         "}\n";
 
     static immutable enum generate_manifest_from_client =
-        "export extern(C) void GenerateManifestFromClient(generateManifestFromClientCallback callback, const(char)[] binaryFileName, const(char)[] buildDir)"  ~
+        "export extern(C) int GenerateManifestFromClient(char* manifestBuf, int manifestBufLen, const(char)* binaryFileName, int binaryFileNameLen)"  ~
         "{" ~
-        "    GenerateManifestFromClient_templated!" ~ ClientClass.stringof ~ "(callback, binaryFileName, buildDir);" ~
+        "    return GenerateManifestFromClient_templated!" ~ ClientClass.stringof ~ "(manifestBuf[0..manifestBufLen], binaryFileName[0..binaryFileNameLen]);" ~
         "}\n";
 
     const char[] LV2EntryPoint = lv2_descriptor ~ lv2_ui_descriptor ~ generate_manifest_from_client;

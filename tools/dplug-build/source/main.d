@@ -504,24 +504,21 @@ int main(string[] args)
                         if (!lib.hasSymbol("GenerateManifestFromClient"))
                             throw new Exception("Couldn't find the symbol ExtractPortConfiguration in the plug-in");
 
-                        // Note: this is duplicated in dplug:lv2 in lv2_init.d
-                        alias generateManifestFromClientCallback = extern(C) void function(const(ubyte)* fileContents, size_t len, const(char)[] path);
-                        alias generateManifest = extern(C) void function(generateManifestFromClientCallback, const(char)[] binaryFileName, const(char)[] buildDir);
+                        alias generateManifest = extern(C) int function(char* manifestBuf, int manifestBufLen,
+                                                                        const(char)* binaryFileName, int binaryFileNameLen);
 
-                        static extern(C) void processManifest(const(ubyte*) fileContents, size_t len, const(char)[] path)
-                        {
-                            const(char)[] manifest = cast(const(char)[])fileContents[0..len];
-                            std.file.write(path ~ "/manifest.ttl", fileContents[0..len]);
-                        }
                         generateManifest ptrGenerateManifest = cast(generateManifest) lib.loadSymbol("GenerateManifestFromClient");
-                        ptrGenerateManifest(&processManifest, binaryName, outputDir);
+
+                        // set max manifest size to 1 Million characters/bytes.  We whould never exceed this I hope
+                        char[] manifestBuf = new char[1000 * 1000];
+                        int manifestLen = ptrGenerateManifest(manifestBuf.ptr, cast(int)(manifestBuf.length), 
+                                                              binaryName.ptr, cast(int)(binaryName.length));
                         lib.unload();
 
+                        // write manifest
                         string manifestPath = outputDir ~ "/manifest.ttl";
-                        if (!exists(manifestPath))
-                            throw new Exception(format("%s wasn't created", manifestPath));
-                        if (getSize(manifestPath) == 0)
-                            throw new Exception(format("%s is an empty file", manifestPath));
+                        std.file.write(manifestPath, manifestBuf[0..manifestLen]);
+
                         cwritefln("    => Written %s bytes to manifest.ttl.".green, getSize(manifestPath));
                         cwriteln();
                     }

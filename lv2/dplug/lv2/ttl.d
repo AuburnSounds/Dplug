@@ -35,12 +35,8 @@ import dplug.client.client;
 import dplug.client.params;
 import dplug.client.daw;
 
-
-extern(C) alias generateManifestFromClientCallback = void function(const(ubyte)* fileContents, size_t len, const(char)[] buildDir) nothrow @nogc;
-
-void GenerateManifestFromClient_templated(alias ClientClass)(generateManifestFromClientCallback callback,
-                                                             const(char)[] binaryFileName,
-                                                             const(char)[] buildDir) nothrow @nogc
+int GenerateManifestFromClient_templated(alias ClientClass)(char[] outputBuffer,
+                                                            const(char)[] binaryFileName) nothrow @nogc
 {
     ClientClass client = mallocNew!ClientClass();
     scope(exit) client.destroyFree();
@@ -48,10 +44,8 @@ void GenerateManifestFromClient_templated(alias ClientClass)(generateManifestFro
     LegalIO[] legalIOs = client.legalIOs();
     Parameter[] params = client.params();
 
-    // set max manifest size to 1 Million characters/bytes.  We whould never exceed this I hope
-    const int manifestMaxSize = 1_000_000;
-    char[] manifest = cast(char[])malloc(char.sizeof * manifestMaxSize)[0..manifestMaxSize];
-    manifest[0] = '\0';
+    char[] manifest = outputBuffer;
+    manifest[] = '\0';
 
     // Make an URI for the GUI
     char[256] uriBuf;
@@ -198,7 +192,7 @@ void GenerateManifestFromClient_templated(alias ClientClass)(generateManifestFro
     }
 
     const int manifestFinalLength = cast(int)strlen(manifest.ptr);
-    callback(cast(const(ubyte)*)strdup(manifest[0..manifestFinalLength].ptr), manifestFinalLength, buildDir);
+    return manifestFinalLength;
 }
 
 package:
@@ -280,7 +274,8 @@ void sprintPluginURI_IO(char* buf, size_t maxChars, string pluginHomepage, char[
 const(char)[] lv2PluginCategory(PluginCategory category) nothrow @nogc
 {
     char[] lv2Category = cast(char[])malloc(char.sizeof * 30)[0..30];
-    lv2Category[0..6] = ", lv2:";
+    lv2Category[] = '\0';
+    strcat(lv2Category.ptr, ", lv2:");
     with(PluginCategory)
     {
         switch(category)
@@ -333,47 +328,46 @@ const(char)[] lv2PluginCategory(PluginCategory category) nothrow @nogc
 /// See_also: https://www.w3.org/TR/turtle/
 const(char)[] escapeRDFString(const(char)[] s) nothrow @nogc
 {
-    const int len = cast(int)s.length + 3;
-    char[] r = cast(char[])malloc(char.sizeof * len)[0..len];
+    // Note: over-allocate, in case the string is made up of only escaped chars
+    const int len = cast(int)(s.length) * 2 + 3; 
+    char[] r = (cast(char*)malloc(len))[0..len];
     r[0] = '\"';
 
-    foreach(int i, char ch; s)
+    int index = 1;
+
+    foreach(char ch; s)
     {
-        int index = i + 1;
         switch(ch)
         {
-           // escape some whitespace chars
-           // NOTE - Not sure what this does
-           case '\t': r[index] = '\t'; break;
-           case '\b': r[index] = '\b'; break;
-           case '\n': r[index] = '\n'; break;
-           case '\r': r[index] = '\r'; break;
-           case '\f': r[index] = '\f'; break;
-           case '\"': r[index] = '\"'; break;
-           case '\'': r[index] = '\''; break;
-           case '\\': r[index] = '\\'; break;
+           // Escape some whitespace chars
+           case '\t': r[index++] = '\\'; r[index++] = 't'; break;
+           case '\b': r[index++] = '\\'; r[index++] = 'b'; break;
+           case '\n': r[index++] = '\\'; r[index++] = 'n'; break;
+           case '\r': r[index++] = '\\'; r[index++] = 'r'; break;
+           case '\f': r[index++] = '\\'; r[index++] = 'f'; break;
+           case '\"': r[index++] = '\\'; r[index++] = '\"'; break;
+           case '\'': r[index++] = '\\'; r[index++] = '\''; break;
+           case '\\': r[index++] = '\\'; r[index++] = '\\'; break;
            default:
-               r[index] = ch;
+               r[index++] = ch;
         }
     }
-    r[len - 2] = '\"';
-    r[len - 1] = '\0';
-    return r;
+    r[index++] = '\"';
+    r[index++] = '\0';
+    return r[0..index];
 }
 
 /// Escape a UTF-8 string for UTF-8 IRI literal
 /// See_also: https://www.w3.org/TR/turtle/
 const(char)[] escapeRDF_IRI(const(char)[] s) nothrow @nogc
 {
-    const int len = cast(int)s.length + 3;
-    char[] escapedRDF_IRI = cast(char[])malloc(char.sizeof * len)[0..len];
-    
-    // We actually remove all characters, because it seems not all hosts properly decode escape sequences
+    const int len = cast(int)(s.length) + 3;
+    char[] escapedRDF_IRI = (cast(char*)malloc(char.sizeof * len))[0..len];
+    // We actually remove all special characters, because it seems not all hosts properly decode escape sequences
     escapedRDF_IRI[0] = '<';
-
-    foreach(int i, char ch; s)
+    int index = 1;
+    foreach(char ch; s)
     {
-        const int index = i + 1;
         switch(ch)
         {
             // escape some whitespace chars
@@ -389,12 +383,12 @@ const(char)[] escapeRDF_IRI(const(char)[] s) nothrow @nogc
             case '\\':
                 break; // skip that character
             default:
-                escapedRDF_IRI[index] = ch;
+                escapedRDF_IRI[index++] = ch;
         }
     }
-    escapedRDF_IRI[len - 2] = '>';
-    escapedRDF_IRI[len - 1] = '\0';
-    return escapedRDF_IRI;
+    escapedRDF_IRI[index++] = '>';
+    escapedRDF_IRI[index++] = '\0';
+    return escapedRDF_IRI[0..index];
 }
 
 const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, bool hasMIDIInput) nothrow @nogc
