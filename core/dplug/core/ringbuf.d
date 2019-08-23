@@ -12,9 +12,6 @@ import dplug.core.sync;
 import dplug.core.nogc;
 import dplug.core.vec;
 
-deprecated("Use makeRingBufferNoGC instead.") // unfortunately no warning because of https://issues.dlang.org/show_bug.cgi?id=19780
-alias ringBufferNoGC = makeRingBufferNoGC;
-
 RingBufferNoGC!T makeRingBufferNoGC(T)(size_t initialCapacity) nothrow @nogc
 {
     return RingBufferNoGC!T(initialCapacity);

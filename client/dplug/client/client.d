@@ -545,13 +545,22 @@ nothrow:
         return _info.publicVersion;
     }
 
- // TODO: deprecate older names in v8
- //   deprecated("Use readParam!T() instead.")
- //   {
+    deprecated("Use readParam!float() instead.")
+    {
         alias readFloatParamValue = readParam!float;
+    }
+
+    deprecated("Use readParam!int() instead.")
+    {
         alias readIntegerParamValue = readParam!int;
+    }
+
+    deprecated("Use readParam!bool() instead.")
+    {
         alias readBoolParamValue = readParam!bool;
-        
+    }
+       
+    deprecated("Use readParam!MyEnum() instead.")
         /// Boilerplate function to get the value of an `EnumParameter`, for use in `processAudio`.
         int readEnumParamValue(int paramIndex) nothrow @nogc
         {
@@ -559,7 +568,6 @@ nothrow:
             assert(cast(EnumParameter)p !is null); // check it's an EnumParameter
             return unsafeObjectCast!EnumParameter(p).valueAtomic();
         }
- ///   }
 
     /// Boilerplate function to get the value of a `FloatParameter`, for use in `processAudio`.
     final T readParam(T)(int paramIndex) nothrow @nogc

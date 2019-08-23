@@ -195,33 +195,6 @@ struct Color(FieldTuple...)
 		return r;
 	}
 
-	/// Alpha-blend two colors.
-	deprecated("use blendColor instead") static typeof(this) blend()(typeof(this) c0, typeof(this) c1)
-		if (is(typeof(a)))
-	{
-		alias A = typeof(c0.a);
-		A a = ~cast(A)(~c0.a * ~c1.a / A.max);
-		if (!a)
-			return typeof(this).init;
-		A x = cast(A)(c1.a * A.max / a);
-
-		typeof(this) r;
-		foreach (i, f; r.tupleof)
-			static if (r.tupleof[i].stringof == "r.x")
-				{} // skip padding
-			else
-			static if (r.tupleof[i].stringof == "r.a")
-				r.a = a;
-			else
-			{
-				auto v0 = c0.tupleof[i];
-				auto v1 = c1.tupleof[i];
-				auto vr = .blend(v1, v0, x);
-				r.tupleof[i] = vr;
-			}
-		return r;
-	}
-
 	/// Construct an RGB color from a typical hex string.
 	static if (is(typeof(this.r) == ubyte) && is(typeof(this.g) == ubyte) && is(typeof(this.b) == ubyte))
 	{
@@ -491,17 +464,6 @@ unittest
 }
 
 // ***************************************************************************
-
-deprecated("use blendColor instead") ushort blend(ushort f, ushort b, ushort a) pure nothrow @nogc
-{
-    return cast(ushort) ( ((f*a) + (b*cast(ushort)(~cast(int)a))) / ushort.max );
-}
-
-deprecated("use blendColor instead") ubyte blend(ubyte f, ubyte b, ubyte a) pure nothrow @nogc
-{
-    return cast(ubyte) ( ((f*a) + (b*cast(ubyte)(~cast(int)a))) / ubyte.max );
-}
-
 
 RGBA blendColor(RGBA fg, RGBA bg, ubyte alpha) pure nothrow @nogc
 {

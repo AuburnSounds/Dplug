@@ -232,7 +232,7 @@ static if( XK_LATIN1 ){
 	const int XK_percent                       = 0x0025;  /* U+0025 PERCENT SIGN */
 	const int XK_ampersand                     = 0x0026;  /* U+0026 AMPERSAND */
 	const int XK_apostrophe                    = 0x0027;  /* U+0027 APOSTROPHE */
-	const int XK_quoteright                    = 0x0027;  /* deprecated */
+	const int XK_quoteright                    = 0x0027;  /* Deprecated */
 	const int XK_parenleft                     = 0x0028;  /* U+0028 LEFT PARENTHESIS */
 	const int XK_parenright                    = 0x0029;  /* U+0029 RIGHT PARENTHESIS */
 	const int XK_asterisk                      = 0x002a;  /* U+002A ASTERISK */
@@ -290,7 +290,7 @@ static if( XK_LATIN1 ){
 	const int XK_asciicircum                   = 0x005e;  /* U+005E CIRCUMFLEX ACCENT */
 	const int XK_underscore                    = 0x005f;  /* U+005F LOW LINE */
 	const int XK_grave                         = 0x0060;  /* U+0060 GRAVE ACCENT */
-	const int XK_quoteleft                     = 0x0060;  /* deprecated */
+	const int XK_quoteleft                     = 0x0060;  /* Deprecated */
 	const int XK_a                             = 0x0061;  /* U+0061 LATIN SMALL LETTER A */
 	const int XK_b                             = 0x0062;  /* U+0062 LATIN SMALL LETTER B */
 	const int XK_c                             = 0x0063;  /* U+0063 LATIN SMALL LETTER C */
@@ -371,7 +371,7 @@ static if( XK_LATIN1 ){
 	const int XK_Icircumflex                   = 0x00ce;  /* U+00CE LATIN CAPITAL LETTER I WITH CIRCUMFLEX */
 	const int XK_Idiaeresis                    = 0x00cf;  /* U+00CF LATIN CAPITAL LETTER I WITH DIAERESIS */
 	const int XK_ETH                           = 0x00d0;  /* U+00D0 LATIN CAPITAL LETTER ETH */
-	const int XK_Eth                           = 0x00d0;  /* deprecated */
+	const int XK_Eth                           = 0x00d0;  /* Deprecated */
 	const int XK_Ntilde                        = 0x00d1;  /* U+00D1 LATIN CAPITAL LETTER N WITH TILDE */
 	const int XK_Ograve                        = 0x00d2;  /* U+00D2 LATIN CAPITAL LETTER O WITH GRAVE */
 	const int XK_Oacute                        = 0x00d3;  /* U+00D3 LATIN CAPITAL LETTER O WITH ACUTE */
@@ -387,7 +387,7 @@ static if( XK_LATIN1 ){
 	const int XK_Udiaeresis                    = 0x00dc;  /* U+00DC LATIN CAPITAL LETTER U WITH DIAERESIS */
 	const int XK_Yacute                        = 0x00dd;  /* U+00DD LATIN CAPITAL LETTER Y WITH ACUTE */
 	const int XK_THORN                         = 0x00de;  /* U+00DE LATIN CAPITAL LETTER THORN */
-	const int XK_Thorn                         = 0x00de;  /* deprecated */
+	const int XK_Thorn                         = 0x00de;  /* Deprecated */
 	const int XK_ssharp                        = 0x00df;  /* U+00DF LATIN SMALL LETTER SHARP S */
 	const int XK_agrave                        = 0x00e0;  /* U+00E0 LATIN SMALL LETTER A WITH GRAVE */
 	const int XK_aacute                        = 0x00e1;  /* U+00E1 LATIN SMALL LETTER A WITH ACUTE */

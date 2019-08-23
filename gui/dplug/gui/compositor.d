@@ -374,34 +374,6 @@ nothrow @nogc:
         }
     }
 
-    // <deprecated color correction functions, now superseded by UIColorCorrection>
-    deprecated("Use UIColorCorrection instead. Color correction in the Compositor will crash.") 
-    void setLiftGammaGainContrast(float lift = 0.0f, float gamma = 1.0f, float gain = 1.0f, float contrast = 0.0f)
-    {
-        assert(false);
-    }
-    deprecated("Use UIColorCorrection instead. Color correction in the Compositor will crash.") 
-    void setLiftGammaGainRGB(float rLift = 0.0f, float rGamma = 1.0f, float rGain = 1.0f,
-                             float gLift = 0.0f, float gGamma = 1.0f, float gGain = 1.0f,
-                             float bLift = 0.0f, float bGamma = 1.0f, float bGain = 1.0f)
-    {
-        assert(false);
-    }
-    deprecated("Use UIColorCorrection instead. Color correction in the Compositor will crash.")  
-    void setLiftGammaGainContrastRGB(float rLift = 0.0f, float rGamma = 1.0f, float rGain = 1.0f, float rContrast = 0.0f,
-                                     float gLift = 0.0f, float gGamma = 1.0f, float gGain = 1.0f, float gContrast = 0.0f,
-                                     float bLift = 0.0f, float bGamma = 1.0f, float bGain = 1.0f, float bContrast = 0.0f)
-    {
-       assert(false);
-    }
-    deprecated("Use UIColorCorrection instead. Color correction in the Compositor will crash.") 
-    void setLiftGammaGainContrastRGB(mat3x4!float liftGammaGainContrast)
-    {
-        assert(false);
-    }
-    // </deprecated color correction functions, now superseded by UIColorCorrection>
-
-
 private:
     float[256] _exponentTable;
 }

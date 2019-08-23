@@ -31,8 +31,6 @@ enum int32 kMinLong = int.min;
 enum int32 kMaxInt32 = kMaxLong;
 enum int32 kMinInt32 = kMinLong;
 
-deprecated enum uint32 kMaxInt32u = uint.max;
-
 alias int64 = long;
 alias uint64 = ulong;
 enum int64 kMaxInt64 = long.max;
@@ -41,9 +39,6 @@ enum uint64 kMinInt64u = ulong.max;
 
 alias TSize = int64;
 alias tresult = int32;
-
-deprecated enum float kMaxFloat = 3.40282346638528860E38;
-deprecated enum double kMaxDouble = 1.7976931348623158E308;
 
 alias TPtrInt = size_t;
 
@@ -154,10 +149,6 @@ SpeakerArrangement getSpeakerArrangement(int numChannels) pure nothrow @nogc
     }
     return arr;
 }
-
-
-deprecated enum kLittleEndian = 0;
-deprecated enum kBigEndian = 1;
 
 version(Windows)
 {

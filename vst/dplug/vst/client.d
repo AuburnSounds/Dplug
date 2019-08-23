@@ -151,7 +151,6 @@ nothrow:
         _effect.object = cast(void*)(this);
         _effect.processDoubleReplacing = &processDoubleReplacingCallback;
 
-        //deprecated
         _effect.DEPRECATED_ioRatio = 1.0;
         _effect.DEPRECATED_process = &processCallback;
 
@@ -1117,7 +1116,7 @@ nothrow:
     }
 
     /**
-     * Deprecated: This call is deprecated, but was added to support older hosts (like MaxMSP).
+     * Deprecated: This call is Deprecated, but was added to support older hosts (like MaxMSP).
      * Plugins (VSTi2.0 thru VSTi2.3) call this to tell the host that the plugin is an instrument.
      */
     void wantEvents() nothrow @nogc

@@ -37,9 +37,6 @@ enum ubyte defaultRoughness = 128;
 /// Reasonable default value for the Specular channel ("everything is shiny").
 enum ubyte defaultSpecular = 128;
 
-/// Reasonable default value for the Physical channel (completely physical).
-deprecated enum ubyte defaultPhysical = 255;
-
 /// Reasonable dielectric default value for the Metalness channel.
 enum ubyte defaultMetalnessDielectric = 25; // ~ 0.08
 

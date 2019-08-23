@@ -15,9 +15,6 @@ enum L8 opacityFullyOpaque = L8(255);
 enum L8 opacityFullyTransparent = L8(0);
 
 
-deprecated("UIBufferedElement has disappeared. Use either UIBufferedElementPBR or UIBufferedElementRaw instead.")
-alias UIBufferedElement = UIBufferedElementPBR;
-
 /// Extending the UIElement with an owned drawing buffer.
 /// This is intended to have easier dirtyrect-compliant widgets.
 /// Also caches expensive drawing, but it's not free at all.

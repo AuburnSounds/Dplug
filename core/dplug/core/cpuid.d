@@ -265,7 +265,7 @@ public:
     /// Processor type (vendor-dependent).
     /// This should be visible ONLY for display purposes.
     uint stepping, model, family;
-    /// $(RED This field has been deprecated. Please use $(D cacheLevels) instead.)
+    /// $(RED This field has been Deprecated. Please use $(D cacheLevels) instead.)
     uint numCacheLevels = 1;
     /// The number of cache levels in the CPU.
     @property uint cacheLevels() { return numCacheLevels; }
