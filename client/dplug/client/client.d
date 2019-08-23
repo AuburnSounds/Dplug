@@ -774,10 +774,20 @@ PluginInfo parsePluginInfo(string json)
 
     static bool toBoolean(JSONValue value)
     {
-        if (value.type == JSON_TYPE.TRUE)
-            return true;
-        if (value.type == JSON_TYPE.FALSE)
-            return false;
+        static if (__VERSION__ >= 2087)
+        {
+            if (value.type == JSONType.true_)
+                return true;
+            if (value.type == JSONType.false_)
+                return false;
+        }
+        else
+        {
+            if (value.type == JSON_TYPE.TRUE)
+                return true;
+            if (value.type == JSON_TYPE.FALSE)
+                return false;
+        }
         throw new Exception(format("Expected a boolean, got %s instead", value));
     }
 

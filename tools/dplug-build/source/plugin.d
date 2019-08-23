@@ -41,7 +41,16 @@ Arch[] allArchitectureqForThisPlatform()
     return archs;
 }
 
-
+static if (__VERSION__ >= 2087)
+{
+    alias jsonTrue = JSONType.true_;
+    alias jsonFalse = JSONType.false_;
+}
+else
+{
+    alias jsonTrue = JSON_TYPE.TRUE;
+    alias jsonFalse = JSON_TYPE.FALSE;
+}
 
 string toString(Compiler compiler)
 {
@@ -756,9 +765,9 @@ Plugin readPluginDescription()
 
     bool toBoolean(JSONValue value)
     {
-        if (value.type == JSON_TYPE.TRUE)
+        if (value.type == jsonTrue)
             return true;
-        if (value.type == JSON_TYPE.FALSE)
+        if (value.type == jsonFalse)
             return false;
         throw new Exception("Expected a boolean");
     }
@@ -824,9 +833,9 @@ Plugin readPluginDescription()
 
 bool toBool(JSONValue v)
 {
-    if (v.type == JSON_TYPE.FALSE)
+    if (v.type == jsonFalse)
         return false;
-    else if (v.type == JSON_TYPE.TRUE)
+    else if (v.type == jsonTrue)
         return true;
     else
         throw new Exception("expected boolean value");

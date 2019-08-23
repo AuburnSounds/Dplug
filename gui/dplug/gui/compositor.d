@@ -395,7 +395,7 @@ nothrow @nogc:
        assert(false);
     }
     deprecated("Use UIColorCorrection instead. Color correction in the Compositor will crash.") 
-    void setLiftGammaGainContrastRGB(mat3x4f liftGammaGainContrast)
+    void setLiftGammaGainContrastRGB(mat3x4!float liftGammaGainContrast)
     {
         assert(false);
     }
