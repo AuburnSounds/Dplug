@@ -1,5 +1,9 @@
 language: d
 
+before_install:
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get update -y ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get install -y gcc-multilib ; fi
+
 os:
   - osx
   - linux
@@ -43,7 +47,6 @@ env:
   - VST2_SDK=$TRAVIS_BUILD_DIR/VST2_SDK
 
 
-# Note: 32-bit x86 isn't tested anymore in the CI
 script:
   - cd examples/distort; dub --compiler=${DC}; cd ../..
   - cd examples/clipit; dub --compiler=${DC}; cd ../..
@@ -55,6 +58,16 @@ script:
   - cd tools/process; dub --compiler=${DC}; cd ../..
   - cd tools/latency-check; dub --compiler=${DC}; cd ../..
   - cd tools/wav-compare; dub --compiler=${DC}; cd ../..
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; cd examples/distort; dub --compiler=${DC}; cd ../.. ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; cd examples/clipit; dub --compiler=${DC}; cd ../.. ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; cd examples/ms-encode; dub --compiler=${DC}; cd ../.. ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; cd examples/simple-mono-synth; dub --compiler=${DC}; cd ../.. ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; cd examples/poly-alias-synth; dub --compiler=${DC}; cd ../.. ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; cd tools/dplug-build; dub --compiler=${DC}; cd ../.. ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; cd tools/stress-plugin; dub --compiler=${DC}; cd ../.. ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; cd tools/process; dub --compiler=${DC}; cd ../.. ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; cd tools/latency-check; dub --compiler=${DC}; cd ../.. ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; cd tools/wav-compare; dub --compiler=${DC}; cd ../.. ; fi
   - dub test --compiler=${DC} dplug:core
   - dub test --compiler=${DC} dplug:dsp
   - dub test --compiler=${DC} dplug:client
@@ -68,3 +81,16 @@ script:
   - dub test --compiler=${DC} dplug:flat-widgets
   - dub test --compiler=${DC} dplug:lv2
   - dub test --compiler=${DC} dplug:vst3
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; dub test --compiler=${DC} dplug:core ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; dub test --compiler=${DC} dplug:dsp ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; dub test --compiler=${DC} dplug:client ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; dub test --compiler=${DC} dplug:host ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; dub test --compiler=${DC} dplug:vst ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; dub test --compiler=${DC} dplug:window ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; dub test --compiler=${DC} dplug:cocoa ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; dub test --compiler=${DC} dplug:carbon ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; dub test --compiler=${DC} dplug:au ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; dub test --compiler=${DC} dplug:pbr-widgets ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; dub test --compiler=${DC} dplug:flat-widgets ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; dub test --compiler=${DC} dplug:lv2 ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; dub test --compiler=${DC} dplug:vst3 ; fi
