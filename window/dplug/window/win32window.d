@@ -243,7 +243,8 @@ version(Windows)
 
                 case WM_MOUSEMOVE:
                     {
-                        int newMouseX = ( cast(int)lParam ) & 0xffff;
+                        // See Dplug #378, important to sign-extend for multiple monitors
+                        int newMouseX = cast(int)(lParam << 16) >> 16; 
                         int newMouseY = ( cast(int)lParam ) >> 16;
                         int dx = newMouseX - _mouseX;
                         int dy = newMouseY - _mouseY;
@@ -266,7 +267,8 @@ version(Windows)
 
                 case WM_MOUSEWHEEL:
                     {
-                        int mouseX = ( cast(int)lParam ) & 0xffff;
+                        // See Dplug #378, important to sign-extend for multiple monitors
+                        int mouseX = cast(int)(lParam << 16) >> 16; 
                         int mouseY = ( cast(int)lParam ) >> 16;
 
                         // Mouse positions we are getting are not relative to the client area
