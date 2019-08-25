@@ -200,7 +200,11 @@ nothrow:
 
         override void onMouseMove(int x, int y, int dx, int dy, MouseState mstate)
         {
-            version(futureMouseOver)
+            version(legacyMouseOver)
+            {
+                outer.mouseMove(x, y, dx, dy, mstate);
+            }
+            else
             {
                 bool hitSomething = outer.mouseMove(x, y, dx, dy, mstate, false);
                 if (!hitSomething)
@@ -208,10 +212,6 @@ nothrow:
                     // Nothing was mouse-over'ed, nothing is `isMouseOver()` anymore
                     outer._uiContext.setMouseOver(null);
                 }
-            }
-            else
-            {
-                outer.mouseMove(x, y, dx, dy, mstate);
             }
         }
 

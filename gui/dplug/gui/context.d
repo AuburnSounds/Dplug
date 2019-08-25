@@ -51,7 +51,8 @@ nothrow:
     UIElement dragged = null;
 
 
-    version(futureMouseOver)
+    version(legacyMouseOver) {}
+    else
     {
         /// Currently mouse-over'd element.
         UIElement mouseOver = null;
@@ -77,7 +78,8 @@ nothrow:
         skybox = mallocNew!(Mipmap!RGBA)(12, image);
     }
 
-    version(futureMouseOver)
+    version(legacyMouseOver) {}
+    else
     {
         final void setMouseOver(UIElement elem) nothrow @nogc
         {
