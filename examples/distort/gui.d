@@ -117,9 +117,9 @@ nothrow:
         // Very useful at the end of the UI creating process.
         // As the sole Raw-only widget it is always on top and doesn't need zOrder adjustment.
         {
-            mat3x4f colorCorrectionMatrix = mat3x4f(- 0.07f, 1.0f , 1.15f, 0.03f,
-                                                    + 0.01f, 0.93f, 1.16f, 0.08f,
-                                                    + 0.0f , 1.0f , 1.10f, -0.01f);
+            mat3x4!float colorCorrectionMatrix = mat3x4!float(- 0.07f, 1.0f , 1.15f, 0.03f,
+                                                              + 0.01f, 0.93f, 1.16f, 0.08f,
+                                                              + 0.0f , 1.0f , 1.10f, -0.01f);
             addChild(colorCorrection = mallocNew!UIColorCorrection(context()));
             colorCorrection.setLiftGammaGainContrastRGB(colorCorrectionMatrix);
             colorCorrection.position = box2i.rectangle(0, 0, W, H);
