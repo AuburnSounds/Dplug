@@ -10,13 +10,9 @@
 
     "copyright": "none",
 
-    "lflags-windows-ldc": [
-        "libcmt.lib",
-        "/nodefaultlib:msvcrt.lib",
-        "/nodefaultlib:vcruntime.lib"
-    ],
-
     "dflags-linux-dmd": ["-defaultlib=libphobos2.a"],
+    "dflags-osx-ldc": ["-static"],
+    "dflags-windows-ldc": ["-mscrtlib=libcmt"],
 
     "comment-WARNING-READ-THIS-IS-IMPORTANT": [
         "    When making your own plug-in you have to CHANGE THESE DEPENDENCY    ",
@@ -35,7 +31,7 @@
         "dplug:pbr-widgets": { "path": "../.." }
     },
 
-    "dflags-osx-ldc": ["-static"],
+
 
     "comment": "Example of configuration options",
     "versions": ["futureMouseOver"],
