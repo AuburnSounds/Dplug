@@ -31,7 +31,7 @@ struct LockedQueue(T)
         /// Creates a locked queue with an initial capacity.
         this(size_t capacity) nothrow @nogc
         {
-            _queue = ringBufferNoGC!T(capacity);
+            _queue = makeRingBufferNoGC!T(capacity);
             _rwMutex = makeMutex();
             _readerSemaphore = makeSemaphore(0);
             _writerSemaphore = makeSemaphore(cast(uint)capacity);

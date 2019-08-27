@@ -117,14 +117,14 @@ nothrow:
     }
 
     /// ditto
-    void setLiftGammaGainContrastRGB(mat3x4f liftGammaGainContrast)
+    void setLiftGammaGainContrastRGB(mat3x4!float liftGammaGainContrast)
     {
         auto m = liftGammaGainContrast;
         setLiftGammaGainContrastRGB(m.c[0][0], m.c[0][1], m.c[0][2], m.c[0][3],
                                     m.c[1][0], m.c[1][1], m.c[1][2], m.c[1][3],
                                     m.c[2][0], m.c[2][1], m.c[2][2], m.c[2][3]);
     }
-    
+
     override void onDrawRaw(ImageRef!RGBA rawMap, box2i[] dirtyRects)
     {
         foreach(dirtyRect; dirtyRects)
@@ -136,10 +136,10 @@ nothrow:
     override bool contains(int x, int y)
     {
         // HACK: this is just a way to avoid taking mouseOver.
-        // As this widget is often a top widget, 
-        // this avoids capturing mouse instead 
+        // As this widget is often a top widget,
+        // this avoids capturing mouse instead
         // of all below widgets.
-        return false; 
+        return false;
     }
 
 
