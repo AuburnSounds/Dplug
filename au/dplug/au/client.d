@@ -50,7 +50,6 @@ import dplug.au.audiocomponentdispatch;
 
 //version = logDispatcher;
 version = supportCocoaUI;
-version = supportCarbonUI;
 
 // Difference with IPlug
 // - no support for parameters group
@@ -1174,31 +1173,6 @@ private:
                 {
                     *pDataSize = 0;
                     return kAudioUnitErr_InvalidProperty;
-                }
-            }
-
-            version(supportCarbonUI)
-            {
-                case kAudioUnitProperty_GetUIComponentList: // 18
-                {
-                    if ( _client.hasGUI() )
-                    {
-                        *pDataSize = ComponentDescription.sizeof;
-                        if (pData)
-                        {
-                            ComponentDescription* pDesc = cast(ComponentDescription*) pData;
-                            pDesc.componentType = kAudioUnitCarbonViewComponentType;
-                            char[4] uid =_client.getPluginUniqueID();
-                            pDesc.componentSubType = CCONST(uid[0], uid[1], uid[2], uid[3]);
-                            char[4] vid =_client.getVendorUniqueID();
-                            pDesc.componentManufacturer = CCONST(vid[0], vid[1], vid[2], vid[3]);
-                            pDesc.componentFlags = 0;
-                            pDesc.componentFlagsMask = 0;
-                        }
-                        return noErr;
-                    }
-                    else
-                        return kAudioUnitErr_InvalidProperty;
                 }
             }
 
