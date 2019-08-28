@@ -316,7 +316,9 @@ int main(string[] args)
                 version(OSX)
                 {
                     if (!is64b)
-                        continue;
+                    {
+                       throw new Exception("Can't make 32-bit builds on macOS");
+                    }
                 }
 
                 // Does not try to build AU under Windows
@@ -869,17 +871,21 @@ int main(string[] args)
             }
         }
 
+        // Copy user manual (if any provided in plugin.json)
+        if (plugin.userManualPath)
+            std.file.copy(plugin.userManualPath, outputDir ~ "/" ~ baseName(plugin.userManualPath));
+
+        // Build various configuration
+        foreach(config; configurations)
+            buildAndPackage(config, archs, iconPathOSX);
+
         // Copy license (if any provided in plugin.json)
         // Ensure it is HTML.
         if (plugin.licensePath)
         {
             string licensePath = outputDir ~ "/license.html";
 
-            if (extension(plugin.licensePath) == ".html")
-            {
-                std.file.copy(plugin.licensePath, licensePath);
-            }
-            else if (extension(plugin.licensePath) == ".md")
+            if (extension(plugin.licensePath) == ".md")
             {
                 // Convert license markdown to HTML
                 cwritefln("*** Converting license file to HTML... ".white);
@@ -889,16 +895,8 @@ int main(string[] args)
                 cwritefln(" => OK\n".green);
             }
             else
-                throw new Exception("License file should be a Markdown .md or HTML .html file");
+                throw new Exception("License file should be a Markdown .md file");
         }
-
-        // Copy user manual (if any provided in plugin.json)
-        if (plugin.userManualPath)
-            std.file.copy(plugin.userManualPath, outputDir ~ "/" ~ baseName(plugin.userManualPath));
-
-        // Build various configuration
-        foreach(config; configurations)
-            buildAndPackage(config, archs, iconPathOSX);
 
         version(OSX)
         {
