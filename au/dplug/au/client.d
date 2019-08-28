@@ -49,7 +49,6 @@ import dplug.au.audiocomponentdispatch;
 
 
 //version = logDispatcher;
-version = supportCocoaUI;
 
 // Difference with IPlug
 // - no support for parameters group
@@ -1294,27 +1293,24 @@ private:
                 return noErr;
             }
 
-            version(supportCocoaUI)
+            case kAudioUnitProperty_CocoaUI: // 31
             {
-                case kAudioUnitProperty_CocoaUI: // 31
+                if ( _client.hasGUI() )
                 {
-                    if ( _client.hasGUI() )
+                    *pDataSize = AudioUnitCocoaViewInfo.sizeof;
+                    if (pData)
                     {
-                        *pDataSize = AudioUnitCocoaViewInfo.sizeof;
-                        if (pData)
-                        {
-                            const(char)[] factoryClassName = registerCocoaViewFactory(); // TODO: call unregisterCocoaViewFactory somewhere
-                            CFBundleRef pBundle = CFBundleGetMainBundle();
-                            CFURLRef url = CFBundleCopyBundleURL(pBundle);
-                            AudioUnitCocoaViewInfo* pViewInfo = cast(AudioUnitCocoaViewInfo*) pData;
-                            pViewInfo.mCocoaAUViewBundleLocation = url;
-                            pViewInfo.mCocoaAUViewClass[0] = toCFString(factoryClassName);
-                        }
-                        return noErr;
+                        const(char)[] factoryClassName = registerCocoaViewFactory(); // TODO: call unregisterCocoaViewFactory somewhere
+                        CFBundleRef pBundle = CFBundleGetMainBundle();
+                        CFURLRef url = CFBundleCopyBundleURL(pBundle);
+                        AudioUnitCocoaViewInfo* pViewInfo = cast(AudioUnitCocoaViewInfo*) pData;
+                        pViewInfo.mCocoaAUViewBundleLocation = url;
+                        pViewInfo.mCocoaAUViewClass[0] = toCFString(factoryClassName);
                     }
-                    else
-                        return kAudioUnitErr_InvalidProperty;
+                    return noErr;
                 }
+                else
+                    return kAudioUnitErr_InvalidProperty;
             }
 
             case kAudioUnitProperty_SupportedChannelLayoutTags:
