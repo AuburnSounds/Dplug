@@ -26,18 +26,16 @@ enum Arch
 {
     x86,
     x86_64,
-    universalBinary
 }
 
-Arch[] allArchitectureqForThisPlatform()
+Arch[] allArchitecturesForThisPlatform()
 {
     version(linux)
         Arch[] archs = [Arch.x86_64]; // we have no support for 32-bit plug-ins on Linux
+    else version(OSX)
+        Arch[] archs = [Arch.x86_64]; // we have no support for 32-bit plug-ins on macOS
     else
         Arch[] archs = [Arch.x86, Arch.x86_64];
-
-    version (OSX)
-        archs ~= [Arch.universalBinary]; // only Mac has universal binaries
     return archs;
 }
 
@@ -87,7 +85,6 @@ string toStringArchs(Arch[] archs)
                 if (i) r ~= " and ";
                 r ~= "64-bit";
                 break;
-            case universalBinary: break;
         }
     }
     return r;
@@ -991,7 +988,6 @@ string makeRSRC(Plugin plugin, Arch arch, bool verbose)
     {
         case x86: archFlags = "-arch i386"; break;
         case x86_64: archFlags = "-arch x86_64"; break;
-        case universalBinary: archFlags = "-arch i386 -arch x86_64"; break;
     }
 
     string verboseFlag = verbose ? " -p" : "";
