@@ -68,10 +68,6 @@ template AUEntryPoint(alias ClientClass)
     "{" ~
         "return audioUnitEntryPoint!" ~ ClientClass.stringof ~ "(params, pPlug);" ~
     "}" ~
-    "extern(C) ComponentResult dplugAUCarbonViewEntryPoint(ComponentParameters* params, void* pView) nothrow  @nogc" ~
-    "{" ~
-        "return audioUnitCarbonViewEntry!" ~ ClientClass.stringof ~ "(params, pView);" ~
-    "}" ~
     "extern(C) void* dplugAUComponentFactoryFunction(void* inDesc) nothrow  @nogc"  ~ // type-punned here to avoid the derelict.carbon import
     "{" ~
         "return audioUnitComponentFactory!" ~ ClientClass.stringof ~ "(inDesc);" ~
@@ -151,56 +147,6 @@ struct CarbonViewInstance
     AUClient mPlug;
 }
 
-ComponentResult audioUnitCarbonViewEntry(alias ClientClass)(ComponentParameters* params, void* pView) nothrow @nogc
-{
-    ScopedForeignCallback!(false, true) scopedCallback;
-    scopedCallback.enter();
-
-    int select = params.what;
-
-    version(logDispatcher) printf("audioUnitCarbonViewEntry thread %p select %d\n", currentThreadId(), select);
-
-    if (select == kComponentOpenSelect)
-    {
-        CarbonViewInstance* pCVI = mallocNew!CarbonViewInstance();
-        pCVI.mCI = getCompParam!(ComponentInstance, 0, 1)(params);
-        pCVI.mPlug = null;
-        SetComponentInstanceStorage(pCVI.mCI, cast(Handle)pCVI);
-        return noErr;
-    }
-
-    CarbonViewInstance* pCVI = cast(CarbonViewInstance*) pView;
-
-    switch (select)
-    {
-        case kComponentCloseSelect:
-        {
-            assert(pCVI !is null);
-            AUClient auClient = pCVI.mPlug;
-            if (auClient && auClient._client.hasGUI())
-            {
-                auClient._client.closeGUI();
-            }
-            destroyFree(pCVI);
-            return noErr;
-        }
-        case kAudioUnitCarbonViewCreateSelect:
-        {
-            AudioUnitCarbonViewCreateGluePB* pb = cast(AudioUnitCarbonViewCreateGluePB*) params;
-            AUClient auClient = cast(AUClient) GetComponentInstanceStorage(pb.inAudioUnit);
-            pCVI.mPlug = auClient;
-            if (auClient && auClient._client.hasGUI())
-            {
-                void* controlRef = auClient._client.openGUI(pb.inWindow, pb.inParentControl, GraphicsBackend.carbon);
-                *(pb.outControl) = cast(ControlRef)controlRef;
-                return noErr;
-            }
-            return badComponentSelector;
-        }
-        default:
-            return badComponentSelector;
-    }
-}
 
 //__gshared AudioComponentPlugInInterface audioComponentPlugInInterface;
 

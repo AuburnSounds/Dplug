@@ -6,11 +6,8 @@ License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
  module derelict.carbon;
 
-public import derelict.carbon.carbon;
 public import derelict.carbon.corefoundation;
-public import derelict.carbon.hitoolbox;
 public import derelict.carbon.coreservices;
-public import derelict.carbon.coregraphics;
 public import derelict.carbon.coreaudio;
 public import derelict.carbon.audiounit;
 

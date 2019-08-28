@@ -15,7 +15,6 @@ import dplug.core.sharedlib;
 import dplug.core.nogc;
 import derelict.carbon.corefoundation;
 import derelict.carbon.coreaudio;
-import derelict.carbon.hitoolbox;
 import derelict.carbon.coreservices;
 
 version(OSX)
@@ -692,32 +691,6 @@ struct MusicDeviceNoteParams
     Float32 mVelocity;
     //NoteParamsControlValue[1] mControls;               /* arbitrary length */
 }
-
-
-// AudioUnitCarbonView.h
-// Technically in AU base classes but fits well here
-
-alias AudioUnitCarbonView = ComponentInstance;
-
-align(1) struct AudioUnitCarbonViewCreateGluePB
-{
-    align(1):
-    ubyte                          componentFlags;
-    ubyte                          componentParamSize;
-    short                          componentWhat;
-    ControlRef*                    outControl;
-    const(Float32Point)*           inSize;
-    const(Float32Point)*           inLocation;
-    ControlRef                     inParentControl;
-    WindowRef                      inWindow;
-    AudioUnit                      inAudioUnit;
-    AudioUnitCarbonView            inView;
-}
-
-version(X86_64)
-    static assert(AudioUnitCarbonViewCreateGluePB.sizeof == 60);
-version(X86)
-    static assert(AudioUnitCarbonViewCreateGluePB.sizeof == 32);
 
 //
 // AUDIO COMPONENT API
