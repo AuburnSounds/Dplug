@@ -60,7 +60,8 @@ void usage()
     flag("-v --verbose", "Verbose output", null, "no");
     flag("-sr --skip-registry", " Skip checking the DUB registry\n                        Avoid network, doesn't update dependencies", null, "no");
     flag("--final", "Shortcut for --force --combined -b release-nobounds", null, null);
-    flag("--installer", "Make an installer " ~ "(OSX only)".red, null, "no");
+    flag("--installer", "Make an installer " ~ "(Windows and OSX only)".red, null, "no");
+    flag("--notarize", "Notarize the installer " ~ "(OSX only)".red, null, "no");
     flag("--publish", "Make the plugin available in standard directories " ~ "(OSX only, DOESN'T WORK)".red, null, "no");
     flag("--auval", "Check Audio Unit validation with auval " ~ "(OSX only, DOESN'T WORK)".red, null, "no");
     flag("-h --help", "Shows this help", null, null);
@@ -114,6 +115,7 @@ int main(string[] args)
         bool publish = false;
         bool auval = false;
         bool makeInstaller = false;
+        bool notarize = false;
         bool skipRegistry = false;
         string prettyName = null;
 
@@ -161,6 +163,13 @@ int main(string[] args)
             }
             else if (arg == "-sr" || arg == "--skip-registry")
                 skipRegistry = true;
+            else if (arg == "--notarize")
+            {
+                version(OSX)
+                    notarize = true;
+                else
+                    warning("--notarize not supported on that OS");
+            }
             else if (arg == "--installer")
             {
                 version(OSX)
@@ -208,6 +217,10 @@ int main(string[] args)
 
         if (quiet && verbose)
             throw new Exception("Can't have both --quiet and --verbose flags.");
+
+        version(OSX)
+            if (notarize && !makeInstaller)
+                throw new Exception("Flag --notarize cannot be used without --installer.");
 
         if (help)
         {
@@ -907,6 +920,14 @@ int main(string[] args)
                 generateMacInstaller(outputDir, resDir, plugin, macInstallerPackages, finalPkgPath, verbose);
                 cwriteln("    => OK".green);
                 cwriteln;
+
+                if (notarize)
+                {
+                    cwriteln("*** Notarizing final Mac installer...".white);
+                    notarizeMacInstaller(plugin, finalPkgPath);
+                    cwriteln("    => OK".green);
+                    cwriteln;
+                }
             }
         }
 
@@ -1293,5 +1314,25 @@ void generateMacInstaller(string outputDir,
                         escapeShellArgument(distribPath),
                         packagePaths,
                         escapeShellArgument(outPkgPath));
+    safeCommand(cmd);
+}
+
+void notarizeMacInstaller(Plugin plugin, string outPkgPath)
+{
+    if (plugin.vendorAppleID is null)
+        throw new Exception(`Missing "vendorAppleID" in plugin.json. Notarization need this key.`);
+    if (plugin.appSpecificPassword_altool is null)
+            throw new Exception(`Missing "appSpecificPassword-altool" in plugin.json. Notarization need this key.`);
+    if (plugin.appSpecificPassword_stapler is null)
+            throw new Exception(`Missing "appSpecificPassword-stapler" in plugin.json. Notarization need this key.`);
+
+    // Note: this doesn't have to match anything, it's just there in emails
+    string primaryBundle = plugin.getNotarizationBundleIdentifier();
+    string cmd = format(`xcrun altool --notarize-app -t osx -f %s -u %s -p %s --primary-bundle-id %s --output-format xml`,
+                        escapeShellArgument(outPkgPath),
+                        plugin.vendorAppleID,
+                        plugin.appSpecificPassword_altool,
+                        primaryBundle
+                        );
     safeCommand(cmd);
 }

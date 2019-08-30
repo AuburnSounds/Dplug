@@ -180,6 +180,11 @@ struct Plugin
     // duplicate key in pace.json. Also support "!PROMPT" as special value.
     string keyPasswordWindows;
 
+    // <Used for Apple notarization>
+    string vendorAppleID;
+    string appSpecificPassword_altool;
+    string appSpecificPassword_stapler;
+    // </Used for Apple notarization>
 
     bool receivesMIDI;
     bool isSynth;
@@ -311,6 +316,11 @@ struct Plugin
         throw new Exception("Didn't found a plug-in file in %s . See dplug-build source to check the heuristic for DUB naming in `dubOutputFileName()`.");
     }
     string dubOutputFileNameCached = null;
+
+    string getNotarizationBundleIdentifier() pure const
+    {
+        return CFBundleIdentifierPrefix ~ "." ~ sanitizeBundleString(pluginName);
+    }
 
     string getVST3BundleIdentifier() pure const
     {
@@ -483,6 +493,13 @@ struct Plugin
             warning(`Missing "vendorSupportEmail" in plugin.json. Email address will be wrong in VST3 format.`);
         if (pluginHomepage is null)
             warning(`Missing "pluginHomepage" in plugin.json. Plugin homepage will be wrong in VST3 format.`);
+    }
+
+    string getAppleID()
+    {
+        if (vendorAppleID is null)
+            throw new Exception(`Missing "vendorAppleID" in plugin.json. Notarization need this key.`);
+        return vendorAppleID;
     }
 }
 
@@ -802,8 +819,23 @@ Plugin readPluginDescription()
         throw new Exception("=> Check dplug/client/daw.d to find a suitable \"category\" for plugin.json.");
     }
 
-    result.paceConfig = readPACEConfig();
+    try
+    {
+        result.vendorAppleID = rawPluginFile["vendorAppleID"].str;
+    }
+    catch(Exception e){}
+    try
+    {
+        result.appSpecificPassword_altool = rawPluginFile["appSpecificPassword-altool"].str;
+    }
+    catch(Exception e){}
+    try
+    {
+        result.appSpecificPassword_stapler = rawPluginFile["appSpecificPassword-stapler"].str;
+    }
+    catch(Exception e){}
 
+    result.paceConfig = readPACEConfig();
 
     try
     {
