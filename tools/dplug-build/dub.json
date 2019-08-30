@@ -7,6 +7,7 @@
     {
         "colorize": "~>1.0",
         "dmarkdown": "~>0.2",
+        "arsd-official:dom": "~>4.0",
         "dplug:client": { "path": "../.." }
     }
 }

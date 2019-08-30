@@ -317,9 +317,19 @@ struct Plugin
     }
     string dubOutputFileNameCached = null;
 
-    string getNotarizationBundleIdentifier() pure const
+    // Gets a config to extract the name of the configuration beyond the prefix
+    string getNotarizationBundleIdentifier(string config) pure const
     {
-        return CFBundleIdentifierPrefix ~ "." ~ sanitizeBundleString(pluginName);
+        string verName = stripConfig(config);
+        if (verName)
+            verName = "-" ~ verName;
+        else
+            verName = "";
+        return format("%s.%s%s-%s.pkg",
+                      CFBundleIdentifierPrefix,
+                      sanitizeBundleString(pluginName),
+                      verName,
+                      publicVersionString);
     }
 
     string getVST3BundleIdentifier() pure const

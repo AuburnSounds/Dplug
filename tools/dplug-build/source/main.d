@@ -8,6 +8,7 @@ import std.uuid;
 import std.process;
 import std.string;
 import std.path;
+import std.xml;
 
 import dplug.core.sharedlib;
 
@@ -923,8 +924,11 @@ int main(string[] args)
 
                 if (notarize)
                 {
-                    cwriteln("*** Notarizing final Mac installer...".white);
-                    notarizeMacInstaller(plugin, finalPkgPath);
+                    // Note: this doesn't have to match anything, it's just there in emails
+                    string primaryBundle = plugin.getNotarizationBundleIdentifier(configurations[0]);
+
+                    cwritefln("*** Notarizing final Mac installer %s...".white, primaryBundle);
+                    notarizeMacInstaller(plugin, finalPkgPath, primaryBundle);
                     cwriteln("    => OK".green);
                     cwriteln;
                 }
@@ -1317,8 +1321,9 @@ void generateMacInstaller(string outputDir,
     safeCommand(cmd);
 }
 
-void notarizeMacInstaller(Plugin plugin, string outPkgPath)
+void notarizeMacInstaller(Plugin plugin, string outPkgPath, string primaryBundleId)
 {
+    string uploadXMLPath = buildPath(tempDir(), "notarization-upload.xml");
     if (plugin.vendorAppleID is null)
         throw new Exception(`Missing "vendorAppleID" in plugin.json. Notarization need this key.`);
     if (plugin.appSpecificPassword_altool is null)
@@ -1326,13 +1331,64 @@ void notarizeMacInstaller(Plugin plugin, string outPkgPath)
     if (plugin.appSpecificPassword_stapler is null)
             throw new Exception(`Missing "appSpecificPassword-stapler" in plugin.json. Notarization need this key.`);
 
-    // Note: this doesn't have to match anything, it's just there in emails
-    string primaryBundle = plugin.getNotarizationBundleIdentifier();
-    string cmd = format(`xcrun altool --notarize-app -t osx -f %s -u %s -p %s --primary-bundle-id %s --output-format xml`,
+    string cmd = format(`xcrun altool --notarize-app -t osx -f %s -u %s -p %s --primary-bundle-id %s --output-format xml > %s`,
                         escapeShellArgument(outPkgPath),
                         plugin.vendorAppleID,
                         plugin.appSpecificPassword_altool,
-                        primaryBundle
+                        primaryBundleId,
+                        uploadXMLPath,
                         );
     safeCommand(cmd);
+
+    import arsd.dom;
+
+    // read XML
+    auto doc = new Document();
+    doc.parseUtf8( cast(string)(std.file.read(uploadXMLPath)), false, false);
+
+    auto plist = doc.root;
+    string requestUUID = null;
+
+    foreach(key; plist.querySelectorAll("key"))
+    {
+        if (key.innerHTML == "success-message")
+        {
+            auto value = key.nextSibling("string");
+            cwritefln("    Upload returned message '%s'", value.innerHTML);
+        }
+        else if (key.innerHTML == "notarization-upload")
+        {
+            auto dict = key.nextSibling("dict");
+            foreach(key2; dict.querySelectorAll("key"))
+            {
+                if (key2.innerHTML == "RequestUUID")
+                {
+                    requestUUID = key2.nextSibling("string").innerHTML;
+                }
+            }
+        }
+    }
+
+    if (requestUUID)
+    {
+        cwritefln("    => Uploaded, RequestUUID = %s".green, requestUUID);
+        cwriteln();
+    }
+    else
+        throw new Exception("Couldn't parse RequestUUID");
+
+/+
+<!DOCTYPE html>
+<plist version="1.0">
+<dict>
+    <key>notarization-upload</key>
+    <dict>
+        <key>RequestUUID</key>
+        <string>affbfdb3-7ff6-4192-a6c6-3a0ca8ac59bc</string>
+    </dict>
+    <key>success-message</key>
+    <string>No errors uploading 'builds/Couture-FREE-1.3.0.pkg'.</string>
+</dict>
+</plist>
++/
 }
