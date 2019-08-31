@@ -1383,12 +1383,24 @@ void notarizeMacInstaller(Plugin plugin, string outPkgPath, string primaryBundle
     else
         throw new Exception("Couldn't parse RequestUUID");
 
-    // poll notarization servers for 1 hour
+    // Three possible outcomes: suceeded, invalid, and timeout (1 hour of polling)
     bool notarizationSucceeded = false;
-    foreach(attempts; 0..(3600/5))
+    bool notarizationFailed = false;
+    string LogFileURL = null;
+    double timeout = 5000;
+    double timeSpentPolling = 0;
+    while(true)
     {
-        if (notarizationSucceeded)
+        if (notarizationSucceeded || notarizationFailed)
             break;
+
+        if (timeSpentPolling > 3600 * 1000)
+        {
+            notarizationSucceeded = false;
+            notarizationFailed = false;
+            break;
+        }
+
         string cmd = format(`xcrun altool --notarization-info %s --username %s --password %s --output-format xml > %s`,
                         escapeShellArgument(requestUUID),
                         plugin.vendorAppleID,
@@ -1401,7 +1413,6 @@ void notarizeMacInstaller(Plugin plugin, string outPkgPath, string primaryBundle
         doc.parseUtf8( cast(string)(std.file.read(pollXMLPath)), false, false);
         auto plist = doc.root;
         string status;
-        double timeout = 5;
         foreach(key; plist.querySelectorAll("key"))
         {
             if (key.innerHTML == "notarization-info")
@@ -1409,20 +1420,28 @@ void notarizeMacInstaller(Plugin plugin, string outPkgPath, string primaryBundle
                 auto dict = key.nextSibling("dict");
                 foreach(key2; dict.querySelectorAll("key"))
                 {
-                    if (key2.innerHTML == "Status")
+                    if (key2.innerHTML == "LogFileURL")
+                    {
+                        LogFileURL = key2.nextSibling("string").innerHTML;
+                    }
+                    else if (key2.innerHTML == "Status")
                     {
                         status = key2.nextSibling("string").innerHTML;
                         if (status == "in progress")
                         {
                             cwriteln("    => Notarization in progress, waiting...");
-                            Thread.sleep( dur!("seconds")( timeout ) );
+                            Thread.sleep( (cast(long)timeout).msecs );
+                            timeSpentPolling += timeout;
                             timeout = timeout * 1.61;
-                            if (timeout > 60) timeout = 60;
+                            if (timeout > 60000) timeout = 60000; // can't exceed one minute
                         }
                         else if (status == "success")
                         {
                             notarizationSucceeded = true;
-                            writeln(doc);
+                        }
+                        else if (status == "invalid")
+                        {
+                            notarizationFailed = true;
                         }
                     }
                 }
@@ -1431,10 +1450,17 @@ void notarizeMacInstaller(Plugin plugin, string outPkgPath, string primaryBundle
         if (status is null)
             throw new Exception(format("Couldn't parse a status in %s", pollXMLPath));
     }
+    if (notarizationFailed)
+    {
+        cwritefln("    => Notarization failed, log available at %s".red, LogFileURL);
+        cwriteln();
+        throw new Exception("Failed notarization");
+    }
+
     if (!notarizationSucceeded)
         throw new Exception("Time out. Notarization took more than one hour. Consider uploading smaller packages.");
 
-    cwritefln("    => Notarization finished, log available at ???".green);
+    cwritefln("    => Notarization succeeded, log available at %s".green, LogFileURL);
     cwriteln();
 
     {
