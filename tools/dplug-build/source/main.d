@@ -1401,6 +1401,7 @@ void notarizeMacInstaller(Plugin plugin, string outPkgPath, string primaryBundle
         doc.parseUtf8( cast(string)(std.file.read(pollXMLPath)), false, false);
         auto plist = doc.root;
         string status;
+        double timeout = 5;
         foreach(key; plist.querySelectorAll("key"))
         {
             if (key.innerHTML == "notarization-info")
@@ -1414,7 +1415,9 @@ void notarizeMacInstaller(Plugin plugin, string outPkgPath, string primaryBundle
                         if (status == "in progress")
                         {
                             cwriteln("    => Notarization in progress, waiting...");
-                            Thread.sleep( dur!("seconds")( 5 ) );
+                            Thread.sleep( dur!("seconds")( timeout ) );
+                            timeout = timeout * 1.61;
+                            if (timeout > 60) timeout = 60;
                         }
                         else if (status == "success")
                         {
@@ -1443,8 +1446,5 @@ void notarizeMacInstaller(Plugin plugin, string outPkgPath, string primaryBundle
                             uploadXMLPath,
                             );
         safeCommand( format(`xcrun stapler staple %s`, escapeShellArgument(outPkgPath) ) );
-        safeCommand( format(`xcrun stapler staple -v %s`, escapeShellArgument(outPkgPath) ) );
     }
-    cwritefln("    => Notarization OK".green);
-    cwriteln();
 }
