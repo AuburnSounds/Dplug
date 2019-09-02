@@ -34,6 +34,7 @@ import dplug.core.nogc;
 import dplug.core.lockedqueue;
 import dplug.core.runtime;
 import dplug.core.sync;
+import dplug.core.fpcontrol;
 import dplug.core.thread;
 
 import dplug.client.client;
@@ -1914,6 +1915,12 @@ private:
             // Call client.reset if we do need to call it, and only once.
             bool needReset = (newMaxFrames != _lastMaxFrames || newUsedInputs != _lastUsedInputs ||
                               newUsedOutputs != _lastUsedOutputs || newSamplerate != _lastSamplerate);
+
+
+            // in case upstream has changed flags
+            FPControl fpControl;
+            fpControl.initialize();
+
             if (needReset)
             {
                 _client.resetFromHost(newSamplerate, newMaxFrames, newUsedInputs, newUsedOutputs);
@@ -1937,6 +1944,7 @@ private:
             else
             {
                 TimeInfo timeInfo = getTimeInfo();
+
                 _client.processAudioFromHost(_inputPointersNoGap[0..newUsedInputs],
                                              _outputPointersNoGap[0..newUsedOutputs],
                                              nFrames,
@@ -2116,6 +2124,9 @@ extern(C) ComponentResult renderProc(void* pPlug,
                                      uint nFrames,
                                      AudioBufferList* pOutBufList) nothrow @nogc
 {
+    ScopedForeignCallback!(false, true) scopedCallback;
+    scopedCallback.enter();
+
     AUClient _this = cast(AUClient)pPlug;
     return _this.render(pFlags, pTimestamp, outputBusIdx, nFrames, pOutBufList, true);
 }
