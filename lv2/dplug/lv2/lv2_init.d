@@ -25,6 +25,7 @@ module dplug.lv2.lv2_init;
 import core.stdc.stdint;
 
 import dplug.core.nogc;
+import dplug.core.runtime;
 
 import dplug.client.client;
 
@@ -66,6 +67,9 @@ template LV2EntryPoint(alias ClientClass)
 const(LV2_Descriptor)* lv2_descriptor_templated(ClientClass)(uint index) nothrow @nogc
 {
     debug(debugLV2Client) debugLog(">lv2_descriptor_templated");
+    ScopedForeignCallback!(false, true) scopedCallback;
+    scopedCallback.enter();
+    
     build_all_lv2_descriptors!ClientClass();
     if(index >= cast(int)(lv2Descriptors.length))
         return null;
@@ -77,6 +81,10 @@ const(LV2_Descriptor)* lv2_descriptor_templated(ClientClass)(uint index) nothrow
 const (LV2UI_Descriptor)* lv2ui_descriptor_templated(ClientClass)(uint index) nothrow @nogc
 {
     debug(debugLV2Client) debugLog(">lv2ui_descriptor_templated");
+    ScopedForeignCallback!(false, true) scopedCallback;
+    scopedCallback.enter();
+
+    
     build_all_lv2_descriptors!ClientClass();
     if (hasUI && index == 0)
     {
@@ -93,6 +101,9 @@ extern(C) static LV2_Handle instantiate(ClientClass)(const(LV2_Descriptor)* desc
                                                      const(LV2_Feature*)* features)
 {
     debug(debugLV2Client) debugLog(">instantiate");
+    ScopedForeignCallback!(false, true) scopedCallback;
+    scopedCallback.enter();
+    
     LV2_Handle handle = cast(LV2_Handle)myLV2EntryPoint!ClientClass(descriptor, rate, bundle_path, features);
     debug(debugLV2Client) debugLog("<instantiate");
     return handle;
@@ -195,6 +206,8 @@ extern(C) nothrow @nogc
     void connect_port(LV2_Handle instance, uint32_t   port, void* data)
     {
         debug(debugLV2Client) debugLog(">connect_port");
+        ScopedForeignCallback!(false, true) scopedCallback;
+        scopedCallback.enter();
         LV2Client lv2client = cast(LV2Client)instance;
         lv2client.connect_port(port, data);
         debug(debugLV2Client) debugLog("<connect_port");
@@ -203,6 +216,8 @@ extern(C) nothrow @nogc
     void activate(LV2_Handle instance)
     {
         debug(debugLV2Client) debugLog(">activate");
+        ScopedForeignCallback!(false, true) scopedCallback;
+        scopedCallback.enter();
         LV2Client lv2client = cast(LV2Client)instance;
         lv2client.activate();
         debug(debugLV2Client) debugLog("<activate");
@@ -210,6 +225,8 @@ extern(C) nothrow @nogc
 
     void run(LV2_Handle instance, uint32_t n_samples)
     {
+        ScopedForeignCallback!(false, true) scopedCallback;
+        scopedCallback.enter();
         LV2Client lv2client = cast(LV2Client)instance;
         lv2client.run(n_samples);
     }
@@ -223,6 +240,8 @@ extern(C) nothrow @nogc
     void cleanup(LV2_Handle instance)
     {
         debug(debugLV2Client) debugLog(">cleanup");
+        ScopedForeignCallback!(false, true) scopedCallback;
+        scopedCallback.enter();
         LV2Client lv2client = cast(LV2Client)instance;
         lv2client.destroyFree();
         debug(debugLV2Client) debugLog("<cleanup");
@@ -244,6 +263,8 @@ extern(C) nothrow @nogc
                                const (LV2_Feature*)*   features)
     {
         debug(debugLV2Client) debugLog(">instantiateUI");
+        ScopedForeignCallback!(false, true) scopedCallback;
+        scopedCallback.enter();
         void* instance_access = lv2_features_data(features, "http://lv2plug.in/ns/ext/instance-access");
         if (instance_access)
         {
@@ -272,6 +293,8 @@ extern(C) nothrow @nogc
     void cleanupUI(LV2UI_Handle ui)
     {
         debug(debugLV2Client) debugLog(">cleanupUI");
+        ScopedForeignCallback!(false, true) scopedCallback;
+        scopedCallback.enter();
         LV2Client lv2client = cast(LV2Client)ui;
         lv2client.cleanupUI();
         debug(debugLV2Client) debugLog("<cleanupUI");
@@ -284,6 +307,8 @@ extern(C) nothrow @nogc
                       const void*  buffer)
     {
         debug(debugLV2Client) debugLog(">port_event");
+        ScopedForeignCallback!(false, true) scopedCallback;
+        scopedCallback.enter();
         LV2Client lv2client = cast(LV2Client)ui;
         lv2client.portEventUI(port_index, buffer_size, format, buffer);
         debug(debugLV2Client) debugLog("<port_event");
