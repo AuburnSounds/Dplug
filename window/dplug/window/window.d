@@ -191,7 +191,7 @@ enum WindowBackend
 {
     autodetect,
     win32,
-    carbon,
+    carbon, // Legacy, now unsupported
     cocoa,
     x11
 }
@@ -206,7 +206,7 @@ static isWindowBackendSupported(WindowBackend backend) nothrow @nogc
         version(X86_64)
             return (backend == WindowBackend.cocoa);
         else version(X86)
-            return (backend == WindowBackend.cocoa) || (backend == WindowBackend.carbon); // Cocoa supported in 32-bit also
+            return (backend == WindowBackend.cocoa);
         else
             static assert(false, "unsupported arch");
     }
@@ -263,14 +263,7 @@ IWindow createWindow(WindowUsage usage,
             return WindowBackend.win32;
         else version(OSX)
         {
-            version(X86_64)
-            {
-                return WindowBackend.cocoa;
-            }
-            else
-            {
-                return WindowBackend.carbon;
-            }
+            return WindowBackend.cocoa;
         }
         else version(linux)
         {
@@ -301,11 +294,6 @@ IWindow createWindow(WindowUsage usage,
         {
             import dplug.window.cocoawindow;
             return mallocNew!CocoaWindow(usage, parentInfo, listener, width, height);
-        }
-        else if (backend == WindowBackend.carbon)
-        {
-            import dplug.window.carbonwindow;
-            return mallocNew!CarbonWindow(usage, parentInfo, controlInfo, listener, width, height);
         }
         else
             return null;

@@ -136,7 +136,24 @@
             "description": "The password for the Windows certificate. Can be !PROMPT to be prompted on first use.",
             "id": "/properties/keyPassword-windows",
             "type": "string"
-        }
+        },
 
+        "vendorAppleID": {
+            "description": "An Apple ID used for notarization services.",
+            "id": "/properties/vendorAppleID",
+            "type": "string"
+        },
+
+        "appSpecificPassword-altool": {
+            "description": "An App-Specific Password created for being able to run altool. Read Dplug's Notarization Guide for explanations.",
+            "id": "/properties/appSpecificPassword-altool",
+            "type": "string"
+        },
+
+        "appSpecificPassword-stapler": {
+            "description": "An App-Specific Password created for being able to run stapler. Read Dplug's Notarization Guide for explanations.",
+            "id": "/properties/appSpecificPassword-stapler",
+            "type": "string"
+        }
     }
 }

@@ -26,18 +26,16 @@ enum Arch
 {
     x86,
     x86_64,
-    universalBinary
 }
 
-Arch[] allArchitectureqForThisPlatform()
+Arch[] allArchitecturesForThisPlatform()
 {
     version(linux)
         Arch[] archs = [Arch.x86_64]; // we have no support for 32-bit plug-ins on Linux
+    else version(OSX)
+        Arch[] archs = [Arch.x86_64]; // we have no support for 32-bit plug-ins on macOS
     else
         Arch[] archs = [Arch.x86, Arch.x86_64];
-
-    version (OSX)
-        archs ~= [Arch.universalBinary]; // only Mac has universal binaries
     return archs;
 }
 
@@ -87,7 +85,6 @@ string toStringArchs(Arch[] archs)
                 if (i) r ~= " and ";
                 r ~= "64-bit";
                 break;
-            case universalBinary: break;
         }
     }
     return r;
@@ -183,6 +180,11 @@ struct Plugin
     // duplicate key in pace.json. Also support "!PROMPT" as special value.
     string keyPasswordWindows;
 
+    // <Used for Apple notarization>
+    string vendorAppleID;
+    string appSpecificPassword_altool;
+    string appSpecificPassword_stapler;
+    // </Used for Apple notarization>
 
     bool receivesMIDI;
     bool isSynth;
@@ -314,6 +316,21 @@ struct Plugin
         throw new Exception("Didn't found a plug-in file in %s . See dplug-build source to check the heuristic for DUB naming in `dubOutputFileName()`.");
     }
     string dubOutputFileNameCached = null;
+
+    // Gets a config to extract the name of the configuration beyond the prefix
+    string getNotarizationBundleIdentifier(string config) pure const
+    {
+        string verName = stripConfig(config);
+        if (verName)
+            verName = "-" ~ verName;
+        else
+            verName = "";
+        return format("%s.%s%s-%s.pkg",
+                      CFBundleIdentifierPrefix,
+                      sanitizeBundleString(pluginName),
+                      verName,
+                      publicVersionString);
+    }
 
     string getVST3BundleIdentifier() pure const
     {
@@ -486,6 +503,13 @@ struct Plugin
             warning(`Missing "vendorSupportEmail" in plugin.json. Email address will be wrong in VST3 format.`);
         if (pluginHomepage is null)
             warning(`Missing "pluginHomepage" in plugin.json. Plugin homepage will be wrong in VST3 format.`);
+    }
+
+    string getAppleID()
+    {
+        if (vendorAppleID is null)
+            throw new Exception(`Missing "vendorAppleID" in plugin.json. Notarization need this key.`);
+        return vendorAppleID;
     }
 }
 
@@ -805,8 +829,23 @@ Plugin readPluginDescription()
         throw new Exception("=> Check dplug/client/daw.d to find a suitable \"category\" for plugin.json.");
     }
 
-    result.paceConfig = readPACEConfig();
+    try
+    {
+        result.vendorAppleID = rawPluginFile["vendorAppleID"].str;
+    }
+    catch(Exception e){}
+    try
+    {
+        result.appSpecificPassword_altool = rawPluginFile["appSpecificPassword-altool"].str;
+    }
+    catch(Exception e){}
+    try
+    {
+        result.appSpecificPassword_stapler = rawPluginFile["appSpecificPassword-stapler"].str;
+    }
+    catch(Exception e){}
 
+    result.paceConfig = readPACEConfig();
 
     try
     {
@@ -991,7 +1030,6 @@ string makeRSRC(Plugin plugin, Arch arch, bool verbose)
     {
         case x86: archFlags = "-arch i386"; break;
         case x86_64: archFlags = "-arch x86_64"; break;
-        case universalBinary: archFlags = "-arch i386 -arch x86_64"; break;
     }
 
     string verboseFlag = verbose ? " -p" : "";

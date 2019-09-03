@@ -34,6 +34,7 @@ import dplug.core.nogc;
 import dplug.core.lockedqueue;
 import dplug.core.runtime;
 import dplug.core.sync;
+import dplug.core.fpcontrol;
 import dplug.core.thread;
 
 import dplug.client.client;
@@ -49,8 +50,6 @@ import dplug.au.audiocomponentdispatch;
 
 
 //version = logDispatcher;
-version = supportCocoaUI;
-version = supportCarbonUI;
 
 // Difference with IPlug
 // - no support for parameters group
@@ -69,10 +68,6 @@ template AUEntryPoint(alias ClientClass)
     "extern(C) ComponentResult dplugAUEntryPoint(ComponentParameters* params, void* pPlug) nothrow  @nogc" ~
     "{" ~
         "return audioUnitEntryPoint!" ~ ClientClass.stringof ~ "(params, pPlug);" ~
-    "}" ~
-    "extern(C) ComponentResult dplugAUCarbonViewEntryPoint(ComponentParameters* params, void* pView) nothrow  @nogc" ~
-    "{" ~
-        "return audioUnitCarbonViewEntry!" ~ ClientClass.stringof ~ "(params, pView);" ~
     "}" ~
     "extern(C) void* dplugAUComponentFactoryFunction(void* inDesc) nothrow  @nogc"  ~ // type-punned here to avoid the derelict.carbon import
     "{" ~
@@ -153,56 +148,6 @@ struct CarbonViewInstance
     AUClient mPlug;
 }
 
-ComponentResult audioUnitCarbonViewEntry(alias ClientClass)(ComponentParameters* params, void* pView) nothrow @nogc
-{
-    ScopedForeignCallback!(false, true) scopedCallback;
-    scopedCallback.enter();
-
-    int select = params.what;
-
-    version(logDispatcher) printf("audioUnitCarbonViewEntry thread %p select %d\n", currentThreadId(), select);
-
-    if (select == kComponentOpenSelect)
-    {
-        CarbonViewInstance* pCVI = mallocNew!CarbonViewInstance();
-        pCVI.mCI = getCompParam!(ComponentInstance, 0, 1)(params);
-        pCVI.mPlug = null;
-        SetComponentInstanceStorage(pCVI.mCI, cast(Handle)pCVI);
-        return noErr;
-    }
-
-    CarbonViewInstance* pCVI = cast(CarbonViewInstance*) pView;
-
-    switch (select)
-    {
-        case kComponentCloseSelect:
-        {
-            assert(pCVI !is null);
-            AUClient auClient = pCVI.mPlug;
-            if (auClient && auClient._client.hasGUI())
-            {
-                auClient._client.closeGUI();
-            }
-            destroyFree(pCVI);
-            return noErr;
-        }
-        case kAudioUnitCarbonViewCreateSelect:
-        {
-            AudioUnitCarbonViewCreateGluePB* pb = cast(AudioUnitCarbonViewCreateGluePB*) params;
-            AUClient auClient = cast(AUClient) GetComponentInstanceStorage(pb.inAudioUnit);
-            pCVI.mPlug = auClient;
-            if (auClient && auClient._client.hasGUI())
-            {
-                void* controlRef = auClient._client.openGUI(pb.inWindow, pb.inParentControl, GraphicsBackend.carbon);
-                *(pb.outControl) = cast(ControlRef)controlRef;
-                return noErr;
-            }
-            return badComponentSelector;
-        }
-        default:
-            return badComponentSelector;
-    }
-}
 
 //__gshared AudioComponentPlugInInterface audioComponentPlugInInterface;
 
@@ -1177,31 +1122,6 @@ private:
                 }
             }
 
-            version(supportCarbonUI)
-            {
-                case kAudioUnitProperty_GetUIComponentList: // 18
-                {
-                    if ( _client.hasGUI() )
-                    {
-                        *pDataSize = ComponentDescription.sizeof;
-                        if (pData)
-                        {
-                            ComponentDescription* pDesc = cast(ComponentDescription*) pData;
-                            pDesc.componentType = kAudioUnitCarbonViewComponentType;
-                            char[4] uid =_client.getPluginUniqueID();
-                            pDesc.componentSubType = CCONST(uid[0], uid[1], uid[2], uid[3]);
-                            char[4] vid =_client.getVendorUniqueID();
-                            pDesc.componentManufacturer = CCONST(vid[0], vid[1], vid[2], vid[3]);
-                            pDesc.componentFlags = 0;
-                            pDesc.componentFlagsMask = 0;
-                        }
-                        return noErr;
-                    }
-                    else
-                        return kAudioUnitErr_InvalidProperty;
-                }
-            }
-
             case kAudioUnitProperty_AudioChannelLayout:
             {
                 return kAudioUnitErr_InvalidProperty; // MAYDO IPlug says "this seems wrong but works"
@@ -1320,27 +1240,24 @@ private:
                 return noErr;
             }
 
-            version(supportCocoaUI)
+            case kAudioUnitProperty_CocoaUI: // 31
             {
-                case kAudioUnitProperty_CocoaUI: // 31
+                if ( _client.hasGUI() )
                 {
-                    if ( _client.hasGUI() )
+                    *pDataSize = AudioUnitCocoaViewInfo.sizeof;
+                    if (pData)
                     {
-                        *pDataSize = AudioUnitCocoaViewInfo.sizeof;
-                        if (pData)
-                        {
-                            const(char)[] factoryClassName = registerCocoaViewFactory(); // TODO: call unregisterCocoaViewFactory somewhere
-                            CFBundleRef pBundle = CFBundleGetMainBundle();
-                            CFURLRef url = CFBundleCopyBundleURL(pBundle);
-                            AudioUnitCocoaViewInfo* pViewInfo = cast(AudioUnitCocoaViewInfo*) pData;
-                            pViewInfo.mCocoaAUViewBundleLocation = url;
-                            pViewInfo.mCocoaAUViewClass[0] = toCFString(factoryClassName);
-                        }
-                        return noErr;
+                        const(char)[] factoryClassName = registerCocoaViewFactory(); // TODO: call unregisterCocoaViewFactory somewhere
+                        CFBundleRef pBundle = CFBundleGetMainBundle();
+                        CFURLRef url = CFBundleCopyBundleURL(pBundle);
+                        AudioUnitCocoaViewInfo* pViewInfo = cast(AudioUnitCocoaViewInfo*) pData;
+                        pViewInfo.mCocoaAUViewBundleLocation = url;
+                        pViewInfo.mCocoaAUViewClass[0] = toCFString(factoryClassName);
                     }
-                    else
-                        return kAudioUnitErr_InvalidProperty;
+                    return noErr;
                 }
+                else
+                    return kAudioUnitErr_InvalidProperty;
             }
 
             case kAudioUnitProperty_SupportedChannelLayoutTags:
@@ -1998,6 +1915,12 @@ private:
             // Call client.reset if we do need to call it, and only once.
             bool needReset = (newMaxFrames != _lastMaxFrames || newUsedInputs != _lastUsedInputs ||
                               newUsedOutputs != _lastUsedOutputs || newSamplerate != _lastSamplerate);
+
+
+            // in case upstream has changed flags
+            FPControl fpControl;
+            fpControl.initialize();
+
             if (needReset)
             {
                 _client.resetFromHost(newSamplerate, newMaxFrames, newUsedInputs, newUsedOutputs);
@@ -2021,6 +1944,7 @@ private:
             else
             {
                 TimeInfo timeInfo = getTimeInfo();
+
                 _client.processAudioFromHost(_inputPointersNoGap[0..newUsedInputs],
                                              _outputPointersNoGap[0..newUsedOutputs],
                                              nFrames,
@@ -2200,6 +2124,9 @@ extern(C) ComponentResult renderProc(void* pPlug,
                                      uint nFrames,
                                      AudioBufferList* pOutBufList) nothrow @nogc
 {
+    ScopedForeignCallback!(false, true) scopedCallback;
+    scopedCallback.enter();
+
     AUClient _this = cast(AUClient)pPlug;
     return _this.render(pFlags, pTimestamp, outputBusIdx, nFrames, pOutBufList, true);
 }

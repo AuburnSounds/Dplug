@@ -3,10 +3,10 @@
 // (c) 2005, Steinberg Media Technologies GmbH, All Rights Reserved
 // (c) 2018, Guillaume Piolat (contact@auburnsounds.com)
 //-----------------------------------------------------------------------------
-// 
-// This Software Development Kit is licensed under the terms of the General 
+//
+// This Software Development Kit is licensed under the terms of the General
 // Public License (GPL) Version 3.
-// 
+//
 // Details of that license can be found at: www.gnu.org/licenses/gpl-3.0.html
 //-----------------------------------------------------------------------------
 module dplug.vst3.client;
@@ -56,7 +56,7 @@ nothrow:
 
         // if no preset, pretend to be a continuous parameter
         _presetStepCount = _client.presetBank.numPresets() - 1;
-        if (_presetStepCount < 0) _presetStepCount = 0; 
+        if (_presetStepCount < 0) _presetStepCount = 0;
 
         _maxInputs = client.maxInputs();
         _inputScratchBuffers = mallocSlice!(Vec!float)(_maxInputs);
@@ -86,11 +86,11 @@ nothrow:
     }
 
     // Implements all COM interfaces needed
-    mixin QUERY_INTERFACE_SPECIAL_CASE_IUNKNOWN!(IAudioProcessor, 
-                                                 IComponent, 
-                                                 IEditController, 
-                                                 IEditController2, 
-                                                 IPluginBase, 
+    mixin QUERY_INTERFACE_SPECIAL_CASE_IUNKNOWN!(IAudioProcessor,
+                                                 IComponent,
+                                                 IEditController,
+                                                 IEditController2,
+                                                 IPluginBase,
                                                  IUnitInfo);
 
     mixin IMPLEMENT_REFCOUNT;
@@ -362,6 +362,9 @@ nothrow:
 
     extern(Windows) override tresult process (ref ProcessData data)
     {
+        ScopedForeignCallback!(false, true) scopedCallback;
+        scopedCallback.enter();
+
         assert(data.symbolicSampleSize == kSample32); // no conversion to 64-bit supported
 
         // Call initialize if needed
@@ -402,7 +405,7 @@ nothrow:
             float* pInput = data.inputs[0].channelBuffers32[chan];
 
             // May be null in case of deactivated bus, in which case we feed zero instead
-            if (pInput is null) 
+            if (pInput is null)
                 pInput = _zeroesBuffer.ptr;
             _inputPointers[chan] = pInput;
         }
@@ -542,9 +545,9 @@ nothrow:
                 _inputPointers[chan] = pCopy;
             }
 
-            _client.processAudioFromHost(_inputPointers[0..numInputs], 
-                                         _outputPointers[0..numOutputs], 
-                                         frames, 
+            _client.processAudioFromHost(_inputPointers[0..numInputs],
+                                         _outputPointers[0..numOutputs],
+                                         frames,
                                          _timeInfo);
         }
         return kResultOk;
@@ -674,7 +677,7 @@ nothrow:
             info.stepCount = 1;
             info.defaultNormalizedValue = 0.0f;
             info.unitId = 0; // root, unit 0 is always here
-            info.flags = ParameterInfo.ParameterFlags.kCanAutomate 
+            info.flags = ParameterInfo.ParameterFlags.kCanAutomate
                        | ParameterInfo.ParameterFlags.kIsBypass
                        | ParameterInfo.ParameterFlags.kIsList;
             return kResultTrue;

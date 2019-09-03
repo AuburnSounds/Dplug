@@ -8,7 +8,9 @@ import std.uuid;
 import std.process;
 import std.string;
 import std.path;
+import std.xml;
 
+import core.time, core.thread;
 import dplug.core.sharedlib;
 
 import colorize;
@@ -60,7 +62,8 @@ void usage()
     flag("-v --verbose", "Verbose output", null, "no");
     flag("-sr --skip-registry", " Skip checking the DUB registry\n                        Avoid network, doesn't update dependencies", null, "no");
     flag("--final", "Shortcut for --force --combined -b release-nobounds", null, null);
-    flag("--installer", "Make an installer " ~ "(OSX only)".red, null, "no");
+    flag("--installer", "Make an installer " ~ "(Windows and OSX only)".red, null, "no");
+    flag("--notarize", "Notarize the installer " ~ "(OSX only)".red, null, "no");
     flag("--publish", "Make the plugin available in standard directories " ~ "(OSX only, DOESN'T WORK)".red, null, "no");
     flag("--auval", "Check Audio Unit validation with auval " ~ "(OSX only, DOESN'T WORK)".red, null, "no");
     flag("-h --help", "Shows this help", null, null);
@@ -98,7 +101,7 @@ int main(string[] args)
     {
         string compiler = "ldc2"; // use LDC by default
 
-        Arch[] archs = allArchitectureqForThisPlatform();
+        Arch[] archs = allArchitecturesForThisPlatform();
 
         // Until 32-bit is eventually fixed for macOS, remove it from default arch
         version(OSX)
@@ -114,6 +117,7 @@ int main(string[] args)
         bool publish = false;
         bool auval = false;
         bool makeInstaller = false;
+        bool notarize = false;
         bool skipRegistry = false;
         string prettyName = null;
 
@@ -161,6 +165,13 @@ int main(string[] args)
             }
             else if (arg == "-sr" || arg == "--skip-registry")
                 skipRegistry = true;
+            else if (arg == "--notarize")
+            {
+                version(OSX)
+                    notarize = true;
+                else
+                    warning("--notarize not supported on that OS");
+            }
             else if (arg == "--installer")
             {
                 version(OSX)
@@ -182,7 +193,7 @@ int main(string[] args)
                     archs = [ Arch.x86_64 ];
                 else if (args[i] == "all")
                 {
-                    archs = allArchitectureqForThisPlatform();
+                    archs = allArchitecturesForThisPlatform();
                 }
                 else
                     throw new Exception("Unrecognized arch (available: x86, x86_64, all)");
@@ -208,6 +219,10 @@ int main(string[] args)
 
         if (quiet && verbose)
             throw new Exception("Can't have both --quiet and --verbose flags.");
+
+        version(OSX)
+            if (notarize && !makeInstaller)
+                throw new Exception("Flag --notarize cannot be used without --installer.");
 
         if (help)
         {
@@ -253,7 +268,6 @@ int main(string[] args)
                 {
                     case x86: return "32b-";
                     case x86_64: return "64b-";
-                    case universalBinary: return "";
                 }
             }
             return format("%s%s/%s-%s%s",
@@ -302,23 +316,24 @@ int main(string[] args)
 
         void buildAndPackage(string config, Arch[] architectures, string iconPathOSX)
         {
-            // Is one of those arch Universal Binary?
-            bool oneOfTheArchIsUB = false;
-            foreach (arch; architectures)
-            {
-                if (arch == Arch.universalBinary)
-                    oneOfTheArchIsUB = true;
-            }
-
             foreach (size_t archCount, arch; architectures)
             {
                 bool is64b = arch == Arch.x86_64;
 
                 // Does not try to build 32-bit builds of AAX, or Universal Binaries
-                if (configIsAAX(config) && (arch == Arch.universalBinary || arch == Arch.x86))
+                if (configIsAAX(config) && (arch == Arch.x86))
                 {
                     cwritefln("info: Skipping architecture %s for AAX\n".white, arch);
                     continue;
+                }
+
+                // Does not try to build 32-bit under Mac
+                version(OSX)
+                {
+                    if (!is64b)
+                    {
+                       throw new Exception("Can't make 32-bit builds on macOS");
+                    }
                 }
 
                 // Does not try to build AU under Windows
@@ -339,21 +354,10 @@ int main(string[] args)
 
                 // Do we need this build in the installer?
                 // isTemp is true for plugin build that are only there to jumpstart
-                // the creation of universal binaries.
+                // the creation of something else.
                 // As such their content shouln't be mistaken for something that would be redistributed
+                // Note: Universal Binaries were removed, so no build is deemed temporary anymore
                 bool isTemp = false;
-                version(OSX)
-                {
-                    if (!configIsAAX(config) && oneOfTheArchIsUB)
-                    {
-                        // In short: this build is deemed "temporary" if it's only a step toward building a
-                        // multi-arch Universal Binary on macOS.
-                        if (arch == Arch.x86)
-                            isTemp = true;
-                        else if (arch == Arch.x86_64)
-                            isTemp = true;
-                    }
-                }
 
                 // VST3-related warning in case of missing keys
                 if (configIsVST3(config))
@@ -363,14 +367,11 @@ int main(string[] args)
 
                 mkdirRecurse(path);
 
-                if (arch != Arch.universalBinary)
-                {
-                    buildPlugin(compiler, config, build, is64b, verbose, force, combined, quiet, skipRegistry);
+                buildPlugin(compiler, config, build, is64b, verbose, force, combined, quiet, skipRegistry);
 
-                    double bytes = getSize(plugin.dubOutputFileName) / (1024.0 * 1024.0);
-                    cwritefln("    => Build OK, binary size = %0.1f mb, available in ./%s".green, bytes, path);
-                    cwriteln();
-                }
+                double bytes = getSize(plugin.dubOutputFileName) / (1024.0 * 1024.0);
+                cwritefln("    => Build OK, binary size = %0.1f mb, available in ./%s".green, bytes, path);
+                cwriteln();
 
                 void signAAXBinaryWithPACE(string binaryPathInOut)
                 {
@@ -504,7 +505,7 @@ int main(string[] args)
 
                         // set max manifest size to 1 Million characters/bytes.  We whould never exceed this I hope
                         char[] manifestBuf = new char[1000 * 1000];
-                        int manifestLen = ptrGenerateManifest(manifestBuf.ptr, cast(int)(manifestBuf.length), 
+                        int manifestLen = ptrGenerateManifest(manifestBuf.ptr, cast(int)(manifestBuf.length),
                                                               binaryName.ptr, cast(int)(binaryName.length));
                         lib.unload();
 
@@ -737,28 +738,7 @@ int main(string[] args)
                         if (iconPathOSX)
                             std.file.copy(iconPathOSX, contentsDir ~ "Resources/icon.icns");
 
-                        if (arch == Arch.universalBinary)
-                        {
-                            string path32 = outputDirectory(outputDir, true, osString, Arch.x86, config)
-                            ~ "/" ~ pluginDir ~ "/Contents/MacOS/" ~ plugin.prettyName;
-
-                            string path64 = outputDirectory(outputDir, true, osString, Arch.x86_64, config)
-                            ~ "/" ~ pluginDir ~ "/Contents/MacOS/" ~ plugin.prettyName;
-
-                            cwritefln("*** Making an universal binary with lipo".white);
-
-                            string cmd = format("lipo -create %s %s -output %s",
-                                                escapeShellArgument(path32),
-                                                escapeShellArgument(path64),
-                                                escapeShellArgument(exePath));
-                            safeCommand(cmd);
-                            cwritefln("    => Universal build OK, available in ./%s".green, path);
-                            cwriteln();
-                        }
-                        else
-                        {
-                            fileMove(plugin.dubOutputFileName, exePath);
-                        }
+                        fileMove(plugin.dubOutputFileName, exePath);
                     }
 
                     // Note: on Mac, the bundle path is passed instead, since wraptool won't accept the executable only
@@ -906,17 +886,21 @@ int main(string[] args)
             }
         }
 
+        // Copy user manual (if any provided in plugin.json)
+        if (plugin.userManualPath)
+            std.file.copy(plugin.userManualPath, outputDir ~ "/" ~ baseName(plugin.userManualPath));
+
+        // Build various configuration
+        foreach(config; configurations)
+            buildAndPackage(config, archs, iconPathOSX);
+
         // Copy license (if any provided in plugin.json)
         // Ensure it is HTML.
         if (plugin.licensePath)
         {
             string licensePath = outputDir ~ "/license.html";
 
-            if (extension(plugin.licensePath) == ".html")
-            {
-                std.file.copy(plugin.licensePath, licensePath);
-            }
-            else if (extension(plugin.licensePath) == ".md")
+            if (extension(plugin.licensePath) == ".md")
             {
                 // Convert license markdown to HTML
                 cwritefln("*** Converting license file to HTML... ".white);
@@ -926,16 +910,8 @@ int main(string[] args)
                 cwritefln(" => OK\n".green);
             }
             else
-                throw new Exception("License file should be a Markdown .md or HTML .html file");
+                throw new Exception("License file should be a Markdown .md file");
         }
-
-        // Copy user manual (if any provided in plugin.json)
-        if (plugin.userManualPath)
-            std.file.copy(plugin.userManualPath, outputDir ~ "/" ~ baseName(plugin.userManualPath));
-
-        // Build various configuration
-        foreach(config; configurations)
-            buildAndPackage(config, archs, iconPathOSX);
 
         version(OSX)
         {
@@ -946,6 +922,17 @@ int main(string[] args)
                 generateMacInstaller(outputDir, resDir, plugin, macInstallerPackages, finalPkgPath, verbose);
                 cwriteln("    => OK".green);
                 cwriteln;
+
+                if (notarize)
+                {
+                    // Note: this doesn't have to match anything, it's just there in emails
+                    string primaryBundle = plugin.getNotarizationBundleIdentifier(configurations[0]);
+
+                    cwritefln("*** Notarizing final Mac installer %s...".white, primaryBundle);
+                    notarizeMacInstaller(plugin, finalPkgPath, primaryBundle);
+                    cwriteln("    => Notarization OK".green);
+                    cwriteln;
+                }
             }
         }
 
@@ -1333,4 +1320,157 @@ void generateMacInstaller(string outputDir,
                         packagePaths,
                         escapeShellArgument(outPkgPath));
     safeCommand(cmd);
+}
+
+void notarizeMacInstaller(Plugin plugin, string outPkgPath, string primaryBundleId)
+{
+    string uploadXMLPath = buildPath(tempDir(), "notarization-upload.xml");
+    string pollXMLPath = buildPath(tempDir(), "notarization-poll.xml");
+    if (plugin.vendorAppleID is null)
+        throw new Exception(`Missing "vendorAppleID" in plugin.json. Notarization need this key.`);
+    if (plugin.appSpecificPassword_altool is null)
+            throw new Exception(`Missing "appSpecificPassword-altool" in plugin.json. Notarization need this key.`);
+    if (plugin.appSpecificPassword_stapler is null)
+            throw new Exception(`Missing "appSpecificPassword-stapler" in plugin.json. Notarization need this key.`);
+
+    {
+        string cmd = format(`xcrun altool --notarize-app -t osx -f %s -u %s -p %s --primary-bundle-id %s --output-format xml > %s`,
+                            escapeShellArgument(outPkgPath),
+                            plugin.vendorAppleID,
+                            plugin.appSpecificPassword_altool,
+                            primaryBundleId,
+                            uploadXMLPath,
+                            );
+        safeCommand(cmd);
+    }
+
+    import arsd.dom;
+
+    // read XML
+    string requestUUID = null;
+
+    {
+        auto doc = new Document();
+        doc.parseUtf8( cast(string)(std.file.read(uploadXMLPath)), false, false);
+        auto plist = doc.root;
+
+        foreach(key; plist.querySelectorAll("key"))
+        {
+            if (key.innerHTML == "success-message")
+            {
+                auto value = key.nextSibling("string");
+                cwritefln("    Upload returned message '%s'", value.innerHTML);
+            }
+            else if (key.innerHTML == "notarization-upload")
+            {
+                auto dict = key.nextSibling("dict");
+                foreach(key2; dict.querySelectorAll("key"))
+                {
+                    if (key2.innerHTML == "RequestUUID")
+                    {
+                        requestUUID = key2.nextSibling("string").innerHTML;
+                    }
+                }
+            }
+        }
+    }
+
+    if (requestUUID)
+    {
+        cwritefln("    => Uploaded, RequestUUID = %s".green, requestUUID);
+        cwriteln();
+    }
+    else
+        throw new Exception("Couldn't parse RequestUUID");
+
+    // Three possible outcomes: suceeded, invalid, and timeout (1 hour of polling)
+    bool notarizationSucceeded = false;
+    bool notarizationFailed = false;
+    string LogFileURL = null;
+    double timeout = 5000;
+    double timeSpentPolling = 0;
+    while(true)
+    {
+        if (notarizationSucceeded || notarizationFailed)
+            break;
+
+        if (timeSpentPolling > 3600 * 1000)
+        {
+            notarizationSucceeded = false;
+            notarizationFailed = false;
+            break;
+        }
+
+        string cmd = format(`xcrun altool --notarization-info %s --username %s --password %s --output-format xml > %s`,
+                        escapeShellArgument(requestUUID),
+                        plugin.vendorAppleID,
+                        plugin.appSpecificPassword_altool,
+                        pollXMLPath,
+                        );
+        safeCommand(cmd);
+
+        auto doc = new Document();
+        doc.parseUtf8( cast(string)(std.file.read(pollXMLPath)), false, false);
+        auto plist = doc.root;
+        string status;
+        foreach(key; plist.querySelectorAll("key"))
+        {
+            if (key.innerHTML == "notarization-info")
+            {
+                auto dict = key.nextSibling("dict");
+                foreach(key2; dict.querySelectorAll("key"))
+                {
+                    if (key2.innerHTML == "LogFileURL")
+                    {
+                        LogFileURL = key2.nextSibling("string").innerHTML;
+                    }
+                    else if (key2.innerHTML == "Status")
+                    {
+                        status = key2.nextSibling("string").innerHTML;
+                        if (status == "in progress")
+                        {
+                            cwriteln("    => Notarization in progress, waiting...");
+                            Thread.sleep( (cast(long)timeout).msecs );
+                            timeSpentPolling += timeout;
+                            timeout = timeout * 1.61;
+                            if (timeout > 60000) timeout = 60000; // can't exceed one minute
+                        }
+                        else if (status == "success")
+                        {
+                            notarizationSucceeded = true;
+                        }
+                        else if (status == "invalid")
+                        {
+                            notarizationFailed = true;
+                        }
+                    }
+                }
+            }
+        }
+        if (status is null)
+            throw new Exception(format("Couldn't parse a status in %s", pollXMLPath));
+    }
+    if (notarizationFailed)
+    {
+        cwritefln("    => Notarization failed, log available at %s".red, LogFileURL);
+        cwriteln();
+        throw new Exception("Failed notarization");
+    }
+
+    if (!notarizationSucceeded)
+        throw new Exception("Time out. Notarization took more than one hour. Consider uploading smaller packages.");
+
+    cwritefln("    => Notarization succeeded, log available at %s".green, LogFileURL);
+    cwriteln();
+
+    {
+        string cmd = format(`xcrun altool --notarize-app -t osx -f %s -u %s -p %s --primary-bundle-id %s --output-format xml > %s`,
+                            escapeShellArgument(outPkgPath),
+                            plugin.vendorAppleID,
+                            plugin.appSpecificPassword_altool,
+                            primaryBundleId,
+                            uploadXMLPath,
+                            );
+        safeCommand( format(`xcrun stapler staple %s`, escapeShellArgument(outPkgPath) ) );
+    }
 }
