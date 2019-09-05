@@ -731,7 +731,8 @@ int main(string[] args)
                         // Create a .rsrc for this set of architecture when building an AU
                         if (configIsAU(config))
                         {
-                            string rsrcPath = makeRSRC(plugin, arch, verbose);
+                            string rsrcPath = makeRSRC_with_Rez(plugin, arch, verbose);
+                            makeRSRC_internal(plugin, arch, verbose);
                             std.file.copy(rsrcPath, contentsDir ~ "Resources/" ~ baseName(exePath) ~ ".rsrc");
                         }
 

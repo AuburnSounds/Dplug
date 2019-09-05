@@ -12,6 +12,7 @@ import std.datetime;
 
 import colorize;
 import utils;
+import rsrc;
 
 import dplug.client.daw;
 
@@ -1000,10 +1001,27 @@ string makeMacIcon(string pluginName, string pngPath)
     return outputIcon;
 }
 
-string makeRSRC(Plugin plugin, Arch arch, bool verbose)
+string makeRSRC_internal(Plugin plugin, Arch arch, bool verbose)
+{
+    cwritefln("*** Generating a .rsrc file for the bundle, with code...".white);
+
+    string rsrcPath = "clone.rsrc";
+    RSRCWriter rsrc;
+
+    rsrc.addType("STR ");
+    rsrc.addType("dlle");
+    rsrc.addType("thng");
+
+    std.file.write(rsrcPath, rsrc.write());
+    cwritefln("    => Written %s bytes.".green, getSize(rsrcPath));
+    cwriteln();
+    return rsrcPath;
+}
+
+string makeRSRC_with_Rez(Plugin plugin, Arch arch, bool verbose)
 {
     string pluginName = plugin.pluginName;
-    cwritefln("*** Generating a .rsrc file for the bundle...".white);
+    cwritefln("*** Generating a .rsrc file for the bundle, with Rez...".white);
     string temp = tempDir();
 
     string rPath = buildPath(temp, "plugin.r");
