@@ -1,6 +1,4 @@
 module rsrc;
-import dplug.client.binrange;
-
 
 
 struct RSRCResource
@@ -34,10 +32,10 @@ struct RSRCWriter
         types ~= RSRCType(id, []);
     }
 
-    void addString(int typeNum, ushort resourceID, bool purgeable, string name, string s)
+    /*void addString(int typeNum, ushort resourceID, bool purgeable, string name, string s)
     {
         addResource(typeNum, resourceID, purgeable, name, cast(const(ubyte)[])s);
-    }
+    }*/
 
     void addResource(int typeNum, ushort resourceID, bool purgeable, string name, const(ubyte)[] content)
     {
@@ -51,7 +49,7 @@ struct RSRCWriter
         ubyte[] resourceData;
         foreach(r; resources)
         {
-            resourceData.writeBE!uint(cast(uint)(r.content.length));
+            resourceData.writeBE_uint(cast(uint)(r.content.length));
             resourceData ~= r.content;
         }
 
@@ -60,22 +58,22 @@ struct RSRCWriter
         ubyte[] buffer;
 
         // Offset from beginning of resource file to resource data. Basically guaranteed to be 0x100.
-        buffer.writeBE!uint(0x100);
+        buffer.writeBE_uint(0x100);
 
         /// Offset from beginning of resource file to resource map.
-        buffer.writeBE!uint(0x100 + cast(uint)(resourceData.length));
+        buffer.writeBE_uint(0x100 + cast(uint)(resourceData.length));
 
         // Length of resource data
-        buffer.writeBE!uint(cast(uint)(resourceData.length));
+        buffer.writeBE_uint(cast(uint)(resourceData.length));
 
         // Length of resource map, unknown yet TODO
-        buffer.writeBE!uint(cast(uint)(resourceMap.length));
+        buffer.writeBE_uint(cast(uint)(resourceMap.length));
 
         // System-reserved data. In practice, this is usually all null bytes.
         foreach(n; 0..112)
-            buffer.writeBE!ubyte(0);
+            buffer.writeBE_ubyte(0);
         foreach(n; 0..128)
-            buffer.writeBE!ubyte(0);
+            buffer.writeBE_ubyte(0);
         return buffer ~ resourceData ~ resourceMap;
     }
 
@@ -83,18 +81,18 @@ struct RSRCWriter
     {
         ubyte[] buf;
         foreach(n; 0..16 + 4 + 2)
-            buf.writeBE!ubyte(0);
+            buf.writeBE_ubyte(0);
 
-        buf.writeBE!ushort(0); // TODO which flags?
+        buf.writeBE_ushort(0); // TODO which flags?
 
         ubyte[] resourceName = buildResourceNameList();
         ubyte[] typelist = buildTypeList();
 
         // Offset from beginning of resource map to type list.
-        buf.writeBE!ushort(28); // = size of resource map header
+        buf.writeBE_ushort(28); // = size of resource map header
 
         // Offset from beginning of resource map to resource name list.
-        buf.writeBE!ushort(cast(ushort)(28 + typelist.length));
+        buf.writeBE_ushort(cast(ushort)(28 + typelist.length));
 
         return buf ~ typelist ~ resourceName;
     }
@@ -102,7 +100,7 @@ struct RSRCWriter
     ubyte[] buildTypeList()
     {
         ubyte[] buf;
-        buf.writeBE!ushort( cast(ushort)(types.length - 1));
+        buf.writeBE_ushort( cast(ushort)(types.length - 1));
 
         ubyte[] referenceLists;
 
@@ -112,13 +110,13 @@ struct RSRCWriter
         {
             // Resource type. This is usually a 4-character ASCII mnemonic, but may be any 4 bytes.
             foreach(n; 0..4)
-                buf.writeBE!ubyte(cast(ubyte)(t.id[n]));
+                buf.writeBE_ubyte(cast(ubyte)(t.id[n]));
 
             // Number of resources of this type in the map minus 1.
-            buf.writeBE!ushort( cast(ushort)(t.numRes - 1));
+            buf.writeBE_ushort( cast(ushort)(t.numRes - 1));
 
             // Offset from beginning of type list to reference list for resources of this type.
-            buf.writeBE!ushort( cast(ushort)( offsetOfFirstReferenceList + referenceLists.length) );
+            buf.writeBE_ushort( cast(ushort)( offsetOfFirstReferenceList + referenceLists.length) );
 
             // build reference list for this type
             foreach(rindex; 0..t.numRes)
@@ -126,21 +124,21 @@ struct RSRCWriter
                 const(RSRCResource) res = resources[t.resIndices[rindex]];
 
                 // Resource ID
-                referenceLists.writeBE!ushort(res.resourceID);
+                referenceLists.writeBE_ushort(res.resourceID);
 
                 // Offset from beginning of resource name list to length of resource name, or -1 (0xffff) if none.
-                referenceLists.writeBE!ushort(res.nameOffset);
+                referenceLists.writeBE_ushort(res.nameOffset);
 
                 // Resource attributes. Combination of ResourceAttrs flags, see below. (Note: packed into 4 bytes together with the next 3 bytes.)
-                referenceLists.writeBE!ubyte(res.purgeable ? (1 << 5) : 0);
+                referenceLists.writeBE_ubyte(res.purgeable ? (1 << 5) : 0);
 
                 // Offset from beginning of resource data to length of data for this resource. (Note: packed into 4 bytes together with the previous 1 byte.)
-                referenceLists.writeBE!ubyte(0);
-                referenceLists.writeBE!ubyte(0); // TODO
-                referenceLists.writeBE!ubyte(0); // ?????
+                referenceLists.writeBE_ubyte(0);
+                referenceLists.writeBE_ubyte(0); // TODO
+                referenceLists.writeBE_ubyte(0); // ?????
 
                 // Reserved for handle to resource (in memory). Should be 0 in file.
-                referenceLists.writeBE!int(0);
+                referenceLists.writeBE_uint(0);
             }
         }
 
@@ -157,9 +155,9 @@ struct RSRCWriter
             if (name is null)
             {
                 r.nameOffset = cast(ushort)(buf.length);
-                buf.writeBE!ubyte(cast(ubyte)(name.length));
+                buf.writeBE_ubyte(cast(ubyte)(name.length));
                 foreach(char ch; name)
-                    buf.writeBE!ubyte(cast(ubyte)ch);
+                    buf.writeBE_ubyte(cast(ubyte)ch);
             }
             else
                 r.nameOffset = 0xffff;
@@ -167,4 +165,68 @@ struct RSRCWriter
         return buf;
     }
 
+}
+
+void writeBE_ubyte(ref ubyte[] buf, ubyte b)
+{
+    buf ~= b;
+}
+
+void writeBE_ushort(ref ubyte[] buf, ushort s)
+{
+    buf ~= (s >> 8) & 0xff;
+    buf ~= (s >> 0) & 0xff;
+}
+
+void writeBE_uint(ref ubyte[] buf, uint u)
+{
+    buf ~= (u >> 24) & 0xff;
+    buf ~= (u >> 16) & 0xff;
+    buf ~= (u >>  8) & 0xff;
+    buf ~= (u >>  0) & 0xff;
+}
+
+ubyte[] makeRSRC_pstring(string s)
+{
+    import std.stdio;
+    assert(s.length <= 255);
+    ubyte[] buf;
+    buf.writeBE_ubyte(cast(ubyte)(s.length));
+    foreach(char ch; s)
+    {
+        buf.writeBE_ubyte(cast(ubyte)(ch));
+    }
+    return buf;
+}
+
+ubyte[] makeRSRC_fourCC(char[4] ch)
+{
+    ubyte[] buf;
+    buf.writeBE_ubyte(ch[0]);
+    buf.writeBE_ubyte(ch[1]);
+    buf.writeBE_ubyte(ch[2]);
+    buf.writeBE_ubyte(ch[3]);
+    return buf;
+}
+
+ubyte[] makeRSRC_fourCC_string(string fourcc)
+{
+    assert(fourcc.length == 4);
+    ubyte[] buf;
+    buf.writeBE_ubyte(fourcc[0]);
+    buf.writeBE_ubyte(fourcc[1]);
+    buf.writeBE_ubyte(fourcc[2]);
+    buf.writeBE_ubyte(fourcc[3]);
+    return buf;
+}
+
+ubyte[] makeRSRC_cstring(string s)
+{
+    ubyte[] buf;
+    foreach(char ch; s)
+    {
+        buf.writeBE_ubyte(cast(ubyte)(ch));
+    }
+    buf.writeBE_ubyte(0);
+    return buf;
 }

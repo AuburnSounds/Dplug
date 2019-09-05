@@ -9,6 +9,7 @@ import std.json;
 import std.path;
 import std.stdio;
 import std.datetime;
+import std.range;
 
 import colorize;
 import utils;
@@ -1003,14 +1004,48 @@ string makeMacIcon(string pluginName, string pngPath)
 
 string makeRSRC_internal(Plugin plugin, Arch arch, bool verbose)
 {
+    assert(arch == Arch.x86_64);
+
     cwritefln("*** Generating a .rsrc file for the bundle, with code...".white);
 
     string rsrcPath = "clone.rsrc";
     RSRCWriter rsrc;
-
     rsrc.addType("STR ");
     rsrc.addType("dlle");
     rsrc.addType("thng");
+    rsrc.addResource(0, 1000, true, null, makeRSRC_pstring(plugin.vendorName ~ ": " ~ plugin.pluginName));
+    rsrc.addResource(0, 1001, true, null, makeRSRC_pstring(plugin.pluginName ~ " AU"));
+    rsrc.addResource(1, 1000, false, null, makeRSRC_cstring("dplugAUEntryPoint"));
+    ubyte[] thng;
+    if (plugin.isSynth)
+        thng ~= makeRSRC_fourCC("aumu");
+    else if (plugin.receivesMIDI)
+        thng ~= makeRSRC_fourCC("aumf");
+    else
+        thng ~= makeRSRC_fourCC("aufx");
+    thng ~= makeRSRC_fourCC_string(plugin.pluginUniqueID);
+    thng ~= makeRSRC_fourCC_string(plugin.vendorUniqueID);
+    thng.writeBE_uint(0);
+    thng.writeBE_uint(0);
+    thng.writeBE_uint(0);
+    thng.writeBE_ushort(0);
+    thng ~= makeRSRC_fourCC("STR ");
+    thng.writeBE_ushort(1000);
+    thng ~= makeRSRC_fourCC("STR ");
+    thng.writeBE_ushort(1001);
+    thng.writeBE_uint(0); // icon
+    thng.writeBE_ushort(0);
+    thng.writeBE_uint(plugin.publicVersionInt());
+    enum componentDoAutoVersion = 0x01;
+    enum componentHasMultiplePlatforms = 0x08;
+    thng.writeBE_uint(componentDoAutoVersion | componentHasMultiplePlatforms);
+    thng.writeBE_ushort(0);
+    thng.writeBE_uint(0x10000000);
+    thng ~= makeRSRC_fourCC("dlle");
+    thng.writeBE_ushort(1000);
+    thng.writeBE_ushort(8 /* platformX86_64NativeEntryPoint */);
+
+    rsrc.addResource(2, 1000, false, plugin.vendorName ~ ": " ~ plugin.pluginName, thng);
 
     std.file.write(rsrcPath, rsrc.write());
     cwritefln("    => Written %s bytes.".green, getSize(rsrcPath));
