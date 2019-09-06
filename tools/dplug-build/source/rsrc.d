@@ -9,6 +9,7 @@ struct RSRCResource
     string name = null;
     const(ubyte)[] content;
     ushort nameOffset;
+    uint dataOffset;
 }
 
 struct RSRCType
@@ -32,10 +33,6 @@ struct RSRCWriter
         types ~= RSRCType(id, []);
     }
 
-    /*void addString(int typeNum, ushort resourceID, bool purgeable, string name, string s)
-    {
-        addResource(typeNum, resourceID, purgeable, name, cast(const(ubyte)[])s);
-    }*/
 
     void addResource(int typeNum, ushort resourceID, bool purgeable, string name, const(ubyte)[] content)
     {
@@ -49,6 +46,7 @@ struct RSRCWriter
         ubyte[] resourceData;
         foreach(r; resources)
         {
+            r.dataOffset = cast(uint)resourceData.length;
             resourceData.writeBE_uint(cast(uint)(r.content.length));
             resourceData ~= r.content;
         }
@@ -66,7 +64,7 @@ struct RSRCWriter
         // Length of resource data
         buffer.writeBE_uint(cast(uint)(resourceData.length));
 
-        // Length of resource map, unknown yet TODO
+        // Length of resource map
         buffer.writeBE_uint(cast(uint)(resourceMap.length));
 
         // System-reserved data. In practice, this is usually all null bytes.
@@ -81,9 +79,9 @@ struct RSRCWriter
     {
         ubyte[] buf;
         foreach(n; 0..16 + 4 + 2)
-            buf.writeBE_ubyte(0);
+            buf.writeBE_ubyte(0); // Note: rez duplicates the file first 16 bytes here...
 
-        buf.writeBE_ushort(0); // TODO which flags?
+        buf.writeBE_ushort(0);
 
         ubyte[] resourceName = buildResourceNameList();
         ubyte[] typelist = buildTypeList();
@@ -133,9 +131,10 @@ struct RSRCWriter
                 referenceLists.writeBE_ubyte(res.purgeable ? (1 << 5) : 0);
 
                 // Offset from beginning of resource data to length of data for this resource. (Note: packed into 4 bytes together with the previous 1 byte.)
-                referenceLists.writeBE_ubyte(0);
-                referenceLists.writeBE_ubyte(0); // TODO
-                referenceLists.writeBE_ubyte(0); // ?????
+                uint doffset = res.dataOffset;
+                referenceLists.writeBE_ubyte((doffset & 0xff0000) >> 16);
+                referenceLists.writeBE_ubyte((doffset & 0x00ff00) >> 8);
+                referenceLists.writeBE_ubyte((doffset & 0x0000ff) >> 0);
 
                 // Reserved for handle to resource (in memory). Should be 0 in file.
                 referenceLists.writeBE_uint(0);
@@ -152,7 +151,7 @@ struct RSRCWriter
         {
             string name = r.name;
 
-            if (name is null)
+            if (name !is null)
             {
                 r.nameOffset = cast(ushort)(buf.length);
                 buf.writeBE_ubyte(cast(ubyte)(name.length));
