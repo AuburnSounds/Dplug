@@ -1041,6 +1041,8 @@ string makeRSRC_internal(Plugin plugin, Arch arch, bool verbose)
         enum componentHasMultiplePlatforms = 0x08;
         thng.writeBE_uint(componentDoAutoVersion | componentHasMultiplePlatforms);
         thng.writeBE_ushort(0);
+
+        thng.writeBE_uint(1); // 1 platform
         thng.writeBE_uint(0x10000000);
         thng ~= makeRSRC_fourCC("dlle");
         thng.writeBE_ushort(1000);
