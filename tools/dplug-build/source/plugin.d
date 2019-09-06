@@ -1006,9 +1006,9 @@ string makeRSRC_internal(Plugin plugin, Arch arch, bool verbose)
 {
     assert(arch == Arch.x86_64);
 
-    cwritefln("*** Generating a .rsrc file for the bundle, with code...".white);
+    cwritefln("*** Generating a .rsrc file for the bundle...".white);
 
-    string rsrcPath = "clone.rsrc";
+    string rsrcPath = buildPath(tempDir(), "plugin.rsrc");
     RSRCWriter rsrc;
     rsrc.addType("STR ");
     rsrc.addType("dlle");
@@ -1058,7 +1058,7 @@ string makeRSRC_internal(Plugin plugin, Arch arch, bool verbose)
 string makeRSRC_with_Rez(Plugin plugin, Arch arch, bool verbose)
 {
     string pluginName = plugin.pluginName;
-    cwritefln("*** Generating a .rsrc file for the bundle, with Rez...".white);
+    cwritefln("*** Generating a .rsrc file for the bundle, using Rez...".white);
     string temp = tempDir();
 
     string rPath = buildPath(temp, "plugin.r");

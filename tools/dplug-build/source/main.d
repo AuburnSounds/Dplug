@@ -66,6 +66,7 @@ void usage()
     flag("--notarize", "Notarize the installer " ~ "(OSX only)".red, null, "no");
     flag("--publish", "Make the plugin available in standard directories " ~ "(OSX only, DOESN'T WORK)".red, null, "no");
     flag("--auval", "Check Audio Unit validation with auval " ~ "(OSX only, DOESN'T WORK)".red, null, "no");
+    flag("--rez", "Generate AUv1 .rsrc file with Rez" ~ "(OSX only)".red, null, "no");
     flag("-h --help", "Shows this help", null, null);
 
 
@@ -118,6 +119,7 @@ int main(string[] args)
         bool auval = false;
         bool makeInstaller = false;
         bool notarize = false;
+        bool useRez = false;
         bool skipRegistry = false;
         string prettyName = null;
 
@@ -165,6 +167,13 @@ int main(string[] args)
             }
             else if (arg == "-sr" || arg == "--skip-registry")
                 skipRegistry = true;
+            else if (arg == "--rez")
+            {
+                version(OSX)
+                    useRez = true;
+                else
+                    warning("--rez not supported on that OS");
+            }
             else if (arg == "--notarize")
             {
                 version(OSX)
@@ -731,8 +740,11 @@ int main(string[] args)
                         // Create a .rsrc for this set of architecture when building an AU
                         if (configIsAU(config))
                         {
-                            string rsrcPath = makeRSRC_with_Rez(plugin, arch, verbose);
-                            makeRSRC_internal(plugin, arch, verbose);
+                            string rsrcPath;
+                            if (useRez)
+                                rsrcPath = makeRSRC_with_Rez(plugin, arch, verbose);
+                            else
+                                rsrcPath = makeRSRC_internal(plugin, arch, verbose);
                             std.file.copy(rsrcPath, contentsDir ~ "Resources/" ~ baseName(exePath) ~ ".rsrc");
                         }
 
