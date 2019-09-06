@@ -23,7 +23,6 @@ import core.stdc.stdio;
 import core.stdc.config;
 import core.stdc.string;
 
-import std.algorithm.comparison;
 import std.string;
 import std.conv;
 
@@ -224,7 +223,9 @@ nothrow:
         _inBusConnections = mallocSlice!InputBusConnection(numInputBuses);
         foreach(i; 0..numInputBuses)
         {
-            int channels = std.algorithm.comparison.min(2, _maxInputs - i * 2);
+            int channels = _maxInputs - i * 2;
+            if (channels > 2)
+                channels = 2;
             assert(channels == 1 || channels == 2);
             _inBuses[i].connected = false;
             _inBuses[i].numHostChannels = -1;
@@ -239,7 +240,9 @@ nothrow:
         _outBuses = mallocSlice!BusChannels(numOutputBuses);
         foreach(i; 0..numOutputBuses)
         {
-            int channels = std.algorithm.comparison.min(2, _maxOutputs - i * 2);
+            int channels = _maxOutputs - i * 2;
+            if (channels > 2)
+                channels = 2;
             assert(channels == 1 || channels == 2);
             _outBuses[i].connected = false;
             _outBuses[i].numHostChannels = -1;
@@ -1620,14 +1623,16 @@ private:
         }
         if (scope_ == kAudioUnitScope_Input)
         {
-            int nIn = max(numHostChannelsConnected(_inBuses, busIdx), 0);
+            int nIn = numHostChannelsConnected(_inBuses, busIdx);
+            if (nIn < 0) nIn = 0;
             int nOut = _active ? numHostChannelsConnected(_outBuses) : -1;
             componentResult = _client.isLegalIO(nIn + nChannels, nOut) ? noErr : kAudioUnitErr_InvalidScope;
         }
         else
         {
             int nIn = _active ? numHostChannelsConnected(_inBuses) : -1;
-            int nOut = max(numHostChannelsConnected(_outBuses, busIdx), 0);
+            int nOut = numHostChannelsConnected(_outBuses, busIdx);
+            if (nOut < 0) nOut = 0;
             componentResult = _client.isLegalIO(nIn, nOut + nChannels) ? noErr : kAudioUnitErr_InvalidScope;
         }
         return componentResult;
@@ -1933,7 +1938,9 @@ private:
             if (_lastBypassed)
             {
                 // TODO: should delay by latency when bypassed
-                int minIO = min(newUsedInputs, newUsedOutputs);
+                int minIO = newUsedInputs;
+                if (minIO > newUsedOutputs)
+                    minIO = newUsedOutputs;
 
                 for (int i = 0; i < minIO; ++i)
                     _outputPointersNoGap[i][0..nFrames] = _inputPointersNoGap[i][0..nFrames];
