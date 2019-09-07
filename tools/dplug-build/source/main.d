@@ -66,7 +66,7 @@ void usage()
     flag("--notarize", "Notarize the installer " ~ "(OSX only)".red, null, "no");
     flag("--publish", "Make the plugin available in standard directories " ~ "(OSX only, DOESN'T WORK)".red, null, "no");
     flag("--auval", "Check Audio Unit validation with auval " ~ "(OSX only, DOESN'T WORK)".red, null, "no");
-    flag("--rez", "Generate AUv1 .rsrc file with Rez" ~ "(OSX only)".red, null, "no");
+    flag("--rez", "Generate Audio Unit .rsrc file with Rez " ~ "(OSX only)".red, null, "no");
     flag("-h --help", "Shows this help", null, null);
 
 
@@ -746,9 +746,6 @@ int main(string[] args)
                             else
                             {
                                 rsrcPath = makeRSRC_internal(plugin, arch, verbose);
-
-                                // TEMP
-                                makeRSRC_with_Rez(plugin, arch, verbose);
                             }
                             std.file.copy(rsrcPath, contentsDir ~ "Resources/" ~ baseName(exePath) ~ ".rsrc");
                         }

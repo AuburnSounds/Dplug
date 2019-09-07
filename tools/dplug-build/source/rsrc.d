@@ -44,7 +44,7 @@ struct RSRCWriter
     {
         // compute resource data
         ubyte[] resourceData;
-        foreach(r; resources)
+        foreach(ref r; resources)
         {
             r.dataOffset = cast(uint)resourceData.length;
             resourceData.writeBE_uint(cast(uint)(r.content.length));
@@ -120,6 +120,8 @@ struct RSRCWriter
 
         int offsetOfFirstReferenceList = 2 + cast(int)(types.length) * 8;
 
+        int resMysteriousID = 0x100_0000;
+
         foreach(t; types)
         {
             // Resource type. This is usually a 4-character ASCII mnemonic, but may be any 4 bytes.
@@ -135,7 +137,7 @@ struct RSRCWriter
             // build reference list for this type
             foreach(rindex; 0..t.numRes)
             {
-                const(RSRCResource) res = resources[t.resIndices[rindex]];
+                const(RSRCResource)* res = &resources[t.resIndices[rindex]];
 
                 // Resource ID
                 referenceLists.writeBE_ushort(res.resourceID);
@@ -150,10 +152,12 @@ struct RSRCWriter
                 uint doffset = res.dataOffset;
                 referenceLists.writeBE_ubyte((doffset & 0xff0000) >> 16);
                 referenceLists.writeBE_ubyte((doffset & 0x00ff00) >> 8);
-                referenceLists.writeBE_ubyte((doffset & 0x0000ff) >> 0);
+                referenceLists.writeBE_ubyte((doffset & 0x0000ff)     );
 
-                // Reserved for handle to resource (in memory). Should be 0 in file.
-                referenceLists.writeBE_uint(0);
+                // Reserved for handle to resource (in memory). "Should be 0 in file."
+                // But it is not actually zero when written by Rez, unknown use...
+                referenceLists.writeBE_uint(resMysteriousID);
+                resMysteriousID += 0x100_0000;
             }
         }
 
