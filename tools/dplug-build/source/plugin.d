@@ -1080,7 +1080,7 @@ string makeRSRC_with_Rez(Plugin plugin, Arch arch, bool verbose)
     rFile.writeln(rFileBase);
     rFile.close();
 
-    string rsrcPath = buildPath(temp, "plugin.rsrc");
+    string rsrcPath = "reference.rsrc";
 
     string archFlags;
     final switch(arch) with (Arch)

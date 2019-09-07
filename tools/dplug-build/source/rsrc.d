@@ -72,14 +72,30 @@ struct RSRCWriter
             buffer.writeBE_ubyte(0);
         foreach(n; 0..128)
             buffer.writeBE_ubyte(0);
+
+        // Undocumented, but rez does fill the first 16
+        // bytes of resourceMap with the same beginning of
+        // the resource file header
+        resourceMap[0..16] = buffer[0..16];
         return buffer ~ resourceData ~ resourceMap;
     }
 
     ubyte[] buildResourceMap()
     {
         ubyte[] buf;
-        foreach(n; 0..16 + 4 + 2)
-            buf.writeBE_ubyte(0); // Note: rez duplicates the file first 16 bytes here...
+        foreach(n; 0..16)
+            buf.writeBE_ubyte(0); // Note: modified afterwards to duplicate file header
+
+        foreach(n; 0..4)
+           buf.writeBE_ubyte(0);
+
+        // Don't know what this number of for, but it changes with builds
+        // distort => 0x0A00
+        // panagement => 0x0900
+        // couture => 0x0A00
+        // graillon => 0x0A00
+        buf.writeBE_ushort(0x0A00);
+
 
         buf.writeBE_ushort(0);
 

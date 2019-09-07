@@ -744,7 +744,12 @@ int main(string[] args)
                             if (useRez)
                                 rsrcPath = makeRSRC_with_Rez(plugin, arch, verbose);
                             else
+                            {
                                 rsrcPath = makeRSRC_internal(plugin, arch, verbose);
+
+                                // TEMP
+                                makeRSRC_with_Rez(plugin, arch, verbose);
+                            }
                             std.file.copy(rsrcPath, contentsDir ~ "Resources/" ~ baseName(exePath) ~ ".rsrc");
                         }
 
