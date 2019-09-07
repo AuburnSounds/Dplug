@@ -547,10 +547,19 @@ private:
 
             case kAudioUnitInitializeSelect: // 1, S
             {
+                // Audio processing was switched on.
                 _globalMutex.lock();
                 scope(exit) _globalMutex.unlock();
                 _active = true;
-                // Audio processing was switched on.
+
+                // We may end up with invalid I/O config at this point (Issue #385).
+                // Because validity check were made while _active was false.
+                // Check that the connected I/O is actually legal.
+                int nIn = numHostChannelsConnected(_inBuses);
+                int nOut = numHostChannelsConnected(_outBuses);
+                if (!_client.isLegalIO(nIn, nOut))
+                    return kAudioUnitErr_FailedInitialization;
+
                 return noErr;
             }
 
@@ -1616,26 +1625,26 @@ private:
 
     ComponentResult checkLegalIO(AudioUnitScope scope_, int busIdx, int nChannels) nothrow
     {
-        ComponentResult componentResult;
-        if (!(scope_ == kAudioUnitScope_Input || scope_ == kAudioUnitScope_Output))
-        {
-            componentResult = kAudioUnitErr_InvalidScope;
-        }
+        import core.stdc.stdio;
+
         if (scope_ == kAudioUnitScope_Input)
         {
             int nIn = numHostChannelsConnected(_inBuses, busIdx);
             if (nIn < 0) nIn = 0;
             int nOut = _active ? numHostChannelsConnected(_outBuses) : -1;
-            componentResult = _client.isLegalIO(nIn + nChannels, nOut) ? noErr : kAudioUnitErr_InvalidScope;
+            ComponentResult res = _client.isLegalIO(nIn + nChannels, nOut) ? noErr : kAudioUnitErr_InvalidScope;
+            return res;
         }
-        else
+        else if (scope_ == kAudioUnitScope_Output)
         {
             int nIn = _active ? numHostChannelsConnected(_inBuses) : -1;
             int nOut = numHostChannelsConnected(_outBuses, busIdx);
             if (nOut < 0) nOut = 0;
-            componentResult = _client.isLegalIO(nIn, nOut + nChannels) ? noErr : kAudioUnitErr_InvalidScope;
+            ComponentResult res = _client.isLegalIO(nIn, nOut + nChannels) ? noErr : kAudioUnitErr_InvalidScope;
+            return res;
         }
-        return componentResult;
+        else
+            return kAudioUnitErr_InvalidScope;
     }
 
     static int numHostChannelsConnected(BusChannels[] pBuses, int excludeIdx = -1) pure nothrow @nogc
