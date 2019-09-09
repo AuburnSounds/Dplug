@@ -1081,7 +1081,6 @@ void generateWindowsInstaller(string outputDir,
     //remove ./ if it occurs at the beginning of windowsInstallerHeaderBmp
     string headerImagePage = plugin.windowsInstallerHeaderBmp.replaceAll(r"^./".regex, "");
     string nsisPath = "WindowsInstaller.nsi";
-    string licensePath = plugin.licensePath;
 
     string content = "";
 
@@ -1101,7 +1100,11 @@ void generateWindowsInstaller(string outputDir,
     content ~= "!define MUI_ABORTWARNING\n";
     if (plugin.iconPathWindows)
         content ~= "!define MUI_ICON \"" ~ escapeNSISPath(plugin.iconPathWindows) ~ "\"\n";
-    content ~= "!insertmacro MUI_PAGE_LICENSE \"" ~ licensePath ~ "\"\n";
+    if (plugin.licensePath)
+    {
+        string licensePath = outputDir ~ "/license.html";
+        content ~= "!insertmacro MUI_PAGE_LICENSE \"" ~ licensePath ~ "\"\n";
+    }
     content ~= "!insertmacro MUI_PAGE_COMPONENTS\n";
     content ~= "!insertmacro MUI_LANGUAGE \"English\"\n\n";
 
