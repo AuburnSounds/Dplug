@@ -87,6 +87,16 @@ void safeCommand(string cmd)
         throw new ExternalProgramErrored(errorCode, format("Command '%s' returned %s", cmd, errorCode));
 }
 
+string escapeXMLString(string s)
+{
+    s = s.replace("&", "&amp;");
+    s = s.replace("<", "&lt;");
+    s = s.replace(">", "&gt;");
+    s = s.replace("\"", "&quot;");
+    s = s.replace("\'", "&apos;");
+    return s;
+}
+
 // Currently this only escapes spaces...
 string escapeShellArgument(string arg)
 {

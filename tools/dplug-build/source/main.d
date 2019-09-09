@@ -31,6 +31,11 @@ string WIN_AAX_DIR = "C:\\Program Files\\Common Files\\Avid\\Audio\\Plug-Ins";
 string WIN_VST3_DIR_X86 = "C:\\Program Files (x86)\\Common Files\\VST3";
 string WIN_VST_DIR_X86 = "C:\\Program Files (x86)\\VSTPlugins";
 
+
+// What flavour of AUv2 we generate.
+enum enableAUv2AudioComponentAPI = true;   // new style of AUv2, need an extended plist
+enum enableAUv2ComponentManagerAPI = true; // old API, .rsrc
+
 void usage()
 {
     void flag(string arg, string desc, string possibleValues, string defaultDesc)
@@ -729,7 +734,7 @@ int main(string[] args)
                             extractAAXPresetsFromBinary(plugin.dubOutputFileName, contentsDir, is64b);
 
                         // Generate Plist
-                        string plist = makePListFile(plugin, config, iconPathOSX != null);
+                        string plist = makePListFile(plugin, config, iconPathOSX != null, enableAUv2AudioComponentAPI);
                         std.file.write(contentsDir ~ "Info.plist", cast(void[])plist);
 
                         void[] pkgInfo = cast(void[]) plugin.makePkgInfo(config);
@@ -738,7 +743,7 @@ int main(string[] args)
                         string exePath = macosDir ~ "/" ~ plugin.prettyName;
 
                         // Create a .rsrc for this set of architecture when building an AU
-                        if (configIsAU(config))
+                        if (enableAUv2ComponentManagerAPI && configIsAU(config))
                         {
                             string rsrcPath;
                             if (useRez)

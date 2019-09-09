@@ -883,7 +883,7 @@ bool toBool(JSONValue v)
 }
 
 
-string makePListFile(Plugin plugin, string config, bool hasIcon)
+string makePListFile(Plugin plugin, string config, bool hasIcon, bool isAudioComponentAPIImplemented)
 {
     string productVersion = plugin.publicVersionString;
     string content = "";
@@ -928,8 +928,6 @@ string makePListFile(Plugin plugin, string config, bool hasIcon)
     // PACE signing need this on Mac to find the executable to sign
     addKeyString("CFBundleExecutable", plugin.prettyName);
 
-    enum isAudioComponentAPIImplemented = false;
-
     if (isAudioComponentAPIImplemented && configIsAU(config))
     {
         content ~= "        <key>AudioComponents</key>\n";
@@ -942,14 +940,22 @@ string makePListFile(Plugin plugin, string config, bool hasIcon)
             content ~= "                <string>aumf</string>\n";
         else
             content ~= "                <string>aufx</string>\n";
+
+        // We use VST unique plugin ID as subtype in Audio Unit
+        // So apparently no chance to give a categoy here.
+        char[4] uid = plugin.pluginUniqueID;
+        string suid = escapeXMLString(uid.idup);//format("%c%c%c%c", uid[0], uid[1], uid[2], uid[3]));
         content ~= "                <key>subtype</key>\n";
-        content ~= "                <string>dely</string>\n"; // TODO: when Audio Component API is implemented, use the right subtype
+        content ~= "                <string>" ~ suid ~ "</string>\n";
+
+        char[4] vid = plugin.vendorUniqueID;
+        string svid = escapeXMLString(vid.idup);
         content ~= "                <key>manufacturer</key>\n";
-        content ~= "                <string>" ~ plugin.vendorUniqueID ~ "</string>\n"; // FUTURE XML escape that
+        content ~= "                <string>" ~ svid ~ "</string>\n";
         content ~= "                <key>name</key>\n";
-        content ~= format("                <string>%s</string>\n", plugin.pluginName);
+        content ~= format("                <string>%s</string>\n", escapeXMLString(plugin.pluginName));
         content ~= "                <key>version</key>\n";
-        content ~= format("                <integer>%s</integer>\n", plugin.publicVersionInt()); // correct?
+        content ~= format("                <integer>%s</integer>\n", plugin.publicVersionInt()); // TODO correct?
         content ~= "                <key>factoryFunction</key>\n";
         content ~= "                <string>dplugAUComponentFactoryFunction</string>\n";
         content ~= "                <key>sandboxSafe</key><true/>\n";
@@ -961,8 +967,8 @@ string makePListFile(Plugin plugin, string config, bool hasIcon)
     addKeyString("CFBundlePackageType", "BNDL");
     addKeyString("CFBundleSignature", plugin.pluginUniqueID); // doesn't matter http://stackoverflow.com/questions/1875912/naming-convention-for-cfbundlesignature-and-cfbundleidentifier
 
-   // Set to 10.7 in case 10.7 is supported by chance
-    addKeyString("LSMinimumSystemVersion", "10.7.0");
+   // Set to 10.9
+    addKeyString("LSMinimumSystemVersion", "10.9.0");
 
    // content ~= "        <key>VSTWindowCompositing</key><true/>\n";
 
