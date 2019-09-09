@@ -45,28 +45,47 @@
 
 */
 /**
-* Audio Unit plug-in client. Unused yet. Unfinished dispatcher for the Audio Component API.
+* Dispatcher for the Audio Component API.
 * Copyright: Copyright Auburn Sounds 2016.
 * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 * Authors:   Guillaume Piolat
 */
 module dplug.au.audiocomponentdispatch;
 
-import derelict.carbon;
-
-// Dispatcher for the Audio Component API
-// Not implemented yet
-
 import core.stdc.stdio;
+import core.stdc.stdlib: malloc, free;
+import derelict.carbon;
+import dplug.core.runtime;
+import dplug.au.client;
 
+
+// Factory function entry point for Audio Component
+void* audioUnitComponentFactory(alias ClientClass)(void* inDesc) nothrow @nogc
+{
+    ScopedForeignCallback!(false, true) scopedCallback;
+    scopedCallback.enter();
+    acquireAUFunctions();
+
+    const(AudioComponentDescription)* desc = cast(const(AudioComponentDescription)*)inDesc;
+    AudioComponentPlugInInterface* pinter = cast(AudioComponentPlugInInterface*) malloc(AudioComponentPlugInInterface.sizeof);
+
+    pinter.Open = &audioComponentOpen;
+    pinter.Close = &audioComponentClose;
+    pinter.Lookup = &audioComponentLookup;
+    pinter.reserved = null;
+    return pinter;
+}
+
+package:
 
 struct AudioComponentPlugInInstance
 {
     AudioComponentPlugInInterface iface;
-    //AUClient auclient;
+  //  AUClient auclient;
 }
 
-extern(C) nothrow
+
+extern(C) nothrow package
 {
     OSStatus audioComponentOpen(void *self, AudioComponentInstance mInstance)
     {

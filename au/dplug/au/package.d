@@ -12,4 +12,5 @@ module dplug.au;
 public
 {
     import dplug.au.client;
+    import dplug.au.audiocomponentdispatch;
 }

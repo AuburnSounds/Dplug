@@ -64,11 +64,11 @@ template AUEntryPoint(alias ClientClass)
 
     const char[] AUEntryPoint =
     "import derelict.carbon;" ~
-    "extern(C) ComponentResult dplugAUEntryPoint(ComponentParameters* params, void* pPlug) nothrow  @nogc" ~
+    "export extern(C) ComponentResult dplugAUEntryPoint(ComponentParameters* params, void* pPlug) nothrow  @nogc" ~
     "{" ~
         "return audioUnitEntryPoint!" ~ ClientClass.stringof ~ "(params, pPlug);" ~
     "}" ~
-    "extern(C) void* dplugAUComponentFactoryFunction(void* inDesc) nothrow  @nogc"  ~ // type-punned here to avoid the derelict.carbon import
+    "export extern(C) void* dplugAUComponentFactoryFunction(void* inDesc) nothrow  @nogc"  ~ // type-punned here to avoid the derelict.carbon import
     "{" ~
         "return audioUnitComponentFactory!" ~ ClientClass.stringof ~ "(inDesc);" ~
     "}"
@@ -93,7 +93,7 @@ private T getCompParam(T, int Idx, int Num)(ComponentParameters* params) pure no
         return *cast(T*)(&p[Idx]);
 }
 
-private void acquireAUFunctions() nothrow @nogc
+package void acquireAUFunctions() nothrow @nogc
 {
     acquireCoreFoundationFunctions();
     acquireCoreServicesFunctions();
@@ -101,7 +101,7 @@ private void acquireAUFunctions() nothrow @nogc
     acquireAudioToolboxFunctions();
 }
 
-private void releaseAUFunctions() nothrow @nogc
+package void releaseAUFunctions() nothrow @nogc
 {
     releaseCoreFoundationFunctions();
     releaseCoreServicesFunctions();
@@ -147,34 +147,6 @@ struct CarbonViewInstance
     AUClient mPlug;
 }
 
-
-//__gshared AudioComponentPlugInInterface audioComponentPlugInInterface;
-
-// Factory function entry point for Audio Component
-void* audioUnitComponentFactory(alias ClientClass)(void* inDesc) nothrow @nogc
-{
-    // disabled since we don't use the Audio Component API (yet?)
- /+
-      const(AudioComponentDescription)* desc = cast(const(AudioComponentDescription)*)inDesc;
-
-        // FUTURE: this function is racey
-
-        attachToRuntimeIfNeeded();
-        acquireAudioUnitFunctions();
-
-        auto instance = cast(AudioComponentPlugInInstance*) malloc(  )
-
-        instance.iface.Open = &audioComponentOpen;
-        instance.iface.Close = &audioComponentClose;
-        instance.iface.Lookup = &audioComponentLookup;
-        instance.iface.reserved = null;
-
-
-        return cast(void*)(&audioComponentPlugInInterface);
-
-    +/
-    return null;
-}
 
 enum AUInputType
 {
