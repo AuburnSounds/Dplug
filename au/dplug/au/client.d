@@ -141,7 +141,7 @@ ComponentResult audioUnitEntryPoint(alias ClientClass)(ComponentParameters* para
     return auClient.dispatcher(select, params);
 }
 
-struct CarbonViewInstance
+deprecated struct CarbonViewInstance
 {
     ComponentInstance mCI;
     AUClient mPlug;
@@ -166,7 +166,7 @@ nothrow:
     this(Client client, ComponentInstance componentInstance)
     {
         _client = client;
-        _componentInstance = componentInstance;
+        _componentInstance = componentInstance; // null if Audio Component API
 
         int queueSize = 256;
         _messageQueue = makeLockedQueue!AudioThreadMessage(queueSize);
@@ -260,7 +260,7 @@ nothrow:
     }
 
 private:
-    ComponentInstance _componentInstance;
+    ComponentInstance _componentInstance; // null if Audio Component API
     Client _client;
 
     HostCallbackInfo _hostCallbacks;
@@ -455,13 +455,10 @@ private:
 
     // </scratch-buffers>
 
-
-
-
     //
     // DISPATCHER
     //
-    ComponentResult dispatcher(int select, ComponentParameters* params) nothrow
+    final ComponentResult dispatcher(int select, ComponentParameters* params) nothrow
     {
         if (select == kComponentCloseSelect) // -2
         {
@@ -823,6 +820,121 @@ private:
                 return badComponentSelector;
         }
     }
+
+    // individual select actions, to be reused for the Audio Component API
+
+package:
+
+    final OSStatus DoInitialize()
+    {
+        printf("DoInitialize\n");
+        assert(false);
+    }
+
+    final OSStatus DoUninitialize()
+    {
+        printf("DoUninitialize\n");
+        assert(false);
+    }
+
+    final OSStatus DoGetPropertyInfo(AudioUnitPropertyID prop,
+                                    AudioUnitScope scope_,
+                                    AudioUnitElement elem,
+                                    UInt32* pOutDataSize,
+                                    Boolean* pOutWritable)
+    {
+        printf("DoGetPropertyInfo\n");
+        assert(false);
+    }
+
+    final OSStatus DoGetProperty(AudioUnitPropertyID inID, AudioUnitScope inScope, AudioUnitElement inElement, void* pOutData, UInt32* pIODataSize)
+    {
+        printf("DoGetProperty\n");
+        assert(false);
+    }
+
+    final OSStatus DoSetProperty(AudioUnitPropertyID inID, AudioUnitScope inScope, AudioUnitElement inElement, const void* pInData, UInt32* pInDataSize)
+    {
+        printf("DoSetProperty\n");
+        assert(false);
+    }
+
+    final OSStatus DoAddPropertyListener(AudioUnitPropertyID prop, AudioUnitPropertyListenerProc proc, void* pUserData)
+    {
+        printf("DoAddPropertyListener\n");
+        assert(false);
+    }
+
+    final OSStatus DoRemovePropertyListener(AudioUnitPropertyID prop, AudioUnitPropertyListenerProc proc)
+    {
+        printf("DoRemovePropertyListener\n");
+        assert(false);
+    }
+
+    final OSStatus DoRemovePropertyListenerWithUserData(AudioUnitPropertyID prop, AudioUnitPropertyListenerProc proc, void* pUserData)
+    {
+        printf("DoRemovePropertyListenerWithUserData\n");
+        assert(false);
+    }
+
+    final OSStatus DoAddRenderNotify(AURenderCallback proc, void* pUserData)
+    {
+        printf("DoAddRenderNotify\n");
+        assert(false);
+    }
+
+    final OSStatus DoRemoveRenderNotify(AURenderCallback proc, void* pUserData)
+    {
+        printf("DoRemoveRenderNotify\n");
+        assert(false);
+    }
+
+    final OSStatus DoGetParameter(AudioUnitParameterID param, AudioUnitScope scope_, AudioUnitElement elem, AudioUnitParameterValue *value)
+    {
+        printf("DoGetParameter\n");
+        assert(false);
+    }
+
+    final OSStatus DoSetParameter(AudioUnitParameterID param, AudioUnitScope scope_, AudioUnitElement elem, AudioUnitParameterValue value, UInt32 bufferOffset)
+    {
+        printf("DoSetParameter\n");
+        assert(false);
+    }
+
+    final OSStatus DoScheduleParameters(const AudioUnitParameterEvent *pEvent, UInt32 nEvents)
+    {
+        printf("DoScheduleParameters\n");
+        assert(false);
+    }
+
+    final OSStatus DoRender(AudioUnitRenderActionFlags* pIOActionFlags, const AudioTimeStamp* pInTimeStamp, UInt32 inOutputBusNumber, UInt32 inNumberFrames, AudioBufferList* pIOData)
+    {
+        printf("DoRender\n");
+        assert(false);
+    }
+
+    final OSStatus DoReset(AudioUnitScope scope_, AudioUnitElement elem)
+    {
+        printf("DoReset\n");
+        assert(false);
+    }
+
+    final OSStatus DoMIDIEvent(UInt32 inStatus, UInt32 inData1, UInt32 inData2, UInt32 inOffsetSampleFrame)
+    {
+        printf("DoMIDIEvent\n");
+        assert(false);
+    }
+
+    final OSStatus DoSysEx(const UInt8* pInData, UInt32 inLength)
+    {
+        printf("DoSysEx\n");
+        assert(false);
+    }
+
+private:
+    //
+    // </DISPATCHER>
+    //
 
     //
     // GET PROPERTY
