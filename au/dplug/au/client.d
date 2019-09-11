@@ -141,13 +141,6 @@ ComponentResult audioUnitEntryPoint(alias ClientClass)(ComponentParameters* para
     return auClient.dispatcher(select, params);
 }
 
-deprecated struct CarbonViewInstance
-{
-    ComponentInstance mCI;
-    AUClient mPlug;
-}
-
-
 enum AUInputType
 {
     notConnected = 0,
@@ -605,54 +598,28 @@ private:
                 uint outputBusIdx = params.getCompParam!(uint, 2, 5)();
                 uint nFrames = params.getCompParam!(uint, 1, 5)();
                 AudioBufferList* pOutBufList = params.getCompParam!(AudioBufferList*, 0, 5)();
-                return render(pFlags, pTimestamp, outputBusIdx, nFrames, pOutBufList, false);
+                return DoRender(pFlags, pTimestamp, outputBusIdx, nFrames, pOutBufList);
             }
 
             case kAudioUnitAddRenderNotifySelect: // 15
             {
-                AURenderCallbackStruct acs;
-                acs.inputProc = params.getCompParam!(AURenderCallback, 1, 2);
-                acs.inputProcRefCon = params.getCompParam!(void*, 0, 2);
-
-                _renderNotifyMutex.lock();
-                scope(exit) _renderNotifyMutex.unlock();
-                _renderNotify.pushBack(acs);
-                return noErr;
+                AURenderCallback inputProc = params.getCompParam!(AURenderCallback, 1, 2);
+                void* inputProcRefCon = params.getCompParam!(void*, 0, 2);
+                return DoAddRenderNotify(inputProc, inputProcRefCon);
             }
 
             case kAudioUnitRemoveRenderNotifySelect: // 16
             {
-                AURenderCallbackStruct acs;
-                acs.inputProc = params.getCompParam!(AURenderCallback, 1, 2);
-                acs.inputProcRefCon = params.getCompParam!(void*, 0, 2);
-
-                _renderNotifyMutex.lock();
-                scope(exit) _renderNotifyMutex.unlock();
-
-                int iElem = _renderNotify.indexOf(acs);
-                if (iElem != -1)
-                    _renderNotify.removeAndReplaceByLastElement(iElem);
-
-                return noErr;
+                AURenderCallback inputProc = params.getCompParam!(AURenderCallback, 1, 2);
+                void* inputProcRefCon = params.getCompParam!(void*, 0, 2);
+                return DoRemoveRenderNotify(inputProc, inputProcRefCon);
             }
 
             case kAudioUnitScheduleParametersSelect: // 17
             {
                 AudioUnitParameterEvent* pEvent = params.getCompParam!(AudioUnitParameterEvent*, 1, 2);
                 uint nEvents = params.getCompParam!(uint, 0, 2);
-
-                foreach(ref pE; pEvent[0..nEvents])
-                {
-                    if (pE.eventType == kParameterEvent_Immediate)
-                    {
-                        ComponentResult r = setParamProc(cast(void*)this, pE.parameter, pE.scope_, pE.element,
-                                                         pE.eventValues.immediate.value,
-                                                         pE.eventValues.immediate.bufferOffset);
-                        if (r != noErr)
-                            return r;
-                    }
-                }
-                return noErr;
+                return DoScheduleParameters(pEvent, nEvents);
             }
 
             case kAudioUnitRemovePropertyListenerWithUserDataSelect: // 18
@@ -884,19 +851,33 @@ package:
 
     final OSStatus DoAddRenderNotify(AURenderCallback proc, void* pUserData)
     {
-        printf("DoAddRenderNotify\n"); // TODO
-        assert(false);
+        AURenderCallbackStruct acs;
+        acs.inputProc = proc;
+        acs.inputProcRefCon = pUserData;
+        _renderNotifyMutex.lock();
+        scope(exit) _renderNotifyMutex.unlock();
+        _renderNotify.pushBack(acs);
+        return noErr;
     }
 
     final OSStatus DoRemoveRenderNotify(AURenderCallback proc, void* pUserData)
     {
-        printf("DoRemoveRenderNotify\n"); // TODO
-        assert(false);
+        AURenderCallbackStruct acs;
+        acs.inputProc = proc;
+        acs.inputProcRefCon = pUserData;
+
+        _renderNotifyMutex.lock();
+        scope(exit) _renderNotifyMutex.unlock();
+
+        int iElem = _renderNotify.indexOf(acs);
+        if (iElem != -1)
+            _renderNotify.removeAndReplaceByLastElement(iElem);
+
+        return noErr;
     }
 
     final OSStatus DoGetParameter(AudioUnitParameterID param, AudioUnitScope scope_, AudioUnitElement elem, AudioUnitParameterValue *value)
     {
-        printf("%d param %d scope %d\n", param, scope_, elem);
         if (!_client.isValidParamIndex(param))
             return kAudioUnitErr_InvalidParameter;
         *value = _client.param(param).getForHost();
@@ -914,14 +895,27 @@ package:
 
     final OSStatus DoScheduleParameters(const AudioUnitParameterEvent *pEvent, UInt32 nEvents)
     {
-        printf("DoScheduleParameters\n"); // TODO
-        assert(false);
+        foreach(ref pE; pEvent[0..nEvents])
+        {
+            if (pE.eventType == kParameterEvent_Immediate)
+            {
+                ComponentResult r = DoSetParameter(pE.parameter, pE.scope_, pE.element,
+                                                   pE.eventValues.immediate.value,
+                                                   pE.eventValues.immediate.bufferOffset);
+                if (r != noErr)
+                    return r;
+            }
+        }
+        return noErr;
     }
 
-    final OSStatus DoRender(AudioUnitRenderActionFlags* pIOActionFlags, const AudioTimeStamp* pInTimeStamp, UInt32 inOutputBusNumber, UInt32 inNumberFrames, AudioBufferList* pIOData)
+    final OSStatus DoRender(AudioUnitRenderActionFlags* pIOActionFlags,
+                            const AudioTimeStamp* pInTimeStamp,
+                            UInt32 inOutputBusNumber,
+                            UInt32 inNumberFrames,
+                            AudioBufferList* pIOData)
     {
-        printf("DoRender\n"); // TODO
-        assert(false);
+        return render(pIOActionFlags, pInTimeStamp, inOutputBusNumber, inNumberFrames, pIOData);
     }
 
     final OSStatus DoReset(AudioUnitScope scope_, AudioUnitElement elem)
@@ -1075,6 +1069,8 @@ private:
 
             case kAudioUnitProperty_FastDispatch: // 5
             {
+                if (isAudioComponentAPI)
+                    return kAudioUnitErr_InvalidElement;
                 switch (element)
                 {
                     case kAudioUnitGetParameterSelect:
@@ -1502,10 +1498,21 @@ private:
         }
     }
 
+    final bool isAudioComponentAPI()
+    {
+        return _componentInstance is null;
+    }
+
+    final bool isComponentManagerAPI()
+    {
+        return _componentInstance !is null;
+    }
+
     ComponentResult setProperty(AudioUnitPropertyID propID, AudioUnitScope scope_, AudioUnitElement element,
                                 UInt32* pDataSize, const(void)* pData) nothrow
     {
         // inform listeners
+        // TODO ACAPI
         foreach (ref listener; _propertyListeners)
             if (listener.mPropID == propID)
                 listener.mListenerProc(listener.mProcArgs, _componentInstance, propID, scope_, 0); // always zero?
@@ -1515,6 +1522,7 @@ private:
         switch(propID)
         {
             case kAudioUnitProperty_ClassInfo:
+                printf("WRITE kAudioUnitProperty_ClassInfo\n");
                 return writeState(*(cast(CFPropertyListRef*) pData));
 
             case kAudioUnitProperty_MakeConnection: // 1
@@ -1767,24 +1775,48 @@ private:
             return -1;
     }
 
-    AudioThreadMessage makeResetStateMessage() pure const nothrow @nogc
+    final AudioThreadMessage makeResetStateMessage() pure const nothrow @nogc
     {
         return AudioThreadMessage(AudioThreadMessage.Type.resetState, _maxFrames, _sampleRate, _hardBypassed);
     }
 
-    // Serialize state
-    ComponentResult readState(CFPropertyListRef* ppPropList) nothrow
+    // Note: this logic is duplicated in several places in dplug-build
+    final int componentType()
     {
-        ComponentDescription cd;
-        ComponentResult r = GetComponentInfo(cast(Component) _componentInstance, &cd, null, null, null);
-        if (r != noErr)
-            return r;
+        if (_client.isSynth)
+            return CCONST('a', 'u', 'm', 'u');
+        else if (_client.receivesMIDI)
+            return CCONST('a', 'u', 'm', 'f');
+        else
+            return CCONST('a', 'u', 'f', 'x');
+    }
+
+    final int componentSubType()
+    {
+        char[4] pid = _client.getPluginUniqueID();
+        return CCONST(pid[0], pid[1], pid[2], pid[3]);
+    }
+
+    final int componentManufacturer()
+    {
+        char[4] vid = _client.getVendorUniqueID();
+        return CCONST(vid[0], vid[1], vid[2], vid[3]);
+    }
+
+    // Serialize state
+    final ComponentResult readState(CFPropertyListRef* ppPropList) nothrow
+    {
+        int cType = componentType(),
+            cSubType = componentSubType,
+            cManufacturer = componentManufacturer();
+
         CFMutableDictionaryRef pDict = CFDictionaryCreateMutable(null, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
         int version_ = _client.getPublicVersion().toAUVersion;
         putNumberInDict(pDict, kAUPresetVersionKey, &version_, kCFNumberSInt32Type);
-        putNumberInDict(pDict, kAUPresetTypeKey, &(cd.componentType), kCFNumberSInt32Type);
-        putNumberInDict(pDict, kAUPresetSubtypeKey, &(cd.componentSubType), kCFNumberSInt32Type);
-        putNumberInDict(pDict, kAUPresetManufacturerKey, &(cd.componentManufacturer), kCFNumberSInt32Type);
+
+        putNumberInDict(pDict, kAUPresetTypeKey, &cType, kCFNumberSInt32Type);
+        putNumberInDict(pDict, kAUPresetSubtypeKey, &cSubType, kCFNumberSInt32Type);
+        putNumberInDict(pDict, kAUPresetManufacturerKey, &cManufacturer, kCFNumberSInt32Type);
         auto presetBank = _client.presetBank();
         putStrInDict(pDict, kAUPresetNameKey, presetBank.currentPreset().name);
         ubyte[] state = presetBank.getStateChunkFromCurrentState();
@@ -1793,12 +1825,11 @@ private:
         return noErr;
     }
 
-    ComponentResult writeState(CFPropertyListRef ppPropList) nothrow @nogc
+    final ComponentResult writeState(CFPropertyListRef ppPropList) nothrow @nogc
     {
-        ComponentDescription cd;
-        ComponentResult r = GetComponentInfo(cast(Component) _componentInstance, &cd, null, null, null);
-        if (r != noErr)
-            return r;
+        int cType = componentType(),
+        cSubType = componentSubType,
+        cManufacturer = componentManufacturer();
 
         int version_, type, subtype, mfr;
         string presetName;
@@ -1810,9 +1841,9 @@ private:
             !getNumberFromDict(pDict, kAUPresetSubtypeKey, &subtype, kCFNumberSInt32Type) ||
             !getNumberFromDict(pDict, kAUPresetManufacturerKey, &mfr, kCFNumberSInt32Type) ||
             !getStrFromDict(pDict, kAUPresetNameKey, presetName) ||
-              type != cd.componentType ||
-              subtype != cd.componentSubType ||
-              mfr != cd.componentManufacturer)
+              type != cType ||
+              subtype != cSubType ||
+              mfr != cManufacturer)
         {
             return kAudioUnitErr_InvalidPropertyValue;
         }
@@ -1845,13 +1876,12 @@ private:
     // Render procedure
     //
 
-    ComponentResult render(AudioUnitRenderActionFlags* pFlags,
-                           const(AudioTimeStamp)* pTimestamp,
-                           uint outputBusIdx,
-                           uint nFrames,
-                           AudioBufferList* pOutBufList,
-                           bool isFastCall) nothrow @nogc
-   {
+    final ComponentResult render(AudioUnitRenderActionFlags* pFlags,
+                                 const(AudioTimeStamp)* pTimestamp,
+                                 uint outputBusIdx,
+                                 uint nFrames,
+                                 AudioBufferList* pOutBufList) nothrow @nogc
+    {
         // GarageBand will happily send NULL pFlags, do not use it
 
         // Non-existing bus
@@ -2095,16 +2125,19 @@ private:
 
         override void beginParamEdit(int paramIndex)
         {
+            // TODO ACAPI
             sendAUEvent(kAudioUnitEvent_BeginParameterChangeGesture, _componentInstance, paramIndex);
         }
 
         override void paramAutomate(int paramIndex, float value)
         {
+            // TODO ACAPI
             sendAUEvent(kAudioUnitEvent_ParameterValueChange, _componentInstance, paramIndex);
         }
 
         override void endParamEdit(int paramIndex)
         {
+            // TODO ACAPI
             sendAUEvent(kAudioUnitEvent_EndParameterChangeGesture, _componentInstance, paramIndex);
         }
 
@@ -2206,11 +2239,7 @@ extern(C) ComponentResult getParamProc(void* pPlug,
                              AudioUnitParameterValue* pValue) nothrow @nogc
 {
     AUClient _this = cast(AUClient)pPlug;
-    auto client = _this._client;
-    if (!client.isValidParamIndex(paramID))
-        return kAudioUnitErr_InvalidParameter;
-    *pValue = client.param(paramID).getForHost();
-    return noErr;
+    return _this.DoGetParameter(paramID, scope_, element, pValue);
 }
 
 extern(C) ComponentResult setParamProc(void* pPlug,
@@ -2221,11 +2250,7 @@ extern(C) ComponentResult setParamProc(void* pPlug,
                              UInt32 offsetFrames) nothrow @nogc
 {
     AUClient _this = cast(AUClient)pPlug;
-    auto client = _this._client;
-    if (!client.isValidParamIndex(paramID))
-        return kAudioUnitErr_InvalidParameter;
-    client.setParameterFromHost(paramID, value);
-    return noErr;
+    return _this.DoSetParameter(paramID, scope_, element, value, offsetFrames);
 }
 
 extern(C) ComponentResult renderProc(void* pPlug,
@@ -2239,7 +2264,7 @@ extern(C) ComponentResult renderProc(void* pPlug,
     scopedCallback.enter();
 
     AUClient _this = cast(AUClient)pPlug;
-    return _this.render(pFlags, pTimestamp, outputBusIdx, nFrames, pOutBufList, true);
+    return _this.render(pFlags, pTimestamp, outputBusIdx, nFrames, pOutBufList);
 }
 
 
