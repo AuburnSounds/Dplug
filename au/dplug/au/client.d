@@ -1522,7 +1522,6 @@ private:
         switch(propID)
         {
             case kAudioUnitProperty_ClassInfo:
-                printf("WRITE kAudioUnitProperty_ClassInfo\n");
                 return writeState(*(cast(CFPropertyListRef*) pData));
 
             case kAudioUnitProperty_MakeConnection: // 1
