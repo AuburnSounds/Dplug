@@ -496,11 +496,13 @@ private:
 
                     case kAudioUnitAddPropertyListenerSelect:
                     case kAudioUnitRemovePropertyListenerSelect:
+                    case kAudioUnitRemovePropertyListenerWithUserDataSelect:
 
                     case kAudioUnitAddRenderNotifySelect:
                     case kAudioUnitRemoveRenderNotifySelect:
                         return 1;
 
+                    // TODO for Audio Component API, are synth supported by ACAPI?
                     case kMusicDeviceMIDIEventSelect:
                     case kMusicDeviceSysExSelect:
                     case kMusicDeviceStartNoteSelect:
@@ -516,29 +518,12 @@ private:
 
             case kAudioUnitInitializeSelect: // 1, S
             {
-                // Audio processing was switched on.
-                _globalMutex.lock();
-                scope(exit) _globalMutex.unlock();
-                _active = true;
-
-                // We may end up with invalid I/O config at this point (Issue #385).
-                // Because validity check were made while _active was false.
-                // Check that the connected I/O is actually legal.
-                int nIn = numHostChannelsConnected(_inBuses);
-                int nOut = numHostChannelsConnected(_outBuses);
-                if (!_client.isLegalIO(nIn, nOut))
-                    return kAudioUnitErr_FailedInitialization;
-
-                return noErr;
+                return DoInitialize();
             }
 
             case kAudioUnitUninitializeSelect: // 2, S
             {
-                _globalMutex.lock();
-                scope(exit) _globalMutex.unlock();
-                _active = false;
-                // Nothing to do here
-                return noErr;
+                return DoUninitialize();
             }
 
             case kAudioUnitGetPropertyInfoSelect: // 3
@@ -548,19 +533,7 @@ private:
                 AudioUnitElement element = params.getCompParam!(AudioUnitElement, 2, 5);
                 UInt32* pDataSize = params.getCompParam!(UInt32*, 1, 5);
                 Boolean* pWriteable = params.getCompParam!(Boolean*, 0, 5);
-
-                UInt32 dataSize = 0;
-                if (!pDataSize)
-                    pDataSize = &dataSize;
-
-                Boolean writeable;
-                if (!pWriteable)
-                    pWriteable = &writeable;
-
-                *pWriteable = false;
-                _globalMutex.lock();
-                scope(exit) _globalMutex.unlock();
-                return getProperty(propID, scope_, element, pDataSize, pWriteable, null);
+                return DoGetPropertyInfo(propID, scope_, element, pDataSize, pWriteable);
             }
 
             case kAudioUnitGetPropertySelect: // 4
@@ -570,15 +543,7 @@ private:
                 AudioUnitElement element = params.getCompParam!(AudioUnitElement, 2, 5);
                 void* pData = params.getCompParam!(void*, 1, 5);
                 UInt32* pDataSize = params.getCompParam!(UInt32*, 0, 5);
-
-                UInt32 dataSize = 0;
-                if (!pDataSize)
-                    pDataSize = &dataSize;
-
-                Boolean writeable = false;
-                _globalMutex.lock();
-                scope(exit) _globalMutex.unlock();
-                return getProperty(propID, scope_, element, pDataSize, &writeable, pData);
+                return DoGetProperty(propID, scope_, element, pData, pDataSize);
             }
 
             case kAudioUnitSetPropertySelect: // 5
@@ -588,9 +553,7 @@ private:
                 AudioUnitElement element = params.getCompParam!(AudioUnitElement, 2, 5);
                 const(void)* pData = params.getCompParam!(const(void)*, 1, 5);
                 UInt32* pDataSize = params.getCompParam!(UInt32*, 0, 5);
-                _globalMutex.lock();
-                scope(exit) _globalMutex.unlock();
-                return setProperty(propID, scope_, element, pDataSize, pData);
+                return DoSetProperty(propID, scope_, element, pData, pDataSize);
             }
 
             case kAudioUnitGetParameterSelect: // 6
@@ -599,7 +562,7 @@ private:
                 AudioUnitScope scope_ = params.getCompParam!(AudioUnitScope, 2, 4);
                 AudioUnitElement element = params.getCompParam!(AudioUnitElement, 1, 4);
                 AudioUnitParameterValue* pValue = params.getCompParam!(AudioUnitParameterValue*, 0, 4);
-                return getParamProc(cast(void*)this, paramID, scope_, element, pValue);
+                return DoGetParameter(paramID, scope_, element, pValue);
             }
 
             case kAudioUnitSetParameterSelect: // 7
@@ -609,55 +572,30 @@ private:
                 AudioUnitElement element = params.getCompParam!(AudioUnitElement, 2, 5);
                 AudioUnitParameterValue value = params.getCompParam!(AudioUnitParameterValue, 1, 5);
                 UInt32 offset = params.getCompParam!(UInt32, 0, 5);
-                return setParamProc(cast(void*)this, paramID, scope_, element, value, offset);
+                return DoSetParameter(paramID, scope_, element, value, offset);
             }
 
             case kAudioUnitResetSelect: // 9
             {
-                _messageQueue.pushBack(makeResetStateMessage());
-                return noErr;
+                AudioUnitScope scope_;
+                AudioUnitElement elem;
+                return DoReset(scope_, elem);
             }
 
             case kAudioUnitAddPropertyListenerSelect: // 10
             {
-                PropertyListener listener;
-                listener.mPropID = params.getCompParam!(AudioUnitPropertyID, 2, 3);
-                listener.mListenerProc = params.getCompParam!(AudioUnitPropertyListenerProc, 1, 3);
-                listener.mProcArgs = params.getCompParam!(void*, 0, 3);
-                _globalMutex.lock();
-                scope(exit) _globalMutex.unlock();
-                int n = cast(int)(_propertyListeners.length);
-                for (int i = 0; i < n; ++i)
-                {
-                    PropertyListener pListener = _propertyListeners[i];
-                    if (listener.mPropID == pListener.mPropID && listener.mListenerProc == pListener.mListenerProc)
-                    {
-                        return noErr; // already in
-                    }
-                }
-                _propertyListeners.pushBack(listener);
-                return noErr;
+                AudioUnitPropertyID mPropID = params.getCompParam!(AudioUnitPropertyID, 2, 3);
+                AudioUnitPropertyListenerProc mListenerProc = params.getCompParam!(AudioUnitPropertyListenerProc, 1, 3);
+                void* mProcArgs = params.getCompParam!(void*, 0, 3);
+                return DoAddPropertyListener(mPropID, mListenerProc, mProcArgs);
+
             }
 
             case kAudioUnitRemovePropertyListenerSelect: // 11
             {
-                PropertyListener listener;
-                listener.mPropID = params.getCompParam!(AudioUnitPropertyID, 1, 2);
-                listener.mListenerProc = params.getCompParam!(AudioUnitPropertyListenerProc, 0, 2);
-                _globalMutex.lock();
-                scope(exit) _globalMutex.unlock();
-                int n = cast(int)(_propertyListeners.length);
-                for (int i = 0; i < n; ++i)
-                {
-                    PropertyListener pListener = _propertyListeners[i];
-                    if (listener.mPropID == pListener.mPropID
-                        && listener.mListenerProc == pListener.mListenerProc)
-                    {
-                        _propertyListeners.removeAndReplaceByLastElement(i);
-                        break;
-                    }
-                }
-                return noErr;
+                AudioUnitPropertyID propID = params.getCompParam!(AudioUnitPropertyID, 1, 2);
+                AudioUnitPropertyListenerProc proc = params.getCompParam!(AudioUnitPropertyListenerProc, 0, 2);
+                return DoRemovePropertyListener(propID, proc);
             }
 
             case kAudioUnitRenderSelect: // 14
@@ -719,26 +657,10 @@ private:
 
             case kAudioUnitRemovePropertyListenerWithUserDataSelect: // 18
             {
-                PropertyListener listener;
-                listener.mPropID = params.getCompParam!(AudioUnitPropertyID, 2, 3);
-                listener.mListenerProc = params.getCompParam!(AudioUnitPropertyListenerProc, 1, 3);
-                listener.mProcArgs = params.getCompParam!(void*, 0, 3);
-
-                _globalMutex.lock();
-                scope(exit) _globalMutex.unlock();
-                int n = cast(int)(_propertyListeners.length);
-                for (int i = 0; i < n; ++i)
-                {
-                    PropertyListener pListener = _propertyListeners[i];
-                    if (listener.mPropID == pListener.mPropID
-                        && listener.mListenerProc == pListener.mListenerProc
-                        && listener.mProcArgs == pListener.mProcArgs)
-                    {
-                        _propertyListeners.removeAndReplaceByLastElement(i);
-                        break;
-                    }
-                }
-                return noErr;
+                AudioUnitPropertyID propID = params.getCompParam!(AudioUnitPropertyID, 2, 3);
+                AudioUnitPropertyListenerProc proc = params.getCompParam!(AudioUnitPropertyListenerProc, 1, 3);
+                void* userData = params.getCompParam!(void*, 0, 3);
+                return DoRemovePropertyListenerWithUserData(propID, proc, userData);
             }
 
             case kMusicDeviceMIDIEventSelect: // 0x0101
@@ -827,14 +749,29 @@ package:
 
     final OSStatus DoInitialize()
     {
-        printf("DoInitialize\n");
-        assert(false);
+        // Audio processing was switched on.
+        _globalMutex.lock();
+        scope(exit) _globalMutex.unlock();
+        _active = true;
+
+        // We may end up with invalid I/O config at this point (Issue #385).
+        // Because validity check were made while _active was false.
+        // Check that the connected I/O is actually legal.
+        int nIn = numHostChannelsConnected(_inBuses);
+        int nOut = numHostChannelsConnected(_outBuses);
+        if (!_client.isLegalIO(nIn, nOut))
+            return kAudioUnitErr_FailedInitialization;
+
+        return noErr;
     }
 
     final OSStatus DoUninitialize()
     {
-        printf("DoUninitialize\n");
-        assert(false);
+        _globalMutex.lock();
+        scope(exit) _globalMutex.unlock();
+        _active = false;
+        // Nothing to do here
+        return noErr;
     }
 
     final OSStatus DoGetPropertyInfo(AudioUnitPropertyID prop,
@@ -843,91 +780,165 @@ package:
                                     UInt32* pOutDataSize,
                                     Boolean* pOutWritable)
     {
-        printf("DoGetPropertyInfo\n");
-        assert(false);
+        UInt32 dataSize = 0;
+        if (!pOutDataSize)
+            pOutDataSize = &dataSize;
+
+        Boolean writeable;
+        if (!pOutWritable)
+            pOutWritable = &writeable;
+
+        *pOutWritable = false;
+        _globalMutex.lock();
+        scope(exit) _globalMutex.unlock();
+        return getProperty(prop, scope_, elem, pOutDataSize, pOutWritable, null);
     }
 
-    final OSStatus DoGetProperty(AudioUnitPropertyID inID, AudioUnitScope inScope, AudioUnitElement inElement, void* pOutData, UInt32* pIODataSize)
+    final OSStatus DoGetProperty(AudioUnitPropertyID inID,
+                                 AudioUnitScope inScope,
+                                 AudioUnitElement inElement,
+                                 void* pOutData,
+                                 UInt32* pIODataSize)
     {
-        printf("DoGetProperty\n");
-        assert(false);
+        UInt32 dataSize = 0;
+        if (!pIODataSize)
+            pIODataSize = &dataSize;
+        Boolean writeable = false;
+        _globalMutex.lock();
+        scope(exit) _globalMutex.unlock();
+        return getProperty(inID, inScope, inElement, pIODataSize, &writeable, pOutData);
     }
 
     final OSStatus DoSetProperty(AudioUnitPropertyID inID, AudioUnitScope inScope, AudioUnitElement inElement, const void* pInData, UInt32* pInDataSize)
     {
-        printf("DoSetProperty\n");
-        assert(false);
+        _globalMutex.lock();
+        scope(exit) _globalMutex.unlock();
+        return setProperty(inID, inScope, inElement, pInDataSize, pInData);
     }
 
     final OSStatus DoAddPropertyListener(AudioUnitPropertyID prop, AudioUnitPropertyListenerProc proc, void* pUserData)
     {
-        printf("DoAddPropertyListener\n");
-        assert(false);
+        PropertyListener listener;
+        listener.mPropID = prop;
+        listener.mListenerProc = proc;
+        listener.mProcArgs = pUserData;
+
+        _globalMutex.lock();
+        scope(exit) _globalMutex.unlock();
+        int n = cast(int)(_propertyListeners.length);
+        for (int i = 0; i < n; ++i)
+        {
+            PropertyListener pListener = _propertyListeners[i];
+            if (listener.mPropID == pListener.mPropID && listener.mListenerProc == pListener.mListenerProc)
+            {
+                return noErr; // already in
+            }
+        }
+        _propertyListeners.pushBack(listener);
+        return noErr;
     }
 
     final OSStatus DoRemovePropertyListener(AudioUnitPropertyID prop, AudioUnitPropertyListenerProc proc)
     {
-        printf("DoRemovePropertyListener\n");
-        assert(false);
+        PropertyListener listener;
+        listener.mPropID = prop;
+        listener.mListenerProc = proc;
+        _globalMutex.lock();
+        scope(exit) _globalMutex.unlock();
+        int n = cast(int)(_propertyListeners.length);
+        for (int i = 0; i < n; ++i)
+        {
+            PropertyListener pListener = _propertyListeners[i];
+            if (listener.mPropID == pListener.mPropID
+                && listener.mListenerProc == pListener.mListenerProc)
+            {
+                _propertyListeners.removeAndReplaceByLastElement(i);
+                break;
+            }
+        }
+        return noErr;
     }
 
     final OSStatus DoRemovePropertyListenerWithUserData(AudioUnitPropertyID prop, AudioUnitPropertyListenerProc proc, void* pUserData)
     {
-        printf("DoRemovePropertyListenerWithUserData\n");
-        assert(false);
+        PropertyListener listener;
+        listener.mPropID = prop;
+        listener.mListenerProc = proc;
+        listener.mProcArgs = pUserData;
+        _globalMutex.lock();
+        scope(exit) _globalMutex.unlock();
+        int n = cast(int)(_propertyListeners.length);
+        for (int i = 0; i < n; ++i)
+        {
+            PropertyListener pListener = _propertyListeners[i];
+            if (listener.mPropID == pListener.mPropID
+                && listener.mListenerProc == pListener.mListenerProc
+                && listener.mProcArgs == pListener.mProcArgs)
+            {
+                _propertyListeners.removeAndReplaceByLastElement(i);
+                break;
+            }
+        }
+        return noErr;
     }
 
     final OSStatus DoAddRenderNotify(AURenderCallback proc, void* pUserData)
     {
-        printf("DoAddRenderNotify\n");
+        printf("DoAddRenderNotify\n"); // TODO
         assert(false);
     }
 
     final OSStatus DoRemoveRenderNotify(AURenderCallback proc, void* pUserData)
     {
-        printf("DoRemoveRenderNotify\n");
+        printf("DoRemoveRenderNotify\n"); // TODO
         assert(false);
     }
 
     final OSStatus DoGetParameter(AudioUnitParameterID param, AudioUnitScope scope_, AudioUnitElement elem, AudioUnitParameterValue *value)
     {
-        printf("DoGetParameter\n");
-        assert(false);
+        printf("%d param %d scope %d\n", param, scope_, elem);
+        if (!_client.isValidParamIndex(param))
+            return kAudioUnitErr_InvalidParameter;
+        *value = _client.param(param).getForHost();
+        return noErr;
     }
 
     final OSStatus DoSetParameter(AudioUnitParameterID param, AudioUnitScope scope_, AudioUnitElement elem, AudioUnitParameterValue value, UInt32 bufferOffset)
     {
-        printf("DoSetParameter\n");
-        assert(false);
+        // Note: buffer offset is ignored...
+        if (!_client.isValidParamIndex(param))
+            return kAudioUnitErr_InvalidParameter;
+        _client.setParameterFromHost(param, value);
+        return noErr;
     }
 
     final OSStatus DoScheduleParameters(const AudioUnitParameterEvent *pEvent, UInt32 nEvents)
     {
-        printf("DoScheduleParameters\n");
+        printf("DoScheduleParameters\n"); // TODO
         assert(false);
     }
 
     final OSStatus DoRender(AudioUnitRenderActionFlags* pIOActionFlags, const AudioTimeStamp* pInTimeStamp, UInt32 inOutputBusNumber, UInt32 inNumberFrames, AudioBufferList* pIOData)
     {
-        printf("DoRender\n");
+        printf("DoRender\n"); // TODO
         assert(false);
     }
 
     final OSStatus DoReset(AudioUnitScope scope_, AudioUnitElement elem)
     {
-        printf("DoReset\n");
-        assert(false);
+        _messageQueue.pushBack(makeResetStateMessage());
+        return noErr;
     }
 
     final OSStatus DoMIDIEvent(UInt32 inStatus, UInt32 inData1, UInt32 inData2, UInt32 inOffsetSampleFrame)
     {
-        printf("DoMIDIEvent\n");
+        printf("DoMIDIEvent\n"); // TODO
         assert(false);
     }
 
     final OSStatus DoSysEx(const UInt8* pInData, UInt32 inLength)
     {
-        printf("DoSysEx\n");
+        printf("DoSysEx\n"); // TODO
         assert(false);
     }
 

@@ -60,8 +60,12 @@ import dplug.core.runtime;
 import dplug.core.nogc;
 import dplug.au.client;
 
+nothrow:
+@nogc:
+
+//debug = logDispatcher;
 // Factory function entry point for Audio Component
-void* audioUnitComponentFactory(alias ClientClass)(void* inDesc) nothrow @nogc
+void* audioUnitComponentFactory(alias ClientClass)(void* inDesc)
 {
     ScopedForeignCallback!(false, true) scopedCallback;
     scopedCallback.enter();
@@ -85,7 +89,7 @@ struct PlugInInstance
     AUClient instance;
 }
 
-extern(C) nothrow
+extern(C)
 {
     OSStatus audioComponentOpen(ClientClass)(void *pSelf, AudioUnit compInstance)
     {
@@ -161,11 +165,13 @@ extern(C) nothrow
 
     OSStatus AUMethodInitialize(void* pSelf)
     {
+        debug(logDispatcher) printf("AUMethodInitialize\n");
         return getPlug(pSelf).DoInitialize();
     }
 
     OSStatus AUMethodUninitialize(void* pSelf)
     {
+        debug(logDispatcher) printf("AUMethodUninitialize\n");
         return getPlug(pSelf).DoUninitialize();
     }
 
@@ -176,76 +182,97 @@ extern(C) nothrow
                                      UInt32* pOutDataSize,
                                      Boolean* pOutWritable)
     {
+        debug(logDispatcher) printf("AUMethodGetPropertyInfo\n");
         return getPlug(pSelf).DoGetPropertyInfo(prop, scope_, elem, pOutDataSize, pOutWritable);
     }
 
-    static OSStatus AUMethodGetProperty(void* pSelf, AudioUnitPropertyID inID, AudioUnitScope inScope, AudioUnitElement inElement, void* pOutData, UInt32* pIODataSize)
+    OSStatus AUMethodGetProperty(void* pSelf, AudioUnitPropertyID inID, AudioUnitScope inScope, AudioUnitElement inElement, void* pOutData, UInt32* pIODataSize)
     {
+        debug(logDispatcher) printf("AUMethodGetProperty\n");
         return getPlug(pSelf).DoGetProperty(inID, inScope, inElement, pOutData, pIODataSize);
     }
 
-    static OSStatus AUMethodSetProperty(void* pSelf, AudioUnitPropertyID inID, AudioUnitScope inScope, AudioUnitElement inElement, const void* pInData, UInt32* pInDataSize)
+    OSStatus AUMethodSetProperty(void* pSelf, AudioUnitPropertyID inID, AudioUnitScope inScope, AudioUnitElement inElement, const void* pInData, UInt32* pInDataSize)
     {
+        debug(logDispatcher) printf("AUMethodSetProperty\n");
         return getPlug(pSelf).DoSetProperty(inID, inScope, inElement, pInData, pInDataSize);
     }
 
-    static OSStatus AUMethodAddPropertyListener(void* pSelf, AudioUnitPropertyID prop, AudioUnitPropertyListenerProc proc, void* pUserData)
+    OSStatus AUMethodAddPropertyListener(void* pSelf, AudioUnitPropertyID prop, AudioUnitPropertyListenerProc proc, void* pUserData)
     {
+        debug(logDispatcher) printf("AUMethodAddPropertyListener\n");
         return getPlug(pSelf).DoAddPropertyListener(prop, proc, pUserData);
     }
 
-    static OSStatus AUMethodRemovePropertyListener(void* pSelf, AudioUnitPropertyID prop, AudioUnitPropertyListenerProc proc)
+    OSStatus AUMethodRemovePropertyListener(void* pSelf, AudioUnitPropertyID prop, AudioUnitPropertyListenerProc proc)
     {
+        debug(logDispatcher) printf("AUMethodRemovePropertyListener\n");
         return getPlug(pSelf).DoRemovePropertyListener(prop, proc);
     }
 
-    static OSStatus AUMethodRemovePropertyListenerWithUserData(void* pSelf, AudioUnitPropertyID prop, AudioUnitPropertyListenerProc proc, void* pUserData)
+    OSStatus AUMethodRemovePropertyListenerWithUserData(void* pSelf, AudioUnitPropertyID prop, AudioUnitPropertyListenerProc proc, void* pUserData)
     {
+        debug(logDispatcher) printf("AUMethodRemovePropertyListenerWithUserData\n");
         return getPlug(pSelf).DoRemovePropertyListenerWithUserData(prop, proc, pUserData);
     }
 
-    static OSStatus AUMethodAddRenderNotify(void* pSelf, AURenderCallback proc, void* pUserData)
+    OSStatus AUMethodAddRenderNotify(void* pSelf, AURenderCallback proc, void* pUserData)
     {
+        debug(logDispatcher) printf("AUMethodAddRenderNotify\n");
         return getPlug(pSelf).DoAddRenderNotify(proc, pUserData);
     }
 
-    static OSStatus AUMethodRemoveRenderNotify(void* pSelf, AURenderCallback proc, void* pUserData)
+    OSStatus AUMethodRemoveRenderNotify(void* pSelf, AURenderCallback proc, void* pUserData)
     {
+        debug(logDispatcher) printf("AUMethodRemoveRenderNotify\n");
         return getPlug(pSelf).DoRemoveRenderNotify(proc, pUserData);
     }
 
-    static OSStatus AUMethodGetParameter(void* pSelf, AudioUnitParameterID param, AudioUnitScope scope_, AudioUnitElement elem, AudioUnitParameterValue *value)
+    // Note: used even without Audio Component API
+    public OSStatus AUMethodGetParameter(void* pSelf,
+                                         AudioUnitParameterID param,
+                                         AudioUnitScope scope_,
+                                         AudioUnitElement elem,
+                                         AudioUnitParameterValue *value)
     {
+        debug(logDispatcher) printf("AUMethodGetParameter\n");
         return getPlug(pSelf).DoGetParameter(param, scope_, elem, value);
     }
 
-    static OSStatus AUMethodSetParameter(void* pSelf, AudioUnitParameterID param, AudioUnitScope scope_, AudioUnitElement elem, AudioUnitParameterValue value, UInt32 bufferOffset)
+    // Note: used even without Audio Component API
+    public OSStatus AUMethodSetParameter(void* pSelf, AudioUnitParameterID param, AudioUnitScope scope_, AudioUnitElement elem, AudioUnitParameterValue value, UInt32 bufferOffset)
     {
+        debug(logDispatcher) printf("AUMethodSetParameter\n");
         return getPlug(pSelf).DoSetParameter(param, scope_, elem, value, bufferOffset);
     }
 
-    static OSStatus AUMethodScheduleParameters(void* pSelf, const AudioUnitParameterEvent *pEvent, UInt32 nEvents)
+    OSStatus AUMethodScheduleParameters(void* pSelf, const AudioUnitParameterEvent *pEvent, UInt32 nEvents)
     {
+        debug(logDispatcher) printf("AUMethodScheduleParameters\n");
         return getPlug(pSelf).DoScheduleParameters(pEvent, nEvents);
     }
 
-    static OSStatus AUMethodRender(void* pSelf, AudioUnitRenderActionFlags* pIOActionFlags, const AudioTimeStamp* pInTimeStamp, UInt32 inOutputBusNumber, UInt32 inNumberFrames, AudioBufferList* pIOData)
+    OSStatus AUMethodRender(void* pSelf, AudioUnitRenderActionFlags* pIOActionFlags, const AudioTimeStamp* pInTimeStamp, UInt32 inOutputBusNumber, UInt32 inNumberFrames, AudioBufferList* pIOData)
     {
+        debug(logDispatcher) printf("AUMethodRender\n");
         return getPlug(pSelf).DoRender(pIOActionFlags, pInTimeStamp, inOutputBusNumber, inNumberFrames, pIOData);
     }
 
     static OSStatus AUMethodReset(void* pSelf, AudioUnitScope scope_, AudioUnitElement elem)
     {
+        debug(logDispatcher) printf("AUMethodReset\n");
         return getPlug(pSelf).DoReset(scope_, elem);
     }
 
     static OSStatus AUMethodMIDIEvent(void* pSelf, UInt32 inStatus, UInt32 inData1, UInt32 inData2, UInt32 inOffsetSampleFrame)
     {
+        debug(logDispatcher) printf("AUMethodMIDIEvent\n");
         return getPlug(pSelf).DoMIDIEvent(inStatus, inData1, inData2, inOffsetSampleFrame);
     }
 
     static OSStatus AUMethodSysEx(void* pSelf, const UInt8* pInData, UInt32 inLength)
     {
+        debug(logDispatcher) printf("AUMethodSysEx\n");
         return getPlug(pSelf).DoSysEx(pInData, inLength);
     }
 
