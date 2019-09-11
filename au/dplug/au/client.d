@@ -466,13 +466,20 @@ private:
         {
             case kComponentVersionSelect: // -4, S
             {
-                return _client.getPublicVersion().toAUVersion;
+                int ver = _client.getPublicVersion().toAUVersion;
+                return ver;
             }
 
             case kComponentCanDoSelect: // -3, S
             {
                 switch (params.params[0])
                 {
+                    case kComponentOpenSelect:
+                    case kComponentCloseSelect:
+                    case kComponentVersionSelect:
+                    case kComponentCanDoSelect:
+                        return 1;
+
                     case kAudioUnitInitializeSelect:
                     case kAudioUnitUninitializeSelect:
 
