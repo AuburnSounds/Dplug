@@ -160,12 +160,22 @@ extern(C) nothrow @nogc
         ScopedForeignCallback!(true, true) scopedCallback;
         scopedCallback.enter();
 
-        AUClient plugin = cast(AUClient)( cast(void*)GetComponentInstanceStorage(audioUnit) );
+        AUClient plugin;
+
+        void* res;
+        uint pointerSize = cast(uint)(size_t.sizeof);
+        if (AudioUnitGetProperty (audioUnit, AUClient.kAudioUnitProperty_DPLUG_AUCLIENT_INSTANCE, kAudioUnitScope_Global, 0, &res, &pointerSize) == noErr)
+        {
+            plugin = cast(AUClient)res;
+        }
+
         if (plugin)
         {
             return cast(id)( plugin.openGUIAndReturnCocoaView() );
         }
         else
+        {
             return null;
+        }
     }
 }

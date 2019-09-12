@@ -159,6 +159,9 @@ public:
 nothrow:
 @nogc:
 
+    // this allows to pass AUClient instance, whether we are using the Audio Component API or the Component Manager API
+    enum kAudioUnitProperty_DPLUG_AUCLIENT_INSTANCE = 0xDEADBEEF;
+
     this(Client client,
         ComponentInstance componentInstance,
         AudioComponentInstance audioComponentInstance)
@@ -1539,6 +1542,15 @@ private:
                 }
                 else
                     return kAudioUnitErr_InvalidProperty;
+            }
+
+            case kAudioUnitProperty_DPLUG_AUCLIENT_INSTANCE:
+            {
+                *pWriteable = false;
+                *pDataSize = size_t.sizeof;
+                if (pData)
+                    *(cast(void**) pData) = cast(void*)this;
+                return noErr;
             }
 
             default:
