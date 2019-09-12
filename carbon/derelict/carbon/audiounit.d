@@ -682,6 +682,8 @@ enum
     kMusicDeviceStopNoteSelect = 0x0106,
 }
 
+alias MusicDeviceInstrumentID = uint;
+alias MusicDeviceGroupID = uint;
 alias NoteInstanceID = uint;
 
 struct MusicDeviceNoteParams

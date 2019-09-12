@@ -502,7 +502,6 @@ private:
                     case kAudioUnitRemoveRenderNotifySelect:
                         return 1;
 
-                    // TODO for Audio Component API, are synth supported by ACAPI?
                     case kMusicDeviceMIDIEventSelect:
                     case kMusicDeviceSysExSelect:
                     case kMusicDeviceStartNoteSelect:
@@ -639,77 +638,48 @@ private:
 
             case kMusicDeviceMIDIEventSelect: // 0x0101
             {
-                if (!_client.receivesMIDI)
-                    return kAudioUnitErr_InvalidProperty;
-
-                int offset = params.getCompParam!(uint, 0, 4);
                 ubyte status = cast(ubyte)( params.getCompParam!(uint, 3, 4) );
                 ubyte data1 = cast(ubyte)( params.getCompParam!(uint, 2, 4) );
                 ubyte data2 = cast(ubyte)( params.getCompParam!(uint, 1, 4) );
-                MidiMessage m =  MidiMessage(offset, status, data1, data2);
-                _messageQueue.pushBack(makeMidiThreadMessage(m));
-                return noErr;
+                int offset = params.getCompParam!(uint, 0, 4);
+                return DoMIDIEvent(status, data1, data2, offset);
             }
 
             case kMusicDeviceSysExSelect: // 0x0102
             {
-                // MAYDO Not supported yet
-                if (!_client.receivesMIDI)
-                    return kAudioUnitErr_InvalidProperty;
-                return noErr;
+                const UInt8* pInData = cast(UInt8*)( params.getCompParam!(uint, 1, 2) );
+                uint offset = params.getCompParam!(uint, 0, 2);
+                return DoSysEx(pInData, offset);
             }
 
             case kMusicDevicePrepareInstrumentSelect: // 0x0103
             {
-                if (!_client.receivesMIDI)
-                    return kAudioUnitErr_InvalidProperty;
-                return noErr;
+                MusicDeviceInstrumentID inInstrument = params.getCompParam!(MusicDeviceInstrumentID, 0, 1);
+                return DoPrepareInstrument(inInstrument);
             }
 
             case kMusicDeviceReleaseInstrumentSelect: // 0x0104
             {
-                if (!_client.receivesMIDI)
-                    return kAudioUnitErr_InvalidProperty;
-                return noErr;
+                MusicDeviceInstrumentID inInstrument = params.getCompParam!(MusicDeviceInstrumentID, 0, 1);
+                return DoReleaseInstrument(inInstrument);
             }
 
             case kMusicDeviceStartNoteSelect: // 0x0105
             {
-                if (!_client.receivesMIDI)
-                    return kAudioUnitErr_InvalidProperty;
-
+                MusicDeviceInstrumentID inInstrument = params.getCompParam!(MusicDeviceInstrumentID, 4, 5);
+                MusicDeviceGroupID inGroupID = params.getCompParam!(MusicDeviceGroupID, 3, 5);
                 NoteInstanceID* pNoteID = params.getCompParam!(NoteInstanceID*, 2, 5);
                 uint offset = params.getCompParam!(uint, 1, 5);
                 MusicDeviceNoteParams* pNoteParams = params.getCompParam!(MusicDeviceNoteParams*, 0, 5);
-                int noteNumber = cast(int) pNoteParams.mPitch;
-                if (noteNumber < 0) noteNumber = 0;
-                if (noteNumber > 127) noteNumber = 127;
-
-                int velocity = cast(int) pNoteParams.mVelocity;
-                if (velocity < 0) velocity = 0;
-                if (velocity > 127) velocity = 127;
-
-                // Note from IPlug: noteID is supposed to be some incremented unique ID,
-                // but we're just storing note number in it.
-                *pNoteID = noteNumber;
-
-                int channel = 0; // always using channel 0
-                MidiMessage m = makeMidiMessageNoteOn(offset, channel, noteNumber, velocity);
-                _messageQueue.pushBack(makeMidiThreadMessage(m));
-                return noErr;
+                return DoStartNote(inInstrument, inGroupID, pNoteID, offset, pNoteParams);
             }
 
             case kMusicDeviceStopNoteSelect: // 0x0106
             {
-                if (!_client.receivesMIDI)
-                    return kAudioUnitErr_InvalidProperty;
-
+                MusicDeviceGroupID inGroupID = params.getCompParam!(MusicDeviceGroupID, 2, 3);
                 NoteInstanceID noteID = params.getCompParam!(NoteInstanceID, 1, 3);
                 uint offset = params.getCompParam!(uint, 0, 3);
-                int channel = 0; // always using channel 0
-                MidiMessage m = makeMidiMessageNoteOff(offset, channel, noteID);
-                _messageQueue.pushBack(makeMidiThreadMessage(m));
-                return noErr;
+                return DoStopNote(inGroupID, noteID, offset);
             }
 
             default:
@@ -933,14 +903,69 @@ package:
 
     final OSStatus DoMIDIEvent(UInt32 inStatus, UInt32 inData1, UInt32 inData2, UInt32 inOffsetSampleFrame)
     {
-        printf("DoMIDIEvent\n"); // TODO
-        assert(false);
+        if (!_client.receivesMIDI)
+            return kAudioUnitErr_InvalidProperty;
+        MidiMessage m =  MidiMessage(inOffsetSampleFrame, cast(ubyte)inStatus, cast(ubyte)inData1, cast(ubyte)inData2);
+        _messageQueue.pushBack(makeMidiThreadMessage(m));
+        return noErr;
     }
 
     final OSStatus DoSysEx(const UInt8* pInData, UInt32 inLength)
     {
-        printf("DoSysEx\n"); // TODO
-        assert(false);
+        // MAYDO Not supported yet
+        if (!_client.receivesMIDI)
+            return kAudioUnitErr_InvalidProperty;
+        return noErr;
+    }
+
+    final OSStatus DoPrepareInstrument(MusicDeviceInstrumentID inInstrument)
+    {
+        if (!_client.receivesMIDI)
+            return kAudioUnitErr_InvalidProperty;
+        return noErr;
+    }
+
+    final OSStatus DoReleaseInstrument(MusicDeviceInstrumentID inInstrument)
+    {
+        if (!_client.receivesMIDI)
+            return kAudioUnitErr_InvalidProperty;
+        return noErr;
+    }
+
+    final OSStatus DoStartNote(MusicDeviceInstrumentID inInstrument,
+                               MusicDeviceGroupID inGroupID, NoteInstanceID *outNoteInstanceID,
+                               UInt32 inOffsetSampleFrame, const MusicDeviceNoteParams *inParams)
+    {
+        if (!_client.receivesMIDI)
+            return kAudioUnitErr_InvalidProperty;
+
+        int noteNumber = cast(int) inParams.mPitch;
+        if (noteNumber < 0) noteNumber = 0;
+        if (noteNumber > 127) noteNumber = 127;
+
+        int velocity = cast(int) inParams.mVelocity;
+        if (velocity < 0) velocity = 0;
+        if (velocity > 127) velocity = 127;
+
+        // Note from IPlug: noteID is supposed to be some incremented unique ID,
+        // but we're just storing note number in it.
+        *outNoteInstanceID = noteNumber;
+
+        int channel = 0; // always using channel 0
+        MidiMessage m = makeMidiMessageNoteOn(inOffsetSampleFrame, channel, noteNumber, velocity);
+        _messageQueue.pushBack(makeMidiThreadMessage(m));
+        return noErr;
+    }
+
+    final OSStatus DoStopNote(MusicDeviceGroupID inGroupID, NoteInstanceID inNoteInstanceID, UInt32 inOffsetSampleFrame)
+    {
+        if (!_client.receivesMIDI)
+            return kAudioUnitErr_InvalidProperty;
+
+        int channel = 0; // always using channel 0
+        MidiMessage m = makeMidiMessageNoteOff(inOffsetSampleFrame, channel, inNoteInstanceID);
+        _messageQueue.pushBack(makeMidiThreadMessage(m));
+        return noErr;
     }
 
 private:
@@ -1357,7 +1382,7 @@ private:
                     *pDataSize = AudioUnitCocoaViewInfo.sizeof;
                     if (pData)
                     {
-                        const(char)[] factoryClassName = registerCocoaViewFactory(); // TODO: call unregisterCocoaViewFactory somewhere
+                        const(char)[] factoryClassName = registerCocoaViewFactory(); // FUTURE: call unregisterCocoaViewFactory somewhere
                         CFBundleRef pBundle = CFBundleGetMainBundle();
                         CFURLRef url = CFBundleCopyBundleURL(pBundle);
                         AudioUnitCocoaViewInfo* pViewInfo = cast(AudioUnitCocoaViewInfo*) pData;
@@ -2118,11 +2143,11 @@ private:
     // IHostCommand
     public
     {
-        final void sendAUEvent(AudioUnitEventType type, ComponentInstance ci, int paramIndex) nothrow @nogc
+        final void sendAUEvent(AudioUnitEventType type, int paramIndex) nothrow @nogc
         {
             AudioUnitEvent auEvent;
             auEvent.mEventType = type;
-            auEvent.mArgument.mParameter.mAudioUnit = ci;
+            auEvent.mArgument.mParameter.mAudioUnit = _componentInstance;
             auEvent.mArgument.mParameter.mParameterID = paramIndex;
             auEvent.mArgument.mParameter.mScope = kAudioUnitScope_Global;
             auEvent.mArgument.mParameter.mElement = 0;
@@ -2131,20 +2156,17 @@ private:
 
         override void beginParamEdit(int paramIndex)
         {
-            // TODO ACAPI
-            sendAUEvent(kAudioUnitEvent_BeginParameterChangeGesture, _componentInstance, paramIndex);
+            sendAUEvent(kAudioUnitEvent_BeginParameterChangeGesture, paramIndex);
         }
 
         override void paramAutomate(int paramIndex, float value)
         {
-            // TODO ACAPI
-            sendAUEvent(kAudioUnitEvent_ParameterValueChange, _componentInstance, paramIndex);
+            sendAUEvent(kAudioUnitEvent_ParameterValueChange, paramIndex);
         }
 
         override void endParamEdit(int paramIndex)
         {
-            // TODO ACAPI
-            sendAUEvent(kAudioUnitEvent_EndParameterChangeGesture, _componentInstance, paramIndex);
+            sendAUEvent(kAudioUnitEvent_EndParameterChangeGesture, paramIndex);
         }
 
         override bool requestResize(int width, int height)

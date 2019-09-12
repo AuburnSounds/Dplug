@@ -150,8 +150,22 @@ extern(C)
                 return null;
             case kAudioUnitProcessMultipleSelect: // 21
                 return null;
+
+            case kMusicDeviceMIDIEventSelect: // 0x0101
+                return cast(AudioComponentMethod)&AUMethodMIDIEvent;
+            case kMusicDeviceSysExSelect: // 0x0102
+                return cast(AudioComponentMethod)&AUMethodSysEx;
+            case kMusicDevicePrepareInstrumentSelect: // 0x0103
+                return cast(AudioComponentMethod)&AUMethodPrepareInstrument;
+            case kMusicDeviceReleaseInstrumentSelect: // 0x0104
+                return cast(AudioComponentMethod)&AUMethodReleaseInstrument;
+            case kMusicDeviceStartNoteSelect: // 0x0105
+                return cast(AudioComponentMethod)&AUMethodStartNote;
+            case kMusicDeviceStopNoteSelect: // 0x0106
+                return cast(AudioComponentMethod)&AUMethodStopNote;
+
             default:
-                //printf("unsupported audioComponentLookup selector %d\n", selector);
+                debug(logDispatcher) printf("WARNING: unsupported audioComponentLookup selector %d\n", selector);
                 return null;
         }
     }
@@ -229,18 +243,18 @@ extern(C)
     }
 
     // Note: used even without Audio Component API
-    public OSStatus AUMethodGetParameter(void* pSelf,
-                                         AudioUnitParameterID param,
-                                         AudioUnitScope scope_,
-                                         AudioUnitElement elem,
-                                         AudioUnitParameterValue *value)
+    OSStatus AUMethodGetParameter(void* pSelf,
+                                  AudioUnitParameterID param,
+                                  AudioUnitScope scope_,
+                                  AudioUnitElement elem,
+                                  AudioUnitParameterValue *value)
     {
         debug(logDispatcher) printf("AUMethodGetParameter\n");
         return getPlug(pSelf).DoGetParameter(param, scope_, elem, value);
     }
 
     // Note: used even without Audio Component API
-    public OSStatus AUMethodSetParameter(void* pSelf, AudioUnitParameterID param, AudioUnitScope scope_, AudioUnitElement elem, AudioUnitParameterValue value, UInt32 bufferOffset)
+    OSStatus AUMethodSetParameter(void* pSelf, AudioUnitParameterID param, AudioUnitScope scope_, AudioUnitElement elem, AudioUnitParameterValue value, UInt32 bufferOffset)
     {
         debug(logDispatcher) printf("AUMethodSetParameter\n");
         return getPlug(pSelf).DoSetParameter(param, scope_, elem, value, bufferOffset);
@@ -258,24 +272,49 @@ extern(C)
         return getPlug(pSelf).DoRender(pIOActionFlags, pInTimeStamp, inOutputBusNumber, inNumberFrames, pIOData);
     }
 
-    static OSStatus AUMethodReset(void* pSelf, AudioUnitScope scope_, AudioUnitElement elem)
+    OSStatus AUMethodReset(void* pSelf, AudioUnitScope scope_, AudioUnitElement elem)
     {
         debug(logDispatcher) printf("AUMethodReset\n");
         return getPlug(pSelf).DoReset(scope_, elem);
     }
 
-    static OSStatus AUMethodMIDIEvent(void* pSelf, UInt32 inStatus, UInt32 inData1, UInt32 inData2, UInt32 inOffsetSampleFrame)
+    OSStatus AUMethodMIDIEvent(void* pSelf, UInt32 inStatus, UInt32 inData1, UInt32 inData2, UInt32 inOffsetSampleFrame)
     {
         debug(logDispatcher) printf("AUMethodMIDIEvent\n");
         return getPlug(pSelf).DoMIDIEvent(inStatus, inData1, inData2, inOffsetSampleFrame);
     }
 
-    static OSStatus AUMethodSysEx(void* pSelf, const UInt8* pInData, UInt32 inLength)
+    OSStatus AUMethodSysEx(void* pSelf, const UInt8* pInData, UInt32 inLength)
     {
         debug(logDispatcher) printf("AUMethodSysEx\n");
         return getPlug(pSelf).DoSysEx(pInData, inLength);
     }
 
+    OSStatus AUMethodPrepareInstrument(void* pSelf, MusicDeviceInstrumentID inInstrument)
+    {
+        debug(logDispatcher) printf("AUMethodPrepareInstrument\n");
+        return getPlug(pSelf).DoPrepareInstrument(inInstrument);
+    }
+
+    OSStatus AUMethodReleaseInstrument(void* pSelf, MusicDeviceInstrumentID inInstrument)
+    {
+        debug(logDispatcher) printf("AUMethodReleaseInstrument\n");
+        return getPlug(pSelf).DoReleaseInstrument(inInstrument);
+    }
+
+    OSStatus AUMethodStartNote(void *pSelf, MusicDeviceInstrumentID inInstrument,
+                               MusicDeviceGroupID inGroupID, NoteInstanceID *outNoteInstanceID,
+                               UInt32 inOffsetSampleFrame, const MusicDeviceNoteParams *inParams)
+    {
+        debug(logDispatcher) printf("AUMethodStartNote\n");
+        return getPlug(pSelf).DoStartNote(inInstrument, inGroupID, outNoteInstanceID, inOffsetSampleFrame, inParams);
+    }
+
+    OSStatus AUMethodStopNote(void *pSelf, MusicDeviceGroupID inGroupID, NoteInstanceID inNoteInstanceID, UInt32 inOffsetSampleFrame)
+    {
+        debug(logDispatcher) printf("AUMethodStopNote\n");
+        return getPlug(pSelf).DoStopNote(inGroupID, inNoteInstanceID, inOffsetSampleFrame);
+    }
     // </Dispatch methods>
 
 }
