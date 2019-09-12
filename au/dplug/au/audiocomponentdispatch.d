@@ -96,7 +96,7 @@ extern(C)
         PlugInInstance* acpi = cast(PlugInInstance *) pSelf;
         assert(acpi);
         ClientClass client = mallocNew!ClientClass();
-        AUClient auClient = mallocNew!AUClient(client, null);
+        AUClient auClient = mallocNew!AUClient(client, null, compInstance);
         acpi.instance = auClient;
         return noErr;
     }

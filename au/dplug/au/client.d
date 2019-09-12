@@ -132,7 +132,10 @@ ComponentResult audioUnitEntryPoint(alias ClientClass)(ComponentParameters* para
         // Create client and AUClient
         ClientClass client = mallocNew!ClientClass();
         ComponentInstance instance = params.getCompParam!(ComponentInstance, 0, 1);
-        AUClient plugin = mallocNew!AUClient(client, instance);
+
+        // Create with Component Manager
+        AUClient plugin = mallocNew!AUClient(client, instance, null);
+
         SetComponentInstanceStorage( instance, cast(Handle)(cast(void*)plugin) );
         return noErr;
     }
@@ -156,10 +159,13 @@ public:
 nothrow:
 @nogc:
 
-    this(Client client, ComponentInstance componentInstance)
+    this(Client client,
+        ComponentInstance componentInstance,
+        AudioComponentInstance audioComponentInstance)
     {
         _client = client;
         _componentInstance = componentInstance; // null if Audio Component API
+        _audioComponentInstance = audioComponentInstance;
 
         int queueSize = 256;
         _messageQueue = makeLockedQueue!AudioThreadMessage(queueSize);
@@ -254,6 +260,16 @@ nothrow:
 
 private:
     ComponentInstance _componentInstance; // null if Audio Component API
+    AudioComponentInstance _audioComponentInstance; // null if Component Manager PI
+
+    void* instanceHandle()
+    {
+        if (_componentInstance)
+            return _componentInstance;
+        else
+            return _audioComponentInstance;
+    }
+
     Client _client;
 
     HostCallbackInfo _hostCallbacks;
@@ -1544,10 +1560,9 @@ private:
                                 UInt32* pDataSize, const(void)* pData) nothrow
     {
         // inform listeners
-        // TODO ACAPI
         foreach (ref listener; _propertyListeners)
             if (listener.mPropID == propID)
-                listener.mListenerProc(listener.mProcArgs, _componentInstance, propID, scope_, 0); // always zero?
+                listener.mListenerProc(listener.mProcArgs, instanceHandle(), propID, scope_, 0); // always zero?
 
         version(logDispatcher) printf("SET property %d\n", propID);
 
@@ -2102,7 +2117,7 @@ private:
 
             if (_lastBypassed)
             {
-                // TODO: should delay by latency when bypassed
+                // MAYDO: should delay by latency when bypassed
                 int minIO = newUsedInputs;
                 if (minIO > newUsedOutputs)
                     minIO = newUsedOutputs;
@@ -2147,7 +2162,7 @@ private:
         {
             AudioUnitEvent auEvent;
             auEvent.mEventType = type;
-            auEvent.mArgument.mParameter.mAudioUnit = _componentInstance;
+            auEvent.mArgument.mParameter.mAudioUnit = instanceHandle();
             auEvent.mArgument.mParameter.mParameterID = paramIndex;
             auEvent.mArgument.mParameter.mScope = kAudioUnitScope_Global;
             auEvent.mArgument.mParameter.mElement = 0;
