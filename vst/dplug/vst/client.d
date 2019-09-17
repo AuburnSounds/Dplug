@@ -58,7 +58,7 @@ template VSTEntryPoint(alias ClientClass)
         "    return myVSTEntryPoint!" ~ ClientClass.stringof ~ "(hostCallback);" ~
         "}\n";
     enum entry_main_macho =
-        "extern(C) nothrow AEffect* main_macho(HostCallbackFunction hostCallback) " ~
+        "export extern(C) nothrow AEffect* main_macho(HostCallbackFunction hostCallback) " ~
         "{" ~
         "    return myVSTEntryPoint!" ~ ClientClass.stringof ~ "(hostCallback);" ~
         "}\n";
