@@ -142,7 +142,6 @@ struct Plugin
 {
     string name;       // name, extracted from dub.json(eg: 'distort')
     string CFBundleIdentifierPrefix;
-    string userManualPath; // can be null
     string licensePath;    // can be null
     string iconPathWindows;       // can be null or a path to a .ico
     string iconPathOSX;       // can be null or a path to a (large) .png
@@ -634,11 +633,11 @@ Plugin readPluginDescription()
 
     try
     {
-        result.userManualPath = rawPluginFile["userManualPath"].str;
+        string userManualPath = rawPluginFile["userManualPath"].str;
+        warning("\"userManualPath\" is deprecated");
     }
     catch(Exception e)
     {
-        info("Missing \"userManualPath\" in plugin.json (eg: \"UserManual.pdf\")");
     }
 
     try

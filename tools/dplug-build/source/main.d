@@ -906,10 +906,6 @@ int main(string[] args)
             }
         }
 
-        // Copy user manual (if any provided in plugin.json)
-        if (plugin.userManualPath)
-            std.file.copy(plugin.userManualPath, outputDir ~ "/" ~ baseName(plugin.userManualPath));
-
         // Build various configuration
         foreach(config; configurations)
             buildAndPackage(config, archs, iconPathOSX);
