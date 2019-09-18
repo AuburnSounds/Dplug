@@ -86,10 +86,10 @@ jobs:
         # Here you can customize the flags, or build multiple plugins
         cd examples/distort
         dplug-build -c VST -c VST3 -c LV2 
-        cd ..
+        cd ../..
         cd examples/clipit
         dplug-build -c VST -c VST3 -c LV2 
-        cd ..
+        cd ../..
       displayName: Build plug-ins
 
     - script: |
@@ -174,10 +174,10 @@ jobs:
         # Here you can customize the flags, or build multiple plugins
         cd examples/distort
         ../../../dplug/tools/dplug-build/dplug-build -c VST -c VST3 -c AU
-        cd ..
+        cd ../..
         cd examples/clipit
         ../../../dplug/tools/dplug-build/dplug-build -c VST -c VST3 -c AU
-        cd ..
+        cd ../..
       displayName: Build plug-ins
 
     - script: |
