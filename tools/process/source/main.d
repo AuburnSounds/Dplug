@@ -59,7 +59,7 @@ void usage()
 </measurements>
 */
 
-void main(string[]args)
+int main(string[]args)
 {
     try
     {
@@ -168,7 +168,7 @@ void main(string[]args)
         if (help)
         {
             usage();
-            return;
+            return 0;
         }
 	    if (pluginPath is null)
             throw new Exception("No plugin path provided");
@@ -378,12 +378,15 @@ void main(string[]args)
 
         // Dump xml
         if (xmlFilename) xmlOutput.getData.toFile(xmlFilename);
+
+        return 0;
     }
     catch(Exception e)
     {
         import std.stdio;
         writefln("error: %s", e.msg);
         usage();
+        return 1;
     }
 }
 
