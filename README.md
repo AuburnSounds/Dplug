@@ -1,6 +1,6 @@
 <img alt="logo" src="https://cdn.rawgit.com/AuburnSounds/dplug/master/logo.svg" width="200">
 
-# Dplug [![Build Status](https://travis-ci.org/AuburnSounds/Dplug.svg?branch=master)](https://travis-ci.org/AuburnSounds/Dplug) <a href="https://code.dlang.org/packages/dplug" title="Go to dplug"><img src="https://img.shields.io/dub/v/dplug.svg" alt="Dub version"></a> ![Dplug Discord server](https://discordapp.com/api/guilds/242094594181955585/widget.png?style=shield)
+# Dplug [![Build Status](https://travis-ci.org/AuburnSounds/Dplug.svg?branch=master)](https://travis-ci.org/AuburnSounds/Dplug) <a href="https://code.dlang.org/packages/dplug" title="Go to dplug"><img src="https://img.shields.io/dub/v/dplug.svg" alt="Dub version"></a> ![Dplug Discord server](https://discordapp.com/api/guilds/242094594181955585/widget.png?style=shield) [![Build Status](https://dev.azure.com/AuburnSounds/Dplug%20CI/_apis/build/status/AuburnSounds.Dplug?branchName=master)](https://dev.azure.com/AuburnSounds/Dplug%20CI/_build/latest?definitionId=2&branchName=master)
 
 `Dplug` lets you create professional audio plug-ins with unmatched simplicity and speed, using the D language.
 
