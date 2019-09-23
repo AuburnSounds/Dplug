@@ -99,6 +99,8 @@ private:
     enum int XEMBED_VERSION = 0;
     enum int XEMBED_MAPPED = (1 << 0);
 
+    uint _lastClickTime;
+
 public:
     this(void* parentWindow, IWindowListener listener, int width, int height)
     {
@@ -325,6 +327,7 @@ void handleEvents(ref XEvent event, X11Window theWindow) nothrow @nogc
     debug(logX11Window) printf("< handleEvents\n");
     with(theWindow)
     {
+        _dirtyMutex.lock();
         
         switch(event.type)
         {
@@ -342,7 +345,6 @@ void handleEvents(ref XEvent event, X11Window theWindow) nothrow @nogc
 
             case MapNotify:
             case Expose:
-                _dirtyMutex.lock();
                 if (_dirtyAreasAreNotYetComputed)
                 {
                     _dirtyAreasAreNotYetComputed = false;
@@ -353,7 +355,6 @@ void handleEvents(ref XEvent event, X11Window theWindow) nothrow @nogc
                     _graphicImage = XCreateImage(_display, _visual, depth, ZPixmap, 0, cast(char*)_wfb.pixels, _width, _height, 32, 0);
                 
                 _listener.onDraw(WindowPixelFormat.BGRA8);
-                _dirtyMutex.unlock();
 
                 XPutImage(_display, _windowId, _graphicGC, _graphicImage, 0, 0, 0, 0, cast(uint)_width, cast(uint)_height);
                 break;
@@ -399,7 +400,8 @@ void handleEvents(ref XEvent event, X11Window theWindow) nothrow @nogc
                 else if (event.xbutton.button == Button5)
                     button = MouseButton.x2;
 
-                bool isDoubleClick;
+                bool isDoubleClick = _lastMeasturedTimeInMs - _lastClickTime <= 500;
+                _lastClickTime = _lastMeasturedTimeInMs;
 
                 lastMouseX = newMouseX;
                 lastMouseY = newMouseY;
@@ -457,6 +459,7 @@ void handleEvents(ref XEvent event, X11Window theWindow) nothrow @nogc
             default:
                 break;
         }
+        _dirtyMutex.unlock();
     }
     debug(logX11Window) printf("> handleEvents\n");
 }
