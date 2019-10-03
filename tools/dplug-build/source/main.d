@@ -46,9 +46,9 @@ void usage()
             write(" ");
         cwritefln("%s".white, desc);
         if (possibleValues)
-            cwritefln("                        Possible values: ".grey ~ "%s".color(fg.light_yellow), possibleValues);
+            cwritefln("                        Possible values: ".grey ~ "%s".yellow, possibleValues);
         if (defaultDesc)
-            cwritefln("                        Default: ".grey ~ "%s".color(fg.cyan), defaultDesc);
+            cwritefln("                        Default: ".grey ~ "%s".cyan, defaultDesc);
         cwriteln;
     }
 
@@ -65,6 +65,7 @@ void usage()
     flag("--combined", "Combined build, important for cross-module inlining with LDC!", null, "no");
     flag("-q --quiet", "Quieter output", null, "no");
     flag("-v --verbose", "Verbose output", null, "no");
+    flag("--no-color", "Disable colored output", null, null);
     flag("-sr --skip-registry", " Skip checking the DUB registry\n                        Avoid network, doesn't update dependencies", null, "no");
     flag("--final", "Shortcut for --force --combined -b release-nobounds", null, null);
     flag("--installer", "Make an installer " ~ "(Windows and OSX only)".red, null, "no");
@@ -160,6 +161,8 @@ int main(string[] args)
                 verbose = true;
             else if (arg == "-q" || arg == "--quiet")
                 quiet = true;
+            else if (arg == "--no-color")
+                utils.enableColoredOutput = false;
             else if (arg == "--compiler")
             {
                 ++i;
