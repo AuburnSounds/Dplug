@@ -1075,6 +1075,10 @@ private:
                                   kAudioUnitParameterFlag_IsReadable |
                                   kAudioUnitParameterFlag_IsWritable;
 
+                    version(futureAUHighResolutionParameters) {
+                        pInfo.flags |= kAudioUnitParameterFlag_IsHighResolution;
+                    }
+
                     Parameter p = _client.param(element);
                     pInfo.cfNameString = toCFString(p.name);
                     stringNCopy(pInfo.name.ptr, 52, p.name);
