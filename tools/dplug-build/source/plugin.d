@@ -1,5 +1,7 @@
 module plugin;
 
+import std.algorithm : any;
+import std.ascii : isUpper;
 import std.conv;
 import std.process;
 import std.string;
@@ -747,6 +749,9 @@ Plugin readPluginDescription()
 
     if (result.vendorUniqueID.length != 4)
         throw new Exception("\"vendorUniqueID\" should be a string of 4 characters (eg: \"aucd\")");
+
+    if (!any!isUpper(result.vendorUniqueID))
+        throw new Exception("\"vendorUniqueID\" should contain at least one upper case character (eg: \"Aucd\")");
 
     try
     {
