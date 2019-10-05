@@ -85,10 +85,10 @@ jobs:
 
         # Here you can customize the flags, or build multiple plugins
         cd examples/distort
-        dplug-build -c VST -c VST3 -c LV2 
+        dplug-build --no-color -c VST -c VST3 -c LV2 
         cd ../..
         cd examples/clipit
-        dplug-build -c VST -c VST3 -c LV2 
+        dplug-build --no-color -c VST -c VST3 -c LV2 
         cd ../..
       displayName: Build plug-ins
 
@@ -173,10 +173,10 @@ jobs:
 
         # Here you can customize the flags, or build multiple plugins
         cd examples/distort
-        ../../../dplug/tools/dplug-build/dplug-build -c VST -c VST3 -c AU
+        ../../../dplug/tools/dplug-build/dplug-build --no-color -c VST -c VST3 -c AU
         cd ../..
         cd examples/clipit
-        ../../../dplug/tools/dplug-build/dplug-build -c VST -c VST3 -c AU
+        ../../../dplug/tools/dplug-build/dplug-build --no-color -c VST -c VST3 -c AU
         cd ../..
       displayName: Build plug-ins
 
@@ -266,10 +266,10 @@ jobs:
 
         # Here ldc2, dub and dplug-build tools are available. Customize as needed
         cd examples\distort
-        dplug-build -a x86_64 -c VST -c VST3
+        dplug-build --no-color -a x86_64 -c VST -c VST3
         cd ..\..
         cd examples\clipit
-        dplug-build -a x86_64 -c VST -c VST3
+        dplug-build --no-color -a x86_64 -c VST -c VST3
         cd ..\..
 
       displayName: Build plug-ins

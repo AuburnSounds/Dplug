@@ -8,34 +8,42 @@ import std.path;
 import dmarkdown;
 import colorize;
 
+bool enableColoredOutput = true;
+
 string white(string s) @property
 {
-    return s.color(fg.light_white);
+    if (enableColoredOutput) return s.color(fg.light_white);
+    return s;
 }
 
 string grey(string s) @property
 {
-    return s.color(fg.white);
+    if (enableColoredOutput) return s.color(fg.white);
+    return s;
 }
 
 string cyan(string s) @property
 {
-    return s.color(fg.light_cyan);
+    if (enableColoredOutput) return s.color(fg.light_cyan);
+    return s;
 }
 
 string green(string s) @property
 {
-    return s.color(fg.light_green);
+    if (enableColoredOutput) return s.color(fg.light_green);
+    return s;
 }
 
 string yellow(string s) @property
 {
-    return s.color(fg.light_yellow);
+    if (enableColoredOutput) return s.color(fg.light_yellow);
+    return s;
 }
 
 string red(string s) @property
 {
-    return s.color(fg.light_red);
+    if (enableColoredOutput) return s.color(fg.light_red);
+    return s;
 }
 
 void info(string msg)
