@@ -669,7 +669,6 @@ nothrow:
 
         if (paramIndex == 0)
         {
-            Parameter param = _client.param(paramIndex);
             info.id = PARAM_ID_BYPASS;
             str8ToStr16(info.title.ptr, "Bypass".ptr, 128);
             str8ToStr16(info.shortTitle.ptr, "Byp".ptr, 128);
@@ -684,7 +683,6 @@ nothrow:
         }
         else if (paramIndex == 1)
         {
-            Parameter param = _client.param(paramIndex);
             info.id = PARAM_ID_PROGRAM_CHANGE;
             str8ToStr16(info.title.ptr, "Preset".ptr, 128);
             str8ToStr16(info.shortTitle.ptr, "Pre".ptr, 128);
