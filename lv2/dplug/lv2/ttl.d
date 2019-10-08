@@ -431,9 +431,12 @@ const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, b
         strcat(paramString.ptr, " ;\n".ptr);
         strcat(paramString.ptr, "        lv2:minimum 0.0 ;\n".ptr);
         strcat(paramString.ptr, "        lv2:maximum 1.0 ;\n".ptr);
+        if (!param.isAutomatable) {
+            strcat(paramString.ptr, "        lv2:portProperty <http://kxstudio.sf.net/ns/lv2ext/props#NonAutomable> ;\n".ptr);
+        }
         strcat(paramString.ptr, "    ]".ptr);
-        if(index < params.length -1 || legalIO.numInputChannels > 0 || legalIO.numOutputChannels > 0)
-            strcat(paramString.ptr, " , ".ptr);
+        if(index < params.length - 1 || legalIO.numInputChannels > 0 || legalIO.numOutputChannels > 0)
+            strcat(paramString.ptr, " ,\n".ptr);
         else
             strcat(paramString.ptr, " . \n".ptr);
     }

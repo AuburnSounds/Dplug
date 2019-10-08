@@ -1065,6 +1065,7 @@ private:
                 {
                     AudioUnitParameterInfo* pInfo = cast(AudioUnitParameterInfo*)pData;
                     *pInfo = AudioUnitParameterInfo.init;
+                    Parameter param = _client.param(element);
 
                     // every parameter in dplug:
                     //  - is readable
@@ -1079,18 +1080,23 @@ private:
                         pInfo.flags |= kAudioUnitParameterFlag_IsHighResolution;
                     }
 
-                    Parameter p = _client.param(element);
-                    pInfo.cfNameString = toCFString(p.name);
-                    stringNCopy(pInfo.name.ptr, 52, p.name);
 
-                    /*if (auto intParam = cast(IntegerParameter)p)
+                    if (!param.isAutomatable) {
+                        // flag as non-automatable parameter
+                        pInfo.flags |= kAudioUnitParameterFlag_NonRealTime;
+                    }
+
+                    pInfo.cfNameString = toCFString(param.name);
+                    stringNCopy(pInfo.name.ptr, 52, param.name);
+
+                    /*if (auto intParam = cast(IntegerParameter)param)
                     {
                         pInfo.unit = kAudioUnitParameterUnit_Indexed;
                         pInfo.minValue = intParam.minValue;
                         pInfo.maxValue = intParam.maxValue;
                         pInfo.defaultValue = intParam.defaultValue;
                     }
-                    else if (auto boolParam = cast(BoolParameter)p)
+                    else if (auto boolParam = cast(BoolParameter)param)
                     {
                         pInfo.minValue = 0;
                         pInfo.maxValue = 1;
@@ -1100,10 +1106,10 @@ private:
                     else*/
                     {
                         // Generic label
-                        assert(p.label !is null);
-                        /*if (p.label != "")
+                        assert(param.label !is null);
+                        /*if (param.label != "")
                         {
-                            pInfo.unitName = toCFString(p.label);
+                            pInfo.unitName = toCFString(param.label);
                             pInfo.unit = kAudioUnitParameterUnit_CustomUnit;
                         }
                         else
@@ -1115,7 +1121,7 @@ private:
                         pInfo.unit = kAudioUnitParameterUnit_Generic;
                         pInfo.minValue = 0.0f;
                         pInfo.maxValue = 1.0f;
-                        pInfo.defaultValue = p.getNormalizedDefault();
+                        pInfo.defaultValue = param.getNormalizedDefault();
                     }
                     pInfo.clumpID = 0; // parameter groups not supported yet
                 }

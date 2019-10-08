@@ -612,7 +612,9 @@ private:
             {
                 if (!isValidParamIndex(index))
                     return 0;
-                return 1; // can always be automated
+                if (_client.param(index).isAutomatable)
+                    return 1;
+                return 0;
             }
 
             case effString2Parameter: // opcode 27
