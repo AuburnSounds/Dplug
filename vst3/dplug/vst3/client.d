@@ -705,7 +705,10 @@ nothrow:
             info.stepCount = 0; // continuous
             info.defaultNormalizedValue = param.getNormalizedDefault();
             info.unitId = 0; // root, unit 0 is always here
-            info.flags = ParameterInfo.ParameterFlags.kCanAutomate; // Dplug assumption: all parameters automatable.
+            info.flags = 0;
+            if (param.isAutomatable) {
+                info.flags |= ParameterInfo.ParameterFlags.kCanAutomate;
+            }
             return kResultTrue;
         }
     }

@@ -107,6 +107,19 @@ nothrow:
         return _index;
     }
 
+    /// Returns: Whether parameter is automatable.
+    bool isAutomatable() pure const
+    {
+        return _isAutomatable;
+    }
+
+    /// Makes parameter non-automatable.
+    Parameter nonAutomatable()
+    {
+        _isAutomatable = false;
+        return this;
+    }
+
     /// From a normalized double [0..1], set the parameter value.
     void setFromHost(double hostValue)
     {
@@ -219,6 +232,8 @@ private:
     int _index;
     string _name;
     string _label;
+    /// Parameter is automatable by default.
+    bool _isAutomatable = true;
 
     /// The list of active `IParameterListener` to receive parameter changes.
     Vec!IParameterListener _listeners;

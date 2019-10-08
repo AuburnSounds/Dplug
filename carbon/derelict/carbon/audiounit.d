@@ -543,6 +543,7 @@ enum : AudioUnitParameterOptions
     kAudioUnitParameterFlag_DisplayLogarithmic  = (1UL << 22),
 
     kAudioUnitParameterFlag_IsHighResolution    = (1UL << 23),
+    // parameter is non-automatable
     kAudioUnitParameterFlag_NonRealTime         = (1UL << 24),
     kAudioUnitParameterFlag_CanRamp             = (1UL << 25),
     kAudioUnitParameterFlag_ExpertMode          = (1UL << 26),
