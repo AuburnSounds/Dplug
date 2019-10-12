@@ -65,14 +65,12 @@ jobs:
         ldc2 --version
         dub --version
 
-        # Install dplug-build
-        git clone --depth 1 https://github.com/AuburnSounds/Dplug dplug
-        cd dplug/tools/dplug-build
-        dub build
-        sudo ln -sf $(pwd)/dplug-build /usr/bin/dplug-build
+        # Pull dplug docker container
+        docker pull ctrecordings/dplug:latest
 
         # Install process
-        cd ../process
+        git clone --depth 1 https://github.com/AuburnSounds/Dplug dplug
+        cd dplug/tools/process
         dub build
         sudo ln -sf $(pwd)/process /usr/bin/process
       displayName: Install
@@ -84,12 +82,10 @@ jobs:
         export VST2_SDK="$(pwd)/VST2_SDK"
 
         # Here you can customize the flags, or build multiple plugins
-        cd examples/distort
-        dplug-build --no-color -c VST -c VST3 -c LV2 
-        cd ../..
-        cd examples/clipit
-        dplug-build --no-color -c VST -c VST3 -c LV2 
-        cd ../..
+        docker run -w /src/examples/distort --volume "$(pwd)/VST2_SDK:/VST2_SDK" --volume "$(pwd):/src" ctrecordings/dplug --no-color -c VST -c VST3 -c LV2 --compiler ldc2
+
+        docker run -w /src/examples/clipit --volume "$(pwd)/VST2_SDK:/VST2_SDK" --volume "$(pwd):/src" ctrecordings/dplug --no-color -c VST -c VST3 -c LV2 --compiler ldc2
+
       displayName: Build plug-ins
 
     - script: |
