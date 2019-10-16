@@ -37,8 +37,6 @@ interface ICompositor
                        Mipmap!RGBA skybox) nothrow @nogc;
 }
 
-version = newNormal;
-
 /// "Physically Based"-style rendering
 class PBRCompositor : ICompositor
 {
@@ -145,7 +143,7 @@ nothrow @nogc:
                 uint numIters = 0;
 
                 vec3f normal = void;
-                version(newNormal)
+                version(ransac_normals)
                 {
                     immutable ubyte[3][] LUT = depthSampleLUT[0..24]; // only with center pixel
                     //immutable ubyte[3][] LUT = depthSampleLUT; // full table
