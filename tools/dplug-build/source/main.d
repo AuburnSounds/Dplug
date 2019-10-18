@@ -1426,7 +1426,23 @@ void notarizeMacInstaller(Plugin plugin, string outPkgPath, string primaryBundle
                         plugin.appSpecificPassword_altool,
                         pollXMLPath,
                         );
-        safeCommand(cmd);
+
+        int errorCode = 239;
+        int retryAttempts = 0;
+        do
+        {
+            errorCode = unsafeCommand(cmd);
+            if(errorCode == 239)
+            {
+                cwritefln("    Notarization-info not yet available, retrying...".yellow);
+            }
+            else if (errorCode > 0)
+            {
+                throw new ExternalProgramErrored(errorCode, format("Command '%s' returned %s", cmd, errorCode));
+            }
+            ++retryAttempts;
+        }
+        while (errorCode == 239 && retryAttempts < 20);
 
         auto doc = new Document();
         doc.parseUtf8( cast(string)(std.file.read(pollXMLPath)), false, false);

@@ -95,6 +95,14 @@ void safeCommand(string cmd)
         throw new ExternalProgramErrored(errorCode, format("Command '%s' returned %s", cmd, errorCode));
 }
 
+int unsafeCommand(string cmd)
+{
+    cwritefln("$ %s".cyan, cmd);
+    auto pid = spawnShell(cmd);
+    auto errorCode = wait(pid);
+    return errorCode;
+}
+
 string escapeXMLString(string s)
 {
     s = s.replace("&", "&amp;");
