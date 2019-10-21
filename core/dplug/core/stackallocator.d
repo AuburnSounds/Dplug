@@ -6,7 +6,7 @@ License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 module dplug.core.stackallocator;
 
-import core.stdc.stdlib: malloc;
+import core.stdc.stdlib: malloc, free;
 import dplug.core.vec;
 
 struct StackAllocator
@@ -17,16 +17,30 @@ private:
     uint currentPageFreeBytes;
     enum PAGE_SIZE = 1024 * 1024 * 1024; // 1MB
 
+    struct State
+    {
+        uint savedNumUsedPages;
+        uint savedCurrentPageFreeBytes;
+    }
+
 public:
 
+    @disable this(this); // non copyable
+
+    ~this()
+    {
+        foreach(ubyte* bucket; bucketArray)
+            free(bucket);
+    }
+
     /// Save allocation state
-    StackAllocState saveState()
+    State saveState()
     {
         return StackAllocState(numUsedPages, currentPageFreeBytes);
     }
 
     /// Pop allocation state
-    void restoreState(StackAllocState state)
+    void restoreState(State state)
     {
         numUsedPages = state.savedNumUsedPages;
         currentPageFreeBytes = state.savedCurrentPageFreeBytes;
@@ -61,12 +75,6 @@ public:
         ++numUsedPages;
         currentPageFreeBytes = PAGE_SIZE;
     }
-}
-
-struct StackAllocState
-{
-    private uint savedNumUsedPages;
-    private uint savedCurrentPageFreeBytes;
 }
 
 unittest
