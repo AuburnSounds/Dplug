@@ -130,6 +130,7 @@ private
     /// Returns: next pointer aligned with alignment bytes.
     void* nextAlignedPointer(void* start, size_t alignment) pure nothrow @nogc
     {
+        import dplug.core.math : nextMultipleOf;
         return cast(void*)nextMultipleOf(cast(size_t)(start), alignment);
     }
 
@@ -154,27 +155,10 @@ private
         assert( isPointerAligned(aligned, alignment) );
         return aligned;
     }
-
-    // Returns: x, multiple of powerOfTwo, so that x >= n.
-    @nogc size_t nextMultipleOf(size_t n, size_t powerOfTwo) pure nothrow
-    {
-        // check power-of-two
-        assert( (powerOfTwo != 0) && ((powerOfTwo & (powerOfTwo - 1)) == 0));
-
-        size_t mask = ~(powerOfTwo - 1);
-        return (n + powerOfTwo - 1) & mask;
-    }
 }
 
 unittest
 {
-    assert(nextMultipleOf(0, 4) == 0);
-    assert(nextMultipleOf(1, 4) == 4);
-    assert(nextMultipleOf(2, 4) == 4);
-    assert(nextMultipleOf(3, 4) == 4);
-    assert(nextMultipleOf(4, 4) == 4);
-    assert(nextMultipleOf(5, 4) == 8);
-
     {
         void* p = alignedMalloc(23, 16);
         assert(p !is null);

@@ -75,6 +75,26 @@ bool isPowerOfTwo(int i) pure nothrow @nogc
     return (i != 0) && ((i & (i - 1)) == 0);
 }
 
+/// Returns: x, multiple of powerOfTwo, so that x >= n.
+size_t nextMultipleOf(size_t n, size_t powerOfTwo) pure nothrow @nogc
+{
+    // check power-of-two
+    assert( (powerOfTwo != 0) && ((powerOfTwo & (powerOfTwo - 1)) == 0));
+
+    size_t mask = ~(powerOfTwo - 1);
+    return (n + powerOfTwo - 1) & mask;
+}
+
+unittest
+{
+    assert(nextMultipleOf(0, 4) == 0);
+    assert(nextMultipleOf(1, 4) == 4);
+    assert(nextMultipleOf(2, 4) == 4);
+    assert(nextMultipleOf(3, 4) == 4);
+    assert(nextMultipleOf(4, 4) == 4);
+    assert(nextMultipleOf(5, 4) == 8);
+}
+
 
 /// Computes next power of 2.
 /// Returns: N so that N is a power of 2 and N >= i.
