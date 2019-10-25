@@ -36,7 +36,7 @@ public:
     /// Save allocation state
     State saveState()
     {
-        return StackAllocState(numUsedPages, currentPageFreeBytes);
+        return State(numUsedPages, currentPageFreeBytes);
     }
 
     /// Pop allocation state
