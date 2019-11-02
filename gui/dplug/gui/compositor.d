@@ -166,7 +166,7 @@ nothrow @nogc:
                     depth9[8] = depthPatch[2][2] * multUshort;
                     normal = computeRANSACNormal(depth9.ptr, 
                                                  ransacMode, 
-                                                 numRansacInliers, tune0);
+                                                 numRansacInliers);
                 }
                 else
                 {

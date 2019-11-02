@@ -16,7 +16,7 @@ nothrow @nogc:
  */
 vec3f computeRANSACNormal(float* depth9Pixels,     // Must point at 9 floats containing depth of pixels. Normal will be computed in this pixel space.
                           out RansacMode ransacMode,      // choosen mode
-                          out int numRansacInliers, float tune0) // number of inliers
+                          out int numRansacInliers) // number of inliers
 {
     immutable ubyte[3][] LUT = depthSampleLUT;
     
