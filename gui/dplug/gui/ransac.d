@@ -111,6 +111,55 @@ vec3f computeRANSACNormal(float* depth9Pixels,     // Must point at 9 floats con
     return bestNormal;
 }
 
+/**
+* Average normals of neigbouring triangles. Alternative to RANSAC without discontinuity.
+*/
+vec3f computeAveragedNormal(float* depth9Pixels,     // Must point at 9 floats containing depth of pixels. Normal will be computed in this pixel space.
+                            int modeCount) // number of planes to average
+{
+    immutable ubyte[3][] LUT = depthSampleLUT[0..modeCount];
+
+    static immutable int[9] indexToX = [0,1,2, 0,1,2, 0,1,2];
+    static immutable int[9] indexToY = [0,0,0, 1,1,1, 2,2,2];
+
+    vec3f accumulatedNormal = vec3f(0);
+    float accumulatedConfidence = 0.01f;
+
+    foreach(size_t iter, ubyte[3] indicies; LUT)
+    {
+        // plane point indicies upacked
+        int i0 = indicies[0];
+        int i1 = indicies[1];
+        int i2 = indicies[2];
+
+        // x, y, z of plane points
+        int x0 = indexToX[i0];
+        int x1 = indexToX[i1];
+        int x2 = indexToX[i2];
+        int y0 = indexToY[i0];
+        int y1 = indexToY[i1];
+        int y2 = indexToY[i2];
+        float z0 = depth9Pixels[i0];
+        float z1 = depth9Pixels[i1];
+        float z2 = depth9Pixels[i2];
+
+        vec3f vecA = vec3f(x1 - x0, y1 - y0, z1 - z0);
+        vec3f vecB = vec3f(x2 - x0, y2 - y0, z2 - z0);
+        vec3f n = cross(vecA, vecB); // plane normal
+        n.fastNormalize();
+
+        accumulatedNormal += n;
+    }
+
+    accumulatedNormal /= modeCount;
+
+    // For some unknown reason, I guess it's because left-handed vs right-handed?
+    accumulatedNormal.y = -accumulatedNormal.y;
+    accumulatedNormal.fastNormalize();
+
+    return accumulatedNormal;
+}
+
 vec3f convertRansacModeToColor(RansacMode mode)
 {
     if (mode < 4) 

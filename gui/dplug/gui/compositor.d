@@ -26,8 +26,12 @@ import dplug.graphics.view;
 
 import dplug.gui.ransac;
 
-//version = ransacNormals; // enable RANSAC normals (more sophisticated normal-from-depth algorithm)
+// Enable RANSAC normals (more sophisticated normal-from-depth algorithm)
+//version = ransacNormals; 
 //debug = debugRansac;     // show RANSAC information
+
+// Enable plane normals blending (find normals of the 4 neighbour triangles then sum them)
+//version = nicerNormals; 
 
 // Only deals with rendering tiles.
 // If you don't like Dplug default compositing, just make another Compositor
@@ -167,6 +171,24 @@ nothrow @nogc:
                     normal = computeRANSACNormal(depth9.ptr, 
                                                  ransacMode, 
                                                  numRansacInliers);
+                }
+                else version(nicerNormals)
+                {
+                    // Tuned once by hand to match the other normal computation algorithm
+                    enum float FACTOR_Z = 4655.0f;
+                    enum float multUshort = 1.0 / FACTOR_Z;
+
+                    float[9] depth9 = void;
+                    depth9[0] = depthPatch[0][0] * multUshort;
+                    depth9[1] = depthPatch[0][1] * multUshort;
+                    depth9[2] = depthPatch[0][2] * multUshort;
+                    depth9[3] = depthPatch[1][0] * multUshort;
+                    depth9[4] = depthPatch[1][1] * multUshort;
+                    depth9[5] = depthPatch[1][2] * multUshort;
+                    depth9[6] = depthPatch[2][0] * multUshort;
+                    depth9[7] = depthPatch[2][1] * multUshort;
+                    depth9[8] = depthPatch[2][2] * multUshort;
+                    normal = computeAveragedNormal(depth9.ptr, 4); // tuned, 4 modes makes most sense
                 }
                 else
                 {
