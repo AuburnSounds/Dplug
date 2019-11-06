@@ -303,7 +303,7 @@ IWindow createWindow(WindowUsage usage,
         if (backend == WindowBackend.x11)
         {
             import dplug.window.x11window;
-            return mallocNew!X11Window(parentInfo, listener, width, height);
+            return mallocNew!X11Window(usage, parentInfo, listener, width, height);
         }
         else
             return null;
