@@ -135,13 +135,15 @@ nothrow:
             case GraphicsBackend.x11: wbackend = WindowBackend.x11; break;
         }
 
-        // We create this window each time.
-        _window = createWindow(WindowUsage.plugin, parentInfo, controlInfo, _windowListener, wbackend, _askedWidth, _askedHeight);
-
         reflow(box2i(0, 0, _askedWidth, _askedHeight));
 
-        // Sets the whole UI dirty
+        // Sets the whole UI dirty.
+        // This needs to be done _before_ window creation, else there could be a race
+        // displaying partial updates to the UI.
         setDirtyWhole();
+
+        // We create this window each time.
+        _window = createWindow(WindowUsage.plugin, parentInfo, controlInfo, _windowListener, wbackend, _askedWidth, _askedHeight);
 
         return _window.systemHandle();
     }

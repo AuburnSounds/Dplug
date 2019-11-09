@@ -13,28 +13,14 @@
  */
 module dplug.window.x11window;
 
-import gfm.math.box;
+version(linux): // because of static linking with the X11 library
 
-import core.sys.posix.unistd;
-import core.stdc.string;
 import core.atomic;
+import core.stdc.string;
+import core.sys.posix.unistd;
+import core.sys.posix.time;
 
-import dplug.window.window;
-
-import dplug.core.runtime;
-import dplug.core.nogc;
-import dplug.core.thread;
-import dplug.core.sync;
-
-import dplug.graphics.image;
-import dplug.graphics.view;
-
-nothrow:
-@nogc:
-
-version(linux):
-
-import dplug.core.map;
+import gfm.math.box;
 
 import derelict.x11.X;
 import derelict.x11.Xlib;
@@ -43,425 +29,653 @@ import derelict.x11.keysymdef;
 import derelict.x11.Xutil;
 import derelict.x11.extensions.Xrandr;
 import derelict.x11.extensions.randr;
-import core.stdc.stdio;
 
-// debug = logX11Window;
+import dplug.core.runtime;
+import dplug.core.nogc;
+import dplug.core.thread;
+import dplug.core.sync;
+import dplug.core.map;
+
+import dplug.graphics.image;
+import dplug.graphics.view;
+import dplug.window.window;
+
+nothrow:
+@nogc:
+
+//debug = logX11Window;
+
+debug(logX11Window)
+{
+    import core.stdc.stdio;
+}
+
 
 // This is an extension to X11, almost always should exist on modern systems
 // If it becomes a problem, version out its usage, it'll work just won't be as nice event wise
 extern(C) bool XkbSetDetectableAutoRepeat(Display*, bool, bool*);
 
-__gshared XLibInitialized = false;
-__gshared Display* _display;
-__gshared Visual* _visual;
-__gshared size_t _white_pixel, _black_pixel;
-__gshared int _screen;
-
-enum XA_CARDINAL = 6;
-
 final class X11Window : IWindow
 {
 nothrow:
 @nogc:
-
-private:
-    // Xlib variables
-    Window _windowId, _parentWindowId;
-    Atom _closeAtom;
-    derelict.x11.Xlib.GC _graphicGC;
-    XImage* _graphicImage;
-    int depth;
-    // Threads
-    Thread _eventLoop, _timerLoop;
-
-    //Other
-    IWindowListener _listener;
-    bool _usingXEmbed = false;
-
-    ImageRef!RGBA _wfb; // framebuffer reference
-
-    UncheckedMutex _dirtyMutex;
-    
-    uint _timeAtCreationInMs;
-    uint _lastMeasturedTimeInMs;
-    bool _dirtyAreasAreNotYetComputed;
-
-    int _width;
-    int _height;
-
-    uint currentTime;
-    int lastMouseX, lastMouseY;
-
-    shared(bool) _terminated = false;
-
-    Atom _XEMBED;
-    Atom _XEMBED_INFO;
-    enum int XEMBED_VERSION = 0;
-    enum int XEMBED_MAPPED = (1 << 0);
-
-    uint _lastClickTime;
-
 public:
-    this(void* parentWindow, IWindowListener listener, int width, int height)
+
+    // Important: this mutex protect EVERY X11 call since
+
+    this(WindowUsage usage, void* parentWindow, IWindowListener listener, int width, int height)
     {
-        debug(logX11Window) printf("X11Window: constructor\n");
-        initializeXLib();
+        debug(logX11Window) printf(">X11Window.this()\n");        
 
+        _animationMutex = makeMutex();
+        _isHostWindow = (usage == WindowUsage.host);
+
+        assert(listener !is null);
         _listener = listener;
-        _dirtyMutex = makeMutex();
 
-        _width = width;
-        _height = height;
-        _wfb = _listener.onResized(_width, _height);
+        bool isChildWindow = parentWindow !is null;
+        acquireX11(isChildWindow);
 
-        version(VST3) _usingXEmbed = true;
-        createWindow(parentWindow);
+        lockX11();
 
-        _lastMeasturedTimeInMs = _timeAtCreationInMs = getTimeMs();
+        //_parentID = cast(Window)parentWindow;
+        _screen = DefaultScreen(_display);
+        _visual = XDefaultVisual(_display, _screen);
 
-        _dirtyAreasAreNotYetComputed = true;
+        XkbSetDetectableAutoRepeat(_display, true, null);
 
-        _timerLoop = makeThread(&timerLoop);
+        version(VST3) 
+            _useXEmbed = true;
+        else
+            _useXEmbed = false;
+
+        createX11Window(parentWindow, width, height);
+
+        _timeAtCreationInUs = getTimeUs();
+        _lastMeasturedTimeInUs = _timeAtCreationInUs;
+        _lastClickTimeUs = _timeAtCreationInUs;
+
+        _timerLoop = makeThread(&timerLoopFunc);
         _timerLoop.start();
-
-        _eventLoop = makeThread(&eventLoop);
+        _eventLoop = makeThread(&eventLoopFunc);
         _eventLoop.start();
+
+        unlockX11();
+        debug(logX11Window) printf("<X11Window.this()\n");
     }
 
     ~this()
-    { 
-        _terminated = true;
+    {     
+        debug(logX11Window) printf(">X11Window.~this()\n");
+        atomicStore(_terminateThreads, true);
 
-        XDestroyWindow(_display, _windowId);
-        XFlush(_display);
-
-        _timerLoop.join();
+        // Terminate event loop thread
         _eventLoop.join();
+
+        // Terminate time thread
+        _timerLoop.join();
+
+        releaseX11Window();
+
+        _animationMutex.destroy();
+
+        releaseX11();
+        debug(logX11Window) printf("<X11Window.~this()\n");
     }
 
-    void initializeXLib() {
-        if (!XLibInitialized) {
-            XInitThreads();
-
-            _display = XOpenDisplay(null);
-            if(_display == null)
-                assert(false);
-
-            _screen = DefaultScreen(_display);
-            _visual = XDefaultVisual(_display, _screen);
-            _white_pixel = WhitePixel(_display, _screen);
-            _black_pixel = BlackPixel(_display, _screen);
-            XkbSetDetectableAutoRepeat(_display, true, null);
-
-            XLibInitialized = true;
-        }
-    }
-
-    void createWindow(void* parentWindow)
+    // <Implements IWindow>
+    override void waitEventAndDispatch()
     {
-        if (parentWindow is null)
-        {
-            _parentWindowId = RootWindow(_display, _screen);
-        }
-        else
-        {
-            _parentWindowId = cast(Window)parentWindow;
-        }
-
-        depth = 24;
-
-        Colormap cmap = XCreateColormap(_display, _parentWindowId, _visual, AllocNone);
-
-        XSetWindowAttributes attr;
-        memset(&attr, 0, XSetWindowAttributes.sizeof);
-        attr.border_pixel = BlackPixel(_display, _screen);
-        attr.colormap     = cmap;
-        attr.event_mask   = (ExposureMask | StructureNotifyMask |
-                            EnterWindowMask | LeaveWindowMask |
-                            KeyPressMask | KeyReleaseMask |
-                            ButtonPressMask | ButtonReleaseMask |
-                            PointerMotionMask | FocusChangeMask);
-
-        _windowId = XCreateWindow(_display, _parentWindowId, 0, 0, _width, _height, 0, depth, InputOutput, _visual, CWBorderPixel | CWColormap | CWEventMask, &attr);
-
-        if(_width > 1 || _height > 1)
-            XResizeWindow(_display, _windowId, _width, _height);
-
-        if(_usingXEmbed)
-        {
-            //Setup XEMBED atoms
-            _XEMBED = XInternAtom(_display, "_XEMBED", false);
-            _XEMBED_INFO = XInternAtom(_display, "_XEMBED_INFO", false);
-            uint[2] data = [XEMBED_VERSION, XEMBED_MAPPED];
-            XChangeProperty(_display, _windowId, _XEMBED_INFO,
-                            XA_CARDINAL, 32, PropModeReplace,
-                            cast(ubyte*) data, 2);
-
-            _closeAtom = XInternAtom(_display, cast(char*)("WM_DELETE_WINDOW".ptr), cast(Bool)false);
-            XSetWMProtocols(_display, _windowId, &_closeAtom, 1);
-
-            if(parentWindow)
-            {
-                XReparentWindow(_display, _windowId, _parentWindowId, 0, 0);
-            }
-        }
-        if(parentWindow)
-        {
-            XMapRaised(_display, _windowId);
-        }
-        else
-        {
-            _closeAtom = XInternAtom(_display, "WM_DELETE_WINDOW", True);
-            XSetWMProtocols(_display, _windowId, &_closeAtom , 1);
-        }
-
-        XSelectInput(_display, _windowId, windowEventMask());
-        _graphicGC = XCreateGC(_display, _windowId, 0, null);
-
-        XFlush(_display);
-    }
-
-    long windowEventMask() {
-        return ExposureMask | StructureNotifyMask |
-            KeyReleaseMask | KeyPressMask | ButtonReleaseMask | ButtonPressMask | PointerMotionMask;
-    }
-
-    // Implements IWindow
-    override void waitEventAndDispatch() nothrow @nogc
-    {
-        debug(logX11Window) printf("< waitEventAndDispatch\n");
         XEvent event;
-        // Wait for events for current window
-        XWindowEvent(_display, _windowId, windowEventMask(), &event);
-        handleEvents(event, this);
-        debug(logX11Window) printf("> waitEventAndDispatch\n");
+        lockX11();
+        XWindowEvent(_display, _windowID, windowEventMask(), &event);
+        unlockX11();
+        processEvent(&event);
     }
 
-    void eventLoop() nothrow @nogc
+    override bool terminated()
     {
-        debug(logX11Window) printf("< eventLoop\n");
-        while (!terminated()) {
-            waitEventAndDispatch();
+        return atomicLoad(_userRequestedTermination);
+    }
+
+    override uint getTimeMs()
+    {
+        static uint perform() 
+        {
+            import core.sys.posix.sys.time;
+            timeval tv;
+            gettimeofday(&tv, null);
+            return cast(uint)((tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ) ;
         }
-        debug(logX11Window) printf("> eventLoop\n");
+        return assumeNothrowNoGC(&perform)();
+    }
+
+    // For more precise animation
+    ulong getTimeUs()
+    {
+        static ulong perform() 
+        {
+            import core.sys.posix.sys.time;
+            timeval tv;
+            gettimeofday(&tv, null);
+            return cast(ulong)(tv.tv_sec) * 1_000_000 + tv.tv_usec;
+        }
+        return assumeNothrowNoGC(&perform)();
+    }
+
+    override void* systemHandle()
+    {
+        return cast(void*)_windowID;
+    }
+
+    // </Implements IWindow>
+
+private:
+
+    enum int BIT_DEPTH = 24;
+    enum int XEMBED_VERSION = 0;
+    enum int XEMBED_MAPPED = (1 << 0);
+
+    /// Usage of this window (host or plugin)
+    bool _isHostWindow;
+
+    /// window listener.
+    IWindowListener _listener = null;  
+
+    /// Current width of window.
+    int _width = -1;
+
+    /// Current height of window.
+    int _height = -1;
+
+    /// Framebuffer reference
+    ImageRef!RGBA _wfb;
+
+    // For debug purpose.
+    bool _recomputeDirtyAreasWasCalled;
+
+    /// Flag to tell threads to terminate. Used in thread finalization only.
+    shared(bool) _terminateThreads = false; 
+
+    /// Did the user closed the window? (when used as host window).
+    shared(bool) _userRequestedTermination = false;
+    
+    // Time when creating this window, in microseconds.
+    ulong _timeAtCreationInUs;
+
+    /// Last time in microseconds.
+    ulong  _lastMeasturedTimeInUs;
+
+    /// Last click time (for double click emulation).
+    ulong _lastClickTimeUs;
+
+    /// This thread pump event.
+    Thread _eventLoop;
+
+    /// This thread acts like a timer.
+    Thread _timerLoop;
+
+    /// Are we using XEmbed?
+    bool _useXEmbed;
+
+    /// Last mouse position.
+    bool _firstMouseMoveAfterEntering = true;
+    int _lastMouseX;
+    int _lastMouseY;
+
+    /// Prevent onAnimate going on at the same time than input events.
+    /// The only calls that can be concurrent are onAnimate and onDraw
+    UncheckedMutex _animationMutex;   
+
+    //
+    // <X11 resources>
+    //
+
+    /// X11 ID of this window.
+    Window _windowID;
+
+    /// The default X11 screen of _display.
+    int _screen;
+
+    /// The default Visual of _display.
+    Visual* _visual;
+
+    /// Colormap associated with this window.
+    Colormap _cmap;
+
+    // XEmbed stuff
+    Atom _XEMBED;
+    Atom _XEMBED_INFO;
+
+    Atom _closeAtom;
+
+    /// X11 Graphics Context
+    derelict.x11.Xlib.GC _graphicGC;
+    XImage* _graphicImage;
+
+    //
+    // </X11 resources>
+    //
+
+    void sendCustomMessage(int mode)
+    {
+        // HACK: we use the FocusIn message to send custom messages...
+        // ClientMessage just doesn't seen to work
+        XEvent ev;
+        memset(&ev, 0, XEvent.sizeof);
+        ev.xfocus.type = FocusIn;
+        ev.xfocus.display = _display;
+        ev.xfocus.window = _windowID;            
+        ev.xfocus.mode = mode;
+
+        lockX11();
+        //uint mask = 0; // must be non-zero in order for message to arrive
+        XSendEvent(_display, _windowID, False, FocusChangeMask, &ev);
+        XFlush(_display);
+        unlockX11();  
+    }
+
+    void eventLoopFunc() nothrow @nogc
+    {
+        // Pump events until told to terminate.
+        uint pauseTimeUs = 0;
+
+        while (true)
+        {
+            if (atomicLoad(_terminateThreads))
+                break;
+
+            XEvent event;
+            Bool found = XCheckWindowEvent(_display, _windowID, windowEventMask(), &event);
+            if (found == False)
+            {
+                pauseTimeUs = pauseTimeUs * 2 + 1000; // exponential pause
+                if (pauseTimeUs > 100_000)
+                    pauseTimeUs = 100_000; // max 100ms of pause            }
+                usleep(pauseTimeUs);
+            }
+            else
+            {
+                processEvent(&event);
+                pauseTimeUs = 0;
+            }
+            //waitEventAndDispatch();
+        }
+    }
+
+    void timerLoopFunc() nothrow @nogc
+    {
+        // Send repaints until told to terminate.
+        while(true)
+        {
+            if (atomicLoad(_terminateThreads))
+                break;
+
+            doAnimation();
+            sendRepaintIfUIDirty();
+
+            if (atomicLoad(_terminateThreads))
+                break;
+
+            // Sleep 1 / 60th of a second
+            enum long durationInNanosecs = 1_000_000_000 / 60;
+            timespec time;
+            timespec rem;
+            time.tv_nsec = durationInNanosecs;
+            time.tv_sec  = 0;
+            nanosleep(&time, &rem);
+        }
+    }
+
+    void doAnimation()
+    {
+        ulong now = getTimeUs();
+        double dt = (now - _lastMeasturedTimeInUs) * 0.001;
+        double time = (now - _timeAtCreationInUs) * 0.001; // hopefully no plug-in will be open more than 49 days
+        _lastMeasturedTimeInUs = now;
+
+        _animationMutex.lock();
+        _listener.onAnimate(dt, time);
+        _animationMutex.unlock();
+    }
+
+    // A message that says "animate the UI"
+    enum NOTIFY_ANIMATE = 4;
+
+    void processEvent(XEvent* event)
+    {
+        switch(event.type)
+        {
+        case ConfigureNotify:
+            notifySize(event.xconfigure.width, event.xconfigure.height);                
+            break;
+
+        case EnterNotify:
+            _firstMouseMoveAfterEntering = true;
+            return; // nothing to do
+
+        case Expose:
+            assert(_recomputeDirtyAreasWasCalled);
+
+            // Draw UI
+            _listener.onDraw(WindowPixelFormat.BGRA8);
+
+            XExposeEvent* xpose = cast(XExposeEvent*)event;
+
+            // Find dirty rect from event
+            int x = xpose.x;
+            int y = xpose.y;
+            int width = xpose.width;
+            int height = xpose.height;
+
+            lockX11();
+            XPutImage(_display, 
+                      _windowID,
+                      _graphicGC, 
+                      _graphicImage, 
+                      x, y, // source position
+                      x, y, // dest position
+                      width,
+                      height);
+            unlockX11();
+            break;
+
+        case ReparentNotify:
+            break; // do nothing
+
+        case KeyPress:
+            KeySym symbol;
+            lockX11();
+            XLookupString(&event.xkey, null, 0, &symbol, null);
+            unlockX11();
+            _animationMutex.lock();
+            _listener.onKeyDown(convertKeyFromX11(symbol));
+            _animationMutex.unlock();
+            break;
+
+        case KeyRelease:
+            KeySym symbol;
+            lockX11();
+            XLookupString(&event.xkey, null, 0, &symbol, null);
+            unlockX11();
+            _animationMutex.lock();
+            _listener.onKeyUp(convertKeyFromX11(symbol));
+            _animationMutex.unlock();
+            break;
+
+        case MotionNotify:
+            int newMouseX = event.xmotion.x;
+            int newMouseY = event.xmotion.y;
+
+            if (_firstMouseMoveAfterEntering)
+            {
+                _lastMouseX = newMouseX;
+                _lastMouseY = newMouseY;
+                _firstMouseMoveAfterEntering = false;                    
+            }
+
+            int dx = newMouseX - _lastMouseX;
+            int dy = newMouseY - _lastMouseY;
+            _animationMutex.lock();
+            _listener.onMouseMove(newMouseX, newMouseY, dx, dy, mouseStateFromX11(event.xbutton.state));
+            _animationMutex.unlock();
+            _lastMouseX = newMouseX;
+            _lastMouseY = newMouseY;
+            break;
+
+        case ButtonPress:
+            int newMouseX = event.xbutton.x;
+            int newMouseY = event.xbutton.y;
+            MouseButton button;
+            if (event.xbutton.button == Button1)
+                button = MouseButton.left;
+            else if (event.xbutton.button == Button3)
+                button = MouseButton.right;
+            else if (event.xbutton.button == Button2)
+                button = MouseButton.middle;
+            else if (event.xbutton.button == Button4)
+                button = MouseButton.x1;
+            else if (event.xbutton.button == Button5)
+                button = MouseButton.x2;
+
+            ulong now = getTimeUs();
+            bool isDoubleClick = now - _lastClickTimeUs <= 500_000; // 500 ms
+            _lastClickTimeUs = now;
+
+            _lastMouseX = newMouseX;
+            _lastMouseY = newMouseY;
+
+            _animationMutex.lock();
+            if (event.xbutton.button == Button4 || event.xbutton.button == Button5)
+            {
+                _listener.onMouseWheel(newMouseX, newMouseY, 0, event.xbutton.button == Button4 ? 1 : -1,
+                    mouseStateFromX11(event.xbutton.state));
+            }
+            else
+            {
+                _listener.onMouseClick(newMouseX, newMouseY, button, isDoubleClick, mouseStateFromX11(event.xbutton.state));
+            }
+            _animationMutex.unlock();
+            break;
+
+        case ButtonRelease:
+            int newMouseX = event.xbutton.x;
+            int newMouseY = event.xbutton.y;
+
+            MouseButton button;
+
+            _lastMouseX = newMouseX;
+            _lastMouseY = newMouseY;
+
+            if (event.xbutton.button == Button1)
+                button = MouseButton.left;
+            else if (event.xbutton.button == Button3)
+                button = MouseButton.right;
+            else if (event.xbutton.button == Button2)
+                button = MouseButton.middle;
+            else if (event.xbutton.button == Button4 || event.xbutton.button == Button5)
+                break;
+
+            _animationMutex.lock();
+            _listener.onMouseRelease(newMouseX, newMouseY, button, mouseStateFromX11(event.xbutton.state));
+            _animationMutex.unlock();
+            break;
+
+        case DestroyNotify:
+            atomicStore(_userRequestedTermination, true);
+            break;
+/+
+        case ClientMessage:
+
+            Atom atom = event.xclient.message_type; // note: layout of XClientMessageEvent seems incorrect
+            if (atom == _closeAtom)
+            {
+                atomicStore(_userRequestedTermination, true);
+            }
+            break;
++/
+
+        default:
+            string s = X11EventTypeString(event.type);           
+            debug(logX11Window) printf("Unhandled event %d (%s)\n", event.type, s.ptr);
+        }
+    }
+
+    void notifySize(int width, int height)
+    {
+        if (width != _width || height != _height)
+        {
+            _width = width;
+            _height = height;
+
+            _animationMutex.lock();
+            _wfb = _listener.onResized(width, height);
+            _animationMutex.unlock();
+
+            // reallocates backbuffer (if any)
+            freeBackbuffer();
+
+            // and recreates it at the right size
+            assert(_visual);
+            lockX11();
+            _graphicImage = XCreateImage(_display, 
+                            _visual, 
+                            BIT_DEPTH, 
+                            ZPixmap, 
+                            0, 
+                            cast(char*)_wfb.pixels, 
+                            _width, 
+                            _height, 
+                            32, 
+                            0);
+            unlockX11();
+        }
     }
 
     void sendRepaintIfUIDirty() nothrow @nogc
     {
-        debug(logX11Window) printf("< sendRepaintIfUIDirty\n");
-
-        _dirtyMutex.lock();
         _listener.recomputeDirtyAreas();
-        _dirtyAreasAreNotYetComputed = false;
+        _recomputeDirtyAreasWasCalled = true;
         box2i dirtyRect = _listener.getDirtyRectangle();
-        _dirtyMutex.unlock();
 
         if (!dirtyRect.empty())
         {
             XEvent evt;
             memset(&evt, 0, XEvent.sizeof);
             evt.type = Expose;
-            evt.xexpose.window = _windowId;
+            evt.xexpose.window = _windowID;
             evt.xexpose.display = _display;
             evt.xexpose.x = dirtyRect.min.x;
             evt.xexpose.y = dirtyRect.min.y;
             evt.xexpose.width = dirtyRect.width;
             evt.xexpose.height = dirtyRect.height;
-
-            XSendEvent(_display, _windowId, False, ExposureMask, &evt);
+            lockX11();
+            XSendEvent(_display, _windowID, False, ExposureMask, &evt);
             XFlush(_display);
+            unlockX11();
         }
-        debug(logX11Window) printf("> sendRepaintIfUIDirty\n");
     }
 
-    void doAnimation()
+    void createX11Window(void* parentWindow, int width, int height)
     {
-        uint now = getTimeMs();
-        double dt = (now - _lastMeasturedTimeInMs) * 0.001;
-        double time = (now - _timeAtCreationInMs) * 0.001; // hopefully no plug-in will be open more than 49 days
-        _lastMeasturedTimeInMs = now;
-        _listener.onAnimate(dt, time);
-    }
+        // Note: this is already locked by constructor
 
-    void timerLoop() nothrow @nogc
-    {
-        debug(logX11Window) printf("< timerLoop\n");
-        while(!terminated())
+        // Find the parent Window ID if none provided
+        Window parentWindowID;
+        if (parentWindow is null)
+            parentWindowID = RootWindow(_display, _screen);
+        else
+            parentWindowID = cast(Window)parentWindow;
+
+        _cmap = XCreateColormap(_display, parentWindowID, _visual, AllocNone);
+
+        XSetWindowAttributes attr;
+        memset(&attr, 0, XSetWindowAttributes.sizeof);
+        attr.border_pixel = BlackPixel(_display, _screen);
+        attr.colormap     = _cmap;
+        attr.event_mask   = windowEventMask();
+
+        int left = 0;
+        int top = 0;
+        int border_width = 0;
+        _windowID = XCreateWindow(_display, 
+                                  parentWindowID, 
+                                  left, top, 
+                                  width, height, border_width, 
+                                  BIT_DEPTH, 
+                                  InputOutput, 
+                                  _visual, 
+                                  CWBorderPixel | CWColormap | CWEventMask,  // TODO we need all this?
+                                  &attr);
+        
+
+        // in case ConfigureNotiy isn't sent
+        // this create t
+        notifySize(width, height);
+
+        // MAYDO: Is it necessary? seems not.
+        // XResizeWindow(_display, _windowID, width, height);
+
+        _closeAtom = XInternAtom(_display, "WM_DELETE_WINDOW", False);
+        XSetWMProtocols(_display, _windowID, &_closeAtom , 1);
+        
+        if(_useXEmbed)
         {
-            doAnimation();
+            //Setup XEMBED atoms
+            _XEMBED = XInternAtom(_display, "_XEMBED", false);
+            _XEMBED_INFO = XInternAtom(_display, "_XEMBED_INFO", false);
+            uint[2] data = [XEMBED_VERSION, XEMBED_MAPPED];
+            enum XA_CARDINAL = 6;
+            XChangeProperty(_display, _windowID, _XEMBED_INFO,
+                            XA_CARDINAL, 32, PropModeReplace,
+                            cast(ubyte*) data, 2);
 
-            sendRepaintIfUIDirty();
-            sleep(1 / 60);
+            if(parentWindow)
+            {
+                XReparentWindow(_display, _windowID, parentWindowID, 0, 0);
+            }
         }
-        debug(logX11Window) printf("> timerLoop\n");
+
+        // MAYDO possible could be XMapWindow I guess
+        XMapRaised(_display, _windowID);
+        XSelectInput(_display, _windowID, windowEventMask());
+
+        _graphicGC = XCreateGC(_display, _windowID, 0, null);
     }
 
-    override bool terminated()
+    void releaseX11Window() 
     {
-        return atomicLoad(_terminated);
+        // release all X11 resource allocated by createX11Window
+        lockX11();
+        XFreeColormap(_display, _cmap);
+        XFreeGC(_display, _graphicGC);
+        freeBackbuffer();
+        XDestroyWindow(_display, _windowID);
+        unlockX11();
+
     }
 
-    override uint getTimeMs()
+    // this frees _graphicImage
+    void freeBackbuffer()
     {
-        debug(logX11Window) printf("< getTimeMs\n");
-        static uint perform() {
-            debug(logX11Window) printf("< perform\n");
-            import core.sys.posix.sys.time;
-            timeval  tv;
-            gettimeofday(&tv, null);
-            debug(logX11Window) printf("> perform\n");
-            return cast(uint)((tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ) ;
-        }
-        debug(logX11Window) printf("> getTimeMs\n");
-        return assumeNothrowNoGC(&perform)();
-    }
+        // For some reason freeing that buffer is crashing X11
+     /+   if (_graphicImage)
+        {
+            lockX11();
+            XDestroyImage(_graphicImage);
+            unlockX11();
+            _graphicImage = null;
+        } +/
+    }    
 
-    override void* systemHandle()
+    // which X11 events we are interested in
+
+    uint windowEventMask() 
     {
-        return cast(void*)_windowId;
+        return ExposureMask 
+             | StructureNotifyMask
+             | KeyReleaseMask
+             | KeyPressMask
+             | ButtonReleaseMask
+             | ButtonPressMask
+             | PointerMotionMask
+             | EnterWindowMask;
     }
 }
 
-void handleEvents(ref XEvent event, X11Window theWindow) nothrow @nogc
+private:
+
+debug(logX11Window) 
 {
-    debug(logX11Window) printf("< handleEvents\n");
-    with(theWindow)
+    extern(C) int X11ErrorHandler(Display* display, XErrorEvent* event)
     {
-        _dirtyMutex.lock();
-        
-        switch(event.type)
-        {
-            case KeyPress:
-                KeySym symbol;
-                XLookupString(&event.xkey, null, 0, &symbol, null);
-                _listener.onKeyDown(convertKeyFromX11(symbol));
-                break;
-
-            case KeyRelease:
-                KeySym symbol;
-                XLookupString(&event.xkey, null, 0, &symbol, null);
-                _listener.onKeyUp(convertKeyFromX11(symbol));
-                break;
-
-            case MapNotify:
-            case Expose:
-                if (_dirtyAreasAreNotYetComputed)
-                {
-                    _dirtyAreasAreNotYetComputed = false;
-                    _listener.recomputeDirtyAreas();
-                }
-                
-                if(_graphicImage is null)
-                    _graphicImage = XCreateImage(_display, _visual, depth, ZPixmap, 0, cast(char*)_wfb.pixels, _width, _height, 32, 0);
-                
-                _listener.onDraw(WindowPixelFormat.BGRA8);
-
-                XPutImage(_display, _windowId, _graphicGC, _graphicImage, 0, 0, 0, 0, cast(uint)_width, cast(uint)_height);
-                break;
-
-            case ConfigureNotify:
-                if (event.xconfigure.width != _width || event.xconfigure.height != _height)
-                {
-                    // Handle resize event
-                    _width = event.xconfigure.width;
-                    _height = event.xconfigure.height;
-
-                    _wfb = _listener.onResized(_width, _height);
-                    sendRepaintIfUIDirty();
-                }
-                break;
-
-            case MotionNotify:
-                int newMouseX = event.xmotion.x;
-                int newMouseY = event.xmotion.y;
-                int dx = newMouseX - lastMouseX;
-                int dy = newMouseY - lastMouseY;
-
-                _listener.onMouseMove(newMouseX, newMouseY, dx, dy, mouseStateFromX11(event.xbutton.state));
-
-                lastMouseX = newMouseX;
-                lastMouseY = newMouseY;
-                break;
-
-            case ButtonPress:
-                int newMouseX = event.xbutton.x;
-                int newMouseY = event.xbutton.y;
-
-                MouseButton button;
-
-                if (event.xbutton.button == Button1)
-                    button = MouseButton.left;
-                else if (event.xbutton.button == Button3)
-                    button = MouseButton.right;
-                else if (event.xbutton.button == Button2)
-                    button = MouseButton.middle;
-                else if (event.xbutton.button == Button4)
-                    button = MouseButton.x1;
-                else if (event.xbutton.button == Button5)
-                    button = MouseButton.x2;
-
-                bool isDoubleClick = _lastMeasturedTimeInMs - _lastClickTime <= 500;
-                _lastClickTime = _lastMeasturedTimeInMs;
-
-                lastMouseX = newMouseX;
-                lastMouseY = newMouseY;
-
-                if (event.xbutton.button == Button4 || event.xbutton.button == Button5)
-                {
-                    _listener.onMouseWheel(newMouseX, newMouseY, 0, event.xbutton.button == Button4 ? 1 : -1,
-                        mouseStateFromX11(event.xbutton.state));
-                }
-                else
-                {
-                    _listener.onMouseClick(newMouseX, newMouseY, button, isDoubleClick, mouseStateFromX11(event.xbutton.state));
-                }
-                break;
-
-            case ButtonRelease:
-                int newMouseX = event.xbutton.x;
-                int newMouseY = event.xbutton.y;
-
-                MouseButton button;
-
-                lastMouseX = newMouseX;
-                lastMouseY = newMouseY;
-
-                if (event.xbutton.button == Button1)
-                    button = MouseButton.left;
-                else if (event.xbutton.button == Button3)
-                    button = MouseButton.right;
-                else if (event.xbutton.button == Button2)
-                    button = MouseButton.middle;
-                else if (event.xbutton.button == Button4 || event.xbutton.button == Button5)
-                    break;
-
-                _listener.onMouseRelease(newMouseX, newMouseY, button, mouseStateFromX11(event.xbutton.state));
-                break;
-
-            case DestroyNotify:
-                XDestroyImage(_graphicImage);
-                XFreeGC(_display, _graphicGC);
-                atomicStore(_terminated, true);
-                break;
-
-            case ClientMessage:
-                // TODO Possibly not used anymore
-                if (event.xclient.data.l[0] == _closeAtom)
-                {
-                    atomicStore(_terminated, true);
-                    XDestroyImage(_graphicImage);
-                    XFreeGC(_display, _graphicGC);
-                    XDestroyWindow(_display, _windowId);
-                    XFlush(_display);
-                }
-                break;
-
-            default:
-                break;
-        }
-        _dirtyMutex.unlock();
+        char[128] buf;
+        lockX11();
+        XGetErrorText(display, event.error_code, buf.ptr, 128); 
+        unlockX11();
+        printf("Error = %s\n", buf.ptr);
+        assert(false);
     }
-    debug(logX11Window) printf("> handleEvents\n");
 }
 
 Key convertKeyFromX11(KeySym symbol)
@@ -510,7 +724,8 @@ Key convertKeyFromX11(KeySym symbol)
     }
 }
 
-MouseState mouseStateFromX11(uint state) {
+MouseState mouseStateFromX11(uint state) 
+{
     return MouseState(
         (state & Button1Mask) == Button1Mask,
         (state & Button3Mask) == Button3Mask,
@@ -520,4 +735,112 @@ MouseState mouseStateFromX11(uint state) {
         (state & ShiftMask) == ShiftMask,
         (state & Mod1Mask) == Mod1Mask);
 }
+
+// Check if the X11 operation has completed correctly
+void checkX11Status(Status err)
+{
+    if (err == 0)
+        assert(false); // There was an error
+}
+
+
+// <X11 initialization>
+
+shared(int) _x11Counter = 0;
+__gshared Display* _display;
+
+/// Protects every X11 call. This is because as a plugin we cannot call XInitThreads() 
+/// to ensure thread safety.
+/// Note that like the conncetion, this is shared across plugin instances...
+__gshared UncheckedMutex _x11Mutex;
+
+void lockX11()
+{
+    _x11Mutex.lock();
+}
+
+void unlockX11()
+{
+    _x11Mutex.unlock();
+}
+
+void acquireX11(bool isAChildwindow)
+{
+    // Note: this is racey, if you open two plugins exactly at once, it might race
+    if (atomicOp!"+="(_x11Counter, 1) == 1)
+    {
+        _x11Mutex = makeMutex();
+        debug(logX11Window)
+        {
+            XSetErrorHandler(&X11ErrorHandler);
+        }
+
+        // "On a POSIX-conformant system, if the display_name is NULL, 
+        // it defaults to the value of the DISPLAY environment variable."
+        _display = XOpenDisplay(null);
+
+        if(_display == null)
+            assert(false);
+
+        debug(logX11Window)
+            XSynchronize(_display, False);
+    }
+    else
+    {
+        usleep(20); // Dumb protection against X11 initialization race.
+    }
+}
+
+void releaseX11()
+{
+    if (atomicOp!"-="(_x11Counter, 1) == 0)
+    {
+        XCloseDisplay(_display);
+        _x11Mutex.destroy();
+    }
+}
+
+
+string X11EventTypeString(int type)
+{
+    string s = "Unknown event";
+    if (type == 2) s = "KeyPress";
+    if (type == 3) s = "KeyRelease";
+    if (type == 4) s = "ButtonPress";
+    if (type == 5) s = "ButtonRelease";
+    if (type == 6) s = "MotionNotify";
+    if (type == 7) s = "EnterNotify";
+    if (type == 8) s = "LeaveNotify";
+    if (type == 9) s = "FocusIn";
+    if (type == 10) s = "FocusOut";
+    if (type == 11) s = "KeymapNotify";
+    if (type == 12) s = "Expose";
+    if (type == 13) s = "GraphicsExpose";
+    if (type == 14) s = "NoExpose";
+    if (type == 15) s = "VisibilityNotify";
+    if (type == 16) s = "CreateNotify";
+    if (type == 17) s = "DestroyNotify";
+    if (type == 18) s = "UnmapNotify";
+    if (type == 19) s = "MapNotify";
+    if (type == 20) s = "MapRequest";
+    if (type == 21) s = "ReparentNotify";
+    if (type == 22) s = "ConfigureNotify";
+    if (type == 23) s = "ConfigureRequest";
+    if (type == 24) s = "GravityNotify";
+    if (type == 25) s = "ResizeRequest";
+    if (type == 26) s = "CirculateNotify";
+    if (type == 27) s = "CirculateRequest";
+    if (type == 28) s = "PropertyNotify";
+    if (type == 29) s = "SelectionClear";
+    if (type == 30) s = "SelectionRequest";
+    if (type == 31) s = "SelectionNotify";
+    if (type == 32) s = "ColormapNotify";
+    if (type == 33) s = "ClientMessage";
+    if (type == 34) s = "MappingNotify";
+    if (type == 35) s = "GenericEvent";
+    if (type == 36) s = "LASTEvent";
+    return s;
+}
+
+// </X11 initialization>
 
