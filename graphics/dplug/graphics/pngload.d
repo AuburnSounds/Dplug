@@ -787,82 +787,169 @@ static int paeth(int a, int b, int c)
 // create the png data from post-deflated data
 static int create_png_image_raw(png *a, ubyte *raw, uint raw_len, int out_n, uint x, uint y)
 {
-   stbi *s = a.s;
-   uint i,j,stride = x*out_n;
-   int k;
-   int img_n = s.img_n; // copy it into a local for later
-   assert(out_n == s.img_n || out_n == s.img_n+1);
-   if (stbi_png_partial) y = 1;
-   a.out_ = cast(ubyte*) malloc(x * y * out_n);
-   if (!a.out_) assert(false, "Out of memory");
-   if (!stbi_png_partial) {
-      if (s.img_x == x && s.img_y == y) {
-         if (raw_len != (img_n * x + 1) * y) assert(false, "Not enough pixels, corrupt PNG");
-      } else { // interlaced:
-         if (raw_len < (img_n * x + 1) * y) assert(false, "Not enough pixels, corrupt PNG");
-      }
-   }
-   for (j=0; j < y; ++j) {
-      ubyte *cur = a.out_ + stride*j;
-      ubyte *prior = cur - stride;
-      int filter = *raw++;
-      if (filter > 4) assert(false, "Invalid filter, corrupt PNG");
-      // if first row, use special filter that doesn't sample previous row
-      if (j == 0) filter = first_row_filter[filter];
-      // handle first pixel explicitly
-      for (k=0; k < img_n; ++k) {
-         switch (filter) {
-            case F_none       : cur[k] = raw[k]; break;
-            case F_sub        : cur[k] = raw[k]; break;
-            case F_up         : cur[k] = cast(ubyte)(raw[k] + prior[k]); break;
-            case F_avg        : cur[k] = cast(ubyte)(raw[k] + (prior[k]>>1)); break;
-            case F_paeth      : cur[k] = cast(ubyte) (raw[k] + paeth(0,prior[k],0)); break;
-            case F_avg_first  : cur[k] = raw[k]; break;
-            case F_paeth_first: cur[k] = raw[k]; break;
-            default: break;
-         }
-      }
-      if (img_n != out_n) cur[img_n] = 255;
-      raw += img_n;
-      cur += out_n;
-      prior += out_n;
-      // this is a little gross, so that we don't switch per-pixel or per-component
-      if (img_n == out_n) {
+    stbi *s = a.s;
+    uint i,j,stride = x*out_n;
+    int k;
+    int img_n = s.img_n; // copy it into a local for later
+    assert(out_n == s.img_n || out_n == s.img_n+1);
+    if (stbi_png_partial) y = 1;
+    a.out_ = cast(ubyte*) malloc(x * y * out_n);
+    if (!a.out_) assert(false, "Out of memory");
+    if (!stbi_png_partial) 
+    {
+        if (s.img_x == x && s.img_y == y) 
+        {
+            if (raw_len != (img_n * x + 1) * y) assert(false, "Not enough pixels, corrupt PNG");
+        } 
+        else 
+        { // interlaced:
+            if (raw_len < (img_n * x + 1) * y) assert(false, "Not enough pixels, corrupt PNG");
+        }
+    }
 
-         for (i=x-1; i >= 1; --i, raw+=img_n,cur+=img_n,prior+=img_n)
-            for (k=0; k < img_n; ++k)
-            {
-               switch (filter) {
-                  case F_none:  cur[k] = raw[k]; break;
-                  case F_sub:   cur[k] = cast(ubyte)(raw[k] + cur[k-img_n]); break;
-                  case F_up:    cur[k] = cast(ubyte)(raw[k] + prior[k]); break;
-                  case F_avg:   cur[k] = cast(ubyte)(raw[k] + ((prior[k] + cur[k-img_n])>>1)); break;
-                  case F_paeth:  cur[k] = cast(ubyte) (raw[k] + paeth(cur[k-img_n],prior[k],prior[k-img_n])); break;
-                  case F_avg_first:    cur[k] = cast(ubyte)(raw[k] + (cur[k-img_n] >> 1)); break;
-                  case F_paeth_first:  cur[k] = cast(ubyte) (raw[k] + paeth(cur[k-img_n],0,0)); break;
-                  default: break;
-               }
-            }
-      } else {
-         assert(img_n+1 == out_n);
+    for (j=0; j < y; ++j) 
+    {
+        ubyte *cur = a.out_ + stride*j;
+        ubyte *prior = cur - stride;
+        int filter = *raw++;
+        if (filter > 4) assert(false, "Invalid filter, corrupt PNG");
+        // if first row, use special filter that doesn't sample previous row
+        if (j == 0) filter = first_row_filter[filter];
+        // handle first pixel explicitly
 
-         for (i=x-1; i >= 1; --i, cur[img_n]=255,raw+=img_n,cur+=out_n,prior+=out_n)
+      
+        switch (filter) 
+        {
+        case F_none:
+        case F_sub:
+        case F_avg_first:
+        case F_paeth_first:
             for (k=0; k < img_n; ++k)
+                cur[k] = raw[k];
+            break;
+        case F_up: 
+            for (k=0; k < img_n; ++k)
+                cur[k] = cast(ubyte)(raw[k] + prior[k]); 
+            break;
+        case F_avg: 
+            for (k=0; k < img_n; ++k)
+                cur[k] = cast(ubyte)(raw[k] + (prior[k]>>1)); 
+            break;
+        case F_paeth: 
+            for (k=0; k < img_n; ++k)
+                cur[k] = cast(ubyte) (raw[k] + paeth(0,prior[k],0)); 
+            break;
+        default: 
+            break;
+        }
+      
+        if (img_n != out_n) cur[img_n] = 255;
+        raw += img_n;
+        cur += out_n;
+        prior += out_n;
+        // this is a little gross, so that we don't switch per-pixel or per-component
+        if (img_n == out_n) 
+        {
+            switch (filter) 
             {
-               switch (filter) {
-                  case F_none:  cur[k] = raw[k]; break;
-                  case F_sub:   cur[k] = cast(ubyte)(raw[k] + cur[k-out_n]); break;
-                  case F_up:    cur[k] = cast(ubyte)(raw[k] + prior[k]); break;
-                  case F_avg:   cur[k] = cast(ubyte)(raw[k] + ((prior[k] + cur[k-out_n])>>1)); break;
-                  case F_paeth:  cur[k] = cast(ubyte) (raw[k] + paeth(cur[k-out_n],prior[k],prior[k-out_n])); break;
-                  case F_avg_first:    cur[k] = cast(ubyte)(raw[k] + (cur[k-out_n] >> 1)); break;
-                  case F_paeth_first:  cur[k] = cast(ubyte) (raw[k] + paeth(cur[k-out_n],0,0)); break;
-                  default: break;
-               }
+                case F_none:  
+                    for (i=x-1; i >= 1; --i, raw+=img_n,cur+=img_n,prior+=img_n)
+                    {
+                        for (k=0; k < img_n; ++k)
+                        {
+                            cur[k] = raw[k]; 
+                        }
+                    }
+                    break;
+
+                case F_sub:  
+                    for (i=x-1; i >= 1; --i, raw+=img_n,cur+=img_n,prior+=img_n)
+                    {
+                        for (k=0; k < img_n; ++k)
+                        {
+                            cur[k] = cast(ubyte)(raw[k] + cur[k-img_n]); 
+                        }
+                    }
+                    break;
+
+                case F_up:
+                    for (i=x-1; i >= 1; --i, raw+=img_n,cur+=img_n,prior+=img_n)
+                    {
+                        for (k=0; k < img_n; ++k)
+                        {
+                            cur[k] = cast(ubyte)(raw[k] + prior[k]); 
+                        }
+                    }
+                    break;
+
+                case F_avg:  
+                    for (i=x-1; i >= 1; --i, raw+=img_n,cur+=img_n,prior+=img_n)
+                    {
+                        for (k=0; k < img_n; ++k)
+                        {
+                            cur[k] = cast(ubyte)(raw[k] + ((prior[k] + cur[k-img_n])>>1)); 
+                        }
+                    }
+                    break;
+
+                case F_paeth:  
+                    for (i=x-1; i >= 1; --i, raw+=img_n,cur+=img_n,prior+=img_n)
+                    {
+                        for (k=0; k < img_n; ++k)
+                        {
+                            cur[k] = cast(ubyte) (raw[k] + paeth(cur[k-img_n],prior[k],prior[k-img_n])); 
+                        }
+                    }
+                    break;
+
+                case F_avg_first:   
+                    for (i=x-1; i >= 1; --i, raw+=img_n,cur+=img_n,prior+=img_n)
+                    {
+                        for (k=0; k < img_n; ++k)
+                        {
+                            cur[k] = cast(ubyte)(raw[k] + (cur[k-img_n] >> 1)); 
+                        }
+                    }
+                    break;
+
+                case F_paeth_first: 
+                    for (i=x-1; i >= 1; --i, raw+=img_n,cur+=img_n,prior+=img_n)
+                    {
+                        for (k=0; k < img_n; ++k)
+                        {
+                            cur[k] = cast(ubyte) (raw[k] + paeth(cur[k-img_n],0,0)); 
+                        }
+                    }
+                    break;
+
+                default: 
+                    break;
             }
-      }
-   }
-   return 1;
+        } 
+        else 
+        {
+            assert(img_n+1 == out_n);
+
+            for (i=x-1; i >= 1; --i, cur[img_n]=255,raw+=img_n,cur+=out_n,prior+=out_n)
+            {
+                for (k=0; k < img_n; ++k)
+                {
+                    switch (filter) 
+                    {
+                    case F_none:  cur[k] = raw[k]; break;
+                    case F_sub:   cur[k] = cast(ubyte)(raw[k] + cur[k-out_n]); break;
+                    case F_up:    cur[k] = cast(ubyte)(raw[k] + prior[k]); break;
+                    case F_avg:   cur[k] = cast(ubyte)(raw[k] + ((prior[k] + cur[k-out_n])>>1)); break;
+                    case F_paeth:  cur[k] = cast(ubyte) (raw[k] + paeth(cur[k-out_n],prior[k],prior[k-out_n])); break;
+                    case F_avg_first:    cur[k] = cast(ubyte)(raw[k] + (cur[k-out_n] >> 1)); break;
+                    case F_paeth_first:  cur[k] = cast(ubyte) (raw[k] + paeth(cur[k-out_n],0,0)); break;
+                    default: break;
+                    }
+                }
+            }
+        }
+    }
+    return 1;
 }
 
 int create_png_image(png *a, ubyte *raw, uint raw_len, int out_n, int interlaced)
