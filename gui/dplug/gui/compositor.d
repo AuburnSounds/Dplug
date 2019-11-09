@@ -152,7 +152,7 @@ nothrow @nogc:
                 RansacMode ransacMode;
                 int numRansacInliers;
 
-                version(ransacNormals)
+                version(futurePBRNormals)
                 {
                     // Tuned once by hand to match the other normal computation algorithm
                     enum float FACTOR_Z = 4655.0f;
