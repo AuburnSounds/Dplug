@@ -26,13 +26,6 @@ import dplug.graphics.view;
 
 import dplug.gui.ransac;
 
-// Enable RANSAC normals (more sophisticated normal-from-depth algorithm)
-//version = ransacNormals; 
-//debug = debugRansac;     // show RANSAC information
-
-// Enable plane normals blending (find normals of the 4 neighbour triangles then sum them)
-//version = nicerNormals; 
-
 // Only deals with rendering tiles.
 // If you don't like Dplug default compositing, just make another Compositor
 // and assign the 'compositor' field in GUIGraphics.
@@ -148,47 +141,24 @@ nothrow @nogc:
 
                 vec3f normal = void;
 
-                // For visualization below
-                RansacMode ransacMode;
-                int numRansacInliers;
-
                 version(futurePBRNormals)
                 {
                     // Tuned once by hand to match the other normal computation algorithm
                     enum float FACTOR_Z = 4655.0f;
                     enum float multUshort = 1.0 / FACTOR_Z;
 
-                    float[9] depth9 = void;
-                    depth9[0] = depthPatch[0][0] * multUshort;
-                    depth9[1] = depthPatch[0][1] * multUshort;
-                    depth9[2] = depthPatch[0][2] * multUshort;
-                    depth9[3] = depthPatch[1][0] * multUshort;
-                    depth9[4] = depthPatch[1][1] * multUshort;
-                    depth9[5] = depthPatch[1][2] * multUshort;
-                    depth9[6] = depthPatch[2][0] * multUshort;
-                    depth9[7] = depthPatch[2][1] * multUshort;
-                    depth9[8] = depthPatch[2][2] * multUshort;
-                    normal = computeRANSACNormal(depth9.ptr, 
-                                                 ransacMode, 
-                                                 numRansacInliers);
-                }
-                else version(nicerNormals)
-                {
-                    // Tuned once by hand to match the other normal computation algorithm
-                    enum float FACTOR_Z = 4655.0f;
-                    enum float multUshort = 1.0 / FACTOR_Z;
+                    float[9] depthNeighbourhood = void;
+                    depthNeighbourhood[0] = depthPatch[0][0] * multUshort;
+                    depthNeighbourhood[1] = depthPatch[0][1] * multUshort;
+                    depthNeighbourhood[2] = depthPatch[0][2] * multUshort;
+                    depthNeighbourhood[3] = depthPatch[1][0] * multUshort;
+                    depthNeighbourhood[4] = depthPatch[1][1] * multUshort;
+                    depthNeighbourhood[5] = depthPatch[1][2] * multUshort;
+                    depthNeighbourhood[6] = depthPatch[2][0] * multUshort;
+                    depthNeighbourhood[7] = depthPatch[2][1] * multUshort;
+                    depthNeighbourhood[8] = depthPatch[2][2] * multUshort;
+                    normal = computeRANSACNormal(depthNeighbourhood.ptr);
 
-                    float[9] depth9 = void;
-                    depth9[0] = depthPatch[0][0] * multUshort;
-                    depth9[1] = depthPatch[0][1] * multUshort;
-                    depth9[2] = depthPatch[0][2] * multUshort;
-                    depth9[3] = depthPatch[1][0] * multUshort;
-                    depth9[4] = depthPatch[1][1] * multUshort;
-                    depth9[5] = depthPatch[1][2] * multUshort;
-                    depth9[6] = depthPatch[2][0] * multUshort;
-                    depth9[7] = depthPatch[2][1] * multUshort;
-                    depth9[8] = depthPatch[2][2] * multUshort;
-                    normal = computeAveragedNormal(depth9.ptr, 4); // tuned, 4 modes makes most sense
                 }
                 else
                 {
@@ -394,17 +364,6 @@ nothrow @nogc:
                     emitted += colorLevel5      * 0.00058823f;
                     color += emitted.rgb;
                 }
-
-                /+debug(debugRansac)
-                {
-                    // Show normals
-                    if (tune1 < 0.25f)
-                       color = /*normal;//*/ vec3f(0.5f) + normal * 0.5f;
-                    else if (tune1 < 0.5f)
-                        color = convertRansacModeToColor(ransacMode);
-                    else if (tune1 < 0.75f)
-                        color = convertRansacNumInlierToColor(numRansacInliers);
-                }+/
 
                 // Show depth
                 {
