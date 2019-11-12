@@ -26,6 +26,8 @@ import dplug.graphics.view;
 
 import dplug.gui.ransac;
 
+import inteli.math;
+
 // Only deals with rendering tiles.
 // If you don't like Dplug default compositing, just make another Compositor
 // and assign the 'compositor' field in GUIGraphics.
@@ -306,7 +308,7 @@ nothrow @nogc:
                     if (specularFactor > 1e-3f)
                     {
                         float exponent = _exponentTable[materialHere.r];
-                        specularFactor = specularFactor ^^ exponent;
+                        specularFactor = _mm_pow_ss(specularFactor, exponent);
                         float roughFactor = 10 * (1.0f - roughness) * (1 - metalness * 0.5f);
                         specularFactor = specularFactor * roughFactor;
                         if (specularFactor != 0)

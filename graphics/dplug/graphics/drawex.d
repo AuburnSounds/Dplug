@@ -501,7 +501,7 @@ void blendWithAlpha(SRC, DST)(auto ref SRC srcView, auto ref DST dstView, auto r
 
 
 /// Manually managed image which is also GC-proof.
-class OwnedImage(COLOR)
+final class OwnedImage(COLOR)
 {
 public:
 nothrow:
