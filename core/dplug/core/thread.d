@@ -37,6 +37,9 @@ version(OSX)
 }
 
 
+//debug = threadPoolIsActuallySynchronous;
+
+
 alias ThreadDelegate = void delegate() nothrow @nogc;
 
 
@@ -300,230 +303,271 @@ int getTotalNumberOfCPUs() nothrow @nogc
 alias ThreadPoolDelegate = void delegate(int workItem) nothrow @nogc;
 
 
-/// Rewrite of the ThreadPool using condition variables.
-/// FUTURE: this could be speed-up by using futures. Description of the task
-///         and associated condition+mutex would go in an external struct.
-/// Note: the interface of the thread-pool itself is not thread-safe, you cannot give orders from
-///       multiple threads at once.
-class ThreadPool
+debug(threadPoolIsActuallySynchronous)
 {
-public:
-nothrow:
-@nogc:
-
-    /// Creates a thread-pool.
-    /// Params:
-    ///     numThreads Number of threads to create (0 = auto).
-    ///     maxThreads A maximum number of threads to create (0 = none).
-    ///     stackSize Stack size to create threads with (0 = auto).
-    this(int numThreads = 0, int maxThreads = 0, size_t stackSize = 0)
+    /// Fake synchronous version of the thread pool
+    /// For measurement purpose, makes it easier to measure actual CPU time spent.
+    class ThreadPool
     {
-        // Create sync first
-        _workMutex = makeMutex();
-        _workCondition = makeConditionVariable();
+    public:
+    nothrow:
+    @nogc:
 
-        _finishMutex = makeMutex();
-        _finishCondition = makeConditionVariable();
-
-        // Create threads
-        if (numThreads == 0)
-            numThreads = getTotalNumberOfCPUs();
-
-        // Limit number of threads eventually (this is done to give other software some leeway
-        // in a soft real-time OS)
-        if (maxThreads != 0)
+        this(int numThreads = 0, int maxThreads = 0, size_t stackSize = 0)
         {
-            if (numThreads > maxThreads)
-                numThreads = maxThreads;
         }
 
-        assert(numThreads >= 1);
-
-        _threads = mallocSlice!Thread(numThreads);
-        foreach(ref thread; _threads)
+        ~this()
         {
-            thread = makeThread(&workerThreadFunc, stackSize);
-            thread.start();
         }
+
+        void parallelFor(int count, scope ThreadPoolDelegate dg)
+        {
+            foreach(i; 0..count)
+                dg(cast(int)i);
+        }
+
+        void parallelForAsync(int count, scope ThreadPoolDelegate dg)
+        {
+            foreach(i; 0..count)
+                dg(cast(int)i);
+        }
+
+        /// Wait for completion of the previous parallelFor, if any.
+        // It's always safe to call this function before doing another parallelFor.
+        void waitForCompletion()
+        {            
+        }  
     }
+}
+else
+{
 
-    /// Destroys a thread-pool.
-    ~this()
+    /// Rewrite of the ThreadPool using condition variables.
+    /// FUTURE: this could be speed-up by using futures. Description of the task
+    ///         and associated condition+mutex would go in an external struct.
+    /// Note: the interface of the thread-pool itself is not thread-safe, you cannot give orders from
+    ///       multiple threads at once.
+    class ThreadPool
     {
-        if (_threads !is null)
+    public:
+    nothrow:
+    @nogc:
+
+        /// Creates a thread-pool.
+        /// Params:
+        ///     numThreads Number of threads to create (0 = auto).
+        ///     maxThreads A maximum number of threads to create (0 = none).
+        ///     stackSize Stack size to create threads with (0 = auto).
+        this(int numThreads = 0, int maxThreads = 0, size_t stackSize = 0)
+        {
+            // Create sync first
+            _workMutex = makeMutex();
+            _workCondition = makeConditionVariable();
+
+            _finishMutex = makeMutex();
+            _finishCondition = makeConditionVariable();
+
+            // Create threads
+            if (numThreads == 0)
+                numThreads = getTotalNumberOfCPUs();
+
+            // Limit number of threads eventually (this is done to give other software some leeway
+            // in a soft real-time OS)
+            if (maxThreads != 0)
+            {
+                if (numThreads > maxThreads)
+                    numThreads = maxThreads;
+            }
+
+            assert(numThreads >= 1);
+
+            _threads = mallocSlice!Thread(numThreads);
+            foreach(ref thread; _threads)
+            {
+                thread = makeThread(&workerThreadFunc, stackSize);
+                thread.start();
+            }
+        }
+
+        /// Destroys a thread-pool.
+        ~this()
+        {
+            if (_threads !is null)
+            {
+                assert(_state == State.initial);
+
+                // Put the threadpool is stop state
+                _workMutex.lock();
+                    _stopFlag = true;
+                _workMutex.unlock();
+
+                // Notify all workers
+                _workCondition.notifyAll();
+
+                // Wait for each thread termination
+                foreach(ref thread; _threads)
+                    thread.join();
+
+                // Detroys each thread
+                foreach(ref thread; _threads)
+                    thread.destroy();
+                freeSlice(_threads);
+                _threads = null;
+            }
+        }
+
+        /// Calls the delegate in parallel, with 0..count as index.
+        /// Immediate waiting for completion.
+        void parallelFor(int count, scope ThreadPoolDelegate dg)
         {
             assert(_state == State.initial);
 
-            // Put the threadpool is stop state
-            _workMutex.lock();
-                _stopFlag = true;
-            _workMutex.unlock();
-
-            // Notify all workers
-            _workCondition.notifyAll();
-
-            // Wait for each thread termination
-            foreach(ref thread; _threads)
-                thread.join();
-
-            // Detroys each thread
-            foreach(ref thread; _threads)
-                thread.destroy();
-            freeSlice(_threads);
-            _threads = null;
-        }
-    }
-
-    /// Calls the delegate in parallel, with 0..count as index.
-    /// Immediate waiting for completion.
-    void parallelFor(int count, scope ThreadPoolDelegate dg)
-    {
-        assert(_state == State.initial);
-
-        // Do not launch worker threads for one work-item, not worth it.
-        // (but it is worth it in async).
-        if (count == 1)
-        {
-            dg(0);
-            return;
-        }
-
-        // Unleash parallel threads.
-        parallelForAsync(count, dg);
-
-        // Wait for completion immediately.
-        waitForCompletion(); 
-    }
-
-    /// Same, but does not wait for completion. 
-    /// You cannot have 2 concurrent parallelFor for the same thread-pool.
-    void parallelForAsync(int count, scope ThreadPoolDelegate dg)
-    {
-        assert(_state == State.initial);
-
-        if (count == 0) // no tasks, exit immediately
-            return;
-
-        // At this point we assume all worker threads are waiting for messages
-
-        // Sets the current task
-        _workMutex.lock();
-
-        _taskDelegate = dg;       // immutable during this parallelFor
-        _taskNumWorkItem = count; // immutable during this parallelFor
-        _taskCurrentWorkItem = 0;
-        _taskCompleted = 0;
-
-        _workMutex.unlock();
-
-        if (count >= _threads.length)
-        {
-            // wake up all threads
-            // FUTURE: if number of tasks < number of threads only wake up the necessary amount of threads
-            _workCondition.notifyAll();
-        }
-        else
-        {
-            // Less tasks than threads in the pool: only wake-up some threads.
-            for (int t = 0; t < count; ++t)
-                _workCondition.notifyOne();
-        }
-
-        _state = State.parallelForInProgress;
-    }
-
-    /// Wait for completion of the previous parallelFor, if any.
-    // It's always safe to call this function before doing another parallelFor.
-    void waitForCompletion()
-    {
-        if (_state == State.initial)
-            return; // that means that parallel threads were not launched
-
-        assert(_state == State.parallelForInProgress);
-
-        _finishMutex.lock();
-        scope(exit) _finishMutex.unlock();
-
-        // FUTURE: order thread will be waken up multiple times
-        //         (one for every completed task)
-        //         maybe that can be optimized
-        while (_taskCompleted < _taskNumWorkItem)
-        {
-            _finishCondition.wait(&_finishMutex);
-        }
-
-        _state = State.initial;
-    }
-
-private:
-    Thread[] _threads = null;
-
-    // Used to signal more work
-    UncheckedMutex _workMutex;
-    ConditionVariable _workCondition;
-
-    // Used to signal completion
-    UncheckedMutex _finishMutex;
-    ConditionVariable _finishCondition;
-
-    // These fields represent the current task group (ie. a parallelFor)
-    ThreadPoolDelegate _taskDelegate;
-    int _taskNumWorkItem;     // total number of tasks in this task group
-    int _taskCurrentWorkItem; // current task still left to do (protected by _workMutex)
-    int _taskCompleted;       // every task < taskCompleted has already been completed (protected by _finishMutex)
-
-    bool _stopFlag;
-
-    bool hasWork()
-    {
-        return _taskCurrentWorkItem < _taskNumWorkItem;
-    }
-
-    // Represent the thread-pool state from the user POV
-    enum State
-    {
-        initial,               // tasks can be launched
-        parallelForInProgress, // task were launched, but not waited one
-    }
-    State _state = State.initial;
-
-    // What worker threads do
-    // MAYDO: threads come here with bad context with struct delegates
-    void workerThreadFunc()
-    {
-        while (true)
-        {
-            int workItem = -1;
+            // Do not launch worker threads for one work-item, not worth it.
+            // (but it is worth it in async).
+            if (count == 1)
             {
-                _workMutex.lock();
-                scope(exit) _workMutex.unlock();
-
-                // Wait for notification
-                while (!_stopFlag && !hasWork())
-                    _workCondition.wait(&_workMutex);
-
-                if (_stopFlag && !hasWork())
-                    return;
-
-                assert(hasWork());
-
-                // Pick a task and increment counter
-                workItem = _taskCurrentWorkItem;
-                _taskCurrentWorkItem++;
+                dg(0);
+                return;
             }
 
-            assert(workItem != -1);
+            // Unleash parallel threads.
+            parallelForAsync(count, dg);
 
-            // Do the actual task
-            _taskDelegate(workItem);
+            // Wait for completion immediately.
+            waitForCompletion(); 
+        }
 
-            // signal completion of one more task
+        /// Same, but does not wait for completion. 
+        /// You cannot have 2 concurrent parallelFor for the same thread-pool.
+        void parallelForAsync(int count, scope ThreadPoolDelegate dg)
+        {
+            assert(_state == State.initial);
+
+            if (count == 0) // no tasks, exit immediately
+                return;
+
+            // At this point we assume all worker threads are waiting for messages
+
+            // Sets the current task
+            _workMutex.lock();
+
+            _taskDelegate = dg;       // immutable during this parallelFor
+            _taskNumWorkItem = count; // immutable during this parallelFor
+            _taskCurrentWorkItem = 0;
+            _taskCompleted = 0;
+
+            _workMutex.unlock();
+
+            if (count >= _threads.length)
             {
-                _finishMutex.lock();
-                _taskCompleted++;
-                _finishMutex.unlock();
+                // wake up all threads
+                // FUTURE: if number of tasks < number of threads only wake up the necessary amount of threads
+                _workCondition.notifyAll();
+            }
+            else
+            {
+                // Less tasks than threads in the pool: only wake-up some threads.
+                for (int t = 0; t < count; ++t)
+                    _workCondition.notifyOne();
+            }
 
-                _finishCondition.notifyOne(); // wake-up
+            _state = State.parallelForInProgress;
+        }
+
+        /// Wait for completion of the previous parallelFor, if any.
+        // It's always safe to call this function before doing another parallelFor.
+        void waitForCompletion()
+        {
+            if (_state == State.initial)
+                return; // that means that parallel threads were not launched
+
+            assert(_state == State.parallelForInProgress);
+
+            _finishMutex.lock();
+            scope(exit) _finishMutex.unlock();
+
+            // FUTURE: order thread will be waken up multiple times
+            //         (one for every completed task)
+            //         maybe that can be optimized
+            while (_taskCompleted < _taskNumWorkItem)
+            {
+                _finishCondition.wait(&_finishMutex);
+            }
+
+            _state = State.initial;
+        }
+
+    private:
+        Thread[] _threads = null;
+
+        // Used to signal more work
+        UncheckedMutex _workMutex;
+        ConditionVariable _workCondition;
+
+        // Used to signal completion
+        UncheckedMutex _finishMutex;
+        ConditionVariable _finishCondition;
+
+        // These fields represent the current task group (ie. a parallelFor)
+        ThreadPoolDelegate _taskDelegate;
+        int _taskNumWorkItem;     // total number of tasks in this task group
+        int _taskCurrentWorkItem; // current task still left to do (protected by _workMutex)
+        int _taskCompleted;       // every task < taskCompleted has already been completed (protected by _finishMutex)
+
+        bool _stopFlag;
+
+        bool hasWork()
+        {
+            return _taskCurrentWorkItem < _taskNumWorkItem;
+        }
+
+        // Represent the thread-pool state from the user POV
+        enum State
+        {
+            initial,               // tasks can be launched
+            parallelForInProgress, // task were launched, but not waited one
+        }
+        State _state = State.initial;
+
+        // What worker threads do
+        // MAYDO: threads come here with bad context with struct delegates
+        void workerThreadFunc()
+        {
+            while (true)
+            {
+                int workItem = -1;
+                {
+                    _workMutex.lock();
+                    scope(exit) _workMutex.unlock();
+
+                    // Wait for notification
+                    while (!_stopFlag && !hasWork())
+                        _workCondition.wait(&_workMutex);
+
+                    if (_stopFlag && !hasWork())
+                        return;
+
+                    assert(hasWork());
+
+                    // Pick a task and increment counter
+                    workItem = _taskCurrentWorkItem;
+                    _taskCurrentWorkItem++;
+                }
+
+                assert(workItem != -1);
+
+                // Do the actual task
+                _taskDelegate(workItem);
+
+                // signal completion of one more task
+                {
+                    _finishMutex.lock();
+                    _taskCompleted++;
+                    _finishMutex.unlock();
+
+                    _finishCondition.notifyOne(); // wake-up
+                }
             }
         }
     }

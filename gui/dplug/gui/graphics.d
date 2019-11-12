@@ -42,6 +42,13 @@ alias RMSP = RGBA; // reminder
 // Uncomment to benchmark compositing and devise optimizations.
 //debug = benchmarkGraphics;
 
+debug(benchmarkGraphics)
+{
+    import core.sys.windows.windows;
+    extern(Windows) BOOL QueryThreadCycleTime(HANDLE   ThreadHandle, PULONG64 CycleTime) nothrow @nogc;
+    enum bool preciseMeasurements = true;
+}
+
 // A GUIGraphics is the interface between a plugin client and a IWindow.
 // It is also an UIElement and the root element of the plugin UI hierarchy.
 // You have to derive it to have a GUI.
@@ -814,67 +821,106 @@ int byteStride(int width) pure nothrow @nogc
     return (widthInBytes + (scanLineAlignment - 1)) & ~(scanLineAlignment-1);
 }
 
-
-static class StopWatch
+debug(benchmarkGraphics)
 {
-nothrow:
-@nogc:
-    this(GUIGraphics graphics, string title)
+    static class StopWatch
     {
-        _graphics = graphics;
-        _title = title;
-    }
-
-    void start()
-    {
-        _lastTime = _graphics._window.getTimeMs();
-    }
-
-    enum WARMUP = 30;
-
-    void stop()
-    {
-        uint now = _graphics._window.getTimeMs();
-        int timeDiff = cast(int)(now - _lastTime);
-
-        if (times >= WARMUP)
-            sum += timeDiff; // first samples are discarded
-
-        times++;
-    }
-
-    void displayMean()
-    {
-        if (times > WARMUP)
+    nothrow:
+    @nogc:
+        this(GUIGraphics graphics, string title)
         {
-            import core.stdc.stdio;
-            char[128] buf;
-            sprintf(buf.ptr, "%s %2.2f ms mean", _title.ptr, sum / (times - WARMUP));
-            debugOutput(buf.ptr);
+            _graphics = graphics;
+            _title = title;
+
+            getCurrentThreadHandle();
+        }
+
+        void start()
+        {
+            _lastTime = getTickUs();
+        }
+
+        enum WARMUP = 0;
+
+        void stop()
+        {
+            long now = getTickUs();
+            int timeDiff = cast(int)(now - _lastTime);
+
+            if (times >= WARMUP)
+                sum += timeDiff; // first samples are discarded
+
+            times++;
+        }
+
+        int done = 0;
+
+        void displayMean()
+        {
+            if (!done)
+            {
+                import core.stdc.stdio;
+                char[128] buf;
+                sprintf(buf.ptr, "%s %2.2f ms mean", _title.ptr, (sum * 0.001) / (times - WARMUP));
+                debugOutput(buf.ptr);
+            }
+            done = 1;
+        }
+
+        void debugOutput(const(char)* a)
+        {
+            debugLog(a);
+        }
+
+        GUIGraphics _graphics;
+        string _title;
+        long _lastTime;
+        double sum = 0;
+        int times = 0;
+
+    
+        __gshared HANDLE hThread;
+
+        long qpcFrequency;
+
+        void getCurrentThreadHandle()
+        {
+            hThread = GetCurrentThread();    
+            QueryPerformanceFrequency(&qpcFrequency);
+        }
+
+        long getTickUs() nothrow @nogc
+        {
+            version(Windows)
+            {
+                static if (preciseMeasurements)
+                {
+                    // Note about -precise measurement
+                    // We use the undocumented fact that QueryThreadCycleTime
+                    // seem to return a counter in QPC units.
+                    // That may not be the case everywhere, so -precise is not reliable and should
+                    // never be the default.
+                    import core.sys.windows.windows;
+                    ulong cycles;
+                    BOOL res = QueryThreadCycleTime(hThread, &cycles);
+                    assert(res != 0);
+                    real us = 1000.0 * cast(real)(cycles) / cast(real)(qpcFrequency);
+                    return cast(long)(0.5 + us);
+                }
+                else
+                {
+                    import core.time;
+                    return convClockFreq(MonoTime.currTime.ticks, MonoTime.ticksPerSecond, 1_000_000);
+                }
+            }
+            else
+            {
+                import core.time;
+                return convClockFreq(MonoTime.currTime.ticks, MonoTime.ticksPerSecond, 1_000_000);
+            }
         }
     }
-
-    void debugOutput(const(char)* a)
-    {
-        version(Posix)
-        {
-            import core.stdc.stdio;
-            printf("%s\n", a);
-        }
-        else version(Windows)
-        {
-            import core.sys.windows.windows;
-            OutputDebugStringA(a);
-        }
-    }
-
-    GUIGraphics _graphics;
-    string _title;
-    uint _lastTime;
-    double sum = 0;
-    int times = 0;
 }
-
 void shuffleComponentsRGBA8ToARGB8AndForceAlphaTo255(ImageRef!RGBA image) pure nothrow @nogc
 {
     immutable int w = image.w;
