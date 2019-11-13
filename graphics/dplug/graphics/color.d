@@ -313,6 +313,8 @@ alias Color!(ubyte  , "r", "g", "b", "a") RGBA   ;
 alias Color!(ubyte  , "l"               ) L8     ;
 alias Color!(ushort , "l"               ) L16    ;
 
+alias Color!(float  , "r", "g", "b"     ) RGBf   ;
+alias Color!(float  , "r", "g", "b", "a") RGBAf  ;
 
 
 unittest
