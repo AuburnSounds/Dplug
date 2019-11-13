@@ -15,6 +15,9 @@ import core.stdc.string: memcpy;
 import core.exception;
 
 
+nothrow:
+@nogc:
+
 // This module deals with aligned memory.
 // You'll also find here a non-copyable std::vector equivalent `Vec`.
 
@@ -23,7 +26,7 @@ import core.exception;
 /// Do not mix allocations with different alignment.
 /// Important: `alignedMalloc(0)` does not necessarily return `null`, and its result 
 ///            _has_ to be freed with `alignedFree`.
-void* alignedMalloc(size_t size, size_t alignment) nothrow @nogc
+void* alignedMalloc(size_t size, size_t alignment)
 {
     assert(alignment != 0);
 
@@ -50,7 +53,7 @@ void* alignedMalloc(size_t size, size_t alignment) nothrow @nogc
 /// Frees aligned memory allocated by alignedMalloc or alignedRealloc.
 /// Functionally equivalent to Visual C++ _aligned_free.
 /// Do not mix allocations with different alignment.
-void alignedFree(void* aligned, size_t alignment) nothrow @nogc
+void alignedFree(void* aligned, size_t alignment)
 {
     // Short-cut and use the C allocator to avoid overhead if no alignment
     if (alignment == 1)
@@ -67,59 +70,26 @@ void alignedFree(void* aligned, size_t alignment) nothrow @nogc
     free(*rawLocation);
 }
 
-/// Reallocates an aligned memory chunk allocated by alignedMalloc or alignedRealloc.
-/// Functionally equivalent to Visual C++ _aligned_realloc.
+/// Reallocates an aligned memory chunk allocated by `alignedMalloc` or `alignedRealloc`.
+/// Functionally equivalent to Visual C++ `_aligned_realloc`.
 /// Do not mix allocations with different alignment.
 /// Important: `alignedRealloc(p, 0)` does not necessarily return `null`, and its result 
 ///            _has_ to be freed with `alignedFree`.
-@nogc void* alignedRealloc(void* aligned, size_t size, size_t alignment) nothrow
+void* alignedRealloc(void* aligned, size_t size, size_t alignment)
 {
-    // Short-cut and use the C allocator to avoid overhead if no alignment
-    if (alignment == 1)
-    {
-        // C99:
-        // Implementation-defined behavior
-        // Whether the calloc, malloc, and realloc functions return a null pointer
-        // or a pointer to an allocated object when the size requested is zero.
-        // In any case, we'll have to `free()` it.
-        return realloc(aligned, size);
-    }
-
-    if (aligned is null)
-        return alignedMalloc(size, alignment);
-
-    assert(alignment != 0);
-    assert(isPointerAligned(aligned, alignment));
-
-    size_t previousSize = *cast(size_t*)(cast(char*)aligned - size_t.sizeof * 2);
-
-    void* raw = *cast(void**)(cast(char*)aligned - size_t.sizeof);
-    size_t request = requestedSize(size, alignment);
-
-    // Heuristic: if a requested size is within 50% to 100% of what is already allocated
-    //            then exit with the same pointer
-    if ( (previousSize < request * 4) && (request <= previousSize) )
-        return aligned;
-
-    void* newRaw = malloc(request);
-    static if( __VERSION__ > 2067 ) // onOutOfMemoryError wasn't nothrow before July 2014
-    {
-        if (request > 0 && newRaw == null) // realloc(0) can validly return anything
-            onOutOfMemoryError();
-    }
-
-    void* newAligned = storeRawPointerPlusSizeAndReturnAligned(newRaw, request, alignment);
-    size_t minSize = size < previousSize ? size : previousSize;
-    memcpy(newAligned, aligned, minSize);
-
-    // Free previous data
-    alignedFree(aligned, alignment);
-    assert(isPointerAligned(newAligned, alignment));
-    return newAligned;
+    return alignedReallocImpl!true(aligned, size, alignment);
 }
 
+
+/// Same as `alignedRealloc` but does not preserve data.
+void* alignedReallocDiscard(void* aligned, size_t size, size_t alignment)
+{
+    return alignedReallocImpl!false(aligned, size, alignment);
+}
+
+
 /// Returns: `true` if the pointer is suitably aligned.
-bool isPointerAligned(void* p, size_t alignment) pure nothrow @nogc
+bool isPointerAligned(void* p, size_t alignment) pure
 {
     assert(alignment != 0);
     return ( cast(size_t)p & (alignment - 1) ) == 0;
@@ -127,8 +97,58 @@ bool isPointerAligned(void* p, size_t alignment) pure nothrow @nogc
 
 private
 {
+    void* alignedReallocImpl(bool PreserveDataIfResized)(void* aligned, size_t size, size_t alignment)
+    {
+        // Short-cut and use the C allocator to avoid overhead if no alignment
+        if (alignment == 1)
+        {
+            // C99:
+            // Implementation-defined behavior
+            // Whether the calloc, malloc, and realloc functions return a null pointer
+            // or a pointer to an allocated object when the size requested is zero.
+            // In any case, we'll have to `free()` it.
+            return realloc(aligned, size);
+        }
+
+        if (aligned is null)
+            return alignedMalloc(size, alignment);
+
+        assert(alignment != 0);
+        assert(isPointerAligned(aligned, alignment));
+
+        size_t previousSize = *cast(size_t*)(cast(char*)aligned - size_t.sizeof * 2);
+
+        void* raw = *cast(void**)(cast(char*)aligned - size_t.sizeof);
+        size_t request = requestedSize(size, alignment);
+
+        // Heuristic: if a requested size is within 50% to 100% of what is already allocated
+        //            then exit with the same pointer
+        if ( (previousSize < request * 4) && (request <= previousSize) )
+            return aligned;
+
+        void* newRaw = malloc(request);
+        static if( __VERSION__ > 2067 ) // onOutOfMemoryError wasn't nothrow before July 2014
+        {
+            if (request > 0 && newRaw == null) // realloc(0) can validly return anything
+                onOutOfMemoryError();
+        }
+
+        void* newAligned = storeRawPointerPlusSizeAndReturnAligned(newRaw, request, alignment);
+
+        static if (PreserveDataIfResized)
+        {
+            size_t minSize = size < previousSize ? size : previousSize;
+            memcpy(newAligned, aligned, minSize);
+        }
+
+        // Free previous data
+        alignedFree(aligned, alignment);
+        assert(isPointerAligned(newAligned, alignment));
+        return newAligned;
+    }
+
     /// Returns: next pointer aligned with alignment bytes.
-    void* nextAlignedPointer(void* start, size_t alignment) pure nothrow @nogc
+    void* nextAlignedPointer(void* start, size_t alignment) pure
     {
         import dplug.core.math : nextMultipleOf;
         return cast(void*)nextMultipleOf(cast(size_t)(start), alignment);
@@ -136,14 +156,14 @@ private
 
     // Returns number of bytes to actually allocate when asking
     // for a particular alignement
-    @nogc size_t requestedSize(size_t askedSize, size_t alignment) pure nothrow
+    size_t requestedSize(size_t askedSize, size_t alignment) pure
     {
         enum size_t pointerSize = size_t.sizeof;
         return askedSize + alignment - 1 + pointerSize * 2;
     }
 
     // Store pointer given my malloc, and size in bytes initially requested (alignedRealloc needs it)
-    @nogc void* storeRawPointerPlusSizeAndReturnAligned(void* raw, size_t size, size_t alignment) nothrow
+    void* storeRawPointerPlusSizeAndReturnAligned(void* raw, size_t size, size_t alignment)
     {
         enum size_t pointerSize = size_t.sizeof;
         char* start = cast(char*)raw + pointerSize * 2;
@@ -208,7 +228,7 @@ unittest
 ///    alignment = Alignement if the slice has allocation requirements, 1 else. 
 ///                Must match for deallocation.
 ///
-void reallocBuffer(T)(ref T[] buffer, size_t length, int alignment = 1) nothrow @nogc
+void reallocBuffer(T)(ref T[] buffer, size_t length, int alignment = 1)
 {
     static if (is(T == struct) && hasElaborateDestructor!T)
     {
@@ -232,7 +252,7 @@ void reallocBuffer(T)(ref T[] buffer, size_t length, int alignment = 1) nothrow 
 
 
 /// Returns: A newly created `Vec`.
-Vec!T makeVec(T)(size_t initialSize = 0, int alignment = 1) nothrow @nogc
+Vec!T makeVec(T)(size_t initialSize = 0, int alignment = 1)
 {
     return Vec!T(initialSize, alignment);
 }

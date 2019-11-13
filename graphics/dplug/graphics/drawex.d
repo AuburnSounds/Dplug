@@ -548,7 +548,8 @@ nothrow:
         this.w = w;
         this.h = h;
         size_t sizeInBytes = w * h * COLOR.sizeof;
-        _pixels = cast(COLOR*) alignedRealloc(_pixels, sizeInBytes, 128);
+        // We don't need to preserve former data.
+        _pixels = cast(COLOR*) alignedReallocDiscard(_pixels, sizeInBytes, 128);
     }
 
     /// Returns: A slice of all pixels.
