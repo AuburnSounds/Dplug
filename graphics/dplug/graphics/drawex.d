@@ -533,11 +533,17 @@ nothrow:
     }
 
     /// Returns an array for the pixels at row y.
-    COLOR[] scanline(int y) pure nothrow @nogc
+    COLOR[] scanline(int y) pure
     {
         assert(y>=0 && y<h);
         auto start = w*y;
         return _pixels[start..start+w];
+    }
+
+    COLOR* scanlinePtr(int y) pure
+    {
+        assert(y>=0 && y<h);
+        return &_pixels[w * y];
     }
 
     mixin DirectView;

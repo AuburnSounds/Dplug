@@ -89,18 +89,19 @@ nothrow @nogc:
         }
 
         _normalBuffer = mallocNew!(OwnedImage!RGBf)();
-      //  _accumBuffer = mallocNew!(OwnedImage!RGBAf)();
+        _accumBuffer = mallocNew!(OwnedImage!RGBAf)();
     }
 
     ~this()
     {
         _normalBuffer.destroyFree();
-    //    _accumBuffer.destroyFree();
+        _accumBuffer.destroyFree();
     }
 
     override void resizeBuffers(int width, int height)
     {
         _normalBuffer.size(width, height);
+        _accumBuffer.size(width, height);
     }
 
     /// Don't like this rendering? Feel free to override this method.
@@ -116,7 +117,7 @@ nothrow @nogc:
         OwnedImage!L16 depthLevel0 = depthMap.levels[0];
         int depthPitch = depthLevel0.pitchInSamples(); // pitch of depth buffer, in L16 units
 
-        // Compute normals
+        // Compute normals (read depth, write to _normalBuffer)
         {            
             for (int j = area.min.y; j < area.max.y; ++j)
             {
@@ -172,11 +173,52 @@ nothrow @nogc:
             }
         }
 
+        static immutable float div255 = 1 / 255.0f;
+
+        // Add ambient component
+        {
+            for (int j = area.min.y; j < area.max.y; ++j)
+            {
+                RGBA* diffuseScan = diffuseMap.levels[0].scanlinePtr(j);
+                const(L16*) depthScan = depthLevel0.scanlinePtr(j + DEPTH_BORDER);
+                RGBAf* accumScan = _accumBuffer.scanlinePtr(j);
+
+                for (int i = area.min.x; i < area.max.x; ++i)
+                {
+                    RGBA ibaseColor = diffuseScan[i];
+                    vec3f baseColor = vec3f(ibaseColor.r, ibaseColor.g, ibaseColor.b) * div255;
+                    const(L16)* depthHere = depthScan + i + DEPTH_BORDER;
+
+                    float px = DEPTH_BORDER + i + 0.5f;
+                    float py = DEPTH_BORDER + j + 0.5f;
+
+                    float avgDepthHere =
+                        ( depthMap.linearSample(1, px, py)
+                        + depthMap.linearSample(2, px, py)
+                        + depthMap.linearSample(3, px, py)
+                        + depthMap.linearSample(4, px, py) ) * 0.25f;
+
+                    float diff = (*depthHere).l - avgDepthHere;
+                    float cavity = void;
+                    if (diff >= 0)
+                        cavity = 1;
+                    else if (diff < -23040)
+                        cavity = 0;
+                    else
+                    {
+                        static immutable float divider23040 = 1.0f / 23040;
+                        cavity = (diff + 23040) * divider23040;
+                    }
+                    vec4f color = vec4f(baseColor, 0.0f) * (cavity * ambientLight);
+                    accumScan[i] = RGBAf(color.r, color.g, color.b, color.a);
+                }
+            }
+        }
+
         // Other passes
 
         float invW = 1.0f / w;
         float invH = 1.0f / h;
-        static immutable float div255 = 1 / 255.0f;
 
         for (int j = area.min.y; j < area.max.y; ++j)
         {
@@ -184,6 +226,7 @@ nothrow @nogc:
             RGBA* materialScan = materialMap.levels[0].scanline(j).ptr;
             RGBA* diffuseScan = diffuseMap.levels[0].scanline(j).ptr;
             RGBf* normalScan = _normalBuffer.scanline(j).ptr;
+            RGBAf* accumScan = _accumBuffer.scanlinePtr(j);
             const(L16*) depthScan = depthLevel0.scanline(j + DEPTH_BORDER).ptr;
 
             for (int i = area.min.x; i < area.max.x; ++i)
@@ -205,32 +248,6 @@ nothrow @nogc:
                 float roughness = materialHere.r * div255;
                 float metalness = materialHere.g * div255;
                 float specular  = materialHere.b * div255;
-
-                // Add ambient component
-                {
-                    float px = DEPTH_BORDER + i + 0.5f;
-                    float py = DEPTH_BORDER + j + 0.5f;
-
-                    float avgDepthHere =
-                        ( depthMap.linearSample(1, px, py)
-                            + depthMap.linearSample(2, px, py)
-                            + depthMap.linearSample(3, px, py)
-                            + depthMap.linearSample(4, px, py) ) * 0.25f;
-
-                    float diff = (*depthHere).l - avgDepthHere;
-                    float cavity = void;
-                    if (diff >= 0)
-                        cavity = 1;
-                    else if (diff < -23040)
-                        cavity = 0;
-                    else
-                    {
-                        static immutable float divider23040 = 1.0f / 23040;
-                        cavity = (diff + 23040) * divider23040;
-                    }
-                    if (cavity > 0)
-                        color += baseColor * (cavity * ambientLight);
-                }
 
                 // cast shadows, ie. enlight what isn't in shadows
                 {
@@ -382,6 +399,9 @@ nothrow @nogc:
                     emitted += colorLevel5      * 0.00058823f;
                     color += emitted.rgb;
                 }
+
+                RGBAf accum = accumScan[i];
+                color += vec3f(accum.r, accum.g, accum.b);
 
                 // Show depth
                 {
