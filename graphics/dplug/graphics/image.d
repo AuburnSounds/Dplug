@@ -38,6 +38,20 @@ struct ImageRef(COLOR)
 	}
 
 	mixin DirectView;
+
+    /// Returns a cropped view of the same `ImageRef`.
+    ImageRef!COLOR cropBorder(int borderPixels)
+    {
+        assert(w >= 2*borderPixels);
+        assert(h >= 2*borderPixels);
+
+        ImageRef cropped;
+        cropped.w = w - 2*borderPixels;
+        cropped.h = h - 2*borderPixels;
+        cropped.pitch = pitch;
+        cropped.pixels = cast(COLOR*)(cast(ubyte*)pixels + borderPixels*pitch + borderPixels*COLOR.sizeof);
+        return cropped;
+    }
 }
 
 unittest
