@@ -50,6 +50,8 @@ nothrow:
 /// "Physically Based"-style rendering
 class PBRCompositor : ICompositor
 {
+    enum DEPTH_BORDER = 1; // MUST be kept in sync with the one in GUIGraphics
+
 nothrow @nogc:
     // light 1 used for key lighting and shadows
     // always coming from top-right
@@ -122,11 +124,7 @@ nothrow @nogc:
                     OwnedImage!L16 depthLevel0 = depthMap.levels[0];
                     for (int line = 0; line < 3; ++line)
                     {
-                        int lineIndex = j - 1 + line;
-                        if (lineIndex < 0)
-                            lineIndex = 0;
-                        if (lineIndex > h - 1)
-                            lineIndex = h - 1;
+                        int lineIndex = j - 1 + DEPTH_BORDER + line;
                         depth_scan[line] = depthLevel0.scanline(lineIndex).ptr;
                     }
                 }
@@ -141,12 +139,7 @@ nothrow @nogc:
                         // Turns out DMD like hand-unrolling:(
                         for (int k = 0; k < 3; ++k)
                         {
-                            int colIndex = i - 1 + k;
-                            if (colIndex < 0)
-                                colIndex = 0;
-                            if (colIndex > w - 1)
-                                colIndex = w - 1;
-
+                            int colIndex = i - 1 + DEPTH_BORDER + k;
                             depthPatch[0][k] = depth_scan.ptr[0][colIndex].l;
                             depthPatch[1][k] = depth_scan.ptr[1][colIndex].l;
                             depthPatch[2][k] = depth_scan.ptr[2][colIndex].l;
@@ -213,11 +206,7 @@ nothrow @nogc:
                 OwnedImage!L16 depthLevel0 = depthMap.levels[0];
                 for (int line = 0; line < 3; ++line)
                 {
-                    int lineIndex = j - 1 + line;
-                    if (lineIndex < 0)
-                        lineIndex = 0;
-                    if (lineIndex > h - 1)
-                        lineIndex = h - 1;
+                    int lineIndex = j - 1 + DEPTH_BORDER + line;
                     depth_scan[line] = depthLevel0.scanline(lineIndex).ptr;
                 }
             }
@@ -237,12 +226,7 @@ nothrow @nogc:
                     // Turns out DMD like hand-unrolling:(
                     for (int k = 0; k < 3; ++k)
                     {
-                        int colIndex = i - 1 + k;
-                        if (colIndex < 0)
-                            colIndex = 0;
-                        if (colIndex > w - 1)
-                            colIndex = w - 1;
-
+                        int colIndex = i - 1 + DEPTH_BORDER + k;
                         depthPatch[0][k] = depth_scan.ptr[0][colIndex].l;
                         depthPatch[1][k] = depth_scan.ptr[1][colIndex].l;
                         depthPatch[2][k] = depth_scan.ptr[2][colIndex].l;
@@ -266,8 +250,8 @@ nothrow @nogc:
 
                 // Add ambient component
                 {
-                    float px = i + 0.5f;
-                    float py = j + 0.5f;
+                    float px = DEPTH_BORDER + i + 0.5f;
+                    float py = DEPTH_BORDER + j + 0.5f;
 
                     float avgDepthHere =
                         ( depthMap.linearSample(1, px, py)

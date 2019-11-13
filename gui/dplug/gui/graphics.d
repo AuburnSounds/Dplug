@@ -307,6 +307,11 @@ protected:
 
     // Depth values for the whole UI.
     Mipmap!L16 _depthMap;
+    enum DEPTH_BORDER = 1;
+
+    // No other value is actually supported
+    // Specifically, what doesn't work is border replication before mipmapping.
+    static assert(DEPTH_BORDER == 1); 
 
     // Depth values for the whole UI.
     Mipmap!RGBA _materialMap;
@@ -568,9 +573,12 @@ protected:
 
         reflow(box2i(0, 0, _askedWidth, _askedHeight));
 
+        // Resize compositor buffers
+        compositor.resizeBuffers(width, height);
+
         // FUTURE: maybe not destroy the whole mipmap?
         _diffuseMap.size(5, width, height);
-        _depthMap.size(4, width, height);
+        _depthMap.size(4, width + 2 * DEPTH_BORDER, height + 2 * DEPTH_BORDER);
         _materialMap.size(0, width, height);
 
         // Extends buffer
@@ -646,7 +654,7 @@ protected:
         enum bool parallelDraw = true;
 
         auto diffuseRef = _diffuseMap.levels[0].toRef();
-        auto depthRef = _depthMap.levels[0].toRef();
+        auto depthRef = _depthMap.levels[0].toRef().cropBorder(DEPTH_BORDER);
         auto materialRef = _materialMap.levels[0].toRef();
 
         // No need to launch threads only to have them realize there isn't anything to do
@@ -768,7 +776,76 @@ protected:
             }
             else
             {
-                // depth
+                int W = _askedWidth;
+                int H = _askedHeight;
+
+                // Depth is special since it has a border!
+
+                // Areas have to be offset by (DEPTH_BORDER, DEPTH_BORDER)
+                // to apply to depth.
+                foreach(ref box2i area; _updateRectScratch[i])
+                {
+                     area = area.translate(vec2i(DEPTH_BORDER, DEPTH_BORDER));
+                }
+
+                // BORDER REPLICATION.
+                // If an area is touching left border, then the border needs replication.
+                // If an area is touching left and top border, then the border needs replication and the corner pixel should be filled too.
+                // Same for all four corners. Border only applies to level 0.
+                //
+                // OOOOOOOxxxxxxxxxxxxxxx
+                // Ooooooo
+                // Oo    o
+                // Oo    o    <------ if the update area is made of 'o', then the area to replicate is 'O'
+                // Ooooooo
+                // x
+                // x
+                OwnedImage!L16 level0 = _depthMap.levels[0];
+
+                // Note: not really tested visually
+                foreach(box2i area; _updateRectScratch[i])
+                {
+                    bool touchLeft   = (area.min.x == DEPTH_BORDER);
+                    bool touchTop    = (area.min.y == DEPTH_BORDER);
+                    bool touchRight  = (area.max.x == W + DEPTH_BORDER);
+                    bool touchBottom = (area.max.y == H + DEPTH_BORDER);
+
+                    if (touchTop)
+                    {
+                        if (touchLeft) level0[0, 0] = level0[1, 1];
+                        int minX = area.min.x;
+                        int maxX = area.max.x;
+                        level0.scanline(0)[minX..maxX] = level0.scanline(1)[minX..maxX];
+                        if (touchRight) level0[W+1, 0] = level0[W, 1];
+                    }
+
+                    if (touchLeft)
+                    {
+                        for (int y = area.min.y; y < area.max.y; ++y)
+                        {
+                            level0[0, y] = level0[1, y];
+                        }
+                    }
+
+                    if (touchRight)
+                    {
+                        for (int y = area.min.y; y < area.max.y; ++y)
+                        {
+                            level0[W+1, y] = level0[W, y];
+                        }
+                    }
+
+                    if (touchBottom)
+                    {
+                        if (touchLeft) level0[0, H+1] = level0[1, H];
+                        int minX = area.min.x;
+                        int maxX = area.max.x;
+                        level0.scanline(H+1)[minX..maxX] = level0.scanline(H)[minX..maxX];
+                        if (touchRight) level0[W+1, H+1] = level0[W, H];
+                    }
+                }
+
+                // DEPTH MIPMAPPING
                 Mipmap!L16 mipmap = _depthMap;
                 foreach(level; 1 .. mipmap.numLevels())
                 {
@@ -847,24 +924,20 @@ debug(benchmarkGraphics)
             long now = getTickUs();
             int timeDiff = cast(int)(now - _lastTime);
 
-            if (times >= WARMUP)
-                sum += timeDiff; // first samples are discarded
+            //if (times >= WARMUP)
+            if (sum < timeDiff)
+                sum = timeDiff;
+                //sum += timeDiff; // first samples are discarded
 
-            times++;
+            times = 1;
         }
-
-        int done = 0;
 
         void displayMean()
         {
-            if (!done)
-            {
-                import core.stdc.stdio;
-                char[128] buf;
-                sprintf(buf.ptr, "%s %2.2f ms mean", _title.ptr, (sum * 0.001) / (times - WARMUP));
-                debugOutput(buf.ptr);
-            }
-            done = 1;
+            import core.stdc.stdio;
+            char[128] buf;
+            sprintf(buf.ptr, "%s %2.3f ms mean", _title.ptr, (sum * 0.001) / (times - WARMUP));
+            debugOutput(buf.ptr);
         }
 
         void debugOutput(const(char)* a)
