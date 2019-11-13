@@ -215,6 +215,89 @@ nothrow @nogc:
             }
         }
 
+        // Add a primary light that cast shadows
+        {
+            enum float fallOff = 0.78f;
+
+            int samples = 11;
+
+            static immutable float[11] weights =
+            [
+                1.0f,
+                fallOff,
+                fallOff ^^ 2,
+                fallOff ^^ 3,
+                fallOff ^^ 4,
+                fallOff ^^ 5,
+                fallOff ^^ 6,
+                fallOff ^^ 7,
+                fallOff ^^ 8,
+                fallOff ^^ 9,
+                fallOff ^^ 10
+            ];
+
+            enum float totalWeights = (1.0f - (fallOff ^^ 11)) / (1.0f - fallOff) - 1;
+            enum float invTotalWeights = 1 / (1.7f * totalWeights);
+
+            for (int j = area.min.y; j < area.max.y; ++j)
+            {
+                RGBA* diffuseScan = diffuseMap.levels[0].scanlinePtr(j);
+
+                const(L16*) depthScan = depthLevel0.scanlinePtr(j + DEPTH_BORDER);
+                RGBAf* accumScan = _accumBuffer.scanlinePtr(j);
+
+                for (int i = area.min.x; i < area.max.x; ++i)
+                {
+                    const(L16)* depthHere = depthScan + i + DEPTH_BORDER;
+                    RGBA ibaseColor = diffuseScan[i];
+                    vec3f baseColor = vec3f(ibaseColor.r, ibaseColor.g, ibaseColor.b) * div255;
+
+                    float lightPassed = 0.0f;
+
+                    int depthCenter = (*depthHere).l;
+                    for (int sample = 1; sample < samples; ++sample)
+                    {
+                        int x1 = i + sample;
+                        if (x1 >= w)
+                            x1 = w - 1;
+                        int x2 = i - sample;
+                        if (x2 < 0)
+                            x2 = 0;
+                        int y = j - sample;
+                        if (y < 0)
+                            y = 0;
+                        int z = depthCenter + sample; // ???
+                        L16* scan = depthLevel0.scanline(y + DEPTH_BORDER).ptr;
+                        int diff1 = z - scan[x1].l; // FUTURE: use pointer offsets here instead of opIndex
+                        int diff2 = z - scan[x2].l;
+
+                        float contrib1 = void, 
+                            contrib2 = void;
+
+                        static immutable float divider15360 = 1.0f / 15360;
+
+                        if (diff1 >= 0)
+                            contrib1 = 1;
+                        else if (diff1 < -15360)
+                            contrib1 = 0;
+                        else
+                            contrib1 = (diff1 + 15360) * divider15360;
+
+                        if (diff2 >= 0)
+                            contrib2 = 1;
+                        else if (diff2 < -15360)
+                            contrib2 = 0;
+                        else
+                            contrib2 = (diff2 + 15360) * divider15360;
+
+                        lightPassed += (contrib1 + contrib2 * 0.7f) * weights[sample];
+                    }
+                    vec3f color = baseColor * light1Color * (lightPassed * invTotalWeights);
+                    accumScan[i] += RGBAf(color.r, color.g, color.b, 0.0f);
+                }
+            }
+        }
+
         // Other passes
 
         float invW = 1.0f / w;
@@ -249,72 +332,6 @@ nothrow @nogc:
                 float metalness = materialHere.g * div255;
                 float specular  = materialHere.b * div255;
 
-                // cast shadows, ie. enlight what isn't in shadows
-                {
-                    enum float fallOff = 0.78f;
-
-                    int samples = 11;
-
-                    static immutable float[11] weights =
-                    [
-                        1.0f,
-                        fallOff,
-                        fallOff ^^ 2,
-                        fallOff ^^ 3,
-                        fallOff ^^ 4,
-                        fallOff ^^ 5,
-                        fallOff ^^ 6,
-                        fallOff ^^ 7,
-                        fallOff ^^ 8,
-                        fallOff ^^ 9,
-                        fallOff ^^ 10
-                    ];
-
-                    enum float totalWeights = (1.0f - (fallOff ^^ 11)) / (1.0f - fallOff) - 1;
-                    enum float invTotalWeights = 1 / (1.7f * totalWeights);
-
-                    float lightPassed = 0.0f;
-
-                    int depthCenter = (*depthHere).l;
-                    for (int sample = 1; sample < samples; ++sample)
-                    {
-                        int x1 = i + sample;
-                        if (x1 >= w)
-                            x1 = w - 1;
-                        int x2 = i - sample;
-                        if (x2 < 0)
-                            x2 = 0;
-                        int y = j - sample;
-                        if (y < 0)
-                            y = 0;
-                        int z = depthCenter + sample; // ???
-                        L16* scan = depthLevel0.scanline(y + DEPTH_BORDER).ptr;
-                        int diff1 = z - scan[x1].l; // FUTURE: use pointer offsets here instead of opIndex
-                        int diff2 = z - scan[x2].l;
-
-                        float contrib1 = void, 
-                              contrib2 = void;
-
-                        static immutable float divider15360 = 1.0f / 15360;
-
-                        if (diff1 >= 0)
-                            contrib1 = 1;
-                        else if (diff1 < -15360)
-                            contrib1 = 0;
-                        else
-                            contrib1 = (diff1 + 15360) * divider15360;
-
-                        if (diff2 >= 0)
-                            contrib2 = 1;
-                        else if (diff2 < -15360)
-                            contrib2 = 0;
-                        else
-                            contrib2 = (diff2 + 15360) * divider15360;
-
-                        lightPassed += (contrib1 + contrib2 * 0.7f) * weights[sample];
-                    }
-                    color += baseColor * light1Color * (lightPassed * invTotalWeights);
-                }
 
                 // secundary light
                 {
