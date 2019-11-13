@@ -34,11 +34,17 @@ import inteli.math;
 // However for now mipmaps are not negotiable, they will get generated outside this compositor.
 interface ICompositor
 {
-    void compositeTile(ImageRef!RGBA wfb, WindowPixelFormat pf, box2i area,
+nothrow:
+@nogc:
+    void compositeTile(ImageRef!RGBA wfb, 
+                       WindowPixelFormat pf, 
+                       box2i area,
                        Mipmap!RGBA diffuseMap,
                        Mipmap!RGBA materialMap,
                        Mipmap!L16 depthMap,
-                       Mipmap!RGBA skybox) nothrow @nogc;
+                       Mipmap!RGBA skybox);
+
+    void resizeBuffers(int width, int height);
 }
 
 /// "Physically Based"-style rendering
@@ -79,6 +85,20 @@ nothrow @nogc:
         {
             _exponentTable[roughByte] = 0.8f * exp( (1-roughByte / 255.0f) * 5.5f);
         }
+
+        _normalBuffer = mallocNew!(OwnedImage!RGBf)();
+      //  _accumBuffer = mallocNew!(OwnedImage!RGBAf)();
+    }
+
+    ~this()
+    {
+        _normalBuffer.destroyFree();
+    //    _accumBuffer.destroyFree();
+    }
+
+    override void resizeBuffers(int width, int height)
+    {
+        _normalBuffer.size(width, height);
     }
 
     /// Don't like this rendering? Feel free to override this method.
@@ -90,9 +110,96 @@ nothrow @nogc:
     {
         ushort[3][3] depthPatch = void;
         L16*[3] depth_scan = void;
-
         int w = diffuseMap.levels[0].w;
         int h = diffuseMap.levels[0].h;
+
+        // Compute normals
+        {            
+            for (int j = area.min.y; j < area.max.y; ++j)
+            {
+                // clamp to existing lines
+                {
+                    OwnedImage!L16 depthLevel0 = depthMap.levels[0];
+                    for (int line = 0; line < 3; ++line)
+                    {
+                        int lineIndex = j - 1 + line;
+                        if (lineIndex < 0)
+                            lineIndex = 0;
+                        if (lineIndex > h - 1)
+                            lineIndex = h - 1;
+                        depth_scan[line] = depthLevel0.scanline(lineIndex).ptr;
+                    }
+                }
+
+                RGBf* normalScan = _normalBuffer.scanline(j).ptr;
+
+                for (int i = area.min.x; i < area.max.x; ++i)
+                {
+                    // clamp to existing columns
+                    {
+                        // Get depth for a 3x3 patch
+                        // Turns out DMD like hand-unrolling:(
+                        for (int k = 0; k < 3; ++k)
+                        {
+                            int colIndex = i - 1 + k;
+                            if (colIndex < 0)
+                                colIndex = 0;
+                            if (colIndex > w - 1)
+                                colIndex = w - 1;
+
+                            depthPatch[0][k] = depth_scan.ptr[0][colIndex].l;
+                            depthPatch[1][k] = depth_scan.ptr[1][colIndex].l;
+                            depthPatch[2][k] = depth_scan.ptr[2][colIndex].l;
+                        }
+                    }
+
+                    vec3f normal = void;
+
+                    version(futurePBRNormals)
+                    {
+                        // Tuned once by hand to match the other normal computation algorithm
+                        enum float FACTOR_Z = 4655.0f;
+                        enum float multUshort = 1.0 / FACTOR_Z;
+
+                        float[9] depthNeighbourhood = void;
+                        depthNeighbourhood[0] = depthPatch[0][0] * multUshort;
+                        depthNeighbourhood[1] = depthPatch[0][1] * multUshort;
+                        depthNeighbourhood[2] = depthPatch[0][2] * multUshort;
+                        depthNeighbourhood[3] = depthPatch[1][0] * multUshort;
+                        depthNeighbourhood[4] = depthPatch[1][1] * multUshort;
+                        depthNeighbourhood[5] = depthPatch[1][2] * multUshort;
+                        depthNeighbourhood[6] = depthPatch[2][0] * multUshort;
+                        depthNeighbourhood[7] = depthPatch[2][1] * multUshort;
+                        depthNeighbourhood[8] = depthPatch[2][2] * multUshort;
+                        normal = computeRANSACNormal(depthNeighbourhood.ptr);
+                    }
+                    else
+                    {
+                        // compute normal
+                        float sx = depthPatch[0][0]
+                            + depthPatch[1][0] * 2
+                            + depthPatch[2][0]
+                            - ( depthPatch[0][2]
+                                + depthPatch[1][2] * 2
+                               + depthPatch[2][2]);
+
+                        float sy = depthPatch[2][0] + depthPatch[2][1] * 2 + depthPatch[2][2]
+                            - ( depthPatch[0][0] + depthPatch[0][1] * 2 + depthPatch[0][2]);
+
+                        // this factor basically tweak normals to make the UI flatter or not
+                        // if you change normal filtering, retune this
+                        enum float sz = 260.0f * 257.0f / 1.8f; 
+
+                        normal = vec3f(sx, sy, sz);
+                        normal.fastNormalize(); // this makes very, very little difference in output vs normalize
+                    }
+                    normalScan[i] = RGBf(normal.x, normal.y, normal.z);
+                }
+            }
+        }
+
+        // Other passes
+
         float invW = 1.0f / w;
         float invH = 1.0f / h;
         static immutable float div255 = 1 / 255.0f;
@@ -117,6 +224,7 @@ nothrow @nogc:
 
             RGBA* materialScan = materialMap.levels[0].scanline(j).ptr;
             RGBA* diffuseScan = diffuseMap.levels[0].scanline(j).ptr;
+            RGBf* normalScan = _normalBuffer.scanline(j).ptr;
 
             for (int i = area.min.x; i < area.max.x; ++i)
             {
@@ -141,47 +249,8 @@ nothrow @nogc:
                     }
                 }
 
-                vec3f normal = void;
-
-                version(futurePBRNormals)
-                {
-                    // Tuned once by hand to match the other normal computation algorithm
-                    enum float FACTOR_Z = 4655.0f;
-                    enum float multUshort = 1.0 / FACTOR_Z;
-
-                    float[9] depthNeighbourhood = void;
-                    depthNeighbourhood[0] = depthPatch[0][0] * multUshort;
-                    depthNeighbourhood[1] = depthPatch[0][1] * multUshort;
-                    depthNeighbourhood[2] = depthPatch[0][2] * multUshort;
-                    depthNeighbourhood[3] = depthPatch[1][0] * multUshort;
-                    depthNeighbourhood[4] = depthPatch[1][1] * multUshort;
-                    depthNeighbourhood[5] = depthPatch[1][2] * multUshort;
-                    depthNeighbourhood[6] = depthPatch[2][0] * multUshort;
-                    depthNeighbourhood[7] = depthPatch[2][1] * multUshort;
-                    depthNeighbourhood[8] = depthPatch[2][2] * multUshort;
-                    normal = computeRANSACNormal(depthNeighbourhood.ptr);
-
-                }
-                else
-                {
-                    // compute normal
-                    float sx = depthPatch[0][0]
-                        + depthPatch[1][0] * 2
-                        + depthPatch[2][0]
-                        - ( depthPatch[0][2]
-                            + depthPatch[1][2] * 2
-                            + depthPatch[2][2]);
-
-                    float sy = depthPatch[2][0] + depthPatch[2][1] * 2 + depthPatch[2][2]
-                        - ( depthPatch[0][0] + depthPatch[0][1] * 2 + depthPatch[0][2]);
-
-                    // this factor basically tweak normals to make the UI flatter or not
-                    // if you change normal filtering, retune this
-                    enum float sz = 260.0f * 257.0f / 1.8f; 
-
-                    normal = vec3f(sx, sy, sz);
-                    normal.fastNormalize(); // this makes very, very little difference in output vs normalize
-                }
+                RGBf normalFromBuf = normalScan[i];
+                vec3f normal = vec3f(normalFromBuf.r, normalFromBuf.g, normalFromBuf.b);
 
                 RGBA ibaseColor = diffuseScan[i];
                 vec3f baseColor = vec3f(ibaseColor.r, ibaseColor.g, ibaseColor.b) * div255;
@@ -400,6 +469,8 @@ nothrow @nogc:
     }
 
 private:
+    OwnedImage!RGBf _normalBuffer;
+    OwnedImage!RGBAf _accumBuffer;
     float[256] _exponentTable;
 }
 
