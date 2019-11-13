@@ -557,6 +557,19 @@ nothrow:
         return _pixels[0..w*h];
     }
 
+    /// Returns: Number of samples to add to a COLOR* pointer to get to the previous/next line.
+    int pitchInSamples()
+    {
+        return w;
+    }
+
+    /// Returns: Number of bytes to add to a COLOR* pointer to get to the previous/next line.
+    int pitchInBytes()
+    {
+        return w * cast(int)(COLOR.sizeof);
+    }
+
+
 private:
     COLOR* _pixels;
 }

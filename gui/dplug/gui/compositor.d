@@ -110,80 +110,61 @@ nothrow @nogc:
                                 Mipmap!L16 depthMap,
                                 Mipmap!RGBA skybox)
     {
-        ushort[3][3] depthPatch = void;
-        L16*[3] depth_scan = void;
         int w = diffuseMap.levels[0].w;
         int h = diffuseMap.levels[0].h;
+
+        OwnedImage!L16 depthLevel0 = depthMap.levels[0];
+        int depthPitch = depthLevel0.pitchInSamples(); // pitch of depth buffer, in L16 units
 
         // Compute normals
         {            
             for (int j = area.min.y; j < area.max.y; ++j)
             {
-                // clamp to existing lines
-                {
-                    OwnedImage!L16 depthLevel0 = depthMap.levels[0];
-                    for (int line = 0; line < 3; ++line)
-                    {
-                        int lineIndex = j - 1 + DEPTH_BORDER + line;
-                        depth_scan[line] = depthLevel0.scanline(lineIndex).ptr;
-                    }
-                }
-
                 RGBf* normalScan = _normalBuffer.scanline(j).ptr;
+                const(L16*) depthScan = depthLevel0.scanline(j + DEPTH_BORDER).ptr;
 
                 for (int i = area.min.x; i < area.max.x; ++i)
                 {
-                    // clamp to existing columns
-                    {
-                        // Get depth for a 3x3 patch
-                        // Turns out DMD like hand-unrolling:(
-                        for (int k = 0; k < 3; ++k)
-                        {
-                            int colIndex = i - 1 + DEPTH_BORDER + k;
-                            depthPatch[0][k] = depth_scan.ptr[0][colIndex].l;
-                            depthPatch[1][k] = depth_scan.ptr[1][colIndex].l;
-                            depthPatch[2][k] = depth_scan.ptr[2][colIndex].l;
-                        }
-                    }
-
-                    vec3f normal = void;
-
+                    const(L16)* depthHere = depthScan + i + DEPTH_BORDER;
                     version(futurePBRNormals)
                     {
                         // Tuned once by hand to match the other normal computation algorithm
                         enum float FACTOR_Z = 4655.0f;
                         enum float multUshort = 1.0 / FACTOR_Z;
-
                         float[9] depthNeighbourhood = void;
-                        depthNeighbourhood[0] = depthPatch[0][0] * multUshort;
-                        depthNeighbourhood[1] = depthPatch[0][1] * multUshort;
-                        depthNeighbourhood[2] = depthPatch[0][2] * multUshort;
-                        depthNeighbourhood[3] = depthPatch[1][0] * multUshort;
-                        depthNeighbourhood[4] = depthPatch[1][1] * multUshort;
-                        depthNeighbourhood[5] = depthPatch[1][2] * multUshort;
-                        depthNeighbourhood[6] = depthPatch[2][0] * multUshort;
-                        depthNeighbourhood[7] = depthPatch[2][1] * multUshort;
-                        depthNeighbourhood[8] = depthPatch[2][2] * multUshort;
-                        normal = computeRANSACNormal(depthNeighbourhood.ptr);
+                        depthNeighbourhood[0] = depthHere[-depthPitch-1].l * multUshort;
+                        depthNeighbourhood[1] = depthHere[-depthPitch  ].l * multUshort;
+                        depthNeighbourhood[2] = depthHere[-depthPitch+1].l * multUshort;
+                        depthNeighbourhood[3] = depthHere[           -1].l * multUshort;
+                        depthNeighbourhood[4] = depthHere[            0].l * multUshort;
+                        depthNeighbourhood[5] = depthHere[           +1].l * multUshort;
+                        depthNeighbourhood[6] = depthHere[+depthPitch-1].l * multUshort;
+                        depthNeighbourhood[7] = depthHere[+depthPitch  ].l * multUshort;
+                        depthNeighbourhood[8] = depthHere[+depthPitch+1].l * multUshort;
+                        vec3f normal = computeRANSACNormal(depthNeighbourhood.ptr);
                     }
                     else
                     {
                         // compute normal
-                        float sx = depthPatch[0][0]
-                            + depthPatch[1][0] * 2
-                            + depthPatch[2][0]
-                            - ( depthPatch[0][2]
-                                + depthPatch[1][2] * 2
-                               + depthPatch[2][2]);
+                        float sx = depthHere[-depthPitch-1].l
+                                 + depthHere[           -1].l * 2
+                                 + depthHere[+depthPitch-1].l
+                             - (   depthHere[-depthPitch+1].l
+                                 + depthHere[           +1].l * 2
+                                 + depthHere[+depthPitch+1].l  );
 
-                        float sy = depthPatch[2][0] + depthPatch[2][1] * 2 + depthPatch[2][2]
-                            - ( depthPatch[0][0] + depthPatch[0][1] * 2 + depthPatch[0][2]);
+                        float sy = depthHere[ depthPitch-1].l 
+                                 + depthHere[ depthPitch  ].l * 2 
+                                 + depthHere[ depthPitch+1].l
+                             - (   depthHere[-depthPitch-1].l 
+                                 + depthHere[-depthPitch  ].l * 2 
+                                 + depthHere[-depthPitch+1].l);
 
                         // this factor basically tweak normals to make the UI flatter or not
                         // if you change normal filtering, retune this
                         enum float sz = 260.0f * 257.0f / 1.8f; 
 
-                        normal = vec3f(sx, sy, sz);
+                        vec3f normal = vec3f(sx, sy, sz);
                         normal.fastNormalize(); // this makes very, very little difference in output vs normalize
                     }
                     normalScan[i] = RGBf(normal.x, normal.y, normal.z);
@@ -200,39 +181,16 @@ nothrow @nogc:
         for (int j = area.min.y; j < area.max.y; ++j)
         {
             RGBA* wfb_scan = wfb.scanline(j).ptr;
-
-            // clamp to existing lines
-            {
-                OwnedImage!L16 depthLevel0 = depthMap.levels[0];
-                for (int line = 0; line < 3; ++line)
-                {
-                    int lineIndex = j - 1 + DEPTH_BORDER + line;
-                    depth_scan[line] = depthLevel0.scanline(lineIndex).ptr;
-                }
-            }
-
             RGBA* materialScan = materialMap.levels[0].scanline(j).ptr;
             RGBA* diffuseScan = diffuseMap.levels[0].scanline(j).ptr;
             RGBf* normalScan = _normalBuffer.scanline(j).ptr;
+            const(L16*) depthScan = depthLevel0.scanline(j + DEPTH_BORDER).ptr;
 
             for (int i = area.min.x; i < area.max.x; ++i)
             {
+                const(L16)* depthHere = depthScan + i + DEPTH_BORDER;
+
                 RGBA materialHere = materialScan[i];
-
-                // clamp to existing columns
-
-                {
-                    // Get depth for a 3x3 patch
-                    // Turns out DMD like hand-unrolling:(
-                    for (int k = 0; k < 3; ++k)
-                    {
-                        int colIndex = i - 1 + DEPTH_BORDER + k;
-                        depthPatch[0][k] = depth_scan.ptr[0][colIndex].l;
-                        depthPatch[1][k] = depth_scan.ptr[1][colIndex].l;
-                        depthPatch[2][k] = depth_scan.ptr[2][colIndex].l;
-                    }
-                }
-
                 RGBf normalFromBuf = normalScan[i];
                 vec3f normal = vec3f(normalFromBuf.r, normalFromBuf.g, normalFromBuf.b);
 
@@ -259,7 +217,7 @@ nothrow @nogc:
                             + depthMap.linearSample(3, px, py)
                             + depthMap.linearSample(4, px, py) ) * 0.25f;
 
-                    float diff = depthPatch[1][1] - avgDepthHere;
+                    float diff = (*depthHere).l - avgDepthHere;
                     float cavity = void;
                     if (diff >= 0)
                         cavity = 1;
@@ -300,9 +258,7 @@ nothrow @nogc:
 
                     float lightPassed = 0.0f;
 
-                    OwnedImage!L16 depthLevel0 = depthMap.levels[0];
-
-                    int depthHere = depthPatch[1][1];
+                    int depthCenter = (*depthHere).l;
                     for (int sample = 1; sample < samples; ++sample)
                     {
                         int x1 = i + sample;
@@ -314,8 +270,8 @@ nothrow @nogc:
                         int y = j - sample;
                         if (y < 0)
                             y = 0;
-                        int z = depthHere + sample; // ???
-                        L16* scan = depthLevel0.scanline(y).ptr;
+                        int z = depthCenter + sample; // ???
+                        L16* scan = depthLevel0.scanline(y + DEPTH_BORDER).ptr;
                         int diff1 = z - scan[x1].l; // FUTURE: use pointer offsets here instead of opIndex
                         int diff2 = z - scan[x2].l;
 
@@ -347,7 +303,7 @@ nothrow @nogc:
                 {
                     float diffuseFactor = 0.5f + 0.5f * dot(normal, light2Dir);
 
-                    diffuseFactor = /*cavity * */ linmap!float(diffuseFactor, 0.24f - roughness * 0.5f, 1, 0, 1.0f);
+                    diffuseFactor = linmap!float(diffuseFactor, 0.24f - roughness * 0.5f, 1, 0, 1.0f);
 
                     if (diffuseFactor > 0)
                         color += baseColor * light2Color * diffuseFactor;
@@ -377,10 +333,17 @@ nothrow @nogc:
                     float skyx = 0.5f + ((0.5f - pureReflection.x *0.5f) * (skybox.width - 1));
                     float skyy = 0.5f + ((0.5f + pureReflection.y *0.5f) * (skybox.height - 1));
 
+                    float[3][3] depthPatch;
+                    for (int row = 0; row < 3; ++row)
+                        for (int col = 0; col < 3; ++col)
+                        {
+                            depthPatch[row][col] = depthHere[(row-1) * depthPitch - 1 + col].l;
+                        }
+
                     // 2nd order derivatives
                     float depthDX = depthPatch[2][0] + depthPatch[2][1] + depthPatch[2][2]
-                        + depthPatch[0][0] + depthPatch[0][1] + depthPatch[0][2]
-                        - 2 * (depthPatch[1][0] + depthPatch[1][1] + depthPatch[1][2]);
+                                  + depthPatch[0][0] + depthPatch[0][1] + depthPatch[0][2]
+                             - 2 * (depthPatch[1][0] + depthPatch[1][1] + depthPatch[1][2]);
 
                     float depthDY = depthPatch[0][2] + depthPatch[1][2] + depthPatch[2][2]
                         + depthPatch[0][0] + depthPatch[1][0] + depthPatch[2][0]
@@ -430,7 +393,6 @@ nothrow @nogc:
                 //color = baseColor;
 
                 //  color = toEye;
-                //color = vec3f(cavity);
                 assert(color.x >= 0);
                 assert(color.y >= 0);
                 assert(color.z >= 0);
