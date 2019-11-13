@@ -505,6 +505,16 @@ RGBA blendColor(RGBA fg, RGBA bg, ubyte alpha) pure nothrow @nogc
     }
 }
 
+RGB blendColor(RGB fg, RGB bg, ubyte alpha) pure nothrow @nogc
+{
+    ubyte invAlpha = cast(ubyte)(~cast(int)alpha);
+    RGB c = void;
+    c.r = cast(ubyte) ( ( (fg.r * alpha) + (bg.r * invAlpha)  ) / ubyte.max );
+    c.g = cast(ubyte) ( ( (fg.g * alpha) + (bg.g * invAlpha)  ) / ubyte.max );
+    c.b = cast(ubyte) ( ( (fg.b * alpha) + (bg.b * invAlpha)  ) / ubyte.max );
+    return c;
+}
+
 L16 blendColor(L16 fg, L16 bg, ushort alpha) pure nothrow @nogc
 {
     ushort v = cast(ushort) ( ((fg.l * alpha) + (bg.l * cast(ushort)(~cast(int)alpha))) / ushort.max );
