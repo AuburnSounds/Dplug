@@ -517,11 +517,11 @@ unittest
         }
 
         const(MidiMessage)[] messages = queue.getNextMidiMessages(1024);
-        foreach(int i, m; messages)
+        foreach(size_t i, m; messages)
         {
             import core.stdc.stdio;
             // each should be in order
-            assert(m.offset == i);
+            assert(m.offset == cast(int)i);
             assert(m.isNoteOn);
         }
     }
