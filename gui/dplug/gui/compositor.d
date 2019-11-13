@@ -118,7 +118,7 @@ nothrow @nogc:
         int depthPitch = depthLevel0.pitchInSamples(); // pitch of depth buffer, in L16 units
 
         // Compute normals (read depth, write to _normalBuffer)
-        {            
+        {
             for (int j = area.min.y; j < area.max.y; ++j)
             {
                 RGBf* normalScan = _normalBuffer.scanline(j).ptr;
@@ -368,74 +368,86 @@ nothrow @nogc:
 
         // Other passes
 
-
-        for (int j = area.min.y; j < area.max.y; ++j)
+        // skybox reflection (use the same shininess as specular)
         {
-            RGBA* wfb_scan = wfb.scanline(j).ptr;
-            RGBA* materialScan = materialMap.levels[0].scanline(j).ptr;
-            RGBA* diffuseScan = diffuseMap.levels[0].scanline(j).ptr;
-            RGBf* normalScan = _normalBuffer.scanline(j).ptr;
-            RGBAf* accumScan = _accumBuffer.scanlinePtr(j);
-            const(L16*) depthScan = depthLevel0.scanline(j + DEPTH_BORDER).ptr;
-
-            for (int i = area.min.x; i < area.max.x; ++i)
+            for (int j = area.min.y; j < area.max.y; ++j)
             {
-                const(L16)* depthHere = depthScan + i + DEPTH_BORDER;
+                RGBA* materialScan = materialMap.levels[0].scanlinePtr(j);
+                RGBA* diffuseScan = diffuseMap.levels[0].scanlinePtr(j);
+                RGBf* normalScan = _normalBuffer.scanlinePtr(j);
+                RGBAf* accumScan = _accumBuffer.scanlinePtr(j);
+                const(L16*) depthScan = depthLevel0.scanlinePtr(j + DEPTH_BORDER);
 
-                RGBA materialHere = materialScan[i];
-                RGBf normalFromBuf = normalScan[i];
-                vec3f normal = vec3f(normalFromBuf.r, normalFromBuf.g, normalFromBuf.b);
-
-                RGBA ibaseColor = diffuseScan[i];
-                vec3f baseColor = vec3f(ibaseColor.r, ibaseColor.g, ibaseColor.b) * div255;
-
-                vec3f color = vec3f(0.0f);
-
-                float roughness = materialHere.r * div255;
-                float metalness = materialHere.g * div255;
-                float specular  = materialHere.b * div255;
-
-                vec3f toEye = vec3f(0.5f - i * invW, j * invH - 0.5f, 1.0f);
-
-                // skybox reflection (use the same shininess as specular)
-                if (metalness != 0)
+                for (int i = area.min.x; i < area.max.x; ++i)
                 {
-                    vec3f pureReflection = reflect(toEye, normal);
+                    vec3f toEye = vec3f(0.5f - i * invW, j * invH - 0.5f, 1.0f);
 
-                    float skyx = 0.5f + ((0.5f - pureReflection.x *0.5f) * (skybox.width - 1));
-                    float skyy = 0.5f + ((0.5f + pureReflection.y *0.5f) * (skybox.height - 1));
+                    RGBA materialHere = materialScan[i];
+                    float roughness = materialHere.r * div255;
+                    float metalness = materialHere.g * div255;
 
-                    float[3][3] depthPatch;
-                    for (int row = 0; row < 3; ++row)
-                        for (int col = 0; col < 3; ++col)
-                        {
-                            depthPatch[row][col] = depthHere[(row-1) * depthPitch - 1 + col].l;
-                        }
+                    // skybox reflection (use the same shininess as specular)
+                    if (metalness != 0)
+                    {
+                        RGBf normalFromBuf = normalScan[i];
+                        vec3f normal = vec3f(normalFromBuf.r, normalFromBuf.g, normalFromBuf.b);
 
-                    // 2nd order derivatives
-                    float depthDX = depthPatch[2][0] + depthPatch[2][1] + depthPatch[2][2]
-                                  + depthPatch[0][0] + depthPatch[0][1] + depthPatch[0][2]
-                             - 2 * (depthPatch[1][0] + depthPatch[1][1] + depthPatch[1][2]);
+                        RGBA ibaseColor = diffuseScan[i];
+                        vec3f baseColor = vec3f(ibaseColor.r, ibaseColor.g, ibaseColor.b) * div255;
 
-                    float depthDY = depthPatch[0][2] + depthPatch[1][2] + depthPatch[2][2]
-                        + depthPatch[0][0] + depthPatch[1][0] + depthPatch[2][0]
-                        - 2 * (depthPatch[0][1] + depthPatch[1][1] + depthPatch[2][1]);
+                        const(L16)* depthHere = depthScan + i + DEPTH_BORDER;
 
-                    depthDX *= (1 / 256.0f);
-                    depthDY *= (1 / 256.0f);
+                        vec3f pureReflection = reflect(toEye, normal);
 
-                    float depthDerivSqr = depthDX * depthDX + depthDY * depthDY;
-                    float indexDeriv = depthDerivSqr * skybox.width * skybox.height;
+                        float skyx = 0.5f + ((0.5f - pureReflection.x *0.5f) * (skybox.width - 1));
+                        float skyy = 0.5f + ((0.5f + pureReflection.y *0.5f) * (skybox.height - 1));
 
-                    // cooking here
-                    // log2 scaling + threshold
-                    float mipLevel = 0.5f * fastlog2(1.0f + indexDeriv * 0.00001f) + 6 * roughness;
+                        float[3][3] depthPatch;
+                        for (int row = 0; row < 3; ++row)
+                            for (int col = 0; col < 3; ++col)
+                            {
+                                depthPatch[row][col] = depthHere[(row-1) * depthPitch + (col - 1)].l;
+                            }
 
-                    vec3f skyColor = skybox.linearMipmapSample(mipLevel, skyx, skyy).rgb * (div255 * metalness * skyboxAmount);
-                    color += skyColor * baseColor;
+                        // 2nd order derivatives
+                        float depthDX = depthPatch[2][0] + depthPatch[2][1] + depthPatch[2][2]
+                            + depthPatch[0][0] + depthPatch[0][1] + depthPatch[0][2]
+                            - 2 * (depthPatch[1][0] + depthPatch[1][1] + depthPatch[1][2]);
+
+                        float depthDY = depthPatch[0][2] + depthPatch[1][2] + depthPatch[2][2]
+                            + depthPatch[0][0] + depthPatch[1][0] + depthPatch[2][0]
+                            - 2 * (depthPatch[0][1] + depthPatch[1][1] + depthPatch[2][1]);
+
+                        depthDX *= (1 / 256.0f);
+                        depthDY *= (1 / 256.0f);
+
+                        float depthDerivSqr = depthDX * depthDX + depthDY * depthDY;
+                        float indexDeriv = depthDerivSqr * skybox.width * skybox.height;
+
+                        // cooking here
+                        // log2 scaling + threshold
+                        float mipLevel = 0.5f * fastlog2(1.0f + indexDeriv * 0.00001f) + 6 * roughness;
+
+                        vec3f skyColor = skybox.linearMipmapSample(mipLevel, skyx, skyy).rgb * (div255 * metalness * skyboxAmount);
+                        vec3f color = skyColor * baseColor;
+                        accumScan[i] += RGBAf(color.r, color.g, color.b, 0.0f);
+                    }
                 }
+            }
+        }
 
-                // Add light emitted by neighbours
+        // Add light emitted by neighbours
+        // Bloom-like.
+        {
+            for (int j = area.min.y; j < area.max.y; ++j)
+            {
+                RGBA* materialScan = materialMap.levels[0].scanlinePtr(j);
+                RGBA* diffuseScan = diffuseMap.levels[0].scanlinePtr(j);
+                RGBf* normalScan = _normalBuffer.scanlinePtr(j);
+                RGBAf* accumScan = _accumBuffer.scanlinePtr(j);
+                const(L16*) depthScan = depthLevel0.scanlinePtr(j + DEPTH_BORDER);
+
+                for (int i = area.min.x; i < area.max.x; ++i)
                 {
                     float ic = i + 0.5f;
                     float jc = j + 0.5f;
@@ -446,28 +458,28 @@ nothrow @nogc:
                     vec4f colorLevel3 = diffuseMap.linearSample(3, ic, jc);
                     vec4f colorLevel4 = diffuseMap.linearSample(4, ic, jc);
                     vec4f colorLevel5 = diffuseMap.linearSample(5, ic, jc);
-                      
+
                     vec4f emitted = colorLevel1 * 0.00117647f;
                     emitted += colorLevel2      * 0.00176471f;
                     emitted += colorLevel3      * 0.00147059f;
                     emitted += colorLevel4      * 0.00088235f;
                     emitted += colorLevel5      * 0.00058823f;
-                    color += emitted.rgb;
+                    accumScan[i] += RGBAf(emitted.r, emitted.g, emitted.b, emitted.a);
                 }
+            }
+        }
 
+        // Final pass, clamp, convert to ubyte
+        for (int j = area.min.y; j < area.max.y; ++j)
+        {
+            RGBA* wfb_scan = wfb.scanline(j).ptr;
+            RGBAf* accumScan = _accumBuffer.scanlinePtr(j);
+
+            for (int i = area.min.x; i < area.max.x; ++i)
+            {
                 RGBAf accum = accumScan[i];
-                color += vec3f(accum.r, accum.g, accum.b);
+                vec3f color = vec3f(accum.r, accum.g, accum.b);
 
-                // Show depth
-                {
-                    //    float depthColor = depthPatch[1][1] / 65535.0f;
-                    //    color = vec3f(depthColor);
-                }
-
-                // Show diffuse
-                //color = baseColor;
-
-                //  color = toEye;
                 assert(color.x >= 0);
                 assert(color.y >= 0);
                 assert(color.z >= 0);
