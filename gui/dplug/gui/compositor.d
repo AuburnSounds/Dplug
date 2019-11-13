@@ -298,10 +298,76 @@ nothrow @nogc:
             }
         }
 
+        // secundary light
+        {
+            for (int j = area.min.y; j < area.max.y; ++j)
+            {
+                RGBA* materialScan = materialMap.levels[0].scanlinePtr(j);
+                RGBA* diffuseScan = diffuseMap.levels[0].scanlinePtr(j);
+                RGBf* normalScan = _normalBuffer.scanlinePtr(j);
+                RGBAf* accumScan = _accumBuffer.scanlinePtr(j);
+
+                for (int i = area.min.x; i < area.max.x; ++i)
+                {
+                    RGBf normalFromBuf = normalScan[i];
+                    RGBA materialHere = materialScan[i];
+                    float roughness = materialHere.r * div255;
+                    RGBA ibaseColor = diffuseScan[i];
+                    vec3f baseColor = vec3f(ibaseColor.r, ibaseColor.g, ibaseColor.b) * div255;
+                    vec3f normal = vec3f(normalFromBuf.r, normalFromBuf.g, normalFromBuf.b);
+                    float diffuseFactor = 0.5f + 0.5f * dot(normal, light2Dir);
+                    diffuseFactor = linmap!float(diffuseFactor, 0.24f - roughness * 0.5f, 1, 0, 1.0f);
+                    vec3f color = baseColor * light2Color * diffuseFactor;
+                    accumScan[i] += RGBAf(color.r, color.g, color.b, 0.0f);
+                }
+            }
+        }
+
+        immutable float invW = 1.0f / w;
+        immutable float invH = 1.0f / h;
+
+        // Specular highlight
+        {
+            for (int j = area.min.y; j < area.max.y; ++j)
+            {
+                RGBA* materialScan = materialMap.levels[0].scanlinePtr(j);
+                RGBA* diffuseScan = diffuseMap.levels[0].scanlinePtr(j);
+                RGBf* normalScan = _normalBuffer.scanlinePtr(j);
+                RGBAf* accumScan = _accumBuffer.scanlinePtr(j);
+
+                for (int i = area.min.x; i < area.max.x; ++i)
+                {
+                    RGBA materialHere = materialScan[i];
+                    float roughness = materialHere.r * div255;
+                    float metalness = materialHere.g * div255;
+                    float specular  = materialHere.b * div255;
+                    RGBA ibaseColor = diffuseScan[i];
+                    vec3f baseColor = vec3f(ibaseColor.r, ibaseColor.g, ibaseColor.b) * div255;
+
+                    RGBf normalFromBuf = normalScan[i];
+                    vec3f normal = vec3f(normalFromBuf.r, normalFromBuf.g, normalFromBuf.b);
+
+                    vec3f toEye = vec3f(0.5f - i * invW, j * invH - 0.5f, 1.0f);
+                    toEye.fastNormalize(); // this makes very, very little difference in output vs normalize
+
+                    vec3f lightReflect = reflect(-light3Dir, normal);
+                    float specularFactor = dot(toEye, lightReflect);
+                    if (specularFactor > 1e-3f)
+                    {
+                        float exponent = _exponentTable[materialHere.r];
+                        specularFactor = _mm_pow_ss(specularFactor, exponent); // TODO: do 4 pixels at once
+                        float roughFactor = 10 * (1.0f - roughness) * (1 - metalness * 0.5f);
+                        specularFactor = specularFactor * roughFactor;
+
+                        vec3f color = baseColor * light3Color * (specularFactor * specular);
+                        accumScan[i] += RGBAf(color.r, color.g, color.b, 0.0f);
+                    }
+                }
+            }
+        }
+
         // Other passes
 
-        float invW = 1.0f / w;
-        float invH = 1.0f / h;
 
         for (int j = area.min.y; j < area.max.y; ++j)
         {
@@ -323,41 +389,13 @@ nothrow @nogc:
                 RGBA ibaseColor = diffuseScan[i];
                 vec3f baseColor = vec3f(ibaseColor.r, ibaseColor.g, ibaseColor.b) * div255;
 
-                vec3f toEye = vec3f(0.5f - i * invW, j * invH - 0.5f, 1.0f);
-                toEye.fastNormalize(); // this makes very, very little difference in output vs normalize
-
                 vec3f color = vec3f(0.0f);
 
                 float roughness = materialHere.r * div255;
                 float metalness = materialHere.g * div255;
                 float specular  = materialHere.b * div255;
 
-
-                // secundary light
-                {
-                    float diffuseFactor = 0.5f + 0.5f * dot(normal, light2Dir);
-
-                    diffuseFactor = linmap!float(diffuseFactor, 0.24f - roughness * 0.5f, 1, 0, 1.0f);
-
-                    if (diffuseFactor > 0)
-                        color += baseColor * light2Color * diffuseFactor;
-                }
-
-                // specular reflection
-                if (specular != 0)
-                {
-                    vec3f lightReflect = reflect(-light3Dir, normal);
-                    float specularFactor = dot(toEye, lightReflect);
-                    if (specularFactor > 1e-3f)
-                    {
-                        float exponent = _exponentTable[materialHere.r];
-                        specularFactor = _mm_pow_ss(specularFactor, exponent);
-                        float roughFactor = 10 * (1.0f - roughness) * (1 - metalness * 0.5f);
-                        specularFactor = specularFactor * roughFactor;
-                        if (specularFactor != 0)
-                            color += baseColor * light3Color * (specularFactor * specular);
-                    }
-                }
+                vec3f toEye = vec3f(0.5f - i * invW, j * invH - 0.5f, 1.0f);
 
                 // skybox reflection (use the same shininess as specular)
                 if (metalness != 0)
