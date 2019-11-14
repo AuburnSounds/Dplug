@@ -381,6 +381,7 @@ nothrow @nogc:
                 for (int i = area.min.x; i < area.max.x; ++i)
                 {
                     vec3f toEye = vec3f(0.5f - i * invW, j * invH - 0.5f, 1.0f);
+                    toEye.fastNormalize();
 
                     RGBA materialHere = materialScan[i];
                     float roughness = materialHere.r * div255;
