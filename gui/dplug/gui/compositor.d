@@ -267,7 +267,7 @@ nothrow @nogc:
                         if (y < 0)
                             y = 0;
                         int z = depthCenter + sample; // ???
-                        L16* scan = depthLevel0.scanline(y + DEPTH_BORDER).ptr;
+                        L16* scan = depthLevel0.scanlinePtr(y + DEPTH_BORDER) + DEPTH_BORDER;
                         int diff1 = z - scan[x1].l; // FUTURE: use pointer offsets here instead of opIndex
                         int diff2 = z - scan[x2].l;
 

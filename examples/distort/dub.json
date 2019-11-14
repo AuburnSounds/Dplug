@@ -35,8 +35,7 @@
 
 
     "comment": "Example of configuration options",
-    "versions": ["futureMouseOver"],
-    "versions": ["futurePBRNormals"],
+    "versions": ["futureMouseOver", "futurePBRNormals"],
 
     "configurations": [
         {
