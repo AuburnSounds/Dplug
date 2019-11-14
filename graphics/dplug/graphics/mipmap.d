@@ -16,6 +16,8 @@ import dplug.core.nogc;
 import dplug.core.vec;
 import dplug.graphics.drawex;
 
+import inteli.emmintrin;
+
 version( D_InlineAsm_X86 )
 {
     version = AsmX86;
@@ -222,8 +224,38 @@ nothrow:
         static if (is(COLOR == RGBA))
         {
             float inv255 = 1 / 255.0f;
+            version(LDC)
+            {
+                int Ai = *cast(int*)(&A);
+                int Bi = *cast(int*)(&B);
+                int Ci = *cast(int*)(&C);
+                int Di = *cast(int*)(&D);
 
-            version( AsmX86 )
+                __m128i mmZero = _mm_setzero_si128();
+                __m128i mmABCD = _mm_setr_epi32(Ai, Bi, Ci, Di);
+
+                // Convert to float of the form (R, G, B, A)
+                __m128i mmAB = _mm_unpacklo_epi8(mmABCD, mmZero);
+                __m128i mmCD = _mm_unpackhi_epi8(mmABCD, mmZero);
+                __m128 vA = _mm_cvtepi32_ps( _mm_unpacklo_epi16(mmAB, mmZero));
+                __m128 vB = _mm_cvtepi32_ps( _mm_unpackhi_epi16(mmAB, mmZero));
+                __m128 vC = _mm_cvtepi32_ps( _mm_unpacklo_epi16(mmCD, mmZero));
+                __m128 vD = _mm_cvtepi32_ps( _mm_unpackhi_epi16(mmCD, mmZero));
+
+                __m128 vfx = _mm_set1_ps(fx);
+                __m128 vfxm1 = _mm_set1_ps(fxm1);
+                __m128 up = vA * vfxm1 + vB * vfx;
+                __m128 down = vC * vfxm1 + vD * vfx;
+
+                __m128 vfy = _mm_set1_ps(fy);
+                __m128 vfym1 = _mm_set1_ps(fym1);
+                __m128 dResult = up * fym1 + down * fy;
+                vec4f result = void;
+                _mm_storeu_ps(result.ptr, dResult);
+                return result;
+
+            }
+            else version( AsmX86 )
             {
                 vec4f asmResult;
 
