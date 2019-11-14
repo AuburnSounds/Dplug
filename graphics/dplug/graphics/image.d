@@ -31,9 +31,13 @@ struct ImageRef(COLOR)
 	/// Returns an array for the pixels at row y.
 	COLOR[] scanline(int y)
 	{
-		assert(y>=0 && y<h);
+		assert(y >= 0 && y < h);
 		assert(pitch);
-		auto row = cast(COLOR*)(cast(ubyte*)pixels + y*pitch);
+
+        // perf: this cast help in 64-bit, since it avoids a MOVSXD to extend a signed 32-bit into a 64-bit pointer offset
+        uint unsignedY = cast(uint)y;
+
+		auto row = cast(COLOR*)(cast(ubyte*)pixels + unsignedY * pitch);
 		return row[0..w];
 	}
 

@@ -536,14 +536,16 @@ nothrow:
     COLOR[] scanline(int y) pure
     {
         assert(y>=0 && y<h);
-        auto start = w*y;
+        // perf: this cast help in 64-bit, since it avoids a MOVSXD to extend a signed 32-bit into a 64-bit pointer offset
+        auto start = w * cast(uint)y; 
         return _pixels[start..start+w];
     }
 
     COLOR* scanlinePtr(int y) pure
     {
         assert(y>=0 && y<h);
-        return &_pixels[w * y];
+        // perf: this cast help in 64-bit, since it avoids a MOVSXD to extend a signed 32-bit into a 64-bit pointer offset
+        return &_pixels[w * cast(uint)y];
     }
 
     mixin DirectView;
