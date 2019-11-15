@@ -27,6 +27,7 @@ import dplug.graphics.view;
 import dplug.gui.ransac;
 
 import inteli.math;
+import inteli.emmintrin;
 
 // Only deals with rendering tiles.
 // If you don't like Dplug default compositing, just make another Compositor
@@ -185,8 +186,8 @@ nothrow @nogc:
 
                 for (int i = area.min.x; i < area.max.x; ++i)
                 {
-                    RGBA ibaseColor = diffuseScan[i];
-                    vec3f baseColor = vec3f(ibaseColor.r, ibaseColor.g, ibaseColor.b) * div255;
+                    __m128 baseColor = convertBaseColorToFloat4(diffuseScan[i]);
+
                     const(L16)* depthHere = depthScan + i + DEPTH_BORDER;
 
                     float px = DEPTH_BORDER + i + 0.5f;
@@ -199,18 +200,16 @@ nothrow @nogc:
                         + depthMap.linearSample(4, px, py) ) * 0.25f;
 
                     float diff = (*depthHere).l - avgDepthHere;
-                    float cavity = void;
-                    if (diff >= 0)
+
+                    enum float divider23040 = 1.0f / 23040;
+                    float cavity = (diff + 23040.0f) * divider23040;
+                    if (cavity >= 1)
                         cavity = 1;
-                    else if (diff < -23040)
+                    else if (cavity < 0)
                         cavity = 0;
-                    else
-                    {
-                        static immutable float divider23040 = 1.0f / 23040;
-                        cavity = (diff + 23040) * divider23040;
-                    }
-                    vec4f color = vec4f(baseColor, 0.0f) * (cavity * ambientLight);
-                    accumScan[i] = RGBAf(color.r, color.g, color.b, color.a);
+
+                    __m128 color = baseColor * _mm_set1_ps(cavity * ambientLight);
+                    _mm_storeu_ps(cast(float*)&accumScan[i], color);
                 }
             }
         }
@@ -560,5 +559,16 @@ float fastlog2(float val) pure nothrow @nogc
     return fi.f + log_2;
 }
 
+// Convert a 8-bit color to a normalized 4xfloat color
+__m128 convertBaseColorToFloat4(RGBA rgba) nothrow @nogc pure
+{
+    int asInt = *cast(int*)(&rgba);
+    __m128i packed = _mm_cvtsi32_si128(asInt);
+    __m128i mmZero = _mm_setzero_si128();
+    __m128i shorts = _mm_unpacklo_epi8(packed, mmZero);
+    __m128i ints = _mm_unpacklo_epi16(shorts, mmZero);
 
+    enum float div255 = 1 / 255.0f;
+    return _mm_cvtepi32_ps(ints) * _mm_set1_ps(div255);
+}
 
