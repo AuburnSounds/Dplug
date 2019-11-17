@@ -147,7 +147,7 @@ nothrow:
         // Sets the whole UI dirty.
         // This needs to be done _before_ window creation, else there could be a race
         // displaying partial updates to the UI.
-        setDirtyWhole();
+        setDirtyWhole(UILayer.allLayers);
 
         // We create this window each time.
         _window = createWindow(WindowUsage.plugin, parentInfo, controlInfo, _windowListener, wbackend, _askedWidth, _askedHeight);

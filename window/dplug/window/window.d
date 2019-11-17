@@ -82,7 +82,7 @@ enum WindowUsage
     plugin,
 
     /// This window is intended to be top-level, for hosting another OS window.
-    /// Event pumping will be done by the caller manually through
+    /// Event pumping will be done by the caller manually through `waitEventAndDispatch()`
     /// Important: This case is not the nominal case.
     ///            Some calls to the `IWindowListener` will make no sense.
     host
@@ -122,6 +122,27 @@ enum WindowPixelFormat
 }
 
 /// Receiving commands from a window.
+///
+/// IMPORTANT The IWindow implementation should not call these callback without care.
+/// In particular, there are two sets of calls that are assumed will NOT be called concurrently.
+///
+///  Set 1:
+///   - `onAnimate`
+///   - key events
+///   - mouse events
+///   - `onMouseCaptureCancelled` 
+///   MUST NOT be called concurrently.
+///
+///  Set 2:
+///   - `onDraw`
+///   - `onResized`
+///   - `recomputeDirtyAreas`    <---- this particular set has birthed many data races
+///   - `getDirtyRectangle`
+///   MUST NOT be called concurrently.
+///
+///   Some IWindow implentation ensure that unicity through passing in an event queue, others
+///   like the X11 implementation have to use locks.
+///
 interface IWindowListener
 {
 nothrow @nogc:
@@ -170,6 +191,7 @@ nothrow @nogc:
     /// Important: once you've called `recomputeDirtyAreas()` you COMMIT to redraw the
     /// corresponding area given by `getDirtyRectangle()`.
     /// IMPORTANT: Two calls to `recomputeDirtyAreas()` will not yield the same area.
+    /// VERY IMPORTANT: See the above note about concurrent calls.
     void recomputeDirtyAreas();
 
     /// Returns: Minimal rectangle that contains dirty UIELement in UI + their graphical extent.

@@ -73,7 +73,11 @@ enum UILayer
     /// Only the Raw layer is invalidated.
     /// This is what you want if your `UIElement` draw to both Raw and PBR layer, but this 
     /// time you only want to udpate a fast Raw overlay (ie: any PBR widget that still need to be real-time)
-    rawOnly
+    rawOnly,
+
+    /// This is only useful for the very first setDirty call, to mark the whole UI dirty.
+    /// For internal Dplug usage.
+    allLayers
 }
 
 /// Base class of the UI widget hierarchy.
@@ -918,6 +922,11 @@ private:
 
             case UILayer.rawOnly:
                 _context.dirtyListRaw.addRect(rect); 
+                break;
+
+            case UILayer.allLayers:
+                // This will lead the Raw layer to be invalidated too
+                _context.dirtyListPBR.addRect(rect);
                 break;
         }
     }

@@ -68,6 +68,7 @@ public:
         debug(logX11Window) printf(">X11Window.this()\n");        
 
         _animationMutex = makeMutex();
+        _dirtyAreaMutex = makeMutex();
         _isHostWindow = (usage == WindowUsage.host);
 
         assert(listener !is null);
@@ -227,6 +228,14 @@ private:
     /// The only calls that can be concurrent are onAnimate and onDraw
     UncheckedMutex _animationMutex;   
 
+    /// Prevent recomputeDirtyAreas() and onDraw() to be called simulatneously.
+    /// This is masking a race in dplug:gui.
+    /// Other window systems (Windows and Mac) prevent this race by having the 
+    /// timer messages inside the same event queue, and don't run into this problem.
+    /// But X11Window has to prevent this race with this mutex.
+    /// Strong case of coupling!
+    UncheckedMutex _dirtyAreaMutex;
+
     //
     // <X11 resources>
     //
@@ -358,7 +367,9 @@ private:
             assert(_recomputeDirtyAreasWasCalled);
 
             // Draw UI
+            _dirtyAreaMutex.lock();
             _listener.onDraw(WindowPixelFormat.BGRA8);
+            _dirtyAreaMutex.unlock();
 
             XExposeEvent* xpose = cast(XExposeEvent*)event;
 
@@ -509,7 +520,9 @@ private:
             _height = height;
 
             _animationMutex.lock();
+            _dirtyAreaMutex.lock();
             _wfb = _listener.onResized(width, height);
+            _dirtyAreaMutex.unlock();
             _animationMutex.unlock();
 
             // reallocates backbuffer (if any)
@@ -534,9 +547,14 @@ private:
 
     void sendRepaintIfUIDirty() nothrow @nogc
     {
-        _listener.recomputeDirtyAreas();
-        _recomputeDirtyAreasWasCalled = true;
-        box2i dirtyRect = _listener.getDirtyRectangle();
+        box2i dirtyRect;
+        _dirtyAreaMutex.lock();
+        {
+            _listener.recomputeDirtyAreas();
+            _recomputeDirtyAreasWasCalled = true;
+            dirtyRect = _listener.getDirtyRectangle();
+        }
+        _dirtyAreaMutex.unlock();
 
         if (!dirtyRect.empty())
         {
