@@ -91,16 +91,22 @@ nothrow @nogc:
 
         _normalBuffer = mallocNew!(OwnedImage!RGBf)();
         _accumBuffer = mallocNew!(OwnedImage!RGBAf)();
+        float[] _specularFactor;
+        float[] _exponentFactor;
     }
 
     ~this()
     {
         _normalBuffer.destroyFree();
         _accumBuffer.destroyFree();
+        _specularFactor.reallocBuffer(0);
+        _exponentFactor.reallocBuffer(0);
     }
 
     override void resizeBuffers(int width, int height)
     {
+        _specularFactor.reallocBuffer(width);
+        _exponentFactor.reallocBuffer(width);
         _normalBuffer.size(width, height);
         _accumBuffer.size(width, height);
     }
@@ -327,6 +333,7 @@ nothrow @nogc:
 
         // Specular highlight
         {
+            __m128 mmlight3Dir = _mm_setr_ps(-light3Dir.x, -light3Dir.y, -light3Dir.z, 0.0f);
             for (int j = area.min.y; j < area.max.y; ++j)
             {
                 RGBA* materialScan = materialMap.levels[0].scanlinePtr(j);
@@ -334,33 +341,58 @@ nothrow @nogc:
                 RGBf* normalScan = _normalBuffer.scanlinePtr(j);
                 RGBAf* accumScan = _accumBuffer.scanlinePtr(j);
 
+                float* pSpecular = _specularFactor.ptr;
+                float* pExponent = _exponentFactor.ptr;
+
+
                 for (int i = area.min.x; i < area.max.x; ++i)
                 {
                     RGBA materialHere = materialScan[i];
-                    float roughness = materialHere.r * div255;
-                    float metalness = materialHere.g * div255;
-                    float specular  = materialHere.b * div255;
-                    RGBA ibaseColor = diffuseScan[i];
-                    vec3f baseColor = vec3f(ibaseColor.r, ibaseColor.g, ibaseColor.b) * div255;
-
                     RGBf normalFromBuf = normalScan[i];
-                    vec3f normal = vec3f(normalFromBuf.r, normalFromBuf.g, normalFromBuf.b);
+                    __m128 normal = convertNormalToFloat4(normalScan[i]);
 
-                    vec3f toEye = vec3f(0.5f - i * invW, j * invH - 0.5f, 1.0f);
-                    toEye.fastNormalize(); // this makes very, very little difference in output vs normalize
+                    // TODO: this should be tuned interactively, maybe it's annoying to feel
+                    __m128 toEye = _mm_setr_ps(0.5f - i * invW, j * invH - 0.5f, 1.0f, 0.0f);
 
-                    vec3f lightReflect = reflect(-light3Dir, normal);
-                    float specularFactor = dot(toEye, lightReflect);
-                    if (specularFactor > 1e-3f)
+                    toEye = _mm_fast_normalize_ps(toEye);
+                    __m128 lightReflect = _mm_reflectnormal_ps(mmlight3Dir, normal);
+                    float specularFactor = _mm_dot_ps(toEye, lightReflect);
+                    if (specularFactor < 1e-3f) 
+                        specularFactor = 1e-3f;
+                    pSpecular[i] = specularFactor;
+                    pExponent[i] = _exponentTable[materialHere.r];
+                }
+
+                // Just the pow operation for this line
+                {
+                    int i = area.min.x;
+                    for (; i + 3 < area.max.x; i += 4)
                     {
-                        float exponent = _exponentTable[materialHere.r];
-                        specularFactor = _mm_pow_ss(specularFactor, exponent); // TODO: do 4 pixels at once
-                        float roughFactor = 10 * (1.0f - roughness) * (1 - metalness * 0.5f);
-                        specularFactor = specularFactor * roughFactor;
-
-                        vec3f color = baseColor * light3Color * (specularFactor * specular);
-                        accumScan[i] += RGBAf(color.r, color.g, color.b, 0.0f);
+                        _mm_storeu_ps(&pSpecular[i], _mm_pow_ps(_mm_loadu_ps(&pSpecular[i]), _mm_loadu_ps(&pExponent[i])));
                     }
+                    for (; i < area.max.x; ++i)
+                    {
+                        pSpecular[i] = _mm_pow_ss(pSpecular[i], pExponent[i]);
+                    }
+                }
+
+                for (int i = area.min.x; i < area.max.x; ++i)
+                {
+                    float specularFactor = pSpecular[i];
+
+                    __m128 material = convertMaterialToFloat4(materialScan[i]);
+                    RGBA materialHere = materialScan[i];
+                    float roughness = material.array[0];
+                    float metalness = material.array[1];
+                    float specular  = material.array[2];
+                    __m128 baseColor = convertBaseColorToFloat4(diffuseScan[i]);
+                    __m128 mmLight3Color = _mm_setr_ps(light3Color.x, light3Color.y, light3Color.z, 0.0f);
+
+                    float roughFactor = 10 * (1.0f - roughness) * (1 - metalness * 0.5f);
+                    specularFactor = specularFactor * roughFactor;
+                    __m128 color = baseColor * mmLight3Color * _mm_set1_ps(specularFactor * specular);
+
+                    _mm_store_ps(cast(float*)(&accumScan[i]), _mm_load_ps(cast(float*)(&accumScan[i])) + color);
                 }
             }
         }
@@ -505,6 +537,10 @@ private:
     OwnedImage!RGBf _normalBuffer;
     OwnedImage!RGBAf _accumBuffer;
     float[256] _exponentTable;
+
+    // For the specular highlight pass
+    float[] _specularFactor;
+    float[] _exponentFactor;
 }
 
 private:
@@ -559,6 +595,8 @@ float fastlog2(float val) pure nothrow @nogc
     return fi.f + log_2;
 }
 
+alias convertMaterialToFloat4 = convertBaseColorToFloat4;
+
 // Convert a 8-bit color to a normalized 4xfloat color
 __m128 convertBaseColorToFloat4(RGBA rgba) nothrow @nogc pure
 {
@@ -567,8 +605,11 @@ __m128 convertBaseColorToFloat4(RGBA rgba) nothrow @nogc pure
     __m128i mmZero = _mm_setzero_si128();
     __m128i shorts = _mm_unpacklo_epi8(packed, mmZero);
     __m128i ints = _mm_unpacklo_epi16(shorts, mmZero);
-
     enum float div255 = 1 / 255.0f;
     return _mm_cvtepi32_ps(ints) * _mm_set1_ps(div255);
 }
 
+__m128 convertNormalToFloat4(RGBf normal) nothrow @nogc pure
+{
+    return _mm_setr_ps(normal.r, normal.g, normal.b, 0.0f);
+}

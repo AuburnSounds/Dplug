@@ -11,19 +11,34 @@ alias RansacMode = int;
 nothrow @nogc:
 
 
+// Note: these functions should move to intel-intrinsics #BONUS
+
+/// 4D dot product
+package float _mm_dot_ps(__m128 a, __m128 b) pure
+{
+    __m128 m = a * b;
+    return m.array[0] + m.array[1] + m.array[2] + m.array[3];
+}
 
 // Note: .w element is undefined
-__m128 _mm_crossproduct_ps(__m128 a, __m128 b) pure
+package __m128 _mm_crossproduct_ps(__m128 a, __m128 b) pure
 {
     enum ubyte SHUF1 = _MM_SHUFFLE(3, 0, 2, 1);
     enum ubyte SHUF2 = _MM_SHUFFLE(3, 1, 0, 2);
     return _mm_sub_ps(
-        _mm_mul_ps(_mm_shuffle_ps!SHUF1(a, a), _mm_shuffle_ps!SHUF2(b, b)), 
-        _mm_mul_ps(_mm_shuffle_ps!SHUF2(a, a), _mm_shuffle_ps!SHUF1(b, b))
-    );
+                      _mm_mul_ps(_mm_shuffle_ps!SHUF1(a, a), _mm_shuffle_ps!SHUF2(b, b)), 
+                      _mm_mul_ps(_mm_shuffle_ps!SHUF2(a, a), _mm_shuffle_ps!SHUF1(b, b))
+                      );
 }
 
-__m128 _mm_fast_normalize_ps(__m128 v) pure
+package __m128 _mm_reflectnormal_ps(__m128 normalA, __m128 normalB) pure // W must be zero
+{
+    __m128 dotBA = normalB * normalA;
+    float sum = 2 * _mm_dot_ps(normalA, normalB);
+    return normalA - _mm_set1_ps(sum) * normalB;
+}
+
+package __m128 _mm_fast_normalize_ps(__m128 v) pure
 {
     __m128 squared = _mm_mul_ps(v, v);
     float squaredLength = squared.array[0] + squared.array[1] + squared.array[2] + squared.array[3];
