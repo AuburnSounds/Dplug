@@ -159,8 +159,15 @@ vec3f computeRANSACNormal(
             1.0f
         ];
 
+        // first 4 modes have distance to center of 1 + 1, 8 other have 1 + sqrt(2)
+        // so we rescale the first by (1 + sqrt(2)) / (1+1)
+        float confidenceModeWeight = 1.0f;
+        if (iter < 4) 
+            confidenceModeWeight = 2.414f; 
+
         // Confidence that this is a good normal (0 to 1)
-        float confidence = confidenceFor_N_minus_3_inliners[numInliers - 2];
+        float confidence = confidenceFor_N_minus_3_inliners[numInliers - 2] * confidenceModeWeight;
+
         accumulatedNormal = accumulatedNormal + planeNormal * _mm_set1_ps(confidence);
     }
   
