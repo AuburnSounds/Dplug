@@ -397,8 +397,6 @@ nothrow @nogc:
             }
         }
 
-        // Other passes
-
         // skybox reflection (use the same shininess as specular)
         {
             for (int j = area.min.y; j < area.max.y; ++j)
@@ -409,61 +407,80 @@ nothrow @nogc:
                 RGBAf* accumScan = _accumBuffer.scanlinePtr(j);
                 const(L16*) depthScan = depthLevel0.scanlinePtr(j + DEPTH_BORDER);
 
+                // First compute the needed mipmap level for this line
+
+                immutable float amountOfSkyboxPixels = skybox.width * skybox.height;
                 for (int i = area.min.x; i < area.max.x; ++i)
                 {
-                    vec3f toEye = vec3f(0.5f - i * invW, j * invH - 0.5f, 1.0f);
-                    toEye.fastNormalize();
+                    // TODO optimize this crap
+                    const(L16)* depthHere = depthScan + i + DEPTH_BORDER;
+                    float[3][3] depthPatch;
+                    for (int row = 0; row < 3; ++row)
+                        for (int col = 0; col < 3; ++col)
+                        {
+                            depthPatch[row][col] = depthHere[(row-1) * depthPitch + (col - 1)].l;
+                        }
 
-                    RGBA materialHere = materialScan[i];
-                    float roughness = materialHere.r * div255;
-                    float metalness = materialHere.g * div255;
+                    // 2nd order derivatives
+                    float depthDX = depthPatch[2][0] + depthPatch[2][1] + depthPatch[2][2]
+                        + depthPatch[0][0] + depthPatch[0][1] + depthPatch[0][2]
+                        - 2 * (depthPatch[1][0] + depthPatch[1][1] + depthPatch[1][2]);
 
-                    // skybox reflection (use the same shininess as specular)
-                    if (metalness != 0)
+                    float depthDY = depthPatch[0][2] + depthPatch[1][2] + depthPatch[2][2]
+                        + depthPatch[0][0] + depthPatch[1][0] + depthPatch[2][0]
+                        - 2 * (depthPatch[0][1] + depthPatch[1][1] + depthPatch[2][1]);
+
+                    depthDX *= (1 / 256.0f);
+                    depthDY *= (1 / 256.0f);
+
+                    _skyMimapLevel[i] = (depthDX * depthDX + depthDY * depthDY) * amountOfSkyboxPixels;
+                }
+
+                // Compute mipmap level
+                {
+                    // cooking here
+                    // log2 scaling + threshold
+                    enum float ROUGH_FACT = 6.0f / 255.0f;
+                    int i = area.min.x;
+                    for (; i + 3 < area.max.x; i += 4)
                     {
-                        RGBf normalFromBuf = normalScan[i];
-                        vec3f normal = vec3f(normalFromBuf.r, normalFromBuf.g, normalFromBuf.b);
-
-                        RGBA ibaseColor = diffuseScan[i];
-                        vec3f baseColor = vec3f(ibaseColor.r, ibaseColor.g, ibaseColor.b) * div255;
-
-                        const(L16)* depthHere = depthScan + i + DEPTH_BORDER;
-
-                        vec3f pureReflection = reflect(toEye, normal);
-
-                        float skyx = 0.5f + ((0.5f - pureReflection.x *0.5f) * (skybox.width - 1));
-                        float skyy = 0.5f + ((0.5f + pureReflection.y *0.5f) * (skybox.height - 1));
-
-                        float[3][3] depthPatch;
-                        for (int row = 0; row < 3; ++row)
-                            for (int col = 0; col < 3; ++col)
-                            {
-                                depthPatch[row][col] = depthHere[(row-1) * depthPitch + (col - 1)].l;
-                            }
-
-                        // 2nd order derivatives
-                        float depthDX = depthPatch[2][0] + depthPatch[2][1] + depthPatch[2][2]
-                            + depthPatch[0][0] + depthPatch[0][1] + depthPatch[0][2]
-                            - 2 * (depthPatch[1][0] + depthPatch[1][1] + depthPatch[1][2]);
-
-                        float depthDY = depthPatch[0][2] + depthPatch[1][2] + depthPatch[2][2]
-                            + depthPatch[0][0] + depthPatch[1][0] + depthPatch[2][0]
-                            - 2 * (depthPatch[0][1] + depthPatch[1][1] + depthPatch[2][1]);
-
-                        depthDX *= (1 / 256.0f);
-                        depthDY *= (1 / 256.0f);
-
-                        float depthDerivSqr = depthDX * depthDX + depthDY * depthDY;
-                        float indexDeriv = depthDerivSqr * skybox.width * skybox.height;
-
-                        // cooking here
-                        // log2 scaling + threshold
-                        float mipLevel = 0.5f * fastlog2(1.0f + indexDeriv * 0.00001f) + 6 * roughness;
-
-                        vec3f skyColor = skybox.linearMipmapSample(mipLevel, skyx, skyy).rgb * (div255 * metalness * skyboxAmount);
-                        vec3f color = skyColor * baseColor;
-                        accumScan[i] += RGBAf(color.r, color.g, color.b, 0.0f);
+                        // We only want the first byte of each material sample, the roughness one
+                        __m128i material4 = _mm_loadu_si128(cast(__m128i*) &materialScan[i]);
+                        material4 = _mm_and_si128(material4, _mm_set1_epi32(255));
+                        __m128 roughness = _mm_cvtepi32_ps(material4);
+                        __m128 derivativeSquared = _mm_loadu_ps(&_skyMimapLevel[i]);
+                        __m128 level = _mm_set1_ps(0.5f) * _mm_fastlog2_ps(_mm_set1_ps(1.0f) + derivativeSquared * _mm_set1_ps(0.00001f))
+                                       + _mm_set1_ps(ROUGH_FACT) * roughness;
+                        _mm_storeu_ps(&_skyMimapLevel[i], level);
                     }
+                    for (; i < area.max.x; ++i)
+                    {
+                        float roughness = materialScan[i].r;
+                        _skyMimapLevel[i] = 0.5f * fastlog2(1.0f + _skyMimapLevel[i] * 0.00001f) + ROUGH_FACT * roughness;
+                    }
+                }
+
+                immutable float fskyX = (skybox.width - 1.0f);
+                immutable float fSkyY = (skybox.height - 1.0f);
+
+                immutable float amount = skyboxAmount * div255;
+
+                for (int i = area.min.x; i < area.max.x; ++i)
+                {
+                    // TODO: same remark than above about toEye, something to think about
+                    __m128 toEye = _mm_setr_ps(0.5f - i * invW, j * invH - 0.5f, 1.0f, 0.0f);
+                    toEye = _mm_fast_normalize_ps(toEye);
+
+                    __m128 normal = convertNormalToFloat4(normalScan[i]);
+                    __m128 pureReflection = _mm_reflectnormal_ps(toEye, normal);
+                    __m128 material = convertMaterialToFloat4(materialScan[i]);
+                    float metalness = material.array[1];
+                    __m128 baseColor = convertBaseColorToFloat4(diffuseScan[i]);
+                    float skyx = 0.5f + ((0.5f - pureReflection.array[0] * 0.5f) * fskyX);
+                    float skyy = 0.5f + ((0.5f + pureReflection.array[1] * 0.5f) * fSkyY);
+                    __m128 skyColorAtThisPoint = convertVec4fToFloat4( skybox.linearMipmapSample(_skyMimapLevel[i], skyx, skyy) );
+                    __m128 color = baseColor * skyColorAtThisPoint * _mm_set1_ps(metalness * amount);
+                    _mm_store_ps(cast(float*)(&accumScan[i]), _mm_load_ps(cast(float*)(&accumScan[i])) + color);
                 }
             }
         }
@@ -541,6 +558,9 @@ private:
     // For the specular highlight pass
     float[] _specularFactor;
     float[] _exponentFactor;
+
+    // Reused temporary buffer for the mipmap level
+    alias _skyMimapLevel = _specularFactor;
 }
 
 private:
@@ -595,6 +615,23 @@ float fastlog2(float val) pure nothrow @nogc
     return fi.f + log_2;
 }
 
+// log2 approximation by Laurent de Soras
+// http://www.flipcode.com/archives/Fast_log_Function.shtml
+// Same but 4x at once
+__m128 _mm_fastlog2_ps(__m128 val) pure nothrow @nogc
+{
+    __m128i x = _mm_castps_si128(val);
+    __m128i m128 = _mm_set1_epi32(128);
+    __m128i m255 = _mm_set1_epi32(255);
+    __m128i log_2 = _mm_and_si128(_mm_srai_epi32(x, 23), m255) - m128;
+    x = _mm_and_si128(x, _mm_set1_epi32(~(255 << 23)));
+    x = x + _mm_set1_epi32(127 << 23);
+    __m128 fif = _mm_castsi128_ps(x);
+    return fif + _mm_cvtepi32_ps(log_2);
+}
+
+
+
 alias convertMaterialToFloat4 = convertBaseColorToFloat4;
 
 // Convert a 8-bit color to a normalized 4xfloat color
@@ -613,3 +650,10 @@ __m128 convertNormalToFloat4(RGBf normal) nothrow @nogc pure
 {
     return _mm_setr_ps(normal.r, normal.g, normal.b, 0.0f);
 }
+
+__m128 convertVec4fToFloat4(vec4f vec) nothrow @nogc pure
+{
+    return _mm_setr_ps(vec.x, vec.y, vec.z, vec.w);
+}
+
+
