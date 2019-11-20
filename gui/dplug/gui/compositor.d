@@ -122,7 +122,7 @@ nothrow @nogc:
         int h = diffuseMap.levels[0].h;
 
         OwnedImage!L16 depthLevel0 = depthMap.levels[0];
-        int depthPitch = depthLevel0.pitchInSamples(); // pitch of depth buffer, in L16 units
+        int depthPitchBytes = depthLevel0.pitchInBytes(); // pitch of depth buffer, in bytes
 
         // Compute normals (read depth, write to _normalBuffer)
         {
@@ -134,39 +134,41 @@ nothrow @nogc:
                 for (int i = area.min.x; i < area.max.x; ++i)
                 {
                     const(L16)* depthHere = depthScan + i + DEPTH_BORDER;
+                    const(L16)* depthHereM1 = cast(const(L16)*) ( cast(const(ubyte)*)depthHere - depthPitchBytes );
+                    const(L16)* depthHereP1 = cast(const(L16)*) ( cast(const(ubyte)*)depthHere + depthPitchBytes );
                     version(futurePBRNormals)
                     {
                         // Tuned once by hand to match the other normal computation algorithm
                         enum float FACTOR_Z = 4655.0f;
                         enum float multUshort = 1.0 / FACTOR_Z;
                         float[9] depthNeighbourhood = void;
-                        depthNeighbourhood[0] = depthHere[-depthPitch-1].l * multUshort;
-                        depthNeighbourhood[1] = depthHere[-depthPitch  ].l * multUshort;
-                        depthNeighbourhood[2] = depthHere[-depthPitch+1].l * multUshort;
-                        depthNeighbourhood[3] = depthHere[           -1].l * multUshort;
-                        depthNeighbourhood[4] = depthHere[            0].l * multUshort;
-                        depthNeighbourhood[5] = depthHere[           +1].l * multUshort;
-                        depthNeighbourhood[6] = depthHere[+depthPitch-1].l * multUshort;
-                        depthNeighbourhood[7] = depthHere[+depthPitch  ].l * multUshort;
-                        depthNeighbourhood[8] = depthHere[+depthPitch+1].l * multUshort;
+                        depthNeighbourhood[0] = depthHereM1[-1].l * multUshort;
+                        depthNeighbourhood[1] = depthHereM1[ 0].l * multUshort;
+                        depthNeighbourhood[2] = depthHereM1[+1].l * multUshort;
+                        depthNeighbourhood[3] = depthHere[-1].l * multUshort;
+                        depthNeighbourhood[4] = depthHere[ 0].l * multUshort;
+                        depthNeighbourhood[5] = depthHere[+1].l * multUshort;
+                        depthNeighbourhood[6] = depthHereP1[-1].l * multUshort;
+                        depthNeighbourhood[7] = depthHereP1[ 0].l * multUshort;
+                        depthNeighbourhood[8] = depthHereP1[+1].l * multUshort;
                         vec3f normal = computeRANSACNormal(depthNeighbourhood.ptr);
                     }
                     else
                     {
                         // compute normal
-                        float sx = depthHere[-depthPitch-1].l
-                                 + depthHere[           -1].l * 2
-                                 + depthHere[+depthPitch-1].l
-                             - (   depthHere[-depthPitch+1].l
-                                 + depthHere[           +1].l * 2
-                                 + depthHere[+depthPitch+1].l  );
+                        float sx = depthHereM1[-1].l
+                                 + depthHere[  -1].l * 2
+                                 + depthHereP1[-1].l
+                             - (   depthHereM1[+1].l
+                                 + depthHere[  +1].l * 2
+                                 + depthHereP1[+1].l  );
 
-                        float sy = depthHere[ depthPitch-1].l 
-                                 + depthHere[ depthPitch  ].l * 2 
-                                 + depthHere[ depthPitch+1].l
-                             - (   depthHere[-depthPitch-1].l 
-                                 + depthHere[-depthPitch  ].l * 2 
-                                 + depthHere[-depthPitch+1].l);
+                        float sy = depthHereP1[-1].l 
+                                 + depthHereP1[ 0].l * 2 
+                                 + depthHereP1[+1].l
+                             - (   depthHereM1[-1].l 
+                                 + depthHereM1[ 0].l * 2 
+                                 + depthHereM1[+1].l);
 
                         // this factor basically tweak normals to make the UI flatter or not
                         // if you change normal filtering, retune this
@@ -416,10 +418,13 @@ nothrow @nogc:
                     const(L16)* depthHere = depthScan + i + DEPTH_BORDER;
                     float[3][3] depthPatch;
                     for (int row = 0; row < 3; ++row)
+                    {
+                        const(L16)* depthLine = cast(const(L16)*)((cast(const(ubyte)*)depthHere) + (row-1) * depthPitchBytes);
                         for (int col = 0; col < 3; ++col)
-                        {
-                            depthPatch[row][col] = depthHere[(row-1) * depthPitch + (col - 1)].l;
+                        {                            
+                            depthPatch[row][col] = depthLine[(col - 1)].l;
                         }
+                    }
 
                     // 2nd order derivatives
                     float depthDX = depthPatch[2][0] + depthPatch[2][1] + depthPatch[2][2]

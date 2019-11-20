@@ -500,92 +500,258 @@ void blendWithAlpha(SRC, DST)(auto ref SRC srcView, auto ref DST dstView, auto r
 }
 
 
-/// Manually managed image which is also GC-proof.
+/// Manually managed image.
 final class OwnedImage(COLOR)
 {
 public:
 nothrow:
 @nogc:
-    int w, h;
 
-    /// Create empty.
+    /// Width of the meaningful area. Public in order to be an `Image`.
+    int w;
+
+    /// Height of the meaningful area. Public in order to be an `Image`.
+    int h;
+
+    /// Create empty and with no size.
     this() nothrow @nogc
     {
-        w = 0;
-        h = 0;
-        _pixels = null;
     }
 
     /// Create with given initial size.
-    this(int w, int h) nothrow @nogc
+    ///
+    /// Params:
+    ///   w               Width of meaningful area in pixels.
+    ///   h               Height of meaningful area in pixels.
+    ///   border          Number of border pixels around the meaningful area. For the right border, this could actually be more depending on other constraints.
+    ///   rowAlignment    Alignment of the _first_ pixel of each row, in bytes (excluding border).
+    ///   xMultiplicity   Starting with the first meaningful pixel of a line, force the number of adressable
+    ///                   pixels to be a multiple of `xMultiplicity`.
+    ///                   All these "padding" samples added at the right of each line if needed will be considered 
+    ///                   part of the border and replicated if need be.
+    ///                   This is eg. to process a whole line with only aligned loads.
+    ///                   Implemented with additional right border.
+    ///   trailingSamples When reading from a meaningful position, you can read 1 + `trailingSamples` neightbours
+    ///                   Their value is NOT guaranteed in any way and is completely undefined. 
+    ///                   They are guaranteed non-NaN if you've generated borders and did not write into borders.
+    ///                   Because of row alignment padding, this is not implemented with a few samples at the end 
+    ///                   of the buffer, but is instead again a right border extension.
+    ///
+    /// Note: default arguments leads to a gapless representation.
+    this(int w, int h, int border = 0, int rowAlignment = 1, int xMultiplicity = 1, int trailingSamples = 0) nothrow @nogc
     {
         this();
-        size(w, h);
+        size(w, h, border, rowAlignment, xMultiplicity);
     }
 
     ~this()
     {
-        if (_pixels !is null)
+        if (_buffer !is null)
         {
-            alignedFree(_pixels, 128);
-            _pixels = null;
+            alignedFree(_buffer, 1);
+            _buffer = null;
         }
     }
 
-    /// Returns an array for the pixels at row y.
-    COLOR[] scanline(int y) pure
-    {
-        assert(y>=0 && y<h);
-        // perf: this cast help in 64-bit, since it avoids a MOVSXD to extend a signed 32-bit into a 64-bit pointer offset
-        auto start = w * cast(uint)y; 
-        return _pixels[start..start+w];
-    }
-
+    /// Returns: A pojnter to the pixels at row y. Excluding border pixels.
     COLOR* scanlinePtr(int y) pure
     {
-        assert(y>=0 && y<h);
+        assert(y >= 0 && y < h);
         // perf: this cast help in 64-bit, since it avoids a MOVSXD to extend a signed 32-bit into a 64-bit pointer offset
         return &_pixels[w * cast(uint)y];
     }
 
-    mixin DirectView;
-
-    /// Resize the image, the content is lost.
-    void size(int w, int h) nothrow @nogc
+    /// Returns: A slice of the pixels at row y. Excluding border pixels.
+    COLOR[] scanline(int y) pure
     {
-        this.w = w;
-        this.h = h;
-        size_t sizeInBytes = w * h * COLOR.sizeof;
-        // We don't need to preserve former data.
-        _pixels = cast(COLOR*) alignedReallocDiscard(_pixels, sizeInBytes, 128);
+        return scanlinePtr(y)[0..w];
+    }    
+
+    /// Resize the image, the content is lost and the new content is undefined.
+    ///
+    /// Params:
+    ///   w               Width of meaningful area in pixels.
+    ///   h               Height of meaningful area in pixels.
+    ///   border          Number of border pixels around the meaningful area. For the right border, this could actually be more depending on other constraints.
+    ///   rowAlignment    Alignment of the _first_ pixel of each row, in bytes (excluding border).
+    ///   xMultiplicity   Starting with the first meaningful pixel of a line, force the number of adressable
+    ///                   pixels to be a multiple of `xMultiplicity`.
+    ///                   All these "padding" samples added at the right of each line if needed will be considered 
+    ///                   part of the border and replicated if need be.
+    ///                   This is eg. to process a whole line with only aligned loads.
+    ///                   Implemented with additional right border.
+    ///   trailingSamples When reading from a meaningful position, you can read 1 + `trailingSamples` neightbours
+    ///                   Their value is NOT guaranteed in any way and is completely undefined. 
+    ///                   They are guaranteed non-NaN if you've generated borders and did not write into borders.
+    ///                   Because of row alignment padding, this is not implemented with a few samples at the end 
+    ///                   of the buffer, but is instead again a right border extension.
+    ///
+    /// Note: Default arguments leads to a gapless representation.
+    void size(int width, 
+              int height, 
+              int border = 0, 
+              int rowAlignment = 1, 
+              int xMultiplicity = 1, 
+              int trailingSamples = 0)
+    {
+        assert(width >= 0); // Note sure if 0 is supported
+        assert(height >= 0); // Note sure if 0 is supported
+        assert(border >= 0);
+        assert(rowAlignment >= 1); // Not yet implemented!
+        assert(xMultiplicity >= 1); // Not yet implemented!
+
+        // Compute size of right border.
+        // How many "padding samples" do we need to extend the right border with to respect `xMultiplicity`?
+        int rightPadding = computeRightPadding(w, border, xMultiplicity);
+        int borderRight = border + rightPadding;
+        if (borderRight < trailingSamples)
+            borderRight = trailingSamples;
+
+        int actualWidthInSamples  = border + width  + borderRight;
+        int actualHeightInSamples = border + height + border;        
+
+        // Compute byte pitch and align it on `rowAlignment`
+        int bytePitch = cast(int)(COLOR.sizeof) * actualWidthInSamples;
+        bytePitch = cast(int) nextMultipleOf(bytePitch, rowAlignment);
+
+        this.w = width;
+        this.h = height;
+        this._border = border;
+        this._borderRight = borderRight;
+        this._bytePitch = bytePitch;
+
+        // How many bytes do we need for all samples? A bit more for aligning the first valid pixel.
+        size_t allocationSize = bytePitch * actualHeightInSamples;
+        allocationSize += (rowAlignment - 1);
+
+        // We don't need to preserve former data, nor to align the first border pixel
+        this._buffer = alignedReallocDiscard(this._buffer, allocationSize, 1);
+
+        // Set _pixels to the right place
+        size_t offsetToFirstMeaningfulPixel = bytePitch * borderTop() + COLOR.sizeof * borderLeft();
+        this._pixels = cast(COLOR*) nextAlignedPointer(&_buffer[offsetToFirstMeaningfulPixel], rowAlignment);
+
+        // Test alignment of rows
+        assert( isPointerAligned(_pixels, rowAlignment) );
+        if (height > 0)
+            assert( isPointerAligned(scanlinePtr(0), rowAlignment) );
     }
 
-    /// Returns: A slice of all pixels.
-    COLOR[] pixels() nothrow @nogc
+    /// Returns: `true` if rows of pixels are immediately consecutive in memory.
+    ///          Meaning that there is no border or lost pixels in the data.
+    bool isGapless() pure
     {
+        return w * COLOR.sizeof  == _bytePitch;
+    }
+
+    /// Returns: A slice of all pixels. This only works for gapless images, because else it doesn't make sense.
+    deprecated("pixels() is being removed because it's unclear what it should do") COLOR[] pixels()
+    {
+        if (!isGapless())
+            assert(false);
+
         return _pixels[0..w*h];
     }
 
     /// Returns: Number of samples to add to a COLOR* pointer to get to the previous/next line.
-    int pitchInSamples()
+    ///          `OwnedImage` used to guarantees that this is always an integer number of samples.
+    deprecated("prefer using pitchInBytes() now") int pitchInSamples()
     {
-        return w;
+        assert(_bytePitch % cast(int)(COLOR.sizeof) == 0);
+        return _bytePitch / cast(int)(COLOR.sizeof);
     }
 
     /// Returns: Number of bytes to add to a COLOR* pointer to get to the previous/next line.
     int pitchInBytes()
     {
-        return w * cast(int)(COLOR.sizeof);
+        return _bytePitch;
     }
 
+    /// Returns: Number of border pixels in the left direction (small X).
+    int borderLeft() pure
+    {
+        return _border;
+    }
+
+    /// Returns: Number of border pixels in the right direction (large X).
+    int borderRight() pure
+    {
+        return _borderRight;
+    }
+
+    /// Returns: Number of border pixels in the left direction (small Y).
+    int borderTop() pure
+    {
+        return _border;
+    }
+
+    /// Returns: Number of border pixels in the left direction (large Y).
+    int borderBottom() pure
+    {
+        return _border;
+    }
+
+    // It is a `DirectView`.
+    mixin DirectView;
 
 private:
+
+    /// Adress of the first meaningful pixel
     COLOR* _pixels;
+
+    /// Samples difference between rows of pixels.
+    int _bytePitch;
+
+    /// Address of the allocation itself
+    void* _buffer = null;
+
+    /// Size of left, top and bottom borders, around the meaningful area.
+    int _border;
+
+    /// Size of border at thr right of the meaningful area (most positive X)
+    int _borderRight;
+
+    static int computeRightPadding(int width, int border, int xMultiplicity) pure
+    {
+        int nextMultiple = cast(int)(nextMultipleOf(width + border, xMultiplicity));
+        return nextMultiple - (width + border);
+    }
+
+    static size_t nextMultipleOf(size_t base, size_t multiple) pure
+    {
+        assert(multiple > 0);
+        size_t n = (base + multiple - 1) / multiple;
+        return multiple * n;
+    }
+
+    /// Returns: next pointer aligned with alignment bytes.
+    static void* nextAlignedPointer(void* start, size_t alignment) pure
+    {
+        return cast(void*)nextMultipleOf(cast(size_t)(start), alignment);
+    }
 }
 
 unittest
 {
     static assert(isDirectView!(OwnedImage!ubyte));
+    assert(OwnedImage!RGBA.computeRightPadding(4, 0, 4) == 0);
+    assert(OwnedImage!RGBA.computeRightPadding(1, 3, 5) == 1);
+    assert(OwnedImage!L16.computeRightPadding(2, 0, 4) == 2);
+    assert(OwnedImage!RGBA.computeRightPadding(2, 1, 4) == 1);
+    assert(OwnedImage!RGBf.nextMultipleOf(0, 7) == 0);
+    assert(OwnedImage!RGBAf.nextMultipleOf(1, 7) == 7);
+    assert(OwnedImage!RGBA.nextMultipleOf(6, 7) == 7);
+    assert(OwnedImage!RGBA.nextMultipleOf(7, 7) == 7);
+    assert(OwnedImage!RGBA.nextMultipleOf(8, 7) == 14);
+
+    {
+        OwnedImage!RGBA img = mallocNew!(OwnedImage!RGBA);
+        scope(exit) destroyFree(img);
+        img.size(0, 0); // should be supported
+
+        int border = 10;
+        img.size(0, 0, 10); // should also be supported (border with no data!)
+    }
 }
 
 //
@@ -652,8 +818,15 @@ OwnedImage!RGBA loadOwnedImage(in void[] imageData)
     int width = cast(int)ifImage.w;
     int height = cast(int)ifImage.h;
 
+    // Make a copy
     OwnedImage!RGBA loaded = mallocNew!(OwnedImage!RGBA)(width, height);
-    loaded.pixels[] = (cast(RGBA[]) ifImage.pixels)[]; // pixel copy here
+    ubyte[] sourcePixels = ifImage.pixels;
+    for (int y = 0; y < height; ++y)
+    {
+        RGBA* destScan = loaded.scanlinePtr(y);
+        RGBA* sourceScan = cast(RGBA*)(&sourcePixels[y * width * 4]);
+        destScan[0..width] = sourceScan[0..width];
+    }
     return loaded;
 }
 
