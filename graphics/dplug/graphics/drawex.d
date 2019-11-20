@@ -558,7 +558,7 @@ nothrow:
     {
         assert(y >= 0 && y < h);
         // perf: this cast help in 64-bit, since it avoids a MOVSXD to extend a signed 32-bit into a 64-bit pointer offset
-        return &_pixels[w * cast(uint)y];
+        return &_pixels[_bytePitch * cast(uint)y];
     }
 
     /// Returns: A slice of the pixels at row y. Excluding border pixels.
@@ -694,6 +694,129 @@ nothrow:
     // It is a `DirectView`.
     mixin DirectView;
 
+    /// Fills the whole image, border included, with a single color value.
+    void fillWith(COLOR fill)
+    {
+        for (int y = -borderTop(); y < h + borderBottom(); ++y)
+        {
+            int pixelsInRow = borderLeft() + w + borderRight();
+            COLOR* scan = unsafeScanlinePtr(y) - borderLeft();
+            scan[0..pixelsInRow] = fill;
+        }
+    }
+
+    /// Fill the borders by taking the nearest existing pixel in the meaningful area.
+    void replicateBorders()
+    {
+        replicateBordersTouching( box2i.rectangle(0, 0, this.w, this.h) );
+    }
+
+    /// Fill the borders _touching updatedRect_ by taking the nearest existing pixel in the meaningful area.
+    void replicateBordersTouching(box2i updatedRect)
+    {
+        if (w < 1 || h < 1)
+            return; // can't replicate borders of an empty image
+
+        // BORDER REPLICATION.
+        // If an area is touching left border, then the border needs replication.
+        // If an area is touching left and top border, then the border needs replication and the corner pixel should be filled too.
+        // Same for all four corners. Border only applies to level 0.
+        //
+        // OOOOOOOxxxxxxxxxxxxxxx
+        // Ooooooo
+        // Oo    o
+        // Oo    o    <------ if the update area is made of 'o', then the area to replicate is 'O'
+        // Ooooooo
+        // x
+        // x
+
+        int W = this.w;
+        int H = this.h;
+
+        int minx = updatedRect.min.x;
+        int maxx = updatedRect.max.x;
+        int miny = updatedRect.min.y;
+        int maxy = updatedRect.max.y;
+
+        bool touchLeft   = (minx == 0);
+        bool touchTop    = (miny == 0);
+        bool touchRight  = (maxx == W);
+        bool touchBottom = (maxy == H);
+
+        int bTop   = borderTop();
+        int bBott  = borderBottom();
+        int bLeft  = borderLeft();
+        int bRight = borderRight();
+
+        if (touchTop)
+        {
+            if (touchLeft)
+            {
+                COLOR topLeft = this[0, 0];
+                for (int y = -borderTop; y < 0; ++y)
+                    for (int x = -borderLeft; x < 0; ++x)
+                        unsafeScanlinePtr(y)[x] = topLeft;
+            }
+
+            for (int y = -borderTop; y < 0; ++y)
+            {
+                unsafeScanlinePtr(y)[minx..maxx] = scanline(0)[minx..maxx];
+            }
+
+            if (touchRight)
+            {
+                COLOR topRight = this[W-1, 0];
+                for (int y = -borderTop; y < 0; ++y)
+                    for (int x = 0; x < borderRight(); ++x)
+                        unsafeScanlinePtr(y)[W + x] = topRight;
+            }
+        }
+
+        if (touchLeft)
+        {
+            for (int y = miny; y < maxy; ++y)
+            {
+                COLOR edge = this[0, y];
+                for (int x = -borderLeft(); x < 0; ++x)
+                    unsafeScanlinePtr(y)[x] = edge;
+            }
+        }
+
+        if (touchRight)
+        {
+            for (int y = miny; y < maxy; ++y)
+            {
+                COLOR edge = this[W-1, y];
+                for (int x = 0; x < borderRight(); ++x)
+                    unsafeScanlinePtr(y)[W + x] = edge;
+            }
+        }
+
+        if (touchBottom)
+        {
+            if (touchLeft)
+            {
+                COLOR bottomLeft = this[0, H-1];
+                for (int y = H; y < H + borderTop(); ++y)
+                    for (int x = -borderLeft; x < 0; ++x)
+                        unsafeScanlinePtr(y)[x] = bottomLeft;
+            }
+
+            for (int y = H; y < H + borderBottom(); ++y)
+            {
+                unsafeScanlinePtr(y)[minx..maxx] = scanline(H-1)[minx..maxx];
+            }
+
+            if (touchRight)
+            {
+                COLOR bottomRight = this[W-1, H-1];
+                for (int y = H; y < H + borderTop(); ++y)
+                    for (int x = 0; x < borderRight(); ++x)
+                        unsafeScanlinePtr(y)[W + x] = bottomRight;
+            }
+        }
+    }
+
 private:
 
     /// Adress of the first meaningful pixel
@@ -710,6 +833,15 @@ private:
 
     /// Size of border at thr right of the meaningful area (most positive X)
     int _borderRight;
+
+    // Internal use: allows to get the scanlines of top and bottom borders too
+    COLOR* unsafeScanlinePtr(int y) pure
+    {
+        assert(y >= -borderTop());      // negative Y allows to get top border scanlines
+        assert(y < h + borderBottom()); // Y overflow allows to get bottom border scanlines
+        int byteOffset = _bytePitch * y; // unlike the normal `scanlinePtr`, there will be a MOVSXD here
+        return cast(COLOR*)(cast(ubyte*)(_pixels) + byteOffset);
+    }
 
     static int computeRightPadding(int width, int border, int xMultiplicity) pure
     {
@@ -750,7 +882,55 @@ unittest
         img.size(0, 0); // should be supported
 
         int border = 10;
-        img.size(0, 0, 10); // should also be supported (border with no data!)
+        img.size(0, 0, border); // should also be supported (border with no data!)
+        img.replicateBorders(); // should not crash
+
+        border = 0;
+        img.size(1, 1, border);
+        img.replicateBorders(); // should not crash
+    }
+}
+
+// Test border replication
+unittest
+{
+    OwnedImage!L8 img = mallocNew!(OwnedImage!L8);
+    scope(exit) destroyFree(img);
+    int width = 2;
+    int height = 2;
+    int border = 2;
+    int xMultiplicity = 1;
+    int trailing = 3;
+    img.size(width, height, border, xMultiplicity, trailing);
+    assert(img.w == 2 && img.h == 2);
+    assert(img.borderLeft() == 2 && img.borderRight() == 3);
+    assert(img._bytePitch == 7);
+
+    img.fillWith(L8(5));
+    img.scanline(0)[0].l = 1;
+    img.scanlinePtr(0)[1].l = 2;
+    img[0, 1].l = 3;
+    img[1, 1].l = 4;
+    
+    img.replicateBorders();
+    ubyte[7][6] correct = 
+    [
+        [1, 1, 1, 2, 2, 2, 2],
+        [1, 1, 1, 2, 2, 2, 2],
+        [1, 1, 1, 2, 2, 2, 2],
+        [3, 3, 3, 4, 4, 4, 4],
+        [3, 3, 3, 4, 4, 4, 4],
+        [3, 3, 3, 4, 4, 4, 4],
+    ];
+
+    for (int y = -2; y < 4; ++y)
+    {
+        for (int x = -2; x < 5; ++x)
+        {            
+            L8 read = img.unsafeScanlinePtr(y)[x];
+            ubyte good = correct[y+2][x+2];
+            assert(read.l == good);
+        }
     }
 }
 
