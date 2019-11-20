@@ -565,36 +565,6 @@ private:
 
 private:
 
-// cause smoothStep wasn't needed
-float ctLinearStep(float a, float b)(float t) pure nothrow @nogc
-{
-    if (t <= a)
-        return 0.0f;
-    else if (t >= b)
-        return 1.0f;
-    else
-    {
-        static immutable divider = 1.0f / (b - a);
-        return (t - a) * divider;
-    }
-}
-
-private:
-
-// cause smoothStep wasn't needed
-float linearStep(float a, float b, float t) pure nothrow @nogc
-{
-    if (t <= a)
-        return 0.0f;
-    else if (t >= b)
-        return 1.0f;
-    else
-    {
-        float divider = 1.0f / (b - a);
-        return (t - a) * divider;
-    }
-}
-
 // log2 approximation by Laurent de Soras
 // http://www.flipcode.com/archives/Fast_log_Function.shtml
 float fastlog2(float val) pure nothrow @nogc
