@@ -579,7 +579,7 @@ protected:
         int border_1 = 1;
         int rowAlign_1 = 1;
         int xMultiplicity_1 = 1;
-        int trailingSamples_2 = 0; // TODO change to 2
+        int trailingSamples_2 = 2;
         _depthMap.levels[0].size(width, height, border_1, rowAlign_1, xMultiplicity_1, trailingSamples_2);
 
         _materialMap.size(0, width, height);

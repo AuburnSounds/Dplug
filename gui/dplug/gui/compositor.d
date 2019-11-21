@@ -51,8 +51,6 @@ nothrow:
 /// "Physically Based"-style rendering
 class PBRCompositor : ICompositor
 {
-    deprecated enum DEPTH_BORDER = 1; // MUST be kept in sync with the one in GUIGraphics
-
 nothrow @nogc:
     // light 1 used for key lighting and shadows
     // always coming from top-right
@@ -413,73 +411,60 @@ nothrow @nogc:
                 RGBA* materialScan = materialMap.levels[0].scanlinePtr(j);
                 RGBA* diffuseScan = diffuseMap.levels[0].scanlinePtr(j);
                 RGBf* normalScan = _normalBuffer.scanlinePtr(j);
-                RGBAf* accumScan = _accumBuffer.scanlinePtr(j);
-                const(L16*) depthScan = depthLevel0.scanlinePtr(j);
+                RGBAf* accumScan = _accumBuffer.scanlinePtr(j);         
 
                 // First compute the needed mipmap level for this line
 
+                // Note: because the level 0 of depth map has a border of 1 and a trailingSamples of 2,
+                //       then we are allowed to read 4 depth samples at once.
+                const(L16)* depthScan   = depthLevel0.scanlinePtr(j);
+
                 immutable float amountOfSkyboxPixels = skybox.width * skybox.height;
-                float* mipmapLevelScan = cast(float*) _skyMimapLevel.scanlinePtr(j);
+                uint depthPitch = depthLevel0.pitchInBytes();
                 for (int i = area.min.x; i < area.max.x; ++i)
                 {
-                    // TODO optimize this crap
-                    const(L16)* depthHere = depthScan + i;
-                    float[3][3] depthPatch;
-                    for (int row = 0; row < 3; ++row)
-                    {
-                        const(L16)* depthLine = cast(const(L16)*)((cast(const(ubyte)*)depthHere) + (row-1) * depthPitchBytes);
-                        for (int col = 0; col < 3; ++col)
-                        {                            
-                            depthPatch[row][col] = depthLine[(col - 1)].l;
-                        }
-                    }
+                    const(ubyte)* depthHere = cast(const(ubyte)*)(depthScan + i);
 
-                    // 2nd order derivatives
-                    float depthDX = depthPatch[2][0] + depthPatch[2][1] + depthPatch[2][2]
-                        + depthPatch[0][0] + depthPatch[0][1] + depthPatch[0][2]
-                        - 2 * (depthPatch[1][0] + depthPatch[1][1] + depthPatch[1][2]);
+                    // Read 12 depth samples, the rightmost 3 are unused
+                    __m128i depthSamplesM1 = _mm_loadl_epi64( cast(const(__m128i)*)(depthHere - depthPitch) );
+                    __m128i depthSamplesP0 = _mm_loadl_epi64( cast(const(__m128i)*)(depthHere) );
+                    __m128i depthSamplesP1 = _mm_loadl_epi64( cast(const(__m128i)*)(depthHere + depthPitch) );
 
-                    float depthDY = depthPatch[0][2] + depthPatch[1][2] + depthPatch[2][2]
-                        + depthPatch[0][0] + depthPatch[1][0] + depthPatch[2][0]
-                        - 2 * (depthPatch[0][1] + depthPatch[1][1] + depthPatch[2][1]);
+                    // Extend to float
+                    __m128i zero = _mm_setzero_si128();
+                    __m128 depthM1 = _mm_cvtepi32_ps(_mm_unpacklo_epi16(depthSamplesM1, zero));
+                    __m128 depthP0 = _mm_cvtepi32_ps(_mm_unpacklo_epi16(depthSamplesP0, zero));
+                    __m128 depthP1 = _mm_cvtepi32_ps(_mm_unpacklo_epi16(depthSamplesP1, zero));
+
+                    // 2nd-order-derivative for depth in the X direction
+                    //  1 -2  1
+                    //  1 -2  1
+                    //  1 -2  1
+                    const(__m128) fact_DDX_M1 = _mm_setr_ps( 1.0f, -2.0f,  1.0f, 0.0f);   
+                    __m128 mulForDDX = fact_DDX_M1 * (depthM1 + depthP0 + depthP1);
+                    float depthDX = mulForDDX.array[0] + mulForDDX.array[1] + mulForDDX.array[2];
+
+                    // 2nd-order-derivative for depth in the Y direction
+                    //  1  1  1
+                    // -2 -2 -2
+                    //  1  1  1
+                    const(__m128) fact_DDY_M1 = _mm_setr_ps( 1.0f,  1.0f,  1.0f, 0.0f);
+                    const(__m128) fact_DDY_P0 = _mm_setr_ps(-2.0f, -2.0f, -2.0f, 0.0f);
+                    __m128 mulForDDY = fact_DDY_M1 * (depthM1 + depthP1) + depthP0 * fact_DDY_P0;
+                    float depthDY = mulForDDY.array[0] + mulForDDY.array[1] + mulForDDY.array[2];
 
                     depthDX *= (1 / 256.0f);
                     depthDY *= (1 / 256.0f);
-
-                    mipmapLevelScan[i] = (depthDX * depthDX + depthDY * depthDY) * amountOfSkyboxPixels;
-                }
-
-                // Compute mipmap level
-                {
-                    // cooking here
-                    // log2 scaling + threshold
+                    float mipmapLevel = (depthDX * depthDX + depthDY * depthDY) * amountOfSkyboxPixels;
                     enum float ROUGH_FACT = 6.0f / 255.0f;
-                    int i = area.min.x;
-                    for (; i + 3 < area.max.x; i += 4)
-                    {
-                        // We only want the first byte of each material sample, the roughness one
-                        __m128i material4 = _mm_loadu_si128(cast(__m128i*) &materialScan[i]);
-                        material4 = _mm_and_si128(material4, _mm_set1_epi32(255));
-                        __m128 roughness = _mm_cvtepi32_ps(material4);
-                        __m128 derivativeSquared = _mm_loadu_ps(&mipmapLevelScan[i]);
-                        __m128 level = _mm_set1_ps(0.5f) * _mm_fastlog2_ps(_mm_set1_ps(1.0f) + derivativeSquared * _mm_set1_ps(0.00001f))
-                                       + _mm_set1_ps(ROUGH_FACT) * roughness;
-                        _mm_storeu_ps(&mipmapLevelScan[i], level);
-                    }
-                    for (; i < area.max.x; ++i)
-                    {
-                        float roughness = materialScan[i].r;
-                        mipmapLevelScan[i] = 0.5f * fastlog2(1.0f + mipmapLevelScan[i] * 0.00001f) + ROUGH_FACT * roughness;
-                    }
-                }
+                    float roughness = materialScan[i].r;
+                    mipmapLevel = 0.5f * fastlog2(1.0f + mipmapLevel * 0.00001f) + ROUGH_FACT * roughness;
+   
+                    immutable float fskyX = (skybox.width - 1.0f);
+                    immutable float fSkyY = (skybox.height - 1.0f);
 
-                immutable float fskyX = (skybox.width - 1.0f);
-                immutable float fSkyY = (skybox.height - 1.0f);
+                    immutable float amount = skyboxAmount * div255;
 
-                immutable float amount = skyboxAmount * div255;
-
-                for (int i = area.min.x; i < area.max.x; ++i)
-                {
                     // TODO: same remark than above about toEye, something to think about
                     __m128 toEye = _mm_setr_ps(0.5f - i * invW, j * invH - 0.5f, 1.0f, 0.0f);
                     toEye = _mm_fast_normalize_ps(toEye);
@@ -491,7 +476,7 @@ nothrow @nogc:
                     __m128 baseColor = convertBaseColorToFloat4(diffuseScan[i]);
                     float skyx = 0.5f + ((0.5f - pureReflection.array[0] * 0.5f) * fskyX);
                     float skyy = 0.5f + ((0.5f + pureReflection.array[1] * 0.5f) * fSkyY);
-                    __m128 skyColorAtThisPoint = convertVec4fToFloat4( skybox.linearMipmapSample(mipmapLevelScan[i], skyx, skyy) );
+                    __m128 skyColorAtThisPoint = convertVec4fToFloat4( skybox.linearMipmapSample(mipmapLevel, skyx, skyy) );
                     __m128 color = baseColor * skyColorAtThisPoint * _mm_set1_ps(metalness * amount);
                     _mm_store_ps(cast(float*)(&accumScan[i]), _mm_load_ps(cast(float*)(&accumScan[i])) + color);
                 }
@@ -573,9 +558,6 @@ private:
     // and overwriting the same are if it was a line.
     OwnedImage!L32f _specularFactor;
     OwnedImage!L32f _exponentFactor;
-
-    // Reused temporary buffer for the mipmap level
-    alias _skyMimapLevel = _specularFactor;
 }
 
 private:

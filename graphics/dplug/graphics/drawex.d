@@ -670,6 +670,7 @@ nothrow:
     }
 
     /// Returns: Number of bytes to add to a COLOR* pointer to get to the previous/next line.
+    ///          This pitch is guaranteed to be positive (>= 0).
     int pitchInBytes() pure
     {
         return _bytePitch;
