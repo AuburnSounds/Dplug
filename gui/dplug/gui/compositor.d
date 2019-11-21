@@ -107,8 +107,12 @@ nothrow @nogc:
     {
         _specularFactor.reallocBuffer(width);
         _exponentFactor.reallocBuffer(width);
-        _normalBuffer.size(width, height);
-        _accumBuffer.size(width, height);
+
+        int border_0 = 0;
+        int rowAlign_1 = 1;
+        int rowAlign_16 = 16;
+        _normalBuffer.size(width, height, border_0, rowAlign_1);
+        _accumBuffer.size(width, height, border_0, rowAlign_16);
     }
 
     /// Don't like this rendering? Feel free to override this method.
@@ -217,7 +221,7 @@ nothrow @nogc:
                         cavity = 0;
 
                     __m128 color = baseColor * _mm_set1_ps(cavity * ambientLight);
-                    _mm_storeu_ps(cast(float*)&accumScan[i], color);
+                    _mm_store_ps(cast(float*)&accumScan[i], color);
                 }
             }
         }
@@ -300,7 +304,8 @@ nothrow @nogc:
                         lightPassed += (contrib1 + contrib2 * 0.7f) * weights[sample];
                     }
                     vec3f color = baseColor * light1Color * (lightPassed * invTotalWeights);
-                    accumScan[i] += RGBAf(color.r, color.g, color.b, 0.0f);
+                    __m128 mmColor = _mm_setr_ps(color.r, color.g, color.b, 0.0f);
+                    _mm_store_ps(&accumScan[i], _mm_load_ps(&accumScan[i]) + mmColor);
                 }
             }
         }

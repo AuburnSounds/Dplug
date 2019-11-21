@@ -559,7 +559,7 @@ nothrow:
         assert(y >= 0 && y < h);
 
         // perf: this cast help in 64-bit, since it avoids a MOVSXD to extend a signed 32-bit into a 64-bit pointer offset
-        int offsetBytes = _bytePitch * cast(uint)y;
+        uint offsetBytes = _bytePitch * cast(uint)y;
 
         return cast(COLOR*)( cast(ubyte*)_pixels + offsetBytes );
     }
