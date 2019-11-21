@@ -541,7 +541,7 @@ nothrow:
     this(int w, int h, int border = 0, int rowAlignment = 1, int xMultiplicity = 1, int trailingSamples = 0) nothrow @nogc
     {
         this();
-        size(w, h, border, rowAlignment, xMultiplicity);
+        size(w, h, border, rowAlignment, xMultiplicity, trailingSamples);
     }
 
     ~this()
@@ -638,6 +638,11 @@ nothrow:
         assert( isPointerAligned(_pixels, rowAlignment) );
         if (height > 0)
             assert( isPointerAligned(scanlinePtr(0), rowAlignment) );
+
+        if (border == 0 && rowAlignment == 1 && xMultiplicity == 1 && trailingSamples == 0)
+        {
+            assert(isGapless());
+        }
     }
 
     /// Returns: `true` if rows of pixels are immediately consecutive in memory.
