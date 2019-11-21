@@ -425,10 +425,10 @@ nothrow @nogc:
                 {
                     const(ubyte)* depthHere = cast(const(ubyte)*)(depthScan + i);
 
-                    // Read 12 depth samples, the rightmost 3 are unused
-                    __m128i depthSamplesM1 = _mm_loadl_epi64( cast(const(__m128i)*)(depthHere - depthPitch) );
-                    __m128i depthSamplesP0 = _mm_loadl_epi64( cast(const(__m128i)*)(depthHere) );
-                    __m128i depthSamplesP1 = _mm_loadl_epi64( cast(const(__m128i)*)(depthHere + depthPitch) );
+                    // Read 12 depth samples, the rightmost are unused
+                    __m128i depthSamplesM1 = _mm_loadl_epi64( cast(const(__m128i)*)(depthHere - depthPitch - 2) );
+                    __m128i depthSamplesP0 = _mm_loadl_epi64( cast(const(__m128i)*)(depthHere - 2) );
+                    __m128i depthSamplesP1 = _mm_loadl_epi64( cast(const(__m128i)*)(depthHere + depthPitch - 2) );
 
                     // Extend to float
                     __m128i zero = _mm_setzero_si128();
@@ -488,12 +488,7 @@ nothrow @nogc:
         {
             for (int j = area.min.y; j < area.max.y; ++j)
             {
-                RGBA* materialScan = materialMap.levels[0].scanlinePtr(j);
-                RGBA* diffuseScan = diffuseMap.levels[0].scanlinePtr(j);
-                RGBf* normalScan = _normalBuffer.scanlinePtr(j);
                 RGBAf* accumScan = _accumBuffer.scanlinePtr(j);
-                const(L16*) depthScan = depthLevel0.scanlinePtr(j);
-
                 for (int i = area.min.x; i < area.max.x; ++i)
                 {
                     float ic = i + 0.5f;
