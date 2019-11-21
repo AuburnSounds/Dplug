@@ -557,8 +557,11 @@ nothrow:
     COLOR* scanlinePtr(int y) pure
     {
         assert(y >= 0 && y < h);
+
         // perf: this cast help in 64-bit, since it avoids a MOVSXD to extend a signed 32-bit into a 64-bit pointer offset
-        return &_pixels[_bytePitch * cast(uint)y];
+        int offsetBytes = _bytePitch * cast(uint)y;
+
+        return cast(COLOR*)( cast(ubyte*)_pixels + offsetBytes );
     }
 
     /// Returns: A slice of the pixels at row y. Excluding border pixels.
