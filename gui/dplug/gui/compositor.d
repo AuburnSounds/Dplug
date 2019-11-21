@@ -51,7 +51,7 @@ nothrow:
 /// "Physically Based"-style rendering
 class PBRCompositor : ICompositor
 {
-    enum DEPTH_BORDER = 1; // MUST be kept in sync with the one in GUIGraphics
+    deprecated enum DEPTH_BORDER = 1; // MUST be kept in sync with the one in GUIGraphics
 
 nothrow @nogc:
     // light 1 used for key lighting and shadows
@@ -133,11 +133,11 @@ nothrow @nogc:
             for (int j = area.min.y; j < area.max.y; ++j)
             {
                 RGBf* normalScan = _normalBuffer.scanline(j).ptr;
-                const(L16*) depthScan = depthLevel0.scanline(j + DEPTH_BORDER).ptr;
+                const(L16*) depthScan = depthLevel0.scanline(j).ptr;
 
                 for (int i = area.min.x; i < area.max.x; ++i)
                 {
-                    const(L16)* depthHere = depthScan + i + DEPTH_BORDER;
+                    const(L16)* depthHere = depthScan + i;
                     const(L16)* depthHereM1 = cast(const(L16)*) ( cast(const(ubyte)*)depthHere - depthPitchBytes );
                     const(L16)* depthHereP1 = cast(const(L16)*) ( cast(const(ubyte)*)depthHere + depthPitchBytes );
                     version(futurePBRNormals)
@@ -193,17 +193,17 @@ nothrow @nogc:
             for (int j = area.min.y; j < area.max.y; ++j)
             {
                 RGBA* diffuseScan = diffuseMap.levels[0].scanlinePtr(j);
-                const(L16*) depthScan = depthLevel0.scanlinePtr(j + DEPTH_BORDER);
+                const(L16*) depthScan = depthLevel0.scanlinePtr(j);
                 RGBAf* accumScan = _accumBuffer.scanlinePtr(j);
 
                 for (int i = area.min.x; i < area.max.x; ++i)
                 {
                     __m128 baseColor = convertBaseColorToFloat4(diffuseScan[i]);
 
-                    const(L16)* depthHere = depthScan + i + DEPTH_BORDER;
+                    const(L16)* depthHere = depthScan + i;
 
-                    float px = DEPTH_BORDER + i + 0.5f;
-                    float py = DEPTH_BORDER + j + 0.5f;
+                    float px = i + 0.5f;
+                    float py = j + 0.5f;
 
                     float avgDepthHere =
                         ( depthMap.linearSample(1, px, py)
@@ -254,12 +254,12 @@ nothrow @nogc:
             {
                 RGBA* diffuseScan = diffuseMap.levels[0].scanlinePtr(j);
 
-                const(L16*) depthScan = depthLevel0.scanlinePtr(j + DEPTH_BORDER);
+                const(L16*) depthScan = depthLevel0.scanlinePtr(j);
                 RGBAf* accumScan = _accumBuffer.scanlinePtr(j);
 
                 for (int i = area.min.x; i < area.max.x; ++i)
                 {
-                    const(L16)* depthHere = depthScan + i + DEPTH_BORDER;
+                    const(L16)* depthHere = depthScan + i;
                     RGBA ibaseColor = diffuseScan[i];
                     vec3f baseColor = vec3f(ibaseColor.r, ibaseColor.g, ibaseColor.b) * div255;
 
@@ -278,7 +278,7 @@ nothrow @nogc:
                         if (y < 0)
                             y = 0;
                         int z = depthCenter + sample; // ???
-                        L16* scan = depthLevel0.scanlinePtr(y + DEPTH_BORDER) + DEPTH_BORDER;
+                        L16* scan = depthLevel0.scanlinePtr(y);
                         int diff1 = z - scan[x1].l; // FUTURE: use pointer offsets here instead of opIndex
                         int diff2 = z - scan[x2].l;
 
@@ -305,7 +305,7 @@ nothrow @nogc:
                     }
                     vec3f color = baseColor * light1Color * (lightPassed * invTotalWeights);
                     __m128 mmColor = _mm_setr_ps(color.r, color.g, color.b, 0.0f);
-                    _mm_store_ps(&accumScan[i], _mm_load_ps(&accumScan[i]) + mmColor);
+                    _mm_store_ps(cast(float*)(&accumScan[i]), _mm_load_ps(cast(float*)(&accumScan[i])) + mmColor);
                 }
             }
         }
@@ -405,6 +405,7 @@ nothrow @nogc:
         }
 
         // skybox reflection (use the same shininess as specular)
+        if (skybox !is null)
         {
             for (int j = area.min.y; j < area.max.y; ++j)
             {
@@ -412,7 +413,7 @@ nothrow @nogc:
                 RGBA* diffuseScan = diffuseMap.levels[0].scanlinePtr(j);
                 RGBf* normalScan = _normalBuffer.scanlinePtr(j);
                 RGBAf* accumScan = _accumBuffer.scanlinePtr(j);
-                const(L16*) depthScan = depthLevel0.scanlinePtr(j + DEPTH_BORDER);
+                const(L16*) depthScan = depthLevel0.scanlinePtr(j);
 
                 // First compute the needed mipmap level for this line
 
@@ -420,7 +421,7 @@ nothrow @nogc:
                 for (int i = area.min.x; i < area.max.x; ++i)
                 {
                     // TODO optimize this crap
-                    const(L16)* depthHere = depthScan + i + DEPTH_BORDER;
+                    const(L16)* depthHere = depthScan + i;
                     float[3][3] depthPatch;
                     for (int row = 0; row < 3; ++row)
                     {
@@ -504,7 +505,7 @@ nothrow @nogc:
                 RGBA* diffuseScan = diffuseMap.levels[0].scanlinePtr(j);
                 RGBf* normalScan = _normalBuffer.scanlinePtr(j);
                 RGBAf* accumScan = _accumBuffer.scanlinePtr(j);
-                const(L16*) depthScan = depthLevel0.scanlinePtr(j + DEPTH_BORDER);
+                const(L16*) depthScan = depthLevel0.scanlinePtr(j);
 
                 for (int i = area.min.x; i < area.max.x; ++i)
                 {

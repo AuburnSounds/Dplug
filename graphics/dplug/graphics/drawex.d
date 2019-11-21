@@ -663,14 +663,14 @@ nothrow:
 
     /// Returns: Number of samples to add to a COLOR* pointer to get to the previous/next line.
     ///          `OwnedImage` used to guarantees that this is always an integer number of samples.
-    deprecated("prefer using pitchInBytes() now") int pitchInSamples()
+    deprecated("prefer using pitchInBytes() now") int pitchInSamples() pure
     {
         assert(_bytePitch % cast(int)(COLOR.sizeof) == 0);
         return _bytePitch / cast(int)(COLOR.sizeof);
     }
 
     /// Returns: Number of bytes to add to a COLOR* pointer to get to the previous/next line.
-    int pitchInBytes()
+    int pitchInBytes() pure
     {
         return _bytePitch;
     }

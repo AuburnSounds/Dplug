@@ -307,11 +307,6 @@ protected:
 
     // Depth values for the whole UI.
     Mipmap!L16 _depthMap;
-    enum DEPTH_BORDER = 1;
-
-    // No other value is actually supported
-    // Specifically, what doesn't work is border replication before mipmapping.
-    static assert(DEPTH_BORDER == 1); 
 
     // Depth values for the whole UI.
     Mipmap!RGBA _materialMap;
@@ -578,7 +573,15 @@ protected:
 
         // FUTURE: maybe not destroy the whole mipmap?
         _diffuseMap.size(5, width, height);
-        _depthMap.size(4, width + 2 * DEPTH_BORDER, height + 2 * DEPTH_BORDER);
+        _depthMap.size(4, width, height);
+
+        // The first level of the depth map has a border of 1 pixels and 2 pxiels on the right, to simplify some PBR passes
+        int border_1 = 1;
+        int rowAlign_1 = 1;
+        int xMultiplicity_1 = 1;
+        int trailingSamples_2 = 0; // TODO change to 2
+        _depthMap.levels[0].size(width, height, border_1, rowAlign_1, xMultiplicity_1, trailingSamples_2);
+
         _materialMap.size(0, width, height);
 
         // Extends buffer
@@ -654,7 +657,7 @@ protected:
         enum bool parallelDraw = true;
 
         auto diffuseRef = _diffuseMap.levels[0].toRef();
-        auto depthRef = _depthMap.levels[0].toRef().cropBorder(DEPTH_BORDER);
+        auto depthRef = _depthMap.levels[0].toRef();
         auto materialRef = _materialMap.levels[0].toRef();
 
         // No need to launch threads only to have them realize there isn't anything to do
@@ -780,70 +783,10 @@ protected:
                 int H = _askedHeight;
 
                 // Depth is special since it has a border!
-
-                // Areas have to be offset by (DEPTH_BORDER, DEPTH_BORDER)
-                // to apply to depth.
-                foreach(ref box2i area; _updateRectScratch[i])
-                {
-                     area = area.translate(vec2i(DEPTH_BORDER, DEPTH_BORDER));
-                }
-
-                // BORDER REPLICATION.
-                // If an area is touching left border, then the border needs replication.
-                // If an area is touching left and top border, then the border needs replication and the corner pixel should be filled too.
-                // Same for all four corners. Border only applies to level 0.
-                //
-                // OOOOOOOxxxxxxxxxxxxxxx
-                // Ooooooo
-                // Oo    o
-                // Oo    o    <------ if the update area is made of 'o', then the area to replicate is 'O'
-                // Ooooooo
-                // x
-                // x
+                // Regenerate the border area that needs to be regenerated
                 OwnedImage!L16 level0 = _depthMap.levels[0];
-
-                // Note: not really tested visually
                 foreach(box2i area; _updateRectScratch[i])
-                {
-                    bool touchLeft   = (area.min.x == DEPTH_BORDER);
-                    bool touchTop    = (area.min.y == DEPTH_BORDER);
-                    bool touchRight  = (area.max.x == W + DEPTH_BORDER);
-                    bool touchBottom = (area.max.y == H + DEPTH_BORDER);
-
-                    if (touchTop)
-                    {
-                        if (touchLeft) level0[0, 0] = level0[1, 1];
-                        int minX = area.min.x;
-                        int maxX = area.max.x;
-                        level0.scanline(0)[minX..maxX] = level0.scanline(1)[minX..maxX];
-                        if (touchRight) level0[W+1, 0] = level0[W, 1];
-                    }
-
-                    if (touchLeft)
-                    {
-                        for (int y = area.min.y; y < area.max.y; ++y)
-                        {
-                            level0[0, y] = level0[1, y];
-                        }
-                    }
-
-                    if (touchRight)
-                    {
-                        for (int y = area.min.y; y < area.max.y; ++y)
-                        {
-                            level0[W+1, y] = level0[W, y];
-                        }
-                    }
-
-                    if (touchBottom)
-                    {
-                        if (touchLeft) level0[0, H+1] = level0[1, H];
-                        int minX = area.min.x;
-                        int maxX = area.max.x;
-                        level0.scanline(H+1)[minX..maxX] = level0.scanline(H)[minX..maxX];
-                        if (touchRight) level0[W+1, H+1] = level0[W, H];
-                    }
-                }
+                    level0.replicateBordersTouching(area);
 
                 // DEPTH MIPMAPPING
                 Mipmap!L16 mipmap = _depthMap;

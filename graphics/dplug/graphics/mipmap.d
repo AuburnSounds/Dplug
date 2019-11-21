@@ -53,9 +53,9 @@ nothrow:
 
     enum Quality
     {
-        box,                  // simple 2x2 filter, creates phase problems with NPOT. For higher levels, automatically uses cubic.
-        cubic,                // Very smooth kernel [1 2 1] x [1 2 1]
-        boxAlphaCov,          // ditto but alpha is used as weight, only implemented for RGBA
+        box,                   // simple 2x2 filter, creates phase problems with NPOT. For higher levels, automatically uses cubic.
+        cubic,                 // Very smooth kernel [1 2 1] x [1 2 1]
+        boxAlphaCov,           // ditto but alpha is used as weight, only implemented for RGBA
         boxAlphaCovIntoPremul, // same as boxAlphaConv but after such a step the next level is alpha-premultiplied
     }
 
@@ -89,7 +89,6 @@ nothrow:
         // replaces level 0
         levels[0].destroyFree();
         levels[0] = level0;
-        generateMipmaps(Quality.box);
     }
 
     void size(int maxLevel, int w, int h)
@@ -589,15 +588,11 @@ void generateLevelBoxRGBA(OwnedImage!RGBA thisLevel,
     int width = updateRect.width();
     int height = updateRect.height();
 
-    int previousPitch = previousLevel.w;
-    int thisPitch = thisLevel.w;
-
-    RGBA* L0 = previousLevel.scanline(updateRect.min.y * 2).ptr + updateRect.min.x * 2;
-    RGBA* L1 = L0 + previousPitch;
-    RGBA* dest = thisLevel.scanline(updateRect.min.y).ptr + updateRect.min.x;
-
     for (int y = 0; y < height; ++y)
     {
+        RGBA* L0   = previousLevel.scanlinePtr( (updateRect.min.y + y) * 2    ) + updateRect.min.x * 2;
+        RGBA* L1   = previousLevel.scanlinePtr( (updateRect.min.y + y) * 2 + 1) + updateRect.min.x * 2;
+        RGBA* dest =     thisLevel.scanlinePtr(           updateRect.min.y + y) + updateRect.min.x;
         version(inlineAsmCanLoadGlobalsInPIC)
         {
             version(D_InlineAsm_X86)
@@ -731,10 +726,6 @@ void generateLevelBoxRGBA(OwnedImage!RGBA thisLevel,
                 dest[x] = RGBA.op!q{(a + b + c + d + 2) >> 2}(A, B, C, D);
             }
         }
-
-        L0 += (2 * previousPitch);
-        L1 += (2 * previousPitch);
-        dest += thisPitch;
     }
 }
 
@@ -745,16 +736,12 @@ void generateLevelBoxL16(OwnedImage!L16 thisLevel,
     int width = updateRect.width();
     int height = updateRect.height();
 
-    int previousPitch = previousLevel.w;
-    int thisPitch = thisLevel.w;
-
-    L16* L0 = previousLevel.scanline(updateRect.min.y * 2).ptr + updateRect.min.x * 2;
-    L16* L1 = L0 + previousPitch;
-
-    L16* dest = thisLevel.scanline(updateRect.min.y).ptr + updateRect.min.x;
-
     for (int y = 0; y < height; ++y)
     {
+        L16* L0   = previousLevel.scanlinePtr( (updateRect.min.y + y) * 2    ) + updateRect.min.x * 2;
+        L16* L1   = previousLevel.scanlinePtr( (updateRect.min.y + y) * 2 + 1) + updateRect.min.x * 2;
+        L16* dest =     thisLevel.scanlinePtr(           updateRect.min.y + y) + updateRect.min.x;
+
         version(inlineAsmCanLoadGlobalsInPIC)
         {
             version(D_InlineAsm_X86)
@@ -918,10 +905,6 @@ void generateLevelBoxL16(OwnedImage!L16 thisLevel,
                 dest[x] = L16.op!q{(a + b + c + d + 2) >> 2}(A, B, C, D);
             }
         }
-
-        L0 += (2 * previousPitch);
-        L1 += (2 * previousPitch);
-        dest += thisPitch;
     }
 }
 
@@ -933,16 +916,12 @@ void generateLevelBoxAlphaCovRGBA(OwnedImage!RGBA thisLevel,
     int width = updateRect.width();
     int height = updateRect.height();
 
-    int previousPitch = previousLevel.w;
-    int thisPitch = thisLevel.w;
-
-    RGBA* L0 = previousLevel.scanline(updateRect.min.y * 2).ptr + updateRect.min.x * 2;
-    RGBA* L1 = L0 + previousPitch;
-
-    RGBA* dest = thisLevel.scanline(updateRect.min.y).ptr + updateRect.min.x;
-
     for (int y = 0; y < height; ++y)
     {
+        RGBA* L0   = previousLevel.scanlinePtr( (updateRect.min.y + y) * 2    ) + updateRect.min.x * 2;
+        RGBA* L1   = previousLevel.scanlinePtr( (updateRect.min.y + y) * 2 + 1) + updateRect.min.x * 2;
+        RGBA* dest =     thisLevel.scanlinePtr(           updateRect.min.y + y) + updateRect.min.x;
+
         version(inlineAsmCanLoadGlobalsInPIC)
         {
             version(D_InlineAsm_X86)
@@ -1244,10 +1223,6 @@ void generateLevelBoxAlphaCovRGBA(OwnedImage!RGBA thisLevel,
                 }
             }
         }
-
-        L0 += (2 * previousPitch);
-        L1 += (2 * previousPitch);
-        dest += thisPitch;
     }
 }
 
@@ -1258,16 +1233,12 @@ void generateLevelBoxAlphaCovIntoPremulRGBA(OwnedImage!RGBA thisLevel,
     int width = updateRect.width();
     int height = updateRect.height();
 
-    int previousPitch = previousLevel.w;
-    int thisPitch = thisLevel.w;
-
-    RGBA* L0 = previousLevel.scanline(updateRect.min.y * 2).ptr + updateRect.min.x * 2;
-    RGBA* L1 = L0 + previousPitch;
-
-    RGBA* dest = thisLevel.scanline(updateRect.min.y).ptr + updateRect.min.x;
-
     for (int y = 0; y < height; ++y)
     {
+        RGBA* L0   = previousLevel.scanlinePtr( (updateRect.min.y + y) * 2    ) + updateRect.min.x * 2;
+        RGBA* L1   = previousLevel.scanlinePtr( (updateRect.min.y + y) * 2 + 1) + updateRect.min.x * 2;
+        RGBA* dest =     thisLevel.scanlinePtr(           updateRect.min.y + y) + updateRect.min.x;
+
         version(inlineAsmCanLoadGlobalsInPIC)
         {
             version(D_InlineAsm_X86)
@@ -1446,10 +1417,6 @@ void generateLevelBoxAlphaCovIntoPremulRGBA(OwnedImage!RGBA thisLevel,
                 assert(dest[x] == finalColor);
             }
         }
-
-        L0 += (2 * previousPitch);
-        L1 += (2 * previousPitch);
-        dest += thisPitch;
     }
 }
 

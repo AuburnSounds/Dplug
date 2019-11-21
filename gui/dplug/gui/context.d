@@ -23,7 +23,7 @@ import dplug.gui.boxlist;
 /// UIContext contains the "globals" of the UI
 /// - current focused element
 /// - current dragged element
-/// - images and fonts...
+/// - and stuff that shouldn't be there
 class UIContext
 {
 public:
@@ -31,17 +31,17 @@ nothrow:
 @nogc:
     this()
     {
-        // create a dummy black skybox
-        // FUTURE: do not create it, support no-skybox in rendering
-        skybox = mallocNew!(Mipmap!RGBA)(10, 1024, 1024);
-
         dirtyListPBR = makeDirtyRectList();
         dirtyListRaw = makeDirtyRectList();
     }
 
     ~this()
     {
-        skybox.destroyFree();
+        if (skybox !is null)
+        {
+            skybox.destroyFree();
+            skybox = null;
+        }
     }
 
     /// Last clicked element.
@@ -49,7 +49,6 @@ nothrow:
 
     /// Currently dragged element.
     UIElement dragged = null;
-
 
     version(legacyMouseOver) {}
     else
@@ -59,7 +58,8 @@ nothrow:
     }
 
     /// UI global image used for environment reflections.
-    Mipmap!RGBA skybox;
+    /// TODO: should belong to a Compositor pass, this is not global to the UI at all.
+    Mipmap!RGBA skybox = null;
 
     // This is the UI-global, disjointed list of rectangles that need updating at the PBR level.
     // Every UIElement touched by those rectangles will have their `onDrawPBR` and `onDrawRaw` 
@@ -74,8 +74,13 @@ nothrow:
     // That image must have been built with `mallocEmplace`
     void setSkybox(OwnedImage!RGBA image)
     {
-        skybox.destroyFree();
+        if (skybox !is null)
+        {
+            skybox.destroyFree();
+            skybox = null;
+        }
         skybox = mallocNew!(Mipmap!RGBA)(12, image);
+        skybox.generateMipmaps(Mipmap!RGBA.Quality.box);
     }
 
     version(legacyMouseOver) {}
