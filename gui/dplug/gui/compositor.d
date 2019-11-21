@@ -91,22 +91,23 @@ nothrow @nogc:
 
         _normalBuffer = mallocNew!(OwnedImage!RGBf)();
         _accumBuffer = mallocNew!(OwnedImage!RGBAf)();
-        float[] _specularFactor;
-        float[] _exponentFactor;
+
+        _specularFactor = mallocNew!(OwnedImage!L32f)();
+        _exponentFactor = mallocNew!(OwnedImage!L32f)();
     }
 
     ~this()
     {
         _normalBuffer.destroyFree();
         _accumBuffer.destroyFree();
-        _specularFactor.reallocBuffer(0);
-        _exponentFactor.reallocBuffer(0);
+        _specularFactor.destroyFree();
+        _exponentFactor.destroyFree();
     }
 
     override void resizeBuffers(int width, int height)
     {
-        _specularFactor.reallocBuffer(width);
-        _exponentFactor.reallocBuffer(width);
+        _specularFactor.size(width, height);
+        _exponentFactor.size(width, height);
 
         int border_0 = 0;
         int rowAlign_1 = 1;
@@ -348,8 +349,8 @@ nothrow @nogc:
                 RGBf* normalScan = _normalBuffer.scanlinePtr(j);
                 RGBAf* accumScan = _accumBuffer.scanlinePtr(j);
 
-                float* pSpecular = _specularFactor.ptr;
-                float* pExponent = _exponentFactor.ptr;
+                float* pSpecular = cast(float*) _specularFactor.scanlinePtr(j);
+                float* pExponent = cast(float*) _exponentFactor.scanlinePtr(j);
 
 
                 for (int i = area.min.x; i < area.max.x; ++i)
@@ -418,6 +419,7 @@ nothrow @nogc:
                 // First compute the needed mipmap level for this line
 
                 immutable float amountOfSkyboxPixels = skybox.width * skybox.height;
+                float* mipmapLevelScan = cast(float*) _skyMimapLevel.scanlinePtr(j);
                 for (int i = area.min.x; i < area.max.x; ++i)
                 {
                     // TODO optimize this crap
@@ -444,7 +446,7 @@ nothrow @nogc:
                     depthDX *= (1 / 256.0f);
                     depthDY *= (1 / 256.0f);
 
-                    _skyMimapLevel[i] = (depthDX * depthDX + depthDY * depthDY) * amountOfSkyboxPixels;
+                    mipmapLevelScan[i] = (depthDX * depthDX + depthDY * depthDY) * amountOfSkyboxPixels;
                 }
 
                 // Compute mipmap level
@@ -459,15 +461,15 @@ nothrow @nogc:
                         __m128i material4 = _mm_loadu_si128(cast(__m128i*) &materialScan[i]);
                         material4 = _mm_and_si128(material4, _mm_set1_epi32(255));
                         __m128 roughness = _mm_cvtepi32_ps(material4);
-                        __m128 derivativeSquared = _mm_loadu_ps(&_skyMimapLevel[i]);
+                        __m128 derivativeSquared = _mm_loadu_ps(&mipmapLevelScan[i]);
                         __m128 level = _mm_set1_ps(0.5f) * _mm_fastlog2_ps(_mm_set1_ps(1.0f) + derivativeSquared * _mm_set1_ps(0.00001f))
                                        + _mm_set1_ps(ROUGH_FACT) * roughness;
-                        _mm_storeu_ps(&_skyMimapLevel[i], level);
+                        _mm_storeu_ps(&mipmapLevelScan[i], level);
                     }
                     for (; i < area.max.x; ++i)
                     {
                         float roughness = materialScan[i].r;
-                        _skyMimapLevel[i] = 0.5f * fastlog2(1.0f + _skyMimapLevel[i] * 0.00001f) + ROUGH_FACT * roughness;
+                        mipmapLevelScan[i] = 0.5f * fastlog2(1.0f + mipmapLevelScan[i] * 0.00001f) + ROUGH_FACT * roughness;
                     }
                 }
 
@@ -489,7 +491,7 @@ nothrow @nogc:
                     __m128 baseColor = convertBaseColorToFloat4(diffuseScan[i]);
                     float skyx = 0.5f + ((0.5f - pureReflection.array[0] * 0.5f) * fskyX);
                     float skyy = 0.5f + ((0.5f + pureReflection.array[1] * 0.5f) * fSkyY);
-                    __m128 skyColorAtThisPoint = convertVec4fToFloat4( skybox.linearMipmapSample(_skyMimapLevel[i], skyx, skyy) );
+                    __m128 skyColorAtThisPoint = convertVec4fToFloat4( skybox.linearMipmapSample(mipmapLevelScan[i], skyx, skyy) );
                     __m128 color = baseColor * skyColorAtThisPoint * _mm_set1_ps(metalness * amount);
                     _mm_store_ps(cast(float*)(&accumScan[i]), _mm_load_ps(cast(float*)(&accumScan[i])) + color);
                 }
@@ -567,8 +569,10 @@ private:
     float[256] _exponentTable;
 
     // For the specular highlight pass
-    float[] _specularFactor;
-    float[] _exponentFactor;
+    // These buffers must be complete image, since multiple threads may be operating
+    // and overwriting the same are if it was a line.
+    OwnedImage!L32f _specularFactor;
+    OwnedImage!L32f _exponentFactor;
 
     // Reused temporary buffer for the mipmap level
     alias _skyMimapLevel = _specularFactor;

@@ -312,10 +312,14 @@ alias Color!(ubyte  , "r", "g", "b", "a") RGBA   ;
 
 alias Color!(ubyte  , "l"               ) L8     ;
 alias Color!(ushort , "l"               ) L16    ;
+alias Color!(float ,  "l"               ) L32f   ;
 
 alias Color!(float  , "r", "g", "b"     ) RGBf   ;
 alias Color!(float  , "r", "g", "b", "a") RGBAf  ;
 
+static assert(L32f.sizeof == 4);
+static assert(RGBf.sizeof == 12);
+static assert(RGBAf.sizeof == 16);
 
 unittest
 {
