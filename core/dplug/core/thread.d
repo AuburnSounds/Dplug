@@ -165,9 +165,24 @@ public:
         }
     }
 
+    void* getThreadID()
+    {
+        version(Posix) return cast(void*)_id;
+        else version(Windows) return cast(void*)_id;
+        else assert(false);
+    }
+
 private:
-    version(Posix) pthread_t _id;
-    version(Windows) HANDLE _id;
+    version(Posix) 
+    {
+        pthread_t _id;
+    }
+    else version(Windows) 
+    {
+        HANDLE _id;
+    }
+    else 
+        static assert(false);
     ThreadDelegate _callback;
     size_t _stackSize;
     bool _started = false;
@@ -300,7 +315,7 @@ int getTotalNumberOfCPUs() nothrow @nogc
         static assert(false, "OS unsupported");
 }
 
-alias ThreadPoolDelegate = void delegate(int workItem) nothrow @nogc;
+alias ThreadPoolDelegate = void delegate(int workItem, int threadIndex) nothrow @nogc;
 
 
 debug(threadPoolIsActuallySynchronous)
@@ -324,13 +339,13 @@ debug(threadPoolIsActuallySynchronous)
         void parallelFor(int count, scope ThreadPoolDelegate dg)
         {
             foreach(i; 0..count)
-                dg(cast(int)i);
+                dg(cast(int)i, 0);
         }
 
         void parallelForAsync(int count, scope ThreadPoolDelegate dg)
         {
             foreach(i; 0..count)
-                dg(cast(int)i);
+                dg(cast(int)i, 0);
         }
 
         /// Wait for completion of the previous parallelFor, if any.
@@ -427,7 +442,8 @@ else
             // (but it is worth it in async).
             if (count == 1)
             {
-                dg(0);
+                int dummythreadID = 0; // it should not matter which is passed as long as it's a valid ID.
+                dg(0, dummythreadID);
                 return;
             }
 
@@ -498,8 +514,16 @@ else
             _state = State.initial;
         }
 
+        int numThreads() pure const
+        {
+            return cast(int)_threads.length;
+        }
+
     private:
         Thread[] _threads = null;
+
+        // A map to find back thread index from thread system ID
+        void*[] _threadID = null;
 
         // Used to signal more work
         UncheckedMutex _workMutex;
@@ -555,10 +579,19 @@ else
                     _taskCurrentWorkItem++;
                 }
 
+
+                // Find thread index in the pool
+                void* threadID = currentThreadId;
                 assert(workItem != -1);
+                int threadIndex = -1;
+                foreach(size_t index, ref t; _threads)
+                {
+                    if (t.getThreadID() == threadID)
+                        threadIndex = cast(int)index;
+                }
 
                 // Do the actual task
-                _taskDelegate(workItem);
+                _taskDelegate(workItem, threadIndex);
 
                 // signal completion of one more task
                 {

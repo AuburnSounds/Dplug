@@ -58,6 +58,12 @@ class GUIGraphics : UIElement, IGraphics
 nothrow:
 @nogc:
 
+    // Max size of tiles when doing the expensive PBR compositing step.
+    // Difficult trade-off: we wanted the medium size knob to be only one tile.
+    // This avoid launching threads for the PBR compositor in this case.
+    enum PBR_TILE_MAX_WIDTH = 128;
+    enum PBR_TILE_MAX_HEIGHT = 128;
+
     ICompositor compositor;
 
     this(int initialWidth, int initialHeight, UIFlags flags)
@@ -569,7 +575,7 @@ protected:
         reflow(box2i(0, 0, _askedWidth, _askedHeight));
 
         // Resize compositor buffers
-        compositor.resizeBuffers(width, height);
+        compositor.resizeBuffers(_threadPool.numThreads(), width, height, PBR_TILE_MAX_WIDTH, PBR_TILE_MAX_HEIGHT);
 
         // FUTURE: maybe not destroy the whole mipmap?
         _diffuseMap.size(5, width, height);
@@ -633,7 +639,7 @@ protected:
                 assert(canBeDrawn >= 1);
 
                 // Draw a number of UIElement in parallel
-                void drawOneItem(int i) nothrow @nogc
+                void drawOneItem(int i, int threadIndex) nothrow @nogc
                 {
                     _elemsToDrawRaw[drawn + i].renderRaw(renderedRef, _rectsToDisplayDisjointed[]);
                 }
@@ -694,7 +700,7 @@ protected:
                 assert(canBeDrawn >= 1);
  
                 // Draw a number of UIElement in parallel
-                void drawOneItem(int i) nothrow @nogc
+                void drawOneItem(int i, int threadIndex) nothrow @nogc
                 {
                     _elemsToDrawPBR[drawn + i].renderPBR(diffuseRef, depthRef, materialRef, _rectsToUpdateDisjointedPBR[]);
                 }
@@ -713,25 +719,24 @@ protected:
         }
     }
 
-    /// Compose lighting effects from depth and diffuse into a result.
-    /// takes output image and non-overlapping areas as input
-    /// Useful multithreading code.
+    /// Do the PBR compositing step. This is the most expensive step in the UI.
     void compositeGUI(ImageRef!RGBA wfb, WindowPixelFormat pf) nothrow @nogc
     {
-        // Difficult trade-off: we canted the medium size knob to be only one tile.
-        // This avoid launching threads for the PBR compositor in this case.
-        enum tileWidth = 128;
-        enum tileHeight = 128;
-
         _rectsToCompositeDisjointedTiled.clearContents();
-        tileAreas(_rectsToCompositeDisjointed[], tileWidth, tileHeight,_rectsToCompositeDisjointedTiled);
+        tileAreas(_rectsToCompositeDisjointed[],  PBR_TILE_MAX_WIDTH, PBR_TILE_MAX_HEIGHT, _rectsToCompositeDisjointedTiled);
 
         int numAreas = cast(int)_rectsToCompositeDisjointedTiled.length;
 
-        void compositeOneTile(int i) nothrow @nogc
+        void compositeOneTile(int i, int threadIndex) nothrow @nogc
         {
-            compositor.compositeTile(wfb, pf, _rectsToCompositeDisjointedTiled[i],
-                                     _diffuseMap, _materialMap, _depthMap, context.skybox);
+            compositor.compositeTile(threadIndex, 
+                                     wfb, 
+                                     pf, 
+                                     _rectsToCompositeDisjointedTiled[i],
+                                     _diffuseMap, 
+                                     _materialMap, 
+                                     _depthMap, 
+                                     context.skybox);
         }
         _threadPool.parallelFor(numAreas, &compositeOneTile);
     }
@@ -756,7 +761,7 @@ protected:
 
         // We can't use tiled parallelism for mipmapping here because there is overdraw beyond level 0
         // So instead what we do is using up to 2 threads.
-        void processOneMipmap(int i) nothrow @nogc
+        void processOneMipmap(int i, int threadIndex) nothrow @nogc
         {
             if (i == 0)
             {

@@ -29,23 +29,62 @@ import dplug.gui.ransac;
 import inteli.math;
 import inteli.emmintrin;
 
-// Only deals with rendering tiles.
-// If you don't like Dplug default compositing, just make another Compositor
-// and assign the 'compositor' field in GUIGraphics.
-// However for now mipmaps are not negotiable, they will get generated outside this compositor.
+/// Only deals with rendering tiles.
+/// If you don't like Dplug default compositing, just make another Compositor
+/// and assign the 'compositor' field in GUIGraphics.
+/// However for now mipmaps are not negotiable, they will get generated outside this compositor.
 interface ICompositor
 {
 nothrow:
 @nogc:
-    void compositeTile(ImageRef!RGBA wfb, 
+
+
+    /// Setup the compositor to output a particular output size.
+    ///
+    /// Params:
+    ///     numThreads Number of threads that could call `compositeTile` simultaneously. Their index will be < `numThreads`
+    ///                This is useful to allocate thread-local buffers.
+    ///     width      The width of the given input mipmaps, and the width of the output image.
+    ///     height     The height of the given input mipmaps, and the height of the output image.
+    ///     areaMaxWidth  The maximum width of the `area` passed in `compositeTile`. This is useful to allocate smaller thread-local buffers.
+    ///     areaMaxHeight The maximum height of the `area` passed in `compositeTile`. This is useful to allocate smaller thread-local buffers.
+    ///
+    /// Note: this call is always called before `compositeTile` is called, and never simultaneously.
+    ///
+    void resizeBuffers(int numThreads, 
+                       int width, 
+                       int height,
+                       int areaMaxWidth,
+                       int areaMaxHeight);
+
+    /// Equivalence factor between Z samples and pixels.
+    /// Tuned once by hand to match the other normal computation algorithm
+    enum float FACTOR_Z = 4655.0f;
+
+    /// From given input mipmaps, write output image into `wfb` with pixel format `pf`, for the output area `area`.
+    ///
+    /// Params:
+    ///     threadIndex index of the thread 0 to `numThreads` - 1 that is tasked with repainting the area
+    ///     wfb         Image to write the output pixels to.
+    ///     pf          Order of the output pixels.
+    ///     diffuseMap  Diffuse input.  Basecolor + Emissive, the Compositor decides how it uses these channels.
+    ///     materialMap Material input. Roughness + Metalness + Specular + Unused, the Compositor decides how it uses these channels.
+    ///     depthMap    Depth input. A different of `FACTOR_Z` in the Z direction has a similar size as a displacement of one pixels.
+    ///                 As such, the range of possible simulated depth is (ushort.max / FACTOR_Z) pixels.
+    ///                 But ultimately, the Compositor decides how it uses these channels.
+    ///     skybox      Environment texture. Cheap and dirty reflections, to simulate metals.
+    ///
+    /// Note: several threads will call this function concurrently. 
+    ///       It is important to only deal with `area` to avoid clashing writes.
+    ///
+    void compositeTile(int threadIndex,
+                       ImageRef!RGBA wfb, 
                        WindowPixelFormat pf, 
                        box2i area,
                        Mipmap!RGBA diffuseMap,
                        Mipmap!RGBA materialMap,
                        Mipmap!L16 depthMap,
                        Mipmap!RGBA skybox);
-
-    void resizeBuffers(int width, int height);
 }
 
 /// "Physically Based"-style rendering
@@ -102,7 +141,11 @@ nothrow @nogc:
         _exponentFactor.destroyFree();
     }
 
-    override void resizeBuffers(int width, int height)
+    override void resizeBuffers(int numThreads, 
+                                int width, 
+                                int height,
+                                int areaMaxWidth,
+                                int areaMaxHeight)
     {
         _specularFactor.size(width, height);
         _exponentFactor.size(width, height);
@@ -115,7 +158,10 @@ nothrow @nogc:
     }
 
     /// Don't like this rendering? Feel free to override this method.
-    override void compositeTile(ImageRef!RGBA wfb, WindowPixelFormat pf, box2i area,
+    override void compositeTile(int threadIndex,
+                                ImageRef!RGBA wfb,
+                                WindowPixelFormat pf,
+                                box2i area,
                                 Mipmap!RGBA diffuseMap,
                                 Mipmap!RGBA materialMap,
                                 Mipmap!L16 depthMap,
@@ -141,8 +187,6 @@ nothrow @nogc:
                     const(L16)* depthHereP1 = cast(const(L16)*) ( cast(const(ubyte)*)depthHere + depthPitchBytes );
                     version(futurePBRNormals)
                     {
-                        // Tuned once by hand to match the other normal computation algorithm
-                        enum float FACTOR_Z = 4655.0f;
                         enum float multUshort = 1.0 / FACTOR_Z;
                         float[9] depthNeighbourhood = void;
                         depthNeighbourhood[0] = depthHereM1[-1].l * multUshort;
