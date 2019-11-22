@@ -328,6 +328,8 @@ debug(threadPoolIsActuallySynchronous)
     nothrow:
     @nogc:
 
+        enum constantThreadId = 0;
+
         this(int numThreads = 0, int maxThreads = 0, size_t stackSize = 0)
         {
         }
@@ -339,20 +341,25 @@ debug(threadPoolIsActuallySynchronous)
         void parallelFor(int count, scope ThreadPoolDelegate dg)
         {
             foreach(i; 0..count)
-                dg(cast(int)i, 0);
+                dg(cast(int)i, constantThreadId);
         }
 
         void parallelForAsync(int count, scope ThreadPoolDelegate dg)
         {
             foreach(i; 0..count)
-                dg(cast(int)i, 0);
+                dg(cast(int)i, constantThreadId);
         }
 
         /// Wait for completion of the previous parallelFor, if any.
         // It's always safe to call this function before doing another parallelFor.
         void waitForCompletion()
-        {            
-        }  
+        {
+        }
+
+        int numThreads() pure const
+        {
+            return 1;
+        }
     }
 }
 else
