@@ -57,10 +57,6 @@ nothrow:
                        int areaMaxWidth,
                        int areaMaxHeight);
 
-    /// Equivalence factor between Z samples and pixels.
-    /// Tuned once by hand to match the other normal computation algorithm
-    enum float FACTOR_Z = 4655.0f;
-
     /// From given input mipmaps, write output image into `wfb` with pixel format `pf`, for the output area `area`.
     ///
     /// Params:
@@ -106,6 +102,10 @@ nothrow @nogc:
     float ambientLight;
     float skyboxAmount;
 
+    /// Equivalence factor between Z samples and pixels.
+    /// Tuned once by hand to match the other normal computation algorithm
+    enum float FACTOR_Z = 4655.0f;
+
     this()
     {
         float globalLightFactor = 1.3f;
@@ -128,17 +128,19 @@ nothrow @nogc:
 
         _normalBuffer = mallocNew!(OwnedImage!RGBf)();
         _accumBuffer = mallocNew!(OwnedImage!RGBAf)();
-
-        _specularFactor = mallocNew!(OwnedImage!L32f)();
-        _exponentFactor = mallocNew!(OwnedImage!L32f)();
     }
 
     ~this()
     {
         _normalBuffer.destroyFree();
         _accumBuffer.destroyFree();
-        _specularFactor.destroyFree();
-        _exponentFactor.destroyFree();
+        foreach(thread; 0.._numThreads)
+        {
+            _specularFactor[thread].reallocBuffer(0);
+            _exponentFactor[thread].reallocBuffer(0);
+        }
+        _specularFactor.reallocBuffer(0);
+        _exponentFactor.reallocBuffer(0);
     }
 
     override void resizeBuffers(int numThreads, 
@@ -147,14 +149,20 @@ nothrow @nogc:
                                 int areaMaxWidth,
                                 int areaMaxHeight)
     {
-        _specularFactor.size(width, height);
-        _exponentFactor.size(width, height);
-
         int border_0 = 0;
         int rowAlign_1 = 1;
         int rowAlign_16 = 16;
         _normalBuffer.size(width, height, border_0, rowAlign_1);
         _accumBuffer.size(width, height, border_0, rowAlign_16);
+
+        _numThreads = numThreads;
+        _specularFactor.reallocBuffer(numThreads);
+        _exponentFactor.reallocBuffer(numThreads);
+        foreach(thread; 0..numThreads)
+        {
+            _specularFactor[thread].reallocBuffer(width);
+            _exponentFactor[thread].reallocBuffer(width);
+        }
     }
 
     /// Don't like this rendering? Feel free to override this method.
@@ -384,16 +392,15 @@ nothrow @nogc:
         // Specular highlight
         {
             __m128 mmlight3Dir = _mm_setr_ps(-light3Dir.x, -light3Dir.y, -light3Dir.z, 0.0f);
+            float* pSpecular = _specularFactor[threadIndex].ptr;
+            float* pExponent = _exponentFactor[threadIndex].ptr;
+
             for (int j = area.min.y; j < area.max.y; ++j)
             {
                 RGBA* materialScan = materialMap.levels[0].scanlinePtr(j);
                 RGBA* diffuseScan = diffuseMap.levels[0].scanlinePtr(j);
                 RGBf* normalScan = _normalBuffer.scanlinePtr(j);
                 RGBAf* accumScan = _accumBuffer.scanlinePtr(j);
-
-                float* pSpecular = cast(float*) _specularFactor.scanlinePtr(j);
-                float* pExponent = cast(float*) _exponentFactor.scanlinePtr(j);
-
 
                 for (int i = area.min.x; i < area.max.x; ++i)
                 {
@@ -595,8 +602,12 @@ private:
     // For the specular highlight pass
     // These buffers must be complete image, since multiple threads may be operating
     // and overwriting the same are if it was a line.
-    OwnedImage!L32f _specularFactor;
-    OwnedImage!L32f _exponentFactor;
+
+    // Thread-local buffers
+    float[][] _specularFactor;
+    float[][] _exponentFactor;
+
+    int _numThreads;
 }
 
 private:
