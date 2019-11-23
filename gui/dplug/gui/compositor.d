@@ -128,6 +128,8 @@ nothrow @nogc:
 
         _normalBuffer = mallocNew!(OwnedImage!RGBf)();
         _accumBuffer = mallocNew!(OwnedImage!RGBAf)();
+
+        _numThreads = 0;
     }
 
     ~this()
@@ -154,11 +156,19 @@ nothrow @nogc:
         int rowAlign_16 = 16;
         _normalBuffer.size(width, height, border_0, rowAlign_1);
         _accumBuffer.size(width, height, border_0, rowAlign_16);
-
-        _numThreads = numThreads;
         _specularFactor.reallocBuffer(numThreads);
         _exponentFactor.reallocBuffer(numThreads);
-        foreach(thread; 0..numThreads)
+        // initialize new elements in the array, else realloc wouldn't work well
+        int previousNumThreads = _numThreads;
+        for (int thread = previousNumThreads; thread < numThreads; ++thread)
+        {
+            _specularFactor[thread] = null;
+            _exponentFactor[thread] = null;
+        }
+        _numThreads = numThreads;
+
+        // resize all thread-local buffers
+        for (int thread = 0; thread < numThreads; ++thread)
         {
             _specularFactor[thread].reallocBuffer(width);
             _exponentFactor[thread].reallocBuffer(width);
