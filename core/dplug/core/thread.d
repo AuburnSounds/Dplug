@@ -11,6 +11,8 @@
  */
 module dplug.core.thread;
 
+import core.stdc.stdlib;
+
 import dplug.core.nogc;
 import dplug.core.lockedqueue;
 import dplug.core.sync;
@@ -36,16 +38,24 @@ version(OSX)
     int sysctlbyname(const(char)*, void *, size_t *, void *, size_t);
 }
 
-
 //debug = threadPoolIsActuallySynchronous;
 
 
+/// Legacy thread function
 alias ThreadDelegate = void delegate() nothrow @nogc;
+
+/// Thread function with user data, used eg. in thread pool.
+alias ThreadDelegateUser = void delegate(void* userData) nothrow @nogc;
 
 
 Thread makeThread(ThreadDelegate callback, size_t stackSize = 0) nothrow @nogc
 {
     return Thread(callback, stackSize);
+}
+
+Thread makeThread(ThreadDelegateUser callback, size_t stackSize = 0, void* userData = null) nothrow @nogc
+{
+    return Thread(callback, stackSize, userData);
 }
 
 /// Optimistic thread, failure not supported
@@ -55,35 +65,56 @@ nothrow:
 @nogc:
 public:
 
-    /// Create a suspended thread.
+    /// Create a thread with user data. Thread is not created until `start` has been called.
     ///
     /// Params:
-    ///     callback = The delegate that will be called by the thread.
+    ///     callback  = The delegate that will be called by the thread.
     ///     stackSize = The thread stack size in bytes. 0 for default size.
+    ///     userData  = a pointer to be passed to thread delegate
     ///
     /// Warning: It is STRONGLY ADVISED to pass a class member delegate (not a struct
-    ///          member delegate) to have context.
+    ///          member delegate) to have additional context.
     ///          Passing struct method delegates are currently UNSUPPORTED.
     ///
     this(ThreadDelegate callback, size_t stackSize = 0)
     {
         _stackSize = stackSize;
-        _callback = callback;
+        _context = cast(CreateContext*) malloc(CreateContext.sizeof);
+        _context.callback = callback;
+        _context.callbackUser = null;
+    }
+
+    ///ditto
+    this(ThreadDelegateUser callback, size_t stackSize = 0, void* userData = null)
+    {
+        _stackSize = stackSize;
+        _context = cast(CreateContext*) malloc(CreateContext.sizeof);
+        _context.callback = null;
+        _context.callbackUser = callback;
+        _context.userData = userData;
     }
 
     /// Destroys a thread. The thread is supposed to be finished at this point.
     ~this()
     {
-        if (!_started)
-            return;
-
-        version(Posix)
+        if (_started)
         {
-            pthread_detach(_id);
+            version(Posix)
+            {
+                pthread_detach(_id);
+            }
+            else version(Windows)
+            {
+                CloseHandle(_id);
+            }
+            else
+                static assert(false);
+            _started = false;
         }
-        else version(Windows)
+        if (_context !is null)
         {
-            CloseHandle(_id);
+            free(_context);
+            _context = null;
         }
     }
 
@@ -118,7 +149,7 @@ public:
                     assert(false);
             }
 
-            int err3 = pthread_create(&_id, &attr, &posixThreadEntryPoint, &_callback);
+            int err3 = pthread_create(&_id, &attr, &posixThreadEntryPoint, _context);
             if (err3 != 0)
                 assert(false);
 
@@ -130,15 +161,15 @@ public:
             if (err4 != 0)
                 assert(false);
         }
-
-        version(Windows)
+        else version(Windows)
         {
 
             uint dummy;
+
             _id = cast(HANDLE) _beginthreadex(null,
                                               cast(uint)_stackSize,
                                               &windowsThreadEntryPoint,
-                                              &_callback,
+                                              _context,
                                               CREATE_SUSPENDED,
                                               &dummy);
             if (cast(size_t)_id == 0)
@@ -146,6 +177,9 @@ public:
             if (ResumeThread(_id) == -1)
                 assert(false);
         }
+        else
+            static assert(false);
+        _started = true;
     }
 
     /// Wait for that thread termination
@@ -183,7 +217,26 @@ private:
     }
     else 
         static assert(false);
-    ThreadDelegate _callback;
+
+    // Thread context given to OS thread creation function need to have a constant adress
+    // since there are no guarantees the `Thread` struct will be at the same adress.
+    static struct CreateContext
+    {
+    nothrow:
+    @nogc:
+        ThreadDelegate callback;
+        ThreadDelegateUser callbackUser;
+        void* userData;
+        void call()
+        {
+            if (callback !is null)
+                callback();
+            else
+                callbackUser(userData);
+        }
+    }
+    CreateContext* _context;
+
     size_t _stackSize;
     bool _started = false;
 }
@@ -192,8 +245,8 @@ version(Posix)
 {
     extern(C) void* posixThreadEntryPoint(void* threadContext) nothrow @nogc
     {
-        ThreadDelegate dg = *cast(ThreadDelegate*)(threadContext);
-        dg(); // hopfully called with the right context pointer
+        Thread.CreateContext* context = cast(Thread.CreateContext*)(threadContext);
+        context.call();
         return null;
     }
 }
@@ -202,8 +255,8 @@ version(Windows)
 {
     extern (Windows) uint windowsThreadEntryPoint(void* threadContext) nothrow @nogc
     {
-        ThreadDelegate dg = *cast(ThreadDelegate*)(threadContext);
-        dg();
+        Thread.CreateContext* context = cast(Thread.CreateContext*)(threadContext);
+        context.call();
         return 0;
     }
 }
@@ -251,9 +304,9 @@ unittest
 
 /// Launch a function in a newly created thread, which is destroyed afterwards.
 /// Return the thread so that you can call `.join()` on it.
-Thread launchInAThread(ThreadDelegate dg) nothrow @nogc
+Thread launchInAThread(ThreadDelegate dg, size_t stackSize = 0) nothrow @nogc
 {
-    Thread t = makeThread(dg);
+    Thread t = makeThread(dg, stackSize);
     t.start();
     return t;
 }
@@ -262,15 +315,18 @@ Thread launchInAThread(ThreadDelegate dg) nothrow @nogc
 version(Windows)
 {
     /// Returns: current thread identifier.
-    void* currentThreadId() nothrow @nogc
+    /// Warning: doesn't return stuff that you would expect. Not a HANDLE. 
+    ///          this shouldn't be used for anything serious.
+    deprecated("It doesn't work, depreciated") void* currentThreadId() nothrow @nogc
     {
-        return cast(void*)GetCurrentThreadId();
+        HANDLE handle = GetCurrentThread();
+        return cast(void*)handle;
     }
 }
 else version(Posix)
 {
     /// Returns: current thread identifier.
-    void* currentThreadId() nothrow @nogc
+    deprecated("It doesn't work, depreciated") void* currentThreadId() nothrow @nogc
     {
         return assumeNothrowNoGC(
                 ()
@@ -405,9 +461,17 @@ else
             assert(numThreads >= 1);
 
             _threads = mallocSlice!Thread(numThreads);
+            foreach(size_t threadIndex, ref thread; _threads)
+            {
+                // Pass the index of the thread through user data, so that it can be passed to the task in 
+                // case these task need thread-local buffers.
+                void* userData = cast(void*)(threadIndex);
+                thread = makeThread(&workerThreadFunc, stackSize, userData);
+            }
+
+            // because of calling currentThreadId, don't start threads until all are created
             foreach(ref thread; _threads)
             {
-                thread = makeThread(&workerThreadFunc, stackSize);
                 thread.start();
             }
         }
@@ -563,7 +627,7 @@ else
 
         // What worker threads do
         // MAYDO: threads come here with bad context with struct delegates
-        void workerThreadFunc()
+        void workerThreadFunc(void* userData)
         {
             while (true)
             {
@@ -586,16 +650,8 @@ else
                     _taskCurrentWorkItem++;
                 }
 
-
-                // Find thread index in the pool
-                void* threadID = currentThreadId;
-                assert(workItem != -1);
-                int threadIndex = -1;
-                foreach(size_t index, ref t; _threads)
-                {
-                    if (t.getThreadID() == threadID)
-                        threadIndex = cast(int)index;
-                }
+                // Find thread index from user data set by pool
+                int threadIndex = cast(int)( cast(size_t)(userData) );
 
                 // Do the actual task
                 _taskDelegate(workItem, threadIndex);
@@ -622,10 +678,12 @@ unittest
     struct A
     {
         ThreadPool _pool;
+        int _numThreads;
 
         this(int numThreads, int maxThreads = 0, int stackSize = 0)
         {
             _pool = mallocNew!ThreadPool(numThreads, maxThreads, stackSize);
+            _numThreads = _pool.numThreads();
         }
 
         ~this()
@@ -644,8 +702,10 @@ unittest
                 _pool.parallelFor(count, &loopBody);
         }
 
-        void loopBody(int workItem) nothrow @nogc
+        void loopBody(int workItem, int threadIndex) nothrow @nogc
         {
+            bool goodIndex = (threadIndex >= 0) && (threadIndex < _numThreads);
+            assert(goodIndex);
             atomicOp!"+="(counter, 1);
         }
 
