@@ -94,23 +94,8 @@ public:
         _context.userData = userData;
     }
 
-    /// Destroys a thread. The thread is supposed to be finished at this point.
     ~this()
     {
-        if (_started)
-        {
-            version(Posix)
-            {
-                pthread_detach(_id);
-            }
-            else version(Windows)
-            {
-                CloseHandle(_id);
-            }
-            else
-                static assert(false);
-            _started = false;
-        }
         if (_context !is null)
         {
             free(_context);
@@ -124,7 +109,6 @@ public:
     /// only be called once.
     void start()
     {
-        assert(!_started);
         version(Posix)
         {
             pthread_attr_t attr;
@@ -179,10 +163,11 @@ public:
         }
         else
             static assert(false);
-        _started = true;
     }
 
     /// Wait for that thread termination
+    /// Again, this function can be called only once.
+    /// This actually releases the thread resource.
     void join()
     {
         version(Posix)
@@ -238,7 +223,6 @@ private:
     CreateContext* _context;
 
     size_t _stackSize;
-    bool _started = false;
 }
 
 version(Posix)
