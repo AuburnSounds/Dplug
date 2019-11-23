@@ -15,9 +15,6 @@ import core.stdc.string: memcpy;
 import core.exception;
 
 
-nothrow:
-@nogc:
-
 // This module deals with aligned memory.
 // You'll also find here a non-copyable std::vector equivalent `Vec`.
 
@@ -26,7 +23,7 @@ nothrow:
 /// Do not mix allocations with different alignment.
 /// Important: `alignedMalloc(0)` does not necessarily return `null`, and its result 
 ///            _has_ to be freed with `alignedFree`.
-void* alignedMalloc(size_t size, size_t alignment)
+void* alignedMalloc(size_t size, size_t alignment) nothrow @nogc
 {
     assert(alignment != 0);
 
@@ -53,7 +50,7 @@ void* alignedMalloc(size_t size, size_t alignment)
 /// Frees aligned memory allocated by alignedMalloc or alignedRealloc.
 /// Functionally equivalent to Visual C++ _aligned_free.
 /// Do not mix allocations with different alignment.
-void alignedFree(void* aligned, size_t alignment)
+void alignedFree(void* aligned, size_t alignment) nothrow @nogc
 {
     // Short-cut and use the C allocator to avoid overhead if no alignment
     if (alignment == 1)
@@ -75,27 +72,27 @@ void alignedFree(void* aligned, size_t alignment)
 /// Do not mix allocations with different alignment.
 /// Important: `alignedRealloc(p, 0)` does not necessarily return `null`, and its result 
 ///            _has_ to be freed with `alignedFree`.
-void* alignedRealloc(void* aligned, size_t size, size_t alignment)
+void* alignedRealloc(void* aligned, size_t size, size_t alignment) nothrow @nogc
 {
     return alignedReallocImpl!true(aligned, size, alignment);
 }
 
 
 /// Same as `alignedRealloc` but does not preserve data.
-void* alignedReallocDiscard(void* aligned, size_t size, size_t alignment)
+void* alignedReallocDiscard(void* aligned, size_t size, size_t alignment) nothrow @nogc
 {
     return alignedReallocImpl!false(aligned, size, alignment);
 }
 
 
 /// Returns: `true` if the pointer is suitably aligned.
-bool isPointerAligned(void* p, size_t alignment) pure
+bool isPointerAligned(void* p, size_t alignment) pure nothrow @nogc
 {
     assert(alignment != 0);
     return ( cast(size_t)p & (alignment - 1) ) == 0;
 }
 
-private
+private nothrow @nogc
 {
     void* alignedReallocImpl(bool PreserveDataIfResized)(void* aligned, size_t size, size_t alignment)
     {
@@ -228,7 +225,7 @@ unittest
 ///    alignment = Alignement if the slice has allocation requirements, 1 else. 
 ///                Must match for deallocation.
 ///
-void reallocBuffer(T)(ref T[] buffer, size_t length, int alignment = 1)
+void reallocBuffer(T)(ref T[] buffer, size_t length, int alignment = 1) nothrow @nogc
 {
     static if (is(T == struct) && hasElaborateDestructor!T)
     {
@@ -252,7 +249,7 @@ void reallocBuffer(T)(ref T[] buffer, size_t length, int alignment = 1)
 
 
 /// Returns: A newly created `Vec`.
-Vec!T makeVec(T)(size_t initialSize = 0, int alignment = 1)
+Vec!T makeVec(T)(size_t initialSize = 0, int alignment = 1) nothrow @nogc
 {
     return Vec!T(initialSize, alignment);
 }
@@ -263,10 +260,12 @@ Vec!T makeVec(T)(size_t initialSize = 0, int alignment = 1)
 /// `Vec` is designed to work even when uninitialized, without `makeVec`.
 struct Vec(T)
 {
+nothrow:
+@nogc:
     public
     {
         /// Creates an aligned buffer with given initial size.
-        this(size_t initialSize, int alignment) nothrow @nogc
+        this(size_t initialSize, int alignment)
         {
             assert(alignment != 0);
             _size = 0;
@@ -276,7 +275,7 @@ struct Vec(T)
             resize(initialSize);
         }
 
-        ~this() nothrow @nogc
+        ~this()
         {
             if (_data !is null)
             {
@@ -289,7 +288,7 @@ struct Vec(T)
         @disable this(this);
 
         /// Returns: Length of buffer in elements.
-        size_t length() pure const nothrow @nogc
+        size_t length() pure const
         {
             return _size;
         }
@@ -298,7 +297,7 @@ struct Vec(T)
         alias opDollar = length;
 
         /// Resizes a buffer to hold $(D askedSize) elements.
-        void resize(size_t askedSize) nothrow @nogc
+        void resize(size_t askedSize)
         {
             // grow only
             if (_allocated < askedSize)
@@ -311,7 +310,7 @@ struct Vec(T)
         }
 
         /// Pop last element
-        T popBack() nothrow @nogc
+        T popBack()
         {
             assert(_size > 0);
             _size = _size - 1;
@@ -319,7 +318,7 @@ struct Vec(T)
         }
 
         /// Append an element to this buffer.
-        void pushBack(T x) nothrow @nogc
+        void pushBack(T x)
         {
             size_t i = _size;
             resize(_size + 1);
@@ -328,7 +327,7 @@ struct Vec(T)
 
         ///ditto
         // support for ~=
-        void opCatAssign(T x) nothrow @nogc
+        void opCatAssign(T x)
         {
             pushBack(x); 
         }
@@ -337,7 +336,7 @@ struct Vec(T)
         alias put = pushBack;
 
         /// Finds an item, returns -1 if not found
-        int indexOf(T x) nothrow @nogc
+        int indexOf(T x)
         {
             foreach(int i; 0..cast(int)_size)
                 if (_data[i] is x)
@@ -347,7 +346,7 @@ struct Vec(T)
 
         /// Removes an item and replaces it by the last item.
         /// Warning: this reorders the array.
-        void removeAndReplaceByLastElement(size_t index) nothrow @nogc
+        void removeAndReplaceByLastElement(size_t index)
         {
             assert(index < _size);
             _data[index] = _data[--_size];
@@ -355,7 +354,7 @@ struct Vec(T)
 
         /// Removes an item and shift the rest of the array to front by 1.
         /// Warning: O(N) complexity.
-        void removeAndShiftRestOfArray(size_t index) nothrow @nogc
+        void removeAndShiftRestOfArray(size_t index)
         {
             assert(index < _size);
             for (; index + 1 < _size; ++index)
@@ -363,7 +362,7 @@ struct Vec(T)
         }
 
         /// Appends another buffer to this buffer.
-        void pushBack(ref Vec other) nothrow @nogc
+        void pushBack(ref Vec other)
         {
             size_t oldSize = _size;
             resize(_size + other._size);
@@ -371,7 +370,7 @@ struct Vec(T)
         }
 
         /// Appends a slice to this buffer.
-        void pushBack(T[] slice) nothrow @nogc
+        void pushBack(T[] slice)
         {
             foreach(item; slice)
             {
@@ -380,48 +379,48 @@ struct Vec(T)
         }
 
         /// Returns: Raw pointer to data.
-        @property inout(T)* ptr() inout nothrow @nogc
+        @property inout(T)* ptr() inout
         {
             return _data;
         }
 
         /// Returns: n-th element.
-        ref inout(T) opIndex(size_t i) pure nothrow inout @nogc
+        ref inout(T) opIndex(size_t i) pure inout
         {
             return _data[i];
         }
 
-        T opIndexAssign(T x, size_t i) nothrow @nogc
+        T opIndexAssign(T x, size_t i)
         {
             return _data[i] = x;
         }
 
         /// Sets size to zero, but keeps allocated buffers.
-        void clearContents() nothrow @nogc
+        void clearContents()
         {
             _size = 0;
         }
 
         /// Returns: Whole content of the array in one slice.
-        inout(T)[] opSlice() inout nothrow @nogc
+        inout(T)[] opSlice() inout
         {
             return opSlice(0, length());
         }
 
         /// Returns: A slice of the array.
-        inout(T)[] opSlice(size_t i1, size_t i2) inout nothrow @nogc
+        inout(T)[] opSlice(size_t i1, size_t i2) inout
         {
             return _data[i1 .. i2];
         }
 
         /// Fills the buffer with the same value.
-        void fill(T x) nothrow @nogc
+        void fill(T x)
         {
             _data[0.._size] = x;
         }
 
         /// Move. Give up owner ship of the data.
-        T[] releaseData() nothrow @nogc
+        T[] releaseData()
         {
             T[] data = _data[0.._size];
             assert(_alignment == 1); // else would need to be freed with alignedFree.
