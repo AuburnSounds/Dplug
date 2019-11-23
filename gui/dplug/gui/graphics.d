@@ -419,8 +419,6 @@ protected:
         // C. MIPMAPPING
         debug(benchmarkGraphics)
             _mipmapWatch.start();
-        // Split boxes to avoid overlapped work
-        // Note: this is done separately for update areas and render areas
         regenerateMipmaps();
         debug(benchmarkGraphics)
         {
@@ -759,53 +757,50 @@ protected:
             _updateRectScratch[i].pushBack(_rectsToUpdateDisjointedPBR[]);
         }
 
-        // We can't use tiled parallelism for mipmapping here because there is overdraw beyond level 0
-        // So instead what we do is using up to 2 threads.
-        void processOneMipmap(int i, int threadIndex) nothrow @nogc
+        // Mipmapping used to be threaded, however because it's completely memory-bound
+        // (about 2mb read/sec) and fast enough, it's not worth launching threads for.
+
+        // Generate diffuse mipmap, useful for dealing with emissive
         {
-            if (i == 0)
+            // diffuse
+            Mipmap!RGBA mipmap = _diffuseMap;
+            int levelMax = min(mipmap.numLevels(), 5);
+            foreach(level; 1 .. mipmap.numLevels())
             {
-                // diffuse
-                Mipmap!RGBA mipmap = _diffuseMap;
-                int levelMax = min(mipmap.numLevels(), 5);
-                foreach(level; 1 .. mipmap.numLevels())
+                Mipmap!RGBA.Quality quality;
+                if (level == 1)
+                    quality = Mipmap!RGBA.Quality.boxAlphaCovIntoPremul;
+                else
+                    quality = Mipmap!RGBA.Quality.cubic;
+                foreach(ref area; _updateRectScratch[0])
                 {
-                    Mipmap!RGBA.Quality quality;
-                    if (level == 1)
-                        quality = Mipmap!RGBA.Quality.boxAlphaCovIntoPremul;
-                    else
-                        quality = Mipmap!RGBA.Quality.cubic;
-
-                    foreach(ref area; _updateRectScratch[i])
-                    {
-                        area = mipmap.generateNextLevel(quality, area, level);
-                    }
-                }
-            }
-            else
-            {
-                int W = _askedWidth;
-                int H = _askedHeight;
-
-                // Depth is special since it has a border!
-                // Regenerate the border area that needs to be regenerated
-                OwnedImage!L16 level0 = _depthMap.levels[0];
-                foreach(box2i area; _updateRectScratch[i])
-                    level0.replicateBordersTouching(area);
-
-                // DEPTH MIPMAPPING
-                Mipmap!L16 mipmap = _depthMap;
-                foreach(level; 1 .. mipmap.numLevels())
-                {
-                    auto quality = level >= 3 ? Mipmap!L16.Quality.cubic : Mipmap!L16.Quality.box;
-                    foreach(ref area; _updateRectScratch[i])
-                    {
-                        area = mipmap.generateNextLevel(quality, area, level);
-                    }
+                    area = mipmap.generateNextLevel(quality, area, level);
                 }
             }
         }
-        _threadPool.parallelFor(2, &processOneMipmap);
+
+        // Generate depth mipmap, useful for dealing with ambient occlusion
+        {
+            int W = _askedWidth;
+            int H = _askedHeight;
+
+            // Depth is special since it has a border!
+            // Regenerate the border area that needs to be regenerated
+            OwnedImage!L16 level0 = _depthMap.levels[0];
+            foreach(box2i area; _updateRectScratch[1])
+                level0.replicateBordersTouching(area);
+
+            // DEPTH MIPMAPPING
+            Mipmap!L16 mipmap = _depthMap;
+            foreach(level; 1 .. mipmap.numLevels())
+            {
+                auto quality = level >= 3 ? Mipmap!L16.Quality.cubic : Mipmap!L16.Quality.box;
+                foreach(ref area; _updateRectScratch[1])
+                {
+                    area = mipmap.generateNextLevel(quality, area, level);
+                }
+            }
+        }
     }
 
     void reorderComponents(WindowPixelFormat pf)
