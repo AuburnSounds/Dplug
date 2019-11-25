@@ -29,6 +29,7 @@ import dplug.gui.boxlist;
 import dplug.gui.context;
 import dplug.gui.element;
 import dplug.gui.compositor;
+import dplug.gui.legacypbr;
 
 /// In the whole package:
 /// The diffuse maps contains:
@@ -71,9 +72,6 @@ nothrow:
         _uiContext = mallocNew!UIContext();
         super(_uiContext, flags);
 
-        // Don't like the default rendering? Make another compositor.
-        compositor = mallocNew!PBRCompositor();
-
         _windowListener = mallocNew!WindowListener(this);
 
         _window = null;
@@ -83,6 +81,8 @@ nothrow:
         int numThreads = 0; // auto
         int maxThreads = 2;
         _threadPool = mallocNew!ThreadPool(numThreads, maxThreads);
+
+        compositor = buildCompositor(_threadPool.numThreads());
 
         _rectsToUpdateDisjointedRaw = makeVec!box2i;
         _rectsToUpdateDisjointedPBR = makeVec!box2i;
@@ -116,6 +116,11 @@ nothrow:
         _depthMap = mallocNew!(Mipmap!L16)();
     }
 
+    // Don't like the default rendering? Override this function and make another compositor.
+    ICompositor buildCompositor(int numThreads)
+    {        
+        return mallocNew!PBRCompositor(numThreads);
+    }  
 
     ~this()
     {
@@ -573,9 +578,8 @@ protected:
         reflow(box2i(0, 0, _askedWidth, _askedHeight));
 
         // Resize compositor buffers
-        compositor.resizeBuffers(_threadPool.numThreads(), width, height, PBR_TILE_MAX_WIDTH, PBR_TILE_MAX_HEIGHT);
+        compositor.resizeBuffers(width, height, PBR_TILE_MAX_WIDTH, PBR_TILE_MAX_HEIGHT);
 
-        // FUTURE: maybe not destroy the whole mipmap?
         _diffuseMap.size(5, width, height);
         _depthMap.size(4, width, height);
 
@@ -729,7 +733,6 @@ protected:
         {
             compositor.compositeTile(threadIndex, 
                                      wfb, 
-                                     pf, 
                                      _rectsToCompositeDisjointedTiled[i],
                                      _diffuseMap, 
                                      _materialMap, 
