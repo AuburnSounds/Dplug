@@ -17,12 +17,7 @@ import dplug.graphics.drawex;
 import dplug.graphics.image;
 import dplug.graphics.view;
 
-import dplug.gui.ransac;
-
 import dplug.window.window;
-
-
-import inteli.math;
 
 
 /// Only deals with rendering tiles.
@@ -73,8 +68,9 @@ nothrow:
                        Mipmap!RGBA skybox);
 }
 
-/// Customizable compositor. This owns an arbitrary number of passes.
-class Compositor : ICompositor
+/// Compositor with series of successive passes.
+/// This owns an arbitrary number of passesn that are created in its constructor.
+class MultipassCompositor : ICompositor
 {
 public:
 nothrow:
@@ -124,8 +120,16 @@ nothrow:
         {
             pass.renderIfActive(threadIndex, area, &buffers);
         }
+    }
 
-        // final pass copy pixels into the `wfb` buffer
+protected:
+
+    /// To be used in constructor, this just adds a member into `_passes`.
+    /// That pass is now owned by this `MultipassCompositor`.
+    /// Passes are called in their order of addition.
+    void addPass(CompositorPass pass)
+    {
+        _passes.pushBack(pass);
     }
 
 private:
@@ -142,18 +146,9 @@ struct CompositorPassBuffers
     Mipmap!RGBA skybox; // TODO: this should be internal to the SkyboxPass instead    
 }
 
-interface ICompositorPass
-{
-nothrow:
-@nogc:
-    void resizeBuffers(int width, 
-                       int height,
-                       int areaMaxWidth,
-                       int areaMaxHeight);
-}
 
-
-class CompositorPass : ICompositorPass
+/// Derive from this class to create new passes.
+class CompositorPass
 {
 public:
 nothrow:
@@ -165,17 +160,29 @@ nothrow:
         _active = true;
     }
 
-    void setActive(bool active)
+    final bool isActive()
+    {
+        return _active;
+    }
+
+    final void setActive(bool active)
     {
         _active = active;
     }
 
-    void renderIfActive(int threadIndex, const(box2i) area, CompositorPassBuffers* buffers)
+    final void renderIfActive(int threadIndex, const(box2i) area, CompositorPassBuffers* buffers)
     {
-        if (_active)
+        if (isActive())
             render(threadIndex, area, buffers);
     }
 
+    /// Override this to allocate temporary buffers, eventually.
+    void resizeBuffers(int width, int height, int areaMaxWidth, int areaMaxHeight)
+    {
+    }
+
+    /// Override this to specify what the pass does.
+    /// If you need more buffers, use type-punning based on a `CompositorPassBuffers` extension.
     abstract void render(int threadIndex, const(box2i) area, CompositorPassBuffers* buffers);
 
 private:
@@ -188,4 +195,45 @@ private:
 }
 
 
+/// Example Compositor implementation; this just copies the diffuse map into
+/// and is useful for flat plugins.
+final class SimpleRawCompositor : MultipassCompositor
+{
+nothrow:
+@nogc:
+    this(int numThreads)
+    {
+        super(numThreads);
+        // override and add passes here. They will be `destroyFree` on exit.
+        addPass(mallocNew!CopyDiffuseToFramebuffer(numThreads));
+    }
 
+    static class CopyDiffuseToFramebuffer : CompositorPass
+    {
+    nothrow:
+    @nogc:
+
+        this(int numThreads)
+        {
+            super(numThreads);
+        }
+
+        override void render(int threadIndex, const(box2i) area, CompositorPassBuffers* buffers)
+        {
+            ImageRef!RGBA outputBuf = *(buffers.outputBuf);
+            OwnedImage!RGBA diffuseBuf = buffers.diffuseMap.levels[0];
+            for (int j = area.min.y; j < area.max.y; ++j)
+            {
+                RGBA* wfb_scan = outputBuf.scanline(j).ptr;
+                RGBA* diffuseScan = diffuseBuf.scanlinePtr(j);
+
+                // write composited color
+                for (int i = area.min.x; i < area.max.x; ++i)
+                {
+                    RGBA df = diffuseScan[i];
+                    wfb_scan[i] = RGBA(df.r, df.g, df.b, 255);
+                }
+            }
+        }
+    }
+}
