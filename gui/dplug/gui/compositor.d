@@ -78,15 +78,19 @@ nothrow:
 
     this(int numThreads)
     {
-        // override and add passes here. They will be `destroyFree` on exit.
+        _numThreads = numThreads;
+
+        // override, call `super(numThreads)`, and add passes here with `addPass`. 
+        // They will be `destroyFree` on exit.
     }
 
-    ~this()
+    /// Enqueue a pass in the compositor pipeline.
+    /// This is meant to be used in a `MultipassCompositor` derivative constructor.
+    /// Passes are called in their order of addition.
+    /// That pass is now owned by the `MultipassCompositor`.
+    protected void addPass(CompositorPass pass)
     {
-        foreach(pass; _passes[])
-        {
-            destroyFree(pass);
-        }
+        _passes.pushBack(pass);
     }
 
     override void resizeBuffers(int width, 
@@ -100,6 +104,8 @@ nothrow:
         }
     }
 
+    /// Note: the exact algorithm for compositing pass is entirely up to you.
+    /// You could imagine intermediate mipmappingsteps in the middle.
     override void compositeTile(int threadIndex,
                                 ImageRef!RGBA wfb, 
                                 box2i area,
@@ -109,7 +115,7 @@ nothrow:
                                 Mipmap!RGBA skybox)
     {
         // Note: if you want to customize rendering further, you can add new buffers to a struct extending
-        // CompositorPassBuffers, override `compositeTile` and you will still be able to use the legacy passes.
+        // CompositorPassBuffers, override `compositeTile` and you will still be able to use the former passes.
         CompositorPassBuffers buffers;
         buffers.outputBuf = &wfb;
         buffers.diffuseMap = diffuseMap;
@@ -122,17 +128,33 @@ nothrow:
         }
     }
 
-protected:
-
-    /// To be used in constructor, this just adds a member into `_passes`.
-    /// That pass is now owned by this `MultipassCompositor`.
-    /// Passes are called in their order of addition.
-    void addPass(CompositorPass pass)
+    ~this()
     {
-        _passes.pushBack(pass);
+        foreach(pass; _passes[])
+        {
+            destroyFree(pass);
+        }
+    }
+
+    final int numThreads()
+    {
+        return _numThreads;
+    }
+
+    final inout(CompositorPass) getPass(int nth) inout
+    {
+        return _passes[nth];
+    }
+
+    final inout(CompositorPass)[] passes() inout
+    {
+        return _passes[];
     }
 
 private:
+    // Stored number of threads that could possibly call compositeTile.
+    int _numThreads;
+
     // Implements ICompositor
     Vec!CompositorPass _passes;
 }
@@ -154,15 +176,9 @@ public:
 nothrow:
 @nogc:
 
-    this(int numThreads)
+    this(MultipassCompositor parent)
     {
-        _numThreads = numThreads;
-        _active = true;
-    }
-
-    final bool isActive()
-    {
-        return _active;
+        _numThreads = parent.numThreads();
     }
 
     final void setActive(bool active)
@@ -170,15 +186,21 @@ nothrow:
         _active = active;
     }
 
+    final int numThreads()
+    {
+        return _numThreads;
+    }
+
     final void renderIfActive(int threadIndex, const(box2i) area, CompositorPassBuffers* buffers)
     {
-        if (isActive())
+        if (_active)
             render(threadIndex, area, buffers);
     }
 
     /// Override this to allocate temporary buffers, eventually.
     void resizeBuffers(int width, int height, int areaMaxWidth, int areaMaxHeight)
     {
+        // do nothing by default
     }
 
     /// Override this to specify what the pass does.
@@ -187,11 +209,11 @@ nothrow:
 
 private:
 
-    /// Whether the pass should execute on render. This breaks dirtiness if you change it.
-    bool _active;
-
-    /// Cached number of threads.
+    /// The compositor that owns this pass.
     int _numThreads;
+
+    /// Whether the pass should execute on render. This breaks dirtiness if you change it.
+    bool _active = true;
 }
 
 
@@ -205,7 +227,7 @@ nothrow:
     {
         super(numThreads);
         // override and add passes here. They will be `destroyFree` on exit.
-        addPass(mallocNew!CopyDiffuseToFramebuffer(numThreads));
+        addPass(mallocNew!CopyDiffuseToFramebuffer(this));
     }
 
     static class CopyDiffuseToFramebuffer : CompositorPass
@@ -213,9 +235,9 @@ nothrow:
     nothrow:
     @nogc:
 
-        this(int numThreads)
+        this(MultipassCompositor parent)
         {
-            super(numThreads);
+            super(parent);
         }
 
         override void render(int threadIndex, const(box2i) area, CompositorPassBuffers* buffers)

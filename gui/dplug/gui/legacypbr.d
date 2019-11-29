@@ -32,71 +32,583 @@ import dplug.gui.ransac;
 import inteli.math;
 import inteli.emmintrin;
 
+
+/// When inheriging from `MultipassCompositor`, you can define what the passes exchange 
+/// between each other. However, the first field has to be a `CompositorPassBuffers`.
+struct PBRCompositorPassBuffers
+{
+    // First field must be `CompositorPassBuffers` for ABI compatibility of `MultipassCompositor`.
+    CompositorPassBuffers parent;
+    alias parent this;
+
+    // Computed normal
+    OwnedImage!RGBf normalBuffer;
+
+    // Accumulates light for each deferred pass
+    OwnedImage!RGBAf accumBuffer;
+}
+
+
+/// Equivalence factor between Z samples and pixels.
+/// Tuned once by hand to match the other normal computation algorithm
+/// This affects virutal geometry, and as such: normals and raymarching into depth.
+/// Future: this should be modifiable in order to have more Z range in plugins (more 3D).
+enum float FACTOR_Z = 4655.0f;
+
 /// Originally, Dplug compositor was fixed function.
 /// This is the legacy compositor.
-class PBRCompositor : ICompositor
+class PBRCompositor : MultipassCompositor
 {
-    nothrow @nogc:
+nothrow @nogc:
 
 
-    // light 1 used for key lighting and shadows
-    // always coming from top-right
-    vec3f light1Color;
+    // <LEGACY> parameters, reproduced here as properties for compatibility.
+    // Instead you are supposed to tweak settings when creating the passes.
 
-    // light 2 used for diffuse lighting
-    vec3f light2Dir;
-    vec3f light2Color;
+    void light1Color(vec3f color)
+    {
+        (cast(PassObliqueShadowLight)getPass(PASS_OBLIQUE_SHADOW)).color = color;        
+    }
 
-    // light 3 used for specular highlights
-    vec3f light3Dir;
-    vec3f light3Color;
+    void light2Dir(vec3f dir)
+    {
+        (cast(PassDirectionalLight)getPass(PASS_DIRECTIONAL)).direction = dir;
+    }
 
-    float ambientLight;
-    float skyboxAmount;
+    void light2Color(vec3f color)
+    {
+        (cast(PassDirectionalLight)getPass(PASS_DIRECTIONAL)).color = color;        
+    }
 
-    /// Equivalence factor between Z samples and pixels.
-    /// Tuned once by hand to match the other normal computation algorithm
-    enum float FACTOR_Z = 4655.0f;
+    void light3Dir(vec3f dir)
+    {
+        (cast(PassSpecularLight)getPass(PASS_SPECULAR)).direction = dir;
+    }
+
+    void light3Color(vec3f color)
+    {
+        (cast(PassSpecularLight)getPass(PASS_SPECULAR)).color = color;        
+    }
+
+    void skyboxAmount(float amount)
+    {
+        (cast(PassSkyboxReflections)getPass(PASS_SKYBOX)).amount = amount;
+    }
+
+    void ambientLight(float amount)
+    {
+        (cast(PassAmbientOcclusion)getPass(PASS_AO)).amount = amount;
+    }
+
+    // </LEGACY>
+
+
+
+    private enum // MUST be kept in sync with below passes, it's for legacy purpose
+    {
+        PASS_NORMAL      = 0,
+        PASS_AO          = 1,
+        PASS_OBLIQUE_SHADOW = 2,
+        PASS_DIRECTIONAL = 3,
+        PASS_SPECULAR    = 4,
+        PASS_SKYBOX      = 5,
+        PASS_EMISSIVE    = 6,
+        PASS_CLAMP       = 7
+    }
 
     this(int numThreads)
     {
-        float globalLightFactor = 1.3f;
-        // defaults
-        light1Color = vec3f(0.25f, 0.25f, 0.25f) * globalLightFactor;
-
-        light2Dir = vec3f(0.0f, 1.0f, 0.1f).normalized;
-        light2Color = vec3f(0.37f, 0.37f, 0.37f) * globalLightFactor;
-
-        light3Dir = vec3f(0.0f, 1.0f, 0.1f).normalized;
-        light3Color = vec3f(0.2f, 0.2f, 0.2f) * globalLightFactor;
-
-        ambientLight = 0.0625f * globalLightFactor;
-        skyboxAmount = 0.4f * globalLightFactor;
-
-        for (int roughByte = 0; roughByte < 256; ++roughByte)
-        {
-            _exponentTable[roughByte] = 0.8f * exp( (1-roughByte / 255.0f) * 5.5f);
-        }
+        super(numThreads);
 
         _normalBuffer = mallocNew!(OwnedImage!RGBf)();
         _accumBuffer = mallocNew!(OwnedImage!RGBAf)();
 
-        _specularFactor.reallocBuffer(numThreads);
-        _exponentFactor.reallocBuffer(numThreads);
-        // initialize new elements in the array, else realloc wouldn't work well next
-        for (int thread = 0; thread < numThreads; ++thread)
-        {
-            _specularFactor[thread] = null;
-            _exponentFactor[thread] = null;
-        }
-        _numThreads = numThreads;
+        // Create the passes
+        addPass( mallocNew!PassComputeNormal(this) );         // PASS_NORMAL
+        addPass( mallocNew!PassAmbientOcclusion(this) );      // PASS_AO
+        addPass( mallocNew!PassObliqueShadowLight(this) );    // PASS_OBLIQUE_SHADOW
+        addPass( mallocNew!PassDirectionalLight(this) );      // PASS_DIRECTIONAL
+        addPass( mallocNew!PassSpecularLight(this) );         // PASS_SPECULAR
+        addPass( mallocNew!PassSkyboxReflections(this) );     // PASS_SKYBOX
+        addPass( mallocNew!PassEmissiveContribution(this) );  // PASS_EMISSIVE
+        addPass( mallocNew!PassClampAndConvertTo8bit(this) ); // PASS_CLAMP
     }
 
     ~this()
     {
         _normalBuffer.destroyFree();
         _accumBuffer.destroyFree();
-        foreach(thread; 0.._numThreads)
+    }
+
+    override void resizeBuffers(int width, 
+                                int height,
+                                int areaMaxWidth,
+                                int areaMaxHeight)
+    {
+        super.resizeBuffers(width, height, areaMaxWidth, areaMaxHeight);
+
+        int border_0 = 0;
+        int rowAlign_1 = 1;
+        int rowAlign_16 = 16;
+        _normalBuffer.size(width, height, border_0, rowAlign_1);
+        _accumBuffer.size(width, height, border_0, rowAlign_16);
+    }
+
+    override void compositeTile(int threadIndex,
+                                ImageRef!RGBA wfb, 
+                                box2i area,
+                                Mipmap!RGBA diffuseMap,
+                                Mipmap!RGBA materialMap,
+                                Mipmap!L16 depthMap,
+                                Mipmap!RGBA skybox)
+    {
+        // Clear the accumulation buffer, since all passes add to it
+        {
+            RGBAf zero = RGBAf(0.0f, 0.0f, 0.0f, 0.0f);
+            for (int j = area.min.y; j < area.max.y; ++j)
+            {
+                RGBAf* accumScan = _accumBuffer.scanline(j).ptr;
+                accumScan[area.min.x..area.max.x] = zero;
+            }
+        }
+
+        // Call each pass in sequence
+        PBRCompositorPassBuffers buffers;
+        buffers.outputBuf = &wfb;
+        buffers.diffuseMap = diffuseMap;
+        buffers.materialMap = materialMap;
+        buffers.depthMap = depthMap;
+        buffers.skybox = skybox;
+        buffers.accumBuffer = _accumBuffer;
+        buffers.normalBuffer = _normalBuffer;
+        foreach(pass; passes())
+        {
+            pass.renderIfActive(threadIndex, area, cast(CompositorPassBuffers*)(&buffers));
+        }
+    }
+
+private:
+    OwnedImage!RGBf _normalBuffer;
+    OwnedImage!RGBAf _accumBuffer;
+}
+
+
+class PassComputeNormal : CompositorPass
+{
+nothrow:
+@nogc:
+
+    this(MultipassCompositor parent)
+    {
+        super(parent);
+    }
+
+    override void render(int threadIndex, const(box2i) area, CompositorPassBuffers* buffers)
+    {
+        PBRCompositorPassBuffers* PBRbuf = cast(PBRCompositorPassBuffers*) buffers;
+        OwnedImage!RGBf normalBuffer = PBRbuf.normalBuffer;
+        OwnedImage!L16 depthLevel0 = PBRbuf.depthMap.levels[0];
+
+        const int depthPitchBytes = depthLevel0.pitchInBytes();
+
+        for (int j = area.min.y; j < area.max.y; ++j)
+        {
+            RGBf* normalScan = normalBuffer.scanline(j).ptr;
+            const(L16*) depthScan = depthLevel0.scanline(j).ptr;
+
+            for (int i = area.min.x; i < area.max.x; ++i)
+            {
+                const(L16)* depthHere = depthScan + i;
+                const(L16)* depthHereM1 = cast(const(L16)*) ( cast(const(ubyte)*)depthHere - depthPitchBytes );
+                const(L16)* depthHereP1 = cast(const(L16)*) ( cast(const(ubyte)*)depthHere + depthPitchBytes );
+                version(futurePBRNormals)
+                {
+                    enum float multUshort = 1.0 / FACTOR_Z;
+                    float[9] depthNeighbourhood = void;
+                    depthNeighbourhood[0] = depthHereM1[-1].l * multUshort;
+                    depthNeighbourhood[1] = depthHereM1[ 0].l * multUshort;
+                    depthNeighbourhood[2] = depthHereM1[+1].l * multUshort;
+                    depthNeighbourhood[3] = depthHere[-1].l * multUshort;
+                    depthNeighbourhood[4] = depthHere[ 0].l * multUshort;
+                    depthNeighbourhood[5] = depthHere[+1].l * multUshort;
+                    depthNeighbourhood[6] = depthHereP1[-1].l * multUshort;
+                    depthNeighbourhood[7] = depthHereP1[ 0].l * multUshort;
+                    depthNeighbourhood[8] = depthHereP1[+1].l * multUshort;
+                    vec3f normal = computeRANSACNormal(depthNeighbourhood.ptr);
+                }
+                else
+                {
+                    // compute normal
+                    float sx = depthHereM1[-1].l
+                        + depthHere[  -1].l * 2
+                        + depthHereP1[-1].l
+                        - (   depthHereM1[+1].l
+                              + depthHere[  +1].l * 2
+                           + depthHereP1[+1].l  );
+
+                    float sy = depthHereP1[-1].l 
+                        + depthHereP1[ 0].l * 2 
+                        + depthHereP1[+1].l
+                        - (   depthHereM1[-1].l 
+                              + depthHereM1[ 0].l * 2 
+                           + depthHereM1[+1].l);
+
+                    // this factor basically tweak normals to make the UI flatter or not
+                    // if you change normal filtering, retune this
+                    enum float sz = 260.0f * 257.0f / 1.8f; 
+
+                    vec3f normal = vec3f(sx, sy, sz);
+                    normal.fastNormalize(); // this makes very, very little difference in output vs normalize
+                }
+                normalScan[i] = RGBf(normal.x, normal.y, normal.z);
+            }
+        }
+    }
+}
+
+
+/// Give light depending on whether the pixels are statistically above their neighbours.
+class PassAmbientOcclusion : CompositorPass
+{
+nothrow:
+@nogc:
+
+    float amount = 0.08125f;
+
+    // TODO: add ambient light color
+
+    this(MultipassCompositor parent)
+    {
+        super(parent);
+    }
+
+    override void render(int threadIndex, const(box2i) area, CompositorPassBuffers* buffers)
+    {
+        PBRCompositorPassBuffers* PBRbuf = cast(PBRCompositorPassBuffers*) buffers;
+        OwnedImage!RGBA diffuseLevel0 = PBRbuf.diffuseMap.levels[0];
+        Mipmap!L16 depthMap = PBRbuf.depthMap;
+        OwnedImage!L16 depthLevel0 = PBRbuf.depthMap.levels[0];
+        OwnedImage!RGBAf accumBuffer = PBRbuf.accumBuffer;
+
+        for (int j = area.min.y; j < area.max.y; ++j)
+        {
+            RGBA* diffuseScan = diffuseLevel0.scanlinePtr(j);
+            const(L16*) depthScan = depthLevel0.scanlinePtr(j);
+            RGBAf* accumScan = accumBuffer.scanlinePtr(j);
+
+            for (int i = area.min.x; i < area.max.x; ++i)
+            {
+                __m128 baseColor = convertBaseColorToFloat4(diffuseScan[i]);
+
+                const(L16)* depthHere = depthScan + i;
+
+                float px = i + 0.5f;
+                float py = j + 0.5f;
+
+                float avgDepthHere =
+                    ( depthMap.linearSample(1, px, py)
+                        + depthMap.linearSample(2, px, py)
+                        + depthMap.linearSample(3, px, py)
+                        + depthMap.linearSample(4, px, py) ) * 0.25f;
+
+                float diff = (*depthHere).l - avgDepthHere;
+
+                enum float divider23040 = 1.0f / 23040;
+                float cavity = (diff + 23040.0f) * divider23040;
+                if (cavity >= 1)
+                    cavity = 1;
+                else if (cavity < 0)
+                    cavity = 0;
+
+                __m128 color = baseColor * _mm_set1_ps(cavity * amount);
+                _mm_store_ps(cast(float*)(&accumScan[i]), _mm_load_ps(cast(float*)(&accumScan[i])) + color);
+            }
+        }
+    }
+}
+
+class PassObliqueShadowLight : CompositorPass
+{
+nothrow:
+@nogc:
+
+    /// Color of this light pass.
+    vec3f color = vec3f(0.25f, 0.25f, 0.25f) * 1.3f;
+
+    this(MultipassCompositor parent)
+    {
+        super(parent);
+    }
+
+    override void render(int threadIndex, const(box2i) area, CompositorPassBuffers* buffers)
+    {
+        PBRCompositorPassBuffers* PBRbuf = cast(PBRCompositorPassBuffers*) buffers;
+        OwnedImage!L16 depthLevel0 = PBRbuf.depthMap.levels[0];
+        OwnedImage!RGBA diffuseLevel0 = PBRbuf.diffuseMap.levels[0];
+        OwnedImage!RGBAf accumBuffer = PBRbuf.accumBuffer;
+
+        // Add a primary light that cast shadows
+        
+        enum float fallOff = 0.78f;
+
+        int samples = 11;
+
+        static immutable float[11] weights =
+        [
+            1.0f,
+            fallOff,
+            fallOff ^^ 2,
+            fallOff ^^ 3,
+            fallOff ^^ 4,
+            fallOff ^^ 5,
+            fallOff ^^ 6,
+            fallOff ^^ 7,
+            fallOff ^^ 8,
+            fallOff ^^ 9,
+            fallOff ^^ 10
+        ];
+
+        enum float totalWeights = (1.0f - (fallOff ^^ 11)) / (1.0f - fallOff) - 1;
+        enum float invTotalWeights = 1 / (1.7f * totalWeights);
+
+        int wholeWidth = depthLevel0.w;
+        int wholeHeight = depthLevel0.h;
+
+        for (int j = area.min.y; j < area.max.y; ++j)
+        {
+            RGBA* diffuseScan = diffuseLevel0.scanlinePtr(j);
+
+            const(L16*) depthScan = depthLevel0.scanlinePtr(j);
+            RGBAf* accumScan = accumBuffer.scanlinePtr(j);
+
+            for (int i = area.min.x; i < area.max.x; ++i)
+            {
+                const(L16)* depthHere = depthScan + i;
+                RGBA ibaseColor = diffuseScan[i];
+                vec3f baseColor = vec3f(ibaseColor.r, ibaseColor.g, ibaseColor.b) * div255;
+
+                float lightPassed = 0.0f;
+
+                int depthCenter = (*depthHere).l;
+                for (int sample = 1; sample < samples; ++sample)
+                {
+                    int x1 = i + sample;
+                    if (x1 >= wholeWidth)
+                        x1 = wholeWidth - 1;
+                    int x2 = i - sample;
+                    if (x2 < 0)
+                        x2 = 0;
+                    int y = j - sample;
+                    if (y < 0)
+                        y = 0;
+                    int z = depthCenter + sample; // ???
+                    L16* scan = depthLevel0.scanlinePtr(y);
+                    int diff1 = z - scan[x1].l; // FUTURE: use pointer offsets here instead of opIndex
+                    int diff2 = z - scan[x2].l;
+
+                    float contrib1 = void, 
+                        contrib2 = void;
+
+                    static immutable float divider15360 = 1.0f / 15360;
+
+                    if (diff1 >= 0)
+                        contrib1 = 1;
+                    else if (diff1 < -15360)
+                        contrib1 = 0;
+                    else
+                        contrib1 = (diff1 + 15360) * divider15360;
+
+                    if (diff2 >= 0)
+                        contrib2 = 1;
+                    else if (diff2 < -15360)
+                        contrib2 = 0;
+                    else
+                        contrib2 = (diff2 + 15360) * divider15360;
+
+                    lightPassed += (contrib1 + contrib2 * 0.7f) * weights[sample];
+                }
+                vec3f finalColor = baseColor * color * (lightPassed * invTotalWeights);
+                __m128 mmColor = _mm_setr_ps(finalColor.r, finalColor.g, finalColor.b, 0.0f);
+                _mm_store_ps(cast(float*)(&accumScan[i]), _mm_load_ps(cast(float*)(&accumScan[i])) + mmColor);
+            }
+        }
+    }
+}
+
+class PassDirectionalLight : CompositorPass
+{
+nothrow:
+@nogc:
+public:
+
+    /// World-space direction. Unsure of the particular space it lives in.
+    vec3f direction = vec3f(0.0f, 1.0f, 0.1f).normalized;
+
+    /// Color of this light pass.
+    vec3f color = vec3f(0.481f, 0.481f, 0.481f);
+
+    this(MultipassCompositor parent)
+    {
+        super(parent);
+    }
+
+    override void render(int threadIndex, const(box2i) area, CompositorPassBuffers* buffers)
+    {
+        PBRCompositorPassBuffers* PBRbuf = cast(PBRCompositorPassBuffers*) buffers;
+        OwnedImage!RGBA diffuseLevel0 = PBRbuf.diffuseMap.levels[0];
+        OwnedImage!RGBA materialLevel0 = PBRbuf.materialMap.levels[0];
+        OwnedImage!RGBf normalBuffer = PBRbuf.normalBuffer;
+        OwnedImage!RGBAf accumBuffer = PBRbuf.accumBuffer;
+
+        // secundary light
+        for (int j = area.min.y; j < area.max.y; ++j)
+        {
+            RGBA* materialScan = materialLevel0.scanlinePtr(j);
+            RGBA* diffuseScan = diffuseLevel0.scanlinePtr(j);
+            RGBf* normalScan = normalBuffer.scanlinePtr(j);
+            RGBAf* accumScan = accumBuffer.scanlinePtr(j);
+
+            for (int i = area.min.x; i < area.max.x; ++i)
+            {
+                RGBf normalFromBuf = normalScan[i];
+                RGBA materialHere = materialScan[i];
+                float roughness = materialHere.r * div255;
+                RGBA ibaseColor = diffuseScan[i];
+                vec3f baseColor = vec3f(ibaseColor.r, ibaseColor.g, ibaseColor.b) * div255;
+                vec3f normal = vec3f(normalFromBuf.r, normalFromBuf.g, normalFromBuf.b);
+                float diffuseFactor = 0.5f + 0.5f * dot(normal, direction);
+                diffuseFactor = linmap!float(diffuseFactor, 0.24f - roughness * 0.5f, 1, 0, 1.0f);
+                vec3f finalColor = baseColor * color * diffuseFactor;
+                accumScan[i] += RGBAf(finalColor.r, finalColor.g, finalColor.b, 0.0f);
+            }
+        }
+    }
+}
+
+class PassSpecularLight : CompositorPass
+{
+nothrow:
+@nogc:
+public:
+
+    /// World-space direction. Unsure of the particular space it lives in.
+    vec3f direction = vec3f(0.0f, 1.0f, 0.1f).normalized;
+
+    /// Color of this light pass.
+    vec3f color = vec3f(0.26f, 0.26f, 0.26f);
+
+    this(MultipassCompositor parent)
+    {
+        super(parent);
+        _specularFactor.reallocBuffer(numThreads());
+        _exponentFactor.reallocBuffer(numThreads());
+
+        // initialize new elements in the array, else realloc wouldn't work well next
+        for (int thread = 0; thread < numThreads(); ++thread)
+        {
+            _specularFactor[thread] = null;
+            _exponentFactor[thread] = null;
+        }
+
+        for (int roughByte = 0; roughByte < 256; ++roughByte)
+        {
+            _exponentTable[roughByte] = 0.8f * exp( (1-roughByte / 255.0f) * 5.5f);
+        }        
+
+    }
+
+    override void resizeBuffers(int width, 
+                                int height,
+                                int areaMaxWidth,
+                                int areaMaxHeight)
+    {
+        // resize all thread-local buffers
+        for (int thread = 0; thread < numThreads(); ++thread)
+        {
+            _specularFactor[thread].reallocBuffer(width);
+            _exponentFactor[thread].reallocBuffer(width);
+        }
+    }
+
+    override void render(int threadIndex, const(box2i) area, CompositorPassBuffers* buffers)
+    {
+        PBRCompositorPassBuffers* PBRbuf = cast(PBRCompositorPassBuffers*) buffers;
+        OwnedImage!RGBA diffuseLevel0 = PBRbuf.diffuseMap.levels[0];
+        OwnedImage!RGBA materialLevel0 = PBRbuf.materialMap.levels[0];
+        OwnedImage!RGBf normalBuffer = PBRbuf.normalBuffer;
+        OwnedImage!RGBAf accumBuffer = PBRbuf.accumBuffer;
+
+        int w = diffuseLevel0.w;
+        int h = diffuseLevel0.h;
+        immutable float invW = 1.0f / w;
+        immutable float invH = 1.0f / h;
+
+        __m128 mmlight3Dir = _mm_setr_ps(-direction.x, -direction.y, -direction.z, 0.0f);
+        float* pSpecular = _specularFactor[threadIndex].ptr;
+        float* pExponent = _exponentFactor[threadIndex].ptr;
+
+        for (int j = area.min.y; j < area.max.y; ++j)
+        {
+            RGBA* materialScan = materialLevel0.scanlinePtr(j);
+            RGBA* diffuseScan = diffuseLevel0.scanlinePtr(j);
+            RGBf* normalScan = normalBuffer.scanlinePtr(j);
+            RGBAf* accumScan = accumBuffer.scanlinePtr(j);
+
+            for (int i = area.min.x; i < area.max.x; ++i)
+            {
+                RGBA materialHere = materialScan[i];
+                RGBf normalFromBuf = normalScan[i];
+                __m128 normal = convertNormalToFloat4(normalScan[i]);
+
+                // TODO: this should be tuned interactively, maybe it's annoying to feel
+                __m128 toEye = _mm_setr_ps(0.5f - i * invW, j * invH - 0.5f, 1.0f, 0.0f);
+
+                toEye = _mm_fast_normalize_ps(toEye);
+                __m128 lightReflect = _mm_reflectnormal_ps(mmlight3Dir, normal);
+                float specularFactor = _mm_dot_ps(toEye, lightReflect);
+                if (specularFactor < 1e-3f) 
+                    specularFactor = 1e-3f;
+                pSpecular[i] = specularFactor;
+                pExponent[i] = _exponentTable[materialHere.r];
+            }
+
+            // Just the pow operation for this line
+            {
+                int i = area.min.x;
+                for (; i + 3 < area.max.x; i += 4)
+                {
+                    _mm_storeu_ps(&pSpecular[i], _mm_pow_ps(_mm_loadu_ps(&pSpecular[i]), _mm_loadu_ps(&pExponent[i])));
+                }
+                for (; i < area.max.x; ++i)
+                {
+                    pSpecular[i] = _mm_pow_ss(pSpecular[i], pExponent[i]);
+                }
+            }
+
+            for (int i = area.min.x; i < area.max.x; ++i)
+            {
+                float specularFactor = pSpecular[i];
+
+                __m128 material = convertMaterialToFloat4(materialScan[i]);
+                RGBA materialHere = materialScan[i];
+                float roughness = material.array[0];
+                float metalness = material.array[1];
+                float specular  = material.array[2];
+                __m128 baseColor = convertBaseColorToFloat4(diffuseScan[i]);
+                __m128 mmLightColor = _mm_setr_ps(color.x, color.y, color.z, 0.0f);
+
+                float roughFactor = 10 * (1.0f - roughness) * (1 - metalness * 0.5f);
+                specularFactor = specularFactor * roughFactor;
+                __m128 finalColor = baseColor * mmLightColor * _mm_set1_ps(specularFactor * specular);
+
+                _mm_store_ps(cast(float*)(&accumScan[i]), _mm_load_ps(cast(float*)(&accumScan[i])) + finalColor);
+            }
+        }
+    }
+
+    ~this()
+    {
+        foreach(thread; 0..numThreads())
         {
             _specularFactor[thread].reallocBuffer(0);
             _exponentFactor[thread].reallocBuffer(0);
@@ -105,322 +617,51 @@ class PBRCompositor : ICompositor
         _exponentFactor.reallocBuffer(0);
     }
 
-    override void resizeBuffers(int width, 
-                                int height,
-                                int areaMaxWidth,
-                                int areaMaxHeight)
-    {
-        int border_0 = 0;
-        int rowAlign_1 = 1;
-        int rowAlign_16 = 16;
-        _normalBuffer.size(width, height, border_0, rowAlign_1);
-        _accumBuffer.size(width, height, border_0, rowAlign_16);  
+private:
+    float[256] _exponentTable;
 
-        // resize all thread-local buffers
-        for (int thread = 0; thread < _numThreads; ++thread)
-        {
-            _specularFactor[thread].reallocBuffer(width);
-            _exponentFactor[thread].reallocBuffer(width);
-        }
+    // Note: those are thread-local buffers
+    float[][] _specularFactor;
+    float[][] _exponentFactor;    
+}
+
+class PassSkyboxReflections : CompositorPass
+{
+nothrow:
+@nogc:
+public:
+
+    float amount = 0.4f * 1.3f;
+
+    this(MultipassCompositor parent)
+    {
+        super(parent);
     }
 
-    /// Don't like this rendering? Feel free to override this method.
-    override void compositeTile(int threadIndex,
-                                ImageRef!RGBA wfb,
-                                box2i area,
-                                Mipmap!RGBA diffuseMap,
-                                Mipmap!RGBA materialMap,
-                                Mipmap!L16 depthMap,
-                                Mipmap!RGBA skybox)
+    override void render(int threadIndex, const(box2i) area, CompositorPassBuffers* buffers)
     {
-        int w = diffuseMap.levels[0].w;
-        int h = diffuseMap.levels[0].h;
+        PBRCompositorPassBuffers* PBRbuf = cast(PBRCompositorPassBuffers*) buffers;
+        OwnedImage!RGBA diffuseLevel0 = PBRbuf.diffuseMap.levels[0];
+        OwnedImage!RGBA materialLevel0 = PBRbuf.materialMap.levels[0];
+        OwnedImage!L16 depthLevel0 = PBRbuf.depthMap.levels[0];
+        OwnedImage!RGBf normalBuffer = PBRbuf.normalBuffer;
+        OwnedImage!RGBAf accumBuffer = PBRbuf.accumBuffer;
+        Mipmap!RGBA skybox = PBRbuf.skybox;
 
-        OwnedImage!L16 depthLevel0 = depthMap.levels[0];
-        int depthPitchBytes = depthLevel0.pitchInBytes(); // pitch of depth buffer, in bytes
-
-        // Compute normals (read depth, write to _normalBuffer)
-        {
-            for (int j = area.min.y; j < area.max.y; ++j)
-            {
-                RGBf* normalScan = _normalBuffer.scanline(j).ptr;
-                const(L16*) depthScan = depthLevel0.scanline(j).ptr;
-
-                for (int i = area.min.x; i < area.max.x; ++i)
-                {
-                    const(L16)* depthHere = depthScan + i;
-                    const(L16)* depthHereM1 = cast(const(L16)*) ( cast(const(ubyte)*)depthHere - depthPitchBytes );
-                    const(L16)* depthHereP1 = cast(const(L16)*) ( cast(const(ubyte)*)depthHere + depthPitchBytes );
-                    version(futurePBRNormals)
-                    {
-                        enum float multUshort = 1.0 / FACTOR_Z;
-                        float[9] depthNeighbourhood = void;
-                        depthNeighbourhood[0] = depthHereM1[-1].l * multUshort;
-                        depthNeighbourhood[1] = depthHereM1[ 0].l * multUshort;
-                        depthNeighbourhood[2] = depthHereM1[+1].l * multUshort;
-                        depthNeighbourhood[3] = depthHere[-1].l * multUshort;
-                        depthNeighbourhood[4] = depthHere[ 0].l * multUshort;
-                        depthNeighbourhood[5] = depthHere[+1].l * multUshort;
-                        depthNeighbourhood[6] = depthHereP1[-1].l * multUshort;
-                        depthNeighbourhood[7] = depthHereP1[ 0].l * multUshort;
-                        depthNeighbourhood[8] = depthHereP1[+1].l * multUshort;
-                        vec3f normal = computeRANSACNormal(depthNeighbourhood.ptr);
-                    }
-                    else
-                    {
-                        // compute normal
-                        float sx = depthHereM1[-1].l
-                            + depthHere[  -1].l * 2
-                            + depthHereP1[-1].l
-                            - (   depthHereM1[+1].l
-                                  + depthHere[  +1].l * 2
-                               + depthHereP1[+1].l  );
-
-                        float sy = depthHereP1[-1].l 
-                            + depthHereP1[ 0].l * 2 
-                            + depthHereP1[+1].l
-                            - (   depthHereM1[-1].l 
-                                  + depthHereM1[ 0].l * 2 
-                               + depthHereM1[+1].l);
-
-                        // this factor basically tweak normals to make the UI flatter or not
-                        // if you change normal filtering, retune this
-                        enum float sz = 260.0f * 257.0f / 1.8f; 
-
-                        vec3f normal = vec3f(sx, sy, sz);
-                        normal.fastNormalize(); // this makes very, very little difference in output vs normalize
-                    }
-                    normalScan[i] = RGBf(normal.x, normal.y, normal.z);
-                }
-            }
-        }
-
-        static immutable float div255 = 1 / 255.0f;
-
-        // Add ambient component
-        {
-            for (int j = area.min.y; j < area.max.y; ++j)
-            {
-                RGBA* diffuseScan = diffuseMap.levels[0].scanlinePtr(j);
-                const(L16*) depthScan = depthLevel0.scanlinePtr(j);
-                RGBAf* accumScan = _accumBuffer.scanlinePtr(j);
-
-                for (int i = area.min.x; i < area.max.x; ++i)
-                {
-                    __m128 baseColor = convertBaseColorToFloat4(diffuseScan[i]);
-
-                    const(L16)* depthHere = depthScan + i;
-
-                    float px = i + 0.5f;
-                    float py = j + 0.5f;
-
-                    float avgDepthHere =
-                        ( depthMap.linearSample(1, px, py)
-                          + depthMap.linearSample(2, px, py)
-                         + depthMap.linearSample(3, px, py)
-                         + depthMap.linearSample(4, px, py) ) * 0.25f;
-
-                    float diff = (*depthHere).l - avgDepthHere;
-
-                    enum float divider23040 = 1.0f / 23040;
-                    float cavity = (diff + 23040.0f) * divider23040;
-                    if (cavity >= 1)
-                        cavity = 1;
-                    else if (cavity < 0)
-                        cavity = 0;
-
-                    __m128 color = baseColor * _mm_set1_ps(cavity * ambientLight);
-                    _mm_store_ps(cast(float*)&accumScan[i], color);
-                }
-            }
-        }
-
-        // Add a primary light that cast shadows
-        {
-            enum float fallOff = 0.78f;
-
-            int samples = 11;
-
-            static immutable float[11] weights =
-            [
-                1.0f,
-                fallOff,
-                fallOff ^^ 2,
-                fallOff ^^ 3,
-                fallOff ^^ 4,
-                fallOff ^^ 5,
-                fallOff ^^ 6,
-                fallOff ^^ 7,
-                fallOff ^^ 8,
-                fallOff ^^ 9,
-                fallOff ^^ 10
-            ];
-
-            enum float totalWeights = (1.0f - (fallOff ^^ 11)) / (1.0f - fallOff) - 1;
-            enum float invTotalWeights = 1 / (1.7f * totalWeights);
-
-            for (int j = area.min.y; j < area.max.y; ++j)
-            {
-                RGBA* diffuseScan = diffuseMap.levels[0].scanlinePtr(j);
-
-                const(L16*) depthScan = depthLevel0.scanlinePtr(j);
-                RGBAf* accumScan = _accumBuffer.scanlinePtr(j);
-
-                for (int i = area.min.x; i < area.max.x; ++i)
-                {
-                    const(L16)* depthHere = depthScan + i;
-                    RGBA ibaseColor = diffuseScan[i];
-                    vec3f baseColor = vec3f(ibaseColor.r, ibaseColor.g, ibaseColor.b) * div255;
-
-                    float lightPassed = 0.0f;
-
-                    int depthCenter = (*depthHere).l;
-                    for (int sample = 1; sample < samples; ++sample)
-                    {
-                        int x1 = i + sample;
-                        if (x1 >= w)
-                            x1 = w - 1;
-                        int x2 = i - sample;
-                        if (x2 < 0)
-                            x2 = 0;
-                        int y = j - sample;
-                        if (y < 0)
-                            y = 0;
-                        int z = depthCenter + sample; // ???
-                        L16* scan = depthLevel0.scanlinePtr(y);
-                        int diff1 = z - scan[x1].l; // FUTURE: use pointer offsets here instead of opIndex
-                        int diff2 = z - scan[x2].l;
-
-                        float contrib1 = void, 
-                            contrib2 = void;
-
-                        static immutable float divider15360 = 1.0f / 15360;
-
-                        if (diff1 >= 0)
-                            contrib1 = 1;
-                        else if (diff1 < -15360)
-                            contrib1 = 0;
-                        else
-                            contrib1 = (diff1 + 15360) * divider15360;
-
-                        if (diff2 >= 0)
-                            contrib2 = 1;
-                        else if (diff2 < -15360)
-                            contrib2 = 0;
-                        else
-                            contrib2 = (diff2 + 15360) * divider15360;
-
-                        lightPassed += (contrib1 + contrib2 * 0.7f) * weights[sample];
-                    }
-                    vec3f color = baseColor * light1Color * (lightPassed * invTotalWeights);
-                    __m128 mmColor = _mm_setr_ps(color.r, color.g, color.b, 0.0f);
-                    _mm_store_ps(cast(float*)(&accumScan[i]), _mm_load_ps(cast(float*)(&accumScan[i])) + mmColor);
-                }
-            }
-        }
-
-        // secundary light
-        {
-            for (int j = area.min.y; j < area.max.y; ++j)
-            {
-                RGBA* materialScan = materialMap.levels[0].scanlinePtr(j);
-                RGBA* diffuseScan = diffuseMap.levels[0].scanlinePtr(j);
-                RGBf* normalScan = _normalBuffer.scanlinePtr(j);
-                RGBAf* accumScan = _accumBuffer.scanlinePtr(j);
-
-                for (int i = area.min.x; i < area.max.x; ++i)
-                {
-                    RGBf normalFromBuf = normalScan[i];
-                    RGBA materialHere = materialScan[i];
-                    float roughness = materialHere.r * div255;
-                    RGBA ibaseColor = diffuseScan[i];
-                    vec3f baseColor = vec3f(ibaseColor.r, ibaseColor.g, ibaseColor.b) * div255;
-                    vec3f normal = vec3f(normalFromBuf.r, normalFromBuf.g, normalFromBuf.b);
-                    float diffuseFactor = 0.5f + 0.5f * dot(normal, light2Dir);
-                    diffuseFactor = linmap!float(diffuseFactor, 0.24f - roughness * 0.5f, 1, 0, 1.0f);
-                    vec3f color = baseColor * light2Color * diffuseFactor;
-                    accumScan[i] += RGBAf(color.r, color.g, color.b, 0.0f);
-                }
-            }
-        }
-
+        int w = diffuseLevel0.w;
+        int h = diffuseLevel0.h;
         immutable float invW = 1.0f / w;
         immutable float invH = 1.0f / h;
-
-        // Specular highlight
-        {
-            __m128 mmlight3Dir = _mm_setr_ps(-light3Dir.x, -light3Dir.y, -light3Dir.z, 0.0f);
-            float* pSpecular = _specularFactor[threadIndex].ptr;
-            float* pExponent = _exponentFactor[threadIndex].ptr;
-
-            for (int j = area.min.y; j < area.max.y; ++j)
-            {
-                RGBA* materialScan = materialMap.levels[0].scanlinePtr(j);
-                RGBA* diffuseScan = diffuseMap.levels[0].scanlinePtr(j);
-                RGBf* normalScan = _normalBuffer.scanlinePtr(j);
-                RGBAf* accumScan = _accumBuffer.scanlinePtr(j);
-
-                for (int i = area.min.x; i < area.max.x; ++i)
-                {
-                    RGBA materialHere = materialScan[i];
-                    RGBf normalFromBuf = normalScan[i];
-                    __m128 normal = convertNormalToFloat4(normalScan[i]);
-
-                    // TODO: this should be tuned interactively, maybe it's annoying to feel
-                    __m128 toEye = _mm_setr_ps(0.5f - i * invW, j * invH - 0.5f, 1.0f, 0.0f);
-
-                    toEye = _mm_fast_normalize_ps(toEye);
-                    __m128 lightReflect = _mm_reflectnormal_ps(mmlight3Dir, normal);
-                    float specularFactor = _mm_dot_ps(toEye, lightReflect);
-                    if (specularFactor < 1e-3f) 
-                        specularFactor = 1e-3f;
-                    pSpecular[i] = specularFactor;
-                    pExponent[i] = _exponentTable[materialHere.r];
-                }
-
-                // Just the pow operation for this line
-                {
-                    int i = area.min.x;
-                    for (; i + 3 < area.max.x; i += 4)
-                    {
-                        _mm_storeu_ps(&pSpecular[i], _mm_pow_ps(_mm_loadu_ps(&pSpecular[i]), _mm_loadu_ps(&pExponent[i])));
-                    }
-                    for (; i < area.max.x; ++i)
-                    {
-                        pSpecular[i] = _mm_pow_ss(pSpecular[i], pExponent[i]);
-                    }
-                }
-
-                for (int i = area.min.x; i < area.max.x; ++i)
-                {
-                    float specularFactor = pSpecular[i];
-
-                    __m128 material = convertMaterialToFloat4(materialScan[i]);
-                    RGBA materialHere = materialScan[i];
-                    float roughness = material.array[0];
-                    float metalness = material.array[1];
-                    float specular  = material.array[2];
-                    __m128 baseColor = convertBaseColorToFloat4(diffuseScan[i]);
-                    __m128 mmLight3Color = _mm_setr_ps(light3Color.x, light3Color.y, light3Color.z, 0.0f);
-
-                    float roughFactor = 10 * (1.0f - roughness) * (1 - metalness * 0.5f);
-                    specularFactor = specularFactor * roughFactor;
-                    __m128 color = baseColor * mmLight3Color * _mm_set1_ps(specularFactor * specular);
-
-                    _mm_store_ps(cast(float*)(&accumScan[i]), _mm_load_ps(cast(float*)(&accumScan[i])) + color);
-                }
-            }
-        }
 
         // skybox reflection (use the same shininess as specular)
         if (skybox !is null)
         {
             for (int j = area.min.y; j < area.max.y; ++j)
             {
-                RGBA* materialScan = materialMap.levels[0].scanlinePtr(j);
-                RGBA* diffuseScan = diffuseMap.levels[0].scanlinePtr(j);
-                RGBf* normalScan = _normalBuffer.scanlinePtr(j);
-                RGBAf* accumScan = _accumBuffer.scanlinePtr(j);         
+                RGBA* materialScan = materialLevel0.scanlinePtr(j);
+                RGBA* diffuseScan = diffuseLevel0.scanlinePtr(j);
+                RGBf* normalScan = normalBuffer.scanlinePtr(j);
+                RGBAf* accumScan = accumBuffer.scanlinePtr(j);         
 
                 // First compute the needed mipmap level for this line
 
@@ -472,7 +713,7 @@ class PBRCompositor : ICompositor
                     immutable float fskyX = (skybox.width - 1.0f);
                     immutable float fSkyY = (skybox.height - 1.0f);
 
-                    immutable float amount = skyboxAmount * div255;
+                    immutable float amountFactor = amount * div255;
 
                     // TODO: same remark than above about toEye, something to think about
                     __m128 toEye = _mm_setr_ps(0.5f - i * invW, j * invH - 0.5f, 1.0f, 0.0f);
@@ -486,45 +727,81 @@ class PBRCompositor : ICompositor
                     float skyx = 0.5f + ((0.5f - pureReflection.array[0] * 0.5f) * fskyX);
                     float skyy = 0.5f + ((0.5f + pureReflection.array[1] * 0.5f) * fSkyY);
                     __m128 skyColorAtThisPoint = convertVec4fToFloat4( skybox.linearMipmapSample(mipmapLevel, skyx, skyy) );
-                    __m128 color = baseColor * skyColorAtThisPoint * _mm_set1_ps(metalness * amount);
+                    __m128 color = baseColor * skyColorAtThisPoint * _mm_set1_ps(metalness * amountFactor);
                     _mm_store_ps(cast(float*)(&accumScan[i]), _mm_load_ps(cast(float*)(&accumScan[i])) + color);
                 }
             }
         }
+    }
+}
+
+class PassEmissiveContribution : CompositorPass
+{
+nothrow:
+@nogc:
+public:
+
+    this(MultipassCompositor parent)
+    {
+        super(parent);
+    }
+
+    override void render(int threadIndex, const(box2i) area, CompositorPassBuffers* buffers)
+    {
+        PBRCompositorPassBuffers* PBRbuf = cast(PBRCompositorPassBuffers*) buffers;
+        OwnedImage!RGBAf accumBuffer = PBRbuf.accumBuffer;
+        Mipmap!RGBA diffuseMap = PBRbuf.diffuseMap;
 
         // Add light emitted by neighbours
         // Bloom-like.
+        for (int j = area.min.y; j < area.max.y; ++j)
         {
-            for (int j = area.min.y; j < area.max.y; ++j)
+            RGBAf* accumScan = accumBuffer.scanlinePtr(j);
+            for (int i = area.min.x; i < area.max.x; ++i)
             {
-                RGBAf* accumScan = _accumBuffer.scanlinePtr(j);
-                for (int i = area.min.x; i < area.max.x; ++i)
-                {
-                    float ic = i + 0.5f;
-                    float jc = j + 0.5f;
+                float ic = i + 0.5f;
+                float jc = j + 0.5f;
 
-                    // Get alpha-premultiplied, avoids to have to do alpha-aware mipmapping
-                    vec4f colorLevel1 = diffuseMap.linearSample(1, ic, jc);
-                    vec4f colorLevel2 = diffuseMap.linearSample(2, ic, jc);
-                    vec4f colorLevel3 = diffuseMap.linearSample(3, ic, jc);
-                    vec4f colorLevel4 = diffuseMap.linearSample(4, ic, jc);
-                    vec4f colorLevel5 = diffuseMap.linearSample(5, ic, jc);
+                // Get alpha-premultiplied, avoids to have to do alpha-aware mipmapping
+                vec4f colorLevel1 = diffuseMap.linearSample(1, ic, jc);
+                vec4f colorLevel2 = diffuseMap.linearSample(2, ic, jc);
+                vec4f colorLevel3 = diffuseMap.linearSample(3, ic, jc);
+                vec4f colorLevel4 = diffuseMap.linearSample(4, ic, jc);
+                vec4f colorLevel5 = diffuseMap.linearSample(5, ic, jc);
 
-                    vec4f emitted = colorLevel1 * 0.00117647f;
-                    emitted += colorLevel2      * 0.00176471f;
-                    emitted += colorLevel3      * 0.00147059f;
-                    emitted += colorLevel4      * 0.00088235f;
-                    emitted += colorLevel5      * 0.00058823f;
-                    accumScan[i] += RGBAf(emitted.r, emitted.g, emitted.b, emitted.a);
-                }
+                vec4f emitted = colorLevel1 * 0.00117647f;
+                emitted += colorLevel2      * 0.00176471f;
+                emitted += colorLevel3      * 0.00147059f;
+                emitted += colorLevel4      * 0.00088235f;
+                emitted += colorLevel5      * 0.00058823f;
+                accumScan[i] += RGBAf(emitted.r, emitted.g, emitted.b, emitted.a);
             }
         }
+    }
+}
 
+class PassClampAndConvertTo8bit : CompositorPass
+{
+nothrow:
+@nogc:
+public:
+
+    this(MultipassCompositor parent)
+    {
+        super(parent);
+    }
+
+    override void render(int threadIndex, const(box2i) area, CompositorPassBuffers* buffers)
+    {
+        PBRCompositorPassBuffers* PBRbuf = cast(PBRCompositorPassBuffers*) buffers;
+        OwnedImage!RGBAf accumBuffer = PBRbuf.accumBuffer;
+        ImageRef!RGBA* wfb = PBRbuf.outputBuf;
+        
         // Final pass, clamp, convert to ubyte
         for (int j = area.min.y; j < area.max.y; ++j)
         {
             RGBA* wfb_scan = wfb.scanline(j).ptr;
-            RGBAf* accumScan = _accumBuffer.scanlinePtr(j);
+            RGBAf* accumScan = accumBuffer.scanlinePtr(j);
 
             for (int i = area.min.x; i < area.max.x; ++i)
             {
@@ -551,21 +828,6 @@ class PBRCompositor : ICompositor
             }
         }
     }
-
-private:
-    OwnedImage!RGBf _normalBuffer;
-    OwnedImage!RGBAf _accumBuffer;
-    float[256] _exponentTable;
-
-    // For the specular highlight pass
-    // These buffers must be complete image, since multiple threads may be operating
-    // and overwriting the same are if it was a line.
-
-    // Thread-local buffers
-    float[][] _specularFactor;
-    float[][] _exponentFactor;
-
-    int _numThreads;
 }
 
 
@@ -620,7 +882,6 @@ __m128 convertBaseColorToFloat4(RGBA rgba) nothrow @nogc pure
     __m128i mmZero = _mm_setzero_si128();
     __m128i shorts = _mm_unpacklo_epi8(packed, mmZero);
     __m128i ints = _mm_unpacklo_epi16(shorts, mmZero);
-    enum float div255 = 1 / 255.0f;
     return _mm_cvtepi32_ps(ints) * _mm_set1_ps(div255);
 }
 
@@ -634,5 +895,4 @@ __m128 convertVec4fToFloat4(vec4f vec) nothrow @nogc pure
     return _mm_setr_ps(vec.x, vec.y, vec.z, vec.w);
 }
 
-
-
+private enum float div255 = 1 / 255.0f;
