@@ -65,7 +65,13 @@ nothrow:
     enum PBR_TILE_MAX_WIDTH = 128;
     enum PBR_TILE_MAX_HEIGHT = 128;
 
+    // TODO: make this private.
     ICompositor compositor;
+
+    ICompositor getCompositor()
+    {
+        return compositor;
+    }
 
     this(int initialWidth, int initialHeight, UIFlags flags)
     {
@@ -736,8 +742,7 @@ protected:
                                      _rectsToCompositeDisjointedTiled[i],
                                      _diffuseMap, 
                                      _materialMap, 
-                                     _depthMap, 
-                                     context.skybox);
+                                     _depthMap);
         }
         _threadPool.parallelFor(numAreas, &compositeOneTile);
     }

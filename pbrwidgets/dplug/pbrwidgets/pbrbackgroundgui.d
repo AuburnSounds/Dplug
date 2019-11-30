@@ -20,6 +20,8 @@ import dplug.window.window;
 
 import dplug.gui.graphics;
 import dplug.gui.element;
+import dplug.gui.compositor;
+import dplug.gui.legacypbr;
 
 /// PBRBackgroundGUI provides a PBR background loaded from PNG or JPEG images.
 /// It's very practical while in development because it let's you reload the six
@@ -244,8 +246,19 @@ private:
             }
         }
 
-        OwnedImage!RGBA skybox = loadOwnedImage(skyboxData);
-        context.setSkybox(skybox);
+
+        // Search for a pass of type PassSkyboxReflections
+        if (auto mpc = cast(MultipassCompositor) getCompositor())
+        {
+            foreach(pass; mpc.passes())
+            {
+                if (auto skyreflPass = cast(PassSkyboxReflections)pass)
+                {
+                    OwnedImage!RGBA skybox = loadOwnedImage(skyboxData);
+                    skyreflPass.setSkybox(skybox);
+                }
+            }
+        }
     }
 }
 

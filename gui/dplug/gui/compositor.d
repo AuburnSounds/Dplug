@@ -64,8 +64,9 @@ nothrow:
                        box2i area,
                        Mipmap!RGBA diffuseMap,
                        Mipmap!RGBA materialMap,
-                       Mipmap!L16 depthMap,
-                       Mipmap!RGBA skybox);
+                       Mipmap!L16 depthMap);
+
+
 }
 
 /// Compositor with series of successive passes.
@@ -111,8 +112,7 @@ nothrow:
                                 box2i area,
                                 Mipmap!RGBA diffuseMap,
                                 Mipmap!RGBA materialMap,
-                                Mipmap!L16 depthMap,
-                                Mipmap!RGBA skybox)
+                                Mipmap!L16 depthMap)
     {
         // Note: if you want to customize rendering further, you can add new buffers to a struct extending
         // CompositorPassBuffers, override `compositeTile` and you will still be able to use the former passes.
@@ -121,7 +121,6 @@ nothrow:
         buffers.diffuseMap = diffuseMap;
         buffers.materialMap = materialMap;
         buffers.depthMap = depthMap;
-        buffers.skybox = skybox;
         foreach(pass; _passes)
         {
             pass.renderIfActive(threadIndex, area, &buffers);
@@ -165,7 +164,6 @@ struct CompositorPassBuffers
     Mipmap!RGBA diffuseMap;
     Mipmap!RGBA materialMap;
     Mipmap!L16 depthMap;
-    Mipmap!RGBA skybox; // TODO: this should be internal to the SkyboxPass instead    
 }
 
 

@@ -35,15 +35,6 @@ nothrow:
         dirtyListRaw = makeDirtyRectList();
     }
 
-    ~this()
-    {
-        if (skybox !is null)
-        {
-            skybox.destroyFree();
-            skybox = null;
-        }
-    }
-
     /// Last clicked element.
     UIElement focused = null;
 
@@ -57,10 +48,6 @@ nothrow:
         UIElement mouseOver = null;
     }
 
-    /// UI global image used for environment reflections.
-    /// TODO: should belong to a Compositor pass, this is not global to the UI at all.
-    Mipmap!RGBA skybox = null;
-
     // This is the UI-global, disjointed list of rectangles that need updating at the PBR level.
     // Every UIElement touched by those rectangles will have their `onDrawPBR` and `onDrawRaw` 
     // callbacks called successively.
@@ -69,19 +56,6 @@ nothrow:
     // This is the UI-global, disjointed list of rectangles that need updating at the Raw level.
     // Every UIElement touched by those rectangles will have its `onDrawRaw` callback called.
     DirtyRectList dirtyListRaw;
-
-    // Note: take ownership of image
-    // That image must have been built with `mallocEmplace`
-    void setSkybox(OwnedImage!RGBA image)
-    {
-        if (skybox !is null)
-        {
-            skybox.destroyFree();
-            skybox = null;
-        }
-        skybox = mallocNew!(Mipmap!RGBA)(12, image);
-        skybox.generateMipmaps(Mipmap!RGBA.Quality.box);
-    }
 
     version(legacyMouseOver) {}
     else

@@ -159,8 +159,7 @@ nothrow @nogc:
                                 box2i area,
                                 Mipmap!RGBA diffuseMap,
                                 Mipmap!RGBA materialMap,
-                                Mipmap!L16 depthMap,
-                                Mipmap!RGBA skybox)
+                                Mipmap!L16 depthMap)
     {
         // Clear the accumulation buffer, since all passes add to it
         {
@@ -178,7 +177,6 @@ nothrow @nogc:
         buffers.diffuseMap = diffuseMap;
         buffers.materialMap = materialMap;
         buffers.depthMap = depthMap;
-        buffers.skybox = skybox;
         buffers.accumBuffer = _accumBuffer;
         buffers.normalBuffer = _normalBuffer;
         foreach(pass; passes())
@@ -631,11 +629,33 @@ nothrow:
 @nogc:
 public:
 
-    float amount = 0.4f * 1.3f;
+    float amount = 0.52f;
 
     this(MultipassCompositor parent)
     {
         super(parent);
+    }
+
+    ~this()
+    {
+        if (_skybox !is null)
+        {
+            _skybox.destroyFree();
+            _skybox = null;
+        }
+    }
+
+    // Note: take ownership of image
+    // That image must have been built with `mallocNew`
+    void setSkybox(OwnedImage!RGBA image)
+    {
+        if (_skybox !is null)
+        {
+            _skybox.destroyFree();
+            _skybox = null;
+        }
+        _skybox = mallocNew!(Mipmap!RGBA)(12, image);
+        _skybox.generateMipmaps(Mipmap!RGBA.Quality.box);
     }
 
     override void render(int threadIndex, const(box2i) area, CompositorPassBuffers* buffers)
@@ -646,7 +666,6 @@ public:
         OwnedImage!L16 depthLevel0 = PBRbuf.depthMap.levels[0];
         OwnedImage!RGBf normalBuffer = PBRbuf.normalBuffer;
         OwnedImage!RGBAf accumBuffer = PBRbuf.accumBuffer;
-        Mipmap!RGBA skybox = PBRbuf.skybox;
 
         int w = diffuseLevel0.w;
         int h = diffuseLevel0.h;
@@ -654,14 +673,14 @@ public:
         immutable float invH = 1.0f / h;
 
         // skybox reflection (use the same shininess as specular)
-        if (skybox !is null)
+        if (_skybox !is null)
         {
             for (int j = area.min.y; j < area.max.y; ++j)
             {
                 RGBA* materialScan = materialLevel0.scanlinePtr(j);
                 RGBA* diffuseScan = diffuseLevel0.scanlinePtr(j);
                 RGBf* normalScan = normalBuffer.scanlinePtr(j);
-                RGBAf* accumScan = accumBuffer.scanlinePtr(j);         
+                RGBAf* accumScan = accumBuffer.scanlinePtr(j);
 
                 // First compute the needed mipmap level for this line
 
@@ -669,7 +688,7 @@ public:
                 //       then we are allowed to read 4 depth samples at once.
                 const(L16)* depthScan   = depthLevel0.scanlinePtr(j);
 
-                immutable float amountOfSkyboxPixels = skybox.width * skybox.height;
+                immutable float amountOfSkyboxPixels = _skybox.width * _skybox.height;
                 uint depthPitch = depthLevel0.pitchInBytes();
                 for (int i = area.min.x; i < area.max.x; ++i)
                 {
@@ -710,8 +729,8 @@ public:
                     float roughness = materialScan[i].r;
                     mipmapLevel = 0.5f * fastlog2(1.0f + mipmapLevel * 0.00001f) + ROUGH_FACT * roughness;
 
-                    immutable float fskyX = (skybox.width - 1.0f);
-                    immutable float fSkyY = (skybox.height - 1.0f);
+                    immutable float fskyX = (_skybox.width - 1.0f);
+                    immutable float fSkyY = (_skybox.height - 1.0f);
 
                     immutable float amountFactor = amount * div255;
 
@@ -726,13 +745,17 @@ public:
                     __m128 baseColor = convertBaseColorToFloat4(diffuseScan[i]);
                     float skyx = 0.5f + ((0.5f - pureReflection.array[0] * 0.5f) * fskyX);
                     float skyy = 0.5f + ((0.5f + pureReflection.array[1] * 0.5f) * fSkyY);
-                    __m128 skyColorAtThisPoint = convertVec4fToFloat4( skybox.linearMipmapSample(mipmapLevel, skyx, skyy) );
+                    __m128 skyColorAtThisPoint = convertVec4fToFloat4( _skybox.linearMipmapSample(mipmapLevel, skyx, skyy) );
                     __m128 color = baseColor * skyColorAtThisPoint * _mm_set1_ps(metalness * amountFactor);
                     _mm_store_ps(cast(float*)(&accumScan[i]), _mm_load_ps(cast(float*)(&accumScan[i])) + color);
                 }
             }
         }
     }
+
+private:
+    /// Used for faking environment reflections.
+    Mipmap!RGBA _skybox = null;
 }
 
 class PassEmissiveContribution : CompositorPass
