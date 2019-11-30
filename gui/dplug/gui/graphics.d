@@ -47,7 +47,7 @@ debug(benchmarkGraphics)
 {
     import core.sys.windows.windows;
     extern(Windows) BOOL QueryThreadCycleTime(HANDLE   ThreadHandle, PULONG64 CycleTime) nothrow @nogc;
-    enum bool preciseMeasurements = true;
+    enum bool preciseMeasurements = false;
 }
 
 // A GUIGraphics is the interface between a plugin client and a IWindow.
@@ -919,11 +919,13 @@ debug(benchmarkGraphics)
             {
                 static if (preciseMeasurements)
                 {
-                    // Note about -precise measurement
+                    // About -precise measurement:
                     // We use the undocumented fact that QueryThreadCycleTime
                     // seem to return a counter in QPC units.
                     // That may not be the case everywhere, so -precise is not reliable and should
                     // never be the default.
+                    // Warning: -precise and normal measurements not in the same unit. 
+                    //          You shouldn't trust preciseMeasurements to give actual milliseconds values.
                     import core.sys.windows.windows;
                     ulong cycles;
                     BOOL res = QueryThreadCycleTime(hThread, &cycles);
@@ -933,8 +935,12 @@ debug(benchmarkGraphics)
                 }
                 else
                 {
-                    import core.time;
-                    return convClockFreq(MonoTime.currTime.ticks, MonoTime.ticksPerSecond, 1_000_000);
+                    import core.sys.windows.windows;
+                    LARGE_INTEGER lint;
+                    QueryPerformanceCounter(&lint);
+                    double seconds = lint.QuadPart / cast(double)(qpcFrequency);
+                    long us = cast(long)(seconds * 1_000_000);
+                    return us;
                 }
             }
             else
