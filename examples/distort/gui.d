@@ -37,6 +37,9 @@ nothrow:
 
     Font _font;
 
+    KnobImage _knobImageData;
+    UIImageKnob _imageKnob;
+
     this(DistortClient client)
     {
         _client = client;
@@ -74,7 +77,15 @@ nothrow:
         RGBA litTrailDiffuse = RGBA(151, 119, 255, 100);
         RGBA unlitTrailDiffuse = RGBA(81, 54, 108, 0);
 
-        // Add knob
+        KnobImage _knobImageData;
+        UIImageKnob _imageKnob;
+
+        _knobImageData = loadKnobImage( import("imageknob.png") );
+        addChild(_imageKnob = mallocNew!UIImageKnob(context(), _knobImageData, cast(FloatParameter) _client.param(paramBias)));
+        _imageKnob.position = rectangle(517, 176, 46, 46);
+        _imageKnob.hasTrail = false; // no trail by default
+
+        // Add procedural knobs
         addChild(driveKnob = mallocNew!UIKnob(context(), cast(FloatParameter) _client.param(paramDrive)));
         driveKnob.position = box2i.rectangle(250, 140, 120, 120);
         driveKnob.knobRadius = 0.65f;
@@ -130,5 +141,6 @@ nothrow:
     ~this()
     {
         _font.destroyFree();
+        _knobImageData.destroyFree();        
     }
 }

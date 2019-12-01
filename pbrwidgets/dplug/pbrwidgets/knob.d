@@ -55,6 +55,7 @@ nothrow:
     ushort LEDDepth = 65000;
 
     // trail
+    bool hasTrail = true;
     RGBA litTrailDiffuse = RGBA(230, 80, 43, 192);
     RGBA unlitTrailDiffuse = RGBA(150, 40, 20, 8);
     float trailRadiusMin = 0.85f;
@@ -119,7 +120,8 @@ nothrow:
 
     override void onDrawPBR(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects) nothrow @nogc
     {
-        drawTrail(diffuseMap, depthMap, materialMap, dirtyRects);
+        if (hasTrail)
+            drawTrail(diffuseMap, depthMap, materialMap, dirtyRects);
         drawKnob(diffuseMap, depthMap, materialMap, dirtyRects);
     }
 

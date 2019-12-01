@@ -20,6 +20,7 @@ enum : int
 {
     paramInput,
     paramDrive,
+    paramBias,
     paramOutput,
     paramOnOff,
 }
@@ -51,7 +52,8 @@ nothrow:
     {
         auto params = makeVec!Parameter();
         params ~= mallocNew!GainParameter(paramInput, "input", 6.0, 0.0);
-        params ~= mallocNew!LinearFloatParameter(paramDrive, "drive", "%", 1.0f, 2.0f, 1.0f);
+        params ~= mallocNew!LinearFloatParameter(paramDrive, "drive", "%", 0.0f, 100.0f, 20.0f);
+        params ~= mallocNew!LinearFloatParameter(paramBias, "bias", "%", 0.0f, 100.0f, 50.0f);
         params ~= mallocNew!GainParameter(paramOutput, "output", 6.0, 0.0);
         params ~= mallocNew!BoolParameter(paramOnOff, "enabled", true);
         return params.releaseData();
@@ -102,10 +104,13 @@ nothrow:
 
         assert(maxFrames <= 512); // guaranteed by audio buffer splitting
 
+        _sampleRate = sampleRate;
+
         foreach(channel; 0..2)
         {
             _inputRMS[channel].initialize(sampleRate);
             _outputRMS[channel].initialize(sampleRate);
+            _hpState[channel].initialize();
         }
     }
 
@@ -120,7 +125,8 @@ nothrow:
         int minChan = numInputs > numOutputs ? numOutputs : numInputs;
 
         float inputGain = convertDecibelToLinearGain(readParam!float(paramInput));
-        float drive = readParam!float(paramDrive);
+        float drive = readParam!float(paramDrive) * 0.01f;
+        float bias = readParam!float(paramBias) * 0.01f;
         float outputGain = convertDecibelToLinearGain(readParam!float(paramOutput));
 
         bool enabled = readParam!bool(paramOnOff);
@@ -129,8 +135,10 @@ nothrow:
 
         if (enabled)
         {
+            BiquadCoeff highpassCoeff = biquadRBJHighPass(150, _sampleRate, SQRT1_2);
             for (int chan = 0; chan < minChan; ++chan)
             {
+                // Distort and put the result in output buffers
                 for (int f = 0; f < frames; ++f)
                 {
                     float inputSample = inputGain * 2.0 * inputs[chan][f];
@@ -139,12 +147,17 @@ nothrow:
                     _inputRMS[chan].nextSample(inputSample);
 
                     // Distort signal
-                    float distorted = tanh(inputSample * drive) / drive;
-                    float outputSample = outputGain * distorted;
-                    outputs[chan][f] = outputSample;
+                    float distorted = tanh(inputSample * drive * 10.0f + bias) * 0.9f;
+                    outputs[chan][f] = outputGain * distorted;
+                }
 
-                    // Feed the output RMS computation
-                    _outputRMS[chan].nextSample(outputSample);
+                // Highpass to remove bias
+                _hpState[chan].nextBuffer(outputs[chan], outputs[chan], frames, highpassCoeff);
+
+                // Feed the output RMS computation
+                for (int f = 0; f < frames; ++f)
+                {
+                    _outputRMS[chan].nextSample(outputs[chan][f]);
                 }
             }
         }
@@ -186,6 +199,9 @@ nothrow:
 private:
     CoarseRMS[2] _inputRMS;
     CoarseRMS[2] _outputRMS;
+
+    BiquadDelay[2] _hpState;
+    float _sampleRate;
 }
 
 
