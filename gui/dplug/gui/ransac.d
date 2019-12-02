@@ -71,7 +71,7 @@ vec3f computeRANSACNormal(
                                                          0,     0,    0];
 
     // Maximum plane distance for a point to be considered on that plane.
-    enum float INLIER_THRESHOLD = 0.343f; // Tuned once, not easy and depends on rendering.
+    enum float INLIER_THRESHOLD = 0.343f; // Tuned twice, not very easy
 
     __m128 accumulatedNormal = _mm_setzero_ps();
 
@@ -151,22 +151,16 @@ vec3f computeRANSACNormal(
         static immutable float[7] confidenceFor_N_minus_3_inliners =
         [
             0.0f, // Note: can probably be non-zero
-            (1.0f / 6.0f ) ^^ 2.0f,
-            (2.0f / 6.0f ) ^^ 2.0f,
-            (3.0f / 6.0f ) ^^ 2.0f,
-            (4.0f / 6.0f ) ^^ 2.0f,
-            (5.0f / 6.0f ) ^^ 2.0f,
+            (1.0f / 6.0f ) ^^ 1.6f,
+            (2.0f / 6.0f ) ^^ 1.6f,
+            (3.0f / 6.0f ) ^^ 1.6f,
+            (4.0f / 6.0f ) ^^ 1.6f,
+            (5.0f / 6.0f ) ^^ 1.6f,
             1.0f
         ];
 
-        // first 4 modes have distance to center of 1 + 1, 8 other have 1 + sqrt(2)
-        // so we rescale the first by (1 + sqrt(2)) / (1+1)
-        float confidenceModeWeight = 1.0f;
-        if (iter < 4) 
-            confidenceModeWeight = 2.414f; 
-
         // Confidence that this is a good normal (0 to 1)
-        float confidence = confidenceFor_N_minus_3_inliners[numInliers - 2] * confidenceModeWeight;
+        float confidence = confidenceFor_N_minus_3_inliners[numInliers - 2];
 
         accumulatedNormal = accumulatedNormal + planeNormal * _mm_set1_ps(confidence);
     }
@@ -180,26 +174,6 @@ vec3f computeRANSACNormal(
     resultNormal.ptr[1] = -resultNormal.array[1];
 
     return vec3f(resultNormal.array[0], resultNormal.array[1], resultNormal.array[2]);
-}
-
-vec3f convertRansacModeToColor(RansacMode mode)
-{
-    if (mode < 4) 
-        return vec3f(0, 0, 1); // blue 
-    if (mode < 12) 
-        return vec3f(1, 1, 1); // white 
-    if (mode < 12 + 4) 
-        return vec3f(0, 1, 1); // cyan
-    if (mode < 12 + 4 + 8) 
-        return vec3f(0, 1, 0); // green
-    else
-        assert(false);
-}
-
-vec3f convertRansacNumInlierToColor(int numInliers)
-{
-    float grey = (numInliers - 3) / 6.0f;
-    return vec3f(grey, grey, grey);
 }
 
 // Look-up table for sampling 3 points out of 3x3 pixels
@@ -229,4 +203,29 @@ immutable int[2][12] depthSampleLUT =
     [5,8], // 100110000
     [7,6], // 011010000
     [8,7], // 110010000
+
+// Adds a little something when enabled, but not the biggest limitation
+/+
+    // #..
+    // .#.
+    // #..
+    // has center pixel
+    [0,2], // 000010101
+    [6,0], // 001010001
+    [2,8], // 100010100
+    [8,6], // 101010000
+
+    // #..
+    // .#.
+    // .#.
+    // has center pixel
+    [0,5], // 000110001
+    [7,0], // 010010001
+    [6,1], // 001010010
+    [1,8], // 100010010
+    [3,2], // 000011100
+    [2,7], // 010010100
+    [8,3], // 100011000
+    [5,6], // 001110000 
++/
 ];
