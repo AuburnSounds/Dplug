@@ -18,6 +18,7 @@ import gfm.math.matrix;
 import dplug.core.vec;
 import dplug.core.nogc;
 import dplug.core.math;
+import dplug.core.thread;
 
 import dplug.gui.compositor;
 
@@ -116,9 +117,9 @@ nothrow @nogc:
         PASS_CLAMP       = 7
     }
 
-    this(int numThreads)
+    this(CompositorCreationContext* context)
     {
-        super(numThreads);
+        super(context);
 
         _normalBuffer = mallocNew!(OwnedImage!RGBf)();
         _accumBuffer = mallocNew!(OwnedImage!RGBAf)();
@@ -154,23 +155,13 @@ nothrow @nogc:
         _accumBuffer.size(width, height, border_0, rowAlign_16);
     }
 
-    override void compositeTile(int threadIndex,
-                                ImageRef!RGBA wfb, 
-                                box2i area,
+
+    override void compositeTile(ImageRef!RGBA wfb, 
+                                const(box2i)[] areas,
                                 Mipmap!RGBA diffuseMap,
                                 Mipmap!RGBA materialMap,
                                 Mipmap!L16 depthMap)
     {
-        // Clear the accumulation buffer, since all passes add to it
-        {
-            RGBAf zero = RGBAf(0.0f, 0.0f, 0.0f, 0.0f);
-            for (int j = area.min.y; j < area.max.y; ++j)
-            {
-                RGBAf* accumScan = _accumBuffer.scanline(j).ptr;
-                accumScan[area.min.x..area.max.x] = zero;
-            }
-        }
-
         // Call each pass in sequence
         PBRCompositorPassBuffers buffers;
         buffers.outputBuf = &wfb;
@@ -179,10 +170,28 @@ nothrow @nogc:
         buffers.depthMap = depthMap;
         buffers.accumBuffer = _accumBuffer;
         buffers.normalBuffer = _normalBuffer;
-        foreach(pass; passes())
+
+        // For each tile, do all pass one by one.
+        void compositeOneTile(int i, int threadIndex) nothrow @nogc
         {
-            pass.renderIfActive(threadIndex, area, cast(CompositorPassBuffers*)(&buffers));
+            box2i area = areas[i];
+            // Clear the accumulation buffer, since all passes add to it
+            {
+                RGBAf zero = RGBAf(0.0f, 0.0f, 0.0f, 0.0f);
+                for (int j = area.min.y; j < area.max.y; ++j)
+                {
+                    RGBAf* accumScan = _accumBuffer.scanline(j).ptr;
+                    accumScan[area.min.x..area.max.x] = zero;
+                }
+            }
+
+            foreach(pass; passes())
+            {
+                pass.renderIfActive(threadIndex, area, cast(CompositorPassBuffers*)&buffers);
+            }
         }
+        int numAreas = cast(int)areas.length;
+        threadPool().parallelFor(numAreas, &compositeOneTile);
     }
 
 private:

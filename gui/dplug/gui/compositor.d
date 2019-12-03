@@ -11,6 +11,7 @@ import gfm.math.box;
 
 import dplug.core.vec;
 import dplug.core.nogc;
+import dplug.core.thread;
 
 import dplug.graphics.mipmap;
 import dplug.graphics.drawex;
@@ -46,8 +47,6 @@ nothrow:
     /// From given input mipmaps, write output image into `wfb` with pixel format `pf`, for the output area `area`.
     ///
     /// Params:
-    ///     threadIndex index of the thread 0 to `numThreads` - 1 that is tasked with repainting the area
-    ///                 The number of threads is passed out of band, in the Compositor constructor.
     ///     wfb         Image to write the output pixels to.
     ///     diffuseMap  Diffuse input.  Basecolor + Emissive, the Compositor decides how it uses these channels.
     ///     materialMap Material input. Roughness + Metalness + Specular + Unused, the Compositor decides how it uses these channels.
@@ -59,15 +58,20 @@ nothrow:
     /// Note: several threads will call this function concurrently. 
     ///       It is important to only deal with `area` to avoid clashing writes.
     ///
-    void compositeTile(int threadIndex,
-                       ImageRef!RGBA wfb, 
-                       box2i area,
+    void compositeTile(ImageRef!RGBA wfb, 
+                       const(box2i)[] areas,
                        Mipmap!RGBA diffuseMap,
                        Mipmap!RGBA materialMap,
                        Mipmap!L16 depthMap);
-
-
 }
+
+/// What a compositor is passed upon creation within `GUIGraphics`.
+struct CompositorCreationContext
+{
+    /// The thread instance this compositor is allowed to use while in `compositeTile`.
+    ThreadPool threadPool;
+}
+
 
 /// Compositor with series of successive passes.
 /// This owns an arbitrary number of passesn that are created in its constructor.
@@ -77,11 +81,14 @@ public:
 nothrow:
 @nogc:
 
-    this(int numThreads)
+    /// Params:
+    ///     threadPool The thread instance this compositor is allowed to use while in `compositeTile`.
+    ///
+    this(CompositorCreationContext* context)
     {
-        _numThreads = numThreads;
+        _threadPool = context.threadPool;
 
-        // override, call `super(numThreads)`, and add passes here with `addPass`. 
+        // override, call `super(threadPool)`, and add passes here with `addPass`. 
         // They will be `destroyFree` on exit.
     }
 
@@ -107,9 +114,9 @@ nothrow:
 
     /// Note: the exact algorithm for compositing pass is entirely up to you.
     /// You could imagine intermediate mipmappingsteps in the middle.
-    override void compositeTile(int threadIndex,
-                                ImageRef!RGBA wfb, 
-                                box2i area,
+    /// `compositeTile` needs complete power over the parallelization strategy.
+    override void compositeTile(ImageRef!RGBA wfb, 
+                                const(box2i)[] areas,
                                 Mipmap!RGBA diffuseMap,
                                 Mipmap!RGBA materialMap,
                                 Mipmap!L16 depthMap)
@@ -121,10 +128,17 @@ nothrow:
         buffers.diffuseMap = diffuseMap;
         buffers.materialMap = materialMap;
         buffers.depthMap = depthMap;
-        foreach(pass; _passes)
+
+        // For each tile, do all pass one by one.
+        void compositeOneTile(int i, int threadIndex) nothrow @nogc
         {
-            pass.renderIfActive(threadIndex, area, &buffers);
+            foreach(pass; _passes)
+            {
+                pass.renderIfActive(threadIndex, areas[i], &buffers);
+            }
         }
+        int numAreas = cast(int)areas.length;
+        _threadPool.parallelFor(numAreas, &compositeOneTile);    
     }
 
     ~this()
@@ -137,7 +151,7 @@ nothrow:
 
     final int numThreads()
     {
-        return _numThreads;
+        return _threadPool.numThreads();
     }
 
     final inout(CompositorPass) getPass(int nth) inout
@@ -150,9 +164,17 @@ nothrow:
         return _passes[];
     }
 
+protected:
+    ref ThreadPool threadPool()
+    {
+        return _threadPool;
+    }
+
 private:
-    // Stored number of threads that could possibly call compositeTile.
-    int _numThreads;
+
+    // Thread pool that could be used to speed-up things.
+    // This thread pool must outlive the compositor.
+    ThreadPool _threadPool;
 
     // Implements ICompositor
     Vec!CompositorPass _passes;
@@ -221,10 +243,9 @@ final class SimpleRawCompositor : MultipassCompositor
 {
 nothrow:
 @nogc:
-    this(int numThreads)
+    this(CompositorCreationContext* context)
     {
-        super(numThreads);
-        // override and add passes here. They will be `destroyFree` on exit.
+        super(context);
         addPass(mallocNew!CopyDiffuseToFramebuffer(this));
     }
 

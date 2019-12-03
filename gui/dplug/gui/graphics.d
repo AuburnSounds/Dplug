@@ -88,7 +88,12 @@ nothrow:
         int maxThreads = 2;
         _threadPool = mallocNew!ThreadPool(numThreads, maxThreads);
 
-        compositor = buildCompositor(_threadPool.numThreads());
+        // Build the compositor
+        {
+            CompositorCreationContext compositorContext;
+            compositorContext.threadPool = _threadPool;
+            compositor = buildCompositor(&compositorContext);
+        }
 
         _rectsToUpdateDisjointedRaw = makeVec!box2i;
         _rectsToUpdateDisjointedPBR = makeVec!box2i;
@@ -123,9 +128,9 @@ nothrow:
     }
 
     // Don't like the default rendering? Override this function and make another compositor.
-    ICompositor buildCompositor(int numThreads)
+    ICompositor buildCompositor(CompositorCreationContext* context)
     {        
-        return mallocNew!PBRCompositor(numThreads);
+        return mallocNew!PBRCompositor(context);
     }  
 
     ~this()
@@ -440,8 +445,8 @@ protected:
         // D. COMPOSITING
         auto compositedRef = toImageRef(_compositedBuffer);
         debug(benchmarkGraphics)
-            _compositingWatch.start();        
-        compositeGUI(compositedRef, pf); // Launch the possibly-expensive Compositor step, which implements PBR rendering 
+            _compositingWatch.start();
+        compositeGUI(compositedRef); // Launch the possibly-expensive Compositor step, which implements PBR rendering 
         debug(benchmarkGraphics)
         {
             _compositingWatch.stop();
@@ -728,23 +733,16 @@ protected:
     }
 
     /// Do the PBR compositing step. This is the most expensive step in the UI.
-    void compositeGUI(ImageRef!RGBA wfb, WindowPixelFormat pf) nothrow @nogc
+    void compositeGUI(ImageRef!RGBA wfb) nothrow @nogc
     {
         _rectsToCompositeDisjointedTiled.clearContents();
         tileAreas(_rectsToCompositeDisjointed[],  PBR_TILE_MAX_WIDTH, PBR_TILE_MAX_HEIGHT, _rectsToCompositeDisjointedTiled);
 
-        int numAreas = cast(int)_rectsToCompositeDisjointedTiled.length;
-
-        void compositeOneTile(int i, int threadIndex) nothrow @nogc
-        {
-            compositor.compositeTile(threadIndex, 
-                                     wfb, 
-                                     _rectsToCompositeDisjointedTiled[i],
-                                     _diffuseMap, 
-                                     _materialMap, 
-                                     _depthMap);
-        }
-        _threadPool.parallelFor(numAreas, &compositeOneTile);
+        compositor.compositeTile(wfb, 
+                                 _rectsToCompositeDisjointedTiled[],
+                                 _diffuseMap, 
+                                 _materialMap, 
+                                 _depthMap);
     }
 
     /// Compose lighting effects from depth and diffuse into a result.
