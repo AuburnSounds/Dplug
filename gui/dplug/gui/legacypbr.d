@@ -492,6 +492,8 @@ public:
     }
 }
 
+//version = futureBlinnPhong;
+
 class PassSpecularLight : CompositorPass
 {
 nothrow:
@@ -520,7 +522,11 @@ public:
         for (int roughByte = 0; roughByte < 256; ++roughByte)
         {
             _exponentTable[roughByte] = 0.8f * exp( (1-roughByte / 255.0f) * 5.5f);
-        }        
+
+            // Convert Phong exponent to Blinn-phong exponent (TODO tune)
+            version(futureBlinnPhong)
+                _exponentTable[roughByte] *= 3.0f;
+        }
 
     }
 
@@ -568,11 +574,21 @@ public:
                 __m128 normal = convertNormalToFloat4(normalScan[i]);
 
                 // TODO: this should be tuned interactively, maybe it's annoying to feel
+                //       Need to compute the viewer distance from screen... and DPI.
                 __m128 toEye = _mm_setr_ps(0.5f - i * invW, j * invH - 0.5f, 1.0f, 0.0f);
-
                 toEye = _mm_fast_normalize_ps(toEye);
-                __m128 lightReflect = _mm_reflectnormal_ps(mmlight3Dir, normal);
-                float specularFactor = _mm_dot_ps(toEye, lightReflect);
+
+                version(futureBlinnPhong)
+                {
+                    __m128 halfVector = toEye - mmlight3Dir;
+                    halfVector = _mm_fast_normalize_ps(halfVector);
+                    float specularFactor = _mm_dot_ps(halfVector, normal);
+                }
+                else
+                {
+                    __m128 lightReflect = _mm_reflectnormal_ps(mmlight3Dir, normal);
+                    float specularFactor = _mm_dot_ps(toEye, lightReflect);
+                }
                 if (specularFactor < 1e-3f) 
                     specularFactor = 1e-3f;
                 pSpecular[i] = specularFactor;
