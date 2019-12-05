@@ -147,15 +147,18 @@ vec3f computeRANSACNormal(
             return vec3f(planeNormal.array[0], planeNormal.array[1], planeNormal.array[2]);
         }
         
-        // can probably be up to pow3
+        // These factors (n/N)^^exp sets the factor of non-linearity.
+        // Full non-linearity is achieved with infinite exponent,
+        // else it's a blend between most successful planes
+        // Note: this can probably be tuned more BUT it's difficult
         static immutable float[7] confidenceFor_N_minus_3_inliners =
         [
-            0.0f, // Note: can probably be non-zero
-            (1.0f / 6.0f ) ^^ 1.6f,
-            (2.0f / 6.0f ) ^^ 1.6f,
-            (3.0f / 6.0f ) ^^ 1.6f,
-            (4.0f / 6.0f ) ^^ 1.6f,
-            (5.0f / 6.0f ) ^^ 1.6f,
+            0.0f,
+            0.056879f,
+            0.17242f,
+            0.3299f,
+            0.52279f,
+            0.7469f,
             1.0f
         ];
 
