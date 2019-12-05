@@ -186,6 +186,42 @@ nothrow @nogc:
         alias fun_t = extern(C) NSRect function (id, const(SEL)) nothrow @nogc;
         return (cast(fun_t)objc_msgSend_stret)(_id, sel!"bounds");
     }
+
+    CALayer layer()
+    {
+        alias fun_t = extern(C) id function (id, SEL) nothrow @nogc;
+        id result = (cast(fun_t)objc_msgSend)(_id, sel!"layer");
+        return CALayer(result);
+    }
+
+    void setWantsLayer(BOOL value)
+    {
+        alias fun_t = extern(C) void function (id, SEL, BOOL) nothrow @nogc;
+        (cast(fun_t)objc_msgSend)(_id, sel!"setWantsLayer:", value);
+    }
+}
+
+// CALayer
+struct CALayer
+{
+nothrow @nogc:
+
+    NSObject parent;
+    alias parent this;
+
+    mixin NSObjectTemplate!(CALayer, "CALayer");
+
+    void setDrawsAsynchronously(BOOL value)
+    {
+        alias fun_t = extern(C) void function (id, SEL, BOOL) nothrow @nogc;
+        (cast(fun_t)objc_msgSend)(_id, sel!"setDrawsAsynchronously:", value);
+    }
+
+    void setOpaque(BOOL value)
+    {
+        alias fun_t = extern(C) void function (id, SEL, BOOL) nothrow @nogc;
+        (cast(fun_t)objc_msgSend)(_id, sel!"setOpaque:", value);
+    }
 }
 
 
