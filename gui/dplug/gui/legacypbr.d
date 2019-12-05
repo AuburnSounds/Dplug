@@ -492,8 +492,6 @@ public:
     }
 }
 
-//version = futureBlinnPhong;
-
 class PassSpecularLight : CompositorPass
 {
 nothrow:
@@ -523,9 +521,9 @@ public:
         {
             _exponentTable[roughByte] = 0.8f * exp( (1-roughByte / 255.0f) * 5.5f);
 
-            // Convert Phong exponent to Blinn-phong exponent (TODO tune)
+            // Convert Phong exponent to Blinn-phong exponent
             version(futureBlinnPhong)
-                _exponentTable[roughByte] *= 3.0f;
+                _exponentTable[roughByte] *= 2.8f; // tuned bu hand to match the former Phong specular highlight. This makes very little difference.
         }
 
     }
