@@ -45,7 +45,22 @@ template VST3EntryPoint(alias ClientClass)
     enum entry_bundleEntry = `export extern(C) bool bundleEntry(void*) nothrow @nogc { return true; }`;
     enum entry_bundleExit = `export extern(C) bool bundleExit() nothrow @nogc { return true; }`;
 
-    const char[] VST3EntryPoint = entry_InitDll ~ entry_ExitDll ~ entry_GetPluginFactory ~ entry_bundleEntry ~ entry_bundleExit;
+    // Issue #433: on Linux, VST3 need entry points ModuleEntry and ModuleExit
+    version(linux)
+    {
+        enum entry_ModuleEntry = `export extern(C) bool ModuleEntry(void*) nothrow @nogc { return true; }`;
+        enum entry_ModuleExit = `export extern(C) bool ModuleExit(void*) nothrow @nogc { return true; }`;
+    }
+    else
+    {
+        enum entry_ModuleEntry = ``;
+        enum entry_ModuleExit = ``;
+    }
+
+    const char[] VST3EntryPoint = entry_InitDll ~ entry_ExitDll 
+                                ~ entry_GetPluginFactory 
+                                ~ entry_bundleEntry ~ entry_bundleExit
+                                ~ entry_ModuleEntry ~ entry_ModuleExit;
 }
 
 IPluginFactory GetPluginFactoryInternal(ClientClass)()
