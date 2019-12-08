@@ -659,10 +659,14 @@ int main(string[] args)
                         fileMove(plugin.dubOutputFileName, soPath);
                         extractLV2ManifestFromBinary(soPath, path, is64b, pluginFinalPath);
                     }
-                    else if (configIsVST3(config)) // VST3 special case, needs to be named .vst3 (but can't be _linked_ as .vst3)
+                    else if (configIsVST3(config)) 
                     {
-                        // Simply copy the file
-                        fileMove(plugin.dubOutputFileName, path ~ "/" ~ plugin.prettyName ~ ".vst3");
+                        // VST3 special case, needs to be a .vst3 bundle
+                        string pluginDirectory = path ~ "/" ~ plugin.prettyName ~ ".vst3";
+                        string exeDirectory = pluginDirectory ~ "/Contents/x86_64-linux";
+                        mkdirRecurse(pluginDirectory);
+                        mkdirRecurse(exeDirectory);
+                        fileMove(plugin.dubOutputFileName, exeDirectory ~ "/" ~ plugin.prettyName ~ ".so");
                     }
                     else if (configIsVST(config)) // VST2 special case
                     {
