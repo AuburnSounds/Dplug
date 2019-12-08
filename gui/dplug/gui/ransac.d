@@ -114,8 +114,8 @@ vec3f computeRANSACNormal(
                                          _mm_mul_ps(normalZ, depthAD));
 
         __m128 depthFG = _mm_loadu_ps(&depthNeighbourhood[5]);
-        __m128 mmX_FG = _mm_load_ps(&indexToX[5]);
-        __m128 mmY_FG = _mm_load_ps(&indexToY[5]);
+        __m128 mmX_FG = _mm_loadu_ps(&indexToX[5]);
+        __m128 mmY_FG = _mm_loadu_ps(&indexToY[5]);
         __m128 dotProductFG = _mm_add_ps( _mm_add_ps( _mm_mul_ps(normalX, mmX_FG), 
                                                       _mm_mul_ps(normalY, mmY_FG)),
                                           _mm_mul_ps(normalZ, depthFG));
