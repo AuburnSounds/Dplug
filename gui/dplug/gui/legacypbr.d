@@ -854,9 +854,12 @@ public:
                 RGBAf accum = accumScan[i];
                 vec3f color = vec3f(accum.r, accum.g, accum.b);
 
-                assert(color.x >= 0);
-                assert(color.y >= 0);
-                assert(color.z >= 0);
+                if (color.x < 0)
+                    color.x = 0;
+                if (color.y < 0)
+                    color.y = 0;
+                if (color.z < 0)
+                    color.z = 0;
 
                 if (color.x > 1)
                     color.x = 1;
