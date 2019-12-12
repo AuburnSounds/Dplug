@@ -98,10 +98,12 @@ public:
             _view = DPlugCustomView.alloc();
             _view.initialize(this, width, height);
 
-            // Force display by the GPU, this is supposed to solve
+            // GOAL: Force display by the GPU, this is supposed to solve
             // resampling problems on HiDPI like 4k and 5k
-            _view.setWantsLayer(YES);
-            _view.layer.setDrawsAsynchronously(YES);
+            // REALITY: QA reports this to be blurrier AND slower than previously
+            // 
+            //_view.setWantsLayer(YES);
+            //_view.layer.setDrawsAsynchronously(YES);
 
             // This is supposed to make things faster, but doesn't
             //_view.layer.setOpaque(YES);
