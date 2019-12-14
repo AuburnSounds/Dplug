@@ -843,37 +843,23 @@ public:
         OwnedImage!RGBAf accumBuffer = PBRbuf.accumBuffer;
         ImageRef!RGBA* wfb = PBRbuf.outputBuf;
         
+        immutable __m128 mm255_99 = _mm_set1_ps(255.99f);
+        immutable __m128i zero = _mm_setzero_si128();
+
         // Final pass, clamp, convert to ubyte
         for (int j = area.min.y; j < area.max.y; ++j)
         {
-            RGBA* wfb_scan = wfb.scanline(j).ptr;
-            RGBAf* accumScan = accumBuffer.scanlinePtr(j);
+            int* wfb_scan = cast(int*)(wfb.scanline(j).ptr);
+            const(RGBAf)* accumScan = accumBuffer.scanlinePtr(j);            
 
             for (int i = area.min.x; i < area.max.x; ++i)
             {
                 RGBAf accum = accumScan[i];
-                vec3f color = vec3f(accum.r, accum.g, accum.b);
-
-                if (color.x < 0)
-                    color.x = 0;
-                if (color.y < 0)
-                    color.y = 0;
-                if (color.z < 0)
-                    color.z = 0;
-
-                if (color.x > 1)
-                    color.x = 1;
-                if (color.y > 1)
-                    color.y = 1;
-                if (color.z > 1)
-                    color.z = 1;
-
-                int r = cast(int)(color.x * 255.99f);
-                int g = cast(int)(color.y * 255.99f);
-                int b = cast(int)(color.z * 255.99f);
-
-                // write composited color
-                wfb_scan[i] = RGBA(cast(ubyte)r, cast(ubyte)g, cast(ubyte)b, 255);
+                __m128 color = _mm_setr_ps(accum.r, accum.g, accum.b, 1.0f);
+                __m128i icolorD = _mm_cvttps_epi32(color * mm255_99);
+                __m128i icolorW = _mm_packs_epi32(icolorD, zero);
+                __m128i icolorB = _mm_packus_epi16(icolorW, zero);
+                wfb_scan[i] = icolorB.array[0];
             }
         }
     }
