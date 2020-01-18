@@ -295,7 +295,9 @@ private:
                 break;
 
             XEvent event;
+            lockX11();
             Bool found = XCheckWindowEvent(_display, _windowID, windowEventMask(), &event);
+            unlockX11();
             if (found == False)
             {
                 pauseTimeUs = pauseTimeUs * 2 + 1000; // exponential pause
@@ -859,6 +861,3 @@ string X11EventTypeString(int type)
     if (type == 36) s = "LASTEvent";
     return s;
 }
-
-// </X11 initialization>
-
