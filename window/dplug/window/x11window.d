@@ -4,6 +4,7 @@
  * Copyright: Copyright (C) 2017 Richard Andrew Cattermole
  *            Copyright (C) 2017 Ethan Reker
  *            Copyright (C) 2017 Lukasz Pelszynski
+ *            Copyright (C) 2019-2020 Guillaume Piolat
  *
  * Bugs:
  *     - X11 does not support double clicks, it is sometimes emulated https://github.com/glfw/glfw/issues/462
@@ -636,7 +637,7 @@ private:
             }
         }
 
-        // MAYDO possible could be XMapWindow I guess
+        // MAYDO possibly could be XMapWindow I guess
         XMapRaised(_display, _windowID);
         XSelectInput(_display, _windowID, windowEventMask());
 
