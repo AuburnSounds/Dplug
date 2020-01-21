@@ -40,7 +40,7 @@ T hermite(T)(T frac_pos, T xm1, T x0, T x1, T x2) pure nothrow @nogc
     return ((((a * frac_pos) - b_neg) * frac_pos + c) * frac_pos + x0);
 }
 
-/// Convert from dB to float.
+/// Converts from dB to linear gain.
 /// Precision: This uses fast_exp which under normal conditions has a peak error under -135dB over the useful range.
 T convertDecibelToLinearGain(T)(T dB) pure nothrow @nogc
 {
@@ -48,12 +48,27 @@ T convertDecibelToLinearGain(T)(T dB) pure nothrow @nogc
     return fast_exp(dB * ln10_20);
 }
 
-/// Convert from float to dB
+/// Converts from linear gain to dB.
 /// Precision: This uses fast_exp which under normal conditions has a peak error under -135dB over the useful range.
 T convertLinearGainToDecibel(T)(T x) pure nothrow @nogc
 {
     static immutable T f20_ln10 = 20 / cast(T)LN10;
     return fast_log(x) * f20_ln10;
+}
+
+/// Converts from power to dB. 
+/// Instantaneous power is the squared amplitude of a signal, and can be a 
+/// nice domain to work in at times.
+/// Precision: This uses fast_exp which under normal conditions has a peak error under -135dB over the useful range.
+T convertPowerToDecibel(T)(T x) pure nothrow @nogc
+{
+    // Explanation:
+    //   20.log10(amplitude) 
+    // = 20.log10(sqrt(power)) 
+    // = 20.log10( 10^(0.5 * log10(power) )
+    // = 10.log10(power)
+    static immutable T f10_ln10 = 10 / cast(T)LN10;
+    return fast_log(x) * f10_ln10;
 }
 
 /// Is this integer odd?
