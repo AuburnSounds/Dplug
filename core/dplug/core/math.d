@@ -47,6 +47,11 @@ T convertDecibelToLinearGain(T)(T dB) pure nothrow @nogc
     static immutable T ln10_20 = cast(T)LN10 / 20;
     return fast_exp(dB * ln10_20);
 }
+unittest
+{
+    assert(convertDecibelToLinearGain!float(-float.infinity) == 0);
+    assert(convertDecibelToLinearGain!double(-double.infinity) == 0);
+}
 
 /// Converts from linear gain to dB.
 /// Precision: This uses fast_exp which under normal conditions has a peak error under -135dB over the useful range.
@@ -54,6 +59,11 @@ T convertLinearGainToDecibel(T)(T x) pure nothrow @nogc
 {
     static immutable T f20_ln10 = 20 / cast(T)LN10;
     return fast_log(x) * f20_ln10;
+}
+unittest
+{
+    assert(convertLinearGainToDecibel!float(0) == -float.infinity);
+    assert(convertLinearGainToDecibel!double(0) == -double.infinity);
 }
 
 /// Converts from power to dB. 
