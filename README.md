@@ -4,7 +4,8 @@
 
 `Dplug` lets you create professional audio plug-ins with unmatched simplicity and speed, using the D language.
 
-[READ THE WIKI](https://github.com/AuburnSounds/Dplug/wiki)
+- Homepage: [https://dplug.org/](https://dplug.org/)
+- Wiki: https://github.com/AuburnSounds/Dplug/wiki
 
 ## Features
 
