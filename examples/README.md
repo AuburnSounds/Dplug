@@ -6,3 +6,12 @@
    * `examples/simple-mono-synth`: very basic sine-wave generator, without UI
 
 
+### How to run
+
+- `dplug-build` will build a VST3 plug-in.
+
+- `dplug-build -c <format>` to choose a format.
+
+- `dplug-build --final -c <format>` for an optimized final build.
+
+

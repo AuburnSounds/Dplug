@@ -3,7 +3,10 @@
 
     "vendorName": "No Name Audio",
     "vendorUniqueID": "NoAu",
+    "vendorSupportEmail": "support@nonameaudio.com",
+
     "pluginName": "MSEncodator",
+    "pluginHomepage": "https://www.nonameaudio.com/fictional/plugin",
     "pluginUniqueID": "NAms",
     "publicVersion": "1.0.0",
     "CFBundleIdentifierPrefix": "com.nonameaudio",

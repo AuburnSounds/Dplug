@@ -3,7 +3,10 @@
 
     "vendorName": "No Name Audio",
     "vendorUniqueID": "NoAu",
+    "vendorSupportEmail": "support@nonameaudio.com",
+
     "pluginName": "SimpleMonoSynth",
+    "pluginHomepage": "https://www.nonameaudio.com/fictional/plugin/url",
     "pluginUniqueID": "NAss",
     "publicVersion": "1.0.0",
     "CFBundleIdentifierPrefix": "com.nonameaudio",
