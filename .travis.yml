@@ -48,11 +48,11 @@ env:
 
 
 script:
-  - cd examples/distort; dub --compiler=${DC}; cd ../..
-  - cd examples/clipit; dub --compiler=${DC}; cd ../..
-  - cd examples/ms-encode; dub --compiler=${DC}; cd ../..
-  - cd examples/simple-mono-synth; dub --compiler=${DC}; cd ../..
-  - cd examples/poly-alias-synth; dub --compiler=${DC}; cd ../..
+  - cd examples/distort; dub --compiler=${DC} -c LV2; cd ../..
+  - cd examples/clipit; dub --compiler=${DC} -c VST2; cd ../..
+  - cd examples/ms-encode; dub --compiler=${DC} -c VST3; cd ../..
+  - cd examples/simple-mono-synth; dub --compiler=${DC} -c VST3; cd ../..
+  - cd examples/poly-alias-synth; dub --compiler=${DC} -c VST2; cd ../..
   - cd tools/dplug-build; dub --compiler=${DC}; cd ../..
   - cd tools/stress-plugin; dub --compiler=${DC}; cd ../..
   - cd tools/process; dub --compiler=${DC}; cd ../..
