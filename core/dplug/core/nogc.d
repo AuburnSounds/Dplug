@@ -292,8 +292,8 @@ string stringIDup(const(char)* cstr) nothrow @nogc
 unittest
 {
     int[] slice = mallocSlice!int(4);
-    freeSlice(slice);
     assert(slice[3] == int.init);
+    freeSlice(slice);    
 
     slice = mallocSliceNoInit!int(4);
     freeSlice(slice);
