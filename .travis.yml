@@ -81,6 +81,8 @@ script:
   - dub test --compiler=${DC} dplug:flat-widgets
   - dub test --compiler=${DC} dplug:lv2
   - dub test --compiler=${DC} dplug:vst3
+  - dub test --compiler=${DC} -b unittest-release dplug:core
+  - dub test --compiler=${DC} -b unittest-release dplug:dsp
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then dub test --compiler=${DC} dplug:core ; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then dub test --compiler=${DC} dplug:dsp ; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then dub test --compiler=${DC} dplug:client ; fi

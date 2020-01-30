@@ -46,7 +46,15 @@
             "authors": [
                 "Guillaume Piolat",
                 "Mike Parker (derelict-util bits)"
-            ]
+            ],
+
+            "buildTypes": 
+            {
+                "unittest-release": 
+                {
+                    "buildOptions": ["unittests", "optimize", "inline"]
+                }
+            }
         },
         {
             "name": "dsp",
@@ -61,6 +69,14 @@
                 "dplug:core": "*",
                 "pfft": "~>1.0",
                 "intel-intrinsics": "~>1.0"
+            },
+
+            "buildTypes": 
+            {
+                "unittest-release": 
+                {
+                    "buildOptions": ["unittests", "optimize", "inline"]
+                }
             }
         },
         {
