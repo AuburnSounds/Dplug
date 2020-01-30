@@ -4,6 +4,11 @@ Copyright: Guillaume Piolat 2018.
 License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 module dplug.vst.translatesdk;
+
+// Only does a semantic pass on this if the VST version identifier is defined.
+// This allows building dplug:vst even without a VST2 SDK (though nothing will be defined in this case)
+version(VST): 
+
 import std.string;
 
 mixin(translateCppHeaderToD(cast(string) import("aeffect.h") ~ import("aeffectx.h")));

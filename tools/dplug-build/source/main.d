@@ -262,6 +262,33 @@ int main(string[] args)
                     throw new Exception(format("configuration specified twice: '%s'", configurations[confA]));
                 }
 
+
+        // Detect if we try to build a VST2.
+        // => In this case, error if VST2_SDK isn't defined.
+        // => else, force VST2_SDK to a dummy value before calling any DUB command.
+        {
+            bool buildingVST2 = false;
+            foreach(string conf; configurations)
+            {
+                if (configIsVST(conf))
+                    buildingVST2 = true;
+            }
+
+            // In case the VST2_SDK isn't pointed by a variable, redirect the user to the appropriate
+            // Wiki page. Also, in case that user can't find a VST2 SDK, let her build other format
+            // by faking the variable. This will allow dub to build a plug-in anyway.
+            auto VST2_SDK = environment.get("VST2_SDK");
+            if (VST2_SDK is null)
+            {
+                if (buildingVST2)
+                    throw new Exception("cannot build VST2 plug-in since the environment variable VST2_SDK isn't defined.\n       See https://github.com/AuburnSounds/Dplug/wiki/Dplug-VST2-Guide for details.\n");
+                else
+                {
+                    environment["VST2_SDK"] = "dummy-VST2_SDK-path"; // define a dummy VST2_SDK for the sake of building
+                }
+            }
+        }
+
         // If no configuration provided, take the first one like DUB
         if (configurations == [])
             configurations = [ plugin.getFirstConfiguration() ];
@@ -1001,6 +1028,7 @@ void buildPlugin(string compiler, string config, string build, bool is64b, bool 
     string arch = is64b ? "x86_64" : "x86";
 
     // If we want to support Notarization, we can't target earlier than 10.9
+    // Note: it seems it is overiden at some point and when notarizing you can't target so low
     version(OSX)
     {
         environment["MACOSX_DEPLOYMENT_TARGET"] = "10.9";

@@ -45,6 +45,10 @@ import dplug.client.client,
 
 import dplug.vst.translatesdk;
 
+// Only does a semantic pass on this if the VST version identifier is defined.
+// This allows building dplug:vst even without a VST2 SDK (though nothing will be defined in this case)
+version(VST): 
+
 template VSTEntryPoint(alias ClientClass)
 {
     enum entry_VSTPluginMain =
