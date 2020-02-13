@@ -23,6 +23,8 @@ void usage()
     writeln("        -h, --help  Shows this help");
     writeln("        -preset     Choose preset to process audio with.");
     writeln("        -param      Set parameter value after loading preset");
+    writeln("        -sr         Test only one sample-rate");
+    writeln("        -pw         Augment duration of dirac to avoid zero output (default = 1)");
     writeln;
 }
 
@@ -37,6 +39,11 @@ int main(string[] args)
         string pluginPath = null;
         int preset = -1; // none
         float[int] parameterValues;
+        int pw = 1;
+
+        // Note: 11025 and 22050 are mandatory for auval
+        double[] sampleRates = [11025, 22050, 44100, 48000, 88200, 96000, 192000];
+        bool firstSRFlag = true;
 
         for (int i = 1; i < args.length; ++i)
         {
@@ -47,6 +54,21 @@ int main(string[] args)
             {
                 ++i;
                 preset = to!int(args[i]);
+            }
+            else if (arg == "-sr")
+            {
+                if (firstSRFlag) 
+                {
+                    sampleRates = [];
+                    firstSRFlag = false;
+                }
+                ++i;
+                sampleRates ~= to!double(args[i]);
+            }
+            else if (arg == "-pw")
+            {
+                ++i;
+                pw = to!int(args[i]);
             }
             else if (arg == "-param")
             {
@@ -72,6 +94,11 @@ int main(string[] args)
         {
             usage();
             return 1;
+        }
+
+        if (pw < 1 || pw > 100)
+        {
+            throw new Exception("-pw should be set between 1 and 100 included");
         }
 
         IPluginHost host = createPluginHost(pluginPath);
@@ -106,9 +133,8 @@ int main(string[] args)
 
         writeln;
 
-        // Note: 11025 and 22050 are mandatory for auval
-        double[] ALL_SAMPLE_RATES = [11025, 22050, 44100, 48000, 88200, 96000, 192000];
-        foreach (sampleRate ; ALL_SAMPLE_RATES)
+
+        foreach (sampleRate ; sampleRates)
         {
             cwritefln("*** Testing at sample rate %s".color(fg.light_white), sampleRate);
             host.setSampleRate(sampleRate);
@@ -120,9 +146,9 @@ int main(string[] args)
             float latencyReported = host.getLatencySamples();
 
             diracL[0..N] = 0;
-            diracL[E] = 1;
+            diracL[E..E + pw] = 1;
             diracR[0..N] = 0;
-            diracR[E] = 1;
+            diracR[E..E + pw] = 1;
 
             host.processAudioFloat(inputPointers.ptr, outputPointers.ptr, N);
 
@@ -158,6 +184,11 @@ int main(string[] args)
             
             float latencyReportedMs = 1000.0 * latencyReported / sampleRate;
             host.endAudioProcessing();
+            if (pw != 1)
+            {
+                cwritefln("Warning: pw is != 1 so latency with be reported wrongly".color(fg.yellow));
+            }
+
             if (abs(latencyReported - latencyMeasured) <= 0.5f)
                 cwritefln("  Reported %s samples (%.3f ms), measured %s samples => OK".color(fg.light_green), latencyReported, latencyReportedMs, latencyMeasured);
             else
