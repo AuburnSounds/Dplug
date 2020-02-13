@@ -17,7 +17,7 @@ import dplug.host.host;
 import dplug.vst;
 
 
-alias VSTPluginMain_t = extern(C) AEffect* function(HostCallbackFunction fun);
+alias VSTPluginMain_t = extern(C) void* function(void* fun);
 
 VSTPluginMain_t getVSTEntryPoint(ref SharedLib lib)
 {
@@ -43,6 +43,8 @@ VSTPluginMain_t getVSTEntryPoint(ref SharedLib lib)
         return cast(VSTPluginMain_t)result;
 }
 
+version(VST):
+
 private __gshared VSTPluginHost[AEffect*] reverseMapping;
 
 final class VSTPluginHost : IPluginHost
@@ -52,8 +54,9 @@ final class VSTPluginHost : IPluginHost
         _lib = move(lib);
 
         VSTPluginMain_t VSTPluginMain = getVSTEntryPoint(_lib);
+        HostCallbackFunction hostFun = &hostCallback;
 
-        _aeffect = VSTPluginMain(&hostCallback);
+        _aeffect = cast(AEffect*) VSTPluginMain(hostFun);
 
         reverseMapping[_aeffect] = this;
 

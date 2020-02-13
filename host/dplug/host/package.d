@@ -22,10 +22,16 @@ IPluginHost createPluginHost(string dynlibPath)
     SharedLib lib;
     lib.load(dynlibPath);
 
-    auto VSTPluginMain = getVSTEntryPoint(lib);
-    if (VSTPluginMain != null) // is this is a VST plugin?
+    // Detect if  this is a VST plugin
+    void* VSTPluginMain = getVSTEntryPoint(lib);
+    if (VSTPluginMain != null) 
     {
-        return new VSTPluginHost(move(lib));
+        version(VST)
+        {
+            return new VSTPluginHost(move(lib));
+        }
+        else
+            throw new Exception(format("Couldn't load plugin '%s': VST 2.4 format not supported", dynlibPath));
     }
     else
         throw new Exception(format("Couldn't load plugin '%s': unknown format", dynlibPath));

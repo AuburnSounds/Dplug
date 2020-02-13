@@ -6,6 +6,8 @@
         "wave-d": "~>1.0"
     },
 
+    "versions": ["VST"],
+
     "sourcePaths": ["source"],
     "importPaths": ["source"]
 }
