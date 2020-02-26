@@ -325,11 +325,22 @@ nothrow:
             _data[i] = x;
         }
 
-        ///ditto
-        // support for ~=
-        void opCatAssign(T x)
+        // DMD 2.088 deprecates the old D1-operators
+        static if (__VERSION__ >= 2088)
         {
-            pushBack(x); 
+            ///ditto
+            void opOpAssign(string op)(T x) if (op == "~")
+            {
+                pushBack(x);
+            }
+        }
+        else
+        {
+            ///ditto
+            void opCatAssign(T x)
+            {
+                pushBack(x);
+            }
         }
 
         // Output range support
@@ -536,6 +547,7 @@ unittest
     Vec!A vec = makeVec!A();
     A a;
     vec.pushBack(a);
+    vec ~= a;
     vec[0].x = 42; // vec[0] needs to return a ref
     assert(vec[0].x == 42);
 }
