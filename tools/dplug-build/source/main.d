@@ -32,6 +32,28 @@ string WIN_VST3_DIR_X86 = "C:\\Program Files (x86)\\Common Files\\VST3";
 string WIN_VST_DIR_X86 = "C:\\Program Files (x86)\\VSTPlugins";
 
 
+version(linux)
+{
+    version(DigitalMars)
+    {
+        static assert(false, 
+        "\n\nERROR (Work-around #450)\n" ~ 
+        "\n" ~ 
+        "  Please build dplug-build with the LDC compiler:\n" ~ 
+        "  => https://github.com/ldc-developers/ldc/releases\n" ~
+        "  when using Linux.\n" ~
+        "\n" ~ 
+        "\n" ~ 
+        "RATIONALE\n" ~ 
+        "\n" ~ 
+        "  On Linux, building dplug-build with DMD creates crashes with plugins that expose calls\n" ~
+        "  to a D host. To avoid those crashes, Dplug library users shall builds dplug-build with\n" ~
+        "  LDC. Such a dplug-build will work more reliably as host, for unknown druntime reasons.\n" ~ 
+        "  See also: https://github.com/AuburnSounds/Dplug/issues/450 for details.\n" ~ 
+        "\n");
+    }
+}
+
 // What flavour of AUv2 we generate.
 enum enableAUv2AudioComponentAPI = true;   // new style of AUv2, need an extended plist
 enum enableAUv2ComponentManagerAPI = true; // old API, .rsrc
