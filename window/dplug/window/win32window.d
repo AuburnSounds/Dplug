@@ -217,7 +217,6 @@ version(Windows)
                     {
                         if (_listener.onKeyDown(key))
                         {
-                            sendRepaintIfUIDirty(); // do not wait for the timer
                             handled = true;
                         }
                     }
@@ -225,7 +224,6 @@ version(Windows)
                     {
                         if (_listener.onKeyUp(key))
                         {
-                            sendRepaintIfUIDirty(); // do not wait for the timer
                             handled = true;
                         }
                     }
@@ -251,7 +249,6 @@ version(Windows)
                         _listener.onMouseMove(newMouseX, newMouseY, dx, dy, getMouseState(wParam));
                         _mouseX = newMouseX;
                         _mouseY = newMouseY;
-                        sendRepaintIfUIDirty();
                         return 0;
                     }
 
@@ -451,7 +448,18 @@ version(Windows)
                         double time = (now - _timeAtCreationInMs) * 0.001; // hopefully no plug-in will be open more than 49 days
                         _lastMeasturedTimeInMs = now;
                         _listener.onAnimate(dt, time);
-                        sendRepaintIfUIDirty();
+
+                        _listener.recomputeDirtyAreas();
+                        box2i dirtyRect = _listener.getDirtyRectangle();
+                        if (!dirtyRect.empty())
+                        {
+                            RECT r = RECT(dirtyRect.min.x, dirtyRect.min.y, dirtyRect.max.x, dirtyRect.max.y);
+                            InvalidateRect(_hwnd, &r, FALSE); // FUTURE: invalidate rects one by one
+
+                            // See issue #432 and #269
+                            // To avoid blocking WM_TIMER with expensive WM_PAINT, it's important NOT to enqueue manually a 
+                            // WM_PAINT here. Let Windows do its job of sending WM_PAINT when needed.
+                        }
                     }
                     return 0;
                 }
@@ -531,8 +539,6 @@ version(Windows)
             SetFocus(_hwnd);   // get keyboard focus
             SetCapture(_hwnd); // start mouse capture
             bool consumed = _listener.onMouseClick(mouseX, mouseY, mb, isDoubleClick, getMouseState(wParam));
-            if (consumed)
-                sendRepaintIfUIDirty(); // do not wait for the timer
             return consumed;
         }
 
@@ -541,26 +547,7 @@ version(Windows)
         {
             ReleaseCapture();
             bool consumed = _listener.onMouseRelease(mouseX, mouseY, mb, getMouseState(wParam));
-            if (consumed)
-                sendRepaintIfUIDirty(); // do not wait for the timer
             return consumed;
-        }
-
-        /// Provokes a WM_PAINT if some UI element is dirty.
-        /// FUTURE: this function should be as fast as possible, maybe invalidate differently?
-        void sendRepaintIfUIDirty()
-        {
-            _listener.recomputeDirtyAreas();
-            box2i dirtyRect = _listener.getDirtyRectangle();
-            if (!dirtyRect.empty())
-            {
-                RECT r = RECT(dirtyRect.min.x, dirtyRect.min.y, dirtyRect.max.x, dirtyRect.max.y);
-                InvalidateRect(_hwnd, &r, FALSE); // FUTURE: invalidate rects one by one
-
-                // See issue #432 and #269
-                // To avoid blocking WM_TIMER with expensive WM_PAINT, it's important NOT to enqueue manually a 
-                // WM_PAINT here. Let Windows do its job of sending WM_PAINT when needed.
-            }
         }
 
         wchar[43] _className; // Zero-terminated class name
