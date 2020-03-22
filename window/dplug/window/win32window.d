@@ -555,9 +555,11 @@ version(Windows)
             if (!dirtyRect.empty())
             {
                 RECT r = RECT(dirtyRect.min.x, dirtyRect.min.y, dirtyRect.max.x, dirtyRect.max.y);
-                // MAYDO: maybe use RedrawWindow instead
                 InvalidateRect(_hwnd, &r, FALSE); // FUTURE: invalidate rects one by one
-                UpdateWindow(_hwnd);
+
+                // See issue #432 and #269
+                // To avoid blocking WM_TIMER with expensive WM_PAINT, it's important NOT to enqueue manually a 
+                // WM_PAINT here. Let Windows do its job of sending WM_PAINT when needed.
             }
         }
 
