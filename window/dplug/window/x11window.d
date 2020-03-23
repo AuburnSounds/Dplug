@@ -4,7 +4,7 @@
  * Copyright: Copyright (C) 2017 Richard Andrew Cattermole
  *            Copyright (C) 2017 Ethan Reker
  *            Copyright (C) 2017 Lukasz Pelszynski
- *            Copyright (C) 2019-2020 Guillaume Piolat
+ *            Copyright (C) 2019-2020 Guillaume Piolat 
  *
  * Bugs:
  *     - X11 does not support double clicks, it is sometimes emulated https://github.com/glfw/glfw/issues/462
@@ -28,8 +28,6 @@ import derelict.x11.Xlib;
 import derelict.x11.keysym;
 import derelict.x11.keysymdef;
 import derelict.x11.Xutil;
-import derelict.x11.extensions.Xrandr;
-import derelict.x11.extensions.randr;
 
 import dplug.core.runtime;
 import dplug.core.nogc;
@@ -62,13 +60,11 @@ nothrow:
 @nogc:
 public:
 
-    // Important: this mutex protect EVERY X11 call since
-
     this(WindowUsage usage, void* parentWindow, IWindowListener listener, int width, int height)
     {
         debug(logX11Window) printf(">X11Window.this()\n");        
 
-        _animationMutex = makeMutex();
+        _eventMutex = makeMutex();
         _dirtyAreaMutex = makeMutex();
         _isHostWindow = (usage == WindowUsage.host);
 
@@ -119,7 +115,7 @@ public:
 
         releaseX11Window();
 
-        _animationMutex.destroy();
+        _eventMutex.destroy();
 
         releaseX11();
         debug(logX11Window) printf("<X11Window.~this()\n");
@@ -225,9 +221,11 @@ private:
     int _lastMouseX;
     int _lastMouseY;
 
-    /// Prevent onAnimate going on at the same time than input events.
-    /// The only calls that can be concurrent are onAnimate and onDraw
-    UncheckedMutex _animationMutex;   
+    /// Prevent onAnimate and all other events from going on at the same time,
+    /// notably including onDraw.
+    /// That way, `onAnimate`, `onDraw` and input callbacks are not concurrent,
+    /// like in Windows and macOS.
+    UncheckedMutex _eventMutex;   
 
     /// Prevent recomputeDirtyAreas() and onDraw() to be called simulatneously.
     /// This is masking a race in dplug:gui.
@@ -267,24 +265,6 @@ private:
     // </X11 resources>
     //
 
-    void sendCustomMessage(int mode)
-    {
-        // HACK: we use the FocusIn message to send custom messages...
-        // ClientMessage just doesn't seen to work
-        XEvent ev;
-        memset(&ev, 0, XEvent.sizeof);
-        ev.xfocus.type = FocusIn;
-        ev.xfocus.display = _display;
-        ev.xfocus.window = _windowID;            
-        ev.xfocus.mode = mode;
-
-        lockX11();
-        //uint mask = 0; // must be non-zero in order for message to arrive
-        XSendEvent(_display, _windowID, False, FocusChangeMask, &ev);
-        XFlush(_display);
-        unlockX11();  
-    }
-
     void eventLoopFunc() nothrow @nogc
     {
         // Pump events until told to terminate.
@@ -311,7 +291,6 @@ private:
                 processEvent(&event);
                 pauseTimeUs = 0;
             }
-            //waitEventAndDispatch();
         }
     }
 
@@ -346,13 +325,10 @@ private:
         double time = (now - _timeAtCreationInUs) * 0.001; // hopefully no plug-in will be open more than 49 days
         _lastMeasturedTimeInUs = now;
 
-        _animationMutex.lock();
+        _eventMutex.lock();
         _listener.onAnimate(dt, time);
-        _animationMutex.unlock();
+        _eventMutex.unlock();
     }
-
-    // A message that says "animate the UI"
-    enum NOTIFY_ANIMATE = 4;
 
     void processEvent(XEvent* event)
     {
@@ -370,9 +346,11 @@ private:
             assert(_recomputeDirtyAreasWasCalled);
 
             // Draw UI
+            _eventMutex.lock();
             _dirtyAreaMutex.lock();
             _listener.onDraw(WindowPixelFormat.BGRA8);
             _dirtyAreaMutex.unlock();
+            _eventMutex.unlock();
 
             XExposeEvent* xpose = cast(XExposeEvent*)event;
 
@@ -402,9 +380,9 @@ private:
             lockX11();
             XLookupString(&event.xkey, null, 0, &symbol, null);
             unlockX11();
-            _animationMutex.lock();
+            _eventMutex.lock();
             _listener.onKeyDown(convertKeyFromX11(symbol));
-            _animationMutex.unlock();
+            _eventMutex.unlock();
             break;
 
         case KeyRelease:
@@ -412,9 +390,9 @@ private:
             lockX11();
             XLookupString(&event.xkey, null, 0, &symbol, null);
             unlockX11();
-            _animationMutex.lock();
+            _eventMutex.lock();
             _listener.onKeyUp(convertKeyFromX11(symbol));
-            _animationMutex.unlock();
+            _eventMutex.unlock();
             break;
 
         case MotionNotify:
@@ -430,9 +408,9 @@ private:
 
             int dx = newMouseX - _lastMouseX;
             int dy = newMouseY - _lastMouseY;
-            _animationMutex.lock();
+            _eventMutex.lock();
             _listener.onMouseMove(newMouseX, newMouseY, dx, dy, mouseStateFromX11(event.xbutton.state));
-            _animationMutex.unlock();
+            _eventMutex.unlock();
             _lastMouseX = newMouseX;
             _lastMouseY = newMouseY;
             break;
@@ -459,7 +437,7 @@ private:
             _lastMouseX = newMouseX;
             _lastMouseY = newMouseY;
 
-            _animationMutex.lock();
+            _eventMutex.lock();
             if (event.xbutton.button == Button4 || event.xbutton.button == Button5)
             {
                 _listener.onMouseWheel(newMouseX, newMouseY, 0, event.xbutton.button == Button4 ? 1 : -1,
@@ -469,7 +447,7 @@ private:
             {
                 _listener.onMouseClick(newMouseX, newMouseY, button, isDoubleClick, mouseStateFromX11(event.xbutton.state));
             }
-            _animationMutex.unlock();
+            _eventMutex.unlock();
             break;
 
         case ButtonRelease:
@@ -490,24 +468,14 @@ private:
             else if (event.xbutton.button == Button4 || event.xbutton.button == Button5)
                 break;
 
-            _animationMutex.lock();
+            _eventMutex.lock();
             _listener.onMouseRelease(newMouseX, newMouseY, button, mouseStateFromX11(event.xbutton.state));
-            _animationMutex.unlock();
+            _eventMutex.unlock();
             break;
 
         case DestroyNotify:
             atomicStore(_userRequestedTermination, true);
             break;
-/+
-        case ClientMessage:
-
-            Atom atom = event.xclient.message_type; // note: layout of XClientMessageEvent seems incorrect
-            if (atom == _closeAtom)
-            {
-                atomicStore(_userRequestedTermination, true);
-            }
-            break;
-+/
 
         default:
             string s = X11EventTypeString(event.type);           
@@ -522,11 +490,11 @@ private:
             _width = width;
             _height = height;
 
-            _animationMutex.lock();
+            _eventMutex.lock();
             _dirtyAreaMutex.lock();
             _wfb = _listener.onResized(width, height);
             _dirtyAreaMutex.unlock();
-            _animationMutex.unlock();
+            _eventMutex.unlock();
 
             // reallocates backbuffer (if any)
             freeBackbuffer();
@@ -637,7 +605,7 @@ private:
             }
         }
 
-        // MAYDO possibly could be XMapWindow I guess
+        // MAYDO possible could be XMapWindow I guess
         XMapRaised(_display, _windowID);
         XSelectInput(_display, _windowID, windowEventMask());
 
@@ -772,7 +740,7 @@ __gshared Display* _display;
 
 /// Protects every X11 call. This is because as a plugin we cannot call XInitThreads() 
 /// to ensure thread safety.
-/// Note that like the conncetion, this is shared across plugin instances...
+/// Note that like the connection, this is shared across plugin instances...
 __gshared UncheckedMutex _x11Mutex;
 
 void lockX11()
