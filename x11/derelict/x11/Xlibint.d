@@ -21,13 +21,8 @@ import derelict.x11.Xlib : _XrmHashBucketRec, Bool,Screen, ScreenFormat, Status,
                     XGenericEventCookie, XModifierKeymap, XPointer, XRectangle, XSetWindowAttributes, XWindowAttributes;
 import derelict.x11.Xtos;
 import derelict.x11.Xproto;                                      /* to declare xEvent                                            */
-import derelict.x11.XlibConf;                                    /* for configured options like XTHREADS                         */
 
 extern (C) nothrow @nogc:
-
-version( WIN32 )
-    alias _XFlush _XFlushIt;
-
 
 /*
  * If your BytesReadable correctly detects broken connections, then

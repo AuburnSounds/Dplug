@@ -1,7 +1,6 @@
 module derelict.x11.Xproto;
 version(linux):
 import derelict.x11.Xmd;
-import derelict.x11.Xprotostr;
 import derelict.x11.Xlib;
 
 extern (C) nothrow @nogc:
