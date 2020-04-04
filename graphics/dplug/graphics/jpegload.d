@@ -43,6 +43,8 @@
 /// JPEG image loading.
 module dplug.graphics.jpegload;
 
+import core.stdc.string : memcpy, memset;
+
 nothrow:
 @nogc:
 
@@ -85,14 +87,15 @@ nothrow:
 //version = JPGD_SUPPORT_FREQ_DOMAIN_UPSAMPLING;
 
 /// Input stream interface.
-/// This delegate is called when the internal input buffer is empty.
+/// This function is called when the internal input buffer is empty.
 /// Parameters:
 ///   pBuf - input buffer
 ///   max_bytes_to_read - maximum bytes that can be written to pBuf
 ///   pEOF_flag - set this to true if at end of stream (no more bytes remaining)
+///   userData - user context for being used as closure.
 ///   Returns -1 on error, otherwise return the number of bytes actually written to the buffer (which may be 0).
 ///   Notes: This delegate will be called in a loop until you set *pEOF_flag to true or the internal buffer is full.
-alias JpegStreamReadFunc = int delegate (void* pBuf, int max_bytes_to_read, bool* pEOF_flag);
+alias JpegStreamReadFunc = int function(void* pBuf, int max_bytes_to_read, bool* pEOF_flag, void* userData);
 
 
 // ////////////////////////////////////////////////////////////////////////// //
@@ -406,7 +409,6 @@ struct jpeg_decoder {
 nothrow:
 @nogc:
 
-private import core.stdc.string : memcpy, memset;
 private:
   static auto JPGD_MIN(T) (T a, T b) pure nothrow @safe @nogc { pragma(inline, true); return (a < b ? a : b); }
   static auto JPGD_MAX(T) (T a, T b) pure nothrow @safe @nogc { pragma(inline, true); return (a > b ? a : b); }
@@ -441,6 +443,7 @@ private:
   int m_image_x_size;
   int m_image_y_size;
   JpegStreamReadFunc readfn;
+  void* userData;
   int m_progressive_flag;
   ubyte[JPGD_MAX_HUFF_TABLES] m_huff_ac;
   ubyte*[JPGD_MAX_HUFF_TABLES] m_huff_num;      // pointer to number of Huffman codes per bit size
@@ -514,7 +517,10 @@ private:
 public:
   // Inspect `error_code` after constructing to determine if the stream is valid or not. You may look at the `width`, `height`, etc.
   // methods after the constructor is called. You may then either destruct the object, or begin decoding the image by calling begin_decoding(), then decode() on each scanline.
-  this (JpegStreamReadFunc rfn) { decode_init(rfn); }
+  this (JpegStreamReadFunc rfn, void* userData) 
+  { 
+    decode_init(rfn, userData); 
+  }
 
   ~this () { free_all_blocks(); }
 
@@ -1089,7 +1095,7 @@ private:
 
     do
     {
-      int bytes_read = readfn(m_in_buf.ptr + m_in_buf_left, JPGD_IN_BUF_SIZE - m_in_buf_left, &m_eof_flag);
+      int bytes_read = readfn(m_in_buf.ptr + m_in_buf_left, JPGD_IN_BUF_SIZE - m_in_buf_left, &m_eof_flag, userData);
       if (bytes_read == -1)
         stop_decoding(JPGD_STREAM_READ);
 
@@ -1501,12 +1507,14 @@ private:
   }
 
   // Reset everything to default/uninitialized state.
-  void initit (JpegStreamReadFunc rfn) {
+  void initit (JpegStreamReadFunc rfn, void* userData) 
+  {
     m_pMem_blocks = null;
     m_error_code = JPGD_SUCCESS;
     m_ready_flag = false;
     m_image_x_size = m_image_y_size = 0;
     readfn = rfn;
+    this.userData = userData;
     m_progressive_flag = false;
 
     memset(m_huff_ac.ptr, 0, m_huff_ac.sizeof);
@@ -2953,62 +2961,24 @@ private:
       init_sequential();
   }
 
-  void decode_init (JpegStreamReadFunc rfn) {
-    initit(rfn);
+  void decode_init (JpegStreamReadFunc rfn, void* userData) {
+    initit(rfn, userData);
     locate_sof_marker();
   }
 }
 
-
-// ////////////////////////////////////////////////////////////////////////// //
-/// read JPEG image header, determine dimensions and number of components.
-/// return `false` if image is not JPEG (i hope).
-public bool detect_jpeg_image_from_stream (scope JpegStreamReadFunc rfn, out int width, out int height, out int actual_comps) {
-  if (rfn is null) return false;
-  auto decoder = jpeg_decoder(rfn);
-  version(jpegd_test) { import core.stdc.stdio : printf; printf("%u bytes read.\n", cast(uint)decoder.total_bytes_read); }
-  if (decoder.error_code != JPGD_SUCCESS) return false;
-  width = decoder.width;
-  height = decoder.height;
-  actual_comps = decoder.num_components;
-  return true;
-}
-
-// ////////////////////////////////////////////////////////////////////////// //
-/// read JPEG image header, determine dimensions and number of components.
-/// return `false` if image is not JPEG (i hope).
-public bool detect_jpeg_image_from_memory (const(void)[] buf, out int width, out int height, out int actual_comps) {
-  bool m_eof_flag;
-  size_t bufpos;
-  auto b = cast(const(ubyte)*)buf.ptr;
-
-  return detect_jpeg_image_from_stream(
-    delegate int (void* pBuf, int max_bytes_to_read, bool *pEOF_flag) {
-      import core.stdc.string : memcpy;
-      if (bufpos >= buf.length) {
-        *pEOF_flag = true;
-        return 0;
-      }
-      if (buf.length-bufpos < max_bytes_to_read) max_bytes_to_read = cast(int)(buf.length-bufpos);
-      memcpy(pBuf, b, max_bytes_to_read);
-      b += max_bytes_to_read;
-      return max_bytes_to_read;
-    },
-    width, height, actual_comps);
-}
-
-
 // ////////////////////////////////////////////////////////////////////////// //
 /// decompress JPEG image, what else?
 /// you can specify required color components in `req_comps` (3 for RGB or 4 for RGBA), or leave it as is to use image value.
-public ubyte[] decompress_jpeg_image_from_stream(scope JpegStreamReadFunc rfn, out int width, out int height, out int actual_comps, int req_comps=-1) {
+public ubyte[] decompress_jpeg_image_from_stream(scope JpegStreamReadFunc rfn, void* userData,
+                                                 out int width, out int height, out int actual_comps, int req_comps=-1) {
   import core.stdc.string : memcpy;
 
   //actual_comps = 0;
   if (rfn is null) return null;
   if (req_comps != -1 && req_comps != 1 && req_comps != 3 && req_comps != 4) return null;
 
-  auto decoder = jpeg_decoder(rfn);
+  auto decoder = jpeg_decoder(rfn, userData);
   if (decoder.error_code != JPGD_SUCCESS) return null;
   version(jpegd_test) scope(exit) { import core.stdc.stdio : printf; printf("%u bytes read.\n", cast(uint)decoder.total_bytes_read); }
 
@@ -3082,25 +3052,40 @@ public ubyte[] decompress_jpeg_image_from_stream(scope JpegStreamReadFunc rfn, o
 }
 
 
+struct MemoryContext
+{
+    const(ubyte)[] buf;
+    size_t bufpos;
+}
+
+int read_from_memory_callback(void* pBuf, int max_bytes_to_read, bool* pEOF_flag, void* userData)
+{   
+    MemoryContext* context = cast(MemoryContext*)userData;
+
+    const(ubyte)[] buf = context.buf;
+
+    if (context.bufpos >= buf.length) 
+    {
+        *pEOF_flag = true;
+        return 0;
+    }
+    if (buf.length - context.bufpos < max_bytes_to_read) 
+    {
+        max_bytes_to_read = cast(int)(buf.length - context.bufpos);
+    }
+    memcpy(pBuf, &buf[context.bufpos], max_bytes_to_read);
+    context.bufpos += max_bytes_to_read;
+    return max_bytes_to_read;
+}
+
 // ////////////////////////////////////////////////////////////////////////// //
 /// decompress JPEG image from memory buffer.
 /// you can specify required color components in `req_comps` (3 for RGB or 4 for RGBA), or leave it as is to use image value.
-public ubyte[] decompress_jpeg_image_from_memory(const(void)[] buf, out int width, out int height, out int actual_comps, int req_comps=-1) {
-  bool m_eof_flag;
-  size_t bufpos;
-  auto b = cast(const(ubyte)*)buf.ptr;
-
-  return decompress_jpeg_image_from_stream(
-    delegate int (void* pBuf, int max_bytes_to_read, bool *pEOF_flag) {
-      import core.stdc.string : memcpy;
-      if (bufpos >= buf.length) {
-        *pEOF_flag = true;
-        return 0;
-      }
-      if (buf.length-bufpos < max_bytes_to_read) max_bytes_to_read = cast(int)(buf.length-bufpos);
-      memcpy(pBuf, b, max_bytes_to_read);
-      b += max_bytes_to_read;
-      return max_bytes_to_read;
-    },
-    width, height, actual_comps, req_comps);
+public ubyte[] decompress_jpeg_image_from_memory(const(void)[] buf, out int width, out int height, out int actual_comps, int req_comps=-1) 
+{
+    MemoryContext context;
+    context.buf = cast(const(ubyte)[]) buf;
+    ubyte[] result = decompress_jpeg_image_from_stream(&read_from_memory_callback, &context, 
+                                                       width, height, actual_comps, req_comps);
+    return result;
 }
