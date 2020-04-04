@@ -4,7 +4,6 @@ import core.stdc.config;
 import derelict.x11.Xlib;
 import derelict.x11.X;
 import derelict.x11.Xregion;
-import derelict.x11.Xresource : XrmStringToQuark;
 import derelict.x11.keysym;
 
 extern (C) nothrow @nogc:
@@ -371,10 +370,6 @@ alias int XContext;
 
 template XUniqueContext(){
     const XContext XUniqueContext = XrmUniqueQuark();
-}
-
-XContext XStringToContext(char* statement){
-    return XrmStringToQuark(statement);
 }
 
                                                         /* The following declarations are alphabetized.                 */
