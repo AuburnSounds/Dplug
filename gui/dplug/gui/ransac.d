@@ -153,7 +153,10 @@ vec3f computeRANSACNormal(
         // Note: this can probably be tuned more BUT it's difficult
         static immutable float[7] confidenceFor_N_minus_3_inliners =
         [
-            0.0f,
+            // Should not be zero, else it breaks normalization in case no plane ever scores more than 3 inliners (Issue #455)
+            // Could also probably be tuned
+            0.01f, 
+
             0.056879f,
             0.17242f,
             0.3299f,
