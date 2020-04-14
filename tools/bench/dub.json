@@ -1,0 +1,11 @@
+{
+    "name": "bench",
+    "dependencies": {
+        "wave-d": "~>1.0",
+        "arsd-official:dom": "~>2.1.0",
+        "colorize": "~>1.0",
+    },
+
+    "sourcePaths": ["source"],
+    "importPaths": ["source"]
+}

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bench>
+  <baseline>baseline.dll</baseline>
+  <challenger>challenger.dll</challenger>
+
+  <!-- Test preset 1, 2, 3 and 4. Presets can be specified by range or individually -->
+  <preset>1</preset>
+  <preset>2</preset>
+  <preset-range min="3" max="4"/>
+
+  <source>various.wav</source>
+  <source>various-voices.wav</source>
+
+  <quality-compare/>
+</bench>

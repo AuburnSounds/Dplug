@@ -1,0 +1,9 @@
+{
+    "name": "wav-info",
+
+    "dependencies": {
+        "dplug:core": "~>9.0",
+        "wave-d": "~>1.0",
+        "colorize": "~>1.0"
+    }
+}

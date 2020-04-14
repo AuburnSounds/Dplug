@@ -1,0 +1,14 @@
+{
+    "name" :"abtest",
+    "description": "Allows to make blind A/B comparisons.",
+    "license": "Boost",
+    "dependencies":
+    {
+        "bindbc-sdl": "~>0.0",
+        "audio-formats": "~>1.0",
+        "colorize": "~>1.0"
+    },
+    "versions": [
+        "BindSDL_Mixer"
+    ],
+}
