@@ -91,6 +91,18 @@ public:
 nothrow:
 @nogc:
 
+    /// If `true`, diffuse data is blended in the diffuse map using alpha information.
+    /// If `false`, diffuse is left untouched.
+    bool drawToDiffuse = true;
+
+    /// If `true`, depth data is blended in the depth map using alpha information.
+    /// If `false`, depth is left untouched.
+    bool drawToDepth = true;
+
+    /// If `true`, material data is blended in the material map using alpha information.
+    /// If `false`, material is left untouched.
+    bool drawToMaterial = true;
+
     /// `knobImage` should have been loaded with `loadKnobImage`.
     /// Warning: `knobImage` must outlive the knob, it is borrowed.
     this(UIContext context, KnobImage knobImage, FloatParameter parameter)
@@ -165,11 +177,16 @@ nothrow:
                             RGBA diffuse = RGBA(R, G, B, E);
                             RGBA material = RGBA(Ro, M, S, X);
 
-                            outDiffuse[x] = blendColor( diffuse, outDiffuse[x], alpha);
-                            outMaterial[x] = blendColor( material, outMaterial[x], alpha);
+                            if (drawToDiffuse)
+                                outDiffuse[x] = blendColor( diffuse, outDiffuse[x], alpha);
+                            if (drawToMaterial)
+                                outMaterial[x] = blendColor( material, outMaterial[x], alpha);
 
-                            int interpolatedDepth = depth * alpha + outDepth[x].l * (255 - alpha);
-                            outDepth[x] = L16(cast(ushort)( (interpolatedDepth + 128) / 255));
+                            if (drawToDepth)
+                            {
+                                int interpolatedDepth = depth * alpha + outDepth[x].l * (255 - alpha);
+                                outDepth[x] = L16(cast(ushort)( (interpolatedDepth + 128) / 255));
+                            }
                         }
                     }
                 }
