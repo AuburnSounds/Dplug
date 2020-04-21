@@ -20,6 +20,7 @@
         "dplug:dsp": "*",
         "dplug:client": "*",
         "dplug:graphics": "*",
+        "dplug:canvas": "*",
         "dplug:host": "*",
         "dplug:lv2": "*",
         "dplug:vst": "*",
@@ -93,6 +94,17 @@
             "importPaths": [ "graphics" ],
             "dependencies": {
                 "dplug:core": "*",
+                "gfm:math": "~>8.0",
+                "intel-intrinsics": "~>1.0"
+            }
+        },
+        {
+            "name": "canvas",
+            "sourcePaths": [ "canvas/dplug/canvas" ],
+            "importPaths": [ "canvas" ],
+            "dependencies": {
+            	"dplug:core": "*",
+                "dplug:graphics": "*",
                 "gfm:math": "~>8.0",
                 "intel-intrinsics": "~>1.0"
             }
