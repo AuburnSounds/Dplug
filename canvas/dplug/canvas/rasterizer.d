@@ -5,6 +5,7 @@
 module dplug.canvas.rasterizer;
 
 import std.traits;
+import dplug.core.vec;
 import dplug.canvas.misc;
 
 
@@ -191,12 +192,17 @@ nothrow:
         m_yrmax = top;
 
         // init buffers
+        m_scandelta.resize(roundUpPow2((right+3)|63));
+        m_deltamask.resize(roundUpPow2(1+right/dmPixPerWord));
+        m_buckets.resize(roundUpPow2(bottom+1));
+        m_clipbfr_l.resize(roundUpPow2((bottom+2)|63));
+        m_clipbfr_r.resize(roundUpPow2((bottom+2)|63));
 
-        m_scandelta.length = roundUpPow2((right+3)|63);
-        m_deltamask.length = roundUpPow2(1+right/dmPixPerWord);
-        m_buckets.length = roundUpPow2(bottom+1);
-        m_clipbfr_l.length = roundUpPow2((bottom+2)|63);
-        m_clipbfr_r.length = roundUpPow2((bottom+2)|63);
+        m_scandelta.fill(0);
+       // m_deltamask is init on each rasterized line
+        m_buckets.fill((Edge*).init);
+        m_clipbfr_l.fill(0);
+        m_clipbfr_r.fill(0);
 
         // init prev x,y and sub path start x,y
 
@@ -227,7 +233,7 @@ nothrow:
 
         for (int y = starty; y < endy; y++)
         {
-            m_deltamask[] = 0;
+            m_deltamask.fill(0);
             int ly = (y << fpFracBits) + 256;
 
             // clip accumulator
@@ -759,11 +765,11 @@ private:
 
     ArenaAllocator!(Edge,100) m_edgepool;
 
-    Array!(Edge*) m_buckets;
-    Array!int m_scandelta;
-    Array!DMWord m_deltamask;
-    Array!int m_clipbfr_l;
-    Array!int m_clipbfr_r;
+    Vec!(Edge*) m_buckets;
+    Vec!int m_scandelta;
+    Vec!DMWord m_deltamask;
+    Vec!int m_clipbfr_l;
+    Vec!int m_clipbfr_r;
 
     // clip rectangle, in 24:8 fixed point
 
@@ -789,6 +795,9 @@ private:
     float m_fprevx,m_fprevy;
 
 }
+
+// the rasterizer itself should be a reusable, small object suitable for the stack
+static assert(Rasterizer.sizeof < 256);
 
 private:
 

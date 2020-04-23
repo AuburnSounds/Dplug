@@ -4,6 +4,8 @@
 */
 module dplug.canvas.gradient;
 
+import dplug.core.nogc;
+import dplug.core.vec;
 import dplug.canvas.misc;
 
 /*
@@ -36,13 +38,13 @@ class Gradient
 
     void reset()
     {
-        m_stops.reset();
+        m_stops.clearContents();
         m_changed = true;
     }
 
     Gradient addStop(float pos, uint color)
     {
-        m_stops.append(ColorStop(color,clip(pos,0.0,1.0)));
+        m_stops.pushBack(ColorStop(color,clip(pos,0.0,1.0)));
         return this;
     }
 
@@ -102,7 +104,7 @@ private:
         m_changed = false;
     }
 
-    Array!(ColorStop,true) m_stops;
+    Vec!ColorStop m_stops;
     uint[lookupLen] m_lookup;
     bool m_changed = true;
 }
