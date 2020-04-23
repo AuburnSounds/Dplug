@@ -53,6 +53,9 @@ import dplug.canvas.misc;
    (repeat modes not implemented yet)
 */
 
+nothrow:
+@nogc:
+
 enum WindingRule
 {
     NonZero,
@@ -122,7 +125,9 @@ enum fpDYScale = 1073741824.0; // as above but div 4
     y     - y position
 */
 
-public alias Blitter = void delegate(int* delta, DMWord* mask, int x0, int x1, int y);
+alias BlitFunction = void function(void* userData, int* delta, DMWord* mask, int x0, int x1, int y);
+
+
 
 /*
   a*b/c, with the intermediate result of a*b in 64 bit
@@ -130,39 +135,23 @@ public alias Blitter = void delegate(int* delta, DMWord* mask, int x0, int x1, i
   plain D version is same speed with 64bit / LDC
 */
 
-private:
-
-/*
-int MulDiv64(int a, int b, int c)
-{
-    asm
-    {
-        mov EAX, a;
-        imul b;
-        idiv c;
-    }
-}
-*/
-int MulDiv64(int a, int b, int c)
-{
-    return cast(int) ((cast(long) a * b) / c);
-}
-
-/*
-  Rasterizer class.
-*/
-
 public:
 
-class Rasterizer
+struct Blitter
 {
-    this()
-    {
-    }
+    void* userData; // used for retrieving context
+    BlitFunction doBlit;
+}
 
-    ~this()
-    {
-    }
+/// Rasterizer
+struct Rasterizer
+{
+public:
+nothrow:
+@nogc:
+
+    @disable this(this);
+
 
     /*
       initialise -- This sets the clip rectange, flushes any existing state
@@ -364,8 +353,8 @@ class Rasterizer
 
             // Blit scanline
 
-            blitter(m_scandelta.ptr, m_deltamask.ptr, startx, endx, y);
-            
+            blitter.doBlit(blitter.userData, m_scandelta.ptr, m_deltamask.ptr, startx, endx, y);
+
             // clear scandelta overspill
 
             m_scandelta[endx] = 0;
@@ -373,7 +362,7 @@ class Rasterizer
             version(assert)
             {
                 foreach(e; m_scandelta) assert(e == 0);
-			}
+            }
         }
 
         // clear clip buffers overspill
@@ -497,7 +486,13 @@ class Rasterizer
         m_fprevy = y3;
     }
 
-   
+    void closePath()
+    {
+        if ((m_prevx != m_subpx) || (m_prevy != m_subpy))
+        {
+            intLineTo(m_subpx, m_subpy);
+        }
+    }
 
 private:
 
@@ -506,12 +501,7 @@ private:
 
     void intMoveTo(int x, int y)
     {
-        if ((m_prevx != m_subpx) || (m_prevy != m_subpy))
-        {
-            // add debug message? unclosed paths are really an error at this point i think
-            intLineTo(m_subpx, m_subpy);
-        }
-
+        closePath();
         m_prevx = x;
         m_prevy = y;
         m_subpx = x;
@@ -701,7 +691,7 @@ private:
             }
          
             // note cliping here can occasionaly result in horizontals, and can
-            // ocaisionaly put a horizontal on bucket for clipbotttom, which is
+            // occasionally put a horizontal on bucket for clipbotttom, which is
             // outside the drawable area, currently it allows it and zeros that
             // bucket after rasterization. 
 
@@ -798,4 +788,11 @@ private:
 
     float m_fprevx,m_fprevy;
 
+}
+
+private:
+
+int MulDiv64(int a, int b, int c)
+{
+    return cast(int) ((cast(long) a * b) / c);
 }

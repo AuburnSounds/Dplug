@@ -11,38 +11,32 @@ import dplug.canvas.misc;
   ColorBlit
 */
 
+nothrow:
+@nogc:
+
 struct ColorBlit
 {   
-    void init(uint* pixels, int stride, int height, uint color)
+nothrow:
+@nogc:
+
+    void init(ubyte* pixels, size_t strideBytes, int height, uint color)
     {
-        assert(((cast(uint)pixels) & 15) == 0); // must be 16 byte alligned
-        assert((stride & 3) == 0);              // stride must be 16 byte alligned
         assert(height > 0);
         
         this.pixels = pixels;
-        this.stride = stride;
+        this.strideBytes = strideBytes;
         this.height = height;
         this.color = color;
     }
 
-    Blitter getBlitter(WindingRule wr)
-    {
-        if (wr == WindingRule.NonZero)
-        {
-            return &color_blit!(WindingRule.NonZero);
-        }
-        else
-        {
-            return &color_blit!(WindingRule.EvenOdd);
-        }
-    }
+
 
 private:
 
     void color_blit(WindingRule wr)(int* delta, DMWord* mask, int x0, int x1, int y)
     {
         assert(x0 >= 0);
-        assert(x1 <= stride);
+        assert(x1 * 4 <= strideBytes);
         assert(y >= 0);
         assert(y < height);
         assert((x0 & 3) == 0);
@@ -52,7 +46,7 @@ private:
 
         int bpos = x0 / 4;
         int endbit = x1 / 4;
-        uint* dest = &pixels[y*stride];
+        uint* dest = cast(uint*)(&pixels[y*strideBytes]);
         __m128i xmWinding = 0;
         bool isopaque = (color >> 24) == 0xFF;
 
@@ -112,7 +106,7 @@ private:
 
                     while (ptr < end)
                     {
-                        _mm_store_si128(cast(__m128i*)ptr, tqc);
+                        _mm_storeu_si128(cast(__m128i*)ptr, tqc);
                         ptr+=4;                        
                     }
 
@@ -134,14 +128,14 @@ private:
 
                     while (ptr < end)
                     {
-                        __m128i d0 = _mm_load_si128(cast(__m128i*)ptr);
+                        __m128i d0 = _mm_loadu_si128(cast(__m128i*)ptr);
                         __m128i d1 = _mm_unpackhi_epi8(d0,XMZERO);
                         d0 = _mm_unpacklo_epi8(d0,XMZERO);
                         d0 = _mm_mulhi_epu16(d0,tpma);
                         d1 = _mm_mulhi_epu16(d1,tpma);
                         d0 = _mm_packus_epi16(d0,d1);
                         d0 =  _mm_adds_epi8(d0,tpmc);
-                        _mm_store_si128(cast(__m128i*)ptr,d0);
+                        _mm_storeu_si128(cast(__m128i*)ptr,d0);
                         ptr+=4;
                     }
 
@@ -159,12 +153,12 @@ private:
             {
                 // Integrate delta values
 
-                __m128i tqw = _mm_load_si128(cast(__m128i*)dlptr);
+                __m128i tqw = _mm_loadu_si128(cast(__m128i*)dlptr);
                 tqw = _mm_add_epi32(tqw, _mm_slli_si128!4(tqw)); 
                 tqw = _mm_add_epi32(tqw, _mm_slli_si128!8(tqw)); 
                 tqw = _mm_add_epi32(tqw, xmWinding); 
                 xmWinding = _mm_shuffle_epi32!255(tqw);  
-                _mm_store_si128(cast(__m128i*)dlptr,XMZERO);
+                _mm_storeu_si128(cast(__m128i*)dlptr,XMZERO);
 
                 // Process coverage values taking account of winding rule
                 
@@ -213,7 +207,7 @@ private:
 
                 __m128i r01 = _mm_packus_epi16(r0,r1);
 
-                _mm_store_si128(cast(__m128i*)ptr,r01);
+                _mm_storeu_si128(cast(__m128i*)ptr,r01);
                 
                 bpos++;
                 ptr+=4;
@@ -224,8 +218,14 @@ private:
         }
     }
 
-    uint* pixels;
-    int stride;
+    ubyte* pixels;
+    size_t strideBytes;
     int height;
     uint color;
 }
+
+ void doBlit_ColorBlit(void* userData, int* delta, DMWord* mask, int x0, int x1, int y)
+ {
+     ColorBlit* cb = cast(ColorBlit*)userData;
+     return cb.color_blit!(WindingRule.NonZero)(delta, mask, x0, x1, y);
+ }

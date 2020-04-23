@@ -8,6 +8,7 @@ module gui;
 import dplug.gui;
 import dplug.flatwidgets;
 import dplug.client;
+import dplug.canvas;
 
 import main;
 
@@ -30,7 +31,7 @@ nothrow:
         // Since we aren't using pbr we can set this value to 0 to save
         // on resources.
         // If you are mixing pbr and flat elements, you may want to set this
-        // to a higher value such as 30.
+        // to a higher value such as 20.
         setUpdateMargin(0);
 
         // All resources are bundled as a string import.
@@ -78,4 +79,26 @@ nothrow:
         modeSwitch.position = box2i(switchX, switchY, switchX + switchWidth, switchY  + switchHeight);
     }
 
+    // This is just to show how to use with dplug:canvas
+    override void onDrawRaw(ImageRef!RGBA rawMap,box2i[] dirtyRects) 
+    {
+        super.onDrawRaw(rawMap,dirtyRects);
+
+        foreach(dirtyRect; dirtyRects)
+        {
+            auto cRaw = rawMap.cropImageRef(dirtyRect);
+            canvas.initialize(cRaw);
+            canvas.fillStyle = RGBA(128, 50, 200, 64);
+            float dx = -dirtyRect.min.x;
+            float dy = -dirtyRect.min.y;
+            canvas.beginPath;
+                canvas.moveTo(0 + dx, 0 + dy);
+                canvas.lineTo(200 + dx, 0 + dy);
+                canvas.lineTo(0 + dx, 70 + dy);
+                canvas.lineTo(0 + dx, 0 + dy);
+                canvas.fill();
+        }
+
+    }
+    Canvas canvas;
 }

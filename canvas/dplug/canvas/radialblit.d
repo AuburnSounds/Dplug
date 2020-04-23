@@ -12,6 +12,9 @@ import dplug.canvas.misc;
   radial gradient blit
 */
 
+// disabled for now
+/+
+
 struct RadialBlit
 {   
     void init(uint* pixels, int stride, int height,
@@ -333,3 +336,4 @@ private:
     float      xstep1,ystep1; 
 }
 
++/

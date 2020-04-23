@@ -8,6 +8,9 @@ import core.stdc.stdlib : malloc, free, realloc;
 public import inteli;
 public import std.math : sqrt, abs;
 
+nothrow:
+@nogc:
+
 version(LDC)
 {
     import ldc.intrinsics;
@@ -84,31 +87,6 @@ bool isPow2(int x)
     return ! ((x - 1) & x);
 }
 
-// load file into malloced memory
-
-ubyte[] loadFileMalloc(string filename)
-{
-    import std.stdio;
-    import core.stdc.stdlib : malloc, free, realloc;
-
-    File file = File(filename, "r"); 
-    if (!file.isOpen) return null;
-    if (file.size > size_t.max) return null;
-    ubyte* p = cast(ubyte*) malloc(cast(size_t) file.size);
-    if (p == null) return null;
-    ubyte[] tmp = file.rawRead(p[0..cast(size_t)file.size]);
-
-    if (tmp.length != file.size)
-    {
-        free(p);
-        return null;
-    }
-    else
-    {
-        return tmp;
-    }
-}
-
 /*
   broadcast alpha
 
@@ -123,9 +101,6 @@ __m128i _mm_broadcast_alpha(__m128i x)
     x = _mm_shufflelo_epi16!255(x);
     x = _mm_shufflehi_epi16!255(x);
     return _mm_slli_epi16(x,8);
-//    return  cast(__m128i)
-//        shufflevector!(byte16, 7,6,7,6,7,6,7,6,  15,14,15,14,15,14,15,14)
-//            (cast(byte16)a, cast(byte16)a);
 }
 
 /*
@@ -410,6 +385,9 @@ T* realloc2(T)(T* ptr, size_t newcap)
 
 struct Array(T, bool voidInit = false)
 {
+nothrow:
+@nogc:
+
     @disable this(this);
 
     @disable void opAssign(Array other);
