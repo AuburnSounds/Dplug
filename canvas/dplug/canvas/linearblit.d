@@ -5,8 +5,6 @@
 module dplug.canvas.linearblit;
 
 
-/+
-
 import dplug.canvas.rasterizer;
 import dplug.canvas.gradient;
 import dplug.canvas.misc;
@@ -17,17 +15,18 @@ import dplug.canvas.misc;
 
 struct LinearBlit
 {   
-    void init(uint* pixels, int stride, int height,
+nothrow:
+@nogc:
+
+    void init(ubyte* pixels, size_t strideBytes, int height,
               Gradient g, float x0, float y0, float x1, float y1)
     {
-        assert(((cast(int)pixels) & 15) == 0); // must be 16 byte alligned
-        assert((stride & 3) == 0);             // stride must be 16 byte alligned
         assert(height > 0);
         assert(g !is null);
         assert(isPow2(g.lutLength));
 
         this.pixels = pixels;
-        this.stride = stride;
+        this.strideBytes = strideBytes;
         this.height = height;
         this.gradient = g;
         int lutsize = g.lutLength;
@@ -42,25 +41,13 @@ struct LinearBlit
         ystep = lutsize * h / hsq;
     }
 
-    Blitter getBlitter(WindingRule wr)
-    {
-        if (wr == WindingRule.NonZero)
-        {
-            return &linear_blit!(WindingRule.NonZero);
-        }
-        else
-        {
-            return &linear_blit!(WindingRule.EvenOdd);
-        }
-    }
-
 private:
 
     void linear_blit(WindingRule wr)(int* delta, DMWord* mask, int x0, int x1, int y)
     {
         assert( ( cast(size_t)delta & 15 ) == 0 );
         assert(x0 >= 0);
-        assert(x1 <= stride);
+        assert(x1*4 <= strideBytes);
         assert(y >= 0);
         assert(y < height);
         assert((x0 & 3) == 0);
@@ -70,7 +57,7 @@ private:
 
         int bpos = x0 / 4;
         int endbit = x1 / 4;
-        uint* dest = &pixels[y*stride];
+        uint* dest = cast(uint*)(&pixels[y*strideBytes]);
         __m128i xmWinding = 0;
         uint* lut = gradient.getLookup.ptr;
         uint lutmsk = gradient.lutLength - 1;
@@ -308,15 +295,19 @@ private:
 
     // Member variables
 
-    uint* pixels;
-    int stride;
+    ubyte* pixels;
+    size_t strideBytes;
     int height;
     Gradient gradient;
     float xctr,yctr;
     float xstep,ystep;
 }
 
+nothrow:
+@nogc:
 
-
-
-+/
+void doBlit_LinearBlit(void* userData, int* delta, DMWord* mask, int x0, int x1, int y)
+{
+    LinearBlit* lb = cast(LinearBlit*)userData;
+    return lb.linear_blit!(WindingRule.NonZero)(delta, mask, x0, x1, y);
+}

@@ -14,13 +14,21 @@
 */
 module dplug.canvas;
 
+import dplug.core.vec;
+import dplug.core.nogc;
+
 import dplug.graphics.color;
 import dplug.graphics.image;
+
 import dplug.canvas.htmlcolors;
-public import dplug.canvas.rasterizer;
-
-
+import dplug.canvas.gradient;
 import dplug.canvas.colorblit;
+import dplug.canvas.linearblit;
+
+import dplug.canvas.rasterizer;
+
+
+// dplug:canvas whole public API should live here.
 
 alias ImageDest = ImageRef!RGBA;
 
@@ -36,28 +44,30 @@ nothrow:
     void initialize(ImageRef!RGBA imageDest)
     {
         _imageDest = imageDest;
+        _gradientUsed = 0;
         fillStyle(RGBA(0, 0, 0, 255));
     }
 
     ~this()
     {
+        // delete all created gradients
+
+        foreach(gradient; _gradients[])
+        {
+            destroyFree(gradient);
+        }
     }
 
     @disable this(this);
 
     void fillStyle(RGBA color)
     {
-        _brushStyle = BrushStyle.plainColor;
-        _fillStyleColor = color;
-
-        uint color_as_uint = *cast(uint*)&_fillStyleColor;
-
-        _plainColorBlitter.init(cast(ubyte*)_imageDest.pixels, 
-                                _imageDest.pitch, 
-                                _imageDest.h, 
-                                color_as_uint);
-
-        _currentBlitter.userData = &_plainColorBlitter;
+        uint color_as_uint = *cast(uint*)&color;
+        _plainColorBlit.init(cast(ubyte*)_imageDest.pixels, 
+                             _imageDest.pitch, 
+                             _imageDest.h, 
+                             color_as_uint);
+        _currentBlitter.userData = &_plainColorBlit;
         _currentBlitter.doBlit = &doBlit_ColorBlit;
     }
 
@@ -71,6 +81,26 @@ nothrow:
         }
         else
             assert(false);
+    }
+
+    void fillStyle(CanvasGradient gradient)
+    {
+        final switch(gradient.type)
+        {
+            case CanvasGradient.Type.linear:
+                _linearGradientBlit.init(cast(ubyte*)_imageDest.pixels,
+                                         _imageDest.pitch, 
+                                         _imageDest.h, 
+                                         gradient._gradient,
+                                         gradient.x0, gradient.y0, gradient.x1, gradient.y1);
+                _currentBlitter.userData = &_linearGradientBlit;
+                _currentBlitter.doBlit = &doBlit_LinearBlit;
+                break;
+
+            case CanvasGradient.Type.radial:
+            case CanvasGradient.Type.angular:
+                assert(false); // not implemented yet
+        }
     }
 
     /// Starts a new path by emptying the list of sub-paths. Call this method when you want to create a new path.
@@ -113,31 +143,31 @@ nothrow:
         _rasterizer.quadTo(cpx, cpy, x, y);
     }
 
+    /// Fills all subpaths of the current path.
+    /// Open subpaths are implicitly closed when being filled.
     void fill()
     {
+        closePath();
         _rasterizer.rasterize(_currentBlitter);
     }
 
-  /*  void roundRect(float x, float y, float w, float h, float r, uint color)
+    void fillRect(float x, float y, float width, float height)
     {
-        float lpc = r*0.44772;
+        assert(false); // it's more complicated than it seems
+    }
 
-        _rasterizer.initialise(m_clip.x0,m_clip.y0,m_clip.x1, m_clip.y1);
-
-        _rasterizer.moveTo(x+r,y);
-        _rasterizer.lineTo(x+w-r,y);
-        _rasterizer.cubicTo(x+w-lpc,y,  x+w,y+lpc,  x+w,y+r);
-        _rasterizer.lineTo(x+w,y+h-r);
-        _rasterizer.cubicTo(x+w,y+h-lpc,  x+w-lpc,y+h,  x+w-r,y+h);
-        _rasterizer.lineTo(x+r,y+h);
-        _rasterizer.cubicTo(x+lpc,y+h,  x,y+h-lpc,  x,y+h-r);
-        _rasterizer.lineTo(x,y+r);
-        _rasterizer.cubicTo(x,y+lpc,  x+lpc,y,  x+r,y);
-
-        ColorBlit cb;
-        _plainColorBlitter.init(m_pixels,m_stride,m_height,color);
-        _rasterizer.rasterize(cb.getBlitter(WindingRule.NonZero));
-    }*/
+    /// Creates a linear gradient along the line given by the coordinates 
+    /// represented by the parameters.
+    CanvasGradient createLinearGradient(float x0, float y0, float x1, float y1)
+    {
+        CanvasGradient result = newOrReuseGradient();
+        result.type = CanvasGradient.Type.linear;
+        result.x0 = x0;
+        result.y0 = y0;
+        result.x1 = x1;
+        result.y1 = y1;
+        return result;
+    }
 
 private:
 
@@ -148,13 +178,71 @@ private:
         plainColor
     }
 
-    BrushStyle _brushStyle = BrushStyle.plainColor;
-    RGBA _fillStyleColor = RGBA(0, 0, 0, 255); // default to plain black
-
     Rasterizer   _rasterizer;
 
     Blitter _currentBlitter;
 
     // Blitters
-    ColorBlit _plainColorBlitter;
+    ColorBlit _plainColorBlit;
+    LinearBlit _linearGradientBlit;
+
+    // Gradient cache
+    // You're expected to recreate gradient in draw code.
+    int _gradientUsed; // number of gradients in _gradients in active use
+    Vec!CanvasGradient _gradients; // all gradients here are created on demand, 
+                                   // and possibly reusable after `ìnitialize`
+
+    CanvasGradient newOrReuseGradient()
+    {
+        if (_gradientUsed < _gradients.length)
+        {
+            _gradients[_gradientUsed].reset();
+            return _gradients[_gradientUsed++];
+        }
+        else
+        {
+            CanvasGradient result = mallocNew!CanvasGradient();
+            _gradients.pushBack(result);
+            return result;
+        }
+    }
+}
+
+/// To conform with the HMLTL 5 API, this holds both the gradient data/table and 
+/// positioning information.
+class CanvasGradient
+{
+public:
+nothrow:
+@nogc:
+
+    this()
+    {
+        _gradient = mallocNew!Gradient();
+    }
+
+    void addColorStop(float offset, RGBA color)
+    {
+        uint color_as_uint = *cast(uint*)(&color);
+        _gradient.addStop(offset, color_as_uint);
+    }
+
+package:
+
+    enum Type
+    {
+        linear,
+        radial,
+        angular,
+    }
+
+    Type type;
+
+    void reset()
+    {
+        _gradient.reset();
+    }
+
+    float x0, y0, x1, y1;
+    Gradient _gradient;
 }

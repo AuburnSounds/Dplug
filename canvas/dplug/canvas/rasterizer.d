@@ -145,7 +145,7 @@ struct Blitter
 }
 
 /// Rasterizer
-struct Rasterizer
+package struct Rasterizer
 {
 public:
 nothrow:

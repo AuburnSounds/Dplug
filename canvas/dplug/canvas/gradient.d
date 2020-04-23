@@ -7,6 +7,7 @@ module dplug.canvas.gradient;
 import dplug.core.nogc;
 import dplug.core.vec;
 import dplug.canvas.misc;
+import dplug.graphics.color;
 
 /*
   Gradient class, 
@@ -15,9 +16,10 @@ import dplug.canvas.misc;
   It has a precomputed lookup table for the rasterizer, currently fixed at 256
   entries. Its a "just get it working for now" solution tbh
 */
-
 class Gradient
 {
+nothrow:
+@nogc:
     // colour is 32 bit ARGB, pos runs from 0..1 
 
     struct ColorStop
@@ -45,6 +47,7 @@ class Gradient
     Gradient addStop(float pos, uint color)
     {
         m_stops.pushBack(ColorStop(color,clip(pos,0.0,1.0)));
+        m_changed = true;
         return this;
     }
 
