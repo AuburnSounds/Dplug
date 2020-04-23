@@ -445,9 +445,9 @@ nothrow:
 
     private
     {
-        size_t _size;
-        T* _data;
-        size_t _allocated;
+        size_t _size = 0;
+        T* _data = null;
+        size_t _allocated = 0;
         size_t _alignment = 1; // for an unaligned Vec, you probably are not interested in alignment
     }
 }
