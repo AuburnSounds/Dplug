@@ -134,7 +134,7 @@ private:
                         d0 = _mm_mulhi_epu16(d0,tpma);
                         d1 = _mm_mulhi_epu16(d1,tpma);
                         d0 = _mm_packus_epi16(d0,d1);
-                        d0 =  _mm_adds_epi8(d0,tpmc);
+                        d0 =  _mm_adds_epu8(d0,tpmc);
                         _mm_storeu_si128(cast(__m128i*)ptr,d0);
                         ptr+=4;
                     }
