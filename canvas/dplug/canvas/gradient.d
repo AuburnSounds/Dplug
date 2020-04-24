@@ -84,12 +84,12 @@ private:
         }
         else
         {           
-            int idx = cast(int) (m_stops[0].pos*256);
+            int idx = cast(int) (m_stops[0].pos*lookupLen);
             m_lookup[0..idx] = m_stops[0].color;
 
             foreach(size_t i; 1.. m_stops.length)
             {
-                int next = cast(int) (m_stops[i].pos*256);
+                int next = cast(int) (m_stops[i].pos*lookupLen);
 
                 foreach(int j; idx..next)
                 {
