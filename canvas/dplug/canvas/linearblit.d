@@ -4,6 +4,7 @@
 */
 module dplug.canvas.linearblit;
 
+import dplug.core.math;
 
 import dplug.canvas.rasterizer;
 import dplug.canvas.gradient;
@@ -45,7 +46,6 @@ private:
 
     void linear_blit(WindingRule wr)(int* delta, DMWord* mask, int x0, int x1, int y)
     {
-        assert( ( cast(size_t)delta & 15 ) == 0 );
         assert(x0 >= 0);
         assert(x1*4 <= strideBytes);
         assert(y >= 0);
@@ -60,7 +60,9 @@ private:
         uint* dest = cast(uint*)(&pixels[y*strideBytes]);
         __m128i xmWinding = 0;
         uint* lut = gradient.getLookup.ptr;
-        uint lutmsk = gradient.lutLength - 1;
+        assert(gradient.lutLength <= short.max); // LUT can be non-power-of-2 as far as LinearBlit is concerned, but this held low interest
+        short lutMax = cast(short)(gradient.lutLength - 1);
+
         bool isopaque = false;//gradient.isOpaque
 
         // XMM constants
@@ -119,16 +121,14 @@ private:
 
                     while (ptr < end)
                     {
-                        __m128i ipos = _mm_cvtps_epi32 (xmT0);
+                        __m128i ipos = _mm_cvttps_epi32 (xmT0);
+                        ipos = _mm_clamp_0_to_N_epi32(ipos, lutMax);
                         xmT0 = xmT0 + xmStep0;
 
-                        long tlip = _mm_cvtsi128_si64 (ipos);
-                        ipos = _mm_shuffle_epi32!14(ipos);
-                        ptr[0] = lut[tlip & lutmsk];
-                        ptr[1] = lut[(tlip >> 32) & lutmsk];
-                        tlip = _mm_cvtsi128_si64 (ipos);
-                        ptr[2] = lut[tlip & lutmsk];
-                        ptr[3] = lut[(tlip >> 32) & lutmsk];
+                        ptr[0] = lut[ ipos.array[0] ];
+                        ptr[1] = lut[ ipos.array[1] ];
+                        ptr[2] = lut[ ipos.array[2] ];
+                        ptr[3] = lut[ ipos.array[3] ];
 
                         ptr+=4;                        
                     }
@@ -147,7 +147,8 @@ private:
 
                     while (ptr < end)
                     {
-                        __m128i ipos = _mm_cvtps_epi32 (xmT0);
+                        __m128i ipos = _mm_cvttps_epi32 (xmT0);
+                        ipos = _mm_clamp_0_to_N_epi32(ipos, lutMax);
                         xmT0 = xmT0 + xmStep0;
 
                         __m128i d0 = _mm_loadu_si64 (ptr);
@@ -155,20 +156,15 @@ private:
                         __m128i d1 = _mm_loadu_si64 (ptr+2);
                         d1 = _mm_unpacklo_epi8 (d1, XMZERO);
 
-                        long tlip = _mm_cvtsi128_si64 (ipos);
-                        ipos = _mm_unpackhi_epi64 (ipos, ipos);
-
-                        __m128i c0 = _mm_loadu_si32 (&lut[tlip & lutmsk]);
-                        __m128i tnc = _mm_loadu_si32 (&lut[(tlip >> 32) & lutmsk]);
+                        __m128i c0 = _mm_loadu_si32 (&lut[ ipos.array[0] ]);
+                        __m128i tnc = _mm_loadu_si32 (&lut[ ipos.array[1] ]);
                         c0 = _mm_unpacklo_epi32 (c0, tnc);
                         c0 = _mm_unpacklo_epi8 (c0, XMZERO);
                         __m128i a0 = _mm_broadcast_alpha(c0);
                         a0 = _mm_mulhi_epu16(a0, tqcvr);
 
-                        tlip = _mm_cvtsi128_si64 (ipos);
-                        
-                        __m128i c1 = _mm_loadu_si32 (&lut[tlip & lutmsk]);
-                        tnc = _mm_loadu_si32 (&lut[(tlip >> 32) & lutmsk]);
+                        __m128i c1 = _mm_loadu_si32 (&lut[ ipos.array[2] ]);
+                        tnc = _mm_loadu_si32 (&lut[ ipos.array[3] ]);
                         c1 = _mm_unpacklo_epi32 (c1, tnc);
                         c1 = _mm_unpacklo_epi8 (c1, XMZERO);
                         __m128i a1 = _mm_broadcast_alpha(c1);
@@ -234,7 +230,8 @@ private:
 
                 // convert grad pos to integer
 
-                __m128i ipos = _mm_cvtps_epi32 (xmT0);
+                __m128i ipos = _mm_cvttps_epi32 (xmT0);
+                ipos = _mm_clamp_0_to_N_epi32(ipos, lutMax);
                 xmT0 = xmT0 + xmStep0;
 
                 // Load destination pixels
@@ -246,24 +243,20 @@ private:
 
                 // load grad colors
 
-                long tlip = _mm_cvtsi128_si64 (ipos);
-                ipos = _mm_unpackhi_epi64 (ipos, ipos);
-
                 tcvr = _mm_unpacklo_epi16 (tcvr, tcvr);
                 __m128i tcvr2 = _mm_unpackhi_epi32 (tcvr, tcvr);
                 tcvr = _mm_unpacklo_epi32 (tcvr, tcvr);
 
-                __m128i c0 = _mm_loadu_si32 (&lut[tlip & lutmsk]);
-                __m128i tnc = _mm_loadu_si32 (&lut[(tlip >> 32) & lutmsk]);
+                __m128i c0 = _mm_loadu_si32 (&lut[ ipos.array[0] ]);
+                __m128i tnc = _mm_loadu_si32 (&lut[ ipos.array[1] ]);
                 c0 = _mm_unpacklo_epi32 (c0, tnc);
                 c0 = _mm_unpacklo_epi8 (c0, XMZERO);
                 __m128i a0 = _mm_broadcast_alpha(c0);
                 a0 = _mm_mulhi_epu16(a0, tcvr);
 
-                tlip = _mm_cvtsi128_si64 (ipos);
 
-                __m128i c1 = _mm_loadu_si32 (&lut[tlip & lutmsk]);
-                tnc = _mm_loadu_si32 (&lut[(tlip >> 32) & lutmsk]);
+                __m128i c1 = _mm_loadu_si32 (&lut[ ipos.array[2] ]);
+                tnc = _mm_loadu_si32 (&lut[ ipos.array[3] ]);
                 c1 = _mm_unpacklo_epi32 (c1, tnc);
                 c1 = _mm_unpacklo_epi8 (c1, XMZERO);
                 __m128i a1 = _mm_broadcast_alpha(c1);
@@ -310,4 +303,21 @@ void doBlit_LinearBlit(void* userData, int* delta, DMWord* mask, int x0, int x1,
 {
     LinearBlit* lb = cast(LinearBlit*)userData;
     return lb.linear_blit!(WindingRule.NonZero)(delta, mask, x0, x1, y);
+}
+
+__m128i _mm_clamp_0_to_N_epi32(__m128i v, short max)
+{
+    // turn into shorts to be able to use min and max functions
+    // this preserve signedness
+    // _mm_max_epi32 exists but in SSE4.1
+    v = _mm_packs_epi32(v, _mm_setzero_si128());
+
+    // Clip to zero if negative
+    v = _mm_max_epi16(v, _mm_setzero_si128());
+
+    // Clip to max if above
+    v = _mm_min_epi16(v, _mm_set1_epi16(max));
+
+    // Expand back to 32-bit
+    return _mm_unpacklo_epi16(v, _mm_setzero_si128());
 }
