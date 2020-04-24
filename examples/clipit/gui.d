@@ -88,17 +88,23 @@ nothrow:
         {
             auto cRaw = rawMap.cropImageRef(dirtyRect);
             canvas.initialize(cRaw);
-            canvas.fillStyle = RGBA(128, 50, 200, 64);
-            float dx = -dirtyRect.min.x;
-            float dy = -dirtyRect.min.y;
+            canvas.translate(-dirtyRect.min.x, -dirtyRect.min.y);
+
+            // gradients have to be recreated for each dirtyRect
+            auto gradient = canvas.createLinearGradient(0, 0, 100*1.414, 100*1.414);
+            gradient.addColorStop(0.0f, RGBA(255, 50, 128, 255));
+            gradient.addColorStop(1.0f, RGBA(128, 128, 128, 0));
+
+            canvas.fillStyle = gradient;
+
             canvas.beginPath;
-                canvas.moveTo(0 + dx, 0 + dy);
-                canvas.lineTo(200 + dx, 0 + dy);
-                canvas.lineTo(0 + dx, 70 + dy);
-                canvas.lineTo(0 + dx, 0 + dy);
+                canvas.moveTo(0, 0);
+                canvas.lineTo(200, 0);
+                canvas.lineTo(0, 200);
                 canvas.fill();
         }
 
     }
-    Canvas canvas;
+    // this struct object should not be since it contains everything rasterizer-related
+    Canvas canvas; 
 }

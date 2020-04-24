@@ -14,6 +14,8 @@
 */
 module dplug.canvas;
 
+import std.math;
+
 import dplug.core.vec;
 import dplug.core.nogc;
 
@@ -30,10 +32,22 @@ import dplug.canvas.rasterizer;
 
 // dplug:canvas whole public API should live here.
 
+public import gfm.math.vector;
+import gfm.math.matrix;
+
+
+/// The transform type used by dplug:canvas. It's a 3x3 float matrix
+/// with the form:
+/// (a b c)
+/// (d e f)
+/// (0 0 1)
+alias Transform2D = mat3!float;
+
 alias ImageDest = ImageRef!RGBA;
 
 /// 2D Canvas able to render complex pathes into a ImageRef!RGBA buffer.
 /// `Canvas` tries to follow loosely the HTML 5 Canvas API, without stroking.
+/// Reference: https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement
 struct Canvas
 {
 public:
@@ -46,6 +60,9 @@ nothrow:
         _imageDest = imageDest;
         _gradientUsed = 0;
         fillStyle(RGBA(0, 0, 0, 255));
+
+        _stateStack.resize(1);
+        _stateStack[0].transform = Transform2D.identity();
     }
 
     ~this()
@@ -103,6 +120,8 @@ nothrow:
         }
     }
 
+    // <PATH> functions
+
     /// Starts a new path by emptying the list of sub-paths. Call this method when you want to create a new path.
     void beginPath()
     {
@@ -122,25 +141,32 @@ nothrow:
     /// Moves the starting point of a new sub-path to the (x, y) coordinates.
     void moveTo(float x, float y)
     {
-        _rasterizer.moveTo(x, y);
+        vec2f pt = transformPoint(x, y);
+        _rasterizer.moveTo(pt.x, pt.y);
     }
 
     /// Connects the last point in the current sub-path to the specified (x, y) coordinates with a straight line.
     void lineTo(float x, float y)
     {
-        _rasterizer.lineTo(x, y);
+        vec2f pt = transformPoint(x, y);
+        _rasterizer.lineTo(pt.x, pt.y);
     }
 
     /// Adds a cubic Bézier curve to the current path.
     void bezierCurveTo(float cp1x, float cp1y, float cp2x, float cp2y, float x, float y)
     {
-        _rasterizer.cubicTo(cp1x, cp1y, cp2x, cp2y, x, y);
+        vec2f cp1 = transformPoint(cp1x, cp1y);
+        vec2f cp2 = transformPoint(cp2x, cp2y);
+        vec2f pt = transformPoint(x, y);
+        _rasterizer.cubicTo(cp1.x, cp1.y, cp2.x, cp2.y, pt.x, pt.y);
     }
 
     /// Adds a quadratic Bézier curve to the current path.
     void quadraticCurveTo(float cpx, float cpy, float x, float y)
     {
-        _rasterizer.quadTo(cpx, cpy, x, y);
+        vec2f cp = transformPoint(cpx, cpy);
+        vec2f pt = transformPoint(x, y);
+        _rasterizer.quadTo(cp.x, cp.y, pt.x, pt.y);
     }
 
     /// Fills all subpaths of the current path.
@@ -156,18 +182,112 @@ nothrow:
         assert(false); // it's more complicated than it seems
     }
 
+    // </PATH> functions
+
+
+    // <GRADIENT> functions
+
     /// Creates a linear gradient along the line given by the coordinates 
     /// represented by the parameters.
     CanvasGradient createLinearGradient(float x0, float y0, float x1, float y1)
     {
+        vec2f pt0 = transformPoint(x0, y0);
+        vec2f pt1 = transformPoint(x1, y1);
+
         CanvasGradient result = newOrReuseGradient();
         result.type = CanvasGradient.Type.linear;
-        result.x0 = x0;
-        result.y0 = y0;
-        result.x1 = x1;
-        result.y1 = y1;
+        result.x0 = pt0.x;
+        result.y0 = pt0.y;
+        result.x1 = pt1.x;
+        result.y1 = pt1.y;
         return result;
     }
+
+    // </GRADIENT> functions
+
+
+    // <STATE> functions
+
+    /// Save:
+    ///   - current transform
+    void save()
+    {
+        _stateStack ~= _stateStack[$-1]; // just duplicate current state
+    }
+
+    /// Restores state corresponding to `save()`.
+    void restore()
+    {
+        _stateStack.popBack();
+        if (_stateStack.length == 0)
+            assert(false); // too many restore() without corresponding save()
+    }
+
+    /// Retrieves the current transformation matrix.
+    Transform2D currentTransform()
+    {
+        return _stateStack[$-1].transform;
+    }
+    alias getTransform = currentTransform; ///ditto
+
+    /// Adds a rotation to the transformation matrix. The angle argument represents 
+    /// a clockwise rotation angle and is expressed in radians.
+    void rotate(float angle)
+    {
+        float cosa = cos(angle);
+        float sina = sin(angle);
+        curMatrix() *= Transform2D(cosa, -sina, 0,
+                                   sina,  cosa, 0,
+                                      0,     0, 1);
+    }
+
+    /// Adds a scaling transformation to the canvas units by x horizontally and by y vertically.
+    void scale(float x, float y)
+    {
+        curMatrix() *= Transform2D(x, 0, 0,
+                                   0, y, 0,
+                                   0, 0, 1);
+    }
+
+    /// Adds a translation transformation by moving the canvas and its origin `x`
+    /// horizontally and `y` vertically on the grid.
+    void translate(float x, float y)
+    {
+        curMatrix() *= Transform2D(1, 0, x,
+                                   0, 1, y,
+                                   0, 0, 1);
+    }
+
+    /// Multiplies the current transformation matrix with the matrix described by its arguments.
+    void transform(float a, float b, float c,
+                   float d, float e, float f)
+    {
+        curMatrix() *= Transform2D(a, c, e, 
+                                   b, d, f, 
+                                   0, 0, 1);
+    }
+
+    void setTransform(float a, float b, float c,
+                      float d, float e, float f)
+    {
+        curMatrix() = Transform2D(a, c, e, 
+                                  b, d, f, 
+                                  0, 0, 1);
+    }
+
+    ///ditto
+    void setTransform(Transform2D transform)
+    {
+        curMatrix() = transform;
+    }
+
+    /// Changes the current transformation matrix to the identity matrix.
+    void resetTransform()
+    {
+        curMatrix() = Transform2D.identity();
+    }
+
+    // </STATE>
 
 private:
 
@@ -205,6 +325,31 @@ private:
             _gradients.pushBack(result);
             return result;
         }
+    }
+
+    // State stack.
+    // Current state is the last element.
+    Vec!State _stateStack;
+
+    // What is saved by `save`.
+    struct State
+    {
+        Transform2D transform;
+    }
+
+    ref Transform2D curMatrix()
+    {
+        return _stateStack[$-1].transform;
+    }
+
+    vec2f transformPoint(float x, float y)
+    {
+        return ( currentTransform() * vec3f(x, y, 1.0f) ).xy;
+    }
+
+    vec2f transformPoint(vec2f pt)
+    {
+        return ( currentTransform() * vec3f(pt.xy, 1.0f) ).xy;
     }
 }
 
