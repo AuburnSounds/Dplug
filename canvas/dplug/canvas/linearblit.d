@@ -304,20 +304,3 @@ void doBlit_LinearBlit(void* userData, int* delta, DMWord* mask, int x0, int x1,
     LinearBlit* lb = cast(LinearBlit*)userData;
     return lb.linear_blit!(WindingRule.NonZero)(delta, mask, x0, x1, y);
 }
-
-__m128i _mm_clamp_0_to_N_epi32(__m128i v, short max)
-{
-    // turn into shorts to be able to use min and max functions
-    // this preserve signedness
-    // _mm_max_epi32 exists but in SSE4.1
-    v = _mm_packs_epi32(v, _mm_setzero_si128());
-
-    // Clip to zero if negative
-    v = _mm_max_epi16(v, _mm_setzero_si128());
-
-    // Clip to max if above
-    v = _mm_min_epi16(v, _mm_set1_epi16(max));
-
-    // Expand back to 32-bit
-    return _mm_unpacklo_epi16(v, _mm_setzero_si128());
-}

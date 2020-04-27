@@ -2,32 +2,26 @@
 * Copyright: Copyright Chris Jones 2020.
 * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
-module dplug.canvas.radialblit;
+module dplug.canvas.ellipticalblit;
 
 import dplug.canvas.rasterizer;
 import dplug.canvas.gradient;
 import dplug.canvas.misc;
 
-/*
-  radial gradient blit
-*/
-
-// disabled for now
-/+
-
-struct RadialBlit
+struct EllipticalBlit
 {   
-    void init(uint* pixels, int stride, int height,
-              Gradient* g, float x0, float y0, float x1, float y1, float r2)
+nothrow:
+@nogc:
+
+    void init(ubyte* pixels, size_t strideBytes, int height,
+              Gradient g, float x0, float y0, float x1, float y1, float r2)
     {
-        assert(((cast(int)pixels) & 15) == 0); // must be 16 byte alligned
-        assert((stride & 3) == 0);             // stride must be 16 byte alligned
         assert(height > 0);
         assert(g !is null);
         assert(isPow2(g.lutLength));
 
         this.pixels = pixels;
-        this.stride = stride;
+        this.strideBytes = strideBytes;
         this.height = height;
         this.gradient = g;
         int lutsize = g.lutLength;
@@ -45,24 +39,12 @@ struct RadialBlit
         ystep1 = lutsize * -w / (r2*hyp); 
     }
 
-    Blitter getBlitter(WindingRule wr)
-    {
-        if (wr == WindingRule.NonZero)
-        {
-            return &radial_blit!(WindingRule.NonZero);
-        }
-        else
-        {
-            return &radial_blit!(WindingRule.EvenOdd);
-        }
-    }
-
 private:
 
-    void radial_blit(WindingRule wr)(int* delta, DMWord* mask, int x0, int x1, int y)
+    void color_blit(WindingRule wr)(int* delta, DMWord* mask, int x0, int x1, int y)
     {
         assert(x0 >= 0);
-        assert(x1 <= stride);
+        assert(x1*4 <= strideBytes);
         assert(y >= 0);
         assert(y < height);
         assert((x0 & 3) == 0);
@@ -72,10 +54,10 @@ private:
 
         int bpos = x0 / 4;
         int endbit = x1 / 4;
-        uint* dest = &pixels[y*stride];
+        uint* dest = cast(uint*)(&pixels[y*strideBytes]);
         __m128i xmWinding = 0;
         uint* lut = gradient.getLookup.ptr;
-        uint lutmsk = gradient.lutLength - 1;
+        short lutMax = cast(short)(gradient.lutLength - 1);
         bool isopaque = false;//gradient.isOpaque
 
         // XMM constants
@@ -144,17 +126,15 @@ private:
                         rad = _mm_sqrt_ps(rad);
                         xmT0 = xmT0 + xmStep0;
                         xmT1 = xmT1 + xmStep1;
-                        __m128i ipos = _mm_cvtps_epi32 (rad);
+                        __m128i ipos = _mm_cvttps_epi32 (rad);
+                        ipos = _mm_clamp_0_to_N_epi32(ipos, lutMax);
 
-                        long tlip = _mm_cvtsi128_si64 (ipos);
-                        ipos = _mm_shuffle_epi32!14(ipos);
-                        ptr[0] = lut[tlip & lutmsk];
-                        ptr[1] = lut[(tlip >> 32) & lutmsk];
-                        tlip = _mm_cvtsi128_si64 (ipos);
-                        ptr[2] = lut[tlip & lutmsk];
-                        ptr[3] = lut[(tlip >> 32) & lutmsk];
+                        ptr[0] = lut[ ipos.array[0] ];
+                        ptr[1] = lut[ ipos.array[1] ];
+                        ptr[2] = lut[ ipos.array[2] ];
+                        ptr[3] = lut[ ipos.array[3] ];
 
-                        ptr+=4;                        
+                        ptr+=4;
                     }
 
                     bpos = nsb;
@@ -181,22 +161,18 @@ private:
                         __m128i d1 = _mm_loadu_si64 (ptr+2);
                         d1 = _mm_unpacklo_epi8 (d1, XMZERO);
 
-                        __m128i ipos = _mm_cvtps_epi32 (rad);
+                        __m128i ipos = _mm_cvttps_epi32 (rad);
+                        ipos = _mm_clamp_0_to_N_epi32(ipos, lutMax);
 
-                        long tlip = _mm_cvtsi128_si64 (ipos);
-                        ipos = _mm_unpackhi_epi64 (ipos, ipos);
-
-                        __m128i c0 = _mm_loadu_si32 (&lut[tlip & lutmsk]);
-                        __m128i tnc = _mm_loadu_si32 (&lut[(tlip >> 32) & lutmsk]);
+                        __m128i c0 = _mm_loadu_si32 (&lut[ ipos.array[0] ]);
+                        __m128i tnc = _mm_loadu_si32 (&lut[ ipos.array[1] ]);
                         c0 = _mm_unpacklo_epi32 (c0, tnc);
                         c0 = _mm_unpacklo_epi8 (c0, XMZERO);
                         __m128i a0 = _mm_broadcast_alpha(c0);
                         a0 = _mm_mulhi_epu16(a0, tqcvr);
 
-                        tlip = _mm_cvtsi128_si64 (ipos);
-                        
-                        __m128i c1 = _mm_loadu_si32 (&lut[tlip & lutmsk]);
-                        tnc = _mm_loadu_si32 (&lut[(tlip >> 32) & lutmsk]);
+                        __m128i c1 = _mm_loadu_si32 (&lut[ ipos.array[2] ]);
+                        tnc = _mm_loadu_si32 (&lut[ ipos.array[3] ]);
                         c1 = _mm_unpacklo_epi32 (c1, tnc);
                         c1 = _mm_unpacklo_epi8 (c1, XMZERO);
                         __m128i a1 = _mm_broadcast_alpha(c1);
@@ -246,7 +222,8 @@ private:
 
                 // convert grad pos to integer
 
-                __m128i ipos = _mm_cvtps_epi32 (rad);
+                __m128i ipos = _mm_cvttps_epi32(rad);
+                ipos = _mm_clamp_0_to_N_epi32(ipos, lutMax);
                 xmT0 = xmT0 + xmStep0;
                 xmT1 = xmT1 + xmStep1;
 
@@ -278,24 +255,19 @@ private:
 
                 // load grad colors
 
-                long tlip = _mm_cvtsi128_si64 (ipos);
-                ipos = _mm_unpackhi_epi64 (ipos, ipos);
-
                 tcvr = _mm_unpacklo_epi16 (tcvr, tcvr);
                 __m128i tcvr2 = _mm_unpackhi_epi32 (tcvr, tcvr);
                 tcvr = _mm_unpacklo_epi32 (tcvr, tcvr);
 
-                __m128i c0 = _mm_loadu_si32 (&lut[tlip & lutmsk]);
-                __m128i tnc = _mm_loadu_si32 (&lut[(tlip >> 32) & lutmsk]);
+                __m128i c0 = _mm_loadu_si32 (&lut[ ipos.array[0] ]);
+                __m128i tnc = _mm_loadu_si32 (&lut[ ipos.array[1] ]);
                 c0 = _mm_unpacklo_epi32 (c0, tnc);
                 c0 = _mm_unpacklo_epi8 (c0, XMZERO);
                 __m128i a0 = _mm_broadcast_alpha(c0);
                 a0 = _mm_mulhi_epu16(a0, tcvr);
 
-                tlip = _mm_cvtsi128_si64 (ipos);
-
-                __m128i c1 = _mm_loadu_si32 (&lut[tlip & lutmsk]);
-                tnc = _mm_loadu_si32 (&lut[(tlip >> 32) & lutmsk]);
+                __m128i c1 = _mm_loadu_si32 (&lut[ ipos.array[2] ]);
+                tnc = _mm_loadu_si32 (&lut[ ipos.array[3] ]);
                 c1 = _mm_unpacklo_epi32 (c1, tnc);
                 c1 = _mm_unpacklo_epi8 (c1, XMZERO);
                 __m128i a1 = _mm_broadcast_alpha(c1);
@@ -327,13 +299,18 @@ private:
 
     // Member variables
 
-    uint*      pixels;
-    int        stride;
+    ubyte*      pixels;
+    size_t      strideBytes;
     int        height;
-    Gradient*  gradient;
+    Gradient  gradient;
     float      xctr,yctr;
     float      xstep0,ystep0;
     float      xstep1,ystep1; 
 }
 
-+/
+void doBlit_EllipticalBlit(void* userData, int* delta, DMWord* mask, int x0, int x1, int y) nothrow @nogc
+{
+    EllipticalBlit* cb = cast(EllipticalBlit*)userData;
+    return cb.color_blit!(WindingRule.NonZero)(delta, mask, x0, x1, y);
+}
+

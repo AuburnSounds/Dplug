@@ -103,6 +103,24 @@ __m128i _mm_broadcast_alpha(__m128i x)
     return _mm_slli_epi16(x,8);
 }
 
+// Used for clamping 4 LUT indices to valid values.
+__m128i _mm_clamp_0_to_N_epi32(__m128i v, short max)
+{
+    // turn into shorts to be able to use min and max functions
+    // this preserve signedness
+    // _mm_max_epi32 exists but in SSE4.1
+    v = _mm_packs_epi32(v, _mm_setzero_si128());
+
+    // Clip to zero if negative
+    v = _mm_max_epi16(v, _mm_setzero_si128());
+
+    // Clip to max if above
+    v = _mm_min_epi16(v, _mm_set1_epi16(max));
+
+    // Expand back to 32-bit
+    return _mm_unpacklo_epi16(v, _mm_setzero_si128());
+}
+
 /*
   nextSetBit, searches the bit mask for the next set bit. 
 

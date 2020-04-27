@@ -26,6 +26,7 @@ import dplug.canvas.htmlcolors;
 import dplug.canvas.gradient;
 import dplug.canvas.colorblit;
 import dplug.canvas.linearblit;
+import dplug.canvas.ellipticalblit;
 
 import dplug.canvas.rasterizer;
 
@@ -114,6 +115,17 @@ nothrow:
                 _currentBlitter.doBlit = &doBlit_LinearBlit;
                 break;
 
+            case CanvasGradient.Type.elliptical:
+                _ellipticalGradientBlit.init(cast(ubyte*)_imageDest.pixels,
+                                             _imageDest.pitch, 
+                                             _imageDest.h, 
+                                             gradient._gradient,
+                                             gradient.x0, gradient.y0, 
+                                             gradient.x1, gradient.y1, gradient.r2);
+                _currentBlitter.userData = &_ellipticalGradientBlit;
+                _currentBlitter.doBlit = &doBlit_EllipticalBlit;
+                break;
+
             case CanvasGradient.Type.radial:
             case CanvasGradient.Type.angular:
                 assert(false); // not implemented yet
@@ -191,6 +203,7 @@ nothrow:
     /// represented by the parameters.
     CanvasGradient createLinearGradient(float x0, float y0, float x1, float y1)
     {
+        // TODO: delay this transform upon point of use with CTM
         vec2f pt0 = transformPoint(x0, y0);
         vec2f pt1 = transformPoint(x1, y1);
 
@@ -200,6 +213,39 @@ nothrow:
         result.y0 = pt0.y;
         result.x1 = pt1.x;
         result.y1 = pt1.y;
+        return result;
+    }
+
+    /// Creates a circular gradient, centered in (x, y) and going from 0 to endRadius.
+    CanvasGradient createCircularGradient(float centerX, float centerY, float endRadius)
+    {
+        float x1 = centerX + endRadius;
+        float y1 = centerY;
+        float r2 = endRadius;
+        return createEllipticalGradient(centerX, centerY, x1, y1, r2);
+    }
+
+    /// Creates an elliptical gradient.
+    /// First radius is given with (x1, y1, second radius with a radius at 90° with
+    CanvasGradient createEllipticalGradient(float x0, float y0, float x1, float y1, float r2)
+    { 
+        // TODO: delay this transform upon point of use with CTM
+        vec2f pt0 = transformPoint(x0, y0);
+        vec2f pt1 = transformPoint(x1, y1);
+
+        // Transform r2 radius
+        vec2f diff = vec2f(x1 - x0, y1 - y0).normalized; // TODO: this could crash with radius zero
+        vec2f pt2 = vec2f(x0 - diff.y * r2, y0 + diff.x * r2);
+        pt2 = transformPoint(pt2);
+        float tr2 = pt2.distanceTo(pt0);
+
+        CanvasGradient result = newOrReuseGradient();
+        result.type = CanvasGradient.Type.elliptical;
+        result.x0 = pt0.x;
+        result.y0 = pt0.y;
+        result.x1 = pt1.x;
+        result.y1 = pt1.y;
+        result.r2 = tr2;
         return result;
     }
 
@@ -305,6 +351,7 @@ private:
     // Blitters
     ColorBlit _plainColorBlit;
     LinearBlit _linearGradientBlit;
+    EllipticalBlit _ellipticalGradientBlit;
 
     // Gradient cache
     // You're expected to recreate gradient in draw code.
@@ -378,6 +425,7 @@ package:
     {
         linear,
         radial,
+        elliptical,
         angular,
     }
 
@@ -388,6 +436,6 @@ package:
         _gradient.reset();
     }
 
-    float x0, y0, x1, y1;
+    float x0, y0, x1, y1, r2;
     Gradient _gradient;
 }
