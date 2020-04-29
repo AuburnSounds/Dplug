@@ -18,6 +18,7 @@ import std.math;
 
 import dplug.core.vec;
 import dplug.core.nogc;
+import dplug.core.math;
 
 import dplug.graphics.color;
 import dplug.graphics.image;
@@ -181,7 +182,132 @@ nothrow:
         _rasterizer.quadTo(cp.x, cp.y, pt.x, pt.y);
     }
 
-    /// Fills all subpaths of the current path.
+    /// Add a rect to the current path.
+    void rect(float x, float y, float width, float height)
+    {
+        moveTo(x, y);
+        lineTo(x + width, y);
+        lineTo(x + width, y + height);
+        lineTo(x, y + height);
+        lineTo(x, y);
+    }
+
+    /// Adds an arc to the current path (used to create circles, or parts of circles).
+    void arc(float x, float y, float radius, float startAngle, float endAngle, bool anticlockwise = false)
+    {
+        // See https://github.com/AuburnSounds/Dplug/issues/468
+        // for the complexities of startAngle, endAngle, and clockwise things
+
+        // "If anticlockwise is false and endAngle-startAngle is equal to or 
+        //  greater than 2π, or, if anticlockwise is true and startAngle-endAngle 
+        //  is equal to or greater than 2π, then the arc is the whole circumference 
+        //  of this ellipse, and the point at startAngle along this circle's
+        //  circumference, measured in radians clockwise from the ellipse's semi-major
+        //  axis, acts as both the start point and the end point."
+
+        // "Otherwise, the points at startAngle and endAngle along this circle's
+        //  circumference, measured in radians clockwise from the ellipse's 
+        //  semi-major axis, are the start and end points respectively, and 
+        //  the arc is the path along the circumference of this ellipse from 
+        //  the start point to the end point, going anti-clockwise if 
+        //  anticlockwise is true, and clockwise otherwise. Since the points 
+        //  are on the ellipse, as opposed to being simply angles from zero, 
+        //  the arc can never cover an angle greater than 2π radians.
+        if (!anticlockwise)
+        {
+            float endMinusStart = endAngle - startAngle;
+            if (endMinusStart >= 2 * PI)
+                endMinusStart = 2 * PI;
+            else
+            {
+                endMinusStart = normalizePhase(endMinusStart);
+                if (endMinusStart < 0) endMinusStart += 2 * PI;
+            }
+
+            // Modify endAngle so that startAngle <= endAngle <= startAngle + 2 * PI
+            endAngle = startAngle + endMinusStart;
+            assert(endAngle >= startAngle);
+        }
+        else
+        {
+            float endMinusStart = endAngle - startAngle;
+            if (endMinusStart <= -2 * PI)
+                endMinusStart = -2 * PI;
+            else
+            {
+                endMinusStart = normalizePhase(endMinusStart);
+                if (endMinusStart > 0) endMinusStart -= 2 * PI;
+            }
+
+            // Modify endAngle so that startAngle >= endAngle >= startAngle - 2 * PI
+            endAngle = startAngle + endMinusStart;
+            assert(endAngle <= startAngle);
+        }
+
+        // find tangential start point xt,yt
+        float xt = x + fast_cos(startAngle) * radius;
+        float yt = y + fast_sin(startAngle) * radius;
+
+        // Make a line to there
+        lineTo(xt, yt);
+
+        enum float MAX_ANGLE_FOR_SINGLE_BEZIER_CURVE = PI / 2.0;
+
+        // From https://stackoverflow.com/questions/1734745/how-to-create-circle-with-b%C3%A9zier-curves
+        // The optimal distance to the control points, in the sense that the 
+        // middle of the curve lies on the circle itself, is (4/3)*tan(pi/(2n)).
+
+        float angleDiff = endAngle - startAngle;
+        if (startAngle == endAngle || angleDiff == 0)
+            return;
+        
+        // How many bezier curves will we draw?
+        // The angle will be evenly split between those parts.
+        // The 1e-2 offset is to avoid a circle made with 5 curves.
+        int numCurves = cast(int)(fast_ceil( (fast_fabs(angleDiff) - 1e-2f) / MAX_ANGLE_FOR_SINGLE_BEZIER_CURVE));
+        assert(numCurves >= 0);
+        if (numCurves == 0)
+            numCurves = 1;
+
+        float currentAngle = startAngle;
+        float angleIncr = angleDiff / cast(float)numCurves;
+
+        // Compute where control points should be placed
+        // How many segments does this correspond to for a full 2*pi circle?
+        float numCurvesIfThisWereACircle = (2.0f * PI * numCurves) / angleDiff;
+
+        // Then compute optimal distance of the control points
+        float xx = cast(float)PI / (2.0f * numCurvesIfThisWereACircle);
+        float optimalDistance = (4.0f / 3.0f) * tan(xx);
+        optimalDistance *= radius;
+
+        // PERF: for the inner loop this is more expensive than strictly needed
+        foreach(curve; 0..numCurves) 
+        {
+            float angle0 = startAngle + angleIncr * curve;
+            float angle1 = startAngle + angleIncr * (curve + 1);
+
+            float cos0 = fast_cos(angle0);
+            float sin0 = fast_sin(angle0);
+            float cos1 = fast_cos(angle1);
+            float sin1 = fast_sin(angle1);
+
+            // compute end points of the curve
+            float x0 = x + cos0 * radius;
+            float y0 = y + sin0 * radius;
+            float x1 = x + cos1 * radius;
+            float y1 = y + sin1 * radius;
+
+            // compute control points
+            float cp0x = x0 - sin0 * optimalDistance;
+            float cp0y = y0 + cos0 * optimalDistance;
+            float cp1x = x1 + sin1 * optimalDistance;
+            float cp1y = y1 - cos1 * optimalDistance;
+            bezierCurveTo(cp0x, cp0y, cp1x, cp1y, x1, y1);
+        }
+    }
+
+    /// Fills all subpaths of the current path using the current `fillStyle`.
     /// Open subpaths are implicitly closed when being filled.
     void fill()
     {
@@ -189,9 +315,23 @@ nothrow:
         _rasterizer.rasterize(_currentBlitter);
     }
 
+    /// Fill a rectangle using the current `fillStyle`.
+    /// Note: affects the current path.
     void fillRect(float x, float y, float width, float height)
     {
-        assert(false); // it's more complicated than it seems
+        beginPath();
+        rect(x, y, width, height);
+        fill();
+    }
+
+    /// Fill a disc using the current `fillStyle`.
+    /// Note: affects the current path.
+    void fillCircle(float x, float y, float radius)
+    {
+        beginPath();
+        moveTo(x + radius, y);
+        arc(x, y, radius, 0, 2 * PI);
+        fill();
     }
 
     // </PATH> functions
