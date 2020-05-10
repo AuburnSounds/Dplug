@@ -7,9 +7,11 @@
 /// - add html color parsing
 /// - no alignment requirements
 /// - clipping is done with the ImageRef input
-/// etc...
+/// However a failure of this fork is that for transforms and stroke() support
+/// you do need path abstraction in the end.
 /**
 * Copyright: Copyright Chris Jones 2020.
+* Copyright: Copyright Guillaume Piolat 2020.
 * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 module dplug.canvas;
@@ -79,6 +81,7 @@ nothrow:
 
     @disable this(this);
 
+    /// Set the fill style as a plain color fill.
     void fillStyle(RGBA color)
     {
         uint color_as_uint = *cast(uint*)&color;
@@ -90,6 +93,7 @@ nothrow:
         _currentBlitter.doBlit = &doBlit_ColorBlit;
     }
 
+    /// Set the fill style as a plain color fill.
     void fillStyle(const(char)[] htmlColorString)
     {
         string error;
@@ -102,6 +106,9 @@ nothrow:
             assert(false);
     }
 
+    /// Set the fill style with a `CanvasGradient`.
+    /// The used coordinates of the gradient are those computed
+    /// when in `
     void fillStyle(CanvasGradient gradient)
     {
         final switch(gradient.type)
