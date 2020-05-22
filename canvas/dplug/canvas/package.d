@@ -1,18 +1,20 @@
-/// This is a DPlug-specific rework of dg2d by Cerjones.
-/// 
-/// - removal of truetype functionnality (since covered by dplug:graphics)
-/// - nothrow @nogc
-/// - rework of the Canvas itself, to resemble more the HTML5 Canvas API
-/// - Blitter delegate made explicit with a userData pointer
-/// - add html color parsing
-/// - no alignment requirements
-/// - clipping is done with the ImageRef input
-/// However a failure of this fork is that for transforms and stroke() support
-/// you do need path abstraction in the end.
 /**
-* Copyright: Copyright Chris Jones 2020.
-* Copyright: Copyright Guillaume Piolat 2020.
-* License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
+  2D software renderer.
+  
+  This is a DPlug-specific rework of dg2d by Cerjones.
+  - removal of truetype functionnality (since covered by dplug:graphics)
+  - nothrow @nogc
+  - rework of the Canvas itself, to resemble more the HTML5 Canvas API
+  - Blitter delegate made explicit with a userData pointer
+  - added html color parsing
+  - no alignment requirements
+  - clipping is done with the ImageRef input
+  However a failure of this fork is that for transforms and stroke() support
+  you do need path abstraction in the end.
+  
+  Copyright: Copyright Chris Jones 2020.
+  Copyright: Copyright Guillaume Piolat 2020.
+  License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 module dplug.canvas;
 
@@ -37,6 +39,7 @@ import dplug.canvas.rasterizer;
 // dplug:canvas whole public API should live here.
 
 public import gfm.math.vector;
+public import gfm.math.box;
 import gfm.math.matrix;
 
 
@@ -47,11 +50,12 @@ import gfm.math.matrix;
 /// (0 0 1)
 alias Transform2D = mat3!float;
 
+ /// `dplug:canvas` operates on RGBA 8-bit buffers.
 alias ImageDest = ImageRef!RGBA;
 
-/// 2D Canvas able to render complex pathes into a ImageRef!RGBA buffer.
-/// `Canvas` tries to follow loosely the HTML 5 Canvas API, without stroking.
-/// Reference: https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement
+/// A 2D Canvas able to render complex pathes into an `ImageRef!RGBA` buffer.
+/// `Canvas` tries to follow loosely the HTML 5 Canvas API.
+/// See_also: https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement
 struct Canvas
 {
 public:
@@ -164,12 +168,22 @@ nothrow:
         vec2f pt = transformPoint(x, y);
         _rasterizer.moveTo(pt.x, pt.y);
     }
+    ///ditto
+    void moveTo(vec2f point)
+    {
+        moveTo(point.x, point.y);
+    }
 
     /// Connects the last point in the current sub-path to the specified (x, y) coordinates with a straight line.
     void lineTo(float x, float y)
     {
         vec2f pt = transformPoint(x, y);
         _rasterizer.lineTo(pt.x, pt.y);
+    }
+    ///ditto
+    void lineTo(vec2f point)
+    {
+        lineTo(point.x, point.y);
     }
 
     /// Adds a cubic Bézier curve to the current path.
@@ -180,6 +194,11 @@ nothrow:
         vec2f pt = transformPoint(x, y);
         _rasterizer.cubicTo(cp1.x, cp1.y, cp2.x, cp2.y, pt.x, pt.y);
     }
+    ///ditto
+    void bezierCurveTo(vec2f controlPoint1, vec2f controlPoint2, vec2f dest)
+    {
+        bezierCurveTo(controlPoint1.x, controlPoint1.y, controlPoint2.x, controlPoint2.y, dest.x, dest.y);
+    }
 
     /// Adds a quadratic Bézier curve to the current path.
     void quadraticCurveTo(float cpx, float cpy, float x, float y)
@@ -187,6 +206,11 @@ nothrow:
         vec2f cp = transformPoint(cpx, cpy);
         vec2f pt = transformPoint(x, y);
         _rasterizer.quadTo(cp.x, cp.y, pt.x, pt.y);
+    }
+    ///ditto
+    void quadraticCurveTo(vec2f controlPoint, vec2f dest)
+    {
+        quadraticCurveTo(controlPoint.x, controlPoint.y, dest.x, dest.y);
     }
 
     /// Add a rect to the current path.
@@ -197,6 +221,21 @@ nothrow:
         lineTo(x + width, y + height);
         lineTo(x, y + height);
         lineTo(x, y);
+    }
+    ///ditto
+    void rect(vec2f topLeftPoint, vec2f dimension)
+    {
+        rect(topLeftPoint.x, topLeftPoint.y, dimension.x, dimension.y);
+    }
+    ///ditto
+    void rect(box2f rectangle)
+    {
+        rect(rectangle.min.x, rectangle.min.y, rectangle.width, rectangle.height);
+    }
+    ///ditto
+    void rect(box2i rectangle)
+    {
+        rect(rectangle.min.x, rectangle.min.y, rectangle.width, rectangle.height);
     }
 
     /// Adds an arc to the current path (used to create circles, or parts of circles).
@@ -313,6 +352,11 @@ nothrow:
             bezierCurveTo(cp0x, cp0y, cp1x, cp1y, x1, y1);
         }
     }
+    ///ditto
+    void arc(vec2f center, float radius, float startAngle, float endAngle, bool anticlockwise = false)
+    {
+        arc(center.x, center.y, radius, startAngle, endAngle, anticlockwise);
+    }
 
     /// Fills all subpaths of the current path using the current `fillStyle`.
     /// Open subpaths are implicitly closed when being filled.
@@ -330,6 +374,21 @@ nothrow:
         rect(x, y, width, height);
         fill();
     }
+    ///ditto
+    void fillRect(vec2f topLeft, vec2f dimension)
+    {
+        fillRect(topLeft.x, topLeft.y, dimension.x, dimension.y);
+    }
+    ///ditto
+    void fillRect(box2f rect)
+    {
+        fillRect(rect.min.x, rect.min.y, rect.width, rect.height);
+    }
+    ///ditto
+    void fillRect(box2i rect)
+    {
+        fillRect(rect.min.x, rect.min.y, rect.width, rect.height);
+    }
 
     /// Fill a disc using the current `fillStyle`.
     /// Note: affects the current path.
@@ -339,6 +398,11 @@ nothrow:
         moveTo(x + radius, y);
         arc(x, y, radius, 0, 2 * PI);
         fill();
+    }
+    ///ditto
+    void fillCircle(vec2f center, float radius)
+    {
+        fillCircle(center.x, center.y, radius);
     }
 
     // </PATH> functions
@@ -362,6 +426,12 @@ nothrow:
         result.y1 = pt1.y;
         return result;
     }
+    ///ditto
+    CanvasGradient createLinearGradient(vec2f pt0, vec2f pt1)
+    {
+        return createLinearGradient(pt0.x, pt0.y, pt1.x, pt1.y);
+    }
+
 
     /// Creates a circular gradient, centered in (x, y) and going from 0 to endRadius.
     CanvasGradient createCircularGradient(float centerX, float centerY, float endRadius)
@@ -371,9 +441,14 @@ nothrow:
         float r2 = endRadius;
         return createEllipticalGradient(centerX, centerY, x1, y1, r2);
     }
+    ///ditto
+    CanvasGradient createCircularGradient(vec2f center, float endRadius)
+    {
+        return createCircularGradient(center.x, center.y, endRadius);
+    }
 
     /// Creates an elliptical gradient.
-    /// First radius is given with (x1, y1, second radius with a radius at 90° with
+    /// First radius is given by (x1, y1), second radius with a radius at 90° with the first one).
     CanvasGradient createEllipticalGradient(float x0, float y0, float x1, float y1, float r2)
     { 
         // TODO: delay this transform upon point of use with CTM
@@ -394,6 +469,11 @@ nothrow:
         result.y1 = pt1.y;
         result.r2 = tr2;
         return result;
+    }
+    ///ditto
+    CanvasGradient createEllipticalGradient(vec2f pt0, vec2f pt1, float r2)
+    {
+        return createEllipticalGradient(pt0.x, pt0.y, pt1.x, pt1.y, r2);
     }
 
     // </GRADIENT> functions
@@ -441,6 +521,11 @@ nothrow:
                                    0, y, 0,
                                    0, 0, 1);
     }
+    ///ditto
+    void scale(vec2f xy)
+    {
+        scale(xy.x, xy.y);
+    }
 
     /// Adds a translation transformation by moving the canvas and its origin `x`
     /// horizontally and `y` vertically on the grid.
@@ -449,6 +534,11 @@ nothrow:
         curMatrix() *= Transform2D(1, 0, x,
                                    0, 1, y,
                                    0, 0, 1);
+    }
+    ///
+    void translate(vec2f position)
+    {
+        translate(position.x, position.y);
     }
 
     /// Multiplies the current transformation matrix with the matrix described by its arguments.
@@ -547,7 +637,7 @@ private:
     }
 }
 
-/// To conform with the HMLTL 5 API, this holds both the gradient data/table and 
+/// To conform with the HTML 5 API, this holds both the gradient data/table and 
 /// positioning information.
 class CanvasGradient
 {
