@@ -85,7 +85,8 @@ nothrow:
 
     @disable this(this);
 
-    /// Set the fill style as a plain color fill.
+    /// Set the fill style. The fill style can be a plain color fill, a `CanvasGradient`,
+    /// or an HTML-compatible text string.
     void fillStyle(RGBA color)
     {
         uint color_as_uint = *cast(uint*)&color;
@@ -96,8 +97,7 @@ nothrow:
         _currentBlitter.userData = &_plainColorBlit;
         _currentBlitter.doBlit = &doBlit_ColorBlit;
     }
-
-    /// Set the fill style as a plain color fill.
+    ///ditto
     void fillStyle(const(char)[] htmlColorString)
     {
         string error;
@@ -109,10 +109,7 @@ nothrow:
         else
             assert(false);
     }
-
-    /// Set the fill style with a `CanvasGradient`.
-    /// The used coordinates of the gradient are those computed
-    /// when in `
+    ///ditto
     void fillStyle(CanvasGradient gradient)
     {
         final switch(gradient.type)
@@ -535,7 +532,7 @@ nothrow:
                                    0, 1, y,
                                    0, 0, 1);
     }
-    ///
+    ///ditto
     void translate(vec2f position)
     {
         translate(position.x, position.y);
@@ -637,8 +634,14 @@ private:
     }
 }
 
-/// To conform with the HTML 5 API, this holds both the gradient data/table and 
-/// positioning information.
+/// Holds both gradient data/table and positioning information.
+///
+/// You can create a gradient with `createLinearGradient`, `createCircularGradient`, or `createEllipticalGradient`,
+/// every frame.
+/// Then use `addColorStop` to set the color information.
+///
+/// The gradient data is managed  by the `Canvas` object itself. All gradients are invalidated once
+/// `initialize` has been called.
 class CanvasGradient
 {
 public:
@@ -650,6 +653,7 @@ nothrow:
         _gradient = mallocNew!Gradient();
     }
 
+    /// Adds a new color stop, defined by an offset and a color, to a given canvas gradient.
     void addColorStop(float offset, RGBA color)
     {
         uint color_as_uint = *cast(uint*)(&color);

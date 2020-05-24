@@ -1,5 +1,7 @@
 /**
-* Copyright: Copyright Chris Jones 2020.
+* Implement HTML color parsing. * Implement the gradient class. dplug:canvas internals.
+*
+* Copyright: Copyright Guillaume Piolat 2020.
 * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 module dplug.canvas.htmlcolors;
@@ -8,7 +10,7 @@ import std.math: PI, floor;
 import core.stdc.stdio : sscanf;
 public import dplug.graphics.color;
 
-/// Parses a HTML color and gives back a RGBA color.
+/// Parses a HTML color string, and gives back a RGBA color.
 ///
 /// Params:
 ///     htmlColorString = A CSS string describing a color.

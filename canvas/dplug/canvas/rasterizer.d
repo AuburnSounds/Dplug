@@ -1,4 +1,5 @@
 /**
+ * Analytic antialiasing rasterizer.
  * Copyright: Copyright Chris Jones 2020.
  * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
  */
@@ -10,7 +11,7 @@ import dplug.canvas.misc;
 
 
 /*
-  Analitic antialiasing rasterizer.
+  Analytic antialiasing rasterizer.
   =================================
 
   Internally works with 24:8 fixed point integer coordinates.

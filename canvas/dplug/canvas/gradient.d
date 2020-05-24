@@ -1,4 +1,6 @@
 /**
+* Implement the gradient class.
+*
 * Copyright: Copyright Chris Jones 2020.
 * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
