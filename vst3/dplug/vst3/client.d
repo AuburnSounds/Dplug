@@ -15,8 +15,6 @@ import core.atomic;
 import core.stdc.stdlib: free;
 import core.stdc.string: strcmp;
 
-import dplug.window.window;
-
 import dplug.client.client;
 import dplug.client.params;
 import dplug.client.graphics;
@@ -1283,9 +1281,9 @@ nothrow:
     {
         debug(logVST3Client) debugLog(">isPlatformTypeSupported".ptr);
         debug(logVST3Client) scope(exit) debugLog("<isPlatformTypeSupported".ptr);
-        WindowBackend backend;
-        if (convertPlatformToWindowBackend(type, &backend))
-            return isWindowBackendSupported(backend) ? kResultTrue : kResultFalse;
+        GraphicsBackend backend;
+        if (convertPlatformToGraphicsBackend(type, &backend))
+            return isGraphicsBackendSupported(backend) ? kResultTrue : kResultFalse;
         return kResultFalse;
     }
 
@@ -1306,8 +1304,8 @@ nothrow:
             if (kResultTrue != isPlatformTypeSupported(type))
                 return kResultFalse;
 
-            WindowBackend backend = WindowBackend.autodetect;
-            if (!convertPlatformToWindowBackend(type, &backend))
+            GraphicsBackend backend = GraphicsBackend.autodetect;
+            if (!convertPlatformToGraphicsBackend(type, &backend))
                 return kResultFalse;
             _graphicsMutex.lock();
             scope(exit) _graphicsMutex.unlock();
@@ -1433,21 +1431,21 @@ private:
     UncheckedMutex _graphicsMutex;
     IPlugFrame _plugFrame;
 
-    static bool convertPlatformToWindowBackend(FIDString type, WindowBackend* backend)
+    static bool convertPlatformToGraphicsBackend(FIDString type, GraphicsBackend* backend)
     {
         if (strcmp(type, kPlatformTypeHWND.ptr) == 0)
         {
-            *backend = WindowBackend.win32;
+            *backend = GraphicsBackend.win32;
             return true;
         }
         if (strcmp(type, kPlatformTypeNSView.ptr) == 0)
         {
-            *backend = WindowBackend.cocoa;
+            *backend = GraphicsBackend.cocoa;
             return true;
         }
         if (strcmp(type, kPlatformTypeX11EmbedWindowID.ptr) == 0)
         {
-            *backend = WindowBackend.x11;
+            *backend = GraphicsBackend.x11;
             return true;
         }
         return false;
@@ -1503,5 +1501,20 @@ nothrow:
 
 private:
     VST3Client _vst3Client;
+}
+
+/// Returns: `true` if that graphics backend is supported on this platform in VST3
+private bool isGraphicsBackendSupported(GraphicsBackend backend) nothrow @nogc
+{
+    version(Windows)
+        return (backend == GraphicsBackend.win32);
+    else version(OSX)
+    {
+        return (backend == GraphicsBackend.cocoa);
+    }
+    else version(linux)
+        return (backend == GraphicsBackend.x11);
+    else
+        static assert(false, "Unsupported OS");
 }
 
