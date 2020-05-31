@@ -29,14 +29,14 @@
 
 ### Community and ecosystem
 
-These products use Dplug:
+The following commercial products are known to use Dplug:
 
+- [Convergence](https://www.cutthroughrecordings.com/product/Convergence) by Cut Through Recordings
 - [Couture](https://www.auburnsounds.com/products/Couture.html) by Auburn Sounds
-- [Entropy](http://www.modernmetalproduction.com/product/entropy-ii-enhanced-stereo-delay-vst-au/) by Cut Through Recordings
+- [Entropy](https://www.cutthroughrecordings.com/product/Entropy_II_-_Enhanced_Stereo_Delay) by Cut Through Recordings
 - [Graillon](https://www.auburnsounds.com/products/Graillon.html) by Auburn Sounds
-- [M4 Multiband Compressor](http://www.modernmetalproduction.com/product/m4-multiband-compressor-vst-au/) by Cut Through Recordings
+- [M4 Multiband Compressor](https://www.cutthroughrecordings.com/product/M4_Multiband_Compressor) by Cut Through Recordings
 - [Panagement](https://www.auburnsounds.com/products/Panagement.html) by Auburn Sounds
-- [Tarabia Distortion](http://smaolab.org/product/tarabia-distortion/) by SMAOLAB
 
 Increase quality and reduce time-to-market with commercial audio DSP in the [DSP Asset Store](DSP_Asset_Store.md).
 
@@ -65,27 +65,15 @@ Yes. See the [simple-mono-synth](examples/simple-mono-synth) and [Poly Alias](ex
 No. And if you don't use it, you don't pay for it.
 
 
-- What is the oldest supported Windows version?
-
-Windows 7. 
-
-
-- What is the oldest supported OS X version?
-
-OS X 10.9+.
-
 - What D compiler can possibly be used?
 
    See `.travis.yml` for supported compilers. The latest DMD or LDC should do.
+   We recommend that you use LDC.
 
-- What D compilers are recommended?
-
-   For releases it is highly recommended that you use LDC >= 1.8.
-   When in development you can use DMD for faster compilation times. 
 
 - Is Dplug stable?
 
-Dplug has excellent stability.
+Dplug has a deep commitment to stability.
 
 Dplug documents all breaking changes in the [Changelog](https://github.com/AuburnSounds/Dplug/wiki/) and
 issues major SemVer tags for breaking changes.
@@ -122,6 +110,7 @@ Be sure to read the [Wiki](https://github.com/AuburnSounds/Dplug/wiki/) in depth
   - Well-defined scope: for professional plug-in developers
   - Maintained continuously, supported by sales for the foreseeable future
   - Price is free, no personal support must be expected though
+  - Fast 2D software rasterizer in `dplug:canvas`
   - PBR-style rendering lets you have a good visual quality with less disk space. If you don't use it, you don't pay for it.
   - No dealing with resource compilers: D can `import("filename.ext")` them
   - Easy to install and update

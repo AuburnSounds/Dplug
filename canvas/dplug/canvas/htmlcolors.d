@@ -1,5 +1,5 @@
 /**
-* Implement HTML color parsing. * Implement the gradient class. dplug:canvas internals.
+* Implement HTML color parsing. dplug:canvas internals.
 *
 * Copyright: Copyright Guillaume Piolat 2020.
 * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)

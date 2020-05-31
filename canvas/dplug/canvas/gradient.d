@@ -1,5 +1,5 @@
 /**
-* Implement the gradient class.
+* Implement the gradient class. dplug:canvas internals.
 *
 * Copyright: Copyright Chris Jones 2020.
 * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
