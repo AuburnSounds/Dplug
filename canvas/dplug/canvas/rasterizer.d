@@ -366,10 +366,11 @@ nothrow:
 
             m_scandelta[endx] = 0;
             
-            version(assert)
+            // disabled until Issue #471 is resolved
+            /*version(assert)
             {
                 foreach(e; m_scandelta) assert(e == 0);
-            }
+            }*/
         }
 
         // clear clip buffers overspill
