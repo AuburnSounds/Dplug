@@ -108,6 +108,15 @@ void DMSetBit(DMWord* mask, uint x)
     mask[x/dmPixPerWord] |= (cast(DMWord)1) << ((x / dmPixPerBit) & dmWordMask);  
 }
 
+void DMSetBitRange(DMWord* mask, uint x0, int x1)
+{
+    while (x0 <= x1)
+    {
+        mask[x0/dmPixPerWord] |= (cast(DMWord)1) << ((x0 / dmPixPerBit) & dmWordMask);
+        x0+=4;
+    }
+}
+
 /*
   Few constants for fixed point coordinates / gradients
 */
@@ -298,7 +307,7 @@ nothrow:
                 }
                 else if (steps > 0)
                 {
-                    DMSetBit(m_deltamask.ptr, x0);
+                    DMSetBitRange(m_deltamask.ptr, x0, x1);
 
                     int w = 256 - ((edge.x >> 32) & 0xFF);
                     long acc = w * edge.dy;
@@ -326,7 +335,7 @@ nothrow:
                 }
                 else if (steps < 0)
                 {
-                    DMSetBit(m_deltamask.ptr, x1);
+                    DMSetBitRange(m_deltamask.ptr, x1, x0);
 
                     int w = 256 - ((nx >> 32) & 0xFF);
                     long acc = w * edge.dy;
@@ -365,12 +374,11 @@ nothrow:
             // clear scandelta overspill
 
             m_scandelta[endx] = 0;
-            
-            // disabled until Issue #471 is resolved
-            /*version(assert)
+
+            version(assert)
             {
                 foreach(e; m_scandelta) assert(e == 0);
-            }*/
+            }
         }
 
         // clear clip buffers overspill
