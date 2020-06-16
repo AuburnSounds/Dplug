@@ -185,7 +185,7 @@ private:
 
                         d0 = _mm_packus_epi16 (c0,c1);
 
-                        _mm_store_si128 (cast(__m128i*)ptr,d0);
+                        _mm_storeu_si128 (cast(__m128i*)ptr,d0);
                         
                         ptr+=4;
                     }
@@ -204,12 +204,12 @@ private:
             {
                 // Integrate delta values
 
-                __m128i tqw = _mm_load_si128(cast(__m128i*)dlptr);
+                __m128i tqw = _mm_loadu_si128(cast(__m128i*)dlptr);
                 tqw = _mm_add_epi32(tqw, _mm_slli_si128!4(tqw)); 
                 tqw = _mm_add_epi32(tqw, _mm_slli_si128!8(tqw)); 
                 tqw = _mm_add_epi32(tqw, xmWinding); 
                 xmWinding = _mm_shuffle_epi32!255(tqw);  
-                _mm_store_si128(cast(__m128i*)dlptr,XMZERO);
+                _mm_storeu_si128(cast(__m128i*)dlptr,XMZERO);
 
                 // Process coverage values taking account of winding rule
                 
@@ -277,7 +277,7 @@ private:
 
                 d0 = _mm_packus_epi16 (c0,c1);
 
-                _mm_store_si128 (cast(__m128i*)ptr,d0);
+                _mm_storeu_si128 (cast(__m128i*)ptr,d0);
                 
                 bpos++;
                 ptr+=4;
