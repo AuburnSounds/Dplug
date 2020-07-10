@@ -185,31 +185,35 @@ nothrow:
         x = x * divider - 0.5f;
         y = y * divider - 0.5f;
 
-        float maxX = image.w - 1.001f; // avoids an edge case with truncation
-        float maxY = image.h - 1.001f;
-
         if (x < 0)
             x = 0;
         if (y < 0)
             y = 0;
-        if (x > maxX)
-            x = maxX;
-        if (y > maxY)
-            y = maxY;
 
-        int ix = cast(int)x;
-        int iy = cast(int)y;
+        __m128 floatCoords = _mm_setr_ps(x, y, 0, 0);
+        __m128i truncatedCoord = _mm_cvttps_epi32(floatCoords);
+        int ix = truncatedCoord.array[0];
+        int iy = truncatedCoord.array[1];
+
+        // Get fractional part
         float fx = x - ix;
+        float fy = y - iy;
+
+        const int maxX = image.w-1;
+        const int maxY = image.h-1;
+        if (ix > maxX)
+            ix = maxX;
+        if (iy > maxY)
+            iy = maxY;
 
         int ixp1 = ix + 1;
-        if (ixp1 >= image.w)
-            ixp1 = image.w - 1;
         int iyp1 = iy + 1;
-        if (iyp1 >= image.h)
-            iyp1 = image.h - 1;
+        if (ixp1 > maxX)
+            ixp1 = maxX;
+        if (iyp1 > maxY)
+            iyp1 = maxY;  
 
         float fxm1 = 1 - fx;
-        float fy = y - iy;
         float fym1 = 1 - fy;
 
         COLOR[] L0 = image.scanline(iy);
