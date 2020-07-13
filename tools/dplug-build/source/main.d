@@ -88,7 +88,7 @@ void usage()
     flag("-v --verbose", "Verbose output", null, "no");
     flag("--no-color", "Disable colored output", null, null);
     flag("-sr --skip-registry", " Skip checking the DUB registry\n                        Avoid network, doesn't update dependencies", null, "no");
-    flag("--final", "Shortcut for --force --combined -b release-nobounds", null, null);
+    flag("--final", "Shortcut for --combined -b release-nobounds", null, null);
     flag("--installer", "Make an installer " ~ "(Windows and OSX only)".red, null, "no");
     flag("--notarize", "Notarize the installer " ~ "(OSX only)".red, null, "no");
     flag("--publish", "Make the plugin available in standard directories " ~ "(OSX only, DOESN'T WORK)".red, null, "no");
@@ -165,8 +165,7 @@ int main(string[] args)
             string arg = args[i];
             if (arg == "--final")
             {
-                args = args[0..i] ~ ["--force",
-                                     "--combined",
+                args = args[0..i] ~ ["--combined",
                                      "-b",
                                      "release-nobounds"] ~ args[i+1..$];
             }
