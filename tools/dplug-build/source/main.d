@@ -8,7 +8,6 @@ import std.uuid;
 import std.process;
 import std.string;
 import std.path;
-import std.xml;
 
 import core.time, core.thread;
 import dplug.core.sharedlib;

@@ -674,7 +674,7 @@ nothrow:
     }
 
 private:
-    void* valuePtr()
+    void* valuePtr() return
     {
         return _value.ptr;
     }
