@@ -4,8 +4,9 @@ import std.process;
 import std.string;
 import std.file;
 import std.path;
+import std.datetime;
 
-import dmarkdown;
+import commonmarkd;
 import colorize;
 
 bool enableColoredOutput = true;
@@ -82,7 +83,8 @@ class ExternalProgramErrored : Exception
 string convertMarkdownFileToHTML(string markdownFile)
 {
     string res = `<!DOCTYPE html><html><head><title></title><meta charset="utf-8"></head><body>`
-    ~ filterMarkdown(markdownFile) ~ `</body></html>`;
+    ~ convertMarkdownToHTML(markdownFile,  MarkdownFlag.dialectCommonMark | MarkdownFlag.permissiveAutoLinks)
+    ~ `</body></html>`;
     return res;
 }
 
@@ -152,4 +154,10 @@ int copyRecurse(string from, string to, bool verbose)
         std.file.copy(from, to);
         return 1;
     }
+}
+
+int currentYear()
+{
+    SysTime time = Clock.currTime(UTC());
+    return time.year;
 }

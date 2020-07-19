@@ -975,6 +975,14 @@ int main(string[] args)
                 // Convert license markdown to HTML
                 cwritefln("*** Converting license file to HTML... ".white);
                 string markdown = cast(string)std.file.read(plugin.licensePath);
+
+                // Subsitute predefined macros to plugin.json specific values. 
+                // It helps create licences that work for any vendor.
+                markdown = markdown.replace("$VENDORNAME", plugin.vendorName)
+                                   .replace("$PLUGINNAME", plugin.pluginName)
+                                   .replace("$PUBLICVERSION", plugin.publicVersionString)
+                                   .replace("$CURRENTYEAR", to!string(currentYear()));
+
                 string html = convertMarkdownFileToHTML(markdown);
                 std.file.write(licensePath, html);
                 cwritefln(" => OK\n".green);
