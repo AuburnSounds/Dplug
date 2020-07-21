@@ -115,7 +115,7 @@ nothrow:
         _audioOutputs = makeVec!Bus;
         _eventInputs = makeVec!Bus;
 
-        _sampleRate = -42.0f; // so that a latency changed is sent at next `setupProcessing`
+        _sampleRate = -42.0f; // so that a latency change is sent at next `setupProcessing`
 
         if (maxInputs)
         {
@@ -321,7 +321,7 @@ nothrow:
     {
         ScopedForeignCallback!(false, true) scopedCallback;
         scopedCallback.enter();
-        return _client.latencySamples(44100.0f);//_sampleRateHostPOV);
+        return _client.latencySamples(_sampleRateHostPOV);
     }
 
     extern(Windows) override tresult setupProcessing (ref ProcessSetup setup)
@@ -336,11 +336,12 @@ nothrow:
         // That is an implicit assumption in Dplug that latency is dependent upon sample-rate.
         bool sampleRateChanged = (_sampleRate != setup.sampleRate);
         _sampleRate = setup.sampleRate;
+        atomicStore(_sampleRateHostPOV, cast(float)(setup.sampleRate));
         if (sampleRateChanged && _handler)
             _handler.restartComponent(kLatencyChanged);
 
         // Pass these new values to the audio thread
-        atomicStore(_sampleRateHostPOV, cast(float)(setup.sampleRate));
+        atomicStore(_sampleRateAudioThreadPOV, cast(float)(setup.sampleRate));
         atomicStore(_maxSamplesPerBlockHostPOV, setup.maxSamplesPerBlock);
         if (setup.symbolicSampleSize != kSample32)
             return kResultFalse;
@@ -366,7 +367,7 @@ nothrow:
         assert(data.symbolicSampleSize == kSample32); // no conversion to 64-bit supported
 
         // Call initialize if needed
-        float newSampleRate = atomicLoad!(MemoryOrder.raw)(_sampleRateHostPOV);
+        float newSampleRate = atomicLoad!(MemoryOrder.raw)(_sampleRateAudioThreadPOV);
         int newMaxSamplesPerBlock = atomicLoad!(MemoryOrder.raw)(_maxSamplesPerBlockHostPOV);
         // find current number of inputs audio channels
         int numInputs = 0;
@@ -1076,6 +1077,7 @@ private:
 
     float _sampleRate;
     shared(float) _sampleRateHostPOV = 44100.0f;
+    shared(float) _sampleRateAudioThreadPOV = 44100.0f;
     float _sampleRateDSPPOV = 0.0f;
 
     shared(int) _maxSamplesPerBlockHostPOV = -1;
