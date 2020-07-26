@@ -957,7 +957,7 @@ string makePListFile(Plugin plugin, string config, bool hasIcon, bool isAudioCom
         content ~= "                <key>manufacturer</key>\n";
         content ~= "                <string>" ~ svid ~ "</string>\n";
         content ~= "                <key>name</key>\n";
-        content ~= format("                <string>%s</string>\n", escapeXMLString(plugin.pluginName));
+        content ~= format("                <string>%s</string>\n", escapeXMLString(plugin.vendorName ~ ": " ~ plugin.pluginName));
         content ~= "                <key>version</key>\n";
         content ~= format("                <integer>%s</integer>\n", plugin.publicVersionInt()); // TODO correct?
         content ~= "                <key>factoryFunction</key>\n";
