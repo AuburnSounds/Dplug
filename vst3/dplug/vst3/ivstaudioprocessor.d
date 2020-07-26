@@ -13,6 +13,19 @@ module dplug.vst3.ivstaudioprocessor;
 
 import dplug.vst3.ftypes;
 
+// Windows 64-bit seemingly need a slightly different ABI (unless the macOS one is wrong in the first place)
+// The problem being that there is no direct pragma(pack) equivalent in D, would be simpler to have tool that displays the layout
+version(Windows)
+{
+    static if (size_t.sizeof == 8)
+    {
+        enum bool eventWindowsABIFix = true;
+    }
+    else
+        enum bool eventWindowsABIFix = false;
+}
+else
+    enum bool eventWindowsABIFix = false;
 
 immutable string kVstAudioEffectClass = "Audio Module Class";
 
@@ -512,58 +525,107 @@ struct ChordEvent
 mixin SMTG_TYPE_SIZE_CHECK!(ChordEvent, 16, 12, 12);
 
 
-/** Event */
-struct Event
+
+static if (eventWindowsABIFix)
 {
-align(1):
-    int32 busIndex;             ///< event bus index
-    int32 sampleOffset;         ///< sample frames related to the current block start sample position
-    TQuarterNotes ppqPosition;  ///< position in project
-    uint16 flags;               ///< combination of \ref EventFlags
-
-    /** Event Flags - used for Event::flags */
-    enum EventFlags
+    /** Event */
+    struct Event
     {
-        kIsLive = 1 << 0,           ///< indicates that the event is played live (directly from keyboard)
+        int32 busIndex;             ///< event bus index
+        int32 sampleOffset;         ///< sample frames related to the current block start sample position
+        TQuarterNotes ppqPosition;  ///< position in project
+        uint16 flags;               ///< combination of \ref EventFlags
 
-        kUserReserved1 = 1 << 14,   ///< reserved for user (for internal use)
-        kUserReserved2 = 1 << 15    ///< reserved for user (for internal use)
+        /** Event Flags - used for Event::flags */
+        enum EventFlags
+        {
+            kIsLive = 1 << 0,           ///< indicates that the event is played live (directly from keyboard)
+
+            kUserReserved1 = 1 << 14,   ///< reserved for user (for internal use)
+            kUserReserved2 = 1 << 15    ///< reserved for user (for internal use)
+        }
+
+        /**  Event Types - used for Event::type */
+        enum EventTypes
+        {
+            kNoteOnEvent = 0,           ///< is \ref NoteOnEvent
+            kNoteOffEvent,              ///< is \ref NoteOffEvent
+            kDataEvent,                 ///< is \ref DataEvent
+            kPolyPressureEvent,         ///< is \ref PolyPressureEvent
+            kNoteExpressionValueEvent,  ///< is \ref NoteExpressionValueEvent
+            kNoteExpressionTextEvent,   ///< is \ref NoteExpressionTextEvent
+            kChordEvent,                ///< is \ref ChordEvent
+            kScaleEvent                 ///< is \ref ScaleEvent
+        }
+
+        uint16 type;                ///< a value from \ref EventTypes
+        union
+        {
+            NoteOnEvent noteOn;                             ///< type == kNoteOnEvent
+            NoteOffEvent noteOff;                           ///< type == kNoteOffEvent
+            DataEvent data;                                 ///< type == kDataEvent
+            PolyPressureEvent polyPressure;                 ///< type == kPolyPressureEvent
+            NoteExpressionValueEvent noteExpressionValue;   ///< type == kNoteExpressionValueEvent
+            NoteExpressionTextEvent noteExpressionText;     ///< type == kNoteExpressionTextEvent
+            ChordEvent chord;                               ///< type == kChordEvent
+            //ScaleEvent scale;                               ///< type == kScaleEvent
+        }
     }
-
-    /**  Event Types - used for Event::type */
-    enum EventTypes
+}
+else
+{    
+    /** Event */
+    struct Event
     {
-        kNoteOnEvent = 0,           ///< is \ref NoteOnEvent
-        kNoteOffEvent,              ///< is \ref NoteOffEvent
-        kDataEvent,                 ///< is \ref DataEvent
-        kPolyPressureEvent,         ///< is \ref PolyPressureEvent
-        kNoteExpressionValueEvent,  ///< is \ref NoteExpressionValueEvent
-        kNoteExpressionTextEvent,   ///< is \ref NoteExpressionTextEvent
-        kChordEvent,                ///< is \ref ChordEvent
-        kScaleEvent                 ///< is \ref ScaleEvent
+    align(1):
+        int32 busIndex;             ///< event bus index
+        int32 sampleOffset;         ///< sample frames related to the current block start sample position
+        TQuarterNotes ppqPosition;  ///< position in project
+        uint16 flags;               ///< combination of \ref EventFlags
+
+        /** Event Flags - used for Event::flags */
+        enum EventFlags
+        {
+            kIsLive = 1 << 0,           ///< indicates that the event is played live (directly from keyboard)
+
+            kUserReserved1 = 1 << 14,   ///< reserved for user (for internal use)
+            kUserReserved2 = 1 << 15    ///< reserved for user (for internal use)
+        }
+
+        /**  Event Types - used for Event::type */
+        enum EventTypes
+        {
+            kNoteOnEvent = 0,           ///< is \ref NoteOnEvent
+            kNoteOffEvent,              ///< is \ref NoteOffEvent
+            kDataEvent,                 ///< is \ref DataEvent
+            kPolyPressureEvent,         ///< is \ref PolyPressureEvent
+            kNoteExpressionValueEvent,  ///< is \ref NoteExpressionValueEvent
+            kNoteExpressionTextEvent,   ///< is \ref NoteExpressionTextEvent
+            kChordEvent,                ///< is \ref ChordEvent
+            kScaleEvent                 ///< is \ref ScaleEvent
+        }
+
+        static if (size_t.sizeof == 8)
+            ubyte[2] padding0;
+
+        uint16 type;                ///< a value from \ref EventTypes
+        union
+        {
+            NoteOnEvent noteOn;                             ///< type == kNoteOnEvent
+            NoteOffEvent noteOff;                           ///< type == kNoteOffEvent
+            DataEvent data;                                 ///< type == kDataEvent
+            PolyPressureEvent polyPressure;                 ///< type == kPolyPressureEvent
+            NoteExpressionValueEvent noteExpressionValue;   ///< type == kNoteExpressionValueEvent
+            NoteExpressionTextEvent noteExpressionText;     ///< type == kNoteExpressionTextEvent
+            ChordEvent chord;                               ///< type == kChordEvent
+            //ScaleEvent scale;                               ///< type == kScaleEvent
+        }
+
+        static if (size_t.sizeof == 8)
+            ubyte[2] padding1;
     }
-
-    static if (size_t.sizeof == 8)
-        ubyte[2] padding0;
-
-    uint16 type;                ///< a value from \ref EventTypes
-    union
-    {
-        NoteOnEvent noteOn;                             ///< type == kNoteOnEvent
-        NoteOffEvent noteOff;                           ///< type == kNoteOffEvent
-        DataEvent data;                                 ///< type == kDataEvent
-        PolyPressureEvent polyPressure;                 ///< type == kPolyPressureEvent
-        NoteExpressionValueEvent noteExpressionValue;   ///< type == kNoteExpressionValueEvent
-        NoteExpressionTextEvent noteExpressionText;     ///< type == kNoteExpressionTextEvent
-        ChordEvent chord;                               ///< type == kChordEvent
-        //ScaleEvent scale;                               ///< type == kScaleEvent
-    }
-
-    static if (size_t.sizeof == 8)
-        ubyte[2] padding1;
 }
 
-//pragma(msg.
 mixin SMTG_TYPE_SIZE_CHECK!(Event, 48, 40, 40);
 
 
