@@ -3,10 +3,10 @@
 // (c) 2005-2018, Steinberg Media Technologies GmbH, All Rights Reserved
 // (c) 2018, Guillaume Piolat (contact@auburnsounds.com)
 //-----------------------------------------------------------------------------
-// 
-// This Software Development Kit is licensed under the terms of the General 
+//
+// This Software Development Kit is licensed under the terms of the General
 // Public License (GPL) Version 3.
-// 
+//
 // Details of that license can be found at: www.gnu.org/licenses/gpl-3.0.html
 //-----------------------------------------------------------------------------
 module dplug.vst3.ivstaudioprocessor;
@@ -19,13 +19,22 @@ version(Windows)
 {
     static if (size_t.sizeof == 8)
     {
-        enum bool eventWindowsABIFix = true;
+        enum bool eventABIFix = true;
     }
     else
-        enum bool eventWindowsABIFix = false;
+        enum bool eventABIFix = false;
+}
+else version(OSX)
+{
+    static if (size_t.sizeof == 8)
+    {
+        enum bool eventABIFix = true;
+    }
+    else
+        enum bool eventABIFix = false;
 }
 else
-    enum bool eventWindowsABIFix = false;
+    enum bool eventABIFix = false;
 
 immutable string kVstAudioEffectClass = "Audio Module Class";
 
@@ -201,7 +210,7 @@ nothrow:
 @nogc:
 
     /** Try to set (from host) a predefined arrangement for inputs and outputs.
-        The host should always deliver the same number of input and output buses than the Plug-in needs 
+        The host should always deliver the same number of input and output buses than the Plug-in needs
         (see \ref IComponent::getBusCount).
         The Plug-in returns kResultFalse if wanted arrangements are not supported.
         If the Plug-in accepts these arrangements, it should modify its buses to match the new arrangements
@@ -211,7 +220,7 @@ nothrow:
     tresult setBusArrangements (SpeakerArrangement* inputs, int32 numIns,  SpeakerArrangement* outputs, int32 numOuts);
 
     /** Gets the bus arrangement for a given direction (input/output) and index.
-        Note: IComponent::getInfo () and IAudioProcessor::getBusArrangement () should be always return the same 
+        Note: IComponent::getInfo () and IAudioProcessor::getBusArrangement () should be always return the same
         information about the buses arrangements. */
     tresult getBusArrangement (BusDirection dir, int32 index, ref SpeakerArrangement arr);
 
@@ -232,7 +241,7 @@ nothrow:
 
     /** Informs the Plug-in about the processing state. This will be called before any process calls start with true and after with false.
         Note that setProcessing (false) may be called after setProcessing (true) without any process calls.
-        In this call the Plug-in should do only light operation (no memory allocation or big setup reconfiguration), 
+        In this call the Plug-in should do only light operation (no memory allocation or big setup reconfiguration),
         this could be used to reset some buffers (like Delay line or Reverb). */
     tresult setProcessing (TBool state);
 
@@ -240,9 +249,9 @@ nothrow:
     tresult process (ref ProcessData data);
 
     /** Gets tail size in samples. For example, if the Plug-in is a Reverb Plug-in and it knows that
-        the maximum length of the Reverb is 2sec, then it has to return in getTailSamples() 
+        the maximum length of the Reverb is 2sec, then it has to return in getTailSamples()
         (in VST2 it was getGetTailSize ()): 2*sampleRate.
-        This information could be used by host for offline processing, process optimization and 
+        This information could be used by host for offline processing, process optimization and
         downmix (avoiding signal cut (clicks)).
         It should return:
          - kNoTail when no tail
@@ -526,7 +535,7 @@ mixin SMTG_TYPE_SIZE_CHECK!(ChordEvent, 16, 12, 12);
 
 
 
-static if (eventWindowsABIFix)
+static if (eventABIFix)
 {
     /** Event */
     struct Event
@@ -573,7 +582,7 @@ static if (eventWindowsABIFix)
     }
 }
 else
-{    
+{
     /** Event */
     struct Event
     {
