@@ -37,6 +37,7 @@ The following commercial products are known to use Dplug:
 - [Graillon](https://www.auburnsounds.com/products/Graillon.html) by Auburn Sounds
 - [M4 Multiband Compressor](https://www.cutthroughrecordings.com/product/M4_Multiband_Compressor) by Cut Through Recordings
 - [Panagement](https://www.auburnsounds.com/products/Panagement.html) by Auburn Sounds
+- [Renegate](https://www.auburnsounds.com/products/Renegate.html) by Auburn Sounds
 
 Increase quality and reduce time-to-market with commercial audio DSP in the [DSP Asset Store](DSP_Asset_Store.md).
 
