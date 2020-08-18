@@ -55,6 +55,8 @@ nothrow:
         _sensivity = 1.0f;
          _pushedAnimation = 0;
         clearCrosspoints();
+        CursorWhenDragged = MouseCursor.drag;
+        CursorWhenMouseOver = MouseCursor.move;
     }
 
     ~this()

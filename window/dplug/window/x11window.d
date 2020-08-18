@@ -261,6 +261,9 @@ private:
     derelict.x11.Xlib.GC _graphicGC;
     XImage* _graphicImage;
 
+    /// Last X11 cursor font used
+    int _lastX11CursorFont;
+
     //
     // </X11 resources>
     //
@@ -304,6 +307,7 @@ private:
 
             doAnimation();
             sendRepaintIfUIDirty();
+            setCursor();
 
             if (atomicLoad(_terminateThreads))
                 break;
@@ -328,6 +332,20 @@ private:
         _eventMutex.lock();
         _listener.onAnimate(dt, time);
         _eventMutex.unlock();
+    }
+
+    void setCursor()
+    {
+        MouseCursor cursor = _listener.getMouseCursor();
+        immutable int x11CursorFont = convertCursorToX11CursorFont(cursor);
+        if(_lastX11CursorFont != x11CursorFont)
+        {
+            lockX11();
+            auto c = XCreateFontCursor(_display, x11CursorFont); 
+            XDefineCursor(_display, _windowID, c);
+            unlockX11();
+        }
+        _lastX11CursorFont = x11CursorFont;
     }
 
     void processEvent(XEvent* event)
@@ -829,4 +847,25 @@ string X11EventTypeString(int type)
     if (type == 35) s = "GenericEvent";
     if (type == 36) s = "LASTEvent";
     return s;
+}
+
+int convertCursorToX11CursorFont(MouseCursor cursor)
+{
+    switch(cursor)
+    {
+
+        case cursor.linkSelect:
+            return 60;
+        case cursor.drag:
+            return 58;
+        case cursor.move:
+            return 34;
+        case cursor.horizontalResize:
+            return 116;
+        case cursor.verticalResize:
+            return 108;
+        case cursor.pointer:
+        default:
+            return 2;
+    }
 }

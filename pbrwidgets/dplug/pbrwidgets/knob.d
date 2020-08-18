@@ -86,6 +86,8 @@ nothrow:
         _param.addListener(this);
         _pushedAnimation = 0;
         clearCrosspoints();
+        CursorWhenDragged = MouseCursor.drag;
+        CursorWhenMouseOver = MouseCursor.move;
     }
 
     ~this()
