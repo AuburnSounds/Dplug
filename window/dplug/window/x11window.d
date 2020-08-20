@@ -336,7 +336,7 @@ private:
 
     void setCursor()
     {
-        MouseCursor cursor = _listener.getMouseCursor();
+        MouseCursor cursor = _listener.getMouseCursor(_lastMouseX, _lastMouseY);
         immutable int x11CursorFont = convertCursorToX11CursorFont(cursor);
         if(_lastX11CursorFont != x11CursorFont)
         {

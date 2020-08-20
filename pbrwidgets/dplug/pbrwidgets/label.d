@@ -27,7 +27,6 @@ nothrow:
         super(context, flagAnimated | flagPBR);
         _text = text;
         _font = font;
-        CursorWhenMouseOver = MouseCursor.linkSelect;
     }
 
     /// Returns: Font used.
@@ -170,6 +169,11 @@ nothrow:
         int w = textDimensions.width/2 + 1;
         int h = textDimensions.height/2 + 1;
         _position = box2i(bx, by, x + w, y + h);
+    }
+
+    override MouseCursor cursorWhenMouseOver(int x, int y)
+    {
+        return MouseCursor.linkSelect;
     }
 
 protected:

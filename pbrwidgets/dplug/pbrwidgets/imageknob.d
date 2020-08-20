@@ -110,8 +110,6 @@ nothrow:
     {
         super(context, parameter);
         _knobImage = knobImage;
-        CursorWhenDragged = MouseCursor.drag;
-        CursorWhenMouseOver = MouseCursor.drag;
     }
 
     override void drawKnob(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects)

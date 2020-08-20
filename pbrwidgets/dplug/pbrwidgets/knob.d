@@ -86,8 +86,6 @@ nothrow:
         _param.addListener(this);
         _pushedAnimation = 0;
         clearCrosspoints();
-        CursorWhenDragged = MouseCursor.drag;
-        CursorWhenMouseOver = MouseCursor.move;
     }
 
     ~this()
@@ -387,6 +385,18 @@ nothrow:
 
     override void onEndParameterEdit(Parameter sender)
     {
+    }
+
+    override MouseCursor cursorWhenMouseOver(int x, int y)
+    {
+        assert(x >= 0 && x < _position.width);
+        assert(y >= 0 && y < _position.height);
+        return MouseCursor.drag;
+    }
+
+    override MouseCursor cursorWhenDragged(int x, int y)
+    {
+        return MouseCursor.move;
     }
 
 protected:

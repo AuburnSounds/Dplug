@@ -299,9 +299,9 @@ nothrow:
             outer.animate(dt, time);
         }
 
-        override MouseCursor getMouseCursor()
+        override MouseCursor getMouseCursor(int x, int y)
         {
-            return outer._uiContext.getCurrentMouseCursor();
+            return outer._uiContext.getCurrentMouseCursor(x, y);
         }
     }
 

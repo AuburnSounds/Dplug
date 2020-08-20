@@ -105,7 +105,7 @@ nothrow:
         }
     }
 
-    final MouseCursor getCurrentMouseCursor() nothrow @nogc
+    final MouseCursor getCurrentMouseCursor(int x, int y) nothrow @nogc
     {
         MouseCursor cursor = MouseCursor.pointer;
 
@@ -114,13 +114,13 @@ nothrow:
         {
             if (!(mouseOver is null))
             {
-                cursor = mouseOver.CursorWhenMouseOver;
+                cursor = mouseOver.cursorWhenMouseOver(x - mouseOver.position().min.x, y - mouseOver.position().min.y);
             }
         }
 
         if(!(dragged is null))
         {
-            cursor = dragged.CursorWhenDragged;
+            cursor = dragged.cursorWhenDragged(x - dragged.position().min.x, y - dragged.position().min.y);
         }        
 
         return cursor;

@@ -97,8 +97,6 @@ nothrow:
         _localRectsBuf = makeVec!box2i();
         _children = makeVec!UIElement();
         _zOrderedChildren = makeVec!UIElement();
-        _cursorWhenDragged = MouseCursor.pointer;
-        _cursorWhenMouseOver = MouseCursor.pointer;
     }
 
     ~this()
@@ -786,11 +784,15 @@ nothrow:
         }
     }
 
-    @property MouseCursor CursorWhenDragged() { return _cursorWhenDragged; }
-    @property MouseCursor CursorWhenDragged(MouseCursor value) { return _cursorWhenDragged = value; }
+    MouseCursor cursorWhenDragged(int x, int y) 
+    { 
+        return MouseCursor.pointer;
+    }
 
-    @property MouseCursor CursorWhenMouseOver() { return _cursorWhenMouseOver; }
-    @property MouseCursor CursorWhenMouseOver(MouseCursor value) { return _cursorWhenMouseOver = value; }
+    MouseCursor cursorWhenMouseOver(int x, int y)
+    {
+        return MouseCursor.pointer;
+    }
 
 protected:
 
@@ -889,9 +891,6 @@ private:
 
     /// Sorted children in Z-lexical-order (sorted by Z, or else increasing index in _children).
     Vec!UIElement _zOrderedChildren;
-
-    MouseCursor _cursorWhenDragged;
-    MouseCursor _cursorWhenMouseOver;
 
     // Sort children in ascending z-order
     // Input: unsorted _children
