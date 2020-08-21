@@ -20,7 +20,6 @@ import dplug.graphics.color;
 import dplug.graphics.image;
 import dplug.graphics.draw;
 import dplug.graphics.drawex;
-import dplug.gui.element;
 
 nothrow:
 @nogc:

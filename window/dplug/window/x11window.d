@@ -88,6 +88,7 @@ public:
             _useXEmbed = false;
 
         createX11Window(parentWindow, width, height);
+        createHiddenCursor();
 
         _timeAtCreationInUs = getTimeUs();
         _lastMeasturedTimeInUs = _timeAtCreationInUs;
@@ -261,8 +262,16 @@ private:
     derelict.x11.Xlib.GC _graphicGC;
     XImage* _graphicImage;
 
-    /// Last X11 cursor font used
-    int _lastX11CursorFont;
+    // Last MouseCursor used. This is to avoid updating the cursor
+    // more often than necessary
+    // Default value of pointer
+    MouseCursor _lastMouseCursor = MouseCursor.pointer;
+
+    // empty pixmap for creating an invisible cursor
+    Pixmap _bitmapNoData;
+
+    // custom defined cursor that has empty data to appear invisible
+    Cursor _hiddenCursor;
 
     //
     // </X11 resources>
@@ -336,16 +345,17 @@ private:
 
     void setCursor()
     {
-        MouseCursor cursor = _listener.getMouseCursor(_lastMouseX, _lastMouseY);
-        immutable int x11CursorFont = convertCursorToX11CursorFont(cursor);
-        if(_lastX11CursorFont != x11CursorFont)
+        MouseCursor cursor = _listener.getMouseCursor();
+
+        if(cursor != _lastMouseCursor)
         {
             lockX11();
-            auto c = XCreateFontCursor(_display, x11CursorFont); 
+            immutable int x11CursorFont = convertCursorToX11CursorFont(cursor);
+            auto c = cursor == MouseCursor.hidden ? _hiddenCursor : XCreateFontCursor(_display, x11CursorFont); 
             XDefineCursor(_display, _windowID, c);
             unlockX11();
         }
-        _lastX11CursorFont = x11CursorFont;
+        _lastMouseCursor = cursor;
     }
 
     void processEvent(XEvent* event)
@@ -634,6 +644,8 @@ private:
     {
         // release all X11 resource allocated by createX11Window
         lockX11();
+        XFreeCursor(_display, _hiddenCursor);
+        XFreePixmap(_display, _bitmapNoData);
         XFreeColormap(_display, _cmap);
         XFreeGC(_display, _graphicGC);
         freeBackbuffer();
@@ -667,6 +679,16 @@ private:
              | ButtonPressMask
              | PointerMotionMask
              | EnterWindowMask;
+    }
+
+    void createHiddenCursor()
+    {
+        XColor black;
+        static char[] noData = [0,0,0,0,0,0,0,0];
+        black.red = black.green = black.blue = 0;
+
+        _bitmapNoData = XCreateBitmapFromData(_display, _windowID, noData.ptr, 8, 8);
+        _hiddenCursor = XCreatePixmapCursor(_display, _bitmapNoData, _bitmapNoData, &black, &black, 0, 0);
     }
 }
 

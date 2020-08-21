@@ -219,7 +219,7 @@ nothrow @nogc:
     void onAnimate(double dt, double time);
 
     /// Must be called to get the current mouse cursor state for the plugin
-    MouseCursor getMouseCursor(int x, int y);
+    MouseCursor getMouseCursor();
 }
 
 /// Various backends for windowing.
