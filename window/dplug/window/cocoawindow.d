@@ -441,6 +441,7 @@ private:
                         break;
                     case MouseCursor.horizontalResize:
                         nsCursor = NSCursor.resizeLeftRightCursor();
+                        break;
                     case MouseCursor.pointer:
                     default:
                         nsCursor = NSCursor.arrowCursor();
