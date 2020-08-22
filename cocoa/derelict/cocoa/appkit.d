@@ -701,6 +701,36 @@ nothrow @nogc:
         return NSCursor( (cast(fun_t)objc_msgSend)(getClassID(), sel!"arrowCursor") );
     }
 
+    static NSCursor crosshairCursor()
+    {
+        alias fun_t = extern(C) id function (id, SEL) nothrow @nogc;
+        return NSCursor( (cast(fun_t)objc_msgSend)(getClassID(), sel!"crosshairCursor") );
+    }
+
+    static NSCursor pointingHandCursor()
+    {
+        alias fun_t = extern(C) id function (id, SEL) nothrow @nogc;
+        return NSCursor( (cast(fun_t)objc_msgSend)(getClassID(), sel!"pointingHandCursor") );
+    }
+
+    static NSCursor openHandCursor()
+    {
+        alias fun_t = extern(C) id function (id, SEL) nothrow @nogc;
+        return NSCursor( (cast(fun_t)objc_msgSend)(getClassID(), sel!"openHandCursor") );
+    }
+
+    static NSCursor resizeLeftRightCursor()
+    {
+        alias fun_t = extern(C) id function (id, SEL) nothrow @nogc;
+        return NSCursor( (cast(fun_t)objc_msgSend)(getClassID(), sel!"resizeLeftRightCursor") );
+    }
+
+    static NSCursor resizeUpDownCursor()
+    {
+        alias fun_t = extern(C) id function (id, SEL) nothrow @nogc;
+        return NSCursor( (cast(fun_t)objc_msgSend)(getClassID(), sel!"resizeUpDownCursor") );
+    }
+
     static void hide()
     {
         alias fun_t = extern(C) id function (id, SEL) nothrow @nogc;
