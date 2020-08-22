@@ -238,6 +238,10 @@ version(Windows)
                     else
                         return 0;
                 }
+                case WM_SETCURSOR:
+                {
+                    return setMouseCursor();
+                }
 
                 case WM_MOUSEMOVE:
                     {
@@ -249,6 +253,7 @@ version(Windows)
                         _listener.onMouseMove(newMouseX, newMouseY, dx, dy, getMouseState(wParam));
                         _mouseX = newMouseX;
                         _mouseY = newMouseY;
+                        setMouseCursor();
                         return 0;
                     }
 
@@ -532,6 +537,11 @@ version(Windows)
 
         bool shiftPressed = false;
 
+        // Last MouseCursor used. This is to avoid updating the cursor
+        // more often than necessary
+        // Default value of pointer
+        MouseCursor _lastMouseCursor = MouseCursor.pointer;
+
         /// Propagates mouse events.
         /// Returns: true if event handled.
         bool mouseClick(int mouseX, int mouseY, MouseButton mb, bool isDoubleClick, WPARAM wParam)
@@ -555,6 +565,43 @@ version(Windows)
         void generateClassName() nothrow @nogc
         {
             generateNullTerminatedRandomUUID!wchar(_className, "dplug_"w);
+        }
+
+        int setMouseCursor()
+        {
+            MouseCursor cursor = _listener.getMouseCursor();
+
+            if(cursor != _lastMouseCursor)
+            {
+                CURSORINFO pci;
+                pci.cbSize = CURSORINFO.sizeof;
+                GetCursorInfo(&pci);
+
+                // If the cursor we want to display is "hidden" and the cursor is being shown
+                // then we will hide the cursor.
+                // If the cursor we want to display is anything other than "hidden" and the
+                // cursor is being hidden already, we will set it to show 
+                // (this triggers a WM_SETCURSOR which will call this to set the cursor)
+                // lastly if the above conditions are false then we will set the cursor
+                if(cursor == MouseCursor.hidden && pci.flags == CURSOR_SHOWING)
+                {
+                    ShowCursor(false);
+                }
+                else if(cursor != MouseCursor.hidden && pci.flags == 0)
+                {
+                    ShowCursor(true);
+                }
+                else
+                {
+                    auto cursorId = mouseCursorToCursorId(cursor);
+                    HCURSOR hc = LoadCursorA(NULL, cast(const(char)*)cursorId);
+                    SetCursor(hc);
+                }
+                _lastMouseCursor = cursor;
+                return 1;
+            }
+
+            return 0;
         }
     }
 
@@ -653,5 +700,26 @@ version(Windows)
                            (wParam & MK_CONTROL) != 0,
                            (wParam & MK_SHIFT) != 0,
                            keyState(VK_MENU) < 0 );
+    }
+
+    HCURSOR mouseCursorToCursorId(MouseCursor cursor)
+    {
+        switch(cursor)
+        {
+
+            case cursor.linkSelect:
+            case cursor.drag:
+                return IDC_CROSS;
+            case cursor.move:
+                return IDC_HAND;
+            case cursor.horizontalResize:
+                return IDC_SIZEWE;
+            case cursor.verticalResize:
+                return IDC_SIZENS;
+            case cursor.pointer:
+            default:
+                return IDC_ARROW;
+        }
+        
     }
 }
