@@ -784,6 +784,26 @@ nothrow:
         }
     }
 
+    MouseCursor cursorWhenDragged() 
+    { 
+        return _cursorWhenDragged;
+    }
+
+    void setCursorWhenDragged(MouseCursor mouseCursor)
+    {
+        _cursorWhenDragged = mouseCursor;
+    }
+
+    MouseCursor cursorWhenMouseOver()
+    {
+        return _cursorWhenMouseOver;
+    }
+
+    void setCursorWhenMouseOver(MouseCursor mouseCursor)
+    {
+        _cursorWhenMouseOver = mouseCursor;
+    }
+
 protected:
 
     /// Raw layer draw method. This gives you 1 surface cropped by  _position for drawing.
@@ -881,6 +901,12 @@ private:
 
     /// Sorted children in Z-lexical-order (sorted by Z, or else increasing index in _children).
     Vec!UIElement _zOrderedChildren;
+
+    /// The mouse cursor to display when this element is being dragged
+    MouseCursor _cursorWhenDragged = MouseCursor.pointer;
+
+    /// The mouse cursor to display when this element is being moused over
+    MouseCursor _cursorWhenMouseOver = MouseCursor.pointer;
 
     // Sort children in ascending z-order
     // Input: unsorted _children
