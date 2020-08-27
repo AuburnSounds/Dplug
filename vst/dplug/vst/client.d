@@ -83,21 +83,26 @@ template VSTEntryPoint(alias ClientClass)
             "}\n";
     }
 
+    version(unittest)
+        enum entry_main_if_no_unittest = "";
+    else
+        enum entry_main_if_no_unittest = entry_main;
+
     version(OSX)
         // OSX has two VST entry points
-        const char[] VSTEntryPoint =entry_VSTPluginMain ~ entry_main_macho;
+        const char[] VSTEntryPoint = entry_VSTPluginMain ~ entry_main_macho;
     else version(Windows)
     {
         static if (size_t.sizeof == int.sizeof)
             // 32-bit Windows needs a legacy "main" entry point
-            const char[] VSTEntryPoint = entry_VSTPluginMain ~ entry_main;
+            const char[] VSTEntryPoint = entry_VSTPluginMain ~ entry_main_if_no_unittest;
         else
             // 64-bit Windows does not
             const char[] VSTEntryPoint = entry_VSTPluginMain;
 
     }
     else version(linux)
-        const char[] VSTEntryPoint = entry_VSTPluginMain ~ entry_main;
+        const char[] VSTEntryPoint = entry_VSTPluginMain ~ entry_main_if_no_unittest;
     else
         static assert(false);
 }
