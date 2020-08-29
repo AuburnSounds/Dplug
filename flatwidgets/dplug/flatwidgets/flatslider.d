@@ -51,6 +51,15 @@ nothrow:
         return _sensivity = sensivity;
     }
 
+    override void reflow(box2i availableSpace)
+    {
+        _position = availableSpace;
+
+        _filmstripScaled = mallocNew!(OwnedImage!RGBA)(cast(int)(_position.width), cast(int)(_position.height * _numFrames));
+        resizeBilinear(_filmstrip.toRef(), _filmstripScaled.toRef());
+    }
+
+
     // TODO: it doesn't seem the animation is used when drawing
     override void onAnimate(double dt, double time) nothrow @nogc
     {
@@ -66,7 +75,7 @@ nothrow:
     override void onDrawRaw(ImageRef!RGBA rawMap, box2i[] dirtyRects)
     {
         setCurrentImage();
-        auto _currentImage = _filmstrip.crop(box2i(_imageX1, _imageY1, _imageX2, _imageY2));
+        auto _currentImage = _filmstripScaled.crop(box2i(_imageX1, _imageY1, _imageX2, _imageY2));
         foreach(dirtyRect; dirtyRects)
         {
             auto croppedRawIn = _currentImage.crop(dirtyRect);
@@ -101,10 +110,10 @@ nothrow:
         if(currentFrame > 59) currentFrame = 59;
 
         _imageX1 = 0;
-        _imageY1 = (_filmstrip.h / _numFrames) * currentFrame;
+        _imageY1 = (_filmstripScaled.h / _numFrames) * currentFrame;
 
-        _imageX2 = _filmstrip.w;
-        _imageY2 = _imageY1 + (_filmstrip.h / _numFrames);
+        _imageX2 = _filmstripScaled.w;
+        _imageY2 = _imageY1 + (_filmstripScaled.h / _numFrames);
 
     }
 
@@ -229,6 +238,7 @@ protected:
     Parameter _param;
 
     OwnedImage!RGBA _filmstrip;
+    OwnedImage!RGBA _filmstripScaled;
     int _numFrames;
     int _imageX1, _imageX2, _imageY1, _imageY2;
     int currentFrame;

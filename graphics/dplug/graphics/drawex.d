@@ -1019,8 +1019,6 @@ OwnedImage!RGBA loadOwnedImage(in void[] imageData)
     return loaded;
 }
 
-
-
 /// Loads two different images:
 /// - the 1st is the RGB channels
 /// - the 2nd is interpreted as greyscale and fetch in the alpha channel of the result.
@@ -1060,3 +1058,65 @@ OwnedImage!RGBA loadImageSeparateAlpha(in void[] imageDataRGB, in void[] imageDa
     return loaded;
 }
 
+/// Resizes an image from the source size to the destination size:
+/// Uses bilinear interpolation to stretch or shirnk the image
+/// It shouldnt matter what size the src or the dest image are.
+/// See http://www.tech-algorithm.com/articles/bilinear-image-scaling/
+void resizeBilinear(COLOR)(ImageRef!COLOR src, ImageRef!COLOR dest)
+{
+    COLOR a, b, c, d;
+    int x, y;
+    float xRatio = (cast(float)(src.w-1))/dest.w ;
+    float yRatio = (cast(float)(src.h-1))/dest.h ;
+    float xDiff, yDiff;
+
+    int offset = 0;
+
+    for (int i = 0; i < dest.h; i++)
+    {
+        for(int j = 0; j < dest.w; ++j)
+        {
+            x = cast(int)(xRatio * j);
+            y = cast(int)(yRatio * i);
+            xDiff = (xRatio * j) - x;
+            yDiff = (yRatio * i) - y;
+
+            a = src[x, y];
+            b = src[x + 1, y];
+            c = src[x, y + 1];
+            d = src[x + 1, y + 1];
+
+            auto coefA = (1-xDiff) * (1-yDiff);
+            auto coefB = xDiff * (1-yDiff);
+            auto coefC = yDiff * (1-xDiff);
+            auto coefD = xDiff * yDiff;
+            
+            static if(is(COLOR: RGBA))
+            {
+                // alpha element
+                auto alpha = cast(ubyte)((a.a) * coefA + (b.a) * coefB +
+                    (c.a) * coefC   + (d.a) * coefD);
+
+                // blue element
+                auto blue = cast(ubyte)((a.b) * coefA + (b.b) * coefB +
+                    (c.b) * coefC   + (d.b) * coefD);
+
+                // green element
+                auto green = cast(ubyte)((a.g) * coefA + (b.g ) * coefB +
+                        (c.g) * coefC   + (d.g) * coefD);
+
+                // red element
+                auto red = cast(ubyte)((a.r) * coefA + (b.r) * coefB +
+                    (c.r) * coefC   + (d.r) * coefD);
+                
+                dest[j, i] = COLOR(red, green, blue, alpha);
+            }
+            static if(is(COLOR: L16))
+            {
+                auto l = cast(ushort)((a.l) * coefA + (b.l) * coefB +
+                    (c.l) * coefC   + (d.l) * coefD);
+                dest[j, i] = COLOR(l);
+            }
+        }
+    }
+}

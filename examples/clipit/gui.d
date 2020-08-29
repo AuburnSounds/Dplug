@@ -22,10 +22,16 @@ nothrow:
 
     ClipitClient _client;
 
+    UIFilmstripKnob inputGainKnob;
+    UIFilmstripKnob clipKnob;
+    UIFilmstripKnob outputGainKnob;
+    UIFilmstripKnob mixKnob;
+    UIImageSwitch modeSwitch;
+
     this(ClipitClient client)
     {
         _client = client;
-        super(500, 500); // size
+        super(_initialWidth, _initialHeight); // size
 
         // Sets the number of pixels recomputed around dirtied controls.
         // Since we aren't using pbr we can set this value to 0 to save
@@ -44,39 +50,16 @@ nothrow:
         // Creates all widets and adds them as children to the GUI
         // widgets are not visible until their positions have been set
         int numFrames = 101;
-        UIFilmstripKnob inputGainKnob = mallocNew!UIFilmstripKnob(context(), cast(FloatParameter) _client.param(paramInputGain), knobImage, numFrames);
+        inputGainKnob = mallocNew!UIFilmstripKnob(context(), cast(FloatParameter) _client.param(paramInputGain), knobImage, numFrames);
         addChild(inputGainKnob);
-        UIFilmstripKnob clipKnob = mallocNew!UIFilmstripKnob(context(), cast(FloatParameter) _client.param(paramClip), knobImage, numFrames);
+        clipKnob = mallocNew!UIFilmstripKnob(context(), cast(FloatParameter) _client.param(paramClip), knobImage, numFrames);
         addChild(clipKnob);
-        UIFilmstripKnob outputGainKnob = mallocNew!UIFilmstripKnob(context(), cast(FloatParameter) _client.param(paramOutputGain), knobImage, numFrames);
+        outputGainKnob = mallocNew!UIFilmstripKnob(context(), cast(FloatParameter) _client.param(paramOutputGain), knobImage, numFrames);
         addChild(outputGainKnob);
-        UIFilmstripKnob mixKnob = mallocNew!UIFilmstripKnob(context(), cast(FloatParameter) _client.param(paramMix), knobImage, numFrames);
+        mixKnob = mallocNew!UIFilmstripKnob(context(), cast(FloatParameter) _client.param(paramMix), knobImage, numFrames);
         addChild(mixKnob);
-        UIImageSwitch modeSwitch = mallocNew!UIImageSwitch(context(), cast(BoolParameter) _client.param(paramMode), switchOnImage, switchOffImage);
+        modeSwitch = mallocNew!UIImageSwitch(context(), cast(BoolParameter) _client.param(paramMode), switchOnImage, switchOffImage);
         addChild(modeSwitch);
-
-        // Builds the UI hierarchy
-        // Note: when Dplug has resizeable UI, all positionning is going 
-        // to move into a reflow() override.
-        // Meanwhile, we hardcode each position.
-        immutable int knobX1 = 70;
-        immutable int knobX2 = 308;
-        immutable int knobY1 = 101;
-        immutable int knobY2 = 320;
-        immutable int knobWidth = 128;
-        immutable int knobHeight = 128;
-
-        inputGainKnob.position = box2i(knobX1, knobY1, knobX1 + knobWidth, knobY1 + knobHeight);
-        clipKnob.position = box2i(knobX2, knobY1, knobX2 + knobWidth, knobY1 + knobHeight);
-        outputGainKnob.position = box2i(knobX1, knobY2, knobX1 + knobWidth, knobY2 + knobHeight);
-        mixKnob.position = box2i(knobX2, knobY2, knobX2 + knobWidth, knobY2 + knobHeight);
-
-        immutable int switchX = 380;
-        immutable int switchY = 28;
-        immutable int switchWidth = 51;
-        immutable int switchHeight = 21;
-
-        modeSwitch.position = box2i(switchX, switchY, switchX + switchWidth, switchY  + switchHeight);
     }
 
     // This is just to show how to use with dplug:canvas
@@ -105,6 +88,58 @@ nothrow:
         }
 
     }
+
+    override void reflow(box2i availableSpace)
+    {
+        super.reflow(availableSpace);
+        _position = availableSpace;
+
+        // Builds the UI hierarchy
+        immutable int W = _position.width;
+        immutable int H = _position.height;
+        
+        // Calculate weighted positions based on the width and height of the position
+        immutable int knobX1 = cast(int)(0.14 * W);
+        immutable int knobX2 = cast(int)(0.616 * W);
+        immutable int knobY1 = cast(int)(0.202 * H);
+        immutable int knobY2 = cast(int)(0.64 * H);
+        immutable int knobWidth = cast(int)(0.256 * W);
+        immutable int knobHeight = cast(int)(0.256 * H);
+
+        inputGainKnob.reflow(box2i(knobX1, knobY1, knobX1 + knobWidth, knobY1 + knobHeight));
+        clipKnob.reflow(box2i(knobX2, knobY1, knobX2 + knobWidth, knobY1 + knobHeight));
+        outputGainKnob.reflow(box2i(knobX1, knobY2, knobX1 + knobWidth, knobY2 + knobHeight));
+        mixKnob.reflow(box2i(knobX2, knobY2, knobX2 + knobWidth, knobY2 + knobHeight));
+
+        immutable int switchX = cast(int)(0.76 * W);
+        immutable int switchY = cast(int)(0.056 * H);
+        immutable int switchWidth = cast(int)(0.1 * W);
+        immutable int switchHeight = cast(int)(0.04 * H);
+
+        modeSwitch.reflow(box2i(switchX, switchY, switchX + switchWidth, switchY  + switchHeight));
+    }
+
+    /// This on only a temporary addition for testing the resizing ability of dplug
+    override bool onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
+    {
+        if(isDoubleClick)
+        {
+            if(_position.width == 1000)
+            {
+                _client.hostCommand().requestResize(_initialWidth, _initialHeight);
+            }
+            else
+            {
+                _client.hostCommand().requestResize(_initialWidth * 2, _initialHeight * 2);
+            }
+            return true;
+        }
+        return false;
+    }
+
     // this struct object should not be since it contains everything rasterizer-related
     Canvas canvas; 
+
+private:
+    int _initialWidth = 500, _initialHeight = 500;
 }

@@ -136,6 +136,12 @@ nothrow:
             colorCorrection.setLiftGammaGainContrastRGB(colorCorrectionMatrix);
             colorCorrection.position = box2i.rectangle(0, 0, W, H);
         }
+         _client.hostCommand().requestResize(W * 2, H *2);
+    }
+
+    override void reflow(box2i availableSpace)
+    {
+        _position = availableSpace;
     }
 
     ~this()

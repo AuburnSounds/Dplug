@@ -36,12 +36,12 @@ nothrow:
         _param = param;
         _sensitivity = sensitivity;
         _filmstrip = mipmap;
+        _filmstripScaled = mallocNew!(OwnedImage!RGBA)(_filmstrip.w, _filmstrip.h);
         _numFrames = numFrames;
         _knobWidth = _filmstrip.w;
         _knobHeight = _filmstrip.h / _numFrames;
         _param.addListener(this);
         _disabled = false;
-
     }
 
     ~this()
@@ -66,10 +66,18 @@ nothrow:
         _disabled = true;
     }
 
+    override void reflow(box2i availableSpace)
+    {
+        _position = availableSpace;
+
+        _filmstripScaled = mallocNew!(OwnedImage!RGBA)(cast(int)(_position.width), cast(int)(_position.height * _numFrames));
+        resizeBilinear(_filmstrip.toRef(), _filmstripScaled.toRef());
+    }
+
     override void onDrawRaw(ImageRef!RGBA rawMap, box2i[] dirtyRects)
     {
         setCurrentImage();
-        auto _currentImage = _filmstrip.crop(box2i(_imageX1, _imageY1, _imageX2, _imageY2));
+        auto _currentImage = _filmstripScaled.crop(box2i(_imageX1, _imageY1, _imageX2, _imageY2));
         foreach(dirtyRect; dirtyRects)
         {
             auto croppedRawIn = _currentImage.crop(dirtyRect);
@@ -108,11 +116,10 @@ nothrow:
         if(currentFrame < 0) currentFrame = 0;
 
         _imageX1 = 0;
-        _imageY1 = (_filmstrip.h / _numFrames) * currentFrame;
+        _imageY1 = (_filmstripScaled.h / _numFrames) * currentFrame;
 
-        _imageX2 = _filmstrip.w;
-        _imageY2 = _imageY1 + (_filmstrip.h / _numFrames);
-
+        _imageX2 = _filmstripScaled.w;
+        _imageY2 = _imageY1 + (_filmstripScaled.h / _numFrames);
     }
 
     override bool onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
@@ -211,13 +218,13 @@ nothrow:
     override void onEndParameterEdit(Parameter sender)
     {
     }
-
 protected:
 
     /// The parameter this knob is linked with.
     FloatParameter _param;
 
     OwnedImage!RGBA _filmstrip;
+    OwnedImage!RGBA _filmstripScaled;
     OwnedImage!RGBA _faderFilmstrip;
     OwnedImage!RGBA _knobGreenFilmstrip;
     ImageRef!RGBA _currentImage;

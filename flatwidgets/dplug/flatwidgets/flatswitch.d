@@ -40,7 +40,6 @@ nothrow:
         assert(_onImage.w == _offImage.w);
         _width = _onImage.w;
         _height = _onImage.h;
-
     }
 
     ~this()
@@ -53,13 +52,23 @@ nothrow:
       return unsafeObjectCast!BoolParameter(_param).valueAtomic();
     }
 
+    override void reflow(box2i availableSpace)
+    {
+        _position = availableSpace;
+
+        _onImageScaled = mallocNew!(OwnedImage!RGBA)(cast(int)(_position.width), cast(int)(_position.height));
+        _offImageScaled = mallocNew!(OwnedImage!RGBA)(cast(int)(_position.width), cast(int)(_position.height));
+        resizeBilinear(_onImage.toRef(), _onImageScaled.toRef());
+        resizeBilinear(_offImage.toRef(), _offImageScaled.toRef());
+    }
+
     override void onDrawRaw(ImageRef!RGBA rawMap, box2i[] dirtyRects)
     {
-          auto _currentImage = getState() ? _onImage : _offImage;
+          auto _currentImage = getState() ? _onImageScaled.toRef() : _offImageScaled.toRef();
           foreach(dirtyRect; dirtyRects)
           {
-              auto croppedRawIn = _currentImage.crop(dirtyRect);
-              auto croppedRawOut = rawMap.crop(dirtyRect);
+              auto croppedRawIn = _currentImage.cropImageRef(dirtyRect);
+              auto croppedRawOut = rawMap.cropImageRef(dirtyRect);
 
               int w = dirtyRect.width;
               int h = dirtyRect.height;
@@ -101,7 +110,7 @@ nothrow:
 
     override void onMouseEnter()
     {
-        setDirtyWhole();
+        
     }
 
     override void onMouseMove(int x, int y, int dx, int dy, MouseState mstate)
@@ -110,7 +119,7 @@ nothrow:
 
     override void onMouseExit()
     {
-        setDirtyWhole();
+        
     }
 
     override void onBeginDrag()
@@ -144,6 +153,8 @@ protected:
     bool _state;
     OwnedImage!RGBA _onImage;
     OwnedImage!RGBA _offImage;
+    OwnedImage!RGBA _onImageScaled;
+    OwnedImage!RGBA _offImageScaled;
     int _width;
     int _height;
 }

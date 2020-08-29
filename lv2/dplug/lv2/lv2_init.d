@@ -23,6 +23,7 @@
 module dplug.lv2.lv2_init;
 
 import core.stdc.stdint;
+import core.stdc.string;
 
 import dplug.core.nogc;
 import dplug.core.runtime;
@@ -167,7 +168,7 @@ void build_all_lv2_descriptors(ClientClass)() nothrow @nogc
             instantiate:    &instantiateUI,
             cleanup:        &cleanupUI,
             port_event:     &port_eventUI,
-            extension_data: null// &extension_dataUI TODO support it for real
+            extension_data: &extensionDataUI
         };
         lv2UIDescriptor = descriptor;
     }
@@ -314,10 +315,28 @@ extern(C) nothrow @nogc
         debug(debugLV2Client) debugLog("<port_event");
     }
 
-    const (void)* extension_dataUI(const char* uri)
+    const (void)* extensionDataUI(const char* uri)
     {
+        void* feature = null;
         debug(debugLV2Client) debugLog(">extension_dataUI");
+        static const LV2UI_Resize lv2UIResize = LV2UI_Resize(cast(void*)null, &uiResize);
+        if (!strcmp(uri, LV2_UI__resize)) {
+            feature = cast(void*)&lv2UIResize;
+        }
         debug(debugLV2Client) debugLog("<extension_dataUI");
-        return null;
+        return feature;
+    }
+
+    /// This is currently not fully implemented
+    /// According to the LV2 IRC channel, this extension is planned to be
+    /// deprecated.  The only known host that uses this extension is
+    /// synthpod.  LV2 plug-ins should respond directly to resize
+    /// events from the window.
+    int uiResize(LV2UI_Feature_Handle handle, int width, int height)
+    {
+        ScopedForeignCallback!(false, true) scopedCallback;
+        scopedCallback.enter();
+        LV2Client lv2client = cast(LV2Client)handle;
+        return 0;
     }
 }
