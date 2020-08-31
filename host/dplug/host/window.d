@@ -91,4 +91,9 @@ nothrow:
     void onAnimate(double dt, double time)
     {
     }
+
+    MouseCursor getMouseCursor()
+    {
+        return MouseCursor.init;
+    }
 }
