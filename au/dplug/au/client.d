@@ -343,7 +343,7 @@ private:
         char[16] label; // pretty name
         AudioChannelLayoutTag[1] tagsBuffer;
 
-        AudioChannelLayoutTag[] getSupportedChannelLayoutTags() nothrow @nogc
+        AudioChannelLayoutTag[] getSupportedChannelLayoutTags() return nothrow @nogc
         {
             // a bit rigid right now, could be useful to support mono systematically?
             if (numPlugChannels == 1)

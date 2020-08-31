@@ -1,0 +1,167 @@
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Correct images with lift-gamma-gain-contrast</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css">
+    <link href='https://fonts.googleapis.com/css?family=Fira+Sans:400,500,400italic' rel='stylesheet' type='text/css'>
+    <style>
+        * { box-sizing: border-box; }
+
+        .flex-container 
+        {
+            height: 100%;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        input { display: block;}
+
+        html
+        {
+            font-family: 'Fira Sans', sans-serif;
+            font-size: 14px;
+        }
+
+        body 
+        { 
+            color: white;
+            background: #222;
+        }
+
+        .white { color: white; }
+        .red   { color: #ffacac; }
+        .green { color: #6ede6e; }
+        .blue  { color: #9c9cff; }
+
+        .fullscreen
+        {
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+        }
+
+        #full-image
+        {
+            visibility: hidden;
+        }
+
+        #button-panels
+        {
+            display: block;
+            position: fixed;
+            left: 0rem;
+            top: 0rem;
+            bottom: 0rem;
+            padding: 1rem 1rem;
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+        }
+
+        .button-panel
+        {
+            padding: 0.2rem 1rem; 
+            display: block;
+        }
+       
+        .value-display
+        {
+            display: block;
+            text-align: left;
+            padding: 0;
+            margin: 0.2rem 0 0 0;
+        }
+
+        .slider
+        {
+            padding: 0;
+            margin: 0 0 0.1rem 0;
+            max-width: 15rem;
+        }
+
+        #curve-display
+        {
+            width: 13rem;
+            height: 13rem;
+            display: block;
+            position: fixed;
+            right: 1rem;
+            top: 1rem;
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+    <img id="full-image" src="" alt="">
+    <div class="flex-container">
+        <input id="file-selector" type="file" onchange="uploadFile()" />
+    </div>
+
+    <div id="button-panels">
+        <div class="button-panel">
+            <span id="liftV" class="white value-display">Lift</span>
+            <input class="white slider" id="lift" type="range" min="-0.15" max="0.15" step="0.01" value="0"/>
+
+            <div id="gammaV" class="white value-display">Gamma</div>
+            <input class="white slider" id="gamma" type="range" min="-0.15" max="0.15" step="0.01" value="0"/>
+
+            <div id="gainV" class="white value-display">Gain</div>
+            <input class="white slider" id="gain" type="range" min="-0.15" max="0.15" step="0.01" value="0"/>
+
+            <div id="contrastV" class="white value-display">Contrast</div>
+            <input class="white slider" id="contrast" type="range" min="-0.5" max="0.5" step="0.01" value="0.0"/>
+        </div>
+
+        <div class="button-panel">
+            <div id="liftRV" class="red value-display">Lift</div>
+            <input class="red slider" id="liftR" type="range" min="-0.15" max="0.15" step="0.01" value="0"/>
+
+            <div id="gammaRV" class="red value-display">Gamma</div>
+            <input class="red slider" id="gammaR" type="range" min="-0.15" max="0.15" step="0.01" value="0"/>
+
+            <div id="gainRV" class="red value-display">Gain</div>
+            <input class="red slider" id="gainR" type="range" min="-0.15" max="0.15" step="0.01" value="0"/>
+
+            <div id="contrastRV" class="red value-display">Contrast</div>
+            <input class="red slider" id="contrastR" type="range" min="-0.5" max="0.5" step="0.01" value="0"/>
+        </div>
+
+        <div class="button-panel">
+            <div id="liftGV" class="green value-display">Lift</div>
+            <input class="green slider" id="liftG" type="range" min="-0.15" max="0.15" step="0.01" value="0"/>
+
+            <div id="gammaGV" class="green value-display">Gamma</div>
+            <input class="green slider" id="gammaG" type="range" min="-0.15" max="0.15" step="0.01" value="0"/>            
+
+            <div id="gainGV" class="green value-display">Gain</div>
+            <input class="green slider" id="gainG" type="range" min="-0.15" max="0.15" step="0.01" value="0"/>
+
+            <div id="contrastGV" class="green value-display">Contrast</div>
+            <input class="green slider" id="contrastG" type="range" min="-0.5" max="0.5" step="0.01" value="0"/>
+        </div>
+
+        <div class="button-panel">
+            <div id="liftBV" class="blue value-display">Lift</div>
+            <input class="blue slider" id="liftB" type="range" min="-0.15" max="0.15" step="0.01" value="0"/>
+
+            <div id="gammaBV" class="blue value-display">Gamma</div>
+            <input class="blue slider" id="gammaB" type="range" min="-0.15" max="0.15" step="0.01" value="0"/>
+
+            <div id="gainBV" class="blue value-display">Gain</div>
+            <input class="blue slider" id="gainB" type="range" min="-0.15" max="0.15" step="0.01" value="0"/>
+
+            <div id="contrastBV" class="blue value-display">Contrast</div>
+            <input class="blue slider" id="contrastB" type="range" min="-0.5" max="0.5" step="0.01" value="0"/>
+        </div>
+    </div>
+    <canvas id="curve-display" width="256" height="256"></canvas>
+    <script src="glfx.js"></script>
+    <script src="lggc.js"></script>
+</body>
+</html>

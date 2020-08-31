@@ -6,7 +6,7 @@
     "dependencies":
     {
         "colorize": "~>1.0",
-        "dmarkdown": "~>0.2",
+        "commonmark-d": "~>1.0",
         "arsd-official:dom": "~>4.0",
         "dplug:client": { "path": "../.." }
     }

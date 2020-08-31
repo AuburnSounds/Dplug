@@ -180,11 +180,9 @@ private:
                 } 
 
                 // Load destination pixels
-
-                __m128i d0 = _mm_loadu_si64 (ptr);
-                d0 = _mm_unpacklo_epi8 (d0, XMZERO);
-                __m128i d1 = _mm_loadu_si64 (ptr+2);
-                d1 = _mm_unpacklo_epi8 (d1, XMZERO);
+                __m128i d01 = _mm_loadu_si128(cast(__m128i*) ptr);
+                __m128i d0 = _mm_unpacklo_epi8 (d01, XMZERO);
+                __m128i d1 = _mm_unpackhi_epi8 (d01, XMZERO);
 
                 // muliply source alpha & coverage
 

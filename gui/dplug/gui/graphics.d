@@ -298,6 +298,11 @@ nothrow:
         {
             outer.animate(dt, time);
         }
+
+        override MouseCursor getMouseCursor()
+        {
+            return outer._uiContext.getCurrentMouseCursor();
+        }
     }
 
     /// Tune this to tune the trade-off between light quality and speed.

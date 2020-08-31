@@ -3,16 +3,38 @@
 // (c) 2005-2018, Steinberg Media Technologies GmbH, All Rights Reserved
 // (c) 2018, Guillaume Piolat (contact@auburnsounds.com)
 //-----------------------------------------------------------------------------
-// 
-// This Software Development Kit is licensed under the terms of the General 
+//
+// This Software Development Kit is licensed under the terms of the General
 // Public License (GPL) Version 3.
-// 
+//
 // Details of that license can be found at: www.gnu.org/licenses/gpl-3.0.html
 //-----------------------------------------------------------------------------
 module dplug.vst3.ivstaudioprocessor;
 
 import dplug.vst3.ftypes;
 
+// Windows 64-bit seemingly need a slightly different ABI (unless the macOS one is wrong in the first place)
+// The problem being that there is no direct pragma(pack) equivalent in D, would be simpler to have tool that displays the layout
+version(Windows)
+{
+    static if (size_t.sizeof == 8)
+    {
+        enum bool eventABIFix = true;
+    }
+    else
+        enum bool eventABIFix = false;
+}
+else version(OSX)
+{
+    static if (size_t.sizeof == 8)
+    {
+        enum bool eventABIFix = true;
+    }
+    else
+        enum bool eventABIFix = false;
+}
+else
+    enum bool eventABIFix = false;
 
 immutable string kVstAudioEffectClass = "Audio Module Class";
 
@@ -188,7 +210,7 @@ nothrow:
 @nogc:
 
     /** Try to set (from host) a predefined arrangement for inputs and outputs.
-        The host should always deliver the same number of input and output buses than the Plug-in needs 
+        The host should always deliver the same number of input and output buses than the Plug-in needs
         (see \ref IComponent::getBusCount).
         The Plug-in returns kResultFalse if wanted arrangements are not supported.
         If the Plug-in accepts these arrangements, it should modify its buses to match the new arrangements
@@ -198,7 +220,7 @@ nothrow:
     tresult setBusArrangements (SpeakerArrangement* inputs, int32 numIns,  SpeakerArrangement* outputs, int32 numOuts);
 
     /** Gets the bus arrangement for a given direction (input/output) and index.
-        Note: IComponent::getInfo () and IAudioProcessor::getBusArrangement () should be always return the same 
+        Note: IComponent::getInfo () and IAudioProcessor::getBusArrangement () should be always return the same
         information about the buses arrangements. */
     tresult getBusArrangement (BusDirection dir, int32 index, ref SpeakerArrangement arr);
 
@@ -219,7 +241,7 @@ nothrow:
 
     /** Informs the Plug-in about the processing state. This will be called before any process calls start with true and after with false.
         Note that setProcessing (false) may be called after setProcessing (true) without any process calls.
-        In this call the Plug-in should do only light operation (no memory allocation or big setup reconfiguration), 
+        In this call the Plug-in should do only light operation (no memory allocation or big setup reconfiguration),
         this could be used to reset some buffers (like Delay line or Reverb). */
     tresult setProcessing (TBool state);
 
@@ -227,9 +249,9 @@ nothrow:
     tresult process (ref ProcessData data);
 
     /** Gets tail size in samples. For example, if the Plug-in is a Reverb Plug-in and it knows that
-        the maximum length of the Reverb is 2sec, then it has to return in getTailSamples() 
+        the maximum length of the Reverb is 2sec, then it has to return in getTailSamples()
         (in VST2 it was getGetTailSize ()): 2*sampleRate.
-        This information could be used by host for offline processing, process optimization and 
+        This information could be used by host for offline processing, process optimization and
         downmix (avoiding signal cut (clicks)).
         It should return:
          - kNoTail when no tail
@@ -512,58 +534,107 @@ struct ChordEvent
 mixin SMTG_TYPE_SIZE_CHECK!(ChordEvent, 16, 12, 12);
 
 
-/** Event */
-struct Event
+
+static if (eventABIFix)
 {
-align(1):
-    int32 busIndex;             ///< event bus index
-    int32 sampleOffset;         ///< sample frames related to the current block start sample position
-    TQuarterNotes ppqPosition;  ///< position in project
-    uint16 flags;               ///< combination of \ref EventFlags
-
-    /** Event Flags - used for Event::flags */
-    enum EventFlags
+    /** Event */
+    struct Event
     {
-        kIsLive = 1 << 0,           ///< indicates that the event is played live (directly from keyboard)
+        int32 busIndex;             ///< event bus index
+        int32 sampleOffset;         ///< sample frames related to the current block start sample position
+        TQuarterNotes ppqPosition;  ///< position in project
+        uint16 flags;               ///< combination of \ref EventFlags
 
-        kUserReserved1 = 1 << 14,   ///< reserved for user (for internal use)
-        kUserReserved2 = 1 << 15    ///< reserved for user (for internal use)
+        /** Event Flags - used for Event::flags */
+        enum EventFlags
+        {
+            kIsLive = 1 << 0,           ///< indicates that the event is played live (directly from keyboard)
+
+            kUserReserved1 = 1 << 14,   ///< reserved for user (for internal use)
+            kUserReserved2 = 1 << 15    ///< reserved for user (for internal use)
+        }
+
+        /**  Event Types - used for Event::type */
+        enum EventTypes
+        {
+            kNoteOnEvent = 0,           ///< is \ref NoteOnEvent
+            kNoteOffEvent,              ///< is \ref NoteOffEvent
+            kDataEvent,                 ///< is \ref DataEvent
+            kPolyPressureEvent,         ///< is \ref PolyPressureEvent
+            kNoteExpressionValueEvent,  ///< is \ref NoteExpressionValueEvent
+            kNoteExpressionTextEvent,   ///< is \ref NoteExpressionTextEvent
+            kChordEvent,                ///< is \ref ChordEvent
+            kScaleEvent                 ///< is \ref ScaleEvent
+        }
+
+        uint16 type;                ///< a value from \ref EventTypes
+        union
+        {
+            NoteOnEvent noteOn;                             ///< type == kNoteOnEvent
+            NoteOffEvent noteOff;                           ///< type == kNoteOffEvent
+            DataEvent data;                                 ///< type == kDataEvent
+            PolyPressureEvent polyPressure;                 ///< type == kPolyPressureEvent
+            NoteExpressionValueEvent noteExpressionValue;   ///< type == kNoteExpressionValueEvent
+            NoteExpressionTextEvent noteExpressionText;     ///< type == kNoteExpressionTextEvent
+            ChordEvent chord;                               ///< type == kChordEvent
+            //ScaleEvent scale;                               ///< type == kScaleEvent
+        }
     }
-
-    /**  Event Types - used for Event::type */
-    enum EventTypes
+}
+else
+{
+    /** Event */
+    struct Event
     {
-        kNoteOnEvent = 0,           ///< is \ref NoteOnEvent
-        kNoteOffEvent,              ///< is \ref NoteOffEvent
-        kDataEvent,                 ///< is \ref DataEvent
-        kPolyPressureEvent,         ///< is \ref PolyPressureEvent
-        kNoteExpressionValueEvent,  ///< is \ref NoteExpressionValueEvent
-        kNoteExpressionTextEvent,   ///< is \ref NoteExpressionTextEvent
-        kChordEvent,                ///< is \ref ChordEvent
-        kScaleEvent                 ///< is \ref ScaleEvent
+    align(1):
+        int32 busIndex;             ///< event bus index
+        int32 sampleOffset;         ///< sample frames related to the current block start sample position
+        TQuarterNotes ppqPosition;  ///< position in project
+        uint16 flags;               ///< combination of \ref EventFlags
+
+        /** Event Flags - used for Event::flags */
+        enum EventFlags
+        {
+            kIsLive = 1 << 0,           ///< indicates that the event is played live (directly from keyboard)
+
+            kUserReserved1 = 1 << 14,   ///< reserved for user (for internal use)
+            kUserReserved2 = 1 << 15    ///< reserved for user (for internal use)
+        }
+
+        /**  Event Types - used for Event::type */
+        enum EventTypes
+        {
+            kNoteOnEvent = 0,           ///< is \ref NoteOnEvent
+            kNoteOffEvent,              ///< is \ref NoteOffEvent
+            kDataEvent,                 ///< is \ref DataEvent
+            kPolyPressureEvent,         ///< is \ref PolyPressureEvent
+            kNoteExpressionValueEvent,  ///< is \ref NoteExpressionValueEvent
+            kNoteExpressionTextEvent,   ///< is \ref NoteExpressionTextEvent
+            kChordEvent,                ///< is \ref ChordEvent
+            kScaleEvent                 ///< is \ref ScaleEvent
+        }
+
+        static if (size_t.sizeof == 8)
+            ubyte[2] padding0;
+
+        uint16 type;                ///< a value from \ref EventTypes
+        union
+        {
+            NoteOnEvent noteOn;                             ///< type == kNoteOnEvent
+            NoteOffEvent noteOff;                           ///< type == kNoteOffEvent
+            DataEvent data;                                 ///< type == kDataEvent
+            PolyPressureEvent polyPressure;                 ///< type == kPolyPressureEvent
+            NoteExpressionValueEvent noteExpressionValue;   ///< type == kNoteExpressionValueEvent
+            NoteExpressionTextEvent noteExpressionText;     ///< type == kNoteExpressionTextEvent
+            ChordEvent chord;                               ///< type == kChordEvent
+            //ScaleEvent scale;                               ///< type == kScaleEvent
+        }
+
+        static if (size_t.sizeof == 8)
+            ubyte[2] padding1;
     }
-
-    static if (size_t.sizeof == 8)
-        ubyte[2] padding0;
-
-    uint16 type;                ///< a value from \ref EventTypes
-    union
-    {
-        NoteOnEvent noteOn;                             ///< type == kNoteOnEvent
-        NoteOffEvent noteOff;                           ///< type == kNoteOffEvent
-        DataEvent data;                                 ///< type == kDataEvent
-        PolyPressureEvent polyPressure;                 ///< type == kPolyPressureEvent
-        NoteExpressionValueEvent noteExpressionValue;   ///< type == kNoteExpressionValueEvent
-        NoteExpressionTextEvent noteExpressionText;     ///< type == kNoteExpressionTextEvent
-        ChordEvent chord;                               ///< type == kChordEvent
-        //ScaleEvent scale;                               ///< type == kScaleEvent
-    }
-
-    static if (size_t.sizeof == 8)
-        ubyte[2] padding1;
 }
 
-//pragma(msg.
 mixin SMTG_TYPE_SIZE_CHECK!(Event, 48, 40, 40);
 
 

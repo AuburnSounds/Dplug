@@ -27,6 +27,7 @@ nothrow:
         super(context, flagAnimated | flagPBR);
         _text = text;
         _font = font;
+        setCursorWhenMouseOver(MouseCursor.linkSelect);
     }
 
     /// Returns: Font used.

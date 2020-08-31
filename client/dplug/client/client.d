@@ -529,8 +529,8 @@ nothrow:
     final void getPluginFullName(char* p, int bufLength) const nothrow @nogc
     {
         snprintf(p, bufLength, "%.*s %.*s",
-                 _info.vendorName.length, _info.vendorName.ptr,
-                 _info.pluginName.length, _info.pluginName.ptr);
+                 cast(int)(_info.vendorName.length), _info.vendorName.ptr,
+                 cast(int)(_info.pluginName.length), _info.pluginName.ptr);
 
         // DigitalMars's snprintf doesn't always add a terminal zero
         if (bufLength > 0)

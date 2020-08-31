@@ -61,6 +61,8 @@ private:
 
     bool _isHostWindow;
 
+    MouseCursor _lastMouseCursor;
+
 public:
 
     this(WindowUsage usage, void* parentWindow, IWindowListener listener, int width, int height)
@@ -287,6 +289,7 @@ private:
 
         _listener.onMouseMove(mousePos.x, mousePos.y, mousePos.x - _lastMouseX, mousePos.y - _lastMouseY,
             getMouseState(event));
+        setMouseCursor(_listener.getMouseCursor());
 
         _lastMouseX = mousePos.x;
         _lastMouseY = mousePos.y;
@@ -402,6 +405,51 @@ private:
                                     dirtyRect.width,
                                     dirtyRect.height);
             _view.setNeedsDisplayInRect(r);
+        }
+    }
+
+    void setMouseCursor(MouseCursor dplugCursor)
+    {
+        if(dplugCursor != _lastMouseCursor)
+        {
+            if(dplugCursor == MouseCursor.hidden)
+            {
+                NSCursor.hide();
+            }
+            else
+            {
+                if(_lastMouseCursor == MouseCursor.hidden)
+                {
+                    NSCursor.unhide();
+                }
+
+                NSCursor.pop();
+                NSCursor nsCursor;
+                switch(dplugCursor)
+                {
+                    case MouseCursor.linkSelect:
+                        nsCursor = NSCursor.pointingHandCursor();
+                        break;
+                    case MouseCursor.drag:
+                        nsCursor = NSCursor.crosshairCursor();
+                        break;
+                    case MouseCursor.move:
+                        nsCursor = NSCursor.openHandCursor();
+                        break;
+                    case MouseCursor.verticalResize:
+                        nsCursor = NSCursor.resizeUpDownCursor();
+                        break;
+                    case MouseCursor.horizontalResize:
+                        nsCursor = NSCursor.resizeLeftRightCursor();
+                        break;
+                    case MouseCursor.pointer:
+                    default:
+                        nsCursor = NSCursor.arrowCursor();
+                }
+                nsCursor.push();
+            }
+   
+            _lastMouseCursor = dplugCursor;
         }
     }
 }

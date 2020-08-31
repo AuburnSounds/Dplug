@@ -218,7 +218,7 @@ class SpeedMeasureProcessor : Processor
             double challengerSeconds = challenger.lastMeasurements.minSeconds;
             double percents = (baselineSec / challengerSeconds - 1) * 100;
             speedUps[challenger.shortName] ~= percents;
-            cwritef("  %s vs %s = %.3fs vs %.3fs => ".grey, challenger.shortName, universe.baseline, 
+            cwritef("  %s vs %s = %.4fs vs %.4fs => ".grey, challenger.shortName, universe.baseline, 
                                                               challengerSeconds, baselineSec);
             cwritefln("%+.2s%%".yellow, percents);
         }

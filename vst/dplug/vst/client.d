@@ -56,32 +56,53 @@ template VSTEntryPoint(alias ClientClass)
         "{" ~
         "    return myVSTEntryPoint!" ~ ClientClass.stringof ~ "(hostCallback);" ~
         "}\n";
-    enum entry_main =
-        "export extern(C) nothrow AEffect* main(HostCallbackFunction hostCallback) " ~
-        "{" ~
-        "    return myVSTEntryPoint!" ~ ClientClass.stringof ~ "(hostCallback);" ~
-        "}\n";
     enum entry_main_macho =
         "export extern(C) nothrow AEffect* main_macho(HostCallbackFunction hostCallback) " ~
         "{" ~
         "    return myVSTEntryPoint!" ~ ClientClass.stringof ~ "(hostCallback);" ~
         "}\n";
 
+    // Workaround LDC #3505
+    // https://github.com/ldc-developers/ldc/issues/3505
+    // Not possible to return a pointer from a "main" function.
+    // Using pragma mangle, this symbol should be "main" in Win32 and "_main" on Linux.
+    static if (__VERSION__ >= 2079)
+    {
+        enum entry_main =
+            "pragma(mangle, \"main\") export extern(C) nothrow AEffect* main_renamed(HostCallbackFunction hostCallback) " ~
+            "{" ~
+            "    return myVSTEntryPoint!" ~ ClientClass.stringof ~ "(hostCallback);" ~
+            "}\n";
+    }
+    else
+    {
+        enum entry_main = // earlier compilers didn't have a problem
+            "export extern(C) nothrow AEffect* main(HostCallbackFunction hostCallback) " ~
+            "{" ~
+            "    return myVSTEntryPoint!" ~ ClientClass.stringof ~ "(hostCallback);" ~
+            "}\n";
+    }
+
+    version(unittest)
+        enum entry_main_if_no_unittest = "";
+    else
+        enum entry_main_if_no_unittest = entry_main;
+
     version(OSX)
         // OSX has two VST entry points
-        const char[] VSTEntryPoint =entry_VSTPluginMain ~ entry_main_macho;
+        const char[] VSTEntryPoint = entry_VSTPluginMain ~ entry_main_macho;
     else version(Windows)
     {
         static if (size_t.sizeof == int.sizeof)
             // 32-bit Windows needs a legacy "main" entry point
-            const char[] VSTEntryPoint = entry_VSTPluginMain ~ entry_main;
+            const char[] VSTEntryPoint = entry_VSTPluginMain ~ entry_main_if_no_unittest;
         else
             // 64-bit Windows does not
             const char[] VSTEntryPoint = entry_VSTPluginMain;
 
     }
     else version(linux)
-        const char[] VSTEntryPoint = entry_VSTPluginMain ~ entry_main;
+        const char[] VSTEntryPoint = entry_VSTPluginMain ~ entry_main_if_no_unittest;
     else
         static assert(false);
 }

@@ -72,6 +72,17 @@ struct MouseState
     bool altPressed;
 }
 
+enum MouseCursor
+{
+    pointer, //default cursor
+    linkSelect,
+    move,
+    drag,
+    verticalResize,
+    horizontalResize,
+    hidden
+}
+
 /// Is this window intended as a plug-in window running inside a host,
 /// or a host window itself possibly hosting a plug-in?
 enum WindowUsage
@@ -206,6 +217,9 @@ nothrow @nogc:
     /// `time` must refer to the window creation time.
     /// `dt` and `time` are expressed in seconds (not milliseconds).
     void onAnimate(double dt, double time);
+
+    /// Must be called to get the current mouse cursor state for the plugin
+    MouseCursor getMouseCursor();
 }
 
 /// Various backends for windowing.

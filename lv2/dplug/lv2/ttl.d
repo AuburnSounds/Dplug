@@ -410,7 +410,7 @@ const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, b
     foreach(index, param; params)
     {
         char[] paramSymbol = cast(char[])malloc(char.sizeof * 256)[0..256];
-        sprintf(paramSymbol.ptr, "p%d", index);
+        sprintf(paramSymbol.ptr, "p%d", cast(int)index);
         strcat(paramString.ptr, "    [ \n".ptr);
         strcat(paramString.ptr, "        a lv2:InputPort , lv2:ControlPort ;\n".ptr);
         strcat(paramString.ptr, "        lv2:index ".ptr);
@@ -444,9 +444,9 @@ const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, b
     foreach(input; 0..legalIO.numInputChannels)
     {
         char[] paramsLengthPlusInput = cast(char[])malloc(char.sizeof * 10)[0..10];
-        snprintf(paramsLengthPlusInput.ptr, 10, "%d", params.length + input);
+        snprintf(paramsLengthPlusInput.ptr, 10, "%d", cast(int)(params.length + input));
         char[] inputString = cast(char[])malloc(char.sizeof * 10)[0..10];
-        snprintf(inputString.ptr, 10, "%d", params.length + input);
+        snprintf(inputString.ptr, 10, "%d", cast(int)(params.length + input));
 
         strcat(paramString.ptr, "    [ \n".ptr);
         strcat(paramString.ptr, "        a lv2:AudioPort , lv2:InputPort ;\n".ptr);
@@ -469,7 +469,7 @@ const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, b
     foreach(output; 0..legalIO.numOutputChannels)
     {
         char[] indexString = cast(char[])malloc(char.sizeof * 256)[0..256];
-        sprintf(indexString.ptr, "%d", params.length + legalIO.numInputChannels + output);
+        sprintf(indexString.ptr, "%d", cast(int)(params.length + legalIO.numInputChannels + output));
         char[] outputString = cast(char[])malloc(char.sizeof * 256)[0..256];
         sprintf(outputString.ptr, "%d", output);
         
@@ -499,7 +499,7 @@ const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, b
         strcat(paramString.ptr, "        atom:supports <http://lv2plug.in/ns/ext/midi#MidiEvent> ;\n".ptr);
 
     char[] indexString = cast(char[])malloc(char.sizeof * 256)[0..256];
-    sprintf(indexString.ptr, "%d", params.length + legalIO.numInputChannels + legalIO.numOutputChannels);
+    sprintf(indexString.ptr, "%d", cast(int)(params.length + legalIO.numInputChannels + legalIO.numOutputChannels));
 
     strcat(paramString.ptr, "        atom:supports <http://lv2plug.in/ns/ext/time#Position> ;\n".ptr);
     strcat(paramString.ptr, "        lv2:designation lv2:control ;\n".ptr);

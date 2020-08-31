@@ -417,7 +417,7 @@ public:
 
         // Because the input string is not zero-terminated
         char[64] buf;
-        snprintf(buf.ptr, buf.length, "%.*s", valueString.length, valueString.ptr);
+        snprintf(buf.ptr, buf.length, "%.*s", cast(int)(valueString.length), valueString.ptr);
 
         int denorm;
         if (1 == sscanf(buf.ptr, "%d", &denorm))
@@ -547,7 +547,7 @@ public:
     override void stringFromNormalizedValue(double normalizedValue, char* buffer, size_t len)
     {
         const(char[]) valueLabel = _possibleValues[ fromNormalized(normalizedValue) ];
-        snprintf(buffer, len, "%.*s", valueLabel.length, valueLabel.ptr);
+        snprintf(buffer, len, "%.*s", cast(int)(valueLabel.length), valueLabel.ptr);
     }
 
     override bool normalizedValueFromString(const(char)[] valueString, out double result)
@@ -696,10 +696,10 @@ public:
 
         // Because the input string is not zero-terminated
         char[64] buf;
-        snprintf(buf.ptr, buf.length, "%.*s", valueString.length, valueString.ptr);
+        snprintf(buf.ptr, buf.length, "%.*s", cast(int)(valueString.length), valueString.ptr);
 
         double denorm;
-        if (1 == sscanf(buf.ptr, "%f", &denorm))
+        if (1 == sscanf(buf.ptr, "%lf", &denorm))
         {
             result = toNormalized(denorm);
             return true;

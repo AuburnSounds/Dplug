@@ -153,10 +153,9 @@ private:
                         ipos = _mm_clamp_0_to_N_epi32(ipos, lutMax);
                         xmT0 = xmT0 + xmStep0;
 
-                        __m128i d0 = _mm_loadu_si64 (ptr);
-                        d0 = _mm_unpacklo_epi8 (d0, XMZERO);
-                        __m128i d1 = _mm_loadu_si64 (ptr+2);
-                        d1 = _mm_unpacklo_epi8 (d1, XMZERO);
+                        __m128i d01 = _mm_loadu_si128(cast(__m128i*) ptr);
+                        __m128i d0 = _mm_unpacklo_epi8 (d01, XMZERO);
+                        __m128i d1 = _mm_unpackhi_epi8 (d01, XMZERO);
 
                         __m128i c0 = _mm_loadu_si32 (&lut[ ipos.array[0] ]);
                         __m128i tnc = _mm_loadu_si32 (&lut[ ipos.array[1] ]);
@@ -185,7 +184,7 @@ private:
 
                         d0 = _mm_packus_epi16 (c0,c1);
 
-                        _mm_store_si128 (cast(__m128i*)ptr,d0);
+                        _mm_storeu_si128 (cast(__m128i*)ptr,d0);
                         
                         ptr+=4;
                     }
@@ -204,12 +203,12 @@ private:
             {
                 // Integrate delta values
 
-                __m128i tqw = _mm_load_si128(cast(__m128i*)dlptr);
+                __m128i tqw = _mm_loadu_si128(cast(__m128i*)dlptr);
                 tqw = _mm_add_epi32(tqw, _mm_slli_si128!4(tqw)); 
                 tqw = _mm_add_epi32(tqw, _mm_slli_si128!8(tqw)); 
                 tqw = _mm_add_epi32(tqw, xmWinding); 
                 xmWinding = _mm_shuffle_epi32!255(tqw);  
-                _mm_store_si128(cast(__m128i*)dlptr,XMZERO);
+                _mm_storeu_si128(cast(__m128i*)dlptr,XMZERO);
 
                 // Process coverage values taking account of winding rule
                 
@@ -237,11 +236,9 @@ private:
                 xmT0 = xmT0 + xmStep0;
 
                 // Load destination pixels
-
-                __m128i d0 = _mm_loadu_si64 (ptr);
-                d0 = _mm_unpacklo_epi8 (d0, XMZERO);
-                __m128i d1 = _mm_loadu_si64 (ptr+2);
-                d1 = _mm_unpacklo_epi8 (d1, XMZERO);
+                __m128i d01 = _mm_loadu_si128(cast(__m128i*) ptr);
+                __m128i d0 = _mm_unpacklo_epi8 (d01, XMZERO);
+                __m128i d1 = _mm_unpackhi_epi8 (d01, XMZERO);
 
                 // load grad colors
 
@@ -277,7 +274,7 @@ private:
 
                 d0 = _mm_packus_epi16 (c0,c1);
 
-                _mm_store_si128 (cast(__m128i*)ptr,d0);
+                _mm_storeu_si128 (cast(__m128i*)ptr,d0);
                 
                 bpos++;
                 ptr+=4;

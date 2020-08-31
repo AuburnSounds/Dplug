@@ -104,6 +104,27 @@ nothrow:
             dragged = null;
         }
     }
+
+    final MouseCursor getCurrentMouseCursor() nothrow @nogc
+    {
+        MouseCursor cursor = MouseCursor.pointer;
+
+        version(legacyMouseOver) { cursor = MouseCursor.pointer;}
+        else
+        {
+            if (!(mouseOver is null))
+            {
+                cursor = mouseOver.cursorWhenMouseOver();
+            }
+        }
+
+        if(!(dragged is null))
+        {
+            cursor = dragged.cursorWhenDragged();
+        }        
+
+        return cursor;
+    }
 }
 
 DirtyRectList makeDirtyRectList() nothrow @nogc

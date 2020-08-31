@@ -146,7 +146,6 @@ jobs:
         cd ..
 
         brew update
-        brew install gpg
         
         # Install compiler
         curl -fsS https://dlang.org/install.sh | bash -s $(DC)-$(DVersion) -a
