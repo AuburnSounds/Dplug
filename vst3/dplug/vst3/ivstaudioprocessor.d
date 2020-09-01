@@ -13,7 +13,7 @@ module dplug.vst3.ivstaudioprocessor;
 
 import dplug.vst3.ftypes;
 
-// Windows 64-bit seemingly need a slightly different ABI (unless the macOS one is wrong in the first place)
+// 64-bit seemingly need a slightly different ABI.
 // The problem being that there is no direct pragma(pack) equivalent in D, would be simpler to have tool that displays the layout
 version(Windows)
 {
@@ -34,7 +34,7 @@ else version(OSX)
         enum bool eventABIFix = false;
 }
 else
-    enum bool eventABIFix = false;
+    enum bool eventABIFix = true;
 
 immutable string kVstAudioEffectClass = "Audio Module Class";
 
