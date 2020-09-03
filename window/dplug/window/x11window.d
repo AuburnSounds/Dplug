@@ -345,17 +345,20 @@ private:
 
     void setCursor()
     {
-        MouseCursor cursor = _listener.getMouseCursor();
-
-        if(cursor != _lastMouseCursor)
+        version(futureMouseCursor)
         {
-            lockX11();
-            immutable int x11CursorFont = convertCursorToX11CursorFont(cursor);
-            auto c = cursor == MouseCursor.hidden ? _hiddenCursor : XCreateFontCursor(_display, x11CursorFont); 
-            XDefineCursor(_display, _windowID, c);
-            unlockX11();
+            MouseCursor cursor = _listener.getMouseCursor();
+
+            if(cursor != _lastMouseCursor)
+            {
+                lockX11();
+                immutable int x11CursorFont = convertCursorToX11CursorFont(cursor);
+                auto c = cursor == MouseCursor.hidden ? _hiddenCursor : XCreateFontCursor(_display, x11CursorFont); 
+                XDefineCursor(_display, _windowID, c);
+                unlockX11();
+            }
+            _lastMouseCursor = cursor;
         }
-        _lastMouseCursor = cursor;
     }
 
     void processEvent(XEvent* event)
@@ -363,7 +366,7 @@ private:
         switch(event.type)
         {
         case ConfigureNotify:
-            notifySize(event.xconfigure.width, event.xconfigure.height);                
+            notifySize(event.xconfigure.width, event.xconfigure.height);
             break;
 
         case EnterNotify:

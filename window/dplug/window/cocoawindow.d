@@ -289,7 +289,11 @@ private:
 
         _listener.onMouseMove(mousePos.x, mousePos.y, mousePos.x - _lastMouseX, mousePos.y - _lastMouseY,
             getMouseState(event));
-        setMouseCursor(_listener.getMouseCursor());
+
+        version(futureMouseCursor)
+        {
+            setMouseCursor(_listener.getMouseCursor());
+        }
 
         _lastMouseX = mousePos.x;
         _lastMouseY = mousePos.y;

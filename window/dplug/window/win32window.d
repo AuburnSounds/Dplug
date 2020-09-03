@@ -569,36 +569,39 @@ version(Windows)
 
         int setMouseCursor()
         {
-            MouseCursor cursor = _listener.getMouseCursor();
-
-            if(cursor != _lastMouseCursor)
+            version(futureMouseCursor)
             {
-                CURSORINFO pci;
-                pci.cbSize = CURSORINFO.sizeof;
-                GetCursorInfo(&pci);
+                MouseCursor cursor = _listener.getMouseCursor();
 
-                // If the cursor we want to display is "hidden" and the cursor is being shown
-                // then we will hide the cursor.
-                // If the cursor we want to display is anything other than "hidden" and the
-                // cursor is being hidden already, we will set it to show 
-                // (this triggers a WM_SETCURSOR which will call this to set the cursor)
-                // lastly if the above conditions are false then we will set the cursor
-                if(cursor == MouseCursor.hidden && pci.flags == CURSOR_SHOWING)
+                if(cursor != _lastMouseCursor)
                 {
-                    ShowCursor(false);
+                    CURSORINFO pci;
+                    pci.cbSize = CURSORINFO.sizeof;
+                    GetCursorInfo(&pci);
+
+                    // If the cursor we want to display is "hidden" and the cursor is being shown
+                    // then we will hide the cursor.
+                    // If the cursor we want to display is anything other than "hidden" and the
+                    // cursor is being hidden already, we will set it to show 
+                    // (this triggers a WM_SETCURSOR which will call this to set the cursor)
+                    // lastly if the above conditions are false then we will set the cursor
+                    if(cursor == MouseCursor.hidden && pci.flags == CURSOR_SHOWING)
+                    {
+                        ShowCursor(false);
+                    }
+                    else if(cursor != MouseCursor.hidden && pci.flags == 0)
+                    {
+                        ShowCursor(true);
+                    }
+                    else
+                    {
+                        auto cursorId = mouseCursorToCursorId(cursor);
+                        HCURSOR hc = LoadCursorA(NULL, cast(const(char)*)cursorId);
+                        SetCursor(hc);
+                    }
+                    _lastMouseCursor = cursor;
+                    return 1;
                 }
-                else if(cursor != MouseCursor.hidden && pci.flags == 0)
-                {
-                    ShowCursor(true);
-                }
-                else
-                {
-                    auto cursorId = mouseCursorToCursorId(cursor);
-                    HCURSOR hc = LoadCursorA(NULL, cast(const(char)*)cursorId);
-                    SetCursor(hc);
-                }
-                _lastMouseCursor = cursor;
-                return 1;
             }
 
             return 0;
