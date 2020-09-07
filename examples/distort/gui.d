@@ -43,8 +43,7 @@ nothrow:
     this(DistortClient client)
     {
         _client = client;
-        int W = 620, H = 330;
-        super(W, H); // size
+        super(_initialWidth, _initialHeight); // size
 
 
         // Note: PBRCompositor default lighting might change in a future version (increase of light to allow white plastics).
@@ -74,53 +73,32 @@ nothrow:
         // to move into a reflow() override.
         // Meanwhile, we hardcode each position.
 
-        RGBA litTrailDiffuse = RGBA(151, 119, 255, 100);
-        RGBA unlitTrailDiffuse = RGBA(81, 54, 108, 0);
-
         KnobImage _knobImageData;
-        UIImageKnob _imageKnob;
 
         _knobImageData = loadKnobImage( import("imageknob.png") );
         addChild(_imageKnob = mallocNew!UIImageKnob(context(), _knobImageData, cast(FloatParameter) _client.param(paramBias)));
-        _imageKnob.position = rectangle(517, 176, 46, 46);
-        _imageKnob.hasTrail = false; // no trail by default
+
 
         // Add procedural knobs
         addChild(driveKnob = mallocNew!UIKnob(context(), cast(FloatParameter) _client.param(paramDrive)));
-        driveKnob.position = box2i.rectangle(250, 140, 120, 120);
-        driveKnob.knobRadius = 0.65f;
-        driveKnob.knobDiffuse = RGBA(255, 255, 238, 0);
-        driveKnob.knobMaterial = RGBA(0, 255, 128, 255);
-        driveKnob.numLEDs = 15;
-        driveKnob.litTrailDiffuse = litTrailDiffuse;
-        driveKnob.unlitTrailDiffuse = unlitTrailDiffuse;
-        driveKnob.LEDDiffuseLit = RGBA(40, 40, 40, 100);
-        driveKnob.LEDDiffuseUnlit = RGBA(40, 40, 40, 0);
-        driveKnob.LEDRadiusMin = 0.06f;
-        driveKnob.LEDRadiusMax = 0.06f;
+
 
         // Add sliders
         addChild(inputSlider = mallocNew!UISlider(context(), cast(FloatParameter) _client.param(paramInput)));
-        inputSlider.position = box2i.rectangle(190, 132, 30, 130);
-        inputSlider.litTrailDiffuse = litTrailDiffuse;
-        inputSlider.unlitTrailDiffuse = unlitTrailDiffuse;
+        
 
         addChild(outputSlider = mallocNew!UISlider(context(), cast(FloatParameter) _client.param(paramOutput)));
-        outputSlider.position = box2i.rectangle(410, 132, 30, 130);
-        outputSlider.litTrailDiffuse = litTrailDiffuse;
-        outputSlider.unlitTrailDiffuse = unlitTrailDiffuse;
+        
 
         // Add switch
         addChild(onOffSwitch = mallocNew!UIOnOffSwitch(context(), cast(BoolParameter) _client.param(paramOnOff)));
-        onOffSwitch.position = box2i.rectangle(90, 177, 30, 40);
-        onOffSwitch.diffuseOn = litTrailDiffuse;
-        onOffSwitch.diffuseOff = unlitTrailDiffuse;
+        
 
         // Add bargraphs
         addChild(inputBargraph = mallocNew!UIBargraph(context(), 2, -80.0f, 6.0f));
-        inputBargraph.position = box2i.rectangle(150, 132, 30, 130);
+        
         addChild(outputBargraph = mallocNew!UIBargraph(context(), 2, -80.0f, 6.0f));
-        outputBargraph.position = box2i.rectangle(450, 132, 30, 130);
+        
         static immutable float[2] startValues = [0.0f, 0.0f];
         inputBargraph.setValues(startValues);
         outputBargraph.setValues(startValues);
@@ -134,19 +112,84 @@ nothrow:
                                                               + 0.0f , 1.0f , 1.10f, -0.01f);
             addChild(colorCorrection = mallocNew!UIColorCorrection(context()));
             colorCorrection.setLiftGammaGainContrastRGB(colorCorrectionMatrix);
-            colorCorrection.position = box2i.rectangle(0, 0, W, H);
         }
-         _client.hostCommand().requestResize(W * 2, H *2);
     }
 
     override void reflow(box2i availableSpace)
     {
-        _position = availableSpace;
+        super.reflow(availableSpace);
+
+        RGBA litTrailDiffuse = RGBA(151, 119, 255, 100);
+        RGBA unlitTrailDiffuse = RGBA(81, 54, 108, 0);
+
+        _imageKnob.position = box2i.rectangle(relativeWidth(517), relativeHeight(176), relativeWidth(46), relativeHeight(46));
+        _imageKnob.hasTrail = false; // no trail by default
+
+        driveKnob.position = box2i.rectangle(relativeWidth(250), relativeHeight(140), relativeWidth(120), relativeHeight(120));
+        driveKnob.knobRadius = 0.65f;
+        driveKnob.knobDiffuse = RGBA(255, 255, 238, 0);
+        driveKnob.knobMaterial = RGBA(0, 255, 128, 255);
+        driveKnob.numLEDs = 15;
+        driveKnob.litTrailDiffuse = litTrailDiffuse;
+        driveKnob.unlitTrailDiffuse = unlitTrailDiffuse;
+        driveKnob.LEDDiffuseLit = RGBA(40, 40, 40, 100);
+        driveKnob.LEDDiffuseUnlit = RGBA(40, 40, 40, 0);
+        driveKnob.LEDRadiusMin = 0.06f;
+        driveKnob.LEDRadiusMax = 0.06f;
+
+        inputSlider.position = box2i.rectangle(relativeWidth(190), relativeHeight(132), relativeWidth(30), relativeHeight(130));
+        inputSlider.litTrailDiffuse = litTrailDiffuse;
+        inputSlider.unlitTrailDiffuse = unlitTrailDiffuse;
+
+        outputSlider.position = box2i.rectangle(relativeWidth(410), relativeHeight(132), relativeWidth(30), relativeHeight(130));
+        outputSlider.litTrailDiffuse = litTrailDiffuse;
+        outputSlider.unlitTrailDiffuse = unlitTrailDiffuse;
+
+        onOffSwitch.position = box2i.rectangle(relativeWidth(90), relativeHeight(177), relativeWidth(30), relativeHeight(40));
+        onOffSwitch.diffuseOn = litTrailDiffuse;
+        onOffSwitch.diffuseOff = unlitTrailDiffuse;
+
+        inputBargraph.position = box2i.rectangle(relativeWidth(150), relativeHeight(132), relativeWidth(30), relativeHeight(130));
+
+        outputBargraph.position = box2i.rectangle(relativeWidth(450), relativeHeight(132), relativeWidth(30), relativeHeight(130));
+
+        colorCorrection.position = box2i.rectangle(0, 0, _position.width, _position.height);
+    }
+
+    /// This on only a temporary addition for testing the resizing ability of dplug
+    override bool onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
+    {
+        if(isDoubleClick)
+        {
+            if(_position.width == _initialHeight * 2)
+            {
+                _client.hostCommand().requestResize(_initialWidth, _initialHeight);
+            }
+            else
+            {
+                _client.hostCommand().requestResize(_initialWidth * 2, _initialHeight * 2);
+            }
+            return true;
+        }
+        return false;
     }
 
     ~this()
     {
         _font.destroyFree();
         _knobImageData.destroyFree();        
+    }
+
+private:
+    int _initialWidth = 620, _initialHeight = 330;
+
+    int relativeWidth(int val)
+    {
+        return cast(int)((cast(float)val / _initialWidth) * _position.width);
+    }
+
+    int relativeHeight(int val)
+    {
+        return cast(int)((cast(float)val / _initialHeight) * _position.height);
     }
 }

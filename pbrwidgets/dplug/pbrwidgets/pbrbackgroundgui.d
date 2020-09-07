@@ -77,49 +77,24 @@ nothrow:
 
     override void reflow(box2i availableSpace)
     {
-        // Note: the position is entirely decorrelated from the size of background images
-        // IMPORTANT technically we don't need to take all space, since we'll never draw outside a subrect
-        //           this is for the future where we may resize the images.
+        bool reallocResizedImage = availableSpace.width != _position.width || availableSpace.height != _position.height;
+        
+        // Note: the position is entirely decorrelated from the size of _backgroundImage
         _position = availableSpace;
 
-        // Compute which rect of _backgroundImage goes into which rect of _position
-        // if the full element was entirely dirty
-        // The image is not resized to fit, instead it is cropped.
-        int sourceX;
-        int sourceY;
-        int destX;
-        int destY;
-        int width;
-        int height;
-        if (_position.width >= _diffuse.w)
+        
+        if(reallocResizedImage)
         {
-            width = _diffuse.w;
-            sourceX = 0;
-            destX = 0;
-        }
-        else
-        {
-            width = _position.width;
-            sourceX = 0;
-            destX = 0;
-        }
+            _diffuseResized = mallocNew!(OwnedImage!RGBA)(_position.width, _position.height);
+            _materialResized = mallocNew!(OwnedImage!RGBA)(_position.width, _position.height);
+            _depthResized = mallocNew!(OwnedImage!L16)(_position.width, _position.height);
 
-        if (_position.height >= _diffuse.h)
-        {
-            height = _diffuse.h;
-            sourceY = 0;
-            destY = 0;
-        }
-        else
-        {
-            height = _position.height;
-            sourceY = 0;
-            destY = 0;
-        }
+            resizeBilinear(_diffuse.toRef(), _diffuseResized.toRef());
+            resizeBilinear(_material.toRef(), _materialResized.toRef());
+            resizeBilinear(_depth.toRef(), _depthResized.toRef());
 
-        _sourceRect = box2i.rectangle(sourceX, sourceY, width, height);
-        _destRect = box2i.rectangle(destX, destY, width, height);
-        _offset = vec2i(destX - sourceX, destY - sourceY);
+            setDirtyWhole();
+        }
     }
 
     override void onDrawPBR(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects)
@@ -127,25 +102,15 @@ nothrow:
         // Just blit backgrounds into dirtyRects.
         foreach(dirtyRect; dirtyRects)
         {
-            // Compute source and dest
-            box2i source = _sourceRect.intersection(dirtyRect.translate(_offset));
-            box2i dest = _destRect.intersection(dirtyRect); // since dirtyRect is relative to _position 
-            if (source.empty())
-                continue;
-            if (dest.empty())
-                continue;
 
-            assert(source.width == dest.width);
-            assert(source.height == dest.height);
+            auto croppedDiffuseIn = _diffuseResized.crop(dirtyRect);
+            auto croppedDiffuseOut = diffuseMap.crop(dirtyRect);
 
-            auto croppedDiffuseIn = _diffuse.crop(source);
-            auto croppedDiffuseOut = diffuseMap.crop(dest);
+            auto croppedDepthIn = _depthResized.crop(dirtyRect);
+            auto croppedDepthOut = depthMap.crop(dirtyRect);
 
-            auto croppedDepthIn = _depth.crop(source);
-            auto croppedDepthOut = depthMap.crop(dest);
-
-            auto croppedMaterialIn = _material.crop(source);
-            auto croppedMaterialOut = materialMap.crop(dest);
+            auto croppedMaterialIn = _materialResized.crop(dirtyRect);
+            auto croppedMaterialOut = materialMap.crop(dirtyRect);
 
             croppedDiffuseIn.blitTo(croppedDiffuseOut);
             croppedDepthIn.blitTo(croppedDepthOut);
@@ -166,6 +131,10 @@ private:
     OwnedImage!RGBA _diffuse;
     OwnedImage!RGBA _material;
     OwnedImage!L16 _depth;
+
+    OwnedImage!RGBA _diffuseResized;
+    OwnedImage!RGBA _materialResized;
+    OwnedImage!L16 _depthResized;
 
     /// Where pixel data is taken in the image, expressed in _background coordinates.
     box2i _sourceRect;
