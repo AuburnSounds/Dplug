@@ -38,6 +38,9 @@ import dplug.window.window;
 nothrow:
 @nogc:
 
+__gshared LONG_PTR parentWndProcCallback;
+__gshared Win32Window childWindow;
+
 
 version(Windows)
 {
@@ -142,6 +145,10 @@ version(Windows)
                     _useFLStudioBridgeWorkaround = path[len - 12 .. len] == "ilbridge.exe";
                 }
             }
+
+            parentWndProcCallback = GetWindowLongPtr(parentWindow, GWLP_WNDPROC);
+            SetWindowLongPtrA(parentWindow, GWL_WNDPROC, cast(LONG_PTR)&parentWindowProcCallback);
+            childWindow = this;
         }
 
         ~this()
@@ -205,6 +212,11 @@ version(Windows)
 
             switch (uMsg)
             {
+                case WM_SIZE:
+                {
+                    int i = 0;
+                    return 0;
+                }
                 case WM_KEYDOWN:
                 case WM_KEYUP:
                 {
@@ -568,6 +580,23 @@ version(Windows)
                 return window.windowProc(hwnd, uMsg, wParam, lParam);
             else
                 return DefWindowProcA(hwnd, uMsg, wParam, lParam);
+        }
+    }
+
+    extern(Windows) nothrow
+    {
+        LRESULT parentWindowProcCallback(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+        {
+            Win32Window window = childWindow;
+            if(uMsg == WM_SIZE)
+            {
+                if (window !is null)
+                    return window.windowProc(hwnd, uMsg, wParam, lParam);
+                else
+                    return DefWindowProcA(hwnd, uMsg, wParam, lParam);
+            }
+
+            return CallWindowProcA(cast(WNDPROC)parentWndProcCallback, hwnd, uMsg, wParam, lParam);
         }
     }
 
