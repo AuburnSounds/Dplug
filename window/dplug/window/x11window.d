@@ -167,6 +167,13 @@ public:
         return cast(void*)_windowID;
     }
 
+    override void resize(int width, int height)
+    {
+        lockX11();
+        XResizeWindow(_display, _windowID, width, height); 
+        unlockX11();
+    }
+
     // </Implements IWindow>
 
 private:
@@ -242,6 +249,9 @@ private:
 
     /// X11 ID of this window.
     Window _windowID;
+
+    /// X11 ID of this window's parent.
+    Window _parentWindowID;
 
     /// The default X11 screen of _display.
     int _screen;
@@ -578,13 +588,12 @@ private:
         // Note: this is already locked by constructor
 
         // Find the parent Window ID if none provided
-        Window parentWindowID;
         if (parentWindow is null)
-            parentWindowID = RootWindow(_display, _screen);
+            _parentWindowID = RootWindow(_display, _screen);
         else
-            parentWindowID = cast(Window)parentWindow;
+            _parentWindowID = cast(Window)parentWindow;
 
-        _cmap = XCreateColormap(_display, parentWindowID, _visual, AllocNone);
+        _cmap = XCreateColormap(_display, _parentWindowID, _visual, AllocNone);
 
         XSetWindowAttributes attr;
         memset(&attr, 0, XSetWindowAttributes.sizeof);
@@ -596,7 +605,7 @@ private:
         int top = 0;
         int border_width = 0;
         _windowID = XCreateWindow(_display, 
-                                  parentWindowID, 
+                                  _parentWindowID, 
                                   left, top, 
                                   width, height, border_width, 
                                   BIT_DEPTH, 
@@ -629,7 +638,7 @@ private:
 
             if(parentWindow)
             {
-                XReparentWindow(_display, _windowID, parentWindowID, 0, 0);
+                XReparentWindow(_display, _windowID, _parentWindowID, 0, 0);
             }
         }
 
@@ -678,7 +687,8 @@ private:
              | ButtonReleaseMask
              | ButtonPressMask
              | PointerMotionMask
-             | EnterWindowMask;
+             | EnterWindowMask
+             | SubstructureRedirectMask;
     }
 
     void createHiddenCursor()

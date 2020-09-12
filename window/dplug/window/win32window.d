@@ -38,8 +38,6 @@ import dplug.window.window;
 nothrow:
 @nogc:
 
-__gshared LONG_PTR parentWndProcCallback;
-__gshared Win32Window childWindow;
 
 
 version(Windows)
@@ -213,8 +211,9 @@ version(Windows)
             switch (uMsg)
             {
                 case WM_SIZE:
+                case WM_MOVE:
                 {
-                    int i = 0;
+                    updateSizeIfNeeded();
                     return 0;
                 }
                 case WM_KEYDOWN:
@@ -513,6 +512,11 @@ version(Windows)
             return cast(void*)( cast(size_t)_hwnd );
         }
 
+        void resize(int width, int height)
+        {
+
+        }
+
     private:
         enum TIMER_ID = 144;
 
@@ -570,6 +574,8 @@ version(Windows)
         }
     }
 
+__gshared LONG_PTR parentWndProcCallback;
+__gshared Win32Window childWindow;
 
     extern(Windows) nothrow
     {

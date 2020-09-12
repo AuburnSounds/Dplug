@@ -180,6 +180,11 @@ public:
             return _view._id;
     }
 
+    override void resize(int width, int height)
+    {
+
+    }
+
 private:
 
     MouseState getMouseState(NSEvent event)

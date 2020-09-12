@@ -123,6 +123,9 @@ nothrow:
 
     /// Gets the window's OS handle.
     void* systemHandle();
+
+    ///  Resizes the window from the client
+    void resize(int width, int height);
 }
 
 enum WindowPixelFormat

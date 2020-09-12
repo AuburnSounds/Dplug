@@ -28,5 +28,6 @@ nothrow:
     abstract void* openUI(void* parentInfo, void* controlInfo, DAW daw, GraphicsBackend backend);
     abstract void closeUI();
     abstract void getGUISize(int* width, int* height);
+    abstract void resizeWindow(int width, int height);
 }
 
