@@ -44,6 +44,8 @@ public:
 nothrow:
 @nogc:
 
+    DplugView* _dplugView;
+
     this(Client client)
     {
         debug(logVST3Client) debugLog(">VST3Client.this()");
@@ -1263,6 +1265,7 @@ nothrow:
     this(VST3Client vst3Client)
     {
         _vst3Client = vst3Client;
+        _vst3Client._dplugView = this.ptr;
         _graphicsMutex = makeMutex();
     }
 
@@ -1428,6 +1431,14 @@ nothrow:
         return kResultTrue;
     }
 
+    void resize(int width, int height)
+    {
+		ViewRect vr;
+		vr.right = width;
+		vr.bottom = height;
+		return _plugFrame.resizeView (this, &vr) == kResultTrue ? true : false;
+    }
+
 private:
     VST3Client _vst3Client;
     UncheckedMutex _graphicsMutex;
@@ -1493,7 +1504,7 @@ nothrow:
     override bool requestResize(int width, int height)
     {
         // FUTURE, will need to keep an instance pointer of the current IPluginView
-        return false;
+        return _vst3Client.dplugView.resize(width, height);
     }
 
     DAW getDAW()

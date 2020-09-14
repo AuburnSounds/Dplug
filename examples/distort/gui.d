@@ -163,10 +163,12 @@ nothrow:
         {
             if(_position.width == _initialHeight * 2)
             {
+                _client.hostCommand().requestResize(_initialWidth, _initialHeight);
                 resizeWindow(_initialWidth, _initialHeight);
             }
             else
             {
+                _client.hostCommand().requestResize(_initialWidth * 2, _initialHeight * 2);
                 resizeWindow(_initialWidth * 2, _initialHeight * 2);
             }
             return true;

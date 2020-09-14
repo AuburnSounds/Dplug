@@ -317,7 +317,6 @@ nothrow:
     void resizeWindow(int width, int height) nothrow @nogc
     {
         _window.resize(width, height);
-        // _client.hostCommand().requestResize(_initialWidth * 2, _initialHeight * 2);
     }
 
 protected:
