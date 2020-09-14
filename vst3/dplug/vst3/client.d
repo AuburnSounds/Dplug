@@ -44,7 +44,7 @@ public:
 nothrow:
 @nogc:
 
-    DplugView* _dplugView;
+    DplugView _dplugView;
 
     this(Client client)
     {
@@ -1265,7 +1265,7 @@ nothrow:
     this(VST3Client vst3Client)
     {
         _vst3Client = vst3Client;
-        _vst3Client._dplugView = this.ptr;
+        _vst3Client._dplugView = this;
         _graphicsMutex = makeMutex();
     }
 
@@ -1400,7 +1400,14 @@ nothrow:
     *  requests a resize (IPlugFrame::resizeView ()) onSize has to be called afterward. */
     extern(Windows) tresult onSize (ViewRect* newSize)
     {
-        return kResultOk;
+        if(newSize)
+        {
+            if(expectingNewSize)
+            {
+                expectingNewSize = false;
+            }
+        }
+        return kResultTrue;
     }
 
     /** Focus changed message. */
@@ -1421,7 +1428,7 @@ nothrow:
     /** Is view sizable by user. */
     extern(Windows) tresult canResize ()
     {
-        return kResultFalse;
+        return kResultTrue;
     }
 
     /** On live resize this is called to check if the view can be resized to the given rect, if not
@@ -1431,18 +1438,19 @@ nothrow:
         return kResultTrue;
     }
 
-    void resize(int width, int height)
+    bool resize(int width, int height)
     {
-		ViewRect vr;
-		vr.right = width;
-		vr.bottom = height;
-		return _plugFrame.resizeView (this, &vr) == kResultTrue ? true : false;
+		ViewRect newSize = ViewRect(0, 0, width, height);
+        expectingNewSize = true;
+		bool result = _plugFrame.resizeView (this, &newSize) == kResultTrue ? true : false;
+        return result;
     }
 
 private:
     VST3Client _vst3Client;
     UncheckedMutex _graphicsMutex;
     IPlugFrame _plugFrame;
+    bool expectingNewSize;
 
     static bool convertPlatformToGraphicsBackend(FIDString type, GraphicsBackend* backend)
     {
@@ -1504,7 +1512,7 @@ nothrow:
     override bool requestResize(int width, int height)
     {
         // FUTURE, will need to keep an instance pointer of the current IPluginView
-        return _vst3Client.dplugView.resize(width, height);
+        return _vst3Client._dplugView.resize(width, height);
     }
 
     DAW getDAW()
