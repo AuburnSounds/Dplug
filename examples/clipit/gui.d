@@ -31,7 +31,7 @@ nothrow:
     this(ClipitClient client)
     {
         _client = client;
-        super(_initialWidth, _initialHeight); // size
+        super(_initialWidth, _initialHeight, _client); // size
 
         // Sets the number of pixels recomputed around dirtied controls.
         // Since we aren't using pbr we can set this value to 0 to save
@@ -67,25 +67,25 @@ nothrow:
     {
         super.onDrawRaw(rawMap,dirtyRects);
 
-        foreach(dirtyRect; dirtyRects)
-        {
-            auto cRaw = rawMap.cropImageRef(dirtyRect);
-            canvas.initialize(cRaw);
-            canvas.translate(-dirtyRect.min.x, -dirtyRect.min.y);
+        // foreach(dirtyRect; dirtyRects)
+        // {
+        //     auto cRaw = rawMap.cropImageRef(dirtyRect);
+        //     canvas.initialize(cRaw);
+        //     canvas.translate(-dirtyRect.min.x, -dirtyRect.min.y);
 
-            // gradients have to be recreated for each dirtyRect
-            auto gradient = canvas.createLinearGradient(0, 0, 100*1.414, 100*1.414);
-            gradient.addColorStop(0.0f, RGBA(255, 50, 128, 255));
-            gradient.addColorStop(1.0f, RGBA(128, 128, 128, 0));
+        //     // gradients have to be recreated for each dirtyRect
+        //     auto gradient = canvas.createLinearGradient(0, 0, 100*1.414, 100*1.414);
+        //     gradient.addColorStop(0.0f, RGBA(255, 50, 128, 255));
+        //     gradient.addColorStop(1.0f, RGBA(128, 128, 128, 0));
 
-            canvas.fillStyle = gradient;
+        //     canvas.fillStyle = gradient;
 
-            canvas.beginPath;
-                canvas.moveTo(0, 0);
-                canvas.lineTo(200, 0);
-                canvas.lineTo(0, 200);
-                canvas.fill();
-        }
+        //     canvas.beginPath;
+        //         canvas.moveTo(0, 0);
+        //         canvas.lineTo(200, 0);
+        //         canvas.lineTo(0, 200);
+        //         canvas.fill();
+        // }
 
     }
 
@@ -124,15 +124,15 @@ nothrow:
     {
         if(isDoubleClick)
         {
-            if(_position.width == 1000)
+            if(_position.width == cast(int)(_initialWidth * 0.5))
             {
-                _client.hostCommand().requestResize(_initialWidth, _initialHeight);
                 resizeWindow(_initialWidth, _initialHeight);
             }
             else
             {
-                _client.hostCommand().requestResize(_initialWidth * 2, _initialHeight * 2);
-                resizeWindow(_initialWidth * 2, _initialHeight * 2);
+                int newWidth = cast(int)(_initialWidth * 0.5);
+                int newHeight = cast(int)(_initialHeight * 0.5);
+                resizeWindow(newWidth, newHeight);
             }
             return true;
         }

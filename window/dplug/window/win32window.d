@@ -38,8 +38,6 @@ import dplug.window.window;
 nothrow:
 @nogc:
 
-
-
 version(Windows)
 {
     import std.uuid;
@@ -143,10 +141,6 @@ version(Windows)
                     _useFLStudioBridgeWorkaround = path[len - 12 .. len] == "ilbridge.exe";
                 }
             }
-
-            parentWndProcCallback = GetWindowLongPtr(parentWindow, GWLP_WNDPROC);
-            SetWindowLongPtrA(parentWindow, GWL_WNDPROC, cast(LONG_PTR)&parentWindowProcCallback);
-            childWindow = this;
         }
 
         ~this()
@@ -210,12 +204,6 @@ version(Windows)
 
             switch (uMsg)
             {
-                case WM_SIZE:
-                case WM_MOVE:
-                {
-                    updateSizeIfNeeded();
-                    return 0;
-                }
                 case WM_KEYDOWN:
                 case WM_KEYUP:
                 {
@@ -353,6 +341,14 @@ version(Windows)
                 case WM_CAPTURECHANGED:
                     _listener.onMouseCaptureCancelled();
                     goto default;
+
+                case WM_SIZE:
+                {
+                    uint width = LOWORD(lParam); 
+                    uint height = HIWORD(lParam);
+                    _listener.onResized(width, height);
+                    return 0;
+                }
 
                 case WM_PAINT:
                 {
@@ -514,7 +510,7 @@ version(Windows)
 
         void resize(int width, int height)
         {
-
+            int result = SetWindowPos(_hwnd, HWND_TOP, 0, 0, width, height, 0);
         }
 
     private:
@@ -586,23 +582,6 @@ __gshared Win32Window childWindow;
                 return window.windowProc(hwnd, uMsg, wParam, lParam);
             else
                 return DefWindowProcA(hwnd, uMsg, wParam, lParam);
-        }
-    }
-
-    extern(Windows) nothrow
-    {
-        LRESULT parentWindowProcCallback(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
-        {
-            Win32Window window = childWindow;
-            if(uMsg == WM_SIZE)
-            {
-                if (window !is null)
-                    return window.windowProc(hwnd, uMsg, wParam, lParam);
-                else
-                    return DefWindowProcA(hwnd, uMsg, wParam, lParam);
-            }
-
-            return CallWindowProcA(cast(WNDPROC)parentWndProcCallback, hwnd, uMsg, wParam, lParam);
         }
     }
 

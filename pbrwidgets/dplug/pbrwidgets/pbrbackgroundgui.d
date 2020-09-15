@@ -23,6 +23,8 @@ import dplug.gui.element;
 import dplug.gui.compositor;
 import dplug.gui.legacypbr;
 
+import dplug.client: Client;
+
 /// PBRBackgroundGUI provides a PBR background loaded from PNG or JPEG images.
 /// It's very practical while in development because it let's you reload the six
 /// images used with the press of ENTER.
@@ -40,9 +42,9 @@ public:
 nothrow:
 @nogc:
 
-    this(int width, int height)
+    this(int width, int height, Client client)
     {
-        super(width, height, flagPBR);
+        super(width, height, flagPBR, client);
         auto basecolorData = cast(ubyte[])(import(baseColorPath));
         auto emissiveData = cast(ubyte[])(import(emissivePath));        
         auto materialData = cast(ubyte[])(import(materialPath));

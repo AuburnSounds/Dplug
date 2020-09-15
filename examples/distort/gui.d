@@ -43,7 +43,7 @@ nothrow:
     this(DistortClient client)
     {
         _client = client;
-        super(_initialWidth, _initialHeight); // size
+        super(_initialWidth, _initialHeight, _client); // size
 
 
         // Note: PBRCompositor default lighting might change in a future version (increase of light to allow white plastics).
@@ -161,15 +161,15 @@ nothrow:
     {
         if(isDoubleClick)
         {
-            if(_position.width == _initialHeight * 2)
+            if(_position.width == cast(int)(_initialWidth * 0.5))
             {
-                _client.hostCommand().requestResize(_initialWidth, _initialHeight);
                 resizeWindow(_initialWidth, _initialHeight);
             }
             else
             {
-                _client.hostCommand().requestResize(_initialWidth * 2, _initialHeight * 2);
-                resizeWindow(_initialWidth * 2, _initialHeight * 2);
+                int newWidth = cast(int)(_initialWidth * 0.5);
+                int newHeight = cast(int)(_initialHeight * 0.5);
+                resizeWindow(newWidth, newHeight);
             }
             return true;
         }

@@ -73,9 +73,10 @@ nothrow:
         return compositor;
     }
 
-    this(int initialWidth, int initialHeight, UIFlags flags)
+    this(int initialWidth, int initialHeight, UIFlags flags, Client client)
     {
         _uiContext = mallocNew!UIContext();
+        _client = client;
         super(_uiContext, flags);
 
         _windowListener = mallocNew!WindowListener(this);
@@ -316,12 +317,15 @@ nothrow:
 
     void resizeWindow(int width, int height) nothrow @nogc
     {
+        _client.hostCommand().requestResize(width, height);
         _window.resize(width, height);
     }
 
 protected:
 
     UIContext _uiContext;
+
+    Client _client;
 
     WindowListener _windowListener;
 

@@ -19,6 +19,8 @@ import dplug.core.nogc;
 import dplug.gui.graphics;
 import dplug.gui.element;
 
+import dplug.client : Client;
+
 /// FlatBackgroundGUI provides a background that is loaded from a PNG or JPEG
 /// image. The string for backgroundPath should be in "stringImportPaths"
 /// specified in dub.json
@@ -28,9 +30,9 @@ public:
 nothrow:
 @nogc:
 
-    this(int width, int height)
+    this(int width, int height, Client client)
     {
-        super(width, height, flagRaw);
+        super(width, height, flagRaw, client);
         _backgroundImage = loadOwnedImage(cast(ubyte[])(import(backgroundPath)));
     }
     
