@@ -111,6 +111,7 @@ Be sure to read the [Wiki](https://github.com/AuburnSounds/Dplug/wiki/) in depth
   - Well-defined scope: for professional plug-in developers
   - Maintained continuously, supported by sales for the foreseeable future
   - Price is free, no personal support must be expected though
+  - Intel intrinsics compatible with Apple Silicon
   - Fast 2D software rasterizer in `dplug:canvas`
   - PBR-style rendering lets you have a good visual quality with less disk space. If you don't use it, you don't pay for it.
   - No dealing with resource compilers: D can `import("filename.ext")` them
