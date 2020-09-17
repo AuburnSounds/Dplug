@@ -1,8 +1,13 @@
 language: d
 
 before_install:
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get update -y ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get install -y gcc-multilib ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then sudo apt-get update -y ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then sudo apt-get install -y gcc-multilib ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then sudo apt-get install -y libc6-dev ; fi
+
+arch:
+  - amd64
+  - arm64
 
 os:
   - osx
@@ -33,6 +38,20 @@ matrix:
    - d: ldc-beta
    - d: dmd-beta
    - d: dmd-2.089.1
+   - d: dmd-beta
+     arch: arm64
+   - d: dmd-2.093.0
+     arch: arm64
+   - d: dmd-2.092.1
+     arch: arm64
+   - d: dmd-2.091.1
+     arch: arm64
+   - d: dmd-2.090.1
+     arch: arm64
+   - d: dmd-2.088.1
+     arch: arm64
+   - d: dmd-2.087.1
+     arch: arm64
 
 # uncompress encrypted VST SDK
 before_install:
@@ -41,7 +60,6 @@ before_install:
 
 env:
   - VST2_SDK=$TRAVIS_BUILD_DIR/VST2_SDK
-
 
 script:
   - cd examples/distort; dub --compiler=${DC} -c LV2; cd ../..
@@ -83,20 +101,20 @@ script:
   - dub test --compiler=${DC} dplug:canvas
   - dub test --compiler=${DC} -b unittest-release dplug:core
   - dub test --compiler=${DC} -b unittest-release dplug:dsp
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then dub test --compiler=${DC} -a x86 dplug:core ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then dub test --compiler=${DC} -a x86 dplug:dsp ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then dub test --compiler=${DC} -a x86 dplug:client ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then dub test --compiler=${DC} -a x86 dplug:host ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then dub test --compiler=${DC} -a x86 dplug:vst ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then dub test --compiler=${DC} -a x86 dplug:window ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then dub test --compiler=${DC} -a x86 dplug:cocoa ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then dub test --compiler=${DC} -a x86 dplug:carbon ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then dub test --compiler=${DC} -a x86 dplug:au ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then dub test --compiler=${DC} -a x86 dplug:pbr-widgets ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then dub test --compiler=${DC} -a x86 dplug:flat-widgets ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then dub test --compiler=${DC} -a x86 dplug:lv2 ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then dub test --compiler=${DC} -a x86 dplug:vst3 ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then dub test --compiler=${DC} -a x86 dplug:lv2 ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then dub test --compiler=${DC} -a x86 dplug:vst3 ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then dub test --compiler=${DC} -a x86 dplug:graphics ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then dub test --compiler=${DC} -a x86 dplug:canvas ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then dub test --compiler=${DC} -a x86 dplug:core ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then dub test --compiler=${DC} -a x86 dplug:dsp ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then dub test --compiler=${DC} -a x86 dplug:client ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then dub test --compiler=${DC} -a x86 dplug:host ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then dub test --compiler=${DC} -a x86 dplug:vst ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then dub test --compiler=${DC} -a x86 dplug:window ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then dub test --compiler=${DC} -a x86 dplug:cocoa ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then dub test --compiler=${DC} -a x86 dplug:carbon ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then dub test --compiler=${DC} -a x86 dplug:au ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then dub test --compiler=${DC} -a x86 dplug:pbr-widgets ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then dub test --compiler=${DC} -a x86 dplug:flat-widgets ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then dub test --compiler=${DC} -a x86 dplug:lv2 ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then dub test --compiler=${DC} -a x86 dplug:vst3 ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then dub test --compiler=${DC} -a x86 dplug:lv2 ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then dub test --compiler=${DC} -a x86 dplug:vst3 ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then dub test --compiler=${DC} -a x86 dplug:graphics ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then dub test --compiler=${DC} -a x86 dplug:canvas ; fi
