@@ -163,6 +163,18 @@ nothrow @nogc:
         (cast(fun_t)objc_msgSend)(_id, sel!"setNeedsDisplayInRect:", rect);
     }
 
+    void display()
+    {
+        alias fun_t = extern(C) void function (id, SEL) nothrow @nogc;
+        (cast(fun_t)objc_msgSend)(_id, sel!"display");
+    }
+
+    void setNeedsDisplay()
+    {
+        alias fun_t = extern(C) void function (id, SEL) nothrow @nogc;
+        (cast(fun_t)objc_msgSend)(_id, sel!"setNeedsDisplay:");
+    }
+
     NSPoint convertPoint(NSPoint point, NSView view)
     {
         alias fun_t = extern(C) NSPoint function (id, const(SEL), NSPoint, id) nothrow @nogc;
@@ -198,6 +210,17 @@ nothrow @nogc:
     {
         alias fun_t = extern(C) void function (id, SEL, BOOL) nothrow @nogc;
         (cast(fun_t)objc_msgSend)(_id, sel!"setWantsLayer:", value);
+    }
+
+    void setFrameSize(NSSize newSize)
+    {
+        version(Debug)
+        {
+            import core.stdc.stdlib;
+            fprintf(stderr, "this is a test");
+        }
+        alias fun_t = extern(C) void function (id, SEL, NSSize) nothrow @nogc;
+        (cast(fun_t)objc_msgSend)(_id, sel!"setFrameSize:", newSize);
     }
 }
 
@@ -303,6 +326,12 @@ nothrow @nogc:
     {
         alias fun_t = extern(C) void function (id, SEL, BOOL) nothrow @nogc;
         (cast(fun_t)objc_msgSend)(_id, sel!"setAcceptsMouseMovedEvents:", b ? YES : NO);
+    }
+
+    void setFrameDisplay(NSRect frameRect, bool display)
+    {
+        alias fun_t = extern(C) void function(id, SEL, NSRect, BOOL) nothrow @nogc;
+        (cast(fun_t)objc_msgSend)(_id, sel!"setFrameDisplay", frameRect, display ? YES : NO);
     }
 }
 

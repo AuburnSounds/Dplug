@@ -182,7 +182,10 @@ public:
 
     override void resize(int width, int height)
     {
-
+        NSSize size = NSSize(cast(CGFloat)width, cast(CGFloat)height);
+        _listener.onResized(width, height);
+        _view.setFrameSize(size);
+        _view.setNeedsDisplay();
     }
 
 private:
@@ -334,12 +337,11 @@ private:
         // Updates internal buffers in case of startup/resize
         // FUTURE: why is the bounds rect too large? It creates havoc in AU even without resizing.
         {
-            /*
             NSRect boundsRect = _view.bounds();
             int width = cast(int)(boundsRect.size.width);   // truncating down the dimensions of bounds
             int height = cast(int)(boundsRect.size.height);
-            */
-            updateSizeIfNeeded(_askedWidth, _askedHeight);
+
+            updateSizeIfNeeded(width, height);
         }
 
         // The first drawRect callback occurs before the timer triggers.

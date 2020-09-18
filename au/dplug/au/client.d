@@ -2208,7 +2208,7 @@ private:
 
         override bool requestResize(int width, int height)
         {
-            return false; // FUTURE implement for AU
+            return true; // FUTURE implement for AU
         }
 
         DAW _daw = DAW.Unknown;
