@@ -2,7 +2,7 @@
     "name": "wav-info",
 
     "dependencies": {
-        "dplug:core": "~>9.0",
+        "dplug:core": {"path": "../../"},
         "wave-d": "~>1.0",
         "colorize": "~>1.0"
     }

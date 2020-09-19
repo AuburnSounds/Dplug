@@ -586,7 +586,7 @@ nothrow @nogc:
         else version(X86_64)
             return (cast(fun_t)objc_msgSend)(_id, sel!"deltaX");
         else
-            static assert(false);
+            return (cast(fun_t)objc_msgSend)(_id, sel!"deltaX");
     }
 
     double deltaY()
@@ -597,7 +597,7 @@ nothrow @nogc:
         else version(X86_64)
             return (cast(fun_t)objc_msgSend)(_id, sel!"deltaY");
         else
-            static assert(false);
+            return (cast(fun_t)objc_msgSend)(_id, sel!"deltaY");
     }
 
     ushort keyCode()

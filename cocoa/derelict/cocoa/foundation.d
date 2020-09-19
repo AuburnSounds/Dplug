@@ -482,7 +482,7 @@ nothrow @nogc:
         else version(X86_64)
             return (cast(fun_t)objc_msgSend)(getClassID(), sel!"timeIntervalSinceReferenceDate");
         else
-            static assert(false);
+            return (cast(fun_t)objc_msgSend)(getClassID(), sel!"timeIntervalSinceReferenceDate");
     }
 
     static NSDate dateWithTimeIntervalSinceNow(double secs)
