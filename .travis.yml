@@ -1,6 +1,6 @@
 language: d
 
-dist: focal
+dist: trusty
 
 arch:
   - amd64
