@@ -475,6 +475,11 @@ void debugBreak() nothrow @nogc
             "int $0x03" : : : ;
         }
     }
+    else version(LDC)
+    {
+    	import ldc.intrinsics;
+    	llvm_debugtrap();
+    }
     else
     {
         static assert(false, "No debugBreak() for this compiler");
