@@ -1,9 +1,6 @@
 language: d
 
-before_install:
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get update -y ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then sudo apt-get install -y gcc-multilib ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then sudo apt-get install -y libc6-dev ; fi
+dist: focal
 
 arch:
   - amd64
@@ -12,6 +9,12 @@ arch:
 os:
   - osx
   - linux
+
+before_install:
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get update -y ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then sudo apt-get install -y gcc-multilib ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then sudo apt-get install -y libc6-dev ; fi
+
 
 d:
  - ldc-beta
@@ -73,17 +76,17 @@ script:
   - if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then cd tools/latency-check; dub --compiler=${DC}; cd ../.. ; fi
   - cd tools/wav-compare; dub --compiler=${DC}; cd ../..
   - cd tools/wav-info; dub --compiler=${DC}; cd ../..
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then cd examples/distort; dub --compiler=${DC} -a x86; cd ../.. ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then cd examples/clipit; dub --compiler=${DC} -a x86; cd ../.. ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then cd examples/ms-encode; dub --compiler=${DC} -a x86; cd ../.. ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then cd examples/simple-mono-synth; dub --compiler=${DC} -a x86; cd ../.. ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then cd examples/poly-alias-synth; dub --compiler=${DC} -a x86; cd ../.. ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then cd tools/dplug-build; dub --compiler=${DC} -a x86; cd ../.. ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then cd tools/stress-plugin; dub --compiler=${DC} -a x86; cd ../.. ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then cd tools/process; dub --compiler=${DC} -a x86; cd ../.. ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then cd tools/latency-check; dub --compiler=${DC} -a x86; cd ../.. ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then cd tools/wav-compare; dub --compiler=${DC} -a x86; cd ../.. ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then cd tools/wav-info; dub --compiler=${DC} -a x86; cd ../.. ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then cd examples/distort; dub --compiler=${DC} -a x86; cd ../.. ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then cd examples/clipit; dub --compiler=${DC} -a x86; cd ../.. ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then cd examples/ms-encode; dub --compiler=${DC} -a x86; cd ../.. ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then cd examples/simple-mono-synth; dub --compiler=${DC} -a x86; cd ../.. ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then cd examples/poly-alias-synth; dub --compiler=${DC} -a x86; cd ../.. ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then cd tools/dplug-build; dub --compiler=${DC} -a x86; cd ../.. ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" && "$TRAVIS_PULL_REQUEST" != "false" ]]; then cd tools/stress-plugin; dub --compiler=${DC} -a x86; cd ../.. ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" && "$TRAVIS_PULL_REQUEST" != "false" ]]; then cd tools/process; dub --compiler=${DC} -a x86; cd ../.. ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" && "$TRAVIS_PULL_REQUEST" != "false" ]]; then cd tools/latency-check; dub --compiler=${DC} -a x86; cd ../.. ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then cd tools/wav-compare; dub --compiler=${DC} -a x86; cd ../.. ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then cd tools/wav-info; dub --compiler=${DC} -a x86; cd ../.. ; fi
   - dub test --compiler=${DC} dplug:core
   - dub test --compiler=${DC} dplug:dsp
   - dub test --compiler=${DC} dplug:client
