@@ -214,11 +214,6 @@ nothrow @nogc:
 
     void setFrameSize(NSSize newSize)
     {
-        version(Debug)
-        {
-            import core.stdc.stdlib;
-            fprintf(stderr, "this is a test");
-        }
         alias fun_t = extern(C) void function (id, SEL, NSSize) nothrow @nogc;
         (cast(fun_t)objc_msgSend)(_id, sel!"setFrameSize:", newSize);
     }
