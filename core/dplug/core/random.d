@@ -46,6 +46,11 @@ uint nogc_unpredictableSeed() @nogc nothrow
             mov result, EAX;
         }
     }
+    else version(LDC)
+    {
+        import ldc.intrinsics;
+        result = cast(uint) llvm_readcyclecounter();
+    }
     else
         static assert(false, "Unsupported");
     return result;
