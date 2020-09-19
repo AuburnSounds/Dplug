@@ -58,22 +58,22 @@ matrix:
 
 # uncompress encrypted VST SDK
 before_install:
-  - if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then openssl aes-256-cbc -K $encrypted_00660bf0ef48_key -iv $encrypted_00660bf0ef48_iv -in secrets-for-ci.tar.enc -out secrets-for-ci.tar -d ; fi
-  - if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then tar xvf secrets-for-ci.tar ; fi
+  - if [[ "$TRAVIS_PULL_REQUEST" == "false" ]]; then openssl aes-256-cbc -K $encrypted_00660bf0ef48_key -iv $encrypted_00660bf0ef48_iv -in secrets-for-ci.tar.enc -out secrets-for-ci.tar -d ; fi
+  - if [[ "$TRAVIS_PULL_REQUEST" == "false" ]]; then tar xvf secrets-for-ci.tar ; fi
 
 env:
   - VST2_SDK=$TRAVIS_BUILD_DIR/VST2_SDK
 
 script:
   - cd examples/distort; dub --compiler=${DC} -c LV2; cd ../..
-  - if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then cd examples/clipit; dub --compiler=${DC} -c VST2; cd ../.. ; fi
+  - if [[ "$TRAVIS_PULL_REQUEST" == "false" ]]; then cd examples/clipit; dub --compiler=${DC} -c VST2; cd ../.. ; fi
   - cd examples/ms-encode; dub --compiler=${DC} -c VST3; cd ../..
   - cd examples/simple-mono-synth; dub --compiler=${DC} -c VST3; cd ../..
-  - if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then cd examples/poly-alias-synth; dub --compiler=${DC} -c VST2; cd ../.. ; fi
+  - if [[ "$TRAVIS_PULL_REQUEST" == "false" ]]; then cd examples/poly-alias-synth; dub --compiler=${DC} -c VST2; cd ../.. ; fi
   - cd tools/dplug-build; dub --compiler=${DC}; cd ../..
-  - if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then cd tools/stress-plugin; dub --compiler=${DC}; cd ../.. ; fi
-  - if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then cd tools/process; dub --compiler=${DC}; cd ../.. ; fi
-  - if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then cd tools/latency-check; dub --compiler=${DC}; cd ../.. ; fi
+  - if [[ "$TRAVIS_PULL_REQUEST" == "false" ]]; then cd tools/stress-plugin; dub --compiler=${DC}; cd ../.. ; fi
+  - if [[ "$TRAVIS_PULL_REQUEST" == "false" ]]; then cd tools/process; dub --compiler=${DC}; cd ../.. ; fi
+  - if [[ "$TRAVIS_PULL_REQUEST" == "false" ]]; then cd tools/latency-check; dub --compiler=${DC}; cd ../.. ; fi
   - cd tools/wav-compare; dub --compiler=${DC}; cd ../..
   - cd tools/wav-info; dub --compiler=${DC}; cd ../..
   - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then cd examples/distort; dub --compiler=${DC} -a x86; cd ../.. ; fi
@@ -82,16 +82,16 @@ script:
   - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then cd examples/simple-mono-synth; dub --compiler=${DC} -a x86; cd ../.. ; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then cd examples/poly-alias-synth; dub --compiler=${DC} -a x86; cd ../.. ; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then cd tools/dplug-build; dub --compiler=${DC} -a x86; cd ../.. ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" && "$TRAVIS_PULL_REQUEST" != "false" ]]; then cd tools/stress-plugin; dub --compiler=${DC} -a x86; cd ../.. ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" && "$TRAVIS_PULL_REQUEST" != "false" ]]; then cd tools/process; dub --compiler=${DC} -a x86; cd ../.. ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" && "$TRAVIS_PULL_REQUEST" != "false" ]]; then cd tools/latency-check; dub --compiler=${DC} -a x86; cd ../.. ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" && "$TRAVIS_PULL_REQUEST" == "false" ]]; then cd tools/stress-plugin; dub --compiler=${DC} -a x86; cd ../.. ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" && "$TRAVIS_PULL_REQUEST" == "false" ]]; then cd tools/process; dub --compiler=${DC} -a x86; cd ../.. ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" && "$TRAVIS_PULL_REQUEST" == "false" ]]; then cd tools/latency-check; dub --compiler=${DC} -a x86; cd ../.. ; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then cd tools/wav-compare; dub --compiler=${DC} -a x86; cd ../.. ; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then cd tools/wav-info; dub --compiler=${DC} -a x86; cd ../.. ; fi
   - dub test --compiler=${DC} dplug:core
   - dub test --compiler=${DC} dplug:dsp
   - dub test --compiler=${DC} dplug:client
-  - if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then dub test --compiler=${DC} dplug:host ; fi
-  - if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then dub test --compiler=${DC} dplug:vst ; fi
+  - if [[ "$TRAVIS_PULL_REQUEST" == "false" ]]; then dub test --compiler=${DC} dplug:host ; fi
+  - if [[ "$TRAVIS_PULL_REQUEST" == "false" ]]; then dub test --compiler=${DC} dplug:vst ; fi
   - dub test --compiler=${DC} dplug:window
   - dub test --compiler=${DC} dplug:cocoa
   - dub test --compiler=${DC} dplug:carbon
@@ -106,8 +106,8 @@ script:
   - dub test --compiler=${DC} -b unittest-release dplug:dsp
   - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then dub test --compiler=${DC} -a x86 dplug:core ; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then dub test --compiler=${DC} -a x86 dplug:dsp ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" && "$TRAVIS_PULL_REQUEST" != "false" ]]; then dub test --compiler=${DC} -a x86 dplug:client ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" && "$TRAVIS_PULL_REQUEST" != "false" ]]; then dub test --compiler=${DC} -a x86 dplug:host ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" && "$TRAVIS_PULL_REQUEST" == "false" ]]; then dub test --compiler=${DC} -a x86 dplug:client ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" && "$TRAVIS_PULL_REQUEST" == "false" ]]; then dub test --compiler=${DC} -a x86 dplug:host ; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then dub test --compiler=${DC} -a x86 dplug:vst ; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then dub test --compiler=${DC} -a x86 dplug:window ; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then dub test --compiler=${DC} -a x86 dplug:cocoa ; fi
