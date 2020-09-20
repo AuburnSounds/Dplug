@@ -67,10 +67,10 @@ env:
 
 script:
   - cd examples/distort; dub --compiler=${DC} -c LV2; cd ../..
-  - if [[ "$TRAVIS_PULL_REQUEST" == "false" ]]; then cd examples/clipit; dub --compiler=${DC} -c VST2; cd ../.. ; fi
+  - if [[ "$TRAVIS_PULL_REQUEST" == "false" ]]; then cd examples/clipit; dub --compiler=${DC} -c VST; cd ../.. ; fi
   - cd examples/ms-encode; dub --compiler=${DC} -c VST3; cd ../..
   - cd examples/simple-mono-synth; dub --compiler=${DC} -c VST3; cd ../..
-  - if [[ "$TRAVIS_PULL_REQUEST" == "false" ]]; then cd examples/poly-alias-synth; dub --compiler=${DC} -c VST2; cd ../.. ; fi
+  - if [[ "$TRAVIS_PULL_REQUEST" == "false" ]]; then cd examples/poly-alias-synth; dub --compiler=${DC} -c VST; cd ../.. ; fi
   - cd tools/dplug-build; dub --compiler=${DC}; cd ../..
   - if [[ "$TRAVIS_PULL_REQUEST" == "false" ]]; then cd tools/stress-plugin; dub --compiler=${DC}; cd ../.. ; fi
   - if [[ "$TRAVIS_PULL_REQUEST" == "false" ]]; then cd tools/process; dub --compiler=${DC}; cd ../.. ; fi
