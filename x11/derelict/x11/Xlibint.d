@@ -655,12 +655,6 @@ else{                                                   /* not WORD64           
     }
 }
 
-void PackData16( Display* dpy, short* data, uint len){ Data16(dpy, data, len); }
-void PackData32( Display* dpy, c_long* data, uint len){ Data32(dpy, data, len); }
-
-                                                        /* Xlib manual is bogus                                         */
-void PackData( Display* dpy, short* data, uint len){ PackData16(dpy, data, len); }
-
 int max(int a, int b) { return (a < b) ? b : a; }
 int min(int a, int b) { return (a > b) ? b : a; }
 
