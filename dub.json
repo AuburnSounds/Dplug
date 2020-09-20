@@ -44,10 +44,10 @@
             ],
 
             "importPaths": [ "core" ],
-            "authors": [
-                "Guillaume Piolat",
-                "Mike Parker (derelict-util bits)"
-            ],
+
+            "dependencies": {
+                "intel-intrinsics": "~>1.0"
+            },
 
             "buildTypes": 
             {

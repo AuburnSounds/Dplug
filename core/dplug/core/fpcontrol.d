@@ -11,20 +11,23 @@ version(X86)
 version(X86_64)
     version = isX86;
 
+import inteli.xmmintrin;
+
 /// This struct ensures that floating point is save/restored and set consistently in plugin callbacks.
 struct FPControl
 {
     void initialize() nothrow @nogc
     {
+        // Get current SSE control word (emulated on ARM)
+        storedMXCSR = _mm_getcsr();
+
+        // Set current SSE control word (emulated on ARM)
+        _mm_setcsr(0x9fff); // Flush denormals to zero + Denormals Are Zeros + all exception masked
+
         version(isX86)
         {
-            // store SSE control word
-            sseState = getSSEControlState();
-            setSSEControlState(0x9fff); // Flush denormals to zero + Denormals Are Zeros + all exception masked
-
             // store FPU control word
             fpuState = getFPUControlState();
-
 
             // masks all floating-point exceptions, sets rounding to nearest, and sets the x87 FPU precision to 64 bits
             ushort control = 0x037f;
@@ -41,11 +44,10 @@ struct FPControl
 
     ~this() nothrow @nogc
     {
-        version(isX86)
-        {
-            // restore SSE2 LDMXCSR and STMXCSR load and write the MXCSR
-            setSSEControlState(sseState);
+        _mm_setcsr(storedMXCSR);
 
+        version(isX86)
+        {        
             // restore FPU control word
             setFPUControlState(fpuState);
         }
@@ -54,7 +56,7 @@ struct FPControl
     version(isX86)
     {
         ushort fpuState;
-        uint sseState;
+        uint storedMXCSR;
     }
 }
 
@@ -100,43 +102,27 @@ version(isX86)
         else
             static assert(0, "Unsupported");
     }
-
-    /// Get SSE control register
-    uint getSSEControlState() @trusted nothrow @nogc
-    {
-        version (InlineX86Asm)
-        {
-            uint controlWord;
-            asm nothrow @nogc 
-            {
-                stmxcsr controlWord; 
-            }
-            return controlWord;
-        }
-        else
-            static assert(0, "Not yet supported");
-    }
-
-    /// Sets SSE control register
-    void setSSEControlState(uint controlWord) @trusted nothrow @nogc
-    {
-        version (InlineX86Asm)
-        {
-            asm nothrow @nogc 
-            { 
-                ldmxcsr controlWord; 
-            }
-        }
-        else
-            static assert(0, "Not yet supported");
-    }
 }
 
 unittest
 {
+    // TEST FOR DENORMAL FLUSH TO ZERO
 
     FPControl control;
     control.initialize();
+    
+    // Trying to see if FTZ is working, 1e-37 is a very small normalized number
+    float denormal = 1e-37f * 0.1f;
 
-
+    version(DigitalMars)
+    {
+        version(X86)
+        {
+            // DMD x86 32-bit may use FPU operations, hence not suppressing denormals         
+        }
+        else
+            assert(denormal == 0);
+    }
+    else
+        assert(denormal == 0);
 }
