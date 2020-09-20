@@ -930,7 +930,47 @@ void generateLevelBoxAlphaCovRGBA(OwnedImage!RGBA thisLevel,
         {
             version(D_InlineAsm_X86)
             {
+                // Note: this block of assembly created problems with LDC -a x86,
+                // and other problems with DMD, so it's currently disabled
+
+                // Generic code
                 assert(width > 0);
+
+                for (int x = 0; x < width; ++x)
+                {
+                    // A B
+                    // C D
+                    RGBA A = L0[2 * x];
+                    RGBA B = L0[2 * x + 1];
+                    RGBA C = L1[2 * x];
+                    RGBA D = L1[2 * x + 1];
+
+                    int alphaA = A.a;
+                    int alphaB = B.a;
+                    int alphaC = C.a;
+                    int alphaD = D.a;
+                    int sum = alphaA + alphaB + alphaC + alphaD;
+                    if (sum == 0)
+                    {
+                        dest[x] = RGBA(0,0,0,0);
+                    }
+                    else
+                    {
+                        int destAlpha = cast(ubyte)( (alphaA + alphaB + alphaC + alphaD + 2) >> 2 );
+                        int red =   (A.r * alphaA + B.r * alphaB + C.r * alphaC + D.r * alphaD);
+                        int green = (A.g * alphaA + B.g * alphaB + C.g * alphaC + D.g * alphaD);
+                        int blue =  (A.b * alphaA + B.b* alphaB + C.b * alphaC + D.b * alphaD);
+                        float invSum = 1 / cast(float)(sum);
+
+                        RGBA finalColor = RGBA( cast(ubyte)(0.5f + red * invSum),
+                                                cast(ubyte)(0.5f + green * invSum),
+                                                cast(ubyte)(0.5f + blue * invSum),
+                                                cast(ubyte)destAlpha );
+                        dest[x] = finalColor;
+                    }
+                }
+
+                /+
                 asm nothrow @nogc
                 {
                     mov ECX, width;
@@ -1030,6 +1070,7 @@ void generateLevelBoxAlphaCovRGBA(OwnedImage!RGBA thisLevel,
                     jnz loop_ecx;
                     end_of_loop: ;
                 }
+                +/
             }
             else version(D_InlineAsm_X86_64)
             {
