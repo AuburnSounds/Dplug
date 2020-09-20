@@ -2,20 +2,20 @@
 
 # [![Build Status](https://travis-ci.org/AuburnSounds/Dplug.svg?branch=master)](https://travis-ci.org/AuburnSounds/Dplug) <a href="https://code.dlang.org/packages/dplug" title="Go to dplug"><img src="https://img.shields.io/dub/v/dplug.svg" alt="Dub version"></a> ![Dplug Discord server](https://discordapp.com/api/guilds/242094594181955585/widget.png?style=shield) [![Build Status](https://dev.azure.com/AuburnSounds/Dplug%20CI/_apis/build/status/AuburnSounds.Dplug?branchName=master)](https://dev.azure.com/AuburnSounds/Dplug%20CI/_build/latest?definitionId=2&branchName=master)
 
-`Dplug` lets you create professional audio plug-ins with unmatched simplicity and speed, using the D language.
+`Dplug` lets you create audio plug-ins with unmatched simplicity and speed, using the D language.
 
 - Homepage: [https://dplug.org/](https://dplug.org/)
 - Wiki: https://github.com/AuburnSounds/Dplug/wiki
 
 ## Features
 
-|  Plug-in format supported | Mac 64b | Windows 32b | Windows 64b | Linux 64b |
-|---------------------------|---------|-------------|-------------|-----------|
-| VST2                      | Yes     | Yes         | Yes         | Yes       |
-| VST3                      | Yes     | Yes         | Yes         | Yes       |
-| AUv2                      | Yes     | NA          | NA          | NA        |
-| AAX                       | Yes     | No          | Yes         | No        |
-| LV2                       | Yes     | No          | Yes         | Yes       |
+|  Plug-in format supported | Mac x86-64 | Windows x86 | Windows x86-64 | Linux x86-64 |
+|---------------------------|------------|-------------|----------------|--------------|
+| VST2                      | Yes        | Yes         | Yes            | Yes          |
+| VST3                      | Yes        | Yes         | Yes            | Yes          |
+| AUv2                      | Yes        |             |                |              |
+| AAX                       | Yes        | No          | Yes            | No           |
+| LV2                       | Yes        | No          | Yes            | Yes          |
 
 
 - Automated Mac and Windows installers
