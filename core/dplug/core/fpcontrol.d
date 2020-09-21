@@ -55,9 +55,9 @@ struct FPControl
 
     version(isX86)
     {
-        ushort fpuState;
-        uint storedMXCSR;
+        ushort fpuState;        
     }
+    uint storedMXCSR;
 }
 
 
