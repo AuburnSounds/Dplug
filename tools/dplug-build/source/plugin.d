@@ -27,17 +27,6 @@ enum Compiler
     dmd,
 }
 
-Arch[] allArchitecturesForThisPlatform()
-{
-    version(linux)
-        Arch[] archs = [Arch.x86_64]; // we have no support for 32-bit plug-ins on Linux
-    else version(OSX)
-        Arch[] archs = [Arch.x86_64]; // we have no support for 32-bit plug-ins on macOS
-    else
-        Arch[] archs = [Arch.x86, Arch.x86_64];
-    return archs;
-}
-
 static if (__VERSION__ >= 2087)
 {
     alias jsonTrue = JSONType.true_;

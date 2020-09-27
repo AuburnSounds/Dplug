@@ -85,7 +85,7 @@ void usage()
     flag("-c --config", "Adds a build configuration.", "VST | VST3 | AU | AAX | LV2 | name starting with \"VST\", \"VST3\",\"AU\", \"AAX\", or \"LV2\"", "all");
     flag("-f --force", "Forces rebuild", null, "no");
     flag("--combined", "Combined build, important for cross-module inlining with LDC!", null, "no");
-    flag("--os", "Cross-compile to another OS." ~ "(FUTURE)".red, null, "build OS");
+    flag("--os", "Cross-compile to another OS." ~ "(FUTURE)".red, "linux | macos | windows | autodetect", "build OS");
     flag("-q --quiet", "Quieter output", null, "no");
     flag("-v --verbose", "Verbose output", null, "no");
     flag("--no-color", "Disable colored output", null, null);
@@ -130,12 +130,8 @@ int main(string[] args)
     {
         string compiler = "ldc2"; // use LDC by default
 
-        // The _target_ archs.
-        Arch[] archs = allArchitecturesForThisPlatform();
-
-        // Until 32-bit is eventually fixed for macOS, remove it from default arch
-        version(OSX)
-            archs = [ Arch.x86_64 ];
+        // The _target_ architectures. null means "all".
+        Arch[] archs = null;
 
         string build="debug";
         string[] configurationPatterns = [];
@@ -200,10 +196,7 @@ int main(string[] args)
             }
             else if (arg == "--notarize")
             {
-                version(OSX)
-                    notarize = true;
-                else
-                    warning("--notarize not supported on that OS");
+                notarize = true;
             }
             else if (arg == "--installer")
             {
@@ -216,6 +209,19 @@ int main(string[] args)
             }
             else if (arg == "--combined")
                 combined = true;
+            else if (arg == "--os")
+            {
+                if (args[i] == "linux")
+                    targetOS = OS.linux;
+                else if (args[i] == "macos")
+                    targetOS = OS.macOS;
+                else if (args[i] == "windows")
+                    targetOS = OS.windows;
+                else if (args[i] == "autodetect")
+                    targetOS = buildOS();
+                else
+                    throw new Exception("Unrecognized OS (available: linux, macos, windows, autodetect)");            
+            }
             else if (arg == "-a" || arg == "--arch")
             {
                 ++i;
@@ -234,7 +240,7 @@ int main(string[] args)
                     archs = [ Arch.x86_64, Arch.arm64, Arch.universalBinary ];
                 else if (args[i] == "all")
                 {
-                    archs = allArchitecturesForThisPlatform();
+                    archs = null;
                 }
                 else
                     throw new Exception("Unrecognized arch (available: x86, x86_64, arm32, arm64, UB, all)");            
@@ -258,17 +264,35 @@ int main(string[] args)
                 throw new Exception(format("Unrecognized argument '%s'. Type \"dplug-build -h\" for help.", arg));
         }
 
-        if (quiet && verbose)
-            throw new Exception("Can't have both --quiet and --verbose flags.");
-
-        version(OSX)
-            if (notarize && !makeInstaller)
-                throw new Exception("Flag --notarize cannot be used without --installer.");
-
         if (help)
         {
             usage();
             return 0;
+        }
+
+        // Check validity of flags
+
+        if (targetOS != buildOS)
+        {
+            throw new Exception("Cross-compiling isn't supported yet. Target --os should be the same as the dplug-build OS.");
+        }
+
+        if (notarize && (targetOS != OS.macOS))
+        {
+            warning("--notarize not supported on that target OS");
+        }
+
+        if (quiet && verbose)
+            throw new Exception("Can't have both --quiet and --verbose flags.");
+
+        if (targetOS == OS.macOS)
+            if (notarize && !makeInstaller)
+                throw new Exception("Flag --notarize cannot be used without --installer.");
+
+        if (archs is null)
+        {
+            // Autodetect target archs that dplug-build is able to build, for the target OS
+            archs = allArchitecturesWeCanBuildForThisOS(targetOS);
         }
 
         Plugin plugin = readPluginDescription();
