@@ -484,7 +484,7 @@ int main(string[] args)
 
                 if (arch != Arch.universalBinary)
                 {
-                    buildPlugin(compiler, config, build, is64b, verbose, force, combined, quiet, skipRegistry);
+                    buildPlugin(compiler, config, build, arch, verbose, force, combined, quiet, skipRegistry);
                 }
 
                 double bytes = getSize(plugin.dubOutputFileName) / (1024.0 * 1024.0);
@@ -1124,21 +1124,20 @@ int main(string[] args)
     }
 }
 
-void buildPlugin(string compiler, string config, string build, bool is64b, bool verbose, bool force, bool combined, bool quiet, bool skipRegistry)
+void buildPlugin(string compiler, string config, string build, Arch arch, bool verbose, bool force, bool combined, bool quiet, bool skipRegistry)
 {
-     cwritefln("*** Building configuration %s with %s, %s arch...".white, config, compiler, is64b ? "64-bit" : "32-bit");
-    // build the output file
-    string arch = is64b ? "x86_64" : "x86";
+    cwritefln("*** Building configuration %s with %s, %s arch...".white, config, compiler, convertArchToPrettyString(arch));
 
-    // If we want to support Notarization, we can't target earlier than 10.9
-    // Note: it seems it is overriden at some point and when notarizing you can't target so low
+    // If we want to support Notarization, we can't target earlier than 10.11
+    // Note: it seems it is overriden at some point and when notarizing you can't target lower
     version(OSX)
     {
-        environment["MACOSX_DEPLOYMENT_TARGET"] = "10.9";
+        environment["MACOSX_DEPLOYMENT_TARGET"] = "10.11";
     }
 
-    string cmd = format("dub build --build=%s --arch=%s --compiler=%s%s%s%s%s%s%s",
-        build, arch,
+    string cmd = format("dub build --build=%s %s--compiler=%s%s%s%s%s%s%s",
+        build, 
+        convertArchToDUBFlag(arch),
         compiler,
         force ? " --force" : "",
         verbose ? " -v" : "",

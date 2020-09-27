@@ -11,6 +11,37 @@ enum Arch
     universalBinary, // stitching x86_64 and arm64 in a single binary
 }
 
+string convertArchToPrettyString(Arch arch) pure
+{
+    final switch(arch) with (Arch)
+    {
+        case x86:    return "x86";
+        case x86_64: return "x86_64";
+        case arm32:  return "arm32";
+        case arm64:  return "arm64";
+        case universalBinary: return "Universal Binary";
+    }
+}
+
+string convertArchToDUBFlag(Arch arch) pure
+{
+    final switch(arch) with (Arch)
+    {
+        case x86:    return "--arch=x86 ";
+        case x86_64: return "--arch=x86_64 ";
+
+        // Explanation: the dub and ldc2 bundled on Raspberry Pi OS build to the right arch by default
+        // aka: arm-linux-gnueabihf
+        case arm32:  return "";
+
+        // LLVM Triple for Apple Silicon
+        // For now this needs a modified LDC
+        case arm64:  return "--arch=arm64-apple-macos ";
+
+        case universalBinary: assert(false);
+    }
+}
+
 enum OS
 {
     linux,
