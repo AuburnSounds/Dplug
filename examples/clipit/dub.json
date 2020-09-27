@@ -12,7 +12,8 @@
 
     "dflags-linux-dmd": ["-defaultlib=libphobos2.a"],
     "dflags-osx-ldc": ["-static"],
-    "dflags-linux-ldc": ["-link-defaultlib-shared=false", "-fvisibility=hidden"],
+    "dflags-linux-ldc": ["-link-defaultlib-shared=false"],
+    "dflags-linux-x86_64-ldc": ["-fvisibility=hidden"],
     "dflags-windows-ldc": ["-mscrtlib=libcmt"],
 
     "comment-WARNING-READ-THIS-IS-IMPORTANT": [
