@@ -9,16 +9,17 @@
 
 ## Features
 
-|  Plug-in format supported | Mac x86-64 | Windows x86 | Windows x86-64 | Linux x86-64 |
-|---------------------------|------------|-------------|----------------|--------------|
-| VST2                      | Yes        | Yes         | Yes            | Yes          |
-| VST3                      | Yes        | Yes         | Yes            | Yes          |
-| AUv2                      | Yes        |             |                |              |
-| AAX                       | Yes        | No          | Yes            | No           |
-| LV2                       | Yes        | No          | Yes            | Yes          |
+|  Plug-in format supported | Mac x86-64 | Windows x86 | Windows x86-64 | Linux x86-64 | Raspberry ARM32 |
+|---------------------------|------------|-------------|----------------|--------------|-----------------|
+| VST2                      | Yes        | Yes         | Yes            | Yes          | Yes             |
+| VST3                      | Yes        | Yes         | Yes            | Yes          | Yes             |
+| AUv2                      | Yes        |             |                |              |                 |
+| AAX                       | Yes        | No          | Yes            |              |                 |
+| LV2                       | Yes        | No          | Yes            | Yes          | Yes             |
 
 
 - Automated Mac and Windows installers
+- Raspberry Pi support
 - Build plug-ins with less pain using the D language, possibly the most [powerful](https://dlang.org/orgs-using-d.html) native language available today
 - Leverage package-based dependencies using DUB, the D language's package manager
 - Small binaries with (optional) [rendering](http://www.auburnsounds.com/blog/2016-09-16_PBR-for-Audio-Software-Interfaces.html)
