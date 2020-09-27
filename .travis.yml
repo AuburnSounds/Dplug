@@ -20,8 +20,7 @@ d:
  - ldc-1.23.0
  - ldc-1.22.0
  - ldc-1.21.0
- - ldc-1.20.1
- - ldc-1.19.0
+ - ldc-1.20.1 # ldc 1.19 has random crash in x86_64 Linux jCI and isn't supported!
  - ldc-1.18.0
  - ldc-1.17.0
  - dmd-beta
