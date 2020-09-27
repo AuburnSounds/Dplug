@@ -15,6 +15,7 @@ import dplug.core.sharedlib;
 import colorize;
 import utils;
 import plugin;
+import arch;
 
 // This define the paths to install plug-ins in on macOS
 string MAC_VST3_DIR = "/Library/Audio/Plug-Ins/VST3";
@@ -84,6 +85,7 @@ void usage()
     flag("-c --config", "Adds a build configuration.", "VST | VST3 | AU | AAX | LV2 | name starting with \"VST\", \"VST3\",\"AU\", \"AAX\", or \"LV2\"", "all");
     flag("-f --force", "Forces rebuild", null, "no");
     flag("--combined", "Combined build, important for cross-module inlining with LDC!", null, "no");
+    flag("--os", "Cross-compile to another OS." ~ "(FUTURE)".red, null, "build OS");
     flag("-q --quiet", "Quieter output", null, "no");
     flag("-v --verbose", "Verbose output", null, "no");
     flag("--no-color", "Disable colored output", null, null);
@@ -95,7 +97,6 @@ void usage()
     flag("--auval", "Check Audio Unit validation with auval " ~ "(OSX only, DOESN'T WORK)".red, null, "no");
     flag("--rez", "Generate Audio Unit .rsrc file with Rez " ~ "(OSX only)".red, null, "no");
     flag("-h --help", "Shows this help", null, null);
-
 
     cwriteln();
     cwriteln("EXAMPLES".white);
@@ -129,6 +130,7 @@ int main(string[] args)
     {
         string compiler = "ldc2"; // use LDC by default
 
+        // The _target_ archs.
         Arch[] archs = allArchitecturesForThisPlatform();
 
         // Until 32-bit is eventually fixed for macOS, remove it from default arch
@@ -150,14 +152,8 @@ int main(string[] args)
         bool skipRegistry = false;
         string prettyName = null;
 
-
-        string osString = "";
-        version (OSX)
-            osString = "macOS";
-        else version(linux)
-            osString = "Linux";
-        else version(Windows)
-            osString = "Windows";
+        OS targetOS = buildOS();
+        string osString = convertOSToString(targetOS);
 
         // Expand macro arguments
         for (int i = 1; i < args.length; )
@@ -224,16 +220,24 @@ int main(string[] args)
             {
                 ++i;
 
+                // You can select a single arch for fast building, or "all".
+                // all is also the default.
                 if (args[i] == "x86")
                     archs = [ Arch.x86 ];
                 else if (args[i] == "x86_64")
                     archs = [ Arch.x86_64 ];
+                else if (args[i] == "arm32")
+                    archs = [ Arch.arm32 ];
+                else if (args[i] == "arm64")
+                    archs = [ Arch.arm64 ];
+                else if (args[i] == "UB")
+                    archs = [ Arch.x86_64, Arch.arm64, Arch.universalBinary ];
                 else if (args[i] == "all")
                 {
                     archs = allArchitecturesForThisPlatform();
                 }
                 else
-                    throw new Exception("Unrecognized arch (available: x86, x86_64, all)");
+                    throw new Exception("Unrecognized arch (available: x86, x86_64, arm32, arm64, UB, all)");            
             }
             else if (arg == "-h" || arg == "-help" || arg == "--help")
                 help = true;
@@ -332,6 +336,9 @@ int main(string[] args)
                 {
                     case x86: return "32b-";
                     case x86_64: return "64b-";
+                    case arm32: return "arm32-";
+                    case arm64: return "arm64-";
+                    case universalBinary: return "";
                 }
             }
             return format("%s%s/%s-%s%s",
@@ -380,12 +387,20 @@ int main(string[] args)
 
         void buildAndPackage(string config, Arch[] architectures, string iconPathOSX)
         {
+            // Is one of those arch Universal Binary?
+            bool oneOfTheArchIsUB = false;
+            foreach (arch; architectures)
+            {
+                if (arch == Arch.universalBinary)
+                    oneOfTheArchIsUB = true;
+            }
+
             foreach (size_t archCount, arch; architectures)
             {
                 bool is64b = arch == Arch.x86_64;
 
-                // Does not try to build 32-bit builds of AAX, or Universal Binaries
-                if (configIsAAX(config) && (arch == Arch.x86))
+                // Only build AAX if it's for x86_64
+                if (configIsAAX(config) && (arch != Arch.x86_64))
                 {
                     cwritefln("info: Skipping architecture %s for AAX\n".white, arch);
                     continue;
@@ -418,10 +433,22 @@ int main(string[] args)
 
                 // Do we need this build in the installer?
                 // isTemp is true for plugin build that are only there to jumpstart
-                // the creation of something else.
+                // the creation of universal binaries.
                 // As such their content shouln't be mistaken for something that would be redistributed
-                // Note: Universal Binaries were removed, so no build is deemed temporary anymore
+
                 bool isTemp = false;
+                version(OSX)
+                {
+                    if (!configIsAAX(config) && oneOfTheArchIsUB)
+                    {
+                        // In short: this build is deemed "temporary" if it's only a step toward building a
+                        // multi-arch Universal Binary on macOS 11.
+                        if (arch == Arch.arm64)
+                            isTemp = true;
+                        else if (arch == Arch.x86_64)
+                            isTemp = true;
+                    }
+                }
 
                 // VST3-related warning in case of missing keys
                 if (configIsVST3(config))
@@ -431,7 +458,10 @@ int main(string[] args)
 
                 mkdirRecurse(path);
 
-                buildPlugin(compiler, config, build, is64b, verbose, force, combined, quiet, skipRegistry);
+                if (arch != Arch.universalBinary)
+                {
+                    buildPlugin(compiler, config, build, is64b, verbose, force, combined, quiet, skipRegistry);
+                }
 
                 double bytes = getSize(plugin.dubOutputFileName) / (1024.0 * 1024.0);
                 cwritefln("    => Build OK, binary size = %0.1f mb, available in ./%s".green, bytes, path);
@@ -812,7 +842,28 @@ int main(string[] args)
                         if (iconPathOSX)
                             std.file.copy(iconPathOSX, contentsDir ~ "Resources/icon.icns");
 
-                        fileMove(plugin.dubOutputFileName, exePath);
+                        if (arch == Arch.universalBinary)
+                        {
+                            string path_arm64  = outputDirectory(outputDir, true, osString, Arch.arm64, config)
+                            ~ "/" ~ pluginDir ~ "/Contents/MacOS/" ~ plugin.prettyName;
+
+                            string path_x86_64 = outputDirectory(outputDir, true, osString, Arch.x86_64, config)
+                            ~ "/" ~ pluginDir ~ "/Contents/MacOS/" ~ plugin.prettyName;
+
+                            cwritefln("*** Making an universal binary with lipo".white);
+
+                            string cmd = format("lipo -create %s %s -output %s",
+                                                escapeShellArgument(path_arm64),
+                                                escapeShellArgument(path_x86_64),
+                                                escapeShellArgument(exePath));
+                            safeCommand(cmd);
+                            cwritefln("    => Universal build OK, available in ./%s".green, path);
+                            cwriteln();
+                        }
+                        else
+                        {
+                            fileMove(plugin.dubOutputFileName, exePath);
+                        }
                     }
 
                     // Note: on Mac, the bundle path is passed instead, since wraptool won't accept the executable only
@@ -1056,7 +1107,7 @@ void buildPlugin(string compiler, string config, string build, bool is64b, bool 
     string arch = is64b ? "x86_64" : "x86";
 
     // If we want to support Notarization, we can't target earlier than 10.9
-    // Note: it seems it is overiden at some point and when notarizing you can't target so low
+    // Note: it seems it is overriden at some point and when notarizing you can't target so low
     version(OSX)
     {
         environment["MACOSX_DEPLOYMENT_TARGET"] = "10.9";

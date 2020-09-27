@@ -17,6 +17,7 @@ import colorize;
 import utils;
 import rsrc;
 
+import arch;
 import dplug.client.daw;
 
 enum Compiler
@@ -24,12 +25,6 @@ enum Compiler
     ldc,
     gdc,
     dmd,
-}
-
-enum Arch
-{
-    x86,
-    x86_64,
 }
 
 Arch[] allArchitecturesForThisPlatform()
@@ -88,6 +83,18 @@ string toStringArchs(Arch[] archs)
             case x86_64:
                 if (i) r ~= " and ";
                 r ~= "64-bit";
+                break;
+            case arm32:
+                if (i) r ~= " and ";
+                r ~= "arm32";
+                break;
+            case arm64:
+                if (i) r ~= " and ";
+                r ~= "arm32";
+                break;
+            case universalBinary:
+                if (i) r ~= " and ";
+                r ~= "Universal Binary";
                 break;
         }
     }
@@ -1097,6 +1104,9 @@ string makeRSRC_with_Rez(Plugin plugin, Arch arch, bool verbose)
     {
         case x86: archFlags = "-arch i386"; break;
         case x86_64: archFlags = "-arch x86_64"; break;
+        case arm32: assert(false);
+        case arm64: assert(false);
+        case universalBinary: assert(false);
     }
 
     string verboseFlag = verbose ? " -p" : "";
