@@ -75,7 +75,7 @@ OS buildOS()
 Arch buildArch()
 {
     version(X86)
-         Arch.x86;
+        return Arch.x86;
     else version(X86_64)
         return Arch.x86_64;
     else version(ARM)

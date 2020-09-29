@@ -189,7 +189,7 @@ int main(string[] args)
                 skipRegistry = true;
             else if (arg == "--rez")
             {
-                version(OSX)
+                if (targetOS == OS.macOS)
                     useRez = true;
                 else
                     warning("--rez not supported on that OS");
@@ -200,9 +200,9 @@ int main(string[] args)
             }
             else if (arg == "--installer")
             {
-                version(OSX)
+                if (targetOS == OS.macOS)
                     makeInstaller = true;
-                else version(Windows)
+                else if (targetOS == OS.windows)
                     makeInstaller = true;
                 else
                     warning("--installer not supported on that OS");
@@ -373,16 +373,13 @@ int main(string[] args)
                           config); // no spaces because of lipo call
         }
 
-        version(OSX)
-        {
-            // A path to .pkg artifacts to distribute together
-            MacPackage[] macInstallerPackages;
-        }
 
-        version(Windows)
-        {
-            WindowsPackage[] windowsPackages;
-        }
+        // A path to .pkg artifacts to distribute together
+        // only use when targetting macOS
+        MacPackage[] macInstallerPackages;
+
+        // Only used when targetting Windows
+        WindowsPackage[] windowsPackages;
 
         cwriteln();
 
@@ -401,9 +398,9 @@ int main(string[] args)
                 cwritefln("   Then Audio Unit validation with auval will be performed for arch %s.".green, archs[$-1]);
             if (makeInstaller)
             {
-                version(OSX)
+                if (targetOS == OS.macOS)
                     cwritefln("   Then a Mac installer will be created for distribution outside of the App Store.".green);
-                version(Windows)
+                if (targetOS == OS.windows)
                     cwritefln("   Then a Windows installer will be created for distribution.".green);
             }
             cwriteln();
@@ -421,8 +418,6 @@ int main(string[] args)
 
             foreach (size_t archCount, arch; architectures)
             {
-                bool is64b = arch == Arch.x86_64;
-
                 // Only build AAX if it's for x86_64
                 if (configIsAAX(config) && (arch != Arch.x86_64))
                 {
@@ -431,23 +426,23 @@ int main(string[] args)
                 }
 
                 // Does not try to build 32-bit under Mac
-                version(OSX)
+                if (targetOS == OS.macOS)
                 {
-                    if (!is64b)
+                    if (arch == Arch.x86)
                     {
                        throw new Exception("Can't make 32-bit builds on macOS");
                     }
                 }
 
                 // Does not try to build AU under Windows
-                version(Windows)
+                if (targetOS == OS.windows)
                 {
                     if (configIsAU(config))
                         throw new Exception("Can't build AU format on Windows");
                 }
 
                 // Does not try to build AAX or AU under Linux
-                version(linux)
+                if (targetOS == OS.linux)
                 {
                     if (configIsAAX(config))
                         throw new Exception("Can't build AAX format on Linux");
@@ -461,7 +456,7 @@ int main(string[] args)
                 // As such their content shouln't be mistaken for something that would be redistributed
 
                 bool isTemp = false;
-                version(OSX)
+                if (targetOS == OS.macOS)
                 {
                     if (!configIsAAX(config) && oneOfTheArchIsUB)
                     {
@@ -500,48 +495,39 @@ int main(string[] args)
                     }
 
                     // Get password from the user if "!PROMPT" was used
-                    plugin.paceConfig.promptPasswordsLazily();
+                    plugin.paceConfig.promptPasswordsLazily(targetOS);
 
                     auto paceConfig = plugin.paceConfig;
 
-                    version(Windows)
-                    {
-                        string cmd = format(`wraptool sign %s--account %s --password %s --keyfile %s --keypassword %s --wcguid %s --in %s --out %s`,
-                                            (verbose ? "--verbose " : ""),
-                                            paceConfig.iLokAccount,
-                                            paceConfig.iLokPassword,
-                                            paceConfig.keyFileWindows,
-                                            paceConfig.keyPasswordWindows,
-                                            paceConfig.wrapConfigGUID,
-                                            escapeShellArgument(binaryPathInOut),
-                                            escapeShellArgument(binaryPathInOut));
-                        safeCommand(cmd);
-                    }
-                    else version(OSX)
-                    {
-                        string cmd = format(`wraptool sign --verbose --account %s --password %s --signid %s --wcguid %s --in %s --out %s`,
-                                            paceConfig.iLokAccount,
-                                            paceConfig.iLokPassword,
-                                            escapeShellArgument(paceConfig.developerIdentityOSX),
-                                            paceConfig.wrapConfigGUID,
-                                            escapeShellArgument(binaryPathInOut),
-                                            escapeShellArgument(binaryPathInOut));
-                        safeCommand(cmd);
-                        writeln();
-                    }
+                    string verboseFlag = verbose ? "--verbose " : "";
+
+                    string identFlag;
+                    if (targetOS == OS.windows)
+                        identFlag = format("--keyfile %s --keypassword %s ", paceConfig.keyFileWindows, paceConfig.keyPasswordWindows);
+                    else if (targetOS == OS.macOS)
+                        identFlag = format("--signid %s ", escapeShellArgument(paceConfig.developerIdentityOSX));
                     else
-                        assert(false);
+                        throw new Exception("AAX not supported on that OS");
+
+                    string cmd = format(`wraptool sign %s--account %s --password %s %s--wcguid %s --in %s --out %s`,
+                                        verboseFlag,
+                                        paceConfig.iLokAccount,
+                                        paceConfig.iLokPassword,
+                                        identFlag,
+                                        paceConfig.wrapConfigGUID,
+                                        escapeShellArgument(binaryPathInOut),
+                                        escapeShellArgument(binaryPathInOut));
+                    safeCommand(cmd);
                 }
 
-                void extractAAXPresetsFromBinary(string binaryPath, string contentsDir, bool is64b)
+                void extractAAXPresetsFromBinary(string binaryPath, string contentsDir, Arch targetArch)
                 {
                     // Extract presets from the AAX plugin binary by executing it.
-                    // Because of this release itself must be 64-bit.
-                    // To avoid this coupling, presets should be stored outside of the binary in the future.
-                    if ((void*).sizeof == 4 && is64b)
-                        warning("Can't extract presets from a 64-bit AAX plug-in when dplug-build is built as a 32-bit program.\n");
-                    else if ((void*).sizeof == 8 && !is64b)
-                        warning("Can't extract presets from a 32-bit AAX plug-in when dplug-build is built as a 64-bit program.\n");
+                    // Because of this dplug-build and the target plug-in should have the same architecture.
+
+                    // To avoid this coupling, presets could be stored outside of the binary in the future?
+                    if (targetArch != buildArch)
+                        warning("Can't extract presets from AAX plug-in when dplug-build is built with a different arch.\n");
                     else
                     {
                         // We need to have a sub-directory of vendorName else the presets aren't found.
@@ -599,15 +585,13 @@ int main(string[] args)
                     }
                 }
 
-                void extractLV2ManifestFromBinary(string binaryPath, string outputDir, bool is64b, string binaryName)
+                void extractLV2ManifestFromBinary(string binaryPath, string outputDir, Arch targetArch, string binaryName)
                 {
                     // Extract ports from LV2 Binary
                     // Because of this release itself must be 64-bit.
                     // To avoid this coupling, presets should be stored outside of the binary in the future.
-                    if ((void*).sizeof == 4 && is64b)
-                        warning("Can't extract ports from a 64-bit LV2 plug-in when dplug-build is built as a 32-bit program.\n");
-                    else if ((void*).sizeof == 8 && !is64b)
-                        warning("Can't extract ports from a 32-bit LV2 plug-in when dplug-build is built as a 64-bit program.\n");
+                    if (targetArch != buildArch)
+                        warning("Can't extract manifest from LV2 plug-in when dplug-build is built with a different arch.\n");
                     else
                     {
                         cwritefln("*** Extract LV2 manifest from binary...".white);
@@ -636,7 +620,7 @@ int main(string[] args)
                     }
                 }
 
-                version(Windows)
+                if (targetOS == OS.windows)
                 {
                     // size used in installer
                     int sizeInKiloBytes = cast(int) (getSize(plugin.dubOutputFileName) / (1024.0));
@@ -650,20 +634,22 @@ int main(string[] args)
                         string pluginFinalName = plugin.prettyName ~ ".aaxplugin";
                         string contentsDir = path ~ "/" ~ (plugin.prettyName ~ ".aaxplugin") ~ "/Contents/";
 
-                        extractAAXPresetsFromBinary(plugin.dubOutputFileName, contentsDir, is64b);
+                        extractAAXPresetsFromBinary(plugin.dubOutputFileName, contentsDir, arch);
 
-                        if (is64b)
+                        if (arch == Arch.x86_64)
                         {
                             mkdirRecurse(contentsDir ~ "x64");
                             fileMove(plugin.dubOutputFileName, contentsDir ~ "x64/" ~ pluginFinalName);
                             signAAXBinaryWithPACE(contentsDir ~ "x64/" ~ pluginFinalName);
                         }
-                        else
+                        else if (arch == Arch.x86)
                         {
                             mkdirRecurse(contentsDir ~ "Win32");
                             fileMove(plugin.dubOutputFileName, contentsDir ~ "Win32/" ~ pluginFinalName);
                             signAAXBinaryWithPACE(contentsDir ~ "Win32/" ~ pluginFinalName);
                         }
+                        else
+                            throw new Exception("AAX doesn't support this arch");
                     }
                     else if (configIsLV2(config))
                     {
@@ -674,16 +660,17 @@ int main(string[] args)
 
                         mkdirRecurse(pluginDirectory);
                         fileMove(plugin.dubOutputFileName, pluginFinalPath);
-                        extractLV2ManifestFromBinary(pluginFinalPath, pluginDirectory, is64b, pluginFinalName);
+                        extractLV2ManifestFromBinary(pluginFinalPath, pluginDirectory, arch, pluginFinalName);
                     }
                     else if (configIsVST3(config)) // VST3 special case, needs to be named .vst3 (but can't be _linked_ as .vst3)
                     {
                         string appendBitnessVST3(string prettyName, string originalPath)
                         {
-                            if (is64b)
+                            if (arch == Arch.x86_64)
                             {
                                 // Issue #84
                                 // Rename 64-bit binary on Windows to get Reaper to list both 32-bit and 64-bit plugins if in the same directory
+                                // Note: I don't think that's necessary...
                                 return prettyName ~ "-64.vst3";
                             }
                             else
@@ -696,7 +683,7 @@ int main(string[] args)
                     {
                         string appendBitness(string prettyName, string originalPath)
                         {
-                            if (is64b)
+                            if (arch == Arch.x86_64)
                             {
                                 // Issue #84
                                 // Rename 64-bit binary on Windows to get Reaper to list both 32-bit and 64-bit plugins if in the same directory
@@ -751,14 +738,14 @@ int main(string[] args)
                         windowsPackages ~= WindowsPackage(format, blobName, title, installDir, sizeInKiloBytes, arch == arch.x86_64);
                     }
                 }
-                else version(linux)
+                else if (targetOS == OS.linux)
                 {
                     if(configIsLV2(config))
                     {
                         string pluginFinalPath = plugin.getLV2PrettyName() ~ ".so";
                         string soPath = path ~ "/" ~ pluginFinalPath;
                         fileMove(plugin.dubOutputFileName, soPath);
-                        extractLV2ManifestFromBinary(soPath, path, is64b, pluginFinalPath);
+                        extractLV2ManifestFromBinary(soPath, path, arch, pluginFinalPath);
                     }
                     else if (configIsVST3(config)) 
                     {
@@ -775,7 +762,7 @@ int main(string[] args)
                         fileMove(plugin.dubOutputFileName, path ~ "/" ~ plugin.prettyName ~ ".so");
                     }
                 }
-                else version(OSX)
+                else if (targetOS == OS.macOS)
                 {
                     // Only accepts two configurations: VST and AudioUnit
                     string pluginDir;
@@ -826,7 +813,7 @@ int main(string[] args)
                         string pluginFinalPath = bundleDir ~ "/" ~ pluginFinalName;
                         mkdirRecurse(bundleDir);
                         fileMove(plugin.dubOutputFileName, pluginFinalPath);
-                        extractLV2ManifestFromBinary(pluginFinalPath, bundleDir, is64b, pluginFinalName);
+                        extractLV2ManifestFromBinary(pluginFinalPath, bundleDir, arch, pluginFinalName);
 
                         // Note: there is no support for Universal Binary in LV2
                     }
@@ -839,7 +826,7 @@ int main(string[] args)
                         mkdirRecurse(macosDir);
 
                         if (configIsAAX(config))
-                            extractAAXPresetsFromBinary(plugin.dubOutputFileName, contentsDir, is64b);
+                            extractAAXPresetsFromBinary(plugin.dubOutputFileName, contentsDir, arch);
 
                         // Generate Plist
                         string plist = makePListFile(plugin, config, iconPathOSX != null, enableAUv2AudioComponentAPI);
@@ -1017,6 +1004,8 @@ int main(string[] args)
                         cwriteln;
                     }
                 }
+                else
+                    throw new Exception("Unsupported OS");
             }
         }
 
@@ -1026,7 +1015,7 @@ int main(string[] args)
             mkdirRecurse(outputDir ~ "/res-install");
 
         string iconPathOSX = null;
-        version(OSX)
+        if (targetOS == OS.macOS)
         {
             // Make icns and copy it (if any provided in plugin.json)
             if (plugin.iconPathOSX)
@@ -1066,39 +1055,33 @@ int main(string[] args)
                 throw new Exception("License file should be a Markdown .md file");
         }
 
-        version(OSX)
+        if ((targetOS == OS.macOS) && makeInstaller)
         {
-            if (makeInstaller)
+            cwriteln("*** Generating final Mac installer...".white);
+            string finalPkgPath = outputDir ~ "/" ~ plugin.finalPkgFilename(configurations[0]);
+            generateMacInstaller(outputDir, resDir, plugin, macInstallerPackages, finalPkgPath, verbose);
+            cwriteln("    => OK".green);
+            cwriteln;
+
+            if (notarize)
             {
-                cwriteln("*** Generating final Mac installer...".white);
-                string finalPkgPath = outputDir ~ "/" ~ plugin.finalPkgFilename(configurations[0]);
-                generateMacInstaller(outputDir, resDir, plugin, macInstallerPackages, finalPkgPath, verbose);
-                cwriteln("    => OK".green);
+                // Note: this doesn't have to match anything, it's just there in emails
+                string primaryBundle = plugin.getNotarizationBundleIdentifier(configurations[0]);
+
+                cwritefln("*** Notarizing final Mac installer %s...".white, primaryBundle);
+                notarizeMacInstaller(plugin, finalPkgPath, primaryBundle);
+                cwriteln("    => Notarization OK".green);
                 cwriteln;
-
-                if (notarize)
-                {
-                    // Note: this doesn't have to match anything, it's just there in emails
-                    string primaryBundle = plugin.getNotarizationBundleIdentifier(configurations[0]);
-
-                    cwritefln("*** Notarizing final Mac installer %s...".white, primaryBundle);
-                    notarizeMacInstaller(plugin, finalPkgPath, primaryBundle);
-                    cwriteln("    => Notarization OK".green);
-                    cwriteln;
-                }
             }
         }
 
-        version(Windows)
+        if ((targetOS == OS.windows) && makeInstaller)
         {
-            if (makeInstaller)
-            {
-                cwriteln("*** Generating Windows installer...".white);
-                string windowsInstallerPath = outputDir ~ "/" ~ plugin.windowsInstallerName(configurations[0]);
-                generateWindowsInstaller(outputDir, plugin, windowsPackages, windowsInstallerPath, verbose);
-                cwriteln("    => OK".green);
-                cwriteln;
-            }
+            cwriteln("*** Generating Windows installer...".white);
+            string windowsInstallerPath = outputDir ~ "/" ~ plugin.windowsInstallerName(configurations[0]);
+            generateWindowsInstaller(outputDir, plugin, windowsPackages, windowsInstallerPath, verbose);
+            cwriteln("    => OK".green);
+            cwriteln;
         }
 
         return 0;

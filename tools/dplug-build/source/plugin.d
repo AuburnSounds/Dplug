@@ -356,86 +356,84 @@ struct Plugin
         return CFBundleIdentifierPrefix ~ ".lv2." ~ sanitizeBundleString(pluginName);
     }
 
-    version(OSX)
+    // <Apple specific>
+
+    // filename of the final installer
+    // give a config to extract a configuration name in case of multiple configurations
+    string finalPkgFilename(string config) pure const
     {
-        // filename of the final installer
-        // give a config to extract a configuration name in case of multiple configurations
-        string finalPkgFilename(string config) pure const
-        {
-            string verName = stripConfig(config);
-            if (verName)
-                verName = "-" ~ verName;
-            else
-                verName = "";
-            return format("%s%s-%s.pkg", sanitizeFilenameString(pluginName),
-                                         verName,
-                                         publicVersionString);
-        }
-
-        string pkgFilenameVST3() pure const
-        {
-            return sanitizeFilenameString(pluginName) ~ "-vst3.pkg";
-        }
-
-        string pkgFilenameVST() pure const
-        {
-            return sanitizeFilenameString(pluginName) ~ "-vst.pkg";
-        }
-
-        string pkgFilenameAU() pure const
-        {
-            return sanitizeFilenameString(pluginName) ~ "-au.pkg";
-        }
-
-        string pkgFilenameAAX() pure const
-        {
-            return sanitizeFilenameString(pluginName) ~ "-aax.pkg";
-        }
-
-        string pkgFilenameLV2() pure const
-        {
-            return sanitizeFilenameString(pluginName) ~ "-lv2.pkg";
-        }
-
-        string pkgBundleVST3() pure const
-        {
-            return CFBundleIdentifierPrefix ~ "." ~ sanitizeBundleString(pkgFilenameVST3());
-        }
-
-        string pkgBundleVST() pure const
-        {
-            return CFBundleIdentifierPrefix ~ "." ~ sanitizeBundleString(pkgFilenameVST());
-        }
-
-        string pkgBundleAU() pure const
-        {
-            return CFBundleIdentifierPrefix ~ "." ~ sanitizeBundleString(pkgFilenameAU());
-        }
-
-        string pkgBundleAAX() pure const
-        {
-            return CFBundleIdentifierPrefix ~ "." ~ sanitizeBundleString(pkgFilenameAAX());
-        }
-
-        string pkgBundleLV2() pure const
-        {
-            return CFBundleIdentifierPrefix ~ "." ~ sanitizeBundleString(pkgFilenameLV2());
-        }
+        string verName = stripConfig(config);
+        if (verName)
+            verName = "-" ~ verName;
+        else
+            verName = "";
+        return format("%s%s-%s.pkg", sanitizeFilenameString(pluginName),
+                                     verName,
+                                     publicVersionString);
     }
 
-    version(Windows)
+    string pkgFilenameVST3() pure const
     {
-        string windowsInstallerName(string config) pure const
-        {
-            string verName = stripConfig(config);
-            if(verName)
-                verName = "-" ~ verName;
-            else
-                verName = "";
-            return format("%s%s-%s.exe", sanitizeFilenameString(pluginName),
-                                         verName,
-                                         publicVersionString);
-        }
+        return sanitizeFilenameString(pluginName) ~ "-vst3.pkg";
+    }
+
+    string pkgFilenameVST() pure const
+    {
+        return sanitizeFilenameString(pluginName) ~ "-vst.pkg";
+    }
+
+    string pkgFilenameAU() pure const
+    {
+        return sanitizeFilenameString(pluginName) ~ "-au.pkg";
+    }
+
+    string pkgFilenameAAX() pure const
+    {
+        return sanitizeFilenameString(pluginName) ~ "-aax.pkg";
+    }
+
+    string pkgFilenameLV2() pure const
+    {
+        return sanitizeFilenameString(pluginName) ~ "-lv2.pkg";
+    }
+
+    string pkgBundleVST3() pure const
+    {
+        return CFBundleIdentifierPrefix ~ "." ~ sanitizeBundleString(pkgFilenameVST3());
+    }
+
+    string pkgBundleVST() pure const
+    {
+        return CFBundleIdentifierPrefix ~ "." ~ sanitizeBundleString(pkgFilenameVST());
+    }
+
+    string pkgBundleAU() pure const
+    {
+        return CFBundleIdentifierPrefix ~ "." ~ sanitizeBundleString(pkgFilenameAU());
+    }
+
+    string pkgBundleAAX() pure const
+    {
+        return CFBundleIdentifierPrefix ~ "." ~ sanitizeBundleString(pkgFilenameAAX());
+    }
+
+    string pkgBundleLV2() pure const
+    {
+        return CFBundleIdentifierPrefix ~ "." ~ sanitizeBundleString(pkgFilenameLV2());
+    }
+
+    // </Apple specific>
+
+    string windowsInstallerName(string config) pure const
+    {
+        string verName = stripConfig(config);
+        if(verName)
+            verName = "-" ~ verName;
+        else
+            verName = "";
+        return format("%s%s-%s.exe", sanitizeFilenameString(pluginName),
+                                     verName,
+                                     publicVersionString);
     }
 
     void promptWindowsInstallerPasswordLazily()
@@ -1139,7 +1137,7 @@ class PACEConfig
 
     // Prompt needed passwords
 
-    void promptPasswordsLazily()
+    void promptPasswordsLazily(OS targetOS)
     {
         if (iLokPassword == "!PROMPT")
         {
@@ -1149,7 +1147,7 @@ class PACEConfig
             cwriteln();
         }
 
-        version(Windows)
+        if (targetOS == OS.windows)
         {
             if (keyPasswordWindows == "!PROMPT")
             {
