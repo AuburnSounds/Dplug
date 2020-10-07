@@ -126,15 +126,15 @@ public
                             XMM5 = _mm_sub_pd(XMM5, XMM7); // x1*a2 - y1*a4 | input[i]*a0 + x0*a1 - y0*a3
                             XMM6 = XMM5;
 
-                            XMM0 = _mm_slli_si128!8(XMM0);
-                            XMM6 = _mm_srli_si128!8(XMM6);
+                            XMM0 = cast(double2) _mm_slli_si128!8(cast(__m128i) XMM0);
+                            XMM6 = cast(double2) _mm_srli_si128!8(cast(__m128i) XMM6);
 
                             XMM0 = _mm_cvtss_sd(XMM0, INPUT);
                             XMM5 = _mm_add_pd(XMM5, XMM6);
-                            XMM7 = _mm_cvtsd_ss(_mm_undefined_ps(), XMM5);
+                            XMM7 = cast(double2) _mm_cvtsd_ss(_mm_undefined_ps(), XMM5);
                             XMM5 = _mm_unpacklo_pd(XMM5, XMM1);
                             XMM1 = XMM5;
-                            _mm_store_ss(output + n, XMM7);
+                            _mm_store_ss(output + n, cast(__m128) XMM7);
                         }
                         _mm_storel_pd(&x0, XMM0);
                         _mm_storeh_pd(&x1, XMM0);

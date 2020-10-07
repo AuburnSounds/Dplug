@@ -972,10 +972,10 @@ void shuffleComponentsRGBA8ToARGB8AndForceAlphaTo255(ImageRef!RGBA image) pure n
             {
                 import ldc.intrinsics;
                 import ldc.simd;
-                __m128i outputBytes = shufflevector!(byte16, 3, 0,  1,  2,
-                                                             7, 4,  5,  6,
-                                                            11, 8,  9,  10,
-                                                            15, 12, 13, 14)(inputBytes, inputBytes);
+                __m128i outputBytes = cast(__m128i) shufflevector!(byte16, 3, 0,  1,  2,
+                                                                           7, 4,  5,  6,
+                                                                           11, 8,  9,  10,
+                                                                           15, 12, 13, 14)(cast(byte16)inputBytes, cast(byte16)inputBytes);
                 _mm_storeu_si128(cast(__m128i*)(&scan[4*i]), outputBytes);
             }
             else
@@ -1024,10 +1024,10 @@ void shuffleComponentsRGBA8ToBGRA8AndForceAlphaTo255(ImageRef!RGBA image) pure n
             {
                 import ldc.intrinsics;
                 import ldc.simd;
-                __m128i outputBytes = shufflevector!(byte16, 2,  1,  0,  3,
-                                                              6,  5,  4,  7,
-                                                             10,  9,  8, 11,
-                                                             14, 13, 12, 15)(inputBytes, inputBytes);
+                __m128i outputBytes = cast(__m128i) shufflevector!(byte16, 2,  1,  0,  3,
+                                                                           6,  5,  4,  7,
+                                                                          10,  9,  8, 11,
+                                                                          14, 13, 12, 15)(cast(byte16)inputBytes, cast(byte16)inputBytes);
                 _mm_storeu_si128(cast(__m128i*)(&scan[4*i]), outputBytes);
             }
             else
