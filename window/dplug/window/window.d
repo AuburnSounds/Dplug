@@ -239,7 +239,9 @@ static isWindowBackendSupported(WindowBackend backend) nothrow @nogc
         return (backend == WindowBackend.win32);
     else version(OSX)
     {
-        version(X86_64)
+        version(AArch64)
+            return (backend == WindowBackend.cocoa);
+        else version(X86_64)
             return (backend == WindowBackend.cocoa);
         else version(X86)
             return (backend == WindowBackend.cocoa);
