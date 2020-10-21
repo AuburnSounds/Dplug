@@ -434,6 +434,16 @@ int main(string[] args)
                     }
                 }
 
+                // Does not try to build Universal Binary for LV2 on mac (AAX is handled before)
+                if (targetOS == OS.macOS)
+                {
+                    if (configIsLV2(config) && (arch != Arch.x86_64))
+                    {
+                        cwritefln("info: Skipping architecture %s for LV2\n".white, arch);
+                        continue;
+                    }
+                }
+
                 // Does not try to build AU under Windows
                 if (targetOS == OS.windows)
                 {
@@ -458,7 +468,7 @@ int main(string[] args)
                 bool isTemp = false;
                 if (targetOS == OS.macOS)
                 {
-                    if (!configIsAAX(config) && oneOfTheArchIsUB)
+                    if (!configIsAAX(config) && !configIsLV2(config) && oneOfTheArchIsUB)
                     {
                         // In short: this build is deemed "temporary" if it's only a step toward building a
                         // multi-arch Universal Binary on macOS 11.
