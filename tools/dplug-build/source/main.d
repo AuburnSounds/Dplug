@@ -480,11 +480,10 @@ int main(string[] args)
                 if (arch != Arch.universalBinary)
                 {
                     buildPlugin(compiler, config, build, arch, verbose, force, combined, quiet, skipRegistry);
+                    double bytes = getSize(plugin.dubOutputFileName) / (1024.0 * 1024.0);
+                    cwritefln("    => Build OK, binary size = %0.1f mb, available in ./%s".green, bytes, path);
+                    cwriteln();
                 }
-
-                double bytes = getSize(plugin.dubOutputFileName) / (1024.0 * 1024.0);
-                cwritefln("    => Build OK, binary size = %0.1f mb, available in ./%s".green, bytes, path);
-                cwriteln();
 
                 void signAAXBinaryWithPACE(string binaryPathInOut)
                 {
@@ -868,12 +867,13 @@ int main(string[] args)
                                                 escapeShellArgument(path_x86_64),
                                                 escapeShellArgument(exePath));
                             safeCommand(cmd);
-                            cwritefln("    => Universal build OK, available in ./%s".green, path);
+                            double bytes = getSize(exePath) / (1024.0 * 1024.0);
+                            cwritefln("    => Universal build OK, binary size = %0.1f mb, available in ./%s".green, bytes, path);
                             cwriteln();
                         }
                         else
                         {
-                            fileMove(plugin.dubOutputFileName, exePath);
+                            fileMove(plugin.dubOutputFileName, exePath);                            
                         }
                     }
 

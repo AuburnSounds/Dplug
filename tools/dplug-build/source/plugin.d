@@ -1008,7 +1008,12 @@ string makeMacIcon(string pluginName, string pngPath)
 
 string makeRSRC_internal(Plugin plugin, Arch arch, bool verbose)
 {
-    assert(arch == Arch.x86_64);
+    if (arch != Arch.x86_64 
+        && arch != Arch.arm64 
+        && arch != Arch.universalBinary)
+    {
+        throw new Exception("Can't use internal .rsrc generation for this arch");
+    }
 
     cwritefln("*** Generating a .rsrc file for the bundle...".white);
 
@@ -1046,11 +1051,38 @@ string makeRSRC_internal(Plugin plugin, Arch arch, bool verbose)
         thng.writeBE_uint(componentDoAutoVersion | componentHasMultiplePlatforms);
         thng.writeBE_ushort(0);
 
-        thng.writeBE_uint(1); // 1 platform
-        thng.writeBE_uint(0x10000000);
-        thng ~= makeRSRC_fourCC("dlle");
-        thng.writeBE_ushort(1000);
-        thng.writeBE_ushort(8 /* platformX86_64NativeEntryPoint */);
+        if (arch == Arch.x86_64)
+        {
+            thng.writeBE_uint(1); // 1 platform
+            thng.writeBE_uint(0x10000000);
+            thng ~= makeRSRC_fourCC("dlle");
+            thng.writeBE_ushort(1000);
+            thng.writeBE_ushort(8 /* platformX86_64NativeEntryPoint */);
+        }
+        else if (arch == Arch.arm64)
+        {
+            thng.writeBE_uint(1); // 1 platform
+            thng.writeBE_uint(0x10000000);
+            thng ~= makeRSRC_fourCC("dlle");
+            thng.writeBE_ushort(1000);
+            thng.writeBE_ushort(9 /* platformArm64NativeEntryPoint */);
+        }
+        else if (arch == Arch.universalBinary)
+        {
+            thng.writeBE_uint(2); // 2 platform, arm64 then x86_64
+
+            thng.writeBE_uint(0x10000000);
+            thng ~= makeRSRC_fourCC("dlle");
+            thng.writeBE_ushort(1000);
+            thng.writeBE_ushort(9 /* platformArm64NativeEntryPoint */);
+            
+            thng.writeBE_uint(0x10000000);
+            thng ~= makeRSRC_fourCC("dlle");
+            thng.writeBE_ushort(1000);
+            thng.writeBE_ushort(8 /* platformX86_64NativeEntryPoint */);
+        }
+        else
+            assert(false, "not supported yet");
     }
 
     rsrc.addResource(2, 1000, false, plugin.vendorName ~ ": " ~ plugin.pluginName, thng);
@@ -1063,6 +1095,8 @@ string makeRSRC_internal(Plugin plugin, Arch arch, bool verbose)
 
 string makeRSRC_with_Rez(Plugin plugin, Arch arch, bool verbose)
 {
+    if (arch != Arch.x86_64)
+        throw new Exception("Can't use --rez for another arch than x86_64");
     string pluginName = plugin.pluginName;
     cwritefln("*** Generating a .rsrc file for the bundle, using Rez...".white);
     string temp = tempDir();
