@@ -243,7 +243,7 @@ int main(string[] args)
                     archs = null;
                 }
                 else
-                    throw new Exception("Unrecognized arch (available: x86, x86_64, arm32, arm64, UB, all)");            
+                    throw new Exception("Unrecognized arch combination (available: x86, x86_64, arm32, arm64, UB, all)");            
             }
             else if (arg == "-h" || arg == "-help" || arg == "--help")
                 help = true;

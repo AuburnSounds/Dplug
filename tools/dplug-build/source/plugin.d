@@ -79,7 +79,7 @@ string toStringArchs(Arch[] archs)
                 break;
             case arm64:
                 if (i) r ~= " and ";
-                r ~= "arm32";
+                r ~= "arm64";
                 break;
             case universalBinary:
                 if (i) r ~= " and ";
