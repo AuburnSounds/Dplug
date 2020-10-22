@@ -13,6 +13,11 @@ import derelict.cocoa.foundation;
 import derelict.cocoa.coreimage;
 import derelict.cocoa.coregraphics;
 
+version(X86)
+    version = AnyX86;
+version(X86_64)
+    version = AnyX86;
+
 
 // free functions
 extern (C) nothrow @nogc
@@ -172,19 +177,28 @@ nothrow @nogc:
     NSRect convertRect(NSRect rect, NSView view)
     {
         alias fun_t = extern(C) NSRect function (id, const(SEL), NSRect, id) nothrow @nogc;
-        return (cast(fun_t)objc_msgSend_stret)(_id, sel!"convertRect:fromView:", rect, view._id);
+        version(AnyX86)
+            return (cast(fun_t)objc_msgSend_stret)(_id, sel!"convertRect:fromView:", rect, view._id);
+        else
+            return (cast(fun_t)objc_msgSend      )(_id, sel!"convertRect:fromView:", rect, view._id);
     }
 
     NSRect frame()
     {
         alias fun_t = extern(C) NSRect function (id, const(SEL)) nothrow @nogc;
-        return (cast(fun_t)objc_msgSend_stret)(_id, sel!"frame");
+        version(AnyX86)
+            return (cast(fun_t)objc_msgSend_stret)(_id, sel!"frame");
+        else
+            return (cast(fun_t)objc_msgSend      )(_id, sel!"frame");
     }
 
     NSRect bounds()
     {
         alias fun_t = extern(C) NSRect function (id, const(SEL)) nothrow @nogc;
-        return (cast(fun_t)objc_msgSend_stret)(_id, sel!"bounds");
+        version(AnyX86)
+            return (cast(fun_t)objc_msgSend_stret)(_id, sel!"bounds");
+        else
+            return (cast(fun_t)objc_msgSend      )(_id, sel!"bounds");
     }
 
     CALayer layer()

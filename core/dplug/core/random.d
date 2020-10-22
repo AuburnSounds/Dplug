@@ -48,8 +48,20 @@ uint nogc_unpredictableSeed() @nogc nothrow
     }
     else version(LDC)
     {
-        import ldc.intrinsics;
-        result = cast(uint) llvm_readcyclecounter();
+        version(AArch64)
+        {
+            // llvm_readcyclecounter is forbidden as it reads a register we
+            // are not allowed to read.
+            import core.sys.posix.sys.time;
+            timeval tv;
+            gettimeofday(&tv, null);
+            result = cast(uint)( cast(ulong)(tv.tv_sec) * 1_000_000 + tv.tv_usec );
+        }
+        else
+        {
+            import ldc.intrinsics;
+            result = cast(uint) llvm_readcyclecounter();
+        }
     }
     else
         static assert(false, "Unsupported");

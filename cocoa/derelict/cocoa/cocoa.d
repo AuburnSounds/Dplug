@@ -20,6 +20,10 @@ version(OSX)
 else
     enum libNames = "";
 
+version(X86)
+    version = AnyX86;
+version(X86_64)
+    version = AnyX86;
 
 class DerelictCocoaLoader : SharedLibLoader
 {
@@ -43,7 +47,7 @@ class DerelictCocoaLoader : SharedLibLoader
 
             bindFunc(cast(void**)&objc_msgSend, "objc_msgSend");
             bindFunc(cast(void**)&objc_msgSendSuper, "objc_msgSendSuper");
-            bindFunc(cast(void**)&objc_msgSend_stret, "objc_msgSend_stret");
+            version(AnyX86) bindFunc(cast(void**)&objc_msgSend_stret, "objc_msgSend_stret");
             version(X86) bindFunc(cast(void**)&objc_msgSend_fpret, "objc_msgSend_fpret");
 
             bindFunc(cast(void**)&varobject_getClassName, "object_getClassName");

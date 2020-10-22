@@ -29,6 +29,11 @@ import std.string;
 import dplug.core.nogc;
 
 
+version(X86)
+    version = AnyX86;
+version(X86_64)
+    version = AnyX86;
+
 
 // NSGeometry.h
 
@@ -185,7 +190,9 @@ extern (C) nothrow @nogc
 
     alias id function (id theReceiver, SEL theSelector, ...) pfobjc_msgSend;
     alias id function (objc_super* superr, SEL op, ...) pfobjc_msgSendSuper;
-    alias void function (void* stretAddr, id theReceiver, SEL theSelector, ...) pfobjc_msgSend_stret;
+
+    version (AnyX86)
+        alias void function (void* stretAddr, id theReceiver, SEL theSelector, ...) pfobjc_msgSend_stret;
 
     alias const(char)* function (id obj) pfobject_getClassName;
     alias Ivar function (id obj, const(char)* name, void** outValue) pfobject_getInstanceVariable;
@@ -224,7 +231,9 @@ __gshared
 
     pfobjc_msgSend objc_msgSend;
     pfobjc_msgSendSuper objc_msgSendSuper;
-    pfobjc_msgSend_stret objc_msgSend_stret;
+
+    version(AnyX86)
+        pfobjc_msgSend_stret objc_msgSend_stret;
 
     version(X86)
         pfobjc_msgSend_fpret objc_msgSend_fpret;
