@@ -643,7 +643,7 @@ private:
         _graphicGC = XCreateGC(_display, _windowID, 0, null);
     }
 
-    void releaseX11Window() 
+    void releaseX11Window()
     {
         // release all X11 resource allocated by createX11Window
         lockX11();
@@ -653,8 +653,18 @@ private:
         XFreeGC(_display, _graphicGC);
         freeBackbuffer();
         XDestroyWindow(_display, _windowID);
-        unlockX11();
 
+        // We need to flush all window events from the queue that are related to this window.
+        // Else another open instance may read message from this window and crash.
+        XSync(_display, false);
+        XEvent event;
+        while(true)
+        {
+            Bool found = XCheckWindowEvent(_display, _windowID, windowEventMask(), &event);
+            if (!found) break;
+        }
+
+        unlockX11();
     }
 
     // this frees _graphicImage
