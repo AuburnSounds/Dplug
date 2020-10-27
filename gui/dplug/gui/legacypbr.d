@@ -522,7 +522,9 @@ public:
             _exponentTable[roughByte] = 0.8f * exp( (1-roughByte / 255.0f) * 5.5f);
 
             // Convert Phong exponent to Blinn-phong exponent
-            version(futureBlinnPhong)
+            version(legacyBlinnPhong)
+            {}
+            else
                 _exponentTable[roughByte] *= 2.8f; // tuned bu hand to match the former Phong specular highlight. This makes very little difference.
         }
 
@@ -576,16 +578,16 @@ public:
                 __m128 toEye = _mm_setr_ps(0.5f - i * invW, j * invH - 0.5f, 1.0f, 0.0f);
                 toEye = _mm_fast_normalize_ps(toEye);
 
-                version(futureBlinnPhong)
+                version(legacyBlinnPhong)
+                {
+                    __m128 lightReflect = _mm_reflectnormal_ps(mmlight3Dir, normal);
+                    float specularFactor = _mm_dot_ps(toEye, lightReflect);
+                }
+                else
                 {
                     __m128 halfVector = toEye - mmlight3Dir;
                     halfVector = _mm_fast_normalize_ps(halfVector);
                     float specularFactor = _mm_dot_ps(halfVector, normal);
-                }
-                else
-                {
-                    __m128 lightReflect = _mm_reflectnormal_ps(mmlight3Dir, normal);
-                    float specularFactor = _mm_dot_ps(toEye, lightReflect);
                 }
                 if (specularFactor < 1e-3f) 
                     specularFactor = 1e-3f;
