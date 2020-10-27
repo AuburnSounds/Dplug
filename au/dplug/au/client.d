@@ -1076,7 +1076,10 @@ private:
                                   kAudioUnitParameterFlag_IsReadable |
                                   kAudioUnitParameterFlag_IsWritable;
 
-                    version(futureAUHighResolutionParameters) {
+                    version(legacyAUHighResolutionParameters)
+                    {}
+                    else
+                    {
                         pInfo.flags |= kAudioUnitParameterFlag_IsHighResolution;
                     }
 
