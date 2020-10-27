@@ -569,7 +569,9 @@ version(Windows)
 
         int setMouseCursor()
         {
-            version(futureMouseCursor)
+            version(legacyMouseCursor)
+            {}
+            else
             {
                 MouseCursor cursor = _listener.getMouseCursor();
 

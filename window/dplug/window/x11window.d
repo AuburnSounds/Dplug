@@ -345,7 +345,9 @@ private:
 
     void setCursor()
     {
-        version(futureMouseCursor)
+        version(legacyMouseCursor)
+        {}
+        else
         {
             MouseCursor cursor = _listener.getMouseCursor();
 

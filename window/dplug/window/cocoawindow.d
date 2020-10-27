@@ -290,7 +290,9 @@ private:
         _listener.onMouseMove(mousePos.x, mousePos.y, mousePos.x - _lastMouseX, mousePos.y - _lastMouseY,
             getMouseState(event));
 
-        version(futureMouseCursor)
+        version(legacyMouseCursor)
+        {}
+        else
         {
             setMouseCursor(_listener.getMouseCursor());
         }
