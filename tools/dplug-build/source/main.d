@@ -146,6 +146,7 @@ int main(string[] args)
         bool notarize = false;
         bool useRez = false;
         bool skipRegistry = false;
+        bool parallel = false;
         string prettyName = null;
 
         OS targetOS = buildOS();
@@ -187,6 +188,8 @@ int main(string[] args)
             }
             else if (arg == "-sr" || arg == "--skip-registry")
                 skipRegistry = true;
+            else if (arg == "--parallel")
+                parallel = true;
             else if (arg == "--rez")
             {
                 if (targetOS == OS.macOS)
@@ -489,7 +492,7 @@ int main(string[] args)
 
                 if (arch != Arch.universalBinary)
                 {
-                    buildPlugin(compiler, config, build, arch, verbose, force, combined, quiet, skipRegistry);
+                    buildPlugin(compiler, config, build, arch, verbose, force, combined, quiet, skipRegistry, parallel);
                     double bytes = getSize(plugin.dubOutputFileName) / (1024.0 * 1024.0);
                     cwritefln("    => Build OK, binary size = %0.1f mb, available in ./%s".green, bytes, path);
                     cwriteln();
@@ -1117,7 +1120,7 @@ int main(string[] args)
     }
 }
 
-void buildPlugin(string compiler, string config, string build, Arch arch, bool verbose, bool force, bool combined, bool quiet, bool skipRegistry)
+void buildPlugin(string compiler, string config, string build, Arch arch, bool verbose, bool force, bool combined, bool quiet, bool skipRegistry, bool parallel)
 {
     cwritefln("*** Building configuration %s with %s, %s arch...".white, config, compiler, convertArchToPrettyString(arch));
 
@@ -1128,7 +1131,7 @@ void buildPlugin(string compiler, string config, string build, Arch arch, bool v
         environment["MACOSX_DEPLOYMENT_TARGET"] = "10.11";
     }
 
-    string cmd = format("dub build --build=%s %s--compiler=%s%s%s%s%s%s%s",
+    string cmd = format("dub build --build=%s %s--compiler=%s%s%s%s%s%s%s%s",
         build, 
         convertArchToDUBFlag(arch),
         compiler,
@@ -1137,7 +1140,8 @@ void buildPlugin(string compiler, string config, string build, Arch arch, bool v
         quiet ? " -q" : "",
         combined ? " --combined" : "",
         config ? " --config=" ~ config : "",
-        skipRegistry ? " --skip-registry=all" : ""
+        skipRegistry ? " --skip-registry=all" : "",
+        parallel ? " --parallel" : ""
         );
     safeCommand(cmd);
 }
