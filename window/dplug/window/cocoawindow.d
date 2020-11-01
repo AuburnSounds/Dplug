@@ -171,7 +171,14 @@ public:
 
     override uint getTimeMs()
     {
-        return cast(uint)(NSDate.timeIntervalSinceReferenceDate() * 1000.0);
+        double timeMs = NSDate.timeIntervalSinceReferenceDate() * 1000.0;
+
+        // WARNING: ARM and x86 do not convert float to int in the same way.
+        // Convert to 64-bit and use integer truncation rather than UB.
+        // See: https://github.com/ldc-developers/ldc/issues/3603
+        long timeMs_integer = cast(long)timeMs;
+        uint ms = cast(uint)(timeMs_integer);
+        return ms;
     }
 
     override void* systemHandle()
