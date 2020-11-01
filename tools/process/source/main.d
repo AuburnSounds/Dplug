@@ -152,7 +152,8 @@ int main(string[]args)
             }
         }
 
-        pluginPath = pluginPath.absolutePath.buildNormalizedPath;
+        if (xmlFilename)
+            pluginPath = pluginPath.absolutePath.buildNormalizedPath;
 
         // store singular parameters
         parametersXml.addChild("input").innerText = inPath;
