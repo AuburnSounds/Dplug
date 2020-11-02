@@ -76,11 +76,6 @@ int main(string[]args)
         float[int] parameterValues;
         string xmlFilename;
 
-        Document xmlOutput = new Document;
-        xmlOutput.setProlog(`<?xml version="1.0" encoding="UTF-8"?>`);
-        xmlOutput.root = xmlOutput.createElement("measurements");
-        Element parametersXml = xmlOutput.root.addChild("parameters");
-
         for(int i = 1; i < args.length; ++i)
         {
             string arg = args[i];
@@ -128,11 +123,6 @@ int main(string[]args)
                 ++i;
                 float paramValue = to!float(args[i]);
                 parameterValues[paramIndex] = paramValue;
-
-                parametersXml
-                    .addChild("param")
-                    .setAttribute("index", paramIndex.to!string)
-                    .setAttribute("value", paramValue.to!string);
             }
             else if (arg == "-output-xml")
             {
@@ -152,20 +142,39 @@ int main(string[]args)
             }
         }
 
-        if (xmlFilename)
+        bool outputXML = xmlFilename !is null;
+        Document xmlOutput;
+
+        if (outputXML)
+        {
+            xmlOutput = new Document;
+            xmlOutput.setProlog(`<?xml version="1.0" encoding="UTF-8"?>`);
+            xmlOutput.root = xmlOutput.createElement("measurements");
+            Element parametersXml = xmlOutput.root.addChild("parameters");
+
+            foreach (index, value; parameterValues)
+            {
+                parametersXml.addChild("param")
+                             .setAttribute("index", to!string(index))
+                             .setAttribute("value", to!string(value));
+            }
+            
             pluginPath = pluginPath.absolutePath.buildNormalizedPath;
 
-        // store singular parameters
-        parametersXml.addChild("input").innerText = inPath;
-        parametersXml.addChild("output").innerText = outPath;
-        parametersXml.addChild("buffer").innerText = bufferSize.to!string;
-        if (preRoll) parametersXml.addChild("preroll");
-        if (precise) parametersXml.addChild("precise");
-        parametersXml.addChild("times").innerText = times.to!string;
-        parametersXml.addChild("preset").innerText = preset.to!string;
-        parametersXml.addChild("plugin").innerText = pluginPath;
-        parametersXml.addChild("plugin_timestamp").innerText = pluginPath.timeLastModified.toISOExtString;
+            // store singular parameters
+            parametersXml.addChild("input").innerText = inPath;
 
+            parametersXml.addChild("output").innerText = outPath;
+
+            parametersXml.addChild("buffer").innerText = bufferSize.to!string;
+            if (preRoll) parametersXml.addChild("preroll");
+            if (precise) parametersXml.addChild("precise");
+            parametersXml.addChild("times").innerText = times.to!string;
+            parametersXml.addChild("preset").innerText = preset.to!string;
+            parametersXml.addChild("plugin").innerText = pluginPath;
+            parametersXml.addChild("plugin_timestamp").innerText = pluginPath.timeLastModified.toISOExtString;
+        }
+        
         if (help)
         {
             usage();
@@ -332,7 +341,8 @@ int main(string[]args)
 
             measures ~= cast(double)measureUs;
 
-            xmlOutput.root.addChild("run_seconds").innerText = (measureUs / 1_000_000.0).to!string;
+            if (outputXML)
+                xmlOutput.root.addChild("run_seconds").innerText = (measureUs / 1_000_000.0).to!string;
         }
 
         double minTime = measures[0];
@@ -356,9 +366,12 @@ int main(string[]args)
             if (verbose) writefln(" * average time: %s => %.2f x real-time", convertMicroSecondsToDisplay(averageTime), 1000.0*sampleDurationMs / averageTime);
         }
 
-        xmlOutput.root.addChild("min_seconds").innerText = (minTime / 1_000_000.0).to!string;
-        xmlOutput.root.addChild("avg_seconds").innerText = (averageTime / 1_000_000.0).to!string;
-        xmlOutput.root.addChild("median_seconds").innerText = (medianTime / 1_000_000.0).to!string;
+        if (outputXML)
+        {
+            xmlOutput.root.addChild("min_seconds").innerText = (minTime / 1_000_000.0).to!string;
+            xmlOutput.root.addChild("avg_seconds").innerText = (averageTime / 1_000_000.0).to!string;
+            xmlOutput.root.addChild("median_seconds").innerText = (medianTime / 1_000_000.0).to!string;
+        }
 
         // write output if necessary
         if (outPath)
@@ -378,7 +391,7 @@ int main(string[]args)
         host.close();
 
         // Dump xml
-        if (xmlFilename) xmlOutput.getData.toFile(xmlFilename);
+        if (outputXML) xmlOutput.getData.toFile(xmlFilename);
 
         return 0;
     }
