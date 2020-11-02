@@ -17,20 +17,9 @@ before_install:
 
 d:
  - ldc-beta
- - ldc-1.23.0
- - ldc-1.22.0
- - ldc-1.21.0
- - ldc-1.20.1 # ldc 1.19 has random crash in x86_64 Linux jCI and isn't supported!
- - ldc-1.18.0
- - ldc-1.17.0
+ - ldc-1.24.0
  - dmd-beta
- - dmd-2.093.1
- - dmd-2.092.1
- - dmd-2.091.1
- - dmd-2.090.1
- - dmd-2.089.1
- - dmd-2.088.1
- - dmd-2.087.1
+ - dmd-2.094.1
  - gdc
 
 matrix:
@@ -38,20 +27,9 @@ matrix:
    - d: gdc
    - d: ldc-beta
    - d: dmd-beta
-   - d: dmd-2.089.1
    - d: dmd-beta
      arch: arm64
-   - d: dmd-2.093.1
-     arch: arm64
-   - d: dmd-2.092.1
-     arch: arm64
-   - d: dmd-2.091.1
-     arch: arm64
-   - d: dmd-2.090.1
-     arch: arm64
-   - d: dmd-2.088.1
-     arch: arm64
-   - d: dmd-2.087.1
+   - d: dmd-2.094.1
      arch: arm64
 
 # uncompress encrypted VST SDK
