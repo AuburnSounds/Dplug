@@ -9,13 +9,13 @@
 
 ## Features
 
-|  Plug-in format supported | Mac x86-64 | Windows x86 | Windows x86-64 | Linux x86-64 | Raspberry ARM32 |
-|---------------------------|------------|-------------|----------------|--------------|-----------------|
-| VST2                      | Yes        | Yes         | Yes            | Yes          | Yes             |
-| VST3                      | Yes        | Yes         | Yes            | Yes          | Yes             |
-| AUv2                      | Yes        |             |                |              |                 |
-| AAX                       | Yes        | No          | Yes            |              |                 |
-| LV2                       | Yes        | No          | Yes            | Yes          | Yes             |
+|  Format | macOS arm64 | macOS amd64  | Windows 32-bit | Windows 64-bit | Linux x86-64 | Raspberry ARM32 |
+|---------|-------------|--------------|----------------|----------------|--------------|-----------------|
+| VST2    | Yes         | Yes          | Yes            | Yes            | Yes          | Yes             |
+| VST3    | Yes         | Yes          | Yes            | Yes            | Yes          | Yes             |
+| AUv2    | Yes         | Yes          |                |                |              |                 |
+| AAX     | No          | Yes          | No             | Yes            |              |                 |
+| LV2     | No          | Yes          | No             | Yes            | Yes          | Yes             |
 
 
 - Automated Mac and Windows installers
