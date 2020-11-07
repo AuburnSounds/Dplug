@@ -952,11 +952,14 @@ string makePListFile(Plugin plugin, string config, bool hasIcon, bool isAudioCom
         content ~= "                <string>" ~ svid ~ "</string>\n";
         content ~= "                <key>name</key>\n";
         content ~= format("                <string>%s</string>\n", escapeXMLString(plugin.vendorName ~ ": " ~ plugin.pluginName));
+        content ~= "                <key>description</key>\n";
+        content ~= format("                <string>%s</string>\n", escapeXMLString(plugin.vendorName ~ " " ~ plugin.pluginName));
         content ~= "                <key>version</key>\n";
         content ~= format("                <integer>%s</integer>\n", plugin.publicVersionInt()); // TODO correct?
         content ~= "                <key>factoryFunction</key>\n";
         content ~= "                <string>dplugAUComponentFactoryFunction</string>\n";
-        content ~= "                <key>sandboxSafe</key><true/>\n";
+        content ~= "                <key>sandboxSafe</key>\n";
+        content ~= "                <true/>\n";
         content ~= "            </dict>\n";
         content ~= "        </array>\n";
     }
