@@ -18,6 +18,7 @@ import utils;
 import waved;
 import colorize;
 import arsd.dom;
+import arch;
 
 
 // Use case: 
@@ -108,46 +109,31 @@ class Plugin
     double[int] parameterValues;
     ProcessMeasurements lastMeasurements;
 
-    bool is64b;
+    Arch arch;  
 
-    static bool detectPEBitness(string pluginPath) // true if 64-bit, false else
-    {
-        import std.stdio;
-        File f = File(pluginPath, "rb");
-        f.seek(0x3c);
 
-        short[1] bufOffset;
-        short[] offset = f.rawRead(bufOffset[]);
-
-        f.seek(offset[0]);
-
-        ubyte[6] buf;
-        ubyte[] flag = f.rawRead(buf[]);
-
-        if (flag[] == "PE\x00\x00\x4C\x01")
-            return false;
-        else if (flag[] == "PE\x00\x00\x64\x86")
-            return true;
-        else
-            throw new Exception("Couldn't parse file as PE");
-    }
+    string cacheID; // string used for unique ID in encoded wav files
 
     void toString(scope void delegate(const(char)[]) sink)
     {
         sink(shortName);
-        if (is64b) sink("(64-bit)");
-        else sink("(32-bit)");
+
+        sink("(");
+        sink(archName(arch));
+        sink(")");
+
         foreach (int paramIndex, double paramvalue; parameterValues)
             formattedWrite(sink, " %s=%s", paramIndex, paramvalue);
     }
 
-    this(string pluginPath)
+    this(string pluginPath, int cacheIDInt)
     {
         this.pluginPath = pluginPath;
         enforce(exists(pluginPath), format("Can't find plugin file '%s'", pluginPath));
         pluginTimestamp = pluginPath.timeLastModified;
         this.shortName = pluginPath.baseName.stripExtension;
-        this.is64b = detectPEBitness(pluginPath);
+        this.arch = detectArch(pluginPath);
+        this.cacheID = "#" ~ to!string(cacheIDInt);
     }
 
     // TODO: add parameter values too?
@@ -294,13 +280,13 @@ class Universe
         }
     }
 
-    Plugin parsePlugin(Element pluginTag)
+    Plugin parsePlugin(Element pluginTag, int cacheID)
     {
         string pluginPath = pluginTag.innerText.strip;
         if (!pluginPath.isAbsolute)
             pluginPath = buildPath(xmlDir, pluginPath);
 
-        auto plugin = new Plugin(pluginPath);
+        auto plugin = new Plugin(pluginPath, cacheID);
         foreach(e; pluginTag.getElementsByTagName("parameter"))
         {
             string parameterIndexStr = e.getAttribute("index");
@@ -326,16 +312,18 @@ class Universe
         if (elems.length > 1)
             throw new Exception(format("Only single baseline must be provided, not %s", elems.length));
 
-        baseline = parsePlugin(elems[0]);
+        baseline = parsePlugin(elems[0], 0); // baseline has cacheID 0
 
     }
 
     void parseChallengers(Document doc)
     {
+        int cacheID = 1;
         foreach(e; doc.getElementsByTagName("challenger"))
         {
-            auto plugin = parsePlugin(e);
+            auto plugin = parsePlugin(e, cacheID); // challengers have cacheID > 1
             challengers ~= plugin;
+            cacheID++;
         }
     }
 
@@ -451,7 +439,7 @@ class Universe
     {
         int times = speedMeasureCount;
         mkdirRecurse(dirName(outputFile));
-        string exeProcess = plugin.is64b ? "process64" : "process";
+        string exeProcess = processExecutablePathForThisArch(plugin.arch);
         string parameterValues;
         foreach (int paramIndex, double paramvalue; plugin.parameterValues)
         {
@@ -467,7 +455,7 @@ class Universe
 
 string pathForEncode(Plugin plugin, TaskConfiguration conf, Source source, string ext)
 {
-    return buildPath(source.outputDirectory, format("%s-%s-%s.%s", source.shortName, conf.presetIndex, plugin.shortName, ext));
+    return buildPath(source.outputDirectory, format("%s-%s-%s.%s", source.shortName, conf.presetIndex, plugin.cacheID, ext));
 }
 
 struct ProcessMeasurements
