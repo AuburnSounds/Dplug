@@ -56,46 +56,15 @@ Keep up with major changes here: [Release Notes](https://github.com/AuburnSounds
 - [Getting Started](https://github.com/AuburnSounds/Dplug/wiki/Getting-Started)
 
 
-## FAQ
+## Governance
 
-- Does Dplug support the creation of synthesizer plug-ins?
-
-Yes. See the [simple-mono-synth](examples/simple-mono-synth) and [Poly Alias](examples/poly-alias-synth) examples.
-
-- Am I forced to use the PBR rendering system?
-
-No. And if you don't use it, you don't pay for it.
+Dplug has a deep commitment to stability. All breaking changes are documented in the [Changelog](https://github.com/AuburnSounds/Dplug/wiki/) and issues major SemVer tags for breaking changes. If you don't want any breaking changes, you can pin Dplug to a major version in your `dub.json`. **Breaking changes only happen for major tags.**
 
 
-- What D compiler can possibly be used?
+**Dplug's goal is to support existing products and building commercial companies around them**. 
+It is a part-time operation, from people who release commercial plug-ins.
 
-   See `.travis.yml` for supported compilers. The latest DMD or LDC should do.
-   We recommend that you use LDC.
-
-
-- Is Dplug stable?
-
-Dplug has a deep commitment to stability.
-
-Dplug documents all breaking changes in the [Changelog](https://github.com/AuburnSounds/Dplug/wiki/) and
-issues major SemVer tags for breaking changes.
-
-If you don't want any breaking changes, you can pin Dplug to a major version in your `dub.json`.
-
-But reality is complex, and bug fixes can be breaking too, (eg: "highpass FIR wasn't working").
-In which case we have to make a judgment call as to whether it's a breaking fix, and whether the buggy feature was used.
-
-Breaking commits, when they happen, are marked with BREAKING in the commit backlog.
-They are discussed on Discord to assess the impact. Make yourself known!
-
-- Will you add feature X?
-
-Dplug is a part-time operation, from people who spend time working on and releasing commercial plug-ins.
-
-**Dplug is there to support existing products and building commercial companies around them**, not to be beta software and make empty promises. 
-Being stable and bug-free is much more important to us than implement every possible feature.
-
-Politically, it's very often than enhancements get postponed in favour of product development, so please be patient!
+Being stable and relatively bug-free is deemed more important to us than implement every possible feature. It's often than enhancements get postponed in favour of product development, so please be patient!
 
 We're looking for ways to improve governance as more contributors have appeared with contrasted agendas.
 
@@ -122,7 +91,7 @@ Be sure to read the [Wiki](https://github.com/AuburnSounds/Dplug/wiki/) in depth
 
 ### VST SDK
 
-If you don't have the VST SDK, you can't _make_ plugins with Dplug.
+If you don't have the VST SDK, you can't _make_ VST plugins with Dplug.
 Find the VST SDK there: http://www.steinberg.net/en/company/developers.html
 
 **If you don't have a licensing agreement with Steinberg**, you can't _distribute_ VST2 or VST3 plug-ins.
