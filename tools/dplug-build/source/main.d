@@ -1126,9 +1126,10 @@ void buildPlugin(string compiler, string config, string build, Arch arch, bool v
 
     // If we want to support Notarization, we can't target earlier than 10.11
     // Note: it seems it is overriden at some point and when notarizing you can't target lower
+    // If you want Universal Binary 2, can't targer earlier than 10.12
     version(OSX)
     {
-        environment["MACOSX_DEPLOYMENT_TARGET"] = "10.11";
+        environment["MACOSX_DEPLOYMENT_TARGET"] = "10.12";
     }
 
     string cmd = format("dub build --build=%s %s--compiler=%s%s%s%s%s%s%s%s",
