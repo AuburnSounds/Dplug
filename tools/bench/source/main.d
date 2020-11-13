@@ -27,28 +27,71 @@ import arch;
 // - speed measurements
 // - non-regressions
 
+
 void usage()
 {
-    writeln;
-    writeln("Auburn Sounds benchmark tool");
-    writeln("Matrix of plug-ins, configurations and WAV sources");
-    writeln;
-    writeln("Usage: bench [-h] [-f] [<bench.xml>]");
-    writeln("    -h, --help    Print this message");
-    writeln("    -t, --times   Changes number of speed measures (default: 30)");
-    writeln("    -f, --force   Force reprocessing of cached outputs");
-    writeln;
-    writeln("Note: if task file is not provided, uses bench.xml");
-    writeln;
+    void flag(string arg, string desc, string possibleValues, string defaultDesc)
+    {
+        string argStr = format("        %s", arg);
+        cwrite(argStr.cyan);
+        for(size_t i = argStr.length; i < 24; ++i)
+            write(" ");
+        cwritefln("%s".white, desc);
+        if (possibleValues)
+            cwritefln("                        Possible values: ".grey ~ "%s".yellow, possibleValues);
+        if (defaultDesc)
+            cwritefln("                        Default: ".grey ~ "%s".cyan, defaultDesc);
+        cwriteln;
+    }
+
+    cwriteln;
+    cwriteln("This is " ~ "bench".yellow ~ ", the Dplug benchmark tool.");
+    cwriteln("It analyzes processing results, using a matrix of plug-ins, configurations and sources.");
+    cwriteln();
+    cwriteln("FLAGS".white);
+    cwriteln();
+    flag("-f --force", "Update cache of processed files.", null, "no");
+    flag("-t --times", "Number of samples for speed measures.", null, "30");
+    flag("-h --help",  "Shows this help.", null, null);
+
+    cwriteln();
+    cwriteln("NOTES".white);
+    cwriteln();
+    cwriteln("      bench".yellow ~ " expects a " ~ "bench.xml".cyan ~ " file in the directory it is launched.");
+    cwriteln();
+
+    cwriteln();
+    cwriteln("EXAMPLE");
+    cwriteln();
+    cwriteln(`    -------------------------------------- bench.xml ---------------------------------------`.cyan);
+    cwriteln();
+    cwriteln(`    <?xml version="1.0" encoding="UTF-8"?>`.green);
+    cwriteln(`    <bench>`.green);
+    cwriteln();
+    cwriteln(`      <!-- This will compare challenger.dll to baseline.dll over presets 0 to 20,`.magenta);
+    cwriteln(`           and display the speed-up and audio RMS differences.                           -->`.magenta);
+    cwriteln();    
+    cwriteln(`      <baseline>baseline.dll</baseline>`.green ~ `        <!-- path to baseline VST2.4 executable   -->`.magenta);
+    cwriteln(`      <challenger>challenger.dll</challenger>`.green ~ `  <!-- path to challenger VST2.4 executable -->`.magenta);
+    cwriteln(`      <preset-range min="0" max="20"/>`.green ~ `         <!-- range of VST2.4 presets to check     -->`.magenta);
+    cwriteln(`      <source>mysource.wav</source>`.green ~ `            <!-- add a source to the test             -->`.magenta);
+    cwriteln(`      <quality-compare/>`.green ~ `                       <!-- perform quality comparison           -->`.magenta);
+    cwriteln(`      <speed-measure/>`.green ~ `                         <!-- perform speed comparison             -->`.magenta);
+    cwriteln(`    </bench>`.green);
+    cwriteln();
+    cwriteln(`    ----------------------------------------------------------------------------------------`.cyan);
+    cwriteln();
+    cwriteln();
 }
+
+enum string configFile = "bench.xml";
 
 int main(string[] args)
 {
     try
     {
         bool help;
-        bool forceEncode;
-        string taskFile = "bench.xml";
+        bool forceEncode;        
         int times = 30;
 
         for(int i = 1; i < args.length; ++i)
@@ -70,33 +113,32 @@ int main(string[] args)
             }
             else
             {
-                if (taskFile)
-                {
-                    throw new Exception("only one XML file can be provided");
-                }
-                taskFile = arg;
+                throw new Exception(format("unexpected argument '%s'", arg));
             }
+        }
+
+        if (!configFile.exists())
+        {
+            error(format("missing file %s", configFile));
+            usage();
+            return 1;
         }
 
         if (help)
         {
             usage();
             return 0;
-        }        
-
-        // Check that the config file exists
-        if (!exists(taskFile))
-            throw new Exception(format("%s does not exist", taskFile));
+        }
 
         auto universe = new Universe(forceEncode, times);
-        universe.parseTask(taskFile);
+        universe.parseTask(configFile);
         universe.executeAllTasks();
         return 0;
     }
     catch(Exception e)
     {
         import std.stdio;
-        writeln("error: ", e.msg);
+        cwritefln("error: %s".red, e.msg);
         return 1;
     }
 }
@@ -259,7 +301,6 @@ class Universe
         auto doc = new Document();
         doc.parseUtf8(content, true, true);
 
-        parseDirectories(doc);
         parseBaseline(doc);
         parseChallengers(doc);
         parsePresets(doc);
@@ -267,25 +308,10 @@ class Universe
         parseProcessors(doc);
     }
 
-    void parseDirectories(Document doc)
-    {
-        foreach(e; doc.getElementsByTagName("source-dir"))
-        {
-            sourceDirectory = e.innerText;
-        }
-
-        foreach(e; doc.getElementsByTagName("output-dir"))
-        {
-            outputDir = e.innerText;
-        }
-    }
-
     Plugin parsePlugin(Element pluginTag, int cacheID)
     {
         string pluginPath = pluginTag.innerText.strip;
-        if (!pluginPath.isAbsolute)
-            pluginPath = buildPath(xmlDir, pluginPath);
-
+        
         auto plugin = new Plugin(pluginPath, cacheID);
         foreach(e; pluginTag.getElementsByTagName("parameter"))
         {
@@ -308,7 +334,7 @@ class Universe
     {
         auto elems = doc.getElementsByTagName("baseline");
         if (elems.length == 0)
-            throw new Exception("Baseline must be provided");
+            throw new Exception("baseline must be provided");
         if (elems.length > 1)
             throw new Exception(format("Only single baseline must be provided, not %s", elems.length));
 
@@ -356,11 +382,10 @@ class Universe
     {
         foreach(e; doc.getElementsByTagName("source"))
         {
-            string sourcePath;
-            if (e.innerText.isAbsolute)
-                sourcePath = e.innerText.strip;
-            else
-                sourcePath = buildPath(sourceDirectory, e.innerText);
+            string sourcePath = e.innerText.strip;
+
+            if (!exists(sourcePath))
+                throw new Exception(format("source '%s' doesn't exist.", sourcePath));
 
             sources ~= new Source(sourcePath, outputDir);
         }

@@ -41,6 +41,11 @@ string red(string s) @property
     return s.color(fg.light_red);
 }
 
+string magenta(string s) @property
+{
+    return s.color(fg.light_magenta);
+}
+
 void info(string msg)
 {
     cwritefln("info: %s".white, msg);

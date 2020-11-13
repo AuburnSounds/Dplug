@@ -14,7 +14,8 @@ enum Arch
     windows_x86_64,
     mac_x86_64,
     mac_arm64,
-    mac_UB
+    mac_UB,
+    linux_x86_64
 }
 
 
@@ -53,7 +54,9 @@ Arch detectArch(string pluginPath)
                 return Arch.windows_x86;
         }
         catch(Exception e)
-        {}
+        {
+        	throw new Exception("Unsupported OS/arch combination in bench, please modify the bench tool");
+        }
     }
     else version(OSX)
     {
@@ -67,6 +70,14 @@ Arch detectArch(string pluginPath)
         if ( has_x86_64 && !has_arm64) return Arch.mac_x86_64;
         if (!has_x86_64 &&  has_arm64) return Arch.mac_arm64;
         if ( has_x86_64 &&  has_arm64) return Arch.mac_UB;
+        throw new Exception("Unsupported arch combination in bench, please modify the bench tool");
+    }
+    else version(linux)
+    {
+        auto fileResult = executeShell(escapeShellCommand("file", pluginPath));
+        if (fileResult.status != 0) throw new Exception("file command failed");
+        bool has_x86_64 = indexOf(fileResult.output, "x86_64") != -1;
+        if (has_x86_64) return Arch.linux_x86_64;
         throw new Exception("Unsupported arch combination in bench, please modify the bench tool");
     }
     else
@@ -83,6 +94,7 @@ string archName(Arch arch)
         case mac_x86_64:     return "x86_64";
         case mac_arm64:      return "arm64";
         case mac_UB:         return "Universal Binary";
+        case linux_x86_64:   return "x86_64";
     }
 }
 
@@ -105,6 +117,7 @@ string processExecutablePathForThisArch(Arch arch)
         case mac_x86_64:     return "process-x86_64";
         case mac_arm64:      return "process-arm64";
         case mac_UB:         return "process-arm64"; // Can use any, so might as well take the fastest option
+        case linux_x86_64:   return "process";
     }
 }
 
