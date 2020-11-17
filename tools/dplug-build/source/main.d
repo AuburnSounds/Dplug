@@ -1357,11 +1357,10 @@ void generateWindowsInstaller(string outputDir,
     if(plugin.keyFileWindows !is null && plugin.keyPasswordWindows !is null)
     {
         // use windows signtool to sign the installer for distribution
-        string cmd = format("signtool sign /f %s /p %s /tr http://timestamp.comodoca.com/authenticode /td sha256 /fd sha256 /q %s",
+        string cmd = format("signtool sign /f %s /p %s /tr http://timestamp.sectigo.com /td sha256 /fd sha256 /q %s",
                             plugin.keyFileWindows,
                             plugin.keyPasswordWindows,
                             escapeShellArgument(outExePath));
-
         safeCommand(cmd);
     }
     else
