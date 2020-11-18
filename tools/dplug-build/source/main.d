@@ -1046,6 +1046,7 @@ int main(string[] args)
         if (plugin.licensePath)
         {
             string licensePath = outputDir ~ "/license.html";
+            string licensePathExpanded = outputDir ~ "/license-expanded.md";
 
             if (extension(plugin.licensePath) == ".md")
             {
@@ -1060,6 +1061,10 @@ int main(string[] args)
                                    .replace("$PUBLICVERSION", plugin.publicVersionString)
                                    .replace("$CURRENTYEAR", to!string(currentYear()));
 
+                // Write a file with just macro expanded, for the Windows installer.
+                std.file.write(licensePathExpanded, markdown);
+
+                // Write a file with macro expanded and converted to HTML, for the Mac installer.
                 string html = convertMarkdownFileToHTML(markdown);
                 std.file.write(licensePath, html);
                 cwritefln(" => OK\n".green);
@@ -1212,7 +1217,6 @@ void generateWindowsInstaller(string outputDir,
     //remove ./ if it occurs at the beginning of windowsInstallerHeaderBmp
     string headerImagePage = plugin.windowsInstallerHeaderBmp.replaceAll(r"^./".regex, "");
     string nsisPath = "WindowsInstaller.nsi";
-    string licensePath = plugin.licensePath;
 
     string content = "";
 
@@ -1232,7 +1236,11 @@ void generateWindowsInstaller(string outputDir,
     content ~= "!define MUI_ABORTWARNING\n";
     if (plugin.iconPathWindows)
         content ~= "!define MUI_ICON \"" ~ escapeNSISPath(plugin.iconPathWindows) ~ "\"\n";
+
+    // Use the markdown licence file with macro expanded.
+    string licensePath = outputDir ~ "/license-expanded.md"; 
     content ~= "!insertmacro MUI_PAGE_LICENSE \"" ~ licensePath ~ "\"\n";
+
     content ~= "!insertmacro MUI_PAGE_COMPONENTS\n";
     content ~= "!insertmacro MUI_LANGUAGE \"English\"\n\n";
 
