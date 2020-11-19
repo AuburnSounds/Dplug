@@ -24,6 +24,9 @@ import dplug.window.window;
 
 import derelict.cocoa;
 
+
+version = useCoreGraphicsContext;
+
 final class CocoaWindow : IWindow
 {
 nothrow:
@@ -72,6 +75,7 @@ public:
         _listener = listener;
 
         acquireCocoaFunctions();
+        acquireCoreGraphicsFunctions();
         NSApplicationLoad(); // to use Cocoa in Carbon applications
         bool parentViewExists = parentWindow !is null;
 
@@ -339,8 +343,8 @@ private:
     void drawRect(NSRect rect)
     {
         NSGraphicsContext nsContext = NSGraphicsContext.currentContext();
-
-        CIContext ciContext = nsContext.getCIContext();
+        
+        
 
         // Updates internal buffers in case of startup/resize
         // FUTURE: why is the bounds rect too large? It creates havoc in AU even without resizing.
@@ -364,16 +368,46 @@ private:
 
         _listener.onDraw(WindowPixelFormat.ARGB8);
 
-        size_t sizeNeeded = _wfb.pitch * _wfb.h;
-        _imageData = NSData.dataWithBytesNoCopy(_wfb.pixels, sizeNeeded, false);
 
-        CIImage image = CIImage.imageWithBitmapData(_imageData,
-                                                    byteStride(_width),
-                                                    CGSize(_width, _height),
-                                                    kCIFormatARGB8,
-                                                    _cgColorSpaceRef);
+        version(useCoreGraphicsContext)
+        {
+            CGContextRef cgContext = nsContext.getCGContext();
+            size_t sizeNeeded = _wfb.pitch * _wfb.h;
 
-        ciContext.drawImage(image, rect, rect);
+            import core.stdc.stdio;
+         
+            CGDataProviderRef provider = CGDataProviderCreateWithData(null, _wfb.pixels, sizeNeeded, null);
+            CGImageRef image = CGImageCreate(_width, 
+                                             _height, 
+                                             8, 
+                                             32, 
+                                             byteStride(_width), 
+                                             _cgColorSpaceRef, 
+                                             kCGImageByteOrderDefault | kCGImageAlphaNoneSkipFirst, 
+                                             provider, 
+                                             null,
+                                             true,
+                                             kCGRenderingIntentDefault);
+            // "on return, you may safely release [the provider]"
+            CGDataProviderRelease(provider);
+            scope(exit) CGImageRelease(image);
+
+            CGRect fullRect = CGMakeRect(0, 0, _width, _height);
+            CGContextDrawImage(cgContext, fullRect, image);
+        }
+        else
+        {
+            CIContext ciContext = nsContext.getCIContext();
+            size_t sizeNeeded = _wfb.pitch * _wfb.h;
+            _imageData = NSData.dataWithBytesNoCopy(_wfb.pixels, sizeNeeded, false);
+
+            CIImage image = CIImage.imageWithBitmapData(_imageData,
+                                                        byteStride(_width),
+                                                        CGSize(_width, _height),
+                                                        kCIFormatARGB8,
+                                                        _cgColorSpaceRef);
+            ciContext.drawImage(image, rect, rect);
+        }
     }
 
     /// Returns: true if window size changed.
