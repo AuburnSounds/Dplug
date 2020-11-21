@@ -213,6 +213,12 @@ nothrow @nogc:
         alias fun_t = extern(C) void function (id, SEL, BOOL) nothrow @nogc;
         (cast(fun_t)objc_msgSend)(_id, sel!"setWantsLayer:", value);
     }
+
+    void getRectsBeingDrawn(const(NSRect)** rects, NSInteger* count)
+    {
+        alias fun_t = extern(C) void function (id, SEL, const(NSRect)**, NSInteger*) nothrow @nogc;
+        (cast(fun_t)objc_msgSend)(_id, sel!"getRectsBeingDrawn:count:", rects, count);
+    }
 }
 
 // CALayer
@@ -674,6 +680,13 @@ nothrow @nogc:
         alias fun_t = extern(C) id function (id, SEL) nothrow @nogc;
         id result = (cast(fun_t)objc_msgSend)(_id, sel!"CIContext");
         return CIContext(result);
+    }
+
+    CGContextRef getCGContext()
+    {
+        alias fun_t = extern(C) CGContextRef function (id, SEL) nothrow @nogc;
+        CGContextRef result = (cast(fun_t)objc_msgSend)(_id, sel!"CGContext");
+        return result;
     }
 }
 
