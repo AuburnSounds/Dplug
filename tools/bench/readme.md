@@ -15,29 +15,20 @@ Task file contains single xml node `<bench> </bench>`:
 
 Plugins specified with `<baseline>` and `<challenger>` nodes can have optional parameter values. See `example1.xml` below.
 
-Source paths are always relative to `<source_dir>`, unless they are absolute.
-
-Plugin paths are always relative to `<task_dir>`, unless they are absolute.
 
 # Caching
 
-The results of process step are cached and are recalculated when cache is invalidated or when -force flag is passed.
+The results of process step are cached and are recalculated when cache is invalidated or when --force flag is passed.
 Cache is invalidated when plugin modification date changes, or when plugin parameters change.
 
 # Execution process:
 
 ```
-Read global config
-    Read source directory. If not set than source directory equals <task directory>/samples
-    Read output directory. If not set than output directory equals <task directory>/output
-
 Read task file
     Read baseline plugin
-    Read competitor plugins
-    Read sources. If no sources were specified uses all sources from source_dir
+    Read challenger plugins
+    Read sources.
     Read presets. If no presets were specified uses preset 0
-    Read optional source directory that will override one from global config
-    Read optional output directory that will override one from global config
     Read zero or more processors that will be run after 'process' step
 For each combination of source and preset
     for each plugin
