@@ -125,9 +125,6 @@ nothrow:
         _diffuseMap = mallocNew!(Mipmap!RGBA)();
         _materialMap = mallocNew!(Mipmap!RGBA)();
         _depthMap = mallocNew!(Mipmap!L16)();
-
-        _compositedBuffer = mallocNew!(OwnedImage!RGBA)();
-        _renderedBuffer = mallocNew!(OwnedImage!RGBA)();
     }
 
     // Don't like the default rendering? Override this function and make another compositor.
@@ -149,9 +146,8 @@ nothrow:
         _depthMap.destroyFree();
 
         _windowListener.destroyFree();
-        _compositedBuffer.destroyFree();
-        _renderedBuffer.destroyFree();
-
+        alignedFree(_compositedBuffer, 16);
+        alignedFree(_renderedBuffer, 16);
     }
 
     // Graphics implementation
@@ -378,11 +374,11 @@ protected:
     int _updateMargin = 20;
 
     /// The composited buffer, before the Raw layer is applied.
-    OwnedImage!RGBA _compositedBuffer = null;
+    ubyte* _compositedBuffer = null;
 
     /// The final rendered framebuffer. 
-    /// This is copied from `_compositedBuffer`, then Raw layer is drawn on top.
-    OwnedImage!RGBA _renderedBuffer = null;
+    /// This is copied from `_renderedBuffer`, then Raw layer is drawn on top.
+    ubyte* _renderedBuffer = null;
 
     debug(benchmarkGraphics)
     {
@@ -412,7 +408,7 @@ protected:
     }
 
     // useful to convert 16-byte aligned buffers into an ImageRef!RGBA
-    deprecated final ImageRef!RGBA toImageRef(ubyte* alignedBuffer)
+    final ImageRef!RGBA toImageRef(ubyte* alignedBuffer)
     {
         ImageRef!RGBA ir = void;
         ir.w = _askedWidth;
@@ -452,7 +448,7 @@ protected:
         }
 
         // D. COMPOSITING
-        auto compositedRef = _compositedBuffer.toRef();
+        auto compositedRef = toImageRef(_compositedBuffer);
         debug(benchmarkGraphics)
             _compositingWatch.start();
         compositeGUI(compositedRef); // Launch the possibly-expensive Compositor step, which implements PBR rendering 
@@ -464,7 +460,7 @@ protected:
 
         // E. COPY FROM "COMPOSITED" TO "RENDERED" BUFFER
         // Copy _compositedBuffer onto _renderedBuffer for every rect that will be changed on display
-        auto renderedRef = _renderedBuffer.toRef();
+        auto renderedRef = toImageRef(_renderedBuffer);
         debug(benchmarkGraphics)
             _copyWatch.start();
         foreach(rect; _rectsToDisplayDisjointed[])
@@ -613,14 +609,11 @@ protected:
         _materialMap.size(0, width, height);
 
         // Extends buffer
-       // size_t sizeNeeded = byteStride(width) * height;
+        size_t sizeNeeded = byteStride(width) * height;
+        _compositedBuffer = cast(ubyte*) alignedRealloc(_compositedBuffer, sizeNeeded, 16);
+        _renderedBuffer = cast(ubyte*) alignedRealloc(_renderedBuffer, sizeNeeded, 16);
 
-        int border_0 = 0;
-        int rowAlign_16 = 16;
-        int trailingSamples_0 = 0;
-        _compositedBuffer.size(width, height, border_0, rowAlign_16, xMultiplicity_1, trailingSamples_0);
-        _renderedBuffer.size(width, height, border_0, rowAlign_16, xMultiplicity_1, trailingSamples_0);
-        return _renderedBuffer.toRef();
+        return toImageRef(_renderedBuffer);
     }
 
     /// Draw the Raw layer of `UIElement` widgets
@@ -628,7 +621,7 @@ protected:
     {
         enum bool parallelDraw = true;
 
-        ImageRef!RGBA renderedRef = _renderedBuffer.toRef();
+        ImageRef!RGBA renderedRef = toImageRef(_renderedBuffer);
 
         // No need to launch threads only to have them realize there isn't anything to do
         if (_rectsToDisplayDisjointed.length == 0)
@@ -823,7 +816,7 @@ protected:
 
     void reorderComponents(WindowPixelFormat pf)
     {
-        auto renderedRef = _renderedBuffer.toRef;
+        auto renderedRef = toImageRef(_renderedBuffer);
 
         final switch(pf)
         {
@@ -850,10 +843,10 @@ protected:
     }
 }
 
-deprecated enum scanLineAlignment = 4; // could be anything
+enum scanLineAlignment = 4; // could be anything
 
 // given a width, how long in bytes should scanlines be
-deprecated int byteStride(int width) pure nothrow @nogc
+int byteStride(int width) pure nothrow @nogc
 {
     int widthInBytes = width * 4;
     return (widthInBytes + (scanLineAlignment - 1)) & ~(scanLineAlignment-1);
