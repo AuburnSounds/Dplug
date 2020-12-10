@@ -9,6 +9,8 @@ import std.traits;
 import dplug.core.vec;
 import dplug.canvas.misc;
 
+// Those asserts are disabled by default, since they are very slow in debug mode.
+//debug = checkRasterizer;
 
 /*
   Analytic antialiasing rasterizer.
@@ -375,8 +377,10 @@ nothrow:
 
             m_scandelta[endx] = 0;
 
-            version(assert)
+            debug(checkRasterizer)
             {
+
+                size_t size = m_scandelta.length;
                 foreach(e; m_scandelta) assert(e == 0);
             }
         }
@@ -386,7 +390,7 @@ nothrow:
         m_clipbfr_l[endy] = 0;
         m_clipbfr_r[endy] = 0;
 
-        version(assert)
+        debug(checkRasterizer)
         {
            foreach(e; m_clipbfr_l) assert(e == 0);
            foreach(e; m_clipbfr_r) assert(e == 0);
@@ -399,7 +403,7 @@ nothrow:
 
         m_buckets[endy] = null;
         
-        version(assert)
+        debug(checkRasterizer)
         {
            foreach(e; m_buckets) assert(e == null);
         } 
