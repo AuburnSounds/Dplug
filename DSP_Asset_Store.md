@@ -27,6 +27,16 @@ _Add yourself to this page with a PR (sorted by alphabetical order)._
 
 &nbsp;
 
+
+**Eight-band Split/Sum**
+- Description: 8-band splitter using linkwitz-riley crossovers. 
+- Content: D source code
+- Try it: [Panagement - Room modelling](https://www.auburnsounds.com/products/Panagement.html)
+- Contact: contact@auburnsounds.com
+
+&nbsp;
+
+
 **Phase-vocoder pitch-shifter**
 - Description: Pitch-shifting algorithm, spectral.
 - Content: D source code
@@ -34,6 +44,25 @@ _Add yourself to this page with a PR (sorted by alphabetical order)._
 - Contact: contact@auburnsounds.com
 
 &nbsp;
+
+
+**Pitch Detection**
+- Description: Monophonic Pitch-detection, speaker-independent.
+- Content: D source code
+- Try it: [Graillon - Pitch Correction](https://www.auburnsounds.com/products/Graillon.html)
+- Contact: contact@auburnsounds.com
+
+&nbsp;
+
+
+**Complete pitch correction solution**
+- Description: Pitch-detection, quantizing and pitch-shifting in one package.
+- Content: D source code
+- Try it: [Graillon - Pitch Correction](https://www.auburnsounds.com/products/Graillon.html)
+- Contact: contact@auburnsounds.com
+
+&nbsp;
+
 
 **Stereo Cross-over Delay**
 - Description: Stereo delay module with cross-over external feedback.
@@ -43,6 +72,7 @@ _Add yourself to this page with a PR (sorted by alphabetical order)._
 
 &nbsp;
 
+
 **Two-band Envelope follower**
 - Description: RMS 2-band spectral envelope follower.
 - Content: D source code
@@ -51,5 +81,16 @@ _Add yourself to this page with a PR (sorted by alphabetical order)._
 
 &nbsp;
 
-_Integration, modifying & porting services may be available upon request, depending on the vendor._
+
+**Psychoacoustic Envelope follower**
+- Description: RMS 43-band "natural hearing" envelope follower.
+- Content: D source code
+- Try it: [Renegate - Gate](https://www.auburnsounds.com/products/Renegate.html)
+- Contact: contact@auburnsounds.com
+
+
+&nbsp;
+
+_Integration, modifying & porting services may (or may not) be available upon request, depending on the vendor._
+_For a C++ shop, expect to pay extra for porting work, be it by the seller or a freelancer._
 _The exact terms and conditions are unknown to this website, and strictly up to the buyer and seller._
