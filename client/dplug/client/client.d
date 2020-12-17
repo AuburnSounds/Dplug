@@ -333,10 +333,15 @@ nothrow:
             return false;
     }
 
-    /// ditto
+    /// Close the plugin UI if one was opened.
+    /// Note: OBS Studio will happily call effEditClose without having called effEditOpen.
     final void closeGUI() nothrow @nogc
     {
-        (cast(IGraphics)_graphics).closeUI();
+        auto graphics = (cast(IGraphics)_graphics);
+        if (graphics)
+        {
+            graphics.closeUI();
+        }
     }
 
     // This should be called only by a client implementation.
