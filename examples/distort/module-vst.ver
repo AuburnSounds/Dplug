@@ -1,0 +1,4 @@
+VSTABI_1.0 {
+    global: VSTPluginMain; main;
+    local: *;
+};
