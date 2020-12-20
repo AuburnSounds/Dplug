@@ -1,0 +1,4 @@
+LV2ABI_1.0 {
+    global: lv2_descriptor; lv2ui_descriptor; GenerateManifestFromClient;
+    local: *;
+};

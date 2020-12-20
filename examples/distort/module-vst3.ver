@@ -1,0 +1,4 @@
+VST3ABI_1.0 {
+    global: GetPluginFactory; ModuleEntry; ModuleExit;
+    local: *;
+};
