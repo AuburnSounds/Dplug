@@ -448,7 +448,14 @@ const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, b
         char[] indexString = cast(char[])malloc(char.sizeof * 256)[0..256];
         sprintf(indexString.ptr, "%d", portIndex);
         char[] inputString = cast(char[])malloc(char.sizeof * 256)[0..256];
-        sprintf(inputString.ptr, "%d", input);
+        static if (false)
+            sprintf(inputString.ptr, "%d", input);
+        else
+        {
+            // kept for backward compatibility; however this breaks if the
+            // number of parameters change in the future.
+            sprintf(inputString.ptr, "%d", cast(int)(input + params.length));
+        }
 
         strcat(paramString.ptr, "    [\n".ptr);
         strcat(paramString.ptr, "        a lv2:AudioPort , lv2:InputPort ;\n".ptr);
