@@ -65,8 +65,6 @@ nothrow:
     {
         auto io = makeVec!LegalIO();
         io ~= LegalIO(1, 1);
-        io ~= LegalIO(1, 2);
-        io ~= LegalIO(2, 1);
         io ~= LegalIO(2, 2);
         return io.releaseData();
     }
