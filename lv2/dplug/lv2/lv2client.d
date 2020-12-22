@@ -77,6 +77,7 @@ nothrow:
         _legalIOIndex = legalIOIndex;
         _latencyOutput = null;
         _eventsInput = null;
+        _latencySamples = 0;
     }
 
     ~this()
@@ -164,6 +165,9 @@ nothrow:
 
         _currentTimeInfo = TimeInfo.init;
         _currentTimeInfo.hostIsPlaying = true;
+
+        if (_numOutputs > 0)
+            _latencySamples = _client.latencySamples(rate);
     }
 
     void connect_port(uint32_t port, void* data)
@@ -365,7 +369,7 @@ nothrow:
 
         // Report latency to host, expressed in frames
         if (_latencyOutput)
-            *_latencyOutput = _client.latencySamples(_sampleRate);
+            *_latencyOutput = _latencySamples;
     }
 
     void instantiateUI(const LV2UI_Descriptor* descriptor,
@@ -526,6 +530,9 @@ private:
     LV2_Atom_Sequence* _eventsInput;
 
     float _sampleRate;
+
+    // The latency value expressed in frames
+    int _latencySamples;
 
     UncheckedMutex _graphicsMutex;
 
