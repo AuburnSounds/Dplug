@@ -935,6 +935,8 @@ nothrow:
     {
         debug(logVST3Client) debugLog(">createView".ptr);
         debug(logVST3Client) scope(exit) debugLog("<createView".ptr);
+        if (!_client.hasGUI)
+            return null;
         if (name !is null && strcmp(name, "editor") == 0)
             return mallocNew!DplugView(this);
         return null;
