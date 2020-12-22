@@ -75,7 +75,9 @@ nothrow:
         _client.setHostCommand(this);
         _graphicsMutex = makeMutex();
         _legalIOIndex = legalIOIndex;
+        _latencyOutput = null;
         _eventsInput = null;
+        _latencySamples = 0;
     }
 
     ~this()
@@ -163,31 +165,48 @@ nothrow:
 
         _currentTimeInfo = TimeInfo.init;
         _currentTimeInfo.hostIsPlaying = true;
+
+        if (_numOutputs > 0)
+            _latencySamples = _client.latencySamples(rate);
     }
 
     void connect_port(uint32_t port, void* data)
     {
         int numParams = cast(int)(_client.params.length);
-        if(port < _client.params.length)
+        if(port < numParams)
         {
             _paramsPointers[port] = cast(float*)data;
+            return;
         }
-        else if(port < _numInputs + numParams)
+        port -= numParams;
+        if(port < _numInputs)
         {
-            uint input = port - numParams;
-            _inputPointersProvided[input] = cast(float*)data;
+            _inputPointersProvided[port] = cast(float*)data;
+            return;
         }
-        else if(port < _numOutputs + _numInputs + numParams)
+        port -= _numInputs;
+        if(port < _numOutputs)
         {
-            uint output = port - numParams - _numInputs;
-            _outputPointersProvided[output] = cast(float*)data;
+            _outputPointersProvided[port] = cast(float*)data;
+            return;
         }
-        else if(port < 1 + _numOutputs + _numInputs + numParams)
+        port -= _numOutputs;
+        if (_numOutputs > 0)
+        {
+            if (port == 0)
+            {
+                _latencyOutput = cast(float*)data;
+                return;
+            }
+            --port;
+        }
+        if(port == 0)
         {
             _eventsInput = cast(LV2_Atom_Sequence*)data;
+            return;
         }
-        else
-            assert(false, "Error unknown port index");
+        --port;
+        assert(false, "Error unknown port index");
     }
 
     void activate()
@@ -347,6 +366,10 @@ nothrow:
         _client.processAudioFromHost(_inputPointersProcessing, _outputPointersProcessing, n_samples, _currentTimeInfo);
 
         _currentTimeInfo.timeInSamples += n_samples;
+
+        // Report latency to host, expressed in frames
+        if (_latencyOutput)
+            *_latencyOutput = _latencySamples;
     }
 
     void instantiateUI(const LV2UI_Descriptor* descriptor,
@@ -501,9 +524,15 @@ private:
     // Output pointers used by processing, recomputed at each run().
     float*[] _outputPointersProcessing;
 
+    // Output pointer for latency reporting, `null` if not provided.
+    float* _latencyOutput;
+
     LV2_Atom_Sequence* _eventsInput;
 
     float _sampleRate;
+
+    // The latency value expressed in frames
+    int _latencySamples;
 
     UncheckedMutex _graphicsMutex;
 

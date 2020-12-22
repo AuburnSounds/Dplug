@@ -62,6 +62,7 @@ int GenerateManifestFromClient_templated(alias ClientClass)(char[] outputBuffer,
     strcat(manifest.ptr, "@prefix ui:   <http://lv2plug.in/ns/extensions/ui#>.\n".ptr);
     strcat(manifest.ptr, "@prefix pset: <http://lv2plug.in/ns/ext/presets#>.\n".ptr);
     strcat(manifest.ptr, "@prefix opts: <http://lv2plug.in/ns/ext/options#>.\n".ptr);
+    strcat(manifest.ptr, "@prefix pprops: <http://lv2plug.in/ns/ext/port-props#>.\n".ptr);
     strcat(manifest.ptr, "@prefix vendor: ".ptr); // this prefix abbreviate the ttl with our own URL base
     strcat(manifest.ptr, escapeRDF_IRI(uriVendor).ptr);
     strcat(manifest.ptr, ".\n\n".ptr);
@@ -396,6 +397,8 @@ const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, b
     import std.conv: to;
     import std.uni: toLower;
 
+    int portIndex = 0;
+
     const paramStringLen = 10_000;
     char[] paramString = cast(char[])malloc(char.sizeof * paramStringLen)[0..paramStringLen];
     paramString[0] = '\0';
@@ -407,14 +410,16 @@ const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, b
     // We choose to have symbol "output_<n>" for output channel n
 
     strcat(paramString.ptr, "    lv2:port\n".ptr);
-    foreach(index, param; params)
+    foreach(paramIndex, param; params)
     {
+        char[] indexString = cast(char[])malloc(char.sizeof * 256)[0..256];
+        sprintf(indexString.ptr, "%d", portIndex);
         char[] paramSymbol = cast(char[])malloc(char.sizeof * 256)[0..256];
-        sprintf(paramSymbol.ptr, "p%d", cast(int)index);
-        strcat(paramString.ptr, "    [ \n".ptr);
+        sprintf(paramSymbol.ptr, "p%d", cast(int)paramIndex);
+        strcat(paramString.ptr, "    [\n".ptr);
         strcat(paramString.ptr, "        a lv2:InputPort , lv2:ControlPort ;\n".ptr);
         strcat(paramString.ptr, "        lv2:index ".ptr);
-        strcat(paramString.ptr, paramSymbol[1..$].ptr);
+        strcat(paramString.ptr, indexString.ptr);
         strcat(paramString.ptr, " ;\n".ptr);
         strcat(paramString.ptr, "        lv2:symbol \"".ptr);
         strcat(paramString.ptr, paramSymbol.ptr);
@@ -434,24 +439,28 @@ const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, b
         if (!param.isAutomatable) {
             strcat(paramString.ptr, "        lv2:portProperty <http://kxstudio.sf.net/ns/lv2ext/props#NonAutomable> ;\n".ptr);
         }
-        strcat(paramString.ptr, "    ]".ptr);
-        if(index < params.length - 1 || legalIO.numInputChannels > 0 || legalIO.numOutputChannels > 0)
-            strcat(paramString.ptr, " ,\n".ptr);
-        else
-            strcat(paramString.ptr, " . \n".ptr);
+        strcat(paramString.ptr, "    ] ,\n".ptr);
+        ++portIndex;
     }
 
     foreach(input; 0..legalIO.numInputChannels)
     {
-        char[] paramsLengthPlusInput = cast(char[])malloc(char.sizeof * 10)[0..10];
-        snprintf(paramsLengthPlusInput.ptr, 10, "%d", cast(int)(params.length + input));
-        char[] inputString = cast(char[])malloc(char.sizeof * 10)[0..10];
-        snprintf(inputString.ptr, 10, "%d", cast(int)(params.length + input));
+        char[] indexString = cast(char[])malloc(char.sizeof * 256)[0..256];
+        sprintf(indexString.ptr, "%d", portIndex);
+        char[] inputString = cast(char[])malloc(char.sizeof * 256)[0..256];
+        static if (false)
+            sprintf(inputString.ptr, "%d", input);
+        else
+        {
+            // kept for backward compatibility; however this breaks if the
+            // number of parameters change in the future.
+            sprintf(inputString.ptr, "%d", cast(int)(input + params.length));
+        }
 
-        strcat(paramString.ptr, "    [ \n".ptr);
+        strcat(paramString.ptr, "    [\n".ptr);
         strcat(paramString.ptr, "        a lv2:AudioPort , lv2:InputPort ;\n".ptr);
         strcat(paramString.ptr, "        lv2:index ".ptr);
-        strcat(paramString.ptr, paramsLengthPlusInput.ptr);
+        strcat(paramString.ptr, indexString.ptr);
         strcat(paramString.ptr, ";\n".ptr);
         strcat(paramString.ptr, "        lv2:symbol \"input_".ptr);
         strcat(paramString.ptr, inputString.ptr);
@@ -459,21 +468,18 @@ const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, b
         strcat(paramString.ptr, "        lv2:name \"Input".ptr);
         strcat(paramString.ptr, inputString.ptr);
         strcat(paramString.ptr, "\" ;\n".ptr);
-        strcat(paramString.ptr, "    ]".ptr);
-        if(input < legalIO.numInputChannels - 1 || legalIO.numOutputChannels > 0)
-            strcat(paramString.ptr, " , ".ptr);
-        else
-            strcat(paramString.ptr, " . \n".ptr);
+        strcat(paramString.ptr, "    ] ,\n".ptr);
+        ++portIndex;
     }
 
     foreach(output; 0..legalIO.numOutputChannels)
     {
         char[] indexString = cast(char[])malloc(char.sizeof * 256)[0..256];
-        sprintf(indexString.ptr, "%d", cast(int)(params.length + legalIO.numInputChannels + output));
+        sprintf(indexString.ptr, "%d", portIndex);
         char[] outputString = cast(char[])malloc(char.sizeof * 256)[0..256];
         sprintf(outputString.ptr, "%d", output);
-        
-        strcat(paramString.ptr, "    [ \n".ptr);
+
+        strcat(paramString.ptr, "    [\n".ptr);
         strcat(paramString.ptr, "        a lv2:AudioPort , lv2:OutputPort ;\n".ptr);
         strcat(paramString.ptr, "        lv2:index ".ptr);
         strcat(paramString.ptr, indexString.ptr);
@@ -484,14 +490,26 @@ const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, b
         strcat(paramString.ptr, "        lv2:name \"Output".ptr);
         strcat(paramString.ptr, outputString.ptr);
         strcat(paramString.ptr, "\" ;\n".ptr);
-        strcat(paramString.ptr, "    ]".ptr);
-        if(output < legalIO.numOutputChannels - 1 || hasMIDIInput)
-            strcat(paramString.ptr, " , ".ptr);
-        else
-            strcat(paramString.ptr, " . \n".ptr);
+        strcat(paramString.ptr, "    ] ,\n".ptr);
+        if(output == legalIO.numOutputChannels - 1)
+        {
+            ++portIndex;
+            sprintf(indexString.ptr, "%d", portIndex);
+            strcat(paramString.ptr, "    [\n".ptr);
+            strcat(paramString.ptr, "        a lv2:ControlPort , lv2:OutputPort ;\n".ptr);
+            strcat(paramString.ptr, "        lv2:index ".ptr);
+            strcat(paramString.ptr, indexString.ptr);
+            strcat(paramString.ptr, ";\n".ptr);
+            strcat(paramString.ptr, "        lv2:designation lv2:latency ;\n".ptr);
+            strcat(paramString.ptr, "        lv2:symbol \"latency\" ;\n".ptr);
+            strcat(paramString.ptr, "        lv2:name \"Latency\" ;\n".ptr);
+            strcat(paramString.ptr, "        lv2:portProperty lv2:reportsLatency, pprops:notOnGUI ;\n".ptr);
+            strcat(paramString.ptr, "    ] ,\n".ptr);
+        }
+        ++portIndex;
     }
 
-    strcat(paramString.ptr, "    [ \n".ptr);
+    strcat(paramString.ptr, "    [\n".ptr);
     strcat(paramString.ptr, "        a lv2:InputPort, atom:AtomPort ;\n".ptr);
     strcat(paramString.ptr, "        atom:bufferType atom:Sequence ;\n".ptr);
 
@@ -499,7 +517,7 @@ const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, b
         strcat(paramString.ptr, "        atom:supports <http://lv2plug.in/ns/ext/midi#MidiEvent> ;\n".ptr);
 
     char[] indexString = cast(char[])malloc(char.sizeof * 256)[0..256];
-    sprintf(indexString.ptr, "%d", cast(int)(params.length + legalIO.numInputChannels + legalIO.numOutputChannels));
+    sprintf(indexString.ptr, "%d", portIndex);
 
     strcat(paramString.ptr, "        atom:supports <http://lv2plug.in/ns/ext/time#Position> ;\n".ptr);
     strcat(paramString.ptr, "        lv2:designation lv2:control ;\n".ptr);
@@ -509,7 +527,9 @@ const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, b
     strcat(paramString.ptr, "        lv2:symbol \"lv2_events_in\" ;\n".ptr);
     strcat(paramString.ptr, "        lv2:name \"Events Input\"\n".ptr);
     strcat(paramString.ptr, "    ]".ptr);
-    strcat(paramString.ptr, " . \n".ptr);
+    ++portIndex;
+
+    strcat(paramString.ptr, " .\n".ptr);
 
     return paramString;
 }
