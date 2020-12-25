@@ -1298,6 +1298,13 @@ void generateWindowsInstaller(string outputDir,
             string identifier = formatSectionIdentifier(p);
 
             content ~= "Function defaultInstDir" ~ identifier ~ "\n";
+            if(p.is64b)
+            {
+                // The 64-bit version does not get installed on a 32-bit system, skip asking in this case
+                content ~= "  ${IfNot} ${RunningX64}\n";
+                content ~= "    Abort\n";
+                content ~= "  ${EndIf}\n";
+            }
             content ~= "  ${IfNot} ${SectionIsSelected} ${Sec" ~ p.format ~ "}\n";
             content ~= "    Abort\n";
             content ~= "  ${Else}\n";
@@ -1341,7 +1348,10 @@ void generateWindowsInstaller(string outputDir,
         // For all other formats
         else
         {
+            // Only install the 64-bit package on 64-bit OS
             content ~= "  ${If} ${SectionIsSelected} ${Sec" ~ p.format ~ "}\n";
+            if(p.is64b)
+                content ~= "    ${AndIf} ${RunningX64}\n";
             if (p.format == "VST")
                 content ~= "    SetOutPath $InstDir" ~ formatSectionIdentifier(p) ~ "\n";
             else
