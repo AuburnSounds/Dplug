@@ -122,8 +122,6 @@ nothrow AEffect* myVSTEntryPoint(alias ClientClass)(HostCallbackFunction hostCal
     return &plugin._effect;
 };
 
-// FUTURE: later
-//version = useChunks;
 
 //version = logVSTDispatcher;
 
@@ -147,7 +145,7 @@ nothrow:
 
         int flags = effFlagsCanReplacing | effFlagsCanDoubleReplacing;
 
-        version(useChunks)
+        version(futureVST2Chunks)
             flags |= effFlagsProgramChunks;
 
         if ( client.hasGUI() )
@@ -543,7 +541,7 @@ private:
 
             case effGetChunk: // opcode 23
             {
-                version(useChunks)
+                version(futureVST2Chunks)
                 {
                     ubyte** ppData = cast(ubyte**) ptr;
                     bool wantBank = (index == 0);
@@ -552,12 +550,14 @@ private:
                         auto presetBank = _client.presetBank();
                         if (wantBank)
                         {
+                            debugLog("GET bank chunk");
                             _lastBankChunk = presetBank.getBankChunk();
                             *ppData = _lastBankChunk.ptr;
                             return cast(int)_lastBankChunk.length;
                         }
                         else
                         {
+                            debugLog("GET preset chunk");
                             _lastPresetChunk = presetBank.getPresetChunk(presetBank.currentPresetIndex());
                             *ppData = _lastPresetChunk.ptr;
                             return cast(int)_lastPresetChunk.length;
@@ -569,7 +569,7 @@ private:
 
             case effSetChunk: // opcode 24
             {
-                version(useChunks)
+                version(futureVST2Chunks)
                 {
                     if (!ptr)
                         return 0;
@@ -580,9 +580,13 @@ private:
                     try
                     {
                         if (isBank)
+                        {
+                            debugLog("SET bank chunk");
                             presetBank.loadBankChunk(chunk);
+                        }
                         else
                         {
+                            debugLog("SET preset chunk");
                             presetBank.loadPresetChunk(presetBank.currentPresetIndex(), chunk);
                             presetBank.loadPresetFromHost(presetBank.currentPresetIndex());
                         }

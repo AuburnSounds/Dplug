@@ -36,7 +36,7 @@
 
 
     "comment": "Example of configuration options",
-    "versions": ["futureMouseOver", "futurePBRNormals"],
+    "versions": ["futureVST2Chunks"],
 
     "configurations": [
         {

@@ -275,7 +275,7 @@ public:
 
     /// Parse a preset chunk and set parameters.
     /// May throw an Exception.
-    void loadPresetChunk(int index, ubyte[] chunk)
+    void loadPresetChunk(int index, ubyte[] chunk) @nogc
     {
         checkChunkHeader(chunk);
         presets[index].unserializeBinary(chunk);
@@ -309,7 +309,7 @@ public:
 
         int numPresets = chunk.popLE!int();
 
-        // TODO: is there a way to have a dynamic number of presets in the bank? Check with VST and AU
+        // TODO: is there a way to have a dynamic number of presets in the bank?
         numPresets = min(numPresets, presets.length);
         foreach(preset; presets[0..numPresets])
             preset.unserializeBinary(chunk);
