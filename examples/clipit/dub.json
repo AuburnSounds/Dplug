@@ -34,6 +34,9 @@
         "dplug:flat-widgets": { "path": "../.." }
     },
 
+    "comment": "Example of configuration options",
+    "versions": ["futureVST2Chunks"],
+
     "configurations": [
         {
             "name": "VST3",
