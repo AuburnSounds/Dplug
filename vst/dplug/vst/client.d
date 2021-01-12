@@ -238,6 +238,15 @@ nothrow:
         _host.destroyFree();
 
         _messageQueue.destroy();
+
+        version(futureVST2Chunks)
+        {
+            if (_lastStateChunk)
+            {
+                free(_lastStateChunk.ptr);
+                _lastStateChunk = null;
+            }
+        }
     }
 
 private:
@@ -313,9 +322,9 @@ private:
     float*[] _inputPointers;  // where processAudio will take its audio input, one per possible input
     float*[] _outputPointers; // where processAudio will output audio, one per possible output
 
-    // stores the last asked preset/bank chunk
-    ubyte[] _lastPresetChunk = null;
-    ubyte[] _lastBankChunk = null;
+    // stores the last asked state chunk
+    version(futureVST2Chunks)
+        ubyte[] _lastStateChunk = null;
 
     // Inter-locked message queue from opcode thread to audio thread
     LockedQueue!AudioThreadMessage _messageQueue;
@@ -392,7 +401,7 @@ private:
                 return 0;
             }
 
-            case effGetProgramName: // opcode 5,
+            case effGetProgramName: // opcode 5
             {
                 char* p = cast(char*)ptr;
                 if (p !is null)
@@ -547,21 +556,11 @@ private:
                     bool wantBank = (index == 0);
                     if (ppData)
                     {
+                        // Note: we have no concern whether the host demanded a bank or preset chunk here.
                         auto presetBank = _client.presetBank();
-                        if (wantBank)
-                        {
-                            debugLog("GET bank chunk");
-                            _lastBankChunk = presetBank.getBankChunk();
-                            *ppData = _lastBankChunk.ptr;
-                            return cast(int)_lastBankChunk.length;
-                        }
-                        else
-                        {
-                            debugLog("GET preset chunk");
-                            _lastPresetChunk = presetBank.getPresetChunk(presetBank.currentPresetIndex());
-                            *ppData = _lastPresetChunk.ptr;
-                            return cast(int)_lastPresetChunk.length;
-                        }
+                        _lastStateChunk = presetBank.getStateChunkFromCurrentState();
+                        *ppData = _lastStateChunk.ptr;
+                        return cast(int)_lastStateChunk.length;
                     }
                 }
                 return 0;
@@ -579,23 +578,13 @@ private:
                     auto presetBank = _client.presetBank();
                     try
                     {
-                        if (isBank)
-                        {
-                            debugLog("SET bank chunk");
-                            presetBank.loadBankChunk(chunk);
-                        }
-                        else
-                        {
-                            debugLog("SET preset chunk");
-                            presetBank.loadPresetChunk(presetBank.currentPresetIndex(), chunk);
-                            presetBank.loadPresetFromHost(presetBank.currentPresetIndex());
-                        }
+                        presetBank.loadStateChunk(chunk);
                         return 1; // success
                     }
                     catch(Exception e)
                     {
-                        e.destroyFree();
                         // Chunk didn't parse
+                        e.destroyFree();
                         return 0;
                     }
                 }
@@ -1058,7 +1047,11 @@ extern(C) private nothrow
         scopedCallback.enter();
 
         version(logVSTDispatcher)
-            printf("dispatcher effect %p thread %p opcode %d \n", effect, currentThreadId(), opcode);
+        {
+            char[128] buf;
+            snprintf(buf.ptr, 128, "dispatcher effect %p opcode %d".ptr, effect, opcode);
+            debugLog(buf.ptr);
+        }
 
         auto plugin = cast(VSTClient)(effect.object);
         result = plugin.dispatcher(opcode, index, value, ptr, opt);

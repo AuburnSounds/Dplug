@@ -21,18 +21,13 @@ import dplug.client.binrange;
 import dplug.client.client;
 import dplug.client.params;
 
-// The current situation is really complicated.
-//
-// There are 3 types of chunks:
-// - "preset" and "bank" chunks are used by VST2. The whole preset "bank" structure exists for VST2.
-//   Changing a preset and loading another changes the bank. VST2 is the only format that could
-//   store unused presets.
-// - AU, VST3 and AAX uses "state chunks" which are storing a single preset and a preset index.
-//   On load, the bank from factory is restored but the single preset stored will be changed.
-//   However, in AU and AAX the whole concept of the preset bank is there for nothing.
+// The current situation is quite complicated.
+// 
+// See https://github.com/AuburnSounds/Dplug/wiki/Roles-of-the-PresetBank
+// for an explanation of the bizarre "PresetBank".
 
-/// I can see no reason why dplug shouldn't be able to maintain
-/// backward-compatibility with older versions in the future.
+/// I can see no reason why Dplug shouldn't be able to maintain
+/// state chunks backward-compatibility with older versions in the future.
 /// However, never say never.
 /// This number will be incremented for every backward-incompatible change.
 enum int DPLUG_SERIALIZATION_MAJOR_VERSION = 0;
@@ -262,59 +257,7 @@ public:
         presets.pushBack(mallocNew!Preset(presetName, values));
         loadPresetFromHost(cast(int)(presets.length) - 1);
     }
-
-    /// Allocates and fill a preset chunk
-    /// The resulting buffer should be freed with `free`.
-    ubyte[] getPresetChunk(int index) nothrow @nogc
-    {
-        auto chunk = makeVec!ubyte();
-        writeChunkHeader(chunk);
-        presets[index].serializeBinary(chunk);
-        return chunk.releaseData();
-    }
-
-    /// Parse a preset chunk and set parameters.
-    /// May throw an Exception.
-    void loadPresetChunk(int index, ubyte[] chunk) @nogc
-    {
-        checkChunkHeader(chunk);
-        presets[index].unserializeBinary(chunk);
-
-        // Not sure why it's there in IPlug, this whole function is probably not
-        // doing what it should
-        //putCurrentStateInCurrentPreset();
-    }
-
-    /// Allocate and fill a bank chunk
-    /// The resulting buffer should be freed with `free`.
-    ubyte[] getBankChunk() nothrow @nogc
-    {
-        putCurrentStateInCurrentPreset();
-        auto chunk = makeVec!ubyte();
-        writeChunkHeader(chunk);
-
-        // write number of presets
-        chunk.writeLE!int(cast(int)(presets.length));
-
-        foreach(size_t i, preset; presets)
-            preset.serializeBinary(chunk);
-        return chunk.releaseData();
-    }
-
-    /// Parse a bank chunk and set parameters.
-    /// May throw an Exception.
-    void loadBankChunk(ubyte[] chunk) @nogc
-    {
-        checkChunkHeader(chunk);
-
-        int numPresets = chunk.popLE!int();
-
-        // TODO: is there a way to have a dynamic number of presets in the bank?
-        numPresets = min(numPresets, presets.length);
-        foreach(preset; presets[0..numPresets])
-            preset.unserializeBinary(chunk);
-    }
-
+  
     /// Gets a state chunk to save the current state.
     /// The returned state chunk should be freed with `free`.
     ubyte[] getStateChunkFromCurrentState() nothrow @nogc
