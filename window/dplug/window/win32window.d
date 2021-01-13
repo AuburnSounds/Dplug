@@ -352,6 +352,16 @@ version(Windows)
                 {
                     updateSizeIfNeeded();
 
+
+                    // Same thing that under Cocoa, the first WM_PAINT could happen before WM_TIMER is ever called.
+                    // In this case, call `recomputeDirtyAreas()` so that onDraw draw something and uninitialized pixels are not displayed.
+                    // See Issue #523.
+                    if (_dirtyAreasAreNotYetComputed)
+                    {
+                        _dirtyAreasAreNotYetComputed = false;
+                        _listener.recomputeDirtyAreas();
+                    }
+
                     // Renders UI. 
                     // FUTURE: This could be done in a separate thread?
                     // For efficiency purpose, render in BGRA for Windows
@@ -455,6 +465,7 @@ version(Windows)
                         _listener.onAnimate(dt, time);
 
                         _listener.recomputeDirtyAreas();
+                        _dirtyAreasAreNotYetComputed = false;
                         box2i dirtyRect = _listener.getDirtyRectangle();
                         if (!dirtyRect.empty())
                         {
@@ -536,6 +547,7 @@ version(Windows)
         int _mouseY = 0;
 
         bool shiftPressed = false;
+        bool _dirtyAreasAreNotYetComputed = true;
 
         // Last MouseCursor used. This is to avoid updating the cursor
         // more often than necessary
