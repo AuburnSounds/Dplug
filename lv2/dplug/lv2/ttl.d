@@ -503,7 +503,7 @@ const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, b
             strcat(paramString.ptr, "        lv2:designation lv2:latency ;\n".ptr);
             strcat(paramString.ptr, "        lv2:symbol \"latency\" ;\n".ptr);
             strcat(paramString.ptr, "        lv2:name \"Latency\" ;\n".ptr);
-            strcat(paramString.ptr, "        lv2:portProperty lv2:reportsLatency, pprops:notOnGUI ;\n".ptr);
+            strcat(paramString.ptr, "        lv2:portProperty lv2:reportsLatency, lv2:connectionOptional, pprops:notOnGUI ;\n".ptr);
             strcat(paramString.ptr, "    ] ,\n".ptr);
         }
         ++portIndex;
@@ -512,6 +512,8 @@ const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, b
     strcat(paramString.ptr, "    [\n".ptr);
     strcat(paramString.ptr, "        a lv2:InputPort, atom:AtomPort ;\n".ptr);
     strcat(paramString.ptr, "        atom:bufferType atom:Sequence ;\n".ptr);
+    strcat(paramString.ptr, "        lv2:portProperty lv2:connectionOptional ;\n".ptr);
+    
 
     if(hasMIDIInput)
         strcat(paramString.ptr, "        atom:supports <http://lv2plug.in/ns/ext/midi#MidiEvent> ;\n".ptr);
