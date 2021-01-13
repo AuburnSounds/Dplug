@@ -240,7 +240,7 @@ version(Windows)
                 }
                 case WM_SETCURSOR:
                 {
-                    return setMouseCursor();
+                    return setMouseCursor(true);
                 }
 
                 case WM_MOUSEMOVE:
@@ -253,7 +253,7 @@ version(Windows)
                         _listener.onMouseMove(newMouseX, newMouseY, dx, dy, getMouseState(wParam));
                         _mouseX = newMouseX;
                         _mouseY = newMouseY;
-                        setMouseCursor();
+                        setMouseCursor(false);
                         return 0;
                     }
 
@@ -346,6 +346,7 @@ version(Windows)
 
                 case WM_CAPTURECHANGED:
                     _listener.onMouseCaptureCancelled();
+                    setMouseCursor(true);
                     goto default;
 
                 case WM_PAINT:
@@ -579,7 +580,7 @@ version(Windows)
             generateNullTerminatedRandomUUID!wchar(_className, "dplug_"w);
         }
 
-        int setMouseCursor()
+        int setMouseCursor(bool forceUpdate)
         {
             version(legacyMouseCursor)
             {}
@@ -587,7 +588,7 @@ version(Windows)
             {
                 MouseCursor cursor = _listener.getMouseCursor();
 
-                if(cursor != _lastMouseCursor)
+                if((cursor != _lastMouseCursor) || forceUpdate )
                 {
                     CURSORINFO pci;
                     pci.cbSize = CURSORINFO.sizeof;
