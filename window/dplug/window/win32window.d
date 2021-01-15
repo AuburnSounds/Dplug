@@ -238,9 +238,19 @@ version(Windows)
                     else
                         return 0;
                 }
+
                 case WM_SETCURSOR:
                 {
-                    return setMouseCursor(true);
+                    // In case the cursor was modified by another window, restore the cursor.
+                    // This is done differently depending on whether we want a modifed cursor ourselves.
+                    // Easily tested in REAPER by hovering over the left border of 
+                    // the plugin: this turn the custor into a resize arrow.                    
+                    version(legacyMouseCursor)
+                    {
+                        goto default;
+                    }
+                    else
+                        return setMouseCursor(true);
                 }
 
                 case WM_MOUSEMOVE:
