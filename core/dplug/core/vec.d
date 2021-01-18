@@ -381,12 +381,14 @@ nothrow:
         }
 
         /// Appends a slice to this buffer.
+        /// `slice` should not belong to the same buffer _data.
         void pushBack(T[] slice)
         {
-            foreach(item; slice)
-            {
-                pushBack(item);
-            }
+            size_t oldSize = _size;
+            size_t newSize = _size + slice.length;
+            resize(newSize);
+            for (size_t n = 0; n < slice.length; ++n)
+                _data[oldSize + n] = slice[n];
         }
 
         /// Returns: Raw pointer to data.
@@ -516,6 +518,23 @@ unittest
 
         foreach(i ; 0..N)
             assert(buf[i] == i);
+
+        auto buf2 = makeVec!int;
+        buf2.pushBack(11);
+        buf2.pushBack(14);
+
+        // test pushBack(slice)
+        buf.clearContents();
+        buf.pushBack(buf2[]);
+        assert(buf[0] == 11);
+        assert(buf[1] == 14);
+
+        // test pushBack(slice)
+        buf2[1] = 8;
+        buf.clearContents();
+        buf.pushBack(buf2);
+        assert(buf[0] == 11);
+        assert(buf[1] == 8);
     }
 }
 
