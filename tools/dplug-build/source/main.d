@@ -1179,6 +1179,7 @@ void generateWindowsInstaller(string outputDir,
 
     string regVendorKey = "Software\\" ~ plugin.vendorName;
     string regProductKey = regVendorKey ~ "\\" ~ plugin.pluginName;
+    string regUninstallKey = "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\" ~ plugin.prettyName;
 
     // changes slashes in path to backslashes, which are the only supported within NSIS
     string escapeNSISPath(string path)
@@ -1375,6 +1376,43 @@ void generateWindowsInstaller(string outputDir,
         }
     }
 
+    content ~= format!"    CreateDirectory \"$PROGRAMFILES\\%s\\%s\"\n"(plugin.vendorName, plugin.pluginName);
+    content ~= format!"    WriteUninstaller \"$PROGRAMFILES\\%s\\%s\\Uninstall.exe\"\n"(plugin.vendorName, plugin.pluginName);
+    content ~= format!"    WriteRegStr HKLM \"%s\" \"DisplayName\" \"%s\"\n"(regUninstallKey, plugin.prettyName);
+    content ~= format!"    WriteRegStr HKLM \"%s\" \"UninstallString\" \"$PROGRAMFILES\\%s\\%s\\Uninstall.exe\"\n"(regUninstallKey, plugin.vendorName, plugin.pluginName);
+
+    content ~= "SectionEnd\n\n";
+
+    // Uninstaller
+
+    content ~= "Section \"Uninstall\"\n";
+    content ~= "SetRegView 64\n";
+    foreach(p; packs)
+    {
+        bool pluginIsDir = p.pluginDir.isDir;
+
+        if (p.format == "VST")
+        {
+            string instDirVar = "InstDir" ~ formatSectionIdentifier(p);
+            content ~= format!"    ReadRegStr $%s HKLM \"%s\" \"%s\"\n"(instDirVar, regProductKey, instDirVar);
+            content ~= format!"    ${If} $%s != \"\"\n"(instDirVar);
+            content ~= format!"        Delete \"$%s\\%s\"\n"(instDirVar, p.pluginDir.baseName);
+            content ~=        "    ${EndIf}\n";
+        }
+        else if (pluginIsDir)
+        {
+            content ~= format!"    RMDir /r \"%s\\%s\"\n"(p.installDir, p.pluginDir.baseName);
+        }
+        else
+        {
+            content ~= format!"    Delete \"%s\\%s\"\n"(p.installDir, p.pluginDir.baseName);
+        }
+    }
+    content ~= format!"    DeleteRegKey HKLM \"%s\"\n"(regProductKey);
+    content ~= format!"    DeleteRegKey /ifempty HKLM \"%s\"\n"(regVendorKey);
+    content ~= format!"    DeleteRegKey HKLM \"%s\"\n"(regUninstallKey);
+    content ~= format!"    RMDir /r \"$PROGRAMFILES\\%s\\%s\"\n"(plugin.vendorName, plugin.pluginName);
+    content ~= format!"    RMDir \"$PROGRAMFILES\\%s\"\n"(plugin.vendorName);
     content ~= "SectionEnd\n\n";
 
     std.file.write(nsisPath, cast(void[])content);
