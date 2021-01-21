@@ -26,10 +26,11 @@ string MAC_LV2_DIR      = "/Library/Audio/Plug-Ins/LV2";
 
 string WIN_VST3_DIR     = "$PROGRAMFILES64\\Common Files\\VST3";
 string WIN_VST_DIR      = "$PROGRAMFILES64\\VSTPlugins";
-string WIN_LV2_DIR      = "$APPDATA\\LV2";
+string WIN_LV2_DIR      = "$PROGRAMFILES64\\Common Files\\LV2";
 string WIN_AAX_DIR      = "$PROGRAMFILES64\\Common Files\\Avid\\Audio\\Plug-Ins";
 string WIN_VST3_DIR_X86 = "$PROGRAMFILES\\Common Files\\VST3";
 string WIN_VST_DIR_X86  = "$PROGRAMFILES\\VSTPlugins";
+string WIN_LV2_DIR_X86  = "$PROGRAMFILES\\Common Files\\LV2";
 
 
 version(linux)
@@ -749,7 +750,10 @@ int main(string[] args)
                         {
                             format = "LV2";
                             title = "LV2 plugin-in";
-                            installDir = WIN_LV2_DIR;
+                            if (arch == arch.x86_64)
+                                installDir = WIN_LV2_DIR;
+                            else
+                                installDir = WIN_LV2_DIR_X86;
                         }
 
                         windowsPackages ~= WindowsPackage(format, pluginDirectory, title, installDir, sizeInKiloBytes, arch == arch.x86_64);
