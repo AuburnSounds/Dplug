@@ -1332,7 +1332,9 @@ void generateWindowsInstaller(string outputDir,
     }
 
     content ~= "Section\n";
-    content ~= "SetRegView 64\n";
+    content ~= "  ${If} ${RunningX64}\n";
+    content ~= "    SetRegView 64\n";
+    content ~= "  ${EndIf}\n";
 
     auto lv2Packs = packs.filter!((p) => p.format == "LV2").array();
     foreach(p; packs)
@@ -1390,7 +1392,9 @@ void generateWindowsInstaller(string outputDir,
     // Uninstaller
 
     content ~= "Section \"Uninstall\"\n";
-    content ~= "SetRegView 64\n";
+    content ~= "  ${If} ${RunningX64}\n";
+    content ~= "    SetRegView 64\n";
+    content ~= "  ${EndIf}\n";
     foreach(p; packs)
     {
         bool pluginIsDir = p.pluginDir.isDir;
