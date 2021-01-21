@@ -1391,6 +1391,9 @@ void generateWindowsInstaller(string outputDir,
     {
         bool pluginIsDir = p.pluginDir.isDir;
 
+        if(p.is64b)
+          content ~= "    ${If} ${RunningX64}\n";
+
         if (p.format == "VST")
         {
             string instDirVar = "InstDir" ~ formatSectionIdentifier(p);
@@ -1407,6 +1410,9 @@ void generateWindowsInstaller(string outputDir,
         {
             content ~= format!"    Delete \"%s\\%s\"\n"(p.installDir, p.pluginDir.baseName);
         }
+
+        if(p.is64b)
+          content ~= "    ${EndIf}\n";
     }
     content ~= format!"    DeleteRegKey HKLM \"%s\"\n"(regProductKey);
     content ~= format!"    DeleteRegKey /ifempty HKLM \"%s\"\n"(regVendorKey);
