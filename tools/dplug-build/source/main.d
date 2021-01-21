@@ -637,6 +637,9 @@ int main(string[] args)
                     // size used in installer
                     int sizeInKiloBytes = cast(int) (getSize(plugin.dubOutputFileName) / (1024.0));
 
+                    // plugin path used in installer
+                    string pluginDirectory;
+
                     // Special case for AAX need its own directory, but according to Voxengo releases,
                     // its more minimal than either JUCE or IPlug builds.
                     // Only one file (.dll even) seems to be needed in <plugin-name>.aaxplugin\Contents\x64
@@ -644,7 +647,8 @@ int main(string[] args)
                     if (configIsAAX(config))
                     {
                         string pluginFinalName = plugin.prettyName ~ ".aaxplugin";
-                        string contentsDir = path ~ "/" ~ (plugin.prettyName ~ ".aaxplugin") ~ "/Contents/";
+                        pluginDirectory = path ~ "/" ~ (plugin.prettyName ~ ".aaxplugin");
+                        string contentsDir = pluginDirectory ~ "/Contents/";
 
                         extractAAXPresetsFromBinary(plugin.dubOutputFileName, contentsDir, arch);
 
@@ -667,7 +671,7 @@ int main(string[] args)
                     {
                         // must create TTL, and a .lv2 directory
                         string pluginFinalName = plugin.getLV2PrettyName() ~ ".dll";
-                        string pluginDirectory = path ~ "/" ~ plugin.prettyName ~ ".lv2";
+                        pluginDirectory = path ~ "/" ~ plugin.prettyName ~ ".lv2";
                         string pluginFinalPath = pluginDirectory ~ "/" ~ pluginFinalName;
 
                         mkdirRecurse(pluginDirectory);
@@ -689,7 +693,8 @@ int main(string[] args)
                                 return prettyName ~ ".vst3";
                         }
                         // Simply copy the file
-                        fileMove(plugin.dubOutputFileName, path ~ "/" ~ appendBitnessVST3(plugin.prettyName, plugin.dubOutputFileName));
+                        pluginDirectory = path ~ "/" ~ appendBitnessVST3(plugin.prettyName, plugin.dubOutputFileName);
+                        fileMove(plugin.dubOutputFileName, pluginDirectory);
                     }
                     else
                     {
@@ -706,7 +711,8 @@ int main(string[] args)
                         }
 
                         // Simply copy the file
-                        fileMove(plugin.dubOutputFileName, path ~ "/" ~ appendBitness(plugin.prettyName, plugin.dubOutputFileName));
+                        pluginDirectory = path ~ "/" ~ appendBitness(plugin.prettyName, plugin.dubOutputFileName);
+                        fileMove(plugin.dubOutputFileName, pluginDirectory);
                     }
 
                     if(!isTemp && makeInstaller)
@@ -714,7 +720,6 @@ int main(string[] args)
                         string title;
                         string format;
                         string installDir;
-                        string blobName = path ~ "/" ~ plugin.dubTargetPath ~ "\\*.*";
 
                         if(configIsVST(config))
                         {
@@ -747,7 +752,7 @@ int main(string[] args)
                             installDir = WIN_LV2_DIR;
                         }
 
-                        windowsPackages ~= WindowsPackage(format, blobName, title, installDir, sizeInKiloBytes, arch == arch.x86_64);
+                        windowsPackages ~= WindowsPackage(format, pluginDirectory, title, installDir, sizeInKiloBytes, arch == arch.x86_64);
                     }
                 }
                 else if (targetOS == OS.linux)
@@ -1155,7 +1160,7 @@ void buildPlugin(string compiler, string config, string build, Arch arch, bool v
 struct WindowsPackage
 {
     string format;
-    string blobName;
+    string pluginDir;
     string title;
     string installDir;
     double bytes;
@@ -1322,6 +1327,8 @@ void generateWindowsInstaller(string outputDir,
     auto lv2Packs = packs.filter!((p) => p.format == "LV2").array();
     foreach(p; packs)
     {
+        bool pluginIsDir = p.pluginDir.isDir;
+
         // Handle special case for LV2 if both 32bit and 64bit are built, create check in the installer
         // to install the correct version for the user's OS
         // TODO: The manifest is only generated for the bitness that dplug-build is built in. We could take advantage
@@ -1334,14 +1341,14 @@ void generateWindowsInstaller(string outputDir,
                 content ~= "    ${AndIfNot} ${RunningX64}\n";
                 content ~= "      SetOutPath $InstDir" ~ formatSectionIdentifier(p) ~ "\n";
                 content ~= "      SetOutPath \"" ~ p.installDir ~ "\"\n";
-                content ~= "      File /r \"" ~ p.blobName ~ "\"\n";
+                content ~= "      File " ~ (pluginIsDir ? "/r " : "") ~ "\"" ~ p.pluginDir.asNormalizedPath.array ~ "\"\n";
             }
             else
             {
                 content ~= "  ${ElseIf} ${SectionIsSelected} ${Sec" ~ p.format ~ "}\n";
                 content ~= "      SetOutPath $InstDir" ~ formatSectionIdentifier(p) ~ "\n";
                 content ~= "      SetOutPath \"" ~ p.installDir ~ "\"\n";
-                content ~= "      File /r \"" ~ p.blobName ~ "\"\n";
+                content ~= "      File " ~ (pluginIsDir ? "/r " : "") ~ "\"" ~ p.pluginDir.asNormalizedPath.array ~ "\"\n";
                 content ~= "  ${EndIf}\n";
             }
         }
@@ -1356,7 +1363,7 @@ void generateWindowsInstaller(string outputDir,
                 content ~= "    SetOutPath $InstDir" ~ formatSectionIdentifier(p) ~ "\n";
             else
                 content ~= "    SetOutPath \"" ~ p.installDir ~ "\"\n";
-            content ~= "    File /r \"" ~ p.blobName ~ "\"\n";
+            content ~= "    File " ~ (pluginIsDir ? "/r " : "") ~ "\"" ~ p.pluginDir.asNormalizedPath.array ~ "\"\n";
             content ~= "  ${EndIf}\n";
         }
     }
