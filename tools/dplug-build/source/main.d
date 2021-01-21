@@ -1177,6 +1177,9 @@ void generateWindowsInstaller(string outputDir,
     import std.regex: regex, replaceAll;
     import std.array : array;
 
+    string regVendorKey = "Software\\" ~ plugin.vendorName;
+    string regProductKey = regVendorKey ~ "\\" ~ plugin.pluginName;
+
     // changes slashes in path to backslashes, which are the only supported within NSIS
     string escapeNSISPath(string path)
     {
@@ -1230,7 +1233,8 @@ void generateWindowsInstaller(string outputDir,
     content ~= "!include \"x64.nsh\"\n";
     content ~= "BrandingText \"" ~ plugin.vendorName ~ "\"\n";
     content ~= "SpaceTexts none\n";
-    content ~= `OutFile "` ~ outExePath ~ `"` ~ "\n\n";
+    content ~= `OutFile "` ~ outExePath ~ `"` ~ "\n";
+    content ~= "RequestExecutionLevel admin\n";
 
     if (plugin.windowsInstallerHeaderBmp != null)
     {
@@ -1323,6 +1327,7 @@ void generateWindowsInstaller(string outputDir,
     }
 
     content ~= "Section\n";
+    content ~= "SetRegView 64\n";
 
     auto lv2Packs = packs.filter!((p) => p.format == "LV2").array();
     foreach(p; packs)
@@ -1358,7 +1363,11 @@ void generateWindowsInstaller(string outputDir,
             if(p.is64b)
                 content ~= "    ${AndIf} ${RunningX64}\n";
             if (p.format == "VST")
-                content ~= "    SetOutPath $InstDir" ~ formatSectionIdentifier(p) ~ "\n";
+            {
+                string instDirVar = "InstDir" ~ formatSectionIdentifier(p);
+                content ~= "    SetOutPath $" ~ instDirVar ~ "\n";
+                content ~= format!"    WriteRegStr HKLM \"%s\" \"%s\" \"$%s\"\n"(regProductKey, instDirVar, instDirVar);
+            }
             else
                 content ~= "    SetOutPath \"" ~ p.installDir ~ "\"\n";
             content ~= "    File " ~ (pluginIsDir ? "/r " : "") ~ "\"" ~ p.pluginDir.asNormalizedPath.array ~ "\"\n";
