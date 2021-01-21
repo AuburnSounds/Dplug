@@ -1339,14 +1339,12 @@ void generateWindowsInstaller(string outputDir,
             {
                 content ~= "  ${If} ${SectionIsSelected} ${Sec" ~ p.format ~ "}\n";
                 content ~= "    ${AndIfNot} ${RunningX64}\n";
-                content ~= "      SetOutPath $InstDir" ~ formatSectionIdentifier(p) ~ "\n";
                 content ~= "      SetOutPath \"" ~ p.installDir ~ "\"\n";
                 content ~= "      File " ~ (pluginIsDir ? "/r " : "") ~ "\"" ~ p.pluginDir.asNormalizedPath.array ~ "\"\n";
             }
             else
             {
                 content ~= "  ${ElseIf} ${SectionIsSelected} ${Sec" ~ p.format ~ "}\n";
-                content ~= "      SetOutPath $InstDir" ~ formatSectionIdentifier(p) ~ "\n";
                 content ~= "      SetOutPath \"" ~ p.installDir ~ "\"\n";
                 content ~= "      File " ~ (pluginIsDir ? "/r " : "") ~ "\"" ~ p.pluginDir.asNormalizedPath.array ~ "\"\n";
                 content ~= "  ${EndIf}\n";
