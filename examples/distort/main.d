@@ -131,8 +131,6 @@ nothrow:
 
         bool enabled = readParam!bool(paramOnOff);
 
-        float[2] RMS = 0;
-
         if (enabled)
         {
             BiquadCoeff highpassCoeff = biquadRBJHighPass(150, _sampleRate, SQRT1_2);
