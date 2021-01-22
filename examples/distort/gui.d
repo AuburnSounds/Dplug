@@ -77,9 +77,6 @@ nothrow:
         RGBA litTrailDiffuse = RGBA(151, 119, 255, 100);
         RGBA unlitTrailDiffuse = RGBA(81, 54, 108, 0);
 
-        KnobImage _knobImageData;
-        UIImageKnob _imageKnob;
-
         _knobImageData = loadKnobImage( import("imageknob.png") );
         addChild(_imageKnob = mallocNew!UIImageKnob(context(), _knobImageData, cast(FloatParameter) _client.param(paramBias)));
         _imageKnob.position = rectangle(517, 176, 46, 46);
