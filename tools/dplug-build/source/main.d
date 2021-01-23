@@ -26,10 +26,11 @@ string MAC_LV2_DIR      = "/Library/Audio/Plug-Ins/LV2";
 
 string WIN_VST3_DIR     = "$PROGRAMFILES64\\Common Files\\VST3";
 string WIN_VST_DIR      = "$PROGRAMFILES64\\VSTPlugins";
-string WIN_LV2_DIR      = "$APPDATA\\LV2";
+string WIN_LV2_DIR      = "$PROGRAMFILES64\\Common Files\\LV2";
 string WIN_AAX_DIR      = "$PROGRAMFILES64\\Common Files\\Avid\\Audio\\Plug-Ins";
 string WIN_VST3_DIR_X86 = "$PROGRAMFILES\\Common Files\\VST3";
 string WIN_VST_DIR_X86  = "$PROGRAMFILES\\VSTPlugins";
+string WIN_LV2_DIR_X86  = "$PROGRAMFILES\\Common Files\\LV2";
 
 
 version(linux)
@@ -637,6 +638,9 @@ int main(string[] args)
                     // size used in installer
                     int sizeInKiloBytes = cast(int) (getSize(plugin.dubOutputFileName) / (1024.0));
 
+                    // plugin path used in installer
+                    string pluginDirectory;
+
                     // Special case for AAX need its own directory, but according to Voxengo releases,
                     // its more minimal than either JUCE or IPlug builds.
                     // Only one file (.dll even) seems to be needed in <plugin-name>.aaxplugin\Contents\x64
@@ -644,7 +648,8 @@ int main(string[] args)
                     if (configIsAAX(config))
                     {
                         string pluginFinalName = plugin.prettyName ~ ".aaxplugin";
-                        string contentsDir = path ~ "/" ~ (plugin.prettyName ~ ".aaxplugin") ~ "/Contents/";
+                        pluginDirectory = path ~ "/" ~ (plugin.prettyName ~ ".aaxplugin");
+                        string contentsDir = pluginDirectory ~ "/Contents/";
 
                         extractAAXPresetsFromBinary(plugin.dubOutputFileName, contentsDir, arch);
 
@@ -667,7 +672,7 @@ int main(string[] args)
                     {
                         // must create TTL, and a .lv2 directory
                         string pluginFinalName = plugin.getLV2PrettyName() ~ ".dll";
-                        string pluginDirectory = path ~ "/" ~ plugin.prettyName ~ ".lv2";
+                        pluginDirectory = path ~ "/" ~ plugin.prettyName ~ ".lv2";
                         string pluginFinalPath = pluginDirectory ~ "/" ~ pluginFinalName;
 
                         mkdirRecurse(pluginDirectory);
@@ -689,7 +694,8 @@ int main(string[] args)
                                 return prettyName ~ ".vst3";
                         }
                         // Simply copy the file
-                        fileMove(plugin.dubOutputFileName, path ~ "/" ~ appendBitnessVST3(plugin.prettyName, plugin.dubOutputFileName));
+                        pluginDirectory = path ~ "/" ~ appendBitnessVST3(plugin.prettyName, plugin.dubOutputFileName);
+                        fileMove(plugin.dubOutputFileName, pluginDirectory);
                     }
                     else
                     {
@@ -706,7 +712,8 @@ int main(string[] args)
                         }
 
                         // Simply copy the file
-                        fileMove(plugin.dubOutputFileName, path ~ "/" ~ appendBitness(plugin.prettyName, plugin.dubOutputFileName));
+                        pluginDirectory = path ~ "/" ~ appendBitness(plugin.prettyName, plugin.dubOutputFileName);
+                        fileMove(plugin.dubOutputFileName, pluginDirectory);
                     }
 
                     if(!isTemp && makeInstaller)
@@ -714,7 +721,6 @@ int main(string[] args)
                         string title;
                         string format;
                         string installDir;
-                        string blobName = path ~ "/" ~ plugin.dubTargetPath ~ "\\*.*";
 
                         if(configIsVST(config))
                         {
@@ -744,10 +750,13 @@ int main(string[] args)
                         {
                             format = "LV2";
                             title = "LV2 plugin-in";
-                            installDir = WIN_LV2_DIR;
+                            if (arch == arch.x86_64)
+                                installDir = WIN_LV2_DIR;
+                            else
+                                installDir = WIN_LV2_DIR_X86;
                         }
 
-                        windowsPackages ~= WindowsPackage(format, blobName, title, installDir, sizeInKiloBytes, arch == arch.x86_64);
+                        windowsPackages ~= WindowsPackage(format, pluginDirectory, title, installDir, sizeInKiloBytes, arch == arch.x86_64);
                     }
                 }
                 else if (targetOS == OS.linux)
@@ -1155,7 +1164,7 @@ void buildPlugin(string compiler, string config, string build, Arch arch, bool v
 struct WindowsPackage
 {
     string format;
-    string blobName;
+    string pluginDir;
     string title;
     string installDir;
     double bytes;
@@ -1171,6 +1180,10 @@ void generateWindowsInstaller(string outputDir,
     import std.algorithm.iteration : uniq, filter;
     import std.regex: regex, replaceAll;
     import std.array : array;
+
+    string regVendorKey = "Software\\" ~ plugin.vendorName;
+    string regProductKey = regVendorKey ~ "\\" ~ plugin.pluginName;
+    string regUninstallKey = "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\" ~ plugin.prettyName;
 
     // changes slashes in path to backslashes, which are the only supported within NSIS
     string escapeNSISPath(string path)
@@ -1225,7 +1238,8 @@ void generateWindowsInstaller(string outputDir,
     content ~= "!include \"x64.nsh\"\n";
     content ~= "BrandingText \"" ~ plugin.vendorName ~ "\"\n";
     content ~= "SpaceTexts none\n";
-    content ~= `OutFile "` ~ outExePath ~ `"` ~ "\n\n";
+    content ~= `OutFile "` ~ outExePath ~ `"` ~ "\n";
+    content ~= "RequestExecutionLevel admin\n";
 
     if (plugin.windowsInstallerHeaderBmp != null)
     {
@@ -1298,6 +1312,13 @@ void generateWindowsInstaller(string outputDir,
             string identifier = formatSectionIdentifier(p);
 
             content ~= "Function defaultInstDir" ~ identifier ~ "\n";
+            if(p.is64b)
+            {
+                // The 64-bit version does not get installed on a 32-bit system, skip asking in this case
+                content ~= "  ${IfNot} ${RunningX64}\n";
+                content ~= "    Abort\n";
+                content ~= "  ${EndIf}\n";
+            }
             content ~= "  ${IfNot} ${SectionIsSelected} ${Sec" ~ p.format ~ "}\n";
             content ~= "    Abort\n";
             content ~= "  ${Else}\n";
@@ -1311,10 +1332,15 @@ void generateWindowsInstaller(string outputDir,
     }
 
     content ~= "Section\n";
+    content ~= "  ${If} ${RunningX64}\n";
+    content ~= "    SetRegView 64\n";
+    content ~= "  ${EndIf}\n";
 
     auto lv2Packs = packs.filter!((p) => p.format == "LV2").array();
     foreach(p; packs)
     {
+        bool pluginIsDir = p.pluginDir.isDir;
+
         // Handle special case for LV2 if both 32bit and 64bit are built, create check in the installer
         // to install the correct version for the user's OS
         // TODO: The manifest is only generated for the bitness that dplug-build is built in. We could take advantage
@@ -1325,32 +1351,82 @@ void generateWindowsInstaller(string outputDir,
             {
                 content ~= "  ${If} ${SectionIsSelected} ${Sec" ~ p.format ~ "}\n";
                 content ~= "    ${AndIfNot} ${RunningX64}\n";
-                content ~= "      SetOutPath $InstDir" ~ formatSectionIdentifier(p) ~ "\n";
                 content ~= "      SetOutPath \"" ~ p.installDir ~ "\"\n";
-                content ~= "      File /r \"" ~ p.blobName ~ "\"\n";
+                content ~= "      File " ~ (pluginIsDir ? "/r " : "") ~ "\"" ~ p.pluginDir.asNormalizedPath.array ~ "\"\n";
             }
             else
             {
                 content ~= "  ${ElseIf} ${SectionIsSelected} ${Sec" ~ p.format ~ "}\n";
-                content ~= "      SetOutPath $InstDir" ~ formatSectionIdentifier(p) ~ "\n";
                 content ~= "      SetOutPath \"" ~ p.installDir ~ "\"\n";
-                content ~= "      File /r \"" ~ p.blobName ~ "\"\n";
+                content ~= "      File " ~ (pluginIsDir ? "/r " : "") ~ "\"" ~ p.pluginDir.asNormalizedPath.array ~ "\"\n";
                 content ~= "  ${EndIf}\n";
             }
         }
         // For all other formats
         else
         {
+            // Only install the 64-bit package on 64-bit OS
             content ~= "  ${If} ${SectionIsSelected} ${Sec" ~ p.format ~ "}\n";
+            if(p.is64b)
+                content ~= "    ${AndIf} ${RunningX64}\n";
             if (p.format == "VST")
-                content ~= "    SetOutPath $InstDir" ~ formatSectionIdentifier(p) ~ "\n";
+            {
+                string instDirVar = "InstDir" ~ formatSectionIdentifier(p);
+                content ~= "    SetOutPath $" ~ instDirVar ~ "\n";
+                content ~= format!"    WriteRegStr HKLM \"%s\" \"%s\" \"$%s\"\n"(regProductKey, instDirVar, instDirVar);
+            }
             else
                 content ~= "    SetOutPath \"" ~ p.installDir ~ "\"\n";
-            content ~= "    File /r \"" ~ p.blobName ~ "\"\n";
+            content ~= "    File " ~ (pluginIsDir ? "/r " : "") ~ "\"" ~ p.pluginDir.asNormalizedPath.array ~ "\"\n";
             content ~= "  ${EndIf}\n";
         }
     }
 
+    content ~= format!"    CreateDirectory \"$PROGRAMFILES\\%s\\%s\"\n"(plugin.vendorName, plugin.pluginName);
+    content ~= format!"    WriteUninstaller \"$PROGRAMFILES\\%s\\%s\\Uninstall.exe\"\n"(plugin.vendorName, plugin.pluginName);
+    content ~= format!"    WriteRegStr HKLM \"%s\" \"DisplayName\" \"%s\"\n"(regUninstallKey, plugin.prettyName);
+    content ~= format!"    WriteRegStr HKLM \"%s\" \"UninstallString\" \"$PROGRAMFILES\\%s\\%s\\Uninstall.exe\"\n"(regUninstallKey, plugin.vendorName, plugin.pluginName);
+
+    content ~= "SectionEnd\n\n";
+
+    // Uninstaller
+
+    content ~= "Section \"Uninstall\"\n";
+    content ~= "  ${If} ${RunningX64}\n";
+    content ~= "    SetRegView 64\n";
+    content ~= "  ${EndIf}\n";
+    foreach(p; packs)
+    {
+        bool pluginIsDir = p.pluginDir.isDir;
+
+        if(p.is64b)
+          content ~= "    ${If} ${RunningX64}\n";
+
+        if (p.format == "VST")
+        {
+            string instDirVar = "InstDir" ~ formatSectionIdentifier(p);
+            content ~= format!"    ReadRegStr $%s HKLM \"%s\" \"%s\"\n"(instDirVar, regProductKey, instDirVar);
+            content ~= format!"    ${If} $%s != \"\"\n"(instDirVar);
+            content ~= format!"        Delete \"$%s\\%s\"\n"(instDirVar, p.pluginDir.baseName);
+            content ~=        "    ${EndIf}\n";
+        }
+        else if (pluginIsDir)
+        {
+            content ~= format!"    RMDir /r \"%s\\%s\"\n"(p.installDir, p.pluginDir.baseName);
+        }
+        else
+        {
+            content ~= format!"    Delete \"%s\\%s\"\n"(p.installDir, p.pluginDir.baseName);
+        }
+
+        if(p.is64b)
+          content ~= "    ${EndIf}\n";
+    }
+    content ~= format!"    DeleteRegKey HKLM \"%s\"\n"(regProductKey);
+    content ~= format!"    DeleteRegKey /ifempty HKLM \"%s\"\n"(regVendorKey);
+    content ~= format!"    DeleteRegKey HKLM \"%s\"\n"(regUninstallKey);
+    content ~= format!"    RMDir /r \"$PROGRAMFILES\\%s\\%s\"\n"(plugin.vendorName, plugin.pluginName);
+    content ~= format!"    RMDir \"$PROGRAMFILES\\%s\"\n"(plugin.vendorName);
     content ~= "SectionEnd\n\n";
 
     std.file.write(nsisPath, cast(void[])content);
