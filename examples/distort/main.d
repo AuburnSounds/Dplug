@@ -122,16 +122,14 @@ nothrow:
         int numInputs = cast(int)inputs.length;
         int numOutputs = cast(int)outputs.length;
 
-        int minChan = numInputs > numOutputs ? numOutputs : numInputs;
+        const int minChan = numInputs > numOutputs ? numOutputs : numInputs;
 
-        float inputGain = convertDecibelToLinearGain(readParam!float(paramInput));
+        const float inputGain = convertDecibelToLinearGain(readParam!float(paramInput));
         float drive = readParam!float(paramDrive) * 0.01f;
         float bias = readParam!float(paramBias) * 0.01f;
-        float outputGain = convertDecibelToLinearGain(readParam!float(paramOutput));
+        const float outputGain = convertDecibelToLinearGain(readParam!float(paramOutput));
 
-        bool enabled = readParam!bool(paramOnOff);
-
-        float[2] RMS = 0;
+        const bool enabled = readParam!bool(paramOnOff);
 
         if (enabled)
         {
@@ -141,13 +139,13 @@ nothrow:
                 // Distort and put the result in output buffers
                 for (int f = 0; f < frames; ++f)
                 {
-                    float inputSample = inputGain * 2.0 * inputs[chan][f];
+                    const float inputSample = inputGain * 2.0 * inputs[chan][f];
 
                     // Feed the input RMS computation
                     _inputRMS[chan].nextSample(inputSample);
 
                     // Distort signal
-                    float distorted = tanh(inputSample * drive * 10.0f + bias) * 0.9f;
+                    const float distorted = tanh(inputSample * drive * 10.0f + bias) * 0.9f;
                     outputs[chan][f] = outputGain * distorted;
                 }
 
