@@ -112,7 +112,7 @@ jobs:
           $BuiltLib = "./builds/Linux-64b-VST/Witty Audio Destructatorizer.so"
         }
         $esc = '--%'
-        ${{ env.DPlugBuild }} --no-color -a ${{ matrix.arch }} $esc $Plugins
+        ${{ env.DPlugBuild }} -a ${{ matrix.arch }} $esc $Plugins
         ${{ env.DplugProcess }} $BuiltLib -t 10
       working-directory: ./examples/distort
 
@@ -130,7 +130,7 @@ jobs:
           $BuiltLib = "./builds/Linux-64b-VST/Witty Audio CLIP It.so"
         }
         $esc = '--%'
-        ${{ env.DPlugBuild }} --no-color -a ${{ matrix.arch }} $esc $Plugins
+        ${{ env.DPlugBuild }} -a ${{ matrix.arch }} $esc $Plugins
         ${{ env.DplugProcess }} $BuiltLib -t 10
       working-directory: ./examples/clipit
 
