@@ -85,13 +85,13 @@ jobs:
     - name: Install dplug-build
       run: |
         dub build
-        echo "${{ github.workspace }}/tools/dplug-build/dplug-build" >> $GITHUB_PATH
+        (pwd).path >> $GITHUB_PATH
       working-directory: ./tools/dplug-build
 
     - name: Install process
       run: |
         dub build
-        echo "${{ github.workspace }}/tools/process/process" >> $GITHUB_PATH
+        (pwd).path >> $GITHUB_PATH
       working-directory: ./tools/process
 
     # Test
