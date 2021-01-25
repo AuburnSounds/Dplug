@@ -11,6 +11,10 @@ env:
   VST2_SDK: ${{ github.workspace }}/VST2_SDK
   SETUP_VST2_SDK: true
 
+defaults:
+  run:
+    shell: pwsh
+
 jobs:
   Test:
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
@@ -71,11 +75,10 @@ jobs:
 
     - name: Setup VST2_SDK
       if: contains(env.SETUP_VST2_SDK, 'true') && steps.deplug-cache.outputs.cache-hit != 'true'
-      shell: bash
       run: |
         curl -LOJ https://www.steinberg.net/sdk_downloads/vstsdk366_27_06_2016_build_61.zip
         7z x ./vstsdk366_27_06_2016_build_61.zip
-        mkdir -vp ${{ env.VST2_SDK }}/pluginterfaces/vst2.x
+        mkdir -p ${{ env.VST2_SDK }}/pluginterfaces/vst2.x
         cp "./VST3 SDK/pluginterfaces/vst2.x/aeffect.h" ${{ env.VST2_SDK }}/pluginterfaces/vst2.x/aeffect.h
         cp "./VST3 SDK/pluginterfaces/vst2.x/aeffectx.h" ${{ env.VST2_SDK }}/pluginterfaces/vst2.x/aeffectx.h
 
