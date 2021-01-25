@@ -8,9 +8,6 @@ on:
 
 # Common variables for all platforms (ldc is hardcoded in windows job)
 env:
-  DC: ldc
-  DVersion: 1.17.0
-  arch: x64
   VST2_SDK: ${{ github.workspace }}/VST2_SDK
   SETUP_VST2_SDK: true
 
@@ -26,6 +23,12 @@ jobs:
           - windows-latest
           - ubuntu-latest
           - macOS-latest
+        arch:
+          - x64
+        compiler:
+          - 'ldc-beta'
+          - 'ldc-latest'
+          - 'ldc-1.17.0'
     steps:
     # Checkout
     - name: Checkout master branch
@@ -59,12 +62,12 @@ jobs:
       if: startsWith(matrix.os,'windows')
       uses: ilammy/msvc-dev-cmd@v1
       with:
-        arch: ${{ env.arch }}
+        arch: ${{ matrix.arch }}
 
     - name: Install compiler
       uses: dlang-community/setup-dlang@v1
       with:
-        compiler: ldc-latest
+        compiler: ${{ matrix.compiler }}
 
     - name: Setup VST2_SDK
       if: contains(env.SETUP_VST2_SDK, 'true') && steps.deplug-cache.outputs.cache-hit != 'true'
