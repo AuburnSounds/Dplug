@@ -36,7 +36,6 @@ jobs:
         compiler:
           - 'ldc-beta'
           - 'ldc-latest'
-          - 'ldc-1.17.0'
     steps:
     # Checkout
     - name: Checkout master branch
