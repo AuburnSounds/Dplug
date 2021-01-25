@@ -1,0 +1,159 @@
+name: ci
+
+on:
+  push:
+  # Nightly builds
+  schedule:
+    - cron: '00 00 * * *'
+
+# Common variables for all platforms (ldc is hardcoded in windows job)
+env:
+  VST2_SDK: ${{ github.workspace }}/VST2_SDK
+  SETUP_VST2_SDK: true
+  # List of commands
+  DPlugBuild: ${{ github.workspace }}/tools/dplug-build/dplug-build
+  DplugProcess: ${{ github.workspace }}/tools/process/process
+
+
+defaults:
+  run:
+    shell: pwsh
+
+jobs:
+  Test:
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - windows-latest
+          - ubuntu-latest
+          - macOS-latest
+        arch:
+          - 'x86_64'
+        compiler:
+          - 'ldc-beta'
+          - 'ldc-latest'
+    steps:
+    # Checkout
+    - name: Checkout master branch
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+
+    # Cache
+    - name: Cache
+      id: dplug-cache
+      uses: actions/cache@v2
+      env:
+        cache-name: dplug-cache
+      with:
+        path: |
+          ${{ env.VST2_SDK }}
+        key: dplug-cache
+
+    # Install
+    - name: Install Dependencies - Ubuntu
+      if: startsWith(matrix.os,'ubuntu')
+      run: |
+        sudo apt-get -yq install libx11-dev
+
+    # - name: Install Dependencies - Mac
+    #   if: startsWith(matrix.os,'macOS')
+    #   run: |
+    #     brew update
+
+    - name: Setup Visual Studio Command Prompt - Windows
+      if: startsWith(matrix.os,'windows')
+      uses: ilammy/msvc-dev-cmd@v1
+      # with:
+        # arch: ${{ matrix.arch }}  # 'x64'by default
+
+    - name: Install compiler
+      uses: dlang-community/setup-dlang@v1
+      with:
+        compiler: ${{ matrix.compiler }}
+
+    - name: Setup VST2_SDK
+      if: contains(env.SETUP_VST2_SDK, 'true') && steps.dplug-cache.outputs.cache-hit != 'true'
+      run: |
+        curl -LOJ https://www.steinberg.net/sdk_downloads/vstsdk366_27_06_2016_build_61.zip
+        7z x ./vstsdk366_27_06_2016_build_61.zip
+        mkdir -p ${{ env.VST2_SDK }}/pluginterfaces/vst2.x
+        cp "./VST3 SDK/pluginterfaces/vst2.x/aeffect.h" ${{ env.VST2_SDK }}/pluginterfaces/vst2.x/aeffect.h
+        cp "./VST3 SDK/pluginterfaces/vst2.x/aeffectx.h" ${{ env.VST2_SDK }}/pluginterfaces/vst2.x/aeffectx.h
+
+    - name: Install dplug-build
+      run: |
+        dub build
+      working-directory: ./tools/dplug-build
+
+    - name: Install process
+      run: |
+        dub build
+      working-directory: ./tools/process
+
+    # Test
+    # Here you can customize the flags, or build multiple plugins
+
+    ## Distort Plugin
+    - name: Build and test distort plug-ins
+      run: |
+        if ("${{ matrix.os }}" -like 'windows*') {
+          $Plugins = "-c VST -c VST3"
+          $BuiltLib = "./builds/Windows-64b-VST/Witty Audio Destructatorizer-64.dll"
+        } elseif ("${{ matrix.os }}" -like 'macOS*') {
+          $Plugins = "-c VST -c VST3 -c AU"
+          $BuiltLib = "./builds/macOS-64b-VST/Witty Audio Destructatorizer.vst/Contents/MacOS/Witty Audio Destructatorizer"
+        } elseif ("${{ matrix.os }}" -like 'ubuntu*') {
+          $Plugins = "-c VST -c VST3 -c LV2"
+          $BuiltLib = "./builds/Linux-64b-VST/Witty Audio Destructatorizer.so"
+        }
+        $esc = '--%'
+        ${{ env.DPlugBuild }} -a ${{ matrix.arch }} $esc $Plugins
+        ${{ env.DplugProcess }} $BuiltLib -t 10
+      working-directory: ./examples/distort
+
+    ## Clipit Plugin
+    - name: Build and test clipit plug-ins
+      run: |
+        if ("${{ matrix.os }}" -like 'windows*') {
+          $Plugins = "-c VST -c VST3"
+          $BuiltLib = "./builds/Windows-64b-VST/Witty Audio CLIP It-64.dll"
+        } elseif ("${{ matrix.os }}" -like 'macOS*') {
+          $Plugins = "-c VST -c VST3 -c AU"
+          $BuiltLib = "./builds/macOS-64b-VST/Witty Audio CLIP It.vst/Contents/MacOS/Witty Audio CLIP It"
+        } elseif ("${{ matrix.os }}" -like 'ubuntu*') {
+          $Plugins = "-c VST -c VST3 -c LV2"
+          $BuiltLib = "./builds/Linux-64b-VST/Witty Audio CLIP It.so"
+        }
+        $esc = '--%'
+        ${{ env.DPlugBuild }} -a ${{ matrix.arch }} $esc $Plugins
+        ${{ env.DplugProcess }} $BuiltLib -t 10
+      working-directory: ./examples/clipit
+
+
+    # Upload
+    # This task uploads the builds directory that contains all artifacts produced by dplug-build
+    # You may need to repeat this for each plugin that you build
+    # Pattern matching is not supported here
+    - name: Upload distort
+      uses: actions/upload-artifact@v2
+      with:
+        name: distort-${{ matrix.os }}
+        path: ./examples/distort/builds/
+
+    - name: Upload clipit
+      uses: actions/upload-artifact@v2
+      with:
+        name: clipit-${{ matrix.os }}
+        path: ./examples/clipit/builds/
+
+  Skip:
+    if: "contains(github.event.head_commit.message, '[skip ci]')"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skip CI 🚫
+        run: echo skip CI
