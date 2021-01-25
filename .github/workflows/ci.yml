@@ -66,12 +66,6 @@ jobs:
       with:
         compiler: ldc-latest
 
-    - name: Install dplug-build
-      run: |
-        dub build
-        echo "$(pwd)/dplug-build" >> $GITHUB_PATH
-      working-directory: ./tools/dplug-build
-
     - name: Setup VST2_SDK
       if: contains(env.SETUP_VST2_SDK, 'true') && steps.deplug-cache.outputs.cache-hit != 'true'
       shell: bash
@@ -81,6 +75,12 @@ jobs:
         mkdir -vp ${{ env.VST2_SDK }}/pluginterfaces/vst2.x
         cp "./VST3 SDK/pluginterfaces/vst2.x/aeffect.h" ${{ env.VST2_SDK }}/pluginterfaces/vst2.x/aeffect.h
         cp "./VST3 SDK/pluginterfaces/vst2.x/aeffectx.h" ${{ env.VST2_SDK }}/pluginterfaces/vst2.x/aeffectx.h
+
+    - name: Install dplug-build
+      run: |
+        dub build
+        echo "$(pwd)/dplug-build" >> $GITHUB_PATH
+      working-directory: ./tools/dplug-build
 
     - name: Install process
       run: |
