@@ -10,6 +10,10 @@ on:
 env:
   VST2_SDK: ${{ github.workspace }}/VST2_SDK
   SETUP_VST2_SDK: true
+  # List of commands
+  DPlugBuild: ${{ github.workspace }}/tools/dplug-build/dplug-build
+  DplugProcess: ${{ github.workspace }}/tools/process/process
+
 
 defaults:
   run:
@@ -85,13 +89,11 @@ jobs:
     - name: Install dplug-build
       run: |
         dub build
-        (pwd).path >> $GITHUB_PATH
       working-directory: ./tools/dplug-build
 
     - name: Install process
       run: |
         dub build
-        (pwd).path >> $GITHUB_PATH
       working-directory: ./tools/process
 
     # Test
@@ -101,43 +103,43 @@ jobs:
     - name: Build and test distort plug-ins - Windows
       if: startsWith(matrix.os,'windows')
       run: |
-        dplug-build --no-color -a x86_64 -c VST -c VST3
-        process "./builds/Windows-64b-VST/Witty Audio Destructatorizer-64.dll" -t 10
+        ${{ env.DPlugBuild }} --no-color -a x86_64 -c VST -c VST3
+        ${{ env.DplugProcess }} "./builds/Windows-64b-VST/Witty Audio Destructatorizer-64.dll" -t 10
       working-directory: ./examples/distort
 
     - name: Build and test distort plug-ins - Mac
       if: startsWith(matrix.os,'macOS')
       run: |
-        dplug-build --no-color -c VST -c VST3 -c AU
-        process ./builds/macOS-64b-VST/Witty\ Audio\ Destructatorizer.vst/Contents/MacOS/Witty\ Audio\ Destructatorizer -t 10
+        ${{ env.DPlugBuild }} --no-color -c VST -c VST3 -c AU
+        ${{ env.DplugProcess }} ./builds/macOS-64b-VST/Witty\ Audio\ Destructatorizer.vst/Contents/MacOS/Witty\ Audio\ Destructatorizer -t 10
       working-directory: ./examples/distort
 
     - name: Build and test distort plug-ins - Linux
       if: startsWith(matrix.os,'ubuntu')
       run: |
-        dplug-build --no-color -c VST -c VST3 -c LV2
-        process ./builds/Linux-64b-VST/Witty\ Audio\ Destructatorizer.so -t 10
+        ${{ env.DPlugBuild }} --no-color -c VST -c VST3 -c LV2
+        ${{ env.DplugProcess }} ./builds/Linux-64b-VST/Witty\ Audio\ Destructatorizer.so -t 10
       working-directory: ./examples/distort
 
     ## Clipit Plugin
     - name: Build and test clipit plug-ins - Windows
       if: startsWith(matrix.os,'windows')
       run: |
-        dplug-build --no-color -a x86_64 -c VST -c VST3
-        process "./builds/Windows-64b-VST/Witty Audio CLIP It-64.dll" -t 10
+        ${{ env.DPlugBuild }} --no-color -a x86_64 -c VST -c VST3
+        ${{ env.DplugProcess }} "./builds/Windows-64b-VST/Witty Audio CLIP It-64.dll" -t 10
       working-directory: ./examples/clipit
 
     - name: Build and test clipit plug-ins - Mac
       run: |
-        dplug-build --no-color -c VST -c VST3 -c LV2
-        process examples/clipit/builds/macOS-64b-VST/Witty\ Audio\ CLIP\ It.vst/Contents/MacOS/Witty\ Audio\ CLIP\ It -t 10
+        ${{ env.DPlugBuild }} --no-color -c VST -c VST3 -c LV2
+        ${{ env.DplugProcess }} ./builds/macOS-64b-VST/Witty\ Audio\ CLIP\ It.vst/Contents/MacOS/Witty\ Audio\ CLIP\ It -t 10
       working-directory: ./examples/clipit
 
     - name: Build and test clipit plug-ins - Linux
       if: startsWith(matrix.os,'ubuntu')
       run: |
-        dplug-build --no-color -c VST -c VST3 -c LV2
-        process ./builds/Linux-64b-VST/Witty\ Audio\ CLIP\ It.so -t 10
+        ${{ env.DPlugBuild }} --no-color -c VST -c VST3 -c LV2
+        ${{ env.DplugProcess }} ./builds/Linux-64b-VST/Witty\ Audio\ CLIP\ It.so -t 10
       working-directory: ./examples/clipit
 
 
