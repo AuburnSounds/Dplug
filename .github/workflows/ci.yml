@@ -130,6 +130,7 @@ jobs:
       working-directory: ./examples/clipit
 
     - name: Build and test clipit plug-ins - Mac
+      if: startsWith(matrix.os,'macOS')
       run: |
         ${{ env.DPlugBuild }} --no-color -c VST -c VST3 -c LV2
         ${{ env.DplugProcess }} "./builds/macOS-64b-VST/Witty Audio CLIP It.vst/Contents/MacOS/Witty Audio CLIP It" -t 10
