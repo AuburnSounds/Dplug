@@ -45,14 +45,14 @@ jobs:
 
     # Cache
     - name: Cache
-      id: deplug-cache
+      id: dplug-cache
       uses: actions/cache@v2
       env:
-        cache-name: deplug-cache
+        cache-name: dplug-cache
       with:
         path: |
           ${{ env.VST2_SDK }}
-        key: deplug-cache
+        key: dplug-cache
 
     # Install
     - name: Install Dependencies - Ubuntu
@@ -77,7 +77,7 @@ jobs:
         compiler: ${{ matrix.compiler }}
 
     - name: Setup VST2_SDK
-      if: contains(env.SETUP_VST2_SDK, 'true') && steps.deplug-cache.outputs.cache-hit != 'true'
+      if: contains(env.SETUP_VST2_SDK, 'true') && steps.dplug-cache.outputs.cache-hit != 'true'
       run: |
         curl -LOJ https://www.steinberg.net/sdk_downloads/vstsdk366_27_06_2016_build_61.zip
         7z x ./vstsdk366_27_06_2016_build_61.zip
