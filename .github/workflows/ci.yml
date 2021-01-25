@@ -32,7 +32,7 @@ jobs:
           - ubuntu-latest
           - macOS-latest
         arch:
-          - x64
+          - 'x86_64'
         compiler:
           - 'ldc-beta'
           - 'ldc-latest'
@@ -69,8 +69,8 @@ jobs:
     - name: Setup Visual Studio Command Prompt - Windows
       if: startsWith(matrix.os,'windows')
       uses: ilammy/msvc-dev-cmd@v1
-      with:
-        arch: ${{ matrix.arch }}
+      # with:
+        # arch: ${{ matrix.arch }}  # 'x64'by default
 
     - name: Install compiler
       uses: dlang-community/setup-dlang@v1
@@ -103,21 +103,21 @@ jobs:
     - name: Build and test distort plug-ins - Windows
       if: startsWith(matrix.os,'windows')
       run: |
-        ${{ env.DPlugBuild }} --no-color -a x86_64 -c VST -c VST3
+        ${{ env.DPlugBuild }} --no-color -a ${{ matrix.arch }} -c VST -c VST3
         ${{ env.DplugProcess }} "./builds/Windows-64b-VST/Witty Audio Destructatorizer-64.dll" -t 10
       working-directory: ./examples/distort
 
     - name: Build and test distort plug-ins - Mac
       if: startsWith(matrix.os,'macOS')
       run: |
-        ${{ env.DPlugBuild }} --no-color -c VST -c VST3 -c AU
+        ${{ env.DPlugBuild }} --no-color -a ${{ matrix.arch }} -c VST -c VST3 -c AU
         ${{ env.DplugProcess }} "./builds/macOS-64b-VST/Witty Audio Destructatorizer.vst/Contents/MacOS/Witty Audio Destructatorizer" -t 10
       working-directory: ./examples/distort
 
     - name: Build and test distort plug-ins - Linux
       if: startsWith(matrix.os,'ubuntu')
       run: |
-        ${{ env.DPlugBuild }} --no-color -c VST -c VST3 -c LV2
+        ${{ env.DPlugBuild }} --no-color -a ${{ matrix.arch }} -c VST -c VST3 -c LV2
         ${{ env.DplugProcess }} "./builds/Linux-64b-VST/Witty Audio Destructatorizer.so" -t 10
       working-directory: ./examples/distort
 
@@ -125,21 +125,21 @@ jobs:
     - name: Build and test clipit plug-ins - Windows
       if: startsWith(matrix.os,'windows')
       run: |
-        ${{ env.DPlugBuild }} --no-color -a x86_64 -c VST -c VST3
+        ${{ env.DPlugBuild }} --no-color -a ${{ matrix.arch }} -c VST -c VST3
         ${{ env.DplugProcess }} "./builds/Windows-64b-VST/Witty Audio CLIP It-64.dll" -t 10
       working-directory: ./examples/clipit
 
     - name: Build and test clipit plug-ins - Mac
       if: startsWith(matrix.os,'macOS')
       run: |
-        ${{ env.DPlugBuild }} --no-color -c VST -c VST3 -c LV2
+        ${{ env.DPlugBuild }} --no-color -a ${{ matrix.arch }} -c VST -c VST3 -c LV2
         ${{ env.DplugProcess }} "./builds/macOS-64b-VST/Witty Audio CLIP It.vst/Contents/MacOS/Witty Audio CLIP It" -t 10
       working-directory: ./examples/clipit
 
     - name: Build and test clipit plug-ins - Linux
       if: startsWith(matrix.os,'ubuntu')
       run: |
-        ${{ env.DPlugBuild }} --no-color -c VST -c VST3 -c LV2
+        ${{ env.DPlugBuild }} --no-color -a ${{ matrix.arch }} -c VST -c VST3 -c LV2
         ${{ env.DplugProcess }} "./builds/Linux-64b-VST/Witty Audio CLIP It.so" -t 10
       working-directory: ./examples/clipit
 
