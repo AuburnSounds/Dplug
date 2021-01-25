@@ -1,0 +1,148 @@
+name: Build
+
+on:
+  push:
+  # Nightly builds
+  schedule:
+    - cron: '00 00 * * *'
+
+# Common variables for all platforms (ldc is hardcoded in windows job)
+env:
+  DC: ldc
+  DVersion: 1.17.0
+  arch: x64
+  VST2_SDK: ${{ github.workspace }}/VST2_SDK
+  SETUP_VST2_SDK: true
+
+jobs:
+  Test:
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - windows-latest
+          - ubuntu-latest
+          - macOS-latest
+    steps:
+    # Checkout
+    - name: Checkout master branch
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+
+    # Install
+    - name: Install Dependencies - Ubuntu
+      if: startsWith(matrix.os,'ubuntu')
+      run: |
+        sudo apt-get -yq install libx11-dev
+
+    # - name: Install Dependencies - Mac
+    #   if: startsWith(matrix.os,'macOS')
+    #   run: |
+    #     brew update
+
+    - name: Setup Visual Studio Command Prompt - Windows
+      if: startsWith(matrix.os,'windows')
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: ${{ env.arch }}
+
+    - name: Install compiler
+      uses: dlang-community/setup-dlang@v1
+      with:
+        compiler: ldc-latest
+
+    - name: Install dplug-build
+      run: |
+        dub build
+        echo "$(pwd)/dplug-build" >> $GITHUB_PATH
+      working-directory: ./tools/dplug-build
+
+    - name: Setup VST2_SDK
+      if: contains(env.SETUP_VST2_SDK, 'true')
+      shell: bash
+      run: |
+        curl -LOJ https://www.steinberg.net/sdk_downloads/vstsdk366_27_06_2016_build_61.zip
+        7z x ./vstsdk366_27_06_2016_build_61.zip
+        mkdir -vp ${{ env.VST2_SDK }}/pluginterfaces/vst2.x
+        cp "./VST3 SDK/pluginterfaces/vst2.x/aeffect.h" ${{ env.VST2_SDK }}/pluginterfaces/vst2.x/aeffect.h
+        cp "./VST3 SDK/pluginterfaces/vst2.x/aeffectx.h" ${{ env.VST2_SDK }}/pluginterfaces/vst2.x/aeffectx.h
+
+    - name: Install process
+      run: |
+        dub build
+        echo "${{ github.workspace }}/process" >> $GITHUB_PATH
+      working-directory: ./tools/process
+
+    # Test
+    # Here you can customize the flags, or build multiple plugins
+
+    ## Distort Plugin
+    - name: Build and test distort plug-ins - Windows
+      if: startsWith(matrix.os,'windows')
+      run: |
+        dplug-build --no-color -a x86_64 -c VST -c VST3
+        process "./builds/Windows-64b-VST/Witty Audio Destructatorizer-64.dll" -t 10
+      working-directory: ./examples/distort
+
+    - name: Build and test distort plug-ins - Mac
+      if: startsWith(matrix.os,'macOS')
+      run: |
+        dplug-build --no-color -c VST -c VST3 -c AU
+        process ./builds/macOS-64b-VST/Witty\ Audio\ Destructatorizer.vst/Contents/MacOS/Witty\ Audio\ Destructatorizer -t 10
+      working-directory: ./examples/distort
+
+    - name: Build and test distort plug-ins - Linux
+      if: startsWith(matrix.os,'ubuntu')
+      run: |
+        dplug-build --no-color -c VST -c VST3 -c LV2
+        process ./builds/Linux-64b-VST/Witty\ Audio\ Destructatorizer.so -t 10
+      working-directory: ./examples/distort
+
+    ## Clipit Plugin
+    - name: Build and test clipit plug-ins - Windows
+      if: startsWith(matrix.os,'windows')
+      run: |
+        dplug-build --no-color -a x86_64 -c VST -c VST3
+        process "./builds/Windows-64b-VST/Witty Audio CLIP It-64.dll" -t 10
+      working-directory: ./examples/clipit
+
+    - name: Build and test clipit plug-ins - Mac
+      run: |
+        dplug-build --no-color -c VST -c VST3 -c LV2
+        process examples/clipit/builds/macOS-64b-VST/Witty\ Audio\ CLIP\ It.vst/Contents/MacOS/Witty\ Audio\ CLIP\ It -t 10
+      working-directory: ./examples/clipit
+
+    - name: Build and test clipit plug-ins - Linux
+      if: startsWith(matrix.os,'ubuntu')
+      run: |
+        dplug-build --no-color -c VST -c VST3 -c LV2
+        process ./builds/Linux-64b-VST/Witty\ Audio\ CLIP\ It.so -t 10
+      working-directory: ./examples/clipit
+
+
+    # Upload
+    # This task uploads the builds directory that contains all artifacts produced by dplug-build
+    # You may need to repeat this for each plugin that you build
+    # Pattern matching is not supported here
+    - name: Upload distort
+      uses: actions/upload-artifact@v2
+      with:
+        name: distort-${{ matrix.os }}
+        path: ./examples/distort/builds/
+
+    - name: Upload clipit
+      uses: actions/upload-artifact@v2
+      with:
+        name: clipit-${{ matrix.os }}
+        path: ./examples/clipit/builds/
+
+  Skip:
+    if: "contains(github.event.head_commit.message, '[skip ci]')"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skip CI 🚫
+        run: echo skip CI
