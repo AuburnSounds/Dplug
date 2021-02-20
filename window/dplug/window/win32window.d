@@ -39,6 +39,11 @@ nothrow:
 @nogc:
 
 
+// Disabled, remaining issues in #536
+// - very few hosts actually give the needed DPI
+// - resizing that window is in some cases a challenge
+enum DPISupportWin32 = false; 
+
 version(Windows)
 {
     import std.uuid;
@@ -90,10 +95,15 @@ version(Windows)
             else
                 parentWindow = GetDesktopWindow();
 
-            _hwnd = CreateWindowW(_className.ptr, null, flags, CW_USEDEFAULT, CW_USEDEFAULT, width, height,
-                                 parentWindow, null,
-                                 getModuleHandle(),
-                                 cast(void*)this);
+            // Save original size (until we have better sizing description)
+            _origWidth = width;
+            _origHeight = height;
+
+            _hwnd = CreateWindowW(_className.ptr, null, flags, CW_USEDEFAULT, CW_USEDEFAULT, 
+                                  _origWidth, _origHeight,
+                                  parentWindow, null,
+                                  getModuleHandle(),
+                                  cast(void*)this);
 
             if (_hwnd is null)
             {
@@ -115,6 +125,14 @@ version(Windows)
 
                 int mSec = 15; // refresh at 60 hz if possible
                 SetTimer(_hwnd, TIMER_ID, mSec, null);
+            }
+
+            // Resize if DPI is supported.
+            if (DPISupportWin32)
+            {
+                _dpiSupport.initialize();
+                _currentDPI = _dpiSupport.GetDpiForWindow(_hwnd) / 96.0f;
+                resizeWindowForDPI();
             }
 
             SetFocus(_hwnd);
@@ -359,10 +377,25 @@ version(Windows)
                     setMouseCursor(true);
                     goto default;
 
+                case 0x02E0: /* WM_DPICHANGED */
+                {
+                    if (DPISupportWin32) 
+                    {
+                        int dpiX = cast(int)(wParam & 0xffff);
+                        _currentDPI = dpiX;
+
+                        // Note: there is a suggested position in lParam. But we are free to apply the width 
+                        // and height of our choosing. 
+                        resizeWindowForDPI();
+                        return 0;
+                    }
+                    else goto default;
+                }
+
                 case WM_PAINT:
                 {
+                    // This get the size of the client area, and then tells the listener about the new size.
                     updateSizeIfNeeded();
-
 
                     // Same thing that under Cocoa, the first WM_PAINT could happen before WM_TIMER is ever called.
                     // In this case, call `recomputeDirtyAreas()` so that onDraw draw something and uninitialized pixels are not displayed.
@@ -496,7 +529,26 @@ version(Windows)
             }
         }
 
+        // TEMP, until we have a better size description
+        int _origWidth;
+        int _origHeight; 
 
+        void resizeWindowForDPI()
+        {
+            // TODO: more complex behaviour based on what is available as size.
+            int width = cast(int)(0.5f + _origWidth * _currentDPI);
+            int height = cast(int)(0.5f + _origHeight * _currentDPI);
+
+            /*char[128] buf;
+            import core.stdc.stdio;
+            sprintf(buf.ptr, "%d x %d", width, height);
+            debugLog(buf.ptr);*/
+
+            int left = 0, top = 0;
+            SetWindowPos(_hwnd, null,
+                         left, top, left + width, top + height,
+                         SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+        }
 
         // Implements IWindow
         override void waitEventAndDispatch()
@@ -559,6 +611,13 @@ version(Windows)
 
         bool shiftPressed = false;
         bool _dirtyAreasAreNotYetComputed = true;
+
+        // Helper for getting DPI information.
+        DPIHelper _dpiSupport;
+
+        // Current UI scale, 1.0f means default DPI (96).
+        // See_also: https://www.enlyze.com/blog/writing-win32-apps-like-its-2020/part-3/
+        float _currentDPI = 1.0f; 
 
         // Last MouseCursor used. This is to avoid updating the cursor
         // more often than necessary
@@ -748,6 +807,142 @@ version(Windows)
             default:
                 return IDC_ARROW;
         }
-        
+    }
+
+
+// Copyright 2013 The Flutter Authors. All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without modification,
+//     are permitted provided that the following conditions are met:
+// 
+// * Redistributions of source code must retain the above copyright
+// notice, this list of conditions and the following disclaimer.
+// * Redistributions in binary form must reproduce the above
+// copyright notice, this list of conditions and the following
+// disclaimer in the documentation and/or other materials provided
+// with the distribution.
+// * Neither the name of Google Inc. nor the names of its
+// contributors may be used to endorse or promote products derived
+// from this software without specific prior written permission.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+// (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+//  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+// ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+    /// A helper class for abstracting various Windows DPI related functions across
+    /// Windows OS versions.
+    private struct DPIHelper 
+    {
+    public:
+    nothrow:
+    @nogc:
+        void initialize()
+        {
+            if ((user32_module_ = LoadLibraryA("User32.dll")) != null) 
+            {
+                get_dpi_for_window_ = cast(GetDpiForWindow_t) GetProcAddress(user32_module_, "GetDpiForWindow".ptr);
+                dpi_for_window_supported_ = get_dpi_for_window_ !is null;
+            }
+            if ((shlib_module_ = LoadLibraryA("Shcore.dll")) != null) 
+            {
+                get_dpi_for_monitor_ = cast(GetDpiForMonitor_t) GetProcAddress(shlib_module_, "GetDpiForMonitor".ptr);
+                dpi_for_monitor_supported_ = get_dpi_for_monitor_ !is null;
+            }
+        }
+
+        ~this()
+        {
+            if (user32_module_ != null) 
+            {
+                FreeLibrary(user32_module_);
+                user32_module_ = null;
+            }
+            if (shlib_module_ != null) 
+            {
+                FreeLibrary(shlib_module_);
+                shlib_module_ = null;
+            }
+        }
+
+    private:
+        extern(Windows) nothrow @nogc
+        {
+            alias GetDpiForWindow_t = UINT function(HWND);
+            alias GetDpiForMonitor_t = HRESULT function(HMONITOR hmonitor,
+                                                        UINT dpiType,
+                                                        UINT* dpiX,
+                                                        UINT* dpiY);
+            alias EnableNonClientDpiScaling_t = BOOL function(HWND);
+        }
+
+        GetDpiForWindow_t get_dpi_for_window_;
+        GetDpiForMonitor_t get_dpi_for_monitor_;
+        EnableNonClientDpiScaling_t enable_non_client_dpi_scaling_;
+        HMODULE user32_module_ = null;
+        HMODULE shlib_module_ = null;
+        bool dpi_for_window_supported_ = false;
+        bool dpi_for_monitor_supported_ = false;
+
+
+        /// Returns the DPI for |hwnd|. Supports all DPI awareness modes, and is
+        /// backward compatible down to Windows Vista. If |hwnd| is nullptr, returns
+        /// the DPI for the primary monitor. If Per-Monitor DPI awareness is not
+        /// available, returns the system's DPI.
+        UINT GetDpiForWindow(HWND hwnd)
+        {
+            // GetDpiForWindow returns the DPI for any awareness mode. If not available,
+            // or no |hwnd| is provided, fallback to a per monitor, system, or default
+            // DPI.
+            if (dpi_for_window_supported_ && hwnd != null) {
+                return get_dpi_for_window_(hwnd);
+            }
+
+            if (dpi_for_monitor_supported_) 
+            {
+                HMONITOR monitor = null;
+                if (hwnd != null) {
+                    monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTOPRIMARY);
+                }
+                return GetDpiForMonitor(monitor);
+            }
+            HDC hdc = GetDC(hwnd);
+            UINT dpi = GetDeviceCaps(hdc, LOGPIXELSX);
+            ReleaseDC(hwnd, hdc);
+            return dpi;
+        }
+
+        enum kDefaultDpi = 96;
+
+        /// Returns the DPI of a given monitor. Defaults to 96 if the API is not
+        /// available.
+        UINT GetDpiForMonitor(HMONITOR monitor)
+        {
+            if (dpi_for_monitor_supported_) 
+            {
+                if (monitor == null) 
+                {
+                    POINT target_point;
+                    target_point.x = 0;
+                    target_point.y = 0;
+                    monitor = MonitorFromPoint(target_point, MONITOR_DEFAULTTOPRIMARY);
+                }
+                UINT dpi_x = 0, 
+                     dpi_y = 0;
+
+                HRESULT result = get_dpi_for_monitor_(monitor, 0 /* kEffectiveDpiMonitorType */, &dpi_x, &dpi_y);
+                if (SUCCEEDED(result)) 
+                {
+                    return dpi_x;
+                }
+            }
+            return kDefaultDpi;
+        }
     }
 }
