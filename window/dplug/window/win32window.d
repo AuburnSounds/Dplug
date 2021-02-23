@@ -42,6 +42,8 @@ nothrow:
 // Disabled, remaining issues in #536
 // - very few hosts actually give the needed DPI
 // - resizing that window is in some cases a challenge
+// - hosts that are not DPI-aware v2 create difficulties creating a v2 window, not managed to do it yet
+// - need testing in Windows 8
 enum DPISupportWin32 = false; 
 
 version(Windows)
@@ -99,11 +101,27 @@ version(Windows)
             _origWidth = width;
             _origHeight = height;
 
+            // Save/restore DPI awareness for this thread, and create the window inside that thread context.
+            DPI_AWARENESS_CONTEXT previousDpiContext;
+            DPI_HOSTING_BEHAVIOR previousDpiHosting;
+            if (DPISupportWin32)
+            {
+                _dpiSupport.initialize();
+                previousDpiHosting = _dpiSupport.SetThreadDpiHostingBehavior(DPI_HOSTING_BEHAVIOR_MIXED);
+                previousDpiContext = _dpiSupport.SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+            }
             _hwnd = CreateWindowW(_className.ptr, null, flags, CW_USEDEFAULT, CW_USEDEFAULT, 
                                   _origWidth, _origHeight,
                                   parentWindow, null,
                                   getModuleHandle(),
                                   cast(void*)this);
+
+            // restore previous DPI context
+            if (DPISupportWin32)
+            {
+                _dpiSupport.SetThreadDpiAwarenessContext(previousDpiContext);
+                _dpiSupport.SetThreadDpiHostingBehavior(previousDpiHosting);
+            }
 
             if (_hwnd is null)
             {
@@ -120,7 +138,7 @@ version(Windows)
             // Sets this as user data
             SetWindowLongPtrA(_hwnd, GWLP_USERDATA, cast(LONG_PTR)( cast(void*)this ));
 
-            if (_listener !is null) // we are interested in custom behaviour
+            if (_listener !is null) // we are interested in custom behavior
             {
 
                 int mSec = 15; // refresh at 60 hz if possible
@@ -130,7 +148,6 @@ version(Windows)
             // Resize if DPI is supported.
             if (DPISupportWin32)
             {
-                _dpiSupport.initialize();
                 _currentDPI = _dpiSupport.GetDpiForWindow(_hwnd) / 96.0f;
                 resizeWindowForDPI();
             }
@@ -383,6 +400,10 @@ version(Windows)
                     {
                         int dpiX = cast(int)(wParam & 0xffff);
                         _currentDPI = dpiX;
+                        /*char[128] buf;
+                        import core.stdc.stdio;
+                        sprintf(buf.ptr, "New DPI is %f", _currentDPI);
+                        debugLog(buf.ptr);*/
 
                         // Note: there is a suggested position in lParam. But we are free to apply the width 
                         // and height of our choosing. 
@@ -535,7 +556,7 @@ version(Windows)
 
         void resizeWindowForDPI()
         {
-            // TODO: more complex behaviour based on what is available as size.
+            // TODO: more complex behavior based on what is available as size.
             int width = cast(int)(0.5f + _origWidth * _currentDPI);
             int height = cast(int)(0.5f + _origHeight * _currentDPI);
 
@@ -849,6 +870,9 @@ version(Windows)
             {
                 get_dpi_for_window_ = cast(GetDpiForWindow_t) GetProcAddress(user32_module_, "GetDpiForWindow".ptr);
                 dpi_for_window_supported_ = get_dpi_for_window_ !is null;
+
+                set_thread_dpi_awareness_context = cast(SetThreadDpiAwarenessContext_t) GetProcAddress(user32_module_, "SetThreadDpiAwarenessContext".ptr);
+                set_thread_dpi_hosting_behavior = cast(SetThreadDpiHostingBehavior_t) GetProcAddress(user32_module_, "SetThreadDpiHostingBehavior".ptr);
             }
             if ((shlib_module_ = LoadLibraryA("Shcore.dll")) != null) 
             {
@@ -880,10 +904,17 @@ version(Windows)
                                                         UINT* dpiX,
                                                         UINT* dpiY);
             alias EnableNonClientDpiScaling_t = BOOL function(HWND);
+
+            alias SetThreadDpiAwarenessContext_t = DPI_AWARENESS_CONTEXT function(DPI_AWARENESS_CONTEXT);
+            alias SetThreadDpiHostingBehavior_t = DPI_HOSTING_BEHAVIOR function(DPI_HOSTING_BEHAVIOR);
         }
 
         GetDpiForWindow_t get_dpi_for_window_;
         GetDpiForMonitor_t get_dpi_for_monitor_;
+
+        SetThreadDpiAwarenessContext_t set_thread_dpi_awareness_context;
+        SetThreadDpiHostingBehavior_t set_thread_dpi_hosting_behavior;
+
         EnableNonClientDpiScaling_t enable_non_client_dpi_scaling_;
         HMODULE user32_module_ = null;
         HMODULE shlib_module_ = null;
@@ -944,5 +975,51 @@ version(Windows)
             }
             return kDefaultDpi;
         }
+
+        DPI_AWARENESS_CONTEXT SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT context)
+        {
+            // Do not set DPI to unsupported if asked so.
+            if (context == DPI_AWARENESS_CONTEXT_UNSUPPORTED)
+                return context;
+
+            if (set_thread_dpi_awareness_context !is null)
+            {
+                return set_thread_dpi_awareness_context(context);
+            }
+            else
+                return DPI_AWARENESS_CONTEXT_UNSUPPORTED;
+        }
+
+        DPI_HOSTING_BEHAVIOR SetThreadDpiHostingBehavior(DPI_HOSTING_BEHAVIOR value)
+        {
+            if (value == DPI_HOSTING_UNSUPPORTED)
+                return value;
+
+            if (set_thread_dpi_hosting_behavior !is null)
+                return set_thread_dpi_hosting_behavior(value);
+            else
+                return value; // do nothing but pretend it went OK
+        }
+    }
+
+    alias DPI_AWARENESS_CONTEXT = void*;
+    enum : DPI_AWARENESS_CONTEXT
+    {
+        DPI_AWARENESS_CONTEXT_UNSUPPORTED          = cast(void*)0, // This API not supported
+        DPI_AWARENESS_CONTEXT_UNAWARE              = cast(void*)(-1),
+        DPI_AWARENESS_CONTEXT_SYSTEM_AWARE         = cast(void*)(-2),
+        DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE    = cast(void*)(-3),
+        DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 = cast(void*)(-4),
+        DPI_AWARENESS_CONTEXT_UNAWARE_GDISCALED    = cast(void*)(-5)  // since Windows 10 
+    }
+
+    alias DPI_HOSTING_BEHAVIOR = int;
+    enum : DPI_HOSTING_BEHAVIOR
+    {
+        DPI_HOSTING_UNSUPPORTED      = -2,
+        DPI_HOSTING_BEHAVIOR_INVALID = -1,
+        DPI_HOSTING_BEHAVIOR_DEFAULT = 0,
+        DPI_HOSTING_BEHAVIOR_MIXED = 1
     }
 }
+
