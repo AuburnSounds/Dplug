@@ -42,8 +42,9 @@ nothrow:
 // Disabled, remaining issues in #536
 // - very few hosts actually give the needed DPI
 // - resizing that window is in some cases a challenge
-// - hosts that are not DPI-aware v2 create difficulties creating a v2 window, not managed to do it yet
-// - need testing in Windows 8
+// - using "mixed" DPI support to force Hi-DPI looks like a bad idea
+// - not always easy to resize the child window
+// - need testing in Windows 8 or something where some calls are missing
 enum DPISupportWin32 = false; 
 
 version(Windows)
@@ -101,27 +102,11 @@ version(Windows)
             _origWidth = width;
             _origHeight = height;
 
-            // Save/restore DPI awareness for this thread, and create the window inside that thread context.
-            DPI_AWARENESS_CONTEXT previousDpiContext;
-            DPI_HOSTING_BEHAVIOR previousDpiHosting;
-            if (DPISupportWin32)
-            {
-                _dpiSupport.initialize();
-                previousDpiHosting = _dpiSupport.SetThreadDpiHostingBehavior(DPI_HOSTING_BEHAVIOR_MIXED);
-                previousDpiContext = _dpiSupport.SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
-            }
             _hwnd = CreateWindowW(_className.ptr, null, flags, CW_USEDEFAULT, CW_USEDEFAULT, 
                                   _origWidth, _origHeight,
                                   parentWindow, null,
                                   getModuleHandle(),
                                   cast(void*)this);
-
-            // restore previous DPI context
-            if (DPISupportWin32)
-            {
-                _dpiSupport.SetThreadDpiAwarenessContext(previousDpiContext);
-                _dpiSupport.SetThreadDpiHostingBehavior(previousDpiHosting);
-            }
 
             if (_hwnd is null)
             {
@@ -148,6 +133,7 @@ version(Windows)
             // Resize if DPI is supported.
             if (DPISupportWin32)
             {
+                _dpiSupport.initialize();
                 _currentDPI = _dpiSupport.GetDpiForWindow(_hwnd) / 96.0f;
                 resizeWindowForDPI();
             }
@@ -394,25 +380,6 @@ version(Windows)
                     setMouseCursor(true);
                     goto default;
 
-                case 0x02E0: /* WM_DPICHANGED */
-                {
-                    if (DPISupportWin32) 
-                    {
-                        int dpiX = cast(int)(wParam & 0xffff);
-                        _currentDPI = dpiX;
-                        /*char[128] buf;
-                        import core.stdc.stdio;
-                        sprintf(buf.ptr, "New DPI is %f", _currentDPI);
-                        debugLog(buf.ptr);*/
-
-                        // Note: there is a suggested position in lParam. But we are free to apply the width 
-                        // and height of our choosing. 
-                        resizeWindowForDPI();
-                        return 0;
-                    }
-                    else goto default;
-                }
-
                 case WM_PAINT:
                 {
                     // This get the size of the client area, and then tells the listener about the new size.
@@ -559,11 +526,6 @@ version(Windows)
             // TODO: more complex behavior based on what is available as size.
             int width = cast(int)(0.5f + _origWidth * _currentDPI);
             int height = cast(int)(0.5f + _origHeight * _currentDPI);
-
-            /*char[128] buf;
-            import core.stdc.stdio;
-            sprintf(buf.ptr, "%d x %d", width, height);
-            debugLog(buf.ptr);*/
 
             int left = 0, top = 0;
             SetWindowPos(_hwnd, null,
