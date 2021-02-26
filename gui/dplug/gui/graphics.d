@@ -30,6 +30,7 @@ import dplug.gui.context;
 import dplug.gui.element;
 import dplug.gui.compositor;
 import dplug.gui.legacypbr;
+import dplug.gui.sizeconstraints;
 
 /// In the whole package:
 /// The diffuse maps contains:
@@ -73,16 +74,18 @@ nothrow:
         return compositor;
     }
 
-    this(int initialWidth, int initialHeight, UIFlags flags)
+    this(SizeConstraints sizeConstraints, UIFlags flags)
     {
+        _sizeConstraints = sizeConstraints;
+
         _uiContext = mallocNew!UIContext();
         super(_uiContext, flags);
 
         _windowListener = mallocNew!WindowListener(this);
 
         _window = null;
-        _askedWidth = initialWidth;
-        _askedHeight = initialHeight;
+
+        _sizeConstraints.suggestDefaultSize(&_askedWidth, &_askedHeight);
 
         int numThreads = 0; // auto
         int maxThreads = 2;
@@ -325,6 +328,10 @@ protected:
 
     // Task pool for multi-threaded image work
     ThreadPool _threadPool;
+
+    // Size constraints of this UI.
+    // Currently can only be a fixed size.
+    SizeConstraints _sizeConstraints;
 
     int _askedWidth = 0;
     int _askedHeight = 0;

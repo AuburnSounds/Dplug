@@ -18,6 +18,7 @@ import dplug.graphics.drawex;
 import dplug.core.nogc;
 import dplug.gui.graphics;
 import dplug.gui.element;
+public import dplug.gui.sizeconstraints;
 
 /// FlatBackgroundGUI provides a background that is loaded from a PNG or JPEG
 /// image. The string for backgroundPath should be in "stringImportPaths"
@@ -30,7 +31,12 @@ nothrow:
 
     this(int width, int height)
     {
-        super(width, height, flagRaw);
+        this(makeSizeConstraintsFixed(width, height));
+    }
+
+    this(SizeConstraints sizeConstraints)
+    {
+        super(sizeConstraints, flagRaw);
         _backgroundImage = loadOwnedImage(cast(ubyte[])(import(backgroundPath)));
     }
     

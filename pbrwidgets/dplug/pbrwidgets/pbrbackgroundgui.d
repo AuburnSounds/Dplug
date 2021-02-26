@@ -22,6 +22,7 @@ import dplug.gui.graphics;
 import dplug.gui.element;
 import dplug.gui.compositor;
 import dplug.gui.legacypbr;
+public import dplug.gui.sizeconstraints;
 
 /// PBRBackgroundGUI provides a PBR background loaded from PNG or JPEG images.
 /// It's very practical while in development because it let's you reload the six
@@ -42,9 +43,14 @@ nothrow:
 
     this(int width, int height)
     {
-        super(width, height, flagPBR);
+        this(makeSizeConstraintsFixed(width, height));
+    }
+
+    this(SizeConstraints sizeConstraints)
+    {
+        super(sizeConstraints, flagPBR);
         auto basecolorData = cast(ubyte[])(import(baseColorPath));
-        auto emissiveData = cast(ubyte[])(import(emissivePath));        
+        auto emissiveData = cast(ubyte[])(import(emissivePath));
         auto materialData = cast(ubyte[])(import(materialPath));
         auto depthData = cast(ubyte[])(import(depthPath));
         auto skyboxData = cast(ubyte[])(import(skyboxPath));
