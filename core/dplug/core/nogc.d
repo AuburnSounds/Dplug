@@ -253,7 +253,7 @@ void freeSlice(T)(const(T)[] slice) nothrow @nogc
 }
 
 /// Duplicates a slice with `malloc`. Equivalent to `.dup`
-/// Has to be cleaned-up with `free()`.
+/// Has to be cleaned-up with `free(slice.ptr)` or `freeSlice(slice)`.
 T[] mallocDup(T)(const(T)[] slice) nothrow @nogc if (!is(T == struct))
 {
     T[] copy = mallocSliceNoInit!T(slice.length);
@@ -262,14 +262,14 @@ T[] mallocDup(T)(const(T)[] slice) nothrow @nogc if (!is(T == struct))
 }
 
 /// Duplicates a slice with `malloc`. Equivalent to `.idup`
-/// Has to be cleaned-up with `free()`.
+/// Has to be cleaned-up with `free(slice.ptr)` or `freeSlice(slice)`.
 immutable(T)[] mallocIDup(T)(const(T)[] slice) nothrow @nogc if (!is(T == struct))
 {
     return assumeUnique(mallocDup!T(slice));
 }
 
 /// Duplicates a zero-terminated string with `malloc`, return a `char[]`. Equivalent to `.dup`
-/// Has to be cleaned-up with `free()`.
+/// Has to be cleaned-up with `free(s.ptr)`.
 /// Note: The zero-terminating byte is preserved. This allow to have a string which also can be converted
 /// to a C string with `.ptr`. However the zero byte is not included in slice length.
 char[] stringDup(const(char)* cstr) nothrow @nogc
@@ -281,7 +281,7 @@ char[] stringDup(const(char)* cstr) nothrow @nogc
 }
 
 /// Duplicates a zero-terminated string with `malloc`, return a `string`. Equivalent to `.idup`
-/// Has to be cleaned-up with `free()`.
+/// Has to be cleaned-up with `free(s.ptr)`.
 /// Note: The zero-terminating byte is preserved. This allow to have a string which also can be converted
 /// to a C string with `.ptr`. However the zero byte is not included in slice length.
 string stringIDup(const(char)* cstr) nothrow @nogc
