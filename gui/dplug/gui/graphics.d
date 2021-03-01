@@ -85,7 +85,7 @@ nothrow:
 
         _window = null;
 
-        _sizeConstraints.suggestDefaultSize(&_askedWidth, &_askedHeight);
+        _sizeConstraints.suggestDefaultSize(&_currentWidth, &_currentHeight);
 
         int numThreads = 0; // auto
         int maxThreads = 2;
@@ -167,7 +167,7 @@ nothrow:
             case GraphicsBackend.x11: wbackend = WindowBackend.x11; break;
         }
 
-        reflow(box2i(0, 0, _askedWidth, _askedHeight));
+        reflow(box2i(0, 0, _currentWidth, _currentHeight));
 
         // Sets the whole UI dirty.
         // This needs to be done _before_ window creation, else there could be a race
@@ -175,7 +175,7 @@ nothrow:
         setDirtyWhole(UILayer.allLayers);
 
         // We create this window each time.
-        _window = createWindow(WindowUsage.plugin, parentInfo, controlInfo, _windowListener, wbackend, _askedWidth, _askedHeight);
+        _window = createWindow(WindowUsage.plugin, parentInfo, controlInfo, _windowListener, wbackend, _currentWidth, _currentHeight);
 
         return _window.systemHandle();
     }
@@ -192,8 +192,8 @@ nothrow:
 
     override void getGUISize(int* width, int* height)
     {
-        *width = _askedWidth;
-        *height = _askedHeight;
+        *width = _currentWidth;
+        *height = _currentHeight;
     }
 
     // This class is only here to avoid name conflicts between
@@ -333,8 +333,10 @@ protected:
     // Currently can only be a fixed size.
     SizeConstraints _sizeConstraints;
 
-    int _askedWidth = 0;
-    int _askedHeight = 0;
+    // The _internal_ size in pixels of our UI.
+    // This is not the same as the size seen by the window.
+    int _currentWidth = 0;
+    int _currentHeight = 0;
 
     // Diffuse color values for the whole UI.
     Mipmap!RGBA _diffuseMap;
@@ -418,9 +420,9 @@ protected:
     final ImageRef!RGBA toImageRef(ubyte* alignedBuffer)
     {
         ImageRef!RGBA ir = void;
-        ir.w = _askedWidth;
-        ir.h = _askedHeight;
-        ir.pitch = byteStride(_askedWidth);
+        ir.w = _currentWidth;
+        ir.h = _currentHeight;
+        ir.pitch = byteStride(_currentWidth);
         ir.pixels = cast(RGBA*)alignedBuffer;
         return ir;
     }
@@ -548,7 +550,7 @@ protected:
             {
                 assert(rect.isSorted);
                 assert(!rect.empty);
-                _rectsToComposite.pushBack( convertPBRLayerRectToRawLayerRect(rect, _askedWidth, _askedHeight) );
+                _rectsToComposite.pushBack( convertPBRLayerRectToRawLayerRect(rect, _currentWidth, _currentHeight) );
             }
 
             // Compute the non-overlapping version
@@ -595,10 +597,14 @@ protected:
 
     ImageRef!RGBA doResize(int width, int height) nothrow @nogc
     {
-        _askedWidth = width;
-        _askedHeight = height;
+        // TODO: based upon how much space there are, choose the corresponding size with _sizeConstraints
+        // TODO _renderedBuffer should width x height, but _currentWidth and _currentHeight should be something else
 
-        reflow(box2i(0, 0, _askedWidth, _askedHeight));
+
+        _currentWidth = width;
+        _currentHeight = height;
+
+        reflow(box2i(0, 0, _currentWidth, _currentHeight));
 
         // Resize compositor buffers
         compositor.resizeBuffers(width, height, PBR_TILE_MAX_WIDTH, PBR_TILE_MAX_HEIGHT);
@@ -799,8 +805,8 @@ protected:
 
         // Generate depth mipmap, useful for dealing with ambient occlusion
         {
-            int W = _askedWidth;
-            int H = _askedHeight;
+            int W = _currentWidth;
+            int H = _currentHeight;
 
             // Depth is special since it has a border!
             // Regenerate the border area that needs to be regenerated
