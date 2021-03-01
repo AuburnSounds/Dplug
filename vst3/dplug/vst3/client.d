@@ -462,7 +462,7 @@ nothrow:
             }
         }
 
-        // Deal with input MIDI events (only note on and note off supported so far)
+        // Deal with input MIDI events (only note on, note off, CC and pitch bend supported so far)
         if (data.inputEvents !is null && _client.receivesMIDI())
         {
             IEventList eventList = data.inputEvents;
@@ -487,6 +487,21 @@ nothrow:
                         {
                             ubyte noteNumber = cast(ubyte)(e.noteOff.pitch);
                             _client.enqueueMIDIFromHost( makeMidiMessageNoteOff(offset, e.noteOff.channel, noteNumber));
+                            break;
+                        }
+
+                        case Event.EventTypes.kLegacyMIDICCOutEvent:
+                        {
+                            if (e.midiCCOut.controlNumber <= 127)
+                            {
+                                _client.enqueueMIDIFromHost(
+                                    makeMidiMessage(offset, e.midiCCOut.channel, MidiStatus.controlChange, e.midiCCOut.controlNumber, e.midiCCOut.value));
+                            }
+                            else if (e.midiCCOut.controlNumber == 129)
+                            {
+                                _client.enqueueMIDIFromHost(
+                                    makeMidiMessage(offset, e.midiCCOut.channel, MidiStatus.pitchBend, e.midiCCOut.value, e.midiCCOut.value2));
+                            }
                             break;
                         }
 
@@ -1521,4 +1536,3 @@ private bool isGraphicsBackendSupported(GraphicsBackend backend) nothrow @nogc
     else
         static assert(false, "Unsupported OS");
 }
-

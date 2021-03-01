@@ -533,6 +533,17 @@ struct ChordEvent
 
 mixin SMTG_TYPE_SIZE_CHECK!(ChordEvent, 16, 12, 12);
 
+/** Legacy MIDI CC Out event specific data. Used in \ref Event (union)*/
+struct LegacyMIDICCOutEvent
+{
+    uint8 controlNumber; ///< see enum ControllerNumbers [0, 255]
+    int8 channel;        ///< channel index in event bus [0, 15]
+    int8 value;          ///< value of Controller [0, 127]
+    int8 value2;         ///< [0, 127] used for pitch bend (kPitchBend) and polyPressure (kCtrlPolyPressure)
+};
+
+mixin SMTG_TYPE_SIZE_CHECK!(LegacyMIDICCOutEvent, 4, 4, 4);
+
 
 
 static if (eventABIFix)
@@ -557,14 +568,15 @@ static if (eventABIFix)
         /**  Event Types - used for Event::type */
         enum EventTypes
         {
-            kNoteOnEvent = 0,           ///< is \ref NoteOnEvent
-            kNoteOffEvent,              ///< is \ref NoteOffEvent
-            kDataEvent,                 ///< is \ref DataEvent
-            kPolyPressureEvent,         ///< is \ref PolyPressureEvent
-            kNoteExpressionValueEvent,  ///< is \ref NoteExpressionValueEvent
-            kNoteExpressionTextEvent,   ///< is \ref NoteExpressionTextEvent
-            kChordEvent,                ///< is \ref ChordEvent
-            kScaleEvent                 ///< is \ref ScaleEvent
+            kNoteOnEvent = 0,              ///< is \ref NoteOnEvent
+            kNoteOffEvent,                 ///< is \ref NoteOffEvent
+            kDataEvent,                    ///< is \ref DataEvent
+            kPolyPressureEvent,            ///< is \ref PolyPressureEvent
+            kNoteExpressionValueEvent,     ///< is \ref NoteExpressionValueEvent
+            kNoteExpressionTextEvent,      ///< is \ref NoteExpressionTextEvent
+            kChordEvent,                   ///< is \ref ChordEvent
+            kScaleEvent,                   ///< is \ref ScaleEvent
+            kLegacyMIDICCOutEvent = 65535, ///< is \ref LegacyMIDICCOutEvent
         }
 
         uint16 type;                ///< a value from \ref EventTypes
@@ -578,6 +590,7 @@ static if (eventABIFix)
             NoteExpressionTextEvent noteExpressionText;     ///< type == kNoteExpressionTextEvent
             ChordEvent chord;                               ///< type == kChordEvent
             //ScaleEvent scale;                               ///< type == kScaleEvent
+            LegacyMIDICCOutEvent midiCCOut;                 ///< type == kLegacyMIDICCOutEvent
         }
     }
 }
@@ -604,14 +617,15 @@ else
         /**  Event Types - used for Event::type */
         enum EventTypes
         {
-            kNoteOnEvent = 0,           ///< is \ref NoteOnEvent
-            kNoteOffEvent,              ///< is \ref NoteOffEvent
-            kDataEvent,                 ///< is \ref DataEvent
-            kPolyPressureEvent,         ///< is \ref PolyPressureEvent
-            kNoteExpressionValueEvent,  ///< is \ref NoteExpressionValueEvent
-            kNoteExpressionTextEvent,   ///< is \ref NoteExpressionTextEvent
-            kChordEvent,                ///< is \ref ChordEvent
-            kScaleEvent                 ///< is \ref ScaleEvent
+            kNoteOnEvent = 0,              ///< is \ref NoteOnEvent
+            kNoteOffEvent,                 ///< is \ref NoteOffEvent
+            kDataEvent,                    ///< is \ref DataEvent
+            kPolyPressureEvent,            ///< is \ref PolyPressureEvent
+            kNoteExpressionValueEvent,     ///< is \ref NoteExpressionValueEvent
+            kNoteExpressionTextEvent,      ///< is \ref NoteExpressionTextEvent
+            kChordEvent,                   ///< is \ref ChordEvent
+            kScaleEvent,                   ///< is \ref ScaleEvent
+            kLegacyMIDICCOutEvent = 65535, ///< is \ref LegacyMIDICCOutEvent
         }
 
         static if (size_t.sizeof == 8)
@@ -628,6 +642,7 @@ else
             NoteExpressionTextEvent noteExpressionText;     ///< type == kNoteExpressionTextEvent
             ChordEvent chord;                               ///< type == kChordEvent
             //ScaleEvent scale;                               ///< type == kScaleEvent
+            LegacyMIDICCOutEvent midiCCOut;                 ///< type == kLegacyMIDICCOutEvent
         }
 
         static if (size_t.sizeof == 8)
