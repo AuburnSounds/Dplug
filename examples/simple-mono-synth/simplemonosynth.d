@@ -8,7 +8,7 @@ import std.complex;
 import std.math;
 import dplug.core, dplug.client, dplug.vst;
 
-// This define entry points for plugin formats, 
+// This define entry points for plugin formats,
 // depending on which version identifiers are defined.
 mixin(pluginEntryPoints!SimpleMonoSynth);
 
@@ -22,7 +22,7 @@ nothrow:
     override PluginInfo buildPluginInfo()
     {
         // Plugin info is parsed from plugin.json here at compile time.
-        // Indeed it is strongly recommended that you do not fill PluginInfo 
+        // Indeed it is strongly recommended that you do not fill PluginInfo
         // manually, else the information could diverge.
         static immutable PluginInfo pluginInfo = parsePluginInfo(import("plugin.json"));
         return pluginInfo;
@@ -52,26 +52,32 @@ nothrow:
         _phase = complex(1, 0);
         _sampleRate = sampleRate;
         _voiceStatus.initialize();
+        _pitchBend = 0;
+        _expression = 1;
     }
 
     override void processAudio(const(float*)[] inputs, float*[]outputs, int frames, TimeInfo info)
     {
-        foreach(msg; getNextMidiMessages(frames))
+        foreach(MidiMessage msg; getNextMidiMessages(frames))
         {
             if (msg.isNoteOn())
                 _voiceStatus.markNoteOn(msg.noteNumber());
             else if (msg.isNoteOff())
                 _voiceStatus.markNoteOff(msg.noteNumber());
+            else if (msg.isPitchBend())
+                _pitchBend = msg.pitchBend();
+            else if (msg.isControlChange() && msg.controlChangeControl() == MidiControlChange.expressionController)
+                _expression = msg.controlChangeValue0to1();
         }
 
         if (_voiceStatus.isAVoicePlaying)
         {
-            float freq = convertMIDINoteToFrequency(_voiceStatus.lastNotePlayed);
+            float freq = convertMIDINoteToFrequency(_voiceStatus.lastNotePlayed + _pitchBend);
             Complex!float phasor = complex!float(cos(2 * PI * freq / _sampleRate), sin(2 * PI * freq / _sampleRate));
 
             foreach(smp; 0..frames)
             {
-                outputs[0][smp] = _phase.im;
+                outputs[0][smp] = _phase.im * _expression;
                 _phase *= phasor;
             }
             _phase /= abs!float(_phase); // resync oscillator
@@ -90,6 +96,8 @@ private:
     VoicesStatus _voiceStatus;
     Complex!float _phase;
     float _sampleRate;
+    float _expression;
+    float _pitchBend;
 }
 
 // Maintain list of active voices/notes
