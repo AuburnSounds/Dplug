@@ -27,6 +27,9 @@ nothrow:
         _client = client;
         super(500, 500); // size
 
+        int W = 500;
+        int H = 500;
+
         // Sets the number of pixels recomputed around dirtied controls.
         // Since we aren't using pbr we can set this value to 0 to save
         // on resources.
@@ -77,6 +80,9 @@ nothrow:
         immutable int switchHeight = 21;
 
         modeSwitch.position = box2i(switchX, switchY, switchX + switchWidth, switchY  + switchHeight);
+
+        addChild(resizerHint = mallocNew!UIWindowResizer(context()));
+        resizerHint.position = rectangle(W-20, H-20, 20, 20);
     }
 
     // This is just to show how to use with dplug:canvas
@@ -105,6 +111,8 @@ nothrow:
         }
 
     }
-    // this struct object should not be since it contains everything rasterizer-related
-    Canvas canvas; 
+
+private:
+    Canvas canvas;
+    UIWindowResizer resizerHint;
 }

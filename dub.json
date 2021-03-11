@@ -216,7 +216,8 @@
                 "dplug:graphics": "*",
                 "dplug:window": "*",
                 "dplug:client": "*",
-                "dplug:gui": "*"
+                "dplug:gui": "*",
+                "dplug:canvas": "*"
             }
         },
         {

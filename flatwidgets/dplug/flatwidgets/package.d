@@ -14,3 +14,4 @@ public import dplug.flatwidgets.flatknob;
 public import dplug.flatwidgets.flatslider;
 public import dplug.flatwidgets.flatswitch;
 public import dplug.flatwidgets.flatbackgroundgui;
+public import dplug.flatwidgets.windowresizer;
