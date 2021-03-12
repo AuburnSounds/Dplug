@@ -13,7 +13,7 @@ import std.algorithm.comparison;
 import std.math;
 import std.traits;
 
-import gfm.math.box;
+import dplug.math.box;
 
 import dplug.core.nogc;
 import dplug.core.vec;

@@ -6,7 +6,7 @@ module gui;
 
 import std.math;
 
-import gfm.math;
+import dplug.math;
 import dplug.gui;
 import dplug.pbrwidgets;
 import dplug.client;

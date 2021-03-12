@@ -8,7 +8,7 @@ License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 module dplug.pbrwidgets.colorcorrection;
 
 
-import gfm.math.matrix;
+import dplug.math.matrix;
 
 import dplug.core.math;
 import dplug.gui.element;

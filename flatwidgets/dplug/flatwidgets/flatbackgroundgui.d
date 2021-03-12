@@ -7,7 +7,7 @@ License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 module dplug.flatwidgets.flatbackgroundgui;
 
-import gfm.math.box;
+import dplug.math.box;
 import dplug.core.nogc;
 import dplug.core.file;
 import dplug.graphics.color;

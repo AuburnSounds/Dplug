@@ -58,6 +58,14 @@
             }
         },
         {
+            "name": "math",
+            "sourcePaths": [ "math/dplug/math" ],
+            "importPaths": [ "math" ],
+            "dependencies": {
+                "intel-intrinsics": "~>1.0"
+            }
+        },
+        {
             "name": "dsp",
 
             "sourcePaths": 
@@ -94,7 +102,7 @@
             "importPaths": [ "graphics" ],
             "dependencies": {
                 "dplug:core": "*",
-                "gfm:math": "~>8.0",
+                "dplug:math": "*",
                 "intel-intrinsics": "~>1.0"
             }
         },
@@ -105,7 +113,7 @@
             "dependencies": {
             	"dplug:core": "*",
                 "dplug:graphics": "*",
-                "gfm:math": "~>8.0",
+                "dplug:math": "*",
                 "intel-intrinsics": "~>1.0"
             }
         },
@@ -165,7 +173,7 @@
             "libs-windows": ["gdi32", "user32"],
 
             "dependencies": {
-                "gfm:math": "~>8.0",
+                "dplug:math": "*",
                 "dplug:graphics": "*",
                 "dplug:core": "*"
             },
@@ -185,7 +193,7 @@
             "importPaths": [ "gui" ],
 
             "dependencies": {
-                "gfm:math": "~>8.0",
+                "dplug:math": "*",
                 "dplug:client": "*",
                 "dplug:window": "*",
                 "dplug:core": "*",

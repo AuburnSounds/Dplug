@@ -6,7 +6,7 @@ License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 module dplug.host.window;
 
-import gfm.math.box;
+import dplug.math.box;
 import dplug.window;
 import dplug.graphics.image;
 import dplug.graphics.color;

@@ -8,8 +8,8 @@ module dplug.pbrwidgets.imageknob;
 
 import std.math;
 
-import gfm.math.vector;
-import gfm.math.box;
+import dplug.math.vector;
+import dplug.math.box;
 
 import dplug.core.nogc;
 import dplug.gui.context;

@@ -7,7 +7,7 @@
 */
 module dplug.gui.compositor;
 
-import gfm.math.box;
+import dplug.math.box;
 
 import dplug.core.vec;
 import dplug.core.nogc;

@@ -13,8 +13,8 @@ import std.math;
 import std.algorithm.comparison;
 import std.utf;
 
-import gfm.math.vector;
-import gfm.math.box;
+import dplug.math.vector;
+import dplug.math.box;
 
 import dplug.core.sync;
 import dplug.core.nogc;

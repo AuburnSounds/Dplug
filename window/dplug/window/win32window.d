@@ -23,8 +23,8 @@ import std.process,
        std.string,
        std.conv;
 
-import gfm.math.vector;
-import gfm.math.box;
+import dplug.math.vector;
+import dplug.math.box;
 
 import dplug.core.runtime;
 import dplug.core.nogc;

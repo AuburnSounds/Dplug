@@ -7,7 +7,7 @@
 */
 module dplug.window.window;
 
-import gfm.math.box;
+import dplug.math.box;
 
 import dplug.core.nogc;
 import dplug.graphics.image;

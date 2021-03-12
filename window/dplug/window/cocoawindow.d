@@ -11,8 +11,8 @@ import core.stdc.stdlib;
 import std.string;
 import std.uuid;
 
-import gfm.math.vector;
-import gfm.math.box;
+import dplug.math.vector;
+import dplug.math.box;
 import dplug.graphics.image;
 import dplug.graphics.view;
 

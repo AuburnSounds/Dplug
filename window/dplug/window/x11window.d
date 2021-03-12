@@ -21,7 +21,7 @@ import core.stdc.string;
 import core.sys.posix.unistd;
 import core.sys.posix.time;
 
-import gfm.math.box;
+import dplug.math.box;
 
 import derelict.x11.X;
 import derelict.x11.Xlib;

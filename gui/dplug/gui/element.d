@@ -11,8 +11,8 @@ import core.stdc.stdio;
 
 import std.algorithm.comparison;
 
-public import gfm.math.vector;
-public import gfm.math.box;
+public import dplug.math.vector;
+public import dplug.math.box;
 
 public import dplug.graphics;
 

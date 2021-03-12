@@ -8,7 +8,7 @@ License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 module dplug.gui.boxlist;
 
 import dplug.core.vec;
-import gfm.math.box;
+import dplug.math.box;
 
 /// Returns: Bounding boxes of all bounding boxes.
 box2i boundingBox(box2i[] boxes) pure nothrow @nogc

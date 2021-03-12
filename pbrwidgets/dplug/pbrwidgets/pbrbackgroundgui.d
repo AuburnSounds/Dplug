@@ -7,7 +7,7 @@ Authors:   Guillaume Piolat
 */
 module dplug.pbrwidgets.pbrbackgroundgui;
 
-import gfm.math.box;
+import dplug.math.box;
 import dplug.core.nogc;
 import dplug.core.file;
 import dplug.graphics.color;

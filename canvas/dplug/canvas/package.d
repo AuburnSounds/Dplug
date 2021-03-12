@@ -38,9 +38,9 @@ import dplug.canvas.rasterizer;
 
 // dplug:canvas whole public API should live here.
 
-public import gfm.math.vector;
-public import gfm.math.box;
-import gfm.math.matrix;
+public import dplug.math.vector;
+public import dplug.math.box;
+import dplug.math.matrix;
 
 
 /// The transform type used by dplug:canvas. It's a 3x3 float matrix

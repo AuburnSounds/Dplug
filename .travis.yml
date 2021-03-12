@@ -64,6 +64,7 @@ script:
 #  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then cd tools/wav-compare; dub --compiler=${DC} -a x86; cd ../.. ; fi
 #  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then cd tools/wav-info; dub --compiler=${DC} -a x86; cd ../.. ; fi
   - dub test --compiler=${DC} dplug:core
+  - dub test --compiler=${DC} dplug:math
   - dub test --compiler=${DC} dplug:dsp
   - dub test --compiler=${DC} dplug:client
   - if [[ "$TRAVIS_PULL_REQUEST" == "false" ]]; then dub test --compiler=${DC} dplug:host ; fi
@@ -81,6 +82,7 @@ script:
   - dub test --compiler=${DC} -b unittest-release dplug:core
   - dub test --compiler=${DC} -b unittest-release dplug:dsp
   #- if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then dub test --compiler=${DC} -a x86 dplug:core ; fi
+  #- if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then dub test --compiler=${DC} -a x86 dplug:math ; fi
   #- if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then dub test --compiler=${DC} -a x86 dplug:dsp ; fi
   #- if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" && "$TRAVIS_PULL_REQUEST" == "false" ]]; then dub test --compiler=${DC} -a x86 dplug:client ; fi
   #- if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" && "$TRAVIS_PULL_REQUEST" == "false" ]]; then dub test --compiler=${DC} -a x86 dplug:host ; fi

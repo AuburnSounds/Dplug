@@ -11,9 +11,9 @@ module dplug.gui.legacypbr;
 
 import std.math;
 
-import gfm.math.vector;
-import gfm.math.box;
-import gfm.math.matrix;
+import dplug.math.vector;
+import dplug.math.box;
+import dplug.math.matrix;
 
 import dplug.core.vec;
 import dplug.core.nogc;

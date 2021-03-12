@@ -1,7 +1,7 @@
 /// Normal from depth estimation
 module dplug.gui.ransac;
 
-import gfm.math.vector;
+import dplug.math.vector;
 import dplug.core.math;
 
 import inteli.emmintrin;

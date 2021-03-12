@@ -2,7 +2,7 @@ import dplug.graphics.image;
 import dplug.graphics.view;
 import dplug.core.nogc;
 import dplug.window;
-import gfm.math.box;
+import dplug.math.box;
 import std.stdio;
 
 class WindowListener : IWindowListener {
