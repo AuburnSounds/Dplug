@@ -30,8 +30,7 @@
         "dplug:gui": "*",
         "dplug:pbr-widgets": "*",
         "dplug:flat-widgets": "*",
-        "dplug:cocoa": "*",
-        "dplug:carbon": "*",
+        "dplug:macos": "*",
         "dplug:x11": "*"
     },
 
@@ -161,8 +160,7 @@
             },
 
             "dependencies-osx": {
-                "dplug:carbon": "*",
-                "dplug:cocoa": "*"
+                "dplug:macos": "*"
             }
         },
         {
@@ -179,8 +177,7 @@
             },
 
             "dependencies-osx": {
-                "dplug:cocoa": "*",
-                "dplug:carbon": "*"
+                "dplug:macos": "*"
             },
 
             "dependencies-linux": {
@@ -229,17 +226,9 @@
             }
         },
         {
-            "name": "cocoa",
-            "sourcePaths": [ "cocoa/derelict/cocoa" ],
-            "importPaths": [ "cocoa" ],
-            "dependencies": {
-                "dplug:core": "*"
-            }
-        },
-        {
-            "name": "carbon",
-            "sourcePaths": [ "carbon/derelict/carbon" ],
-            "importPaths": [ "carbon" ],
+            "name": "macos",
+            "sourcePaths": [ "macos/derelict/cocoa", "macos/derelict/carbon" ],
+            "importPaths": [ "macos" ],
             "dependencies": {
                 "dplug:core": "*"
             }
