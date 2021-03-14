@@ -13,7 +13,7 @@ so that developers can focus on a portable codebase for audio software.
 ## Plugin clients
 
 
-`dplug:vst`, `dplug:vst3`, `dplug:au`, `dplug:lv2`, and `dplug-aax` are "plugin clients" libraries.
+`dplug:vst2`, `dplug:vst3`, `dplug:au`, `dplug:lv2`, and `dplug-aax` are "plugin clients" libraries.
 These subpackage depends on the "generic client" `dplug:client`.
 
 
@@ -40,6 +40,8 @@ Within each layer, widgets are Z-ordered for drawing and events.
 
 
 # Graphics subsystem
+
+`dplug:math` defines small vectors, rectangles, and matrices.
 
 `dplug:graphics` defines drawing surfaces and a lot of low-level rendering routines. They are considered a legacy way to draw on screen. This is based on a fork of `ae:graphics`, a stripped-down generic library for working with images.
 

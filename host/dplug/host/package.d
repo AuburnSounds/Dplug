@@ -7,7 +7,7 @@ License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 module dplug.host;
 
 public import dplug.host.host;
-public import dplug.host.vst;
+public import dplug.host.vst2;
 public import dplug.host.window;
 
 import std.algorithm.mutation;
@@ -23,12 +23,12 @@ IPluginHost createPluginHost(string dynlibPath)
     lib.load(dynlibPath);
 
     // Detect if  this is a VST plugin
-    void* VSTPluginMain = getVSTEntryPoint(lib);
+    void* VSTPluginMain = getVST2EntryPoint(lib);
     if (VSTPluginMain != null) 
     {
-        version(VST)
+        version(VST2)
         {
-            return new VSTPluginHost(move(lib));
+            return new VST2PluginHost(move(lib));
         }
         else
             throw new Exception(format("Couldn't load plugin '%s': VST 2.4 format not supported", dynlibPath));

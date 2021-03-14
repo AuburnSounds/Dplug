@@ -23,7 +23,7 @@
         "dplug:canvas": "*",
         "dplug:host": "*",
         "dplug:lv2": "*",
-        "dplug:vst": "*",
+        "dplug:vst2": "*",
         "dplug:vst3": "*",
         "dplug:au": "*",
         "dplug:window": "*",
@@ -122,7 +122,7 @@
             "importPaths": [ "host" ],
             "dependencies": {
                 "dplug:core": "*",
-                "dplug:vst": "*",
+                "dplug:vst2": "*",
                 "dplug:window": "*"
             }
         },
@@ -135,9 +135,9 @@
             }
         },
         {
-            "name": "vst",
-            "sourcePaths": [ "vst/dplug/vst" ],
-            "importPaths": [ "vst" ],
+            "name": "vst2",
+            "sourcePaths": [ "vst2/dplug/vst2" ],
+            "importPaths": [ "vst2" ],
             "stringImportPaths": [ "$VST2_SDK/pluginterfaces/vst2.x" ],
             "dependencies": {
                 "dplug:client": "*"

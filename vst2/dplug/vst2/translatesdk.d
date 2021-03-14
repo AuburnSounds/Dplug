@@ -3,11 +3,16 @@ Simple C++ header translation for us with the VST SDK.
 Copyright: Guillaume Piolat 2018.
 License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
-module dplug.vst.translatesdk;
+module dplug.vst2.translatesdk;
+
+version(VST) // legacy version identifier
+{
+	static assert(false, "The \"VST\" version identifier should be replaced with \"VST2\" in your dub.json. See https://github.com/AuburnSounds/Dplug/wiki/Release-notes for upgrade instructions.");
+}
 
 // Only does a semantic pass on this if the VST version identifier is defined.
 // This allows building dplug:vst even without a VST2 SDK (though nothing will be defined in this case)
-version(VST): 
+version(VST2): 
 
 import std.string;
 

@@ -1,10 +1,10 @@
 /**
-VST host implementation.
+VST 2.4 host implementation.
 
 Copyright: Auburn Sounds 2015-2016.
 License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
-module dplug.host.vst;
+module dplug.host.vst2;
 
 import core.stdc.string;
 
@@ -14,12 +14,12 @@ import std.algorithm.mutation;
 import dplug.core.sharedlib;
 import dplug.core.nogc;
 import dplug.host.host;
-import dplug.vst;
+import dplug.vst2;
 
 
 alias VSTPluginMain_t = extern(C) void* function(void* fun);
 
-VSTPluginMain_t getVSTEntryPoint(ref SharedLib lib)
+VSTPluginMain_t getVST2EntryPoint(ref SharedLib lib)
 {
     void* result = null;
 
@@ -43,17 +43,17 @@ VSTPluginMain_t getVSTEntryPoint(ref SharedLib lib)
         return cast(VSTPluginMain_t)result;
 }
 
-version(VST):
+version(VST2):
 
-private __gshared VSTPluginHost[AEffect*] reverseMapping;
+private __gshared VST2PluginHost[AEffect*] reverseMapping;
 
-final class VSTPluginHost : IPluginHost
+final class VST2PluginHost : IPluginHost
 {
     this(SharedLib lib)
     {
         _lib = move(lib);
 
-        VSTPluginMain_t VSTPluginMain = getVSTEntryPoint(_lib);
+        VSTPluginMain_t VSTPluginMain = getVST2EntryPoint(_lib);
         HostCallbackFunction hostFun = &hostCallback;
 
         _aeffect = cast(AEffect*) VSTPluginMain(hostFun);
@@ -269,11 +269,11 @@ extern(C) nothrow @nogc VstIntPtr hostCallback(AEffect* effect, VstInt32 opcode,
         case DEPRECATED_audioMasterWantMidi: return 0;
         case audioMasterGetTime:
         {
-            VSTPluginHost* phost = effect in reverseMapping;
+            VST2PluginHost* phost = effect in reverseMapping;
             if (!phost)
                 return 0;
 
-            VSTPluginHost host = *phost;
+            VST2PluginHost host = *phost;
             host.timeInfo.samplePos = host._processedSamples;
             host.timeInfo.flags = 0;
 

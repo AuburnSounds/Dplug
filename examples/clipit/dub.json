@@ -25,7 +25,7 @@
     "dependencies":
     {
         "dplug:dsp": { "path": "../.." },
-        "dplug:vst": { "path": "../.." },
+        "dplug:vst2": { "path": "../.." },
         "dplug:lv2": { "path": "../.."},
         "dplug:au": { "path": "../.." },
         "dplug:vst3": { "path": "../.." },
@@ -46,11 +46,11 @@
             "lflags-linux-ldc": [ "--version-script=module-vst3.ver" ]
         },
         {
-            "name": "VST",
-            "versions": ["VST"],
+            "name": "VST2",
+            "versions": ["VST2"],
             "targetType": "dynamicLibrary",
-            "lflags-osx-ldc": [ "-exported_symbols_list", "module-vst.lst", "-dead_strip" ],
-            "lflags-linux-ldc": [ "--version-script=module-vst.ver" ]
+            "lflags-osx-ldc": [ "-exported_symbols_list", "module-vst2.lst", "-dead_strip" ],
+            "lflags-linux-ldc": [ "--version-script=module-vst2.ver" ]
         },
         {
             "name": "AU",

@@ -83,7 +83,7 @@ void usage()
     flag("-a --arch", "Selects target architecture.", "x86 | x86_64 | all", "Windows => all   macOS => x86_64    Linux => x86_64");
     flag("-b --build", "Selects build type.", "same ones as dub accepts", "debug");
     flag("--compiler", "Selects D compiler.", "dmd | ldc | gdc", "ldc");
-    flag("-c --config", "Adds a build configuration.", "VST | VST3 | AU | AAX | LV2 | name starting with \"VST\", \"VST3\",\"AU\", \"AAX\", or \"LV2\"", "all");
+    flag("-c --config", "Adds a build configuration.", "VST2 | VST3 | AU | AAX | LV2 | name starting with \"VST2\", \"VST3\",\"AU\", \"AAX\", or \"LV2\"", "all");
     flag("-f --force", "Forces rebuild", null, "no");
     flag("--combined", "Combined build, important for cross-module inlining with LDC!", null, "no");
     flag("--os", "Cross-compile to another OS." ~ "(FUTURE)".red, "linux | macos | windows | autodetect", "build OS");
@@ -322,7 +322,7 @@ int main(string[] args)
             bool buildingVST2 = false;
             foreach(string conf; configurations)
             {
-                if (configIsVST(conf))
+                if (configIsVST2(conf))
                     buildingVST2 = true;
             }
 
@@ -722,7 +722,7 @@ int main(string[] args)
                         string format;
                         string installDir;
 
-                        if(configIsVST(config))
+                        if(configIsVST2(config))
                         {
                             format = "VST";
                             title = "VST 2.4 plugin-in";
@@ -777,7 +777,7 @@ int main(string[] args)
                         mkdirRecurse(exeDirectory);
                         fileMove(plugin.dubOutputFileName, exeDirectory ~ "/" ~ plugin.prettyName ~ ".so");
                     }
-                    else if (configIsVST(config)) // VST2 special case
+                    else if (configIsVST2(config)) // VST2 special case
                     {
                         // Simply copy the file
                         fileMove(plugin.dubOutputFileName, path ~ "/" ~ plugin.prettyName ~ ".so");
@@ -788,7 +788,7 @@ int main(string[] args)
                     // Only accepts two configurations: VST and AudioUnit
                     string pluginDir;
                     string installDir;
-                    if (configIsVST(config))
+                    if (configIsVST2(config))
                     {
                         pluginDir = plugin.prettyName ~ ".vst";
                         installDir = MAC_VST_DIR;
@@ -956,11 +956,11 @@ int main(string[] args)
                         string pkgFilename;
                         string title;
 
-                        if (configIsVST(config))
+                        if (configIsVST2(config))
                         {
 
-                            pkgIdentifier = plugin.pkgBundleVST();
-                            pkgFilename   = plugin.pkgFilenameVST();
+                            pkgIdentifier = plugin.pkgBundleVST2();
+                            pkgFilename   = plugin.pkgFilenameVST2();
                             title = "VST 2.4 plug-in";
                         }
                         else if (configIsVST3(config))

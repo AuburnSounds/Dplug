@@ -9,7 +9,7 @@
 
     "dependencies":
     {
-        "dplug:client": "*",
+        "dplug:client": {"path": "../../"},
         "colorize": "~>1.0"
     }
 }

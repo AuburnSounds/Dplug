@@ -97,7 +97,7 @@ string stripConfig(string config) pure nothrow @nogc
 {
     if (config.length >= 5 && config[0..5] == "VST3-")
         return config[5..$];
-    if (config.length >= 4 && config[0..4] == "VST-")
+    if (config.length >= 4 && config[0..4] == "VST2-")
         return config[4..$];
     if (config.length >= 3 && config[0..3] == "AU-")
         return config[3..$];
@@ -113,11 +113,11 @@ bool configIsVST3(string config) pure nothrow @nogc
     return config.length >= 4 && config[0..4] == "VST3";
 }
 
-bool configIsVST(string config) pure nothrow @nogc
+bool configIsVST2(string config) pure nothrow @nogc
 {
     if (configIsVST3(config))
         return false;
-    return config.length >= 3 && config[0..3] == "VST";
+    return config.length >= 4 && config[0..4] == "VST2";
 }
 
 bool configIsAU(string config) pure nothrow @nogc
@@ -377,7 +377,7 @@ struct Plugin
         return sanitizeFilenameString(pluginName) ~ "-vst3.pkg";
     }
 
-    string pkgFilenameVST() pure const
+    string pkgFilenameVST2() pure const
     {
         return sanitizeFilenameString(pluginName) ~ "-vst.pkg";
     }
@@ -402,9 +402,9 @@ struct Plugin
         return CFBundleIdentifierPrefix ~ "." ~ sanitizeBundleString(pkgFilenameVST3());
     }
 
-    string pkgBundleVST() pure const
+    string pkgBundleVST2() pure const
     {
-        return CFBundleIdentifierPrefix ~ "." ~ sanitizeBundleString(pkgFilenameVST());
+        return CFBundleIdentifierPrefix ~ "." ~ sanitizeBundleString(pkgFilenameVST2());
     }
 
     string pkgBundleAU() pure const
@@ -562,11 +562,11 @@ Plugin readPluginDescription()
         {
             string cname = c["name"].str;
             if (!configIsAAX(cname)
-              &&!configIsVST(cname)
+              &&!configIsVST2(cname)
               &&!configIsVST3(cname)
               &&!configIsAU(cname)
               &&!configIsLV2(cname))
-                throw new Exception(format("Configuration name should start with \"VST\", \"VST3\", \"AU\", \"AAX\", or \"LV2\". '%s' is not a valid configuration name.", cname));
+                throw new Exception(format("Configuration name should start with \"VST2\", \"VST3\", \"AU\", \"AAX\", or \"LV2\". '%s' is not a valid configuration name.", cname));
             result.configurations ~= cname;
         }
 
@@ -901,7 +901,7 @@ string makePListFile(Plugin plugin, string config, bool hasIcon, bool isAudioCom
     addKeyString("CFBundleGetInfoString", productVersion ~ ", " ~ plugin.copyright);
 
     string CFBundleIdentifier;
-    if (configIsVST(config))
+    if (configIsVST2(config))
         CFBundleIdentifier = plugin.getVSTBundleIdentifier();
     else if (configIsVST3(config))
         CFBundleIdentifier = plugin.getVST3BundleIdentifier();

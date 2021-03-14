@@ -20,7 +20,7 @@ VST plug-in client implementation.
 Copyright: Cockos Incorporated 2005-2015.
 Copyright: Guillaume Piolat 2015-2018.
 +/
-module dplug.vst.client;
+module dplug.vst2.client;
 
 import std.string;
 
@@ -43,13 +43,13 @@ import dplug.client.client,
        dplug.client.graphics,
        dplug.client.midi;
 
-import dplug.vst.translatesdk;
+import dplug.vst2.translatesdk;
 
 // Only does a semantic pass on this if the VST version identifier is defined.
 // This allows building dplug:vst even without a VST2 SDK (though nothing will be defined in this case)
-version(VST): 
+version(VST2): 
 
-template VSTEntryPoint(alias ClientClass)
+template VST2EntryPoint(alias ClientClass)
 {
     enum entry_VSTPluginMain =
         "export extern(C) nothrow AEffect* VSTPluginMain(HostCallbackFunction hostCallback) " ~
@@ -90,19 +90,19 @@ template VSTEntryPoint(alias ClientClass)
 
     version(OSX)
         // OSX has two VST entry points
-        const char[] VSTEntryPoint = entry_VSTPluginMain ~ entry_main_macho;
+        const char[] VST2EntryPoint = entry_VSTPluginMain ~ entry_main_macho;
     else version(Windows)
     {
         static if (size_t.sizeof == int.sizeof)
             // 32-bit Windows needs a legacy "main" entry point
-            const char[] VSTEntryPoint = entry_VSTPluginMain ~ entry_main_if_no_unittest;
+            const char[] VST2EntryPoint = entry_VSTPluginMain ~ entry_main_if_no_unittest;
         else
             // 64-bit Windows does not
-            const char[] VSTEntryPoint = entry_VSTPluginMain;
+            const char[] VST2EntryPoint = entry_VSTPluginMain;
 
     }
     else version(linux)
-        const char[] VSTEntryPoint = entry_VSTPluginMain ~ entry_main_if_no_unittest;
+        const char[] VST2EntryPoint = entry_VSTPluginMain ~ entry_main_if_no_unittest;
     else
         static assert(false);
 }
@@ -118,7 +118,7 @@ nothrow AEffect* myVSTEntryPoint(alias ClientClass)(HostCallbackFunction hostCal
     auto client = mallocNew!ClientClass();
 
     // malloc'd else the GC would not register roots for some reason!
-    VSTClient plugin = mallocNew!VSTClient(client, hostCallback);
+    VST2Client plugin = mallocNew!VST2Client(client, hostCallback);
     return &plugin._effect;
 };
 
@@ -126,7 +126,7 @@ nothrow AEffect* myVSTEntryPoint(alias ClientClass)(HostCallbackFunction hostCal
 //version = logVSTDispatcher;
 
 /// VST client wrapper
-class VSTClient
+class VST2Client
 {
 public:
 nothrow:
@@ -1053,7 +1053,7 @@ extern(C) private nothrow
             debugLog(buf.ptr);
         }
 
-        auto plugin = cast(VSTClient)(effect.object);
+        auto plugin = cast(VST2Client)(effect.object);
         result = plugin.dispatcher(opcode, index, value, ptr, opt);
         if (opcode == effClose)
         {
@@ -1068,7 +1068,7 @@ extern(C) private nothrow
         FPControl fpctrl;
         fpctrl.initialize();
 
-        auto plugin = cast(VSTClient)effect.object;
+        auto plugin = cast(VST2Client)effect.object;
         plugin.process(inputs, outputs, sampleFrames);
     }
 
@@ -1078,7 +1078,7 @@ extern(C) private nothrow
         FPControl fpctrl;
         fpctrl.initialize();
 
-        auto plugin = cast(VSTClient)effect.object;
+        auto plugin = cast(VST2Client)effect.object;
         plugin.processReplacing(inputs, outputs, sampleFrames);
     }
 
@@ -1088,7 +1088,7 @@ extern(C) private nothrow
         FPControl fpctrl;
         fpctrl.initialize();
 
-        auto plugin = cast(VSTClient)effect.object;
+        auto plugin = cast(VST2Client)effect.object;
         plugin.processDoubleReplacing(inputs, outputs, sampleFrames);
     }
 
@@ -1098,7 +1098,7 @@ extern(C) private nothrow
         FPControl fpctrl;
         fpctrl.initialize();
 
-        auto plugin = cast(VSTClient)effect.object;
+        auto plugin = cast(VST2Client)effect.object;
         Client client = plugin._client;
 
         if (!plugin.isValidParamIndex(index))
@@ -1113,7 +1113,7 @@ extern(C) private nothrow
         FPControl fpctrl;
         fpctrl.initialize();
 
-        auto plugin = cast(VSTClient)(effect.object);
+        auto plugin = cast(VST2Client)(effect.object);
         Client client = plugin._client;
 
         if (!plugin.isValidParamIndex(index))

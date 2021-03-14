@@ -15,10 +15,10 @@ string pluginEntryPoints(ClientClass)()
         `
         mixin(DLLEntryPoint!());
 
-        version(VST)
+        version(VST2)
         {
-            import dplug.vst;
-            mixin(VSTEntryPoint!` ~ ClientClass.stringof ~ `);
+            import dplug.vst2;
+            mixin(VST2EntryPoint!` ~ ClientClass.stringof ~ `);
         }
 
         version(AU)
