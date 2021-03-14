@@ -97,8 +97,8 @@ string stripConfig(string config) pure nothrow @nogc
 {
     if (config.length >= 5 && config[0..5] == "VST3-")
         return config[5..$];
-    if (config.length >= 4 && config[0..4] == "VST2-")
-        return config[4..$];
+    if (config.length >= 5 && config[0..5] == "VST2-")
+        return config[5..$];
     if (config.length >= 3 && config[0..3] == "AU-")
         return config[3..$];
     if (config.length >= 4 && config[0..4] == "AAX-")
@@ -115,8 +115,6 @@ bool configIsVST3(string config) pure nothrow @nogc
 
 bool configIsVST2(string config) pure nothrow @nogc
 {
-    if (configIsVST3(config))
-        return false;
     return config.length >= 4 && config[0..4] == "VST2";
 }
 
