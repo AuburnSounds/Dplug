@@ -725,7 +725,7 @@ int main(string[] args)
                         if(configIsVST2(config))
                         {
                             format = "VST";
-                            title = "VST 2.4 plugin-in";
+                            title = "VST 2.4 plug-in";
                             if (arch == arch.x86_64)
                                 installDir = WIN_VST_DIR;
                             else
@@ -734,7 +734,7 @@ int main(string[] args)
                         else if (configIsVST3(config))
                         {
                             format = "VST3";
-                            title = "VST3 plugin-in";
+                            title = "VST 3 plug-in";
                             if (arch == arch.x86_64)
                                 installDir = WIN_VST3_DIR;
                             else
@@ -743,13 +743,13 @@ int main(string[] args)
                         else if (configIsAAX(config))
                         {
                             format = "AAX";
-                            title = "AAX plugin-in";
+                            title = "AAX plug-in";
                             installDir = WIN_AAX_DIR;
                         }
                         else if (configIsLV2(config))
                         {
                             format = "LV2";
-                            title = "LV2 plugin-in";
+                            title = "LV2 plug-in";
                             if (arch == arch.x86_64)
                                 installDir = WIN_LV2_DIR;
                             else
@@ -1261,8 +1261,7 @@ void generateWindowsInstaller(string outputDir,
     auto sections = packs.uniq!((p1, p2) => p1.format == p2.format);
     foreach(p; sections)
     {
-
-        content ~= `Section "` ~ p.format ~ `" Sec` ~ p.format ~ "\n";
+        content ~= `Section "` ~ p.title ~ `" Sec` ~ p.format ~ "\n";
         content ~= "AddSize " ~ p.bytes.to!string ~ "\n";
         content ~= "SectionEnd\n";
     }
