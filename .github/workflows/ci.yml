@@ -102,13 +102,13 @@ jobs:
     - name: Build and test distort plug-ins
       run: |
         if ("${{ matrix.os }}" -like 'windows*') {
-          $Plugins = "-c VST -c VST3"
+          $Plugins = "-c VST2 -c VST3"
           $BuiltLib = "./builds/Windows-64b-VST/Witty Audio Destructatorizer-64.dll"
         } elseif ("${{ matrix.os }}" -like 'macOS*') {
-          $Plugins = "-c VST -c VST3 -c AU"
+          $Plugins = "-c VST2 -c VST3 -c AU"
           $BuiltLib = "./builds/macOS-64b-VST/Witty Audio Destructatorizer.vst/Contents/MacOS/Witty Audio Destructatorizer"
         } elseif ("${{ matrix.os }}" -like 'ubuntu*') {
-          $Plugins = "-c VST -c VST3 -c LV2"
+          $Plugins = "-c VST2 -c VST3 -c LV2"
           $BuiltLib = "./builds/Linux-64b-VST/Witty Audio Destructatorizer.so"
         }
         $esc = '--%'
@@ -120,13 +120,13 @@ jobs:
     - name: Build and test clipit plug-ins
       run: |
         if ("${{ matrix.os }}" -like 'windows*') {
-          $Plugins = "-c VST -c VST3"
+          $Plugins = "-c VST2 -c VST3"
           $BuiltLib = "./builds/Windows-64b-VST/Witty Audio CLIP It-64.dll"
         } elseif ("${{ matrix.os }}" -like 'macOS*') {
-          $Plugins = "-c VST -c VST3 -c AU"
+          $Plugins = "-c VST2 -c VST3 -c AU"
           $BuiltLib = "./builds/macOS-64b-VST/Witty Audio CLIP It.vst/Contents/MacOS/Witty Audio CLIP It"
         } elseif ("${{ matrix.os }}" -like 'ubuntu*') {
-          $Plugins = "-c VST -c VST3 -c LV2"
+          $Plugins = "-c VST2 -c VST3 -c LV2"
           $BuiltLib = "./builds/Linux-64b-VST/Witty Audio CLIP It.so"
         }
         $esc = '--%'
