@@ -97,6 +97,9 @@ nothrow:
         _localRectsBuf = makeVec!box2i();
         _children = makeVec!UIElement();
         _zOrderedChildren = makeVec!UIElement();
+
+        // Initially set to an empty position
+        assert(_position.empty()); 
     }
 
     ~this()
@@ -197,18 +200,23 @@ nothrow:
         onDrawPBR(diffuseMapCropped, depthMapCropped, materialMapCropped, _localRectsBuf[]);
     }
 
-    /// TODO: useless until we have resizeable UIs.
-    /// Meant to be overriden almost everytime for custom behaviour.
-    /// Default behaviour is to span the whole area and reflow children.
-    /// Any layout algorithm is up to you.
-    /// Like in the DOM, children elements don't need to be inside _position of their parent.
-    void reflow(box2i availableSpace)
+    /// The goal of this method is to update positions of childrens. It is called whenever
+    /// _position changes.
+    ///
+    /// It is called after a widget position is changed.
+    /// Given information with `position` getter, the widget decides the position of its 
+    /// children, by calling their `position` setter (which will call `reflow` itself).
+    /// 
+    /// `reflow()` cannot be used to set the own position of a widget: it is always done
+    /// externally. You shouldn't call reflow yourself, instead use `position = x;`.
+    ///
+    /// Like in the DOM, children elements don't need to be inside position of their parent.
+    /// The _position field is indeed storing an absolute position.
+    ///
+    /// See_also: `position`, `_position`.
+    void reflow()
     {
-        // default: span the entire available area, and do the same for children
-        _position = availableSpace;
-
-        foreach(ref child; _children)
-            child.reflow(availableSpace);
+        // default: do nothing
     }
 
     /// Returns: Position of the element, that will be used for rendering. This
@@ -219,13 +227,28 @@ nothrow:
     }
 
     /// Forces the position of the element. It is typically used in the parent
-    /// reflow() method
+    /// reflow() method.
     /// IMPORTANT: As of today you are not allowed to assign a position outside the extent of
     //             the window.
-    final box2i position(box2i p)
+    final void position(box2i p)
     {
         assert(p.isSorted());
-        return _position = p;
+
+        bool moved = (p != _position);
+        
+        // Make dirty rect in former and new positions.
+        if (moved)
+        {
+            setDirtyWhole();
+            _position = p;
+            setDirtyWhole();
+        }
+
+        // New in Dplug v11: setting position now calls reflow() if position has changed.
+        reflow();
+
+        // _position shouldn't be touched by `reflow` calls.
+        assert(p == _position);
     }
 
     final UIElement child(int n)
@@ -449,9 +472,7 @@ nothrow:
                         int h = _position.height + dy;
                         if (w < 5) w = 5;
                         if (h < 5) h = 5;
-                        setDirtyWhole();
-                        _position = box2i(nx, ny, nx + w, ny + h);
-                        setDirtyWhole();
+                        position = box2i(nx, ny, nx + w, ny + h);
                         draggingUsed = true;
 
                     
@@ -467,9 +488,7 @@ nothrow:
                         int ny = _position.min.y + dy;
                         if (nx < 0) nx = 0;
                         if (ny < 0) ny = 0;
-                        setDirtyWhole();
-                        _position = box2i(nx, ny, nx + _position.width, ny + _position.height);
-                        setDirtyWhole();
+                        position = box2i(nx, ny, nx + position.width, ny + position.height);
                         draggingUsed = true;
                     }
 
@@ -478,7 +497,7 @@ nothrow:
                     if (draggingUsed)
                     {
                         char[128] buf;
-                        snprintf(buf.ptr, 128, "_position = box2i.rectangle(%d, %d, %d, %d)\n", _position.min.x, _position.min.y, _position.width, _position.height);
+                        snprintf(buf.ptr, 128, "position = rectangle(%d, %d, %d, %d)\n", _position.min.x, _position.min.y, _position.width, _position.height);
                         debugLog(buf.ptr);
                     }
                 }
@@ -556,9 +575,7 @@ nothrow:
                         int h = _position.height + dy;
                         if (w < 5) w = 5;
                         if (h < 5) h = 5;
-                        setDirtyWhole();
-                        _position = box2i(nx, ny, nx + w, ny + h);
-                        setDirtyWhole();
+                        position = box2i(nx, ny, nx + w, ny + h);
                         draggingUsed = true;
 
 
@@ -574,9 +591,7 @@ nothrow:
                         int ny = _position.min.y + dy;
                         if (nx < 0) nx = 0;
                         if (ny < 0) ny = 0;
-                        setDirtyWhole();
-                        _position = box2i(nx, ny, nx + _position.width, ny + _position.height);
-                        setDirtyWhole();
+                        position = box2i(nx, ny, nx + position.width, ny + position.height);
                         draggingUsed = true;
                     }
 
@@ -585,7 +600,7 @@ nothrow:
                     if (draggingUsed)
                     {
                         char[128] buf;
-                        snprintf(buf.ptr, 128, "_position = box2i.rectangle(%d, %d, %d, %d)\n", _position.min.x, _position.min.y, _position.width, _position.height);
+                        snprintf(buf.ptr, 128, "position = box2i.rectangle(%d, %d, %d, %d)\n", _position.min.x, _position.min.y, _position.width, _position.height);
                         debugLog(buf.ptr);
                     }
                 }
@@ -697,8 +712,10 @@ nothrow:
 
     /// Mark a part of the element dirty.
     /// This part must be a subrect of its _position.
+    ///
     /// Params:
     ///     rect = Position of the dirtied rectangle, in widget coordinates.
+    ///
     /// Important: you could call this from the audio thread, however it is
     ///            much more efficient to mark the widget dirty with an atomic 
     ///            and call setDirty in animation callback.
@@ -871,6 +888,7 @@ protected:
     /// Position is the graphical extent of the element, or something larger.
     /// An `UIElement` is not allowed though to draw further than its _position.
     /// For efficiency it's best to keep `_position` as small as feasible.
+    /// This is an absolute positioning data, that doesn't depend on the parent's position.
     box2i _position;
 
     /// The list of children UI elements.

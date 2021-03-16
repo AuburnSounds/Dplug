@@ -81,13 +81,8 @@ nothrow:
         }
     }
 
-    override void reflow(box2i availableSpace)
+    override void reflow()
     {
-        // Note: the position is entirely decorrelated from the size of background images
-        // IMPORTANT technically we don't need to take all space, since we'll never draw outside a subrect
-        //           this is for the future where we may resize the images.
-        _position = availableSpace;
-
         // Compute which rect of _backgroundImage goes into which rect of _position
         // if the full element was entirely dirty
         // The image is not resized to fit, instead it is cropped.

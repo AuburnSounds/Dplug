@@ -162,7 +162,8 @@ nothrow:
     }
 
     // Sets _position and resize automatically to adjust with text size and content. 
-    void setCenterAndResize(int x, int y) nothrow @nogc
+    // Note: deprecated, since this should be done in some kind of `reflow` method.
+    deprecated void setCenterAndResize(int x, int y) nothrow @nogc
     {
         box2i textDimensions = _font.measureText(_text, _textSize, _letterSpacing);
         int bx = x - textDimensions.width/2 - 1;

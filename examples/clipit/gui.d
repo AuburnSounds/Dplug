@@ -31,9 +31,9 @@ nothrow:
         int H = 500;
 
         // Sets the number of pixels recomputed around dirtied controls.
-        // Since we aren't using pbr we can set this value to 0 to save
+        // Since we aren't using PBR we can set this value to 0 to save
         // on resources.
-        // If you are mixing pbr and flat elements, you may want to set this
+        // If you are mixing PBR and flat elements, you may want to set this
         // to a higher value such as 20.
         setUpdateMargin(0);
 
@@ -47,21 +47,31 @@ nothrow:
         // Creates all widets and adds them as children to the GUI
         // widgets are not visible until their positions have been set
         int numFrames = 101;
-        UIFilmstripKnob inputGainKnob = mallocNew!UIFilmstripKnob(context(), cast(FloatParameter) _client.param(paramInputGain), knobImage, numFrames);
-        addChild(inputGainKnob);
-        UIFilmstripKnob clipKnob = mallocNew!UIFilmstripKnob(context(), cast(FloatParameter) _client.param(paramClip), knobImage, numFrames);
-        addChild(clipKnob);
-        UIFilmstripKnob outputGainKnob = mallocNew!UIFilmstripKnob(context(), cast(FloatParameter) _client.param(paramOutputGain), knobImage, numFrames);
-        addChild(outputGainKnob);
-        UIFilmstripKnob mixKnob = mallocNew!UIFilmstripKnob(context(), cast(FloatParameter) _client.param(paramMix), knobImage, numFrames);
-        addChild(mixKnob);
-        UIImageSwitch modeSwitch = mallocNew!UIImageSwitch(context(), cast(BoolParameter) _client.param(paramMode), switchOnImage, switchOffImage);
-        addChild(modeSwitch);
 
-        // Builds the UI hierarchy
-        // Note: when Dplug has resizeable UI, all positionning is going 
-        // to move into a reflow() override.
-        // Meanwhile, we hardcode each position.
+
+        _inputGainKnob = mallocNew!UIFilmstripKnob(context(), cast(FloatParameter) _client.param(paramInputGain), knobImage, numFrames);
+        addChild(_inputGainKnob);
+        
+        _clipKnob = mallocNew!UIFilmstripKnob(context(), cast(FloatParameter) _client.param(paramClip), knobImage, numFrames);
+        addChild(_clipKnob);
+        
+        _outputGainKnob = mallocNew!UIFilmstripKnob(context(), cast(FloatParameter) _client.param(paramOutputGain), knobImage, numFrames);
+        addChild(_outputGainKnob);
+        
+        _mixKnob = mallocNew!UIFilmstripKnob(context(), cast(FloatParameter) _client.param(paramMix), knobImage, numFrames);
+        addChild(_mixKnob);
+
+        addChild(_modeSwitch = mallocNew!UIImageSwitch(context(), cast(BoolParameter) _client.param(paramMode), switchOnImage, switchOffImage));       
+
+        addChild(_resizerHint = mallocNew!UIWindowResizer(context()));        
+    }
+
+    override void reflow()
+    {
+        super.reflow();
+        int W = position.width;
+        int H = position.height;
+
         immutable int knobX1 = 70;
         immutable int knobX2 = 308;
         immutable int knobY1 = 101;
@@ -69,20 +79,18 @@ nothrow:
         immutable int knobWidth = 128;
         immutable int knobHeight = 128;
 
-        inputGainKnob.position = box2i(knobX1, knobY1, knobX1 + knobWidth, knobY1 + knobHeight);
-        clipKnob.position = box2i(knobX2, knobY1, knobX2 + knobWidth, knobY1 + knobHeight);
-        outputGainKnob.position = box2i(knobX1, knobY2, knobX1 + knobWidth, knobY2 + knobHeight);
-        mixKnob.position = box2i(knobX2, knobY2, knobX2 + knobWidth, knobY2 + knobHeight);
+        _inputGainKnob.position = box2i(knobX1, knobY1, knobX1 + knobWidth, knobY1 + knobHeight);
+        _clipKnob.position = box2i(knobX2, knobY1, knobX2 + knobWidth, knobY1 + knobHeight);
+        _outputGainKnob.position = box2i(knobX1, knobY2, knobX1 + knobWidth, knobY2 + knobHeight);
+        _mixKnob.position = box2i(knobX2, knobY2, knobX2 + knobWidth, knobY2 + knobHeight);
 
         immutable int switchX = 380;
         immutable int switchY = 28;
         immutable int switchWidth = 51;
         immutable int switchHeight = 21;
 
-        modeSwitch.position = box2i(switchX, switchY, switchX + switchWidth, switchY  + switchHeight);
-
-        addChild(resizerHint = mallocNew!UIWindowResizer(context()));
-        resizerHint.position = rectangle(W-20, H-20, 20, 20);
+        _modeSwitch.position = box2i(switchX, switchY, switchX + switchWidth, switchY  + switchHeight);
+        _resizerHint.position = rectangle(W-20, H-20, 20, 20);
     }
 
     // This is just to show how to use with dplug:canvas
@@ -114,5 +122,11 @@ nothrow:
 
 private:
     Canvas canvas;
-    UIWindowResizer resizerHint;
+    
+    UIFilmstripKnob _inputGainKnob;
+    UIFilmstripKnob _clipKnob;
+    UIFilmstripKnob _outputGainKnob;
+    UIFilmstripKnob _mixKnob;
+    UIImageSwitch   _modeSwitch;
+    UIWindowResizer _resizerHint;
 }

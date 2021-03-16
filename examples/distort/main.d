@@ -178,12 +178,12 @@ nothrow:
             float[2] inputLevels;
             inputLevels[0] = convertLinearGainToDecibel(_inputRMS[0].RMS());
             inputLevels[1] = minChan >= 1 ? convertLinearGainToDecibel(_inputRMS[1].RMS()) : inputLevels[0];
-            gui.inputBargraph.setValues(inputLevels);
+            gui._inputBargraph.setValues(inputLevels);
 
             float[2] outputLevels;
             outputLevels[0] = convertLinearGainToDecibel(_outputRMS[0].RMS());
             outputLevels[1] = minChan >= 1 ? convertLinearGainToDecibel(_outputRMS[1].RMS()) : outputLevels[0];
-            gui.outputBargraph.setValues(outputLevels);
+            gui._outputBargraph.setValues(outputLevels);
 
             graphicsRelease();
         }

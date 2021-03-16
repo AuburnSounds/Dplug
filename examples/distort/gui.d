@@ -28,12 +28,12 @@ nothrow:
 
     DistortClient _client;
 
-    UISlider inputSlider;
-    UIKnob driveKnob;
-    UISlider outputSlider;
-    UIOnOffSwitch onOffSwitch;
-    UIBargraph inputBargraph, outputBargraph;
-    UIColorCorrection colorCorrection;
+    UISlider _inputSlider;
+    UIKnob _driveKnob;
+    UISlider _outputSlider;
+    UIOnOffSwitch _onOffSwitch;
+    UIBargraph _inputBargraph, _outputBargraph;
+    UIColorCorrection _colorCorrection;
 
     Font _font;
 
@@ -62,7 +62,7 @@ nothrow:
         // This is a tradeoff between Emissive light accuracy and speed.
         // A typical good value is 20, and this is the default, as this is
         // what `PBRCompositor` needs for the emissive pass.
-        setUpdateMargin(19);
+        setUpdateMargin(20);
 
         // All resources are bundled as a string import.
         // You can avoid resource compilers that way.
@@ -70,8 +70,6 @@ nothrow:
         _font = mallocNew!Font(cast(ubyte[])( import("VeraBd.ttf") ));
 
         // Builds the UI hierarchy
-        // Note: when Dplug has resizeable UI, all positionning is going
-        // to move into a reflow() override.
         // Meanwhile, we hardcode each position.
 
         RGBA litTrailDiffuse = RGBA(151, 119, 255, 100);
@@ -79,48 +77,41 @@ nothrow:
 
         _knobImageData = loadKnobImage( import("imageknob.png") );
         addChild(_imageKnob = mallocNew!UIImageKnob(context(), _knobImageData, cast(FloatParameter) _client.param(paramBias)));
-        _imageKnob.position = rectangle(517, 176, 46, 46);
         _imageKnob.hasTrail = false; // no trail by default
 
         // Add procedural knobs
-        addChild(driveKnob = mallocNew!UIKnob(context(), cast(FloatParameter) _client.param(paramDrive)));
-        driveKnob.position = box2i.rectangle(250, 140, 120, 120);
-        driveKnob.knobRadius = 0.65f;
-        driveKnob.knobDiffuse = RGBA(255, 255, 238, 0);
-        driveKnob.knobMaterial = RGBA(0, 255, 128, 255);
-        driveKnob.numLEDs = 15;
-        driveKnob.litTrailDiffuse = litTrailDiffuse;
-        driveKnob.unlitTrailDiffuse = unlitTrailDiffuse;
-        driveKnob.LEDDiffuseLit = RGBA(40, 40, 40, 100);
-        driveKnob.LEDDiffuseUnlit = RGBA(40, 40, 40, 0);
-        driveKnob.LEDRadiusMin = 0.06f;
-        driveKnob.LEDRadiusMax = 0.06f;
+        addChild(_driveKnob = mallocNew!UIKnob(context(), cast(FloatParameter) _client.param(paramDrive)));
+        _driveKnob.knobRadius = 0.65f;
+        _driveKnob.knobDiffuse = RGBA(255, 255, 238, 0);
+        _driveKnob.knobMaterial = RGBA(0, 255, 128, 255);
+        _driveKnob.numLEDs = 15;
+        _driveKnob.litTrailDiffuse = litTrailDiffuse;
+        _driveKnob.unlitTrailDiffuse = unlitTrailDiffuse;
+        _driveKnob.LEDDiffuseLit = RGBA(40, 40, 40, 100);
+        _driveKnob.LEDDiffuseUnlit = RGBA(40, 40, 40, 0);
+        _driveKnob.LEDRadiusMin = 0.06f;
+        _driveKnob.LEDRadiusMax = 0.06f;
 
         // Add sliders
-        addChild(inputSlider = mallocNew!UISlider(context(), cast(FloatParameter) _client.param(paramInput)));
-        inputSlider.position = box2i.rectangle(190, 132, 30, 130);
-        inputSlider.litTrailDiffuse = litTrailDiffuse;
-        inputSlider.unlitTrailDiffuse = unlitTrailDiffuse;
+        addChild(_inputSlider = mallocNew!UISlider(context(), cast(FloatParameter) _client.param(paramInput)));
+        _inputSlider.litTrailDiffuse = litTrailDiffuse;
+        _inputSlider.unlitTrailDiffuse = unlitTrailDiffuse;
 
-        addChild(outputSlider = mallocNew!UISlider(context(), cast(FloatParameter) _client.param(paramOutput)));
-        outputSlider.position = box2i.rectangle(410, 132, 30, 130);
-        outputSlider.litTrailDiffuse = litTrailDiffuse;
-        outputSlider.unlitTrailDiffuse = unlitTrailDiffuse;
+        addChild(_outputSlider = mallocNew!UISlider(context(), cast(FloatParameter) _client.param(paramOutput)));
+        _outputSlider.litTrailDiffuse = litTrailDiffuse;
+        _outputSlider.unlitTrailDiffuse = unlitTrailDiffuse;
 
         // Add switch
-        addChild(onOffSwitch = mallocNew!UIOnOffSwitch(context(), cast(BoolParameter) _client.param(paramOnOff)));
-        onOffSwitch.position = box2i.rectangle(90, 177, 30, 40);
-        onOffSwitch.diffuseOn = litTrailDiffuse;
-        onOffSwitch.diffuseOff = unlitTrailDiffuse;
+        addChild(_onOffSwitch = mallocNew!UIOnOffSwitch(context(), cast(BoolParameter) _client.param(paramOnOff)));
+        _onOffSwitch.diffuseOn = litTrailDiffuse;
+        _onOffSwitch.diffuseOff = unlitTrailDiffuse;
 
         // Add bargraphs
-        addChild(inputBargraph = mallocNew!UIBargraph(context(), 2, -80.0f, 6.0f));
-        inputBargraph.position = box2i.rectangle(150, 132, 30, 130);
-        addChild(outputBargraph = mallocNew!UIBargraph(context(), 2, -80.0f, 6.0f));
-        outputBargraph.position = box2i.rectangle(450, 132, 30, 130);
+        addChild(_inputBargraph = mallocNew!UIBargraph(context(), 2, -80.0f, 6.0f));
+        addChild(_outputBargraph = mallocNew!UIBargraph(context(), 2, -80.0f, 6.0f));
         static immutable float[2] startValues = [0.0f, 0.0f];
-        inputBargraph.setValues(startValues);
-        outputBargraph.setValues(startValues);
+        _inputBargraph.setValues(startValues);
+        _outputBargraph.setValues(startValues);
 
         // Global color correction.
         // Very useful at the end of the UI creating process.
@@ -129,9 +120,8 @@ nothrow:
             mat3x4!float colorCorrectionMatrix = mat3x4!float(- 0.07f, 1.0f , 1.15f, 0.03f,
                                                               + 0.01f, 0.93f, 1.16f, 0.08f,
                                                               + 0.0f , 1.0f , 1.10f, -0.01f);
-            addChild(colorCorrection = mallocNew!UIColorCorrection(context()));
-            colorCorrection.setLiftGammaGainContrastRGB(colorCorrectionMatrix);
-            colorCorrection.position = box2i.rectangle(0, 0, W, H);
+            addChild(_colorCorrection = mallocNew!UIColorCorrection(context()));
+            _colorCorrection.setLiftGammaGainContrastRGB(colorCorrectionMatrix);            
         }
     }
 
@@ -139,5 +129,20 @@ nothrow:
     {
         _font.destroyFree();
         _knobImageData.destroyFree();        
+    }
+
+    override void reflow()
+    {
+        super.reflow();
+        int W = position.width;
+        int H = position.height;
+        _imageKnob.position = rectangle(517, 176, 46, 46);
+        _inputSlider.position = rectangle(190, 132, 30, 130);
+        _outputSlider.position = rectangle(410, 132, 30, 130);
+        _onOffSwitch.position = rectangle(90, 177, 30, 40);
+        _driveKnob.position = box2i.rectangle(250, 140, 120, 120);
+        _inputBargraph.position = rectangle(150, 132, 30, 130);
+        _outputBargraph.position = rectangle(450, 132, 30, 130);
+        _colorCorrection.position = box2i.rectangle(0, 0, W, H);
     }
 }

@@ -167,7 +167,7 @@ nothrow:
             case GraphicsBackend.x11: wbackend = WindowBackend.x11; break;
         }
 
-        reflow(box2i(0, 0, _currentWidth, _currentHeight));
+        position = box2i(0, 0, _currentWidth, _currentHeight);
 
         // Sets the whole UI dirty.
         // This needs to be done _before_ window creation, else there could be a race
@@ -604,7 +604,7 @@ protected:
         _currentWidth = width;
         _currentHeight = height;
 
-        reflow(box2i(0, 0, _currentWidth, _currentHeight));
+        position = box2i(0, 0, _currentWidth, _currentHeight);
 
         // Resize compositor buffers
         compositor.resizeBuffers(width, height, PBR_TILE_MAX_WIDTH, PBR_TILE_MAX_HEIGHT);
