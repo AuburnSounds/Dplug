@@ -103,13 +103,13 @@ jobs:
       run: |
         if ("${{ matrix.os }}" -like 'windows*') {
           $Plugins = "-c VST2 -c VST3"
-          $BuiltLib = "./builds/Windows-64b-VST/Witty Audio Destructatorizer-64.dll"
+          $BuiltLib = "./builds/Windows-64b-VST2/Witty Audio Destructatorizer-64.dll"
         } elseif ("${{ matrix.os }}" -like 'macOS*') {
           $Plugins = "-c VST2 -c VST3 -c AU"
-          $BuiltLib = "./builds/macOS-64b-VST/Witty Audio Destructatorizer.vst/Contents/MacOS/Witty Audio Destructatorizer"
+          $BuiltLib = "./builds/macOS-64b-VST2/Witty Audio Destructatorizer.vst/Contents/MacOS/Witty Audio Destructatorizer"
         } elseif ("${{ matrix.os }}" -like 'ubuntu*') {
           $Plugins = "-c VST2 -c VST3 -c LV2"
-          $BuiltLib = "./builds/Linux-64b-VST/Witty Audio Destructatorizer.so"
+          $BuiltLib = "./builds/Linux-64b-VST2/Witty Audio Destructatorizer.so"
         }
         $esc = '--%'
         ${{ env.DPlugBuild }} -a ${{ matrix.arch }} $esc $Plugins
@@ -121,13 +121,13 @@ jobs:
       run: |
         if ("${{ matrix.os }}" -like 'windows*') {
           $Plugins = "-c VST2 -c VST3"
-          $BuiltLib = "./builds/Windows-64b-VST/Witty Audio CLIP It-64.dll"
+          $BuiltLib = "./builds/Windows-64b-VST2/Witty Audio CLIP It-64.dll"
         } elseif ("${{ matrix.os }}" -like 'macOS*') {
           $Plugins = "-c VST2 -c VST3 -c AU"
-          $BuiltLib = "./builds/macOS-64b-VST/Witty Audio CLIP It.vst/Contents/MacOS/Witty Audio CLIP It"
+          $BuiltLib = "./builds/macOS-64b-VST2/Witty Audio CLIP It.vst/Contents/MacOS/Witty Audio CLIP It"
         } elseif ("${{ matrix.os }}" -like 'ubuntu*') {
           $Plugins = "-c VST2 -c VST3 -c LV2"
-          $BuiltLib = "./builds/Linux-64b-VST/Witty Audio CLIP It.so"
+          $BuiltLib = "./builds/Linux-64b-VST2/Witty Audio CLIP It.so"
         }
         $esc = '--%'
         ${{ env.DPlugBuild }} -a ${{ matrix.arch }} $esc $Plugins
