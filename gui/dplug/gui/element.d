@@ -219,17 +219,17 @@ nothrow:
         // default: do nothing
     }
 
-    /// Returns: Position of the element, that will be used for rendering. This
-    /// position is reset when calling reflow.
+    /// Returns: Position of the element, that will be used for rendering. 
+    /// This getter is typically used in reflow() to adapt resource and children to the new position.
     final box2i position()
     {
         return _position;
     }
 
-    /// Forces the position of the element. It is typically used in the parent
-    /// reflow() method.
-    /// IMPORTANT: As of today you are not allowed to assign a position outside the extent of
-    //             the window.
+    /// Changes the position of the element.
+    /// This calls `reflow` if that position has changed.
+    /// IMPORTANT: As of today you are not allowed to assign a position outside the extent of the window.
+    ///            This is purely a Dplug limitation.
     final void position(box2i p)
     {
         assert(p.isSorted());
@@ -251,14 +251,16 @@ nothrow:
         assert(p == _position);
     }
 
+    /// Returns: The nth  child of this `UIElement`.
     final UIElement child(int n)
     {
         return _children[n];
     }
 
-    // The addChild method is mandatory.
-    // Such a child MUST be created through `dplug.core.nogc.mallocEmplace`.
-    // MAYDO: Should we dirty this place in the case it's not plugin creation?
+    /// Adds an `UIElement`
+    /// The addChild method is mandatory.
+    /// Such a child MUST be created through `dplug.core.nogc.mallocEmplace`.
+    /// Note: to display a newly added widget, use `position` setter.
     final void addChild(UIElement element)
     {
         element._parent = this;
