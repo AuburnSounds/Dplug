@@ -372,11 +372,9 @@ protected:
     Vec!box2i _rectsToDisplayDisjointed; // same list, but reorganized to avoid overlap
 
     /// The list of UIElement to potentially call `onDrawPBR` on.
-    // PERF: could be replaced by a range on the UI tree
     Vec!UIElement _elemsToDrawRaw;
 
     /// The list of UIElement to potentially call `onDrawPBR` on.
-    // PERF: could be replaced by a range on the UI tree
     Vec!UIElement _elemsToDrawPBR;
 
     /// Amount of pixels dirty rectangles are extended with.

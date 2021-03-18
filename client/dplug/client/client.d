@@ -39,10 +39,29 @@ import dplug.client.daw;
 interface IHostCommand
 {
 nothrow @nogc:
+
+    /// Notifies the host that editing of a parameter has begun from UI side.
     void beginParamEdit(int paramIndex);
+
+    /// Notifies the host that a parameter was edited from the UI side.
+    /// This enables the host to record automation.
+    /// It is illegal to call `paramAutomate` outside of a `beginParamEdit`/`endParamEdit` pair.
     void paramAutomate(int paramIndex, float value);
+
+    /// Notifies the host that editing of a parameter has finished from UI side.
     void endParamEdit(int paramIndex);
-    bool requestResize(int width, int height);
+
+    /// Requests to the host a resize of the plugin window.
+    ///
+    /// Note: UI widgets and plugin format clients have different coordinate systems.
+    ///
+    /// Params:
+    ///     width New width of the plugin, in logical pixels.
+    ///     height New height of the plugin, in logical pixels.
+    bool requestResize(int widthLogicalPixels, int heightLogicalPixels);
+
+    /// Report the identied host name (DAW).
+    /// MAYDO: not available for LV2.
     DAW getDAW();
 }
 
