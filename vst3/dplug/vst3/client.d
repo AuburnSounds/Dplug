@@ -1398,13 +1398,13 @@ nothrow:
         _graphicsMutex.lock();
         scope(exit) _graphicsMutex.unlock();
 
-        int w, h;
-        if (_vst3Client._client.getGUISize(&w, &h))
+        int widthLogicalPixels, heightLogicalPixels;
+        if (_vst3Client._client.getGUISize(&widthLogicalPixels, &heightLogicalPixels))
         {
             size.left = 0;
             size.top = 0;
-            size.right = w;
-            size.bottom = h;
+            size.right = widthLogicalPixels;
+            size.bottom = heightLogicalPixels;
             return kResultTrue;
         }
         return kResultFalse;

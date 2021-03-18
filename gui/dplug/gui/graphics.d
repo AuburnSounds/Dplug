@@ -190,10 +190,10 @@ nothrow:
         }
     }
 
-    override void getGUISize(int* width, int* height)
+    override void getGUISize(int* widthLogicalPixels, int* heightLogicalPixels)
     {
-        *width = _currentWidth;
-        *height = _currentHeight;
+        *widthLogicalPixels = _currentWidth;
+        *heightLogicalPixels = _currentHeight;
     }
 
     // This class is only here to avoid name conflicts between

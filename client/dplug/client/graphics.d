@@ -26,7 +26,11 @@ nothrow:
 @nogc:
     /// Create an UI, return a system-specific handle for the window/view
     abstract void* openUI(void* parentInfo, void* controlInfo, DAW daw, GraphicsBackend backend);
+
+    /// Close that UI.
     abstract void closeUI();
-    abstract void getGUISize(int* width, int* height);
+
+    /// Get the current plugin UI size in logical pixels.
+    abstract void getGUISize(int* widthLogicalPixels, int* heightLogicalPixels);
 }
 

@@ -426,11 +426,11 @@ nothrow:
             void* pluginWindow = cast(LV2UI_Widget)_client.openGUI(parentId, null, GraphicsBackend.autodetect);
             _graphicsMutex.unlock();
 
-            int width, height;
-            if (_client.getGUISize(&width, &height))
+            int widthLogicalPixels, heightLogicalPixels;
+            if (_client.getGUISize(&widthLogicalPixels, &heightLogicalPixels))
             {
                 _graphicsMutex.lock();
-                uiResize.ui_resize(uiResize.handle, width, height);
+                uiResize.ui_resize(uiResize.handle, widthLogicalPixels, heightLogicalPixels);
                 _graphicsMutex.unlock();
             }
 

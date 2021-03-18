@@ -339,13 +339,13 @@ nothrow:
         return (cast(IGraphics)_graphics).openUI(parentInfo, controlInfo, _hostCommand.getDAW(), backend);
     }
 
-    final bool getGUISize(int* width, int* height) nothrow @nogc
+    final bool getGUISize(int* widthLogicalPixels, int* heightLogicalPixels) nothrow @nogc
     {
         createGraphicsLazily();
         auto graphics = (cast(IGraphics)_graphics);
         if (graphics)
         {
-            graphics.getGUISize(width, height);
+            graphics.getGUISize(widthLogicalPixels, heightLogicalPixels);
             return true;
         }
         else

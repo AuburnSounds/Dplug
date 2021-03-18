@@ -495,14 +495,14 @@ private:
                         // Cubase may call effEditOpen and effEditGetRect simultaneously
                         _graphicsMutex.lock();
 
-                        int width, height;
-                        if (_client.getGUISize(&width, &height))
+                        int widthLogicalPixels, heightLogicalPixels;
+                        if (_client.getGUISize(&widthLogicalPixels, &heightLogicalPixels))
                         {
                             _graphicsMutex.unlock();
                             _editRect.top = 0;
                             _editRect.left = 0;
-                            _editRect.right = cast(short)(width);
-                            _editRect.bottom = cast(short)(height);
+                            _editRect.right = cast(short)(widthLogicalPixels);
+                            _editRect.bottom = cast(short)(heightLogicalPixels);
                             *cast(ERect**)(ptr) = &_editRect;
 
                             return 1;

@@ -13,7 +13,6 @@ public import dplug.gui.bufferedelement;
 public import dplug.gui.context;
 
 public import dplug.gui.graphics;
-public import dplug.gui.boxlist;
 public import dplug.gui.compositor;
 public import dplug.gui.legacypbr;
 public import dplug.gui.sizeconstraints;
