@@ -249,7 +249,7 @@ private:
 
 
         // Search for a pass of type PassSkyboxReflections
-        if (auto mpc = cast(MultipassCompositor) getCompositor())
+        if (auto mpc = cast(MultipassCompositor) compositor())
         {
             foreach(pass; mpc.passes())
             {

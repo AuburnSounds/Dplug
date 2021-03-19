@@ -66,14 +66,6 @@ nothrow:
     enum PBR_TILE_MAX_WIDTH = 128;
     enum PBR_TILE_MAX_HEIGHT = 128;
 
-    // TODO: make this private.
-    ICompositor compositor;
-
-    ICompositor getCompositor()
-    {
-        return compositor;
-    }
-
     this(SizeConstraints sizeConstraints, UIFlags flags)
     {
         _sizeConstraints = sizeConstraints;
@@ -95,7 +87,7 @@ nothrow:
         {
             CompositorCreationContext compositorContext;
             compositorContext.threadPool = _threadPool;
-            compositor = buildCompositor(&compositorContext);
+            _compositor = buildCompositor(&compositorContext);
         }
 
         _rectsToUpdateDisjointedRaw = makeVec!box2i;
@@ -134,7 +126,12 @@ nothrow:
     ICompositor buildCompositor(CompositorCreationContext* context)
     {        
         return mallocNew!PBRCompositor(context);
-    }  
+    }
+
+    final ICompositor compositor()
+    {
+        return _compositor;
+    }
 
     ~this()
     {
@@ -143,7 +140,7 @@ nothrow:
 
         _threadPool.destroyFree();
 
-        compositor.destroyFree();
+        _compositor.destroyFree();
         _diffuseMap.destroyFree();
         _materialMap.destroyFree();
         _depthMap.destroyFree();
@@ -318,6 +315,8 @@ nothrow:
     }
 
 protected:
+
+    ICompositor _compositor;
 
     UIContext _uiContext;
 
@@ -605,7 +604,7 @@ protected:
         position = box2i(0, 0, _currentWidth, _currentHeight);
 
         // Resize compositor buffers
-        compositor.resizeBuffers(width, height, PBR_TILE_MAX_WIDTH, PBR_TILE_MAX_HEIGHT);
+        _compositor.resizeBuffers(width, height, PBR_TILE_MAX_WIDTH, PBR_TILE_MAX_HEIGHT);
 
         _diffuseMap.size(5, width, height);
         _depthMap.size(4, width, height);
@@ -754,11 +753,11 @@ protected:
         _rectsToCompositeDisjointedTiled.clearContents();
         tileAreas(_rectsToCompositeDisjointed[],  PBR_TILE_MAX_WIDTH, PBR_TILE_MAX_HEIGHT, _rectsToCompositeDisjointedTiled);
 
-        compositor.compositeTile(wfb, 
-                                 _rectsToCompositeDisjointedTiled[],
-                                 _diffuseMap, 
-                                 _materialMap, 
-                                 _depthMap);
+        _compositor.compositeTile(wfb, 
+                                  _rectsToCompositeDisjointedTiled[],
+                                  _diffuseMap, 
+                                  _materialMap, 
+                                  _depthMap);
     }
 
     /// Compose lighting effects from depth and diffuse into a result.
