@@ -77,7 +77,10 @@ nothrow:
 
         _window = null;
 
-        _sizeConstraints.suggestDefaultSize(&_currentWidth, &_currentHeight);
+        // Find what size the UI should at first opening.
+        _sizeConstraints.suggestDefaultSize(&_currentUserWidth, &_currentUserHeight);
+        _currentLogicalWidth = _currentUserWidth;
+        _currentLogicalHeight = _currentUserHeight;
 
         int numThreads = 0; // auto
         int maxThreads = 2;
@@ -103,6 +106,9 @@ nothrow:
 
         _rectsToDisplay = makeVec!box2i;
         _rectsToDisplayDisjointed = makeVec!box2i;
+
+        _rectsToResize = makeVec!box2i;
+        _rectsToResizeDisjointed = makeVec!box2i;
 
         _elemsToDrawRaw = makeVec!UIElement;
         _elemsToDrawPBR = makeVec!UIElement;
@@ -148,11 +154,15 @@ nothrow:
         _windowListener.destroyFree();
         alignedFree(_compositedBuffer, 16);
         alignedFree(_renderedBuffer, 16);
+        alignedFree(_resizedBuffer, 16);
     }
 
     // Graphics implementation
 
-    override void* openUI(void* parentInfo, void* controlInfo, DAW daw, GraphicsBackend backend)
+    override void* openUI(void* parentInfo, 
+                          void* controlInfo, 
+                          DAW daw, 
+                          GraphicsBackend backend)
     {
         WindowBackend wbackend = void;
         final switch(backend)
@@ -164,7 +174,7 @@ nothrow:
             case GraphicsBackend.x11: wbackend = WindowBackend.x11; break;
         }
 
-        position = box2i(0, 0, _currentWidth, _currentHeight);
+        position = box2i(0, 0, _currentUserWidth, _currentUserHeight);
 
         // Sets the whole UI dirty.
         // This needs to be done _before_ window creation, else there could be a race
@@ -172,7 +182,7 @@ nothrow:
         setDirtyWhole(UILayer.allLayers);
 
         // We create this window each time.
-        _window = createWindow(WindowUsage.plugin, parentInfo, controlInfo, _windowListener, wbackend, _currentWidth, _currentHeight);
+        _window = createWindow(WindowUsage.plugin, parentInfo, controlInfo, _windowListener, wbackend, _currentLogicalWidth, _currentLogicalHeight);
 
         return _window.systemHandle();
     }
@@ -189,8 +199,8 @@ nothrow:
 
     override void getGUISize(int* widthLogicalPixels, int* heightLogicalPixels)
     {
-        *widthLogicalPixels = _currentWidth;
-        *heightLogicalPixels = _currentHeight;
+        *widthLogicalPixels = _currentLogicalWidth;
+        *heightLogicalPixels = _currentLogicalHeight;
     }
 
     // This class is only here to avoid name conflicts between
@@ -209,6 +219,8 @@ nothrow:
 
         override bool onMouseClick(int x, int y, MouseButton mb, bool isDoubleClick, MouseState mstate)
         {
+            x -= outer._userArea.min.x;
+            y -= outer._userArea.min.y;
             bool hitSomething = outer.mouseClick(x, y, mb, isDoubleClick, mstate);
             if (!hitSomething)
             {
@@ -220,17 +232,23 @@ nothrow:
 
         override bool onMouseRelease(int x, int y, MouseButton mb, MouseState mstate)
         {
+            x -= outer._userArea.min.x;
+            y -= outer._userArea.min.y;
             outer.mouseRelease(x, y, mb, mstate);
             return true;
         }
 
         override bool onMouseWheel(int x, int y, int wheelDeltaX, int wheelDeltaY, MouseState mstate)
         {
+            x -= outer._userArea.min.x;
+            y -= outer._userArea.min.y;
             return outer.mouseWheel(x, y, wheelDeltaX, wheelDeltaY, mstate);
         }
 
         override void onMouseMove(int x, int y, int dx, int dy, MouseState mstate)
         {
+            x -= outer._userArea.min.x;
+            y -= outer._userArea.min.y;
             version(legacyMouseOver)
             {
                 outer.mouseMove(x, y, dx, dy, mstate);
@@ -275,7 +293,7 @@ nothrow:
         /// Returns areas affected by updates.
         override box2i getDirtyRectangle() nothrow @nogc
         {
-            return outer._rectsToDisplay[].boundingBox();
+            return outer._rectsToResize[].boundingBox();
         }
 
         override ImageRef!RGBA onResized(int width, int height)
@@ -332,10 +350,20 @@ protected:
     // Currently can only be a fixed size.
     SizeConstraints _sizeConstraints;
 
+    // The _external_ size in pixels of the plugin interface.
+    // This is the size seen by the host/window.
+    int _currentLogicalWidth = 0;
+    int _currentLogicalHeight = 0;
+
     // The _internal_ size in pixels of our UI.
-    // This is not the same as the size seen by the window.
-    int _currentWidth = 0;
-    int _currentHeight = 0;
+    // This is not the same as the size seen by the window ("logical").
+    int _currentUserWidth = 0;
+    int _currentUserHeight = 0;
+
+    /// the area in logical area where the user area is drawn.
+    box2i _userArea; 
+    bool _invalidateResizedBuffer; // if true, the whole _userArea must be updated on next draw.
+    bool _redrawBlackBorders;      // if true, redraw black borders before resize step.
 
     // Diffuse color values for the whole UI.
     Mipmap!RGBA _diffuseMap;
@@ -370,6 +398,10 @@ protected:
     Vec!box2i _rectsToDisplay;
     Vec!box2i _rectsToDisplayDisjointed; // same list, but reorganized to avoid overlap
 
+    // The areas that must be effectively redisplayed, in logical space.
+    Vec!box2i _rectsToResize;
+    Vec!box2i _rectsToResizeDisjointed;
+
     /// The list of UIElement to potentially call `onDrawPBR` on.
     Vec!UIElement _elemsToDrawRaw;
 
@@ -382,9 +414,18 @@ protected:
     /// The composited buffer, before the Raw layer is applied.
     ubyte* _compositedBuffer = null;
 
-    /// The final rendered framebuffer. 
+    /// The rendered framebuffer. 
     /// This is copied from `_renderedBuffer`, then Raw layer is drawn on top.
+    /// Components are reordered there.
     ubyte* _renderedBuffer = null;
+
+    /// The final framebuffer.
+    /// It is the only buffer to have a size in logical pixels.
+    /// Internally the UI has an "user" size.
+    /// FUTURE: resize from user size to logical size using a resizer, 
+    /// to allow better looking DPI without the OS blurry resizing.
+    /// Or to allow higher internal pixel count.
+    ubyte* _resizedBuffer = null;
 
     debug(benchmarkGraphics)
     {
@@ -413,13 +454,15 @@ protected:
         grailSort!UIElement(_elemsToDrawPBR[], &compareZOrder);
     }
 
-    // useful to convert 16-byte aligned buffers into an ImageRef!RGBA
-    final ImageRef!RGBA toImageRef(ubyte* alignedBuffer)
+    // Useful to convert 16-byte aligned buffer into an ImageRef!RGBA
+    final ImageRef!RGBA toImageRef(ubyte* alignedBuffer,
+                                   int width,
+                                   int height)
     {
         ImageRef!RGBA ir = void;
-        ir.w = _currentWidth;
-        ir.h = _currentHeight;
-        ir.pitch = byteStride(_currentWidth);
+        ir.w = width;
+        ir.h = height;
+        ir.pitch = byteStride(width);
         ir.pixels = cast(RGBA*)alignedBuffer;
         return ir;
     }
@@ -454,7 +497,7 @@ protected:
         }
 
         // D. COMPOSITING
-        auto compositedRef = toImageRef(_compositedBuffer);
+        auto compositedRef = toImageRef(_compositedBuffer, _currentUserWidth, _currentUserHeight);
         debug(benchmarkGraphics)
             _compositingWatch.start();
         compositeGUI(compositedRef); // Launch the possibly-expensive Compositor step, which implements PBR rendering 
@@ -466,7 +509,7 @@ protected:
 
         // E. COPY FROM "COMPOSITED" TO "RENDERED" BUFFER
         // Copy _compositedBuffer onto _renderedBuffer for every rect that will be changed on display
-        auto renderedRef = toImageRef(_renderedBuffer);
+        auto renderedRef = toImageRef(_renderedBuffer, _currentUserWidth, _currentUserHeight);
         debug(benchmarkGraphics)
             _copyWatch.start();
         foreach(rect; _rectsToDisplayDisjointed[])
@@ -500,6 +543,9 @@ protected:
             _reorderWatch.stop();
             _reorderWatch.displayMean();
         }
+
+        // H. Copy updated content to the final buffer.
+        resizeContent(pf);
 
         // Only then is the list of rectangles to update cleared, 
         // before calling `doDraw` such work accumulates
@@ -540,14 +586,14 @@ protected:
         // Compute _rectsToRender and _rectsToDisplay, purely derived from the above.
         // Note that they are possibly overlapping collections
         // _rectsToComposite <- margin(_rectsToUpdateDisjointedPBR)
-        // _rectsToDisplay <- union(_rectsToComposite, _rectsToUpdateDisjointedRaw)        
+        // _rectsToDisplay <- union(_rectsToComposite, _rectsToUpdateDisjointedRaw)
         {
-            _rectsToComposite.clearContents();            
+            _rectsToComposite.clearContents();
             foreach(rect; _rectsToUpdateDisjointedPBR)
             {
                 assert(rect.isSorted);
                 assert(!rect.empty);
-                _rectsToComposite.pushBack( convertPBRLayerRectToRawLayerRect(rect, _currentWidth, _currentHeight) );
+                _rectsToComposite.pushBack( convertPBRLayerRectToRawLayerRect(rect, _currentUserWidth, _currentUserHeight) );
             }
 
             // Compute the non-overlapping version
@@ -566,6 +612,24 @@ protected:
             // Compute the non-overlapping version
             _rectsToDisplayDisjointed.clearContents();
             removeOverlappingAreas(_rectsToDisplay, _rectsToDisplayDisjointed);
+        }
+
+        // Compute _rectsToResize and _rectsToDisplayDisjointed to write resized content to (in the logical pixel area).
+        // These rectangle are constrained to update only _userArea.
+        {
+            _rectsToResize.clearContents();
+            foreach(rect; _rectsToDisplay[])
+            {
+                box2i r = convertUserRectToLogicalRect(rect).intersection(_userArea);
+                _rectsToResize.pushBack(r);
+            }
+            if (_invalidateResizedBuffer)
+            {
+                // mark _userArea as needing a recompute, since borders were drawn
+                _rectsToResize.pushBack(_userArea);
+            }
+            _rectsToResizeDisjointed.clearContents();
+            removeOverlappingAreas(_rectsToResize, _rectsToResizeDisjointed);
         }
     }
 
@@ -592,38 +656,79 @@ protected:
         return result;
     }
 
-    ImageRef!RGBA doResize(int width, int height) nothrow @nogc
+    ImageRef!RGBA doResize(int widthLogicalPixels, 
+                           int heightLogicalPixels) nothrow @nogc
     {
-        // TODO: based upon how much space there are, choose the corresponding size with _sizeConstraints
-        // TODO _renderedBuffer should width x height, but _currentWidth and _currentHeight should be something else
+        /// We do receive a new size in logical pixels. 
+        /// This is coming from getting the window client area. The reason
+        /// for this resize doesn't matter, we must find a mapping that fits
+        /// between this given logical size and user size.
 
+        // 1.a Based upon the _sizeConstraints, select a user size in pixels.
+        _currentLogicalWidth  = widthLogicalPixels;
+        _currentLogicalHeight = heightLogicalPixels;
+        _currentUserWidth     = widthLogicalPixels;
+        _currentUserHeight    = heightLogicalPixels;
+        _sizeConstraints.getNearestValidSize(&_currentUserWidth, &_currentUserHeight);
 
-        _currentWidth = width;
-        _currentHeight = height;
+        // 1.b Update user area rect. We find a suitable space in logical area 
+        //     to draw the whole UI.
+        {
+            int x, y, w, h;
+            if (_currentLogicalWidth >= _currentUserWidth)
+            {
+                x = (_currentLogicalWidth - _currentUserWidth) / 2;
+                w = _currentUserWidth;
+            }
+            else
+            {
+                x = 0;
+                w = _currentLogicalWidth;
+            }
+            if (_currentLogicalHeight >= _currentUserHeight)
+            {
+                y = (_currentLogicalHeight - _currentUserHeight) / 2;
+                h = _currentUserHeight;
+            }
+            else
+            {
+                y = 0;
+                h = _currentLogicalHeight;
+            }
+            _userArea = box2i.rectangle(x, y, w, h);
+        }
 
-        position = box2i(0, 0, _currentWidth, _currentHeight);
+        // 2. Invalidate UI region if user size change.
+        //    Note: _resizedBuffer invalidation is managed otherwise.
+        position = box2i(0, 0, _currentUserWidth, _currentUserHeight);
+        _invalidateResizedBuffer = true; // TODO: only do this if _userArea changed
+        _redrawBlackBorders = true; // TODO: only do this if _userArea changed
 
-        // Resize compositor buffers
-        _compositor.resizeBuffers(width, height, PBR_TILE_MAX_WIDTH, PBR_TILE_MAX_HEIGHT);
+        // 3. Resize compositor buffers.
+        _compositor.resizeBuffers(_currentUserWidth, _currentUserHeight, PBR_TILE_MAX_WIDTH, PBR_TILE_MAX_HEIGHT);
 
-        _diffuseMap.size(5, width, height);
-        _depthMap.size(4, width, height);
+        _diffuseMap.size(5, _currentUserWidth, _currentUserHeight);
+        _depthMap.size(4, _currentUserWidth, _currentUserHeight);
 
         // The first level of the depth map has a border of 1 pixels and 2 pxiels on the right, to simplify some PBR passes
         int border_1 = 1;
         int rowAlign_1 = 1;
         int xMultiplicity_1 = 1;
         int trailingSamples_2 = 2;
-        _depthMap.levels[0].size(width, height, border_1, rowAlign_1, xMultiplicity_1, trailingSamples_2);
+        _depthMap.levels[0].size(_currentUserWidth, _currentUserHeight, border_1, rowAlign_1, xMultiplicity_1, trailingSamples_2);
 
-        _materialMap.size(0, width, height);
+        _materialMap.size(0, _currentUserWidth, _currentUserHeight);
 
-        // Extends buffer
-        size_t sizeNeeded = byteStride(width) * height;
+        // Extends buffers with user size
+        size_t sizeNeeded = byteStride(_currentUserWidth) * _currentUserHeight;
         _compositedBuffer = cast(ubyte*) alignedRealloc(_compositedBuffer, sizeNeeded, 16);
         _renderedBuffer = cast(ubyte*) alignedRealloc(_renderedBuffer, sizeNeeded, 16);
 
-        return toImageRef(_renderedBuffer);
+        // Extends final buffer with logical size
+        sizeNeeded = byteStride(_currentLogicalWidth) * _currentLogicalHeight;
+        _resizedBuffer = cast(ubyte*) alignedRealloc(_resizedBuffer, sizeNeeded, 16);
+
+        return toImageRef(_resizedBuffer, _currentLogicalWidth, _currentLogicalHeight);
     }
 
     /// Draw the Raw layer of `UIElement` widgets
@@ -631,7 +736,7 @@ protected:
     {
         enum bool parallelDraw = true;
 
-        ImageRef!RGBA renderedRef = toImageRef(_renderedBuffer);
+        ImageRef!RGBA renderedRef = toImageRef(_renderedBuffer, _currentUserWidth, _currentUserHeight);
 
         // No need to launch threads only to have them realize there isn't anything to do
         if (_rectsToDisplayDisjointed.length == 0)
@@ -802,8 +907,8 @@ protected:
 
         // Generate depth mipmap, useful for dealing with ambient occlusion
         {
-            int W = _currentWidth;
-            int H = _currentHeight;
+            int W = _currentUserWidth;
+            int H = _currentUserHeight;
 
             // Depth is special since it has a border!
             // Regenerate the border area that needs to be regenerated
@@ -826,7 +931,7 @@ protected:
 
     void reorderComponents(WindowPixelFormat pf)
     {
-        auto renderedRef = toImageRef(_renderedBuffer);
+        auto renderedRef = toImageRef(_renderedBuffer, _currentUserWidth, _currentUserHeight);
 
         final switch(pf)
         {
@@ -850,6 +955,58 @@ protected:
                 }
                 break;
         }   
+    }
+
+    // From a user area rectangle, return a logical are rectangle with the same size.
+    final box2i convertUserRectToLogicalRect(box2i b)
+    {
+        return b.translate(_userArea.min);
+    }
+
+    final box2i convertLogicalRectToUserRect(box2i b)
+    {
+        return b.translate(-_userArea.min);
+    }
+
+    void resizeContent(WindowPixelFormat pf)
+    {
+        // TODO: eventually resize?
+        // For now what we do for logical area is crop and offset.
+        // In the future, could be beneficial to resample if needed.
+
+        auto renderedRef = toImageRef(_renderedBuffer, _currentUserWidth, _currentUserHeight);
+        auto resizedRef = toImageRef(_resizedBuffer, _currentLogicalWidth, _currentLogicalHeight);
+
+        // If invalidated, the whole buffer needs to be redrawn 
+        // (because of borders, or changing offsets of the user area).
+        if (_redrawBlackBorders)
+        {
+            RGBA black;
+            final switch(pf)
+            {
+                case WindowPixelFormat.RGBA8:
+                case WindowPixelFormat.BGRA8: black = RGBA(0, 0, 0, 255); break;
+                case WindowPixelFormat.ARGB8: black = RGBA(255, 0, 0, 0); break;
+            }
+            // PERF: Only do this in the location of the black border.
+            resizedRef.fillAll(black);
+            _redrawBlackBorders = false;
+        }
+
+        foreach(rect; _rectsToResizeDisjointed[])
+        {
+            assert(_userArea.contains(rect));
+
+            int dx = _userArea.min.x;
+            int dy = _userArea.min.y;
+
+            for (int j = rect.min.y; j < rect.max.y; ++j)
+            {
+                RGBA* src  = renderedRef.scanline(j - dy).ptr;
+                RGBA* dest = resizedRef.scanline(j).ptr;
+                dest[rect.min.x..rect.max.x] = src[(rect.min.x - dx)..(rect.max.x - dx)];
+            }
+        }
     }
 }
 

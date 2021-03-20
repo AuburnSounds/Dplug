@@ -553,7 +553,7 @@ nothrow:
         }
     }
 
-    /// Returns: A pojnter to the pixels at row y. Excluding border pixels.
+    /// Returns: A pointer to the pixels at row y. Excluding border pixels.
     COLOR* scanlinePtr(int y) pure
     {
         assert(y >= 0 && y < h);
