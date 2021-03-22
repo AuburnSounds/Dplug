@@ -242,13 +242,13 @@ nothrow:
             setDirtyWhole();
             _position = p;
             setDirtyWhole();
+
+            // New in Dplug v11: setting position now calls reflow() if position has changed.
+            reflow();
+
+            // _position shouldn't be touched by `reflow` calls.
+            assert(p == _position);
         }
-
-        // New in Dplug v11: setting position now calls reflow() if position has changed.
-        reflow();
-
-        // _position shouldn't be touched by `reflow` calls.
-        assert(p == _position);
     }
 
     /// Returns: The nth  child of this `UIElement`.

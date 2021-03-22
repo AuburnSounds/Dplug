@@ -293,7 +293,13 @@ nothrow:
         /// Returns areas affected by updates.
         override box2i getDirtyRectangle() nothrow @nogc
         {
-            return outer._rectsToResize[].boundingBox();
+            box2i r = outer._rectsToResize[].boundingBox();
+
+            // If _userArea changed recently, mark the whole area as in need of redisplay.
+            if (outer._redrawBlackBordersAndResizedArea)
+                r = r.expand( box2i(0, 0, outer._currentLogicalWidth, outer._currentLogicalHeight) );
+
+            return r;
         }
 
         override ImageRef!RGBA onResized(int width, int height)
@@ -362,8 +368,9 @@ protected:
 
     /// the area in logical area where the user area is drawn.
     box2i _userArea; 
-    bool _invalidateResizedBuffer; // if true, the whole _userArea must be updated on next draw.
-    bool _redrawBlackBorders;      // if true, redraw black borders before resize step.
+
+    // if true, it means the whle resize buffer and accompanying black borders should be regenerated
+    bool _redrawBlackBordersAndResizedArea; 
 
     // Diffuse color values for the whole UI.
     Mipmap!RGBA _diffuseMap;
@@ -551,6 +558,9 @@ protected:
         // before calling `doDraw` such work accumulates
         _rectsToUpdateDisjointedPBR.clearContents();
         _rectsToUpdateDisjointedRaw.clearContents();
+
+        // Same reasoning, this work doesn't get done until doDraw is called.
+        _redrawBlackBordersAndResizedArea = false;
     }
 
     void recomputeDirtyAreas() nothrow @nogc
@@ -623,9 +633,10 @@ protected:
                 box2i r = convertUserRectToLogicalRect(rect).intersection(_userArea);
                 _rectsToResize.pushBack(r);
             }
-            if (_invalidateResizedBuffer)
+
+            if (_redrawBlackBordersAndResizedArea)
             {
-                // mark _userArea as needing a recompute, since borders were drawn
+                // mark _userArea as needing a resize, this is used in `resizeContent`.
                 _rectsToResize.pushBack(_userArea);
             }
             _rectsToResizeDisjointed.clearContents();
@@ -695,14 +706,18 @@ protected:
                 y = 0;
                 h = _currentLogicalHeight;
             }
-            _userArea = box2i.rectangle(x, y, w, h);
+            box2i newUserArea = box2i.rectangle(x, y, w, h);
+            if (newUserArea != _userArea)
+            {
+                // if user area changed, invalidate all to-be-resized area, and redraw black borders.
+                _userArea = newUserArea;
+                _redrawBlackBordersAndResizedArea = true;
+            }
         }
 
         // 2. Invalidate UI region if user size change.
         //    Note: _resizedBuffer invalidation is managed otherwise.
         position = box2i(0, 0, _currentUserWidth, _currentUserHeight);
-        _invalidateResizedBuffer = true; // TODO: only do this if _userArea changed
-        _redrawBlackBorders = true; // TODO: only do this if _userArea changed
 
         // 3. Resize compositor buffers.
         _compositor.resizeBuffers(_currentUserWidth, _currentUserHeight, PBR_TILE_MAX_WIDTH, PBR_TILE_MAX_HEIGHT);
@@ -979,7 +994,7 @@ protected:
 
         // If invalidated, the whole buffer needs to be redrawn 
         // (because of borders, or changing offsets of the user area).
-        if (_redrawBlackBorders)
+        if (_redrawBlackBordersAndResizedArea)
         {
             RGBA black;
             final switch(pf)
@@ -988,9 +1003,7 @@ protected:
                 case WindowPixelFormat.BGRA8: black = RGBA(0, 0, 0, 255); break;
                 case WindowPixelFormat.ARGB8: black = RGBA(255, 0, 0, 0); break;
             }
-            // PERF: Only do this in the location of the black border.
-            resizedRef.fillAll(black);
-            _redrawBlackBorders = false;
+            resizedRef.fillAll(black); // PERF: Only do this in the location of the black border.
         }
 
         foreach(rect; _rectsToResizeDisjointed[])
