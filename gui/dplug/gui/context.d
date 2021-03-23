@@ -17,21 +17,82 @@ import dplug.graphics.mipmap;
 
 import dplug.gui.element;
 import dplug.gui.boxlist;
+import dplug.gui.graphics;
 
 
-/// UIContext contains the "globals" of the UI
-/// - current focused element
-/// - current dragged element
-/// - and stuff that shouldn't be there
-class UIContext
+/// Work in progress. An ensemble of calls `UIElement` are allowed to make, that
+/// concern the whole UI.
+/// Whenever an API call makes sense globally for `UIelement`, 
+/// it should be moved to IUIContext.
+interface IUIContext
+{
+nothrow @nogc:
+
+    /// Returns: Current number of physical pixels for one logical pixel.
+    /// There is currently no support for this in Dplug, so it is always 1.0f for now.
+    /// The OS _might_ upscale the UI without our knowledge though.
+    float getUIScale();
+
+    /// Returns: Current number of user pixels for one logical pixel.
+    /// There is currently no user area resize in Dplug, so it is always 1.0f for now.
+    float getUserScale();
+
+    /// Get current size of the UI, in user pixels.
+    vec2i getUISizeInPixelsUser();
+
+    /// Get current size of the UI, in logical pixels.
+    vec2i getUISizeInPixelsLogical();
+
+    /// Get current size of the UI, in physical pixels.
+    vec2i getUISizeInPixelsPhysical();
+
+    /// Trigger a resize of the plugin window. This isn't guaranteed to succeed.
+    bool requestUIResize(int widthLogicalPixels, int heightLogicalPixels);
+}
+
+
+/// UIContext contains the "globals" of the UI.
+/// It also provides additional APIs for `UIElement`.
+class UIContext : IUIContext
 {
 public:
 nothrow:
 @nogc:
-    this()
+    this(GUIGraphics owner)
     {
+        this._owner = owner;
         dirtyListPBR = makeDirtyRectList();
         dirtyListRaw = makeDirtyRectList();
+    }
+
+    final override float getUIScale()
+    {
+        return _owner.getUIScale();
+    }
+
+    final override float getUserScale()
+    {
+        return _owner.getUserScale();
+    }
+
+    final override vec2i getUISizeInPixelsUser()
+    {
+        return _owner.getUISizeInPixelsUser();
+    }
+
+    final override vec2i getUISizeInPixelsLogical()
+    {
+        return _owner.getUISizeInPixelsLogical();
+    }
+
+    final override vec2i getUISizeInPixelsPhysical()
+    {
+        return _owner.getUISizeInPixelsLogical();
+    }
+
+    final override bool requestUIResize(int widthLogicalPixels, int heightLogicalPixels)
+    {
+        return _owner.requestUIResize(widthLogicalPixels, heightLogicalPixels);
     }
 
     /// Last clicked element.
@@ -125,7 +186,8 @@ nothrow:
         return cursor;
     }
 
-
+private:
+    GUIGraphics _owner;
 
 }
 

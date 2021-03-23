@@ -70,7 +70,7 @@ nothrow:
     {
         _sizeConstraints = sizeConstraints;
 
-        _uiContext = mallocNew!UIContext();
+        _uiContext = mallocNew!UIContext(this);
         super(_uiContext, flags);
 
         _windowListener = mallocNew!WindowListener(this);
@@ -337,6 +337,46 @@ nothrow:
     {
         _updateMargin = margin;
     }
+
+package:
+
+    // <resizing support>
+
+    final float getUIScale()
+    {
+        /// There is currently no support for this in Dplug, so it is always 1.0f for now.
+        /// The OS _might_ upscale the UI without our knowledge though.
+        return 1.0f;
+    }
+
+    final float getUserScale()
+    {
+        /// There is currently no _userArea resize in Dplug, so it is always 1.0f for now.
+        return 1.0f;
+    }
+
+    final vec2i getUISizeInPixelsUser()
+    {
+        return vec2i(_currentUserWidth, _currentUserHeight);
+    }
+
+    final vec2i getUISizeInPixelsLogical()
+    {
+        return vec2i(_currentLogicalWidth, _currentLogicalHeight);
+    }
+
+    final vec2i getUISizeInPixelsPhysical()
+    {
+        return getUISizeInPixelsLogical(); // no support yet
+    }
+
+    final bool requestUIResize(int widthLogicalPixels, int heightLogicalPixels)
+    {
+        // TODO: tell the IWindow
+        return false;
+    }
+
+    // </resizing support>
 
 protected:
 

@@ -38,7 +38,12 @@ nothrow:
 
     override void onMouseDrag(int x, int y, int dx, int dy, MouseState mstate)
     {
-        // TODO: request resize to relevant subsystems
+        vec2i size = context.getUISizeInPixelsLogical();
+        size.x += dx;
+        size.y += dy;
+
+        // Attempt to resize window.
+        context.requestUIResize(size.x, size.y);
     }
 
     override void onDrawRaw(ImageRef!RGBA rawMap, box2i[] dirtyRects)
