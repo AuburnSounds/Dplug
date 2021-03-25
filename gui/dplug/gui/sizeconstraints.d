@@ -116,6 +116,20 @@ nothrow:
         *height = defaultHeight;
     }
 
+    /// Returns `true` if several size are possible.
+    bool isResizable()
+    {
+        final switch(type) with (Type)
+        {
+            case continuousRatio:
+                return true;
+            case discreteRatio:
+                return numDiscreteScales > 1;
+            case rectangularBounds: 
+                return true;
+        }
+    }
+
     /// Returns `true` if this `SizeConstraints` preserve plugin aspect ratio.
     bool preserveAspectRatio()
     {
@@ -143,7 +157,8 @@ nothrow:
         {
             case continuousRatio:
                 // find estimate of scale
-                float scale = 0.5f * (*inoutWidth / defaultWidth + *inoutHeight / defaultHeight);
+                float scale = 0.5f * (*inoutWidth / (cast(float)defaultWidth) 
+                                      + *inoutHeight / (cast(float)defaultHeight));
                 if (scale < minScale) scale = minScale;
                 if (scale > maxScale) scale = maxScale;
                 *inoutWidth = cast(int)(0.5f + scale * defaultWidth);
@@ -151,7 +166,8 @@ nothrow:
                 break;
 
             case discreteRatio:
-                float scale = 0.5f * (*inoutWidth / defaultWidth + *inoutHeight / defaultHeight);
+                float scale = 0.5f * (*inoutWidth / (cast(float)defaultWidth) 
+                                      + *inoutHeight / (cast(float)defaultHeight));
                 float bestScore = -float.infinity;
                 int bestScale = 0;
                 for (int n = 0; n < numDiscreteScales; ++n)
