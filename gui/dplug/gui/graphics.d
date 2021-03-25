@@ -296,7 +296,7 @@ nothrow:
             box2i r = outer._rectsToResize[].boundingBox();
 
             // If _userArea changed recently, mark the whole area as in need of redisplay.
-            if (outer._redrawBlackBordersAndResizedArea)
+            if (outer._reportBlackBordersAndResizedAreaAsDirty)
                 r = r.expand( box2i(0, 0, outer._currentLogicalWidth, outer._currentLogicalHeight) );
 
             return r;
@@ -372,10 +372,37 @@ package:
 
     final bool requestUIResize(int widthLogicalPixels, int heightLogicalPixels)
     {
-        // TODO: tell the IWindow
-        return false;
+        // If it's already the logical size, nothing to do.
+        if ( (widthLogicalPixels == _currentLogicalWidth)
+            &&  (heightLogicalPixels == _currentLogicalHeight) )
+            return true;
+
+        // TODO: some hosts need to be informed via format-specific requests
+
+        // Here we request the native window to resize. 
+        // The actual resize will be received by the window listener, later.
+        return _window.requestResize(widthLogicalPixels, heightLogicalPixels);
     }
 
+    final void getUINearestValidSize(int* widthLogicalPixels, int* heightLogicalPixels)
+    {
+        // Convert this size to a user width and height
+        int userWidth = cast(int)(0.5f + *widthLogicalPixels * getUserScale());
+        int userHeight = cast(int)(0.5f + *heightLogicalPixels * getUserScale());
+
+        _sizeConstraints.getNearestValidSize(&userWidth, &userHeight);
+
+        // Convert back to logical pixels
+        // Note that because of rounding, there might be small problems yet unsolved.
+        *widthLogicalPixels = cast(int)(0.5f + userWidth / getUserScale());
+        *heightLogicalPixels = cast(int)(0.5f + userHeight / getUserScale());
+    }
+
+    final bool isUIResizable()
+    {
+        // TODO: allow logic resize if internally user area is resampled
+        return _sizeConstraints.isResizable();
+    }
     // </resizing support>
 
 protected:
@@ -409,8 +436,14 @@ protected:
     /// the area in logical area where the user area is drawn.
     box2i _userArea; 
 
-    // if true, it means the whle resize buffer and accompanying black borders should be regenerated
+    // if true, it means the whole resize buffer and accompanying black
+    // borders should be redrawn at the next onDraw
     bool _redrawBlackBordersAndResizedArea; 
+
+    // if true, it means the whole resize buffer and accompanying black
+    // borders should be reported as dirty at the next recomputeDirtyAreas, and until
+    // it is drawn.
+    bool _reportBlackBordersAndResizedAreaAsDirty;
 
     // Diffuse color values for the whole UI.
     Mipmap!RGBA _diffuseMap;
@@ -445,7 +478,7 @@ protected:
     Vec!box2i _rectsToDisplay;
     Vec!box2i _rectsToDisplayDisjointed; // same list, but reorganized to avoid overlap
 
-    // The areas that must be effectively redisplayed, in logical space.
+    // The areas that must be effectively redisplayed, in logical space (like _userArea).
     Vec!box2i _rectsToResize;
     Vec!box2i _rectsToResizeDisjointed;
 
@@ -516,6 +549,16 @@ protected:
    
     void doDraw(WindowPixelFormat pf) nothrow @nogc
     {
+        // THIS IS A HACK??
+        // Will draw next time, because a resize occured, but recomputeDirtyAreas 
+        // wasn't called yet, so a lot of rectangles are now invalid.
+        // Unfortunately, Win32 backend resize just before redrawing because of 
+        // WM_PAINT invalidation.
+        // TODO: try to avoid that
+        if (_reportBlackBordersAndResizedAreaAsDirty
+            && !_redrawBlackBordersAndResizedArea)
+            return;
+
         // A. Recompute draw lists
         // These are the `UIElement`s that _may_ have their onDrawXXX callbacks called.
         recomputeDrawLists();
@@ -598,9 +641,6 @@ protected:
         // before calling `doDraw` such work accumulates
         _rectsToUpdateDisjointedPBR.clearContents();
         _rectsToUpdateDisjointedRaw.clearContents();
-
-        // Same reasoning, this work doesn't get done until doDraw is called.
-        _redrawBlackBordersAndResizedArea = false;
     }
 
     void recomputeDirtyAreas() nothrow @nogc
@@ -674,13 +714,18 @@ protected:
                 _rectsToResize.pushBack(r);
             }
 
-            if (_redrawBlackBordersAndResizedArea)
+            if (_reportBlackBordersAndResizedAreaAsDirty)
             {
-                // mark _userArea as needing a resize, this is used in `resizeContent`.
-                _rectsToResize.pushBack(_userArea);
+                // Redraw whole resized zone and black borders on next draw, as this will 
+                // be reported to the OS as being repainted.
+                _redrawBlackBordersAndResizedArea = true;
             }
             _rectsToResizeDisjointed.clearContents();
             removeOverlappingAreas(_rectsToResize, _rectsToResizeDisjointed);
+
+            // All those rectangles should be strictly in _userArea
+            foreach(r; _rectsToResizeDisjointed)
+                assert(_userArea.contains(r));
         }
     }
 
@@ -751,7 +796,7 @@ protected:
             {
                 // if user area changed, invalidate all to-be-resized area, and redraw black borders.
                 _userArea = newUserArea;
-                _redrawBlackBordersAndResizedArea = true;
+                _reportBlackBordersAndResizedAreaAsDirty = true;
             }
         }
 
@@ -1032,6 +1077,8 @@ protected:
         auto renderedRef = toImageRef(_renderedBuffer, _currentUserWidth, _currentUserHeight);
         auto resizedRef = toImageRef(_resizedBuffer, _currentLogicalWidth, _currentLogicalHeight);
 
+        box2i[] rectsToCopy = _rectsToResizeDisjointed[];
+
         // If invalidated, the whole buffer needs to be redrawn 
         // (because of borders, or changing offsets of the user area).
         if (_redrawBlackBordersAndResizedArea)
@@ -1044,12 +1091,18 @@ protected:
                 case WindowPixelFormat.ARGB8: black = RGBA(255, 0, 0, 0); break;
             }
             resizedRef.fillAll(black); // PERF: Only do this in the location of the black border.
+
+            // No need to report that everything is dirty anymore.
+            _reportBlackBordersAndResizedAreaAsDirty = false;
+
+            // and no need to draw everything in onDraw anymore.
+            _redrawBlackBordersAndResizedArea = false;
+
+            rectsToCopy[] = _userArea;
         }
 
-        foreach(rect; _rectsToResizeDisjointed[])
+        foreach(rect; rectsToCopy[])
         {
-            assert(_userArea.contains(rect));
-
             int dx = _userArea.min.x;
             int dy = _userArea.min.y;
 

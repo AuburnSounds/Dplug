@@ -18,6 +18,7 @@ import dplug.graphics.mipmap;
 import dplug.gui.element;
 import dplug.gui.boxlist;
 import dplug.gui.graphics;
+import dplug.gui.sizeconstraints;
 
 
 /// Work in progress. An ensemble of calls `UIElement` are allowed to make, that
@@ -48,6 +49,14 @@ nothrow @nogc:
 
     /// Trigger a resize of the plugin window. This isn't guaranteed to succeed.
     bool requestUIResize(int widthLogicalPixels, int heightLogicalPixels);
+
+    /// Find the nearest valid _logical_ UI size.
+    /// Given an input size, get the nearest valid size.
+    void getUINearestValidSize(int* widthLogicalPixels, int* heightLogicalPixels);
+
+    /// Returns: `true` if the UI can accomodate several size in _logical_ space.
+    ///          (be it by resizing the user area, or rescaling it).
+    bool isUIResizable();
 }
 
 
@@ -93,6 +102,16 @@ nothrow:
     final override bool requestUIResize(int widthLogicalPixels, int heightLogicalPixels)
     {
         return _owner.requestUIResize(widthLogicalPixels, heightLogicalPixels);
+    }
+
+    final override void getUINearestValidSize(int* widthLogicalPixels, int* heightLogicalPixels)
+    {
+        _owner.getUINearestValidSize(widthLogicalPixels, heightLogicalPixels);
+    }
+
+    final override bool isUIResizable()
+    {
+        return _owner.isUIResizable();
     }
 
     /// Last clicked element.

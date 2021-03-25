@@ -33,16 +33,28 @@ nothrow:
     {
         // Initiate drag
         setDirtyWhole();
+
+        _sizeBeforeDrag = context.getUISizeInPixelsLogical();
+        _accumX = 0;
+        _accumY = 0;
+
         return true;
     }
 
     override void onMouseDrag(int x, int y, int dx, int dy, MouseState mstate)
     {
-        vec2i size = context.getUISizeInPixelsLogical();
-        size.x += dx;
-        size.y += dy;
+        vec2i size = _sizeBeforeDrag;
 
-        // Attempt to resize window.
+        // Cumulative mouse movement since dragging started
+        _accumX += dx; // TODO: divide that by user scale
+        _accumY += dy;
+        size.x += _accumX;
+        size.y += _accumY;
+
+        // Find nearest valid _logical_ size.
+        context.getUINearestValidSize(&size.x, &size.y);
+
+        // Attempt to resize window with that size.
         context.requestUIResize(size.x, size.y);
     }
 
@@ -89,6 +101,14 @@ nothrow:
         }
     }
 
+    override bool contains(int x, int y)
+    {
+        if (!context.isUIResizable())
+            return false; // not clickable if UI not resizeable
+
+        return super.contains(x, y);
+    }
+
     // Account for color changes
 
     override void onBeginDrag()
@@ -113,4 +133,7 @@ nothrow:
 
 private:
     Canvas canvas;
+    vec2i _sizeBeforeDrag;
+    int _accumX;
+    int _accumY;
 } 
