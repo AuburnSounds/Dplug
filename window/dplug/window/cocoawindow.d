@@ -193,6 +193,12 @@ public:
             return _view._id;
     }
 
+    override bool requestResize(int widthLogicalPixels, int heightLogicalPixels)
+    {
+        // TODO implement
+        assert(false);
+    }
+
 private:
 
     MouseState getMouseState(NSEvent event)

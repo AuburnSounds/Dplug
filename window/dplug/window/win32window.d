@@ -98,12 +98,8 @@ version(Windows)
             else
                 parentWindow = GetDesktopWindow();
 
-            // Save original size (until we have better sizing description)
-            _origWidth = width;
-            _origHeight = height;
-
             _hwnd = CreateWindowW(_className.ptr, null, flags, CW_USEDEFAULT, CW_USEDEFAULT, 
-                                  _origWidth, _origHeight,
+                                  width, height,
                                   parentWindow, null,
                                   getModuleHandle(),
                                   cast(void*)this);
@@ -135,7 +131,8 @@ version(Windows)
             {
                 _dpiSupport.initialize();
                 _currentDPI = _dpiSupport.GetDpiForWindow(_hwnd) / 96.0f;
-                resizeWindowForDPI();
+                //MAYDO resize for DPI
+                //resizeWindowForDPI();
             }
 
             SetFocus(_hwnd);
@@ -215,6 +212,21 @@ version(Windows)
                 return false;
         }
 
+        override bool requestResize(int widthLogicalPixels, int heightLogicalPixels)
+        {
+            UINT flags =  SWP_NOACTIVATE 
+                        | SWP_NOZORDER
+                        | SWP_NOOWNERZORDER
+                        | SWP_NOMOVE
+                        | SWP_NOCOPYBITS; // discard entire content of the client area
+
+            int left = 0, top = 0;
+            BOOL r = SetWindowPos(_hwnd, null,
+                                  left, top, left + widthLogicalPixels, top + heightLogicalPixels,
+                                  flags);
+            return r != 0;
+        }
+
         LRESULT windowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         {
             // because DispatchMessage is called by host, we don't know which thread comes here
@@ -259,6 +271,13 @@ version(Windows)
                     else
                         return 0;
                 }
+
+                /*case WM_SIZE:
+                {
+                    UINT width = LOWORD(lParam);
+                    UINT height = HIWORD(lParam);
+                    goto default;
+                }*/
 
                 case WM_SETCURSOR:
                 {
@@ -515,22 +534,6 @@ version(Windows)
                 default:
                     return DefWindowProcA(hwnd, uMsg, wParam, lParam);
             }
-        }
-
-        // TEMP, until we have a better size description
-        int _origWidth;
-        int _origHeight; 
-
-        void resizeWindowForDPI()
-        {
-            // TODO: more complex behavior based on what is available as size.
-            int width = cast(int)(0.5f + _origWidth * _currentDPI);
-            int height = cast(int)(0.5f + _origHeight * _currentDPI);
-
-            int left = 0, top = 0;
-            SetWindowPos(_hwnd, null,
-                         left, top, left + width, top + height,
-                         SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
         }
 
         // Implements IWindow

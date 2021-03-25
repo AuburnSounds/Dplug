@@ -123,6 +123,14 @@ nothrow:
 
     /// Gets the window's OS handle.
     void* systemHandle();
+
+    /// Request a resize from the native window.
+    /// If successful, onResized` should be called after with _some_ width
+    /// and height.
+    /// Note: DPI unaware. This doesn't check size constraints.
+    ///       Do not call this with a size that isn't compatible with your desired 
+    ///       user pixel size, after GUIGraphics _userArea adjustments.
+    bool requestResize(int widthLogicalPixels, int heightLogicalPixels);
 }
 
 enum WindowPixelFormat

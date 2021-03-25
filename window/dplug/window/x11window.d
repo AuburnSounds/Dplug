@@ -167,6 +167,12 @@ public:
         return cast(void*)_windowID;
     }
 
+    override bool requestResize(int widthLogicalPixels, int heightLogicalPixels)
+    {
+        // TODO implement
+        assert(false);
+    }
+
     // </Implements IWindow>
 
 private:
