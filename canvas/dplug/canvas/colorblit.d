@@ -36,7 +36,8 @@ private:
     void color_blit(WindingRule wr)(int* delta, DMWord* mask, int x0, int x1, int y)
     {
         assert(x0 >= 0);
-        assert(x1 * 4 <= strideBytes);
+        ulong sbytes = strideBytes;
+        assert(x1 * 4 <= sbytes);
         assert(y >= 0);
         assert(y < height);
         assert((x0 & 3) == 0);
