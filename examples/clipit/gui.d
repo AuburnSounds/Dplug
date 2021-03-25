@@ -25,7 +25,12 @@ nothrow:
     this(ClipitClient client)
     {
         _client = client;
-        super(500, 500); // size
+
+        super(500, 500); // fixed size
+
+        //static immutable float[8] scales = [1.0f, 1.25f, 1.5f];
+        //auto constraints = makeSizeConstraintsDiscrete(500, 500, scales);
+        //super(constraints); // WIP
 
         int W = 500;
         int H = 500;
@@ -109,7 +114,7 @@ nothrow:
             gradient.addColorStop(0.0f, RGBA(255, 50, 128, 255));
             gradient.addColorStop(1.0f, RGBA(128, 128, 128, 0));
 
-            canvas.fillStyle = gradient;
+            canvas.fillStyle = RGBA(255, 0, 0, 255);//gradient;
 
             canvas.beginPath;
                 canvas.moveTo(0, 0);
