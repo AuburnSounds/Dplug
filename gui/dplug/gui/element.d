@@ -723,6 +723,11 @@ nothrow:
     ///            and call setDirty in animation callback.
     void setDirty(box2i rect, UILayer layer = UILayer.guessFromFlags)
     {
+        /// BUG: it is problematic to allow this from the audio thread,
+        /// because the access to _position isn't protected and it could 
+        /// create a race in case of concurrent reflow(). Puhsed rectangles
+        /// might be out of range, this is workarounded in GUIGraphics currently
+        /// for other reasons.
         box2i translatedRect = rect.translate(_position.min);
         assert(_position.contains(translatedRect));
         addDirtyRect(translatedRect, layer);
