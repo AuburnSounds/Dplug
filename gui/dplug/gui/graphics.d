@@ -549,16 +549,6 @@ protected:
    
     void doDraw(WindowPixelFormat pf) nothrow @nogc
     {
-        // THIS IS A HACK??
-        // Will draw next time, because a resize occured, but recomputeDirtyAreas 
-        // wasn't called yet, so a lot of rectangles are now invalid.
-        // Unfortunately, Win32 backend resize just before redrawing because of 
-        // WM_PAINT invalidation.
-        // TODO: try to avoid that
-        if (_reportBlackBordersAndResizedAreaAsDirty
-            && !_redrawBlackBordersAndResizedArea)
-            return;
-
         // A. Recompute draw lists
         // These are the `UIElement`s that _may_ have their onDrawXXX callbacks called.
         recomputeDrawLists();
@@ -650,6 +640,31 @@ protected:
         // at around the same time), but that isn't a problem.
         context().dirtyListRaw.pullAllRectangles(_rectsToUpdateDisjointedRaw);
         context().dirtyListPBR.pullAllRectangles(_rectsToUpdateDisjointedPBR);
+
+        recomputePurelyDerivedRectangles();
+    }
+
+    void recomputePurelyDerivedRectangles()
+    {
+        // If a resize has been made recently, we need to clip rectangles 
+        // in the pending lists to the new size.
+        // All other rectangles are purely derived from those.
+        // PERF: not sure if necessary to do it each time, a control 
+        //       could call setDirty?
+        foreach (ref r; _rectsToUpdateDisjointedRaw[])
+        {
+            if (r.max.x > _currentUserWidth)
+                r.max.x = _currentUserWidth;
+            if (r.max.y > _currentUserHeight)
+                r.max.y = _currentUserHeight;
+        }
+        foreach (ref r; _rectsToUpdateDisjointedPBR[])
+        {
+            if (r.max.x > _currentUserWidth)
+                r.max.x = _currentUserWidth;
+            if (r.max.y > _currentUserHeight)
+                r.max.y = _currentUserHeight;
+        }
 
         // TECHNICAL DEBT HERE
         // The problem here is that if the window isn't shown there may be duplicates in
@@ -797,6 +812,9 @@ protected:
                 // if user area changed, invalidate all to-be-resized area, and redraw black borders.
                 _userArea = newUserArea;
                 _reportBlackBordersAndResizedAreaAsDirty = true;
+
+                // This avoids an onDraw with wrong rectangles
+                recomputePurelyDerivedRectangles();
             }
         }
 
@@ -1119,6 +1137,7 @@ protected:
 enum scanLineAlignment = 4; // could be anything
 
 // given a width, how long in bytes should scanlines be
+// Note: win32 needs this exact stride for returned buffer.
 int byteStride(int width) pure nothrow @nogc
 {
     int widthInBytes = width * 4;

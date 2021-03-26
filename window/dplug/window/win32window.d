@@ -71,7 +71,7 @@ version(Windows)
 
         this(HWND parentWindow, IWindowListener listener, int width, int height)
         {
-            _wndClass.style = CS_DBLCLKS | CS_OWNDC;
+            _wndClass.style = CS_DBLCLKS | CS_OWNDC | CS_VREDRAW | CS_HREDRAW;
 
             _wndClass.lpfnWndProc = &windowProcCallback;
 
