@@ -72,6 +72,7 @@ nothrow:
     override void reflow()
     {
         super.reflow();
+
         int W = position.width;
         int H = position.height;
 
@@ -82,21 +83,33 @@ nothrow:
         immutable int knobWidth = 128;
         immutable int knobHeight = 128;
 
-        _inputGainKnob.position = box2i(knobX1, knobY1, knobX1 + knobWidth, knobY1 + knobHeight);
-        _clipKnob.position = box2i(knobX2, knobY1, knobX2 + knobWidth, knobY1 + knobHeight);
+        // Calculate weighted positions based on the width and height of the position
+   /*     int knobX1 = cast(int)(0.14 * W);
+        int knobX2 = cast(int)(0.616 * W);
+        int knobY1 = cast(int)(0.202 * H);
+        int knobY2 = cast(int)(0.64 * H);
+        int knobWidth = cast(int)(0.256 * W);
+        int knobHeight = cast(int)(0.256 * H);   */
+
+        _inputGainKnob.position  = box2i(knobX1, knobY1, knobX1 + knobWidth, knobY1 + knobHeight);
+        _clipKnob.position       = box2i(knobX2, knobY1, knobX2 + knobWidth, knobY1 + knobHeight);
         _outputGainKnob.position = box2i(knobX1, knobY2, knobX1 + knobWidth, knobY2 + knobHeight);
-        _mixKnob.position = box2i(knobX2, knobY2, knobX2 + knobWidth, knobY2 + knobHeight);
+        _mixKnob.position        = box2i(knobX2, knobY2, knobX2 + knobWidth, knobY2 + knobHeight);
 
         immutable int switchX = 380;
         immutable int switchY = 28;
         immutable int switchWidth = 51;
         immutable int switchHeight = 21;
 
-        _modeSwitch.position = box2i(switchX, switchY, switchX + switchWidth, switchY  + switchHeight);
+/*
+        int switchX = cast(int)(0.76 * W);
+        int switchY = cast(int)(0.056 * H);
+        int switchWidth = cast(int)(0.1 * W);
+        int switchHeight = cast(int)(0.04 * H);
+ */
+        _modeSwitch.position = box2i(switchX, switchY, switchX + switchWidth, switchY  + switchHeight);      
         _resizerHint.position = rectangle(W-20, H-20, 20, 20);
     }
-
-
 
 private:
     UIFilmstripKnob _inputGainKnob;
