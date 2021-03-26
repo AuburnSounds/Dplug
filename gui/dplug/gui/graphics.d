@@ -819,7 +819,7 @@ protected:
         }
 
         // 2. Invalidate UI region if user size change.
-        //    Note: _resizedBuffer invalidation is managed otherwise.
+        //    Note: _resizedBuffer invalidation is managed with flags instead of this.
         position = box2i(0, 0, _currentUserWidth, _currentUserHeight);
 
         // 3. Resize compositor buffers.

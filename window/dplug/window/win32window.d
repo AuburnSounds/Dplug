@@ -92,7 +92,7 @@ version(Windows)
                 assert(false, "Couldn't register Win32 class");
             }
 
-            DWORD flags = WS_VISIBLE;
+            DWORD flags = 0;
             if (parentWindow != null)
                 flags |= WS_CHILD;
             else
@@ -135,6 +135,7 @@ version(Windows)
                 //resizeWindowForDPI();
             }
 
+            ShowWindow(_hwnd, SW_SHOW);
             SetFocus(_hwnd);
 
             // Get performance counter frequency
@@ -187,7 +188,8 @@ version(Windows)
         }
 
         /// Returns: true if window size changed.
-        bool updateSizeIfNeeded()
+        /// Update internal buffers, if needed.
+        bool updateInternalSize()
         {
             RECT winsize;
             BOOL res = GetClientRect(_hwnd, &winsize);
@@ -205,6 +207,7 @@ version(Windows)
                 _width = newWidth;
                 _height = newHeight;
 
+                _sizeSet = true;
                 _wfb = _listener.onResized(_width, _height);
                 return true;
             }
@@ -393,10 +396,18 @@ version(Windows)
                     setMouseCursor(true);
                     goto default;
 
-                case WM_PAINT:
+                case WM_SIZE:
+                case WM_SHOWWINDOW:
                 {
                     // This get the size of the client area, and then tells the listener about the new size.
-                    updateSizeIfNeeded();
+                    updateInternalSize();
+                    goto default;
+                }
+
+                case WM_PAINT:
+                {
+                    // Internal size must have been set.
+                    assert(_sizeSet);
 
                     // Same thing that under Cocoa, the first WM_PAINT could happen before WM_TIMER is ever called.
                     // In this case, call `recomputeDirtyAreas()` so that onDraw draw something and uninitialized pixels are not displayed.
@@ -577,6 +588,8 @@ version(Windows)
         long _performanceCounterDivider;
         uint _timeAtCreationInMs;
         uint _lastMeasturedTimeInMs;
+
+        bool _sizeSet = false;
 
         IWindowListener _listener; // contract: _listener must only be used in the message callback
 
