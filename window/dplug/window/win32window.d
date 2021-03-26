@@ -272,14 +272,6 @@ version(Windows)
                         return 0;
                 }
 
-                case WM_SIZE:
-                {
-                    // It is important to recompute internal rectangles in 
-                    // GUIGraphics after a resize.
-                    _listener.recomputeDirtyAreas();
-                    _dirtyAreasAreNotYetComputed = false;
-                    goto default;
-                }
 
                 case WM_SETCURSOR:
                 {
