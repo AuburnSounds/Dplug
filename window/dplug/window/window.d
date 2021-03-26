@@ -80,6 +80,7 @@ enum MouseCursor
     drag,
     verticalResize,
     horizontalResize,
+    diagonalResize,
     hidden
 }
 

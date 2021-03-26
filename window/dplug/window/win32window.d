@@ -796,6 +796,8 @@ version(Windows)
                 return IDC_SIZEWE;
             case cursor.verticalResize:
                 return IDC_SIZENS;
+            case cursor.diagonalResize:
+                return IDC_SIZENWSE;
             case cursor.pointer:
             default:
                 return IDC_ARROW;

@@ -213,7 +213,7 @@ unittest
 
 
 
-/// Use throughout dplug:dsp to avoid reliance on GC.
+/// Used throughout dplug:dsp to avoid reliance on GC.
 /// Important: Size 0 is special-case to free the slice.
 /// This works a bit like alignedRealloc except with slices as input.
 /// You MUST use consistent alignement thoughout the lifetime of this buffer.
@@ -242,7 +242,7 @@ void reallocBuffer(T)(ref T[] buffer, size_t length, int alignment = 1) nothrow 
 
     T* pointer = cast(T*) alignedRealloc(buffer.ptr, T.sizeof * length, alignment);
     if (pointer is null)
-        buffer = null; // alignement 1 can still return null
+        buffer = null; // alignment 1 can still return null
     else
         buffer = pointer[0..length];
 }

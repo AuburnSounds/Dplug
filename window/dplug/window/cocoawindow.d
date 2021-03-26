@@ -495,6 +495,9 @@ private:
                     case MouseCursor.horizontalResize:
                         nsCursor = NSCursor.resizeLeftRightCursor();
                         break;
+                    case MouseCursor.diagonalResize:
+                        nsCursor = NSCursor.crosshairCursor(); // macOS doesn't seem to have this
+                        break;
                     case MouseCursor.pointer:
                     default:
                         nsCursor = NSCursor.arrowCursor();

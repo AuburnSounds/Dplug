@@ -907,6 +907,8 @@ int convertCursorToX11CursorFont(MouseCursor cursor)
             return 116;
         case cursor.verticalResize:
             return 108;
+        case cursor.diagonalResize:
+            return 14;
         case cursor.pointer:
         default:
             return 2;

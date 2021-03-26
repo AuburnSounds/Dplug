@@ -27,6 +27,8 @@ nothrow:
     this(UIContext context)
     {
         super(context, flagRaw);
+        setCursorWhenMouseOver(MouseCursor.diagonalResize);
+        setCursorWhenDragged(MouseCursor.diagonalResize);
     }
 
     override bool onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)

@@ -26,12 +26,7 @@ nothrow:
     {
         _client = client;
 
-        //super(500, 500); // fixed size
-
-        //static immutable float[8] scales = [1.0f, 1.25f, 1.5f];
-        //super(makeSizeConstraintsDiscrete(500, 500, scales)); // WIP
-
-        super(makeSizeConstraintsContinuous(500, 500, 0.5f, 3.0f)); // WIP
+        super(makeSizeConstraintsContinuous(500, 500, 0.5f, 3.0f));
 
         // Sets the number of pixels recomputed around dirtied controls.
         // Since we aren't using PBR we can set this value to 0 to save
@@ -95,7 +90,7 @@ nothrow:
         int switchHeight = cast(int)(0.04 * H);
  
         _modeSwitch.position = box2i(switchX, switchY, switchX + switchWidth, switchY  + switchHeight);      
-        _resizerHint.position = rectangle(W-20, H-20, 20, 20);
+        _resizerHint.position = rectangle(W-30, H-30, 30, 30);
     }
 
 private:
