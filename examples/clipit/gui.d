@@ -26,12 +26,12 @@ nothrow:
     {
         _client = client;
 
-        super(500, 500); // fixed size
+        //super(500, 500); // fixed size
 
         //static immutable float[8] scales = [1.0f, 1.25f, 1.5f];
         //super(makeSizeConstraintsDiscrete(500, 500, scales)); // WIP
 
-        //super(makeSizeConstraintsContinuous(500, 500, 1.0f, 3.0f)); // WIP
+        super(makeSizeConstraintsContinuous(500, 500, 0.9f, 3.0f)); // WIP
 
         // Sets the number of pixels recomputed around dirtied controls.
         // Since we aren't using PBR we can set this value to 0 to save
