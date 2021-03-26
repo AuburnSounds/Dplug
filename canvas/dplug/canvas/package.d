@@ -69,6 +69,16 @@ nothrow:
         _gradientUsed = 0;
         fillStyle(RGBA(0, 0, 0, 255));
 
+        // This is a limitation of dplug:canvas
+        // Because this rasterizer writes to 4 pixels at once at all times,
+        // there need up to 3 extra bytes between lines.
+        // You can use OwnedImage to have that guarantee.
+        // Or you can avoid full-UI controls that use a Canvas.
+
+        int xmaxRounded4Up = (imageDest.w + 3) & 0xfffffffc;
+        assert((xmaxRounded4Up & 3) == 0);
+        assert(xmaxRounded4Up*4 <= imageDest.pitch);
+
         _stateStack.resize(1);
         _stateStack[0].transform = Transform2D.identity();
     }

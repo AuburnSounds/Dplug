@@ -96,36 +96,9 @@ nothrow:
         _resizerHint.position = rectangle(W-20, H-20, 20, 20);
     }
 
-    // This is just to show how to use with dplug:canvas
-    override void onDrawRaw(ImageRef!RGBA rawMap,box2i[] dirtyRects) 
-    {
-        super.onDrawRaw(rawMap,dirtyRects);
 
-        foreach(dirtyRect; dirtyRects)
-        {
-            auto cRaw = rawMap.cropImageRef(dirtyRect);
-            canvas.initialize(cRaw);
-            canvas.translate(-dirtyRect.min.x, -dirtyRect.min.y);
-
-            // gradients have to be recreated for each dirtyRect
-            auto gradient = canvas.createLinearGradient(0, 0, 100*1.414, 100*1.414);
-            gradient.addColorStop(0.0f, RGBA(255, 50, 128, 255));
-            gradient.addColorStop(1.0f, RGBA(128, 128, 128, 0));
-
-         //   canvas.fillStyle = RGBA(255, 0, 0, 255);//gradient;
-/*
-            canvas.beginPath;
-                canvas.moveTo(0, 0);
-                canvas.lineTo(200, 0);
-                canvas.lineTo(0, 200);
-                canvas.fill();*/
-        }
-
-    }
 
 private:
-    Canvas canvas;
-    
     UIFilmstripKnob _inputGainKnob;
     UIFilmstripKnob _clipKnob;
     UIFilmstripKnob _outputGainKnob;
