@@ -649,8 +649,9 @@ protected:
         // If a resize has been made recently, we need to clip rectangles 
         // in the pending lists to the new size.
         // All other rectangles are purely derived from those.
-        // PERF: not sure if necessary to do it each time, a control 
-        //       could call setDirty?
+        // PERF: not sure if necessary to do it each time, or just after a resize. 
+        //       Could a control call setDirty at the same time?
+        //       See `addDirtyRect` for details.
         foreach (ref r; _rectsToUpdateDisjointedRaw[])
         {
             if (r.max.x > _currentUserWidth)

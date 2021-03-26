@@ -94,6 +94,18 @@ nothrow:
     {
         auto backgroundRef = _backgroundImage.toRef();
 
+        // Display cyan because we don't support resizing the image for now
+        debug
+        {
+            foreach(dirtyRect; dirtyRects)
+            {
+                auto croppedRawOut = rawMap.cropImageRef(dirtyRect);
+
+                // Fill with cyan.
+                croppedRawOut.fillAll(RGBA(255, 0, 255, 255));
+            }
+        }
+
         foreach(dirtyRect; dirtyRects)
         {
             // Compute source and dest
