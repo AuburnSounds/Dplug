@@ -14,6 +14,7 @@ import dplug.window.window;
 
 import dplug.graphics.font;
 import dplug.graphics.mipmap;
+import dplug.graphics.resizer;
 
 import dplug.gui.element;
 import dplug.gui.boxlist;
@@ -57,6 +58,14 @@ nothrow @nogc:
     /// Returns: `true` if the UI can accomodate several size in _logical_ space.
     ///          (be it by resizing the user area, or rescaling it).
     bool isUIResizable();
+
+    // A shared image resizer to be used in `reflow()` of element.
+    // Resizing using dplug:graphics use a lot of memory, 
+    // so it can be better if this is a shared resource.
+    // It is lazily constructed.
+    // See_also: `ImageResizer`.
+    // Note: do not use this resizer concurrently (in `onDrawRaw`, `onDrawPBR`, etc.).
+    ImageResizer* globalImageResizer();
 }
 
 
@@ -112,6 +121,11 @@ nothrow:
     final override bool isUIResizable()
     {
         return _owner.isUIResizable();
+    }
+
+    final override ImageResizer* globalImageResizer()
+    {
+        return &_globalResizer;
     }
 
     /// Last clicked element.
@@ -208,5 +222,6 @@ nothrow:
 private:
     GUIGraphics _owner;
 
+    ImageResizer _globalResizer;
 }
 
