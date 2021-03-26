@@ -41,12 +41,19 @@ nothrow:
         _knobHeight = _filmstrip.h / _numFrames;
         _param.addListener(this);
         _disabled = false;
-
+        _filmstripScaled = mallocNew!(OwnedImage!RGBA)();
     }
 
     ~this()
     {
         _param.removeListener(this);
+        _filmstripScaled.destroyFree();
+    }
+
+    override void reflow()
+    {
+        _filmstripScaled.size(position.width, position.height * _numFrames);
+        context.globalImageResizer.resizeImage(_filmstrip.toRef, _filmstripScaled.toRef);
     }
 
     /// Returns: sensivity.
@@ -69,7 +76,7 @@ nothrow:
     override void onDrawRaw(ImageRef!RGBA rawMap, box2i[] dirtyRects)
     {
         setCurrentImage();
-        auto _currentImage = _filmstrip.crop(box2i(_imageX1, _imageY1, _imageX2, _imageY2));
+        auto _currentImage = _filmstripScaled.crop(box2i(_imageX1, _imageY1, _imageX2, _imageY2));
         foreach(dirtyRect; dirtyRects)
         {
             auto croppedRawIn = _currentImage.crop(dirtyRect);
@@ -108,10 +115,10 @@ nothrow:
         if(currentFrame < 0) currentFrame = 0;
 
         _imageX1 = 0;
-        _imageY1 = (_filmstrip.h / _numFrames) * currentFrame;
+        _imageY1 = (_filmstripScaled.h / _numFrames) * currentFrame;
 
-        _imageX2 = _filmstrip.w;
-        _imageY2 = _imageY1 + (_filmstrip.h / _numFrames);
+        _imageX2 = _filmstripScaled.w;
+        _imageY2 = _imageY1 + (_filmstripScaled.h / _numFrames);
 
     }
 
@@ -218,8 +225,10 @@ protected:
     FloatParameter _param;
 
     OwnedImage!RGBA _filmstrip;
-    OwnedImage!RGBA _faderFilmstrip;
-    OwnedImage!RGBA _knobGreenFilmstrip;
+    OwnedImage!RGBA _filmstripScaled;
+
+    deprecated OwnedImage!RGBA _faderFilmstrip;
+    deprecated OwnedImage!RGBA _knobGreenFilmstrip;
     ImageRef!RGBA _currentImage;
 
     int _numFrames;

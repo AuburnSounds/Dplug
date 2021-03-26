@@ -43,8 +43,8 @@ nothrow:
     
     ~this()
     {
-        if(_backgroundImage)
-            _backgroundImage.destroyFree();
+        _backgroundImage.destroyFree();
+        _backgroundImageResized.destroyFree();
     }
     
     override void reflow()

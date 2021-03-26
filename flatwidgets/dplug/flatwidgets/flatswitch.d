@@ -41,11 +41,16 @@ nothrow:
         _width = _onImage.w;
         _height = _onImage.h;
 
+        _onImageScaled = mallocNew!(OwnedImage!RGBA)();
+        _offImageScaled = mallocNew!(OwnedImage!RGBA)();
+
     }
 
     ~this()
     {
         _param.removeListener(this);
+        _onImageScaled.destroyFree();
+        _offImageScaled.destroyFree();
     }
 
     bool getState()
@@ -53,9 +58,17 @@ nothrow:
       return unsafeObjectCast!BoolParameter(_param).valueAtomic();
     }
 
+    override void reflow()
+    {
+        _onImageScaled.size(position.width, position.height);
+        _offImageScaled.size(position.width, position.height);
+        context.globalImageResizer.resizeImage(_onImage.toRef, _onImageScaled.toRef);
+        context.globalImageResizer.resizeImage(_offImage.toRef, _offImageScaled.toRef);
+    }
+
     override void onDrawRaw(ImageRef!RGBA rawMap, box2i[] dirtyRects)
     {
-          auto _currentImage = getState() ? _onImage : _offImage;
+          auto _currentImage = getState() ? _onImageScaled : _offImageScaled;
           foreach(dirtyRect; dirtyRects)
           {
               auto croppedRawIn = _currentImage.crop(dirtyRect);
@@ -144,6 +157,8 @@ protected:
     bool _state;
     OwnedImage!RGBA _onImage;
     OwnedImage!RGBA _offImage;
+    OwnedImage!RGBA _onImageScaled;
+    OwnedImage!RGBA _offImageScaled;
     int _width;
     int _height;
 }
