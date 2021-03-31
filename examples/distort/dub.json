@@ -30,7 +30,8 @@
         "dplug:au": { "path": "../.." },
         "dplug:lv2": { "path": "../.."},
         "dplug:gui": { "path": "../.." },
-        "dplug:pbr-widgets": { "path": "../.." }
+        "dplug:pbr-widgets": { "path": "../.." },
+        "dplug:flat-widgets": { "path": "../.." }
     },
 
 

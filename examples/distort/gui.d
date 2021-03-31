@@ -10,6 +10,7 @@ import dplug.math;
 import dplug.gui;
 import dplug.pbrwidgets;
 import dplug.client;
+import dplug.flatwidgets;
 
 import main;
 
@@ -26,25 +27,11 @@ public:
 nothrow:
 @nogc:
 
-    DistortClient _client;
-
-    UISlider _inputSlider;
-    UIKnob _driveKnob;
-    UISlider _outputSlider;
-    UIOnOffSwitch _onOffSwitch;
-    UIBargraph _inputBargraph, _outputBargraph;
-    UIColorCorrection _colorCorrection;
-
-    Font _font;
-
-    KnobImage _knobImageData;
-    UIImageKnob _imageKnob;
-
     this(DistortClient client)
     {
         _client = client;
-        int W = 620, H = 330;
-        super(W, H); // size
+
+        super(makeSizeConstraintsContinuous(620, 330, 0.5f, 3.0f));
 
 
         // Note: PBRCompositor default lighting might change in a future version (increase of light to allow white plastics).
@@ -113,6 +100,8 @@ nothrow:
         _inputBargraph.setValues(startValues);
         _outputBargraph.setValues(startValues);
 
+        addChild(_resizerHint = mallocNew!UIWindowResizer(context()));
+
         // Global color correction.
         // Very useful at the end of the UI creating process.
         // As the sole Raw-only widget it is always on top and doesn't need zOrder adjustment.
@@ -121,14 +110,14 @@ nothrow:
                                                               + 0.01f, 0.93f, 1.16f, 0.08f,
                                                               + 0.0f , 1.0f , 1.10f, -0.01f);
             addChild(_colorCorrection = mallocNew!UIColorCorrection(context()));
-            _colorCorrection.setLiftGammaGainContrastRGB(colorCorrectionMatrix);            
+            _colorCorrection.setLiftGammaGainContrastRGB(colorCorrectionMatrix);
         }
     }
 
     ~this()
     {
         _font.destroyFree();
-        _knobImageData.destroyFree();        
+        _knobImageData.destroyFree();
     }
 
     override void reflow()
@@ -136,13 +125,35 @@ nothrow:
         super.reflow();
         int W = position.width;
         int H = position.height;
-        _imageKnob.position = rectangle(517, 176, 46, 46);
-        _inputSlider.position = rectangle(190, 132, 30, 130);
-        _outputSlider.position = rectangle(410, 132, 30, 130);
-        _onOffSwitch.position = rectangle(90, 177, 30, 40);
-        _driveKnob.position = box2i.rectangle(250, 140, 120, 120);
-        _inputBargraph.position = rectangle(150, 132, 30, 130);
-        _outputBargraph.position = rectangle(450, 132, 30, 130);
-        _colorCorrection.position = box2i.rectangle(0, 0, W, H);
+        float S = W / cast(float)(context.getDefaultUIWidth());
+        _imageKnob.position = rectangle(517, 176, 46, 46).scaleByFactor(S);
+        _inputSlider.position = rectangle(190, 132, 30, 130).scaleByFactor(S);
+        _outputSlider.position = rectangle(410, 132, 30, 130).scaleByFactor(S);
+        _onOffSwitch.position = rectangle(90, 177, 30, 40).scaleByFactor(S);
+        _driveKnob.position = rectangle(250, 140, 120, 120).scaleByFactor(S);
+        _inputBargraph.position = rectangle(150, 132, 30, 130).scaleByFactor(S);
+        _outputBargraph.position = rectangle(450, 132, 30, 130).scaleByFactor(S);
+
+        _colorCorrection.position = rectangle(0, 0, W, H);
+        _resizerHint.position = rectangle(W-30, H-30, 30, 30);
     }
+
+    void setMetersLevels(float[2] inputLevels, float[2] outputLevels)
+    {
+        _inputBargraph.setValues(inputLevels);
+        _outputBargraph.setValues(outputLevels);
+    }
+
+private:
+    DistortClient _client;
+    UISlider _inputSlider;
+    UIKnob _driveKnob;
+    UISlider _outputSlider;
+    UIOnOffSwitch _onOffSwitch;
+    UIBargraph _inputBargraph, _outputBargraph;
+    UIColorCorrection _colorCorrection;
+    Font _font;
+    KnobImage _knobImageData;
+    UIImageKnob _imageKnob;
+    UIWindowResizer _resizerHint;
 }

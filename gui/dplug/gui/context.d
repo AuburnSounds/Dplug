@@ -24,8 +24,7 @@ import dplug.gui.sizeconstraints;
 
 /// Work in progress. An ensemble of calls `UIElement` are allowed to make, that
 /// concern the whole UI.
-/// Whenever an API call makes sense globally for `UIelement`, 
-/// it should be moved to IUIContext.
+/// Whenever an API call makes sense globally for usage in an `UIelement`, it should be moved to `IUIContext`.
 interface IUIContext
 {
 nothrow @nogc:
@@ -38,6 +37,15 @@ nothrow @nogc:
     /// Returns: Current number of user pixels for one logical pixel.
     /// There is currently no user area resize in Dplug, so it is always 1.0f for now.
     float getUserScale();
+
+    /// Get default size of the UI, at creation time, in user pixels.
+    vec2i getDefaultUISizeInPixels();
+
+    /// Get default width of the UI, at creation time, in user pixels.
+    int getDefaultUIWidth();
+
+    /// Get default width of the UI, at creation time, in user pixels.
+    int getDefaultUIHeight();
 
     /// Get current size of the UI, in user pixels.
     vec2i getUISizeInPixelsUser();
@@ -57,6 +65,8 @@ nothrow @nogc:
 
     /// Returns: `true` if the UI can accomodate several size in _logical_ space.
     ///          (be it by resizing the user area, or rescaling it).
+    /// Technically all sizes are supported with black borders or cropping in logical space,
+    /// but they don't have to be encouraged if the plugin declares no support for it.
     bool isUIResizable();
 
     // A shared image resizer to be used in `reflow()` of element.
@@ -65,6 +75,7 @@ nothrow @nogc:
     // It is lazily constructed.
     // See_also: `ImageResizer`.
     // Note: do not use this resizer concurrently (in `onDrawRaw`, `onDrawPBR`, etc.).
+    //       Usually intended for `reflow()`.
     ImageResizer* globalImageResizer();
 }
 
@@ -91,6 +102,21 @@ nothrow:
     final override float getUserScale()
     {
         return _owner.getUserScale();
+    }
+
+    final override vec2i getDefaultUISizeInPixels()
+    {
+        return _owner.getDefaultUISizeInPixels();
+    }
+
+    final override int getDefaultUIWidth()
+    {
+        return getDefaultUISizeInPixels().x;
+    }
+
+    final override int getDefaultUIHeight()
+    {
+        return getDefaultUISizeInPixels().y;
     }
 
     final override vec2i getUISizeInPixelsUser()

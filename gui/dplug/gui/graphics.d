@@ -344,15 +344,22 @@ package:
 
     final float getUIScale()
     {
-        /// There is currently no support for this in Dplug, so it is always 1.0f for now.
-        /// The OS _might_ upscale the UI without our knowledge though.
+        // There is currently no support for this in Dplug, so it is always 1.0f for now.
+        // The OS _might_ upscale the UI without our knowledge though.
         return 1.0f;
     }
 
     final float getUserScale()
     {
-        /// There is currently no _userArea resize in Dplug, so it is always 1.0f for now.
+        // There is currently no _userArea resize in Dplug, so it is always 1.0f for now.
         return 1.0f;
+    }
+
+    final vec2i getDefaultUISizeInPixels()
+    {
+        int w = 0, h = 0;
+        _sizeConstraints.suggestDefaultSize(&w, &h);
+        return vec2i(w, h);
     }
 
     final vec2i getUISizeInPixelsUser()
@@ -652,19 +659,15 @@ protected:
         // PERF: not sure if necessary to do it each time, or just after a resize. 
         //       Could a control call setDirty at the same time?
         //       See `addDirtyRect` for details.
+
+        box2i validUserArea = rectangle(0, 0, _currentUserWidth, _currentUserHeight);
         foreach (ref r; _rectsToUpdateDisjointedRaw[])
         {
-            if (r.max.x > _currentUserWidth)
-                r.max.x = _currentUserWidth;
-            if (r.max.y > _currentUserHeight)
-                r.max.y = _currentUserHeight;
+            r = r.intersection(validUserArea);
         }
         foreach (ref r; _rectsToUpdateDisjointedPBR[])
         {
-            if (r.max.x > _currentUserWidth)
-                r.max.x = _currentUserWidth;
-            if (r.max.y > _currentUserHeight)
-                r.max.y = _currentUserHeight;
+            r = r.intersection(validUserArea);
         }
 
         // TECHNICAL DEBT HERE

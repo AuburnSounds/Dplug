@@ -122,7 +122,7 @@ nothrow:
         // receive maps whose points (0,0) is the lop-right of _position
         //
         // TL;DR If you fail this assertion, this means you have an UIElement outside the extent
-        //       of the window. Check UI creation code.
+        //       of the window. Check UI creation code, or `reflow()` chain for .position assignments.
         assert(validPosition == _position);
 
         if (validPosition.empty())

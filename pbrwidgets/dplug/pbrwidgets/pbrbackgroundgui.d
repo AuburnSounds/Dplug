@@ -54,12 +54,19 @@ nothrow:
         auto materialData = cast(ubyte[])(import(materialPath));
         auto depthData = cast(ubyte[])(import(depthPath));
         auto skyboxData = cast(ubyte[])(import(skyboxPath));
+
+        _diffuseResized = mallocNew!(OwnedImage!RGBA);
+        _materialResized = mallocNew!(OwnedImage!RGBA);
+        _depthResized = mallocNew!(OwnedImage!L16);
         loadImages(basecolorData, emissiveData, materialData, depthData, skyboxData);
     } 
 
     ~this()
     {
         freeImages();
+        _diffuseResized.destroyFree();
+        _materialResized.destroyFree();
+        _depthResized.destroyFree();
     }
 
     // Development purposes. 
@@ -81,77 +88,36 @@ nothrow:
         }
     }
 
-    override void reflow()
-    {
-        // Compute which rect of _backgroundImage goes into which rect of _position
-        // if the full element was entirely dirty
-        // The image is not resized to fit, instead it is cropped.
-        int sourceX;
-        int sourceY;
-        int destX;
-        int destY;
-        int width;
-        int height;
-        if (_position.width >= _diffuse.w)
-        {
-            width = _diffuse.w;
-            sourceX = 0;
-            destX = 0;
-        }
-        else
-        {
-            width = _position.width;
-            sourceX = 0;
-            destX = 0;
-        }
-
-        if (_position.height >= _diffuse.h)
-        {
-            height = _diffuse.h;
-            sourceY = 0;
-            destY = 0;
-        }
-        else
-        {
-            height = _position.height;
-            sourceY = 0;
-            destY = 0;
-        }
-
-        _sourceRect = box2i.rectangle(sourceX, sourceY, width, height);
-        _destRect = box2i.rectangle(destX, destY, width, height);
-        _offset = vec2i(destX - sourceX, destY - sourceY);
-    }
-
     override void onDrawPBR(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects)
     {
         // Just blit backgrounds into dirtyRects.
         foreach(dirtyRect; dirtyRects)
         {
-            // Compute source and dest
-            box2i source = _sourceRect.intersection(dirtyRect.translate(_offset));
-            box2i dest = _destRect.intersection(dirtyRect); // since dirtyRect is relative to _position 
-            if (source.empty())
-                continue;
-            if (dest.empty())
-                continue;
+            auto croppedDiffuseIn = _diffuseResized.toRef().cropImageRef(dirtyRect);
+            auto croppedDiffuseOut = diffuseMap.cropImageRef(dirtyRect);
 
-            assert(source.width == dest.width);
-            assert(source.height == dest.height);
+            auto croppedDepthIn = _depthResized.toRef().cropImageRef(dirtyRect);
+            auto croppedDepthOut = depthMap.cropImageRef(dirtyRect);
 
-            auto croppedDiffuseIn = _diffuse.crop(source);
-            auto croppedDiffuseOut = diffuseMap.crop(dest);
-
-            auto croppedDepthIn = _depth.crop(source);
-            auto croppedDepthOut = depthMap.crop(dest);
-
-            auto croppedMaterialIn = _material.crop(source);
-            auto croppedMaterialOut = materialMap.crop(dest);
+            auto croppedMaterialIn = _materialResized.toRef().cropImageRef(dirtyRect);
+            auto croppedMaterialOut = materialMap.cropImageRef(dirtyRect);
 
             croppedDiffuseIn.blitTo(croppedDiffuseOut);
             croppedDepthIn.blitTo(croppedDepthOut);
             croppedMaterialIn.blitTo(croppedMaterialOut);
         }
+    }
+
+    override void reflow()
+    {
+        int W = position.width;
+        int H = position.height;
+        _diffuseResized.size(W, H);
+        _materialResized.size(W, H);
+        _depthResized.size(W, H);
+        context.globalImageResizer.resizeImage(_diffuse.toRef, _diffuseResized.toRef);
+        context.globalImageResizer.resizeImage(_material.toRef, _materialResized.toRef);
+        context.globalImageResizer.resizeImage(_depth.toRef, _depthResized.toRef);
     }
 
 private:
@@ -163,10 +129,12 @@ private:
     static immutable string depthPathAbs = absoluteGfxDirectory ~ depthPath;
     static immutable string skyboxPathAbs = absoluteGfxDirectory ~ skyboxPath;
 
-
     OwnedImage!RGBA _diffuse;
     OwnedImage!RGBA _material;
     OwnedImage!L16 _depth;
+    OwnedImage!RGBA _diffuseResized;
+    OwnedImage!RGBA _materialResized;
+    OwnedImage!L16 _depthResized;
 
     /// Where pixel data is taken in the image, expressed in _background coordinates.
     box2i _sourceRect;
@@ -206,6 +174,7 @@ private:
             freeImages();
             loadImages(basecolorData, emissiveData, materialData, depthData, skyboxData);
             setDirtyWhole();
+            reflow();
         }
 
         // Release copy of file contents
@@ -246,7 +215,6 @@ private:
                 outDepth[i].l = cast(ushort)(d);
             }
         }
-
 
         // Search for a pass of type PassSkyboxReflections
         if (auto mpc = cast(MultipassCompositor) compositor())
