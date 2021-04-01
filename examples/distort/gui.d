@@ -31,7 +31,7 @@ nothrow:
     {
         _client = client;
 
-        super(makeSizeConstraintsContinuous(620, 330, 0.5f, 3.0f));
+        super(makeSizeConstraintsContinuous(620, 330, 0.5f, 2.0f));
 
 
         // Note: PBRCompositor default lighting might change in a future version (increase of light to allow white plastics).

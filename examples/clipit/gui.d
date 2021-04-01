@@ -26,7 +26,7 @@ nothrow:
     {
         _client = client;
 
-        super(makeSizeConstraintsContinuous(500, 500, 0.5f, 3.0f));
+        super(makeSizeConstraintsContinuous(500, 500, 0.5f, 2.0f));
 
         // Sets the number of pixels recomputed around dirtied controls.
         // Since we aren't using PBR we can set this value to 0 to save
