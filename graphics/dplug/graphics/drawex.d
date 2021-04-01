@@ -37,6 +37,8 @@ auto crop(V)(auto ref V src, box2i b) if (isView!V)
 /// This also avoid adding offset to coordinates.
 ImageRef!COLOR cropImageRef(COLOR)(ImageRef!COLOR src, box2i rect)
 {
+    assert(rect.max.x <= src.w);
+    assert(rect.max.y <= src.h);
     ImageRef!COLOR result;
     result.w = rect.width;
     result.h = rect.height;

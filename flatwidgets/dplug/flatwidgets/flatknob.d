@@ -53,7 +53,22 @@ nothrow:
     override void reflow()
     {
         _filmstripScaled.size(position.width, position.height * _numFrames);
-        context.globalImageResizer.resizeImage(_filmstrip.toRef, _filmstripScaled.toRef);
+
+        auto resizer = context.globalImageResizer;
+
+        // Limitation: the source image should have identically sized sub-frames.
+        assert(_filmstrip.h % _numFrames == 0);
+
+        int hsource = _filmstrip.h / _numFrames;
+        int hdest   = _filmstripScaled.h / _numFrames;
+
+        // Note: in order to avoid slight sample offsets, each subframe needs to be resized separately.
+        for (int frame = 0; frame < _numFrames; ++frame)
+        {
+            ImageRef!RGBA source     = _filmstrip.toRef.cropImageRef(rectangle(0, hsource * frame, _filmstrip.w, hsource));
+            ImageRef!RGBA dest = _filmstripScaled.toRef.cropImageRef(rectangle(0, hdest   * frame, _filmstripScaled.w, hdest  ));
+            resizer.resizeImage(source, dest);
+        }
     }
 
     /// Returns: sensivity.
@@ -76,11 +91,11 @@ nothrow:
     override void onDrawRaw(ImageRef!RGBA rawMap, box2i[] dirtyRects)
     {
         setCurrentImage();
-        auto _currentImage = _filmstripScaled.crop(box2i(_imageX1, _imageY1, _imageX2, _imageY2));
+        ImageRef!RGBA _currentImage = _filmstripScaled.toRef().cropImageRef(box2i(_imageX1, _imageY1, _imageX2, _imageY2));
         foreach(dirtyRect; dirtyRects)
         {
-            auto croppedRawIn = _currentImage.crop(dirtyRect);
-            auto croppedRawOut = rawMap.crop(dirtyRect);
+            ImageRef!RGBA croppedRawIn = _currentImage.toRef().cropImageRef(dirtyRect);
+            ImageRef!RGBA croppedRawOut = rawMap.cropImageRef(dirtyRect);
 
             int w = dirtyRect.width;
             int h = dirtyRect.height;
