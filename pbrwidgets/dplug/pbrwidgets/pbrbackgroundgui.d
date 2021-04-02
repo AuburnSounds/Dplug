@@ -192,10 +192,6 @@ private:
         _material = loadOwnedImage(materialData);
         OwnedImage!RGBA depthRGBA = loadOwnedImage(depthData);
         scope(exit) depthRGBA.destroyFree();
-        assert(_diffuse.w == _material.w);
-        assert(_diffuse.h == _material.h);
-        assert(_diffuse.w == depthRGBA.w);
-        assert(_diffuse.h == depthRGBA.h);
 
         int width = depthRGBA.w;
         int height = depthRGBA.h;
