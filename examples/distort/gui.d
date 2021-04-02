@@ -116,6 +116,8 @@ nothrow:
 
     ~this()
     {
+        // Note: UI widgets are owned by the UI and don't need to be destroyed manually
+        //       However some of the resources they consumed aren't owned by them, but borrowed.
         _font.destroyFree();
         _knobImageData.destroyFree();
     }
