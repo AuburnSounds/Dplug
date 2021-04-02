@@ -24,13 +24,12 @@ import dplug.graphics.drawex;
 nothrow:
 @nogc:
 
-// TODO: adapt on size, use mipmapping for reducing size.
-//       KnobImage will need to be something else (several Mipmap?)
 
 /// Type of image being used for Knob graphics.
-/// It's actually a one level deep Mipmap (ie. a flat image with sampling capabilities).
+/// It used to be a one level deep Mipmap (ie. a flat image with sampling capabilities).
+/// It is now a regular `OwnedImage` since it is resized in `reflow()`.
 /// Use it an opaque type: its definition can change.
-alias KnobImage = Mipmap!RGBA;
+alias KnobImage = OwnedImage!RGBA;
 
 /// Loads a knob image and rearrange channels to be fit to pass to `UIImageKnob`.
 ///
@@ -51,8 +50,11 @@ alias KnobImage = Mipmap!RGBA;
 /// - same for material with the physical channel, which is assumed to be always "full physical"
 ///
 /// Recommended format: PNG, for example a 230x46 24-bit image.
+/// Note that such an image is resized before use.
 ///
 /// Warning: the returned `KnobImage` should be destroyed by the caller with `destroyFree`.
+/// Note: internal resizing does not preserve aspect ratio exactly for 
+///       approximate scaled rectangles.
 KnobImage loadKnobImage(in void[] data)
 {
     OwnedImage!RGBA image = loadOwnedImage(data);
@@ -78,9 +80,8 @@ KnobImage loadKnobImage(in void[] data)
             // Fills unused with 255
             material[x].a = 255;
         }
-    }   
-
-    return mallocNew!(Mipmap!RGBA)(0, image);
+    }
+    return image;
 }
 
 
@@ -109,7 +110,40 @@ nothrow:
     {
         super(context, parameter);
         _knobImage = knobImage;
+        _knobImageResized = mallocNew!(Mipmap!RGBA)();
     }
+
+    ~this()
+    {
+        _knobImageResized.destroyFree();
+    }
+
+    override void reflow()
+    {
+        int numTiles = 5;
+
+        // _knobImageResized is a 1-level mipmap
+        // Note that this is only to benefit from being rotated
+        _knobImageResized.size(1, position.width * numTiles, position.height);
+
+        // Limitation: the source _knobImage should be multiple of numTiles pixels.
+        assert(_knobImage.w % numTiles == 0);
+
+        auto resizer = context.globalImageResizer;
+        ImageRef!RGBA destlevel0 = _knobImageResized.levels[0].toRef;
+
+        int wsource = _knobImage.w / numTiles;
+        int wdest   = destlevel0.w / numTiles;
+
+        // Note: in order to avoid slight sample offsets, each subframe needs to be resized separately.
+        for (int tile = 0; tile < numTiles; ++tile)
+        {
+            ImageRef!RGBA source = _knobImage.toRef.cropImageRef(rectangle(wsource * tile, 0, wsource, _knobImage.h       ));
+            ImageRef!RGBA dest   = destlevel0.cropImageRef(rectangle(wdest   * tile, 0, wdest, destlevel0.h));
+            resizer.resizeImage(source, dest);
+        }
+    }
+
 
     override void drawKnob(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects)
     {
@@ -119,23 +153,26 @@ nothrow:
         float cosa = cos(valueAngle);
         float sina = sin(valueAngle);
 
-        int h = _knobImage.height;
+        int w = _knobImageResized.width / 5;
+        int h = _knobImageResized.height;
 
+        // Note: slightly incorrect, since our resize in reflow doesn't exactly preserve aspect-ratio
         vec2f rotate(vec2f v) pure nothrow @nogc
         {
-            return vec2f(v.x * cosa + v.y * sina, v.y * cosa - v.x * sina);
+            return vec2f(v.x * cosa + v.y * sina, 
+                         v.y * cosa - v.x * sina);
         }
 
         foreach(dirtyRect; dirtyRects)
         {
-            auto cDiffuse = diffuseMap.crop(dirtyRect);
-            auto cMaterial = materialMap.crop(dirtyRect);
-            auto cDepth = depthMap.crop(dirtyRect);
+            ImageRef!RGBA cDiffuse  = diffuseMap.cropImageRef(dirtyRect);
+            ImageRef!RGBA cMaterial = materialMap.cropImageRef(dirtyRect);
+            ImageRef!L16 cDepth     = depthMap.cropImageRef(dirtyRect);
 
             // Basically we'll find a coordinate in the knob image for each pixel in the dirtyRect 
 
             // source center 
-            vec2f sourceCenter = vec2f(h*0.5f, h*0.5f);
+            vec2f sourceCenter = vec2f(w*0.5f, h*0.5f);
 
             for (int y = 0; y < dirtyRect.height; ++y)
             {
@@ -153,13 +190,13 @@ nothrow:
                     if ( (sourcePos.x >= 0.5f) && (sourcePos.x < (h - 0.5f))
                      &&  (sourcePos.y >=  0.5f) && (sourcePos.y < (h - 0.5f)) )
                     {
-                        fAlpha = _knobImage.linearSample(0, sourcePos.x, sourcePos.y).r;
+                        fAlpha = _knobImageResized.linearSample(0, sourcePos.x, sourcePos.y).r;
 
                         if (fAlpha > 0)
                         {
-                            vec4f fDiffuse = _knobImage.linearSample(0, sourcePos.x + h, sourcePos.y); 
-                            vec4f fDepth = _knobImage.linearSample(0, sourcePos.x + h*2, sourcePos.y); 
-                            vec4f fMaterial = _knobImage.linearSample(0, sourcePos.x + h*3, sourcePos.y);
+                            vec4f fDiffuse = _knobImageResized.linearSample(0, sourcePos.x + h, sourcePos.y); 
+                            vec4f fDepth = _knobImageResized.linearSample(0, sourcePos.x + h*2, sourcePos.y); 
+                            vec4f fMaterial = _knobImageResized.linearSample(0, sourcePos.x + h*3, sourcePos.y);
 
                             ubyte alpha = cast(ubyte)(0.5f + fAlpha);
                             ubyte R = cast(ubyte)(0.5f + fDiffuse.r);
@@ -195,5 +232,6 @@ nothrow:
     }
 
     KnobImage _knobImage; // borrowed image of the knob
+    Mipmap!RGBA _knobImageResized; // owned resized image
 }
 
