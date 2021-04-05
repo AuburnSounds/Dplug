@@ -50,21 +50,21 @@ nothrow:
     override void reflow()
     {
         int W = position.width;
-        int H = position.width;
+        int H = position.height;
         _backgroundImageResized.size(_position.width, _position.height);
-        context.globalImageResizer.resizeImage(_backgroundImage.toRef, _backgroundImageResized.toRef);
+        context.globalImageResizer.resizeImage_sRGBNoAlpha(_backgroundImage.toRef, _backgroundImageResized.toRef);
     }
     
     override void onDrawRaw(ImageRef!RGBA rawMap, box2i[] dirtyRects)
     {
-        auto backgroundRef = _backgroundImageResized.toRef();
+        ImageRef!RGBA backgroundRef = _backgroundImageResized.toRef();
 
         foreach(dirtyRect; dirtyRects)
         {
             int W = dirtyRect.width;
             int H = dirtyRect.height;
-            auto croppedRawIn = backgroundRef.cropImageRef(dirtyRect);
-            auto croppedRawOut = rawMap.cropImageRef(dirtyRect);
+            ImageRef!RGBA croppedRawIn = backgroundRef.cropImageRef(dirtyRect);
+            ImageRef!RGBA croppedRawOut = rawMap.cropImageRef(dirtyRect);
             croppedRawIn.blitTo(croppedRawOut);
         }
     }

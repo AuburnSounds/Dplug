@@ -67,7 +67,7 @@ nothrow:
         {
             ImageRef!RGBA source     = _filmstrip.toRef.cropImageRef(rectangle(0, hsource * frame, _filmstrip.w, hsource));
             ImageRef!RGBA dest = _filmstripScaled.toRef.cropImageRef(rectangle(0, hdest   * frame, _filmstripScaled.w, hdest  ));
-            resizer.resizeImage(source, dest);
+            resizer.resizeImage_sRGBNoAlpha(source, dest);
         }
     }
 

@@ -62,8 +62,8 @@ nothrow:
     {
         _onImageScaled.size(position.width, position.height);
         _offImageScaled.size(position.width, position.height);
-        context.globalImageResizer.resizeImage(_onImage.toRef, _onImageScaled.toRef);
-        context.globalImageResizer.resizeImage(_offImage.toRef, _offImageScaled.toRef);
+        context.globalImageResizer.resizeImage_sRGBWithAlpha(_onImage.toRef, _onImageScaled.toRef);
+        context.globalImageResizer.resizeImage_sRGBWithAlpha(_offImage.toRef, _offImageScaled.toRef);
     }
 
     override void onDrawRaw(ImageRef!RGBA rawMap, box2i[] dirtyRects)

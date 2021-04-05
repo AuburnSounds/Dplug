@@ -115,9 +115,9 @@ nothrow:
         _diffuseResized.size(W, H);
         _materialResized.size(W, H);
         _depthResized.size(W, H);
-        context.globalImageResizer.resizeImage(_diffuse.toRef, _diffuseResized.toRef);
-        context.globalImageResizer.resizeImage(_material.toRef, _materialResized.toRef);
-        context.globalImageResizer.resizeImage(_depth.toRef, _depthResized.toRef);
+        context.globalImageResizer.resizeImageDiffuse(_diffuse.toRef, _diffuseResized.toRef);
+        context.globalImageResizer.resizeImageMaterial(_material.toRef, _materialResized.toRef);
+        context.globalImageResizer.resizeImageDepth(_depth.toRef, _depthResized.toRef);
     }
 
 private:

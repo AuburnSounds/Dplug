@@ -84,6 +84,7 @@ KnobImage loadKnobImage(in void[] data)
     return image;
 }
 
+// TODO: for more precision, depth should be copied into a L16 texture, and resized there. Else precision from resampling is lost.
 
 /// UIKnob which replace the knob part by a rotated PBR image.
 class UIImageKnob : UIKnob
@@ -140,7 +141,13 @@ nothrow:
         {
             ImageRef!RGBA source = _knobImage.toRef.cropImageRef(rectangle(wsource * tile, 0, wsource, _knobImage.h       ));
             ImageRef!RGBA dest   = destlevel0.cropImageRef(rectangle(wdest   * tile, 0, wdest, destlevel0.h));
-            resizer.resizeImage(source, dest);
+
+            if (tile == 2) // depth
+            {
+                resizer.resizeImageSmoother(source, dest);
+            }
+            else
+                resizer.resizeImageGeneric(source, dest);
         }
     }
 
