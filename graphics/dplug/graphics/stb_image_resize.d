@@ -156,6 +156,7 @@ module dplug.graphics.stb_image_resize;
 import core.stdc.stdlib: malloc, free;
 import core.stdc.string: memset;
 import dplug.core.math : fast_fabs, fast_pow, fast_ceil, fast_floor;
+import dplug.core.vec;
 
 
 nothrow:
@@ -182,9 +183,9 @@ nothrow:
 
 int stbir_resize_uint8(const(ubyte)* input_pixels , int input_w , int input_h , int input_stride_in_bytes,
                        ubyte* output_pixels, int output_w, int output_h, int output_stride_in_bytes,
-                       int num_channels, int filter = STBIR_FILTER_DEFAULT)
+                       int num_channels, int filter, void *alloc_context)
 {
-    return stbir__resize_arbitrary(null, input_pixels, input_w, input_h, input_stride_in_bytes,
+    return stbir__resize_arbitrary(alloc_context, input_pixels, input_w, input_h, input_stride_in_bytes,
                                    output_pixels, output_w, output_h, output_stride_in_bytes,
                                    0,0,1,1,null,num_channels,-1,0, STBIR_TYPE_UINT8, filter, filter,
                                    STBIR_EDGE_CLAMP, STBIR_EDGE_CLAMP, STBIR_COLORSPACE_LINEAR);
@@ -192,9 +193,9 @@ int stbir_resize_uint8(const(ubyte)* input_pixels , int input_w , int input_h , 
 
 int stbir_resize_uint16(const(ushort)* input_pixels , int input_w , int input_h , int input_stride_in_bytes,
                        ushort* output_pixels, int output_w, int output_h, int output_stride_in_bytes,
-                       int num_channels, int filter = STBIR_FILTER_DEFAULT)
+                       int num_channels, int filter, void *alloc_context)
 {
-    return stbir__resize_arbitrary(null, input_pixels, input_w, input_h, input_stride_in_bytes,
+    return stbir__resize_arbitrary(alloc_context, input_pixels, input_w, input_h, input_stride_in_bytes,
                                    output_pixels, output_w, output_h, output_stride_in_bytes,
                                    0,0,1,1,null,num_channels,-1,0, STBIR_TYPE_UINT16, filter, filter,
                                    STBIR_EDGE_CLAMP, STBIR_EDGE_CLAMP, STBIR_COLORSPACE_LINEAR);
@@ -220,9 +221,9 @@ enum STBIR_FLAG_ALPHA_USES_COLORSPACE = (1 << 1);
 
 int stbir_resize_uint8_srgb(const(ubyte)*input_pixels , int input_w , int input_h , int input_stride_in_bytes,
                             ubyte*output_pixels, int output_w, int output_h, int output_stride_in_bytes,
-                            int num_channels, int alpha_channel, int flags)
+                            int num_channels, int alpha_channel, int flags, void* alloc_context)
 {
-    return stbir__resize_arbitrary(null, input_pixels, input_w, input_h, input_stride_in_bytes,
+    return stbir__resize_arbitrary(alloc_context, input_pixels, input_w, input_h, input_stride_in_bytes,
                                    output_pixels, output_w, output_h, output_stride_in_bytes,
                                    0,0,1,1,null,num_channels,alpha_channel,flags, STBIR_TYPE_UINT8, STBIR_FILTER_DEFAULT, STBIR_FILTER_DEFAULT,
                                    STBIR_EDGE_CLAMP, STBIR_EDGE_CLAMP, STBIR_COLORSPACE_SRGB);
@@ -237,11 +238,6 @@ enum : stbir_edge
     STBIR_EDGE_ZERO    = 4,
 }
 
-// This function adds the ability to specify how requests to sample off the edge of the image are handled.
-int stbir_resize_uint8_srgb_edgemode(const(ubyte)*input_pixels , int input_w , int input_h , int input_stride_in_bytes,
-                                                    ubyte*output_pixels, int output_w, int output_h, int output_stride_in_bytes,
-                                              int num_channels, int alpha_channel, int flags,
-                                              stbir_edge edge_wrap_mode);
 
 //////////////////////////////////////////////////////////////////////////////
 //
@@ -278,20 +274,6 @@ enum : stbir_colorspace
     STBIR_MAX_COLORSPACES,
 }
 
-// The following functions are all identical except for the type of the image data
-
-int stbir_resize_uint8_generic( const(ubyte)*input_pixels , int input_w , int input_h , int input_stride_in_bytes,
-                                               ubyte*output_pixels, int output_w, int output_h, int output_stride_in_bytes,
-                                         int num_channels, int alpha_channel, int flags,
-                                         stbir_edge edge_wrap_mode, stbir_filter filter, stbir_colorspace space,
-                                         void *alloc_context);
-
-int stbir_resize_uint16_generic(const ushort *input_pixels  , int input_w , int input_h , int input_stride_in_bytes,
-                                               ushort *output_pixels , int output_w, int output_h, int output_stride_in_bytes,
-                                         int num_channels, int alpha_channel, int flags,
-                                         stbir_edge edge_wrap_mode, stbir_filter filter, stbir_colorspace space,
-                                         void *alloc_context);
-
 
 //////////////////////////////////////////////////////////////////////////////
 //
@@ -317,42 +299,39 @@ enum : stbir_datatype
     STBIR_MAX_TYPES
 }
 
-int stbir_resize(         const void *input_pixels , int input_w , int input_h , int input_stride_in_bytes,
-                                         void *output_pixels, int output_w, int output_h, int output_stride_in_bytes,
-                                   stbir_datatype datatype,
-                                   int num_channels, int alpha_channel, int flags,
-                                   stbir_edge edge_mode_horizontal, stbir_edge edge_mode_vertical,
-                                   stbir_filter filter_horizontal,  stbir_filter filter_vertical,
-                                   stbir_colorspace space, void *alloc_context);
-
-int stbir_resize_subpixel(const void *input_pixels , int input_w , int input_h , int input_stride_in_bytes,
-                                         void *output_pixels, int output_w, int output_h, int output_stride_in_bytes,
-                                   stbir_datatype datatype,
-                                   int num_channels, int alpha_channel, int flags,
-                                   stbir_edge edge_mode_horizontal, stbir_edge edge_mode_vertical,
-                                   stbir_filter filter_horizontal,  stbir_filter filter_vertical,
-                                   stbir_colorspace space, void *alloc_context,
-                                   float x_scale, float y_scale,
-                                   float x_offset, float y_offset);
-
-int stbir_resize_region(  const void *input_pixels , int input_w , int input_h , int input_stride_in_bytes,
-                                         void *output_pixels, int output_w, int output_h, int output_stride_in_bytes,
-                                   stbir_datatype datatype,
-                                   int num_channels, int alpha_channel, int flags,
-                                   stbir_edge edge_mode_horizontal, stbir_edge edge_mode_vertical,
-                                   stbir_filter filter_horizontal,  stbir_filter filter_vertical,
-                                   stbir_colorspace space, void *alloc_context,
-                                   float s0, float t0, float s1, float t1);
 // (s0, t0) & (s1, t1) are the top-left and bottom right corner (uv addressing style: [0, 1]x[0, 1]) of a region of the input image to use.
+
+struct STBAllocatorContext
+{
+nothrow:
+@nogc:
+    void* buf = null;
+    size_t length = 0;
+
+    @disable this(this);
+
+    void* reallocDiscard(size_t numBytes)
+    {
+        if (length < numBytes)
+        {         
+            buf = alignedReallocDiscard(buf, numBytes, 1);
+            length = numBytes;
+        }
+        return buf;
+    }
+}
 
 void* STBIR_MALLOC(size_t size, void* context)
 {
-    return malloc(size);
+    assert(context !is null);
+    STBAllocatorContext* alloc = cast(STBAllocatorContext*)context;
+    return alloc.reallocDiscard(size);
 }
 
 void STBIR_FREE(void* p, void* context)
 {
-    free(p);
+    assert(context !is null);
+    // will be freed when resizer is freed, because it's relatively small and shared.
 }
 
 enum STBIR_DEFAULT_FILTER_UPSAMPLE = STBIR_FILTER_CATMULLROM;
