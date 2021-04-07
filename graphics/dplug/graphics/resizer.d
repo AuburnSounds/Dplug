@@ -86,6 +86,16 @@ nothrow:
     }
 
     ///ditto
+    void resizeImageGeneric(ImageRef!L16 input, ImageRef!L16 output)
+    {
+        // Note: smoothing depth while resampling avoids some depth artifacts.
+        stbir_filter filter = STBIR_FILTER_DEFAULT;
+        int res = stbir_resize_uint16(cast(const(ushort*))input.pixels, input.w, input.h, cast(int)input.pitch,
+                                      cast(      ushort* )output.pixels, output.w, output.h, cast(int)output.pitch, 1, filter, &alloc_context);
+        assert(res);
+    }
+
+    ///ditto
     void resizeImageDepth(ImageRef!L16 input, ImageRef!L16 output)
     {
         // Note: smoothing depth while resampling avoids some depth artifacts.

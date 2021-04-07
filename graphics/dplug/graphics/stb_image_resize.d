@@ -310,6 +310,11 @@ nothrow:
 
     @disable this(this);
 
+    ~this()
+    {
+        alignedFree(buf, 1);
+    }
+
     void* reallocDiscard(size_t numBytes)
     {
         if (length < numBytes)

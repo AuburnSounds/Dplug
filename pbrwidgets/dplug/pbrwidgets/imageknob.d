@@ -50,7 +50,7 @@ alias KnobImage = OwnedImage!RGBA;
 /// - same for material with the physical channel, which is assumed to be always "full physical"
 ///
 /// Recommended format: PNG, for example a 230x46 24-bit image.
-/// Note that such an image is resized before use.
+/// Note that such an image is formatted and resized in `reflow` before use.
 ///
 /// Warning: the returned `KnobImage` should be destroyed by the caller with `destroyFree`.
 /// Note: internal resizing does not preserve aspect ratio exactly for 
@@ -84,7 +84,6 @@ KnobImage loadKnobImage(in void[] data)
     return image;
 }
 
-// TODO: for more precision, depth should be copied into a L16 texture, and resized there. Else precision from resampling is lost.
 
 /// UIKnob which replace the knob part by a rotated PBR image.
 class UIImageKnob : UIKnob
@@ -111,43 +110,96 @@ nothrow:
     {
         super(context, parameter);
         _knobImage = knobImage;
-        _knobImageResized = mallocNew!(Mipmap!RGBA)();
+
+        _tempBuf = mallocNew!(OwnedImage!L16);
+        _alphaTexture = mallocNew!(Mipmap!L16);
+        _depthTexture = mallocNew!(Mipmap!L16);
+        _diffuseTexture = mallocNew!(Mipmap!RGBA);
+        _materialTexture = mallocNew!(Mipmap!RGBA);
     }
 
     ~this()
     {
-        _knobImageResized.destroyFree();
+        _tempBuf.destroyFree();
+        _alphaTexture.destroyFree();
+        _depthTexture.destroyFree();
+        _diffuseTexture.destroyFree();
+        _materialTexture.destroyFree();
     }
 
     override void reflow()
     {
         int numTiles = 5;
 
-        // _knobImageResized is a 1-level mipmap
-        // Note that this is only to benefit from being rotated
-        _knobImageResized.size(1, position.width * numTiles, position.height);
-
         // Limitation: the source _knobImage should be multiple of numTiles pixels.
         assert(_knobImage.w % numTiles == 0);
+        int SH = _knobImage.w / numTiles;
+        assert(_knobImage.h == SH); // Input image dimension should be: (numTiles x SH, SH)
+
+        // Things are resized towards DW x DH textures.
+        int DW = position.width;
+        int DH = position.height; 
+        //assert(DW == DH); // For now.
+
+        _tempBuf.size(SH, SH);
+
+        enum numMipLevels = 1;
+        _alphaTexture.size(numMipLevels, DW, DH);
+        _depthTexture.size(numMipLevels, DW, DH);
+        _diffuseTexture.size(numMipLevels, DW, DH);
+        _materialTexture.size(numMipLevels, DW, DH);
 
         auto resizer = context.globalImageResizer;
-        ImageRef!RGBA destlevel0 = _knobImageResized.levels[0].toRef;
 
-        int wsource = _knobImage.w / numTiles;
-        int wdest   = destlevel0.w / numTiles;
-
-        // Note: in order to avoid slight sample offsets, each subframe needs to be resized separately.
-        for (int tile = 0; tile < numTiles; ++tile)
+        // 1. Extends alpha to 16-bit, resize it to destination size in _alphaTexture.
         {
-            ImageRef!RGBA source = _knobImage.toRef.cropImageRef(rectangle(wsource * tile, 0, wsource, _knobImage.h       ));
-            ImageRef!RGBA dest   = destlevel0.cropImageRef(rectangle(wdest   * tile, 0, wdest, destlevel0.h));
-
-            if (tile == 2) // depth
+            ImageRef!RGBA srcAlpha =  _knobImage.toRef.cropImageRef(rectangle(0, 0, SH, SH));
+            ImageRef!L16 tempAlpha = _tempBuf.toRef();
+            ImageRef!L16 destAlpha = _alphaTexture.levels[0].toRef;
+            for (int y = 0; y < SH; ++y)
             {
-                resizer.resizeImageSmoother(source, dest);
+                for (int x = 0; x < SH; ++x)
+                {
+                    RGBA sample = srcAlpha[x, y];
+                    ushort alpha16 = sample.r * 257;
+                    tempAlpha[x, y] = L16(alpha16);
+                }
             }
-            else
-                resizer.resizeImageGeneric(source, dest);
+            resizer.resizeImageGeneric(tempAlpha, destAlpha);
+        }
+
+        // 2. Extends depth to 16-bit, resize it to destination size in _depthTexture.
+        {
+            ImageRef!RGBA srcDepth =  _knobImage.toRef.cropImageRef(rectangle(2*SH, 0, SH, SH));
+            ImageRef!L16 tempDepth = _tempBuf.toRef();
+            ImageRef!L16 destDepth = _depthTexture.levels[0].toRef;
+            for (int y = 0; y < SH; ++y)
+            {
+                for (int x = 0; x < SH; ++x)
+                {
+                    RGBA sample = srcDepth[x, y];
+                    ushort depth = cast(ushort)(0.5f + (257 * (sample.r + sample.g + sample.b) / 3.0f));
+                    tempDepth[x, y] = L16(depth);
+                }
+            }
+
+            // Note: different resampling kernal for depth, to smooth it. 
+            //       Slightly more serene to look at.
+            resizer.resizeImageDepth(tempDepth, destDepth); 
+        }
+
+        // 3. Resize diffuse+emissive in _diffuseTexture.
+        {
+            ImageRef!RGBA srcDiffuse =  _knobImage.toRef.cropImageRef(rectangle(SH, 0, SH, SH));
+            ImageRef!RGBA destDiffuse = _diffuseTexture.levels[0].toRef;
+            resizer.resizeImageDiffuse(srcDiffuse, destDiffuse);
+        }
+
+        // 4. Resize material in _materialTexture.
+        {
+            ImageRef!RGBA srcMaterial =  _knobImage.toRef.cropImageRef(rectangle(3*SH, 0, SH, SH));
+            ImageRef!RGBA destMaterial = _materialTexture.levels[0].toRef;
+            resizer.resizeImageMaterial(srcMaterial, destMaterial);
         }
     }
 
@@ -160,8 +212,8 @@ nothrow:
         float cosa = cos(valueAngle);
         float sina = sin(valueAngle);
 
-        int w = _knobImageResized.width / 5;
-        int h = _knobImageResized.height;
+        int w = _alphaTexture.width;
+        int h = _alphaTexture.height;
 
         // Note: slightly incorrect, since our resize in reflow doesn't exactly preserve aspect-ratio
         vec2f rotate(vec2f v) pure nothrow @nogc
@@ -181,6 +233,7 @@ nothrow:
             // source center 
             vec2f sourceCenter = vec2f(w*0.5f, h*0.5f);
 
+            enum float renormDepth = 1.0 / 65535.0f;
             for (int y = 0; y < dirtyRect.height; ++y)
             {
                 RGBA* outDiffuse = cDiffuse.scanline(y).ptr;
@@ -197,15 +250,15 @@ nothrow:
                     if ( (sourcePos.x >= 0.5f) && (sourcePos.x < (h - 0.5f))
                      &&  (sourcePos.y >=  0.5f) && (sourcePos.y < (h - 0.5f)) )
                     {
-                        fAlpha = _knobImageResized.linearSample(0, sourcePos.x, sourcePos.y).r;
+                        fAlpha = _alphaTexture.linearSample(0, sourcePos.x, sourcePos.y);
 
                         if (fAlpha > 0)
                         {
-                            vec4f fDiffuse = _knobImageResized.linearSample(0, sourcePos.x + h, sourcePos.y); 
-                            vec4f fDepth = _knobImageResized.linearSample(0, sourcePos.x + h*2, sourcePos.y); 
-                            vec4f fMaterial = _knobImageResized.linearSample(0, sourcePos.x + h*3, sourcePos.y);
+                            vec4f fDiffuse  =  _diffuseTexture.linearSample(0, sourcePos.x, sourcePos.y); 
+                            float fDepth    =    _depthTexture.linearSample(0, sourcePos.x, sourcePos.y); 
+                            vec4f fMaterial = _materialTexture.linearSample(0, sourcePos.x, sourcePos.y);
 
-                            ubyte alpha = cast(ubyte)(0.5f + fAlpha);
+                            ubyte alpha = cast(ubyte)(0.5f + fAlpha / 257.0f);
                             ubyte R = cast(ubyte)(0.5f + fDiffuse.r);
                             ubyte G = cast(ubyte)(0.5f + fDiffuse.g);
                             ubyte B = cast(ubyte)(0.5f + fDiffuse.b);
@@ -239,6 +292,11 @@ nothrow:
     }
 
     KnobImage _knobImage; // borrowed image of the knob
-    Mipmap!RGBA _knobImageResized; // owned resized image
+
+    OwnedImage!L16 _tempBuf; // used for augmenting bitdepth of alpha and depth
+    Mipmap!L16 _alphaTexture; // owned 1-level image of alpha
+    Mipmap!L16 _depthTexture; // owned 1-level image of depth
+    Mipmap!RGBA _diffuseTexture; // owned 1-level image of diffuse+emissive RGBE
+    Mipmap!RGBA _materialTexture; // owned 1-level image of material
 }
 
