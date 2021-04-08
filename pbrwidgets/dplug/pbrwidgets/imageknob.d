@@ -269,7 +269,7 @@ nothrow:
                             ubyte S = cast(ubyte)(0.5f + fMaterial.b);
                             ubyte X = cast(ubyte)(0.5f + fMaterial.a);
 
-                            ushort depth = cast(ushort)(0.5f + 257 * (fDepth.r + fDepth.g + fDepth.b) / 3);
+                            ushort depth = cast(ushort)(0.5f + fDepth);
 
                             RGBA diffuse = RGBA(R, G, B, E);
                             RGBA material = RGBA(Ro, M, S, X);
