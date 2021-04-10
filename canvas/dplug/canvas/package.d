@@ -533,6 +533,11 @@ nothrow:
     {
         scale(xy.x, xy.y);
     }
+    ///ditto
+    void scale(float xy)
+    {
+        scale(xy, xy);
+    }
 
     /// Adds a translation transformation by moving the canvas and its origin `x`
     /// horizontally and `y` vertically on the grid.
