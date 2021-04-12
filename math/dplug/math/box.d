@@ -316,14 +316,23 @@ struct Box(T, int N)
 
         /// Scale the box by factor `scale`, and round the result to integer if needed.
         // MAYDO: round instead? Take care of overflow.
-        // To be safe, it should be valid to have an overflowing UIElement.
-        @nogc Box scaleByFactor(float scale) pure const nothrow
+        @nogc Box scaleByFactor(float scale) const nothrow
         {
             Box res;
-            res.min.x = cast(T)(min.x * scale); 
-            res.min.y = cast(T)(min.y * scale);
-            res.max.x = cast(T)(max.x * scale);
-            res.max.y = cast(T)(max.y * scale);
+            static if (isFloatingPoint!T)
+            {
+                res.min.x = min.x * scale;
+                res.min.y = min.y * scale;
+                res.max.x = max.x * scale;
+                res.max.y = max.y * scale;
+            }
+            else
+            {
+                res.min.x = cast(T)( round(min.x * scale) );
+                res.min.y = cast(T)( round(min.y * scale) );
+                res.max.x = cast(T)( round(max.x * scale) );
+                res.max.y = cast(T)( round(max.y * scale) );
+            }
             return res;
         }
 
