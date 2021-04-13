@@ -182,11 +182,26 @@ struct LegalIO
     int numOutputChannels;
 }
 
+/// This is the interface used by the GUI, to reduce coupling and avoid exposing the whole of `Client` to it.
+/// It should eventually allows to supersede/hide IHostCommand.
+interface IClient
+{
+nothrow:
+@nogc:
+    /// Requests a resize of the plugin window, notifying the host.
+    /// Returns: `true` if succeeded.
+    ///
+    /// Params:
+    ///     width New width of the plugin, in logical pixels.
+    ///     height New height of the plugin, in logical pixels.
+    bool requestResize(int widthLogicalPixels, int heightLogicalPixels);
+}
+
 /// Plugin interface, from the client point of view.
 /// This client has no knowledge of thread-safety, it must be handled externally.
 /// User plugins derivate from this class.
 /// Plugin formats wrappers owns one dplug.plugin.Client as a member.
-class Client
+class Client : IClient
 {
 public:
 nothrow:
@@ -336,7 +351,7 @@ nothrow:
     {
         createGraphicsLazily();
         assert(_hostCommand !is null);
-        return (cast(IGraphics)_graphics).openUI(parentInfo, controlInfo, _hostCommand.getDAW(), backend);
+        return (cast(IGraphics)_graphics).openUI(parentInfo, controlInfo, this, backend);
     }
 
     final bool getGUISize(int* widthLogicalPixels, int* heightLogicalPixels) nothrow @nogc
@@ -714,6 +729,16 @@ nothrow:
         // Calls the reset virtual call
         reset(sampleRate, maxFrames, numInputs, numOutputs);
     }
+
+    // <IClient>
+    bool requestResize(int widthLogicalPixels, int heightLogicalPixels)
+    {
+        if (_hostCommand is null) 
+            return false;
+
+        return _hostCommand.requestResize(widthLogicalPixels, heightLogicalPixels);
+    }
+    // </IClient>
 
 protected:
 

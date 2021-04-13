@@ -25,7 +25,10 @@ interface IGraphics
 nothrow:
 @nogc:
     /// Create an UI, return a system-specific handle for the window/view
-    abstract void* openUI(void* parentInfo, void* controlInfo, DAW daw, GraphicsBackend backend);
+    abstract void* openUI(void* parentInfo, 
+                          void* controlInfo, 
+                          IClient client,
+                          GraphicsBackend backend);
 
     /// Close that UI.
     abstract void closeUI();

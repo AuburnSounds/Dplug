@@ -161,9 +161,11 @@ nothrow:
 
     override void* openUI(void* parentInfo, 
                           void* controlInfo, 
-                          DAW daw, 
+                          IClient client, 
                           GraphicsBackend backend)
     {
+        _client = client;
+
         WindowBackend wbackend = void;
         final switch(backend)
         {
@@ -195,6 +197,7 @@ nothrow:
             _window.destroyFree();
             _window = null;
         }
+        _client = null;
     }
 
     override void getGUISize(int* widthLogicalPixels, int* heightLogicalPixels)
@@ -384,7 +387,8 @@ package:
             &&  (heightLogicalPixels == _currentLogicalHeight) )
             return true;
 
-        // TODO: some hosts need to be informed via format-specific requests
+        // Note: discarding the result.
+        _client.requestResize(widthLogicalPixels, heightLogicalPixels);
 
         // Here we request the native window to resize. 
         // The actual resize will be received by the window listener, later.
@@ -413,6 +417,11 @@ package:
     // </resizing support>
 
 protected:
+
+    // The link to act on the client through the interface.
+    // Eventually it may supersedes direct usage of the client, or its IHostCommand in UIElements.
+    // Only valid in a openUI/closeUI pair.
+    IClient _client;
 
     ICompositor _compositor;
 
