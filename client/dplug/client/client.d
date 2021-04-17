@@ -34,6 +34,16 @@ import dplug.client.graphics;
 import dplug.client.daw;
 
 
+enum PluginFormat
+{
+    vst2,
+    vst3,
+    aax,
+    auv2,
+    lv2
+}
+
+
 /// A plugin client can send commands to the host.
 /// This interface is injected after the client creation though.
 interface IHostCommand
@@ -63,6 +73,10 @@ nothrow @nogc:
     /// Report the identied host name (DAW).
     /// MAYDO: not available for LV2.
     DAW getDAW();
+
+    /// Gets the plugin format used at runtime. Version identifier may not be enough in the future, in case of 
+    /// unity builds.
+    PluginFormat getPluginFormat();
 }
 
 // Plugin version in major.minor.patch form.
@@ -195,6 +209,13 @@ nothrow:
     ///     width New width of the plugin, in logical pixels.
     ///     height New height of the plugin, in logical pixels.
     bool requestResize(int widthLogicalPixels, int heightLogicalPixels);
+
+    /// Report the identied host name (DAW).
+    DAW getDAW();
+
+    /// Gets the plugin format used at runtime. Version identifier may not be enough in the future, in case of 
+    /// unity builds.
+    PluginFormat getPluginFormat();
 }
 
 /// Plugin interface, from the client point of view.
@@ -731,13 +752,26 @@ nothrow:
     }
 
     // <IClient>
-    bool requestResize(int widthLogicalPixels, int heightLogicalPixels)
+    override bool requestResize(int widthLogicalPixels, int heightLogicalPixels)
     {
         if (_hostCommand is null) 
             return false;
 
         return _hostCommand.requestResize(widthLogicalPixels, heightLogicalPixels);
     }
+
+    override DAW getDAW()
+    {
+        assert(_hostCommand !is null);
+        return _hostCommand.getDAW();
+    }
+
+    override PluginFormat getPluginFormat()
+    {
+        assert(_hostCommand !is null);
+        return _hostCommand.getPluginFormat();
+    }
+
     // </IClient>
 
 protected:

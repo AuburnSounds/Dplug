@@ -131,7 +131,7 @@ nothrow:
     /// Note: DPI unaware. This doesn't check size constraints.
     ///       Do not call this with a size that isn't compatible with your desired 
     ///       user pixel size, after GUIGraphics _userArea adjustments.
-    bool requestResize(int widthLogicalPixels, int heightLogicalPixels);
+    bool requestResize(int widthLogicalPixels, int heightLogicalPixels, bool alsoResizeParentWindow);
 }
 
 enum WindowPixelFormat

@@ -491,6 +491,11 @@ nothrow:
         return DAW.Unknown;
     }
 
+    override PluginFormat getPluginFormat()
+    {
+        return PluginFormat.lv2;
+    }
+
 private:
 
     uint _numInputs;

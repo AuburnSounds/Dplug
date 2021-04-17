@@ -167,7 +167,7 @@ public:
         return cast(void*)_windowID;
     }
 
-    override bool requestResize(int widthLogicalPixels, int heightLogicalPixels)
+    override bool requestResize(int widthLogicalPixels, int heightLogicalPixels, bool alsoResizeParentWindow)
     {
         // TODO implement
         assert(false);

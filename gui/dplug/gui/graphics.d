@@ -390,9 +390,13 @@ package:
         // Note: discarding the result.
         _client.requestResize(widthLogicalPixels, heightLogicalPixels);
 
+        // was supposed to be enabled for Cubase + VST2 + Windows, but didn't worked out
+        // better ignore that edge case?
+        bool needResizeParentWindow = false; 
+
         // Here we request the native window to resize. 
         // The actual resize will be received by the window listener, later.
-        return _window.requestResize(widthLogicalPixels, heightLogicalPixels);
+        return _window.requestResize(widthLogicalPixels, heightLogicalPixels, needResizeParentWindow);
     }
 
     final void getUINearestValidSize(int* widthLogicalPixels, int* heightLogicalPixels)

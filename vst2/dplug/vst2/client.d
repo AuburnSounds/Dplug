@@ -1174,6 +1174,11 @@ nothrow:
         return identifyDAW(productString());
     }
 
+    override PluginFormat getPluginFormat()
+    {
+        return PluginFormat.vst2;
+    }
+
     const(char)* vendorString() nothrow @nogc
     {
         int res = cast(int)callback(audioMasterGetVendorString, 0, 0, _vendorStringBuf.ptr, 0.0f);

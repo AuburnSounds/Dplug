@@ -2220,6 +2220,11 @@ private:
         {
             return _daw;
         }
+
+        override PluginFormat getPluginFormat()
+        {
+            return PluginFormat.auv2;
+        }
     }
 
     // Host callbacks

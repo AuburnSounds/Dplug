@@ -215,19 +215,62 @@ version(Windows)
                 return false;
         }
 
-        override bool requestResize(int widthLogicalPixels, int heightLogicalPixels)
+        override bool requestResize(int widthLogicalPixels, int heightLogicalPixels, bool alsoResizeParentWindow)
         {
+            assert(!alsoResizeParentWindow); // doesn't work in Cubase, so the whole workaround is disabled
+
             UINT flags =  SWP_NOACTIVATE 
                         | SWP_NOZORDER
                         | SWP_NOOWNERZORDER
                         | SWP_NOMOVE
                         | SWP_NOCOPYBITS; // discard entire content of the client area
 
-            int left = 0, top = 0;
+            RECT formerClient;
+            GetClientRect(_hwnd, &formerClient);
+
+            int dw = widthLogicalPixels - (formerClient.right - formerClient.left);
+            int dh = heightLogicalPixels - (formerClient.bottom - formerClient.top);
+
+            HWND parent = null;
+            RECT parentClient;
+            HWND gparent = null;
+            RECT gparentClient;
+            if (alsoResizeParentWindow)
+            {
+                if (IsChildWindow(_hwnd))
+                {
+                    parent = GetParent(_hwnd);
+                    GetClientRect(parent, &parentClient);
+                    if (IsChildWindow(parent))
+                    {
+                        gparent = GetParent(_hwnd);
+                        GetClientRect(gparent, &gparentClient);
+                    }
+                }
+            }
+
             BOOL r = SetWindowPos(_hwnd, null,
-                                  left, top, left + widthLogicalPixels, top + heightLogicalPixels,
+                                  0, 0, 0 + widthLogicalPixels, 0 + heightLogicalPixels,
                                   flags);
-            return r != 0;
+            bool result = r != 0;
+
+            if (parent !is null)
+            {
+                int parentWidth = (parentClient.right - parentClient.left) + dw;
+                int parentHeight = (parentClient.bottom - parentClient.top) + dh;
+                SetWindowPos(parent, null,
+                             0, 0, 0 + parentWidth, 0 + parentHeight,
+                             SWP_NOZORDER | SWP_NOMOVE | SWP_NOACTIVATE);
+            }
+            if (gparent !is null)
+            {
+                int gparentWidth = (gparentClient.right - gparentClient.left) + dw;
+                int gparentHeight = (gparentClient.bottom - gparentClient.top) + dh;
+                SetWindowPos(gparent, null,
+                             0, 0, 0 + gparentWidth, 0 + gparentHeight,
+                             SWP_NOZORDER | SWP_NOMOVE | SWP_NOACTIVATE);
+            }
+            return result;
         }
 
         LRESULT windowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -997,3 +1040,13 @@ version(Windows)
     }
 }
 
+static bool IsChildWindow(HWND pWnd)
+{
+    if (pWnd)
+    {
+        int style = GetWindowLong(pWnd, GWL_STYLE);
+        int exStyle = GetWindowLong(pWnd, GWL_EXSTYLE);
+        return ((style & WS_CHILD) && !(exStyle & WS_EX_MDICHILD));
+    }
+    return false;
+}

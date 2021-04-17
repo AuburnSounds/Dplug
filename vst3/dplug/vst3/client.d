@@ -1518,6 +1518,11 @@ nothrow:
         return _vst3Client._daw;
     }
 
+    override PluginFormat getPluginFormat()
+    {
+        return PluginFormat.vst3;
+    }
+
 private:
     VST3Client _vst3Client;
 }

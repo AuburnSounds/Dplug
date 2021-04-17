@@ -193,7 +193,7 @@ public:
             return _view._id;
     }
 
-    override bool requestResize(int widthLogicalPixels, int heightLogicalPixels)
+    override bool requestResize(int widthLogicalPixels, int heightLogicalPixels, bool alsoResizeParentWindow)
     {
         // TODO implement
         assert(false);
