@@ -1427,10 +1427,21 @@ static void stbir__resample_horizontal_downsample(stbir__info* stbir_info, float
                     int out_pixel_index = k * 4;
                     float coefficient = horizontal_coefficients[coefficient_group + k - n0];
                     assert(coefficient != 0);
-                    __m128 A = _mm_loadu_ps(&decode_buffer[in_pixel_index]);
-                    __m128 B = _mm_loadu_ps(&output_buffer[out_pixel_index]);
-                    B = B + A * _mm_set1_ps(coefficient);
-                    _mm_storeu_ps(&output_buffer[out_pixel_index], B);
+
+                    version(DigitalMars)
+                    {
+                        output_buffer[out_pixel_index + 0] += decode_buffer[in_pixel_index + 0] * coefficient;
+                        output_buffer[out_pixel_index + 1] += decode_buffer[in_pixel_index + 1] * coefficient;
+                        output_buffer[out_pixel_index + 2] += decode_buffer[in_pixel_index + 2] * coefficient;
+                        output_buffer[out_pixel_index + 3] += decode_buffer[in_pixel_index + 3] * coefficient;
+                    }
+                    else
+                    {
+                        __m128 A = _mm_loadu_ps(&decode_buffer[in_pixel_index]);
+                        __m128 B = _mm_loadu_ps(&output_buffer[out_pixel_index]);
+                        B = B + A * _mm_set1_ps(coefficient);
+                        _mm_storeu_ps(&output_buffer[out_pixel_index], B);
+                    }
                 }
             }
             break;
