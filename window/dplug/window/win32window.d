@@ -1038,15 +1038,16 @@ version(Windows)
         DPI_HOSTING_BEHAVIOR_DEFAULT = 0,
         DPI_HOSTING_BEHAVIOR_MIXED = 1
     }
-}
 
-static bool IsChildWindow(HWND pWnd)
-{
-    if (pWnd)
+    static bool IsChildWindow(HWND pWnd)
     {
-        int style = GetWindowLong(pWnd, GWL_STYLE);
-        int exStyle = GetWindowLong(pWnd, GWL_EXSTYLE);
-        return ((style & WS_CHILD) && !(exStyle & WS_EX_MDICHILD));
+        if (pWnd)
+        {
+            int style = GetWindowLong(pWnd, GWL_STYLE);
+            int exStyle = GetWindowLong(pWnd, GWL_EXSTYLE);
+            return ((style & WS_CHILD) && !(exStyle & WS_EX_MDICHILD));
+        }
+        return false;
     }
-    return false;
+
 }
