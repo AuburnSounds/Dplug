@@ -3,7 +3,7 @@ Copyright: Guillaume Piolat 2015-2017.
 License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 import std.math;
-import dplug.core, dplug.client, dplug.vst;
+import dplug.core, dplug.client;
 
 // This define entry points for plugin formats, 
 // depending on which version identifiers are defined.
@@ -14,7 +14,7 @@ enum : int
     paramOnOff
 }
 
-/// Simplest VST plugin you could make.
+/// Simplest Dplug plug-in you could make.
 final class MSEncode : dplug.client.Client
 {
 public:

@@ -23,7 +23,7 @@
         "         https://code.dlang.org/package-format?lang=json#version-specs  "],
     "dependencies":
     {
-        "dplug:vst": { "path": "../.." },
+        "dplug:vst2": { "path": "../.." },
         "dplug:vst3": { "path": "../.." },
         "dplug:au": { "path": "../.." }
     },
@@ -35,8 +35,8 @@
             "targetType": "dynamicLibrary"
         },
         {
-            "name": "VST",
-            "versions": ["VST"],
+            "name": "VST2",
+            "versions": ["VST2"],
             "targetType": "dynamicLibrary"
         },
         {
