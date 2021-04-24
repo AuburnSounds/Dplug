@@ -21,12 +21,15 @@ nothrow:
     RGBA color        = RGBA(255, 255, 255, 96);
     RGBA colorHovered = RGBA(255, 255, 255, 140);
     RGBA colorDragged = RGBA(255, 255, 128, 200);
+    RGBA colorCannotResize = RGBA(255, 96, 96, 200);
+
+    float failureDisplayTime = 1.2f; // Time in seconds spent indicating failure to resize.
 
     /// Construct a new `UIWindowResizer`.
     /// Recommended size is around 20x20 whatever the UI size, and on the bottom-right.
     this(UIContext context)
     {
-        super(context, flagRaw);
+        super(context, flagRaw | flagAnimated);
         setCursorWhenMouseOver(MouseCursor.diagonalResize);
         setCursorWhenDragged(MouseCursor.diagonalResize);
     }
@@ -57,7 +60,22 @@ nothrow:
         context.getUINearestValidSize(&size.x, &size.y);
 
         // Attempt to resize window with that size.
-        context.requestUIResize(size.x, size.y);
+        bool success = context.requestUIResize(size.x, size.y);
+
+        if (!success)
+        {
+            _timeDisplayError = failureDisplayTime;
+        }
+    }
+
+    override void onAnimate(double dt, double time) nothrow @nogc
+    {
+        if (_timeDisplayError > 0.0f)
+        {
+            _timeDisplayError = _timeDisplayError - dt;
+            if (_timeDisplayError < 0) _timeDisplayError = 0;
+            setDirtyWhole();
+        }
     }
 
     override void onDrawRaw(ImageRef!RGBA rawMap, box2i[] dirtyRects)
@@ -79,6 +97,9 @@ nothrow:
                 c = colorHovered;
             if (isDragged) 
                 c = colorDragged;
+            if (_timeDisplayError > 0)
+                c = colorCannotResize;
+
             canvas.fillStyle = c;
 
             canvas.beginPath;
@@ -138,4 +159,6 @@ private:
     vec2i _sizeBeforeDrag;
     int _accumX;
     int _accumY;
+
+    float _timeDisplayError = 0.0f;
 } 
