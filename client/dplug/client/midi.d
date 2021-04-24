@@ -107,6 +107,29 @@ nothrow:
                ( (statusType() == MidiStatus.noteOn) && (noteVelocity() == 0) );
     }
 
+    /// DO HANDLE THIS. From MIDI Spec:
+    ///
+    /// "Mutes all sounding notes that were turned on by received Note On messages, and which haven't yet been 
+    /// turned off by respective Note Off messages. [...]
+    ///
+    /// "Note: The difference between this message and All Notes Off is that this message immediately mutes all sound 
+    /// on the device regardless of whether the Hold Pedal is on, and mutes the sound quickly regardless of any lengthy 
+    /// VCA release times. It's often used by sequencers to quickly mute all sound when the musician presses "Stop" in 
+    /// the middle of a song."
+    bool isAllSoundsOff() const
+    {
+        return isControlChange() && (controlChangeControl() == MidiControlChange.allSoundsOff);
+    }
+
+    /// DO HANDLE THIS. From MIDI Spec:
+    ///
+    /// "Turns off all notes that were turned on by received Note On messages, and which haven't yet been turned off 
+    /// by respective Note Off messages. [...]
+    bool isAllNotesOff() const
+    {
+        return isControlChange() && (controlChangeControl() == MidiControlChange.allNotesOff);
+    }
+
     bool isPitchBend() const
     {
         return statusType() == MidiStatus.pitchWheel;
@@ -259,6 +282,7 @@ enum MidiControlChange : ubyte
     tremoloDepth = 92,
     chorusDepth = 93,
     phaserDepth = 95,
+    allSoundsOff = 120,
     allNotesOff = 123
 }
 

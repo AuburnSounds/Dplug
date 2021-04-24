@@ -64,6 +64,8 @@ nothrow:
                 _voiceStatus.markNoteOn(msg.noteNumber());
             else if (msg.isNoteOff())
                 _voiceStatus.markNoteOff(msg.noteNumber());
+            else if (msg.isAllNotesOff() || msg.isAllSoundsOff())
+                _voiceStatus.markAllNotesOff();
             else if (msg.isPitchBend())
                 _pitchBend = msg.pitchBend();
             else if (msg.isControlChange() && msg.controlChangeControl() == MidiControlChange.expressionController)
@@ -124,7 +126,7 @@ nothrow:
         return _lastNotePlayed;
     }
 
-    // useful to maintain list of msot recently played note
+    // useful to maintain list of most recently played note
     void timeHasElapsed(int frames)
     {
         _timestamp += frames;
@@ -149,6 +151,12 @@ nothrow:
             if (_currentNumberOfNotePlayed > 0)
                 lookForMostRecentlyPlayedActiveNote();
         }
+    }
+
+    void markAllNotesOff()
+    {
+        _played[] = 0;
+        _currentNumberOfNotePlayed = 0;
     }
 
 private:
