@@ -61,13 +61,14 @@ nothrow @nogc:
     /// Notifies the host that editing of a parameter has finished from UI side.
     void endParamEdit(int paramIndex);
 
-    /// Requests to the host a resize of the plugin window.
+    /// Requests to the host a resize of the plugin window's PARENT window, given logical pixels of plugin window.
     ///
     /// Note: UI widgets and plugin format clients have different coordinate systems.
     ///
     /// Params:
     ///     width New width of the plugin, in logical pixels.
     ///     height New height of the plugin, in logical pixels.
+    /// Returns: `true` if the host parent window has been resized.
     bool requestResize(int widthLogicalPixels, int heightLogicalPixels);
 
     /// Report the identied host name (DAW).

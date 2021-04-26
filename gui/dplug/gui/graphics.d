@@ -382,17 +382,18 @@ package:
 
     final bool requestUIResize(int widthLogicalPixels, int heightLogicalPixels)
     {
-        // If it's already the logical size, nothing to do.
+        // If it's already the same logical size, nothing to do.
         if ( (widthLogicalPixels == _currentLogicalWidth)
             &&  (heightLogicalPixels == _currentLogicalHeight) )
             return true;
 
-        // Note: discarding the result.
-        _client.requestResize(widthLogicalPixels, heightLogicalPixels);
+        bool parentWasResized = _client.requestResize(widthLogicalPixels, heightLogicalPixels);
 
         // was supposed to be enabled for Cubase + VST2 + Windows, but didn't worked out
         // better ignore that edge case?
         bool needResizeParentWindow = false; 
+
+        // In VST2, very few hosts also resize the plugin window. We get to do it manually.
 
         // Here we request the native window to resize. 
         // The actual resize will be received by the window listener, later.
