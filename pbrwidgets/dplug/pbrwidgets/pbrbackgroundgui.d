@@ -14,6 +14,7 @@ import dplug.graphics.color;
 import dplug.graphics.image;
 import dplug.graphics.view;
 import dplug.graphics.drawex;
+import dplug.graphics.resizer;
 
 // Note: this dependency exist because Key is defined in dplug:window
 import dplug.window.window;
@@ -23,6 +24,8 @@ import dplug.gui.element;
 import dplug.gui.compositor;
 import dplug.gui.legacypbr;
 public import dplug.gui.sizeconstraints;
+
+version = delayResizeToFirstDraw;
 
 /// PBRBackgroundGUI provides a PBR background loaded from PNG or JPEG images.
 /// It's very practical while in development because it let's you reload the six
@@ -90,6 +93,23 @@ nothrow:
 
     override void onDrawPBR(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects)
     {
+        version (delayResizeToFirstDraw)
+        {
+            int W = position.width;
+            int H = position.height;
+            ImageResizer resizer;
+            
+            if (_diffuseResized.w != W || _diffuseResized.h != H)
+            {
+                _diffuseResized.size(W, H);
+                _materialResized.size(W, H);
+                _depthResized.size(W, H);
+                resizer.resizeImageDiffuse(_diffuse.toRef, _diffuseResized.toRef);
+                resizer.resizeImageMaterial(_material.toRef, _materialResized.toRef);
+                resizer.resizeImageDepth(_depth.toRef, _depthResized.toRef);
+            }
+        }
+
         // Just blit backgrounds into dirtyRects.
         foreach(dirtyRect; dirtyRects)
         {
@@ -110,14 +130,18 @@ nothrow:
 
     override void reflow()
     {
-        int W = position.width;
-        int H = position.height;
-        _diffuseResized.size(W, H);
-        _materialResized.size(W, H);
-        _depthResized.size(W, H);
-        context.globalImageResizer.resizeImageDiffuse(_diffuse.toRef, _diffuseResized.toRef);
-        context.globalImageResizer.resizeImageMaterial(_material.toRef, _materialResized.toRef);
-        context.globalImageResizer.resizeImageDepth(_depth.toRef, _depthResized.toRef);
+        version (delayResizeToFirstDraw) { }
+        else
+        {
+            int W = position.width;
+            int H = position.height;
+            _diffuseResized.size(W, H);
+            _materialResized.size(W, H);
+            _depthResized.size(W, H);
+            context.globalImageResizer.resizeImageDiffuse(_diffuse.toRef, _diffuseResized.toRef);
+            context.globalImageResizer.resizeImageMaterial(_material.toRef, _materialResized.toRef);
+            context.globalImageResizer.resizeImageDepth(_depth.toRef, _depthResized.toRef);
+        }
     }
 
 private:

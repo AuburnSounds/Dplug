@@ -14,11 +14,15 @@ import dplug.graphics.color;
 import dplug.graphics.image;
 import dplug.graphics.view;
 import dplug.graphics.drawex;
+import dplug.graphics.resizer;
 
 import dplug.core.nogc;
 import dplug.gui.graphics;
 import dplug.gui.element;
 public import dplug.gui.sizeconstraints;
+
+
+version = delayResizeToFirstDraw;
 
 /// FlatBackgroundGUI provides a background that is loaded from a PNG or JPEG
 /// image. The string for backgroundPath should be in "stringImportPaths"
@@ -49,14 +53,30 @@ nothrow:
     
     override void reflow()
     {
-        int W = position.width;
-        int H = position.height;
-        _backgroundImageResized.size(_position.width, _position.height);
-        context.globalImageResizer.resizeImage_sRGBNoAlpha(_backgroundImage.toRef, _backgroundImageResized.toRef);
+        version(delayResizeToFirstDraw) {}
+        else
+        {
+            int W = position.width;
+            int H = position.height;
+            _backgroundImageResized.size(_position.width, _position.height);
+            context.globalImageResizer.resizeImage_sRGBNoAlpha(_backgroundImage.toRef, _backgroundImageResized.toRef);
+        }
     }
     
     override void onDrawRaw(ImageRef!RGBA rawMap, box2i[] dirtyRects)
     {
+        version(delayResizeToFirstDraw)
+        {
+            int W = position.width;
+            int H = position.height;
+            if (_backgroundImageResized.w != W || _backgroundImageResized.h != H)
+            {
+                _backgroundImageResized.size(W, H);
+                ImageResizer resizer;
+                resizer.resizeImage_sRGBNoAlpha(_backgroundImage.toRef, _backgroundImageResized.toRef);
+            }
+        }
+
         ImageRef!RGBA backgroundRef = _backgroundImageResized.toRef();
 
         foreach(dirtyRect; dirtyRects)
