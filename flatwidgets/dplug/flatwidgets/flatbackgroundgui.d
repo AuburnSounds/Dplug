@@ -81,8 +81,6 @@ nothrow:
 
         foreach(dirtyRect; dirtyRects)
         {
-            int W = dirtyRect.width;
-            int H = dirtyRect.height;
             ImageRef!RGBA croppedRawIn = backgroundRef.cropImageRef(dirtyRect);
             ImageRef!RGBA croppedRawOut = rawMap.cropImageRef(dirtyRect);
             croppedRawIn.blitTo(croppedRawOut);

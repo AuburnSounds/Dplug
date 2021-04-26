@@ -12,6 +12,7 @@ import std.algorithm.comparison;
 
 import dplug.core.math;
 import dplug.graphics.drawex;
+import dplug.graphics.resizer;
 
 import dplug.gui.element;
 
@@ -42,33 +43,20 @@ nothrow:
         _param.addListener(this);
         _disabled = false;
         _filmstripScaled = mallocNew!(OwnedImage!RGBA)();
+        _frameNthResized.reallocBuffer(_numFrames);
     }
 
     ~this()
     {
         _param.removeListener(this);
         _filmstripScaled.destroyFree();
+        _frameNthResized.reallocBuffer(0);
     }
 
     override void reflow()
     {
         _filmstripScaled.size(position.width, position.height * _numFrames);
-
-        auto resizer = context.globalImageResizer;
-
-        // Limitation: the source image should have identically sized sub-frames.
-        assert(_filmstrip.h % _numFrames == 0);
-
-        int hsource = _filmstrip.h / _numFrames;
-        int hdest   = _filmstripScaled.h / _numFrames;
-
-        // Note: in order to avoid slight sample offsets, each subframe needs to be resized separately.
-        for (int frame = 0; frame < _numFrames; ++frame)
-        {
-            ImageRef!RGBA source     = _filmstrip.toRef.cropImageRef(rectangle(0, hsource * frame, _filmstrip.w, hsource));
-            ImageRef!RGBA dest = _filmstripScaled.toRef.cropImageRef(rectangle(0, hdest   * frame, _filmstripScaled.w, hdest  ));
-            resizer.resizeImage_sRGBNoAlpha(source, dest);
-        }
+        _frameNthResized[] = false; // PERF: no need to do that if only the offset changed (not size)
     }
 
     /// Returns: sensivity.
@@ -135,6 +123,7 @@ nothrow:
         _imageX2 = _filmstripScaled.w;
         _imageY2 = _imageY1 + (_filmstripScaled.h / _numFrames);
 
+        cacheImage(currentFrame);
     }
 
     override bool onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
@@ -218,7 +207,6 @@ nothrow:
 
     override void onMouseExit()
     {
-        //_shouldBeHighlighted = false;
     }
 
     override void onParameterChanged(Parameter sender) nothrow @nogc
@@ -264,6 +252,9 @@ protected:
 
     bool _disabled;
 
+    ImageResizer _resizer;
+    bool[] _frameNthResized;
+
     void clearCrosspoints() nothrow @nogc
     {
         _mousePosOnLast0Cross = float.infinity;
@@ -299,7 +290,6 @@ protected:
     final float getRadius() pure const nothrow @nogc
     {
         return getSubsquare().width * 0.5f;
-
     }
 
     final vec2f getCenter() pure const nothrow @nogc
@@ -308,5 +298,26 @@ protected:
         float centerx = (subSquare.min.x + subSquare.max.x - 1) * 0.5f;
         float centery = (subSquare.min.y + subSquare.max.y - 1) * 0.5f;
         return vec2f(centerx, centery);
+    }
+
+    // Resize sub-image lazily. Instead of doing it in `reflow()` for all frames,
+    // we do it in a case by case basis when needed in `onDrawRaw`.
+    void cacheImage(int frame)
+    {
+        // Limitation: the source image should have identically sized sub-frames.
+        assert(_filmstrip.h % _numFrames == 0);
+
+        if (_frameNthResized[frame]) 
+            return;
+
+        int hsource = _filmstrip.h / _numFrames;
+        int hdest   = _filmstripScaled.h / _numFrames;
+
+        // Note: in order to avoid slight sample offsets, each subframe needs to be resized separately.
+        ImageRef!RGBA source     = _filmstrip.toRef.cropImageRef(rectangle(0, hsource * frame, _filmstrip.w, hsource));
+        ImageRef!RGBA dest = _filmstripScaled.toRef.cropImageRef(rectangle(0, hdest   * frame, _filmstripScaled.w, hdest  ));
+        _resizer.resizeImage_sRGBNoAlpha(source, dest);
+
+        _frameNthResized[frame] = true;
     }
 }
