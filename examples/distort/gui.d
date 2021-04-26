@@ -31,8 +31,9 @@ nothrow:
     {
         _client = client;
 
-        super(makeSizeConstraintsContinuous(620, 330, 0.5f, 2.0f));
 
+        static immutable float[7] ratios = [0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 1.75f, 2.0f];
+        super( makeSizeConstraintsDiscrete(620, 330, ratios) );
 
         // Note: PBRCompositor default lighting might change in a future version (increase of light to allow white plastics).
         //       So we keep the value.
