@@ -1,5 +1,5 @@
 /**
-A widget to place at the bottom-right of your UI. It allows the usze to resize the plugin.
+A widget to place at the bottom-right of your UI. It resizes the plugin, based upon valid sizes given by `SizeContstraints`.
 
 Copyright: Guillaume Piolat 2021.
 License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
@@ -18,12 +18,20 @@ public:
 nothrow:
 @nogc:
 
+    /// Color of the stripes in nominal state.
     RGBA color        = RGBA(255, 255, 255, 96);
+
+    /// Color of the stripes when hovered by the mouse.
     RGBA colorHovered = RGBA(255, 255, 255, 140);
+
+    /// Color of the stripes when dragged / resizing.
     RGBA colorDragged = RGBA(255, 255, 128, 200);
+
+    /// Color of the stripes when a resize operation failed.
     RGBA colorCannotResize = RGBA(255, 96, 96, 200);
 
-    float failureDisplayTime = 1.2f; // Time in seconds spent indicating failure to resize.
+    /// Time in seconds spent indicating failure to resize.
+    float failureDisplayTime = 1.2f; 
 
     /// Construct a new `UIWindowResizer`.
     /// Recommended size is around 20x20 whatever the UI size, and on the bottom-right.

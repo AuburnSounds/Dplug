@@ -55,8 +55,13 @@ nothrow:
 
     override void reflow()
     {
-        _filmstripScaled.size(position.width, position.height * _numFrames);
-        _frameNthResized[] = false; // PERF: no need to do that if only the offset changed (not size)
+        int W = position.width;
+        int H = position.height * _numFrames;
+        if (_filmstripScaled.w != W || _filmstripScaled.h != H)
+        {
+            _filmstripScaled.size(position.width, position.height * _numFrames);
+            _frameNthResized[] = false;
+        }
     }
 
     /// Returns: sensivity.
