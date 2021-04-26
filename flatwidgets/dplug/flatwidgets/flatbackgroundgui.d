@@ -22,8 +22,6 @@ import dplug.gui.element;
 public import dplug.gui.sizeconstraints;
 
 
-version = delayResizeToFirstDraw;
-
 /// FlatBackgroundGUI provides a background that is loaded from a PNG or JPEG
 /// image. The string for backgroundPath should be in "stringImportPaths"
 /// specified in dub.json
@@ -53,19 +51,11 @@ nothrow:
     
     override void reflow()
     {
-        version(delayResizeToFirstDraw) {}
-        else
-        {
-            int W = position.width;
-            int H = position.height;
-            _backgroundImageResized.size(_position.width, _position.height);
-            context.globalImageResizer.resizeImage_sRGBNoAlpha(_backgroundImage.toRef, _backgroundImageResized.toRef);
-        }
     }
     
     override void onDrawRaw(ImageRef!RGBA rawMap, box2i[] dirtyRects)
     {
-        version(delayResizeToFirstDraw)
+        // Resize resources to match actual size.
         {
             int W = position.width;
             int H = position.height;

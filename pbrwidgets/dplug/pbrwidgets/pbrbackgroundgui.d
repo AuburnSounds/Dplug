@@ -25,8 +25,6 @@ import dplug.gui.compositor;
 import dplug.gui.legacypbr;
 public import dplug.gui.sizeconstraints;
 
-version = delayResizeToFirstDraw;
-
 /// PBRBackgroundGUI provides a PBR background loaded from PNG or JPEG images.
 /// It's very practical while in development because it let's you reload the six
 /// images used with the press of ENTER.
@@ -93,7 +91,7 @@ nothrow:
 
     override void onDrawPBR(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects)
     {
-        version (delayResizeToFirstDraw)
+        // Resize resource to match _position
         {
             int W = position.width;
             int H = position.height;
@@ -130,18 +128,6 @@ nothrow:
 
     override void reflow()
     {
-        version (delayResizeToFirstDraw) { }
-        else
-        {
-            int W = position.width;
-            int H = position.height;
-            _diffuseResized.size(W, H);
-            _materialResized.size(W, H);
-            _depthResized.size(W, H);
-            context.globalImageResizer.resizeImageDiffuse(_diffuse.toRef, _diffuseResized.toRef);
-            context.globalImageResizer.resizeImageMaterial(_material.toRef, _materialResized.toRef);
-            context.globalImageResizer.resizeImageDepth(_depth.toRef, _depthResized.toRef);
-        }
     }
 
 private:
