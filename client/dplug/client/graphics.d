@@ -35,5 +35,22 @@ nothrow:
 
     /// Get the current plugin UI size in logical pixels.
     abstract void getGUISize(int* widthLogicalPixels, int* heightLogicalPixels);
+
+    /// Used by VST3.
+    /// Returns: `true` if this is resizeable in terms of logical pixels.
+    /// This should succeed even f the UI is closed.
+    abstract bool isResizeable();
+
+    /// Used by VST3.
+    /// Returns: Nearest, valid size in logical pixels, given an input size in logical pixels.
+    /// This should work even if the UI is closed.
+    abstract void getNearestValidSize(int* inoutWidth, int* inoutHeight);
+
+    /// Used by VST3.
+    /// Tells the native window to resize itself.
+    /// Called by the host when it's one resizing the parent window, and wants our window to follow suit.
+    /// This is to be forwarded to IWindow.
+    /// Returns: `true` if properly resized.
+    abstract bool nativeWindowResize(int newWidthLogicalPixels, int newHeightLogicalPixels);
 }
 

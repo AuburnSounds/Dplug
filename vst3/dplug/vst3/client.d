@@ -1084,6 +1084,10 @@ private:
     IComponentHandler _handler;
     IHostCommand _hostCommand;
 
+    // Assigned when UI is opened, nulled when closed. This allow to request a host parent window resize.
+    IPlugFrame _plugFrame = null; 
+    IPlugView _currentView = null;
+
     shared(bool) _shouldInitialize = true;
     shared(bool) _bypassed = false;
 
@@ -1346,6 +1350,8 @@ nothrow:
         {
             _graphicsMutex.lock();
             scope(exit) _graphicsMutex.unlock();
+            _vst3Client._plugFrame = null;
+            _vst3Client._currentView = null;
             _vst3Client._client.closeGUI();
             debug(logVST3Client) debugLog("<removed".ptr);
             return kResultTrue;
@@ -1414,6 +1420,16 @@ nothrow:
     *  requests a resize (IPlugFrame::resizeView ()) onSize has to be called afterward. */
     extern(Windows) tresult onSize (ViewRect* newSize)
     {
+        _graphicsMutex.lock();
+        scope(exit) _graphicsMutex.unlock();
+
+        auto graphics = _vst3Client._client.graphicsAcquire();
+        if (graphics is null) 
+            return kResultOk; // Window not yet opened, nothing to do.
+
+        graphics.nativeWindowResize(newSize.getWidth(), newSize.getHeight()); // Tell the IWindow to position itself at newSize.
+
+        _vst3Client._client.graphicsRelease();
         return kResultOk;
     }
 
@@ -1426,29 +1442,45 @@ nothrow:
     /** Sets IPlugFrame object to allow the Plug-in to inform the host about resizing. */
     extern(Windows) tresult setFrame (IPlugFrame frame)
     {
-        debug(logVST3Client) debugLog(">setFrame".ptr);
-        debug(logVST3Client) scope(exit) debugLog("<setFrame".ptr);
-        _plugFrame = frame;
+        _vst3Client._plugFrame = frame;
+        _vst3Client._currentView = cast(IPlugView)this;
         return kResultTrue;
     }
 
     /** Is view sizable by user. */
     extern(Windows) tresult canResize ()
     {
-        return kResultFalse;
+        auto graphics = _vst3Client._client.graphicsAcquire();
+        if (graphics is null) 
+            return kResultFalse;
+        tresult result = graphics.isResizeable() ? kResultTrue : kResultFalse;
+        _vst3Client._client.graphicsRelease();
+        return result;
     }
 
     /** On live resize this is called to check if the view can be resized to the given rect, if not
     *  adjust the rect to the allowed size. */
     extern(Windows) tresult checkSizeConstraint (ViewRect* rect)
     {
+        auto graphics = _vst3Client._client.graphicsAcquire();
+        if (graphics is null) 
+            return kResultFalse; // could as well return true? since we accomodate for any size anyway.
+
+        int W = rect.getWidth();
+        int H = rect.getHeight();
+
+        graphics.getNearestValidSize(&W, &H);
+
+        rect.right = rect.left + W;
+        rect.bottom = rect.top + H;
+
+        _vst3Client._client.graphicsRelease();
         return kResultTrue;
     }
 
 private:
     VST3Client _vst3Client;
     UncheckedMutex _graphicsMutex;
-    IPlugFrame _plugFrame;
 
     static bool convertPlatformToGraphicsBackend(FIDString type, GraphicsBackend* backend)
     {
@@ -1509,8 +1541,16 @@ nothrow:
 
     override bool requestResize(int width, int height)
     {
-        // FUTURE, will need to keep an instance pointer of the current IPluginView
-        return false;
+        IPlugFrame frame = _vst3Client._plugFrame;
+        IPlugView view = _vst3Client._currentView;
+        if (frame is null || view is null)
+            return false;
+        ViewRect rect;
+        rect.left = 0;
+        rect.top = 0;
+        rect.right = width;
+        rect.bottom = height;
+        return frame.resizeView(view, &rect) == kResultOk;
     }
 
     DAW getDAW()

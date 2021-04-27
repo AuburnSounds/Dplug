@@ -157,7 +157,7 @@ nothrow:
         alignedFree(_resizedBuffer, 16);
     }
 
-    // Graphics implementation
+    // <IGraphics implementation>
 
     override void* openUI(void* parentInfo, 
                           void* controlInfo, 
@@ -205,6 +205,30 @@ nothrow:
         *widthLogicalPixels = _currentLogicalWidth;
         *heightLogicalPixels = _currentLogicalHeight;
     }
+
+    override bool isResizeable()
+    {
+        return isUIResizable();
+    }
+
+    override void getNearestValidSize(int* inoutWidth, int* inoutHeight)
+    {
+        _sizeConstraints.getNearestValidSize(inoutWidth, inoutHeight);
+    }
+
+    override bool nativeWindowResize(int newWidthLogicalPixels, int newHeightLogicalPixels)
+    {
+        // If it's already the same logical size, nothing to do.
+        if ( (newWidthLogicalPixels == _currentLogicalWidth)
+             &&  (newHeightLogicalPixels == _currentLogicalHeight) )
+            return true;
+
+        // Here we request the native window to resize. 
+        // The actual resize will be received by the window listener, later.
+        return _window.requestResize(newWidthLogicalPixels, newHeightLogicalPixels, false);
+    }
+
+    // </IGraphics implementation>
 
     // This class is only here to avoid name conflicts between
     // UIElement and IWindowListener methods :|
@@ -380,7 +404,8 @@ package:
         return getUISizeInPixelsLogical(); // no support yet
     }
 
-    final bool requestUIResize(int widthLogicalPixels, int heightLogicalPixels)
+    final bool requestUIResize(int widthLogicalPixels, 
+                               int heightLogicalPixels)
     {
         // If it's already the same logical size, nothing to do.
         if ( (widthLogicalPixels == _currentLogicalWidth)
@@ -388,6 +413,12 @@ package:
             return true;
 
         bool parentWasResized = _client.requestResize(widthLogicalPixels, heightLogicalPixels);
+
+        // We are be able to early-exit here in VST3.
+        // This is because once a VST3 host has resized the parent window, it calls a callback
+        // and that leads to `nativeWindowResize` to be called.
+        if (parentWasResized && (_client.getPluginFormat() == PluginFormat.vst3))
+            return true;
 
         // was supposed to be enabled for Cubase + VST2 + Windows, but didn't worked out
         // better ignore that edge case?

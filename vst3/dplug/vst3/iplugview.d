@@ -15,13 +15,22 @@ import dplug.vst3.ftypes;
 
 struct ViewRect
 {
+nothrow:
+@nogc:
     int left = 0;
     int top = 0;
     int right = 0;
     int bottom = 0;
 
-    int getWidth () const { return right - left; }
-    int getHeight () const { return bottom - top; }
+    int getWidth () const 
+    { 
+        return right - left; 
+    }
+
+    int getHeight () const 
+    { 
+        return bottom - top; 
+    }
 }
 
 static assert(ViewRect.sizeof == 16);
