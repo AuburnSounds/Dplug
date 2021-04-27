@@ -805,10 +805,6 @@ private:
                         return 1;
                 }
 
-                // Needed to have a Cocoa view in effEditOpen for 32-bit plugins in Reaper
-                //if (strcmp(str, "hasCockosViewAsConfig") == 0)
-                //        return 1;
-
                 return 0;
             }
 
@@ -1151,7 +1147,13 @@ nothrow:
     /// Request plugin window resize.
     override bool requestResize(int width, int height) nothrow @nogc
     {
-        return (callback(audioMasterSizeWindow, width, height, null, 0.0f) != 0);
+        bool isAbletonLive = getDAW() == DAW.AbletonLive; // #DAW-specific
+        if (canDo(HostCaps.SIZE_WINDOW) || isAbletonLive)
+        {
+            return (callback(audioMasterSizeWindow, width, height, null, 0.0f) != 0);
+        }
+        else
+            return false;
     }
 
     override void beginParamEdit(int paramIndex) nothrow @nogc
@@ -1195,6 +1197,12 @@ nothrow:
         int res = cast(int)callback(audioMasterGetProductString, 0, 0, _productStringBuf.ptr, 0.0f);
         if (res == 1)
         {
+            // Force lowercase
+            for (char* p =  _productStringBuf.ptr; *p != '\0'; ++p)
+            {
+                if (*p >= 'A' && *p <= 'Z')
+                    *p += ('a' - 'A');
+            }
             return _productStringBuf.ptr;
         }
         else
