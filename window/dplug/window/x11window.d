@@ -169,8 +169,10 @@ public:
 
     override bool requestResize(int widthLogicalPixels, int heightLogicalPixels, bool alsoResizeParentWindow)
     {
-        // TODO implement
-        assert(false);
+        lockX11();
+        XResizeWindow(_display, _windowID, widthLogicalPixels, heightLogicalPixels);
+        unlockX11();
+        return true;
     }
 
     // </Implements IWindow>
@@ -679,6 +681,7 @@ private:
     void freeBackbuffer()
     {
         // For some reason freeing that buffer is crashing X11
+        // Unfortunate since that makes continuous resizing impractical.
      /+   if (_graphicImage)
         {
             lockX11();

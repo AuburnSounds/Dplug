@@ -385,7 +385,7 @@ nothrow:
         int transientWinId;
         void* parentId = null;
         LV2_Options_Option* options = null;
-        LV2UI_Resize* uiResize = null;
+        _uiResize = null;
         LV2_URID_Map* uridMap = null;
 
         // Useful to record automation
@@ -398,7 +398,7 @@ nothrow:
             if (strcmp(features[i].URI, LV2_UI__parent) == 0)
                 parentId = cast(void*)features[i].data;
             else if (strcmp(features[i].URI, LV2_UI__resize) == 0)
-                uiResize = cast(LV2UI_Resize*)features[i].data;
+                _uiResize = cast(LV2UI_Resize*)features[i].data;
             else if (strcmp(features[i].URI, LV2_OPTIONS__options) == 0)
                 options = cast(LV2_Options_Option*)features[i].data;
             else if (strcmp(features[i].URI, LV2_URID__map) == 0)
@@ -430,7 +430,7 @@ nothrow:
             if (_client.getGUISize(&widthLogicalPixels, &heightLogicalPixels))
             {
                 _graphicsMutex.lock();
-                uiResize.ui_resize(uiResize.handle, widthLogicalPixels, heightLogicalPixels);
+                _uiResize.ui_resize(_uiResize.handle, widthLogicalPixels, heightLogicalPixels);
                 _graphicsMutex.unlock();
             }
 
@@ -482,7 +482,8 @@ nothrow:
 
     override bool requestResize(int width, int height)
     {
-        return false;
+        int result = _uiResize.ui_resize(_uiResize.handle, width, height);
+        return result == 0;        
     }
 
     // Not properly implemented yet. LV2 should have an extension to get DAW information.
@@ -549,6 +550,7 @@ private:
     LV2UI_Write_Function _write_function;
     LV2UI_Controller _controller;
     LV2UI_Touch* _uiTouch;
+    LV2UI_Resize* _uiResize;
 
     // Current time info, eventually extrapolated when data is missing.
     TimeInfo _currentTimeInfo;
