@@ -219,6 +219,12 @@ nothrow @nogc:
         alias fun_t = extern(C) void function (id, SEL, const(NSRect)**, NSInteger*) nothrow @nogc;
         (cast(fun_t)objc_msgSend)(_id, sel!"getRectsBeingDrawn:count:", rects, count);
     }
+
+    void setFrameSize(NSSize newSize)
+    {
+        alias fun_t = extern(C) void function (id, SEL, NSSize) nothrow @nogc;
+        (cast(fun_t)objc_msgSend)(_id, sel!"setFrameSize:", newSize);
+    }
 }
 
 // CALayer

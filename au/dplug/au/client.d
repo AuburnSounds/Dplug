@@ -53,7 +53,6 @@ import dplug.au.audiocomponentdispatch;
 // Difference with IPlug
 // - no support for parameters group
 // - no support for multi-output instruments
-// - no support for UI resize
 
 // FUTURE: thread safety isn't very fine-grained, and there is 3 mutex lock in the audio thread
 
@@ -2211,7 +2210,11 @@ private:
 
         override bool requestResize(int width, int height)
         {
-            return false; // FUTURE implement for AU
+            // On macOS 10.14
+            // * Logic: window plugin resizing seems enough
+            // * Live 10: window plugin resizing seems enough
+            // * REAPER: problems with host parent window
+            return true;
         }
 
         DAW _daw = DAW.Unknown;

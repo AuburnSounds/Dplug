@@ -130,7 +130,7 @@ nothrow:
 
     // Don't like the default rendering? Override this function and make another compositor.
     ICompositor buildCompositor(CompositorCreationContext* context)
-    {        
+    {
         return mallocNew!PBRCompositor(context);
     }
 
@@ -159,9 +159,9 @@ nothrow:
 
     // <IGraphics implementation>
 
-    override void* openUI(void* parentInfo, 
-                          void* controlInfo, 
-                          IClient client, 
+    override void* openUI(void* parentInfo,
+                          void* controlInfo,
+                          IClient client,
                           GraphicsBackend backend)
     {
         _client = client;
@@ -223,7 +223,7 @@ nothrow:
              &&  (newHeightLogicalPixels == _currentLogicalHeight) )
             return true;
 
-        // Here we request the native window to resize. 
+        // Here we request the native window to resize.
         // The actual resize will be received by the window listener, later.
         return _window.requestResize(newWidthLogicalPixels, newHeightLogicalPixels, false);
     }
@@ -404,7 +404,7 @@ package:
         return getUISizeInPixelsLogical(); // no support yet
     }
 
-    final bool requestUIResize(int widthLogicalPixels, 
+    final bool requestUIResize(int widthLogicalPixels,
                                int heightLogicalPixels)
     {
         // If it's already the same logical size, nothing to do.
@@ -422,11 +422,11 @@ package:
 
         // was supposed to be enabled for Cubase + VST2 + Windows, but didn't worked out
         // better ignore that edge case?
-        bool needResizeParentWindow = false; 
+        bool needResizeParentWindow = false;
 
         // In VST2, very few hosts also resize the plugin window. We get to do it manually.
 
-        // Here we request the native window to resize. 
+        // Here we request the native window to resize.
         // The actual resize will be received by the window listener, later.
         return _window.requestResize(widthLogicalPixels, heightLogicalPixels, needResizeParentWindow);
     }
@@ -486,11 +486,11 @@ protected:
     int _currentUserHeight = 0;
 
     /// the area in logical area where the user area is drawn.
-    box2i _userArea; 
+    box2i _userArea;
 
     // if true, it means the whole resize buffer and accompanying black
     // borders should be redrawn at the next onDraw
-    bool _redrawBlackBordersAndResizedArea; 
+    bool _redrawBlackBordersAndResizedArea;
 
     // if true, it means the whole resize buffer and accompanying black
     // borders should be reported as dirty at the next recomputeDirtyAreas, and until
@@ -546,7 +546,7 @@ protected:
     /// The composited buffer, before the Raw layer is applied.
     ubyte* _compositedBuffer = null;
 
-    /// The rendered framebuffer. 
+    /// The rendered framebuffer.
     /// This is copied from `_renderedBuffer`, then Raw layer is drawn on top.
     /// Components are reordered there.
     ubyte* _renderedBuffer = null;
@@ -554,7 +554,7 @@ protected:
     /// The final framebuffer.
     /// It is the only buffer to have a size in logical pixels.
     /// Internally the UI has an "user" size.
-    /// FUTURE: resize from user size to logical size using a resizer, 
+    /// FUTURE: resize from user size to logical size using a resizer,
     /// to allow better looking DPI without the OS blurry resizing.
     /// Or to allow higher internal pixel count.
     ubyte* _resizedBuffer = null;
@@ -598,7 +598,7 @@ protected:
         ir.pixels = cast(RGBA*)alignedBuffer;
         return ir;
     }
-   
+
     void doDraw(WindowPixelFormat pf) nothrow @nogc
     {
         // A. Recompute draw lists
@@ -632,7 +632,7 @@ protected:
         auto compositedRef = toImageRef(_compositedBuffer, _currentUserWidth, _currentUserHeight);
         debug(benchmarkGraphics)
             _compositingWatch.start();
-        compositeGUI(compositedRef); // Launch the possibly-expensive Compositor step, which implements PBR rendering 
+        compositeGUI(compositedRef); // Launch the possibly-expensive Compositor step, which implements PBR rendering
         debug(benchmarkGraphics)
         {
             _compositingWatch.stop();
@@ -679,7 +679,7 @@ protected:
         // H. Copy updated content to the final buffer.
         resizeContent(pf);
 
-        // Only then is the list of rectangles to update cleared, 
+        // Only then is the list of rectangles to update cleared,
         // before calling `doDraw` such work accumulates
         _rectsToUpdateDisjointedPBR.clearContents();
         _rectsToUpdateDisjointedRaw.clearContents();
@@ -698,10 +698,10 @@ protected:
 
     void recomputePurelyDerivedRectangles()
     {
-        // If a resize has been made recently, we need to clip rectangles 
+        // If a resize has been made recently, we need to clip rectangles
         // in the pending lists to the new size.
         // All other rectangles are purely derived from those.
-        // PERF: not sure if necessary to do it each time, or just after a resize. 
+        // PERF: not sure if necessary to do it each time, or just after a resize.
         //       Could a control call setDirty at the same time?
         //       See `addDirtyRect` for details.
 
@@ -718,7 +718,7 @@ protected:
         // TECHNICAL DEBT HERE
         // The problem here is that if the window isn't shown there may be duplicates in
         // _rectsToUpdateDisjointedRaw and _rectsToUpdateDisjointedPBR
-        // (`recomputeDirtyAreas`called multiple times without clearing those arrays), 
+        // (`recomputeDirtyAreas`called multiple times without clearing those arrays),
         //  so we have to maintain unicity again.
         //
         {
@@ -780,7 +780,7 @@ protected:
 
             if (_reportBlackBordersAndResizedAreaAsDirty)
             {
-                // Redraw whole resized zone and black borders on next draw, as this will 
+                // Redraw whole resized zone and black borders on next draw, as this will
                 // be reported to the OS as being repainted.
                 _redrawBlackBordersAndResizedArea = true;
             }
@@ -816,10 +816,10 @@ protected:
         return result;
     }
 
-    ImageRef!RGBA doResize(int widthLogicalPixels, 
+    ImageRef!RGBA doResize(int widthLogicalPixels,
                            int heightLogicalPixels) nothrow @nogc
     {
-        /// We do receive a new size in logical pixels. 
+        /// We do receive a new size in logical pixels.
         /// This is coming from getting the window client area. The reason
         /// for this resize doesn't matter, we must find a mapping that fits
         /// between this given logical size and user size.
@@ -831,7 +831,7 @@ protected:
         _currentUserHeight    = heightLogicalPixels;
         _sizeConstraints.getNearestValidSize(&_currentUserWidth, &_currentUserHeight);
 
-        // 1.b Update user area rect. We find a suitable space in logical area 
+        // 1.b Update user area rect. We find a suitable space in logical area
         //     to draw the whole UI.
         {
             int x, y, w, h;
@@ -998,7 +998,7 @@ protected:
                 }
 
                 assert(canBeDrawn >= 1);
- 
+
                 // Draw a number of UIElement in parallel
                 void drawOneItem(int i, int threadIndex) nothrow @nogc
                 {
@@ -1025,10 +1025,10 @@ protected:
         _rectsToCompositeDisjointedTiled.clearContents();
         tileAreas(_rectsToCompositeDisjointed[],  PBR_TILE_MAX_WIDTH, PBR_TILE_MAX_HEIGHT, _rectsToCompositeDisjointedTiled);
 
-        _compositor.compositeTile(wfb, 
+        _compositor.compositeTile(wfb,
                                   _rectsToCompositeDisjointedTiled[],
-                                  _diffuseMap, 
-                                  _materialMap, 
+                                  _diffuseMap,
+                                  _materialMap,
                                   _depthMap);
     }
 
@@ -1121,7 +1121,7 @@ protected:
                     shuffleComponentsRGBA8ToARGB8AndForceAlphaTo255(renderedRef.cropImageRef(rect));
                 }
                 break;
-        }   
+        }
     }
 
     // From a user area rectangle, return a logical are rectangle with the same size.
@@ -1146,7 +1146,7 @@ protected:
 
         box2i[] rectsToCopy = _rectsToResizeDisjointed[];
 
-        // If invalidated, the whole buffer needs to be redrawn 
+        // If invalidated, the whole buffer needs to be redrawn
         // (because of borders, or changing offsets of the user area).
         if (_redrawBlackBordersAndResizedArea)
         {
@@ -1246,14 +1246,14 @@ debug(benchmarkGraphics)
         double sum = 0;
         int times = 0;
 
-    
+
         __gshared HANDLE hThread;
 
         long qpcFrequency;
 
         void getCurrentThreadHandle()
         {
-            hThread = GetCurrentThread();    
+            hThread = GetCurrentThread();
             QueryPerformanceFrequency(&qpcFrequency);
         }
 
@@ -1268,7 +1268,7 @@ debug(benchmarkGraphics)
                     // seem to return a counter in QPC units.
                     // That may not be the case everywhere, so -precise is not reliable and should
                     // never be the default.
-                    // Warning: -precise and normal measurements not in the same unit. 
+                    // Warning: -precise and normal measurements not in the same unit.
                     //          You shouldn't trust preciseMeasurements to give actual milliseconds values.
                     import core.sys.windows.windows;
                     ulong cycles;

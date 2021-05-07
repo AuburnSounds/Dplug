@@ -53,8 +53,8 @@ private:
     int _width;
     int _height;
 
-    int _askedWidth;
-    int _askedHeight;
+    //int _askedWidth;
+    //int _askedHeight;
 
     ImageRef!RGBA _wfb;
 
@@ -82,8 +82,8 @@ public:
         _width = 0;
         _height = 0;
 
-        _askedWidth = width;
-        _askedHeight = height;
+//        _askedWidth = width;
+//        _askedHeight = height;
 
         _nsColorSpace = NSColorSpace.sRGBColorSpace();
         // hopefully not null else the colors will be brighter
@@ -107,7 +107,7 @@ public:
             // GOAL: Force display by the GPU, this is supposed to solve
             // resampling problems on HiDPI like 4k and 5k
             // REALITY: QA reports this to be blurrier AND slower than previously
-            // 
+            //
             //_view.setWantsLayer(YES);
             //_view.layer.setDrawsAsynchronously(YES);
 
@@ -195,8 +195,10 @@ public:
 
     override bool requestResize(int widthLogicalPixels, int heightLogicalPixels, bool alsoResizeParentWindow)
     {
-        // TODO implement
-        assert(false);
+        NSSize size = NSSize(cast(CGFloat)widthLogicalPixels,
+                             cast(CGFloat)heightLogicalPixels);
+        _view.setFrameSize(size);
+        return true;
     }
 
 private:
@@ -349,18 +351,15 @@ private:
     void drawRect(NSRect rect)
     {
         NSGraphicsContext nsContext = NSGraphicsContext.currentContext();
-        
-        
 
         // Updates internal buffers in case of startup/resize
-        // FUTURE: why is the bounds rect too large? It creates havoc in AU even without resizing.
         {
-            /*
-            NSRect boundsRect = _view.bounds();
-            int width = cast(int)(boundsRect.size.width);   // truncating down the dimensions of bounds
-            int height = cast(int)(boundsRect.size.height);
-            */
-            updateSizeIfNeeded(_askedWidth, _askedHeight);
+            NSRect frameRect = _view.frame();
+            // Note: even if the frame rect is wrong, we can support any internal size with cropping etc.
+            // TODO: is it really wrong though?
+            int width = cast(int)(frameRect.size.width);   // truncating down the dimensions of bounds
+            int height = cast(int)(frameRect.size.height);
+            updateSizeIfNeeded(width, height);
         }
 
         // The first drawRect callback occurs before the timer triggers.
@@ -381,16 +380,16 @@ private:
             size_t sizeNeeded = _wfb.pitch * _wfb.h;
 
             import core.stdc.stdio;
-         
+
             CGDataProviderRef provider = CGDataProviderCreateWithData(null, _wfb.pixels, sizeNeeded, null);
-            CGImageRef image = CGImageCreate(_width, 
-                                             _height, 
-                                             8, 
-                                             32, 
-                                             byteStride(_width), 
-                                             _cgColorSpaceRef, 
-                                             kCGImageByteOrderDefault | kCGImageAlphaNoneSkipFirst, 
-                                             provider, 
+            CGImageRef image = CGImageCreate(_width,
+                                             _height,
+                                             8,
+                                             32,
+                                             byteStride(_width),
+                                             _cgColorSpaceRef,
+                                             kCGImageByteOrderDefault | kCGImageAlphaNoneSkipFirst,
+                                             provider,
                                              null,
                                              true,
                                              kCGRenderingIntentDefault);
@@ -504,7 +503,7 @@ private:
                 }
                 nsCursor.push();
             }
-   
+
             _lastMouseCursor = dplugCursor;
         }
     }
