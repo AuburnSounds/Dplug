@@ -10,6 +10,8 @@ module dplug.pbrwidgets.logo;
 import std.math;
 import dplug.gui.element;
 import dplug.core.math;
+import dplug.graphics;
+import dplug.graphics.resizer;
 
 class UILogo : UIElement
 {
@@ -32,11 +34,21 @@ nothrow:
         super(context, flagAnimated | flagPBR);
         _diffuseImage = diffuseImage;
         _animation = 0;
+
+        _diffuseImageResized = mallocNew!(OwnedImage!RGBA);
     }
 
     ~this()
     {
         _diffuseImage.destroyNoGC();
+        _diffuseImageResized.destroyFree();
+    }
+
+    override void reflow()
+    {
+        _diffuseImageResized.size(position.width, position.height);
+        ImageResizer* resizer = context.globalImageResizer;
+        resizer.resizeImageDiffuse(_diffuseImage.toRef(), _diffuseImageResized.toRef());
     }
 
     override void onAnimate(double dt, double time) nothrow @nogc
@@ -56,8 +68,8 @@ nothrow:
     {
         foreach(dirtyRect; dirtyRects)
         {
-            auto croppedDiffuseIn = _diffuseImage.crop(dirtyRect);
-            auto croppedDiffuseOut = diffuseMap.crop(dirtyRect);
+            ImageRef!RGBA croppedDiffuseIn = _diffuseImageResized.toRef().cropImageRef(dirtyRect);
+            ImageRef!RGBA croppedDiffuseOut = diffuseMap.cropImageRef(dirtyRect);
 
             int w = dirtyRect.width;
             int h = dirtyRect.height;
@@ -91,4 +103,5 @@ nothrow:
 private:
     float _animation;
     OwnedImage!RGBA _diffuseImage;
+    OwnedImage!RGBA _diffuseImageResized;
 }

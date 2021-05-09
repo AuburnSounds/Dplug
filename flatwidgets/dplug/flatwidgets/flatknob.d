@@ -19,7 +19,7 @@ import dplug.gui.element;
 import dplug.client.params;
 
 /**
-*
+* UIFilmstripKnob is a knob with a vertical RGBA image describing the knob graphics.
 */
 class UIFilmstripKnob : UIElement, IParameterListener
 {
