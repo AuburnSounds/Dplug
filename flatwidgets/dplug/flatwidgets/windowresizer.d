@@ -22,7 +22,7 @@ nothrow:
     RGBA color        = RGBA(255, 255, 255, 96);
 
     /// Color of the stripes when hovered by the mouse.
-    RGBA colorHovered = RGBA(255, 255, 255, 140);
+    RGBA colorHovered = RGBA(255, 255, 255, 150);
 
     /// Color of the stripes when dragged / resizing.
     RGBA colorDragged = RGBA(255, 255, 128, 200);
