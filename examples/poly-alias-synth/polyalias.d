@@ -1,7 +1,7 @@
 /**
 Aliased polyphonic syntesizer.
 
-Copyright: Elias Batek 2018.
+Copyright: Elias Batek 2018, 2021.
 License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 import std.math;
@@ -14,11 +14,12 @@ mixin(pluginEntryPoints!PolyAlias);
 /// Number of max notes playing at the same time
 enum maxVoices = 4;
 
-enum TAU = 2 * PI;
+enum double TAU = 2 * PI;
 
 enum : int
 {
     paramOsc1WaveForm,
+    paramOutputGain,
 }
 
 enum WaveForm
@@ -49,6 +50,7 @@ public:
     {
         auto params = makeVec!Parameter();
         params ~= mallocNew!EnumParameter(paramOsc1WaveForm, "Waveform", waveFormNames, WaveForm.init);
+        params ~= mallocNew!GainParameter(paramOutputGain, "Output Gain", 6.0, 0.0);
         return params.releaseData();
     }
 
@@ -86,6 +88,7 @@ public:
         }
 
         _synth.waveForm = readParam!WaveForm(paramOsc1WaveForm);
+        _synth.outputGain = convertDecibelToLinearGain(readParam!float(paramOutputGain));
 
         foreach (ref sample; outputs[0][0 .. frames])
             sample = _synth.nextSample();
@@ -157,17 +160,25 @@ public:
 
     float nextSample()
     {
-        float sample = 0;
+        double sample = 0;
 
         foreach (ref v; _voices)
             sample += v.nextSample(); // synth
 
-        sample /= voicesCount; // lower volume
+        // lower volume relative to the total count of voices
+        sample *= _internalGain;
 
-        return sample;
+        // apply gain
+        sample *= outputGain;
+
+        return float(sample);
     }
 
+    float outputGain = 1;
+
 private:
+    enum double _internalGain = (1.0 / (voicesCount / SQRT1_2));
+
     VoiceStatus[voicesCount] _voices;
 }
 
@@ -261,9 +272,9 @@ public:
         _waveForm = value;
     }
 
-    float nextSample()
+    double nextSample()
     {
-        float sample = void;
+        double sample = void;
 
         final switch (_waveForm) with (WaveForm)
         {
@@ -291,9 +302,9 @@ public:
     }
 
 private:
-    float _deltaPhase;
+    double _deltaPhase;
     float _frequency;
-    float _phase = 0;
+    double _phase = 0;
     float _sampleRate;
     WaveForm _waveForm;
 
