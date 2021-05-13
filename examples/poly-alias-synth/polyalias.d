@@ -11,10 +11,10 @@ import dplug.core, dplug.client;
 // depending on which version identifiers are defined.
 mixin(pluginEntryPoints!PolyAlias);
 
-
-// Number of max notes playing at the same time
-enum TAU = 2 * PI;
+/// Number of max notes playing at the same time
 enum maxVoices = 4;
+
+enum TAU = 2 * PI;
 
 enum : int
 {
@@ -28,23 +28,14 @@ enum WaveForm
     square,
 }
 
+static immutable waveFormNames = [__traits(allMembers, WaveForm)];
+
 /// Polyphonic digital-aliasing synth
-final class PolyAlias : dplug.client.Client
+final class PolyAlias : Client
 {
+nothrow @nogc:
 public:
-nothrow:
-@nogc:    
 
-    this()
-    {
-        _synth = mallocNew!(Synth!maxVoices)(WaveForm.saw);
-    }
-
-    ~this()
-    {
-        destroyFree(_synth);
-    }
-    
     override PluginInfo buildPluginInfo()
     {
         // Plugin info is parsed from plugin.json here at compile time.
@@ -57,10 +48,7 @@ nothrow:
     override Parameter[] buildParameters()
     {
         auto params = makeVec!Parameter();
-        
-        static immutable waveFormNames = [ __traits(allMembers, WaveForm) ];
-        params ~= mallocNew!EnumParameter(paramOsc1WaveForm, "Waveform", waveFormNames, 0);
-
+        params ~= mallocNew!EnumParameter(paramOsc1WaveForm, "Waveform", waveFormNames, WaveForm.init);
         return params.releaseData();
     }
 
@@ -72,7 +60,7 @@ nothrow:
         return io.releaseData();
     }
 
-    override int maxFramesInProcess() pure const
+    override int maxFramesInProcess()
     {
         return 32; // samples only processed by a maximum of 32 samples
     }
@@ -84,165 +72,109 @@ nothrow:
 
     override void processAudio(const(float*)[] inputs, float*[] outputs, int frames, TimeInfo info)
     {
+        // process MIDI - note on/off and similar
         foreach (msg; getNextMidiMessages(frames))
         {
-            if (msg.isNoteOn())
-            {
+            if (msg.isNoteOn()) // note on
                 _synth.markNoteOn(msg.noteNumber());
-            }
-            else if (msg.isNoteOff())
-            {
+
+            else if (msg.isNoteOff()) // note off
                 _synth.markNoteOff(msg.noteNumber());
-            }
-            else if (msg.isAllNotesOff() || msg.isAllSoundsOff())
-            {
+
+            else if (msg.isAllNotesOff() || msg.isAllSoundsOff()) // all off
                 _synth.markAllNotesOff();
-            }
         }
 
         _synth.waveForm = readParam!WaveForm(paramOsc1WaveForm);
 
         foreach (ref sample; outputs[0][0 .. frames])
-        {
             sample = _synth.nextSample();
-        }
 
         // Copy output to every channel
         foreach (chan; 1 .. outputs.length)
-        {
             outputs[chan][0 .. frames] = outputs[0][0 .. frames];
-        }
     }
 
 private:
     Synth!maxVoices _synth;
 }
 
-
-
-final class Synth(size_t voicesCount)
+struct Synth(size_t voicesCount)
 {
+@safe pure nothrow @nogc:
 public:
-nothrow:
-@nogc:   
 
     static assert(voicesCount > 0, "A synth must have at least 1 voice.");
 
     bool isPlaying()
     {
-        foreach(v; this._voices)
-        {
+        foreach (v; _voices)
             if (v.isPlaying())
-            {
                 return true;
-            }
-        }
+
         return false;
     }
 
     WaveForm waveForm()
     {
-        return this._voices[0].waveForm;
+        return _voices[0].waveForm;
     }
 
     void waveForm(WaveForm value)
     {
-        foreach (v; _voices)
-        {
+        foreach (ref v; _voices)
             v.waveForm = value;
-        }
-    }
-
-    this(WaveForm waveForm)
-    {
-        foreach (ref v; _voices)
-        {
-            v = mallocNew!VoiceStatus(waveForm);
-        }
-    }
-
-    ~this()
-    {
-        foreach (ref v; _voices)
-        {
-            destroyFree(v);
-        }
     }
 
     void markNoteOn(int note)
     {
-        VoiceStatus v = this.getUnusedVoice();
-        if (v is null)
-        {
-            // Voice stealing not implmented here
-            return;
-        }
+        foreach (ref v; _voices)
+            if (!v.isPlaying)
+                return v.play(note);
 
-        v.play(note);
+        // no free voice available, skip
     }
 
     void markNoteOff(int note)
     {
-        foreach (v; _voices)
-        {
+        foreach (ref v; _voices)
             if (v.isPlaying && (v.note == note))
-            {
                 v.release();
-            }
-        }
     }
 
     void markAllNotesOff()
     {
-        foreach (v; _voices)
-        {
+        foreach (ref v; _voices)
             if (v.isPlaying)
-            {
                 v.release();
-            }
-        }
     }
 
     void reset(float sampleRate)
     {
-        foreach (v; _voices)
-        {
+        foreach (ref v; _voices)
             v.reset(sampleRate);
-        }
     }
 
     float nextSample()
     {
         float sample = 0;
 
-        foreach (v; _voices)
-        {
-            sample += (v.nextSample() / voicesCount); // synth + lower volume
-        }
+        foreach (ref v; _voices)
+            sample += v.nextSample(); // synth
+
+        sample /= voicesCount; // lower volume
+
         return sample;
     }
 
 private:
     VoiceStatus[voicesCount] _voices;
-
-    VoiceStatus getUnusedVoice()
-    {
-        foreach (v; this._voices)
-        {
-            if (!v.isPlaying)
-            {
-                return v;
-            }
-        }
-        return null;
-    }
 }
 
-final class VoiceStatus
+struct VoiceStatus
 {
+@safe pure nothrow @nogc:
 public:
-nothrow:
-@nogc:
 
     bool isPlaying()
     {
@@ -264,21 +196,10 @@ nothrow:
         return _osc.waveForm;
     }
 
-    this(WaveForm waveForm)
-    {
-        _osc = mallocNew!Oscillator(waveForm);
-        _note = -1;
-    }
-
-    ~this()
-    {
-        destroyFree(_osc);
-    }
-
-    void play(int note)
+    void play(int note) @trusted
     {
         _note = note;
-        _osc.frequency = convertMIDINoteToFrequency(note);
+        _osc.frequency = convertMIDINoteToFrequency(note); // convertMIDINoteToFrequency() is actually @safe
         _isPlaying = true;
     }
 
@@ -296,9 +217,7 @@ nothrow:
     float nextSample()
     {
         if (!_isPlaying)
-        {
             return 0;
-        }
 
         return _osc.nextSample();
     }
@@ -306,32 +225,30 @@ nothrow:
 private:
     Oscillator _osc;
     bool _isPlaying;
-    int _note;
+    int _note = -1;
 }
 
-
-final class Oscillator
+struct Oscillator
 {
+@safe pure nothrow @nogc:
 public:
-nothrow:
-@nogc:
 
     this(WaveForm waveForm)
     {
         _waveForm = waveForm;
-        updatePhaseSummand();
+        recalculateDeltaPhase();
     }
 
     void frequency(float value)
     {
         _frequency = value;
-        updatePhaseSummand();
+        recalculateDeltaPhase();
     }
 
     void sampleRate(float value)
     {
         _sampleRate = value;
-        updatePhaseSummand();
+        recalculateDeltaPhase();
     }
 
     WaveForm waveForm()
@@ -350,37 +267,38 @@ nothrow:
 
         final switch (_waveForm) with (WaveForm)
         {
-            case saw:
-                sample = 1.0 - (_phase / PI);
-                break;
+        case saw:
+            sample = 1.0 - (_phase / PI);
+            break;
 
-            case sine:
-                sample = sin(_phase);
-                break;
+        case sine:
+            sample = sin(_phase);
+            break;
 
-            case square:
-                sample = (_phase <= PI) ? 1.0 : -1.0;
-                break;
+        case square:
+            sample = (_phase <= PI) ? 1.0 : -1.0;
+            break;
         }
 
-        _phase += _phaseSummand;
+        _phase += _deltaPhase;
+
         while (_phase >= TAU)
         {
             _phase -= TAU;
         }
+
         return sample;
     }
 
 private:
+    float _deltaPhase;
     float _frequency;
     float _phase = 0;
-    float _phaseSummand;
     float _sampleRate;
     WaveForm _waveForm;
 
-    void updatePhaseSummand()
+    void recalculateDeltaPhase()
     {
-        _phaseSummand = (_frequency * TAU / _sampleRate);
+        _deltaPhase = (_frequency * TAU / _sampleRate);
     }
 }
-
