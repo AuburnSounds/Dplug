@@ -315,7 +315,6 @@ struct Box(T, int N)
         }
 
         /// Scale the box by factor `scale`, and round the result to integer if needed.
-        // MAYDO: round instead? Take care of overflow.
         @nogc Box scaleByFactor(float scale) const nothrow
         {
             Box res;
@@ -334,6 +333,31 @@ struct Box(T, int N)
                 res.max.y = cast(T)( round(max.y * scale) );
             }
             return res;
+        }
+
+        static if (N == 2) // useful for UI that have horizontal and vertical scale
+        {
+            /// Scale the box by factor `scaleX` horizontally and `scaleY` vetically. 
+            /// Round the result to integer if needed.
+            @nogc Box scaleByFactor(float scaleX, float scaleY) const nothrow
+            {
+                Box res;
+                static if (isFloatingPoint!T)
+                {
+                    res.min.x = min.x * scaleX;
+                    res.min.y = min.y * scaleY;
+                    res.max.x = max.x * scaleX;
+                    res.max.y = max.y * scaleY;
+                }
+                else
+                {
+                    res.min.x = cast(T)( round(min.x * scaleX) );
+                    res.min.y = cast(T)( round(min.y * scaleY) );
+                    res.max.x = cast(T)( round(max.x * scaleX) );
+                    res.max.y = cast(T)( round(max.y * scaleY) );
+                }
+                return res;
+            }
         }
 
         static if (N >= 2)
@@ -634,6 +658,9 @@ unittest
     assert(rectangle(1, 2, 3, 4) == box2i(1, 2, 4, 6));
     assert(rectanglef(1, 2, 3, 4) == box2f(1, 2, 4, 6));
     assert(rectangled(1, 2, 3, 4) == box2d(1, 2, 4, 6));
+
+    assert(rectangle(10, 10, 20, 20).scaleByFactor(1.5f) == rectangle(15, 15, 30, 30));
+    assert(rectangle(10, 10, 20, 20).scaleByFactor(1.5f, 2.0f) == rectangle(15, 20, 30, 40));
 }
 
 /// True if `T` is a kind of Box
