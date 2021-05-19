@@ -97,7 +97,7 @@ nothrow:
             int H = position.height;
             ImageResizer resizer;
             
-            if (_diffuseResized.w != W || _diffuseResized.h != H)
+            if (_forceResizeUpdate || _diffuseResized.w != W || _diffuseResized.h != H)
             {
                 _diffuseResized.size(W, H);
                 _materialResized.size(W, H);
@@ -105,6 +105,7 @@ nothrow:
                 resizer.resizeImageDiffuse(_diffuse.toRef, _diffuseResized.toRef);
                 resizer.resizeImageMaterial(_material.toRef, _materialResized.toRef);
                 resizer.resizeImageDepth(_depth.toRef, _depthResized.toRef);
+                _forceResizeUpdate = false;
             }
         }
 
@@ -155,6 +156,9 @@ private:
     /// Offset from source to dest.
     vec2i _offset;
 
+    /// Force resize of source image in order to display changes while editing files.
+    bool _forceResizeUpdate;
+
     void freeImages()
     {
         if (_diffuse)
@@ -183,8 +187,8 @@ private:
             // Reload images from disk and update the UI
             freeImages();
             loadImages(basecolorData, emissiveData, materialData, depthData, skyboxData);
+            _forceResizeUpdate = true;
             setDirtyWhole();
-            reflow();
         }
 
         // Release copy of file contents
