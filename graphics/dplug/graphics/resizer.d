@@ -98,8 +98,9 @@ nothrow:
     ///ditto
     void resizeImageDepth(ImageRef!L16 input, ImageRef!L16 output)
     {
-        // Note: smoothing depth while resampling avoids some depth artifacts.
-        stbir_filter filter = STBIR_FILTER_CUBICBSPLINE;
+        // If too smooth, downsampling depth could make too blurry transitions.
+        // So we use the normal fltrer again.
+        stbir_filter filter = STBIR_FILTER_DEFAULT;
         int res = stbir_resize_uint16(cast(const(ushort*))input.pixels, input.w, input.h, cast(int)input.pitch,
                                       cast(      ushort* )output.pixels, output.w, output.h, cast(int)output.pitch, 1, filter, &alloc_context);
         assert(res);
@@ -131,9 +132,19 @@ nothrow:
         assert(res);
     }
 
+    ///ditto
+    void resizeImageDiffuse(ImageRef!RGBA input, ImageRef!RGBA output)
+    {
+        // Note: as the primary use case is downsampling, it was found it is helpful to have a relatively sharp filter
+        // since the diffuse map may contain text, and downsampling text is too blurry as of today.
+        stbir_filter filter = STBIR_FILTER_CATMULLROM;
+        int res = stbir_resize_uint8(cast(const(ubyte*))input.pixels, input.w, input.h, cast(int)input.pitch,
+                                     cast(      ubyte* )output.pixels, output.w, output.h, cast(int)output.pitch, 4, filter, &alloc_context);
+        assert(res);
+    }
 
-    // Note: no special treatment for diffuse and material images
-    alias resizeImageDiffuse = resizeImageGeneric;
+
+   // Note: no special treatment for material images
     alias resizeImageMaterial = resizeImageGeneric;
 
 private:
