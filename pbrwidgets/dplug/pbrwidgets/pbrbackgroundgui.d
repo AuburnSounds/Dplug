@@ -190,6 +190,12 @@ private:
             _forceResizeUpdate = true;
             setDirtyWhole();
         }
+        else
+        {
+            // Note: if you fail here, the absolute path you provided in your gui.d was incorrect.
+            // The background files cannot be loaded at runtime, and you have to fix your pathes.
+            assert(false);
+        }
 
         // Release copy of file contents
         freeSlice(basecolorData);
