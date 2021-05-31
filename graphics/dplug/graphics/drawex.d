@@ -1041,7 +1041,10 @@ OwnedImage!RGBA loadImageSeparateAlpha(in void[] imageDataRGB, in void[] imageDa
     int heightA = cast(int)ifImageA.h;
 
     if ( (widthA != widthRGB) || (heightRGB != heightA) )
+    {
+        // If you fail here, typically size of your Diffuse map doesn't match the Emissive map.
         assert(false, "Image size mismatch");
+    }
 
     int width = widthA;
     int height = heightA;
