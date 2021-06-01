@@ -69,6 +69,19 @@ class WindowListener : IWindowListener {
             return true;
         }
 
+        void onMouseExitedWindow() {
+            static void func() {
+                writeln("onMouseExitedWindow");
+            }
+
+            assumeNothrowNoGC(&func)();
+        }
+
+        MouseCursor getMouseCursor()
+        {
+            return MouseCursor.init;
+        }
+
         void onDraw(WindowPixelFormat pf) {
             if (image.pixels !is null) {
                 foreach(y; 0 .. image.h) {
