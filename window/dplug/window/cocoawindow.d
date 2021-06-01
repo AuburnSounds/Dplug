@@ -1,8 +1,7 @@
 /**
 * Cocoa window implementation.
-* Copyright: Copyright Auburn Sounds 2015 and later.
+* Copyright: Copyright Guillaume Piolat 2015 - 2021.
 * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
-* Authors:   Guillaume Piolat
 */
 module dplug.window.cocoawindow;
 
@@ -53,9 +52,6 @@ private:
     int _width;
     int _height;
 
-    //int _askedWidth;
-    //int _askedHeight;
-
     ImageRef!RGBA _wfb;
 
     uint _timeAtCreationInMs;
@@ -81,9 +77,6 @@ public:
 
         _width = 0;
         _height = 0;
-
-//        _askedWidth = width;
-//        _askedHeight = height;
 
         _nsColorSpace = NSColorSpace.sRGBColorSpace();
         // hopefully not null else the colors will be brighter
@@ -554,6 +547,7 @@ private:
     CocoaWindow _window;
     NSTimer _timer = null;
     NSString _runLoopMode;
+    NSTrackingArea _trackingArea;
 
     void initialize(CocoaWindow window, int width, int height)
     {
@@ -599,6 +593,7 @@ private:
 
         class_addMethod(clazz, sel!"mouseEntered:", cast(IMP) &mouseEntered, "v@:@");
         class_addMethod(clazz, sel!"mouseExited:", cast(IMP) &mouseExited, "v@:@");
+        class_addMethod(clazz, sel!"updateTrackingAreas", cast(IMP)&updateTrackingAreas, "v@:");
 
         // This ~ is to avoid a strange DMD ICE. Didn't succeed in isolating it.
         class_addMethod(clazz, sel!("scroll" ~ "Wheel:") , cast(IMP) &scrollWheel, "v@:@");
@@ -756,14 +751,47 @@ extern(C)
     {
         CocoaScopedCallback scopedCallback;
         scopedCallback.enter();
-        NSCursor.arrowCursor().push();
     }
 
     void mouseExited(id self, SEL selector, id event) nothrow @nogc
     {
         CocoaScopedCallback scopedCallback;
         scopedCallback.enter();
-        NSCursor.pop();
+        DPlugCustomView view = getInstance(self);
+        view._window._listener.onMouseExitedWindow();
+    }
+
+    void updateTrackingAreas(id self, SEL selector) nothrow @nogc
+    {
+        CocoaScopedCallback scopedCallback;
+        scopedCallback.enter();
+
+        // Call superclass's updateTrackingAreas:, equivalent to [super updateTrackingAreas]; 
+        {
+            objc_super sup;
+            sup.receiver = self;
+            sup.clazz = cast(Class) lazyClass!"NSView";
+            alias fun_t = extern(C) void function (objc_super*, SEL) nothrow @nogc;
+            (cast(fun_t)objc_msgSendSuper)(&sup, selector);
+        }
+
+        DPlugCustomView view = getInstance(self);
+
+        // Remove an existing tracking area, if any.
+        if (view._trackingArea._id !is null)
+        {
+            view.removeTrackingArea(view._trackingArea);
+            view._trackingArea.release();
+            view._trackingArea._id = null;
+        }
+
+        // This is needed to get mouseEntered and mouseExited
+        int opts = (NSTrackingMouseEnteredAndExited | NSTrackingActiveAlways);
+
+        NSRect bounds = view.bounds();
+        view._trackingArea = NSTrackingArea.alloc();
+        view._trackingArea.initWithRect(bounds, opts, view, null);
+        view.addTrackingArea(view._trackingArea);
     }
 
 

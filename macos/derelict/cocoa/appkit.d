@@ -225,7 +225,41 @@ nothrow @nogc:
         alias fun_t = extern(C) void function (id, SEL, NSSize) nothrow @nogc;
         (cast(fun_t)objc_msgSend)(_id, sel!"setFrameSize:", newSize);
     }
+
+    void addTrackingArea(NSTrackingArea trackingArea)
+    {
+        alias fun_t = extern(C) void function (id, SEL, id) nothrow @nogc;
+        (cast(fun_t)objc_msgSend)(_id, sel!"addTrackingArea:", trackingArea._id);
+    }
+
+    void removeTrackingArea(NSTrackingArea trackingArea)
+    {
+        alias fun_t = extern(C) void function (id, SEL, id) nothrow @nogc;
+        (cast(fun_t)objc_msgSend)(_id, sel!"removeTrackingArea:", trackingArea._id);
+    }
 }
+
+enum NSTrackingMouseEnteredAndExited = 1;
+enum NSTrackingActiveAlways = 0x80;
+
+// NSTrackingArea
+
+struct NSTrackingArea
+{
+nothrow @nogc:
+
+    NSObject parent;
+    alias parent this;
+
+    mixin NSObjectTemplate!(NSTrackingArea, "NSTrackingArea");
+
+    void initWithRect(NSRect rect, NSUInteger options, NSView owner, void* userData)
+    {
+        alias fun_t = extern(C) void function (id, SEL, NSRect, NSUInteger, id, void*) nothrow @nogc;
+        (cast(fun_t)objc_msgSend)(_id, sel!"initWithRect:options:owner:userInfo:", rect, options, owner._id, userData);
+    }
+}
+
 
 // CALayer
 struct CALayer
