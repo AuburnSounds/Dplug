@@ -383,6 +383,10 @@ private:
             _firstMouseMoveAfterEntering = true;
             return; // nothing to do
 
+        case LeaveNotify:
+            _listener.onMouseExitedWindow();
+            return;
+
         case Expose:
             assert(_recomputeDirtyAreasWasCalled);
 
@@ -702,7 +706,8 @@ private:
              | ButtonReleaseMask
              | ButtonPressMask
              | PointerMotionMask
-             | EnterWindowMask;
+             | EnterWindowMask
+             | LeaveWindowMask;
     }
 
     void createHiddenCursor()
