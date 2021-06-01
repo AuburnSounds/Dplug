@@ -344,6 +344,20 @@ version(Windows)
                         _mouseX = newMouseX;
                         _mouseY = newMouseY;
                         setMouseCursor(false);
+
+                        // Track when mouse exit the window
+                        if (!_mouseTracking)
+                        {
+                            // Enable mouse tracking.
+                            TRACKMOUSEEVENT tme;
+                            tme.cbSize = tme.sizeof;
+                            tme.hwndTrack = hwnd;
+                            tme.dwFlags = TME_LEAVE;
+                            tme.dwHoverTime = HOVER_DEFAULT;
+                            TrackMouseEvent(&tme);
+                            _mouseTracking = true;
+                        }
+
                         return 0;
                     }
 
@@ -438,6 +452,11 @@ version(Windows)
                     _listener.onMouseCaptureCancelled();
                     setMouseCursor(true);
                     goto default;
+
+                case WM_MOUSELEAVE:
+                    _listener.onMouseExitedWindow();
+                    _mouseTracking = false;
+                    return 0;
 
                 case WM_SIZE:
                 case WM_SHOWWINDOW:
@@ -633,7 +652,6 @@ version(Windows)
         uint _lastMeasturedTimeInMs;
 
         bool _sizeSet = false;
-
         IWindowListener _listener; // contract: _listener must only be used in the message callback
 
         ImageRef!RGBA _wfb; // framebuffer reference
@@ -644,6 +662,7 @@ version(Windows)
 
         int _mouseX = 0;
         int _mouseY = 0;
+        bool _mouseTracking = false;
 
         bool shiftPressed = false;
         bool _dirtyAreasAreNotYetComputed = true;

@@ -345,6 +345,16 @@ nothrow:
             outer._uiContext.stopDragging();
         }
 
+        override void onMouseExitedWindow()
+        {
+            // Stop an eventual isMouseOver
+            version(legacyMouseOver) {}
+            else
+            {
+                outer._uiContext.setMouseOver(null);
+            }
+        }
+
         override void onAnimate(double dt, double time)
         {
             outer.animate(dt, time);

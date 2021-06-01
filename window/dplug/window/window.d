@@ -222,6 +222,9 @@ nothrow @nogc:
     /// Called whenever mouse capture was canceled (ALT + TAB, SetForegroundWindow...)
     void onMouseCaptureCancelled();
 
+    /// Called whenever mouse exited the window (but a capture could still be in action).
+    void onMouseExitedWindow();
+
     /// Must be called periodically (ideally 60 times per second but this is not mandatory).
     /// `time` must refer to the window creation time.
     /// `dt` and `time` are expressed in seconds (not milliseconds).
