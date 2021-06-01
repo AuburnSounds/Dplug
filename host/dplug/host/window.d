@@ -96,4 +96,8 @@ nothrow:
     {
         return MouseCursor.init;
     }
+
+    void onMouseExitedWindow()
+    {        
+    }
 }
