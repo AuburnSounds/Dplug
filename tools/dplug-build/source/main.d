@@ -911,7 +911,7 @@ int main(string[] args)
                             cwritefln("*** Signing bundle %s...".white, bundleDir);
                             if (plugin.developerIdentity !is null)
                             {
-                                string command = format(`codesign --strict -f -s %s --timestamp %s`,
+                                string command = format(`codesign --strict -f -s %s --timestamp %s --digest-algorithm=sha1,sha256`,
                                     escapeShellArgument(plugin.developerIdentity), escapeShellArgument(bundleDir));
                                 safeCommand(command);
                             }
