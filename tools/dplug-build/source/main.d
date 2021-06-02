@@ -1206,9 +1206,9 @@ void generateWindowsInstaller(string outputDir,
     string sectionDescription(WindowsPackage pack) pure
     {
         if (pack.format == "VST")
-            return "For VST 2.4 hosts like Live, FL Studio, Bitwig, Reason, etc. Includes both 32bit and 64bit components.";
+            return "For VST 2.4 hosts like FL Studio, Live, Bitwig, Studio One, etc. Includes both 32bit and 64bit components.";
         else if(pack.format == "VST3")
-            return "For VST3 hosts like Cubase, Digital Performer, Wavelab., etc. Includes both 32bit and 64bit components.";
+            return "For VST 3 hosts like Cubase, Digital Performer, Wavelab., etc. Includes both 32bit and 64bit components.";
         else if(pack.format == "AAX")
             return "For Pro Tools 11 or later";
         else if(pack.format == "LV2")
@@ -1220,10 +1220,10 @@ void generateWindowsInstaller(string outputDir,
     string vstInstallDirDescription(bool is64b) pure
     {
         string description = "";
-        description ~= "Setup will install VST 2.4 (";
-        description ~= is64b ? "64" : "32";
-        description ~= " bit) in the following folder.  To install in a different folder, ";
-        description ~= "click Browse and select another folder.  Click install to start the installation.";
+        if (is64b)
+            description ~= "Select your 64-bit VST 2.4 folder.";
+        else
+            description ~= "Select your 32-bit VST 2.4 folder.";
         return description;
     }
 

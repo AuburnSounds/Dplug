@@ -105,9 +105,9 @@ Arch[] allArchitecturesWeCanBuildForThisOS(OS targetOS)
         case OS.windows:
         {
             if (buildArch == Arch.x86 || buildArch == Arch.x86_64 )
-                return [Arch.x86, Arch.x86_64];
+                return [ Arch.x86_64, Arch.x86];
             else
-                throw new Exception("dplug-build on Windows should be built with a x86 or x86_64 architecture.");
+                throw new Exception("dplug-build on Windows should be built with a x86_64 or x86 architecture.");
         }
 
         case OS.linux:
