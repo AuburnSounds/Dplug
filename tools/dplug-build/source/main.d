@@ -1143,7 +1143,7 @@ void buildPlugin(string compiler, string config, string build, Arch arch, bool v
     // If you want Universal Binary 2, can't targer earlier than 10.12
     version(OSX)
     {
-        environment["MACOSX_DEPLOYMENT_TARGET"] = "10.12";
+        environment["MACOSX_DEPLOYMENT_TARGET"] = "10.10";
     }
 
     string cmd = format("dub build --build=%s %s--compiler=%s%s%s%s%s%s%s%s",

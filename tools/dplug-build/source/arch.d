@@ -35,7 +35,6 @@ string convertArchToDUBFlag(Arch arch) pure
         case arm32:  return "";
 
         // LLVM Triple for Apple Silicon
-        // For now this needs a modified LDC
         case arm64:  return "--arch=arm64-apple-macos ";
 
         case universalBinary: assert(false);

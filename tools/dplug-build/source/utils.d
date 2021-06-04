@@ -93,6 +93,7 @@ void safeCommand(string cmd)
     cwritefln("$ %s".cyan, cmd);
     auto pid = spawnShell(cmd);
     auto errorCode = wait(pid);
+    //cwritefln(" => returned error code %s", errorCode);
     if (errorCode != 0)
         throw new ExternalProgramErrored(errorCode, format("Command '%s' returned %s", cmd, errorCode));
 }
