@@ -331,7 +331,7 @@ nothrow:
     void initialize(stbtt_fontinfo* font)
     {
         _font = font;
-        _glyphs = makeMap!(GlyphKey, ubyte*);
+        _glyphs = makeMap!(GlyphKey, ubyte*); // TODO: Inspector says this map is leaking, investigate why
     }
 
     @disable this(this);
