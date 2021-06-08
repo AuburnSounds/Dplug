@@ -111,7 +111,7 @@ void main(string[]args)
                 if (preset != -1)
                     host.loadPreset(preset);
 
-                foreach(thread; iota(2).parallel)
+                foreach(thread; iota(2).parallel) // Note: the taskpool is leaked, according to Intel Inspector
                 {
                     if (thread == 0)
                     {

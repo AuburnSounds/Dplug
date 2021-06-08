@@ -484,6 +484,7 @@ else
                     thread.destroy();
                 freeSlice(_threads);
                 _threads = null;
+                destroy(_workMutex);
             }
         }
 
