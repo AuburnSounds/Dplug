@@ -40,8 +40,16 @@ nothrow:
 
     ~this()
     {
-        _diffuseImage.destroyNoGC();
-        _diffuseImageResized.destroyFree();
+        if (_diffuseImage !is null)
+        {
+            destroyFree(_diffuseImage);
+            _diffuseImage = null;
+        }
+        if (_diffuseImageResized !is null)
+        {
+            destroyFree(_diffuseImageResized);
+            _diffuseImageResized = null;
+        }
     }
 
     override void reflow()
