@@ -134,7 +134,7 @@ void main(string[]args)
                                 hostWindow.waitEventAndDispatch();
 
                             host.closeUI();
-                            hostWindow.destroy();
+                            hostWindow.destroyFree();
                         }
 
                     }
