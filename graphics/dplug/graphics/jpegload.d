@@ -84,7 +84,7 @@ nothrow:
 
 // Set to 1 to enable freq. domain chroma upsampling on images using H2V2 subsampling (0=faster nearest neighbor sampling).
 // This is slower, but results in higher quality on images with highly saturated colors.
-//version = JPGD_SUPPORT_FREQ_DOMAIN_UPSAMPLING;
+version = JPGD_SUPPORT_FREQ_DOMAIN_UPSAMPLING;
 
 /// Input stream interface.
 /// This function is called when the internal input buffer is empty.
