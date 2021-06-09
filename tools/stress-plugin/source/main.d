@@ -6,6 +6,7 @@ import std.parallelism;
 
 import waved;
 
+import dplug.core;
 import dplug.host;
 import dplug.window;
 
@@ -134,7 +135,7 @@ void main(string[]args)
                                 hostWindow.waitEventAndDispatch();
 
                             host.closeUI();
-                            hostWindow.destroyFree();
+                            destroyFree(hostWindow);
                         }
 
                     }
