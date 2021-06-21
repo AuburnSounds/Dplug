@@ -6,6 +6,7 @@ import std.parallelism;
 
 import waved;
 
+import dplug.core;
 import dplug.host;
 import dplug.window;
 
@@ -111,7 +112,7 @@ void main(string[]args)
                 if (preset != -1)
                     host.loadPreset(preset);
 
-                foreach(thread; iota(2).parallel)
+                foreach(thread; iota(2).parallel) // Note: the taskpool is leaked, according to Intel Inspector
                 {
                     if (thread == 0)
                     {
@@ -134,7 +135,7 @@ void main(string[]args)
                                 hostWindow.waitEventAndDispatch();
 
                             host.closeUI();
-                            hostWindow.destroy();
+                            destroyFree(hostWindow);
                         }
 
                     }
