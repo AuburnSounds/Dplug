@@ -696,12 +696,9 @@ nothrow:
     *    node.
     */
     Node rotateR()
-    in
     {
         assert(_left !is null);
-    }
-    body
-    {
+
         // sets _left._parent also
         if (isLeftNode)
             parent.left = _left;
@@ -739,12 +736,9 @@ nothrow:
     *    node.
     */
     Node rotateL()
-    in
     {
         assert(_right !is null);
-    }
-    body
-    {
+
         // sets _right._parent also
         if (isLeftNode)
             parent.left = _right;
@@ -768,12 +762,8 @@ nothrow:
     * parent which is the marker node.
     */
     @property bool isLeftNode() const
-        in
-        {
-            assert(_parent !is null);
-        }
-    body
     {
+        assert(_parent !is null);
         return _parent._left is &this;
     }
 

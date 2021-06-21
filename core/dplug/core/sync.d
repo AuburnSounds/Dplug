@@ -381,12 +381,9 @@ struct UncheckedSemaphore
     }
 
     bool wait( Duration period ) nothrow @nogc
-    in
     {
         assert( !period.isNegative );
-    }
-    body
-    {
+
         version( Windows )
         {
             auto maxWaitMillis = dur!("msecs")( uint.max - 1 );
