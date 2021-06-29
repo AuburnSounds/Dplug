@@ -204,6 +204,7 @@ private:
     T[] _data;
     int _count;
     int _readIndex;
+    int _readIndexAtLastRead;
     int _inputTimestamp;
 
     // Note: information about sample-rate is passed through atomics, out-of-band
@@ -238,6 +239,7 @@ public:
 
         _count = 0; // no data at start
         _readIndex = 0;
+        _readIndexAtLastRead = 0;
         _indexMask = size - 1;
         _inputTimestamp = 0;
         _dividerMask = divider - 1;
@@ -322,6 +324,7 @@ public:
             {
                 output[i] = _data[ (_readIndex + i) & _indexMask ];
             }
+            _readIndexAtLastRead = _readIndex;
 
             // drop samples
             float sampleRate = atomicLoad(_sampleRate);
@@ -349,6 +352,14 @@ public:
     bool readOldestDataAndDropSome(T* output, double dt) nothrow @nogc
     {
         return readOldestDataAndDropSome(output[0..1], dt) != 0;
+    }
+
+    /// Getting the last used read index is useful if you want to further filter the TImedFIFO output,
+    /// and need a modulo reference for to alignment.
+    /// In Couture, this is used to avoid "humps" on gain display.
+    int readIndexAtLastRead()
+    {
+        return _readIndexAtLastRead;
     }
 }
 
