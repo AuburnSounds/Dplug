@@ -1874,13 +1874,15 @@ static void stbir__resample_vertical_downsample(stbir__info* stbir_info, int n)
                 }
                 break;
             case 4:
+
+                __m128 vCoefficients = _mm_set1_ps(coefficient);
+
                 for (x = 0; x < output_w; x++)
                 {
                     int in_pixel_index = x * 4;
-                    ring_buffer_entry[in_pixel_index + 0] += horizontal_buffer[in_pixel_index + 0] * coefficient;
-                    ring_buffer_entry[in_pixel_index + 1] += horizontal_buffer[in_pixel_index + 1] * coefficient;
-                    ring_buffer_entry[in_pixel_index + 2] += horizontal_buffer[in_pixel_index + 2] * coefficient;
-                    ring_buffer_entry[in_pixel_index + 3] += horizontal_buffer[in_pixel_index + 3] * coefficient;
+                    __m128 A = _mm_loadu_ps(&horizontal_buffer[in_pixel_index]);
+                    __m128 B = _mm_loadu_ps(&ring_buffer_entry[in_pixel_index]);
+                    _mm_storeu_ps( &ring_buffer_entry[in_pixel_index], B + A * vCoefficients);
                 }
                 break;
             default:

@@ -216,13 +216,13 @@ nothrow:
         float fxm1 = 1 - fx;
         float fym1 = 1 - fy;
 
-        COLOR[] L0 = image.scanline(iy);
-        COLOR[] L1 = image.scanline(iyp1);
+        COLOR* L0 = image.scanlinePtr(iy);
+        COLOR* L1 = image.scanlinePtr(iyp1);
 
-        COLOR A = L0.ptr[ix];
-        COLOR B = L0.ptr[ixp1];
-        COLOR C = L1.ptr[ix];
-        COLOR D = L1.ptr[ixp1];
+        COLOR A = L0[ix];
+        COLOR B = L0[ixp1];
+        COLOR C = L1[ix];
+        COLOR D = L1[ixp1];
 
         static if (is(COLOR == RGBA))
         {
@@ -1479,11 +1479,11 @@ void generateLevelCubicRGBA(OwnedImage!RGBA thisLevel,
         if (y2p2 > previousLevel.h - 1)
             y2p2 = previousLevel.h - 1;
 
-        RGBA* LM1 = previousLevel.scanline(y2m1).ptr;
-        RGBA* L0 = previousLevel.scanline(y * 2).ptr;
-        RGBA* L1 = previousLevel.scanline(y * 2 + 1).ptr;
-        RGBA* L2 = previousLevel.scanline(y2p2).ptr;
-        RGBA* dest = thisLevel.scanline(y).ptr;
+        RGBA* LM1 = previousLevel.scanlinePtr(y2m1);
+        RGBA* L0 = previousLevel.scanlinePtr(y * 2);
+        RGBA* L1 = previousLevel.scanlinePtr(y * 2 + 1);
+        RGBA* L2 = previousLevel.scanlinePtr(y2p2);
+        RGBA* dest = thisLevel.scanlinePtr(y);
 
         for (int x = updateRect.min.x; x < updateRect.max.x; ++x)
         {
@@ -1712,11 +1712,11 @@ void generateLevelCubicL16(OwnedImage!L16 thisLevel,
         if (y2p2 > previousLevel.h - 1)
             y2p2 = previousLevel.h - 1;
 
-        L16* LM1 = previousLevel.scanline(y2m1).ptr;
-        L16* L0 = previousLevel.scanline(y * 2).ptr;
-        L16* L1 = previousLevel.scanline(y * 2 + 1).ptr;
-        L16* L2 = previousLevel.scanline(y2p2).ptr;
-        L16* dest = thisLevel.scanline(y).ptr;
+        L16* LM1 = previousLevel.scanlinePtr(y2m1);
+        L16* L0 = previousLevel.scanlinePtr(y * 2);
+        L16* L1 = previousLevel.scanlinePtr(y * 2 + 1);
+        L16* L2 = previousLevel.scanlinePtr(y2p2);
+        L16* dest = thisLevel.scanlinePtr(y);
 
         for (int x = updateRect.min.x; x < updateRect.max.x; ++x)
         {
