@@ -42,11 +42,11 @@ struct PBRCompositorPassBuffers
     CompositorPassBuffers parent;
     alias parent this;
 
-    // Computed normal
-    OwnedImage!RGBf normalBuffer;
+    // Computed normal, one buffer per thread
+    OwnedImage!RGBf[] normalBuffers;
 
-    // Accumulates light for each deferred pass
-    OwnedImage!RGBAf accumBuffer;
+    // Accumulates light for each deferred pass, one buffer per thread
+    OwnedImage!RGBAf[] accumBuffers;
 }
 
 
@@ -121,8 +121,14 @@ nothrow @nogc:
     {
         super(context);
 
-        _normalBuffer = mallocNew!(OwnedImage!RGBf)();
-        _accumBuffer = mallocNew!(OwnedImage!RGBAf)();
+        _normalBuffers = mallocSlice!(OwnedImage!RGBf)(numThreads());
+        _accumBuffers = mallocSlice!(OwnedImage!RGBAf)(numThreads());
+
+        for (int t = 0; t < numThreads(); ++t)
+        {
+            _normalBuffers[t] = mallocNew!(OwnedImage!RGBf)();
+            _accumBuffers[t] = mallocNew!(OwnedImage!RGBAf)();
+        }
 
         // Create the passes
         addPass( mallocNew!PassComputeNormal(this) );         // PASS_NORMAL
@@ -137,8 +143,13 @@ nothrow @nogc:
 
     ~this()
     {
-        _normalBuffer.destroyFree();
-        _accumBuffer.destroyFree();
+        for (size_t t = 0; t < _normalBuffers.length; ++t)
+        {
+            _normalBuffers[t].destroyFree();
+            _accumBuffers[t].destroyFree();
+        }
+        freeSlice(_normalBuffers);
+        freeSlice(_accumBuffers);
     }
 
     override void resizeBuffers(int width, 
@@ -148,11 +159,16 @@ nothrow @nogc:
     {
         super.resizeBuffers(width, height, areaMaxWidth, areaMaxHeight);
 
-        int border_0 = 0;
-        int rowAlign_1 = 1;
-        int rowAlign_16 = 16;
-        _normalBuffer.size(width, height, border_0, rowAlign_1);
-        _accumBuffer.size(width, height, border_0, rowAlign_16);
+        // Create numThreads thread-local buffers of areaMaxWidth x areaMaxHeight size.
+        for (int t = 0; t < numThreads(); ++t)
+        {
+
+            int border_0 = 0;
+            int rowAlign_1 = 1;
+            int rowAlign_16 = 16;
+            _normalBuffers[t].size(areaMaxWidth, areaMaxHeight, border_0, rowAlign_1);
+            _accumBuffers[t].size(areaMaxWidth, areaMaxHeight, border_0, rowAlign_16);
+        }
     }
 
 
@@ -168,20 +184,22 @@ nothrow @nogc:
         buffers.diffuseMap = diffuseMap;
         buffers.materialMap = materialMap;
         buffers.depthMap = depthMap;
-        buffers.accumBuffer = _accumBuffer;
-        buffers.normalBuffer = _normalBuffer;
+        buffers.accumBuffers = _accumBuffers;
+        buffers.normalBuffers = _normalBuffers;
 
         // For each tile, do all pass one by one.
         void compositeOneTile(int i, int threadIndex) nothrow @nogc
         {
+            OwnedImage!RGBAf accumBuffer = _accumBuffers[threadIndex];
+
             box2i area = areas[i];
             // Clear the accumulation buffer, since all passes add to it
             {
                 RGBAf zero = RGBAf(0.0f, 0.0f, 0.0f, 0.0f);
-                for (int j = area.min.y; j < area.max.y; ++j)
+                for (int j = 0; j < area.height; ++j)
                 {
-                    RGBAf* accumScan = _accumBuffer.scanline(j).ptr;
-                    accumScan[area.min.x..area.max.x] = zero;
+                    RGBAf* accumScan = accumBuffer.scanline(j).ptr;
+                    accumScan[0..area.width] = zero;
                 }
             }
 
@@ -195,8 +213,8 @@ nothrow @nogc:
     }
 
 private:
-    OwnedImage!RGBf _normalBuffer;
-    OwnedImage!RGBAf _accumBuffer;
+    OwnedImage!RGBf[] _normalBuffers;
+    OwnedImage!RGBAf[] _accumBuffers;
 }
 
 
@@ -213,14 +231,14 @@ nothrow:
     override void render(int threadIndex, const(box2i) area, CompositorPassBuffers* buffers)
     {
         PBRCompositorPassBuffers* PBRbuf = cast(PBRCompositorPassBuffers*) buffers;
-        OwnedImage!RGBf normalBuffer = PBRbuf.normalBuffer;
+        OwnedImage!RGBf normalBuffer = PBRbuf.normalBuffers[threadIndex];
         OwnedImage!L16 depthLevel0 = PBRbuf.depthMap.levels[0];
 
         const int depthPitchBytes = depthLevel0.pitchInBytes();
 
         for (int j = area.min.y; j < area.max.y; ++j)
         {
-            RGBf* normalScan = normalBuffer.scanline(j).ptr;
+            RGBf* normalScan = normalBuffer.scanline(j - area.min.y).ptr;
             const(L16*) depthScan = depthLevel0.scanline(j).ptr;
 
             for (int i = area.min.x; i < area.max.x; ++i)
@@ -267,7 +285,7 @@ nothrow:
                     depthNeighbourhood[8] = depthHereP1[+1].l * multUshort;
                     vec3f normal = computeRANSACNormal(depthNeighbourhood.ptr);
                 }
-                normalScan[i] = RGBf(normal.x, normal.y, normal.z);
+                normalScan[i - area.min.x] = RGBf(normal.x, normal.y, normal.z);
             }
         }
     }
@@ -295,13 +313,13 @@ nothrow:
         OwnedImage!RGBA diffuseLevel0 = PBRbuf.diffuseMap.levels[0];
         Mipmap!L16 depthMap = PBRbuf.depthMap;
         OwnedImage!L16 depthLevel0 = PBRbuf.depthMap.levels[0];
-        OwnedImage!RGBAf accumBuffer = PBRbuf.accumBuffer;
+        OwnedImage!RGBAf accumBuffer = PBRbuf.accumBuffers[threadIndex];
 
         for (int j = area.min.y; j < area.max.y; ++j)
         {
             RGBA* diffuseScan = diffuseLevel0.scanlinePtr(j);
             const(L16*) depthScan = depthLevel0.scanlinePtr(j);
-            RGBAf* accumScan = accumBuffer.scanlinePtr(j);
+            RGBAf* accumScan = accumBuffer.scanlinePtr(j - area.min.y);
 
             for (int i = area.min.x; i < area.max.x; ++i)
             {
@@ -328,7 +346,7 @@ nothrow:
                     cavity = 0;
 
                 __m128 color = baseColor * _mm_set1_ps(cavity * amount);
-                _mm_store_ps(cast(float*)(&accumScan[i]), _mm_load_ps(cast(float*)(&accumScan[i])) + color);
+                _mm_store_ps(cast(float*)(&accumScan[i - area.min.x]), _mm_load_ps(cast(float*)(&accumScan[i - area.min.x])) + color);
             }
         }
     }
@@ -352,7 +370,7 @@ nothrow:
         PBRCompositorPassBuffers* PBRbuf = cast(PBRCompositorPassBuffers*) buffers;
         OwnedImage!L16 depthLevel0 = PBRbuf.depthMap.levels[0];
         OwnedImage!RGBA diffuseLevel0 = PBRbuf.diffuseMap.levels[0];
-        OwnedImage!RGBAf accumBuffer = PBRbuf.accumBuffer;
+        OwnedImage!RGBAf accumBuffer = PBRbuf.accumBuffers[threadIndex];
 
         // Add a primary light that cast shadows
         
@@ -386,7 +404,7 @@ nothrow:
             RGBA* diffuseScan = diffuseLevel0.scanlinePtr(j);
 
             const(L16*) depthScan = depthLevel0.scanlinePtr(j);
-            RGBAf* accumScan = accumBuffer.scanlinePtr(j);
+            RGBAf* accumScan = accumBuffer.scanlinePtr(j - area.min.y);
 
             for (int i = area.min.x; i < area.max.x; ++i)
             {
@@ -436,7 +454,7 @@ nothrow:
                 }
                 vec3f finalColor = baseColor * color * (lightPassed * invTotalWeights);
                 __m128 mmColor = _mm_setr_ps(finalColor.r, finalColor.g, finalColor.b, 0.0f);
-                _mm_store_ps(cast(float*)(&accumScan[i]), _mm_load_ps(cast(float*)(&accumScan[i])) + mmColor);
+                _mm_store_ps(cast(float*)(&accumScan[i - area.min.x]), _mm_load_ps(cast(float*)(&accumScan[i - area.min.x])) + mmColor);
             }
         }
     }
@@ -464,20 +482,20 @@ public:
         PBRCompositorPassBuffers* PBRbuf = cast(PBRCompositorPassBuffers*) buffers;
         OwnedImage!RGBA diffuseLevel0 = PBRbuf.diffuseMap.levels[0];
         OwnedImage!RGBA materialLevel0 = PBRbuf.materialMap.levels[0];
-        OwnedImage!RGBf normalBuffer = PBRbuf.normalBuffer;
-        OwnedImage!RGBAf accumBuffer = PBRbuf.accumBuffer;
+        OwnedImage!RGBf normalBuffer = PBRbuf.normalBuffers[threadIndex];
+        OwnedImage!RGBAf accumBuffer = PBRbuf.accumBuffers[threadIndex];
 
         // secundary light
         for (int j = area.min.y; j < area.max.y; ++j)
         {
             RGBA* materialScan = materialLevel0.scanlinePtr(j);
             RGBA* diffuseScan = diffuseLevel0.scanlinePtr(j);
-            RGBf* normalScan = normalBuffer.scanlinePtr(j);
-            RGBAf* accumScan = accumBuffer.scanlinePtr(j);
+            RGBf* normalScan = normalBuffer.scanlinePtr(j - area.min.y);
+            RGBAf* accumScan = accumBuffer.scanlinePtr(j - area.min.y);
 
             for (int i = area.min.x; i < area.max.x; ++i)
             {
-                RGBf normalFromBuf = normalScan[i];
+                RGBf normalFromBuf = normalScan[i - area.min.x];
                 RGBA materialHere = materialScan[i];
                 float roughness = materialHere.r * div255;
                 RGBA ibaseColor = diffuseScan[i];
@@ -486,7 +504,7 @@ public:
                 float diffuseFactor = 0.5f + 0.5f * dot(normal, direction);
                 diffuseFactor = linmap!float(diffuseFactor, 0.24f - roughness * 0.5f, 1, 0, 1.0f);
                 vec3f finalColor = baseColor * color * diffuseFactor;
-                accumScan[i] += RGBAf(finalColor.r, finalColor.g, finalColor.b, 0.0f);
+                accumScan[i - area.min.x] += RGBAf(finalColor.r, finalColor.g, finalColor.b, 0.0f);
             }
         }
     }
@@ -548,8 +566,8 @@ public:
         PBRCompositorPassBuffers* PBRbuf = cast(PBRCompositorPassBuffers*) buffers;
         OwnedImage!RGBA diffuseLevel0 = PBRbuf.diffuseMap.levels[0];
         OwnedImage!RGBA materialLevel0 = PBRbuf.materialMap.levels[0];
-        OwnedImage!RGBf normalBuffer = PBRbuf.normalBuffer;
-        OwnedImage!RGBAf accumBuffer = PBRbuf.accumBuffer;
+        OwnedImage!RGBf normalBuffer = PBRbuf.normalBuffers[threadIndex];
+        OwnedImage!RGBAf accumBuffer = PBRbuf.accumBuffers[threadIndex];
 
         int w = diffuseLevel0.w;
         int h = diffuseLevel0.h;
@@ -564,14 +582,14 @@ public:
         {
             RGBA* materialScan = materialLevel0.scanlinePtr(j);
             RGBA* diffuseScan = diffuseLevel0.scanlinePtr(j);
-            RGBf* normalScan = normalBuffer.scanlinePtr(j);
-            RGBAf* accumScan = accumBuffer.scanlinePtr(j);
+            RGBf* normalScan = normalBuffer.scanlinePtr(j - area.min.y);
+            RGBAf* accumScan = accumBuffer.scanlinePtr(j - area.min.y);
 
             for (int i = area.min.x; i < area.max.x; ++i)
             {
                 RGBA materialHere = materialScan[i];
-                RGBf normalFromBuf = normalScan[i];
-                __m128 normal = convertNormalToFloat4(normalScan[i]);
+                RGBf normalFromBuf = normalScan[i - area.min.x];
+                __m128 normal = convertNormalToFloat4(normalFromBuf);
 
                 // TODO: this should be tuned interactively, maybe it's annoying to feel
                 //       Need to compute the viewer distance from screen... and DPI.
@@ -624,7 +642,7 @@ public:
                 specularFactor = specularFactor * roughFactor;
                 __m128 finalColor = baseColor * mmLightColor * _mm_set1_ps(specularFactor * specular);
 
-                _mm_store_ps(cast(float*)(&accumScan[i]), _mm_load_ps(cast(float*)(&accumScan[i])) + finalColor);
+                _mm_store_ps(cast(float*)(&accumScan[i - area.min.x]), _mm_load_ps(cast(float*)(&accumScan[i - area.min.x])) + finalColor);
             }
         }
     }
@@ -689,8 +707,8 @@ public:
         OwnedImage!RGBA diffuseLevel0 = PBRbuf.diffuseMap.levels[0];
         OwnedImage!RGBA materialLevel0 = PBRbuf.materialMap.levels[0];
         OwnedImage!L16 depthLevel0 = PBRbuf.depthMap.levels[0];
-        OwnedImage!RGBf normalBuffer = PBRbuf.normalBuffer;
-        OwnedImage!RGBAf accumBuffer = PBRbuf.accumBuffer;
+        OwnedImage!RGBf normalBuffer = PBRbuf.normalBuffers[threadIndex];
+        OwnedImage!RGBAf accumBuffer = PBRbuf.accumBuffers[threadIndex];
 
         int w = diffuseLevel0.w;
         int h = diffuseLevel0.h;
@@ -704,8 +722,8 @@ public:
             {
                 RGBA* materialScan = materialLevel0.scanlinePtr(j);
                 RGBA* diffuseScan = diffuseLevel0.scanlinePtr(j);
-                RGBf* normalScan = normalBuffer.scanlinePtr(j);
-                RGBAf* accumScan = accumBuffer.scanlinePtr(j);
+                RGBf* normalScan = normalBuffer.scanlinePtr(j - area.min.y);
+                RGBAf* accumScan = accumBuffer.scanlinePtr(j - area.min.y);
 
                 // First compute the needed mipmap level for this line
 
@@ -763,7 +781,7 @@ public:
                     __m128 toEye = _mm_setr_ps(0.5f - i * invW, j * invH - 0.5f, 1.0f, 0.0f);
                     toEye = _mm_fast_normalize_ps(toEye);
 
-                    __m128 normal = convertNormalToFloat4(normalScan[i]);
+                    __m128 normal = convertNormalToFloat4(normalScan[i - area.min.x]);
                     __m128 pureReflection = _mm_reflectnormal_ps(toEye, normal);
                     __m128 material = convertMaterialToFloat4(materialScan[i]);
                     float metalness = material.array[1];
@@ -772,7 +790,7 @@ public:
                     float skyy = 0.5f + ((0.5f + pureReflection.array[1] * 0.5f) * fSkyY);
                     __m128 skyColorAtThisPoint = convertVec4fToFloat4( _skybox.linearMipmapSample(mipmapLevel, skyx, skyy) );
                     __m128 color = baseColor * skyColorAtThisPoint * _mm_set1_ps(metalness * amountFactor);
-                    _mm_store_ps(cast(float*)(&accumScan[i]), _mm_load_ps(cast(float*)(&accumScan[i])) + color);
+                    _mm_store_ps(cast(float*)(&accumScan[i - area.min.x]), _mm_load_ps(cast(float*)(&accumScan[i - area.min.x])) + color);
                 }
             }
         }
@@ -797,14 +815,14 @@ public:
     override void render(int threadIndex, const(box2i) area, CompositorPassBuffers* buffers)
     {
         PBRCompositorPassBuffers* PBRbuf = cast(PBRCompositorPassBuffers*) buffers;
-        OwnedImage!RGBAf accumBuffer = PBRbuf.accumBuffer;
+        OwnedImage!RGBAf accumBuffer = PBRbuf.accumBuffers[threadIndex];
         Mipmap!RGBA diffuseMap = PBRbuf.diffuseMap;
 
         // Add light emitted by neighbours
         // Bloom-like.
         for (int j = area.min.y; j < area.max.y; ++j)
         {
-            RGBAf* accumScan = accumBuffer.scanlinePtr(j);
+            RGBAf* accumScan = accumBuffer.scanlinePtr(j - area.min.y);
             for (int i = area.min.x; i < area.max.x; ++i)
             {
                 float ic = i + 0.5f;
@@ -822,7 +840,7 @@ public:
                 emitted += colorLevel3      * 0.00147059f;
                 emitted += colorLevel4      * 0.00088235f;
                 emitted += colorLevel5      * 0.00058823f;
-                accumScan[i] += RGBAf(emitted.r, emitted.g, emitted.b, emitted.a);
+                accumScan[i - area.min.x] += RGBAf(emitted.r, emitted.g, emitted.b, emitted.a);
             }
         }
     }
@@ -842,7 +860,7 @@ public:
     override void render(int threadIndex, const(box2i) area, CompositorPassBuffers* buffers)
     {
         PBRCompositorPassBuffers* PBRbuf = cast(PBRCompositorPassBuffers*) buffers;
-        OwnedImage!RGBAf accumBuffer = PBRbuf.accumBuffer;
+        OwnedImage!RGBAf accumBuffer = PBRbuf.accumBuffers[threadIndex];
         ImageRef!RGBA* wfb = PBRbuf.outputBuf;
         
         immutable __m128 mm255_99 = _mm_set1_ps(255.99f);
@@ -852,11 +870,11 @@ public:
         for (int j = area.min.y; j < area.max.y; ++j)
         {
             int* wfb_scan = cast(int*)(wfb.scanline(j).ptr);
-            const(RGBAf)* accumScan = accumBuffer.scanlinePtr(j);            
+            const(RGBAf)* accumScan = accumBuffer.scanlinePtr(j - area.min.y);            
 
             for (int i = area.min.x; i < area.max.x; ++i)
             {
-                RGBAf accum = accumScan[i];
+                RGBAf accum = accumScan[i - area.min.x];
                 __m128 color = _mm_setr_ps(accum.r, accum.g, accum.b, 1.0f);
                 __m128i icolorD = _mm_cvttps_epi32(color * mm255_99);
                 __m128i icolorW = _mm_packs_epi32(icolorD, zero);
