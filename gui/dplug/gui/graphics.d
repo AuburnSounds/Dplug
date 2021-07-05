@@ -63,6 +63,7 @@ nothrow:
     // Max size of tiles when doing the expensive PBR compositing step.
     // Difficult trade-off: we wanted the medium size knob to be only one tile.
     // This avoid launching threads for the PBR compositor in this case.
+    // It also an impact on memory usage, since smaller tiles have smaller thread-local buffers.
     enum PBR_TILE_MAX_WIDTH = 128;
     enum PBR_TILE_MAX_HEIGHT = 128;
 
@@ -83,7 +84,7 @@ nothrow:
         _currentLogicalHeight = _currentUserHeight;
 
         int numThreads = 0; // auto
-        int maxThreads = 2;
+        int maxThreads = 2; // PERF: maybe allow to have more threads, depending on number of cores.s
         _threadPool = mallocNew!ThreadPool(numThreads, maxThreads);
 
         // Build the compositor
@@ -703,7 +704,7 @@ protected:
         context().dirtyListRaw.pullAllRectangles(_rectsToUpdateDisjointedRaw);
         context().dirtyListPBR.pullAllRectangles(_rectsToUpdateDisjointedPBR);
 
-        recomputePurelyDerivedRectangles();
+        recomputePurelyDerivedRectangles();        
     }
 
     void recomputePurelyDerivedRectangles()
@@ -871,6 +872,17 @@ protected:
                 // if user area changed, invalidate all to-be-resized area, and redraw black borders.
                 _userArea = newUserArea;
                 _reportBlackBordersAndResizedAreaAsDirty = true;
+
+                // Immediately abandon all promises of redraw, since the data is now wrong.
+                // NOTE: RECTANGLES UPDATES ARE A BIG BIG MESS HERE.
+                // This is probably one of the most correct workaround in the file, however Windows doesn't need it.
+                // No good reason this should be OS-specific.
+                // TODO: clean-up the other workarounds against wrong redraw.
+                version(OSX)
+                {
+                    _rectsToUpdateDisjointedRaw.clearContents();
+                    _rectsToUpdateDisjointedPBR.clearContents();
+                }
 
                 // This avoids an onDraw with wrong rectangles
                 recomputePurelyDerivedRectangles();
