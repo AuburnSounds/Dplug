@@ -6,22 +6,15 @@ License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 module dplug.core.complex;
 
-// Helpers to use builtin D language complex numbers.
+// Helpers to use builtin D language complex numbers vs library types.
+
+public import std.complex;
+
+alias BuiltinComplex = Complex;
 
 
-template BuiltinComplex(T)
-{
-    static if (is(T == float))
-        alias BuiltinComplex = cfloat;
-    else static if (is(T == double))
-        alias BuiltinComplex = cdouble;
-    else static if (is(T == real))
-        alias BuiltinComplex = creal;
-    else
-        static assert("This type doesn't match any builtin complex type");
-}
 
-template BuiltinImaginary(T)
+deprecated template BuiltinImaginary(T)
 {
     static if (is(T == float))
         alias BuiltinComplex = ifloat;
@@ -32,6 +25,11 @@ template BuiltinImaginary(T)
     else
         static assert("This type doesn't match any builtin imaginary complex type");
 }
+
+deprecated("Use std.complex instead"):
+
+
+
 
 @safe pure nothrow @nogc:
 

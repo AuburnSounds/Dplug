@@ -117,26 +117,26 @@ void minimumPhaseImpulse(T)(T[] inoutImpulse, BuiltinComplex!T[] tempStorage) no
 
     // Put the real impulse in a larger buffer
     for (int i = 0; i < N; ++i)
-        kernel[i] = (inoutImpulse[i] + 0i);
+        kernel[i] = BuiltinComplex!T(inoutImpulse[i], 0);
     for (int i = N; i < fftSize; ++i)
-        kernel[i] = 0+0i;
+        kernel[i] = BuiltinComplex!T(0, 0);
 
     forwardFFT!T(kernel[]);
 
     // Take the log-modulus of spectrum
     for (int i = 0; i < fftSize; ++i)
-        kernel[i] = log(cabs(kernel[i]))+0i;
+        kernel[i] =  BuiltinComplex!T( log(std.complex.abs(kernel[i])), 0);
 
     // Back to real cepstrum
     inverseFFT!T(kernel[]);
 
     // Apply a cepstrum window, not sure how this works
-    kernel[0] = kernel[0].re + 0i;
+    kernel[0] = BuiltinComplex!T(kernel[0].re, 0);
     for (int i = 1; i < halfFFTSize; ++i)
-        kernel[i] = kernel[i].re * 2 + 0i;
-    kernel[halfFFTSize] = kernel[halfFFTSize].re + 0i;
+        kernel[i] = BuiltinComplex!T(kernel[i].re * 2, 0);
+    kernel[halfFFTSize] = BuiltinComplex!T(kernel[halfFFTSize].re, 0);
     for (int i = halfFFTSize + 1; i < fftSize; ++i)
-        kernel[i] = 0+0i;
+        kernel[i] = BuiltinComplex!T(0, 0);
 
     forwardFFT!T(kernel[]);
 
@@ -152,7 +152,7 @@ void minimumPhaseImpulse(T)(T[] inoutImpulse, BuiltinComplex!T[] tempStorage) no
 private BuiltinComplex!T complexExp(T)(BuiltinComplex!T z) nothrow @nogc
 {
     T mag = exp(z.re);
-    return (mag * cos(z.im)) + 1i * (mag * sin(z.im));
+    return BuiltinComplex!T( (mag * cos(z.im)) , (mag * sin(z.im)) );
 }
 
 private static void checkFilterParams(size_t length, double cutoff, double sampleRate) nothrow @nogc
@@ -169,7 +169,7 @@ unittest
     generateLowpassImpulse(lp_impulse[], 40.0, 44100.0);
     generateHighpassImpulse(hp_impulse[], 40.0, 44100.0);
 
-    cdouble[] tempStorage = new cdouble[tempBufferSizeForMinPhase(lp_impulse[])];
+    BuiltinComplex!double[] tempStorage = new BuiltinComplex!double[tempBufferSizeForMinPhase(lp_impulse[])];
     minimumPhaseImpulse!double(lp_impulse[], tempStorage);
 
     generateHilbertTransformer(lp_impulse[0..$-1],

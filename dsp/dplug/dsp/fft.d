@@ -68,13 +68,13 @@ private void FFT_internal(T, FFTDirection direction)(BuiltinComplex!T[] buffer) 
     }
 
     // compute the FFT
-    BuiltinComplex!T c = -1+0i;
+    BuiltinComplex!T c = BuiltinComplex!T(-1, 0);
     int l2 = 1;
     for (int l = 0; l < m; ++l)
     {
         int l1 = l2;
         l2 = l2 * 2;
-        BuiltinComplex!T u = 1+0i;
+        BuiltinComplex!T u = BuiltinComplex!T(1, 0);
         for (int j2 = 0; j2 < l1; ++j2)
         {
             int i = j2;
@@ -93,7 +93,7 @@ private void FFT_internal(T, FFTDirection direction)(BuiltinComplex!T[] buffer) 
         static if (direction == FFTDirection.FORWARD)
             newImag = -newImag;
         T newReal = sqrt((1 + c.re) / 2);
-        c = newReal + 1.0fi * newImag;
+        c = BuiltinComplex!T(newReal, 1.0f * newImag);
     }
 
     // scaling when doing the reverse transformation, to avoid being multiplied by size
@@ -118,9 +118,9 @@ unittest
     {
         foreach(i; 0..a.length)
         {
-            if (!approxEqual(a[i].re, b[i].re))
+            if (!isClose(a[i].re, b[i].re))
                 return false;
-            if (!approxEqual(a[i].im, b[i].im))
+            if (!isClose(a[i].im, b[i].im))
                 return false;
         }
         return true;
@@ -130,23 +130,23 @@ unittest
     {
         foreach(i; 0..a.length)
         {
-            if (!approxEqual(a[i].re, b[i].re))
+            if (!isClose(a[i].re, b[i].re))
                 return false;
-            if (!approxEqual(a[i].im, b[i].im))
+            if (!isClose(a[i].im, b[i].im))
                 return false;
         }
         return true;
     }
 
-    BuiltinComplex!double[] A = [1+0i, 13-4i, 5-5i, 0+2i];
+    //BuiltinComplex!double[] A = [1+0i, 13-4i, 5-5i, 0+2i];
     Complex!double[] Abis = [Complex!double(1, 0), Complex!double(13, -4), Complex!double(5,-5), Complex!double(0,2)];
     Complex!double[] fftARef = fft(Abis);
 
-    auto B = A.dup;
+    auto B = Abis.dup;
     forwardFFT!double(B);
     assert(approxEqualArr(B, fftARef));
     inverseFFT!double(B);
-    assert(approxEqualArrBuiltin(B, A));
+    assert(approxEqualArrBuiltin(B, Abis));
 }
 
 /// From a signal, output chunks of determined size, with optional overlap.
@@ -688,10 +688,10 @@ nothrow:
         //    f[length(x)/2+1...length(x)-1] = imaginary values of coefficents 1...length(x)/2-1.
         // So we have to reshuffle them to have nice complex bins.
         int mid = _length/2;
-        outputBins[0] = _buffer[0] + 0i;
+        outputBins[0] = BuiltinComplex!T(_buffer[0], 0);
         for(int i = 1; i < mid; ++i)
-            outputBins[i] = _buffer[i] + 1i * _buffer[mid+i];
-        outputBins[mid] = _buffer[mid] + 0i; // for length 1, this still works
+            outputBins[i] = BuiltinComplex!T(_buffer[i], _buffer[mid+i]);
+        outputBins[mid] = BuiltinComplex!T(_buffer[mid], 0); // for length 1, this still works
     }
 
     /**

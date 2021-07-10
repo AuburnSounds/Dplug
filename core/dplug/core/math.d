@@ -242,18 +242,13 @@ T normalizePhase(T)(T phase) nothrow @nogc
 
 unittest
 {
-    assert(approxEqual(normalizePhase!real(TAU), 0));
+    assert(isClose(normalizePhase!real(TAU), 0));
 
-    assert(approxEqual(normalizePhase!float(0.1f), 0.1f));
-    assert(approxEqual(normalizePhase!float(TAU + 0.1f), 0.1f));
+    assert(isClose(normalizePhase!float(0.1f), 0.1f));
+    assert(isClose(normalizePhase!float(TAU + 0.1f), 0.1f));
 
-    assert(approxEqual(normalizePhase!double(-0.1f), -0.1f));
-    assert(approxEqual(normalizePhase!double(-TAU - 0.1f), -0.1f));
-
-    bool approxEqual(T)(T a, T b) nothrow @nogc
-    {
-        return (a - b) < 1e-7;
-    }
+    assert(isClose(normalizePhase!double(-0.1f), -0.1f));
+    assert(isClose(normalizePhase!double(-TAU - 0.1f), -0.1f));
 }
 
 /// Quick and dirty sawtooth for testing purposes.

@@ -300,7 +300,7 @@ unittest
         for (int i = 0; i < inp.length/2; ++i)
         {
             // Window generation should be precise
-            assert(approxEqual(inp[i], inp[$-1-i], 1e-10));
+            assert(isClose(inp[i], inp[$-1-i], 1e-10));
         }
     }
 
@@ -340,9 +340,6 @@ unittest
                                              2.0);
 
                 window.initialize(desc, size);
-
-                //import std.stdio;
-                //writeln(desc);
 
                 final switch(alignment) with (WindowAlignment)
                 {
