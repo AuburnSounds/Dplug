@@ -44,43 +44,10 @@
 module dplug.graphics.jpegload;
 
 import core.stdc.string : memcpy, memset;
+import inteli.emmintrin;
 
 nothrow:
 @nogc:
-
-// arsd.color stripped down
-class TrueColorImage
-{
-nothrow:
-@nogc:
-	//ubyte[] data; // stored as rgba quads, upper left to right to bottom
-	/// .
-	struct Data {
-		ubyte[] bytes; /// the data as rgba bytes. Stored left to right, top to bottom, no padding.
-		// the union is no good because the length of the struct is wrong!
-	}
-
-	/// .
-	Data imageData;
-	alias imageData.bytes data;
-
-	int _width;
-	int _height;
-
-	/// .
-	int width() const { return _width; }
-	///.
-	int height() const { return _height; }
-
-	/// Creates with existing data. The data pointer is stored here.
-	this(int w, int h, ubyte[] data) {
-		_width = w;
-		_height = h;
-		assert(data.length == w * h * 4);
-		imageData.bytes = data;
-	}
-}
-
 
 // Set to 1 to enable freq. domain chroma upsampling on images using H2V2 subsampling (0=faster nearest neighbor sampling).
 // This is slower, but results in higher quality on images with highly saturated colors.
@@ -154,9 +121,22 @@ enum FIX_2_053119869 = cast(int)16819; /* FIX(2.053119869) */
 enum FIX_2_562915447 = cast(int)20995; /* FIX(2.562915447) */
 enum FIX_3_072711026 = cast(int)25172; /* FIX(3.072711026) */
 
-int DESCALE() (int x, int n) { pragma(inline, true); return (((x) + (SCALEDONE << ((n)-1))) >> (n)); }
-int DESCALE_ZEROSHIFT() (int x, int n) { pragma(inline, true); return (((x) + (128 << (n)) + (SCALEDONE << ((n)-1))) >> (n)); }
-ubyte CLAMP() (int i) { pragma(inline, true); return cast(ubyte)(cast(uint)i > 255 ? (((~i) >> 31) & 0xFF) : i); }
+int DESCALE() (int x, int n) 
+{ 
+    return ((x + (SCALEDONE << (n-1))) >> n); 
+}
+
+int DESCALE_ZEROSHIFT() (int x, int n) 
+{ 
+    pragma(inline, true); return (((x) + (128 << (n)) + (SCALEDONE << ((n)-1))) >> (n)); 
+}
+
+ubyte CLAMP() (int i) 
+{ 
+    if (i < 0) i = 0;
+    if (i > 255) i = 255;
+    return cast(ubyte)i;
+}
 
 
 // Compiler creates a fast path 1D IDCT for X non-zero columns
@@ -596,18 +576,18 @@ public:
   }
 
   @property const pure nothrow @safe @nogc {
-    jpgd_status error_code () { pragma(inline, true); return m_error_code; }
+    jpgd_status error_code () { return m_error_code; }
 
-    int width () { pragma(inline, true); return m_image_x_size; }
-    int height () { pragma(inline, true); return m_image_y_size; }
+    int width () { return m_image_x_size; }
+    int height () { return m_image_y_size; }
 
-    int num_components () { pragma(inline, true); return m_comps_in_frame; }
+    int num_components () { return m_comps_in_frame; }
 
-    int bytes_per_pixel () { pragma(inline, true); return m_dest_bytes_per_pixel; }
-    int bytes_per_scan_line () { pragma(inline, true); return m_image_x_size * bytes_per_pixel(); }
+    int bytes_per_pixel () { return m_dest_bytes_per_pixel; }
+    int bytes_per_scan_line () { return m_image_x_size * bytes_per_pixel(); }
 
     // Returns the total number of bytes actually consumed by the decoder (which should equal the actual size of the JPEG file).
-    int total_bytes_read () { pragma(inline, true); return m_total_bytes_read; }
+    int total_bytes_read () { return m_total_bytes_read; }
   }
 
 private:
@@ -766,13 +746,13 @@ private:
   // Tables and macro used to fully decode the DPCM differences.
   static immutable int[16] s_extend_test = [ 0, 0x0001, 0x0002, 0x0004, 0x0008, 0x0010, 0x0020, 0x0040, 0x0080, 0x0100, 0x0200, 0x0400, 0x0800, 0x1000, 0x2000, 0x4000 ];
   static immutable int[16] s_extend_offset = [ 0, ((-1)<<1) + 1, ((-1)<<2) + 1, ((-1)<<3) + 1, ((-1)<<4) + 1, ((-1)<<5) + 1, ((-1)<<6) + 1, ((-1)<<7) + 1, ((-1)<<8) + 1, ((-1)<<9) + 1, ((-1)<<10) + 1, ((-1)<<11) + 1, ((-1)<<12) + 1, ((-1)<<13) + 1, ((-1)<<14) + 1, ((-1)<<15) + 1 ];
-  static immutable int[18] s_extend_mask = [ 0, (1<<0), (1<<1), (1<<2), (1<<3), (1<<4), (1<<5), (1<<6), (1<<7), (1<<8), (1<<9), (1<<10), (1<<11), (1<<12), (1<<13), (1<<14), (1<<15), (1<<16) ];
-  // The logical AND's in this macro are to shut up static code analysis (aren't really necessary - couldn't find another way to do this)
-  //#define JPGD_HUFF_EXTEND(x, s) (((x) < s_extend_test[s & 15]) ? ((x) + s_extend_offset[s & 15]) : (x))
-  static JPGD_HUFF_EXTEND (int x, int s) nothrow @trusted @nogc { pragma(inline, true); return (((x) < s_extend_test.ptr[s & 15]) ? ((x) + s_extend_offset.ptr[s & 15]) : (x)); }
+  
+  static int JPGD_HUFF_EXTEND (int x, int s) nothrow @trusted @nogc 
+  { 
+      return (((x) < s_extend_test.ptr[s]) ? ((x) + s_extend_offset.ptr[s]) : (x)); 
+  }
 
   // Clamps a value between 0-255.
-  //static ubyte clamp (int i) { if (cast(uint)(i) > 255) i = (((~i) >> 31) & 0xFF); return cast(ubyte)(i); }
   alias clamp = CLAMP;
 
   static struct DCT_Upsample {
@@ -787,9 +767,6 @@ private:
       this() (in auto ref Matrix44 m) {
         foreach (immutable r; 0..NUM_ROWS) v[r][] = m.v[r][];
       }
-
-      //@property int rows () const { pragma(inline, true); return NUM_ROWS; }
-      //@property int cols () const { pragma(inline, true); return NUM_COLS; }
 
       ref inout(Element_Type) at (int r, int c) inout { pragma(inline, true); return v.ptr[r].ptr[c]; }
 
@@ -1905,8 +1882,6 @@ private:
     get_bits_no_markers(16);
   }
 
-  static int dequantize_ac (int c, int q) { pragma(inline, true); c *= q; return c; }
-
   // Decodes and dequantizes the next row of coefficients.
   void decode_next_row () {
     int row_block = 0;
@@ -1965,7 +1940,7 @@ private:
 
             assert(k < 64);
 
-            p[g_ZAG[k]] = cast(jpgd_block_t)(dequantize_ac(s, q[k])); //s * q[k];
+            p[g_ZAG[k]] = cast(jpgd_block_t)( s * q[k] ); // dequantize
           }
           else
           {
@@ -2028,11 +2003,15 @@ private:
         int cb = s[64+j];
         int cr = s[128+j];
 
-        d[0] = clamp(y + m_crr.ptr[cr]);
-        d[1] = clamp(y + ((m_crg.ptr[cr] + m_cbg.ptr[cb]) >> 16));
-        d[2] = clamp(y + m_cbb.ptr[cb]);
-        d[3] = 255;
 
+        __m128i zero = _mm_setzero_si128();
+        __m128i A = _mm_setr_epi32(y + m_crr.ptr[cr], 
+                                   y + ((m_crg.ptr[cr] + m_cbg.ptr[cb]) >> 16),
+                                   y + m_cbb.ptr[cb],
+                                   255);
+        A = _mm_packs_epi32(A, zero);
+        A = _mm_packus_epi16(A, zero);
+        _mm_storeu_si32(&d[0], A);
         d += 4;
       }
 
@@ -2041,7 +2020,8 @@ private:
   }
 
   // YCbCr H2V1 (2x1:1:1, 4 m_blocks per MCU) to RGB
-  void H2V1Convert () {
+  void H2V1Convert () 
+  {
     int row = m_max_mcu_y_size - m_mcu_lines_left;
     ubyte *d0 = m_pScan_line_0;
     ubyte *y = m_pSample_buf + row * 8;
@@ -2212,7 +2192,9 @@ private:
     }
   }
 
-  void expanded_convert () {
+
+  void expanded_convert () 
+  {
     int row = m_max_mcu_y_size - m_mcu_lines_left;
 
     ubyte* Py = m_pSample_buf + (row / 8) * 64 * m_comp_h_samp.ptr[0] + (row & 7) * 8;
@@ -2221,7 +2203,7 @@ private:
 
     for (int i = m_max_mcus_per_row; i > 0; i--)
     {
-      for (int k = 0; k < m_max_mcu_x_size; k += 8)
+      for (int k = 0; k < 5; k += 8)
       {
         immutable int Y_ofs = k * 8;
         immutable int Cb_ofs = Y_ofs + 64 * m_expanded_blocks_per_component;
@@ -2232,11 +2214,14 @@ private:
           int cb = Py[Cb_ofs + j];
           int cr = Py[Cr_ofs + j];
 
-          d[0] = clamp(y + m_crr.ptr[cr]);
-          d[1] = clamp(y + ((m_crg.ptr[cr] + m_cbg.ptr[cb]) >> 16));
-          d[2] = clamp(y + m_cbb.ptr[cb]);
-          d[3] = 255;
-
+          __m128i zero = _mm_setzero_si128();
+          __m128i A = _mm_setr_epi32(y + m_crr.ptr[cr], 
+                                     y + ((m_crg.ptr[cr] + m_cbg.ptr[cb]) >> 16),
+                                     y + m_cbb.ptr[cb],
+                                     255);
+          A = _mm_packs_epi32(A, zero);
+          A = _mm_packus_epi16(A, zero);
+          _mm_storeu_si32(&d[0], A);
           d += 4;
         }
       }
@@ -2972,7 +2957,6 @@ private:
 /// you can specify required color components in `req_comps` (3 for RGB or 4 for RGBA), or leave it as is to use image value.
 public ubyte[] decompress_jpeg_image_from_stream(scope JpegStreamReadFunc rfn, void* userData,
                                                  out int width, out int height, out int actual_comps, int req_comps=-1) {
-  import core.stdc.string : memcpy;
 
   //actual_comps = 0;
   if (rfn is null) return null;
