@@ -2203,7 +2203,7 @@ private:
 
     for (int i = m_max_mcus_per_row; i > 0; i--)
     {
-      for (int k = 0; k < 5; k += 8)
+      for (int k = 0; k < m_max_mcu_x_size; k += 8)
       {
         immutable int Y_ofs = k * 8;
         immutable int Cb_ofs = Y_ofs + 64 * m_expanded_blocks_per_component;
