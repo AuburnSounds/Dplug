@@ -9,3 +9,4 @@
        - [The Dplug Wiki](https://github.com/AuburnSounds/Dplug/wiki)
        - [ARCHITECTURE.md](https://github.com/AuburnSounds/Dplug/blob/master/ARCHITECTURE.md)
 +/
+module dplug;
