@@ -14,7 +14,7 @@ import dplug.dsp.window;
 import dplug.core.math;
 import dplug.core.complex;
 import dplug.core.vec;
-import pfft.pfft;
+import dplug.fft;
 
 
 enum FFTDirection

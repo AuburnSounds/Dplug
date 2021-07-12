@@ -21,6 +21,7 @@
         "dplug:client": "*",
         "dplug:graphics": "*",
         "dplug:canvas": "*",
+        "dplug:fft": "*",
         "dplug:host": "*",
         "dplug:lv2": "*",
         "dplug:vst2": "*",
@@ -65,6 +66,20 @@
             }
         },
         {
+            "name": "fft",
+
+            "sourcePaths": 
+            [ 
+                "fft/dplug/fft" 
+            ],
+
+            "importPaths": [ "fft" ],
+            "dependencies": {
+                "dplug:core": "*",
+                "intel-intrinsics": "~>1.0"
+            }
+        },
+        {
             "name": "dsp",
 
             "sourcePaths": 
@@ -75,7 +90,7 @@
             "importPaths": [ "dsp" ],
             "dependencies": {
                 "dplug:core": "*",
-                "pfft": "~>1.0",
+                "dplug:fft": "*",
                 "intel-intrinsics": "~>1.0"
             },
 
