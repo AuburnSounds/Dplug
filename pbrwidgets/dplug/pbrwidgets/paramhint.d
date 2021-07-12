@@ -144,10 +144,10 @@ nothrow:
         float textPositionX = ilabelRectCrossHole.width - labelRectCrossHole.center.x;
         float fontVerticalExtent = _font.getAscent(fontSizePx) - _font.getDescent(fontSizePx);
         float textPositionY = ilabelRectCrossHole.height - labelRect.height * 0.5f + 0.5f * _font.getHeightOfx(fontSizePx);
-        diffuseMap.crop(ilabelRectCrossHole).fillText(_font, _lastParamString, fontSizePx, 0, textDiffuse, 
-                                                      textPositionX, textPositionY,
-                                                      HorizontalAlignment.center,
-                                                      VerticalAlignment.baseline);
+        diffuseMap.cropImageRef(ilabelRectCrossHole).fillText(_font, _lastParamString, fontSizePx, 0, textDiffuse, 
+                                                              textPositionX, textPositionY,
+                                                              HorizontalAlignment.center,
+                                                              VerticalAlignment.baseline);
 
         // Fill opacity
         {

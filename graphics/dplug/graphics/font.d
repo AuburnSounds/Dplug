@@ -85,7 +85,7 @@ nothrow:
     /// Returns: Where a line of text will be drawn if starting at position (0, 0).
     /// Note: aligning vertically with this information is dangerous, since different characters
     ///       may affect vertical extent differently. Prefer the use of `getHeightOfx()`.
-    box2i measureText(StringType)(StringType s, float fontSizePx, float letterSpacingPx) nothrow @nogc
+    box2i measureText(const(char)[] s, float fontSizePx, float letterSpacingPx) nothrow @nogc
     {
         box2i area;
         void extendArea(int numCh, dchar ch, box2i position, float scale, float xShift, float yShift) nothrow @nogc
@@ -99,7 +99,7 @@ nothrow:
         // Note: when measuring the size of the text, we do not account for sub-pixel shifts
         // this is because it would make the size of the text vary which does movement jitter
         // for moving text
-        iterateCharacterPositions!StringType(s, fontSizePx, letterSpacingPx, 0, 0, &extendArea);
+        iterateCharacterPositions(s, fontSizePx, letterSpacingPx, 0, 0, &extendArea);
         return area;
     }
 
@@ -113,7 +113,7 @@ private:
     /// Only support one line of text.
     /// Use kerning.
     /// No hinting.
-    void iterateCharacterPositions(StringType)(StringType text, float fontSizePx, float letterSpacingPx, float fractionalPosX, float fractionalPosY,
+    void iterateCharacterPositions(const(char)[] text, float fontSizePx, float letterSpacingPx, float fractionalPosX, float fractionalPosY,
         scope void delegate(int numCh, dchar ch, box2i position, float scale, float xShift, float yShift) nothrow @nogc doSomethingWithPosition) nothrow @nogc
     {
         assert(0 <= fractionalPosX && fractionalPosX <= 1.0f);
@@ -191,11 +191,10 @@ enum VerticalAlignment
 }
 
 /// Draw text centered on a point on a DirectView.
-void fillText(V, StringType)(auto ref V surface, Font font, StringType s, float fontSizePx, float letterSpacingPx,
-                             RGBA textColor, float positionX, float positionY,
-                             HorizontalAlignment horzAlign = HorizontalAlignment.center,
-                             VerticalAlignment   vertAlign = VerticalAlignment.center) nothrow @nogc
-    if (isWritableView!V && is(ViewColor!V == RGBA))
+void fillText(ImageRef!RGBA surface, Font font, const(char)[] s, float fontSizePx, float letterSpacingPx,
+              RGBA textColor, float positionX, float positionY,
+              HorizontalAlignment horzAlign = HorizontalAlignment.center,
+              VerticalAlignment   vertAlign = VerticalAlignment.center) nothrow @nogc
 {
     font._mutex.lock();
     scope(exit) font._mutex.unlock();
@@ -246,24 +245,16 @@ void fillText(V, StringType)(auto ref V surface, Font font, StringType s, float 
 
         for (int y = 0; y < outsurf.h; ++y)
         {
-            static if (isDirectView!V)
-                RGBA[] outscan = outsurf.scanline(y);
+            RGBA[] outscan = outsurf.scanline(y);
 
             L8[] inscan = coverageBuffer.scanline(y);
             for (int x = 0; x < croppedWidth; ++x)
             {
-                static if (isDirectView!V)
-                {
-                    blendFontPixel(outscan.ptr[x], fontColor, inscan.ptr[x].l);
-                }
-                else
-                {
-                    blendFontPixel(outscan.ptr[x], fontColor, inscan.ptr[x].l);
-                }
+                blendFontPixel(outscan.ptr[x], fontColor, inscan.ptr[x].l);
             }
         }
     }
-    font.iterateCharacterPositions!StringType(s, fontSizePx, letterSpacingPx, fractionalPosX, fractionalPosY, &drawCharacter);
+    font.iterateCharacterPositions(s, fontSizePx, letterSpacingPx, fractionalPosX, fractionalPosY, &drawCharacter);
 }
 
 
