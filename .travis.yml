@@ -8,6 +8,8 @@ os:
   - osx
   - linux
 
+dist: bionic
+
 before_install:
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get update -y ; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then sudo apt-get install -y gcc-multilib ; fi
