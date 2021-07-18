@@ -77,6 +77,13 @@
             "dependencies": {
                 "dplug:core": "*",
                 "intel-intrinsics": "~>1.0"
+            },
+            "buildTypes": 
+            {
+                "unittest-release": 
+                {
+                    "buildOptions": ["unittests", "optimize", "inline"]
+                }
             }
         },
         {
