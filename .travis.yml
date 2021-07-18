@@ -17,20 +17,22 @@ before_install:
 
 d:
  - ldc-beta
+ - ldc-1.26.0
+ - ldc-1.25.1
  - ldc-1.24.0
  - dmd-beta
- - dmd-2.094.1
- - gdc
+ - dmd-2.097.0
+ - dmd-2.096.1
+ - dmd-2.095.1
+ - dmd-2.094.2
 
 matrix:
   allow_failures:
-   - d: gdc
-   - d: ldc-beta
    - d: dmd-beta
-   - d: dmd-beta
-     arch: arm64
-   - d: dmd-2.094.1
-     arch: arm64
+   - d: dmd-2.097.0
+   - d: dmd-2.096.1
+   - d: dmd-2.095.1
+   - d: dmd-2.094.2
 
 # uncompress encrypted VST SDK
 before_install:
