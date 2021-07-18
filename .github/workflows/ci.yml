@@ -34,11 +34,6 @@ jobs:
         arch:
           - 'x86_64'
         compiler:
-          - dmd-latest
-          - dmd-2.097.0
-          - dmd-2.096.1
-          - dmd-2.095.1
-          - dmd-2.094.2
           - ldc-latest
           - ldc-1.26.0
           - ldc-1.25.1
