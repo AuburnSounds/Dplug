@@ -8,17 +8,14 @@ os:
   - osx
   - linux
 
-dist: bionic
-
 before_install:
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get update -y ; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then sudo apt-get install -y gcc-multilib ; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then sudo apt-get install -y libc6-dev ; fi
 
-# TODO: 32-bit testing...
 
+# Note: LDC 1.27 requires GLIBC_2.27 and going with "dist: bionic" is not enough apprently
 d:
- - ldc-beta
  - ldc-1.26.0
  - ldc-1.25.1
  - ldc-1.24.0
