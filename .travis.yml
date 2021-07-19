@@ -17,20 +17,13 @@ before_install:
 # Note: LDC 1.27 requires GLIBC_2.27 and going with "dist: bionic" is not enough apprently
 d:
  - ldc-1.26.0
- - ldc-1.25.1
  - ldc-1.24.0
- - dmd-beta
  - dmd-2.097.0
- - dmd-2.096.1
- - dmd-2.095.1
  - dmd-2.094.2
 
 matrix:
   allow_failures:
-   - d: dmd-beta
    - d: dmd-2.097.0
-   - d: dmd-2.096.1
-   - d: dmd-2.095.1
    - d: dmd-2.094.2
 
 # uncompress encrypted VST SDK
