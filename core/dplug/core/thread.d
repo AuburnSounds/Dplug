@@ -32,7 +32,16 @@ else version(Windows)
 else
     static assert(false, "Platform not supported");
 
-version(OSX)
+version (OSX)
+    version = Darwin;
+else version (iOS)
+    version = Darwin;
+else version (TVOS)
+    version = Darwin;
+else version (WatchOS)
+    version = Darwin;
+
+version(Darwin)
 {
     extern(C) nothrow @nogc
     int sysctlbyname(const(char)*, void *, size_t *, void *, size_t);
@@ -343,7 +352,7 @@ int getTotalNumberOfCPUs() nothrow @nogc
         import core.sys.posix.unistd : _SC_NPROCESSORS_ONLN, sysconf;
         return cast(int) sysconf(_SC_NPROCESSORS_ONLN);
     }
-    else version(OSX)
+    else version(Darwin)
     {
         auto nameStr = "machdep.cpu.core_count\0".ptr;
         uint ans;

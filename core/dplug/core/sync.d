@@ -21,6 +21,15 @@ import core.stdc.stdlib: malloc, free;
 // (this was originally in Phobos for XP compatibility)
 version = emulateCondVarWin32;
 
+version (OSX)
+    version = Darwin;
+else version (iOS)
+    version = Darwin;
+else version (TVOS)
+    version = Darwin;
+else version (WatchOS)
+    version = Darwin;
+
 version( Windows )
 {
     import core.sys.windows.windows;
@@ -43,7 +52,7 @@ version( Windows )
         BOOL SleepConditionVariableCS(PCONDITION_VARIABLE ConditionVariable, PCRITICAL_SECTION CriticalSection, DWORD dwMilliseconds);
     }
 }
-else version( OSX )
+else version( Darwin )
 {
     import core.sys.posix.pthread;
     import core.sync.config;
@@ -104,7 +113,7 @@ struct UncheckedMutex
                     pthread_mutexattr_init( &attr );
                     pthread_mutexattr_settype( &attr, PTHREAD_MUTEX_RECURSIVE );
 
-                    version (OSX)
+                    version (Darwin)
                     {
                         // Note: disabled since this breaks thread pool.
                         /+
@@ -279,7 +288,7 @@ struct UncheckedSemaphore
             if( m_hndl == m_hndl.init )
                 assert(false);
         }
-        else version( OSX )
+        else version( Darwin )
         {
             mach_port_t task = assumeNothrowNoGC(
                 ()
@@ -314,7 +323,7 @@ struct UncheckedSemaphore
                 BOOL rc = CloseHandle( m_hndl );
                 assert( rc, "Unable to destroy semaphore" );
             }
-            else version( OSX )
+            else version( Darwin )
             {
                 mach_port_t task = assumeNothrowNoGC(
                     ()
@@ -348,7 +357,7 @@ struct UncheckedSemaphore
             DWORD rc = WaitForSingleObject( m_hndl, INFINITE );
             assert( rc == WAIT_OBJECT_0 );
         }
-        else version( OSX )
+        else version( Darwin )
         {
             while( true )
             {
@@ -413,7 +422,7 @@ struct UncheckedSemaphore
                     assert(false);
             }
         }
-        else version( OSX )
+        else version( Darwin )
         {
             mach_timespec_t t = void;
             (cast(byte*) &t)[0 .. t.sizeof] = 0;
@@ -472,7 +481,7 @@ struct UncheckedSemaphore
             if( !ReleaseSemaphore( m_hndl, 1, null ) )
                 assert(false);
         }
-        else version( OSX )
+        else version( Darwin )
         {
            auto rc = assumeNothrowNoGC(
                         (semaphore_t handle)
@@ -504,7 +513,7 @@ struct UncheckedSemaphore
                     assert(false);
             }
         }
-        else version( OSX )
+        else version( Darwin )
         {
             return wait( dur!"hnsecs"(0) );
         }
@@ -528,7 +537,7 @@ private:
     {
         HANDLE  m_hndl;
     }
-    else version( OSX )
+    else version( Darwin )
     {
         semaphore_t m_hndl;
     }
