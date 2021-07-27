@@ -36,14 +36,15 @@ The following commercial products are known to use Dplug:
 - [Convergence](https://www.cutthroughrecordings.com/product/Convergence) by Cut Through Recordings
 - [Couture](https://www.auburnsounds.com/products/Couture.html) by Auburn Sounds
 - [Entropy](https://www.cutthroughrecordings.com/product/Entropy_II_-_Enhanced_Stereo_Delay) by Cut Through Recordings
+- [EpicPRESS](https://www.cutthroughrecordings.com/product/EpicPRESS) by Cut Through Recordings
 - [Graillon](https://www.auburnsounds.com/products/Graillon.html) by Auburn Sounds
 - [M4 Multiband Compressor](https://www.cutthroughrecordings.com/product/M4_Multiband_Compressor) by Cut Through Recordings
 - [Panagement](https://www.auburnsounds.com/products/Panagement.html) by Auburn Sounds
 - [Renegate](https://www.auburnsounds.com/products/Renegate.html) by Auburn Sounds
 
-Increase quality and reduce time-to-market with commercial audio DSP in the [DSP Asset Store](DSP_Asset_Store.md).
+Looking for DSP algorithms? Reduce time-to-market with the [DSP Asset Store](DSP_Asset_Store.md).
 
-Become one happy [Dplug contributor](https://github.com/AuburnSounds/Dplug/graphs/contributors) by submitting issues and pull-requests, and come talk with us on the [D Language Discord](https://discord.gg/QZtGZUw) to learn more and meet your peers Dplug users!
+Become one happy [Dplug contributor](https://github.com/AuburnSounds/Dplug/graphs/contributors) by submitting issues and pull-requests, and come talk with us on the [D Language Discord](https://discord.gg/QZtGZUw) to learn more and meet other Dplug users!
 
 
 
@@ -66,8 +67,6 @@ Dplug has a deep commitment to stability. All breaking changes are documented in
 It is a part-time operation, from people who release commercial plug-ins.
 
 Being stable and relatively bug-free is deemed more important to us than implement every possible feature. It's often than enhancements get postponed in favour of product development, so please be patient!
-
-We're looking for ways to improve governance as more contributors have appeared with contrasted agendas.
 
 
 - Where do I start?
@@ -102,7 +101,7 @@ Find the VST SDK there: http://www.steinberg.net/en/company/developers.html
 
 Dplug has many different licenses depending on the sub-package you need.
 Please check individual source files for license information.
-**Please do your homework and respect the individual licences when releasing a plug-in.**
+Please do your homework and respect the individual licences when releasing a plug-in.
 
 - [Dplug VST2 Guide](https://github.com/AuburnSounds/Dplug/wiki/Dplug-VST2-Guide)
 - [Dplug AAX Guide](https://github.com/AuburnSounds/Dplug/wiki/Dplug-AAX-Guide)
