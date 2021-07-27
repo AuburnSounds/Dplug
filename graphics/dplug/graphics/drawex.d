@@ -970,7 +970,7 @@ IFImage readImageFromMem(const(ubyte[]) imageData, int channels)
     if (isPNG)
     {
         int width, height, components;
-        ubyte* decoded = stbi_load_png_from_memory(imageData, width, height, components, channels);
+        ubyte* decoded = stbi_load_from_memory(imageData.ptr, cast(int)imageData.length, &width, &height, &components, channels);
         IFImage result;
         result.w = width;
         result.h = height;
