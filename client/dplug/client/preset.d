@@ -16,8 +16,8 @@ import std.algorithm.comparison;
 
 import dplug.core.vec;
 import dplug.core.nogc;
+import dplug.core.binrange;
 
-import dplug.client.binrange;
 import dplug.client.client;
 import dplug.client.params;
 

@@ -20,3 +20,4 @@ public import dplug.core.file;
 public import dplug.core.cpuid;
 public import dplug.core.complex;
 public import dplug.core.map;
+public import dplug.core.binrange;
