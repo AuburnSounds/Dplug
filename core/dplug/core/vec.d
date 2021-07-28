@@ -117,10 +117,12 @@ private nothrow @nogc
 
         void* raw = *cast(void**)(cast(char*)aligned - size_t.sizeof);
         size_t request = requestedSize(size, alignment);
+        size_t previousRequest = requestedSize(previousSize, alignment);
+        assert(previousRequest - request == previousSize - size); // same alignment
 
         // Heuristic: if a requested size is within 50% to 100% of what is already allocated
         //            then exit with the same pointer
-        if ( (previousSize < request * 4) && (request <= previousSize) )
+        if ( (previousRequest < request * 4) && (request <= previousRequest) )
             return aligned;
 
         void* newRaw = malloc(request);
@@ -130,7 +132,7 @@ private nothrow @nogc
                 onOutOfMemoryError();
         }
 
-        void* newAligned = storeRawPointerPlusSizeAndReturnAligned(newRaw, request, alignment);
+        void* newAligned = storeRawPointerPlusSizeAndReturnAligned(newRaw, size, alignment);
 
         static if (PreserveDataIfResized)
         {
@@ -208,6 +210,19 @@ unittest
         assert(p !is null);
 
         alignedFree(p, alignment);
+    }
+
+    // Verify that same size alloc preserve pointer. 
+    {
+        void* p = null;
+        p = alignedRealloc(p, 254, 16);
+        void* p2 = alignedRealloc(p, 254, 16);
+        assert(p == p2);
+
+        // Test shrink heuristic
+        void* p3 = alignedRealloc(p, 128, 16);
+        assert(p == p3);
+        alignedFree(p3, 16);
     }
 }
 
