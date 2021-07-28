@@ -66,11 +66,11 @@ nothrow:
     override void onDrawRaw(ImageRef!RGBA rawMap, box2i[] dirtyRects)
     {
         setCurrentImage();
-        auto _currentImage = _filmstrip.crop(box2i(_imageX1, _imageY1, _imageX2, _imageY2));
+        auto _currentImage = _filmstrip.toRef.cropImageRef(box2i(_imageX1, _imageY1, _imageX2, _imageY2));
         foreach(dirtyRect; dirtyRects)
         {
-            auto croppedRawIn = _currentImage.crop(dirtyRect);
-            auto croppedRawOut = rawMap.crop(dirtyRect);
+            auto croppedRawIn = _currentImage.cropImageRef(dirtyRect);
+            auto croppedRawOut = rawMap.cropImageRef(dirtyRect);
 
             int w = dirtyRect.width;
             int h = dirtyRect.height;

@@ -23,6 +23,7 @@ import dplug.core.map;
 import dplug.graphics.view;
 import dplug.graphics.image;
 import dplug.graphics.stb_truetype;
+import dplug.graphics.drawex;
 
 final class Font
 {
@@ -233,7 +234,7 @@ void fillText(ImageRef!RGBA surface, Font font, const(char)[] s, float fontSizeP
         int cropY0 = clamp!int(offsetPos.y, 0, surface.h);
         int cropX1 = clamp!int(offsetPos.x + w, 0, surface.w);
         int cropY1 = clamp!int(offsetPos.y + h, 0, surface.h);
-        auto outsurf = surface.crop(cropX0, cropY0, cropX1, cropY1);
+        auto outsurf = surface.cropImageRef(cropX0, cropY0, cropX1, cropY1);
 
         // Early exit if out of scope
         if (!surfaceArea.intersects(box2i(cropX0, cropY0, cropX1, cropY1)))

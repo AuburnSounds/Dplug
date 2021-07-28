@@ -28,7 +28,7 @@ nothrow:
 
 
 /// Crop a view from a box2i
-auto crop(V)(auto ref V src, box2i b) if (isView!V)
+deprecated("use cropImageRef and ImageRef instead") auto crop(V)(auto ref V src, box2i b) if (isView!V)
 {
     return dplug.graphics.view.crop(src, b.min.x, b.min.y, b.max.x, b.max.y);
 }
@@ -46,6 +46,11 @@ ImageRef!COLOR cropImageRef(COLOR)(ImageRef!COLOR src, box2i rect)
     COLOR[] scan = src.scanline(rect.min.y);
     result.pixels = &scan[rect.min.x];
     return result;
+}
+///ditto
+ImageRef!COLOR cropImageRef(COLOR)(ImageRef!COLOR src, int xmin, int ymin, int xmax, int ymax)
+{
+    return src.cropImageRef(box2i(xmin, ymin, xmax, ymax));
 }
 
 /// Rough anti-aliased fillsector

@@ -69,12 +69,12 @@ mixin template DirectView()
 
 /// Returns a view which calculates pixels
 /// on-demand using the specified formula.
-template procedural(alias formula)
+deprecated template procedural(alias formula)
 {
 	alias fun = binaryFun!(formula, "x", "y");
 	alias COLOR = typeof(fun(0, 0));
 
-	auto procedural(int w, int h)
+	deprecated auto procedural(int w, int h)
 	{
 		struct Procedural
 		{
@@ -92,22 +92,18 @@ template procedural(alias formula)
 
 /// Returns a view of the specified dimensions
 /// and same solid color.
-auto solid(COLOR)(COLOR c, int w, int h)
+deprecated auto solid(COLOR)(COLOR c, int w, int h)
 {
 	return procedural!((x, y) => c)(w, h);
 }
 
 /// Return a 1x1 view of the specified color.
 /// Useful for testing.
-auto onePixel(COLOR)(COLOR c)
+deprecated auto onePixel(COLOR)(COLOR c)
 {
 	return solid(c, 1, 1);
 }
 
-unittest
-{
-	assert(onePixel(42)[0, 0] == 42);
-}
 
 // ***************************************************************************
 
@@ -167,7 +163,7 @@ mixin template Warp(V)
 }
 
 /// Crop a view to the specified rectangle.
-auto crop(V)(auto ref V src, int x0, int y0, int x1, int y1)
+deprecated auto crop(V)(auto ref V src, int x0, int y0, int x1, int y1)
 	if (isView!V)
 {
 	assert( 0 <=    x0 &&  0 <=    y0);
@@ -201,9 +197,3 @@ auto crop(V)(auto ref V src, int x0, int y0, int x1, int y1)
 	return Crop(src, x0, y0, x1, y1);
 }
 
-unittest
-{
-	auto g = procedural!((x, y) => y)(1, 256);
-	auto c = g.crop(0, 10, 1, 20);
-	assert(c[0, 0] == 10);
-}

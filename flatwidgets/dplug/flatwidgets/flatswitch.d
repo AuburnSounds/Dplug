@@ -71,8 +71,8 @@ nothrow:
           auto _currentImage = getState() ? _onImageScaled : _offImageScaled;
           foreach(dirtyRect; dirtyRects)
           {
-              auto croppedRawIn = _currentImage.crop(dirtyRect);
-              auto croppedRawOut = rawMap.crop(dirtyRect);
+              auto croppedRawIn = _currentImage.toRef.cropImageRef(dirtyRect);
+              auto croppedRawOut = rawMap.cropImageRef(dirtyRect);
 
               int w = dirtyRect.width;
               int h = dirtyRect.height;

@@ -88,7 +88,7 @@ nothrow:
 
         RGBA diffuseColor = RGBA(red, green, blue, cast(ubyte)emissive);
 
-        diffuseMap.crop(switchRect).fillAll(diffuseColor);
+        diffuseMap.cropImageRef(switchRect).fillAll(diffuseColor);
 
         L16 depthA = L16(cast(short)(lerp!float(depthHigh, depthLow, _animation)));
         L16 depthB = L16(cast(short)(lerp!float(depthLow, depthHigh, _animation)));
@@ -98,7 +98,7 @@ nothrow:
         else
             horizontalSlope(depthMap, switchRect, depthA, depthB);
     
-        materialMap.crop(switchRect).fillAll(material);
+        materialMap.cropImageRef(switchRect).fillAll(material);
     }
 
     override bool onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
