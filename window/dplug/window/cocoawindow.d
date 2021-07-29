@@ -13,7 +13,6 @@ import std.uuid;
 import dplug.math.vector;
 import dplug.math.box;
 import dplug.graphics.image;
-import dplug.graphics.view;
 
 import dplug.core.sync;
 import dplug.core.runtime;

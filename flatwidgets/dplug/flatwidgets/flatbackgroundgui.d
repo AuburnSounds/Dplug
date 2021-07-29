@@ -10,11 +10,7 @@ module dplug.flatwidgets.flatbackgroundgui;
 import dplug.math.box;
 import dplug.core.nogc;
 import dplug.core.file;
-import dplug.graphics.color;
-import dplug.graphics.image;
-import dplug.graphics.view;
-import dplug.graphics.drawex;
-import dplug.graphics.resizer;
+import dplug.graphics;
 
 import dplug.core.nogc;
 import dplug.gui.graphics;

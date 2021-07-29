@@ -12,14 +12,9 @@ import dplug.math.vector;
 import dplug.math.box;
 
 import dplug.core.nogc;
-import dplug.gui.context;
+import dplug.gui.element;
 import dplug.pbrwidgets.knob;
-import dplug.graphics.mipmap;
 import dplug.client.params;
-import dplug.graphics.color;
-import dplug.graphics.image;
-import dplug.graphics.draw;
-import dplug.graphics.drawex;
 
 nothrow:
 @nogc:

@@ -1,5 +1,4 @@
-import dplug.graphics.image;
-import dplug.graphics.view;
+import dplug.graphics;
 import dplug.core.nogc;
 import dplug.window;
 import dplug.math.box;

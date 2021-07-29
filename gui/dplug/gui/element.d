@@ -22,9 +22,6 @@ public import dplug.core.sync;
 public import dplug.core.vec;
 public import dplug.core.nogc;
 
-public import dplug.graphics.font;
-public import dplug.graphics.drawex;
-
 public import dplug.gui.boxlist;
 public import dplug.gui.context;
 

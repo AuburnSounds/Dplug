@@ -10,11 +10,10 @@ import std.algorithm.comparison;
 
 import dplug.math.vector;
 import dplug.math.box;
-import dplug.graphics.color;
-
+import dplug.graphics.image;
 import dplug.core.nogc;
 import dplug.core.vec;
-import dplug.graphics.drawex;
+
 
 import inteli.emmintrin;
 

@@ -31,7 +31,6 @@ import dplug.core.nogc;
 import dplug.core.vec;
 
 import dplug.graphics.image;
-import dplug.graphics.view;
 
 import dplug.window.window;
 

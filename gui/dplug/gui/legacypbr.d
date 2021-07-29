@@ -22,10 +22,7 @@ import dplug.core.thread;
 
 import dplug.gui.compositor;
 
-import dplug.graphics.mipmap;
-import dplug.graphics.drawex;
-import dplug.graphics.image;
-import dplug.graphics.view;
+import dplug.graphics;
 import dplug.window.window;
 
 import dplug.gui.ransac;

@@ -36,7 +36,6 @@ import dplug.core.sync;
 import dplug.core.map;
 
 import dplug.graphics.image;
-import dplug.graphics.view;
 import dplug.window.window;
 
 nothrow:

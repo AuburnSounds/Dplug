@@ -11,8 +11,6 @@ import std.math;
 import std.algorithm.comparison;
 
 import dplug.core.math;
-import dplug.graphics.drawex;
-import dplug.graphics.resizer;
 
 import dplug.gui.element;
 

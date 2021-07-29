@@ -8,8 +8,10 @@ License: A mix of Boost 1.0, MPL 2.0, and public domain. See individual files fo
 module dplug.graphics;
 
 public import dplug.graphics.color;
-public import dplug.graphics.view;
 public import dplug.graphics.image;
 public import dplug.graphics.draw;
+public import dplug.graphics.resizer;
+public import dplug.graphics.mipmap;
+public import dplug.graphics.font;
               
 

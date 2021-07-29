@@ -11,7 +11,6 @@ import std.math;
 import std.algorithm.comparison;
 
 import dplug.core.math;
-import dplug.graphics.drawex;
 import dplug.gui.bufferedelement;
 import dplug.client.params;
 

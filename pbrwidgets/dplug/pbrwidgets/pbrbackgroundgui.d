@@ -10,11 +10,6 @@ module dplug.pbrwidgets.pbrbackgroundgui;
 import dplug.math.box;
 import dplug.core.nogc;
 import dplug.core.file;
-import dplug.graphics.color;
-import dplug.graphics.image;
-import dplug.graphics.view;
-import dplug.graphics.drawex;
-import dplug.graphics.resizer;
 
 // Note: this dependency exist because Key is defined in dplug:window
 import dplug.window.window;

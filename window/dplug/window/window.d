@@ -11,7 +11,6 @@ import dplug.math.box;
 
 import dplug.core.nogc;
 import dplug.graphics.image;
-import dplug.graphics.view;
 
 enum Key
 {

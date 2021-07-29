@@ -9,7 +9,6 @@ module dplug.pbrwidgets.onoffswitch;
 
 import std.math;
 import dplug.core.math;
-import dplug.graphics.drawex;
 import dplug.gui.element;
 import dplug.client.params;
 

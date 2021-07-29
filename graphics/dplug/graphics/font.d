@@ -20,10 +20,8 @@ import dplug.core.sync;
 import dplug.core.nogc;
 import dplug.core.map;
 
-import dplug.graphics.view;
 import dplug.graphics.image;
 import dplug.graphics.stb_truetype;
-import dplug.graphics.drawex;
 
 final class Font
 {

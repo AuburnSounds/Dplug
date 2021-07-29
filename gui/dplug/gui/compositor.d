@@ -13,10 +13,7 @@ import dplug.core.vec;
 import dplug.core.nogc;
 import dplug.core.thread;
 
-import dplug.graphics.mipmap;
-import dplug.graphics.drawex;
-import dplug.graphics.image;
-import dplug.graphics.view;
+import dplug.graphics;
 
 import dplug.window.window;
 

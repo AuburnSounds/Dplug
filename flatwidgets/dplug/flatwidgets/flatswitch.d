@@ -10,7 +10,6 @@ module dplug.flatwidgets.flatswitch;
 
 import std.math;
 import dplug.core.math;
-import dplug.graphics.drawex;
 import dplug.gui.element;
 import dplug.client.params;
 
