@@ -1,7 +1,10 @@
 /**
   2D software renderer.
-  
+  See an example of a Canvas-enabled UIElement in:
+      `dplug.flatwidgets.windowresizer.UIWindowResizer`
+
   This is a DPlug-specific rework of dg2d by Cerjones.
+  https://github.com/cerjones/dg2d
   - removal of truetype functionnality (since covered by dplug:graphics)
   - nothrow @nogc
   - rework of the Canvas itself, to resemble more the HTML5 Canvas API
@@ -11,6 +14,10 @@
   - clipping is done with the ImageRef input
   However a failure of this fork is that for transforms and stroke() support
   you do need path abstraction in the end.
+
+  dplug:canvas is pretty fast and writes 4 pixels at once.
+
+  Bug: you can't use it on a widget that is full-size in your plugin.
   
   Copyright: Copyright Chris Jones 2020.
   Copyright: Copyright Guillaume Piolat 2020.

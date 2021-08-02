@@ -1,6 +1,8 @@
 /**
 A widget to place at the bottom-right of your UI. It resizes the plugin, based upon valid sizes given by `SizeContstraints`.
 
+This is also an usage example for dplug:canvas.
+
 Copyright: Guillaume Piolat 2021.
 License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
@@ -11,7 +13,7 @@ module dplug.flatwidgets.windowresizer;
 import dplug.gui.element;
 import dplug.canvas;
 
-
+///
 class UIWindowResizer : UIElement
 {
 public:
