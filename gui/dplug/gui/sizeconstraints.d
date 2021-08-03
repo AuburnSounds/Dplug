@@ -71,6 +71,7 @@ SizeConstraints makeSizeConstraintsContinuous(int defaultWidth,
 }
 
 /// Build a `SizeConstraints` that describes a rectangular range of size, in logical pixels.
+/// All continous sizes are valid within these bounds.
 /// Aspect ratio is NOT preserved.
 SizeConstraints makeSizeConstraintsBounds(int minWidth, 
                                           int minHeight, 
@@ -94,6 +95,42 @@ SizeConstraints makeSizeConstraintsBounds(int minWidth,
 }
 
 
+/// Build a `SizeConstraints` that describes several scale factors for X and Y, in logical pixels.
+/// Aspect ratio is NOT preserved.
+///
+/// Params:
+///     defaultWidth base width in pixels.
+///     defaultHeight base height in pixels.
+///     availableRatiosX sorted list of UI scale factors for the X dimension, should contain 1.0f.
+///                      That list of scale factors: - must be increasing
+///                                                  - must contain 1.0f
+///                                                  - all factors must be > 0.0f
+///     availableRatiosY  sorted list of UI scale factors for the Y dimension. Same as above.
+///
+/// Warning: no more than 8 possible scales are possible for each axis.
+SizeConstraints makeSizeConstraintsDiscreteXY(int defaultWidth, 
+                                              int defaultHeight, 
+                                              const(float)[] availableRatiosX,
+                                              const(float)[] availableRatiosY)
+{
+    SizeConstraints sc;
+    sc.type = SizeConstraints.Type.discreteRatioXY;
+    sc.defaultWidth = defaultWidth;
+    sc.defaultHeight = defaultHeight;
+    assert(availableRatiosX.length <= SizeConstraints.MAX_POSSIBLE_SCALES);
+    assert(availableRatiosY.length <= SizeConstraints.MAX_POSSIBLE_SCALES);
+
+    int N = cast(int)availableRatiosX.length;
+    sc.numDiscreteScalesX = N;
+    sc.discreteScalesX[0..N] = availableRatiosX[0..N];
+
+    N = cast(int)availableRatiosY.length;
+    sc.numDiscreteScalesY = N;
+    sc.discreteScalesY[0..N] = availableRatiosY[0..N];
+    return sc;
+}
+
+
 /// Describe what size in logical pixels are possible.
 /// A GUIGraphics is given a `SizeConstraints` in its constructor.
 struct SizeConstraints
@@ -102,11 +139,12 @@ public:
 nothrow:
 @nogc:
 
-    enum Type /// 
+    enum Type /// Internal type of size constraint
     {
-        continuousRatio,
-        discreteRatio,
-        rectangularBounds
+        continuousRatio,       /// Continuous zoom factors, preserve aspect ratio
+        discreteRatio,         /// Discrete zoom factors, preserve aspect ratio (recommended)
+        rectangularBounds,     /// Continuous separate zoom factors for X and Y, given with rectangular bounds.
+        discreteRatioXY,       /// Discrete separate zoom factors for X and Y (recommended)
     }
 
     /// Suggest a valid size for plugin first opening.
@@ -127,6 +165,8 @@ nothrow:
                 return numDiscreteScales > 1;
             case rectangularBounds: 
                 return true;
+            case discreteRatioXY: 
+                return numDiscreteScalesX > 1 && numDiscreteScalesY > 1;
         }
     }
 
@@ -136,8 +176,11 @@ nothrow:
         final switch(type) with (Type)
         {
             case continuousRatio:
-            case discreteRatio:     return true;
-            case rectangularBounds: return false;
+            case discreteRatio:
+                return true;
+            case rectangularBounds: 
+            case discreteRatioXY: 
+                return false;
         }
     }
 
@@ -166,23 +209,14 @@ nothrow:
                 break;
 
             case discreteRatio:
+            {
                 float scale = 0.5f * (*inoutWidth / (cast(float)defaultWidth) 
                                       + *inoutHeight / (cast(float)defaultHeight));
-                float bestScore = -float.infinity;
-                int bestScale = 0;
-                for (int n = 0; n < numDiscreteScales; ++n)
-                {
-                    float score = -fast_fabs(discreteScales[n] - scale);
-                    if (score > bestScore)
-                    {
-                        bestScore = score;
-                        bestScale = n;
-                    }
-                }
-                scale = discreteScales[bestScale];
+                scale = findBestMatchingFloat(scale, discreteScales[0..numDiscreteScales]);
                 *inoutWidth = cast(int)(0.5f + scale * defaultWidth);
                 *inoutHeight = cast(int)(0.5f + scale * defaultHeight);
                 break;
+            }
 
             case rectangularBounds: 
                 alias w = inoutWidth;
@@ -192,6 +226,16 @@ nothrow:
                 if (*w > maxWidth)  *w = maxWidth;
                 if (*h > maxHeight) *h = maxHeight;
                 break;
+
+            case discreteRatioXY:
+            {
+                float scaleX = (*inoutWidth) / (cast(float)defaultWidth);
+                float scaleY = (*inoutHeight) / (cast(float)defaultHeight);
+                scaleX = findBestMatchingFloat(scaleX, discreteScalesX[0..numDiscreteScalesX]);
+                scaleY = findBestMatchingFloat(scaleY, discreteScalesY[0..numDiscreteScalesY]);
+                *inoutWidth = cast(int)(0.5f + scaleX * defaultWidth);
+                *inoutHeight = cast(int)(0.5f + scaleY * defaultHeight);
+            }
         }
     }
 
@@ -205,7 +249,12 @@ private:
     int defaultHeight;
     
     int numDiscreteScales = 0;
-    float[MAX_POSSIBLE_SCALES] discreteScales; // only used with discreteRatio case
+    float[MAX_POSSIBLE_SCALES] discreteScales; // only used with discreteRatio or rectangularBoundsDiscrete case
+
+    alias numDiscreteScalesX = numDiscreteScales;
+    alias discreteScalesX = discreteScales;
+    int numDiscreteScalesY = 0;
+    float[MAX_POSSIBLE_SCALES] discreteScalesY; // only used with rectangularBoundsDiscrete case
 
     float minScale, maxScale;          // only used with continuousRatio case
 
@@ -213,6 +262,24 @@ private:
     int minHeight;
     int maxWidth;
     int maxHeight;
+
+    // Return arr[n], the nearest element of the array to x
+    static float findBestMatchingFloat(float x, const(float)[] arr) pure @trusted
+    {
+        assert(arr.length > 0);
+        float bestScore = -float.infinity;
+        int bestIndex = 0;
+        for (int n = 0; n < cast(int)arr.length; ++n)
+        {
+            float score = -fast_fabs(arr[n] - x);
+            if (score > bestScore)
+            {
+                bestScore = score;
+                bestIndex = n;
+            }
+        }
+        return arr[bestIndex];
+    }
 }
 
 unittest
@@ -234,4 +301,18 @@ unittest
     int w, h;
     a.suggestDefaultSize(&w, &h);
     assert(w == 640 && h == 480);
+
+    float[3] ratiosX = [0.5f, 1.0f, 2.0f];
+    float[4] ratiosY = [0.5f, 1.0f, 2.0f, 3.0f];
+    c = makeSizeConstraintsDiscreteXY(900, 500, ratiosX[], ratiosY[]);
+    c.suggestDefaultSize(&w, &h);
+    assert(w == 900 && h == 500);
+
+    w = 100; h = 501;
+    c.suggestDefaultSize(&w, &h);
+    assert(w == 450 && h == 500);
+
+    w = 1000; h = 2500;
+    c.suggestDefaultSize(&w, &h);
+    assert(w == 900 && h == 1500);
 }
