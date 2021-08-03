@@ -1205,10 +1205,14 @@ protected:
     }
 }
 
+// See https://github.com/AuburnSounds/Dplug/issues/563, there
+// is currently a coupling with dplug:window and this can't be changed.
+// Current X11 and Cocoa Window assume dense images.
 enum scanLineAlignment = 4; // could be anything
 
 // given a width, how long in bytes should scanlines be
 // Note: win32 needs this exact stride for returned buffer.
+// TODO is it still true? or we can ave arbitrary pitch.
 int byteStride(int width) pure nothrow @nogc
 {
     int widthInBytes = width * 4;
