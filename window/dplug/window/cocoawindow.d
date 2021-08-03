@@ -331,15 +331,6 @@ private:
         }
     }
 
-    enum scanLineAlignment = 4; // could be anything
-
-    // given a width, how long in bytes should scanlines be
-    int byteStride(int width)
-    {
-        int widthInBytes = width * 4;
-        return (widthInBytes + (scanLineAlignment - 1)) & ~(scanLineAlignment-1);
-    }
-
     void drawRect(NSRect rect)
     {
         NSGraphicsContext nsContext = NSGraphicsContext.currentContext();

@@ -127,6 +127,9 @@ nothrow:
         _diffuseMap = mallocNew!(Mipmap!RGBA)();
         _materialMap = mallocNew!(Mipmap!RGBA)();
         _depthMap = mallocNew!(Mipmap!L16)();
+
+        _compositedBuffer = mallocNew!(OwnedImage!RGBA)();
+        _renderedBuffer = mallocNew!(OwnedImage!RGBA)();
     }
 
     // Don't like the default rendering? Override this function and make another compositor.
@@ -153,8 +156,10 @@ nothrow:
         _depthMap.destroyFree();
 
         _windowListener.destroyFree();
-        alignedFree(_compositedBuffer, 16);
-        alignedFree(_renderedBuffer, 16);
+
+        destroyFree(_compositedBuffer);
+        destroyFree(_renderedBuffer);
+
         alignedFree(_resizedBuffer, 16);
     }
 
@@ -555,12 +560,13 @@ protected:
     int _updateMargin = 20;
 
     /// The composited buffer, before the Raw layer is applied.
-    ubyte* _compositedBuffer = null;
+    OwnedImage!RGBA _compositedBuffer = null;
 
     /// The rendered framebuffer.
     /// This is copied from `_compositedBuffer`, then Raw layer is drawn on top.
     /// Components are reordered there.
-    ubyte* _renderedBuffer = null;
+    /// It must be possible to use a Canvas on it.
+    OwnedImage!RGBA _renderedBuffer = null;
 
     /// The final framebuffer.
     /// It is the only buffer to have a size in logical pixels.
@@ -598,9 +604,7 @@ protected:
     }
 
     // Useful to convert 16-byte aligned buffer into an ImageRef!RGBA
-    final ImageRef!RGBA toImageRef(ubyte* alignedBuffer,
-                                   int width,
-                                   int height)
+    final ImageRef!RGBA toImageRef(ubyte* alignedBuffer, int width, int height)
     {
         ImageRef!RGBA ir = void;
         ir.w = width;
@@ -640,7 +644,7 @@ protected:
         }
 
         // D. COMPOSITING
-        auto compositedRef = toImageRef(_compositedBuffer, _currentUserWidth, _currentUserHeight);
+        auto compositedRef = _compositedBuffer.toRef();
         debug(benchmarkGraphics)
             _compositingWatch.start();
         compositeGUI(compositedRef); // Launch the possibly-expensive Compositor step, which implements PBR rendering
@@ -652,7 +656,7 @@ protected:
 
         // E. COPY FROM "COMPOSITED" TO "RENDERED" BUFFER
         // Copy _compositedBuffer onto _renderedBuffer for every rect that will be changed on display
-        auto renderedRef = toImageRef(_renderedBuffer, _currentUserWidth, _currentUserHeight);
+        auto renderedRef = _renderedBuffer.toRef();
         debug(benchmarkGraphics)
             _copyWatch.start();
         foreach(rect; _rectsToDisplayDisjointed[])
@@ -909,12 +913,16 @@ protected:
         _materialMap.size(0, _currentUserWidth, _currentUserHeight);
 
         // Extends buffers with user size
-        size_t sizeNeeded = byteStride(_currentUserWidth) * _currentUserHeight;
-        _compositedBuffer = cast(ubyte*) alignedRealloc(_compositedBuffer, sizeNeeded, 16);
-        _renderedBuffer = cast(ubyte*) alignedRealloc(_renderedBuffer, sizeNeeded, 16);
+
+        int border_0 = 0;
+        int rowAlign_16 = 16;
+        int trailingSamples_0 = 0;
+        int trailingSamples_3 = 3;
+        _compositedBuffer.size(_currentUserWidth, _currentUserHeight, border_0, rowAlign_16, xMultiplicity_1, trailingSamples_0);
+        _renderedBuffer.size(_currentUserWidth, _currentUserHeight, border_0, rowAlign_16, xMultiplicity_1, trailingSamples_3);
 
         // Extends final buffer with logical size
-        sizeNeeded = byteStride(_currentLogicalWidth) * _currentLogicalHeight;
+        size_t sizeNeeded = byteStride(_currentLogicalWidth) * _currentLogicalHeight;
         _resizedBuffer = cast(ubyte*) alignedRealloc(_resizedBuffer, sizeNeeded, 16);
 
         return toImageRef(_resizedBuffer, _currentLogicalWidth, _currentLogicalHeight);
@@ -925,7 +933,7 @@ protected:
     {
         enum bool parallelDraw = true;
 
-        ImageRef!RGBA renderedRef = toImageRef(_renderedBuffer, _currentUserWidth, _currentUserHeight);
+        ImageRef!RGBA renderedRef = _renderedBuffer.toRef();
 
         // No need to launch threads only to have them realize there isn't anything to do
         if (_rectsToDisplayDisjointed.length == 0)
@@ -1120,7 +1128,7 @@ protected:
 
     void reorderComponents(WindowPixelFormat pf)
     {
-        auto renderedRef = toImageRef(_renderedBuffer, _currentUserWidth, _currentUserHeight);
+        auto renderedRef = _renderedBuffer.toRef();
 
         final switch(pf)
         {
@@ -1163,7 +1171,7 @@ protected:
         // For now what we do for logical area is crop and offset.
         // In the future, could be beneficial to resample if needed.
 
-        auto renderedRef = toImageRef(_renderedBuffer, _currentUserWidth, _currentUserHeight);
+        auto renderedRef = _renderedBuffer.toRef();
         auto resizedRef = toImageRef(_resizedBuffer, _currentLogicalWidth, _currentLogicalHeight);
 
         box2i[] rectsToCopy = _rectsToResizeDisjointed[];
@@ -1205,16 +1213,15 @@ protected:
     }
 }
 
-// See https://github.com/AuburnSounds/Dplug/issues/563, there
-// is currently a coupling with dplug:window and this can't be changed.
-// Current X11 and Cocoa Window assume dense images.
-enum scanLineAlignment = 4; // could be anything
 
-// given a width, how long in bytes should scanlines be
-// Note: win32 needs this exact stride for returned buffer.
-// TODO is it still true? or we can ave arbitrary pitch.
+// given a width, how long in bytes should scanlines be for the final output buffer.
+// Note: it seems win32 needs this exact stride for returned buffer. It mimics BMP.
+//       On the other hands, is seems other platforms don't have the same constraints with row pitch.
 int byteStride(int width) pure nothrow @nogc
 {
+    // See https://github.com/AuburnSounds/Dplug/issues/563, there
+    // is currently a coupling with dplug:window and this can't be changed.
+    enum scanLineAlignment = 4;
     int widthInBytes = width * 4;
     return (widthInBytes + (scanLineAlignment - 1)) & ~(scanLineAlignment-1);
 }
