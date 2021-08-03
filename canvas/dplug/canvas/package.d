@@ -62,7 +62,14 @@ alias ImageDest = ImageRef!RGBA;
 
 /// A 2D Canvas able to render complex pathes into an `ImageRef!RGBA` buffer.
 /// `Canvas` tries to follow loosely the HTML 5 Canvas API.
+///
 /// See_also: https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement
+///
+/// Important:
+///     * Only works on RGBA output.
+///     * There need at least 12 extra bytes between lines (`trailingSamples = 3` in `OwnedImage`).
+///       You can use OwnedImage to have that guarantee. See https://github.com/AuburnSounds/Dplug/issues/563
+///       For now, avoid full-UI controls that use a Canvas.
 struct Canvas
 {
 public:
@@ -76,14 +83,14 @@ nothrow:
         _gradientUsed = 0;
         fillStyle(RGBA(0, 0, 0, 255));
 
-        // This is a limitation of dplug:canvas
-        // Because this rasterizer writes to 4 pixels at once at all times,
-        // there need up to 3 extra bytes between lines.
-        // You can use OwnedImage to have that guarantee.
-        // Or you can avoid full-UI controls that use a Canvas.
-
         int xmaxRounded4Up = (imageDest.w + 3) & 0xfffffffc;
         assert((xmaxRounded4Up & 3) == 0);
+
+        // This is a limitation of dplug:canvas
+        // Because this rasterizer writes to 4 pixels at once at all times,
+        // there need up to 3 extra samples (12 bytes) between lines.
+        // You can use OwnedImage to have that guarantee.
+        // Or you can avoid full-UI controls that use a Canvas.
         assert(xmaxRounded4Up*4 <= imageDest.pitch);
 
         _stateStack.resize(1);

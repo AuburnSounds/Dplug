@@ -558,7 +558,7 @@ protected:
     ubyte* _compositedBuffer = null;
 
     /// The rendered framebuffer.
-    /// This is copied from `_renderedBuffer`, then Raw layer is drawn on top.
+    /// This is copied from `_compositedBuffer`, then Raw layer is drawn on top.
     /// Components are reordered there.
     ubyte* _renderedBuffer = null;
 

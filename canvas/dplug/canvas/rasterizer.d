@@ -36,7 +36,7 @@ import dplug.canvas.misc;
   Basically anywhere an edge crosses the current scanline the bit
   for the leftmost pixel it touches is set in the mask. So we can
   use a bitscan instruction to find long spans of unchanging
-  coverage and where we need to start processing the covrage again.
+  coverage and where we need to start processing the coverage again.
 
   The mask uses 1 bit for every 4 pixels, because the blitters are
   processing 4 pixels at once with SIMD.
