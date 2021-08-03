@@ -371,14 +371,14 @@ private:
             CGContextRef cgContext = nsContext.getCGContext();
             size_t sizeNeeded = _wfb.pitch * _wfb.h;
 
-            import core.stdc.stdio;
+            size_t bytesPerRow = _wfb.pitch;
 
             CGDataProviderRef provider = CGDataProviderCreateWithData(null, _wfb.pixels, sizeNeeded, null);
             CGImageRef image = CGImageCreate(_width,
                                              _height,
                                              8,
                                              32,
-                                             byteStride(_width),
+                                             bytesPerRow,
                                              _cgColorSpaceRef,
                                              kCGImageByteOrderDefault | kCGImageAlphaNoneSkipFirst,
                                              provider,
@@ -399,7 +399,7 @@ private:
             _imageData = NSData.dataWithBytesNoCopy(_wfb.pixels, sizeNeeded, false);
 
             CIImage image = CIImage.imageWithBitmapData(_imageData,
-                                                        byteStride(_width),
+                                                        bytesPerRow,
                                                         CGSize(_width, _height),
                                                         kCIFormatARGB8,
                                                         _cgColorSpaceRef);

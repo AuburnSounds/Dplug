@@ -527,6 +527,16 @@ version(Windows)
                             _updateRects.pushBack(box2i(left, top, right, bottom));
                         }
 
+                        static int byteStride(int width) pure nothrow @nogc @safe
+                        {
+                            enum scanLineAlignment = 4;
+                            int widthInBytes = width * 4;
+                            return (widthInBytes + (scanLineAlignment - 1)) & ~(scanLineAlignment-1);
+                        }
+                        // Note: the pitch of the displayed image _has_ to follow `byteStride`.
+                        // SetDIBitsToDevice doesn't seem to take arbitrary pitch
+                        assert(wfb.pitch == byteStride(wfb.w));
+
                         BITMAPINFOHEADER bmi = BITMAPINFOHEADER.init; // fill with zeroes
                         with (bmi)
                         {

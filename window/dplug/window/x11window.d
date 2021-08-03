@@ -546,6 +546,7 @@ private:
             // and recreates it at the right size
             assert(_visual);
             lockX11();
+            int bytes_per_line = cast(int)(_wfb.pitch);
             _graphicImage = XCreateImage(_display, 
                             _visual, 
                             BIT_DEPTH, 
@@ -555,7 +556,7 @@ private:
                             _width, 
                             _height, 
                             32, 
-                            0);
+                            bytes_per_line);
             unlockX11();
         }
     }
