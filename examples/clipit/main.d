@@ -71,7 +71,7 @@ nothrow:
 
     // This override is optional, the default implementation will
     // have one default preset.
-    override Preset[] buildPresets() nothrow @nogc
+    override Preset[] buildPresets()
     {
         auto presets = makeVec!Preset();
         presets ~= makeDefaultPreset();
@@ -82,20 +82,19 @@ nothrow:
     // exceed some amount of frames at once.
     // This can be useful as a cheap chunking for parameter smoothing.
     // Buffer splitting also allows to allocate statically or on the stack with less worries.
-    override int maxFramesInProcess() const //nothrow @nogc
+    override int maxFramesInProcess()
     {
         return 512;
     }
 
-    override void reset(double sampleRate, int maxFrames, int numInputs, int numOutputs) nothrow @nogc
+    override void reset(double sampleRate, int maxFrames, int numInputs, int numOutputs) 
     {
         // Clear here any state and delay buffers you might have.
 
         assert(maxFrames <= 512); // guaranteed by audio buffer splitting
     }
 
-    override void processAudio(const(float*)[] inputs, float*[]outputs, int frames,
-                               TimeInfo info) nothrow @nogc
+    override void processAudio(const(float*)[] inputs, float*[]outputs, int frames, TimeInfo info)
     {
         assert(frames <= 512); // guaranteed by audio buffer splitting
 

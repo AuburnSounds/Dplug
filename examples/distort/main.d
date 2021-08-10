@@ -76,7 +76,7 @@ nothrow:
 
     // This override is optional, the default implementation will
     // have one default preset.
-    override Preset[] buildPresets() nothrow @nogc
+    override Preset[] buildPresets()
     {
         auto presets = makeVec!Preset();
         presets ~= makeDefaultPreset();
@@ -98,7 +98,7 @@ nothrow:
         return 512;
     }
 
-    override void reset(double sampleRate, int maxFrames, int numInputs, int numOutputs) nothrow @nogc
+    override void reset(double sampleRate, int maxFrames, int numInputs, int numOutputs)
     {
         // Clear here any state and delay buffers you might have.
 
@@ -114,8 +114,7 @@ nothrow:
         }
     }
 
-    override void processAudio(const(float*)[] inputs, float*[]outputs, int frames,
-                               TimeInfo info) nothrow @nogc
+    override void processAudio(const(float*)[] inputs, float*[]outputs, int frames, TimeInfo info)
     {
         assert(frames <= 512); // guaranteed by audio buffer splitting
 
@@ -203,9 +202,11 @@ private:
 struct EnvelopeFollower
 {
 public:
+nothrow:
+@nogc:
 
     // typical frequency would be is 10-30hz
-    void initialize(float cutoffInHz, float samplerate) nothrow @nogc
+    void initialize(float cutoffInHz, float samplerate)
     {
         _coeff = biquadRBJLowPass(cutoffInHz, samplerate);
         _delay0.initialize();
@@ -213,7 +214,7 @@ public:
     }
 
     // takes on sample, return mean amplitude
-    float nextSample(float x) nothrow @nogc
+    float nextSample(float x)
     {
         float l = abs(x);
         l = _delay0.nextSample(l, _coeff);
@@ -221,7 +222,7 @@ public:
         return l;
     }
 
-    void nextBuffer(const(float)* input, float* output, int frames) nothrow @nogc
+    void nextBuffer(const(float)* input, float* output, int frames)
     {
         for(int i = 0; i < frames; ++i)
             output[i] = abs(input[i]);
@@ -241,7 +242,9 @@ private:
 struct CoarseRMS
 {
 public:
-    void initialize(double sampleRate) nothrow @nogc
+nothrow:
+@nogc:
+    void initialize(double sampleRate)
     {
         // In Reaper, default RMS window is 500 ms
         _envelope.initialize(20, sampleRate);
@@ -250,12 +253,12 @@ public:
     }
 
     /// Process a chunk of samples and return a value in dB (could be -infinity)
-    void nextSample(float input) nothrow @nogc
+    void nextSample(float input)
     {
         _last = _envelope.nextSample(input * input);
     }
 
-    void nextBuffer(float* input, int frames) nothrow @nogc
+    void nextBuffer(float* input, int frames)
     {
         if (frames == 0)
             return;
@@ -266,7 +269,7 @@ public:
         _last = _envelope.nextSample(input[frames - 1] * input[frames - 1]);
     }
 
-    float RMS() nothrow @nogc
+    float RMS()
     {
         return sqrt(_last);
     }
