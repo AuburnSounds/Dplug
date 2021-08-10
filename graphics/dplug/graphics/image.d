@@ -882,10 +882,9 @@ OwnedImage!RGBA loadOwnedImage(in void[] imageData)
 /// Throws: $(D ImageIOException) on error.
 OwnedImage!RGBA loadImageSeparateAlpha(in void[] imageDataRGB, in void[] imageDataAlpha)
 {
-    IFImage ifImageRGB = readImageFromMem(cast(const(ubyte[])) imageDataRGB, 3);
-    scope(exit) ifImageRGB.free();
-    int widthRGB = cast(int)ifImageRGB.w;
-    int heightRGB = cast(int)ifImageRGB.h;
+    OwnedImage!RGBA result = loadOwnedImage(imageDataRGB);
+    int widthRGB = result.w;
+    int heightRGB = result.h;
 
     IFImage ifImageA = readImageFromMem(cast(const(ubyte[])) imageDataAlpha, 1);
     scope(exit) ifImageA.free();
@@ -900,20 +899,15 @@ OwnedImage!RGBA loadImageSeparateAlpha(in void[] imageDataRGB, in void[] imageDa
 
     int width = widthA;
     int height = heightA;
-
-    OwnedImage!RGBA loaded = mallocNew!(OwnedImage!RGBA)(width, height);
-
     for (int j = 0; j < height; ++j)
     {
-        RGB* rgbscan = cast(RGB*)(&ifImageRGB.pixels[3 * (j * width)]);
+        RGBA* outScan = result.scanlinePtr(j);
         ubyte* ascan = &ifImageA.pixels[j * width];
-        RGBA[] outscan = loaded.scanline(j);
         for (int i = 0; i < width; ++i)
         {
-            RGB rgb = rgbscan[i];
-            outscan[i] = RGBA(rgb.r, rgb.g, rgb.b, ascan[i]);
+            outScan[i].a = ascan[i];
         }
     }
-    return loaded;
+    return result;
 }
 
