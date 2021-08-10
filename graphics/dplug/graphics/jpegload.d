@@ -67,8 +67,18 @@ alias JpegStreamReadFunc = int function(void* pBuf, int max_bytes_to_read, bool*
 
 // ////////////////////////////////////////////////////////////////////////// //
 private:
-void *jpgd_malloc (size_t nSize) { import core.stdc.stdlib : malloc; return malloc(nSize); }
-void jpgd_free (void *p) { import core.stdc.stdlib : free; if (p !is null) free(p); }
+
+void *jpgd_malloc (size_t nSize) 
+{ 
+    import dplug.core.vec;
+    return alignedMalloc(nSize, 1); // FUTURE: use intel-intrinsics _mm_malloc
+}
+
+void jpgd_free (void *p) 
+{ 
+    import dplug.core.vec;
+    alignedFree(p, 1); // FUTURE: use intel-intrinsics _mm_free
+}
 
 // Success/failure error codes.
 alias jpgd_status = int;

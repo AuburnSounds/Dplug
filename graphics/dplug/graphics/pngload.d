@@ -115,12 +115,11 @@ To add your name to the credits, pick a random blank space in the middle and fil
 of the credits.
 */
 
-import core.stdc.stdlib: malloc, free, realloc;
 import core.stdc.string: memcpy, memset;
 import core.atomic;
 
 import std.math: ldexp, pow, abs;
-
+import dplug.core.vec;
 
 nothrow @nogc:
 
@@ -401,14 +400,29 @@ uint stbi_lrot(uint x, int y)
     return (x << y) | (x >> (-y & 31));
 }
 
-alias STBI_MALLOC = malloc;
-alias STBI_REALLOC = realloc;
-alias STBI_FREE = free;
+void* STBI_MALLOC(size_t size)
+{
+    return alignedMalloc(size, 1);
+}
+
+void* STBI_REALLOC(void* p, size_t new_size)
+{
+    return alignedRealloc(p, new_size, 1);
+}
 
 void* STBI_REALLOC_SIZED(void *ptr, size_t old_size, size_t new_size)
 {
-    return realloc(ptr, new_size);
+    return alignedRealloc(ptr, new_size, 1);
 }
+
+void STBI_FREE(void* p)
+{
+    alignedFree(p, 1);
+}
+
+//alias STBI_MALLOC = malloc;
+//alias STBI_REALLOC = realloc;
+//alias STBI_FREE = free;
 
 enum STBI_MAX_DIMENSIONS = (1 << 24);
 

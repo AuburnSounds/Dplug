@@ -13,7 +13,6 @@ License:
 
 module dplug.graphics.image;
 
-import core.stdc.stdlib: free;
 
 import std.conv : to;
 import std.string : format;
@@ -369,11 +368,26 @@ nothrow:
         size(w, h, border, rowAlignment, xMultiplicity, trailingSamples);
     }
 
+    /// Create from already loaded dense RGBA pixel data.
+    /// `buffer` should be allocated with `alignedMalloc`/`alignedRealloc` with an alignment of 1.
+    /// Ownership of `buffer` is given to the `OwnedImage`.
+    this(int w, int h, ubyte* buffer)
+    {
+        this.w = w;
+        this.h = h;
+        _pixels = cast(COLOR*) buffer;
+        _bytePitch = w * 4;
+        _buffer = buffer;
+        _border = 0;
+        _borderRight = 0;
+    }
+
     ~this()
     {
         if (_buffer !is null)
         {
-            alignedFree(_buffer, 1);
+             // FUTURE: use intel-intrinsics _mm_malloc/_mm_free
+            alignedFree(_buffer, 1); // Note: this allocation methods must be synced with the one in JPEG and PNL loading.
             _buffer = null;
         }
     }
@@ -780,14 +794,16 @@ private struct IFImage
     void free() nothrow @nogc
     {
         if (pixels.ptr !is null)
-            .free(pixels.ptr);
+            alignedFree(pixels.ptr, 1);
     }
 }
+
 
 private IFImage readImageFromMem(const(ubyte[]) imageData, int channels)
 {
     static immutable ubyte[8] pngSignature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
     bool isPNG = imageData.length >= 8 && (imageData[0..8] == pngSignature);
+
 
     // PNG are decoded using stb_image to avoid GC overload using zlib
     if (isPNG)
@@ -820,35 +836,49 @@ private IFImage readImageFromMem(const(ubyte[]) imageData, int channels)
     }
 }
 
-/// The one function you probably want to use.
-/// Loads an image from a static array.
-/// The OwnedImage is allocated with `mallocNew` and should be destroyed with `destroyFree`.
+/// Loads an image from compressed data.
+/// The returned `OwnedImage!RGBA` should be destroyed with `destroyFree`.
 /// Throws: $(D ImageIOException) on error.
 OwnedImage!RGBA loadOwnedImage(in void[] imageData)
 {
-    IFImage ifImage = readImageFromMem(cast(const(ubyte[])) imageData, 4);
-    scope(exit) ifImage.free();
-    int width = cast(int)ifImage.w;
-    int height = cast(int)ifImage.h;
+    ubyte[] bImageData = cast(ubyte[])imageData;
+    int channels = 4;
 
-    // Make a copy
-    OwnedImage!RGBA loaded = mallocNew!(OwnedImage!RGBA)(width, height);
-    ubyte[] sourcePixels = ifImage.pixels;
-    for (int y = 0; y < height; ++y)
+    static immutable ubyte[8] pngSignature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+    bool isPNG = imageData.length >= 8 && (imageData[0..8] == pngSignature);
+
+    if (isPNG)
     {
-        RGBA* destScan = loaded.scanlinePtr(y);
-        RGBA* sourceScan = cast(RGBA*)(&sourcePixels[y * width * 4]);
-        destScan[0..width] = sourceScan[0..width];
+        int width, height, components;
+        ubyte* decoded = stbi_load_from_memory(bImageData.ptr, 
+                                               cast(int)bImageData.length, 
+                                               &width, 
+                                               &height, 
+                                               &components, 
+                                               channels);
+        return mallocNew!(OwnedImage!RGBA)(width, height, decoded);
     }
-    return loaded;
-}
+    else
+    {
+        bool isJPEG = (bImageData.length >= 2) && (bImageData[0] == 0xff) && (bImageData[1] == 0xd8);
 
+        if (isJPEG)
+        {
+            int width, height;
+            int comp;
+            ubyte[] pixels = decompress_jpeg_image_from_memory(imageData, width, height, comp, channels);
+            return mallocNew!(OwnedImage!RGBA)(width, height, pixels.ptr);
+        }
+        else
+            assert(false); // Only PNG and JPEG are supported
+    }
+}
 
 
 /// Loads two different images:
 /// - the 1st is the RGB channels
 /// - the 2nd is interpreted as greyscale and fetch in the alpha channel of the result.
-/// The OwnedImage is allocated with `mallocEmplace` and should be destroyed with `destroyFree`.
+/// The returned `OwnedImage!RGBA` should be destroyed with `destroyFree`.
 /// Throws: $(D ImageIOException) on error.
 OwnedImage!RGBA loadImageSeparateAlpha(in void[] imageDataRGB, in void[] imageDataAlpha)
 {
