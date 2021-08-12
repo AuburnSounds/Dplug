@@ -20,6 +20,13 @@ import dplug.gui.compositor;
 import dplug.gui.legacypbr;
 public import dplug.gui.sizeconstraints;
 
+
+// On Panagement this wins 9mb by decompressing background only before resizing.
+// However this expose a race condition makes reopening of the images breaking.
+// No crash so I don't know what it comes from... looks like a race condition.
+// DISABLED
+//version = decompressImagesLazily;
+
 /// PBRBackgroundGUI provides a PBR background loaded from PNG or JPEG images.
 /// It's very practical while in development because it let's you reload the six
 /// images used with the press of ENTER.
@@ -45,21 +52,25 @@ nothrow:
     this(SizeConstraints sizeConstraints)
     {
         super(sizeConstraints, flagPBR);
-        auto basecolorData = cast(ubyte[])(import(baseColorPath));
-        auto emissiveData = cast(ubyte[])(import(emissivePath));
-        auto materialData = cast(ubyte[])(import(materialPath));
-        auto depthData = cast(ubyte[])(import(depthPath));
-        auto skyboxData = cast(ubyte[])(import(skyboxPath));
 
         _diffuseResized = mallocNew!(OwnedImage!RGBA);
         _materialResized = mallocNew!(OwnedImage!RGBA);
         _depthResized = mallocNew!(OwnedImage!L16);
-        loadImages(basecolorData, emissiveData, materialData, depthData, skyboxData);
-    } 
+
+        version(decompressImagesLazily)
+        {}
+        else
+        {
+            loadBackgroundImagesFromStaticData();   
+        }
+
+        auto skyboxData = cast(ubyte[])(import(skyboxPath));   
+        loadSkybox(skyboxData);
+    }    
 
     ~this()
     {
-        freeImages();
+        freeBackgroundImages();
         _diffuseResized.destroyFree();
         _materialResized.destroyFree();
         _depthResized.destroyFree();
@@ -74,10 +85,16 @@ nothrow:
             if (super.onKeyDown(key))
                 return true;
 
-            if (key == Key.enter)
+            version(decompressImagesLazily)
             {
-                reloadImagesAtRuntime();
-                return true;
+            }
+            else
+            {
+                if (key == Key.enter)
+                {
+                    reloadImagesAtRuntime();
+                    return true;
+                }
             }
 
             return false;
@@ -94,6 +111,13 @@ nothrow:
             
             if (_forceResizeUpdate || _diffuseResized.w != W || _diffuseResized.h != H)
             {
+                // Decompress images lazily for this size
+
+                version (decompressImagesLazily)
+                {
+                    assert(_diffuse is null);
+                    loadBackgroundImagesFromStaticData();
+                }
                 _diffuseResized.size(W, H);
                 _materialResized.size(W, H);
                 _depthResized.size(W, H);
@@ -101,6 +125,12 @@ nothrow:
                 resizer.resizeImageMaterial(_material.toRef, _materialResized.toRef);
                 resizer.resizeImageDepth(_depth.toRef, _depthResized.toRef);
                 _forceResizeUpdate = false;
+
+                version (decompressImagesLazily)
+                {
+                    freeBackgroundImages();
+                    assert(_diffuse is null);
+                }
             }
         }
 
@@ -128,6 +158,15 @@ nothrow:
 
 private:
 
+    final void loadBackgroundImagesFromStaticData()
+    {
+        auto basecolorData = cast(ubyte[])(import(baseColorPath));
+        auto emissiveData = cast(ubyte[])(import(emissivePath));
+        auto materialData = cast(ubyte[])(import(materialPath));
+        auto depthData = cast(ubyte[])(import(depthPath));
+        loadBackgroundImages(basecolorData, emissiveData, materialData, depthData);
+    }
+
     // CTFE used here so we are allowed to use ~
     static immutable string baseColorPathAbs = absoluteGfxDirectory ~ baseColorPath;
     static immutable string emissivePathAbs = absoluteGfxDirectory ~ emissivePath;
@@ -138,6 +177,7 @@ private:
     OwnedImage!RGBA _diffuse;
     OwnedImage!RGBA _material;
     OwnedImage!L16 _depth;
+
     OwnedImage!RGBA _diffuseResized;
     OwnedImage!RGBA _materialResized;
     OwnedImage!L16 _depthResized;
@@ -154,57 +194,76 @@ private:
     /// Force resize of source image in order to display changes while editing files.
     bool _forceResizeUpdate;
 
-    void freeImages()
+    void freeBackgroundImages()
     {
         if (_diffuse)
+        {
             _diffuse.destroyFree();
+            _diffuse = null;
+        }
+
         if (_depth)
+        {
             _depth.destroyFree();
+            _depth = null;
+        }
+
         if (_material)
+        {
             _material.destroyFree();
+            _material = null;
+        }
     }
 
-    // Reloads images for UI development, avoid long compile round trips
-    // This saves up hours.
-    void reloadImagesAtRuntime()
+    version(decompressImagesLazily)
     {
-        // reading images with an absolute path since we don't know 
-        // which is the current directory from the host
-        ubyte[] basecolorData = readFile(baseColorPathAbs);
-        ubyte[] emissiveData = readFile(emissivePathAbs);
-        ubyte[] materialData = readFile(materialPathAbs);
-        ubyte[] depthData = readFile(depthPathAbs);
-        ubyte[] skyboxData = readFile(skyboxPathAbs);
-
-        if (basecolorData && emissiveData && materialData
-            && depthData && skyboxData) // all valid?
+    }
+    else
+    {
+        // Reloads images for UI development, avoid long compile round trips
+        // This saves up hours.
+        void reloadImagesAtRuntime()
         {
-            // Reload images from disk and update the UI
-            freeImages();
-            loadImages(basecolorData, emissiveData, materialData, depthData, skyboxData);
-            _forceResizeUpdate = true;
-            setDirtyWhole();
-        }
-        else
-        {
-            // Note: if you fail here, the absolute path you provided in your gui.d was incorrect.
-            // The background files cannot be loaded at runtime, and you have to fix your pathes.
-            assert(false);
-        }
+            // reading images with an absolute path since we don't know 
+            // which is the current directory from the host
+            ubyte[] basecolorData = readFile(baseColorPathAbs);
+            ubyte[] emissiveData = readFile(emissivePathAbs);
+            ubyte[] materialData = readFile(materialPathAbs);
+            ubyte[] depthData = readFile(depthPathAbs);
+            ubyte[] skyboxData = readFile(skyboxPathAbs);
 
-        // Release copy of file contents
-        freeSlice(basecolorData);
-        freeSlice(emissiveData);
-        freeSlice(materialData);
-        freeSlice(depthData);
-        freeSlice(skyboxData);
+            if (basecolorData && emissiveData && materialData
+                && depthData && skyboxData) // all valid?
+            {
+                // Reload images from disk and update the UI
+                freeBackgroundImages();
+                loadBackgroundImages(basecolorData, emissiveData, materialData, depthData);
+                loadSkybox(skyboxData);
+                _forceResizeUpdate = true;
+                setDirtyWhole();
+            }
+            else
+            {
+                // Note: if you fail here, the absolute path you provided in your gui.d was incorrect.
+                // The background files cannot be loaded at runtime, and you have to fix your pathes.
+                assert(false);
+            }
+
+            // Release copy of file contents
+            freeSlice(basecolorData);
+            freeSlice(emissiveData);
+            freeSlice(materialData);
+            freeSlice(depthData);
+            freeSlice(skyboxData);
+        }
     }
 
-    void loadImages(ubyte[] basecolorData, ubyte[] emissiveData,
-                    ubyte[] materialData, ubyte[] depthData, ubyte[] skyboxData)
+    void loadBackgroundImages(ubyte[] basecolorData, ubyte[] emissiveData,
+                              ubyte[] materialData, ubyte[] depthData)
     {
         _diffuse = loadImageSeparateAlpha(basecolorData, emissiveData);
         _material = loadOwnedImage(materialData);
+
         OwnedImage!RGBA depthRGBA = loadOwnedImage(depthData);
         scope(exit) depthRGBA.destroyFree();
 
@@ -227,6 +286,10 @@ private:
             }
         }
 
+    }
+
+    void loadSkybox(ubyte[] skyboxData)
+    {
         // Search for a pass of type PassSkyboxReflections
         if (auto mpc = cast(MultipassCompositor) compositor())
         {
