@@ -21,11 +21,10 @@ import dplug.gui.legacypbr;
 public import dplug.gui.sizeconstraints;
 
 
-// On Panagement this wins 9mb by decompressing background only before resizing.
-// However this expose a race condition makes reopening of the images breaking.
-// No crash so I don't know what it comes from... looks like a race condition.
-// DISABLED
-//version = decompressImagesLazily;
+// This cause JPEG and PNG to be decompressed on the fly on resize, instead of ahead of time and staying in memory.
+// This wins 17mb of RAM on Panagement.
+// However, this also disable live reload of images for UI development.
+version = decompressImagesLazily;
 
 /// PBRBackgroundGUI provides a PBR background loaded from PNG or JPEG images.
 /// It's very practical while in development because it let's you reload the six
@@ -289,7 +288,7 @@ private:
     }
 
     void loadSkybox(ubyte[] skyboxData)
-    {
+    {        
         // Search for a pass of type PassSkyboxReflections
         if (auto mpc = cast(MultipassCompositor) compositor())
         {
@@ -302,6 +301,7 @@ private:
                 }
             }
         }
+        
     }
 }
 
