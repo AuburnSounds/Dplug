@@ -308,10 +308,16 @@ version(Windows)
 
                     if (!handled)
                     {
-                        // key is passed to the parent window
+                        // TODO: looks fishy, why GA_ROOT instead of GA_PARENT?
+                        // key is passed to the most-parent window
                         HWND rootHWnd = GetAncestor(hwnd, GA_ROOT);
-                        SendMessage(rootHWnd, uMsg, wParam, lParam);
-                        return DefWindowProc(hwnd, uMsg, wParam, lParam);
+                        if (rootHWnd != hwnd) // send message up the chain if not self (not hosting)
+                        {
+                            SendMessage(rootHWnd, uMsg, wParam, lParam);
+                            return DefWindowProc(hwnd, uMsg, wParam, lParam);
+                        }
+                        else
+                            return DefWindowProc(hwnd, uMsg, wParam, lParam);
                     }
                     else
                         return 0;
