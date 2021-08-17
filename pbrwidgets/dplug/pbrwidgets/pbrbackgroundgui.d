@@ -262,29 +262,7 @@ private:
     {
         _diffuse = loadImageSeparateAlpha(basecolorData, emissiveData);
         _material = loadOwnedImage(materialData);
-
-        OwnedImage!RGBA depthRGBA = loadOwnedImage(depthData);
-        scope(exit) depthRGBA.destroyFree();
-
-        int width = depthRGBA.w;
-        int height = depthRGBA.h;
-
-        _depth = mallocNew!(OwnedImage!L16)(width, height);
-
-        for (int j = 0; j < height; ++j)
-        {
-            RGBA[] inDepth = depthRGBA.scanline(j);
-            L16[] outDepth = _depth.scanline(j);
-            for (int i = 0; i < width; ++i)
-            {
-                RGBA v = inDepth[i];
-
-                float d = 0.5f + 257 * (v.g + v.r + v.b) / 3;
-
-                outDepth[i].l = cast(ushort)(d);
-            }
-        }
-
+        _depth = loadOwnedImageDepth(depthData);
     }
 
     void loadSkybox(ubyte[] skyboxData)
@@ -300,8 +278,7 @@ private:
                     skyreflPass.setSkybox(skybox);
                 }
             }
-        }
-        
+        }        
     }
 }
 

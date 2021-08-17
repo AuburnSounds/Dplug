@@ -2413,4 +2413,11 @@ version(decodePNG)
         return 1;
     }
 
+    bool stbi__png_is16(const(ubyte)[] buffer) // #BONUS
+    {
+        stbi__context s;
+        stbi__start_mem(&s, buffer.ptr, cast(int)buffer.length);
+        return stbi__png_is16(&s) != 0;
+    }
+
 }

@@ -376,7 +376,7 @@ nothrow:
         this.w = w;
         this.h = h;
         _pixels = cast(COLOR*) buffer;
-        _bytePitch = w * 4;
+        _bytePitch = w * cast(int)(COLOR.sizeof);
         _buffer = buffer;
         _border = 0;
         _borderRight = 0;
@@ -911,3 +911,53 @@ OwnedImage!RGBA loadImageSeparateAlpha(in void[] imageDataRGB, in void[] imageDa
     return result;
 }
 
+
+/// Loads an image to be a 16-bit one channel image (`OwnedImage!L16`).
+/// The returned `OwnedImage!L16` should be destroyed with `destroyFree`.
+/// Throws: $(D ImageIOException) on error.
+OwnedImage!L16 loadOwnedImageDepth(in void[] imageData)
+{
+    ubyte[] bImageData = cast(ubyte[])imageData;
+
+    if (stbi__png_is16(bImageData))
+    { 
+        int width, height, components;
+        ushort* decoded = stbi_load_16_from_memory(bImageData.ptr, 
+                                                   cast(int)bImageData.length, 
+                                                   &width, 
+                                                   &height, 
+                                                   &components, 
+                                                   1);
+        return mallocNew!(OwnedImage!L16)(width, height, cast(ubyte*)decoded);
+    }
+    else
+    {
+        // This is the original legacy way to load depth.
+        // Load as 8-bit RGBA, then mix the channels so as to support
+        // legacy depth maps.
+        OwnedImage!RGBA depthRGBA = loadOwnedImage(imageData);
+        scope(exit) depthRGBA.destroyFree();
+
+        int width = depthRGBA.w;
+        int height = depthRGBA.h;
+
+        OwnedImage!L16 result = mallocNew!(OwnedImage!L16)(width, height);
+
+        for (int j = 0; j < height; ++j)
+        {
+            RGBA[] inDepth = depthRGBA.scanline(j);
+            L16[] outDepth = result.scanline(j);
+            for (int i = 0; i < width; ++i)
+            {
+                RGBA v = inDepth[i];
+
+                // Using 257 to span the full range of depth: 257 * (255+255+255)/3 = 65535
+                // If we do that inside stb_image, it will first reduce channels _then_ increase bitdepth.
+                // Instead, this is used to gain 1.5 bit of accuracy for 8-bit depth maps. :)
+                float d = 0.5f + 257 * (v.g + v.r + v.b) / 3; 
+                outDepth[i].l = cast(ushort)(d);
+            }
+        }
+        return result;
+    }
+}
