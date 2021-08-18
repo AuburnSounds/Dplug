@@ -197,7 +197,7 @@ private:
     /// Framebuffer reference
     ImageRef!RGBA _wfb;
 
-    // For debug purpose.
+    /// Because timer events can arrive after the first Expose (first seen in JUCE's AudioPluginHost see Issue #572)
     bool _recomputeDirtyAreasWasCalled;
 
     /// Flag to tell threads to terminate. Used in thread finalization only.
@@ -236,11 +236,8 @@ private:
     UncheckedMutex _eventMutex;   
 
     /// Prevent recomputeDirtyAreas() and onDraw() to be called simulatneously.
-    /// This is masking a race in dplug:gui.
-    /// Other window systems (Windows and Mac) prevent this race by having the 
-    /// timer messages inside the same event queue, and don't run into this problem.
-    /// But X11Window has to prevent this race with this mutex.
-    /// Strong case of coupling!
+    /// This is masking a race in dplug:gui. See Dplug issue #572.
+    /// Other window systems (Windows and Mac) also have this kind of shenanigans.
     UncheckedMutex _dirtyAreaMutex;
 
     //
@@ -387,7 +384,16 @@ private:
             return;
 
         case Expose:
-            assert(_recomputeDirtyAreasWasCalled);
+
+            // Same thing that under Cocoa and Windows: the first Expose could happen before the timer is called.
+            // See Issue #523 and #572.
+            _dirtyAreaMutex.lock();
+            if (!_recomputeDirtyAreasWasCalled)
+            {
+                _listener.recomputeDirtyAreas();
+                _recomputeDirtyAreasWasCalled = true;
+            }
+            _dirtyAreaMutex.unlock();
 
             // Draw UI
             _eventMutex.lock();

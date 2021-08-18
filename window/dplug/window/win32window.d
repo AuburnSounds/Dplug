@@ -476,9 +476,9 @@ version(Windows)
                     // Internal size must have been set.
                     assert(_sizeSet);
 
-                    // Same thing that under Cocoa, the first WM_PAINT could happen before WM_TIMER is ever called.
+                    // Same thing that under Cocoa and Linux, the first WM_PAINT could happen before WM_TIMER is ever called.
                     // In this case, call `recomputeDirtyAreas()` so that onDraw draw something and uninitialized pixels are not displayed.
-                    // See Issue #523.
+                    // See Issue #523 and #572.
                     if (_dirtyAreasAreNotYetComputed)
                     {
                         _dirtyAreasAreNotYetComputed = false;
