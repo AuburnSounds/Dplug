@@ -19,6 +19,7 @@ Copyright:
 */
 module dplug.core.nogc;
 
+import core.stdc.stdarg;
 import core.stdc.string: strdup, memcpy, strlen;
 import core.stdc.stdlib: malloc, free, getenv;
 import core.memory: GC;
@@ -456,6 +457,27 @@ void debugLog(const(char)* message) nothrow @nogc
     }
 }
 
+///ditto
+extern (C) void debugLogf(const(char)* fmt, ...) nothrow @nogc
+{
+    import core.stdc.stdio;
+
+    char[256] buffer;
+    va_list args;
+    va_start (args, fmt);
+    vsnprintf (buffer.ptr, 256, fmt, args);
+    va_end (args);
+
+    version(Windows)
+    {
+        import core.sys.windows.windows;
+        OutputDebugStringA(buffer.ptr);
+    }
+    else
+    {        
+        printf("%s\n", buffer.ptr);
+    }
+}
 
 /// Inserts a breakpoint instruction. useful to trigger the debugger.
 void debugBreak() nothrow @nogc
