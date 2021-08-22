@@ -359,6 +359,7 @@ nothrow:
         // Clears all pending MIDI messages
         _framesElapsed = 0;
         _numElements = 0;
+        _insertOrder = 0;
     }
 
     /// Enqueue a message in the priority queue.
@@ -414,12 +415,20 @@ private:
     //
     // Min heap implementation below.
     //
-
     int _numElements = 0;
+
+    /// Rolling counter used to disambiguate from messages pushed with the same timestamp.
+    uint _insertOrder = 0;
 
     // Useful slots are in 1..QueueCapacity+1
     // means it can contain QueueCapacity items at most
-    MidiMessage[QueueCapacity+1] _heap;
+    MidiMessageWithOrder[QueueCapacity+1] _heap;
+
+    static struct MidiMessageWithOrder
+    {
+        MidiMessage message;
+        uint order;
+    }
 
     void insertElement(MidiMessage message)
     {
@@ -444,12 +453,12 @@ private:
             }
         }
 
-        _heap[slot] = message;
+        _heap[slot] = MidiMessageWithOrder(message, _insertOrder++);
 
         // Bubble up
-        while (slot > 1 && _heap[parentOf(slot)]._offset > _heap[slot]._offset)
+        while (slot > 1 && compareLargerThan(_heap[parentOf(slot)], _heap[slot]))
         {
-            // swap with parent if larger
+            // swap with parent if should be popped later
             swap(_heap[slot], _heap[parentOf(slot)]);
             slot = parentOf(slot);
         }
@@ -464,7 +473,7 @@ private:
     MidiMessage minElement()
     {
         assert(!empty);
-        return _heap[1];
+        return _heap[1].message;
     }
 
     void popMinElement()
@@ -490,10 +499,15 @@ private:
             int left = leftChildOf(slot);
             int right = rightChildOf(slot);
             int best = slot;
-            if (left <= _numElements && _heap[left]._offset < _heap[best]._offset)
+
+            if ((left <= _numElements) && compareLargerThan(_heap[best], _heap[left]))
+            {
                 best = left;
-            if (right <= _numElements && _heap[right]._offset < _heap[best]._offset)
+            }
+            if (right <= _numElements && compareLargerThan(_heap[best], _heap[right]))
+            {
                 best = right;
+            }
 
             if (best == slot) // no swap, final position
             {
@@ -525,12 +539,31 @@ private:
     {
         return 2*index+1;
     }
+
+    // Larger means "should be popped later"
+    // Priorities can't ever be equal.
+    private static bool compareLargerThan(MidiMessageWithOrder a, MidiMessageWithOrder b)
+    {
+        if (a.message._offset != b.message._offset) 
+        {
+            return a.message._offset > b.message._offset;
+        }
+        if (a.order != b.order)
+        {
+            int diff = cast(int)(a.order - b.order);
+            return (diff > 0);
+        }
+        else
+        {
+            // Impossible, unless 2^32 messages have been pushed with the same timestamp
+            assert(false);
+        }
+    }
 }
 
 unittest
 {
     MidiQueue queue = makeMidiQueue();
-
     foreach (k; 0..2)
     {
         // Enqueue QueueCapacity messages with decreasing timestamps
@@ -541,12 +574,35 @@ unittest
         }
 
         const(MidiMessage)[] messages = queue.getNextMidiMessages(1024);
+
         foreach(size_t i, m; messages)
         {
-            import core.stdc.stdio;
             // each should be in order
             assert(m.offset == cast(int)i);
+
             assert(m.isNoteOn);
         }
     }
+}
+
+// Issue #575: MidiQueue should NOT reorder messages that come with same timestamp.
+unittest
+{
+    MidiQueue queue = makeMidiQueue();
+    int note = 102;
+    int vel = 64;
+    int chan = 1;
+    int offset = 0;
+
+    queue.enqueue( makeMidiMessageNoteOn(offset, chan, note, vel) );
+    queue.enqueue( makeMidiMessageNoteOn(offset, chan, note, vel) );
+    queue.enqueue( makeMidiMessageNoteOff(offset, chan, note) );
+    queue.enqueue( makeMidiMessageNoteOff(offset, chan, note) );
+
+    const(MidiMessage)[] messages = queue.getNextMidiMessages(1024);
+    assert(messages.length == 4);
+    assert(messages[0].isNoteOn());
+    assert(messages[1].isNoteOn());
+    assert(messages[2].isNoteOff());
+    assert(messages[3].isNoteOff());
 }
