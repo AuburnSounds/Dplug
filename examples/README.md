@@ -1,5 +1,6 @@
 ### Examples
    * `examples/distort`: mandatory distortion plugin, with a PBR UI. Fork this for your own plug-in.
+     This one explains how to use `TimedFIFO` for UI feedback, `Canvas`, `ImageKnob`, custom widgets that draw to both Raw and PBR layer.
    * `examples/clipit`: mandatory distortion plugin, with a flat UI. Fork this for your own plug-in.
 
 

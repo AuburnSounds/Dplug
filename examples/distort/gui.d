@@ -11,7 +11,7 @@ import dplug.gui;
 import dplug.pbrwidgets;
 import dplug.client;
 import dplug.flatwidgets;
-
+import leveldisplay;
 import main;
 
 // Plugin GUI, based on PBRBackgroundGUI.
@@ -95,13 +95,11 @@ nothrow:
         _onOffSwitch.diffuseOff = unlitTrailDiffuse;
 
         // Add bargraphs
-        addChild(_inputBargraph = mallocNew!UIBargraph(context(), 2, -80.0f, 6.0f));
-        addChild(_outputBargraph = mallocNew!UIBargraph(context(), 2, -80.0f, 6.0f));
-        static immutable float[2] startValues = [0.0f, 0.0f];
-        _inputBargraph.setValues(startValues);
-        _outputBargraph.setValues(startValues);
+        addChild(_inputLevel = mallocNew!UILevelDisplay(context()));
+        addChild(_outputLevel = mallocNew!UILevelDisplay(context()));
 
-        addChild(_resizerHint = mallocNew!UIWindowResizer(context()));
+        // Add resizer corner
+        addChild(_resizer = mallocNew!UIWindowResizer(context()));
 
         // Global color correction.
         // Very useful at the end of the UI creating process.
@@ -134,17 +132,17 @@ nothrow:
         _outputSlider.position = rectangle(410, 132, 30, 130).scaleByFactor(S);
         _onOffSwitch.position = rectangle(90, 177, 30, 40).scaleByFactor(S);
         _driveKnob.position = rectangle(250, 140, 120, 120).scaleByFactor(S);
-        _inputBargraph.position = rectangle(150, 132, 30, 130).scaleByFactor(S);
-        _outputBargraph.position = rectangle(450, 132, 30, 130).scaleByFactor(S);
+        _inputLevel.position = rectangle(150, 132, 30, 130).scaleByFactor(S);
+        _outputLevel.position = rectangle(450, 132, 30, 130).scaleByFactor(S);
 
         _colorCorrection.position = rectangle(0, 0, W, H);
-        _resizerHint.position = rectangle(W-30, H-30, 30, 30);
+        _resizer.position = rectangle(W-30, H-30, 30, 30);
     }
 
-    void setMetersLevels(float[2] inputLevels, float[2] outputLevels)
+    void sendFeedbackToUI(float* inputRMS, float* outputRMS, int frames, float sampleRate)
     {
-        _inputBargraph.setValues(inputLevels);
-        _outputBargraph.setValues(outputLevels);
+        _inputLevel.sendFeedbackToUI(inputRMS, frames, sampleRate);
+        _outputLevel.sendFeedbackToUI(outputRMS, frames, sampleRate);
     }
 
 private:
@@ -153,10 +151,10 @@ private:
     UIKnob _driveKnob;
     UISlider _outputSlider;
     UIOnOffSwitch _onOffSwitch;
-    UIBargraph _inputBargraph, _outputBargraph;
+    UILevelDisplay _inputLevel, _outputLevel;
     UIColorCorrection _colorCorrection;
     Font _font;
     KnobImage _knobImageData;
     UIImageKnob _imageKnob;
-    UIWindowResizer _resizerHint;
+    UIWindowResizer _resizer;
 }

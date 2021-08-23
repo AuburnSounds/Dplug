@@ -36,6 +36,12 @@ nothrow:
     {
     }
 
+    ~this()
+    {
+        _inputRMS.reallocBuffer(0);
+        _outputRMS.reallocBuffer(0);
+    }
+
     override PluginInfo buildPluginInfo()
     {
         // Plugin info is parsed from plugin.json here at compile time.
@@ -93,6 +99,7 @@ nothrow:
     // exceed some amount of frames at once.
     // This can be useful as a cheap chunking for parameter smoothing.
     // Buffer splitting also allows to allocate statically or on the stack with less worries.
+    // It also makes the plugin uses constant memory in case of large buffer sizes.
     override int maxFramesInProcess() const //nothrow @nogc
     {
         return 512;
@@ -101,15 +108,18 @@ nothrow:
     override void reset(double sampleRate, int maxFrames, int numInputs, int numOutputs)
     {
         // Clear here any state and delay buffers you might have.
-
         assert(maxFrames <= 512); // guaranteed by audio buffer splitting
 
         _sampleRate = sampleRate;
 
+        _levelInput.initialize(sampleRate);
+        _levelOutput.initialize(sampleRate);
+
+        _inputRMS.reallocBuffer(maxFrames);
+        _outputRMS.reallocBuffer(maxFrames);
+
         foreach(channel; 0..2)
-        {
-            _inputRMS[channel].initialize(sampleRate);
-            _outputRMS[channel].initialize(sampleRate);
+        {            
             _hpState[channel].initialize();
         }
     }
@@ -120,8 +130,7 @@ nothrow:
 
         int numInputs = cast(int)inputs.length;
         int numOutputs = cast(int)outputs.length;
-
-        const int minChan = numInputs > numOutputs ? numOutputs : numInputs;
+        assert(numInputs == numOutputs);
 
         const float inputGain = convertDecibelToLinearGain(readParam!float(paramInput));
         float drive = readParam!float(paramDrive) * 0.01f;
@@ -133,15 +142,12 @@ nothrow:
         if (enabled)
         {
             BiquadCoeff highpassCoeff = biquadRBJHighPass(150, _sampleRate, SQRT1_2);
-            for (int chan = 0; chan < minChan; ++chan)
+            for (int chan = 0; chan < numOutputs; ++chan)
             {
                 // Distort and put the result in output buffers
                 for (int f = 0; f < frames; ++f)
                 {
                     const float inputSample = inputGain * 2.0 * inputs[chan][f];
-
-                    // Feed the input RMS computation
-                    _inputRMS[chan].nextSample(inputSample);
 
                     // Distort signal
                     const float distorted = tanh(inputSample * drive * 10.0f + bias) * 0.9f;
@@ -150,36 +156,24 @@ nothrow:
 
                 // Highpass to remove bias
                 _hpState[chan].nextBuffer(outputs[chan], outputs[chan], frames, highpassCoeff);
-
-                // Feed the output RMS computation
-                for (int f = 0; f < frames; ++f)
-                {
-                    _outputRMS[chan].nextSample(outputs[chan][f]);
-                }
             }
         }
         else
         {
             // Bypass mode
-            for (int chan = 0; chan < minChan; ++chan)
+            for (int chan = 0; chan < numOutputs; ++chan)
                 outputs[chan][0..frames] = inputs[chan][0..frames];
         }
 
-        // fill with zero the remaining channels
-        for (int chan = minChan; chan < numOutputs; ++chan)
-            outputs[chan][0..frames] = 0; // D has array slices assignments and operations
+        // Compute feedback for the UI.
+        // We take the first channel (left) and process it, then send it to the widgets.
+        _levelInput.nextBuffer(inputs[0], _inputRMS.ptr, frames);
+        _levelOutput.nextBuffer(outputs[0], _outputRMS.ptr, frames);
 
-        // Update RMS meters from the audio callback
-        // The IGraphics object must be acquired and released, so that it does not
-        // disappear under your feet
+        // Update meters from the audio callback.
         if (DistortGUI gui = cast(DistortGUI) graphicsAcquire())
         {
-            float[2] inputLevels, outputLevels;
-            inputLevels[0] = convertLinearGainToDecibel(_inputRMS[0].RMS());
-            inputLevels[1] = minChan >= 1 ? convertLinearGainToDecibel(_inputRMS[1].RMS()) : inputLevels[0];
-            outputLevels[0] = convertLinearGainToDecibel(_outputRMS[0].RMS());
-            outputLevels[1] = minChan >= 1 ? convertLinearGainToDecibel(_outputRMS[1].RMS()) : outputLevels[0];
-            gui.setMetersLevels(inputLevels, outputLevels);
+            gui.sendFeedbackToUI(_inputRMS.ptr, _outputRMS.ptr, frames, _sampleRate);
             graphicsRelease();
         }
     }
@@ -190,92 +184,49 @@ nothrow:
     }
 
 private:
-    CoarseRMS[2] _inputRMS;
-    CoarseRMS[2] _outputRMS;
+    LevelComputation _levelInput;
+    LevelComputation _levelOutput;
     BiquadDelay[2] _hpState;
     float _sampleRate;
+    float[] _inputRMS, _outputRMS;
 }
 
 
-
+/// Sliding dB computation.
 /// Simple envelope follower, filters the envelope with 24db/oct lowpass.
-struct EnvelopeFollower
+struct LevelComputation
 {
 public:
 nothrow:
 @nogc:
 
-    // typical frequency would be is 10-30hz
-    void initialize(float cutoffInHz, float samplerate)
+    void initialize(float samplerate)
     {
-        _coeff = biquadRBJLowPass(cutoffInHz, samplerate);
-        _delay0.initialize();
-        _delay1.initialize();
+        float attackSecs = 0.001;
+        float releaseSecs = 0.001;
+        float initValue = -140;
+        _envelope.initialize(samplerate, attackSecs, releaseSecs, initValue);
     }
 
-    // takes on sample, return mean amplitude
-    float nextSample(float x)
-    {
-        float l = abs(x);
-        l = _delay0.nextSample(l, _coeff);
-        l = _delay1.nextSample(l, _coeff);
-        return l;
-    }
-
+    // take audio samples, output RMS values.
     void nextBuffer(const(float)* input, float* output, int frames)
     {
+        // Compute squared value
         for(int i = 0; i < frames; ++i)
-            output[i] = abs(input[i]);
+            output[i] = input[i] * input[i] + 1e-10f; // avoid -inf
 
-        _delay0.nextBuffer(output, output, frames, _coeff);
-        _delay1.nextBuffer(output, output, frames, _coeff);
+        // Take log
+        for (int n = 0; n < frames; ++n)
+        {
+            output[n] = convertLinearGainToDecibel(output[n]);
+        }
+
+        _envelope.nextBuffer(output, output, frames);
     }
 
 private:
-    BiquadCoeff _coeff;
-    BiquadDelay _delay0;
-    BiquadDelay _delay1;
+    AttackReleaseSmoother!float _envelope;
 }
 
-/// Sliding RMS computation
-/// To use for coarse grained levels for visual display.
-struct CoarseRMS
-{
-public:
-nothrow:
-@nogc:
-    void initialize(double sampleRate)
-    {
-        // In Reaper, default RMS window is 500 ms
-        _envelope.initialize(20, sampleRate);
 
-        _last = 0;
-    }
-
-    /// Process a chunk of samples and return a value in dB (could be -infinity)
-    void nextSample(float input)
-    {
-        _last = _envelope.nextSample(input * input);
-    }
-
-    void nextBuffer(float* input, int frames)
-    {
-        if (frames == 0)
-            return;
-
-        for (int i = 0; i < frames - 1; ++i)
-            _envelope.nextSample(input[i] * input[i]);
-
-        _last = _envelope.nextSample(input[frames - 1] * input[frames - 1]);
-    }
-
-    float RMS()
-    {
-        return sqrt(_last);
-    }
-
-private:
-    EnvelopeFollower _envelope;
-    float _last;
-}
 
