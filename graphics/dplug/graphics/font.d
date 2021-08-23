@@ -256,7 +256,8 @@ void fillText(ImageRef!RGBA surface, Font font, const(char)[] s, float fontSizeP
     font.iterateCharacterPositions(s, fontSizePx, letterSpacingPx, fractionalPosX, fractionalPosY, &drawCharacter);
 }
 
-
+// PERF: perhaps this can be replaced by blendColor, but beware of alpha
+// this can be breaking
 private void blendFontPixel(ref RGBA bg, RGBA fontColor, int alpha) nothrow @nogc
 {
 
