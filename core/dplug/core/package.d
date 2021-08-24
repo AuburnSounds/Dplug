@@ -17,7 +17,6 @@ public import dplug.core.nogc;
 public import dplug.core.random;
 public import dplug.core.thread;
 public import dplug.core.file;
-public import dplug.core.cpuid;
 public import dplug.core.complex;
 public import dplug.core.map;
 public import dplug.core.binrange;

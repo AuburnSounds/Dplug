@@ -15,7 +15,6 @@ import std.functional: toDelegate;
 
 import dplug.core.fpcontrol;
 import dplug.core.nogc;
-import dplug.core.cpuid;
 
 
 /// RAII struct to cover extern callbacks.
@@ -33,9 +32,6 @@ nothrow:
 
         static if (saveRestoreFPU)
             _fpControl.initialize();
-
-        // Just detect the CPU in case it's the first ever callback
-        initializeCpuid();
     }
 
     ~this()
