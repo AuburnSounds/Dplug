@@ -82,26 +82,26 @@ T convertPowerToDecibel(T)(T x) pure nothrow @nogc
 }
 
 /// Is this integer odd?
-bool isOdd(T)(T i) pure nothrow @nogc
+bool isOdd(T)(T i) pure nothrow @nogc @safe
 {
     return (i & 1) != 0;
 }
 
 /// Is this integer even?
-bool isEven(T)(T i) pure nothrow @nogc
+bool isEven(T)(T i) pure nothrow @nogc @safe
 {
     return (i & 1) == 0;
 }
 
 /// Returns: true of i is a power of 2.
-bool isPowerOfTwo(int i) pure nothrow @nogc
+bool isPowerOfTwo(int i) pure nothrow @nogc @safe
 {
     assert(i >= 0);
     return (i != 0) && ((i & (i - 1)) == 0);
 }
 
 /// Returns: x, multiple of powerOfTwo, so that x >= n.
-size_t nextMultipleOf(size_t n, size_t powerOfTwo) pure nothrow @nogc
+size_t nextMultipleOf(size_t n, size_t powerOfTwo) pure nothrow @nogc @safe
 {
     // check power-of-two
     assert( (powerOfTwo != 0) && ((powerOfTwo & (powerOfTwo - 1)) == 0));

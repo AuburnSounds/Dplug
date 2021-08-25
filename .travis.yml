@@ -58,6 +58,7 @@ script:
 #  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then cd tools/wav-compare; dub --compiler=${DC} -a x86; cd ../.. ; fi
 #  - if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_CPU_ARCH" == "amd64" ]]; then cd tools/wav-info; dub --compiler=${DC} -a x86; cd ../.. ; fi
   - dub test --compiler=${DC} dplug:core
+  - dub test --compiler=${DC} dplug:audio
   - dub test --compiler=${DC} dplug:math
   - dub test --compiler=${DC} dplug:dsp
   - dub test --compiler=${DC} dplug:fft

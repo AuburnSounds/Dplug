@@ -17,6 +17,7 @@
     "dependencies":
     {
         "dplug:core": "*",
+        "dplug:audio": "*",
         "dplug:dsp": "*",
         "dplug:client": "*",
         "dplug:graphics": "*",
@@ -55,6 +56,15 @@
                 {
                     "buildOptions": ["unittests", "optimize", "inline"]
                 }
+            }
+        },
+        {
+            "name": "audio",
+            "sourcePaths": [ "audio/dplug/audio" ],
+            "importPaths": [ "audio" ],
+            "dependencies": {
+                "dplug:core": "*",
+                "intel-intrinsics": "~>1.0"
             }
         },
         {
