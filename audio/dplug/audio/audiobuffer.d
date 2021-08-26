@@ -205,10 +205,6 @@ nothrow:
     /// Warning: that when this flag isn't set, the buffer could still contains only zeroes.
     ///          If you want to test for zeroes, use `isSilent` instead.
     ///
-    /// BUG than zero flag will fail if you:
-    /// 1. Take a mutable borrow on a zeroed buffer, 
-    /// 2. Compute and set the zero flag
-    /// 3. Use the borrowed subbuffer to change the content.
     bool hasZeroFlag() const
     {
         return (_flags & Flags.isZero) != 0;
