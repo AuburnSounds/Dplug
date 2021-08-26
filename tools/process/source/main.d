@@ -23,7 +23,7 @@ void usage()
     writeln("  -o          Specify an output file (default: do not output a file)");
     writeln("  -t          Process the input multiple times (default: 1)");
     writeln("  -h          Display this help");
-    writeln("  -precise    Use experimental time, much more precise measurement (Windows-only)");
+    writeln("  -precise    Use experimental time, more precise measurement BUT much less accuracy (Windows-only)");
     writeln("  -preroll    Process one second of silence before measurement");
     writeln("  -buffer     Process audio by given chunk size (default: all-at-once)");
     writeln("  -preset     Choose preset to process audio with");    
@@ -364,6 +364,14 @@ int main(string[]args)
             if (verbose) writefln(" * minimum time: %s => %.2f x real-time", convertMicroSecondsToDisplay(minTime), 1000.0*sampleDurationMs / minTime);
             if (verbose) writefln(" * median  time: %s => %.2f x real-time", convertMicroSecondsToDisplay(medianTime), 1000.0*sampleDurationMs / medianTime);
             if (verbose) writefln(" * average time: %s => %.2f x real-time", convertMicroSecondsToDisplay(averageTime), 1000.0*sampleDurationMs / averageTime);
+
+            if (verbose && precise)
+            {
+                version(Windows)
+                {
+                    writeln(" (Warning: -precise was used, those numbers are precise but less *accurate*)");
+                }
+            }
         }
 
         if (outputXML)
@@ -447,8 +455,11 @@ version(Windows)
     long qpcFrequency;
     void getCurrentThreadHandle()
     {
-        hThread = GetCurrentThread();    
-        QueryPerformanceFrequency(&qpcFrequency);
+        hThread = GetCurrentThread();
+
+        // VCVrack hack is better than trying to find a "cycle per seconds"
+        // for QueryThreadCycleTime
+        qpcFrequency = 2_500_000;
     }
 }
 else
