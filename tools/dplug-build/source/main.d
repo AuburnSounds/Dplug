@@ -115,7 +115,7 @@ void usage()
     cwriteln("NOTES".white);
     cwriteln();
     cwriteln("      The configuration name used with " ~ "--config".cyan ~ " must exist in your " ~ "dub.json".cyan ~ " file.");
-    cwriteln("      dplug-build".cyan ~ " detects plugin format based on the " ~ "configuration".yellow ~ " name's prefix: " ~ "VST | VST3 | AU | AAX | LV2.".yellow);
+    cwriteln("      dplug-build".cyan ~ " detects plugin format based on the " ~ "configuration".yellow ~ " name's prefix: " ~ `"VST2" | "VST3" | "AU" | "AAX" | "LV2".`.yellow);
     cwriteln();
     cwriteln("      --combined".cyan ~ " has an important effect on code speed, as it can be required for inlining in LDC.".grey);
     cwriteln();
@@ -453,6 +453,16 @@ int main(string[] args)
                 {
                     if (configIsAU(config))
                         throw new Exception("Can't build AU format on Windows");
+                }
+
+                // Does not try to build x86 LV2 under Windows
+                if (targetOS == OS.windows)
+                {
+                    if (configIsLV2(config) && (arch == Arch.x86))
+                    {
+                       cwritefln("info: Skipping architecture %s for LV2\n".white, arch);
+                       continue;
+                    }
                 }
 
                 // Does not try to build AAX or AU under Linux
@@ -1210,9 +1220,9 @@ void generateWindowsInstaller(string outputDir,
         else if(pack.format == "VST3")
             return "For VST 3 hosts like Cubase, Digital Performer, Wavelab., etc. Includes both 32bit and 64bit components.";
         else if(pack.format == "AAX")
-            return "For Pro Tools 11 or later";
+            return "For Pro Tools 11 or later.";
         else if(pack.format == "LV2")
-            return "For LV2 hosts like Mixbus and Ardour";
+            return "For LV2 hosts like REAPER, Mixbus, and Ardour.";
         else
             return "";
     }
