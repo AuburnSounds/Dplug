@@ -34,8 +34,13 @@ static immutable waveFormNames = [__traits(allMembers, WaveForm)];
 /// Polyphonic digital-aliasing synth
 final class PolyAlias : Client
 {
-nothrow @nogc:
+nothrow:
+@nogc:
 public:
+
+    this()
+    {
+    }
 
     override PluginInfo buildPluginInfo()
     {

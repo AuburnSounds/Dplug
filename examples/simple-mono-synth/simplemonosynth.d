@@ -19,6 +19,10 @@ public:
 nothrow:
 @nogc:
 
+    this()
+    {
+    }
+
     override PluginInfo buildPluginInfo()
     {
         // Plugin info is parsed from plugin.json here at compile time.

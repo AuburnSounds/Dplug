@@ -18,6 +18,12 @@ enum : int
 final class MSEncode : dplug.client.Client
 {
 public:
+nothrow:
+@nogc:
+
+    this()
+    {
+    }
 
     override PluginInfo buildPluginInfo()
     {
