@@ -19,60 +19,43 @@ nothrow:
 @safe:
 
 /// Allocate a new `AudioBuffer` with given `frames` and `channels`.
-/// Initialized with zeroes.
-AudioBuffer audioBufferCreateNew(int channels, int frames, AudioBuffer.Format format = AudioBuffer.Format.fp32, int alignment = 1)
+/// Its data is _not_ initialized.
+AudioBuffer!T audioBufferAlloc(T)(int channels, int frames, int alignment = 1)
 {
-    AudioBuffer buf;
-    buf.createNew(channels, frames, format, alignment);
+    AudioBuffer!T buf;
+    buf.resize(channels, frames, alignment);
     return buf;
 }
 
 /// Allocate a new `AudioBuffer` with given `frames` and `channels`.
-/// Not initialized.
-AudioBuffer audioBufferCreateNewUninitialized(int channels, int frames, AudioBuffer.Format format = AudioBuffer.Format.fp32, int alignment = 1)
+/// Its data is initialized to zeroes.
+AudioBuffer!T audioBufferAllocZeroed(T)(int channels, int frames, int alignment = 1)
 {
-    AudioBuffer buf;
-    buf.createNewUninitialized(channels, frames, format, alignment);
+    AudioBuffer!T buf;
+    buf.resize(channels, frames, alignment);
+    buf.fillWithZeroes();
     return buf;
 }
 
 /// Create a `AudioBuffer` by reusing existing data. Hence no format conversion happens.
-AudioBuffer audioBufferCreateFromExistingData(int channels, int frames, void** inData, AudioBuffer.Format inFormat) @system
+AudioBuffer!T audioBufferFromData(T)(int channels, int frames, T** inData) @system
 {
-    AudioBuffer buf;
-    buf.createFromExistingData(channels, frames, inData, inFormat);
+    AudioBuffer!T buf;
+    buf.initWithData(channels, frames, inData);
     return buf;
 }
-
 ///ditto
-const(AudioBuffer) audioBufferCreateFromExistingData(int channels, int frames, const(void*)* inData, AudioBuffer.Format inFormat) @system
+const(AudioBuffer!T) audioBufferFromData(T)(int channels, int frames, const(T*)* inData) @system
 {    
-    return const(AudioBuffer)(channels, frames, inData, 0, inFormat, 1, 0);
-}
-
-/// Create a `AudioBuffer` derivated from another buffer.
-/// Params:
-///    frameStart offset in the buffer. Must be >= 0 and <= `frameEnd`.
-///    frameEnd offset in the buffer. Cannot be larger than the parent size.
-AudioBuffer audioBufferCreateSubBuffer(ref AudioBuffer parent, int frameStart, int frameEnd) @trusted
-{
-    assert(frameStart >= 0);
-    assert(frameStart <= frameEnd);
-    assert(frameEnd <= parent.frames());
+    int frameStart = 0;
     ubyte alignment = 1;
-    int channels = parent.channels();
-    int frames = frameEnd - frameStart;
-
-    void** data = parent.getChannelsPointers();
-
-    // Because this is a mutable reference, both the parent and the mutable reference
-    // lose the ability to have a zero flag.
-    parent.setHasOtherMutableReferenceFlag();
-    return AudioBuffer(channels, frames, data, frameStart, parent.format(), 
-                       alignment, AudioBuffer.Flags.hasOtherMutableReference);
+    ubyte flags = 0;
+    return const(AudioBuffer!T)(channels, frames, inData, frameStart, alignment, flags);
 }
+
+/*
 ///ditto
-const(AudioBuffer) audioBufferCreateSubBuffer(ref const(AudioBuffer) parent, int frameStart, int frameEnd) @trusted
+const(AudioBuffer!T) audioBufferCreateSubBuffer(T)(ref const(AudioBuffer!T) parent, int frameStart, int frameEnd) @trusted
 {
     assert(frameStart >= 0);
     assert(frameStart <= frameEnd);
@@ -81,82 +64,57 @@ const(AudioBuffer) audioBufferCreateSubBuffer(ref const(AudioBuffer) parent, int
     int channels = parent.channels();
     int frames = frameEnd - frameStart;
 
-    const(void*)* data = parent.getChannelsPointers();
+    const(T*)* data = parent.getChannelsPointers();
     bool parentHasZeroFlag = parent.hasZeroFlag();
 
-    return const(AudioBuffer)(channels, frames, data, frameStart, parent.format(), 
-                              alignment, parentHasZeroFlag ? AudioBuffer.Flags.isZero : 0);
+    return const(AudioBuffer!T)(channels, frames, data, frameStart,
+                                alignment, parentHasZeroFlag ? AudioBuffer!T.Flags.isZero : 0);
 }
+*/
 
 /// Duplicate an `AudioBuffer` with an own allocation, make it mutable.
-AudioBuffer audioBufferDup(ref const(AudioBuffer) buf, int alignment = 1)
+AudioBuffer!T audioBufferDup(T)(ref const(AudioBuffer!T) buf, int alignment = 1)
 {
-    AudioBuffer b;
-    b.createNewUninitialized(buf.channels(), buf.frames(), buf.format(), alignment);
+    AudioBuffer!T b;
+    b.resize(buf.channels(), buf.frames(), alignment);
     b.copyFrom(buf);
     return b;
 }
 
-/// Copy samples from `source` to `dest`.
-/// Number of `frames`, `channels`, and `format` should match.
-void audioBufferCopyFrom(ref AudioBuffer dest, ref const(AudioBuffer) source)
-{
-    dest.copyFrom(source);
-}
 
-/// An `AudioBuffer` is a multi-channel buffer, with defined length, to act as storage of audio samples.
+/// An `AudioBuffer` is a multi-channel buffer, with defined length, to act as storage 
+/// of audio samples of type `T`.
 /// It is passed around by DSP algorithms.
 /// Data is store deinterleaved.
-struct AudioBuffer
+struct AudioBuffer(T)
 {
 public:
 nothrow:
 @nogc:
 @safe:
 
-    /// Format of audio data samples.
-    enum Format : ubyte
+    /// Change the size (`channels` and `frames` of the underlying store.
+    /// Data is not initialized.
+    /// Typically you would reuse an `AudioBuffer` if you want to reuse the allocation.
+    /// When the same size is requested, the same allocation is reused (unless alignment is changed).
+    void resize(int channels, int frames, int alignment = 1)
     {
-        fp32, /// 32-bit single precision
-        fp64, /// 64-bit single precision
-    }
-
-    // Constructors. Clean-up existing data if owner, then create.
-    // Typically you would reused an `AudioBuffer` if you want to reuse the allocation.
-
-    /// Dispose the previous content, if any.
-    /// Allocate a new `AudioBuffer` with given `frames` and `channels`. This step can reuse an existing owned allocation.
-    /// Data is then initialized with zeroes, and the zero flag is set.
-    void createNew(int channels, int frames, Format format = Format.fp32, int alignment = 1)
-    {
-        resizeDiscard(channels, frames, format, alignment);
-        fillWithZeroes();
-    }
-
-    /// Dispose the previous content, if any.
-    /// Allocate a new `AudioBuffer` with given `frames` and `channels`. This step can reuse an existing owned allocation.
-    void createNewUninitialized(int channels, int frames, Format format = Format.fp32, int alignment = 1)
-    {
-        resizeDiscard(channels, frames, format, alignment);
+        resizeDiscard(channels, frames, alignment);
 
         // Debug: fill with NaNs, this will make non-initialization problem very explicit.
         debug
         {
-            final switch(_format)
-            {
-                case Format.fp32:
-                    fillWithValueFloat(float.nan);
-                    break;
-                case Format.fp64:
-                    fillWithValueDouble(double.nan);
-                    break;
-            }
+            fillWithValue(T.nan);
         }
     }
 
+
+
+
+
     /// Dispose the previous content, if any.
     /// Allocate a new `AudioBuffer` with given `frames` and `channels`. This step can reuse an existing owned allocation.
-    void createFromExistingData(int channels, int frames, void** inData, AudioBuffer.Format inFormat) @system
+    void initWithData(int channels, int frames, T** inData) @system
     {
         assert(channels <= maxPossibleChannels);
 
@@ -166,8 +124,7 @@ nothrow:
         _channels = channels;
         _frames = frames; 
         _alignment = 1;
-        _format = inFormat;
-        _flags = 0;
+        _flags = Flags.hasOtherMutableReference;
 
         for (int n = 0; n < channels; ++n)
         {
@@ -190,25 +147,16 @@ nothrow:
     int frames() const
     {
         return _frames;
-    }    
-
-    /// Return internal format.
-    Format format() const
-    {
-        return _format;
     }
+
+    /// Return alignment of the sample storage.
+    int alignment() const
+    {
+        return _alignment;
+    }
+
 
     @disable this(this);
-
-    /// Test if the 
-    /// Returns: `true` is the buffer has the `zeroFlag` set.
-    /// Warning: that when this flag isn't set, the buffer could still contains only zeroes.
-    ///          If you want to test for zeroes, use `isSilent` instead.
-    ///
-    bool hasZeroFlag() const
-    {
-        return (_flags & Flags.isZero) != 0;
-    }
 
     /// Recompute the status of the zero flag.
     /// Otherwise, asking for a mutable pointer into the zero data will clear this flag.
@@ -229,16 +177,27 @@ nothrow:
     bool isSilent() const
     {
         if (hasZeroFlag())
-            return true;
+        {
+            if (isIsolated())
+                return true;
+            else
+                return computeIsBufferSilent();
+        }
         else
             return computeIsBufferSilent();
     }
 
-    /// Returns: `true` is the data is pointed to mutable by another `AudioBuffer`.
-    /// Being pointed to by raw pointers doesn't count.
-    bool hasOtherMutableReference() const
+    /// Returns: `true` is the data is only pointed to by this `AudioBuffer`.
+    bool isIsolated() const
     {
-        return (_flags & Flags.hasOtherMutableReference) != 0;
+        return (_flags & Flags.hasOtherMutableReference)== 0;
+    }
+
+    // This break the isolated flag manually, in case you want to be able 
+    // to use the zero flag regardless, at your own risk.
+    void assumeIsolated()
+    {
+        clearHasOtherMutableReferenceFlag();
     }
 
     /// Returns: `true` is the buffer own its pointed audio data.
@@ -249,144 +208,161 @@ nothrow:
 
     // <data-access>
 
-    // void*
-
     /// Get pointer of a given channel.
-    void* getChannelPointer(int channel)
+    T* getChannelPointer(int channel)
     {
         clearZeroFlag();
         return _channelPointers[channel];
     }
 
     /// Get const pointer of a given channel.
-    const(void)* getChannelPointer(int channel) const
+    const(T)* getChannelPointer(int channel) const
+    {
+        return _channelPointers[channel];
+    }
+
+    /// Get immutable pointer of a given channel.
+    immutable(T)* getChannelPointer(int channel) immutable
     {
         return _channelPointers[channel];
     }
 
     /// Get channel pointers.
-    void** getChannelsPointers() return @trusted
+    T** getChannelsPointers() return @trusted
     {
         clearZeroFlag();
         return _channelPointers.ptr;
     }
 
     /// Get const channel pointers.
-    const(void*)* getChannelsPointers() return @trusted const
+    const(T*)* getChannelsPointers() return @trusted const
     {
         return _channelPointers.ptr;
     }
 
-    /// Get const channel pointers.
-    immutable(void*)* getChannelsPointers() return @trusted immutable
+    /// Get immutable channel pointers.
+    immutable(T*)* getChannelsPointers() return @trusted immutable
     {
         return _channelPointers.ptr;
     }
-
-    // float*
 
     /// Get slice of a given channel.
-    float[] getChannelFloat(int channel) @trusted
+    T[] getChannel(int channel) @trusted
     {
         clearZeroFlag();
-        assert(_format == Format.fp32);
-        return (cast(float*) _channelPointers[channel])[0.._frames];
+        return _channelPointers[channel][0.._frames];
     }
-
-    /// Get const slice of a given channel.
-    const(float)[] getChannelFloat(int channel) const @trusted
+    ///ditto
+    const(T)[] getChannel(int channel) const @trusted
     {
-        assert(_format == Format.fp32);
-        return (cast(const(float)*) _channelPointers[channel])[0.._frames];
+        return _channelPointers[channel][0.._frames];
     }
-
-    /// Get pointer of a given channel.
-    float* getChannelPointerFloat(int channel) @trusted
+    ///ditto
+    immutable(T)[] getChannel(int channel) immutable @trusted
     {
-        clearZeroFlag();
-        assert(_format == Format.fp32);
-        return cast(float*) _channelPointers[channel];
+        return _channelPointers[channel][0.._frames];
     }
-
-    /// Get const pointer of a given channel.
-    const(float)* getChannelPointerFloat(int channel) const @trusted
+    ///ditto
+    inout(T)[] opIndex(int channel) inout @trusted
     {
-        assert(_format == Format.fp32);
-        return cast(const(float)*) _channelPointers[channel];
-    }  
+        return _channelPointers[channel][0.._frames];
+    } 
 
-    /// Get channel pointers.
-    float** getChannelsPointersFloat() return @trusted
-    {
-        clearZeroFlag();
-        assert(_format == Format.fp32);
-        return cast(float**) _channelPointers.ptr;
-    }
-
-    /// Get const channel pointers.
-    const(float*)* getChannelsPointersFloat() return @trusted const
-    {
-        assert(_format == Format.fp32);
-        return cast(const(float*)*) _channelPointers.ptr;
-    }
-
-    // double*
-
-    /// Get slice of a given channel.
-    double[] getChannelDouble(int channel) @trusted
-    {
-        clearZeroFlag();
-        assert(_format == Format.fp64);
-        return (cast(double*) _channelPointers[channel])[0.._frames];
-    }
-
-    /// Get const slice of a given channel.
-    const(double)[] getChannelDouble(int channel) const @trusted
-    {
-        assert(_format == Format.fp64);
-        return (cast(const(double)*) _channelPointers[channel])[0.._frames];
-    }
-
-    /// Get pointer of a given channel.
-    double* getChannelPointerDouble(int channel) @trusted
-    {
-        clearZeroFlag();
-        assert(_format == Format.fp64);
-        return cast(double*) _channelPointers[channel];
-    }
-
-    /// Get const pointer of a given channel.
-    const(double)* getChannelPointerDouble(int channel) const @trusted
-    {
-        assert(_format == Format.fp64);
-        return cast(const(double)*) _channelPointers[channel];
-    }
-
-    /// Get channel pointers.
-    double** getChannelsPointersDouble() return @trusted
-    {
-        clearZeroFlag();
-        assert(_format == Format.fp64);
-        return cast(double**) _channelPointers.ptr;
-    }
-
-    /// Get const channel pointers.
-    const(double*)* getChannelsPointersDouble() return const @trusted
-    {
-        assert(_format == Format.fp64);
-        return cast(const(double*)*) _channelPointers.ptr;
+    /// Index a single sample.
+    ref T opIndex(int channel, int frame) @trusted
+    { 
+        return _channelPointers[channel][frame];
     }
 
     // </data-access>
 
+    // <slice>
+
+    int opDollar(size_t dim : 0)() pure const 
+    { 
+        return _channels; 
+    }
+
+    int opDollar(size_t dim : 1)() pure const
+    { 
+        return _frames; 
+    }
+
+    /// Create a `AudioBuffer` derivated from another buffer.
+    /// Params:
+    ///    frameStart offset in the buffer. Must be >= 0 and <= `frameEnd`.
+    ///    frameEnd offset in the buffer. Cannot be larger than the parent size.
+    AudioBuffer sliceSubBuffer(int frameStart, int frameEnd) @trusted
+    {
+        assert(frameStart >= 0);
+        assert(frameStart <= frameEnd);
+        assert(frameEnd <= this.frames());
+        ubyte alignment = 1;
+        int channels = this.channels();
+        int framesSub = frameEnd - frameStart;
+
+        T** data = this.getChannelsPointers();
+
+        ubyte flags = Flags.hasOtherMutableReference;
+        if (this.hasZeroFlag())
+            flags |= Flags.isZero;
+
+        // Because this is a mutable reference, both the parent and the result
+        // get the "has another mutable ref" flag.
+        this.setHasOtherMutableReferenceFlag();
+        return AudioBuffer!T(channels, 
+                             framesSub, 
+                             data,
+                             frameStart, 
+                             alignment, // PERF: this alignment could be min(this.alignment, T.sizeof)
+                             flags);
+    }
+    ///ditto
+    const(AudioBuffer) sliceSubBuffer(int frameStart, int frameEnd) const @trusted
+    {
+        assert(frameStart >= 0);
+        assert(frameStart <= frameEnd);
+        assert(frameEnd <= this.frames());
+        ubyte alignment = 1;
+        int channels = this.channels();
+        int framesSub = frameEnd - frameStart;
+
+        const(T*)* data = this.getChannelsPointers();
+
+        ubyte flags = 0;
+        if (this.hasZeroFlag())
+            flags |= Flags.isZero;        
+
+        return AudioBuffer!T(channels, 
+                             framesSub, 
+                             data,
+                             frameStart, 
+                             alignment, // PERF: this alignment could be min(this.alignment, T.sizeof)
+                             flags);
+    }
+    ///ditto
+    AudioBuffer opSlice(int start, int end)
+    {
+        return sliceSubBuffer(start, end);
+    }
+    ///ditto
+    const(AudioBuffer) opSlice(int start, int end) const
+    {
+        return sliceSubBuffer(start, end);
+    }
+
+    // </slice>
+
     // <copy>
+
+    /// Copy samples from `source` to `dest`.
+    /// Number of `frames` and `channels` must match.
     void copyFrom(ref const(AudioBuffer) source) @trusted
     {
         assert(_frames == source.frames());
         assert(_channels == source.channels());
-        assert(_format == source.format());
 
-        size_t bytesForOneChannel = bytesPerSample(_format) * _frames;
+        size_t bytesForOneChannel = T.sizeof * _frames;
         for (int chan = 0; chan < _channels; ++chan)
         {
             memcpy(_channelPointers[chan], source._channelPointers[chan], bytesForOneChannel);
@@ -394,7 +370,6 @@ nothrow:
         if (source.hasZeroFlag)
             setZeroFlag();
     }
-
 
     // </copy>
 
@@ -404,7 +379,7 @@ nothrow:
     /// Fill the buffer with zeroes.
     void fillWithZeroes() @trusted
     {
-        size_t bytesForOneChannel = bytesPerSample(_format) * _frames;
+        size_t bytesForOneChannel = T.sizeof * _frames;
         for (int chan = 0; chan < _channels; ++chan)
         {
             memset(_channelPointers[chan], 0, bytesForOneChannel);
@@ -414,29 +389,14 @@ nothrow:
 
     /// Fill the buffer with a single value.
     /// Warning: the buffer must be in `fp32` format.
-    void fillWithValueFloat(float value) @trusted
+    void fillWithValue(T value) @trusted
     {
-        if (value == 0.0f)
-            return fillWithZeroes();
+        if (value == 0)
+            return fillWithZeroes(); // Note: this turns -0.0 into +0.0
 
         for (int chan = 0; chan < _channels; ++chan)
         {
-            float* p = getChannelPointerFloat(chan);
-            p[0.._frames] = value;
-        }
-        assert(!hasZeroFlag);
-    }
-
-    /// Fill the buffer with a single value.
-    /// Warning: the buffer must be in `fp64` format.
-    void fillWithValueDouble(float value) @trusted
-    {
-        if (value == 0.0)
-            return fillWithZeroes();
-
-        for (int chan = 0; chan < _channels; ++chan)
-        {
-            double* p = getChannelPointerDouble(chan);
+            T* p = getChannelPointer(chan);
             p[0.._frames] = value;
         }
         assert(!hasZeroFlag);
@@ -458,7 +418,7 @@ private:
         /// Growable flag.
         //isGrowable = 4
 
-        /// Data is pointed to, mutably, by other `AudioBuffer` that this `AudioBuffer`.
+        /// Data is pointed to, mutably, by other things than this `AudioBuffer`.
         hasOtherMutableReference = 8,
     }
 
@@ -466,7 +426,7 @@ private:
     enum maxPossibleChannels = 8;
 
     // Pointers to beginning of every channel.
-    void*[maxPossibleChannels] _channelPointers;
+    T*[maxPossibleChannels] _channelPointers;
     
     // Pointer to start of data.
     // If memory is _owned_, then it is allocated with `_mm_realloc_discard`/`_mm_free`
@@ -481,11 +441,17 @@ private:
     // Various flags.
     ubyte _flags;
 
-    // Format tag.
-    Format _format;
-
     // Current allocation alignment.
     ubyte _alignment = 0; // current alignment, 0 means "unassigned" 
+
+    // Test if the zero flag is set.
+    // Returns: `true` is the buffer has the `zeroFlag` set.
+    // Warning: that when this flag isn't set, the buffer could still contains only zeroes.
+    //          If you want to test for zeroes, use `isSilent` instead.
+    bool hasZeroFlag() const
+    {
+        return (_flags & Flags.isZero) != 0;
+    }    
 
     void clearZeroFlag()
     {
@@ -500,42 +466,35 @@ private:
     void setHasOtherMutableReferenceFlag()
     {
         _flags |= Flags.hasOtherMutableReference;
-        clearZeroFlag(); // can't guarantee all zeroes if other mutable ref exist
+    }
+
+    void clearHasOtherMutableReferenceFlag()
+    {
+        _flags &= ~cast(int)Flags.hasOtherMutableReference;
     }
 
     // Private constructor, the only way to create const/immutable object.
     this(int channels, 
          int frames, 
-         const(void*)* inData, 
+         const(T*)* inData, 
          int offsetFrames, // point further in the input
-         AudioBuffer.Format inFormat, 
          ubyte alignment, 
          ubyte flags) @system 
     {
-        size_t offsetBytes = offsetFrames * bytesPerSample(inFormat);
+        assert(offsetFrames >= 0);
         assert(channels <= maxPossibleChannels);
         _channels = channels;
         _frames = frames; 
         _alignment = alignment;
-        _format = inFormat;
         _flags = flags;
 
         for (int n = 0; n < channels; ++n)
         {
-            _channelPointers[n] = cast(void*)(inData[n]) + offsetBytes; // const_cast here, just to avoid constructor duplication
+            _channelPointers[n] = cast(T*)(inData[n]) + offsetFrames; // const_cast here
         }
     }
 
-    static size_t bytesPerSample(Format format)
-    {
-        final switch(format)
-        {
-            case Format.fp32: return 4;
-            case Format.fp64: return 8;
-        }
-    }
-
-    void resizeDiscard(int channels, int frames, Format format, int alignment) @trusted
+    void resizeDiscard(int channels, int frames, int alignment) @trusted
     {
         assert(channels >= 0 && frames >= 0);
         assert(alignment >= 1 && alignment <= 128);
@@ -551,9 +510,8 @@ private:
         _channels = channels;
         _frames = frames; 
         _alignment = cast(ubyte)alignment;
-        _format = format;
 
-        size_t bytesForOneChannel = bytesPerSample(format) * frames;
+        size_t bytesForOneChannel = T.sizeof * frames;
         bytesForOneChannel = nextMultipleOf(bytesForOneChannel, alignment);
         
         size_t bytesTotal = bytesForOneChannel * channels;
@@ -565,7 +523,8 @@ private:
 
         for (int n = 0; n < _channels; ++n)
         {
-            _channelPointers[n] = (cast(ubyte*)_data) + bytesForOneChannel * n;
+            ubyte* p = (cast(ubyte*)_data) + bytesForOneChannel * n;
+            _channelPointers[n] = cast(T*)p;
         }
     }
 
@@ -593,49 +552,33 @@ private:
     // Do not expose this API as it isn't clear how fast it is.
     bool computeIsBufferSilent() const nothrow @nogc @trusted
     {
-        final switch(_format)
+        for (int channel = 0; channel < _channels; ++channel)
         {
-            case Format.fp32:
+            const(T)* samples = getChannelPointer(channel);
+            for (int n = 0; n < _frames; ++n)
             {
-                for (int channel = 0; channel < _channels; ++channel)
-                {
-                    const(float)* samples = getChannelPointerFloat(channel);
-                    for (int n = 0; n < _frames; ++n)
-                    {
-                        if (samples[n] != 0)
-                            return false;
-                    }
-                }
-                return true;
-            }
-
-            case Format.fp64:
-            {
-                for (int channel = 0; channel < _channels; ++channel)
-                {
-                    const(double)* samples = getChannelPointerDouble(channel);
-                    for (int n = 0; n < _frames; ++n)
-                    {
-                        if (samples[n] != 0)
-                            return false;
-                    }
-                }
-                return true;
+                if (samples[n] != 0)
+                    return false;
             }
         }
+        return true;        
     }
 }
 
 // How zero flag works:
 @trusted unittest 
 {
-    AudioBuffer a = audioBufferCreateNew(3, 1024, AudioBuffer.Format.fp64, 16);
+    AudioBuffer!double a = audioBufferAlloc!double(3, 1024, 16);
+    assert(!a.hasZeroFlag());
+    assert(!a.isSilent);
+    a.fillWithValue(0.0);
 
     // Newly created AudioBuffer with own memory is zeroed out.
     assert(a.hasZeroFlag());
+    assert(a.isSilent);
 
     // Getting a mutable pointer make the zero flag disappear.
-    a.getChannelPointerDouble(2)[1023] = 0.0;
+    a.getChannelPointer(2)[1023] = 0.0;
     assert(!a.hasZeroFlag());
     assert(a.isSilent());
 
@@ -648,18 +591,24 @@ private:
 
 unittest 
 {
-    AudioBuffer b;
-    b.createNewUninitialized(1, 1024, AudioBuffer.Format.fp64, 16);
+    // Buffer must reuse an existing allocation if the size/alignment is the same.
+    // Even in this case, the content is NOT preserved.
+    AudioBuffer!double b;
+    b.resize(1, 1024, 16);
+    double* chan0 = b.getChannelPointer(0);
 
-    // Buffer can reuse an existing allocation and change the format.
-    // if the alignment changes though, can't reuse allocation.
-    b.createNewUninitialized(2, 1023, AudioBuffer.Format.fp32, 128);
-    assert(b.format() == AudioBuffer.Format.fp32);
-    assert(b.channels() == 2);
-    assert(b.frames() == 1023);
-    b.fillWithValueFloat(4.0f);
-    float[] p = b.getChannelFloat(1);
-    assert(p[1022] == 4.0f);
+    b.resize(1, 1024, 16);
+    assert(chan0 == b.getChannelPointer(0));
+
+    // If the alignment changes though, can't reuse allocation.
+    b.resize(1, 1024, 128);
+    assert(b.channels() == 1);
+    assert(b.frames() == 1024);
+    b.resize(2, 1023, 128);
+
+    b.fillWithValue(4.0);
+    double[] p = b.getChannel(1);
+    assert(p[1022] == 4.0);
     assert(!b.hasZeroFlag());
 }
 
@@ -667,38 +616,49 @@ unittest
 {
     // const borrow preserve zero flag
     int numChans = 8;
-    const(AudioBuffer) c = audioBufferCreateNew(numChans, 123, AudioBuffer.Format.fp32);
-    const(float*)* buffers = c.getChannelsPointersFloat();
+    const(AudioBuffer!float) c = audioBufferAllocZeroed!float(numChans, 123);
+    assert(c.hasZeroFlag());
+    const(float*)* buffers = c.getChannelsPointers();
     for (int chan = 0; chan < 8; ++chan)
     {
-        assert(buffers[chan] == c.getChannelPointerFloat(chan));
+        assert(buffers[chan] == c.getChannelPointer(chan));
     }
-    const(AudioBuffer) d = audioBufferCreateSubBuffer(c, 10, c.frames());
+    const(AudioBuffer!float) d = c.sliceSubBuffer(10, c.frames());
     assert(d.frames() == 123 - 10);
-    assert(d.hasZeroFlag()); 
+    assert(d.hasZeroFlag());
+
+    const(AudioBuffer!float) e = d[0..$][0..$];
+    assert(e.channels() == d.channels());
+//    assert(e.frames() == d.frames());
 }
 
 @trusted unittest
 {
     // Mutable borrow doesn't preserve zero flag, and set hasOtherMutableReference flag
     int numChans = 2;
-    AudioBuffer c = audioBufferCreateNew(numChans, 14, AudioBuffer.Format.fp64);
+    AudioBuffer!double c = audioBufferAlloc!double(numChans, 14);
+    c.fillWithZeroes();
     assert(c.hasZeroFlag());
+    assert(c.isIsolated());
     
-    AudioBuffer d = audioBufferCreateSubBuffer(c, 10, 14);
+    AudioBuffer!double d = c[10 .. 14];
     assert(!c.hasZeroFlag());
     assert(!d.hasZeroFlag());
-    assert(c.hasOtherMutableReference);
-    assert(d.hasOtherMutableReference);
+    assert(!c.isIsolated);
+    assert(!d.isIsolated);
 
     // Fill right channel with 2.5f 
-    d.getChannelDouble(1)[] = 2.5;
-    assert(c.getChannelDouble(1)[9] == 0.0);
-    assert(c.getChannelDouble(1)[10] == 2.5);
+    d.getChannel(1)[] = 2.5;
+    assert(c[1, 9] == 0.0);
+    c[1, 8] = -1.0;
+    assert(c[1, 8] == -1.0);
+    
+    
+    assert(c[1][10] == 2.5);
 
     // Mutable dup
-    AudioBuffer e = audioBufferDup(d);
-    assert(!e.hasOtherMutableReference);
+    AudioBuffer!double e = audioBufferDup(d);
+    assert(e.isIsolated);
 }
 
 @trusted unittest
@@ -706,18 +666,24 @@ unittest
     // Create mutable buffer from mutable data.
     {
         float[128][2] data;
-        void*[2] pdata;
+        float*[2] pdata;
         pdata[0] = data[0].ptr;
         pdata[1] = data[1].ptr;
-        AudioBuffer b = audioBufferCreateFromExistingData(2, 128, pdata.ptr, AudioBuffer.Format.fp32);
-        assert(!b.hasOtherMutableReference); // only other AudioBuffer counts
+        AudioBuffer!float b;
+        b.initWithData(2, 128, pdata.ptr);
+        assert(!b.isIsolated);
+
+        // This break the isolated flag manually, in case you want to be able 
+        // to use the zero flag regardless, at your own risk.
+        b.assumeIsolated(); 
+        assert(b.isIsolated);
     }
 
     // Create const buffer from const data.
     {
         float[128][2] data;
-        const(void*)[2] pdata = [ data[0].ptr, data[1].ptr];
-        const(AudioBuffer) b = audioBufferCreateFromExistingData(2, 128, pdata.ptr, AudioBuffer.Format.fp32);
-        assert(!b.hasOtherMutableReference);
+        const(float*)[2] pdata = [ data[0].ptr, data[1].ptr];
+        const(AudioBuffer!float) b = audioBufferFromData(2, 128, pdata.ptr);
+        assert(b.isIsolated);
     }
 }
