@@ -404,6 +404,74 @@ nothrow:
 
     // </filling the buffer>
 
+    // <buffer splitting>
+
+    /// Return an input range that returns several subbuffers that covers the 
+    /// parent buffer, each with length not larger than `maxFrames`.
+    auto chunkBy(int maxFrames)
+    {
+        static struct AudioBufferRange
+        {
+            AudioBuffer buf;
+            int offset = 0;
+            int maxFrames;
+            int totalFrames;
+
+            AudioBuffer front()
+            {
+                int end = offset + maxFrames;
+                if (end > totalFrames)
+                    end = totalFrames;
+                AudioBuffer res = buf.sliceSubBuffer(offset, end);
+                return res;
+            }
+
+            void popFront()
+            {
+                offset += maxFrames;
+            }
+
+            bool empty()
+            {
+                return offset >= totalFrames;
+            }
+        }
+        return AudioBufferRange( sliceSubBuffer(0, frames()), 0, maxFrames, frames() );
+    }
+    ///ditto
+    auto chunkBy(int maxFrames) const
+    {
+        static struct AudioBufferRange
+        {
+            const(AudioBuffer) buf;
+            int offset;
+            int maxFrames;
+            int totalFrames;
+
+            const(AudioBuffer) front()
+            {
+                int end = offset + maxFrames;
+                if (end > totalFrames)
+                    end = totalFrames;
+                const(AudioBuffer) res = buf.sliceSubBuffer(offset, end);
+                return res;
+            }
+
+            void popFront()
+            {
+                offset += maxFrames;
+            }
+
+            bool empty()
+            {
+                return offset >= totalFrames;
+            }
+        }
+        return AudioBufferRange( sliceSubBuffer(0, frames()), 0, maxFrames, frames() );
+    }
+
+    // </buffer splitting>
+
 private:
 
     /// Internal flags
@@ -685,5 +753,28 @@ unittest
         const(float*)[2] pdata = [ data[0].ptr, data[1].ptr];
         const(AudioBuffer!float) b = audioBufferFromData(2, 128, pdata.ptr);
         assert(b.isIsolated);
+    }
+}
+
+unittest
+{
+    // Chunked foreach
+    {
+        AudioBuffer!double whole = audioBufferAlloc!double(1, 323 + 1024);
+        foreach(b; whole.chunkBy(1024))
+        {
+            assert(b.frames() <= 1024);
+            b.fillWithZeroes();
+        }
+        assert(whole.computeIsBufferSilent());
+    }
+
+    // Chunked const foreach
+    {
+        const(AudioBuffer!double) whole = audioBufferAllocZeroed!double(3, 2000);
+        foreach(b; whole.chunkBy(1024))
+        {
+            assert(b.isSilent);
+        }
     }
 }
