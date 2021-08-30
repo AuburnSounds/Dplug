@@ -6,6 +6,7 @@ License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 module dplug.audio.audiobuffer;
 
+import core.bitop: bsf;
 import core.stdc.string;
 import dplug.core.math;
 import inteli.emmintrin;
@@ -94,7 +95,7 @@ nothrow:
 @safe:
 
     /// Change the size (`channels` and `frames` of the underlying store.
-    /// Data is not initialized.
+    /// Data is left uninitialized.
     /// Typically you would reuse an `AudioBuffer` if you want to reuse the allocation.
     /// When the same size is requested, the same allocation is reused (unless alignment is changed).
     void resize(int channels, int frames, int alignment = 1)
@@ -107,10 +108,6 @@ nothrow:
             fillWithValue(T.nan);
         }
     }
-
-
-
-
 
     /// Dispose the previous content, if any.
     /// Allocate a new `AudioBuffer` with given `frames` and `channels`. This step can reuse an existing owned allocation.
@@ -266,15 +263,53 @@ nothrow:
     inout(T)[] opIndex(int channel) inout @trusted
     {
         return _channelPointers[channel][0.._frames];
-    } 
+    }
+
+    // </data-access>
+
+    // <opIndex>
+
+    /// Create an AudioBuffer that is a ref to the same data.
+    AudioBuffer opIndex()
+    {
+        return sliceFrames(0, _frames);
+    }
+    ///ditto
+    const(AudioBuffer) opIndex() const
+    {
+        return sliceFrames(0, _frames);
+    }
 
     /// Index a single sample.
-    ref T opIndex(int channel, int frame) @trusted
+    ref inout(T) opIndex(int channel, int frame) inout @trusted
     { 
         return _channelPointers[channel][frame];
     }
 
-    // </data-access>
+    /// Slice with a sub-range of channels.
+    AudioBuffer opIndex(int[2] chan)
+    {
+        return sliceChannels(chan[0], chan[1]);
+    } 
+    ///ditto
+    const(AudioBuffer) opIndex(int[2] chan) const
+    {
+        return sliceChannels(chan[0], chan[1]);
+    }
+
+    /// Slice across channels and temporally.
+    /// Take a sub-range of channels, and a sub-range of frames.
+    AudioBuffer opIndex(int[2] chan, int[2] framesBounds)
+    {
+        return sliceChannels(chan[0], chan[1]).sliceFrames(framesBounds[0], framesBounds[1]);
+    } 
+    ///ditto
+    const(AudioBuffer) opIndex(int[2] chan, int[2] framesBounds) const
+    {
+        return sliceChannels(chan[0], chan[1]).sliceFrames(framesBounds[0], framesBounds[1]);
+    }
+
+    // </op-index>
 
     // <slice>
 
@@ -288,16 +323,69 @@ nothrow:
         return _frames; 
     }
 
+    /// Select only a slice of channels from `AudioBuffer`.
+    /// Params:
+    ///    frameStart offset in the buffer. Must be >= 0 and <= `frameEnd`.
+    ///    frameEnd offset in the buffer. Cannot be larger than the parent size.
+    AudioBuffer sliceChannels(int channelStart, int channelEnd) @trusted
+    {
+        assert(channelStart >= 0);
+        assert(channelStart <= channelEnd);
+        assert(channelEnd <= this.channels());
+        int channelSub = channelEnd - channelStart;
+        T** data = this.getChannelsPointers();
+
+        ubyte flags = Flags.hasOtherMutableReference;
+        if (this.hasZeroFlag())
+            flags |= Flags.isZero;
+
+        // Because this is a mutable reference, both the parent and the result
+        // get the "has another mutable ref" flag.
+        this.setHasOtherMutableReferenceFlag();
+
+        return AudioBuffer!T(channelSub, 
+                             this.frames(), 
+                             data + channelStart,
+                             0, 
+                             _alignment,
+                             flags);
+    }
+    //ditto
+    const(AudioBuffer) sliceChannels(int channelStart, int channelEnd) const @trusted
+    {
+        assert(channelStart >= 0);
+        assert(channelStart <= channelEnd);
+        assert(channelEnd <= this.channels());
+        int channelSub = channelEnd - channelStart;
+        const(T*)* data = this.getChannelsPointers();
+
+        ubyte flags = 0;
+        if (this.hasZeroFlag())
+            flags |= Flags.isZero;
+
+        return AudioBuffer!T(channelSub, 
+                             this.frames(), 
+                             data + channelStart,
+                             0, 
+                             _alignment,
+                             flags);
+    }
+    ///ditto
+    int[2] opSlice(size_t dim)(int start, int end) const
+    {
+        return [start, end];
+    }
+
     /// Create a `AudioBuffer` derivated from another buffer.
     /// Params:
     ///    frameStart offset in the buffer. Must be >= 0 and <= `frameEnd`.
     ///    frameEnd offset in the buffer. Cannot be larger than the parent size.
-    AudioBuffer sliceSubBuffer(int frameStart, int frameEnd) @trusted
+    AudioBuffer sliceFrames(int frameStart, int frameEnd) @trusted
     {
         assert(frameStart >= 0);
         assert(frameStart <= frameEnd);
         assert(frameEnd <= this.frames());
-        ubyte alignment = 1;
+        ubyte alignment = childAlignment(_alignment, T.sizeof, frameStart);
         int channels = this.channels();
         int framesSub = frameEnd - frameStart;
 
@@ -310,20 +398,21 @@ nothrow:
         // Because this is a mutable reference, both the parent and the result
         // get the "has another mutable ref" flag.
         this.setHasOtherMutableReferenceFlag();
+
         return AudioBuffer!T(channels, 
                              framesSub, 
                              data,
                              frameStart, 
-                             alignment, // PERF: this alignment could be min(this.alignment, T.sizeof)
+                             alignment,
                              flags);
     }
     ///ditto
-    const(AudioBuffer) sliceSubBuffer(int frameStart, int frameEnd) const @trusted
+    const(AudioBuffer) sliceFrames(int frameStart, int frameEnd) const @trusted
     {
         assert(frameStart >= 0);
         assert(frameStart <= frameEnd);
         assert(frameEnd <= this.frames());
-        ubyte alignment = 1;
+        ubyte alignment = childAlignment(_alignment, T.sizeof, frameStart);
         int channels = this.channels();
         int framesSub = frameEnd - frameStart;
 
@@ -331,24 +420,14 @@ nothrow:
 
         ubyte flags = 0;
         if (this.hasZeroFlag())
-            flags |= Flags.isZero;        
+            flags |= Flags.isZero;
 
         return AudioBuffer!T(channels, 
                              framesSub, 
                              data,
                              frameStart, 
-                             alignment, // PERF: this alignment could be min(this.alignment, T.sizeof)
+                             alignment,
                              flags);
-    }
-    ///ditto
-    AudioBuffer opSlice(int start, int end)
-    {
-        return sliceSubBuffer(start, end);
-    }
-    ///ditto
-    const(AudioBuffer) opSlice(int start, int end) const
-    {
-        return sliceSubBuffer(start, end);
     }
 
     // </slice>
@@ -422,7 +501,7 @@ nothrow:
                 int end = offset + maxFrames;
                 if (end > totalFrames)
                     end = totalFrames;
-                AudioBuffer res = buf.sliceSubBuffer(offset, end);
+                AudioBuffer res = buf.sliceFrames(offset, end);
                 return res;
             }
 
@@ -436,7 +515,7 @@ nothrow:
                 return offset >= totalFrames;
             }
         }
-        return AudioBufferRange( sliceSubBuffer(0, frames()), 0, maxFrames, frames() );
+        return AudioBufferRange( sliceFrames(0, frames()), 0, maxFrames, frames() );
     }
     ///ditto
     auto chunkBy(int maxFrames) const
@@ -453,7 +532,7 @@ nothrow:
                 int end = offset + maxFrames;
                 if (end > totalFrames)
                     end = totalFrames;
-                const(AudioBuffer) res = buf.sliceSubBuffer(offset, end);
+                const(AudioBuffer) res = buf.sliceFrames(offset, end);
                 return res;
             }
 
@@ -467,7 +546,7 @@ nothrow:
                 return offset >= totalFrames;
             }
         }
-        return AudioBufferRange( sliceSubBuffer(0, frames()), 0, maxFrames, frames() );
+        return AudioBufferRange( sliceFrames(0, frames()), 0, maxFrames, frames() );
     }
 
     // </buffer splitting>
@@ -629,8 +708,48 @@ private:
                     return false;
             }
         }
-        return true;        
+        return true;
     }
+}
+
+private:
+
+// Compute largest possible byte alignment for a sub-buffer.
+ubyte childAlignment(ubyte parentAlignment, size_t itemSize, int frameStart) pure
+{
+    assert(parentAlignment >= 1 && parentAlignment <= 128);
+
+    // For reference, this is the alignment for T == float:
+    //
+    // float(4 bytes)|  0   |  1  |  2   |  3  |   4 |
+    // ----------------------------------------------|
+    // parent 1      |  1   |  1  |  1   |  1  |   1 |
+    // parent 2      |  2   |  2  |  2   |  2  |   2 |
+    // parent 4      |  4   |  4  |  4   |  4  |   4 |
+    // parent 8      |  8   |  4  |  8   |  4  |   8 |
+    // parent 16     |  16  |  4  |  8   |  4  |  16 |
+    // parent 32     |  32  |  4  |  8   |  4  |  16 |
+
+    size_t offset = frameStart * itemSize;
+    // how many zero bits there are in LSB?
+    if (offset == 0)
+        return parentAlignment;
+    int zeroBits = bsf(offset);
+    if (zeroBits > 7) 
+        zeroBits = 7; // do not exceed 128
+    int a = (1 << zeroBits);
+    if (a > parentAlignment)
+        a = parentAlignment;
+    return cast(ubyte)a;
+}
+unittest
+{
+    assert( childAlignment(1, 8, 8) == 1 );        // do not exceed aprent align
+    assert( childAlignment(16, 4, 2) == 8 );
+    assert( childAlignment(16, 8, 0) == 16 );
+    assert( childAlignment(16, 8, 1024) == 16 );
+    assert( childAlignment(16, 4, 1) == 4 );
+    assert( childAlignment(128, 4, 1024) == 128 ); // do not exceed 128
 }
 
 // How zero flag works:
@@ -691,13 +810,13 @@ unittest
     {
         assert(buffers[chan] == c.getChannelPointer(chan));
     }
-    const(AudioBuffer!float) d = c.sliceSubBuffer(10, c.frames());
+    const(AudioBuffer!float) d = c.sliceFrames(10, c.frames());
     assert(d.frames() == 123 - 10);
     assert(d.hasZeroFlag());
 
-    const(AudioBuffer!float) e = d[0..$][0..$];
+    const(AudioBuffer!float) e = d[0..$, 0..24];
     assert(e.channels() == d.channels());
-//    assert(e.frames() == d.frames());
+    assert(e.frames() == 24);
 }
 
 @trusted unittest
@@ -709,7 +828,7 @@ unittest
     assert(c.hasZeroFlag());
     assert(c.isIsolated());
     
-    AudioBuffer!double d = c[10 .. 14];
+    AudioBuffer!double d = c[0..$, 10 .. 14];
     assert(!c.hasZeroFlag());
     assert(!d.hasZeroFlag());
     assert(!c.isIsolated);
@@ -719,8 +838,7 @@ unittest
     d.getChannel(1)[] = 2.5;
     assert(c[1, 9] == 0.0);
     c[1, 8] = -1.0;
-    assert(c[1, 8] == -1.0);
-    
+    assert(c[1, 8] == -1.0);    
     
     assert(c[1][10] == 2.5);
 
@@ -760,11 +878,16 @@ unittest
 {
     // Chunked foreach
     {
-        AudioBuffer!double whole = audioBufferAlloc!double(1, 323 + 1024);
+        AudioBuffer!double whole = audioBufferAlloc!double(2, 323 + 1024, 16);
         foreach(b; whole.chunkBy(1024))
         {
             assert(b.frames() <= 1024);
             b.fillWithZeroes();
+
+            AudioBuffer!double c = b[0..$];
+            assert(c.channels == whole.channels);
+            assert(c.alignment == whole.alignment); // inherited alignment correctly
+            assert(c.frames == b.frames);
         }
         assert(whole.computeIsBufferSilent());
     }
@@ -772,9 +895,17 @@ unittest
     // Chunked const foreach
     {
         const(AudioBuffer!double) whole = audioBufferAllocZeroed!double(3, 2000);
-        foreach(b; whole.chunkBy(1024))
+        foreach(b; whole.chunkBy(1024)) // split by frames
         {
             assert(b.isSilent);
+
+            // Split by channels
+            const(AudioBuffer!double) left = b[0..1];
+            const(AudioBuffer!double) right = b.sliceChannels(1, 2);
+            assert(left.isSilent);
+            assert(b.frames == left.frames);
+            assert(left.channels == 1);
+            assert(right.isSilent);
         }
     }
 }
