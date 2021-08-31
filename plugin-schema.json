@@ -126,7 +126,7 @@
             "type": "string"
         },
 
-        "keyPassword-windows": {
+        "keyFile-windows": {
             "description": "A relative path to a Windows certificate, to be used for installer creation.",
             "id": "/properties/keyFile-windows",
             "type": "string"
@@ -153,6 +153,24 @@
         "appSpecificPassword-stapler": {
             "description": "An App-Specific Password created for being able to run stapler. Read Dplug's Notarization Guide for explanations.",
             "id": "/properties/appSpecificPassword-stapler",
+            "type": "string"
+        },
+
+        "iLokAccount": {
+            "description": "For PACE signing, the iLok account to access EDEN signing. Read Dplug's AAX Guide for explanations.",
+            "id": "/properties/iLokAccount",
+            "type": "string"
+        },
+
+        "iLokPassword": {
+            "description": "For PACE signing, the iLok password. Can be !PROMPT to be prompted on first use.",
+            "id": "/properties/iLokPassword",
+            "type": "string"
+        },
+
+        "wrapConfigGUID": {
+            "description": "For PACE signing, the PACE wrap configuration ID to use. Create one in the PACE Central interface.",
+            "id": "/properties/wrapConfigGUID",
             "type": "string"
         }
     }

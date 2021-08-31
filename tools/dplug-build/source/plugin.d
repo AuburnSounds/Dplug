@@ -169,13 +169,13 @@ struct Plugin
     // relative path to .bmp image for Windows installer header
     string windowsInstallerHeaderBmp;
 
-    /// Windows-only, points to a .p12/.pfx certificate...
-    /// duplicate key in pace.json.
-    string keyFileWindows;
+    // Windows-only, points to a .p12/.pfx certificate...
+    // Is needed to codesign anything.
+    private string keyFileWindows;
 
     // ...and the password of its private key
-    // duplicate key in pace.json. Also support "!PROMPT" as special value.
-    string keyPasswordWindows;
+    // Support "!PROMPT" as special value.
+    private string keyPasswordWindows;
 
     // <Used for Apple notarization>
     string vendorAppleID;
@@ -187,13 +187,6 @@ struct Plugin
     bool isSynth;
 
     PluginCategory category;
-
-    PACEConfig paceConfig;
-
-    bool hasPACEConfig() pure const nothrow
-    {
-        return paceConfig !is null;
-    }
 
     string prettyName() pure const nothrow
     {
@@ -420,7 +413,23 @@ struct Plugin
         return CFBundleIdentifierPrefix ~ "." ~ sanitizeBundleString(pkgFilenameLV2());
     }
 
+    string getAppleID()
+    {
+        if (vendorAppleID is null)
+            throw new Exception(`Missing "vendorAppleID" in plugin.json. Notarization need this key.`);
+        return vendorAppleID;
+    }
+
+    string getDeveloperIdentity()
+    {
+        if (developerIdentity is null)
+            throw new Exception(`Missing "developerIdentity-osx" in plugin.json`);
+        return developerIdentity;
+    }
+
     // </Apple specific>
+
+    // <Windows specific>
 
     string windowsInstallerName(string config) pure const
     {
@@ -429,24 +438,62 @@ struct Plugin
             verName = "-" ~ verName;
         else
             verName = "";
-        return format("%s%s-%s.exe", sanitizeFilenameString(pluginName),
-                                     verName,
-                                     publicVersionString);
+        return format("%s%s-%s.exe", sanitizeFilenameString(pluginName), verName, publicVersionString);
     }
 
-    void promptWindowsInstallerPasswordLazily()
+    string getKeyFileWindows()
     {
-        version(Windows)
-        {
-            if (keyPasswordWindows == "!PROMPT")
-            {
-                cwriteln();
-                cwritefln(`Please enter your certificate Windows password (seen "!PROMPT"):`.cyan);
-                keyPasswordWindows = chomp(readln());
-                cwriteln();
-            }
-        }
+        if (keyFileWindows is null)
+            throw new Exception(`Missing "keyFile-windows" in plugin.json`);
+        return keyFileWindows;
     }
+
+    string getKeyPasswordWindows()
+    {
+        promptWindowsKeyFilePasswordLazily();
+        if (keyPasswordWindows is null)
+            throw new Exception(`Missing "keyPassword-windows" in plugin.json (Recommended value: "!PROMPT")`);
+        return keyPasswordWindows;
+    }
+
+    // </Windows specific>
+
+
+    // <PACE Ilok specific>
+
+    /// The iLok account of the AAX developer    
+    private string iLokAccount;    
+
+    /// The iLok password of the AAX developer (special value "!PROMPT")
+    private string iLokPassword;    
+
+    /// The wrap configuration GUID (go to PACE Central to create such wrap configurations)
+    private string wrapConfigGUID;  
+
+    string getILokAccount()
+    {
+        if (iLokAccount is null)
+            throw new Exception(`Missing "iLokAccount" in plugin.json (Note: pace.json has moved to plugin.json, see Dplug's Release Notes)`);
+        return iLokAccount;
+    }
+
+    string getILokPassword()
+    {
+        promptIlokPasswordLazily();
+        if (iLokPassword is null)
+            throw new Exception(`Missing "iLokPassword" in plugin.json (Recommended value: "!PROMPT")`);
+        return iLokPassword;
+    }
+
+    string getWrapConfigGUID()
+    {
+        if (wrapConfigGUID is null)
+            throw new Exception(`Missing "wrapConfigGUID" in plugin.json`);
+        return wrapConfigGUID;
+    }
+
+    // </PACE Ilok specific>
+
 
     string getLV2PrettyName()
     {
@@ -500,11 +547,27 @@ struct Plugin
             warning(`Missing "pluginHomepage" in plugin.json. Plugin homepage will be wrong in VST3 format.`);
     }
 
-    string getAppleID()
+
+    private void promptIlokPasswordLazily()
     {
-        if (vendorAppleID is null)
-            throw new Exception(`Missing "vendorAppleID" in plugin.json. Notarization need this key.`);
-        return vendorAppleID;
+        if (iLokPassword == "!PROMPT")
+        {
+            cwriteln();
+            cwritefln(`Please enter your iLok password (seen "!PROMPT"):`.cyan);
+            iLokPassword = chomp(readln());
+            cwriteln();
+        }
+    }
+
+    private void promptWindowsKeyFilePasswordLazily()
+    {   
+        if (keyPasswordWindows == "!PROMPT")
+        {
+            cwriteln();
+            cwritefln(`Please enter your certificate Windows password (seen "!PROMPT"):`.cyan);
+            keyPasswordWindows = chomp(readln());
+            cwriteln();
+        }
     }
 }
 
@@ -843,8 +906,6 @@ Plugin readPluginDescription()
     }
     catch(Exception e){}
 
-    result.paceConfig = readPACEConfig();
-
     try
     {
         result.pluginHomepage = rawPluginFile["pluginHomepage"].str;
@@ -863,6 +924,33 @@ Plugin readPluginDescription()
     {
         // Only warn on VST3 build if vendorSupportEmail is missing
         result.vendorSupportEmail = null;
+    }
+
+    try
+    {
+        result.iLokAccount = rawPluginFile["iLokAccount"].str;
+    }
+    catch(Exception e)
+    {
+        result.iLokAccount = null;
+    }
+
+    try
+    {
+        result.iLokPassword = rawPluginFile["iLokPassword"].str;
+    }
+    catch(Exception e)
+    {
+        result.iLokPassword = null;
+    }
+
+    try
+    {
+        result.wrapConfigGUID = rawPluginFile["wrapConfigGUID"].str;
+    }
+    catch(Exception e)
+    {
+        result.wrapConfigGUID = null;
     }
 
     return result;
@@ -1146,90 +1234,3 @@ string makeRSRC_with_Rez(Plugin plugin, Arch arch, bool verbose)
     cwriteln();
     return rsrcPath;
 }
-
-// <PACE CONFIG>
-
-
-class PACEConfig
-{
-    // The iLok account of the AAX developer
-    string iLokAccount;
-
-    // The iLok password of the AAX developer
-    string iLokPassword;
-
-    // WIndows-only, points to a .p12/.pfx certificate...
-    string keyFileWindows;
-
-    // ...and the password of its private key
-    string keyPasswordWindows;
-
-    // For Mac, only a developer identiyy string is needed
-    string developerIdentityOSX;
-
-    // The wrap configuration GUID (go to PACE Central to create such wrap configurations)
-    string wrapConfigGUID;
-
-    // Prompt needed passwords
-
-    void promptPasswordsLazily(OS targetOS)
-    {
-        if (iLokPassword == "!PROMPT")
-        {
-            cwriteln();
-            cwritefln(`Please enter your iLok password (seen "!PROMPT"):`.cyan);
-            iLokPassword = chomp(readln());
-            cwriteln();
-        }
-
-        if (targetOS == OS.windows)
-        {
-            if (keyPasswordWindows == "!PROMPT")
-            {
-                cwriteln();
-                cwritefln(`Please enter your certificate Windows password (seen "!PROMPT"):`.cyan);
-                keyPasswordWindows = chomp(readln());
-                cwriteln();
-            }
-        }
-    }
-}
-
-PACEConfig readPACEConfig()
-{
-    // It's OK not to have a pace.json, but you have, it must be correct.
-    if (!exists("pace.json"))
-        return null;
-
-    auto config = new PACEConfig;
-    JSONValue dubFile = parseJSON(cast(string)(std.file.read("pace.json")));
-
-    void get(string fieldName, string jsonKey, bool promptOption)()
-    {
-        try
-        {
-            mixin("config." ~ fieldName ~ ` = dubFile["` ~ jsonKey ~ `"].str;`);
-        }
-        catch(Exception e)
-        {
-            string msg;
-            msg = "Missing \"" ~ jsonKey ~ "\" in pace.json";
-            if (promptOption)
-            {
-                msg ~= ` (note: recommended special value "!PROMPT")`;
-            }
-            throw new Exception(msg);
-        }
-    }
-    get!("iLokAccount", "iLokAccount", false);
-    get!("iLokPassword", "iLokPassword", true);
-    get!("keyFileWindows", "keyFile-windows", false);
-    get!("keyPasswordWindows", "keyPassword-windows", true);
-    get!("developerIdentityOSX", "developerIdentity-osx", false);
-    get!("wrapConfigGUID", "wrapConfigGUID", false);
-
-    return config;
-}
-
-
-// </PACE CONFIG>

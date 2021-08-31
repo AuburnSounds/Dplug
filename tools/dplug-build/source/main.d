@@ -511,36 +511,40 @@ int main(string[] args)
 
                 void signAAXBinaryWithPACE(string binaryPathInOut)
                 {
-                    if (!plugin.hasPACEConfig)
+                    try
                     {
-                        warning("Plug-in will not be signed by PACE because no pace.json found");
-                        return;
+                        string verboseFlag = verbose ? "--verbose " : "";
+
+                        string identFlag;
+                        if (targetOS == OS.windows)
+                        {
+                            identFlag = format("--keyfile %s --keypassword %s ", 
+                                               plugin.getKeyFileWindows(), 
+                                               plugin.getKeyPasswordWindows());
+                        }
+                        else if (targetOS == OS.macOS)
+                        {
+                            identFlag = format("--signid %s ", escapeShellArgument(plugin.getDeveloperIdentity()));
+                        }
+                        else
+                            throw new Exception("AAX not supported on that OS");
+
+                        string cmd = format(`wraptool sign %s--account %s --password %s %s--wcguid %s --in %s --out %s`,
+                                            verboseFlag,
+                                            plugin.getILokAccount(),
+                                            plugin.getILokPassword(),
+                                            identFlag,
+                                            plugin.getWrapConfigGUID(),
+                                            escapeShellArgument(binaryPathInOut),
+                                            escapeShellArgument(binaryPathInOut));
+                        safeCommand(cmd);
                     }
-
-                    // Get password from the user if "!PROMPT" was used
-                    plugin.paceConfig.promptPasswordsLazily(targetOS);
-
-                    auto paceConfig = plugin.paceConfig;
-
-                    string verboseFlag = verbose ? "--verbose " : "";
-
-                    string identFlag;
-                    if (targetOS == OS.windows)
-                        identFlag = format("--keyfile %s --keypassword %s ", paceConfig.keyFileWindows, paceConfig.keyPasswordWindows);
-                    else if (targetOS == OS.macOS)
-                        identFlag = format("--signid %s ", escapeShellArgument(paceConfig.developerIdentityOSX));
-                    else
-                        throw new Exception("AAX not supported on that OS");
-
-                    string cmd = format(`wraptool sign %s--account %s --password %s %s--wcguid %s --in %s --out %s`,
-                                        verboseFlag,
-                                        paceConfig.iLokAccount,
-                                        paceConfig.iLokPassword,
-                                        identFlag,
-                                        paceConfig.wrapConfigGUID,
-                                        escapeShellArgument(binaryPathInOut),
-                                        escapeShellArgument(binaryPathInOut));
-                    safeCommand(cmd);
+                    catch(Exception e)
+                    {
+                        error(e.msg);
+                        warning(`AAX signature failed, plugin won't run in the normal Pro Tools.` ~ "\n" ~
+                                `         Do NOT distribute such a build.` ~ "\n");
+                    }
                 }
 
                 void extractAAXPresetsFromBinary(string binaryPath, string contentsDir, Arch targetArch)
@@ -1444,21 +1448,18 @@ void generateWindowsInstaller(string outputDir,
     string makeNsiCommand = format("makensis.exe /V1 %s", nsisPath);
     safeCommand(makeNsiCommand);
 
-    // Prompt password if needed
-    plugin.promptWindowsInstallerPasswordLazily();
-
-    if(plugin.keyFileWindows !is null && plugin.keyPasswordWindows !is null)
+    try
     {
         // use windows signtool to sign the installer for distribution
         string cmd = format("signtool sign /f %s /p %s /tr http://timestamp.sectigo.com /td sha256 /fd sha256 /q %s",
-                            plugin.keyFileWindows,
-                            plugin.keyPasswordWindows,
+                            plugin.getKeyFileWindows(),
+                            plugin.getKeyPasswordWindows(),
                             escapeShellArgument(outExePath));
         safeCommand(cmd);
     }
-    else
+    catch(Exception e)
     {
-        warning("Installer will not be signed because keyFileWindows or keyPasswordWindows is missing from paceConfig.json");
+        error(format("Installer signature failed! %s", e.msg));
     }
 }
 
