@@ -951,7 +951,8 @@ PluginInfo parsePluginInfo(string json)
             if (pwd.length > 0 && pwd[0] == '$')
                 return; // using an envvar
 
-            pragma(msg, "\n*************************** WARNING ***************************\n\n"
+            throw new Exception(
+                        "\n*************************** WARNING ***************************\n\n"
                         ~ "  This build is using a plain text password in plugin.json\n"
                         ~ "  This will leak through `import(\"plugin.json\")`\n\n"
                         ~ "  Solutions:\n"
