@@ -966,6 +966,27 @@ PluginInfo parsePluginInfo(string json)
     checkNotLeakingPassword("keyPassword-windows");
     checkNotLeakingPassword("iLokPassword");
 
+    void checkNotLeakingNoPrompt(string key)
+    {
+        if (key in j)
+        {
+            string pwd = j[key].str;
+            if (pwd.length > 0 && pwd[0] == '$')
+                return; // using an envvar
+
+            throw new Exception(
+                        "\n*************************** WARNING ***************************\n\n"
+                        ~ "  This build is using a plain text password in plugin.json\n"
+                        ~ "  This will leak through `import(\"plugin.json\")`\n\n"
+                        ~ "  Solution:\n"
+                        ~ "       Use environment variables, such as:\n"
+                        ~ "           \"appSpecificPassword-altool\": \"$APP_SPECIFIC_PASSWORD\"\n\n"
+                        ~ "***************************************************************\n");
+        }
+    }
+    checkNotLeakingNoPrompt("appSpecificPassword-altool");
+    checkNotLeakingNoPrompt("appSpecificPassword-stapler");
+
     return info;
 }
 
