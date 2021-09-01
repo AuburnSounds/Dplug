@@ -19,16 +19,17 @@ void usage()
     writeln("Usage: process [-i input.wav] [-o output.wav] [-precise] [-preroll] [-t times] [-h] [-buffer <bufferSize>] [-preset <index>] [-param <index> <value>] [-output-xml <filename>] plugin.dll\n");
     writeln();
     writeln("Params:");
-    writeln("  -i          Specify an input file (default: process silence)");
-    writeln("  -o          Specify an output file (default: do not output a file)");
-    writeln("  -t          Process the input multiple times (default: 1)");
-    writeln("  -h          Display this help");
-    writeln("  -precise    Use experimental time, more precise measurement BUT much less accuracy (Windows-only)");
-    writeln("  -preroll    Process one second of silence before measurement");
-    writeln("  -buffer     Process audio by given chunk size (default: all-at-once)");
-    writeln("  -preset     Choose preset to process audio with");    
-    writeln("  -param      Set parameter value after loading preset");
-    writeln("  -output-xml Write measurements into an xml file instead of stdout");
+    writeln("  -i           Specify an input file (default: process silence)");
+    writeln("  -o           Specify an output file (default: do not output a file)");
+    writeln("  -t           Process the input multiple times (default: 1)");
+    writeln("  -h           Display this help");
+    writeln("  -precise     Use experimental time, more precise measurement BUT much less accuracy (Windows-only)");
+    writeln("  -preroll     Process one second of silence before measurement");
+    writeln("  -buffer      Process audio by given chunk size (default: all-at-once)");
+    writeln("  -preset      Choose preset to process audio with");    
+    writeln("  -param       Set parameter value after loading preset");
+    writeln("  -show-params Set parameter value after loading preset");
+    writeln("  -output-xml  Write measurements into an xml file instead of stdout");
     writeln;
 }
 
@@ -71,6 +72,7 @@ int main(string[]args)
         bool preRoll = false;
         bool precise = false;
         bool verbose = true;
+        bool showParams = false;
         int times = 1;
         int preset = -1; // none
         float[int] parameterValues;
@@ -129,6 +131,10 @@ int main(string[]args)
                 ++i;
                 xmlFilename = args[i];
                 verbose = false;
+            }
+            else if (arg == "-show-params")
+            {
+                showParams = true;
             }
             else if (arg == "-h")
             {
@@ -255,6 +261,7 @@ int main(string[]args)
         host.setMaxBufferSize(bufferSize);
         if (!host.setIO(numChannels, numChannels))
             throw new Exception(format("Unsupported I/O: %s inputs, %s outputs", numChannels, numChannels));
+
         host.beginAudioProcessing();
 
         if (preset != -1)
@@ -263,6 +270,18 @@ int main(string[]args)
         foreach (int paramIndex, float paramvalue; parameterValues)
         {
             host.setParameter(paramIndex, paramvalue);
+        }
+
+        if (showParams)
+        {
+            writeln;
+            writeln("Parameters:");
+            int count = host.getParameterCount();
+            for(int p = 0; p < count; ++p)
+            {
+                writefln("  - %d %s value = %f", p, host.getParameterName(p), host.getParameter(p));
+            }
+            writeln;
         }
 
         long timeAfterInit = getTickUs(precise);

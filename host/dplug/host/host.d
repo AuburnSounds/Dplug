@@ -27,6 +27,12 @@ interface IPluginHost
     /// Returns: Normalized value for parameter.
     float getParameter(int paramIndex);
 
+    /// Returns: Full name for parameter.
+    const(char)[] getParameterName(int paramIndex);
+
+    /// Returns: Number of parameters.
+    int getParameterCount();
+
     /// Loads a preset.
     void loadPreset(int presetIndex);
 

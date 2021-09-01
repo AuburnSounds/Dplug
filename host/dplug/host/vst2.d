@@ -89,6 +89,18 @@ final class VST2PluginHost : IPluginHost
         return _aeffect.getParameter(_aeffect, paramIndex);
     }
 
+    override const(char)[] getParameterName(int paramIndex)
+    {
+        char[33] buf;
+        _dispatcher(_aeffect, effGetParamName, paramIndex, 0, buf.ptr, 0.0f);
+        return fromStringz(buf.ptr).idup;
+    }
+
+    override int getParameterCount()
+    {
+        return _aeffect.numParams;
+    }
+
     override void close()
     {
         if (!_suspended)
