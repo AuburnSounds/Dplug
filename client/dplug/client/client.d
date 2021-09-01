@@ -944,7 +944,7 @@ PluginInfo parsePluginInfo(string json)
     {
         if (key in j)
         {
-            string pwd = j["pluginHomepage"].str;
+            string pwd = j[key].str;
             if (pwd == "!PROMPT")
                 return;
 

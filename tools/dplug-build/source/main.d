@@ -1121,7 +1121,6 @@ int main(string[] args)
             cwriteln("*** Generating Windows installer...".white);
             string windowsInstallerPath = outputDir ~ "/" ~ plugin.windowsInstallerName(configurations[0]);
             generateWindowsInstaller(outputDir, plugin, windowsPackages, windowsInstallerPath, verbose);
-            cwriteln("    => OK".green);
             cwriteln;
         }
 
@@ -1456,6 +1455,7 @@ void generateWindowsInstaller(string outputDir,
                             plugin.getKeyPasswordWindows(),
                             escapeShellArgument(outExePath));
         safeCommand(cmd);
+        cwriteln("    => OK".green);
     }
     catch(Exception e)
     {

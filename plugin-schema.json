@@ -133,7 +133,7 @@
         },
 
         "keyPassword-windows": {
-            "description": "The password for the Windows certificate. Can be !PROMPT to be prompted on first use.",
+            "description": "The password for the Windows certificate. Can be !PROMPT to be prompted on first use. Supports $VAR and !PROMPT syntax.",
             "id": "/properties/keyPassword-windows",
             "type": "string"
         },
@@ -145,31 +145,31 @@
         },
 
         "appSpecificPassword-altool": {
-            "description": "An App-Specific Password created for being able to run altool. Read Dplug's Notarization Guide for explanations.",
+            "description": "An App-Specific Password created for being able to run altool. Read Dplug's Notarization Guide for explanations. Supports $VAR syntax.",
             "id": "/properties/appSpecificPassword-altool",
             "type": "string"
         },
 
         "appSpecificPassword-stapler": {
-            "description": "An App-Specific Password created for being able to run stapler. Read Dplug's Notarization Guide for explanations.",
+            "description": "An App-Specific Password created for being able to run stapler. Read Dplug's Notarization Guide for explanations. Supports $VAR syntax.",
             "id": "/properties/appSpecificPassword-stapler",
             "type": "string"
         },
 
         "iLokAccount": {
-            "description": "For PACE signing, the iLok account to access EDEN signing. Read Dplug's AAX Guide for explanations.",
+            "description": "For PACE signing, the iLok account to access EDEN signing. Read Dplug's AAX Guide for explanations. Supports $VAR syntax.",
             "id": "/properties/iLokAccount",
             "type": "string"
         },
 
         "iLokPassword": {
-            "description": "For PACE signing, the iLok password. Can be !PROMPT to be prompted on first use.",
+            "description": "For PACE signing, the iLok password. Can be !PROMPT to be prompted on first use. Supports $VAR and !PROMPT syntax.",
             "id": "/properties/iLokPassword",
             "type": "string"
         },
 
         "wrapConfigGUID": {
-            "description": "For PACE signing, the PACE wrap configuration ID to use. Create one in the PACE Central interface.",
+            "description": "For PACE signing, the PACE wrap configuration ID to use. Create one in the PACE Central interface. Supports $VAR syntax.",
             "id": "/properties/wrapConfigGUID",
             "type": "string"
         }

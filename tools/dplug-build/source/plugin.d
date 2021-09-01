@@ -452,8 +452,8 @@ struct Plugin
     {
         promptWindowsKeyFilePasswordLazily();
         if (keyPasswordWindows is null)
-            throw new Exception(`Missing "keyPassword-windows" in plugin.json (Recommended value: "!PROMPT")`);
-        return keyPasswordWindows;
+            throw new Exception(`Missing "keyPassword-windows" in plugin.json (Recommended value: "!PROMPT" or "$ENVVAR")`);
+        return expandDplugVariables(keyPasswordWindows);
     }
 
     // </Windows specific>
@@ -474,22 +474,22 @@ struct Plugin
     {
         if (iLokAccount is null)
             throw new Exception(`Missing "iLokAccount" in plugin.json (Note: pace.json has moved to plugin.json, see Dplug's Release Notes)`);
-        return iLokAccount;
+        return expandDplugVariables(iLokAccount);
     }
 
     string getILokPassword()
     {
         promptIlokPasswordLazily();
         if (iLokPassword is null)
-            throw new Exception(`Missing "iLokPassword" in plugin.json (Recommended value: "!PROMPT")`);
-        return iLokPassword;
+            throw new Exception(`Missing "iLokPassword" in plugin.json (Recommended value: "!PROMPT" or "$ENVVAR")`);
+        return expandDplugVariables(iLokPassword);
     }
 
     string getWrapConfigGUID()
     {
         if (wrapConfigGUID is null)
             throw new Exception(`Missing "wrapConfigGUID" in plugin.json`);
-        return wrapConfigGUID;
+        return expandDplugVariables(wrapConfigGUID);
     }
 
     // </PACE Ilok specific>
@@ -897,12 +897,12 @@ Plugin readPluginDescription()
     catch(Exception e){}
     try
     {
-        result.appSpecificPassword_altool = rawPluginFile["appSpecificPassword-altool"].str;
+        result.appSpecificPassword_altool = expandDplugVariables( rawPluginFile["appSpecificPassword-altool"].str );
     }
     catch(Exception e){}
     try
     {
-        result.appSpecificPassword_stapler = rawPluginFile["appSpecificPassword-stapler"].str;
+        result.appSpecificPassword_stapler = expandDplugVariables( rawPluginFile["appSpecificPassword-stapler"].str );
     }
     catch(Exception e){}
 
