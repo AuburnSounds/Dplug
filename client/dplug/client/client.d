@@ -937,6 +937,34 @@ PluginInfo parsePluginInfo(string json)
     if (category == PluginCategory.invalid)
         throw new Exception("Invalid \"category\" in plugin.json. Check out dplug.client.daw for valid values (eg: \"effectDynamics\").");
     info.category = category;
+
+    // See Issue #581.
+    // Check that we aren't leaking secrets in this build, through `import("plugin.json")`.
+    void checkNotLeakingPassword(string key)
+    {
+        if (key in j)
+        {
+            string pwd = j["pluginHomepage"].str;
+            if (pwd == "!PROMPT")
+                return;
+
+            if (pwd.length > 0 && pwd[0] == '$')
+                return; // using an envvar
+
+            pragma(msg, "\n*************************** WARNING ***************************\n\n"
+                        ~ "  This build is using a plain text password in plugin.json\n"
+                        ~ "  This will leak through `import(\"plugin.json\")`\n\n"
+                        ~ "  Solutions:\n"
+                        ~ "    1. Use environment variables, such as:\n"
+                        ~ "           \"iLokPassword\": \"$ILOK_PASSWORD\"\n"
+                        ~ "    2. Use the special value \"!PROMPT\", such as:\n"
+                        ~ "           \"keyPassword-windows\": \"!PROMPT\"\n\n"
+                        ~ "***************************************************************\n");
+        }
+    }
+    checkNotLeakingPassword("keyPassword-windows");
+    checkNotLeakingPassword("iLokPassword");
+
     return info;
 }
 
