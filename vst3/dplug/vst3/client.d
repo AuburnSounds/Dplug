@@ -474,6 +474,10 @@ nothrow:
 
         int totalFrames = data.numSamples;
         int bufferSplitMaxFrames = _client.getBufferSplitMaxFrames();
+        assert(bufferSplitMaxFrames > 0);
+
+        // How many split buffers do we need this buffer?
+        int numSubBuffers = totalFrames + (bufferSplitMaxFrames - 1) / bufferSplitMaxFrames;
 
         updateTimeInfo(data.processContext);
 
@@ -492,34 +496,89 @@ nothrow:
         // Read parameter changes, sets them.
         // For changed parameters, fills an array of successive values for each split period + 1.
         //
+        // Store changes of a single parameter over the current buffer.
+
         IParameterChanges paramChanges = data.inputParameterChanges;
+        _tracks.clearContents();
         if (paramChanges !is null)
         {
+            // How many paramter tracks do we need this buffer?
             int numParamChanges = paramChanges.getParameterCount();
+
+            // For each varying parameter, store values for each subbuffer + 1 for the end value.
+            int numParamValues = numSubBuffers + 1;
+
+            _sharedValues.resize(numParamValues * numParamChanges);
+
             foreach(index; 0..numParamChanges)
             {
                 IParamValueQueue queue = paramChanges.getParameterData(index);
-
                 ParamID id = queue.getParameterId();
                 int pointCount = queue.getPointCount();
-                if (pointCount > 0)
+
+                ParameterTracks track;
+                track.id = id;
+                track.values = (_sharedValues.ptr + (index * numParamValues));
+
+                double x1 = -1; // position of last point related to current buffer
+                double y1 = getParamNormalized(id); // last known parameter value
+
+                int time = 0;
+                int subbuf = 0;
+                for (int pt = 0; pt < pointCount; ++pt)
                 {
-                    int offset;
-                    ParamValue value;
-                    if (kResultTrue == queue.getPoint(pointCount-1, offset, value))
+                    int pointTime;
+                    ParamValue pointValue;
+                    if (kResultTrue == queue.getPoint(pt, pointTime, pointValue))
                     {
-                        setParamValue(id, value);
                     }
+                    else
+                        continue;
+
+                    double x2 = pointTime;
+                    double y2 = pointValue;
+                    double slope = 0;
+                    double offset = y1;
+                    if (x2 != x1)
+                    {
+                        slope = (y2 - y1) / (x2 - x1);
+                        offset = y1 - (slope * x1);
+                    }
+
+                    // Fill values for subbuffers in this linear ramp
+                    while (time < x2)
+                    {
+                        assert(time >= x1);
+                        double curveValue = (slope * time) + offset; // bufferTime is any position in buffer
+                        track.values[subbuf++] = curveValue;
+                        time += bufferSplitMaxFrames;
+                    }
+                    x1 = x2;
+                    y1 = y2;
                 }
+
+                // All remaining points are set to be y1 (the last known value)
+                while (subbuf < numParamValues)
+                {
+                    track.values[subbuf++] = y1;
+                }
+
+                _tracks.pushBack(track);
             }
         }
 
         int processedFrames = 0;
+        int subbuf = 0;
         while(processedFrames < totalFrames)
         {
             int blockFrames = totalFrames - processedFrames;
             if (blockFrames > bufferSplitMaxFrames)
                 blockFrames = bufferSplitMaxFrames;
+
+            for (int track = 0; track < _tracks.length; ++track)
+            {
+                setParamValue(_tracks[track].id, _tracks[track].values[subbuf]);
+            }
 
             // TODO: put parameter updates here
 
@@ -574,6 +633,13 @@ nothrow:
             _timeInfo.timeInSamples += blockFrames;
 
             processedFrames += blockFrames;
+            subbuf = subbuf + 1;
+        }
+
+        // Send last values for varying parameters
+        for (int track = 0; track < _tracks.length; ++track)
+        {
+            setParamValue(_tracks[track].id, _tracks[track].values[subbuf]);
         }
 
         assert(processedFrames == totalFrames);
@@ -1192,6 +1258,9 @@ private:
     // host application reference
     IHostApplication _hostApplication = null;
 
+    Vec!ParameterTracks _tracks;
+    Vec!double _sharedValues;
+
     void setHostApplication(FUnknown context)
     {
         debug(logVST3Client) debugLog(">setHostApplication".ptr);
@@ -1612,4 +1681,11 @@ private bool isGraphicsBackendSupported(GraphicsBackend backend) nothrow @nogc
         return (backend == GraphicsBackend.x11);
     else
         static assert(false, "Unsupported OS");
+}
+
+// Store changes of a single paramter over the current buffer.
+struct ParameterTracks
+{
+    ParamID id;
+    double* values; // values for each split sub-buffer, plus the final value. This points into a buffer shared across parameters.
 }

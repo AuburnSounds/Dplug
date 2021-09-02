@@ -100,6 +100,7 @@ nothrow:
     // This can be useful as a cheap chunking for parameter smoothing.
     // Buffer splitting also allows to allocate statically or on the stack with less worries.
     // It also makes the plugin uses constant memory in case of large buffer sizes.
+    // In VST3, parameter automation gets more precise when this value is small.
     override int maxFramesInProcess() const //nothrow @nogc
     {
         return 512;
