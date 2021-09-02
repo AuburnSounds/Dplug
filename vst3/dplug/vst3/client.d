@@ -420,49 +420,8 @@ nothrow:
             _outputPointers[chan] = pOutput;
         }
 
-        //
-        // Read parameter changes, sets them.
-        //
-        IParameterChanges paramChanges = data.inputParameterChanges;
-        if (paramChanges !is null)
-        {
-            int numParamChanges = paramChanges.getParameterCount();
-            foreach(index; 0..numParamChanges)
-            {
-                IParamValueQueue queue = paramChanges.getParameterData(index);
-
-                ParamID id = queue.getParameterId();
-                int pointCount = queue.getPointCount();
-                if (pointCount > 0)
-                {
-                    int offset;
-                    ParamValue value;
-                    if (kResultTrue == queue.getPoint(pointCount-1, offset, value))
-                    {
-                        if (id == PARAM_ID_BYPASS)
-                        {
-                            atomicStore(_bypassed, (value >= 0.5f));
-                        }
-                        else if (id == PARAM_ID_PROGRAM_CHANGE)
-                        {
-                            int presetIndex;
-                            if (convertPresetParamToPlain(value, &presetIndex))
-                            {
-                                _client.presetBank.loadPresetFromHost(presetIndex);
-                            }
-                        }
-                        else
-                        {
-                            // Dplug assume parameter do not change over a single buffer, and parameter smoothing is handled
-                            // inside the plugin itself. So we take the most future point (inside this buffer) and applies it now.
-                            _client.setParameterFromHost(convertParamIDToClientParamIndex(id), value);
-                        }
-                    }
-                }
-            }
-        }
-
         // Deal with input MIDI events (only note on, note off, CC and pitch bend supported so far)
+        // We can pull all MIDI events at once since there is a priority queue to store them.
         if (data.inputEvents !is null && _client.receivesMIDI())
         {
             IEventList eventList = data.inputEvents;
@@ -512,65 +471,139 @@ nothrow:
             }
         }
 
-        int frames = data.numSamples;
-        updateTimeInfo(data.processContext, frames);
 
-        // Support bypass
-        bool bypassed = atomicLoad!(MemoryOrder.raw)(_bypassed);
-        if (bypassed)
+        int totalFrames = data.numSamples;
+        int bufferSplitMaxFrames = _client.getBufferSplitMaxFrames();
+
+        updateTimeInfo(data.processContext);
+
+        // Hosts like Cubase gives input and output buffer which are identical.
+        // This creates problems since Dplug assumes the contrary.
+        // Copy the input to scratch buffers to avoid overwrite.
+        for (int chan = 0; chan < numInputs; ++chan)
         {
-            int minIO = numInputs;
-            if (minIO > numOutputs) minIO = numOutputs;
+            float* pCopy = _inputScratchBuffers[chan].ptr;
+            float* pInput = _inputPointers[chan];
+            pCopy[0..totalFrames] = pInput[0..totalFrames];
+            _inputPointers[chan] = pCopy;
+        }
 
-            for (int chan = 0; chan < minIO; ++chan)
+        //
+        // Read parameter changes, sets them.
+        // For changed parameters, fills an array of successive values for each split period + 1.
+        //
+        IParameterChanges paramChanges = data.inputParameterChanges;
+        if (paramChanges !is null)
+        {
+            int numParamChanges = paramChanges.getParameterCount();
+            foreach(index; 0..numParamChanges)
             {
-                float* pOut = _outputPointers[chan];
-                float* pIn = _inputPointers[chan];
-                for(int i = 0; i < frames; ++i)
+                IParamValueQueue queue = paramChanges.getParameterData(index);
+
+                ParamID id = queue.getParameterId();
+                int pointCount = queue.getPointCount();
+                if (pointCount > 0)
                 {
-                    pOut[i] = pIn[i];
+                    int offset;
+                    ParamValue value;
+                    if (kResultTrue == queue.getPoint(pointCount-1, offset, value))
+                    {
+                        setParamValue(id, value);
+                    }
                 }
             }
+        }
 
-            for (int chan = minIO; chan < numOutputs; ++chan)
+        int processedFrames = 0;
+        while(processedFrames < totalFrames)
+        {
+            int blockFrames = totalFrames - processedFrames;
+            if (blockFrames > bufferSplitMaxFrames)
+                blockFrames = bufferSplitMaxFrames;
+
+            // TODO: put parameter updates here
+
+            // Support bypass
+            bool bypassed = atomicLoad!(MemoryOrder.raw)(_bypassed);
+            if (bypassed)
             {
-                float* pOut = _outputPointers[chan];
-                for(int i = 0; i < frames; ++i)
+                int minIO = numInputs;
+                if (minIO > numOutputs) minIO = numOutputs;
+
+                for (int chan = 0; chan < minIO; ++chan)
                 {
-                    pOut[i] = 0.0f;
+                    float* pOut = _outputPointers[chan];
+                    float* pIn = _inputPointers[chan];
+                    for(int i = 0; i < blockFrames; ++i)
+                    {
+                        pOut[i] = pIn[i];
+                    }
                 }
+
+                for (int chan = minIO; chan < numOutputs; ++chan)
+                {
+                    float* pOut = _outputPointers[chan];
+                    for(int i = 0; i < blockFrames; ++i)
+                    {
+                        pOut[i] = 0.0f;
+                    }
+                }
+            }
+            else
+            {
+                // Regular processing
+                bool doNotSplit = true;
+                _client.processAudioFromHost(_inputPointers[0..numInputs],
+                                             _outputPointers[0..numOutputs],
+                                             blockFrames,
+                                             _timeInfo,
+                                             doNotSplit);
+            }
+
+            // advance split buffers
+            for (int chan = 0; chan < numInputs; ++chan)
+            {
+                _inputPointers[chan] = _inputPointers[chan] + blockFrames;                
+            }
+            for (int chan = 0; chan < numOutputs; ++chan)
+            {
+                _outputPointers[chan] = _outputPointers[chan] + blockFrames;
+            }
+
+            // In case the next process block has no ProcessContext
+            _timeInfo.timeInSamples += blockFrames;
+
+            processedFrames += blockFrames;
+        }
+
+        assert(processedFrames == totalFrames);
+
+        return kResultOk;
+    }
+
+    void setParamValue(ParamID id, ParamValue value)
+    {
+        if (id == PARAM_ID_BYPASS)
+        {
+            atomicStore(_bypassed, (value >= 0.5f));
+        }
+        else if (id == PARAM_ID_PROGRAM_CHANGE)
+        {
+            int presetIndex;
+            if (convertPresetParamToPlain(value, &presetIndex))
+            {
+                _client.presetBank.loadPresetFromHost(presetIndex);
             }
         }
         else
         {
-            // Regular processing
-
-            // Hosts like Cubase gives input and output buffer which are identical.
-            // This creates problems since Dplug assumes the contrary.
-            // Copy the input to scratch buffers to avoid overwrite.
-            for (int chan = 0; chan < numInputs; ++chan)
-            {
-                float* pCopy = _inputScratchBuffers[chan].ptr;
-                float* pInput = _inputPointers[chan];
-                for(int i = 0; i < frames; ++i)
-                {
-                    pCopy[i] = pInput[i];
-                }
-                _inputPointers[chan] = pCopy;
-            }
-
-            _client.processAudioFromHost(_inputPointers[0..numInputs],
-                                         _outputPointers[0..numOutputs],
-                                         frames,
-                                         _timeInfo);
+            // Dplug assume parameter do not change over a single buffer, and parameter smoothing is handled
+            // inside the plugin itself. So we take the most future point (inside this buffer) and applies it now.
+            _client.setParameterFromHost(convertParamIDToClientParamIndex(id), value);
         }
-
-        // In case the next process block has no ProcessContext
-        _timeInfo.timeInSamples += frames;
-        return kResultOk;
     }
 
-    void updateTimeInfo(ProcessContext* context, int frames)
+    void updateTimeInfo(ProcessContext* context)
     {
         if (context !is null)
         {

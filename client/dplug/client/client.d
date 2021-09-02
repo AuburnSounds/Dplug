@@ -670,6 +670,14 @@ nothrow:
     final void setHostCommand(IHostCommand hostCommand) nothrow @nogc
     {
         _hostCommand = hostCommand;
+
+        // In VST3, for accuracy of parameter automation we choose to split buffers in chunks of maximum 512.
+        // This avoids painful situations where parameters could higher precision.
+        if (hostCommand.getPluginFormat() == PluginFormat.vst3)
+        {
+            if (_maxFramesInProcess == 0 || _maxFramesInProcess > 512)
+                _maxFramesInProcess = 512;
+        }
     }
 
     /// For plugin format clients only.
@@ -686,7 +694,8 @@ nothrow:
     void processAudioFromHost(float*[] inputs,
                               float*[] outputs,
                               int frames,
-                              TimeInfo timeInfo
+                              TimeInfo timeInfo,
+                              bool doNotSplit = false, // flag that exist in case the plugin client want to split itself
                               ) nothrow @nogc
     {
         // In debug mode, fill all output audio buffers with `float.nan`.
@@ -702,7 +711,7 @@ nothrow:
             }
         }
 
-        if (_maxFramesInProcess == 0)
+        if (_maxFramesInProcess == 0 || doNotSplit)
         {
             processAudio(inputs, outputs, frames, timeInfo);
         }
@@ -750,6 +759,14 @@ nothrow:
 
         // Calls the reset virtual call
         reset(sampleRate, maxFrames, numInputs, numOutputs);
+    }
+
+    /// For use by plugin format clients. This gives the buffer split size to use.
+    /// (0 == no split).
+    /// This is useful in the cast the format client wants to split buffers by itself.
+    final int getBufferSplitMaxFrames()
+    {
+        return _maxFramesInProcess;
     }
 
     // <IClient>

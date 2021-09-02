@@ -45,9 +45,10 @@ interface IParameterListener
 nothrow:
 @nogc:
 
-    /// Called when a parameter value was changed, from an UI control or through the host.
+    /// Called when a parameter value was changed, from an UI control or through the host (automation).
     /// You'll probably want to call `setDirtyWhole()` or `setDirty()` in it
     /// to make the graphics respond to host changing a parameter.
+    /// Note that this WILL be called from the audio thread.
     void onParameterChanged(Parameter sender);
 
     /// Called when a parameter value _starts_ being changed due to an UI element.
