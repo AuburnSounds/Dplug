@@ -564,6 +564,9 @@ nothrow:
                                          frames,
                                          _timeInfo);
         }
+
+        // In case the next process block has no ProcessContext
+        _timeInfo.timeInSamples += frames;
         return kResultOk;
     }
 
@@ -575,10 +578,6 @@ nothrow:
                 _timeInfo.tempo = context.tempo;
             _timeInfo.timeInSamples = context.projectTimeSamples;
             _timeInfo.hostIsPlaying = (context.state & ProcessContext.kPlaying) != 0;
-        }
-        else
-        {
-            _timeInfo.timeInSamples += frames;
         }
     }
 
