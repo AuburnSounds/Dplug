@@ -295,6 +295,6 @@ vec3f computePlaneFittingNormal(
 
     float det_z = xx*yy - xy*xy;
 
-    vec3f normal = vec3f(xy*yz - xz*yy, xy*xz - yz*xx, det_z);
+    vec3f normal = vec3f(xy*yz - xz*yy, -(xy*xz - yz*xx), det_z);
     return normal.normalized();
 }
