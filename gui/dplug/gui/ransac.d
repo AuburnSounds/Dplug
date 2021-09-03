@@ -57,7 +57,7 @@ vec3f computeRANSACNormal(
                           // D E F     <--- x is padding, and E is the center pixel depth
                           // G H I 
                           // x x x
-                          float* depthNeighbourhood) pure // number of inliers
+                          float* depthNeighbourhood) pure
 {
     immutable int[2][] LUT = depthSampleLUT;
     
@@ -235,3 +235,66 @@ immutable int[2][12] depthSampleLUT =
     [5,6], // 001110000 
 +/
 ];
+
+
+// Method from http://www.ilikebigbits.com/2015_03_04_plane_from_points.html
+
+
+vec3f computePlaneFittingNormal(
+    // Must point at 12 floats containing depth of pixels in the neighbourhood, and 3 more for padding. Normal will be computed in this pixel space.
+    // c c c
+    // c c c     <--- x is padding, and E is the center pixel depth
+    // c c c 
+    // x x x
+    float* depthNeighbourhood) pure // number of inliers
+{
+    enum int NUM = 9 + 4 + 3;
+
+    vec3f[NUM] points;
+    points[0] = vec3f(-1, -1, depthNeighbourhood[0]);
+    points[1] = vec3f( 0, -1, depthNeighbourhood[1]);
+    points[2] = vec3f(+1, -1, depthNeighbourhood[2]);
+    points[3] = vec3f(-1,  0, depthNeighbourhood[3]);
+    points[4] = vec3f( 0,  0, depthNeighbourhood[4]);
+    points[5] = vec3f(+1,  0, depthNeighbourhood[5]);
+    points[6] = vec3f(-1, +1, depthNeighbourhood[6]);
+    points[7] = vec3f( 0, +1, depthNeighbourhood[7]);
+    points[8] = vec3f(+1, +1, depthNeighbourhood[8]);
+
+    // More weight given to side pixels 1 3 5 7
+    points[9] = points[1];
+    points[10] = points[3];
+    points[11] = points[5];
+    points[12] = points[7];
+
+    // More weight given to center pixel 4
+    points[13] = points[4];
+    points[14] = points[4];
+    points[15] = points[4];
+
+    vec3f sum = vec3f(0, 0, 0);
+    for (int n = 0; n < NUM; ++n)
+        sum += points[n];
+    vec3f centroid = sum / NUM;
+
+    // Calc full 3x3 covariance matrix, excluding symmetries:
+    float xx = 0, xy = 0, xz = 0,
+          yy = 0, yz = 0, zz = 0;
+
+    for (int n = 0; n < NUM; ++n)
+    {
+        vec3f r = points[n] - centroid;
+
+        xx += r.x * r.x;
+        xy += r.x * r.y;
+        xz += r.x * r.z;
+        yy += r.y * r.y;
+        yz += r.y * r.z;
+        zz += r.z * r.z;
+    }
+
+    float det_z = xx*yy - xy*xy;
+
+    vec3f normal = vec3f(xy*yz - xz*yy, xy*xz - yz*xx, det_z);
+    return normal.normalized();
+}
