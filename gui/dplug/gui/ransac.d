@@ -248,7 +248,35 @@ vec3f computePlaneFittingNormal(
     // x x x
     float* depthNeighbourhood) pure // number of inliers
 {
-    enum int NUM = 9 + 4 + 3;
+    enum int NUM = 9;
+
+    // sigma 0.8
+    //static immutable float[3] sigma = [0.5f, 1.0f, 0.5f];
+    //immutable float SUM_WEIGHTS = 4.0f;
+
+    // sigma 0.6
+    static immutable float[3] sigma = [0.19858494730562265, 0.6028301053887546, 0.19858494730562265];
+    immutable float SUM_WEIGHTS = 1.0f;
+
+    // sigma 0.7
+    //static immutable float[3] sigma = [0.22881347268828103, 0.542373054623438, 0.22881347268828103];
+    //immutable float SUM_WEIGHTS = 1.0f;
+
+    // sigma 0.4
+//   static immutable float[3] sigma = [ 0.10558007358450751, 0.7888398528309849, 0.10558007358450751];
+  //  immutable float SUM_WEIGHTS = 1.0f;
+
+    float[9] weights;
+    weights[0] = sigma[0] * sigma[0]; 
+    weights[1] = sigma[0] * sigma[1];
+    weights[2] = sigma[0] * sigma[2];
+    weights[3] = sigma[1] * sigma[0];
+    weights[4] = sigma[1] * sigma[1];
+    weights[5] = sigma[1] * sigma[2];
+    weights[6] = sigma[2] * sigma[0];
+    weights[7] = sigma[2] * sigma[1];
+    weights[8] = sigma[2] * sigma[2];
+
 
     vec3f[NUM] points;
     points[0] = vec3f(-1, -1, depthNeighbourhood[0]);
@@ -261,36 +289,27 @@ vec3f computePlaneFittingNormal(
     points[7] = vec3f( 0, +1, depthNeighbourhood[7]);
     points[8] = vec3f(+1, +1, depthNeighbourhood[8]);
 
-    // More weight given to side pixels 1 3 5 7
-    points[9] = points[1];
-    points[10] = points[3];
-    points[11] = points[5];
-    points[12] = points[7];
-
-    // More weight given to center pixel 4
-    points[13] = points[4];
-    points[14] = points[4];
-    points[15] = points[4];
-
     vec3f sum = vec3f(0, 0, 0);
     for (int n = 0; n < NUM; ++n)
-        sum += points[n];
-    vec3f centroid = sum / NUM;
+        sum += points[n] * weights[n];
+
+    vec3f centroid = sum / SUM_WEIGHTS; // Note: very slight advantage of not just taking points[4]
 
     // Calc full 3x3 covariance matrix, excluding symmetries:
-    float xx = 0, xy = 0, xz = 0,
+    float xx = 0, xy = 0, xz = 0,   
           yy = 0, yz = 0, zz = 0;
 
     for (int n = 0; n < NUM; ++n)
     {
         vec3f r = points[n] - centroid;
+        float w = weights[n];
 
-        xx += r.x * r.x;
-        xy += r.x * r.y;
-        xz += r.x * r.z;
-        yy += r.y * r.y;
-        yz += r.y * r.z;
-        zz += r.z * r.z;
+        xx += w*(r.x * r.x);
+        xy += w*(r.x * r.y);
+        xz += w*(r.x * r.z);
+        yy += w*(r.y * r.y);
+        yz += w*(r.y * r.z);
+        zz += w*(r.z * r.z);
     }
 
     float det_z = xx*yy - xy*xy;
