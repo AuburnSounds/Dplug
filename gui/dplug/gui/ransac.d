@@ -248,52 +248,57 @@ vec3f computePlaneFittingNormal(
     // x x x
     float* depthNeighbourhood) pure // number of inliers
 {
-    enum int NUM = 9;
-
     // sigma 0.6
     // use this page to change the filter: https://observablehq.com/@jobleonard/gaussian-kernel-calculater
     // Probably a tiny bit more visual quality to gain if tuning that sigma, but 0.7 looks worse.
     //static immutable float[3] sigma = [0.19858494730562265, 0.6028301053887546, 0.19858494730562265];
-    static immutable align(16) float[12] WEIGHTS =
+    align(16) static immutable float[8] WEIGHTS =
     [
         0.03943598129, 0.11971298471, 0.03943598129,
-        0.11971298471, 0.36340413596, 0.11971298471,
+        0.11971298471, /* 0.36340413596, */ 0.11971298471,
         0.03943598129, 0.11971298471, 0.03943598129,
     ];
 
-    
-    vec3f[NUM] points;
-    points[0] = vec3f(-1, -1, depthNeighbourhood[0]);
-    points[1] = vec3f( 0, -1, depthNeighbourhood[1]);
-    points[2] = vec3f(+1, -1, depthNeighbourhood[2]);
-    points[3] = vec3f(-1,  0, depthNeighbourhood[3]);
-    points[4] = vec3f( 0,  0, depthNeighbourhood[4]);
-    points[5] = vec3f(+1,  0, depthNeighbourhood[5]);
-    points[6] = vec3f(-1, +1, depthNeighbourhood[6]);
-    points[7] = vec3f( 0, +1, depthNeighbourhood[7]);
-    points[8] = vec3f(+1, +1, depthNeighbourhood[8]);
-    
+    __m128 mmDepth_0_3 = _mm_loadu_ps(&depthNeighbourhood[0]);
+    __m128 mmDepth_5_8 = _mm_loadu_ps(&depthNeighbourhood[5]);
+    __m128 mmWeights_0_3 = _mm_load_ps(&WEIGHTS[0]);
+    __m128 mmWeights_5_8 = _mm_load_ps(&WEIGHTS[4]);
+    __m128 meanDepth = mmDepth_0_3 * mmWeights_0_3 + mmDepth_5_8 * mmWeights_5_8;
+    float filtDepth = depthNeighbourhood[4] * 0.36340413596f + meanDepth.array[0] + meanDepth.array[1] + meanDepth.array[2] + meanDepth.array[3];
 
-    float filteredDepth = 0.0f;
-    for (int n = 0; n < NUM; ++n)
-        filteredDepth += depthNeighbourhood[n] * WEIGHTS[n];
+    // Compute mean weighted depth
+    __m128 mmFiltDepth = _mm_set1_ps(filtDepth);
 
+    mmDepth_0_3 = mmDepth_0_3 - mmFiltDepth;
+    mmDepth_5_8 = mmDepth_5_8 - mmFiltDepth;
+    
     // Calc full 3x3 covariance matrix, excluding symmetries.
     // However it simplifies a lot thanks to being a grid.
+    // Only xz and yz factors need to be computed.
 
-    float xz = 0, yz = 0;
+    align(16) static immutable float[8] XZ_WEIGHTS =
+    [
+        -0.03943598129,         0.0f, 0.03943598129,
+        -0.11971298471,               0.11971298471,
+        -0.03943598129,         0.0f, 0.03943598129,
+    ];
 
-    for (int n = 0; n < NUM; ++n)
-    {
-        vec3f r = points[n];
-        r.z -= filteredDepth;
-        float w = WEIGHTS[n];
-        xz += w*(r.x * r.z);
-        yz += w*(r.y * r.z);
-    }
+    align(16) static immutable float[8] YZ_WEIGHTS =
+    [
+         -0.03943598129, -0.11971298471, -0.03943598129,
+                   0.0f,                           0.0f,
+          0.03943598129,  0.11971298471,  0.03943598129,
+    ];
+
+    __m128 mmXZ = mmDepth_0_3 * _mm_load_ps(&XZ_WEIGHTS[0]) + mmDepth_5_8 * _mm_load_ps(&XZ_WEIGHTS[4]);
+    __m128 mmYZ = mmDepth_0_3 * _mm_load_ps(&YZ_WEIGHTS[0]) + mmDepth_5_8 * _mm_load_ps(&YZ_WEIGHTS[4]);
+
+
+    float xz = mmXZ.array[0] + mmXZ.array[1] + mmXZ.array[2] + mmXZ.array[3];
+    float yz = mmYZ.array[0] + mmYZ.array[1] + mmYZ.array[2] + mmYZ.array[3];
 
     // Y inversion happens here.
-    __m128 mmNormal = _mm_setr_ps(-xz, yz, 0.39716989458f, 0.0f);
+    __m128 mmNormal = _mm_setr_ps(-xz, yz, 0.39716989458f /* this depends on sigma */, 0.0f);
     mmNormal = _mm_fast_normalize_ps(mmNormal);
     return vec3f(mmNormal.array[0], mmNormal.array[1], mmNormal.array[2]);
 }
