@@ -281,16 +281,7 @@ nothrow:
                     depthNeighbourhood[7] = depthHereP1[ 0].l * multUshort;
                     depthNeighbourhood[8] = depthHereP1[+1].l * multUshort;
 
-                    enum enablePlaneFitting = false;
-
-                    static if (enablePlaneFitting)
-                    {
-                        vec3f normal = computePlaneFittingNormal(depthNeighbourhood.ptr);
-                    }
-                    else
-                    {
-                        vec3f normal = computeRANSACNormal(depthNeighbourhood.ptr);
-                    }
+                    vec3f normal = computePlaneFittingNormal(depthNeighbourhood.ptr);
                 }
                 normalScan[i - area.min.x] = RGBf(normal.x, normal.y, normal.z);
             }
