@@ -309,10 +309,10 @@ unittest
     assert(w == 900 && h == 500);
 
     w = 100; h = 501;
-    c.suggestDefaultSize(&w, &h);
+    c.getNearestValidSize(&w, &h);
     assert(w == 450 && h == 500);
 
     w = 1000; h = 2500;
-    c.suggestDefaultSize(&w, &h);
+    c.getNearestValidSize(&w, &h);
     assert(w == 900 && h == 1500);
 }
