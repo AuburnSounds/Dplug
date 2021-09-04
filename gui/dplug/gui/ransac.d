@@ -250,34 +250,18 @@ vec3f computePlaneFittingNormal(
 {
     enum int NUM = 9;
 
-    // sigma 0.8
-    //static immutable float[3] sigma = [0.5f, 1.0f, 0.5f];
-    //immutable float SUM_WEIGHTS = 4.0f;
-
     // sigma 0.6
-    static immutable float[3] sigma = [0.19858494730562265, 0.6028301053887546, 0.19858494730562265];
-    immutable float SUM_WEIGHTS = 1.0f;
+    // use this page to change the filter: https://observablehq.com/@jobleonard/gaussian-kernel-calculater
+    // Probably a tiny bit more visual quality to gain if tuning that sigma, but 0.7 looks worse.
+    //static immutable float[3] sigma = [0.19858494730562265, 0.6028301053887546, 0.19858494730562265];
+    static immutable align(16) float[12] WEIGHTS =
+    [
+        0.03943598129, 0.11971298471, 0.03943598129,
+        0.11971298471, 0.36340413596, 0.11971298471,
+        0.03943598129, 0.11971298471, 0.03943598129,
+    ];
 
-    // sigma 0.7
-    //static immutable float[3] sigma = [0.22881347268828103, 0.542373054623438, 0.22881347268828103];
-    //immutable float SUM_WEIGHTS = 1.0f;
-
-    // sigma 0.4
-//   static immutable float[3] sigma = [ 0.10558007358450751, 0.7888398528309849, 0.10558007358450751];
-  //  immutable float SUM_WEIGHTS = 1.0f;
-
-    float[9] weights;
-    weights[0] = sigma[0] * sigma[0]; 
-    weights[1] = sigma[0] * sigma[1];
-    weights[2] = sigma[0] * sigma[2];
-    weights[3] = sigma[1] * sigma[0];
-    weights[4] = sigma[1] * sigma[1];
-    weights[5] = sigma[1] * sigma[2];
-    weights[6] = sigma[2] * sigma[0];
-    weights[7] = sigma[2] * sigma[1];
-    weights[8] = sigma[2] * sigma[2];
-
-
+    
     vec3f[NUM] points;
     points[0] = vec3f(-1, -1, depthNeighbourhood[0]);
     points[1] = vec3f( 0, -1, depthNeighbourhood[1]);
@@ -288,32 +272,28 @@ vec3f computePlaneFittingNormal(
     points[6] = vec3f(-1, +1, depthNeighbourhood[6]);
     points[7] = vec3f( 0, +1, depthNeighbourhood[7]);
     points[8] = vec3f(+1, +1, depthNeighbourhood[8]);
+    
 
-    vec3f sum = vec3f(0, 0, 0);
+    float filteredDepth = 0.0f;
     for (int n = 0; n < NUM; ++n)
-        sum += points[n] * weights[n];
+        filteredDepth += depthNeighbourhood[n] * WEIGHTS[n];
 
-    vec3f centroid = sum / SUM_WEIGHTS; // Note: very slight advantage of not just taking points[4]
+    // Calc full 3x3 covariance matrix, excluding symmetries.
+    // However it simplifies a lot thanks to being a grid.
 
-    // Calc full 3x3 covariance matrix, excluding symmetries:
-    float xx = 0, xy = 0, xz = 0,   
-          yy = 0, yz = 0, zz = 0;
+    float xz = 0, yz = 0;
 
     for (int n = 0; n < NUM; ++n)
     {
-        vec3f r = points[n] - centroid;
-        float w = weights[n];
-
-        xx += w*(r.x * r.x);
-        xy += w*(r.x * r.y);
+        vec3f r = points[n];
+        r.z -= filteredDepth;
+        float w = WEIGHTS[n];
         xz += w*(r.x * r.z);
-        yy += w*(r.y * r.y);
         yz += w*(r.y * r.z);
-        zz += w*(r.z * r.z);
     }
 
-    float det_z = xx*yy - xy*xy;
-
-    vec3f normal = vec3f(xy*yz - xz*yy, -(xy*xz - yz*xx), det_z);
-    return normal.normalized();
+    // Y inversion happens here.
+    __m128 mmNormal = _mm_setr_ps(-xz, yz, 0.39716989458f, 0.0f);
+    mmNormal = _mm_fast_normalize_ps(mmNormal);
+    return vec3f(mmNormal.array[0], mmNormal.array[1], mmNormal.array[2]);
 }
