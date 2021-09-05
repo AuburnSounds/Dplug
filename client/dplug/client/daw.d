@@ -169,6 +169,7 @@ enum DAW
     Standalone,
     AudioMulch,
     StudioOne,
+    VSTHost,
     VST3TestHost,
     Ardour
     // These hosts don't report the host name:
@@ -206,6 +207,7 @@ DAW identifyDAW(const(char*) s) pure nothrow @nogc
     if (hasSubstring(s, "audiomulch")) return DAW.AudioMulch;
     if (hasSubstring(s, "presonus")) return DAW.StudioOne;
     if (hasSubstring(s, "vst3plugintesthost")) return DAW.VST3TestHost;
+    if (hasSubstring(s, "vsthost")) return DAW.VSTHost;
     if (hasSubstring(s, "protools")) return DAW.ProTools;
     if (hasSubstring(s, "ardour")) return DAW.Ardour;
     if (hasSubstring(s, "standalone")) return DAW.Standalone;

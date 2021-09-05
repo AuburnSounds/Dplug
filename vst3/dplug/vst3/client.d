@@ -580,8 +580,6 @@ nothrow:
                 setParamValue(_tracks[track].id, _tracks[track].values[subbuf]);
             }
 
-            // TODO: put parameter updates here
-
             // Support bypass
             bool bypassed = atomicLoad!(MemoryOrder.raw)(_bypassed);
             if (bypassed)
@@ -663,9 +661,18 @@ nothrow:
         }
         else
         {
-            // Dplug assume parameter do not change over a single buffer, and parameter smoothing is handled
-            // inside the plugin itself. So we take the most future point (inside this buffer) and applies it now.
-            _client.setParameterFromHost(convertParamIDToClientParamIndex(id), value);
+            // Note: VSTHost sends _param indices_ instead of ParamID, which is completely wrong.
+            int paramIndex;
+            if (_hostMaySendBadParameterIDs)
+            {
+                paramIndex = convertParamIDToClientParamIndex(convertVST3ParamIndexToParamID(id));
+                if (!_client.isValidParamIndex(paramIndex))
+                    return;
+            }
+            else
+                paramIndex = convertParamIDToClientParamIndex(id);
+
+            _client.setParameterFromHost(paramIndex, value);
         }
     }
 
@@ -1261,6 +1268,10 @@ private:
     Vec!ParameterTracks _tracks;
     Vec!double _sharedValues;
 
+    // Workaround a VSTHost bug, see Issue #583.
+    // VSTHost send parameters updates to inexisting parameters.
+    bool _hostMaySendBadParameterIDs = false;
+
     void setHostApplication(FUnknown context)
     {
         debug(logVST3Client) debugLog(">setHostApplication".ptr);
@@ -1286,7 +1297,16 @@ private:
             if (_hostApplication.getName(&name) == kResultOk)
             {
                 str16ToStr8(_hostName.ptr, name.ptr, 128);
+
+                // Force lowercase
+                for (int n = 0; n < 128; ++n)
+                {
+                    if (_hostName[n] >= 'A' && _hostName[n] <= 'Z')
+                        _hostName[n] += ('a' - 'A');
+                }
+
                 _daw = identifyDAW(_hostName.ptr);
+                _hostMaySendBadParameterIDs = (_daw == DAW.VSTHost);
             }
         }
     }
