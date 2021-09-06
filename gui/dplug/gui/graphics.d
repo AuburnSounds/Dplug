@@ -881,8 +881,13 @@ protected:
                 // NOTE: RECTANGLES UPDATES ARE A BIG BIG MESS HERE.
                 // This is probably one of the most correct workaround in the file, however Windows doesn't need it.
                 // No good reason this should be OS-specific.
-                // TODO: clean-up the other workarounds against wrong redraw.
+                // TODO: clean-up the other workarounds against wrong redraw. (Windows, specifically, but test on other OSes)
                 version(OSX)
+                {
+                    _rectsToUpdateDisjointedRaw.clearContents();
+                    _rectsToUpdateDisjointedPBR.clearContents();
+                }
+                version(linux)
                 {
                     _rectsToUpdateDisjointedRaw.clearContents();
                     _rectsToUpdateDisjointedPBR.clearContents();
