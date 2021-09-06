@@ -687,18 +687,16 @@ private:
         unlockX11();
     }
 
-    // this frees _graphicImage
+    // this frees _graphicImage, but not the data it points to since it is owned elsewhere
     void freeBackbuffer()
     {
-        // For some reason freeing that buffer is crashing X11
-        // Unfortunate since that makes continuous resizing impractical.
-     /+   if (_graphicImage)
+        if (_graphicImage)
         {
             lockX11();
-            XDestroyImage(_graphicImage);
+            XFree(_graphicImage);
             unlockX11();
             _graphicImage = null;
-        } +/
+        }
     }    
 
     // which X11 events we are interested in
