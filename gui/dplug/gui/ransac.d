@@ -49,8 +49,7 @@ package __m128 _mm_fast_normalize_ps(__m128 v) pure
 // This has superseded the previous "RANSAC" method, thanks to being much faster, and also gives better results thanks to being anisotropic.
 // There could be a tiny bit of visual quality to be extracted by tuning sigma a bit. 
 // Method from http://www.ilikebigbits.com/2015_03_04_plane_from_points.html
-
-
+// Courtesy of Emil Ernerfeldt.
 vec3f computePlaneFittingNormal(
     // Must point at 12 floats containing depth of pixels in the neighbourhood, and 3 more for padding. Normal will be computed in this pixel space.
     // c c c
