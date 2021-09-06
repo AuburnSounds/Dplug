@@ -61,11 +61,11 @@ nothrow:
 @nogc:
 
     // Max size of tiles when doing the expensive PBR compositing step.
-    // Difficult trade-off: we wanted the medium size knob to be only one tile.
-    // This avoid launching threads for the PBR compositor in this case.
-    // It also an impact on memory usage, since smaller tiles have smaller thread-local buffers.
-    enum PBR_TILE_MAX_WIDTH = 128;
-    enum PBR_TILE_MAX_HEIGHT = 128;
+    // Difficult trade-off in general: not launching threads (one tile) might be better on low-powered devices and 
+    // in case of a large number of opened UI.
+    // But: having too large tiles also makes a visible delay when operating a single UI, even with only two threads.
+    enum PBR_TILE_MAX_WIDTH = 64;
+    enum PBR_TILE_MAX_HEIGHT = 64;
 
     this(SizeConstraints sizeConstraints, UIFlags flags)
     {
