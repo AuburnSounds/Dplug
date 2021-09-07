@@ -31,6 +31,7 @@ string WIN_AAX_DIR      = "$PROGRAMFILES64\\Common Files\\Avid\\Audio\\Plug-Ins"
 string WIN_VST3_DIR_X86 = "$PROGRAMFILES\\Common Files\\VST3";
 string WIN_VST_DIR_X86  = "$PROGRAMFILES\\VSTPlugins";
 string WIN_LV2_DIR_X86  = "$PROGRAMFILES\\Common Files\\LV2";
+string WIN_AAX_DIR_X86  = "$PROGRAMFILES\\Common Files\\Avid\\Audio\\Plug-Ins";
 
 
 version(linux)
@@ -388,6 +389,16 @@ int main(string[] args)
         // Only used for LV2. A copy of the manifest, that allows to create multi-arch LV2.
         string lv2Manifest = null;
 
+        // Only used for AAX. A copy of presets, that allows to create multi-arch AAX.
+        // Kept in memory because presets are fairly small.
+        static struct TFXPreset
+        {
+            string filename; // eg: "stuff.tfx"
+            immutable(ubyte)[] content;
+        }
+        TFXPreset[] tfxPresets = null;
+
+
         cwriteln();
 
         if (!quiet)
@@ -533,28 +544,16 @@ int main(string[] args)
 
                 void extractAAXPresetsFromBinary(string binaryPath, string contentsDir, Arch targetArch)
                 {
-                    // Extract presets from the AAX plugin binary by executing it.
-                    // Because of this dplug-build and the target plug-in should have the same architecture.
-
-                    // To avoid this coupling, presets could be stored outside of the binary in the future?
+                    bool formerlyExtracted = false;
                     if (targetArch != buildArch)
-                        warning("Can't extract presets from AAX plug-in when dplug-build is built with a different arch.\n");
+                    {
+                         if (tfxPresets is null)
+                            throw new Exception("Can't extract presets from AAX plug-in because dplug-build is built with a different arch, and the x86_64 arch wasn't built before. Re-run this build, including the x86_64 arch.\n");
+                        formerlyExtracted = true;
+                    }
                     else
                     {
-                        // We need to have a sub-directory of vendorName else the presets aren't found.
-                        // Then we need one level deeper else the presets aren't organized in sub-directories.
-                        //
-                        // "AAX plug-ins should include a set of presets in the following directory within the .aaxplugin:
-                        //       MyPlugIn.aaxplugin/Contents/Factory Presets/MyPlugInPackage/
-                        //  Where MyPlugInPackage is the plug-in's longest Package Name with 16 characters or fewer."
-                        string packageName = plugin.pluginName;
-                        if (packageName.length > 16)
-                            packageName = packageName[0..16];
-                        string factoryPresetsLocation =
-                            format(contentsDir ~ "Factory Presets/" ~ packageName ~ "/%s Factory Presets", plugin.prettyName);
-
-                        mkdirRecurse(factoryPresetsLocation);
-
+                        // Preset extraction itself
                         SharedLib lib;
                         lib.load(plugin.dubOutputFileName);
                         if (!lib.hasSymbol("DplugEnumerateTFX"))
@@ -570,11 +569,11 @@ int main(string[] args)
 
                         struct Context
                         {
-                            string factoryPresetsDir;
+                            TFXPreset[]* presetArray;
                             int presetCount = 0;
                         }
 
-                        Context context = Context(factoryPresetsLocation);
+                        Context context = Context(&tfxPresets);
 
                         static extern(C) void processPreset(const(char)* name,
                                                             const(ubyte)* tfxContent,
@@ -583,17 +582,41 @@ int main(string[] args)
                         {
                             Context* context = cast(Context*)userPointer;
                             const(char)[] presetName = name[0..strlen(name)];
-                            std.file.write(context.factoryPresetsDir ~ "/" ~ presetName ~ ".tfx", tfxContent[0..len]);
+
+                            TFXPreset preset;
+                            preset.filename = (presetName ~ ".tfx").idup;
+                            preset.content = tfxContent[0..len].idup;
+                            *(context.presetArray) ~= preset;
                             context.presetCount += 1;
                         }
 
                         enumerateTFX_t ptrDplugEnumerateTFX = cast(enumerateTFX_t) lib.loadSymbol("DplugEnumerateTFX");
                         ptrDplugEnumerateTFX(&processPreset, &context);
                         lib.unload();
-
-                        cwritefln("    => Extracted %s AAX factory presets from binary".green, context.presetCount);
-                        cwriteln();
                     }
+
+                    // We need to have a sub-directory of vendorName else the presets aren't found.
+                    // Then we need one level deeper else the presets aren't organized in sub-directories.
+                    //
+                    // "AAX plug-ins should include a set of presets in the following directory within the .aaxplugin:
+                    //       MyPlugIn.aaxplugin/Contents/Factory Presets/MyPlugInPackage/
+                    //  Where MyPlugInPackage is the plug-in's longest Package Name with 16 characters or fewer."
+                    string packageName = plugin.pluginName;
+                    if (packageName.length > 16)
+                        packageName = packageName[0..16];
+                    string factoryPresetsLocation =
+                        format(contentsDir ~ "Factory Presets/" ~ packageName ~ "/%s Factory Presets", plugin.prettyName);
+
+                    mkdirRecurse(factoryPresetsLocation);
+
+                    // Write files stored in tfxPresets
+                    foreach(p; tfxPresets)
+                    {
+                        std.file.write(factoryPresetsLocation ~ "/" ~ p.filename, p.content);
+                    }
+
+                    cwritefln("    => Copied %s AAX factory presets %sfrom binary".green, tfxPresets.length, formerlyExtracted ? "(formerly extracted) " : "");
+                    cwriteln();
                 }
 
                 void extractLV2ManifestFromBinary(string binaryPath, string outputDir, Arch targetArch, string binaryName)
@@ -748,7 +771,10 @@ int main(string[] args)
                         {
                             format = "AAX";
                             title = "AAX plug-in";
-                            installDir = WIN_AAX_DIR;
+                            if (arch == arch.x86_64)
+                                installDir = WIN_AAX_DIR;
+                            else
+                                installDir = WIN_AAX_DIR_X86;
                         }
                         else if (configIsLV2(config))
                         {
@@ -921,7 +947,7 @@ int main(string[] args)
                         }
                         else
                         {
-                            fileMove(plugin.dubOutputFileName, exePath);                            
+                            fileMove(plugin.dubOutputFileName, exePath);
                         }
                     }
 
