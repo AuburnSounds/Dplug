@@ -385,6 +385,9 @@ int main(string[] args)
         // Only used when targetting Windows
         WindowsPackage[] windowsPackages;
 
+        // Only used for LV2. A copy of the manifest, that allows to create multi-arch LV2.
+        string lv2Manifest = null;
+
         cwriteln();
 
         if (!quiet)
@@ -455,15 +458,6 @@ int main(string[] args)
                         throw new Exception("Can't build AU format on Windows");
                 }
 
-                // Does not try to build x86 LV2 under Windows
-                if (targetOS == OS.windows)
-                {
-                    if (configIsLV2(config) && (arch == Arch.x86))
-                    {
-                       cwritefln("info: Skipping architecture %s for LV2\n".white, arch);
-                       continue;
-                    }
-                }
 
                 // Does not try to build AAX or AU under Linux
                 if (targetOS == OS.linux)
@@ -617,8 +611,13 @@ int main(string[] args)
                     // Extract ports from LV2 Binary
                     // Because of this release itself must be 64-bit.
                     // To avoid this coupling, presets should be stored outside of the binary in the future.
+                    bool formerlyExtracted = false;
                     if (targetArch != buildArch)
-                        warning("Can't extract manifest from LV2 plug-in when dplug-build is built with a different arch.\n");
+                    {
+                        if (lv2Manifest is null)
+                            throw new Exception("Can't extract manifest from LV2 plug-in because dplug-build is built with a different arch, and the x86_64 arch wasn't built before. Re-run this build, including the x86_64 arch.\n");
+                        formerlyExtracted = true;
+                    }
                     else
                     {
                         cwritefln("*** Extract LV2 manifest from binary...".white);
@@ -637,14 +636,15 @@ int main(string[] args)
                         int manifestLen = ptrGenerateManifest(manifestBuf.ptr, cast(int)(manifestBuf.length),
                                                               binaryName.ptr, cast(int)(binaryName.length));
                         lib.unload();
-
-                        // write manifest
-                        string manifestPath = outputDir ~ "/manifest.ttl";
-                        std.file.write(manifestPath, manifestBuf[0..manifestLen]);
-
-                        cwritefln("    => Written %s bytes to manifest.ttl.".green, getSize(manifestPath));
-                        cwriteln();
+                        lv2Manifest = manifestBuf[0..manifestLen].idup;
                     }
+
+                    // write manifest
+                    string manifestPath = outputDir ~ "/manifest.ttl";
+                    std.file.write(manifestPath, lv2Manifest);
+
+                    cwritefln("    => Written %s bytes to%s manifest.ttl.".green, getSize(manifestPath), formerlyExtracted ? " (formerly extracted)" : "");
+                    cwriteln();
                 }
 
                 if (targetOS == OS.windows)
@@ -1353,29 +1353,6 @@ void generateWindowsInstaller(string outputDir,
     {
         bool pluginIsDir = p.pluginDir.isDir;
 
-        // Handle special case for LV2 if both 32bit and 64bit are built, create check in the installer
-        // to install the correct version for the user's OS
-        // TODO: The manifest is only generated for the bitness that dplug-build is built in. We could take advantage
-        // of the installer to install the manifest for 32bit and 64bit
-        if(p.format == "LV2" && lv2Packs.length > 1)
-        {
-            if(!p.is64b)
-            {
-                content ~= "  ${If} ${SectionIsSelected} ${Sec" ~ p.format ~ "}\n";
-                content ~= "    ${AndIfNot} ${RunningX64}\n";
-                content ~= "      SetOutPath \"" ~ p.installDir ~ "\"\n";
-                content ~= "      File " ~ (pluginIsDir ? "/r " : "") ~ "\"" ~ p.pluginDir.asNormalizedPath.array ~ "\"\n";
-            }
-            else
-            {
-                content ~= "  ${ElseIf} ${SectionIsSelected} ${Sec" ~ p.format ~ "}\n";
-                content ~= "      SetOutPath \"" ~ p.installDir ~ "\"\n";
-                content ~= "      File " ~ (pluginIsDir ? "/r " : "") ~ "\"" ~ p.pluginDir.asNormalizedPath.array ~ "\"\n";
-                content ~= "  ${EndIf}\n";
-            }
-        }
-        // For all other formats
-        else
         {
             // Only install the 64-bit package on 64-bit OS
             content ~= "  ${If} ${SectionIsSelected} ${Sec" ~ p.format ~ "}\n";

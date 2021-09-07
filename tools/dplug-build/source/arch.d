@@ -96,7 +96,7 @@ Arch[] allArchitecturesWeCanBuildForThisOS(OS targetOS)
         {
             // On arm64, build Universal Binaries with both arm64 and x86_64.
             if (buildArch == Arch.arm64 || buildArch == Arch.x86_64)
-                return [ Arch.arm64, Arch.x86_64, Arch.universalBinary ];
+                return [ Arch.x86_64, Arch.arm64, Arch.universalBinary ];
             else
                 throw new Exception("dplug-build on macOS should be built with a x86_64 or arm64 architecture.");
         }

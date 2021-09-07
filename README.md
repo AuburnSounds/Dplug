@@ -16,7 +16,7 @@
 | VST3    | Yes         | Yes          | Yes            | Yes            | Yes          | Yes             |
 | AUv2    | Yes         | Yes          |                |                |              |                 |
 | AAX     | No          | Yes          | No             | Yes            |              |                 |
-| LV2     | No          | Yes          | No             | Yes            | Yes          | Yes             |
+| LV2     | No          | Yes          | Yes            | Yes            | Yes          | Yes             |
 
 
 - Automated Mac and Windows installers
