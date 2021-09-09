@@ -48,3 +48,10 @@ Within each layer, widgets are Z-ordered for drawing and events.
 `dplug:canvas` is a 2D rasterizer library that provide quick RGBA drawing with a friendly interface. It is now the preferred way to draw on screen.
 
 [More info on this in the Wiki.](https://github.com/AuburnSounds/Dplug/wiki)
+
+
+# DSP subsystems
+
+`dplug:dsp` is the legacy, rather bad DSP module.
+`dplug:audio` defines an AudioBuffer abstraction and is the base for better DSP modules, such as `dsp:iir`.
+
