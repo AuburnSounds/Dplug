@@ -954,17 +954,25 @@ int main(string[] args)
                     if (publish && (archCount + 1 == architectures.length))
                     {
                         cwritefln("*** Publishing to %s...".white, installDir);
+
+                        string sourceDir = escapeShellArgument(path ~ "/" ~ pluginDir);
+                        string destDir = escapeShellArgument(installDir ~ "/");
+
+                        string cmd = format("sudo cp -R %s %s", sourceDir, destDir);
+                        safeCommand(cmd);
+
+/*
                         int filesCopied = copyRecurse(path ~ "/" ~ pluginDir, installDir ~ "/" ~ pluginDir, verbose);
                         cwritefln("    => %s files copied.".green, filesCopied);
                         cwriteln();
-
+*/
                         if (auval)
                         {
                             cwriteln("*** Validation with auval...".white);
 
                             bool is32b = (arch == Arch.x86);
                             string exename = is32b ? "auval" : "auvaltool";
-                            string cmd = format("%s%s -v aufx %s %s -de -dw",
+                            cmd = format("%s%s -v aufx %s %s -de -dw",
                                 exename,
                                 is32b ? " -32 ":"",
                                 plugin.pluginUniqueID,
