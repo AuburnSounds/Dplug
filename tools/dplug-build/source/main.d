@@ -94,8 +94,8 @@ void usage()
     flag("--final", "Shortcut for --combined -b release-nobounds", null, null);
     flag("--installer", "Make an installer " ~ "(Windows and OSX only)".red, null, "no");
     flag("--notarize", "Notarize the installer " ~ "(OSX only)".red, null, "no");
-    flag("--publish", "Make the plugin available in standard directories " ~ "(OSX only, DOESN'T WORK)".red, null, "no");
-    flag("--auval", "Check Audio Unit validation with auval " ~ "(OSX only, DOESN'T WORK)".red, null, "no");
+    flag("--publish", "Make the plugin available in standard directories " ~ "(OSX only)".red, null, "no");
+    flag("--auval", "Check Audio Unit validation with auval " ~ "(OSX only)".red, null, "no");
     flag("--rez", "Generate Audio Unit .rsrc file with Rez " ~ "(OSX only)".red, null, "no");
     flag("-h --help", "Shows this help", null, null);
 
