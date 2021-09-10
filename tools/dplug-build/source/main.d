@@ -441,16 +441,6 @@ int main(string[] args)
                     }
                 }
 
-                // Does not try to build Universal Binary for LV2 on mac (AAX is handled before)
-                if (targetOS == OS.macOS)
-                {
-                    if (configIsLV2(config) && (arch != Arch.x86_64))
-                    {
-                        cwritefln("info: Skipping architecture %s for LV2\n".white, arch);
-                        continue;
-                    }
-                }
-
                 // Does not try to build AU under Windows
                 if (targetOS == OS.windows)
                 {
@@ -476,7 +466,7 @@ int main(string[] args)
                 bool isTemp = false;
                 if (targetOS == OS.macOS)
                 {
-                    if (!configIsAAX(config) && !configIsLV2(config) && oneOfTheArchIsUB)
+                    if (!configIsAAX(config) && oneOfTheArchIsUB)
                     {
                         // In short: this build is deemed "temporary" if it's only a step toward building a
                         // multi-arch Universal Binary on macOS 11.
@@ -847,10 +837,32 @@ int main(string[] args)
                         string pluginFinalName = plugin.getLV2PrettyName() ~ ".dylib";
                         string pluginFinalPath = bundleDir ~ "/" ~ pluginFinalName;
                         mkdirRecurse(bundleDir);
-                        fileMove(plugin.dubOutputFileName, pluginFinalPath);
-                        extractLV2ManifestFromBinary(pluginFinalPath, bundleDir, arch, pluginFinalName);
-
+                        
                         // Note: there is no support for Universal Binary in LV2
+                        if (arch == Arch.universalBinary)
+                        {
+                            string path_arm64  = outputDirectory(outputDir, true, osString, Arch.arm64, config)
+                            ~ "/" ~ pluginDir ~ "/" ~ pluginFinalName;
+
+                            string path_x86_64 = outputDirectory(outputDir, true, osString, Arch.x86_64, config)
+                            ~ "/" ~ pluginDir ~ "/" ~ pluginFinalName;
+
+                            cwritefln("*** Making an universal binary with lipo".white);
+
+                            string cmd = format("lipo -create %s %s -output %s",
+                                                escapeShellArgument(path_arm64),
+                                                escapeShellArgument(path_x86_64),
+                                                escapeShellArgument(pluginFinalPath));
+                            safeCommand(cmd);
+                            double bytes = getSize(pluginFinalPath) / (1024.0 * 1024.0);
+                            cwritefln("    => Universal build OK, binary size = %0.1f mb, available in ./%s".green, bytes, path);
+                            cwriteln();
+                        }
+                        else
+                        {
+                            fileMove(plugin.dubOutputFileName, pluginFinalPath);                            
+                        }
+                        extractLV2ManifestFromBinary(pluginFinalPath, bundleDir, arch, pluginFinalName);
                     }
                     else
                     {
