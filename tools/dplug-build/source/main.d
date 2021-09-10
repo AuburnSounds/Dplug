@@ -892,7 +892,7 @@ int main(string[] args)
                                 rsrcPath = makeRSRC_with_Rez(plugin, arch, verbose);
                             else
                             {
-                                rsrcPath = makeRSRC_internal(plugin, arch, verbose);
+                                rsrcPath = makeRSRC_internal(outputDir, plugin, arch, verbose);
                             }
                             std.file.copy(rsrcPath, contentsDir ~ "Resources/" ~ baseName(exePath) ~ ".rsrc");
                         }
@@ -1068,7 +1068,7 @@ int main(string[] args)
             // Make icns and copy it (if any provided in plugin.json)
             if (plugin.iconPathOSX)
             {
-                iconPathOSX = makeMacIcon(plugin.name, plugin.iconPathOSX); // FUTURE: this should be lazy
+                iconPathOSX = makeMacIcon(outputDir, plugin.name, plugin.iconPathOSX); // FUTURE: this should be lazy
             }
         }
 
@@ -1122,7 +1122,7 @@ int main(string[] args)
                 string primaryBundle = plugin.getNotarizationBundleIdentifier(configurations[0]);
 
                 cwritefln("*** Notarizing final Mac installer %s...".white, primaryBundle);
-                notarizeMacInstaller(plugin, finalPkgPath, primaryBundle);
+                notarizeMacInstaller(outputDir, plugin, finalPkgPath, primaryBundle);
                 cwriteln("    => Notarization OK".green);
                 cwriteln;
             }
@@ -1555,10 +1555,10 @@ void generateMacInstaller(string outputDir,
     safeCommand(cmd);
 }
 
-void notarizeMacInstaller(Plugin plugin, string outPkgPath, string primaryBundleId)
+void notarizeMacInstaller(string outputDir, Plugin plugin, string outPkgPath, string primaryBundleId)
 {
-    string uploadXMLPath = buildPath(tempDir(), "notarization-upload.xml");
-    string pollXMLPath = buildPath(tempDir(), "notarization-poll.xml");
+    string uploadXMLPath = outputDir ~ "/temp/notarization-upload.xml";
+    string pollXMLPath = outputDir ~ "/temp/notarization-poll.xml";
     if (plugin.vendorAppleID is null)
         throw new Exception(`Missing "vendorAppleID" in plugin.json. Notarization need this key.`);
     if (plugin.appSpecificPassword_altool is null)

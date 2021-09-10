@@ -1067,11 +1067,10 @@ string makePListFile(Plugin plugin, string config, bool hasIcon, bool isAudioCom
 }
 
 // return path of newly made icon
-string makeMacIcon(string pluginName, string pngPath)
+string makeMacIcon(string outputDir, string pluginName, string pngPath)
 {
-    string temp = tempDir();
-    string iconSetDir = buildPath(tempDir(), pluginName ~ ".iconset");
-    string outputIcon = buildPath(tempDir(), pluginName ~ ".icns");
+    string iconSetDir = buildPath(outputDir, "temp/" ~ pluginName ~ ".iconset");
+    string outputIcon = buildPath(outputDir, "temp/" ~ pluginName ~ ".icns");
 
     if(!outputIcon.exists)
     {
@@ -1095,7 +1094,7 @@ string makeMacIcon(string pluginName, string pngPath)
     return outputIcon;
 }
 
-string makeRSRC_internal(Plugin plugin, Arch arch, bool verbose)
+string makeRSRC_internal(string outputDir, Plugin plugin, Arch arch, bool verbose)
 {
     if (arch != Arch.x86_64 
         && arch != Arch.arm64 
@@ -1106,7 +1105,7 @@ string makeRSRC_internal(Plugin plugin, Arch arch, bool verbose)
 
     cwritefln("*** Generating a .rsrc file for the bundle...".white);
 
-    string rsrcPath = buildPath(tempDir(), "plugin.rsrc");
+    string rsrcPath = outputDir ~ "/temp/plugin-" ~ convertArchToPrettyString(arch) ~ ".rsrc";
     RSRCWriter rsrc;
     rsrc.addType("STR ");
     rsrc.addType("dlle");
