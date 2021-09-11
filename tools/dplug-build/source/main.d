@@ -697,11 +697,10 @@ int main(string[] args)
                     }
                     else if (configIsLV2(config))
                     {
-                        // must create TTL, and a .lv2 directory
+                        // Create both a TTL and the .lv2 directory
                         string pluginFinalName = plugin.getLV2PrettyName() ~ ".dll";
                         pluginDirectory = path ~ "/" ~ plugin.prettyName ~ ".lv2";
                         string pluginFinalPath = pluginDirectory ~ "/" ~ pluginFinalName;
-
                         mkdirRecurse(pluginDirectory);
                         fileMove(plugin.dubOutputFileName, pluginFinalPath);
                         extractLV2ManifestFromBinary(pluginFinalPath, pluginDirectory, arch, pluginFinalName);
@@ -793,10 +792,13 @@ int main(string[] args)
                 {
                     if(configIsLV2(config))
                     {
-                        string pluginFinalPath = plugin.getLV2PrettyName() ~ ".so";
-                        string soPath = path ~ "/" ~ pluginFinalPath;
-                        fileMove(plugin.dubOutputFileName, soPath);
-                        extractLV2ManifestFromBinary(soPath, path, arch, pluginFinalPath);
+                        // Create both a TTL and the .lv2 directory
+                        string pluginDirectory = path ~ "/" ~ plugin.prettyName ~ ".lv2";
+                        string pluginFinalName = plugin.getLV2PrettyName() ~ ".so";
+                        string pluginFinalPath = pluginDirectory ~ "/" ~ pluginFinalName;
+                        mkdirRecurse(pluginDirectory);
+                        fileMove(plugin.dubOutputFileName, pluginFinalPath);
+                        extractLV2ManifestFromBinary(pluginFinalPath, pluginDirectory, arch, pluginFinalName);
                     }
                     else if (configIsVST3(config)) 
                     {
