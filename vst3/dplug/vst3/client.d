@@ -1451,6 +1451,7 @@ nothrow:
             GraphicsBackend backend = GraphicsBackend.autodetect;
             if (!convertPlatformToGraphicsBackend(type, &backend))
                 return kResultFalse;
+
             _graphicsMutex.lock();
             scope(exit) _graphicsMutex.unlock();
 
@@ -1544,13 +1545,11 @@ nothrow:
         _graphicsMutex.lock();
         scope(exit) _graphicsMutex.unlock();
 
-        auto graphics = _vst3Client._client.graphicsAcquire();
-        if (graphics is null) 
-            return kResultOk; // Window not yet opened, nothing to do. TODO: is it correct though???
+        auto graphics = _vst3Client._client.getGraphics();
+        assert(graphics !is null);
 
         graphics.nativeWindowResize(newSize.getWidth(), newSize.getHeight()); // Tell the IWindow to position itself at newSize.
 
-        _vst3Client._client.graphicsRelease();
         return kResultOk;
     }
 
@@ -1571,11 +1570,12 @@ nothrow:
     /** Is view sizable by user. */
     extern(Windows) tresult canResize ()
     {
-        auto graphics = _vst3Client._client.graphicsAcquire();
-        if (graphics is null) 
-            return kResultFalse;
+        _graphicsMutex.lock();
+        scope(exit) _graphicsMutex.unlock();
+        auto graphics = _vst3Client._client.getGraphics();
+        assert(graphics !is null);
+
         tresult result = graphics.isResizeable() ? kResultTrue : kResultFalse;
-        _vst3Client._client.graphicsRelease();
         return result;
     }
 
@@ -1583,9 +1583,10 @@ nothrow:
     *  adjust the rect to the allowed size. */
     extern(Windows) tresult checkSizeConstraint (ViewRect* rect)
     {
-        auto graphics = _vst3Client._client.graphicsAcquire();
-        if (graphics is null) 
-            return kResultTrue; // could as well return true? since we accomodate for any size anyway.
+        _graphicsMutex.lock();
+        scope(exit) _graphicsMutex.unlock();
+        auto graphics = _vst3Client._client.getGraphics();
+        assert(graphics !is null);
 
         int W = rect.getWidth();
         int H = rect.getHeight();
@@ -1614,7 +1615,6 @@ nothrow:
         rect.right = rect.left + W;
         rect.bottom = rect.top + H;
 
-        _vst3Client._client.graphicsRelease();
         return kResultTrue;
     }
    

@@ -367,8 +367,9 @@ nothrow:
         return index >= 0 && index < maxOutputs();
     }
 
-    // Note: openGUI, getGUISize and closeGUI are guaranteed
-    // synchronized by the client implementation
+    /// Note: openGUI, getGUISize, getGraphics and closeGUI are guaranteed
+    /// synchronized by the client implementation
+    /// Only allowed for client implementation.
     final void* openGUI(void* parentInfo, void* controlInfo, GraphicsBackend backend) nothrow @nogc
     {
         createGraphicsLazily();
@@ -376,6 +377,7 @@ nothrow:
         return (cast(IGraphics)_graphics).openUI(parentInfo, controlInfo, this, backend);
     }
 
+    /// Only allowed for client implementation.
     final bool getGUISize(int* widthLogicalPixels, int* heightLogicalPixels) nothrow @nogc
     {
         createGraphicsLazily();
@@ -391,6 +393,7 @@ nothrow:
 
     /// Close the plugin UI if one was opened.
     /// Note: OBS Studio will happily call effEditClose without having called effEditOpen.
+    /// Only allowed for client implementation.
     final void closeGUI() nothrow @nogc
     {
         auto graphics = (cast(IGraphics)_graphics);
@@ -398,6 +401,14 @@ nothrow:
         {
             graphics.closeUI();
         }
+    }
+
+    /// This creates the GUIGraphics object lazily, and return it without synchronization.
+    /// Only allowed for client implementation.
+    final IGraphics getGraphics()
+    {
+        createGraphicsLazily();
+        return (cast(IGraphics)_graphics);
     }
 
     // This should be called only by a client implementation.
@@ -415,12 +426,13 @@ nothrow:
     }
 
     /// Getter for the IGraphics interface
-    /// This is intended for the audio thread and has acquire semantics.
+    /// This is intended ONLY for the audio thread inside processing and has acquire semantics.
     /// Not reentrant! You can't call this twice without a graphicsRelease first.
+    /// THIS CAN RETURN NULL EVEN AFTER HAVING RETURNED NON-NULL AT ONE POINT.
     /// Returns: null if feedback from audio thread is not welcome.
     final IGraphics graphicsAcquire() nothrow @nogc
     {
-        if (cas(&_graphicsIsAvailable, true, false))
+        if (cas(&_graphicsIsAvailable, true, false)) // exclusive, since there is only one audio thread normally
             return _graphics;
         else
             return null;
