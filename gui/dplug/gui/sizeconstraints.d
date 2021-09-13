@@ -241,7 +241,8 @@ nothrow:
     }
 
     /// Given an input size, get a valid size that is the maximum that would fit inside a `inoutWidth` x `inoutHeight`, but smaller.
-    void getSmallerOrEqualValidSize(int* inoutWidth, int* inoutHeight)
+    /// Prefer validity if no smaller size is available.
+    void getMaxSmallerValidSize(int* inoutWidth, int* inoutHeight)
     {
         final switch(type) with (Type)
         {
@@ -373,7 +374,7 @@ static float findMinMatchingFloat(float threshold, const(float)[] arr) pure @tru
 
     w = 640*2-1;
     h = 480-1;
-    c.getSmallerOrEqualValidSize(&w, &h);
+    c.getMaxSmallerValidSize(&w, &h);
     assert(w == 320 && h == 240);    
 
     c = makeSizeConstraintsContinuous(640, 480, 0.5f, 2.0f);

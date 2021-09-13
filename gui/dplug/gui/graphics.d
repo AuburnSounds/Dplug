@@ -217,9 +217,9 @@ nothrow:
         return isUIResizable();
     }
 
-    override void getNearestValidSize(int* inoutWidth, int* inoutHeight)
+    override void getMaxSmallerValidSize(int* inoutWidth, int* inoutHeight)
     {
-        _sizeConstraints.getNearestValidSize(inoutWidth, inoutHeight);
+        _sizeConstraints.getMaxSmallerValidSize(inoutWidth, inoutHeight);
     }
 
     override bool nativeWindowResize(int newWidthLogicalPixels, int newHeightLogicalPixels)
@@ -844,7 +844,7 @@ protected:
         _currentLogicalHeight = heightLogicalPixels;
         _currentUserWidth     = widthLogicalPixels;
         _currentUserHeight    = heightLogicalPixels;
-        _sizeConstraints.getNearestValidSize(&_currentUserWidth, &_currentUserHeight);
+        _sizeConstraints.getMaxSmallerValidSize(&_currentUserWidth, &_currentUserHeight);
 
         // 1.b Update user area rect. We find a suitable space in logical area
         //     to draw the whole UI.

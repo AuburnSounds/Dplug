@@ -42,9 +42,10 @@ nothrow:
     abstract bool isResizeable();
 
     /// Used by VST3.
-    /// Returns: Nearest, valid size in logical pixels, given an input size in logical pixels.
+    /// Returns: Maximum valid size that still fits into a `inoutWidth x inoutHeight` rectangle.
+    ///          When one of the criterion is impossible to satisfy, returning a valid size is preferred.
     /// This should work even if the UI is closed.
-    abstract void getNearestValidSize(int* inoutWidth, int* inoutHeight);
+    abstract void getMaxSmallerValidSize(int* inoutWidth, int* inoutHeight);
 
     /// Used by VST3.
     /// Tells the native window to resize itself.

@@ -1585,12 +1585,12 @@ nothrow:
     {
         auto graphics = _vst3Client._client.graphicsAcquire();
         if (graphics is null) 
-            return kResultFalse; // could as well return true? since we accomodate for any size anyway.
+            return kResultTrue; // could as well return true? since we accomodate for any size anyway.
 
         int W = rect.getWidth();
         int H = rect.getHeight();
 
-        graphics.getNearestValidSize(&W, &H);
+        graphics.getMaxSmallerValidSize(&W, &H);
 
         rect.right = rect.left + W;
         rect.bottom = rect.top + H;
