@@ -11,6 +11,7 @@ import dplug.core.math;
 
 nothrow:
 @nogc:
+@safe:
 
 
 /// Build a `SizeConstraints` that describes a fixed UI dimensions, in logical pixels.
@@ -185,7 +186,7 @@ nothrow:
     }
 
     /// Returns `true` if this `SizeConstraints` allows this size.
-    bool isValidSize(int width, int height)
+    bool isValidSize(int width, int height) @trusted
     {
         int validw = width,
             validh = height;
@@ -239,6 +240,56 @@ nothrow:
         }
     }
 
+    /// Given an input size, get a valid size that is the maximum that would fit inside a `inoutWidth` x `inoutHeight`, but smaller.
+    void getSmallerOrEqualValidSize(int* inoutWidth, int* inoutHeight)
+    {
+        final switch(type) with (Type)
+        {
+            case continuousRatio:
+            {
+                // find estimate of scale
+                float scaleX = *inoutWidth / (cast(float)defaultWidth);
+                float scaleY = *inoutHeight / (cast(float)defaultHeight);
+                float scale = (scaleX < scaleY) ? scaleX : scaleY;
+                if (scale < minScale) scale = minScale;
+                if (scale > maxScale) scale = maxScale;
+                *inoutWidth = cast(int)(0.5f + scale * defaultWidth);
+                *inoutHeight = cast(int)(0.5f + scale * defaultHeight);
+                break;
+            }
+
+            case discreteRatio:
+            {
+                float scaleX = *inoutWidth / (cast(float)defaultWidth);
+                float scaleY = *inoutHeight / (cast(float)defaultHeight);
+                float scale = (scaleX < scaleY) ? scaleX : scaleY;
+                scale = findMinMatchingFloat(scale, discreteScales[0..numDiscreteScales]);
+                *inoutWidth = cast(int)(0.5f + scale * defaultWidth);
+                *inoutHeight = cast(int)(0.5f + scale * defaultHeight);
+                break;
+            }
+
+            case rectangularBounds: 
+                alias w = inoutWidth;
+                alias h = inoutHeight;
+                if (*w < minWidth)  *w = minWidth;
+                if (*h < minHeight) *h = minHeight;
+                if (*w > maxWidth)  *w = maxWidth;
+                if (*h > maxHeight) *h = maxHeight;
+                break;
+
+            case discreteRatioXY:
+            {
+                float scaleX = (*inoutWidth) / (cast(float)defaultWidth);
+                float scaleY = (*inoutHeight) / (cast(float)defaultHeight);
+                scaleX = findMinMatchingFloat(scaleX, discreteScalesX[0..numDiscreteScalesX]);
+                scaleY = findMinMatchingFloat(scaleY, discreteScalesY[0..numDiscreteScalesY]);
+                *inoutWidth = cast(int)(0.5f + scaleX * defaultWidth);
+                *inoutHeight = cast(int)(0.5f + scaleY * defaultHeight);
+            }
+        }
+    }
+
 private:
 
     enum MAX_POSSIBLE_SCALES = 8;
@@ -262,28 +313,56 @@ private:
     int minHeight;
     int maxWidth;
     int maxHeight;
-
-    // Return arr[n], the nearest element of the array to x
-    static float findBestMatchingFloat(float x, const(float)[] arr) pure @trusted
-    {
-        assert(arr.length > 0);
-        float bestScore = -float.infinity;
-        int bestIndex = 0;
-        for (int n = 0; n < cast(int)arr.length; ++n)
-        {
-            float score = -fast_fabs(arr[n] - x);
-            if (score > bestScore)
-            {
-                bestScore = score;
-                bestIndex = n;
-            }
-        }
-        return arr[bestIndex];
-    }
 }
 
-unittest
+private:
+
+// Return arr[n], the nearest element of the array to x
+static float findBestMatchingFloat(float x, const(float)[] arr) pure @trusted
 {
+    assert(arr.length > 0);
+    float bestScore = -float.infinity;
+    int bestIndex = 0;
+    for (int n = 0; n < cast(int)arr.length; ++n)
+    {
+        float score = -fast_fabs(arr[n] - x);
+        if (score > bestScore)
+        {
+            bestScore = score;
+            bestIndex = n;
+        }
+    }
+    return arr[bestIndex];
+}
+
+// Return arr[n], the element of the array that approach `threshold` better without exceeding it
+// (unless every proposed item exceed)
+static float findMinMatchingFloat(float threshold, const(float)[] arr) pure @trusted
+{
+    assert(arr.length > 0);
+    float bestScore = float.infinity;
+    int bestIndex = 0;
+    for (int n = 0; n < cast(int)arr.length; ++n)
+    {
+        float score = (threshold - arr[n]);
+        if ( (score >= 0) && (score < bestScore) )
+        {
+            bestScore = score;
+            bestIndex = n;
+        }
+    }
+
+    // All items were above the threshold, use nearest item.
+    if (bestIndex == -1)
+        return findBestMatchingFloat(threshold, arr);
+
+    return arr[bestIndex];
+}
+
+@trusted unittest
+{
+    int w, h;
+
     SizeConstraints a, b;
     a = makeSizeConstraintsFixed(640, 480);
     b = a;
@@ -292,13 +371,17 @@ unittest
     SizeConstraints c = makeSizeConstraintsDiscrete(640, 480, ratios[]);
     assert(c.isValidSize(640, 480));
 
+    w = 640*2-1;
+    h = 480-1;
+    c.getSmallerOrEqualValidSize(&w, &h);
+    assert(w == 320 && h == 240);    
+
     c = makeSizeConstraintsContinuous(640, 480, 0.5f, 2.0f);
     assert(c.isValidSize(640, 480));
     assert(!c.isValidSize(640/4, 480/4));
     assert(c.isValidSize(640/2, 480/2));
     assert(c.isValidSize(640*2, 480*2));
-
-    int w, h;
+    
     a.suggestDefaultSize(&w, &h);
     assert(w == 640 && h == 480);
 
@@ -315,4 +398,17 @@ unittest
     w = 1000; h = 2500;
     c.getNearestValidSize(&w, &h);
     assert(w == 900 && h == 1500);
+}
+
+unittest
+{
+    float[4] A = [1.0f, 2, 3, 4];
+    assert( findMinMatchingFloat(3.8f, A) == 3 );
+    assert( findMinMatchingFloat(10.0f, A) == 4 );
+    assert( findMinMatchingFloat(2.0f, A) == 2 );
+    assert( findMinMatchingFloat(-1.0f, A) == 1 );
+    assert( findBestMatchingFloat(3.8f, A) == 4 );
+    assert( findBestMatchingFloat(10.0f, A) == 4 );
+    assert( findBestMatchingFloat(2.0f, A) == 2 );
+    assert( findBestMatchingFloat(-1.0f, A) == 1 );
 }
