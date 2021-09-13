@@ -1546,7 +1546,7 @@ nothrow:
 
         auto graphics = _vst3Client._client.graphicsAcquire();
         if (graphics is null) 
-            return kResultOk; // Window not yet opened, nothing to do.
+            return kResultOk; // Window not yet opened, nothing to do. TODO: is it correct though???
 
         graphics.nativeWindowResize(newSize.getWidth(), newSize.getHeight()); // Tell the IWindow to position itself at newSize.
 
@@ -1590,7 +1590,26 @@ nothrow:
         int W = rect.getWidth();
         int H = rect.getHeight();
 
-        graphics.getMaxSmallerValidSize(&W, &H);
+        DAW daw = _vst3Client._hostCommand.getDAW();
+
+        bool avoidLargerSizeInCheckConstraint = (daw == DAW.Reaper);
+
+        if (avoidLargerSizeInCheckConstraint)
+        {
+            // REAPER want instead the max size that fits.
+            graphics.getMaxSmallerValidSize(&W, &H);
+        }
+        else
+        {
+            // Most other host accomodate with a larger size.
+            // Note: It is important to take the nearest here rather than the max size that fits, but is smaller?
+            // it is to allow an upsize when dragging only one size of the window.
+            // Else, the window can only be shrink in VST3 hosts (tested in Cubase, FL, Waveform, the test host...) unless the 
+            // window corner is used.
+            // FUTURE: allow any size, since GUIGraphics does the best it can.
+            //         Check it on Studio One! which is more demanding.
+            graphics.getNearestValidSize(&W, &H);
+        }
 
         rect.right = rect.left + W;
         rect.bottom = rect.top + H;
@@ -1598,7 +1617,7 @@ nothrow:
         _vst3Client._client.graphicsRelease();
         return kResultTrue;
     }
-
+   
 private:
     VST3Client _vst3Client;
     UncheckedMutex _graphicsMutex;

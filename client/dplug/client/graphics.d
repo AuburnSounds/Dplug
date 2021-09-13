@@ -48,6 +48,11 @@ nothrow:
     abstract void getMaxSmallerValidSize(int* inoutWidth, int* inoutHeight);
 
     /// Used by VST3.
+    /// Returns: Nearest, valid size in logical pixels, given an input size in logical pixels.
+    /// This should work even if the UI is closed.
+    abstract void getNearestValidSize(int* inoutWidth, int* inoutHeight);
+
+    /// Used by VST3.
     /// Tells the native window to resize itself.
     /// Called by the host when it's one resizing the parent window, and wants our window to follow suit.
     /// This is to be forwarded to IWindow.

@@ -222,6 +222,11 @@ nothrow:
         _sizeConstraints.getMaxSmallerValidSize(inoutWidth, inoutHeight);
     }
 
+    override void getNearestValidSize(int* inoutWidth, int* inoutHeight)
+    {
+        _sizeConstraints.getNearestValidSize(inoutWidth, inoutHeight);
+    }
+
     override bool nativeWindowResize(int newWidthLogicalPixels, int newHeightLogicalPixels)
     {
         // If it's already the same logical size, nothing to do.
