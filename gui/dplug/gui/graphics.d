@@ -381,9 +381,10 @@ nothrow:
     /// The default value was tuned by hand on very shiny light sources.
     /// Too high and processing becomes more expensive.
     /// Too little and the ligth decay doesn't feel natural.
+    /// IMPORTANT: This should be called only inside your main reflow() or at UI creation time.
     void setUpdateMargin(int margin = 20) nothrow @nogc
     {
-        _updateMargin = margin;
+        _updateMargin = margin; // theoretically it should dirty every PBR rectangle... hence restricting to reflow().
     }
 
 package:
@@ -713,7 +714,7 @@ protected:
         context().dirtyListRaw.pullAllRectangles(_rectsToUpdateDisjointedRaw);
         context().dirtyListPBR.pullAllRectangles(_rectsToUpdateDisjointedPBR);
 
-        recomputePurelyDerivedRectangles();        
+        recomputePurelyDerivedRectangles();
     }
 
     void recomputePurelyDerivedRectangles()
@@ -721,10 +722,8 @@ protected:
         // If a resize has been made recently, we need to clip rectangles
         // in the pending lists to the new size.
         // All other rectangles are purely derived from those.
-        // PERF: not sure if necessary to do it each time, or just after a resize.
-        //       Could a control call setDirty at the same time?
-        //       See `addDirtyRect` for details.
-
+        // PERF: this check is necessary because of #597.
+        //       Solveing this is a long-term quest in itself.
         box2i validUserArea = rectangle(0, 0, _currentUserWidth, _currentUserHeight);
         foreach (ref r; _rectsToUpdateDisjointedRaw[])
         {
@@ -735,12 +734,13 @@ protected:
             r = r.intersection(validUserArea);
         }
 
-        // TECHNICAL DEBT HERE
         // The problem here is that if the window isn't shown there may be duplicates in
         // _rectsToUpdateDisjointedRaw and _rectsToUpdateDisjointedPBR
         // (`recomputeDirtyAreas`called multiple times without clearing those arrays),
         //  so we have to maintain unicity again.
         //
+        // PERF: when the window is shown, we could overwrite content of _rectsToUpdateDisjointedRaw/_rectsToUpdateDisjointedPBR?
+        //       instead of doing that.
         {
             // Make _rectsToUpdateDisjointedRaw disjointed
             _rectsTemp.clearContents();
@@ -887,6 +887,9 @@ protected:
                 // This is probably one of the most correct workaround in the file.
                 _rectsToUpdateDisjointedRaw.clearContents();
                 _rectsToUpdateDisjointedPBR.clearContents();
+
+                // Note: out of range rectangles will still be in the dirtyListRaw/dirtyListPBR
+                // This is the dreaded Issue #597
 
                 // This avoids an onDraw with wrong rectangles
                 recomputePurelyDerivedRectangles();
