@@ -44,6 +44,9 @@ alias RMSP = RGBA; // reminder
 // Uncomment to benchmark compositing and devise optimizations.
 //debug = benchmarkGraphics;
 
+// Uncomment to enter the marvellous world of dirty rectangles.
+//debug = resizing;
+
 debug(benchmarkGraphics)
 {
     import core.sys.windows.windows;
@@ -337,6 +340,14 @@ nothrow:
             if (outer._reportBlackBordersAndResizedAreaAsDirty)
                 r = r.expand( box2i(0, 0, outer._currentLogicalWidth, outer._currentLogicalHeight) );
 
+            debug(resizing)
+            {
+                if (!r.empty)
+                {
+                    debugLogf("getDirtyRectangle returned rectangle(%d, %d, %d, %d)\n", r.min.x, r.min.y, r.width, r.height);
+                }
+            }
+
             return r;
         }
 
@@ -443,7 +454,7 @@ package:
             return true;
 
         // was supposed to be enabled for Cubase + VST2 + Windows, but didn't worked out
-        // better ignore that edge case?
+        // This is Issue #595.
         bool needResizeParentWindow = false;
 
         // In VST2, very few hosts also resize the plugin window. We get to do it manually.
@@ -509,6 +520,9 @@ protected:
 
     /// the area in logical area where the user area is drawn.
     box2i _userArea;
+
+    // Force userArea refresh on first resize.
+    bool _firstResize = true;
 
     // if true, it means the whole resize buffer and accompanying black
     // borders should be redrawn at the next onDraw
@@ -622,6 +636,20 @@ protected:
 
     void doDraw(WindowPixelFormat pf) nothrow @nogc
     {
+        debug(resizing) debugLogf(">doDraw\n");
+
+        debug(resizing)
+        {
+            foreach(r; _rectsToUpdateDisjointedPBR[])
+            {
+                debugLogf("  * this will redraw PBR rectangle(%d, %d, %d, %d)\n", r.min.x, r.min.y, r.width, r.height);
+            }
+            foreach(r; _rectsToUpdateDisjointedRaw[])
+            {
+                debugLogf("  * this will redraw RAW rectangle(%d, %d, %d, %d)\n", r.min.x, r.min.y, r.width, r.height);
+            }
+        }
+
         // A. Recompute draw lists
         // These are the `UIElement`s that _may_ have their onDrawXXX callbacks called.
         recomputeDrawLists();
@@ -704,6 +732,8 @@ protected:
         // before calling `doDraw` such work accumulates
         _rectsToUpdateDisjointedPBR.clearContents();
         _rectsToUpdateDisjointedRaw.clearContents();
+
+        debug(resizing) debugLogf("<doDraw\n");
     }
 
     void recomputeDirtyAreas() nothrow @nogc
@@ -738,6 +768,7 @@ protected:
         // _rectsToUpdateDisjointedRaw and _rectsToUpdateDisjointedPBR
         // (`recomputeDirtyAreas`called multiple times without clearing those arrays),
         //  so we have to maintain unicity again.
+        // Also duplicate can accumulate in case of two successive onResize (to test: Studio One with continuous resizing plugin)
         //
         // PERF: when the window is shown, we could overwrite content of _rectsToUpdateDisjointedRaw/_rectsToUpdateDisjointedPBR?
         //       instead of doing that.
@@ -839,20 +870,59 @@ protected:
     ImageRef!RGBA doResize(int widthLogicalPixels,
                            int heightLogicalPixels) nothrow @nogc
     {
+        debug(resizing) debugLogf(">doResize(%d, %d)\n", widthLogicalPixels, heightLogicalPixels);
+
         /// We do receive a new size in logical pixels.
         /// This is coming from getting the window client area. The reason
         /// for this resize doesn't matter, we must find a mapping that fits
         /// between this given logical size and user size.
 
         // 1.a Based upon the _sizeConstraints, select a user size in pixels.
-        _currentLogicalWidth  = widthLogicalPixels;
-        _currentLogicalHeight = heightLogicalPixels;
-        _currentUserWidth     = widthLogicalPixels;
-        _currentUserHeight    = heightLogicalPixels;
-        _sizeConstraints.getMaxSmallerValidSize(&_currentUserWidth, &_currentUserHeight);
+        //     Keep in mind if the _userArea has just moved (just moving the contents elsewhere)
+        //     or if its size has changed (user size), which require a redraw.
+
+        // Has the logical available size changed?
+        bool logicalSizeChanged = false;
+        if (_currentLogicalWidth != widthLogicalPixels)
+        {
+            _currentLogicalWidth = widthLogicalPixels;
+            logicalSizeChanged = true;
+        }
+        if (_currentLogicalHeight != heightLogicalPixels)
+        {
+            _currentLogicalHeight = heightLogicalPixels;
+            logicalSizeChanged = true;
+        }
+
+        int newUserWidth = widthLogicalPixels;
+        int newUserHeight = heightLogicalPixels;
+        _sizeConstraints.getMaxSmallerValidSize(&newUserWidth, &newUserHeight);
+
+        bool userSizeChanged = false;
+        if (_currentUserWidth != newUserWidth)
+        {
+            _currentUserWidth = newUserWidth;
+            userSizeChanged = true;
+        }
+        if (_currentUserHeight != newUserHeight)
+        {
+            _currentUserHeight = newUserHeight;
+            userSizeChanged = true;
+        }
+
+        // On first onResize, assume both sizes changed
+        if (_firstResize)
+        {
+            logicalSizeChanged = true;
+            userSizeChanged = true;
+            _firstResize = false;
+        }
+
+        if (userSizeChanged) { assert(logicalSizeChanged); }
 
         // 1.b Update user area rect. We find a suitable space in logical area
         //     to draw the whole UI.
+        if (logicalSizeChanged)
         {
             int x, y, w, h;
             if (_currentLogicalWidth >= _currentUserWidth)
@@ -875,25 +945,32 @@ protected:
                 y = 0;
                 h = _currentLogicalHeight;
             }
-            box2i newUserArea = box2i.rectangle(x, y, w, h);
-            if (newUserArea != _userArea)
+
+            _userArea = box2i.rectangle(x, y, w, h);
+
+            debug(resizing)
             {
-                // if user area changed, invalidate all to-be-resized area, and redraw black borders.
-                _userArea = newUserArea;
-                _reportBlackBordersAndResizedAreaAsDirty = true;
-
-                // Immediately abandon all promises of redraw, since the data is now wrong.
-                // NOTE: RECTANGLES UPDATES ARE A BIG BIG MESS HERE.
-                // This is probably one of the most correct workaround in the file.
-                _rectsToUpdateDisjointedRaw.clearContents();
-                _rectsToUpdateDisjointedPBR.clearContents();
-
-                // Note: out of range rectangles will still be in the dirtyListRaw/dirtyListPBR
-                // This is the dreaded Issue #597
-
-                // This avoids an onDraw with wrong rectangles
-                recomputePurelyDerivedRectangles();
+                debugLogf("new _userArea is rectangle(%d, %d, %d, %d)\n", x, y, w, h);
             }
+
+            _reportBlackBordersAndResizedAreaAsDirty = true;
+
+            // Note: out of range rectangles will still be in the dirtyListRaw/dirtyListPBR
+            // and also _rectsToUpdateDisjointedPBR/_rectsToUpdateDisjointedRaw
+            // This is the dreaded Issue #597
+            // Unicity and boundness is maintained inside recomputePurelyDerivedRectangles().
+
+            // The user size has changed. Force an immediate full redraw, so that no ancient data is used.
+            // Not that this is on top of previous resizes or pulled rectangles in 
+            // _rectsToUpdateDisjointedPBR / _rectsToUpdateDisjointedRaw.
+            if (userSizeChanged)
+            {
+                debug(resizing) debugLogf("  * provoke full redraw\n");
+                _rectsToUpdateDisjointedPBR.pushBack( rectangle(0, 0, _userArea.width, _userArea.height) );
+            }
+
+            // This avoids an onDraw with wrong rectangles
+            recomputePurelyDerivedRectangles();
         }
 
         // 2. Invalidate UI region if user size change.
@@ -927,6 +1004,8 @@ protected:
         // Extends final buffer with logical size
         size_t sizeNeeded = byteStride(_currentLogicalWidth) * _currentLogicalHeight;
         _resizedBuffer = cast(ubyte*) alignedRealloc(_resizedBuffer, sizeNeeded, 16);
+
+        debug(resizing) debugLogf("<doResize(%d, %d)\n", widthLogicalPixels, heightLogicalPixels);
 
         return toImageRef(_resizedBuffer, _currentLogicalWidth, _currentLogicalHeight);
     }
@@ -1183,6 +1262,7 @@ protected:
         // (because of borders, or changing offsets of the user area).
         if (_redrawBlackBordersAndResizedArea)
         {
+            debug(resizing) debugLogf("  * redrawing black borders, and copy item\n");
             RGBA black;
             final switch(pf)
             {
@@ -1198,7 +1278,7 @@ protected:
             // and no need to draw everything in onDraw anymore.
             _redrawBlackBordersAndResizedArea = false;
 
-            rectsToCopy[] = _userArea;
+            rectsToCopy = (&_userArea)[0..1];
         }
 
         foreach(rect; rectsToCopy[])
