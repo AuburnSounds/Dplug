@@ -1592,10 +1592,22 @@ nothrow:
         int H = rect.getHeight();
 
         DAW daw = _vst3Client._hostCommand.getDAW();
+        bool reaper = (daw == DAW.Reaper);
+        bool avoidLargerSizeInCheckConstraint = reaper;
 
-        bool avoidLargerSizeInCheckConstraint = (daw == DAW.Reaper);
-
-        if (avoidLargerSizeInCheckConstraint)
+        // Force the default size on first opening in REAPER.
+        // See Issue #559.
+        // This is because REAPER will try another size for no apparent reason, in VST3 + (Linux or macOS).
+        bool avoidLiveResize = false;
+        version(linux)
+            if (reaper) avoidLiveResize = true;
+        version(OSX)
+            if (reaper) avoidLiveResize = true;
+        if (avoidLiveResize)
+        {
+            graphics.getGUISize(&W, &H);
+        }
+        else if (avoidLargerSizeInCheckConstraint)
         {
             // REAPER want instead the max size that fits.
             graphics.getMaxSmallerValidSize(&W, &H);
