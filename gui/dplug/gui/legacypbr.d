@@ -243,46 +243,18 @@ nothrow:
                 const(L16)* depthHere = depthScan + i;
                 const(L16)* depthHereM1 = cast(const(L16)*) ( cast(const(ubyte)*)depthHere - depthPitchBytes );
                 const(L16)* depthHereP1 = cast(const(L16)*) ( cast(const(ubyte)*)depthHere + depthPitchBytes );
-                version(legacyPBRNormals)
-                {
-                    // compute normal
-                    float sx = depthHereM1[-1].l
-                        + depthHere[  -1].l * 2
-                        + depthHereP1[-1].l
-                        - (   depthHereM1[+1].l
-                              + depthHere[  +1].l * 2
-                           + depthHereP1[+1].l  );
-
-                    float sy = depthHereP1[-1].l 
-                        + depthHereP1[ 0].l * 2 
-                        + depthHereP1[+1].l
-                        - (   depthHereM1[-1].l 
-                              + depthHereM1[ 0].l * 2 
-                           + depthHereM1[+1].l);
-
-                    // this factor basically tweak normals to make the UI flatter or not
-                    // if you change normal filtering, retune this
-                    enum float sz = 260.0f * 257.0f / 1.8f; 
-
-                    vec3f normal = vec3f(sx, sy, sz);
-                    normal.fastNormalize(); // this makes very, very little difference in output vs normalize
-                }
-                else
-                {
-                    enum float multUshort = 1.0 / FACTOR_Z;
-                    float[9] depthNeighbourhood = void;
-                    depthNeighbourhood[0] = depthHereM1[-1].l * multUshort;
-                    depthNeighbourhood[1] = depthHereM1[ 0].l * multUshort;
-                    depthNeighbourhood[2] = depthHereM1[+1].l * multUshort;
-                    depthNeighbourhood[3] = depthHere[-1].l * multUshort;
-                    depthNeighbourhood[4] = depthHere[ 0].l * multUshort;
-                    depthNeighbourhood[5] = depthHere[+1].l * multUshort;
-                    depthNeighbourhood[6] = depthHereP1[-1].l * multUshort;
-                    depthNeighbourhood[7] = depthHereP1[ 0].l * multUshort;
-                    depthNeighbourhood[8] = depthHereP1[+1].l * multUshort;
-
-                    vec3f normal = computePlaneFittingNormal(depthNeighbourhood.ptr);
-                }
+                enum float multUshort = 1.0 / FACTOR_Z;
+                float[9] depthNeighbourhood = void;
+                depthNeighbourhood[0] = depthHereM1[-1].l * multUshort;
+                depthNeighbourhood[1] = depthHereM1[ 0].l * multUshort;
+                depthNeighbourhood[2] = depthHereM1[+1].l * multUshort;
+                depthNeighbourhood[3] = depthHere[-1].l   * multUshort;
+                depthNeighbourhood[4] = depthHere[ 0].l   * multUshort;
+                depthNeighbourhood[5] = depthHere[+1].l   * multUshort;
+                depthNeighbourhood[6] = depthHereP1[-1].l * multUshort;
+                depthNeighbourhood[7] = depthHereP1[ 0].l * multUshort;
+                depthNeighbourhood[8] = depthHereP1[+1].l * multUshort;
+                vec3f normal = computePlaneFittingNormal(depthNeighbourhood.ptr);
                 normalScan[i - area.min.x] = RGBf(normal.x, normal.y, normal.z);
             }
         }
