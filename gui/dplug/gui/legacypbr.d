@@ -297,6 +297,8 @@ nothrow:
                     enum useLaplacian = false;
                     static if (useLaplacian)
                     {
+                        // Possible a bit better, not tried further since
+                        // it is a pain to make it match for the passes that uses it.
                         // 2nd-order-derivative for depth in the X direction
                         align(16) static immutable float[12] LAPLACIAN =
                         [
@@ -309,32 +311,31 @@ nothrow:
                                    + depthP0 * _mm_load_ps(&LAPLACIAN[4])
                                    + depthP1 * _mm_load_ps(&LAPLACIAN[8]);
                         float laplace = mul.array[0] + mul.array[1] + mul.array[2] + mul.array[3];
-                        if (laplace < 0) laplace = -laplace;
-                        float variance = laplace;
-                        variance /= 256.0f;
+                        laplace /= 256.0f;
+                        float variance = laplace*laplace;
                     }
                     else
                     {
-                    // 2nd-order-derivative for depth in the X direction
-                    //  1 -2  1
-                    //  1 -2  1
-                    //  1 -2  1
-                    const(__m128) fact_DDX_M1 = _mm_setr_ps( 1.0f, -2.0f,  1.0f, 0.0f);   
-                    __m128 mulForDDX = fact_DDX_M1 * (depthM1 + depthP0 + depthP1);
-                    float depthDX = mulForDDX.array[0] + mulForDDX.array[1] + mulForDDX.array[2];
+                        // 2nd-order-derivative for depth in the X direction
+                        //  1 -2  1
+                        //  1 -2  1
+                        //  1 -2  1
+                        const(__m128) fact_DDX_M1 = _mm_setr_ps( 1.0f, -2.0f,  1.0f, 0.0f);   
+                        __m128 mulForDDX = fact_DDX_M1 * (depthM1 + depthP0 + depthP1);
+                        float depthDX = mulForDDX.array[0] + mulForDDX.array[1] + mulForDDX.array[2];
 
-                    // 2nd-order-derivative for depth in the Y direction
-                    //  1  1  1
-                    // -2 -2 -2
-                    //  1  1  1
-                    const(__m128) fact_DDY_M1 = _mm_setr_ps( 1.0f,  1.0f,  1.0f, 0.0f);
-                    const(__m128) fact_DDY_P0 = _mm_setr_ps(-2.0f, -2.0f, -2.0f, 0.0f);
-                    __m128 mulForDDY = fact_DDY_M1 * (depthM1 + depthP1) + depthP0 * fact_DDY_P0;
-                    float depthDY = mulForDDY.array[0] + mulForDDY.array[1] + mulForDDY.array[2];
+                        // 2nd-order-derivative for depth in the Y direction
+                        //  1  1  1
+                        // -2 -2 -2
+                        //  1  1  1
+                        const(__m128) fact_DDY_M1 = _mm_setr_ps( 1.0f,  1.0f,  1.0f, 0.0f);
+                        const(__m128) fact_DDY_P0 = _mm_setr_ps(-2.0f, -2.0f, -2.0f, 0.0f);
+                        __m128 mulForDDY = fact_DDY_M1 * (depthM1 + depthP1) + depthP0 * fact_DDY_P0;
+                        float depthDY = mulForDDY.array[0] + mulForDDY.array[1] + mulForDDY.array[2];
 
-                    depthDX *= (1 / 256.0f); // #RESIZE: sounds strange
-                    depthDY *= (1 / 256.0f);
-                    float variance = (depthDX * depthDX + depthDY * depthDY);
+                        depthDX *= (1 / 256.0f); // #RESIZE: sounds strange
+                        depthDY *= (1 / 256.0f);
+                        float variance = (depthDX * depthDX + depthDY * depthDY);
                     }
                     varianceScan[i - area.min.x] = L32f(variance);
                 }
@@ -673,12 +674,12 @@ public:
 
                 float exponent = _exponentTable[materialHere.r];
 
-                // DISABLED FOR NOW
                 // From NVIDIA Technical Brief: "Mipmapping Normal Maps"
                 // We use normal variance to reduce exponent and scale of the specular
                 // highlight, which should avoid aliasing.
+                float VARIANCE_FACTOR = 4e-5f; // was very hard to tune, probably should not be dx*dx+dy*dy?
                 float variance = varianceScan[i - area.min.x].l;
-                float Ft = 1.0f / (1.0f + exponent * variance * 0.0f); // DISABLED! Ft in the paper or "Toksvig factor"
+                float Ft = 1.0f / (1.0f + exponent * variance * VARIANCE_FACTOR);
                 float scaleFactorToksvig = ( (1.0f + exponent * Ft) / (1.0f + exponent) );
                 assert(scaleFactorToksvig <= 1);
                 pToksvigScale[i] = scaleFactorToksvig;
