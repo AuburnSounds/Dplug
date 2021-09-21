@@ -280,8 +280,6 @@ nothrow:
                 }
 
                 // Compute normal variance (old method)
-                // PERF: somehow merge the computations
-                // TODO: somehow get the variance from plane squared error
                 {
                     const(ubyte)* depthHere = cast(const(ubyte)*)(depthScan + i);
 
@@ -296,6 +294,27 @@ nothrow:
                     __m128 depthP0 = _mm_cvtepi32_ps(_mm_unpacklo_epi16(depthSamplesP0, zero));
                     __m128 depthP1 = _mm_cvtepi32_ps(_mm_unpacklo_epi16(depthSamplesP1, zero));
 
+                    enum useLaplacian = false;
+                    static if (useLaplacian)
+                    {
+                        // 2nd-order-derivative for depth in the X direction
+                        align(16) static immutable float[12] LAPLACIAN =
+                        [
+                            0.25,  0.5, 0.25, 0,
+                            0.5, -3.0,  0.5, 0,
+                            0.25,  0.5, 0.25, 0,
+                        ];
+
+                        __m128 mul = depthM1 * _mm_load_ps(&LAPLACIAN[0]) 
+                                   + depthP0 * _mm_load_ps(&LAPLACIAN[4])
+                                   + depthP1 * _mm_load_ps(&LAPLACIAN[8]);
+                        float laplace = mul.array[0] + mul.array[1] + mul.array[2] + mul.array[3];
+                        if (laplace < 0) laplace = -laplace;
+                        float variance = laplace;
+                        variance /= 256.0f;
+                    }
+                    else
+                    {
                     // 2nd-order-derivative for depth in the X direction
                     //  1 -2  1
                     //  1 -2  1
@@ -316,6 +335,7 @@ nothrow:
                     depthDX *= (1 / 256.0f); // #RESIZE: sounds strange
                     depthDY *= (1 / 256.0f);
                     float variance = (depthDX * depthDX + depthDY * depthDY);
+                    }
                     varianceScan[i - area.min.x] = L32f(variance);
                 }
             }
@@ -561,12 +581,14 @@ public:
         super(parent);
         _specularFactor.reallocBuffer(numThreads());
         _exponentFactor.reallocBuffer(numThreads());
+        _toksvigScaleFactor.reallocBuffer(numThreads());
 
         // initialize new elements in the array, else realloc wouldn't work well next
         for (int thread = 0; thread < numThreads(); ++thread)
         {
             _specularFactor[thread] = null;
             _exponentFactor[thread] = null;
+            _toksvigScaleFactor[thread] = null;
         }
 
         for (int roughByte = 0; roughByte < 256; ++roughByte)
@@ -592,6 +614,7 @@ public:
         {
             _specularFactor[thread].reallocBuffer(width);
             _exponentFactor[thread].reallocBuffer(width);
+            _toksvigScaleFactor[thread].reallocBuffer(width);
         }
     }
 
@@ -602,6 +625,7 @@ public:
         OwnedImage!RGBA materialLevel0 = PBRbuf.materialMap.levels[0];
         OwnedImage!RGBf normalBuffer = PBRbuf.normalBuffers[threadIndex];
         OwnedImage!RGBAf accumBuffer = PBRbuf.accumBuffers[threadIndex];
+        OwnedImage!L32f varianceBuffer = PBRbuf.varianceBuffers[threadIndex];
 
         int w = diffuseLevel0.w;
         int h = diffuseLevel0.h;
@@ -611,6 +635,7 @@ public:
         __m128 mmlight3Dir = _mm_setr_ps(-direction.x, -direction.y, -direction.z, 0.0f);
         float* pSpecular = _specularFactor[threadIndex].ptr;
         float* pExponent = _exponentFactor[threadIndex].ptr;
+        float* pToksvigScale = _toksvigScaleFactor[threadIndex].ptr;
 
         for (int j = area.min.y; j < area.max.y; ++j)
         {
@@ -618,6 +643,7 @@ public:
             RGBA* diffuseScan = diffuseLevel0.scanlinePtr(j);
             RGBf* normalScan = normalBuffer.scanlinePtr(j - area.min.y);
             RGBAf* accumScan = accumBuffer.scanlinePtr(j - area.min.y);
+            L32f* varianceScan = varianceBuffer.scanlinePtr(j - area.min.y);
 
             for (int i = area.min.x; i < area.max.x; ++i)
             {
@@ -644,8 +670,20 @@ public:
                 }
                 if (specularFactor < 1e-3f) 
                     specularFactor = 1e-3f;
+
+                float exponent = _exponentTable[materialHere.r];
+
+                // DISABLED FOR NOW
+                // From NVIDIA Technical Brief: "Mipmapping Normal Maps"
+                // We use normal variance to reduce exponent and scale of the specular
+                // highlight, which should avoid aliasing.
+                float variance = varianceScan[i - area.min.x].l;
+                float Ft = 1.0f / (1.0f + exponent * variance * 0.0f); // DISABLED! Ft in the paper or "Toksvig factor"
+                float scaleFactorToksvig = ( (1.0f + exponent * Ft) / (1.0f + exponent) );
+                assert(scaleFactorToksvig <= 1);
+                pToksvigScale[i] = scaleFactorToksvig;
                 pSpecular[i] = specularFactor;
-                pExponent[i] = _exponentTable[materialHere.r];
+                pExponent[i] = exponent * Ft;
             }
 
             // Just the pow operation for this line
@@ -674,7 +712,7 @@ public:
                 __m128 mmLightColor = _mm_setr_ps(color.x, color.y, color.z, 0.0f);
 
                 float roughFactor = 10 * (1.0f - roughness) * (1 - metalness * 0.5f);
-                specularFactor = specularFactor * roughFactor;
+                specularFactor = specularFactor * roughFactor * pToksvigScale[i];
                 __m128 finalColor = baseColor * mmLightColor * _mm_set1_ps(specularFactor * specular);
 
                 _mm_store_ps(cast(float*)(&accumScan[i - area.min.x]), _mm_load_ps(cast(float*)(&accumScan[i - area.min.x])) + finalColor);
@@ -698,7 +736,8 @@ private:
 
     // Note: those are thread-local buffers
     float[][] _specularFactor;
-    float[][] _exponentFactor;    
+    float[][] _exponentFactor; 
+    float[][] _toksvigScaleFactor;
 }
 
 class PassSkyboxReflections : CompositorPass
