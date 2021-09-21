@@ -30,6 +30,9 @@ import dplug.gui.ransac;
 import inteli.math;
 import inteli.emmintrin;
 
+// TODO: PBR rendering doesn't depend rightly on size of the plugin.
+//       The #RESIZE tag below makrs all areas that needs updating.
+
 
 /// When inheriging from `MultipassCompositor`, you can define what the passes exchange 
 /// between each other. However, the first field has to be a `CompositorPassBuffers`.
@@ -52,9 +55,10 @@ struct PBRCompositorPassBuffers
 
 /// Equivalence factor between Z samples and pixels.
 /// Tuned once by hand to match the other normal computation algorithm
-/// This affects virutal geometry, and as such: normals and raymarching into depth.
+/// This affects virtual geometry, and as such: normals and raymarching into depth.
 /// Future: this should be modifiable in order to have more Z range in plugins (more 3D).
-enum float FACTOR_Z = 4655.0f;
+/// Bug: resizing should affect this factor.
+enum float FACTOR_Z = 4655.0f; // #RESIZE: this factor depends on DPI
 
 /// Originally, Dplug compositor was fixed function.
 /// This is the legacy compositor.
@@ -309,7 +313,7 @@ nothrow:
                     __m128 mulForDDY = fact_DDY_M1 * (depthM1 + depthP1) + depthP0 * fact_DDY_P0;
                     float depthDY = mulForDDY.array[0] + mulForDDY.array[1] + mulForDDY.array[2];
 
-                    depthDX *= (1 / 256.0f);
+                    depthDX *= (1 / 256.0f); // #RESIZE: sounds strange
                     depthDY *= (1 / 256.0f);
                     float variance = (depthDX * depthDX + depthDY * depthDY);
                     varianceScan[i - area.min.x] = L32f(variance);
@@ -358,6 +362,8 @@ nothrow:
                 float px = i + 0.5f;
                 float py = j + 0.5f;
 
+                // #RESIZE: if the plugin is large, should sample higher in mipmap levels
+
                 float avgDepthHere =
                     ( depthMap.linearSample(1, px, py)
                         + depthMap.linearSample(2, px, py)
@@ -402,9 +408,9 @@ nothrow:
 
         // Add a primary light that cast shadows
         
-        enum float fallOff = 0.78f;
+        enum float fallOff = 0.78f; // #RESIZE, recompute that table as needed
 
-        int samples = 11;
+        int samples = 11; // #RESIZE ditto
 
         static immutable float[11] weights =
         [
@@ -462,7 +468,7 @@ nothrow:
                     float contrib1 = void, 
                         contrib2 = void;
 
-                    static immutable float divider15360 = 1.0f / 15360;
+                    static immutable float divider15360 = 1.0f / 15360; // BUG: not consistent with FACTOR_Z, this is steeper...
 
                     if (diff1 >= 0)
                         contrib1 = 1;
@@ -571,7 +577,7 @@ public:
             version(legacyBlinnPhong)
             {}
             else
-                _exponentTable[roughByte] *= 2.8f; // tuned bu hand to match the former Phong specular highlight. This makes very little difference.
+                _exponentTable[roughByte] *= 2.8f; // tuned by hand to match the former Phong specular highlight. This makes very little difference.
         }
 
     }
@@ -621,6 +627,7 @@ public:
 
                 // TODO: this should be tuned interactively, maybe it's annoying to feel
                 //       Need to compute the viewer distance from screen... and DPI.
+                // #RESIZE
                 __m128 toEye = _mm_setr_ps(0.5f - i * invW, j * invH - 0.5f, 1.0f, 0.0f);
                 toEye = _mm_fast_normalize_ps(toEye);
 
@@ -770,6 +777,7 @@ public:
                     immutable float amountFactor = amount * div255;
 
                     // TODO: same remark than above about toEye, something to think about
+                    // #RESIZE
                     __m128 toEye = _mm_setr_ps(0.5f - i * invW, j * invH - 0.5f, 1.0f, 0.0f);
                     toEye = _mm_fast_normalize_ps(toEye);
 
@@ -821,6 +829,7 @@ public:
                 float jc = j + 0.5f;
 
                 // Get alpha-premultiplied, avoids to have to do alpha-aware mipmapping
+                // #RESIZE: more pixels => light travels further
                 vec4f colorLevel1 = diffuseMap.linearSample(1, ic, jc);
                 vec4f colorLevel2 = diffuseMap.linearSample(2, ic, jc);
                 vec4f colorLevel3 = diffuseMap.linearSample(3, ic, jc);
