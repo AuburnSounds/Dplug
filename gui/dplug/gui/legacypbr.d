@@ -44,6 +44,9 @@ struct PBRCompositorPassBuffers
 
     // Accumulates light for each deferred pass, one buffer per thread
     OwnedImage!RGBAf[] accumBuffers;
+
+    // Approximate of normal variance, one buffer per thread
+    OwnedImage!L32f[] varianceBuffers;
 }
 
 
@@ -120,11 +123,13 @@ nothrow @nogc:
 
         _normalBuffers = mallocSlice!(OwnedImage!RGBf)(numThreads());
         _accumBuffers = mallocSlice!(OwnedImage!RGBAf)(numThreads());
+        _varianceBuffers = mallocSlice!(OwnedImage!L32f)(numThreads());
 
         for (int t = 0; t < numThreads(); ++t)
         {
             _normalBuffers[t] = mallocNew!(OwnedImage!RGBf)();
             _accumBuffers[t] = mallocNew!(OwnedImage!RGBAf)();
+            _varianceBuffers[t] = mallocNew!(OwnedImage!L32f)();
         }
 
         // Create the passes
@@ -144,9 +149,11 @@ nothrow @nogc:
         {
             _normalBuffers[t].destroyFree();
             _accumBuffers[t].destroyFree();
+            _varianceBuffers[t].destroyFree();
         }
         freeSlice(_normalBuffers);
         freeSlice(_accumBuffers);
+        freeSlice(_varianceBuffers);
     }
 
     override void resizeBuffers(int width, 
@@ -165,6 +172,7 @@ nothrow @nogc:
             int rowAlign_16 = 16;
             _normalBuffers[t].size(areaMaxWidth, areaMaxHeight, border_0, rowAlign_1);
             _accumBuffers[t].size(areaMaxWidth, areaMaxHeight, border_0, rowAlign_16);
+            _varianceBuffers[t].size(areaMaxWidth, areaMaxHeight, border_0, rowAlign_1);
         }
     }
 
@@ -183,6 +191,7 @@ nothrow @nogc:
         buffers.depthMap = depthMap;
         buffers.accumBuffers = _accumBuffers;
         buffers.normalBuffers = _normalBuffers;
+        buffers.varianceBuffers = _varianceBuffers;
 
         // For each tile, do all pass one by one.
         void compositeOneTile(int i, int threadIndex) nothrow @nogc
@@ -210,11 +219,12 @@ nothrow @nogc:
     }
 
 private:
-    OwnedImage!RGBf[] _normalBuffers;
-    OwnedImage!RGBAf[] _accumBuffers;
+    OwnedImage!RGBf[] _normalBuffers; // store computed normals
+    OwnedImage!RGBAf[] _accumBuffers; // store accumulated color
+    OwnedImage!L32f[] _varianceBuffers; // store computed normal variance, useful for anti-aliasing
 }
 
-
+// Compute normals from depth, and normal variance.
 class PassComputeNormal : CompositorPass
 {
 nothrow:
@@ -230,32 +240,80 @@ nothrow:
         PBRCompositorPassBuffers* PBRbuf = cast(PBRCompositorPassBuffers*) buffers;
         OwnedImage!RGBf normalBuffer = PBRbuf.normalBuffers[threadIndex];
         OwnedImage!L16 depthLevel0 = PBRbuf.depthMap.levels[0];
+        OwnedImage!L32f varianceBuffer = PBRbuf.varianceBuffers[threadIndex];
 
         const int depthPitchBytes = depthLevel0.pitchInBytes();
 
         for (int j = area.min.y; j < area.max.y; ++j)
         {
             RGBf* normalScan = normalBuffer.scanline(j - area.min.y).ptr;
-            const(L16*) depthScan = depthLevel0.scanline(j).ptr;
+            L32f* varianceScan = varianceBuffer.scanline(j - area.min.y).ptr;
+
+            // Note: because the level 0 of depth map has a border of 1 and a trailingSamples of 2,
+            //       then we are allowed to read 4 depth samples at once.
+            const(L16)* depthScan   = depthLevel0.scanlinePtr(j);
 
             for (int i = area.min.x; i < area.max.x; ++i)
             {
-                const(L16)* depthHere = depthScan + i;
-                const(L16)* depthHereM1 = cast(const(L16)*) ( cast(const(ubyte)*)depthHere - depthPitchBytes );
-                const(L16)* depthHereP1 = cast(const(L16)*) ( cast(const(ubyte)*)depthHere + depthPitchBytes );
-                enum float multUshort = 1.0 / FACTOR_Z;
-                float[9] depthNeighbourhood = void;
-                depthNeighbourhood[0] = depthHereM1[-1].l * multUshort;
-                depthNeighbourhood[1] = depthHereM1[ 0].l * multUshort;
-                depthNeighbourhood[2] = depthHereM1[+1].l * multUshort;
-                depthNeighbourhood[3] = depthHere[-1].l   * multUshort;
-                depthNeighbourhood[4] = depthHere[ 0].l   * multUshort;
-                depthNeighbourhood[5] = depthHere[+1].l   * multUshort;
-                depthNeighbourhood[6] = depthHereP1[-1].l * multUshort;
-                depthNeighbourhood[7] = depthHereP1[ 0].l * multUshort;
-                depthNeighbourhood[8] = depthHereP1[+1].l * multUshort;
-                vec3f normal = computePlaneFittingNormal(depthNeighbourhood.ptr);
-                normalScan[i - area.min.x] = RGBf(normal.x, normal.y, normal.z);
+                // Compute normal
+                {
+                    const(L16)* depthHere = depthScan + i;
+                    const(L16)* depthHereM1 = cast(const(L16)*) ( cast(const(ubyte)*)depthHere - depthPitchBytes );
+                    const(L16)* depthHereP1 = cast(const(L16)*) ( cast(const(ubyte)*)depthHere + depthPitchBytes );
+                    enum float multUshort = 1.0 / FACTOR_Z;
+                    float[9] depthNeighbourhood = void;
+                    depthNeighbourhood[0] = depthHereM1[-1].l * multUshort;
+                    depthNeighbourhood[1] = depthHereM1[ 0].l * multUshort;
+                    depthNeighbourhood[2] = depthHereM1[+1].l * multUshort;
+                    depthNeighbourhood[3] = depthHere[-1].l   * multUshort;
+                    depthNeighbourhood[4] = depthHere[ 0].l   * multUshort;
+                    depthNeighbourhood[5] = depthHere[+1].l   * multUshort;
+                    depthNeighbourhood[6] = depthHereP1[-1].l * multUshort;
+                    depthNeighbourhood[7] = depthHereP1[ 0].l * multUshort;
+                    depthNeighbourhood[8] = depthHereP1[+1].l * multUshort;
+                    vec3f normal = computePlaneFittingNormal(depthNeighbourhood.ptr);
+                    normalScan[i - area.min.x] = RGBf(normal.x, normal.y, normal.z);
+                }
+
+                // Compute normal variance (old method)
+                // PERF: somehow merge the computations
+                // TODO: somehow get the variance from plane squared error
+                {
+                    const(ubyte)* depthHere = cast(const(ubyte)*)(depthScan + i);
+
+                    // Read 12 depth samples, the rightmost are unused
+                    __m128i depthSamplesM1 = _mm_loadl_epi64( cast(const(__m128i)*)(depthHere - depthPitchBytes - 2) );
+                    __m128i depthSamplesP0 = _mm_loadl_epi64( cast(const(__m128i)*)(depthHere - 2) );
+                    __m128i depthSamplesP1 = _mm_loadl_epi64( cast(const(__m128i)*)(depthHere + depthPitchBytes - 2) );
+
+                    // Extend to float
+                    __m128i zero = _mm_setzero_si128();
+                    __m128 depthM1 = _mm_cvtepi32_ps(_mm_unpacklo_epi16(depthSamplesM1, zero));
+                    __m128 depthP0 = _mm_cvtepi32_ps(_mm_unpacklo_epi16(depthSamplesP0, zero));
+                    __m128 depthP1 = _mm_cvtepi32_ps(_mm_unpacklo_epi16(depthSamplesP1, zero));
+
+                    // 2nd-order-derivative for depth in the X direction
+                    //  1 -2  1
+                    //  1 -2  1
+                    //  1 -2  1
+                    const(__m128) fact_DDX_M1 = _mm_setr_ps( 1.0f, -2.0f,  1.0f, 0.0f);   
+                    __m128 mulForDDX = fact_DDX_M1 * (depthM1 + depthP0 + depthP1);
+                    float depthDX = mulForDDX.array[0] + mulForDDX.array[1] + mulForDDX.array[2];
+
+                    // 2nd-order-derivative for depth in the Y direction
+                    //  1  1  1
+                    // -2 -2 -2
+                    //  1  1  1
+                    const(__m128) fact_DDY_M1 = _mm_setr_ps( 1.0f,  1.0f,  1.0f, 0.0f);
+                    const(__m128) fact_DDY_P0 = _mm_setr_ps(-2.0f, -2.0f, -2.0f, 0.0f);
+                    __m128 mulForDDY = fact_DDY_M1 * (depthM1 + depthP1) + depthP0 * fact_DDY_P0;
+                    float depthDY = mulForDDY.array[0] + mulForDDY.array[1] + mulForDDY.array[2];
+
+                    depthDX *= (1 / 256.0f);
+                    depthDY *= (1 / 256.0f);
+                    float variance = (depthDX * depthDX + depthDY * depthDY);
+                    varianceScan[i - area.min.x] = L32f(variance);
+                }
             }
         }
     }
@@ -676,9 +734,9 @@ public:
         PBRCompositorPassBuffers* PBRbuf = cast(PBRCompositorPassBuffers*) buffers;
         OwnedImage!RGBA diffuseLevel0 = PBRbuf.diffuseMap.levels[0];
         OwnedImage!RGBA materialLevel0 = PBRbuf.materialMap.levels[0];
-        OwnedImage!L16 depthLevel0 = PBRbuf.depthMap.levels[0];
         OwnedImage!RGBf normalBuffer = PBRbuf.normalBuffers[threadIndex];
         OwnedImage!RGBAf accumBuffer = PBRbuf.accumBuffers[threadIndex];
+        OwnedImage!L32f varianceBuffer = PBRbuf.varianceBuffers[threadIndex];
 
         int w = diffuseLevel0.w;
         int h = diffuseLevel0.h;
@@ -694,50 +752,14 @@ public:
                 RGBA* diffuseScan = diffuseLevel0.scanlinePtr(j);
                 RGBf* normalScan = normalBuffer.scanlinePtr(j - area.min.y);
                 RGBAf* accumScan = accumBuffer.scanlinePtr(j - area.min.y);
-
-                // First compute the needed mipmap level for this line
-
-                // Note: because the level 0 of depth map has a border of 1 and a trailingSamples of 2,
-                //       then we are allowed to read 4 depth samples at once.
-                const(L16)* depthScan   = depthLevel0.scanlinePtr(j);
+                L32f* varianceScan = varianceBuffer.scanlinePtr(j - area.min.y);
 
                 immutable float amountOfSkyboxPixels = _skybox.width * _skybox.height;
-                uint depthPitch = depthLevel0.pitchInBytes();
+                
                 for (int i = area.min.x; i < area.max.x; ++i)
                 {
-                    const(ubyte)* depthHere = cast(const(ubyte)*)(depthScan + i);
-
-                    // Read 12 depth samples, the rightmost are unused
-                    __m128i depthSamplesM1 = _mm_loadl_epi64( cast(const(__m128i)*)(depthHere - depthPitch - 2) );
-                    __m128i depthSamplesP0 = _mm_loadl_epi64( cast(const(__m128i)*)(depthHere - 2) );
-                    __m128i depthSamplesP1 = _mm_loadl_epi64( cast(const(__m128i)*)(depthHere + depthPitch - 2) );
-
-                    // Extend to float
-                    __m128i zero = _mm_setzero_si128();
-                    __m128 depthM1 = _mm_cvtepi32_ps(_mm_unpacklo_epi16(depthSamplesM1, zero));
-                    __m128 depthP0 = _mm_cvtepi32_ps(_mm_unpacklo_epi16(depthSamplesP0, zero));
-                    __m128 depthP1 = _mm_cvtepi32_ps(_mm_unpacklo_epi16(depthSamplesP1, zero));
-
-                    // 2nd-order-derivative for depth in the X direction
-                    //  1 -2  1
-                    //  1 -2  1
-                    //  1 -2  1
-                    const(__m128) fact_DDX_M1 = _mm_setr_ps( 1.0f, -2.0f,  1.0f, 0.0f);   
-                    __m128 mulForDDX = fact_DDX_M1 * (depthM1 + depthP0 + depthP1);
-                    float depthDX = mulForDDX.array[0] + mulForDDX.array[1] + mulForDDX.array[2];
-
-                    // 2nd-order-derivative for depth in the Y direction
-                    //  1  1  1
-                    // -2 -2 -2
-                    //  1  1  1
-                    const(__m128) fact_DDY_M1 = _mm_setr_ps( 1.0f,  1.0f,  1.0f, 0.0f);
-                    const(__m128) fact_DDY_P0 = _mm_setr_ps(-2.0f, -2.0f, -2.0f, 0.0f);
-                    __m128 mulForDDY = fact_DDY_M1 * (depthM1 + depthP1) + depthP0 * fact_DDY_P0;
-                    float depthDY = mulForDDY.array[0] + mulForDDY.array[1] + mulForDDY.array[2];
-
-                    depthDX *= (1 / 256.0f);
-                    depthDY *= (1 / 256.0f);
-                    float mipmapLevel = (depthDX * depthDX + depthDY * depthDY) * amountOfSkyboxPixels;
+                    // First compute the needed mipmap level for this line
+                    float mipmapLevel = varianceScan[i - area.min.x].l * amountOfSkyboxPixels;
                     enum float ROUGH_FACT = 6.0f / 255.0f;
                     float roughness = materialScan[i].r;
                     mipmapLevel = 0.5f * fastlog2(1.0f + mipmapLevel * 0.00001f) + ROUGH_FACT * roughness;
