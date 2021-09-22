@@ -727,9 +727,11 @@ public:
         {
             _specularFactor[thread].reallocBuffer(0);
             _exponentFactor[thread].reallocBuffer(0);
+            _toksvigScaleFactor[thread].reallocBuffer(0);
         }
         _specularFactor.reallocBuffer(0);
         _exponentFactor.reallocBuffer(0);
+        _toksvigScaleFactor.reallocBuffer(0);
     }
 
 private:
