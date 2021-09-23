@@ -261,12 +261,32 @@ nothrow:
 
             case discreteRatio:
             {
-                float scaleX = *inoutWidth / (cast(float)defaultWidth);
-                float scaleY = *inoutHeight / (cast(float)defaultHeight);
-                float scale = (scaleX < scaleY) ? scaleX : scaleY;
-                scale = findMinMatchingFloat(scale, discreteScales[0..numDiscreteScales]);
-                *inoutWidth = cast(int)(0.5f + scale * defaultWidth);
-                *inoutHeight = cast(int)(0.5f + scale * defaultHeight);
+                // Note: because of ugly rounding issue, we cannot just find the scale from input size.
+                // See Issue #593. Find the best size by generating the size forward and see which one fits.
+
+                int w = 0;
+                int h = 0;
+
+                int bestIndex = 0; // should be the smallest size... not checked
+                float bestScore = float.infinity;
+                for (int n = 0; n < numDiscreteScales; ++n)
+                {
+                    // Generate a possible size.
+                    int cand_w = cast(int)(0.5f + discreteScales[n] * defaultWidth);
+                    int cand_h = cast(int)(0.5f + discreteScales[n] * defaultHeight);
+
+                    float scoreX = (*inoutWidth - cand_w);
+                    float scoreY = (*inoutHeight - cand_h);
+                    float score = scoreX + scoreY;
+                    if ( (scoreX >= 0) && (scoreY >= 0) && (score < bestScore) )
+                    {
+                        bestScore = score;
+                        bestIndex = n;
+                    }
+                }
+
+                *inoutWidth = cast(int)(0.5f + discreteScales[bestIndex] * defaultWidth);
+                *inoutHeight = cast(int)(0.5f + discreteScales[bestIndex] * defaultHeight);
                 break;
             }
 
@@ -375,7 +395,12 @@ static float findMinMatchingFloat(float threshold, const(float)[] arr) pure @tru
     w = 640*2-1;
     h = 480-1;
     c.getMaxSmallerValidSize(&w, &h);
-    assert(w == 320 && h == 240);    
+    assert(w == 320 && h == 240);
+
+    w = 640-1;
+    h = 480;
+    c.getMaxSmallerValidSize(&w, &h);
+    assert(w == 320 && h == 240);
 
     c = makeSizeConstraintsContinuous(640, 480, 0.5f, 2.0f);
     assert(c.isValidSize(640, 480));
@@ -412,4 +437,14 @@ unittest
     assert( findBestMatchingFloat(10.0f, A) == 4 );
     assert( findBestMatchingFloat(2.0f, A) == 2 );
     assert( findBestMatchingFloat(-1.0f, A) == 1 );
+}
+
+// Issue #593, max min valid size not matching
+@trusted unittest
+{
+    static immutable float[6] ratios = [0.75f, 1.0f, 1.25f, 1.5f, 1.75f, 2.0f];
+    SizeConstraints c = makeSizeConstraintsDiscrete(626, 487, ratios);
+    int w = 1096, h = 852;
+    c.getMaxSmallerValidSize(&w, &h);
+    assert(w == 1096 && h == 852);
 }
