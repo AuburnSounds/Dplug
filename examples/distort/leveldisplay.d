@@ -7,6 +7,11 @@ import dplug.core;
 import dplug.gui;
 import dplug.canvas;
 
+/// This widgets demonstrates how to:
+/// - do a custom widget
+/// - use dplug:canvas
+/// - use TimedFIFO for UI feedback with sub-buffer latency
+/// - render to both the Raw and PBR layer
 final class UILevelDisplay : UIElement
 {
 public:
@@ -15,7 +20,7 @@ nothrow:
 
     enum READ_OVERSAMPLING = 180;
     enum INPUT_SUBSAMPLING = 16;
-    enum SAMPLES_IN_FIFO = 1024;    
+    enum SAMPLES_IN_FIFO = 1024;
     enum int MIN_DISPLAYABLE_DB = -100;
     enum int MAX_DISPLAYABLE_DB =  0;
 
@@ -29,13 +34,19 @@ nothrow:
     override void onAnimate(double dt, double time)
     {
         bool needRedraw = false;
+        // Note that readOldestDataAndDropSome return the number of samples 
+        // stored in _stateToDisplay[0..ret].
         if (_timedFIFO.readOldestDataAndDropSome(_stateToDisplay[], dt, READ_OVERSAMPLING))
         {
             needRedraw = true;
         }
 
+        // Only redraw the Raw layer. This is key to have low-CPU UI widgets that can 
+        // still render on the PBR layer.
+        // Note: You can further improve CPU usage by not redrawing if the displayed data
+        // has been only zeroes for a while.
         if (needRedraw)
-            setDirtyWhole();
+            setDirtyWhole(UILayer.rawOnly);
     }
 
     float mapValueY(float normalized)
