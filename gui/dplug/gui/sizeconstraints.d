@@ -301,8 +301,9 @@ nothrow:
 
             case discreteRatioXY:
             {
-                float scaleX = (*inoutWidth) / (cast(float)defaultWidth);
-                float scaleY = (*inoutHeight) / (cast(float)defaultHeight);
+                // +0.5f since a smaller ratio would lead to a smaller size being generated
+                float scaleX = (*inoutWidth + 0.5f) / (cast(float)defaultWidth);
+                float scaleY = (*inoutHeight + 0.5f) / (cast(float)defaultHeight);
                 scaleX = findMinMatchingFloat(scaleX, discreteScalesX[0..numDiscreteScalesX]);
                 scaleY = findMinMatchingFloat(scaleY, discreteScalesY[0..numDiscreteScalesY]);
                 *inoutWidth = cast(int)(0.5f + scaleX * defaultWidth);
@@ -447,4 +448,11 @@ unittest
     int w = 1096, h = 852;
     c.getMaxSmallerValidSize(&w, &h);
     assert(w == 1096 && h == 852);
+
+    // Same but with separate XY
+    c = makeSizeConstraintsDiscreteXY(487, 487, ratios, ratios);
+    w = 852;
+    h = 852;
+    c.getMaxSmallerValidSize(&w, &h);
+    assert(w == 852 && h == 852);
 }
