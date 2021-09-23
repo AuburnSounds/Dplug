@@ -120,8 +120,7 @@ nothrow:
                                           cast(int)(0.5f + labelRectCrossHole.min.y), 
                                           cast(int)(0.5f + labelRectCrossHole.max.x),
                                           cast(int)(0.5f + labelRectCrossHole.max.y));
-
-        if (labelRect.empty)
+        if (ilabelRectCrossHole.empty)
             return;
 
         // Cheating :( because depth animation isn't sufficient
