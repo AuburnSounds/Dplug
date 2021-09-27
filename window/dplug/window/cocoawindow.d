@@ -331,10 +331,8 @@ private:
         }
     }
 
-    void drawRect(NSRect rect)
+    void layout()
     {
-        NSGraphicsContext nsContext = NSGraphicsContext.currentContext();
-
         // Updates internal buffers in case of startup/resize
         {
             NSRect frameRect = _view.frame();
@@ -344,6 +342,11 @@ private:
             int height = cast(int)(frameRect.size.height);
             updateSizeIfNeeded(width, height);
         }
+    }
+
+    void drawRect(NSRect rect)
+    {
+        NSGraphicsContext nsContext = NSGraphicsContext.currentContext(); 
 
         // The first drawRect callback occurs before the timer triggers.
         // But because recomputeDirtyAreas() wasn't called before there is nothing to draw.
@@ -578,6 +581,7 @@ private:
         class_addMethod(clazz, sel!"isOpaque", cast(IMP) &isOpaque, "b@:");
         class_addMethod(clazz, sel!"acceptsFirstMouse:", cast(IMP) &acceptsFirstMouse, "b@:@");
         class_addMethod(clazz, sel!"viewDidMoveToWindow", cast(IMP) &viewDidMoveToWindow, "v@:");
+        class_addMethod(clazz, sel!"layout", cast(IMP) &layout, "v@:");
         class_addMethod(clazz, sel!"drawRect:", cast(IMP) &drawRect, "v@:" ~ encode!NSRect);
         class_addMethod(clazz, sel!"onTimer:", cast(IMP) &onTimer, "v@:@");
 
@@ -806,6 +810,25 @@ extern(C)
     bool isOpaque(id self, SEL selector) nothrow @nogc
     {
         return YES;
+    }
+
+    // Since 10.7, called on resize.
+    void layout(id self, SEL selector) nothrow @nogc
+    {
+        CocoaScopedCallback scopedCallback;
+        scopedCallback.enter();
+
+        DPlugCustomView view = getInstance(self);
+        view._window.layout();
+
+        // Call superclass's layout:, equivalent to [super layout]; 
+        {
+            objc_super sup;
+            sup.receiver = self;
+            sup.clazz = cast(Class) lazyClass!"NSView";
+            alias fun_t = extern(C) void function (objc_super*, SEL) nothrow @nogc;
+            (cast(fun_t)objc_msgSendSuper)(&sup, selector);
+        }
     }
 
     void viewDidMoveToWindow(id self, SEL selector) nothrow @nogc
