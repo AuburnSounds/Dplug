@@ -12,6 +12,7 @@
 module dplug.core.thread;
 
 import core.stdc.stdlib;
+import core.stdc.stdio;
 
 import dplug.core.nogc;
 import dplug.core.lockedqueue;
@@ -726,4 +727,72 @@ unittest
         a.launch(0, false);
         assert(a.counter == 512);
     }
+}
+
+// Bonus: Capacity to get the macOS version
+
+version(Darwin)
+{
+
+    // Note: .init value is a large future version (100.0.0), so that failure to detect version
+    // lead to newer behaviour.
+    struct MacOSVersion
+    {
+        int major = 100; // eg: major = 10   minor = 7 for 10.7
+        int minor = 0;
+        int patch = 0;
+    }
+
+    /// Get the macOS version we are running on.
+    /// Note: it only makes sense for macOS, not iOS.
+    /// Note: patch always return zero for now.
+    MacOSVersion getMacOSVersion()
+    {
+        char[256] str;
+        size_t size = 256;
+        int ret = sysctlbyname("kern.osrelease", str.ptr, &size, null, 0);
+        MacOSVersion result;
+        if (ret != 0) 
+            return result;
+        int darwinMajor, darwinMinor, darwinPatch;
+        if (3 == sscanf(str.ptr, "%d.%d.%d", &darwinMajor, &darwinMinor, &darwinPatch))
+        {
+            result.patch = 0;
+
+            switch(darwinMajor)
+            {
+                case 0: .. case 11:
+                    result.major = 10; // 10.7
+                    result.minor = 7;
+                    break;
+
+                case 12: .. case 19:
+                    result.major = 10; // 10.7
+                    result.minor = darwinMajor - 4; // 10.8 to 10.15
+                    break;
+
+                case 20:
+                    result.major = 11; // Big Sur
+                    result.minor = 0;
+                    break;
+
+                case 21:
+                    result.major = 12; // Monterey
+                    result.minor = 0;
+                    break;
+
+
+                default:
+                    result.major = 100;
+                    result.minor = 0;
+            }
+        }
+        return result;
+    }
+
+  /*  unittest
+    {
+        MacOSVersion ver = getMacOSVersion();
+        printf("Detected macOS %d.%d.%d\n", ver.major, ver.minor, ver.patch);
+    } */
 }
