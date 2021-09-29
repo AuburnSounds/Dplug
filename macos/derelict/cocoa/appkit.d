@@ -260,6 +260,11 @@ nothrow @nogc:
     }
 }
 
+__gshared
+{
+    NSString kCAContentsFormatRGBA8Uint;
+}
+
 
 // CALayer
 struct CALayer
@@ -281,6 +286,12 @@ nothrow @nogc:
     {
         alias fun_t = extern(C) void function (id, SEL, BOOL) nothrow @nogc;
         (cast(fun_t)objc_msgSend)(_id, sel!"setOpaque:", value);
+    }
+
+    void setContentsFormat(NSString fmt)
+    {
+        alias fun_t = extern(C) void function (id, SEL, id) nothrow @nogc;
+        (cast(fun_t)objc_msgSend)(_id, sel!"setContentsFormat:", fmt._id);
     }
 }
 

@@ -73,6 +73,8 @@ class DerelictCocoaLoader : SharedLibLoader
             // MAYDO: load from proper global variables
             NSRunLoopCommonModes = NSString.stringWith("kCFRunLoopCommonModes"w);
 
+            kCAContentsFormatRGBA8Uint = NSString.stringWith("RGBA8"w); // value from Big Sur
+
             // For debugging purpose
             //NSLog(NSString.stringWith("%@\n")._id, NSDefaultRunLoopMode._id);
             //NSLog(NSString.stringWith("%@\n")._id, NSRunLoopCommonModes._id);

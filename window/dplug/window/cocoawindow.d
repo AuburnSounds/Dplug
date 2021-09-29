@@ -18,6 +18,7 @@ import dplug.core.sync;
 import dplug.core.runtime;
 import dplug.core.nogc;
 import dplug.core.random;
+import dplug.core.thread;
 import dplug.window.window;
 
 import derelict.cocoa;
@@ -58,6 +59,7 @@ private:
     bool _dirtyAreasAreNotYetComputed;
 
     bool _isHostWindow;
+    bool _drawRectWorkaround; // See Issue #505, drawRect: returning always one big rectangle, killing CPU
 
     MouseCursor _lastMouseCursor;
 
@@ -88,6 +90,9 @@ public:
 
         _dirtyAreasAreNotYetComputed = true;
 
+        // The drawRect: failure started with 11.0 Big Sur beta 9.
+        _drawRectWorkaround = getMacOSVersion().major >= 11;
+
         if (!_isHostWindow)
         {
             DPlugCustomView.generateClassName();
@@ -99,10 +104,11 @@ public:
             // GOAL: Force display by the GPU, this is supposed to solve
             // resampling problems on HiDPI like 4k and 5k
             // REALITY: QA reports this to be blurrier AND slower than previously
-            //
-            //_view.setWantsLayer(YES);
-            //_view.layer.setDrawsAsynchronously(YES);
+            // Layer has to be there for the drawRect workaround.
+            if (_drawRectWorkaround)
+                _view.setWantsLayer(YES);
 
+            //_view.layer.setDrawsAsynchronously(YES);
             // This is supposed to make things faster, but doesn't
             //_view.layer.setOpaque(YES);
 
@@ -344,6 +350,21 @@ private:
         }
     }
 
+    void viewWillDraw()
+    {
+        if (_drawRectWorkaround)
+        {
+            CALayer layer = _view.layer();
+
+            if (layer)
+            {
+                // On Big Sur this is technically a no-op, but that reverts the drawRect behaviour!          
+                // This workaround is sanctionned by Apple: https://gist.github.com/lukaskubanek/9a61ac71dc0db8bb04db2028f2635779#gistcomment-3901461
+                layer.setContentsFormat(kCAContentsFormatRGBA8Uint);
+            }
+        }
+    }
+
     void drawRect(NSRect rect)
     {
         NSGraphicsContext nsContext = NSGraphicsContext.currentContext(); 
@@ -357,39 +378,82 @@ private:
             _listener.recomputeDirtyAreas();
         }
 
-        _listener.onDraw(WindowPixelFormat.ARGB8);
-
+        _listener.onDraw(WindowPixelFormat.ARGB8); 
 
         version(useCoreGraphicsContext)
         {
             CGContextRef cgContext = nsContext.getCGContext();
-            size_t sizeNeeded = _wfb.pitch * _wfb.h;
 
-            size_t bytesPerRow = _wfb.pitch;
+            enum bool fullDraw = false;
+            
+            static if (fullDraw)
+            {            
+                size_t sizeNeeded = _wfb.pitch * _wfb.h;
+                size_t bytesPerRow = _wfb.pitch;
 
-            CGDataProviderRef provider = CGDataProviderCreateWithData(null, _wfb.pixels, sizeNeeded, null);
-            CGImageRef image = CGImageCreate(_width,
-                                             _height,
-                                             8,
-                                             32,
-                                             bytesPerRow,
-                                             _cgColorSpaceRef,
-                                             kCGImageByteOrderDefault | kCGImageAlphaNoneSkipFirst,
-                                             provider,
-                                             null,
-                                             true,
-                                             kCGRenderingIntentDefault);
-            // "on return, you may safely release [the provider]"
-            CGDataProviderRelease(provider);
-            scope(exit) CGImageRelease(image);
+                CGDataProviderRef provider = CGDataProviderCreateWithData(null, _wfb.pixels, sizeNeeded, null);
+                CGImageRef image = CGImageCreate(_width,
+                                                 _height,
+                                                 8,
+                                                 32,
+                                                 bytesPerRow,
+                                                 _cgColorSpaceRef,
+                                                 kCGImageByteOrderDefault | kCGImageAlphaNoneSkipFirst,
+                                                 provider,
+                                                 null,
+                                                 true,
+                                                 kCGRenderingIntentDefault);
+                // "on return, you may safely release [the provider]"
+                CGDataProviderRelease(provider);
+                scope(exit) CGImageRelease(image);
 
-            CGRect fullRect = CGMakeRect(0, 0, _width, _height);
-            CGContextDrawImage(cgContext, fullRect, image);
+                CGRect fullRect = CGMakeRect(0, 0, _width, _height);
+                CGContextDrawImage(cgContext, fullRect, image);
+            }
+            else
+            {
+                alias r = rect;
+
+                int origX = cast(int)rect.origin.x;
+                int origY = cast(int)rect.origin.y;
+                int width = cast(int)rect.size.width;
+                int height = cast(int)rect.size.height;
+
+                int ysource = -origY + _height - height;
+
+                assert(ysource >= 0);
+                assert(ysource < _height);
+
+                const (RGBA)* firstPixel = &(_wfb.scanline(ysource)[origX]);
+                size_t sizeNeeded = _wfb.pitch * height;
+                size_t bytesPerRow = _wfb.pitch;
+
+                CGDataProviderRef provider = CGDataProviderCreateWithData(null, firstPixel, sizeNeeded, null);
+
+                CGImageRef image = CGImageCreate(width,
+                                                 height,
+                                                 8,
+                                                 32,
+                                                 bytesPerRow,
+                                                 _cgColorSpaceRef,
+                                                 kCGImageByteOrderDefault | kCGImageAlphaNoneSkipFirst,
+                                                 provider,
+                                                 null,
+                                                 true,
+                                                 kCGRenderingIntentDefault);
+                // "on return, you may safely release [the provider]"
+                CGDataProviderRelease(provider);
+                scope(exit) CGImageRelease(image);
+
+                //CGRect fullRect = CGMakeRect(0, 0, width, height);
+                CGContextDrawImage(cgContext, rect, image);
+            }
         }
         else
         {
-            CIContext ciContext = nsContext.getCIContext();
             size_t sizeNeeded = _wfb.pitch * _wfb.h;
+            size_t bytesPerRow = _wfb.pitch;
+            CIContext ciContext = nsContext.getCIContext();
             _imageData = NSData.dataWithBytesNoCopy(_wfb.pixels, sizeNeeded, false);
 
             CIImage image = CIImage.imageWithBitmapData(_imageData,
@@ -584,6 +648,7 @@ private:
         class_addMethod(clazz, sel!"layout", cast(IMP) &layout, "v@:");
         class_addMethod(clazz, sel!"drawRect:", cast(IMP) &drawRect, "v@:" ~ encode!NSRect);
         class_addMethod(clazz, sel!"onTimer:", cast(IMP) &onTimer, "v@:@");
+        class_addMethod(clazz, sel!"viewWillDraw", cast(IMP) &viewWillDraw, "v@:");
 
         class_addMethod(clazz, sel!"mouseEntered:", cast(IMP) &mouseEntered, "v@:@");
         class_addMethod(clazz, sel!"mouseExited:", cast(IMP) &mouseExited, "v@:@");
@@ -822,6 +887,26 @@ extern(C)
         view._window.layout();
 
         // Call superclass's layout:, equivalent to [super layout]; 
+        {
+            objc_super sup;
+            sup.receiver = self;
+            sup.clazz = cast(Class) lazyClass!"NSView";
+            alias fun_t = extern(C) void function (objc_super*, SEL) nothrow @nogc;
+            (cast(fun_t)objc_msgSendSuper)(&sup, selector);
+        }
+    }
+
+    // Necessary for the Big Sur drawRect: fuckup
+    // See Issue #505.
+    void viewWillDraw(id self, SEL selector) nothrow @nogc
+    {
+        CocoaScopedCallback scopedCallback;
+        scopedCallback.enter();
+
+        DPlugCustomView view = getInstance(self);
+        view._window.viewWillDraw();
+
+        // Call superclass's layout:, equivalent to [super viewWillDraw]; 
         {
             objc_super sup;
             sup.receiver = self;

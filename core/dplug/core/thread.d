@@ -746,7 +746,7 @@ version(Darwin)
     /// Get the macOS version we are running on.
     /// Note: it only makes sense for macOS, not iOS.
     /// Note: patch always return zero for now.
-    MacOSVersion getMacOSVersion()
+    MacOSVersion getMacOSVersion() nothrow @nogc
     {
         char[256] str;
         size_t size = 256;
