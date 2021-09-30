@@ -3,7 +3,7 @@
 Dplug is an audio plugin framework.
 
 Its core value proposition is abstracting over:
-- the various plugin formats. Dplug implements 5 plugin "client" and 1 plugin "host".
+- the various plugin formats. Dplug implements 5 plugin "clients" and 1 plugin "host".
 - the various OS windowing
 
 so that developers can focus on a portable codebase for audio software.
@@ -36,7 +36,7 @@ The god object orchestrating all this is `GUIGraphics`.
 
 Within each layer, widgets are Z-ordered for drawing and events.
 
-`dplug:pbr-widget` and `dplug:flatwidgets` are different collections of widgets that act on these layers. They can act as base class, or examples, for custom widgets.
+`dplug:pbr-widget` and `dplug:flatwidgets` are different collections of widgets that act on these layers. They can act as base classes, or examples, for custom widgets.
 
 
 # Graphics subsystem
@@ -53,5 +53,5 @@ Within each layer, widgets are Z-ordered for drawing and events.
 # DSP subsystems
 
 `dplug:dsp` is the legacy, rather bad DSP module.
-`dplug:audio` defines an AudioBuffer abstraction and is the base for better DSP modules, such as `dsp:iir`.
+`dplug:audio` defines an AudioBuffer abstraction and is the base for better DSP modules, such as `dsp:iir`. But those two subpackages are very early.
 
