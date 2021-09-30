@@ -91,7 +91,8 @@ public:
         _dirtyAreasAreNotYetComputed = true;
 
         // The drawRect: failure started with 11.0 Big Sur beta 9.
-        _drawRectWorkaround = getMacOSVersion().major >= 11;
+        version(OSX)
+            _drawRectWorkaround = getMacOSVersion().major >= 11;
 
         if (!_isHostWindow)
         {
