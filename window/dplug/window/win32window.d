@@ -216,8 +216,6 @@ version(Windows)
 
         override bool requestResize(int widthLogicalPixels, int heightLogicalPixels, bool alsoResizeParentWindow)
         {
-            assert(!alsoResizeParentWindow); // doesn't work in Cubase, so the whole workaround is disabled
-
             UINT flags =  SWP_NOACTIVATE 
                         | SWP_NOZORDER
                         | SWP_NOOWNERZORDER
@@ -242,7 +240,7 @@ version(Windows)
                     GetClientRect(parent, &parentClient);
                     if (IsChildWindow(parent))
                     {
-                        gparent = GetParent(_hwnd);
+                        gparent = GetParent(parent);
                         GetClientRect(gparent, &gparentClient);
                     }
                 }

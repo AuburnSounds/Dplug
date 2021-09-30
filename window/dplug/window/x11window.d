@@ -168,6 +168,7 @@ public:
 
     override bool requestResize(int widthLogicalPixels, int heightLogicalPixels, bool alsoResizeParentWindow)
     {
+        assert(!alsoResizeParentWindow); // unsupported here
         lockX11();
         XResizeWindow(_display, _windowID, widthLogicalPixels, heightLogicalPixels);
         unlockX11();

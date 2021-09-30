@@ -453,9 +453,13 @@ package:
         if (parentWasResized && (_client.getPluginFormat() == PluginFormat.vst3))
             return true;
 
-        // was supposed to be enabled for Cubase + VST2 + Windows, but didn't worked out
-        // This is Issue #595.
+        // Cubase + VST2 + Windows need special treatment to resize parent and grandparent windows manually (Issue #595).
         bool needResizeParentWindow = false;
+        version(Windows)
+        {
+            if (_client.getPluginFormat() == PluginFormat.vst2 && _client.getDAW() == DAW.Cubase)
+                needResizeParentWindow = true;
+        }
 
         // In VST2, very few hosts also resize the plugin window. We get to do it manually.
 

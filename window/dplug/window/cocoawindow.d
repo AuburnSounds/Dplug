@@ -194,6 +194,7 @@ public:
 
     override bool requestResize(int widthLogicalPixels, int heightLogicalPixels, bool alsoResizeParentWindow)
     {
+        assert(!alsoResizeParentWindow); // unsupported here
         NSSize size = NSSize(cast(CGFloat)widthLogicalPixels,
                              cast(CGFloat)heightLogicalPixels);
         _view.setFrameSize(size);
