@@ -147,6 +147,8 @@ nothrow:
             _param.endParamEdit();
         }
 
+        _normalizedValueWhileDragging = _param.getNormalized();
+
         return true; // to initiate dragging
     }
 
@@ -161,7 +163,7 @@ nothrow:
             if (mstate.shiftPressed || mstate.ctrlPressed)
                 modifier *= 0.1f;
 
-            double oldParamValue = _param.getNormalized();
+            double oldParamValue = _normalizedValueWhileDragging;
             double newParamValue = oldParamValue - displacementInHeight * modifier * _sensitivity;
             if (mstate.altPressed)
                 newParamValue = _param.getNormalizedDefault();
@@ -196,8 +198,8 @@ nothrow:
                     ip.setFromGUINormalized(newParamValue);
                 else
                     assert(false);
+                _normalizedValueWhileDragging = newParamValue;
             }
-            setDirtyWhole();
         }
     }
 
@@ -264,6 +266,10 @@ protected:
 
     float _mousePosOnLast0Cross;
     float _mousePosOnLast1Cross;
+
+    // Normalized value last set while dragging. Necessary for integer paramerers 
+    // that may round that normalized value when setting the parameter.
+    float _normalizedValueWhileDragging; 
 
     bool _disabled;
 
