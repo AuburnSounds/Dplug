@@ -101,7 +101,7 @@ nothrow:
 
     /// `knobImage` should have been loaded with `loadKnobImage`.
     /// Warning: `knobImage` must outlive the knob, it is borrowed.
-    this(UIContext context, KnobImage knobImage, FloatParameter parameter)
+    this(UIContext context, KnobImage knobImage, Parameter parameter)
     {
         super(context, parameter);
         _knobImage = knobImage;
