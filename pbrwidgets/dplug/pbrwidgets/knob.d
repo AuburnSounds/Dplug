@@ -77,7 +77,7 @@ nothrow:
 
 
 
-    this(UIContext context, FloatParameter param)
+    this(UIContext context, Parameter param)
     {
         super(context, flagAnimated | flagPBR);
         _param = param;
@@ -301,7 +301,12 @@ nothrow:
         if (isDoubleClick || mstate.altPressed)
         {
             _param.beginParamEdit();
-            _param.setFromGUI(_param.defaultValue());
+            if (auto fp = cast(FloatParameter)_param)
+                fp.setFromGUI(fp.defaultValue());
+            else if (auto ip = cast(IntegerParameter)_param)
+                ip.setFromGUI(ip.defaultValue());
+            else
+                assert(false);
             _param.endParamEdit();
         }
 
@@ -346,7 +351,14 @@ nothrow:
             _mousePosOnLast1Cross = -float.infinity;
 
         if (newParamValue != oldParamValue)
-            _param.setFromGUINormalized(newParamValue);
+        {
+            if (auto fp = cast(FloatParameter)_param)
+                fp.setFromGUINormalized(newParamValue);
+            else if (auto ip = cast(IntegerParameter)_param)
+                ip.setFromGUINormalized(newParamValue);
+            else
+                assert(false);
+        }
     }
 
     // For lazy updates
@@ -391,7 +403,7 @@ nothrow:
 protected:
 
     /// The parameter this knob is linked with.
-    FloatParameter _param;
+    Parameter _param;
 
     float _pushedAnimation;
 

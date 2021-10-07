@@ -1231,6 +1231,7 @@ protected:
                     shuffleComponentsRGBA8ToBGRA8AndForceAlphaTo255(renderedRef.cropImageRef(rect));
                 }
                 break;
+
             case WindowPixelFormat.ARGB8:
                 foreach(rect; _rectsToDisplayDisjointed[])
                 {

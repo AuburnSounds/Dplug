@@ -29,7 +29,7 @@ nothrow:
     // sensivity with that.
     enum defaultSensivity = 0.25f;
 
-    this(UIContext context, FloatParameter param, OwnedImage!RGBA mipmap, int numFrames, float sensitivity = 0.25)
+    this(UIContext context, Parameter param, OwnedImage!RGBA mipmap, int numFrames, float sensitivity = 0.25)
     {
         super(context, flagRaw);
         _param = param;
@@ -138,7 +138,12 @@ nothrow:
         if (isDoubleClick || mstate.altPressed)
         {
             _param.beginParamEdit();
-            _param.setFromGUI(_param.defaultValue());
+            if (auto fp = cast(FloatParameter)_param)
+                fp.setFromGUI(fp.defaultValue());
+            else if (auto ip = cast(IntegerParameter)_param)
+                ip.setFromGUI(ip.defaultValue());
+            else
+                assert(false);
             _param.endParamEdit();
         }
 
@@ -184,7 +189,14 @@ nothrow:
                 _mousePosOnLast1Cross = -float.infinity;
 
             if (newParamValue != oldParamValue)
-                _param.setFromGUINormalized(newParamValue);
+            {
+                if (auto fp = cast(FloatParameter)_param)
+                    fp.setFromGUINormalized(newParamValue);
+                else if (auto ip = cast(IntegerParameter)_param)
+                    ip.setFromGUINormalized(newParamValue);
+                else
+                    assert(false);
+            }
             setDirtyWhole();
         }
     }
@@ -228,7 +240,7 @@ nothrow:
 protected:
 
     /// The parameter this knob is linked with.
-    FloatParameter _param;
+    Parameter _param;
 
     OwnedImage!RGBA _filmstrip;
     OwnedImage!RGBA _filmstripScaled;
