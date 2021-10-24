@@ -13,6 +13,7 @@ import core.stdc.stdlib: malloc, free, realloc;
 import core.stdc.string: memcpy;
 
 import core.exception;
+import inteli.xmmintrin;
 
 
 // This module deals with aligned memory.
@@ -584,4 +585,120 @@ unittest
     vec ~= a;
     vec[0].x = 42; // vec[0] needs to return a ref
     assert(vec[0].x == 42);
+}
+
+/// Allows to merge the allocation of several arrays, which saves allocation count and can speed up things thanks to locality.
+///
+/// Example: see below unittest.
+struct MergedAllocation
+{
+nothrow:
+@nogc:
+
+    enum maxExpectedAlignment = 32;
+
+    /// Start defining the area of allocations.
+    void start()
+    {
+        _base = cast(ubyte*)(cast(size_t)0);
+    }
+
+    /// Given pointer `base`, `array` gets an alignement area with `numElems` T elements and a given alignment.
+    /// `base` gets incremented to point to just after that area.
+    /// This is usful to create merged allocations with a chain of `mergedAllocArea`.
+    /// Giving null to this chain and converting the result to size_t give the total needed size for the merged allocation.
+    /// Warning: if called after a `start()` call, the area returned are wrong and are only for counting needed bytes.
+    ///          if called after an `allocate()` call, the area returned are right (if the same calls are done).
+    void allocArray(T)(out T[] array, size_t numElems, size_t alignment = 1)
+    {
+        assert(alignment <= maxExpectedAlignment);
+        assert( (alignment != 0) && ((alignment & (alignment - 1)) == 0)); // power of two
+
+        size_t adr = cast(size_t) _base;
+
+        // 1. Align base address
+        size_t mask = ~(alignment - 1);
+        adr = (adr + alignment - 1) & mask;
+
+        // 2. Assign array and base.
+        array = (cast(T*)adr)[0..numElems];
+        adr += T.sizeof * numElems;
+        _base = cast(ubyte*) adr;
+    }
+
+    ///ditto
+    void alloc(T)(out T* array, size_t numElems, size_t alignment = 1)
+    {
+        T[] arr;
+        allocArray(arr, numElems, alignment);
+        array = arr.ptr;
+    }
+
+    /// Allocate actual storage for the merged allocation. From there, you need to define exactly the same area with `alloc` and `allocArray`.
+    /// This time they will get a proper value.
+    void allocate()
+    {
+        size_t sizeNeeded =  cast(size_t)_base; // since it was fed 0 at start.
+
+        // the merged allocation needs to have the largest expected alignment, else the size could depend on the hazards
+        // of the allocation. With maximum alignment, padding is the same so long as areas have smaller or equal alignment requirements.
+        _allocation = cast(ubyte*) _mm_realloc(_allocation, sizeNeeded, maxExpectedAlignment);
+
+        // So that the next layout call points to the right area.
+        _base = _allocation;
+    }
+
+    ~this()
+    {
+        _allocation = cast(ubyte*) _mm_realloc(_allocation, 0, maxExpectedAlignment);
+    }
+
+
+private:
+
+    // Location of the allocation.
+    ubyte* _allocation = null;
+
+    ///
+    ubyte* _base = null;
+}
+
+unittest
+{
+    static struct MyDSPStruct
+    {
+    public:
+    nothrow:
+    @nogc:
+        void initialize(int maxFrames)
+        {
+            _mergedAlloc.start();
+            layout(_mergedAlloc, maxFrames); // you need such a layout function to be called twice.
+            _mergedAlloc.allocate();
+            layout(_mergedAlloc, maxFrames); // the first time arrays area allocated in the `null` area, the second time in
+                                             // actually allocated memory (since we now have the needed length).
+        }
+    
+        void layout(ref MergedAllocation ma, int maxFrames)
+        {
+            // allocate `maxFrames` elems, and return a slice in `_intermediateBuf`.
+            ma.allocArray(_intermediateBuf, maxFrames); 
+
+            // allocate `maxFrames` elems, aligned to 16-byte boundaries. Return a pointer to that in `_coeffs`.
+            ma.alloc(_coeffs, maxFrames, 16);
+        }
+
+    private:
+        float[] _intermediateBuf;
+        double* _coeffs;
+        MergedAllocation _mergedAlloc;
+    }
+
+    MyDSPStruct s;
+    s.initialize(14);
+    s._coeffs[0..14] = 1.0f;
+    s._intermediateBuf[0..14] = 1.0f;
+    s.initialize(17);
+    s._coeffs[0..17] = 1.0f;
+    s._intermediateBuf[0..17] = 1.0f;
 }
