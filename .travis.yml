@@ -1,5 +1,7 @@
 language: d
 
+dist: bionic
+
 arch:
   - amd64
   - arm64
