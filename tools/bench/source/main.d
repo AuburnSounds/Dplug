@@ -77,6 +77,7 @@ void usage()
     cwriteln(`      <source>mysource.wav</source>`.green ~ `            <!-- add a source to the test             -->`.magenta);
     cwriteln(`      <quality-compare/>`.green ~ `                       <!-- perform quality comparison           -->`.magenta);
     cwriteln(`      <speed-measure/>`.green ~ `                         <!-- perform speed comparison             -->`.magenta);
+    cwriteln(`      <times>20</times>`.green ~ `                        <!-- specify number of speed samples      -->`.magenta);
     cwriteln(`    </bench>`.green);
     cwriteln();
     cwriteln(`    ----------------------------------------------------------------------------------------`.cyan);
@@ -91,8 +92,9 @@ int main(string[] args)
     try
     {
         bool help;
-        bool forceEncode;        
-        int times = 30;
+        bool forceEncode;  
+        bool timesProvided = false;
+        int times;
 
         for(int i = 1; i < args.length; ++i)
         {
@@ -108,6 +110,7 @@ int main(string[] args)
             }
             else if (arg == "-t" || arg == "--times")
             {
+                timesProvided = true;
                 ++i;
                 times = to!int(args[i]);
             }
@@ -132,6 +135,8 @@ int main(string[] args)
 
         auto universe = new Universe(forceEncode, times);
         universe.parseTask(configFile);
+        if (timesProvided)
+            universe.speedMeasureCount = times; // cmdline overrides XML for sample count
         universe.executeAllTasks();
         return 0;
     }
@@ -276,7 +281,7 @@ class Universe
     Processor[] processors;
 
     bool forceEncode;
-    int speedMeasureCount = 30;
+    int speedMeasureCount = 30; // default
 
     string xmlDir;
     string sourceDirectory = "p:/Samples";
@@ -401,6 +406,11 @@ class Universe
         if (doc.getElementsByTagName("speed-measure").length > 0)
         {
             processors ~= new SpeedMeasureProcessor();
+        }        
+
+        if (doc.getElementsByTagName("times").length > 0)
+        {
+            speedMeasureCount = doc.getElementsByTagName("times")[0].innerText.to!int;
         }
     }
 

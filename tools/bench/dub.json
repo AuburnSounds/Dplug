@@ -2,7 +2,7 @@
     "name": "bench",
     "dependencies": {
         "wave-d": "~>1.0",
-        "arsd-official:dom": "~>4.0",
+        "arsd-official:dom": "~>10.0",
         "colorize": "~>1.0",
     },
 
