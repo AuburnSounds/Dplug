@@ -23,9 +23,12 @@ T linmap(T)(T value, T a, T b, T c, T d) pure nothrow @nogc
 
 /// map [0..1] to [min..max] logarithmically
 /// min and max must be all > 0, t in [0..1]
+/// Note: you can totally have a max that is smaller than min.
+///       In this cases, the range mapped with more accuracy are still small values.
 T logmap(T)(T t, T min, T max) pure nothrow @nogc
 {
-    assert(min < max);
+    assert(min > 0 && max > 0);
+    T ratio = max / min;
     return min * exp(t * log(max / min));
 }
 
