@@ -86,6 +86,15 @@ nothrow:
     }
 
     ///ditto
+    void resizeImageNearest(ImageRef!RGBA input, ImageRef!RGBA output) // same but with nearest filter
+    {
+        stbir_filter filter = STBIR_FILTER_BOX;
+        int res = stbir_resize_uint8(cast(const(ubyte*))input.pixels, input.w, input.h, cast(int)input.pitch,
+                                     cast(      ubyte* )output.pixels, output.w, output.h, cast(int)output.pitch, 4, filter, &alloc_context);
+        assert(res);
+    }
+
+    ///ditto
     void resizeImageGeneric(ImageRef!L16 input, ImageRef!L16 output)
     {
         // Note: smoothing depth while resampling avoids some depth artifacts.
