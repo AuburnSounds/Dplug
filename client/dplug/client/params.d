@@ -582,6 +582,8 @@ public:
         super(index, name, label);
 
         // If you fail in this assertion, this means your default value is out of range.
+        // What to do: get back to your `buildParameters` function and give a default 
+        // in range of [min..max].
         assert(defaultValue >= min && defaultValue <= max);
 
         _defaultValue = defaultValue;
