@@ -21,6 +21,7 @@ void usage()
     writeln("Flags:");
     writeln("        -h, --help   Shows this help");
     writeln("        -o <file>    Write instantaneous peak difference in a WAV file (default: no)");
+    writeln("        --strip <s>  Strip s seconds of the start. Avoid initialization conditions.");
     writeln("        --quiet      Less verbose output, just output RMS error (default: verbose)");    
     writeln;
 }
@@ -33,6 +34,7 @@ int main(string[] args)
         string[] files = null;
         string outDiffFile = null;
         bool quiet = false;
+        double stripSecs = 0.0;
 
         for (int i = 1; i < args.length; ++i)
         {
@@ -47,6 +49,11 @@ int main(string[] args)
             {
                 i += 1;
                 outDiffFile = args[i];
+            }
+            else if (arg == "--strip")
+            {
+                i += 1;
+                stripSecs = to!double(args[i]);
             }
             else
                 files ~= arg;
@@ -82,6 +89,8 @@ int main(string[] args)
         if (soundA.samples.length != soundB.samples.length)
             throw new Exception(format("%s and %s have different length", fileA, fileB));
 
+        int startSample = cast(int)(stripSecs * soundA.sampleRate);
+
         // Normalize both sounds by the same amount
         // However we don't apply this factor yet to avoid introducing noise.
         real nFactor = (normalizeFactor(soundA) + normalizeFactor(soundB) ) * 0.5f;
@@ -102,12 +111,17 @@ int main(string[] args)
             difference[i] = nFactor * abs(diff);
         }
 
-        real maxPeakDifference = reduce!max(difference);//!("a > b")(difference).front;
+        if (startSample >= N)
+        {
+            throw new Exception(format("Using --strip with a duration longer than the content"));
+        }
+
+        real maxPeakDifference = reduce!max(difference[startSample..$]);//!("a > b")(difference).front;
 
         real rms = 0;
-        for (int i = 0; i < N; ++i)
+        for (int i = startSample; i < N; ++i)
             rms +=  difference[i] * difference[i];
-        rms = sqrt(rms / N);
+        rms = sqrt(rms / (N - startSample));
 
         real peak_dB = convertLinearGainToDecibel(maxPeakDifference);
         real rms_dB = convertLinearGainToDecibel(rms);
