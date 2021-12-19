@@ -34,6 +34,7 @@
         "dplug:vst2": "*",
         "dplug:vst3": "*",
         "dplug:window": "*",
+        "dplug:wren-support": "*",
         "dplug:x11": "*"
     },
 
@@ -255,6 +256,15 @@
             "importPaths": [ "vst3" ],
             "dependencies": {
                 "dplug:client": "*"
+            }
+        },
+        {
+            "name": "wren-support",
+            "sourcePaths": [ "wren/dplug/wren" ],
+            "importPaths": [ "wren" ],
+            "dependencies": {
+                "dplug:gui": "*",
+                "wren-port": "~>1.0"
             }
         },
         {

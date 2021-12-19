@@ -72,6 +72,7 @@ script:
   - dub test --compiler=${DC} dplug:au
   - dub test --compiler=${DC} dplug:pbr-widgets
   - dub test --compiler=${DC} dplug:flat-widgets
+  - dub test --compiler=${DC} dplug:wren-support
   - dub test --compiler=${DC} dplug:lv2
   - dub test --compiler=${DC} dplug:vst3
   - dub test --compiler=${DC} dplug:graphics

@@ -6,7 +6,7 @@
     "license": "public domain",
     "importPaths": [ "." ],
     "sourcePaths": [ "." ],
-    "stringImportPaths": ["gfx", "fonts", "."],
+    "stringImportPaths": ["gfx", "fonts", "scripts", "."],
 
     "copyright": "none",
 
@@ -31,7 +31,8 @@
         "dplug:lv2": { "path": "../.."},
         "dplug:gui": { "path": "../.." },
         "dplug:pbr-widgets": { "path": "../.." },
-        "dplug:flat-widgets": { "path": "../.." }
+        "dplug:flat-widgets": { "path": "../.." },
+        "dplug:wren-support": { "path": "../.." },
     },
 
 

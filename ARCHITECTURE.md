@@ -38,6 +38,8 @@ Within each layer, widgets are Z-ordered for drawing and events.
 
 `dplug:pbr-widget` and `dplug:flatwidgets` are different collections of widgets that act on these layers. They can act as base classes, or examples, for custom widgets.
 
+`dplug:wren-support` is an optional enhancement that adds the ability to script parts of the UI.
+
 
 # Graphics subsystem
 

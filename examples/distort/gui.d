@@ -11,8 +11,10 @@ import dplug.gui;
 import dplug.pbrwidgets;
 import dplug.client;
 import dplug.flatwidgets;
+import dplug.wren;
 import leveldisplay;
 import main;
+
 
 // Plugin GUI, based on PBRBackgroundGUI.
 // If you don't want to use PBR, you not inherit from it.
@@ -31,9 +33,14 @@ nothrow:
     {
         _client = client;
 
-
         static immutable float[7] ratios = [0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 1.75f, 2.0f];
         super( makeSizeConstraintsDiscrete(620, 330, ratios) );
+
+
+        context.enableWrenSupport();
+
+        // Not yet supported
+        //context.wrenSupport.registerUIElement!UIKnob();
 
         // Note: PBRCompositor default lighting might change in a future version (increase of light to allow white plastics).
         //       So we keep the value.
@@ -119,6 +126,7 @@ nothrow:
         //       However some of the resources they consumed aren't owned by them, but borrowed.
         _font.destroyFree();
         _knobImageData.destroyFree();
+        context.disableWrenSupport();
     }
 
     override void reflow()
@@ -137,6 +145,9 @@ nothrow:
 
         _colorCorrection.position = rectangle(0, 0, W, H);
         _resizer.position = rectangle(W-30, H-30, 30, 30);
+
+        // That currently works.
+        //context.wrenSupport.interpret("none.wren", `System.print("hello")`);
     }
 
     void sendFeedbackToUI(float* inputRMS, float* outputRMS, int frames, float sampleRate)
