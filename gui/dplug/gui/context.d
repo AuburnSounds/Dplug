@@ -77,8 +77,36 @@ nothrow @nogc:
     // Note: do not use this resizer concurrently (in `onDrawRaw`, `onDrawPBR`, etc.).
     //       Usually intended for `reflow()`.
     ImageResizer* globalImageResizer();
+
+    /// Store an user-defined pointer globally for the UI. This is useful to implement an optional extension to dplug:gui.
+    /// id 0..7 are reserved for future Dplug extensions.
+    /// id 8..15 are for vendor-specific extensions.
+    /// Warning: if you store an object here, keep in mind they won't get destroyed automatically.
+    void setUserPointer(int pointerID, void* userPointer);
+
+    /// Get an user-defined pointer stored globally for the UI. This is useful to implement an optional extension to dplug:gui.
+    /// id 0..7 are reserved for future Dplug extensions.
+    /// id 8..15 are for vendor-specific extensions.
+    void* getUserPointer(int pointerID);
 }
 
+// Official dplug:gui optional extension.
+enum UICONTEXT_POINTERID_WREN_SUPPORT = 0; /// Official dplug:gui Wren extension. Wren state needs to be store globally for the UI.
+
+// <wren-specific part>
+// See Wiki for how to enable scripting.
+
+/// For a UIElement-derived class, this UDA means its members need to be inspected for registering properties to the script engine.
+struct ScriptExport
+{
+}
+
+/// For a member of a @ScriptExport class, this UDA means the member can is a property to be modified by script (read and write).
+struct ScriptProperty
+{
+}
+
+// </wren-specific part>
 
 /// UIContext contains the "globals" of the UI.
 /// It also provides additional APIs for `UIElement`.
@@ -245,9 +273,25 @@ nothrow:
         return cursor;
     }
 
+    final override void* getUserPointer(int pointerID)
+    {
+        return _userPointers[pointerID];
+    }
+
+    final override void setUserPointer(int pointerID, void* userPointer)
+    {
+        _userPointers[pointerID] = userPointer;
+    }
+
 private:
     GUIGraphics _owner;
 
     ImageResizer _globalResizer;
+
+    /// Warning: if you store objects here, keep in mind they won't get destroyed automatically.
+    /// 16 user pointer in case you'd like to store things in UIContext as a Dplug extension.
+    /// id 0..7 are reserved for future Dplug extensions.
+    /// id 8..15 are for vendor-specific extensions.
+    void*[16] _userPointers; // Opaque pointer for Wren VM and things.
 }
 
