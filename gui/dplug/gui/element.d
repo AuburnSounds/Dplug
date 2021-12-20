@@ -8,6 +8,7 @@
 module dplug.gui.element;
 
 import core.stdc.stdio;
+import core.stdc.string: strlen;
 
 import std.algorithm.comparison;
 
@@ -77,6 +78,24 @@ enum UILayer
     allLayers
 }
 
+/// The maximum length for an UIElement ID.
+enum maxUIElementIDLength = 63;
+
+/// Returns: true if a valid UIlement unique identifier.
+/// HTML5 rules applies: can't be empty, and that it can't contain any space characters.
+static bool isValidElementID(const(char)[] identifier) nothrow @nogc
+{
+    if (identifier.length == 0) return false;
+    if (identifier.length > maxUIElementIDLength) return false;
+    foreach (char ch; identifier)
+    {
+        if (ch == 0 || ch == ' ') // doesn't contain spaces or null char
+            return false;
+    }
+    return true;
+}
+
+
 /// Base class of the UI widget hierarchy.
 ///
 /// MAYDO: a bunch of stuff in that class is intended specifically for the root element,
@@ -94,6 +113,7 @@ nothrow:
         _localRectsBuf = makeVec!box2i();
         _children = makeVec!UIElement();
         _zOrderedChildren = makeVec!UIElement();
+        _idStorage[0] = '\0'; // defaults to no ID
 
         // Initially set to an empty position
         assert(_position.empty()); 
@@ -103,6 +123,50 @@ nothrow:
     {
         foreach(child; _children[])
             child.destroyFree();
+    }
+
+
+    /// Set this element ID.
+    /// All UIElement can have a string as unique identifier, similar to HTML.
+    /// There is a maximum of 63 characters for this id though.
+    /// This ID is supposed to be unique. If it isn't, a search by ID will return `null`.
+    /// HTML5 rules applies: can't be empty, and that it can't contain any space characters.
+    final void setId(const(char)[] identifier)
+    {
+        if (!isValidElementID(identifier))
+        {
+            _idStorage[0] = '\0';
+            return;
+        }
+        _idStorage[0..identifier.length] = identifier[0..$];
+        _idStorage[identifier.length] = '\0';
+    }
+
+    /// Get this element ID.
+    /// All UIElement can have a string as unique identifier, similar to HTML.
+    /// Returns the empty string "" if there is no ID.
+    /// Note: this return an interior slice, and could be invalidated if the ID is reassigned.
+    final const(char)[] getId()
+    {
+        size_t len = strlen(_idStorage.ptr);
+        if (_idStorage[0] == '\0')
+            return "";
+        else
+        {
+            return _idStorage[0..len];
+        }
+    }
+
+    /// Properties to access this element ID.
+    /// See_also: setId, getId.
+    final const(char)[] id()
+    {
+        return getId();
+    }
+    ///ditto
+    final void id(const(char)[] identifier)
+    {
+        setId(identifier);
     }
 
     /// This method is called for each item in the drawlist that was visible and has a dirty Raw layer.
@@ -913,6 +977,9 @@ private:
 
     /// The mouse cursor to display when this element is being moused over
     MouseCursor _cursorWhenMouseOver = MouseCursor.pointer;
+
+    /// Identifier storage.
+    char[maxUIElementIDLength+1] _idStorage;
 
     // Sort children in ascending z-order
     // Input: unsorted _children
