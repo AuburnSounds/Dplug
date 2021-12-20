@@ -82,14 +82,14 @@ enum UILayer
 enum maxUIElementIDLength = 63;
 
 /// Returns: true if a valid UIlement unique identifier.
-/// HTML5 rules applies: can't be empty, and that it can't contain any space characters.
-static bool isValidElementID(const(char)[] identifier) nothrow @nogc
+/// Chrome rules applies: can't be empty.
+static bool isValidElementID(const(char)[] identifier) pure nothrow @nogc @safe
 {
     if (identifier.length == 0) return false;
     if (identifier.length > maxUIElementIDLength) return false;
     foreach (char ch; identifier)
     {
-        if (ch == 0 || ch == ' ') // doesn't contain spaces or null char
+        if (ch == 0) // Note: Chrome does actually accept ID with spaces
             return false;
     }
     return true;
@@ -125,16 +125,16 @@ nothrow:
             child.destroyFree();
     }
 
-
     /// Set this element ID.
     /// All UIElement can have a string as unique identifier, similar to HTML.
     /// There is a maximum of 63 characters for this id though.
     /// This ID is supposed to be unique. If it isn't, a search by ID will return `null`.
-    /// HTML5 rules applies: can't be empty, and that it can't contain any space characters.
-    final void setId(const(char)[] identifier)
+    /// Chrome rules applies: can't contain any space characters.
+    final void setId(const(char)[] identifier) pure
     {
         if (!isValidElementID(identifier))
         {
+            // Note: assigning an invalid ID is a silent error. The UIElement ends up with no ID.
             _idStorage[0] = '\0';
             return;
         }
@@ -146,20 +146,20 @@ nothrow:
     /// All UIElement can have a string as unique identifier, similar to HTML.
     /// Returns the empty string "" if there is no ID.
     /// Note: this return an interior slice, and could be invalidated if the ID is reassigned.
-    final const(char)[] getId()
+    final const(char)[] getId() pure
     {
-        size_t len = strlen(_idStorage.ptr);
         if (_idStorage[0] == '\0')
             return "";
         else
         {
+            size_t len = strlen(_idStorage.ptr);
             return _idStorage[0..len];
         }
     }
 
     /// Properties to access this element ID.
     /// See_also: setId, getId.
-    final const(char)[] id()
+    final const(char)[] id() pure
     {
         return getId();
     }
@@ -167,6 +167,12 @@ nothrow:
     final void id(const(char)[] identifier)
     {
         setId(identifier);
+    }
+
+    /// Returns: `true` if thie UIElement has an ID.
+    bool hasId() pure
+    {
+        return _idStorage[0] != '\0';
     }
 
     /// This method is called for each item in the drawlist that was visible and has a dirty Raw layer.
