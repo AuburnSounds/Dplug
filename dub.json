@@ -262,6 +262,7 @@
             "name": "wren-support",
             "sourcePaths": [ "wren/dplug/wren" ],
             "importPaths": [ "wren" ],
+            "stringImportPaths": ["wren/dplug/wren"],
             "dependencies": {
                 "dplug:gui": "*",
                 "wren-port": "~>1.0"
