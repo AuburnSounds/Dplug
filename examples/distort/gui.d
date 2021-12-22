@@ -37,10 +37,8 @@ nothrow:
         super( makeSizeConstraintsDiscrete(620, 330, ratios) );
 
         context.enableWrenSupport();
+        context.wrenSupport.addModuleSource("plugin", import("plugin.wren")); // TODO: make that potentially dynamic
 
-        // Not yet supported
-        //context.wrenSupport.registerUIElement!UIKnob();
-        //context.wrenSupport.interpret("reflow.wren", import("reflow.wren"));
 
         // Note: PBRCompositor default lighting might change in a future version (increase of light to allow white plastics).
         //       So we keep the value.
@@ -118,6 +116,7 @@ nothrow:
             addChild(_colorCorrection = mallocNew!UIColorCorrection(context()));
             _colorCorrection.setLiftGammaGainContrastRGB(colorCorrectionMatrix);
         }
+        context.wrenSupport.callCreateUI();
     }
 
     ~this()
@@ -146,8 +145,7 @@ nothrow:
         _colorCorrection.position = rectangle(0, 0, W, H);
         _resizer.position = rectangle(W-30, H-30, 30, 30);
 
-        // Doesn't work yet
-        //context.wrenSupport.callReflow();
+        context.wrenSupport.callReflow();
     }
 
     void sendFeedbackToUI(float* inputRMS, float* outputRMS, int frames, float sampleRate)

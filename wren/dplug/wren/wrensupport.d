@@ -7,6 +7,8 @@ License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 module dplug.wren.wrensupport;
 
 import core.stdc.string : strcmp;
+import core.stdc.stdlib : free;
+
 import std.traits: getSymbolsByUDA;
 import std.meta: staticIndexOf;
 
@@ -82,6 +84,12 @@ nothrow @nogc:
             }
             _vm = null;
         }
+
+        foreach(ps; _preloadedSources[])
+        {
+            free(ps.moduleName);
+            free(ps.source);
+        }
     }
 
     IUIContext uiContext()
@@ -122,33 +130,54 @@ nothrow @nogc:
 
         }
     }    
-/*
-    void callStaticMethod()
+
+
+    void callCreateUI()
     {
-        WrenHandle* wrenMakeCallHandle(WrenVM* vm, const char* signature);
-    }*/
-/*
+        string code =
+            "{ \n" ~
+            "  import \"plugin\" for Plugin\n" ~
+            "  Plugin.createUI()\n" ~
+            "}\n";
+        interpret(code);
+    }
+
     void callReflow()
     {
-        try
-        {
-            WrenHandle* reflowHandle = wrenMakeCallHandle(_vm, "reflow()");
-            wrenEnsureSlots(_vm, 1);
-            wrenGetVariable(_vm, "main", "Plugin", 0);
-            WrenHandle* pluginClass = wrenGetSlotHandle(_vm, 0);
-            wrenSetSlotHandle(_vm, 0, pluginClass);
-            wrenCall(_vm, reflowHandle);
-        }
-        catch(Exception e)
-        {
-            int b = 0;
-        }
-    } */
+        string code =
+        "{ \n" ~
+        "  import \"plugin\" for Plugin\n" ~
+        "  Plugin.reflow()\n" ~
+        "}\n";
+        interpret(code);
+    }
+
+    /// Add read-only static module source code, to be loaded eventually.
+    void addModuleSource(const(char)[] moduleName, const(char)[] moduleSource)
+    {
+        // This forces a zero terminator.
+        // PERF: use less zero-terminated strings in Wren, so that we don't have to do this
+        char* moduleNameZ = stringDup(CString(moduleName).storage).ptr;
+        char* moduleSourceZ = stringDup(CString(moduleSource).storage).ptr;
+
+        PreloadedSource ps;
+        ps.moduleName = moduleNameZ;
+        ps.source = moduleSourceZ;
+        _preloadedSources.pushBack(ps);
+    }
 
 private:
 
     WrenVM* _vm;
     IUIContext _uiContext;
+
+    static struct PreloadedSource
+    {
+        char* moduleName;
+        char* source;
+    }
+
+    Vec!PreloadedSource _preloadedSources;
 
     void print(const(char)* text)
     {
@@ -179,6 +208,7 @@ private:
     // this is called anytime Wren looks for a foreign method
     WrenForeignMethodFn foreignMethod(WrenVM* vm, const(char)* module_, const(char)* className, bool isStatic, const(char)* signature)
     {
+        // Introducing the Dplug-Wren standard library here.
         try
         {
             if (strcmp(module_, "ui") == 0)
@@ -222,6 +252,16 @@ private:
         res.onComplete = null;
         res.userData = null;
 
+        // Try preloaded source first
+        foreach(ps; _preloadedSources[])
+        {
+            if (strcmp(name, ps.moduleName) == 0)
+            {
+                res.source = ps.source;
+                goto found;
+            }
+        }
+
         try
         {   
             if (strcmp(name, "ui") == 0)
@@ -231,6 +271,7 @@ private:
         {
             res.source = null;
         }
+        found:
         return res;
     }
 }
