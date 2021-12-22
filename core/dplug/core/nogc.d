@@ -269,7 +269,7 @@ immutable(T)[] mallocIDup(T)(const(T)[] slice) nothrow @nogc if (!is(T == struct
     return assumeUnique(mallocDup!T(slice));
 }
 
-/// Duplicates a zero-terminated string with `malloc`, return a `char[]`. Equivalent to `.dup`
+/// Duplicates a zero-terminated string with `malloc`, return a `char[]` with zero-terminated byte.
 /// Has to be cleaned-up with `free(s.ptr)`.
 /// Note: The zero-terminating byte is preserved. This allow to have a string which also can be converted
 /// to a C string with `.ptr`. However the zero byte is not included in slice length.
@@ -281,7 +281,7 @@ char[] stringDup(const(char)* cstr) nothrow @nogc
     return copy[0..len];
 }
 
-/// Duplicates a zero-terminated string with `malloc`, return a `string`. Equivalent to `.idup`
+/// Duplicates a zero-terminated string with `malloc`, return a `string`. with zero-terminated byte. 
 /// Has to be cleaned-up with `free(s.ptr)`.
 /// Note: The zero-terminating byte is preserved. This allow to have a string which also can be converted
 /// to a C string with `.ptr`. However the zero byte is not included in slice length.
