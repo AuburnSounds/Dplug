@@ -88,6 +88,9 @@ nothrow @nogc:
     /// id 0..7 are reserved for future Dplug extensions.
     /// id 8..15 are for vendor-specific extensions.
     void* getUserPointer(int pointerID);
+
+    /// Get root element of the hierarchy.
+    IUIElement getRootElement();
 }
 
 // Official dplug:gui optional extension.
@@ -281,6 +284,11 @@ nothrow:
     final override void setUserPointer(int pointerID, void* userPointer)
     {
         _userPointers[pointerID] = userPointer;
+    }
+
+    final override IUIElement getRootElement()
+    {
+        return _owner;
     }
 
 private:

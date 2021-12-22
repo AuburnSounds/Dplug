@@ -1,4 +1,4 @@
-import "ui" for UI
+import "ui" for UI, Element, Point, Size
 
 class Plugin {
 

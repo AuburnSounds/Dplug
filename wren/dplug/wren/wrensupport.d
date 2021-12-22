@@ -19,9 +19,12 @@ import dplug.gui.element;
 import wren.vm;
 import wren.value;
 
-import dplug.wren.wren_uicontext;
+import dplug.wren.wren_ui;
 
 nothrow @nogc:
+
+
+//debug = consoleDebug;
 
 
 
@@ -129,12 +132,11 @@ nothrow @nogc:
    //         pragma(msg, T.stringof);
 
         }
-    }    
-
+    }
 
     void callCreateUI()
     {
-        string code =
+        static immutable string code =
             "{ \n" ~
             "  import \"plugin\" for Plugin\n" ~
             "  Plugin.createUI()\n" ~
@@ -144,7 +146,7 @@ nothrow @nogc:
 
     void callReflow()
     {
-        string code =
+        static immutable string code =
         "{ \n" ~
         "  import \"plugin\" for Plugin\n" ~
         "  Plugin.reflow()\n" ~
@@ -181,6 +183,11 @@ private:
 
     void print(const(char)* text)
     {
+        debug(consoleDebug) 
+        {
+            import core.stdc.stdio;
+            printf("%s", text);
+        }
         debugLog(text);
     }
 
@@ -213,10 +220,7 @@ private:
         {
             if (strcmp(module_, "ui") == 0)
             {
-                if (strcmp(className, "UI") == 0)
-                {
-                    return wrenUIContextBindForeignMethod(vm, className, isStatic, signature);
-                }
+                return wrenUIBindForeignMethod(vm, className, isStatic, signature);                
             }
             return null;
         }
@@ -229,19 +233,12 @@ private:
     // this is called anytime Wren looks for a foreign class
     WrenForeignClassMethods foreignClass(WrenVM* vm, const(char)* module_, const(char)* className)
     {
-        // TODO
+        if (strcmp(module_, "ui") == 0)
+            return wrenUIForeignClass(vm, className);
+
         WrenForeignClassMethods methods;
-        /* if (strcmp(className, "File") == 0)
-        {
-        methods.allocate = fileAllocate;
-        methods.finalize = fileFinalize;
-        }
-        else */
-        {
-            // Unknown class.
-            methods.allocate = null;
-            methods.finalize = null;
-        }
+        methods.allocate = null;
+        methods.finalize = null;
         return methods;
     }
 
@@ -265,7 +262,7 @@ private:
         try
         {   
             if (strcmp(name, "ui") == 0)
-                res.source = wrenUIContextSource();
+                res.source = wrenUIModuleSource();
         }
         catch(Exception e)
         {
