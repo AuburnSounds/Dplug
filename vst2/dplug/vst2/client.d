@@ -967,8 +967,15 @@ private:
         int usedOutputs = _processingIOFromAudioThread.outputs;
         int minOutputs = (usedOutputs < hostOutputs) ? usedOutputs : hostOutputs;
 
-        // Existing inputs gets converted to double
+        // Existing inputs gets converted to float
         // Non-connected inputs are zeroes
+        // 
+        // Note about converting double to float:
+        // on both white noise and sinusoids, a conversion from
+        // double to float yield a relative RMS difference of 
+        // -152dB. It would really extraordinary if anyone can tell
+        // the difference, as -110 dB RMS already exercise the limits
+        // of audition.
         for (int i = 0; i < usedInputs; ++i)
         {
             if (i < hostInputs)
