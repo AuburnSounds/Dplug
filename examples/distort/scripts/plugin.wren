@@ -7,6 +7,8 @@ class Plugin {
     }
 
     static reflow() { 
+        System.print(UI.root.width)
+        System.print(UI.root.height)
         System.print("reflow")
     }
 }

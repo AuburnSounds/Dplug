@@ -95,21 +95,11 @@ static bool isValidElementID(const(char)[] identifier) pure nothrow @nogc @safe
     return true;
 }
 
-
-/// Work in progress. An sub-set of calls the scripting API is allowed to make on `UIElement`.
-/// Whenever an API call makes sense to be durable, it should be moved to `IUIElement`.
-interface IUIElement
-{
-    nothrow @nogc:
-
-}
-
-
 /// Base class of the UI widget hierarchy.
 ///
 /// MAYDO: a bunch of stuff in that class is intended specifically for the root element,
 ///        there is probably a better design to find.
-class UIElement : IUIElement
+class UIElement
 {
 public:
 nothrow:

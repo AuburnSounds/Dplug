@@ -90,7 +90,7 @@ nothrow @nogc:
     void* getUserPointer(int pointerID);
 
     /// Get root element of the hierarchy.
-    IUIElement getRootElement();
+    UIElement getRootElement();
 }
 
 // Official dplug:gui optional extension.
@@ -286,7 +286,7 @@ nothrow:
         _userPointers[pointerID] = userPointer;
     }
 
-    final override IUIElement getRootElement()
+    final override UIElement getRootElement()
     {
         return _owner;
     }

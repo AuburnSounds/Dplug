@@ -1,7 +1,6 @@
 module dplug.wren.wren_ui;
 
 import core.stdc.string : strcmp;
-
 import wren.vm;
 import wren.common;
 
@@ -34,27 +33,53 @@ void ui_root(WrenVM* vm)
 {
     WrenSupport ws = cast(WrenSupport) vm.config.userData;
     IUIContext context = ws.uiContext();
-    IUIElement root = context.getRootElement();
-
-    UIElementBridge* well = cast(UIElementBridge*) wrenSetSlotNewForeign(vm, 0, 0, UIElementBridge.sizeof);
-    well.elem = root;
+    UIElement root = context.getRootElement();
+    UIElementBridge* bridge = cast(UIElementBridge*) wrenSetSlotNewForeign(vm, 0, 0, UIElementBridge.sizeof);
+    bridge.elem = root;
 }
 
- // Element
+ // Elements
+
+void element_allocate(WrenVM* vm)
+{
+    UIElementBridge* bridge = cast(UIElementBridge*)wrenSetSlotNewForeign(vm, 0, 0, UIElementBridge.sizeof);
+    
+    WrenSupport ws = cast(WrenSupport) vm.config.userData;
+    IUIContext context = ws.uiContext();
+    bridge.elem = null;
+}
+
+void element_findIdAndBecomeThat(WrenVM* vm)
+{
+    UIElementBridge* bridge = cast(UIElementBridge*) wrenGetSlotForeign(vm, 0);
+    const(char)* id = wrenGetSlotString(vm, 1);
+
+    WrenSupport ws = cast(WrenSupport) vm.config.userData;
+    IUIContext context = ws.uiContext();
+    bridge.elem = null;
+
+    // special value "__ROOT__"
+    if (strcmp("__ROOT__", id) == 0)
+         bridge.elem = context.getRootElement();
+}
 
 void element_width(WrenVM* vm)
 {
-    wrenSetSlotDouble(vm, 0, cast(double)(0));
+    UIElementBridge* bridge = cast(UIElementBridge*) wrenGetSlotForeign(vm, 0);
+    double width = bridge.elem.position.width;    
+    wrenSetSlotDouble(vm, 0, width);
 }
 
 void element_height(WrenVM* vm)
 {
-    wrenSetSlotDouble(vm, 0, cast(double)(0));
+    UIElementBridge* bridge = cast(UIElementBridge*) wrenGetSlotForeign(vm, 0);
+    double height = bridge.elem.position.height;    
+    wrenSetSlotDouble(vm, 0, height);
 }
 
 struct UIElementBridge
 {
-    IUIElement elem;
+    UIElement elem;
 }
 
 const(char)* wrenUIModuleSource()
@@ -68,13 +93,14 @@ WrenForeignMethodFn wrenUIBindForeignMethod(WrenVM* vm, const(char)* className, 
     {
         if (isStatic && strcmp(signature, "width") == 0) return &ui_width;
         if (isStatic && strcmp(signature, "height") == 0) return &ui_height;
-        if (isStatic && strcmp(signature, "root") == 0) return &ui_root;        
     }
 
     if (strcmp(className, "Element") == 0)
     {
+        if (strcmp(signature, "<allocate>") == 0) return &element_allocate;
         if (strcmp(signature, "width") == 0) return &element_width;
         if (strcmp(signature, "height") == 0) return &element_height;
+        if (strcmp(signature, "findIdAndBecomeThat_(_)") == 0) return &element_findIdAndBecomeThat;
     }
     return null;
 }
@@ -87,7 +113,8 @@ WrenForeignClassMethods wrenUIForeignClass(WrenVM* vm, const(char)* className) n
     
     if (strcmp(className, "Element") == 0)
     {
-        // impossible to create Element from Wren
+        methods.allocate = &element_allocate;
+        // Note: impossible to create Element from Wren
     }
     return methods;
 }
