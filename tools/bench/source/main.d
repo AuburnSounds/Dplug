@@ -133,7 +133,7 @@ int main(string[] args)
             return 0;
         }
 
-        auto universe = new Universe(forceEncode, times);
+        auto universe = new Universe(forceEncode);
         universe.parseTask(configFile);
         if (timesProvided)
             universe.speedMeasureCount = times; // cmdline overrides XML for sample count
@@ -292,10 +292,9 @@ class Universe
         return chain(only(baseline), challengers);
     }
 
-    this(bool forceEncode, int speedMeasureCount)
+    this(bool forceEncode)
     {
         this.forceEncode = forceEncode;
-        this.speedMeasureCount = speedMeasureCount;
     }
 
     void parseTask(string xmlPath)
