@@ -1,6 +1,6 @@
 /**
 * Delay-line implementation.
-* Copyright: Auburn Sounds 2015.
+* Copyright: Guillaume Piolat 2015-2021.
 * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 module dplug.dsp.delayline;
@@ -18,13 +18,46 @@ import dplug.core.vec;
 /// |     | _index |                  | readPointer = _index + half size |             |
 /// ------------------------------------------------------------------------------------
 ///
+/// A Delayline is initialized with an internal length of N = numSamples,
+/// in order to do a simple delay of N samples.
+/// Internally, the delayline actually has 2 x nextPow2(N + 1) samples of storage.
+/// So typically a delay line is initialized with maxDelaySamples + maxFrames (if buffering is used)..
+///
+/// Example:
+/// ---
+/// import dplug.dsp.delayline;
+///
+/// void delaySampleBySample() // slower method, but easier to be correct
+/// {
+///     Delayline!float delayline;
+///     delayline.initialize(maxPossibleDelay);
+///     for (int n = 0; n < frames; ++n)
+///     {
+///         delayline.feedSample(input[n]);
+///
+///         // desiredDelay = 0 would be the sample we just fed
+///         // the delayline with.
+///         delayed[n] = delayline.fullSample(desiredDelay); 
+///     }
+/// }
+///
+/// void delayUsingReadPointer() // fastest method, but more confusing
+/// {
+///     Delayline!float delayline;
+///     delayline.initialize(maxFrames + maxPossibleDelay);
+///     delayline.feedBuffer(input.ptr, frames);
+///     const(float)* readPtr = d.readPointer() - desiredDelay - frames + 1;
+///     delayed[0..frames] = readPtr[0..frames];
+///     // Caveats: frames <= maxFrames and desiredDelay <= maxPossibleDelay.
+/// }
+/// ---
 struct Delayline(T)
 {
 public:
 nothrow:
 @nogc:
 
-    /// Initialize the delay line. Can delay up to count samples.
+    /// Initialize the delay line. Can delay up to `numSamples` samples.
     void initialize(int numSamples)
     {
         resize(numSamples);
