@@ -214,11 +214,9 @@ double expDecayFactor(double timeConstantInSeconds, double samplerate) pure noth
 }
 
 /// Give back a phase between -PI and PI
-T normalizePhase(T)(T phase) nothrow @nogc
+T normalizePhase(T)(T phase) nothrow @nogc if (is(T == float) || is(T == double))
 {
-    enum bool Assembly = D_InlineAsm_Any && !(is(Unqual!T == real));
-
-    static if (Assembly)
+    static if (D_InlineAsm_Any)
     {
         T k_TAU = PI * 2;
         T result = phase;
