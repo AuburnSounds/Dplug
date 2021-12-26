@@ -27,8 +27,6 @@ import core.exception: onOutOfMemoryErrorNoGC;
 
 import std.conv: emplace;
 import std.traits;
-import std.array: empty;
-import std.exception: assumeUnique;
 
 // This module provides many utilities to deal with @nogc nothrow, in a situation with the runtime disabled.
 
@@ -266,7 +264,7 @@ T[] mallocDup(T)(const(T)[] slice) nothrow @nogc if (!is(T == struct))
 /// Has to be cleaned-up with `free(slice.ptr)` or `freeSlice(slice)`.
 immutable(T)[] mallocIDup(T)(const(T)[] slice) nothrow @nogc if (!is(T == struct))
 {
-    return assumeUnique(mallocDup!T(slice));
+    return cast(immutable(T)[]) (mallocDup!T(slice));
 }
 
 /// Duplicates a zero-terminated string with `malloc`, return a `char[]` with zero-terminated byte.
@@ -287,7 +285,7 @@ char[] stringDup(const(char)* cstr) nothrow @nogc
 /// to a C string with `.ptr`. However the zero byte is not included in slice length.
 string stringIDup(const(char)* cstr) nothrow @nogc
 {
-    return assumeUnique(stringDup(cstr));
+    return cast(string) stringDup(cstr);
 }
 
 unittest
@@ -558,7 +556,7 @@ nothrow:
     this(immutable(CharType)[] s)
     {
         // Same optimizations that for toStringz
-        if (s.empty)
+        if (s.length == 0)
         {
             enum emptyString = cast(CharType[])"";
             storage = emptyString.ptr;
