@@ -243,8 +243,6 @@ T normalizePhase(T)(T phase) nothrow @nogc if (is(T == float) || is(T == double)
 
 unittest
 {
-    assert(isClose(normalizePhase!real(TAU), 0));
-
     assert(isClose(normalizePhase!float(0.1f), 0.1f));
     assert(isClose(normalizePhase!float(TAU + 0.1f), 0.1f));
 
