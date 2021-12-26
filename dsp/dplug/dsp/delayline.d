@@ -91,7 +91,7 @@ nothrow:
 
         // this buffer must be smaller than the delay line, 
         // else we may risk dropping samples immediately
-        assert(N < _numSamples);
+        assert(N <=_numSamples);
 
         // remaining samples before end of delayline
         int remain = _indexMask - _index;
@@ -111,6 +111,11 @@ nothrow:
             memcpy( _data.ptr + _half, incoming.ptr + remain, numBytes);
             _index = (_index + N) & _indexMask;
         }
+    }
+    ///ditto
+    void feedBuffer(const(T)* incoming, size_t count) pure
+    {
+        feedBuffer(incoming[0..count]);
     }
 
     /// Returns: A pointer which allow to get delayed values.
@@ -289,3 +294,43 @@ unittest
     assert(line3.sampleLinear(0.5f) == (3.0f + 42.0f) * 0.5f);
 }
 
+// See Issue #607, usability of feedBuffer.
+unittest
+{
+    
+    float[256] zeroes;
+    float[256] data;
+    float[256] delayed;
+    foreach (n; 0..256)
+    {
+        data[n] = cast(float)n;
+        zeroes[n] = 0.0f;
+    }
+
+    // Delay of 256 samples, using `nextBuffer`.
+    {
+        Delayline!float d;
+        d.initialize(256);
+        d.nextBuffer(data.ptr, delayed.ptr, 256);
+        assert(delayed == zeroes);
+        d.nextBuffer(zeroes.ptr, delayed.ptr, 256);
+        assert(delayed == data);
+    }
+
+    // It should be possible to use feedBuffer to delay of 256 amount too.
+    {
+        int desiredDelay = 256;
+        Delayline!float d;
+        d.initialize(256);
+        int frames = 256;
+        d.feedBuffer(data.ptr, frames);
+        const(float)* readPtr = d.readPointer() - desiredDelay - frames + 1;
+        delayed[0..frames] = readPtr[0..frames];
+        assert(delayed == zeroes);
+
+        d.feedBuffer(zeroes.ptr, frames);
+        readPtr = d.readPointer() - desiredDelay - frames + 1;
+        delayed[0..frames] = readPtr[0..frames];
+        assert(delayed == data);
+    }
+}
