@@ -175,17 +175,6 @@ version(Posix)
         {
             return dlsym(hlib, CString(symbolName));
         }
-
-        string GetErrorStr()
-        {
-            import std.conv : to;
-
-            auto err = dlerror();
-            if(err is null)
-                return "Unknown Error";
-
-            return to!string(err);
-        }
     }
 }
 else version(Windows)
@@ -209,19 +198,6 @@ else version(Windows)
         void* GetSymbol(SharedLibHandle hlib, string symbolName)
         {
             return GetProcAddress(hlib, CString(symbolName));
-        }
-
-        nothrow @nogc
-        string GetErrorStr()
-        {
-            import std.windows.syserror;
-            DWORD err = GetLastError();
-            return assumeNothrowNoGC(
-                    (DWORD err)
-                    {
-                        return sysErrorString(err);
-                    }
-                )(err);
         }
     }
 } else {
