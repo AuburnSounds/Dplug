@@ -8,7 +8,7 @@
 module dplug.gui.element;
 
 import core.stdc.stdio;
-import core.stdc.string: strlen;
+import core.stdc.string: strlen, strcmp;
 
 import std.algorithm.comparison;
 
@@ -169,9 +169,23 @@ nothrow:
     }
 
     /// Returns: `true` if thie UIElement has an ID.
-    bool hasId() pure
+    final bool hasId() pure
     {
         return _idStorage[0] != '\0';
+    }
+
+    /// Search subtree for an UIElement with ID `id`. Undefined Behaviour if ID are not unique.
+    final UIElement getElementById(const(char)* id)
+    {
+        if (strcmp(id, _idStorage.ptr) == 0)
+            return this;
+
+        foreach(c; _children)
+        {
+            UIElement r = c.getElementById(id);
+            if (r) return r;
+        }
+        return null;
     }
 
     /// This method is called for each item in the drawlist that was visible and has a dirty Raw layer.

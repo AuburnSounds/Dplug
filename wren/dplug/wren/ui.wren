@@ -10,12 +10,21 @@ class UI {
    // Get current height of the UI
    foreign static height
 
+   // Get default width of the UI
+   foreign static defaultWidth
+
+   // Get default height of the UI
+   foreign static defaultHeight
+
    // Get root Element of the hierarchy
    static root {
        return Element.new("__ROOT__")
    }
-}
 
+   static getElementById(id) {
+       return Element.new(id)
+   }
+}
 
 // API for widget. Wraps an UIElement.
 foreign class Element {
@@ -32,8 +41,15 @@ foreign class Element {
    // Get current height of the UIElement
    foreign height
 
+   position=(rect) {
+       var orig = rect.origin
+       var sz = rect.size
+       setPosition_(orig.x, orig.y, sz.width, sz.height)  // PERF: use _fields instead of accessors
+   }
+
    // Internal use
    foreign findIdAndBecomeThat_(id)
+   foreign setPosition_(x, y, w, h)
 }
 
 class Point {
@@ -74,4 +90,12 @@ class Rectangle {
 
     size { _size }
     origin { _orig }
+
+    scaleByFactor(scale) { 
+        var minx = (_orig.x * scale).round
+        var miny = (_orig.y * scale).round
+        var maxx = ( (_orig.x + _size.width) * scale).round
+        var maxy = ( (_orig.y + _size.height) * scale).round
+        return Rectangle.new(minx, miny, maxx - minx, maxy - miny)
+    }
 }

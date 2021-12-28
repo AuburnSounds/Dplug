@@ -1,4 +1,4 @@
-import "ui" for UI, Element, Point, Size
+import "ui" for UI, Element, Point, Size, Rectangle
 
 class Plugin {
 
@@ -7,8 +7,9 @@ class Plugin {
     }
 
     static reflow() { 
-        System.print(UI.root.width)
-        System.print(UI.root.height)
-        System.print("reflow")
+        var W = UI.width
+        var H = UI.height
+        var S = W / UI.defaultWidth
+        UI.getElementById("_imageKnob").position = Rectangle.new(517, 176, 46, 46).scaleByFactor(S)
     }
 }

@@ -71,6 +71,7 @@ nothrow:
         _knobImageData = loadKnobImage( import("imageknob.png") );
         addChild(_imageKnob = mallocNew!UIImageKnob(context(), _knobImageData, cast(FloatParameter) _client.param(paramBias)));
         _imageKnob.hasTrail = false; // no trail by default
+        _imageKnob.id = "_imageKnob";
 
         // Add procedural knobs
         addChild(_driveKnob = mallocNew!UIKnob(context(), cast(FloatParameter) _client.param(paramDrive)));

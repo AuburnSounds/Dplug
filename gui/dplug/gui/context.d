@@ -7,6 +7,8 @@
 */
 module dplug.gui.context;
 
+import core.stdc.string : strcmp;
+
 import dplug.core.vec;
 import dplug.core.nogc;
 
@@ -91,6 +93,9 @@ nothrow @nogc:
 
     /// Get root element of the hierarchy.
     UIElement getRootElement();
+
+    /// Get UIElement with given ID.
+    UIElement getElementById(const(char)* id);
 }
 
 // Official dplug:gui optional extension.
@@ -289,6 +294,19 @@ nothrow:
     final override UIElement getRootElement()
     {
         return _owner;
+    }
+
+    final override UIElement getElementById(const(char)* id)
+    {
+        if (id is null)
+            return null;
+
+        // special value "__ROOT__"
+        if (strcmp("__ROOT__", id) == 0)
+            return getRootElement();
+
+        // search in whole UI hierarchy
+        return _owner.getElementById(id);
     }
 
 private:
