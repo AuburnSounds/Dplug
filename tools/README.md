@@ -1,7 +1,7 @@
 ### Tools
    * `tools/dplug-build`: DUB frontend to build plug-ins
    * `tools/process`: plugin host for testing audio processing speed/reproducibility
-   * `tools/wav-compare`: comparison of WAV files
+   * `tools/wav-compare`: comparison of WAV files, difference spectrogram
    * `tools/wav-info`: show information about a single WAV file
    * `tools/abtest`: helps performing A/B testing of two similar audio files (needs SDL and SDL_mixer)
    * `tools/bench`: perform quality and performance measurements to validate optimizations and find regressions. Uses `wav-compare` and `process`

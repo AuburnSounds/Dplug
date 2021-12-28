@@ -15,21 +15,59 @@ import colorize;
 
 void usage()
 {
-    writeln("Usage:");
-    writeln("        wav-compare fileA.wav fileB.wav [-o diff.wav]");
-    writeln();
-    writeln("Description:");
-    writeln("        This qualifies the difference between two files.");
-    writeln;
-    writeln("Flags:");
-    writeln("        -h, --help   Shows this help");
-    writeln("        -o <file>    Write instantaneous peak difference in a WAV file (default: no)");
-    writeln("        -s <file>    Output spectrogram (default: no)");
-    writeln("        -sw <width>  Spectrogram width (default: length / 512)");
-    writeln("        -sh <height> Spectrogram height (default: 800)");
-    writeln("        --strip <s>  Strip s seconds of the start. Avoid initialization conditions.");
-    writeln("        --quiet      Less verbose output, just output RMS error (default: verbose)");    
-    writeln;
+    void flag(string arg, string desc, string possibleValues, string defaultDesc)
+    {
+        string argStr = format("        %s", arg);
+        cwrite(argStr.cyan);
+        for(size_t i = argStr.length; i < 28; ++i)
+            write(" ");
+        cwritefln("%s".white, desc);
+        if (possibleValues)
+            cwritefln("                            Possible values: ".grey ~ "%s".yellow, possibleValues);
+        if (defaultDesc)
+            cwritefln("                            Default: ".grey ~ "%s".cyan, defaultDesc);
+        cwriteln;
+    }
+
+    cwriteln();
+    cwriteln( "This is the ".white ~ "wav-compare".cyan ~ " tool: it compares audio files for small differences.".white);
+    cwriteln();
+    cwriteln("FLAGS".white);
+    cwriteln();
+    flag("-o --output", "Write output spectrogram.", "PNG file path", "no");
+    flag("-ow --output-width", "Spectrogram PNG width.", null, "length / 512");
+    flag("-oh --output-height", "Spectrogram PNG height.", null, "800");
+    flag("-s  --skip", "Skip seconds of the input start. Avoid initialization conditions.", "seconds", "0.0");
+    flag("-d  --duration", "Strip to a certain duration.", "seconds", "max");
+    flag("-q  --quiet", "Just output RMS error", null, "verbose");    
+    flag("-h --help", "Shows this help", null, null);
+
+    cwriteln();
+    cwriteln("EXAMPLES".white);
+    cwriteln();
+    cwriteln("        # Compare two WAV files, display RMS and comment".green);
+    cwriteln("        wav-compare A.wav B.wav".cyan);
+    cwriteln();
+    cwriteln("        # Compare two WAV files, quietly make an output spectrogram of the difference".green);
+    cwriteln("        wav-compare A.wav B.wav -o spectrogram.png --quiet".cyan);
+    cwriteln();
+    cwriteln("        # Compare two WAV files, skip the first 3 seconds, take 8 seconds of sound".green);
+    cwriteln("        wav-compare A.wav B.wav --skip 3 --duration 8".cyan);
+
+    cwriteln();
+    cwriteln("NOTES".white);
+    cwriteln();
+    cwriteln("      The palette of the spectrogram is as follow:".grey);
+    cwriteln("      - white   means    0dB difference".white);
+    cwriteln("      - red     means  -20dB difference".red);
+    cwriteln("      - yellow  means  -40dB difference".yellow);
+    cwriteln("      - green   means  -60dB difference".green);
+    cwriteln("      - cyan    means  -80dB difference".cyan);
+    cwriteln("      - blue    means -100dB difference".blue);
+    cwriteln("      - magenta means -120dB difference".magenta);
+    cwriteln("      - black   means -140dB difference or below".grey);
+    cwriteln();
+    cwriteln();
 }
 
 int main(string[] args)
@@ -38,9 +76,9 @@ int main(string[] args)
     {
         bool help = false;
         string[] files = null;
-        string outDiffFile = null;
         bool quiet = false;
-        double stripSecs = 0.0;
+        double skipSecs = 0.0;
+        double durationSecs = -1.0;
         string spectrogramPath = null;
         int sh = 800;
         int sw = 0;
@@ -48,41 +86,43 @@ int main(string[] args)
         for (int i = 1; i < args.length; ++i)
         {
             string arg = args[i];
-            if (arg == "-h")
+            if (arg == "-h" || arg == "--help")
+            {
                 help = true;
-            else if (arg == "--quiet")
+            }
+            else if (arg == "-q" || arg == "--quiet")
             {
                 quiet = true;
             }
-            else if (arg == "-o")
+            else if (arg == "-o" || arg == "--output")
             {
                 i += 1;
-                outDiffFile = args[i];
+                spectrogramPath = args[i];
+                if (spectrogramPath.length < 4 || spectrogramPath[$-4..$] != ".png")
+                    throw new Exception(format("Expected a PNG file path after %s", arg));
             }
-            else if (arg == "--strip")
+            else if (arg == "-s" || arg == "--strip")
             {
                 i += 1;
-                stripSecs = to!double(args[i]);
+                skipSecs = to!double(args[i]);
             }
-            else if (arg == "-sw")
+            else if (arg == "-ow" || arg == "--output-width")
             {
                 i += 1;
                 sw = to!int(args[i]);
             }
-            else if (arg == "-sh")
+            else if (arg == "-oh" || arg == "--output-height")
             {
                 i += 1;
                 sh = to!int(args[i]);
             }
-            else if (arg == "--strip")
+            else if (arg == "-d" || arg == "--duration")
             {
                 i += 1;
-                stripSecs = to!double(args[i]);
-            }
-            else if (arg == "-s")
-            {
-                i += 1;
-                spectrogramPath = args[i];
+                if (args[i] == "max")
+                    durationSecs = -1;
+                else
+                    durationSecs = to!double(args[i]);
             }
             else
                 files ~= arg;
@@ -118,7 +158,28 @@ int main(string[] args)
         if (soundA.samples.length != soundB.samples.length)
             throw new Exception(format("%s and %s have different length", fileA, fileB));
 
-        int startSample = cast(int)(stripSecs * soundA.sampleRate);
+        // Strip inpujt
+        {
+            if (durationSecs < 0)
+                durationSecs = soundA.lengthInSeconds() + 1;
+
+            int startSample = cast(int)(skipSecs * soundA.sampleRate);
+            int stopSample  = cast(int)((skipSecs + durationSecs) * soundA.sampleRate);
+
+            if (startSample < 0) startSample = 0;
+            if (stopSample > soundA.lengthInFrames) stopSample = soundA.lengthInFrames;
+            if (stopSample < startSample) stopSample = startSample;
+
+            int sampleDuration = stopSample - startSample;
+            if (sampleDuration == 0)
+            {
+                throw new Exception(format("Selected input has zero length. Use --skip and --duration differently"));
+            }
+
+            soundA = soundA.stripSound(startSample, stopSample);
+            soundB = soundB.stripSound(startSample, stopSample);
+        }
+
 
         if (sw == 0)
             sw = soundB.lengthInFrames() / 512;
@@ -126,35 +187,29 @@ int main(string[] args)
         // Normalize both sounds by the same amount
         // However we don't apply this factor yet to avoid introducing noise.
         // TODO: harmonic square root?
-        real nFactor = (normalizeFactor(soundA) + normalizeFactor(soundB) ) * 0.5f;
+        // Note: normalization factor is considered for the whole input, not the stripped input.
+        real nFactor = (normalizeFactor(soundA) + normalizeFactor(soundB)) * 0.5f;
         int channels = soundA.channels;
 
         int N = cast(int)(soundA.samples.length);
 
         // No need to deinterleave stereo, since the peak difference is what interest us
         real[] difference = new real[N];
-        float[] diffFileContent = new float[N];
 
         // Note: the WAV output is an absolute value (simply A minus B)
         // while the RMS and peak numbers are given against normalized A and B
         for (int i = 0; i < N; ++i)
         {
             real diff = cast(real)soundA.samples[i] - soundB.samples[i];
-            diffFileContent[i] = diff;
             difference[i] = nFactor * abs(diff);
         }
 
-        if (startSample >= N)
-        {
-            throw new Exception(format("Using --strip with a duration longer than the content"));
-        }
-
-        real maxPeakDifference = reduce!max(difference[startSample..$]);//!("a > b")(difference).front;
+        real maxPeakDifference = reduce!max(difference[0..$]);//!("a > b")(difference).front;
 
         real rms = 0;
-        for (int i = startSample; i < N; ++i)
+        for (int i = 0; i < N; ++i)
             rms +=  difference[i] * difference[i];
-        rms = sqrt(rms / (N - startSample));
+        rms = sqrt(rms / N);
 
         real peak_dB = convertLinearGainToDecibel(maxPeakDifference);
         real rms_dB = convertLinearGainToDecibel(rms);
@@ -172,26 +227,10 @@ int main(string[] args)
             cwriteln(" An opinion from the comparison program:");
             cwriteln(format("    \"%s\"", getComment(rms_dB, peak_dB)).color(fg.light_cyan));
             cwriteln();
-
-            if (isFinite(peak_dB - rms_dB))
-                cwritefln(" => (Peak - RMS) Crest difference = %s", format("%.2f dB", peak_dB - rms_dB).color(fg.light_green));
         }
         else
         {
             writefln(format("%.2f dB", rms_dB));
-        }
-
-        // write absolute difference into
-        if (outDiffFile)
-        {
-            Sound(soundA.sampleRate, channels, diffFileContent).encodeWAV(outDiffFile);
-
-            if (!quiet)
-            {
-                cwritefln(" => Difference written in %s (max rel. peak = %s)", 
-                          outDiffFile.color(fg.light_white),
-                          format("%.2f dB", peak_dB).color(fg.light_green));
-            }
         }
 
         if (spectrogramPath)
@@ -207,9 +246,7 @@ int main(string[] args)
     {
         cwriteln;
         cwritefln(format("error: %s", e.msg).color(fg.light_red));
-        cwriteln;
         usage();
-        writeln;
         return 1;
     }
 }
@@ -269,7 +306,7 @@ void outputSpectrumOfDifferences(Sound soundA, Sound soundB, string spectrogramP
     assert(soundA.sampleRate == soundB.sampleRate);
     assert(soundA.lengthInFrames == soundB. lengthInFrames);
 
-    float samplerate = soundA.sampleRate;
+    float sampleRate = soundA.sampleRate;
     int N = soundA.lengthInFrames();
     float[] diff = new float[N];
     float[] A = soundA.channel(0);
@@ -287,7 +324,7 @@ void outputSpectrumOfDifferences(Sound soundA, Sound soundB, string spectrogramP
     int windowSize = (analysisPeriod * 2);
 
     // window size cannot be inferior to 20ms
-    int minWindowSize = cast(int)(0.5f + samplerate * 0.020);
+    int minWindowSize = cast(int)(0.5f + sampleRate * 0.020);
     if (windowSize < minWindowSize)
         windowSize = minWindowSize;
 
@@ -321,20 +358,25 @@ void outputSpectrumOfDifferences(Sound soundA, Sound soundB, string spectrogramP
     if (!quiet)
     {
         cwriteln;
-        cwritef(" * Resize to %s x %s", sw, sh);
+        cwritef(" * Resize to %s x %s...".grey, sw, sh);
     }
 
     // Remap image in log-frequency.
     OwnedImage!RGBA temp2 = new OwnedImage!RGBA(iwidth, iheight);
     for (int y = 0; y < iheight; ++y)
     {
-        // which frequency it is supposed to be?
+        // Sample temp in ERB scale, linearly.
         int lowestBin = 0;
         int nyquistBin = half-1;
-        float hereBin = logmap!float(y / (iheight - 1.0f), lowestBin + 1.0f, nyquistBin + 1.0f) - 1.0f;
+        double lowestBinFreq = convertFFTBinToFrequency(lowestBin, fftSize, sampleRate);
+        double nyquistBinFreq = convertFFTBinToFrequency(nyquistBin, fftSize, sampleRate);
+        double lowestBinERB = convertHzToERBS(lowestBinFreq);
+        double nyquistBinERB = convertHzToERBS(nyquistBinFreq);
+        double thisBinERB = lowestBinERB + (nyquistBinERB - lowestBinERB) * (y / (iheight - 1.0));
+        double thisBinHz = convertERBSToHz(thisBinERB);
+        float hereBin = convertFrequencyToFFTBin(thisBinHz, sampleRate, fftSize);
         if (hereBin < 0) hereBin = 0;
         if (hereBin > nyquistBin - 0.01f) hereBin = nyquistBin - 0.01f;
-
         int ibin = cast(int)hereBin;
         ubyte t = cast(ubyte)( (hereBin - ibin) * 256.0 );
         for (int x = 0; x < iwidth; ++x)
@@ -350,7 +392,7 @@ void outputSpectrumOfDifferences(Sound soundA, Sound soundB, string spectrogramP
     if (!quiet)
     {
         cwriteln;
-        cwritef(" * Convert to PNG");
+        cwritef(" * Convert to PNG...".grey);
     }
     ubyte[] png = convertImageRefToPNG(spectrumImage.toRef());
     scope(exit) freeSlice(png);
@@ -362,13 +404,13 @@ void outputSpectrumOfDifferences(Sound soundA, Sound soundB, string spectrogramP
  static immutable RGBA[8] dB_COLORS =
  [
     RGBA(255, 255, 255, 255), // 0db => white
-    RGBA(255, 0,     0, 255), // -20db => red
+    RGBA(255, 128, 128, 255), // -20db => red
     RGBA(255, 255,   0, 255), // -40db => yellow
-    RGBA(0,   255,   0, 255), // -60db => green
-    RGBA(0,   255, 255, 255), // -80db => cyan
-    RGBA(0,     0, 255, 255), // -100db => blue
-    RGBA(255,   0, 255, 255), // -120db => magenta
-    RGBA(255,   0, 255, 255), // -140db or below => black
+    RGBA(64,   255, 64, 255), // -60db => green
+    RGBA(0,   200, 200, 255), // -80db => cyan
+    RGBA(16,   16, 255, 255), // -100db => blue
+    RGBA(128,   0, 128, 255), // -120db => magenta
+    RGBA(0,   0, 0, 255), // -140db or below => black
 ];
 
 RGBA coeff2Color(Complex!float c)
@@ -381,4 +423,87 @@ RGBA coeff2Color(Complex!float c)
     int icol = cast(int)dB;
     ubyte t = cast(ubyte)( (dB - icol) * 256.0 );
     return blendColor(dB_COLORS[icol+1], dB_COLORS[icol], t);
+}
+
+
+bool enableColoredOutput = true;
+
+string white(string s)
+{
+    if (enableColoredOutput) return s.color(fg.light_white);
+    return s;
+}
+
+string grey(string s)
+{
+    if (enableColoredOutput) return s.color(fg.white);
+    return s;
+}
+
+string cyan(string s)
+{
+    if (enableColoredOutput) return s.color(fg.light_cyan);
+    return s;
+}
+
+string green(string s)
+{
+    if (enableColoredOutput) return s.color(fg.light_green);
+    return s;
+}
+
+string yellow(string s)
+{
+    if (enableColoredOutput) return s.color(fg.light_yellow);
+    return s;
+}
+
+string red(string s)
+{
+    if (enableColoredOutput) return s.color(fg.light_red);
+    return s;
+}
+
+string blue(string s)
+{
+    if (enableColoredOutput) return s.color(fg.light_blue);
+    return s;
+}
+
+string magenta(string s)
+{
+    if (enableColoredOutput) return s.color(fg.light_magenta);
+    return s;
+}
+
+
+/// Returns: Another Sound with stripped input.
+Sound stripSound(const(Sound) input, int start, int end) pure nothrow
+{
+    Sound output;
+    int N = input.lengthInFrames();
+    assert(start >= 0);
+    assert(end >= start);
+    assert(N >= end);
+    int M = end - start;
+    output.sampleRate = input.sampleRate;
+    output.samples = new float[M * input.channels];
+    output.channels = input.channels;
+    for (int ch = 0; ch < input.channels; ++ch)
+    {
+        for (int n = 0; n < M; ++n)
+            output.sample(ch, n) = input.sample(ch, n + start);
+    }
+    return output;
+}
+
+// https://en.wikipedia.org/wiki/Equivalent_rectangular_bandwidth
+double convertHzToERBS(double hz)
+{
+    return 11.17268 * log(1.0 +  (hz * 46.06538) / (hz + 14678.49) );
+}
+
+double convertERBSToHz(double erbs)
+{
+    return 676170.4 / (47.06538 - exp(0.08950404 * erbs)) - 14678.49;
 }
