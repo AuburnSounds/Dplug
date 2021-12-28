@@ -2,8 +2,9 @@
     "name": "wav-compare",
     "description": "Compares two sounds.",
     "dependencies": {
-        "dplug:core": {"path": "../../"},
-        "dplug:graphics": {"path": "../../"},
+        "dplug:core": { "path": "../../" },
+        "dplug:graphics": { "path": "../../" },
+        "dplug:dsp": { "path": "../../" },
         "wave-d": "~>1.0",
         "colorize": "~>1.0"
     },
