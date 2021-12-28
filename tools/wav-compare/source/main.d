@@ -7,6 +7,7 @@ import std.conv;
 
 import waved;
 import dplug.core;
+import dplug.graphics;
 import colorize;
 
 
