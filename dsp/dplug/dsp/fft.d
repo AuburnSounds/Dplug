@@ -442,7 +442,7 @@ public:
         }
     }
 
-    bool feed(float x, BuiltinComplex!T[] fftData) nothrow @nogc
+    bool feed(T x, BuiltinComplex!T[] fftData) nothrow @nogc
     {
         void processSegment(T[] segment) nothrow @nogc
         {
