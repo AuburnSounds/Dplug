@@ -291,7 +291,7 @@ void outputSpectrumOfDifferences(Sound soundA, Sound soundB, string spectrogramP
     if (windowSize < minWindowSize)
         windowSize = minWindowSize;
 
-    int fftSize = nextPow2HigherOrEqual(windowSize);
+    int fftSize = nextPow2HigherOrEqual(windowSize) * 2;
     bool zeroPhaseWindowing = false;
     FFTAnalyzer!float fft;
     fft.initialize(windowSize, fftSize, analysisPeriod, WindowDesc(WindowType.hann, WindowAlignment.right), zeroPhaseWindowing);
@@ -312,7 +312,7 @@ void outputSpectrumOfDifferences(Sound soundA, Sound soundB, string spectrogramP
         {
             for (int c = 0; c < half; ++c)
             {
-                temp[hops, half-1-c] = coeff2Color(coeffs[c]);
+                temp[hops, c] = coeff2Color(coeffs[c]);
             }
             hops++;
         }
@@ -324,11 +324,28 @@ void outputSpectrumOfDifferences(Sound soundA, Sound soundB, string spectrogramP
         cwritef(" * Resize to %s x %s", sw, sh);
     }
 
-    // TODO: log-frequency
+    // Remap image in log-frequency.
+    OwnedImage!RGBA temp2 = new OwnedImage!RGBA(iwidth, iheight);
+    for (int y = 0; y < iheight; ++y)
+    {
+        // which frequency it is supposed to be?
+        int lowestBin = 0;
+        int nyquistBin = half-1;
+        float hereBin = logmap!float(y / (iheight - 1.0f), lowestBin + 1.0f, nyquistBin + 1.0f) - 1.0f;
+        if (hereBin < 0) hereBin = 0;
+        if (hereBin > nyquistBin - 0.01f) hereBin = nyquistBin - 0.01f;
+
+        int ibin = cast(int)hereBin;
+        ubyte t = cast(ubyte)( (hereBin - ibin) * 256.0 );
+        for (int x = 0; x < iwidth; ++x)
+        {
+            temp2[x, iheight-1-y] = blendColor(temp[x, ibin+1], temp[x, ibin], t);
+        }
+    }
 
     OwnedImage!RGBA spectrumImage = new OwnedImage!RGBA(sw, sh);
     ImageResizer resizer;
-    resizer.resizeImageGeneric(temp.toRef, spectrumImage.toRef);
+    resizer.resizeImageGeneric(temp2.toRef, spectrumImage.toRef);
 
     if (!quiet)
     {
