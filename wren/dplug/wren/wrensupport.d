@@ -18,6 +18,7 @@ import dplug.gui.element;
 
 import wren.vm;
 import wren.value;
+import wren.primitive;
 
 import dplug.wren.wren_ui;
 
@@ -57,6 +58,7 @@ nothrow @nogc:
 
             config.writeFn             = &dplug_wrenPrint;
             config.errorFn             = &dplug_wrenError;
+            config.dollarOperatorFn    = &dplug_wrenDollarOperator;
             config.bindForeignMethodFn = &dplug_wrenBindForeignMethod;
             config.bindForeignClassFn  = &dplug_wrenBindForeignClass;
             config.loadModuleFn        = &dplug_wrenLoadModule;
@@ -220,12 +222,13 @@ private:
         {
             if (strcmp(module_, "ui") == 0)
             {
-                return wrenUIBindForeignMethod(vm, className, isStatic, signature);                
+                return wrenUIBindForeignMethod(vm, className, isStatic, signature);
             }
             return null;
         }
         catch(Exception e)
         {
+            destroyFree(e);
             return null;
         }
     }
@@ -266,10 +269,50 @@ private:
         }
         catch(Exception e)
         {
+            destroyFree(e);
             res.source = null;
         }
         found:
         return res;
+    }
+
+    bool dollarOperator(WrenVM* vm, Value* args)
+    {
+        try
+        {
+            if (!IS_STRING(args[0]))
+                return false;
+
+            const(char)* id = AS_STRING(args[0]).value.ptr;
+            UIElement elem = _uiContext.getElementById(id);
+
+            Value moduleName = wrenStringFormat(vm, "$", "ui".ptr);
+            wrenPushRoot(vm, AS_OBJ(moduleName));
+            ObjModule* uiModule = getModule(vm, moduleName);
+            if (uiModule is null)
+            {
+                wrenPopRoot(vm);
+                return RETURN_ERROR(vm, "module ui is not imported");
+            }
+            wrenPopRoot(vm);
+
+            ObjClass* classElement = AS_CLASS(wrenFindVariable(vm, uiModule, "Element"));
+            if (classElement is null)
+            {
+                return RETURN_ERROR(vm, "class ui.Element is not imported");
+            }
+
+            // Create new foreign
+            ObjForeign* foreign = wrenNewForeign(vm, classElement, UIElementBridge.sizeof);
+            UIElementBridge* bridge = cast(UIElementBridge*) foreign.data.ptr;
+            bridge.elem = elem;
+            return RETURN_OBJ(args, foreign);
+        }
+        catch(Exception e)
+        {
+            destroyFree(e);
+            return false;
+        }
     }
 }
 
@@ -304,4 +347,10 @@ WrenLoadModuleResult dplug_wrenLoadModule(WrenVM* vm, const(char)* name)
 {
     WrenSupport ws = cast(WrenSupport) vm.config.userData;
     return ws.loadModule(vm, name);
+}
+
+bool dplug_wrenDollarOperator(WrenVM* vm, Value* args)
+{
+    WrenSupport ws = cast(WrenSupport) vm.config.userData;
+    return ws.dollarOperator(vm, args);
 }

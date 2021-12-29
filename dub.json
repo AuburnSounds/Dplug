@@ -265,7 +265,7 @@
             "stringImportPaths": ["wren/dplug/wren"],
             "dependencies": {
                 "dplug:gui": "*",
-                "wren-port": "~>1.0"
+                "wren-port": "~>1.1"
             }
         },
         {
