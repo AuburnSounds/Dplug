@@ -69,7 +69,7 @@ nothrow:
             vec a0,  vec a1, ref vec r0, ref vec r1)
         {
             r0 = shufflevector!(double2, 0, 2)(a0, a1);
-            r1 = shufflevector!(double2, 1, 3)(1, 3);
+            r1 = shufflevector!(double2, 1, 3)(a0, a1);
         }
         
         static vec unaligned_load(T* p)

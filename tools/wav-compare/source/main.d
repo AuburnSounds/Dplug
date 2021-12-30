@@ -295,7 +295,7 @@ string getComment(float rms_dB, float peak_dB)
     }
 }
 
-alias CoeffType = float;
+alias CoeffType = double;
 
 void outputSpectrumOfDifferences(Sound soundA, Sound soundB, string spectrogramPath, int sw, int sh, real nFactor, bool quiet)
 {
@@ -329,8 +329,6 @@ void outputSpectrumOfDifferences(Sound soundA, Sound soundB, string spectrogramP
     int minWindowSize = cast(int)(0.5f + sampleRate * 0.020);
     if (windowSize < minWindowSize)
         windowSize = minWindowSize;
-
-    analysisPeriod = 1;
 
     int fftSize = nextPow2HigherOrEqual(windowSize) * 2;
     bool zeroPhaseWindowing = false;
