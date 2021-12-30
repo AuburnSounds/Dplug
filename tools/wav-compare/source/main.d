@@ -6,11 +6,11 @@ import std.array;
 import std.conv;
 import std.file;
 
-import waved;
 import dplug.core;
 import dplug.graphics;
 import dplug.dsp;
 import colorize;
+import audioformats;
 
 
 void usage()
@@ -167,7 +167,7 @@ int main(string[] args)
             int stopSample  = cast(int)((skipSecs + durationSecs) * soundA.sampleRate);
 
             if (startSample < 0) startSample = 0;
-            if (stopSample > soundA.lengthInFrames) stopSample = soundA.lengthInFrames;
+            if (stopSample > soundA.lengthInFrames) stopSample = soundA.lengthInFrames();
             if (stopSample < startSample) stopSample = startSample;
 
             int sampleDuration = stopSample - startSample;
@@ -182,7 +182,7 @@ int main(string[] args)
 
 
         if (sw == 0)
-            sw = soundB.lengthInFrames() / 512;
+            sw = (soundB.lengthInFrames() / 512);
 
         // Normalize both sounds by the same amount
         // However we don't apply this factor yet to avoid introducing noise.
@@ -309,10 +309,10 @@ void outputSpectrumOfDifferences(Sound soundA, Sound soundB, string spectrogramP
     assert(soundA.lengthInFrames == soundB. lengthInFrames);
 
     float sampleRate = soundA.sampleRate;
-    int N = soundA.lengthInFrames();
+    int N = cast(int) soundA.lengthInFrames();
     CoeffType[] diff = new CoeffType[N];
-    float[] A = soundA.channel(0);
-    float[] B = soundB.channel(0);
+    double[] A = soundA.channel(0);
+    double[] B = soundB.channel(0);
     foreach(n; 0..N)
     {
         diff[n] = nFactor * (cast(real)A[n] - B[n]); // so that the relative difference is seen.
@@ -489,7 +489,7 @@ Sound stripSound(const(Sound) input, int start, int end) pure nothrow
     assert(N >= end);
     int M = end - start;
     output.sampleRate = input.sampleRate;
-    output.samples = new float[M * input.channels];
+    output.samples = new double[M * input.channels];
     output.channels = input.channels;
     for (int ch = 0; ch < input.channels; ++ch)
     {
@@ -508,4 +508,72 @@ double convertHzToERBS(double hz)
 double convertERBSToHz(double erbs)
 {
     return 676170.4 / (47.06538 - exp(0.08950404 * erbs)) - 14678.49;
+}
+
+// Compatibility with former wave-d API
+struct Sound
+{   
+    float sampleRate;
+    int channels;
+    double[] samples;
+
+    int lengthInFrames() pure const nothrow @nogc
+    {
+        return cast(int)( cast(long)(samples.length) / channels);
+    }
+
+    /// Returns: Length in seconds.
+    double lengthInSeconds() pure const nothrow
+    {
+        return lengthInFrames() / cast(double)sampleRate;
+    }
+
+    /// Direct sample access.
+    ref inout(double) sample(int chan, int frame) pure inout nothrow @nogc
+    {
+        assert(cast(uint)chan < channels);
+        return samples[frame * channels + chan];
+    }
+
+    /// Allocates a new array and put deinterleaved channel samples inside.
+    double[] channel(int chan) pure const nothrow
+    {
+        int N = lengthInFrames();
+        double[] c = new double[N];
+        foreach(frame; 0..N)
+            c[frame] = this.sample(chan, frame);
+        return c;
+    }
+}
+
+
+// Decode a whole stream at once.
+Sound decodeSound(string file)
+{
+    AudioStream input;
+    input.openFromFile(file);
+
+    int channels = input.getNumChannels();
+    float sampleRate = input.getSamplerate();
+
+    double[] samples; 
+
+    double[] buf = new double[1024 * channels];
+
+    // Chunked encode/decode
+    int totalFrames = 0;
+    int framesRead;
+    do
+    {
+        framesRead = input.readSamplesDouble(buf);
+        samples ~= buf[0..framesRead*channels]; 
+        totalFrames += framesRead;
+    } while(framesRead > 0);
+
+    Sound sound;
+    sound.samples = samples;
+    sound.sampleRate = sampleRate;
+    sound.channels = channels;
+
+    return sound;
 }
