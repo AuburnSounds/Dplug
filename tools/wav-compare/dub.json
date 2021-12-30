@@ -5,7 +5,7 @@
         "dplug:core": { "path": "../../" },
         "dplug:graphics": { "path": "../../" },
         "dplug:dsp": { "path": "../../" },
-        "wave-d": "~>1.0",
+        "audio-formats": "~>1.5",
         "colorize": "~>1.0"
     },
 
