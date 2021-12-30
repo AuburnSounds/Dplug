@@ -295,6 +295,8 @@ string getComment(float rms_dB, float peak_dB)
     }
 }
 
+alias CoeffType = float;
+
 void outputSpectrumOfDifferences(Sound soundA, Sound soundB, string spectrogramPath, int sw, int sh, real nFactor, bool quiet)
 {
     if (!quiet)
@@ -308,7 +310,7 @@ void outputSpectrumOfDifferences(Sound soundA, Sound soundB, string spectrogramP
 
     float sampleRate = soundA.sampleRate;
     int N = soundA.lengthInFrames();
-    float[] diff = new float[N];
+    CoeffType[] diff = new CoeffType[N];
     float[] A = soundA.channel(0);
     float[] B = soundB.channel(0);
     foreach(n; 0..N)
@@ -328,9 +330,11 @@ void outputSpectrumOfDifferences(Sound soundA, Sound soundB, string spectrogramP
     if (windowSize < minWindowSize)
         windowSize = minWindowSize;
 
+    analysisPeriod = 1;
+
     int fftSize = nextPow2HigherOrEqual(windowSize) * 2;
     bool zeroPhaseWindowing = false;
-    FFTAnalyzer!float fft;
+    FFTAnalyzer!CoeffType fft;
     fft.initialize(windowSize, fftSize, analysisPeriod, WindowDesc(WindowType.hann, WindowAlignment.right), zeroPhaseWindowing);
 
     int half = fftSize/2 + 1;
@@ -340,7 +344,7 @@ void outputSpectrumOfDifferences(Sound soundA, Sound soundB, string spectrogramP
     int iwidth = (N + analysisPeriod - 1) / analysisPeriod; // max number of analysis
 
     OwnedImage!RGBA temp = new OwnedImage!RGBA(iwidth, iheight);
-    auto coeffs = new Complex!float[half];
+    auto coeffs = new Complex!CoeffType[half];
 
     int hops = 0;
     foreach(n; 0..N)
@@ -413,7 +417,7 @@ void outputSpectrumOfDifferences(Sound soundA, Sound soundB, string spectrogramP
     RGBA(0,   0, 0, 255), // -140db or below => black
 ];
 
-RGBA coeff2Color(Complex!float c)
+RGBA coeff2Color(Complex!CoeffType c)
 {
     double len = abs(c);
     double dB = -convertLinearGainToDecibel!double(len);
