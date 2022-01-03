@@ -25,7 +25,10 @@ nothrow:
         horizontal
     }
 
-    Orientation orientation = Orientation.vertical;
+    @ScriptProperty
+    {
+        Orientation orientation = Orientation.vertical;
+    }
 
     this(UIContext context, BoolParameter param, OwnedImage!RGBA onImage, OwnedImage!RGBA offImage)
     {

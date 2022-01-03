@@ -19,8 +19,8 @@ nothrow:
 @nogc:
 
     /// Sets to true if this is clickable
-    bool clickable = false;
-    string targetURL = "http://example.com";
+    @ScriptProperty bool clickable = false;
+    @ScriptProperty string targetURL = "http://example.com";
 
     this(UIContext context, Font font, string text = "")
     {

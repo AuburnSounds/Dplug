@@ -30,21 +30,21 @@ nothrow:
 @nogc:
 
     // Trail customization
-    L16 trailDepth = L16(30000);
-    RGBA unlitTrailDiffuse = RGBA(130, 90, 45, 5);
-    RGBA litTrailDiffuse = RGBA(240, 165, 102, 130);
-    float trailWidth = 0.2f;
+    @ScriptProperty L16 trailDepth = L16(30000);
+    @ScriptProperty RGBA unlitTrailDiffuse = RGBA(130, 90, 45, 5);
+    @ScriptProperty RGBA litTrailDiffuse = RGBA(240, 165, 102, 130);
+    @ScriptProperty float trailWidth = 0.2f;
 
-    RGBA litTrailDiffuseAlt = RGBA(240, 165, 102, 130);
-    bool hasAlternateTrail = false;
-    float trailBase = 0.0f; // trail is from trailBase to parameter value
+    @ScriptProperty RGBA litTrailDiffuseAlt = RGBA(240, 165, 102, 130);
+    @ScriptProperty bool hasAlternateTrail = false;
+    @ScriptProperty float trailBase = 0.0f; // trail is from trailBase to parameter value
 
     // Handle customization
-    HandleStyle handleStyle = HandleStyle.shapeW;
-    float handleHeightRatio = 0.25f;
-    float handleWidthRatio = 0.7f;
-    RGBA handleDiffuse = RGBA(248, 245, 233, 16);
-    RGBA handleMaterial = RGBA(0, 255, 128, 255);
+    @ScriptProperty HandleStyle handleStyle = HandleStyle.shapeW;
+    @ScriptProperty float handleHeightRatio = 0.25f;
+    @ScriptProperty float handleWidthRatio = 0.7f;
+    @ScriptProperty RGBA handleDiffuse = RGBA(248, 245, 233, 16);
+    @ScriptProperty RGBA handleMaterial = RGBA(0, 255, 128, 255);
 
     this(UIContext context, Parameter param)
     {

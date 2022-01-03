@@ -20,14 +20,16 @@ nothrow:
 @nogc:
 
     /// Change this to point to your website
-    string targetURL = "http://example.com";
-    float animationTimeConstant = 30.0f;
-    ubyte defaultEmissive = 0; // emissive where the logo isn't
+    @ScriptProperty string targetURL = "http://example.com";
+    
+    @ScriptProperty float animationTimeConstant = 30.0f;
+
+    @ScriptProperty ubyte defaultEmissive = 0; // emissive where the logo isn't
 
     // these are offset on top of defaultEmissive
-    ubyte emissiveOn = 40;
-    ubyte emissiveOff = 0;
-
+    @ScriptProperty ubyte emissiveOn = 40;
+    @ScriptProperty ubyte emissiveOff = 0;
+    
     /// Note: once called, the logo now own the diffuse image, and will destroy it.
     this(UIContext context, OwnedImage!RGBA diffuseImage)
     {

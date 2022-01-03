@@ -37,45 +37,43 @@ nothrow:
     //
     // Modify these public members to customize knobs!
     //
-    float knobRadius = 0.75f;
-    RGBA knobDiffuse = RGBA(233, 235, 236, 0);
-    RGBA knobMaterial = RGBA(0, 255, 128, 255);
-    KnobStyle style = KnobStyle.thumb;
+    @ScriptProperty float knobRadius = 0.75f;
+    @ScriptProperty RGBA knobDiffuse = RGBA(233, 235, 236, 0);
+    @ScriptProperty RGBA knobMaterial = RGBA(0, 255, 128, 255);
+    @ScriptProperty KnobStyle style = KnobStyle.thumb;
 
     // LEDs
-    int numLEDs = 7;
-    float LEDRadiusMin = 0.127f;
-    float LEDRadiusMax = 0.127f;
-    RGBA LEDDiffuseLit = RGBA(255, 140, 220, 215);
-    RGBA LEDDiffuseUnlit = RGBA(255, 140, 220, 40);
-    RGBA LEDMaterial = RGBA(128, 128, 255, 255);
-    float LEDDistanceFromCenter = 0.8f;
-    float LEDDistanceFromCenterDragged = 0.7f;
-    ushort LEDDepth = 65000;
+    @ScriptProperty int numLEDs = 7;
+    @ScriptProperty float LEDRadiusMin = 0.127f;
+    @ScriptProperty float LEDRadiusMax = 0.127f;
+    @ScriptProperty RGBA LEDDiffuseLit = RGBA(255, 140, 220, 215);
+    @ScriptProperty RGBA LEDDiffuseUnlit = RGBA(255, 140, 220, 40);
+    @ScriptProperty RGBA LEDMaterial = RGBA(128, 128, 255, 255);
+    @ScriptProperty float LEDDistanceFromCenter = 0.8f;
+    @ScriptProperty float LEDDistanceFromCenterDragged = 0.7f;
+    @ScriptProperty ushort LEDDepth = 65000;
 
     // trail
-    bool hasTrail = true;
-    RGBA litTrailDiffuse = RGBA(230, 80, 43, 192);
-    RGBA unlitTrailDiffuse = RGBA(150, 40, 20, 8);
-    float trailRadiusMin = 0.85f;
-    float trailRadiusMax = 0.97f;
-    float trailOffsetX = 0.0f; // in ratio of knob size
-    float trailOffsetY = 0.0f; // in ratio of knob size
+    @ScriptProperty bool hasTrail = true;
+    @ScriptProperty RGBA litTrailDiffuse = RGBA(230, 80, 43, 192);
+    @ScriptProperty RGBA unlitTrailDiffuse = RGBA(150, 40, 20, 8);
+    @ScriptProperty float trailRadiusMin = 0.85f;
+    @ScriptProperty float trailRadiusMax = 0.97f;
+    @ScriptProperty float trailOffsetX = 0.0f; // in ratio of knob size
+    @ScriptProperty float trailOffsetY = 0.0f; // in ratio of knob size
 
-    float trailMinAngle = -PI * 0.75f;
-    float trailBaseAngle = -PI * 0.75f;
-    float trailMaxAngle = +PI * 0.75f;
+    @ScriptProperty float trailMinAngle = -PI * 0.75f;
+    @ScriptProperty float trailBaseAngle = -PI * 0.75f;
+    @ScriptProperty float trailMaxAngle = +PI * 0.75f;
 
     // alternate trail is for values below base angle
     // For example, knob trails can be blue for positive values,
     // and orange for negative.
-    RGBA litTrailDiffuseAlt = RGBA(43, 80, 230, 192);
-    bool hasAlternateTrail = false;
+    @ScriptProperty RGBA litTrailDiffuseAlt = RGBA(43, 80, 230, 192);
+    @ScriptProperty bool hasAlternateTrail = false;
 
 
-    float animationTimeConstant = 40.0f;
-
-
+    @ScriptProperty float animationTimeConstant = 40.0f;
 
     this(UIContext context, Parameter param)
     {

@@ -6,14 +6,9 @@ License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 module dplug.wren;
 
-import std.traits: getSymbolsByUDA;
-import std.meta: staticIndexOf;
-
 import dplug.core.nogc;
 import dplug.gui.context;
 import dplug.gui.element;
-
-import wren.vm;
 
 nothrow @nogc:
 

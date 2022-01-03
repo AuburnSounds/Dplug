@@ -28,25 +28,25 @@ public:
 nothrow:
 @nogc:
 
-    double fadeinDuration = 0.15f;
-    double fadeoutDuration = 0.3f;
-    double holdDuration = 0.85f;
+    @ScriptProperty double fadeinDuration = 0.15f;
+    @ScriptProperty double fadeoutDuration = 0.3f;
+    @ScriptProperty double holdDuration = 0.85f;
 
-    float textSizePx = 9.5f;
-    RGBA holeDiffuse = RGBA(90, 90, 90, 0);
+    @ScriptProperty float textSizePx = 9.5f;
+    @ScriptProperty RGBA holeDiffuse = RGBA(90, 90, 90, 0);
     
-    RGBA textDiffuseLow = RGBA(90, 90, 90, 0);
-    RGBA textDiffuseHigh = RGBA(42, 42, 42, 0);
+    @ScriptProperty RGBA textDiffuseLow = RGBA(90, 90, 90, 0);
+    @ScriptProperty RGBA textDiffuseHigh = RGBA(42, 42, 42, 0);
 
-    RGBA diffuseLow = RGBA(90, 90, 90, 0);
-    RGBA diffuseHigh = RGBA(245, 245, 245, 30);
-    RGBA material = RGBA(0, 255, 192, 255);
+    @ScriptProperty RGBA diffuseLow = RGBA(90, 90, 90, 0);
+    @ScriptProperty RGBA diffuseHigh = RGBA(245, 245, 245, 30);
+    @ScriptProperty RGBA material = RGBA(0, 255, 192, 255);
 
-    RGBA plasticMaterial = RGBA(155, 240, 69, 255);
-    float plasticAlpha = 0.05f;
+    @ScriptProperty RGBA plasticMaterial = RGBA(155, 240, 69, 255);
+    @ScriptProperty float plasticAlpha = 0.05f;
 
-    ushort depthLow = 0;
-    ushort depthHigh = 50000;
+    @ScriptProperty ushort depthLow = 0;
+    @ScriptProperty ushort depthHigh = 50000;
 
     this(UIContext context, Parameter param, Font font)
     {

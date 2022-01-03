@@ -23,16 +23,14 @@ nothrow:
         vertical,
         horizontal
     }
-
-    RGBA diffuseOff = RGBA(230, 80, 43, 0);
-    RGBA diffuseOn = RGBA(230, 80, 43, 200);
-    RGBA material = RGBA(192, 10, 128, 255);
-    float animationTimeConstant = 10.0f;
-    ushort depthLow = 0;
-    ushort depthHigh = 30000;
-    ushort holeDepth = 0;
-
-    Orientation orientation = Orientation.vertical;
+    @ScriptProperty RGBA diffuseOff = RGBA(230, 80, 43, 0);
+    @ScriptProperty RGBA diffuseOn = RGBA(230, 80, 43, 200);
+    @ScriptProperty RGBA material = RGBA(192, 10, 128, 255);
+    @ScriptProperty float animationTimeConstant = 10.0f;
+    @ScriptProperty ushort depthLow = 0;
+    @ScriptProperty ushort depthHigh = 30000;
+    @ScriptProperty ushort holeDepth = 0;
+    @ScriptProperty Orientation orientation = Orientation.vertical;
 
     this(UIContext context, BoolParameter param)
     {

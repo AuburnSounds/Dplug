@@ -71,7 +71,6 @@ nothrow:
         _knobImageData = loadKnobImage( import("imageknob.png") );
         addChild(_imageKnob = mallocNew!UIImageKnob(context(), _knobImageData, cast(FloatParameter) _client.param(paramBias)));
         _imageKnob.hasTrail = false; // no trail by default
-        _imageKnob.id = "_imageKnob";
 
         // Add procedural knobs
         addChild(_driveKnob = mallocNew!UIKnob(context(), cast(FloatParameter) _client.param(paramDrive)));
@@ -117,6 +116,9 @@ nothrow:
             addChild(_colorCorrection = mallocNew!UIColorCorrection(context()));
             _colorCorrection.setLiftGammaGainContrastRGB(colorCorrectionMatrix);
         }
+
+        mixin(setUIElementsFieldNamesAsTheirId!DistortGUI); // Each UIElement in this object receives its identifier as runtime ID
+        context.wrenSupport.registerScriptExports!DistortGUI; // Note: for now, only UIElement should be @ScriptExport
         context.wrenSupport.callCreateUI();
     }
 
@@ -132,20 +134,6 @@ nothrow:
     override void reflow()
     {
         super.reflow();
-        int W = position.width;
-        int H = position.height;
-        float S = W / cast(float)(context.getDefaultUIWidth());
-        _imageKnob.position = rectangle(517, 176, 46, 46).scaleByFactor(S);
-        _inputSlider.position = rectangle(190, 132, 30, 130).scaleByFactor(S);
-        _outputSlider.position = rectangle(410, 132, 30, 130).scaleByFactor(S);
-        _onOffSwitch.position = rectangle(90, 177, 30, 40).scaleByFactor(S);
-        _driveKnob.position = rectangle(250, 140, 120, 120).scaleByFactor(S);
-        _inputLevel.position = rectangle(150, 132, 30, 130).scaleByFactor(S);
-        _outputLevel.position = rectangle(450, 132, 30, 130).scaleByFactor(S);
-
-        _colorCorrection.position = rectangle(0, 0, W, H);
-        _resizer.position = rectangle(W-30, H-30, 30, 30);
-
         context.wrenSupport.callReflow();
     }
 
@@ -157,14 +145,22 @@ nothrow:
 
 private:
     DistortClient _client;
-    UISlider _inputSlider;
-    UIKnob _driveKnob;
-    UISlider _outputSlider;
-    UIOnOffSwitch _onOffSwitch;
-    UILevelDisplay _inputLevel, _outputLevel;
-    UIColorCorrection _colorCorrection;
+
+    // Resources
     Font _font;
     KnobImage _knobImageData;
-    UIImageKnob _imageKnob;
-    UIWindowResizer _resizer;
+
+    // Widgets can be exported to Wren. This allow styling through a plugin.wren script.
+    @ScriptExport 
+    {
+        UISlider _inputSlider;
+        UIKnob _driveKnob;
+        UISlider _outputSlider;
+        UIOnOffSwitch _onOffSwitch;
+        UILevelDisplay _inputLevel, _outputLevel;
+        UIColorCorrection _colorCorrection;
+        UIImageKnob _imageKnob;
+        UIWindowResizer _resizer;
+    }
 }
+

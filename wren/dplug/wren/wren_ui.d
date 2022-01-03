@@ -1,3 +1,9 @@
+/**
+Dplug-Wren stdlib. This API is accessed from Wren with `import "ui"`.
+
+Copyright: Guillaume Piolat 2021.
+License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
+*/
 module dplug.wren.wren_ui;
 
 import core.stdc.string : strcmp;

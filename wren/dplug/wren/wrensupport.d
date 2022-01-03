@@ -19,27 +19,29 @@ import dplug.gui.element;
 import wren.vm;
 import wren.value;
 import wren.primitive;
-
+import dplug.wren.describe;
 import dplug.wren.wren_ui;
 
-nothrow @nogc:
+nothrow:
 
 
 //debug = consoleDebug;
 
 
-
-string registerUIElements(alias moduleName)()
+string setUIElementsFieldNamesAsTheirId(T)()
 {
-    // WIP
-    string s = "context().enableWrenSupport();";
+    import std.traits: getSymbolsByUDA;
+    string s;
 
-    static foreach(t; __traits(allMembers, moduleName))
+    // Automatically set widgets ID. _member.id = "_member";
+    static foreach(m; getSymbolsByUDA!(T, ScriptExport))
     {
-        //       pragma(msg, t.stringof);
+        s ~= m.stringof ~ ".id = \"" ~ m.stringof ~ "\";\n";
     }
     return s;
 }
+
+@nogc:
 
 /// Manages interaction between Wren and the plugin. 
 /// Note: this is interlinked with UIContext.
@@ -95,6 +97,11 @@ nothrow @nogc:
             free(ps.moduleName);
             free(ps.source);
         }
+
+        foreach(ec; _exportedClasses[])
+        {
+            destroyFree(ec);
+        }
     }
 
     IUIContext uiContext()
@@ -124,16 +131,32 @@ nothrow @nogc:
         interpret("", source);
     }
 
-    void registerUIElement(alias uiClass)() if (is(uiClass: UIElement))
+    private void registerDClass(alias aClass)(ScriptExportClass classDesc)
     {
-        enum UDAs = __traits(getAttributes, uiClass);
-        enum isScripExport = (staticIndexOf!(ScriptExport, UDAs) == -1);
-        static assert(isScripExport);
-        static foreach(T; getSymbolsByUDA!(uiClass, ScriptProperty))
-        {
-   //         pragma(msg, T.stringof);
+        static foreach(P; getSymbolsByUDA!(aClass, ScriptProperty))
+        {{
+          //  classDesc.addProperty
+            // TODO: add to internal description
+            pragma(msg, P.stringof);
+        }}
+    }
 
-        }
+    void registerScriptExports(UIClass)()
+    {
+        // Automatically set widgets ID. _member.id = "_member";
+        static foreach(m; getSymbolsByUDA!(UIClass, ScriptExport))
+        {{
+            alias dClass = typeof(m);
+            string className = dClass.classinfo.name;
+            if (!hasScriptExportClass(className))
+            {
+                ScriptExportClass c = mallocNew!ScriptExportClass();
+                c.classInfo = dClass.classinfo;
+
+                pragma(msg, dClass.stringof);
+                registerDClass!dClass(c);
+            }
+        }}
     }
 
     void callCreateUI()
@@ -181,7 +204,25 @@ private:
         char* source;
     }
 
+    /// All known premade modules.
     Vec!PreloadedSource _preloadedSources;
+
+
+    /// All known D @ScriptExport classes.
+    Vec!ScriptExportClass _exportedClasses;
+
+    bool hasScriptExportClass(string name)
+    {
+        foreach(e; _exportedClasses[])
+            if (e.className() == name)
+                return true;
+        return false;
+    }
+
+    void addExportedClass(ScriptExportClass c)
+    {
+        _exportedClasses ~= c;
+    }
 
     void print(const(char)* text)
     {
