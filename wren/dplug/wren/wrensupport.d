@@ -15,6 +15,7 @@ import std.meta: staticIndexOf;
 import dplug.core.nogc;
 import dplug.gui.context;
 import dplug.gui.element;
+import dplug.graphics.color;
 
 import wren.vm;
 import wren.value;
@@ -24,10 +25,6 @@ import dplug.wren.wren_ui;
 
 nothrow:
 
-
-//debug = consoleDebug;
-
-
 string setUIElementsFieldNamesAsTheirId(T)()
 {
     import std.traits: getSymbolsByUDA;
@@ -35,9 +32,10 @@ string setUIElementsFieldNamesAsTheirId(T)()
 
     // Automatically set widgets ID. _member.id = "_member";
     static foreach(m; getSymbolsByUDA!(T, ScriptExport))
-    {
-        s ~= m.stringof ~ ".id = \"" ~ m.stringof ~ "\";\n";
-    }
+    {{
+        string fieldName = m.stringof;
+        s ~= fieldName ~ ".id = \"" ~ fieldName ~ "\";\n";
+    }}
     return s;
 }
 
@@ -135,9 +133,52 @@ nothrow @nogc:
     {
         static foreach(P; getSymbolsByUDA!(aClass, ScriptProperty))
         {{
-          //  classDesc.addProperty
-            // TODO: add to internal description
-            pragma(msg, P.stringof);
+            alias FieldType = typeof(P);
+
+            enum string fieldName = P.stringof;
+            enum size_t offsetInClass = P.offsetof;
+
+            ScriptPropertyDesc desc;
+            desc.identifier = fieldName;
+            desc.offset = offsetInClass;
+            static if (is(FieldType == enum))
+            {
+                // Note: enum are just integers in Wren, no translation of enum value.
+                static if (FieldType.sizeof == 1)
+                    desc.type = ScriptPropertyType.byte_;
+                else static if (FieldType.sizeof == 2)
+                    desc.type = ScriptPropertyType.short_;
+                else static if (FieldType.sizeof == 4)
+                    desc.type = ScriptPropertyType.int_;
+                else
+                    static assert(false, "Unsupported enum size in @ScriptProperty field " ~ fieldName ~  " of type " ~ FieldType.stringof);
+            }
+            else static if (is(FieldType == bool))
+                desc.type = ScriptPropertyType.bool_;
+            else static if (is(FieldType == RGBA))
+                desc.type = ScriptPropertyType.RGBA;
+            else static if (is(FieldType == ubyte))
+                desc.type = ScriptPropertyType.ubyte_;
+            else static if (is(FieldType == byte))
+                desc.type = ScriptPropertyType.byte_;
+            else static if (is(FieldType == ushort))
+                desc.type = ScriptPropertyType.ushort_;
+            else static if (is(FieldType == short))
+                desc.type = ScriptPropertyType.short_;
+            else static if (is(FieldType == uint))
+                desc.type = ScriptPropertyType.uint_;
+            else static if (is(FieldType == int))
+                desc.type = ScriptPropertyType.int_;
+            else static if (is(FieldType == float))
+                desc.type = ScriptPropertyType.float_;
+            else static if (is(FieldType == double))
+                desc.type = ScriptPropertyType.double_;
+            else static if (is(FieldType == L16)) // Note: this is deprecated. L16 properties should be eventually replaced by ushort instead.
+                desc.type = ScriptPropertyType.ushort_;
+            else
+                static assert(false, "No @ScriptProperty support for field " ~ fieldName ~  " of type " ~ FieldType.stringof); // FUTURE: a way to add other types for properties?
+
+            classDesc.addProperty(desc);
         }}
     }
 
@@ -152,9 +193,8 @@ nothrow @nogc:
             {
                 ScriptExportClass c = mallocNew!ScriptExportClass();
                 c.classInfo = dClass.classinfo;
-
-                pragma(msg, dClass.stringof);
                 registerDClass!dClass(c);
+                _exportedClasses ~= c;
             }
         }}
     }
@@ -207,7 +247,6 @@ private:
     /// All known premade modules.
     Vec!PreloadedSource _preloadedSources;
 
-
     /// All known D @ScriptExport classes.
     Vec!ScriptExportClass _exportedClasses;
 
@@ -219,18 +258,8 @@ private:
         return false;
     }
 
-    void addExportedClass(ScriptExportClass c)
-    {
-        _exportedClasses ~= c;
-    }
-
     void print(const(char)* text)
     {
-        debug(consoleDebug) 
-        {
-            import core.stdc.stdio;
-            printf("%s", text);
-        }
         debugLog(text);
     }
 

@@ -28,14 +28,14 @@ public:
     /// Its .classinfo
     TypeInfo_Class classInfo;
 
-    void addProperty(ScriptExportProperty prop)
+    void addProperty(ScriptPropertyDesc prop)
     {
         _properties ~= prop;
     }
 
 private:
 
-    Vec!ScriptExportProperty _properties;
+    Vec!ScriptPropertyDesc _properties;
 
 private:
 }
@@ -43,33 +43,40 @@ private:
 /// All possible types of properties.
 enum ScriptPropertyType
 {
-    ubyte_,
-    ushort_,
-    L16,
-    string_,  // what is the ownership of strings when set through wren?
-    float_,
-    int_,
     bool_,
-    RGBA
+
+    byte_,
+    ubyte_,
+    short_,
+    ushort_,
+    int_,
+    uint_,
+
+    float_,
+    double_,
+
+    // Color types from dplug:graphics
+    RGBA,
+    string_,  // what is the ownership of strings when set through wren?    
 }
 
-
-struct ScriptExportProperty
+struct ScriptPropertyDesc
 {
 nothrow @nogc:
 public:
     // type enumeration
     ScriptPropertyType type;
 
+    /// Byte offset in the class.
     int offset;
 
     /// The D identifier of the property.
     /// Not owned, has to be compile-time.
-    string name;
+    string identifier;
     
     size_t sizeInInstance()
     {
-        return propertySize(type);
+        return SCRIPT_PROPERTY_SIZES[type];
     }
 
 private:
@@ -78,17 +85,5 @@ private:
 
 private:
 
-size_t propertySize(ScriptPropertyType type)
-{
-    final switch(type) with (ScriptPropertyType)
-    {
-        case ubyte_: return 1; 
-        case ushort_: return 2;
-        case L16: return 2;
-        case string_: return (char[]).sizeof; 
-        case float_: return 4;
-        case int_:  return 4;
-        case bool_: return 1;
-        case RGBA:  return 4;
-    }
-}
+static immutable size_t[ScriptPropertyType.max+1] SCRIPT_PROPERTY_SIZES =
+[ 1, 1, 1, 2, 2, 4, 4, 4, 8, 4, (char[]).sizeof ];
