@@ -476,7 +476,7 @@ private:
 
                 // getter
                 text("  "); text(prop.identifier); text("{"); LF;
-                text("    innerElement.getProp_("); textZ(bufC.ptr); text(","); textZ(buf.ptr); text(")"); LF;
+                text("    return innerElement.getProp_("); textZ(bufC.ptr); text(","); textZ(buf.ptr); text(")"); LF;
                 text("  }"); LF;
 
                 // setter for property (itself a Wren property setter)

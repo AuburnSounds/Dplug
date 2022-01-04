@@ -125,3 +125,18 @@ class Rectangle {
         return Rectangle.new(minx, miny, maxx - minx, maxy - miny)
     }
 }
+
+class RGBA {
+
+    construct new(r, g, b, a) {
+        _r = r
+        _g = g
+        _b = b
+        _a = a
+    }
+
+    r { _r }
+    g { _g }
+    b { _b }
+    a { _a }
+}

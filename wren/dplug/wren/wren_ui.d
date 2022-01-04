@@ -135,13 +135,42 @@ void element_setProperty(WrenVM* vm)
         case ScriptPropertyType.float_:  *cast(float*)raw = cast(float) wrenGetSlotDouble(vm, 3); break;
         case ScriptPropertyType.double_: *cast(double*)raw = wrenGetSlotDouble(vm, 3); break;
         case ScriptPropertyType.RGBA:    assert(false);
-        case ScriptPropertyType.string_: assert(false);
     }
 }
 
 void element_getProperty(WrenVM* vm)
 {
-    return;
+    UIElementBridge* bridge = cast(UIElementBridge*) wrenGetSlotForeign(vm, 0);
+    if (!bridge.elem)
+        return;
+
+    int classIndex = cast(int) wrenGetSlotDouble(vm, 1);
+    int propIndex = cast(int) wrenGetSlotDouble(vm, 2);
+
+    // Get property description
+    WrenSupport ws = cast(WrenSupport) vm.config.userData;
+    ScriptPropertyDesc* desc = ws.getScriptProperty(classIndex, propIndex);
+    assert(desc !is null);
+
+    ubyte* raw = cast(ubyte*)(cast(void*)bridge.elem) + desc.offset;
+
+    final switch(desc.type)
+    {
+        case ScriptPropertyType.bool_:   wrenSetSlotBool(vm, 0, *cast(bool*)raw); break;
+        case ScriptPropertyType.byte_:   wrenSetSlotDouble(vm, 0, *cast(byte*)raw); break;
+        case ScriptPropertyType.ubyte_:  wrenSetSlotDouble(vm, 0, *cast(ubyte*)raw); break;
+        case ScriptPropertyType.short_:  wrenSetSlotDouble(vm, 0, *cast(short*)raw); break;
+        case ScriptPropertyType.ushort_: wrenSetSlotDouble(vm, 0, *cast(ushort*)raw); break;
+        case ScriptPropertyType.int_:    wrenSetSlotDouble(vm, 0, *cast(int*)raw); break;
+        case ScriptPropertyType.uint_:   wrenSetSlotDouble(vm, 0, *cast(uint*)raw); break;
+        case ScriptPropertyType.float_: 
+        {
+            float f = *cast(float*)raw;
+            wrenSetSlotDouble(vm, 0, f); break;
+        }
+        case ScriptPropertyType.double_: wrenSetSlotDouble(vm, 0, *cast(double*)raw); break;
+        case ScriptPropertyType.RGBA:    assert(false);
+    }
 }
 
 struct UIElementBridge
@@ -186,7 +215,7 @@ WrenForeignClassMethods wrenUIForeignClass(WrenVM* vm, const(char)* className) n
     if (strcmp(className, "Element") == 0)
     {
         methods.allocate = &element_allocate;
-        // Note: impossible to create Element from Wren
+        // Note: impossible to create Element from Wren,it's just meant as internal bridge
     }
     return methods;
 }

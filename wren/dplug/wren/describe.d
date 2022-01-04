@@ -80,7 +80,6 @@ enum ScriptPropertyType
 
     // Color types from dplug:graphics
     RGBA,
-    string_,  // what is the ownership of strings when set through wren?    
 }
 
 struct ScriptPropertyDesc
@@ -112,4 +111,4 @@ private:
 private:
 
 static immutable size_t[ScriptPropertyType.max+1] SCRIPT_PROPERTY_SIZES =
-[ 1, 1, 1, 2, 2, 4, 4, 4, 8, 4, (char[]).sizeof ];
+[ 1, 1, 1, 2, 2, 4, 4, 4, 8, 4];
