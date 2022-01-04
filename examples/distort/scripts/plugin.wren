@@ -6,6 +6,9 @@ class Plugin {
     static createUI() { 
 
         ($"_driveKnob").knobRadius = 0.65 // does nothing yet, but an UIKnob is returned
+        ($"_driveKnob").numLEDs = 15
+        ($"_driveKnob").LEDRadiusMin = 0.06
+        ($"_driveKnob").LEDRadiusMax = 0.06
 
     }
 

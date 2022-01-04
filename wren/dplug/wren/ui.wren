@@ -52,8 +52,8 @@ foreign class Element {
    foreign findIdAndBecomeThat_(id)
    foreign setPosition_(x, y, w, h)
 
-   // TODO: set and get properties
-   foreign setProp_(nth, x)
+   foreign setProp_(nclass, nth, x)
+   foreign getProp_(nclass, nth)
 }
 
 // Non-foreign base classes for UIElement derivatives.

@@ -234,6 +234,13 @@ nothrow @nogc:
         _preloadedSources.pushBack(ps);
     }
 
+    ScriptPropertyDesc* getScriptProperty(int nthClass, int nthProp)
+    {
+        ScriptExportClass sec = _exportedClasses[nthClass];
+        ScriptPropertyDesc[] descs = sec.properties();
+        return &descs[nthProp];
+    }
+
 private:
 
     WrenVM* _vm;
@@ -455,23 +462,26 @@ private:
 
         text(`import "ui" for UIElement`); LF;
 
-        foreach(ec; _exportedClasses[])
+        foreach(size_t nthClass, ec; _exportedClasses[])
         {
             text("class "); text(ec.className); text(" is UIElement {"); LF;
 
+            char[16] bufC;
+            snprintf(bufC.ptr, 16, "%d", cast(int)nthClass);
+
             foreach(size_t nth, prop; ec.properties())
             {
-                char[32] buf;
-                snprintf(buf.ptr, 32, "%d", cast(int)nth);
+                char[16] buf;
+                snprintf(buf.ptr, 16, "%d", cast(int)nth);
 
                 // getter
                 text("  "); text(prop.identifier); text("{"); LF;
-                text("    innerElement.getProp_("); textZ(buf.ptr); text(")"); LF;
+                text("    innerElement.getProp_("); textZ(bufC.ptr); text(","); textZ(buf.ptr); text(")"); LF;
                 text("  }"); LF;
 
                 // setter for property (itself a Wren property setter)
                 text("  "); text(prop.identifier); text("=(x){"); LF;
-                text("    innerElement.setProp_("); textZ(buf.ptr); text(",x)"); LF;
+                text("    innerElement.setProp_("); textZ(bufC.ptr); text(","); textZ(buf.ptr); text(",x)"); LF;
                 text("  }"); LF;
             }
             LF;

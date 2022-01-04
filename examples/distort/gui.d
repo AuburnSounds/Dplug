@@ -77,13 +77,11 @@ nothrow:
 
         _driveKnob.knobDiffuse = RGBA(255, 255, 238, 0);
         _driveKnob.knobMaterial = RGBA(0, 255, 128, 255);
-        _driveKnob.numLEDs = 15;
         _driveKnob.litTrailDiffuse = litTrailDiffuse;
         _driveKnob.unlitTrailDiffuse = unlitTrailDiffuse;
         _driveKnob.LEDDiffuseLit = RGBA(40, 40, 40, 100);
         _driveKnob.LEDDiffuseUnlit = RGBA(40, 40, 40, 0);
-        _driveKnob.LEDRadiusMin = 0.06f;
-        _driveKnob.LEDRadiusMax = 0.06f;
+
 
         // Add sliders
         addChild(_inputSlider = mallocNew!UISlider(context(), cast(FloatParameter) _client.param(paramInput)));

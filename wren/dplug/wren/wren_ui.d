@@ -12,6 +12,8 @@ import wren.common;
 
 import dplug.gui.element;
 import dplug.wren.wrensupport;
+import dplug.wren.describe;
+
 
 private static immutable string uiModuleSource = import("ui.wren");
 
@@ -107,8 +109,34 @@ void element_setposition(WrenVM* vm)
 
 void element_setProperty(WrenVM* vm)
 {
+    UIElementBridge* bridge = cast(UIElementBridge*) wrenGetSlotForeign(vm, 0);
+    if (!bridge.elem)
+        return;
 
-    return;
+    int classIndex = cast(int) wrenGetSlotDouble(vm, 1);
+    int propIndex = cast(int) wrenGetSlotDouble(vm, 2);
+
+    // Get property description
+    WrenSupport ws = cast(WrenSupport) vm.config.userData;
+    ScriptPropertyDesc* desc = ws.getScriptProperty(classIndex, propIndex);
+    assert(desc !is null);
+
+    ubyte* raw = cast(ubyte*)(cast(void*)bridge.elem) + desc.offset;
+
+    final switch(desc.type)
+    {
+        case ScriptPropertyType.bool_:   *cast(bool*)raw = wrenGetSlotBool(vm, 3); break;
+        case ScriptPropertyType.byte_:   *cast(byte*)raw = cast(byte) wrenGetSlotDouble(vm, 3); break;
+        case ScriptPropertyType.ubyte_:  *cast(ubyte*)raw = cast(ubyte) wrenGetSlotDouble(vm, 3); break;
+        case ScriptPropertyType.short_:  *cast(short*)raw = cast(short) wrenGetSlotDouble(vm, 3); break;
+        case ScriptPropertyType.ushort_: *cast(ushort*)raw = cast(ushort) wrenGetSlotDouble(vm, 3); break;
+        case ScriptPropertyType.int_:    *cast(int*)raw = cast(int) wrenGetSlotDouble(vm, 3); break;
+        case ScriptPropertyType.uint_:   *cast(uint*)raw = cast(uint) wrenGetSlotDouble(vm, 3); break;
+        case ScriptPropertyType.float_:  *cast(float*)raw = cast(float) wrenGetSlotDouble(vm, 3); break;
+        case ScriptPropertyType.double_: *cast(double*)raw = wrenGetSlotDouble(vm, 3); break;
+        case ScriptPropertyType.RGBA:    assert(false);
+        case ScriptPropertyType.string_: assert(false);
+    }
 }
 
 void element_getProperty(WrenVM* vm)
@@ -143,8 +171,8 @@ WrenForeignMethodFn wrenUIBindForeignMethod(WrenVM* vm, const(char)* className, 
         if (strcmp(signature, "height") == 0) return &element_height;
         if (strcmp(signature, "setPosition_(_,_,_,_)") == 0) return &element_setposition;
         if (strcmp(signature, "findIdAndBecomeThat_(_)") == 0) return &element_findIdAndBecomeThat;
-        if (strcmp(signature, "setProp_(_,_)") == 0) return &element_setProperty;
-        if (strcmp(signature, "getProp_(_)") == 0) return &element_getProperty;
+        if (strcmp(signature, "setProp_(_,_,_)") == 0) return &element_setProperty;
+        if (strcmp(signature, "getProp_(_,_)") == 0) return &element_getProperty;
     }
     return null;
 }
