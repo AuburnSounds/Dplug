@@ -460,7 +460,7 @@ private:
             _widgetModuleSource.pushBack('\n');
         }
 
-        text(`import "ui" for UIElement`); LF;
+        text(`import "ui" for UIElement, RGBA`); LF;
 
         foreach(size_t nthClass, ec; _exportedClasses[])
         {
@@ -474,15 +474,27 @@ private:
                 char[16] buf;
                 snprintf(buf.ptr, 16, "%d", cast(int)nth);
 
-                // getter
-                text("  "); text(prop.identifier); text("{"); LF;
-                text("    return innerElement.getProp_("); textZ(bufC.ptr); text(","); textZ(buf.ptr); text(")"); LF;
-                text("  }"); LF;
+                bool isRGBA = prop.type == ScriptPropertyType.RGBA;
 
-                // setter for property (itself a Wren property setter)
-                text("  "); text(prop.identifier); text("=(x){"); LF;
-                text("    innerElement.setProp_("); textZ(bufC.ptr); text(","); textZ(buf.ptr); text(",x)"); LF;
-                text("  }"); LF;
+                if (isRGBA)
+                {
+                    // setter for a RGBA property
+                    text("  "); text(prop.identifier); text("=(c){"); LF;
+                    text("    innerElement.setPropRGBA_("); textZ(bufC.ptr); text(","); textZ(buf.ptr); text(",c.r, c.g, c.b, c.a)"); LF;
+                    text("  }"); LF;
+                }
+                else
+                {
+                    // getter
+                    text("  "); text(prop.identifier); text("{"); LF;
+                    text("    return innerElement.getProp_("); textZ(bufC.ptr); text(","); textZ(buf.ptr); text(")"); LF;
+                    text("  }"); LF;
+
+                    // setter for property (itself a Wren property setter)
+                    text("  "); text(prop.identifier); text("=(x){"); LF;
+                    text("    innerElement.setProp_("); textZ(bufC.ptr); text(","); textZ(buf.ptr); text(",x)"); LF;
+                    text("  }"); LF;
+                }
             }
             LF;
             text("}"); LF; LF;

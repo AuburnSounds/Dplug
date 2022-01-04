@@ -63,39 +63,22 @@ nothrow:
         _font = mallocNew!Font(cast(ubyte[])( import("VeraBd.ttf") ));
 
         // Builds the UI hierarchy
-        // Meanwhile, we hardcode each position.
-
-        RGBA litTrailDiffuse = RGBA(151, 119, 255, 100);
-        RGBA unlitTrailDiffuse = RGBA(81, 54, 108, 0);
+        // Meanwhile, we hardcode each position.  
 
         _knobImageData = loadKnobImage( import("imageknob.png") );
         addChild(_imageKnob = mallocNew!UIImageKnob(context(), _knobImageData, cast(FloatParameter) _client.param(paramBias)));
-        _imageKnob.hasTrail = false; // no trail by default
 
         // Add procedural knobs
         addChild(_driveKnob = mallocNew!UIKnob(context(), cast(FloatParameter) _client.param(paramDrive)));
 
-        _driveKnob.knobDiffuse = RGBA(255, 255, 238, 0);
-        _driveKnob.knobMaterial = RGBA(0, 255, 128, 255);
-        _driveKnob.litTrailDiffuse = litTrailDiffuse;
-        _driveKnob.unlitTrailDiffuse = unlitTrailDiffuse;
-        _driveKnob.LEDDiffuseLit = RGBA(40, 40, 40, 100);
-        _driveKnob.LEDDiffuseUnlit = RGBA(40, 40, 40, 0);
-
-
         // Add sliders
         addChild(_inputSlider = mallocNew!UISlider(context(), cast(FloatParameter) _client.param(paramInput)));
-        _inputSlider.litTrailDiffuse = litTrailDiffuse;
-        _inputSlider.unlitTrailDiffuse = unlitTrailDiffuse;
 
         addChild(_outputSlider = mallocNew!UISlider(context(), cast(FloatParameter) _client.param(paramOutput)));
-        _outputSlider.litTrailDiffuse = litTrailDiffuse;
-        _outputSlider.unlitTrailDiffuse = unlitTrailDiffuse;
 
         // Add switch
         addChild(_onOffSwitch = mallocNew!UIOnOffSwitch(context(), cast(BoolParameter) _client.param(paramOnOff)));
-        _onOffSwitch.diffuseOn = litTrailDiffuse;
-        _onOffSwitch.diffuseOff = unlitTrailDiffuse;
+  
 
         // Add bargraphs
         addChild(_inputLevel = mallocNew!UILevelDisplay(context()));

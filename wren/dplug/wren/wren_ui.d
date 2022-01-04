@@ -115,8 +115,6 @@ void element_setProperty(WrenVM* vm)
 
     int classIndex = cast(int) wrenGetSlotDouble(vm, 1);
     int propIndex = cast(int) wrenGetSlotDouble(vm, 2);
-
-    // Get property description
     WrenSupport ws = cast(WrenSupport) vm.config.userData;
     ScriptPropertyDesc* desc = ws.getScriptProperty(classIndex, propIndex);
     assert(desc !is null);
@@ -138,6 +136,37 @@ void element_setProperty(WrenVM* vm)
     }
 }
 
+void element_setPropertyRGBA(WrenVM* vm)
+{
+    UIElementBridge* bridge = cast(UIElementBridge*) wrenGetSlotForeign(vm, 0);
+    if (!bridge.elem)
+        return;
+
+    int classIndex = cast(int) wrenGetSlotDouble(vm, 1);
+    int propIndex = cast(int) wrenGetSlotDouble(vm, 2);
+    WrenSupport ws = cast(WrenSupport) vm.config.userData;
+    ScriptPropertyDesc* desc = ws.getScriptProperty(classIndex, propIndex);
+    assert(desc !is null);
+    assert(desc.type == ScriptPropertyType.RGBA);
+
+    ubyte* raw = cast(ubyte*)(cast(void*)bridge.elem) + desc.offset;
+    RGBA* pRGBA = cast(RGBA*)(raw);
+
+    double r = wrenGetSlotDouble(vm, 3);
+    double g = wrenGetSlotDouble(vm, 4);
+    double b = wrenGetSlotDouble(vm, 5);
+    double a = wrenGetSlotDouble(vm, 6);
+    if (r < 0) r = 0;
+    if (g < 0) g = 0;
+    if (b < 0) b = 0;
+    if (a < 0) a = 0;
+    if (r > 255) r = 255;
+    if (g > 255) g = 255;
+    if (b > 255) b = 255;
+    if (a > 255) a = 255;
+    *pRGBA = RGBA(cast(ubyte)r, cast(ubyte)g, cast(ubyte)b, cast(ubyte)a);
+}
+
 void element_getProperty(WrenVM* vm)
 {
     UIElementBridge* bridge = cast(UIElementBridge*) wrenGetSlotForeign(vm, 0);
@@ -146,8 +175,6 @@ void element_getProperty(WrenVM* vm)
 
     int classIndex = cast(int) wrenGetSlotDouble(vm, 1);
     int propIndex = cast(int) wrenGetSlotDouble(vm, 2);
-
-    // Get property description
     WrenSupport ws = cast(WrenSupport) vm.config.userData;
     ScriptPropertyDesc* desc = ws.getScriptProperty(classIndex, propIndex);
     assert(desc !is null);
@@ -201,6 +228,7 @@ WrenForeignMethodFn wrenUIBindForeignMethod(WrenVM* vm, const(char)* className, 
         if (strcmp(signature, "setPosition_(_,_,_,_)") == 0) return &element_setposition;
         if (strcmp(signature, "findIdAndBecomeThat_(_)") == 0) return &element_findIdAndBecomeThat;
         if (strcmp(signature, "setProp_(_,_,_)") == 0) return &element_setProperty;
+        if (strcmp(signature, "setPropRGBA_(_,_,_,_,_,_)") == 0) return &element_setPropertyRGBA;
         if (strcmp(signature, "getProp_(_,_)") == 0) return &element_getProperty;
     }
     return null;

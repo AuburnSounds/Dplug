@@ -53,6 +53,7 @@ foreign class Element {
    foreign setPosition_(x, y, w, h)
 
    foreign setProp_(nclass, nth, x)
+   foreign setPropRGBA_(nclass, nth, r, g, b, a)
    foreign getProp_(nclass, nth)
 }
 
