@@ -22,7 +22,7 @@ class UI {
    }
 
    static getElementById(id) {
-       return UIElement.new(id)
+       return $(id)
    }
 }
 
@@ -62,18 +62,20 @@ class UIElement {
    // Construct an Element from an ID.
    // if "__ROOT__" is passed, the root Element is returned  
    construct new(id) {
-       e_ = Element.new(id)
+       _e = Element.new(id)
    }
 
    // Get current width of the UIElement
-   width { e_.width }
+   width { _e.width }
 
    // Get current height of the UIElement
-   height { e_.height }
+   height { _e.height }
 
    position=(rect) {
-       e_.position = rect
+       _e.position = rect
    }
+
+   innerElement { _e }
 }
 
 class Point {

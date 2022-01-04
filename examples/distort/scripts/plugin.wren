@@ -5,6 +5,8 @@ class Plugin {
 
     static createUI() { 
 
+        ($"_driveKnob").knobRadius = 0.65 // does nothing yet, but an UIKnob is returned
+
     }
 
     static reflow() { 

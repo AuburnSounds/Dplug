@@ -74,7 +74,7 @@ nothrow:
 
         // Add procedural knobs
         addChild(_driveKnob = mallocNew!UIKnob(context(), cast(FloatParameter) _client.param(paramDrive)));
-        _driveKnob.knobRadius = 0.65f;
+
         _driveKnob.knobDiffuse = RGBA(255, 255, 238, 0);
         _driveKnob.knobMaterial = RGBA(0, 255, 128, 255);
         _driveKnob.numLEDs = 15;

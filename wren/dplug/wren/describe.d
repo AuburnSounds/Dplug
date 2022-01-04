@@ -23,7 +23,7 @@ public:
     /// eg: UIKnob
     string className()
     {
-        string fullName = classInfo.name;
+        string fullName = concreteClassInfo.name;
         int LEN = cast(int)fullName.length;
 
         // try to find rightmost '.'
@@ -39,11 +39,11 @@ public:
     /// eg: UIKnob
     string fullClassName()
     {
-        return classInfo.name;
+        return concreteClassInfo.name;
     }
 
     /// Its .classinfo
-    TypeInfo_Class classInfo;
+    TypeInfo_Class concreteClassInfo; // the D ClassInfo of the D class named by fullClassName()
 
     void addProperty(ScriptPropertyDesc prop)
     {

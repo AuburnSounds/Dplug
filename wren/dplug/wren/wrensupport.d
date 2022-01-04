@@ -193,7 +193,7 @@ nothrow @nogc:
             if (!hasScriptExportClass(fullClassName)) // PERF: this is quadratic
             {
                 ScriptExportClass c = mallocNew!ScriptExportClass();
-                c.classInfo = dClass.classinfo;
+                c.concreteClassInfo = dClass.classinfo;
                 registerDClass!dClass(c);
                 _exportedClasses ~= c;
             }
@@ -365,27 +365,66 @@ private:
             const(char)* id = AS_STRING(args[0]).value.ptr;
             UIElement elem = _uiContext.getElementById(id);
 
-            Value moduleName = wrenStringFormat(vm, "$", "ui".ptr);
-            wrenPushRoot(vm, AS_OBJ(moduleName));
-            ObjModule* uiModule = getModule(vm, moduleName);
-            if (uiModule is null)
+            // Find a Wren class we have to convert it to.
+            // $ can be any of the improted classes in "widgets", if not it is an UIElement.
+            // Note that both "ui" and "widgets" module MUST be imported.
+
+            ObjModule* uiModule, widgetsModule;
             {
+                Value moduleName = wrenStringFormat(vm, "$", "ui".ptr);
+                wrenPushRoot(vm, AS_OBJ(moduleName));
+                uiModule = getModule(vm, moduleName);
+                if (uiModule is null)
+                {
+                    wrenPopRoot(vm);
+                    return RETURN_ERROR(vm, "module \"ui\" is not imported");
+                }
                 wrenPopRoot(vm);
-                return RETURN_ERROR(vm, "module ui is not imported");
             }
-            wrenPopRoot(vm);
-
-            ObjClass* classElement = AS_CLASS(wrenFindVariable(vm, uiModule, "Element"));
-            if (classElement is null)
             {
-                return RETURN_ERROR(vm, "class ui.Element is not imported");
+                Value moduleName = wrenStringFormat(vm, "$", "widgets".ptr);
+                wrenPushRoot(vm, AS_OBJ(moduleName));
+                widgetsModule = getModule(vm, moduleName);
+                if (widgetsModule is null)
+                {
+                    wrenPopRoot(vm);
+                    return RETURN_ERROR(vm, "module \"widgets\" is not imported");
+                }
+                wrenPopRoot(vm);
             }
 
-            // Create new foreign
+            // try to find concrete class directly
+            ObjClass* classElement;
+            ObjClass* classTarget;
+            ScriptExportClass* concreteClassInfo = findExportedClassByClassInfo(elem.classinfo);
+            if (concreteClassInfo)
+            {
+                // PERF: this allocates
+                CString nameZ = CString(concreteClassInfo.className());
+                classTarget = AS_CLASS(wrenFindVariable(vm, widgetsModule, nameZ.storage));
+            }
+            else
+                classTarget = AS_CLASS(wrenFindVariable(vm, uiModule, "UIElement"));
+
+            classElement = AS_CLASS(wrenFindVariable(vm, uiModule, "Element"));
+
+            if (classTarget is null)
+            {
+                return RETURN_ERROR(vm, "cannot create a IUElement from operator $");
+            }
+
+            Value obj = wrenNewInstance(vm, classTarget);
+
+            // Create new Element foreign
             ObjForeign* foreign = wrenNewForeign(vm, classElement, UIElementBridge.sizeof);
             UIElementBridge* bridge = cast(UIElementBridge*) foreign.data.ptr;
             bridge.elem = elem;
-            return RETURN_OBJ(args, foreign);
+
+            // Assign it in the first field of the newly created ui.UIElement
+            ObjInstance* instance = AS_INSTANCE(obj);
+            instance.fields[0] = OBJ_VAL(foreign);
+
+            return RETURN_OBJ(args, AS_INSTANCE(obj));
         }
         catch(Exception e)
         {
@@ -394,6 +433,7 @@ private:
         }
     }
 
+    // auto-generate the "widgets" Wren module
     const(char)* widgetModuleSource()
     {
         _widgetModuleSource.clearContents();
@@ -426,12 +466,12 @@ private:
 
                 // getter
                 text("  "); text(prop.identifier); text("{"); LF;
-                text("    e_.getProp("); textZ(buf.ptr); text(")"); LF;
+                text("    innerElement.getProp_("); textZ(buf.ptr); text(")"); LF;
                 text("  }"); LF;
 
                 // setter for property (itself a Wren property setter)
-                text("  "); text(prop.identifier); text("(x){"); LF;
-                text("    e_.setProp("); textZ(buf.ptr); text(",x)"); LF;
+                text("  "); text(prop.identifier); text("=(x){"); LF;
+                text("    innerElement.setProp_("); textZ(buf.ptr); text(",x)"); LF;
                 text("  }"); LF;
             }
             LF;
@@ -440,6 +480,20 @@ private:
 
         _widgetModuleSource.pushBack('\0');
         return _widgetModuleSource.ptr;
+    }
+
+
+    ScriptExportClass* findExportedClassByClassInfo(TypeInfo_Class info)
+    {
+        foreach(ref ScriptExportClass sec; _exportedClasses[])
+        {
+            if (sec.concreteClassInfo is info)
+            {
+                // Found
+                return &sec;
+            }
+        }
+        return null;
     }
 }
 
