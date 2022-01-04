@@ -482,6 +482,12 @@ private:
                     text("  "); text(prop.identifier); text("=(c){"); LF;
                     text("    innerElement.setPropRGBA_("); textZ(bufC.ptr); text(","); textZ(buf.ptr); text(",c.r, c.g, c.b, c.a)"); LF;
                     text("  }"); LF;
+
+                    // same but return this for chaining syntax
+                    text("  "); text(prop.identifier); text("(c){"); LF;
+                    text("    innerElement.setPropRGBA_("); textZ(bufC.ptr); text(","); textZ(buf.ptr); text(",c.r, c.g, c.b, c.a)"); LF;
+                    text("    return this"); LF;
+                    text("  }"); LF;
                 }
                 else
                 {
@@ -493,6 +499,12 @@ private:
                     // setter for property (itself a Wren property setter)
                     text("  "); text(prop.identifier); text("=(x){"); LF;
                     text("    innerElement.setProp_("); textZ(bufC.ptr); text(","); textZ(buf.ptr); text(",x)"); LF;
+                    text("  }"); LF;
+
+                     // same but return this for chaining syntax
+                    text("  "); text(prop.identifier); text("(x){"); LF;
+                    text("    innerElement.setProp_("); textZ(bufC.ptr); text(","); textZ(buf.ptr); text(",x)"); LF;
+                    text("    return this"); LF;
                     text("  }"); LF;
                 }
             }

@@ -8,24 +8,27 @@ class Plugin {
         ($"_imageKnob").hasTrail = false  // no trail by default
         var litTrailDiffuse = RGBA.new(151, 119, 255, 100)
         var unlitTrailDiffuse = RGBA.new(81, 54, 108, 0)
-        ($"_driveKnob").knobDiffuse = RGBA.new(255, 255, 238, 0)
-        ($"_driveKnob").knobMaterial = RGBA.new(0, 255, 128, 255)
-        ($"_driveKnob").litTrailDiffuse = litTrailDiffuse
-        ($"_driveKnob").unlitTrailDiffuse = unlitTrailDiffuse
-        ($"_driveKnob").LEDDiffuseLit = RGBA.new(40, 40, 40, 100)
-        ($"_driveKnob").LEDDiffuseUnlit = RGBA.new(40, 40, 40, 0)
 
-        ($"_inputSlider").litTrailDiffuse = litTrailDiffuse
-        ($"_inputSlider").unlitTrailDiffuse = unlitTrailDiffuse
-        ($"_outputSlider").litTrailDiffuse = litTrailDiffuse
-        ($"_outputSlider").unlitTrailDiffuse = unlitTrailDiffuse
-        ($"_onOffSwitch").diffuseOn = litTrailDiffuse
-        ($"_onOffSwitch").diffuseOff = unlitTrailDiffuse
+        var driveKnob = ($"_driveKnob")
+        driveKnob.knobDiffuse = RGBA.new(255, 255, 238, 0)
+        driveKnob.knobMaterial = RGBA.new(0, 255, 128, 255)
+        driveKnob.litTrailDiffuse = litTrailDiffuse
+        driveKnob.unlitTrailDiffuse = unlitTrailDiffuse
+        driveKnob.LEDDiffuseLit = RGBA.new(40, 40, 40, 100)
+        driveKnob.LEDDiffuseUnlit = RGBA.new(40, 40, 40, 0)
 
-        ($"_driveKnob").knobRadius = 0.65 // does nothing yet, but an UIKnob is returned
-        ($"_driveKnob").numLEDs = 15
-        ($"_driveKnob").LEDRadiusMin = 0.06
-        ($"_driveKnob").LEDRadiusMax = 0.06
+        // Note: chaining syntax is also supported (but you can't mix and match property assignment and chaining)
+        ($"_inputSlider").litTrailDiffuse(litTrailDiffuse)
+                         .unlitTrailDiffuse(unlitTrailDiffuse)
+        ($"_outputSlider").litTrailDiffuse(litTrailDiffuse)
+                          .unlitTrailDiffuse(unlitTrailDiffuse)
+        ($"_onOffSwitch").diffuseOn(litTrailDiffuse)
+                         .diffuseOff(unlitTrailDiffuse)
+
+        ($"_driveKnob").knobRadius(0.65) // does nothing yet, but an UIKnob is returned
+                       .numLEDs(15)
+                       .LEDRadiusMin(0.06)
+                       .LEDRadiusMax(0.06)
     }
 
     static reflow() { 
