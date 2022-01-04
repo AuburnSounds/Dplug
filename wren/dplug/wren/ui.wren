@@ -55,13 +55,12 @@ foreign class Element {
    foreign setProp_(nclass, nth, x)
    foreign setPropRGBA_(nclass, nth, r, g, b, a)
    foreign getProp_(nclass, nth)
+   foreign getPropRGBA_(nclass, nth, ch)
 }
 
 // Non-foreign base classes for UIElement derivatives.
 class UIElement {
 
-   // Construct an Element from an ID.
-   // if "__ROOT__" is passed, the root Element is returned  
    construct new(id) {
        _e = Element.new(id)
    }
@@ -76,7 +75,7 @@ class UIElement {
        _e.position = rect
    }
 
-   innerElement { _e }
+   e { _e }
 }
 
 class Point {
@@ -140,4 +139,8 @@ class RGBA {
     g { _g }
     b { _b }
     a { _a }
+    r=(x) { _r = x }
+    g=(x) { _g = x }
+    b=(x) { _b = x }
+    a=(x) { _a = x }
 }

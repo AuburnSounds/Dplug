@@ -478,14 +478,22 @@ private:
 
                 if (isRGBA)
                 {
+                    // getter
+                    text("  "); text(prop.identifier); text("{"); LF;
+                    text("    return RGBA.new( e.getPropRGBA_("); textZ(bufC.ptr); text(","); textZ(buf.ptr); text(",0),");
+                                         text("e.getPropRGBA_("); textZ(bufC.ptr); text(","); textZ(buf.ptr); text(",1),");
+                                         text("e.getPropRGBA_("); textZ(bufC.ptr); text(","); textZ(buf.ptr); text(",2),");
+                                         text("e.getPropRGBA_("); textZ(bufC.ptr); text(","); textZ(buf.ptr); text(",3))"); LF;
+                    text("  }"); LF;
+
                     // setter for a RGBA property
                     text("  "); text(prop.identifier); text("=(c){"); LF;
-                    text("    innerElement.setPropRGBA_("); textZ(bufC.ptr); text(","); textZ(buf.ptr); text(",c.r, c.g, c.b, c.a)"); LF;
+                    text("    e.setPropRGBA_("); textZ(bufC.ptr); text(","); textZ(buf.ptr); text(",c.r, c.g, c.b, c.a)"); LF;
                     text("  }"); LF;
 
                     // same but return this for chaining syntax
                     text("  "); text(prop.identifier); text("(c){"); LF;
-                    text("    innerElement.setPropRGBA_("); textZ(bufC.ptr); text(","); textZ(buf.ptr); text(",c.r, c.g, c.b, c.a)"); LF;
+                    text("    e.setPropRGBA_("); textZ(bufC.ptr); text(","); textZ(buf.ptr); text(",c.r, c.g, c.b, c.a)"); LF;
                     text("    return this"); LF;
                     text("  }"); LF;
                 }
@@ -493,17 +501,17 @@ private:
                 {
                     // getter
                     text("  "); text(prop.identifier); text("{"); LF;
-                    text("    return innerElement.getProp_("); textZ(bufC.ptr); text(","); textZ(buf.ptr); text(")"); LF;
+                    text("    return e.getProp_("); textZ(bufC.ptr); text(","); textZ(buf.ptr); text(")"); LF;
                     text("  }"); LF;
 
                     // setter for property (itself a Wren property setter)
                     text("  "); text(prop.identifier); text("=(x){"); LF;
-                    text("    innerElement.setProp_("); textZ(bufC.ptr); text(","); textZ(buf.ptr); text(",x)"); LF;
+                    text("    e.setProp_("); textZ(bufC.ptr); text(","); textZ(buf.ptr); text(",x)"); LF;
                     text("  }"); LF;
 
                      // same but return this for chaining syntax
                     text("  "); text(prop.identifier); text("(x){"); LF;
-                    text("    innerElement.setProp_("); textZ(bufC.ptr); text(","); textZ(buf.ptr); text(",x)"); LF;
+                    text("    e.setProp_("); textZ(bufC.ptr); text(","); textZ(buf.ptr); text(",x)"); LF;
                     text("    return this"); LF;
                     text("  }"); LF;
                 }

@@ -200,6 +200,24 @@ void element_getProperty(WrenVM* vm)
     }
 }
 
+void element_getPropertyRGBA(WrenVM* vm)
+{
+    UIElementBridge* bridge = cast(UIElementBridge*) wrenGetSlotForeign(vm, 0);
+    if (!bridge.elem)
+        return;
+
+    int classIndex = cast(int) wrenGetSlotDouble(vm, 1);
+    int propIndex = cast(int) wrenGetSlotDouble(vm, 2);
+    WrenSupport ws = cast(WrenSupport) vm.config.userData;
+    ScriptPropertyDesc* desc = ws.getScriptProperty(classIndex, propIndex);
+    assert(desc !is null);
+
+    ubyte* raw = cast(ubyte*)(cast(void*)bridge.elem) + desc.offset;
+    int channel = cast(int) wrenGetSlotDouble(vm, 3);
+    assert(channel >= 0 && channel < 4);
+    wrenSetSlotDouble(vm, 0, raw[channel]);
+}
+
 struct UIElementBridge
 {
     UIElement elem;
@@ -230,6 +248,7 @@ WrenForeignMethodFn wrenUIBindForeignMethod(WrenVM* vm, const(char)* className, 
         if (strcmp(signature, "setProp_(_,_,_)") == 0) return &element_setProperty;
         if (strcmp(signature, "setPropRGBA_(_,_,_,_,_,_)") == 0) return &element_setPropertyRGBA;
         if (strcmp(signature, "getProp_(_,_)") == 0) return &element_getProperty;
+        if (strcmp(signature, "getPropRGBA_(_,_,_)") == 0) return &element_getPropertyRGBA;
     }
     return null;
 }
