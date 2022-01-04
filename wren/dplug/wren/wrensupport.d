@@ -6,8 +6,9 @@ License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 module dplug.wren.wrensupport;
 
-import core.stdc.string : strcmp;
+import core.stdc.string : strlen, strcmp;
 import core.stdc.stdlib : free;
+import core.stdc.stdio : snprintf;
 
 import std.traits: getSymbolsByUDA;
 import std.meta: staticIndexOf;
@@ -188,8 +189,8 @@ nothrow @nogc:
         static foreach(m; getSymbolsByUDA!(UIClass, ScriptExport))
         {{
             alias dClass = typeof(m);
-            string className = dClass.classinfo.name;
-            if (!hasScriptExportClass(className))
+            string fullClassName = dClass.classinfo.name;
+            if (!hasScriptExportClass(fullClassName)) // PERF: this is quadratic
             {
                 ScriptExportClass c = mallocNew!ScriptExportClass();
                 c.classInfo = dClass.classinfo;
@@ -250,10 +251,13 @@ private:
     /// All known D @ScriptExport classes.
     Vec!ScriptExportClass _exportedClasses;
 
-    bool hasScriptExportClass(string name)
+    /// "widgets" module source, recreated on import based upon _exportedClasses content.
+    Vec!char _widgetModuleSource;
+
+    bool hasScriptExportClass(string fullName)
     {
         foreach(e; _exportedClasses[])
-            if (e.className() == name)
+            if (e.fullClassName() == fullName)
                 return true;
         return false;
     }
@@ -334,6 +338,9 @@ private:
 
         try
         {   
+            if (strcmp(name, "widgets") == 0)
+                res.source = widgetModuleSource();
+
             if (strcmp(name, "ui") == 0)
                 res.source = wrenUIModuleSource();
         }
@@ -345,6 +352,8 @@ private:
         found:
         return res;
     }
+
+    // TODO: return the right class, depending on what is imported in the module and its .classinfo
 
     bool dollarOperator(WrenVM* vm, Value* args)
     {
@@ -383,6 +392,54 @@ private:
             destroyFree(e);
             return false;
         }
+    }
+
+    const(char)* widgetModuleSource()
+    {
+        _widgetModuleSource.clearContents();
+
+        void text(const(char)[] s)
+        {
+            _widgetModuleSource.pushBack(cast(char[])s); // const_cast here
+        }
+
+        void textZ(const(char)* s)
+        {
+            _widgetModuleSource.pushBack(cast(char[])s[0..strlen(s)]); // const_cast here
+        }
+
+        void LF()
+        {
+            _widgetModuleSource.pushBack('\n');
+        }
+
+        text(`import "ui" for UIElement`); LF;
+
+        foreach(ec; _exportedClasses[])
+        {
+            text("class "); text(ec.className); text(" is UIElement {"); LF;
+
+            foreach(size_t nth, prop; ec.properties())
+            {
+                char[32] buf;
+                snprintf(buf.ptr, 32, "%d", cast(int)nth);
+
+                // getter
+                text("  "); text(prop.identifier); text("{"); LF;
+                text("    e_.getProp("); textZ(buf.ptr); text(")"); LF;
+                text("  }"); LF;
+
+                // setter for property (itself a Wren property setter)
+                text("  "); text(prop.identifier); text("(x){"); LF;
+                text("    e_.setProp("); textZ(buf.ptr); text(",x)"); LF;
+                text("  }"); LF;
+            }
+            LF;
+            text("}"); LF; LF;
+        }
+
+        _widgetModuleSource.pushBack('\0');
+        return _widgetModuleSource.ptr;
     }
 }
 

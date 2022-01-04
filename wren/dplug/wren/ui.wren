@@ -18,15 +18,16 @@ class UI {
 
    // Get root Element of the hierarchy
    static root {
-       return Element.new("__ROOT__")
+       return UIElement.new("__ROOT__")
    }
 
    static getElementById(id) {
-       return Element.new(id)
+       return UIElement.new(id)
    }
 }
 
 // API for widget. Wraps an UIElement.
+// Note that this is only for internal use! Scripts should manipulate UIElement and its derivative instead.
 foreign class Element {
 
    // Construct an Element from an ID.
@@ -50,6 +51,29 @@ foreign class Element {
    // Internal use
    foreign findIdAndBecomeThat_(id)
    foreign setPosition_(x, y, w, h)
+
+   // TODO: set and get properties
+   foreign setProp_(nth, x)
+}
+
+// Non-foreign base classes for UIElement derivatives.
+class UIElement {
+
+   // Construct an Element from an ID.
+   // if "__ROOT__" is passed, the root Element is returned  
+   construct new(id) {
+       e_ = Element.new(id)
+   }
+
+   // Get current width of the UIElement
+   width { e_.width }
+
+   // Get current height of the UIElement
+   height { e_.height }
+
+   position=(rect) {
+       e_.position = rect
+   }
 }
 
 class Point {

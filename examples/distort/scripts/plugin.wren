@@ -1,4 +1,5 @@
 import "ui" for UI, Element, Point, Size, Rectangle
+import "widgets" for UISlider, UIKnob, UIOnOffSwitch, UILevelDisplay, UIColorCorrection, UIImageKnob, UIWindowResizer
 
 class Plugin {
 

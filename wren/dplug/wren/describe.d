@@ -18,9 +18,26 @@ class ScriptExportClass
 nothrow @nogc:
 public:
 
-    /// The D identifier of the class.
+    /// The D identifier of the class, stripped from module identifiers.
     /// Not owned, has to be compile-time.
+    /// eg: UIKnob
     string className()
+    {
+        string fullName = classInfo.name;
+        int LEN = cast(int)fullName.length;
+
+        // try to find rightmost '.'
+        for(int n = LEN - 1; n >= 0; --n)
+        {
+            if (fullName[n] == '.')
+                return fullName[n+1..$];
+        }
+        return fullName; // no '.' were found
+    }
+
+    /// The D identifier of the class, with module identifiers.
+    /// eg: UIKnob
+    string fullClassName()
     {
         return classInfo.name;
     }
@@ -30,7 +47,13 @@ public:
 
     void addProperty(ScriptPropertyDesc prop)
     {
+        prop.nth = cast(int)_properties.length;
         _properties ~= prop;
+    }
+
+    ScriptPropertyDesc[] properties()
+    {
+        return _properties[];
     }
 
 private:
@@ -69,6 +92,9 @@ public:
 
     /// Byte offset in the class.
     int offset;
+
+    /// Number of the property in the _properties array.
+    int nth;
 
     /// The D identifier of the property.
     /// Not owned, has to be compile-time.

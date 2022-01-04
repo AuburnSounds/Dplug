@@ -105,6 +105,17 @@ void element_setposition(WrenVM* vm)
     bridge.elem.position = box2i.rectangle(cast(int)x, cast(int)y, cast(int)w, cast(int)h);
 }
 
+void element_setProperty(WrenVM* vm)
+{
+
+    return;
+}
+
+void element_getProperty(WrenVM* vm)
+{
+    return;
+}
+
 struct UIElementBridge
 {
     UIElement elem;
@@ -132,6 +143,8 @@ WrenForeignMethodFn wrenUIBindForeignMethod(WrenVM* vm, const(char)* className, 
         if (strcmp(signature, "height") == 0) return &element_height;
         if (strcmp(signature, "setPosition_(_,_,_,_)") == 0) return &element_setposition;
         if (strcmp(signature, "findIdAndBecomeThat_(_)") == 0) return &element_findIdAndBecomeThat;
+        if (strcmp(signature, "setProp_(_,_)") == 0) return &element_setProperty;
+        if (strcmp(signature, "getProp_(_)") == 0) return &element_getProperty;
     }
     return null;
 }
