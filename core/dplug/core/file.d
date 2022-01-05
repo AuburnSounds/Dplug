@@ -15,6 +15,7 @@ nothrow:
 
 /// Replacement for `std.file.read`.
 /// Returns: File contents, allocated with malloc. `null` on error.
+// FUTURE: this should take a char*, this is confusing
 ubyte[] readFile(const(char)[] fileNameZ)
 {
     // assuming that fileNameZ is zero-terminated, since it will in practice be
@@ -56,4 +57,9 @@ ubyte[] readFile(const(char)[] fileNameZ)
     }
     else
         return null;
+}
+ubyte[] readFile(const(char)* fileNameZ)
+{
+    import core.stdc.string: strlen;
+    return readFile(fileNameZ[0..strlen(fileNameZ)]);
 }
