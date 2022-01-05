@@ -6,14 +6,15 @@ License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 module dplug.wren.wrensupport;
 
-import core.stdc.string : strlen, strcmp;
-import core.stdc.stdlib : free;
+import core.stdc.string : memcpy, strlen, strcmp;
+import core.stdc.stdlib : malloc, free;
 import core.stdc.stdio : snprintf;
 
 import std.traits: getSymbolsByUDA;
 import std.meta: staticIndexOf;
 
 import dplug.core.nogc;
+import dplug.core.file;
 import dplug.gui.context;
 import dplug.gui.element;
 import dplug.graphics.color;
@@ -21,6 +22,7 @@ import dplug.graphics.color;
 import wren.vm;
 import wren.value;
 import wren.primitive;
+import wren.common;
 import dplug.wren.describe;
 import dplug.wren.wren_ui;
 
@@ -45,13 +47,261 @@ string setUIElementsFieldNamesAsTheirId(T)()
 /// Manages interaction between Wren and the plugin. 
 /// Note: this is interlinked with UIContext.
 /// This class could as well be a part of UIContext.
-class WrenSupport
+final class WrenSupport
 {
 nothrow @nogc:
 
+    /// Constructor.
     this(IUIContext uiContext)
     {
-        _uiContext = uiContext;
+        _uiContext = uiContext; // Note: wren VM start is deferred to first use.
+    }
+
+    /// Instantiate that with your main UI widget to register widgets classes.
+    /// Foreach member variable of `GUIClass` with the `@ScriptExport` attribute, this registers
+    /// a Wren class 
+    /// The right Wren class can then be returned by the `$` operator and `UI.getElementById` methods.
+    ///
+    /// Note: the mirror Wren classes don't inherit from each other. Wren doesn't know our D hierarchy.
+    void registerScriptExports(GUIClass)()
+    {
+        // Automatically set widgets ID. _member.id = "_member";
+        static foreach(m; getSymbolsByUDA!(GUIClass, ScriptExport))
+        {{
+            alias dClass = typeof(m);
+            registerUIElementClass!dClass();
+        }}
+    }
+
+    /// Add a UIElement derivative class into the set of known classes in Wren, and all its parent up to UIElement
+    /// It is recommended that you use `@ScriptExport` on your fields and `registerScriptExports` instead, but this
+    /// can be used to register classes manually.
+    ///
+    /// Note: the mirror Wren classes don't inherit from each other. Wren doesn't know our D hierarchy.
+    void registerUIElementClass(ElemClass)()
+    {
+        static assert(is(ElemClass: UIElement));
+        string fullClassName = ElemClass.classinfo.name;
+
+        if (!hasScriptExportClass(fullClassName)) // PERF: this is quadratic
+        {
+            ScriptExportClass c = mallocNew!ScriptExportClass();
+            c.concreteClassInfo = ElemClass.classinfo;
+            registerDClass!ElemClass(c);
+            _exportedClasses ~= c;
+        }
+    }
+  
+    /// Add a read-only Wren module source code, to be loaded once and never changed.
+    /// Release purpose. When in developement, you might prefer a reloadable file, with `addModuleFileWatch`.
+    void addModuleSource(const(char)[] moduleName, const(char)[] moduleSource)
+    {
+        // This forces a zero terminator.
+        // PERF: use less zero-terminated strings in Wren, so that we don't have to do this
+        char* moduleNameZ = stringDup(CString(moduleName).storage).ptr;
+        char* moduleSourceZ = stringDup(CString(moduleSource).storage).ptr;
+
+        PreloadedSource ps;
+        ps.moduleName = moduleNameZ;
+        ps.source = moduleSourceZ;
+        _preloadedSources.pushBack(ps);
+    }
+
+    /// Add a dynamic reloadable .wren source file. The module is reloaded and compared when `reloadScriptsThatChanged()` is called.
+    /// Development purpose. For a release plug-in, you want to use `addModuleSource` instead.
+    void addModuleFileWatch(const(char)[] moduleName, const(char)[] wrenFilePath)
+    {
+        // This forces a zero terminator.
+        // PERF: use less zero-terminated strings in Wren, so that we don't have to do this
+        char* moduleNameZ = stringDup(CString(moduleName).storage).ptr;
+        char* wrenFilePathZ = stringDup(CString(wrenFilePath).storage).ptr;
+
+        FileWatch fw;
+        fw.moduleName = moduleNameZ;
+        fw.wrenFilePath = wrenFilePathZ;
+        fw.lastSource = null;
+
+        _fileSources.pushBack(fw);
+    }
+
+    /// To call in your UI's constructor. This call the `Plugin.createUI` Wren method, in module "plugin".
+    ///
+    /// Note: Changing @ScriptProperty values does not make the elements dirty.
+    ///       But since it's called at UI creation, the whole UI is dirty anyway so it works.
+    ///
+    void callCreateUI()
+    {
+        callPluginMethod("createUI");
+    }
+
+    /// To call in your UI's `reflow()` method. This call the `Plugin.reflow` Wren method, in module "plugin".
+    ///
+    /// Note: Changing @ScriptProperty values does not make the elements dirty.
+    ///       But since it's called at UI reflow, the whole UI is dirty anyway so it works.
+    ///
+    void callReflow()
+    {
+        callPluginMethod("reflow");
+    }
+
+    // <advanced API>
+
+    /// Call Plugin.<methodName>, a static method without arguments in Wren. For advanced users only.
+    void callPluginMethod(const(char)* methodName)
+    {
+        reloadScriptsThatChanged();
+        enum int MAX = 64+MAX_VARIABLE_NAME*2;
+        char[MAX] code;
+        snprintf(code.ptr, MAX, "{\n \nimport \"plugin\" for Plugin\n Plugin.%s()\n}\n", methodName);
+        interpret(code.ptr);
+    }
+
+    /// Interpret arbitrary code. For advanced users only.
+    void interpret(const(char)* path, const(char)* source)
+    {
+        try
+        {
+            WrenInterpretResult result = wrenInterpret(_vm, path, source);
+        }
+        catch(Exception e)
+        {
+            // Note: error reported by another mechanism anyway.
+            destroyFree(e);
+        }
+    }
+
+    /// Interpret arbitrary code. For advanced users only.
+    void interpret(const(char)* source)
+    {
+        interpret("", source);
+    }  
+
+    // </advanced API>
+
+    ~this()
+    {
+        stopWrenVM();
+
+        foreach(ps; _preloadedSources[])
+        {
+            free(ps.moduleName);
+            free(ps.source);
+        }
+
+        foreach(fw; _fileSources[])
+        {
+            free(fw.moduleName);
+            free(fw.wrenFilePath);
+            free(fw.lastSource);
+        }
+
+        foreach(ec; _exportedClasses[])
+        {
+            destroyFree(ec);
+        }
+    }
+
+package:
+
+    IUIContext uiContext()
+    {
+        return _uiContext;
+    }
+
+    ScriptPropertyDesc* getScriptProperty(int nthClass, int nthProp)
+    {
+        ScriptExportClass sec = _exportedClasses[nthClass];
+        ScriptPropertyDesc[] descs = sec.properties();
+        return &descs[nthProp];
+    }
+
+private:
+
+    WrenVM* _vm = null;
+    IUIContext _uiContext;
+
+    static struct PreloadedSource
+    {
+        char* moduleName;
+        char* source;
+    }
+
+    static struct FileWatch
+    {
+    nothrow:
+    @nogc:
+        char* moduleName;
+        char* wrenFilePath;
+        char* lastSource;
+
+        bool updateAndReturnIfChanged()
+        {
+            char* newSource = readWrenFile();
+       
+            if ((lastSource is null) || strcmp(lastSource, newSource) != 0)
+            {
+                free(lastSource);
+                lastSource = newSource;
+                return true;
+            }
+            else
+                return false;
+        }
+
+        char* readWrenFile()
+        {
+            ubyte[] content = readFile(wrenFilePath);
+            scope(exit) free(content.ptr);
+
+            // If you fail here, your absolute path to a .wren script was wrong
+            assert(content);
+
+            // PERF: create directly a trailing \0 while reading the file
+            char* source = cast(char*) malloc(content.length + 1);
+            memcpy(source, content.ptr, content.length); 
+            source[content.length] = '\0';
+            return source;
+        }
+    }
+
+    /// All known premade modules.
+    Vec!PreloadedSource _preloadedSources;
+
+    /// All known file-watch modules.
+    Vec!FileWatch _fileSources;
+
+    /// All known D @ScriptExport classes.
+    Vec!ScriptExportClass _exportedClasses;
+
+    /// "widgets" module source, recreated on import based upon _exportedClasses content.
+    Vec!char _widgetModuleSource;
+
+
+    // Check the registered .wren file and check if they have changed.
+    // Since it (re)starts the Wren VM, it cannot be called from Wren.
+    void reloadScriptsThatChanged()
+    {
+        bool oneScriptChanged = false;
+        foreach(ref fw; _fileSources)
+        {
+            if (fw.updateAndReturnIfChanged())
+                oneScriptChanged = true;
+        }
+
+        // If a script changed, we need to restart the whole Wren VM since there is no way to forger about a module!
+        if (oneScriptChanged)
+            stopWrenVM();
+
+        // then ensure Wren VM is on
+        startWrenVM();
+    }
+
+
+    void startWrenVM()
+    {
+        if (_vm !is null)
+            return; // Already started
+
         try
         {
             WrenConfiguration config;
@@ -76,7 +326,7 @@ nothrow @nogc:
         }
     }
 
-    ~this()
+    void stopWrenVM()
     {
         if (_vm !is null)
         {
@@ -90,176 +340,7 @@ nothrow @nogc:
             }
             _vm = null;
         }
-
-        foreach(ps; _preloadedSources[])
-        {
-            free(ps.moduleName);
-            free(ps.source);
-        }
-
-        foreach(ec; _exportedClasses[])
-        {
-            destroyFree(ec);
-        }
-    }
-
-    IUIContext uiContext()
-    {
-        return _uiContext;
-    }
-
-    // Important: path and source MUST be zero terminated.
-    void interpret(const(char)[] path, const(char)[] source)
-    {
-        const(char)* sourceZ = assumeZeroTerminated(source);
-        const(char)* pathZ = assumeZeroTerminated(path);
-        try
-        {
-            WrenInterpretResult result = wrenInterpret(_vm, pathZ, sourceZ);
-        }
-        catch(Exception e)
-        {
-            // Note: error reported by another mechanism anyway.
-            destroyFree(e);
-        }
-    }
-
-    // same but without module name
-    void interpret(const(char)[] source)
-    {
-        interpret("", source);
-    }
-
-    private void registerDClass(alias aClass)(ScriptExportClass classDesc)
-    {
-        static foreach(P; getSymbolsByUDA!(aClass, ScriptProperty))
-        {{
-            alias FieldType = typeof(P);
-
-            enum string fieldName = P.stringof;
-            enum size_t offsetInClass = P.offsetof;
-
-            ScriptPropertyDesc desc;
-            desc.identifier = fieldName;
-            desc.offset = offsetInClass;
-            static if (is(FieldType == enum))
-            {
-                // Note: enum are just integers in Wren, no translation of enum value.
-                static if (FieldType.sizeof == 1)
-                    desc.type = ScriptPropertyType.byte_;
-                else static if (FieldType.sizeof == 2)
-                    desc.type = ScriptPropertyType.short_;
-                else static if (FieldType.sizeof == 4)
-                    desc.type = ScriptPropertyType.int_;
-                else
-                    static assert(false, "Unsupported enum size in @ScriptProperty field " ~ fieldName ~  " of type " ~ FieldType.stringof);
-            }
-            else static if (is(FieldType == bool))
-                desc.type = ScriptPropertyType.bool_;
-            else static if (is(FieldType == RGBA))
-                desc.type = ScriptPropertyType.RGBA;
-            else static if (is(FieldType == ubyte))
-                desc.type = ScriptPropertyType.ubyte_;
-            else static if (is(FieldType == byte))
-                desc.type = ScriptPropertyType.byte_;
-            else static if (is(FieldType == ushort))
-                desc.type = ScriptPropertyType.ushort_;
-            else static if (is(FieldType == short))
-                desc.type = ScriptPropertyType.short_;
-            else static if (is(FieldType == uint))
-                desc.type = ScriptPropertyType.uint_;
-            else static if (is(FieldType == int))
-                desc.type = ScriptPropertyType.int_;
-            else static if (is(FieldType == float))
-                desc.type = ScriptPropertyType.float_;
-            else static if (is(FieldType == double))
-                desc.type = ScriptPropertyType.double_;
-            else static if (is(FieldType == L16)) // Note: this is deprecated. L16 properties should be eventually replaced by ushort instead.
-                desc.type = ScriptPropertyType.ushort_;
-            else
-                static assert(false, "No @ScriptProperty support for field " ~ fieldName ~  " of type " ~ FieldType.stringof); // FUTURE: a way to add other types for properties?
-
-            classDesc.addProperty(desc);
-        }}
-    }
-
-    void registerScriptExports(UIClass)()
-    {
-        // Automatically set widgets ID. _member.id = "_member";
-        static foreach(m; getSymbolsByUDA!(UIClass, ScriptExport))
-        {{
-            alias dClass = typeof(m);
-            string fullClassName = dClass.classinfo.name;
-            if (!hasScriptExportClass(fullClassName)) // PERF: this is quadratic
-            {
-                ScriptExportClass c = mallocNew!ScriptExportClass();
-                c.concreteClassInfo = dClass.classinfo;
-                registerDClass!dClass(c);
-                _exportedClasses ~= c;
-            }
-        }}
-    }
-
-    void callCreateUI()
-    {
-        static immutable string code =
-            "{ \n" ~
-            "  import \"plugin\" for Plugin\n" ~
-            "  Plugin.createUI()\n" ~
-            "}\n";
-        interpret(code);
-    }
-
-    void callReflow()
-    {
-        static immutable string code =
-        "{ \n" ~
-        "  import \"plugin\" for Plugin\n" ~
-        "  Plugin.reflow()\n" ~
-        "}\n";
-        interpret(code);
-    }
-
-    /// Add read-only static module source code, to be loaded eventually.
-    void addModuleSource(const(char)[] moduleName, const(char)[] moduleSource)
-    {
-        // This forces a zero terminator.
-        // PERF: use less zero-terminated strings in Wren, so that we don't have to do this
-        char* moduleNameZ = stringDup(CString(moduleName).storage).ptr;
-        char* moduleSourceZ = stringDup(CString(moduleSource).storage).ptr;
-
-        PreloadedSource ps;
-        ps.moduleName = moduleNameZ;
-        ps.source = moduleSourceZ;
-        _preloadedSources.pushBack(ps);
-    }
-
-    ScriptPropertyDesc* getScriptProperty(int nthClass, int nthProp)
-    {
-        ScriptExportClass sec = _exportedClasses[nthClass];
-        ScriptPropertyDesc[] descs = sec.properties();
-        return &descs[nthProp];
-    }
-
-private:
-
-    WrenVM* _vm;
-    IUIContext _uiContext;
-
-    static struct PreloadedSource
-    {
-        char* moduleName;
-        char* source;
-    }
-
-    /// All known premade modules.
-    Vec!PreloadedSource _preloadedSources;
-
-    /// All known D @ScriptExport classes.
-    Vec!ScriptExportClass _exportedClasses;
-
-    /// "widgets" module source, recreated on import based upon _exportedClasses content.
-    Vec!char _widgetModuleSource;
+    }   
 
     bool hasScriptExportClass(string fullName)
     {
@@ -333,6 +414,17 @@ private:
         res.onComplete = null;
         res.userData = null;
 
+        // Try file-watch source first
+        foreach(fw; _fileSources[])
+        {
+            if (strcmp(name, fw.moduleName) == 0)
+            {
+                assert(fw.lastSource); // should have parsed the file preventively
+                res.source = fw.lastSource;
+                goto found;
+            }
+        }
+
         // Try preloaded source first
         foreach(ps; _preloadedSources[])
         {
@@ -342,6 +434,7 @@ private:
                 goto found;
             }
         }
+
 
         try
         {   
@@ -425,11 +518,11 @@ private:
             // Create new Element foreign
             ObjForeign* foreign = wrenNewForeign(vm, classElement, UIElementBridge.sizeof);
             UIElementBridge* bridge = cast(UIElementBridge*) foreign.data.ptr;
-            bridge.elem = elem;
+            bridge.elem = elem; 
 
             // Assign it in the first field of the newly created ui.UIElement
             ObjInstance* instance = AS_INSTANCE(obj);
-            instance.fields[0] = OBJ_VAL(foreign);
+            instance.fields[0] = OBJ_VAL(foreign); // TODO: field seems to be collected already when VM is terminated
 
             return RETURN_OBJ(args, AS_INSTANCE(obj));
         }
@@ -537,6 +630,63 @@ private:
         }
         return null;
     }
+
+    // Add a single UIElement derivative class into the set of known classes in Wren
+    // Note that it enumerates all @ScriptProperty from its ancestors too, so it works.
+    // Wren code doesn't actually know that UIImageKnob is derived from UIKnob.
+    private void registerDClass(alias aClass)(ScriptExportClass classDesc)
+    {
+        static foreach(P; getSymbolsByUDA!(aClass, ScriptProperty))
+        {{
+            alias FieldType = typeof(P);
+
+            enum string fieldName = P.stringof;
+            enum size_t offsetInClass = P.offsetof;
+
+            ScriptPropertyDesc desc;
+            desc.identifier = fieldName;
+            desc.offset = offsetInClass;
+            static if (is(FieldType == enum))
+            {
+                // Note: enum are just integers in Wren, no translation of enum value.
+                static if (FieldType.sizeof == 1)
+                    desc.type = ScriptPropertyType.byte_;
+                else static if (FieldType.sizeof == 2)
+                    desc.type = ScriptPropertyType.short_;
+                else static if (FieldType.sizeof == 4)
+                    desc.type = ScriptPropertyType.int_;
+                else
+                    static assert(false, "Unsupported enum size in @ScriptProperty field " ~ fieldName ~  " of type " ~ FieldType.stringof);
+            }
+            else static if (is(FieldType == bool))
+                desc.type = ScriptPropertyType.bool_;
+            else static if (is(FieldType == RGBA))
+                desc.type = ScriptPropertyType.RGBA;
+            else static if (is(FieldType == ubyte))
+                desc.type = ScriptPropertyType.ubyte_;
+            else static if (is(FieldType == byte))
+                desc.type = ScriptPropertyType.byte_;
+            else static if (is(FieldType == ushort))
+                desc.type = ScriptPropertyType.ushort_;
+            else static if (is(FieldType == short))
+                desc.type = ScriptPropertyType.short_;
+            else static if (is(FieldType == uint))
+                desc.type = ScriptPropertyType.uint_;
+            else static if (is(FieldType == int))
+                desc.type = ScriptPropertyType.int_;
+            else static if (is(FieldType == float))
+                desc.type = ScriptPropertyType.float_;
+            else static if (is(FieldType == double))
+                desc.type = ScriptPropertyType.double_;
+            else static if (is(FieldType == L16)) // Note: this is deprecated. L16 properties should be eventually replaced by ushort instead.
+                desc.type = ScriptPropertyType.ushort_;
+            else
+                static assert(false, "No @ScriptProperty support for field " ~ fieldName ~  " of type " ~ FieldType.stringof); // FUTURE: a way to add other types for properties?
+
+            classDesc.addProperty(desc);
+        }}
+    }
+
 }
 
 private:

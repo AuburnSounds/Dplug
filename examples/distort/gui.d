@@ -37,7 +37,17 @@ nothrow:
         super( makeSizeConstraintsDiscrete(620, 330, ratios) );
 
         context.enableWrenSupport();
-        context.wrenSupport.addModuleSource("plugin", import("plugin.wren")); // TODO: make that potentially dynamic
+
+        debug
+        {
+            // Live-reload
+            context.wrenSupport.addModuleFileWatch("plugin", `C:\Users\guill\Desktop\Dplug\examples\distort\scripts\plugin.wren`);
+        }
+        else
+        {
+            // Final release
+            context.wrenSupport.addModuleSource("plugin", import("plugin.wren")); // TODO: make that potentially dynamic
+        }
 
 
         // Note: PBRCompositor default lighting might change in a future version (increase of light to allow white plastics).

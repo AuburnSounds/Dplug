@@ -30,6 +30,7 @@ void disableWrenSupport(IUIContext context)
 {
     WrenSupport w = wrenSupport(context);
     context.setUserPointer(UICONTEXT_POINTERID_WREN_SUPPORT, null);
+    destroyFree(w);
 }
 
 /// Get the `WrenSupport` object that holds all wren state and integration with the plugin.

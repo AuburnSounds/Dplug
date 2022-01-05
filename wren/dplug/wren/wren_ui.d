@@ -262,7 +262,6 @@ WrenForeignClassMethods wrenUIForeignClass(WrenVM* vm, const(char)* className) n
     if (strcmp(className, "Element") == 0)
     {
         methods.allocate = &element_allocate;
-        // Note: impossible to create Element from Wren,it's just meant as internal bridge
     }
     return methods;
 }
