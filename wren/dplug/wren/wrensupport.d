@@ -28,12 +28,15 @@ import dplug.wren.wren_ui;
 
 nothrow:
 
+/// Automatically set widgets ID. 
+/// It generates 
+///     _member.id = "_member";
+/// for every field that is @ScriptExport, in order to find them from Wren.
 string setUIElementsFieldNamesAsTheirId(T)()
 {
     import std.traits: getSymbolsByUDA;
     string s;
 
-    // Automatically set widgets ID. _member.id = "_member";
     static foreach(m; getSymbolsByUDA!(T, ScriptExport))
     {{
         string fieldName = m.stringof;
