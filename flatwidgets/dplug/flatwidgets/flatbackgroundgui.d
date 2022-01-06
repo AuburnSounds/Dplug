@@ -34,7 +34,7 @@ nothrow:
 
     this(SizeConstraints sizeConstraints)
     {
-        super(sizeConstraints, flagRaw);
+        super(sizeConstraints, flagRaw | flagAnimated);
         _backgroundImage = loadOwnedImage(cast(ubyte[])(import(backgroundPath)));
         _backgroundImageResized = mallocNew!(OwnedImage!RGBA)();
     }

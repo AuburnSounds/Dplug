@@ -50,7 +50,7 @@ nothrow:
 
     this(SizeConstraints sizeConstraints)
     {
-        super(sizeConstraints, flagPBR);
+        super(sizeConstraints, flagPBR | flagAnimated);
 
         _diffuseResized = mallocNew!(OwnedImage!RGBA);
         _materialResized = mallocNew!(OwnedImage!RGBA);
