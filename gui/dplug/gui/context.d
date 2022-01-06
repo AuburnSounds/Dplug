@@ -94,12 +94,13 @@ nothrow @nogc:
     /// Get root element of the hierarchy.
     UIElement getRootElement();
 
-    /// Get UIElement with given ID.
+    /// Get the first `UIElement` with the given ID, or `null`. This just checks for exact id matches, without anything fancy.
+    /// If you use `dplug:wren-support`, this is called by the `$` operator or the `UI.getElementById`.
     UIElement getElementById(const(char)* id);
 }
 
 // Official dplug:gui optional extension.
-enum UICONTEXT_POINTERID_WREN_SUPPORT = 0; /// Official dplug:gui Wren extension. Wren state needs to be store globally for the UI.
+enum UICONTEXT_POINTERID_WREN_SUPPORT = 0; /// Official dplug:gui Wren extension. Wren state needs to be stored globally for the UI.
 
 // <wren-specific part>
 // See Wiki for how to enable scripting.

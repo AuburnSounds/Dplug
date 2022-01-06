@@ -36,20 +36,6 @@ nothrow:
         static immutable float[7] ratios = [0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 1.75f, 2.0f];
         super( makeSizeConstraintsDiscrete(620, 330, ratios) );
 
-        context.enableWrenSupport();
-
-        debug
-        {
-            // Live-reload
-            context.wrenSupport.addModuleFileWatch("plugin", `C:\Users\guill\Desktop\Dplug\examples\distort\scripts\plugin.wren`);
-        }
-        else
-        {
-            // Final release
-            context.wrenSupport.addModuleSource("plugin", import("plugin.wren")); // TODO: make that potentially dynamic
-        }
-
-
         // Note: PBRCompositor default lighting might change in a future version (increase of light to allow white plastics).
         //       So we keep the value.
         PBRCompositor comp = cast(PBRCompositor)compositor;
@@ -108,9 +94,20 @@ nothrow:
             _colorCorrection.setLiftGammaGainContrastRGB(colorCorrectionMatrix);
         }
 
-        mixin(setUIElementsFieldNamesAsTheirId!DistortGUI); // Each UIElement in this object receives its identifier as runtime ID
+        // Enable all things Wren
+        mixin(fieldIdentifiersAreIDs!DistortGUI); // Each UIElement in this object receives its identifier as runtime ID, ie. _inputSlider receives ID "_inputSlider"
+        context.enableWrenSupport();
+        debug
+            context.wrenSupport.addModuleFileWatch("plugin", `/my/absolute/path/to/plugin.wren`); // debug => live reload, enter absolute path here
+        else
+            context.wrenSupport.addModuleSource("plugin", import("plugin.wren"));                 // no debug => static scripts
         context.wrenSupport.registerScriptExports!DistortGUI; // Note: for now, only UIElement should be @ScriptExport
         context.wrenSupport.callCreateUI();
+    }
+
+    override void onAnimate(double dt, double time)
+    {
+        context.wrenSupport.callReflowWhenScriptsChange(dt);
     }
 
     ~this()

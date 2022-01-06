@@ -26,35 +26,36 @@ import wren.common;
 import dplug.wren.describe;
 import dplug.wren.wren_ui;
 
-nothrow:
+nothrow @nogc:
 
-/// Automatically set widgets ID. 
-/// It generates 
-///     _member.id = "_member";
-/// for every field that is @ScriptExport, in order to find them from Wren.
-string setUIElementsFieldNamesAsTheirId(T)()
-{
-    import std.traits: getSymbolsByUDA;
-    string s;
-
-    static foreach(m; getSymbolsByUDA!(T, ScriptExport))
-    {{
-        string fieldName = m.stringof;
-        s ~= fieldName ~ ".id = \"" ~ fieldName ~ "\";\n";
-    }}
-    return s;
-}
-
-@nogc:
-
-/// Manages interaction between Wren and the plugin. 
-/// Note: this is interlinked with UIContext.
-/// This class could as well be a part of UIContext.
+///
+/// `WrenSupport` manages interaction between Wren and the plugin. 
+/// Such an object is created/destroyed/accessed with `enableWrenSupport()`, `disableWrenSupport()`,
+/// and `wrenSupport()`. It is held, as all GUI globals in the `UIContext`.
+///
+/// Example:
+/// ---
+/// // Inside your UI constructor
+/// mixin(fieldIdentifiersAreIDs!DistortGUI);
+/// context.enableWrenSupport();
+/// debug
+///     context.wrenSupport.addModuleFileWatch("plugin", `/absolute/path/to/my/plugin.wren`); // Live-reload
+/// else
+///     context.wrenSupport.addModuleSource("plugin", import("plugin.wren"));                 // Final release has static scripts
+/// context.wrenSupport.registerScriptExports!DistortGUI;
+/// context.wrenSupport.callCreateUI();
+///
+/// // Inside your UI destructor
+/// context.disableWrenSupport();
+/// ---
+///
+/// See_also: `enableWrenSupport()`, `disableWrenSupport()`
+///
 final class WrenSupport
 {
 nothrow @nogc:
 
-    /// Constructor.
+    /// Constructor. Use `context.enableWrenSupport()` instead.
     this(IUIContext uiContext)
     {
         _uiContext = uiContext; // Note: wren VM start is deferred to first use.
@@ -83,7 +84,10 @@ nothrow @nogc:
     /// Note: the mirror Wren classes don't inherit from each other. Wren doesn't know our D hierarchy.
     void registerUIElementClass(ElemClass)()
     {
+        // If you fail here: ony UIElement derivatives can have @ScriptExport
+        // Maybe you can expose this functionnality in a widget?
         static assert(is(ElemClass: UIElement));
+
         string fullClassName = ElemClass.classinfo.name;
 
         if (!hasScriptExportClass(fullClassName)) // PERF: this is quadratic
@@ -145,6 +149,54 @@ nothrow @nogc:
     void callReflow()
     {
         callPluginMethod("reflow");
+    }
+
+    /// Read live-reload .wren files and restart the Wren VM if they have changed.
+    /// Check the registered .wren file and check if they have changed.
+    /// Since it (re)starts the Wren VM, it cannot be called from Wren.
+    /// Returns: `true` on first load, or if the scripts have changed.
+    bool reloadScriptsThatChanged()
+    {
+        bool oneScriptChanged = false;
+        foreach(ref fw; _fileSources)
+        {
+            if (fw.updateAndReturnIfChanged())
+                oneScriptChanged = true;
+        }
+
+        // If a script changed, we need to restart the whole Wren VM since there is no way to forger about a module!
+        if (oneScriptChanged)
+            stopWrenVM();
+
+        // then ensure Wren VM is on
+        startWrenVM();
+        return oneScriptChanged;
+    }
+
+    /// Call this in your `onAnimate` callback. This polls script regularly and force a full redraw.
+    ///
+    /// Example:
+    /// ---
+    /// override void onAnimate(double dt, double time)
+    /// {
+    ///    context.wrenSupport.callReflowWhenScriptsChange(dt);
+    /// }
+    /// ---
+    ///
+    void callReflowWhenScriptsChange(double dt)
+    {
+        enum CHECK_EVERY_N_SECS = 0.2; // 200 ms
+        _timeSinceLastScriptCheck += dt;
+        if (_timeSinceLastScriptCheck > CHECK_EVERY_N_SECS)
+        {
+            _timeSinceLastScriptCheck = 0;
+            if (reloadScriptsThatChanged())
+            {
+                // We detected a change, we need to call Plugin.reflow() in Wren, and invalidate graphics so that everything is redrawn.
+                callReflow();
+                uiContext.getRootElement().setDirtyWhole();
+            }
+        }
     }
 
     // <advanced API>
@@ -222,6 +274,7 @@ private:
 
     WrenVM* _vm = null;
     IUIContext _uiContext;
+    double _timeSinceLastScriptCheck = 0; // in seconds
 
     static struct PreloadedSource
     {
@@ -237,10 +290,10 @@ private:
         char* wrenFilePath;
         char* lastSource;
 
+        // PERF: this is awful... should check file dates instead
         bool updateAndReturnIfChanged()
         {
-            char* newSource = readWrenFile();
-       
+            char* newSource = readWrenFile(); 
             if ((lastSource is null) || strcmp(lastSource, newSource) != 0)
             {
                 free(lastSource);
@@ -278,27 +331,6 @@ private:
 
     /// "widgets" module source, recreated on import based upon _exportedClasses content.
     Vec!char _widgetModuleSource;
-
-
-    // Check the registered .wren file and check if they have changed.
-    // Since it (re)starts the Wren VM, it cannot be called from Wren.
-    void reloadScriptsThatChanged()
-    {
-        bool oneScriptChanged = false;
-        foreach(ref fw; _fileSources)
-        {
-            if (fw.updateAndReturnIfChanged())
-                oneScriptChanged = true;
-        }
-
-        // If a script changed, we need to restart the whole Wren VM since there is no way to forger about a module!
-        if (oneScriptChanged)
-            stopWrenVM();
-
-        // then ensure Wren VM is on
-        startWrenVM();
-    }
-
 
     void startWrenVM()
     {
