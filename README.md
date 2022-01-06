@@ -22,6 +22,7 @@
 - Automated Mac and Windows installers
 - Raspberry Pi support
 - Build plug-ins with less pain using the D language, possibly the most [powerful](https://dlang.org/orgs-using-d.html) native language available today
+- Live-coding of the UI with [Wren](https://wren.io/)
 - Leverage package-based dependencies using DUB, the D language's package manager
 - Small binaries with (optional) [rendering](http://www.auburnsounds.com/blog/2016-09-16_PBR-for-Audio-Software-Interfaces.html)
 - Static link with the MSCRT runtime libraries to distribute only one single file
@@ -83,6 +84,7 @@ Be sure to read the [Wiki](https://github.com/AuburnSounds/Dplug/wiki/) in depth
   - Price is free, no personal support must be expected though
   - Intel intrinsics compatible with Apple Silicon
   - Fast 2D software rasterizer in `dplug:canvas`
+  - Scriptable UI for faster authoring
   - PBR-style rendering lets you have a good visual quality with less disk space. If you don't use it, you don't pay for it.
   - No dealing with resource compilers: D can `import("filename.ext")` them
   - Easy to install and update
