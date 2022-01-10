@@ -1,0 +1,3 @@
+Color correcting all 3 RGB channels at once is common.
+
+However in photography correcting channels independently can turn your greys into "non-grey", which can possibly be perceived as dirty. Color correction is fraught with perils.
