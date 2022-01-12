@@ -2,8 +2,13 @@
  * N-dimensional half-open interval [a, b[.
  *
  * Copyright: Copyright Guillaume Piolat 2015-2021.
+ *            Copyright Ahmet Sait 2021.
+ *            Copyright Ryan Roden-Corrent 2016.
+ *            Copyright Nathan Sashihara 2018.
+ *            Copyright Colden Cullen 2014.
+ *
  * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
-  */
+ */
 module dplug.math.box;
 
 import std.math,

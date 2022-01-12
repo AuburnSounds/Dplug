@@ -2,8 +2,16 @@
  * N-dimensional small vector math.
  *
  * Copyright: Copyright Guillaume Piolat 2021.
+ *            Copyright Chance Snow 2021.
+ *            Copyright github @drug007 2018.
+ *            Copyright Nathan Sashihara 2018.
+ *            Copyright Ryan Roden-Corrent 2016.
+ *            Copyright Steven Dwy 2015.
+ *            Copyright Martin Nowak Dwy 2015.
+ *            Copyright github @clinei 2015.
+ * 
  * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
-  */
+ */
 module dplug.math.vector;
 
 import std.traits,
