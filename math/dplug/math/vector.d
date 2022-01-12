@@ -3,7 +3,7 @@
  *
  * Copyright: Copyright Guillaume Piolat 2021.
  *            Copyright Chance Snow 2021.
- *            Copyright github @drug007 2018.
+ *            Copyright Aleksandr Druzhinin 2018.
  *            Copyright Nathan Sashihara 2018.
  *            Copyright Ryan Roden-Corrent 2016.
  *            Copyright Steven Dwy 2015.

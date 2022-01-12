@@ -2,7 +2,7 @@
  * Custom sized 2D Matrices.
  *
  * Copyright: Copyright Guillaume Piolat 2015-2021.
- *            Copyright github @drug007 2016-2020.
+ *            Copyright Aleksandr Druzhinin 2016-2020.
  *            Copyright Nathan Sashihara 2018.
  *            Copyright Thibaut Charles 2018.
  *
