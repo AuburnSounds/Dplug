@@ -88,10 +88,27 @@ nothrow @nogc:
         // Maybe you can expose this functionnality in a widget?
         static assert(is(ElemClass: UIElement));
 
-        string fullClassName = ElemClass.classinfo.name;
+        string name = ElemClass.classinfo.name;
 
-        if (!hasScriptExportClass(fullClassName)) // PERF: this is quadratic
+        bool alreadyKnown = false; 
+
+        // search if class already known
+        IdentifierBloom.HashResult hash = IdentifierBloom.hashOf(name);
+        if (_identifierBloom.couldContain(hash))
         {
+            foreach(e; _exportedClasses[])
+            {
+                if (e.fullClassName() == name)
+                {
+                    alreadyKnown = true;
+                    break;
+                }
+            }
+        }
+
+        if (!alreadyKnown)
+        {
+            _identifierBloom.add(hash);
             ScriptExportClass c = mallocNew!ScriptExportClass();
             c.concreteClassInfo = ElemClass.classinfo;
             registerDClass!ElemClass(c);
@@ -274,6 +291,7 @@ private:
     WrenVM* _vm = null;
     IUIContext _uiContext;
     double _timeSinceLastScriptCheck = 0; // in seconds
+    IdentifierBloom _identifierBloom;
 
     static struct PreloadedSource
     {
@@ -374,14 +392,6 @@ private:
             }
             _vm = null;
         }
-    }   
-
-    bool hasScriptExportClass(string fullName)
-    {
-        foreach(e; _exportedClasses[])
-            if (e.fullClassName() == fullName)
-                return true;
-        return false;
     }
 
     void print(const(char)* text)
@@ -760,4 +770,41 @@ bool dplug_wrenDollarOperator(WrenVM* vm, Value* args)
 {
     WrenSupport ws = cast(WrenSupport) vm.config.userData;
     return ws.dollarOperator(vm, args);
+}
+
+
+// Bloom filter to filter out if an identifier is not defined, quickly.
+// Using the 64-bit FNV-1 hash: https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function
+struct IdentifierBloom
+{
+pure nothrow @nogc @safe:
+    alias HashResult = ulong;
+
+    ulong bits = 0;
+
+    static HashResult hashOf(const(char)[] identifier)
+    {
+        ulong hash = 0xcbf29ce484222325;
+
+        foreach(char ch; identifier)
+        {
+            hash = hash * 0x00000100000001B3;
+            hash = hash ^ cast(ulong)(ch);
+        }
+
+        return hash;
+    }
+
+    bool couldContain(HashResult identifierHash)
+    {
+        return (_bits & identifierHash) == identifierHash;
+    }
+
+    void add(HashResult identifierHash)
+    {
+        _bits |= identifierHash;
+    }
+
+private:
+    ulong _bits = 0;
 }

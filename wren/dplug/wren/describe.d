@@ -36,7 +36,7 @@ public:
     }
 
     /// The D identifier of the class, with module identifiers.
-    /// eg: UIKnob
+    /// eg: dplug.pbkwidgets.knob.UIKnob
     string fullClassName()
     {
         return concreteClassInfo.name;
