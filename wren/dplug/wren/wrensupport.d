@@ -304,9 +304,9 @@ private:
         char* wrenFilePath;
         char* lastSource;
 
-        // PERF: this is awful... should check file dates instead
         bool updateAndReturnIfChanged()
         {
+            // FUTURE: eventually use stat to get date of change instead
             char* newSource = readWrenFile(); 
             if ((lastSource is null) || strcmp(lastSource, newSource) != 0)
             {
