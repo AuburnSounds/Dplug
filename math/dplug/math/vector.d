@@ -7,8 +7,8 @@
  *            Copyright Nathan Sashihara 2018.
  *            Copyright Ryan Roden-Corrent 2016.
  *            Copyright Steven Dwy 2015.
- *            Copyright Martin Nowak Dwy 2015.
- *            Copyright github @clinei 2015.
+ *            Copyright Martin Nowak 2015.
+ *            Copyright Tanel Tagaväli 2015.
  * 
  * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
  */
