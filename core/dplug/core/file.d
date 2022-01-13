@@ -15,12 +15,14 @@ nothrow:
 
 /// Replacement for `std.file.read`.
 /// Returns: File contents, allocated with malloc. `null` on error.
-// FUTURE: this should take a char*, this is confusing
+/// Note: the result file gets an additional terminal zero after the slice, so that 
+/// it can be converted to a C string at no cost. 
+// FUTURE: this should be depreciated in favor of take a char*, this is confusing
 ubyte[] readFile(const(char)[] fileNameZ)
 {
     // assuming that fileNameZ is zero-terminated, since it will in practice be
     // a static string
-    FILE* file = fopen(fileNameZ.ptr, "rb".ptr);
+    FILE* file = fopen(assumeZeroTerminated(fileNameZ), "rb".ptr);
     if (file)
     {
         scope(exit) fclose(file);
@@ -36,7 +38,7 @@ ubyte[] readFile(const(char)[] fileNameZ)
             return null;
 
         // Read whole file in a mallocated slice
-        ubyte[] fileBytes = mallocSliceNoInit!ubyte(cast(int)size);
+        ubyte[] fileBytes = mallocSliceNoInit!ubyte(cast(int)size + 1); // room for one additional '\0' byte
         size_t remaining = cast(size_t)size;
 
         ubyte* p = fileBytes.ptr;
@@ -53,7 +55,9 @@ ubyte[] readFile(const(char)[] fileNameZ)
             remaining -= bytesRead;
         }
 
-        return fileBytes;
+        fileBytes[size] = 0;
+
+        return fileBytes[0..size];
     }
     else
         return null;

@@ -324,16 +324,7 @@ private:
         char* readWrenFile()
         {
             ubyte[] content = readFile(wrenFilePath);
-            scope(exit) free(content.ptr);
-
-            // If you fail here, your absolute path to a .wren script was wrong
-            assert(content);
-
-            // PERF: create directly a trailing \0 while reading the file
-            char* source = cast(char*) malloc(content.length + 1);
-            memcpy(source, content.ptr, content.length); 
-            source[content.length] = '\0';
-            return source;
+            return cast(char*) content.ptr; // correct because readFile return one trailing '\0'
         }
     }
 
