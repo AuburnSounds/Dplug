@@ -90,7 +90,7 @@ nothrow @nogc:
 
         string name = ElemClass.classinfo.name;
 
-        bool alreadyKnown = false; 
+        bool alreadyKnown = false;
 
         // search if class already known
         IdentifierBloom.HashResult hash = IdentifierBloom.hashOf(name);
@@ -109,8 +109,7 @@ nothrow @nogc:
         if (!alreadyKnown)
         {
             _identifierBloom.add(hash);
-            ScriptExportClass c = mallocNew!ScriptExportClass();
-            c.concreteClassInfo = ElemClass.classinfo;
+            ScriptExportClass c = mallocNew!ScriptExportClass(ElemClass.classinfo);
             registerDClass!ElemClass(c);
             _exportedClasses ~= c;
         }
@@ -121,7 +120,6 @@ nothrow @nogc:
     void addModuleSource(const(char)[] moduleName, const(char)[] moduleSource)
     {
         // This forces a zero terminator.
-        // PERF: use less zero-terminated strings in Wren, so that we don't have to do this
         char* moduleNameZ = stringDup(CString(moduleName).storage).ptr;
         char* moduleSourceZ = stringDup(CString(moduleSource).storage).ptr;
 
@@ -136,7 +134,6 @@ nothrow @nogc:
     void addModuleFileWatch(const(char)[] moduleName, const(char)[] wrenFilePath)
     {
         // This forces a zero terminator.
-        // PERF: use less zero-terminated strings in Wren, so that we don't have to do this
         char* moduleNameZ = stringDup(CString(moduleName).storage).ptr;
         char* wrenFilePathZ = stringDup(CString(wrenFilePath).storage).ptr;
 
@@ -531,15 +528,17 @@ private:
             // try to find concrete class directly
             ObjClass* classElement;
             ObjClass* classTarget;
-            ScriptExportClass* concreteClassInfo = findExportedClassByClassInfo(elem.classinfo);
+            ScriptExportClass concreteClassInfo = findExportedClassByClassInfo(elem.classinfo);
             if (concreteClassInfo)
             {
-                // PERF: this allocates
-                CString nameZ = CString(concreteClassInfo.className());
-                classTarget = AS_CLASS(wrenFindVariable(vm, widgetsModule, nameZ.storage));
+                const(char)* wrenClassName = concreteClassInfo.wrenClassNameZ();
+                classTarget = AS_CLASS(wrenFindVariable(vm, widgetsModule, wrenClassName));
             }
             else
+            {
+                // $ return a UIElement
                 classTarget = AS_CLASS(wrenFindVariable(vm, uiModule, "UIElement"));
+            }
 
             classElement = AS_CLASS(wrenFindVariable(vm, uiModule, "Element"));
 
@@ -592,7 +591,7 @@ private:
 
         foreach(size_t nthClass, ec; _exportedClasses[])
         {
-            text("class "); text(ec.className); text(" is UIElement {"); LF;
+            text("class "); textZ(ec.wrenClassNameZ); text(" is UIElement {"); LF;
 
             char[16] bufC;
             snprintf(bufC.ptr, 16, "%d", cast(int)nthClass);
@@ -607,6 +606,7 @@ private:
                 if (isRGBA)
                 {
                     // getter
+                    // PERF: this calls the wren function 4 times
                     text("  "); text(prop.identifier); text("{"); LF;
                     text("    return RGBA.new( e.getPropRGBA_("); textZ(bufC.ptr); text(","); textZ(buf.ptr); text(",0),");
                                          text("e.getPropRGBA_("); textZ(bufC.ptr); text(","); textZ(buf.ptr); text(",1),");
@@ -652,15 +652,15 @@ private:
         return _widgetModuleSource.ptr;
     }
 
-
-    ScriptExportClass* findExportedClassByClassInfo(TypeInfo_Class info)
+    ScriptExportClass findExportedClassByClassInfo(TypeInfo_Class info)
     {
-        foreach(ref ScriptExportClass sec; _exportedClasses[])
+        // PERF: again, not a simple lookup bt O(num-classes)
+        foreach(ScriptExportClass sec; _exportedClasses[])
         {
             if (sec.concreteClassInfo is info)
             {
                 // Found
-                return &sec;
+                return sec;
             }
         }
         return null;

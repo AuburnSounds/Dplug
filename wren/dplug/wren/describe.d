@@ -6,6 +6,7 @@ License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 module dplug.wren.describe;
 
+import core.stdc.stdlib: malloc, free;
 import dplug.core.vec;
 
 nothrow @nogc:
@@ -18,24 +19,34 @@ class ScriptExportClass
 nothrow @nogc:
 public:
 
-    /// The D identifier of the class, stripped from module identifiers.
-    /// Not owned, has to be compile-time.
-    /// eg: UIKnob
-    string className()
+    this(TypeInfo_Class classInfo)
     {
+        _concreteClassInfo = classInfo;
+
+        // build wren identifier
         string fullName = concreteClassInfo.name;
         int LEN = cast(int)fullName.length;
 
         // try to find rightmost '.'
+        string strippedName = fullName;
         for(int n = LEN - 1; n >= 0; --n)
         {
             if (fullName[n] == '.')
-                return fullName[n+1..$];
+            {
+                strippedName = fullName[n+1..$];
+                break;
+            }
         }
-        return fullName; // no '.' were found
+
+        _wrenClassName = convertDStringToCString(strippedName);
     }
 
-    /// The D identifier of the class, with module identifiers.
+    ~this()
+    {
+        free(_wrenClassName);
+    }
+
+    /// The full D identifier of the class, with module identifiers.
     /// eg: dplug.pbkwidgets.knob.UIKnob
     string fullClassName()
     {
@@ -43,12 +54,9 @@ public:
     }
 
     /// Its .classinfo
-    TypeInfo_Class concreteClassInfo; // the D ClassInfo of the D class named by fullClassName()
-
-    void addProperty(ScriptPropertyDesc prop)
+    TypeInfo_Class concreteClassInfo()
     {
-        prop.nth = cast(int)_properties.length;
-        _properties ~= prop;
+        return _concreteClassInfo;
     }
 
     ScriptPropertyDesc[] properties()
@@ -56,11 +64,29 @@ public:
         return _properties[];
     }
 
+    /// The identifier of the class in Wren code. It is stripped from module identifiers.
+    /// Zero-terminated.
+    /// eg: "UIKnob"
+    const(char)* wrenClassNameZ()
+    {
+        return _wrenClassName;
+    }
+
+    void addProperty(ScriptPropertyDesc prop)
+    {
+        prop.nth = cast(int)_properties.length;
+        _properties ~= prop;
+    }
+
 private:
+
+    char* _wrenClassName;
+
+    /// Its .classinfo
+    TypeInfo_Class _concreteClassInfo; // the D ClassInfo of the D class named by fullClassName()
+
 
     Vec!ScriptPropertyDesc _properties;
-
-private:
 }
 
 /// All possible types of properties.
@@ -112,3 +138,15 @@ private:
 
 static immutable size_t[ScriptPropertyType.max+1] SCRIPT_PROPERTY_SIZES =
 [ 1, 1, 1, 2, 2, 4, 4, 4, 8, 4];
+
+
+/// Allocated a zero-terminated C string from a D string. A copy is always made, and has to be released with free.
+char* convertDStringToCString(const(char)[] cstr) nothrow @nogc
+{
+    assert(cstr !is null);
+    size_t len = cstr.length;
+    char* copy = cast(char*) malloc(len + 1);
+    copy[0..len] = cstr[0..len];
+    copy[len] = '\0';
+    return copy;
+}
