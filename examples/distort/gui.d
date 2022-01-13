@@ -97,9 +97,9 @@ nothrow:
         // Enable all things Wren
         mixin(fieldIdentifiersAreIDs!DistortGUI); // Each UIElement in this object receives its identifier as runtime ID, ie. _inputSlider receives ID "_inputSlider"
         context.enableWrenSupport();
-        debug
-            context.wrenSupport.addModuleFileWatch("plugin", `/my/absolute/path/to/plugin.wren`); // debug => live reload, enter absolute path here
-        else
+        //debug
+        //    context.wrenSupport.addModuleFileWatch("plugin", `/my/absolute/path/to/plugin.wren`); // debug => live reload, enter absolute path here
+        //else
             context.wrenSupport.addModuleSource("plugin", import("plugin.wren"));                 // no debug => static scripts
         context.wrenSupport.registerScriptExports!DistortGUI; // Note: for now, only UIElement should be @ScriptExport
         context.wrenSupport.callCreateUI();
