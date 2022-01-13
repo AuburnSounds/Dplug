@@ -194,7 +194,6 @@ nothrow @nogc:
             {
                 // We detected a change, we need to call Plugin.reflow() in Wren, and invalidate graphics so that everything is redrawn.
                 callReflow();
-                uiContext.getRootElement().setDirtyWhole();
             }
         }
     }

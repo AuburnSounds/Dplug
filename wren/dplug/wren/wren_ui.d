@@ -121,19 +121,97 @@ void element_setProperty(WrenVM* vm)
 
     ubyte* raw = cast(ubyte*)(cast(void*)bridge.elem) + desc.offset;
 
+    bool changed = false;
+
     final switch(desc.type)
     {
-        case ScriptPropertyType.bool_:   *cast(bool*)raw = wrenGetSlotBool(vm, 3); break;
-        case ScriptPropertyType.byte_:   *cast(byte*)raw = cast(byte) wrenGetSlotDouble(vm, 3); break;
-        case ScriptPropertyType.ubyte_:  *cast(ubyte*)raw = cast(ubyte) wrenGetSlotDouble(vm, 3); break;
-        case ScriptPropertyType.short_:  *cast(short*)raw = cast(short) wrenGetSlotDouble(vm, 3); break;
-        case ScriptPropertyType.ushort_: *cast(ushort*)raw = cast(ushort) wrenGetSlotDouble(vm, 3); break;
-        case ScriptPropertyType.int_:    *cast(int*)raw = cast(int) wrenGetSlotDouble(vm, 3); break;
-        case ScriptPropertyType.uint_:   *cast(uint*)raw = cast(uint) wrenGetSlotDouble(vm, 3); break;
-        case ScriptPropertyType.float_:  *cast(float*)raw = cast(float) wrenGetSlotDouble(vm, 3); break;
-        case ScriptPropertyType.double_: *cast(double*)raw = wrenGetSlotDouble(vm, 3); break;
+        case ScriptPropertyType.bool_:
+        { 
+            bool* valuePtr = cast(bool*)raw;
+            bool current = *valuePtr;
+            bool newValue = wrenGetSlotBool(vm, 3);
+            changed = newValue != current;
+            *valuePtr = newValue;
+            break;
+        }
+        case ScriptPropertyType.byte_: 
+        { 
+            byte* valuePtr = cast(byte*)raw;
+            byte current = *valuePtr;
+            byte newValue =  cast(byte) wrenGetSlotDouble(vm, 3);
+            changed = newValue != current;
+            *valuePtr = newValue;
+            break;
+        }
+        case ScriptPropertyType.ubyte_: 
+        { 
+            ubyte* valuePtr = cast(ubyte*)raw;
+            ubyte current = *valuePtr;
+            ubyte newValue =  cast(ubyte) wrenGetSlotDouble(vm, 3);
+            changed = newValue != current;
+            *valuePtr = newValue;
+            break;
+        }   
+        case ScriptPropertyType.short_: 
+        { 
+            short* valuePtr = cast(short*)raw;
+            short current = *valuePtr;
+            short newValue =  cast(short) wrenGetSlotDouble(vm, 3);
+            changed = newValue != current;
+            *valuePtr = newValue;
+            break;
+        }
+        case ScriptPropertyType.ushort_: 
+        { 
+            ushort* valuePtr = cast(ushort*)raw;
+            ushort current = *valuePtr;
+            ushort newValue =  cast(ushort) wrenGetSlotDouble(vm, 3);
+            changed = newValue != current;
+            *valuePtr = newValue;
+            break;
+        }
+        case ScriptPropertyType.int_: 
+        { 
+            int* valuePtr = cast(int*)raw;
+            int current = *valuePtr;
+            int newValue =  cast(int) wrenGetSlotDouble(vm, 3);
+            changed = newValue != current;
+            *valuePtr = newValue;
+            break;
+        }
+        case ScriptPropertyType.uint_: 
+        { 
+            uint* valuePtr = cast(uint*)raw;
+            uint current = *valuePtr;
+            uint newValue =  cast(uint) wrenGetSlotDouble(vm, 3);
+            changed = newValue != current;
+            *valuePtr = newValue;
+            break;
+        }
+        case ScriptPropertyType.float_: 
+        { 
+            float* valuePtr = cast(float*)raw;
+            float current = *valuePtr;
+            float newValue =  cast(float) wrenGetSlotDouble(vm, 3);
+             changed = !(newValue == current); // so that NaN don't provoke redraw
+            *valuePtr = newValue;
+            break;
+        }
+        case ScriptPropertyType.double_: 
+        { 
+            double* valuePtr = cast(double*)raw;
+            double current = *valuePtr;
+            double newValue =  wrenGetSlotDouble(vm, 3);
+            changed = !(newValue == current); // so that NaN don't provoke redraw
+            *valuePtr = newValue;
+            break;
+        }
         case ScriptPropertyType.RGBA:    assert(false);
     }
+
+    // Changing a @ScriptProperty calls setDirtyWhole on the UIElement if the property changed
+    if (changed)
+        bridge.elem.setDirtyWhole();
 }
 
 void element_setPropertyRGBA(WrenVM* vm)
@@ -164,7 +242,13 @@ void element_setPropertyRGBA(WrenVM* vm)
     if (g > 255) g = 255;
     if (b > 255) b = 255;
     if (a > 255) a = 255;
-    *pRGBA = RGBA(cast(ubyte)r, cast(ubyte)g, cast(ubyte)b, cast(ubyte)a);
+    RGBA newColor = RGBA(cast(ubyte)r, cast(ubyte)g, cast(ubyte)b, cast(ubyte)a);
+    bool changed = newColor != *pRGBA;
+    *pRGBA = newColor;
+
+    // Changing a @ScriptProperty calls setDirtyWhole on the UIElement if the property changed
+    if (changed)
+        bridge.elem.setDirtyWhole();
 }
 
 void element_getProperty(WrenVM* vm)
