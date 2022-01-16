@@ -485,8 +485,7 @@ private:
         return res;
     }
 
-    // TODO: return the right class, depending on what is imported in the module and its .classinfo
-
+    // Implementation of the $ operator.
     bool dollarOperator(WrenVM* vm, Value* args)
     {
         try
@@ -513,6 +512,7 @@ private:
                 }
                 wrenPopRoot(vm);
             }
+            // PERF: uiModule and widgetsModule should be cached, unless the Wren VM has restarted
             {
                 Value moduleName = wrenStringFormat(vm, "$", "widgets".ptr);
                 wrenPushRoot(vm, AS_OBJ(moduleName));
@@ -539,7 +539,10 @@ private:
                 // $ return a UIElement
                 classTarget = AS_CLASS(wrenFindVariable(vm, uiModule, "UIElement"));
             }
+            // PERF: classTarget should be cached inside a UIElement user pointer, 
+            // and reused unless the Wren VM has restarted
 
+            // PERF: this should be cached, and reused unless the VM has restarted
             classElement = AS_CLASS(wrenFindVariable(vm, uiModule, "Element"));
 
             if (classTarget is null)
@@ -556,7 +559,7 @@ private:
 
             // Assign it in the first field of the newly created ui.UIElement
             ObjInstance* instance = AS_INSTANCE(obj);
-            instance.fields[0] = OBJ_VAL(foreign); // TODO: field seems to be collected already when VM is terminated
+            instance.fields[0] = OBJ_VAL(foreign);
 
             return RETURN_OBJ(args, AS_INSTANCE(obj));
         }
