@@ -53,10 +53,10 @@ nothrow @nogc:
 ///
 final class WrenSupport
 {
-nothrow @nogc:
+@nogc:
 
     /// Constructor. Use `context.enableWrenSupport()` instead.
-    this(IUIContext uiContext)
+    this(IUIContext uiContext) nothrow
     {
         _uiContext = uiContext; // Note: wren VM start is deferred to first use.
     }
@@ -67,7 +67,7 @@ nothrow @nogc:
     /// The right Wren class can then be returned by the `$` operator and `UI.getElementById` methods.
     ///
     /// Note: the mirror Wren classes don't inherit from each other. Wren doesn't know our D hierarchy.
-    void registerScriptExports(GUIClass)()
+    void registerScriptExports(GUIClass)() nothrow
     {
         // Automatically set widgets ID. _member.id = "_member";
         static foreach(m; getSymbolsByUDA!(GUIClass, ScriptExport))
@@ -82,7 +82,7 @@ nothrow @nogc:
     /// can be used to register classes manually.
     ///
     /// Note: the mirror Wren classes don't inherit from each other. Wren doesn't know our D hierarchy.
-    void registerUIElementClass(ElemClass)()
+    void registerUIElementClass(ElemClass)() nothrow
     {
         // If you fail here: ony UIElement derivatives can have @ScriptExport
         // Maybe you can expose this functionnality in a widget?
@@ -117,7 +117,7 @@ nothrow @nogc:
   
     /// Add a read-only Wren module source code, to be loaded once and never changed.
     /// Release purpose. When in developement, you might prefer a reloadable file, with `addModuleFileWatch`.
-    void addModuleSource(const(char)[] moduleName, const(char)[] moduleSource)
+    void addModuleSource(const(char)[] moduleName, const(char)[] moduleSource) nothrow
     {
         // This forces a zero terminator.
         char* moduleNameZ = stringDup(CString(moduleName).storage).ptr;
@@ -131,7 +131,7 @@ nothrow @nogc:
 
     /// Add a dynamic reloadable .wren source file. The module is reloaded and compared when `reloadScriptsThatChanged()` is called.
     /// Development purpose. For a release plug-in, you want to use `addModuleSource` instead.
-    void addModuleFileWatch(const(char)[] moduleName, const(char)[] wrenFilePath)
+    void addModuleFileWatch(const(char)[] moduleName, const(char)[] wrenFilePath) nothrow
     {
         // This forces a zero terminator.
         char* moduleNameZ = stringDup(CString(moduleName).storage).ptr;
@@ -150,7 +150,7 @@ nothrow @nogc:
     /// Note: Changing @ScriptProperty values does not make the elements dirty.
     ///       But since it's called at UI creation, the whole UI is dirty anyway so it works.
     ///
-    void callCreateUI()
+    void callCreateUI() nothrow
     {
         callPluginMethod("createUI");
     }
@@ -160,7 +160,7 @@ nothrow @nogc:
     /// Note: Changing @ScriptProperty values does not make the elements dirty.
     ///       But since it's called at UI reflow, the whole UI is dirty anyway so it works.
     ///
-    void callReflow()
+    void callReflow() nothrow
     {
         callPluginMethod("reflow");
     }
@@ -169,7 +169,7 @@ nothrow @nogc:
     /// Check the registered .wren file and check if they have changed.
     /// Since it (re)starts the Wren VM, it cannot be called from Wren.
     /// Returns: `true` on first load, or if the scripts have changed.
-    bool reloadScriptsThatChanged()
+    bool reloadScriptsThatChanged() nothrow
     {
         bool oneScriptChanged = false;
         foreach(ref fw; _fileSources)
@@ -197,7 +197,7 @@ nothrow @nogc:
     /// }
     /// ---
     ///
-    void callReflowWhenScriptsChange(double dt)
+    void callReflowWhenScriptsChange(double dt) nothrow
     {
         enum CHECK_EVERY_N_SECS = 0.2; // 200 ms
         _timeSinceLastScriptCheck += dt;
@@ -215,7 +215,7 @@ nothrow @nogc:
     // <advanced API>
 
     /// Call Plugin.<methodName>, a static method without arguments in Wren. For advanced users only.
-    void callPluginMethod(const(char)* methodName)
+    void callPluginMethod(const(char)* methodName) nothrow
     {
         reloadScriptsThatChanged();
         enum int MAX = 64+MAX_VARIABLE_NAME*2;
@@ -225,7 +225,7 @@ nothrow @nogc:
     }
 
     /// Interpret arbitrary code. For advanced users only.
-    void interpret(const(char)* path, const(char)* source)
+    void interpret(const(char)* path, const(char)* source) nothrow
     {
         try
         {
@@ -239,14 +239,14 @@ nothrow @nogc:
     }
 
     /// Interpret arbitrary code. For advanced users only.
-    void interpret(const(char)* source)
+    void interpret(const(char)* source) nothrow
     {
         interpret("", source);
     }  
 
     // </advanced API>
 
-    ~this()
+    ~this() nothrow
     {
         stopWrenVM();
 
@@ -271,12 +271,12 @@ nothrow @nogc:
 
 package:
 
-    IUIContext uiContext()
+    IUIContext uiContext() nothrow
     {
         return _uiContext;
     }
 
-    ScriptPropertyDesc* getScriptProperty(int nthClass, int nthProp)
+    ScriptPropertyDesc* getScriptProperty(int nthClass, int nthProp) nothrow
     {
         ScriptExportClass sec = _exportedClasses[nthClass];
         ScriptPropertyDesc[] descs = sec.properties();
@@ -337,7 +337,19 @@ private:
     /// "widgets" module source, recreated on import based upon _exportedClasses content.
     Vec!char _widgetModuleSource;
 
-    void startWrenVM()
+    /// The number of time a Wren VM has been started. This is to invalidate caching of Wren values.
+    int _vmGeneration = 0;
+
+    /// Wren module, cached to speed-up $ operator.
+    ObjModule* _cachedUIModule,
+               _cachedWidgetsModule;
+
+    int wrenVMGen() nothrow
+    {
+        return _vmGeneration;
+    }
+
+    void startWrenVM() nothrow
     {
         if (_vm !is null)
             return; // Already started
@@ -357,6 +369,9 @@ private:
 
             // Note: wren defaults for memory usage make a lot of sense.
             _vm = wrenNewVM(&config);
+            _vmGeneration++;
+            _cachedUIModule = null;
+            _cachedWidgetsModule = null;
         }
         catch(Exception e)
         {
@@ -366,7 +381,7 @@ private:
         }
     }
 
-    void stopWrenVM()
+    void stopWrenVM() nothrow
     {
         if (_vm !is null)
         {
@@ -382,12 +397,12 @@ private:
         }
     }
 
-    void print(const(char)* text)
+    void print(const(char)* text) nothrow
     {
         debugLog(text);
     }
 
-    void error(WrenErrorType type, const(char)* module_, int line, const(char)* message)
+    void error(WrenErrorType type, const(char)* module_, int line, const(char)* message) nothrow
     {
         switch(type)
         {
@@ -409,7 +424,7 @@ private:
     }
 
     // this is called anytime Wren looks for a foreign method
-    WrenForeignMethodFn foreignMethod(WrenVM* vm, const(char)* module_, const(char)* className, bool isStatic, const(char)* signature)
+    WrenForeignMethodFn foreignMethod(WrenVM* vm, const(char)* module_, const(char)* className, bool isStatic, const(char)* signature) nothrow
     {
         // Introducing the Dplug-Wren standard library here.
         try
@@ -428,7 +443,7 @@ private:
     }
 
     // this is called anytime Wren looks for a foreign class
-    WrenForeignClassMethods foreignClass(WrenVM* vm, const(char)* module_, const(char)* className)
+    WrenForeignClassMethods foreignClass(WrenVM* vm, const(char)* module_, const(char)* className) nothrow
     {
         if (strcmp(module_, "ui") == 0)
             return wrenUIForeignClass(vm, className);
@@ -439,7 +454,7 @@ private:
         return methods;
     }
 
-    WrenLoadModuleResult loadModule(WrenVM* vm, const(char)* name)
+    WrenLoadModuleResult loadModule(WrenVM* vm, const(char)* name) nothrow
     {
         WrenLoadModuleResult res;
         res.source = null;
@@ -485,8 +500,18 @@ private:
         return res;
     }
 
+    // Note: return a value whose lifetime is tied to Wren VM.
+    ObjModule* getWrenModule(const(char)* name)
+    {
+        Value moduleName = wrenStringFormat(_vm, "$", name);
+        wrenPushRoot(_vm, AS_OBJ(moduleName));
+        ObjModule* wModule = getModule(_vm, moduleName);
+        wrenPopRoot(_vm);
+        return wModule;
+    }
+
     // Implementation of the $ operator.
-    bool dollarOperator(WrenVM* vm, Value* args)
+    bool dollarOperator(WrenVM* vm, Value* args) nothrow
     {
         try
         {
@@ -500,31 +525,20 @@ private:
             // $ can be any of the improted classes in "widgets", if not it is an UIElement.
             // Note that both "ui" and "widgets" module MUST be imported.
 
-            ObjModule* uiModule, widgetsModule;
+            if (_cachedUIModule is null)
             {
-                Value moduleName = wrenStringFormat(vm, "$", "ui".ptr);
-                wrenPushRoot(vm, AS_OBJ(moduleName));
-                uiModule = getModule(vm, moduleName);
-                if (uiModule is null)
-                {
-                    wrenPopRoot(vm);
+                _cachedUIModule = getWrenModule("ui");
+                if (_cachedUIModule is null)
                     return RETURN_ERROR(vm, "module \"ui\" is not imported");
-                }
-                wrenPopRoot(vm);
-            }
-            // PERF: uiModule and widgetsModule should be cached, unless the Wren VM has restarted
-            {
-                Value moduleName = wrenStringFormat(vm, "$", "widgets".ptr);
-                wrenPushRoot(vm, AS_OBJ(moduleName));
-                widgetsModule = getModule(vm, moduleName);
-                if (widgetsModule is null)
-                {
-                    wrenPopRoot(vm);
-                    return RETURN_ERROR(vm, "module \"widgets\" is not imported");
-                }
-                wrenPopRoot(vm);
             }
 
+            if (_cachedWidgetsModule is null)
+            {
+                _cachedWidgetsModule = getWrenModule("widgets");
+                if (_cachedWidgetsModule is null)
+                    return RETURN_ERROR(vm, "module \"widgets\" is not imported");
+            }          
+           
             // try to find concrete class directly
             ObjClass* classElement;
             ObjClass* classTarget;
@@ -532,18 +546,18 @@ private:
             if (concreteClassInfo)
             {
                 const(char)* wrenClassName = concreteClassInfo.wrenClassNameZ();
-                classTarget = AS_CLASS(wrenFindVariable(vm, widgetsModule, wrenClassName));
+                classTarget = AS_CLASS(wrenFindVariable(vm, _cachedWidgetsModule, wrenClassName));
             }
             else
             {
-                // $ return a UIElement
-                classTarget = AS_CLASS(wrenFindVariable(vm, uiModule, "UIElement"));
+                // $ return a UIElement, no classes were found
+                classTarget = AS_CLASS(wrenFindVariable(vm, _cachedUIModule, "UIElement"));
             }
             // PERF: classTarget should be cached inside a UIElement user pointer, 
             // and reused unless the Wren VM has restarted
 
             // PERF: this should be cached, and reused unless the VM has restarted
-            classElement = AS_CLASS(wrenFindVariable(vm, uiModule, "Element"));
+            classElement = AS_CLASS(wrenFindVariable(vm, _cachedUIModule, "Element"));
 
             if (classTarget is null)
             {
@@ -571,7 +585,7 @@ private:
     }
 
     // auto-generate the "widgets" Wren module
-    const(char)* widgetModuleSource()
+    const(char)* widgetModuleSource() nothrow
     {
         _widgetModuleSource.clearContents();
 
@@ -655,7 +669,7 @@ private:
         return _widgetModuleSource.ptr;
     }
 
-    ScriptExportClass findExportedClassByClassInfo(TypeInfo_Class info)
+    ScriptExportClass findExportedClassByClassInfo(TypeInfo_Class info) nothrow
     {
         // PERF: again, not a simple lookup bt O(num-classes)
         foreach(ScriptExportClass sec; _exportedClasses[])
@@ -672,7 +686,7 @@ private:
     // Add a single UIElement derivative class into the set of known classes in Wren
     // Note that it enumerates all @ScriptProperty from its ancestors too, so it works.
     // Wren code doesn't actually know that UIImageKnob is derived from UIKnob.
-    private void registerDClass(alias aClass)(ScriptExportClass classDesc)
+    private void registerDClass(alias aClass)(ScriptExportClass classDesc) nothrow
     {
         static foreach(P; getSymbolsByUDA!(aClass, ScriptProperty))
         {{
