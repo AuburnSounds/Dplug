@@ -340,9 +340,12 @@ private:
     /// The number of time a Wren VM has been started. This is to invalidate caching of Wren values.
     int _vmGeneration = 0;
 
-    /// Wren module, cached to speed-up $ operator.
+    /// Wren module, its look-up is cached to speed-up $ operator.
     ObjModule* _cachedUIModule,
                _cachedWidgetsModule;
+
+    // ui.Element class, its look-up is cached to speed-up $ operator.
+    ObjClass* _cachedClassElement;
 
     int wrenVMGen() nothrow
     {
@@ -372,6 +375,7 @@ private:
             _vmGeneration++;
             _cachedUIModule = null;
             _cachedWidgetsModule = null;
+            _cachedClassElement = null;
         }
         catch(Exception e)
         {
@@ -538,9 +542,8 @@ private:
                 if (_cachedWidgetsModule is null)
                     return RETURN_ERROR(vm, "module \"widgets\" is not imported");
             }          
-           
+
             // try to find concrete class directly
-            ObjClass* classElement;
             ObjClass* classTarget;
             ScriptExportClass concreteClassInfo = findExportedClassByClassInfo(elem.classinfo);
             if (concreteClassInfo)
@@ -556,8 +559,10 @@ private:
             // PERF: classTarget should be cached inside a UIElement user pointer, 
             // and reused unless the Wren VM has restarted
 
-            // PERF: this should be cached, and reused unless the VM has restarted
-            classElement = AS_CLASS(wrenFindVariable(vm, _cachedUIModule, "Element"));
+            if (_cachedClassElement is null)
+            {
+                _cachedClassElement = AS_CLASS(wrenFindVariable(vm, _cachedUIModule, "Element"));
+            }
 
             if (classTarget is null)
             {
@@ -567,7 +572,7 @@ private:
             Value obj = wrenNewInstance(vm, classTarget);
 
             // Create new Element foreign
-            ObjForeign* foreign = wrenNewForeign(vm, classElement, UIElementBridge.sizeof);
+            ObjForeign* foreign = wrenNewForeign(vm, _cachedClassElement, UIElementBridge.sizeof);
             UIElementBridge* bridge = cast(UIElementBridge*) foreign.data.ptr;
             bridge.elem = elem; 
 
