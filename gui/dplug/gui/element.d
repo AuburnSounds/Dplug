@@ -95,6 +95,13 @@ static bool isValidElementID(const(char)[] identifier) pure nothrow @nogc @safe
     return true;
 }
 
+// An UIElement has 8 void* user pointers (4 reserved for Dplug + 4 for vendors).
+// The first two are used by dplug:wren-support.
+// Official dplug:wren-support optional extension.
+enum UIELEMENT_POINTERID_WREN_EXPORTED_CLASS = 0; /// The cached Wren class of this UIElement.
+enum UIELEMENT_POINTERID_WREN_VM_GENERATION  = 1; /// The Wren VM count, as it is restarted. Stored as void*, but is an uint.
+
+
 /// Base class of the UI widget hierarchy.
 ///
 /// MAYDO: a bunch of stuff in that class is intended specifically for the root element,
@@ -892,6 +899,18 @@ nothrow:
         _cursorWhenMouseOver = mouseCursor;
     }
 
+    /// Get a user pointer. Allow dplug:gui extensions.
+    final void* getUserPointer(int pointerID)
+    {
+        return _userPointers[pointerID];
+    }
+
+    /// Set a user pointer. Allow dplug:gui extensions.
+    final void setUserPointer(int pointerID, void* userPointer)
+    {
+        _userPointers[pointerID] = userPointer;
+    }
+
 protected:
 
     /// Raw layer draw method. This gives you 1 surface cropped by  _position for drawing.
@@ -959,7 +978,7 @@ protected:
     /// Position is the graphical extent of the element, or something larger.
     /// An `UIElement` is not allowed though to draw further than its _position.
     /// For efficiency it's best to keep `_position` as small as feasible.
-    /// This is an absolute positioning data, that doesn't depend on the parent's position.
+    /// This is an absolute "world" positioning data, that doesn't depend on the parent's position.
     box2i _position;
 
     /// The list of children UI elements.
@@ -999,6 +1018,13 @@ private:
 
     /// Identifier storage.
     char[maxUIElementIDLength+1] _idStorage;
+
+    /// Warning: if you store objects here, keep in mind they won't get destroyed automatically.
+    /// 4 user pointer in case you'd like to store things in UIElement as a Dplug extension.
+    /// id 0..1 are reserved for Wren support.
+    /// id 2..3 are reserved for future Dplug extensions.
+    /// id 4..7 are for vendor-specific extensions.
+    void*[8] _userPointers; // Opaque pointers for Wren VM and things.
 
     // Sort children in ascending z-order
     // Input: unsorted _children
@@ -1049,6 +1075,3 @@ private:
         }
     }
 }
-
-
-
