@@ -338,7 +338,7 @@ private:
     Vec!char _widgetModuleSource;
 
     /// The number of time a Wren VM has been started. This is to invalidate caching of Wren values.
-    int _vmGeneration = 0;
+    uint _vmGeneration = 0;
 
     /// Wren module, its look-up is cached to speed-up $ operator.
     ObjModule* _cachedUIModule,
@@ -346,11 +346,6 @@ private:
 
     // ui.Element class, its look-up is cached to speed-up $ operator.
     ObjClass* _cachedClassElement;
-
-    int wrenVMGen() nothrow
-    {
-        return _vmGeneration;
-    }
 
     void startWrenVM() nothrow
     {
@@ -514,6 +509,46 @@ private:
         return wModule;
     }
 
+    ObjClass* getWrenClassForThisUIELement(UIElement elem)
+    {
+        // Do we have a valid cached ObjClass* inside the UIElement?
+        void* cachedClass = elem.getUserPointer(UIELEMENT_POINTERID_WREN_EXPORTED_CLASS);
+        if (cachedClass !is null)
+        {
+            // Same Wren VM?
+            uint cacheGen = cast(uint) elem.getUserPointer(UIELEMENT_POINTERID_WREN_VM_GENERATION);
+            if (cacheGen == _vmGeneration)
+            {
+                // yes, reuse
+                return cast(ObjClass*) cachedClass; 
+            }
+        }
+
+        enum UIELEMENT_POINTERID_WREN_EXPORTED_CLASS = 0; /// The cached Wren class of this UIElement.
+        enum UIELEMENT_POINTERID_WREN_VM_GENERATION  = 1; /// The Wren VM count, as it is restarted. Stored as void*, but is an uint.
+
+        // try to find concrete class directly
+        ObjClass* classTarget;
+        ScriptExportClass concreteClassInfo = findExportedClassByClassInfo(elem.classinfo);
+        if (concreteClassInfo)
+        {
+            const(char)* wrenClassName = concreteClassInfo.wrenClassNameZ();
+            classTarget = AS_CLASS(wrenFindVariable(_vm, _cachedWidgetsModule, wrenClassName));
+        }
+        else
+        {
+            // $ return a UIElement, no classes were found
+            // This is a silent error, properties assignment will silently fail.
+            // We still cache that incorrect value, as the real fix is registering the class to Wren.
+            classTarget = AS_CLASS(wrenFindVariable(_vm, _cachedUIModule, "UIElement"));
+        }
+
+        // Cached return value inside the UIElement, which will speed-up future $
+        elem.setUserPointer(UIELEMENT_POINTERID_WREN_VM_GENERATION, classTarget);
+        elem.setUserPointer(UIELEMENT_POINTERID_WREN_VM_GENERATION, cast(void*) _vmGeneration);
+        return classTarget;
+    }
+
     // Implementation of the $ operator.
     bool dollarOperator(WrenVM* vm, Value* args) nothrow
     {
@@ -541,23 +576,11 @@ private:
                 _cachedWidgetsModule = getWrenModule("widgets");
                 if (_cachedWidgetsModule is null)
                     return RETURN_ERROR(vm, "module \"widgets\" is not imported");
-            }          
+            }
 
-            // try to find concrete class directly
-            ObjClass* classTarget;
-            ScriptExportClass concreteClassInfo = findExportedClassByClassInfo(elem.classinfo);
-            if (concreteClassInfo)
-            {
-                const(char)* wrenClassName = concreteClassInfo.wrenClassNameZ();
-                classTarget = AS_CLASS(wrenFindVariable(vm, _cachedWidgetsModule, wrenClassName));
-            }
-            else
-            {
-                // $ return a UIElement, no classes were found
-                classTarget = AS_CLASS(wrenFindVariable(vm, _cachedUIModule, "UIElement"));
-            }
-            // PERF: classTarget should be cached inside a UIElement user pointer, 
-            // and reused unless the Wren VM has restarted
+            ObjClass* classTarget = getWrenClassForThisUIELement(elem);
+
+
 
             if (_cachedClassElement is null)
             {
@@ -571,6 +594,7 @@ private:
 
             Value obj = wrenNewInstance(vm, classTarget);
 
+            // PERF: could this be also cached? It wouldn't be managed by Wren.
             // Create new Element foreign
             ObjForeign* foreign = wrenNewForeign(vm, _cachedClassElement, UIElementBridge.sizeof);
             UIElementBridge* bridge = cast(UIElementBridge*) foreign.data.ptr;
