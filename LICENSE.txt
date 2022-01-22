@@ -1,0 +1,3 @@
+Dplug Plug-in Framework. 
+
+Portions copyright other contributors, see EACH source file for more information.
