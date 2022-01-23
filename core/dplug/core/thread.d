@@ -348,11 +348,6 @@ int getTotalNumberOfCPUs() nothrow @nogc
             procs = 1;
         return procs;
     }
-    else version(linux)
-    {
-        import core.sys.posix.unistd : _SC_NPROCESSORS_ONLN, sysconf;
-        return cast(int) sysconf(_SC_NPROCESSORS_ONLN);
-    }
     else version(Darwin)
     {
         auto nameStr = "machdep.cpu.core_count\0".ptr;
@@ -360,6 +355,11 @@ int getTotalNumberOfCPUs() nothrow @nogc
         size_t len = uint.sizeof;
         sysctlbyname(nameStr, &ans, &len, null, 0);
         return cast(int)ans;
+    }
+    else version(Posix)
+    {
+        import core.sys.posix.unistd : _SC_NPROCESSORS_ONLN, sysconf;
+        return cast(int) sysconf(_SC_NPROCESSORS_ONLN);
     }
     else
         static assert(false, "OS unsupported");
