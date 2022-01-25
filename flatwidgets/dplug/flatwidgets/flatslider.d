@@ -25,6 +25,7 @@ nothrow:
     {
         super(context, flagAnimated | flagRaw);
         _param = param;
+        _param.addListener(this);
         _sensivity = sensitivity;
         _filmstrip = mipmap;
         _numFrames = numFrames;
