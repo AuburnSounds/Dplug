@@ -334,8 +334,7 @@ MidiQueue makeMidiQueue()
     return MidiQueue(42);
 }
 
-/// Queue for MIDI messages
-/// TODO: use a priority queue
+/// Priority queue for MIDI messages
 struct MidiQueue
 {
 nothrow:
