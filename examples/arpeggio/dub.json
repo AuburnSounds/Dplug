@@ -1,0 +1,42 @@
+{
+    "$schema": "https://raw.githubusercontent.com/Pure-D/code-d/master/json-validation/dub.schema.json",
+
+    "name": "arpeggio",
+
+    "importPaths": [ "." ],
+    "sourcePaths": [ "." ],
+    "stringImportPaths": [ "." ],
+
+    "targetType": "dynamicLibrary",
+
+    "dflags-linux-dmd": ["-defaultlib=libphobos2.a"],
+    "dflags-osx-ldc": ["-static"],
+    "dflags-linux-ldc": ["-link-defaultlib-shared=false"],
+    "dflags-linux-x86_64-ldc": ["-fvisibility=hidden"],
+    "dflags-windows-ldc": ["-mscrtlib=libcmt","-fvisibility=hidden", "-link-defaultlib-shared=false"],
+
+    "comment-WARNING-READ-THIS-IS-IMPORTANT": [
+        "    When making your own plug-in you have to CHANGE THESE DEPENDENCY    ",
+        "    SPECIFICATIONS below from path-based to ~>MAJOR.MINOR               ",
+        "      Example: ~>7.0                                                    ",
+        "    See also the DUB documentation:                                     ",
+        "         https://code.dlang.org/package-format?lang=json#version-specs  "],
+    "dependencies":
+    {
+        "dplug:vst2": { "path": "../.." },
+        "dplug:vst3": { "path": "../.." }
+    },
+
+    "configurations": [
+        {
+            "name": "VST3",
+            "versions": ["VST3"],
+            "targetType": "dynamicLibrary"
+        },
+        {
+            "name": "VST2",
+            "versions": ["VST2"],
+            "targetType": "dynamicLibrary"
+        }
+    ]
+}

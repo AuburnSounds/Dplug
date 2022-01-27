@@ -1,0 +1,16 @@
+{
+    "$schema": "https://raw.githubusercontent.com/AuburnSounds/dplug/master/plugin-schema.json",
+
+    "vendorName": "No Name Audio",
+    "vendorUniqueID": "NoAu",
+    "vendorSupportEmail": "support@nonameaudio.com",
+
+    "pluginName": "Arpeggio",
+    "pluginHomepage": "https://www.nonameaudio.com/fictional/plugin",
+    "pluginUniqueID": "NArp",
+    "publicVersion": "1.0.0",
+    "CFBundleIdentifierPrefix": "com.nonameaudio",
+    "hasGUI": false,
+    "sendsMIDI": true,
+    "category": "effectImaging"
+}
