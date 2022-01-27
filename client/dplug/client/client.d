@@ -272,7 +272,7 @@ nothrow:
                 _maxOutputs = legalIO.numOutputChannels;
         }
 
-        _midiQueue = makeMidiQueue();
+        _inputMidiQueue = makeMidiQueue();
     }
 
     ~this()
@@ -515,7 +515,7 @@ nothrow:
     /// Useful if you don't want to process messages every samples, or every split buffer.
     final const(MidiMessage)[] getNextMidiMessages(int frames) nothrow @nogc
     {
-        return _midiQueue.getNextMidiMessages(frames);
+        return _inputMidiQueue.getNextMidiMessages(frames);
     }
 
     /// Returns a new default preset.
@@ -704,7 +704,7 @@ nothrow:
     /// Enqueues an incoming MIDI message.
     void enqueueMIDIFromHost(MidiMessage message)
     {
-        _midiQueue.enqueue(message);
+        _inputMidiQueue.enqueue(message);
     }
 
     /// For plugin format clients only.
@@ -770,7 +770,7 @@ nothrow:
     void resetFromHost(double sampleRate, int maxFrames, int numInputs, int numOutputs) nothrow @nogc
     {
         // Clear outstanding MIDI messages (now invalid)
-        _midiQueue.initialize();
+        _inputMidiQueue.initialize(); // MAYDO: should it push a MIDI message to mute all voices?
 
         // We potentially give to the client implementation a lower value
         // for the maximum number of frames
@@ -867,7 +867,7 @@ private:
     int _maxFramesInProcess;
 
     // Container for awaiting MIDI messages.
-    MidiQueue _midiQueue;
+    MidiQueue _inputMidiQueue;
 
     final void createGraphicsLazily()
     {
