@@ -55,9 +55,9 @@ ubyte[] readFile(const(char)[] fileNameZ)
             remaining -= bytesRead;
         }
 
-        fileBytes[size] = 0;
+        fileBytes[cast(size_t)size] = 0;
 
-        return fileBytes[0..size];
+        return fileBytes[0..cast(size_t)size];
     }
     else
         return null;
