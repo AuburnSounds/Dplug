@@ -9,7 +9,5 @@
     "publicVersion": "1.0.0",
     "CFBundleIdentifierPrefix": "com.wittyaudio",
     "hasGUI": true,
-    "isSynth": false,
-    "receivesMIDI": true,
     "category": "effectDistortion"
 }

@@ -184,6 +184,7 @@ struct Plugin
     // </Used for Apple notarization>
 
     bool receivesMIDI;
+    bool sendsMIDI;
     bool isSynth;
 
     PluginCategory category;
@@ -863,7 +864,6 @@ Plugin readPluginDescription()
     }
     catch(Exception e)
     {
-        warning("no \"isSynth\" provided in plugin.json (eg: \"true\")\n         => Using \"false\" instead.");
         result.isSynth = false;
     }
 
@@ -873,8 +873,16 @@ Plugin readPluginDescription()
     }
     catch(Exception e)
     {
-        warning("no \"receivesMIDI\" provided in plugin.json (eg: \"true\")\n         => Using \"false\" instead.");
         result.receivesMIDI = false;
+    }
+
+    try
+    {
+        result.sendsMIDI = toBoolean(rawPluginFile["sendsMIDI"]);
+    }
+    catch(Exception e)
+    {
+        result.sendsMIDI = false;
     }
 
 

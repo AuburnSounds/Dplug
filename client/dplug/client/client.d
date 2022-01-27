@@ -164,6 +164,9 @@ struct PluginInfo
     /// with the right number of `frames`, every buffer.
     bool receivesMIDI = false;
 
+    /// True if the plugin sends MIDI events.
+    bool sendsMIDI = false;
+
     /// Used for being at the right place in list of plug-ins.
     PluginCategory category;
 
@@ -545,6 +548,11 @@ nothrow:
     final bool receivesMIDI() pure const nothrow @nogc
     {
         return _info.receivesMIDI;
+    }
+
+    final bool sendsMIDI() pure const nothrow @nogc
+    {
+        return _info.sendsMIDI;
     }
 
     final string vendorName() pure const nothrow @nogc
@@ -950,9 +958,13 @@ PluginInfo parsePluginInfo(string json)
     if ("pluginHomepage" in j)
         info.pluginHomepage = j["pluginHomepage"].str;
 
-    info.isSynth = toBoolean(j["isSynth"]);
+    if ("isSynth" in j)
+        info.isSynth = toBoolean(j["isSynth"]);
     info.hasGUI = toBoolean(j["hasGUI"]);
-    info.receivesMIDI = toBoolean(j["receivesMIDI"]);
+    if ("receivesMIDI" in j)
+        info.receivesMIDI = toBoolean(j["receivesMIDI"]);
+    if ("sendsMIDI" in j)
+        info.sendsMIDI = toBoolean(j["sendsMIDI"]);
     info.publicVersion = parsePluginVersion(j["publicVersion"].str);
 
     string CFBundleIdentifierPrefix = j["CFBundleIdentifierPrefix"].str;

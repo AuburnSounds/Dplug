@@ -5,11 +5,9 @@
 
     "required": [ "CFBundleIdentifierPrefix",
                   "hasGUI",
-                  "isSynth",
                   "pluginName",
                   "pluginUniqueID",
                   "publicVersion",
-                  "receivesMIDI",
                   "vendorName",
                   "vendorUniqueID",
                   "category" ],
@@ -43,7 +41,8 @@
         "isSynth": {
             "description": "true if the plug-in is an instrument. Must match with the choosen category property.",
             "id": "/properties/isSynth",
-            "type": "boolean"
+            "type": "boolean",
+            "default": "false"
         },
         "licensePath": {
             "description": "Optional path to a license file, to be bundled with binary releases.",
@@ -73,7 +72,14 @@
         "receivesMIDI": {
             "description": "true if the plug-in reads MIDI input, can be for a synthesizer or an effect taking MIDI.",
             "id": "/properties/receivesMIDI",
-            "type": "boolean"
+            "type": "boolean",
+            "default": "false"
+        },
+        "sendsMIDI": {
+            "description": "true if the plug-in sends MIDI output",
+            "id": "/properties/sendsMIDI",
+            "type": "boolean",
+            "default": "false"
         },
         "userManualPath": {
             "description": "Optional path to a user manual file, to be bundled with binary releases.",
