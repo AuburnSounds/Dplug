@@ -69,8 +69,8 @@ nothrow:
                 // A priority queue will order them.
                 // They are sent in bulk, after this buffer is processed.
 
-                //sendMIDIMessage(noteOn);
-                //sendMIDIMessage(noteOff);
+                sendMIDIMessage(noteOn);
+                sendMIDIMessage(noteOff);
             }
         }
     }

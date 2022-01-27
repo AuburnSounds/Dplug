@@ -272,7 +272,8 @@ nothrow:
                 _maxOutputs = legalIO.numOutputChannels;
         }
 
-        _inputMidiQueue = makeMidiQueue();
+        _inputMidiQueue = makeMidiQueue(); // PERF: only init those for plugins that need it?
+        _outputMidiQueue = makeMidiQueue();
     }
 
     ~this()
@@ -426,6 +427,16 @@ nothrow:
     IGraphics createGraphics() nothrow @nogc
     {
         return null;
+    }
+
+
+    /// Intended from inside the audio thread, in `process`.
+    /// Enqueue one MIDI message on the output MIDI priority queue, so that it is
+    /// eventually sent.
+    /// Its offset is relative to the current buffer, and you can send messages arbitrarily in the future too.
+    void sendMIDIMessage(MidiMessage message) nothrow @nogc
+    {
+        _outputMidiQueue.enqueue(message);
     }
 
     /// Getter for the IGraphics interface
@@ -708,6 +719,13 @@ nothrow:
     }
 
     /// For plugin format clients only.
+    /// This return a slice of MIDI messages to be sent for this (unsplit) buffer.
+    final const(MidiMessage)[] getOutputMidiMessages(int frames) nothrow @nogc
+    {
+        return _outputMidiQueue.getNextMidiMessages(frames);
+    }
+
+    /// For plugin format clients only.
     /// Calls processAudio repeatedly, splitting the buffers.
     /// Splitting allow to decouple memory requirements from the actual host buffer size.
     /// There is few performance penalty above 512 samples.
@@ -771,6 +789,8 @@ nothrow:
     {
         // Clear outstanding MIDI messages (now invalid)
         _inputMidiQueue.initialize(); // MAYDO: should it push a MIDI message to mute all voices?
+
+        _outputMidiQueue.initialize(); // TODO: that sounds fishy, what if we have send a note on but not the note off?
 
         // We potentially give to the client implementation a lower value
         // for the maximum number of frames
@@ -868,6 +888,9 @@ private:
 
     // Container for awaiting MIDI messages.
     MidiQueue _inputMidiQueue;
+
+    // Priority queue for sending MIDI messages.
+    MidiQueue _outputMidiQueue;
 
     final void createGraphicsLazily()
     {
