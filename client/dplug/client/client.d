@@ -488,7 +488,7 @@ nothrow:
     /// Returns: Plugin tail size in seconds.
     float tailSizeInSeconds() nothrow @nogc
     {
-        // Default: 800ms, which shoukld be safe for most plugins except delay or reverb
+        // Default: 800ms, which should be safe for most plugins except delay or reverb
         return 0.800f;
     }
 

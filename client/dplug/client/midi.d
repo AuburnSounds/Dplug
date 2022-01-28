@@ -221,6 +221,23 @@ nothrow:
         return _data1;
     }
 
+    /// Get the raw MIDI data in a buffer `data` of capacity `len`.
+    /// Returns: number of returned bytes.
+    /// If given < 0 len, return the number of bytes needed to return the whole message.
+    int toBytes(ubyte* data, int len)
+    {
+        if (len < 0) 
+            return 3;
+        else
+        {
+            assert(len >= 3);
+            data[0] = _statusByte;
+            data[1] = _data1;
+            data[2] = _data2;
+            return 3;
+        }
+    }
+
 private:
     int _offset = 0;
 
@@ -335,6 +352,7 @@ MidiQueue makeMidiQueue()
 }
 
 /// Priority queue for MIDI messages
+// TODO: size should dynamically grow if needed
 struct MidiQueue
 {
 nothrow:
@@ -374,6 +392,7 @@ nothrow:
     /// Gets all the MIDI messages for the next `frames` samples.
     /// It is guaranteed to be in order relative to time.
     /// These messages are valid until the next call to `getNextMidiMessages`.
+    /// The time reference is afterwards advanced by `frames`.
     const(MidiMessage)[] getNextMidiMessages(int frames)
     {
         _outMessages.clearContents();

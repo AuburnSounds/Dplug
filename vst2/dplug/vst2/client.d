@@ -781,15 +781,14 @@ private:
                 }
                 */
 
-                if (_client.isSynth())
+                if (_client.sendsMIDI())
                 {
-                    // Not supported yet
-                    /*
                     if (strcmp(str, "sendVstEvents") == 0)
+                        return 1;
+                    if (strcmp(str, "sendVstMidiEvent") == 0)
                         return 1;
                     if (strcmp(str, "sendVstMidiEvents") == 0)
                         return 1;
-                    */
                 }
 
                 if (_client.receivesMIDI())
@@ -906,6 +905,7 @@ private:
             for (int f = 0; f < sampleFrames; ++f)
                 dest[f] += source[f];
         }
+        sendMidiEvents(sampleFrames);
     }
 
     void processReplacing(float **inputs, float **outputs, int sampleFrames) nothrow @nogc
@@ -956,6 +956,7 @@ private:
             for (int f = 0; f < sampleFrames; ++f)
                 dest[f] = 0;
         }
+        sendMidiEvents(sampleFrames);
     }
 
     void processDoubleReplacing(double **inputs, double **outputs, int sampleFrames) nothrow @nogc
@@ -1016,6 +1017,35 @@ private:
             double* dest = outputs[i];
             for (int f = 0; f < sampleFrames; ++f)
                 dest[f] = 0;
+        }
+        sendMidiEvents(sampleFrames);
+    }
+
+    void sendMidiEvents(int frames)
+    {
+        if (!_client.sendsMIDI())
+            return;
+
+        const(MidiMessage)[] messages = _client.getOutputMidiMessages(frames);
+        foreach(MidiMessage msg; messages)
+        {
+            VstMidiEvent event;
+            event.type = kVstMidiType;
+            event.byteSize = VstMidiEvent.sizeof;
+            event.deltaFrames = msg.offset;
+            event.flags = 0; // not played live, doesn't need specially high-priority
+            event.noteLength = 0; // not available
+            event.noteOffset = 0; // not available
+            event.midiData[0] = 0;
+            event.midiData[1] = 0;
+            event.midiData[2] = 0;
+            event.midiData[3] = 0;
+            msg.toBytes(cast(ubyte*)(event.midiData.ptr), 3); // Warning: doesn't handle longer MIDI message than 3 bytes.            
+            event.detune = 0;
+            event.noteOffVelocity = 0; // why it's here?
+            event.reserved1 = 0;
+            event.reserved2 = 0;
+            _host.sendVstMidiEvent(cast(VstEvent*)&event);
         }
     }
 }
@@ -1265,6 +1295,15 @@ nothrow:
 
         // note: const is casted away here
         return callback(audioMasterCanDo, 0, 0, cast(void*)capsString, 0.0f) == 1;
+    }
+
+    bool sendVstMidiEvent(VstEvent* event)
+    {
+        VstEvents events;
+        memset(&events, 0, VstEvents.sizeof);
+        events.numEvents = 1;
+        events.events[0] = event; // PERF: could use the VLA in VstEvents to pass more at once.
+        return callback(audioMasterProcessEvents, 0, 0, &events, 0.0f) == 1;
     }
 
 private:

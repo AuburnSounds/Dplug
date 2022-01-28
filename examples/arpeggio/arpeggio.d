@@ -57,6 +57,8 @@ nothrow:
             _timer++;
             if (_timer >= _sampleRate)
             {
+                _timer -= _sampleRate;
+
                 int offset = cast(int)n;
                 int channel = 0;
                 int note = 60; // C5
@@ -68,9 +70,8 @@ nothrow:
                 // Note: you can send MIDI messages in any order, and in the future. 
                 // A priority queue will order them.
                 // They are sent in bulk, after this buffer is processed.
-
-                sendMIDIMessage(noteOn);
                 sendMIDIMessage(noteOff);
+                sendMIDIMessage(noteOn);
             }
         }
     }
