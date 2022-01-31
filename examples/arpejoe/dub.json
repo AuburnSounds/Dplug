@@ -1,7 +1,7 @@
 {
     "$schema": "https://raw.githubusercontent.com/Pure-D/code-d/master/json-validation/dub.schema.json",
 
-    "name": "arpeggio",
+    "name": "arpejoe",
 
     "importPaths": [ "." ],
     "sourcePaths": [ "." ],
@@ -24,7 +24,9 @@
     "dependencies":
     {
         "dplug:vst2": { "path": "../.." },
-        "dplug:vst3": { "path": "../.." }
+        "dplug:vst3": { "path": "../.." },
+        "dplug:au": { "path": "../.." },
+        "dplug:lv2": { "path": "../.." }
     },
 
     "configurations": [
@@ -36,6 +38,17 @@
         {
             "name": "VST2",
             "versions": ["VST2"],
+            "targetType": "dynamicLibrary"
+        },
+        {
+            "name": "AU",
+            "versions": ["AU"],
+            "targetType": "dynamicLibrary",
+            "lflags-osx-ldc": [ "-exported_symbols_list", "module-au.lst", "-dead_strip" ]
+        },
+        {
+            "name": "LV2",
+            "versions": ["LV2"],
             "targetType": "dynamicLibrary"
         }
     ]
