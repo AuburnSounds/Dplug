@@ -84,8 +84,9 @@ nothrow:
                 MidiMessage noteOff = makeMidiMessageNoteOff(offset + noteDuration, channel, note);
             
                 // The MIDI messages are stable-sorted by offset.
-                // If the offset is the same, the order of `sendMIDIMessage` is preserved.
-                // Warning: so for notes with zero length, send the note-on before note-off.
+                // If the offset is the same, the order of `sendMIDIMessage` calls is preserved though.
+                // Consequently, for notes with zero length, send the note-on before note-off. Else you can mix everything up, or
+                // send whole future patterns without limits.
                 sendMIDIMessage(noteOn);
                 sendMIDIMessage(noteOff);
             }
