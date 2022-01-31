@@ -110,6 +110,7 @@ nothrow:
         int maxInputs = _client.maxInputs();
         int maxOutputs = _client.maxOutputs();
         bool receivesMIDI = _client.receivesMIDI();
+        bool sendsMIDI = _client.sendsMIDI();
 
         _audioInputs = makeVec!Bus;
         _audioOutputs = makeVec!Bus;
@@ -166,6 +167,23 @@ nothrow:
                 flags = BusInfo.BusFlags.kDefaultActive;
             }
             _eventInputs.pushBack(busEventsIn);
+        }
+
+        if (sendsMIDI)
+        {
+            Bus busEventsOut;
+            busEventsOut.active = true;
+            busEventsOut.speakerArrangement = 0; // whatever
+            with(busEventsOut.info)
+            {
+                mediaType = kEvent;
+                direction = kOutput;
+                channelCount = 1;
+                setName("MIDI Output"w);
+                busType = kMain;
+                flags = BusInfo.BusFlags.kDefaultActive;
+            }
+            _eventOutputs.pushBack(busEventsOut);
         }
 
         return kResultOk;
@@ -567,6 +585,9 @@ nothrow:
             }
         }
 
+        if (_client.sendsMIDI)
+            _client.clearAccumulatedOutputMidiMessages();
+
         int processedFrames = 0;
         int subbuf = 0;
         while(processedFrames < totalFrames)
@@ -615,12 +636,16 @@ nothrow:
                                              blockFrames,
                                              _timeInfo,
                                              doNotSplit);
+
+                // Accumulate MIDI output for this sub-buffer, if any
+                if (_client.sendsMIDI())
+                    _client.accumulateOutputMIDI(blockFrames);
             }
 
             // advance split buffers
             for (int chan = 0; chan < numInputs; ++chan)
             {
-                _inputPointers[chan] = _inputPointers[chan] + blockFrames;                
+                _inputPointers[chan] = _inputPointers[chan] + blockFrames;
             }
             for (int chan = 0; chan < numOutputs; ++chan)
             {
@@ -641,6 +666,14 @@ nothrow:
         }
 
         assert(processedFrames == totalFrames);
+
+
+        // Send MIDI message in bulk
+        if (_client.sendsMIDI)
+        {
+            // TODO
+            assert(false);
+        }
 
         return kResultOk;
     }

@@ -792,6 +792,13 @@ nothrow:
         }
     }
 
+    /// For VST3 client only. Format clients that split the buffers themselves (for automation precision)
+    /// Need as well to accumulate MIDI output themselves.
+    final void accumulateOutputMIDI(int frames)
+    {
+        _outputMidiQueue.accumNextMidiMessages(_outputMidiMessages, frames);
+    }
+
     /// For plugin format clients only.
     /// Calls `reset()`.
     /// Must be called by the audio thread.
@@ -925,12 +932,7 @@ private:
             // Now that the UI is fully created, we enable the audio thread to use it
             atomicStore(_graphicsIsAvailable, true);
         }
-    }
-
-    final void accumulateOutputMIDI(int frames)
-    {
-        _outputMidiQueue.accumNextMidiMessages(_outputMidiMessages, frames);
-    }
+    }    
 }
 
 /// Should be called in Client class during compile time
