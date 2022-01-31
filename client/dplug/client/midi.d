@@ -358,11 +358,10 @@ struct MidiQueue
 nothrow:
 @nogc:
 
-    enum QueueCapacity = 511;
-
     private this(int dummy)
     {
-        _outMessages = makeVec!MidiMessage(QueueCapacity);
+        _outMessages = makeVec!MidiMessage();
+        initialize();
     }
 
     @disable this(this);
@@ -375,8 +374,11 @@ nothrow:
     {
         // Clears all pending MIDI messages
         _framesElapsed = 0;
-        _numElements = 0;
         _insertOrder = 0;
+        _heap.clearContents();
+
+        MidiMessageWithOrder dummy;
+        _heap.pushBack(dummy); // empty should have element
     }
 
     /// Enqueue a message in the priority queue.
@@ -433,14 +435,18 @@ private:
     //
     // Min heap implementation below.
     //
-    int _numElements = 0;
+
+    int numElements() pure const
+    {
+        return cast(int)(_heap.length) - 1; // item 0 is unused
+    }
 
     /// Rolling counter used to disambiguate from messages pushed with the same timestamp.
     uint _insertOrder = 0;
 
     // Useful slots are in 1..QueueCapacity+1
     // means it can contain QueueCapacity items at most
-    MidiMessageWithOrder[QueueCapacity+1] _heap;
+    Vec!MidiMessageWithOrder _heap; // important that this is grow-only
 
     static struct MidiMessageWithOrder
     {
@@ -451,27 +457,10 @@ private:
     void insertElement(MidiMessage message)
     {
         // Insert the element at the next available bottom level slot
-        int slot = _numElements + 1;
+        int slot = numElements() + 1;
 
-        _numElements++;
-
-        if (slot >= _heap.length)
-        {
-            // TODO: limitation here, we can't accept more than QueueCapacity MIDI messages in the queue
-            debug
-            {
-                // MIDI messages heap is on full capacity.
-                // That can happen because you have forgotten to call `getNextMidiMessages`
-                // with the necessary number of frames.
-                assert(false);
-            }
-            else
-            {
-                return; // dropping excessive message
-            }
-        }
-
-        _heap[slot] = MidiMessageWithOrder(message, _insertOrder++);
+        // Insert at end of heap, then bubble up
+        _heap.pushBack(MidiMessageWithOrder(message, _insertOrder++));
 
         // Bubble up
         while (slot > 1 && compareLargerThan(_heap[parentOf(slot)], _heap[slot]))
@@ -484,8 +473,8 @@ private:
 
     bool empty()
     {
-        assert(_numElements >= 0);
-        return _numElements == 0;
+        assert(numElements() >= 0);
+        return numElements() == 0;
     }
 
     MidiMessage minElement()
@@ -499,16 +488,9 @@ private:
         assert(!empty);
 
         // Put the last element into root
-        _heap[1] = _heap[_numElements];
-
-        _numElements = _numElements-1;
+        _heap[1] = _heap.popBack();
 
         int slot = 1;
-
-        if (slot >= _heap.length)
-        {
-            debug assert(false); // dropping excessive message
-        }
 
         while (1)
         {
@@ -518,11 +500,11 @@ private:
             int right = rightChildOf(slot);
             int best = slot;
 
-            if ((left <= _numElements) && compareLargerThan(_heap[best], _heap[left]))
+            if ((left <= numElements()) && compareLargerThan(_heap[best], _heap[left]))
             {
                 best = left;
             }
-            if (right <= _numElements && compareLargerThan(_heap[best], _heap[right]))
+            if (right <= numElements() && compareLargerThan(_heap[best], _heap[right]))
             {
                 best = right;
             }
@@ -584,11 +566,12 @@ unittest
     MidiQueue queue = makeMidiQueue();
     foreach (k; 0..2)
     {
+        int capacity = 511;
         // Enqueue QueueCapacity messages with decreasing timestamps
-        foreach(i; 0..MidiQueue.QueueCapacity)
+        foreach(i; 0..capacity)
         {
-            queue.enqueue( makeMidiMessageNoteOn(MidiQueue.QueueCapacity-1-i, 0, 60, 100) );
-            assert(queue._numElements == i+1);
+            queue.enqueue( makeMidiMessageNoteOn(capacity-1-i, 0, 60, 100) );
+            assert(queue.numElements() == i+1);
         }
 
         const(MidiMessage)[] messages = queue.getNextMidiMessages(1024);
