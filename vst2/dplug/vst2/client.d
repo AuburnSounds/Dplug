@@ -891,6 +891,7 @@ private:
             _outputPointers[i] = _outputScratchBuffer[i].ptr;
         }
 
+        clearMidiOutBuffer();
         _client.processAudioFromHost(_inputPointers[0..usedInputs],
                                      _outputPointers[0..usedOutputs],
                                      sampleFrames,
@@ -943,6 +944,7 @@ private:
                 _outputPointers[i] = _outputScratchBuffer[i].ptr; // dummy output
         }
 
+        clearMidiOutBuffer();
         _client.processAudioFromHost(_inputPointers[0..usedInputs],
                                      _outputPointers[0..usedOutputs],
                                      sampleFrames,
@@ -996,6 +998,7 @@ private:
             _outputPointers[i] = _outputScratchBuffer[i].ptr;
         }
 
+        clearMidiOutBuffer();
         _client.processAudioFromHost(_inputPointers[0..usedInputs],
                                      _outputPointers[0..usedOutputs],
                                      sampleFrames,
@@ -1021,12 +1024,19 @@ private:
         sendMidiEvents(sampleFrames);
     }
 
+    void clearMidiOutBuffer()
+    {
+        if (!_client.sendsMIDI())
+            return;
+        _client.clearAccumulatedOutputMidiMessages();
+    }
+
     void sendMidiEvents(int frames)
     {
         if (!_client.sendsMIDI())
             return;
 
-        const(MidiMessage)[] messages = _client.getOutputMidiMessages(frames);
+        const(MidiMessage)[] messages = _client.getAccumulatedOutputMidiMessages(frames);
         foreach(MidiMessage msg; messages)
         {
             VstMidiEvent event;

@@ -719,10 +719,18 @@ nothrow:
     }
 
     /// For plugin format clients only.
-    /// This return a slice of MIDI messages to be sent for this (unsplit) buffer.
-    final const(MidiMessage)[] getOutputMidiMessages(int frames) nothrow @nogc
+    /// This return a slice of MIDI messages to be sent for this (whole unsplit) buffer.
+    /// Internally, you need to either use split-buffering from this file, or if the format does
+    /// its own buffer split it needs to call `accumulateOutputMIDI` itself.
+    final const(MidiMessage)[] getAccumulatedOutputMidiMessages(int frames) nothrow @nogc
     {
-        return _outputMidiQueue.getNextMidiMessages(frames);
+        return _outputMidiMessages[];
+    }
+    /// For plugin format clients only.
+    /// Clear MIDI output buffer. Call it before `getAccumulatedOutputMidiMessages`.
+    final void clearAccumulatedOutputMidiMessages() nothrow @nogc
+    {
+        _outputMidiMessages.clearContents();
     }
 
     /// For plugin format clients only.
@@ -752,6 +760,7 @@ nothrow:
         if (_maxFramesInProcess == 0 || doNotSplit)
         {
             processAudio(inputs, outputs, frames, timeInfo);
+            if (sendsMIDI) accumulateOutputMIDI(frames);
         }
         else
         {
@@ -764,6 +773,7 @@ nothrow:
                     sliceLength = _maxFramesInProcess;
 
                 processAudio(inputs, outputs, sliceLength, timeInfo);
+                if (sendsMIDI) accumulateOutputMIDI(sliceLength);
 
                 // offset all input buffer pointers
                 for (int i = 0; i < cast(int)inputs.length; ++i)
@@ -892,11 +902,15 @@ private:
     // Priority queue for sending MIDI messages.
     MidiQueue _outputMidiQueue;
 
+    // Accumulated output MIDI messages, for one unsplit buffer.
+    // Output MIDI messages, if any, are accumulated there.
+    Vec!MidiMessage _outputMidiMessages;
+
     final void createGraphicsLazily()
     {
         // First GUI opening create the graphics object
         // no need to protect _graphics here since the audio thread
-        // does not write to it
+        // does not write to it.
         if ( (_graphics is null) && hasGUI())
         {
             // Why is the IGraphics created lazily? This allows to load a plugin very quickly,
@@ -911,6 +925,11 @@ private:
             // Now that the UI is fully created, we enable the audio thread to use it
             atomicStore(_graphicsIsAvailable, true);
         }
+    }
+
+    final void accumulateOutputMIDI(int frames)
+    {
+        _outputMidiQueue.accumNextMidiMessages(_outputMidiMessages, frames);
     }
 }
 

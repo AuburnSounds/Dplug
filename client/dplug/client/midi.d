@@ -352,7 +352,6 @@ MidiQueue makeMidiQueue()
 }
 
 /// Priority queue for MIDI messages
-// TODO: size should dynamically grow if needed
 struct MidiQueue
 {
 nothrow:
