@@ -398,7 +398,15 @@ nothrow:
     const(MidiMessage)[] getNextMidiMessages(int frames)
     {
         _outMessages.clearContents();
+        accumNextMidiMessages(_outMessages, frames);
+        return _outMessages[];
+    }
 
+    /// Another way to get MIDI messages is to pushBack them into an external buffer,
+    /// in order to accumulate them for different sub-buffers.
+    /// When you use this API, you need to provide a Vec yourself.
+    void accumNextMidiMessages(ref Vec!MidiMessage output, int frames)
+    {
         int framesLimit = _framesElapsed;
 
         if (!empty())
@@ -411,7 +419,7 @@ nothrow:
                 m._offset -= _framesElapsed;
                 assert(m._offset >= 0);
                 assert(m._offset < frames);
-                _outMessages.pushBack(m);
+                output.pushBack(m);
                 popMinElement();
 
                 if (empty())
@@ -421,7 +429,6 @@ nothrow:
             }
         }
         _framesElapsed += frames;
-        return _outMessages[];
     }
 
 private:

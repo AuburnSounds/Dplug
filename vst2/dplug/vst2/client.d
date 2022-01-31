@@ -2,7 +2,7 @@
 Cockos WDL License
 
 Copyright (C) 2005-2015 Cockos Incorporated
-Copyright (C) 2015-2018 Guillaume Piolat
+Copyright (C) 2015-2022 Guillaume Piolat
 
 Portions copyright other contributors, see each source file for more information
 
@@ -18,7 +18,7 @@ Permission is granted to anyone to use this software for any purpose, including 
 VST plug-in client implementation.
 
 Copyright: Cockos Incorporated 2005-2015.
-Copyright: Guillaume Piolat 2015-2018.
+Copyright: Guillaume Piolat 2015-2022.
 +/
 module dplug.vst2.client;
 
