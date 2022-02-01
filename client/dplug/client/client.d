@@ -722,7 +722,7 @@ nothrow:
     /// This return a slice of MIDI messages to be sent for this (whole unsplit) buffer.
     /// Internally, you need to either use split-buffering from this file, or if the format does
     /// its own buffer split it needs to call `accumulateOutputMIDI` itself.
-    final const(MidiMessage)[] getAccumulatedOutputMidiMessages(int frames) nothrow @nogc
+    final const(MidiMessage)[] getAccumulatedOutputMidiMessages() nothrow @nogc
     {
         return _outputMidiMessages[];
     }
@@ -794,6 +794,7 @@ nothrow:
 
     /// For VST3 client only. Format clients that split the buffers themselves (for automation precision)
     /// Need as well to accumulate MIDI output themselves.
+    /// See_also: `getAccumulatedOutputMidiMessages` for how to get those accumulated messages for the whole buffer.
     final void accumulateOutputMIDI(int frames)
     {
         _outputMidiQueue.accumNextMidiMessages(_outputMidiMessages, frames);

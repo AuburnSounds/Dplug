@@ -906,7 +906,7 @@ private:
             for (int f = 0; f < sampleFrames; ++f)
                 dest[f] += source[f];
         }
-        sendMidiEvents(sampleFrames);
+        sendMidiEvents();
     }
 
     void processReplacing(float **inputs, float **outputs, int sampleFrames) nothrow @nogc
@@ -958,7 +958,7 @@ private:
             for (int f = 0; f < sampleFrames; ++f)
                 dest[f] = 0;
         }
-        sendMidiEvents(sampleFrames);
+        sendMidiEvents();
     }
 
     void processDoubleReplacing(double **inputs, double **outputs, int sampleFrames) nothrow @nogc
@@ -1021,7 +1021,7 @@ private:
             for (int f = 0; f < sampleFrames; ++f)
                 dest[f] = 0;
         }
-        sendMidiEvents(sampleFrames);
+        sendMidiEvents();
     }
 
     void clearMidiOutBuffer()
@@ -1031,12 +1031,12 @@ private:
         _client.clearAccumulatedOutputMidiMessages();
     }
 
-    void sendMidiEvents(int frames)
+    void sendMidiEvents()
     {
         if (!_client.sendsMIDI())
             return;
 
-        const(MidiMessage)[] messages = _client.getAccumulatedOutputMidiMessages(frames);
+        const(MidiMessage)[] messages = _client.getAccumulatedOutputMidiMessages();
         foreach(MidiMessage msg; messages)
         {
             VstMidiEvent event;
