@@ -59,7 +59,6 @@ nothrow:
 
     override void processAudio(const(float*)[] inputs, float*[]outputs, int frames, TimeInfo info) nothrow @nogc
     {
-        int note = readParam!int(paramNote);
         int velocity = readParam!int(paramVelocity);
 
         double delayBetweenNoteOnInSamples = _sampleRate * readParam!float(paramSpeed);
@@ -79,6 +78,9 @@ nothrow:
 
                 int offset = cast(int)n;
                 int channel = 0;
+                int note = readParam!int(paramNote) + pattern[(_patternIndex++ & 7)];
+                if (note < 0 || note > 127)
+                    continue;
 
                 MidiMessage noteOn  = makeMidiMessageNoteOn(offset,                 channel, note, velocity);            
                 MidiMessage noteOff = makeMidiMessageNoteOff(offset + noteDuration, channel, note);
@@ -95,4 +97,6 @@ nothrow:
 private:
     double _timer; // time accumulator
     int _sampleRate;
+    int _patternIndex;
+    int[8] pattern = [-12, 0, 12, -12, 12, 7, -5, 12];
 }
