@@ -667,12 +667,46 @@ nothrow:
 
         assert(processedFrames == totalFrames);
 
-
         // Send MIDI message in bulk
         if (_client.sendsMIDI)
         {
-            // TODO
-            assert(false);
+            const(MidiMessage)[] toSend = _client.getAccumulatedOutputMidiMessages();
+            IEventList outEvents = data.outputEvents;
+
+            if (outEvents !is null && toSend.length != 0)
+            {
+                foreach(ref const(MidiMessage) msg; toSend)
+                {
+                    Event e;
+                    e.busIndex = 0;
+                    e.sampleOffset = msg.offset;
+                    e.ppqPosition = 0;
+                    e.flags = 0;
+
+                    // TODO: CC output
+                    if (msg.isNoteOn())
+                    {
+                        e.type = Event.EventTypes.kNoteOnEvent;
+                        e.noteOn.channel = cast(short) msg.channel();
+                        e.noteOn.pitch = cast(short) msg.noteNumber();
+                        e.noteOn.velocity = msg.noteVelocity() / 127.0f;
+                        e.noteOn.length = 0;
+                        e.noteOn.tuning = 0;
+                        e.noteOn.noteId = -1;
+                        outEvents.addEvent(e);
+                    }
+                    else if (msg.isNoteOff())
+                    {
+                        e.type = Event.EventTypes.kNoteOffEvent;
+                        e.noteOff.channel = cast(short) msg.channel();
+                        e.noteOff.pitch = cast(short) msg.noteNumber();
+                        e.noteOff.velocity = msg.noteVelocity() / 127.0f;
+                        e.noteOff.tuning = 0;
+                        e.noteOff.noteId = -1;
+                        outEvents.addEvent(e);
+                    }
+                }
+            }
         }
 
         return kResultOk;
