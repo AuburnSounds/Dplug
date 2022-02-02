@@ -1,7 +1,7 @@
 //-----------------------------------------------------------------------------
 // LICENSE
 // (c) 2005, Steinberg Media Technologies GmbH, All Rights Reserved
-// (c) 2018, Guillaume Piolat (contact@auburnsounds.com)
+// (c) 2018-2021, Guillaume Piolat (contact@auburnsounds.com)
 //-----------------------------------------------------------------------------
 //
 // This Software Development Kit is licensed under the terms of the General
@@ -510,7 +510,6 @@ nothrow:
             _inputPointers[chan] = pCopy;
         }
 
-        //
         // Read parameter changes, sets them.
         // For changed parameters, fills an array of successive values for each split period + 1.
         //
@@ -683,7 +682,11 @@ nothrow:
                     e.ppqPosition = 0;
                     e.flags = 0;
 
-                    // TODO: CC output
+                    // TODO support the following events:
+                    // - MIDI poly after touch
+                    // - MIDI channel after touch
+                    // - MIDI program change
+
                     if (msg.isNoteOn())
                     {
                         e.type = Event.EventTypes.kNoteOnEvent;
@@ -705,10 +708,26 @@ nothrow:
                         e.noteOff.noteId = -1;
                         outEvents.addEvent(e);
                     }
+                    else if (msg.isPitchBend())
+                    {
+                        e.type = Event.EventTypes.kLegacyMIDICCOutEvent;
+                        e.midiCCOut.channel = cast(byte) msg.channel();
+                        e.midiCCOut.controlNumber = 129 /* kPitchBend */;
+                        e.midiCCOut.value = msg.data1();
+                        e.midiCCOut.value2 = msg.data2();
+                        outEvents.addEvent(e);
+                    }
+                    else if (msg.isControlChange())
+                    {
+                        e.type = Event.EventTypes.kLegacyMIDICCOutEvent;
+                        e.midiCCOut.channel = cast(byte) msg.channel();
+                        e.midiCCOut.controlNumber = cast(ubyte) msg.controlChangeControl();
+                        e.midiCCOut.value = cast(byte) msg.controlChangeValue();
+                        e.midiCCOut.value2 = 0; // TODO: special handling for pitch bend and poly pressure                        
+                    }
                 }
             }
         }
-
         return kResultOk;
     }
 

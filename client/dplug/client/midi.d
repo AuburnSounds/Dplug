@@ -244,6 +244,17 @@ nothrow:
         }
     }
 
+    /// Simply returns internal representation.
+    ubyte data1() pure const
+    {
+        return _data1;
+    }
+    ///ditto
+    ubyte data2() pure const
+    {
+        return _data2;
+    }
+
 private:
     int _offset = 0;
 
@@ -568,6 +579,7 @@ private:
         else
         {
             // Impossible, unless 2^32 messages have been pushed with the same timestamp
+            // which is perhaps too experimental as far as music goes
             assert(false);
         }
     }
