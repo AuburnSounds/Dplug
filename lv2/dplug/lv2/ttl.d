@@ -62,12 +62,14 @@ int GenerateManifestFromClient_templated(alias ClientClass)(char[] outputBuffer,
     strcat(manifest.ptr, "@prefix ui:   <http://lv2plug.in/ns/extensions/ui#>.\n".ptr);
     strcat(manifest.ptr, "@prefix pset: <http://lv2plug.in/ns/ext/presets#>.\n".ptr);
     strcat(manifest.ptr, "@prefix opts: <http://lv2plug.in/ns/ext/options#>.\n".ptr);
+    if (client.sendsMIDI)
+    {
+        strcat(manifest.ptr, "@prefix rsz:  <http://lv2plug.in/ns/ext/resize-port#>.\n".ptr);
+    }
     strcat(manifest.ptr, "@prefix pprops: <http://lv2plug.in/ns/ext/port-props#>.\n".ptr);
     strcat(manifest.ptr, "@prefix vendor: ".ptr); // this prefix abbreviate the ttl with our own URL base
     strcat(manifest.ptr, escapeRDF_IRI(uriVendor).ptr);
     strcat(manifest.ptr, ".\n\n".ptr);
-
-    
 
     string uriGUI = null;
     if(client.hasGUI)
@@ -107,7 +109,7 @@ int GenerateManifestFromClient_templated(alias ClientClass)(char[] outputBuffer,
             strcat(manifest.ptr, "    ui:ui vendor:ui;\n".ptr);
         }
 
-        strcat(manifest.ptr, buildParamPortConfiguration(client.params(), legalIO, client.receivesMIDI).ptr);
+        strcat(manifest.ptr, buildParamPortConfiguration(client.params(), legalIO, client.receivesMIDI, client.sendsMIDI).ptr);
     }
 
     // add presets information
@@ -392,7 +394,7 @@ const(char)[] escapeRDF_IRI(const(char)[] s) nothrow @nogc
     return escapedRDF_IRI[0..index];
 }
 
-const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, bool hasMIDIInput) nothrow @nogc
+const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, bool hasMIDIInput, bool hasMIDIOutput) nothrow @nogc
 {
     import std.conv: to;
     import std.uni: toLower;
@@ -513,22 +515,41 @@ const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, b
     strcat(paramString.ptr, "        a lv2:InputPort, atom:AtomPort ;\n".ptr);
     strcat(paramString.ptr, "        atom:bufferType atom:Sequence ;\n".ptr);
     strcat(paramString.ptr, "        lv2:portProperty lv2:connectionOptional ;\n".ptr);
-    
 
     if(hasMIDIInput)
         strcat(paramString.ptr, "        atom:supports <http://lv2plug.in/ns/ext/midi#MidiEvent> ;\n".ptr);
 
-    char[] indexString = cast(char[])malloc(char.sizeof * 256)[0..256];
-    sprintf(indexString.ptr, "%d", portIndex);
+    char[16] indexBuf;
+    snprintf(indexBuf.ptr, 16, "%d", portIndex);
 
     strcat(paramString.ptr, "        atom:supports <http://lv2plug.in/ns/ext/time#Position> ;\n".ptr);
     strcat(paramString.ptr, "        lv2:designation lv2:control ;\n".ptr);
     strcat(paramString.ptr, "        lv2:index ".ptr);
-    strcat(paramString.ptr, indexString.ptr);
+    strcat(paramString.ptr, indexBuf.ptr);
     strcat(paramString.ptr, ";\n".ptr);
     strcat(paramString.ptr, "        lv2:symbol \"lv2_events_in\" ;\n".ptr);
     strcat(paramString.ptr, "        lv2:name \"Events Input\"\n".ptr);
     strcat(paramString.ptr, "    ]".ptr);
+    ++portIndex;
+
+    if (hasMIDIOutput)
+    {
+        strcat(paramString.ptr, " ,\n    [\n".ptr);
+        strcat(paramString.ptr, "        a lv2:OutputPort, atom:AtomPort ;\n".ptr);
+        strcat(paramString.ptr, "        atom:bufferType atom:Sequence ;\n".ptr);
+        strcat(paramString.ptr, "        lv2:portProperty lv2:connectionOptional ;\n".ptr);
+        strcat(paramString.ptr, "        atom:supports <http://lv2plug.in/ns/ext/midi#MidiEvent> ;\n".ptr);
+        strcat(paramString.ptr, "        lv2:designation lv2:control ;\n".ptr);
+        snprintf(indexBuf.ptr, 16, "%d", portIndex);
+        strcat(paramString.ptr, "        lv2:index ".ptr);
+        strcat(paramString.ptr, indexBuf.ptr);
+        strcat(paramString.ptr, ";\n".ptr);
+        strcat(paramString.ptr, "        lv2:symbol \"lv2_events_out\" ;\n".ptr);
+        strcat(paramString.ptr, "        lv2:name \"Events Output\"\n".ptr);
+        strcat(paramString.ptr, "        rsz:minimumSize 2048 ;\n".ptr);
+        strcat(paramString.ptr, "    ]".ptr);
+        
+    }
     ++portIndex;
 
     strcat(paramString.ptr, " .\n".ptr);

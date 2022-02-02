@@ -221,10 +221,16 @@ nothrow:
         return _data1;
     }
 
+    /// Return: size in bytes of the MIDI message, if it were serialized without offset.
+    int lengthInBytes() const
+    {
+        return 3;
+    }
+
     /// Get the raw MIDI data in a buffer `data` of capacity `len`.
     /// Returns: number of returned bytes.
     /// If given < 0 len, return the number of bytes needed to return the whole message.
-    int toBytes(ubyte* data, int len)
+    int toBytes(ubyte* data, int len) const
     {
         if (len < 0) 
             return 3;

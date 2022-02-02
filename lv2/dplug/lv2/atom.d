@@ -60,7 +60,7 @@ enum LV2_ATOM__atomTransfer=  LV2_ATOM_PREFIX ~ "atomTransfer";   ///< http://lv
 enum LV2_ATOM__beatTime    =  LV2_ATOM_PREFIX ~ "beatTime";       ///< http://lv2plug.in/ns/ext/atom#beatTime
 enum LV2_ATOM__bufferType  =  LV2_ATOM_PREFIX ~ "bufferType";     ///< http://lv2plug.in/ns/ext/atom#bufferType
 enum LV2_ATOM__childType   =  LV2_ATOM_PREFIX ~ "childType";      ///< http://lv2plug.in/ns/ext/atom#childType
-enum LV2_ATOM__eventTransfer = LV2_ATOM_PREFIX~  "eventTransfer";  ///< http://lv2plug.in/ns/ext/atom#eventTransfer
+enum LV2_ATOM__eventTransfer = LV2_ATOM_PREFIX~ "eventTransfer";  ///< http://lv2plug.in/ns/ext/atom#eventTransfer
 enum LV2_ATOM__frameTime   =  LV2_ATOM_PREFIX ~ "frameTime";      ///< http://lv2plug.in/ns/ext/atom#frameTime
 enum LV2_ATOM__supports    =  LV2_ATOM_PREFIX ~ "supports";       ///< http://lv2plug.in/ns/ext/atom#supports
 enum LV2_ATOM__timeUnit    =  LV2_ATOM_PREFIX ~ "timeUnit";       ///< http://lv2plug.in/ns/ext/atom#timeUnit
@@ -102,8 +102,12 @@ extern(C) {
     Return a pointer to the body of an Atom.  The "body" of an atom is the
     data just past the LV2_Atom head (i.e. the same offset for all types).
     */
-    // #define LV2_ATOM_BODY(atom) LV2_ATOM_CONTENTS(LV2_Atom, atom)
-    alias LV2_ATOM_BODY(atom) = LV2_ATOM_CONTENTS!(LV2_Atom, atom);
+
+    void* LV2_ATOM_BODY(LV2_Atom* atom) nothrow @nogc
+    {
+        return LV2_ATOM_CONTENTS!LV2_Atom(atom);
+    }
+
 
     /**
     Const version of LV2_ATOM_BODY.

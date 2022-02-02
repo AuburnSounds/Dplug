@@ -77,6 +77,7 @@ nothrow:
         _legalIOIndex = legalIOIndex;
         _latencyOutput = null;
         _eventsInput = null;
+        _eventsOutput = null;
         _latencySamples = 0;
     }
 
@@ -172,6 +173,15 @@ nothrow:
 
     void connect_port(uint32_t port, void* data)
     {
+        // Parameters by index:
+        // - first goes all parameters by index
+        // - then audio inputs
+        // - then audio outputs
+        // - (optional) then a latency port if there is one audio output
+        // - then an events port for timings and MIDI input
+        // - (optional) then an output event port for MIDI output
+
+
         int numParams = cast(int)(_client.params.length);
         if(port < numParams)
         {
@@ -206,6 +216,11 @@ nothrow:
             return;
         }
         --port;
+        if(port == 0)
+        {
+            _eventsOutput = cast(LV2_Atom_Sequence*)data;
+            return;
+        }
         assert(false, "Error unknown port index");
     }
 
@@ -366,6 +381,44 @@ nothrow:
         _client.processAudioFromHost(_inputPointersProcessing, _outputPointersProcessing, n_samples, _currentTimeInfo);
 
         _currentTimeInfo.timeInSamples += n_samples;
+
+        if (_client.sendsMIDI() && _eventsOutput !is null)
+        {
+            uint capacity = _eventsOutput.atom.size;
+
+            _eventsOutput.atom.size = LV2_Atom_Sequence_Body.sizeof;
+            _eventsOutput.atom.type = _mappedURIs.atomSequence;
+            _eventsOutput.body_.unit = 0;
+            _eventsOutput.body_.pad = 0;
+
+            const(MidiMessage)[] outMsgs = _client.getAccumulatedOutputMidiMessages();
+            if (outMsgs.length > 0)
+            {
+                const(ubyte)* midiEventData;
+                uint totalOffset = 0;
+
+                foreach(MidiMessage msg; outMsgs)
+                {
+                    assert(msg.offset >= 0 && msg.offset <= n_samples);
+
+                    int len = msg.lengthInBytes();
+
+                    if ( LV2_Atom_Event.sizeof + len > capacity - totalOffset)
+                        break; // Note: some MIDI messages will get dropped in that case
+
+                    int midiMsgSize = cast(int) msg.lengthInBytes(); 
+                    LV2_Atom_Event* event = cast(LV2_Atom_Event*)(cast(char*)LV2_ATOM_CONTENTS!LV2_Atom_Sequence(&_eventsOutput.atom) + totalOffset);
+                    event.time.frames = msg.offset;
+                    event.body_.type = _mappedURIs.midiEvent;
+                    event.body_.size = midiMsgSize;
+                    int written = msg.toBytes( cast(ubyte*) LV2_ATOM_BODY(&event.body_), midiMsgSize /* enough room */);
+                    assert(written == midiMsgSize);
+                    uint size = lv2_atom_pad_size(cast(uint)(LV2_Atom_Event.sizeof) + midiMsgSize);
+                    totalOffset += size;
+                    _eventsOutput.atom.size += size;
+                }
+            }
+        }
 
         // Report latency to host, expressed in frames
         if (_latencyOutput)
@@ -533,7 +586,8 @@ private:
     // Output pointer for latency reporting, `null` if not provided.
     float* _latencyOutput;
 
-    LV2_Atom_Sequence* _eventsInput;
+    LV2_Atom_Sequence* _eventsInput; // may be null
+    LV2_Atom_Sequence* _eventsOutput;
 
     float _sampleRate;
 
