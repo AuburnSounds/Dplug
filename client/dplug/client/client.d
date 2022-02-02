@@ -727,7 +727,7 @@ nothrow:
         return _outputMidiMessages[];
     }
     /// For plugin format clients only.
-    /// Clear MIDI output buffer. Call it before `getAccumulatedOutputMidiMessages`.
+    /// Clear MIDI output buffer. Call it before `processAudioFromHost` or `accumulateOutputMIDI`.
     final void clearAccumulatedOutputMidiMessages() nothrow @nogc
     {
         _outputMidiMessages.clearContents();

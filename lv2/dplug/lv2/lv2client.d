@@ -377,6 +377,9 @@ nothrow:
             _outputPointersProcessing[output] = _outputPointersProvided[output] ? _outputPointersProvided[output] : _outputScratchBuffer[output].ptr;
         }
 
+        if (_client.sendsMIDI)
+            _client.clearAccumulatedOutputMidiMessages();
+
         // Process audio
         _client.processAudioFromHost(_inputPointersProcessing, _outputPointersProcessing, n_samples, _currentTimeInfo);
 

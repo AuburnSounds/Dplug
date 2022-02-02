@@ -545,10 +545,9 @@ const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, b
         strcat(paramString.ptr, indexBuf.ptr);
         strcat(paramString.ptr, ";\n".ptr);
         strcat(paramString.ptr, "        lv2:symbol \"lv2_events_out\" ;\n".ptr);
-        strcat(paramString.ptr, "        lv2:name \"Events Output\"\n".ptr);
+        strcat(paramString.ptr, "        lv2:name \"Events Output\" ;\n".ptr);
         strcat(paramString.ptr, "        rsz:minimumSize 2048 ;\n".ptr);
         strcat(paramString.ptr, "    ]".ptr);
-        
     }
     ++portIndex;
 
