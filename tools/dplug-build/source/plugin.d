@@ -885,6 +885,10 @@ Plugin readPluginDescription()
         result.sendsMIDI = false;
     }
 
+    if (result.sendsMIDI && !result.receivesMIDI)
+    {
+        throw new Exception("In plugin.json, \"sendsMIDI\" is true but \"receivesMIDI\" is false. Plugins that sends MIDI must also receive MIDI.");
+    }
 
     try
     {

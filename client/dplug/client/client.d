@@ -1010,6 +1010,11 @@ PluginInfo parsePluginInfo(string json)
         info.receivesMIDI = toBoolean(j["receivesMIDI"]);
     if ("sendsMIDI" in j)
         info.sendsMIDI = toBoolean(j["sendsMIDI"]);
+
+    // Plugins that sends MIDI must also receives MIDI.
+    if (info.sendsMIDI && !info.receivesMIDI)
+        throw new Exception("A plugin that sends MIDI must also receives MIDI. Caution: a plugin that receives MIDI must call getNextMidiMessages() in the audio callback");
+
     info.publicVersion = parsePluginVersion(j["publicVersion"].str);
 
     string CFBundleIdentifierPrefix = j["CFBundleIdentifierPrefix"].str;

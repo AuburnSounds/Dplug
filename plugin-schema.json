@@ -76,7 +76,7 @@
             "default": "false"
         },
         "sendsMIDI": {
-            "description": "true if the plug-in sends MIDI output",
+            "description": "true if the plug-in sends MIDI output. If a plugin sends MIDI, it MUST receives MIDI too.",
             "id": "/properties/sendsMIDI",
             "type": "boolean",
             "default": "false"

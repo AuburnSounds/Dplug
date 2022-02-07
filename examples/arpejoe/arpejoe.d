@@ -17,6 +17,13 @@ enum : int
     paramLength
 }
 
+/// This is an example of a "MIDI effect"
+/// However for compatibility purpose, and because true "MIDI effects" (no audio) aren't working everywhere, we have
+/// to follow the way the "MIDI effects" work in the wild:
+/// - they are instead synthesizers that takes audio, and copy it unchanged (bypass)
+/// - they have input MIDI
+/// - they have output MIDI
+/// - some of them optionally create audio themselves in order to hear the output notes (eg: Cthulhu).
 final class MyClient : dplug.client.Client
 {
 public:
@@ -59,6 +66,11 @@ nothrow:
 
     override void processAudio(const(float*)[] inputs, float*[]outputs, int frames, TimeInfo info) nothrow @nogc
     {
+        // A plugin that sends MIDI should also takes MIDI input.
+        // This is for the widestg compatibility purpose.
+        // Here input messages are just dropped.
+        getNextMidiMessages(frames);
+
         int velocity = readParam!int(paramVelocity);
 
         double delayBetweenNoteOnInSamples = _sampleRate * readParam!float(paramSpeed);
@@ -67,6 +79,13 @@ nothrow:
 
         int noteDuration = cast(int)(0.5f + delayBetweenNoteOnInSamples * readParam!float(paramLength) * 0.01);
         assert(noteDuration >= 0);
+
+        // Bypass audio (copy)
+        assert(inputs.length == outputs.length);
+        for (int chan = 0; chan < cast(int)inputs.length; ++chan)
+        {
+            outputs[chan][0..frames] = inputs[chan][0..frames];
+        }
 
         // Every second, emit a 1/2 sec C4 note.
         foreach(n; 0..frames)
