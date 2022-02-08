@@ -26,6 +26,7 @@ import core.stdc.stdlib: free;
 import dplug.core.nogc;
 import dplug.core.math;
 import dplug.core.vec;
+import dplug.core.sync;
 
 import dplug.client.params;
 import dplug.client.preset;
@@ -226,6 +227,12 @@ nothrow:
 /// This client has no knowledge of thread-safety, it must be handled externally.
 /// User plugins derivate from this class.
 /// Plugin formats wrappers owns one dplug.plugin.Client as a member.
+///
+/// Note: this is an architecture failure since there are 3 users of that interface:
+///   1. the plugin "client" implementation (= product), 
+///   2. the format client
+///   3. the UI, directly
+///  Those should be splitted cleanly.
 class Client : IClient
 {
 public:
@@ -274,6 +281,11 @@ nothrow:
 
         _inputMidiQueue = makeMidiQueue(); // PERF: only init those for plugins that need it?
         _outputMidiQueue = makeMidiQueue();
+
+        if (sendsMIDI)
+        {
+            _midiOutFromUIMutex = makeMutex();
+        }
     }
 
     ~this()
@@ -429,14 +441,41 @@ nothrow:
         return null;
     }
 
-
     /// Intended from inside the audio thread, in `process`.
     /// Enqueue one MIDI message on the output MIDI priority queue, so that it is
     /// eventually sent.
-    /// Its offset is relative to the current buffer, and you can send messages arbitrarily in the future too.
+    /// Its offset is relative to the current buffer, and you can send messages arbitrarily 
+    /// in the future too.
     void sendMIDIMessage(MidiMessage message) nothrow @nogc
     {
         _outputMidiQueue.enqueue(message);
+    }
+
+    /// Send MIDI from inside the UI.
+    /// Intended to be called from inside an UI event callback.
+    ///
+    /// Enqueue several MIDI messages in a synchronized manner, so that they are sent all at once,
+    /// as early as possible as "live" MIDI messages.
+    /// No guarantee of any timing for these messages, for example this can be in response to 
+    /// a key press on a virtual keyboard.
+    /// The messages don't have to be ordered if they are spaced, but have to be if they 
+    /// have the same `offset`. 
+    ///
+    /// Note: It is guaranteed that all messages passed this way will keep their offset 
+    ///       relationship in MIDI output. (Typically such a messages would all have a zero
+    ///       timestamp).
+    ///       Though they are sent as soon as possible in a best effort manner, their relative 
+    ///       offset is preserved.
+    ///       Its offset is relative to the current buffer, and you can send messages arbitrarily 
+    ///       in the future too.
+    void sendMIDIMessagesFromUI(const(MidiMessage)[] messages) nothrow @nogc
+    {
+        _midiOutFromUIMutex.lock();
+        
+        foreach(msg; messages)
+            _outputMidiFromUI.pushBack(msg);
+        
+        _midiOutFromUIMutex.unlock();
     }
 
     /// Getter for the IGraphics interface
@@ -728,9 +767,20 @@ nothrow:
     }
     /// For plugin format clients only.
     /// Clear MIDI output buffer. Call it before `processAudioFromHost` or `accumulateOutputMIDI`.
+    /// What it also does it get all MIDI message from the UI, and add them to the priority queue, 
+    /// so that they may be accumulated like normal MIDI sent from the process callback.
     final void clearAccumulatedOutputMidiMessages() nothrow @nogc
     {
+        assert(sendsMIDI());
+
         _outputMidiMessages.clearContents();
+
+        // Enqueue all messages from UI in the priority queue.
+        _midiOutFromUIMutex.lock();
+        foreach(msg; _outputMidiFromUI[])
+            _outputMidiQueue.enqueue(msg);
+        _outputMidiFromUI.clearContents();
+        _midiOutFromUIMutex.unlock();
     }
 
     /// For plugin format clients only.
@@ -909,6 +959,12 @@ private:
 
     // Priority queue for sending MIDI messages.
     MidiQueue _outputMidiQueue;
+
+    // Protects MIDI out from UI.
+    UncheckedMutex _midiOutFromUIMutex;
+
+    // Additional, unsorted messages to be sent, courtesy of the UI.
+    Vec!MidiMessage _outputMidiFromUI;
 
     // Accumulated output MIDI messages, for one unsplit buffer.
     // Output MIDI messages, if any, are accumulated there.
