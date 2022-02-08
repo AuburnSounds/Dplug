@@ -35,6 +35,7 @@ class DerelictCoreFoundationLoader : SharedLibLoader
             bindFunc(cast(void**)&CFHash, "CFHash");
             bindFunc(cast(void**)&CFCopyDescription, "CFCopyDescription");
 
+            bindFunc(cast(void**)&CFArrayCreate, "CFArrayCreate");
             bindFunc(cast(void**)&CFArrayCreateMutable, "CFArrayCreateMutable");
             bindFunc(cast(void**)&CFArrayAppendValue, "CFArrayAppendValue");
 
@@ -404,12 +405,14 @@ __gshared CFArrayCallBacks kCFTypeArrayCallBacks;
 
 extern(C) nothrow @nogc
 {
+    alias da_CFArrayCreate = CFArrayRef function(CFAllocatorRef allocator, const(void)** values, CFIndex numValues, const(CFArrayCallBacks)* callBacks);
     alias da_CFArrayCreateMutable = CFMutableArrayRef function(CFAllocatorRef allocator, CFIndex capacity, const(CFArrayCallBacks)* callBacks);
     alias da_CFArrayAppendValue = void function(CFMutableArrayRef theArray, const(void)* value);
 }
 
 __gshared
 {
+    da_CFArrayCreate CFArrayCreate;
     da_CFArrayCreateMutable CFArrayCreateMutable;
     da_CFArrayAppendValue CFArrayAppendValue;
 }

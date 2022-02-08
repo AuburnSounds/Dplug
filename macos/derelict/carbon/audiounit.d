@@ -475,6 +475,20 @@ struct AudioUnitCocoaViewInfo
     CFStringRef[1] mCocoaAUViewClass;
 }
 
+extern(C) nothrow @nogc
+{
+    alias AUMIDIOutputCallback = OSStatus function(void* userData,
+                                                   const(AudioTimeStamp)* timeStamp,
+                                                   UInt32 midiOutNum,
+                                                   const(MIDIPacketList)* pktlist);
+}
+
+struct AUMIDIOutputCallbackStruct
+{
+    AUMIDIOutputCallback midiOutputCallback;
+    void* userData;
+}
+
 struct AudioUnitParameterInfo
 {
     char[52]                    name;
@@ -737,3 +751,44 @@ extern(C) nothrow
     alias AudioComponentFactoryFunction = AudioComponentPlugInInterface* function(const(AudioComponentDescription)* inDesc);
 }
 
+
+// <CoreMIDI/MIDIServices.h>
+
+alias MIDITimeStamp = ulong;
+
+struct MIDIPacket
+{
+    MIDITimeStamp       timeStamp;
+    UInt16              length;
+    byte[256]           data;
+}
+static assert(MIDIPacket.sizeof == 8 + 2 + 6 + 256); // verified with c++ Godbolt
+
+const(MIDIPacket)* MIDIPacketNext(const(MIDIPacket)* pkt)
+{
+    version(ARM)
+    {
+        ptrdiff_t mask = ~3;
+        size_t p = cast(size_t)(pkt.data.ptr + pkt.length);
+        p = (p + 3) & mask;
+        return cast(const(MIDIPacket)*)p;
+    }
+    else version(AArch64)
+    {
+        ptrdiff_t mask = ~3;
+        size_t p = cast(size_t)(pkt.data.ptr + pkt.length);
+        p = (p + 3) & mask;
+        return cast(const(MIDIPacket)*)p;
+    }
+    else
+    {
+        return cast(const(MIDIPacket)*)(pkt.data.ptr + pkt.length);
+    }
+}
+
+struct MIDIPacketList
+{
+    UInt32              numPackets;
+    MIDIPacket[1]           packet;
+}
+static assert(MIDIPacketList.sizeof == 4 + 4 + MIDIPacket.sizeof); // verified with C++ Godbolt
