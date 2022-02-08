@@ -311,6 +311,11 @@ private:
     float*[] _outputPointersNoGap; // same array, but flatten and modified in-place
 
 
+    // <MIDI out>
+    AUMIDIOutputCallbackStruct _midiOutCallback;
+    // </MIDI out>
+
+
     //
     // Property listeners
     //
@@ -519,6 +524,10 @@ private:
                     case kAudioUnitAddRenderNotifySelect:
                     case kAudioUnitRemoveRenderNotifySelect:
                         return 1;
+
+                    case kAudioUnitProperty_MIDIOutputCallback:
+                    case kAudioUnitProperty_MIDIOutputCallbackInfo:
+                        return _client.sendsMIDI() ? 1 : 0;
 
                     case kMusicDeviceMIDIEventSelect:
                     case kMusicDeviceSysExSelect:
@@ -1540,6 +1549,31 @@ private:
                 return noErr;
             }
 
+            case kAudioUnitProperty_MIDIOutputCallbackInfo: // 47
+                if (!_client.sendsMIDI())
+                    return kAudioUnitErr_InvalidProperty;
+                *pDataSize = CFArrayRef.sizeof;
+                *pWriteable = false;
+                if (pData)
+                {
+                    CFStringRef[1] strs;
+                    strs[0] = toCFString("MIDI Out");
+                    CFArrayRef callbackArray = CFArrayCreate (null, cast(const(void)**)strs.ptr, 1, null);
+                    CFRelease(strs[0]);
+                    *cast(CFArrayRef*) pData = callbackArray;
+                }
+                return noErr;
+
+            case kAudioUnitProperty_MIDIOutputCallback: // 48
+                if (!_client.sendsMIDI())
+                    return kAudioUnitErr_InvalidProperty;
+                *pDataSize = AUMIDIOutputCallbackStruct.sizeof;
+                *pWriteable = true;
+                if (pData is null)
+                    return noErr;
+                else
+                    return kAudioUnitErr_InvalidProperty;
+
             case kMusicDeviceProperty_InstrumentCount:
             {
                 if (!isGlobalScope(scope_))
@@ -1761,6 +1795,13 @@ private:
                 string dawName = mallocStringFromCFString(pHostID.hostName);
                 _daw = identifyDAW(dawName.ptr); // dawName is guaranteed zero-terminated
                 dawName.freeSlice();
+                return noErr;
+            }
+
+            case kAudioUnitProperty_MIDIOutputCallback: // 48
+            {
+                AUMIDIOutputCallbackStruct* cbs = (cast(AUMIDIOutputCallbackStruct*) pData);
+                _midiOutCallback = *cbs;
                 return noErr;
             }
 
@@ -2156,10 +2197,32 @@ private:
             {
                 TimeInfo timeInfo = getTimeInfo();
 
+
+                // clear MIDI out buffers
+                if (_client.sendsMIDI)
+                    _client.clearAccumulatedOutputMidiMessages();
+
                 _client.processAudioFromHost(_inputPointersNoGap[0..newUsedInputs],
                                              _outputPointersNoGap[0..newUsedOutputs],
                                              nFrames,
                                              timeInfo);
+
+                if (_client.sendsMIDI() && _midiOutCallback.midiOutputCallback !is null)
+                {
+                    const(MidiMessage)[] outMsgs = _client.getAccumulatedOutputMidiMessages();
+
+                    foreach(msg; outMsgs)
+                    {
+                        MIDIPacketList packets;
+                        packets.packet[0].length = cast(ushort) msg.toBytes(cast(ubyte*) packets.packet[0].data.ptr, 256);
+                        packets.packet[0].timeStamp = msg.offset;
+                        packets.numPackets = 1;
+                        _midiOutCallback.midiOutputCallback(_midiOutCallback.userData,
+                                                            pTimestamp,
+                                                            0,
+                                                            &packets);
+                    }
+                }
             }
         }
 

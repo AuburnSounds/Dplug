@@ -5,7 +5,7 @@ License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 import std.math;
 import dplug.core, dplug.client;
 
-// This define entry points for plugin formats, 
+// This define entry points for plugin formats,
 // depending on which version identifiers are defined.
 mixin(pluginEntryPoints!MyClient);
 
@@ -74,14 +74,13 @@ nothrow:
         int velocity = readParam!int(paramVelocity);
 
         double delayBetweenNoteOnInSamples = _sampleRate * readParam!float(paramSpeed);
-        if (delayBetweenNoteOnInSamples < 1) 
+        if (delayBetweenNoteOnInSamples < 1)
             delayBetweenNoteOnInSamples = 1;
 
         int noteDuration = cast(int)(0.5f + delayBetweenNoteOnInSamples * readParam!float(paramLength) * 0.01);
         assert(noteDuration >= 0);
 
-        // Bypass audio (copy)
-        assert(inputs.length == outputs.length);
+        //assert(inputs.length == outputs.length);
         for (int chan = 0; chan < cast(int)inputs.length; ++chan)
         {
             outputs[chan][0..frames] = inputs[chan][0..frames];
@@ -101,9 +100,9 @@ nothrow:
                 if (note < 0 || note > 127)
                     continue;
 
-                MidiMessage noteOn  = makeMidiMessageNoteOn(offset,                 channel, note, velocity);            
+                MidiMessage noteOn  = makeMidiMessageNoteOn(offset,                 channel, note, velocity);
                 MidiMessage noteOff = makeMidiMessageNoteOff(offset + noteDuration, channel, note);
-            
+
                 // The MIDI messages are stable-sorted by offset.
                 // If the offset is the same, the order of `sendMIDIMessage` calls is preserved though.
                 // Consequently, for notes with zero length, send the note-on before note-off. Else you can mix everything up, or
