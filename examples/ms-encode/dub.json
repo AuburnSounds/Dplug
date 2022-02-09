@@ -19,6 +19,7 @@
         "    When making your own plug-in you have to CHANGE THESE DEPENDENCY    ",
         "    SPECIFICATIONS below from path-based to ~>MAJOR.MINOR               ",
         "      Example: ~>7.0                                                    ",
+        "    This way you can move the project out of the Dplug tree.            ",
         "    See also the DUB documentation:                                     ",
         "         https://code.dlang.org/package-format?lang=json#version-specs  "],
     "dependencies":
