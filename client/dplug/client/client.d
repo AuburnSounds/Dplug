@@ -527,8 +527,10 @@ nothrow:
     /// Returns: Plugin tail size in seconds.
     float tailSizeInSeconds() nothrow @nogc
     {
-        // Default: 800ms, which should be safe for most plugins except delay or reverb
-        return 0.800f;
+        // Default: 2 secs, which should be safe for most plugins except delay or reverb
+        // Warning: plugins have often more tail size than expected!
+        // Don't reduce to a shorter time unless you know for sure what you are doing.
+        return 2.0f;
     }
 
     /// Override to declare the maximum number of samples to accept
