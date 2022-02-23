@@ -20,7 +20,7 @@ nothrow:
 @nogc:
 
     /// Change this to point to your website
-    @ScriptProperty string targetURL = "http://example.com";
+    string targetURL = "http://example.com";
     
     @ScriptProperty float animationTimeConstant = 30.0f;
 
