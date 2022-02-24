@@ -308,6 +308,11 @@ private:
         {
             // FUTURE: eventually use stat to get date of change instead
             char* newSource = readWrenFile(); 
+
+            // Sometimes reading the file fails, and then we should just retry later. Report no changes.
+            if (newSource is null)
+                return false;
+
             if ((lastSource is null) || strcmp(lastSource, newSource) != 0)
             {
                 free(lastSource);
