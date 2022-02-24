@@ -150,9 +150,10 @@ final class WrenSupport
     /// Note: Changing @ScriptProperty values does not make the elements dirty.
     ///       But since it's called at UI creation, the whole UI is dirty anyway so it works.
     ///
-    void callCreateUI() nothrow
+    /// Returns: `true` if no runtime or compile-time error.
+    bool callCreateUI() nothrow
     {
-        callPluginMethod("createUI");
+        return callPluginMethod("createUI");
     }
 
     /// To call in your UI's `reflow()` method. This call the `Plugin.reflow` Wren method, in module "plugin".
@@ -160,9 +161,10 @@ final class WrenSupport
     /// Note: Changing @ScriptProperty values does not make the elements dirty.
     ///       But since it's called at UI reflow, the whole UI is dirty anyway so it works.
     ///
-    void callReflow() nothrow
+    /// Returns: `true` if no runtime or compile-time error.
+    bool callReflow() nothrow
     {
-        callPluginMethod("reflow");
+        return callPluginMethod("reflow");
     }
 
     /// Read live-reload .wren files and restart the Wren VM if they have changed.
@@ -197,7 +199,8 @@ final class WrenSupport
     /// }
     /// ---
     ///
-    void callReflowWhenScriptsChange(double dt) nothrow
+    /// Returns: `true` if no runtime or compile-time error.
+    bool callReflowWhenScriptsChange(double dt) nothrow
     {
         enum CHECK_EVERY_N_SECS = 0.2; // 200 ms
         _timeSinceLastScriptCheck += dt;
@@ -206,42 +209,48 @@ final class WrenSupport
             _timeSinceLastScriptCheck = 0;
             if (reloadScriptsThatChanged())
             {
-                // We detected a change, we need to call Plugin.reflow() in Wren, and invalidate graphics so that everything is redrawn.
-                callReflow();
+                // We detected a change, we need to call Plugin.reflow() in Wren.
+                return callReflow();
             }
         }
+        return true;
     }
 
     // <advanced API>
 
     /// Call Plugin.<methodName>, a static method without arguments in Wren. For advanced users only.
-    void callPluginMethod(const(char)* methodName) nothrow
+    /// Returns: `true` if no runtime or compile-time error.
+    bool callPluginMethod(const(char)* methodName) nothrow
     {
         reloadScriptsThatChanged();
         enum int MAX = 64+MAX_VARIABLE_NAME*2;
         char[MAX] code;
         snprintf(code.ptr, MAX, "{\n \nimport \"plugin\" for Plugin\n Plugin.%s()\n}\n", methodName);
-        interpret(code.ptr);
+        return interpret(code.ptr);
     }
 
     /// Interpret arbitrary code. For advanced users only.
-    void interpret(const(char)* path, const(char)* source) nothrow
+    /// Returns: `true` if no runtime or compile-time error.
+    bool interpret(const(char)* path, const(char)* source) nothrow
     {
         try
         {
             WrenInterpretResult result = wrenInterpret(_vm, path, source);
+            return result == WrenInterpretResult.WREN_RESULT_SUCCESS;
         }
         catch(Exception e)
         {
-            // Note: error reported by another mechanism anyway.
+            // Note: error reported by another mechanism anyway (debug output).
             destroyFree(e);
+            return false;
         }
     }
 
     /// Interpret arbitrary code. For advanced users only.
-    void interpret(const(char)* source) nothrow
+    /// Returns: `true` if no runtime or compile-time error.
+    bool interpret(const(char)* source) nothrow
     {
-        interpret("", source);
+        return interpret("", source);
     }  
 
     // </advanced API>
@@ -308,7 +317,7 @@ private:
         {
             // FUTURE: eventually use stat to get date of change instead
             char* newSource = readWrenFile(); 
-
+            
             // Sometimes reading the file fails, and then we should just retry later. Report no changes.
             if (newSource is null)
                 return false;
