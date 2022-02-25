@@ -75,6 +75,11 @@ class UIElement {
        _e.position = rect
    }
 
+   position(rect) {
+       _e.position = rect
+       return this
+   }
+
    e { _e }
 }
 
