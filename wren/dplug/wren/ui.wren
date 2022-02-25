@@ -140,6 +140,14 @@ class RGBA {
         _a = a
     }
 
+    static grey(v) {
+        return RGBA.new(v, v, v, 255)
+    }
+
+    static grey(v, alpha) {
+        return RGBA.new(v, v, v, alpha)
+    }
+
     r { _r }
     g { _g }
     b { _b }
