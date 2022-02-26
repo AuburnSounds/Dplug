@@ -140,6 +140,10 @@ class RGBA {
         _a = a
     }
 
+    withAlpha(a) {
+        return RGBA.new(_r, _g, _b, a)
+    }
+
     static grey(v) {
         return RGBA.new(v, v, v, 255)
     }
