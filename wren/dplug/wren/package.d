@@ -57,7 +57,7 @@ string fieldIdentifiersAreIDs(T)()
     static foreach(m; getSymbolsByUDA!(T, ScriptExport))
     {{
         string fieldName = m.stringof;
-        s ~= fieldName ~ ".id = \"" ~ fieldName ~ "\";\n";
+        s ~= "if(" ~ fieldName ~ ")" ~ fieldName ~ ".id = \"" ~ fieldName ~ "\";\n";
     }}
     return s;
 }
