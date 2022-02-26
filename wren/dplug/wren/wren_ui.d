@@ -78,7 +78,7 @@ void element_findIdAndBecomeThat(WrenVM* vm)
 
     WrenSupport ws = cast(WrenSupport) vm.config.userData;
     IUIContext context = ws.uiContext();
-    bridge.elem = context.getElementById(id);
+    bridge.elem = context.getElementById(id); // Note: could be null
 }
 
 void element_width(WrenVM* vm)
@@ -98,8 +98,7 @@ void element_height(WrenVM* vm)
 void element_setposition(WrenVM* vm)
 {
     UIElementBridge* bridge = cast(UIElementBridge*) wrenGetSlotForeign(vm, 0);
-    if (!bridge.elem)
-        return;
+    assert(bridge.elem); // TODO error
     double x = wrenGetSlotDouble(vm, 1);
     double y = wrenGetSlotDouble(vm, 2);
     double w = wrenGetSlotDouble(vm, 3);
@@ -110,8 +109,7 @@ void element_setposition(WrenVM* vm)
 void element_setProperty(WrenVM* vm)
 {
     UIElementBridge* bridge = cast(UIElementBridge*) wrenGetSlotForeign(vm, 0);
-    if (!bridge.elem)
-        return;
+    assert(bridge.elem);  // TODO error
 
     int classIndex = cast(int) wrenGetSlotDouble(vm, 1);
     int propIndex = cast(int) wrenGetSlotDouble(vm, 2);
@@ -217,8 +215,7 @@ void element_setProperty(WrenVM* vm)
 void element_setPropertyRGBA(WrenVM* vm)
 {
     UIElementBridge* bridge = cast(UIElementBridge*) wrenGetSlotForeign(vm, 0);
-    if (!bridge.elem)
-        return;
+    assert(bridge.elem); // TODO error
 
     int classIndex = cast(int) wrenGetSlotDouble(vm, 1);
     int propIndex = cast(int) wrenGetSlotDouble(vm, 2);
@@ -254,8 +251,7 @@ void element_setPropertyRGBA(WrenVM* vm)
 void element_getProperty(WrenVM* vm)
 {
     UIElementBridge* bridge = cast(UIElementBridge*) wrenGetSlotForeign(vm, 0);
-    if (!bridge.elem)
-        return;
+    assert(bridge.elem); // TODO error
 
     int classIndex = cast(int) wrenGetSlotDouble(vm, 1);
     int propIndex = cast(int) wrenGetSlotDouble(vm, 2);
@@ -287,8 +283,7 @@ void element_getProperty(WrenVM* vm)
 void element_getPropertyRGBA(WrenVM* vm)
 {
     UIElementBridge* bridge = cast(UIElementBridge*) wrenGetSlotForeign(vm, 0);
-    if (!bridge.elem)
-        return;
+    assert(bridge.elem); // TODO error
 
     int classIndex = cast(int) wrenGetSlotDouble(vm, 1);
     int propIndex = cast(int) wrenGetSlotDouble(vm, 2);

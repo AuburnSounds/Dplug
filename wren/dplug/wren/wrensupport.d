@@ -572,10 +572,15 @@ private:
                 return false;
 
             const(char)* id = AS_STRING(args[0]).value.ptr;
+
+            // Note: elem can be null here. If no element is found with a proper ID,
+            // return an unbound value.
             UIElement elem = _uiContext.getElementById(id);
+            if (elem is null)
+                return RETURN_ERROR(vm, "$(id) not found");
 
             // Find a Wren class we have to convert it to.
-            // $ can be any of the improted classes in "widgets", if not it is an UIElement.
+            // $ can be any of the imported classes in "widgets", if not it is an UIElement.
             // Note that both "ui" and "widgets" module MUST be imported.
 
             if (_cachedUIModule is null)
