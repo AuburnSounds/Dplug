@@ -569,7 +569,7 @@ private:
         try
         {
             if (!IS_STRING(args[0]))
-                return false;
+                return RETURN_NULL(args);
 
             const(char)* id = AS_STRING(args[0]).value.ptr;
 
@@ -577,7 +577,7 @@ private:
             // return an unbound value.
             UIElement elem = _uiContext.getElementById(id);
             if (elem is null)
-                return RETURN_ERROR(vm, "$(id) not found");
+                return RETURN_NULL(args); // $(id) not found
 
             // Find a Wren class we have to convert it to.
             // $ can be any of the imported classes in "widgets", if not it is an UIElement.
@@ -598,8 +598,6 @@ private:
             }
 
             ObjClass* classTarget = getWrenClassForThisUIELement(elem);
-
-
 
             if (_cachedClassElement is null)
             {
@@ -628,7 +626,7 @@ private:
         catch(Exception e)
         {
             destroyFree(e);
-            return false;
+            return RETURN_NULL(args); // other error
         }
     }
 
