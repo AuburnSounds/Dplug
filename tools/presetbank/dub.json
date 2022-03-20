@@ -10,6 +10,6 @@
     "dependencies":
     {
         "dplug:client": {"path": "../../"},
-        "colorize": "~>1.0"
+        "console-colors": "~>1.0"
     }
 }

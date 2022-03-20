@@ -7,9 +7,9 @@ import std.conv;
 import std.file;
 import std.path;
 
-import colorize;
+import consolecolors;
 import dplug.core.vec;
-import dplug.client.binrange;
+import dplug.core.binrange;
 
 void usage()
 {
@@ -86,21 +86,21 @@ int main(string[] args)
             usage();
             return 1;
         }
-        cwriteln(format("  => %s presets parsed", presets.length).color(fg.light_green));
+        cwriteln(format("  => %s presets parsed", presets.length).lgreen);
 
         if (!(output.length > 4 && output[$-4..$] == ".fxb"))
             throw new Exception("Output must end in .fxb");
 
         ubyte[] fxb = savePresetsToFXB(presets);
         std.file.write(output, fxb);
-        cwriteln(format("  => exported to %s", output).color(fg.light_green));
+        cwriteln(format("  => exported to %s", output).lgreen);
 
         return 0;      
     }
     catch(Exception e)
     {
         writeln;
-        cwriteln(format("error: %s", e.msg).color(fg.light_red));
+        cwriteln(format("error: %s", escapeCCL(e.msg)).lred);
         writeln;
         usage();
         writeln;
