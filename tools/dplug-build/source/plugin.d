@@ -13,7 +13,8 @@ import std.stdio;
 import std.datetime;
 import std.range;
 
-import colorize;
+import consolecolors;
+
 import utils;
 import rsrc;
 
@@ -554,7 +555,7 @@ struct Plugin
         if (iLokPassword == "!PROMPT")
         {
             cwriteln();
-            cwritefln(`Please enter your iLok password (seen "!PROMPT"):`.cyan);
+            cwritefln(`Please enter your iLok password (seen "!PROMPT"):`.lcyan);
             iLokPassword = chomp(readln());
             cwriteln();
         }
@@ -565,7 +566,7 @@ struct Plugin
         if (keyPasswordWindows == "!PROMPT")
         {
             cwriteln();
-            cwritefln(`Please enter your certificate Windows password (seen "!PROMPT"):`.cyan);
+            cwritefln(`Please enter your certificate Windows password (seen "!PROMPT"):`.lcyan);
             keyPasswordWindows = chomp(readln());
             cwriteln();
         }
@@ -1188,7 +1189,7 @@ string makeRSRC_internal(string outputDir, Plugin plugin, Arch arch, bool verbos
     rsrc.addResource(2, 1000, false, plugin.vendorName ~ ": " ~ plugin.pluginName, thng);
 
     std.file.write(rsrcPath, rsrc.write());
-    cwritefln("    => Written %s bytes.".green, getSize(rsrcPath));
+    cwritefln("    => Written %s bytes.".lgreen, getSize(rsrcPath));
     cwriteln();
     return rsrcPath;
 }
@@ -1241,7 +1242,7 @@ string makeRSRC_with_Rez(Plugin plugin, Arch arch, bool verbose)
     if (getSize(rsrcPath) == 0)
         throw new Exception(format("%s is an empty file", rsrcPath));
 
-    cwritefln("    => Written %s bytes.".green, getSize(rsrcPath));
+    cwritefln("    => Written %s bytes.".lgreen, getSize(rsrcPath));
     cwriteln();
     return rsrcPath;
 }

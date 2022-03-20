@@ -12,7 +12,7 @@ import std.path;
 import core.time, core.thread;
 import dplug.core.sharedlib;
 
-import colorize;
+import consolecolors;
 import utils;
 import plugin;
 import arch;
@@ -65,63 +65,63 @@ void usage()
     void flag(string arg, string desc, string possibleValues, string defaultDesc)
     {
         string argStr = format("        %s", arg);
-        cwrite(argStr.cyan);
+        cwrite(argStr.lcyan);
         for(size_t i = argStr.length; i < 24; ++i)
             write(" ");
         cwritefln("%s".white, desc);
         if (possibleValues)
             cwritefln("                        Possible values: ".grey ~ "%s".yellow, possibleValues);
         if (defaultDesc)
-            cwritefln("                        Default: ".grey ~ "%s".cyan, defaultDesc);
+            cwritefln("                        Default: ".grey ~ "%s".lcyan, defaultDesc);
         cwriteln;
     }
 
     cwriteln();
-    cwriteln( "This is the ".white ~ "dplug-build".cyan ~ " tool: plugin bundler and DUB front-end.".white);
+    cwriteln( "This is the ".white ~ "dplug-build".lcyan ~ " tool: plugin bundler and DUB front-end.".white);
     cwriteln();
     cwriteln("FLAGS".white);
     cwriteln();
-    flag("-a --arch", "Selects target architecture.", "x86 | x86_64 | all", "Windows => all   macOS => x86_64    Linux => x86_64");
+    flag("-a --arch", "Selects target architecture.", "x86 | x86_64 | all", "Windows =&gt; all   macOS =&gt; x86_64    Linux =&gt; x86_64");
     flag("-b --build", "Selects build type.", "same ones as dub accepts", "debug");
     flag("--compiler", "Selects D compiler.", "dmd | ldc | gdc", "ldc");
     flag("-c --config", "Adds a build configuration.", "VST2 | VST3 | AU | AAX | LV2 | name starting with \"VST2\", \"VST3\",\"AU\", \"AAX\", or \"LV2\"", "all");
     flag("-f --force", "Forces rebuild", null, "no");
     flag("--combined", "Combined build, important for cross-module inlining with LDC!", null, "no");
-    flag("--os", "Cross-compile to another OS." ~ "(FUTURE)".red, "linux | macos | windows | autodetect", "build OS");
+    flag("--os", "Cross-compile to another OS." ~ "(FUTURE)".lred, "linux | macos | windows | autodetect", "build OS");
     flag("-q --quiet", "Quieter output", null, "no");
     flag("-v --verbose", "Verbose output", null, "no");
     flag("--no-color", "Disable colored output", null, null);
     flag("-sr --skip-registry", " Skip checking the DUB registry\n                        Avoid network, doesn't update dependencies", null, "no");
     flag("--final", "Shortcut for --combined -b release-nobounds", null, null);
-    flag("--installer", "Make an installer " ~ "(Windows and OSX only)".red, null, "no");
-    flag("--notarize", "Notarize the installer " ~ "(OSX only)".red, null, "no");
-    flag("--publish", "Make the plugin available in standard directories " ~ "(OSX only)".red, null, "no");
-    flag("--auval", "Check Audio Unit validation with auval " ~ "(OSX only)".red, null, "no");
-    flag("--rez", "Generate Audio Unit .rsrc file with Rez " ~ "(OSX only)".red, null, "no");
+    flag("--installer", "Make an installer " ~ "(Windows and OSX only)".lred, null, "no");
+    flag("--notarize", "Notarize the installer " ~ "(OSX only)".lred, null, "no");
+    flag("--publish", "Make the plugin available in standard directories " ~ "(OSX only)".lred, null, "no");
+    flag("--auval", "Check Audio Unit validation with auval " ~ "(OSX only)".lred, null, "no");
+    flag("--rez", "Generate Audio Unit .rsrc file with Rez " ~ "(OSX only)".lred, null, "no");
     flag("-h --help", "Shows this help", null, null);
 
     cwriteln();
     cwriteln("EXAMPLES".white);
     cwriteln();
-    cwriteln("        # Releases an optimized VST/AU plugin for all supported architecture".green);
-    cwriteln("        dplug-build --final -c VST-CONFIG -c AU-CONFIG".cyan);
+    cwriteln("        # Releases an optimized VST/AU plugin for all supported architecture".lgreen);
+    cwriteln("        dplug-build --final -c VST-CONFIG -c AU-CONFIG".lcyan);
     cwriteln();
-    cwriteln("        # Builds a 64-bit Audio Unit plugin for profiling with DMD".green);
-    cwriteln("        dplug-build --compiler dmd -a x86_64 --config AU -b release-debug".cyan);
+    cwriteln("        # Builds a 64-bit Audio Unit plugin for profiling with DMD".lgreen);
+    cwriteln("        dplug-build --compiler dmd -a x86_64 --config AU -b release-debug".lcyan);
     cwriteln();
-    cwriteln("        # Shows help".green);
-    cwriteln("        dplug-build -h".cyan);
+    cwriteln("        # Shows help".lgreen);
+    cwriteln("        dplug-build -h".lcyan);
 
     cwriteln();
     cwriteln("NOTES".white);
     cwriteln();
-    cwriteln("      The configuration name used with " ~ "--config".cyan ~ " must exist in your " ~ "dub.json".cyan ~ " file.");
-    cwriteln("      dplug-build".cyan ~ " detects plugin format based on the " ~ "configuration".yellow ~ " name's prefix: " ~ `"VST2" | "VST3" | "AU" | "AAX" | "LV2".`.yellow);
+    cwriteln("      The configuration name used with " ~ "--config".lcyan ~ " must exist in your " ~ "dub.json".lcyan ~ " file.");
+    cwriteln("      dplug-build".lcyan ~ " detects plugin format based on the " ~ "configuration".yellow ~ " name's prefix: " ~ `"VST2" | "VST3" | "AU" | "AAX" | "LV2".`.yellow);
     cwriteln();
-    cwriteln("      --combined".cyan ~ " has an important effect on code speed, as it can be required for inlining in LDC.".grey);
+    cwriteln("      --combined".lcyan ~ " has an important effect on code speed, as it can be required for inlining in LDC.".grey);
     cwriteln();
-    cwriteln("      dplug-build".cyan ~ " expects a " ~ "plugin.json".cyan ~ " file for proper bundling and will provide help".grey);
-    cwriteln("      for populating it. For other informations it reads the " ~ "dub.json".cyan ~ " file.".grey);
+    cwriteln("      dplug-build".lcyan ~ " expects a " ~ "plugin.json".lcyan ~ " file for proper bundling and will provide help".grey);
+    cwriteln("      for populating it. For other informations it reads the " ~ "dub.json".lcyan ~ " file.".grey);
     cwriteln();
     cwriteln();
 }
@@ -177,7 +177,7 @@ int main(string[] args)
             else if (arg == "-q" || arg == "--quiet")
                 quiet = true;
             else if (arg == "--no-color")
-                utils.enableColoredOutput = false;
+                disableConsoleColors();
             else if (arg == "--compiler")
             {
                 ++i;
@@ -403,23 +403,23 @@ int main(string[] args)
 
         if (!quiet)
         {
-            cwritefln("=> Bundling plug-in ".green ~ "%s".yellow ~ " from ".green ~ "%s".yellow
-                      ~ ", archs ".green ~ "%s".yellow,
+            cwritefln("=> Bundling plug-in ".lgreen ~ "%s".yellow ~ " from ".lgreen ~ "%s".yellow
+                      ~ ", archs ".lgreen ~ "%s".yellow,
                 plugin.pluginName, plugin.vendorName, toStringArchs(archs));
-            cwritefln("   configurations: ".green ~ "%s".yellow
-                       ~ ", build type ".green ~ "%s".yellow
-                       ~ ", compiler ".green ~ "%s".yellow,
+            cwritefln("   configurations: ".lgreen ~ "%s".yellow
+                       ~ ", build type ".lgreen ~ "%s".yellow
+                       ~ ", compiler ".lgreen ~ "%s".yellow,
                        configurations, build, compiler);
             if (publish)
-                cwritefln("   The binaries will be copied to standard plugin directories.".green);
+                cwritefln("   The binaries will be copied to standard plugin directories.".lgreen);
             if (auval)
-                cwritefln("   Then Audio Unit validation with auval will be performed for arch %s.".green, archs[$-1]);
+                cwritefln("   Then Audio Unit validation with auval will be performed for arch %s.".lgreen, archs[$-1]);
             if (makeInstaller)
             {
                 if (targetOS == OS.macOS)
-                    cwritefln("   Then a Mac installer will be created for distribution outside of the App Store.".green);
+                    cwritefln("   Then a Mac installer will be created for distribution outside of the App Store.".lgreen);
                 if (targetOS == OS.windows)
-                    cwritefln("   Then a Windows installer will be created for distribution.".green);
+                    cwritefln("   Then a Windows installer will be created for distribution.".lgreen);
             }
             cwriteln();
         }
@@ -500,7 +500,7 @@ int main(string[] args)
                 {
                     buildPlugin(compiler, config, build, arch, verbose, force, combined, quiet, skipRegistry, parallel);
                     double bytes = getSize(plugin.dubOutputFileName) / (1024.0 * 1024.0);
-                    cwritefln("    => Build OK, binary size = %0.1f mb, available in ./%s".green, bytes, path);
+                    cwritefln("    => Build OK, binary size = %0.1f mb, available in ./%s".lgreen, bytes, path);
                     cwriteln();
                 }
 
@@ -615,7 +615,7 @@ int main(string[] args)
                         std.file.write(factoryPresetsLocation ~ "/" ~ p.filename, p.content);
                     }
 
-                    cwritefln("    => Copied %s AAX factory presets %sfrom binary".green, tfxPresets.length, formerlyExtracted ? "(formerly extracted) " : "");
+                    cwritefln("    => Copied %s AAX factory presets %sfrom binary".lgreen, tfxPresets.length, formerlyExtracted ? "(formerly extracted) " : "");
                     cwriteln();
                 }
 
@@ -656,7 +656,7 @@ int main(string[] args)
                     string manifestPath = outputDir ~ "/manifest.ttl";
                     std.file.write(manifestPath, lv2Manifest);
 
-                    cwritefln("    => Written %s bytes to%s manifest.ttl.".green, getSize(manifestPath), formerlyExtracted ? " (formerly extracted)" : "");
+                    cwritefln("    => Written %s bytes to%s manifest.ttl.".lgreen, getSize(manifestPath), formerlyExtracted ? " (formerly extracted)" : "");
                     cwriteln();
                 }
 
@@ -883,7 +883,7 @@ int main(string[] args)
                                                 escapeShellArgument(pluginFinalPath));
                             safeCommand(cmd);
                             double bytes = getSize(pluginFinalPath) / (1024.0 * 1024.0);
-                            cwritefln("    => Universal build OK, binary size = %0.1f mb, available in ./%s".green, bytes, path);
+                            cwritefln("    => Universal build OK, binary size = %0.1f mb, available in ./%s".lgreen, bytes, path);
                             cwriteln();
                         }
                         else
@@ -944,7 +944,7 @@ int main(string[] args)
                                                 escapeShellArgument(exePath));
                             safeCommand(cmd);
                             double bytes = getSize(exePath) / (1024.0 * 1024.0);
-                            cwritefln("    => Universal build OK, binary size = %0.1f mb, available in ./%s".green, bytes, path);
+                            cwritefln("    => Universal build OK, binary size = %0.1f mb, available in ./%s".lgreen, bytes, path);
                             cwriteln();
                         }
                         else
@@ -1007,7 +1007,7 @@ int main(string[] args)
                                 plugin.vendorUniqueID);
                             safeCommand(cmd);
 
-                            cwriteln("    => Audio Unit passed validation.".green);
+                            cwriteln("    => Audio Unit passed validation.".lgreen);
                             cwriteln();
                         }
                     }
@@ -1138,7 +1138,7 @@ int main(string[] args)
                 // Write a file with macro expanded and converted to HTML, for the Mac installer.
                 string html = convertMarkdownFileToHTML(markdown);
                 std.file.write(licensePath, html);
-                cwritefln(" => OK\n".green);
+                cwritefln(" => OK\n".lgreen);
             }
             else
                 throw new Exception("License file should be a Markdown .md file");
@@ -1149,7 +1149,7 @@ int main(string[] args)
             cwriteln("*** Generating final Mac installer...".white);
             string finalPkgPath = outputDir ~ "/" ~ plugin.finalPkgFilename(configurations[0]);
             generateMacInstaller(outputDir, resDir, plugin, macInstallerPackages, finalPkgPath, verbose);
-            cwriteln("    => OK".green);
+            cwriteln("    => OK".lgreen);
             cwriteln;
 
             if (notarize)
@@ -1159,7 +1159,7 @@ int main(string[] args)
 
                 cwritefln("*** Notarizing final Mac installer %s...".white, primaryBundle);
                 notarizeMacInstaller(outputDir, plugin, finalPkgPath, primaryBundle);
-                cwriteln("    => Notarization OK".green);
+                cwriteln("    => Notarization OK".lgreen);
                 cwriteln;
             }
         }
@@ -1177,20 +1177,25 @@ int main(string[] args)
     catch(DplugBuildBuiltCorrectlyException e)
     {
         cwriteln;
-        cwriteln("    Congratulations! ".green ~ "dplug-build".cyan ~ " built successfully.".green);
-        cwriteln("    Type " ~ "dplug-build --help".cyan ~ " to know about its usage.");
-        cwriteln("    You'll probably want " ~ "dplug-build".cyan ~ " to be in your" ~ " PATH".yellow ~ ".");
+        cwriteln("    Congratulations! ".lgreen ~ "dplug-build".lcyan ~ " built successfully.".lgreen);
+        cwriteln("    Type " ~ "dplug-build --help".lcyan ~ " to know about its usage.");
+        cwriteln("    You'll probably want " ~ "dplug-build".lcyan ~ " to be in your" ~ " PATH".yellow ~ ".");
         cwriteln;
         return 0;
     }
     catch(ExternalProgramErrored e)
     {
-        error(e.msg);
+        error(escapeCCL(e.msg));
         return e.errorCode;
     }
-    catch(Exception e)
+    catch(CCLException e) // An exception with a coloured message
     {
-        error(e.msg);
+        cwritefln("\n<lred>Error:</lred> %s", e.msg);
+        return -1;
+    }
+    catch(Exception e) // An uncoloured exception.
+    {
+        cwritefln("\n<lred>Error:</lred> %s", escapeCCL(e.msg));
         return -1;
     }
 }
@@ -1480,7 +1485,7 @@ void generateWindowsInstaller(string outputDir,
                             plugin.getKeyPasswordWindows(),
                             escapeShellArgument(outExePath));
         safeCommand(cmd);
-        cwriteln("    => OK".green);
+        cwriteln("    => OK".lgreen);
     }
     catch(Exception e)
     {
@@ -1646,7 +1651,7 @@ void notarizeMacInstaller(string outputDir, Plugin plugin, string outPkgPath, st
 
     if (requestUUID)
     {
-        cwritefln("    => Uploaded, RequestUUID = %s".green, requestUUID);
+        cwritefln("    => Uploaded, RequestUUID = %s".lgreen, requestUUID);
         cwriteln();
     }
     else
@@ -1737,7 +1742,7 @@ void notarizeMacInstaller(string outputDir, Plugin plugin, string outPkgPath, st
     }
     if (notarizationFailed)
     {
-        cwritefln("    => Notarization failed, log available at %s".red, LogFileURL);
+        cwritefln("    => Notarization failed, log available at %s".lred, LogFileURL);
         cwriteln();
         throw new Exception("Failed notarization");
     }
@@ -1745,7 +1750,7 @@ void notarizeMacInstaller(string outputDir, Plugin plugin, string outPkgPath, st
     if (!notarizationSucceeded)
         throw new Exception("Time out. Notarization took more than one hour. Consider uploading smaller packages.");
 
-    cwritefln("    => Notarization succeeded, log available at %s".green, LogFileURL);
+    cwritefln("    => Notarization succeeded, log available at %s".lgreen, LogFileURL);
     cwriteln();
 
     {

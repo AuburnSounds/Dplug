@@ -10,60 +10,23 @@ import std.exception;
 import std.algorithm.searching;
 import std.process;
 
+import consolecolors;
+
 import commonmarkd;
-import colorize;
 
-bool enableColoredOutput = true;
-
-string white(string s) @property
+void info(const(char)[] msg)
 {
-    if (enableColoredOutput) return s.color(fg.light_white);
-    return s;
+    cwritefln("info: %s".white,escapeCCL(msg));
 }
 
-string grey(string s) @property
+void warning(const(char)[] msg)
 {
-    if (enableColoredOutput) return s.color(fg.white);
-    return s;
+    cwritefln("warning: %s".yellow, escapeCCL(msg));
 }
 
-string cyan(string s) @property
+void error(const(char)[] msg)
 {
-    if (enableColoredOutput) return s.color(fg.light_cyan);
-    return s;
-}
-
-string green(string s) @property
-{
-    if (enableColoredOutput) return s.color(fg.light_green);
-    return s;
-}
-
-string yellow(string s) @property
-{
-    if (enableColoredOutput) return s.color(fg.light_yellow);
-    return s;
-}
-
-string red(string s) @property
-{
-    if (enableColoredOutput) return s.color(fg.light_red);
-    return s;
-}
-
-void info(string msg)
-{
-    cwritefln("info: %s".white, msg);
-}
-
-void warning(string msg)
-{
-    cwritefln("warning: %s".yellow, msg);
-}
-
-void error(string msg)
-{
-    cwritefln("error: %s".red, msg);
+    cwritefln("error: %s".lred, escapeCCL(msg));
 }
 
 class ExternalProgramErrored : Exception
@@ -94,7 +57,7 @@ string convertMarkdownFileToHTML(string markdownFile)
 
 void safeCommand(string cmd)
 {
-    cwritefln("$ %s".cyan, cmd);
+    cwritefln("$ %s".lcyan, cmd);
     auto pid = spawnShell(cmd);
     auto errorCode = wait(pid);
     //cwritefln(" => returned error code %s", errorCode);
@@ -104,7 +67,7 @@ void safeCommand(string cmd)
 
 int unsafeCommand(string cmd)
 {
-    cwritefln("$ %s".cyan, cmd);
+    cwritefln("$ %s".lcyan, cmd);
     auto pid = spawnShell(cmd);
     auto errorCode = wait(pid);
     return errorCode;
@@ -141,7 +104,7 @@ int copyRecurse(string from, string to, bool verbose)
 
     if (isDir(from))
     {
-        if (verbose) cwritefln("    => Create directory %s".green, to);
+        if (verbose) cwritefln("    => Create directory %s".lgreen, to);
         mkdirRecurse(to);
 
         auto entries = dirEntries(from, SpanMode.shallow);
@@ -155,7 +118,7 @@ int copyRecurse(string from, string to, bool verbose)
     }
     else
     {
-        if (verbose) cwritefln("    => Copy %s to %s".green, from, to);
+        if (verbose) cwritefln("    => Copy %s to %s".lgreen, from, to);
         std.file.copy(from, to);
         return 1;
     }

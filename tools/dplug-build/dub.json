@@ -5,7 +5,7 @@
 
     "dependencies":
     {
-        "colorize": "~>1.0",
+        "console-colors": "~>1.0",
         "commonmark-d": "~>1.0",
         "arsd-official:dom": "~>10.0",
         "dplug:client": { "path": "../.." }
