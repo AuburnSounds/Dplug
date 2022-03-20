@@ -9,56 +9,21 @@ import std.string;
 import std.file;
 import std.path;
 
-import colorize;
-
-string white(string s) @property
-{
-    return s.color(fg.light_white);
-}
-
-string grey(string s) @property
-{
-    return s.color(fg.white);
-}
-
-string cyan(string s) @property
-{
-    return s.color(fg.light_cyan);
-}
-
-string green(string s) @property
-{
-    return s.color(fg.light_green);
-}
-
-string yellow(string s) @property
-{
-    return s.color(fg.light_yellow);
-}
-
-string red(string s) @property
-{
-    return s.color(fg.light_red);
-}
-
-string magenta(string s) @property
-{
-    return s.color(fg.light_magenta);
-}
+import consolecolors;
 
 void info(string msg)
 {
-    cwritefln("info: %s".white, msg);
+    cwritefln("info: %s".white, escapeCCL(msg));
 }
 
 void warning(string msg)
 {
-    cwritefln("warning: %s".yellow, msg);
+    cwritefln("warning: %s".yellow, escapeCCL(msg));
 }
 
 void error(string msg)
 {
-    cwritefln("error: %s".red, msg);
+    cwritefln("error: %s".red, escapeCCL(msg));
 }
 
 class ExternalProgramErrored : Exception

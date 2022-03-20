@@ -16,7 +16,7 @@ import std.datetime;
 import utils;
 
 import waved;
-import colorize;
+import consolecolors;
 import arsd.dom;
 import arch;
 
@@ -33,14 +33,14 @@ void usage()
     void flag(string arg, string desc, string possibleValues, string defaultDesc)
     {
         string argStr = format("        %s", arg);
-        cwrite(argStr.cyan);
+        cwrite(argStr.lcyan);
         for(size_t i = argStr.length; i < 24; ++i)
             write(" ");
         cwritefln("%s".white, desc);
         if (possibleValues)
             cwritefln("                        Possible values: ".grey ~ "%s".yellow, possibleValues);
         if (defaultDesc)
-            cwritefln("                        Default: ".grey ~ "%s".cyan, defaultDesc);
+            cwritefln("                        Default: ".grey ~ "%s".lcyan, defaultDesc);
         cwriteln;
     }
 
@@ -57,30 +57,30 @@ void usage()
     cwriteln();
     cwriteln("NOTES".white);
     cwriteln();
-    cwriteln("      bench".yellow ~ " expects a " ~ "bench.xml".cyan ~ " file in the directory it is launched.");
+    cwriteln("      bench".yellow ~ " expects a " ~ "bench.xml".lcyan ~ " file in the directory it is launched.");
     cwriteln();
 
     cwriteln();
     cwriteln("EXAMPLE");
     cwriteln();
-    cwriteln(`    -------------------------------------- bench.xml ---------------------------------------`.cyan);
+    cwriteln(`    -------------------------------------- bench.xml ---------------------------------------`.lcyan);
     cwriteln();
-    cwriteln(`    <?xml version="1.0" encoding="UTF-8"?>`.green);
-    cwriteln(`    <bench>`.green);
+    cwriteln(`    &lt;?xml version="1.0" encoding="UTF-8"?&gt;`.lgreen);
+    cwriteln(`    &lt;bench&gt;`.lgreen);
     cwriteln();
-    cwriteln(`      <!-- This will compare challenger.dll to baseline.dll over presets 0 to 20,`.magenta);
-    cwriteln(`           and display the speed-up and audio RMS differences.                           -->`.magenta);
+    cwriteln(`      &lt;!-- This will compare challenger.dll to baseline.dll over presets 0 to 20,`.lmagenta);
+    cwriteln(`           and display the speed-up and audio RMS differences.                           --&gt;`.lmagenta);
     cwriteln();    
-    cwriteln(`      <baseline>baseline.dll</baseline>`.green ~ `        <!-- path to baseline VST2.4 executable   -->`.magenta);
-    cwriteln(`      <challenger>challenger.dll</challenger>`.green ~ `  <!-- path to challenger VST2.4 executable -->`.magenta);
-    cwriteln(`      <preset-range min="0" max="20"/>`.green ~ `         <!-- range of VST2.4 presets to check     -->`.magenta);
-    cwriteln(`      <source>mysource.wav</source>`.green ~ `            <!-- add a source to the test             -->`.magenta);
-    cwriteln(`      <quality-compare/>`.green ~ `                       <!-- perform quality comparison           -->`.magenta);
-    cwriteln(`      <speed-measure/>`.green ~ `                         <!-- perform speed comparison             -->`.magenta);
-    cwriteln(`      <times>20</times>`.green ~ `                        <!-- specify number of speed samples      -->`.magenta);
-    cwriteln(`    </bench>`.green);
+    cwriteln(`      &lt;baseline&gt;baseline.dll&lt;/baseline&gt;`.lgreen ~ `        &lt;!-- path to baseline VST2.4 executable   --&gt;`.lmagenta);
+    cwriteln(`      &lt;challenger&gt;challenger.dll&lt;/challenger&gt;`.lgreen ~ `  &lt;!-- path to challenger VST2.4 executable --&gt;`.lmagenta);
+    cwriteln(`      &lt;preset-range min="0" max="20"/&gt;`.lgreen ~ `         &lt;!-- range of VST2.4 presets to check     --&gt;`.lmagenta);
+    cwriteln(`      &lt;source&gt;mysource.wav&lt;/source&gt;`.lgreen ~ `            &lt;!-- add a source to the test             --&gt;`.lmagenta);
+    cwriteln(`      &lt;quality-compare/&gt;`.lgreen ~ `                       &lt;!-- perform quality comparison           --&gt;`.lmagenta);
+    cwriteln(`      &lt;speed-measure/&gt;`.lgreen ~ `                         &lt;!-- perform speed comparison             --&gt;`.lmagenta);
+    cwriteln(`      &lt;times&gt;20&lt;/times&gt;`.lgreen ~ `                        &lt;!-- specify number of speed samples      --&gt;`.lmagenta);
+    cwriteln(`    &lt;/bench&gt;`.lgreen);
     cwriteln();
-    cwriteln(`    ----------------------------------------------------------------------------------------`.cyan);
+    cwriteln(`    ----------------------------------------------------------------------------------------`.lcyan);
     cwriteln();
     cwriteln();
 }
@@ -143,7 +143,7 @@ int main(string[] args)
     catch(Exception e)
     {
         import std.stdio;
-        cwritefln("error: %s".red, e.msg);
+        cwritefln("error: %s".lred, e.msg);
         return 1;
     }
 }
@@ -251,7 +251,7 @@ class SpeedMeasureProcessor : Processor
             double challengerSeconds = challenger.lastMeasurements.minSeconds;
             double percents = (baselineSec / challengerSeconds - 1) * 100;
             speedUps[challenger.shortName] ~= percents;
-            cwritef("  %s vs %s = %.4fs vs %.4fs => ".grey, challenger.shortName, universe.baseline, 
+            cwritef("  %s vs %s = %.4fs vs %.4fs =&gt; ".grey, challenger.shortName, universe.baseline, 
                                                               challengerSeconds, baselineSec);
             cwritefln("%+.2s%%".yellow, percents);
         }
@@ -265,8 +265,8 @@ class SpeedMeasureProcessor : Processor
             foreach(s; speedUps[challenger])
                 percents += s;
             double globalSpeedUp = percents / speedUps[challenger].length;
-            string msg = "=> Global speed-up for %s = " ~ "%+.2s%%";
-            msg = (globalSpeedUp > 2) ? msg.green : ((globalSpeedUp < -2) ? msg.red : msg.yellow);
+            string msg = "=&gt; Global speed-up for %s = " ~ "%+.2s%%";
+            msg = (globalSpeedUp > 2) ? msg.lgreen : ((globalSpeedUp < -2) ? msg.lred : msg.yellow);
             cwritefln(msg, challenger, globalSpeedUp);
         }        
     }
