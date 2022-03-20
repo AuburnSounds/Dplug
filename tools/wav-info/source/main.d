@@ -7,7 +7,7 @@ import std.conv;
 
 import waved;
 import dplug.core;
-import colorize;
+import consolecolors;
 
 
 void usage()
@@ -53,7 +53,7 @@ int main(string[] args)
         Sound sound = decodeSound(files[0]);
 
         cwriteln;
-        cwritefln("Analysing %s ...", files[0].color(fg.light_white));
+        cwritefln("Analysing %s ...", files[0].white);
         cwriteln;
 
         string humanReadableDuration = convertSecondsToHuman( sound.lengthInFrames() / cast(double)(sound.sampleRate) );
@@ -106,7 +106,7 @@ int main(string[] args)
     catch(Exception e)
     {
         writeln;
-        cwritefln(format("error: %s", e.msg).color(fg.light_red));
+        cwritefln(format("error: %s", escapeCCL(e.msg)).lred);
         writeln;
         usage();
         writeln;
@@ -136,9 +136,9 @@ string convertSecondsToHuman(double seconds)
 // highlight
 string colored(string s)
 {
-    return s.color(fg.light_yellow);
+    return s.yellow;
 }
 string colored(int s)
 {
-    return to!string(s).color(fg.light_yellow);
+    return to!string(s).yellow;
 }
