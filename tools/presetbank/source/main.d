@@ -86,14 +86,14 @@ int main(string[] args)
             usage();
             return 1;
         }
-        cwriteln(format("  => %s presets parsed", presets.length).lgreen);
+        cwriteln(format("  =&gt; %s presets parsed", presets.length).lgreen);
 
         if (!(output.length > 4 && output[$-4..$] == ".fxb"))
             throw new Exception("Output must end in .fxb");
 
         ubyte[] fxb = savePresetsToFXB(presets);
         std.file.write(output, fxb);
-        cwriteln(format("  => exported to %s", output).lgreen);
+        cwriteln(format("  =&gt; exported to %s", output).lgreen);
 
         return 0;      
     }
