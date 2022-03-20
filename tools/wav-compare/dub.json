@@ -6,7 +6,7 @@
         "dplug:graphics": { "path": "../../" },
         "dplug:dsp": { "path": "../../" },
         "audio-formats": "~>1.5",
-        "colorize": "~>1.0"
+        "console-colors": "~>1.0"
     },
 
     "sourcePaths": ["source"],

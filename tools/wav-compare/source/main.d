@@ -9,7 +9,7 @@ import std.file;
 import dplug.core;
 import dplug.graphics;
 import dplug.dsp;
-import colorize;
+import consolecolors;
 import audioformats;
 
 
@@ -147,7 +147,7 @@ int main(string[] args)
         Sound soundB = decodeSound(fileB);
 
         if (fileA == fileB)
-            cwriteln(format("warning: comparing %s with itself, do you mean that?", fileA).color(fg.light_yellow));
+            cwriteln(format("warning: comparing %s with itself, do you mean that?", fileA).yellow);
 
         if (soundA.channels != soundB.channels)
             throw new Exception(format("%s and %s have different channel count", fileA, fileB));
@@ -217,15 +217,15 @@ int main(string[] args)
         if (!quiet)
         {
             cwriteln;
-            cwritefln(" Comparing %s vs %s", fileA.color(fg.light_white), fileB.color(fg.light_white));
+            cwritefln(" Comparing %s vs %s", fileA.white, fileB.white);
             cwriteln();
-            cwriteln ("    =================================".color(fg.light_white));
-            cwritefln("        RMS difference = %s", format("%.2f dB", rms_dB).color(fg.light_yellow));
-            cwriteln ("    =================================".color(fg.light_white));
+            cwriteln ("    =================================".white);
+            cwritefln("        RMS difference = %s", format("%.2f dB", rms_dB).yellow);
+            cwriteln ("    =================================".white);
             cwriteln();
 
             cwriteln(" An opinion from the comparison program:");
-            cwriteln(format("    \"%s\"", getComment(rms_dB, peak_dB)).color(fg.light_cyan));
+            cwriteln(format("    \"%s\"", getComment(rms_dB, peak_dB)).lcyan);
             cwriteln();
         }
         else
@@ -245,7 +245,7 @@ int main(string[] args)
     catch(Exception e)
     {
         cwriteln;
-        cwritefln(format("error: %s", e.msg).color(fg.light_red));
+        cwritefln(format("error: %s", escapeCCL(e.msg)).lred);
         usage();
         return 1;
     }
@@ -302,7 +302,7 @@ void outputSpectrumOfDifferences(Sound soundA, Sound soundB, string spectrogramP
     if (!quiet)
     {
         cwriteln;
-        cwritef(" Create a difference PNG in %s", spectrogramPath.color(fg.light_white));        
+        cwritef(" Create a difference PNG in %s", spectrogramPath.white);        
     }
 
     assert(soundA.sampleRate == soundB.sampleRate);
@@ -426,58 +426,6 @@ RGBA coeff2Color(Complex!CoeffType c)
     ubyte t = cast(ubyte)( (dB - icol) * 256.0 );
     return blendColor(dB_COLORS[icol+1], dB_COLORS[icol], t);
 }
-
-
-bool enableColoredOutput = true;
-
-string white(string s)
-{
-    if (enableColoredOutput) return s.color(fg.light_white);
-    return s;
-}
-
-string grey(string s)
-{
-    if (enableColoredOutput) return s.color(fg.white);
-    return s;
-}
-
-string cyan(string s)
-{
-    if (enableColoredOutput) return s.color(fg.light_cyan);
-    return s;
-}
-
-string green(string s)
-{
-    if (enableColoredOutput) return s.color(fg.light_green);
-    return s;
-}
-
-string yellow(string s)
-{
-    if (enableColoredOutput) return s.color(fg.light_yellow);
-    return s;
-}
-
-string red(string s)
-{
-    if (enableColoredOutput) return s.color(fg.light_red);
-    return s;
-}
-
-string blue(string s)
-{
-    if (enableColoredOutput) return s.color(fg.light_blue);
-    return s;
-}
-
-string magenta(string s)
-{
-    if (enableColoredOutput) return s.color(fg.light_magenta);
-    return s;
-}
-
 
 /// Returns: Another Sound with stripped input.
 Sound stripSound(const(Sound) input, int start, int end) pure nothrow
