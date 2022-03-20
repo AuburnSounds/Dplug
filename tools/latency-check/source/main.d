@@ -8,7 +8,7 @@ import std.conv;
 import dplug.core;
 import dplug.host;
 
-import colorize;
+import consolecolors;
 import waved;
 
 void usage()
@@ -136,7 +136,7 @@ int main(string[] args)
 
         foreach (sampleRate ; sampleRates)
         {
-            cwritefln("*** Testing at sample rate %s".color(fg.light_white), sampleRate);
+            cwritefln("*** Testing at sample rate %s".white, sampleRate);
             host.setSampleRate(sampleRate);
             host.setMaxBufferSize(N);
             if (!host.setIO(numChannels, numChannels))
@@ -186,13 +186,13 @@ int main(string[] args)
             host.endAudioProcessing();
             if (pw != 1)
             {
-                cwritefln("Warning: pw is != 1 so latency with be reported wrongly".color(fg.yellow));
+                cwritefln("Warning: pw is != 1 so latency with be reported wrongly".yellow);
             }
 
             if (abs(latencyReported - latencyMeasured) <= 0.5f)
-                cwritefln("  Reported %s samples (%.3f ms), measured %s samples => OK".color(fg.light_green), latencyReported, latencyReportedMs, latencyMeasured);
+                cwritefln("  Reported %s samples (%.3f ms), measured %s samples => OK".lgreen, latencyReported, latencyReportedMs, latencyMeasured);
             else
-                cwritefln("  Reported %s samples (%.3f ms), measured %s samples => ERROR".color(fg.light_red), latencyReported, latencyReportedMs, latencyMeasured);
+                cwritefln("  Reported %s samples (%.3f ms), measured %s samples => ERROR".lred, latencyReported, latencyReportedMs, latencyMeasured);
             writeln;
         }
         host.close();
@@ -201,7 +201,7 @@ int main(string[] args)
     catch(Exception e)
     {
         writeln;
-        cwritefln(format("error: %s", e.msg).color(fg.light_red));
+        cwritefln(format("error: %s", escapeCCL(e.msg)).lred);
         writeln;
         usage();
         writeln;

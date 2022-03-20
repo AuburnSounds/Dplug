@@ -3,7 +3,7 @@
     "description": "Check the truthness of reported latency in VST2 plug-ins.",
     "dependencies": {
         "dplug:host": {"path": "../../"},
-        "colorize": "~>1.0",
+        "console-colors": "~>1.0",
         "wave-d": "~>1.0"
     },
 
