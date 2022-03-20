@@ -6,7 +6,7 @@
     {
         "bindbc-sdl": "~>0.0",
         "audio-formats": "~>1.0",
-        "colorize": "~>1.0"
+        "console-colors": "~>1.0"
     },
     "versions": [
         "BindSDL_Mixer"

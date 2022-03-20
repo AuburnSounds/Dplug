@@ -14,7 +14,7 @@ import std.conv;
 import std.string;
 import std.process;
 
-import colorize;
+import consolecolors;
 
 import bindbc.sdl;
 import bindbc.sdl.mixer;
@@ -26,21 +26,21 @@ void usage()
     void flag(string arg, string desc, string possibleValues, string defaultDesc)
     {
         string argStr = format("        %s", arg);
-        cwrite(argStr.cyan);
+        cwrite(argStr.lcyan);
         for(size_t i = argStr.length; i < 24; ++i)
             write(" ");
         cwritefln("%s".white, desc);
         if (possibleValues)
             cwritefln("                        Possible values: ".grey ~ "%s".yellow, possibleValues);
         if (defaultDesc)
-            cwritefln("                        Default: ".grey ~ "%s".cyan, defaultDesc);
+            cwritefln("                        Default: ".grey ~ "%s".lcyan, defaultDesc);
         cwriteln;
     }
     cwriteln();
-    cwriteln( "This is ".white ~ "abtest".cyan ~ ": A/B sound testing tool.".white);
+    cwriteln( "This is ".white ~ "abtest".lcyan ~ ": A/B sound testing tool.".white);
     cwriteln();
     cwriteln("USAGE".white);
-    cwriteln("        abtest A.wav B.wav".cyan);
+    cwriteln("        abtest A.wav B.wav".lcyan);
     
     cwriteln();
     cwriteln();
@@ -55,12 +55,12 @@ void usage()
     cwriteln();
     cwriteln("EXAMPLES".white);
     cwriteln();
-    cwriteln("        # Normal comparison".green);
-    cwriteln("        abtest baseline.wav candidate.wav".cyan);
+    cwriteln("        # Normal comparison".lgreen);
+    cwriteln("        abtest baseline.wav candidate.wav".lcyan);
     cwriteln();
-    cwriteln("        # Comparison with only focused questionning and amplification of difference x2".green);
-    cwriteln("        # (this might not make any sense depending on the context)".green);
-    cwriteln("        abtest baseline.wav candidate.wav --amplify 2 --topic focused".cyan);
+    cwriteln("        # Comparison with only focused questionning and amplification of difference x2".lgreen);
+    cwriteln("        # (this might not make any sense depending on the context)".lgreen);
+    cwriteln("        abtest baseline.wav candidate.wav --amplify 2 --topic focused".lcyan);
     cwriteln();
     cwriteln("NOTES".white);
     cwriteln();
@@ -192,7 +192,7 @@ int main(string[] args)
             {
                 string driverName =  fromStringz(SDL_GetAudioDriver(i)).idup;
                 bool selected = (driver == driverName);
-                cwritefln("- Audio driver %s: %s", i, selected ? driverName.yellow : driverName.cyan);
+                cwritefln("- Audio driver %s: %s", i, selected ? escapeCCL(driverName).yellow : escapeCCL(driverName).lcyan);
             }
             cwriteln;
         }
@@ -326,18 +326,18 @@ int main(string[] args)
 
         // Display scores
         cwritefln("*** TOTAL RESULTS".white);
-        cwritefln("  => %s got %s votes", inputFileA.cyan, to!string(scoreA).yellow);
-        cwritefln("  => %s got %s votes", inputFileB.cyan, to!string(scoreB).yellow);
+        cwritefln("  => %s got %s votes", inputFileA.lcyan, to!string(scoreA).yellow);
+        cwritefln("  => %s got %s votes", inputFileB.lcyan, to!string(scoreB).yellow);
         cwriteln;
         cwritefln("*** DETAILS".white);
 
         for (int question = 0; question < numQuestions; ++question)
         {
             string result;
-            if (choiceQuestion[question] == 0) result = inputFileA.cyan;
-            if (choiceQuestion[question] == 1.0f) result = inputFileB.cyan;
+            if (choiceQuestion[question] == 0) result = inputFileA.lcyan;
+            if (choiceQuestion[question] == 1.0f) result = inputFileB.lcyan;
             if (choiceQuestion[question] == 0.5f) result = "draw".yellow;
-            if (isNaN(choiceQuestion[question])) result = "skipped".red;
+            if (isNaN(choiceQuestion[question])) result = "skipped".lred;
             cwritefln("    %60s => %s", questions[question], result);
         }
         cwriteln;
@@ -430,58 +430,35 @@ enum FOCUSED = 2;
 
 
 
-
-bool enableColoredOutput = true;
-
-string white(string s) @property
+deprecated string cyan(string s) @property
 {
-    if (enableColoredOutput) return s.color(fg.light_white);
     return s;
 }
 
-string grey(string s) @property
+deprecated string green(string s) @property
 {
-    if (enableColoredOutput) return s.color(fg.white);
     return s;
 }
 
-string cyan(string s) @property
-{
-    if (enableColoredOutput) return s.color(fg.light_cyan);
-    return s;
-}
 
-string green(string s) @property
+deprecated string red(string s) @property
 {
-    if (enableColoredOutput) return s.color(fg.light_green);
-    return s;
-}
-
-string yellow(string s) @property
-{
-    if (enableColoredOutput) return s.color(fg.light_yellow);
-    return s;
-}
-
-string red(string s) @property
-{
-    if (enableColoredOutput) return s.color(fg.light_red);
     return s;
 }
 
 void info(string msg)
 {
-    cwritefln("info: %s".white, msg);
+    cwritefln("info: %s".white, escapeCCL(msg));
 }
 
 void warning(string msg)
 {
-    cwritefln("warning: %s".yellow, msg);
+    cwritefln("warning: %s".yellow, escapeCCL(msg));
 }
 
 void error(string msg)
 {
-    cwritefln("error: %s".red, msg);
+    cwritefln("error: %s".lred, escapeCCL(msg));
 }
 
 // Transcode inputs to WAV
