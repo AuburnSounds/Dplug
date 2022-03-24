@@ -51,7 +51,7 @@ nothrow:
         // This is a tradeoff between Emissive light accuracy and speed.
         // A typical good value is 20, and this is the default, as this is
         // what `PBRCompositor` needs for the emissive pass.
-        setUpdateMargin(20);
+        setUpdateMargin(20); // TODO: put this in reflow, depends on scale factor
 
         // All resources are bundled as a string import.
         // You can avoid resource compilers that way.
