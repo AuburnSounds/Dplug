@@ -713,7 +713,7 @@ pure nothrow @nogc:
         return Transform2D.init;
     }
 
-    Transform2D opOpAssign(string op)(Transform2D o) if (op == "*")
+    void opOpAssign(string op)(Transform2D o) if (op == "*")
     {
         //          a  b  c
         //          d  e  f
@@ -728,7 +728,7 @@ pure nothrow @nogc:
         float D = d * o.a + e * o.d;
         float E = d * o.b + e * o.e;
         float F = d * o.c + e * o.f + f;
-        return Transform2D(A, B, C, D, E, F);
+        this = Transform2D(A, B, C, D, E, F);
     }
 
     /// Return this * Transform2D(1, 0, x,
