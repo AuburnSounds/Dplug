@@ -47,17 +47,8 @@ import dplug.canvas.rasterizer;
 
 public import dplug.math.vector;
 public import dplug.math.box;
-import dplug.math.matrix;
 
-
-/// The transform type used by dplug:canvas. It's a 3x3 float matrix
-/// with the form:
-/// (a b c)
-/// (d e f)
-/// (0 0 1)
-alias Transform2D = mat3!float;
-
- /// `dplug:canvas` operates on RGBA 8-bit buffers.
+/// `dplug:canvas` operates on RGBA 8-bit buffers.
 alias ImageDest = ImageRef!RGBA;
 
 /// A 2D Canvas able to render complex pathes into an `ImageRef!RGBA` buffer.
@@ -531,16 +522,13 @@ nothrow:
         float cosa = cos(angle);
         float sina = sin(angle);
         curMatrix() *= Transform2D(cosa, -sina, 0,
-                                   sina,  cosa, 0,
-                                      0,     0, 1);
+                                   sina,  cosa, 0);
     }
 
     /// Adds a scaling transformation to the canvas units by x horizontally and by y vertically.
     void scale(float x, float y)
     {
-        curMatrix() *= Transform2D(x, 0, 0,
-                                   0, y, 0,
-                                   0, 0, 1);
+        curMatrix() = curMatrix().scaleMulOpt(x, y);
     }
     ///ditto
     void scale(vec2f xy)
@@ -557,9 +545,7 @@ nothrow:
     /// horizontally and `y` vertically on the grid.
     void translate(float x, float y)
     {
-        curMatrix() *= Transform2D(1, 0, x,
-                                   0, 1, y,
-                                   0, 0, 1);
+        curMatrix() = curMatrix().translateMulOpt(x, y);
     }
     ///ditto
     void translate(vec2f position)
@@ -572,16 +558,14 @@ nothrow:
                    float d, float e, float f)
     {
         curMatrix() *= Transform2D(a, c, e, 
-                                   b, d, f, 
-                                   0, 0, 1);
+                                   b, d, f);
     }
 
     void setTransform(float a, float b, float c,
                       float d, float e, float f)
     {
         curMatrix() = Transform2D(a, c, e, 
-                                  b, d, f, 
-                                  0, 0, 1);
+                                  b, d, f);
     }
 
     ///ditto
@@ -654,12 +638,15 @@ private:
 
     vec2f transformPoint(float x, float y)
     {
-        return ( currentTransform() * vec3f(x, y, 1.0f) ).xy;
+        Transform2D M = currentTransform();
+        float fx = x * M.a + y * M.b + M.c;
+        float fy = x * M.d + y * M.e + M.f;
+        return vec2f(fx, fy);
     }
 
     vec2f transformPoint(vec2f pt)
     {
-        return ( currentTransform() * vec3f(pt.xy, 1.0f) ).xy;
+        return transformPoint(pt.x, pt.y);
     }
 }
 
@@ -708,4 +695,73 @@ package:
 
     float x0, y0, x1, y1, r2;
     Gradient _gradient;
+}
+
+/// The transform type used by dplug:canvas. It's a 3x3 float matrix
+/// with the form:
+/// (a b c)
+/// (d e f)
+/// (0 0 1)
+struct Transform2D
+{
+pure nothrow @nogc:
+    float a = 1, b = 0, c = 0, 
+          d = 0, e = 1, f = 0;
+
+    static Transform2D identity()
+    {
+        return Transform2D.init;
+    }
+
+    Transform2D opOpAssign(string op)(Transform2D o) if (op == "*")
+    {
+        //          a  b  c
+        //          d  e  f
+        //          0  0  1
+        // a  b  c  A  B  C
+        // d  e  f  D  E  F
+        // 0  0  1  0  0  1
+        
+        float A = a * o.a + b * o.d;
+        float B = a * o.b + b * o.e;
+        float C = a * o.c + b * o.f + c;
+        float D = d * o.a + e * o.d;
+        float E = d * o.b + e * o.e;
+        float F = d * o.c + e * o.f + f;
+        return Transform2D(A, B, C, D, E, F);
+    }
+
+    /// Return this * Transform2D(1, 0, x,
+    ///                           0, 1, y);
+    Transform2D translateMulOpt(float x, float y)
+    {
+        //           1  0  x
+        //           0  1  y
+        //           0  0  1
+        //           -------
+        // a  b  c | a  b  C
+        // d  e  f | d  e  F
+        // 0  0  1 | 0  0  1
+        float C = a * x + b * y + c;
+        float F = d * x + e * y + f;
+        return Transform2D(a, b, C, d, e, F);
+    }
+
+    /// Return this * Transform2D(x, 0, 0,
+    ///                           0, y, 0);
+    Transform2D scaleMulOpt(float x, float y)
+    {
+        //           x  0  0
+        //           0  y  0
+        //           0  0  1
+        //           -------
+        // a  b  c | A  B  c
+        // d  e  f | D  E  f
+        // 0  0  1 | 0  0  1
+        float A = x * a;
+        float B = y * b;
+        float D = x * d;
+        float E = y * e;
+        return Transform2D(A, B, c, D, E, f);
+    }
 }
