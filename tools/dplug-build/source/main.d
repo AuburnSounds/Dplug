@@ -403,7 +403,7 @@ int main(string[] args)
 
         if (!quiet)
         {
-            cwritefln("=> Bundling plug-in ".lgreen ~ "%s".yellow ~ " from ".lgreen ~ "%s".yellow
+            cwritefln("=&gt; Bundling plug-in ".lgreen ~ "%s".yellow ~ " from ".lgreen ~ "%s".yellow
                       ~ ", archs ".lgreen ~ "%s".yellow,
                 plugin.pluginName, plugin.vendorName, toStringArchs(archs));
             cwritefln("   configurations: ".lgreen ~ "%s".yellow
@@ -500,7 +500,7 @@ int main(string[] args)
                 {
                     buildPlugin(compiler, config, build, arch, verbose, force, combined, quiet, skipRegistry, parallel);
                     double bytes = getSize(plugin.dubOutputFileName) / (1024.0 * 1024.0);
-                    cwritefln("    => Build OK, binary size = %0.1f mb, available in ./%s".lgreen, bytes, path);
+                    cwritefln("    =&gt; Build OK, binary size = %0.1f mb, available in ./%s".lgreen, bytes, path);
                     cwriteln();
                 }
 
@@ -615,7 +615,7 @@ int main(string[] args)
                         std.file.write(factoryPresetsLocation ~ "/" ~ p.filename, p.content);
                     }
 
-                    cwritefln("    => Copied %s AAX factory presets %sfrom binary".lgreen, tfxPresets.length, formerlyExtracted ? "(formerly extracted) " : "");
+                    cwritefln("    =&gt; Copied %s AAX factory presets %sfrom binary".lgreen, tfxPresets.length, formerlyExtracted ? "(formerly extracted) " : "");
                     cwriteln();
                 }
 
@@ -656,7 +656,7 @@ int main(string[] args)
                     string manifestPath = outputDir ~ "/manifest.ttl";
                     std.file.write(manifestPath, lv2Manifest);
 
-                    cwritefln("    => Written %s bytes to%s manifest.ttl.".lgreen, getSize(manifestPath), formerlyExtracted ? " (formerly extracted)" : "");
+                    cwritefln("    =&gt; Written %s bytes to%s manifest.ttl.".lgreen, getSize(manifestPath), formerlyExtracted ? " (formerly extracted)" : "");
                     cwriteln();
                 }
 
@@ -883,7 +883,7 @@ int main(string[] args)
                                                 escapeShellArgument(pluginFinalPath));
                             safeCommand(cmd);
                             double bytes = getSize(pluginFinalPath) / (1024.0 * 1024.0);
-                            cwritefln("    => Universal build OK, binary size = %0.1f mb, available in ./%s".lgreen, bytes, path);
+                            cwritefln("    =&gt; Universal build OK, binary size = %0.1f mb, available in ./%s".lgreen, bytes, path);
                             cwriteln();
                         }
                         else
@@ -944,7 +944,7 @@ int main(string[] args)
                                                 escapeShellArgument(exePath));
                             safeCommand(cmd);
                             double bytes = getSize(exePath) / (1024.0 * 1024.0);
-                            cwritefln("    => Universal build OK, binary size = %0.1f mb, available in ./%s".lgreen, bytes, path);
+                            cwritefln("    =&gt; Universal build OK, binary size = %0.1f mb, available in ./%s".lgreen, bytes, path);
                             cwriteln();
                         }
                         else
@@ -991,7 +991,7 @@ int main(string[] args)
 
 /*
                         int filesCopied = copyRecurse(path ~ "/" ~ pluginDir, installDir ~ "/" ~ pluginDir, verbose);
-                        cwritefln("    => %s files copied.".green, filesCopied);
+                        cwritefln("    =&gt; %s files copied.".green, filesCopied);
                         cwriteln();
 */
                         if (auval)
@@ -1007,7 +1007,7 @@ int main(string[] args)
                                 plugin.vendorUniqueID);
                             safeCommand(cmd);
 
-                            cwriteln("    => Audio Unit passed validation.".lgreen);
+                            cwriteln("    =&gt; Audio Unit passed validation.".lgreen);
                             cwriteln();
                         }
                     }
@@ -1138,7 +1138,7 @@ int main(string[] args)
                 // Write a file with macro expanded and converted to HTML, for the Mac installer.
                 string html = convertMarkdownFileToHTML(markdown);
                 std.file.write(licensePath, html);
-                cwritefln(" => OK\n".lgreen);
+                cwritefln(" =&gt; OK\n".lgreen);
             }
             else
                 throw new Exception("License file should be a Markdown .md file");
@@ -1149,7 +1149,7 @@ int main(string[] args)
             cwriteln("*** Generating final Mac installer...".white);
             string finalPkgPath = outputDir ~ "/" ~ plugin.finalPkgFilename(configurations[0]);
             generateMacInstaller(outputDir, resDir, plugin, macInstallerPackages, finalPkgPath, verbose);
-            cwriteln("    => OK".lgreen);
+            cwriteln("    =&gt; OK".lgreen);
             cwriteln;
 
             if (notarize)
@@ -1159,7 +1159,7 @@ int main(string[] args)
 
                 cwritefln("*** Notarizing final Mac installer %s...".white, primaryBundle);
                 notarizeMacInstaller(outputDir, plugin, finalPkgPath, primaryBundle);
-                cwriteln("    => Notarization OK".lgreen);
+                cwriteln("    =&gt; Notarization OK".lgreen);
                 cwriteln;
             }
         }
@@ -1485,7 +1485,7 @@ void generateWindowsInstaller(string outputDir,
                             plugin.getKeyPasswordWindows(),
                             escapeShellArgument(outExePath));
         safeCommand(cmd);
-        cwriteln("    => OK".lgreen);
+        cwriteln("    =&gt; OK".lgreen);
     }
     catch(Exception e)
     {
@@ -1651,7 +1651,7 @@ void notarizeMacInstaller(string outputDir, Plugin plugin, string outPkgPath, st
 
     if (requestUUID)
     {
-        cwritefln("    => Uploaded, RequestUUID = %s".lgreen, requestUUID);
+        cwritefln("    =&gt; Uploaded, RequestUUID = %s".lgreen, requestUUID);
         cwriteln();
     }
     else
@@ -1719,7 +1719,7 @@ void notarizeMacInstaller(string outputDir, Plugin plugin, string outPkgPath, st
                         status = key2.nextSibling("string").innerHTML;
                         if (status == "in progress")
                         {
-                            cwriteln("    => Notarization in progress, waiting...");
+                            cwriteln("    =&gt; Notarization in progress, waiting...");
                             Thread.sleep( (cast(long)timeout).msecs );
                             timeSpentPolling += timeout;
                             timeout = timeout * 1.61;
@@ -1742,7 +1742,7 @@ void notarizeMacInstaller(string outputDir, Plugin plugin, string outPkgPath, st
     }
     if (notarizationFailed)
     {
-        cwritefln("    => Notarization failed, log available at %s".lred, LogFileURL);
+        cwritefln("    =&gt; Notarization failed, log available at %s".lred, LogFileURL);
         cwriteln();
         throw new Exception("Failed notarization");
     }
@@ -1750,7 +1750,7 @@ void notarizeMacInstaller(string outputDir, Plugin plugin, string outPkgPath, st
     if (!notarizationSucceeded)
         throw new Exception("Time out. Notarization took more than one hour. Consider uploading smaller packages.");
 
-    cwritefln("    => Notarization succeeded, log available at %s".lgreen, LogFileURL);
+    cwritefln("    =&gt; Notarization succeeded, log available at %s".lgreen, LogFileURL);
     cwriteln();
 
     {

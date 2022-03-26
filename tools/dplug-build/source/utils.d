@@ -60,7 +60,7 @@ void safeCommand(string cmd)
     cwritefln("$ %s".lcyan, cmd);
     auto pid = spawnShell(cmd);
     auto errorCode = wait(pid);
-    //cwritefln(" => returned error code %s", errorCode);
+    //cwritefln(" =&gt; returned error code %s", errorCode);
     if (errorCode != 0)
         throw new ExternalProgramErrored(errorCode, format("Command '%s' returned %s", cmd, errorCode));
 }
@@ -104,7 +104,7 @@ int copyRecurse(string from, string to, bool verbose)
 
     if (isDir(from))
     {
-        if (verbose) cwritefln("    => Create directory %s".lgreen, to);
+        if (verbose) cwritefln("    =&gt; Create directory %s".lgreen, to);
         mkdirRecurse(to);
 
         auto entries = dirEntries(from, SpanMode.shallow);
@@ -118,7 +118,7 @@ int copyRecurse(string from, string to, bool verbose)
     }
     else
     {
-        if (verbose) cwritefln("    => Copy %s to %s".lgreen, from, to);
+        if (verbose) cwritefln("    =&gt; Copy %s to %s".lgreen, from, to);
         std.file.copy(from, to);
         return 1;
     }

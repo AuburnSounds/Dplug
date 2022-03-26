@@ -1094,7 +1094,7 @@ string makeMacIcon(string outputDir, string pluginName, string pngPath)
         }
         catch(Exception e)
         {
-            cwritefln(" => %s".yellow, e.msg);
+            cwritefln(" =&gt; %s".yellow, e.msg);
         }
         safeCommand(format("sips -z 16 16     %s --out %s/icon_16x16.png", pngPath, iconSetDir));
         safeCommand(format("sips -z 32 32     %s --out %s/icon_16x16@2x.png", pngPath, iconSetDir));
@@ -1189,7 +1189,7 @@ string makeRSRC_internal(string outputDir, Plugin plugin, Arch arch, bool verbos
     rsrc.addResource(2, 1000, false, plugin.vendorName ~ ": " ~ plugin.pluginName, thng);
 
     std.file.write(rsrcPath, rsrc.write());
-    cwritefln("    => Written %s bytes.".lgreen, getSize(rsrcPath));
+    cwritefln("    =&gt; Written %s bytes.".lgreen, getSize(rsrcPath));
     cwriteln();
     return rsrcPath;
 }
@@ -1242,7 +1242,7 @@ string makeRSRC_with_Rez(Plugin plugin, Arch arch, bool verbose)
     if (getSize(rsrcPath) == 0)
         throw new Exception(format("%s is an empty file", rsrcPath));
 
-    cwritefln("    => Written %s bytes.".lgreen, getSize(rsrcPath));
+    cwritefln("    =&gt; Written %s bytes.".lgreen, getSize(rsrcPath));
     cwriteln();
     return rsrcPath;
 }
