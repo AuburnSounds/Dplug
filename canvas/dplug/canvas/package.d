@@ -595,16 +595,19 @@ private:
 
     Blitter _currentBlitter;
 
-    // Blitters
-    ColorBlit _plainColorBlit;
-    LinearBlit _linearGradientBlit;
-    EllipticalBlit _ellipticalGradientBlit;
+    // Blitters (only one used at once)
+    union
+    {
+        ColorBlit _plainColorBlit;
+        LinearBlit _linearGradientBlit;
+        EllipticalBlit _ellipticalGradientBlit;
+    }
 
     // Gradient cache
     // You're expected to recreate gradient in draw code.
     int _gradientUsed; // number of gradients in _gradients in active use
     Vec!CanvasGradient _gradients; // all gradients here are created on demand, 
-                                   // and possibly reusable after `ìnitialize`
+                                   // and possibly reusable after `initialize`
 
     CanvasGradient newOrReuseGradient()
     {
