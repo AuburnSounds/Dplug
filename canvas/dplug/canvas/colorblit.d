@@ -29,6 +29,13 @@ nothrow:
         this.strideBytes = strideBytes;
         this.height = height;
         this.color = color;
+
+        __m128i xmColor = _mm_loadu_si32 (&color);
+        xmColor = _mm_unpacklo_epi8 (xmColor, _mm_setzero_si128());
+        xmColor = _mm_unpacklo_epi64 (xmColor, xmColor);
+        __m128i xmAlpha = _mm_set1_epi16 (cast(ushort) ((color >> 24) << 8));
+        _mm_storeu_si128(cast(__m128i*)_xmColor.ptr, xmColor);
+        _mm_storeu_si128(cast(__m128i*)_xmAlpha.ptr, xmAlpha);
     }
 
 private:
@@ -54,15 +61,11 @@ private:
         // XMM constants
 
         immutable __m128i XMZERO = 0;
-        immutable __m128i XMFFFF = [0xFFFFFFFF,0xFFFFFFFF,0xFFFFFFFF,0xFFFFFFFF];
         immutable __m128i XMMSK16 = [0xFFFF,0xFFFF,0xFFFF,0xFFFF];
 
         // paint variables
-
-        __m128i xmColor = _mm_loadu_si32 (&color);
-        xmColor = _mm_unpacklo_epi8 (xmColor, _mm_setzero_si128());
-        xmColor = _mm_unpacklo_epi64 (xmColor, xmColor);
-        __m128i xmAlpha = _mm_set1_epi16 (cast(ushort) ((color >> 24) << 8));
+        __m128i xmColor = _mm_loadu_si128(cast(__m128i*)_xmColor);
+        __m128i xmAlpha = _mm_loadu_si128(cast(__m128i*)_xmAlpha);
 
         // main loop
 
@@ -122,7 +125,7 @@ private:
                     tpma = _mm_mulhi_epu16(xmAlpha,tpma);
                     __m128i tpmc = _mm_mulhi_epu16(xmColor,tpma);
                     tpmc = _mm_packus_epi16(tpmc,tpmc);
-                    tpma  = tpma ^ XMFFFF;               // 1-alpha
+                    tpma  = _mm_not_si128(tpma); // 1-alpha
 
                     uint* ptr = &dest[bpos*4];
                     uint* end = &dest[nsb*4];
@@ -221,6 +224,8 @@ private:
     size_t strideBytes;
     int height;
     uint color;
+    ubyte[16] _xmColor;
+    ubyte[16] _xmAlpha;
 }
 
  void doBlit_ColorBlit(void* userData, int* delta, DMWord* mask, int x0, int x1, int y)
