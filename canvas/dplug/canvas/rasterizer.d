@@ -779,6 +779,7 @@ private:
 
     ArenaAllocator!(Edge,100) m_edgepool;
 
+    // PERF: no reasons to be Vec here
     Vec!(Edge*) m_buckets;
     Vec!int m_scandelta;
     Vec!DMWord m_deltamask;

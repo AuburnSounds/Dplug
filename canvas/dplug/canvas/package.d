@@ -521,8 +521,7 @@ nothrow:
     {
         float cosa = cos(angle);
         float sina = sin(angle);
-        curMatrix() *= Transform2D(cosa, -sina, 0,
-                                   sina,  cosa, 0);
+        curMatrix() = curMatrix().scaleMulRot(cosa, sina);
     }
 
     /// Adds a scaling transformation to the canvas units by x horizontally and by y vertically.
@@ -766,5 +765,25 @@ pure nothrow @nogc:
         float D = x * d;
         float E = y * e;
         return Transform2D(A, B, c, D, E, f);
+    }
+
+
+    /// Return this * Transform2D(cosa, -sina, 0,
+    ///                           sina, cosa, 0)
+    Transform2D scaleMulRot(float cosa, float sina)
+    {
+        //           g -h  0
+        //           h  g  0
+        //           0  0  1
+        //           -------
+        // a  b  c | A  B  c
+        // d  e  f | D  E  f
+        // 0  0  1 | 0  0  1
+        float A = cosa * a + sina * b;
+        float B = cosa * b - sina * a;
+        float D = cosa * d + sina * e;
+        float E = cosa * e - sina * d;
+        return Transform2D(A, B, c, 
+                           D, E, f);
     }
 }
