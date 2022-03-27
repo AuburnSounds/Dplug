@@ -205,14 +205,21 @@ nothrow:
 
         // init buffers
         m_scandelta.resize(roundUpPow2((right+3)|63));
-        m_deltamask.resize(roundUpPow2(1+right/dmPixPerWord));
+
+        m_deltamaskSize = cast(size_t) roundUpPow2(1+right/dmPixPerWord);
+        if (m_deltamaskSize > m_deltamaskAlloc)
+        {
+            m_deltamask = cast(DMWord*) alignedReallocDiscard(m_deltamask, m_deltamaskSize * (DMWord*).sizeof, 1);
+            m_deltamaskAlloc = m_deltamaskSize;
+        }
+
         m_buckets.resize(roundUpPow2(bottom+1));
         m_clipbfr_l.resize(roundUpPow2((bottom+2)|63));
         m_clipbfr_r.resize(roundUpPow2((bottom+2)|63));
 
         m_scandelta.fill(0);
-       // m_deltamask is init on each rasterized line
-        m_buckets.fill((Edge*).init);
+        // m_deltamask is init on each rasterized line
+        m_buckets.fill(null);
         m_clipbfr_l.fill(0);
         m_clipbfr_r.fill(0);
 
@@ -224,6 +231,15 @@ nothrow:
         m_subpy = 0;
         m_fprevx = 0;
         m_fprevy = 0;
+    }
+
+    ~this()
+    {
+        if (m_deltamask)
+        {
+            alignedFree(m_deltamask, 1);
+            m_deltamask = null;
+        }
     }
 
     // rasterize
@@ -245,7 +261,7 @@ nothrow:
 
         for (int y = starty; y < endy; y++)
         {
-            m_deltamask.fill(0);
+            m_deltamask[0..m_deltamaskSize] = 0;
             int ly = (y << fpFracBits) + 256;
 
             // clip accumulator
@@ -255,8 +271,8 @@ nothrow:
             cr_acc += m_clipbfr_r[y];
             m_clipbfr_r[y] = 0;
 
-            if (cl_acc) DMSetBit(m_deltamask.ptr, cl_pos);
-            if (cr_acc) DMSetBit(m_deltamask.ptr, cr_pos);
+            if (cl_acc) DMSetBit(m_deltamask, cl_pos);
+            if (cr_acc) DMSetBit(m_deltamask, cr_pos);
 
             m_scandelta[cl_pos] += cl_acc;
             m_scandelta[cr_pos] += cr_acc;
@@ -298,7 +314,7 @@ nothrow:
 
                 if (steps == 0)
                 {
-                    DMSetBit(m_deltamask.ptr, x0);
+                    DMSetBit(m_deltamask, x0);
 
                     int w = (edge.x >> 32) & 0xFF;
                     int v = (nx >> 32) & 0xFF;
@@ -309,7 +325,7 @@ nothrow:
                 }
                 else if (steps > 0)
                 {
-                    DMSetBitRange(m_deltamask.ptr, x0, x1);
+                    DMSetBitRange(m_deltamask, x0, x1);
 
                     int w = 256 - ((edge.x >> 32) & 0xFF);
                     long acc = w * edge.dy;
@@ -337,7 +353,7 @@ nothrow:
                 }
                 else if (steps < 0)
                 {
-                    DMSetBitRange(m_deltamask.ptr, x1, x0);
+                    DMSetBitRange(m_deltamask, x1, x0);
 
                     int w = 256 - ((nx >> 32) & 0xFF);
                     long acc = w * edge.dy;
@@ -371,7 +387,7 @@ nothrow:
 
             // Blit scanline
 
-            blitter.doBlit(blitter.userData, m_scandelta.ptr, m_deltamask.ptr, startx, endx, y);
+            blitter.doBlit(blitter.userData, m_scandelta.ptr, m_deltamask, startx, endx, y);
 
             // clear scandelta overspill
 
@@ -782,7 +798,11 @@ private:
     // PERF: no reasons to be Vec here
     Vec!(Edge*) m_buckets;
     Vec!int m_scandelta;
-    Vec!DMWord m_deltamask;
+
+    size_t m_deltamaskSize = 0;
+    size_t m_deltamaskAlloc = 0;
+    DMWord* m_deltamask;
+
     Vec!int m_clipbfr_l;
     Vec!int m_clipbfr_r;
 

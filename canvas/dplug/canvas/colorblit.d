@@ -99,7 +99,7 @@ private:
                     bpos = nsb;
                 }
 
-                // Or fill span with soid color
+                // Or fill span with solid color
 
                 else if (isopaque && (cover > 0xFF00))
                 {
