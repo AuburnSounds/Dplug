@@ -33,7 +33,7 @@
         "dplug:gui": { "path": "../.." },
         "dplug:pbr-widgets": { "path": "../.." },
         "dplug:flat-widgets": { "path": "../.." },
-        "dplug:wren-support": { "path": "../.." },
+        "dplug:wren-support": { "path": "../.." }
     },
 
 
