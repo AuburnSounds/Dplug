@@ -1,3 +1,7 @@
+/**
+Copyright: Guillaume Piolat 2015-2017.
+License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
+*/
 module leveldisplay;
 
 import gui;
@@ -12,6 +16,7 @@ import dplug.canvas;
 /// - use dplug:canvas
 /// - use TimedFIFO for UI feedback with sub-buffer latency
 /// - render to both the Raw and PBR layer
+/// For more custom widget tips, see "Dplug Tutorials 3 - Anatomy of a custom widget".
 final class UILevelDisplay : UIElement
 {
 public:
