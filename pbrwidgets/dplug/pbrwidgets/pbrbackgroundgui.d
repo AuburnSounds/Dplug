@@ -21,10 +21,15 @@ import dplug.gui.legacypbr;
 public import dplug.gui.sizeconstraints;
 
 
-// This cause JPEG and PNG to be decompressed on the fly on resize, instead of ahead of time and staying in memory.
+// `decompressImagesLazily` cause JPEG and PNG to be decompressed on the fly on resize, instead of ahead of time and staying in memory.
 // This wins 17mb of RAM on Panagement.
-// However, this also disable live reload of images for UI development.
-version = decompressImagesLazily;
+// However, this also disable live reload of images for UI development. Hence, it is disabled for debug builds, in order
+// to reload background with the RETURN key.
+debug {}
+else
+{
+    version = decompressImagesLazily;
+}
 
 /// PBRBackgroundGUI provides a PBR background loaded from PNG or JPEG images.
 /// It's very practical while in development because it let's you reload the six
@@ -60,10 +65,10 @@ nothrow:
         {}
         else
         {
-            loadBackgroundImagesFromStaticData();   
+            loadBackgroundImagesFromStaticData();
         }
 
-        auto skyboxData = cast(ubyte[])(import(skyboxPath));   
+        auto skyboxData = cast(ubyte[])(import(skyboxPath));
         loadSkybox(skyboxData);
     }    
 
