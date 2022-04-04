@@ -21,9 +21,9 @@ import main;
 class DistortGUI : PBRBackgroundGUI!("basecolor.jpg", "emissive.png", "material.png",
                                      "depth.png", "skybox.jpg",
 
-                                     // Enter here the absolute path to the gfx directory.
-                                     // This will allow to reload images at debug-time with the press of ENTER.
-                                     `C:\Users\myuser\Products\distort\gfx\`)
+                                     // In development, enter here the absolute path to the gfx directory.
+                                     // This allows to reload background images at debug-time with the press of ENTER.
+                                     `/home/myuser/my/path/to/Dplug/examples/distort/gfx/`)
 {
 public:
 nothrow:

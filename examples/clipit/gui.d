@@ -14,7 +14,11 @@ import main;
 
 // Plugin GUI, based on FlatBackgroundGUI.
 // This allows to use knobs rendered with Knobman
-class ClipitGUI : FlatBackgroundGUI!("background.png")
+class ClipitGUI : FlatBackgroundGUI!("background.png",
+
+                                     // In development, enter here the absolute path to the gfx directory.
+                                     // This allows to reload background images at debug-time when pressing the RETURN key.
+                                     `/home/myuser/my/path/to/Dplug/examples/clipit/gfx/`)
 {
 public:
 nothrow:
