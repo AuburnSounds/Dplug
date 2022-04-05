@@ -1,5 +1,6 @@
-// This is the scirpting API for scriptiing styling behaviour of the plugin, in case of UI creation or UI resize.
-// Cannot create widgets from Wren.
+// This is the Dplug scripting API, for use in your plugin.wren scripts.
+// Note that you cannot create widgets from Wren, and the scoping is global (only your main widget 
+// is scriptable).
 
 // API for global UI things. Wraps an UIContext.
 class UI {
