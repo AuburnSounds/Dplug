@@ -5,6 +5,9 @@ class Plugin {
 
     static createUI() {
 
+        // Note: do not create static __fields in create, since
+        // in case of Wren VM reload (live edit), create won't be called.
+
         ($"_imageKnob").hasTrail = false  // no trail by default
         var litTrailDiffuse = RGBA.new(151, 119, 255, 100)
         var unlitTrailDiffuse = RGBA.new(81, 54, 108, 0)
