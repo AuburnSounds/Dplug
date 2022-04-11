@@ -443,6 +443,11 @@ struct Plugin
         return format("%s%s-%s.exe", sanitizeFilenameString(pluginName), verName, publicVersionString);
     }
 
+    bool hasKeyFileWindows()
+    {
+        return !(keyFileWindows is null);
+    }
+
     string getKeyFileWindows()
     {
         if (keyFileWindows is null)
