@@ -1480,7 +1480,11 @@ void generateWindowsInstaller(string outputDir,
     string makeNsiCommand = format("makensis.exe /V1 %s", nsisPath);
     safeCommand(makeNsiCommand);
 
-    if (plugin.hasKeyFileWindows)
+    if (!plugin.hasKeyFileWindows)
+    {
+        warning(`Do not distribute unsigned installers! refer to the Dplug installer guide`);
+    }
+    else
     {
         try
         {
