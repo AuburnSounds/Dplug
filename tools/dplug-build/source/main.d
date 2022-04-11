@@ -1318,8 +1318,11 @@ void generateWindowsInstaller(string outputDir,
         content ~= "!define MUI_ICON \"" ~ escapeNSISPath(plugin.iconPathWindows) ~ "\"\n";
 
     // Use the markdown licence file with macro expanded.
-    string licensePath = outputDir ~ "/license-expanded.md"; 
-    content ~= "!insertmacro MUI_PAGE_LICENSE \"" ~ licensePath ~ "\"\n";
+    if (plugin.licensePath)
+    {
+        string licensePath = outputDir ~ "/license-expanded.md";
+        content ~= "!insertmacro MUI_PAGE_LICENSE \"" ~ licensePath ~ "\"\n";
+    }
 
     content ~= "!insertmacro MUI_PAGE_COMPONENTS\n";
     content ~= "!insertmacro MUI_LANGUAGE \"English\"\n\n";
@@ -1477,19 +1480,26 @@ void generateWindowsInstaller(string outputDir,
     string makeNsiCommand = format("makensis.exe /V1 %s", nsisPath);
     safeCommand(makeNsiCommand);
 
-    try
+    if (!plugin.hasKeyFileWindows)
     {
-        // use windows signtool to sign the installer for distribution
-        string cmd = format("signtool sign /f %s /p %s /tr http://timestamp.sectigo.com /td sha256 /fd sha256 /q %s",
-                            plugin.getKeyFileWindows(),
-                            plugin.getKeyPasswordWindows(),
-                            escapeShellArgument(outExePath));
-        safeCommand(cmd);
-        cwriteln("    =&gt; OK".lgreen);
+        warning(`Do not distribute unsigned installers! refer to the Dplug installer guide`);
     }
-    catch(Exception e)
+    else
     {
-        error(format("Installer signature failed! %s", e.msg));
+        try
+        {
+            // use windows signtool to sign the installer for distribution
+            string cmd = format("signtool sign /f %s /p %s /tr http://timestamp.sectigo.com /td sha256 /fd sha256 /q %s",
+                                plugin.getKeyFileWindows(),
+                                plugin.getKeyPasswordWindows(),
+                                escapeShellArgument(outExePath));
+            safeCommand(cmd);
+            cwriteln("    =&gt; OK".lgreen);
+        }
+        catch(Exception e)
+        {
+            error(format("Installer signature failed! %s", e.msg));
+        }
     }
 }
 
