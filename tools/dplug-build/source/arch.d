@@ -120,3 +120,15 @@ Arch[] allArchitecturesWeCanBuildForThisOS(OS targetOS)
         }
     }
 }
+
+Arch[] defaultArchitecturesToBuildForThisOS(OS targetOS)
+{
+    Arch arch = buildArch();
+    Arch[] res = allArchitecturesWeCanBuildForThisOS(targetOS);
+
+    if (targetOS == OS.windows)
+        return [ Arch.x86_64 ];
+
+    return res;
+}
+

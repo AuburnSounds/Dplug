@@ -81,7 +81,7 @@ void usage()
     cwriteln();
     cwriteln("FLAGS".white);
     cwriteln();
-    flag("-a --arch", "Selects target architecture.", "x86 | x86_64 | all", "Windows =&gt; all   macOS =&gt; x86_64    Linux =&gt; x86_64");
+    flag("-a --arch", "Selects target architecture.", "x86 | x86_64 | all", "Windows =&gt; x86_64   macOS =&gt; all    Linux =&gt; x86_64");
     flag("-b --build", "Selects build type.", "same ones as dub accepts", "debug");
     flag("--compiler", "Selects D compiler.", "dmd | ldc | gdc", "ldc");
     flag("-c --config", "Adds a build configuration.", "VST2 | VST3 | AU | AAX | LV2 | name starting with \"VST2\", \"VST3\",\"AU\", \"AAX\", or \"LV2\"", "all");
@@ -297,7 +297,7 @@ int main(string[] args)
         if (archs is null)
         {
             // Autodetect target archs that dplug-build is able to build, for the target OS
-            archs = allArchitecturesWeCanBuildForThisOS(targetOS);
+            archs = defaultArchitecturesToBuildForThisOS(targetOS);
         }
 
         Plugin plugin = readPluginDescription();
