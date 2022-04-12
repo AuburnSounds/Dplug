@@ -283,6 +283,16 @@ nothrow:
         {
             x -= outer._userArea.min.x;
             y -= outer._userArea.min.y;
+
+            // Sends the event to the currently dragged element, if any exists.
+            UIElement dragged = outer._uiContext.dragged;
+            if (dragged !is null)
+            {
+                box2i pos = dragged._position;
+                if (dragged.onMouseWheel(x - pos.min.x, y - pos.min.y, wheelDeltaX, wheelDeltaY, mstate))
+                    return true;
+            }
+
             return outer.mouseWheel(x, y, wheelDeltaX, wheelDeltaY, mstate);
         }
 
