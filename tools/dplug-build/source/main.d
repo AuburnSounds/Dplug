@@ -1482,7 +1482,7 @@ void generateWindowsInstaller(string outputDir,
 
     if (!plugin.hasKeyFileWindows)
     {
-        warning(`Do not distribute unsigned installers! refer to the Dplug installer guide`);
+        warning(`Do not distribute an unsigned installer. See: https://github.com/AuburnSounds/Dplug/wiki/Dplug-Installer-Guide`);
     }
     else
     {
