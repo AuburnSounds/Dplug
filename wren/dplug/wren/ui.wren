@@ -49,9 +49,14 @@ foreign class Element {
        setPosition_(orig.x, orig.y, sz.width, sz.height)  // PERF: use _fields instead of accessors
    }
 
+   visibility=(v) {
+       setVisibility_(v)
+   }
+
    // Internal use
    foreign findIdAndBecomeThat_(id)
    foreign setPosition_(x, y, w, h)
+   foreign setVisibility_(v)
 
    foreign setProp_(nclass, nth, x)
    foreign setPropRGBA_(nclass, nth, r, g, b, a)
@@ -78,6 +83,15 @@ class UIElement {
 
    position(rect) {
        _e.position = rect
+       return this
+   }
+
+   visibility=(v) {
+       _e.visibility = v
+   }
+
+   visibility(v) {
+       _e.visibility = v
        return this
    }
 

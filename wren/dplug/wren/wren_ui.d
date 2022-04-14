@@ -51,16 +51,7 @@ void ui_defaultHeight(WrenVM* vm)
     wrenSetSlotDouble(vm, 0, context.getDefaultUIHeight());
 }
 
-void ui_root(WrenVM* vm)
-{
-    WrenSupport ws = cast(WrenSupport) vm.config.userData;
-    IUIContext context = ws.uiContext();
-    UIElement root = context.getRootElement();
-    UIElementBridge* bridge = cast(UIElementBridge*) wrenSetSlotNewForeign(vm, 0, 0, UIElementBridge.sizeof);
-    bridge.elem = root;
-}
-
- // Elements
+// Elements
 
 void element_allocate(WrenVM* vm)
 {
@@ -104,6 +95,14 @@ void element_setposition(WrenVM* vm)
     double w = wrenGetSlotDouble(vm, 3);
     double h = wrenGetSlotDouble(vm, 4);
     bridge.elem.position = box2i.rectangle(cast(int)x, cast(int)y, cast(int)w, cast(int)h);
+}
+
+void element_setvisibility(WrenVM* vm)
+{
+    UIElementBridge* bridge = cast(UIElementBridge*) wrenGetSlotForeign(vm, 0);
+    assert(bridge.elem); // TODO error
+    bool visibleFlag = wrenGetSlotBool(vm, 1);
+    bridge.elem.visibility = visibleFlag;
 }
 
 void element_setProperty(WrenVM* vm)
@@ -323,6 +322,7 @@ WrenForeignMethodFn wrenUIBindForeignMethod(WrenVM* vm, const(char)* className, 
         if (strcmp(signature, "width") == 0) return &element_width;
         if (strcmp(signature, "height") == 0) return &element_height;
         if (strcmp(signature, "setPosition_(_,_,_,_)") == 0) return &element_setposition;
+        if (strcmp(signature, "setVisibility_(_)") == 0) return &element_setvisibility;
         if (strcmp(signature, "findIdAndBecomeThat_(_)") == 0) return &element_findIdAndBecomeThat;
         if (strcmp(signature, "setProp_(_,_,_)") == 0) return &element_setProperty;
         if (strcmp(signature, "setPropRGBA_(_,_,_,_,_,_)") == 0) return &element_setPropertyRGBA;

@@ -335,7 +335,11 @@ nothrow:
     final void addChild(UIElement element)
     {
         element._parent = this;
-        _children.pushBack(element); 
+        _children.pushBack(element);
+
+        // Recompute visibility of that element.
+        bool parentVisible = isVisible();
+        element.recomputeVisibilityStatus(parentVisible);
     }
 
     /// Removes a child (but does not destroy it, you take back the ownership of it).
@@ -750,14 +754,40 @@ nothrow:
         return _context;
     }
 
+    /// A widget is "visible" when it has a true visibility flag, and its parent is itself visible.
+    /// Returns: Last computed visibility status.
     final bool isVisible() pure const
     {
-        return _visible;
+        return _visibilityStatus;
     }
 
-    final void setVisible(bool visible) pure
+    deprecated("use visibility() instead") final void setVisible(bool visible) pure
     {
-        _visible = visible;
+        visibility(visible);
+    }
+
+    /// Get visibility flag of the widget.
+    /// A widget might still be invisible, if one of its parent is not visible.
+    final bool visibility() pure const
+    {
+        return _visibleFlag;
+    }
+
+    /// Change visibility flag of the widget. This show and hide all children of this UIElement,
+    /// regardless of their position on screen, invalidating their graphics if need be much
+    /// like a position change.
+    final void visibility(bool visible)
+    {
+        if (_visibleFlag == visible)
+            return; // Nothing to do, this wouldn't change any visibility status in sub-tree.
+
+        _visibleFlag = visible;
+
+        // Get parent visibility status.
+        bool parentVisibleStatus = (parent !is null) ? parent.isVisible() : true;
+
+        // Recompute own visibility status.
+        recomputeVisibilityStatus(parentVisibleStatus);
     }
 
     final int zOrder() pure const
@@ -767,6 +797,7 @@ nothrow:
 
     final void setZOrder(int zOrder) pure
     {
+        // TODO: this should call setDirty, if Z order changed.
         _zOrder = zOrder;
     }
 
@@ -866,7 +897,7 @@ nothrow:
     /// will get drawn if they don't overlap with a dirty area.
     final void getDrawLists(ref Vec!UIElement listRaw, ref Vec!UIElement listPBR)
     {
-        if (isVisible())
+        if (_visibilityStatus)
         {
             if (drawsToRaw())
                 listRaw.pushBack(this);
@@ -874,6 +905,8 @@ nothrow:
             if (drawsToPBR())
                 listPBR.pushBack(this);
 
+            // Note: if one widget is not visible, the whole sub-tree can be ignored for drawing.
+            // This is because invisibility is inherited without recourse.
             foreach(child; _children[])
                 child.getDrawLists(listRaw, listPBR);
         }
@@ -984,9 +1017,6 @@ protected:
     /// The list of children UI elements.
     Vec!UIElement _children;
 
-    /// If _visible is false, neither the Element nor its children are drawn.
-    bool _visible = true;
-
     /// Flags, for now immutable
     immutable(uint) _flags;
 
@@ -1001,8 +1031,41 @@ private:
     UIContext _context;
 
     /// Flag: whether this UIElement has mouse over it or not.
+    version(legacyMouseOver) 
+    {
+        bool _mouseOver = false; 
+    }
 
-    version(legacyMouseOver) bool _mouseOver = false;
+
+    // <visibility privates>
+
+    /// If _visibleFlag is false, neither the Element nor its children are drawn.
+    /// Each UIElement starts its life being visible.
+    bool _visibleFlag = true;
+
+    /// Final visibility value, cached in order to set rectangles dirty.
+    /// It is always up to date across the whole UI tree.
+    bool _visibilityStatus = true;
+
+    void recomputeVisibilityStatus(bool parentVisibilityStatus)
+    {
+        bool newVisibleStatus = _visibleFlag && parentVisibilityStatus;
+
+        // has it changed in any way?
+        if (newVisibleStatus != _visibilityStatus)
+        {
+            _visibilityStatus = newVisibleStatus;
+
+            // Dirty the widget position
+            setDirtyWhole();
+
+            // Must inform children of the new status of parent.
+            foreach(child; _children[])
+                child.recomputeVisibilityStatus(newVisibleStatus);
+        }
+    }
+
+    // </visibility privates>
 
     /// Dirty rectangles buffer, cropped to _position.
     Vec!box2i _localRectsBuf;
