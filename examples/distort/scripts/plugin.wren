@@ -4,6 +4,10 @@ import "widgets" for UISlider, UIKnob, UIOnOffSwitch, UILevelDisplay, UIColorCor
 class Plugin {
 
     static createUI() {
+        setupEverything()
+    }
+
+    static setupEverything() {
 
         // Note: do not create static __fields in create, since
         // in case of Wren VM reload (live edit), create won't be called.
@@ -19,6 +23,7 @@ class Plugin {
         driveKnob.unlitTrailDiffuse = unlitTrailDiffuse
         driveKnob.LEDDiffuseLit = RGBA.new(40, 40, 40, 100)
         driveKnob.LEDDiffuseUnlit = RGBA.new(40, 40, 40, 0)
+        driveKnob.visibility = true
 
         // Note: chaining syntax is also supported (but you can't mix and match property assignment and chaining)
         ($"_inputSlider").litTrailDiffuse(litTrailDiffuse)
@@ -47,5 +52,6 @@ class Plugin {
         ($"_outputLevel").position = Rectangle.new(450, 132, 30, 130).scaleByFactor(S)
         ($"_colorCorrection").position = Rectangle.new(0, 0, W, H)
         ($"_resizer").position = Rectangle.new(W-30, H-30, 30, 30)
+        setupEverything()
     }
 }
