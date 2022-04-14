@@ -462,7 +462,8 @@ nothrow:
         }
 
         // Test for collision with this element
-        if (contains(x - _position.min.x, y - _position.min.y))
+        bool canBeClicked = _visibilityStatus; // cannot be clicked if invisible
+        if (canBeClicked && contains(x - _position.min.x, y - _position.min.y))
         {
             if (onMouseClick(x - _position.min.x, y - _position.min.y, button, isDoubleClick, mstate))
             {
@@ -502,7 +503,8 @@ nothrow:
                     return true;
         }
 
-        if (contains(x - _position.min.x, y - _position.min.y))
+        bool canBeMouseWheeled = _visibilityStatus; // cannot be mouse-wheeled if invisible
+        if (canBeMouseWheeled && contains(x - _position.min.x, y - _position.min.y))
         {
             if (onMouseWheel(x - _position.min.x, y - _position.min.y, wheelDeltaX, wheelDeltaY, mstate))
                 return true;
@@ -519,9 +521,9 @@ nothrow:
         return false;
     }
 
-    version (legacyMouseOver)
+    version (legacyMouseOver) // FUTURE: remove that on next major
     {
-// to be called when the mouse moved
+        // to be called when the mouse moved
         final void mouseMove(int x, int y, int dx, int dy, MouseState mstate)
         {
             if (isDragged)
@@ -590,7 +592,9 @@ nothrow:
                 child.mouseMove(x, y, dx, dy, mstate);
             }
 
-            if (contains(x - _position.min.x, y - _position.min.y)) // FUTURE: something more fine-grained?
+            // Can't be mouse over if not visible.
+            bool canBeMouseOver = _visibilityStatus;
+            if (canBeMouseOver && contains(x - _position.min.x, y - _position.min.y)) // FUTURE: something more fine-grained?
             {
                 if (!_mouseOver)
                     onMouseEnter();
@@ -686,7 +690,10 @@ nothrow:
                     onMouseDrag(x - _position.min.x, y - _position.min.y, dx, dy, mstate);
             }
 
-            if (contains(x - _position.min.x, y - _position.min.y)) // FUTURE: something more fine-grained?
+            // Can't be mouse over if not visible.
+            bool canBeMouseOver = _visibilityStatus;
+
+            if (canBeMouseOver && contains(x - _position.min.x, y - _position.min.y)) // FUTURE: something more fine-grained?
             {
                 // Get the mouse-over crown if not taken
                 if (!foundMouseOver)
@@ -761,7 +768,7 @@ nothrow:
         return _visibilityStatus;
     }
 
-    deprecated("use visibility() instead") final void setVisible(bool visible) pure
+    deprecated("use visibility() instead") final void setVisible(bool visible)
     {
         visibility(visible);
     }
