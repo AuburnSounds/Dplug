@@ -241,11 +241,26 @@ void fillText(ImageRef!RGBA surface, Font font, const(char)[] s, float fontSizeP
         if (!surfaceArea.intersects(where))
             return;
 
+        // The area where the glyph (part of it at least) is drawn.
         auto outsurf = surface.cropImageRef(where);
 
         int croppedWidth = outsurf.w;
 
         RGBA fontColor = textColor;
+
+        // Need to crop the coverage surface like the output surface.
+        // Get the margins introduced.
+        // This fixed garbled rendering (Issue #642).
+        int covx = cropX0 - offsetPos.x;
+        int covy = cropY0 - offsetPos.y;
+        int covw = cropX1 - cropX0;
+        int covh = cropY1 - cropY0;
+        assert(covw > 0 && covh > 0); // else would have exited above
+
+        coverageBuffer = coverageBuffer.cropImageRef(covx, covy, covx + covw, covy + covh);
+
+        assert(outsurf.w == coverageBuffer.w);
+        assert(outsurf.h == coverageBuffer.h);
 
         for (int y = 0; y < outsurf.h; ++y)
         {
