@@ -232,11 +232,16 @@ void fillText(ImageRef!RGBA surface, Font font, const(char)[] s, float fontSizeP
         int cropY0 = clamp!int(offsetPos.y, 0, surface.h);
         int cropX1 = clamp!int(offsetPos.x + w, 0, surface.w);
         int cropY1 = clamp!int(offsetPos.y + h, 0, surface.h);
-        auto outsurf = surface.cropImageRef(cropX0, cropY0, cropX1, cropY1);
+        box2i where = box2i(cropX0, cropY0, cropX1, cropY1);
+ 
+        // Note: it is possible for where to be empty here.
 
         // Early exit if out of scope
-        if (!surfaceArea.intersects(box2i(cropX0, cropY0, cropX1, cropY1)))
+        // For example the whole charater might be out of surface
+        if (!surfaceArea.intersects(where))
             return;
+
+        auto outsurf = surface.cropImageRef(where);
 
         int croppedWidth = outsurf.w;
 
