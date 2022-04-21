@@ -6,6 +6,7 @@
 module dplug.canvas.rasterizer;
 
 import std.traits;
+import dplug.core.math;
 import dplug.core.vec;
 import dplug.canvas.misc;
 
@@ -483,6 +484,7 @@ nothrow:
         m_fprevy = y2;
     }
 
+    // TODO: when all points are the same => stack overflow
     void cubicTo(float x1, float y1, float x2, float y2, float x3, float y3)
     {
         float x01 = (m_fprevx+x1)*0.5;
@@ -505,8 +507,8 @@ nothrow:
         float dx = x3-m_fprevx;
         float dy = y3-m_fprevy;
 
-        double d2 = abs(((x1 - x3) * dy - (y1 - y3) * dx));
-        double d3 = abs(((x2 - x3) * dy - (y2 - y3) * dx));
+        double d2 = fast_fabs(((x1 - x3) * dy - (y1 - y3) * dx));
+        double d3 = fast_fabs(((x2 - x3) * dy - (y2 - y3) * dx));
 
         if((d2 + d3)*(d2 + d3) < 0.5 * (dx*dx + dy*dy))
         {

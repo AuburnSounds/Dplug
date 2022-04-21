@@ -253,6 +253,8 @@ nothrow:
     /// Adds an arc to the current path (used to create circles, or parts of circles).
     void arc(float x, float y, float radius, float startAngle, float endAngle, bool anticlockwise = false)
     {
+        assert(radius >= 0);
+
         // See https://github.com/AuburnSounds/Dplug/issues/468
         // for the complexities of startAngle, endAngle, and clockwise things
 
@@ -308,6 +310,8 @@ nothrow:
 
         // Make a line to there
         lineTo(xt, yt);
+        if (radius < 1e-4f) // Below 4e-5f => stack overflow in bezier split. This is invisible anyway.
+            return;
 
         enum float MAX_ANGLE_FOR_SINGLE_BEZIER_CURVE = PI / 2.0;
 
@@ -339,16 +343,18 @@ nothrow:
         float optimalDistance = (4.0f / 3.0f) * tan(xx);
         optimalDistance *= radius;
 
-        // PERF: for the inner loop this is more expensive than strictly needed
+        float angle0 = startAngle;
+        float cos0 = fast_cos(angle0);
+        float sin0 = fast_sin(angle0);
+
+        // Using complex rotation here to save some cos/sin operations.
+        float phasorX = fast_cos(angleIncr); 
+        float phasorY = fast_sin(angleIncr);
+
         foreach(curve; 0..numCurves) 
         {
-            float angle0 = startAngle + angleIncr * curve;
-            float angle1 = startAngle + angleIncr * (curve + 1);
-
-            float cos0 = fast_cos(angle0);
-            float sin0 = fast_sin(angle0);
-            float cos1 = fast_cos(angle1);
-            float sin1 = fast_sin(angle1);
+            float cos1 = cos0 * phasorX - sin0 * phasorY;
+            float sin1 = cos0 * phasorY + sin0 * phasorX;
 
             // compute end points of the curve
             float x0 = x + cos0 * radius;
@@ -362,6 +368,9 @@ nothrow:
             float cp1x = x1 + sin1 * optimalDistance;
             float cp1y = y1 - cos1 * optimalDistance;
             bezierCurveTo(cp0x, cp0y, cp1x, cp1y, x1, y1);
+
+            cos0 = cos1;
+            sin0 = sin1;
         }
     }
     ///ditto
