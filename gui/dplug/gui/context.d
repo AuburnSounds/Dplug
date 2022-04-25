@@ -238,9 +238,9 @@ nothrow:
         if (old is new_)
             return;
 
+        this.focused = new_;
         if (old !is null)
             old.onFocusExit();
-        this.focused = new_;
         if (new_ !is null)
             new_.onFocusEnter();
     }
