@@ -44,8 +44,6 @@ The following commercial products are known to use Dplug:
 - [Panagement](https://www.auburnsounds.com/products/Panagement.html) by Auburn Sounds
 - [Renegate](https://www.auburnsounds.com/products/Renegate.html) by Auburn Sounds
 
-Looking for DSP algorithms? Reduce time-to-market with the [DSP Asset Store](DSP_Asset_Store.md).
-
 Become one happy [Dplug contributor](https://github.com/AuburnSounds/Dplug/graphs/contributors) by submitting issues and pull-requests, and come talk with us on the [D Language Discord](https://discord.gg/QZtGZUw) to learn more and meet other Dplug users!
 
 
