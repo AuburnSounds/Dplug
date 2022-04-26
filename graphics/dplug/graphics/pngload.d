@@ -1969,22 +1969,22 @@ version(decodePNG)
                     if (k > 2) *cur++ = cast(ubyte)(scale * ((*in_ >> 2) & 0x03));
                 } else if (depth == 1) {
                     for (k=x*img_n; k >= 8; k-=8, ++in_) {
-                        *cur++ = scale * ((*in_ >> 7)       );
-                        *cur++ = scale * ((*in_ >> 6) & 0x01);
-                        *cur++ = scale * ((*in_ >> 5) & 0x01);
-                        *cur++ = scale * ((*in_ >> 4) & 0x01);
-                        *cur++ = scale * ((*in_ >> 3) & 0x01);
-                        *cur++ = scale * ((*in_ >> 2) & 0x01);
-                        *cur++ = scale * ((*in_ >> 1) & 0x01);
-                        *cur++ = scale * ((*in_     ) & 0x01);
+                        *cur++ = cast(ubyte)(scale * ((*in_ >> 7)       ));
+                        *cur++ = cast(ubyte)(scale * ((*in_ >> 6) & 0x01));
+                        *cur++ = cast(ubyte)(scale * ((*in_ >> 5) & 0x01));
+                        *cur++ = cast(ubyte)(scale * ((*in_ >> 4) & 0x01));
+                        *cur++ = cast(ubyte)(scale * ((*in_ >> 3) & 0x01));
+                        *cur++ = cast(ubyte)(scale * ((*in_ >> 2) & 0x01));
+                        *cur++ = cast(ubyte)(scale * ((*in_ >> 1) & 0x01));
+                        *cur++ = cast(ubyte)(scale * ((*in_     ) & 0x01));
                     }
-                    if (k > 0) *cur++ = scale * ((*in_ >> 7)       );
-                    if (k > 1) *cur++ = scale * ((*in_ >> 6) & 0x01);
-                    if (k > 2) *cur++ = scale * ((*in_ >> 5) & 0x01);
-                    if (k > 3) *cur++ = scale * ((*in_ >> 4) & 0x01);
-                    if (k > 4) *cur++ = scale * ((*in_ >> 3) & 0x01);
-                    if (k > 5) *cur++ = scale * ((*in_ >> 2) & 0x01);
-                    if (k > 6) *cur++ = scale * ((*in_ >> 1) & 0x01);
+                    if (k > 0) *cur++ = cast(ubyte)(scale * ((*in_ >> 7)       ));
+                    if (k > 1) *cur++ = cast(ubyte)(scale * ((*in_ >> 6) & 0x01));
+                    if (k > 2) *cur++ = cast(ubyte)(scale * ((*in_ >> 5) & 0x01));
+                    if (k > 3) *cur++ = cast(ubyte)(scale * ((*in_ >> 4) & 0x01));
+                    if (k > 4) *cur++ = cast(ubyte)(scale * ((*in_ >> 3) & 0x01));
+                    if (k > 5) *cur++ = cast(ubyte)(scale * ((*in_ >> 2) & 0x01));
+                    if (k > 6) *cur++ = cast(ubyte)(scale * ((*in_ >> 1) & 0x01));
                 }
                 if (img_n != out_n) {
                     int q;
