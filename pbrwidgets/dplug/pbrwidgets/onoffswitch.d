@@ -91,8 +91,16 @@ nothrow:
         diffuseMap.cropImageRef(validRect).fillAll(diffuseColor);
         materialMap.cropImageRef(validRect).fillAll(material);
 
-        L16 depthA = L16(cast(short)(lerp!float(depthHigh, depthLow, _animation)));
-        L16 depthB = L16(cast(short)(lerp!float(depthLow, depthHigh, _animation)));
+        // Workaround issue https://issues.dlang.org/show_bug.cgi?id=23076
+        // Regular should not be inlined here.
+        static float lerpfloat(float a, float b, float t) pure nothrow @nogc
+        {
+            pragma(inline, false);
+            return t * b + (1 - t) * a;
+        }
+
+        L16 depthA = L16(cast(short)(lerpfloat(depthHigh, depthLow, _animation)));
+        L16 depthB = L16(cast(short)(lerpfloat(depthLow, depthHigh, _animation)));
 
         if (orientation == Orientation.vertical)
             verticalSlope(depthMap, switchRect, depthA, depthB);
