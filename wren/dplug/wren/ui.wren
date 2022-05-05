@@ -155,6 +155,16 @@ class RGBA {
         _a = a
     }
 
+    // Make it more white: 0 => original    1 => pure white
+    whiten(f) {
+        return RGBA.new(_r + (1 - _r)*f, _g + (1 - _g)*f, _b + (1 - _b)*f, a)
+    }
+
+    // Make it more black: 0 => original    1 => pure black
+    blacken(f) {
+        return RGBA.new(_r * (1 - f), _g * (1 - f), _b * (1 - f), a)
+    }
+
     withAlpha(a) {
         return RGBA.new(_r, _g, _b, a)
     }
