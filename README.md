@@ -7,7 +7,7 @@
 
 - Homepage: [https://dplug.org/](https://dplug.org/)
 - Wiki: https://github.com/AuburnSounds/Dplug/wiki
-- Discord: https://discord.gg/KsUUj39Q
+- Discord: https://discord.gg/7PdUvUbyJs
 
 ## Features
 
