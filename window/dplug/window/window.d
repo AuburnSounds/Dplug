@@ -162,6 +162,8 @@ enum WindowPixelFormat
 ///   Some IWindow implentation ensure that unicity through passing in an event queue, others
 ///   like the X11 implementation have to use locks.
 ///
+/// TODO: clarify this, additionally onDraw and onAnimate are NOT called concurrently, on purpose:
+///       https://github.com/AuburnSounds/Dplug/issues/453
 interface IWindowListener
 {
 nothrow @nogc:
