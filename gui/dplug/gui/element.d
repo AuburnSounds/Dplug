@@ -752,6 +752,8 @@ nothrow:
         if (isAnimated)
             onAnimate(dt, time);
 
+        // For some rare widgets, it is important that children are animated
+        // _after_ their parent.
         foreach(child; _children[])
             child.animate(dt, time);
     }
