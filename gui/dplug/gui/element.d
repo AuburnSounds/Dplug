@@ -1032,6 +1032,7 @@ protected:
     /// Higher z-order = above other `UIElement`.
     /// By default, every `UIElement` have the same z-order.
     /// Because the sort is stable, tree traversal order is the default order (depth first).
+    /// The children added last with `addChild` is considered above its siblings if you have futureZOrder.
     int _zOrder = 0;
 
 private:
@@ -1105,10 +1106,21 @@ private:
     {
         // Get a z-ordered list of childrens
         _zOrderedChildren.clearContents();
-        foreach(child; _children[])
-            _zOrderedChildren.pushBack(child);
 
-        // This is a stable sort, so the order of children with same z-order still counts.
+        /// See: https://github.com/AuburnSounds/Dplug/issues/652
+        version(futureZOrder)
+        {
+            // Adding children in reverse, since children added last are considered having a higher Z order.
+            foreach_reverse(child; _children[])
+                _zOrderedChildren.pushBack(child);
+        }
+        else
+        {
+            foreach(child; _children[])
+                _zOrderedChildren.pushBack(child);
+        }
+
+        // This is a stable sort, so the relative order of children with same z-order is preserved.
         grailSort!UIElement(_zOrderedChildren[],
                              (a, b) nothrow @nogc 
                              {
