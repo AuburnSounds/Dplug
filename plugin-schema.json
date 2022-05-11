@@ -34,7 +34,7 @@
             "type": "string"
         },
         "hasGUI": {
-            "description": "true if the plug-in has a GUI. Can be used to disabled the UI of a plug-in.",
+            "description": "true if the plug-in has a GUI. Can be used to disabled the UI of a plug-in. This is especially practical when creating a new plug-in.",
             "id": "/properties/hasGUI",
             "type": "boolean"
         },
