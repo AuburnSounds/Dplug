@@ -10,6 +10,7 @@ module dplug.pbrwidgets.onoffswitch;
 import std.math;
 import dplug.core.math;
 import dplug.gui.element;
+import dplug.gui.bufferedelement;
 import dplug.client.params;
 
 class UIOnOffSwitch : UIElement, IParameterListener
@@ -60,9 +61,6 @@ nothrow:
 
     override void onDrawPBR(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects) nothrow @nogc
     {
-        // dig a hole
-        depthMap.fillAll(L16(holeDepth));
-
         // The switch is in a subrect
         int width = _position.width;
         int height = _position.height;
@@ -83,14 +81,6 @@ nothrow:
         if (emissive > 255)
             emissive = 255;
 
-        RGBA diffuseColor = RGBA(red, green, blue, cast(ubyte)emissive);
-
-        // Write a plain color in the diffuse and material map.
-        box2i validRect = box2i(0, 0, diffuseMap.w, diffuseMap.h).intersection(switchRect);
-
-        diffuseMap.cropImageRef(validRect).fillAll(diffuseColor);
-        materialMap.cropImageRef(validRect).fillAll(material);
-
         // Workaround issue https://issues.dlang.org/show_bug.cgi?id=23076
         // Regular should not be inlined here.
         static float lerpfloat(float a, float b, float t) pure nothrow @nogc
@@ -102,10 +92,28 @@ nothrow:
         L16 depthA = L16(cast(short)(lerpfloat(depthHigh, depthLow, _animation)));
         L16 depthB = L16(cast(short)(lerpfloat(depthLow, depthHigh, _animation)));
 
-        if (orientation == Orientation.vertical)
-            verticalSlope(depthMap, switchRect, depthA, depthB);
-        else
-            horizontalSlope(depthMap, switchRect, depthA, depthB);
+        RGBA diffuseColor = RGBA(red, green, blue, cast(ubyte)emissive);
+
+        foreach(dirtyRect; dirtyRects)
+        {
+            auto cDepth = depthMap.cropImageRef(dirtyRect);
+
+            // Write a plain color in the diffuse and material map.
+            box2i validRect = dirtyRect.intersection(switchRect);
+            if (!validRect.empty)
+            {
+                diffuseMap.cropImageRef(validRect).fillAll(diffuseColor);
+                materialMap.cropImageRef(validRect).fillAll(material);
+            }       
+
+            // dig a hole
+            cDepth.fillAll(L16(holeDepth));
+
+            if (orientation == Orientation.vertical)
+                verticalSlope(cDepth, switchRect, depthA, depthB);
+            else
+                horizontalSlope(cDepth, switchRect, depthA, depthB);
+        }
     }
 
     override bool onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
