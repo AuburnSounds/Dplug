@@ -58,15 +58,16 @@ vec3f computePlaneFittingNormal(
     // x x x
     float* depthNeighbourhood) pure // number of inliers
 {
-    // sigma 0.6
+    // sigma 0.58
     // use this page to change the filter: https://observablehq.com/@jobleonard/gaussian-kernel-calculater
-    // Probably a tiny bit more visual quality to gain if tuning that sigma, but 0.7 looks worse.
-    //static immutable float[3] sigma = [0.19858494730562265, 0.6028301053887546, 0.19858494730562265];
+    // Not really possible to go below without increasing digital malaise.
+
+    //static immutable float[3] sigma = [0.1913294239359622, 0.6173411521280758, 0.1913294239359622];
     align(16) static immutable float[8] WEIGHTS =
     [
-        0.03943598129, 0.11971298471, 0.03943598129,
-        0.11971298471, /* 0.36340413596, */ 0.11971298471,
-        0.03943598129, 0.11971298471, 0.03943598129,
+        0.03660694846, 0.118115527008, 0.03660694846,
+        0.118115527008, /* 0.38111009811, */ 0.118115527008,
+        0.03660694846, 0.118115527008, 0.03660694846,
     ];
 
     __m128 mmDepth_0_3 = _mm_loadu_ps(&depthNeighbourhood[0]);
@@ -74,7 +75,7 @@ vec3f computePlaneFittingNormal(
     __m128 mmWeights_0_3 = _mm_load_ps(&WEIGHTS[0]);
     __m128 mmWeights_5_8 = _mm_load_ps(&WEIGHTS[4]);
     __m128 meanDepth = mmDepth_0_3 * mmWeights_0_3 + mmDepth_5_8 * mmWeights_5_8;
-    float filtDepth = depthNeighbourhood[4] * 0.36340413596f + meanDepth.array[0] + meanDepth.array[1] + meanDepth.array[2] + meanDepth.array[3];
+    float filtDepth = depthNeighbourhood[4] * 0.38111009811f + meanDepth.array[0] + meanDepth.array[1] + meanDepth.array[2] + meanDepth.array[3];
 
     // PERF: eventually possible to take filtDepth = depthNeighbourhood[4] directly but at the cost of quality. Difficult tradeoff visually.
 
@@ -90,16 +91,16 @@ vec3f computePlaneFittingNormal(
 
     align(16) static immutable float[8] XZ_WEIGHTS = // those are derived from the above WEIGHTS kernel
     [
-        -0.03943598129,         0.0f, 0.03943598129,
-        -0.11971298471,               0.11971298471,
-        -0.03943598129,         0.0f, 0.03943598129,
+        -0.03660694846,         0.0f, 0.03660694846,
+        -0.118115527008,              0.118115527008,
+        -0.03660694846,         0.0f, 0.03660694846,
     ];
 
     align(16) static immutable float[8] YZ_WEIGHTS = // those are derived from the above WEIGHTS kernel
     [
-         -0.03943598129, -0.11971298471, -0.03943598129,
-                   0.0f,                           0.0f,
-          0.03943598129,  0.11971298471,  0.03943598129,
+        -0.03660694846, -0.118115527008, -0.03660694846,
+                  0.0f,                            0.0f,
+         0.03660694846,  0.118115527008,  0.03660694846
     ];
 
     __m128 mmXZ = mmDepth_0_3 * _mm_load_ps(&XZ_WEIGHTS[0]) + mmDepth_5_8 * _mm_load_ps(&XZ_WEIGHTS[4]);
@@ -112,8 +113,8 @@ vec3f computePlaneFittingNormal(
     // Y inversion happens here.
     __m128 mmNormal = _mm_setr_ps(-xz, 
                                    yz, 
-                                   0.39716989458f, // this depends on sigma, expected value for xx * yy (4 * WEIGHTS[0] + 2 * WEIGHTS[1])
-                                                   // Note that we use the normalization step to factor by xx (which is equal to yy)
+                                   0.382658847856f, // this depends on sigma, expected value for xx * yy (4 * WEIGHTS[0] + 2 * WEIGHTS[1])
+                                                    // Note that we use the normalization step to factor by xx (which is equal to yy)
                                    0.0f);
     mmNormal = _mm_fast_normalize_ps(mmNormal);
     return vec3f(mmNormal.array[0], mmNormal.array[1], mmNormal.array[2]);
