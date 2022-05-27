@@ -27,6 +27,7 @@ import dplug.math.box;
 public import dplug.graphics.color;
 import dplug.graphics.jpegload;
 import dplug.graphics.pngload;
+import dplug.graphics.qoi;
 
 nothrow @nogc:
 
@@ -34,9 +35,9 @@ nothrow @nogc:
 /// and can be indexed to get the color at a specific
 /// coordinate.
 enum isView(T) =
-	is(typeof(T.init.w) : size_t) && // width
-	is(typeof(T.init.h) : size_t) && // height
-	is(typeof(T.init[0, 0])     );   // color information
+    is(typeof(T.init.w) : size_t) && // width
+    is(typeof(T.init.h) : size_t) && // height
+    is(typeof(T.init[0, 0])     );   // color information
 
 /// Returns the color type of the specified view.
 /// By convention, colors are structs with numeric
@@ -45,32 +46,32 @@ alias ViewColor(T) = typeof(T.init[0, 0]);
 
 /// Views can be read-only or writable.
 enum isWritableView(T) =
-	isView!T &&
-	is(typeof(T.init[0, 0] = ViewColor!T.init));
+    isView!T &&
+    is(typeof(T.init[0, 0] = ViewColor!T.init));
 
 /// Optionally, a view can also provide direct pixel
 /// access. We call these "direct views".
 enum isDirectView(T) =
-	isView!T &&
-	is(typeof(T.init.scanline(0)) : ViewColor!T[]);
+    isView!T &&
+    is(typeof(T.init.scanline(0)) : ViewColor!T[]);
 
 /// Mixin which implements view primitives on top of
 /// existing direct view primitives.
 mixin template DirectView()
 {
-	alias COLOR = typeof(scanline(0)[0]);
+    alias COLOR = typeof(scanline(0)[0]);
 
-	/// Implements the view[x, y] operator.
-	ref COLOR opIndex(int x, int y)
-	{
-		return scanline(y)[x];
-	}
+    /// Implements the view[x, y] operator.
+    ref COLOR opIndex(int x, int y)
+    {
+        return scanline(y)[x];
+    }
 
-	/// Implements the view[x, y] = c operator.
-	COLOR opIndexAssign(COLOR value, int x, int y)
-	{
-		return scanline(y)[x] = value;
-	}
+    /// Implements the view[x, y] = c operator.
+    COLOR opIndexAssign(COLOR value, int x, int y)
+    {
+        return scanline(y)[x] = value;
+    }
 }
 
 // ***************************************************************************
@@ -803,10 +804,27 @@ private IFImage readImageFromMem(const(ubyte[]) imageData, int channels)
 {
     static immutable ubyte[8] pngSignature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
     bool isPNG = imageData.length >= 8 && (imageData[0..8] == pngSignature);
+    bool isQOI = qoi_is_qoi_image(imageData);
 
+    if (isQOI)
+    {
+        qoi_desc desc;
+        ubyte* decoded = cast(ubyte*) qoi_decode(imageData.ptr, cast(int)imageData.length, &desc, channels);
 
+        IFImage result;
+        if (decoded == null)
+            return result;
+
+        result.w = cast(int) desc.width; // overflow here
+        result.h = cast(int) desc.height; // overflow here
+        result.channels = channels;
+
+        int size = result.w * result.h * channels; // overflow here
+        result.pixels = decoded[0..size];
+        return result;
+    }    
     // PNG are decoded using stb_image to avoid GC overload using zlib
-    if (isPNG)
+    else if (isPNG)
     {
         int width, height, components;
         ubyte* decoded = stbi_load_from_memory(imageData.ptr, cast(int)imageData.length, &width, &height, &components, channels);
@@ -846,8 +864,15 @@ OwnedImage!RGBA loadOwnedImage(in void[] imageData)
 
     static immutable ubyte[8] pngSignature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
     bool isPNG = imageData.length >= 8 && (imageData[0..8] == pngSignature);
+    bool isQOI = qoi_is_qoi_image(cast(const(ubyte)[]) imageData);
 
-    if (isPNG)
+    if (isQOI)
+    {
+        qoi_desc desc;
+        ubyte* decoded = cast(ubyte*) qoi_decode(imageData.ptr, cast(int)imageData.length, &desc, channels);
+        return mallocNew!(OwnedImage!RGBA)(desc.width, desc.height, decoded);
+    }   
+    else if (isPNG)
     {
         int width, height, components;
         ubyte* decoded = stbi_load_from_memory(bImageData.ptr, 
