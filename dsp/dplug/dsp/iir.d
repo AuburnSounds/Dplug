@@ -8,6 +8,7 @@ module dplug.dsp.iir;
 
 import std.math;
 import dplug.core.math;
+import inteli.emmintrin;
 
 // DMD with a 32-bit target uses the FPU
 version(X86)
@@ -53,6 +54,9 @@ public
 
         static if (order == 2)
         {
+            /// Process a single sample through the biquad filter.
+            /// This is rather inefficient, in general you'll prefer to use the `nextBuffer`
+            /// functions.
             float nextSample(float input, const(BiquadCoeff) coeff) nothrow @nogc
             {
                 double x1 = _x0,
@@ -69,6 +73,36 @@ public
                 double current = a0 * input + a1 * x1 + a2 * x2 - a3 * y1 - a4 * y2;
 
                 // kill denormals,and double values that would be converted
+                // to float denormals
+                version(killDenormals)
+                {
+                    current += 1e-18f;
+                    current -= 1e-18f;
+                }
+
+                _x0 = input;
+                _x1 = x1;
+                _y0 = current;
+                _y1 = y1;
+                return current;
+            }
+            ///ditto
+            double nextSample(double input, const(BiquadCoeff) coeff) nothrow @nogc
+            {
+                double x1 = _x0,
+                    x2 = _x1,
+                    y1 = _y0,
+                    y2 = _y1;
+
+                double a0 = coeff[0],
+                    a1 = coeff[1],
+                    a2 = coeff[2],
+                    a3 = coeff[3],
+                    a4 = coeff[4];
+
+                double current = a0 * input + a1 * x1 + a2 * x2 - a3 * y1 - a4 * y2;
+
+                // kill denormals, and double values that would be converted
                 // to float denormals
                 version(killDenormals)
                 {
@@ -323,11 +357,100 @@ public
                     _y1 = y1;
                 }
             }
+            ///ditto
+            void nextBuffer(const(double)* input, double* output, int frames, const(BiquadCoeff) coeff) nothrow @nogc
+            {  
+                double x0 = _x0,
+                       x1 = _x1,
+                       y0 = _y0,
+                       y1 = _y1;
+
+                double a0 = coeff[0],
+                       a1 = coeff[1],
+                       a2 = coeff[2],
+                       a3 = coeff[3],
+                       a4 = coeff[4];
+                
+                __m128d XMM0 = _mm_set_pd(x1, x0);
+                __m128d XMM1 = _mm_set_pd(y1, y0);
+                __m128d XMM2 = _mm_set_pd(a2, a1);
+                __m128d XMM3 = _mm_set_pd(a4, a3);
+                __m128d XMM4 = _mm_set_sd(a0);
+
+                __m128d XMM6 = _mm_undefined_pd();
+                __m128d XMM7 = _mm_undefined_pd();
+                __m128d XMM5 = _mm_undefined_pd();
+                for (int n = 0; n < frames; ++n)
+                {
+                    __m128d INPUT = _mm_load_sd(input + n);
+                    XMM5 = INPUT;
+
+                    XMM6 = XMM0;
+                    XMM7 = XMM1;
+                    XMM5 = _mm_mul_pd(XMM5, XMM4); // input[i]*a0
+                    XMM6 = _mm_mul_pd(XMM6, XMM2); // x1*a2 x0*a1
+                    XMM7 = _mm_mul_pd(XMM7, XMM3); // y1*a4 y0*a3
+                    XMM5 = _mm_add_pd(XMM5, XMM6);
+                    XMM5 = _mm_sub_pd(XMM5, XMM7); // x1*a2 - y1*a4 | input[i]*a0 + x0*a1 - y0*a3
+                    XMM6 = XMM5;
+
+                    XMM0 = cast(double2) _mm_slli_si128!8(cast(__m128i) XMM0);
+                    XMM6 = cast(double2) _mm_srli_si128!8(cast(__m128i) XMM6);
+                    XMM0.ptr[0] = INPUT.array[0];
+                    XMM5 = _mm_add_pd(XMM5, XMM6);
+                    XMM7 = XMM5;
+                    XMM5 = _mm_unpacklo_pd(XMM5, XMM1);
+                    XMM1 = XMM5;
+                    _mm_store_sd(output + n, XMM7);
+                }
+                _mm_storel_pd(&x0, XMM0);
+                _mm_storeh_pd(&x1, XMM0);
+                _mm_storel_pd(&y0, XMM1);
+                _mm_storeh_pd(&y1, XMM1);
+            }
 
             /// Special version of biquad processing, for a constant DC input.
             void nextBuffer(float input, float* output, int frames, const(BiquadCoeff) coeff) nothrow @nogc
             {
                 // Note: this naive version performs better than an intel-intrinsics one
+                double x0 = _x0,
+                    x1 = _x1,
+                    y0 = _y0,
+                    y1 = _y1;
+
+                double a0 = coeff[0],
+                    a1 = coeff[1],
+                    a2 = coeff[2],
+                    a3 = coeff[3],
+                    a4 = coeff[4];
+
+                for(int i = 0; i < frames; ++i)
+                {
+                    double current = a0 * input + a1 * x0 + a2 * x1 - a3 * y0 - a4 * y1;
+
+                    // kill denormals,and double values that would be converted
+                    // to float denormals
+                    version(killDenormals)
+                    {
+                        current += 1e-18f;
+                        current -= 1e-18f;
+                    }
+
+                    x1 = x0;
+                    x0 = input;
+                    y1 = y0;
+                    y0 = current;
+                    output[i] = current;
+                }
+
+                _x0 = x0;
+                _x1 = x1;
+                _y0 = y0;
+                _y1 = y1;
+            }
+            ///ditto
+            void nextBuffer(double input, double* output, int frames, const(BiquadCoeff) coeff) nothrow @nogc
+            {
                 double x0 = _x0,
                     x1 = _x1,
                     y0 = _y0,
