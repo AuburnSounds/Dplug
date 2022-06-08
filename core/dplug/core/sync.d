@@ -76,6 +76,10 @@ UncheckedMutex makeMutex() nothrow @nogc
 
 private enum PosixMutexAlignment = 64; // Wild guess, no measurements done
 
+// Cargo-culting the spin-count in WTF::Lock
+// See: https://webkit.org/blog/6161/locking-in-webkit/
+private enum CriticalSectionSpinCount = 40;
+
 struct UncheckedMutex
 {
     private this(int dummyArg) nothrow @nogc
@@ -84,10 +88,7 @@ struct UncheckedMutex
         version( Windows )
         {
             m_hndl = cast(CRITICAL_SECTION*) malloc(CRITICAL_SECTION.sizeof);
-
-            // Cargo-culting the spin-count in WTF::Lock
-            // See: https://webkit.org/blog/6161/locking-in-webkit/
-            InitializeCriticalSectionAndSpinCount( m_hndl, 40 );
+            InitializeCriticalSectionAndSpinCount( m_hndl, CriticalSectionSpinCount );
         }
         else version( Posix )
         {
@@ -588,7 +589,7 @@ nothrow:
                 assert(false);
 
             m_unblockLock = cast(CRITICAL_SECTION*) malloc(CRITICAL_SECTION.sizeof);
-            InitializeCriticalSection( m_unblockLock );
+            InitializeCriticalSectionAndSpinCount( m_unblockLock, CriticalSectionSpinCount );
         }
         else version( Posix )
         {
