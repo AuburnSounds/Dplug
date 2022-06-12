@@ -26,6 +26,9 @@ import dplug.client.params;
 // See https://github.com/AuburnSounds/Dplug/wiki/Roles-of-the-PresetBank
 // for an explanation of the bizarre "PresetBank".
 
+/// Dplug chunks start with this.
+enum uint DPLUG_MAGIC = 0xB20BA92;
+
 /// I can see no reason why Dplug shouldn't be able to maintain
 /// state chunks backward-compatibility with older versions in the future.
 /// However, never say never.
@@ -320,8 +323,6 @@ public:
 private:
     Client _client;
     int _current; // should this be only in VST client?
-
-    enum uint DPLUG_MAGIC = 0xB20BA92;
 
     void writeChunkHeader(O)(auto ref O output) const @nogc if (isOutputRange!(O, ubyte))
     {

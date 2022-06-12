@@ -10,6 +10,7 @@ import std.path;
 import consolecolors;
 import dplug.core.vec;
 import dplug.core.binrange;
+import dplug.client.preset;
 
 void usage()
 {
@@ -147,7 +148,19 @@ Preset loadPresetFromFXP(ubyte[] inputFXP)
     inputFXP.skipBytes(presetChunkLen);
 
     presetChunkID = inputFXP.popBE!uint();
-    if (presetChunkID != CCONST('F', 'x', 'C', 'k')) throw new Exception("Expected 'FxCk' in preset");
+
+    bool isFXBChunk = false;
+
+    if (presetChunkID != CCONST('F', 'x', 'C', 'k'))
+    {
+        if (presetChunkID == CCONST('F', 'P', 'C', 'h'))
+        {
+            isFXBChunk = true;
+
+        }
+        else
+            throw new Exception("Expected 'FxCk' or 'FPCh' in preset");
+    }
             
     int presetVersion = inputFXP.popBE!uint();
     if (presetVersion != 1) throw new Exception("Only support FXP version 1");
@@ -174,10 +187,45 @@ Preset loadPresetFromFXP(ubyte[] inputFXP)
     }
     preset.name = nameBuf[0..nameLen].idup;
 
-    // parse parameter normalized values
-    foreach(paramIndex; 0..numParams)
-        preset.normalizedParams ~= inputFXP.popBE!float();    
-    return preset;
+    if (isFXBChunk)
+    {
+        // Try to parse a Dplug chunk here.
+        uint chunkID = inputFXP.popBE!uint();
+
+        // nothing to check with minor version
+        uint magic = inputFXP.popBE!uint();
+        if (magic != DPLUG_MAGIC)
+            throw new Exception("Can not load, magic number didn't match");
+
+        // nothing to check with minor version
+        int dplugMajor = inputFXP.popLE!int();
+        if (dplugMajor > 0)
+            throw new Exception("presetbank tool doesn't support Dplug chunk above version 0");
+
+        int dplugMinor = inputFXP.popLE!int();
+        int pluginVersion = inputFXP.popLE!int(); // ignore, compat is in plugin ID already
+
+        int presetIndex = inputFXP.popLE!int(); // ignore
+
+        // Load parameters values
+        if (numParams != inputFXP.popLE!int()) 
+            throw new Exception("Inconsistent number of parameters, written twice in FBX but different.");
+
+        foreach(int i; 0..numParams)
+        {
+            preset.normalizedParams ~= inputFXP.popLE!float();
+        }
+
+        return preset;
+
+    }
+    else // this is a non-chunk VST2 .fxb
+    {
+        // parse parameter normalized values
+        foreach(paramIndex; 0..numParams)
+            preset.normalizedParams ~= inputFXP.popBE!float();
+        return preset;
+    }
 }
 
 
