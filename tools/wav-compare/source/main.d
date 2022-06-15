@@ -18,41 +18,41 @@ void usage()
     void flag(string arg, string desc, string possibleValues, string defaultDesc)
     {
         string argStr = format("        %s", arg);
-        cwrite(argStr.cyan);
+        cwrite(argStr.lcyan);
         for(size_t i = argStr.length; i < 28; ++i)
             write(" ");
         cwritefln("%s".white, desc);
         if (possibleValues)
             cwritefln("                            Possible values: ".grey ~ "%s".yellow, possibleValues);
         if (defaultDesc)
-            cwritefln("                            Default: ".grey ~ "%s".cyan, defaultDesc);
+            cwritefln("                            Default: ".grey ~ "%s".lcyan, defaultDesc);
         cwriteln;
     }
 
     cwriteln();
-    cwriteln( "This is the ".white ~ "wav-compare".cyan ~ " tool: it compares audio files for small differences.".white);
+    cwriteln( "This is the ".white ~ "wav-compare".lcyan ~ " tool: it compares audio files for small differences.".white);
     cwriteln();
     cwriteln("FLAGS".white);
     cwriteln();
-    flag("-o --output", "Write output spectrogram.", "PNG file path", "no");
-    flag("-ow --output-width", "Spectrogram PNG width.", null, "length / 512");
-    flag("-oh --output-height", "Spectrogram PNG height.", null, "800");
-    flag("-s  --skip", "Skip seconds of the input start. Avoid initialization conditions.", "seconds", "0.0");
-    flag("-d  --duration", "Strip to a certain duration.", "seconds", "max");
-    flag("-q  --quiet", "Just output RMS error", null, "verbose");    
+    flag("-o --output", "Write output spectrogram", "PNG file path", "no");
+    flag("-ow --output-width", "Spectrogram PNG width", null, "length / 512");
+    flag("-oh --output-height", "Spectrogram PNG height", null, "800");
+    flag("-s  --skip", "Skip seconds of the input start Avoid initialization conditions", "seconds", "0.0");
+    flag("-d  --duration", "Strip to a certain duration", "seconds", "max");
+    flag("-q  --quiet", "Just output RMS error", null, "verbose");
     flag("-h --help", "Shows this help", null, null);
 
     cwriteln();
     cwriteln("EXAMPLES".white);
     cwriteln();
     cwriteln("        # Compare two WAV files, display RMS and comment".green);
-    cwriteln("        wav-compare A.wav B.wav".cyan);
+    cwriteln("        wav-compare A.wav B.wav".lcyan);
     cwriteln();
     cwriteln("        # Compare two WAV files, quietly make an output spectrogram of the difference".green);
-    cwriteln("        wav-compare A.wav B.wav -o spectrogram.png --quiet".cyan);
+    cwriteln("        wav-compare A.wav B.wav -o spectrogram.png --quiet".lcyan);
     cwriteln();
     cwriteln("        # Compare two WAV files, skip the first 3 seconds, take 8 seconds of sound".green);
-    cwriteln("        wav-compare A.wav B.wav --skip 3 --duration 8".cyan);
+    cwriteln("        wav-compare A.wav B.wav --skip 3 --duration 8".lcyan);
 
     cwriteln();
     cwriteln("NOTES".white);
@@ -62,7 +62,7 @@ void usage()
     cwriteln("      - red     means  -20dB difference".red);
     cwriteln("      - yellow  means  -40dB difference".yellow);
     cwriteln("      - green   means  -60dB difference".green);
-    cwriteln("      - cyan    means  -80dB difference".cyan);
+    cwriteln("      - cyan    means  -80dB difference".lcyan);
     cwriteln("      - blue    means -100dB difference".blue);
     cwriteln("      - magenta means -120dB difference".magenta);
     cwriteln("      - black   means -140dB difference or below".grey);
