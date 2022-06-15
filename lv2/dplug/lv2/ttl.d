@@ -361,11 +361,11 @@ const(char)[] escapeRDFString(const(char)[] s) nothrow @nogc
     }
     r[index++] = '\"';
     r[index++] = '\0';
-    return r[0..index];
+    return r[0..index-1];
 }
 unittest
 {
-    assert(escapeRDFString("Stereo Link") == "Stereo Link");
+    assert(escapeRDFString("Stereo Link") == "\"Stereo Link\"");
 }
 
 /// Escape a UTF-8 string for UTF-8 IRI literal
@@ -458,6 +458,7 @@ const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, b
 
     {
         char[256] indexString;
+        char[256] inputString;
         foreach(input; 0..legalIO.numInputChannels)
         {
             sprintf(indexString.ptr, "%d", portIndex);
