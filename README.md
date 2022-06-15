@@ -43,6 +43,7 @@ The following commercial products are known to use Dplug:
 - [M4 Multiband Compressor](https://www.cutthroughrecordings.com/product/M4_Multiband_Compressor) by Cut Through Recordings
 - [Panagement](https://www.auburnsounds.com/products/Panagement.html) by Auburn Sounds
 - [Renegate](https://www.auburnsounds.com/products/Renegate.html) by Auburn Sounds
+- [Tarabia MK II](https://smaolab.org/product/tarabiamk2/) by SMAOLAB
 
 Become one happy [Dplug contributor](https://github.com/AuburnSounds/Dplug/graphs/contributors) by submitting issues and pull-requests, and come talk with us on the [D Language Discord](https://discord.gg/QZtGZUw) to learn more and meet other Dplug users!
 
