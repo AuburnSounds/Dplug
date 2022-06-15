@@ -524,6 +524,8 @@ int main(string[] args)
                         else
                             throw new Exception("AAX not supported on that OS");
 
+                        // Note: --allowsigningservice doesn't make any difference (2022) since for just signing cloud doesn't seem to make it... 
+                        // Presumably the idea was to favour PACE customers that uses full wrapping.
                         string cmd = format(`wraptool sign %s--account %s --password %s %s--wcguid %s --in %s --out %s`,
                                             verboseFlag,
                                             plugin.getILokAccount(),
