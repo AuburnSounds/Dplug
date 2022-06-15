@@ -57,7 +57,7 @@ string convertMarkdownFileToHTML(string markdownFile)
 
 void safeCommand(string cmd)
 {
-    cwritefln("$ %s".lcyan, cmd);
+    cwritefln("$ %s".lcyan, escapeCCL(cmd));
     auto pid = spawnShell(cmd);
     auto errorCode = wait(pid);
     //cwritefln(" =&gt; returned error code %s", errorCode);
@@ -67,7 +67,7 @@ void safeCommand(string cmd)
 
 int unsafeCommand(string cmd)
 {
-    cwritefln("$ %s".lcyan, cmd);
+    cwritefln("$ %s".lcyan, escapeCCL(cmd));
     auto pid = spawnShell(cmd);
     auto errorCode = wait(pid);
     return errorCode;
