@@ -148,6 +148,7 @@
 */
 /**
 Resizer ported to D from C. Removed a few features that did'nt make sense in Dplug.
+Added Ryhor Spivak work on Lanczos 3 filter...
 Copyright: (c) Guillaume Piolat (2021)
 */
 module dplug.graphics.stb_image_resize;
@@ -158,7 +159,7 @@ import core.stdc.string: memset;
 
 import inteli.emmintrin;
 
-import dplug.core.math : fast_fabs, fast_pow, fast_ceil, fast_floor;
+import dplug.core.math : fast_fabs, fast_pow, fast_ceil, fast_floor, fast_sin;
 import dplug.core.vec;
 
 
@@ -266,6 +267,7 @@ enum : stbir_filter
     STBIR_FILTER_CUBICBSPLINE = 3,  // The cubic b-spline (aka Mitchell-Netrevalli with B=1,C=0), gaussian-esque
     STBIR_FILTER_CATMULLROM   = 4,  // An interpolating cubic spline
     STBIR_FILTER_MITCHELL     = 5,  // Mitchell-Netrevalli filter with B=1/3, C=1/3
+    STBIR_FILTER_LANCZOS3     = 6,  // Lanczos 3
 }
 
 alias stbir_colorspace = int;
@@ -639,6 +641,22 @@ float stbir__filter_mitchell(float x, float s)
     return (0.0f);
 }
 
+float stbir__filter_lanczos3(float x, float s)
+{
+    x = cast(float)fast_fabs(x);
+
+    if (x <= float.min_normal)
+        return 1.0f;
+
+    if (x < 3)
+    {
+        float pix = 3.14159265358979323846f*x;
+        return 3*fast_sin(pix)*fast_sin(pix/3)/(pix*pix);
+    }
+
+    return 0.0f;
+}
+
 float stbir__support_zero(float s)
 {
     return 0;
@@ -654,14 +672,20 @@ float stbir__support_two(float s)
     return 2;
 }
 
-static immutable stbir__filter_info[6] stbir__filter_info_table = 
+float stbir__support_three(float s)
+{
+    return 3;
+}
+
+static immutable stbir__filter_info[7] stbir__filter_info_table = 
 [
-        { null,                     &stbir__support_zero },
+        { null,                      &stbir__support_zero },
         { &stbir__filter_trapezoid,  &stbir__support_trapezoid },
         { &stbir__filter_triangle,   &stbir__support_one },
         { &stbir__filter_cubic,      &stbir__support_two },
         { &stbir__filter_catmullrom, &stbir__support_two },
         { &stbir__filter_mitchell,   &stbir__support_two },
+        { &stbir__filter_lanczos3,   &stbir__support_three },
         ];
 
 static int stbir__use_upsampling(float ratio)
