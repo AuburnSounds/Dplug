@@ -225,11 +225,11 @@ enum STBIR_FLAG_ALPHA_USES_COLORSPACE = (1 << 1);
 
 int stbir_resize_uint8_srgb(const(ubyte)*input_pixels , int input_w , int input_h , int input_stride_in_bytes,
                             ubyte*output_pixels, int output_w, int output_h, int output_stride_in_bytes,
-                            int num_channels, int alpha_channel, int flags, void* alloc_context)
+                            int num_channels, int alpha_channel, int flags, void* alloc_context, int filter)
 {
     return stbir__resize_arbitrary(alloc_context, input_pixels, input_w, input_h, input_stride_in_bytes,
                                    output_pixels, output_w, output_h, output_stride_in_bytes,
-                                   0,0,1,1,null,num_channels,alpha_channel,flags, STBIR_TYPE_UINT8, STBIR_FILTER_DEFAULT, STBIR_FILTER_DEFAULT,
+                                   0,0,1,1,null,num_channels,alpha_channel,flags, STBIR_TYPE_UINT8, filter, filter,
                                    STBIR_EDGE_CLAMP, STBIR_EDGE_CLAMP, STBIR_COLORSPACE_SRGB);
 }
 

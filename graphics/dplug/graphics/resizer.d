@@ -63,7 +63,6 @@ nothrow:
     ///ditto
     void resizeImageGeneric(ImageRef!L16 input, ImageRef!L16 output)
     {
-        // Note: smoothing depth while resampling avoids some depth artifacts.
         stbir_filter filter = STBIR_FILTER_DEFAULT;
         int res = stbir_resize_uint16(cast(const(ushort*))input.pixels, input.w, input.h, cast(int)input.pitch,
                                       cast(      ushort* )output.pixels, output.w, output.h, cast(int)output.pitch, 1, filter, &alloc_context);
@@ -73,9 +72,7 @@ nothrow:
     ///ditto
     void resizeImageDepth(ImageRef!L16 input, ImageRef!L16 output)
     {
-        // If too smooth, downsampling depth could make too blurry transitions.
-        // So we use the normal fltrer again.
-        stbir_filter filter = STBIR_FILTER_DEFAULT;
+        stbir_filter filter = STBIR_FILTER_LANCZOS3;
         int res = stbir_resize_uint16(cast(const(ushort*))input.pixels, input.w, input.h, cast(int)input.pitch,
                                       cast(      ushort* )output.pixels, output.w, output.h, cast(int)output.pitch, 1, filter, &alloc_context);
         assert(res);
@@ -92,18 +89,20 @@ nothrow:
     ///ditto
     void resizeImage_sRGBNoAlpha(ImageRef!RGBA input, ImageRef!RGBA output)
     {
+        stbir_filter filter = STBIR_FILTER_LANCZOS3;
         int res = stbir_resize_uint8_srgb(cast(const(ubyte*))input.pixels, input.w, input.h, cast(int)input.pitch,
                                           cast(      ubyte* )output.pixels, output.w, output.h, cast(int)output.pitch,
-                                          4, STBIR_ALPHA_CHANNEL_NONE, 0, &alloc_context);
+                                          4, STBIR_ALPHA_CHANNEL_NONE, 0, &alloc_context, filter);
         assert(res);
     }
 
     ///ditto
     void resizeImage_sRGBWithAlpha(ImageRef!RGBA input, ImageRef!RGBA output)
     {
+        stbir_filter filter = STBIR_FILTER_LANCZOS3;
         int res = stbir_resize_uint8_srgb(cast(const(ubyte*))input.pixels, input.w, input.h, cast(int)input.pitch,
                                           cast(      ubyte* )output.pixels, output.w, output.h, cast(int)output.pitch,
-                                          4, 3, 0, &alloc_context);
+                                          4, 3, 0, &alloc_context, filter);
         assert(res);
     }
 
@@ -112,14 +111,14 @@ nothrow:
     {
         // Note: as the primary use case is downsampling, it was found it is helpful to have a relatively sharp filter
         // since the diffuse map may contain text, and downsampling text is too blurry as of today.
-        stbir_filter filter = STBIR_FILTER_CATMULLROM;
+        stbir_filter filter = STBIR_FILTER_LANCZOS3;
         int res = stbir_resize_uint8(cast(const(ubyte*))input.pixels, input.w, input.h, cast(int)input.pitch,
                                      cast(      ubyte* )output.pixels, output.w, output.h, cast(int)output.pitch, 4, filter, &alloc_context);
         assert(res);
     }
 
-
-   // Note: no special treatment for material images
+    // Note: no special treatment for material images
+    // No particular quality gain when using lanczos 3.
     alias resizeImageMaterial = resizeImageGeneric;
 
 private:
