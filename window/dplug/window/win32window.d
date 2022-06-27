@@ -832,6 +832,7 @@ version(Windows)
                 case 0x5A: return shiftPressed ?  Key.Z : Key.z;
                 case VK_BACK: return Key.backspace;
                 case VK_RETURN: return Key.enter;
+                case VK_DELETE: return Key.suppr;
                 case VK_ESCAPE: return Key.escape;
                 default: return Key.unsupported;
             }

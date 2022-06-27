@@ -257,6 +257,7 @@ private:
             case kVK_DownArrow: key = Key.downArrow; break;
             case kVK_UpArrow: key = Key.upArrow; break;
             case kVK_Delete: key = Key.backspace; break;
+            case kVK_ForwardDelete: key = Key.suppr; break;
             default:
             {
                 NSString characters = event.charactersIgnoringModifiers();

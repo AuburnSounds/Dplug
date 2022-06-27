@@ -779,6 +779,9 @@ Key convertKeyFromX11(KeySym symbol)
         case XK_Escape:
             return Key.escape;
 
+        case XK_Delete:
+            return Key.suppr;
+
         case XK_BackSpace:
             return Key.backspace;
 

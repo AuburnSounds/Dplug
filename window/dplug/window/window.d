@@ -34,6 +34,7 @@ enum Key
     backspace,
     enter,
     escape,
+    suppr,
     unsupported // special value, means "other"
 };
 
@@ -42,6 +43,7 @@ public dchar getCharFromKey(Key key) nothrow @nogc
     switch(key)
     {
         case Key.backspace: return '\t';
+        case Key.suppr: return '\x7f';
         case Key.digit0: .. case Key.digit9: return cast(dchar)('0' + (key - Key.digit0));
         case Key.a: .. case Key.z: return cast(dchar)('a' + (key - Key.a));
         case Key.A: .. case Key.Z: return cast(dchar)('A' + (key - Key.A));
