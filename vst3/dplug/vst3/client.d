@@ -909,14 +909,12 @@ nothrow:
             info.defaultNormalizedValue = param.getNormalizedDefault();
             info.unitId = 0; // root, unit 0 is always here
             info.flags = 0;
-            if (param.isAutomatable) 
+
+            // Workaround Issue #668.
+            // Live is confused about non-automatable parameters, sends their old value even after a `performEdit`.
+            if (param.isAutomatable || _daw == DAW.AbletonLive) 
             {
-                // Workaround Issue #668.
-                // Live is confused about non-automatable parameters, sends their old value even after a `performEdit`.
-                if (_daw != DAW.AbletonLive)
-                {
-                    info.flags |= ParameterInfo.ParameterFlags.kCanAutomate;
-                }
+                info.flags |= ParameterInfo.ParameterFlags.kCanAutomate;
             }
             return kResultTrue;
         }
