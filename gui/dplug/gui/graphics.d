@@ -307,10 +307,15 @@ nothrow:
             else
             {
                 bool hitSomething = outer.mouseMove(x, y, dx, dy, mstate, false);
-                if (!hitSomething)
+                version(futureMouseDrag)
+                {}
+                else
                 {
-                    // Nothing was mouse-over'ed, nothing is `isMouseOver()` anymore
-                    outer._uiContext.setMouseOver(null);
+                    if (!hitSomething)
+                    {
+                        // Nothing was mouse-over'ed, nothing is `isMouseOver()` anymore
+                        outer._uiContext.setMouseOver(null);
+                    }
                 }
             }
         }
@@ -383,7 +388,15 @@ nothrow:
             version(legacyMouseOver) {}
             else
             {
-                outer._uiContext.setMouseOver(null);
+                version(futureMouseDrag)
+                {
+                    if (outer._uiContext.dragged is null)
+                        outer._uiContext.setMouseOver(null);
+                }
+                else
+                {
+                    outer._uiContext.setMouseOver(null);
+                }
             }
         }
 

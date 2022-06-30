@@ -247,6 +247,10 @@ nothrow:
 
     final void beginDragging(UIElement element)
     {
+        version(futureMouseDrag)
+        {
+            assert(this.mouseOver is element);
+        }
         stopDragging();
         dragged = element;
         dragged.onBeginDrag();
@@ -256,6 +260,10 @@ nothrow:
     {
         if (dragged !is null)
         {
+            version(futureMouseDrag)
+            {
+                assert(this.mouseOver is dragged);
+            }
             dragged.onStopDrag();
             dragged = null;
         }

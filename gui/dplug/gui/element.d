@@ -41,7 +41,13 @@ enum ubyte defaultMetalnessDielectric = 25; // ~ 0.08
 /// Reasonable metal default value for the Metalness channel.
 enum ubyte defaultMetalnessMetal = 255;
 
-
+version(legacyMouseOver)
+{
+    version(futureMouseDrag)
+    {
+        static assert(false, "Incompatible Dplug options legacyMouseOver and futureMouseDrag");
+    }
+}
 
 /// Each UIElement class has flags which are used to lessen the number of empty virtual calls.
 /// Such flags say which callbacks the `UIElement` need.
@@ -487,7 +493,23 @@ nothrow:
     // to be called at top-level when the mouse is released
     final void mouseRelease(int x, int y, int button, MouseState mstate)
     {
+        version(futureMouseDrag)
+        {
+            bool wasDragging = (_context.dragged !is null);
+        }
+
         _context.stopDragging();
+
+        version(futureMouseDrag)
+        {
+            // Enter widget below mouse if a dragged operation was stopped.
+            if (wasDragging)
+            {
+                bool foundOver = mouseMove(x, y, 0, 0, mstate, false);
+                if (!foundOver)
+                    _context.setMouseOver(null);
+            }
+        }
     }
 
     // to be called at top-level when the mouse wheeled
@@ -613,8 +635,6 @@ nothrow:
     {
         // To be called when the mouse moved
         // Returns: `true` if one child has taken the mouse-over role globally.
-        // UNSOLVED QUESTION: should elements receive onMouseMove even if one of the 
-        // elements above in zOrder is officially "mouse-over"? Should only the mouseOver'd elements receive onMouseMove?
         final bool mouseMove(int x, int y, int dx, int dy, MouseState mstate, bool alreadyFoundMouseOver)
         {
             recomputeZOrderedChildren();
@@ -693,6 +713,14 @@ nothrow:
             // Can't be mouse over if not visible.
             bool canBeMouseOver = _visibilityStatus;
 
+            version(futureMouseDrag)
+            {
+                // If dragged, it already received `onMouseDrag`.
+                // if something else is dragged, it can be mouse over.
+                if (_context.dragged !is null)
+                    canBeMouseOver = false;
+            }
+
             if (canBeMouseOver && contains(x - _position.min.x, y - _position.min.y)) // FUTURE: something more fine-grained?
             {
                 // Get the mouse-over crown if not taken
@@ -700,9 +728,19 @@ nothrow:
                 {
                     foundMouseOver = true;
                     _context.setMouseOver(this);
+
+                    version(futureMouseDrag)
+                    {
+                        onMouseMove(x - _position.min.x, y - _position.min.y, dx, dy, mstate);
+                    }
                 }
 
-                onMouseMove(x - _position.min.x, y - _position.min.y, dx, dy, mstate);
+                version(futureMouseDrag)
+                {}
+                else
+                {
+                    onMouseMove(x - _position.min.x, y - _position.min.y, dx, dy, mstate);
+                }
             }
 
             // Test children that are displayed below this element
