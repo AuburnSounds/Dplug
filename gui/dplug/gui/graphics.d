@@ -237,6 +237,13 @@ nothrow:
              &&  (newHeightLogicalPixels == _currentLogicalHeight) )
             return true;
 
+        // Issue #669.
+        // Can't resize a non-existing window, return failure.
+        // Hosts where this is needed: VST3PluginTestHost
+        // It calls onSize way too soon.
+        if (_window is null)
+            return false;
+
         // Here we request the native window to resize.
         // The actual resize will be received by the window listener, later.
         return _window.requestResize(newWidthLogicalPixels, newHeightLogicalPixels, false);
