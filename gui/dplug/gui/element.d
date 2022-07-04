@@ -909,12 +909,26 @@ nothrow:
         /// Returns: `true` is this element is hovered by the mouse, and 
         final bool isMouseOver() pure const
         {
+            version(futureMouseDrag)
+            {
+                if (_context.mouseOver !is this)
+                {
+                    assert(_context.dragged !is this);
+                }
+            }
+
             return _context.mouseOver is this;
         }
     }
 
     final bool isDragged() pure const
     {
+        version(futureMouseDrag)
+        {
+            if (_context.dragged is this)
+                assert(isMouseOver());
+        }
+
         return _context.dragged is this;
     }
 
