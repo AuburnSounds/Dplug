@@ -11,6 +11,7 @@ import core.stdc.stdio;
 import core.stdc.string: strlen, strcmp;
 
 import std.algorithm.comparison;
+import std.math: round;
 
 public import dplug.math.vector;
 public import dplug.math.box;
@@ -326,6 +327,22 @@ nothrow:
             // _position shouldn't be touched by `reflow` calls.
             assert(p == _position);
         }
+    }
+
+    /// Changes the position of the element.
+    /// This calls `reflow` if that position has changed.
+    /// Note: Widget coordinates are always integer coordinates.
+    ///       The input rectangle is rounded to nearest integer.
+    /// IMPORTANT: As of today you are not allowed to assign a position outside the extent of the window.
+    ///            This is purely a Dplug limitation.
+    final void position(box2f p)
+    {
+        int x1 = cast(int) round(p.min.x);
+        int y1 = cast(int) round(p.min.y);
+        int x2 = cast(int) round(p.max.x);
+        int y2 = cast(int) round(p.max.y);
+        box2i r = box2i(x1, y1, x2, y2);
+        position = r;
     }
 
     /// Returns: The nth  child of this `UIElement`.
