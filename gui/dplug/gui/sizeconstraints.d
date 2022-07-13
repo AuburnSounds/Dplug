@@ -314,7 +314,7 @@ nothrow:
 
 private:
 
-    enum MAX_POSSIBLE_SCALES = 8;
+    enum MAX_POSSIBLE_SCALES = 12;
 
     Type type;
 
