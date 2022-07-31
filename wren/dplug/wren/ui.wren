@@ -157,7 +157,7 @@ class RGBA {
 
     // Make it more white: 0 => original    1 => pure white
     whiten(f) {
-        return RGBA.new(_r + (1 - _r)*f, _g + (1 - _g)*f, _b + (1 - _b)*f, a)
+        return RGBA.new(_r + (255 - _r)*f, _g + (255 - _g)*f, _b + (255 - _b)*f, a)
     }
 
     // Make it more black: 0 => original    1 => pure black
