@@ -21,21 +21,33 @@ public:
 nothrow:
 @nogc:
 
-    this(UIContext context, FloatParameter param, OwnedImage!RGBA mipmap, int numFrames, float sensitivity = 0.25)
+    enum Direction
     {
-        super(context, flagAnimated | flagRaw);
+        vertical,
+        horizontal
+    }
+
+    @ScriptProperty Direction direction = Direction.vertical;
+
+    this(UIContext context, FloatParameter param, OwnedImage!RGBA sliderImage, int numFrames, float sensitivity = 0.25)
+    {
+        super(context, flagRaw);
         _param = param;
         _param.addListener(this);
         _sensivity = sensitivity;
-        _filmstrip = mipmap;
+
+        // Borrow original image.
+        _filmstrip = sliderImage;
         _numFrames = numFrames;
-        _knobWidth = _filmstrip.w;
-        _knobHeight = _filmstrip.h / _numFrames;
+        _frameHeightOrig = _filmstrip.h / _numFrames;
+
         _disabled = false;
+        _filmstripResized = mallocNew!(OwnedImage!RGBA)();
     }
 
     ~this()
     {
+        destroyFree(_filmstripResized);
         _param.removeListener(this);
     }
 
@@ -51,62 +63,71 @@ nothrow:
         return _sensivity = sensivity;
     }
 
-    // TODO: it doesn't seem the animation is used when drawing
-    override void onAnimate(double dt, double time) nothrow @nogc
-    {
-        float target = isDragged() ? 1 : 0;
-        float newAnimation = lerp(_pushedAnimation, target, 1.0 - exp(-dt * 30));
-        if (abs(newAnimation - _pushedAnimation) > 0.001f)
-        {
-            _pushedAnimation = newAnimation;
-            setDirtyWhole();
-        }
-    }
-
     override void onDrawRaw(ImageRef!RGBA rawMap, box2i[] dirtyRects)
     {
-        setCurrentImage();
-        auto _currentImage = _filmstrip.toRef.cropImageRef(box2i(_imageX1, _imageY1, _imageX2, _imageY2));
+        assert(position.width != 0);
+        assert(position.height != 0); // does this hold though?
+
+        // Get frame coordinate in _filmstripResized
+        float value = _param.getNormalized();
+        int frame = cast(int)(round(value * (_numFrames - 1)));
+        if(frame >= _numFrames) 
+            frame = _numFrames - 1;
+
+        if(frame < 0) 
+            frame = 0;
+
+        assert(frame >= 0 && frame < _numFrames);
+        assert(_filmstripResized.h == position.height * _numFrames);
+        int frameHeightResized = _filmstripResized.h / _numFrames;
+
+        int x1 = 0;
+        int y1 = frameHeightResized * frame;
+        
+        assert(y1 + position.height <= _filmstripResized.h);
+
+        box2i resizedRect = rectangle(x1, y1, position.width, position.height);
+        ImageRef!RGBA frameImage = _filmstripResized.toRef.cropImageRef(resizedRect);
+
         foreach(dirtyRect; dirtyRects)
         {
-            auto croppedRawIn = _currentImage.cropImageRef(dirtyRect);
-            auto croppedRawOut = rawMap.cropImageRef(dirtyRect);
+            ImageRef!RGBA croppedImage = frameImage.cropImageRef(dirtyRect);
+            ImageRef!RGBA croppedRaw = rawMap.cropImageRef(dirtyRect);
 
             int w = dirtyRect.width;
             int h = dirtyRect.height;
 
             for(int j = 0; j < h; ++j)
             {
-                RGBA[] input = croppedRawIn.scanline(j);
-                RGBA[] output = croppedRawOut.scanline(j);
+                const(RGBA)* input = croppedImage.scanline(j).ptr;
+                RGBA* output       = croppedRaw.scanline(j).ptr;
 
                 for(int i = 0; i < w; ++i)
                 {
                     ubyte alpha = input[i].a;
-
-                    RGBA color = blendColor(input[i], output[i], alpha);
-                    output[i] = color;
+                    output[i] = blendColor(input[i], output[i], alpha);
                 }
             }
-
         }
     }
 
-    void setCurrentImage()
+    override void reflow()
     {
-        float value = _param.getNormalized();
-        currentFrame = cast(int)(round(value * (_numFrames - 1)));
+        // If target size is position.width x position.height, then
+        // slider image must be resized to position.width x (position.height x _numFrames).
 
-        if(currentFrame < 0) currentFrame = 0;
-        if(currentFrame > 59) currentFrame = 59;
+        int usefulInputPixelHeight = _numFrames * _frameHeightOrig;
+        assert(usefulInputPixelHeight <= _filmstrip.h);
 
-        _imageX1 = 0;
-        _imageY1 = (_filmstrip.h / _numFrames) * currentFrame;
+        box2i origRect = rectangle(0, 0, _filmstrip.w, usefulInputPixelHeight);        
+        ImageRef!RGBA originalInput = _filmstrip.toRef().cropImageRef(origRect);
 
-        _imageX2 = _filmstrip.w;
-        _imageY2 = _imageY1 + (_filmstrip.h / _numFrames);
+        _filmstripResized.size(position.width, position.height * _numFrames);
 
-    }
+        // PERF: if we do like in flatknob.d, we can avoid resizing the whole image, and just resize just-in-time
+        //       the one frame we need. Which is better for fast resize.
+        context.globalImageResizer.resizeImage_sRGBWithAlpha(originalInput, _filmstripResized.toRef);
+    }  
 
     override bool onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
     {
@@ -132,7 +153,18 @@ nothrow:
         // FUTURE: replace by actual trail height instead of total height
         if(!_disabled)
         {
-            float displacementInHeight = cast(float)(dy) / _position.height;
+            float referenceCoord;
+            float displacementInHeight;
+            if (direction == Direction.vertical)
+            {
+                referenceCoord = y;
+                displacementInHeight = cast(float)(dy) / _position.height;
+            }
+            else
+            {
+                referenceCoord = -x;
+                displacementInHeight = cast(float)(-dx) / _position.width;
+            }
 
             float modifier = 1.0f;
             if (mstate.shiftPressed || mstate.ctrlPressed)
@@ -143,16 +175,16 @@ nothrow:
             if (mstate.altPressed)
                 newParamValue = _param.getNormalizedDefault();
 
-            if (y > _mousePosOnLast0Cross)
+            if (referenceCoord > _mousePosOnLast0Cross)
                 return;
-            if (y < _mousePosOnLast1Cross)
+            if (referenceCoord < _mousePosOnLast1Cross)
                 return;
 
             if (newParamValue <= 0 && oldParamValue > 0)
-                _mousePosOnLast0Cross = y;
+                _mousePosOnLast0Cross = referenceCoord;
 
             if (newParamValue >= 1 && oldParamValue < 1)
-                _mousePosOnLast1Cross = y;
+                _mousePosOnLast1Cross = referenceCoord;
 
             if (newParamValue < 0)
                 newParamValue = 0;
@@ -228,19 +260,23 @@ protected:
     /// The parameter this switch is linked with.
     Parameter _param;
 
+    /// Original slider image.
     OwnedImage!RGBA _filmstrip;
-    int _numFrames;
-    int _imageX1, _imageX2, _imageY1, _imageY2;
-    int currentFrame;
 
-    int _knobWidth;
-    int _knobHeight;
+    /// Resized slider image, full.
+    OwnedImage!RGBA _filmstripResized;
+
+    /// The number of slider image frames contained in the _filmstrip image.
+    int _numFrames;
+
+    /// The pixel height of slider frames in _filmstrip image.
+    /// _frameHeightOrig x _numFrames is the useful range of pixels, excess ones aren't used, if any.
+    int _frameHeightOrig;
 
     /// Sensivity: given a mouse movement in 100th of the height of the knob,
     /// how much should the normalized parameter change.
     float _sensivity;
 
-    float  _pushedAnimation;
 
     float _mousePosOnLast0Cross;
     float _mousePosOnLast1Cross;

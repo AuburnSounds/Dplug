@@ -9,6 +9,7 @@ import std.math;
 import std.algorithm;
 
 import dplug.core,
+       dplug.dsp,
        dplug.client;
 
 import gui;
@@ -24,6 +25,7 @@ enum : int
     paramOutputGain,
     paramMix,
     paramMode,
+    paramBassBoost
 }
 
 
@@ -58,6 +60,7 @@ nothrow:
         params ~= mallocNew!LinearFloatParameter(paramOutputGain, "output gain", "db", -12.0f, 12.0f, 0.0f) ;
         params ~= mallocNew!LinearFloatParameter(paramMix, "mix", "%", 0.0f, 100.0f, 100.0f) ;
         params ~= mallocNew!BoolParameter(paramMode, "mode", false);
+        params ~= mallocNew!LinearFloatParameter(paramBassBoost, "bass boost", "db", 0.0f, 6.0f, 0.0f) ;
         return params.releaseData();
     }
 
@@ -90,8 +93,13 @@ nothrow:
     override void reset(double sampleRate, int maxFrames, int numInputs, int numOutputs) 
     {
         // Clear here any state and delay buffers you might have.
-
         assert(maxFrames <= 512); // guaranteed by audio buffer splitting
+        assert(numInputs == numOutputs);
+
+        _sampleRate = sampleRate;
+
+        foreach(chan; 0..numInputs)
+            _bassFilter[chan].initialize();
     }
 
     override void processAudio(const(float*)[] inputs, float*[]outputs, int frames, TimeInfo info)
@@ -107,6 +115,8 @@ nothrow:
         /// Convert decibel values to floating point
         immutable float inputGain = pow(10, readParam!float(paramInputGain) /20);
         immutable float outputGain = pow(10, readParam!float(paramOutputGain) /20);
+
+        float bassBoost_dB = readParam!float(paramBassBoost);
 
         immutable float mix = readParam!float(paramMix) / 100.0f;
 
@@ -128,10 +138,16 @@ nothrow:
 
         for (int chan = 0; chan < minChan; ++chan)
         {
+            // Copy to output, since output buffers are read/write unlike input buffers.
+            outputs[chan][0..frames] = inputs[chan][0..frames];
+
+            // Apply bass boost
+            BiquadCoeff bassBoostCoeff = biquadRBJLowShelf(250, _sampleRate, bassBoost_dB);
+            _bassFilter[chan].nextBuffer(outputs[chan], outputs[chan], frames, bassBoostCoeff);
+
             for (int f = 0; f < frames; ++f)
             {
-                float inputSample = inputs[chan][f] * inputGain;
-
+                float inputSample  = outputs[chan][f] * inputGain;
                 float outputSample = inputSample;
 
                 /// Hard clip mode
@@ -175,6 +191,9 @@ nothrow:
     }
 
 private:
+
+    float _sampleRate;
+    BiquadDelay[2] _bassFilter;
     
 }
 

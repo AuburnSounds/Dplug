@@ -46,11 +46,13 @@ nothrow:
         OwnedImage!RGBA knobImage = loadOwnedImage(cast(ubyte[])(import("knob.png")));
         OwnedImage!RGBA switchOnImage = loadOwnedImage(cast(ubyte[])(import("switchOn.png")));
         OwnedImage!RGBA switchOffImage = loadOwnedImage(cast(ubyte[])(import("switchOff.png")));
+        OwnedImage!RGBA sliderImage = loadOwnedImage(cast(ubyte[])(import("slider.png")));
 
-        // Creates all widets and adds them as children to the GUI
-        // widgets are not visible until their positions have been set
+        // In the ClipIt case, all images have 101 frames.
         int numFrames = 101;
 
+        // Creates all widgets and adds them as children to the GUI
+        // widgets are not visible until their positions have been set, in reflow.
 
         _inputGainKnob = mallocNew!UIFilmstripKnob(context(), cast(FloatParameter) _client.param(paramInputGain), knobImage, numFrames);
         addChild(_inputGainKnob);
@@ -63,6 +65,10 @@ nothrow:
         
         _mixKnob = mallocNew!UIFilmstripKnob(context(), cast(FloatParameter) _client.param(paramMix), knobImage, numFrames);
         addChild(_mixKnob);
+
+        _bassSlider = mallocNew!UIFilmstripSlider(context(), cast(FloatParameter) _client.param(paramBassBoost), sliderImage, numFrames);
+        _bassSlider.direction = UIFilmstripSlider.Direction.horizontal;
+        addChild(_bassSlider);
 
         addChild(_modeSwitch = mallocNew!UIImageSwitch(context(), cast(BoolParameter) _client.param(paramMode), switchOnImage, switchOffImage));       
 
@@ -84,6 +90,9 @@ nothrow:
         _mixKnob.position        = rectangle(308, 320, 128, 128).scaleByFactor(S);
  
         _modeSwitch.position = rectangle(380, 28, 50, 20).scaleByFactor(S);
+
+        _bassSlider.position = rectangle(208, 27, 96, 24).scaleByFactor(S);
+
         _resizerHint.position = rectangle(W-30, H-30, 30, 30);
     }
 
@@ -94,4 +103,5 @@ private:
     UIFilmstripKnob _mixKnob;
     UIImageSwitch   _modeSwitch;
     UIWindowResizer _resizerHint;
+    UIFilmstripSlider _bassSlider;
 }
