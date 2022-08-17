@@ -7,6 +7,7 @@ License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 module dplug.core;
 
 public import dplug.core.vec;
+public import dplug.core.string;
 public import dplug.core.math;
 public import dplug.core.sync;
 public import dplug.core.ringbuf;
@@ -20,3 +21,4 @@ public import dplug.core.file;
 public import dplug.core.complex;
 public import dplug.core.map;
 public import dplug.core.binrange;
+
