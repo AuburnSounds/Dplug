@@ -2,6 +2,7 @@ module dplug.core.string;
 
 import core.stdc.stdlib;
 import core.stdc.string;
+import core.stdc.stdarg;
 import dplug.core.vec;
 
 
@@ -19,7 +20,7 @@ String makeString(const(char)[] s)
 /// `String` always owns its memory, and can return as a D slice.
 /// FUTURE: use realloc to be able to size down.
 ///         Capacity to be a slice into existing memory and not own.
-///         Capacity to disown memory.
+///         Capacity to disown memory (implies: stop using Vec)
 struct String
 {
 public:
@@ -34,16 +35,22 @@ nothrow @nogc:
     {
     }
 
+    /// Sets as empty/null string.
+    void makeEmpty()
+    {
+        _chars.clearContents();
+    }
+
     /// Pointer to first character in the string, or `null`.
     inout(char)* ptr() inout return
     {
-        return _buf.ptr;
+        return _chars.ptr;
     }
 
     /// Length in bytes of the string.
     size_t length() const
     {
-        return _buf.length;
+        return _chars.length;
     }
 
     /// Converts to a D string, sliced into the `String` memory.
@@ -52,7 +59,19 @@ nothrow @nogc:
         size_t len = length();
         if (len == 0)
             return null;
-        return _buf[0..len];
+        return _chars[0..len];
+    }
+
+    /// Returns: Whole content of the sring in one slice.
+    inout(char)[] opSlice() inout return
+    {
+        return asSlice();
+    }
+
+    /// Returns: A slice of the array.
+    inout(char)[] opSlice(size_t i1, size_t i2) inout
+    {
+        return _chars[i1 .. i2];
     }
 
     // <Appending>
@@ -61,7 +80,7 @@ nothrow @nogc:
     /// returned before.
     void opOpAssign(string op)(char x) if (op == "~")
     {
-        _buf.pushBack(x);
+        _chars.pushBack(x);
     }
 
     /// Append a characters to the string.
@@ -69,7 +88,15 @@ nothrow @nogc:
     {
         size_t len = str.length;
         for (size_t n = 0; n < len; ++n)
-            _buf.pushBack(str[n]);
+            _chars.pushBack(str[n]);
+    }
+
+    /// Append a zero-terminated character to the string.
+    /// Name is explicit, because it should be rare and overload conflict.
+    void appendZeroTerminatedString(const(char)* str)
+    {
+        while(*str != '\0')
+            _chars.pushBack(*str++);
     }
 
     bool opEquals(const(char)[] s)
@@ -80,7 +107,7 @@ nothrow @nogc:
             return false;
         for (size_t n = 0; n < lenS; ++n)
         {
-            if (s[n] != _buf[n])
+            if (s[n] != _chars[n])
                 return false;
         }        
         return true;
@@ -107,11 +134,11 @@ private:
     Flags _flags = 0;
     */
 
-    Vec!char _buf;
+    Vec!char _chars;
 
     void clearContents()
     {
-        _buf.clearContents();
+        _chars.clearContents();
     }
 }
 
@@ -139,10 +166,15 @@ unittest
     assert(A == B);
 }
 
-// Null and .ptr
+// Basic appending.
 unittest
 {
     String s = "Hello,";
     s ~= " world!";
     assert(s == "Hello, world!");
+    s.makeEmpty();
+    assert(s == null);
+    assert(s.length == 0);
 }
+
+

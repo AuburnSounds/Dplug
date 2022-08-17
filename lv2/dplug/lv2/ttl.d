@@ -24,56 +24,60 @@
 /// TTL generation.
 module dplug.lv2.ttl;
 
+
 import core.stdc.stdio;
 import core.stdc.stdlib;
 import core.stdc.string;
 import std.conv;
 
 import dplug.core.nogc;
+import dplug.core.vec;
+import dplug.core.string;
 
 import dplug.client.client;
 import dplug.client.params;
 import dplug.client.daw;
 
 
-// TODO: this is bad and breaks often.
-// Needs something like an output range, writing to a growable buffer so that no strange limitations exist.
-
+/// Generate
+/// For now: outputBuffer needs to be at least 1_000_000 bytes.
+/// This leaks memory. Only used by dplug-build, for LV2 builds.
+/// TODO: more uses of String to rationalize everything about string building.
 int GenerateManifestFromClient_templated(alias ClientClass)(char[] outputBuffer,
                                                             const(char)[] binaryFileName) nothrow @nogc
 {
+    // Create a temporary client just to know its properties.
     ClientClass client = mallocNew!ClientClass();
-    scope(exit) client.destroyFree();
+    scope(exit) client.destroyFree();    
 
     LegalIO[] legalIOs = client.legalIOs();
     Parameter[] params = client.params();
 
-    char[] manifest = outputBuffer;
-    manifest[] = '\0';
+    String manifest;
 
     // Make an URI for the GUI
     char[256] uriBuf;
     sprintVendorPrefix(uriBuf.ptr, 256, client.pluginHomepage(), client.getPluginUniqueID());
     string uriVendor = stringIDup(uriBuf.ptr); // TODO leak here
 
-    strcat(manifest.ptr, "@prefix lv2:  <http://lv2plug.in/ns/lv2core#>.\n".ptr);
-    strcat(manifest.ptr, "@prefix atom: <http://lv2plug.in/ns/ext/atom#>.\n".ptr);
-    strcat(manifest.ptr, "@prefix doap: <http://usefulinc.com/ns/doap#>.\n".ptr);
-    strcat(manifest.ptr, "@prefix foaf: <http://xmlns.com/foaf/0.1/>.\n".ptr);
-    strcat(manifest.ptr, "@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.\n".ptr);
-    strcat(manifest.ptr, "@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.\n".ptr);
-    strcat(manifest.ptr, "@prefix urid: <http://lv2plug.in/ns/ext/urid#>.\n".ptr);
-    strcat(manifest.ptr, "@prefix ui:   <http://lv2plug.in/ns/extensions/ui#>.\n".ptr);
-    strcat(manifest.ptr, "@prefix pset: <http://lv2plug.in/ns/ext/presets#>.\n".ptr);
-    strcat(manifest.ptr, "@prefix opts: <http://lv2plug.in/ns/ext/options#>.\n".ptr);
+    manifest ~= "@prefix lv2:  <http://lv2plug.in/ns/lv2core#>.\n";
+    manifest ~= "@prefix atom: <http://lv2plug.in/ns/ext/atom#>.\n";
+    manifest ~= "@prefix doap: <http://usefulinc.com/ns/doap#>.\n";
+    manifest ~= "@prefix foaf: <http://xmlns.com/foaf/0.1/>.\n";
+    manifest ~= "@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.\n";
+    manifest ~= "@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.\n";
+    manifest ~= "@prefix urid: <http://lv2plug.in/ns/ext/urid#>.\n";
+    manifest ~= "@prefix ui:   <http://lv2plug.in/ns/extensions/ui#>.\n";
+    manifest ~= "@prefix pset: <http://lv2plug.in/ns/ext/presets#>.\n";
+    manifest ~= "@prefix opts: <http://lv2plug.in/ns/ext/options#>.\n";
     if (client.sendsMIDI)
     {
-        strcat(manifest.ptr, "@prefix rsz:  <http://lv2plug.in/ns/ext/resize-port#>.\n".ptr);
+        manifest ~= "@prefix rsz:  <http://lv2plug.in/ns/ext/resize-port#>.\n";
     }
-    strcat(manifest.ptr, "@prefix pprops: <http://lv2plug.in/ns/ext/port-props#>.\n".ptr);
-    strcat(manifest.ptr, "@prefix vendor: ".ptr); // this prefix abbreviate the ttl with our own URL base
-    strcat(manifest.ptr, escapeRDF_IRI(uriVendor).ptr);
-    strcat(manifest.ptr, ".\n\n".ptr);
+    manifest ~= "@prefix pprops: <http://lv2plug.in/ns/ext/port-props#>.\n";
+    manifest ~= "@prefix vendor: "; // this prefix abbreviate the ttl with our own URL base
+    manifest.appendZeroTerminatedString( escapeRDF_IRI(uriVendor).ptr ); // TODO leak here
+    manifest ~= ".\n\n";
 
     string uriGUI = null;
     if(client.hasGUI)
@@ -88,32 +92,32 @@ int GenerateManifestFromClient_templated(alias ClientClass)(char[] outputBuffer,
         sprintPluginURI_IO_short(uriBuf.ptr, 256, legalIO);
         string uriIO = stringIDup(uriBuf.ptr); // TODO leak here
 
-        strcat(manifest.ptr, uriIO.ptr);
-        strcat(manifest.ptr, "\n".ptr);
-        strcat(manifest.ptr, "    a lv2:Plugin");
-        strcat(manifest.ptr, lv2PluginCategory(client.pluginCategory).ptr);
-        strcat(manifest.ptr, " ;\n".ptr);
-        strcat(manifest.ptr, "    lv2:binary ".ptr);
-        strcat(manifest.ptr, escapeRDF_IRI(binaryFileName).ptr);
-        strcat(manifest.ptr, " ;\n".ptr);
-        strcat(manifest.ptr, "    doap:name ".ptr);
-        strcat(manifest.ptr, escapeRDFString(client.pluginName).ptr);
-        strcat(manifest.ptr, " ;\n".ptr);
-        strcat(manifest.ptr, "    doap:maintainer [ foaf:name ".ptr);
-        strcat(manifest.ptr, escapeRDFString(client.vendorName).ptr);
-        strcat(manifest.ptr, " ] ;\n".ptr);
-        strcat(manifest.ptr, "    lv2:requiredFeature opts:options ,\n".ptr);
-        strcat(manifest.ptr, "                        urid:map ;\n".ptr);
+        manifest.appendZeroTerminatedString(uriIO.ptr);
+        manifest ~= "\n";
+        manifest ~= "    a lv2:Plugin";
+        manifest.appendZeroTerminatedString( lv2PluginCategory(client.pluginCategory).ptr );
+        manifest ~= " ;\n";
+        manifest ~= "    lv2:binary ";
+        manifest.appendZeroTerminatedString( escapeRDF_IRI(binaryFileName).ptr );
+        manifest ~= " ;\n";
+        manifest ~= "    doap:name ";
+        manifest.appendZeroTerminatedString( escapeRDFString(client.pluginName).ptr );
+        manifest ~= " ;\n";
+        manifest ~= "    doap:maintainer [ foaf:name ";
+        manifest.appendZeroTerminatedString( escapeRDFString(client.vendorName).ptr );
+        manifest ~= " ] ;\n";
+        manifest ~= "    lv2:requiredFeature opts:options ,\n";
+        manifest ~= "                        urid:map ;\n";
 
         // We do not provide such an interface
         //manifest ~= "    lv2:extensionData <" ~ LV2_OPTIONS__interface ~ "> ; \n";
 
         if(client.hasGUI)
         {
-            strcat(manifest.ptr, "    ui:ui vendor:ui;\n".ptr);
+            manifest ~= "    ui:ui vendor:ui;\n";
         }
 
-        strcat(manifest.ptr, buildParamPortConfiguration(client.params(), legalIO, client.receivesMIDI, client.sendsMIDI).ptr);
+        manifest.appendZeroTerminatedString( buildParamPortConfiguration(client.params(), legalIO, client.receivesMIDI, client.sendsMIDI).ptr );
     }
 
     // add presets information
@@ -124,15 +128,15 @@ int GenerateManifestFromClient_templated(alias ClientClass)(char[] outputBuffer,
         // Make an URI for this preset
         sprintPluginURI_preset_short(uriBuf.ptr, 256, presetIndex);
         auto preset = presetBank.preset(presetIndex);
-        strcat(manifest.ptr, "\n".ptr);
-        strcat(manifest.ptr, stringIDup(uriBuf.ptr).ptr);
-        strcat(manifest.ptr, "\n".ptr); // TODO leak here
-        strcat(manifest.ptr, "        a pset:Preset ;\n".ptr);
-        strcat(manifest.ptr, "        rdfs:label ".ptr);
-        strcat(manifest.ptr, escapeRDFString(preset.name).ptr);
-        strcat(manifest.ptr, " ;\n".ptr);
+        manifest ~= "\n";
+        manifest ~= stringIDup(uriBuf.ptr); // TODO leak here
+        manifest ~= "\n"; 
+        manifest ~= "        a pset:Preset ;\n";
+        manifest ~= "        rdfs:label ";
+        manifest ~= escapeRDFString(preset.name);
+        manifest ~= " ;\n";
 
-        strcat(manifest.ptr, "        lv2:port [\n".ptr);     
+        manifest ~= "        lv2:port [\n";
 
         const(float)[] paramValues = preset.getNormalizedParamValues();
 
@@ -144,61 +148,68 @@ int GenerateManifestFromClient_templated(alias ClientClass)(char[] outputBuffer,
             char[] paramValue = cast(char[])malloc(char.sizeof * 10)[0..10];
             snprintf(paramValue.ptr, 10, "%f", paramValues[p]);
 
-            strcat(manifest.ptr, "            lv2:symbol \"".ptr);
-            strcat(manifest.ptr, paramSymbol.ptr);
-            strcat(manifest.ptr, "\"; pset:value ".ptr);
-            strcat(manifest.ptr, paramValue[0..strlen(paramValue.ptr)].ptr);
-            strcat(manifest.ptr, " \n".ptr);
+            manifest ~= "            lv2:symbol \"";
+            manifest.appendZeroTerminatedString( paramSymbol.ptr );
+            manifest ~= "\"; pset:value ";
+            manifest.appendZeroTerminatedString( paramValue.ptr );
+            manifest ~= " \n";
             if (p + 1 == paramValues.length)
-                strcat(manifest.ptr, "        ] ;\n".ptr);
+                manifest ~= "        ] ;\n";
             else
-                strcat(manifest.ptr, "        ] , [\n".ptr);
+                manifest ~= "        ] , [\n";
         }
 
         // Each preset applies to every plugin I/O configuration
-        strcat(manifest.ptr, "        lv2:appliesTo ".ptr);
+        manifest ~= "        lv2:appliesTo ";
         foreach(size_t n, legalIO; legalIOs)
         {
             // Make an URI for this I/O configuration
             sprintPluginURI_IO_short(uriBuf.ptr, 256, legalIO);
             string uriIO = stringIDup(uriBuf.ptr); // TODO leak here
-            strcat(manifest.ptr, uriIO.ptr);
+            manifest ~= uriIO;
             if (n + 1 == legalIOs.length)
-                strcat(manifest.ptr, " . \n".ptr);
+                manifest ~= " . \n";
             else
-                strcat(manifest.ptr, " , ".ptr);
+                manifest ~= " , ";
         }
     }
 
     // describe UI
     if(client.hasGUI)
     {
-        strcat(manifest.ptr, "\nvendor:ui\n".ptr);
+        manifest ~= "\nvendor:ui\n";
 
         version(OSX)
-            strcat(manifest.ptr, "    a ui:CocoaUI;\n".ptr);
+            manifest ~= "    a ui:CocoaUI;\n";
         else version(Windows)
-            strcat(manifest.ptr, "    a ui:WindowsUI;\n".ptr);
+            manifest ~= "    a ui:WindowsUI;\n";
         else version(linux)
-            strcat(manifest.ptr, "    a ui:X11UI;\n".ptr);
+            manifest ~= "    a ui:X11UI;\n";
         else
             static assert("unsupported OS");
 
-        strcat(manifest.ptr, "    lv2:optionalFeature ui:noUserResize ,\n".ptr);
-        strcat(manifest.ptr, "                        ui:resize ,\n".ptr);
-        strcat(manifest.ptr, "                        ui:touch ;\n".ptr);
-        strcat(manifest.ptr, "    lv2:requiredFeature opts:options ,\n".ptr);
-        strcat(manifest.ptr, "                        urid:map ,\n".ptr);
+        manifest ~= "    lv2:optionalFeature ui:noUserResize ,\n";
+        manifest ~= "                        ui:resize ,\n";
+        manifest ~= "                        ui:touch ;\n";
+        manifest ~= "    lv2:requiredFeature opts:options ,\n";
+        manifest ~= "                        urid:map ,\n";
 
         // No DSP separated from UI for us
-        strcat(manifest.ptr, "                        <http://lv2plug.in/ns/ext/instance-access> ;\n".ptr);
+        manifest ~= "                        <http://lv2plug.in/ns/ext/instance-access> ;\n";
 
-        strcat(manifest.ptr, "    ui:binary ".ptr);
-        strcat(manifest.ptr, escapeRDF_IRI(binaryFileName).ptr);
-        strcat(manifest.ptr, " .\n".ptr);
+        manifest ~= "    ui:binary ";
+        manifest.appendZeroTerminatedString( escapeRDF_IRI(binaryFileName).ptr );
+        manifest ~= " .\n";
     }
 
-    const int manifestFinalLength = cast(int)strlen(manifest.ptr);
+    assert(manifest.length < 1_000_000); // More than 1mb not supported by Dplug, need dplug-build work
+    const int manifestFinalLength = cast(int) manifest.length;
+
+    if (outputBuffer !is null)
+    {
+        outputBuffer[0..manifestFinalLength] = manifest[0..manifestFinalLength];
+    }
+
     return manifestFinalLength;
 }
 
@@ -215,12 +226,6 @@ void sprintPluginURI(char* buf, size_t maxChars, string pluginHomepage, char[4] 
     CString pluginHomepageZ = CString(pluginHomepage);
     snprintf(buf, maxChars, "%s%2X%2X%2X%2X", pluginHomepageZ.storage, pluginID[0], pluginID[1], pluginID[2], pluginID[3]);
 }
-/*
-void sprintPluginURI(char* buf, size_t maxChars, string pluginHomepage, char[4] pluginID) nothrow @nogc
-{
-    CString pluginHomepageZ = CString(pluginHomepage);
-    snprintf(buf, maxChars, "%s%2X%2X%2X%2X", pluginHomepageZ.storage, pluginID[0], pluginID[1], pluginID[2], pluginID[3]);
-}*/
 
 void sprintPluginURI_UI(char* buf, size_t maxChars, string pluginHomepage, char[4] pluginID) nothrow @nogc
 {
@@ -402,7 +407,12 @@ const(char)[] escapeRDF_IRI(const(char)[] s) nothrow @nogc
     return escapedRDF_IRI[0..index];
 }
 
-const(char)[] buildParamPortConfiguration(Parameter[] params, LegalIO legalIO, bool hasMIDIInput, bool hasMIDIOutput) nothrow @nogc
+// TODO: this does a crazy amount of allocations again. Replace with String, with enhanced
+ //      formatting possibilities.
+const(char)[] buildParamPortConfiguration(Parameter[] params, 
+                                          LegalIO legalIO, 
+                                          bool hasMIDIInput, 
+                                          bool hasMIDIOutput) nothrow @nogc
 {
     import std.conv: to;
     import std.uni: toLower;
