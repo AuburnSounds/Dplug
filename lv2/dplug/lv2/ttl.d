@@ -167,7 +167,7 @@ int GenerateManifestFromClient_templated(alias ClientClass)(char[] outputBuffer,
         for (int p = 0; p < paramValues.length; ++p)
         {
             snprintf(paramSymbol.ptr, 32, "p%d", p);
-            snprintf(paramValue.ptr, 32, "%f", paramValues[p]);
+            snprintf(paramValue.ptr, 32, "%g", paramValues[p]);
 
             manifest ~= "            lv2:symbol \"";
             manifest.appendZeroTerminatedString( paramSymbol.ptr );
@@ -464,7 +464,7 @@ void buildParamPortConfiguration(Parameter[] params,
             paramString ~= "        lv2:default ";
 
             char[10] paramNormalized;
-            snprintf(paramNormalized.ptr, 10, "%f", param.getNormalized());
+            snprintf(paramNormalized.ptr, 10, "%g", param.getNormalized());
 
             paramString.appendZeroTerminatedString(paramNormalized.ptr);
 
