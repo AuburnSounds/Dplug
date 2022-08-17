@@ -21,10 +21,16 @@ String makeString(const(char)[] s)
 /// FUTURE: use realloc to be able to size down.
 ///         Capacity to be a slice into existing memory and not own.
 ///         Capacity to disown memory (implies: stop using Vec)
+/// QUESTION: should String just be a managed slice!T instead? Like Go slices.
 struct String
 {
 public:
 nothrow @nogc:
+
+    this(char ch)
+    {
+        this ~= ch;
+    }
 
     this(const(char)[] s)
     {
@@ -90,6 +96,13 @@ nothrow @nogc:
         for (size_t n = 0; n < len; ++n)
             _chars.pushBack(str[n]);
     }
+
+    /// Append a characters to the string.
+    void opOpAssign(string op)(String str) if (op == "~")
+    {
+        this ~= str.asSlice();
+    }
+
 
     /// Append a zero-terminated character to the string.
     /// Name is explicit, because it should be rare and overload conflict.

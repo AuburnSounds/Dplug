@@ -101,10 +101,10 @@ int GenerateManifestFromClient_templated(alias ClientClass)(char[] outputBuffer,
         manifest ~= escapeRDF_IRI2(binaryFileName);
         manifest ~= " ;\n";
         manifest ~= "    doap:name ";
-        manifest.appendZeroTerminatedString( escapeRDFString(client.pluginName).ptr );
+        manifest ~= escapeRDFString2(client.pluginName);
         manifest ~= " ;\n";
         manifest ~= "    doap:maintainer [ foaf:name ";
-        manifest.appendZeroTerminatedString( escapeRDFString(client.vendorName).ptr );
+        manifest ~= escapeRDFString2(client.vendorName);
         manifest ~= " ] ;\n";
         manifest ~= "    lv2:requiredFeature opts:options ,\n";
         manifest ~= "                        urid:map ;\n";
@@ -133,7 +133,7 @@ int GenerateManifestFromClient_templated(alias ClientClass)(char[] outputBuffer,
         manifest ~= "\n"; 
         manifest ~= "        a pset:Preset ;\n";
         manifest ~= "        rdfs:label ";
-        manifest ~= escapeRDFString(preset.name);
+        manifest ~= escapeRDFString2(preset.name);
         manifest ~= " ;\n";
 
         manifest ~= "        lv2:port [\n";
@@ -336,8 +336,7 @@ const(char)[] lv2PluginCategory(PluginCategory category) nothrow @nogc
     return lv2Category;
 }
 
-/// escape a UTF-8 string for UTF-8 RDF
-/// See_also: https://www.w3.org/TR/turtle/
+// TODO: remove in favor of escapeRDFString2
 const(char)[] escapeRDFString(const(char)[] s) nothrow @nogc
 {
     // Note: over-allocate, in case the string is made up of only escaped chars
@@ -351,26 +350,56 @@ const(char)[] escapeRDFString(const(char)[] s) nothrow @nogc
     {
         switch(ch)
         {
-           // Escape some whitespace chars
-           case '\t': r[index++] = '\\'; r[index++] = 't'; break;
-           case '\b': r[index++] = '\\'; r[index++] = 'b'; break;
-           case '\n': r[index++] = '\\'; r[index++] = 'n'; break;
-           case '\r': r[index++] = '\\'; r[index++] = 'r'; break;
-           case '\f': r[index++] = '\\'; r[index++] = 'f'; break;
-           case '\"': r[index++] = '\\'; r[index++] = '\"'; break;
-           case '\'': r[index++] = '\\'; r[index++] = '\''; break;
-           case '\\': r[index++] = '\\'; r[index++] = '\\'; break;
-           default:
-               r[index++] = ch;
+            // Escape some whitespace chars
+            case '\t': r[index++] = '\\'; r[index++] = 't'; break;
+            case '\b': r[index++] = '\\'; r[index++] = 'b'; break;
+            case '\n': r[index++] = '\\'; r[index++] = 'n'; break;
+            case '\r': r[index++] = '\\'; r[index++] = 'r'; break;
+            case '\f': r[index++] = '\\'; r[index++] = 'f'; break;
+            case '\"': r[index++] = '\\'; r[index++] = '\"'; break;
+            case '\'': r[index++] = '\\'; r[index++] = '\''; break;
+            case '\\': r[index++] = '\\'; r[index++] = '\\'; break;
+            default:
+                r[index++] = ch;
         }
     }
     r[index++] = '\"';
     r[index++] = '\0';
     return r[0..index-1];
 }
+
+/// escape a UTF-8 string for UTF-8 RDF
+/// See_also: https://www.w3.org/TR/turtle/
+String escapeRDFString2(const(char)[] s) nothrow @nogc
+{   
+    String r = '\"';
+
+    int index = 1;
+
+    foreach(char ch; s)
+    {
+        switch(ch)
+        {
+           // Escape some whitespace chars
+           case '\t': r ~= '\\'; r ~= 't'; break;
+           case '\b': r ~= '\\'; r ~= 'b'; break;
+           case '\n': r ~= '\\'; r ~= 'n'; break;
+           case '\r': r ~= '\\'; r ~= 'r'; break;
+           case '\f': r ~= '\\'; r ~= 'f'; break;
+           case '\"': r ~= '\\'; r ~= '\"'; break;
+           case '\'': r ~= '\\'; r ~= '\''; break;
+           case '\\': r ~= '\\'; r ~= '\\'; break;
+           default:
+               r ~= ch;
+        }
+    }
+    r ~= '\"';
+    return r;
+}
 unittest
 {
     assert(escapeRDFString("Stereo Link") == "\"Stereo Link\"");
+    assert(escapeRDFString2("Stereo Link") == "\"Stereo Link\"");
 }
 
 /// Escape a UTF-8 string for UTF-8 IRI literal
@@ -448,7 +477,7 @@ const(char)[] buildParamPortConfiguration(Parameter[] params,
             strcat(paramString.ptr, paramSymbol.ptr);
             strcat(paramString.ptr, "\" ;\n".ptr);
             strcat(paramString.ptr, "        lv2:name ".ptr);
-            strcat(paramString.ptr, escapeRDFString(param.name).ptr);
+            strcat(paramString.ptr, escapeRDFString(param.name).ptr); // TODO: use more String here
             strcat(paramString.ptr, " ;\n".ptr);
             strcat(paramString.ptr, "        lv2:default ".ptr);
 
