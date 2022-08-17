@@ -2,7 +2,7 @@
 * LV2 Client implementation
 *
 * Copyright: Ethan Reker 2018-2019.
-*            Guillaume Piolat 2019.
+*            Guillaume Piolat 2019-2022.
 * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 /*
@@ -41,8 +41,7 @@ import dplug.client.daw;
 
 /// Generate
 /// For now: outputBuffer needs to be at least 1_000_000 bytes.
-/// This leaks memory. Only used by dplug-build, for LV2 builds.
-/// TODO: more uses of String to rationalize everything about string building.
+/// Only used by dplug-build, for LV2 builds.
 int GenerateManifestFromClient_templated(alias ClientClass)(char[] outputBuffer,
                                                             const(char)[] binaryFileName) nothrow @nogc
 {
@@ -56,12 +55,14 @@ int GenerateManifestFromClient_templated(alias ClientClass)(char[] outputBuffer,
     String manifest;
 
     // Make an URI for the GUI
-    char[256] uriBuf;
+    char[256] uriBuf; // this one variable reused quite a lot
     sprintVendorPrefix(uriBuf.ptr, 256, client.pluginHomepage(), client.getPluginUniqueID());
-    string uriVendor = stringIDup(uriBuf.ptr); // TODO leak here
-
+    
     String strUriVendor;
-    escapeRDF_IRI2(uriVendor, strUriVendor);
+    {
+        const(char)[] uriVendor = uriBuf[0..strlen(uriBuf.ptr)];
+        escapeRDF_IRI2(uriVendor, strUriVendor);
+    }
 
     manifest ~= "@prefix lv2:  <http://lv2plug.in/ns/lv2core#>.\n";
     manifest ~= "@prefix atom: <http://lv2plug.in/ns/ext/atom#>.\n";
@@ -82,13 +83,6 @@ int GenerateManifestFromClient_templated(alias ClientClass)(char[] outputBuffer,
     manifest ~= strUriVendor;
     manifest ~= ".\n\n";
 
-    string uriGUI = null;
-    if(client.hasGUI)
-    {
-        sprintPluginURI_UI(uriBuf.ptr, 256, client.pluginHomepage(), client.getPluginUniqueID());
-        uriGUI = stringIDup(uriBuf.ptr); // TODO leak here
-    }
-
     String strCategory;
     lv2PluginCategory(client.pluginCategory, strCategory);
 
@@ -107,9 +101,8 @@ int GenerateManifestFromClient_templated(alias ClientClass)(char[] outputBuffer,
     {
         // Make an URI for this I/O configuration
         sprintPluginURI_IO_short(uriBuf.ptr, 256, legalIO);
-        string uriIO = stringIDup(uriBuf.ptr); // TODO leak here
 
-        manifest.appendZeroTerminatedString(uriIO.ptr);
+        manifest.appendZeroTerminatedString(uriBuf.ptr);
         manifest ~= "\n";
         manifest ~= "    a lv2:Plugin";
         manifest ~= strCategory;
@@ -149,7 +142,7 @@ int GenerateManifestFromClient_templated(alias ClientClass)(char[] outputBuffer,
         sprintPluginURI_preset_short(uriBuf.ptr, 256, presetIndex);
         auto preset = presetBank.preset(presetIndex);
         manifest ~= "\n";
-        manifest ~= stringIDup(uriBuf.ptr); // TODO leak here
+        manifest.appendZeroTerminatedString(uriBuf.ptr);
         manifest ~= "\n"; 
         manifest ~= "        a pset:Preset ;\n";
         manifest ~= "        rdfs:label ";
@@ -186,8 +179,7 @@ int GenerateManifestFromClient_templated(alias ClientClass)(char[] outputBuffer,
         {
             // Make an URI for this I/O configuration
             sprintPluginURI_IO_short(uriBuf.ptr, 256, legalIO);
-            string uriIO = stringIDup(uriBuf.ptr); // TODO leak here
-            manifest ~= uriIO;
+            manifest.appendZeroTerminatedString(uriBuf.ptr);
             if (n + 1 == legalIOs.length)
                 manifest ~= " . \n";
             else
