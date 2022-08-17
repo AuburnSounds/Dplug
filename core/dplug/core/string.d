@@ -82,6 +82,24 @@ nothrow @nogc:
         return _chars[i1 .. i2];
     }
 
+    void opAssign(T : char)(T x)
+    {
+        makeEmpty();
+        this ~= x;
+    }
+
+    void opAssign(T : const(char)[])(T x)
+    {
+        makeEmpty();
+        this ~= x;
+    }
+
+    void opAssign(T : String)(T x)
+    {
+        makeEmpty();
+        this ~= x;
+    }
+
     // <Appending>
 
     /// Append a character to the string. This invalidates pointers to characters
@@ -100,11 +118,10 @@ nothrow @nogc:
     }
 
     /// Append a characters to the string.
-    void opOpAssign(string op)(String str) if (op == "~")
+    void opOpAssign(string op)(ref const(String) str) if (op == "~")
     {
         this ~= str.asSlice();
     }
-
 
     /// Append a zero-terminated character to the string.
     /// Name is explicit, because it should be rare and overload conflict.

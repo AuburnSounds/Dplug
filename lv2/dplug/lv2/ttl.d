@@ -60,6 +60,9 @@ int GenerateManifestFromClient_templated(alias ClientClass)(char[] outputBuffer,
     sprintVendorPrefix(uriBuf.ptr, 256, client.pluginHomepage(), client.getPluginUniqueID());
     string uriVendor = stringIDup(uriBuf.ptr); // TODO leak here
 
+    String strUriVendor;
+    escapeRDF_IRI2(uriVendor, strUriVendor);
+
     manifest ~= "@prefix lv2:  <http://lv2plug.in/ns/lv2core#>.\n";
     manifest ~= "@prefix atom: <http://lv2plug.in/ns/ext/atom#>.\n";
     manifest ~= "@prefix doap: <http://usefulinc.com/ns/doap#>.\n";
@@ -76,7 +79,7 @@ int GenerateManifestFromClient_templated(alias ClientClass)(char[] outputBuffer,
     }
     manifest ~= "@prefix pprops: <http://lv2plug.in/ns/ext/port-props#>.\n";
     manifest ~= "@prefix vendor: "; // this prefix abbreviate the ttl with our own URL base
-    manifest ~= escapeRDF_IRI2(uriVendor);
+    manifest ~= strUriVendor;
     manifest ~= ".\n\n";
 
     string uriGUI = null;
@@ -85,6 +88,20 @@ int GenerateManifestFromClient_templated(alias ClientClass)(char[] outputBuffer,
         sprintPluginURI_UI(uriBuf.ptr, 256, client.pluginHomepage(), client.getPluginUniqueID());
         uriGUI = stringIDup(uriBuf.ptr); // TODO leak here
     }
+
+    String strCategory;
+    lv2PluginCategory(client.pluginCategory, strCategory);
+
+    String strBinaryFile;
+    escapeRDF_IRI2(binaryFileName, strBinaryFile);
+
+    String strPluginName;
+    escapeRDFString(client.pluginName, strPluginName);
+
+    String strVendorName;
+    escapeRDFString(client.vendorName, strVendorName);
+
+    String paramString;
 
     foreach(legalIO; legalIOs)
     {
@@ -95,16 +112,16 @@ int GenerateManifestFromClient_templated(alias ClientClass)(char[] outputBuffer,
         manifest.appendZeroTerminatedString(uriIO.ptr);
         manifest ~= "\n";
         manifest ~= "    a lv2:Plugin";
-        manifest.appendZeroTerminatedString( lv2PluginCategory(client.pluginCategory).ptr );
+        manifest ~= strCategory;
         manifest ~= " ;\n";
         manifest ~= "    lv2:binary ";
-        manifest ~= escapeRDF_IRI2(binaryFileName);
+        manifest ~= strBinaryFile;
         manifest ~= " ;\n";
         manifest ~= "    doap:name ";
-        manifest ~= escapeRDFString2(client.pluginName);
+        manifest ~= strPluginName;
         manifest ~= " ;\n";
         manifest ~= "    doap:maintainer [ foaf:name ";
-        manifest ~= escapeRDFString2(client.vendorName);
+        manifest ~= strVendorName;
         manifest ~= " ] ;\n";
         manifest ~= "    lv2:requiredFeature opts:options ,\n";
         manifest ~= "                        urid:map ;\n";
@@ -117,12 +134,15 @@ int GenerateManifestFromClient_templated(alias ClientClass)(char[] outputBuffer,
             manifest ~= "    ui:ui vendor:ui;\n";
         }
 
-        manifest ~= buildParamPortConfiguration(client.params(), legalIO, client.receivesMIDI, client.sendsMIDI);
+        buildParamPortConfiguration(client.params(), legalIO, client.receivesMIDI, client.sendsMIDI, paramString);
+        manifest ~= paramString;
     }
 
     // add presets information
 
     auto presetBank = client.presetBank();
+    String strPresetName;
+
     for(int presetIndex = 0; presetIndex < presetBank.numPresets(); ++presetIndex)
     {
         // Make an URI for this preset
@@ -133,20 +153,21 @@ int GenerateManifestFromClient_templated(alias ClientClass)(char[] outputBuffer,
         manifest ~= "\n"; 
         manifest ~= "        a pset:Preset ;\n";
         manifest ~= "        rdfs:label ";
-        manifest ~= escapeRDFString2(preset.name);
+        escapeRDFString(preset.name, strPresetName);
+        manifest ~= strPresetName;
         manifest ~= " ;\n";
 
         manifest ~= "        lv2:port [\n";
 
         const(float)[] paramValues = preset.getNormalizedParamValues();
 
+        char[32] paramSymbol;
+        char[32] paramValue;
+
         for (int p = 0; p < paramValues.length; ++p)
         {
-            char[] paramSymbol = cast(char[])malloc(char.sizeof * 256)[0..256];
-            paramSymbol[0] = '\0';
-            sprintf(paramSymbol.ptr, "p%d", p);
-            char[] paramValue = cast(char[])malloc(char.sizeof * 10)[0..10];
-            snprintf(paramValue.ptr, 10, "%f", paramValues[p]);
+            snprintf(paramSymbol.ptr, 32, "p%d", p);
+            snprintf(paramValue.ptr, 32, "%f", paramValues[p]);
 
             manifest ~= "            lv2:symbol \"";
             manifest.appendZeroTerminatedString( paramSymbol.ptr );
@@ -198,7 +219,7 @@ int GenerateManifestFromClient_templated(alias ClientClass)(char[] outputBuffer,
         manifest ~= "                        <http://lv2plug.in/ns/ext/instance-access> ;\n";
 
         manifest ~= "    ui:binary ";
-        manifest ~= escapeRDF_IRI2(binaryFileName);
+        manifest ~= strBinaryFile;
         manifest ~= " .\n";
     }
 
@@ -283,66 +304,62 @@ void sprintPluginURI_IO(char* buf, size_t maxChars, string pluginHomepage, char[
     }
 }
 
-const(char)[] lv2PluginCategory(PluginCategory category) nothrow @nogc
+void lv2PluginCategory(PluginCategory category, ref String lv2Category) nothrow @nogc
 {
-    char[] lv2Category = cast(char[])malloc(char.sizeof * 30)[0..30];
-    lv2Category[] = '\0';
-    strcat(lv2Category.ptr, ", lv2:");
+    lv2Category.makeEmpty();
+    lv2Category ~= ", lv2:";
     with(PluginCategory)
     {
         switch(category)
         {
             case effectAnalysisAndMetering:
-                strcat(lv2Category.ptr, "AnalyserPlugin");
+                lv2Category ~= "AnalyserPlugin";
                 break;
             case effectDelay:
-                strcat(lv2Category.ptr, "DelayPlugin");
+                lv2Category ~= "DelayPlugin";
                 break;
             case effectDistortion:
-                strcat(lv2Category.ptr, "DistortionPlugin");
+                lv2Category ~= "DistortionPlugin";
                 break;
             case effectDynamics:
-                strcat(lv2Category.ptr, "DynamicsPlugin");
+                lv2Category ~= "DynamicsPlugin";
                 break;
             case effectEQ:
-                strcat(lv2Category.ptr, "EQPlugin");
+                lv2Category ~= "EQPlugin";
                 break;
             case effectImaging:
-                strcat(lv2Category.ptr, "SpatialPlugin");
+                lv2Category ~= "SpatialPlugin";
                 break;
             case effectModulation:
-                strcat(lv2Category.ptr, "ModulatorPlugin");
+                lv2Category ~= "ModulatorPlugin";
                 break;
             case effectPitch:
-                strcat(lv2Category.ptr, "PitchPlugin");
+                lv2Category ~= "PitchPlugin";
                 break;
             case effectReverb:
-                strcat(lv2Category.ptr, "ReverbPlugin");
+                lv2Category ~= "ReverbPlugin";
                 break;
             case effectOther:
-                strcat(lv2Category.ptr, "UtilityPlugin");
+                lv2Category ~= "UtilityPlugin";
                 break;
             case instrumentDrums:
             case instrumentSampler:
             case instrumentSynthesizer:
             case instrumentOther:
-                strcat(lv2Category.ptr, "InstrumentPlugin");
+                lv2Category ~= "InstrumentPlugin";
                 break;
             case invalid:
             default:
-                return "";
+                lv2Category.makeEmpty();
         }
     }
-    return lv2Category;
 }
-
-
 
 /// escape a UTF-8 string for UTF-8 RDF
 /// See_also: https://www.w3.org/TR/turtle/
-String escapeRDFString2(const(char)[] s) nothrow @nogc
+void escapeRDFString(const(char)[] s, ref String r) nothrow @nogc
 {   
-    String r = '\"';
+    r = '\"';
 
     int index = 1;
 
@@ -364,20 +381,18 @@ String escapeRDFString2(const(char)[] s) nothrow @nogc
         }
     }
     r ~= '\"';
-    return r;
 }
 unittest
 {
-    assert(escapeRDFString("Stereo Link") == "\"Stereo Link\"");
-    assert(escapeRDFString2("Stereo Link") == "\"Stereo Link\"");
+    String r;
+    escapeRDFString("Stereo Link", r);
+    assert(r == "\"Stereo Link\"");
 }
 
 /// Escape a UTF-8 string for UTF-8 IRI literal
 /// See_also: https://www.w3.org/TR/turtle/
-String escapeRDF_IRI2(const(char)[] s) nothrow @nogc
+void escapeRDF_IRI2(const(char)[] s, ref String outString) nothrow @nogc
 {
-    String outString;
-
     outString.makeEmpty();
     outString ~= '<';
 
@@ -403,17 +418,17 @@ String escapeRDF_IRI2(const(char)[] s) nothrow @nogc
         }
     }
     outString ~= '>';
-    return outString;
 }
 
-String buildParamPortConfiguration(Parameter[] params, 
-                                   LegalIO legalIO, 
-                                   bool hasMIDIInput, 
-                                   bool hasMIDIOutput) nothrow @nogc
+void buildParamPortConfiguration(Parameter[] params, 
+                                 LegalIO legalIO, 
+                                 bool hasMIDIInput, 
+                                 bool hasMIDIOutput,
+                                 ref String paramString) nothrow @nogc
 {
     int portIndex = 0;
 
-    String paramString;
+    paramString = "";
 
     // Note: parameters symbols should be consistent across versions
     // Can't change them without issuing a major version change.
@@ -424,6 +439,8 @@ String buildParamPortConfiguration(Parameter[] params,
     {
         char[256] indexString;
         char[256] paramSymbol;
+
+        String strParamName;
 
         paramString ~= "    lv2:port\n";
         foreach(paramIndex, param; params)
@@ -438,8 +455,11 @@ String buildParamPortConfiguration(Parameter[] params,
             paramString ~= "        lv2:symbol \"";
             paramString.appendZeroTerminatedString(paramSymbol.ptr);
             paramString ~= "\" ;\n";
+
             paramString ~= "        lv2:name ";
-            paramString ~= escapeRDFString2(param.name);
+            escapeRDFString(param.name, strParamName);
+            paramString ~= strParamName;
+
             paramString ~= " ;\n";
             paramString ~= "        lv2:default ";
 
@@ -572,6 +592,4 @@ String buildParamPortConfiguration(Parameter[] params,
     ++portIndex;
 
     paramString ~= " .\n";
-
-    return paramString;
 }
