@@ -76,7 +76,7 @@ int GenerateManifestFromClient_templated(alias ClientClass)(char[] outputBuffer,
     }
     manifest ~= "@prefix pprops: <http://lv2plug.in/ns/ext/port-props#>.\n";
     manifest ~= "@prefix vendor: "; // this prefix abbreviate the ttl with our own URL base
-    manifest.appendZeroTerminatedString( escapeRDF_IRI(uriVendor).ptr ); // TODO leak here
+    manifest ~= escapeRDF_IRI2(uriVendor);
     manifest ~= ".\n\n";
 
     string uriGUI = null;
@@ -98,7 +98,7 @@ int GenerateManifestFromClient_templated(alias ClientClass)(char[] outputBuffer,
         manifest.appendZeroTerminatedString( lv2PluginCategory(client.pluginCategory).ptr );
         manifest ~= " ;\n";
         manifest ~= "    lv2:binary ";
-        manifest.appendZeroTerminatedString( escapeRDF_IRI(binaryFileName).ptr );
+        manifest ~= escapeRDF_IRI2(binaryFileName);
         manifest ~= " ;\n";
         manifest ~= "    doap:name ";
         manifest.appendZeroTerminatedString( escapeRDFString(client.pluginName).ptr );
@@ -198,7 +198,7 @@ int GenerateManifestFromClient_templated(alias ClientClass)(char[] outputBuffer,
         manifest ~= "                        <http://lv2plug.in/ns/ext/instance-access> ;\n";
 
         manifest ~= "    ui:binary ";
-        manifest.appendZeroTerminatedString( escapeRDF_IRI(binaryFileName).ptr );
+        manifest ~= escapeRDF_IRI2(binaryFileName);
         manifest ~= " .\n";
     }
 
@@ -375,13 +375,14 @@ unittest
 
 /// Escape a UTF-8 string for UTF-8 IRI literal
 /// See_also: https://www.w3.org/TR/turtle/
-const(char)[] escapeRDF_IRI(const(char)[] s) nothrow @nogc
+String escapeRDF_IRI2(const(char)[] s) nothrow @nogc
 {
-    const int len = cast(int)(s.length) + 3;
-    char[] escapedRDF_IRI = (cast(char*)malloc(char.sizeof * len))[0..len];
+    String outString;
+
+    outString.makeEmpty();
+    outString ~= '<';
+
     // We actually remove all special characters, because it seems not all hosts properly decode escape sequences
-    escapedRDF_IRI[0] = '<';
-    int index = 1;
     foreach(char ch; s)
     {
         switch(ch)
@@ -399,13 +400,13 @@ const(char)[] escapeRDF_IRI(const(char)[] s) nothrow @nogc
             case '\\':
                 break; // skip that character
             default:
-                escapedRDF_IRI[index++] = ch;
+                outString ~= ch;
         }
     }
-    escapedRDF_IRI[index++] = '>';
-    escapedRDF_IRI[index++] = '\0';
-    return escapedRDF_IRI[0..index];
+    outString ~= '>';
+    return outString;
 }
+
 
 // TODO: this does a crazy amount of allocations again. Replace with String, with enhanced
  //      formatting possibilities.
