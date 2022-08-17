@@ -38,10 +38,10 @@ import dplug.client.client;
 import dplug.client.params;
 import dplug.client.daw;
 
-
-/// Generate
-/// For now: outputBuffer needs to be at least 1_000_000 bytes.
-/// Only used by dplug-build, for LV2 builds.
+/// Generate a manifest. Used by dplug-build, for LV2 builds.
+/// - to ask needed size in bytes, pass null as outputBuffer
+/// - else, pass as much bytes or more than necessary. Result manifest in outputBuffer[0..returned-value]
+/// outputBuffer can be null, in which case it makes no copy.
 int GenerateManifestFromClient_templated(alias ClientClass)(char[] outputBuffer,
                                                             const(char)[] binaryFileName) nothrow @nogc
 {
@@ -215,7 +215,8 @@ int GenerateManifestFromClient_templated(alias ClientClass)(char[] outputBuffer,
         manifest ~= " .\n";
     }
 
-    assert(manifest.length < 1_000_000); // More than 1mb not supported by Dplug, need dplug-build work
+    assert(manifest.length < int.max); // now that would be a very big .ttl
+
     const int manifestFinalLength = cast(int) manifest.length;
 
     if (outputBuffer !is null)
@@ -223,7 +224,7 @@ int GenerateManifestFromClient_templated(alias ClientClass)(char[] outputBuffer,
         outputBuffer[0..manifestFinalLength] = manifest[0..manifestFinalLength];
     }
 
-    return manifestFinalLength;
+    return manifestFinalLength; // Always return manifest length, but you can pass null to get the needed size.
 }
 
 package:

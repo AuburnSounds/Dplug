@@ -646,10 +646,13 @@ int main(string[] args)
 
                         generateManifest ptrGenerateManifest = cast(generateManifest) lib.loadSymbol("GenerateManifestFromClient");
 
-                        // set max manifest size to 1 Million characters/bytes.  We whould never exceed this I hope
-                        char[] manifestBuf = new char[1000 * 1000];
-                        int manifestLen = ptrGenerateManifest(manifestBuf.ptr, cast(int)(manifestBuf.length),
-                                                              binaryName.ptr, cast(int)(binaryName.length));
+                        // How much bytes do we need for the manifest? 
+                        int manifestLen = ptrGenerateManifest(null, 0, binaryName.ptr, cast(int)(binaryName.length));
+
+                        // Generate the manifest again, this time copy it in a properly sized buffer.
+                        char[] manifestBuf = new char[manifestLen];
+                        manifestLen = ptrGenerateManifest(manifestBuf.ptr, cast(int)(manifestBuf.length),
+                                                          binaryName.ptr, cast(int)(binaryName.length));
                         lib.unload();
                         lv2Manifest = manifestBuf[0..manifestLen].idup;
                     }
