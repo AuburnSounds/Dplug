@@ -41,6 +41,8 @@ nothrow @nogc:
     {
     }
 
+    @disable this(this);
+
     /// Sets as empty/null string.
     void makeEmpty()
     {
