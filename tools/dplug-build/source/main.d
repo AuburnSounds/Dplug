@@ -245,7 +245,7 @@ int main(string[] args)
                     archs = [ Arch.x86_64, Arch.arm64, Arch.universalBinary ];
                 else if (args[i] == "all")
                 {
-                    archs = null;
+                    archs = [ Arch.all ];
                 }
                 else
                     throw new Exception("Unrecognized arch combination (available: x86, x86_64, arm32, arm64, UB, all)");            
@@ -299,6 +299,12 @@ int main(string[] args)
             // Autodetect target archs that dplug-build is able to build, for the target OS
             archs = defaultArchitecturesToBuildForThisOS(targetOS);
         }
+        else if (archs == [ Arch.all ])
+        {
+            archs = allArchitecturesWeCanBuildForThisOS(targetOS);
+        }
+
+        assert(archs != [ Arch.all ]);
 
         Plugin plugin = readPluginDescription();
 
@@ -368,6 +374,7 @@ int main(string[] args)
                     case arm32: return "arm32-";
                     case arm64: return "arm64-";
                     case universalBinary: return "";
+                    case all:   assert(false);
                 }
             }
             return format("%s%s/%s-%s%s",

@@ -9,6 +9,7 @@ enum Arch
     arm32,           // ARM 32-bit for Raspberry Pi
     arm64,           // Apple Silicon
     universalBinary, // stitching x86_64 and arm64 in a single binary
+    all              // all arch supported on target OS. Placeholder value.
 }
 
 string convertArchToPrettyString(Arch arch) pure
@@ -20,6 +21,7 @@ string convertArchToPrettyString(Arch arch) pure
         case arm32:  return "arm32";
         case arm64:  return "arm64";
         case universalBinary: return "Universal Binary";
+        case all:    return "all";
     }
 }
 
@@ -38,6 +40,7 @@ string convertArchToDUBFlag(Arch arch) pure
         case arm64:  return "--arch=arm64-apple-macos ";
 
         case universalBinary: assert(false);
+        case all: assert(false);
     }
 }
 

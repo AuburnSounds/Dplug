@@ -86,6 +86,8 @@ string toStringArchs(Arch[] archs)
                 if (i) r ~= " and ";
                 r ~= "Universal Binary";
                 break;
+            case all:
+                assert(false);
         }
     }
     return r;
@@ -1234,6 +1236,7 @@ string makeRSRC_with_Rez(Plugin plugin, Arch arch, bool verbose)
         case arm32: assert(false);
         case arm64: assert(false);
         case universalBinary: assert(false);
+        case all:   assert(false);
     }
 
     string verboseFlag = verbose ? " -p" : "";
