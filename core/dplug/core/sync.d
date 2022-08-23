@@ -10,6 +10,7 @@ License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 module dplug.core.sync;
 
 import core.time;
+import core.atomic;
 
 import dplug.core.vec;
 import dplug.core.nogc;
@@ -82,17 +83,129 @@ private enum CriticalSectionSpinCount = 40;
 
 struct UncheckedMutex
 {
-    private this(int dummyArg) nothrow @nogc
+nothrow @nogc:
+
+    private this(int dummyArg)
     {
         assert(!_created);
+        lazyThreadSafeInitialization();
+    }
+
+    ~this()
+    {
+        // RACE CONDITION HERE
+        // TODO: not easy to make the mutex destruction thread-safe, because one of the
+        // thread must wait. Ignore that for now.
+
+        void* mutexHandle = atomicLoad(_mutex); // Can be the mutex handle, or null.
+
+        if (mutexHandle !is null)
+        {
+            // Now, the mutex could have been destroyed by another thread already.
+            // Make a cas to ensure we are first to attempt it.
+
+            if (cas(&_mutex, &mutexHandle, null))
+            {
+                destroyMutex(mutexHandle);
+            }
+        }
+
+        _created = 0;
+    }
+
+    @disable this(this);
+
+    /// Lock mutex, and create it in a thread-safe way if it doens't exist yet.
+    /// This is useful when globals access must be protected by a mutex.
+    void lockLazy() @trusted
+    {
+        lazyThreadSafeInitialization();
+        lock();
+    }
+
+    /// Lock mutex
+    void lock()
+    {
+        // No sync needed, else would have used lockLazy()
         version( Windows )
         {
-            m_hndl = cast(CRITICAL_SECTION*) malloc(CRITICAL_SECTION.sizeof);
-            InitializeCriticalSectionAndSpinCount( m_hndl, CriticalSectionSpinCount );
+            EnterCriticalSection( cast(CRITICAL_SECTION*) _mutex ); 
         }
         else version( Posix )
         {
-            _handle = cast(pthread_mutex_t*)( alignedMalloc(pthread_mutex_t.sizeof, PosixMutexAlignment) );
+            assumeNothrowNoGC(
+                (pthread_mutex_t* handle)
+                {
+                    int res = pthread_mutex_lock( cast(pthread_mutex*) handle);
+                    if (res != 0)
+                        assert(false);
+                })(handleAddr());
+        }
+    }
+
+    // undocumented function for internal use
+    void unlock()
+    {
+        version( Windows )
+        {
+            LeaveCriticalSection( cast(CRITICAL_SECTION*) _mutex );
+        }
+        else version( Posix )
+        {
+            assumeNothrowNoGC(
+                (pthread_mutex_t* handle)
+                {
+                    int res = pthread_mutex_unlock(handle);
+                    if (res != 0)
+                        assert(false);
+                })(handleAddr());
+        }
+    }
+
+    bool tryLock()
+    {
+        version( Windows )
+        {
+            return TryEnterCriticalSection( cast(CRITICAL_SECTION*) _mutex ) != 0;
+        }
+        else version( Posix )
+        {
+            int result = assumeNothrowNoGC(
+                (pthread_mutex_t* handle)
+                {
+                    return pthread_mutex_trylock(handle);
+                })(handleAddr());
+            return result == 0;
+        }
+    }
+
+    // For debugging purpose
+    deprecated void dumpState()
+    {
+    }
+
+
+private:
+    // on Windows, this is a CRITICAL_SECTION*.
+    // else, this is a pthread_mutex_t*
+    void* _mutex;
+
+    // Work-around for Issue 16636
+    // https://issues.dlang.org/show_bug.cgi?id=16636
+    // Still crash with LDC somehow
+    long _created = 0;
+
+    static void* createMutex()
+    {
+        version( Windows )
+        {
+            CRITICAL_SECTION* critSec = cast(CRITICAL_SECTION*) malloc(CRITICAL_SECTION.sizeof);
+            InitializeCriticalSectionAndSpinCount( critSec, CriticalSectionSpinCount );
+            return critSec;
+        }
+        else version( Posix )
+        {
+            pthread_mutex_t* pmtx = cast(pthread_mutex_t*)( alignedMalloc(pthread_mutex_t.sizeof, PosixMutexAlignment) );
 
             assumeNothrowNoGC(
                 (pthread_mutex_t* handle)
@@ -115,127 +228,64 @@ struct UncheckedMutex
 
                     pthread_mutex_init( handle, &attr );
 
-                })(handleAddr());
+                })(pmtx);
+                return pmtx;
         }
-        _created = 1;
+        else
+            static assert(false);
     }
 
-    ~this() nothrow @nogc
+    static void destroyMutex(void* mutex)
     {
-        if (_created)
-        {
-            version( Windows )
-            {
-                DeleteCriticalSection( m_hndl );
-                free(m_hndl);
-            }
-            else version( Posix )
-            {
-                assumeNothrowNoGC(
-                    (pthread_mutex_t* handle)
-                    {
-                        pthread_mutex_destroy(handle);
-                    })(handleAddr);
-                alignedFree(_handle, PosixMutexAlignment);
-            }
-            _created = 0;
-        }
-    }
+        if (mutex is null)
+            return;
 
-    @disable this(this);
+        // TODO: this should be thread-safe, for example a cas with local variable name or _created
 
-    /// Lock mutex
-    final void lock() nothrow @nogc
-    {
         version( Windows )
         {
-            EnterCriticalSection( m_hndl );
+            DeleteCriticalSection( cast(CRITICAL_SECTION*) mutex );
+            free(mutex);
         }
         else version( Posix )
         {
             assumeNothrowNoGC(
                 (pthread_mutex_t* handle)
                 {
-                    int res = pthread_mutex_lock(handle);
-                    if (res != 0)
-                        assert(false);
-                })(handleAddr());
+                    pthread_mutex_destroy(handle);
+                })( cast(pthread_mutex_t*) mutex );
+            alignedFree(mutex, PosixMutexAlignment);
         }
+        else
+            static assert(false);
     }
 
-    // undocumented function for internal use
-    final void unlock() nothrow @nogc
+    void lazyThreadSafeInitialization() @trusted
     {
-        version( Windows )
-        {
-            LeaveCriticalSection( m_hndl );
-        }
-        else version( Posix )
-        {
-            assumeNothrowNoGC(
-                (pthread_mutex_t* handle)
-                {
-                    int res = pthread_mutex_unlock(handle);
-                    if (res != 0)
-                        assert(false);
-                })(handleAddr());
-        }
-    }
+        // Is there an existing mutex already?
+        if (atomicLoad(_mutex) !is null)
+            return;
 
-    bool tryLock() nothrow @nogc
-    {
-        version( Windows )
+        // Create one mutex.
+        void* mtx = createMutex();
+        void* p = cast(void*)mtx;
+        void** here = &_mutex;
+        void* ifThis = null;
+
+        // Try to set _mutex.
+        if (!cas(here, &ifThis, p))
         {
-            return TryEnterCriticalSection( m_hndl ) != 0;
-        }
-        else version( Posix )
-        {
-            int result = assumeNothrowNoGC(
-                (pthread_mutex_t* handle)
-                {
-                    return pthread_mutex_trylock(handle);
-                })(handleAddr());
-            return result == 0;
+            // Another thread created _mutex first. Destroy our useless instance.
+            destroyMutex(mtx);
         }
     }
-
-    // For debugging purpose
-    void dumpState() nothrow @nogc
-    {
-        version( Posix )
-        {
-            ubyte* pstate = cast(ubyte*)(handleAddr());
-            for (size_t i = 0; i < pthread_mutex_t.sizeof; ++i)
-            {
-                printf("%02x", pstate[i]);
-            }
-            printf("\n");
-        }
-    }
-
-
-
-private:
-    version( Windows )
-    {
-        CRITICAL_SECTION*    m_hndl;
-    }
-    else version( Posix )
-    {
-        pthread_mutex_t* _handle = null;
-    }
-
-    // Work-around for Issue 16636
-    // https://issues.dlang.org/show_bug.cgi?id=16636
-    // Still crash with LDC somehow
-    long _created = 0;
 
 package:
     version( Posix )
     {
         pthread_mutex_t* handleAddr() nothrow @nogc
         {
-            return _handle;
+            return cast(pthread_mutex_t*) _handle;
         }
     }
 }
@@ -252,6 +302,13 @@ unittest
             mutex.unlock();
     }
     mutex.destroy();
+}
+
+unittest
+{
+    __gshared UncheckedMutex mutex2;
+    mutex2.lockLazy();
+    mutex2.unlock();
 }
 
 
