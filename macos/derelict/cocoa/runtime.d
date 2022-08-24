@@ -34,6 +34,7 @@ version(X86)
 version(X86_64)
     version = AnyX86;
 
+//version = useTLS;
 
 // NSGeometry.h
 
@@ -303,43 +304,81 @@ Method class_getInstanceMethod (Class aClass, string aSelector) nothrow @nogc
 // eg: sel!"init"
 SEL sel(string selectorName)() nothrow @nogc
 {
-    // we use type-punning here because deep shared(T) is annoying
-    shared(size_t) cached = 0;
-    size_t got = atomicLoad(cached);
-    if (got == 0)
+    version(useTLS)
     {
-        got = cast(size_t)( sel_registerName(selectorName) );
-        atomicStore(cached, got);
+        // Use of TLS here
+        static size_t cached = 0;
+        if (cached == 0)
+        {
+            cached = cast(size_t)( sel_registerName(selectorName) );        
+        }
+        return cast(SEL) cached;
     }
-    return cast(SEL) got;
+    else
+    {
+        // we use type-punning here because deep shared(T) is annoying
+        shared(size_t) cached = 0;
+        size_t got = atomicLoad(cached);
+        if (got == 0)
+        {
+            got = cast(size_t)( sel_registerName(selectorName) );
+            atomicStore(cached, got);
+        }
+        return cast(SEL) got;
+    }
 }
 
 // Lazy class object
 // eg: lazyClass!"NSObject"
 id lazyClass(string className)() nothrow @nogc
 {
-    // we use type-punning here because deep shared(T) is annoying
-    shared(size_t) cached = 0;
-    size_t got = atomicLoad(cached);
-    if (got == 0)
+    version(useTLS)
     {
-        got = cast(size_t)( objc_getClass(className) );
-        atomicStore(cached, got);
+        // Use of TLS here
+        static size_t cached = 0;
+        if (cached == 0)
+        {
+            cached = cast(size_t)( objc_getClass(className) );        
+        }
+        return cast(id) cached;
     }
-    return cast(id) got;
+    else
+    {
+        // we use type-punning here because deep shared(T) is annoying
+        shared(size_t) cached = 0;
+        size_t got = atomicLoad(cached);
+        if (got == 0)
+        {
+            got = cast(size_t)( objc_getClass(className) );
+            atomicStore(cached, got);
+        }
+        return cast(id) got;
+    }
 }
 
 Protocol* lazyProtocol(string className)() nothrow @nogc
 {
-    // we use type-punning here because deep shared(T) is annoying
-    shared(size_t) cached = 0;
-    size_t got = atomicLoad(cached);
-    if (got == 0)
+    version(useTLS)
     {
-        got = cast(size_t)( objc_getProtocol(className) );
-        atomicStore(cached, got);
+        static size_t cached = 0;
+        if (cached == 0)
+        {
+            cached = cast(size_t)( objc_getProtocol(className) );        
+        }
+        return cast(Protocol*) cached;
     }
-    return cast(Protocol*) got;
+    else
+    {
+        // we use type-punning here because deep shared(T) is annoying
+        shared(size_t) cached = 0;
+        size_t got = atomicLoad(cached);
+        if (got == 0)
+        {
+            got = cast(size_t)( objc_getProtocol(className) );
+            atomicStore(cached, got);
+        }
+        return cast(Protocol*) got;
+    }
 }
 
 // @encode replacement
