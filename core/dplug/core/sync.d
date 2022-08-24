@@ -136,7 +136,7 @@ nothrow @nogc:
             assumeNothrowNoGC(
                 (pthread_mutex_t* handle)
                 {
-                    int res = pthread_mutex_lock( cast(pthread_mutex*) handle);
+                    int res = pthread_mutex_lock(handle);
                     if (res != 0)
                         assert(false);
                 })(handleAddr());
@@ -285,7 +285,7 @@ package:
     {
         pthread_mutex_t* handleAddr() nothrow @nogc
         {
-            return cast(pthread_mutex_t*) _handle;
+            return cast(pthread_mutex_t*) _mutex;
         }
     }
 }
