@@ -144,7 +144,7 @@ nothrow:
             {
                 mediaType = kAudio;
                 direction = kOutput;
-                channelCount = maxInputs;
+                channelCount = maxOutputs;
                 setName("Audio Output"w);
                 busType = kMain;
                 flags = BusInfo.BusFlags.kDefaultActive;
