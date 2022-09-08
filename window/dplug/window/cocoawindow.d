@@ -120,6 +120,11 @@ public:
                 NSView parentView = NSView(cast(id)parentWindow);
                 parentView.addSubview(_view);
             }
+
+            // See Issue #688: when changing the buffer size or sampling rate,
+            // Logic destroy and reloads the plugin, with same settings. The window
+            // is reused, thus layout doesn't get called and the plugin is unsized!
+            layout();
         }
         else
         {

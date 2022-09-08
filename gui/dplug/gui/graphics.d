@@ -1108,6 +1108,9 @@ protected:
     {
         enum bool parallelDraw = true;
 
+        assert(_diffuseMap.levels[0] !is null);
+        assert(_depthMap.levels[0] !is null);
+        assert(_materialMap.levels[0] !is null);
         auto diffuseRef = _diffuseMap.levels[0].toRef();
         auto depthRef = _depthMap.levels[0].toRef();
         auto materialRef = _materialMap.levels[0].toRef();
