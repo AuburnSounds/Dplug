@@ -132,7 +132,7 @@ int main(string[] args)
     {
         string compiler = "ldc2"; // use LDC by default
 
-        // The _target_ architectures. null means "all".
+        // The _target_ architectures. null means "default".
         Arch[] archs = null;
 
         string build="debug";
@@ -205,6 +205,7 @@ int main(string[] args)
             }
             else if (arg == "--installer")
             {
+                // BUG here: order between --os and --installer
                 if (targetOS == OS.macOS)
                     makeInstaller = true;
                 else if (targetOS == OS.windows)
@@ -216,6 +217,7 @@ int main(string[] args)
                 combined = true;
             else if (arg == "--os")
             {
+                ++i;
                 if (args[i] == "linux")
                     targetOS = OS.linux;
                 else if (args[i] == "macos")
@@ -1160,7 +1162,7 @@ int main(string[] args)
         {
             cwriteln("*** Generating final Mac installer...".white);
             string finalPkgPath = outputDir ~ "/" ~ plugin.finalPkgFilename(configurations[0]);
-            generateMacInstaller(outputDir, resDir, plugin, macInstallerPackages, finalPkgPath, verbose);
+            generateMacInstaller(outputDir, resDir, plugin, macInstallerPackages, finalPkgPath, verbose, archs);
             cwriteln("    =&gt; OK".lgreen);
             cwriteln;
 
@@ -1529,7 +1531,8 @@ void generateMacInstaller(string outputDir,
                           Plugin plugin,
                           MacPackage[] packs,
                           string outPkgPath,
-                          bool verbose)
+                          bool verbose,
+                          Arch[] archs)
 {
     string distribPath = "mac-distribution.txt";
 
@@ -1564,7 +1567,26 @@ void generateMacInstaller(string outputDir,
     foreach(p; packs)
         content ~= format(`<pkg-ref id="%s"/>` ~ "\n", p.distributionId);
 
-    content ~= `<options customize="always" require-scripts="false"/>` ~ "\n";
+    string getHostArchitecturesList()
+    {
+        string r = "";
+        int archCount = 0;
+
+        foreach(arch; archs)
+        {
+            if (isSingleArchEnum(arch))
+            {
+                if (archCount > 0) r ~= ",";
+                r ~= convertArchToPrettyString(arch);
+                archCount++;
+            }
+        }
+        return r;
+    }
+    
+    // Note: the installer itself must support the same architectures than generated.
+    content ~= format(`<options customize="always" hostArchitectures="%s" require-scripts="false"/>` ~ "\n", 
+                      getHostArchitecturesList());
 
     content ~= `<choices-outline>` ~ "\n";
     content ~= `    <line choice="default">` ~ "\n";

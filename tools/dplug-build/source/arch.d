@@ -12,6 +12,20 @@ enum Arch
     all              // all arch supported on target OS. Placeholder value.
 }
 
+// True if represent a single arch that can go inside a universal binary
+bool isSingleArchEnum(Arch arch) pure
+{
+    final switch(arch) with (Arch)
+    {
+        case x86:    return true;
+        case x86_64: return true;
+        case arm32:  return true;
+        case arm64:  return true;
+        case universalBinary: return false;
+        case all:    return false;
+    }
+}
+
 string convertArchToPrettyString(Arch arch) pure
 {
     final switch(arch) with (Arch)
