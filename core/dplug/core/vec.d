@@ -92,6 +92,59 @@ bool isPointerAligned(void* p, size_t alignment) pure nothrow @nogc
     assert(alignment != 0);
     return ( cast(size_t)p & (alignment - 1) ) == 0;
 }
+unittest
+{
+    ubyte b;
+    align(16) ubyte[5] c;
+    assert(isPointerAligned(&b, 1));
+    assert(!isPointerAligned(&c[1], 2));
+    assert(isPointerAligned(&c[4], 4));
+}
+
+/// Does memory slices a[0..a_size] and b[0..b_size] have an overlapping byte?
+bool isMemoryOverlapping(const(void)* a, ptrdiff_t a_size, 
+                         const(void)* b, ptrdiff_t b_size) pure @trusted
+{
+    assert(a_size >= 0 && b_size >= 0);
+
+    if (a is null || b is null)
+        return false;
+
+    if (a_size == 0 || b_size == 0)
+        return false;
+
+    ubyte* lA = cast(ubyte*)a;
+    ubyte* hA = lA + a_size;
+    ubyte* lB = cast(ubyte*)b;
+    ubyte* hB = lB + b_size;
+
+    // There is overlapping, if lA is inside lB..hB, or lB is inside lA..hA
+
+    if (lA >= lB && lA < hB)
+        return true;
+
+    if (lB >= lA && lB < hA)
+        return true;
+
+    return false;
+}
+bool isMemoryOverlapping(const(void)[] a, const(void)[] b) pure @trusted
+{
+    return isMemoryOverlapping(a.ptr, a.length, b.ptr, b.length);
+}
+unittest
+{
+    ubyte[100] a;
+    assert(!isMemoryOverlapping(null, a));
+    assert(!isMemoryOverlapping(a, null));
+    assert(!isMemoryOverlapping(a[1..1], a[0..10]));
+    assert(!isMemoryOverlapping(a[1..10], a[10..100]));
+    assert(!isMemoryOverlapping(a[30..100], a[0..30]));
+    assert(isMemoryOverlapping(a[1..50], a[49..100]));
+    assert(isMemoryOverlapping(a[49..100], a[1..50]));
+    assert(isMemoryOverlapping(a[40..45], a[30..55]));
+    assert(isMemoryOverlapping(a[30..55], a[40..45]));
+}
 
 private nothrow @nogc
 {
