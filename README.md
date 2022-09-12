@@ -40,6 +40,7 @@ The following commercial products are known to use Dplug:
 - [Entropy](https://www.cutthroughrecordings.com/product/Entropy_II_-_Enhanced_Stereo_Delay) by Cut Through Recordings
 - [EpicPRESS](https://www.cutthroughrecordings.com/product/EpicPRESS) by Cut Through Recordings
 - [Graillon](https://www.auburnsounds.com/products/Graillon.html) by Auburn Sounds
+- [Lens](https://www.auburnsounds.com/products/Lens.html) by Auburn Sounds
 - [M4 Multiband Compressor](https://www.cutthroughrecordings.com/product/M4_Multiband_Compressor) by Cut Through Recordings
 - [Panagement](https://www.auburnsounds.com/products/Panagement.html) by Auburn Sounds
 - [Renegate](https://www.auburnsounds.com/products/Renegate.html) by Auburn Sounds
