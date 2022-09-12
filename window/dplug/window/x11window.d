@@ -61,7 +61,15 @@ public:
 
     this(WindowUsage usage, void* parentWindow, IWindowListener listener, int width, int height)
     {
-        debug(logX11Window) printf(">X11Window.this()\n");        
+        debug(logX11Window) printf(">X11Window.this()\n");
+
+        // Detect clock
+        {
+            timespec ts;
+            _monotonicClock = false;
+            if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0)
+                _monotonicClock = true;
+        }
 
         _eventMutex = makeMutex();
         _dirtyAreaMutex = makeMutex();
@@ -138,6 +146,8 @@ public:
 
     override uint getTimeMs()
     {
+        // TODO: remove getTimeMs from the IWindow interface.
+
         static uint perform() 
         {
             import core.sys.posix.sys.time;
@@ -151,14 +161,24 @@ public:
     // For more precise animation
     ulong getTimeUs()
     {
-        static ulong perform() 
+        static ulong perform(bool monotonic) 
         {
             import core.sys.posix.sys.time;
-            timeval tv;
-            gettimeofday(&tv, null);
-            return cast(ulong)(tv.tv_sec) * 1_000_000 + tv.tv_usec;
+
+            if (monotonic)
+            {
+                timespec ts;
+                clock_gettime(CLOCK_MONOTONIC, &ts); // gives a time in ns
+                return ( ts.tv_sec * cast(ulong)1_000_000 ) + (cast(ulong)ts.tv_nsec) / 1000;
+            }
+            else
+            {
+                timeval tv;
+                gettimeofday(&tv, null);
+                return cast(ulong)(tv.tv_sec) * 1_000_000 + tv.tv_usec;
+            }
         }
-        return assumeNothrowNoGC(&perform)();
+        return assumeNothrowNoGC(&perform)(_monotonicClock);
     }
 
     override void* systemHandle()
@@ -277,6 +297,9 @@ private:
 
     // custom defined cursor that has empty data to appear invisible
     Cursor _hiddenCursor;
+
+    // If we have access to CLOCK_MONOTONIC.
+    bool _monotonicClock;
 
     //
     // </X11 resources>
