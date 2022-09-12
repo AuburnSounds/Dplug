@@ -339,8 +339,8 @@ private:
     void doAnimation()
     {
         ulong now = getTimeUs();
-        double dt = (now - _lastMeasturedTimeInUs) * 0.001;
-        double time = (now - _timeAtCreationInUs) * 0.001; // hopefully no plug-in will be open more than 49 days
+        double dt = (now - _lastMeasturedTimeInUs) * 0.000001;
+        double time = (now - _timeAtCreationInUs) * 0.000001; // hopefully no plug-in will be open more than 49 days
         _lastMeasturedTimeInUs = now;
 
         _eventMutex.lock();
