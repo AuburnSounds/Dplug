@@ -539,7 +539,7 @@ public:
     {
         int v = value();
         int toCopy = max(0, min( cast(int)(numBytes) - 1, cast(int)(_possibleValues[v].length)));
-        memcpy(buffer, _possibleValues[v].ptr, toCopy);
+        memcpy(buffer, _possibleValues[v].ptr, toCopy); // memcpy OK
         // add terminal zero
         if (numBytes > 0)
             buffer[toCopy] = '\0';

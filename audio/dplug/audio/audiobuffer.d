@@ -444,7 +444,7 @@ nothrow:
         size_t bytesForOneChannel = T.sizeof * _frames;
         for (int chan = 0; chan < _channels; ++chan)
         {
-            memcpy(_channelPointers[chan], source._channelPointers[chan], bytesForOneChannel);
+            memmove(_channelPointers[chan], source._channelPointers[chan], bytesForOneChannel);
         }
         if (source.hasZeroFlag)
             setZeroFlag();

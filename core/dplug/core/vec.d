@@ -10,7 +10,7 @@ module dplug.core.vec;
 import std.traits: hasElaborateDestructor;
 
 import core.stdc.stdlib: malloc, free, realloc;
-import core.stdc.string: memcpy;
+import core.stdc.string: memcpy, memmove;
 
 import core.exception;
 import inteli.xmmintrin;
@@ -191,7 +191,7 @@ private nothrow @nogc
         static if (PreserveDataIfResized)
         {
             size_t minSize = size < previousSize ? size : previousSize;
-            memcpy(newAligned, aligned, minSize);
+            memcpy(newAligned, aligned, minSize); // memcpy OK
         }
 
         // Free previous data
@@ -446,7 +446,7 @@ nothrow:
         {
             size_t oldSize = _size;
             resize(_size + other._size);
-            memcpy(_data + oldSize, other._data, T.sizeof * other._size);
+            memmove(_data + oldSize, other._data, T.sizeof * other._size);
         }
 
         /// Appends a slice to this buffer.

@@ -450,7 +450,7 @@ void* nextAlignedPointer(void* start, size_t alignment) pure nothrow @nogc
 
     void* newAligned = storeRawPointerPlusSizeAndReturnAligned(newRaw, request, alignment);
     size_t minSize = size < previousSize ? size : previousSize;
-    memcpy(newAligned, aligned, minSize);
+    memcpy(newAligned, aligned, minSize); // memcpy OK
 
     // Free previous data
     alignedFree(aligned, alignment);

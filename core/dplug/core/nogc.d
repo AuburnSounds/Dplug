@@ -230,7 +230,7 @@ T[] mallocSlice(T)(size_t count) nothrow @nogc
         for(size_t i = 0; i < count; ++i)
         {
             T uninitialized;
-            memcpy(&slice[i], &uninitialized, T.sizeof);
+            memcpy(&slice[i], &uninitialized, T.sizeof); // memcpy OK
         }
     }
     else
@@ -411,7 +411,7 @@ unittest
 /// want to make a "best effort" at runtime even if it can be meaningless.
 /// MAYDO: change that name, it's not actually unrecoverable
 /// MAYDO: stop using that function
-void unrecoverableError() nothrow @nogc
+deprecated void unrecoverableError() nothrow @nogc
 {
     debug
     {
