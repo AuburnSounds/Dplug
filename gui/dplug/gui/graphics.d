@@ -658,6 +658,8 @@ protected:
     }
 
     // Useful to convert 16-byte aligned buffer into an ImageRef!RGBA
+    // This was probably still needed because of Issue #693. This was secretly a 
+    // workaround. FUTURE: replace by regular toRef
     final ImageRef!RGBA toImageRef(ubyte* alignedBuffer, int width, int height)
     {
         ImageRef!RGBA ir = void;
