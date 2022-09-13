@@ -250,22 +250,48 @@ struct ImageRef(COLOR)
 
 unittest
 {
-	static assert(isDirectView!(ImageRef!ubyte));
+    static assert(isDirectView!(ImageRef!ubyte));
 }
 
-/// Convert a direct view to an ImageRef.
-/// Assumes that the rows are evenly spaced.
-ImageRef!(ViewColor!SRC) toRef(SRC)(auto ref SRC src)
-	if (isDirectView!SRC)
+/// Convert an `OwnedImage` to an `ImageRef`.
+ImageRef!L8 toRef(OwnedImage!L8 src) pure
 {
-	return ImageRef!(ViewColor!SRC)(src.w, src.h,
-		src.h > 1 ? cast(ubyte*)src.scanline(1) - cast(ubyte*)src.scanline(0) : src.w,
-		src.scanline(0).ptr);
+    return ImageRef!L8(src.w, src.h, src.pitchInBytes(), src.scanlinePtr(0));
+}
+
+///ditto
+ImageRef!L16 toRef(OwnedImage!L16 src) pure
+{
+    return ImageRef!L16(src.w, src.h, src.pitchInBytes(), src.scanlinePtr(0));
+}
+
+///ditto
+ImageRef!RGBA toRef(OwnedImage!RGBA src) pure
+{
+    return ImageRef!RGBA(src.w, src.h, src.pitchInBytes(), src.scanlinePtr(0));
+}
+
+/// Convert an image reference, to an image reference.
+deprecated("This toRef is useless") ImageRef!L8 toRef(ImageRef!L8 src) pure
+{
+    return src;
+}
+
+///ditto
+deprecated("This toRef is useless") ImageRef!L16 toRef(ImageRef!L16 src) pure
+{
+    return src;
+}
+
+///ditto
+deprecated("This toRef is useless") ImageRef!RGBA toRef(ImageRef!RGBA src) pure
+{
+    return src;
 }
 
 /// Copy the indicated row of src to a COLOR buffer.
 void copyScanline(SRC, COLOR)(auto ref SRC src, int y, COLOR[] dst)
-	if (isView!SRC && is(COLOR == ViewColor!SRC))
+    if (isView!SRC && is(COLOR == ViewColor!SRC))
 {
 	static if (isDirectView!SRC)
 		dst[] = src.scanline(y)[];
@@ -781,6 +807,21 @@ unittest
             assert(read.l == good);
         }
     }
+}
+
+// Test toRef
+unittest
+{
+    OwnedImage!L8 img = mallocNew!(OwnedImage!L8);
+    scope(exit) destroyFree(img);
+
+    int border = 0;
+    int rowAlignment = 1;
+    int xMultiplicity = 1;
+    int trailingSamples = 4;
+    img.size(10, 10, border, rowAlignment, xMultiplicity, trailingSamples); // Ask for 4 trailing samples
+    ImageRef!L8 r = img.toRef();
+    assert(r.pitch >= 10 + 4); // per the API, OwnedImage could add more space than required
 }
 
 //

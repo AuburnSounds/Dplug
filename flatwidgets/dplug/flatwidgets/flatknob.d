@@ -85,7 +85,7 @@ nothrow:
         ImageRef!RGBA _currentImage = _filmstripScaled.toRef().cropImageRef(box2i(_imageX1, _imageY1, _imageX2, _imageY2));
         foreach(dirtyRect; dirtyRects)
         {
-            ImageRef!RGBA croppedRawIn = _currentImage.toRef().cropImageRef(dirtyRect);
+            ImageRef!RGBA croppedRawIn = _currentImage.cropImageRef(dirtyRect);
             ImageRef!RGBA croppedRawOut = rawMap.cropImageRef(dirtyRect);
 
             int w = dirtyRect.width;
