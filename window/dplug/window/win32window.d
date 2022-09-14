@@ -697,7 +697,11 @@ version(Windows)
         bool mouseClick(int mouseX, int mouseY, MouseButton mb, bool isDoubleClick, WPARAM wParam)
         {
             SetFocus(_hwnd);   // get keyboard focus
-            SetCapture(_hwnd); // start mouse capture
+
+            // Start mouse capture, if not already captures (See Issue #694)
+            if (GetCapture() != _hwnd)
+                SetCapture(_hwnd); 
+
             bool consumed = _listener.onMouseClick(mouseX, mouseY, mb, isDoubleClick, getMouseState(wParam));
             return consumed;
         }
@@ -705,7 +709,12 @@ version(Windows)
         /// ditto
         bool mouseRelease(int mouseX, int mouseY, MouseButton mb, WPARAM wParam)
         {
-            ReleaseCapture();
+            // Note: the first button release from mouse interrupts the dragging operation.
+            // This need not be the case, but it makes things easier.
+            // Not sure how cross platform we are on that specific point.
+            if (GetCapture() == _hwnd)
+                ReleaseCapture();
+
             bool consumed = _listener.onMouseRelease(mouseX, mouseY, mb, getMouseState(wParam));
             return consumed;
         }
