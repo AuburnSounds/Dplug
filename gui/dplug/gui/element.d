@@ -380,8 +380,14 @@ nothrow:
         }
     }
 
-    // This function is meant to be overriden.
-    // Happens _before_ checking for children collisions.
+    /// `onmouseClick` is called for every new click, whether or not you are in a 
+    /// dragging operation.
+    /// This function is meant to be overriden.
+    /// If you return `true`, any existing dragging is stopped, and a new drag operation
+    /// is started. `onStopDrag` may be called, than `onBeginDrag`. 
+    /// If you return `false`, the click is unprocessed.
+    /// Warning: For this reason, check your widgets with several mouse buttons pressed 
+    /// at once.
     bool onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
     {
         return false;
