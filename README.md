@@ -5,30 +5,28 @@
 
 `Dplug` lets you create audio plug-ins with unmatched simplicity and speed, using the D language.
 
-- Homepage: [https://dplug.org/](https://dplug.org/)
-- Wiki: https://github.com/AuburnSounds/Dplug/wiki
-- Discord: https://discord.gg/7PdUvUbyJs
+- 🏠 Homepage: [https://dplug.org/](https://dplug.org/)
+- 📚 Wiki: https://github.com/AuburnSounds/Dplug/wiki
+- 💬 Discord: https://discord.gg/7PdUvUbyJs
 
 ## Features
 
 |  Format | macOS arm64 | macOS amd64  | Windows 32-bit | Windows 64-bit | Linux x86-64 | Raspberry ARM32 |
 |---------|-------------|--------------|----------------|----------------|--------------|-----------------|
-| VST2    | Yes         | Yes          | Yes            | Yes            | Yes          | Yes             |
-| VST3    | Yes         | Yes          | Yes            | Yes            | Yes          | Yes             |
-| AUv2    | Yes         | Yes          |                |                |              |                 |
-| AAX     | No          | Yes          | No             | Yes            |              |                 |
-| LV2     | Yes         | Yes          | Yes            | Yes            | Yes          | Yes             |
+| VST2    | ✅         | ✅          | ✅            | ✅            | ✅          | ✅             |
+| VST3    | ✅         | ✅          | ✅            | ✅            | ✅          | ✅             |
+| AUv2    | ✅         | ✅          |                |                |              |                 |
+| AAX     | ❌          | ✅          | ❌             | ✅            |              |                 |
+| LV2     | ✅         | ✅          | ✅            | ✅            | ✅          | ✅             |
 
 
-- Automated Mac and Windows installers
-- Raspberry Pi support
-- Build plug-ins with less pain using the D language, possibly the most [powerful](https://dlang.org/orgs-using-d.html) native language available today
-- Live-coding of the UI with [Wren](https://wren.io/)
-- Leverage package-based dependencies using DUB, the D language's package manager
-- Small binaries with (optional) [rendering](http://www.auburnsounds.com/blog/2016-09-16_PBR-for-Audio-Software-Interfaces.html)
-- Static link with the MSCRT runtime libraries to distribute only one single file
-- Support [major DAWs](https://github.com/AuburnSounds/Dplug/wiki/Host-Support)
-- Small, tight-knit community
+- ✅ Automated Mac and Windows installers
+- ✅ Build plug-ins with less pain using the D language, possibly the most [powerful](https://dlang.org/orgs-using-d.html) native language available today
+- ✅ Live-coding of the UI with [Wren](https://wren.io/)
+- ✅ Package-based dependency management with DUB, the D language's package manager
+- ✅ Small binaries with (optional) [rendering](http://www.auburnsounds.com/blog/2016-09-16_PBR-for-Audio-Software-Interfaces.html)
+- ✅ Support [major DAWs](https://github.com/AuburnSounds/Dplug/wiki/Host-Support)
+- ✅ Small, growing, tight-knit community
 
 
 ### Community and ecosystem
