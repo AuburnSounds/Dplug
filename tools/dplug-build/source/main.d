@@ -682,6 +682,11 @@ int main(string[] args)
                     // plugin path used in installer
                     string pluginDirectory;
 
+                    // This should avoid too much misdetection by antivirus software.
+                    // If people complain about false positives with dlang programs, please
+                    // report the false positive to the AV vendor!
+                    bool SIGN_WINDOWS_PLUGINS = makeInstaller && plugin.hasKeyFileWindows;
+
                     // Special case for AAX need its own directory, but according to Voxengo releases,
                     // its more minimal than either JUCE or IPlug builds.
                     // Only one file (.dll even) seems to be needed in <plugin-name>.aaxplugin\Contents\x64
@@ -708,6 +713,8 @@ int main(string[] args)
                         }
                         else
                             throw new Exception("AAX doesn't support this arch");
+
+                        // Note: no need to codesign again, as signtool does it
                     }
                     else if (configIsLV2(config))
                     {
@@ -718,6 +725,9 @@ int main(string[] args)
                         mkdirRecurse(pluginDirectory);
                         fileMove(plugin.dubOutputFileName, pluginFinalPath);
                         extractLV2ManifestFromBinary(pluginFinalPath, pluginDirectory, arch, pluginFinalName);
+
+                        if (SIGN_WINDOWS_PLUGINS) 
+                            signExecutableWindows(plugin, pluginFinalPath);
                     }
                     else if (configIsVST3(config)) // VST3 special case, needs to be named .vst3 (but can't be _linked_ as .vst3)
                     {
@@ -736,6 +746,9 @@ int main(string[] args)
                         // Simply copy the file
                         pluginDirectory = path ~ "/" ~ appendBitnessVST3(plugin.prettyName, plugin.dubOutputFileName);
                         fileMove(plugin.dubOutputFileName, pluginDirectory);
+
+                        if (SIGN_WINDOWS_PLUGINS) 
+                            signExecutableWindows(plugin, pluginDirectory);
                     }
                     else
                     {
@@ -754,6 +767,9 @@ int main(string[] args)
                         // Simply copy the file
                         pluginDirectory = path ~ "/" ~ appendBitness(plugin.prettyName, plugin.dubOutputFileName);
                         fileMove(plugin.dubOutputFileName, pluginDirectory);
+
+                        if (SIGN_WINDOWS_PLUGINS) 
+                            signExecutableWindows(plugin, pluginDirectory);
                     }
 
                     if(!isTemp && makeInstaller)
@@ -1500,20 +1516,25 @@ void generateWindowsInstaller(string outputDir,
     }
     else
     {
-        try
-        {
-            // use windows signtool to sign the installer for distribution
-            string cmd = format("signtool sign /f %s /p %s /tr http://timestamp.sectigo.com /td sha256 /fd sha256 /q %s",
-                                plugin.getKeyFileWindows(),
-                                plugin.getKeyPasswordWindows(),
-                                escapeShellArgument(outExePath));
-            safeCommand(cmd);
-            cwriteln("    =&gt; OK".lgreen);
-        }
-        catch(Exception e)
-        {
-            error(format("Installer signature failed! %s", e.msg));
-        }
+        signExecutableWindows(plugin, outExePath);
+    }
+}
+
+void signExecutableWindows(Plugin plugin, string exePath)
+{
+    try
+    {
+        // use windows signtool to sign the installer for distribution
+        string cmd = format("signtool sign /f %s /p %s /tr http://timestamp.sectigo.com /td sha256 /fd sha256 /q %s",
+                            plugin.getKeyFileWindows(),
+                            plugin.getKeyPasswordWindows(),
+                            escapeShellArgument(exePath));
+        safeCommand(cmd);
+        cwriteln("    =&gt; OK\n".lgreen);
+    }
+    catch(Exception e)
+    {
+        error(format("Code signature failed! %s", e.msg));
     }
 }
 
