@@ -43,10 +43,13 @@ nothrow:
 
         _disabled = false;
         _filmstripResized = mallocNew!(OwnedImage!RGBA)();
+
+        _frameNthResized.reallocBuffer(_numFrames);
     }
 
     ~this()
     {
+        _frameNthResized.reallocBuffer(0);
         destroyFree(_filmstripResized);
         _param.removeListener(this);
     }
@@ -79,6 +82,9 @@ nothrow:
 
         assert(frame >= 0 && frame < _numFrames);
         assert(_filmstripResized.h == position.height * _numFrames);
+
+        cacheImage(frame);
+
         int frameHeightResized = _filmstripResized.h / _numFrames;
 
         int x1 = 0;
@@ -122,11 +128,13 @@ nothrow:
         box2i origRect = rectangle(0, 0, _filmstrip.w, usefulInputPixelHeight);        
         ImageRef!RGBA originalInput = _filmstrip.toRef().cropImageRef(origRect);
 
-        _filmstripResized.size(position.width, position.height * _numFrames);
-
-        // PERF: if we do like in flatknob.d, we can avoid resizing the whole image, and just resize just-in-time
-        //       the one frame we need. Which is better for fast resize.
-        context.globalImageResizer.resizeImage_sRGBWithAlpha(originalInput, _filmstripResized.toRef);
+        int W = position.width;
+        int H = position.height * _numFrames;
+        if (_filmstripResized.w != W || _filmstripResized.h != H)
+        {
+            _filmstripResized.size(W, H); // drawback, this still uses memory for slider graphics
+            _frameNthResized[] = false;
+        }   
     }  
 
     override bool onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
@@ -263,8 +271,11 @@ protected:
     /// Original slider image.
     OwnedImage!RGBA _filmstrip;
 
-    /// Resized slider image, full.
+    /// Resized slider image, full. Each frame image is resized independently and lazily.
     OwnedImage!RGBA _filmstripResized;
+
+    /// Which frames in the cache are resized.
+    bool[] _frameNthResized;
 
     /// The number of slider image frames contained in the _filmstrip image.
     int _numFrames;
@@ -287,9 +298,32 @@ protected:
 
     bool _disabled;
 
+    ImageResizer _resizer;
+
     void clearCrosspoints()
     {
         _mousePosOnLast0Cross = float.infinity;
         _mousePosOnLast1Cross = -float.infinity;
+    }
+
+    void cacheImage(int frame)
+    {
+        if (_frameNthResized[frame]) 
+            return;
+
+        int hdest   = _filmstripResized.h / _numFrames;
+        assert(hdest == position.height);
+
+        //     context.globalImageResizer.resizeImage_sRGBWithAlpha(originalInput, _filmstripResized.toRef);
+        box2i origRect = rectangle(0, _frameHeightOrig * frame,       _filmstrip.w, _frameHeightOrig);
+        box2i destRect = rectangle(0,            hdest * frame, _filmstripResized.w,            hdest);
+
+        // Note: in order to avoid slight sample offsets, it's even better that way, as each is resized separately.
+        ImageRef!RGBA source     = _filmstrip.toRef.cropImageRef(origRect);
+        ImageRef!RGBA dest       = _filmstripResized.toRef.cropImageRef(destRect);
+        _resizer.resizeImage_sRGBWithAlpha(source, dest);
+
+        _frameNthResized[frame] = true;
+
     }
 }
