@@ -335,7 +335,7 @@ else
 
     alias fast_fabs = fabs;
     alias fast_log2 = log2;
-    alias fast_êxp2 = exp2;
+    alias fast_exp2 = exp2;
     alias fast_log10 = log10;
 
     alias fast_floor = floor;
@@ -346,6 +346,11 @@ else
     alias fast_sqrt = sqrt; // Undefined behaviour for operands below -0
     alias fast_sin = sin;
     alias fast_cos = cos;
+}
+
+unittest
+{
+    assert(isClose(fast_exp2(0.1), std.math.exp2(0.1)));
 }
 
 /// Linear interpolation, akin to GLSL's mix.
