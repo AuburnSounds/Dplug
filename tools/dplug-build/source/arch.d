@@ -39,7 +39,7 @@ string convertArchToPrettyString(Arch arch) pure
     }
 }
 
-string convertArchToDUBFlag(Arch arch) pure
+string convertArchToDUBFlag(Arch arch, OS targetOS) pure
 {
     final switch(arch) with (Arch)
     {
@@ -51,7 +51,13 @@ string convertArchToDUBFlag(Arch arch) pure
         case arm32:  return "";
 
         // LLVM Triple for Apple Silicon
-        case arm64:  return "--arch=arm64-apple-macos ";
+        case arm64:
+        {
+            if (targetOS == OS.macOS)
+                return "--arch=arm64-apple-macos ";
+            else
+                return "--arch=aarch64 ";
+        }  
 
         case universalBinary: assert(false);
         case all: assert(false);
@@ -132,8 +138,10 @@ Arch[] allArchitecturesWeCanBuildForThisOS(OS targetOS)
                 return [ Arch.x86_64]; // we have no support for 32-bit plug-ins on Linux
             else if (buildArch == Arch.arm32)
                 return [ Arch.arm32];
+            else if (buildArch == Arch.arm64)
+                return [ Arch.arm64];
             else
-                throw new Exception("dplug-build on Linux should be built with a x86_64 or arm32 architecture.");
+                throw new Exception("dplug-build on Linux should be built with a x86_64, arm64, or arm32 architecture.");
         }
     }
 }

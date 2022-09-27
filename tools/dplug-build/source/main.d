@@ -507,7 +507,7 @@ int main(string[] args)
 
                 if (arch != Arch.universalBinary)
                 {
-                    buildPlugin(compiler, config, build, arch, verbose, force, combined, quiet, skipRegistry, parallel);
+                    buildPlugin(targetOS, compiler, config, build, arch, verbose, force, combined, quiet, skipRegistry, parallel);
                     double bytes = getSize(plugin.dubOutputFileName) / (1024.0 * 1024.0);
                     cwritefln("    =&gt; Build OK, binary size = %0.1f mb, available in ./%s".lgreen, bytes, path);
                     cwriteln();
@@ -1230,7 +1230,7 @@ int main(string[] args)
     }
 }
 
-void buildPlugin(string compiler, string config, string build, Arch arch, bool verbose, bool force, bool combined, bool quiet, bool skipRegistry, bool parallel)
+void buildPlugin(OS targetOS, string compiler, string config, string build, Arch arch, bool verbose, bool force, bool combined, bool quiet, bool skipRegistry, bool parallel)
 {
     cwritefln("*** Building configuration %s with %s, %s arch...".white, config, compiler, convertArchToPrettyString(arch));
 
@@ -1244,7 +1244,7 @@ void buildPlugin(string compiler, string config, string build, Arch arch, bool v
 
     string cmd = format("dub build --build=%s %s--compiler=%s%s%s%s%s%s%s%s",
         build, 
-        convertArchToDUBFlag(arch),
+        convertArchToDUBFlag(arch, targetOS),
         compiler,
         force ? " --force" : "",
         verbose ? " -v" : "",
