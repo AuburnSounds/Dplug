@@ -59,7 +59,7 @@ private:
     bool _dirtyAreasAreNotYetComputed;
 
     bool _isHostWindow;
-    bool _drawRectWorkaround; // See Issue #505, drawRect: returning always one big rectangle, killing CPU
+    bool _drawRectWorkaround; // See Issue #505 & #705, drawRect: returning always one big rectangle, killing CPU
 
     MouseCursor _lastMouseCursor;
 
@@ -90,9 +90,10 @@ public:
 
         _dirtyAreasAreNotYetComputed = true;
 
-        // The drawRect: failure started with 11.0 Big Sur beta 9.
+        // The drawRect: failure of having small rectangles started with 11.0 Big Sur beta 9.
+        // It was afterwards removed for Issue #705, it's no longer useful in Monterey, and in Ardour was making things worse.
         version(OSX)
-            _drawRectWorkaround = getMacOSVersion().major >= 11;
+            _drawRectWorkaround = (getMacOSVersion().major == 11);
 
         if (!_isHostWindow)
         {
