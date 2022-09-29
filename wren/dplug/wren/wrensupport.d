@@ -329,7 +329,10 @@ private:
                 return true;
             }
             else
+            {
+                free(newSource);
                 return false;
+            }
         }
 
         char* readWrenFile()
