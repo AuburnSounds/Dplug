@@ -247,11 +247,14 @@ nothrow:
 
     final void beginDragging(UIElement element)
     {
+        // Stop an existing dragging operation.
+        stopDragging();
+
         version(futureMouseDrag)
         {
+            setMouseOver(element);
             assert(this.mouseOver is element);
         }
-        stopDragging();
         dragged = element;
         dragged.onBeginDrag();
     }
