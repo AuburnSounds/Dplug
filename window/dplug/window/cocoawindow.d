@@ -234,10 +234,19 @@ private:
 
     void handleMouseWheel(NSEvent event)
     {
-        int deltaX = cast(int)(0.5 + 10 * event.deltaX);
-        int deltaY = cast(int)(0.5 + 10 * event.deltaY);
-        vec2i mousePos = getMouseXY(_view, event, _height);
-        _listener.onMouseWheel(mousePos.x, mousePos.y, deltaX, deltaY, getMouseState(event));
+        double ddeltaX = event.deltaX;
+        double ddeltaY = event.deltaY;
+        int deltaX = 0;
+        int deltaY = 0;
+        if (ddeltaX > 0) deltaX = 1;
+        if (ddeltaX < 0) deltaX = -1;
+        if (ddeltaY > 0) deltaY = 1;
+        if (ddeltaY < 0) deltaY = -1;
+        if (deltaX || deltaY)
+        {
+            vec2i mousePos = getMouseXY(_view, event, _height);
+            _listener.onMouseWheel(mousePos.x, mousePos.y, deltaX, deltaY, getMouseState(event));
+        }            
     }
 
     bool handleKeyEvent(NSEvent event, bool released)
