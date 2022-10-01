@@ -216,6 +216,33 @@ unittest
     assert(s.length == 0);
 }
 
+/// strtod replacement, but without locale
+///     s Must be a zero-terminated string.
+public double strtod_nolocale(const(char)* s, const(char)** p)
+{
+    bool strtod_err = false;
+    const(char)* pend;
+    double r = stb__clex_parse_number_literal(s, &pend, &strtod_err);
+    if (p) 
+        *p = pend;
+    if (strtod_err)
+        r = 0.0;
+    return r;
+}
+unittest
+{
+    string[8] sPartial = ["0x123lol", "+0x1.921fb54442d18p+0001()", "0,", "-0.0,,,,", "0.65,stuff", "1.64587okokok", "-1.0e+9HELLO", "1.1454e-25f#STUFF"]; 
+    for (int n = 0; n < 8; ++n)
+    {
+        const(char)* p1, p2;
+        double r1 = strtod(sPartial[n].ptr, &p1); // in unittest, no program tampering the C locale
+        double r2 = strtod_nolocale(sPartial[n].ptr, &p2);
+        //import core.stdc.stdio;
+        //debug printf("parsing \"%s\" %lg %lg %p %p\n", sPartial[n].ptr, r1, r2, p1, p2);
+        assert(p1 == p2);
+    }
+}
+
 /// C-locale independent string to float parsing.
 /// For when you have the complete delimitation of the string.
 /// Params:
@@ -234,7 +261,7 @@ public double convertStringToDouble(const(char)* s,
 
     const(char)* end;
     bool strtod_err = false;
-    double r = stb__clex_parse_float(s, &end, &strtod_err);
+    double r = stb__clex_parse_number_literal(s, &end, &strtod_err);
     
     if (mustConsumeEntireInput)
     {
@@ -257,25 +284,24 @@ public double convertStringToDouble(const(char)* s,
 
 unittest
 {
-    import core.stdc.stdio;
+    //import core.stdc.stdio;
 
-    string[7] s = ["+0x1.921fb54442d18p+0001", "0", "-0.0", "0.65L", "1.64587", "-1.0e+9", "1.1454e-25f"]; 
-    double[7] correct = [+0x1.921fb54442d18p+0001, 0.0, -0.0, 0.65L, 1.64587, -1e9, 1.1454e-25f];
+    string[9] s = ["14", "0x123", "+0x1.921fb54442d18p+0001", "0", "-0.0", "0.65", "1.64587", "-1.0e+9", "1.1454e-25"]; 
+    double[9] correct = [14, 0x123, +0x1.921fb54442d18p+0001, 0.0, -0.0, 0.65L, 1.64587, -1e9, 1.1454e-5f];
 
-    string[7] sPartial = ["+0x1.921fb54442d18p+0001()", "0,", "-0.0,,,,", "0.65,stuff", "1.64587okokok", "-1.0e+9HELLO", "1.1454e-25f#STUFF"]; 
+    string[9] sPartial = ["14top", "0x123lol", "+0x1.921fb54442d18p+0001()", "0,", "-0.0,,,,", "0.65,stuff", "1.64587okokok", "-1.0e+9HELLO", "1.1454e-25f#STUFF"]; 
     for (int n = 0; n < s.length; ++n)
     {
-        /+
-
+        /*
         // Check vs scanf
         double sa;
         if (sscanf(s[n].ptr, "%lf", &sa) == 1)
         {
-            debug writefln("scanf finds %s", sa);
+            debug printf("scanf finds %lg\n", sa);
         }
         else
-            debug writefln("scanf no parse", sa);
-        +/
+            debug printf("scanf no parse\n");
+        */
 
         bool err;
         double a = convertStringToDouble(s[n].ptr, true, &err);
@@ -292,7 +318,7 @@ unittest
     }
 }
 
-private double stb__clex_parse_float(const(char)* p, const(char)**q, bool* err) pure nothrow @nogc
+private double stb__clex_parse_number_literal(const(char)* p, const(char)**q, bool* err) pure nothrow @nogc
 {
     const(char)* s = p;
     double value=0;
@@ -348,13 +374,8 @@ private double stb__clex_parse_float(const(char)* p, const(char)**q, bool* err) 
         value += addend / pow;
     }
     if (base == 16) {
-        // exponent required for hex float literal
-        if (*p != 'p' && *p != 'P') {
-            *q = s;
-            if (err) *err = true;
-            return 0;
-        }
-        exponent = 1;
+        // exponent required for hex float literal, else it's an integer literal like 0x123
+        exponent = (*p == 'p' || *p == 'P');
     } else
         exponent = (*p == 'e' || *p == 'E');
 
@@ -379,18 +400,7 @@ private double stb__clex_parse_float(const(char)* p, const(char)**q, bool* err) 
             value *= power;
     }
 
-    // Trailing L or f or F => ignore
-    if (*p == 'L') 
-    {
-        p += 1;
-    }
-    else if (*p == 'f' || *p == 'F')
-    {
-        value = cast(float)value;
-        p += 1;
-    }
-
-    *q = p;
+    if (q) *q = p;
     if (err) *err = false;
     if (signMantissa < 0)
         value = -value;
