@@ -1,3 +1,10 @@
+/**
+String build code, plus no-locale float parsing functions.
+
+Copyright: Guillaume Piolat, 2022.
+License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
+*/
+
 module dplug.core.string;
 
 import core.stdc.stdlib;
@@ -209,4 +216,194 @@ unittest
     assert(s.length == 0);
 }
 
+/// C-locale independent string to float parsing.
+/// For when you have the complete delimitation of the string.
+/// Params:
+///     s Must be a zero-terminated string.
+///     mustConsumeEntireInput if true, check that s is entirely consumed by parsing the number.
+///     err: optional bool
+public double convertStringToDouble(const(char)* s, 
+                                    bool mustConsumeEntireInput,
+                                    bool* err) pure nothrow @nogc
+{
+    if (s is null)
+    {
+        if (err) *err = true;
+        return 0.0;
+    }
 
+    const(char)* end;
+    bool strtod_err = false;
+    double r = stb__clex_parse_float(s, &end, &strtod_err);
+    
+    if (mustConsumeEntireInput)
+    {
+        size_t len = strlen(s);
+        if (end != s + len)
+        {
+            if (err) *err = true; // did not consume whole string
+            return 0.0;
+        }
+    }
+
+    if (strtod_err)
+    {
+        if (err) *err = true;
+        return 0.0;
+    }
+    if (err) *err = false;
+    return r;
+}
+
+unittest
+{
+    import core.stdc.stdio;
+
+    string[7] s = ["+0x1.921fb54442d18p+0001", "0", "-0.0", "0.65L", "1.64587", "-1.0e+9", "1.1454e-25f"]; 
+    double[7] correct = [+0x1.921fb54442d18p+0001, 0.0, -0.0, 0.65L, 1.64587, -1e9, 1.1454e-25f];
+
+    string[7] sPartial = ["+0x1.921fb54442d18p+0001()", "0,", "-0.0,,,,", "0.65,stuff", "1.64587okokok", "-1.0e+9HELLO", "1.1454e-25f#STUFF"]; 
+    for (int n = 0; n < s.length; ++n)
+    {
+        /+
+
+        // Check vs scanf
+        double sa;
+        if (sscanf(s[n].ptr, "%lf", &sa) == 1)
+        {
+            debug writefln("scanf finds %s", sa);
+        }
+        else
+            debug writefln("scanf no parse", sa);
+        +/
+
+        bool err;
+        double a = convertStringToDouble(s[n].ptr, true, &err);
+        assert(!err);
+
+        bool err2;
+        double b = convertStringToDouble(s[n].ptr, false, &err);
+        assert(err == err2);
+        assert(b == a);
+
+        //debug printf("%lf\n", a);
+
+        convertStringToDouble(s[n].ptr, true, null); // should run without error pointer
+    }
+}
+
+private double stb__clex_parse_float(const(char)* p, const(char)**q, bool* err) pure nothrow @nogc
+{
+    const(char)* s = p;
+    double value=0;
+    int base=10;
+    int exponent=0;
+    int signMantissa = 1;
+    if (*p == '-') 
+    {
+        signMantissa = -1;
+        p += 1;
+    } 
+    else if (*p == '+') 
+    {
+        p += 1;
+    }
+
+    if (*p == '0') 
+    {
+        if (p[1] == 'x' || p[1] == 'X') 
+        {
+            base=16;
+            p += 2;
+        }
+    }
+
+    for (;;) 
+    {
+        if (*p >= '0' && *p <= '9')
+            value = value*base + (*p++ - '0');
+        else if (base == 16 && *p >= 'a' && *p <= 'f')
+            value = value*base + 10 + (*p++ - 'a');
+        else if (base == 16 && *p >= 'A' && *p <= 'F')
+            value = value*base + 10 + (*p++ - 'A');
+        else
+            break;
+    }
+
+    if (*p == '.') 
+    {
+        double pow, addend = 0;
+        ++p;
+        for (pow=1; ; pow*=base) 
+        {
+            if (*p >= '0' && *p <= '9')
+                addend = addend*base + (*p++ - '0');
+            else if (base == 16 && *p >= 'a' && *p <= 'f')
+                addend = addend*base + 10 + (*p++ - 'a');
+            else if (base == 16 && *p >= 'A' && *p <= 'F')
+                addend = addend*base + 10 + (*p++ - 'A');
+            else
+                break;
+        }
+        value += addend / pow;
+    }
+    if (base == 16) {
+        // exponent required for hex float literal
+        if (*p != 'p' && *p != 'P') {
+            *q = s;
+            if (err) *err = true;
+            return 0;
+        }
+        exponent = 1;
+    } else
+        exponent = (*p == 'e' || *p == 'E');
+
+    if (exponent) 
+    {
+        int sign = p[1] == '-';
+        uint exponent2 = 0;
+        double power=1;
+        ++p;
+        if (*p == '-' || *p == '+')
+            ++p;
+        while (*p >= '0' && *p <= '9')
+            exponent2 = exponent2*10 + (*p++ - '0');
+
+        if (base == 16)
+            power = stb__clex_pow(2, exponent2);
+        else
+            power = stb__clex_pow(10, exponent2);
+        if (sign)
+            value /= power;
+        else
+            value *= power;
+    }
+
+    // Trailing L or f or F => ignore
+    if (*p == 'L') 
+    {
+        p += 1;
+    }
+    else if (*p == 'f' || *p == 'F')
+    {
+        value = cast(float)value;
+        p += 1;
+    }
+
+    *q = p;
+    if (err) *err = false;
+    if (signMantissa < 0)
+        value = -value;
+    return value;
+}
+
+private double stb__clex_pow(double base, uint exponent) pure nothrow @nogc
+{
+    double value=1;
+    for ( ; exponent; exponent >>= 1) {
+        if (exponent & 1)
+            value *= base;
+        base *= base;
+    }
+    return value;
+}
