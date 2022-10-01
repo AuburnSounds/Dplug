@@ -9,6 +9,7 @@ module dplug.canvas.htmlcolors;
 import std.math: PI, floor;
 import core.stdc.stdio : sscanf;
 public import dplug.graphics.color;
+import dplug.core.string;
 
 /// Parses a HTML color string, and gives back a RGBA color.
 ///
@@ -217,8 +218,10 @@ bool parseHTMLColor(const(char)[] htmlColorString, out RGBA color, out string er
         repr[repr_len++] = '\0'; // force a '\0' to be there, hence rendering sscanf bounded.
         assert(repr_len <= 32);
 
-        double scanned;
-        if (sscanf(repr.ptr, "%lf", &scanned) == 1)
+
+        bool err;
+        double scanned = convertStringToDouble(repr.ptr, false, &err);
+        if (!err)
         {
             *number = scanned;
             error = "";
