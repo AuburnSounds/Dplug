@@ -118,7 +118,6 @@ class WindowListener : IWindowListener {
     }
 
 void main() {
-    writeln("Hi!");
 
     auto listener = mallocNew!WindowListener;
 

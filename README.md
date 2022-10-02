@@ -11,13 +11,13 @@
 
 ## Features
 
-|  Format | macOS arm64 | macOS amd64  | Windows 32-bit | Windows 64-bit | Linux x86-64 | Raspberry ARM32 |
-|---------|-------------|--------------|----------------|----------------|--------------|-----------------|
-| VST2    | ✅         | ✅          | ✅            | ✅            | ✅          | ✅             |
-| VST3    | ✅         | ✅          | ✅            | ✅            | ✅          | ✅             |
-| AUv2    | ✅         | ✅          |                |                |              |                 |
-| AAX     | ❌          | ✅          | ❌             | ✅            |              |                 |
-| LV2     | ✅         | ✅          | ✅            | ✅            | ✅          | ✅             |
+|  Format | macOS arm64 | macOS amd64  | Windows 32-bit | Windows 64-bit | Linux x86-64 | 
+|---------|-------------|--------------|----------------|----------------|--------------|
+| VST2    | ✅         | ✅          | ✅            | ✅            | ✅          | 
+| VST3    | ✅         | ✅          | ✅            | ✅            | ✅          | 
+| AUv2    | ✅         | ✅          |                |                |              |
+| AAX     | ❌          | ✅          | ❌             | ✅            |              |
+| LV2     | ✅         | ✅          | ✅            | ✅            | ✅          | 
 
 
 - ✅ Automated Mac and Windows installers
