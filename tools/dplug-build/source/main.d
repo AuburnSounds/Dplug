@@ -524,11 +524,12 @@ int main(string[] args)
                         {
                             string identity;
 
-                            // Using developerIdentity-windows takes precedence over .P12 file and passwords
-                            if (plugin.developerIdentityWindows !is null)
+                            // Using certThumbprint-windows takes precedence over .P12 file and passwords
+                            if (plugin.certThumbprintWindows !is null)
                             {
                                 // sign using certificate in store (supports cloud signing like Certum)
-                                identFlag = format("--signid %s ", escapeShellArgument(plugin.developerIdentityWindows));
+                                // For wraptool, this needs to be the thumbprint.
+                                identFlag = format("--signid %s ", escapeShellArgument(plugin.certThumbprintWindows));
                             }
                             else
                             {

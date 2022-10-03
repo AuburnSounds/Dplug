@@ -169,6 +169,9 @@ struct Plugin
     // The certificate identity to be used for Windows code signing
     string developerIdentityWindows = null;
 
+    // Same but for wraptool, which needs the certificate "thumbprint".
+    string certThumbprintWindows = null;
+
     // The timestamp URL used on Windows code signing.
     string timestampServerURLWindows = null;
 
@@ -459,7 +462,7 @@ struct Plugin
     string getKeyFileWindows()
     {
         if (keyFileWindows is null)
-            throw new Exception(`Missing "keyFile-windows" or "developerIdentity-windows" in plugin.json`);
+            throw new Exception(`Missing "keyFile-windows" or "developerIdentity-windows" ("certThumbprint-windows" for AAX) in plugin.json`);
         return keyFileWindows;
     }
 
@@ -467,7 +470,7 @@ struct Plugin
     {
         promptWindowsKeyFilePasswordLazily();
         if (keyPasswordWindows is null)
-            throw new Exception(`Missing "keyPassword-windows" or "developerIdentity-windows" in plugin.json (Recommended value: "!PROMPT" or "$ENVVAR")`);
+            throw new Exception(`Missing "keyPassword-windows" or "developerIdentity-windows"("certThumbprint-windows" for AAX) in plugin.json (Recommended value: "!PROMPT" or "$ENVVAR")`);
         return expandDplugVariables(keyPasswordWindows);
     }
 
@@ -737,6 +740,15 @@ Plugin readPluginDescription()
     catch(Exception e)
     {
         result.developerIdentityWindows = null;
+    }
+
+    try
+    {
+        result.certThumbprintWindows = rawPluginFile["certThumbprint-windows"].str;
+    }
+    catch(Exception e)
+    {
+        result.certThumbprintWindows = null;
     }
 
     try
