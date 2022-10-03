@@ -144,6 +144,18 @@
             "type": "string"
         },
 
+        "timestampServerURL-windows": {
+            "description": "Override the default timestamp server URL used by signtool.",
+            "id": "/properties/timestampServerURL-windows",
+            "type": "string"
+        },
+
+        "developerIdentity-windows": {
+            "description": "The name of the certificate to use. This is an alternative to providing a private key and password directly. It is used for cloud code-signing. Takes priority over keyFile-windows.",
+            "id": "/properties/developerIdentity-windows",
+            "type": "string"
+        },
+
         "vendorAppleID": {
             "description": "An Apple ID used for notarization services.",
             "id": "/properties/vendorAppleID",
