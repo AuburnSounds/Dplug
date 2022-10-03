@@ -163,8 +163,11 @@ struct Plugin
     int publicVersionMinor;
     int publicVersionPatch;
 
-    // The certificate identity to be used for Mac installer or application signing
-    string developerIdentity = null;
+    // The certificate identity to be used for Mac code signing
+    string developerIdentityOSX = null;
+
+    // The certificate identity to be used for Windows code signing
+    string developerIdentityWindows = null;
 
     // relative path to a .png for the Mac installer
     string installerPNGPath;
@@ -424,11 +427,11 @@ struct Plugin
         return vendorAppleID;
     }
 
-    string getDeveloperIdentity()
+    string getDeveloperIdentityMac()
     {
-        if (developerIdentity is null)
+        if (developerIdentityOSX is null)
             throw new Exception(`Missing "developerIdentity-osx" in plugin.json`);
-        return developerIdentity;
+        return developerIdentityOSX;
     }
 
     // </Apple specific>
@@ -445,15 +448,15 @@ struct Plugin
         return format("%s%s-%s.exe", sanitizeFilenameString(pluginName), verName, publicVersionString);
     }
 
-    bool hasKeyFileWindows()
+    bool hasKeyFileOrDevIdentityWindows()
     {
-        return !(keyFileWindows is null);
+        return (keyFileWindows !is null) || (developerIdentityWindows !is null);
     }
 
     string getKeyFileWindows()
     {
         if (keyFileWindows is null)
-            throw new Exception(`Missing "keyFile-windows" in plugin.json`);
+            throw new Exception(`Missing "keyFile-windows" or "developerIdentity-windows" in plugin.json`);
         return keyFileWindows;
     }
 
@@ -461,7 +464,7 @@ struct Plugin
     {
         promptWindowsKeyFilePasswordLazily();
         if (keyPasswordWindows is null)
-            throw new Exception(`Missing "keyPassword-windows" in plugin.json (Recommended value: "!PROMPT" or "$ENVVAR")`);
+            throw new Exception(`Missing "keyPassword-windows" or "developerIdentity-windows" in plugin.json (Recommended value: "!PROMPT" or "$ENVVAR")`);
         return expandDplugVariables(keyPasswordWindows);
     }
 
@@ -717,11 +720,20 @@ Plugin readPluginDescription()
 
     try
     {
-        result.developerIdentity = rawPluginFile["developerIdentity-osx"].str;
+        result.developerIdentityOSX = rawPluginFile["developerIdentity-osx"].str;
     }
     catch(Exception e)
     {
-        result.developerIdentity = null;
+        result.developerIdentityOSX = null;
+    }
+
+    try
+    {
+        result.developerIdentityWindows = rawPluginFile["developerIdentity-windows"].str;
+    }
+    catch(Exception e)
+    {
+        result.developerIdentityWindows = null;
     }
 
     try

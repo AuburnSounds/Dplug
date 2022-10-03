@@ -522,13 +522,25 @@ int main(string[] args)
                         string identFlag;
                         if (targetOS == OS.windows)
                         {
-                            identFlag = format("--keyfile %s --keypassword %s ", 
-                                               plugin.getKeyFileWindows(), 
-                                               plugin.getKeyPasswordWindows());
+                            string identity;
+
+                            // Using developerIdentity-windows takes precedence over .P12 file and passwords
+                            if (plugin.developerIdentityWindows !is null)
+                            {
+                                // sign using certificate in store (supports cloud signing like Certum)
+                                identFlag = format("--signid %s ", escapeShellArgument(plugin.developerIdentityWindows));
+                            }
+                            else
+                            {
+                                // sign using keyfile and password in store (supports key file like Sectigo)
+                                identFlag = format("--keyfile %s --keypassword %s ", 
+                                                   plugin.getKeyFileWindows(), 
+                                                   plugin.getKeyPasswordWindows());
+                            }
                         }
                         else if (targetOS == OS.macOS)
                         {
-                            identFlag = format("--signid %s ", escapeShellArgument(plugin.getDeveloperIdentity()));
+                            identFlag = format("--signid %s ", escapeShellArgument(plugin.getDeveloperIdentityMac()));
                         }
                         else
                             throw new Exception("AAX not supported on that OS");
@@ -685,7 +697,7 @@ int main(string[] args)
                     // This should avoid too much misdetection by antivirus software.
                     // If people complain about false positives with dlang programs, please
                     // report the false positive to the AV vendor!
-                    bool SIGN_WINDOWS_PLUGINS = makeInstaller && plugin.hasKeyFileWindows;
+                    bool SIGN_WINDOWS_PLUGINS = makeInstaller && plugin.hasKeyFileOrDevIdentityWindows;
 
                     // Special case for AAX need its own directory, but according to Voxengo releases,
                     // its more minimal than either JUCE or IPlug builds.
@@ -993,10 +1005,10 @@ int main(string[] args)
                         {
                             // eventually sign with codesign
                             cwritefln("*** Signing bundle %s...".white, bundleDir);
-                            if (plugin.developerIdentity !is null)
+                            if (plugin.developerIdentityOSX !is null)
                             {
                                 string command = format(`codesign --strict -f -s %s --timestamp %s --digest-algorithm=sha1,sha256`,
-                                    escapeShellArgument(plugin.developerIdentity), escapeShellArgument(bundleDir));
+                                    escapeShellArgument(plugin.developerIdentityOSX), escapeShellArgument(bundleDir));
                                 safeCommand(command);
                             }
                             else
@@ -1092,9 +1104,9 @@ int main(string[] args)
                         enum SIGN_MAC_INDIVIDUAL_PKG = true;
                         static if (SIGN_MAC_INDIVIDUAL_PKG)
                         {
-                            if (plugin.developerIdentity !is null)
+                            if (plugin.developerIdentityOSX !is null)
                             {
-                                signStr = format(" --sign %s --timestamp", escapeShellArgument(plugin.developerIdentity));
+                                signStr = format(" --sign %s --timestamp", escapeShellArgument(plugin.developerIdentityOSX));
                             }
                             else
                             {
@@ -1510,7 +1522,7 @@ void generateWindowsInstaller(string outputDir,
     string makeNsiCommand = format("makensis.exe /V1 %s", nsisPath);
     safeCommand(makeNsiCommand);
 
-    if (!plugin.hasKeyFileWindows)
+    if (!plugin.hasKeyFileOrDevIdentityWindows)
     {
         warning(`Do not distribute an unsigned installer. See: https://github.com/AuburnSounds/Dplug/wiki/Dplug-Installer-Guide`);
     }
@@ -1524,10 +1536,23 @@ void signExecutableWindows(Plugin plugin, string exePath)
 {
     try
     {
+        string identity;
+
+        // Using developerIdentity-windows takes precedence over .P12 file and passwords
+        if (plugin.developerIdentityWindows !is null)
+        {
+            // sign using certificate in store (supports cloud signing like Certum)
+            identity = format(`/n %s`, escapeShellArgument(plugin.developerIdentityWindows));
+        }
+        else
+        {
+            // sign using keyfile and password in store (supports key file like Sectigo)
+            identity = format(`/f %s /p %s`, plugin.getKeyFileWindows(), plugin.getKeyPasswordWindows());
+        }
+
         // use windows signtool to sign the installer for distribution
-        string cmd = format("signtool sign /f %s /p %s /tr http://timestamp.sectigo.com /td sha256 /fd sha256 /q %s",
-                            plugin.getKeyFileWindows(),
-                            plugin.getKeyPasswordWindows(),
+        string cmd = format("signtool sign %s /tr http://timestamp.sectigo.com /td sha256 /fd sha256 /q %s",
+                            identity,
                             escapeShellArgument(exePath));
         safeCommand(cmd);
         cwriteln("    =&gt; OK\n".lgreen);
@@ -1635,9 +1660,9 @@ void generateMacInstaller(string outputDir,
     std.file.write(distribPath, cast(void[])content);
 
     string signStr = "";
-    if (plugin.developerIdentity !is null)
+    if (plugin.developerIdentityOSX !is null)
     {
-        signStr = format(" --sign %s --timestamp", escapeShellArgument(plugin.developerIdentity));
+        signStr = format(" --sign %s --timestamp", escapeShellArgument(plugin.developerIdentityOSX));
     }
     else
     {
