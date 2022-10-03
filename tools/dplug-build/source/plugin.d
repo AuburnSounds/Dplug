@@ -169,6 +169,9 @@ struct Plugin
     // The certificate identity to be used for Windows code signing
     string developerIdentityWindows = null;
 
+    // The timestamp URL used on Windows code signing.
+    string timestampServerURLWindows = null;
+
     // relative path to a .png for the Mac installer
     string installerPNGPath;
 
@@ -734,6 +737,15 @@ Plugin readPluginDescription()
     catch(Exception e)
     {
         result.developerIdentityWindows = null;
+    }
+
+    try
+    {
+        result.timestampServerURLWindows = rawPluginFile["timestampServerURL-windows"].str;
+    }
+    catch(Exception e)
+    {
+        result.timestampServerURLWindows = null;
     }
 
     try

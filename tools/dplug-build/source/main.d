@@ -1537,7 +1537,6 @@ void signExecutableWindows(Plugin plugin, string exePath)
     try
     {
         string identity;
-
         // Using developerIdentity-windows takes precedence over .P12 file and passwords
         if (plugin.developerIdentityWindows !is null)
         {
@@ -1550,9 +1549,18 @@ void signExecutableWindows(Plugin plugin, string exePath)
             identity = format(`/f %s /p %s`, plugin.getKeyFileWindows(), plugin.getKeyPasswordWindows());
         }
 
+        enum DEFAULT_TIMESTAMP_SERVER_URL = "http://timestamp.sectigo.com";
+        string timestampURL = plugin.timestampServerURLWindows;
+        if (timestampURL is null)
+        {
+            info(`Using a default timestamp URL. Use "timestampServerURL-windows" in plugin.json to override`);
+            timestampURL = DEFAULT_TIMESTAMP_SERVER_URL;
+        }
+
         // use windows signtool to sign the installer for distribution
-        string cmd = format("signtool sign %s /tr http://timestamp.sectigo.com /td sha256 /fd sha256 /q %s",
+        string cmd = format("signtool sign %s /tr %s /td sha256 /fd sha256 /q %s",
                             identity,
+                            timestampURL,
                             escapeShellArgument(exePath));
         safeCommand(cmd);
         cwriteln("    =&gt; OK\n".lgreen);
