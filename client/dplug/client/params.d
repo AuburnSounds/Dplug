@@ -32,6 +32,7 @@ import dplug.core.math;
 import dplug.core.sync;
 import dplug.core.nogc;
 import dplug.core.vec;
+import dplug.core.string;
 import dplug.client.client;
 
 
@@ -413,11 +414,11 @@ public:
 
     override bool normalizedValueFromString(const(char)[] valueString, out double result)
     {
-        if (valueString.length > 63)
+        if (valueString.length > 127)
             return false;
 
         // Because the input string is not zero-terminated
-        char[64] buf;
+        char[128] buf;
         snprintf(buf.ptr, buf.length, "%.*s", cast(int)(valueString.length), valueString.ptr);
 
         int denorm;
@@ -694,21 +695,19 @@ public:
 
     override bool normalizedValueFromString(const(char)[] valueString, out double result)
     {
-        if (valueString.length > 63)
+        if (valueString.length > 127) // ??? TODO doesn't bode well with VST3 constraints
             return false;
 
         // Because the input string is not zero-terminated
-        char[64] buf;
+        char[128] buf;
         snprintf(buf.ptr, buf.length, "%.*s", cast(int)(valueString.length), valueString.ptr);
 
-        double denorm;
-        if (1 == sscanf(buf.ptr, "%lf", &denorm))
-        {
-            result = toNormalized(denorm);
-            return true;
-        }
-        else
-            return false;
+        bool err = false;
+        double denorm = convertStringToDouble(buf.ptr, false, &err);
+        if (err)
+            return false; // didn't parse a double
+        result = toNormalized(denorm);
+        return true;
     }
 
     override bool isDiscrete() 
