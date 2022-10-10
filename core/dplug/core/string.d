@@ -281,15 +281,16 @@ public double convertStringToDouble(const(char)* s,
     if (err) *err = false;
     return r;
 }
-
+ 
 unittest
 {
     //import core.stdc.stdio;
+    import std.math.operations;
 
-    string[9] s = ["14", "0x123", "+0x1.921fb54442d18p+0001", "0", "-0.0", "0.65", "1.64587", "-1.0e+9", "1.1454e-25"]; 
-    double[9] correct = [14, 0x123, +0x1.921fb54442d18p+0001, 0.0, -0.0, 0.65L, 1.64587, -1e9, 1.1454e-5f];
+    string[9] s = ["14", "0x123", "+0x1.921fb54442d18p+0001", "0", "-0.0", "   \n\t\n\f\r 0.65", "1.64587", "-1.0e+9", "1.1454e-25"]; 
+    double[9] correct = [14, 0x123, +0x1.921fb54442d18p+0001, 0.0, -0.0, 0.65L, 1.64587, -1e9, 1.1454e-25f];
 
-    string[9] sPartial = ["14top", "0x123lol", "+0x1.921fb54442d18p+0001()", "0,", "-0.0,,,,", "0.65,stuff", "1.64587okokok", "-1.0e+9HELLO", "1.1454e-25f#STUFF"]; 
+    string[9] sPartial = ["14top", "0x123lol", "+0x1.921fb54442d18p+0001()", "0,", "-0.0,,,,", "   \n\t\n\f\r 0.65,stuff", "1.64587okokok", "-1.0e+9HELLO", "1.1454e-25f#STUFF"]; 
     for (int n = 0; n < s.length; ++n)
     {
         /*
@@ -305,12 +306,15 @@ unittest
 
         bool err;
         double a = convertStringToDouble(s[n].ptr, true, &err);
+        //import std.stdio;
+        //debug writeln(a, " correct is ", correct[n]);
         assert(!err);
+        assert( isClose(a, correct[n], 0.0001) );
 
         bool err2;
-        double b = convertStringToDouble(s[n].ptr, false, &err);
-        assert(err == err2);
-        assert(b == a);
+        double b = convertStringToDouble(s[n].ptr, false, &err2);
+        assert(!err2);
+        assert(b == a); // same parse
 
         //debug printf("%lf\n", a);
 
@@ -325,6 +329,20 @@ private double stb__clex_parse_number_literal(const(char)* p, const(char)**q, bo
     int base=10;
     int exponent=0;
     int signMantissa = 1;
+
+    // Skip leading whitespace, like scanf and strtod do
+    while (true)
+    {
+        char ch = *p;
+        if (ch == ' ' || ch == '\t' || ch == '\r' || ch == '\n' || ch == '\f' || ch == '\r')
+        {
+            p += 1;
+        }
+        else
+            break;
+    }
+
+
     if (*p == '-') 
     {
         signMantissa = -1;
@@ -401,7 +419,7 @@ private double stb__clex_parse_number_literal(const(char)* p, const(char)**q, bo
     }
 
     if (q) *q = p;
-    if (err) *err = false;
+    if (err) *err = false; // seen no error
     if (signMantissa < 0)
         value = -value;
     return value;
