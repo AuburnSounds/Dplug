@@ -7,7 +7,6 @@
 module dplug.canvas.htmlcolors;
 
 import std.math: PI, floor;
-import core.stdc.stdio : sscanf;
 public import dplug.graphics.color;
 import dplug.core.string;
 

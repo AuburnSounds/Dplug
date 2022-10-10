@@ -643,8 +643,9 @@ private:
                 if (ptr == null)
                     return 0;
 
+                // MAYDO: Sounds a bit insufficient? Will return 0 in case of error.
+                // also it will run into C locale problems.
                 double parsed = atof(cast(char*)ptr);
-
                 _client.setParameterFromHost(index, parsed);
                 return 1;
             }

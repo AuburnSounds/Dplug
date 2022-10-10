@@ -222,7 +222,7 @@ public double strtod_nolocale(const(char)* s, const(char)** p)
 {
     bool strtod_err = false;
     const(char)* pend;
-    double r = stb__clex_parse_number_literal(s, &pend, &strtod_err);
+    double r = stb__clex_parse_number_literal(s, &pend, &strtod_err, true);
     if (p) 
         *p = pend;
     if (strtod_err)
@@ -243,8 +243,65 @@ unittest
     }
 }
 
+/// C-locale independent string to integer parsing.
+/// Params:
+///     s Must be a zero-terminated string.
+///     mustConsumeEntireInput if true, check that s is entirely consumed by parsing the number.
+///     err: optional bool
+/// Note: unlike with `convertStringToDouble`, the string "4.7" will parse to just 4. Replaces %d in scanf-like functions.
+/// Only parse correctly from -2147483648 to 2147483647.
+/// Larger values are clamped to this -2147483648 to 2147483647 range.
+public int convertStringToInteger(const(char)* s, 
+                                  bool mustConsumeEntireInput,
+                                  bool* err) pure nothrow @nogc
+{
+    if (s is null)
+    {
+        if (err) *err = true;
+        return 0;
+    }
+
+    const(char)* end;
+    bool strtod_err = false;
+    bool allowFloat = false;
+    double r = stb__clex_parse_number_literal(s, &end, &strtod_err, allowFloat);
+
+    if (strtod_err)
+    {
+        if (err) *err = true;
+        return 0;
+    }
+
+    if (mustConsumeEntireInput)
+    {
+        size_t len = strlen(s);
+        if (end != s + len)
+        {
+            if (err) *err = true; // did not consume whole string
+            return 0;
+        }
+    }
+
+    if (err) *err = false; // no error
+
+    double r2 = cast(int)r;
+    assert(r2 == r); // should have returned an integer that fits in a double, like the whole int.min to int.max range.
+    return cast(int)r;
+}
+unittest
+{
+    bool err;
+    assert(4 == convertStringToInteger(" 4.7\n", false, &err));
+    assert(!err);
+
+    assert(-2147483648 == convertStringToInteger("-2147483649", false, &err));
+    assert( 1 == convertStringToInteger("1e30", false, &err));
+    assert( 0 == convertStringToInteger("-0", false, &err));
+    assert( 2147483647 == convertStringToInteger("10000000000", false, &err));
+}
+
+
 /// C-locale independent string to float parsing.
-/// For when you have the complete delimitation of the string.
 /// Params:
 ///     s Must be a zero-terminated string.
 ///     mustConsumeEntireInput if true, check that s is entirely consumed by parsing the number.
@@ -261,7 +318,13 @@ public double convertStringToDouble(const(char)* s,
 
     const(char)* end;
     bool strtod_err = false;
-    double r = stb__clex_parse_number_literal(s, &end, &strtod_err);
+    double r = stb__clex_parse_number_literal(s, &end, &strtod_err, true);
+
+    if (strtod_err)
+    {
+        if (err) *err = true;
+        return 0.0;
+    }
     
     if (mustConsumeEntireInput)
     {
@@ -273,12 +336,7 @@ public double convertStringToDouble(const(char)* s,
         }
     }
 
-    if (strtod_err)
-    {
-        if (err) *err = true;
-        return 0.0;
-    }
-    if (err) *err = false;
+    if (err) *err = false; // no error
     return r;
 }
  
@@ -322,7 +380,10 @@ unittest
     }
 }
 
-private double stb__clex_parse_number_literal(const(char)* p, const(char)**q, bool* err) pure nothrow @nogc
+private double stb__clex_parse_number_literal(const(char)* p, 
+                                              const(char)**q, 
+                                              bool* err,
+                                              bool allowFloat) pure nothrow @nogc
 {
     const(char)* s = p;
     double value=0;
@@ -374,54 +435,65 @@ private double stb__clex_parse_number_literal(const(char)* p, const(char)**q, bo
             break;
     }
 
-    if (*p == '.') 
+    if (allowFloat)
     {
-        double pow, addend = 0;
-        ++p;
-        for (pow=1; ; pow*=base) 
+        if (*p == '.') 
         {
-            if (*p >= '0' && *p <= '9')
-                addend = addend*base + (*p++ - '0');
-            else if (base == 16 && *p >= 'a' && *p <= 'f')
-                addend = addend*base + 10 + (*p++ - 'a');
-            else if (base == 16 && *p >= 'A' && *p <= 'F')
-                addend = addend*base + 10 + (*p++ - 'A');
-            else
-                break;
-        }
-        value += addend / pow;
-    }
-    if (base == 16) {
-        // exponent required for hex float literal, else it's an integer literal like 0x123
-        exponent = (*p == 'p' || *p == 'P');
-    } else
-        exponent = (*p == 'e' || *p == 'E');
-
-    if (exponent) 
-    {
-        int sign = p[1] == '-';
-        uint exponent2 = 0;
-        double power=1;
-        ++p;
-        if (*p == '-' || *p == '+')
+            double pow, addend = 0;
             ++p;
-        while (*p >= '0' && *p <= '9')
-            exponent2 = exponent2*10 + (*p++ - '0');
+            for (pow=1; ; pow*=base) 
+            {
+                if (*p >= '0' && *p <= '9')
+                    addend = addend*base + (*p++ - '0');
+                else if (base == 16 && *p >= 'a' && *p <= 'f')
+                    addend = addend*base + 10 + (*p++ - 'a');
+                else if (base == 16 && *p >= 'A' && *p <= 'F')
+                    addend = addend*base + 10 + (*p++ - 'A');
+                else
+                    break;
+            }
+            value += addend / pow;
+        }
+        if (base == 16) {
+            // exponent required for hex float literal, else it's an integer literal like 0x123
+            exponent = (*p == 'p' || *p == 'P');
+        } else
+            exponent = (*p == 'e' || *p == 'E');
 
-        if (base == 16)
-            power = stb__clex_pow(2, exponent2);
-        else
-            power = stb__clex_pow(10, exponent2);
-        if (sign)
-            value /= power;
-        else
-            value *= power;
+        if (exponent) 
+        {
+            int sign = p[1] == '-';
+            uint exponent2 = 0;
+            double power=1;
+            ++p;
+            if (*p == '-' || *p == '+')
+                ++p;
+            while (*p >= '0' && *p <= '9')
+                exponent2 = exponent2*10 + (*p++ - '0');
+
+            if (base == 16)
+                power = stb__clex_pow(2, exponent2);
+            else
+                power = stb__clex_pow(10, exponent2);
+            if (sign)
+                value /= power;
+            else
+                value *= power;
+        }
     }
-
+    
     if (q) *q = p;
     if (err) *err = false; // seen no error
+
     if (signMantissa < 0)
         value = -value;
+
+    if (!allowFloat)
+    {
+        // clamp and round to nearest integer
+        if (value > int.max) value = int.max;
+        if (value < int.min) value = int.min;
+    }    
     return value;
 }
 

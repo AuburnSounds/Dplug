@@ -421,14 +421,13 @@ public:
         char[128] buf;
         snprintf(buf.ptr, buf.length, "%.*s", cast(int)(valueString.length), valueString.ptr);
 
-        int denorm;
-        if (1 == sscanf(buf.ptr, "%d", &denorm))
-        {
-            result = toNormalized(denorm);
-            return true;
-        }
-        else
+        bool err = false;
+        int denorm = convertStringToInteger(buf.ptr, false, &err);
+        if (err)
             return false;
+
+        result = toNormalized(denorm);
+        return true;
     }
 
     override bool isDiscrete() 
