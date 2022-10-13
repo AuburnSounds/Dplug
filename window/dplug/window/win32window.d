@@ -34,6 +34,9 @@ import dplug.graphics.image;
 
 import dplug.window.window;
 
+// Note: can be annoying while debugging, as it is a global mouse hook.
+//version = hookMouseForWheelEvents;
+
 nothrow:
 @nogc:
 
@@ -55,7 +58,6 @@ version(Windows)
     import core.sys.windows.winuser;
     import core.sys.windows.winbase;
     import core.sys.windows.wingdi;
-
 
     HINSTANCE getModuleHandle() nothrow @nogc
     {
@@ -160,10 +162,15 @@ version(Windows)
                     _useFLStudioBridgeWorkaround = path[len - 12 .. len] == "ilbridge.exe";
                 }
             }
+            version(hookMouseForWheelEvents)
+                installMouseHook();
         }
 
         ~this()
         {
+            version(hookMouseForWheelEvents)
+                removeMouseHook();
+
             if (_hwnd != null)
             {
                 DestroyWindow(_hwnd);
@@ -767,6 +774,52 @@ version(Windows)
 
             return 0;
         }
+
+        version(hookMouseForWheelEvents)
+        {
+
+            // This prop says that this is a Dplug window, that has hooked the mouse.
+            // useful to identiy things when you just have a HWND.
+            // having does NOT mean that you can cast to Win32Window or anything, just that
+            // you expect the mouse wheel events to come to you in a drag outside your bounds.
+            enum string HOOK_PROPERTY = "i-am-a-dplug-window-and-have-hooked-the-mouse";
+
+            // true if installed
+            bool installMouseHook()
+            {
+                _mouseHook = SetWindowsHookExA(WH_MOUSE_LL, &LowLevelMouseProc, null, 0);
+
+                if (_mouseHook)
+                {
+                    BOOL res = SetPropA(_hwnd, HOOK_PROPERTY.ptr, _mouseHook);
+                    if (res == 0)
+                    {
+                        removeMouseHook();
+                        return false;
+                    }
+                }
+                return (_mouseHook !is null);
+            }
+
+            // true if removed
+            void removeMouseHook()
+            {
+                // Remove property, if any
+                if (null != GetPropA(_hwnd, HOOK_PROPERTY.ptr))
+                {
+                    RemovePropA(_hwnd, HOOK_PROPERTY.ptr);
+                }
+
+                // Note: nothing prevent the hook to be currently called there.
+                if (_mouseHook) 
+                {
+                    UnhookWindowsHookEx(_mouseHook);
+                    _mouseHook = null;
+                }
+            }
+
+            HHOOK _mouseHook = null;
+        }
     }
 
 
@@ -1092,4 +1145,50 @@ version(Windows)
         return false;
     }
 
+}
+
+version(hookMouseForWheelEvents)
+{
+    extern(Windows) LRESULT LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lParam) 
+    {
+        bool processed = false;
+
+        if (nCode == 0) 
+        {
+            if (wParam == WM_MOUSEWHEEL) // this is about a global mouse wheel event
+            {
+                // What window has the mouse capture, if any?
+                HWND hwnd = GetCapture();
+
+                if (hwnd != null)
+                {
+                    // We need to make sure this is destined to a Dplug-window.
+                    // It is one such window, one that can hook the mouse. Send it the mouse wheel event.
+                    // Indeed, casting to Win32Window would not be completely safe.
+                    // Actual mouse data is there.
+                    if (null != GetPropA(hwnd, Win32Window.HOOK_PROPERTY.ptr))
+                    {
+                        MSLLHOOKSTRUCT* hookData = cast(MSLLHOOKSTRUCT*) lParam;
+                        DWORD lParamMsg = cast(short)(hookData.pt.x) | (cast(short)(hookData.pt.y) << 16);
+
+                        BOOL res = PostMessageA(hwnd, 
+                                                WM_MOUSEWHEEL, 
+                                                hookData.mouseData & 0xffff0000,  // Note: no support for horizontal mouse wheel
+                                                lParamMsg);
+                        processed = (res != 0); // posted = processed
+                    }
+                }
+            }
+        }
+
+        if (!processed)
+            return CallNextHookEx(null, nCode, wParam, lParam); // never consume the message
+        else
+        {
+            /// If the hook procedure processed the message, it may return a nonzero value to 
+            /// prevent the system from passing the message to the rest of the hook chain or 
+            /// the target window procedure.
+            return 1;
+        }
+    }
 }
