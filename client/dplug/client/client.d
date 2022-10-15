@@ -540,11 +540,14 @@ nothrow:
     /// This splitting have several benefits:
     /// - help allocating temporary audio buffers on the stack
     /// - keeps memory usage low and reuse it
-    /// - allow faster-than-buffer-size parameter changes
+    /// - allow faster-than-buffer-size parameter changes (VST3)
     /// Returns: Maximum number of samples
+    /// Warning: Some buffersize-related bugs might be hidden by having sub-buffers.
+    ///          If yoy are looking for a buffersize bug, maybe try to disable sub-buffers
+    ///          by returning the default 0.
     int maxFramesInProcess() nothrow @nogc
     {
-        return 0; // default returns 0 which means "do not split"
+        return 0; // default returns 0 which means "do not split buffers"
     }
 
     /// Process some audio.
