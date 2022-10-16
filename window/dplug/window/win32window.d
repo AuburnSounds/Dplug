@@ -37,7 +37,13 @@ import dplug.window.window;
 // Note: can be annoying while debugging, as it is a global mouse hook.
 // But the only way to drag outside of window with mouse wheel working.
 // It is amazing that Windows even allow that.
-version = hookMouseForWheelEvents;
+debug
+{    
+}
+else
+{
+    version = hookMouseForWheelEvents;
+}
 
 nothrow:
 @nogc:
