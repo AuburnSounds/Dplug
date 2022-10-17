@@ -286,6 +286,8 @@ public:
 
         _arr.reallocBuffer(samples);
         _N = samples;
+
+        _tempbuf = makeVec!T();
     }
 
     ~this()
@@ -303,13 +305,15 @@ public:
             _arr[i + 1] = _delay[i];
 
         // sort in place
-        grailSort!T(_arr[],
-            (a, b) nothrow @nogc
-            {
-                if (a > b) return 1;
-                else if (a < b) return -1;
-                else return 0;
-            }
+        // this sort doesn't even need to be stable, but well.
+        timSort!T(_arr[],
+                  _tempbuf,
+                  (a, b) nothrow @nogc
+                  {
+                      if (a > b) return 1;
+                      else if (a < b) return -1;
+                      else return 0;
+                  }
         );
 
         T median = _arr[_N/2];
@@ -330,6 +334,7 @@ private:
     T[] _delay;
     T[] _arr;
     int _N;
+    Vec!T _tempbuf;
 }
 
 unittest
