@@ -36,7 +36,8 @@ import dplug.core.vec: Vec;
 // Faking @nogc
 //
 
-//version = useTimSort;
+version = useTimSort;
+version = useGrailSort;
 
 auto assumeNoGC(T) (T t)
 {
@@ -325,18 +326,24 @@ const(char)* assumeZeroTerminated(const(char)[] input) nothrow @nogc
 // Here is how to use it:
 unittest
 {
-    int[2][] testData = [[110, 0], [5, 0], [10, 0], [3, 0], [110, 1], [5, 1], [10, 1], [3, 1]];
-    version(useTimSort)
     {
-        Vec!(int[2]) tempBuf;
-        timSort!(int[2])(testData, tempBuf, (a, b) => (a[0] - b[0]));        
+        int[2][] testData = [[110, 0], [5, 0], [10, 0], [3, 0], [110, 1], [5, 1], [10, 1], [3, 1]];
+        version(useTimSort)
+        {
+            Vec!(int[2]) tempBuf;
+            timSort!(int[2])(testData, tempBuf, (a, b) => (a[0] - b[0]));        
+        }
+        assert(testData == [[3, 0], [3, 1], [5, 0], [5, 1], [10, 0], [10, 1], [110, 0], [110, 1]]);
     }
-    else
-    {        
-        grailSort!(int[2])(testData, (a, b) => (a[0] - b[0]));
-        
-    }
-    assert(testData == [[3, 0], [3, 1], [5, 0], [5, 1], [10, 0], [10, 1], [110, 0], [110, 1]]);
+    
+    {
+        int[2][] testData = [[110, 0], [5, 0], [10, 0], [3, 0], [110, 1], [5, 1], [10, 1], [3, 1]];
+        version(useGrailSort)
+        {        
+            grailSort!(int[2])(testData, (a, b) => (a[0] - b[0]));            
+        }
+        assert(testData == [[3, 0], [3, 1], [5, 0], [5, 1], [10, 0], [10, 1], [110, 0], [110, 1]]);
+    }    
 }
 
 
@@ -1154,7 +1161,8 @@ version(useTimSort)
         return 1;
     }
 }
-else
+
+version(useGrailSort)
 {
 
     //
