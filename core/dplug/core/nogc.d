@@ -334,15 +334,6 @@ unittest
             timSort!(int[2])(testData, tempBuf, (a, b) => (a[0] - b[0]));        
         }
         assert(testData == [[3, 0], [3, 1], [5, 0], [5, 1], [10, 0], [10, 1], [110, 0], [110, 1]]);
-    }
-    
-    {
-        int[2][] testData = [[110, 0], [5, 0], [10, 0], [3, 0], [110, 1], [5, 1], [10, 1], [3, 1]];
-        version(useGrailSort)
-        {        
-            grailSort!(int[2])(testData, (a, b) => (a[0] - b[0]));            
-        }
-        assert(testData == [[3, 0], [3, 1], [5, 0], [5, 1], [10, 0], [10, 1], [110, 0], [110, 1]]);
     }    
 }
 
@@ -355,7 +346,7 @@ unittest
 /// Array A[] has the items to sort.
 /// Array B[] is a work array.
 /// `grailSort` is approx. 30% slower but doesn't need a scratchBuffer.
-deprecated("Use timSort instead") void mergeSort(T)(T[] inoutElements, T[] scratchBuffer, nogcComparisonFunction!T comparison) nothrow @nogc
+deprecated("Use timSort instead. mergeSort will be removed in Dplug v13") void mergeSort(T)(T[] inoutElements, T[] scratchBuffer, nogcComparisonFunction!T comparison) nothrow @nogc
 {
     // Left source half is A[ iBegin:iMiddle-1].
     // Right source half is A[iMiddle:iEnd-1   ].
@@ -1189,7 +1180,7 @@ version(useGrailSort)
     // IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
     // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-    public void grailSort(T)(T[] inoutElements, nogcComparisonFunction!T comparison) nothrow @nogc
+    deprecated("Use timSort instead. grailSort will be removed in Dplug v13") public void grailSort(T)(T[] inoutElements, nogcComparisonFunction!T comparison) nothrow @nogc
     {
         GrailSort!T(inoutElements.ptr, cast(int)(inoutElements.length), comparison);
     }
