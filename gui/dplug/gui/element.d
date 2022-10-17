@@ -1198,9 +1198,6 @@ private:
                 _zOrderedChildren.pushBack(child);
         }
 
-
-       // 
-
         timSort!UIElement(_zOrderedChildren[],
                             context.sortingScratchBuffer(),
                             (a, b) nothrow @nogc 

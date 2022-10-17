@@ -116,6 +116,7 @@ nothrow:
 
         _elemsToDrawRaw = makeVec!UIElement;
         _elemsToDrawPBR = makeVec!UIElement;
+        _sortScratchBuf = makeVec!UIElement;
 
         debug(benchmarkGraphics)
         {
@@ -610,6 +611,9 @@ protected:
     /// The list of UIElement to potentially call `onDrawPBR` on.
     Vec!UIElement _elemsToDrawPBR;
 
+    /// The scratch buffer used to sort the two above list.
+    Vec!UIElement _sortScratchBuf;
+
     /// Amount of pixels dirty rectangles are extended with.
     int _updateMargin = 20;
 
@@ -653,8 +657,8 @@ protected:
         {
             return a.zOrder() - b.zOrder();
         }
-        grailSort!UIElement(_elemsToDrawRaw[], &compareZOrder);
-        grailSort!UIElement(_elemsToDrawPBR[], &compareZOrder);
+        timSort!UIElement(_elemsToDrawRaw[], _sortScratchBuf, &compareZOrder);
+        timSort!UIElement(_elemsToDrawPBR[], _sortScratchBuf, &compareZOrder);
     }
 
     // Useful to convert 16-byte aligned buffer into an ImageRef!RGBA
