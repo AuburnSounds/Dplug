@@ -46,6 +46,7 @@ nothrow:
 
     ~this()
     {
+        stbtt_FreeFont(&_font);
     }
 
     /// Returns: font ascent in pixels (aka the size of "A").
