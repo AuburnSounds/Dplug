@@ -418,9 +418,23 @@ nothrow:
         /// Finds an item, returns -1 if not found
         int indexOf(T x)
         {
-            foreach(int i; 0..cast(int)_size)
-                if (_data[i] is x)
-                    return i;
+            enum bool isStaticArray(T) = __traits(isStaticArray, T);
+
+            static if (isStaticArray!T)
+            {
+                // static array would be compared by identity as slice, which is not what we want.
+                foreach(int i; 0..cast(int)_size)
+                    if (_data[i] == x)
+                        return i;
+            }
+            else
+            {
+                // base types: identity is equality
+                // reference types: looking for identity
+                foreach(int i; 0..cast(int)_size)
+                    if (_data[i] is x)
+                        return i;
+            }
             return -1;
         }
 
