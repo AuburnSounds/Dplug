@@ -129,6 +129,7 @@ nothrow:
         this._owner = owner;
         dirtyListPBR = makeDirtyRectList();
         dirtyListRaw = makeDirtyRectList();
+        _sortingscratchBuffer = makeVec!UIElement();
     }
 
     final override float getUIScale()
@@ -321,10 +322,18 @@ nothrow:
         return _owner.getElementById(id);
     }
 
+    final ref Vec!UIElement sortingScratchBuffer()
+    {
+        return _sortingscratchBuffer;
+    }
+
 private:
     GUIGraphics _owner;
 
     ImageResizer _globalResizer;
+
+    /// A UI-global scratch buffer used as intermediate buffer for sorting UIElement.
+    Vec!UIElement _sortingscratchBuffer;
 
     /// Warning: if you store objects here, keep in mind they won't get destroyed automatically.
     /// 16 user pointer in case you'd like to store things in UIContext as a Dplug extension.

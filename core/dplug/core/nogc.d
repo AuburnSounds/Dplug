@@ -667,7 +667,7 @@ version(useTimSort)
     public void timSort(T)(T[] dst, 
                        ref Vec!T storeBuf, // content unimportant, this will be use a temp storage.
                                            // it should be "grow-only"
-                       nogcComparisonFunction!T comparison) 
+                       nogcComparisonFunction!T comparison) nothrow @nogc
     {
         const size_t size = dst.length;
 
@@ -960,7 +960,7 @@ version(useTimSort)
         }
     }
 
-    static int tim_sort_check_invariant(tim_sort_run_t *stack, const int stack_curr) 
+    static int tim_sort_check_invariant(tim_sort_run_t *stack, const int stack_curr) nothrow @nogc
     {
         size_t A, B, C;
 

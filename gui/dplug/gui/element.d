@@ -1177,6 +1177,9 @@ private:
     // Sort children in ascending z-order
     // Input: unsorted _children
     // Output: sorted _zOrderedChildren
+    // This is not thread-safe.
+    // Only one widget in the same UI can sort its children at once, since it uses
+    // a UIContext buffer to do so.
     final void recomputeZOrderedChildren()
     {
         // Get a z-ordered list of childrens
@@ -1195,14 +1198,18 @@ private:
                 _zOrderedChildren.pushBack(child);
         }
 
-        // This is a stable sort, so the relative order of children with same z-order is preserved.
-        grailSort!UIElement(_zOrderedChildren[],
-                             (a, b) nothrow @nogc 
-                             {
-                                 if (a.zOrder < b.zOrder) return 1;
-                                 else if (a.zOrder > b.zOrder) return -1;
-                                 else return 0;
-                             });
+
+       // 
+
+        timSort!UIElement(_zOrderedChildren[],
+                            context.sortingScratchBuffer(),
+                            (a, b) nothrow @nogc 
+                            {
+                                if (a.zOrder < b.zOrder) return 1;
+                                else if (a.zOrder > b.zOrder) return -1;
+                                else return 0;
+                            });
+
     }
 
     final void addDirtyRect(box2i rect, UILayer layer)
