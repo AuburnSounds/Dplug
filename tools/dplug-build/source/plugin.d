@@ -552,7 +552,7 @@ struct Plugin
         if (results.length == 0)
         {
             string availConfig = format("%s", configurations);
-            throw new Exception(format("No configuration matches: '%s'. Available: %s", pattern, availConfig.yellow));
+            throw new CCLException(format("No configuration matches: '%s'. Available: %s", pattern.red, availConfig.yellow));
         }
         return results;
     }
