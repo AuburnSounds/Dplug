@@ -5,7 +5,7 @@
 /// - font finding in the TTF itself. Make sure there is only one font in the TTF.
 module dplug.graphics.stb_truetype;
 
-import core.stdc.stdlib : malloc, free, qsort;
+import core.stdc.stdlib : malloc, free;
 import core.stdc.string : memcpy, memset;
 import core.stdc.math : floorf, ceilf;
 
@@ -35,6 +35,7 @@ struct stbtt_fontinfo
    int index_map;                     // a cmap mapping for our chosen character encoding
    int indexToLocFormat;              // format needed to map from glyph index to glyph
 
+   Vec!stbtt__edge edgeBuf;           // edge buffer, used in rasterizing
    Vec!stbtt__edge edgeScratchBuf;    // scratch buffer, used for sorting edges.
 }
 
@@ -224,12 +225,14 @@ int stbtt_InitFont(stbtt_fontinfo* info, const(ubyte)* data2, int fontstart) not
       return 0;
 
    info.indexToLocFormat = ttUSHORT(data+info.head + 50);
+   info.edgeBuf = makeVec!stbtt__edge();
    info.edgeScratchBuf = makeVec!stbtt__edge();
    return 1;
 }
 
 void stbtt_FreeFont(stbtt_fontinfo* info) nothrow @nogc
 {
+     destroyNoGC(info.edgeBuf);
      destroyNoGC(info.edgeScratchBuf);
 }
 
@@ -999,8 +1002,9 @@ void stbtt__rasterize(stbtt_fontinfo *info, stbtt__bitmap *result, stbtt__point 
    for (i=0; i < windings; ++i)
       n += wcount[i];
 
-   e = cast(stbtt__edge *) malloc(stbtt__edge.sizeof * (n+1)); // add an extra one as a sentinel
-   if (e == null) return;
+   info.edgeBuf.resize(n + 1); // add an extra one as a sentinel
+   e = info.edgeBuf.ptr;
+
    n = 0;
 
    m=0;
@@ -1039,8 +1043,6 @@ void stbtt__rasterize(stbtt_fontinfo *info, stbtt__bitmap *result, stbtt__point 
 
    // now, traverse the scanlines and find the intersections on each scanline, use xor winding rule
    stbtt__rasterize_sorted_edges(result, e, n, vsubsample, off_x, off_y);
-
-   free(e);
 }
 
 void stbtt__add_point(stbtt__point *points, int n, float x, float y) nothrow @nogc
@@ -1183,7 +1185,7 @@ void stbtt_FreeBitmap(ubyte *bitmap) nothrow @nogc
    free(bitmap);
 }
 
-ubyte *stbtt_GetGlyphBitmapSubpixel(stbtt_fontinfo *info, float scale_x, float scale_y, float shift_x, float shift_y, int glyph, int *width, int *height, int *xoff, int *yoff) nothrow @nogc
+deprecated ubyte *stbtt_GetGlyphBitmapSubpixel(stbtt_fontinfo *info, float scale_x, float scale_y, float shift_x, float shift_y, int glyph, int *width, int *height, int *xoff, int *yoff) nothrow @nogc
 {
    int ix0,iy0,ix1,iy1;
    stbtt__bitmap gbm;
@@ -1220,7 +1222,7 @@ ubyte *stbtt_GetGlyphBitmapSubpixel(stbtt_fontinfo *info, float scale_x, float s
    return gbm.pixels;
 }
 
-ubyte *stbtt_GetGlyphBitmap(stbtt_fontinfo *info, float scale_x, float scale_y, int glyph, int *width, int *height, int *xoff, int *yoff) nothrow @nogc
+deprecated ubyte *stbtt_GetGlyphBitmap(stbtt_fontinfo *info, float scale_x, float scale_y, int glyph, int *width, int *height, int *xoff, int *yoff) nothrow @nogc
 {
    return stbtt_GetGlyphBitmapSubpixel(info, scale_x, scale_y, 0.0f, 0.0f, glyph, width, height, xoff, yoff);
 }
@@ -1251,7 +1253,7 @@ void stbtt_MakeGlyphBitmap(stbtt_fontinfo *info, ubyte *output, int out_w, int o
 
 /// The same as stbtt_GetCodepoitnBitmap, but you can specify a subpixel
 /// shift for the character.
-ubyte *stbtt_GetCodepointBitmapSubpixel(stbtt_fontinfo *info, float scale_x, float scale_y, float shift_x, float shift_y, int codepoint, int *width, int *height, int *xoff, int *yoff) nothrow @nogc
+deprecated ubyte *stbtt_GetCodepointBitmapSubpixel(stbtt_fontinfo *info, float scale_x, float scale_y, float shift_x, float shift_y, int codepoint, int *width, int *height, int *xoff, int *yoff) nothrow @nogc
 {
    return stbtt_GetGlyphBitmapSubpixel(info, scale_x, scale_y,shift_x,shift_y, stbtt_FindGlyphIndex(info,codepoint), width,height,xoff,yoff);
 }
@@ -1270,7 +1272,7 @@ void stbtt_MakeCodepointBitmapSubpixel(stbtt_fontinfo *info, ubyte *output, int 
 /// which is stored left-to-right, top-to-bottom.
 ///
 /// xoff/yoff are the offset it pixel space from the glyph origin to the top-left of the bitmap
-ubyte *stbtt_GetCodepointBitmap(stbtt_fontinfo *info, float scale_x, float scale_y, int codepoint, int *width, int *height, int *xoff, int *yoff) nothrow @nogc
+deprecated ubyte *stbtt_GetCodepointBitmap(stbtt_fontinfo *info, float scale_x, float scale_y, int codepoint, int *width, int *height, int *xoff, int *yoff) nothrow @nogc
 {
    return stbtt_GetCodepointBitmapSubpixel(info, scale_x, scale_y, 0.0f,0.0f, codepoint, width,height,xoff,yoff);
 }
@@ -1279,7 +1281,7 @@ ubyte *stbtt_GetCodepointBitmap(stbtt_fontinfo *info, float scale_x, float scale
 /// in the form of 'output', with row spacing of 'out_stride' bytes. the bitmap
 /// is clipped to out_w/out_h bytes. Call stbtt_GetCodepointBitmapBox to get the
 /// width and height and positioning info for it first.
-void stbtt_MakeCodepointBitmap(stbtt_fontinfo *info, ubyte *output, int out_w, int out_h, int out_stride, float scale_x, float scale_y, int codepoint) nothrow @nogc
+deprecated void stbtt_MakeCodepointBitmap(stbtt_fontinfo *info, ubyte *output, int out_w, int out_h, int out_stride, float scale_x, float scale_y, int codepoint) nothrow @nogc
 {
    stbtt_MakeCodepointBitmapSubpixel(info, output, out_w, out_h, out_stride, scale_x, scale_y, 0.0f,0.0f, codepoint);
 }
