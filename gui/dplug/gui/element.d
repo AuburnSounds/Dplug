@@ -77,6 +77,14 @@ enum UILayer
     allLayers
 }
 
+/// Result of `onMouseClick`, was the mouse click handled?
+enum Click
+{
+    handled,   /// click handled, no drag.            
+    startDrag, /// click handled AND it start new drag. (previously: true)
+    unhandled  /// click not handeld, pass it around.   (previously: false)
+}
+
 /// The maximum length for an UIElement ID.
 enum maxUIElementIDLength = 63;
 
@@ -99,7 +107,6 @@ static bool isValidElementID(const(char)[] identifier) pure nothrow @nogc @safe
 // Official dplug:wren-support optional extension.
 enum UIELEMENT_POINTERID_WREN_EXPORTED_CLASS = 0; /// The cached Wren class of this UIElement.
 enum UIELEMENT_POINTERID_WREN_VM_GENERATION  = 1; /// The Wren VM count, as it is restarted. Stored as void*, but is an uint.
-
 
 /// Base class of the UI widget hierarchy.
 ///
@@ -375,14 +382,25 @@ nothrow:
     /// `onmouseClick` is called for every new click, whether or not you are in a 
     /// dragging operation.
     /// This function is meant to be overriden.
-    /// If you return `true`, any existing dragging is stopped, and a new drag operation
-    /// is started. `onStopDrag` may be called, than `onBeginDrag`. 
-    /// If you return `false`, the click is unprocessed.
+    ///
+    /// Returns:
+    ///    If you return `Click.handled`, the click is considered processed 
+    ///    and will not pass to parent window.
+    ///
+    ///    If you return `Click.startDrag`, the click is considered processed. 
+    ///    Any existing dragging is stopped with `onStopDrag`, and a new drag operation
+    ///    is started. `onBeginDrag` is called. (was formerly: returning true)
+    ///
+    ///    If you return `Click.unhandled`, the click is unprocessed. 
+    ///    If may be passed down to the underlying parent window. 
+    ///    (was formerly: returning true)
+    ///
     /// Warning: For this reason, check your widgets with several mouse buttons pressed 
     /// at once.
-    bool onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
+    Click onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
     {
-        return false;
+        // By default, does not recognize that click.
+        return Click.unhandled; 
     }
 
     // Mouse wheel was turned.
@@ -486,11 +504,20 @@ nothrow:
         bool canBeClicked = _visibilityStatus; // cannot be clicked if invisible
         if (canBeClicked && contains(x - _position.min.x, y - _position.min.y))
         {
-            if (onMouseClick(x - _position.min.x, y - _position.min.y, button, isDoubleClick, mstate))
+            Click click = onMouseClick(x - _position.min.x, y - _position.min.y, button, isDoubleClick, mstate);
+
+            final switch(click)
             {
-                _context.beginDragging(this);
-                _context.setFocused(this);
-                return true;
+                case Click.handled:
+                    _context.setFocused(this);
+                    return true;
+
+                case Click.startDrag:
+                    _context.beginDragging(this);
+                    goto case Click.handled;
+
+                case Click.unhandled:
+                    return false;
             }
         }
 

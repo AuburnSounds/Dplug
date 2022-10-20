@@ -117,14 +117,14 @@ nothrow:
             setDirtyWhole();
     }    
 
-    override bool onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate) 
+    override Click onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate) 
     {
         if (clickable)
         {
             browseNoGC(targetURL);
-            return true;
+            return Click.startDrag;
         }
-        return false;
+        return Click.unhandled;
     }    
 
     override void onDrawPBR(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects) nothrow @nogc

@@ -228,7 +228,7 @@ nothrow:
         materialOpacity.cropImageRef(handleRect).fillAll(opacityFullyOpaque);
     }
 
-    override bool onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
+    override Click onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
     {
         // double-click => set to default
         if (isDoubleClick || mstate.altPressed)
@@ -249,7 +249,7 @@ nothrow:
                 assert(false); // only integer and float parameters supported
         }
 
-        return true; // to initiate dragging
+        return Click.startDrag; // to initiate dragging
     }
 
     // Called when mouse drag this Element.

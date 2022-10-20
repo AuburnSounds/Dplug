@@ -288,12 +288,10 @@ nothrow:
         }
     }
 
-
-
-    override bool onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
+    override Click onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
     {
         if (!containsPoint(x, y))
-            return false;
+            return Click.unhandled;
 
         // double-click => set to default
         if (isDoubleClick || mstate.altPressed)
@@ -309,7 +307,7 @@ nothrow:
         }
 
         _normalizedValueWhileDragging = _param.getNormalized();
-        return true; // to initiate dragging
+        return Click.startDrag;
     }
 
     // Called when mouse drag this Element.

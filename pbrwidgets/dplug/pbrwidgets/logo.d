@@ -104,10 +104,10 @@ nothrow:
         }
     }
 
-    override bool onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
+    override Click onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
     {
         browseNoGC(targetURL);
-        return true;
+        return Click.startDrag;
     }
 
 private:

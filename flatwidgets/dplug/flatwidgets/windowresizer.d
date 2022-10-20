@@ -47,7 +47,7 @@ nothrow:
         setCursorWhenDragged(MouseCursor.diagonalResize);
     }
 
-    override bool onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
+    override Click onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
     {
         // Initiate drag
         setDirtyWhole();
@@ -56,7 +56,7 @@ nothrow:
         _accumX = 0;
         _accumY = 0;
 
-        return true;
+        return Click.startDrag;
     }
 
     override void onMouseDrag(int x, int y, int dx, int dy, MouseState mstate)

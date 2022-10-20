@@ -116,7 +116,7 @@ nothrow:
         }
     }
 
-    override bool onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
+    override Click onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
     {
         // ALT + click => set it to default
         if (mstate.altPressed) // reset on ALT + click
@@ -133,7 +133,7 @@ nothrow:
             _param.setFromGUI(!_param.value());
             _param.endParamEdit();
         }
-        return true;
+        return Click.startDrag;
     }
 
     override void onMouseEnter()
