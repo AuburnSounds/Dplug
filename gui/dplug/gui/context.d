@@ -198,12 +198,8 @@ nothrow:
     /// Currently dragged element.
     UIElement dragged = null;
 
-    version(legacyMouseOver) {}
-    else
-    {
-        /// Currently mouse-over'd element.
-        UIElement mouseOver = null;
-    }
+    /// Currently mouse-over'd element.
+    UIElement mouseOver = null;
 
     // This is the UI-global, disjointed list of rectangles that need updating at the PBR level.
     // Every UIElement touched by those rectangles will have their `onDrawPBR` and `onDrawRaw` 
@@ -214,22 +210,18 @@ nothrow:
     // Every UIElement touched by those rectangles will have its `onDrawRaw` callback called.
     DirtyRectList dirtyListRaw;
 
-    version(legacyMouseOver) {}
-    else
+    final void setMouseOver(UIElement elem)
     {
-        final void setMouseOver(UIElement elem)
-        {
-            UIElement old = this.mouseOver;
-            UIElement new_ = elem;
-            if (old is new_)
-                return;
+        UIElement old = this.mouseOver;
+        UIElement new_ = elem;
+        if (old is new_)
+            return;
 
-            if (old !is null)
-                old.onMouseExit();
-            this.mouseOver = new_;
-            if (new_ !is null)
-                new_.onMouseEnter();
-        }
+        if (old !is null)
+            old.onMouseExit();
+        this.mouseOver = new_;
+        if (new_ !is null)
+            new_.onMouseEnter();
     }
 
     final void setFocused(UIElement focused)
@@ -277,13 +269,9 @@ nothrow:
     {
         MouseCursor cursor = MouseCursor.pointer;
 
-        version(legacyMouseOver) { cursor = MouseCursor.pointer;}
-        else
+        if (!(mouseOver is null))
         {
-            if (!(mouseOver is null))
-            {
-                cursor = mouseOver.cursorWhenMouseOver();
-            }
+            cursor = mouseOver.cursorWhenMouseOver();
         }
 
         if(!(dragged is null))

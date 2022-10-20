@@ -308,22 +308,15 @@ nothrow:
         {
             x -= outer._userArea.min.x;
             y -= outer._userArea.min.y;
-            version(legacyMouseOver)
-            {
-                outer.mouseMove(x, y, dx, dy, mstate);
-            }
+            bool hitSomething = outer.mouseMove(x, y, dx, dy, mstate, false);
+            version(futureMouseDrag)
+            {}
             else
             {
-                bool hitSomething = outer.mouseMove(x, y, dx, dy, mstate, false);
-                version(futureMouseDrag)
-                {}
-                else
+                if (!hitSomething)
                 {
-                    if (!hitSomething)
-                    {
-                        // Nothing was mouse-over'ed, nothing is `isMouseOver()` anymore
-                        outer._uiContext.setMouseOver(null);
-                    }
+                    // Nothing was mouse-over'ed, nothing is `isMouseOver()` anymore
+                    outer._uiContext.setMouseOver(null);
                 }
             }
         }
@@ -393,18 +386,14 @@ nothrow:
         override void onMouseExitedWindow()
         {
             // Stop an eventual isMouseOver
-            version(legacyMouseOver) {}
+            version(futureMouseDrag)
+            {
+                if (outer._uiContext.dragged is null)
+                    outer._uiContext.setMouseOver(null);
+            }
             else
             {
-                version(futureMouseDrag)
-                {
-                    if (outer._uiContext.dragged is null)
-                        outer._uiContext.setMouseOver(null);
-                }
-                else
-                {
-                    outer._uiContext.setMouseOver(null);
-                }
+                outer._uiContext.setMouseOver(null);
             }
         }
 
