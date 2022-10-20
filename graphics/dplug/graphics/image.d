@@ -74,48 +74,6 @@ mixin template DirectView()
     }
 }
 
-// ***************************************************************************
-
-/// Returns a view which calculates pixels
-/// on-demand using the specified formula.
-deprecated template procedural(alias formula)
-{
-	alias fun = binaryFun!(formula, "x", "y");
-	alias COLOR = typeof(fun(0, 0));
-
-	deprecated auto procedural(int w, int h)
-	{
-		struct Procedural
-		{
-			int w, h;
-
-			auto ref COLOR opIndex(int x, int y)
-			{
-				assert(x >= 0 && y >= 0 && x < w && y < h);
-				return fun(x, y);
-			}
-		}
-		return Procedural(w, h);
-	}
-}
-
-/// Returns a view of the specified dimensions
-/// and same solid color.
-deprecated auto solid(COLOR)(COLOR c, int w, int h)
-{
-	return procedural!((x, y) => c)(w, h);
-}
-
-/// Return a 1x1 view of the specified color.
-/// Useful for testing.
-deprecated auto onePixel(COLOR)(COLOR c)
-{
-	return solid(c, 1, 1);
-}
-
-
-// ***************************************************************************
-
 /// Blits a view onto another.
 /// The views must have the same size.
 void blitTo(SRC, DST)(auto ref SRC src, auto ref DST dst)
@@ -170,43 +128,6 @@ mixin template Warp(V)
 		return src[x, y] = value;
 	}
 }
-
-/// Crop a view to the specified rectangle.
-deprecated auto crop(V)(auto ref V src, int x0, int y0, int x1, int y1)
-	if (isView!V)
-{
-	assert( 0 <=    x0 &&  0 <=    y0);
-	assert(x0 <=    x1 && y0 <=    y1);
-	assert(x1 <= src.w && y1 <= src.h);
-
-	static struct Crop
-	{
-		mixin Warp!V;
-
-		int x0, y0, x1, y1;
-
-		@property int w() { return x1-x0; }
-		@property int h() { return y1-y0; }
-
-		void warp(ref int x, ref int y)
-		{
-			x += x0;
-			y += y0;
-		}
-
-		static if (isDirectView!V)
-		ViewColor!V[] scanline(int y)
-		{
-			return src.scanline(y0+y)[x0..x1];
-		}
-	}
-
-	static assert(isDirectView!V == isDirectView!Crop);
-
-	return Crop(src, x0, y0, x1, y1);
-}
-
-
 
 /// Represents a reference to COLOR data
 /// already existing elsewhere in memory.
@@ -271,24 +192,6 @@ ImageRef!RGBA toRef(OwnedImage!RGBA src) pure
     return ImageRef!RGBA(src.w, src.h, src.pitchInBytes(), src.scanlinePtr(0));
 }
 
-/// Convert an image reference, to an image reference.
-deprecated("This toRef is useless") ImageRef!L8 toRef(ImageRef!L8 src) pure
-{
-    return src;
-}
-
-///ditto
-deprecated("This toRef is useless") ImageRef!L16 toRef(ImageRef!L16 src) pure
-{
-    return src;
-}
-
-///ditto
-deprecated("This toRef is useless") ImageRef!RGBA toRef(ImageRef!RGBA src) pure
-{
-    return src;
-}
-
 /// Copy the indicated row of src to a COLOR buffer.
 void copyScanline(SRC, COLOR)(auto ref SRC src, int y, COLOR[] dst)
     if (isView!SRC && is(COLOR == ViewColor!SRC))
@@ -324,12 +227,6 @@ enum isTargetColor(C, TARGET) = is(C == TargetColor) || is(C == ViewColor!TARGET
 
 // ***************************************************************************
 
-
-/// Crop a view from a box2i
-deprecated("use cropImageRef and ImageRef instead") auto crop(V)(auto ref V src, box2i b) if (isView!V)
-{
-    return crop(src, b.min.x, b.min.y, b.max.x, b.max.y);
-}
 
 /// Crop an ImageRef and get an ImageRef instead of a Voldemort type.
 /// This also avoid adding offset to coordinates.
@@ -516,23 +413,6 @@ nothrow:
     bool isGapless() pure
     {
         return w * COLOR.sizeof  == _bytePitch;
-    }
-
-    /// Returns: A slice of all pixels. This only works for gapless images, because else it doesn't make sense.
-    deprecated("pixels() is being removed because it's unclear what it should do") COLOR[] pixels()
-    {
-        if (!isGapless())
-            assert(false);
-
-        return _pixels[0..w*h];
-    }
-
-    /// Returns: Number of samples to add to a COLOR* pointer to get to the previous/next line.
-    ///          `OwnedImage` used to guarantees that this is always an integer number of samples.
-    deprecated("prefer using pitchInBytes() now") int pitchInSamples() pure
-    {
-        assert(_bytePitch % cast(int)(COLOR.sizeof) == 0);
-        return _bytePitch / cast(int)(COLOR.sizeof);
     }
 
     /// Returns: Number of bytes to add to a COLOR* pointer to get to the previous/next line.

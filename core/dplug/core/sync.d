@@ -179,12 +179,6 @@ nothrow @nogc:
         }
     }
 
-    // For debugging purpose
-    deprecated void dumpState()
-    {
-    }
-
-
 private:
     // on Windows, this is a CRITICAL_SECTION*.
     // else, this is a pthread_mutex_t*

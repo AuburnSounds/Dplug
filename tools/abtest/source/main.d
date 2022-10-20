@@ -428,24 +428,6 @@ string[] getQuestionsFromMask(int mask, int numberOfQuestions)
 enum DIFFUSE = 1;
 enum FOCUSED = 2;
 
-
-
-deprecated string cyan(string s) @property
-{
-    return s;
-}
-
-deprecated string green(string s) @property
-{
-    return s;
-}
-
-
-deprecated string red(string s) @property
-{
-    return s;
-}
-
 void info(string msg)
 {
     cwritefln("info: %s".white, escapeCCL(msg));

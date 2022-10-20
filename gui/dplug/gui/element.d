@@ -831,11 +831,6 @@ nothrow:
         return _visibilityStatus;
     }
 
-    deprecated("use visibility() instead") final void setVisible(bool visible)
-    {
-        visibility(visible);
-    }
-
     /// Get visibility flag of the widget.
     /// A widget might still be invisible, if one of its parent is not visible.
     final bool visibility() pure const

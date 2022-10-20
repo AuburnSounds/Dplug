@@ -262,7 +262,7 @@ extern(C) nothrow @nogc
     
     /// This is currently not fully implemented
     /// According to the LV2 IRC channel, this extension is planned to be
-    /// deprecated.  The only known host that uses this extension is
+    /// phased out.  The only known host that uses this extension is
     /// synthpod.  LV2 plug-ins should respond directly to resize
     /// events from the window.
     /// Note: is it used at all?

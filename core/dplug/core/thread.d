@@ -305,32 +305,6 @@ Thread launchInAThread(ThreadDelegate dg, size_t stackSize = 0) nothrow @nogc
     return t;
 }
 
-
-version(Windows)
-{
-    /// Returns: current thread identifier.
-    /// Warning: doesn't return stuff that you would expect. Not a HANDLE. 
-    ///          this shouldn't be used for anything serious.
-    deprecated("It doesn't work, depreciated") void* currentThreadId() nothrow @nogc
-    {
-        HANDLE handle = GetCurrentThread();
-        return cast(void*)handle;
-    }
-}
-else version(Posix)
-{
-    /// Returns: current thread identifier.
-    deprecated("It doesn't work, depreciated") void* currentThreadId() nothrow @nogc
-    {
-        return assumeNothrowNoGC(
-                ()
-                {
-                    return cast(void*)(pthread_self());
-                })();
-    }
-}
-
-
 //
 // Thread-pool
 //

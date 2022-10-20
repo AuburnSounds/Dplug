@@ -784,7 +784,7 @@ private:
                         desc.type = ScriptPropertyType.float_;
                     else static if (is(FieldType == double))
                         desc.type = ScriptPropertyType.double_;
-                    else static if (is(FieldType == L16)) // Note: this is deprecated. L16 properties should be eventually replaced by ushort instead.
+                    else static if (is(FieldType == L16)) // Note: this is temporary. TODO L16 properties should be eventually replaced by ushort instead.
                         desc.type = ScriptPropertyType.ushort_;
                     else
                         static assert(false, "No @ScriptProperty support for field " ~ fieldName ~  " of type " ~ FieldType.stringof); // FUTURE: a way to add other types for properties?

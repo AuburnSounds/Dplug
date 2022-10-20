@@ -247,8 +247,6 @@ protected:
     OwnedImage!RGBA _filmstrip;
     OwnedImage!RGBA _filmstripScaled;
 
-    deprecated OwnedImage!RGBA _faderFilmstrip;
-    deprecated OwnedImage!RGBA _knobGreenFilmstrip;
     ImageRef!RGBA _currentImage;
 
     int _numFrames;

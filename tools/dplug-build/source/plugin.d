@@ -709,7 +709,7 @@ Plugin readPluginDescription()
     try
     {
         string userManualPath = rawPluginFile["userManualPath"].str;
-        warning("\"userManualPath\" is deprecated");
+        warning("\"userManualPath\" key has been removed");
     }
     catch(Exception e)
     {

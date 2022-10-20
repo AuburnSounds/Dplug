@@ -1185,48 +1185,6 @@ void stbtt_FreeBitmap(ubyte *bitmap) nothrow @nogc
    free(bitmap);
 }
 
-deprecated ubyte *stbtt_GetGlyphBitmapSubpixel(stbtt_fontinfo *info, float scale_x, float scale_y, float shift_x, float shift_y, int glyph, int *width, int *height, int *xoff, int *yoff) nothrow @nogc
-{
-   int ix0,iy0,ix1,iy1;
-   stbtt__bitmap gbm;
-   stbtt_vertex *vertices;
-   int num_verts = stbtt_GetGlyphShape(info, glyph, &vertices);
-
-   if (scale_x == 0) scale_x = scale_y;
-   if (scale_y == 0) {
-      if (scale_x == 0) return null;
-      scale_y = scale_x;
-   }
-
-   stbtt_GetGlyphBitmapBoxSubpixel(info, glyph, scale_x, scale_y, shift_x, shift_y, &ix0,&iy0,&ix1,&iy1);
-
-   // now we get the size
-   gbm.w = (ix1 - ix0);
-   gbm.h = (iy1 - iy0);
-   gbm.pixels = null; // in case we error
-
-   if (width ) *width  = gbm.w;
-   if (height) *height = gbm.h;
-   if (xoff  ) *xoff   = ix0;
-   if (yoff  ) *yoff   = iy0;
-
-   if (gbm.w && gbm.h) {
-      gbm.pixels = cast(ubyte *) malloc(gbm.w * gbm.h);
-      if (gbm.pixels) {
-         gbm.stride = gbm.w;
-
-         stbtt_Rasterize(info, &gbm, 0.35f, vertices, num_verts, scale_x, scale_y, shift_x, shift_y, ix0, iy0, 1);
-      }
-   }
-   free(vertices);
-   return gbm.pixels;
-}
-
-deprecated ubyte *stbtt_GetGlyphBitmap(stbtt_fontinfo *info, float scale_x, float scale_y, int glyph, int *width, int *height, int *xoff, int *yoff) nothrow @nogc
-{
-   return stbtt_GetGlyphBitmapSubpixel(info, scale_x, scale_y, 0.0f, 0.0f, glyph, width, height, xoff, yoff);
-}
-
 void stbtt_MakeGlyphBitmapSubpixel(stbtt_fontinfo *info, ubyte *output, int out_w, int out_h, int out_stride, float scale_x, float scale_y, float shift_x, float shift_y, int glyph) nothrow @nogc
 {
    int ix0,iy0;
@@ -1251,38 +1209,9 @@ void stbtt_MakeGlyphBitmap(stbtt_fontinfo *info, ubyte *output, int out_w, int o
    stbtt_MakeGlyphBitmapSubpixel(info, output, out_w, out_h, out_stride, scale_x, scale_y, 0.0f,0.0f, glyph);
 }
 
-/// The same as stbtt_GetCodepoitnBitmap, but you can specify a subpixel
-/// shift for the character.
-deprecated ubyte *stbtt_GetCodepointBitmapSubpixel(stbtt_fontinfo *info, float scale_x, float scale_y, float shift_x, float shift_y, int codepoint, int *width, int *height, int *xoff, int *yoff) nothrow @nogc
-{
-   return stbtt_GetGlyphBitmapSubpixel(info, scale_x, scale_y,shift_x,shift_y, stbtt_FindGlyphIndex(info,codepoint), width,height,xoff,yoff);
-}
-
 /// Same as stbtt_MakeCodepointBitmap, but you can specify a subpixel
 /// shift for the character.
 void stbtt_MakeCodepointBitmapSubpixel(stbtt_fontinfo *info, ubyte *output, int out_w, int out_h, int out_stride, float scale_x, float scale_y, float shift_x, float shift_y, int codepoint) nothrow @nogc
 {
    stbtt_MakeGlyphBitmapSubpixel(info, output, out_w, out_h, out_stride, scale_x, scale_y, shift_x, shift_y, stbtt_FindGlyphIndex(info,codepoint));
 }
-
-/// Allocates a large-enough single-channel 8bpp bitmap and renders the
-/// specified character/glyph at the specified scale into it, with
-/// antialiasing. 0 is no coverage (transparent), 255 is fully covered (opaque).
-/// *width & *height are filled out with the width & height of the bitmap,
-/// which is stored left-to-right, top-to-bottom.
-///
-/// xoff/yoff are the offset it pixel space from the glyph origin to the top-left of the bitmap
-deprecated ubyte *stbtt_GetCodepointBitmap(stbtt_fontinfo *info, float scale_x, float scale_y, int codepoint, int *width, int *height, int *xoff, int *yoff) nothrow @nogc
-{
-   return stbtt_GetCodepointBitmapSubpixel(info, scale_x, scale_y, 0.0f,0.0f, codepoint, width,height,xoff,yoff);
-}
-
-/// The same as stbtt_GetCodepointBitmap, but you pass in storage for the bitmap
-/// in the form of 'output', with row spacing of 'out_stride' bytes. the bitmap
-/// is clipped to out_w/out_h bytes. Call stbtt_GetCodepointBitmapBox to get the
-/// width and height and positioning info for it first.
-deprecated void stbtt_MakeCodepointBitmap(stbtt_fontinfo *info, ubyte *output, int out_w, int out_h, int out_stride, float scale_x, float scale_y, int codepoint) nothrow @nogc
-{
-   stbtt_MakeCodepointBitmapSubpixel(info, output, out_w, out_h, out_stride, scale_x, scale_y, 0.0f,0.0f, codepoint);
-}
-

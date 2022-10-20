@@ -53,7 +53,7 @@ RECENT REVISION HISTORY:
 2.17  (2018-01-29) bugfix, 1-bit BMP, 16-bitness query, fix warnings
 2.16  (2017-07-23) all functions have 16-bit variants; optimizations; bugfixes
 2.15  (2017-03-18) fix png-1,2,4; all Imagenet JPGs; no runtime SSE detection on GCC
-2.14  (2017-03-03) remove deprecated STBI_JPEG_OLD; fixes for Imagenet JPGs
+2.14  (2017-03-03) remove STBI_JPEG_OLD; fixes for Imagenet JPGs
 2.13  (2016-12-04) experimental 16-bit API, only for PNG so far; fixes
 2.12  (2016-04-02) fix typo in 2.11 PSD fix that caused crashes
 2.11  (2016-04-02) 16-bit PNGS; enable SSE2 in non-gcc x64
@@ -601,7 +601,7 @@ else version(enableFailureStringsUser)
 }
 else
 {
-    deprecated int stbi__err(const(char)* msg, const(char)* msgUser)
+    int stbi__err(const(char)* msg, const(char)* msgUser)
     {
         return 0;
     }
