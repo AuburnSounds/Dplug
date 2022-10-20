@@ -145,8 +145,12 @@ nothrow:
 
         int flags = effFlagsCanReplacing | effFlagsCanDoubleReplacing;
 
-        version(futureVST2Chunks)
+        version(legacyVST2Chunks)
+        {}
+        else
+        {
             flags |= effFlagsProgramChunks;
+        }
 
         if ( client.hasGUI() )
             flags |= effFlagsHasEditor;
@@ -239,7 +243,9 @@ nothrow:
 
         _messageQueue.destroy();
 
-        version(futureVST2Chunks)
+        version(legacyVST2Chunks)
+        {}
+        else
         {
             if (_lastStateChunk)
             {
@@ -323,8 +329,13 @@ private:
     float*[] _outputPointers; // where processAudio will output audio, one per possible output
 
     // stores the last asked state chunk
-    version(futureVST2Chunks)
+    version(legacyVST2Chunks)
+    {}
+    else
+    {
+
         ubyte[] _lastStateChunk = null;
+    }
 
     // Inter-locked message queue from opcode thread to audio thread
     LockedQueue!AudioThreadMessage _messageQueue;
@@ -550,7 +561,9 @@ private:
 
             case effGetChunk: // opcode 23
             {
-                version(futureVST2Chunks)
+                version(legacyVST2Chunks)
+                {}
+                else
                 {
                     ubyte** ppData = cast(ubyte**) ptr;
                     bool wantBank = (index == 0);
@@ -568,7 +581,11 @@ private:
 
             case effSetChunk: // opcode 24
             {
-                version(futureVST2Chunks)
+                version(legacyVST2Chunks)
+                {
+                    return 0;
+                }
+                else
                 {
                     if (!ptr)
                         return 0;
@@ -587,10 +604,6 @@ private:
                         e.destroyFree();
                         return 0;
                     }
-                }
-                else
-                {
-                    return 0;
                 }
             }
 

@@ -35,8 +35,8 @@
         "dplug:flat-widgets": { "path": "../.." }
     },
 
-    "comment": "Example of configuration options",
-    "versions": ["futureVST2Chunks"],
+    "comment": "Example of configuration options. It is wise, before releasing a new product, to try to use a maximum of futureOptions",
+    "versions": ["futureMouseDrag"],
 
     "configurations": [
         {
