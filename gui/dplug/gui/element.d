@@ -1102,7 +1102,7 @@ protected:
     /// Higher z-order = above other `UIElement`.
     /// By default, every `UIElement` have the same z-order.
     /// Because the sort is stable, tree traversal order is the default order (depth first).
-    /// The children added last with `addChild` is considered above its siblings if you have futureZOrder.
+    /// The children added last with `addChild` is considered above its siblings if you don't have legacyZOrder.
     int _zOrder = 0;
 
 private:
@@ -1181,15 +1181,15 @@ private:
         _zOrderedChildren.clearContents();
 
         /// See: https://github.com/AuburnSounds/Dplug/issues/652
-        version(futureZOrder)
+        version(legacyZOrder)
         {
-            // Adding children in reverse, since children added last are considered having a higher Z order.
-            foreach_reverse(child; _children[])
+            foreach(child; _children[])
                 _zOrderedChildren.pushBack(child);
         }
         else
         {
-            foreach(child; _children[])
+            // Adding children in reverse, since children added last are considered having a higher Z order.
+            foreach_reverse(child; _children[])
                 _zOrderedChildren.pushBack(child);
         }
 
