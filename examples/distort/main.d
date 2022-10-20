@@ -11,6 +11,7 @@ import dplug.core,
        dplug.dsp;
 
 import gui;
+import ar;
 
 // This define entry points for plugin formats, 
 // depending on which version identifiers are defined.
@@ -226,7 +227,7 @@ nothrow:
     }
 
 private:
-    AttackReleaseSmoother!float _envelope;
+    AttackRelease!float _envelope;
 }
 
 

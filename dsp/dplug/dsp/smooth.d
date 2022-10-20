@@ -1,7 +1,7 @@
 /**
 Various DSP smoothers.
 
-Copyright: Guillaume Piolats 2015.
+Copyright: Guillaume Piolats 2015-2022.
 License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 module dplug.dsp.smooth;
@@ -16,6 +16,7 @@ import dplug.core.vec;
 
 /// Smooth values exponentially with a 1-pole lowpass.
 /// This is usually sufficient for most parameter smoothing.
+deprecated("ExpSmoother will be removed as of Dplug v14") 
 struct ExpSmoother(T) if (is(T == float) || is(T == double))
 {
 public:
@@ -87,13 +88,9 @@ private:
     float _sampleRate;
 }
 
-unittest
-{
-    ExpSmoother!float a;
-    ExpSmoother!double b;
-}
 
 /// Same as ExpSmoother but have different attack and release decay factors.
+deprecated("AttackReleaseSmoother will be removed as of Dplug v14") 
 struct AttackReleaseSmoother(T) if (is(T == float) || is(T == double))
 {
 public:
@@ -165,15 +162,11 @@ private:
     float _sampleRate;
 }
 
-unittest
-{
-    AttackReleaseSmoother!float a;
-    AttackReleaseSmoother!double b;
-}
 
 /// Non-linear smoother using absolute difference.
 /// Designed to have a nice phase response.
 /// Warning: samplerate-dependent.
+deprecated("AbsSmoother will be removed as of Dplug v14") 
 struct AbsSmoother(T) if (is(T == float) || is(T == double))
 {
 public:
@@ -208,15 +201,10 @@ private:
     T _maxAbsDiff;
 }
 
-unittest
-{
-    AbsSmoother!float a;
-    AbsSmoother!double b;
-}
-
 /// Smooth values over time with a linear slope.
 /// This can be useful for some smoothing needs.
 /// Intermediate between fast phase and actual smoothing.
+deprecated("LinearSmoother will be removed as of Dplug v14")
 struct LinearSmoother(T) if (is(T == float) || is(T == double))
 {
 public:
@@ -264,14 +252,9 @@ private:
     bool _firstNextAfterInit;
 }
 
-unittest
-{
-    LinearSmoother!float a;
-    LinearSmoother!double b;
-}
-
 /// Can be very useful when filtering values with outliers.
 /// For what it's meant to do, excellent phase response.
+deprecated("MedianFilter will be removed as of Dplug v14")
 struct MedianFilter(T) if (is(T == float) || is(T == double))
 {
 public:
@@ -337,23 +320,11 @@ private:
     Vec!T _tempbuf;
 }
 
-unittest
-{
-    void test() nothrow @nogc
-    {
-        MedianFilter!float a;
-        MedianFilter!double b;
-        a.initialize(0.0f, 3);
-        b.initialize(0.0f, 5);
-    }
-    test();
-}
-
-
 /// Simple FIR to smooth things cheaply.
 /// Introduces (samples - 1) / 2 latency.
 /// This one doesn't convert to integers internally so it may
 /// loose precision over time. Meants for finite signals.
+deprecated("UnstableMeanFilter will be removed as of Dplug v14")
 struct UnstableMeanFilter(T) if (is(T == float) || is(T == double))
 {
 public:
@@ -407,6 +378,7 @@ private:
 /// Introduces (samples - 1) / 2 latency.
 /// Converts everything to long for stability purpose.
 /// So this may run forever as long as the input is below some threshold.
+deprecated("MeanFilter will be removed as of Dplug v14")
 struct MeanFilter(T) if (is(T == float) || is(T == double))
 {
 public:
@@ -469,14 +441,3 @@ private:
     T _factor;
 }
 
-unittest
-{
-    void test() nothrow @nogc
-    {
-        MeanFilter!float a;
-        MeanFilter!double b;
-        a.initialize(44100.0f, 0.001f, 0.001f, 0.0f);
-        b.initialize(44100.0f, 0.001f, 0.001f, 0.0f);
-    }
-    test();
-}
