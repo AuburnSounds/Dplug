@@ -8,8 +8,8 @@ module dplug.core.complex;
 
 // Helpers to use builtin D language complex numbers vs library types.
 
-public import std.complex;
+import std.complex;
 
-alias BuiltinComplex = Complex;
+deprecated("Use Complex!T from std.complex instead") alias BuiltinComplex = Complex;
 
 

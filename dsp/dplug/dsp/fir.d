@@ -8,21 +8,18 @@ module dplug.dsp.fir;
 
 import core.stdc.complex;
 
-import std.range,
-       std.math;
+import std.math;
+import std.complex;
 
-import dplug.core.math,
-       dplug.core.vec,
-       dplug.core.complex,
-       dplug.dsp.fft,
-       dplug.dsp.delayline,
-       dplug.dsp.window;
+import dplug.core.math;
+import dplug.core.vec;
+import dplug.dsp.delayline;
+import dplug.dsp.window;
 
-// FUTURE:
-// - bandstop/bandstop IR
-// - naive convolution
+// FUTURE: should probably be deprecated and removed, not good enough. 
+// Need a real convolver library.
 
-// sinc impulse functions
+// Basic sinc impulse functions
 
 /// Generates a sinc lowpass impulse, centered on floor(output.length / 2).
 void generateLowpassImpulse(T)(T[] output, double cutoff, double samplerate) nothrow @nogc
@@ -90,71 +87,6 @@ void generateHilbertTransformer(T)(T[] outImpulse, WindowDesc windowDesc, double
     outImpulse[center] = 0;
 }
 
-/// Returns: Length of temporary buffer needed for `minimumPhaseImpulse`.
-int tempBufferSizeForMinPhase(T)(T[] inputImpulse) nothrow @nogc
-{
-    return cast(int)( nextPow2HigherOrEqual(inputImpulse.length * 4)); // PERF: too much?
-}
-
-
-/// From an impulse, computes a minimum-phase impulse
-/// Courtesy of kasaudio, based on Aleksey Vaneev's algorithm
-/// See: http://www.kvraudio.com/forum/viewtopic.php?t=197881
-/// MAYDO: does it preserve amplitude?
-void minimumPhaseImpulse(T)(T[] inoutImpulse, BuiltinComplex!T[] tempStorage) nothrow @nogc // alloc free version
-{
-    assert(tempStorage.length >= tempBufferSizeForMinPhase(inoutImpulse));
-
-    int N = cast(int)(inoutImpulse.length);
-    int fftSize = cast(int)( nextPow2HigherOrEqual(inoutImpulse.length * 4));
-    assert(fftSize >= N);
-    int halfFFTSize = fftSize / 2;
-
-    if (tempStorage.length < fftSize)
-        assert(false); // crash
-
-    auto kernel = tempStorage;
-
-    // Put the real impulse in a larger buffer
-    for (int i = 0; i < N; ++i)
-        kernel[i] = BuiltinComplex!T(inoutImpulse[i], 0);
-    for (int i = N; i < fftSize; ++i)
-        kernel[i] = BuiltinComplex!T(0, 0);
-
-    forwardFFT!T(kernel[]);
-
-    // Take the log-modulus of spectrum
-    for (int i = 0; i < fftSize; ++i)
-        kernel[i] =  BuiltinComplex!T( log(std.complex.abs(kernel[i])), 0);
-
-    // Back to real cepstrum
-    inverseFFT!T(kernel[]);
-
-    // Apply a cepstrum window, not sure how this works
-    kernel[0] = BuiltinComplex!T(kernel[0].re, 0);
-    for (int i = 1; i < halfFFTSize; ++i)
-        kernel[i] = BuiltinComplex!T(kernel[i].re * 2, 0);
-    kernel[halfFFTSize] = BuiltinComplex!T(kernel[halfFFTSize].re, 0);
-    for (int i = halfFFTSize + 1; i < fftSize; ++i)
-        kernel[i] = BuiltinComplex!T(0, 0);
-
-    forwardFFT!T(kernel[]);
-
-    for (int i = 0; i < fftSize; ++i)
-        kernel[i] = complexExp!T(kernel[i]);
-
-    inverseFFT!T(kernel[]);
-
-    for (int i = 0; i < N; ++i)
-        inoutImpulse[i] = kernel[i].re;
-}
-
-private BuiltinComplex!T complexExp(T)(BuiltinComplex!T z) nothrow @nogc
-{
-    T mag = exp(z.re);
-    return BuiltinComplex!T( (mag * cos(z.im)) , (mag * sin(z.im)) );
-}
-
 private static void checkFilterParams(size_t length, double cutoff, double sampleRate) nothrow @nogc
 {
     assert((length & 1) == 0, "FIR impulse length must be even");
@@ -165,13 +97,13 @@ unittest
 {
     double[256] lp_impulse;
     double[256] hp_impulse;
-
     generateLowpassImpulse(lp_impulse[], 40.0, 44100.0);
     generateHighpassImpulse(hp_impulse[], 40.0, 44100.0);
+}
 
-    BuiltinComplex!double[] tempStorage = new BuiltinComplex!double[tempBufferSizeForMinPhase(lp_impulse[])];
-    minimumPhaseImpulse!double(lp_impulse[], tempStorage);
-
+unittest
+{
+    double[256] lp_impulse;
     generateHilbertTransformer(lp_impulse[0..$-1],
         WindowDesc(WindowType.blackmannHarris,
                    WindowAlignment.right), 44100.0);
@@ -224,13 +156,6 @@ struct FIR(T)
         return _impulse;
     }
 
-    void makeMinimumPhase() nothrow @nogc
-    {
-        int sizeOfTemp = tempBufferSizeForMinPhase(_impulse);
-        _tempBuffer.reallocBuffer(sizeOfTemp);
-        minimumPhaseImpulse!T(_impulse, _tempBuffer);
-    }
-
     void applyWindow(WindowDesc windowDesc) nothrow @nogc
     {
         _windowBuffer.reallocBuffer(_impulse.length);
@@ -245,7 +170,7 @@ private:
     T[] _impulse;
 
     Delayline!T _delayline;
-    BuiltinComplex!T[] _tempBuffer;
+    Complex!T[] _tempBuffer;
     T[] _windowBuffer;
 }
 
@@ -254,6 +179,5 @@ unittest
     FIR!double fir;
     fir.initialize(32);
     generateLowpassImpulse(fir.impulse(), 40.0, 44100.0);
-    fir.makeMinimumPhase();
     fir.applyWindow(WindowDesc(WindowType.hann, WindowAlignment.right));
 }

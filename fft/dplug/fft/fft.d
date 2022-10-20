@@ -4,15 +4,15 @@ High-level interfaces for providing FFT analysis, real FFT, and resynthesis from
 Copyright: Guillaume Piolat 2015.
 License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
-module dplug.dsp.fft;
+module dplug.fft.fft;
 
 import core.stdc.string;
 
 import std.math;
+import std.complex;
 
 import dplug.dsp.window;
 import dplug.core.math;
-import dplug.core.complex;
 import dplug.core.vec;
 import dplug.fft;
 
@@ -25,26 +25,26 @@ enum FFTDirection
 
 /// Perform in-place FFT.
 /// Equivalent to `std.numeric.fft`, but this one is nothrow @nogc.
-void forwardFFT(T)(BuiltinComplex!T[] buffer) nothrow @nogc
+public void forwardFFT(T)(Complex!T[] buffer) nothrow @nogc
 {
     FFT_internal!(T, FFTDirection.FORWARD)(buffer);
 }
 
 /// Perform in-place inverse FFT.
 /// Equivalent to `std.numeric.inverseFft`, but this one is nothrow @nogc.
-void inverseFFT(T)(BuiltinComplex!T[] buffer) nothrow @nogc
+public void inverseFFT(T)(Complex!T[] buffer) nothrow @nogc
 {
     FFT_internal!(T, FFTDirection.REVERSE)(buffer);
 }
 
 // PERF: use pfft instead would be much faster
-private void FFT_internal(T, FFTDirection direction)(BuiltinComplex!T[] buffer) pure nothrow @nogc
+private void FFT_internal(T, FFTDirection direction)(Complex!T[] buffer) pure nothrow @nogc
 {
     int size = cast(int)(buffer.length);
     assert(isPowerOfTwo(size));
     int m = iFloorLog2(size);
 
-    BuiltinComplex!T* pbuffer = buffer.ptr;
+    Complex!T* pbuffer = buffer.ptr;
 
     // do the bit reversal
     int i2 = cast(int)size / 2;
@@ -68,20 +68,20 @@ private void FFT_internal(T, FFTDirection direction)(BuiltinComplex!T[] buffer) 
     }
 
     // compute the FFT
-    BuiltinComplex!T c = BuiltinComplex!T(-1, 0);
+    Complex!T c = Complex!T(-1, 0);
     int l2 = 1;
     for (int l = 0; l < m; ++l)
     {
         int l1 = l2;
         l2 = l2 * 2;
-        BuiltinComplex!T u = BuiltinComplex!T(1, 0);
+        Complex!T u = Complex!T(1, 0);
         for (int j2 = 0; j2 < l1; ++j2)
         {
             int i = j2;
             while (i < size)
             {
                 int i1 = i + l1;
-                BuiltinComplex!T t1 = u * pbuffer[i1];
+                Complex!T t1 = u * pbuffer[i1];
                 pbuffer[i1] = pbuffer[i] - t1;
                 pbuffer[i] += t1;
                 i += l2;
@@ -93,7 +93,7 @@ private void FFT_internal(T, FFTDirection direction)(BuiltinComplex!T[] buffer) 
         static if (direction == FFTDirection.FORWARD)
             newImag = -newImag;
         T newReal = sqrt((1 + c.re) / 2);
-        c = BuiltinComplex!T(newReal, 1.0f * newImag);
+        c = Complex!T(newReal, 1.0f * newImag);
     }
 
     // scaling when doing the reverse transformation, to avoid being multiplied by size
@@ -114,7 +114,7 @@ unittest
     import std.complex;
     import std.numeric: fft;
 
-    bool approxEqualArrBuiltin(BuiltinComplex!double[] a, BuiltinComplex!double[] b) pure
+    bool approxEqualArrBuiltin(Complex!double[] a, Complex!double[] b) pure
     {
         foreach(i; 0..a.length)
         {
@@ -126,7 +126,7 @@ unittest
         return true;
     }
 
-    bool approxEqualArr(BuiltinComplex!double[] a, Complex!double[] b) pure
+    bool approxEqualArr(Complex!double[] a, Complex!double[] b) pure
     {
         foreach(i; 0..a.length)
         {
@@ -442,7 +442,7 @@ public:
         }
     }
 
-    bool feed(T x, BuiltinComplex!T[] fftData) nothrow @nogc
+    bool feed(T x, Complex!T[] fftData) nothrow @nogc
     {
         void processSegment(T[] segment) nothrow @nogc
         {
@@ -674,7 +674,7 @@ nothrow:
 
     @disable this(this);
 
-    void forwardTransform(const(T)[] timeData, BuiltinComplex!T[] outputBins)
+    void forwardTransform(const(T)[] timeData, Complex!T[] outputBins)
     {
         _buffer[] = timeData[];
 
@@ -688,10 +688,10 @@ nothrow:
         //    f[length(x)/2+1...length(x)-1] = imaginary values of coefficents 1...length(x)/2-1.
         // So we have to reshuffle them to have nice complex bins.
         int mid = _length/2;
-        outputBins[0] = BuiltinComplex!T(_buffer[0], 0);
+        outputBins[0] = Complex!T(_buffer[0], 0);
         for(int i = 1; i < mid; ++i)
-            outputBins[i] = BuiltinComplex!T(_buffer[i], _buffer[mid+i]);
-        outputBins[mid] = BuiltinComplex!T(_buffer[mid], 0); // for length 1, this still works
+            outputBins[i] = Complex!T(_buffer[i], _buffer[mid+i]);
+        outputBins[mid] = Complex!T(_buffer[mid], 0); // for length 1, this still works
     }
 
     /**
@@ -705,7 +705,7 @@ nothrow:
     *    This transform has the benefit you don't have to conjugate the "mirrored" part of the FFT.
     *    Excess data in imaginary part of DC and Nyquist bins are ignored.
     */
-    void reverseTransform(BuiltinComplex!T[] inputBins, T[] timeData)
+    void reverseTransform(Complex!T[] inputBins, T[] timeData)
     {
         // On inverse transform, scale down result
         T invMultiplier = cast(T)1 / _length;
@@ -750,4 +750,79 @@ unittest
         rfft.initialize(128);
         rfft.initialize(2048);
     }
+}
+
+/// From an impulse, computes a minimum-phase impulse
+/// Courtesy of kasaudio, based on Aleksey Vaneev's algorithm
+/// See: http://www.kvraudio.com/forum/viewtopic.php?t=197881
+/// MAYDO: does it preserve amplitude?
+///
+/// Params:
+///    tempoStorate Should be at least `tempBufferSizeForMinPhase` items.
+void minimumPhaseImpulse(T)(T[] inoutImpulse, Complex!T[] tempStorage) nothrow @nogc // alloc free version
+{
+    assert(tempStorage.length >= tempBufferSizeForMinPhase(inoutImpulse));
+
+    int N = cast(int)(inoutImpulse.length);
+    int fftSize = cast(int)( nextPow2HigherOrEqual(inoutImpulse.length * 4));
+    assert(fftSize >= N);
+    int halfFFTSize = fftSize / 2;
+
+    if (tempStorage.length < fftSize)
+        assert(false); // crash
+
+    auto kernel = tempStorage;
+
+    // Put the real impulse in a larger buffer
+    for (int i = 0; i < N; ++i)
+        kernel[i] = Complex!T(inoutImpulse[i], 0);
+    for (int i = N; i < fftSize; ++i)
+        kernel[i] = Complex!T(0, 0);
+
+    forwardFFT!T(kernel[]);
+
+    // Take the log-modulus of spectrum
+    for (int i = 0; i < fftSize; ++i)
+        kernel[i] =  Complex!T( log(std.complex.abs(kernel[i])), 0);
+
+    // Back to real cepstrum
+    inverseFFT!T(kernel[]);
+
+    // Apply a cepstrum window, not sure how this works
+    kernel[0] = Complex!T(kernel[0].re, 0);
+    for (int i = 1; i < halfFFTSize; ++i)
+        kernel[i] = Complex!T(kernel[i].re * 2, 0);
+    kernel[halfFFTSize] = Complex!T(kernel[halfFFTSize].re, 0);
+    for (int i = halfFFTSize + 1; i < fftSize; ++i)
+        kernel[i] = Complex!T(0, 0);
+
+    forwardFFT!T(kernel[]);
+
+    for (int i = 0; i < fftSize; ++i)
+        kernel[i] = complexExp!T(kernel[i]);
+
+    inverseFFT!T(kernel[]);
+
+    for (int i = 0; i < N; ++i)
+        inoutImpulse[i] = kernel[i].re;
+}
+unittest
+{
+    double[256] impulse;
+    foreach(size_t i, ref double d; impulse)
+        d = i;
+    Complex!double[] tempStorage = new Complex!double[tempBufferSizeForMinPhase(impulse[])];
+    minimumPhaseImpulse!double(impulse[], tempStorage);
+}
+
+/// Returns: Length of temporary buffer needed for `minimumPhaseImpulse`.
+int tempBufferSizeForMinPhase(T)(T[] inputImpulse) nothrow @nogc
+{
+    return cast(int)( nextPow2HigherOrEqual(inputImpulse.length * 4)); // PERF: too much?
+}
+
+private Complex!T complexExp(T)(Complex!T z) nothrow @nogc
+{
+    T mag = exp(z.re);
+    return Complex!T( (mag * cos(z.im)) , (mag * sin(z.im)) );
 }

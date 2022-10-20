@@ -113,7 +113,6 @@
             "importPaths": [ "dsp" ],
             "dependencies": {
                 "dplug:core": "*",
-                "dplug:fft": "*",
                 "intel-intrinsics": "~>1.0"
             },
 
@@ -136,6 +135,7 @@
             "importPaths": [ "fft" ],
             "dependencies": {
                 "dplug:core": "*",
+                "dplug:dsp": "*",
                 "intel-intrinsics": "~>1.0"
             },
             "buildTypes": 

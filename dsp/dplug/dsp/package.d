@@ -12,6 +12,5 @@ public
            dplug.dsp.iir,
            dplug.dsp.window,
            dplug.dsp.smooth,
-           dplug.dsp.fft,
            dplug.dsp.delayline;
 }
