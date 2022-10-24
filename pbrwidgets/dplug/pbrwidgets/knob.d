@@ -378,8 +378,14 @@ nothrow:
         setDirtyWhole();
     }
 
+    override void onMouseEnter()
+    {
+        _param.beginParamHover();
+    }
+
     override void onMouseExit()
     {
+        _param.endParamHover();
         _shouldBeHighlighted = false;
         setDirtyWhole();
     }
@@ -394,6 +400,14 @@ nothrow:
     }
 
     override void onEndParameterEdit(Parameter sender)
+    {
+    }
+
+    override void onBeginParameterHover(Parameter sender)
+    {
+    }
+
+    override void onEndParameterHover(Parameter sender)
     {
     }
 

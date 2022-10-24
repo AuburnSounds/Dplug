@@ -57,6 +57,27 @@ nothrow:
 
     /// Called when a parameter value _stops_ being changed.
     void onEndParameterEdit(Parameter sender);
+
+    /// Called when a widget that can changes this parameter is mouseover, and wants to signal
+    /// that to the listeners.
+    ///
+    /// `onBeginParameterHover`/`onEndParameterHover` is called by widgets from an UI thread 
+    /// (typically on `onMouseEnter`/`onMouseLeave`) when the mouse has entered a widget that 
+    /// could change its parameter.
+    ///
+    /// It is useful be display the parameter value or related tooltips elsewhere in the UI,
+    /// in another widget.
+    ///
+    /// To dispatch such messages to listeners, see `Parameter.
+    ///
+    /// Not all widgets will want to signal this though, for example a widget that handles plenty
+    /// of Parameters will not want to signal them all the time.
+    ///
+    /// If `onBeginParameterHover` was ever called, then the same widget should also call 
+    /// `onEndParameterHover` when sensible.
+    void onBeginParameterHover(Parameter sender);
+    ///ditto
+    void onEndParameterHover(Parameter sender);
 }
 
 
@@ -67,9 +88,10 @@ nothrow:
 /// could need locking an already taken mutex.
 ///
 /// Listener patter:
-///     Every `Parameter` maintain a list of `
+///     Every `Parameter` maintain a list of `IParameterListener`.
 ///     This is typically used by UI elements to update with parameters changes from all 
 ///     kinds of sources (UI itself, host automation...).
+///     But they are not necessarily UI elements.
 ///
 class Parameter
 {
@@ -160,6 +182,35 @@ nothrow:
         debug _editCount -= 1;
     }
 
+    /// Warns the listeners that a parameter is being hovered in the UI.
+    /// Should only ever be called from the UI thread.
+    ///
+    /// This doesn't communicate anything to the host.
+    ///
+    /// Note: Widgets are not forced to signal this if they do not want other
+    /// widgets to display a parameter value.
+    void beginParamHover()
+    {
+        debug _hoverCount += 1;
+        foreach(listener; _listeners)
+            listener.onBeginParameterHover(this);
+    }
+
+    /// Warns the listeners that a parameter has finished being hovered in the UI.
+    /// Should only ever be called from the UI thread.
+    /// This doesn't communicate anything to the host.
+    ///
+    /// Note: Widgets are not forced to signal this if they do not want other
+    /// widgets to display a parameter value. 
+    /// 
+    /// Warning: calls to `beginParamHover`/`endParamHover` must be balanced.
+    void endParamHover()
+    {
+        foreach(listener; _listeners)
+            listener.onEndParameterHover(this);
+        debug _hoverCount -= 1;
+    }
+
     /// Returns: A normalized double, representing the parameter value.
     abstract double getNormalized();
 
@@ -179,6 +230,7 @@ nothrow:
     {
         _valueMutex.destroy();
         debug assert(_editCount == 0);
+        debug assert(_hoverCount == 0);
     }
 
 protected:
@@ -243,6 +295,10 @@ private:
     // Current number of calls into `beginParamEdit()`/`endParamEdit()` pair.
     // Only checked in debug mode.
     debug int _editCount = 0;
+
+    // Current number of calls into `beginParamHover()`/`endParamHover()` pair.
+    // Only checked in debug mode.
+    debug int _hoverCount = 0;
 
     UncheckedMutex _valueMutex;
 }

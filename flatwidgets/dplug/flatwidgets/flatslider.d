@@ -239,10 +239,12 @@ nothrow:
 
     override void onMouseEnter()
     {
+        _param.beginParamHover();
     }
 
     override void onMouseExit()
     {
+        _param.endParamHover();
     }
 
     override void onParameterChanged(Parameter sender)
@@ -255,6 +257,14 @@ nothrow:
     }
 
     override void onEndParameterEdit(Parameter sender)
+    {
+    }
+
+    override void onBeginParameterHover(Parameter sender)
+    {
+    }
+
+    override void onEndParameterHover(Parameter sender)
     {
     }
 

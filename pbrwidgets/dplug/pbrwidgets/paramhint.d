@@ -215,6 +215,15 @@ nothrow:
         atomicStore(_parameterIsEdited, false);
     }
 
+    override void onBeginParameterHover(Parameter sender)
+    {
+        // MAYDO: also show the parameter if hovered (and not dragged)
+    }
+
+    override void onEndParameterHover(Parameter sender)
+    {
+    }
+
 private:
     Parameter _param;
 

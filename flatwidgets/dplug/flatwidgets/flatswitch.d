@@ -116,6 +116,7 @@ nothrow:
 
     override void onMouseEnter()
     {
+        _param.beginParamHover();
         setDirtyWhole();
     }
 
@@ -125,6 +126,7 @@ nothrow:
 
     override void onMouseExit()
     {
+        _param.endParamHover();
         setDirtyWhole();
     }
 
@@ -150,6 +152,14 @@ nothrow:
     }
 
     override void onEndParameterEdit(Parameter sender)
+    {
+    }
+
+    override void onBeginParameterHover(Parameter sender)
+    {
+    }
+
+    override void onEndParameterHover(Parameter sender)
     {
     }
 

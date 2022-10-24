@@ -219,11 +219,16 @@ nothrow:
 
     override void onMouseMove(int x, int y, int dx, int dy, MouseState mstate)
     {
+    }
 
+    override void onMouseEnter()
+    {
+        _param.beginParamHover();
     }
 
     override void onMouseExit()
     {
+        _param.endParamHover();
     }
 
     override void onParameterChanged(Parameter sender) nothrow @nogc
@@ -236,6 +241,14 @@ nothrow:
     }
 
     override void onEndParameterEdit(Parameter sender)
+    {
+    }
+
+    override void onBeginParameterHover(Parameter sender)
+    {
+    }
+
+    override void onEndParameterHover(Parameter sender)
     {
     }
 
