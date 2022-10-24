@@ -984,3 +984,15 @@ __m128 convertVec4fToFloat4(vec4f vec) nothrow @nogc pure
 }
 
 private enum float div255 = 1 / 255.0f;
+
+
+// Removed Options:
+version(legacyBlinnPhong)
+{
+    static assert("legacyBlinnPhong was removed in Dplug v13");
+}
+
+version(legacyPBRNormals)
+{
+    static assert("legacyPBRNormals was removed in Dplug v12");
+}

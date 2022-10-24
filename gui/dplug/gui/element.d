@@ -1144,3 +1144,8 @@ private:
         }
     }
 }
+
+version(legacyMouseOver)
+{
+    static assert(false, "legacyMouseOver was removed in Dplug v13. Please see Release Notes.");
+}
