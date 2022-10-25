@@ -1201,7 +1201,7 @@ int main(string[] args)
                 string primaryBundle = plugin.getNotarizationBundleIdentifier(configurations[0]);
 
                 cwritefln("*** Notarizing final Mac installer %s...".white, primaryBundle);
-                notarizeMacInstaller(outputDir, plugin, finalPkgPath, primaryBundle);
+                notarizeMacInstaller(outputDir, plugin, finalPkgPath, primaryBundle, verbose);
                 cwriteln("    =&gt; Notarization OK".lgreen);
                 cwriteln;
             }
@@ -1695,19 +1695,24 @@ void generateMacInstaller(string outputDir,
     safeCommand(cmd);
 }
 
-void notarizeMacInstaller(string outputDir, Plugin plugin, string outPkgPath, string primaryBundleId)
+void notarizeMacInstaller(string outputDir, Plugin plugin, string outPkgPath, string primaryBundleId, bool verbose)
 {
+    string verboseFlag = verbose ? "--verbose " : "";
+
     string uploadXMLPath = outputDir ~ "/temp/notarization-upload.xml";
     string pollXMLPath = outputDir ~ "/temp/notarization-poll.xml";
     if (plugin.vendorAppleID is null)
         throw new Exception(`Missing "vendorAppleID" in plugin.json. Notarization need this key.`);
     if (plugin.appSpecificPassword_altool is null)
-            throw new Exception(`Missing "appSpecificPassword-altool" in plugin.json. Notarization need this key.`);
+        throw new Exception(`Missing "appSpecificPassword-altool" in plugin.json. Notarization need this key.`);
     if (plugin.appSpecificPassword_stapler is null)
-            throw new Exception(`Missing "appSpecificPassword-stapler" in plugin.json. Notarization need this key.`);
+        throw new Exception(`Missing "appSpecificPassword-stapler" in plugin.json. Notarization need this key.`);
+    if (plugin.appSpecificPassword_altool == plugin.appSpecificPassword_stapler)
+        warning(`"appSpecificPassword-altool" and "appSpecificPassword-stapler" are the same. Apple may revoke your passwords at one point.`);
 
     {
-        string cmd = format(`xcrun altool --notarize-app -t osx -f %s -u %s -p %s --primary-bundle-id %s --output-format xml > %s`,
+        string cmd = format(`xcrun altool %s--notarize-app -t osx -f %s -u %s -p %s --primary-bundle-id %s --output-format xml > %s`,
+                            verboseFlag,
                             escapeShellArgument(outPkgPath),
                             plugin.vendorAppleID,
                             plugin.appSpecificPassword_altool,
@@ -1774,7 +1779,8 @@ void notarizeMacInstaller(string outputDir, Plugin plugin, string outPkgPath, st
             break;
         }
 
-        string cmd = format(`xcrun altool --notarization-info %s --username %s --password %s --output-format xml > %s`,
+        string cmd = format(`xcrun altool %s--notarization-info %s --username %s --password %s --output-format xml > %s`,
+                        verboseFlag,
                         escapeShellArgument(requestUUID),
                         plugin.vendorAppleID,
                         plugin.appSpecificPassword_altool,
@@ -1853,7 +1859,8 @@ void notarizeMacInstaller(string outputDir, Plugin plugin, string outPkgPath, st
     cwriteln();
 
     {
-        string cmd = format(`xcrun altool --notarize-app -t osx -f %s -u %s -p %s --primary-bundle-id %s --output-format xml > %s`,
+        string cmd = format(`xcrun altool %s--notarize-app -t osx -f %s -u %s -p %s --primary-bundle-id %s --output-format xml > %s`,
+                            verboseFlag,
                             escapeShellArgument(outPkgPath),
                             plugin.vendorAppleID,
                             plugin.appSpecificPassword_altool,
