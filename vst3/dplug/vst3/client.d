@@ -492,10 +492,10 @@ nothrow:
 
         int totalFrames = data.numSamples;
         int bufferSplitMaxFrames = _client.getBufferSplitMaxFrames();
-        assert(bufferSplitMaxFrames > 0);
+        assert(bufferSplitMaxFrames > 0); // TODO: does this even work when no buffer splitting?
 
         // How many split buffers do we need this buffer?
-        int numSubBuffers = totalFrames + (bufferSplitMaxFrames - 1) / bufferSplitMaxFrames;
+        int numSubBuffers = (totalFrames + (bufferSplitMaxFrames - 1)) / bufferSplitMaxFrames;
 
         updateTimeInfo(data.processContext);
 
