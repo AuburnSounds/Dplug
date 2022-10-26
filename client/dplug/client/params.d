@@ -147,6 +147,9 @@ nothrow:
     /// From a normalized double [0..1], set the parameter value.
     void setFromHost(double hostValue)
     {
+        if (isEdited())
+            return; // If edited by a widget, REFUSE host changes, since they could be 
+                    // "in the past" and we know we want newer values anyway.
         setNormalized(hostValue);
         notifyListeners();
     }
@@ -166,7 +169,7 @@ nothrow:
     /// Should only ever be called from the UI thread.
     void beginParamEdit()
     {
-        debug _editCount += 1;
+        atomicOp!"+="(_editCount, 1);
         _client.hostCommand().beginParamEdit(_index);
         foreach(listener; _listeners)
             listener.onBeginParameterEdit(this);
@@ -179,7 +182,7 @@ nothrow:
         _client.hostCommand().endParamEdit(_index);
         foreach(listener; _listeners)
             listener.onEndParameterEdit(this);
-        debug _editCount -= 1;
+        atomicOp!"-="(_editCount, 1);
     }
 
     /// Warns the listeners that a parameter is being hovered in the UI.
@@ -229,7 +232,7 @@ nothrow:
     ~this()
     {
         _valueMutex.destroy();
-        debug assert(_editCount == 0);
+        debug assert(atomicLoad(_editCount) == 0);
         debug assert(_hoverCount == 0);
     }
 
@@ -253,13 +256,13 @@ protected:
     /// Display parameter (without label). This always adds a terminal zero within `numBytes`.
     abstract void toStringN(char* buffer, size_t numBytes);
 
-    void notifyListeners()
+    final void notifyListeners()
     {
         foreach(listener; _listeners)
             listener.onParameterChanged(this);
     }
 
-    void checkBeingEdited()
+    final void checkBeingEdited()
     {
         // If you fail here, you have changed the value of a Parameter from the UI
         // without enclosing within a pair of `beginParamEdit()`/`endParamEdit()`.
@@ -267,7 +270,12 @@ protected:
         //
         // When setting a Parameter from an UI widget, it's important to call `beginParamEdit()`
         // and `endParamEdit()` too.
-        debug assert(_editCount > 0);
+        debug assert(isEdited());
+    }
+
+    final bool isEdited()
+    {
+        return atomicLoad(_editCount) > 0;
     }
 
 package:
@@ -294,7 +302,7 @@ private:
 
     // Current number of calls into `beginParamEdit()`/`endParamEdit()` pair.
     // Only checked in debug mode.
-    debug int _editCount = 0;
+    shared(int) _editCount = 0; // if > 0, the UI is editing this parameter
 
     // Current number of calls into `beginParamHover()`/`endParamHover()` pair.
     // Only checked in debug mode.
