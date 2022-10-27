@@ -208,6 +208,7 @@ nothrow:
         }
 
         // Create output buses
+        // FUTURE: the current AU client largely support only one input bus and one output bus.
 
         int numOutputBuses = (_maxOutputs + 1) / 2;
         _outBuses = mallocSlice!BusChannels(numOutputBuses);
@@ -2144,6 +2145,13 @@ private:
                 }
 
                 _outputPointers[chIdx] = pData;
+            }
+
+            // Second the _outputPointers array is cleared for above > mNumberBuffersthis, to avoid errors when going from 2-2 to 1-1
+            for (int i = pOutBufList.mNumberBuffers; i < pOutBus.numPlugChannels; ++i)
+            {
+                int chIdx = pOutBus.plugChannelStartIdx + i;
+                _outputPointers[chIdx] = null;
             }
         }
 
