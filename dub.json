@@ -48,7 +48,7 @@
                 "dplug:client": "*"
             },
 
-            "dependencies-osx": {
+            "dependencies": {
                 "dplug:macos": "*"
             }
         },
@@ -282,11 +282,11 @@
                 "dplug:core": "*"
             },
 
-            "dependencies-osx": {
+            "dependencies": {
                 "dplug:macos": "*"
             },
 
-            "dependencies-linux": {
+            "dependencies": {
                 "dplug:x11": "*"
             }
         },
