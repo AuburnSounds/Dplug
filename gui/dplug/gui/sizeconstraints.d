@@ -35,7 +35,7 @@ SizeConstraints makeSizeConstraintsFixed(int width, int height)
 /// Warning: no more than 8 possible scales are possible.
 SizeConstraints makeSizeConstraintsDiscrete(int defaultWidth, 
                                             int defaultHeight, 
-                                            const(float)[] availableScales)
+                                            scope const(float)[] availableScales)
 {
     SizeConstraints sc;
     sc.type = SizeConstraints.Type.discreteRatio;
