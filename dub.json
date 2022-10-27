@@ -45,10 +45,7 @@
             "sourcePaths": [ "au/dplug/au" ],
             "importPaths": [ "au" ],
             "dependencies": {
-                "dplug:client": "*"
-            },
-
-            "dependencies": {
+                "dplug:client": "*",
                 "dplug:macos": "*"
             }
         },
@@ -279,14 +276,8 @@
             "dependencies": {
                 "dplug:math": "*",
                 "dplug:graphics": "*",
-                "dplug:core": "*"
-            },
-
-            "dependencies": {
-                "dplug:macos": "*"
-            },
-
-            "dependencies": {
+                "dplug:core": "*",
+                "dplug:macos": "*",
                 "dplug:x11": "*"
             }
         },
