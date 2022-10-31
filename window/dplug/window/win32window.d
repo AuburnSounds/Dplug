@@ -930,7 +930,7 @@ version(Windows)
 
     HCURSOR mouseCursorToCursorId(MouseCursor cursor)
     {
-        final switch(cursor)
+        switch(cursor)
         {
             case cursor.linkSelect:
                 return IDC_HAND;
