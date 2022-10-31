@@ -75,13 +75,30 @@ struct MouseState
 
 enum MouseCursor
 {
-    pointer, //default cursor
+    /// Default cursor
+    pointer, 
+
+    /// Indicates that the underlying item can be clicked like an hyperlink, and will "jump".
     linkSelect,
+
+    /// Indicates that the underlying item can be clicked and then dragged, in no particular directions.
+    /// When an open-hand is available, this is an open-hand cursor.
     move,
+
+    /// Indicates that clicked item can be moved in ether vertical or hozizontal directions.
+    /// When an closed-hand is available, this is a closed-hand cursor.    
     drag,
+
+    /// Indicated vertical resize abilities.
     verticalResize,
+
+    /// Indicated horizontal resize abilities.
     horizontalResize,
+
+    /// Indicated diagonalResize resize abilities.
     diagonalResize,
+
+    /// Cursor is hidden
     hidden
 }
 

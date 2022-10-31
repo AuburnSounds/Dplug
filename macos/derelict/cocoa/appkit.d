@@ -797,6 +797,12 @@ nothrow @nogc:
         return NSCursor( (cast(fun_t)objc_msgSend)(getClassID(), sel!"openHandCursor") );
     }
 
+    static NSCursor closedHandCursor()
+    {
+        alias fun_t = extern(C) id function (id, SEL) nothrow @nogc;
+        return NSCursor( (cast(fun_t)objc_msgSend)(getClassID(), sel!"closedHandCursor") );
+    }
+
     static NSCursor resizeLeftRightCursor()
     {
         alias fun_t = extern(C) id function (id, SEL) nothrow @nogc;

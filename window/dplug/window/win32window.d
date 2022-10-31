@@ -930,21 +930,28 @@ version(Windows)
 
     HCURSOR mouseCursorToCursorId(MouseCursor cursor)
     {
-        switch(cursor)
+        final switch(cursor)
         {
-
             case cursor.linkSelect:
+                return IDC_HAND;
+
             case cursor.drag:
                 return IDC_CROSS;
+
             case cursor.move:
                 return IDC_HAND;
+
             case cursor.horizontalResize:
                 return IDC_SIZEWE;
+
             case cursor.verticalResize:
                 return IDC_SIZENS;
+
             case cursor.diagonalResize:
                 return IDC_SIZENWSE;
+
             case cursor.pointer:
+            
             default:
                 return IDC_ARROW;
         }
