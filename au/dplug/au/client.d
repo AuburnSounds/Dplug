@@ -48,7 +48,7 @@ import dplug.au.cocoaviewfactory;
 import dplug.au.audiocomponentdispatch;
 
 
-//version = logDispatcher;
+//debug = logDispatcher;
 
 // Difference with IPlug
 // - no support for parameters group
@@ -484,7 +484,7 @@ private:
             return noErr;
         }
 
-        version(logDispatcher) if (select != 14) printf("select %d\n", select);
+        debug(logDispatcher) if (select != 14) debugLogf("select %d\n", select);
 
         switch(select)
         {
@@ -1007,12 +1007,12 @@ private:
     ComponentResult getProperty(AudioUnitPropertyID propID, AudioUnitScope scope_, AudioUnitElement element,
                                 UInt32* pDataSize, Boolean* pWriteable, void* pData) nothrow
     {
-        version(logDispatcher)
+        debug(logDispatcher)
         {
             if (pData)
-                printf("GET property %d\n", propID);
+                debugLogf("GET property %d\n", propID);
             else
-                printf("GETINFO property %d\n", propID);
+                debugLogf("GETINFO property %d\n", propID);
         }
 
         switch(propID)
@@ -1623,7 +1623,7 @@ private:
             if (listener.mPropID == propID)
                 listener.mListenerProc(listener.mProcArgs, instanceHandle(), propID, scope_, 0); // always zero?
 
-        version(logDispatcher) printf("SET property %d\n", propID);
+        debug(logDispatcher) debugLogf("SET property %d\n", propID);
 
         switch(propID)
         {
