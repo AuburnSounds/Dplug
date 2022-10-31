@@ -528,7 +528,7 @@ private:
 
                     case kAudioUnitProperty_MIDIOutputCallback:
                     case kAudioUnitProperty_MIDIOutputCallbackInfo:
-                        return _client.sendsMIDI() ? 1 : 0;
+                        return _client.sendsMIDI() ? 1 : 0; // ??? is this truly needed? strange
 
                     case kMusicDeviceMIDIEventSelect:
                     case kMusicDeviceSysExSelect:
