@@ -1855,8 +1855,18 @@ private:
             int nIn = _active ? numHostChannelsConnected(_inBuses) : -1;
             int nOut = numHostChannelsConnected(_outBuses, busIdx);
             if (nOut < 0) nOut = 0;
-            ComponentResult res = _client.isLegalIO(nIn, nOut + nChannels) ? noErr : kAudioUnitErr_InvalidScope;
-            return res;
+
+            // Fix for Issue #727 https://github.com/AuburnSounds/Dplug/issues/727
+            // 1 channel means "flexible" apparently, auvaltool with -oop will demand 1-2 in a transient manner while testing
+            // 
+            // FUTURE: the AUv2 client is a real mess, this should be rewrittent with proper bus management in client one day.
+            bool legal = _client.isLegalIO(nIn, nOut  + nChannels);
+            if (!legal && nIn == 1)
+            {
+                // Another chance to deem it legal.
+                legal = _client.isLegalIO(nOut + nChannels, nOut + nChannels);
+            }
+            return legal ? noErr : kAudioUnitErr_InvalidScope;
         }
         else
             return kAudioUnitErr_InvalidScope;
