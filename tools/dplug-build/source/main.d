@@ -445,13 +445,6 @@ int main(string[] args)
 
             foreach (size_t archCount, arch; architectures)
             {
-                // Only build AAX if it's for x86_64
-                if (configIsAAX(config) && (arch != Arch.x86_64))
-                {
-                    cwritefln("info: Skipping architecture %s for AAX\n".white, arch);
-                    continue;
-                }
-
                 // Does not try to build 32-bit under Mac
                 if (targetOS == OS.macOS)
                 {
@@ -482,11 +475,12 @@ int main(string[] args)
                 // isTemp is true for plugin build that are only there to jumpstart
                 // the creation of universal binaries.
                 // As such their content shouln't be mistaken for something that would be redistributed
+                // Also, in some cases the temporary builds don't need signatures.
 
                 bool isTemp = false;
                 if (targetOS == OS.macOS)
                 {
-                    if (!configIsAAX(config) && oneOfTheArchIsUB)
+                    if (oneOfTheArchIsUB)
                     {
                         // In short: this build is deemed "temporary" if it's only a step toward building a
                         // multi-arch Universal Binary on macOS 11.
@@ -520,6 +514,7 @@ int main(string[] args)
                         string verboseFlag = verbose ? "--verbose " : "";
 
                         string identFlag;
+                        string dsigFlag = "";
                         if (targetOS == OS.windows)
                         {
                             string identity;
@@ -541,6 +536,7 @@ int main(string[] args)
                         }
                         else if (targetOS == OS.macOS)
                         {
+                            dsigFlag = "--dsig1-compat false ";
                             identFlag = format("--signid %s ", escapeShellArgument(plugin.getDeveloperIdentityMac()));
                         }
                         else
@@ -548,12 +544,13 @@ int main(string[] args)
 
                         // Note: --allowsigningservice doesn't make any difference (2022) since for just signing cloud doesn't seem to make it... 
                         // Presumably the idea was to favour PACE customers that uses full wrapping.
-                        string cmd = format(`wraptool sign %s--account %s --password %s %s--wcguid %s --in %s --out %s`,
+                        string cmd = format(`wraptool sign %s--account %s --password %s %s--wcguid %s %s--in %s --out %s`,
                                             verboseFlag,
                                             plugin.getILokAccount(),
                                             plugin.getILokPassword(),
                                             identFlag,
                                             plugin.getWrapConfigGUID(),
+                                            dsigFlag,
                                             escapeShellArgument(binaryPathInOut),
                                             escapeShellArgument(binaryPathInOut));
                         safeCommand(cmd);
@@ -998,7 +995,10 @@ int main(string[] args)
 
                     // Note: on Mac, the bundle path is passed instead, since wraptool won't accept the executable only
                     if (configIsAAX(config))
-                        signAAXBinaryWithPACE(bundleDir);
+                    {
+                        if (!isTemp)
+                            signAAXBinaryWithPACE(bundleDir);
+                    }
                     else
                     {
                         enum SIGN_MAC_BUNDLES = true;
