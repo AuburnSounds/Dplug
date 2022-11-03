@@ -271,6 +271,11 @@ enum : stbir_filter
     STBIR_FILTER_LANCZOS2_5   = 7,  // Lanczos 2.5
     STBIR_FILTER_LANCZOS3     = 8,  // Lanczos 3
     STBIR_FILTER_LANCZOS4     = 9,  // Lanczos 4
+    STBIR_FILTER_MKS2013       = 10, // Magic Kernal, without sharpening
+    STBIR_FILTER_MKS2013_86    = 11, // Magic Kernal + Sharp 2013, but with only 86% sharpening (Dplug Issue #729)
+    STBIR_FILTER_MKS2013_SHARP = 12, // Magic Kernal + Sharp 2013 (the one recommended by John Costella in 2013)
+
+    // To be continued, as John Costella has other kernels...
 }
 
 alias stbir_colorspace = int;
@@ -660,6 +665,48 @@ float stbir__filter_lanczos(float A)(float x, float s)
     return 0.0f;
 }
 
+float stbir__filter_mks2013(float x, float s) nothrow @nogc
+{
+    x = fast_fabs(x);
+    if (x < 0.5)
+        return 0.75 - x * x;
+
+    if (x < 1.5)
+        return 0.5 * (x - 1.5)*(x - 1.5);
+
+    return 0.0f;
+}
+
+float stbir__filter_mks2013_hs(float x, float s) nothrow @nogc
+{
+    // Perhaps possible to do better with "MKS 2021".
+    return 0.14f * stbir__filter_mks2013(x, s)
+         + 0.86f * stbir__filter_mks2013_sharp(x, s);
+}
+
+float stbir__filter_mks2013_sharp(float x, float s) nothrow @nogc
+{
+    x = fast_fabs(x);
+
+    if (x <= float.min_normal)
+        return 17.0f / 16.0f;
+
+    if (x < 0.5)
+        return 17.0 / 16.0 - 7.0 * x * x / 4.0;
+
+    if (x < 1.5)
+    {
+        double x2 = x * x;
+        return 0.25 * (4 * x2 - 11.0 * x + 7.0);
+    }
+
+    if (x < 2.5)
+    {
+        return -0.125 * (x - 5.0 / 2.0)*(x - 5.0 / 2.0);
+    }
+    return 0.0f;
+}
+
 float stbir__support_zero(float s)
 {
     return 0;
@@ -685,7 +732,7 @@ float stbir__support_four(float s)
     return 4;
 }
 
-static immutable stbir__filter_info[10] stbir__filter_info_table = 
+static immutable stbir__filter_info[13] stbir__filter_info_table = 
 [
         { null,                      &stbir__support_zero },
         { &stbir__filter_trapezoid,  &stbir__support_trapezoid },
@@ -697,7 +744,11 @@ static immutable stbir__filter_info[10] stbir__filter_info_table =
         { &stbir__filter_lanczos!2.5f, &stbir__support_three },
         { &stbir__filter_lanczos!3.0f, &stbir__support_three },
         { &stbir__filter_lanczos!4.0f, &stbir__support_four },
+        { &stbir__filter_mks2013,       &stbir__support_three },
+        { &stbir__filter_mks2013_hs,    &stbir__support_three },
+        { &stbir__filter_mks2013_sharp, &stbir__support_three },
         ];
+
 
 static int stbir__use_upsampling(float ratio)
 {
