@@ -35,6 +35,9 @@ nothrow:
     */
     void resizeImageGeneric(ImageRef!RGBA input, ImageRef!RGBA output)
     {
+        if (sameSizeResize(input, output))
+            return;
+
         stbir_filter filter = STBIR_FILTER_DEFAULT;
         int res = stbir_resize_uint8(cast(const(ubyte*))input.pixels, input.w, input.h, cast(int)input.pitch,
                                      cast(      ubyte* )output.pixels, output.w, output.h, cast(int)output.pitch, 4, filter, &alloc_context);
@@ -44,6 +47,9 @@ nothrow:
     ///ditto
     void resizeImageSmoother(ImageRef!RGBA input, ImageRef!RGBA output)
     {
+        if (sameSizeResize(input, output))
+            return;
+
         // suitable when depth is encoded in a RGB8 triplet, such as in UIImageKnob
         stbir_filter filter = STBIR_FILTER_CUBICBSPLINE;
         int res = stbir_resize_uint8(cast(const(ubyte*))input.pixels, input.w, input.h, cast(int)input.pitch,
@@ -54,6 +60,9 @@ nothrow:
     ///ditto
     void resizeImageNearest(ImageRef!RGBA input, ImageRef!RGBA output) // same but with nearest filter
     {
+        if (sameSizeResize(input, output))
+            return;
+
         stbir_filter filter = STBIR_FILTER_BOX;
         int res = stbir_resize_uint8(cast(const(ubyte*))input.pixels, input.w, input.h, cast(int)input.pitch,
                                      cast(      ubyte* )output.pixels, output.w, output.h, cast(int)output.pitch, 4, filter, &alloc_context);
@@ -63,6 +72,9 @@ nothrow:
     ///ditto
     void resizeImageGeneric(ImageRef!L16 input, ImageRef!L16 output)
     {
+        if (sameSizeResize(input, output))
+            return;
+
         stbir_filter filter = STBIR_FILTER_DEFAULT;
         int res = stbir_resize_uint16(cast(const(ushort*))input.pixels, input.w, input.h, cast(int)input.pitch,
                                       cast(      ushort* )output.pixels, output.w, output.h, cast(int)output.pitch, 1, filter, &alloc_context);
@@ -72,7 +84,10 @@ nothrow:
     ///ditto
     void resizeImageDepth(ImageRef!L16 input, ImageRef!L16 output)
     {
-        stbir_filter filter = STBIR_FILTER_LANCZOS3;
+        if (sameSizeResize(input, output))
+            return;
+
+        stbir_filter filter = STBIR_FILTER_MKS2013_86;
         int res = stbir_resize_uint16(cast(const(ushort*))input.pixels, input.w, input.h, cast(int)input.pitch,
                                       cast(      ushort* )output.pixels, output.w, output.h, cast(int)output.pitch, 1, filter, &alloc_context);
         assert(res);
@@ -81,6 +96,9 @@ nothrow:
     ///ditto
     void resizeImageCoverage(ImageRef!L8 input, ImageRef!L8 output)
     {
+        if (sameSizeResize(input, output))
+            return;
+
         int res = stbir_resize_uint8(cast(const(ubyte*))input.pixels, input.w, input.h, cast(int)input.pitch,
                                      cast(      ubyte* )output.pixels, output.w, output.h, cast(int)output.pitch, 1, STBIR_FILTER_DEFAULT, &alloc_context);
         assert(res);
@@ -89,7 +107,9 @@ nothrow:
     ///ditto
     void resizeImage_sRGBNoAlpha(ImageRef!RGBA input, ImageRef!RGBA output)
     {
-        stbir_filter filter = STBIR_FILTER_LANCZOS3;
+        if (sameSizeResize(input, output))
+            return;
+        stbir_filter filter = STBIR_FILTER_MKS2013_86;
         int res = stbir_resize_uint8_srgb(cast(const(ubyte*))input.pixels, input.w, input.h, cast(int)input.pitch,
                                           cast(      ubyte* )output.pixels, output.w, output.h, cast(int)output.pitch,
                                           4, STBIR_ALPHA_CHANNEL_NONE, 0, &alloc_context, filter);
@@ -99,7 +119,9 @@ nothrow:
     ///ditto
     void resizeImage_sRGBWithAlpha(ImageRef!RGBA input, ImageRef!RGBA output)
     {
-        stbir_filter filter = STBIR_FILTER_LANCZOS3;
+        if (sameSizeResize(input, output))
+            return;
+        stbir_filter filter = STBIR_FILTER_MKS2013_86;
         int res = stbir_resize_uint8_srgb(cast(const(ubyte*))input.pixels, input.w, input.h, cast(int)input.pitch,
                                           cast(      ubyte* )output.pixels, output.w, output.h, cast(int)output.pitch,
                                           4, 3, 0, &alloc_context, filter);
@@ -109,9 +131,11 @@ nothrow:
     ///ditto
     void resizeImageDiffuse(ImageRef!RGBA input, ImageRef!RGBA output)
     {
+        if (sameSizeResize(input, output))
+            return;
         // Note: as the primary use case is downsampling, it was found it is helpful to have a relatively sharp filter
         // since the diffuse map may contain text, and downsampling text is too blurry as of today.
-        stbir_filter filter = STBIR_FILTER_LANCZOS3;
+        stbir_filter filter = STBIR_FILTER_MKS2013_86;
         int res = stbir_resize_uint8(cast(const(ubyte*))input.pixels, input.w, input.h, cast(int)input.pitch,
                                      cast(      ubyte* )output.pixels, output.w, output.h, cast(int)output.pitch, 4, filter, &alloc_context);
         assert(res);
@@ -124,4 +148,22 @@ nothrow:
 private:
 
     STBAllocatorContext alloc_context;
+}
+
+
+private:
+
+
+bool sameSizeResize(COLOR)(ImageRef!COLOR input, ImageRef!COLOR output) nothrow @nogc
+{
+    if (input.w == output.w && input.h == output.h)
+    {
+        // Just copy the pixels over
+        input.blitTo(output);
+        return true;
+    }
+    else
+        return false;
+
+
 }
