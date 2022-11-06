@@ -536,7 +536,8 @@ int main(string[] args)
                         }
                         else if (targetOS == OS.macOS)
                         {
-                            dsigFlag = "--dsig1-compat false ";
+                            // Note sure if harmless actually
+                            //dsigFlag = "--dsig1-compat false ";
                             identFlag = format("--signid %s ", escapeShellArgument(plugin.getDeveloperIdentityMac()));
                         }
                         else
