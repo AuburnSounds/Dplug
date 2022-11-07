@@ -271,9 +271,9 @@ enum : stbir_filter
     STBIR_FILTER_LANCZOS2_5   = 7,  // Lanczos 2.5
     STBIR_FILTER_LANCZOS3     = 8,  // Lanczos 3
     STBIR_FILTER_LANCZOS4     = 9,  // Lanczos 4
-    STBIR_FILTER_MKS2013       = 10, // Magic Kernal, without sharpening
-    STBIR_FILTER_MKS2013_86    = 11, // Magic Kernal + Sharp 2013, but with only 86% sharpening (Dplug Issue #729)
-    STBIR_FILTER_MKS2013_SHARP = 12, // Magic Kernal + Sharp 2013 (the one recommended by John Costella in 2013)
+    STBIR_FILTER_MK_2013      = 10, // Magic Kernel, without sharpening
+    STBIR_FILTER_MKS_2013_86  = 11, // Magic Kernel + Sharp 2013, but with only 86% sharpening (Dplug Issue #729)
+    STBIR_FILTER_MKS_2013     = 12, // Magic Kernel + Sharp 2013 (the one recommended by John Costella in 2013)
 
     // To be continued, as John Costella has other kernels...
 }
@@ -665,7 +665,7 @@ float stbir__filter_lanczos(float A)(float x, float s)
     return 0.0f;
 }
 
-float stbir__filter_mks2013(float x, float s) nothrow @nogc
+float stbir__filter_mk2013(float x, float s) nothrow @nogc
 {
     x = fast_fabs(x);
     if (x < 0.5)
@@ -680,11 +680,11 @@ float stbir__filter_mks2013(float x, float s) nothrow @nogc
 float stbir__filter_mks2013_hs(float x, float s) nothrow @nogc
 {
     // Perhaps possible to do better with "MKS 2021".
-    return 0.14f * stbir__filter_mks2013(x, s)
-         + 0.86f * stbir__filter_mks2013_sharp(x, s);
+    return 0.14f * stbir__filter_mk2013(x, s)
+         + 0.86f * stbir__filter_mks2013(x, s);
 }
 
-float stbir__filter_mks2013_sharp(float x, float s) nothrow @nogc
+float stbir__filter_mks2013(float x, float s) nothrow @nogc
 {
     x = fast_fabs(x);
 
@@ -744,9 +744,9 @@ static immutable stbir__filter_info[13] stbir__filter_info_table =
         { &stbir__filter_lanczos!2.5f, &stbir__support_three },
         { &stbir__filter_lanczos!3.0f, &stbir__support_three },
         { &stbir__filter_lanczos!4.0f, &stbir__support_four },
-        { &stbir__filter_mks2013,       &stbir__support_three },
-        { &stbir__filter_mks2013_hs,    &stbir__support_three },
-        { &stbir__filter_mks2013_sharp, &stbir__support_three },
+        { &stbir__filter_mk2013,       &stbir__support_three },
+        { &stbir__filter_mks2013_hs,   &stbir__support_three },
+        { &stbir__filter_mks2013,      &stbir__support_three },
         ];
 
 

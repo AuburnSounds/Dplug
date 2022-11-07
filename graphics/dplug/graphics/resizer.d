@@ -87,7 +87,7 @@ nothrow:
         if (sameSizeResize(input, output))
             return;
 
-        stbir_filter filter = STBIR_FILTER_MKS2013_86;
+        stbir_filter filter = STBIR_FILTER_MKS_2013_86;
         int res = stbir_resize_uint16(cast(const(ushort*))input.pixels, input.w, input.h, cast(int)input.pitch,
                                       cast(      ushort* )output.pixels, output.w, output.h, cast(int)output.pitch, 1, filter, &alloc_context);
         assert(res);
@@ -109,7 +109,7 @@ nothrow:
     {
         if (sameSizeResize(input, output))
             return;
-        stbir_filter filter = STBIR_FILTER_MKS2013_86;
+        stbir_filter filter = STBIR_FILTER_MKS_2013_86;
         int res = stbir_resize_uint8_srgb(cast(const(ubyte*))input.pixels, input.w, input.h, cast(int)input.pitch,
                                           cast(      ubyte* )output.pixels, output.w, output.h, cast(int)output.pitch,
                                           4, STBIR_ALPHA_CHANNEL_NONE, 0, &alloc_context, filter);
@@ -121,7 +121,7 @@ nothrow:
     {
         if (sameSizeResize(input, output))
             return;
-        stbir_filter filter = STBIR_FILTER_MKS2013_86;
+        stbir_filter filter = STBIR_FILTER_MKS_2013_86;
         int res = stbir_resize_uint8_srgb(cast(const(ubyte*))input.pixels, input.w, input.h, cast(int)input.pitch,
                                           cast(      ubyte* )output.pixels, output.w, output.h, cast(int)output.pitch,
                                           4, 3, 0, &alloc_context, filter);
@@ -135,7 +135,7 @@ nothrow:
             return;
         // Note: as the primary use case is downsampling, it was found it is helpful to have a relatively sharp filter
         // since the diffuse map may contain text, and downsampling text is too blurry as of today.
-        stbir_filter filter = STBIR_FILTER_MKS2013_86;
+        stbir_filter filter = STBIR_FILTER_MKS_2013_86;
         int res = stbir_resize_uint8(cast(const(ubyte*))input.pixels, input.w, input.h, cast(int)input.pitch,
                                      cast(      ubyte* )output.pixels, output.w, output.h, cast(int)output.pitch, 4, filter, &alloc_context);
         assert(res);
