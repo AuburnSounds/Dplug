@@ -89,15 +89,24 @@ nothrow:
 
     /// If `true`, diffuse data is blended in the diffuse map using alpha information.
     /// If `false`, diffuse is left untouched.
-    bool drawToDiffuse = true;
+    @ScriptProperty bool drawToDiffuse = true;
 
     /// If `true`, depth data is blended in the depth map using alpha information.
     /// If `false`, depth is left untouched.
-    bool drawToDepth = true;
+    @ScriptProperty bool drawToDepth = true;
 
     /// If `true`, material data is blended in the material map using alpha information.
     /// If `false`, material is left untouched.
-    bool drawToMaterial = true;
+    @ScriptProperty bool drawToMaterial = true;
+
+    /// Amount of static emissive energy to the Emissive channel.
+    @ScriptProperty ubyte emissive = 0;
+
+    /// Amount of static emissive energy to add when mouse is over, but not dragging.
+    @ScriptProperty ubyte emissiveHovered = 0;
+
+    /// Amount of static emissive energy to add when mouse is over, but not dragging.
+    @ScriptProperty ubyte emissiveDragged = 0;
 
     /// `knobImage` should have been loaded with `loadKnobImage`.
     /// Warning: `knobImage` must outlive the knob, it is borrowed.
@@ -217,6 +226,12 @@ nothrow:
                          v.y * cosa - v.x * sina);
         }
 
+        int emissiveOffset = emissive;
+        if (isDragged)
+            emissiveOffset = emissiveDragged;
+        else if (isMouseOver)
+            emissiveOffset = emissiveHovered;
+
         foreach(dirtyRect; dirtyRects)
         {
             ImageRef!RGBA cDiffuse  = diffuseMap.cropImageRef(dirtyRect);
@@ -249,33 +264,36 @@ nothrow:
 
                         if (fAlpha > 0)
                         {
-                            vec4f fDiffuse  =  _diffuseTexture.linearSample(0, sourcePos.x, sourcePos.y); 
-                            float fDepth    =    _depthTexture.linearSample(0, sourcePos.x, sourcePos.y); 
-                            vec4f fMaterial = _materialTexture.linearSample(0, sourcePos.x, sourcePos.y);
-
                             ubyte alpha = cast(ubyte)(0.5f + fAlpha / 257.0f);
-                            ubyte R = cast(ubyte)(0.5f + fDiffuse.r);
-                            ubyte G = cast(ubyte)(0.5f + fDiffuse.g);
-                            ubyte B = cast(ubyte)(0.5f + fDiffuse.b);
-                            ubyte E = cast(ubyte)(0.5f + fDiffuse.a);
-
-                            ubyte Ro = cast(ubyte)(0.5f + fMaterial.r);
-                            ubyte M = cast(ubyte)(0.5f + fMaterial.g);
-                            ubyte S = cast(ubyte)(0.5f + fMaterial.b);
-                            ubyte X = cast(ubyte)(0.5f + fMaterial.a);
-
-                            ushort depth = cast(ushort)(0.5f + fDepth);
-
-                            RGBA diffuse = RGBA(R, G, B, E);
-                            RGBA material = RGBA(Ro, M, S, X);
 
                             if (drawToDiffuse)
+                            {
+                                vec4f fDiffuse  =  _diffuseTexture.linearSample(0, sourcePos.x, sourcePos.y);
+                                ubyte R = cast(ubyte)(0.5f + fDiffuse.r);
+                                ubyte G = cast(ubyte)(0.5f + fDiffuse.g);
+                                ubyte B = cast(ubyte)(0.5f + fDiffuse.b);
+                                int E = cast(ubyte)(0.5f + fDiffuse.a + emissiveOffset);
+                                if (E < 0) E = 0; 
+                                if (E > 255) E = 255;
+                                RGBA diffuse = RGBA(R, G, B, cast(ubyte)E);
                                 outDiffuse[x] = blendColor( diffuse, outDiffuse[x], alpha);
+                            }
+
                             if (drawToMaterial)
+                            {
+                                vec4f fMaterial = _materialTexture.linearSample(0, sourcePos.x, sourcePos.y);
+                                ubyte Ro = cast(ubyte)(0.5f + fMaterial.r);
+                                ubyte M = cast(ubyte)(0.5f + fMaterial.g);
+                                ubyte S = cast(ubyte)(0.5f + fMaterial.b);
+                                ubyte X = cast(ubyte)(0.5f + fMaterial.a);
+                                RGBA material = RGBA(Ro, M, S, X);
                                 outMaterial[x] = blendColor( material, outMaterial[x], alpha);
+                            }
 
                             if (drawToDepth)
                             {
+                                float fDepth    =    _depthTexture.linearSample(0, sourcePos.x, sourcePos.y);
+                                ushort depth = cast(ushort)(0.5f + fDepth);
                                 int interpolatedDepth = depth * alpha + outDepth[x].l * (255 - alpha);
                                 outDepth[x] = L16(cast(ushort)( (interpolatedDepth + 128) / 255));
                             }
