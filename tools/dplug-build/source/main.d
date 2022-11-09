@@ -1119,10 +1119,22 @@ int main(string[] args)
                         string quietStr = verbose ? "" : " --quiet";
 
 
+                        // See Issue #732.
+                        // This is supposed to resolve AAX upgrade problems, and be cleaner.
+                        enum useComponentPlist = false;
+                        string componentPlistFlag = "";
+                        if (useComponentPlist)
+                        {
+                            string pbXML = outputDir ~ "/temp/pkgbuild-options.plist";
+                            std.file.write(pbXML, cast(void[]) makePListFileForPKGBuild());
+                            componentPlistFlag = " --component-plist " ~ escapeShellArgument(pbXML);
+                        }
+
                         // Create individual .pkg installer for each VST, AU or AAX given
-                        string cmd = format("pkgbuild%s%s --install-location %s --identifier %s --version %s --component %s %s",
+                        string cmd = format("pkgbuild%s%s%s --install-location %s --identifier %s --version %s --component %s %s",
                             signStr,
                             quietStr,
+                            componentPlistFlag,
                             escapeShellArgument(installDir),
                             pkgIdentifier,
                             plugin.publicVersionString,

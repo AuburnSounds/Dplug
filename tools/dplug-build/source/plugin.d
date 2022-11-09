@@ -1122,6 +1122,22 @@ string makePListFile(Plugin plugin, string config, bool hasIcon, bool isAudioCom
     return content;
 }
 
+// pkgbuild can take a .plist file to specify additional bundle options
+string makePListFileForPKGBuild()
+{
+    string content = "";
+
+    content ~= `<?xml version="1.0" encoding="UTF-8"?>` ~ "\n";
+    content ~= `<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">` ~ "\n";
+    content ~= `<plist version="1.0">` ~ "\n";
+    content ~= `    <array><dict>` ~ "\n";
+    content ~= `        <key>BundleIsVersionChecked</key><false/>` ~ "\n";
+    content ~= `        <key>BundleOverwriteAction</key><string>upgrade</string>` ~ "\n";
+    content ~= `    </dict></array>` ~ "\n";
+    content ~= `</plist>` ~ "\n";
+    return content;
+}
+
 // return path of newly made icon
 string makeMacIcon(string outputDir, string pluginName, string pngPath)
 {
