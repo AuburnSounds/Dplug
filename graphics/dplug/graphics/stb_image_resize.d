@@ -274,6 +274,7 @@ enum : stbir_filter
     STBIR_FILTER_MK_2013      = 10, // Magic Kernel, without sharpening
     STBIR_FILTER_MKS_2013_86  = 11, // Magic Kernel + Sharp 2013, but with only 86% sharpening (Dplug Issue #729)
     STBIR_FILTER_MKS_2013     = 12, // Magic Kernel + Sharp 2013 (the one recommended by John Costella in 2013)
+    STBIR_FILTER_MKS_2021     = 13, // Magic Kernel + Sharp 2021 (the one recommended to us by John Costella in 2022)
 
     // To be continued, as John Costella has other kernels...
 }
@@ -707,6 +708,29 @@ float stbir__filter_mks2013(float x, float s) nothrow @nogc
     return 0.0f;
 }
 
+float stbir__filter_mks2021(float x, float s) nothrow @nogc
+{
+    x = fast_fabs(x);
+    float x2 = x * x;
+
+    if (x < 0.5)
+        return 577.0f / 576.0f - (239.0f / 144.0f) * x2;
+
+    if (x < 1.5)
+        return (140 * x2 - 379 * x + 239) / 144.0f;
+
+    if (x < 2.5)
+        return -(24 * x2 - 113 * x + 130) / 144.0f;
+
+    if (x < 3.5)
+        return (4 * x2 - 27 * x + 45) / 144.0f;
+
+    if (x < 4.5)
+        return -(4 * x2 - 36 * x + 81) / 1152.0f;
+
+    return 0.0f;
+}
+
 float stbir__support_zero(float s)
 {
     return 0;
@@ -732,7 +756,12 @@ float stbir__support_four(float s)
     return 4;
 }
 
-static immutable stbir__filter_info[13] stbir__filter_info_table = 
+float stbir__support_five(float s)
+{
+    return 5;
+}
+
+static immutable stbir__filter_info[14] stbir__filter_info_table = 
 [
         { null,                      &stbir__support_zero },
         { &stbir__filter_trapezoid,  &stbir__support_trapezoid },
@@ -747,6 +776,7 @@ static immutable stbir__filter_info[13] stbir__filter_info_table =
         { &stbir__filter_mk2013,       &stbir__support_three },
         { &stbir__filter_mks2013_hs,   &stbir__support_three },
         { &stbir__filter_mks2013,      &stbir__support_three },
+        { &stbir__filter_mks2021,      &stbir__support_five },
         ];
 
 
