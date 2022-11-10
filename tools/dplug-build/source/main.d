@@ -1121,24 +1121,34 @@ int main(string[] args)
 
                         // See Issue #732.
                         // This is supposed to resolve AAX upgrade problems, and be cleaner.
-                        enum useComponentPlist = false;
-                        string componentPlistFlag = "";
+                        // instead of using --component, use --root 
+                        enum useComponentPlist = false; // disabled for now... theorietically should be done in all cases but not sure of impact
+
+                        string componentPlistFlag;
+                        string bundleFlag;
                         if (useComponentPlist)
                         {
                             string pbXML = outputDir ~ "/temp/pkgbuild-options.plist";
-                            std.file.write(pbXML, cast(void[]) makePListFileForPKGBuild());
+                            string rootPath = path; // TODO: should escape XML chars enventually
+                            std.file.write(pbXML, cast(void[]) makePListFileForPKGBuild(pluginDir));
                             componentPlistFlag = " --component-plist " ~ escapeShellArgument(pbXML);
+                            bundleFlag = escapeShellArgument(path);
+                        }
+                        else
+                        {
+                            componentPlistFlag = "";
+                            bundleFlag = "--component " ~ escapeShellArgument(bundleDir);
                         }
 
                         // Create individual .pkg installer for each VST, AU or AAX given
-                        string cmd = format("pkgbuild%s%s%s --install-location %s --identifier %s --version %s --component %s %s",
+                        string cmd = format("pkgbuild%s%s%s --install-location %s --identifier %s --version %s %s %s",
                             signStr,
                             quietStr,
                             componentPlistFlag,
                             escapeShellArgument(installDir),
                             pkgIdentifier,
                             plugin.publicVersionString,
-                            escapeShellArgument(bundleDir),
+                            bundleFlag,
                             escapeShellArgument(pathToPkg));
                         safeCommand(cmd);
                         cwriteln;

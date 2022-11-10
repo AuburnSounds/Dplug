@@ -1123,7 +1123,7 @@ string makePListFile(Plugin plugin, string config, bool hasIcon, bool isAudioCom
 }
 
 // pkgbuild can take a .plist file to specify additional bundle options
-string makePListFileForPKGBuild()
+string makePListFileForPKGBuild(string bundleName)
 {
     string content = "";
 
@@ -1131,6 +1131,7 @@ string makePListFileForPKGBuild()
     content ~= `<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">` ~ "\n";
     content ~= `<plist version="1.0">` ~ "\n";
     content ~= `    <array><dict>` ~ "\n";
+    content ~= `        <key>RootRelativeBundlePath</key><string>` ~ escapeXMLString(bundleName) ~ `</string>` ~ "\n";
     content ~= `        <key>BundleIsVersionChecked</key><false/>` ~ "\n";
     content ~= `        <key>BundleOverwriteAction</key><string>upgrade</string>` ~ "\n";
     content ~= `    </dict></array>` ~ "\n";
