@@ -87,7 +87,7 @@ nothrow:
         if (sameSizeResize(input, output))
             return;
 
-        stbir_filter filter = STBIR_FILTER_MKS_2013_86;
+        stbir_filter filter = STBIR_FILTER_MKS_2021;
         int res = stbir_resize_uint16(cast(const(ushort*))input.pixels, input.w, input.h, cast(int)input.pitch,
                                       cast(      ushort* )output.pixels, output.w, output.h, cast(int)output.pitch, 1, filter, &alloc_context);
         assert(res);
