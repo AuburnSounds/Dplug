@@ -641,11 +641,9 @@ int main(string[] args)
                     cwriteln();
                 }
 
+                // Extract manifest from LV2 Binary
                 void extractLV2ManifestFromBinary(string binaryPath, string outputDir, Arch targetArch, string binaryName)
                 {
-                    // Extract ports from LV2 Binary
-                    // Because of this release itself must be 64-bit.
-                    // To avoid this coupling, presets should be stored outside of the binary in the future.
                     bool formerlyExtracted = false;
                     if (targetArch != buildArch)
                     {
@@ -659,7 +657,7 @@ int main(string[] args)
                         SharedLib lib;
                         lib.load(binaryPath);
                         if (!lib.hasSymbol("GenerateManifestFromClient"))
-                            throw new Exception("Couldn't find the symbol ExtractPortConfiguration in the plug-in");
+                            throw new Exception("Couldn't find the symbol GenerateManifestFromClient in the plug-in");
 
                         alias generateManifest = extern(C) int function(char* manifestBuf, int manifestBufLen,
                                                                         const(char)* binaryFileName, int binaryFileNameLen);
