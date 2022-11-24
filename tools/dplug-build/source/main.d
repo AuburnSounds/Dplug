@@ -1119,20 +1119,21 @@ int main(string[] args)
                         string quietStr = verbose ? "" : " --quiet";
 
 
-                        // See Issue #732.
-                        // This is supposed to resolve AAX upgrade problems, and be cleaner.
+                        // This was supposed to resolve AAX wraptool upgrade problems, and be cleaner.
                         // instead of using --component, use --root 
-                        enum useComponentPlist = false; // disabled for now... theorietically should be done in all cases but not sure of impact
+                        // In reality, fix for #732 was never reproduced, and this is JUST enabled to
+                        // test in the wild with a small sample of people, in case we have to use that later.
+                        bool useComponentPlist = false;//(configIsAAX(config));
 
                         string componentPlistFlag;
                         string bundleFlag;
                         if (useComponentPlist)
                         {
                             string pbXML = outputDir ~ "/temp/pkgbuild-options.plist";
-                            string rootPath = path; // TODO: should escape XML chars enventually
+                            string rootPath = path;
                             std.file.write(pbXML, cast(void[]) makePListFileForPKGBuild(pluginDir));
                             componentPlistFlag = " --component-plist " ~ escapeShellArgument(pbXML);
-                            bundleFlag = escapeShellArgument(path);
+                            bundleFlag = "--root " ~ escapeShellArgument(rootPath);
                         }
                         else
                         {
