@@ -445,6 +445,13 @@ int main(string[] args)
 
             foreach (size_t archCount, arch; architectures)
             {
+                // Only build x86_64 on Windows
+                if (targetOS == OS.windows && configIsAAX(config) && (arch != Arch.x86_64))
+                {
+                    cwritefln("info: Skipping architecture %s for AAX on Windows\n".white, arch);
+                    continue;
+                }
+
                 // Does not try to build 32-bit under Mac
                 if (targetOS == OS.macOS)
                 {
