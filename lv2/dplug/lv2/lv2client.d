@@ -23,6 +23,8 @@
 
 module dplug.lv2.lv2client;
 
+version(LV2):
+
 import std.string,
        std.algorithm.comparison;
 

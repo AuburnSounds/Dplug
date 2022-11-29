@@ -11,6 +11,8 @@
 //-----------------------------------------------------------------------------
 module dplug.vst3.ftypes;
 
+version(VST3):
+
 //debug = logVST3Client;
 
 import core.stdc.stdint;

@@ -16,6 +16,8 @@
 */
 module dplug.lv2.midi;
 
+version(LV2):
+
 /**
    @defgroup midi MIDI
 

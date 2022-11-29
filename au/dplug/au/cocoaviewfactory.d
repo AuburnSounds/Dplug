@@ -19,6 +19,8 @@ Permission is granted to anyone to use this software for any purpose, including 
 */
 module dplug.au.cocoaviewfactory;
 
+version(AU):
+
 import std.string;
 import std.uuid;
 

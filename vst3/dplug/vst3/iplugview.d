@@ -11,6 +11,8 @@
 //-----------------------------------------------------------------------------
 module dplug.vst3.iplugview;
 
+version(VST3):
+
 import dplug.vst3.ftypes;
 
 struct ViewRect

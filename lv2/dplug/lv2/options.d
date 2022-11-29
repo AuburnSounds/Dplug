@@ -25,6 +25,8 @@
 */
 module dplug.lv2.options;
 
+version(LV2):
+
 import core.stdc.stdint;
 
 import dplug.lv2.urid;

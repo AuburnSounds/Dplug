@@ -22,6 +22,8 @@
  */
 module dplug.lv2.lv2_init;
 
+version(LV2):
+
 import core.stdc.stdint;
 import core.stdc.string;
 

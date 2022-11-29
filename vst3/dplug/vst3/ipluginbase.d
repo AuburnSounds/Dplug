@@ -11,6 +11,8 @@
 //-----------------------------------------------------------------------------
 module dplug.vst3.ipluginbase;
 
+version(VST3):
+
 import core.stdc.stdlib;
 import core.stdc.string;
 

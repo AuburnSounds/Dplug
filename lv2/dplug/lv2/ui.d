@@ -18,6 +18,8 @@
 */
 module dplug.lv2.ui;
 
+version(LV2):
+
 /**
    @defgroup ui User Interfaces
 

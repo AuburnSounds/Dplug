@@ -52,6 +52,8 @@
 */
 module dplug.au.audiocomponentdispatch;
 
+version(AU):
+
 import core.stdc.stdio;
 import core.stdc.stdlib: malloc, free;
 import derelict.carbon;

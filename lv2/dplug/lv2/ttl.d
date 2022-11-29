@@ -24,6 +24,8 @@
 /// TTL generation.
 module dplug.lv2.ttl;
 
+version(LV2):
+
 
 import core.stdc.stdio;
 import core.stdc.stdlib;

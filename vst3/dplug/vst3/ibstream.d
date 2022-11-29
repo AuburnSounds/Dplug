@@ -11,6 +11,8 @@
 //-----------------------------------------------------------------------------
 module dplug.vst3.ibstream;
 
+version(VST3):
+
 import dplug.vst3.ftypes;
 
 /** Base class for streams.

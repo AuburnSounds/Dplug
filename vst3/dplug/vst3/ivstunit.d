@@ -11,6 +11,8 @@
 //-----------------------------------------------------------------------------
 module dplug.vst3.ivstunit;
 
+version(VST3):
+
 import dplug.vst3.ftypes;
 import dplug.vst3.ibstream;
 

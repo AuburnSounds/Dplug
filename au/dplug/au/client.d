@@ -19,6 +19,8 @@ Permission is granted to anyone to use this software for any purpose, including 
 */
 module dplug.au.client;
 
+version(AU):
+
 import core.stdc.stdio;
 import core.stdc.config;
 import core.stdc.string;

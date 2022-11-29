@@ -17,6 +17,8 @@
 */
 module dplug.lv2.urid;
 
+version(LV2):
+
 /**
    @defgroup urid URID
 

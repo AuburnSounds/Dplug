@@ -20,6 +20,8 @@
 */
 module dplug.lv2.lv2;
 
+version(LV2):
+
 import core.stdc.stdint;
 import core.stdc.string;
 

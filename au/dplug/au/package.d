@@ -9,6 +9,8 @@
  */
 module dplug.au;
 
+version(AU):
+
 public
 {
     import dplug.au.client;

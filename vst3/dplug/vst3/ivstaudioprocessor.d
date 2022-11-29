@@ -11,6 +11,8 @@
 //-----------------------------------------------------------------------------
 module dplug.vst3.ivstaudioprocessor;
 
+version(VST3):
+
 import dplug.vst3.ftypes;
 
 // 64-bit seemingly need a slightly different ABI.

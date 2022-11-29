@@ -11,6 +11,8 @@
 //-----------------------------------------------------------------------------
 module dplug.vst3.vst3main;
 
+version(VST3):
+
 nothrow @nogc:
 
 import core.stdc.stdio: snprintf;

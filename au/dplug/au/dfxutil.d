@@ -46,6 +46,8 @@ Copyright: Copyright (C) 2003-2008  Sophia Poirier
 */
 module dplug.au.dfxutil;
 
+version(AU):
+
 import core.stdc.stdio: snprintf;
 
 import std.string;

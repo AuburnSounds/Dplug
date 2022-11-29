@@ -17,6 +17,8 @@
 */
 module dplug.lv2.atom;
 
+version(LV2):
+
 /**
    @defgroup atom Atom
 

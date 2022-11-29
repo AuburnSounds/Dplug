@@ -11,6 +11,8 @@
 //-----------------------------------------------------------------------------
 module dplug.vst3.client;
 
+version(VST3):
+
 import core.atomic;
 import core.stdc.stdlib: free;
 import core.stdc.string: strcmp;

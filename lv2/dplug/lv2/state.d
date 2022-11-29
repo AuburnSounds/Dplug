@@ -26,6 +26,8 @@
 */
 module dplug.lv2.state;
 
+version(LV2):
+
 import core.stdc.stddef;
 import core.stdc.stdint;
 
