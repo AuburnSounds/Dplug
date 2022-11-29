@@ -912,9 +912,7 @@ nothrow:
             info.unitId = 0; // root, unit 0 is always here
             info.flags = 0;
 
-            // Workaround Issue #668.
-            // Live is confused about non-automatable parameters, sends their old value even after a `performEdit`.
-            if (param.isAutomatable || _daw == DAW.AbletonLive) 
+            if (param.isAutomatable)
             {
                 info.flags |= ParameterInfo.ParameterFlags.kCanAutomate;
             }
