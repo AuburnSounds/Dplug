@@ -22,6 +22,7 @@ import dplug.gui.element;
 import dplug.gui.boxlist;
 import dplug.gui.graphics;
 import dplug.gui.sizeconstraints;
+import dplug.gui.traceeventformat;
 
 
 /// Work in progress. An ensemble of calls `UIElement` are allowed to make, that
@@ -97,6 +98,12 @@ nothrow @nogc:
     /// Get the first `UIElement` with the given ID, or `null`. This just checks for exact id matches, without anything fancy.
     /// If you use `dplug:wren-support`, this is called by the `$` operator or the `UI.getElementById`.
     UIElement getElementById(const(char)* id);
+
+    version(dplugProfileGUI)
+    {
+        // A shared trace profiler to record events.
+        TraceProfiler* traceProfiler();
+    }
 }
 
 // Official dplug:gui optional extension.
@@ -130,6 +137,11 @@ nothrow:
         dirtyListPBR = makeDirtyRectList();
         dirtyListRaw = makeDirtyRectList();
         _sortingscratchBuffer = makeVec!UIElement();
+
+        version(dplugProfileGUI)
+        {
+            _profiler.initialize;
+        }
     }
 
     final override float getUIScale()
@@ -315,6 +327,16 @@ nothrow:
         return _sortingscratchBuffer;
     }
 
+    final TraceProfiler* traceProfiler()
+    {
+        version(dplugProfileGUI)
+        {
+            return &_profiler;
+        }
+        else
+            return null;
+    }
+
 private:
     GUIGraphics _owner;
 
@@ -328,5 +350,10 @@ private:
     /// id 0..7 are reserved for future Dplug extensions.
     /// id 8..15 are for vendor-specific extensions.
     void*[16] _userPointers; // Opaque pointer for Wren VM and things.
+
+    version(dplugProfileGUI)
+    {
+        TraceProfiler _profiler;
+    }
 }
 

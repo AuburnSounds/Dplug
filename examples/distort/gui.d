@@ -117,6 +117,11 @@ nothrow:
         _font.destroyFree();
         _knobImageData.destroyFree();
         context.disableWrenSupport();
+
+        version(dplugProfileGUI)
+        {
+            context.traceProfiler.saveToFile(`/home/myuser/plugin-trace.json`);
+        }
     }
 
     override void reflow()

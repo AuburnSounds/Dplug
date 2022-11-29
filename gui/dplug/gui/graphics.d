@@ -32,6 +32,11 @@ import dplug.gui.compositor;
 import dplug.gui.legacypbr;
 import dplug.gui.sizeconstraints;
 
+version(dplugProfileGUI)
+{
+    import dplug.gui.traceeventformat;
+}
+
 /// In the whole package:
 /// The diffuse maps contains:
 ///   RGBA = red/green/blue/emissiveness
@@ -41,18 +46,8 @@ import dplug.gui.sizeconstraints;
 
 alias RMSP = RGBA; // reminder
 
-// Uncomment to benchmark compositing and devise optimizations.
-//debug = benchmarkGraphics;
-
 // Uncomment to enter the marvellous world of dirty rectangles.
 //debug = resizing;
-
-debug(benchmarkGraphics)
-{
-    import core.sys.windows.windows;
-    extern(Windows) BOOL QueryThreadCycleTime(HANDLE   ThreadHandle, PULONG64 CycleTime) nothrow @nogc;
-    enum bool preciseMeasurements = false;
-}
 
 // A GUIGraphics is the interface between a plugin client and a IWindow.
 // It is also an UIElement and the root element of the plugin UI hierarchy.
@@ -117,16 +112,6 @@ nothrow:
         _elemsToDrawRaw = makeVec!UIElement;
         _elemsToDrawPBR = makeVec!UIElement;
         _sortScratchBuf = makeVec!UIElement;
-
-        debug(benchmarkGraphics)
-        {
-            _compositingWatch = mallocNew!StopWatch(this, "Compositing = ");
-            _drawWatch = mallocNew!StopWatch(this, "Draw PBR = ");
-            _mipmapWatch = mallocNew!StopWatch(this, "Mipmap = ");
-            _copyWatch = mallocNew!StopWatch(this, "Copy to Raw = ");
-            _rawWatch = mallocNew!StopWatch(this, "Draw Raw = ");
-            _reorderWatch = mallocNew!StopWatch(this, "Reorder = ");
-        }
 
         _diffuseMap = mallocNew!(Mipmap!RGBA)();
         _materialMap = mallocNew!(Mipmap!RGBA)();
@@ -196,6 +181,11 @@ nothrow:
         // We create this window each time.
         _window = createWindow(WindowUsage.plugin, parentInfo, controlInfo, _windowListener, wbackend, _currentLogicalWidth, _currentLogicalHeight);
 
+        version(dplugProfileGUI)
+        {
+            _uiContext.traceProfiler.addInstantEvent("Open UI", "ui");
+        }
+
         return _window.systemHandle();
     }
 
@@ -204,6 +194,11 @@ nothrow:
         // Destroy window.
         if (_window !is null)
         {
+            version(dplugProfileGUI)
+            {
+                _uiContext.traceProfiler.addInstantEvent("Close UI", "ui");
+            }
+
             _window.destroyFree();
             _window = null;
         }
@@ -623,16 +618,6 @@ protected:
     /// Or to allow higher internal pixel count.
     ubyte* _resizedBuffer = null;
 
-    debug(benchmarkGraphics)
-    {
-        StopWatch _compositingWatch;
-        StopWatch _mipmapWatch;
-        StopWatch _drawWatch;
-        StopWatch _copyWatch;
-        StopWatch _rawWatch;
-        StopWatch _reorderWatch;
-    }
-
     void recomputeDrawLists()
     {
         // recompute draw lists
@@ -663,6 +648,14 @@ protected:
         return ir;
     }
 
+    version(dplugProfileGUI)
+    {
+        TraceProfiler* profiler()
+        {
+            return _uiContext.traceProfiler();
+        }
+    }
+
     void doDraw(WindowPixelFormat pf) nothrow @nogc
     {
         debug(resizing) debugLogf(">doDraw\n");
@@ -681,81 +674,57 @@ protected:
 
         // A. Recompute draw lists
         // These are the `UIElement`s that _may_ have their onDrawXXX callbacks called.
+
+        version(dplugProfileGUI) profiler.addBeginEvent("Recompute Draw Lists", "ui");
         recomputeDrawLists();
+        version(dplugProfileGUI) profiler.addEndEvent("Recompute Draw Lists", "ui");
 
         // Composite GUI
         // Most of the cost of rendering is here
         // B. 1st PASS OF REDRAW
-        // Some UIElements are redrawn at the PBR level
-        debug(benchmarkGraphics)
-            _drawWatch.start();
+        // Some UIElements are redrawn at the PBR level        
+        version(dplugProfileGUI) profiler.addBeginEvent("Draw Elements PBR", "ui");
         redrawElementsPBR();
-        debug(benchmarkGraphics)
-        {
-            _drawWatch.stop();
-            _drawWatch.displayMean();
-        }
+        version(dplugProfileGUI) profiler.addEndEvent("Draw Elements PBR", "ui");
 
         // C. MIPMAPPING
-        debug(benchmarkGraphics)
-            _mipmapWatch.start();
+        version(dplugProfileGUI) profiler.addBeginEvent("Regenerate Mipmaps", "ui");
         regenerateMipmaps();
-        debug(benchmarkGraphics)
-        {
-            _mipmapWatch.stop();
-            _mipmapWatch.displayMean();
-        }
+        version(dplugProfileGUI) profiler.addEndEvent("Regenerate Mipmaps", "ui");
 
         // D. COMPOSITING
         auto compositedRef = _compositedBuffer.toRef();
-        debug(benchmarkGraphics)
-            _compositingWatch.start();
+
+        version(dplugProfileGUI) profiler.addBeginEvent("Composite GUI", "ui");
         compositeGUI(compositedRef); // Launch the possibly-expensive Compositor step, which implements PBR rendering
-        debug(benchmarkGraphics)
-        {
-            _compositingWatch.stop();
-            _compositingWatch.displayMean();
-        }
+        version(dplugProfileGUI) profiler.addEndEvent("Composite GUI", "ui");
 
         // E. COPY FROM "COMPOSITED" TO "RENDERED" BUFFER
         // Copy _compositedBuffer onto _renderedBuffer for every rect that will be changed on display
         auto renderedRef = _renderedBuffer.toRef();
-        debug(benchmarkGraphics)
-            _copyWatch.start();
+        version(dplugProfileGUI) profiler.addBeginEvent("Copy to renderbuffer", "ui");
         foreach(rect; _rectsToDisplayDisjointed[])
         {
             auto croppedComposite = compositedRef.cropImageRef(rect);
             auto croppedRendered = renderedRef.cropImageRef(rect);
             croppedComposite.blitTo(croppedRendered); // failure to optimize this: 1
         }
-        debug(benchmarkGraphics)
-        {
-            _copyWatch.stop();
-            _copyWatch.displayMean();
-        }
-
+        version(dplugProfileGUI) profiler.addEndEvent("Copy to renderbuffer", "ui");
+        
         // F. 2nd PASS OF REDRAW
-        debug(benchmarkGraphics)
-            _rawWatch.start();
+        version(dplugProfileGUI) profiler.addBeginEvent("Draw Elements Raw", "ui");
         redrawElementsRaw();
-        debug(benchmarkGraphics)
-        {
-            _rawWatch.stop();
-            _rawWatch.displayMean();
-        }
+        version(dplugProfileGUI) profiler.addEndEvent("Draw Elements Raw", "ui");
 
         // G. Reorder components to the right pixel format
-        debug(benchmarkGraphics)
-            _reorderWatch.start();
+        version(dplugProfileGUI) profiler.addBeginEvent("Component Reorder", "ui");
         reorderComponents(pf);
-        debug(benchmarkGraphics)
-        {
-            _reorderWatch.stop();
-            _reorderWatch.displayMean();
-        }
+        version(dplugProfileGUI) profiler.addEndEvent("Component Reorder", "ui");
 
-        // H. Copy updated content to the final buffer.
+        // H. Copy updated content to the final buffer. (hint: not actually resizing)
+        version(dplugProfileGUI) profiler.addBeginEvent("Copy content", "ui");
         resizeContent(pf);
+        version(dplugProfileGUI) profiler.addEndEvent("Copy content", "ui");
 
         // Only then is the list of rectangles to update cleared,
         // before calling `doDraw` such work accumulates
@@ -1342,108 +1311,6 @@ int byteStride(int width) pure nothrow @nogc
     return (widthInBytes + (scanLineAlignment - 1)) & ~(scanLineAlignment-1);
 }
 
-debug(benchmarkGraphics)
-{
-    static class StopWatch
-    {
-    nothrow:
-    @nogc:
-        this(GUIGraphics graphics, string title)
-        {
-            _graphics = graphics;
-            _title = title;
-
-            getCurrentThreadHandle();
-        }
-
-        void start()
-        {
-            _lastTime = getTickUs();
-        }
-
-        enum WARMUP = 0;
-
-        void stop()
-        {
-            long now = getTickUs();
-            int timeDiff = cast(int)(now - _lastTime);
-
-            //if (times >= WARMUP)
-            if (sum < timeDiff)
-                sum = timeDiff;
-                //sum += timeDiff; // first samples are discarded
-
-            times = 1;
-        }
-
-        void displayMean()
-        {
-            import core.stdc.stdio;
-            char[128] buf;
-            sprintf(buf.ptr, "%s %2.3f ms mean", _title.ptr, (sum * 0.001) / (times - WARMUP));
-            debugOutput(buf.ptr);
-        }
-
-        void debugOutput(const(char)* a)
-        {
-            debugLog(a);
-        }
-
-        GUIGraphics _graphics;
-        string _title;
-        long _lastTime;
-        double sum = 0;
-        int times = 0;
-
-
-        __gshared HANDLE hThread;
-
-        long qpcFrequency;
-
-        void getCurrentThreadHandle()
-        {
-            hThread = GetCurrentThread();
-            QueryPerformanceFrequency(&qpcFrequency);
-        }
-
-        long getTickUs() nothrow @nogc
-        {
-            version(Windows)
-            {
-                static if (preciseMeasurements)
-                {
-                    // About -precise measurement:
-                    // We use the undocumented fact that QueryThreadCycleTime
-                    // seem to return a counter in QPC units.
-                    // That may not be the case everywhere, so -precise is not reliable and should
-                    // never be the default.
-                    // Warning: -precise and normal measurements not in the same unit.
-                    //          You shouldn't trust preciseMeasurements to give actual milliseconds values.
-                    import core.sys.windows.windows;
-                    ulong cycles;
-                    BOOL res = QueryThreadCycleTime(hThread, &cycles);
-                    assert(res != 0);
-                    real us = 1000.0 * cast(real)(cycles) / cast(real)(qpcFrequency);
-                    return cast(long)(0.5 + us);
-                }
-                else
-                {
-                    import core.sys.windows.windows;
-                    LARGE_INTEGER lint;
-                    QueryPerformanceCounter(&lint);
-                    double seconds = lint.QuadPart / cast(double)(qpcFrequency);
-                    long us = cast(long)(seconds * 1_000_000);
-                    return us;
-                }
-            }
-            else
-            {
-                import core.time;
-                return convClockFreq(MonoTime.currTime.ticks, MonoTime.ticksPerSecond, 1_000_000);
-            }
-        }
-    }
-}
 void shuffleComponentsRGBA8ToARGB8AndForceAlphaTo255(ImageRef!RGBA image) pure nothrow @nogc
 {
     immutable int w = image.w;
