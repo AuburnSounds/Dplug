@@ -67,3 +67,22 @@ ubyte[] readFile(const(char)* fileNameZ)
     import core.stdc.string: strlen;
     return readFile(fileNameZ[0..strlen(fileNameZ)]);
 }
+
+
+/// Replacement for `std.file.write`.
+/// Returns: `false` on error.
+bool writeFile(const(char)[] fileNameZ, const(ubyte)[] bytes)
+{
+    // assuming that fileNameZ is zero-terminated, since it will in practice be
+    // a static string
+    FILE* file = fopen(assumeZeroTerminated(fileNameZ), "wb".ptr);
+    if (file)
+    {
+        scope(exit) fclose(file);
+
+        size_t n = fwrite(bytes.ptr, 1, bytes.length, file);
+        return n == bytes.length;
+    }
+    else
+        return false;
+}
