@@ -79,6 +79,8 @@ nothrow:
 
         // Over-allocate to support POW2 delaylines.
         // This wastes memory but allows delay-line of length 0 without tests.
+        // The reason to add +1 here is that fundamentally in a delay line of length = 1
+        // we want to keep track of the current sample (at delay 0) and the former one (at delay 1).
 
         int toAllocate = nextPow2HigherOrEqual(numSamples + 1);
         _data.reallocBuffer(toAllocate * 2);
