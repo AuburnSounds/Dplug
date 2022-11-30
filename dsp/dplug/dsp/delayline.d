@@ -129,7 +129,11 @@ nothrow:
         // remaining samples before end of delayline
         int remain = _indexMask - _index;
 
-        if (N <= remain)
+        if (N == 0)
+        {
+            return;
+        }
+        else if (N <= remain)
         {
             memcpy( &_data[_index + 1], incoming.ptr, N * T.sizeof );
             memcpy( &_data[_index + 1 + _half], incoming.ptr, N * T.sizeof );
@@ -137,8 +141,11 @@ nothrow:
         }
         else
         {
-            memcpy( _data.ptr + (_index + 1), incoming.ptr, remain * T.sizeof );
-            memcpy( _data.ptr + (_index + 1) + _half, incoming.ptr, remain * T.sizeof );
+            if (remain != 0)
+            {
+                memcpy( _data.ptr + (_index + 1), incoming.ptr, remain * T.sizeof );
+                memcpy( _data.ptr + (_index + 1) + _half, incoming.ptr, remain * T.sizeof );                
+            }
             size_t numBytes = (N - remain) * T.sizeof;
             memcpy( _data.ptr, incoming.ptr + remain, numBytes);
             memcpy( _data.ptr + _half, incoming.ptr + remain, numBytes);
