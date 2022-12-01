@@ -99,7 +99,7 @@ nothrow @nogc:
     /// If you use `dplug:wren-support`, this is called by the `$` operator or the `UI.getElementById`.
     UIElement getElementById(const(char)* id);
 
-    version(dplugProfileGUI)
+    version(Dplug_ProfileUI)
     {
         // A shared trace profiler to record events.
         TraceProfiler* traceProfiler();
@@ -138,7 +138,7 @@ nothrow:
         dirtyListRaw = makeDirtyRectList();
         _sortingscratchBuffer = makeVec!UIElement();
 
-        version(dplugProfileGUI)
+        version(Dplug_ProfileUI)
         {
             _profiler.initialize;
         }
@@ -327,14 +327,12 @@ nothrow:
         return _sortingscratchBuffer;
     }
 
-    final TraceProfiler* traceProfiler()
+    version(Dplug_ProfileUI)
     {
-        version(dplugProfileGUI)
+        final TraceProfiler* traceProfiler()
         {
             return &_profiler;
         }
-        else
-            return null;
     }
 
 private:
@@ -351,7 +349,7 @@ private:
     /// id 8..15 are for vendor-specific extensions.
     void*[16] _userPointers; // Opaque pointer for Wren VM and things.
 
-    version(dplugProfileGUI)
+    version(Dplug_ProfileUI)
     {
         TraceProfiler _profiler;
     }

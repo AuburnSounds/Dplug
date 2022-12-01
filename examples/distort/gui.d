@@ -118,7 +118,7 @@ nothrow:
         _knobImageData.destroyFree();
         context.disableWrenSupport();
 
-        version(dplugProfileGUI)
+        version(Dplug_ProfileUI)
         {
             context.traceProfiler.saveToFile(`/home/myuser/plugin-trace.json`);
         }

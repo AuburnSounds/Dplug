@@ -32,7 +32,7 @@ import dplug.gui.compositor;
 import dplug.gui.legacypbr;
 import dplug.gui.sizeconstraints;
 
-version(dplugProfileGUI)
+version(Dplug_ProfileUI)
 {
     import dplug.gui.traceeventformat;
 }
@@ -181,7 +181,7 @@ nothrow:
         // We create this window each time.
         _window = createWindow(WindowUsage.plugin, parentInfo, controlInfo, _windowListener, wbackend, _currentLogicalWidth, _currentLogicalHeight);
 
-        version(dplugProfileGUI)
+        version(Dplug_ProfileUI)
         {
             _uiContext.traceProfiler.addInstantEvent("Open UI", "ui");
         }
@@ -194,7 +194,7 @@ nothrow:
         // Destroy window.
         if (_window !is null)
         {
-            version(dplugProfileGUI)
+            version(Dplug_ProfileUI)
             {
                 _uiContext.traceProfiler.addInstantEvent("Close UI", "ui");
             }
@@ -648,7 +648,7 @@ protected:
         return ir;
     }
 
-    version(dplugProfileGUI)
+    version(Dplug_ProfileUI)
     {
         TraceProfiler* profiler()
         {
@@ -675,56 +675,56 @@ protected:
         // A. Recompute draw lists
         // These are the `UIElement`s that _may_ have their onDrawXXX callbacks called.
 
-        version(dplugProfileGUI) profiler.addBeginEvent("Recompute Draw Lists", "ui");
+        version(Dplug_ProfileUI) profiler.addBeginEvent("Recompute Draw Lists", "ui");
         recomputeDrawLists();
-        version(dplugProfileGUI) profiler.addEndEvent("Recompute Draw Lists", "ui");
+        version(Dplug_ProfileUI) profiler.addEndEvent("Recompute Draw Lists", "ui");
 
         // Composite GUI
         // Most of the cost of rendering is here
         // B. 1st PASS OF REDRAW
         // Some UIElements are redrawn at the PBR level        
-        version(dplugProfileGUI) profiler.addBeginEvent("Draw Elements PBR", "ui");
+        version(Dplug_ProfileUI) profiler.addBeginEvent("Draw Elements PBR", "ui");
         redrawElementsPBR();
-        version(dplugProfileGUI) profiler.addEndEvent("Draw Elements PBR", "ui");
+        version(Dplug_ProfileUI) profiler.addEndEvent("Draw Elements PBR", "ui");
 
         // C. MIPMAPPING
-        version(dplugProfileGUI) profiler.addBeginEvent("Regenerate Mipmaps", "ui");
+        version(Dplug_ProfileUI) profiler.addBeginEvent("Regenerate Mipmaps", "ui");
         regenerateMipmaps();
-        version(dplugProfileGUI) profiler.addEndEvent("Regenerate Mipmaps", "ui");
+        version(Dplug_ProfileUI) profiler.addEndEvent("Regenerate Mipmaps", "ui");
 
         // D. COMPOSITING
         auto compositedRef = _compositedBuffer.toRef();
 
-        version(dplugProfileGUI) profiler.addBeginEvent("Composite GUI", "ui");
+        version(Dplug_ProfileUI) profiler.addBeginEvent("Composite GUI", "ui");
         compositeGUI(compositedRef); // Launch the possibly-expensive Compositor step, which implements PBR rendering
-        version(dplugProfileGUI) profiler.addEndEvent("Composite GUI", "ui");
+        version(Dplug_ProfileUI) profiler.addEndEvent("Composite GUI", "ui");
 
         // E. COPY FROM "COMPOSITED" TO "RENDERED" BUFFER
         // Copy _compositedBuffer onto _renderedBuffer for every rect that will be changed on display
         auto renderedRef = _renderedBuffer.toRef();
-        version(dplugProfileGUI) profiler.addBeginEvent("Copy to renderbuffer", "ui");
+        version(Dplug_ProfileUI) profiler.addBeginEvent("Copy to renderbuffer", "ui");
         foreach(rect; _rectsToDisplayDisjointed[])
         {
             auto croppedComposite = compositedRef.cropImageRef(rect);
             auto croppedRendered = renderedRef.cropImageRef(rect);
             croppedComposite.blitTo(croppedRendered); // failure to optimize this: 1
         }
-        version(dplugProfileGUI) profiler.addEndEvent("Copy to renderbuffer", "ui");
+        version(Dplug_ProfileUI) profiler.addEndEvent("Copy to renderbuffer", "ui");
         
         // F. 2nd PASS OF REDRAW
-        version(dplugProfileGUI) profiler.addBeginEvent("Draw Elements Raw", "ui");
+        version(Dplug_ProfileUI) profiler.addBeginEvent("Draw Elements Raw", "ui");
         redrawElementsRaw();
-        version(dplugProfileGUI) profiler.addEndEvent("Draw Elements Raw", "ui");
+        version(Dplug_ProfileUI) profiler.addEndEvent("Draw Elements Raw", "ui");
 
         // G. Reorder components to the right pixel format
-        version(dplugProfileGUI) profiler.addBeginEvent("Component Reorder", "ui");
+        version(Dplug_ProfileUI) profiler.addBeginEvent("Component Reorder", "ui");
         reorderComponents(pf);
-        version(dplugProfileGUI) profiler.addEndEvent("Component Reorder", "ui");
+        version(Dplug_ProfileUI) profiler.addEndEvent("Component Reorder", "ui");
 
         // H. Copy updated content to the final buffer. (hint: not actually resizing)
-        version(dplugProfileGUI) profiler.addBeginEvent("Copy content", "ui");
+        version(Dplug_ProfileUI) profiler.addBeginEvent("Copy content", "ui");
         resizeContent(pf);
-        version(dplugProfileGUI) profiler.addEndEvent("Copy content", "ui");
+        version(Dplug_ProfileUI) profiler.addEndEvent("Copy content", "ui");
 
         // Only then is the list of rectangles to update cleared,
         // before calling `doDraw` such work accumulates
