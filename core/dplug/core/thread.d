@@ -638,6 +638,21 @@ else
     }
 }
 
+/// Get the current thread OS handle.
+/// The returned ID is just used for display. You can't get a `Thread` out of it.
+public static size_t getCurrentThreadId() nothrow @nogc
+{
+    version(Windows)
+    {
+        return cast(size_t) GetCurrentThread();
+    }
+    else version(Posix)
+    {
+        return cast(size_t)cast(void*)pthread_self();
+    }
+    else
+        static assert(false);
+}
 
 unittest
 {
