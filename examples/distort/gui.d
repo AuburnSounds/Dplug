@@ -122,6 +122,7 @@ nothrow:
         version(Dplug_ProfileUI)
         {
             writeFile(`/home/myuser/plugin-trace.json`, context.profiler.toBytes());
+            browseNoGC("https://ui.perfetto.dev/"); // A webtool to read that trace
         }
     }
 

@@ -644,7 +644,7 @@ public static size_t getCurrentThreadId() nothrow @nogc
 {
     version(Windows)
     {
-        return cast(size_t) GetCurrentThread();
+        return cast(size_t) GetCurrentThreadId();
     }
     else version(Posix)
     {

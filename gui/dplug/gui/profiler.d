@@ -121,6 +121,12 @@ public:
 nothrow:
 @nogc:    
 
+    this()
+    {
+        _clock.initialize();
+        _mutex = makeMutex;
+    }
+
     override IProfiler category(const(char)[] categoryZ) 
     {
         ensureThreadContext();
@@ -176,6 +182,7 @@ private:
             return;
 
         _concatenated.makeEmpty();
+        _concatenated ~= "[";
         _mutex.lock();
 
         foreach(ref bufptr; _allBuffers[])
@@ -215,17 +222,8 @@ private:
         char[256] buf;
         size_t tid = getCurrentThreadId();
         snprintf(buf.ptr, 256, `{ "ph": "%s", "pid": 0, "tid": %zu, "ts": %lld }`,
-                 typeZ.ptr, tid, us);        
+                 typeZ.ptr, tid, us);
         threadInfo.buffer.appendZeroTerminatedString(buf.ptr);
-    }   
-
-
-    this()
-    {
-        _concatenated = makeString("");
-        _concatenated ~= "[";
-        _clock.initialize();
-        _mutex = makeMutex;
     }
 
     // All thread-local requirements for the profiling to be thread-local.
@@ -297,4 +295,9 @@ private:
     {
         LARGE_INTEGER _qpcFrequency;
     }
+}
+
+version(Dplug_profileUI)
+{
+    pragma(msg, "You probably meant Dplug_ProfileUI, not Dplug_profileUI. Correct your dub.json");
 }
