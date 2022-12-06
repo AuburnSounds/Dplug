@@ -18,7 +18,7 @@ import dplug.core.thread;
 import dplug.graphics;
 
 import dplug.window.window;
-import dplug.gui.traceeventformat;
+import dplug.gui.profiler;
 
 
 /// Only deals with rendering tiles.
@@ -63,7 +63,7 @@ nothrow:
                        Mipmap!RGBA diffuseMap,
                        Mipmap!RGBA materialMap,
                        Mipmap!L16 depthMap,
-                       TraceProfiler* profiler /* can be null */);
+                       IProfiler profiler);
 }
 
 /// What a compositor is passed upon creation within `GUIGraphics`.
@@ -121,7 +121,7 @@ nothrow:
                                 Mipmap!RGBA diffuseMap,
                                 Mipmap!RGBA materialMap,
                                 Mipmap!L16 depthMap,
-                                TraceProfiler* profiler)
+                                IProfiler profiler)
     {
         // Note: if you want to customize rendering further, you can add new buffers to a struct extending
         // CompositorPassBuffers, override `compositeTile` and you will still be able to use the former passes.
@@ -140,7 +140,7 @@ nothrow:
                 {
                     char[96] buf;
                     snprintf(buf.ptr, 96, "Pass %s".ptr, pass.name.ptr);
-                    profiler.begin(buf, "ui");
+                    profiler.category("ui").begin(buf);
                 }
                 
                 pass.renderIfActive(threadIndex, areas[i], &buffers);

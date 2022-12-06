@@ -22,7 +22,7 @@ import dplug.gui.element;
 import dplug.gui.boxlist;
 import dplug.gui.graphics;
 import dplug.gui.sizeconstraints;
-import dplug.gui.traceeventformat;
+import dplug.gui.profiler;
 
 
 /// Work in progress. An ensemble of calls `UIElement` are allowed to make, that
@@ -72,14 +72,22 @@ nothrow @nogc:
     /// but they don't have to be encouraged if the plugin declares no support for it.
     bool isUIResizable();
 
-    // A shared image resizer to be used in `reflow()` of element.
-    // Resizing using dplug:graphics use a lot of memory, 
-    // so it can be better if this is a shared resource.
-    // It is lazily constructed.
-    // See_also: `ImageResizer`.
-    // Note: do not use this resizer concurrently (in `onDrawRaw`, `onDrawPBR`, etc.).
-    //       Usually intended for `reflow()`.
+    /// A shared image resizer to be used in `reflow()` of element.
+    /// Resizing using dplug:graphics use a lot of memory, 
+    /// so it can be better if this is a shared resource.
+    /// It is lazily constructed.
+    /// See_also: `ImageResizer`.
+    /// Note: do not use this resizer concurrently (in `onDrawRaw`, `onDrawPBR`, etc.).
+    ///       Usually intended for `reflow()`.
     ImageResizer* globalImageResizer();
+
+    /// Returns a UI-wide profiler that records UI performance, as long as Dplug_ProfileUI version is 
+    /// defined. Else, it is a null IProfiler that forgets everything.
+    /// For performance purpose, it is recommended:
+    /// 1. not to record profile if Dplug_ProfileUI is not defined, 
+    /// 2. and undefine Dplug_ProfileUI if you're not looking for a bottleneck.
+    /// See_also: 
+    IProfiler profiler();
 
     /// Store an user-defined pointer globally for the UI. This is useful to implement an optional extension to dplug:gui.
     /// id 0..7 are reserved for future Dplug extensions.
@@ -98,12 +106,6 @@ nothrow @nogc:
     /// Get the first `UIElement` with the given ID, or `null`. This just checks for exact id matches, without anything fancy.
     /// If you use `dplug:wren-support`, this is called by the `$` operator or the `UI.getElementById`.
     UIElement getElementById(const(char)* id);
-
-    version(Dplug_ProfileUI)
-    {
-        // A shared trace profiler to record events.
-        TraceProfiler* traceProfiler();
-    }
 }
 
 // Official dplug:gui optional extension.
@@ -140,8 +142,13 @@ nothrow:
 
         version(Dplug_ProfileUI)
         {
-            _profiler.initialize;
+            _profiler = createProfiler();
         }
+    }
+
+    ~this()
+    {
+        destroyProfiler(_profiler);
     }
 
     final override float getUIScale()
@@ -202,6 +209,11 @@ nothrow:
     final override ImageResizer* globalImageResizer()
     {
         return &_globalResizer;
+    }
+
+    final override IProfiler profiler()
+    {
+        return _profiler;
     }
 
     /// Last clicked element.
@@ -325,15 +337,7 @@ nothrow:
     final ref Vec!UIElement sortingScratchBuffer()
     {
         return _sortingscratchBuffer;
-    }
-
-    version(Dplug_ProfileUI)
-    {
-        final TraceProfiler* traceProfiler()
-        {
-            return &_profiler;
-        }
-    }
+    }    
 
 private:
     GUIGraphics _owner;
@@ -349,9 +353,6 @@ private:
     /// id 8..15 are for vendor-specific extensions.
     void*[16] _userPointers; // Opaque pointer for Wren VM and things.
 
-    version(Dplug_ProfileUI)
-    {
-        TraceProfiler _profiler;
-    }
+    IProfiler _profiler;
 }
 

@@ -6,6 +6,7 @@ module gui;
 
 import std.math;
 
+import dplug.core;
 import dplug.math;
 import dplug.gui;
 import dplug.pbrwidgets;
@@ -120,7 +121,7 @@ nothrow:
 
         version(Dplug_ProfileUI)
         {
-            context.traceProfiler.saveToFile(`/home/myuser/plugin-trace.json`);
+            writeFile(`/home/myuser/plugin-trace.json`, context.profiler.toBytes());
         }
     }
 

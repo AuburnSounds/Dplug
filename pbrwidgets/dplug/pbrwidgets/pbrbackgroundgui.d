@@ -265,17 +265,17 @@ private:
     void loadBackgroundImages(ubyte[] basecolorData, ubyte[] emissiveData,
                               ubyte[] materialData, ubyte[] depthData)
     {
-        version(Dplug_ProfileUI) context.traceProfiler.begin("load Diffuse background", "image");
+        version(Dplug_ProfileUI) context.profiler.category("image").begin("load Diffuse background");
         _diffuse = loadImageSeparateAlpha(basecolorData, emissiveData);
-        version(Dplug_ProfileUI) context.traceProfiler.end;
+        version(Dplug_ProfileUI) context.profiler.end;
 
-        version(Dplug_ProfileUI) context.traceProfiler.begin("load Material background", "image");
+        version(Dplug_ProfileUI) context.profiler.begin("load Material background");
         _material = loadOwnedImage(materialData);
-        version(Dplug_ProfileUI) context.traceProfiler.end;
+        version(Dplug_ProfileUI) context.profiler.end;
 
-        version(Dplug_ProfileUI) context.traceProfiler.begin("load Depth background", "image");
+        version(Dplug_ProfileUI) context.profiler.begin("load Depth background");
         _depth = loadOwnedImageDepth(depthData);
-        version(Dplug_ProfileUI) context.traceProfiler.end;
+        version(Dplug_ProfileUI) context.profiler.end;
     }
 
     void loadSkybox(ubyte[] skyboxData)
@@ -287,13 +287,13 @@ private:
             {
                 if (auto skyreflPass = cast(PassSkyboxReflections)pass)
                 {
-                    version(Dplug_ProfileUI) context.traceProfiler.begin("load Skybox", "image");
+                    version(Dplug_ProfileUI) context.profiler.category("image").begin("load Skybox");
                     OwnedImage!RGBA skybox = loadOwnedImage(skyboxData);
                     skyreflPass.setSkybox(skybox);
-                    version(Dplug_ProfileUI) context.traceProfiler.end;
+                    version(Dplug_ProfileUI) context.profiler.end;
                 }
             }
-        }        
+        }
     }
 }
 

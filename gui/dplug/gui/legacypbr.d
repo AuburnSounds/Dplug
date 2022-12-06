@@ -29,7 +29,7 @@ import dplug.gui.ransac;
 
 import inteli.math;
 import inteli.emmintrin;
-import dplug.gui.traceeventformat;
+import dplug.gui.profiler;
 
 // TODO: PBR rendering doesn't depend rightly on size of the plugin.
 //       The #RESIZE tag below makrs all areas that needs updating.
@@ -187,7 +187,7 @@ nothrow @nogc:
                                 Mipmap!RGBA diffuseMap,
                                 Mipmap!RGBA materialMap,
                                 Mipmap!L16 depthMap,
-                                TraceProfiler* profiler)
+                                IProfiler profiler)
     {
         // Call each pass in sequence
         PBRCompositorPassBuffers buffers;
@@ -204,6 +204,11 @@ nothrow @nogc:
         {
             OwnedImage!RGBAf accumBuffer = _accumBuffers[threadIndex];
 
+            version(Dplug_ProfileUI) 
+            {
+                profiler.category("PBR");
+            }
+
             box2i area = areas[i];
             // Clear the accumulation buffer, since all passes add to it
             {
@@ -215,13 +220,15 @@ nothrow @nogc:
                 }
             }
 
+            
+
             foreach(pass; passes())
             {
                 version(Dplug_ProfileUI) 
                 {
                     char[96] buf;
                     snprintf(buf.ptr, 96, "Pass %s".ptr, pass.name.ptr);
-                    profiler.begin(buf, "ui");
+                    profiler.begin(buf);
                 }
 
                 pass.renderIfActive(threadIndex, area, cast(CompositorPassBuffers*)&buffers);
