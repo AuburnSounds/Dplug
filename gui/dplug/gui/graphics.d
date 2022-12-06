@@ -7,6 +7,8 @@
 */
 module dplug.gui.graphics;
 
+import core.stdc.stdio;
+
 import std.math;
 import std.algorithm.comparison;
 import std.algorithm.sorting;
@@ -181,10 +183,7 @@ nothrow:
         // We create this window each time.
         _window = createWindow(WindowUsage.plugin, parentInfo, controlInfo, _windowListener, wbackend, _currentLogicalWidth, _currentLogicalHeight);
 
-        version(Dplug_ProfileUI)
-        {
-            _uiContext.traceProfiler.addInstantEvent("Open UI", "ui");
-        }
+        version(Dplug_ProfileUI) _uiContext.traceProfiler.instant("Open UI", "ui");
 
         return _window.systemHandle();
     }
@@ -196,7 +195,7 @@ nothrow:
         {
             version(Dplug_ProfileUI)
             {
-                _uiContext.traceProfiler.addInstantEvent("Close UI", "ui");
+                _uiContext.traceProfiler.instant("Close UI", "ui");
             }
 
             _window.destroyFree();
@@ -394,7 +393,9 @@ nothrow:
 
         override void onAnimate(double dt, double time)
         {
+            version(Dplug_ProfileUI) outer._uiContext.traceProfiler.begin("animate", "ui");
             outer.animate(dt, time);
+            version(Dplug_ProfileUI) outer._uiContext.traceProfiler.end();
         }
 
         override MouseCursor getMouseCursor()
@@ -655,9 +656,18 @@ protected:
             return _uiContext.traceProfiler();
         }
     }
+    else
+    {
+        TraceProfiler* profiler()
+        {
+            return null;
+        }
+    }
 
     void doDraw(WindowPixelFormat pf) nothrow @nogc
     {
+        version(Dplug_ProfileUI) profiler.begin("doDraw", "ui");
+
         debug(resizing) debugLogf(">doDraw\n");
 
         debug(resizing)
@@ -675,62 +685,63 @@ protected:
         // A. Recompute draw lists
         // These are the `UIElement`s that _may_ have their onDrawXXX callbacks called.
 
-        version(Dplug_ProfileUI) profiler.addBeginEvent("Recompute Draw Lists", "ui");
+        version(Dplug_ProfileUI) profiler.begin("Recompute Draw Lists", "ui");
         recomputeDrawLists();
-        version(Dplug_ProfileUI) profiler.addEndEvent("Recompute Draw Lists", "ui");
+        version(Dplug_ProfileUI) profiler.end();
 
         // Composite GUI
         // Most of the cost of rendering is here
         // B. 1st PASS OF REDRAW
-        // Some UIElements are redrawn at the PBR level        
-        version(Dplug_ProfileUI) profiler.addBeginEvent("Draw Elements PBR", "ui");
+        // Some UIElements are redrawn at the PBR level
+        version(Dplug_ProfileUI) profiler.begin("Draw Elements PBR", "ui");
         redrawElementsPBR();
-        version(Dplug_ProfileUI) profiler.addEndEvent("Draw Elements PBR", "ui");
+        version(Dplug_ProfileUI) profiler.end();
 
         // C. MIPMAPPING
-        version(Dplug_ProfileUI) profiler.addBeginEvent("Regenerate Mipmaps", "ui");
+        version(Dplug_ProfileUI) profiler.begin("Regenerate Mipmaps", "ui");
         regenerateMipmaps();
-        version(Dplug_ProfileUI) profiler.addEndEvent("Regenerate Mipmaps", "ui");
+        version(Dplug_ProfileUI) profiler.end();
 
         // D. COMPOSITING
         auto compositedRef = _compositedBuffer.toRef();
 
-        version(Dplug_ProfileUI) profiler.addBeginEvent("Composite GUI", "ui");
+        version(Dplug_ProfileUI) profiler.begin("Composite GUI", "ui");
         compositeGUI(compositedRef); // Launch the possibly-expensive Compositor step, which implements PBR rendering
-        version(Dplug_ProfileUI) profiler.addEndEvent("Composite GUI", "ui");
+        version(Dplug_ProfileUI) profiler.end();
 
         // E. COPY FROM "COMPOSITED" TO "RENDERED" BUFFER
         // Copy _compositedBuffer onto _renderedBuffer for every rect that will be changed on display
         auto renderedRef = _renderedBuffer.toRef();
-        version(Dplug_ProfileUI) profiler.addBeginEvent("Copy to renderbuffer", "ui");
+        version(Dplug_ProfileUI) profiler.begin("Copy to renderbuffer", "ui");
         foreach(rect; _rectsToDisplayDisjointed[])
         {
             auto croppedComposite = compositedRef.cropImageRef(rect);
             auto croppedRendered = renderedRef.cropImageRef(rect);
             croppedComposite.blitTo(croppedRendered); // failure to optimize this: 1
         }
-        version(Dplug_ProfileUI) profiler.addEndEvent("Copy to renderbuffer", "ui");
+        version(Dplug_ProfileUI) profiler.end();
         
         // F. 2nd PASS OF REDRAW
-        version(Dplug_ProfileUI) profiler.addBeginEvent("Draw Elements Raw", "ui");
+        version(Dplug_ProfileUI) profiler.begin("Draw Elements Raw", "ui");
         redrawElementsRaw();
-        version(Dplug_ProfileUI) profiler.addEndEvent("Draw Elements Raw", "ui");
+        version(Dplug_ProfileUI) profiler.end();
 
         // G. Reorder components to the right pixel format
-        version(Dplug_ProfileUI) profiler.addBeginEvent("Component Reorder", "ui");
+        version(Dplug_ProfileUI) profiler.begin("Component Reorder", "ui");
         reorderComponents(pf);
-        version(Dplug_ProfileUI) profiler.addEndEvent("Component Reorder", "ui");
+        version(Dplug_ProfileUI) profiler.end();
 
         // H. Copy updated content to the final buffer. (hint: not actually resizing)
-        version(Dplug_ProfileUI) profiler.addBeginEvent("Copy content", "ui");
+        version(Dplug_ProfileUI) profiler.begin("Copy content", "ui");
         resizeContent(pf);
-        version(Dplug_ProfileUI) profiler.addEndEvent("Copy content", "ui");
+        version(Dplug_ProfileUI) profiler.end();
 
         // Only then is the list of rectangles to update cleared,
         // before calling `doDraw` such work accumulates
         _rectsToUpdateDisjointedPBR.clearContents();
         _rectsToUpdateDisjointedRaw.clearContents();
 
+        version(Dplug_ProfileUI) profiler.end();
         debug(resizing) debugLogf("<doDraw\n");
     }
 
@@ -868,6 +879,7 @@ protected:
     ImageRef!RGBA doResize(int widthLogicalPixels,
                            int heightLogicalPixels) nothrow @nogc
     {
+        version(Dplug_ProfileUI) _uiContext.traceProfiler.begin("doResize", "ui");
         debug(resizing) debugLogf(">doResize(%d, %d)\n", widthLogicalPixels, heightLogicalPixels);
 
         /// We do receive a new size in logical pixels.
@@ -1005,6 +1017,8 @@ protected:
 
         debug(resizing) debugLogf("<doResize(%d, %d)\n", widthLogicalPixels, heightLogicalPixels);
 
+        version(Dplug_ProfileUI) _uiContext.traceProfiler.end();
+
         return toImageRef(_resizedBuffer, _currentLogicalWidth, _currentLogicalHeight);
     }
 
@@ -1051,7 +1065,17 @@ protected:
                 // Draw a number of UIElement in parallel
                 void drawOneItem(int i, int threadIndex) nothrow @nogc
                 {
+                    version(Dplug_ProfileUI) 
+                    {
+                        char[maxUIElementIDLength + 16] idstr;
+                        snprintf(idstr.ptr, 128, 
+                                 "draw Raw element %s".ptr, _elemsToDrawRaw[drawn + i].getId().ptr);
+                        _uiContext.traceProfiler.begin(idstr, "draw");
+                    }
+
                     _elemsToDrawRaw[drawn + i].renderRaw(renderedRef, _rectsToDisplayDisjointed[]);
+
+                    version(Dplug_ProfileUI) _uiContext.traceProfiler.end();
                 }
                 _threadPool.parallelFor(canBeDrawn, &drawOneItem);
 
@@ -1115,7 +1139,17 @@ protected:
                 // Draw a number of UIElement in parallel
                 void drawOneItem(int i, int threadIndex) nothrow @nogc
                 {
+                    version(Dplug_ProfileUI) 
+                    {
+                        char[maxUIElementIDLength + 16] idstr;
+                        snprintf(idstr.ptr, 128, 
+                                 "draw PBR element %s", _elemsToDrawPBR[drawn + i].getId().ptr);
+                        _uiContext.traceProfiler.begin(idstr, "draw");
+                    }
+
                     _elemsToDrawPBR[drawn + i].renderPBR(diffuseRef, depthRef, materialRef, _rectsToUpdateDisjointedPBR[]);
+
+                    version(Dplug_ProfileUI) _uiContext.traceProfiler.end();                    
                 }
                 _threadPool.parallelFor(canBeDrawn, &drawOneItem);
 
@@ -1142,7 +1176,8 @@ protected:
                                   _rectsToCompositeDisjointedTiled[],
                                   _diffuseMap,
                                   _materialMap,
-                                  _depthMap);
+                                  _depthMap,
+                                  profiler());
     }
 
     /// Compose lighting effects from depth and diffuse into a result.
@@ -1166,6 +1201,8 @@ protected:
         // Mipmapping used to be threaded, however because it's completely memory-bound
         // (about 2mb read/sec) and fast enough, it's not worth launching threads for.
 
+        version(Dplug_ProfileUI) _uiContext.traceProfiler.begin("diffuse mipmap", "mipmap");
+
         // Generate diffuse mipmap, useful for dealing with emissive
         {
             // diffuse
@@ -1184,6 +1221,10 @@ protected:
                 }
             }
         }
+
+        version(Dplug_ProfileUI) _uiContext.traceProfiler.end;
+
+        version(Dplug_ProfileUI) _uiContext.traceProfiler.begin("depth mipmap", "mipmap");
 
         // Generate depth mipmap, useful for dealing with ambient occlusion
         {
@@ -1207,6 +1248,8 @@ protected:
                 }
             }
         }
+
+        version(Dplug_ProfileUI) _uiContext.traceProfiler.end;
     }
 
     void reorderComponents(WindowPixelFormat pf)

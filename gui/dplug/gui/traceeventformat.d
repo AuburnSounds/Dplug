@@ -5,12 +5,22 @@ Copyright: Guillaume Piolat 2022.
 License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 * Authors:   Guillaume Piolat
 */
-module dplug.gui.traceeventformat;
+module dplug.gui.profiler;
+
+
+/// A profiler interface, make to generate traces in Trace Event Format.
+/// This is useful, for example to check parallelism in the UI.
+
+
+// TODO: clock should be monotonic per-thread
+// events should be recorded per-thread, one mutex per-thread
+// Things should be behind an interface
 
 import core.stdc.stdio;
 
 import dplug.core.math;
 import dplug.core.sync;
+import dplug.core.thread;
 import dplug.core.string;
 import dplug.core.file;
 
@@ -48,24 +58,28 @@ nothrow:
     }
 
     /// Add an event to the trace. This is thread-safe and can be called from multiple threads.
-    void addInstantEvent(const(char)[] nameZ, const(char)[] categoryZ)
+    void instant(const(char)[] nameZ, const(char)[] categoryZ)
     {
         long us = getTickUs();
         addEvent(nameZ, categoryZ, "i", us);
     }
 
-    /// Add an event to the trace. This is thread-safe and can be called from multiple threads.
-    void addBeginEvent(const(char)[] nameZ, const(char)[] categoryZ)
+    /// This Begin Event will be added to the queue.
+    /// Events can be added from whatever thread. But within the same threads, the begin/end events
+    /// are nested and must come in right order.
+    void begin(const(char)[] nameZ, const(char)[] categoryZ)
     {
         long us = getTickUs();
         addEvent(nameZ, categoryZ, "B", us);
     }
 
-    /// Add an event to the trace. This is thread-safe and can be called from multiple threads.
-    void addEndEvent(const(char)[] nameZ, const(char)[] categoryZ)
+    /// This End Event will correspond to the last euqueued Begin event. 
+    /// Events can be added from whatever thread. But within the same threads, the begin/end events
+    /// are nested and must come in right order.
+    void end()
     {
         long us = getTickUs();
-        addEvent(nameZ, categoryZ, "E", us);
+        addEventNoname("E", us);
     }
 
     /// Return a borrowed array of bytes for saving. 
@@ -87,31 +101,12 @@ nothrow:
     {
         version(Windows)
         {
-            /*       static if (preciseMeasurements)
-            {
-            // About -precise measurement:
-            // We use the undocumented fact that QueryThreadCycleTime
-            // seem to return a counter in QPC units.
-            // That may not be the case everywhere, so -precise is not reliable and should
-            // never be the default.
-            // Warning: -precise and normal measurements not in the same unit.
-            //          You shouldn't trust preciseMeasurements to give actual milliseconds values.
             import core.sys.windows.windows;
-            ulong cycles;
-            BOOL res = QueryThreadCycleTime(hThread, &cycles);
-            assert(res != 0);
-            real us = 1000.0 * cast(real)(cycles) / cast(real)(qpcFrequency);
-            return cast(long)(0.5 + us);
-            }
-            else */
-            {
-                import core.sys.windows.windows;
-                LARGE_INTEGER lint;
-                QueryPerformanceCounter(&lint);
-                double seconds = lint.QuadPart / cast(double)(_qpcFrequency.QuadPart);
-                long us = cast(long)(seconds * 1_000_000);
-                return us;
-            }
+            LARGE_INTEGER lint;
+            QueryPerformanceCounter(&lint);
+            double seconds = lint.QuadPart / cast(double)(_qpcFrequency.QuadPart);
+            long us = cast(long)(seconds * 1_000_000);
+            return us;
         }
         else
         {
@@ -133,7 +128,10 @@ private:
         _finalized = true;
     }
 
-    void addEvent(const(char)[] nameZ, const(char)[] categoryZ, const(char)[] typeZ, long us)
+    void addEvent(const(char)[] nameZ, 
+                  const(char)[] categoryZ, 
+                  const(char)[] typeZ, 
+                  long us)
     {
         _mutex.lock();
         if (!_firstEvent)
@@ -142,8 +140,25 @@ private:
         }
         _firstEvent = false;
         char[256] buf;
-        snprintf(buf.ptr, 256, `{ "name": "%s", "cat": "%s", "ph": "%s", "pid": 0, "tid": 0, "ts": %lld }`,
-                 nameZ.ptr, categoryZ.ptr, typeZ.ptr, us);        
+        size_t tid = getCurrentThreadId();
+        snprintf(buf.ptr, 256, `{ "name": "%s", "cat": "%s", "ph": "%s", "pid": 0, "tid": %zu, "ts": %lld }`,
+                 nameZ.ptr, categoryZ.ptr, typeZ.ptr, tid, us);
+        _buf.appendZeroTerminatedString(buf.ptr);
+        _mutex.unlock();
+    }
+
+    void addEventNoname(const(char)[] typeZ, long us)
+    {
+        _mutex.lock();
+        if (!_firstEvent)
+        {
+            _buf ~= ",\n";
+        }
+        _firstEvent = false;
+        char[256] buf;
+        size_t tid = getCurrentThreadId();
+        snprintf(buf.ptr, 256, `{ "ph": "%s", "pid": 0, "tid": %zu, "ts": %lld }`,
+                 typeZ.ptr, tid, us);
         _buf.appendZeroTerminatedString(buf.ptr);
         _mutex.unlock();
     }

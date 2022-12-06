@@ -265,9 +265,17 @@ private:
     void loadBackgroundImages(ubyte[] basecolorData, ubyte[] emissiveData,
                               ubyte[] materialData, ubyte[] depthData)
     {
+        version(Dplug_ProfileUI) context.traceProfiler.begin("load Diffuse background", "image");
         _diffuse = loadImageSeparateAlpha(basecolorData, emissiveData);
+        version(Dplug_ProfileUI) context.traceProfiler.end;
+
+        version(Dplug_ProfileUI) context.traceProfiler.begin("load Material background", "image");
         _material = loadOwnedImage(materialData);
+        version(Dplug_ProfileUI) context.traceProfiler.end;
+
+        version(Dplug_ProfileUI) context.traceProfiler.begin("load Depth background", "image");
         _depth = loadOwnedImageDepth(depthData);
+        version(Dplug_ProfileUI) context.traceProfiler.end;
     }
 
     void loadSkybox(ubyte[] skyboxData)
@@ -279,8 +287,10 @@ private:
             {
                 if (auto skyreflPass = cast(PassSkyboxReflections)pass)
                 {
+                    version(Dplug_ProfileUI) context.traceProfiler.begin("load Skybox", "image");
                     OwnedImage!RGBA skybox = loadOwnedImage(skyboxData);
                     skyreflPass.setSkybox(skybox);
+                    version(Dplug_ProfileUI) context.traceProfiler.end;
                 }
             }
         }        

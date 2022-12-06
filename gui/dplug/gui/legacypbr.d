@@ -8,7 +8,7 @@
 module dplug.gui.legacypbr;
 
 
-
+import core.stdc.stdio;
 import std.math;
 
 import dplug.math.vector;
@@ -29,6 +29,7 @@ import dplug.gui.ransac;
 
 import inteli.math;
 import inteli.emmintrin;
+import dplug.gui.traceeventformat;
 
 // TODO: PBR rendering doesn't depend rightly on size of the plugin.
 //       The #RESIZE tag below makrs all areas that needs updating.
@@ -185,7 +186,8 @@ nothrow @nogc:
                                 const(box2i)[] areas,
                                 Mipmap!RGBA diffuseMap,
                                 Mipmap!RGBA materialMap,
-                                Mipmap!L16 depthMap)
+                                Mipmap!L16 depthMap,
+                                TraceProfiler* profiler)
     {
         // Call each pass in sequence
         PBRCompositorPassBuffers buffers;
@@ -215,7 +217,19 @@ nothrow @nogc:
 
             foreach(pass; passes())
             {
+                version(Dplug_ProfileUI) 
+                {
+                    char[96] buf;
+                    snprintf(buf.ptr, 96, "Pass %s".ptr, pass.name.ptr);
+                    profiler.begin(buf, "ui");
+                }
+
                 pass.renderIfActive(threadIndex, area, cast(CompositorPassBuffers*)&buffers);
+
+                version(Dplug_ProfileUI) 
+                {
+                    profiler.end;
+                }
             }
         }
         int numAreas = cast(int)areas.length;

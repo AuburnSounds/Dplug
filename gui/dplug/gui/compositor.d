@@ -7,6 +7,8 @@
 */
 module dplug.gui.compositor;
 
+import core.stdc.stdio;
+
 import dplug.math.box;
 
 import dplug.core.vec;
@@ -16,6 +18,7 @@ import dplug.core.thread;
 import dplug.graphics;
 
 import dplug.window.window;
+import dplug.gui.traceeventformat;
 
 
 /// Only deals with rendering tiles.
@@ -59,7 +62,8 @@ nothrow:
                        const(box2i)[] areas,
                        Mipmap!RGBA diffuseMap,
                        Mipmap!RGBA materialMap,
-                       Mipmap!L16 depthMap);
+                       Mipmap!L16 depthMap,
+                       TraceProfiler* profiler /* can be null */);
 }
 
 /// What a compositor is passed upon creation within `GUIGraphics`.
@@ -116,7 +120,8 @@ nothrow:
                                 const(box2i)[] areas,
                                 Mipmap!RGBA diffuseMap,
                                 Mipmap!RGBA materialMap,
-                                Mipmap!L16 depthMap)
+                                Mipmap!L16 depthMap,
+                                TraceProfiler* profiler)
     {
         // Note: if you want to customize rendering further, you can add new buffers to a struct extending
         // CompositorPassBuffers, override `compositeTile` and you will still be able to use the former passes.
@@ -131,7 +136,19 @@ nothrow:
         {
             foreach(pass; _passes)
             {
+                version(Dplug_ProfileUI) 
+                {
+                    char[96] buf;
+                    snprintf(buf.ptr, 96, "Pass %s".ptr, pass.name.ptr);
+                    profiler.begin(buf, "ui");
+                }
+                
                 pass.renderIfActive(threadIndex, areas[i], &buffers);
+
+                version(Dplug_ProfileUI) 
+                {
+                    profiler.end();
+                }
             }
         }
         int numAreas = cast(int)areas.length;
@@ -192,6 +209,11 @@ class CompositorPass
 public:
 nothrow:
 @nogc:
+
+    string name()
+    {
+        return typeid(this).name;
+    }
 
     this(MultipassCompositor parent)
     {
