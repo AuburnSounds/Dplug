@@ -98,6 +98,7 @@ void usage()
     flag("--publish", "Make the plugin available in standard directories " ~ "(OSX only)".lred, null, "no");
     flag("--auval", "Check Audio Unit validation with auval " ~ "(OSX only)".lred, null, "no");
     flag("--rez", "Generate Audio Unit .rsrc file with Rez " ~ "(OSX only)".lred, null, "no");
+    flag("--legacy-pt10", "Allow creation of x86 AAX for Protools 10 support" ~ " (Windows only)".lred, null, "no");
     flag("-h --help", "Shows this help", null, null);
 
     cwriteln();
@@ -149,6 +150,7 @@ int main(string[] args)
         bool useRez = false;
         bool skipRegistry = false;
         bool parallel = false;
+        bool legacyPT10 = false;
         string prettyName = null;
 
         OS targetOS = buildOS();
@@ -212,6 +214,13 @@ int main(string[] args)
                     makeInstaller = true;
                 else
                     warning("--installer not supported on that OS");
+            }
+            else if (arg == "--legacy-pt10")
+            {
+                if (targetOS == OS.windows)
+                    legacyPT10 = true;
+                else
+                    warning("--legacy-pt10 not supported on that OS");
             }
             else if (arg == "--combined")
                 combined = true;
@@ -446,7 +455,7 @@ int main(string[] args)
             foreach (size_t archCount, arch; architectures)
             {
                 // Only build x86_64 on Windows
-                if (targetOS == OS.windows && configIsAAX(config) && (arch != Arch.x86_64))
+                if (targetOS == OS.windows && configIsAAX(config) && (arch != Arch.x86_64) && !(legacyPT10 && arch == Arch.x86) )
                 {
                     cwritefln("info: Skipping architecture %s for AAX on Windows\n".white, arch);
                     continue;
