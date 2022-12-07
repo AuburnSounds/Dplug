@@ -90,6 +90,17 @@ void element_setposition(WrenVM* vm)
 {
     UIElementBridge* bridge = cast(UIElementBridge*) wrenGetSlotForeign(vm, 0);
     assert(bridge.elem); // TODO error
+
+    // Avoid crash if passed Rectangle.new(false, 1, 4, 4), just do nothing in that case
+    if ( wrenGetSlotType(vm, 1) !=  WrenType.WREN_TYPE_NUM )
+        return;
+    if ( wrenGetSlotType(vm, 2) !=  WrenType.WREN_TYPE_NUM )
+        return;
+    if ( wrenGetSlotType(vm, 3) !=  WrenType.WREN_TYPE_NUM )
+        return;
+    if ( wrenGetSlotType(vm, 4) !=  WrenType.WREN_TYPE_NUM )
+        return;
+
     double x = wrenGetSlotDouble(vm, 1);
     double y = wrenGetSlotDouble(vm, 2);
     double w = wrenGetSlotDouble(vm, 3);
@@ -101,8 +112,13 @@ void element_setvisibility(WrenVM* vm)
 {
     UIElementBridge* bridge = cast(UIElementBridge*) wrenGetSlotForeign(vm, 0);
     assert(bridge.elem); // TODO error
-    bool visibleFlag = wrenGetSlotBool(vm, 1);
-    bridge.elem.visibility = visibleFlag;
+
+    // If not passed a bool, do nothing
+    if (wrenGetSlotType(vm, 1) == WrenType.WREN_TYPE_BOOL)
+    {
+        bool visibleFlag = wrenGetSlotBool(vm, 1);
+        bridge.elem.visibility = visibleFlag;
+    }
 }
 
 void element_setProperty(WrenVM* vm)
@@ -120,10 +136,16 @@ void element_setProperty(WrenVM* vm)
 
     bool changed = false;
 
+    // Note: we check the property type, if it's the wrong type then nothing happens. Styling failure is not an error.
+    // Visual error like this are silent but will have a visual effect.
+    WrenType slot3_t = wrenGetSlotType(vm, 3);
+
     final switch(desc.type)
     {
         case ScriptPropertyType.bool_:
         { 
+            if (slot3_t != WrenType.WREN_TYPE_BOOL)
+                return;
             bool* valuePtr = cast(bool*)raw;
             bool current = *valuePtr;
             bool newValue = wrenGetSlotBool(vm, 3);
@@ -132,7 +154,9 @@ void element_setProperty(WrenVM* vm)
             break;
         }
         case ScriptPropertyType.byte_: 
-        { 
+        {
+            if (slot3_t != WrenType.WREN_TYPE_NUM)
+                return;
             byte* valuePtr = cast(byte*)raw;
             byte current = *valuePtr;
             byte newValue =  cast(byte) wrenGetSlotDouble(vm, 3);
@@ -141,7 +165,9 @@ void element_setProperty(WrenVM* vm)
             break;
         }
         case ScriptPropertyType.ubyte_: 
-        { 
+        {
+            if (slot3_t != WrenType.WREN_TYPE_NUM)
+                return;
             ubyte* valuePtr = cast(ubyte*)raw;
             ubyte current = *valuePtr;
             ubyte newValue =  cast(ubyte) wrenGetSlotDouble(vm, 3);
@@ -150,7 +176,9 @@ void element_setProperty(WrenVM* vm)
             break;
         }   
         case ScriptPropertyType.short_: 
-        { 
+        {
+            if (slot3_t != WrenType.WREN_TYPE_NUM)
+                return;
             short* valuePtr = cast(short*)raw;
             short current = *valuePtr;
             short newValue =  cast(short) wrenGetSlotDouble(vm, 3);
@@ -159,7 +187,9 @@ void element_setProperty(WrenVM* vm)
             break;
         }
         case ScriptPropertyType.ushort_: 
-        { 
+        {
+            if (slot3_t != WrenType.WREN_TYPE_NUM)
+                return;
             ushort* valuePtr = cast(ushort*)raw;
             ushort current = *valuePtr;
             ushort newValue =  cast(ushort) wrenGetSlotDouble(vm, 3);
@@ -168,7 +198,9 @@ void element_setProperty(WrenVM* vm)
             break;
         }
         case ScriptPropertyType.int_: 
-        { 
+        {
+            if (slot3_t != WrenType.WREN_TYPE_NUM)
+                return;
             int* valuePtr = cast(int*)raw;
             int current = *valuePtr;
             int newValue =  cast(int) wrenGetSlotDouble(vm, 3);
@@ -177,7 +209,9 @@ void element_setProperty(WrenVM* vm)
             break;
         }
         case ScriptPropertyType.uint_: 
-        { 
+        {
+            if (slot3_t != WrenType.WREN_TYPE_NUM)
+                return;
             uint* valuePtr = cast(uint*)raw;
             uint current = *valuePtr;
             uint newValue =  cast(uint) wrenGetSlotDouble(vm, 3);
@@ -186,7 +220,9 @@ void element_setProperty(WrenVM* vm)
             break;
         }
         case ScriptPropertyType.float_: 
-        { 
+        {
+            if (slot3_t != WrenType.WREN_TYPE_NUM)
+                return;
             float* valuePtr = cast(float*)raw;
             float current = *valuePtr;
             float newValue =  cast(float) wrenGetSlotDouble(vm, 3);
@@ -195,7 +231,9 @@ void element_setProperty(WrenVM* vm)
             break;
         }
         case ScriptPropertyType.double_: 
-        { 
+        {
+            if (slot3_t != WrenType.WREN_TYPE_NUM)
+                return;
             double* valuePtr = cast(double*)raw;
             double current = *valuePtr;
             double newValue =  wrenGetSlotDouble(vm, 3);
@@ -225,6 +263,16 @@ void element_setPropertyRGBA(WrenVM* vm)
 
     ubyte* raw = cast(ubyte*)(cast(void*)bridge.elem) + desc.offset;
     RGBA* pRGBA = cast(RGBA*)(raw);
+
+    // check for right type, else ignore line
+    if (wrenGetSlotType(vm, 3) != WrenType.WREN_TYPE_NUM)
+        return;
+    if (wrenGetSlotType(vm, 4) != WrenType.WREN_TYPE_NUM)
+        return;
+    if (wrenGetSlotType(vm, 5) != WrenType.WREN_TYPE_NUM)
+        return;
+    if (wrenGetSlotType(vm, 6) != WrenType.WREN_TYPE_NUM)
+        return;
 
     double r = wrenGetSlotDouble(vm, 3);
     double g = wrenGetSlotDouble(vm, 4);
