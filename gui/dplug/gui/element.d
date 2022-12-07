@@ -332,8 +332,6 @@ nothrow:
     /// This calls `reflow` if that position has changed.
     /// Note: Widget coordinates are always integer coordinates.
     ///       The input rectangle is rounded to nearest integer.
-    /// IMPORTANT: As of today you are not allowed to assign a position outside the extent of the window.
-    ///            This is purely a Dplug limitation.
     final void position(box2f p)
     {
         int x1 = cast(int) round(p.min.x);
@@ -379,7 +377,7 @@ nothrow:
         }
     }
 
-    /// `onmouseClick` is called for every new click, whether or not you are in a 
+    /// `onMouseClick` is called for every new click, whether or not you are in a 
     /// dragging operation.
     /// This function is meant to be overriden.
     ///
@@ -389,11 +387,11 @@ nothrow:
     ///
     ///    If you return `Click.startDrag`, the click is considered processed. 
     ///    Any existing dragging is stopped with `onStopDrag`, and a new drag operation
-    ///    is started. `onBeginDrag` is called. (was formerly: returning true)
+    ///    is started. `onBeginDrag`/`onStopDrag` are also called. (was formerly: returning true)
     ///
     ///    If you return `Click.unhandled`, the click is unprocessed. 
     ///    If may be passed down to the underlying parent window. 
-    ///    (was formerly: returning true)
+    ///    (was formerly: returning false)
     ///
     /// Warning: For this reason, check your widgets with several mouse buttons pressed 
     /// at once.
@@ -403,71 +401,103 @@ nothrow:
         return Click.unhandled; 
     }
 
-    // Mouse wheel was turned.
-    // This function is meant to be overriden.
-    // It should return true if the wheel is handled.
+    /// Mouse wheel was turned.
+    /// This function is meant to be overriden.
+    /// It should return true if the wheel is handled.
     bool onMouseWheel(int x, int y, int wheelDeltaX, int wheelDeltaY, MouseState mstate)
     {
         return false;
     }
 
-    // Called when mouse move over this Element.
-    // This function is meant to be overriden.
+    /// Called when mouse move over this Element.
+    /// This function is meant to be overriden.
+    ///
+    /// Note: If "legacyMouseDrag" version identifier is used, 
+    /// this will be called even during a drag, beware.
     void onMouseMove(int x, int y, int dx, int dy, MouseState mstate)
     {
     }
 
-    // Called when clicked with left/middle/right button
-    // This function is meant to be overriden.
+    /// Called when clicked with left/middle/right button
+    /// This function is meant to be overriden.
+    /// Between `onBeginDrag` and `onStopDrag`, `isDragged` will return `true`.
+    ///
+    /// Note: When a widget is dragged, and "futureMouseDrag" version identifier is used, 
+    /// then a dragged widget is always also isMouseOver.
+    ///
+    /// Example: you could call `beginParamEdit` from there or from `onMouseClick`. You probably 
+    /// have more context in `onMouseClick`.
     void onBeginDrag()
     {
     }
 
-    // Called when mouse drag this Element.
-    // This function is meant to be overriden.
+    /// Called when mouse drag this Element.
+    /// This function is meant to be overriden.
+    ///
+    /// Example: if a mouse click started an edit f a plugin parameter with a drag, this will be a
+    /// preferred place to call `param.setFromGUI`.
     void onMouseDrag(int x, int y, int dx, int dy, MouseState mstate)
     {
     }
 
-    // Called once drag is finished.
-    // This function is meant to be overriden.
+    /// Called once a dragging operation is finished.
+    /// This function is meant to be overriden.
+    /// Between `onBeginDrag` and `onStopDrag`, `isDragged` will return `true`.
+    ///
+    /// Note: When a widget is dragged, and "futureMouseDrag" version identifier is used, 
+    /// then a dragged widget is always also isMouseOver.
+    ///
+    /// Example: if a mouse click started a modification of a plugin parameter, this will be a
+    /// preferred place to call `param.endParamEdit`.
     void onStopDrag()
     {
     }
 
-    // Called when mouse enter this Element.
-    // This function is meant to be overriden.
+    /// Called when mouse enter this Element.
+    /// This function is meant to be overriden.
+    /// Between `onMouseEnter` and `onMouseExit`, `isMouseOver` will return `true`.
+    ///
+    /// Example: use this callback to call `setDirtyWhole` so that you can draw a highlight when 
+    /// the widget is pointed to.
     void onMouseEnter()
     {
     }
 
-    // Called when mouse enter this Element.
-    // This function is meant to be overriden.
+    /// Called when mouse enter this Element.
+    /// This function is meant to be overriden.
+    /// Between `onMouseEnter` and `onMouseExit`, `isMouseOver` will return `true`.
+    ///
+    /// Example: use this callback to call `setDirtyWhole` so that you can draw a lack of highlight 
+    /// when the widget is pointed to.
     void onMouseExit()
     {
     }
 
-    // Called when this Element is clicked and get the focus.
-    // This function is meant to be overriden.
+    /// Called when this Element is clicked and get the "focus" (ie. keyboard focus).
+    /// This function is meant to be overriden.
     void onFocusEnter()
     {
     }
 
-    // Called when focus is lost because another Element was clicked.
-    // This function is meant to be overriden.
+    /// Called when focus is lost because another Element was clicked.
+    /// This widget then loose the "focus" (ie. keyboard focus).
+    /// This function is meant to be overriden.
+    ///
+    /// Example: if a widget is foldable (like a popup menu), you can us this callback to close it
+    /// once the user click anywhere else.
     void onFocusExit()
     {
     }
 
-    // Called when a key is pressed. This event bubbles down-up until being processed.
-    // Return true if treating the message.
+    /// Called when a key is pressed. This event bubbles down-up until being processed.
+    /// Return true if treating the message.
     bool onKeyDown(Key key)
     {
         return false;
     }
 
-    // Called when a key is pressed. This event bubbles down-up until being processed.
-    // Return true if treating the message.
+    /// Called when a key is pressed. This event bubbles down-up until being processed.
+    /// Return true if treating the message.
     bool onKeyUp(Key key)
     {
         return false;
