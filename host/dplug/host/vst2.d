@@ -250,6 +250,12 @@ final class VST2PluginHost : IPluginHost
         return _currentLatencySamples;
     }
 
+    override double getTailSizeInSeconds()
+    {
+        double r = cast(double) _dispatcher(_aeffect, effGetTailSize, 0, 0, null, 0.0f);
+        return r;
+    }
+
 private:
     SharedLib _lib;
     AEffect* _aeffect;

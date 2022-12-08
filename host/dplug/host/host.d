@@ -79,6 +79,9 @@ interface IPluginHost
     /// `beginAudioProcessing` and `endAudioProcessing` call, and won't move while
     /// processing.
     int getLatencySamples();
+
+    /// Get tail size in seconds. Precise semantics TBD.
+    double getTailSizeInSeconds();
 }
 
 
