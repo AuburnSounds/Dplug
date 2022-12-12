@@ -524,15 +524,30 @@ nothrow:
     }
 
     /// Override to set the plugin tail length in seconds.
+    ///
     /// This is the amount of time before silence is reached with a silent input, on the worst
     /// possible settings.
+    ///
     /// Returns: Plugin tail size in seconds.
+    ///     - Returning 0.0f means that as soon as your input is silent, the output will be silent. 
+    ///       It isn't a special value.
+    ///     - Returning `float.infinity` means that the host should not optimize calls to `processAudio`.
+    ///       If your plugin is a synth, or an effect generating sound, you MUST return `float.infinity`.
+    ///     - Otherwise, returning a particular tail size is the regular meaning.
+    ///
     float tailSizeInSeconds() nothrow @nogc
     {
-        // Default: 2 secs, which should be safe for most plugins except delay or reverb
-        // Warning: plugins have often more tail size than expected!
+        // Default: always call `processAudio`. This is safest.
+        //
+        // It is recommended to setup this override at one point in developemnt, especially for an effect plugin.
+        // This allows VST3 and AU hosts to optimize things.
+        //
+        // For an effect 2 secs is a good starting point. Which should be safe for most effects plugins except delay or reverb
+        // Warning: plugins have often MUCH more tail size than expected!
         // Don't reduce to a shorter time unless you know for sure what you are doing.
-        return 2.0f;
+        // Synths, and effects generating audio from MIDI should return `float.infinity`.
+
+        return float.infinity;
     }
 
     /// Override to declare the maximum number of samples to accept

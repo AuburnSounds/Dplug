@@ -1317,6 +1317,8 @@ private:
 
                 if (pData)
                 {
+                    // Note: it's unknown if every AU host will accept an infinite tail size, but I guess
+                    // we'll know soon enough.
                     *(cast(Float64*) pData) = cast(double) tailSize;
                 }
                 return noErr;

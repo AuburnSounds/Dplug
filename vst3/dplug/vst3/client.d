@@ -777,7 +777,29 @@ nothrow:
 
     extern(Windows) override uint32 getTailSamples()
     {
-        return cast(int)(0.5f + _client.tailSizeInSeconds() * atomicLoad(_sampleRateHostPOV));
+        float tailSeconds = _client.tailSizeInSeconds();
+        assert(tailSeconds >= 0);
+
+        double tailInSamples = tailSeconds * cast(double) atomicLoad(_sampleRateHostPOV);
+
+        // Large or infinity? Return infinite tail, which should disable "smart disable".
+        if (tailInSamples + 0.5 >= kInfiniteTail)
+            return kInfiniteTail;
+
+        long samples = cast(long)(tailInSamples + 0.5);
+        assert(samples >= 0 && samples <= kInfiniteTail);
+
+        if (samples < 2)
+        {
+            // In case some hosts do not understand that zero there doesn't mean the same thing that in VST2
+            // (where it meant infinity tail), we avoid zero.
+            // Because in VST2 1 was a special value that means "no tail", we also avoid 1.
+            // So, we return 2 so that even a buggy host would accept our value.
+            // The number of plugin that actually have a zero tail size is really super small.
+            return 2;
+        }
+
+        return cast(uint) samples;
     }
 
     // Implements IEditController
