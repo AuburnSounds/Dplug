@@ -246,7 +246,7 @@ private:
         {
             vec2i mousePos = getMouseXY(_view, event, _height);
             _listener.onMouseWheel(mousePos.x, mousePos.y, deltaX, deltaY, getMouseState(event));
-        }            
+        }
     }
 
     bool handleKeyEvent(NSEvent event, bool released)
@@ -336,6 +336,29 @@ private:
         _lastMouseY = mousePos.y;
     }
 
+    void handleMouseEntered(NSEvent event)
+    {
+        // Welcome to Issue #737.
+        //
+        // Consider the mouse cursor has changed, since the mouse was elsewhere.
+        // Give it an impossible mouse cursor cached value.
+        _lastMouseCursor = cast(MouseCursor) -1;
+
+        // Furthermore, because:
+        // 1. either the cursor might not be set by subsequent
+        // 2. either the mouseMove event might not be called, because the window is hosted in another process
+        //    and isn't active yet (macOS has "click through", a sort of mouse focus)
+        // then we need to set the mouse cursor upon entry. Tricky!
+        version(legacyMouseCursor)
+        {
+            setMouseCursor(MouseCursor.pointer);
+        }
+        else
+        {
+            setMouseCursor(_listener.getMouseCursor());
+        }
+    }
+
     void handleMouseClicks(NSEvent event, MouseButton mb, bool released)
     {
         vec2i mousePos = getMouseXY(_view, event, _height);
@@ -376,7 +399,7 @@ private:
 
             if (layer)
             {
-                // On Big Sur this is technically a no-op, but that reverts the drawRect behaviour!          
+                // On Big Sur this is technically a no-op, but that reverts the drawRect behaviour!
                 // This workaround is sanctionned by Apple: https://gist.github.com/lukaskubanek/9a61ac71dc0db8bb04db2028f2635779#gistcomment-3901461
                 layer.setContentsFormat(kCAContentsFormatRGBA8Uint);
             }
@@ -385,7 +408,7 @@ private:
 
     void drawRect(NSRect rect)
     {
-        NSGraphicsContext nsContext = NSGraphicsContext.currentContext(); 
+        NSGraphicsContext nsContext = NSGraphicsContext.currentContext();
 
         // The first drawRect callback occurs before the timer triggers.
         // But because recomputeDirtyAreas() wasn't called before there is nothing to draw.
@@ -396,16 +419,16 @@ private:
             _listener.recomputeDirtyAreas();
         }
 
-        _listener.onDraw(WindowPixelFormat.ARGB8); 
+        _listener.onDraw(WindowPixelFormat.ARGB8);
 
         version(useCoreGraphicsContext)
         {
             CGContextRef cgContext = nsContext.getCGContext();
 
             enum bool fullDraw = false;
-            
+
             static if (fullDraw)
-            {            
+            {
                 size_t sizeNeeded = _wfb.pitch * _wfb.h;
                 size_t bytesPerRow = _wfb.pitch;
 
@@ -828,6 +851,8 @@ extern(C)
     {
         CocoaScopedCallback scopedCallback;
         scopedCallback.enter();
+        DPlugCustomView view = getInstance(self);
+        view._window.handleMouseEntered(NSEvent(event));
     }
 
     void mouseExited(id self, SEL selector, id event) nothrow @nogc
@@ -843,7 +868,7 @@ extern(C)
         CocoaScopedCallback scopedCallback;
         scopedCallback.enter();
 
-        // Call superclass's updateTrackingAreas:, equivalent to [super updateTrackingAreas]; 
+        // Call superclass's updateTrackingAreas:, equivalent to [super updateTrackingAreas];
         {
             objc_super sup;
             sup.receiver = self;
@@ -904,7 +929,7 @@ extern(C)
         DPlugCustomView view = getInstance(self);
         view._window.layout();
 
-        // Call superclass's layout:, equivalent to [super layout]; 
+        // Call superclass's layout:, equivalent to [super layout];
         {
             objc_super sup;
             sup.receiver = self;
@@ -924,7 +949,7 @@ extern(C)
         DPlugCustomView view = getInstance(self);
         view._window.viewWillDraw();
 
-        // Call superclass's layout:, equivalent to [super viewWillDraw]; 
+        // Call superclass's layout:, equivalent to [super viewWillDraw];
         {
             objc_super sup;
             sup.receiver = self;
