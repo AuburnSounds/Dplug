@@ -818,10 +818,16 @@ nothrow:
         return _zOrder;
     }
 
-    final void setZOrder(int zOrder) pure
+    // TODO: how to deprecate that? Wren will stumble upon every deprecated fields unfortunately.
+    alias setZOrder = zOrder;
+
+    final void zOrder(int zOrder)
     {
-        // TODO: this should call setDirty, if Z order changed.
-        _zOrder = zOrder;
+        if (_zOrder != zOrder)
+        {
+            setDirtyWhole();
+            _zOrder = zOrder;
+        }
     }
 
     /// Mark this element as wholly dirty.

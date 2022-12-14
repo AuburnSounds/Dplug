@@ -23,7 +23,9 @@ class Plugin {
         driveKnob.unlitTrailDiffuse = unlitTrailDiffuse
         driveKnob.LEDDiffuseLit = RGBA.new(40, 40, 40, 100)
         driveKnob.LEDDiffuseUnlit = RGBA.new(40, 40, 40, 0)
+
         driveKnob.visibility = true
+        driveKnob.zOrder = 1
 
         // Note: chaining syntax is also supported (but you can't mix and match property assignment and chaining)
         ($"_inputSlider").litTrailDiffuse(litTrailDiffuse)

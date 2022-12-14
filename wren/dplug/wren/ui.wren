@@ -53,10 +53,15 @@ foreign class Element {
        setVisibility_(v)
    }
 
+   zOrder=(z) {
+       setZOrder_(z)
+   }
+
    // Internal use
    foreign findIdAndBecomeThat_(id)
    foreign setPosition_(x, y, w, h)
    foreign setVisibility_(v)
+   foreign setZOrder_(z)
 
    foreign setProp_(nclass, nth, x)
    foreign setPropRGBA_(nclass, nth, r, g, b, a)
@@ -92,6 +97,15 @@ class UIElement {
 
    visibility(v) {
        _e.visibility = v
+       return this
+   }
+
+   zOrder=(z) {
+       _e.zOrder = z
+   }
+
+   zOrder(z) {
+       _e.zOrder = z
        return this
    }
 

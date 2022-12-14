@@ -121,6 +121,28 @@ void element_setvisibility(WrenVM* vm)
     }
 }
 
+void element_setzorder(WrenVM* vm)
+{
+    UIElementBridge* bridge = cast(UIElementBridge*) wrenGetSlotForeign(vm, 0);
+    assert(bridge.elem); // TODO error
+
+    // If not passed a Num, do nothing
+    if (wrenGetSlotType(vm, 1) == WrenType.WREN_TYPE_NUM)
+    {
+        double z = wrenGetSlotDouble(vm, 1);
+
+        if (z > int.max)
+            return;
+        if (z < int.min)
+            return;
+
+        // Just truncate => fractional zOrder does nothing.
+        int iz = cast(int)z;
+
+        bridge.elem.zOrder = iz;
+    }
+}
+
 void element_setProperty(WrenVM* vm)
 {
     UIElementBridge* bridge = cast(UIElementBridge*) wrenGetSlotForeign(vm, 0);
@@ -371,6 +393,7 @@ WrenForeignMethodFn wrenUIBindForeignMethod(WrenVM* vm, const(char)* className, 
         if (strcmp(signature, "height") == 0) return &element_height;
         if (strcmp(signature, "setPosition_(_,_,_,_)") == 0) return &element_setposition;
         if (strcmp(signature, "setVisibility_(_)") == 0) return &element_setvisibility;
+        if (strcmp(signature, "setZOrder_(_)") == 0) return &element_setzorder;
         if (strcmp(signature, "findIdAndBecomeThat_(_)") == 0) return &element_findIdAndBecomeThat;
         if (strcmp(signature, "setProp_(_,_,_)") == 0) return &element_setProperty;
         if (strcmp(signature, "setPropRGBA_(_,_,_,_,_,_)") == 0) return &element_setPropertyRGBA;
