@@ -691,6 +691,8 @@ public:
 
     final void setFromGUINormalized(double normalizedValue) nothrow @nogc
     {
+        assert(!isNaN(value));
+
         assert(normalizedValue >= 0 && normalizedValue <= 1);
         setFromGUI(fromNormalized(normalizedValue));
     }
@@ -705,6 +707,8 @@ public:
 
     final void setFromGUI(double value) nothrow @nogc
     {
+        assert(!isNaN(value));
+
         checkBeingEdited();
         if (value < _min)
             value = _min;
