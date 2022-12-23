@@ -1176,7 +1176,7 @@ string makeRSRC_internal(string outputDir, Plugin plugin, Arch arch, bool verbos
         throw new Exception("Can't use internal .rsrc generation for this arch");
     }
 
-    cwritefln("*** Generating a .rsrc file for the bundle...".white);
+    cwritefln("*** Generating a .rsrc file for the bundle...");
 
     string rsrcPath = outputDir ~ "/temp/plugin-" ~ convertArchToPrettyString(arch) ~ ".rsrc";
     RSRCWriter rsrc;
@@ -1259,7 +1259,7 @@ string makeRSRC_with_Rez(Plugin plugin, Arch arch, bool verbose)
     if (arch != Arch.x86_64)
         throw new Exception("Can't use --rez for another arch than x86_64");
     string pluginName = plugin.pluginName;
-    cwritefln("*** Generating a .rsrc file for the bundle, using Rez...".white);
+    cwritefln("*** Generating a .rsrc file for the bundle, using Rez...");
     string temp = tempDir();
 
     string rPath = buildPath(temp, "plugin.r");
