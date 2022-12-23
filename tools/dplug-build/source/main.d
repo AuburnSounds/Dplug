@@ -68,7 +68,7 @@ void usage()
         cwrite(argStr.lcyan);
         for(size_t i = argStr.length; i < 24; ++i)
             write(" ");
-        cwritefln("%s".white, desc);
+        cwritefln("%s", desc);
         if (possibleValues)
             cwritefln("                        Possible values: ".grey ~ "%s".yellow, possibleValues);
         if (defaultDesc)
@@ -77,9 +77,9 @@ void usage()
     }
 
     cwriteln();
-    cwriteln( "This is the ".white ~ "dplug-build".lcyan ~ " tool: plugin bundler and DUB front-end.".white);
+    cwriteln( "This is the " ~ "dplug-build".lcyan ~ " tool: plugin bundler and DUB front-end.");
     cwriteln();
-    cwriteln("FLAGS".white);
+    cwriteln("FLAGS");
     cwriteln();
     flag("-a --arch", "Selects target architecture.", "x86 | x86_64 | all", "Windows =&gt; x86_64   macOS =&gt; all    Linux =&gt; x86_64");
     flag("-b --build", "Selects build type.", "same ones as dub accepts", "debug");
@@ -102,7 +102,7 @@ void usage()
     flag("-h --help", "Shows this help", null, null);
 
     cwriteln();
-    cwriteln("EXAMPLES".white);
+    cwriteln("EXAMPLES");
     cwriteln();
     cwriteln("        # Releases an optimized VST/AU plugin for all supported architecture".lgreen);
     cwriteln("        dplug-build --final -c VST-CONFIG -c AU-CONFIG".lcyan);
@@ -114,7 +114,7 @@ void usage()
     cwriteln("        dplug-build -h".lcyan);
 
     cwriteln();
-    cwriteln("NOTES".white);
+    cwriteln("NOTES");
     cwriteln();
     cwriteln("      The configuration name used with " ~ "--config".lcyan ~ " must exist in your " ~ "dub.json".lcyan ~ " file.");
     cwriteln("      dplug-build".lcyan ~ " detects plugin format based on the " ~ "configuration".yellow ~ " name's prefix: " ~ `"VST2" | "VST3" | "AU" | "AAX" | "LV2".`.yellow);
@@ -457,7 +457,7 @@ int main(string[] args)
                 // Only build x86_64 on Windows
                 if (targetOS == OS.windows && configIsAAX(config) && (arch != Arch.x86_64) && !(legacyPT10 && arch == Arch.x86) )
                 {
-                    cwritefln("info: Skipping architecture %s for AAX on Windows\n".white, arch);
+                    cwritefln("info: Skipping architecture %s for AAX on Windows\n", arch);
                     continue;
                 }
 
@@ -669,7 +669,7 @@ int main(string[] args)
                     }
                     else
                     {
-                        cwritefln("*** Extract LV2 manifest from binary...".white);
+                        cwritefln("*** Extract LV2 manifest from binary...");
                         SharedLib lib;
                         lib.load(binaryPath);
                         if (!lib.hasSymbol("GenerateManifestFromClient"))
@@ -930,7 +930,7 @@ int main(string[] args)
                             string path_x86_64 = outputDirectory(outputDir, true, osString, Arch.x86_64, config)
                             ~ "/" ~ pluginDir ~ "/" ~ pluginFinalName;
 
-                            cwritefln("*** Making an universal binary with lipo".white);
+                            cwritefln("*** Making an universal binary with lipo");
 
                             string cmd = format("lipo -create %s %s -output %s",
                                                 escapeShellArgument(path_arm64),
@@ -991,7 +991,7 @@ int main(string[] args)
                             string path_x86_64 = outputDirectory(outputDir, true, osString, Arch.x86_64, config)
                             ~ "/" ~ pluginDir ~ "/Contents/MacOS/" ~ plugin.prettyName;
 
-                            cwritefln("*** Making an universal binary with lipo".white);
+                            cwritefln("*** Making an universal binary with lipo");
 
                             string cmd = format("lipo -create %s %s -output %s",
                                                 escapeShellArgument(path_arm64),
@@ -1020,7 +1020,7 @@ int main(string[] args)
                         if (SIGN_MAC_BUNDLES && !isTemp && makeInstaller)
                         {
                             // eventually sign with codesign
-                            cwritefln("*** Signing bundle %s...".white, bundleDir);
+                            cwritefln("*** Signing bundle %s...", bundleDir);
                             if (plugin.developerIdentityOSX !is null)
                             {
                                 string command = format(`codesign --strict -f -s %s --timestamp %s --digest-algorithm=sha1,sha256`,
@@ -1039,7 +1039,7 @@ int main(string[] args)
                     // it's the last architecture in the list (to avoid overwrite)
                     if (publish && (archCount + 1 == architectures.length))
                     {
-                        cwritefln("*** Publishing to %s...".white, installDir);
+                        cwritefln("*** Publishing to %s...", installDir);
 
                         string sourceDir = escapeShellArgument(path ~ "/" ~ pluginDir);
                         string destDir = escapeShellArgument(installDir ~ "/");
@@ -1054,7 +1054,7 @@ int main(string[] args)
 */
                         if (auval)
                         {
-                            cwriteln("*** Validation with auval...".white);
+                            cwriteln("*** Validation with auval...");
 
                             bool is32b = (arch == Arch.x86);
                             string exename = is32b ? "auval" : "auvaltool";
@@ -1203,7 +1203,7 @@ int main(string[] args)
             if (extension(plugin.licensePath) == ".md")
             {
                 // Convert license markdown to HTML
-                cwritefln("*** Converting license file to HTML... ".white);
+                cwritefln("*** Converting license file to HTML... ");
                 string markdown = cast(string)std.file.read(plugin.licensePath);
 
                 // Subsitute predefined macros to plugin.json specific values. 
@@ -1227,7 +1227,7 @@ int main(string[] args)
 
         if ((targetOS == OS.macOS) && makeInstaller)
         {
-            cwriteln("*** Generating final Mac installer...".white);
+            cwriteln("*** Generating final Mac installer...");
             string finalPkgPath = outputDir ~ "/" ~ plugin.finalPkgFilename(configurations[0]);
             generateMacInstaller(outputDir, resDir, plugin, macInstallerPackages, finalPkgPath, verbose, archs);
             cwriteln("    =&gt; OK".lgreen);
@@ -1238,7 +1238,7 @@ int main(string[] args)
                 // Note: this doesn't have to match anything, it's just there in emails
                 string primaryBundle = plugin.getNotarizationBundleIdentifier(configurations[0]);
 
-                cwritefln("*** Notarizing final Mac installer %s...".white, primaryBundle);
+                cwritefln("*** Notarizing final Mac installer %s...", primaryBundle);
                 notarizeMacInstaller(outputDir, plugin, finalPkgPath, primaryBundle, verbose);
                 cwriteln("    =&gt; Notarization OK".lgreen);
                 cwriteln;
@@ -1247,7 +1247,7 @@ int main(string[] args)
 
         if ((targetOS == OS.windows) && makeInstaller)
         {
-            cwriteln("*** Generating Windows installer...".white);
+            cwriteln("*** Generating Windows installer...");
             string windowsInstallerPath = outputDir ~ "/" ~ plugin.windowsInstallerName(configurations[0]);
             generateWindowsInstaller(outputDir, plugin, windowsPackages, windowsInstallerPath, verbose);
             cwriteln;
@@ -1283,7 +1283,7 @@ int main(string[] args)
 
 void buildPlugin(OS targetOS, string compiler, string config, string build, Arch arch, bool verbose, bool force, bool combined, bool quiet, bool skipRegistry, bool parallel)
 {
-    cwritefln("*** Building configuration %s with %s, %s arch...".white, config, compiler, convertArchToPrettyString(arch));
+    cwritefln("*** Building configuration %s with %s, %s arch...", config, compiler, convertArchToPrettyString(arch));
 
     // If we want to support Notarization, we can't target earlier than 10.11
     // Note: it seems it is overriden at some point and when notarizing you can't target lower

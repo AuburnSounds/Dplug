@@ -16,7 +16,7 @@ import commonmarkd;
 
 void info(const(char)[] msg)
 {
-    cwritefln("info: %s".white,escapeCCL(msg));
+    cwritefln("info: %s",escapeCCL(msg));
 }
 
 void warning(const(char)[] msg)
