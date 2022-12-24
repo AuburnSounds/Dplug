@@ -804,7 +804,7 @@ OwnedImage!L16 loadOwnedImageDepth(in void[] imageData)
                 outDepth[i] = cast(ushort)(d);
             }
         }
-        return convertImageToOwnedImage_l16(image);
+        return convertImageToOwnedImage_l16(image16);
     }
     else
     {
@@ -817,6 +817,7 @@ OwnedImage!L16 loadOwnedImageDepth(in void[] imageData)
 /// Convert and disown gamut Image to OwnedImage
 OwnedImage!RGBA convertImageToOwnedImage_rgba8(ref Image image)
 {
+    assert(image.type() == PixelType.rgba8);
     OwnedImage!RGBA r = mallocNew!(OwnedImage!RGBA);
     r.w = image.width;
     r.h = image.height;    
@@ -831,6 +832,7 @@ OwnedImage!RGBA convertImageToOwnedImage_rgba8(ref Image image)
 ///ditto
 OwnedImage!L16 convertImageToOwnedImage_l16(ref Image image)
 {
+    assert(image.type() == PixelType.l16);
     OwnedImage!L16 r = mallocNew!(OwnedImage!L16);
     r.w = image.width;
     r.h = image.height;    
