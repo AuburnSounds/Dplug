@@ -164,7 +164,11 @@
             "dependencies": {
                 "dplug:core": "*",
                 "dplug:math": "*",
-                "intel-intrinsics": "~>1.0"
+                "intel-intrinsics": "~>1.0",
+                "gamut": "~>2.0"
+            },
+            "subConfigurations": {
+                "gamut": "audio-plugin"
             }
         },
         {

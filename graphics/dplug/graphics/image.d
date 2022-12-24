@@ -25,9 +25,7 @@ import dplug.core.vec;
 import dplug.core.nogc;
 import dplug.math.box;
 public import dplug.graphics.color;
-import dplug.graphics.jpegload;
-import dplug.graphics.pngload;
-import dplug.graphics.qoi;
+import gamut;
 
 nothrow @nogc:
 
@@ -704,120 +702,20 @@ unittest
     assert(r.pitch >= 10 + 4); // per the API, OwnedImage could add more space than required
 }
 
-//
-// Image loading
-//
-private struct IFImage
-{
-    int w, h;
-    ubyte[] pixels;
-    int channels; // number of channels
-
-    void free() nothrow @nogc
-    {
-        if (pixels.ptr !is null)
-            alignedFree(pixels.ptr, 1);
-    }
-}
-
-
-private IFImage readImageFromMem(const(ubyte[]) imageData, int channels)
-{
-    static immutable ubyte[8] pngSignature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
-    bool isPNG = imageData.length >= 8 && (imageData[0..8] == pngSignature);
-    bool isQOI = qoi_is_qoi_image(imageData);
-
-    if (isQOI)
-    {
-        qoi_desc desc;
-        ubyte* decoded = cast(ubyte*) qoi_decode(imageData.ptr, cast(int)imageData.length, &desc, channels);
-
-        IFImage result;
-        if (decoded == null)
-            return result;
-
-        result.w = cast(int) desc.width; // overflow here
-        result.h = cast(int) desc.height; // overflow here
-        result.channels = channels;
-
-        int size = result.w * result.h * channels; // overflow here
-        result.pixels = decoded[0..size];
-        return result;
-    }    
-    // PNG are decoded using stb_image to avoid GC overload using zlib
-    else if (isPNG)
-    {
-        int width, height, components;
-        ubyte* decoded = stbi_load_from_memory(imageData.ptr, cast(int)imageData.length, &width, &height, &components, channels);
-        IFImage result;
-        result.w = width;
-        result.h = height;
-        result.channels = channels;
-        int size = width * height * channels;
-        result.pixels = decoded[0..size];
-        return result;
-    }
-    else
-    {
-        bool isJPEG = (imageData.length >= 2) && (imageData[0] == 0xff) && (imageData[1] == 0xd8);
-
-        if (isJPEG)
-        {
-            IFImage result;
-            int comp;
-            ubyte[] pixels = decompress_jpeg_image_from_memory(imageData, result.w, result.h, comp, channels);
-            result.channels = channels;
-            result.pixels = pixels;
-            return result;
-        }
-        else
-            assert(false); // Only PNG and JPEG are supported
-    }
-}
-
 /// Loads an image from compressed data.
 /// The returned `OwnedImage!RGBA` should be destroyed with `destroyFree`.
 /// Throws: $(D ImageIOException) on error.
 OwnedImage!RGBA loadOwnedImage(in void[] imageData)
 {
-    ubyte[] bImageData = cast(ubyte[])imageData;
-    int channels = 4;
-
-    static immutable ubyte[8] pngSignature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
-    bool isPNG = imageData.length >= 8 && (imageData[0..8] == pngSignature);
-    bool isQOI = qoi_is_qoi_image(cast(const(ubyte)[]) imageData);
-
-    if (isQOI)
+    Image image;
+    image.loadFromMemory(cast(const(ubyte[])) imageData, 
+                         LOAD_RGB | LOAD_8BIT | LOAD_ALPHA | LAYOUT_VERT_STRAIGHT | LAYOUT_GAPLESS);
+    if (image.errored)
     {
-        qoi_desc desc;
-        ubyte* decoded = cast(ubyte*) qoi_decode(imageData.ptr, cast(int)imageData.length, &desc, channels);
-        return mallocNew!(OwnedImage!RGBA)(desc.width, desc.height, decoded);
-    }   
-    else if (isPNG)
-    {
-        int width, height, components;
-        ubyte* decoded = stbi_load_from_memory(bImageData.ptr, 
-                                               cast(int)bImageData.length, 
-                                               &width, 
-                                               &height, 
-                                               &components, 
-                                               channels);
-        return mallocNew!(OwnedImage!RGBA)(width, height, decoded);
+        assert(false, "Decoding failed");
     }
-    else
-    {
-        bool isJPEG = (bImageData.length >= 2) && (bImageData[0] == 0xff) && (bImageData[1] == 0xd8);
 
-        if (isJPEG)
-        {
-            int width, height;
-            int comp;
-            ubyte[] pixels = decompress_jpeg_image_from_memory(imageData, width, height, comp, channels);
-            return mallocNew!(OwnedImage!RGBA)(width, height, pixels.ptr);
-        }
-        else
-            assert(false); // Only PNG and JPEG are supported
-    }
+    return convertImageToOwnedImage_rgba8(image);
 }
 
 
@@ -828,33 +726,42 @@ OwnedImage!RGBA loadOwnedImage(in void[] imageData)
 /// Throws: $(D ImageIOException) on error.
 OwnedImage!RGBA loadImageSeparateAlpha(in void[] imageDataRGB, in void[] imageDataAlpha)
 {
-    OwnedImage!RGBA result = loadOwnedImage(imageDataRGB);
-    int widthRGB = result.w;
-    int heightRGB = result.h;
+    Image alpha;
+    alpha.loadFromMemory(cast(const(ubyte[])) imageDataAlpha, 
+                         LOAD_GREYSCALE | LOAD_8BIT | LOAD_NO_ALPHA | LAYOUT_VERT_STRAIGHT | LAYOUT_GAPLESS);
+    if (alpha.errored)
+    {
+        assert(false, "Decoding failed");
+    }
 
-    IFImage ifImageA = readImageFromMem(cast(const(ubyte[])) imageDataAlpha, 1);
-    scope(exit) ifImageA.free();
-    int widthA = cast(int)ifImageA.w;
-    int heightA = cast(int)ifImageA.h;
+    Image rgb;
+    rgb.loadFromMemory(cast(const(ubyte[])) imageDataRGB, 
+                       LOAD_RGB | LOAD_8BIT | LOAD_ALPHA | LAYOUT_VERT_STRAIGHT | LAYOUT_GAPLESS);
+    if (rgb.errored)
+    {
+        assert(false, "Decoding failed");
+    }
 
-    if ( (widthA != widthRGB) || (heightRGB != heightA) )
+    if ( (rgb.width != alpha.width) || (rgb.height != alpha.height) )
     {
         // If you fail here, typically size of your Diffuse map doesn't match the Emissive map.
         assert(false, "Image size mismatch");
     }
 
-    int width = widthA;
-    int height = heightA;
-    for (int j = 0; j < height; ++j)
+    int W = rgb.width;
+    int H = rgb.height;
+
+    for (int y = 0; y < H; ++y)
     {
-        RGBA* outScan = result.scanlinePtr(j);
-        ubyte* ascan = &ifImageA.pixels[j * width];
-        for (int i = 0; i < width; ++i)
+        ubyte* scanA = cast(ubyte*) alpha.scanline(y);
+        ubyte* scanRGBA = cast(ubyte*) rgb.scanline(y);
+        for (int x = 0; x < W; ++x)
         {
-            outScan[i].a = ascan[i];
+            scanRGBA[4*x + 3] = scanA[x];
         }
     }
-    return result;
+
+    return convertImageToOwnedImage_rgba8(rgb);
 }
 
 
@@ -863,47 +770,74 @@ OwnedImage!RGBA loadImageSeparateAlpha(in void[] imageDataRGB, in void[] imageDa
 /// Throws: $(D ImageIOException) on error.
 OwnedImage!L16 loadOwnedImageDepth(in void[] imageData)
 {
-    ubyte[] bImageData = cast(ubyte[])imageData;
-
-    if (stbi__png_is16(bImageData))
-    { 
-        int width, height, components;
-        ushort* decoded = stbi_load_16_from_memory(bImageData.ptr, 
-                                                   cast(int)bImageData.length, 
-                                                   &width, 
-                                                   &height, 
-                                                   &components, 
-                                                   1);
-        return mallocNew!(OwnedImage!L16)(width, height, cast(ubyte*)decoded);
-    }
-    else
+    Image image;
+    image.loadFromMemory(cast(const(ubyte[])) imageData, LOAD_NO_ALPHA);
+    if (image.errored)
     {
+        assert(false, "Decoding failed");
+    }
+  
+    if (image.type() == PixelType.rgb8)
+    {
+        // Legacy 8-bit to 16-bit depth conversion
         // This is the original legacy way to load depth.
         // Load as 8-bit RGBA, then mix the channels so as to support
         // legacy depth maps.
-        OwnedImage!RGBA depthRGBA = loadOwnedImage(imageData);
-        scope(exit) depthRGBA.destroyFree();
-
-        int width = depthRGBA.w;
-        int height = depthRGBA.h;
+        Image image16;
+        image16.setSize(image.width, image.height, PixelType.l16, LAYOUT_VERT_STRAIGHT | LAYOUT_GAPLESS);
+        int width = image.width;
+        int height = image.height;
 
         OwnedImage!L16 result = mallocNew!(OwnedImage!L16)(width, height);
 
         for (int j = 0; j < height; ++j)
         {
-            RGBA[] inDepth = depthRGBA.scanline(j);
-            L16[] outDepth = result.scanline(j);
+            ubyte* inDepth = cast(ubyte*) image.scanline(j);
+            ushort* outDepth = cast(ushort*) image16.scanline(j);
+
             for (int i = 0; i < width; ++i)
             {
-                RGBA v = inDepth[i];
-
                 // Using 257 to span the full range of depth: 257 * (255+255+255)/3 = 65535
                 // If we do that inside stb_image, it will first reduce channels _then_ increase bitdepth.
                 // Instead, this is used to gain 1.5 bit of accuracy for 8-bit depth maps. :)
-                float d = 0.5f + 257 * (v.g + v.r + v.b) / 3; 
-                outDepth[i].l = cast(ushort)(d);
+                float d = 0.5f + 257 * (inDepth[3*i+0] + inDepth[3*i+1] + inDepth[3*i+2]) / 3; 
+                outDepth[i] = cast(ushort)(d);
             }
         }
-        return result;
+        return convertImageToOwnedImage_l16(image);
     }
+    else
+    {
+        // Ensure the format pixel is l16, and the layout is compatible with OwnedImage
+        image.convertTo(PixelType.l16, LAYOUT_VERT_STRAIGHT | LAYOUT_GAPLESS);
+        return convertImageToOwnedImage_l16(image);
+    }
+}
+
+/// Convert and disown gamut Image to OwnedImage
+OwnedImage!RGBA convertImageToOwnedImage_rgba8(ref Image image)
+{
+    OwnedImage!RGBA r = mallocNew!(OwnedImage!RGBA);
+    r.w = image.width;
+    r.h = image.height;    
+    r._pixels = cast(RGBA*) image.scanline(0);
+    r._bytePitch = image.pitchInBytes();
+    r._buffer = image.disownData();
+    r._border = 0;
+    r._borderRight = 0;
+    return r;
+}
+
+///ditto
+OwnedImage!L16 convertImageToOwnedImage_l16(ref Image image)
+{
+    OwnedImage!L16 r = mallocNew!(OwnedImage!L16);
+    r.w = image.width;
+    r.h = image.height;    
+    r._pixels = cast(L16*) image.scanline(0);
+    r._bytePitch = image.pitchInBytes();
+    r._buffer = image.disownData();
+    r._border = 0;
+    r._borderRight = 0;
+    return r;
 }
