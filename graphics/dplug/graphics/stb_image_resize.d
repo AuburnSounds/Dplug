@@ -1476,7 +1476,7 @@ static void stbir__resample_horizontal_downsample(stbir__info* stbir_info, float
                 {
                     int out_pixel_index = k * 1;
                     float coefficient = horizontal_coefficients[coefficient_group + k - n0];
-                    assert(coefficient != 0);
+                    //assert(coefficient != 0); // Note: this makes MKS 2021 crash
                     output_buffer[out_pixel_index + 0] += decode_buffer[in_pixel_index + 0] * coefficient;
                 }
             }
@@ -1497,7 +1497,7 @@ static void stbir__resample_horizontal_downsample(stbir__info* stbir_info, float
                 {
                     int out_pixel_index = k * 2;
                     float coefficient = horizontal_coefficients[coefficient_group + k - n0];
-                    assert(coefficient != 0);
+                    //assert(coefficient != 0); // Note: this makes MKS 2021 crash
                     output_buffer[out_pixel_index + 0] += decode_buffer[in_pixel_index + 0] * coefficient;
                     output_buffer[out_pixel_index + 1] += decode_buffer[in_pixel_index + 1] * coefficient;
                 }
@@ -1519,7 +1519,7 @@ static void stbir__resample_horizontal_downsample(stbir__info* stbir_info, float
                 {
                     int out_pixel_index = k * 3;
                     float coefficient = horizontal_coefficients[coefficient_group + k - n0];
-                    assert(coefficient != 0);
+                    //assert(coefficient != 0); // Note: this makes MKS 2021 crash
                     output_buffer[out_pixel_index + 0] += decode_buffer[in_pixel_index + 0] * coefficient;
                     output_buffer[out_pixel_index + 1] += decode_buffer[in_pixel_index + 1] * coefficient;
                     output_buffer[out_pixel_index + 2] += decode_buffer[in_pixel_index + 2] * coefficient;
@@ -1542,7 +1542,7 @@ static void stbir__resample_horizontal_downsample(stbir__info* stbir_info, float
                 {
                     int out_pixel_index = k * 4;
                     float coefficient = horizontal_coefficients[coefficient_group + k - n0];
-                    assert(coefficient != 0);
+                    //assert(coefficient != 0); // Note: this makes MKS 2021 crash
 
                     version(DigitalMars)
                     {
@@ -1578,7 +1578,7 @@ static void stbir__resample_horizontal_downsample(stbir__info* stbir_info, float
                     int c;
                     int out_pixel_index = k * channels;
                     float coefficient = horizontal_coefficients[coefficient_group + k - n0];
-                    assert(coefficient != 0);
+                    //assert(coefficient != 0); // Note: this makes MKS 2021 crash
                     for (c = 0; c < channels; c++)
                         output_buffer[out_pixel_index + c] += decode_buffer[in_pixel_index + c] * coefficient;
                 }
