@@ -1394,7 +1394,7 @@ static void stbir__resample_horizontal_upsample(stbir__info* stbir_info, float* 
                 {
                     int in_pixel_index = k * 1;
                     float coefficient = horizontal_coefficients[coefficient_group + coefficient_counter++];
-                    assert(coefficient != 0);
+                    //assert(coefficient != 0);
                     output_buffer[out_pixel_index + 0] += decode_buffer[in_pixel_index + 0] * coefficient;
                 }
                 break;
@@ -1403,7 +1403,7 @@ static void stbir__resample_horizontal_upsample(stbir__info* stbir_info, float* 
                 {
                     int in_pixel_index = k * 2;
                     float coefficient = horizontal_coefficients[coefficient_group + coefficient_counter++];
-                    assert(coefficient != 0);
+                    //assert(coefficient != 0);
                     output_buffer[out_pixel_index + 0] += decode_buffer[in_pixel_index + 0] * coefficient;
                     output_buffer[out_pixel_index + 1] += decode_buffer[in_pixel_index + 1] * coefficient;
                 }
@@ -1413,7 +1413,7 @@ static void stbir__resample_horizontal_upsample(stbir__info* stbir_info, float* 
                 {
                     int in_pixel_index = k * 3;
                     float coefficient = horizontal_coefficients[coefficient_group + coefficient_counter++];
-                    assert(coefficient != 0);
+                    //assert(coefficient != 0);
                     output_buffer[out_pixel_index + 0] += decode_buffer[in_pixel_index + 0] * coefficient;
                     output_buffer[out_pixel_index + 1] += decode_buffer[in_pixel_index + 1] * coefficient;
                     output_buffer[out_pixel_index + 2] += decode_buffer[in_pixel_index + 2] * coefficient;
@@ -1424,7 +1424,7 @@ static void stbir__resample_horizontal_upsample(stbir__info* stbir_info, float* 
                 {
                     int in_pixel_index = k * 4;
                     float coefficient = horizontal_coefficients[coefficient_group + coefficient_counter++];
-                    assert(coefficient != 0);
+                    //assert(coefficient != 0);
                     output_buffer[out_pixel_index + 0] += decode_buffer[in_pixel_index + 0] * coefficient;
                     output_buffer[out_pixel_index + 1] += decode_buffer[in_pixel_index + 1] * coefficient;
                     output_buffer[out_pixel_index + 2] += decode_buffer[in_pixel_index + 2] * coefficient;
@@ -1437,7 +1437,7 @@ static void stbir__resample_horizontal_upsample(stbir__info* stbir_info, float* 
                     int in_pixel_index = k * channels;
                     float coefficient = horizontal_coefficients[coefficient_group + coefficient_counter++];
                     int c;
-                    assert(coefficient != 0);
+                    //assert(coefficient != 0);
                     for (c = 0; c < channels; c++)
                         output_buffer[out_pixel_index + c] += decode_buffer[in_pixel_index + c] * coefficient;
                 }
