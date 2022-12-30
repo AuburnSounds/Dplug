@@ -316,7 +316,9 @@ struct Plugin
                 return path;
             }
         }
-        throw new Exception("Didn't found a plug-in file in %s . See dplug-build source to check the heuristic for DUB naming in `dubOutputFileName()`.");
+        throw new Exception(
+            format!"Didn't find a plug-in file in %s . See dplug-build source to check the heuristic for DUB naming in `dubOutputFileName()`."(
+                possiblePaths));
     }
     string dubOutputFileNameCached = null;
 
