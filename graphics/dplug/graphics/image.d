@@ -814,7 +814,8 @@ OwnedImage!L16 loadOwnedImageDepth(in void[] imageData)
     }
 }
 
-/// Convert and disown gamut Image to OwnedImage
+/// Convert and disown gamut Image to OwnedImage.
+/// Result: ìmage` is disowned, result is owning the image data.
 OwnedImage!RGBA convertImageToOwnedImage_rgba8(ref Image image)
 {
     assert(image.type() == PixelType.rgba8);
@@ -824,8 +825,23 @@ OwnedImage!RGBA convertImageToOwnedImage_rgba8(ref Image image)
     r._pixels = cast(RGBA*) image.scanline(0);
     r._bytePitch = image.pitchInBytes();
     r._buffer = image.disownData();
-    r._border = 0;
-    r._borderRight = 0;
+    r._border = 0;      // TODO should keep it from input
+    r._borderRight = 0; // TODO should keep it from input
+    return r;
+}
+
+///ditto
+OwnedImage!RGB convertImageToOwnedImage_rgb8(ref Image image)
+{
+    assert(image.type() == PixelType.rgb8);
+    OwnedImage!RGB r = mallocNew!(OwnedImage!RGB);
+    r.w = image.width;
+    r.h = image.height;    
+    r._pixels = cast(RGB*) image.scanline(0);
+    r._bytePitch = image.pitchInBytes();
+    r._buffer = image.disownData();
+    r._border = 0;      // TODO should keep it from input
+    r._borderRight = 0; // TODO should keep it from input
     return r;
 }
 
@@ -839,7 +855,22 @@ OwnedImage!L16 convertImageToOwnedImage_l16(ref Image image)
     r._pixels = cast(L16*) image.scanline(0);
     r._bytePitch = image.pitchInBytes();
     r._buffer = image.disownData();
-    r._border = 0;
-    r._borderRight = 0;
+    r._border = 0;      // TODO should keep it from input
+    r._borderRight = 0; // TODO should keep it from input
+    return r;
+}
+
+///ditto
+OwnedImage!L8 convertImageToOwnedImage_l8(ref Image image)
+{
+    assert(image.type() == PixelType.l8);
+    OwnedImage!L8 r = mallocNew!(OwnedImage!L8);
+    r.w = image.width;
+    r.h = image.height;    
+    r._pixels = cast(L8*) image.scanline(0);
+    r._bytePitch = image.pitchInBytes();
+    r._buffer = image.disownData();
+    r._border = 0;      // TODO should keep it from input
+    r._borderRight = 0; // TODO should keep it from input
     return r;
 }
