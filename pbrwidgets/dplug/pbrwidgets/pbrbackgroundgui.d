@@ -85,7 +85,8 @@ nothrow:
 
     ~this()
     {
-        freeCachedImages();
+        version(cacheDecodedImagesInQOIX)
+            freeCachedImages();
         freeBackgroundImages();
         _diffuseResized.destroyFree();
         _materialResized.destroyFree();
@@ -194,10 +195,12 @@ private:
     OwnedImage!RGBA _material;
     OwnedImage!L16 _depth;
 
-
-    ubyte[] _cachedDiffuse;
-    ubyte[] _cachedMaterial;
-    ubyte[] _cachedDepth;
+    version(cacheDecodedImagesInQOIX)
+    {
+        ubyte[] _cachedDiffuse;
+        ubyte[] _cachedMaterial;
+        ubyte[] _cachedDepth;
+    }
 
     OwnedImage!RGBA _diffuseResized;
     OwnedImage!RGBA _materialResized;
