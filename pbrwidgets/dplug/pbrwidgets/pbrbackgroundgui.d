@@ -34,14 +34,6 @@ else
     version = decompressImagesLazily;
 }
 
-
-// `cacheDecodedImagesInQOIX` assumes the images won't change, and that we can cache the decoded
-// images in QOIX in order to speed-up subsequent decodes.
-version(decompressImagesLazily)
-{
-    version = cacheDecodedImagesInQOIX;
-}
-
 /// PBRBackgroundGUI provides a PBR background loaded from PNG or JPEG images.
 /// It's very practical while in development because it let's you reload the six
 /// images used with the press of ENTER.
@@ -85,8 +77,6 @@ nothrow:
 
     ~this()
     {
-        version(cacheDecodedImagesInQOIX)
-            freeCachedImages();
         freeBackgroundImages();
         _diffuseResized.destroyFree();
         _materialResized.destroyFree();
@@ -195,13 +185,6 @@ private:
     OwnedImage!RGBA _material;
     OwnedImage!L16 _depth;
 
-    version(cacheDecodedImagesInQOIX)
-    {
-        ubyte[] _cachedDiffuse;
-        ubyte[] _cachedMaterial;
-        ubyte[] _cachedDepth;
-    }
-
     OwnedImage!RGBA _diffuseResized;
     OwnedImage!RGBA _materialResized;
     OwnedImage!L16 _depthResized;
@@ -285,27 +268,6 @@ private:
     void loadBackgroundImages(ubyte[] basecolorData, ubyte[] emissiveData,
                               ubyte[] materialData, ubyte[] depthData)
     {
-        version(cacheDecodedImagesInQOIX)
-        {
-            if (hasCachedImages())
-            {
-                // load from cache instead on 2nd load
-
-                version(Dplug_ProfileUI) context.profiler.category("image").begin("load cached Diffuse ");
-                _diffuse = loadOwnedImage(_cachedDiffuse);
-                version(Dplug_ProfileUI) context.profiler.end;
-
-                version(Dplug_ProfileUI) context.profiler.begin("load cached background");
-                _material = loadOwnedImage(_cachedMaterial);
-                version(Dplug_ProfileUI) context.profiler.end;
-
-                version(Dplug_ProfileUI) context.profiler.begin("load cached background");
-                _depth = loadOwnedImageDepth(_cachedDepth);
-                version(Dplug_ProfileUI) context.profiler.end;
-                return;
-            }
-        }
-
         version(Dplug_ProfileUI) context.profiler.category("image").begin("load Diffuse background");
         _diffuse = loadImageSeparateAlpha(basecolorData, emissiveData);        
         version(Dplug_ProfileUI) context.profiler.end;
@@ -317,46 +279,8 @@ private:
         version(Dplug_ProfileUI) context.profiler.begin("load Depth background");
         _depth = loadOwnedImageDepth(depthData);
         version(Dplug_ProfileUI) context.profiler.end;
-
-        version(cacheDecodedImagesInQOIX)
-        {
-            // On first decode, re-encodes these decoded images into a easier representation.
-            cacheBackgroundImages();
-        }
     }
-
-    version(cacheDecodedImagesInQOIX)
-    {
-        bool hasCachedImages()
-        {
-            return _cachedDiffuse !is null;
-        }
-
-        void freeCachedImages()
-        {
-            if (hasCachedImages())
-            {
-                freeEncodedImage(_cachedDiffuse);
-                freeEncodedImage(_cachedMaterial);
-                freeEncodedImage(_cachedDepth);
-                _cachedDiffuse = null;
-                _cachedMaterial = null;
-                _cachedDepth = null;
-            }
-        }
-
-        void cacheBackgroundImages()
-        {
-            Image image;
-            image.createViewFromImageRef!RGBA(_diffuse.toRef);
-            _cachedDiffuse = image.saveToMemory(ImageFormat.QOIX);
-            image.createViewFromImageRef!RGBA(_material.toRef);
-            _cachedMaterial = image.saveToMemory(ImageFormat.QOIX);
-            image.createViewFromImageRef!L16(_depth.toRef);
-            _cachedDepth = image.saveToMemory(ImageFormat.QOIX);
-        }
-    }
-
+    
     void loadSkybox(ubyte[] skyboxData)
     {        
         // Search for a pass of type PassSkyboxReflections
