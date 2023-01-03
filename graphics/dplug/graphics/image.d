@@ -814,6 +814,30 @@ OwnedImage!L16 loadOwnedImageDepth(in void[] imageData)
     }
 }
 
+/// Make a gamut `Image` view from a dplug:graphics `ImageRef`.
+/// The original `OwnedImage` is still the owner of the pixel data.
+void createViewFromImageRef(COLOR)(ref Image view, ImageRef!COLOR source)
+{
+    static if (is(COLOR == RGBA))
+    {
+        view.createViewFromData(source.pixels, source.w, source.h, PixelType.rgba8, cast(int)source.pitch);
+    }
+    else static if (is(COLOR == RGB))
+    {
+        view.createViewFromData(source.pixels, source.w, source.h, PixelType.rgb8, cast(int)source.pitch);
+    }
+    else static if (is(COLOR == L8))
+    {
+        view.createViewFromData(source.pixels, source.w, source.h, PixelType.l8, cast(int)source.pitch);
+    }
+    else static if (is(COLOR == L16))
+    {
+        view.createViewFromData(source.pixels, source.w, source.h, PixelType.l16, cast(int)source.pitch);
+    }
+    else
+        static assert(false);
+}
+
 /// Convert and disown gamut Image to OwnedImage.
 /// Result: ìmage` is disowned, result is owning the image data.
 OwnedImage!RGBA convertImageToOwnedImage_rgba8(ref Image image)
