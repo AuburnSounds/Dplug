@@ -5,6 +5,7 @@
         "dplug:core": { "path": "../../" },
         "dplug:graphics": { "path": "../../" },
         "dplug:dsp": { "path": "../../" },
+        "dplug:fft": { "path": "../../" },
         "audio-formats": "~>1.5",
         "console-colors": "~>1.0"
     },
