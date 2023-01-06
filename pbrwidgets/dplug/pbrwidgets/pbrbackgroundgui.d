@@ -20,8 +20,11 @@ import dplug.gui.compositor;
 import dplug.gui.legacypbr;
 public import dplug.gui.sizeconstraints;
 
+import gamut;
 
-// `decompressImagesLazily` cause JPEG and PNG to be decompressed on the fly on resize, instead of ahead of time and staying in memory.
+
+// `decompressImagesLazily` cause JPEG and PNG to be decompressed on the fly on resize, instead 
+// of ahead of time and staying in memory.
 // This wins 17mb of RAM on Panagement.
 // However, this also disable live reload of images for UI development. Hence, it is disabled for debug builds, in order
 // to reload background with the RETURN key.
@@ -266,7 +269,7 @@ private:
                               ubyte[] materialData, ubyte[] depthData)
     {
         version(Dplug_ProfileUI) context.profiler.category("image").begin("load Diffuse background");
-        _diffuse = loadImageSeparateAlpha(basecolorData, emissiveData);
+        _diffuse = loadImageSeparateAlpha(basecolorData, emissiveData);        
         version(Dplug_ProfileUI) context.profiler.end;
 
         version(Dplug_ProfileUI) context.profiler.begin("load Material background");
@@ -277,7 +280,7 @@ private:
         _depth = loadOwnedImageDepth(depthData);
         version(Dplug_ProfileUI) context.profiler.end;
     }
-
+    
     void loadSkybox(ubyte[] skyboxData)
     {        
         // Search for a pass of type PassSkyboxReflections

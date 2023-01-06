@@ -5,10 +5,12 @@ import std.string;
 import std.array;
 import std.conv;
 import std.file;
+import std.complex;
 
 import dplug.core;
 import dplug.graphics;
 import dplug.dsp;
+import dplug.fft;
 import consolecolors;
 import audioformats;
 
