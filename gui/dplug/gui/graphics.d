@@ -80,7 +80,12 @@ nothrow:
         _currentLogicalHeight = _currentUserHeight;
 
         int numThreads = 0; // auto
-        int maxThreads = 2; // PERF: maybe allow to have more threads, depending on number of cores.s
+
+        // Was lowered to 2 in October 2018 to save CPU usage.
+        // Now in Jan 2023, increased to 3 to have a bit smoother PBR.
+        // FUTURE: could make that 4 eventually, see Issue #752. This has minimal memory and CPU 
+        // costs, but is worse on slower plugins.
+        int maxThreads = 3;
         _threadPool = mallocNew!ThreadPool(numThreads, maxThreads);
 
         // Build the compositor
