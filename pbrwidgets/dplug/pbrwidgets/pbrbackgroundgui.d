@@ -125,12 +125,25 @@ nothrow:
                     assert(_diffuse is null);
                     loadBackgroundImagesFromStaticData();
                 }
+
+                version(Dplug_ProfileUI) context.profiler.category("image").begin("set image size");
                 _diffuseResized.size(W, H);
                 _materialResized.size(W, H);
                 _depthResized.size(W, H);
+                version(Dplug_ProfileUI) context.profiler.end;
+
+                version(Dplug_ProfileUI) context.profiler.begin("resize Diffuse background");
                 resizer.resizeImageDiffuse(_diffuse.toRef, _diffuseResized.toRef);
+                version(Dplug_ProfileUI) context.profiler.end;
+
+                version(Dplug_ProfileUI) context.profiler.begin("resize Material background");
                 resizer.resizeImageMaterial(_material.toRef, _materialResized.toRef);
+                version(Dplug_ProfileUI) context.profiler.end;
+
+                version(Dplug_ProfileUI) context.profiler.begin("resize Depth background");
                 resizer.resizeImageDepth(_depth.toRef, _depthResized.toRef);
+                version(Dplug_ProfileUI) context.profiler.end;
+
                 _forceResizeUpdate = false;
 
                 version (decompressImagesLazily)
