@@ -11,6 +11,7 @@ import core.stdc.string : strcmp;
 
 import dplug.core.vec;
 import dplug.core.nogc;
+import dplug.core.thread;
 
 import dplug.window.window;
 
@@ -77,9 +78,16 @@ nothrow @nogc:
     /// so it can be better if this is a shared resource.
     /// It is lazily constructed.
     /// See_also: `ImageResizer`.
-    /// Note: do not use this resizer concurrently (in `onDrawRaw`, `onDrawPBR`, etc.).
+    /// Note: do not use this resizer concurrently (in `onDrawRaw`, `onDrawPBR`, etc.)
+    ///       unless you have `flagDrawAloneRaw` or `flagDrawAlonePBR`.
     ///       Usually intended for `reflow()`.
     ImageResizer* globalImageResizer();
+
+    /// A shared threadpool, used to draw widgets concurrently.
+    /// NEW: A widget can opt to be drawn alone, and use the threadpool for its own drawing itself.
+    /// Can ONLY be called from `onDrawRaw` AND when the flag `flagDrawAloneRaw` is used, 
+    ///                 or from `onDrawPBR` AND when the flag `flagDrawAlonePBR` is used.
+    ThreadPool* globalThreadPool();
 
     /// Returns a UI-wide profiler that records UI performance, as long as Dplug_ProfileUI version is 
     /// defined. Else, it is a null IProfiler that forgets everything.
@@ -209,6 +217,11 @@ nothrow:
     final override ImageResizer* globalImageResizer()
     {
         return &_globalResizer;
+    }
+
+    final override ThreadPool* globalThreadPool()
+    {
+        return &_owner._threadPool;
     }
 
     final override IProfiler profiler()

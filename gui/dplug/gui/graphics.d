@@ -523,7 +523,7 @@ protected:
     IWindow _window;
 
     // Task pool for multi-threaded image work
-    ThreadPool _threadPool;
+    package ThreadPool _threadPool;
 
     // Size constraints of this UI.
     // Currently can only be a fixed size.
@@ -1031,24 +1031,36 @@ protected:
 
             while(drawn < N)
             {
+                // See: redrawElementsPBR below for a remark on performance there.
+
                 int canBeDrawn = 1; // at least one can be drawn without collision
 
-                // Search max number of parallelizable draws until the end of the list or a collision is found
-                bool foundIntersection = false;
-                for ( ; (drawn + canBeDrawn < N); ++canBeDrawn)
+                // Does this first widget in the FIFO wants to be draw alone?
+                if (! _elemsToDrawRaw[drawn].isDrawAloneRaw())
                 {
-                    box2i candidate = _elemsToDrawRaw[drawn + canBeDrawn].position;
-
-                    for (int j = 0; j < canBeDrawn; ++j)
+                    // Search max number of parallelizable draws until the end of the list or a collision is found
+                    bool foundIntersection = false;
+                    for ( ; (drawn + canBeDrawn < N); ++canBeDrawn)
                     {
-                        if (_elemsToDrawRaw[drawn + j].position.intersects(candidate))
+                        // Should we include this element to the assembled set of widgets to draw?
+                        UIElement candidateWidget = _elemsToDrawRaw[drawn + canBeDrawn];
+
+                        if (candidateWidget.isDrawAloneRaw())
+                            break; // wants to be drawn alone
+
+                        box2i candidatePos = candidateWidget.position;
+
+                        for (int j = 0; j < canBeDrawn; ++j) // PERF: aaaand this is nicely quadratic
                         {
-                            foundIntersection = true;
-                            break;
+                            if (_elemsToDrawRaw[drawn + j].position.intersects(candidatePos))
+                            {
+                                foundIntersection = true;
+                                break;
+                            }
                         }
+                        if (foundIntersection)
+                            break;
                     }
-                    if (foundIntersection)
-                        break;
                 }
 
                 assert(canBeDrawn >= 1);
@@ -1105,24 +1117,50 @@ protected:
 
             while(drawn < N)
             {
+                // <Scheduling remark>
+                // PERF: scheduling here is not entirely optimal: consecutive overalapping widgets 
+                // would block further parallel draw if the next widget doesn't overlap the other two.
+                //
+                //  ________          _____
+                //  |      |          |   |
+                //  |  B   |______    | C |      <---- Will not draw A and C in parallel if
+                //  |______|     |    |___|            Z(A) < Z(B) < Z(C)
+                //      |    A   |
+                //      |________|
+                //
+                // PERF: to go further, could use the disjointed rects to draw even more in parallel. 
+                // Real updated graphics is intersection(position, union(_rectsToUpdateDisjointedPBR)),
+                // not simply the widget position.
+                // </Scheduling remark>
+
                 int canBeDrawn = 1; // at least one can be drawn without collision
 
-                // Search max number of parallelizable draws until the end of the list or a collision is found
-                bool foundIntersection = false;
-                for ( ; (drawn + canBeDrawn < N); ++canBeDrawn)
+                // Does this first widget in the FIFO wants to be draw alone?
+                if (! _elemsToDrawPBR[drawn].isDrawAlonePBR())
                 {
-                    box2i candidate = _elemsToDrawPBR[drawn + canBeDrawn].position;
-
-                    for (int j = 0; j < canBeDrawn; ++j)
+                    // Search max number of parallelizable draws until the end of the list or a collision is found
+                    bool foundIntersection = false;
+                    for ( ; (drawn + canBeDrawn < N); ++canBeDrawn)
                     {
-                        if (_elemsToDrawPBR[drawn + j].position.intersects(candidate))
+                        // Should we include this element to the assembled set of widgets to draw?
+                        UIElement candidateWidget = _elemsToDrawPBR[drawn + canBeDrawn];
+
+                        if (candidateWidget.isDrawAlonePBR())
+                            break; // wants to be drawn alone
+
+                        box2i candidatePos = _elemsToDrawPBR[drawn + canBeDrawn].position;
+
+                        for (int j = 0; j < canBeDrawn; ++j) // check with each former selected widget, PERF quadratic
                         {
-                            foundIntersection = true;
-                            break;
+                            if (_elemsToDrawPBR[drawn + j].position.intersects(candidatePos))
+                            {
+                                foundIntersection = true;
+                                break;
+                            }
                         }
+                        if (foundIntersection)
+                            break;
                     }
-                    if (foundIntersection)
-                        break;
                 }
 
                 assert(canBeDrawn >= 1);

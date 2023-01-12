@@ -56,8 +56,14 @@ enum : UIFlags
     /// to be called sucessively.
     flagPBR = 2,
 
-    // This `UIElement` is animated and as such the `onAnimate` callback should be called regularly.
-    flagAnimated = 4
+    /// This `UIElement` is animated and as such the `onAnimate` callback should be called regularly.
+    flagAnimated = 4,
+
+    /// Is not drawn in parallel with other widgets, when draw to the Raw layer.
+    flagDrawAloneRaw = 8,
+
+    /// Is not drawn in parallel with other widgets, when draw to the PBR layer.
+    flagDrawAlonePBR = 16,
 }
 
 /// Used by `setDirty` calls to figure which layer should be invalidated.
@@ -922,6 +928,16 @@ nothrow:
     final bool isAnimated() pure const
     {
         return (_flags & flagAnimated) != 0;
+    }
+
+    final bool isDrawAloneRaw() pure const
+    {
+        return (_flags & flagDrawAloneRaw) != 0;
+    }
+
+    final bool isDrawAlonePBR() pure const
+    {
+        return (_flags & flagDrawAlonePBR) != 0;
     }
 
     /// Appends the Elements that should be drawn, in order.

@@ -474,6 +474,8 @@ else
 
         /// Calls the delegate in parallel, with 0..count as index.
         /// Immediate waiting for completion.
+        /// If there is only one task, it is run directly on this thread.
+        /// IMPORTANT to be reentrant there! widget drawn alone can then launch same threadpool.
         void parallelFor(int count, scope ThreadPoolDelegate dg)
         {
             assert(_state == State.initial);

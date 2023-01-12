@@ -58,7 +58,7 @@ nothrow:
 
     this(SizeConstraints sizeConstraints)
     {
-        super(sizeConstraints, flagPBR | flagAnimated);
+        super(sizeConstraints, flagPBR | flagAnimated | flagDrawAlonePBR);
 
         _diffuseResized = mallocNew!(OwnedImage!RGBA);
         _materialResized = mallocNew!(OwnedImage!RGBA);
@@ -114,8 +114,7 @@ nothrow:
         {
             int W = position.width;
             int H = position.height;
-            ImageResizer resizer;
-            
+
             if (_forceResizeUpdate || _diffuseResized.w != W || _diffuseResized.h != H)
             {
                 // Decompress images lazily for this size
@@ -126,23 +125,34 @@ nothrow:
                     loadBackgroundImagesFromStaticData();
                 }
 
-                version(Dplug_ProfileUI) context.profiler.category("image").begin("set image size");
                 _diffuseResized.size(W, H);
                 _materialResized.size(W, H);
                 _depthResized.size(W, H);
-                version(Dplug_ProfileUI) context.profiler.end;
 
-                version(Dplug_ProfileUI) context.profiler.begin("resize Diffuse background");
-                resizer.resizeImageDiffuse(_diffuse.toRef, _diffuseResized.toRef);
-                version(Dplug_ProfileUI) context.profiler.end;
-
-                version(Dplug_ProfileUI) context.profiler.begin("resize Material background");
-                resizer.resizeImageMaterial(_material.toRef, _materialResized.toRef);
-                version(Dplug_ProfileUI) context.profiler.end;
-
-                version(Dplug_ProfileUI) context.profiler.begin("resize Depth background");
-                resizer.resizeImageDepth(_depth.toRef, _depthResized.toRef);
-                version(Dplug_ProfileUI) context.profiler.end;
+                // Draw a number of UIElement in parallel
+                void resizeOneImage(int i, int threadIndex) nothrow @nogc
+                {
+                    ImageResizer resizer;
+                    if (i == 0) 
+                    {
+                        version(Dplug_ProfileUI) context.profiler.begin("resize Diffuse background");
+                        resizer.resizeImageDiffuse(_diffuse.toRef, _diffuseResized.toRef);
+                        version(Dplug_ProfileUI) context.profiler.end;
+                    }
+                    if (i == 1) 
+                    {
+                        version(Dplug_ProfileUI) context.profiler.begin("resize Material background");
+                        resizer.resizeImageMaterial(_material.toRef, _materialResized.toRef);
+                        version(Dplug_ProfileUI) context.profiler.end;
+                    }
+                    if (i == 2) 
+                    {
+                        version(Dplug_ProfileUI) context.profiler.begin("resize Depth background");
+                        resizer.resizeImageDepth(_depth.toRef, _depthResized.toRef);
+                        version(Dplug_ProfileUI) context.profiler.end;
+                    }
+                }
+                context.globalThreadPool.parallelFor(3, &resizeOneImage);
 
                 _forceResizeUpdate = false;
 
