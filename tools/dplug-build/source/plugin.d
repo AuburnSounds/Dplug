@@ -476,7 +476,8 @@ struct Plugin
     {
         if (keyFileWindows is null)
             throw new Exception(`Missing "keyFile-windows" or "developerIdentity-windows" ("certThumbprint-windows" for AAX) in plugin.json`);
-        return keyFileWindows;
+
+        return buildPath(rootDir, keyFileWindows).array.to!string;
     }
 
     string getKeyPasswordWindows()
