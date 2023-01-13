@@ -2,6 +2,7 @@ import core.stdc.string;
 
 import std.file;
 import std.stdio;
+import std.array;
 import std.conv;
 import std.uni;
 import std.uuid;
@@ -95,6 +96,7 @@ void usage()
     flag("--final", "Shortcut for --combined -b release-nobounds", null, null);
     flag("--installer", "Make an installer " ~ "(Windows and OSX only)".lred, null, "no");
     flag("--notarize", "Notarize the installer " ~ "(OSX only)".lred, null, "no");
+    flag("--root", "Path to operate in instead of the current working dir" ~ " (WIP)".lred, null, ".");
     flag("--publish", "Make the plugin available in standard directories " ~ "(OSX only)".lred, null, "no");
     flag("--auval", "Check Audio Unit validation with auval " ~ "(OSX only)".lred, null, "no");
     flag("--rez", "Generate Audio Unit .rsrc file with Rez " ~ "(OSX only)".lred, null, "no");
@@ -152,6 +154,7 @@ int main(string[] args)
         bool parallel = false;
         bool legacyPT10 = false;
         string prettyName = null;
+        string rootDir = ".";
 
         OS targetOS = buildOS();
         string osString = convertOSToString(targetOS);
@@ -204,6 +207,11 @@ int main(string[] args)
             else if (arg == "--notarize")
             {
                 notarize = true;
+            }
+            else if (arg == "--root")
+            {
+                ++i;
+                rootDir = args[i];
             }
             else if (arg == "--installer")
             {
@@ -317,7 +325,7 @@ int main(string[] args)
 
         assert(archs != [ Arch.all ]);
 
-        Plugin plugin = readPluginDescription();
+        Plugin plugin = readPluginDescription(rootDir);
 
         // Get configurations
         string[] configurations;
@@ -363,8 +371,10 @@ int main(string[] args)
         if (configurations == [])
             configurations = [ plugin.getFirstConfiguration() ];
 
-        string outputDir = "builds";
-        string resDir    = "builds/res-install"; // A directory for the Mac installer
+        string outputDir = buildPath(rootDir, "builds").array.to!string;
+
+        // A directory for the Mac installer
+        string resDir    = buildPath(outputDir, "res-install").array.to!string; 
 
         void fileMove(string source, string dest)
         {
@@ -517,8 +527,8 @@ int main(string[] args)
 
                 if (arch != Arch.universalBinary)
                 {
-                    buildPlugin(targetOS, compiler, config, build, arch, verbose, force, combined, quiet, skipRegistry, parallel);
-                    double bytes = getSize(plugin.dubOutputFileName) / (1024.0 * 1024.0);
+                    buildPlugin(targetOS, compiler, config, build, arch, rootDir, verbose, force, combined, quiet, skipRegistry, parallel);
+                    double bytes = getSize(plugin.dubOutputFileName()) / (1024.0 * 1024.0);
                     cwritefln("    =&gt; Build OK, binary size = %0.1f mb, available in ./%s".lgreen, bytes, path);
                     cwriteln();
                 }
@@ -593,7 +603,7 @@ int main(string[] args)
                     {
                         // Preset extraction itself
                         SharedLib lib;
-                        lib.load(plugin.dubOutputFileName);
+                        lib.load(plugin.dubOutputFileName());
                         if (!lib.hasSymbol("DplugEnumerateTFX"))
                             throw new Exception("Couldn't find the symbol DplugEnumerateTFX in the plug-in");
 
@@ -702,7 +712,7 @@ int main(string[] args)
                 if (targetOS == OS.windows)
                 {
                     // size used in installer
-                    int sizeInKiloBytes = cast(int) (getSize(plugin.dubOutputFileName) / (1024.0));
+                    int sizeInKiloBytes = cast(int) (getSize(plugin.dubOutputFileName()) / (1024.0));
 
                     // plugin path used in installer
                     string pluginDirectory;
@@ -1200,11 +1210,13 @@ int main(string[] args)
             string licensePath = outputDir ~ "/license.html";
             string licensePathExpanded = outputDir ~ "/license-expanded.md";
 
-            if (extension(plugin.licensePath) == ".md")
+            string licensePathReal = buildPath(rootDir, plugin.licensePath).array.to!string;
+
+            if (extension(licensePathReal) == ".md")
             {
                 // Convert license markdown to HTML
                 cwritefln("*** Converting license file to HTML... ");
-                string markdown = cast(string)std.file.read(plugin.licensePath);
+                string markdown = cast(string)std.file.read(licensePathReal);
 
                 // Subsitute predefined macros to plugin.json specific values. 
                 // It helps create licences that work for any vendor.
@@ -1281,7 +1293,11 @@ int main(string[] args)
     }
 }
 
-void buildPlugin(OS targetOS, string compiler, string config, string build, Arch arch, bool verbose, bool force, bool combined, bool quiet, bool skipRegistry, bool parallel)
+void buildPlugin(OS targetOS, 
+                 string compiler, string config, string build, Arch arch, 
+                 string rootDir,
+                 bool verbose, bool force, bool combined, bool quiet, 
+                 bool skipRegistry, bool parallel)
 {
     cwritefln("*** Building configuration %s with %s, %s arch...", config, compiler, convertArchToPrettyString(arch));
 
@@ -1293,7 +1309,7 @@ void buildPlugin(OS targetOS, string compiler, string config, string build, Arch
         environment["MACOSX_DEPLOYMENT_TARGET"] = "10.10";
     }
 
-    string cmd = format("dub build --build=%s %s--compiler=%s%s%s%s%s%s%s%s",
+    string cmd = format("dub build --build=%s %s--compiler=%s%s%s%s%s%s%s%s%s",
         build, 
         convertArchToDUBFlag(arch, targetOS),
         compiler,
@@ -1303,7 +1319,8 @@ void buildPlugin(OS targetOS, string compiler, string config, string build, Arch
         combined ? " --combined" : "",
         config ? " --config=" ~ config : "",
         skipRegistry ? " --skip-registry=all" : "",
-        parallel ? " --parallel" : ""
+        parallel ? " --parallel" : "",
+        rootDir != "." ? " --root=" ~ escapeShellArgument(rootDir) : ""
         );
     safeCommand(cmd);
 }

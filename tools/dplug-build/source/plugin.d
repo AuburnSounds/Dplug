@@ -139,6 +139,7 @@ bool configIsLV2(string config) pure nothrow @nogc
 
 struct Plugin
 {
+    string rootDir; // relative or absolute path to dub.json directory (is is given by --root)
     string name;       // name, extracted from dub.json(eg: 'distort')
     string CFBundleIdentifierPrefix;
     string licensePath;    // can be null
@@ -285,7 +286,7 @@ struct Plugin
         {
             string[] possiblePathes;
             version(Windows)
-                possiblePathes ~= [name  ~ ".dll"];
+                possiblePathes ~=  [name  ~ ".dll"];
             else version(OSX)
             {
                 // support multiple DUB versions, this name changed to .dylib in Aug 2018
@@ -300,8 +301,18 @@ struct Plugin
             if (dubTargetPath !is null)
             {
                 foreach(ref path; possiblePathes)
+                {
                     path = std.path.buildPath(dubTargetPath, path);
+                }
             }
+            else if (rootDir != ".")
+            {
+                foreach(ref path; possiblePathes)
+                {
+                    path = std.path.buildPath(rootDir, path).array.to!string;
+                }
+            }
+
             return possiblePathes;
         }
 
@@ -606,17 +617,23 @@ class DplugBuildBuiltCorrectlyException : Exception
     }
 }
 
-Plugin readPluginDescription()
+Plugin readPluginDescription(string rootDir)
 {
-    if (!exists("dub.json"))
-        throw new Exception("Needs a dub.json file. Please launch 'dplug-build' in a plug-in project directory.");
+    string dubJsonPath = to!string(buildPath(rootDir, "dub.json").array);
+
+    if (!exists(dubJsonPath))
+    {
+        throw new CCLException("Needs a " ~ "dub.json".lcyan ~ " file. Please launch " ~ "dplug-build".lcyan ~ " in a plug-in project directory, or use " ~ "--root".lcyan ~ ".\n" ~
+                               "File " ~ escapeCCL(dubJsonPath).yellow ~ ` doesn't exist.`);
+    }
 
     Plugin result;
+    result.rootDir = rootDir;
 
     enum useDubDescribe = true;
 
     // Open an eventual plugin.json directly to find keys that DUB doesn't bypass
-    JSONValue dubFile = parseJSON(cast(string)(std.file.read("dub.json")));
+    JSONValue dubFile = parseJSON(cast(string)(std.file.read(dubJsonPath)));
 
     try
     {
@@ -664,7 +681,7 @@ Plugin readPluginDescription()
     try
     {
         JSONValue path = dubFile["targetPath"];
-        result.dubTargetPath = path.str;
+        result.dubTargetPath = path.str; // BUG TODO: consider rootDir here
     }
     catch(Exception e)
     {
@@ -672,11 +689,15 @@ Plugin readPluginDescription()
         result.dubTargetPath = null;
     }
 
-    if (!exists("plugin.json"))
-        throw new Exception("Needs a plugin.json file for proper bundling. Please create one next to dub.json.");
+    string pluginJsonPath = to!string(buildPath(rootDir, "plugin.json").array);
+
+    if (!exists(pluginJsonPath))
+    {
+        throw new CCLException("Needs a " ~ "plugin.json".lcyan ~ " for proper bundling. Please create one next to " ~ "dub.json".lcyan ~ ".");
+    }
 
     // Open an eventual plugin.json directly to find keys that DUB doesn't bypass
-    JSONValue rawPluginFile = parseJSON(cast(string)(std.file.read("plugin.json")));
+    JSONValue rawPluginFile = parseJSON(cast(string)(std.file.read(pluginJsonPath)));
 
     // Optional keys
 

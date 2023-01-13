@@ -218,6 +218,7 @@ unittest
 
 /// strtod replacement, but without locale
 ///     s Must be a zero-terminated string.
+/// Note that this code is duplicated in wren-port, to avoid a dependency on dplug:core there.
 public double strtod_nolocale(const(char)* s, const(char)** p)
 {
     bool strtod_err = false;
