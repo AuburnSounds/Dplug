@@ -1241,7 +1241,7 @@ int main(string[] args)
         {
             cwriteln("*** Generating final Mac installer...");
             string finalPkgPath = outputDir ~ "/" ~ plugin.finalPkgFilename(configurations[0]);
-            generateMacInstaller(outputDir, resDir, plugin, macInstallerPackages, finalPkgPath, verbose, archs);
+            generateMacInstaller(rootDir, outputDir, resDir, plugin, macInstallerPackages, finalPkgPath, verbose, archs);
             cwriteln("    =&gt; OK".lgreen);
             cwriteln;
 
@@ -1636,7 +1636,8 @@ struct MacPackage
     string title;
 }
 
-void generateMacInstaller(string outputDir,
+void generateMacInstaller(string rootDir,
+                          string outputDir,
                           string resDir,
                           Plugin plugin,
                           MacPackage[] packs,
@@ -1655,7 +1656,7 @@ void generateMacInstaller(string outputDir,
 
     if (plugin.installerPNGPath)
     {
-        string backgroundPath = resDir ~ "/background.png";
+        string backgroundPath = buildPath(rootDir, resDir ~ "/background.png").array.to!string;
         std.file.copy(plugin.installerPNGPath, backgroundPath);
         content ~= format(`<background file="background.png" alignment="center" scaling="proportional"/>` ~ "\n");
     }

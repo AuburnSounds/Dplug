@@ -630,6 +630,16 @@ Plugin readPluginDescription(string rootDir)
     Plugin result;
     result.rootDir = rootDir;
 
+    string fromDubPathToToRootDirPath(string pathRelativeToDUBJSON)
+    {
+        return buildPath(rootDir, pathRelativeToDUBJSON).array.to!string;
+    }
+
+    string fromPluginPathToToRootDirPath(string pathRelativeToPluginJSON)
+    {
+        return buildPath(rootDir, pathRelativeToPluginJSON).array.to!string;
+    }
+
     enum useDubDescribe = true;
 
     // Open an eventual plugin.json directly to find keys that DUB doesn't bypass
@@ -646,8 +656,8 @@ Plugin readPluginDescription(string rootDir)
 
     // We simply launched `dub` to build dplug-build. So we're not building a plugin.
     // avoid the embarassment of having a red message that confuses new users.
-    // You've read correctly: you can't name your plugin "dplug-build" as a consequence.
-    if (result.name == "dplug-build")
+    // You've read correctly: you can't name your plugin "build" or "dplug-build" as a consequence.
+    if (result.name == "dplug-build" || result.name == "build")
     {
         throw new DplugBuildBuiltCorrectlyException("");
     }
@@ -680,8 +690,7 @@ Plugin readPluginDescription(string rootDir)
     // Support for DUB targetPath
     try
     {
-        JSONValue path = dubFile["targetPath"];
-        result.dubTargetPath = path.str; // BUG TODO: consider rootDir here
+        JSONValue path = fromDubPathToToRootDirPath(dubFile["targetPath"].str);
     }
     catch(Exception e)
     {
@@ -795,6 +804,9 @@ Plugin readPluginDescription(string rootDir)
     try
     {
         result.windowsInstallerHeaderBmp = rawPluginFile["windowsInstallerHeaderBmp"].str;
+
+        // take rootDir into account
+        result.windowsInstallerHeaderBmp = buildPath(rootDir, result.windowsInstallerHeaderBmp).array.to!string;
     }
     catch(Exception e)
     {
