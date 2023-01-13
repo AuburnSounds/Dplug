@@ -690,7 +690,7 @@ Plugin readPluginDescription(string rootDir)
     // Support for DUB targetPath
     try
     {
-        JSONValue path = fromDubPathToToRootDirPath(dubFile["targetPath"].str);
+        result.dubTargetPath = fromDubPathToToRootDirPath(dubFile["targetPath"].str);
     }
     catch(Exception e)
     {
