@@ -17,7 +17,7 @@ import dplug.wren.describe;
 
 private static immutable string uiModuleSource = import("ui.wren");
 
-@nogc:
+nothrow @nogc:
 
 // UI
 

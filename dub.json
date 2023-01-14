@@ -267,7 +267,7 @@
             "dependencies": {
                 "dplug:gui": "*",
                 "dplug:graphics": "*",
-                "wren-port": "~>1.1"
+                "wren-port": ">=1.1.7 <2.0.0"
             }
         },
         {
