@@ -46,28 +46,28 @@
             "name": "VST3",
             "versions": ["VST3"],
             "targetType": "dynamicLibrary",
-            "lflags-osx-ldc": [ "-exported_symbols_list", "module-vst3.lst", "-dead_strip" ],
-            "lflags-linux-ldc": [ "--version-script=module-vst3.ver" ]
+            "lflags-osx-ldc": [ "-exported_symbols_list", "$PACKAGE_DIR/module-vst3.lst", "-dead_strip" ],
+            "lflags-linux-ldc": [ "--version-script=$PACKAGE_DIR/module-vst3.ver" ]
         },
         {
             "name": "VST2",
             "versions": ["VST2"],
             "targetType": "dynamicLibrary",
-            "lflags-osx-ldc": [ "-exported_symbols_list", "module-vst2.lst", "-dead_strip" ],
-            "lflags-linux-ldc": [ "--version-script=module-vst2.ver" ]
+            "lflags-osx-ldc": [ "-exported_symbols_list", "$PACKAGE_DIR/module-vst2.lst", "-dead_strip" ],
+            "lflags-linux-ldc": [ "--version-script=$PACKAGE_DIR/module-vst2.ver" ]
         },
         {
             "name": "AU",
             "versions": ["AU"],
             "targetType": "dynamicLibrary",
-            "lflags-osx-ldc": [ "-exported_symbols_list", "module-au.lst", "-dead_strip" ]
+            "lflags-osx-ldc": [ "-exported_symbols_list", "$PACKAGE_DIR/module-au.lst", "-dead_strip" ]
         },
         {
             "name": "LV2",
             "versions": ["LV2"],
             "targetType": "dynamicLibrary",
-            "lflags-osx-ldc": [ "-exported_symbols_list", "module-lv2.lst", "-dead_strip" ],
-            "lflags-linux-ldc": [ "--version-script=module-lv2.ver" ]
+            "lflags-osx-ldc": [ "-exported_symbols_list", "$PACKAGE_DIR/module-lv2.lst", "-dead_strip" ],
+            "lflags-linux-ldc": [ "--version-script=$PACKAGE_DIR/module-lv2.ver" ]
         }
     ]
 }
