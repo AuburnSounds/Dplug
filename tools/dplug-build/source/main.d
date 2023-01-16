@@ -1656,8 +1656,9 @@ void generateMacInstaller(string rootDir,
 
     if (plugin.installerPNGPath)
     {
-        string backgroundPath = buildPath(rootDir, resDir ~ "/background.png").array.to!string;
-        std.file.copy(plugin.installerPNGPath, backgroundPath);
+        string backgroundPath = resDir ~ "/background.png";
+        string sourceBackground = buildPath(rootDir, plugin.installerPNGPath).array.to!string;
+        std.file.copy(sourceBackground, backgroundPath);
         content ~= format(`<background file="background.png" alignment="center" scaling="proportional"/>` ~ "\n");
     }
     else
