@@ -34,9 +34,9 @@ void usage()
     cwriteln("AVAILABLE COMMANDS");
     cwriteln();
     command("build", "Build an audio plug-in");
-    command("process", "Process a .wav file or silence with a VST2 audio plug-inn");
+    command("process", "Process a .wav file or silence with a VST2 audio plug-in");
     command("bench", "Benchmark several plug-ins against each other");
-    command("abtest", "Perform an A/B comparison");
+    command("abtest", "Perform an A/B comparison between two sound files");
     command("wav-compare", "Compare two .wav files");
     cwriteln();
     cwriteln("FLAGS");
@@ -94,6 +94,8 @@ int main(string[] args)
                 string rest = "";
                 for (size_t n = 1; n < args.length; ++n)
                 {
+                    if (n > 1)
+                        rest ~= " ";
                     rest ~= escapeShellArgument(args[n]);
                 }
 
