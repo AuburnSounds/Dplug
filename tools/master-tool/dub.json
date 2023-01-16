@@ -1,0 +1,9 @@
+{
+    "name": "dplug",
+    "description": "The master dplug tool, call other tools without the need to build them.",
+
+    "dependencies":
+    {
+        "console-colors": "~>1.0"
+    }
+}

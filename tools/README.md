@@ -1,4 +1,5 @@
 ### Tools
+   * `tools/master-tool`: acts as single `dplug` tool entry for other tools
    * `tools/dplug-build`: DUB frontend to build plug-ins
    * `tools/process`: plugin host for testing audio processing speed/reproducibility
    * `tools/wav-compare`: comparison of WAV files, difference spectrogram
