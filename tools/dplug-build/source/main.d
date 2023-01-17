@@ -84,7 +84,7 @@ void usage()
     cwriteln();
     flag("-a --arch", "Selects target architecture.", "x86 | x86_64 | arm64 | all", "Windows =&gt; x86_64   macOS =&gt; all    Linux =&gt; x86_64");
     flag("-b --build", "Selects build type.", "same ones as dub accepts", "debug");
-    flag("--compiler", "Selects D compiler.", "dmd | ldc | gdc", "ldc");
+    flag("--compiler", "Selects D compiler.", "same ones as dub accepts", "ldc2");
     flag("-c --config", "Adds a build configuration.", "VST2 | VST3 | AU | AAX | LV2 | name starting with \"VST2\", \"VST3\",\"AU\", \"AAX\", or \"LV2\"", "all");
     flag("-f --force", "Forces rebuild", null, "no");
     flag("--combined", "Combined build, important for cross-module inlining with LDC!", null, "no");
@@ -141,7 +141,7 @@ int main(string[] args)
         // The _target_ architectures. null means "default".
         Arch[] archs = null;
 
-        string build="debug";
+        string build = "debug";
         string[] configurationPatterns = [];
         bool verbose = false;
         bool quiet = false;
@@ -1310,6 +1310,22 @@ void buildPlugin(OS targetOS,
     version(OSX)
     {
         environment["MACOSX_DEPLOYMENT_TARGET"] = "10.10";
+    }
+
+    if (targetOS == OS.windows && compilerIsLDC(compiler))
+    {
+        // Dplug issue #726
+        // See upstream issue: https://github.com/dlang/dub/issues/2568
+        // When using the newer LDC and DUB, we need to ensure static linking on Windows.
+        // And the ONLY way is now using DFLAGS.
+        // <rant>
+        // This is a terrible situation to be in, but well somehow people decide static linking druntime and C runtime was
+        // a weirdo thing to do, while it's really not. We are being slowly kicked out of D... it will be a language only for Excel and
+        // GC for people without performance requirements that do server software.
+        // </rant>
+        // This requires LDC 1.28+, but Dplug already requires that.
+        info("ldc compiler detected, using a modified DFLAGS for proper Windows druntime static linking");
+        environment["DFLAGS"] = "-fvisibility=hidden -dllimport=none";
     }
 
     string cmd = format("dub build --build=%s %s--compiler=%s%s%s%s%s%s%s%s%s",

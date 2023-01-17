@@ -1,5 +1,6 @@
 module arch;
 
+import std.string;
 
 // Architecture (one single dplug-build invocation may specify several of them)
 enum Arch
@@ -157,3 +158,8 @@ Arch[] defaultArchitecturesToBuildForThisOS(OS targetOS)
     return res;
 }
 
+bool compilerIsLDC(string compilerPath)
+{
+    // if compiler path contains "ldc2", we assume it's LDC.
+    return indexOf(compilerPath, "ldc2") != -1;
+}
