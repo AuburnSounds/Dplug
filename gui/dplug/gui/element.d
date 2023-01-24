@@ -59,10 +59,10 @@ enum : UIFlags
     /// This `UIElement` is animated and as such the `onAnimate` callback should be called regularly.
     flagAnimated = 4,
 
-    /// Is not drawn in parallel with other widgets, when draw to the Raw layer.
+    /// Is not drawn in parallel with other widgets, when drawn to the Raw layer.
     flagDrawAloneRaw = 8,
 
-    /// Is not drawn in parallel with other widgets, when draw to the PBR layer.
+    /// Is not drawn in parallel with other widgets, when drawn to the PBR layer.
     flagDrawAlonePBR = 16,
 }
 

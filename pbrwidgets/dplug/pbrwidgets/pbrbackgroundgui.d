@@ -129,7 +129,7 @@ nothrow:
                 _materialResized.size(W, H);
                 _depthResized.size(W, H);
 
-                // Draw a number of UIElement in parallel
+                // Potentially resize all 3 backgrounds in parallel 
                 void resizeOneImage(int i, int threadIndex) nothrow @nogc
                 {
                     ImageResizer resizer;
