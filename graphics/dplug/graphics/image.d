@@ -710,9 +710,9 @@ OwnedImage!RGBA loadOwnedImage(in void[] imageData)
     Image image;
     image.loadFromMemory(cast(const(ubyte[])) imageData, 
                          LOAD_RGB | LOAD_8BIT | LOAD_ALPHA | LAYOUT_VERT_STRAIGHT | LAYOUT_GAPLESS);
-    if (image.errored)
+    if (image.isError)
     {
-        assert(false, "Decoding failed");
+        assert(false, "Decoding failed"); // FUTURE: could do something more sensible maybe
     }
 
     return convertImageToOwnedImage_rgba8(image);
@@ -729,23 +729,23 @@ OwnedImage!RGBA loadImageSeparateAlpha(in void[] imageDataRGB, in void[] imageDa
     Image alpha;
     alpha.loadFromMemory(cast(const(ubyte[])) imageDataAlpha, 
                          LOAD_GREYSCALE | LOAD_8BIT | LOAD_NO_ALPHA | LAYOUT_VERT_STRAIGHT | LAYOUT_GAPLESS);
-    if (alpha.errored)
+    if (alpha.isError)
     {
-        assert(false, "Decoding failed");
+        assert(false, "Decoding failed"); // same remark as above
     }
 
     Image rgb;
     rgb.loadFromMemory(cast(const(ubyte[])) imageDataRGB, 
                        LOAD_RGB | LOAD_8BIT | LOAD_ALPHA | LAYOUT_VERT_STRAIGHT | LAYOUT_GAPLESS);
-    if (rgb.errored)
+    if (rgb.isError)
     {
-        assert(false, "Decoding failed");
+        assert(false, "Decoding failed"); // same remark as above
     }
 
     if ( (rgb.width != alpha.width) || (rgb.height != alpha.height) )
     {
         // If you fail here, typically size of your Diffuse map doesn't match the Emissive map.
-        assert(false, "Image size mismatch");
+        assert(false, "Image size mismatch"); // same remark as above
     }
 
     int W = rgb.width;
@@ -772,7 +772,7 @@ OwnedImage!L16 loadOwnedImageDepth(in void[] imageData)
 {
     Image image;
     image.loadFromMemory(cast(const(ubyte[])) imageData, LOAD_NO_ALPHA);
-    if (image.errored)
+    if (image.isError)
     {
         assert(false, "Decoding failed");
     }

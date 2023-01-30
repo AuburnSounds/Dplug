@@ -369,22 +369,27 @@ void debugLog(const(char)* message) nothrow @nogc
 ///ditto
 extern (C) void debugLogf(const(char)* fmt, ...) nothrow @nogc
 {
-    import core.stdc.stdio;
-
-    char[256] buffer;
-    va_list args;
-    va_start (args, fmt);
-    vsnprintf (buffer.ptr, 256, fmt, args);
-    va_end (args);
-
-    version(Windows)
+    // This is a complete hack to be able to build in Ubuntu Focal, which distributes D front-ends based
+    // upon DMDFE 2.090. In these compilers, va_start is not marked @nogc.
+    static if (__VERSION__ > 2090)
     {
-        import core.sys.windows.windows;
-        OutputDebugStringA(buffer.ptr);
-    }
-    else
-    {        
-        printf("%s\n", buffer.ptr);
+        import core.stdc.stdio;
+
+        char[256] buffer;
+        va_list args;
+        va_start (args, fmt);
+        vsnprintf (buffer.ptr, 256, fmt, args);
+        va_end (args);
+
+        version(Windows)
+        {
+            import core.sys.windows.windows;
+            OutputDebugStringA(buffer.ptr);
+        }
+        else
+        {        
+            printf("%s\n", buffer.ptr);
+        }
     }
 }
 
