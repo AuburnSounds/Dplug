@@ -377,8 +377,6 @@ private:
     }
 }
 
-version = useRealFFT;
-
 /// From a signal, output short term FFT data.
 /// Variable overlap.
 /// Introduces approximately windowSize/2 samples delay.
@@ -418,28 +416,19 @@ public:
 
         _segmenter.initialize(windowSize, analysisPeriod);
 
-        version(useRealFFT)
-        {
-            _timeData.reallocBuffer(fftSize);
-            _rfft.initialize(fftSize);
-        }
+        _timeData.reallocBuffer(fftSize);
+        _rfft.initialize(fftSize);
     }
 
     ~this()
     {
-        version(useRealFFT)
-        {
-            _timeData.reallocBuffer(0);
-        }
+        _timeData.reallocBuffer(0);
     }
 
-    version(useRealFFT)
+    /// Gets the RFFT object which allows to perform efficient inverse FFT with the same pre-computed tables.
+    ref RFFT!T realFFT()
     {
-        /// Gets the RFFT object which allows to perform efficient incverse FFT with the same pre-computed tables.
-        ref RFFT!T realFFT()
-        {
-            return _rfft;
-        }
+        return _rfft;
     }
 
     bool feed(T x, Complex!T[] fftData) nothrow @nogc
@@ -451,106 +440,51 @@ public:
 
             T scaleFactor = _scaleFactor;
 
-            version(useRealFFT)
+            if (_zeroPhaseWindowing)
             {
-                if (_zeroPhaseWindowing)
-                {
-                    // "Zero Phase" windowing
-                    // Through clever reordering, phase of ouput coefficients will relate to the
-                    // center of the window
-                    //_
-                    // \_                   _/
-                    //   \                 /
-                    //    \               /
-                    //     \_____________/____
-                    int center = (_windowSize - 1) / 2; // position of center bin
-                    int nLeft = _windowSize - center;
-                    for (int i = 0; i < nLeft; ++i)
-                        _timeData[i] = (segment[center + i] * _window[center + i] * scaleFactor);
+                // "Zero Phase" windowing
+                // Through clever reordering, phase of ouput coefficients will relate to the
+                // center of the window
+                //_
+                // \_                   _/
+                //   \                 /
+                //    \               /
+                //     \_____________/____
+                int center = (_windowSize - 1) / 2; // position of center bin
+                int nLeft = _windowSize - center;
+                for (int i = 0; i < nLeft; ++i)
+                    _timeData[i] = (segment[center + i] * _window[center + i] * scaleFactor);
 
-                    int nPadding = _fftSize - _windowSize;
-                    for (int i = 0; i < nPadding; ++i)
-                        _timeData[nLeft + i] = 0;
+                int nPadding = _fftSize - _windowSize;
+                for (int i = 0; i < nPadding; ++i)
+                    _timeData[nLeft + i] = 0;
 
-                    for (int i = 0; i < center; ++i)
-                        _timeData[nLeft + nPadding + i] = (segment[i] * _window[i] * scaleFactor);
-                }
-                else
-                {
-                    // "Normal" windowing
-                    // Phase of output coefficient will relate to the start of the buffer
-                    //      _
-                    //    _/ \_
-                    //   /     \
-                    //  /       \
-                    //_/         \____________
-
-                    // fill FFT buffer and multiply by window
-                    for (int i = 0; i < _windowSize; ++i)
-                        _timeData[i] = (segment[i] * _window[i] * scaleFactor);
-
-                    // zero-padding
-                    for (int i = _windowSize; i < _fftSize; ++i)
-                        _timeData[i] = 0;
-                }
+                for (int i = 0; i < center; ++i)
+                    _timeData[nLeft + nPadding + i] = (segment[i] * _window[i] * scaleFactor);
             }
             else
             {
+                // "Normal" windowing
+                // Phase of output coefficient will relate to the start of the buffer
+                //      _
+                //    _/ \_
+                //   /     \
+                //  /       \
+                //_/         \____________
 
-                if (_zeroPhaseWindowing)
-                {
-                    // "Zero Phase" windowing
-                    // Through clever reordering, phase of ouput coefficients will relate to the
-                    // center of the window
-                    //_
-                    // \_                   _/
-                    //   \                 /
-                    //    \               /
-                    //     \_____________/____
-                    int center = (_windowSize - 1) / 2; // position of center bin
-                    int nLeft = _windowSize - center;
-                    for (int i = 0; i < nLeft; ++i)
-                        fftData[i] = (segment[center + i] * _window[center + i] * scaleFactor)+0i;
+                // fill FFT buffer and multiply by window
+                for (int i = 0; i < _windowSize; ++i)
+                    _timeData[i] = (segment[i] * _window[i] * scaleFactor);
 
-                    int nPadding = _fftSize - _windowSize;
-                    for (int i = 0; i < nPadding; ++i)
-                        fftData[nLeft + i] = 0+0i;
-
-                    for (int i = 0; i < center; ++i)
-                        fftData[nLeft + nPadding + i] = (segment[i] * _window[i] * scaleFactor)+0i;
-                }
-                else
-                {
-                    // "Normal" windowing
-                    // Phase of output coefficient will relate to the start of the buffer
-                    //      _
-                    //    _/ \_
-                    //   /     \
-                    //  /       \
-                    //_/         \____________
-
-                    // fill FFT buffer and multiply by window
-                    for (int i = 0; i < _windowSize; ++i)
-                        fftData[i] = (segment[i] * _window[i] * scaleFactor)+0i;
-
-                    // zero-padding
-                    for (int i = _windowSize; i < _fftSize; ++i)
-                        fftData[i] = 0+0i;
-                }
+                // zero-padding
+                for (int i = _windowSize; i < _fftSize; ++i)
+                    _timeData[i] = 0;
             }
 
-            // perform forward FFT on this slice
-            version(useRealFFT)
-            {
-                // If you fail here, you are giving a larger slice than strictly necessary to FFTAnalyzer.
-                // This can cause hard to find memory corruption if you read the slice one bin too far.
-                // Give a slice with length of exactly _fftSize/2+1.
-                assert(fftData.length == _fftSize/2+1, "FFTAnalyzer is given too large a slice");
-
-                _rfft.forwardTransform(_timeData[], fftData[0.._fftSize/2+1]);
-            }
-            else
-                forwardFFT!T(fftData[0.._fftSize]);
+            // If you fail here, you are giving a larger slice than strictly necessary to FFTAnalyzer.
+            // This can cause hard to find memory corruption if you read the slice one bin too far.
+            // Give a slice with length of exactly _fftSize/2+1.
+            assert(fftData.length == _fftSize/2+1, "FFTAnalyzer is given too large a slice");
         }
 
         return _segmenter.feed(x, &processSegment);
@@ -566,11 +500,8 @@ private:
 
     T _scaleFactor; // account to the shape of the windowing function
 
-    version(useRealFFT)
-    {
-        RFFT!T _rfft;
-        T[] _timeData;
-    }
+    RFFT!T _rfft;
+    T[] _timeData;
 }
 
 unittest
