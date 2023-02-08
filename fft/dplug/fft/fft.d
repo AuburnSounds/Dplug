@@ -485,6 +485,7 @@ public:
             // This can cause hard to find memory corruption if you read the slice one bin too far.
             // Give a slice with length of exactly _fftSize/2+1.
             assert(fftData.length == _fftSize/2+1, "FFTAnalyzer is given too large a slice");
+            _rfft.forwardTransform(_timeData[], fftData[0.._fftSize/2+1]);
         }
 
         return _segmenter.feed(x, &processSegment);
