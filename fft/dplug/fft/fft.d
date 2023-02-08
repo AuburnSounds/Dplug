@@ -237,7 +237,7 @@ private:
 
 /// From short term windowed data, output the summed signal.
 /// Segments can be irregular and have different size.
-struct ShortTermReconstruction
+struct ShortTermReconstruction(T)
 {
 nothrow:
 @nogc:
@@ -270,7 +270,7 @@ nothrow:
 
     // Copy segment to a free slot, and start its summing.
     // The first sample of this segment will be played at next() call if delay is 0.
-    void startSegment(float[] newSegment, int delay = 0)
+    void startSegment(T[] newSegment, int delay = 0)
     {
         assert(newSegment.length <= _maxSegmentLength);
         int i = allocSegmentSlot();
@@ -282,7 +282,7 @@ nothrow:
 
     // Same, but with the input being split into two slices A ~ B. This is a common case
     // when summing zero-phase windows in STFT analysis.
-    void startSegmentSplitted(float[] segmentA, float[] segmentB, int delay = 0)
+    void startSegmentSplitted(T[] segmentA, T[] segmentB, int delay = 0)
     {
         int i = allocSegmentSlot();
         int lenA = cast(int)(segmentA.length);
@@ -295,7 +295,7 @@ nothrow:
         _desc[i].buffer[lenA..lenA+lenB] = segmentB[]; // copy segment part B
     }
 
-    float nextSample()
+    T nextSample()
     {
         float sum = 0;
         foreach(ref desc; _desc)
@@ -310,7 +310,7 @@ nothrow:
         return sum;
     }
 
-    void nextBuffer(float* outAudio, int frames)
+    void nextBuffer(T* outAudio, int frames)
     {
         outAudio[0..frames] = 0;
 
@@ -338,7 +338,7 @@ nothrow:
                 int count = endOfSumming - startOfSumming;
                 assert(count >= 0);
 
-                const(float)* segmentData = desc.buffer.ptr + offset;
+                const(T)* segmentData = desc.buffer.ptr + offset;
 
                 // PERF: this can be optimized further
                 for (int i = startOfSumming; i < endOfSumming; ++i)
@@ -357,7 +357,7 @@ private:
     {
         int playOffset; // offset in this segment
         int length; // length in this segment
-        float[] buffer; // 0..length => data for this segment
+        T[] buffer; // 0..length => data for this segment
 
         bool active() pure const nothrow @nogc
         {
