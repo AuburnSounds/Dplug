@@ -1318,12 +1318,7 @@ void buildPlugin(OS targetOS,
         // See upstream issue: https://github.com/dlang/dub/issues/2568
         // When using the newer LDC and DUB, we need to ensure static linking on Windows.
         // And the ONLY way is now using DFLAGS.
-        // <rant>
-        // This is a terrible situation to be in, but well somehow people decide static linking druntime and C runtime was
-        // a weirdo thing to do, while it's really not. We are being slowly kicked out of D... it will be a language only for Excel and
-        // GC for people without performance requirements that do server software.
-        // </rant>
-        // This requires LDC 1.28+, but Dplug already requires that.
+        // This requires LDC 1.28+, but Dplug already required that.
         info("ldc compiler detected, using a modified DFLAGS for proper Windows druntime static linking");
         environment["DFLAGS"] = "-fvisibility=hidden -dllimport=none";
     }
