@@ -37,6 +37,7 @@ void usage()
     writeln("  -param                 Set parameter value after loading preset");
     writeln("  -show-params           Set parameter value after loading preset");
     writeln("  -output-xml            Write measurements into an xml file instead of stdout");
+    writeln("  -vverbose              Be verbose even if -output-xml was specified");
     writeln;
 }
 
@@ -83,6 +84,7 @@ int main(string[]args)
         bool preRoll = false;
         bool precise = false;
         bool verbose = true;
+        bool vverbose = false;
         bool showParams = false;
         int times = 1;
         int preset = -1; // none
@@ -143,6 +145,10 @@ int main(string[]args)
                 xmlFilename = args[i];
                 verbose = false;
             }
+            else if (arg == "-vverbose")
+            {
+                vverbose = true;
+            }
             else if (arg == "-show-params")
             {
                 showParams = true;
@@ -192,6 +198,12 @@ int main(string[]args)
             parametersXml.addChild("preset").innerText = preset.to!string;
             parametersXml.addChild("plugin").innerText = pluginPath;
             parametersXml.addChild("plugin_timestamp").innerText = pluginPath.timeLastModified.toISOExtString;
+        }
+
+        // this flag is only there to be verbose even in -outpu-xml scenario
+        if (vverbose)
+        {
+            verbose = true;
         }
         
         if (help)
