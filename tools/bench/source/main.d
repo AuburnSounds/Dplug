@@ -499,7 +499,7 @@ struct ProcessMeasurements
     int times;
     bool precise;
     bool preroll;
-    int buffer;
+    string bufferPattern;
     int preset;
     string plugin;
     SysTime pluginTimestamp; // time last modified
@@ -524,7 +524,7 @@ struct ProcessMeasurements
         times = doc.getElementsByTagName("times")[0].innerText.to!int;
         if (doc.getElementsByTagName("precise").length > 0) precise = true;
         if (doc.getElementsByTagName("preroll").length > 0) preroll = true;
-        buffer = doc.getElementsByTagName("buffer")[0].innerText.to!int;
+        bufferPattern = doc.getElementsByTagName("buffer")[0].innerText;
         preset = doc.getElementsByTagName("preset")[0].innerText.to!int;
         plugin = doc.getElementsByTagName("plugin")[0].innerText;
         pluginTimestamp = SysTime.fromISOExtString(doc.getElementsByTagName("plugin_timestamp")[0].innerText);

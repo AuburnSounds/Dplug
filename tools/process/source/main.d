@@ -1,5 +1,6 @@
 import std.stdio;
 import std.algorithm;
+import std.array;
 import std.range;
 import std.conv;
 import std.string;
@@ -19,17 +20,23 @@ void usage()
     writeln("Usage: process [-i input.wav] [-o output.wav] [-precise] [-preroll] [-t times] [-h] [-buffer <bufferSize>] [-preset <index>] [-param <index> <value>] [-output-xml <filename>] plugin.dll\n");
     writeln();
     writeln("Params:");
-    writeln("  -i           Specify an input file (default: process silence)");
-    writeln("  -o           Specify an output file (default: do not output a file)");
-    writeln("  -t           Process the input multiple times (default: 1)");
-    writeln("  -h           Display this help");
-    writeln("  -precise     Use experimental time, more precise measurement BUT much less accuracy (Windows-only)");
-    writeln("  -preroll     Process one second of silence before measurement");
-    writeln("  -buffer      Process audio by given chunk size (default: all-at-once)");
-    writeln("  -preset      Choose preset to process audio with");    
-    writeln("  -param       Set parameter value after loading preset");
-    writeln("  -show-params Set parameter value after loading preset");
-    writeln("  -output-xml  Write measurements into an xml file instead of stdout");
+    writeln("  -i <file.wav>          Specify an input file (default: process silence)");
+    writeln("  -o <file.wav>          Specify an output file (default: do not output a file)");
+    writeln("  -t <count>             Process the input multiple times (default: 1)");
+    writeln("  -h, --help             Display this help");
+    writeln("  -precise               Use experimental time, more precise measurement BUT much less accuracy (Windows-only)");
+    writeln("  -preroll               Process one second of silence before measurement");
+    writeln("  -buffer <pattern>      Process audio by given chunk pattern (Default: 256)");
+    writeln("                           This is a small language:");
+    writeln(`                             *           : all remaining samples`);
+    writeln(`                             64          : process by 64 samples`);
+    writeln(`                             64, 512     : process by 64 samples, then only by 512 samples`);
+    writeln(`                             1,1024,loop : process 1 samples, then 1, then loop that pattern.`);
+    writeln(`                           Helpful to find buffer bugs in your plugin. Pattern applied separately in preroll.`);
+    writeln("  -preset                Choose preset to process audio with");    
+    writeln("  -param                 Set parameter value after loading preset");
+    writeln("  -show-params           Set parameter value after loading preset");
+    writeln("  -output-xml            Write measurements into an xml file instead of stdout");
     writeln;
 }
 
@@ -60,6 +67,9 @@ void usage()
 </measurements>
 */
 
+enum int ALL_REMAINING_BUF = -1;
+enum int LOOP_PATTERN = -2;
+
 int main(string[]args)
 {
     try
@@ -67,7 +77,8 @@ int main(string[]args)
         string pluginPath = null;
         string outPath = null;
         string inPath = null;
-        int bufferSize = 256;
+        string bufferPatternStr = "256";
+        
         bool help = false;
         bool preRoll = false;
         bool precise = false;
@@ -98,7 +109,7 @@ int main(string[]args)
             else if (arg == "-buffer")
             {
                 ++i;
-                bufferSize = to!int(args[i]);
+                bufferPatternStr = args[i];
             }
             else if (arg == "-preroll")
             {
@@ -136,7 +147,7 @@ int main(string[]args)
             {
                 showParams = true;
             }
-            else if (arg == "-h")
+            else if (arg == "-h" || arg == "--help")
             {
                 help = true;
             }
@@ -147,6 +158,8 @@ int main(string[]args)
                 pluginPath = arg;
             }
         }
+
+        int[] bufferPattern = parseBufferPattern(bufferPatternStr);
 
         bool outputXML = xmlFilename !is null;
         Document xmlOutput;
@@ -172,7 +185,7 @@ int main(string[]args)
 
             parametersXml.addChild("output").innerText = outPath;
 
-            parametersXml.addChild("buffer").innerText = bufferSize.to!string;
+            parametersXml.addChild("buffer").innerText = bufferPatternStr;
             if (preRoll) parametersXml.addChild("preroll");
             if (precise) parametersXml.addChild("precise");
             parametersXml.addChild("times").innerText = times.to!string;
@@ -204,16 +217,6 @@ int main(string[]args)
             sound.samples[] = 0;
 
             inPath = "10 seconds of silence";
-        }
-
-        if (bufferSize < 1)
-            throw new Exception("bufferSize is < 1");
-
-        int maxBufferSize = 16384;
-        if (bufferSize > 16384) // 370ms @ 44100hz
-        {
-            bufferSize = 16384;
-            if (verbose) writefln("Buffer clamped to 16384.");
         }
 
         int N = sound.lengthInFrames();
@@ -255,14 +258,40 @@ int main(string[]args)
 
         getCurrentThreadHandle();
 
+        // Get first buffer size
+        int currentMaxBufferSize;
+        {
+            PatternInterpreter interp;
+            int silenceLength = sound.sampleRate;
+            interp.initialize(preRoll ? silenceLength : N, bufferPattern);
+            currentMaxBufferSize = interp.getNextBufferSize();
+        }
+
         long timeBeforeInit = getTickUs(precise);
         IPluginHost host = createPluginHost(pluginPath);
         host.setSampleRate(sound.sampleRate);
-        host.setMaxBufferSize(bufferSize);
+        host.setMaxBufferSize(currentMaxBufferSize);
+        if (verbose) writefln("Setting initial buffer size to %s\n", currentMaxBufferSize);
         if (!host.setIO(numChannels, numChannels))
             throw new Exception(format("Unsupported I/O: %s inputs, %s outputs", numChannels, numChannels));
 
         host.beginAudioProcessing();
+
+        void ensureBufferSize(int bufSize)
+        {
+            bool doChange = (bufSize > currentMaxBufferSize); // Note: hosts may change buffer size more than this
+
+            //bool doChange = (bufSize != currentMaxBufferSize); // Note: this perform more buffer size change than necessary
+            
+            if (doChange)
+            {
+                if (verbose) writefln("Changing buffer size to %s\n", bufSize);
+                host.endAudioProcessing();
+                currentMaxBufferSize = bufSize;
+                host.setMaxBufferSize(bufSize);
+                host.beginAudioProcessing();
+            }
+        }
 
         if (preset != -1)
             host.loadPreset(preset);
@@ -313,17 +342,20 @@ int main(string[]args)
                 outputPointers[chan] = dummyOut[chan].ptr;
             }
 
-            for (int buf = 0; buf < silenceLength / bufferSize; ++buf)
+            PatternInterpreter interp;
+            interp.initialize(silenceLength, bufferPattern);
+            while (!interp.finished())
             {
-                host.processAudioFloat(inputPointers.ptr, outputPointers.ptr, bufferSize);
+                int bufsize = interp.getNextBufferSize();
+                ensureBufferSize(bufsize);
+
+                host.processAudioFloat(inputPointers.ptr, outputPointers.ptr, bufsize);
                 foreach(chan; 0..numChannels)
                 {
-                    inputPointers[chan] += bufferSize;
-                    outputPointers[chan] += bufferSize;
+                    inputPointers[chan] += bufsize;
+                    outputPointers[chan] += bufsize;
                 }
             }
-            // remaining samples
-            host.processAudioFloat(inputPointers.ptr, outputPointers.ptr, silenceLength % bufferSize);
         }
 
         double[] measures;
@@ -341,18 +373,21 @@ int main(string[]args)
                 outputPointers[chan] = outputChannels[chan].ptr;
             }
 
-            for (int buf = 0; buf < N / bufferSize; ++buf)
+            // Iterate by buffer size following the pattern.
+            PatternInterpreter interp;
+            interp.initialize(N, bufferPattern);
+            while (!interp.finished())
             {
-                host.processAudioFloat(inputPointers.ptr, outputPointers.ptr, bufferSize);
+                int bufSize = interp.getNextBufferSize();
+                ensureBufferSize(bufSize);
+
+                host.processAudioFloat(inputPointers.ptr, outputPointers.ptr, bufSize);
                 foreach(chan; 0..numChannels)
                 {
-                    inputPointers[chan] += bufferSize;
-                    outputPointers[chan] += bufferSize;
+                    inputPointers[chan] += bufSize;
+                    outputPointers[chan] += bufSize;
                 }
             }
-
-            // remaining samples
-            host.processAudioFloat(inputPointers.ptr, outputPointers.ptr, N % bufferSize);
 
             long timeB = getTickUs(precise);
             long measureUs = timeB - timeA;
@@ -517,4 +552,94 @@ static long getTickUs(bool precise) nothrow @nogc
         import core.time;
         return convClockFreq(MonoTime.currTime.ticks, MonoTime.ticksPerSecond, 1_000_000);
     }
+}
+
+int[] parseBufferPattern(const(char)[] s)
+{
+    int[] r;
+    foreach(token; split(s, ","))
+    {
+        if (token == "*")
+        {
+            r ~= ALL_REMAINING_BUF;
+        }
+        if (token == "loop")
+        {
+            r ~= LOOP_PATTERN;
+        }
+        else
+        {
+            int samples = to!int(token);
+            if (samples > int.max)
+                throw new Exception("Much too high buffer size, this will eat up RAM in a real scenario. What are you trying to do?");
+            if (samples <= 0)
+                throw new Exception("Zero or negative numbers not allowed in pattern");
+            r ~= samples;            
+        }
+    }
+
+    if (r is null)
+        throw new Exception("Empty buffer pattern");
+    return r;
+}
+
+
+// Interpret buffer sizes
+// use: while (!finished) 
+//          bufsize = getNextBufferSize()
+struct PatternInterpreter
+{
+public:
+
+    void initialize(int totalSamples, int[] pattern)
+    {
+        _totalSamples = totalSamples;
+        _pattern = pattern;
+        _index = 0;
+        _processedSamples = 0;
+    }
+
+    bool finished()
+    {
+        return _processedSamples >= _totalSamples;
+    }
+
+    int getNextBufferSize()
+    {
+    start:
+        assert(_processedSamples < _totalSamples);
+        int command = _pattern[_index];
+        if (command == ALL_REMAINING_BUF)
+        {
+            int r = _totalSamples - _processedSamples;
+            _processedSamples = _totalSamples;
+            return r;
+        }
+        else if (command == LOOP_PATTERN)
+        {
+            _index = 0;
+            goto start;
+        }
+        else
+        {
+            int r = command;
+            int max =  _totalSamples - _processedSamples;
+            if (r > max)
+                r = max;
+            
+            assert(r > 0);
+            _processedSamples += r;
+            if (_index + 1 < _pattern.length)
+                _index = _index + 1;
+            return r;
+        }
+    }
+
+private:
+    int[] _pattern;
+    int _index;
+    int _processedSamples;
+    int _totalSamples;
+
+
 }
