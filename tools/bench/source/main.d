@@ -52,6 +52,7 @@ void usage()
     cwriteln();
     flag("-t --times", "Number of samples for speed measures.", null, "30");
     flag("-h --help",  "Shows this help.", null, null);
+    flag("-v --verbose",  "Tools are called with verbose output.", null, null);
 
     cwriteln();
     cwriteln("NOTES".white);
@@ -90,7 +91,8 @@ int main(string[] args)
 {
     try
     {
-        bool help;
+        bool help = false;
+        bool verbose = false;
         deprecated bool forceEncode = true;  
         bool timesProvided = false;
         int times;
@@ -102,6 +104,10 @@ int main(string[] args)
             if (arg == "-h" || arg == "--help")
             {
                 help = true;
+            }
+            else if (arg == "-v" || arg == "--verbose")
+            {
+                verbose = true;
             }
             else if (arg == "-t" || arg == "--times")
             {
@@ -128,7 +134,7 @@ int main(string[] args)
             return 0;
         }
 
-        auto universe = new Universe();
+        auto universe = new Universe(verbose);
         universe.parseTask(configFile);
         if (timesProvided)
             universe.speedMeasureCount = times; // cmdline overrides XML for sample count
@@ -267,12 +273,11 @@ class Universe
     TaskConfiguration[] configurations;
     Source[] sources;
     Processor[] processors;
+    bool verbose;
 
-    deprecated bool forceEncode;
     int speedMeasureCount = 30; // default
 
     string xmlDir;
-    string sourceDirectory = "p:/Samples";
     string outputDir = "bench";
 
     auto allPlugins()
@@ -280,8 +285,9 @@ class Universe
         return chain(only(baseline), challengers);
     }
 
-    this()
+    this(bool verbose)
     {
+        this.verbose = verbose;
     }
 
     void parseTask(string xmlPath)
@@ -304,16 +310,17 @@ class Universe
         string pluginPath = pluginTag.innerText.strip;
         
         auto plugin = new Plugin(pluginPath, cacheID);
+        foreach(e; pluginTag.getElementsByTagName("buffer-size"))
+        {
+            plugin.bufferPattern = e.getAttribute("pattern"); // null means default, process will choose one for you
+        }
+
         foreach(e; pluginTag.getElementsByTagName("parameter"))
         {
             string parameterIndexStr = e.getAttribute("index");
             if (parameterIndexStr is null)
                 throw new Exception(`parameter node must have 'index' attribute set (example: index="0")`);
             int parameterIndex = to!int(parameterIndexStr);
-
-            string bufferValueStr = e.getAttribute("buffer-size"); // null means default, process will choose one
-            plugin.bufferPattern = bufferValueStr;
-
             string parameterValueStr = e.getAttribute("value");
             if (parameterValueStr is null)
                 throw new Exception(`parameter node must have 'value' attribute set (example: value="0.5")`);
@@ -449,14 +456,15 @@ class Universe
         mkdirRecurse(dirName(outputFile));
         string exeProcess = processExecutablePathForThisArch(plugin.arch);
         string parameterValues;
-        string bufferPattern = (plugin.bufferPattern is null) ? "" : ("-buffer " ~ plugin.bufferPattern);
+        string bufferPattern = (plugin.bufferPattern is null) ? "" : (" -buffer " ~ plugin.bufferPattern);
+        string verboseStr = verbose ? " -vverbose" : "";
         foreach (int paramIndex, double paramvalue; plugin.parameterValues)
         {
             parameterValues ~= format(" -param %s %s", paramIndex, paramvalue);
         }
-        string cmd = format(`%s -precise -t %s -i "%s" -o "%s" -preset %s%s -output-xml "%s" "%s" %s`, 
+        string cmd = format(`%s -precise -t %s -i "%s" -o "%s" -preset %s%s -output-xml "%s" "%s"%s%s`, 
                             exeProcess, times, source.wavPath, outputFile, conf.presetIndex, parameterValues, xmlPath, plugin.pluginPath,
-                            bufferPattern);
+                            bufferPattern, verboseStr);
         safeCommand(cmd);
     }
 }
