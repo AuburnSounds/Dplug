@@ -50,7 +50,6 @@ void usage()
     cwriteln();
     cwriteln("FLAGS".white);
     cwriteln();
-    flag("-f --force", "Update cache of processed files.", null, "no");
     flag("-t --times", "Number of samples for speed measures.", null, "30");
     flag("-h --help",  "Shows this help.", null, null);
 
@@ -92,7 +91,7 @@ int main(string[] args)
     try
     {
         bool help;
-        bool forceEncode;  
+        deprecated bool forceEncode = true;  
         bool timesProvided = false;
         int times;
 
@@ -103,10 +102,6 @@ int main(string[] args)
             if (arg == "-h" || arg == "--help")
             {
                 help = true;
-            }
-            else if (arg == "-f" || arg == "--force")
-            {
-                forceEncode = true;
             }
             else if (arg == "-t" || arg == "--times")
             {
@@ -133,7 +128,7 @@ int main(string[] args)
             return 0;
         }
 
-        auto universe = new Universe(forceEncode);
+        auto universe = new Universe();
         universe.parseTask(configFile);
         if (timesProvided)
             universe.speedMeasureCount = times; // cmdline overrides XML for sample count
@@ -154,6 +149,7 @@ class Plugin
     string shortName;
     SysTime pluginTimestamp;
     double[int] parameterValues;
+    string bufferPattern; // null for default
     ProcessMeasurements lastMeasurements;
 
     Arch arch;  
@@ -181,14 +177,6 @@ class Plugin
         this.shortName = pluginPath.baseName.stripExtension;
         this.arch = detectArch(pluginPath);
         this.cacheID = "#" ~ to!string(cacheIDInt);
-    }
-
-    // TODO: add parameter values too?
-    size_t taskHash()
-    {
-        size_t hash = parameterValues.hashOf;
-        hash = pluginTimestamp.hashOf(hash);
-        return hash;
     }
 }
 
@@ -280,7 +268,7 @@ class Universe
     Source[] sources;
     Processor[] processors;
 
-    bool forceEncode;
+    deprecated bool forceEncode;
     int speedMeasureCount = 30; // default
 
     string xmlDir;
@@ -292,9 +280,8 @@ class Universe
         return chain(only(baseline), challengers);
     }
 
-    this(bool forceEncode)
+    this()
     {
-        this.forceEncode = forceEncode;
     }
 
     void parseTask(string xmlPath)
@@ -323,6 +310,9 @@ class Universe
             if (parameterIndexStr is null)
                 throw new Exception(`parameter node must have 'index' attribute set (example: index="0")`);
             int parameterIndex = to!int(parameterIndexStr);
+
+            string bufferValueStr = e.getAttribute("buffer-size"); // null means default, process will choose one
+            plugin.bufferPattern = bufferValueStr;
 
             string parameterValueStr = e.getAttribute("value");
             if (parameterValueStr is null)
@@ -446,27 +436,11 @@ class Universe
     // Updates plugin.lastMeasurements with calculated or cached results
     void lazyEncode(Plugin plugin, TaskConfiguration conf, Source source)
     {
+         // Caching was mostly useless, so it's not lazy anymore.
         string outputFile = pathForEncode(plugin, conf, source, "wav");
         string xmlFile = pathForEncode(plugin, conf, source, "xml");
-
-        bool isCached = exists(outputFile) && exists(xmlFile);
-
-        bool pluginTimestampDiffer = true;
-
-        // compare timestamps of plugins
-        if (isCached && !forceEncode)
-        {
-            plugin.lastMeasurements.parse(xmlFile);
-            pluginTimestampDiffer = plugin.lastMeasurements.taskHash != plugin.taskHash;
-        }
-
-        bool doEncode = pluginTimestampDiffer || forceEncode;
-
-        if (doEncode)
-        {
-            encode(plugin, conf, source, outputFile, xmlFile);
-            plugin.lastMeasurements.parse(xmlFile);
-        }
+        encode(plugin, conf, source, outputFile, xmlFile);
+        plugin.lastMeasurements.parse(xmlFile);
     }
 
     void encode(Plugin plugin, TaskConfiguration conf, Source source, string outputFile, string xmlPath)
@@ -475,12 +449,14 @@ class Universe
         mkdirRecurse(dirName(outputFile));
         string exeProcess = processExecutablePathForThisArch(plugin.arch);
         string parameterValues;
+        string bufferPattern = (plugin.bufferPattern is null) ? "" : ("-buffer " ~ plugin.bufferPattern);
         foreach (int paramIndex, double paramvalue; plugin.parameterValues)
         {
             parameterValues ~= format(" -param %s %s", paramIndex, paramvalue);
         }
-        string cmd = format(`%s -precise -t %s -i "%s" -o "%s" -preset %s%s -output-xml "%s" "%s"`, 
-                            exeProcess, times, source.wavPath, outputFile, conf.presetIndex, parameterValues, xmlPath, plugin.pluginPath);
+        string cmd = format(`%s -precise -t %s -i "%s" -o "%s" -preset %s%s -output-xml "%s" "%s" %s`, 
+                            exeProcess, times, source.wavPath, outputFile, conf.presetIndex, parameterValues, xmlPath, plugin.pluginPath,
+                            bufferPattern);
         safeCommand(cmd);
     }
 }
