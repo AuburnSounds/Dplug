@@ -63,6 +63,11 @@ nothrow @nogc:
     /// Trigger a resize of the plugin window. This isn't guaranteed to succeed.
     bool requestUIResize(int widthLogicalPixels, int heightLogicalPixels);
 
+    /// Trigger a screenshot of the plugin window.
+    /// The callback `onScreenshotComputed` can then be implemented in your main GUI object (gui.d).
+    /// However, if the operation fails, it may well not be called.
+    void requestUIScreenshot();
+
     /// Find the nearest valid _logical_ UI size.
     /// Given an input size, get the nearest valid size.
     void getUINearestValidSize(int* widthLogicalPixels, int* heightLogicalPixels);
@@ -202,6 +207,11 @@ nothrow:
     final override bool requestUIResize(int widthLogicalPixels, int heightLogicalPixels)
     {
         return _owner.requestUIResize(widthLogicalPixels, heightLogicalPixels);
+    }
+
+    final override void requestUIScreenshot()
+    {
+        _owner.requestUIScreenshot();
     }
 
     final override void getUINearestValidSize(int* widthLogicalPixels, int* heightLogicalPixels)

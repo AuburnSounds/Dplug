@@ -7,6 +7,7 @@
 */
 module dplug.gui.graphics;
 
+import core.atomic;
 import core.stdc.stdio;
 
 import std.math;
@@ -128,6 +129,25 @@ nothrow:
     ICompositor buildCompositor(CompositorCreationContext* context)
     {
         return mallocNew!PBRCompositor(context);
+    }
+
+    /// Want a screenshot? Want to generate a mesh or a voxel out of your render?
+    /// Override this function and call `IUIContext.requestUIScreenshot()`
+    ///
+    /// Params: pf Pixel format. pixelFormat == 0 if pixel format is RGBA8
+    ///                          pixelFormat == 1 if pixel format is BGRA8
+    ///                          pixelFormat == 2 if pixel format is ARGB8
+    ///                          You must support all three, sorry.
+    /// All maps have the same dimension, which is the logical pixel size. 
+    /// Warning: nothing to do with the Screencap key, it doesn't get triggered like that.
+    void onScreenshot(ImageRef!RGBA finalRender,    // the output, as show to the plugin user
+                      WindowPixelFormat pixelFormat,// pixel format of `finalRender`, see above
+                      ImageRef!RGBA diffuseMap,     // the PBR diffuse map
+                      ImageRef!L16 depthMap,        // the PBR depth map
+                      ImageRef!RGBA materialMap)    // the PBR material map
+    {
+        // override this to take programmatic screenshots
+        // eg: generate a .vox, .png, etc.
     }
 
     final ICompositor compositor()
@@ -454,6 +474,11 @@ package:
         return getUISizeInPixelsLogical(); // no support yet
     }
 
+    final void requestUIScreenshot()
+    {
+        atomicStore(_screenShotRequested, true);
+    }
+
     final bool requestUIResize(int widthLogicalPixels,
                                int heightLogicalPixels)
     {
@@ -620,6 +645,9 @@ protected:
     /// Or to allow higher internal pixel count.
     ubyte* _resizedBuffer = null;
 
+    /// If a screenshot was requested by user widget.
+    shared(bool) _screenShotRequested = false;
+
     void recomputeDrawLists()
     {
         // recompute draw lists
@@ -721,6 +749,18 @@ protected:
         version(Dplug_ProfileUI) profiler.begin("Component Reorder");
         reorderComponents(pf);
         version(Dplug_ProfileUI) profiler.end();
+
+        // G.bis
+        // We have a render.
+        // Eventually make a screenshot here, if one was requested asynchronously.
+        if (cas(&_screenShotRequested, true, false))
+        {
+            onScreenshot(_renderedBuffer.toRef(), 
+                         pf, 
+                         _diffuseMap.levels[0].toRef,
+                         _depthMap.levels[0].toRef,
+                         _materialMap.levels[0].toRef);
+        }
 
         // H. Copy updated content to the final buffer. (hint: not actually resizing)
         version(Dplug_ProfileUI) profiler.begin("Copy content");

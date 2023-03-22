@@ -17,4 +17,5 @@ public import dplug.gui.compositor;
 public import dplug.gui.legacypbr;
 public import dplug.gui.sizeconstraints;
 public import dplug.gui.profiler;
+public import dplug.gui.voxexport;
 

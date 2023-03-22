@@ -104,6 +104,8 @@ nothrow:
             context.wrenSupport.addModuleSource("plugin", import("plugin.wren"));                 // no debug => static scripts
         context.wrenSupport.registerScriptExports!DistortGUI; // Note: for now, only UIElement should be @ScriptExport
         context.wrenSupport.callCreateUI();
+
+        //context.requestUIScreenshot(); // onScreenshot will be called at next render
     }
 
     override void onAnimate(double dt, double time)
@@ -137,6 +139,25 @@ nothrow:
         _inputLevel.sendFeedbackToUI(inputRMS, frames, sampleRate);
         _outputLevel.sendFeedbackToUI(outputRMS, frames, sampleRate);
     }
+
+    // <WIP> Show .vox export of final render
+    override void onScreenshot(ImageRef!RGBA finalRender,
+                               WindowPixelFormat pixelFormat,
+                               ImageRef!RGBA diffuseMap,
+                               ImageRef!L16 depthMap,
+                               ImageRef!RGBA materialMap)
+    {
+        import core.stdc.stdlib;
+        import dplug.core.file;
+        import dplug.gui.voxexport;
+        ubyte[] vox = encodePBRBuffersToVOX(finalRender, pixelFormat, depthMap);
+        if (vox)
+        {
+            writeFile(`/my/path/to/voxfile.vox`, vox);
+            free(vox.ptr);
+        }
+    }
+    // </WIP>
 
 private:
     DistortClient _client;
