@@ -5,6 +5,9 @@ import dplug.core.binrange;
 import dplug.graphics.image;
 import dplug.window;
 
+import core.stdc.stdio;
+import core.stdc.string;
+
 nothrow @nogc:
 
 /// Export a .vox format used by MagicaVoxel
@@ -20,15 +23,15 @@ ubyte[] encodePBRBuffersToVOX(ImageRef!RGBA colorMap,
 {
     int DEPTH = 16;
 
-    // limitation of today
-    int W = colorMap.w;
-    if (W > 256) W = 256;
-    int H = colorMap.h;
-    if (H > 256) H = 256;
-
+    // How many 256x256 mesh we need to represent the data?
+    int mesh_x = (colorMap.w + 255) / 256;
+    int mesh_y = (colorMap.h + 255) / 256;
+    int num_meshes = mesh_x * mesh_y;
+    assert(num_meshes > 0);
+   
     Vec!ubyte vox = makeVec!ubyte;
     vox.writeBE!uint(RIFFChunkId!"VOX ");
-    vox.writeLE!uint(150); // version
+    vox.writeLE!uint(200); // version 2.0
     
     vox.writeBE!uint(RIFFChunkId!"MAIN");
     vox.writeLE!uint(0); // temporary chunk size
@@ -36,71 +39,224 @@ ubyte[] encodePBRBuffersToVOX(ImageRef!RGBA colorMap,
     size_t mainChildrenSizeIndex = vox.length;
     vox.writeLE!uint(0); // temporary children chunk size
 
-    // TODO: several objects for each 256x256 slices
-    
-    vox.writeBE!uint(RIFFChunkId!"SIZE");
-    vox.writeLE!uint(12); // SIZE chunk size
-    vox.writeLE!uint(0);  // no children
-    vox.writeLE!uint(W); // width
-    vox.writeLE!uint(DEPTH); // depth
-    vox.writeLE!uint(H); // height
-
-    vox.writeBE!uint(RIFFChunkId!"XYZI");
-    size_t xyziSizeIndex = vox.length;
-    vox.writeLE!uint(0); // XYZI chunk size // will be = 4 + 4 * numVoxels
-    vox.writeLE!uint(0);  // no children
-
-    size_t xyziNumIndex = vox.length;
-    vox.writeLE!uint(0);  // unknown number of voxels, for now
-
-    uint numVoxels = 0;
-
-    for (int y = 0; y < H; ++y)
+    // PACK chunk
+ /*   if (num_meshes > 1)
     {
-        RGBA[] scan = colorMap.scanline(H-1-y); // y inverted in .vox vs screen
-        for (int x = 0; x < W; ++x)
+        vox.writeBE!uint(RIFFChunkId!"PACK");
+        vox.writeLE!uint(4);
+        vox.writeLE!uint(0); // no children
+        vox.writeLE!uint(num_meshes);
+    }*/
+    for (int my = 0; my < mesh_y; ++my)
+    {
+        for (int mx = 0; mx < mesh_x; ++mx)
         {
-            L16 depthHere = depthMap[x, H-1-y];
-            int depth = (DEPTH * (65535 - depthHere.l)) / 65536; // note: in magickavoxel, increasing depth is NOT towards viewer
-            assert(depth >= 0 && depth < DEPTH);
-            RGBA color = scan[x];
-            final switch (pf)
+            // Size of this mesh.
+            int W = colorMap.w - mx * 256;
+            if (W > 256) W = 256;
+            int H = colorMap.h - my * 256;
+            if (H > 256) H = 256;
+
+            vox.writeBE!uint(RIFFChunkId!"SIZE");
+            vox.writeLE!uint(12);    // SIZE chunk size
+            vox.writeLE!uint(0);     // no children
+            vox.writeLE!uint(W);     // width
+            vox.writeLE!uint(DEPTH); // depth    of following XYZI data
+            vox.writeLE!uint(H);     // height
+
+            vox.writeBE!uint(RIFFChunkId!"XYZI");
+            size_t xyziSizeIndex = vox.length;
+            vox.writeLE!uint(0); // XYZI chunk size // will be = 4 + 4 * numVoxels
+            vox.writeLE!uint(0);  // no children
+
+            size_t xyziNumIndex = vox.length;
+            vox.writeLE!uint(0);  // unknown number of voxels, for now
+
+            uint numVoxels = 0;
+
+            for (int y = 0; y < H; ++y)
             {
-                case WindowPixelFormat.RGBA8:
-                    break;
-                case WindowPixelFormat.BGRA8:
-                    ubyte tmp = color.r;
-                    color.r = color.b;
-                    color.b = tmp;
-                    break;
-                case WindowPixelFormat.ARGB8:
-                    ubyte tmp = color.r;
-                    color.r = color.a;
-                    color.a = color.b;
-                    color.b = color.g;
-                    color.g = tmp;
-                    break;
-            }
+                // Y coordinate in screenshot space
+                int globalY = y + my * 256;
+                RGBA[] scan = colorMap.scanline(colorMap.h-1-globalY);      // y inverted in .vox vs screen
+                L16[] depthScan = depthMap.scanline(depthMap.h-1-globalY);  // ditto
 
-            ubyte colIndex = findNearestColor(color);
+                for (int x = 0; x < W; ++x)
+                {
+                    // X coordinate in screenshot space
+                    int globalX = x + mx * 256;                                       
 
-            // A column of dots
+                    L16 depthHere = depthScan[globalX];
+
+                    // note: in magickavoxel, increasing depth is NOT towards viewer
+                    int depth = (DEPTH * (65535 - depthHere.l)) / 65536; 
+
+                    assert(depth >= 0 && depth < DEPTH);
+                    RGBA color = scan[globalX];
+                    final switch (pf)
+                    {
+                        case WindowPixelFormat.RGBA8:
+                            break;
+                        case WindowPixelFormat.BGRA8:
+                            ubyte tmp = color.r;
+                            color.r = color.b;
+                            color.b = tmp;
+                            break;
+                        case WindowPixelFormat.ARGB8:
+                            ubyte tmp = color.r;
+                            color.r = color.a;
+                            color.a = color.b;
+                            color.b = color.g;
+                            color.g = tmp;
+                            break;
+                    }
+
+                    ubyte colIndex = findNearestColor(color);
+
+                    // A column of dots
             
-            for (int d = depth; d < DEPTH; ++d)
-            {
-                vox.put(cast(ubyte)x);
-                vox.put(cast(ubyte)d);
-                vox.put(cast(ubyte)y);
-                vox.put(colIndex);
-                numVoxels++;
+                    for (int d = depth; d < DEPTH; ++d)
+                    {
+                        vox.put(cast(ubyte)x);
+                        vox.put(cast(ubyte)d);
+                        vox.put(cast(ubyte)y);
+                        vox.put(colIndex);
+                        numVoxels++;
+                    }
+                }
             }
+
+            write_LE_uint(&vox[xyziNumIndex], numVoxels);
+
+            size_t endChunkXYZI = vox.length;
+            write_LE_uint(&vox[xyziSizeIndex], cast(uint)(endChunkXYZI - xyziSizeIndex - 8));
+
         }
     }
 
-    write_LE_uint(&vox[xyziNumIndex], numVoxels);
+    int root_id = 0;
+    int group_id = 1;
+    int base_id_trn = 2; // min node id for all transform nodes
+    int base_id_shp = base_id_trn + num_meshes; // min node id for all shapes nodes
 
-    size_t endChunkXYZI = vox.length;
-    write_LE_uint(&vox[xyziSizeIndex], cast(uint)(endChunkXYZI - xyziSizeIndex - 8));
+    // Add root node
+    {
+        vox.writeBE!uint(RIFFChunkId!"nTRN");
+        size_t sizeIndex = vox.length;
+        vox.writeLE!uint(0);     // chunk size
+        vox.writeLE!uint(0);     // no children
+
+        vox.writeLE!uint(root_id); 
+        vox.writeLE!uint(0);     // empty DICT
+        vox.writeLE!uint(group_id);  // child node
+        vox.writeLE!int(-1); // reserved
+        vox.writeLE!int(-1); // no layer id
+        vox.writeLE!int(1); // one frame
+
+        vox.writeLE!uint(0);     // empty DICT
+
+        size_t endChunk = vox.length;
+        write_LE_uint(&vox[sizeIndex], cast(uint)(endChunk - sizeIndex - 8));
+    }
+
+    // Add group node
+    {
+        vox.writeBE!uint(RIFFChunkId!"nGRP");
+        size_t sizeIndex = vox.length;
+        vox.writeLE!uint(0);     // chunk size
+        vox.writeLE!uint(0);     // no children
+
+        vox.writeLE!uint(group_id); 
+        vox.writeLE!uint(0);  // empt DICT for node attributes
+
+        vox.writeLE!uint(num_meshes);
+        for (int n = 0; n < num_meshes; ++n)
+        {
+             vox.writeLE!uint(base_id_trn + n);
+        }
+        size_t endChunk = vox.length;
+        write_LE_uint(&vox[sizeIndex], cast(uint)(endChunk - sizeIndex - 8));
+    }    
+
+    // Add shp nodes
+    for (int my = 0; my < mesh_y; ++my)
+    for (int mx = 0; mx < mesh_x; ++mx)
+    {
+        // Size of this mesh.
+        int W = colorMap.w - mx * 256;
+        if (W > 256) W = 256;
+        int H = colorMap.h - my * 256;
+        if (H > 256) H = 256;
+        int n = mx + my * mesh_x;
+
+        int offset_x = mx * 256;// - (256-W);
+        int offset_y = my * 256;// - (256-H);
+        
+        {
+            vox.writeBE!uint(RIFFChunkId!"nTRN");
+            size_t sizeIndex = vox.length;
+            vox.writeLE!uint(0);     // chunk size
+            vox.writeLE!uint(0);     // no children
+
+            vox.writeLE!uint(base_id_trn + n); 
+            vox.writeLE!uint(0);     // empty DICT
+            vox.writeLE!uint(base_id_shp + n);  // child node
+            vox.writeLE!int(-1); // reserved
+            vox.writeLE!int(-1); // no layer id
+            vox.writeLE!int(1); // one frame
+
+            // A translation in a DICT
+
+  //           vox.writeLE!uint(0);     // DICT with zero entry
+
+            vox.writeLE!uint(1);     // DICT with one entry
+            vox.writeLE!uint(2);     // key length
+            vox.writeLE!ubyte('_');
+            vox.writeLE!ubyte('t');
+
+            char[64] buf;
+            snprintf(buf.ptr, 64, "%d %d %d", offset_x, 0, offset_y);
+            uint len = cast(uint) strlen(buf.ptr);
+            vox.writeLE!uint(len);
+            for (int i = 0; i < len; ++i)
+                vox.writeLE!ubyte(buf[i]);
+
+            size_t endChunk = vox.length;
+            write_LE_uint(&vox[sizeIndex], cast(uint)(endChunk - sizeIndex - 8));
+        }
+        
+
+        {
+            vox.writeBE!uint(RIFFChunkId!"nSHP");
+            size_t sizeIndex = vox.length;
+            vox.writeLE!uint(0);     // chunk size
+            vox.writeLE!uint(0);     // no children
+
+            vox.writeLE!uint(base_id_shp + n); // node id
+            vox.writeLE!uint(0);  // empt DICT for node attributes
+
+            vox.writeLE!uint(1); // one model
+
+            vox.writeLE!uint(n); // model id
+            vox.writeLE!uint(0);  // empty DICT for model attributes
+           // vox.writeLE!uint(0); // frame index
+
+            size_t endChunk = vox.length;
+            write_LE_uint(&vox[sizeIndex], cast(uint)(endChunk - sizeIndex - 8));
+        }
+    }
+
+    // Add RGBA chunk
+    {
+        vox.writeBE!uint(RIFFChunkId!"RGBA");
+        vox.writeLE!uint(256 * 4);     // chunk size
+        vox.writeLE!uint(0);     // no children
+        for (int n = 0; n < 256; ++n)
+        {
+            int pali = (n+1) & 255;
+            vox.writeLE!uint(defaultPalette[pali]);
+        }
+    }
 
     size_t endChunkMain = vox.length;
     write_LE_uint(&vox[mainChildrenSizeIndex], cast(uint)(endChunkMain - mainChildrenSizeIndex - 4));
