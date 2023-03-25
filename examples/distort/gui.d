@@ -4,6 +4,8 @@ License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 module gui;
 
+import core.stdc.stdlib;
+
 import std.math;
 
 import dplug.core;
@@ -16,6 +18,7 @@ import dplug.wren;
 import leveldisplay;
 import main;
 
+//debug = screenshot;
 
 // Plugin GUI, based on PBRBackgroundGUI.
 // If you don't want to use PBR, you not inherit from it.
@@ -105,7 +108,8 @@ nothrow:
         context.wrenSupport.registerScriptExports!DistortGUI; // Note: for now, only UIElement should be @ScriptExport
         context.wrenSupport.callCreateUI();
 
-        //context.requestUIScreenshot(); // onScreenshot will be called at next render
+        debug(screenshot)
+            context.requestUIScreenshot(); // onScreenshot will be called at next render, can be called from anywhere
     }
 
     override void onAnimate(double dt, double time)
@@ -140,24 +144,23 @@ nothrow:
         _outputLevel.sendFeedbackToUI(outputRMS, frames, sampleRate);
     }
 
-    // <WIP> Show .vox export of final render
-    override void onScreenshot(ImageRef!RGBA finalRender,
-                               WindowPixelFormat pixelFormat,
-                               ImageRef!RGBA diffuseMap,
-                               ImageRef!L16 depthMap,
-                               ImageRef!RGBA materialMap)
+    debug(screenshot)
     {
-        import core.stdc.stdlib;
-        import dplug.core.file;
-        import dplug.gui.voxexport;
-        ubyte[] vox = encodePBRBuffersToVOX(finalRender, pixelFormat, depthMap);
-        if (vox)
+        // Show how to do a .qb export of final PBR render
+        override void onScreenshot(ImageRef!RGBA finalRender,
+                                   WindowPixelFormat pixelFormat,
+                                   ImageRef!RGBA diffuseMap,
+                                   ImageRef!L16 depthMap,
+                                   ImageRef!RGBA materialMap)
         {
-            writeFile(`/my/path/to/voxfile.vox`, vox);
-            free(vox.ptr);
+            ubyte[] qb = encodeScreenshotAsQB(finalRender, pixelFormat, depthMap);
+            if (qb)
+            {
+                writeFile(`/my/path/to/distort.qb`, qb);
+                free(qb.ptr);
+            }
         }
     }
-    // </WIP>
 
 private:
     DistortClient _client;
