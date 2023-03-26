@@ -182,7 +182,8 @@
                 "dplug:window": "*",
                 "dplug:core": "*",
                 "dplug:graphics": "*",
-                "intel-intrinsics": "~>1.0"
+                "intel-intrinsics": "~>1.0",
+                "gamut": ">=2.0.5 <3.0.0"
             }
         },
         {

@@ -1,6 +1,7 @@
 module dplug.gui.screencap;
 
 import dplug.core.vec;
+import dplug.core.nogc;
 import dplug.core.binrange;
 import dplug.graphics.image;
 import dplug.window;
@@ -14,6 +15,8 @@ nothrow @nogc:
 /// Create a 3D voxel file representing the whole UI.
 /// Export to a .qb file, as used as input by Qubicle, Goxel, and https://drububu.com/miscellaneous/voxelizer/
 /// Use https://drububu.com/miscellaneous/voxelizer/ if you want to convert to a MagicaVoxel .vox
+/// Alternatively: https://github.com/mgerhardy/vengi
+/// Free the result with `free(slice.ptr)`.
 ubyte[] encodeScreenshotAsQB(ImageRef!RGBA colorMap, 
                              WindowPixelFormat pf, // input pixel format
                              ImageRef!L16 depthMap)
@@ -71,4 +74,64 @@ ubyte[] encodeScreenshotAsQB(ImageRef!RGBA colorMap,
         }
     }
     return vox.releaseData;
+}
+
+/// Create a PNG screenshot of the whole UI.
+/// Free the result with `free(slice.ptr)`.
+ubyte[] encodeScreenshotAsPNG(ImageRef!RGBA colorMap, WindowPixelFormat pf)
+{
+    import gamut;
+    Image source;
+    source.createViewFromImageRef!RGBA(colorMap);
+
+    // make a clone to own the memory
+    Image image = source.clone();
+
+    assert(image.type == PixelType.rgba8);
+    assert(image.hasData);
+
+    static void swapByte(ref ubyte a, ref ubyte b)
+    {
+        ubyte tmp = a;
+        a = b;
+        b = tmp;
+    }
+
+    final switch(pf)
+    {
+        case WindowPixelFormat.RGBA8: break;
+        case WindowPixelFormat.BGRA8: 
+            for (int y = 0; y < image.height(); ++y)
+            {
+                ubyte* scan = cast(ubyte*) image.scanptr(y);
+                for (int x = 0; x < image.width(); ++x)
+                {
+                    swapByte(scan[4*x + 0], scan[4*x + 2]);
+                }
+            }
+            break;
+        case WindowPixelFormat.ARGB8:
+            for (int y = 0; y < image.height(); ++y)
+            {
+                ubyte* scan = cast(ubyte*) image.scanptr(y);
+                for (int x = 0; x < image.width(); ++x)
+                {
+                    ubyte a = scan[4*x + 0];
+                    ubyte r = scan[4*x + 1];
+                    ubyte g = scan[4*x + 2];
+                    ubyte b = scan[4*x + 3];
+                    scan[4*x + 0] = r;
+                    scan[4*x + 1] = g;
+                    scan[4*x + 2] = b;
+                    scan[4*x + 3] = a;
+                }
+            }
+            break;
+    }        
+
+    ubyte[] png = image.saveToMemory(ImageFormat.PNG);
+    scope(exit) freeEncodedImage(png);
+
+    // Return a duped slice because of different freeing functions
+    return mallocDup(png);
 }

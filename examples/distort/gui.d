@@ -153,7 +153,7 @@ nothrow:
                                    ImageRef!L16 depthMap,
                                    ImageRef!RGBA materialMap)
         {
-            ubyte[] qb = encodeScreenshotAsQB(finalRender, pixelFormat, depthMap);
+            ubyte[] qb = encodeScreenshotAsQB(finalRender, pixelFormat, depthMap); // alternatively: encodeScreenshotAsPNG
             if (qb)
             {
                 writeFile(`/my/path/to/distort.qb`, qb);
