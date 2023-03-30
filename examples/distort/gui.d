@@ -18,7 +18,7 @@ import dplug.wren;
 import leveldisplay;
 import main;
 
-//debug = screenshot;
+//debug = voxelExport;
 
 // Plugin GUI, based on PBRBackgroundGUI.
 // If you don't want to use PBR, you not inherit from it.
@@ -108,7 +108,7 @@ nothrow:
         context.wrenSupport.registerScriptExports!DistortGUI; // Note: for now, only UIElement should be @ScriptExport
         context.wrenSupport.callCreateUI();
 
-        debug(screenshot)
+        debug(voxelExport)
             context.requestUIScreenshot(); // onScreenshot will be called at next render, can be called from anywhere
     }
 
@@ -144,7 +144,7 @@ nothrow:
         _outputLevel.sendFeedbackToUI(outputRMS, frames, sampleRate);
     }
 
-    debug(screenshot)
+    debug(voxelExport)
     {
         // Show how to do a .qb export of final PBR render
         override void onScreenshot(ImageRef!RGBA finalRender,
