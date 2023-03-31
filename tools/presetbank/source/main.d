@@ -137,6 +137,7 @@ class Preset
     // </Optional metadata>
 }
 
+// This parser supports: .fxb/.fxp created with Orion and another(?) DAW + the ones created by Dplug .
 Preset loadPresetFromFXP(ubyte[] inputFXP)
 {    
     Preset preset = new Preset();
@@ -145,7 +146,9 @@ Preset loadPresetFromFXP(ubyte[] inputFXP)
     uint presetChunkLen;
     inputFXP.readRIFFChunkHeader(presetChunkID, presetChunkLen);
     if (presetChunkID != CCONST('C', 'c', 'n', 'K')) throw new Exception("Expected 'CcnK' in preset");
-    inputFXP.skipBytes(presetChunkLen);
+
+    // Simply ignore the chunk length. Orion doesn't fill that field reliably. See Dplug Issue #765.
+    // Besides, presetChunkLen is encoded as Big Endian in most hosts probably, and we parse it as Little Endian.
 
     presetChunkID = inputFXP.popBE!uint();
 
@@ -156,7 +159,6 @@ Preset loadPresetFromFXP(ubyte[] inputFXP)
         if (presetChunkID == CCONST('F', 'P', 'C', 'h'))
         {
             isFXBChunk = true;
-
         }
         else
             throw new Exception("Expected 'FxCk' or 'FPCh' in preset");
@@ -239,8 +241,8 @@ ubyte[] savePresetsToFXB(Preset[] presets)
 {
     auto fxb = makeVec!ubyte();
 
-    fxb.writeRIFFChunkHeader(CCONST('C', 'c', 'n', 'K'), 0);
-    
+    fxb.writeRIFFChunkHeader(CCONST('C', 'c', 'n', 'K'), 0); // Zero Length. Note: our FXB output seems incorrent here. TODO Compare to Live .fxb.
+
     fxb.writeBE!uint(CCONST('F', 'x', 'B', 'k'));
     fxb.writeBE!uint(1); // TODO: proper fxVersion here
 
