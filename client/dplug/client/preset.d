@@ -355,9 +355,9 @@ private:
     }
 }
 
-/// Loads an array of `Preset` from a FBX file content.
+/// Loads an array of `Preset` from a FXB file content.
 /// Gives ownership of the result, in a way that can be returned by `buildPresets`.
-/// IMPORTANT: if you store your presets in FBX form, the following limitations 
+/// IMPORTANT: if you store your presets in FXB form, the following limitations 
 ///   * One _add_ new parameters to the plug-in, no reorder or deletion
 ///   * Don't remap the parameter (in a way that changes its normalized value)
 /// They are the same limitations that exist in Dplug in minor plugin version.
@@ -371,6 +371,8 @@ private:
 ///           return loadPresetsFromFXB(this, import("factory-presets.fxb"));
 ///       }
 ///
+/// Note: It is **heavily recommended** to create the FXB chunk with the Dplug `presetbank` tool.
+///       Else it is unknown if it will work.
 Preset[] loadPresetsFromFXB(Client client, string inputFBXData, int maxCount = -1) nothrow @nogc
 {
     ubyte[] fbxCopy = cast(ubyte[]) mallocDup(inputFBXData);
