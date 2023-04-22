@@ -247,22 +247,21 @@ nothrow:
     {
         _maxSegmentLength = maxSegmentLength;
         _maxSimultSegments = maxSimultSegments;
+
         _desc.reallocBuffer(maxSimultSegments);
+        _mergedBuffer.reallocBuffer(_maxSegmentLength * _maxSimultSegments);
+
         for (int i = 0; i < _maxSimultSegments; ++i)
         {
             _desc[i].playOffset = 0; // initially inactive
             _desc[i].length = 0;
-            _desc[i].buffer = null;
-            _desc[i].buffer.reallocBuffer(maxSegmentLength);
-            //reallocBuffer(_desc[i].buffer, maxSegmentLength);
-        } //)
+            _desc[i].buffer = &_mergedBuffer[maxSegmentLength*i];
+        }
     }
 
     ~this()
     {
-        if (_desc !is null)
-            for (int i = 0; i < _maxSimultSegments; ++i)
-                _desc[i].buffer.reallocBuffer(0);
+        _mergedBuffer.reallocBuffer(0);
         _desc.reallocBuffer(0);
     }
 
@@ -338,7 +337,7 @@ nothrow:
                 int count = endOfSumming - startOfSumming;
                 assert(count >= 0);
 
-                const(T)* segmentData = desc.buffer.ptr + offset;
+                const(T)* segmentData = desc.buffer + offset;
 
                 // PERF: this can be optimized further
                 for (int i = startOfSumming; i < endOfSumming; ++i)
@@ -357,7 +356,7 @@ private:
     {
         int playOffset; // offset in this segment
         int length; // length in this segment
-        T[] buffer; // 0..length => data for this segment
+        T* buffer; // 0..length => data for this segment
 
         bool active() pure const nothrow @nogc
         {
@@ -367,6 +366,7 @@ private:
     int _maxSimultSegments;
     int _maxSegmentLength;
     SegmentDesc[] _desc;
+    T[] _mergedBuffer; // Allocation for every segment buffer.
 
     int allocSegmentSlot()
     {
