@@ -514,7 +514,8 @@ string convertMicroSecondsToDisplay(double us)
 
 version(Windows)
 {
-    import core.sys.windows.windows;
+    import core.sys.windows.windef;
+    import core.sys.windows.winbase;
     __gshared HANDLE hThread;
 
     extern(Windows) BOOL QueryThreadCycleTime(HANDLE   ThreadHandle, PULONG64 CycleTime) nothrow @nogc;
@@ -546,7 +547,6 @@ static long getTickUs(bool precise) nothrow @nogc
             // seem to return a counter in QPC units.
             // That may not be the case everywhere, so -precise is not reliable and should
             // never be the default.
-            import core.sys.windows.windows;
             ulong cycles;
             BOOL res = QueryThreadCycleTime(hThread, &cycles);
             assert(res != 0);

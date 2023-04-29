@@ -21,7 +21,8 @@ import dplug.core.vec;
 
 version(Windows)
 {
-    import core.sys.windows.windows;
+    import core.sys.windows.windef;
+    import core.sys.windows.winbase;
 }
 
 nothrow @nogc:
@@ -276,7 +277,6 @@ nothrow @nogc:
     {
         version(Windows)
         {
-            import core.sys.windows.windows;
             LARGE_INTEGER lint;
             QueryPerformanceCounter(&lint);
             double seconds = lint.QuadPart / cast(double)(_qpcFrequency.QuadPart);

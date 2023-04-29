@@ -33,7 +33,8 @@ else version (WatchOS)
 
 version( Windows )
 {
-    import core.sys.windows.windows;
+    import core.sys.windows.windef;
+    import core.sys.windows.winbase;
 
     extern (Windows) nothrow @nogc
     {

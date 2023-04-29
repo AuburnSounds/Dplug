@@ -179,7 +179,7 @@ version(Posix)
 }
 else version(Windows)
 {
-    import core.sys.windows.windows;
+    import core.sys.windows.winbase;
 
     private {
         nothrow @nogc

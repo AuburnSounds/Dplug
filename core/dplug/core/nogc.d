@@ -36,6 +36,11 @@ import dplug.core.vec: Vec;
 // Faking @nogc
 //
 
+version(Windows)
+{
+    import core.sys.windows.winbase;
+}
+
 version = useTimSort;
 
 auto assumeNoGC(T) (T t)
@@ -356,7 +361,6 @@ void debugLog(const(char)* message) nothrow @nogc
 {
     version(Windows)
     {
-        import core.sys.windows.windows;
         OutputDebugStringA(message);
     }
     else
@@ -383,7 +387,6 @@ extern (C) void debugLogf(const(char)* fmt, ...) nothrow @nogc
 
         version(Windows)
         {
-            import core.sys.windows.windows;
             OutputDebugStringA(buffer.ptr);
         }
         else

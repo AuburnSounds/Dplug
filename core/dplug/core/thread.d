@@ -314,7 +314,7 @@ int getTotalNumberOfCPUs() nothrow @nogc
 {
     version(Windows)
     {
-        import core.sys.windows.windows : SYSTEM_INFO, GetSystemInfo;
+      //  import core.sys.windows.windef;// : SYSTEM_INFO, GetSystemInfo;
         SYSTEM_INFO si;
         GetSystemInfo(&si);
         int procs = cast(int) si.dwNumberOfProcessors;
