@@ -19,10 +19,6 @@ Permission is granted to anyone to use this software for any purpose, including 
 */
 module dplug.window.win32window;
 
-import std.process,
-       std.string,
-       std.conv;
-
 import dplug.math.vector;
 import dplug.math.box;
 
@@ -59,7 +55,6 @@ enum DPISupportWin32 = false;
 
 version(Windows)
 {
-    import std.uuid;
     import dplug.core.random;
 
     import core.sys.windows.windef;
