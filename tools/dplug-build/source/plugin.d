@@ -21,6 +21,8 @@ import rsrc;
 import arch;
 import dplug.client.daw;
 
+import sdlang;
+
 enum Compiler
 {
     ldc,
@@ -621,10 +623,14 @@ class DplugBuildBuiltCorrectlyException : Exception
 Plugin readPluginDescription(string rootDir)
 {
     string dubJsonPath = to!string(buildPath(rootDir, "dub.json").array);
+    string dubSDLPath = to!string(buildPath(rootDir, "dub.sdl").array);
 
-    if (!exists(dubJsonPath))
+    bool JSONexists = exists(dubJsonPath);
+    bool SDLexists = exists(dubSDLPath);
+
+    if (!JSONexists && !SDLexists)
     {
-        throw new CCLException("Needs a " ~ "dub.json".lcyan ~ " file. Please launch " ~ "dplug-build".lcyan ~ " in a plug-in project directory, or use " ~ "--root".lcyan ~ ".\n" ~
+        throw new CCLException("Needs a " ~ "dub.json".lcyan ~ " or " ~ "dub.sdl".lcyan ~ "file. Please launch " ~ "dplug-build".lcyan ~ " in a plug-in project directory, or use " ~ "--root".lcyan ~ ".\n" ~
                                "File " ~ escapeCCL(dubJsonPath).yellow ~ ` doesn't exist.`);
     }
 
@@ -643,12 +649,21 @@ Plugin readPluginDescription(string rootDir)
 
     enum useDubDescribe = true;
 
-    // Open an eventual plugin.json directly to find keys that DUB doesn't bypass
-    JSONValue dubFile = parseJSON(cast(string)(std.file.read(dubJsonPath)));
+    JSONValue dubFile;
+    Tag sdlFile;
 
+    // Open an eventual plugin.json directly to find keys that DUB doesn't bypass
+    if (JSONexists)
+        dubFile = parseJSON(cast(string)(std.file.read(dubJsonPath)));
+
+    if (SDLexists)
+        sdlFile = parseFile(dubSDLPath);
+
+    
     try
     {
-        result.name = dubFile["name"].str;
+        if (JSONexists) result.name = dubFile["name"].str;
+        if (SDLexists) result.name = sdlFile.getTagValue!string("name");
     }
     catch(Exception e)
     {
@@ -663,35 +678,50 @@ Plugin readPluginDescription(string rootDir)
         throw new DplugBuildBuiltCorrectlyException("");
     }
 
+    // Check configuration names, they must be valid
+    void checkConfigName(string cname)
+    {
+        if (!configIsAAX(cname)
+            &&!configIsVST2(cname)
+            &&!configIsVST3(cname)
+            &&!configIsAU(cname)
+            &&!configIsLV2(cname))
+            throw new Exception(format("Configuration name should start with \"VST2\", \"VST3\", \"AU\", \"AAX\", or \"LV2\". '%s' is not a valid configuration name.", cname));
+    }
+
     try
     {
-        JSONValue[] config = dubFile["configurations"].array();
-
-        foreach(c; config)
+        if (JSONexists)
         {
-            string cname = c["name"].str;
-            if (!configIsAAX(cname)
-              &&!configIsVST2(cname)
-              &&!configIsVST3(cname)
-              &&!configIsAU(cname)
-              &&!configIsLV2(cname))
-                throw new Exception(format("Configuration name should start with \"VST2\", \"VST3\", \"AU\", \"AAX\", or \"LV2\". '%s' is not a valid configuration name.", cname));
-            result.configurations ~= cname;
+            JSONValue[] config = dubFile["configurations"].array();
+            foreach(c; config)
+            {
+                string cname = c["name"].str;
+                checkConfigName(cname);
+                result.configurations ~= cname;
+            }
         }
-
-        // Check configuration names, they must be valid
-
+        if (SDLexists)
+        {
+            foreach(Tag ctag; sdlFile.maybe.tags["configuration"])
+            {
+                string cname = ctag.expectValue!string();
+                checkConfigName(cname);
+                result.configurations ~= cname;
+            }
+        }
     }
     catch(Exception e)
     {
-        warning("Couldln't parse configurations names in dub.json.");
+        warning("Couldln't parse configurations names in dub.json/dub.sdl.");
         result.configurations = [];
     }
 
     // Support for DUB targetPath
     try
     {
-        result.dubTargetPath = fromDubPathToToRootDirPath(dubFile["targetPath"].str);
+        if (JSONexists) result.dubTargetPath = fromDubPathToToRootDirPath(dubFile["targetPath"].str);
+        if (SDLexists) result.dubTargetPath = fromDubPathToToRootDirPath(sdlFile.getTagValue!string("targetPath"));
     }
     catch(Exception e)
     {

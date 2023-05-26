@@ -127,7 +127,7 @@ void usage()
     cwriteln("      --combined".lcyan ~ " has an important effect on code speed, as it can be required for inlining in LDC.".grey);
     cwriteln();
     cwriteln("      dplug-build".lcyan ~ " expects a " ~ "plugin.json".lcyan ~ " file for proper bundling and will provide help".grey);
-    cwriteln("      for populating it. For other informations it reads the " ~ "dub.json".lcyan ~ " file.".grey);
+    cwriteln("      for populating it. For other informations it reads " ~ "dub.json".lcyan ~ " or " ~ "dub.sdl".lcyan ~ " file.".grey);
     cwriteln();
     cwriteln();
 }
