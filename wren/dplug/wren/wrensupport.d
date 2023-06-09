@@ -10,7 +10,7 @@ import core.stdc.string : memcpy, strlen, strcmp;
 import core.stdc.stdlib : malloc, free;
 import core.stdc.stdio : snprintf;
 
-import std.traits: getSymbolsByUDA;
+import std.traits: getSymbolsByUDA, isFunction;
 import std.meta: staticIndexOf;
 
 import dplug.core.nogc;
@@ -740,57 +740,61 @@ private:
         foreach(memberName; __traits(allMembers, aClass))
         {
             alias P = __traits(getMember, aClass, memberName);
-            foreach(attr; __traits(getAttributes, P))
+
+            static if (!isFunction!P)
             {{
-                static if(is(attr == ScriptProperty))
-                {
-                    alias FieldType = typeof(P);
-
-                    enum string fieldName = P.stringof;
-                    enum size_t offsetInClass = P.offsetof;
-
-                    ScriptPropertyDesc desc;
-                    desc.identifier = fieldName;
-                    desc.offset = offsetInClass;
-                    static if (is(FieldType == enum))
+                foreach(attr; __traits(getAttributes, P))
+                {{
+                    static if(is(attr == ScriptProperty))
                     {
-                        // Note: enum are just integers in Wren, no translation of enum value.
-                        static if (FieldType.sizeof == 1)
-                            desc.type = ScriptPropertyType.byte_;
-                        else static if (FieldType.sizeof == 2)
-                            desc.type = ScriptPropertyType.short_;
-                        else static if (FieldType.sizeof == 4)
-                            desc.type = ScriptPropertyType.int_;
-                        else
-                            static assert(false, "Unsupported enum size in @ScriptProperty field " ~ fieldName ~  " of type " ~ FieldType.stringof);
-                    }
-                    else static if (is(FieldType == bool))
-                        desc.type = ScriptPropertyType.bool_;
-                    else static if (is(FieldType == RGBA))
-                        desc.type = ScriptPropertyType.RGBA;
-                    else static if (is(FieldType == ubyte))
-                        desc.type = ScriptPropertyType.ubyte_;
-                    else static if (is(FieldType == byte))
-                        desc.type = ScriptPropertyType.byte_;
-                    else static if (is(FieldType == ushort))
-                        desc.type = ScriptPropertyType.ushort_;
-                    else static if (is(FieldType == short))
-                        desc.type = ScriptPropertyType.short_;
-                    else static if (is(FieldType == uint))
-                        desc.type = ScriptPropertyType.uint_;
-                    else static if (is(FieldType == int))
-                        desc.type = ScriptPropertyType.int_;
-                    else static if (is(FieldType == float))
-                        desc.type = ScriptPropertyType.float_;
-                    else static if (is(FieldType == double))
-                        desc.type = ScriptPropertyType.double_;
-                    else static if (is(FieldType == L16)) // Note: this is temporary. TODO L16 properties should be eventually replaced by ushort instead.
-                        desc.type = ScriptPropertyType.ushort_;
-                    else
-                        static assert(false, "No @ScriptProperty support for field " ~ fieldName ~  " of type " ~ FieldType.stringof); // FUTURE: a way to add other types for properties?
+                        alias FieldType = typeof(P);
 
-                    classDesc.addProperty(desc);
-                }
+                        enum string fieldName = P.stringof;
+                        enum size_t offsetInClass = P.offsetof;
+
+                        ScriptPropertyDesc desc;
+                        desc.identifier = fieldName;
+                        desc.offset = offsetInClass;
+                        static if (is(FieldType == enum))
+                        {
+                            // Note: enum are just integers in Wren, no translation of enum value.
+                            static if (FieldType.sizeof == 1)
+                                desc.type = ScriptPropertyType.byte_;
+                            else static if (FieldType.sizeof == 2)
+                                desc.type = ScriptPropertyType.short_;
+                            else static if (FieldType.sizeof == 4)
+                                desc.type = ScriptPropertyType.int_;
+                            else
+                                static assert(false, "Unsupported enum size in @ScriptProperty field " ~ fieldName ~  " of type " ~ FieldType.stringof);
+                        }
+                        else static if (is(FieldType == bool))
+                            desc.type = ScriptPropertyType.bool_;
+                        else static if (is(FieldType == RGBA))
+                            desc.type = ScriptPropertyType.RGBA;
+                        else static if (is(FieldType == ubyte))
+                            desc.type = ScriptPropertyType.ubyte_;
+                        else static if (is(FieldType == byte))
+                            desc.type = ScriptPropertyType.byte_;
+                        else static if (is(FieldType == ushort))
+                            desc.type = ScriptPropertyType.ushort_;
+                        else static if (is(FieldType == short))
+                            desc.type = ScriptPropertyType.short_;
+                        else static if (is(FieldType == uint))
+                            desc.type = ScriptPropertyType.uint_;
+                        else static if (is(FieldType == int))
+                            desc.type = ScriptPropertyType.int_;
+                        else static if (is(FieldType == float))
+                            desc.type = ScriptPropertyType.float_;
+                        else static if (is(FieldType == double))
+                            desc.type = ScriptPropertyType.double_;
+                        else static if (is(FieldType == L16)) // Note: this is temporary. TODO L16 properties should be eventually replaced by ushort instead.
+                            desc.type = ScriptPropertyType.ushort_;
+                        else
+                            static assert(false, "No @ScriptProperty support for field " ~ fieldName ~  " of type " ~ FieldType.stringof); // FUTURE: a way to add other types for properties?
+
+                        classDesc.addProperty(desc);
+                    }
+                }}
             }}
         }
     }
