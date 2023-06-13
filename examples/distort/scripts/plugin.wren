@@ -54,6 +54,10 @@ class Plugin {
         ($"_outputLevel").position = Rectangle.new(450, 132, 30, 130).scaleByFactor(S)
         ($"_colorCorrection").position = Rectangle.new(0, 0, W, H)
         ($"_resizer").position = Rectangle.new(W-30, H-30, 30, 30)
-        setupEverything()
+
+        // save time in non-debug builds
+        if (System.isDebugBuild) {
+            setupEverything()
+        }
     }
 }
