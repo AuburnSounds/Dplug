@@ -33,6 +33,14 @@ nothrow:
     @ScriptProperty ushort holeDepth = 0;
     @ScriptProperty Orientation orientation = Orientation.vertical;
 
+    /// Left and right border, in fraction of the widget's width.
+    /// Cannot be > 0.5f
+    @ScriptProperty float borderHorz = 0.1f;
+
+    /// Top and bottom border, in fraction of the widget's width.*
+    /// Cannot be > 0.5f
+    @ScriptProperty float borderVert = 0.1f;
+
     this(UIContext context, BoolParameter param)
     {
         super(context, flagAnimated | flagPBR);
@@ -64,11 +72,11 @@ nothrow:
         // The switch is in a subrect
         int width = _position.width;
         int height = _position.height;
-        float border = 0.1f;
-        box2i switchRect = box2i( cast(int)(0.5f + width * border),
-                                  cast(int)(0.5f + height * border),
-                                  cast(int)(0.5f + width * (1 - border)),
-                                  cast(int)(0.5f + height * (1 - border)) );
+
+        box2i switchRect = box2i( cast(int)(0.5f + width * borderHorz),
+                                  cast(int)(0.5f + height * borderVert),
+                                  cast(int)(0.5f + width * (1 - borderHorz)),
+                                  cast(int)(0.5f + height * (1 - borderVert)) );
 
         ubyte red    = cast(ubyte)(lerp!float(diffuseOff.r, diffuseOn.r, _animation));
         ubyte green  = cast(ubyte)(lerp!float(diffuseOff.g, diffuseOn.g, _animation));
