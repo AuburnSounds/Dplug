@@ -93,10 +93,10 @@ Be sure to read the [Wiki](https://github.com/AuburnSounds/Dplug/wiki/) in depth
   - Constant push to fight complexity
 
 
-### VST SDK
+### VST3 SDK
 
-If you don't have the VST SDK, you can't _make_ VST plugins with Dplug.
-Find the VST SDK there: http://www.steinberg.net/en/company/developers.html
+If you don't have the VST3 SDK, you can't _make_ VST3 plugins with Dplug.
+Find the VST3 SDK there: http://www.steinberg.net/en/company/developers.html
 
 **If you don't have a licensing agreement with Steinberg**, you can't _distribute_ VST2 or VST3 plug-ins.
 
