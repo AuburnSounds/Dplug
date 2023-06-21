@@ -140,7 +140,7 @@ KnobImage loadKnobImage(in void[] data)
         assert(res.image.type == PixelType.rgba16);
 
         // Expected dimension is 4H x H
-        assert(res.image.width == res.image.height * 5);
+        assert(res.image.width == res.image.height * 4);
 
         // No preprocessing in this case.
     }
@@ -187,6 +187,7 @@ nothrow:
         _tempBuf = mallocNew!(OwnedImage!L16);
         _tempBufRGBA = mallocNew!(OwnedImage!RGBA);
 
+        
         if (knobImage.isLegacy())
         {
             _alphaTexture = mallocNew!(Mipmap!L16);
@@ -376,8 +377,8 @@ nothrow:
         float cosa = cos(valueAngle);
         float sina = sin(valueAngle);
 
-        int w = _alphaTexture.width;
-        int h = _alphaTexture.height;
+        int W = position.width;
+        int H = position.height; 
 
         // Note: slightly incorrect, since our resize in reflow doesn't exactly preserve aspect-ratio
         vec2f rotate(vec2f v) pure nothrow @nogc
@@ -401,7 +402,9 @@ nothrow:
             // Basically we'll find a coordinate in the knob image for each pixel in the dirtyRect 
 
             // source center 
-            vec2f sourceCenter = vec2f(w*0.5f, h*0.5f);
+            vec2f sourceCenter = vec2f(W*0.5f, H*0.5f);
+
+            bool legacy = _knobImage.isLegacy();
 
             enum float renormDepth = 1.0 / 65535.0f;
             for (int y = 0; y < dirtyRect.height; ++y)
@@ -416,15 +419,32 @@ nothrow:
                     vec2f sourcePos = sourceCenter + rotate(destPos - center);
 
                     // If the point is outside the knobimage, it is considered to have an alpha of zero
-                    float fAlpha = 0.0f;
-                    if ( (sourcePos.x >= 0.5f) && (sourcePos.x < (h - 0.5f))
-                     &&  (sourcePos.y >=  0.5f) && (sourcePos.y < (h - 0.5f)) )
-                    {
-                        fAlpha = _alphaTexture.linearSample(0, sourcePos.x, sourcePos.y);
+                    float fAlphaDiffuse  = 0.0f;
+                    float fAlphaDepth    = 0.0f;
+                    float fAlphaMaterial = 0.0f;
 
-                        if (fAlpha > 0)
+                    if ( (sourcePos.x >= 0.5f) && (sourcePos.x < (H - 0.5f))
+                     &&  (sourcePos.y >=  0.5f) && (sourcePos.y < (H - 0.5f)) )
+                    {
+                        // PERF: sample a single RGBA L16 mipmap once in non-legacy mode
+
+                        
+                        if (legacy)
                         {
-                            ubyte alpha = cast(ubyte)(0.5f + fAlpha / 257.0f);
+                            fAlphaDiffuse = _alphaTexture.linearSample(0, sourcePos.x, sourcePos.y);
+                            fAlphaDepth = fAlphaDiffuse;
+                            fAlphaMaterial = fAlphaDiffuse;
+                        }
+                        else
+                        {
+                            fAlphaDiffuse  = _alphaTextureDiffuse.linearSample(0, sourcePos.x, sourcePos.y);
+                            fAlphaDepth    = _alphaTextureDepth.linearSample(0, sourcePos.x, sourcePos.y);
+                            fAlphaMaterial = _alphaTextureMaterial.linearSample(0, sourcePos.x, sourcePos.y);
+                        }
+
+                        if (fAlphaDiffuse > 0)
+                        {
+                            ubyte alpha = cast(ubyte)(0.5f + fAlphaDiffuse / 257.0f);
 
                             if (drawToDiffuse)
                             {
@@ -435,9 +455,21 @@ nothrow:
                                 int E = cast(ubyte)(0.5f + fDiffuse.a + emissiveOffset);
                                 if (E < 0) E = 0; 
                                 if (E > 255) E = 255;
+
+                                if (!legacy)
+                                    E = 0;
+
+                                // TODO: non-legacy emissive?
+
                                 RGBA diffuse = RGBA(R, G, B, cast(ubyte)E);
                                 outDiffuse[x] = blendColor( diffuse, outDiffuse[x], alpha);
                             }
+                        }
+
+                        
+                        if (fAlphaMaterial > 0)
+                        {
+                            ubyte alpha = cast(ubyte)(0.5f + fAlphaMaterial / 257.0f);
 
                             if (drawToMaterial)
                             {
@@ -449,13 +481,16 @@ nothrow:
                                 RGBA material = RGBA(Ro, M, S, X);
                                 outMaterial[x] = blendColor( material, outMaterial[x], alpha);
                             }
+                        }
 
+                        if (fAlphaDepth > 0)
+                        {
                             if (drawToDepth)
                             {
+                                fAlphaDepth *= 0.00001525902f; // 1 / 65535
                                 float fDepth    =    _depthTexture.linearSample(0, sourcePos.x, sourcePos.y);
-                                ushort depth = cast(ushort)(0.5f + fDepth);
-                                int interpolatedDepth = depth * alpha + outDepth[x].l * (255 - alpha);
-                                outDepth[x] = L16(cast(ushort)( (interpolatedDepth + 128) / 255));
+                                float interpDepth = fDepth * fAlphaDepth + outDepth[x].l * (1.0f - fAlphaDepth);
+                                outDepth[x] = L16(cast(ushort)(0.5f + interpDepth) );
                             }
                         }
                     }
