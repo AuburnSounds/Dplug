@@ -43,6 +43,17 @@ nothrow:
                                      cast(      ubyte* )output.pixels, output.w, output.h, cast(int)output.pitch, 4, filter, &alloc_context);
         assert(res);
     }
+    ///ditto
+    void resizeImageGeneric(ImageRef!RGBA16 input, ImageRef!RGBA16 output)
+    {
+        if (sameSizeResize(input, output))
+            return;
+
+        stbir_filter filter = STBIR_FILTER_DEFAULT;
+        int res = stbir_resize_uint16(cast(const(ushort*))input.pixels, input.w, input.h, cast(int)input.pitch,
+                                     cast(      ushort* )output.pixels, output.w, output.h, cast(int)output.pitch, 4, filter, &alloc_context);
+        assert(res);
+    }
 
     ///ditto
     void resizeImageSmoother(ImageRef!RGBA input, ImageRef!RGBA output)
@@ -94,6 +105,19 @@ nothrow:
     }
 
     ///ditto
+    void resizeImageDepth(ImageRef!RGBA16 input, ImageRef!RGBA16 output)
+    {
+        // Note: this function is intended for those images that contain depth despite having 4 channels.
+        if (sameSizeResize(input, output))
+            return;
+
+        stbir_filter filter = STBIR_FILTER_MKS_2021;
+        int res = stbir_resize_uint16(cast(const(ushort*))input.pixels, input.w, input.h, cast(int)input.pitch,
+                                      cast(      ushort* )output.pixels, output.w, output.h, cast(int)output.pitch, 4, filter, &alloc_context);
+        assert(res);
+    }
+
+    ///ditto
     void resizeImageCoverage(ImageRef!L8 input, ImageRef!L8 output)
     {
         if (sameSizeResize(input, output))
@@ -129,6 +153,23 @@ nothrow:
     }
 
     ///ditto
+    void resizeImageDiffuseWithAlphaPremul(ImageRef!RGBA16 input, ImageRef!RGBA16 output)
+    {
+        // Intended for 16-bit image in sRGB, with premultipled alpha.
+        if (sameSizeResize(input, output))
+            return;
+        stbir_filter filter = STBIR_FILTER_MKS_2013_86;
+        int flags = STBIR_FLAG_ALPHA_PREMULTIPLIED;
+
+        int res = stbir_resize_uint16_generic(cast(const(ushort*))input.pixels, input.w, input.h, cast(int)input.pitch,
+                                               cast(      ushort* )output.pixels, output.w, output.h, cast(int)output.pitch,
+                                              4, 3, flags,
+                                              STBIR_EDGE_CLAMP, filter, STBIR_COLORSPACE_LINEAR, // for some reason, STBIR_COLORSPACE_SRGB with uint16 creates artifacts
+                                              &alloc_context);
+        assert(res);
+    }
+
+    ///ditto
     void resizeImageDiffuse(ImageRef!RGBA input, ImageRef!RGBA output)
     {
         if (sameSizeResize(input, output))
@@ -144,6 +185,39 @@ nothrow:
     // Note: no special treatment for material images
     // No particular quality gain when using lanczos 3.
     alias resizeImageMaterial = resizeImageGeneric;
+
+    void resizeImageMaterialWithAlphaPremul(ImageRef!RGBA16 input, ImageRef!RGBA16 output)
+    {
+        // Intended for 16-bit image that contains Material with premultipled alpha.
+        if (sameSizeResize(input, output))
+            return;
+        stbir_filter filter = STBIR_FILTER_DEFAULT;
+        int flags = STBIR_FLAG_ALPHA_PREMULTIPLIED;
+
+        int res = stbir_resize_uint16_generic(cast(const(ushort*))input.pixels, input.w, input.h, cast(int)input.pitch,
+                                              cast(      ushort* )output.pixels, output.w, output.h, cast(int)output.pitch,
+                                              4, 3, flags,
+                                              STBIR_EDGE_CLAMP, filter, STBIR_COLORSPACE_LINEAR, // for some reason, STBIR_COLORSPACE_SRGB with uint16 creates artifacts
+                                              &alloc_context);
+        assert(res);
+    }
+
+    void resizeImageDepthWithAlphaPremul(ImageRef!RGBA16 input, ImageRef!RGBA16 output)
+    {
+        // Intended for 16-bit image that contains Depth in the RGB channels (or just one), with premultipled alpha.
+        // Note: this function is intended for those images that contain depth despite having 4 channels.
+        if (sameSizeResize(input, output))
+            return;
+
+        stbir_filter filter = STBIR_FILTER_MKS_2021;
+        int flags = STBIR_FLAG_ALPHA_PREMULTIPLIED;
+        int res = stbir_resize_uint16_generic(cast(const(ushort*))input.pixels, input.w, input.h, cast(int)input.pitch,
+                                              cast(      ushort* )output.pixels, output.w, output.h, cast(int)output.pitch,
+                                              4, 3, flags,
+                                              STBIR_EDGE_CLAMP, filter, STBIR_COLORSPACE_LINEAR,
+                                              &alloc_context);
+        assert(res);
+    }
 
 private:
 

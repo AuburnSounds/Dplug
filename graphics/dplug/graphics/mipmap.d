@@ -44,7 +44,7 @@ version(LDC)
 /// Supports non power-of-two textures.
 /// Size of the i+1-th mipmap is { (width)/2, (height)/2 }
 /// The mipmap owns each of its levels.
-final class Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16))
+final class Mipmap(COLOR) if (is(COLOR == RGBA) || is(COLOR == L16) || is(COLOR == RGBA16) )
 {
 public:
 nothrow:
@@ -349,11 +349,23 @@ nothrow:
                 return dResult;
             }
         }
-        else
+        else static if (is(COLOR == L16))
         {
             float up = A.l * fxm1 + B.l * fx;
             float down = C.l * fxm1 + D.l * fx;
             return up * fym1 + down * fy;
+        }
+        else // RGBA16
+        {
+            vec4f vA = vec4f(A.r, A.g, A.b, A.a);
+            vec4f vB = vec4f(B.r, B.g, B.b, B.a);
+            vec4f vC = vec4f(C.r, C.g, C.b, C.a);
+            vec4f vD = vec4f(D.r, D.g, D.b, D.a);
+
+            vec4f up = vA * fxm1 + vB * fx;
+            vec4f down = vC * fxm1 + vD * fx;
+            vec4f result = up * fym1 + down * fy;
+            return result;
         }
     }
 
@@ -417,6 +429,8 @@ nothrow:
                     generateLevelBoxRGBA(thisLevel, previousLevel, updateRect);
                 else static if (is(COLOR == L16))
                     generateLevelBoxL16(thisLevel, previousLevel, updateRect);
+                else static if (is(COLOR == RGBA16))
+                    generateLevelBoxRGBA16(thisLevel, previousLevel, updateRect);
                 else
                     static assert(false, "not implemented");
 
@@ -521,6 +535,11 @@ nothrow:
             else static if (is(COLOR == L16))
             {
                 generateLevelCubicL16(thisLevel, previousLevel, updateRect);
+                break;
+            }
+            else static if (is(COLOR == RGBA16))
+            {
+                generateLevelCubicRGBA16(thisLevel, previousLevel, updateRect);
                 break;
             }
             else
@@ -907,6 +926,33 @@ void generateLevelBoxL16(OwnedImage!L16 thisLevel,
 
                 dest[x] = L16.op!q{(a + b + c + d + 2) >> 2}(A, B, C, D);
             }
+        }
+    }
+}
+
+void generateLevelBoxRGBA16(OwnedImage!RGBA16 thisLevel,
+                            OwnedImage!RGBA16 previousLevel,
+                            box2i updateRect) pure nothrow @nogc
+{
+    // untested and unused for now
+    int width = updateRect.width();
+    int height = updateRect.height();
+
+    for (int y = 0; y < height; ++y)
+    {
+        RGBA16* L0   = previousLevel.scanlinePtr( (updateRect.min.y + y) * 2    ) + updateRect.min.x * 2;
+        RGBA16* L1   = previousLevel.scanlinePtr( (updateRect.min.y + y) * 2 + 1) + updateRect.min.x * 2;
+        RGBA16* dest =     thisLevel.scanlinePtr(           updateRect.min.y + y) + updateRect.min.x;
+        for (int x = 0; x < width; ++x)
+        {
+            // A B
+            // C D
+            RGBA16 A = L0[2 * x];
+            RGBA16 B = L0[2 * x + 1];
+            RGBA16 C = L1[2 * x];
+            RGBA16 D = L1[2 * x + 1];
+
+            dest[x] = RGBA16.op!q{(a + b + c + d + 2) >> 2}(A, B, C, D);
         }
     }
 }
@@ -1762,6 +1808,80 @@ void generateLevelCubicL16(OwnedImage!L16 thisLevel,
                          + 3 * (B + C + E + H + I + L + N + O)
                          + 9 * (F + G + J + K);
             dest[x].l = cast(ushort)((depthSum + 32) >> 6  );
+        }
+    }
+}
+
+void generateLevelCubicRGBA16(OwnedImage!RGBA16 thisLevel,
+                              OwnedImage!RGBA16 previousLevel,
+                              box2i updateRect) nothrow @nogc
+{
+    // untested and unused for now
+    for (int y = updateRect.min.y; y < updateRect.max.y; ++y)
+    {
+        int y2m1 = 2 * y - 1;
+        if (y2m1 < 0)
+            y2m1 = 0;
+
+        int y2p2 = 2 * y + 2;
+        if (y2p2 > previousLevel.h - 1)
+            y2p2 = previousLevel.h - 1;
+
+        RGBA16* LM1 = previousLevel.scanlinePtr(y2m1);
+        RGBA16* L0 = previousLevel.scanlinePtr(y * 2);
+        RGBA16* L1 = previousLevel.scanlinePtr(y * 2 + 1);
+        RGBA16* L2 = previousLevel.scanlinePtr(y2p2);
+        RGBA16* dest = thisLevel.scanlinePtr(y);
+
+        for (int x = updateRect.min.x; x < updateRect.max.x; ++x)
+        {
+            // A B C D
+            // E F G H
+            // I J K L
+            // M N O P
+
+            int x2m1 = 2 * x - 1;
+            if (x2m1 < 0)
+                x2m1 = 0;
+            int x2p0 = 2 * x;
+            int x2p2 = 2 * x + 2;
+            if (x2p2 > previousLevel.w - 1)
+                x2p2 = previousLevel.w - 1;
+
+            auto A = LM1[x2m1];
+            auto B = LM1[x2p0];
+            auto C = LM1[x2p0+1];
+            auto D = LM1[x2p2];
+
+            auto E = L0[x2m1];
+            auto F = L0[x2p0];
+            auto G = L0[x2p0+1];
+            auto H = L0[x2p2];
+
+            auto I = L1[x2m1];
+            auto J = L1[x2p0];
+            auto K = L1[x2p0+1];
+            auto L = L1[x2p2];
+
+            auto M = L2[x2m1];
+            auto N = L2[x2p0];
+            auto O = L2[x2p0+1];
+            auto P = L2[x2p2];
+
+            // Apply filter
+            // 1 3 3 1
+            // 3 9 9 3
+            // 3 9 9 3
+            // 1 3 3 1
+
+            int rSum = (A.r + D.r + M.r + P.r) + 3 * (B.r + C.r + E.r + H.r + I.r + L.r + N.r + O.r) + 9 * (F.r + G.r + J.r + K.r);
+            int gSum = (A.g + D.g + M.g + P.g) + 3 * (B.g + C.g + E.g + H.g + I.g + L.g + N.g + O.g) + 9 * (F.g + G.g + J.g + K.g);
+            int bSum = (A.b + D.b + M.b + P.b) + 3 * (B.b + C.b + E.b + H.b + I.b + L.b + N.b + O.b) + 9 * (F.b + G.b + J.b + K.b);
+            int aSum = (A.a + D.a + M.a + P.a) + 3 * (B.a + C.a + E.a + H.a + I.a + L.a + N.a + O.a) + 9 * (F.a + G.a + J.a + K.a);
+            dest[x].r = cast(ushort)((rSum + 32) >> 6);
+            dest[x].g = cast(ushort)((gSum + 32) >> 6);
+            dest[x].b = cast(ushort)((bSum + 32) >> 6);
+            dest[x].a = cast(ushort)((aSum + 32) >> 6);
         }
     }
 }

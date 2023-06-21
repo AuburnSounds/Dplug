@@ -308,6 +308,7 @@ struct Color(FieldTuple...)
 // The "x" has the special meaning of "padding" and is ignored in some circumstances
 alias Color!(ubyte  , "r", "g", "b"     ) RGB    ;
 alias Color!(ubyte  , "r", "g", "b", "a") RGBA   ;
+alias Color!(ushort , "r", "g", "b", "a") RGBA16 ;
 
 
 alias Color!(ubyte  , "l"               ) L8     ;
@@ -507,6 +508,20 @@ RGBA blendColor(RGBA fg, RGBA bg, ubyte alpha) pure nothrow @nogc
         c.a = cast(ubyte) ( ( (fg.a * alpha) + (bg.a * invAlpha)  ) / ubyte.max );
         return c;
     }
+}
+
+/// Blend two colors, where `fg` is a premultiplied color by its own alpha.
+/// We consider fg to be already scaled by (alpha/255)
+/// Return: (255-alpha)
+RGBA blendColorPremul(RGBA fg, RGBA bg, ubyte alpha) pure nothrow @nogc
+{
+    ubyte invAlpha = cast(ubyte)(~cast(int)alpha);
+    RGBA c = void;
+    c.r = cast(ubyte) ( fg.r + (bg.r * invAlpha) / 255 );
+    c.g = cast(ubyte) ( fg.g + (bg.g * invAlpha) / 255 ); // Note: curious lack of rounding
+    c.b = cast(ubyte) ( fg.b + (bg.b * invAlpha) / 255 );
+    c.a = cast(ubyte) ( fg.a + (bg.a * invAlpha) / 255 );
+    return c;
 }
 
 RGB blendColor(RGB fg, RGB bg, ubyte alpha) pure nothrow @nogc

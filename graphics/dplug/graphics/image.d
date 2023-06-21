@@ -190,6 +190,12 @@ ImageRef!RGBA toRef(OwnedImage!RGBA src) pure
     return ImageRef!RGBA(src.w, src.h, src.pitchInBytes(), src.scanlinePtr(0));
 }
 
+///ditto
+ImageRef!RGBA16 toRef(OwnedImage!RGBA16 src) pure
+{
+    return ImageRef!RGBA16(src.w, src.h, src.pitchInBytes(), src.scanlinePtr(0));
+}
+
 /// Copy the indicated row of src to a COLOR buffer.
 void copyScanline(SRC, COLOR)(auto ref SRC src, int y, COLOR[] dst)
     if (isView!SRC && is(COLOR == ViewColor!SRC))
@@ -837,6 +843,33 @@ void createViewFromImageRef(COLOR)(ref Image view, ImageRef!COLOR source)
     else
         static assert(false);
 }
+
+/// On the contrary, get an ImageRef!XXX from a Gamut `Image` without disowning it.
+ImageRef!COLOR getImageRef(COLOR)(ref Image image)
+{
+    // Must check dynamic type though.
+    static if (is(COLOR == L8))
+        assert(image.type() == PixelType.l8);
+    else static if (is(COLOR == L16))
+        assert(image.type() == PixelType.l16);
+    else static if (is(COLOR == RGB))
+        assert(image.type() == PixelType.rgb8);
+    else static if (is(COLOR == RGBA))
+        assert(image.type() == PixelType.rgba8);
+    else static if (is(COLOR == RGBA16))
+        assert(image.type() == PixelType.rgba16);
+    else 
+        static assert(false);
+
+    ImageRef!COLOR r;
+    r.w = image.width();
+    r.h = image.height();
+    assert(image.pitchInBytes() >= 0); // Doesn't work for negative pitches.
+    r.pitch = image.pitchInBytes;
+    r.pixels = cast(COLOR*) image.scanptr(0);   
+    return r;
+}
+
 
 /// Convert and disown gamut Image to OwnedImage.
 /// Result: ìmage` is disowned, result is owning the image data.

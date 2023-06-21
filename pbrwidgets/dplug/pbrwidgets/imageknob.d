@@ -29,7 +29,7 @@ enum KnobImageType
     ABDME_8, 
 
     /// New KnobImage format.
-    BADAMAEEE_16
+    BADAMA_16
 }
 
 /// Type of image being used for Knob graphics.
@@ -77,25 +77,25 @@ nothrow @nogc:
 /// Note that such an image is formatted and resized in `reflow` before use.
 ///
 ///
-/// # BADAMAEEE_16 format (new 16-bit depth + more alpha channels)
+/// # BADAMA_16 format (new 16-bit depth + more alpha channels)
 ///
-///           h           h            h                h
-///   +------------+------------+------------+------------------------+
-///   |            |            |            |                        |
-///   |  basecolor |   depth    |  material  | emissive           (R) |
-/// h |    RGB     | (G used)   |    RMS     | + emissive hovered (G) |
-///   |     +      |     +      |     +      | + emissive dragged (B) |
-///   |   alpha    |   alpha    |   alpha    | (no alpha)             |
-///   +------------+------------+------------+------------------------+
+///           h           h            h      
+///   +------------+------------+------------+
+///   |            |            |            |
+///   |  basecolor |   depth    |  material  |
+/// h |    RGB     | (G used)   |    RMS     |
+///   |     +      |     +      |     +      |
+///   |   alpha    |   alpha    |   alpha    |
+///   +------------+------------+------------+
 ///
 /// Recommended format: QOIX, for example a 512x128 16-bit QOIX image.
 /// Note that such an image is formatted and resized in `reflow` before use.
 ///
-/// 8-bit images are considered ABDME_8, and 16-bit images are considered BADAMAEEE_16.
+/// 8-bit images are considered ABDME_8, and 16-bit images are considered BADAMA_16.
 KnobImage loadKnobImage(in void[] data)
 {
     // If the input image is 8-bit, this is assumed to be in ABDME_8 format.
-    // Else this is assumed to be in BADAMAEEE_16 format.
+    // Else this is assumed to be in BADAMA_16 format.
     KnobImage res = mallocNew!KnobImage;
     res.image.loadFromMemory(data, LOAD_RGB | LOAD_ALPHA); // Force RGB and Alpha channel.
     if (res.image.isError)
@@ -106,7 +106,9 @@ KnobImage loadKnobImage(in void[] data)
     if (res.image.isFP32())
         res.image.convertTo16Bit();
 
-    res.type = res.image.is8Bit() ? KnobImageType.ABDME_8 : KnobImageType.BADAMAEEE_16;
+    res.type = res.image.is8Bit() ? KnobImageType.ABDME_8 : KnobImageType.BADAMA_16;
+
+    int h = res.image.height;
 
     if (res.type == KnobImageType.ABDME_8)
     {
@@ -115,8 +117,6 @@ KnobImage loadKnobImage(in void[] data)
         // Expected dimension is 5H x H
         assert(res.image.width == res.image.height * 5);
 
-        int h = res.image.height;
-    
         for (int y = 0; y < h; ++y)
         {
             RGBA[] line = cast(RGBA[]) res.image.scanline(y);
@@ -139,10 +139,28 @@ KnobImage loadKnobImage(in void[] data)
     {
         assert(res.image.type == PixelType.rgba16);
 
-        // Expected dimension is 4H x H
-        assert(res.image.width == res.image.height * 4);
+        // Expected dimension is 3H x H
+        assert(res.image.width == res.image.height * 3);
 
-        // No preprocessing in this case.
+        // The whole image is alpha-premultiplied.
+        for (int y = 0; y < h; ++y)
+        {
+            ushort[] scan = cast(ushort[]) res.image.scanline(y);
+            for (int x = 0; x < 3*h; ++x)
+            {
+                uint R = scan[4*x+0];
+                uint G = scan[4*x+1];
+                uint B = scan[4*x+2];
+                uint A = scan[4*x+3];
+                R = (R * A + 32768) / 65535;
+                G = (G * A + 32768) / 65535;
+                B = (B * A + 32768) / 65535;
+                scan[4 * x + 0] = cast(ushort)R;
+                scan[4 * x + 1] = cast(ushort)G;
+                scan[4 * x + 2] = cast(ushort)B;
+                scan[4 * x + 3] = cast(ushort)A;
+            }
+        }
     }
 
     return res;
@@ -183,34 +201,28 @@ nothrow:
     {
         super(context, parameter);
         _knobImage = knobImage;
-
-        _tempBuf = mallocNew!(OwnedImage!L16);
-        _tempBufRGBA = mallocNew!(OwnedImage!RGBA);
-
         
         if (knobImage.isLegacy())
         {
+            _tempBuf = mallocNew!(OwnedImage!L16);
+            _tempBufRGBA = mallocNew!(OwnedImage!RGBA);
             _alphaTexture = mallocNew!(Mipmap!L16);
+            _depthTexture = mallocNew!(Mipmap!L16);
+            _diffuseTexture = mallocNew!(Mipmap!RGBA);
+            _materialTexture = mallocNew!(Mipmap!RGBA);
         }
         else
         {
-            _alphaTextureDiffuse = mallocNew!(Mipmap!L16);
-            _alphaTextureMaterial = mallocNew!(Mipmap!L16);
-            _alphaTextureDepth = mallocNew!(Mipmap!L16);
-        }
-        _depthTexture = mallocNew!(Mipmap!L16);
-        _diffuseTexture = mallocNew!(Mipmap!RGBA);
-        _materialTexture = mallocNew!(Mipmap!RGBA);
+            _resizedImage = mallocNew!(Mipmap!RGBA16);
+        }        
     }
 
     ~this()
     {
+        _resizedImage.destroyFree();
         _tempBuf.destroyFree();
         _tempBufRGBA.destroyFree();
         _alphaTexture.destroyFree();
-        _alphaTextureDiffuse.destroyFree();
-        _alphaTextureMaterial.destroyFree();
-        _alphaTextureDepth.destroyFree();
         _depthTexture.destroyFree();
         _diffuseTexture.destroyFree();
         _materialTexture.destroyFree();
@@ -218,7 +230,7 @@ nothrow:
 
     override void reflow()
     {
-        int numTiles = _knobImage.type == KnobImageType.ABDME_8 ? 5 : 4;
+        int numTiles = _knobImage.type == KnobImageType.ABDME_8 ? 5 : 3;
 
         // This has been checked before in `loadKnobImage`.
         assert(_knobImage.image.width % numTiles == 0);
@@ -229,76 +241,45 @@ nothrow:
         int DW = position.width;
         int DH = position.height; 
 
-        _tempBuf.size(SH, SH);
-        _tempBufRGBA.size(SH, SH);
-
         enum numMipLevels = 1;
-
-        if (_knobImage.isLegacy())
-            _alphaTexture.size(numMipLevels, DW, DH);
-        else
-        {
-            _alphaTextureDiffuse.size(numMipLevels, DW, DH);
-            _alphaTextureMaterial.size(numMipLevels, DW, DH);
-            _alphaTextureDepth.size(numMipLevels, DW, DH);
-        }
-        _depthTexture.size(numMipLevels, DW, DH);
-        _diffuseTexture.size(numMipLevels, DW, DH);
-        _materialTexture.size(numMipLevels, DW, DH);
 
         auto resizer = context.globalImageResizer;
 
-        // 1. Fill the alpha textures.
+       
         if (_knobImage.isLegacy())
         {
-            // Extends alpha to 16-bit, resize it to destination size in _alphaTexture.
-            ImageRef!L16 tempAlpha = _tempBuf.toRef();
-            ImageRef!L16 destAlpha = _alphaTexture.levels[0].toRef;
-            for (int y = 0; y < SH; ++y)
-            {
-                ubyte* scan = cast(ubyte*)(_knobImage.image.scanptr(y));
-                for (int x = 0; x < SH; ++x)
-                {
-                    ushort alpha16 = scan[4*x] * 257; // take red channel as alpha
-                    tempAlpha[x, y] = L16(alpha16);
-                }
-            }
-            resizer.resizeImageGeneric(tempAlpha, destAlpha);
-        }
-        else
-        {
-            ImageRef!L16 tempAlpha = _tempBuf.toRef();
+            _tempBuf.size(SH, SH);
+            _tempBufRGBA.size(SH, SH);
+            _alphaTexture.size(numMipLevels, DW, DH);
+            _depthTexture.size(numMipLevels, DW, DH);
+            _diffuseTexture.size(numMipLevels, DW, DH);
+            _materialTexture.size(numMipLevels, DW, DH);
 
-            // Take alpha from a rgba16 image, with a source offset.
-            void convertAndResizeAlpha(ImageRef!L16 dest, 
-                                       ref const(Image) src, 
-                                       int srcXoffset)
+            // 1. Fill the alpha textures.
             {
+                // Extends alpha to 16-bit, resize it to destination size in _alphaTexture.
+                ImageRef!L16 tempAlpha = _tempBuf.toRef();
+                ImageRef!L16 destAlpha = _alphaTexture.levels[0].toRef;
                 for (int y = 0; y < SH; ++y)
                 {
-                    ushort* scan = cast(ushort*)(src.scanptr(y)) + srcXoffset*4; 
+                    ubyte* scan = cast(ubyte*)(_knobImage.image.scanptr(y));
                     for (int x = 0; x < SH; ++x)
                     {
-                        tempAlpha[x, y] = L16(scan[4*x+3]);
+                        ushort alpha16 = scan[4*x] * 257; // take red channel as alpha
+                        tempAlpha[x, y] = L16(alpha16);
                     }
                 }
-                resizer.resizeImageGeneric(tempAlpha, dest);
+                resizer.resizeImageGeneric(tempAlpha, destAlpha);
             }
-            convertAndResizeAlpha(_alphaTextureDiffuse.levels[0].toRef,  _knobImage.image, 0);
-            convertAndResizeAlpha(_alphaTextureDepth.levels[0].toRef,    _knobImage.image, SH);
-            convertAndResizeAlpha(_alphaTextureMaterial.levels[0].toRef, _knobImage.image, SH*2);
-        }
-
-        // 2. Fill the depth texture.        
-        {
-            ImageRef!L16 tempDepth = _tempBuf.toRef();
-            ImageRef!L16 destDepth = _depthTexture.levels[0].toRef;
-            for (int y = 0; y < SH; ++y)
+       
+            // 2. Fill the depth texture.
             {
-                L16* outScan = tempDepth.scanline(y).ptr;
-
-                if (_knobImage.isLegacy())
+                ImageRef!L16 tempDepth = _tempBuf.toRef();
+                ImageRef!L16 destDepth = _depthTexture.levels[0].toRef;
+                for (int y = 0; y < SH; ++y)
                 {
+                    L16* outScan = tempDepth.scanline(y).ptr;
+
                     ubyte* scan = cast(ubyte*)(_knobImage.image.scanptr(y)) + SH * 4 * 2; // take depth rectangle
 
                     // Extends depth to 16-bit, resize it to destination size in _depthTexture.
@@ -306,67 +287,56 @@ nothrow:
                     {
                         ushort depth = cast(ushort)(0.5f + (257 * (scan[4*x] + scan[4*x+1] + scan[4*x+2]) / 3.0f));
                         outScan[x] = L16(depth);
-                    }                   
-                }
-                else
-                {   
-                    // Depth is already 16-bit, take green channel.
-                    ushort* scan = cast(ushort*)(_knobImage.image.scanptr(y)) + SH*4; // take depth rectangle
-                    for (int x = 0; x < SH; ++x)
-                    {
-                        ushort sample = scan[x*4 + 1]; // Copy green channel
-                        outScan[x] = L16(sample);
                     }
                 }
+
+                // Note: different resampling kernal for depth, to smooth it. 
+                //       Slightly more serene to look at.
+                resizer.resizeImageDepth(tempDepth, destDepth); 
             }
 
-            // Note: different resampling kernal for depth, to smooth it. 
-            //       Slightly more serene to look at.
-            resizer.resizeImageDepth(tempDepth, destDepth); 
-        }
+            // 3. Prepare the diffuse texture.
+            // Resize diffuse+emissive in _diffuseTexture. Note that emissive channel was fed before.
 
-        void prepareDiffuseMaterialTexture(int offsetX, ImageRef!RGBA outResizedRGBAImage)
-        {
-            for (int y = 0; y < SH; ++y)
+
+            void prepareDiffuseMaterialTexture(int offsetX, ImageRef!RGBA outResizedRGBAImage)
             {
-                if (_knobImage.isLegacy())
-                {                
+                for (int y = 0; y < SH; ++y)
+                {              
                     RGBA* scan = cast(RGBA*)(_knobImage.image.scanptr(y)) + SH*offsetX;
                     for (int x = 0; x < SH; ++x)
                     {
-                        _tempBufRGBA[x, y] = scan[x];
+                        _tempBufRGBA[x, y] = scan[x]; // PERF: use the input image directly?
                     }
                 }
-                else
-                {
-                    ushort* scan = cast(ushort*)(_knobImage.image.scanptr(y)) + 4*SH*offsetX;
-                    for (int x = 0; x < SH; ++x)
-                    {
-                        // From 16-bit to 8-bit                    
-                        RGBA rgba;
-                        rgba.r = cast(ubyte)(0.5f + scan[4*x+0] * 0.00389105058f);
-                        rgba.g = cast(ubyte)(0.5f + scan[4*x+1] * 0.00389105058f);
-                        rgba.b = cast(ubyte)(0.5f + scan[4*x+2] * 0.00389105058f);
-                        rgba.a = cast(ubyte)(0.5f + scan[4*x+3] * 0.00389105058f); 
-
-                        // Note: put whatever as last channel, alpha is separated anyway
-                        _tempBufRGBA[x, y] = rgba;
-                    }             
-                }
+                resizer.resizeImageDiffuse(_tempBufRGBA.toRef, outResizedRGBAImage);
             }
-            resizer.resizeImageDiffuse(_tempBufRGBA.toRef, outResizedRGBAImage);
+
+            int diffuseRect = _knobImage.isLegacy() ? 1 : 0;
+            prepareDiffuseMaterialTexture(diffuseRect, _diffuseTexture.levels[0].toRef);
+
+            // 4. Similarly, prepare material in _materialTexture.
+            // 4th channel contain garbage.
+            int materialRect = _knobImage.isLegacy() ? 3 : 2;
+            prepareDiffuseMaterialTexture(materialRect, _materialTexture.levels[0].toRef);
         }
+        else
+        {
+            _resizedImage.size(numMipLevels, DW*3, DH);
 
-        // 3. Prepare the diffuse texture.
-        // Resize diffuse+emissive in _diffuseTexture. Note that emissive channel was fed before.
-        // Or, in non-legcay, emissive channel will contain garbage.
-        int diffuseRect = _knobImage.isLegacy() ? 1 : 0;
-        prepareDiffuseMaterialTexture(diffuseRect, _diffuseTexture.levels[0].toRef);
+            ImageRef!RGBA16 input = _knobImage.image.getImageRef!RGBA16();
+            ImageRef!RGBA16 resized = _resizedImage.levels[0].toRef;
 
-        // 4. Similarly, prepare material in _materialTexture.
-        // 4th channel contain garbage.
-        int materialRect = _knobImage.isLegacy() ? 3 : 2;
-        prepareDiffuseMaterialTexture(materialRect, _materialTexture.levels[0].toRef);
+            // Resize each of the 3 subrect independently, to avoid strange pixel offset polluting
+
+            // Resize the premultiplied images to _resizedImage.
+            resizer.resizeImageDiffuseWithAlphaPremul(input.cropImageRef(rectangle(0, 0, SH, SH)), 
+                                                      resized.cropImageRef(rectangle(0, 0, DW, DH)));
+            resizer.resizeImageDepthWithAlphaPremul(input.cropImageRef(rectangle(SH, 0, SH, SH)), 
+                                                    resized.cropImageRef(rectangle(DW, 0, DW, DH)));
+            resizer.resizeImageMaterialWithAlphaPremul(input.cropImageRef(rectangle(SH*2, 0, SH, SH)), 
+                                                       resized.cropImageRef(rectangle(DW*2, 0, DW, DH)));
+        }
     }
 
     override void drawKnob(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects)
@@ -413,84 +383,141 @@ nothrow:
                 L16* outDepth = cDepth.scanline(y).ptr;
                 RGBA* outMaterial = cMaterial.scanline(y).ptr;
 
-                for (int x = 0; x < dirtyRect.width; ++x)
+                if (legacy)
                 {
-                    vec2f destPos = vec2f(x + dirtyRect.min.x, y + dirtyRect.min.y);
-                    vec2f sourcePos = sourceCenter + rotate(destPos - center);
-
-                    // If the point is outside the knobimage, it is considered to have an alpha of zero
-                    float fAlphaDiffuse  = 0.0f;
-                    float fAlphaDepth    = 0.0f;
-                    float fAlphaMaterial = 0.0f;
-
-                    if ( (sourcePos.x >= 0.5f) && (sourcePos.x < (H - 0.5f))
-                     &&  (sourcePos.y >=  0.5f) && (sourcePos.y < (H - 0.5f)) )
+                    for (int x = 0; x < dirtyRect.width; ++x)
                     {
-                        // PERF: sample a single RGBA L16 mipmap once in non-legacy mode
+                        vec2f destPos = vec2f(x + dirtyRect.min.x, y + dirtyRect.min.y);
+                        vec2f sourcePos = sourceCenter + rotate(destPos - center);
 
-                        
-                        if (legacy)
-                        {
-                            fAlphaDiffuse = _alphaTexture.linearSample(0, sourcePos.x, sourcePos.y);
-                            fAlphaDepth = fAlphaDiffuse;
-                            fAlphaMaterial = fAlphaDiffuse;
-                        }
-                        else
-                        {
-                            fAlphaDiffuse  = _alphaTextureDiffuse.linearSample(0, sourcePos.x, sourcePos.y);
-                            fAlphaDepth    = _alphaTextureDepth.linearSample(0, sourcePos.x, sourcePos.y);
-                            fAlphaMaterial = _alphaTextureMaterial.linearSample(0, sourcePos.x, sourcePos.y);
-                        }
+                        // Legacy textures have 
 
-                        if (fAlphaDiffuse > 0)
+                        // If the point is outside the knobimage, it is considered to have an alpha of zero
+                        float fAlpha = 0.0f;
+
+                        if ( (sourcePos.x >= 0.5f) && (sourcePos.x < (H - 0.5f))
+                         &&  (sourcePos.y >=  0.5f) && (sourcePos.y < (H - 0.5f)) )
                         {
-                            ubyte alpha = cast(ubyte)(0.5f + fAlphaDiffuse / 257.0f);
+                            // PERF: sample a single RGBA L16 mipmap once in non-legacy mode
+
+                            fAlpha = _alphaTexture.linearSample(0, sourcePos.x, sourcePos.y);
+
+                            if (fAlpha > 0)
+                            {
+                                ubyte alpha = cast(ubyte)(0.5f + fAlpha / 257.0f);
+
+                                if (drawToDiffuse)
+                                {
+                                    vec4f fDiffuse  =  _diffuseTexture.linearSample(0, sourcePos.x, sourcePos.y);
+                                    ubyte R = cast(ubyte)(0.5f + fDiffuse.r);
+                                    ubyte G = cast(ubyte)(0.5f + fDiffuse.g);
+                                    ubyte B = cast(ubyte)(0.5f + fDiffuse.b);
+                                    int E = cast(ubyte)(0.5f + fDiffuse.a + emissiveOffset);
+                                    if (E < 0) E = 0; 
+                                    if (E > 255) E = 255;
+
+                                    if (!legacy)
+                                        E = 0;
+
+                                    // TODO: non-legacy emissive?
+
+                                    RGBA diffuse = RGBA(R, G, B, cast(ubyte)E);
+                                    outDiffuse[x] = blendColor( diffuse, outDiffuse[x], alpha);
+                                }
+
+                                if (drawToMaterial)
+                                {
+                                    vec4f fMaterial = _materialTexture.linearSample(0, sourcePos.x, sourcePos.y);
+                                    ubyte Ro = cast(ubyte)(0.5f + fMaterial.r);
+                                    ubyte M = cast(ubyte)(0.5f + fMaterial.g);
+                                    ubyte S = cast(ubyte)(0.5f + fMaterial.b);
+                                    ubyte X = cast(ubyte)(0.5f + fMaterial.a);
+                                    RGBA material = RGBA(Ro, M, S, X);
+                                    outMaterial[x] = blendColor( material, outMaterial[x], alpha);
+                                }
+
+                                if (drawToDepth)
+                                {
+                                    float fAlphaDepth = fAlpha;
+                                    fAlphaDepth *= 0.00001525902f; // 1 / 65535
+                                    float fDepth    =    _depthTexture.linearSample(0, sourcePos.x, sourcePos.y);
+                                    float interpDepth = fDepth * fAlphaDepth + outDepth[x].l * (1.0f - fAlphaDepth);
+                                    outDepth[x] = L16(cast(ushort)(0.5f + interpDepth) );
+                                }
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    // non-legacy drawing builds upon the fact the texture will be alpha-premul
+                    for (int x = 0; x < dirtyRect.width; ++x)
+                    {
+                        vec2f destPos = vec2f(x + dirtyRect.min.x, y + dirtyRect.min.y);
+                        vec2f sourcePos = sourceCenter + rotate(destPos - center);
+
+                        // Legacy textures have 
+
+                        if ( (sourcePos.x >= 0.5f) && (sourcePos.x < (H - 0.5f))
+                                &&  (sourcePos.y >=  0.5f) && (sourcePos.y < (H - 0.5f)) )
+                        {
+                            // Get the alpha-premultiplied samples in a single texture.
 
                             if (drawToDiffuse)
                             {
-                                vec4f fDiffuse  =  _diffuseTexture.linearSample(0, sourcePos.x, sourcePos.y);
-                                ubyte R = cast(ubyte)(0.5f + fDiffuse.r);
-                                ubyte G = cast(ubyte)(0.5f + fDiffuse.g);
-                                ubyte B = cast(ubyte)(0.5f + fDiffuse.b);
-                                int E = cast(ubyte)(0.5f + fDiffuse.a + emissiveOffset);
-                                if (E < 0) E = 0; 
-                                if (E > 255) E = 255;
-
-                                if (!legacy)
-                                    E = 0;
-
-                                // TODO: non-legacy emissive?
-
-                                RGBA diffuse = RGBA(R, G, B, cast(ubyte)E);
-                                outDiffuse[x] = blendColor( diffuse, outDiffuse[x], alpha);
+                                vec4f fDiffuse  = _resizedImage.linearSample(0, sourcePos.x, sourcePos.y);
+                                if (fDiffuse.a > 0)
+                                {
+                                    // Convert from 16-bit to 8-bit
+                                    ubyte R = cast(ubyte)(0.5f + fDiffuse.r / 257.0f);
+                                    ubyte G = cast(ubyte)(0.5f + fDiffuse.g / 257.0f);
+                                    ubyte B = cast(ubyte)(0.5f + fDiffuse.b / 257.0f);
+                                    ubyte A = cast(ubyte)(0.5f + fDiffuse.a / 257.0f);
+                                    int E = (emissiveOffset * A) / 255; // Need to premultiply Emissive by Alpha
+                                    RGBA diffuse = RGBA(R, G, B, cast(ubyte)E);
+                                    outDiffuse[x] = blendColorPremul( diffuse, outDiffuse[x], A);
+                                }
                             }
-                        }
-
-                        
-                        if (fAlphaMaterial > 0)
-                        {
-                            ubyte alpha = cast(ubyte)(0.5f + fAlphaMaterial / 257.0f);
 
                             if (drawToMaterial)
                             {
-                                vec4f fMaterial = _materialTexture.linearSample(0, sourcePos.x, sourcePos.y);
-                                ubyte Ro = cast(ubyte)(0.5f + fMaterial.r);
-                                ubyte M = cast(ubyte)(0.5f + fMaterial.g);
-                                ubyte S = cast(ubyte)(0.5f + fMaterial.b);
-                                ubyte X = cast(ubyte)(0.5f + fMaterial.a);
-                                RGBA material = RGBA(Ro, M, S, X);
-                                outMaterial[x] = blendColor( material, outMaterial[x], alpha);
+                                vec4f fMaterial = _resizedImage.linearSample(0, sourcePos.x + W*2, sourcePos.y);
+                                if (fMaterial.a > 0)
+                                {
+                                    // Convert from 16-bit to 8-bit
+                                    ubyte R = cast(ubyte)(0.5f + fMaterial.r / 257.0f);
+                                    ubyte G = cast(ubyte)(0.5f + fMaterial.g / 257.0f);
+                                    ubyte B = cast(ubyte)(0.5f + fMaterial.b / 257.0f);
+                                    ubyte A = cast(ubyte)(0.5f + fMaterial.a / 257.0f);
+                                    RGBA material = RGBA(R, G, B, 0); // clear last channel, means nothing currently
+                                    outMaterial[x] = blendColorPremul( material, outMaterial[x], A);
+                                }
                             }
-                        }
 
-                        if (fAlphaDepth > 0)
-                        {
+                            
                             if (drawToDepth)
                             {
-                                fAlphaDepth *= 0.00001525902f; // 1 / 65535
-                                float fDepth    =    _depthTexture.linearSample(0, sourcePos.x, sourcePos.y);
-                                float interpDepth = fDepth * fAlphaDepth + outDepth[x].l * (1.0f - fAlphaDepth);
-                                outDepth[x] = L16(cast(ushort)(0.5f + interpDepth) );
+                                vec4f fDepth = _resizedImage.linearSample(0, sourcePos.x + W, sourcePos.y);
+                                if (fDepth.a > 0)
+                                {
+                                    // Keep it in 16-bit
+                                    float fAlphaDepth = fDepth.a * 0.00001525902f; // 1 / 65535
+                                    float depthHere = outDepth[x].l; //error = 32244
+
+                                    // As specified, only green is considered as depth value, though you will likely
+                                    // want to raw your depth in grey.
+                                    float interpDepth = fDepth.g + depthHere * (1.0f - fAlphaDepth); // error = 65543.016
+
+                                    // Note: here it's perfectly possible for interpDepth to overshoot above 65535 because of roundings.
+                                    // if alpha is near 1.0f, and fDepth.g is rounded up, then the result may overshoot.
+                                    // eg: 65532 (ie. white with 0.99957263 alpha) added to (1 - 0.99957263) * 32242.0f
+                                    if (interpDepth > 65535.0f)
+                                    {
+                                        interpDepth = 65535.0f;
+                                    }
+                                    assert(interpDepth >= 0 && interpDepth <= 65535.49);
+                                    outDepth[x] = L16(cast(ushort)(0.5f + interpDepth) );
+                                }
                             }
                         }
                     }
@@ -501,21 +528,21 @@ nothrow:
 
     KnobImage _knobImage; // borrowed image of the knob
 
-    OwnedImage!L16 _tempBuf; // used for augmenting bitdepth of alpha and depth
-    OwnedImage!RGBA _tempBufRGBA; // used for lessening bitdepth of material and diffuse
+    // Note: mipmaps are used here, only for the linear sampling ability!
 
-    // <Only used in BADAMAEEE_16 format>
-    Mipmap!L16 _alphaTextureDiffuse;   // owned 1-level image of alpha
-    Mipmap!L16 _alphaTextureMaterial;  // owned 1-level image of alpha
-    Mipmap!L16 _alphaTextureDepth;    // owned 1-level image of alpha
-    // </Only used in BADAMAEEE_16 format>
+    // <Only used in BADAMA_16 format>
+    // TODO: a single resized RGBA16 image
+    Mipmap!RGBA16 _resizedImage;
+    // </Only used in BADAMA_16 format>
 
     // <Only used in ABDME_8 format>
     Mipmap!L16 _alphaTexture;         // owned 1-level image of alpha
-    // </Only used in ABDME_8 format>
-
+    OwnedImage!L16 _tempBuf; // used for augmenting bitdepth of alpha and depth
+    OwnedImage!RGBA _tempBufRGBA; // used for lessening bitdepth of material and diffuse
     Mipmap!L16 _depthTexture; // owned 1-level image of depth
     Mipmap!RGBA _diffuseTexture; // owned 1-level image of diffuse+emissive RGBE
     Mipmap!RGBA _materialTexture; // owned 1-level image of material
+    // </Only used in ABDME_8 format>
+
 }
 
