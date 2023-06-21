@@ -630,7 +630,7 @@ Plugin readPluginDescription(string rootDir)
 
     if (!JSONexists && !SDLexists)
     {
-        throw new CCLException("Needs a " ~ "dub.json".lcyan ~ " or " ~ "dub.sdl".lcyan ~ "file. Please launch " ~ "dplug-build".lcyan ~ " in a plug-in project directory, or use " ~ "--root".lcyan ~ ".\n" ~
+        throw new CCLException("Needs a " ~ "dub.json".lcyan ~ " or " ~ "dub.sdl".lcyan ~ " file. Please launch " ~ "dplug-build".lcyan ~ " in a plug-in project directory, or use " ~ "--root".lcyan ~ ".\n" ~
                                "File " ~ escapeCCL(dubJsonPath).yellow ~ ` doesn't exist.`);
     }
 
