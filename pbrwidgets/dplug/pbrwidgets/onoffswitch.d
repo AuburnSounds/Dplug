@@ -32,6 +32,12 @@ nothrow:
     @ScriptProperty ushort depthHigh = 30000;
     @ScriptProperty ushort holeDepth = 0;
     @ScriptProperty Orientation orientation = Orientation.vertical;
+    @ScriptProperty bool drawDepth = true;
+    @ScriptProperty bool drawDiffuse = true;
+    @ScriptProperty bool drawMaterial = true;
+    @ScriptProperty bool drawHole = true;     // if drawDepth && drawHole, draw Z hole
+    @ScriptProperty bool drawEmissive = true; // if drawEmissive && !drawDiffuse, draw just the emissive channel
+    
 
     /// Left and right border, in fraction of the widget's width.
     /// Cannot be > 0.5f
@@ -110,17 +116,30 @@ nothrow:
             box2i validRect = dirtyRect.intersection(switchRect);
             if (!validRect.empty)
             {
-                diffuseMap.cropImageRef(validRect).fillAll(diffuseColor);
-                materialMap.cropImageRef(validRect).fillAll(material);
-            }       
+                ImageRef!RGBA cDiffuse = diffuseMap.cropImageRef(validRect);
+                if (drawDiffuse)
+                {
+                    cDiffuse.fillAll(diffuseColor);
+                }
+                else if (drawEmissive)
+                {
+                    cDiffuse.fillRectAlpha(0, 0, cDiffuse.w, cDiffuse.h, diffuseColor.a);
+                }
+                if (drawMaterial)
+                    materialMap.cropImageRef(validRect).fillAll(material);
+            }
 
             // dig a hole
-            cDepth.fillAll(L16(holeDepth));
+            if (drawDepth)
+            {
+                if (drawHole)
+                    cDepth.fillAll(L16(holeDepth));
 
-            if (orientation == Orientation.vertical)
-                verticalSlope(cDepth, switchRect, depthA, depthB);
-            else
-                horizontalSlope(cDepth, switchRect, depthA, depthB);
+                if (orientation == Orientation.vertical)
+                    verticalSlope(cDepth, switchRect, depthA, depthB);
+                else
+                    horizontalSlope(cDepth, switchRect, depthA, depthB);
+            }
         }
     }
 
@@ -184,4 +203,29 @@ protected:
 
 private:
     float _animation;
+}
+
+private:
+void fillRectAlpha(bool CHECKED=true, V)(auto ref V v, int x1, int y1, int x2, int y2, ubyte alpha) nothrow @nogc
+if (isWritableView!V && is(RGBA : ViewColor!V))
+{
+    sort2(x1, x2);
+    sort2(y1, y2);
+    static if (CHECKED)
+    {
+        if (x1 >= v.w || y1 >= v.h || x2 <= 0 || y2 <= 0 || x1==x2 || y1==y2) return;
+        if (x1 <    0) x1 =   0;
+        if (y1 <    0) y1 =   0;
+        if (x2 >= v.w) x2 = v.w;
+        if (y2 >= v.h) y2 = v.h;
+    }
+
+    foreach (y; y1..y2)
+    {
+        RGBA[] scan = v.scanline(y);
+        foreach (x; x1..x2)
+        {
+            scan[x].a = alpha;
+        }
+    }
 }
