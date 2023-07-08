@@ -1237,6 +1237,20 @@ static void stbir__decode_scanline(stbir__info* stbir_info, int n)
         break;
 
     case STBIR__DECODE(STBIR_TYPE_UINT8, STBIR_COLORSPACE_SRGB):
+        if (channels == 4 && alpha_channel == 3 && !(stbir_info.flags&STBIR_FLAG_ALPHA_USES_COLORSPACE))
+        {
+            // This avoids one table lookup, but the table is the fastest way to onvet from sRGB to linear float
+            for (; x < max_x; x++)
+            {
+                int decode_pixel_index = x * channels;
+                int input_pixel_index = stbir__edge_wrap(edge_horizontal, x, input_w) * channels;
+                for (c = 0; c < 3; c++)
+                    decode_buffer[decode_pixel_index + c] = stbir__srgb_uchar_to_linear_float[(cast(const(ubyte)*)input_data)[input_pixel_index + c]];
+                ubyte alpha = (cast(const(ubyte)*)input_data)[input_pixel_index + 3];
+                decode_buffer[decode_pixel_index + 3] = cast(float)(alpha * 0.00392156862f);
+            }
+        }
+
         for (; x < max_x; x++)
         {
             int decode_pixel_index = x * channels;
