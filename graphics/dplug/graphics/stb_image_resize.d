@@ -157,7 +157,8 @@ module dplug.graphics.stb_image_resize;
 import core.stdc.stdlib: malloc, free;
 import core.stdc.string: memset;
 
-import inteli.emmintrin;
+import inteli.smmintrin;
+import inteli.math;
 
 import dplug.core.math : fast_fabs, fast_pow, fast_ceil, fast_floor, fast_sin;
 import dplug.core.vec;
@@ -525,8 +526,17 @@ float stbir__linear_to_srgb(float f)
     if (f <= 0.0031308f)
         return f * 12.92f;
     else
-        return 1.055f * cast(float)fast_pow(f, 1 / 2.4f) - 0.055f;
+        return 1.055f * _mm_pow_ss(f, 0.4166666666f) - 0.055f;
 }
+/*
+__m128 stbir__linear_to_srgb(__m128 f)
+{
+    __m128 below = f * _mm_set1_ps(12.92f);
+    __m128 exponentiated = _mm_set1_ps(1.055f) * _mm_pow_ps(f, 0.4166666666f) - _mm_set1_ps(0.055f);
+    __m128 mask  =_mm_cmplt_ps(f, _mm_set1_ps(0.0031308f));
+    __m128i result = (cast(__m128i)below & cast(__m128i)mask) | (cast(__m128i)exponentiated & ~cast(__m128i)mask);
+    return cast(__m128)result;
+}*/
 
 union stbir__FP32
 {
@@ -577,6 +587,31 @@ ubyte stbir__linear_to_srgb_uchar(float in_)
     return cast(ubyte) ((bias + scale*t) >> 16);
 }
 
+// same but 4 float at once
+__m128i stbir__linear_to_srgb_uchar(__m128 in_)
+{
+    static const stbir__FP32 almostone = { 0x3f7fffff }; // 1-eps
+    static const stbir__FP32 minval = { (127-13) << 23 };
+    in_ = _mm_max_ps(in_, _mm_set1_ps(minval.f));
+    in_ = _mm_min_ps(in_, _mm_set1_ps(almostone.f));
+
+    __m128i f = cast(__m128i) in_;
+    __m128i tblIndex = _mm_srli_epi32(f - _mm_set1_epi32(minval.u), 20);
+
+    __m128i tab = _mm_setr_epi32(fp32_to_srgb8_tab4[ tblIndex.array[0] ], 
+                                 fp32_to_srgb8_tab4[ tblIndex.array[1] ],
+                                 fp32_to_srgb8_tab4[ tblIndex.array[2] ],
+                                 fp32_to_srgb8_tab4[ tblIndex.array[3] ]);
+    __m128i bias = _mm_slli_epi32(_mm_srli_epi32(tab, 16), 9);
+    __m128i scale = _mm_and_si128(tab, _mm_set1_epi32(0xffff));
+
+    __m128i t = _mm_srli_epi32(f, 12) &  _mm_set1_epi32(0xff);
+    __m128i r = _mm_srli_epi32(bias + _mm_mullo_epi32(scale, t), 16);
+    __m128i zero = _mm_setzero_si128();
+    r = _mm_packs_epi32(r, zero);
+    r = _mm_packus_epi16(r, zero);
+    return r;
+}
 
 float stbir__filter_trapezoid(float x, float scale)
 {
@@ -1679,8 +1714,7 @@ static void stbir__encode_scanline(stbir__info* stbir_info, int num_pixels, void
     {
         return cast(uint)(f + 0.5);
     }
-    
-   
+
     static ubyte STBIR__ENCODE_LINEAR8(float f)
     {
         return cast(ubyte) STBIR__ROUND_INT_f(stbir__saturate(f) * stbir__max_uint8_as_float );
@@ -1707,20 +1741,37 @@ static void stbir__encode_scanline(stbir__info* stbir_info, int num_pixels, void
             break;
 
         case STBIR__DECODE(STBIR_TYPE_UINT8, STBIR_COLORSPACE_SRGB):
-            for (x=0; x < num_pixels; ++x)
+        {
+            // Special case because of how slow it is in normal stb_image_resize.
+            if (channels == 4 && alpha_channel == -1 && (stbir_info.flags & STBIR_FLAG_ALPHA_USES_COLORSPACE))
             {
-                int pixel_index = x*channels;
-
-                for (n = 0; n < num_nonalpha; n++)
+                for (x = 0; x < num_pixels; ++x)
                 {
-                    int index = pixel_index + nonalpha[n];
-                    (cast(ubyte*)output_buffer)[index] = stbir__linear_to_srgb_uchar(encode_buffer[index]);
-                }
+                    __m128i zero = _mm_setzero_si128();
 
-                if (!(stbir_info.flags & STBIR_FLAG_ALPHA_USES_COLORSPACE))
-                    (cast(ubyte*)output_buffer)[pixel_index + alpha_channel] = STBIR__ENCODE_LINEAR8(encode_buffer[pixel_index+alpha_channel]);
+                    __m128 fpixels = _mm_loadu_ps( &encode_buffer[4*x] );
+                    __m128i fpixels_desrgb = stbir__linear_to_srgb_uchar(fpixels);
+                    _mm_storeu_si32( (cast(ubyte*)output_buffer) + 4*x, fpixels_desrgb);
+                }
+            }
+            else
+            {
+                for (x = 0; x < num_pixels; ++x)
+                {
+                    int pixel_index = x*channels;
+
+                    for (n = 0; n < num_nonalpha; n++)
+                    {
+                        int index = pixel_index + nonalpha[n];
+                        (cast(ubyte*)output_buffer)[index] = stbir__linear_to_srgb_uchar(encode_buffer[index]);
+                    }
+
+                    if (!(stbir_info.flags & STBIR_FLAG_ALPHA_USES_COLORSPACE))
+                        (cast(ubyte*)output_buffer)[pixel_index + alpha_channel] = STBIR__ENCODE_LINEAR8(encode_buffer[pixel_index+alpha_channel]);
+                }
             }
             break;
+        }
 
         case STBIR__DECODE(STBIR_TYPE_UINT16, STBIR_COLORSPACE_LINEAR):
             for (x=0; x < num_pixels; ++x)
