@@ -1275,6 +1275,23 @@ static void stbir__decode_scanline(stbir__info* stbir_info, int n)
                 decode_buffer[decode_pixel_index] = depth / stbir__max_uint16_as_float;
             }
         }
+        else if (channels == 4 && edge_horizontal == STBIR_EDGE_CLAMP)
+        {
+            __m128i zero = _mm_setzero_si128();
+            __m128 normalizingFactor = _mm_set1_ps(1 / 65535.0f);
+
+            for (; x < max_x; x++)
+            {
+                int decode_pixel_index = x * channels;
+                int input_pixel_index = stbir__edge_wrap(edge_horizontal, x, input_w) * channels;
+
+                // load four values at once
+                __m128i mmPixel = _mm_loadu_si64( (cast(const(ushort)*)input_data) + input_pixel_index );
+                mmPixel = _mm_unpacklo_epi16(mmPixel, zero); // convert to 32-bit
+                __m128 fPixel = _mm_cvtepi32_ps(mmPixel) * normalizingFactor;
+                _mm_storeu_ps(&decode_buffer[decode_pixel_index], fPixel);
+            }
+        }
         else
         {
             for (; x < max_x; x++)
