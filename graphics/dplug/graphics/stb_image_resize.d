@@ -1264,14 +1264,32 @@ static void stbir__decode_scanline(stbir__info* stbir_info, int n)
         break;
 
     case STBIR__DECODE(STBIR_TYPE_UINT16, STBIR_COLORSPACE_LINEAR):
-        for (; x < max_x; x++)
+    {
+        if (channels == 1 && edge_horizontal == STBIR_EDGE_CLAMP)
         {
-            int decode_pixel_index = x * channels;
-            int input_pixel_index = stbir__edge_wrap(edge_horizontal, x, input_w) * channels;
-            for (c = 0; c < channels; c++)
-                decode_buffer[decode_pixel_index + c] = (cast(float)(cast(const(ushort)*)input_data)[input_pixel_index + c]) / stbir__max_uint16_as_float;
+            for (; x < max_x; x++)
+            {
+                int decode_pixel_index = x;
+                int input_pixel_index = stbir__edge_wrap(STBIR_EDGE_CLAMP, x, input_w) * channels;
+                ushort depth = (cast(const(ushort)*)input_data)[input_pixel_index];
+                decode_buffer[decode_pixel_index] = depth / stbir__max_uint16_as_float;
+            }
+        }
+        else
+        {
+            for (; x < max_x; x++)
+            {
+                int decode_pixel_index = x * channels;
+                int input_pixel_index = stbir__edge_wrap(edge_horizontal, x, input_w) * channels;
+                for (c = 0; c < channels; c++)
+                {
+                    ushort depth = (cast(const(ushort)*)input_data)[input_pixel_index + c];
+                    decode_buffer[decode_pixel_index + c] = depth / stbir__max_uint16_as_float;
+                }
+            }
         }
         break;
+    }
 
     case STBIR__DECODE(STBIR_TYPE_UINT16, STBIR_COLORSPACE_SRGB):
         for (; x < max_x; x++)
