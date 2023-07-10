@@ -195,6 +195,10 @@ nothrow:
     /// Amount of static emissive energy to add when mouse is over, but not dragging.
     @ScriptProperty ubyte emissiveDragged = 0;
 
+    /// Only used in non-legacy mode (BADAMA_16 format). The texture is oversampled on resize, so that rotated image is sharper.
+    /// This costs more CPU and memory, for better visual results.
+    @ScriptProperty float oversampleTexture = 1.0f;
+
     /// `knobImage` should have been loaded with `loadKnobImage`.
     /// Warning: `knobImage` must outlive the knob, it is borrowed.
     this(UIContext context, KnobImage knobImage, Parameter parameter)
@@ -228,6 +232,9 @@ nothrow:
         _materialTexture.destroyFree();
     }
 
+
+    enum numMipLevels = 1;
+
     override void reflow()
     {
         int numTiles = _knobImage.type == KnobImageType.ABDME_8 ? 5 : 3;
@@ -237,17 +244,15 @@ nothrow:
         int SH = _knobImage.image.width / numTiles;
         assert(_knobImage.image.height == SH);
 
-        // Things are resized towards DW x DH textures.
-        int DW = position.width;
-        int DH = position.height; 
-
-        enum numMipLevels = 1;
-
         auto resizer = context.globalImageResizer;
 
        
         if (_knobImage.isLegacy())
         {
+            // Things are resized towards DW x DH textures.
+            int DW = position.width;
+            int DH = position.height; 
+
             _tempBuf.size(SH, SH);
             _tempBufRGBA.size(SH, SH);
             _alphaTexture.size(numMipLevels, DW, DH);
@@ -322,7 +327,35 @@ nothrow:
         }
         else
         {
-            _resizedImage.size(numMipLevels, DW*3, DH);
+            lazyResizeBADAMA16(resizer);
+        }
+    }
+
+    void lazyResizeBADAMA16(ImageResizer* resizer)
+    {
+        // TODO: might as well keep the source pixel ratio
+        int textureWidth = cast(int)(0.5f + oversampleTexture * position.width);
+        int textureHeight = cast(int)(0.5f + oversampleTexture * position.height);
+
+        // resize needed?
+        if (textureWidth != _textureWidth || textureHeight != _textureHeight)
+        {
+            ImageResizer spareResizer; // if global resize not available, use one on stack.
+
+            if (resizer is null)
+            {
+                resizer = &spareResizer;
+            }
+
+            _textureWidth = textureWidth;
+            _textureHeight = textureHeight;
+
+            int numTiles = 3;
+            int DW = _textureWidth;
+            int DH = _textureHeight;
+            int SH = _knobImage.image.width / numTiles;
+
+            _resizedImage.size(numMipLevels, DW*numTiles, DH);
 
             ImageRef!RGBA16 input = _knobImage.image.getImageRef!RGBA16();
             ImageRef!RGBA16 resized = _resizedImage.levels[0].toRef;
@@ -339,16 +372,23 @@ nothrow:
         }
     }
 
+
+
     override void drawKnob(ImageRef!RGBA diffuseMap, ImageRef!L16 depthMap, ImageRef!RGBA materialMap, box2i[] dirtyRects)
     {
+        bool legacy = _knobImage.isLegacy();
+
+        // This is just to enable scripting of `oversampleTe5xture`.
+        if (!legacy)
+            lazyResizeBADAMA16(null);
+
         float radius = getRadius();
         vec2f center = getCenter();
         float valueAngle = getValueAngle() + PI_2;
         float cosa = cos(valueAngle);
         float sina = sin(valueAngle);
 
-        int W = position.width;
-        int H = position.height; 
+
 
         // Note: slightly incorrect, since our resize in reflow doesn't exactly preserve aspect-ratio
         vec2f rotate(vec2f v) pure nothrow @nogc
@@ -369,22 +409,24 @@ nothrow:
             ImageRef!RGBA cMaterial = materialMap.cropImageRef(dirtyRect);
             ImageRef!L16 cDepth     = depthMap.cropImageRef(dirtyRect);
 
-            // Basically we'll find a coordinate in the knob image for each pixel in the dirtyRect 
-
-            // source center 
-            vec2f sourceCenter = vec2f(W*0.5f, H*0.5f);
-
-            bool legacy = _knobImage.isLegacy();
+            // Basically we'll find a coordinate in the knob image for each pixel in the dirtyRect         
 
             enum float renormDepth = 1.0 / 65535.0f;
             for (int y = 0; y < dirtyRect.height; ++y)
             {
+
+
                 RGBA* outDiffuse = cDiffuse.scanline(y).ptr;
                 L16* outDepth = cDepth.scanline(y).ptr;
                 RGBA* outMaterial = cMaterial.scanline(y).ptr;
 
                 if (legacy)
                 {
+                    // source center 
+                    int W = position.width;
+                    int H = position.height; 
+                    vec2f sourceCenter = vec2f(W*0.5f, H*0.5f);
+
                     for (int x = 0; x < dirtyRect.width; ++x)
                     {
                         vec2f destPos = vec2f(x + dirtyRect.min.x, y + dirtyRect.min.y);
@@ -450,16 +492,23 @@ nothrow:
                 }
                 else
                 {
+                    int DW = _textureWidth;
+                    int DH = _textureHeight;
+
+                    vec2f sourceCenter = vec2f(DW*0.5f, DH*0.5f);
+
+
                     // non-legacy drawing builds upon the fact the texture will be alpha-premul
                     for (int x = 0; x < dirtyRect.width; ++x)
                     {
                         vec2f destPos = vec2f(x + dirtyRect.min.x, y + dirtyRect.min.y);
-                        vec2f sourcePos = sourceCenter + rotate(destPos - center);
+
+                        vec2f sourcePos = sourceCenter + rotate(destPos - center) * oversampleTexture;
 
                         // Legacy textures have 
 
-                        if ( (sourcePos.x >= 0.5f) && (sourcePos.x < (H - 0.5f))
-                                &&  (sourcePos.y >=  0.5f) && (sourcePos.y < (H - 0.5f)) )
+                        if ( (sourcePos.x >= 0.5f) && (sourcePos.x < (DW - 0.5f))
+                                &&  (sourcePos.y >=  0.5f) && (sourcePos.y < (DH - 0.5f)) )
                         {
                             // Get the alpha-premultiplied samples in a single texture.
 
@@ -481,7 +530,7 @@ nothrow:
 
                             if (drawToMaterial)
                             {
-                                vec4f fMaterial = _resizedImage.linearSample(0, sourcePos.x + W*2, sourcePos.y);
+                                vec4f fMaterial = _resizedImage.linearSample(0, sourcePos.x + DW*2, sourcePos.y);
                                 if (fMaterial.a > 0)
                                 {
                                     // Convert from 16-bit to 8-bit
@@ -497,7 +546,7 @@ nothrow:
                             
                             if (drawToDepth)
                             {
-                                vec4f fDepth = _resizedImage.linearSample(0, sourcePos.x + W, sourcePos.y);
+                                vec4f fDepth = _resizedImage.linearSample(0, sourcePos.x + DW, sourcePos.y);
                                 if (fDepth.a > 0)
                                 {
                                     // Keep it in 16-bit
@@ -531,8 +580,10 @@ nothrow:
     // Note: mipmaps are used here, only for the linear sampling ability!
 
     // <Only used in BADAMA_16 format>
-    // TODO: a single resized RGBA16 image
     Mipmap!RGBA16 _resizedImage;
+    int _textureWidth = -1; 
+    int _textureHeight = -1;
+    float _currentOversampling;
     // </Only used in BADAMA_16 format>
 
     // <Only used in ABDME_8 format>
