@@ -160,6 +160,154 @@ nothrow:
         return levelN * (1 - flevel) + levelNp1 * flevel;
     }
 
+    /// Cubic filtering mode, using a Catmull-Rom bicubic filter.
+    /// Integer level, spatial linear interpolation.
+    /// x and y are in base level coordinates (top-left pixel is on (0.5, 0.5) coordinates).
+    /// Clamped to borders.
+    /// Reference: https://registry.khronos.org/OpenGL/extensions/IMG/IMG_texture_filter_cubic.txt
+    auto cubicSample(int level, float x, float y) nothrow @nogc 
+    {
+        if (level < 0)
+            level = 0;
+        int numLevels = cast(int)levels.length;
+        if (level >= numLevels)
+            level = numLevels - 1;
+
+        OwnedImage!COLOR image = levels[level];
+
+        static immutable float[14] factors = [ 1.0f, 0.5f, 0.25f, 0.125f,
+                                               0.0625f, 0.03125f, 0.015625f, 0.0078125f,
+        0.00390625f, 0.001953125f, 0.0009765625f, 0.00048828125f,
+        0.000244140625f, 0.0001220703125f];
+
+        float divider = factors[level];
+        x = x * divider - 0.5f;
+        y = y * divider - 0.5f;
+
+        const int minX = 0;
+        const int minY = 0;
+        const int maxX = image.w-1;
+        const int maxY = image.h-1;
+
+        int wrapX(float f)
+        {
+            int r = cast(int)f;
+            if (r < minX) r = minX;
+            if (r > maxX) r = maxX;
+            return r;
+        }
+
+        int wrapY(float f)
+        {
+            int r = cast(int)f;
+            if (r < minY) r = minY;
+            if (r > maxY) r = maxY;
+            return r;
+        }
+
+        int i0 = wrapX(x - 1.0f);
+        int i1 = wrapX(x - 0.0f);
+        int i2 = wrapX(x + 1.0f);
+        int i3 = wrapX(x + 2.0f);
+
+        int j0 = wrapY(y - 1.0f);        
+        int j1 = wrapY(y - 0.0f);        
+        int j2 = wrapY(y + 1.0f);        
+        int j3 = wrapY(y + 2.0f);
+
+        float a = x + 1.0f;
+        float b = y + 1.0f;
+        a = a - cast(int)(a);
+        b = b - cast(int)(b);
+        assert(a >= -0.01 && a <= 1.01);
+        assert(b >= -0.01 && b <= 1.01);
+
+        COLOR*[4] L = void;
+        L[0] = image.scanlinePtr(j0);
+        L[1] = image.scanlinePtr(j1);
+        L[2] = image.scanlinePtr(j2);
+        L[3] = image.scanlinePtr(j3);
+
+        // PERF: use __m128 
+
+       
+
+        static if (is(COLOR == L16))
+        {
+            static float clamp(float a)
+            {
+                if (a < 0) a = 0;
+                if (a > 65535) a = 65535;
+                return a;
+            }
+            static cubicInterp(float t, float x0, float x1, float x2, float x3) pure nothrow @nogc
+            {
+                // PERF: doesn't sound that great???
+                return x1 
+                    + t * ((-0.5f * x0) + (0.5f * x2))
+                    + t * t * (x0 - (2.5f * x1) + (2.0f * x2) - (0.5f * x3))
+                    + t * t * t * ((-0.5f * x0) + (1.5f * x1) - (1.5f * x2) + 0.5f * x3);
+            }
+
+            float[4] R;
+            for (int row = 0; row < 4; ++row)
+            {
+                COLOR* pRow = L[row];
+                COLOR ri0jn = pRow[i0];
+                COLOR ri1jn = pRow[i1];
+                COLOR ri2jn = pRow[i2];
+                COLOR ri3jn = pRow[i3];
+                float A = ri0jn.l;
+                float B = ri1jn.l;
+                float C = ri2jn.l;
+                float D = ri3jn.l;
+                R[row] = cubicInterp(a, A, B, C, D);
+            }
+            return clamp(cubicInterp(b, R[0], R[1], R[2], R[3]));
+        }
+        else
+        {
+            // PERF: this is awful
+            static vec4f clamp(vec4f a)
+            {
+                if (a[0] < 0) a[0] = 0;
+                if (a[1] < 0) a[1] = 0;
+                if (a[2] < 0) a[2] = 0;
+                if (a[3] < 0) a[3] = 0;
+                if (a[0] > 65535) a[0] = 65535;
+                if (a[1] > 65535) a[1] = 65535;
+                if (a[2] > 65535) a[2] = 65535;
+                if (a[3] > 65535) a[3] = 65535;
+                return a;
+            }
+
+            static cubicInterp(float t, vec4f x0, vec4f x1, vec4f x2, vec4f x3) pure nothrow @nogc
+            {
+                // PERF: doesn't sound that great???
+               return x1 
+                    + t * ((-0.5f * x0) + (0.5f * x2))
+                    + t * t * (x0 - (2.5f * x1) + (2.0f * x2) - (0.5f * x3))
+                    + t * t * t * ((-0.5f * x0) + (1.5f * x1) - (1.5f * x2) + 0.5f * x3);
+            }
+            vec4f[4] R = void;
+            for (int row = 0; row < 4; ++row)
+            {
+                COLOR* pRow = L[row];
+                COLOR ri0jn = pRow[i0];
+                COLOR ri1jn = pRow[i1];
+                COLOR ri2jn = pRow[i2];
+                COLOR ri3jn = pRow[i3];
+            
+                vec4f A = vec4f(ri0jn.r, ri0jn.g, ri0jn.b, ri0jn.a);
+                vec4f B = vec4f(ri1jn.r, ri1jn.g, ri1jn.b, ri1jn.a);
+                vec4f C = vec4f(ri2jn.r, ri2jn.g, ri2jn.b, ri2jn.a);
+                vec4f D = vec4f(ri3jn.r, ri3jn.g, ri3jn.b, ri3jn.a);
+                R[row] = cubicInterp(a, A, B, C, D);
+            }
+            return clamp(cubicInterp(b, R[0], R[1], R[2], R[3]));
+        }
+    }
+
 
     /// Interpolates a color.  Integer level, spatial linear interpolation.
     /// x and y are in base level coordinates (top-left pixel is on (0.5, 0.5) coordinates).
