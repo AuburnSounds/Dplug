@@ -505,7 +505,6 @@ nothrow:
 
                         vec2f sourcePos = sourceCenter + rotate(destPos - center) * oversampleTexture;
 
-                        // Legacy textures have 
 
                         if ( (sourcePos.x >= 0.5f) && (sourcePos.x < (DW - 0.5f))
                                 &&  (sourcePos.y >=  0.5f) && (sourcePos.y < (DH - 0.5f)) )
@@ -581,9 +580,8 @@ nothrow:
 
     // <Only used in BADAMA_16 format>
     Mipmap!RGBA16 _resizedImage;
-    int _textureWidth = -1; 
+    int _textureWidth = -1;  // texture size is: 3*_textureWidth, _textureHeight with _textureWidth == _textureHeight being equal.
     int _textureHeight = -1;
-    float _currentOversampling;
     // </Only used in BADAMA_16 format>
 
     // <Only used in ABDME_8 format>
