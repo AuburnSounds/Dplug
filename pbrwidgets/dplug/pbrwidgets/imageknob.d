@@ -32,6 +32,12 @@ enum KnobImageType
     BADAMA_16
 }
 
+enum KnobInterpolationType
+{
+    linear, 
+    cubic
+}
+
 /// Type of image being used for Knob graphics.
 /// It used to be a one level deep Mipmap (ie. a flat image with sampling capabilities).
 /// It is now a regular `OwnedImage` since it is resized in `reflow()`.
@@ -197,7 +203,17 @@ nothrow:
 
     /// Only used in non-legacy mode (BADAMA_16 format). The texture is oversampled on resize, so that rotated image is sharper.
     /// This costs more CPU and memory, for better visual results.
+    /// But this is also dangerous and not always better! Try it on a big screen preferably.
     @ScriptProperty float oversampleTexture = 1.0f;
+
+    /// Texture interpolaton used, only for non-legacy mode (BADAMA_16 format). Try it on a big screen preferably.
+    @ScriptProperty KnobInterpolationType diffuseInterpolation = KnobInterpolationType.linear;
+
+    ///ditto
+    @ScriptProperty KnobInterpolationType depthInterpolation = KnobInterpolationType.linear;
+
+    ///ditto
+    @ScriptProperty KnobInterpolationType materialInterpolation = KnobInterpolationType.linear;
 
     /// `knobImage` should have been loaded with `loadKnobImage`.
     /// Warning: `knobImage` must outlive the knob, it is borrowed.
@@ -513,7 +529,11 @@ nothrow:
 
                             if (drawToDiffuse)
                             {
-                                vec4f fDiffuse  = _resizedImage.linearSample(0, sourcePos.x, sourcePos.y);
+                                vec4f fDiffuse;
+                                if (diffuseInterpolation == KnobInterpolationType.linear)
+                                    fDiffuse = _resizedImage.linearSample(0, sourcePos.x, sourcePos.y);
+                                else
+                                    fDiffuse = _resizedImage.cubicSample(0, sourcePos.x, sourcePos.y);
                                 if (fDiffuse.a > 0)
                                 {
                                     // Convert from 16-bit to 8-bit
@@ -529,7 +549,12 @@ nothrow:
 
                             if (drawToMaterial)
                             {
-                                vec4f fMaterial = _resizedImage.linearSample(0, sourcePos.x + DW*2, sourcePos.y);
+                                vec4f fMaterial;
+                                if (materialInterpolation == KnobInterpolationType.linear)
+                                    fMaterial = _resizedImage.linearSample(0, sourcePos.x + DW*2, sourcePos.y);
+                                else
+                                    fMaterial = _resizedImage.cubicSample(0, sourcePos.x + DW*2, sourcePos.y);
+
                                 if (fMaterial.a > 0)
                                 {
                                     // Convert from 16-bit to 8-bit
@@ -545,7 +570,12 @@ nothrow:
                             
                             if (drawToDepth)
                             {
-                                vec4f fDepth = _resizedImage.linearSample(0, sourcePos.x + DW, sourcePos.y);
+                                vec4f fDepth;
+                                if (depthInterpolation == KnobInterpolationType.linear)
+                                    fDepth = _resizedImage.linearSample(0, sourcePos.x + DW, sourcePos.y);
+                                else
+                                    fDepth = _resizedImage.cubicSample(0, sourcePos.x + DW, sourcePos.y);
+
                                 if (fDepth.a > 0)
                                 {
                                     // Keep it in 16-bit
