@@ -14,8 +14,7 @@ import dplug.graphics.image;
 import dplug.core.nogc;
 import dplug.core.vec;
 
-
-import inteli.emmintrin;
+import inteli.smmintrin;
 
 version( D_InlineAsm_X86 )
 {
@@ -184,37 +183,21 @@ nothrow:
         x = x * divider - 0.5f;
         y = y * divider - 0.5f;
 
-        const int minX = 0;
-        const int minY = 0;
-        const int maxX = image.w-1;
-        const int maxY = image.h-1;
+        __m128 mm0123 = _mm_setr_ps(-1, 0, 1, 2);
+        __m128i x_indices = _mm_cvttps_epi32( _mm_set1_ps(x) + mm0123);
+        __m128i y_indices = _mm_cvttps_epi32( _mm_set1_ps(y) + mm0123);
+        __m128i zero = _mm_setzero_si128();
+        x_indices = _mm_max_epi32(x_indices, zero);
+        y_indices = _mm_max_epi32(y_indices, zero);
+        x_indices = _mm_min_epi32(x_indices, _mm_set1_epi32(image.w-1));
+        y_indices = _mm_min_epi32(y_indices, _mm_set1_epi32(image.h-1));
 
-        int wrapX(float f)
-        {
-            int r = cast(int)f;
-            if (r < minX) r = minX;
-            if (r > maxX) r = maxX;
-            return r;
-        }
+        int i0 = x_indices.array[0];
+        int i1 = x_indices.array[1];
+        int i2 = x_indices.array[2];
+        int i3 = x_indices.array[3];
 
-        int wrapY(float f)
-        {
-            int r = cast(int)f;
-            if (r < minY) r = minY;
-            if (r > maxY) r = maxY;
-            return r;
-        }
-
-        int i0 = wrapX(x - 1.0f);
-        int i1 = wrapX(x - 0.0f);
-        int i2 = wrapX(x + 1.0f);
-        int i3 = wrapX(x + 2.0f);
-
-        int j0 = wrapY(y - 1.0f);        
-        int j1 = wrapY(y - 0.0f);        
-        int j2 = wrapY(y + 1.0f);        
-        int j3 = wrapY(y + 2.0f);
-
+        // fractional part
         float a = x + 1.0f;
         float b = y + 1.0f;
         a = a - cast(int)(a);
@@ -223,14 +206,10 @@ nothrow:
         assert(b >= -0.01 && b <= 1.01);
 
         COLOR*[4] L = void;
-        L[0] = image.scanlinePtr(j0);
-        L[1] = image.scanlinePtr(j1);
-        L[2] = image.scanlinePtr(j2);
-        L[3] = image.scanlinePtr(j3);
-
-        // PERF: use __m128 
-
-       
+        L[0] = image.scanlinePtr(y_indices.array[0]);
+        L[1] = image.scanlinePtr(y_indices.array[1]);
+        L[2] = image.scanlinePtr(y_indices.array[2]);
+        L[3] = image.scanlinePtr(y_indices.array[3]);
 
         static if (is(COLOR == L16))
         {
@@ -267,7 +246,7 @@ nothrow:
         }
         else
         {
-            // PERF: this is awful
+            // actually optimized ok by LDC
             static vec4f clamp(vec4f a)
             {
                 if (a[0] < 0) a[0] = 0;
@@ -284,10 +263,10 @@ nothrow:
             static cubicInterp(float t, vec4f x0, vec4f x1, vec4f x2, vec4f x3) pure nothrow @nogc
             {
                 // PERF: doesn't sound that great???
-               return x1 
-                    + t * ((-0.5f * x0) + (0.5f * x2))
-                    + t * t * (x0 - (2.5f * x1) + (2.0f * x2) - (0.5f * x3))
-                    + t * t * t * ((-0.5f * x0) + (1.5f * x1) - (1.5f * x2) + 0.5f * x3);
+                return x1 
+                     + t * ((-0.5f * x0) + (0.5f * x2))
+                     + t * t * (x0 - (2.5f * x1) + (2.0f * x2) - (0.5f * x3))
+                     + t * t * t * ((-0.5f * x0) + (1.5f * x1) - (1.5f * x2) + 0.5f * x3);
             }
             vec4f[4] R = void;
             for (int row = 0; row < 4; ++row)
@@ -297,7 +276,6 @@ nothrow:
                 COLOR ri1jn = pRow[i1];
                 COLOR ri2jn = pRow[i2];
                 COLOR ri3jn = pRow[i3];
-            
                 vec4f A = vec4f(ri0jn.r, ri0jn.g, ri0jn.b, ri0jn.a);
                 vec4f B = vec4f(ri1jn.r, ri1jn.g, ri1jn.b, ri1jn.a);
                 vec4f C = vec4f(ri2jn.r, ri2jn.g, ri2jn.b, ri2jn.a);
