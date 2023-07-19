@@ -190,9 +190,9 @@ int main(string[] args)
             }
 
             if (abs(latencyReported - latencyMeasured) <= 0.5f)
-                cwritefln("  Reported %s samples (%.3f ms), measured %s samples => OK".lgreen, latencyReported, latencyReportedMs, latencyMeasured);
+                cwritefln("  Reported %s samples (%.3f ms), measured %s samples =&gt; OK".lgreen, latencyReported, latencyReportedMs, latencyMeasured);
             else
-                cwritefln("  Reported %s samples (%.3f ms), measured %s samples => ERROR".lred, latencyReported, latencyReportedMs, latencyMeasured);
+                cwritefln("  Reported %s samples (%.3f ms), measured %s samples =&gt; ERROR".lred, latencyReported, latencyReportedMs, latencyMeasured);
             writeln;
         }
         host.close();
