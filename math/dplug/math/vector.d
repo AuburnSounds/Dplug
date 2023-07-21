@@ -14,11 +14,11 @@
  */
 module dplug.math.vector;
 
+
 import std.traits,
        std.math,
        std.conv,
-       std.array,
-       std.string;
+       std.array;
 
 import inteli.emmintrin;
 
@@ -161,13 +161,10 @@ nothrow:
             return v.ptr;
         }
 
-        /// Converts to a pretty string.
-        string toString() const nothrow
+        // Removed since that depended upon `std.string`.
+        deprecated("Use sprintf instead") string toString() const nothrow
         {
-            try
-                return format("%s", v);
-            catch (Exception e)
-                assert(false); // should not happen since format is right
+            return "<vector>";
         }
 
         @nogc bool opEquals(U)(U other) pure const nothrow
