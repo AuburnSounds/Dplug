@@ -332,23 +332,6 @@ else{                                                 /* !XTHREADS              
 
 void Xfree(void* ptr){ free(ptr); }
 
-/*
- * Note that some machines do not return a valid pointer for malloc(0), in
- * which case we provide an alternate under the control of the
- * define MALLOC_0_RETURNS_NULL.  This is necessary because some
- * Xlib code expects malloc(0) to return a valid pointer to storage.
- */
-version(MALLOC_0_RETURNS_NULL){
-    void* Xmalloc( size_t size )            { return malloc( size == 0 ? 1 : size );                        }
-    void* Xrealloc( void* ptr, size_t size) { const void* Xrealloc = realloc(ptr, (size == 0 ? 1 : size));  }
-    void* Xcalloc( int nelem, size_t elsize){ const void* calloc = ((nelem == 0 ? 1 : nelem), elsize);      }
-}
-else{
-    void* Xmalloc( size_t size)             { return malloc(size);          }
-    void* Xrealloc( void* ptr, size_t size) { return realloc(ptr, size);    }
-    void* Xcalloc( int nelem, size_t elsize){ return calloc(nelem, elsize); }
-}
-
 const int       LOCKED          = 1;
 const int       UNLOCKED        = 0;
 
