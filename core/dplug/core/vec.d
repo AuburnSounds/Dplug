@@ -707,9 +707,18 @@ nothrow:
     {
         size_t sizeNeeded =  cast(size_t)_base; // since it was fed 0 at start.
 
-        // the merged allocation needs to have the largest expected alignment, else the size could depend on the hazards
-        // of the allocation. With maximum alignment, padding is the same so long as areas have smaller or equal alignment requirements.
-        _allocation = cast(ubyte*) _mm_realloc(_allocation, sizeNeeded, maxExpectedAlignment);
+        if (sizeNeeded == 0)
+        {
+            // If no bytes are requested, it means no buffer were requested, or only with zero size.
+            // We will return a null pointer in that case, since accessing them would be illegal anyway.
+            _allocation = null;
+        }
+        else
+        {
+            // the merged allocation needs to have the largest expected alignment, else the size could depend on the hazards
+            // of the allocation. With maximum alignment, padding is the same so long as areas have smaller or equal alignment requirements.
+            _allocation = cast(ubyte*) _mm_realloc(_allocation, sizeNeeded, maxExpectedAlignment);
+        }
 
         // So that the next layout call points to the right area.
         _base = _allocation;
@@ -717,9 +726,12 @@ nothrow:
 
     ~this()
     {
-        _allocation = cast(ubyte*) _mm_realloc(_allocation, 0, maxExpectedAlignment);
+        if (_allocation != null)
+        {
+            _mm_free(_allocation);
+            _allocation = null;
+        }
     }
-
 
 private:
 
@@ -768,4 +780,13 @@ unittest
     s.initialize(17);
     s._coeffs[0..17] = 1.0f;
     s._intermediateBuf[0..17] = 1.0f;
+}
+
+// Should be valid to allocate nothing with a MergedAllocation.
+unittest
+{
+    MergedAllocation ma;
+    ma.start();
+    ma.allocate();
+    assert(ma._allocation == null);
 }
