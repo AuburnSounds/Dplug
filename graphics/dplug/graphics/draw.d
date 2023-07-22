@@ -1,5 +1,6 @@
 /**
 Drawing functions. Port of ae.utils.graphics.
+In many many cases, you should use dplug:canvas instead.
 
 License:
     This Source Code Form is subject to the terms of
@@ -351,7 +352,7 @@ mixin template FixMath(ubyte coordinateBitsParam = 16)
 
 // ************************************************************************************************************************************
 
-void whiteNoise(V)(V v)
+deprecated("This will be removed in Dplug v14") void whiteNoise(V)(V v)
     if (isWritableView!V)
 {
     import std.random;
@@ -571,7 +572,7 @@ void aaFillRect(bool CHECKED=true, F:float, V, COLOR)(auto ref V v, F x1, F y1, 
     v.fillRect!CHECKED(x1i+1, y1i+1, x2i, y2i, color);
 }
 
-void aaLine(bool CHECKED=true, V, COLOR)(auto ref V v, float x1, float y1, float x2, float y2, COLOR color)
+deprecated("This will be removed in Dplug v14") void aaLine(bool CHECKED=true, V, COLOR)(auto ref V v, float x1, float y1, float x2, float y2, COLOR color)
     if (isWritableView!V && is(COLOR : ViewColor!V))
 {
     // Simplistic straight-forward implementation. FUTURE: optimize
@@ -583,7 +584,7 @@ void aaLine(bool CHECKED=true, V, COLOR)(auto ref V v, float x1, float y1, float
             v.aaPutPixel!CHECKED(itpl(x1, x2, y, y1, y2), y, color);
 }
 
-void aaLine(bool CHECKED=true, V, COLOR, frac)(auto ref V v, float x1, float y1, float x2, float y2, COLOR color, frac alpha)
+deprecated("This will be removed in Dplug v14") void aaLine(bool CHECKED=true, V, COLOR, frac)(auto ref V v, float x1, float y1, float x2, float y2, COLOR color, frac alpha)
     if (isWritableView!V && is(COLOR : ViewColor!V))
 {
     // ditto
@@ -608,9 +609,9 @@ unittest
     i.pixels = rgb.ptr;
 
     auto c = RGB(1, 2, 3);
-    i.whiteNoise();
-    i.aaLine(10, 10, 20, 20, c);
-    i.aaLine(10f, 10f, 20f, 20f, c, 100);
+    //i.whiteNoise(); deprecated
+    //i.aaLine(10, 10, 20, 20, c);
+    //i.aaLine(10f, 10f, 20f, 20f, c, 100);
     i.rect(10, 10, 20, 20, c);
     i.fillRect(10, 10, 20, 20, c);
     i.aaFillRect(10, 10, 20, 20, c);

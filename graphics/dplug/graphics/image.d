@@ -13,13 +13,6 @@ License:
 
 module dplug.graphics.image;
 
-
-import std.conv : to;
-import std.string : format;
-import std.functional;
-import std.typetuple;
-import std.algorithm.mutation: swap;
-import std.math;
 import dplug.core.math;
 import dplug.core.vec;
 import dplug.core.nogc;
@@ -224,10 +217,10 @@ void copyPixels(SRC, COLOR)(auto ref SRC src, COLOR[] dst)
 // Workaround for https://d.puremagic.com/issues/show_bug.cgi?id=12433
 
 struct InputColor {}
-alias GetInputColor(COLOR, INPUT) = Select!(is(COLOR == InputColor), INPUT, COLOR);
+deprecated("This will be removed in Dplug v14") alias GetInputColor(COLOR, INPUT) = Select!(is(COLOR == InputColor), INPUT, COLOR);
 
 struct TargetColor {}
-enum isTargetColor(C, TARGET) = is(C == TargetColor) || is(C == ViewColor!TARGET);
+deprecated("This will be removed in Dplug v14") enum isTargetColor(C, TARGET) = is(C == TargetColor) || is(C == ViewColor!TARGET);
 
 // ***************************************************************************
 

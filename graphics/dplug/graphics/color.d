@@ -13,9 +13,7 @@ License:
 
 module dplug.graphics.color;
 
-import std.traits;
-import std.math;
-import std.algorithm.comparison : min, max;
+import std.traits: isSigned, isNumeric;
 
 import inteli.emmintrin;
 
@@ -452,25 +450,13 @@ template ExpandIntegerType(T, size_t bits)
 		alias ExpandIntegerType = ExpandNumericType!(T, bits);
 }
 
-alias ExpandChannelType(COLOR, int BYTES) =
+deprecated("This will be removed in Dplug v14") alias ExpandChannelType(COLOR, int BYTES) =
 	ChangeChannelType!(COLOR,
 		ExpandNumericType!(ChannelType!COLOR, BYTES * 8));
 
-alias temp = ExpandChannelType!(RGB, 1);
+deprecated("This will be removed in Dplug v14") alias temp = ExpandChannelType!(RGB, 1);
 //static assert(is(ExpandChannelType!(RGB, 1) == RGB16));
 
-unittest
-{
-	alias RGBf = ChangeChannelType!(RGB, float);
-	auto rgb = RGB(1, 2, 3);
-	import std.conv : to;
-	auto rgbf = rgb.to!RGBf();
-	assert(rgbf.r == 1f);
-	assert(rgbf.g == 2f);
-	assert(rgbf.b == 3f);
-}
-
-// ***************************************************************************
 
 RGBA blendColor(RGBA fg, RGBA bg, ubyte alpha) pure nothrow @nogc
 {
