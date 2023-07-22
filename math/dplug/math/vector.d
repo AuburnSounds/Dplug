@@ -17,7 +17,6 @@ module dplug.math.vector;
 
 import std.traits,
        std.math,
-       std.conv,
        std.array;
 
 import inteli.emmintrin;
@@ -562,31 +561,6 @@ alias vec4!int    vec4i;  ///
 alias vec4!float  vec4f;  ///
 alias vec4!double vec4d;  ///
 
-private
-{
-    static string generateLoopCode(string formatString, int N)() pure nothrow
-    {
-        string result;
-        for (int i = 0; i < N; ++i)
-        {
-            string index = ctIntToString(i);
-            // replace all @ by indices
-            result ~= formatString.replace("@", index);
-        }
-        return result;
-    }
-
-    // Speed-up CTFE conversions
-    static string ctIntToString(int n) pure nothrow
-    {
-        static immutable string[16] table = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
-        if (n < 10)
-            return table[n];
-        else
-            return to!string(n);
-    }
-}
-
 
 /// Element-wise minimum.
 @nogc Vector!(T, N) minByElem(T, int N)(const Vector!(T, N) a, const Vector!(T, N) b) pure nothrow
@@ -791,4 +765,65 @@ private:
     {
         return 1 / sqrt(x);
     }
+}
+
+
+package
+{
+    // This generates small loops for Vector, Matrix, and Box.
+    // Time has shown such sort of manually unrolled code works best on both DMD and LDC.
+
+    static string generateLoopCode(string formatString, int N)() pure nothrow
+    {
+        string result;
+        for (int i = 0; i < N; ++i)
+        {
+            string index = ctIntToString(i);
+            // replace all @ by indices
+
+            int after = 0;
+            int cur = 0;
+            for (; cur < formatString.length; ++cur)
+            {
+                char ch = formatString[cur];
+                if (ch == '@')
+                {
+                    if (cur > after)
+                        result ~= formatString[after..cur];
+                    result ~= index;
+                    after = cur+1;
+                }
+            }
+            if (cur > after)
+                result ~= formatString[after..cur];
+        }
+        return result;
+    }
+
+    // Speed-up CTFE conversions, replacement for std.conv
+    // Doesn't do the negatives.
+    static string ctIntToString(int n) pure nothrow
+    {
+        static immutable string[16] table = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+        if (n < 10)
+            return table[n];
+        else
+        {
+            char[10] r;
+            for (int k = 0; k < 10; ++k)
+            {
+                r[9-k] = cast(char)('0' + n % 10);
+                n /= 10;
+                if (n == 0)
+                    return r[9-k..$].idup;
+            }
+            return r.idup; 
+        }
+    }
+}
+
+unittest
+{
+    assert(ctIntToString(132) == "132");
+    assert(ctIntToString(2147483647) == "2147483647");
 }

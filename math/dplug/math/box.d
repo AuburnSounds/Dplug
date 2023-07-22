@@ -12,9 +12,7 @@
 module dplug.math.box;
 
 import std.math,
-       std.traits,
-       std.conv,
-       std.string;
+       std.traits;
 
 import dplug.math.vector;
 
@@ -689,27 +687,3 @@ unittest
     static assert(is(DimensionType!box3d == double));
 }
 
-private
-{
-    static string generateLoopCode(string formatString, int N)() pure nothrow
-    {
-        string result;
-        for (int i = 0; i < N; ++i)
-        {
-            string index = ctIntToString(i);
-            // replace all @ by indices
-            result ~= formatString.replace("@", index);
-        }
-        return result;
-    }
-
-    // Speed-up CTFE conversions
-    static string ctIntToString(int n) pure nothrow
-    {
-        static immutable string[16] table = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
-        if (n < 10)
-            return table[n];
-        else
-            return to!string(n);
-    }
-}

@@ -13,9 +13,7 @@ module dplug.math.matrix;
 import std.math,
        std.typetuple,
        std.traits,
-       std.string,
-       std.typecons,
-       std.conv;
+       std.typecons;
 
 import dplug.math.vector;
 
@@ -189,13 +187,10 @@ struct Matrix(T, int R, int C)
             return rows[i];
         }
 
-        /// Covnerts to pretty string.
-        string toString() const nothrow
+        // Removed since that depended upon `std.string`.
+        deprecated("Use sprintf instead") string toString() const nothrow
         {
-            try
-                return format("%s", v);
-            catch (Exception e)
-                assert(false); // should not happen since format is right
+            return "<matrix>";
         }
 
         /// Matrix * scalar multiplication.
