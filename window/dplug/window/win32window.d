@@ -30,15 +30,25 @@ import dplug.graphics.image;
 
 import dplug.window.window;
 
-// Note: can be annoying while debugging, as it is a global mouse hook.
-// But the only way to drag outside of window with mouse wheel working.
-// It is amazing that Windows even allow that.
-debug
-{    
-}
-else
+
+// Hook the mouse callback so that you can use mouse wheel while dragging outside of the plugin 
+// window boundaries. This is most useful for eg. EQ plugins where you would want to use mouse 
+// wheel while dragging a point out of the plugin window.
+// This option is Windows-only, it is ignored on Linux and macOS, where such a thing always works.
+// Dragging + mouse wheel inside the plugin window doesn't need that option.
+// See: https://github.com/AuburnSounds/Dplug/wiki/More-Options
+version(Dplug_MouseWheelOutsideWindow)
 {
-    version = hookMouseForWheelEvents;
+    // Note: can be annoying while debugging, as it is a global mouse hook.
+    // But the only way to drag outside of window with mouse wheel working.
+    // It is amazing that Windows even allow that.
+    debug
+    {    
+    }
+    else
+    {
+        version = hookMouseForWheelEvents;
+    }
 }
 
 nothrow:
