@@ -13,7 +13,7 @@ License:
 
 module dplug.graphics.color;
 
-import std.traits: isSigned, isNumeric;
+import std.traits: Signed, isSigned, isNumeric;
 
 import inteli.emmintrin;
 

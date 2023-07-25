@@ -717,12 +717,10 @@ OwnedImage!RGBA loadOwnedImage(in void[] imageData)
     return convertImageToOwnedImage_rgba8(image);
 }
 
-
 /// Loads two different images:
 /// - the 1st is the RGB channels
 /// - the 2nd is interpreted as greyscale and fetch in the alpha channel of the result.
 /// The returned `OwnedImage!RGBA` should be destroyed with `destroyFree`.
-/// Throws: $(D ImageIOException) on error.
 OwnedImage!RGBA loadImageSeparateAlpha(in void[] imageDataRGB, in void[] imageDataAlpha)
 {
     Image alpha;
@@ -760,6 +758,32 @@ OwnedImage!RGBA loadImageSeparateAlpha(in void[] imageDataRGB, in void[] imageDa
         }
     }
 
+    return convertImageToOwnedImage_rgba8(rgb);
+}
+
+/// Loads two different images:
+/// - the 1st is the RGB channels
+/// - the 2nd is interpreted as greyscale and fetch in the alpha channel of the result.
+/// The returned `OwnedImage!RGBA` should be destroyed with `destroyFree`.
+OwnedImage!RGBA loadImageWithFilledAlpha(in void[] imageDataRGB, ubyte alphaValue)
+{
+    Image rgb;
+    rgb.loadFromMemory(cast(const(ubyte[])) imageDataRGB, 
+                       LOAD_RGB | LOAD_8BIT | LOAD_ALPHA | LAYOUT_VERT_STRAIGHT | LAYOUT_GAPLESS);
+    if (rgb.isError)
+    {
+        assert(false, "Decoding failed"); // same remark as above
+    }
+    int W = rgb.width;
+    int H = rgb.height;
+    for (int y = 0; y < H; ++y)
+    {
+        ubyte* scanRGBA = cast(ubyte*) rgb.scanline(y);
+        for (int x = 0; x < W; ++x)
+        {
+            scanRGBA[4*x + 3] = alphaValue;
+        }
+    }
     return convertImageToOwnedImage_rgba8(rgb);
 }
 

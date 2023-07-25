@@ -191,7 +191,10 @@ private:
     final void loadBackgroundImagesFromStaticData()
     {
         auto basecolorData = cast(ubyte[])(import(baseColorPath));
-        auto emissiveData = cast(ubyte[])(import(emissivePath));
+        static if (emissivePath)
+            ubyte[] emissiveData = cast(ubyte[])(import(emissivePath));
+        else
+            ubyte[] emissiveData = null;
         auto materialData = cast(ubyte[])(import(materialPath));
         auto depthData = cast(ubyte[])(import(depthPath));
         loadBackgroundImages(basecolorData, emissiveData, materialData, depthData);
@@ -199,7 +202,7 @@ private:
 
     // CTFE used here so we are allowed to use ~
     static immutable string baseColorPathAbs = absoluteGfxDirectory ~ baseColorPath;
-    static immutable string emissivePathAbs = absoluteGfxDirectory ~ emissivePath;
+    static immutable string emissivePathAbs = emissivePath ? (absoluteGfxDirectory ~ emissivePath) : null;
     static immutable string materialPathAbs = absoluteGfxDirectory ~ materialPath;
     static immutable string depthPathAbs = absoluteGfxDirectory ~ depthPath;
     static immutable string skyboxPathAbs = absoluteGfxDirectory ~ skyboxPath;
@@ -257,12 +260,12 @@ private:
             // reading images with an absolute path since we don't know 
             // which is the current directory from the host
             ubyte[] basecolorData = readFile(baseColorPathAbs);
-            ubyte[] emissiveData = readFile(emissivePathAbs);
+            ubyte[] emissiveData = emissivePathAbs ? readFile(emissivePathAbs) : null;
             ubyte[] materialData = readFile(materialPathAbs);
             ubyte[] depthData = readFile(depthPathAbs);
             ubyte[] skyboxData = readFile(skyboxPathAbs);
 
-            if (basecolorData && emissiveData && materialData
+            if (basecolorData && materialData
                 && depthData && skyboxData) // all valid?
             {
                 // Reload images from disk and update the UI
@@ -288,11 +291,19 @@ private:
         }
     }
 
-    void loadBackgroundImages(ubyte[] basecolorData, ubyte[] emissiveData,
-                              ubyte[] materialData, ubyte[] depthData)
+    void loadBackgroundImages(ubyte[] basecolorData, 
+                              ubyte[] emissiveData, // this one can be null
+                              ubyte[] materialData, 
+                              ubyte[] depthData)
     {
         version(Dplug_ProfileUI) context.profiler.category("image").begin("load Diffuse background");
-        _diffuse = loadImageSeparateAlpha(basecolorData, emissiveData);        
+        if (emissiveData)
+            _diffuse = loadImageSeparateAlpha(basecolorData, emissiveData);
+        else
+        {
+            // fill with zero, no emissive data => zero Emissive
+            _diffuse = loadImageWithFilledAlpha(basecolorData, 0);
+        }
         version(Dplug_ProfileUI) context.profiler.end;
 
         version(Dplug_ProfileUI) context.profiler.begin("load Material background");
