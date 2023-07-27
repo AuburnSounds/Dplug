@@ -40,6 +40,15 @@ else enum int DPLUG_SERIALIZATION_MAJOR_VERSION = 0;
 /// that is significant enough to bump a version number
 enum int DPLUG_SERIALIZATION_MINOR_VERSION = 0;
 
+// Compilation failures for futureBinState in combinations that don't work (yet!)
+version(futureBinState) {
+    version(LV2) static assert(0, "futureBinState is currently not supported for LV2 plugins!");
+    
+    version(VST2) {
+        version(legacyVST2Chunks) static assert(0, "futureBinState requires futureVST2Chunks for VST2!");
+    }
+}
+
 /// A preset is a slot in a plugin preset list
 final class Preset
 {
