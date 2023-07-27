@@ -323,8 +323,7 @@ private:
             }
 
             int dataLength = chunk.popLE!int();
-            ubyte[] dataSlice = chunk[0..dataLength];
-            _client.setSaveState(dataSlice);
+            _client.setSaveState(chunk[0..dataLength]);
         }
     }
     

@@ -896,23 +896,26 @@ nothrow:
         return _hostCommand.getPluginFormat();
     }
 
-    /**
-        Get state data to write to file
+    version(futureBinState)
+    {
+        /**
+            Get state data to write to file
 
-        Memory is owned by the serializer, do not free it!
+            Memory is owned by the serializer, do not free it!
 
-        NOTE: This is not supported in LV2.
-    */
-    void getSaveState(ref ubyte[] state) { }
+            NOTE: This is not supported in LV2.
+        */
+        void getSaveState(ref ubyte[] state) { }
 
-    /**
-        Sets the binary state for the plugin
+        /**
+            Sets the binary state for the plugin
 
-        Memory is owned by the serializer, do not free it!
+            Memory is owned by the serializer, do not free it!
 
-        NOTE: This is not supported in LV2.
-    */
-    void setSaveState(ref ubyte[] state) { }
+            NOTE: This is not supported in LV2.
+        */
+        void setSaveState(const(ubyte)[] state) { }
+    }
 
     // </IClient>
 
