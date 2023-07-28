@@ -251,19 +251,19 @@ unittest
 }
 
 /// Quick and dirty sawtooth for testing purposes.
-T rawSawtooth(T)(T x) pure nothrow @nogc
+T rawSawtooth(T)(T x) nothrow @nogc
 {
     return normalizePhase(x) / (cast(T)PI);
 }
 
 /// Quick and dirty triangle for testing purposes.
-T rawTriangle(T)(T x) pure nothrow @nogc
+T rawTriangle(T)(T x) nothrow @nogc
 {
     return 1 - normalizePhase(x) / cast(T)PI_2;
 }
 
 /// Quick and dirty square for testing purposes.
-T rawSquare(T)(T x) pure nothrow @nogc
+T rawSquare(T)(T x) nothrow @nogc
 {
     return normalizePhase(x) > 0 ? 1 : -1;
 }
