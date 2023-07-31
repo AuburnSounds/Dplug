@@ -482,7 +482,11 @@ private:
         {
             if (strcmp(name, fw.moduleName) == 0)
             {
-                assert(fw.lastSource); // should have parsed the file preventively
+                // Should have parsed the file preventively.
+                // If you assert here, it probably means that your Wren file was
+                // passed with an incorrect absolute path.
+                assert(fw.lastSource); 
+
                 res.source = fw.lastSource;
                 goto found;
             }
