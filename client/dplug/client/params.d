@@ -232,7 +232,13 @@ nothrow:
     ~this()
     {
         _valueMutex.destroy();
+
+        // If you fail here, it means your calls to beginParamEdit and endParamEdit 
+        // were not balanced correctly.
         debug assert(atomicLoad(_editCount) == 0);
+
+        // If you fail here, it means your calls to beginParamHover and endParamHover
+        // were not balanced correctly.
         debug assert(_hoverCount == 0);
     }
 
