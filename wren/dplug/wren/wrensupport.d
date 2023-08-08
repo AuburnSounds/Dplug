@@ -382,6 +382,11 @@ private:
             config.loadModuleFn        = &dplug_wrenLoadModule;
             config.userData            = cast(void*)this;
 
+            // Makes a bit easier to copy/paste code from D to Wren and vice-versa.
+            // Of course this isn't vanilla Wren, but too much time were spent chasing and 
+            // eliminating semicolons in Wren code.
+            config.acceptsTrailingSemicolons = true;
+
             // Note: wren defaults for memory usage make a lot of sense.
             _vm = wrenNewVM(&config);
             _vmGeneration++;
