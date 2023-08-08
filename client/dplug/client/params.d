@@ -711,6 +711,14 @@ public:
         _formatString[3] = cast(char)('0' + digits);
     }
 
+    /// Helper for `setDecimalPrecision` that returns this, help when in parameter creation.
+    final FloatParameter withDecimalPrecision(int digits)
+    {
+        setDecimalPrecision(digits);
+        return this;
+    }
+
+
     final void setFromGUI(double value) nothrow @nogc
     {
         assert(!isNaN(value));
