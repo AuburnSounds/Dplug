@@ -38,9 +38,12 @@ nothrow:
     // Modify these public members to customize knobs!
     //
     @ScriptProperty float knobRadius = 0.75f;
-    @ScriptProperty RGBA knobDiffuse = RGBA(233, 235, 236, 0);
+    @ScriptProperty RGBA knobDiffuse = RGBA(233, 235, 236, 0); // Last channel is ignored.
     @ScriptProperty RGBA knobMaterial = RGBA(0, 255, 128, 255);
     @ScriptProperty KnobStyle style = KnobStyle.thumb;
+    @ScriptProperty ubyte emissive = 0;
+    @ScriptProperty ubyte emissiveHovered = 30;
+    @ScriptProperty ubyte emissiveDragged = 0;
 
     // LEDs
     @ScriptProperty int numLEDs = 7;
@@ -228,11 +231,11 @@ nothrow:
             float posEdgeX = center.x + sin(angle) * depthRadius2;
             float posEdgeY = center.y - cos(angle) * depthRadius2;
 
-            ubyte emissive = 0;
+            ubyte emissiveComputed = emissive;
             if (_shouldBeHighlighted)
-                emissive = 30;
+                emissiveComputed = emissiveHovered;
             if (isDragged)
-                emissive = 0;
+                emissiveComputed = emissiveDragged;
 
             if (style == KnobStyle.thumb)
             {
@@ -255,7 +258,7 @@ nothrow:
                 croppedDepth.aaSoftDisc!1.2f(center.x - bx, center.y - by, 2, knobRadiusPx, depth);
             }
             RGBA knobDiffuseLit = knobDiffuse;
-            knobDiffuseLit.a = emissive;
+            knobDiffuseLit.a = emissiveComputed;
             croppedDiffuse.aaSoftDisc(center.x - bx, center.y - by, knobRadiusPx - 1, knobRadiusPx, knobDiffuseLit);
             croppedMaterial.aaSoftDisc(center.x - bx, center.y - by, knobRadiusPx - 5, knobRadiusPx, knobMaterial);
 
