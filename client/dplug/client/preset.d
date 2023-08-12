@@ -33,27 +33,39 @@ enum uint DPLUG_MAGIC = 0xB20BA92;
 /// state chunks backward-compatibility with older versions in the future.
 /// However, never say never.
 /// This number will be incremented for every backward-incompatible change.
-enum int DPLUG_SERIALIZATION_MAJOR_VERSION = 0;
+version(futureBinState) enum int DPLUG_SERIALIZATION_MAJOR_VERSION = 1;
+else enum int DPLUG_SERIALIZATION_MAJOR_VERSION = 0;
 
 /// This number will be incremented for every backward-compatible change
 /// that is significant enough to bump a version number
 enum int DPLUG_SERIALIZATION_MINOR_VERSION = 0;
+
+// Compilation failures for futureBinState in combinations that don't work (yet!)
+version(futureBinState) {
+    version(LV2) static assert(0, "futureBinState is currently not supported for LV2 plugins!");
+    
+    version(VST2) {
+        version(legacyVST2Chunks) static assert(0, "futureBinState requires futureVST2Chunks for VST2!");
+    }
+}
 
 /// A preset is a slot in a plugin preset list
 final class Preset
 {
 public:
 
-    this(string name, const(float)[] normalizedParams) nothrow @nogc
+    this(string name, const(float)[] normalizedParams, ubyte[] stateData=null) nothrow @nogc
     {
         _name = name.mallocDup;
         _normalizedParams = normalizedParams.mallocDup;
+        if (stateData) _stateData = stateData.mallocDup;
     }
 
     ~this() nothrow @nogc
     {
         clearName();
         free(_normalizedParams.ptr);
+        if (_stateData) free(_stateData.ptr);
     }
 
     void setNormalized(int paramIndex, float value) nothrow @nogc
@@ -72,6 +84,11 @@ public:
         _name = newName.mallocDup;
     }
 
+    version(futureBinState) void setStateData(ubyte[] data) nothrow @nogc
+    {
+        _stateData = data.mallocDup;
+    }
+
     void saveFromHost(Client client) nothrow @nogc
     {
         auto params = client.params();
@@ -79,6 +96,7 @@ public:
         {
             _normalizedParams[i] = param.getNormalized();
         }
+        version(futureBinState) client.getSaveState(_stateData);
     }
 
     void loadFromHost(Client client) nothrow @nogc
@@ -94,47 +112,7 @@ public:
                 param.setFromHost(param.getNormalizedDefault());
             }
         }
-    }
-
-    void serializeBinary(O)(auto ref O output) nothrow @nogc if (isOutputRange!(O, ubyte))
-    {
-        output.writeLE!int(cast(int)_name.length);
-
-        foreach(i; 0..name.length)
-            output.writeLE!ubyte(_name[i]);
-
-        output.writeLE!int(cast(int)_normalizedParams.length);
-
-        foreach(np; _normalizedParams)
-            output.writeLE!float(np);
-    }
-
-    /// Throws: A `mallocEmplace`d `Exception`
-    void unserializeBinary(ref ubyte[] input) @nogc
-    {
-        clearName();
-        int nameLength = input.popLE!int();
-        _name = mallocSlice!char(nameLength);
-        foreach(i; 0..nameLength)
-        {
-            ubyte ch = input.popLE!ubyte();
-            _name[i] = ch;
-        }
-
-        int paramCount = input.popLE!int();
-
-        foreach(int ip; 0..paramCount)
-        {
-            float f = input.popLE!float();
-
-            // MAYDO: best-effort recovery?
-            if (!isValidNormalizedParam(f))
-                throw mallocNew!Exception("Couldn't unserialize preset: an invalid float parameter was parsed");
-
-            // There may be more parameters when downgrading
-            if (ip < _normalizedParams.length)
-                _normalizedParams[ip] = f;
-        }
+        version(futureBinState) client.setSaveState(_stateData);
     }
 
     static bool isValidNormalizedParam(float f) nothrow @nogc
@@ -147,9 +125,15 @@ public:
         return _normalizedParams;
     }
 
+    version(futureBinState) ubyte[] getStateData() nothrow @nogc
+    {
+        return _stateData;
+    }
+
 private:
     char[] _name;
     float[] _normalizedParams;
+    ubyte[] _stateData;
 
     void clearName() nothrow @nogc
     {
@@ -266,15 +250,7 @@ public:
     ubyte[] getStateChunkFromCurrentState() nothrow @nogc
     {
         auto chunk = makeVec!ubyte();
-        writeChunkHeader(chunk);
-
-        auto params = _client.params();
-
-        chunk.writeLE!int(_current);
-
-        chunk.writeLE!int(cast(int)params.length);
-        foreach(param; params)
-            chunk.writeLE!float(param.getNormalized());
+        this.writeStateChunk(chunk);
         return chunk.releaseData;
     }
 
@@ -282,17 +258,10 @@ public:
     /// preset `presetIndex` was made current first. So it's not
     /// changing the client state.
     /// The returned state chunk should be freed with `free()`.
-    ubyte[] getStateChunkFromPreset(int presetIndex) const nothrow @nogc
+    ubyte[] getStateChunkFromPreset(int presetIndex) nothrow @nogc
     {
         auto chunk = makeVec!ubyte();
-        writeChunkHeader(chunk);
-
-        auto p = preset(presetIndex);
-        chunk.writeLE!int(presetIndex);
-
-        chunk.writeLE!int(cast(int)p._normalizedParams.length);
-        foreach(param; p._normalizedParams)
-            chunk.writeLE!float(param);
+        this.writePresetChunkData(chunk, presetIndex);
         return chunk.releaseData;
     }
 
@@ -300,7 +269,7 @@ public:
     /// May throw an Exception.
     void loadStateChunk(ubyte[] chunk) @nogc
     {
-        checkChunkHeader(chunk);
+        int mVersion = checkChunkHeader(chunk);
 
         // This avoid to overwrite the preset 0 while we modified preset N
         int presetIndex = chunk.popLE!int();
@@ -309,6 +278,24 @@ public:
         else
             _current = presetIndex;
 
+        version(futureBinState) {
+
+            // Binary state future tag.
+            if (mVersion == 0) loadChunkV1(chunk);
+            else loadChunkV2(chunk);
+        } else {
+
+            loadChunkV1(chunk);
+        }
+    }
+
+private:
+    Client _client;
+    int _current; // should this be only in VST client?
+
+    // Loads chunk without binary save state
+    void loadChunkV1(ref ubyte[] chunk) @nogc
+    {
         // Load parameters values
         auto params = _client.params();
         int numParams = chunk.popLE!int();
@@ -320,11 +307,97 @@ public:
         }
     }
 
-private:
-    Client _client;
-    int _current; // should this be only in VST client?
+    version(futureBinState) {
 
-    void writeChunkHeader(O)(auto ref O output) const @nogc if (isOutputRange!(O, ubyte))
+        // Loads chunk with binary save state
+        void loadChunkV2(ref ubyte[] chunk) @nogc
+        {
+            // Load parameters values
+            auto params = _client.params();
+            int numParams = chunk.popLE!int();
+            foreach(int i; 0..numParams)
+            {
+                float normalized = chunk.popLE!float();
+                if (i < params.length)
+                    params[i].setFromHost(normalized);
+            }
+
+            int dataLength = chunk.popLE!int();
+            _client.setSaveState(chunk[0..dataLength]);
+        }
+    }
+    
+    version(futureBinState) {
+
+        // Writes preset chunk with V2 method
+        void writeStateChunk(ref Vec!ubyte chunk) nothrow @nogc
+        {
+            writeChunkHeader(chunk, 1);
+
+            auto params = _client.params();
+            ubyte[] stateData;
+
+            chunk.writeLE!int(_current);
+
+            chunk.writeLE!int(cast(int)params.length);
+            foreach(param; params)
+                chunk.writeLE!float(param.getNormalized());
+            
+            _client.getSaveState(stateData);
+            chunk.writeLE!int(cast(int)stateData.length);
+            chunk.put(stateData);
+        }
+    } else {
+
+        // Writes chunk with V1 method
+        void writeStateChunk(ref Vec!ubyte chunk) nothrow @nogc
+        {
+            writeChunkHeader(chunk, 0);
+
+            auto params = _client.params();
+
+            chunk.writeLE!int(_current);
+
+            chunk.writeLE!int(cast(int)params.length);
+            foreach(param; params)
+                chunk.writeLE!float(param.getNormalized());
+        }
+    }
+
+    version(futureBinState) {
+
+        // Writes preset chunk with V2 method
+        void writePresetChunkData(ref Vec!ubyte chunk, int presetIndex) nothrow @nogc
+        {
+            writeChunkHeader(chunk, 1);
+
+            auto p = preset(presetIndex);
+            chunk.writeLE!int(presetIndex);
+
+            chunk.writeLE!int(cast(int)p._normalizedParams.length);
+            foreach(param; p._normalizedParams)
+                chunk.writeLE!float(param);
+            
+            chunk.writeLE!int(cast(int)p._stateData.length);
+            chunk.pushBack(p._stateData[0..$]);
+        }
+    } else {
+
+        // Writes chunk with V1 method
+        void writePresetChunkData(ref Vec!ubyte chunk, int presetIndex) nothrow @nogc
+        {
+            writeChunkHeader(chunk, 0);
+
+            auto p = preset(presetIndex);
+            chunk.writeLE!int(presetIndex);
+
+            chunk.writeLE!int(cast(int)p._normalizedParams.length);
+            foreach(param; p._normalizedParams)
+                chunk.writeLE!float(param);
+        }
+    }
+
+    void writeChunkHeader(O)(auto ref O output, int version_=DPLUG_SERIALIZATION_MAJOR_VERSION) const @nogc if (isOutputRange!(O, ubyte))
     {
         // write magic number and dplug version information (not the tag version)
         output.writeBE!uint(DPLUG_MAGIC);
@@ -335,7 +408,7 @@ private:
         output.writeLE!int(_client.getPublicVersion().toAUVersion());
     }
 
-    void checkChunkHeader(ref ubyte[] input) @nogc
+    int checkChunkHeader(ref ubyte[] input) @nogc
     {
         // nothing to check with minor version
         uint magic = input.popBE!uint();
@@ -352,6 +425,7 @@ private:
 
         // TODO: how to handle breaking binary compatibility here?
         int pluginVersion = input.popLE!int();
+        return dplugMajor;
     }
 }
 
