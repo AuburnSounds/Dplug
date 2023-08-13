@@ -27,7 +27,7 @@
         "dplug:wren-support": { "path": "../.." }
     },
 
-    "versions": ["futureMouseDrag"],
+    "versions": ["futureMouseDrag", "futureBinState"],
 
     "configurations": [
         {

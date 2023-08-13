@@ -899,22 +899,58 @@ nothrow:
     version(futureBinState)
     {
         /**
-            Get state data to write to file
+            Write the extra state of plugin in a chunk, so that the host can restore that later.
+            You would typically serialize arbitrary stuff with `dplug.core.binrange`.
+            This is called quite frequently.
 
-            Memory is owned by the serializer, do not free it!
+            What should goes here:
+                * your own chunk format with hopefully your plugin major version.
+                * user-defined structures, like opened .wav, strings, wavetables...
+                  You can finally make plugins with arbitrary data in presets!
+                * Typically stuff used to render sound identically.
 
-            NOTE: This is not supported in LV2.
+            Contrarily, this is a disappointing solution for:
+                * Storing UI size, dark mode, and all kind of editor preferences.
+                  Indeed, when `loadState` is called, the UI might not exist at all.
+
+            Note: Using state chunks comes with a BIG challenge of making your own synchronization 
+                  with the UI. You can expect any thread to call `saveState` and `loadState`. 
+                  A proper design would probably have you represent state in the editor and the 
+                  audio client separately, with a clean interchange.
+
+            Warning: Just append new content to the `Vec!ubyte`, do not modify its existing content
+                     if any exist.
+
+            BUG: This is not currently supported in LV2, and only partially in VST2. 
+                 See Issue #352 for the whole story.
+
+            See_also: `loadState`.
         */
-        void getSaveState(ref ubyte[] state) { }
+        void saveState(ref Vec!ubyte chunk) nothrow @nogc
+        {
+        }
 
         /**
-            Sets the binary state for the plugin
+            Write the extra state your plugin in a chunk, so that the host can restore that later.
+            You would typically serialize arbitrary stuff with `dplug.core.binrange`.
+            This is called on session load.
 
-            Memory is owned by the serializer, do not free it!
+            Note: Using state chunks comes with a BIG challenge of making your own synchronization 
+                  with the UI. You can expect any thread to call `saveState` and `loadState`. 
+                  A proper design would probably have you represent state in the editor and the 
+                  audio client separately, with a clean interchange.
 
-            NOTE: This is not supported in LV2.
+            BUG: This is not currently supported in LV2, and only partially in VST2. 
+                 See Issue #352 for the whole story.
+
+            Returns: `true` on successful parse, you can return false to indicate a parsing error.
+
+            See_also: `loadState`.
         */
-        void setSaveState(const(ubyte)[] state) { }
+        bool loadState(const(ubyte)[] chunk) nothrow @nogc
+        {
+            return true;
+        }
     }
 
     // </IClient>

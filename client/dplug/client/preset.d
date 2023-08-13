@@ -54,18 +54,19 @@ final class Preset
 {
 public:
 
-    this(string name, const(float)[] normalizedParams, ubyte[] stateData=null) nothrow @nogc
+    this(string name, const(float)[] normalizedParams, const(ubyte)[] stateData = null) nothrow @nogc
     {
         _name = name.mallocDup;
         _normalizedParams = normalizedParams.mallocDup;
-        if (stateData) _stateData = stateData.mallocDup;
+        if (stateData) 
+            _stateData = stateData.mallocDup;
     }
 
     ~this() nothrow @nogc
     {
         clearName();
         free(_normalizedParams.ptr);
-        if (_stateData) free(_stateData.ptr);
+        clearData();
     }
 
     void setNormalized(int paramIndex, float value) nothrow @nogc
@@ -86,6 +87,7 @@ public:
 
     version(futureBinState) void setStateData(ubyte[] data) nothrow @nogc
     {
+        clearData();
         _stateData = data.mallocDup;
     }
 
@@ -96,9 +98,17 @@ public:
         {
             _normalizedParams[i] = param.getNormalized();
         }
-        version(futureBinState) client.getSaveState(_stateData);
+
+        version(futureBinState)
+        {{
+            clearData(); // Forget possible existing _stateData
+            Vec!ubyte chunk;
+            client.saveState(chunk);
+            _stateData = chunk.releaseData;
+        }}
     }
 
+    // TODO: should this return an error if any encountered?
     void loadFromHost(Client client) nothrow @nogc
     {
         auto params = client.params();
@@ -112,7 +122,12 @@ public:
                 param.setFromHost(param.getNormalizedDefault());
             }
         }
-        version(futureBinState) client.setSaveState(_stateData);
+
+        version(futureBinState)
+        {
+            // loadFromHost seems to best effort, no error reported on parse failure
+            client.loadState(_stateData); 
+        }
     }
 
     static bool isValidNormalizedParam(float f) nothrow @nogc
@@ -141,6 +156,15 @@ private:
         {
             free(_name.ptr);
             _name = null;
+        }
+    }
+
+    void clearData() nothrow @nogc
+    {
+        if (_stateData !is null)
+        {
+            free(_stateData.ptr);
+            _stateData = null;
         }
     }
 }
@@ -323,7 +347,9 @@ private:
             }
 
             int dataLength = chunk.popLE!int();
-            _client.setSaveState(chunk[0..dataLength]);
+            bool parseSuccess = _client.loadState(chunk[0..dataLength]);
+            if (!parseSuccess)
+                throw mallocNew!Exception("Invalid user-defined state chunk");
         }
     }
     
@@ -335,17 +361,23 @@ private:
             writeChunkHeader(chunk, 1);
 
             auto params = _client.params();
-            ubyte[] stateData;
 
             chunk.writeLE!int(_current);
 
             chunk.writeLE!int(cast(int)params.length);
             foreach(param; params)
                 chunk.writeLE!float(param.getNormalized());
-            
-            _client.getSaveState(stateData);
-            chunk.writeLE!int(cast(int)stateData.length);
-            chunk.put(stateData);
+
+            size_t chunkLenIndex = chunk.length;
+            chunk.writeLE!int(0); // temporary chunk length value
+
+            size_t before = chunk.length;
+            _client.saveState(chunk); // append state to chunk
+            size_t after = chunk.length;
+
+            // Write actual value for chunk length.
+            ubyte[] indexPos = chunk.ptr[chunkLenIndex.. chunkLenIndex+4];
+            indexPos.writeLE!int(cast(int)(after - before));
         }
     } else {
 

@@ -185,6 +185,29 @@ nothrow:
         return mallocNew!DistortGUI(this);
     }
 
+    override void saveState(ref Vec!ubyte chunk)
+    {
+        // dplug.core.binrange allows to write arbitrary chunk bytes here.
+        // You are responsible for versioning, correct UI interaction, etc.
+        // See `saveState` definition in client.d for highly-recommended information.
+        writeLE!uint(chunk, getPublicVersion().major);
+    }
+
+    override bool loadState(const(ubyte)[] chunk)
+    {
+        try
+        {
+            int major = popLE!uint(chunk);
+            assert(major == getPublicVersion().major);
+            return true; // no issue parsing the chunk
+        }
+        catch(Exception e)
+        {
+            destroyFree(e);
+            return false;
+        }
+    }
+
 private:
     LevelComputation _levelInput;
     LevelComputation _levelOutput;
