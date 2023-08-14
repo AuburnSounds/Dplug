@@ -712,7 +712,7 @@ public:
     }
 
     /// Helper for `setDecimalPrecision` that returns this, help when in parameter creation.
-    final FloatParameter withDecimalPrecision(int digits)
+    final FloatParameter withDecimalPrecision(int digits) nothrow @nogc
     {
         setDecimalPrecision(digits);
         return this;
