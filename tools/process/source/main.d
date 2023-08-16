@@ -31,7 +31,7 @@ void usage()
     writeln(`                             *           : all remaining samples`);
     writeln(`                             64          : process by 64 samples`);
     writeln(`                             64, 512     : process by 64 samples, then only by 512 samples`);
-    writeln(`                             1,1024,loop : process 1 samples, then 1, then loop that pattern.`);
+    writeln(`                             1,1024,loop : process 1 samples, then 1024, then loop that pattern.`);
     writeln(`                           Helpful to find buffer bugs in your plugin. Pattern applied separately in preroll.`);
     writeln("  -preset                Choose preset to process audio with");    
     writeln("  -param                 Set parameter value after loading preset");
