@@ -4,7 +4,7 @@
     "dependencies": {
         "dplug:host": {"path": "../../"},
         "console-colors": "~>1.0",
-        "wave-d": "~>1.0"
+        "audio-formats": "~>2.2"
     },
 
     "versions": ["VST2"],

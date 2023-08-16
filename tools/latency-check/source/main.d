@@ -9,7 +9,7 @@ import dplug.core;
 import dplug.host;
 
 import consolecolors;
-import waved;
+import audioformats;
 
 void usage()
 {
@@ -169,9 +169,8 @@ int main(string[] args)
             if (outputResults)
             {
                 string filename = format("processed-%s.wav", sampleRate);
-                writefln("  Output written to %s", filename);
-                Sound s = Sound(cast(int)(0.5f+sampleRate), 1, processedL);
-                encodeWAV(s, filename);
+                writefln("  Left output written to %s", filename);
+                saveAsWAV(processedL, filename, 1, sampleRate);
             }
 
             // NaN check!= of the output
