@@ -10,6 +10,7 @@ module dplug.pbrwidgets.pbrbackgroundgui;
 import dplug.math.box;
 import dplug.core.nogc;
 import dplug.core.file;
+import dplug.core.thread;
 
 // Note: this dependency exist because Key is defined in dplug:window
 import dplug.window.window;
@@ -68,7 +69,7 @@ nothrow:
         {}
         else
         {
-            loadBackgroundImagesFromStaticData();
+            loadBackgroundImagesFromStaticData(null);
         }
 
         auto skyboxData = cast(ubyte[])(import(skyboxPath));
@@ -122,7 +123,9 @@ nothrow:
                 version (decompressImagesLazily)
                 {
                     assert(_diffuse is null);
-                    loadBackgroundImagesFromStaticData();
+
+                    // No thread pool, load images one by one.
+                    loadBackgroundImagesFromStaticData(context.globalThreadPool);
                 }
 
                 _diffuseResized.size(W, H);
@@ -188,7 +191,8 @@ nothrow:
 
 private:
 
-    final void loadBackgroundImagesFromStaticData()
+    // Can pass a ThreadPool in the case you want parallel image loading (optional).
+    final void loadBackgroundImagesFromStaticData(ThreadPool* threadPool)
     {
         auto basecolorData = cast(ubyte[])(import(baseColorPath));
         static if (emissivePath)
@@ -197,7 +201,12 @@ private:
             ubyte[] emissiveData = null;
         auto materialData = cast(ubyte[])(import(materialPath));
         auto depthData = cast(ubyte[])(import(depthPath));
-        loadBackgroundImages(basecolorData, emissiveData, materialData, depthData);
+
+        loadBackgroundImages(basecolorData, 
+                             emissiveData, 
+                             materialData, 
+                             depthData,
+                             threadPool);
     }
 
     // CTFE used here so we are allowed to use ~
@@ -270,7 +279,7 @@ private:
             {
                 // Reload images from disk and update the UI
                 freeBackgroundImages();
-                loadBackgroundImages(basecolorData, emissiveData, materialData, depthData);
+                loadBackgroundImages(basecolorData, emissiveData, materialData, depthData, null);
                 loadSkybox(skyboxData);
                 _forceResizeUpdate = true;
                 setDirtyWhole();
@@ -294,25 +303,48 @@ private:
     void loadBackgroundImages(ubyte[] basecolorData, 
                               ubyte[] emissiveData, // this one can be null
                               ubyte[] materialData, 
-                              ubyte[] depthData)
+                              ubyte[] depthData,
+                              ThreadPool* threadPool)
     {
-        version(Dplug_ProfileUI) context.profiler.category("image").begin("load Diffuse background");
-        if (emissiveData)
-            _diffuse = loadImageSeparateAlpha(basecolorData, emissiveData);
+        // Potentially load all 3 background images in parallel, if one threadPool is provided.
+        void loadOneImage(int i, int threadIndex) nothrow @nogc
+        {
+            ImageResizer resizer;
+            if (i == 0) 
+            {
+                version(Dplug_ProfileUI) context.profiler.category("image").begin("load Diffuse background");
+                if (emissiveData)
+                    _diffuse = loadImageSeparateAlpha(basecolorData, emissiveData);
+                else
+                {
+                    // fill with zero, no emissive data => zero Emissive
+                    _diffuse = loadImageWithFilledAlpha(basecolorData, 0);
+                }
+                version(Dplug_ProfileUI) context.profiler.end;
+            }
+            if (i == 1) 
+            {
+                version(Dplug_ProfileUI) context.profiler.begin("load Material background");
+                _material = loadOwnedImage(materialData);
+                version(Dplug_ProfileUI) context.profiler.end;
+            }
+            if (i == 2) 
+            {
+                version(Dplug_ProfileUI) context.profiler.begin("load Depth background");
+                _depth = loadOwnedImageDepth(depthData);
+                version(Dplug_ProfileUI) context.profiler.end;
+            }
+        }
+        if (threadPool)
+        {
+            threadPool.parallelFor(3, &loadOneImage);
+        }
         else
         {
-            // fill with zero, no emissive data => zero Emissive
-            _diffuse = loadImageWithFilledAlpha(basecolorData, 0);
-        }
-        version(Dplug_ProfileUI) context.profiler.end;
-
-        version(Dplug_ProfileUI) context.profiler.begin("load Material background");
-        _material = loadOwnedImage(materialData);
-        version(Dplug_ProfileUI) context.profiler.end;
-
-        version(Dplug_ProfileUI) context.profiler.begin("load Depth background");
-        _depth = loadOwnedImageDepth(depthData);
-        version(Dplug_ProfileUI) context.profiler.end;
+            loadOneImage(0, -1);
+            loadOneImage(1, -1);
+            loadOneImage(2, -1);
+        }       
     }
     
     void loadSkybox(ubyte[] skyboxData)
