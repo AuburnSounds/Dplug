@@ -28,7 +28,7 @@ import dplug.window.window;
 import dplug.gui.ransac;
 
 import inteli.math;
-import inteli.emmintrin;
+import inteli.smmintrin;
 import dplug.gui.profiler;
 
 // TODO: PBR rendering doesn't depend rightly on size of the plugin.
@@ -454,6 +454,7 @@ nothrow:
 
         int samples = 11; // #RESIZE ditto
 
+        // PERF: align(16) on weight[1]
         static immutable float[11] weights =
         [
             1.0f,
@@ -491,42 +492,105 @@ nothrow:
                 float lightPassed = 0.0f;
 
                 int depthCenter = (*depthHere).l;
-                for (int sample = 1; sample < samples; ++sample)
                 {
-                    int x1 = i + sample;
-                    if (x1 >= wholeWidth)
-                        x1 = wholeWidth - 1;
-                    int x2 = i - sample;
-                    if (x2 < 0)
-                        x2 = 0;
-                    int y = j - sample;
-                    if (y < 0)
-                        y = 0;
-                    int z = depthCenter + sample; // ???
-                    L16* scan = depthLevel0.scanlinePtr(y);
-                    int diff1 = z - scan[x1].l; // FUTURE: use pointer offsets here instead of opIndex
-                    int diff2 = z - scan[x2].l;
+                    int sample = 1;
+                    __m128 mmZeroesf = _mm_setzero_ps();
+                    __m128i mmZero = _mm_setzero_si128();
+                    __m128 mmOnes = _mm_set1_ps(1.0f);
+                    __m128 mm0_7 = _mm_set1_ps(0.7f);
+                    __m128i maxX = _mm_set1_epi32(wholeWidth - 1);
 
-                    float contrib1 = void, 
-                        contrib2 = void;
+                    for (; sample + 3 < samples; sample += 4)
+                    {
+                        __m128i mm0123 =  _mm_setr_epi32(0, 1, 2, 3);
+                        __m128i mmSample = _mm_set1_epi32(sample) + mm0123;
+                        __m128i mmI = _mm_set1_epi32(i); // X coord
+                        __m128i mmJ = _mm_set1_epi32(j); // Y coord
+                        __m128i x1 = mmI + mmSample;
+                        __m128i x2 = mmI - mmSample;
+                        __m128i y  = mmJ - mmSample;
 
-                    static immutable float divider15360 = 1.0f / 15360; // BUG: not consistent with FACTOR_Z, this is steeper...
+                        // clamp source indices
 
-                    if (diff1 >= 0)
-                        contrib1 = 1;
-                    else if (diff1 < -15360)
-                        contrib1 = 0;
-                    else
-                        contrib1 = (diff1 + 15360) * divider15360;
+                        // PERF: _mm_min_epi32 and _mm_max_epi32 not available in SSE3, use _mm_min_epi16 instead
+                        x1 = _mm_min_epi32(x1, maxX);
+                        x2 = _mm_max_epi32(x2, mmZero);
+                        y  = _mm_max_epi32( y, mmZero);
 
-                    if (diff2 >= 0)
-                        contrib2 = 1;
-                    else if (diff2 < -15360)
-                        contrib2 = 0;
-                    else
-                        contrib2 = (diff2 + 15360) * divider15360;
+                        __m128i z = _mm_set1_epi32(depthCenter) + mmSample; /// ??? same WTF this makes no sense whatsoever
 
-                    lightPassed += (contrib1 + contrib2 * 0.7f) * weights[sample];
+                        L16* scan0 = depthLevel0.scanlinePtr(y.array[0]);
+                        L16* scan1 = depthLevel0.scanlinePtr(y.array[1]);
+                        L16* scan2 = depthLevel0.scanlinePtr(y.array[2]);
+                        L16* scan3 = depthLevel0.scanlinePtr(y.array[3]);
+
+                        __m128 diff1 = _mm_cvtepi32_ps(
+                                       z - _mm_setr_epi32( scan0[x1.array[0]].l, 
+                                                           scan1[x1.array[1]].l,
+                                                           scan2[x1.array[2]].l,
+                                                           scan3[x1.array[3]].l ) );
+
+                        __m128 diff2 = _mm_cvtepi32_ps(
+                                       z - _mm_setr_epi32( scan0[x2.array[0]].l, 
+                                                           scan1[x2.array[1]].l,
+                                                           scan2[x2.array[2]].l,
+                                                           scan3[x2.array[3]].l ) );
+
+                        __m128 mmA = _mm_set1_ps(0.00006510416f); // 1 / 15360
+                        __m128 contrib1 = _mm_max_ps(mmZeroesf, _mm_min_ps(mmOnes, mmOnes + diff1 * mmA));
+                        __m128 contrib2 = _mm_max_ps(mmZeroesf, _mm_min_ps(mmOnes, mmOnes + diff2 * mmA));
+                        __m128 mmWeight = _mm_loadu_ps(&weights[sample]);
+                        __m128 contrib = (contrib1 + contrib2 * mm0_7) * mmWeight;
+                        lightPassed += contrib.array[0];
+                        lightPassed += contrib.array[1];
+                        lightPassed += contrib.array[2];
+                        lightPassed += contrib.array[3];
+                    }
+
+                    for ( ; sample < samples; ++sample)
+                    {
+                        int x1 = i + sample;
+                        if (x1 >= wholeWidth)
+                            x1 = wholeWidth - 1;
+                        int x2 = i - sample;
+                        if (x2 < 0)
+                            x2 = 0;
+                        int y = j - sample;
+                        if (y < 0)
+                            y = 0;
+                        int z = depthCenter + sample; // ??? WTF
+                        L16* scan = depthLevel0.scanlinePtr(y);
+
+                        int diff1 = z - scan[x1].l; // FUTURE: use pointer offsets here instead of opIndex
+                        int diff2 = z - scan[x2].l;
+
+                        float contrib1 = void, 
+                            contrib2 = void;
+
+                        // Map diff 0 to contribution = 1
+                        // Map -15360 to contribution = 0
+                        // Clamp otherwise.
+                        // In otherwords, this is f(x) = clamp(Ax+B, 0, 1) 
+                        //                                with A = 1/15360
+                        //                                     B = 1
+                        static immutable float divider15360 = 1.0f / 15360; // BUG: not consistent with FACTOR_Z, this is steeper...
+
+                        if (diff1 >= 0)
+                            contrib1 = 1;
+                        else if (diff1 < -15360)
+                            contrib1 = 0;
+                        else
+                            contrib1 = (diff1 + 15360) * divider15360;
+
+                        if (diff2 >= 0)
+                            contrib2 = 1;
+                        else if (diff2 < -15360)
+                            contrib2 = 0;
+                        else
+                            contrib2 = (diff2 + 15360) * divider15360;
+
+                        lightPassed += (contrib1 + contrib2 * 0.7f) * weights[sample];
+                    }
                 }
                 vec3f finalColor = baseColor * color * (lightPassed * invTotalWeights);
                 __m128 mmColor = _mm_setr_ps(finalColor.r, finalColor.g, finalColor.b, 0.0f);
