@@ -68,7 +68,10 @@ int main(string[] args)
         // Read all preset files
         foreach(input; inputs)
         {
-            if (exists(input) && input.length > 4 && input[$-4..$] == ".fxp")
+            if (!exists(input))
+                throw new Exception(format(`"%s" doesn't exist`, input));
+
+            if (input.length > 4 && input[$-4..$] == ".fxp")
             {
                 ubyte[] fxpData = cast(ubyte[]) std.file.read(input);
                 Preset preset = loadPresetFromFXP(fxpData);
@@ -79,7 +82,7 @@ int main(string[] args)
                 presets ~= preset;
             }
             else
-                throw new Exception(format(`Input is "nbame" but should end in .fxp`, input));
+                throw new Exception(format(`Input preset "%s" should end in .fxp`, input));
         }
 
         if (presets.length == 0)
@@ -230,12 +233,10 @@ Preset loadPresetFromFXP(ubyte[] inputFXP)
     }
 }
 
-
 static int CCONST(int a, int b, int c, int d) pure nothrow @nogc
 {
     return (a << 24) | (b << 16) | (c << 8) | (d << 0);
 }
-
 
 ubyte[] savePresetsToFXB(Preset[] presets)
 {

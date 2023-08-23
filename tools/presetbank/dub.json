@@ -1,8 +1,5 @@
 {
     "name": "presetbank",
-    "dependencies": {
-        "colorize": "~>1.0"
-    },
 
     "sourcePaths": ["source"],
     "importPaths": ["source"],
