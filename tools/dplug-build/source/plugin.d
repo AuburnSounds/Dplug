@@ -70,11 +70,11 @@ string toStringArchs(Arch[] archs)
         {
             case x86:
                 if (i) r ~= " and ";
-                r ~= "32-bit";
+                r ~= "x86";
                 break;
             case x86_64:
                 if (i) r ~= " and ";
-                r ~= "64-bit";
+                r ~= "x86_64";
                 break;
             case arm32:
                 if (i) r ~= " and ";

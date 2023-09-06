@@ -109,7 +109,7 @@ void usage()
     cwriteln("        # Releases an optimized VST2/AU plugin for all supported architecture".lgreen);
     cwriteln("        dplug-build --final -c VST2-CONFIG -c AU-CONFIG -a all".lcyan);
     cwriteln();
-    cwriteln("        # Builds a 64-bit Audio Unit plugin for profiling with DMD".lgreen);
+    cwriteln("        # Builds a x86_64 Audio Unit plugin for profiling with DMD".lgreen);
     cwriteln("        dplug-build --compiler dmd -a x86_64 --config AU -b release-debug".lcyan);
     cwriteln;
     cwriteln("        # Builds an arm64 VST3 in given directory".lgreen);
