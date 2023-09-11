@@ -588,7 +588,7 @@ int main(string[] args)
                     catch(Exception e)
                     {
                         error(e.msg);
-                        warning(`AAX signature failed, plugin won't run in the normal Pro Tools.` ~ "\n" ~
+                        warning(`AAX signature failed, plugin won't run in Pro Tools and won't notarize.` ~ "\n" ~
                                 `         Do NOT distribute such a build.` ~ "\n");
                     }
                 }
