@@ -1,7 +1,7 @@
 /**
 Mipmap pyramid implementation.
 
-Copyright: Guillaume Piolat 2015-2016.
+Copyright: Guillaume Piolat 2015-2023.
 License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 module dplug.graphics.mipmap;
@@ -26,7 +26,9 @@ else version( D_InlineAsm_X86_64 )
 }
 
 // Because of unability to load globals in PIC code with DMD, only enable some assembly with LDC
-version(LDC)
+// Then also disabled in LDC because of Issue #797
+// PERF: speed-up with intrinsics instead
+/*version(LDC)
 {
     version( D_InlineAsm_X86 )
     {
@@ -36,7 +38,7 @@ version(LDC)
     {
         version = inlineAsmCanLoadGlobalsInPIC;
     }
-}
+}*/
 
 
 /// Mipmapped images.
