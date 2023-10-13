@@ -454,6 +454,10 @@ void transcode(string inputFileA, string outputFileA,
     AudioStream inputA, outputA, inputB, outputB;
     inputA.openFromFile(inputFileA);
     inputB.openFromFile(inputFileB);
+    if (inputA.isError)
+        throw new Exception(inputA.errorMessage);
+    if (inputB.isError)
+        throw new Exception(inputB.errorMessage);
 
     float sampleRateA = inputA.getSamplerate();
     int channelsA     = inputA.getNumChannels();
@@ -472,6 +476,10 @@ void transcode(string inputFileA, string outputFileA,
 
     outputA.openToFile(outputFileA, AudioFileFormat.wav, sampleRateA, channelsA);
     outputB.openToFile(outputFileB, AudioFileFormat.wav, sampleRateB, channelsB);
+    if (outputA.isError)
+        throw new Exception(outputA.errorMessage);
+    if (outputB.isError)
+        throw new Exception(outputB.errorMessage);
 
     // Chunked encode/decode
     int totalFramesA = 0;
@@ -482,6 +490,11 @@ void transcode(string inputFileA, string outputFileA,
     {
         framesReadA = inputA.readSamplesFloat(bufA);
         framesReadB = inputB.readSamplesFloat(bufB);
+        if (inputA.isError)
+            throw new Exception(inputA.errorMessage);
+        if (inputB.isError)
+            throw new Exception(inputB.errorMessage);
+
         if (framesReadA != framesReadB)
             throw new Exception("Read different frame count between files.");
 
@@ -497,6 +510,10 @@ void transcode(string inputFileA, string outputFileA,
 
         outputA.writeSamplesFloat(bufA[0..framesReadA*channelsA]);
         outputB.writeSamplesFloat(bufB[0..framesReadB*channelsB]);
+        if (outputA.isError)
+            throw new Exception(outputA.errorMessage);
+        if (outputB.isError)
+            throw new Exception(outputB.errorMessage);
 
         totalFramesA += framesReadA;
         totalFramesB += framesReadB;

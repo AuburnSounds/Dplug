@@ -5,7 +5,7 @@
     "dependencies":
     {
         "bindbc-sdl": "~>0.0",
-        "audio-formats": ">=1.0.0 <3.0.0",
+        "audio-formats": "~>3.0",
         "console-colors": "~>1.0"
     },
     "versions": [
