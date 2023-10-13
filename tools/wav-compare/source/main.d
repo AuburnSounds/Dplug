@@ -502,6 +502,8 @@ Sound decodeSound(string file)
 {
     AudioStream input;
     input.openFromFile(file);
+    if (input.isError)
+        throw new Exception(input.errorMessage);
 
     int channels = input.getNumChannels();
     float sampleRate = input.getSamplerate();
@@ -516,6 +518,8 @@ Sound decodeSound(string file)
     do
     {
         framesRead = input.readSamplesDouble(buf);
+        if (input.isError)
+            throw new Exception(input.errorMessage);
         samples ~= buf[0..framesRead*channels]; 
         totalFrames += framesRead;
     } while(framesRead > 0);
