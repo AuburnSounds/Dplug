@@ -17,6 +17,8 @@ version(debugSharedLibs)
     import core.stdc.stdio;
 }
 
+alias void* SharedLibHandle;
+
 /// Shared library ressource
 struct SharedLib
 {
@@ -83,6 +85,23 @@ nothrow:
     bool isLoaded()
     {
         return (_hlib !is null);
+    }
+
+    /// Return the internal shared library handle, this is used to move ownership of such objects.
+    /// Ownership of the underlying shared library is lost.initializeWithHandle
+    SharedLibHandle disown()
+    {
+        SharedLibHandle result = _hlib;
+        _hlib = null;
+        return result;
+    }
+
+    /// Recreate a SharedLib using a `disown()` stored handle. This is used instead of postblit.
+    void initializeWithHandle(SharedLibHandle handle)
+    {
+        assert(_hlib is null);
+        _hlib = handle;
+        _name = null;
     }
 
 private:
@@ -153,7 +172,7 @@ private:
 
 private:
 
-alias void* SharedLibHandle;
+
 
 version(Posix)
 {
