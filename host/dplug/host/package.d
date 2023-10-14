@@ -6,18 +6,16 @@ License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 module dplug.host;
 
+import dplug.core.sharedlib;
+import dplug.core.nogc;
 public import dplug.host.host;
 public import dplug.host.vst2;
 public import dplug.host.window;
 
-import std.algorithm.mutation;
-
 /// Loads an audio plugin.
+/// Such a host MUST be destroyed with `destroyPluginHost`.
 IPluginHost createPluginHost(string dynlibPath)
 {
-    import std.string;
-    import dplug.core.sharedlib;
-
     // FUTURE support OSX plugin bundles
     SharedLib lib;
     lib.load(dynlibPath);
@@ -28,11 +26,18 @@ IPluginHost createPluginHost(string dynlibPath)
     {
         version(VST2)
         {
-            return new VST2PluginHost(move(lib));
+            return new VST2PluginHost(lib.disown);
         }
         else
-            throw new Exception(format("Couldn't load plugin '%s': VST 2.4 format not supported", dynlibPath));
+            throw new Exception("Couldn't load plugin: VST 2.4 format not supported");
     }
     else
-        throw new Exception(format("Couldn't load plugin '%s': unknown format", dynlibPath));
+        throw new Exception("Couldn't load plugin: unknown format");
+}
+
+/// Destroy a plugin host created with `createPluginHost`.
+/// Works even if `host` is null.
+void destroyPluginHost(IPluginHost host) nothrow @nogc
+{
+    destroyFree(host);
 }

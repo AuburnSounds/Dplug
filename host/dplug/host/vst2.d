@@ -9,7 +9,6 @@ module dplug.host.vst2;
 import core.stdc.string;
 
 import std.string;
-import std.algorithm.mutation;
 
 import dplug.core.sharedlib;
 import dplug.core.nogc;
@@ -49,9 +48,9 @@ private __gshared VST2PluginHost[AEffect*] reverseMapping;
 
 final class VST2PluginHost : IPluginHost
 {
-    this(SharedLib lib)
+    this(SharedLibHandle lib)
     {
-        _lib = move(lib);
+        _lib.initializeWithHandle(lib);
 
         VSTPluginMain_t VSTPluginMain = getVST2EntryPoint(_lib);
         HostCallbackFunction hostFun = &hostCallback;
@@ -62,13 +61,13 @@ final class VST2PluginHost : IPluginHost
 
         // various checks
         if (_aeffect.magic != 0x56737450) /* 'VstP' */
-            throw new Exception("Wrong VST magic number");
+            throw new Exception("Wrong VST magic number"); // BUG: shared library must be close here
         if (_aeffect.dispatcher == null)
-            throw new Exception("aeffect.dispatcher is null");
+            throw new Exception("aeffect.dispatcher is null"); // BUG: and here
         if (_aeffect.setParameter == null)
-            throw new Exception("aeffect.setParameter is null");
+            throw new Exception("aeffect.setParameter is null"); // BUG: and here
         if (_aeffect.getParameter == null)
-            throw new Exception("aeffect.getParameter is null");
+            throw new Exception("aeffect.getParameter is null"); // BUG: and here
 
         _dispatcher = _aeffect.dispatcher;
 
@@ -173,7 +172,7 @@ final class VST2PluginHost : IPluginHost
         _dispatcher(_aeffect, effSetSpeakerArrangement, 0, value, ptr, 0.0f);
 
         // Dplug Issue #186: effSetSpeakerArrangement always says no
-        // so we return "yes" here, compunded bug
+        // so we return "yes" here, compounded bug
         return true;
     }
 
