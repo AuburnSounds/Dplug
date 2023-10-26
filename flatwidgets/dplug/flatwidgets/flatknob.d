@@ -8,12 +8,9 @@ License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 module dplug.flatwidgets.flatknob;
 
 import std.math;
-import std.algorithm.comparison;
 
 import dplug.core.math;
-
 import dplug.gui.element;
-
 import dplug.client.params;
 
 /**

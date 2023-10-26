@@ -10,7 +10,6 @@ module dplug.gui.element;
 import core.stdc.stdio;
 import core.stdc.string: strlen, strcmp;
 
-import std.algorithm.comparison;
 import std.math: round;
 
 public import dplug.math.vector;
@@ -655,8 +654,10 @@ nothrow:
                 {
                     if (mstate.ctrlPressed)
                     {
-                        dx = clamp(dx, -1, +1);
-                        dy = clamp(dy, -1, +1);
+                        if (dx < -1) dx = -1;
+                        if (dx >  1) dx =  1;
+                        if (dy < -1) dy = -1;
+                        if (dy >  1) dy =  1;
                     }
                     int nx = _position.min.x;
                     int ny = _position.min.y;
@@ -673,8 +674,10 @@ nothrow:
                 {
                     if (mstate.ctrlPressed)
                     {
-                        dx = clamp(dx, -1, +1);
-                        dy = clamp(dy, -1, +1);
+                        if (dx < -1) dx = -1;
+                        if (dx >  1) dx =  1;
+                        if (dy < -1) dy = -1;
+                        if (dy >  1) dy =  1;
                     }
                     int nx = _position.min.x + dx;
                     int ny = _position.min.y + dy;

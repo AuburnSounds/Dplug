@@ -6,9 +6,6 @@ License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 module ar;
 
-//import std.algorithm.comparison;
-//import std.math;
-
 import std.math: isFinite;
 import dplug.core.math;
 import dplug.core.ringbuf;

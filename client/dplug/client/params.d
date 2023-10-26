@@ -24,8 +24,6 @@ import core.stdc.stdio;
 import core.stdc.string;
 
 import std.math;
-import std.string;
-import std.conv;
 
 import dplug.core.math;
 import dplug.core.sync;
