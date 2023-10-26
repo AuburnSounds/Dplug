@@ -19,6 +19,8 @@ import dplug.core.nogc;
 
 /// RAII struct to cover extern callbacks.
 /// This only deals with CPU identification and FPU control words save/restore.
+/// But when we used an enabled D runtime, this used to manage thread attachment 
+/// and disappearance, so calling this on callbacks is still mandated.
 struct ScopedForeignCallback(bool dummyDeprecated, bool saveRestoreFPU)
 {
 public:
@@ -60,7 +62,7 @@ private:
 ///          By using GC.addRoot you can make GC object survive the collection.
 ///
 /// Returns: a callback Voldement inside which you can use the runtime, but you can't escape GC memory.
-auto runtimeSection(F)(F functionOrDelegateThatCanBeGC) nothrow @nogc if (isCallable!(F))
+deprecated("This will disappear in Dplug v14") auto runtimeSection(F)(F functionOrDelegateThatCanBeGC) nothrow @nogc if (isCallable!(F))
 {
     // turn that into a delegate for simplicity purposes
     auto myGCDelegate = toDelegate(functionOrDelegateThatCanBeGC);
@@ -103,7 +105,7 @@ auto runtimeSection(F)(F functionOrDelegateThatCanBeGC) nothrow @nogc if (isCall
 
 /// RAII struct for runtime initialization, to be used once by the plug-in client.
 /// Without underlying `ScopedRuntime`, there can be no `runtimeSection`.
-struct ScopedRuntime
+deprecated("This will disappear in Dplug v14") struct ScopedRuntime
 {
 public:
 nothrow:
@@ -213,7 +215,7 @@ version(OSX)
 /// => that allow to use GC, TLS etc in a single function.
 /// This isn't meant to be used directly, and it should certainly only be used in a scoped
 /// manner without letting a registered thread exit.
-struct ScopedRuntimeSection
+deprecated("This will disappear in Dplug v14") struct ScopedRuntimeSection
 {
     import core.thread: thread_attachThis, thread_detachThis;
 
