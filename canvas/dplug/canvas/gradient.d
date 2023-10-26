@@ -73,9 +73,8 @@ private:
 
     void initLookup()
     {
-        import std.algorithm : sort;
-        m_stops[].sort!("a.pos < b.pos")();
-        
+        sortStopsInPlace(m_stops[]);
+
         if (m_stops.length == 0)
         {
             foreach(ref c; m_lookup) c = 0;
@@ -112,5 +111,35 @@ private:
     Vec!ColorStop m_stops;
     uint[lookupLen] m_lookup;
     bool m_changed = true;
+
+    static void sortStopsInPlace(ColorStop[] stops)
+    {    
+        size_t i = 1;
+        while (i < stops.length)
+        {
+            size_t j = i;
+            while (j > 0 && (stops[j-1].pos > stops[j].pos))
+            {
+                ColorStop tmp = stops[j-1];
+                stops[j-1] = stops[j];
+                stops[j] = tmp;
+                j = j - 1;
+            }
+            i = i + 1;
+        }
+    }
 }
 
+unittest
+{
+    Gradient.ColorStop[3] stops = [Gradient.ColorStop(0xff0000, 1.0f),
+                                   Gradient.ColorStop(0x00ff00, 0.4f),
+                                   Gradient.ColorStop(0x0000ff, 0.0f)];
+    Gradient.sortStopsInPlace(stops[]);
+    assert(stops[0].pos == 0.0f);
+    assert(stops[1].pos == 0.4f);
+    assert(stops[2].pos == 1.0f);
+
+    Gradient.sortStopsInPlace([]);
+    Gradient.sortStopsInPlace(stops[0..1]);
+}
