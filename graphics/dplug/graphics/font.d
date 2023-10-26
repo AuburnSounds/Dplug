@@ -8,10 +8,9 @@ module dplug.graphics.font;
 
 import core.stdc.math: floorf;
 import core.stdc.stdlib;
-import std.conv;
+
 import std.math;
-import std.algorithm.comparison;
-import std.utf;
+import std.utf: byDchar;
 
 import dplug.math.vector;
 import dplug.math.box;
@@ -228,11 +227,18 @@ void fillText(ImageRef!RGBA surface, Font font, const(char)[] s, float fontSizeP
 
         ImageRef!L8 coverageBuffer = font.getGlyphCoverage(ch, scale, w, h, xShift, yShift);
 
+        static int clamp_int(int x, int m, int M)
+        {
+            if (x < m) x = m;
+            if (x > M) x = M;
+            return x;
+        }
+
         // follows the cropping limitations of crop()
-        int cropX0 = clamp!int(offsetPos.x, 0, surface.w);
-        int cropY0 = clamp!int(offsetPos.y, 0, surface.h);
-        int cropX1 = clamp!int(offsetPos.x + w, 0, surface.w);
-        int cropY1 = clamp!int(offsetPos.y + h, 0, surface.h);
+        int cropX0 = clamp_int(offsetPos.x, 0, surface.w);
+        int cropY0 = clamp_int(offsetPos.y, 0, surface.h);
+        int cropX1 = clamp_int(offsetPos.x + w, 0, surface.w);
+        int cropY1 = clamp_int(offsetPos.y + h, 0, surface.h);
         box2i where = box2i(cropX0, cropY0, cropX1, cropY1);
  
         // Note: it is possible for where to be empty here.

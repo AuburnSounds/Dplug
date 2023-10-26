@@ -6,8 +6,6 @@ License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 module dplug.graphics.mipmap;
 
-import std.algorithm.comparison;
-
 import dplug.math.vector;
 import dplug.math.box;
 import dplug.graphics.image;
@@ -215,7 +213,7 @@ nothrow:
 
         static if (is(COLOR == L16))
         {
-            static float clamp(float a)
+            static float clamp_0_to_65535(float a)
             {
                 if (a < 0) a = 0;
                 if (a > 65535) a = 65535;
@@ -244,12 +242,12 @@ nothrow:
                 float D = ri3jn.l;
                 R[row] = cubicInterp(a, A, B, C, D);
             }
-            return clamp(cubicInterp(b, R[0], R[1], R[2], R[3]));
+            return clamp_0_to_65535(cubicInterp(b, R[0], R[1], R[2], R[3]));
         }
         else
         {
             // actually optimized ok by LDC
-            static vec4f clamp(vec4f a)
+            static vec4f clamp_0_to_65535(vec4f a)
             {
                 if (a[0] < 0) a[0] = 0;
                 if (a[1] < 0) a[1] = 0;
@@ -284,7 +282,7 @@ nothrow:
                 vec4f D = vec4f(ri3jn.r, ri3jn.g, ri3jn.b, ri3jn.a);
                 R[row] = cubicInterp(a, A, B, C, D);
             }
-            return clamp(cubicInterp(b, R[0], R[1], R[2], R[3]));
+            return clamp_0_to_65535(cubicInterp(b, R[0], R[1], R[2], R[3]));
         }
     }
 

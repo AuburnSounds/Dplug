@@ -16,9 +16,7 @@ module dplug.graphics.draw;
 
 import core.stdc.math: floorf, ceilf;
 
-import std.algorithm.comparison;
 import std.math;
-//import std.traits;
 
 import dplug.math.box;
 
@@ -193,10 +191,14 @@ private void floodFillPtr(V, COLOR)(auto ref V v, COLOR* pp, COLOR c, COLOR f)
 void fillCircle(V, COLOR)(auto ref V v, int x, int y, int r, COLOR c)
     if (isWritableView!V && is(COLOR : ViewColor!V))
 {
-    int x0 = x>r?x-r:0;
-    int y0 = y>r?y-r:0;
-    int x1 = min(x+r, v.w-1);
-    int y1 = min(y+r, v.h-1);
+    int x0 = x > r ? x-r : 0;
+    int y0 = y > r ? y-r : 0;
+    int x1 = x+r;
+    if (x1 > v.w-1)
+        x1 = v.w-1;
+    int y1 = y+r;
+    if (y1 > v.h-1)
+        y1 = v.h-1;
     int rs = sqr(r);
     // FUTURE: optimize
     foreach (py; y0..y1+1)
@@ -210,8 +212,14 @@ void fillSector(V, COLOR)(auto ref V v, int x, int y, int r0, int r1, real a0, r
 {
     int x0 = x>r1?x-r1:0;
     int y0 = y>r1?y-r1:0;
-    int x1 = min(x+r1, v.w-1);
-    int y1 = min(y+r1, v.h-1);
+    int x1 = x+r;
+    if (x1 > v.w-1)
+        x1 = v.w-1;
+    int y1 = y+r;
+    if (y1 > v.h-1)
+        y1 = v.h-1;
+
+
     int r0s = sqr(r0);
     int r1s = sqr(r1);
     if (a0 > a1)

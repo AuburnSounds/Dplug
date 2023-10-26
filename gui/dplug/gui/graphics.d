@@ -10,11 +10,6 @@ module dplug.gui.graphics;
 import core.atomic;
 import core.stdc.stdio;
 
-import std.math;
-import std.algorithm.comparison;
-import std.algorithm.sorting;
-import std.algorithm.mutation;
-
 import inteli.emmintrin;
 
 import dplug.core.math;
@@ -1276,7 +1271,6 @@ protected:
         {
             // diffuse
             Mipmap!RGBA mipmap = _diffuseMap;
-            int levelMax = min(mipmap.numLevels(), 5);
             foreach(level; 1 .. mipmap.numLevels())
             {
                 Mipmap!RGBA.Quality quality;
