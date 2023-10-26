@@ -19,7 +19,6 @@ Permission is granted to anyone to use this software for any purpose, including 
 */
 module dplug.client.midi;
 
-import std.algorithm.mutation;
 import dplug.core.vec;
 
 /// This abstraction is similar to the one in IPlug.
@@ -488,9 +487,14 @@ private:
         // Bubble up
         while (slot > 1 && compareLargerThan(_heap[parentOf(slot)], _heap[slot]))
         {
+            int parentIndex = parentOf(slot);
+
             // swap with parent if should be popped later
-            swap(_heap[slot], _heap[parentOf(slot)]);
-            slot = parentOf(slot);
+            MidiMessageWithOrder tmp = _heap[slot];
+            _heap[slot] = _heap[parentIndex];
+            _heap[parentIndex] = tmp;
+
+            slot = parentIndex;
         }
     }
 
@@ -540,7 +544,9 @@ private:
             else
             {
                 // swap with smallest of children
-                swap(_heap[slot], _heap[best]);
+                MidiMessageWithOrder tmp = _heap[slot];
+                _heap[slot] = _heap[best];
+                _heap[best] = tmp;
 
                 // continue to bubble down
                 slot = best;
