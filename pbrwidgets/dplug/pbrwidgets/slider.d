@@ -7,8 +7,7 @@ Authors:   Guillaume Piolat
 */
 module dplug.pbrwidgets.slider;
 
-import std.math;
-import std.algorithm.comparison;
+import std.math: exp, abs;
 
 import dplug.core.math;
 import dplug.gui.bufferedelement;
@@ -156,7 +155,10 @@ nothrow:
             if (isDragged)
             {
                 // lit trail is 50% brighter when dragged
-                litTrail.a = cast(ubyte) min(255, 3 * litTrail.a / 2);
+                int alpha = 3 * litTrail.a / 2;
+                if (alpha > 255)
+                    alpha = 255;
+                litTrail.a = cast(ubyte) alpha;
             }
 
             paintTrail(0, 1, unlitTrailDiffuse);

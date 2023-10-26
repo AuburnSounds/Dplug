@@ -7,7 +7,6 @@ Authors:   Guillaume Piolat
 */
 module dplug.pbrwidgets.label;
 
-import std.math;
 import dplug.gui.element;
 import dplug.client.params;
 

@@ -6,7 +6,7 @@ License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 module dplug.pbrwidgets.imageknob;
 
-import std.math;
+import std.math: PI_2, cos, sin;
 
 import dplug.math.vector;
 import dplug.math.box;

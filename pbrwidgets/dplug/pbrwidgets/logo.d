@@ -7,7 +7,7 @@ Authors:   Guillaume Piolat
 */
 module dplug.pbrwidgets.logo;
 
-import std.math;
+import std.math: exp, abs;
 import dplug.gui.element;
 import dplug.core.math;
 import dplug.graphics;

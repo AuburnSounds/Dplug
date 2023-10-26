@@ -16,6 +16,15 @@ module dplug.window.x11window;
 
 version(linux): // because of static linking with the X11 library
 
+version(legacyMouseCursor)
+{
+    version = noCursors; // FUTURE: tell to replace with Dplug_NoMouseCursor
+}
+else version(Dplug_NoMouseCursor)
+{
+    version = noCursors;
+}
+
 import core.atomic;
 import core.stdc.string;
 import core.sys.posix.unistd;
@@ -373,7 +382,7 @@ private:
 
     void setCursor()
     {
-        version(legacyMouseCursor)
+        version(noCursors)
         {}
         else
         {

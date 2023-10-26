@@ -13,10 +13,9 @@ import std.math;
 import dplug.gui.element;
 import dplug.core.sync;
 import dplug.core.math;
-import std.algorithm.comparison: clamp;
 
 // Vertical bargraphs made of LEDs
-class UIBargraph : UIElement
+deprecated("Will be removed in Dplug v14") class UIBargraph : UIElement
 {
 public:
 nothrow:
@@ -128,7 +127,8 @@ nothrow:
             foreach(i; 0..values.length)
             {
                 _values[i] = linmap!float(values[i], _minValue, _maxValue, 0, 1);
-                _values[i] = clamp!float(_values[i], 0, 1);
+                if (_values[i] < 0) _values[i] = 0;
+                if (_values[i] > 1) _values[i] = 1;
             }
             _valueMutex.unlock();
         }

@@ -7,8 +7,7 @@ Authors:   Guillaume Piolat
 */
 module dplug.pbrwidgets.knob;
 
-import std.math;
-import std.algorithm.comparison;
+import std.math: PI, exp, abs, sin, cos;
 
 import dplug.core.math;
 
@@ -151,7 +150,9 @@ nothrow:
         // when dragged, trail is two times brighter
         if (isDragged)
         {
-            litTrail.a = cast(ubyte) min(255, 2 * litTrail.a);
+            int alpha = 2 * litTrail.a;
+            if (alpha > 255) alpha = 255;
+            litTrail.a = cast(ubyte) alpha;
         }
 
         foreach(dirtyRect; dirtyRects)
@@ -225,8 +226,12 @@ nothrow:
             // Draw knob
             //
             float angle = getValueAngle + PI * 0.5f;
-            float depthRadius = max(knobRadiusPx * 3.0f / 5.0f, 0);
-            float depthRadius2 = max(knobRadiusPx * 3.0f / 5.0f, 0);
+            float depthRadius = knobRadiusPx * 3.0f / 5.0f;
+            if (depthRadius < 0) 
+                depthRadius = 0;
+            float depthRadius2 = knobRadiusPx * 3.0f / 5.0f;
+            if (depthRadius2 < 0) 
+                depthRadius2 = 0;
 
             float posEdgeX = center.x + sin(angle) * depthRadius2;
             float posEdgeY = center.y - cos(angle) * depthRadius2;
@@ -273,7 +278,9 @@ nothrow:
 
                 float t = -1 + 2 * abs(disp - PI) / PI;
 
-                float LEDRadius = max(0.0f, lerp(LEDRadiusMin, LEDRadiusMax, t));
+                float LEDRadius = lerp(LEDRadiusMin, LEDRadiusMax, t);
+                if (LEDRadius < 0)
+                    LEDRadius = 0;
 
                 float smallRadius = knobRadiusPx * LEDRadius * 0.714f;
                 float largerRadius = knobRadiusPx * LEDRadius;

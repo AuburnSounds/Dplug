@@ -7,7 +7,7 @@ Authors:   Guillaume Piolat
 */
 module dplug.pbrwidgets.onoffswitch;
 
-import std.math;
+import std.math: exp, abs;
 import dplug.core.math;
 import dplug.gui.element;
 import dplug.gui.bufferedelement;

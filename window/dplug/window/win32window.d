@@ -31,6 +31,16 @@ import dplug.graphics.image;
 import dplug.window.window;
 
 
+version(legacyMouseCursor)
+{
+    version = noCursors; // FUTURE: tell to replace with Dplug_NoMouseCursor
+}
+else version(Dplug_NoMouseCursor)
+{
+    version = noCursors;
+}
+
+
 // Hook the mouse callback so that you can use mouse wheel while dragging outside of the plugin 
 // window boundaries. This is most useful for eg. EQ plugins where you would want to use mouse 
 // wheel while dragging a point out of the plugin window.
@@ -348,7 +358,7 @@ version(Windows)
                     // This is done differently depending on whether we want a modifed cursor ourselves.
                     // Easily tested in REAPER by hovering over the left border of 
                     // the plugin: this turn the custor into a resize arrow.                    
-                    version(legacyMouseCursor)
+                    version(noCursors)
                     {
                         goto default;
                     }
@@ -748,7 +758,7 @@ version(Windows)
 
         int setMouseCursor(bool forceUpdate)
         {
-            version(legacyMouseCursor)
+            version(noCursors)
             {}
             else
             {

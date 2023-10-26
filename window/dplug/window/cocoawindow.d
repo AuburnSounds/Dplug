@@ -23,6 +23,15 @@ import dplug.window.window;
 
 import derelict.cocoa;
 
+version(legacyMouseCursor)
+{
+    version = noCursors; // FUTURE: tell to replace with Dplug_NoMouseCursor
+}
+else version(Dplug_NoMouseCursor)
+{
+    version = noCursors;
+}
+
 
 version = useCoreGraphicsContext;
 
@@ -325,7 +334,7 @@ private:
         _listener.onMouseMove(mousePos.x, mousePos.y, mousePos.x - _lastMouseX, mousePos.y - _lastMouseY,
             getMouseState(event));
 
-        version(legacyMouseCursor)
+        version(noCursors)
         {}
         else
         {
@@ -349,7 +358,7 @@ private:
         // 2. either the mouseMove event might not be called, because the window is hosted in another process
         //    and isn't active yet (macOS has "click through", a sort of mouse focus)
         // then we need to set the mouse cursor upon entry. Tricky!
-        version(legacyMouseCursor)
+        version(noCursors)
         {
             setMouseCursor(MouseCursor.pointer);
         }

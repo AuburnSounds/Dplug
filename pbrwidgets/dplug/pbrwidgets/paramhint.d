@@ -10,10 +10,6 @@ module dplug.pbrwidgets.paramhint;
 import core.stdc.string;
 import core.atomic;
 
-import std.math;
-import std.conv;
-import std.algorithm.comparison;
-
 import dplug.core;
 import dplug.gui.element;
 import dplug.gui.bufferedelement;
@@ -85,8 +81,13 @@ nothrow:
 
         assert(_upAnimation >= 0 && _upAnimation <= 1);
 
-        float openAnimation = min(1.0f,  _upAnimation * 2.0f);
-        float moveUpAnimation = max(0.0f,  _upAnimation * 2.0f - 1.0f);
+        float openAnimation = _upAnimation * 2.0f;
+        if (openAnimation > 1.0f)
+            openAnimation = 1.0f;
+
+        float moveUpAnimation = _upAnimation * 2.0f - 1.0f;
+        if (openAnimation < 0.0f)
+            openAnimation = 0.0f;
 
         box2i fullRect = box2i(0, 0, W, H);
 
