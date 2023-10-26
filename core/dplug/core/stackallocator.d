@@ -4,12 +4,13 @@ Stack allocator for temporary allocations.
 Copyright: Auburn Sounds 2019.
 License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
+// TODO deprecated("Will be removed in Dplug v15") for the module itself
 module dplug.core.stackallocator;
 
 import core.stdc.stdlib: malloc, free;
 import dplug.core.vec;
 
-struct StackAllocator
+deprecated("Will be removed in Dplug v14") struct StackAllocator
 {
 private:
     Vec!(ubyte*) bucketArray;
@@ -75,38 +76,4 @@ public:
         ++numUsedPages;
         currentPageFreeBytes = PAGE_SIZE;
     }
-}
-
-unittest
-{
-    StackAllocator allocator;
-    auto saved = allocator.saveState;
-    uint[] arr = allocator.makeArray!uint(10);
-    arr[] = 42;
-    assert(arr.length == 10);
-    allocator.restoreState(saved);
-
-    uint[] arr2 = allocator.makeArray!uint(10);
-    arr2[] = 48;
-
-    assert(arr[0] == 48);
-
-    // multiple allocations
-    uint[] arr3 = allocator.makeArray!uint(10);
-    arr3[] = 60;
-
-    // doesn't overwrite arr2
-    assert(arr2[0] == 48);
-    assert(arr2[$-1] == 48);
-
-    allocator.restoreState(saved);
-
-    // test new page allocation
-    allocator.makeArray!uint(1);
-    allocator.makeArray!uint(StackAllocator.PAGE_SIZE / uint.sizeof);
-
-    allocator.restoreState(saved);
-
-    // test page reuse
-    allocator.makeArray!uint(StackAllocator.PAGE_SIZE / uint.sizeof);
 }

@@ -212,10 +212,10 @@ void fillSector(V, COLOR)(auto ref V v, int x, int y, int r0, int r1, real a0, r
 {
     int x0 = x>r1?x-r1:0;
     int y0 = y>r1?y-r1:0;
-    int x1 = x+r;
+    int x1 = x+r1;
     if (x1 > v.w-1)
         x1 = v.w-1;
-    int y1 = y+r;
+    int y1 = y+r1;
     if (y1 > v.h-1)
         y1 = v.h-1;
 
