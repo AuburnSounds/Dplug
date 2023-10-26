@@ -6,7 +6,6 @@ License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 module main;
 
 import std.math;
-import std.algorithm;
 
 import dplug.core,
        dplug.dsp,
@@ -127,8 +126,10 @@ nothrow:
         if(hardClip)
         {
             clipAmount = 1 - (readParam!float(paramClip) / 100.0f);
-            /// Clamp clipAmount to ensure it is never 0
-            clipAmount = clamp(clipAmount, 0.1, 1);
+
+            // Clamp clipAmount to ensure it is never 0
+            if (clipAmount < 0.1f)
+                clipAmount = 0.1f;
         }
         else
         {
