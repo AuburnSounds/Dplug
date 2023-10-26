@@ -10,7 +10,7 @@ module dplug.client.preset;
 import core.stdc.stdlib: free;
 
 import std.range.primitives;
-import std.math;
+import std.math: isFinite;
 
 import dplug.core.vec;
 import dplug.core.nogc;

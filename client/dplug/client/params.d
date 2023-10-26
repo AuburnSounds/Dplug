@@ -23,7 +23,7 @@ import core.atomic;
 import core.stdc.stdio;
 import core.stdc.string;
 
-import std.math;
+import std.math: isNaN, log, exp, isFinite;
 
 import dplug.core.math;
 import dplug.core.sync;

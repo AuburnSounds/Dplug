@@ -25,7 +25,7 @@
 */
 module dplug.canvas;
 
-import std.math;
+import std.math: cos, sin, tan, PI;
 
 import dplug.core.vec;
 import dplug.core.nogc;

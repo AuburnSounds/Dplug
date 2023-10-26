@@ -6,7 +6,7 @@ License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 module dplug.dsp.iir;
 
-import std.math;
+import std.math: SQRT1_2, PI, pow, sin, cos, sqrt;
 import dplug.core.math;
 import inteli.emmintrin;
 

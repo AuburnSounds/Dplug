@@ -2,8 +2,9 @@
 Copyright: Guillaume Piolat 2022.
 License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
-import std.math;
-import dplug.core, dplug.client;
+import std.math: PI;
+import dplug.core;
+import dplug.client;
 
 // This define entry points for plugin formats,
 // depending on which version identifiers are defined.

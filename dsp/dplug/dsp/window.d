@@ -6,7 +6,7 @@ License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 module dplug.dsp.window;
 
-import std.math;
+import std.math: PI, sqrt, cos, isClose;
 
 import dplug.core.vec;
 
@@ -242,7 +242,10 @@ double evalWindowInternal(WindowDesc desc, int n, int N) pure nothrow @nogc
         case WindowType.BARTLETT:
         {
             double nm1 = cast(double)N / 2;
-            return 1 - abs(n - nm1) / nm1;
+            double t = n - nm1;
+            if (t < 0)
+                t = -t;
+            return 1 - t / nm1;
         }
 
         case WindowType.HANN:

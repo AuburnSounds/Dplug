@@ -18,7 +18,7 @@ import core.stdc.math: floorf, ceilf;
 
 import std.algorithm.comparison;
 import std.math;
-import std.traits;
+//import std.traits;
 
 import dplug.math.box;
 
@@ -237,58 +237,18 @@ void fillSector(V, COLOR)(auto ref V v, int x, int y, int r0, int r1, real a0, r
         }
 }
 
-struct Coord { int x, y; string toString() { import std.string; return format("%s", [this.tupleof]); } }
-
-
-/+
-void fillPoly(V, COLOR)(auto ref V v, Coord[] coords, COLOR f)
-    if (isWritableView!V && is(COLOR : ViewColor!V))
-{
-    int minY, maxY;
-    minY = maxY = coords[0].y;
-    foreach (c; coords[1..$])
-        minY = min(minY, c.y),
-        maxY = max(maxY, c.y);
-
-    foreach (y; minY..maxY+1)
-    {
-        int[] intersections;
-        for (uint i=0; i<coords.length; i++)
-        {
-            auto c0=coords[i], c1=coords[i==$-1?0:i+1];
-            if (y==c0.y)
-            {
-                assert(y == coords[i%$].y);
-                int pi = i-1; int py;
-                while ((py=coords[(pi+$)%$].y)==y)
-                    pi--;
-                int ni = i+1; int ny;
-                while ((ny=coords[ni%$].y)==y)
-                    ni++;
-                if (ni > coords.length)
-                    continue;
-                if ((py>y) == (y>ny))
-                    intersections ~= coords[i%$].x;
-                i = ni-1;
-            }
-            else
-            if (c0.y<y && y<c1.y)
-                intersections ~= itpl(c0.x, c1.x, y, c0.y, c1.y);
-            else
-            if (c1.y<y && y<c0.y)
-                intersections ~= itpl(c1.x, c0.x, y, c1.y, c0.y);
-        }
-
-        assert(intersections.length % 2==0);
-        intersections.sort();
-        for (uint i=0; i<intersections.length; i+=2)
-            v.hline!true(intersections[i], intersections[i+1], y, f);
-    }
+deprecated("Will be removed in Dplug v14") struct Coord 
+{ 
+    int x, y; 
+    string toString() 
+    { 
+        import std.string; 
+        return format("%s", [this.tupleof]); 
+    } 
 }
-+/
 
 // No caps
-void thickLine(V, COLOR)(auto ref V v, int x1, int y1, int x2, int y2, int r, COLOR c)
+deprecated("Will be removed in Dplug v14") void thickLine(V, COLOR)(auto ref V v, int x1, int y1, int x2, int y2, int r, COLOR c)
     if (isWritableView!V && is(COLOR : ViewColor!V))
 {
     int dx = x2-x1;
@@ -308,7 +268,7 @@ void thickLine(V, COLOR)(auto ref V v, int x1, int y1, int x2, int y2, int r, CO
 }
 
 // No caps
-void thickLinePoly(V, COLOR)(auto ref V v, Coord[] coords, int r, COLOR c)
+deprecated("Will be removed in Dplug v14") void thickLinePoly(V, COLOR)(auto ref V v, Coord[] coords, int r, COLOR c)
     if (isWritableView!V && is(COLOR : ViewColor!V))
 {
     foreach (i; 0..coords.length)

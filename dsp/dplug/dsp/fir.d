@@ -8,7 +8,7 @@ module dplug.dsp.fir;
 
 import core.stdc.complex;
 
-import std.math;
+import std.math: PI, sin;
 import std.complex;
 
 import dplug.core.math;
@@ -125,7 +125,6 @@ struct FIR(T)
     ~this() nothrow @nogc
     {
         _impulse.reallocBuffer(0);
-        _tempBuffer.reallocBuffer(0);
         _windowBuffer.reallocBuffer(0);
     }
 
@@ -170,7 +169,6 @@ private:
     T[] _impulse;
 
     Delayline!T _delayline;
-    Complex!T[] _tempBuffer;
     T[] _windowBuffer;
 }
 
