@@ -544,7 +544,6 @@ unittest
 
 
     import std.random;
-    import std.algorithm.comparison;
     int NBUF = 200;
 
     Xorshift32 rng;
@@ -571,7 +570,10 @@ unittest
             int newSize = uniform(0, 100, rng);
             boxes[i].resize(newSize);
 
-            int minSize = min(previousSize, boxes[i].length);
+            int minSize = previousSize;
+            if (minSize > boxes[i].length)
+                minSize = cast(int)(boxes[i].length);
+
             void* newPtr = boxes[i].ptr;
             foreach(int k; 0..minSize)
             {

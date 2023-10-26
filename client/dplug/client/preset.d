@@ -11,8 +11,6 @@ import core.stdc.stdlib: free;
 
 import std.range.primitives;
 import std.math;
-import std.array;
-import std.algorithm.comparison;
 
 import dplug.core.vec;
 import dplug.core.nogc;
