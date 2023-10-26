@@ -24,7 +24,6 @@ import core.stdc.stdio;
 import core.stdc.string;
 
 import std.math;
-import std.algorithm.comparison;
 import std.string;
 import std.conv;
 
@@ -444,7 +443,13 @@ public:
     {
         super(index, name, label);
         _name = name;
-        _value = _defaultValue = clamp(defaultValue, min, max);
+        int clamped = defaultValue;
+        if (clamped < min) 
+            clamped = min;
+        if (clamped > max) 
+            clamped = max;
+        _value = clamped;
+        _defaultValue = clamped;
         _min = min;
         _max = max;
     }
@@ -579,19 +584,28 @@ private:
     {
         double mapped = _min + (_max - _min) * normalizedValue;
 
-        // slightly incorrect rounding, but lround is crashing
-        int rounded = void;
+        // BUG slightly incorrect rounding, but lround is crashing
+        int rounded;
         if (mapped >= 0)
             rounded = cast(int)(0.5f + mapped);
         else
             rounded = cast(int)(-0.5f + mapped);
 
-        return clamp(rounded, _min, _max);
+        if (rounded < _min) 
+            rounded = _min;
+        if (rounded > _max)
+            rounded = _max;
+        return rounded;
     }
 
     final double toNormalized(int value) nothrow @nogc
     {
-        return clamp( (cast(double)value - _min) / (_max - _min), 0.0, 1.0);
+        double v = (cast(double)value - _min) / (_max - _min);
+        if (v < 0.0)
+            v = 0.0;
+        if (v > 1.0)
+            v = 1.0;
+        return v;
     }
 }
 
@@ -608,7 +622,12 @@ public:
     override void toStringN(char* buffer, size_t numBytes)
     {
         int v = value();
-        int toCopy = max(0, min( cast(int)(numBytes) - 1, cast(int)(_possibleValues[v].length)));
+        int toCopy = cast(int)(_possibleValues[v].length);
+        int avail = cast(int)(numBytes) - 1;
+        if (toCopy > avail)
+            toCopy = avail;
+        if (toCopy < 0)
+            toCopy = 0;
         memcpy(buffer, _possibleValues[v].ptr, toCopy); // memcpy OK
         // add terminal zero
         if (numBytes > 0)
@@ -822,12 +841,22 @@ class LinearFloatParameter : FloatParameter
 
     override double toNormalized(double value)
     {
-        return clamp( (value - _min) / (_max - _min), 0.0, 1.0);
+        double v = (value - _min) / (_max - _min);
+        if (v < 0.0)
+            v = 0.0;
+        if (v > 1.0)
+            v = 1.0;
+        return v;
     }
 
     override double fromNormalized(double normalizedValue)
     {
-        return clamp(_min + (_max - _min) * normalizedValue, _min, _max);
+        double v = _min + (_max - _min) * normalizedValue;
+        if (v < _min)
+            v = _min;
+        if (v > _max)
+            v = _max;
+        return v;
     }
 }
 
@@ -898,15 +927,28 @@ class PowFloatParameter : FloatParameter
 
     override double toNormalized(double value)
     {
-        double result = clamp( (value - _min) / (_max - _min), 0.0, 1.0) ^^ (1 / _shape);
-        assert(result >= 0 && result <= 1);
-        return result;
+        double v = (value - _min) / (_max - _min);
+        if (v < 0.0)
+            v = 0.0;
+        if (v > 1.0)
+            v = 1.0;
+        v = v ^^ (1 / _shape);
+
+        // Note: It's not entirely impossible to imagine a particular way that 1 would be exceeded, since pow
+        // is implemented with an exp approximation and a log approximation.
+        // TODO: produce ill case in isolation to see
+        assert(v >= 0 && v <= 1); // will still assert on NaN
+        return v;
     }
 
     override double fromNormalized(double normalizedValue)
     {
         double v = _min + (normalizedValue ^^ _shape) * (_max - _min);
-        return clamp(v, _min, _max);
+         if (v < _min)
+            v = _min;
+        if (v > _max)
+            v = _max;
+        return v;
     }
 
 private:
