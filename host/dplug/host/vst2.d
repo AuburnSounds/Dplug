@@ -6,18 +6,18 @@ License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 module dplug.host.vst2;
 
-import core.stdc.string;
-
-import std.string;
-
+import core.stdc.string: strlen, memset;
 import dplug.core.sharedlib;
 import dplug.core.nogc;
+import dplug.core.vec;
 import dplug.host.host;
 import dplug.vst2;
 
+nothrow @nogc:
 
 alias VSTPluginMain_t = extern(C) void* function(void* fun);
 
+/// Returns: a VST2 entry point, or `null` in case of errors.
 VSTPluginMain_t getVST2EntryPoint(ref SharedLib lib)
 {
     void* result = null;
@@ -37,45 +37,84 @@ VSTPluginMain_t getVST2EntryPoint(ref SharedLib lib)
     tryEntryPoint("main");
 
     if (result == null)
-        throw new Exception("Did not find a VST entry point");
+        return null; // Did not find a VST entry point
     else
         return cast(VSTPluginMain_t)result;
 }
 
 version(VST2):
 
-private __gshared VST2PluginHost[AEffect*] reverseMapping;
-
 final class VST2PluginHost : IPluginHost
 {
-    this(SharedLibHandle lib)
+nothrow @nogc:
+
+    // Note: in case of error, it's OK the object will be partially constructed and
+    // its destructor can be called.
+    this(SharedLibHandle lib, bool* err)
     {
+        *err = true;
         _lib.initializeWithHandle(lib);
 
         VSTPluginMain_t VSTPluginMain = getVST2EntryPoint(_lib);
+        if (VSTPluginMain is null)
+            return;
+
         HostCallbackFunction hostFun = &hostCallback;
 
-        _aeffect = cast(AEffect*) VSTPluginMain(hostFun);
-
-        reverseMapping[_aeffect] = this;
+        AEffect* aeffect = cast(AEffect*) VSTPluginMain(hostFun);
 
         // various checks
-        if (_aeffect.magic != 0x56737450) /* 'VstP' */
-            throw new Exception("Wrong VST magic number"); // BUG: shared library must be close here
-        if (_aeffect.dispatcher == null)
-            throw new Exception("aeffect.dispatcher is null"); // BUG: and here
-        if (_aeffect.setParameter == null)
-            throw new Exception("aeffect.setParameter is null"); // BUG: and here
-        if (_aeffect.getParameter == null)
-            throw new Exception("aeffect.getParameter is null"); // BUG: and here
+        if (aeffect.magic != 0x56737450) /* 'VstP' */
+            return; // Wrong VST magic number
+        if (aeffect.dispatcher == null)
+            return; // aeffect.dispatcher is null
+        if (aeffect.setParameter == null)
+            return; // aeffect.setParameter is null
+        if (aeffect.getParameter == null)
+            return; // aeffect.getParameter is null
+
+        // aeffect passed those basic checks
+        _aeffect = aeffect;
+        _aeffect.resvd2 = cast(size_t) cast(void*) this;
 
         _dispatcher = _aeffect.dispatcher;
 
         // open plugin
         _dispatcher(_aeffect, effOpen, 0, 0, null, 0.0f);
+        _parameterNames.reallocBuffer(33 * _aeffect.numParams);
 
         // get initial latency
         updateLatency();
+
+        *err = false;
+    }
+
+    override void close()
+    {
+        // deprecated, destructor does this instead
+    }
+
+    // This destructor must handle a partially constructed object!
+    ~this()
+    {
+        // close plugin
+        if (_aeffect !is null)
+        {
+            // Cannot close VST plugin while not suspended
+            // This is a programming error.
+            assert (_suspended); 
+
+            // close plugin
+            _dispatcher(_aeffect, effClose, 0, 0, null, 0.0f);
+            
+            // remove mapping
+            // TODO Is this safe though? What if the host is still calling audio processing?
+            _aeffect.resvd2 = 0;
+
+            _aeffect = null;
+        }
+
+        _lib.unload();
     }
 
     override void setParameter(int paramIndex, float normalizedValue)
@@ -90,9 +129,9 @@ final class VST2PluginHost : IPluginHost
 
     override const(char)[] getParameterName(int paramIndex)
     {
-        char[33] buf;
-        _dispatcher(_aeffect, effGetParamName, paramIndex, 0, buf.ptr, 0.0f);
-        return fromStringz(buf.ptr).idup;
+        char* buf = &_parameterNames[33 * paramIndex];
+        _dispatcher(_aeffect, effGetParamName, paramIndex, 0, buf, 0.0f);
+        return buf[0..strlen(buf)];
     }
 
     override int getParameterCount()
@@ -100,45 +139,27 @@ final class VST2PluginHost : IPluginHost
         return _aeffect.numParams;
     }
 
-    override void close()
+    override const(char)[] getVendorString()
     {
-        if (!_suspended)
-            throw new Exception("Cannot close VST plugin while not suspended");
-
-        // close plugin
-        _dispatcher(_aeffect, effClose, 0, 0, null, 0.0f);
-
-        // TODO: disabled because this breaks the second time the DLL is unloaded on Windows
-        // unload dynlib
-        // Note: probably fixed now
-        //  _lib.unload();
+        _dispatcher(_aeffect, effGetVendorString, 0, 0, _vendorString.ptr, 0.0f);
+        return _vendorString[0..strlen(_vendorString.ptr)];
     }
 
-    override string getVendorString()
-    {
-        char[65] buf;
-        _dispatcher(_aeffect, effGetVendorString, 0, 0, buf.ptr, 0.0f);
-        return fromStringz(buf.ptr).idup;
+    override const(char)[] getEffectName()
+    {   
+        _dispatcher(_aeffect, effGetEffectName, 0, 0, _effectName.ptr, 0.0f);
+        return _effectName[0..strlen(_effectName.ptr)];
     }
 
-    override string getEffectName()
-    {
-        char[65] buf;
-        _dispatcher(_aeffect, effGetEffectName, 0, 0, buf.ptr, 0.0f);
-        return fromStringz(buf.ptr).idup;
-    }
-
-    override string getProductString()
-    {
-        char[65] buf;
-        _dispatcher(_aeffect, effGetProductString, 0, 0, buf.ptr, 0.0f);
-        return fromStringz(buf.ptr).idup;
+    override const(char)[] getProductString()
+    {        
+        _dispatcher(_aeffect, effGetProductString, 0, 0, _productString.ptr, 0.0f);
+        return _productString[0..strlen(_productString.ptr)];
     }
 
     override void processAudioFloat(float** inputs, float** outputs, int samples)
     {
-        if (_suspended)
-            throw new Exception("Cannot process audio with VST plugin while suspended");
+        assert (!_suspended);
         _aeffect.processReplacing(_aeffect, inputs, outputs, samples);
         _processedSamples += samples;
     }
@@ -178,15 +199,13 @@ final class VST2PluginHost : IPluginHost
 
     override void setSampleRate(float sampleRate)
     {
-        if (!_suspended)
-            throw new Exception("Cannot set sample rate of VST plugin while not suspended");
+        assert(_suspended); // FUTURE: report success or error
         _dispatcher(_aeffect, effSetSampleRate, 0, 0, null, sampleRate);
     }
 
     override void setMaxBufferSize(int samples)
     {
-        if (!_suspended)
-            throw new Exception("Cannot set block sizeof VST plugin while not suspended");
+        assert(_suspended); // FUTURE: report success or error
         _dispatcher(_aeffect, effSetBlockSize, 0, cast(VstIntPtr)samples, null, 0.0f);
     }
 
@@ -215,7 +234,7 @@ final class VST2PluginHost : IPluginHost
         return size;
     }
 
-    override ubyte[] saveState()
+    override const(ubyte)[] saveState()
     {
         if (_aeffect.flags && effFlagsProgramChunks)
         {
@@ -223,20 +242,38 @@ final class VST2PluginHost : IPluginHost
             VstIntPtr size = _dispatcher(_aeffect, effGetChunk, 0 /* want a bank */, 0, &pChunk, 0.0f);
 
             if (size == 0 || pChunk == null)
-                throw new Exception("effGetChunk returned an empty chunk");
+                return null; // bug in client, effGetChunk returned an empty chunk
 
-            return pChunk[0..size].dup;
+            // Local copy
+            _lastStateChunkOutput.resize(size);
+            _lastStateChunkOutput[][0..size] = pChunk[0..size];
+
+            return _lastStateChunkOutput[];
         }
         else
-            throw new Exception("This VST doesn't support chunks");
+            return null;
 
     }
 
-    override void restoreState(ubyte[] chunk)
+    override bool restoreState(const(ubyte)[] chunk)
     {
-        VstIntPtr result = _dispatcher(_aeffect, effSetChunk, 0 /* want a bank */, chunk.length, chunk.ptr, 0.0f);
+        if (chunk is null)
+            return false;
+        size_t size = chunk.length;
+
+        _lastStateChunkInput.resize(size);
+        _lastStateChunkInput[][0..size] = chunk[0..size];
+
+        VstIntPtr result = _dispatcher(_aeffect, 
+                                       effSetChunk, 
+                                       0 /* want a bank */, 
+                                       _lastStateChunkInput.length, 
+                                       _lastStateChunkInput.ptr, 
+                                       0.0f);
         if (result != 1)
-            throw new Exception("effSetChunk failed");
+            return false; // effSetChunk failed
+        else
+            return true;
     }
 
     override int getCurrentProgram()
@@ -264,6 +301,15 @@ private:
     bool _suspended = true;
     int _currentLatencySamples;
 
+    char[] _parameterNames; // 33 x paramlength names.
+    char[65] _productString;
+    char[65] _vendorString;
+    char[65] _effectName; 
+
+    // Using Vec to avoid allocating down.
+    Vec!ubyte _lastStateChunkOutput;
+    Vec!ubyte _lastStateChunkInput;
+
     void updateLatency()
     {
         _currentLatencySamples = _aeffect.initialDelay;
@@ -286,15 +332,14 @@ extern(C) nothrow @nogc VstIntPtr hostCallback(AEffect* effect, VstInt32 opcode,
         case DEPRECATED_audioMasterWantMidi: return 0;
         case audioMasterGetTime:
         {
-            VST2PluginHost* phost = effect in reverseMapping;
+            VST2PluginHost phost = cast(VST2PluginHost) cast(void*) effect.resvd2;
             if (!phost)
                 return 0;
 
-            VST2PluginHost host = *phost;
-            host.timeInfo.samplePos = host._processedSamples;
-            host.timeInfo.flags = 0;
+            phost.timeInfo.samplePos = phost._processedSamples;
+            phost.timeInfo.flags = 0;
 
-            return cast(VstIntPtr)(&host.timeInfo);
+            return cast(VstIntPtr)(&phost.timeInfo);
         }
         case audioMasterProcessEvents: printf("audioMasterProcessEvents\n"); return 0;
         case DEPRECATED_audioMasterSetTime: printf("DEPRECATED_audioMasterSetTime\n"); return 0;

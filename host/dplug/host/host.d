@@ -5,8 +5,12 @@ License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 */
 module dplug.host.host;
 
+nothrow @nogc:
+
 interface IPluginHost
 {
+nothrow @nogc:
+
     /// Process some audio.
     /// `setSampleRate` and `setMaxBufferSize` must be called before use.
     /// samples must <= the maximum buffer size asked in 
@@ -28,6 +32,7 @@ interface IPluginHost
     float getParameter(int paramIndex);
 
     /// Returns: Full name for parameter.
+    /// Lifetime of return value is same as IPluginHost.
     const(char)[] getParameterName(int paramIndex);
 
     /// Returns: Number of parameters.
@@ -36,26 +41,32 @@ interface IPluginHost
     /// Loads a preset.
     void loadPreset(int presetIndex);
 
-    /// Serialize state of the plugin.
-    ubyte[] saveState();
+    /// Serialize state of the plugin, to restore with `restoreState`.
+    ///
+    /// Returns: `null` in case of error, else a state chunk.
+    ///           The lifetime of this returned chunk is the same as the `IPluginHost`, or until 
+    ///           another call to `saveState` is done.
+    const(ubyte)[] saveState();
 
-    /// Restore state of the plugin.
-    void restoreState(ubyte[] chunk);
+    /// Restore state of the plugin, saved with `saveState`.
+    /// Returns: `true` on success.
+    bool restoreState(const(ubyte)[] chunk);
 
     /// Gets current "program" index.
+    /// Note: not all presets are exposed to the host. In many plug-ins they aren't.
     int getCurrentProgram();
 
-    /// Free all resources associated with the plugin host.
-    void close();
-
-    /// Get plugin information
-    string getProductString();
+    /// Get plugin information.
+    /// Lifetime of return value is same as IPluginHost.
+    const(char)[] getProductString();
     
     ///ditto
-    string getEffectName();
+    /// Lifetime of return value is same as IPluginHost.
+    const(char)[] getEffectName();
     
     ///ditto
-    string getVendorString();
+    /// Lifetime of return value is same as IPluginHost.
+    const(char)[] getVendorString();
 
     /// Opens the editor window.
     /// On Windows, pass a HWND
@@ -82,6 +93,8 @@ interface IPluginHost
 
     /// Get tail size in seconds. Precise semantics TBD.
     double getTailSizeInSeconds();
+
+    deprecated("Use destroyPluginHost() instead") void close();
 }
 
 

@@ -281,6 +281,8 @@ int main(string[]args)
 
         long timeBeforeInit = getTickUs(precise);
         IPluginHost host = createPluginHost(pluginPath);
+        if (host is null)
+            throw new Exception(format("Cannot open plug-in %s", pluginPath));
         host.setSampleRate(sound.sampleRate);
         host.setMaxBufferSize(currentMaxBufferSize);
         if (verbose) writefln("Setting initial buffer size to %s\n", currentMaxBufferSize);
@@ -462,7 +464,7 @@ int main(string[]args)
         }
 
         host.endAudioProcessing();
-        host.close();
+        destroyPluginHost(host);
 
         // Dump xml
         if (outputXML) xmlOutput.getData.toFile(xmlFilename);

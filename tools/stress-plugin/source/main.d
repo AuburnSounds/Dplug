@@ -2,6 +2,7 @@ import std.stdio;
 import std.algorithm;
 import std.range;
 import std.conv;
+import std.format;
 import std.parallelism;
 
 import waved;
@@ -104,6 +105,8 @@ void main(string[]args)
                 long timeBeforeInit = getTickMs();
 
                 IPluginHost host = createPluginHost(pluginPath);
+                if (host is null)
+                    throw new Exception(format("Couldn't open plug-in %s", pluginPath));
 
 
                 host.setSampleRate(44100);
@@ -148,7 +151,7 @@ void main(string[]args)
                 }
 
                 host.endAudioProcessing();
-                host.close();
+                destroyPluginHost(host);
             }
 
             long timeAfterMeasures = getTickMs();

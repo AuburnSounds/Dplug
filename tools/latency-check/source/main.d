@@ -128,6 +128,9 @@ int main(string[] args)
             cwritefln("*** Testing at sample rate %s".white, sampleRate);
 
             IPluginHost host = createPluginHost(pluginPath);
+            if (host is null)
+                throw new Exception(format("Couldn't open plug-in %s", pluginPath));
+
             if (preset != -1)
                 host.loadPreset(preset);
 
@@ -246,7 +249,7 @@ int main(string[] args)
                 cwritefln("  Reported %s samples (%.3f ms), measured %s samples =&gt; ERROR".lred, latencyReported, latencyReportedMs, latencyMeasured);
             writeln;
 
-            host.close();
+            destroyPluginHost(host);
         }
        
         return 0;

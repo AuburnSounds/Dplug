@@ -12,8 +12,11 @@ public import dplug.host.host;
 public import dplug.host.vst2;
 public import dplug.host.window;
 
+nothrow @nogc:
+
 /// Loads an audio plugin.
 /// Such a host MUST be destroyed with `destroyPluginHost`.
+/// Return: a plugin host, or `null` on error.
 IPluginHost createPluginHost(string dynlibPath)
 {
     // FUTURE support OSX plugin bundles
@@ -26,13 +29,20 @@ IPluginHost createPluginHost(string dynlibPath)
     {
         version(VST2)
         {
-            return new VST2PluginHost(lib.disown);
+            bool err;
+            VST2PluginHost instance = mallocNew!VST2PluginHost(lib.disown, &err);
+            if (err)
+            {
+                destroyFree(instance);
+                return null; // TODO: shall call destructor?
+            }
+            return instance;
         }
         else
-            throw new Exception("Couldn't load plugin: VST 2.4 format not supported");
+            return null; // VST 2.4 not supported
     }
     else
-        throw new Exception("Couldn't load plugin: unknown format");
+        return null; // unknown format
 }
 
 /// Destroy a plugin host created with `createPluginHost`.

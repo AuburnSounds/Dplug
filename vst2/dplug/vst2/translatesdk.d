@@ -7,7 +7,7 @@ module dplug.vst2.translatesdk;
 
 version(VST) // legacy version identifier
 {
-	static assert(false, "The \"VST\" version identifier should be replaced with \"VST2\" in your dub.json. See https://github.com/AuburnSounds/Dplug/wiki/Release-notes for upgrade instructions.");
+    static assert(false, "The \"VST\" version identifier should be replaced with \"VST2\" in your dub.json. See https://github.com/AuburnSounds/Dplug/wiki/Release-notes for upgrade instructions.");
 }
 
 // Only does a semantic pass on this if the VST version identifier is defined.
@@ -275,12 +275,12 @@ string translateCppHeaderToD(string source) @safe
     }
 
     // Parsing C++ function declaration is harder than the rest of the header, deferred
-    result ~= "alias extern(C) nothrow VstIntPtr function(AEffect* effect, VstInt32 opcode, VstInt32 index, VstIntPtr value, void* ptr, float opt) AEffectDispatcherProc;\n";
+    result ~= "alias extern(C) nothrow @nogc VstIntPtr function(AEffect* effect, VstInt32 opcode, VstInt32 index, VstIntPtr value, void* ptr, float opt) AEffectDispatcherProc;\n";
     result ~= "alias extern(C) nothrow @nogc VstIntPtr function(AEffect* effect, VstInt32 opcode, VstInt32 index, VstIntPtr value, void* ptr, float opt) HostCallbackFunction;\n";
-    result ~= "alias extern(C) nothrow void function(AEffect* effect, float** inputs, float** outputs, VstInt32 sampleFrames) AEffectProcessProc;\n";
-    result ~= "alias extern(C) nothrow void function(AEffect* effect, double** inputs, double** outputs, VstInt32 sampleFrames) AEffectProcessDoubleProc;\n";
-    result ~= "alias extern(C) nothrow void function(AEffect* effect, VstInt32 index, float parameter) AEffectSetParameterProc;\n";
-    result ~= "alias extern(C) nothrow float function(AEffect* effect, VstInt32 index) AEffectGetParameterProc;";
+    result ~= "alias extern(C) nothrow @nogc void function(AEffect* effect, float** inputs, float** outputs, VstInt32 sampleFrames) AEffectProcessProc;\n";
+    result ~= "alias extern(C) nothrow @nogc void function(AEffect* effect, double** inputs, double** outputs, VstInt32 sampleFrames) AEffectProcessDoubleProc;\n";
+    result ~= "alias extern(C) nothrow @nogc void function(AEffect* effect, VstInt32 index, float parameter) AEffectSetParameterProc;\n";
+    result ~= "alias extern(C) nothrow @nogc float function(AEffect* effect, VstInt32 index) AEffectGetParameterProc;";
     return result;
 }
 
