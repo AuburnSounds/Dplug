@@ -93,7 +93,6 @@ int main(string[] args)
     {
         bool help = false;
         bool verbose = false;
-        deprecated bool forceEncode = true;  
         bool timesProvided = false;
         int times;
 

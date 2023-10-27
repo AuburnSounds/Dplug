@@ -245,46 +245,6 @@ void fillSector(V, COLOR)(auto ref V v, int x, int y, int r0, int r1, real a0, r
         }
 }
 
-deprecated("Will be removed in Dplug v14") struct Coord 
-{ 
-    int x, y; 
-    string toString() 
-    { 
-        import std.string; 
-        return format("%s", [this.tupleof]); 
-    } 
-}
-
-// No caps
-deprecated("Will be removed in Dplug v14") void thickLine(V, COLOR)(auto ref V v, int x1, int y1, int x2, int y2, int r, COLOR c)
-    if (isWritableView!V && is(COLOR : ViewColor!V))
-{
-    int dx = x2-x1;
-    int dy = y2-y1;
-    int d  = cast(int)sqrt(cast(float)(sqr(dx)+sqr(dy)));
-    if (d==0) return;
-
-    int nx = dx*r/d;
-    int ny = dy*r/d;
-
-    fillPoly([
-        Coord(x1-ny, y1+nx),
-        Coord(x1+ny, y1-nx),
-        Coord(x2+ny, y2-nx),
-        Coord(x2-ny, y2+nx),
-    ], c);
-}
-
-// No caps
-deprecated("Will be removed in Dplug v14") void thickLinePoly(V, COLOR)(auto ref V v, Coord[] coords, int r, COLOR c)
-    if (isWritableView!V && is(COLOR : ViewColor!V))
-{
-    foreach (i; 0..coords.length)
-        thickLine(coords[i].tupleof, coords[(i+1)%$].tupleof, r, c);
-}
-
-// ************************************************************************************************************************************
-
 mixin template FixMath(ubyte coordinateBitsParam = 16)
 {
     enum coordinateBits = coordinateBitsParam;
@@ -319,30 +279,6 @@ mixin template FixMath(ubyte coordinateBitsParam = 16)
 }
 
 // ************************************************************************************************************************************
-
-deprecated("This will be removed in Dplug v14") void whiteNoise(V)(V v)
-    if (isWritableView!V)
-{
-    import std.random;
-    alias COLOR = ViewColor!V;
-
-    for (int y=0;y<v.h/2;y++)
-        for (int x=0;x<v.w/2;x++)
-            v[x*2, y*2] = COLOR.monochrome(uniform!(COLOR.ChannelType)());
-
-    // interpolate
-    enum AVERAGE = q{(a+b)/2};
-
-    for (int y=0;y<v.h/2;y++)
-        for (int x=0;x<v.w/2-1;x++)
-            v[x*2+1, y*2  ] = COLOR.op!AVERAGE(v[x*2  , y*2], v[x*2+2, y*2  ]);
-    for (int y=0;y<v.h/2-1;y++)
-        for (int x=0;x<v.w/2;x++)
-            v[x*2  , y*2+1] = COLOR.op!AVERAGE(v[x*2  , y*2], v[x*2  , y*2+2]);
-    for (int y=0;y<v.h/2-1;y++)
-        for (int x=0;x<v.w/2-1;x++)
-            v[x*2+1, y*2+1] = COLOR.op!AVERAGE(v[x*2+1, y*2], v[x*2+2, y*2+2]);
-}
 
 private template softRoundShape(bool RING)
 {
@@ -540,30 +476,6 @@ void aaFillRect(bool CHECKED=true, F:float, V, COLOR)(auto ref V v, F x1, F y1, 
     v.fillRect!CHECKED(x1i+1, y1i+1, x2i, y2i, color);
 }
 
-deprecated("This will be removed in Dplug v14") void aaLine(bool CHECKED=true, V, COLOR)(auto ref V v, float x1, float y1, float x2, float y2, COLOR color)
-    if (isWritableView!V && is(COLOR : ViewColor!V))
-{
-    // Simplistic straight-forward implementation. FUTURE: optimize
-    if (abs(x1-x2) > abs(y1-y2))
-        for (auto x=x1; sign(x1-x2)!=sign(x2-x); x += sign(x2-x1))
-            v.aaPutPixel!CHECKED(x, itpl(y1, y2, x, x1, x2), color);
-    else
-        for (auto y=y1; sign(y1-y2)!=sign(y2-y); y += sign(y2-y1))
-            v.aaPutPixel!CHECKED(itpl(x1, x2, y, y1, y2), y, color);
-}
-
-deprecated("This will be removed in Dplug v14") void aaLine(bool CHECKED=true, V, COLOR, frac)(auto ref V v, float x1, float y1, float x2, float y2, COLOR color, frac alpha)
-    if (isWritableView!V && is(COLOR : ViewColor!V))
-{
-    // ditto
-    if (abs(x1-x2) > abs(y1-y2))
-        for (auto x=x1; sign(x1-x2)!=sign(x2-x); x += sign(x2-x1))
-            v.aaPutPixel!CHECKED(x, itpl(y1, y2, x, x1, x2), color, alpha);
-    else
-        for (auto y=y1; sign(y1-y2)!=sign(y2-y); y += sign(y2-y1))
-            v.aaPutPixel!CHECKED(itpl(x1, x2, y, y1, y2), y, color, alpha);
-}
-
 unittest
 {
     // Test instantiation    
@@ -577,9 +489,6 @@ unittest
     i.pixels = rgb.ptr;
 
     auto c = RGB(1, 2, 3);
-    //i.whiteNoise(); deprecated
-    //i.aaLine(10, 10, 20, 20, c);
-    //i.aaLine(10f, 10f, 20f, 20f, c, 100);
     i.rect(10, 10, 20, 20, c);
     i.fillRect(10, 10, 20, 20, c);
     i.aaFillRect(10, 10, 20, 20, c);

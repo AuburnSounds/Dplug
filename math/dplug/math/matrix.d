@@ -187,12 +187,6 @@ struct Matrix(T, int R, int C)
             return rows[i];
         }
 
-        // Removed since that depended upon `std.string`.
-        deprecated("Use sprintf instead") string toString() const nothrow
-        {
-            return "<matrix>";
-        }
-
         /// Matrix * scalar multiplication.
         @nogc Matrix opBinary(string op)(T factor) pure const nothrow if (op == "*")
         {

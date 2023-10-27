@@ -160,12 +160,6 @@ nothrow:
             return v.ptr;
         }
 
-        // Removed since that depended upon `std.string`.
-        deprecated("Use sprintf instead") string toString() const nothrow
-        {
-            return "<vector>";
-        }
-
         @nogc bool opEquals(U)(U other) pure const nothrow
             if (is(U : Vector))
         {

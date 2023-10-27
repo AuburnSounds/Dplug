@@ -450,14 +450,6 @@ template ExpandIntegerType(T, size_t bits)
 		alias ExpandIntegerType = ExpandNumericType!(T, bits);
 }
 
-deprecated("This will be removed in Dplug v14") alias ExpandChannelType(COLOR, int BYTES) =
-	ChangeChannelType!(COLOR,
-		ExpandNumericType!(ChannelType!COLOR, BYTES * 8));
-
-deprecated("This will be removed in Dplug v14") alias temp = ExpandChannelType!(RGB, 1);
-//static assert(is(ExpandChannelType!(RGB, 1) == RGB16));
-
-
 RGBA blendColor(RGBA fg, RGBA bg, ubyte alpha) pure nothrow @nogc
 {
     ubyte invAlpha = cast(ubyte)(~cast(int)alpha);

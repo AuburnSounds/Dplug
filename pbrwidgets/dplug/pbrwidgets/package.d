@@ -16,7 +16,6 @@ public import dplug.pbrwidgets.label;
 public import dplug.pbrwidgets.onoffswitch;
 public import dplug.pbrwidgets.slider;
 public import dplug.pbrwidgets.logo;
-public import dplug.pbrwidgets.bargraph;
 public import dplug.pbrwidgets.paramhint;
 public import dplug.pbrwidgets.imageknob;
 public import dplug.pbrwidgets.pbrbackgroundgui;

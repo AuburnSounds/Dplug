@@ -11,6 +11,5 @@ public
     import dplug.dsp.fir,
            dplug.dsp.iir,
            dplug.dsp.window,
-           dplug.dsp.smooth,
            dplug.dsp.delayline;
 }

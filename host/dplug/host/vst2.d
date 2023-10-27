@@ -91,7 +91,7 @@ nothrow @nogc:
 
     override void close()
     {
-        // deprecated, destructor does this instead
+        // not used anymore (remove in Dplug v15), destructor does this instead
     }
 
     // This destructor must handle a partially constructed object!

@@ -16,7 +16,7 @@ import dplug.core.vec;
 import dplug.dsp.delayline;
 import dplug.dsp.window;
 
-// FUTURE: should probably be deprecated and removed, not good enough. 
+// FUTURE: should probably be removed, not good enough. 
 // Need a real convolver library.
 
 // Basic sinc impulse functions

@@ -212,19 +212,6 @@ void copyPixels(SRC, COLOR)(auto ref SRC src, COLOR[] dst)
 		src.copyScanline(y, dst[y*src.w..(y+1)*src.w]);
 }
 
-// ***************************************************************************
-
-// Workaround for https://d.puremagic.com/issues/show_bug.cgi?id=12433
-
-struct InputColor {}
-deprecated("This will be removed in Dplug v14") alias GetInputColor(COLOR, INPUT) = Select!(is(COLOR == InputColor), INPUT, COLOR);
-
-struct TargetColor {}
-deprecated("This will be removed in Dplug v14") enum isTargetColor(C, TARGET) = is(C == TargetColor) || is(C == ViewColor!TARGET);
-
-// ***************************************************************************
-
-
 /// Crop an ImageRef and get an ImageRef instead of a Voldemort type.
 /// This also avoid adding offset to coordinates.
 ImageRef!COLOR cropImageRef(COLOR)(ImageRef!COLOR src, box2i rect)
