@@ -265,10 +265,6 @@ nothrow:
             param.setClientReference(this);
         }
 
-        // Create presets
-        _presetBank = mallocNew!PresetBank(this, buildPresets());
-
-
         _maxFramesInProcess = maxFramesInProcess();
 
         _maxInputs = 0;
@@ -288,6 +284,10 @@ nothrow:
         {
             _midiOutFromUIMutex = makeMutex();
         }
+
+        // Create presets last, so that we enjoy the presence of built Parameters,
+        // and default I/O configuration.
+        _presetBank = mallocNew!PresetBank(this, buildPresets());
     }
 
     ~this()
@@ -598,10 +598,23 @@ nothrow:
         foreach(param; _params)
             values.pushBack(param.getNormalizedDefault());
 
+
+        const(ubyte)[] stateData = null;
+
+        version(futureBinState)
+        {
+            // When state save is missing, we use the default return of saveState as the default 
+            // preset state content. Hence, saveState will be called relatively early, it can rely
+            // on Parameter values but not input and output count.
+            Vec!ubyte defaultState;
+            saveState(defaultState);
+            stateData = defaultState[]; // PERF: could disown this instead of copy, with another Preset constructor
+        }
+
         // Perf: one could avoid malloc to copy those arrays again there
         float[] valuesSlice = values.releaseData;
-        Preset result = mallocNew!Preset("Default", valuesSlice);
-        free(valuesSlice.ptr);
+        Preset result = mallocNew!Preset("Default", valuesSlice, stateData);
+        free(valuesSlice.ptr); // PERF: could disown this instead of copy, with another Preset constructor
         return result;
     }
 
