@@ -1984,14 +1984,12 @@ private:
 
         scope(exit) chunk.freeSlice();
 
-        try
+        bool err;
+        auto presetBank = _client.presetBank();
+        presetBank.loadStateChunk(chunk, &err);
+
+        if (err)
         {
-            auto presetBank = _client.presetBank();
-            presetBank.loadStateChunk(chunk);
-        }
-        catch(Exception e)
-        {
-            e.destroyFree();
             return kAudioUnitErr_InvalidPropertyValue;
         }
         return noErr;

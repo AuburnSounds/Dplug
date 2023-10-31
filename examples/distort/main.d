@@ -195,17 +195,15 @@ nothrow:
 
     override bool loadState(const(ubyte)[] chunk)
     {
-        try
-        {
-            int major = popLE!uint(chunk);
-            assert(major == getPublicVersion().major);
-            return true; // no issue parsing the chunk
-        }
-        catch(Exception e)
-        {
-            destroyFree(e);
+        const(ubyte)[] c = chunk;
+        bool err;
+        int major = popLE!uint(c, &err);
+        if (err)
             return false;
-        }
+
+        assert(major == getPublicVersion().major);
+
+        return true; // no issue parsing the chunk
     }
 
 private:

@@ -571,7 +571,7 @@ ubyte stbir__linear_to_srgb_uchar(float in_)
     // Clamp to [2^(-13), 1-eps]; these two values map to 0 and 1, respectively.
     // The tests are carefully written so that NaNs map to 0, same as in the reference
     // implementation.
-    if (!(in_ > minval.f)) // written this way to catch NaNs
+    if (!(in_ > minval.f)) // written this way to trap NaNs
         in_ = minval.f;
     if (in_ > almostone.f)
         in_ = almostone.f;

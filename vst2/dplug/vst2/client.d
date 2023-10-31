@@ -593,17 +593,13 @@ private:
                     bool isBank = (index == 0);
                     ubyte[] chunk = (cast(ubyte*)ptr)[0..value];
                     auto presetBank = _client.presetBank();
-                    try
-                    {
-                        presetBank.loadStateChunk(chunk);
+
+                    bool err;
+                    presetBank.loadStateChunk(chunk, &err);
+                    if (err)
+                        return 0; // Chunk didn't parse
+                    else
                         return 1; // success
-                    }
-                    catch(Exception e)
-                    {
-                        // Chunk didn't parse
-                        e.destroyFree();
-                        return 0;
-                    }
                 }
             }
 

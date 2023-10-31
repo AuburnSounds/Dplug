@@ -141,19 +141,22 @@ class Preset
 }
 
 // This parser supports: .fxb/.fxp created with Orion and another(?) DAW + the ones created by Dplug .
-Preset loadPresetFromFXP(ubyte[] inputFXP)
+Preset loadPresetFromFXP(const(ubyte)[] inputFXP)
 {    
     Preset preset = new Preset();
 
     uint presetChunkID;
     uint presetChunkLen;
-    inputFXP.readRIFFChunkHeader(presetChunkID, presetChunkLen);
+    bool err;
+    inputFXP.readRIFFChunkHeader(presetChunkID, presetChunkLen, &err);
+    if (err) throw new Exception("Chunk header cannot be read");
     if (presetChunkID != CCONST('C', 'c', 'n', 'K')) throw new Exception("Expected 'CcnK' in preset");
 
     // Simply ignore the chunk length. Orion doesn't fill that field reliably. See Dplug Issue #765.
     // Besides, presetChunkLen is encoded as Big Endian in most hosts probably, and we parse it as Little Endian.
 
-    presetChunkID = inputFXP.popBE!uint();
+    presetChunkID = inputFXP.popBE!uint(&err);
+    if (err) throw new Exception("input error");
 
     bool isFXBChunk = false;
 
@@ -167,17 +170,21 @@ Preset loadPresetFromFXP(ubyte[] inputFXP)
             throw new Exception("Expected 'FxCk' or 'FPCh' in preset");
     }
             
-    int presetVersion = inputFXP.popBE!uint();
+    int presetVersion = inputFXP.popBE!uint(&err);
+    if (err) throw new Exception("input error");
     if (presetVersion != 1) throw new Exception("Only support FXP version 1");
 
-    uint pluginUID = inputFXP.popBE!uint();
+    uint pluginUID = inputFXP.popBE!uint(&err);
+    if (err) throw new Exception("input error");
     preset.setUID(pluginUID);
 
     // fxVersion. We ignore it, since compat is supposed
     // to be encoded in the unique ID already
-    inputFXP.skipBytes(4);
+    inputFXP.skipBytes(4, &err);
+    if (err) throw new Exception("input error");
 
-    int numParams = inputFXP.popBE!int();
+    int numParams = inputFXP.popBE!int(&err);
+    if (err) throw new Exception("input error");
 
     // parse name
     char[28] nameBuf;
@@ -195,30 +202,41 @@ Preset loadPresetFromFXP(ubyte[] inputFXP)
     if (isFXBChunk)
     {
         // Try to parse a Dplug chunk here.
-        uint chunkID = inputFXP.popBE!uint();
+        uint chunkID = inputFXP.popBE!uint(&err);
+        if (err) throw new Exception("input error");
 
         // nothing to check with minor version
-        uint magic = inputFXP.popBE!uint();
+        uint magic = inputFXP.popBE!uint(&err);
+        if (err) throw new Exception("input error");
         if (magic != DPLUG_MAGIC)
             throw new Exception("Can not load, magic number didn't match");
 
         // nothing to check with minor version
-        int dplugMajor = inputFXP.popLE!int();
+        int dplugMajor = inputFXP.popLE!int(&err);
+        if (err) throw new Exception("Cannot read Dplug major chunk version");
         if (dplugMajor > 0)
             throw new Exception("presetbank tool doesn't support Dplug chunk above version 0");
 
-        int dplugMinor = inputFXP.popLE!int();
-        int pluginVersion = inputFXP.popLE!int(); // ignore, compat is in plugin ID already
+        int dplugMinor = inputFXP.popLE!int(&err);
+        if (err) throw new Exception("Cannot read Dplug minor chunk version");
 
-        int presetIndex = inputFXP.popLE!int(); // ignore
+        int pluginVersion = inputFXP.popLE!int(&err); // ignore, compat is in plugin ID already
+        if (err) throw new Exception("Cannot read plugin version");
+
+        int presetIndex = inputFXP.popLE!int(&err); // ignore
+        if (err) throw new Exception("Cannot read preset index");
 
         // Load parameters values
-        if (numParams != inputFXP.popLE!int()) 
+        int paramNum = inputFXP.popLE!int(&err);
+        if (err) throw new Exception("Cannot read parameter number");
+        if (numParams != paramNum) 
             throw new Exception("Inconsistent number of parameters, written twice in FBX but different.");
 
         foreach(int i; 0..numParams)
         {
-            preset.normalizedParams ~= inputFXP.popLE!float();
+            float paramValue = inputFXP.popLE!float(&err);
+            if (err) throw new Exception("Cannot read parameter value");
+            preset.normalizedParams ~= paramValue;
         }
 
         return preset;
@@ -228,7 +246,11 @@ Preset loadPresetFromFXP(ubyte[] inputFXP)
     {
         // parse parameter normalized values
         foreach(paramIndex; 0..numParams)
-            preset.normalizedParams ~= inputFXP.popBE!float();
+        {
+            float paramValue = inputFXP.popBE!float(&err);
+            if (err) throw new Exception("Cannot read parameter value");
+            preset.normalizedParams ~= paramValue;
+        }
         return preset;
     }
 }

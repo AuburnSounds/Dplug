@@ -288,27 +288,51 @@ public:
     }
 
     /// Loads a chunk state, update current state.
-    /// May throw an Exception.
-    void loadStateChunk(ubyte[] chunk) @nogc
+    /// Return: *err set to true in case of error.
+    void loadStateChunk(const(ubyte)[] chunk, bool* err) nothrow @nogc
     {
-        int mVersion = checkChunkHeader(chunk);
+        int mVersion = checkChunkHeader(chunk, err);
+        if (*err)
+            return;
 
         // This avoid to overwrite the preset 0 while we modified preset N
-        int presetIndex = chunk.popLE!int();
+        int presetIndex = chunk.popLE!int(err);
+        if (*err)
+            return;
+
         if (!isValidPresetIndex(presetIndex))
-            throw mallocNew!Exception("Invalid preset index in state chunk");
+        {
+            *err = true; // Invalid preset index in state chunk
+            return;
+        }
         else
             _current = presetIndex;
 
-        version(futureBinState) {
-
+        version(futureBinState) 
+        {
             // Binary state future tag.
-            if (mVersion == 0) loadChunkV1(chunk);
-            else loadChunkV2(chunk);
-        } else {
-
-            loadChunkV1(chunk);
+            if (mVersion == 0) 
+            {
+                loadChunkV1(chunk, err);
+                if (*err)
+                    return;
+            }
+            else
+            {
+                loadChunkV2(chunk, err);
+                if (*err)
+                    return;
+            }
         }
+        else
+        {
+
+            loadChunkV1(chunk, err);
+            if (*err)
+                return;
+        }
+
+        *err = false;
     }
 
 private:
@@ -316,43 +340,49 @@ private:
     int _current; // should this be only in VST client?
 
     // Loads chunk without binary save state
-    void loadChunkV1(ref ubyte[] chunk) @nogc
+    void loadChunkV1(ref const(ubyte)[] chunk, bool* err) nothrow @nogc
     {
         // Load parameters values
         auto params = _client.params();
-        int numParams = chunk.popLE!int();
+        int numParams = chunk.popLE!int(err); if (*err) return;
         foreach(int i; 0..numParams)
         {
-            float normalized = chunk.popLE!float();
+            float normalized = chunk.popLE!float(err); if (*err) return;
             if (i < params.length)
                 params[i].setFromHost(normalized);
         }
+        *err = false;
     }
 
-    version(futureBinState) {
-
+    version(futureBinState)
+    {
         // Loads chunk with binary save state
-        void loadChunkV2(ref ubyte[] chunk) @nogc
+        void loadChunkV2(ref const(ubyte)[] chunk, bool* err) nothrow @nogc
         {
             // Load parameters values
             auto params = _client.params();
-            int numParams = chunk.popLE!int();
+            int numParams = chunk.popLE!int(err); if (*err) return;
             foreach(int i; 0..numParams)
             {
-                float normalized = chunk.popLE!float();
+                float normalized = chunk.popLE!float(err); if (*err) return;
                 if (i < params.length)
                     params[i].setFromHost(normalized);
             }
 
-            int dataLength = chunk.popLE!int();
+            int dataLength = chunk.popLE!int(err); if (*err) return;
             bool parseSuccess = _client.loadState(chunk[0..dataLength]);
             if (!parseSuccess)
-                throw mallocNew!Exception("Invalid user-defined state chunk");
+            {
+                *err = true; // Invalid user-defined state chunk
+                return;
+            }
+
+            *err = false;
         }
     }
     
-    version(futureBinState) {
-
+    version(futureBinState) 
+    {
         // Writes preset chunk with V2 method
         void writeStateChunk(ref Vec!ubyte chunk) nothrow @nogc
         {
@@ -394,8 +424,8 @@ private:
         }
     }
 
-    version(futureBinState) {
-
+    version(futureBinState) 
+    {
         // Writes preset chunk with V2 method
         void writePresetChunkData(ref Vec!ubyte chunk, int presetIndex) nothrow @nogc
         {
@@ -411,8 +441,9 @@ private:
             chunk.writeLE!int(cast(int)p._stateData.length);
             chunk.pushBack(p._stateData[0..$]);
         }
-    } else {
-
+    }
+    else
+    {
         // Writes chunk with V1 method
         void writePresetChunkData(ref Vec!ubyte chunk, int presetIndex) nothrow @nogc
         {
@@ -438,23 +469,35 @@ private:
         output.writeLE!int(_client.getPublicVersion().toAUVersion());
     }
 
-    int checkChunkHeader(ref ubyte[] input) @nogc
+    // Return Dplug chunk major version, or -1 in case of error.
+    // *err set accordingly.
+    int checkChunkHeader(ref const(ubyte)[] input, bool* err) nothrow @nogc
     {
         // nothing to check with minor version
-        uint magic = input.popBE!uint();
+        uint magic = input.popBE!uint(err); if (*err) return -1;
         if (magic !=  DPLUG_MAGIC)
-            throw mallocNew!Exception("Can not load, magic number didn't match");
+        {
+            *err = true; // Can not load, magic number didn't match
+            return -1;
+        }
 
         // nothing to check with minor version
-        int dplugMajor = input.popLE!int();
+        int dplugMajor = input.popLE!int(err); if (*err) return -1;
         if (dplugMajor > DPLUG_SERIALIZATION_MAJOR_VERSION)
-            throw mallocNew!Exception("Can not load chunk done with a newer, incompatible dplug library");
+        {
+            *err = true; // Can not load chunk done with a newer, incompatible dplug library
+            return -1;
+        }
 
-        int dplugMinor = input.popLE!int();
+        int dplugMinor = input.popLE!int(err); if (*err) return -1;
         // nothing to check with minor version
 
         // TODO: how to handle breaking binary compatibility here?
-        int pluginVersion = input.popLE!int();
+        int pluginVersion = input.popLE!int(err);
+        if (*err)
+            return -1;
+
+        *err = false;
         return dplugMajor;
     }
 }
@@ -480,7 +523,7 @@ private:
 Preset[] loadPresetsFromFXB(Client client, string inputFBXData, int maxCount = -1) nothrow @nogc
 {
     ubyte[] fbxCopy = cast(ubyte[]) mallocDup(inputFBXData);
-    ubyte[] inputFXB = fbxCopy;
+    const(ubyte)[] inputFXB = fbxCopy;
     scope(exit) free(fbxCopy.ptr);
 
     Vec!Preset result = makeVec!Preset();
@@ -490,37 +533,51 @@ Preset[] loadPresetsFromFXB(Client client, string inputFBXData, int maxCount = -
         return (a << 24) | (b << 16) | (c << 8) | (d << 0);
     }
 
-    try
+    void parse(bool* err)
     {
         uint bankChunkID;
         uint bankChunkLen;
-        inputFXB.readRIFFChunkHeader(bankChunkID, bankChunkLen);
+        inputFXB.readRIFFChunkHeader(bankChunkID, bankChunkLen, err); if (*err) return;
 
-        void error() @nogc
+        if (bankChunkID != CCONST('C', 'c', 'n', 'K'))
         {
-            throw mallocNew!Exception("Error in parsing FXB");
+            *err = true;
+            return;
         }
 
-        if (bankChunkID != CCONST('C', 'c', 'n', 'K')) error;
-        inputFXB.skipBytes(bankChunkLen);
-        uint fbxChunkID = inputFXB.popBE!uint();
-        if (fbxChunkID != CCONST('F', 'x', 'B', 'k')) error;
-        inputFXB.skipBytes(4); // fxVersion
+        inputFXB.skipBytes(bankChunkLen, err); if (*err) return;
+        uint fbxChunkID = inputFXB.popBE!uint(err); if (*err) return;
+
+        if (fbxChunkID != CCONST('F', 'x', 'B', 'k'))
+        {
+            *err = true;
+            return;
+        }
+        inputFXB.skipBytes(4, err); if (*err) return; // parse fxVersion
 
         // if uniqueID has changed, then the bank is not compatible and should error
         char[4] uid = client.getPluginUniqueID();
-        if (inputFXB.popBE!uint() != CCONST(uid[0], uid[1], uid[2], uid[3])) error;
+        uint uidChunk = inputFXB.popBE!uint(err); if (*err) return;
+        if (uidChunk != CCONST(uid[0], uid[1], uid[2], uid[3])) 
+        {
+            *err = true; // chunk is not for this plugin
+            return;
+        }
 
         // fxVersion. We ignore it, since compat is supposed
         // to be encoded in the unique ID already
-        inputFXB.popBE!uint();
+        inputFXB.popBE!uint(err); if (*err) return;
 
-        int numPresets = inputFXB.popBE!int();
+        int numPresets = inputFXB.popBE!int(err); if (*err) return;
         if ((maxCount != -1) && (numPresets > maxCount))
             numPresets = maxCount;
-        if (numPresets < 1) error; // no preset in band, probably not what you want
+        if (numPresets < 1)
+        {
+            *err = true; // no preset in bank, probably not what you want
+            return;
+        }
 
-        inputFXB.skipBytes(128);
+        inputFXB.skipBytes(128, err); if (*err) return;
 
         // Create presets
         for(int presetIndex = 0; presetIndex < numPresets; ++presetIndex)
@@ -528,31 +585,52 @@ Preset[] loadPresetsFromFXB(Client client, string inputFBXData, int maxCount = -
             Preset p = client.makeDefaultPreset();
             uint presetChunkID;
             uint presetChunkLen;
-            inputFXB.readRIFFChunkHeader(presetChunkID, presetChunkLen);
-            if (presetChunkID != CCONST('C', 'c', 'n', 'K')) error;
-            inputFXB.skipBytes(presetChunkLen);
+            inputFXB.readRIFFChunkHeader(presetChunkID, presetChunkLen, err); if (*err) return;
+            if (presetChunkID != CCONST('C', 'c', 'n', 'K')) 
+            {
+                *err = true;
+                return;
+            }
+            inputFXB.skipBytes(presetChunkLen, err); if (*err) return;
 
-            presetChunkID = inputFXB.popBE!uint();
-            if (presetChunkID != CCONST('F', 'x', 'C', 'k')) error;
-            int presetVersion = inputFXB.popBE!uint();
-            if (presetVersion != 1) error;
-            if (inputFXB.popBE!uint() != CCONST(uid[0], uid[1], uid[2], uid[3])) error;
+            presetChunkID = inputFXB.popBE!uint(err); if (*err) return;
+            if (presetChunkID != CCONST('F', 'x', 'C', 'k'))
+            {
+                *err = true;
+                return;
+            }
+            int presetVersion = inputFXB.popBE!uint(err); if (*err) return;
+            if (presetVersion != 1)
+            {
+                *err = true;
+                return;
+            }
+
+            uint uidChunk2 = inputFXB.popBE!uint(err); if (*err) return;
+            if (uidChunk2 != CCONST(uid[0], uid[1], uid[2], uid[3])) 
+            {
+                *err = true;
+                return;
+            }
 
             // fxVersion. We ignore it, since compat is supposed
             // to be encoded in the unique ID already
-            inputFXB.skipBytes(4);
+            inputFXB.skipBytes(4, err); if (*err) return;
 
-            int numParams = inputFXB.popBE!int();
-            if (numParams < 0) error;
+            int numParams = inputFXB.popBE!int(err); if (*err) return;
+            if (numParams < 0)
+            {
+                *err = true;
+                return;
+            }
 
             // parse name
             char[28] nameBuf;
             int nameLen = 28;
             foreach(nch; 0..28)
             {
-                char c = inputFXB.front;
+                char c = cast(char) inputFXB.popBE!ubyte(err); if (*err) return;
                 nameBuf[nch] = c;
-                inputFXB.popFront();
                 if (c == '\0' && nameLen == 28) 
                     nameLen = nch;
             }
@@ -564,20 +642,25 @@ Preset[] loadPresetsFromFXB(Client client, string inputFBXData, int maxCount = -
                 paramRead = cast(int)(client.params.length);
             for (int param = 0; param < paramRead; ++param)
             {
-                p.setNormalized(param, inputFXB.popBE!float());
+                float pval = inputFXB.popBE!float(err); if (*err) return;
+                p.setNormalized(param, pval);
             }
 
             // skip excess parameters (this case should never happen so not sure if it's to be handled)
             for (int param = paramRead; param < numParams; ++param)
-                inputFXB.skipBytes(4);
+            {
+                inputFXB.skipBytes(4, err); if (*err) return;
+            }
 
             result.pushBack(p);
         }
     }
-    catch(Exception e)
-    {
-        destroyFree(e);
 
+    bool err;
+    parse(&err);
+
+    if (err)
+    {
         // Your preset file for the plugin is not meant to be invalid, so this is a bug.
         // If you fail here, parsing has created an `error()` call.
         assert(false); 

@@ -869,17 +869,12 @@ nothrow:
         if (state.read (chunk.ptr, size, &bytesRead) != kResultOk)
             return kResultFalse;
 
-        try
-        {
-            auto presetBank = _client.presetBank();
-            presetBank.loadStateChunk(chunk);
-            return kResultTrue;
-        }
-        catch(Exception e)
-        {
-            e.destroyFree();
+        bool err;
+        auto presetBank = _client.presetBank();
+        presetBank.loadStateChunk(chunk, &err);
+        if (err)
             return kResultFalse;
-        }
+        return kResultTrue;
     }
 
     extern(Windows) override tresult getState(IBStream state)
