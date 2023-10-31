@@ -233,17 +233,8 @@ final class WrenSupport
     /// Returns: `true` if no runtime or compile-time error.
     bool interpret(const(char)* path, const(char)* source) nothrow
     {
-        try
-        {
-            WrenInterpretResult result = wrenInterpret(_vm, path, source);
-            return result == WrenInterpretResult.WREN_RESULT_SUCCESS;
-        }
-        catch(Exception e)
-        {
-            // Note: error reported by another mechanism anyway (debug output).
-            destroyFree(e);
-            return false;
-        }
+        WrenInterpretResult result = wrenInterpret(_vm, path, source);
+        return result == WrenInterpretResult.WREN_RESULT_SUCCESS;
     }
 
     /// Interpret arbitrary code. For advanced users only.
