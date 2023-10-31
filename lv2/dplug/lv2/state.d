@@ -28,6 +28,8 @@ module dplug.lv2.state;
 
 version(LV2):
 
+nothrow @nogc:
+
 import core.stdc.stddef;
 import core.stdc.stdint;
 
@@ -44,9 +46,7 @@ enum LV2_STATE__mapPath           = LV2_STATE_PREFIX ~ "mapPath";            ///
 enum LV2_STATE__state             = LV2_STATE_PREFIX ~ "state";              ///< http://lv2plug.in/ns/ext/state#state
 enum LV2_STATE__threadSafeRestore = LV2_STATE_PREFIX ~ "threadSafeRestore";  ///< http://lv2plug.in/ns/ext/state#threadSafeRestore
 
-extern(C) {
-
-alias LV2_State_Handle           = void*; ///< Opaque handle for state save/restore
+alias LV2_State_Handle           = void*; ///b< Opaque handle for state save/restore
 alias LV2_State_Map_Path_Handle  = void*; ///< Opaque handle for state:mapPath feature
 alias LV2_State_Make_Path_Handle = void*; ///< Opaque handle for state:makePath feature
 
@@ -57,7 +57,7 @@ alias LV2_State_Make_Path_Handle = void*; ///< Opaque handle for state:makePath 
    (de-)serialise the value data, or whether it is even possible to do so.
 */
 alias LV2_State_Flags = int;
-enum : int {
+enum : LV2_State_Flags {
    /**
       Plain Old Data.
 
@@ -140,13 +140,10 @@ enum : int {
    The plugin MUST NOT attempt to use this function outside of the
    LV2_State_Interface.restore() context.
 */
-alias LV2_State_Store_Function = LV2_State_Status function(
-   LV2_State_Handle handle,
-   uint32_t         key,
-   const void*      value,
-   size_t           size,
-   uint32_t         type,
-   uint32_t         flags);
+extern(C)
+{
+    alias LV2_State_Store_Function = LV2_State_Status function(LV2_State_Handle handle, uint key, const(void)* value, size_t size, uint type, uint flags);
+}
 
 /**
    A host-provided function to retrieve a property.
@@ -166,12 +163,10 @@ alias LV2_State_Store_Function = LV2_State_Status function(
    returns.  The plugin MUST NOT attempt to use this function, or any value
    returned from it, outside of the LV2_State_Interface.restore() context.
 */
-alias LV2_State_Retrieve_Function = const void* function(
-   LV2_State_Handle handle,
-   uint32_t         key,
-   size_t*          size,
-   uint32_t*        type,
-   uint32_t*        flags);
+extern(C)
+{
+    alias LV2_State_Retrieve_Function = const(void)* function(LV2_State_Handle handle, uint key, size_t* size, uint* type, uint* flags);
+}
 
 /**
    LV2 Plugin State Interface.
@@ -193,6 +188,7 @@ alias LV2_State_Retrieve_Function = const void* function(
 */
 struct LV2_State_Interface 
 {
+nothrow @nogc:
    /**
       Save plugin state using a host-provided `store` callback.
 
@@ -229,11 +225,15 @@ struct LV2_State_Interface
       care to do so in such a way that a concurrent call to save() will save a
       consistent representation of plugin state for a single instant in time.
    */
-   LV2_State_Status function(LV2_Handle                 instance,
-                            LV2_State_Store_Function   store,
-                            LV2_State_Handle           handle,
-                            uint32_t                   flags,
-                            const(LV2_Feature*)*       features) save;
+    extern(C)
+    {
+        alias saveFun_t = LV2_State_Status function(LV2_Handle                 instance,
+                                                  LV2_State_Store_Function   store,
+                                                  LV2_State_Handle           handle,
+                                                  uint                   flags,
+                                                  const(LV2_Feature*)*       features);
+    }
+    saveFun_t save;
 
    /**
       Restore plugin state using a host-provided `retrieve` callback.
@@ -260,95 +260,14 @@ struct LV2_State_Interface
       LV2. This means it MUST NOT be called concurrently with any other
       function on the same plugin instance.
    */
-   LV2_State_Status function(LV2_Handle                  instance,
-                               LV2_State_Retrieve_Function retrieve,
-                               LV2_State_Handle            handle,
-                               uint32_t                    flags,
-                               const(LV2_Feature*)*       features) restore;
+   extern(C)
+   {
+       alias restoreFun_t = LV2_State_Status function(LV2_Handle                  instance,
+                                                   LV2_State_Retrieve_Function retrieve,
+                                                   LV2_State_Handle            handle,
+                                                   uint                    flags,
+                                                   const(LV2_Feature*)*       features);
+   }
+   restoreFun_t restore;
+   
 };
-
-/**
-   Feature data for state:mapPath (@ref LV2_STATE__mapPath).
-*/
-struct LV2_State_Map_Path {
-   /**
-      Opaque host data.
-   */
-   LV2_State_Map_Path_Handle handle;
-
-   /**
-      Map an absolute path to an abstract path for use in plugin state.
-      @param handle MUST be the `handle` member of this struct.
-      @param absolute_path The absolute path of a file.
-      @return An abstract path suitable for use in plugin state.
-
-      The plugin MUST use this function to map any paths that will be stored
-      in plugin state.  The returned value is an abstract path which MAY not
-      be an actual file system path; absolute_path() MUST be used to map
-      it to an actual path in order to use the file.
-
-      Plugins MUST NOT make any assumptions about abstract paths except that
-      they can be mapped back to the absolute path of the "same" file (though
-      not necessarily the same original path) using absolute_path().
-
-      This function may only be called within the context of
-      LV2_State_Interface methods.  The caller is responsible for freeing the
-      returned value with free().
-   */
-   char* function(LV2_State_Map_Path_Handle handle,
-                          const char*               absolute_path) abstract_path;
-
-   /**
-      Map an abstract path from plugin state to an absolute path.
-      @param handle MUST be the `handle` member of this struct.
-      @param abstract_path An abstract path (e.g. a path from plugin state).
-      @return An absolute file system path.
-
-      The plugin MUST use this function in order to actually open or otherwise
-      use any paths loaded from plugin state.
-
-      This function may only be called within the context of
-      LV2_State_Interface methods.  The caller is responsible for freeing the
-      returned value with free().
-   */
-   char* function(LV2_State_Map_Path_Handle handle,
-                          const char*               abstract_path) absolute_path;
-};
-
-/**
-   Feature data for state:makePath (@ref LV2_STATE__makePath).
-*/
-struct LV2_State_Make_Path {
-   /**
-      Opaque host data.
-   */
-   LV2_State_Make_Path_Handle handle;
-
-   /**
-      Return a path the plugin may use to create a new file.
-      @param handle MUST be the `handle` member of this struct.
-      @param path The path of the new file within a namespace unique to this
-      plugin instance.
-      @return The absolute path to use for the new file.
-
-      This function can be used by plugins to create files and directories,
-      either at state saving time (if this feature is passed to
-      LV2_State_Interface.save()) or any time (if this feature is passed to
-      LV2_Descriptor.instantiate()).
-
-      The host MUST do whatever is necessary for the plugin to be able to
-      create a file at the returned path (e.g. using fopen), including
-      creating any leading directories.
-
-      If this function is passed to LV2_Descriptor.instantiate(), it may be
-      called from any non-realtime context.  If it is passed to
-      LV2_State_Interface.save(), it may only be called within the dynamic
-      scope of that function call.
-
-      The caller is responsible for freeing the returned value with free().
-   */
-   char* function(LV2_State_Make_Path_Handle handle,
-                 const char*                path) path;
-};
-
-} /* extern "C" */
