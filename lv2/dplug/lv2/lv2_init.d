@@ -34,6 +34,7 @@ import dplug.client.client;
 
 import dplug.lv2.lv2;
 import dplug.lv2.ui;
+import dplug.lv2.state;
 import dplug.lv2.lv2client;
 import dplug.lv2.ttl;
 
@@ -202,7 +203,7 @@ LV2Client myLV2EntryPoint(alias ClientClass)(const LV2_Descriptor* descriptor,
 }
 
 /*
-    LV2 Callback funtion implementations
+    LV2 Callback function implementations
 */
 extern(C) nothrow @nogc
 {
@@ -253,11 +254,20 @@ extern(C) nothrow @nogc
     const (void)* extensionDataUI(const char* uri)
     {
         void* feature = null;
-        debug(debugLV2Client) debugLog(">extension_dataUI");
+        debug(debugLV2Client) debugLogf(">extension_dataUI: %s", uri);
         static const LV2UI_Resize lv2UIResize = LV2UI_Resize(cast(void*)null, &uiResize);
         if (!strcmp(uri, LV2_UI__resize)) {
             feature = cast(void*)&lv2UIResize;
         }
+
+        version(futureBinState)
+        {
+            static immutable LV2_State_Interface lv2StateInterface = LV2_State_Interface(&state_save, &state_restore);
+            if (!strcmp(uri, LV2_STATE__interface)) {
+                feature = cast(void*)&lv2StateInterface;
+            }
+        }
+
         debug(debugLV2Client) debugLog("<extension_dataUI");
         return feature;
     }
@@ -328,12 +338,12 @@ extern(C) nothrow @nogc
                       uint32_t     format,
                       const void*  buffer)
     {
-        debug(debugLV2Client) debugLog(">port_event");
+        //debug(debugLV2Client) debugLog(">port_event");
         ScopedForeignCallback!(false, true) scopedCallback;
         scopedCallback.enter();
         LV2Client lv2client = cast(LV2Client)ui;
         lv2client.portEventUI(port_index, buffer_size, format, buffer);
-        debug(debugLV2Client) debugLog("<port_event");
+        //debug(debugLV2Client) debugLog("<port_event");
     }
 
     const (void)* extension_dataUI(const char* uri)
@@ -341,5 +351,33 @@ extern(C) nothrow @nogc
         debug(debugLV2Client) debugLog(">extension_dataUI");
         debug(debugLV2Client) debugLog("<extension_dataUI");
         return null;
+    }
+
+    version(futureBinState)
+    {
+        LV2_State_Status state_save (LV2_Handle               instance,
+                                     LV2_State_Store_Function store,
+                                     LV2_State_Handle         handle,
+                                     uint                     flags,
+                                     const(LV2_Feature*)*     features)
+        {
+            debug(debugLV2Client) debugLog(">state_save");
+            // TODO
+            debug(debugLV2Client) debugLog("<state_save");
+            return LV2_STATE_SUCCESS;
+        }
+
+
+        LV2_State_Status state_restore(LV2_Handle                  instance,
+                                       LV2_State_Retrieve_Function retrieve,
+                                       LV2_State_Handle            handle,
+                                       uint                        flags,
+                                       const(LV2_Feature*)*        features)
+        {
+            debug(debugLV2Client) debugLog(">state_restore");
+            // TODO
+            debug(debugLV2Client) debugLog("<state_restore");
+            return LV2_STATE_SUCCESS;
+        }
     }
 }

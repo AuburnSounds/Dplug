@@ -76,6 +76,13 @@ int GenerateManifestFromClient_templated(alias ClientClass)(char[] outputBuffer,
     manifest ~= "@prefix ui:   <http://lv2plug.in/ns/extensions/ui#>.\n";
     manifest ~= "@prefix pset: <http://lv2plug.in/ns/ext/presets#>.\n";
     manifest ~= "@prefix opts: <http://lv2plug.in/ns/ext/options#>.\n";
+    version(futureBinState)
+    {
+        manifest ~= "@prefix owl: <http://www.w3.org/2002/07/owl#> .\n";
+        manifest ~= "@prefix state: <http://lv2plug.in/ns/ext/state#>.\n";
+        manifest ~= "@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .\n";
+    }
+
     if (client.sendsMIDI)
     {
         manifest ~= "@prefix rsz:  <http://lv2plug.in/ns/ext/resize-port#>.\n";
@@ -99,6 +106,21 @@ int GenerateManifestFromClient_templated(alias ClientClass)(char[] outputBuffer,
 
     String paramString;
 
+    version(futureBinState)
+    {
+
+    manifest ~=
+`
+vendor:stateBinary
+    a owl:DatatypeProperty ;
+    rdfs:label "Dplug plugin state as base64-encoded string" ;
+    rdfs:domain state:State ;
+    rdfs:range xsd:string .
+
+`;
+
+    }
+
     foreach(legalIO; legalIOs)
     {
         // Make an URI for this I/O configuration
@@ -119,10 +141,19 @@ int GenerateManifestFromClient_templated(alias ClientClass)(char[] outputBuffer,
         manifest ~= strVendorName;
         manifest ~= " ] ;\n";
         manifest ~= "    lv2:requiredFeature opts:options ,\n";
+    /*    version(futureBinState)
+        {
+            manifest ~= "    state:loadDefaultState ,\n";
+        } */
         manifest ~= "                        urid:map ;\n";
 
         // We do not provide such an interface
         //manifest ~= "    lv2:extensionData <" ~ LV2_OPTIONS__interface ~ "> ; \n";
+
+        version(futureBinState)
+        {
+            manifest ~= "    lv2:extensionData <http://lv2plug.in/ns/ext/state#interface> ;\n";
+        }
 
         if(client.hasGUI)
         {
@@ -151,6 +182,14 @@ int GenerateManifestFromClient_templated(alias ClientClass)(char[] outputBuffer,
         escapeRDFString(preset.name, strPresetName);
         manifest ~= strPresetName;
         manifest ~= " ;\n";
+
+
+        version(futureBinState)
+        {
+            manifest ~= "        state:state [\n";
+            manifest ~= "            vendor:stateBinary \"\"\"this is test\"\"\"^^xsd:base64Binary ;\n";
+            manifest ~= "        ] ;\n";
+        }
 
         manifest ~= "        lv2:port [\n";
 

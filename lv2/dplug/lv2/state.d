@@ -64,7 +64,7 @@ enum : int {
 	   Values with this flag contain no pointers or references to other areas
 	   of memory.  It is safe to copy POD values with a simple memcpy and store
 	   them for the duration of the process.  A POD value is not necessarily
-	   safe to trasmit between processes or machines (e.g. filenames are POD),
+	   safe to transmit between processes or machines (e.g. filenames are POD),
 	   see LV2_STATE_IS_PORTABLE for details.
 
 	   Implementations MUST NOT attempt to copy or serialise a non-POD value if
@@ -191,7 +191,8 @@ alias LV2_State_Retrieve_Function = const void* function(
    authors should consider this possibility, and always store sensible data
    with meaningful types to avoid such problems in the future.
 */
-struct _LV2_State_Interface {
+struct LV2_State_Interface 
+{
 	/**
 	   Save plugin state using a host-provided `store` callback.
 
@@ -265,7 +266,6 @@ struct _LV2_State_Interface {
 	                            uint32_t                    flags,
 	                            const(LV2_Feature*)*       features) restore;
 };
-alias LV2_State_Interface = _LV2_State_Interface;
 
 /**
    Feature data for state:mapPath (@ref LV2_STATE__mapPath).
