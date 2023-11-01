@@ -29,7 +29,9 @@
      Build any Dplug tool with the `$ dub` command.
 - ⚙️ With [PBR rendering](http://www.auburnsounds.com/blog/2016-09-16_PBR-for-Audio-Software-Interfaces.htm), you can have video-game like skeuomorphism with a small distribution size.  Small binaries with (optional) [rendering](http://www.auburnsounds.com/blog/2016-09-16_PBR-for-Audio-Software-Interfaces.html).
 - ⚙️ DAW support list [here](https://github.com/AuburnSounds/Dplug/wiki/Host-Support).
-- ⚙️ Ask your question on the Discord, or join the secretive Dplug Wasteland forces for exclusive audio tips.
+- ⚙️ Ask your question on the Discord!
+- ⚙️ Join the secretive Dplug Wasteland club for exclusive audio knowledge!
+- ⚙️ Free of charge!
 
 
 ### Made with Dplug
