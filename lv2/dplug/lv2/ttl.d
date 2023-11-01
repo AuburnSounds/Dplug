@@ -37,6 +37,7 @@ import dplug.core.vec;
 import dplug.core.string;
 
 import dplug.client.client;
+import dplug.client.preset;
 import dplug.client.params;
 import dplug.client.daw;
 
@@ -169,11 +170,13 @@ vendor:stateBinary
     auto presetBank = client.presetBank();
     String strPresetName;
 
+    Vec!ubyte stateBuf;
+
     for(int presetIndex = 0; presetIndex < presetBank.numPresets(); ++presetIndex)
     {
         // Make an URI for this preset
         sprintPluginURI_preset_short(uriBuf.ptr, 256, presetIndex);
-        auto preset = presetBank.preset(presetIndex);
+        Preset preset = presetBank.preset(presetIndex);
         manifest ~= "\n";
         manifest.appendZeroTerminatedString(uriBuf.ptr);
         manifest ~= "\n"; 
@@ -183,13 +186,20 @@ vendor:stateBinary
         manifest ~= strPresetName;
         manifest ~= " ;\n";
 
-
         version(futureBinState)
-        {
-            manifest ~= "        state:state [\n";
-            manifest ~= "            vendor:stateBinary \"\"\"thisistest\"\"\"^^xsd:base64Binary ;\n";
-            manifest ~= "        ] ;\n";
-        }
+        {{
+            // Encode state buffer to base64.
+            const(ubyte)[] stateData = preset.getStateData();
+            if (stateData !is null) // there is some state associated with the preset
+            {
+                stateData.encodeBase64(stateBuf);
+                manifest ~= "        state:state [\n";
+                manifest ~= "            vendor:stateBinary \"\"\"";
+                manifest ~= cast(const(char)[])(stateBuf[]);
+                manifest ~= "\"\"\"^^xsd:base64Binary ;\n";
+                manifest ~= "        ] ;\n";
+            }
+        }}
 
         manifest ~= "        lv2:port [\n";
 

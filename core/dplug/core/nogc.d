@@ -1358,12 +1358,14 @@ ubyte[] encodeBase64(scope const(ubyte)[] buf, char plusChar = '+', char slashCh
     return outBuf.releaseData;
 }
 
-/// Encode a ubyte array as Base64, placing the result onto an Appender.
+/// Encode a ubyte array as Base64, placing the result onto an `Vec!ubyte`.
 void encodeBase64(scope const(ubyte)[] input,
                   scope ref Vec!ubyte outBuf,
                   char plusChar = '+',
                   char slashChar = '/') nothrow @nogc @trusted
 {
+    outBuf.clearContents();
+
     // Slice our input array so that n % 3 == 0 (we have a multiple of 3) 
     // If we have less then 3, then this is effectively a no-op (will result in a 0-length slice)
     ubyte[4] encodedByteGroup;
