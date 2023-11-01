@@ -30,7 +30,8 @@ import std.traits;
 
 import dplug.core.vec: Vec;
 
-// This module provides many utilities to deal with @nogc nothrow, in a situation with the runtime disabled.
+// This module provides many utilities to deal with @nogc nothrow, in a situation with the runtime 
+// disabled.
 
 //
 // Faking @nogc
@@ -278,8 +279,8 @@ immutable(T)[] mallocIDup(T)(const(T)[] slice) nothrow @nogc if (!is(T == struct
 
 /// Duplicates a zero-terminated string with `malloc`, return a `char[]` with zero-terminated byte.
 /// Has to be cleaned-up with `free(s.ptr)`.
-/// Note: The zero-terminating byte is preserved. This allow to have a string which also can be converted
-/// to a C string with `.ptr`. However the zero byte is not included in slice length.
+/// Note: The zero-terminating byte is preserved. This allow to have a string which also can be 
+/// converted to a C string with `.ptr`. However the zero byte is not included in slice length.
 char[] stringDup(const(char)* cstr) nothrow @nogc
 {
     assert(cstr !is null);
@@ -288,10 +289,11 @@ char[] stringDup(const(char)* cstr) nothrow @nogc
     return copy[0..len];
 }
 
-/// Duplicates a zero-terminated string with `malloc`, return a `string`. with zero-terminated byte. 
-/// Has to be cleaned-up with `free(s.ptr)`.
-/// Note: The zero-terminating byte is preserved. This allow to have a string which also can be converted
-/// to a C string with `.ptr`. However the zero byte is not included in slice length.
+/// Duplicates a zero-terminated string with `malloc`, return a `string`. with zero-terminated 
+/// byte. Has to be cleaned-up with `free(s.ptr)`.
+///
+/// Note: The zero-terminating byte is preserved. This allow to have a string which also can be 
+/// converted to a C string with `.ptr`. However the zero byte is not included in slice length.
 string stringIDup(const(char)* cstr) nothrow @nogc
 {
     return cast(string) stringDup(cstr);
@@ -373,8 +375,8 @@ void debugLog(const(char)* message) nothrow @nogc
 ///ditto
 extern (C) void debugLogf(const(char)* fmt, ...) nothrow @nogc
 {
-    // This is a complete hack to be able to build in Ubuntu Focal, which distributes D front-ends based
-    // upon DMDFE 2.090. In these compilers, va_start is not marked @nogc.
+    // This is a complete hack to be able to build in Ubuntu Focal, which distributes D front-ends 
+    // based upon DMDFE 2.090. In these compilers, va_start is not marked @nogc.
     static if (__VERSION__ > 2090)
     {
         import core.stdc.stdio;
@@ -530,7 +532,8 @@ void browseNoGC(string url) nothrow @nogc
     {
         import core.sys.windows.winuser;
         import core.sys.windows.shellapi;
-        ShellExecuteA(null, CString("open").storage, CString(url).storage, null, null, SW_SHOWNORMAL);
+        ShellExecuteA(null, CString("open").storage, CString(url).storage, null, null, 
+                      SW_SHOWNORMAL);
     }
 
     version(OSX)
@@ -614,25 +617,33 @@ version(useTimSort)
         /* compute the minimum run length */
         size_t minrun = tim_sort_compute_minrun(size);
 
-        if (!tim_sort_push_next!T(dst.ptr, size, storeBuf, minrun, run_stack.ptr, &stack_curr, &curr, comparison)) {
+        if (!tim_sort_push_next!T(dst.ptr, size, storeBuf, minrun, run_stack.ptr, &stack_curr, 
+                                  &curr, comparison)) 
+        {
             return;
         }
 
-        if (!tim_sort_push_next!T(dst.ptr, size, storeBuf, minrun, run_stack.ptr, &stack_curr, &curr, comparison)) {
+        if (!tim_sort_push_next!T(dst.ptr, size, storeBuf, minrun, run_stack.ptr, &stack_curr, 
+                                  &curr, comparison)) 
+        {
             return;
         }
 
-        if (!tim_sort_push_next!T(dst.ptr, size, storeBuf, minrun, run_stack.ptr, &stack_curr, &curr, comparison)) {
+        if (!tim_sort_push_next!T(dst.ptr, size, storeBuf, minrun, run_stack.ptr, &stack_curr, 
+                                  &curr, comparison)) 
+        {
             return;
         }
 
         while (1) {
             if (!tim_sort_check_invariant(run_stack.ptr, cast(int)stack_curr)) {
-                stack_curr = tim_sort_collapse!T(dst.ptr, run_stack.ptr, cast(int)stack_curr, storeBuf, size, comparison);
+                stack_curr = tim_sort_collapse!T(dst.ptr, run_stack.ptr, cast(int)stack_curr, 
+                                                 storeBuf, size, comparison);
                 continue;
             }
 
-            if (!tim_sort_push_next!T(dst.ptr, size, storeBuf, minrun, run_stack.ptr, &stack_curr, &curr, comparison)) {
+            if (!tim_sort_push_next!T(dst.ptr, size, storeBuf, minrun, run_stack.ptr, &stack_curr, 
+                                      &curr, comparison)) {
                 return;
             }
         }
@@ -716,7 +727,8 @@ version(useTimSort)
     }
 
     /* Function used to do a binary search for binary insertion sort */
-    size_t tim_sort_binary_inversion_find(T)(T *dst, const T x, const size_t size, nogcComparisonFunction!T comparison) nothrow @nogc
+    size_t tim_sort_binary_inversion_find(T)(T *dst, const T x, const size_t size, 
+                                             nogcComparisonFunction!T comparison) nothrow @nogc
     {
         size_t l, c, r;
         T cx;
@@ -761,7 +773,7 @@ version(useTimSort)
         }
     }
 
-    /* Binary insertion sort, but knowing that the first "start" entries are sorted.  Used in timsort. */
+    // Binary insertion sort, but knowing that the first "start" entries are sorted.
     static void tim_sort_binary_inversion_sort_start(T)(T *dst, 
                                                const size_t start, 
                                                const size_t size, 
@@ -1085,14 +1097,14 @@ version(useTimSort)
 }
 
 
-/++
+/**
 $(H1 @nogc Simple Base64 parsing)
 
 License: $(HTTP www.apache.org/licenses/LICENSE-2.0, Apache-2.0)
 Authors: Harrison Ford
 Copyright: 2021 Harrison Ford, Symmetry Investments, 2023 Guillaume Piolat
-+/
-// this is mir.base64 but a bit stripped down.
+*/
+// this is from mir.base64 but a bit stripped down.
 
 private
 {
@@ -1100,8 +1112,10 @@ private
     // NOTE: I do not know if this would work on big-endian systems.
     // Needs further testing to figure out if it *does* work on them.
 
-    // Technique borrowed from http://0x80.pl/notesen/2016-01-12-sse-base64-encoding.html#branchless-code-for-lookup-table
-    char lookup_encoding(ubyte i, char plusChar = '+', char slashChar = '/') @safe @nogc pure 
+    // Technique borrowed from:
+    // http://0x80.pl/notesen/2016-01-12-sse-base64-encoding.html#branchless-code-for-lookup-table
+    ubyte lookup_encoding(ubyte i, char plusChar = '+', char slashChar = '/') 
+        pure nothrow @nogc @safe
     {
         assert(i < 64);
 
@@ -1137,7 +1151,8 @@ private
     }
 
     // Do the inverse of above (convert an ASCII value into the Base64 character set)
-    ubyte lookup_decoding(ubyte i, char plusChar = '+', char slashChar = '/', bool* err) @safe @nogc pure
+    ubyte lookup_decoding(ubyte i, char plusChar = '+', char slashChar = '/', bool* err)
+        pure nothrow @nogc @safe
     {
         *err = false;
         // Branching bad, but this isn't performance sensitive
@@ -1167,10 +1182,12 @@ private
             return 0;
         }
     }
+}
 
 /// Decode a Base64 encoded value, returning a buffer to be freed with free().
 /// `null` in case of error or zero size.
-ubyte[] decodeBase64(scope const(ubyte)[] data, char plusChar = '+', char slashChar = '/') @system
+ubyte[] decodeBase64(scope const(ubyte)[] data, char plusChar = '+', char slashChar = '/') 
+    nothrow @nogc @system
 {
     Vec!ubyte outBuffer;
     bool err;
@@ -1180,19 +1197,21 @@ ubyte[] decodeBase64(scope const(ubyte)[] data, char plusChar = '+', char slashC
     return outBuffer.releaseData;
 }
 ///ditto
-ubyte[] decodeBase64(scope const(char)[] data, char plusChar = '+', char slashChar = '/') @system
+ubyte[] decodeBase64(scope const(char)[] data, char plusChar = '+', char slashChar = '/') 
+    nothrow @nogc @system
 {
     return decodeBase64(cast(const(ubyte)[])data, plusChar, slashChar);
 }
 
-/// Decode a Base64 encoded value, placing the result onto a Vec.
+/// Decode a Base64 encoded value, appending the result onto a `Vec!ubyte`.
+/// Reusing the same `Vec!ubyte` allows you to avoid reallocations.
 void decodeBase64(scope const(ubyte)[] data,
-                  ref Vec!ubyte appender,
+                  ref Vec!ubyte outBuffer,
                   char plusChar = '+',
                   char slashChar = '/',
-                  bool* err) @safe
+                  bool* err) nothrow @nogc @safe
 {
-    appender.clearContents();
+    outBuffer.clearContents();
     *err = false;
     // We expect data should be well-formed (with padding),
     // so we should throw if it is not well-formed.
@@ -1279,10 +1298,9 @@ void decodeBase64(scope const(ubyte)[] data,
         decodedByteGroup[2] = (transformed_group >> 8) & 0xff;
 
         // Only emit the transformed bytes that we got data for. 
-        appender.pushBack(decodedByteGroup[0 .. sz]);
+        outBuffer.pushBack(decodedByteGroup[0 .. sz]);
     }
 }
-                            }
 
 /// Test decoding of data which has a length which can be
 /// cleanly decoded.
@@ -1291,8 +1309,10 @@ void decodeBase64(scope const(ubyte)[] data,
     // Note: the decoded strings are leaked in this test.
     assert("QUJD".decodeBase64 == "ABC");
     assert("QQ==".decodeBase64 == "A");
-    assert("YSBiIGMgZCBlIGYgZyBoIGkgaiBrIGwgbSBuIG8gcCBxIHIgcyB0IHUgdiB3IHggeSB6".decodeBase64 == "a b c d e f g h i j k l m n o p q r s t u v w x y z");
-    assert("LCAuIDsgLyBbICcgXSBcID0gLSAwIDkgOCA3IDYgNSA0IDMgMiAxIGAgfiAhIEAgIyAkICUgXiAmICogKCApIF8gKyB8IDogPCA+ID8=".decodeBase64 == ", . ; / [ ' ] \\ = - 0 9 8 7 6 5 4 3 2 1 ` ~ ! @ # $ % ^ & * ( ) _ + | : < > ?");
+    assert("YSBiIGMgZCBlIGYgZyBoIGkgaiBrIGwgbSBuIG8gcCBxIHIgcyB0IHUgdiB3IHggeSB6".decodeBase64 
+           == "a b c d e f g h i j k l m n o p q r s t u v w x y z");
+    assert("LCAuIDsgLyBbICcgXSBcID0gLSAwIDkgOCA3IDYgNSA0IDMgMiAxIGAgfiAhIEAgIyAkICUgXiAmICogKCApIF8gKyB8IDogPCA+ID8="
+           .decodeBase64 == ", . ; / [ ' ] \\ = - 0 9 8 7 6 5 4 3 2 1 ` ~ ! @ # $ % ^ & * ( ) _ + | : < > ?");
     assert("AAA=".decodeBase64 == "\x00\x00");
     assert("AAAABBCC".decodeBase64 == "\x00\x00\x00\x04\x10\x82");
     assert("AA==".decodeBase64 == "\x00");
@@ -1319,87 +1339,89 @@ void decodeBase64(scope const(ubyte)[] data,
     testFail("AAA=QUJD");
     // This fails because we don't allow extra padding (than what is necessary)
     testFail("AA======");
-    // This fails because we don't allow padding before the end of the string (otherwise we'd have a side-channel)
+    // This fails because we don't allow padding before the end of the string (otherwise we'd 
+    // have a side-channel)
     testFail("QU==QUJD");
     testFail("QU======QUJD");
     // Invalid data that's out of the alphabet
     testFail("!@##@@!@");
 }
 
-/+
-/// Encode a ubyte array as Base64, returning the encoded value.
-string encodeBase64(scope const(ubyte)[] buf, char plusChar = '+', char slashChar = '/') @safe pure
+
+/// Encode a ubyte array as Base64, returning the encoded value, which shall be destroyed with 
+/// `free`.
+ubyte[] encodeBase64(scope const(ubyte)[] buf, char plusChar = '+', char slashChar = '/') 
+    nothrow @nogc @system
 {
-    import mir.appender : scopedBuffer;
-    auto app = scopedBuffer!char;
-    encodeBase64(buf, app, plusChar, slashChar);
-    return app.data.idup;
+    Vec!ubyte outBuf;
+    encodeBase64(buf, outBuf, plusChar, slashChar);
+    return outBuf.releaseData;
 }
 
 /// Encode a ubyte array as Base64, placing the result onto an Appender.
-void encodeBase64(Appender)(scope const(ubyte)[] input,
-                            scope ref Appender appender,
-                            char plusChar = '+',
-                            char slashChar = '/') @safe pure
-                            {
-                                import core.bitop : bswap;
-                                import mir.ndslice.topology : bytegroup, map;
-                                // Slice our input array so that n % 3 == 0 (we have a multiple of 3) 
-                                // If we have less then 3, then this is effectively a no-op (will result in a 0-length slice)
-                                char[4] encodedByteGroup;
-                                const(ubyte)[] window = input[0 .. input.length - (input.length % 3)];
-                                foreach(group; window.bytegroup!(3, uint).map!bswap) {
-                                    const(ubyte) a = (group >> 26) & 0x3f;
-                                    const(ubyte) b = (group >> 20) & 0x3f;
-                                    const(ubyte) c = (group >> 14) & 0x3f;
-                                    const(ubyte) d = (group >> 8) & 0x3f;
-
-                                    encodedByteGroup[0] = a.lookup_encoding(plusChar, slashChar);
-                                    encodedByteGroup[1] = b.lookup_encoding(plusChar, slashChar);
-                                    encodedByteGroup[2] = c.lookup_encoding(plusChar, slashChar);
-                                    encodedByteGroup[3] = d.lookup_encoding(plusChar, slashChar);
-                                    appender.put(encodedByteGroup[]);
-                                }
-
-                                // If it's a clean multiple of 3, then it requires no padding.
-                                // If not, then we need to add padding.
-                                if (input.length % 3 != 0)
-                                {
-                                    window = input[window.length .. input.length];
-
-                                    uint group = (window[0] << 24);
-
-                                    if (window.length == 1) {
-                                        const(ubyte) a = (group >> 26) & 0x3f;
-                                        const(ubyte) b = (group >> 20) & 0x3f;
-                                        encodedByteGroup[0] = a.lookup_encoding(plusChar, slashChar);
-                                        encodedByteGroup[1] = b.lookup_encoding(plusChar, slashChar);
-                                        encodedByteGroup[2] = '=';
-                                        encodedByteGroup[3] = '=';
-                                    }
-                                    else {
-                                        // Just in case 
-                                        assert(window.length == 2);
-
-                                        group |= (window[1] << 16);
-                                        const(ubyte) a = (group >> 26) & 0x3f;
-                                        const(ubyte) b = (group >> 20) & 0x3f;
-                                        const(ubyte) c = (group >> 14) & 0x3f;
-                                        encodedByteGroup[0] = a.lookup_encoding(plusChar, slashChar);
-                                        encodedByteGroup[1] = b.lookup_encoding(plusChar, slashChar);
-                                        encodedByteGroup[2] = c.lookup_encoding(plusChar, slashChar);
-                                        encodedByteGroup[3] = '=';
-                                    }
-
-                                    appender.put(encodedByteGroup[]);
-                                }
-                            }
-
-/// Test encoding of data which has a length that can be cleanly
-/// encoded.
-version(mir_test)
-@safe pure unittest
+void encodeBase64(scope const(ubyte)[] input,
+                  scope ref Vec!ubyte outBuf,
+                  char plusChar = '+',
+                  char slashChar = '/') nothrow @nogc @trusted
 {
+    // Slice our input array so that n % 3 == 0 (we have a multiple of 3) 
+    // If we have less then 3, then this is effectively a no-op (will result in a 0-length slice)
+    ubyte[4] encodedByteGroup;
+    const(ubyte)[] window = input[0 .. input.length - (input.length % 3)];
+    assert((window.length % 3) == 0);
+
+    for (size_t n = 0; n < window.length; n += 3)
+    {
+        uint group = (window[n] << 24) | (window[n+1] << 16) | (window[n+2] << 8);
+        const(ubyte) a = (group >> 26) & 0x3f;
+        const(ubyte) b = (group >> 20) & 0x3f;
+        const(ubyte) c = (group >> 14) & 0x3f;
+        const(ubyte) d = (group >> 8) & 0x3f;
+        encodedByteGroup[0] = a.lookup_encoding(plusChar, slashChar);
+        encodedByteGroup[1] = b.lookup_encoding(plusChar, slashChar);
+        encodedByteGroup[2] = c.lookup_encoding(plusChar, slashChar);
+        encodedByteGroup[3] = d.lookup_encoding(plusChar, slashChar);
+        outBuf.pushBack(encodedByteGroup[]);
+    }
+
+    // If it's a clean multiple of 3, then it requires no padding.
+    // If not, then we need to add padding.
+    if (input.length % 3 != 0)
+    {
+        window = input[window.length .. input.length];
+
+        uint group = (window[0] << 24);
+
+        if (window.length == 1) {
+            const(ubyte) a = (group >> 26) & 0x3f;
+            const(ubyte) b = (group >> 20) & 0x3f;
+            encodedByteGroup[0] = a.lookup_encoding(plusChar, slashChar);
+            encodedByteGroup[1] = b.lookup_encoding(plusChar, slashChar);
+            encodedByteGroup[2] = '=';
+            encodedByteGroup[3] = '=';
+        }
+        else 
+        {
+            // Just in case 
+            assert(window.length == 2);
+
+            group |= (window[1] << 16);
+            const(ubyte) a = (group >> 26) & 0x3f;
+            const(ubyte) b = (group >> 20) & 0x3f;
+            const(ubyte) c = (group >> 14) & 0x3f;
+            encodedByteGroup[0] = a.lookup_encoding(plusChar, slashChar);
+            encodedByteGroup[1] = b.lookup_encoding(plusChar, slashChar);
+            encodedByteGroup[2] = c.lookup_encoding(plusChar, slashChar);
+            encodedByteGroup[3] = '=';
+        }
+
+        outBuf.pushBack(encodedByteGroup[]);
+    }
+}
+
+@trusted unittest
+{
+    // Note: encoded data leaked there.
     // 3 bytes
     {
         enum data = cast(immutable(ubyte)[])"ABC";
@@ -1427,9 +1449,9 @@ version(mir_test)
 
 /// Test encoding of data which has a length which CANNOT be cleanly encoded.
 /// This typically means that there's padding.
-version(mir_test)
-@safe pure unittest
+@trusted unittest
 {
+    // Note: encoded data leaked there.
     // 1 byte 
     {
         enum data = cast(immutable(ubyte)[])"A";
@@ -1458,29 +1480,26 @@ version(mir_test)
 }
 
 /// Test nogc encoding
-version(mir_test)
-@safe pure @nogc unittest
+@trusted unittest
 {
-    import mir.appender : scopedBuffer;
-
     {
+        
         enum data = cast(immutable(ubyte)[])"A Very Very Very Very Large Test Blob";
-        auto appender = scopedBuffer!char();
-        data.encodeBase64(appender); 
-        assert(appender.data == "QSBWZXJ5IFZlcnkgVmVyeSBWZXJ5IExhcmdlIFRlc3QgQmxvYg==");     
+        Vec!ubyte outBuf;
+        data.encodeBase64(outBuf); 
+        assert(outBuf[] == "QSBWZXJ5IFZlcnkgVmVyeSBWZXJ5IExhcmdlIFRlc3QgQmxvYg==");     
     }
 
     {
         enum data = cast(immutable(ubyte)[])"abc123!?$*&()'-=@~";
-        auto appender = scopedBuffer!char();
-        data.encodeBase64(appender);
-        assert(appender.data == "YWJjMTIzIT8kKiYoKSctPUB+");
+        Vec!ubyte outBuf;
+        data.encodeBase64(outBuf);
+        assert(outBuf[] == "YWJjMTIzIT8kKiYoKSctPUB+");
     }
 }
 
 /// Make sure we can decode what we encode.
-version(mir_test)
-@safe pure unittest
+@trusted unittest
 {
     // Test an example string
     {
@@ -1493,5 +1512,3 @@ version(mir_test)
         assert(data.encodeBase64.decodeBase64 == data);
     }
 }
-
-+/

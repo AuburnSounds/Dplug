@@ -154,7 +154,7 @@ void build_all_lv2_descriptors(ClientClass)() nothrow @nogc
         lv2Descriptors[io].run = &run;
         lv2Descriptors[io].deactivate = &deactivate;
         lv2Descriptors[io].cleanup = &cleanup;
-        lv2Descriptors[io].extension_data = null;//extension_data; support it for real
+        lv2Descriptors[io].extension_data = &extensionData;
     }
 
 
@@ -251,14 +251,10 @@ extern(C) nothrow @nogc
         debug(debugLV2Client) debugLog("<cleanup");
     }
 
-    const (void)* extensionDataUI(const char* uri)
+    const (void)* extensionData(const char* uri)
     {
         void* feature = null;
-        debug(debugLV2Client) debugLogf(">extension_dataUI: %s", uri);
-        static const LV2UI_Resize lv2UIResize = LV2UI_Resize(cast(void*)null, &uiResize);
-        if (!strcmp(uri, LV2_UI__resize)) {
-            feature = cast(void*)&lv2UIResize;
-        }
+        debug(debugLV2Client) debugLogf(">extension_data: %s", uri);
 
         version(futureBinState)
         {
@@ -266,6 +262,19 @@ extern(C) nothrow @nogc
             if (!strcmp(uri, LV2_STATE__interface)) {
                 feature = cast(void*)&lv2StateInterface;
             }
+        }
+
+        debug(debugLV2Client) debugLog("<extension_dataUI");
+        return feature;
+    }
+
+    const (void)* extensionDataUI(const char* uri)
+    {
+        void* feature = null;
+        debug(debugLV2Client) debugLogf(">extension_dataUI: %s", uri);
+        static const LV2UI_Resize lv2UIResize = LV2UI_Resize(cast(void*)null, &uiResize);
+        if (!strcmp(uri, LV2_UI__resize)) {
+            feature = cast(void*)&lv2UIResize;
         }
 
         debug(debugLV2Client) debugLog("<extension_dataUI");
@@ -344,13 +353,6 @@ extern(C) nothrow @nogc
         LV2Client lv2client = cast(LV2Client)ui;
         lv2client.portEventUI(port_index, buffer_size, format, buffer);
         //debug(debugLV2Client) debugLog("<port_event");
-    }
-
-    const (void)* extension_dataUI(const char* uri)
-    {
-        debug(debugLV2Client) debugLog(">extension_dataUI");
-        debug(debugLV2Client) debugLog("<extension_dataUI");
-        return null;
     }
 
     version(futureBinState)

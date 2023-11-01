@@ -109,8 +109,12 @@ nothrow:
         LV2_Options_Option* options = null;
         LV2_URID_Map* uridMap = null;
 
+        assert(features !is null); // by-spec, always point to at least one item
+
         for(int i = 0; features[i] != null; ++i)
         {
+            debug(debugLV2Client) debugLogf("  * host supports feature: %s\n", features[i].URI);
+
             if (strcmp(features[i].URI, "http://lv2plug.in/ns/ext/options#options") == 0)
                 options = cast(LV2_Options_Option*)features[i].data;
             else if (strcmp(features[i].URI, "http://lv2plug.in/ns/ext/urid#map") == 0)
@@ -451,18 +455,22 @@ nothrow:
         _controller = controller;
         _uiTouch = null;
 
-        for (int i=0; features[i] != null; ++i)
+        if (features !is null)
         {
-            if (strcmp(features[i].URI, LV2_UI__parent) == 0)
-                parentId = cast(void*)features[i].data;
-            else if (strcmp(features[i].URI, LV2_UI__resize) == 0)
-                _uiResize = cast(LV2UI_Resize*)features[i].data;
-            else if (strcmp(features[i].URI, LV2_OPTIONS__options) == 0)
-                options = cast(LV2_Options_Option*)features[i].data;
-            else if (strcmp(features[i].URI, LV2_URID__map) == 0)
-                uridMap = cast(LV2_URID_Map*)features[i].data;
-            else if (strcmp(features[i].URI, LV2_UI__touch) == 0)
-                _uiTouch = cast(LV2UI_Touch*)features[i].data;
+            for (int i=0; features[i] != null; ++i)
+            {
+                debug(debugLV2Client) debugLogf("  * host UI supports feature: %s\n", features[i].URI);
+                if (strcmp(features[i].URI, LV2_UI__parent) == 0)
+                    parentId = cast(void*)features[i].data;
+                else if (strcmp(features[i].URI, LV2_UI__resize) == 0)
+                    _uiResize = cast(LV2UI_Resize*)features[i].data;
+                else if (strcmp(features[i].URI, LV2_OPTIONS__options) == 0)
+                    options = cast(LV2_Options_Option*)features[i].data;
+                else if (strcmp(features[i].URI, LV2_URID__map) == 0)
+                    uridMap = cast(LV2_URID_Map*)features[i].data;
+                else if (strcmp(features[i].URI, LV2_UI__touch) == 0)
+                    _uiTouch = cast(LV2UI_Touch*)features[i].data;
+            }
         }
 
         // Not transmitted yet

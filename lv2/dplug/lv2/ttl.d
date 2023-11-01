@@ -115,7 +115,7 @@ vendor:stateBinary
     a owl:DatatypeProperty ;
     rdfs:label "Dplug plugin state as base64-encoded string" ;
     rdfs:domain state:State ;
-    rdfs:range xsd:string .
+    rdfs:range xsd:base64Binary .
 
 `;
 
@@ -187,7 +187,7 @@ vendor:stateBinary
         version(futureBinState)
         {
             manifest ~= "        state:state [\n";
-            manifest ~= "            vendor:stateBinary \"\"\"this is test\"\"\"^^xsd:base64Binary ;\n";
+            manifest ~= "            vendor:stateBinary \"\"\"thisistest\"\"\"^^xsd:base64Binary ;\n";
             manifest ~= "        ] ;\n";
         }
 
