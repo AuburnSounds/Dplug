@@ -81,6 +81,8 @@ nothrow:
         _eventsInput = null;
         _eventsOutput = null;
         _latencySamples = 0;
+        version(futureBinState)
+            initializeStateChunkTypeURI();
     }
 
     ~this()
@@ -136,7 +138,12 @@ nothrow:
 
         _callResetOnNextRun = true;
 
-        _mappedURIs.initialize(uridMap);
+        const(char)* stateChunkURIZ = "unused".ptr;
+        version(futureBinState)
+        {
+            stateChunkURIZ = stateChunkTypeURI.ptr;
+        }
+        _mappedURIs.initialize(uridMap, stateChunkURIZ);
 
         LegalIO selectedIO = _client.legalIOs()[_legalIOIndex];
 
@@ -302,7 +309,7 @@ nothrow:
                         LV2_Atom* speed = null;
 
                         lv2AtomObjectExtractTimeInfo(obj,
-                                           _mappedURIs.timeBeatsPerMinute, &beatsPerMinute,
+                                           _mappedURIs.timeBPM, &beatsPerMinute,
                                            _mappedURIs.timeFrame, &frame,
                                            _mappedURIs.timeSpeed, &speed);
 
@@ -563,6 +570,63 @@ nothrow:
         return PluginFormat.lv2;
     }
 
+    /// Get the URI used for state chunk type.
+    /// The slice has a terminal zero afterwards.
+    /// eg: "https://www.wittyaudio.com/Destructatorizer57694469#stateBinary"
+    version(futureBinState)
+    {
+        const(char)[] getStateBinaryURI()
+        {
+            return stateChunkTypeURI[0..strlen(stateChunkTypeURI.ptr)];
+        }
+
+        LV2_URID getStateBinaryURID()
+        {
+            return _mappedURIs.stateBinary;
+        }
+
+        LV2_URID getAtomStringURID()
+        {
+            return _mappedURIs.atomString;
+        }
+
+        const(ubyte)[] getBase64EncodedStateZ()
+        {
+            // Fetch latest state.
+            _lastStateBinary.clearContents();
+            _client.saveState(_lastStateBinary);
+
+            // PERF: compare to last seen state, skip base64 if unchanged.
+
+            // Encode to base64
+            _lastStateBinaryBase64.clearContents();
+            encodeBase64(_lastStateBinary[], _lastStateBinaryBase64);
+            _lastStateBinaryBase64.pushBack(0); // Add a terminal zero, since LV2 wants a zero-terminated Atom String.
+
+            return _lastStateBinaryBase64[];
+        }
+
+        // Return: true on success.
+        bool restoreStateBinaryBase64(const(ubyte)[] base64StateBinary)
+        {
+            _lastDecodedStateBinary.clearContents;
+
+            if (base64StateBinary.length == 0)
+            {
+                // Note: zero-length state binary not passed to loadState. Considered a success.
+                return true;
+            }
+
+            bool err;
+            decodeBase64(base64StateBinary, _lastDecodedStateBinary, '+', '/', &err);
+            if (err)
+                return false; // wrong base64 data
+
+            bool parsed = _client.loadState(_lastDecodedStateBinary[]);
+            return parsed;
+        }
+    }
+
 private:
 
     uint _numInputs;
@@ -621,6 +685,27 @@ private:
 
     // Current time info, eventually extrapolated when data is missing.
     TimeInfo _currentTimeInfo;
+
+    version(futureBinState)
+    {
+        Vec!ubyte _lastStateBinary;
+        Vec!ubyte _lastStateBinaryBase64;
+        Vec!ubyte _lastDecodedStateBinary;
+
+        // A zero-terminated buffer holding the full URI to vendor:stateChunk.
+        char[256] stateChunkTypeURI;
+
+        void initializeStateChunkTypeURI()
+        {
+            char[4] pluginID = _client.getPluginUniqueID();
+            CString pluginHomepageZ = CString(_client.pluginHomepage());
+            snprintf(stateChunkTypeURI.ptr, 256, "%s%2X%2X%2X%2X#%s", 
+                     pluginHomepageZ.storage, pluginID[0], pluginID[1], pluginID[2], pluginID[3],
+                     "stateBinary".ptr);
+            stateChunkTypeURI[$-1] = '\0';
+        }
+    }
+
 }
 
 struct MappedURIs
@@ -635,26 +720,33 @@ nothrow:
     LV2_URID atomBlank;
     LV2_URID atomObject;
     LV2_URID atomSequence;
+    LV2_URID atomString;
     LV2_URID midiEvent;
     LV2_URID timePosition;
     LV2_URID timeFrame;
-    LV2_URID timeBeatsPerMinute;
+    LV2_URID timeBPM;
     LV2_URID timeSpeed;
 
-    void initialize(LV2_URID_Map* uridMap)
+    version(futureBinState)
+        LV2_URID stateBinary;
+
+    void initialize(LV2_URID_Map* uridMap, const(char)* stateBinaryURIZ)
     {
-        atomDouble = uridMap.map(uridMap.handle, LV2_ATOM__Double);
-        atomFloat = uridMap.map(uridMap.handle, LV2_ATOM__Float);
-        atomInt = uridMap.map(uridMap.handle, LV2_ATOM__Int);
-        atomLong = uridMap.map(uridMap.handle, LV2_ATOM__Long);
-        atomBlank = uridMap.map(uridMap.handle, LV2_ATOM__Blank);
-        atomObject = uridMap.map(uridMap.handle, LV2_ATOM__Object);
+        atomDouble   = uridMap.map(uridMap.handle, LV2_ATOM__Double);
+        atomFloat    = uridMap.map(uridMap.handle, LV2_ATOM__Float);
+        atomInt      = uridMap.map(uridMap.handle, LV2_ATOM__Int);
+        atomLong     = uridMap.map(uridMap.handle, LV2_ATOM__Long);
+        atomBlank    = uridMap.map(uridMap.handle, LV2_ATOM__Blank);
+        atomObject   = uridMap.map(uridMap.handle, LV2_ATOM__Object);
         atomSequence = uridMap.map(uridMap.handle, LV2_ATOM__Sequence);
-        midiEvent = uridMap.map(uridMap.handle, LV2_MIDI__MidiEvent);
+        atomString   = uridMap.map(uridMap.handle, LV2_ATOM__String);
+        midiEvent    = uridMap.map(uridMap.handle, LV2_MIDI__MidiEvent);
         timePosition = uridMap.map(uridMap.handle, LV2_TIME__Position);
-        timeFrame = uridMap.map(uridMap.handle, LV2_TIME__frame);
-        timeBeatsPerMinute = uridMap.map(uridMap.handle, LV2_TIME__beatsPerMinute);
-        timeSpeed = uridMap.map(uridMap.handle, LV2_TIME__speed);
+        timeFrame    = uridMap.map(uridMap.handle, LV2_TIME__frame);
+        timeBPM      = uridMap.map(uridMap.handle, LV2_TIME__beatsPerMinute);
+        timeSpeed    = uridMap.map(uridMap.handle, LV2_TIME__speed);
+        version(futureBinState)
+            stateBinary  = uridMap.map(uridMap.handle, stateBinaryURIZ);
     }
 }
 

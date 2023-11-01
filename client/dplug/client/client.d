@@ -285,6 +285,8 @@ nothrow:
             _midiOutFromUIMutex = makeMutex();
         }
 
+        // TODO: take default state chunk initialization here, before any preset is created, to fix makeDefaultPreset.
+
         // Create presets last, so that we enjoy the presence of built Parameters,
         // and default I/O configuration.
         _presetBank = mallocNew!PresetBank(this, buildPresets());
@@ -608,7 +610,8 @@ nothrow:
             // on Parameter values but not input and output count.
             Vec!ubyte defaultState;
             saveState(defaultState);
-            stateData = defaultState[]; // PERF: could disown this instead of copy, with another Preset constructor
+            stateData = defaultState[];
+            // TODO: MUST be saved way before makeDefaultPreset is called, since multiple calls are made...
         }
 
         // Perf: one could avoid malloc to copy those arrays again there
@@ -934,7 +937,7 @@ nothrow:
             Warning: Just append new content to the `Vec!ubyte`, do not modify its existing content
                      if any exist.
 
-            BUG: This is not currently supported in LV2, and only partially in VST2. 
+            BUG: This is only partially in VST2. 
                  See Issue #352 for the whole story.
 
             See_also: `loadState`.
@@ -953,7 +956,7 @@ nothrow:
                   A proper design would probably have you represent state in the editor and the 
                   audio client separately, with a clean interchange.
 
-            BUG: This is not currently supported in LV2, and only partially in VST2. 
+            BUG: This is only partially in VST2. 
                  See Issue #352 for the whole story.
 
             Returns: `true` on successful parse, you can return false to indicate a parsing error.

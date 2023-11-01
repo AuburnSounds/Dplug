@@ -185,25 +185,36 @@ nothrow:
         return mallocNew!DistortGUI(this);
     }
 
-    override void saveState(ref Vec!ubyte chunk)
+    version(futureBinState)
     {
-        // dplug.core.binrange allows to write arbitrary chunk bytes here.
-        // You are responsible for versioning, correct UI interaction, etc.
-        // See `saveState` definition in client.d for highly-recommended information.
-        writeLE!uint(chunk, getPublicVersion().major);
-    }
+        /// Important: See documentation in `Client.saveState`.
+        override void saveState(ref Vec!ubyte chunk)
+        {            
+            // dplug.core.binrange allows to write arbitrary chunk bytes here.
+            // You are responsible for versioning, correct UI interaction, etc.
+            // See `saveState` definition in client.d for highly-recommended information.
+            writeLE!uint(chunk, getPublicVersion().major);
 
-    override bool loadState(const(ubyte)[] chunk)
-    {
-        const(ubyte)[] c = chunk;
-        bool err;
-        int major = popLE!uint(c, &err);
-        if (err)
-            return false;
+            //debugLogf("saveState %d\n".ptr, getPublicVersion().major);
+        }
 
-        assert(major == getPublicVersion().major);
+        /// Important: See documentation in `Client.loadState`.
+        override bool loadState(const(ubyte)[] chunk)
+        {
+            //debugLogf("loadState\n".ptr);
+            // Parsing is done with error codes.
+            const(ubyte)[] c = chunk;
+            bool err;
+            int major = popLE!uint(c, &err);
+            if (err)
+                return false;
 
-        return true; // no issue parsing the chunk
+            //debugLogf("  * parsed %d\n".ptr, major);
+
+            assert(major == getPublicVersion().major);
+
+            return true; // no issue parsing the chunk
+        }
     }
 
 private:

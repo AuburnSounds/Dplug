@@ -357,6 +357,8 @@ extern(C) nothrow @nogc
 
     version(futureBinState)
     {
+
+        // Save plugin state (beyond the port values).
         LV2_State_Status state_save (LV2_Handle               instance,
                                      LV2_State_Store_Function store,
                                      LV2_State_Handle         handle,
@@ -364,20 +366,51 @@ extern(C) nothrow @nogc
                                      const(LV2_Feature*)*     features)
         {
             debug(debugLV2Client) debugLog(">state_save");
-            // TODO
+
+            LV2Client lv2client = cast(LV2Client)instance;
+
+            // Get the most current base64-encoded state + terminal zero.
+            const(ubyte)[] lastChunk = lv2client.getBase64EncodedStateZ();
+
+            LV2_State_Status res = store(handle,
+                                         lv2client.getStateBinaryURID(),
+                                         lastChunk.ptr,
+                                         lastChunk.length, // this includes a terminal zero
+                                         lv2client.getAtomStringURID(),
+                                         LV2_STATE_IS_POD | LV2_STATE_IS_PORTABLE);
             debug(debugLV2Client) debugLog("<state_save");
-            return LV2_STATE_SUCCESS;
+            return res;
         }
 
 
         LV2_State_Status state_restore(LV2_Handle                  instance,
                                        LV2_State_Retrieve_Function retrieve,
                                        LV2_State_Handle            handle,
-                                       uint                        flags,
+                                       uint                        flags, // those flags currently unused by LV2
                                        const(LV2_Feature*)*        features)
         {
             debug(debugLV2Client) debugLog(">state_restore");
-            // TODO
+            LV2Client lv2client = cast(LV2Client)instance;
+
+            // BUG: this doesn't restore stuff
+
+            size_t len;
+            uint type;
+            uint rflags;
+            const(void)* pStateBinary = retrieve(handle, lv2client.getStateBinaryURID(), &len, &type, &rflags);
+
+            if (pStateBinary == null)
+                return LV2_STATE_ERR_NO_PROPERTY;
+
+            if (type != lv2client.getAtomStringURID())
+                return LV2_STATE_ERR_BAD_TYPE;
+
+            if (len == 0)
+                return LV2_STATE_ERR_BAD_TYPE;
+
+            const(ubyte)[] chunk = (cast(const(ubyte)*)pStateBinary)[0..len-1];
+            lv2client.restoreStateBinaryBase64(chunk);
+
             debug(debugLV2Client) debugLog("<state_restore");
             return LV2_STATE_SUCCESS;
         }
