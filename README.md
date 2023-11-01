@@ -89,7 +89,7 @@ Being stable and relatively bug-free is deemed more important to us than impleme
   - Optional Physically Based Rendering (PBR).
   - Image support: `PNG`, `JPEG`, `QOI`, and specially designed `QOIX` codec.
   - Easy to install and update.
-  - a range of state of the art [tutorials](https://dplug.org/#tutorials).
+  - State-of-the-Art [tutorials](https://dplug.org/#tutorials).
 
 
 ### VST3 SDK
