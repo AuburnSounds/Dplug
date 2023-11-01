@@ -334,7 +334,7 @@ nothrow:
     public
     {
         /// Creates an aligned buffer with given initial size.
-        this(size_t initialSize, int alignment)
+        this(size_t initialSize, int alignment) @safe
         {
             assert(alignment != 0);
             _size = 0;
@@ -344,7 +344,7 @@ nothrow:
             resize(initialSize);
         }
 
-        ~this()
+        ~this() @trusted
         {
             if (_data !is null)
             {
@@ -357,7 +357,7 @@ nothrow:
         @disable this(this);
 
         /// Returns: Length of buffer in elements.
-        size_t length() pure const
+        size_t length() pure const @safe
         {
             return _size;
         }
@@ -366,7 +366,7 @@ nothrow:
         alias opDollar = length;
 
         /// Resizes a buffer to hold $(D askedSize) elements.
-        void resize(size_t askedSize)
+        void resize(size_t askedSize) @trusted
         {
             // grow only
             if (_allocated < askedSize)
@@ -379,7 +379,7 @@ nothrow:
         }
 
         /// Pop last element
-        T popBack()
+        T popBack() @trusted
         {
             assert(_size > 0);
             _size = _size - 1;
@@ -387,7 +387,7 @@ nothrow:
         }
 
         /// Append an element to this buffer.
-        void pushBack(T x)
+        void pushBack(T x) @trusted
         {
             size_t i = _size;
             resize(_size + 1);
@@ -398,7 +398,7 @@ nothrow:
         static if (__VERSION__ >= 2088)
         {
             ///ditto
-            void opOpAssign(string op)(T x) if (op == "~")
+            void opOpAssign(string op)(T x) @safe if (op == "~")
             {
                 pushBack(x);
             }
@@ -406,7 +406,7 @@ nothrow:
         else
         {
             ///ditto
-            void opCatAssign(T x)
+            void opCatAssign(T x) @safe
             {
                 pushBack(x);
             }
@@ -416,7 +416,7 @@ nothrow:
         alias put = pushBack;
 
         /// Finds an item, returns -1 if not found
-        int indexOf(T x)
+        int indexOf(T x) @trusted
         {
             enum bool isStaticArray(T) = __traits(isStaticArray, T);
 
@@ -440,7 +440,7 @@ nothrow:
 
         /// Removes an item and replaces it by the last item.
         /// Warning: this reorders the array.
-        void removeAndReplaceByLastElement(size_t index)
+        void removeAndReplaceByLastElement(size_t index) @trusted
         {
             assert(index < _size);
             _data[index] = _data[--_size];
@@ -448,7 +448,7 @@ nothrow:
 
         /// Removes an item and shift the rest of the array to front by 1.
         /// Warning: O(N) complexity.
-        void removeAndShiftRestOfArray(size_t index)
+        void removeAndShiftRestOfArray(size_t index) @trusted
         {
             assert(index < _size);
             for (; index + 1 < _size; ++index)
@@ -456,7 +456,7 @@ nothrow:
         }
 
         /// Appends another buffer to this buffer.
-        void pushBack(ref Vec other)
+        void pushBack(ref Vec other) @trusted
         {
             size_t oldSize = _size;
             resize(_size + other._size);
@@ -465,7 +465,7 @@ nothrow:
 
         /// Appends a slice to this buffer.
         /// `slice` should not belong to the same buffer _data.
-        void pushBack(T[] slice)
+        void pushBack(T[] slice) @trusted
         {
             size_t oldSize = _size;
             size_t newSize = _size + slice.length;
@@ -475,48 +475,48 @@ nothrow:
         }
 
         /// Returns: Raw pointer to data.
-        @property inout(T)* ptr() inout
+        @property inout(T)* ptr() inout @system
         {
             return _data;
         }
 
         /// Returns: n-th element.
-        ref inout(T) opIndex(size_t i) pure inout
+        ref inout(T) opIndex(size_t i) pure inout @trusted
         {
             return _data[i];
         }
 
-        T opIndexAssign(T x, size_t i)
+        T opIndexAssign(T x, size_t i) pure @trusted
         {
             return _data[i] = x;
         }
 
         /// Sets size to zero, but keeps allocated buffers.
-        void clearContents()
+        void clearContents() pure @safe
         {
             _size = 0;
         }
 
         /// Returns: Whole content of the array in one slice.
-        inout(T)[] opSlice() inout
+        inout(T)[] opSlice() inout @safe
         {
             return opSlice(0, length());
         }
 
         /// Returns: A slice of the array.
-        inout(T)[] opSlice(size_t i1, size_t i2) inout
+        inout(T)[] opSlice(size_t i1, size_t i2) inout @trusted
         {
             return _data[i1 .. i2];
         }
 
         /// Fills the buffer with the same value.
-        void fill(T x)
+        void fill(T x) @trusted
         {
             _data[0.._size] = x;
         }
 
         /// Move. Give up owner ship of the data.
-        T[] releaseData()
+        T[] releaseData() @system
         {
             T[] data = _data[0.._size];
             assert(_alignment == 1); // else would need to be freed with alignedFree.
