@@ -360,51 +360,35 @@ private:
         if (_vm !is null)
             return; // Already started
 
-        try
-        {
-            WrenConfiguration config;
-            wrenInitConfiguration(&config);
+        WrenConfiguration config;
+        wrenInitConfiguration(&config);
 
-            config.writeFn             = &dplug_wrenPrint;
-            config.errorFn             = &dplug_wrenError;
-            config.dollarOperatorFn    = &dplug_wrenDollarOperator;
-            config.bindForeignMethodFn = &dplug_wrenBindForeignMethod;
-            config.bindForeignClassFn  = &dplug_wrenBindForeignClass;
-            config.loadModuleFn        = &dplug_wrenLoadModule;
-            config.userData            = cast(void*)this;
+        config.writeFn             = &dplug_wrenPrint;
+        config.errorFn             = &dplug_wrenError;
+        config.dollarOperatorFn    = &dplug_wrenDollarOperator;
+        config.bindForeignMethodFn = &dplug_wrenBindForeignMethod;
+        config.bindForeignClassFn  = &dplug_wrenBindForeignClass;
+        config.loadModuleFn        = &dplug_wrenLoadModule;
+        config.userData            = cast(void*)this;
 
-            // Makes a bit easier to copy/paste code from D to Wren and vice-versa.
-            // Of course this isn't vanilla Wren, but too much time were spent chasing and 
-            // eliminating semicolons in Wren code.
-            config.acceptsTrailingSemicolons = true;
+        // Makes a bit easier to copy/paste code from D to Wren and vice-versa.
+        // Of course this isn't vanilla Wren, but too much time were spent chasing and 
+        // eliminating semicolons in Wren code.
+        config.acceptsTrailingSemicolons = true;
 
-            // Note: wren defaults for memory usage make a lot of sense.
-            _vm = wrenNewVM(&config);
-            _vmGeneration++;
-            _cachedUIModule = null;
-            _cachedWidgetsModule = null;
-            _cachedClassElement = null;
-        }
-        catch(Exception e)
-        {
-            debugLog("VM initialization failed");
-            destroyFree(e);
-            _vm = null; 
-        }
+        // Note: wren defaults for memory usage make a lot of sense.
+        _vm = wrenNewVM(&config);
+        _vmGeneration++;
+        _cachedUIModule = null;
+        _cachedWidgetsModule = null;
+        _cachedClassElement = null;
     }
 
     void stopWrenVM() nothrow
     {
         if (_vm !is null)
         {
-            try
-            {
-                wrenFreeVM(_vm);
-            }
-            catch(Exception e)
-            {
-                destroyFree(e);
-            }
+            wrenFreeVM(_vm);
             _vm = null;
         }
     }
@@ -439,19 +423,11 @@ private:
     WrenForeignMethodFn foreignMethod(WrenVM* vm, const(char)* module_, const(char)* className, bool isStatic, const(char)* signature) nothrow
     {
         // Introducing the Dplug-Wren standard library here.
-        try
+        if (strcmp(module_, "ui") == 0)
         {
-            if (strcmp(module_, "ui") == 0)
-            {
-                return wrenUIBindForeignMethod(vm, className, isStatic, signature);
-            }
-            return null;
+            return wrenUIBindForeignMethod(vm, className, isStatic, signature);
         }
-        catch(Exception e)
-        {
-            destroyFree(e);
-            return null;
-        }
+        return null;
     }
 
     // this is called anytime Wren looks for a foreign class
@@ -499,25 +475,17 @@ private:
         }
 
 
-        try
-        {   
-            if (strcmp(name, "widgets") == 0)
-                res.source = widgetModuleSource();
+        if (strcmp(name, "widgets") == 0)
+            res.source = widgetModuleSource();
 
-            if (strcmp(name, "ui") == 0)
-                res.source = wrenUIModuleSource();
-        }
-        catch(Exception e)
-        {
-            destroyFree(e);
-            res.source = null;
-        }
+        if (strcmp(name, "ui") == 0)
+            res.source = wrenUIModuleSource();
         found:
         return res;
     }
 
     // Note: return a value whose lifetime is tied to Wren VM.
-    ObjModule* getWrenModule(const(char)* name)
+    ObjModule* getWrenModule(const(char)* name) nothrow
     {
         Value moduleName = wrenStringFormat(_vm, "$", name);
         wrenPushRoot(_vm, AS_OBJ(moduleName));
@@ -526,7 +494,7 @@ private:
         return wModule;
     }
 
-    ObjClass* getWrenClassForThisUIELement(UIElement elem)
+    ObjClass* getWrenClassForThisUIELement(UIElement elem) nothrow
     {
         // Do we have a valid cached ObjClass* inside the UIElement?
         void* cachedClass = elem.getUserPointer(UIELEMENT_POINTERID_WREN_EXPORTED_CLASS);
@@ -569,68 +537,60 @@ private:
     // Implementation of the $ operator.
     bool dollarOperator(WrenVM* vm, Value* args) nothrow
     {
-        try
+        if (!IS_STRING(args[0]))
+            return RETURN_NULL(args);
+
+        const(char)* id = AS_STRING(args[0]).value.ptr;
+
+        // Note: elem can be null here. If no element is found with a proper ID,
+        // return an unbound value.
+        UIElement elem = _uiContext.getElementById(id);
+        if (elem is null)
+            return RETURN_NULL(args); // $(id) not found
+
+        // Find a Wren class we have to convert it to.
+        // $ can be any of the imported classes in "widgets", if not it is an UIElement.
+        // Note that both "ui" and "widgets" module MUST be imported.
+
+        if (_cachedUIModule is null)
         {
-            if (!IS_STRING(args[0]))
-                return RETURN_NULL(args);
-
-            const(char)* id = AS_STRING(args[0]).value.ptr;
-
-            // Note: elem can be null here. If no element is found with a proper ID,
-            // return an unbound value.
-            UIElement elem = _uiContext.getElementById(id);
-            if (elem is null)
-                return RETURN_NULL(args); // $(id) not found
-
-            // Find a Wren class we have to convert it to.
-            // $ can be any of the imported classes in "widgets", if not it is an UIElement.
-            // Note that both "ui" and "widgets" module MUST be imported.
-
+            _cachedUIModule = getWrenModule("ui");
             if (_cachedUIModule is null)
-            {
-                _cachedUIModule = getWrenModule("ui");
-                if (_cachedUIModule is null)
-                    return RETURN_ERROR(vm, "module \"ui\" is not imported");
-            }
-
-            if (_cachedWidgetsModule is null)
-            {
-                _cachedWidgetsModule = getWrenModule("widgets");
-                if (_cachedWidgetsModule is null)
-                    return RETURN_ERROR(vm, "module \"widgets\" is not imported");
-            }
-
-            ObjClass* classTarget = getWrenClassForThisUIELement(elem);
-
-            if (_cachedClassElement is null)
-            {
-                _cachedClassElement = AS_CLASS(wrenFindVariable(vm, _cachedUIModule, "Element"));
-            }
-
-            if (classTarget is null)
-            {
-                return RETURN_ERROR(vm, "cannot create a IUElement from operator $");
-            }
-
-            Value obj = wrenNewInstance(vm, classTarget);
-
-            // PERF: could this be also cached? It wouldn't be managed by Wren.
-            // Create new Element foreign
-            ObjForeign* foreign = wrenNewForeign(vm, _cachedClassElement, UIElementBridge.sizeof);
-            UIElementBridge* bridge = cast(UIElementBridge*) foreign.data.ptr;
-            bridge.elem = elem; 
-
-            // Assign it in the first field of the newly created ui.UIElement
-            ObjInstance* instance = AS_INSTANCE(obj);
-            instance.fields[0] = OBJ_VAL(foreign);
-
-            return RETURN_OBJ(args, AS_INSTANCE(obj));
+                return RETURN_ERROR(vm, "module \"ui\" is not imported");
         }
-        catch(Exception e)
+
+        if (_cachedWidgetsModule is null)
         {
-            destroyFree(e);
-            return RETURN_NULL(args); // other error
+            _cachedWidgetsModule = getWrenModule("widgets");
+            if (_cachedWidgetsModule is null)
+                return RETURN_ERROR(vm, "module \"widgets\" is not imported");
         }
+
+        ObjClass* classTarget = getWrenClassForThisUIELement(elem);
+
+        if (_cachedClassElement is null)
+        {
+            _cachedClassElement = AS_CLASS(wrenFindVariable(vm, _cachedUIModule, "Element"));
+        }
+
+        if (classTarget is null)
+        {
+            return RETURN_ERROR(vm, "cannot create a IUElement from operator $");
+        }
+
+        Value obj = wrenNewInstance(vm, classTarget);
+
+        // PERF: could this be also cached? It wouldn't be managed by Wren.
+        // Create new Element foreign
+        ObjForeign* foreign = wrenNewForeign(vm, _cachedClassElement, UIElementBridge.sizeof);
+        UIElementBridge* bridge = cast(UIElementBridge*) foreign.data.ptr;
+        bridge.elem = elem; 
+
+        // Assign it in the first field of the newly created ui.UIElement
+        ObjInstance* instance = AS_INSTANCE(obj);
+        instance.fields[0] = OBJ_VAL(foreign);
+
+        return RETURN_OBJ(args, AS_INSTANCE(obj));
     }
 
     // auto-generate the "widgets" Wren module
