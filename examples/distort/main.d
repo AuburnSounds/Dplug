@@ -188,29 +188,36 @@ nothrow:
     version(futureBinState)
     {
         /// Important: See documentation in `Client.saveState`.
+        ///            Right now saving extra state is fraught with peril!
         override void saveState(ref Vec!ubyte chunk)
         {            
             // dplug.core.binrange allows to write arbitrary chunk bytes here.
             // You are responsible for versioning, correct UI interaction, etc.
+            //
+            // `loadState` will be called with your own state chunks without regards for
+            // your plugin major version.
+            //
             // See `saveState` definition in client.d for highly-recommended information.
             writeLE!uint(chunk, getPublicVersion().major);
-
-            //debugLogf("saveState %d\n".ptr, getPublicVersion().major);
         }
 
         /// Important: See documentation in `Client.loadState`.
         override bool loadState(const(ubyte)[] chunk)
         {
-            // Parsing is done with error codes.
+            // Parsing is done with error codes.           
             const(ubyte)[] c = chunk;
             bool err;
             int major = popLE!uint(c, &err);
             if (err)
                 return false;
 
-            assert(major == getPublicVersion().major);
+            // You're supposed to refuse a chunk that you are not compatible with, with your own
+            // versioning. For example, maybe you break your state chunk compat on plugin majors
+            // versions.
+            if (major != getPublicVersion().major)
+                return false;
 
-            return true; // no issue parsing the chunk
+            return true; // no issue parsing the chunk, and acting on it
         }
     }
 
