@@ -217,6 +217,8 @@ nothrow:
             if (major != getPublicVersion().major)
                 return false;
 
+            debugLogf("OKOKOKOKOK\n");
+
             return true; // no issue parsing the chunk, and acting on it
         }
     }

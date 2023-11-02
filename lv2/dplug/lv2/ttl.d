@@ -67,26 +67,26 @@ int GenerateManifestFromClient_templated(alias ClientClass)(char[] outputBuffer,
         escapeRDF_IRI2(uriVendor, strUriVendor);
     }
 
-    manifest ~= "@prefix lv2:  <http://lv2plug.in/ns/lv2core#>.\n";
+    manifest ~= "@prefix lv2: <http://lv2plug.in/ns/lv2core#>.\n";
     manifest ~= "@prefix atom: <http://lv2plug.in/ns/ext/atom#>.\n";
     manifest ~= "@prefix doap: <http://usefulinc.com/ns/doap#>.\n";
     manifest ~= "@prefix foaf: <http://xmlns.com/foaf/0.1/>.\n";
-    manifest ~= "@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.\n";
+    manifest ~= "@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.\n";
     manifest ~= "@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.\n";
     manifest ~= "@prefix urid: <http://lv2plug.in/ns/ext/urid#>.\n";
-    manifest ~= "@prefix ui:   <http://lv2plug.in/ns/extensions/ui#>.\n";
+    manifest ~= "@prefix ui: <http://lv2plug.in/ns/extensions/ui#>.\n";
     manifest ~= "@prefix pset: <http://lv2plug.in/ns/ext/presets#>.\n";
     manifest ~= "@prefix opts: <http://lv2plug.in/ns/ext/options#>.\n";
     version(futureBinState)
     {
-        manifest ~= "@prefix owl: <http://www.w3.org/2002/07/owl#> .\n";
+        manifest ~= "@prefix owl: <http://www.w3.org/2002/07/owl#>.\n";
         manifest ~= "@prefix state: <http://lv2plug.in/ns/ext/state#>.\n";
-        manifest ~= "@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .\n";
+        manifest ~= "@prefix xsd: <http://www.w3.org/2001/XMLSchema#>.\n";
     }
 
     if (client.sendsMIDI)
     {
-        manifest ~= "@prefix rsz:  <http://lv2plug.in/ns/ext/resize-port#>.\n";
+        manifest ~= "@prefix rsz: <http://lv2plug.in/ns/ext/resize-port#>.\n";
     }
     manifest ~= "@prefix pprops: <http://lv2plug.in/ns/ext/port-props#>.\n";
     manifest ~= "@prefix vendor: "; // this prefix abbreviate the ttl with our own URL base

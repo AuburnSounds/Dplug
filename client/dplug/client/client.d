@@ -919,16 +919,16 @@ nothrow:
             You would typically serialize arbitrary stuff with `dplug.core.binrange`.
             This is called quite frequently.
 
-            What should goes here:
+            What should go here:
                 * your own chunk format with hopefully your plugin major version.
-                * user-defined structures, like opened .wav, strings, wavetables...
+                * user-defined structures, like opened .wav, strings, wavetables, file paths...
                   You can finally make plugins with arbitrary data in presets!
                 * Typically stuff used to render sound identically.
-                * Do not put host-exposed plugin Parameter, they are saved by other means.
+                * Do not put host-exposed plug-in Parameters, they are saved by other means.
                 * Do not put stuff that depends on I/O settings, such as:
                    - current sample rate
                    - current I/O count and layout
-                   - maxFrames
+                   - maxFrames and buffering
                   What you put in an extra state chunk must be parameter-like,
                   just not those a DAW allows.
 
@@ -958,9 +958,11 @@ nothrow:
         }
 
         /**
-            Write the extra state your plugin in a chunk, so that the host can restore that later.
-            You would typically serialize arbitrary stuff with `dplug.core.binrange`.
-            This is called on session load.
+            Read the extra state of your plugin from a chunk, to restore a former save.
+            You would typically deserialize arbitrary stuff with `dplug.core.binrange`.
+
+            This is called on session load or on preset load (IF the preset had a state chunk),
+            but this isn't called on plugin instantiation.
 
             Note: Using state chunks comes with a BIG challenge of making your own synchronization 
                   with the UI. You can expect any thread to call `saveState` and `loadState`. 
@@ -968,14 +970,12 @@ nothrow:
                   audio client separately, with a clean interchange.
 
             Important: This should successfully parse whatever the "default state" is
-                       so that `makeDefaultPreset()` can work. When a plugin is instantiated,
-                       `loadState` will be called with whatever `saveState` did as a default.
-                       So you cannot rely on `presetBank` being there in `loadState`.
+                       so that `makeDefaultPreset()` can work.
 
             BUG: This is only partially in VST2. 
                  See Issue #352 for the whole story.
 
-            Returns: `true` on successful parse, you can return false to indicate a parsing error.
+            Returns: `true` on successful parse, return false to indicate a parsing error.
 
             See_also: `loadState`.
         */
