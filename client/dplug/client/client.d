@@ -956,9 +956,6 @@ nothrow:
             Warning: Just append new content to the `Vec!ubyte`, do not modify its existing content
                      if any exist.
 
-            BUG: This is only partially done in VST2. 
-                 See Issue #352 for the whole story.
-
             See_also: `loadState`.
         */
         void saveState(ref Vec!ubyte chunk) nothrow @nogc
@@ -979,9 +976,6 @@ nothrow:
 
             Important: This should successfully parse whatever the "default state" is
                        so that `makeDefaultPreset()` can work.
-
-            BUG: This is only partially in VST2. 
-                 See Issue #352 for the whole story.
 
             Returns: `true` on successful parse, return false to indicate a parsing error.
 
