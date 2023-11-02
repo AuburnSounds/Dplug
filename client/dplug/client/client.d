@@ -597,7 +597,24 @@ nothrow:
         return _inputMidiQueue.getNextMidiMessages(frames);
     }
 
+    /// Return default state data, to be used in constructing a programmatic preset.
+    /// Note: It is recommended to use .fbx instead of constructing presets with code.
+    /// This is intended to be used in `buildPresets` callback.
+    final const(ubyte)[] defaultStateData() nothrow @nogc
+    {
+        // Should this preset have extra state data?
+        const(ubyte)[] stateData = null;
+        version(futureBinState)
+        {
+            // Note: the default state data is called early, so if you plan to call 
+            // `defaultStateData` outside of buildPresets, it will have odd restrictions.
+            stateData = _defaultStateData[];
+        }
+        return stateData;
+    }
+
     /// Returns a new default preset.
+    /// This is intended to be used in `buildPresets` callback.
     final Preset makeDefaultPreset() nothrow @nogc
     {
         // MAYDO: use mallocSlice for perf
@@ -605,18 +622,9 @@ nothrow:
         foreach(param; _params)
             values.pushBack(param.getNormalizedDefault());
 
-        // Should this preset have extra state data?
-        const(ubyte)[] stateData = null;
-        version(futureBinState)
-        {
-            // Note: the default state data is called early, so if you plan to call makeDefaultPreset outside of 
-            // buildPresets, it will have odd restrictions.
-            stateData = _defaultStateData[];
-        }
-
         // Perf: one could avoid malloc to copy those arrays again there
         float[] valuesSlice = values.releaseData;
-        Preset result = mallocNew!Preset("Default", valuesSlice, stateData);
+        Preset result = mallocNew!Preset("Default", valuesSlice, defaultStateData());
         free(valuesSlice.ptr); // PERF: could disown this instead of copy, with another Preset constructor
         return result;
     }

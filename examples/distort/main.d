@@ -89,10 +89,10 @@ nothrow:
         presets ~= makeDefaultPreset();
 
         static immutable float[] silenceParams = [0.0f, 0.0f, 0.0f, 1.0f, 0];
-        presets ~= mallocNew!Preset("Silence", silenceParams);
+        presets ~= mallocNew!Preset("Silence", silenceParams, defaultStateData());
 
         static immutable float[] fullOnParams = [1.0f, 1.0f, 0.4f, 1.0f, 0];
-        presets ~= mallocNew!Preset("Full-on", fullOnParams);
+        presets ~= mallocNew!Preset("Full-on", fullOnParams, defaultStateData());
         return presets.releaseData();
     }
 
@@ -190,7 +190,7 @@ nothrow:
         /// Important: See documentation in `Client.saveState`.
         ///            Right now saving extra state is fraught with peril!
         override void saveState(ref Vec!ubyte chunk)
-        {            
+        {
             // dplug.core.binrange allows to write arbitrary chunk bytes here.
             // You are responsible for versioning, correct UI interaction, etc.
             //
@@ -204,7 +204,7 @@ nothrow:
         /// Important: See documentation in `Client.loadState`.
         override bool loadState(const(ubyte)[] chunk)
         {
-            // Parsing is done with error codes.           
+            // Parsing is done with error codes.
             const(ubyte)[] c = chunk;
             bool err;
             int major = popLE!uint(c, &err);
@@ -216,8 +216,6 @@ nothrow:
             // versions.
             if (major != getPublicVersion().major)
                 return false;
-
-            debugLogf("OKOKOKOKOK\n");
 
             return true; // no issue parsing the chunk, and acting on it
         }
