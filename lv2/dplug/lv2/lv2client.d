@@ -606,10 +606,12 @@ nothrow:
             return _lastStateBinaryBase64[];
         }
 
+        // Base64-decode the input extra state chunk, and gives it to plug-in client.
+        // Empty chunk is considered a success.
         // Return: true on success.
         bool restoreStateBinaryBase64(const(ubyte)[] base64StateBinary)
         {
-            _lastDecodedStateBinary.clearContents;
+            debug(debugLV2Client) debugLogf(">restoreStateBinaryBase64\n");
 
             if (base64StateBinary.length == 0)
             {
@@ -617,12 +619,22 @@ nothrow:
                 return true;
             }
 
+            debug(debugLV2Client) debugLogf("  * len = %llu\n", cast(int)base64StateBinary.length);
+
+            _lastDecodedStateBinary.clearContents;
             bool err;
             decodeBase64(base64StateBinary, _lastDecodedStateBinary, '+', '/', &err);
             if (err)
+            {
+                debug(debugLV2Client) debugLogf("chunk didn't decode\n");
                 return false; // wrong base64 data
+            }
+
+            debug(debugLV2Client) debugLogf("decoded\n");
 
             bool parsed = _client.loadState(_lastDecodedStateBinary[]);
+
+            debug(debugLV2Client) debugLogf("  * parsed = %d\n", cast(int)parsed);
             return parsed;
         }
     }

@@ -209,12 +209,10 @@ extern(C) nothrow @nogc
 {
     void connect_port(LV2_Handle instance, uint32_t   port, void* data)
     {
-        debug(debugLV2Client) debugLog(">connect_port");
         ScopedForeignCallback!(false, true) scopedCallback;
         scopedCallback.enter();
         LV2Client lv2client = cast(LV2Client)instance;
         lv2client.connect_port(port, data);
-        debug(debugLV2Client) debugLog("<connect_port");
     }
 
     void activate(LV2_Handle instance)
@@ -378,6 +376,9 @@ extern(C) nothrow @nogc
                                          lastChunk.length, // this includes a terminal zero
                                          lv2client.getAtomStringURID(),
                                          LV2_STATE_IS_POD | LV2_STATE_IS_PORTABLE);
+
+            debug(debugLV2Client) debugLogf("  * store returned %d\n", res);
+
             debug(debugLV2Client) debugLog("<state_save");
             return res;
         }
@@ -389,30 +390,49 @@ extern(C) nothrow @nogc
                                        uint                        flags, // those flags currently unused by LV2
                                        const(LV2_Feature*)*        features)
         {
-            debug(debugLV2Client) debugLog(">state_restore");
+            debug(debugLV2Client) debugLog(">state_restore\n");
             LV2Client lv2client = cast(LV2Client)instance;
 
-            // BUG: this doesn't restore stuff
+            // Try to restore from a vendor:stateBinary URI
+            {
+                size_t len;
+                uint type;
+                uint rflags;
+                const(ubyte)* pStateBinary = cast(const(ubyte)*) 
+                    retrieve(handle, lv2client.getStateBinaryURID(), &len, &type, &rflags);
 
-            size_t len;
-            uint type;
-            uint rflags;
-            const(void)* pStateBinary = retrieve(handle, lv2client.getStateBinaryURID(), &len, &type, &rflags);
+                debug(debugLV2Client) debugLogf("  * retrieve returned %p\n", pStateBinary);
 
-            if (pStateBinary == null)
-                return LV2_STATE_ERR_NO_PROPERTY;
+                if (pStateBinary == null)
+                    return LV2_STATE_ERR_NO_PROPERTY;
 
-            if (type != lv2client.getAtomStringURID())
-                return LV2_STATE_ERR_BAD_TYPE;
+                if (type != lv2client.getAtomStringURID())
+                    return LV2_STATE_ERR_BAD_TYPE;
 
-            if (len == 0)
-                return LV2_STATE_ERR_BAD_TYPE;
+                if (len == 0) // Empty chunk => error
+                    return LV2_STATE_ERR_BAD_TYPE;
 
-            const(ubyte)[] chunk = (cast(const(ubyte)*)pStateBinary)[0..len-1];
-            lv2client.restoreStateBinaryBase64(chunk);
+                // WORKAROUND.
+                // Now for an interesting story... 
+                // With the same saveState, some hosts like Carla return a string length 
+                // that includes the zero-terminal character.
+                // But other hosts, like REAPER, instead return the string length you can 
+                // expect from the atom spec.
+                // Check if the last return character is '\0', in which case we can safely
+                // remove it from the base64 decoding.
+                {
+                    if (pStateBinary[len-1] == '\0')
+                        len = len - 1;
 
-            debug(debugLV2Client) debugLog("<state_restore");
-            return LV2_STATE_SUCCESS;
+                    if (len == 0) // We just got a '\0' character, so an empty chunk => error
+                        return LV2_STATE_ERR_BAD_TYPE;
+                }
+
+                const(ubyte)[] chunk = pStateBinary[0..len];
+                bool success = lv2client.restoreStateBinaryBase64(chunk);
+                debug(debugLV2Client) debugLog("<state_restore\n");
+                return success ? LV2_STATE_SUCCESS : LV2_STATE_ERR_BAD_TYPE;
+            }
         }
     }
 }

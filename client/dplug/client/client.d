@@ -285,7 +285,12 @@ nothrow:
             _midiOutFromUIMutex = makeMutex();
         }
 
-        // TODO: take default state chunk initialization here, before any preset is created, to fix makeDefaultPreset.
+        version(futureBinState)
+        {
+            // Snapshot default extra state here, before any preset is created, so that `makeDefaultPreset`
+            // can work even if called multiple times.
+            saveState(_defaultStateData);
+        }
 
         // Create presets last, so that we enjoy the presence of built Parameters,
         // and default I/O configuration.
@@ -600,18 +605,13 @@ nothrow:
         foreach(param; _params)
             values.pushBack(param.getNormalizedDefault());
 
-
+        // Should this preset have extra state data?
         const(ubyte)[] stateData = null;
-
         version(futureBinState)
         {
-            // When state save is missing, we use the default return of saveState as the default 
-            // preset state content. Hence, saveState will be called relatively early, it can rely
-            // on Parameter values but not input and output count.
-            Vec!ubyte defaultState;
-            saveState(defaultState);
-            stateData = defaultState[];
-            // TODO: MUST be saved way before makeDefaultPreset is called, since multiple calls are made...
+            // Note: the default state data is called early, so if you plan to call makeDefaultPreset outside of 
+            // buildPresets, it will have odd restrictions.
+            stateData = _defaultStateData[];
         }
 
         // Perf: one could avoid malloc to copy those arrays again there
@@ -924,6 +924,13 @@ nothrow:
                 * user-defined structures, like opened .wav, strings, wavetables...
                   You can finally make plugins with arbitrary data in presets!
                 * Typically stuff used to render sound identically.
+                * Do not put host-exposed plugin Parameter, they are saved by other means.
+                * Do not put stuff that depends on I/O settings, such as:
+                   - current sample rate
+                   - current I/O count and layout
+                   - maxFrames
+                  What you put in an extra state chunk must be parameter-like,
+                  just not those a DAW allows.
 
             Contrarily, this is a disappointing solution for:
                 * Storing UI size, dark mode, and all kind of editor preferences.
@@ -934,10 +941,14 @@ nothrow:
                   A proper design would probably have you represent state in the editor and the 
                   audio client separately, with a clean interchange.
 
+            Important: This is called at the instantiating of a plug-in to get the "default state",
+                       so that `makeDefaultPreset()` can work. At this point, the preset bank isn't 
+                       yet constructed, so you cannot rely on it.
+
             Warning: Just append new content to the `Vec!ubyte`, do not modify its existing content
                      if any exist.
 
-            BUG: This is only partially in VST2. 
+            BUG: This is only partially done in VST2. 
                  See Issue #352 for the whole story.
 
             See_also: `loadState`.
@@ -955,6 +966,11 @@ nothrow:
                   with the UI. You can expect any thread to call `saveState` and `loadState`. 
                   A proper design would probably have you represent state in the editor and the 
                   audio client separately, with a clean interchange.
+
+            Important: This should successfully parse whatever the "default state" is
+                       so that `makeDefaultPreset()` can work. When a plugin is instantiated,
+                       `loadState` will be called with whatever `saveState` did as a default.
+                       So you cannot rely on `presetBank` being there in `loadState`.
 
             BUG: This is only partially in VST2. 
                  See Issue #352 for the whole story.
@@ -1040,6 +1056,14 @@ private:
     // Accumulated output MIDI messages, for one unsplit buffer.
     // Output MIDI messages, if any, are accumulated there.
     Vec!MidiMessage _outputMidiMessages;
+
+    version(futureBinState)
+    {
+        /// Stores the extra state data (from a `saveState` call) from when the plugin was newly
+        /// instantiated. This is helpful, in order to synthesize presets, and also because some 
+        /// hosts don't restore default state when instantiating.
+        Vec!ubyte _defaultStateData;
+    }
 
     final void createGraphicsLazily()
     {

@@ -201,15 +201,12 @@ nothrow:
         /// Important: See documentation in `Client.loadState`.
         override bool loadState(const(ubyte)[] chunk)
         {
-            //debugLogf("loadState\n".ptr);
             // Parsing is done with error codes.
             const(ubyte)[] c = chunk;
             bool err;
             int major = popLE!uint(c, &err);
             if (err)
                 return false;
-
-            //debugLogf("  * parsed %d\n".ptr, major);
 
             assert(major == getPublicVersion().major);
 
