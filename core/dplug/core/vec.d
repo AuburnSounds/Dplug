@@ -294,6 +294,30 @@ unittest
 ///    alignment = Alignement if the slice has allocation requirements, 1 else. 
 ///                Must match for deallocation.
 ///
+/// Example:
+/// ---
+/// import std.stdio;
+///
+/// struct MyDSP
+/// {
+/// nothrow @nogc:
+///
+///     void initialize(int maxFrames)
+///     {
+///         // mybuf points to maxFrames frames
+///         mybuf.reallocBuffer(maxFrames);
+///     }   
+///
+///     ~this()
+///     {
+///         // If you don't free the buffer, it will leak.    
+///         mybuf.reallocBuffer(0); 
+///     }
+///
+/// private:
+///     float[] mybuf;      
+/// }
+/// ---
 void reallocBuffer(T)(ref T[] buffer, size_t length, int alignment = 1) nothrow @nogc
 {
     static if (is(T == struct) && hasElaborateDestructor!T)
@@ -314,6 +338,14 @@ void reallocBuffer(T)(ref T[] buffer, size_t length, int alignment = 1) nothrow 
         buffer = null; // alignment 1 can still return null
     else
         buffer = pointer[0..length];
+}
+unittest
+{
+    int[] arr;
+    arr.reallocBuffer(15);
+    assert(arr.length == 15);
+    arr.reallocBuffer(0);
+    assert(arr.length == 0);
 }
 
 
