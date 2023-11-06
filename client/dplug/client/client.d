@@ -572,17 +572,33 @@ nothrow:
         return 0; // default returns 0 which means "do not split buffers"
     }
 
-    /// Process some audio.
-    /// Override to make some noise.
-    /// In processAudio you are always guaranteed to get valid pointers
-    /// to all the channels the plugin requested.
-    /// Unconnected input pins are zeroed.
-    /// This callback is the only place you may call `getNextMidiMessages()` (it is
-    /// even required for plugins receiving MIDI).
+    /// Process `frames` audio frames.
     ///
-    /// Number of frames are guaranteed to be less or equal to what the last reset() call said.
-    /// Number of inputs and outputs are guaranteed to be exactly what the last reset() call said.
-    /// Warning: Do not modify the output pointers!
+    /// Read audio input from `inputs` channels, and write it to `outputs` channels.
+    ///
+    /// Params:
+    ///
+    ///     inputs   Input channels pointers, each pointing to `frames` audio samples. 
+    ///              Number of pointer is equal to `numInputs` given in last `reset()` callback.
+    ///              Unconnected input pins (if any) point to zeroes.
+    ///
+    ///     outputs  Output channels pointers, each pointing to `frames` audio samples. 
+    ///              Number of pointer is equal to `numOutputs` given in last `reset()` callback.
+    ///              The output space can be used as temporary storage.
+    ///              (do not modify these non-const pointers).
+    ///
+    ///     frames   Number of audio samples for this callback. 
+    ///              This number is always <= `maxFrames`, given in last `reset()` callback.
+    ///              To force this number to arbitrarily, you may override `maxFramesInProcess`, 
+    ///              which will split host buffers in smaller chunks.
+    ///
+    ///     timeInfo Timing information for the first sample (0th) of this buffer.
+    ///
+    /// Warning: Using MIDI input? 
+    ///          If your plug-in has "receivesMidi" set to `true` in its `plugin.json`, this 
+    ///          callback is the one place where you MUST call `getNextMidiMessages()`.
+    ///          See poly-alias or simple-mono-synth examples for how.
+    ///
     abstract void processAudio(const(float*)[] inputs,    // array of input channels
                                float*[] outputs,           // array of output channels
                                int frames,                // number of sample in each input & output channel
