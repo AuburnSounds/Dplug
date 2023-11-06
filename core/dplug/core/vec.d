@@ -341,7 +341,7 @@ nothrow:
             _allocated = 0;
             _data = null;
             _alignment = alignment;
-            resize(initialSize);
+            resizeExactly(initialSize);
         }
 
         ~this() @trusted
@@ -362,20 +362,19 @@ nothrow:
             return _size;
         }
 
+        /// Return: Allocated size of the underlying array.
+        size_t capacity() pure const @safe
+        {
+            return _allocated;
+        }
+
         /// Returns: Length of buffer in elements.
         alias opDollar = length;
 
         /// Resizes a buffer to hold $(D askedSize) elements.
         void resize(size_t askedSize) @trusted
         {
-            // grow only
-            if (_allocated < askedSize)
-            {
-                size_t numBytes = askedSize * 2 * T.sizeof; // gives 2x what is asked to make room for growth
-                _data = cast(T*)(alignedRealloc(_data, numBytes, _alignment));
-                _allocated = askedSize * 2;
-            }
-            _size = askedSize;
+            resizeExactly(askedSize);
         }
 
         /// Pop last element
@@ -390,7 +389,7 @@ nothrow:
         void pushBack(T x) @trusted
         {
             size_t i = _size;
-            resize(_size + 1);
+            resizeGrow(_size + 1);
             _data[i] = x;
         }
 
@@ -459,7 +458,7 @@ nothrow:
         void pushBack(ref Vec other) @trusted
         {
             size_t oldSize = _size;
-            resize(_size + other._size);
+            resizeGrow(_size + other._size);
             memmove(_data + oldSize, other._data, T.sizeof * other._size);
         }
 
@@ -469,7 +468,7 @@ nothrow:
         {
             size_t oldSize = _size;
             size_t newSize = _size + slice.length;
-            resize(newSize);
+            resizeGrow(newSize);
             for (size_t n = 0; n < slice.length; ++n)
                 _data[oldSize + n] = slice[n];
         }
@@ -534,6 +533,67 @@ nothrow:
         T* _data = null;
         size_t _allocated = 0;
         size_t _alignment = 1; // for an unaligned Vec, you probably are not interested in alignment
+
+        /// Used internally to grow in response to a pushBack operation.
+        /// Different heuristic, since we know that the resize is likely to be repeated for an 
+        /// increasing size later.
+        void resizeGrow(size_t askedSize) @trusted
+        {
+            if (_allocated < askedSize)
+            {
+
+                version(all)
+                {
+                    size_t newCap = computeNewCapacity(askedSize, _size);
+                    setCapacity(newCap);
+                }
+                else
+                {
+                    setCapacity(2 * askedSize);
+                }
+            }
+            _size = askedSize;
+        }
+
+        // Resizes the `Vector` to hold exactly `askedSize` elements.
+        // Still if the allocated capacity is larger, do nothing.
+        void resizeExactly(size_t askedSize) @trusted
+        {
+            if (_allocated < askedSize)
+            {
+                setCapacity(askedSize);
+            }
+            _size = askedSize;
+        }
+
+        // Internal use, realloc internal buffer, copy existing items.
+        // Doesn't initialize the new ones.
+        void setCapacity(size_t cap)
+        {
+            size_t numBytes = cap * T.sizeof;
+            _data = cast(T*)(alignedRealloc(_data, numBytes, _alignment));
+            _allocated = cap;
+        }
+
+        // Compute new capacity, while growing.
+        size_t computeNewCapacity(size_t newLength, size_t oldLength)
+        {
+            // Optimal value (Windows malloc) not far from there.
+            enum size_t PAGESIZE = 4096; 
+
+            size_t newLengthBytes = newLength * T.sizeof;
+            if (newLengthBytes > PAGESIZE)
+            {
+                // Larger arrays need a smaller growth factor to avoid wasting too much bytes.
+                // This was found when tracing curve, not too far from golden ratio for some reason.
+                return newLength + newLength / 2 + newLength / 8;
+            }
+            else
+            {
+                // For smaller arrays being pushBack, can bring welcome speed by minimizing realloc.
+                return newLength * 3;
+            }            
+        }
     }
 }
 
@@ -622,7 +682,6 @@ unittest
         assert(buf[1] == 8);
     }
 }
-
 
 // Vec should work without any initialization
 unittest
