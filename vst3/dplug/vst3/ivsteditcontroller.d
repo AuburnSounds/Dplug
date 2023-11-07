@@ -221,3 +221,21 @@ nothrow:
 
     __gshared immutable TUID iid = INLINE_UID(0x7F4EFE59, 0xF3204967, 0xAC27A3AE, 0xAFB63038);
 }
+
+
+interface IMidiMapping : FUnknown
+{
+public:
+nothrow:
+@nogc:
+    /** Gets an (preferred) associated ParamID for a given Input Event Bus index, channel and MIDI Controller.
+    *   @param[in] busIndex - index of Input Event Bus
+    *   @param[in] channel - channel of the bus
+    *   @param[in] midiControllerNumber - see \ref ControllerNumbers for expected values (could be bigger than 127)
+    *   @param[in] id - return the associated ParamID to the given midiControllerNumber
+    */
+    tresult getMidiControllerAssignment(int busIndex, short channel, 
+                                        CtrlNumber midiControllerNumber, ref ParamID id);
+
+    __gshared immutable TUID iid = INLINE_UID(0xDF0FF9F7, 0x49B74669, 0xB63AB732, 0x7ADBF5E5);
+}

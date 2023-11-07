@@ -30,9 +30,13 @@ module dplug.vst3.client;
 
 version(VST3):
 
+// TODO: make it exist as Dplug Option
+//version = futureVST3MIDICC;
+
 import core.atomic;
 import core.stdc.stdlib: free;
 import core.stdc.string: strcmp;
+import core.stdc.stdio: snprintf;
 
 import dplug.client.client;
 import dplug.client.params;
@@ -57,7 +61,7 @@ import dplug.vst3.ivstunit;
 
 
 // Note: the VST3 client assumes shared memory
-class VST3Client : IAudioProcessor, IComponent, IEditController, IEditController2, IUnitInfo
+class VST3Client : IAudioProcessor, IComponent, IEditController, IEditController2, IUnitInfo, IMidiMapping
 {
 public:
 nothrow:
@@ -70,6 +74,9 @@ nothrow:
         _client = client;
         _hostCommand = mallocNew!VST3HostCommand(this);
         _client.setHostCommand(_hostCommand);
+
+        // Store number of parameters.
+        _numParams = cast(int) _client.params().length;
 
         // if no preset, pretend to be a continuous parameter
         _presetStepCount = _client.presetBank.numPresets() - 1;
@@ -900,13 +907,58 @@ nothrow:
 
     extern(Windows) override int32 getParameterCount()
     {
-        return cast(int)(_client.params.length) + 2; // 2 because bypass and program change fake parameters
+        // Add 2 because bypass and program change fake parameters
+        int vst3ParamsCount = cast(int)(_client.params.length) + 2;
+
+        version(futureVST3MIDICC)
+        {
+            if (_client.receivesMIDI)
+                vst3ParamsCount += NUM_MIDICC_PARAMETERS;
+        }
+
+        return vst3ParamsCount; 
     }
 
     extern(Windows) override tresult getParameterInfo (int32 paramIndex, ref ParameterInfo info)
     {
-        if (paramIndex >= (cast(uint)(_client.params.length) + 2))
+        if (paramIndex < 0)
             return kResultFalse;
+
+        if (paramIndex >= getParameterCount())
+            return kResultFalse;
+
+        // Is it a fake MIDI CC parameter?
+        version(futureVST3MIDICC)
+        {
+            if (_client.receivesMIDI)
+            {
+                int clientParamsPlus2 = cast(int)(_client.params.length) + 2;
+                if (paramIndex >= clientParamsPlus2 && paramIndex < clientParamsPlus2 + NUM_MIDICC_PARAMETERS)
+                {
+                    paramIndex -= clientParamsPlus2;
+                    int midiChan = paramIndex / NUM_MIDICC_PER_CHAN;
+                    int cc       = paramIndex % NUM_MIDICC_PER_CHAN;
+                    assert(midiChan >= 0 && midiChan < 16);
+                    assert(cc >= 0 && cc <= 129);
+
+                    info.id = PARAM_ID_MIDICC_START + midiChan * NUM_MIDICC_PER_CHAN + cc;
+
+                    char[128] nameBuf;
+                    snprintf(nameBuf.ptr, 128, "MIDI CC %d|%d".ptr, midiChan, cc);
+                    str8ToStr16(info.title.ptr, nameBuf.ptr, 128);
+                    str8ToStr16(info.shortTitle.ptr, "".ptr, 128);
+                    str8ToStr16(info.units.ptr, "".ptr, 128);
+                    info.stepCount = 0; // continuous
+                    info.defaultNormalizedValue = 0.0f;
+                    info.unitId = 0; // root, unit 0 is always here
+                    info.flags = 0;
+                    
+                    // TODO: how to do MIDI CC here?
+
+                    return kResultTrue;
+                }
+            }
+        }
 
         if (paramIndex == 0)
         {
@@ -1203,6 +1255,30 @@ nothrow:
         return kResultFalse;
     }
 
+    // implements IMidiMapping
+    extern(Windows) override tresult getMidiControllerAssignment(int busIndex, 
+                                                                 short channel, 
+                                                                 CtrlNumber midiControllerNumber, 
+                                                                 ref ParamID id)
+    {
+        version(futureVST3MIDICC)
+        {
+            if (midiControllerNumber > 129)
+                return kResultFalse;
+
+            if (channel < 0 || channel > 15)
+                return kResultFalse;
+
+            id = PARAM_ID_MIDICC_START + midiControllerNumber + channel * NUM_MIDICC_PER_CHAN;
+            assert(id >= PARAM_ID_MIDICC_START && id < PARAM_ID_MIDICC_STOP);
+            return kResultTrue;
+        }
+        else
+        {
+            return kResultFalse;
+        }
+    }
+
 
     // implements IUnitInfo
 
@@ -1324,6 +1400,10 @@ private:
     // "stepcount" is offset by 1 in VST3 Parameter parlance
     // stepcount = 1 gives 2 different values
     int _presetStepCount;
+
+    // Number of Client parameters (the ones the Dplug users sees).
+    // VST3 adds 2 hidden ones (+ 130 x 16 in case of MIDI input)
+    int _numParams;
 
     float _sampleRate;
     shared(float) _sampleRateHostPOV = 44100.0f;
@@ -1470,8 +1550,16 @@ nothrow:
 pure:
 @nogc:
 
-enum int PARAM_ID_BYPASS = 998;
+enum int PARAM_ID_BYPASS         = 998;
 enum int PARAM_ID_PROGRAM_CHANGE = 999;
+
+version(futureVST3MIDICC)
+{
+    enum int PARAM_ID_MIDICC_START   = 1835232512;
+    enum int NUM_MIDICC_PARAMETERS   = 130 * 16;
+    enum int NUM_MIDICC_PER_CHAN     = 130;
+    enum int PARAM_ID_MIDICC_STOP    = PARAM_ID_MIDICC_START + NUM_MIDICC_PARAMETERS;
+}
 
 // Convert from VST3 index to VST3 ParamID
 int convertVST3ParamIndexToParamID(int index)
@@ -1858,7 +1946,7 @@ private bool isGraphicsBackendSupported(GraphicsBackend backend) nothrow @nogc
         static assert(false, "Unsupported OS");
 }
 
-// Store changes of a single paramter over the current buffer.
+// Store changes of a single parameter over the current buffer.
 struct ParameterTracks
 {
     ParamID id;
