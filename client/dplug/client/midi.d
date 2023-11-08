@@ -229,6 +229,8 @@ nothrow:
     /// Get the raw MIDI data in a buffer `data` of capacity `len`.
     /// Returns: number of returned bytes.
     /// If given < 0 len, return the number of bytes needed to return the whole message.
+    /// Note: Channel Pressure event, who are 2 bytes, are transmitted as 3 in VST3 (no issue) 
+    /// but also in LV2 (BUG).
     int toBytes(ubyte* data, int len) const
     {
         if (len < 0) 
@@ -345,6 +347,9 @@ MidiMessage makeMidiMessageNoteOff(int offset, int channel, int noteNumber)
     return makeMidiMessage(offset, channel, MidiStatus.noteOff, noteNumber, 0);
 }
 
+/// Make a Pitch Wheel (aka Pitch Bend) MIDI message.
+/// Params:
+///     value Amount of pitch, -1 to 1. Not sure what unit! FUTUURE understand how much semitones MIDI says it should be.
 MidiMessage makeMidiMessagePitchWheel(int offset, int channel, float value)
 {
     int ivalue = 8192 + cast(int)(value * 8192.0);
@@ -355,10 +360,28 @@ MidiMessage makeMidiMessagePitchWheel(int offset, int channel, float value)
     return makeMidiMessage(offset, channel, MidiStatus.pitchWheel, ivalue & 0x7F, ivalue >> 7);
 }
 
+/// Make a Channel Aftertouch MIDI message. It has no note number, and acts for the whole instrument.
+/// Also called: Channel Pressure.
+MidiMessage makeMidiMessageChannelPressure(int offset, int channel, float value)
+{
+    int ivalue = cast(int)(value * 128.0);
+    if (ivalue < 0)
+        ivalue = 0;
+    if (ivalue > 127)
+        ivalue = 127;
+    return makeMidiMessage(offset, channel, MidiStatus.channelAftertouch, ivalue, 0); // no note number
+}
+
 MidiMessage makeMidiMessageControlChange(int offset, int channel, MidiControlChange index, float value)
 {
-    // MAYDO: mapping is a bit strange here, not sure it can make +127 except exactly for 1.0f
-    return makeMidiMessage(offset, channel, MidiStatus.controlChange, index, cast(int)(value * 127.0f) );
+    // MAYDO: mapping is a slightly bad here, not sure it can make +127 except exactly for 1.0f
+    // probably little impact
+    int ivalue = cast(int)(value * 127.0f);
+    if (ivalue < 0)
+        ivalue = 0;
+    if (ivalue > 127)
+        ivalue = 127;
+    return makeMidiMessage(offset, channel, MidiStatus.controlChange, index, ivalue);
 }
 
 

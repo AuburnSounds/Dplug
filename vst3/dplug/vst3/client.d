@@ -115,7 +115,8 @@ nothrow:
                                                  IEditController,
                                                  IEditController2,
                                                  IPluginBase,
-                                                 IUnitInfo);
+                                                 IUnitInfo,
+                                                 IMidiMapping);
 
     mixin IMPLEMENT_REFCOUNT;
 
@@ -187,7 +188,17 @@ nothrow:
             {
                 mediaType = kEvent;
                 direction = kInput;
-                channelCount = 1;
+
+                // Impatch of that change unknown! Is it safe to pass from channelCount = 1 to 16?
+                // Should we even expose 16 MIDI channels for instruments that are not multi-part?
+                version(futureVST3MIDICC)
+                {
+                    channelCount = 16;
+                }
+                else
+                {
+                    channelCount = 1;
+                }
                 setName("MIDI Input"w);
                 busType = kMain;
                 flags = BusInfo.BusFlags.kDefaultActive;
@@ -497,6 +508,8 @@ nothrow:
                         {
                             if (e.midiCCOut.controlNumber <= 127)
                             {
+                                // Note sure why it's there, I'm not sure if any host uses that,
+                                // rather than fake CC Parameters.
                                 _client.enqueueMIDIFromHost(
                                     makeMidiMessage(offset, e.midiCCOut.channel, MidiStatus.controlChange, e.midiCCOut.controlNumber, e.midiCCOut.value));
                             }
@@ -505,6 +518,7 @@ nothrow:
                                 _client.enqueueMIDIFromHost(
                                     makeMidiMessage(offset, e.midiCCOut.channel, MidiStatus.pitchBend, e.midiCCOut.value, e.midiCCOut.value2));
                             }
+                            // TODO: why not control 128??
                             break;
                         }
 
@@ -518,7 +532,7 @@ nothrow:
 
         int totalFrames = data.numSamples;
         int bufferSplitMaxFrames = _client.getBufferSplitMaxFrames();
-        assert(bufferSplitMaxFrames > 0); // TODO: does this even work when no buffer splitting?
+        assert(bufferSplitMaxFrames > 0); // TODO: WTF does this even work when no buffer splitting?
 
         // How many split buffers do we need this buffer?
         int numSubBuffers = (totalFrames + (bufferSplitMaxFrames - 1)) / bufferSplitMaxFrames;
@@ -545,7 +559,7 @@ nothrow:
         _tracks.clearContents();
         if (paramChanges !is null)
         {
-            // How many paramter tracks do we need this buffer?
+            // How many parameter tracks do we need this buffer?
             int numParamChanges = paramChanges.getParameterCount();
 
             // For each varying parameter, store values for each subbuffer + 1 for the end value.
@@ -559,6 +573,58 @@ nothrow:
                 ParamID id = queue.getParameterId();
                 int pointCount = queue.getPointCount();
 
+                version(futureVST3MIDICC)
+                {
+                    if (_client.receivesMIDI())
+                    {
+                        if (id >= PARAM_ID_MIDICC_START && id < PARAM_ID_MIDICC_STOP)
+                        {
+                            int ccIndex = id - PARAM_ID_MIDICC_START;
+                            int midiChan = ccIndex / NUM_MIDICC_PER_CHAN;
+                            int cc       = ccIndex % NUM_MIDICC_PER_CHAN;
+                            debug(logMIDICC) debugLogf("Seen MIDI cc %d chan %d in automation\n", cc, midiChan);
+                            assert(cc >= 0 && cc <= 129);
+
+                            for (int pt = 0; pt < pointCount; ++pt)
+                            {
+                                int pointTime;
+                                ParamValue pointValue;
+                                if (kResultTrue == queue.getPoint(pt, pointTime, pointValue))
+                                {
+                                    assert(pointTime >= 0); // if this fail, we were wrong to trust the hosts
+
+                                    if (cc == 128) // channel pressure (named just "aftertouch" in VST3)
+                                    {
+                                        // Do not mistake for "Poly Aftertouch".
+                                        // With Channel Pressure, one message is sent out for the entire keyboard.
+                                        MidiMessage msg = makeMidiMessageChannelPressure(pointTime, midiChan, pointValue);                                        
+                                        _client.enqueueMIDIFromHost(msg);
+                                    }
+                                    else if (cc == 129) // pitch wheel
+                                    {
+                                        int ivalue = cast(int)(pointValue * 16384.0f);
+                                        if (ivalue < 0)
+                                            ivalue = 0;
+                                        if (ivalue > 16383)
+                                            ivalue = 16383;
+                                        MidiMessage msg =  makeMidiMessage(pointTime, midiChan, MidiStatus.pitchWheel, ivalue & 0x7F, ivalue >> 7);
+                                        _client.enqueueMIDIFromHost(msg);
+                                    }
+                                    else
+                                    {
+                                        // CC 0 to 127 
+                                        MidiMessage msg =  makeMidiMessageControlChange(pointTime, midiChan, cast(MidiControlChange)cc, pointValue);
+                                        _client.enqueueMIDIFromHost(msg);
+                                    }
+                                }
+                            }
+                        }
+
+                        continue; // Jump to next parameter, no need for a parameter track.
+                    }
+                }
+
+                // If not dealt with, enqueue a parameter track for further processing
                 ParameterTracks track;
                 track.id = id;
                 track.values = (_sharedValues.ptr + (index * numParamValues));
@@ -749,7 +815,7 @@ nothrow:
                         e.midiCCOut.channel = cast(byte) msg.channel();
                         e.midiCCOut.controlNumber = cast(ubyte) msg.controlChangeControl();
                         e.midiCCOut.value = cast(byte) msg.controlChangeValue();
-                        e.midiCCOut.value2 = 0; // TODO: special handling for pitch bend and poly pressure                        
+                        e.midiCCOut.value2 = 0; // TODO: special handling for pitch bend and poly pressure
                     }
                 }
             }
@@ -759,6 +825,15 @@ nothrow:
 
     void setParamValue(ParamID id, ParamValue value)
     {
+        version(futureVST3MIDICC)
+        {
+            if (id >= PARAM_ID_MIDICC_START && id < PARAM_ID_MIDICC_STOP)
+            {
+                // MAYDO accumulate in MIDI queue? Comes with no timestamp there, so probably not.
+                return;
+            }
+        }
+
         if (id == PARAM_ID_BYPASS)
         {
             atomicStore(_bypassed, (value >= 0.5f));
@@ -773,7 +848,7 @@ nothrow:
         }
         else
         {
-            // Note: VSTHost sends _param indices_ instead of ParamID, which is completely wrong.
+            // Note: VSTHost sends _parameters indices_ instead of ParamID, which is completely wrong.
             int paramIndex;
             if (_hostMaySendBadParameterIDs)
             {
@@ -952,9 +1027,6 @@ nothrow:
                     info.defaultNormalizedValue = 0.0f;
                     info.unitId = 0; // root, unit 0 is always here
                     info.flags = 0;
-                    
-                    // TODO: how to do MIDI CC here?
-
                     return kResultTrue;
                 }
             }
@@ -1010,6 +1082,19 @@ nothrow:
     extern(Windows) override tresult getParamStringByValue (ParamID id, ParamValue valueNormalized, String128* string_ )
     {
         debug(logVST3Client) debugLog(">getParamStringByValue".ptr);
+
+        version(futureVST3MIDICC)
+        {
+            if (_client.receivesMIDI())
+            {
+                if (id >= PARAM_ID_MIDICC_START && id < PARAM_ID_MIDICC_STOP)
+                {
+                    str8ToStr16(string_.ptr, "".ptr, 128); // Display "" as value.
+                    return kResultTrue;
+                }
+            }
+        }
+
         if (id == PARAM_ID_BYPASS)
         {
             if (valueNormalized < 0.5f)
@@ -1061,6 +1146,12 @@ nothrow:
         if (id == PARAM_ID_BYPASS || id == PARAM_ID_PROGRAM_CHANGE)
             return kResultFalse; // MAYDO, eventually
 
+        version(futureVST3MIDICC)
+        {
+            if (id >= PARAM_ID_MIDICC_START && id < PARAM_ID_MIDICC_STOP)
+                return kResultFalse;
+        }
+
         int paramIndex = convertParamIDToClientParamIndex(id);
         if (!_client.isValidParamIndex(paramIndex))
         {
@@ -1098,7 +1189,13 @@ nothrow:
     extern(Windows) override ParamValue normalizedParamToPlain (ParamID id, ParamValue valueNormalized)
     {
         debug(logVST3Client) debugLog(">normalizedParamToPlain".ptr);
-        debug(logVST3Client) debugLog("<normalizedParamToPlain".ptr);
+        debug(logVST3Client) scope(exit) debugLog("<normalizedParamToPlain".ptr);
+
+        version(futureVST3MIDICC)
+        {
+            if (id >= PARAM_ID_MIDICC_START && id < PARAM_ID_MIDICC_STOP)
+                return 0;
+        }
 
         if (id == PARAM_ID_BYPASS)
         {
@@ -1126,6 +1223,12 @@ nothrow:
         debug(logVST3Client) debugLog(">plainParamToNormalized".ptr);
         debug(logVST3Client) scope(exit) debugLog("<plainParamToNormalized".ptr);
 
+        version(futureVST3MIDICC)
+        {
+            if (id >= PARAM_ID_MIDICC_START && id < PARAM_ID_MIDICC_STOP)
+                return 0;
+        }
+
         if (id == PARAM_ID_BYPASS)
         {
             return convertBypassParamToNormalized(plainValue);
@@ -1149,6 +1252,12 @@ nothrow:
     {
         debug(logVST3Client) debugLog(">getParamNormalized".ptr);
         debug(logVST3Client) scope(exit) debugLog("<getParamNormalized".ptr);
+
+        version(futureVST3MIDICC)
+        {
+            if (id >= PARAM_ID_MIDICC_START && id < PARAM_ID_MIDICC_STOP)
+                return 0;
+        }
 
         if (id == PARAM_ID_BYPASS)
         {
@@ -1176,6 +1285,12 @@ nothrow:
     {
         debug(logVST3Client) debugLog(">setParamNormalized".ptr);
         debug(logVST3Client) scope(exit) debugLog("<setParamNormalized".ptr);
+
+        version(futureVST3MIDICC)
+        {
+            if (id >= PARAM_ID_MIDICC_START && id < PARAM_ID_MIDICC_STOP)
+                return kResultTrue; // same as setPameter, not sure to deal with CC here, without timestamps
+        }
 
         if (id == PARAM_ID_BYPASS)
         {
@@ -1555,9 +1670,9 @@ enum int PARAM_ID_PROGRAM_CHANGE = 999;
 
 version(futureVST3MIDICC)
 {
-    enum int PARAM_ID_MIDICC_START   = 1835232512;
     enum int NUM_MIDICC_PARAMETERS   = 130 * 16;
     enum int NUM_MIDICC_PER_CHAN     = 130;
+    enum int PARAM_ID_MIDICC_START   = 1835232512;
     enum int PARAM_ID_MIDICC_STOP    = PARAM_ID_MIDICC_START + NUM_MIDICC_PARAMETERS;
 }
 
