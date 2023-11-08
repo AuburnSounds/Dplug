@@ -90,6 +90,9 @@ public:
 
             else if (msg.isAllNotesOff() || msg.isAllSoundsOff()) // all off
                 _synth.markAllNotesOff();
+
+            else if (msg.isPitchBend())
+                _synth.setPitchBend(msg.pitchBend());
         }
 
         _synth.waveForm = readParam!WaveForm(paramOsc1WaveForm);
@@ -138,7 +141,7 @@ public:
     {
         foreach (ref v; _voices)
             if (!v.isPlaying)
-                return v.play(note);
+                return v.play(note, _pitchBend); // note: here pitch bend only applied at start of note, and not updated later.
 
         // no free voice available, skip
     }
@@ -146,7 +149,7 @@ public:
     void markNoteOff(int note)
     {
         foreach (ref v; _voices)
-            if (v.isPlaying && (v.note == note))
+            if (v.isPlaying && (v.noteWithoutBend == note))
                 v.release();
     }
 
@@ -179,10 +182,17 @@ public:
         return float(sample);
     }
 
+    void setPitchBend(float bend)
+    {
+        _pitchBend = bend;
+    }
+
     float outputGain = 1;
 
 private:
     enum double _internalGain = (1.0 / (voicesCount / SQRT1_2));
+
+    float _pitchBend = 0.0f; // -1 to 1, change one semitone
 
     VoiceStatus[voicesCount] _voices;
 }
@@ -197,9 +207,9 @@ public:
         return _isPlaying;
     }
 
-    int note()
+    int noteWithoutBend()
     {
-        return _note;
+        return _noteOriginal;
     }
 
     void waveForm(WaveForm value)
@@ -212,10 +222,10 @@ public:
         return _osc.waveForm;
     }
 
-    void play(int note) @trusted
+    void play(int note, float bend) @trusted
     {
-        _note = note;
-        _osc.frequency = convertMIDINoteToFrequency(note); // convertMIDINoteToFrequency() is actually @safe
+        _noteOriginal = note;
+        _osc.frequency = convertMIDINoteToFrequency(note + bend); // convertMIDINoteToFrequency() is actually @safe
         _isPlaying = true;
     }
 
@@ -241,7 +251,7 @@ public:
 private:
     Oscillator _osc;
     bool _isPlaying;
-    int _note = -1;
+    int _noteOriginal = -1;
 }
 
 struct Oscillator
