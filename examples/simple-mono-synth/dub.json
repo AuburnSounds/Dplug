@@ -20,6 +20,8 @@
         "dplug:au": { "path": "../.." }
     },
 
+    "versions": ["futureVST3MIDICC"],
+
     "configurations": [
         {
             "name": "VST3",

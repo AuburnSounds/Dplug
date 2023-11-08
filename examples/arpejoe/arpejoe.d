@@ -68,7 +68,7 @@ nothrow:
     override void processAudio(const(float*)[] inputs, float*[]outputs, int frames, TimeInfo info) nothrow @nogc
     {
         // A plugin that sends MIDI should also takes MIDI input.
-        // This is for the widestg compatibility purpose.
+        // This is for the widest compatibility purpose.
         // Here input messages are just dropped.
         getNextMidiMessages(frames);
 
