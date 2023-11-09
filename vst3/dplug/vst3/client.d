@@ -529,7 +529,11 @@ nothrow:
 
         int totalFrames = data.numSamples;
         int bufferSplitMaxFrames = _client.getBufferSplitMaxFrames();
-        assert(bufferSplitMaxFrames > 0); // TODO: WTF does this even work when no buffer splitting?
+
+        // This is a Dplug curiosity: in VST3 buffers are always split to a max of 512 samples.
+        // See: https://github.com/AuburnSounds/Dplug/issues/368
+        // Hence, this assertion holds true.
+        assert(bufferSplitMaxFrames > 0);
 
         // How many split buffers do we need this buffer?
         int numSubBuffers = (totalFrames + (bufferSplitMaxFrames - 1)) / bufferSplitMaxFrames;

@@ -781,6 +781,7 @@ nothrow:
 
         // In VST3, for accuracy of parameter automation we choose to split buffers in chunks of maximum 512.
         // This avoids painful situations where parameters could higher precision.
+        // See: https://github.com/AuburnSounds/Dplug/issues/368
         if (hostCommand.getPluginFormat() == PluginFormat.vst3)
         {
             if (_maxFramesInProcess == 0 || _maxFramesInProcess > 512)
@@ -910,6 +911,8 @@ nothrow:
     /// For use by plugin format clients. This gives the buffer split size to use.
     /// (0 == no split).
     /// This is useful in the cast the format client wants to split buffers by itself.
+    ///
+    /// Note: in VST3, no split or a split larger than 512 samples, is replaced by a split by 512.
     final int getBufferSplitMaxFrames()
     {
         return _maxFramesInProcess;
