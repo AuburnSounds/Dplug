@@ -221,28 +221,62 @@ nothrow:
     }
 
     /// Return: size in bytes of the MIDI message, if it were serialized without offset.
+    ///         -1 if unknown size (either the status byte doesn't start with 1xxxxxx, or
+    ///         starts with 1111xxxx (can be many different things).
+    /// Reference: https://www.midi.org/specifications-old/item/table-2-expanded-messages-list-status-bytes
     int lengthInBytes() const
     {
-        return 3;
+        switch (statusType())
+        {
+            case MidiStatus.noteOff:
+            case MidiStatus.noteOn:
+            case MidiStatus.polyAftertouch:
+            case MidiStatus.controlChange:
+                return 3;
+
+            case MidiStatus.programChange:
+            case MidiStatus.channelAftertouch:
+                return 2;
+
+            case MidiStatus.pitchBend:
+                return 3;
+
+            default:
+                return -1; // unknown. A midi message with unknown size will be dropped by Dplug in general.
+        }
     }
 
-    /// Get the raw MIDI data in a buffer `data` of capacity `len`.
-    /// Returns: number of returned bytes.
+    /// Write the raw MIDI data in a buffer `data` of capacity `len`.
+    ///
     /// If given < 0 len, return the number of bytes needed to return the whole message.
     /// Note: Channel Pressure event, who are 2 bytes, are transmitted as 3 in VST3 (no issue) 
     /// but also in LV2 (BUG).
-    int toBytes(ubyte* data, int len) const
+    ///
+    /// Params:
+    ///     data   Pointer to at least 3 bytes of buffer to write MIDI message to (advice = 256 bytes).
+    ///     buflen Length of buffer pointed to by `data`.
+    ///            If buflen < 0, this functions instead return the number of bytes needed (or -1 for unknown length).
+    ///
+    /// Returns: Number of written bytes.
+    ///          If the MIDI message has an unknown (aka unsupported) length then nothing gets written,
+    ///          zero is returned.
+    int toBytes(ubyte* data, int buflen) const
     {
-        if (len < 0) 
-            return 3;
-        else
-        {
-            assert(len >= 3);
-            data[0] = _statusByte;
-            data[1] = _data1;
-            data[2] = _data2;
-            return 3;
-        }
+        int msglen = lengthInBytes();
+        if (buflen < 0) 
+            return msglen;
+
+        if (msglen == -1) 
+            return 0; // unknown length, do not serialize
+
+        // Write min of buffer length, and message length.
+        int len = buflen < msglen ? buflen : msglen;
+
+        if (len > 0) data[0] = _statusByte;
+        if (len > 1) data[1] = _data1;
+        if (len > 2) data[2] = _data2;
+
+        return msglen;
     }
 
     /// Simply returns internal representation.
@@ -269,14 +303,14 @@ private:
 
 enum MidiStatus : ubyte
 {
-    none = 0,
-    noteOff = 8,
-    noteOn = 9,
-    polyAftertouch = 10,
-    controlChange = 11,
-    programChange = 12,
+    none              = 0,
+    noteOff           = 8,
+    noteOn            = 9,
+    polyAftertouch    = 10,
+    controlChange     = 11,
+    programChange     = 12,
     channelAftertouch = 13,
-    pitchBend = 14,
+    pitchBend         = 14,
     pitchWheel = pitchBend
 };
 
@@ -657,4 +691,18 @@ unittest
     assert(messages[1].isNoteOn());
     assert(messages[2].isNoteOff());
     assert(messages[3].isNoteOff());
+}
+
+unittest
+{
+    ubyte[3] buf;
+    MidiMessage msg = makeMidiMessageNoteOn(0, 1, 102, 64);
+    assert(3 == msg.toBytes(null, -1));
+    assert(3 == msg.toBytes(buf.ptr, 3));
+    assert(buf == [0x91, 102, 64 ]);
+
+    msg = makeMidiMessageChannelPressure(0, 4, 1.0f);
+    assert(2 == msg.toBytes(buf.ptr, -1));
+    assert(2 == msg.toBytes(buf.ptr, 3));
+    assert(buf == [0xD4, 127, 64 ]);
 }
