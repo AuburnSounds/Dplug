@@ -30,9 +30,6 @@ module dplug.vst3.client;
 
 version(VST3):
 
-// TODO: make it exist as Dplug Option
-//version = futureVST3MIDICC;
-
 import core.atomic;
 import core.stdc.stdlib: free;
 import core.stdc.string: strcmp;
@@ -582,7 +579,6 @@ nothrow:
                             int ccIndex = id - PARAM_ID_MIDICC_START;
                             int midiChan = ccIndex / NUM_MIDICC_PER_CHAN;
                             int cc       = ccIndex % NUM_MIDICC_PER_CHAN;
-                            debug(logMIDICC) debugLogf("Seen MIDI cc %d chan %d in automation\n", cc, midiChan);
                             assert(cc >= 0 && cc <= 129);
 
                             for (int pt = 0; pt < pointCount; ++pt)
@@ -815,7 +811,7 @@ nothrow:
                         e.midiCCOut.channel = cast(byte) msg.channel();
                         e.midiCCOut.controlNumber = cast(ubyte) msg.controlChangeControl();
                         e.midiCCOut.value = cast(byte) msg.controlChangeValue();
-                        e.midiCCOut.value2 = 0; // TODO: special handling for pitch bend and poly pressure
+                        e.midiCCOut.value2 = 0; // TODO: special handling for channe pressure, poly pressure
                     }
                 }
             }
