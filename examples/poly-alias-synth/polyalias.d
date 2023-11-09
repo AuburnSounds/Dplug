@@ -225,7 +225,7 @@ public:
     void play(int note, float bend) @trusted
     {
         _noteOriginal = note;
-        _osc.frequency = convertMIDINoteToFrequency(note + bend); // convertMIDINoteToFrequency() is actually @safe
+        _osc.frequency = convertMIDINoteToFrequency(note + bend * 12);
         _isPlaying = true;
     }
 

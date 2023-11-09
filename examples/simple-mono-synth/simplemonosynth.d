@@ -78,7 +78,7 @@ nothrow:
 
         if (_voiceStatus.isAVoicePlaying)
         {
-            float freq = convertMIDINoteToFrequency(_voiceStatus.lastNotePlayed + _pitchBend);
+            float freq = convertMIDINoteToFrequency(_voiceStatus.lastNotePlayed + _pitchBend * 12);
             Complex!float phasor = complex!float(cos(2 * PI * freq / _sampleRate), sin(2 * PI * freq / _sampleRate));
 
             foreach(smp; 0..frames)
