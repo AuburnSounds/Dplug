@@ -374,9 +374,7 @@ MidiMessage makeMidiMessageChannelPressure(int offset, int channel, float value)
 
 MidiMessage makeMidiMessageControlChange(int offset, int channel, MidiControlChange index, float value)
 {
-    // MAYDO: mapping is a slightly bad here, not sure it can make +127 except exactly for 1.0f
-    // probably little impact
-    int ivalue = cast(int)(value * 127.0f);
+    int ivalue = cast(int)(value * 128.0f);
     if (ivalue < 0)
         ivalue = 0;
     if (ivalue > 127)
