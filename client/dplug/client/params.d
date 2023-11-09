@@ -796,7 +796,7 @@ public:
         if (valueString.length > 127) // ??? TODO doesn't bode well with VST3 constraints
             return false;
 
-        // Because the input string is not zero-terminated
+        // Because the input string is not necessarily zero-terminated
         char[128] buf;
         snprintf(buf.ptr, buf.length, "%.*s", cast(int)(valueString.length), valueString.ptr);
 

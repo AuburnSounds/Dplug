@@ -42,6 +42,7 @@ import dplug.client.daw;
 import dplug.client.midi;
 
 import dplug.core.nogc;
+import dplug.core.string;
 import dplug.core.sync;
 import dplug.core.vec;
 import dplug.core.runtime;
@@ -83,6 +84,9 @@ nothrow:
         _inputScratchBuffers = mallocSlice!(Vec!float)(_maxInputs);
         for (int i = 0; i < _maxInputs; ++i)
             _inputScratchBuffers[i] = makeVec!float();
+
+        version(futureVST3MIDICC)
+            initializeMIDICCValues();
     }
 
     ~this()
@@ -186,11 +190,12 @@ nothrow:
                 mediaType = kEvent;
                 direction = kInput;
 
-                // Impatch of that change unknown! Is it safe to pass from channelCount = 1 to 16?
+                // Impact of that change unknown! Is it safe to pass from channelCount = 1 to 16?
                 // Should we even expose 16 MIDI channels for instruments that are not multi-part?
+                // FUTURE: more bus control, providing MIDI channel count in plugin.json
                 version(futureVST3MIDICC)
                 {
-                    channelCount = 16;
+                    channelCount = NUM_MIDI_CHANNELS_INPUT;
                 }
                 else
                 {
@@ -574,54 +579,45 @@ nothrow:
                 ParamID id = queue.getParameterId();
                 int pointCount = queue.getPointCount();
 
-                version(futureVST3MIDICC)
+                // Helper to get quickly a MIDI cc with its channel, from a ParamID
+                int cc;
+                int midiChan;
+                if (isMIDIInputCCParameter(id, midiChan, cc))
                 {
-                    if (_client.receivesMIDI())
+                    for (int pt = 0; pt < pointCount; ++pt)
                     {
-                        if (id >= PARAM_ID_MIDICC_START && id < PARAM_ID_MIDICC_STOP)
+                        int pointTime;
+                        ParamValue pointValue;
+                        if (kResultTrue == queue.getPoint(pt, pointTime, pointValue))
                         {
-                            int ccIndex = id - PARAM_ID_MIDICC_START;
-                            int midiChan = ccIndex / NUM_MIDICC_PER_CHAN;
-                            int cc       = ccIndex % NUM_MIDICC_PER_CHAN;
-                            assert(cc >= 0 && cc <= 129);
+                            assert(pointTime >= 0); // if this fail, we were wrong to trust the hosts
 
-                            for (int pt = 0; pt < pointCount; ++pt)
+                            if (cc == 128) // channel pressure (named just "aftertouch" in VST3)
                             {
-                                int pointTime;
-                                ParamValue pointValue;
-                                if (kResultTrue == queue.getPoint(pt, pointTime, pointValue))
-                                {
-                                    assert(pointTime >= 0); // if this fail, we were wrong to trust the hosts
-
-                                    if (cc == 128) // channel pressure (named just "aftertouch" in VST3)
-                                    {
-                                        // Do not mistake for "Poly Aftertouch".
-                                        // With Channel Pressure, one message is sent out for the entire keyboard.
-                                        MidiMessage msg = makeMidiMessageChannelPressure(pointTime, midiChan, pointValue);                                        
-                                        _client.enqueueMIDIFromHost(msg);
-                                    }
-                                    else if (cc == 129) // pitch wheel
-                                    {
-                                        int ivalue = cast(int)(pointValue * 16384.0f);
-                                        if (ivalue < 0)
-                                            ivalue = 0;
-                                        if (ivalue > 16383)
-                                            ivalue = 16383;
-                                        MidiMessage msg =  makeMidiMessage(pointTime, midiChan, MidiStatus.pitchWheel, ivalue & 0x7F, ivalue >> 7);
-                                        _client.enqueueMIDIFromHost(msg);
-                                    }
-                                    else
-                                    {
-                                        // CC 0 to 127 
-                                        MidiMessage msg =  makeMidiMessageControlChange(pointTime, midiChan, cast(MidiControlChange)cc, pointValue);
-                                        _client.enqueueMIDIFromHost(msg);
-                                    }
-                                }
+                                // Do not mistake for "Poly Aftertouch".
+                                // With Channel Pressure, one message is sent out for the entire keyboard.
+                                MidiMessage msg = makeMidiMessageChannelPressure(pointTime, midiChan, pointValue);                                        
+                                _client.enqueueMIDIFromHost(msg);
+                            }
+                            else if (cc == 129) // pitch wheel
+                            {
+                                int ivalue = cast(int)(pointValue * 16384.0f);
+                                if (ivalue < 0)
+                                    ivalue = 0;
+                                if (ivalue > 16383)
+                                    ivalue = 16383;
+                                MidiMessage msg =  makeMidiMessage(pointTime, midiChan, MidiStatus.pitchWheel, ivalue & 0x7F, ivalue >> 7);
+                                _client.enqueueMIDIFromHost(msg);
+                            }
+                            else
+                            {
+                                // CC 0 to 127 
+                                MidiMessage msg =  makeMidiMessageControlChange(pointTime, midiChan, cast(MidiControlChange)cc, pointValue);
+                                _client.enqueueMIDIFromHost(msg);
                             }
                         }
-
-                        continue; // Jump to next parameter, no need for a parameter track.
                     }
+                    continue; // Jump to next parameter, no need for a parameter track.
                 }
 
                 // If not dealt with, enqueue a parameter track for further processing
@@ -827,10 +823,11 @@ nothrow:
     {
         version(futureVST3MIDICC)
         {
-            if (id >= PARAM_ID_MIDICC_START && id < PARAM_ID_MIDICC_STOP)
+            int midiChan;
+            int cc;
+            if (isMIDIInputCCParameter(id, midiChan, cc))
             {
-                // MAYDO accumulate in MIDI queue? Comes with no timestamp there, so probably not.
-                return;
+                midiCCValue(midiChan, cc) = value;
             }
         }
 
@@ -992,7 +989,7 @@ nothrow:
         }
 
         return vst3ParamsCount; 
-    }
+    }   
 
     extern(Windows) override tresult getParameterInfo (int32 paramIndex, ref ParameterInfo info)
     {
@@ -1013,7 +1010,7 @@ nothrow:
                     paramIndex -= clientParamsPlus2;
                     int midiChan = paramIndex / NUM_MIDICC_PER_CHAN;
                     int cc       = paramIndex % NUM_MIDICC_PER_CHAN;
-                    assert(midiChan >= 0 && midiChan < 16);
+                    assert(midiChan >= 0 && midiChan < NUM_MIDI_CHANNELS_INPUT);
                     assert(cc >= 0 && cc <= 129);
 
                     info.id = PARAM_ID_MIDICC_START + midiChan * NUM_MIDICC_PER_CHAN + cc;
@@ -1085,13 +1082,14 @@ nothrow:
 
         version(futureVST3MIDICC)
         {
-            if (_client.receivesMIDI())
+            int midiChan;
+            int cc;            
+            if (isMIDIInputCCParameter(id, midiChan, cc))
             {
-                if (id >= PARAM_ID_MIDICC_START && id < PARAM_ID_MIDICC_STOP)
-                {
-                    str8ToStr16(string_.ptr, "".ptr, 128); // Display "" as value.
-                    return kResultTrue;
-                }
+                char[128] buf;
+                snprintf(buf.ptr, 128, "%2.4f".ptr, valueNormalized);
+                str8ToStr16(string_.ptr, buf.ptr, 128);
+                return kResultTrue;
             }
         }
 
@@ -1146,10 +1144,41 @@ nothrow:
         if (id == PARAM_ID_BYPASS || id == PARAM_ID_PROGRAM_CHANGE)
             return kResultFalse; // MAYDO, eventually
 
+        // Convert short zero-terminated strings from UTF-16 to UTF-8, return length.
+        // Output has a terminal zero.
+        static int convertUTF16ToUTF8_128(TChar* input, char[] output) pure nothrow @nogc
+        {
+            assert(output.length == 128);
+            int len = 0;
+            output[127] = '\0';
+            for(int i = 0; i < 128; ++i)
+            {
+                // Note: no surrogates supported in this UTF-16 to UTF8 conversion
+                output[i] = cast(char)input[i];
+                if (input[i] == 0)
+                    break;
+
+                len++;
+            }
+            return len;
+        }
+
         version(futureVST3MIDICC)
         {
-            if (id >= PARAM_ID_MIDICC_START && id < PARAM_ID_MIDICC_STOP)
-                return kResultFalse;
+            int midiChan;
+            int cc;
+            if (isMIDIInputCCParameter(id, midiChan, cc))
+            {
+                char[128] valueUTF8;
+                int len = convertUTF16ToUTF8_128(string_, valueUTF8[]);
+                bool err;
+                double parsed = convertStringToDouble(valueUTF8.ptr, false, &err);
+                if (err)
+                    return kResultFalse; // didn't parse a double
+
+                valueNormalized = parsed;
+                return kResultTrue;
+            }
         }
 
         int paramIndex = convertParamIDToClientParamIndex(id);
@@ -1161,16 +1190,7 @@ nothrow:
         Parameter param = _client.param(paramIndex);
 
         char[128] valueUTF8;
-        int len = 0;
-        for(int i = 0; i < 128; ++i)
-        {
-            // Note: no surrogates supported in this UTF-16 to UTF8 conversion
-            valueUTF8[i] = cast(char)string_[i];
-            if (!string_[i])
-                break;
-            else
-                len++;
-        }
+        int len = convertUTF16ToUTF8_128(string_, valueUTF8[]);
 
         if (param.normalizedValueFromString( valueUTF8[0..len], valueNormalized))
         {
@@ -1191,10 +1211,11 @@ nothrow:
         debug(logVST3Client) debugLog(">normalizedParamToPlain".ptr);
         debug(logVST3Client) scope(exit) debugLog("<normalizedParamToPlain".ptr);
 
-        version(futureVST3MIDICC)
+        int midiChan;
+        int cc;
+        if (isMIDIInputCCParameter(id, midiChan, cc))
         {
-            if (id >= PARAM_ID_MIDICC_START && id < PARAM_ID_MIDICC_STOP)
-                return 0;
+            return valueNormalized; // no change
         }
 
         if (id == PARAM_ID_BYPASS)
@@ -1223,10 +1244,11 @@ nothrow:
         debug(logVST3Client) debugLog(">plainParamToNormalized".ptr);
         debug(logVST3Client) scope(exit) debugLog("<plainParamToNormalized".ptr);
 
-        version(futureVST3MIDICC)
+        int midiChan;
+        int cc;            
+        if (isMIDIInputCCParameter(id, midiChan, cc))
         {
-            if (id >= PARAM_ID_MIDICC_START && id < PARAM_ID_MIDICC_STOP)
-                return 0;
+            return plainValue; // no change
         }
 
         if (id == PARAM_ID_BYPASS)
@@ -1255,8 +1277,12 @@ nothrow:
 
         version(futureVST3MIDICC)
         {
-            if (id >= PARAM_ID_MIDICC_START && id < PARAM_ID_MIDICC_STOP)
-                return 0;
+            int midiChan;
+            int cc;            
+            if (isMIDIInputCCParameter(id, midiChan, cc))
+            {
+                return midiCCValue(midiChan, cc);
+            }
         }
 
         if (id == PARAM_ID_BYPASS)
@@ -1288,8 +1314,13 @@ nothrow:
 
         version(futureVST3MIDICC)
         {
-            if (id >= PARAM_ID_MIDICC_START && id < PARAM_ID_MIDICC_STOP)
-                return kResultTrue; // same as setPameter, not sure to deal with CC here, without timestamps
+            int midiChan;
+            int cc;
+            if (isMIDIInputCCParameter(id, midiChan, cc))
+            {
+                midiCCValue(midiChan, cc) = value;
+                return kResultTrue;
+            }
         }
 
         if (id == PARAM_ID_BYPASS)
@@ -1381,8 +1412,8 @@ nothrow:
             if (midiControllerNumber > 129)
                 return kResultFalse;
 
-            if (channel < 0 || channel > 15)
-                return kResultFalse;
+            if (channel < 0 || channel >= NUM_MIDI_CHANNELS_INPUT)
+                return kResultFalse; // non-existing channel
 
             id = PARAM_ID_MIDICC_START + midiControllerNumber + channel * NUM_MIDICC_PER_CHAN;
             assert(id >= PARAM_ID_MIDICC_START && id < PARAM_ID_MIDICC_STOP);
@@ -1591,6 +1622,28 @@ private:
     // VSTHost send parameters updates to inexisting parameters.
     bool _hostMaySendBadParameterIDs = false;
 
+    version(futureVST3MIDICC)
+    {
+        // Contains midichannel x 130 values.
+        Vec!double _midiCCValues;
+
+        void initializeMIDICCValues()
+        {
+            if (!_client.receivesMIDI)
+                return; // No need for that state if no MIDI input.
+
+            _midiCCValues.resize(NUM_MIDICC_PER_CHAN * NUM_MIDI_CHANNELS_INPUT);
+            _midiCCValues.fill(0.0f);
+        }
+
+        ref double midiCCValue(int midiChan, int cc)
+        {
+            assert(cc >= 0 && cc < NUM_MIDICC_PER_CHAN);
+            assert(midiChan >= 0 && midiChan < NUM_MIDI_CHANNELS_INPUT);
+            return _midiCCValues[NUM_MIDICC_PER_CHAN * midiChan + cc];
+        }
+    }
+
     void setHostApplication(FUnknown context)
     {
         debug(logVST3Client) debugLog(">setHostApplication".ptr);
@@ -1658,6 +1711,29 @@ private:
         *presetIndex = index;
         return _client.presetBank.isValidPresetIndex(_presetStepCount);
     }
+
+    // Helper to get quickly a MIDI cc with its channel, from a ParamID
+    bool isMIDIInputCCParameter(ParamID id, out int midiChan, out int ccIndex)
+    {
+        version(futureVST3MIDICC)
+        {
+            if (!_client.receivesMIDI)
+                return false;
+
+            if (id < PARAM_ID_MIDICC_START || id > PARAM_ID_MIDICC_STOP)
+                return false;
+
+            int index = id - PARAM_ID_MIDICC_START;
+            midiChan = index / NUM_MIDICC_PER_CHAN;
+            ccIndex  = index % NUM_MIDICC_PER_CHAN;
+            assert(midiChan >= 0 && midiChan < NUM_MIDI_CHANNELS_INPUT);
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
 }
 
 private:
@@ -1670,7 +1746,9 @@ enum int PARAM_ID_PROGRAM_CHANGE = 999;
 
 version(futureVST3MIDICC)
 {
-    enum int NUM_MIDICC_PARAMETERS   = 130 * 16;
+    // FUTURE: deprecate those, to make number of input MIDI channels tunable.
+    enum int NUM_MIDI_CHANNELS_INPUT = 16;
+    enum int NUM_MIDICC_PARAMETERS   = 130 * NUM_MIDI_CHANNELS_INPUT;
     enum int NUM_MIDICC_PER_CHAN     = 130;
     enum int PARAM_ID_MIDICC_START   = 1835232512;
     enum int PARAM_ID_MIDICC_STOP    = PARAM_ID_MIDICC_START + NUM_MIDICC_PARAMETERS;
