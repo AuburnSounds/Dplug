@@ -2235,6 +2235,11 @@ private:
                     {
                         MIDIPacketList packets;
                         packets.packet[0].length = cast(ushort) msg.toBytes(cast(ubyte*) packets.packet[0].data.ptr, 256);
+                        if (packets.packet[0].length == 0)
+                        {
+                            // nothing written, ignore this message
+                            continue;
+                        }
                         packets.packet[0].timeStamp = msg.offset;
                         packets.numPackets = 1;
                         _midiOutCallback.midiOutputCallback(_midiOutCallback.userData,

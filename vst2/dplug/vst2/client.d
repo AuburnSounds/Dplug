@@ -1060,7 +1060,15 @@ private:
             event.midiData[1] = 0;
             event.midiData[2] = 0;
             event.midiData[3] = 0;
-            msg.toBytes(cast(ubyte*)(event.midiData.ptr), 3); // Warning: doesn't handle longer MIDI message than 3 bytes.            
+
+            int written = msg.toBytes(cast(ubyte*)(event.midiData.ptr), 3);
+            if (written == 0)
+            {
+                // nothing written, do not send this message.
+                // which means we must support more message types.
+                continue;
+            }
+
             event.detune = 0;
             event.noteOffVelocity = 0; // why it's here?
             event.reserved1 = 0;

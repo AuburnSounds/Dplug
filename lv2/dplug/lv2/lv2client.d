@@ -417,12 +417,15 @@ nothrow:
                 {
                     assert(msg.offset >= 0 && msg.offset <= n_samples);
 
-                    int len = msg.lengthInBytes();
+                    int midiMsgSize = msg.lengthInBytes();
 
-                    if ( LV2_Atom_Event.sizeof + len > capacity - totalOffset)
+                    // Unknown length, drop message.
+                    if (midiMsgSize == -1)
+                        continue;
+
+                    if ( LV2_Atom_Event.sizeof + midiMsgSize > capacity - totalOffset)
                         break; // Note: some MIDI messages will get dropped in that case
 
-                    int midiMsgSize = cast(int) msg.lengthInBytes(); 
                     LV2_Atom_Event* event = cast(LV2_Atom_Event*)(cast(char*)LV2_ATOM_CONTENTS!LV2_Atom_Sequence(&_eventsOutput.atom) + totalOffset);
                     event.time.frames = msg.offset;
                     event.body_.type = _mappedURIs.midiEvent;
