@@ -110,6 +110,8 @@ string stripConfig(string config) pure nothrow @nogc
         return config[4..$];
     if (config.length >= 4 && config[0..4] == "LV2-")
         return config[4..$];
+    if (config.length >= 4 && config[0..4] == "FLP-")
+        return config[4..$];
     return null;
 }
 
@@ -137,6 +139,12 @@ bool configIsLV2(string config) pure nothrow @nogc
 {
     return config.length >= 3 && config[0..3] == "LV2";
 }
+
+bool configIsFLP(string config) pure nothrow @nogc
+{
+    return config.length >= 3 && config[0..3] == "FLP";
+}
+
 
 
 struct Plugin
@@ -685,8 +693,10 @@ Plugin readPluginDescription(string rootDir)
             &&!configIsVST2(cname)
             &&!configIsVST3(cname)
             &&!configIsAU(cname)
-            &&!configIsLV2(cname))
-            throw new Exception(format("Configuration name should start with \"VST2\", \"VST3\", \"AU\", \"AAX\", or \"LV2\". '%s' is not a valid configuration name.", cname));
+            &&!configIsLV2(cname)
+            &&!configIsFLP(cname)
+            )
+            throw new Exception(format("Configuration name should start with \"VST2\", \"VST3\", \"AU\", \"AAX\", \"LV2\", or \"FLP\". '%s' is not a valid configuration name.", cname));
     }
 
     try
@@ -713,7 +723,8 @@ Plugin readPluginDescription(string rootDir)
     }
     catch(Exception e)
     {
-        warning("Couldln't parse configurations names in dub.json/dub.sdl.");
+        warning(e.msg);
+        warning("At least one configuration was skipped by dplug-build because of invalid prefix.");
         result.configurations = [];
     }
 

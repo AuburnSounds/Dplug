@@ -23,6 +23,7 @@
         "dplug:core": "*",
         "dplug:dsp": "*",
         "dplug:fft": "*",
+        "dplug:flp": "*",
         "dplug:flat-widgets": "*",
         "dplug:graphics": "*",
         "dplug:gui": "*",
@@ -155,6 +156,14 @@
                 "dplug:client": "*",
                 "dplug:gui": "*",
                 "dplug:canvas": "*"
+            }
+        },
+        {
+            "name": "flp",
+            "sourcePaths": [ "flp/dplug/flp" ],
+            "importPaths": [ "flp" ],
+            "dependencies": {
+                "dplug:client": "*"
             }
         },
         {
