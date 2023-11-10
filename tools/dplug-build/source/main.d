@@ -486,7 +486,7 @@ int main(string[] args)
                 {
                     if (arch == Arch.x86)
                     {
-                       throw new Exception("Can't make 32-bit builds on macOS");
+                       throw new Exception("Can't make 32-bit x86 builds for macOS");
                     }
                 }
 
@@ -494,9 +494,15 @@ int main(string[] args)
                 if (targetOS == OS.windows)
                 {
                     if (configIsAU(config))
-                        throw new Exception("Can't build AU format on Windows");
+                        throw new Exception("Can't build AU format for Windows");
                 }
 
+                // Does not try to build FLP except for Windows
+                if (targetOS != OS.windows)
+                {
+                    if (configIsFLP(config))
+                        throw new Exception("Can't build FLP format except for Windows");
+                }
 
                 // Does not try to build AAX or AU under Linux
                 if (targetOS == OS.linux)
@@ -770,6 +776,44 @@ int main(string[] args)
                         mkdirRecurse(pluginDirectory);
                         fileMove(plugin.dubOutputFileName, pluginFinalPath);
                         extractLV2ManifestFromBinary(pluginFinalPath, pluginDirectory, arch, pluginFinalName);
+
+                        if (SIGN_WINDOWS_PLUGINS) 
+                            signExecutableWindows(plugin, pluginFinalPath);
+                    }
+                    else if (configIsFLP(config))
+                    {
+                        // Needed structure is:
+                        //
+                        // <Plugin Name>/
+                        //           Plugin.nfo                  // brand name
+                        //           <Plugin Name>.dll           // x86 executable
+                        //           <Plugin Name_x64>.dll       // x86_64 executable
+                        //
+                        // Else it won't be listed or scanned.
+                        //
+                        // Then this directory must be installed in:
+                        //     $PROGRAMFILES\Image-Line\FL Studio $FLVER\Plugins\Fruity\Effects
+                        //  or 
+                        //     $PROGRAMFILES\Image-Line\FL Studio $FLVER\Plugins\Fruity\Generators
+                        //
+                        string pluginFinalName;
+                        if (arch == Arch.x86)
+                            pluginFinalName = plugin.pluginName ~ ".dll";
+                        else if (arch == Arch.x86_64)
+                            pluginFinalName = plugin.pluginName ~ "_x64.dll";
+                        else
+                            throw new Exception("Unsupported architecture for FLP plug-in format");
+
+                        pluginDirectory = path ~ "/" ~ plugin.pluginName;
+                        mkdirRecurse(pluginDirectory);
+
+                        string pluginFinalPath = pluginDirectory ~ "/" ~ pluginFinalName;
+                        fileMove(plugin.dubOutputFileName, pluginFinalPath);
+
+                        // Create NFO file
+                        string NFOPath = pluginDirectory ~ "/Plugin.nfo";
+                        string NFOcontent = format("ps_vendorname=%s\n", plugin.vendorName);  // spaces allowed in that .nfo
+                        std.file.write(NFOPath, NFOcontent);
 
                         if (SIGN_WINDOWS_PLUGINS) 
                             signExecutableWindows(plugin, pluginFinalPath);
@@ -1398,6 +1442,8 @@ void generateWindowsInstaller(string outputDir,
             return "For Pro Tools 11 or later.";
         else if(pack.format == "LV2")
             return "For LV2 hosts like REAPER, Mixbus, and Ardour.";
+        else if(pack.format == "FLP")
+            return "For FL Studio only.";
         else
             return "";
     }

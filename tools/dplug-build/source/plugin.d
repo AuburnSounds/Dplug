@@ -149,24 +149,23 @@ bool configIsFLP(string config) pure nothrow @nogc
 
 struct Plugin
 {
-    string rootDir; // relative or absolute path to dub.json directory (is is given by --root)
-    string name;       // name, extracted from dub.json(eg: 'distort')
+    string rootDir;               // relative or absolute path to dub.json directory (is is given by --root)
+    string name;                  // name, extracted from dub.json or dub.sdl (eg: 'distort')
     string CFBundleIdentifierPrefix;
-    string licensePath;    // can be null
+    string licensePath;           // can be null
     string iconPathWindows;       // can be null or a path to a .ico
-    string iconPathOSX;       // can be null or a path to a (large) .png
+    string iconPathOSX;           // can be null or a path to a (large) .png
     bool hasGUI;
-    string dubTargetPath;  // extracted from dub.json, used to build the dub output file path
+    string dubTargetPath;         // extracted from dub.json, used to build the dub output file path
 
-    string pluginName;     // Prettier name, extracted from plugin.json (eg: 'Distorter')
+    string pluginName;            // Prettier name, extracted from plugin.json (eg: 'Distorter', 'Graillon 2')
     string pluginUniqueID;
     string pluginHomepage;
     string vendorName;
     string vendorUniqueID;
     string vendorSupportEmail;
 
-    // Available configurations, taken from dub.json
-    string[] configurations;
+    string[] configurations;      // Available configurations, taken from dub.json
 
     // Public version of the plugin
     // Each release of a plugin should upgrade the version somehow
