@@ -62,8 +62,53 @@ typedef long long LARGE_INTEGER;
 #endif
 +/
 
+// plugin flags
+const int FPF_Generator         =1;        // plugin is a generator (not effect)
+const int FPF_RenderVoice       =1 << 1;   // generator will render voices separately (Voice_Render) (not used yet)
+const int FPF_UseSampler        =1 << 2;   // 'hybrid' generator that will stream voices into the host sampler (Voice_Render)
+const int FPF_GetChanCustomShape=1 << 3;   // generator will use the extra shape sample loaded in its parent channel (see FPD_ChanSampleChanged)
+const int FPF_GetNoteInput      =1 << 4;   // plugin accepts note events (not used yet, but effects might also get note input later)
+const int FPF_WantNewTick       =1 << 5;   // plugin will be notified before each mixed tick (& be able to control params (like a built-in MIDI controller) (see NewTick))
+const int FPF_NoProcess         =1 << 6;   // plugin won't process buffers at all (FPF_WantNewTick, or special visual plugins (Fruity NoteBook))
+const int FPF_NoWindow          =1 << 10;  // plugin will show in the channel settings window & not in its own floating window
+const int FPF_Interfaceless     =1 << 11;  // plugin doesn't provide its own interface (not used yet)
+const int FPF_TimeWarp          =1 << 13;  // supports timewarps, that is, can be told to change the playing position in a voice (direct from disk music tracks, ...) (not used yet)
+const int FPF_MIDIOut           =1 << 14;  // plugin will send MIDI out messages (only those will be enabled when rendering to a MIDI file)
+const int FPF_DemoVersion       =1 << 15;  // plugin is a trial version, & the host won't save its automation
+const int FPF_CanSend           =1 << 16;  // plugin has access to the send tracks, so it can't be dropped into a send track or into the master
+const int FPF_MsgOut            =1 << 17;  // plugin will send delayed messages to itself (will require the internal sync clock to be enabled)
+const int FPF_HybridCanRelease  =1 << 18;  // plugin is a hybrid generator & can release its envelope by itself. If the host's volume envelope is disabled, then the sound will keep going when the voice is stopped, until the plugin has finished its own release
+const int FPF_GetChanSample     =1 << 19;  // generator will use the sample loaded in its parent channel (see FPD_ChanSampleChanged)
+const int FPF_WantFitTime       =1 << 20;  // fit to time selector will appear in channel settings window (see FPD_SetFitTime)
+const int FPF_NewVoiceParams    =1 << 21;  // MUST BE USED - tell the host to use TVoiceParams instead of TVoiceParams_Old
+const int FPF_Reserved1         =1 << 22;  // don't use (Delphi version specific)
+const int FPF_CantSmartDisable  =1 << 23;  // plugin can't be smart disabled
+const int FPF_WantSettingsBtn   =1 << 24;  // plugin wants a settings button on the titlebar (mainly for the wrapper)
+const int FPF_CanStealKBFocus   =1 << 25;  // plugin can steal keyboard focus away from FL
+const int FPF_VFX               =1 << 26;  // is VFX plugin
+const int FPF_MacNeedsNSView 	=1 << 27;  // On Mac: This plugin requires a NSView parent
+
 alias TPluginTag = intptr_t;
-alias PFruityPlugInfo = void*; // TODO
+
+// plugin info, common to all instances of the same plugin
+struct TFruityPlugInfo
+{
+align(4):
+    int SDKVersion;    // =CurrentSDKVersion
+    char* LongName;    // full plugin name (should be the same as DLL name)
+    char* ShortName;   // & short version (for labels)
+    int Flags;         // see FPF_Generator
+    int NumParams;     // (maximum) number of parameters, can be overridden using FHD_SetNumParams
+    int DefPoly;       // preferred (default) max polyphony (Fruity manages polyphony) (0=infinite)
+    int NumOutCtrls;   // number of internal output controllers
+	int NumOutVoices;  // number of internal output voices
+    int[30] Reserved;  // set to zero
+}
+
+alias PFruityPlugInfo = TFruityPlugInfo*;
+
+
+
 alias intptr_t = size_t;
 alias TVoiceHandle = intptr_t;
 alias TOutVoiceHandle = intptr_t;
@@ -75,6 +120,7 @@ alias IStream = void*; // TODO
 alias BOOL = int;
 
 alias PVoiceParams = void*;
+
 
 // plugin class, made extern(C++) to have no field and an empty v-table.
 extern(C++) class TFruityPlug 
@@ -150,15 +196,10 @@ nothrow:
     }
 }
 
-alias TFruityPlugHost = void*; // TODO
-
-
-extern(C++) class TFruityHost
+extern(C++) class TFruityPlugHost 
 {
 public:
 nothrow:
 @nogc:
-
-
 
 }

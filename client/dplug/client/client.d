@@ -732,6 +732,19 @@ nothrow:
         }
     }
 
+    /// Returns: Plugin name "$PRODUCT"
+    final void getPluginName(char* p, int bufLength) const nothrow @nogc
+    {
+        snprintf(p, bufLength, "%.*s",
+                 cast(int)(_info.pluginName.length), _info.pluginName.ptr);
+
+        // DigitalMars's snprintf doesn't always add a terminal zero
+        if (bufLength > 0)
+        {
+            p[bufLength-1] = '\0';
+        }
+    }
+
     /// Returns: Plugin version in x.x.x.x decimal form.
     final PluginVersion getPublicVersion() pure const nothrow @nogc
     {

@@ -33,7 +33,7 @@ template FLPEntryPoint(alias ClientClass)
 void* CreatePlugInstance_templated(ClientClass)(void* Host, size_t Tag)
 {
     TPluginTag tag = Tag;    
-    TFruityHost pHost = cast(TFruityHost) Host;
+    TFruityPlugHost pHost = cast(TFruityPlugHost) Host;
 
     if (pHost is null)
         return null;
@@ -43,6 +43,6 @@ void* CreatePlugInstance_templated(ClientClass)(void* Host, size_t Tag)
 
     ClientClass client = mallocNew!ClientClass();
 
-    FLPCLient plugin = mallocNew!FLPCLient(pHost, tag);
+    FLPCLient plugin = mallocNew!FLPCLient(pHost, tag, client);
     return cast(void*) plugin;
 }
