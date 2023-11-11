@@ -15,7 +15,7 @@ import dplug.flp.types;
 
 debug = logFLPClient;
 
-// SDJ insists that there is such a global, not sure if needed yet.
+// SDK insists that there is such a global, not sure if needed yet.
 __gshared TFruityPlugHost g_host = null;
 
 
@@ -23,7 +23,7 @@ final extern(C++) class FLPCLient : TFruityPlug
 {
 nothrow @nogc:
 
-    this(TFruityPlugHost pHost, TPluginTag tag, Client client)
+    this(TFruityPlugHost pHost, TPluginTag tag, Client client, bool* err)
     {
         g_host = pHost;
 
@@ -32,6 +32,20 @@ nothrow @nogc:
         this._host = pHost;
         this._client = client;
         initializeInfo();
+
+        // If a synth ("generator" in FL dialect), it must supports 0-2.
+        // If an effect, it must supports 2-2.
+        // Else fail instantiation.
+
+        bool compatibleIO;
+        if (_client.isSynth)
+            compatibleIO = _client.isLegalIO(0, 2);
+        else
+            compatibleIO = _client.isLegalIO(2, 2);
+
+        *err = false;
+        if (!compatibleIO)
+            *err = true;
     }
 
     // <Implements TFruityPlug>
@@ -99,7 +113,7 @@ nothrow @nogc:
             ScopedForeignCallback!(false, true) scopedCallback;
             scopedCallback.enter();
 
-            debug(logFLPClient) debugLogf("Eff_Render %p %p %d\n", SourceBuffer, DestBuffer, Length);
+            //debug(logFLPClient) debugLogf("Eff_Render %p %p %d\n", SourceBuffer, DestBuffer, Length);
         }
 
         // generator processing (can render less than length)

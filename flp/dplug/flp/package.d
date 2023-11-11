@@ -1,3 +1,9 @@
+/**
+FL Plugin client package. This module is the public API.
+
+Copyright: Guillaume Piolat 2023.
+License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
+*/
 module dplug.flp;
 
 // Fruity Loops Plug-in format.
@@ -8,13 +14,6 @@ import dplug.core.nogc;
 import dplug.core.runtime;
 import dplug.flp.types;
 import dplug.flp.client;
-
-/**
-FL Plugin client package. This module is the public API.
-
-Copyright: Guillaume Piolat 2023.
-License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
-*/
 
  
 // Main entry point for FLP plugins.
@@ -32,7 +31,7 @@ template FLPEntryPoint(alias ClientClass)
 // Templated helper.
 void* CreatePlugInstance_templated(ClientClass)(void* Host, size_t Tag)
 {
-    TPluginTag tag = Tag;    
+    TPluginTag tag = Tag;
     TFruityPlugHost pHost = cast(TFruityPlugHost) Host;
 
     if (pHost is null)
@@ -43,6 +42,14 @@ void* CreatePlugInstance_templated(ClientClass)(void* Host, size_t Tag)
 
     ClientClass client = mallocNew!ClientClass();
 
-    FLPCLient plugin = mallocNew!FLPCLient(pHost, tag, client);
+    bool err;
+    FLPCLient plugin = mallocNew!FLPCLient(pHost, tag, client, &err);
+
+    if (err)
+    {
+        destroyFree(client);
+        return null;
+    }
+
     return cast(void*) plugin;
 }
