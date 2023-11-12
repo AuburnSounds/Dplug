@@ -23,6 +23,9 @@ debug = logFLPClient;
 // SDK insists that there is such a global, not sure if needed yet.
 //__gshared TFruityPlugHost g_host = null;
 
+// TODO: Making a plugin thread safe
+//   - "Use LockMix_Shared and UnlockMix_Shared around any access to the output buffer(s)
+//   - Call the host's dispatcher with the code FHD_SetThreadSafe and Value set to 1 (usually when the plugin is created)"
 
 final extern(C++) class FLPCLient : TFruityPlug
 {
@@ -113,15 +116,22 @@ nothrow @nogc:
                     if (Value == 0)
                     {
                         // hide editor
-                        if (_client.hasGUI) _client.closeGUI();
+                        if (_client.hasGUI)
+                        {
+                            _client.closeGUI();
+                            this.EditorHandle = null;
+                        }
                     }
                     else
                     {
-                        void* parent = cast(void*) Value;
-                        if (_client.hasGUI) _client.openGUI(parent, null, GraphicsBackend.autodetect);
-                        return Value;
+                        if (_client.hasGUI)
+                        {
+                            void* parent = cast(void*) Value;
+                            void* windowHandle = _client.openGUI(parent, null, GraphicsBackend.autodetect);
+                            this.EditorHandle = windowHandle;
+                        }
                     }
-                    return 0; // right return value according to TTestPlug
+                    return 0; // no error, apparently
 
                 case FPD_ProcessMode:                /* 1 */
                     // "this ID can be ignored"
@@ -507,7 +517,7 @@ private:
             flags |= FPF_CantSmartDisable;
         }
 
-        _client.getPluginName(_longNameBuf.ptr, 128);        
+        _client.getPluginName(_longNameBuf.ptr, 128);
         _client.getPluginName(_shortNameBuf.ptr, 32); // yup, same name
         _fruityPlugInfo.SDKVersion   = 1;
         _fruityPlugInfo.LongName     = _longNameBuf.ptr;

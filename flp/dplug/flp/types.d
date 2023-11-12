@@ -48,7 +48,7 @@ deprecated alias HINSTANCE = void*;
 deprecated alias HMENU = void*;
 deprecated alias DWORD = uint;
 deprecated alias HWND = void*;
-deprecated alias HANDLE = void*;
+alias HANDLE = void*;
 deprecated enum MAX_PATH = 256;
 deprecated alias ULONG = uint;
 deprecated alias HRESULT = c_long;
@@ -196,6 +196,10 @@ alias IStream = void*; // TODO
 alias BOOL = int;
 
 alias PVoiceParams = void*;
+alias PWaveFormatExtensible = void*;
+alias PSampleInfo = void*;
+alias PSampleRegion = void*;
+alias PIOBuffer = void*;
 
 
 // plugin class, made extern(C++) to have no field and an empty v-table.
@@ -278,4 +282,164 @@ public:
 nothrow:
 @nogc:
 
+    alias PWaveT = void*;
+
+    // *** params ***
+    int HostVersion;     // current FruityLoops version stored as 01002003 (integer) for 1.2.3
+    int Flags;           // reserved
+
+    // windows
+    HANDLE AppHandle;    // application handle, for slaving windows
+
+    // handy wavetables (32Bit float (-1..1), 16384 samples each)
+    // 6 are currently defined (sine, triangle, square, saw, analog saw, noise)
+    // those pointers are fixed
+    // (obsolete, avoid)
+    PWaveT[10] WaveTables;
+
+    // handy free buffers, guaranteed to be at least the size of the buffer to be rendered (float stereo)
+    // those pointers are variable, please read & use while rendering only
+    // those buffers are contiguous, so you can see TempBuffer[0] as a huge buffer
+    PWAV32FS[4] TempBuffers;
+
+    // reserved for future use
+    int[30] Reserved;    // set to zero
+
+
+    // *** functions ***
+
+    extern(Windows) abstract
+    {
+        // messages (to the host) (Sender=plugin tag)
+        intptr_t Dispatcher(TPluginTag Sender, intptr_t ID, intptr_t Index, intptr_t Value);
+
+        // for the host to store changes
+        void OnParamChanged(TPluginTag Sender, int Index, int Value);
+
+        // for the host to display hints (call from GUI thread!)
+        void OnHint(TPluginTag Sender, char *Text);
+
+        // compute left & right levels using pan & volume info (OLD, OBSOLETE VERSION, USE ComputeLRVol INSTEAD)
+        void ComputeLRVol_Old(ref float LVol, ref float RVol, int Pan, float Volume);
+
+        // voice handling (Sender=voice tag)
+        void Voice_Release(intptr_t Sender);
+        void Voice_Kill(intptr_t Sender, BOOL KillHandle);
+        int Voice_ProcessEvent(intptr_t Sender, intptr_t EventID, intptr_t EventValue, intptr_t Flags);
+
+        // thread synchronisation / safety
+        void LockMix_Old();  // will prevent any new voice creation & rendering
+        void UnlockMix_Old();
+
+
+        // delayed MIDI out message (see TMIDIOutMsg) (will be sent once the MIDI tick has reached the current mixer tick
+        void MIDIOut_Delayed(TPluginTag Sender, intptr_t Msg);
+        // direct MIDI out message
+        void MIDIOut(TPluginTag Sender, intptr_t Msg);
+
+        // adds a mono float buffer to a stereo float buffer, with left/right levels & ramping if needed
+        // how it works: define 2 float params for each voice: LastLVol & LastRVol. Make them match LVol & RVol before the *first* rendering of that voice (unless ramping will occur from 0 to LVol at the beginning).
+        // then, don't touch them anymore, just pass them to the function.
+        // the level will ramp from the last ones (LastLVol) to the new ones (LVol) & will adjust LastLVol accordingly
+        // LVol & RVol are the result of the ComputeLRVol function
+        // for a quick & safe fade out, you can set LVol & RVol to zero, & kill the voice when both LastLVol & LastRVol will reach zero
+        void AddWave_32FM_32FS_Ramp(void *SourceBuffer, void *DestBuffer, int Length, float LVol, float RVol, ref float LastLVol, ref float LastRVol);
+        // same, but takes a stereo source
+        // note that left & right channels are not mixed (not a true panning), but might be later
+        void AddWave_32FS_32FS_Ramp(void *SourceBuffer, void *DestBuffer, int Length, float LVol, float RVol, ref float LastLVol, ref float LastRVol);
+
+        // sample loading functions (FruityLoops 3.1.1 & over)
+        // load a sample (creates one if necessary)
+        // FileName must have room for 256 chars, since it gets written with the file that has been 'located'
+        // only 16Bit 44Khz Stereo is supported right now, but fill the format correctly!
+        // see FHLS_ShowDialog
+        bool LoadSample(ref TSampleHandle Handle, char *FileName, PWaveFormatExtensible NeededFormat, int Flags);
+        void * GetSampleData(TSampleHandle Handle, ref int Length);
+        void CloseSample(TSampleHandle Handle);
+
+        // time info
+        // get the current mixing time, in ticks (integer result)
+        // obsolete, use FHD_GetMixingTime & FHD_GetPlaybackTime
+        int GetSongMixingTime();
+        // get the current mixing time, in ticks (more accurate, with decimals)
+        double GetSongMixingTime_A();
+        // get the current playing time, in ticks (with decimals)
+        double GetSongPlayingTime();
+
+        // internal controller
+        void OnControllerChanged(TPluginTag Sender, intptr_t Index, intptr_t Value);
+
+        // get a pointer to one of the send buffers (see FPD_SetNumSends)
+        // those pointers are variable, please read & use while processing only
+        // the size of those buffers is the same as the size of the rendering buffer requested to be rendered
+        void * GetSendBuffer(intptr_t Num);
+
+        // ask for a message to be dispatched to itself when the current mixing tick will be played (to synchronize stuff) (see MsgIn)
+        // the message is guaranteed to be dispatched, however it could be sent immediately if it couldn't be buffered (it's only buffered when playing)
+        void PlugMsg_Delayed(TPluginTag Sender, intptr_t Msg);
+        // remove a buffered message, so that it will never be dispatched
+        void PlugMsg_Kill(TPluginTag Sender, intptr_t MSg);
+
+        // get more details about a sample
+        void GetSampleInfo(TSampleHandle Handle, PSampleInfo Info);
+
+        // distortion (same as TS404) on a piece of mono or stereo buffer
+        // DistType in 0..1, DistThres in 1..10
+        void DistWave_32FM(int DistType, int DistThres, void *SourceBuffer, int Length, float DryVol, float WetVol, float Mul);
+
+        // same as GetSendBuffer, but Num is an offset to the mixer track assigned to the generator (Num=0 will then return the current rendering buffer)
+        // to be used by generators ONLY, & only while processing
+        void *  GetMixBuffer(int Num);
+
+        // get a pointer to the insert (add-only) buffer following the buffer a generator is currently processing in
+        // Ofs is the offset to the current buffer, +1 means next insert track, -1 means previous one, 0 is forbidden
+        // only valid during Gen_Render
+        // protect using LockMix_Shared
+        void *  GetInsBuffer(TPluginTag Sender, int Ofs);
+
+        // ask the host to prompt the user for a piece of text (s has room for 256 chars)
+        // set x & y to -1 to have the popup screen-centered
+        // if 0 is returned, ignore the results
+        // set c to -1 if you don't want the user to select a color
+        BOOL  PromptEdit(int x, int y, char *SetCaption, char *s, ref int c);
+
+        // deprecated, use SuspendOutput and ResumeOutput instead
+        void  SuspendOutput_Old();
+        void  ResumeOutput_Old();
+
+        // get the region of a sample
+        void  GetSampleRegion(TSampleHandle Handle, int RegionNum, PSampleRegion Region);
+
+        // compute left & right levels using pan & volume info (USE THIS AFTER YOU DEFINED FPF_NewVoiceParams)
+        void  ComputeLRVol(ref float LVol, ref float RVol, float Pan, float Volume);
+
+        // use this instead of PlugHost.LockMix
+        void  LockPlugin(TPluginTag Sender);
+        void  UnlockPlugin(TPluginTag Sender);
+
+        // multithread processing synchronisation / safety
+        void  LockMix_Shared_Old();
+        void  UnlockMix_Shared_Old();
+
+        // multi-in/output (for generators & effects) (only valid during Gen/Eff_Render)
+        // !!! Index starts at 1, to be compatible with GetInsBuffer (Index 0 would be Eff_Render's own buffer)
+        void  GetInBuffer(TPluginTag Sender, intptr_t Index, PIOBuffer IBuffer);    // returns (read-only) input buffer Index (or Nil if not available).
+        void  GetOutBuffer(TPluginTag Sender, intptr_t Index, PIOBuffer OBuffer);   // returns (add-only) output buffer Index (or Nil if not available). Use LockMix_Shared when adding to this buffer.
+
+
+        alias TVoiceParams = void;
+        // output voices (VFX "voice effects")
+        TOutVoiceHandle  TriggerOutputVoice(TVoiceParams *VoiceParams, intptr_t SetIndex, intptr_t SetTag);  // (GM)
+        void  OutputVoice_Release(TOutVoiceHandle Handle);  // (GM)
+        void  OutputVoice_Kill(TOutVoiceHandle Handle);  // (GM)
+        int  OutputVoice_ProcessEvent(TOutVoiceHandle Handle, intptr_t EventID, intptr_t EventValue, intptr_t Flags);  // (GM)
+
+        // ask the host to prompt the user for a piece of text, color, icon ... See PEO_ constants for SetOptions. Text should be null or a pointer to an allocated buffer with at least 255 characters!
+        BOOL  PromptEdit_Ex(int x, int y, const char* SetCaption, char* Text, ref int Color1, ref int Color2, ref int IconIndex, int FontHeight, int SetOptions);
+
+        // SuspendOutput removes the plugin from all processing lists, so Eff/Gen_Render and voice functions will no longer be called.
+        // To be used around lengthy operations (instead of straightforward locking)
+        void  SuspendOutput(TPluginTag Sender);
+        void  ResumeOutput(TPluginTag Sender);
+    }
 }
