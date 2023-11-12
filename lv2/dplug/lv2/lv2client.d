@@ -562,6 +562,11 @@ nothrow:
         return result == 0;        
     }
 
+    override bool notifyResized()
+    {
+        return false;
+    }
+
     // Not properly implemented yet. LV2 should have an extension to get DAW information.
     override DAW getDAW()
     {

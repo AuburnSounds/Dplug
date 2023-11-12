@@ -38,7 +38,7 @@ nothrow:
 
     /// Used by VST3.
     /// Returns: `true` if this is resizeable in terms of logical pixels.
-    /// This should succeed even f the UI is closed.
+    /// This should succeed even if the UI is closed.
     abstract bool isResizeable();
 
     /// Used by VST3.
@@ -50,6 +50,7 @@ nothrow:
     /// Used by VST3.
     /// Returns: Nearest, valid size in logical pixels, given an input size in logical pixels.
     /// This should work even if the UI is closed.
+    /// Hack: Used by FLP format to find minimum and maximum size of window in logical pixels.
     abstract void getNearestValidSize(int* inoutWidth, int* inoutHeight);
 
     /// Used by VST3.

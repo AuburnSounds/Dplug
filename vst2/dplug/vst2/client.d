@@ -1221,6 +1221,11 @@ nothrow:
             return false;
     }
 
+    override bool notifyResized()
+    {
+        return false;
+    }
+
     override void beginParamEdit(int paramIndex) nothrow @nogc
     {
         callback(audioMasterBeginEdit, paramIndex, 0, null, 0.0f);

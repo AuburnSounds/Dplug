@@ -141,6 +141,98 @@ enum int FPD_UseIncreasedMIDIResolution = 50; // return 1 if increased MIDI reso
 enum int FPD_ConvertStringToValue = 51;  //let plugin do string to value conversion, value is pointer to TConvertStringToValueData record , used for custom type in value
 enum int FPD_GetParamType = 52; //return control (Index) param type, see //FPD_GetParamType options below
 
+// host dispatcher IDs
+enum int FHD_ParamMenu         =0;     // the popup menu for each control (Index=param index, Value=popup item index (see FHP_EditEvents))
+enum int FHD_GetParamMenuFlags =1;     // [OBSOLETE, see FHD_GetParamMenuEntry] before the popup menu is shown, you must ask the host to tell if items are checked or disabled (Index=param index, Value=popup item index, Result=flags (see FHP_Disabled))
+enum int FHD_EditorResized     =2;     // to notify the host that the editor (EditorHandle) has been resized
+enum int FHD_NamesChanged      =3;     // to notify the host that names (GetName function) have changed, with the type of names in Value (see the FPN_ constants)
+enum int FHD_ActivateMIDI      =4;     // makes the host enable its MIDI output, useful when a MIDI out plugin is created (but not useful for plugin wrappers)
+enum int FHD_WantMIDIInput     =5;     // plugin wants to be notified about MIDI messages (for processing or filtering) (switch in Value)
+enum int FHD_WantMIDITick      =6;     // plugin wants to receive MIDITick events, allowing MIDI out plugins (not used yet)
+enum int FHD_LocatePlugin      =7;     // ask the host to find a plugin, pass the simple filename in Value, full path is returned as Result (both PAnsiChar). Set Index to 1 if you want host to show a warning if plugin could not be found.
+enum int FHD_KillAutomation    =8;     // ask the host to kill the automation linked to the plugin, for params # between Index & Value (included) (can be used for a trial version of the plugin)
+enum int FHD_SetNumPresets     =9;     // tell the host how many (Value) internal presets the plugin supports (mainly for wrapper)
+enum int FHD_SetNewName        =10;    // sets a new short name for the parent (PChar in Value)
+enum int FHD_VSTiIdle          =11;    // used by the VSTi wrapper, because the dumb VSTGUI needs idling for his knobs
+enum int FHD_SelectChanSample  =12;    // ask the parent to open a selector for its channel sample (see FPF_UseChanSample)
+enum int FHD_WantIdle          =13;    // plugin wants to receive the idle message (enabled by default) (Value=0 for disabled, 1 for enabled when UI is visible, 2 for always enabled)
+enum int FHD_LocateDataFile    =14;    // ask the host to search for a file in its search paths, pass the simple filename in Value, full path is returned as Result (both PChar) (Result doesn't live long, please copy it asap)
+enum int FHD_ShowPlugSelector  =15;    // ask the host to show the plugin selector (Index: see SPSF flags)
+enum int FHD_TicksToTime       =16;    // translate tick time (Value) into Bar:Step:Tick (PSongTime in Index) (warning: it's *not* Bar:Beat:Tick)
+enum int FHD_AddNotesToPR      =17;    // add a note to the piano roll, PNotesParams in Value
+enum int FHD_GetParamMenuEntry =18;    // before the popup menu is shown, you must fill it with the entries set by the host (Index=param index, Value=popup item index (starting from 0), Result=PParamMenuEntry, or null pointer if no more entry)
+enum int FHD_MsgBox            =19;    // make fruity show a message box (PChar in Index [formatted as 'Title|Message'], flags in Value (MB_OkCancel, MB_IconWarning, etc.), result in IDOk, IDCancel format (as in TApplication.MessageBox)
+enum int FHD_NoteOn            =20;    // preview note on (semitone in Index low word, color in index high word (0=default), velocity in Value)
+enum int FHD_NoteOff           =21;    // preview note off (semitone in Index, color in index high word, velocity in Value (-1=default otherwise 0..127))
+enum int FHD_OnHint_Direct     =22;    // same as OnHint, but show it immediately (to show a progress while you're doing something) (PChar in Value)
+enum int FHD_SetNewColor       =23;    // sets a new color for the parent (color in Value) (see FHD_SetNewName);
+enum int FHD_GetInstance       =24;    // (Windows) returns the module instance of the host (could be an exe or a DLL, so not the process itself)
+enum int FHD_KillIntCtrl       =25;    // ask the host to kill anything linked to an internal controller, for # between Index & Value (included) (used when undeclaring internal controllers)
+enum int FHD_CheckProdCode     =26;    // reserved
+enum int FHD_SetNumParams      =27;    // override the # of parameters (for plugins that have a different set of parameters per instance) (number of parameters in Value)
+enum int FHD_PackDataFile      =28;    // ask the host to pack an absolute filename into a local filemane, pass the simple filename in Value, packed path is returned as Result (both PChar) (Result doesn't live long, please copy it asap)
+enum int FHD_GetPath           =29;    // ask the host for a path specified by Index (see GP_ constants) (returned as Result)
+enum int FHD_SetLatency        =30;    // set plugin latency, if any (samples in Value)
+enum int FHD_CallDownloader    =31;    // call the presets downloader (optional plugin name PAnsiChar in Value)
+enum int FHD_EditSample		=32;	// edits sample in Edison (PChar in Value, Index=1 means an existing Edison can be re-used)
+enum int FHD_SetThreadSafe     =33;    // plugin is thread-safe, doing its own thread-sync using LockMix_Shared (switch in Value)
+enum int FHD_SmartDisable      =34;    // plugin asks FL to exit or enter smart disabling (if currently active), mainly for generators when they get MIDI input (switch in Value)
+enum int FHD_SetUID            =35;    // sets a unique identifying string for this plugin. This will be used to save/restore custom data related to this plugin. Handy for wrapper plugins. (PChar in Value)
+enum int FHD_GetMixingTime     =36;    // get mixer time, Index is the time format required (see GT_... constants). Value is a pointer to a TFPTime, which is filled with an optional offset in samples
+enum int FHD_GetPlaybackTime   =37;    // get playback time, same as above
+enum int FHD_GetSelTime        =38;    // get selection time in t & t2, same as above. Returns 0 if no selection (t & t2 are then filled with full song length).
+enum int FHD_GetTimeMul        =39;    // get current tempo multiplicator, that's not part of the song but used for fast-forward
+enum int FHD_Captionize        =40;    // captionize the plugin (useful when dragging) (captionized in Value)
+enum int FHD_SendSysEx         =41;    // send a SysEx string (pointer to array in Value, the first integer being the length of the string, the rest being the string), through port Index, immediately (do not abuse)
+enum int FHD_LoadAudioClip     =42;    // send an audio file to the playlist as an audio clip, starting at the playlist selection. Options in Index (see LAC_ constants). FileName as PAnsiChar in Value.
+enum int FHD_LoadInChannel     =43;    // send a file to the selected channel(s) (mainly for Edison), FileName as PChar in Value
+enum int FHD_ShowInBrowser     =44;    // locates the file in the browser & jumps to it (Index is one of SIB_ constants, PAnsiChar filename in Value)
+enum int FHD_DebugLogMsg       =45;    // adds message to the debug log (PChar in Value)
+enum int FHD_GetMainFormHandle =46;    // gets the handle of the main form (HWND in Value, 0 if none)
+enum int FHD_GetProjDataPath   =47;    // [OBSOLETE - use FHD_GetPath instead] ask the host where the project data is, to store project data (returned as Result)
+enum int FHD_SetDirty          =48;    // mark project as dirty (not required for automatable parameters, only for tweaks the host can't be aware of)
+enum int FHD_AddToRecent       =49;    // add file to recent files (PChar in Value)
+enum int FHD_GetNumInOut       =50;    // ask the host how many inputs (Index=0) are routed to this effect (see GetInBuffer), or how many outputs (Index=1) this effect is routed to (see GetOutBuffer)
+enum int FHD_GetInName         =51;    // ask the host the name of the input Index (!!! first = 1), in Value as a PNameColor, Result=0 if failed (Index out of range)
+enum int FHD_GetOutName        =52;    // ask the host the name of the ouput Index (!!! first = 1), in Value as a PNameColor, Result=0 if failed (Index out of range)
+enum int FHD_ShowEditor        =53;    // make host bring plugin's editor (visibility in Value, -1 to toggle)
+enum int FHD_FloatAutomation   = 54;   // (for the plugin wrapper only) ask the host to turn 0..FromMIDI_Max automation into 0..1 float, for params # between Index & Value (included)
+enum int FHD_ShowSettings      =55;    // called when the settings button on the titlebar should be updated switched. On/off in Value (1=active). See FPF_WantSettingsBtn
+enum int FHD_NoteOnOff         =56;    // generators only! note on/off (semitone in Index low word, color in index high word, NOT recorded in bit 30, velocity in Value (<=0 = note off))
+enum int FHD_ShowPicker        =57;    // show picker (mode [0=plugins, 1=project] in Index, categories [gen=0/FX=1/both=-1/Patcher (includes VFX)=-2] in Value)
+enum int FHD_GetIdleOverflow   =58;    // ask the host for the # of extra frames Idle should process, generally 0 if no overflow/frameskip occured
+enum int FHD_ModalIdle         =59;    // used by FL plugins, when idling from a modal window, mainly for the smoothness hack
+enum int FHD_RenderProject     =60;    // prompt the rendering dialog in song mode
+enum int FHD_GetProjectInfo    =61;    // get project title, author, comments, URL, naked filename (Index), (returned as Result as a *PWideChar*)
+enum int FHD_ForceDetached     =62;    // used by Wrapper in OSX to force the plugin form to be detached
+enum int FHD_StartDrag         =63;    // sent by Patcher when starting dragging a preset
+enum int FHD_EndDrag           =64;    // sent by Patcher when finished dragging a preset
+enum int FHD_PreviewKey        =65;    // chance for host to handle keyboard messages, Index=flags in lower 16 bits (see KUD constants) and virtual key in second 16 bits, Value=KeyData from WM_KeyUp or WM_KeyDown message (0 if not available), returns 1 if handled and 0 if not
+enum int FHD_RenderWindowBitmap=66;    // used by ZgeViz
+enum int FHD_UpdateStealKBFocus=67;    // the plugin will steal kb input or not (Value is 1 or 0)
+//=68;    // [OBSOLETE]
+enum int FHD_GetPluginMenuMode =69;    // returns the view mode of the favorite plugin menus in FL: 0=categories 1=tree 2=flat
+enum int FHD_OpenTool          =70;    // open application in System\Tools folder. Index=tool to start (see OTI_ControlCreator), Value=PAnsiChar with command line params
+enum int FHD_GetPathManager	=71;	// returns IPathManager instance (pointer)
+enum int FHD_RegisterSideInput =72;	// let the host know that you intend to use a sidechained input, so latency can be calculated. Index=input index (first=1), Value=see RSIO_ constants
+enum int FHD_RegisterSideOutput=73;	// let the host know that you intend to use a sidechained output, so latency can be calculated. Index=output index (depends on use of GetInsBuffer or GetOutBuffer), Value=see RSIO_ constants
+
+enum int FHD_ReportError		=74; 	// report error during plugin load (will show combined dialog for all missing plugins after project is loaded or MsgBox in case we are adding plugin to project)
+enum int FHD_ShowStandardParamMenu=75; // ask FL to pop up a parameter menu, so the plugin doesn't have to implement it itself. Index is the parameter index.
+enum int FHD_GetContextInfo	=76; 	// get information about various things. Index is the information type (see CI_ constants), Value and result depend on the type
+enum int FHD_SetContextInfo	=77; 	// change some piece of context information. Index is the information type (see CI_ constants), Value and result depend on the type
+enum int FHD_GetExternalMedia	=78;    // set Flags (bits) as index, for example : EMD_SearchImages or EMD_DownloadFile to search and download images
+enum int FHD_Transport         =79;    // allows the plugin to control FL through some of the messages in GenericTransport. Index=message, Value=release/switch/hold value. Currently only FPT_Play and FPT_Stop are supported. Returns -1 if can't be handled, 0 if not handled, 1 if handled by focused plugin, 2 if handled by focused form, 4 if handled by menu, 5 if delayed, 8 if handled globally.
+enum int FHD_DownloadMissing   =80;    // notify FL about missing data pack
+enum int FHD_DownloadFinished  =81;    // notify FL that a pack download is finished
+enum int FHD_DebugBuild        =82;    // tell FL to show a [DEBUG] warning in the plugin window caption. Value is 0 (release) or 1 (debug)
+enum int FHD_PickVoiceColor    =83;    // Show the piano roll's color picker. Index = screen co-ordinates with x in first 2 bytes and y in next 2 bytes, Value = current color number (not an RGB value). Will call FPD_ColorWasPicked when the user selects a color.
+enum int FHD_GetColorRGBValue  =84;    // Get the RGB value for a color in a palette. Index is the color palette (see CP_ constants for available palettes). Value is the index in the palette. If Value is -1, this returns the count of colors in the palette.
+enum int FHD_ShowException     =85;    // Show application exception. Index is Exception.Message string. Value is Stack-trace string.
+enum int FHD_GetTranslationMoFile =86; // Get the current translation object (for Plugins)
+enum int FHD_PresetSelected    =87;    // tell the host internal preset is changed
+
+
 // event ID's
 enum int FPE_Tempo             =0;     // FLOAT tempo in value (need to typecast), & average samples per tick in Flags (DWORD) (warning: can be called from the mixing thread) (GM)
 enum int FPE_MaxPoly           =1;     // max poly in value (infinite if <=0) (only interesting for standalone generators)
@@ -179,6 +271,19 @@ align(4):
     int NumOutCtrls;   // number of internal output controllers
     int NumOutVoices;  // number of internal output voices
     int[30] Reserved;  // set to zero
+}
+
+// Same as Delphi type.
+struct TPoint
+{
+    int x, y;
+}
+
+// Same as Delphi type.
+struct TRect
+{
+    int x1, y1;
+    int x2, y2;
 }
 
 alias PFruityPlugInfo = TFruityPlugInfo*;

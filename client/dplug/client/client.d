@@ -73,6 +73,12 @@ nothrow @nogc:
     /// Returns: `true` if the host parent window has been resized.
     bool requestResize(int widthLogicalPixels, int heightLogicalPixels);
 
+    /// Tells the host that the plugin window HAS resized already, and the parent need to update. 
+    /// Only useful for FL Studio own plugin format right now.
+    /// To be useful, the `requestResize` must return false for this format, so that manual resize is performed.
+    /// Returns: `true` is the host will act on it, `false` if not supported in this format.
+    bool notifyResized();
+
     /// Report the identied host name (DAW).
     /// MAYDO: not available for LV2.
     DAW getDAW();
@@ -217,6 +223,10 @@ nothrow:
     ///     width New width of the plugin, in logical pixels.
     ///     height New height of the plugin, in logical pixels.
     bool requestResize(int widthLogicalPixels, int heightLogicalPixels);
+
+    /// Notify AFTER a manual resize of the plugin, so that the host updates its window.
+    /// Returns `true` if succeeded. Not needed if `requestResize` returned true.
+    bool notifyResized();
 
     /// Report the identied host name (DAW).
     DAW getDAW();
@@ -566,7 +576,7 @@ nothrow:
     /// - allow faster-than-buffer-size parameter changes (VST3)
     /// Returns: Maximum number of samples
     /// Warning: Some buffersize-related bugs might be hidden by having sub-buffers.
-    ///          If yoy are looking for a buffersize bug, maybe try to disable sub-buffers
+    ///          If you are looking for a buffersize bug, maybe try to disable sub-buffers
     ///          by returning the default 0.
     int maxFramesInProcess() nothrow @nogc
     {
@@ -942,6 +952,14 @@ nothrow:
             return false;
 
         return _hostCommand.requestResize(widthLogicalPixels, heightLogicalPixels);
+    }
+
+    bool notifyResized()
+    {
+        if (_hostCommand is null) 
+            return false;
+
+        return _hostCommand.notifyResized();
     }
 
     override DAW getDAW()

@@ -41,7 +41,7 @@ nothrow @nogc:
         this._client = client;
         initializeInfo();
 
-        _hostCommand = mallocNew!FLHostCommand(pHost);
+        _hostCommand = mallocNew!FLHostCommand(pHost, tag);
         _client.setHostCommand(_hostCommand);
 
         // If a synth ("generator" in FL dialect), it must supports 0-2.
@@ -158,7 +158,26 @@ nothrow @nogc:
                     return 0; // right return value according to TTestPlug
 
                 case FPD_WindowMinMax:               /* 5 */
-                    debug(logFLPClient) debugLog("Not implemented\n");
+                    // Minor lol, the FL SDK doesn't define the TRect and Tpoint, those are Delphi types.
+                    // Here we assume the ui thread is calling this, but not strictly defined in SDK.
+                    IGraphics graphics = _client.getGraphics();
+
+                    // Find min size, in logical pixels.
+                    int minX = 1, minY = 1;
+                    graphics.getNearestValidSize(&minX,& minY);
+
+                    // Find max size, in logical pixels.
+                    int maxX = 32768, maxY = 32768;
+                    graphics.getNearestValidSize(&maxX, &maxY);
+
+                    TRect* outRect = cast(TRect*)Index;
+                    outRect.x1 = minX;
+                    outRect.y1 = minY;
+                    outRect.x2 = maxX;
+                    outRect.y2 = maxY;
+                    TPoint* outSnap = cast(TPoint*)Value;
+                    outSnap.x = 1; // quite smooth really
+                    outSnap.y = 1;
                     return 0;
 
                 case FPD_KillAVoice:                 /* 6 */
@@ -576,14 +595,15 @@ private:
     }
 }
 
-class FLHostCommand: IHostCommand 
+class FLHostCommand : IHostCommand 
 {
 public:
 nothrow @nogc:
 
-    this(TFruityPlugHost pHost)
+    this(TFruityPlugHost pHost,TPluginTag tag)
     {
         _host = pHost;
+        _tag = tag;
     }
 
     ~this()
@@ -610,6 +630,12 @@ nothrow @nogc:
         return false;
     }
 
+    override bool notifyResized()
+    {
+        _host.Dispatcher(_tag, FHD_EditorResized, 0, 0);
+        return true;
+    }
+
     override DAW getDAW()
     {
         return DAW.FLStudio;
@@ -622,5 +648,5 @@ nothrow @nogc:
 
 private:
     TFruityPlugHost _host;
-
+    TPluginTag _tag;
 }
