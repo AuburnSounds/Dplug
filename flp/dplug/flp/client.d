@@ -10,8 +10,10 @@ import core.atomic;
 
 import dplug.core.nogc;
 import dplug.core.vec;
-import dplug.client.client;
 import dplug.core.runtime;
+import dplug.client.client;
+import dplug.client.graphics;
+import dplug.client.daw;
 import dplug.flp.types;
 
 
@@ -19,7 +21,7 @@ import dplug.flp.types;
 debug = logFLPClient;
 
 // SDK insists that there is such a global, not sure if needed yet.
-__gshared TFruityPlugHost g_host = null;
+//__gshared TFruityPlugHost g_host = null;
 
 
 final extern(C++) class FLPCLient : TFruityPlug
@@ -28,13 +30,16 @@ nothrow @nogc:
 
     this(TFruityPlugHost pHost, TPluginTag tag, Client client, bool* err)
     {
-        g_host = pHost;
+        //g_host = pHost;
 
         this.HostTag = tag;
         this.Info = &_fruityPlugInfo;
         this._host = pHost;
         this._client = client;
         initializeInfo();
+
+        _hostCommand = mallocNew!FLHostCommand(pHost);
+        _client.setHostCommand(_hostCommand);
 
         // If a synth ("generator" in FL dialect), it must supports 0-2.
         // If an effect, it must supports 2-2.
@@ -49,6 +54,11 @@ nothrow @nogc:
         *err = false;
         if (!compatibleIO)
             *err = true;
+    }
+
+    ~this()
+    {
+        destroyFree(_hostCommand);
     }
 
     // <Implements TFruityPlug>
@@ -101,8 +111,31 @@ nothrow @nogc:
             switch (ID)
             {
                 case FPD_ShowEditor:                 /* 0 */
+                    if (Value == 0)
+                    {
+                        // hide editor
+                        _client.closeGUI();
+                    }
+                    else
+                    {
+                        void* parent = cast(void*) Value;
+                        _client.openGUI(parent, null, GraphicsBackend.autodetect);
+                    }                    
+                    return 0;
+
                 case FPD_ProcessMode:                /* 1 */
+                    // "this ID can be ignored"
+                    // Gives a quality hint.
+                    return 0;
+
                 case FPD_Flush:                      /* 2 */
+                    // "FPD_Flush warns the plugin that the next samples do not follow immediately
+                    //  in time to the previous block of samples. In other words, the continuity is 
+                    //  broken."
+                    //
+                    // Interesting, Dplug plugins normally follow this already, since it's common
+                    // while the DAW is looping.
+                    return 0;
 
                 case FPD_SetBlockSize:               /* 3 */
                     // Client maxframes will change at next buffer asynchronously.
@@ -119,36 +152,53 @@ nothrow @nogc:
                 case FPD_UseVoiceLevels:             /* 7 */
                 case FPD_SetPreset:                  /* 9 */
                 case FPD_ChanSampleChanged:          /* 10 */
-                case FPD_SetEnabled:                 /* 11 */
+                    break;
+
+                case FPD_SetEnabled:                 /* 11 */  //
+                    // TODO: this is the bypass system
+                    break;
+
+
                 case FPD_SetPlaying:                 /* 12 */
-                case FPD_SongPosChanged:             /* 13 */
+                    return 0; // ignored
+
+
+                case FPD_SongPosChanged:             /* 13 */  //
                     break;
 
                 case FPD_SetTimeSig:                 /* 14 */
-                    // TODO
                     return 0; // ignored
 
                 case FPD_CollectFile:                /* 15 */
                 case FPD_SetInternalParam:           /* 16 */
-                case FPD_SetNumSends:                /* 17 */
+                    break;
+
+                case FPD_SetNumSends:                /* 17 */ //                    
+                    return 0; // ignored
+
                 case FPD_LoadFile:                   /* 18 */
                 case FPD_SetFitTime:                 /* 19 */
                     break;
                 
                 case FPD_SetSamplesPerTick:          /* 20 */
-                    // TODO
+                    // "FPD_SetSamplesPerTick lets you know how many samples there are in a "tick"
+                    //  (the basic period of time in FL Studio). This changes when the tempo, PPQ 
+                    //  or sample rate have changed. This can be called from the mixing thread."
+                    atomicStore(_hostSamplesInATick, Value);
                     return 0;
 
                 case FPD_SetIdleTime:                /* 21 */
-                case FPD_SetFocus:                   /* 22 */
+                    return 0; // ignored
+
+                case FPD_SetFocus:                   /* 22 */  //
                 case FPD_Transport:                  /* 23 */
                 case FPD_MIDIIn:                     /* 24 */
                 case FPD_RoutingChanged:             /* 25 */
                 case FPD_GetParamInfo:               /* 26 */
                 case FPD_ProjLoaded:                 /* 27 */
                 case FPD_WrapperLoadState:           /* 28 */
-                case FPD_ShowSettings:               /* 29 */
-                case FPD_SetIOLatency:               /* 30 */
+                case FPD_ShowSettings:               /* 29 */  //
+                case FPD_SetIOLatency:               /* 30 */  //
                 case FPD_PreferredNumIO:             /* 32 */
                 case FPD_GetGUIColor:                /* 33 */
                 case FPD_CloseAllWindows:            /* 34 */
@@ -158,12 +208,12 @@ nothrow @nogc:
                 case FPD_RegChanged:		         /* 38 */
                 case FPD_ArrangeWindows: 	         /* 39 */
                 case FPD_PluginLoaded:		         /* 40 */
-                case FPD_ContextInfoChanged:         /* 41 */
+                case FPD_ContextInfoChanged:         /* 41 */  //
                 case FPD_ProjectInfoChanged:         /* 42 */
                 case FPD_GetDemoPlugins:             /* 43 */
                 case FPD_UnLockDemoPlugins:          /* 44 */
                 case FPD_ColorWasPicked:             /* 46 */
-                case FPD_IsInDebugMode:              /* 47 */
+                case FPD_IsInDebugMode:              /* 47 */   //
                 case FPD_ColorsHaveChanged:          /* 48 */
                 case FPD_GetStateSizeEstimate:       /* 49 */
                 case FPD_UseIncreasedMIDIResolution: /* 50 */
@@ -213,6 +263,17 @@ nothrow @nogc:
             ScopedForeignCallback!(false, true) scopedCallback;
             scopedCallback.enter();
 
+            switch (EventID)
+            {
+                case FPE_Tempo:
+                    float tempo = *cast(float*)(&EventValue);
+                    atomicStore(_hostTempo, tempo);
+                    break;
+
+                default:
+                    break;
+            }
+
             debug(logFLPClient) debugLogf("ProcessEvent %d %d %d\n", EventID, EventValue, Flags);
             return 0;
         }
@@ -251,6 +312,21 @@ nothrow @nogc:
         @mixerThread
         void Gen_Render(PWAV32FS DestBuffer, ref int Length)
         {
+            // Oddity about Length:
+            // "The Length parameter in Gen_Render serves a somewhat different purpose than in 
+            //  Eff_Render. It still specifies how many samples are in the buffers for each 
+            //  channel, just like in Eff_Render. But this value is a maximum in Gen_Render. 
+            //  The generator may choose to generate less samples than Length specifies. In this 
+            //  case, Length has to be set to the actual amount of samples that were generated 
+            //  before the function returns. For this reason, Length in Gen_Render can be altered
+            //  by the function (it is a var parameter in Delphi and a reference (&) in C++)."
+            //
+            // But here we ignores that and just generates the maximum amount.
+
+            // "You can take a look at Osc3 for an example of what Gen_Render has to do."
+            // It seems FLStudio has an envelope and a knowledge of internal voices.
+            // TODO: lie to FL about one such voice existing, so that we can get this envelope thingy working.
+
             ScopedForeignCallback!(false, true) scopedCallback;
             scopedCallback.enter();
 
@@ -313,10 +389,12 @@ nothrow @nogc:
         {
         }
 
-        // MIDI input message (see FHD_WantMIDIInput & TMIDIOutMsg) (set Msg to MIDIMsg_Null if it has to be killed)
+        // MIDI input message
         @guiThread @mixerThread
         void MIDIIn(ref int Msg)
         {
+            // (see FHD_WantMIDIInput & TMIDIOutMsg) 
+            // (set Msg to MIDIMsg_Null if it has to be killed)
             // TODO
         }
 
@@ -349,24 +427,29 @@ nothrow @nogc:
 
 private:
 
-    Client _client;                         /// Wrapped generic client.
-    TFruityPlugHost _host;                  /// A whole lot of callbacks to host.
-    TFruityPlugInfo _fruityPlugInfo;        /// Plug-in formation for the host to read.
+    Client _client;                          /// Wrapped generic client.
+    TFruityPlugHost _host;                   /// A whole lot of callbacks to host.
+    TFruityPlugInfo _fruityPlugInfo;         /// Plug-in formation for the host to read.
+    FLHostCommand _hostCommand;              /// Host command object.
 
-    char[128] _longNameBuf;                 /// Buffer for plugin long name.
-    char[32] _shortNameBuf;                 /// Buffer for plugin short name.
+    char[128] _longNameBuf;                  /// Buffer for plugin long name.
+    char[32] _shortNameBuf;                  /// Buffer for plugin short name.
     
-    shared(size_t) _hostMaxFrames = 512;    /// Max frames that the host demanded.
-    @mixerThread int _clientMaxFrames = 0;  /// Max frames last used by client.    
-    shared(size_t) _hostSampleRate = 44100; /// Samplerate that the host demanded.
-    @mixerThread int _clientSampleRate = 0; /// Samplerate last used by client.
+    shared(size_t) _hostMaxFrames = 512;     /// Max frames that the host demanded.
+    @mixerThread int _clientMaxFrames = 0;   /// Max frames last used by client.    
+    shared(size_t) _hostSampleRate = 44100;  /// Samplerate that the host demanded.
+    @mixerThread int _clientSampleRate = 0;  /// Samplerate last used by client.
+    shared(size_t) _hostSamplesInATick = 32; /// Number of samples in a FL "tick".
+    shared(float) _hostTempo = 120.0f;       /// Tempo reported by host.
 
     @mixerThread float[][2] _inputBuf;       /// Temp buffers to deinterleave and pass to plug-in.
     @mixerThread float[][2] _outputBuf;      /// Plug-in outoput, deinterleaved.
 
     void initializeInfo()
     {
-        int flags                     = FPF_NewVoiceParams | FPF_MacNeedsNSView;
+        int flags                     = FPF_NewVoiceParams;
+        version(OSX)
+            flags |= FPF_MacNeedsNSView;
         if (_client.isSynth)   flags |= FPF_Generator;
         if (!_client.hasGUI)   flags |= FPF_Interfaceless; // SDK says it's not implemented? mm.
         if (_client.sendsMIDI) flags |= FPF_MIDIOut;
@@ -376,8 +459,8 @@ private:
             flags |= FPF_CantSmartDisable;
         }
 
-        _client.getPluginFullName(_longNameBuf.ptr, 128);        
-        _client.getPluginName(_shortNameBuf.ptr, 32);
+        _client.getPluginName(_longNameBuf.ptr, 128);        
+        _client.getPluginName(_shortNameBuf.ptr, 32); // yup, same name
         _fruityPlugInfo.SDKVersion   = 1;
         _fruityPlugInfo.LongName     = _longNameBuf.ptr;
         _fruityPlugInfo.ShortName    = _shortNameBuf.ptr;
@@ -387,7 +470,6 @@ private:
         _fruityPlugInfo.NumOutCtrls  = 0;
         _fruityPlugInfo.NumOutVoices = 0;
         _fruityPlugInfo.Reserved[]   = 0;
-
     }
 
     @mixerThread
@@ -434,4 +516,53 @@ private:
             output[n][1] = rightInput[n];
         }
     }
+}
+
+class FLHostCommand: IHostCommand 
+{
+public:
+nothrow @nogc:
+
+    this(TFruityPlugHost pHost)
+    {
+        _host = pHost;
+    }
+
+    ~this()
+    {
+    }
+
+    override void beginParamEdit(int paramIndex)
+    {
+        // TODO
+    }
+
+    override void paramAutomate(int paramIndex, float value)
+    {
+        // TODO
+    }
+
+    override void endParamEdit(int paramIndex)
+    {
+        // TODO
+    }
+    
+    override bool requestResize(int widthLogicalPixels, int heightLogicalPixels)
+    {
+        return false;
+    }
+
+    override DAW getDAW()
+    {
+        return DAW.FLStudio;
+    }
+
+    PluginFormat getPluginFormat()
+    {
+        return PluginFormat.flp;
+    }
+
+private:
+    TFruityPlugHost _host;
+
 }

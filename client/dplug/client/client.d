@@ -37,11 +37,12 @@ import dplug.client.daw;
 
 enum PluginFormat
 {
-    vst2,
-    vst3,
-    aax,
-    auv2,
-    lv2
+    vst2, // Virtual Studio Technology v2
+    vst3, // Virtual Studio Technology v3
+    aax,  // Avid Audio eXtension
+    auv2, // Audio Unit v2
+    lv2,  // LADSPA Version 2 
+    flp,  // Fruity Loops Plug-in, aka FP, aka FL
 }
 
 

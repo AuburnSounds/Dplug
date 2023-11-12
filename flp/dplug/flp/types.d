@@ -141,6 +141,14 @@ enum int FPD_UseIncreasedMIDIResolution = 50; // return 1 if increased MIDI reso
 enum int FPD_ConvertStringToValue = 51;  //let plugin do string to value conversion, value is pointer to TConvertStringToValueData record , used for custom type in value
 enum int FPD_GetParamType = 52; //return control (Index) param type, see //FPD_GetParamType options below
 
+// event ID's
+const int FPE_Tempo             =0;     // FLOAT tempo in value (need to typecast), & average samples per tick in Flags (DWORD) (warning: can be called from the mixing thread) (GM)
+const int FPE_MaxPoly           =1;     // max poly in value (infinite if <=0) (only interesting for standalone generators)
+// since MIDI plugins, or other plugin wrappers won't support the voice system, they should be notified about channel pan, vol & pitch changes
+const int FPE_MIDI_Pan          =2;     // MIDI channel panning (0..127) in EventValue, FL panning in -64..+64 in Flags (warning: can be called from the mixing thread) (GM)
+const int FPE_MIDI_Vol          =3;     // MIDI channel volume (0..127) in EventValue + volume as normalized float in Flags (need to typecast) (warning: can be called from the mixing thread) (GM)
+const int FPE_MIDI_Pitch        =4;     // MIDI channel pitch in *cents* (to be translated according to current pitch bend range) in EventValue (warning: can be called from the mixing thread) (GM)
+
 
 
 alias TPluginTag = intptr_t;
