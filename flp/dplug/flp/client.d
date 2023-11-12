@@ -8,9 +8,11 @@ module dplug.flp.client;
 
 import core.atomic;
 import core.stdc.stdio: snprintf;
+import core.stdc.string: strlen;
 
 import dplug.core.nogc;
 import dplug.core.vec;
+import dplug.core.sync;
 import dplug.core.runtime;
 import dplug.client.client;
 import dplug.client.params;
@@ -59,6 +61,8 @@ nothrow @nogc:
         *err = false;
         if (!compatibleIO)
             *err = true;
+
+        _graphicsMutex = makeMutex;
     }
 
     ~this()
@@ -120,7 +124,9 @@ nothrow @nogc:
                         // hide editor
                         if (_client.hasGUI)
                         {
+                            _graphicsMutex.lock();
                             _client.closeGUI();
+                            _graphicsMutex.unlock();
                             this.EditorHandle = null;
                         }
                     }
@@ -129,7 +135,9 @@ nothrow @nogc:
                         if (_client.hasGUI)
                         {
                             void* parent = cast(void*) Value;
+                            _graphicsMutex.lock();
                             void* windowHandle = _client.openGUI(parent, null, GraphicsBackend.autodetect);
+                            _graphicsMutex.unlock();
                             this.EditorHandle = windowHandle;
                         }
                     }
@@ -162,6 +170,8 @@ nothrow @nogc:
                 case FPD_WindowMinMax:               /* 5 */
                     // Minor lol, the FL SDK doesn't define the TRect and Tpoint, those are Delphi types.
                     // Here we assume the ui thread is calling this, but not strictly defined in SDK.
+
+                    _graphicsMutex.lock();
                     IGraphics graphics = _client.getGraphics();
 
                     // Find min size, in logical pixels.
@@ -171,6 +181,8 @@ nothrow @nogc:
                     // Find max size, in logical pixels.
                     int maxX = 32768, maxY = 32768;
                     graphics.getNearestValidSize(&maxX, &maxY);
+
+                    _graphicsMutex.unlock();
 
                     TRect* outRect = cast(TRect*)Index;
                     outRect.x1 = minX;
@@ -234,7 +246,37 @@ nothrow @nogc:
                 case FPD_Transport:                  /* 23 */
                 case FPD_MIDIIn:                     /* 24 */
                 case FPD_RoutingChanged:             /* 25 */
+                    debug(logFLPClient) debugLog("Not implemented\n");
+                    break;
+
                 case FPD_GetParamInfo:               /* 26 */
+                {
+                    enum int PI_CantInterpolate    = 1;     // makes no sense to interpolate parameter values (when values are not levels)
+                    enum int PI_Float              = 2;     // parameter is a normalized (0..1) single float. (Integer otherwise)
+                    enum int PI_Centered           = 4;     // parameter appears centered in event editors
+
+                    if (!_client.isValidParamIndex(cast(int)Index))
+                        return 0;
+
+                    Parameter param = _client.param(cast(int)Index);
+                    if (auto bp = cast(BoolParameter)param)
+                    {
+                        return PI_CantInterpolate;
+                    }
+                    else if (auto ip = cast(IntegerParameter)param)
+                    {
+                        return PI_CantInterpolate;
+                    }
+                    else if (auto fp = cast(FloatParameter)param)
+                    {
+                        return 0;
+                    }
+                    else
+                    {
+                        assert(false); // TODO whenever there is more parameter types around.
+                    }
+                }
+
                 case FPD_ProjLoaded:                 /* 27 */
                 case FPD_WrapperLoadState:           /* 28 */
                     debug(logFLPClient) debugLog("Not implemented\n");
@@ -331,7 +373,6 @@ nothrow @nogc:
             ScopedForeignCallback!(false, true) scopedCallback;
             scopedCallback.enter();
 
-            Name[0]  ='\0';
             if (Section == FPN_Param)
             {
                 if (!_client.isValidParamIndex(Index))
@@ -340,9 +381,20 @@ nothrow @nogc:
                 snprintf(Name, 256, "%*.s", cast(int)name.length, name.ptr);
                 Name[255] = '\0'; // DigitalMars snprintf workaround
             }
-            else
+            else if (Section == FPN_ParamValue)
             {
-                debug(logFLPClient) debugLogf("GetName %d %d %d\n", Section, Index, Value);
+                if (!_client.isValidParamIndex(Index))
+                    return;
+                Parameter param = _client.param(Index);
+                param.toDisplayN(Name, 256);
+                size_t len = strlen(Name);
+                string unitLabel = param.label();
+
+                // Add the unit if enough room.
+                if ((unitLabel.length > 0) && (len + unitLabel.length < 254))
+                {
+                    snprintf(Name + len, 256 - len, "%.*s", cast(int)unitLabel.length, unitLabel.ptr);
+                }
             }
         }
 
@@ -368,6 +420,8 @@ nothrow @nogc:
         @guiThread @mixerThread
         int ProcessParam(int Index, int Value, int RECFlags)
         {
+            int origValue = Value;
+
             enum int REC_UpdateValue       =1;     // update the value
             enum int REC_GetValue          =2;     // retrieves the value
             enum int REC_ShowHint          =4;     // updates the hint (if any)
@@ -631,6 +685,7 @@ private:
     TFruityPlugHost _host;                   /// A whole lot of callbacks to host.
     TFruityPlugInfo _fruityPlugInfo;         /// Plug-in formation for the host to read.
     FLHostCommand _hostCommand;              /// Host command object.
+    UncheckedMutex _graphicsMutex;           /// An oddity mandated by dplug:client.
 
     char[128] _longNameBuf;                  /// Buffer for plugin long name.
     char[32] _shortNameBuf;                  /// Buffer for plugin short name.

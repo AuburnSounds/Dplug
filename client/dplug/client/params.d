@@ -572,12 +572,6 @@ public:
         return _defaultValue;
     }
 
-private:
-    shared(int) _value;
-    int _min;
-    int _max;
-    int _defaultValue;
-
     final int fromNormalized(double normalizedValue) nothrow @nogc
     {
         double mapped = _min + (_max - _min) * normalizedValue;
@@ -605,6 +599,12 @@ private:
             v = 1.0;
         return v;
     }
+
+private:
+    shared(int) _value;
+    int _min;
+    int _max;
+    int _defaultValue;
 }
 
 class EnumParameter : IntegerParameter
