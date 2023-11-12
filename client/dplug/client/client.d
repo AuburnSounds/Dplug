@@ -839,6 +839,7 @@ nothrow:
     /// Calls processAudio repeatedly, splitting the buffers.
     /// Splitting allow to decouple memory requirements from the actual host buffer size.
     /// There is few performance penalty above 512 samples.
+    /// TODO: unclear when using this if inputs.ptr can/should be null in case of zero channels...
     void processAudioFromHost(float*[] inputs,
                               float*[] outputs,
                               int frames,
