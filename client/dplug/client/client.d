@@ -841,6 +841,8 @@ nothrow:
     /// Splitting allow to decouple memory requirements from the actual host buffer size.
     /// There is few performance penalty above 512 samples.
     /// TODO: unclear when using this if inputs.ptr can/should be null in case of zero channels...
+    ///
+    /// CAUTION: channel such as inputs[0]/outputs[0] are MODIFIED by this function.
     void processAudioFromHost(float*[] inputs,
                               float*[] outputs,
                               int frames,

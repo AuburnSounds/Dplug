@@ -142,13 +142,26 @@ enum int FPD_ConvertStringToValue = 51;  //let plugin do string to value convers
 enum int FPD_GetParamType = 52; //return control (Index) param type, see //FPD_GetParamType options below
 
 // event ID's
-const int FPE_Tempo             =0;     // FLOAT tempo in value (need to typecast), & average samples per tick in Flags (DWORD) (warning: can be called from the mixing thread) (GM)
-const int FPE_MaxPoly           =1;     // max poly in value (infinite if <=0) (only interesting for standalone generators)
+enum int FPE_Tempo             =0;     // FLOAT tempo in value (need to typecast), & average samples per tick in Flags (DWORD) (warning: can be called from the mixing thread) (GM)
+enum int FPE_MaxPoly           =1;     // max poly in value (infinite if <=0) (only interesting for standalone generators)
 // since MIDI plugins, or other plugin wrappers won't support the voice system, they should be notified about channel pan, vol & pitch changes
-const int FPE_MIDI_Pan          =2;     // MIDI channel panning (0..127) in EventValue, FL panning in -64..+64 in Flags (warning: can be called from the mixing thread) (GM)
-const int FPE_MIDI_Vol          =3;     // MIDI channel volume (0..127) in EventValue + volume as normalized float in Flags (need to typecast) (warning: can be called from the mixing thread) (GM)
-const int FPE_MIDI_Pitch        =4;     // MIDI channel pitch in *cents* (to be translated according to current pitch bend range) in EventValue (warning: can be called from the mixing thread) (GM)
+enum int FPE_MIDI_Pan          =2;     // MIDI channel panning (0..127) in EventValue, FL panning in -64..+64 in Flags (warning: can be called from the mixing thread) (GM)
+enum int FPE_MIDI_Vol          =3;     // MIDI channel volume (0..127) in EventValue + volume as normalized float in Flags (need to typecast) (warning: can be called from the mixing thread) (GM)
+enum int FPE_MIDI_Pitch        =4;     // MIDI channel pitch in *cents* (to be translated according to current pitch bend range) in EventValue (warning: can be called from the mixing thread) (GM)
 
+enum int CI_TrackName         = 0;  // (R/W) PAnsiChar encoded as UTF-8
+enum int CI_TrackIndex        = 1;  // (R)
+enum int CI_TrackColor        = 2;  // (R/W) color is RGBA
+enum int CI_TrackSelected     = 3;  // (R/W) the track is selected (0=false 1=true, 2=selected with other tracks)
+enum int CI_TrackFocused      = 4;  // (R) the track is focused for user input (0=false 1=true)
+enum int CI_TrackIsOutput     = 5;  // (R) the track sends directly to an audio device output (0=false, 1=true)
+enum int CI_TrackVolume       = 6;  // (R/W) (float+string) the value of the tracks' volume slider. Info is floating point (single / float) cast to an int32
+enum int CI_TrackPan          = 7;  // (R/W) (float+string) the value of the track's panning knob, as a single / float (-1..1) cast to int32
+enum int CI_TrackMuteSolo     = 8;  // (R/W) flags indicate mute and solo state for a track (see CIMS_ constants)
+enum int CI_TrackSendCount    = 9;  // (R) returns the send count for the plugin's track
+enum int CI_TrackSendLevel    = 10; // (R/W) (float+string) get or set the level for a specific send of this track. On read, Value holds the send index. On write, Value holds a pointer to a TContextInfo record with the new value in FloatValue.
+enum int CI_TrackMaxVolume    = 11; // (R) get the maximum value for mixer track volume
+enum int CI_TrackMaxSendLevel = 12; // (R) get the maximum value for mixer track send level
 
 
 alias TPluginTag = intptr_t;
@@ -164,7 +177,7 @@ align(4):
     int NumParams;     // (maximum) number of parameters, can be overridden using FHD_SetNumParams
     int DefPoly;       // preferred (default) max polyphony (Fruity manages polyphony) (0=infinite)
     int NumOutCtrls;   // number of internal output controllers
-	int NumOutVoices;  // number of internal output voices
+    int NumOutVoices;  // number of internal output voices
     int[30] Reserved;  // set to zero
 }
 
@@ -210,7 +223,7 @@ nothrow:
     // (M) calls are done inside the plugin lock (LockPlugin / UnlockPlugin)
     // + TriggerVoice and Voice_ functions are also called inside the plugin lock
     // + assume that any other call is not locked! (so call LockPlugin / UnlockPlugin where necessary, but no more than that)
-	// + don't call back to the host while inside a LockPlugin / UnlockPlugin block
+    // + don't call back to the host while inside a LockPlugin / UnlockPlugin block
 
     // messages (to the plugin)
     extern(Windows) abstract
