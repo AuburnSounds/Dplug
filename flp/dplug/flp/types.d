@@ -233,6 +233,20 @@ enum int FHD_GetTranslationMoFile =86; // Get the current translation object (fo
 enum int FHD_PresetSelected    =87;    // tell the host internal preset is changed
 
 
+enum int FPN_Param             =0;     // retrieve name of param Index
+enum int FPN_ParamValue        =1;     // retrieve text label of param Index for value Value (used in event editor)
+enum int FPN_Semitone          =2;     // retrieve name of note Index (used in piano roll), for color (=MIDI channel) Value
+enum int FPN_Patch             =3;     // retrieve name of patch Index (not used yet)
+enum int FPN_VoiceLevel        =4;     // retrieve name of per-voice param Index (default is filter cutoff (0) & resonance (1)) (optional)
+enum int FPN_VoiceLevelHint    =5;     // longer description for per-voice param (works like FPN_VoiceLevels)
+enum int FPN_Preset            =6;     // for plugins that support internal presets (mainly for the wrapper plugin), retrieve the name for program Index
+enum int FPN_OutCtrl           =7;     // for plugins that output controllers, retrieve the name of output controller Index
+enum int FPN_VoiceColor        =8;     // retrieve name of per-voice color (MIDI channel) Index
+enum int FPN_OutVoice          =9;     // for plugins that output voices, retrieve the name of output voice Index
+
+
+
+
 // event ID's
 enum int FPE_Tempo             =0;     // FLOAT tempo in value (need to typecast), & average samples per tick in Flags (DWORD) (warning: can be called from the mixing thread) (GM)
 enum int FPE_MaxPoly           =1;     // max poly in value (infinite if <=0) (only interesting for standalone generators)

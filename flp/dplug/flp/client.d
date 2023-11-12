@@ -7,11 +7,13 @@ License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
 module dplug.flp.client;
 
 import core.atomic;
+import core.stdc.stdio: snprintf;
 
 import dplug.core.nogc;
 import dplug.core.vec;
 import dplug.core.runtime;
 import dplug.client.client;
+import dplug.client.params;
 import dplug.client.graphics;
 import dplug.client.daw;
 import dplug.flp.types;
@@ -285,7 +287,9 @@ nothrow @nogc:
                     break;
 
                 case FPD_UseIncreasedMIDIResolution: /* 50 */
-                    return 1; // increased MIDI resolution is supported
+                    // increased MIDI resolution is supported, this seems related to REC_FromMIDI 
+                    // having an updated range.
+                    return 1; 
 
                 case FPD_ConvertStringToValue:       /* 51 */
                 case FPD_GetParamType:               /* 52 */
@@ -324,16 +328,28 @@ nothrow @nogc:
         @guiThread
         void GetName(int Section, int Index, int Value, char *Name)
         {
-            debug(logFLPClient) debugLogf("GetName %d %d %d\n", Section, Index, Value);
+            ScopedForeignCallback!(false, true) scopedCallback;
+            scopedCallback.enter();
+
+            Name[0]  ='\0';
+            if (Section == FPN_Param)
+            {
+                if (!_client.isValidParamIndex(Index))
+                    return;
+                string name = _client.param(Index).name;
+                snprintf(Name, 256, "%*.s", cast(int)name.length, name.ptr);
+                Name[255] = '\0'; // DigitalMars snprintf workaround
+            }
+            else
+            {
+                debug(logFLPClient) debugLogf("GetName %d %d %d\n", Section, Index, Value);
+            }
         }
 
         // events
         @guiThread @mixerThread
         int ProcessEvent(int EventID, int EventValue, int Flags)
         {
-            ScopedForeignCallback!(false, true) scopedCallback;
-            scopedCallback.enter();
-
             switch (EventID)
             {
                 case FPE_Tempo:
@@ -352,11 +368,120 @@ nothrow @nogc:
         @guiThread @mixerThread
         int ProcessParam(int Index, int Value, int RECFlags)
         {
+            enum int REC_UpdateValue       =1;     // update the value
+            enum int REC_GetValue          =2;     // retrieves the value
+            enum int REC_ShowHint          =4;     // updates the hint (if any)
+            enum int REC_UpdateControl     =16;    // updates the wheel/knob
+            enum int REC_FromMIDI          =32;    // value from 0 to FromMIDI_Max has to be translated (& always returned, even if REC_GetValue isn't set)
+            enum int REC_NoLink            =1024;  // don't check if wheels are linked (internal to plugins, useful for linked controls)
+            enum int REC_InternalCtrl      =2048;  // sent by an internal controller - internal controllers should pay attention to those, to avoid nasty feedbacks
+            enum int REC_PlugReserved      =4096;  // free to use by plugins
+
             ScopedForeignCallback!(false, true) scopedCallback;
             scopedCallback.enter();
 
-            debug(logFLPClient) debugLogf("ProcessParam %d %d %d\n", Index, Value, RECFlags);
-            return 0;
+            if ( ! _client.isValidParamIndex(Index))
+            {
+                return Value; // well,  as gain example
+            }
+
+            // Rather protracted callback.
+            //
+            // "First, you need to check if REC_FromMIDI is included. If it is, this means that the
+            //  Value parameter contains a value between 0 and <smthg>. This Value then needs to be 
+            //  translated to fall in the range that the plugin uses for the parameter. For this 
+            //  reason, TDelphiFruityPlug and TCPPFruityPlug implement the function TranslateMidi. 
+            //  You pass it Value and the minimum and maximum value of your parameter, and it 
+            //  returns the right value.
+            //  REC_FromMIDI is really important and has to be supported by the plugin. It is not 
+            //  just used by FL Studio to provide you with a new parameter value, but also to 
+            //  determine the minimum and maximum values for a parameter."
+
+            Parameter param = _client.param(Index);
+            float Valuef; // use instead of Value, if the parameter is FloatParameter.
+          
+            if (RECFlags & REC_FromMIDI)
+            {
+                // Example says 1073741824 as max value
+                // Doc says 65536 as max value, but it is wrong.
+                double normalizeMIDI = 1.0 / 1073741824.0;
+                double fNormValue = Value * normalizeMIDI;
+                
+                if (auto bp = cast(BoolParameter)param)
+                {
+                    bool bValue = fNormValue >= 0.5;
+                    Value = bp.value();
+                }
+                else if (auto ip = cast(IntegerParameter)param)
+                {
+                    Value = ip.fromNormalized(fNormValue);
+                }
+                else if (auto fp = cast(FloatParameter)param)
+                {
+                    Valuef = fp.fromNormalized(fNormValue);
+                }
+                else
+                {
+                    assert(false); // TODO whenever there is more parameter types around.
+                }
+            }
+            else
+            {
+                Valuef = 0.0f; // whatever, will be unused
+                if (auto fp = cast(FloatParameter)param)
+                {
+                    Valuef = *cast(float*)&Value;
+                }
+            }
+
+            // At this point, both Value (or Valuef) contain a value provided by the host.
+            // In non-normalized space.
+
+            if (RECFlags & REC_UpdateValue)
+            {
+                // Choosing to ignore REC_UpdateControl here, not sure why it would be the host
+                // prerogative. Especially with the issue of double-updates when editing.
+                //
+                // Parameters setFromHost take only normalized things, so that's what we do, we
+                // get (back?) to normalized space.
+                if (auto bp = cast(BoolParameter)param)
+                {
+                    bp.setFromHost(Value ? 1.0 : 0.0);
+                }
+                else if (auto ip = cast(IntegerParameter)param)
+                {
+                    ip.setFromHost(ip.toNormalized(Value));
+                }
+                else if (auto fp = cast(FloatParameter)param)
+                {
+                    fp.setFromHost(fp.toNormalized(Valuef));
+                }
+                else
+                {
+                    assert(false);
+                }
+            }
+            else if (RECFlags & REC_GetValue) 
+            {
+                if (auto bp = cast(BoolParameter)param)
+                {
+                    Value = bp.value() ? 1 : 0;
+                }
+                else if (auto ip = cast(IntegerParameter)param)
+                {
+                    Value = ip.value();
+                }
+                else if (auto fp = cast(FloatParameter)param)
+                {
+                    float v = fp.value();
+                    Value = *cast(int*)&v;
+                }
+                else
+                {
+                    assert(false);
+                }
+            }
+            return Value;
         }
 
         // effect processing (source & dest can be the same)
