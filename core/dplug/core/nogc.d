@@ -1151,7 +1151,7 @@ private
     }
 
     // Do the inverse of above (convert an ASCII value into the Base64 character set)
-    ubyte lookup_decoding(ubyte i, char plusChar = '+', char slashChar = '/', bool* err)
+    ubyte lookup_decoding(ubyte i, char plusChar, char slashChar, bool* err)
         pure nothrow @nogc @safe
     {
         *err = false;
@@ -1205,10 +1205,11 @@ ubyte[] decodeBase64(scope const(char)[] data, char plusChar = '+', char slashCh
 
 /// Decode a Base64 encoded value, appending the result onto a `Vec!ubyte`.
 /// Reusing the same `Vec!ubyte` allows you to avoid reallocations.
+/// Note: `err` must point to a `bool` and cannot be null. Ugly signature sorry.
 void decodeBase64(scope const(ubyte)[] data,
                   ref Vec!ubyte outBuffer,
-                  char plusChar = '+',
-                  char slashChar = '/',
+                  char plusChar,  // typically: '+'
+                  char slashChar, // typically: '/'
                   bool* err) nothrow @nogc @safe
 {
     outBuffer.clearContents();
