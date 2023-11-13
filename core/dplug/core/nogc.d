@@ -1151,7 +1151,7 @@ private
     }
 
     // Do the inverse of above (convert an ASCII value into the Base64 character set)
-    ubyte lookup_decoding(ubyte i, char plusChar = '+', char slashChar = '/', bool* err)
+    ubyte lookup_decoding(ubyte i, char plusChar = '+', char slashChar = '/', bool* err = null)
         pure nothrow @nogc @safe
     {
         *err = false;
@@ -1209,7 +1209,7 @@ void decodeBase64(scope const(ubyte)[] data,
                   ref Vec!ubyte outBuffer,
                   char plusChar = '+',
                   char slashChar = '/',
-                  bool* err) nothrow @nogc @safe
+                  bool* err = null) nothrow @nogc @safe
 {
     outBuffer.clearContents();
     *err = false;
