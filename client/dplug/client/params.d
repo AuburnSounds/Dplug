@@ -157,6 +157,7 @@ nothrow:
         return getNormalized();
     }
 
+    /// Output a string representation of a `Parameter`.
     void toDisplayN(char* buffer, size_t numBytes)
     {
         toStringN(buffer, numBytes);
