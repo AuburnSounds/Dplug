@@ -20,7 +20,7 @@ import dplug.flp.client;
 template FLPEntryPoint(alias ClientClass)
 {
     static immutable enum create_plugin_instance =
-        "export extern(Windows) void* CreatePlugInstance(void* Host, size_t Tag) nothrow @nogc" ~
+        "export extern(C) void* CreatePlugInstance(void* Host, size_t Tag) nothrow @nogc" ~
         "{" ~
         "    return CreatePlugInstance_templated!" ~ ClientClass.stringof ~ "(Host, Tag);" ~
         "}\n";

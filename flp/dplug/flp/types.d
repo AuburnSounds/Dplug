@@ -349,7 +349,7 @@ nothrow:
     // + don't call back to the host while inside a LockPlugin / UnlockPlugin block
 
     // messages (to the plugin)
-    extern(Windows) abstract
+    extern(System) abstract
     {
         void DestroyObject();  // (G)
         intptr_t Dispatcher(intptr_t ID, intptr_t Index, intptr_t Value);  // (GM)
@@ -427,7 +427,7 @@ nothrow:
 
     // *** functions ***
 
-    extern(Windows) abstract
+    extern(System) abstract
     {
         // messages (to the host) (Sender=plugin tag)
         intptr_t Dispatcher(TPluginTag Sender, intptr_t ID, intptr_t Index, intptr_t Value);

@@ -95,7 +95,7 @@ nothrow @nogc:
     private enum mixerThread = 0;
     private enum midiSyncThread = 0;
 
-    extern(Windows) override
+    extern(System) override
     {
         @guiThread
         void DestroyObject()
@@ -856,7 +856,6 @@ nothrow @nogc:
 
     void setNumPresets(int numPresets)
     {
-        
         int res = cast(int) _host.Dispatcher(_tag, FHD_SetNumPresets, 0, numPresets);
         debugLogf("setNumPresets = %d returned %d\n", numPresets, res);
     }
