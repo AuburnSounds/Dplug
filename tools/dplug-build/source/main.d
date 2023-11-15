@@ -159,6 +159,7 @@ int main(string[] args)
         bool skipRegistry = false;
         bool parallel = false;
         bool legacyPT10 = false;
+        bool finalFlag = false;
         string prettyName = null;
         string rootDir = ".";
 
@@ -171,6 +172,7 @@ int main(string[] args)
             string arg = args[i];
             if (arg == "--final")
             {
+                finalFlag = true;
                 args = args[0..i] ~ ["--combined",
                                      "-b",
                                      "release-nobounds"] ~ args[i+1..$];
@@ -320,8 +322,13 @@ int main(string[] args)
             throw new Exception("Can't have both --quiet and --verbose flags.");
 
         if (targetOS == OS.macOS)
+        {
             if (notarize && !makeInstaller)
                 throw new Exception("Flag --notarize cannot be used without --installer.");
+
+            if (finalFlag && makeInstaller && !notarize)
+                warning("--final and --installer used but not --notarize. Users will see an \"unidentified developer\" pop-up.");
+        }
 
         if (archs is null)
         {
