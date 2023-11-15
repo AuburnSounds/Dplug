@@ -146,6 +146,11 @@ nothrow @nogc:
                 case FPD_ProcessMode:                /* 1 */
                     // "this ID can be ignored"
                     // Gives a quality hint.
+
+                    // Tell how many internal presets there are.
+                    // Quite arbitrarily, this is where we choose to change preset number.
+                    // Doing this at plugin creation is ignored.
+                    _hostCommand.setNumPresets( _client.presetBank.numPresets() );
                     return 0;
 
                 case FPD_Flush:                      /* 2 */
@@ -196,7 +201,21 @@ nothrow @nogc:
 
                 case FPD_KillAVoice:                 /* 6 */
                 case FPD_UseVoiceLevels:             /* 7 */
+                    debug(logFLPClient) debugLog("Not implemented\n");
+                    break;
+
                 case FPD_SetPreset:                  /* 9 */
+                {
+                    int presetIndex = cast(int)Index;
+                    if (!_client.presetBank.isValidPresetIndex(presetIndex))
+                        return 0;
+            
+                    // Load preset, doesn't change "current" preset in PresetBank, doesn't
+                    // overwrite presetbank.
+                    _client.presetBank.preset(presetIndex).loadFromHost(_client);
+                    return 0;
+                }
+
                 case FPD_ChanSampleChanged:          /* 10 */
                     debug(logFLPClient) debugLog("Not implemented\n");
                     break;
@@ -395,6 +414,15 @@ nothrow @nogc:
                 {
                     snprintf(Name + len, 256 - len, "%.*s", cast(int)unitLabel.length, unitLabel.ptr);
                 }
+            }
+            else if (Section == FPN_Preset)
+            {
+                if (!_client.presetBank.isValidPresetIndex(Index))
+                    return;
+
+                const(char)[] name = _client.presetBank.preset(Index).name;
+                snprintf(Name, 256, "%.*s", cast(int)name.length, name.ptr);
+                Name[255] = '\0'; // DigitalMars snprintf workaround                
             }
         }
 
@@ -825,6 +853,14 @@ nothrow @nogc:
     {
         return PluginFormat.flp;
     }
+
+    void setNumPresets(int numPresets)
+    {
+        
+        int res = cast(int) _host.Dispatcher(_tag, FHD_SetNumPresets, 0, numPresets);
+        debugLogf("setNumPresets = %d returned %d\n", numPresets, res);
+    }
+
 
 private:
     TFruityPlugHost _host;
