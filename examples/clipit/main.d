@@ -76,7 +76,16 @@ nothrow:
     override Preset[] buildPresets()
     {
         auto presets = makeVec!Preset();
-        presets ~= makeDefaultPreset();
+        auto p1 = makeDefaultPreset();
+        p1.setName("Loud");
+        p1.getNormalizedParamValues[0] = 0.0;
+        presets ~= p1;
+
+        auto p2 = makeDefaultPreset();
+        p2.setName("Hohoho");
+        p2.getNormalizedParamValues[0] = 1.0;
+        presets ~= p2;
+
         return presets.releaseData();
     }
 

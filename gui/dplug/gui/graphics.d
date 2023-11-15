@@ -502,7 +502,14 @@ package:
 
         // Here we request the native window to resize.
         // The actual resize will be received by the window listener, later.
-        return _window.requestResize(widthLogicalPixels, heightLogicalPixels, needResizeParentWindow);
+        bool success = _window.requestResize(widthLogicalPixels, heightLogicalPixels, needResizeParentWindow);
+
+        // FL Studio format is different, the host needs to be notified _after_ a manual resize.
+        if (success && _client.getPluginFormat() == PluginFormat.flp)
+        {
+            success = _client.notifyResized;
+        }
+        return success;
     }
 
     final void getUINearestValidSize(int* widthLogicalPixels, int* heightLogicalPixels)

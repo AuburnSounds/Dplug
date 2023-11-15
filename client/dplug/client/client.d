@@ -37,11 +37,12 @@ import dplug.client.daw;
 
 enum PluginFormat
 {
-    vst2,
-    vst3,
-    aax,
-    auv2,
-    lv2
+    vst2, // Virtual Studio Technology v2
+    vst3, // Virtual Studio Technology v3
+    aax,  // Avid Audio eXtension
+    auv2, // Audio Unit v2
+    lv2,  // LADSPA Version 2 
+    flp,  // Fruity Loops Plug-in, aka FP, aka FL
 }
 
 
@@ -71,6 +72,12 @@ nothrow @nogc:
     ///     height New height of the plugin, in logical pixels.
     /// Returns: `true` if the host parent window has been resized.
     bool requestResize(int widthLogicalPixels, int heightLogicalPixels);
+
+    /// Tells the host that the plugin window HAS resized already, and the parent need to update. 
+    /// Only useful for FL Studio own plugin format right now.
+    /// To be useful, the `requestResize` must return false for this format, so that manual resize is performed.
+    /// Returns: `true` is the host will act on it, `false` if not supported in this format.
+    bool notifyResized();
 
     /// Report the identied host name (DAW).
     /// MAYDO: not available for LV2.
@@ -216,6 +223,10 @@ nothrow:
     ///     width New width of the plugin, in logical pixels.
     ///     height New height of the plugin, in logical pixels.
     bool requestResize(int widthLogicalPixels, int heightLogicalPixels);
+
+    /// Notify AFTER a manual resize of the plugin, so that the host updates its window.
+    /// Returns `true` if succeeded. Not needed if `requestResize` returned true.
+    bool notifyResized();
 
     /// Report the identied host name (DAW).
     DAW getDAW();
@@ -565,7 +576,7 @@ nothrow:
     /// - allow faster-than-buffer-size parameter changes (VST3)
     /// Returns: Maximum number of samples
     /// Warning: Some buffersize-related bugs might be hidden by having sub-buffers.
-    ///          If yoy are looking for a buffersize bug, maybe try to disable sub-buffers
+    ///          If you are looking for a buffersize bug, maybe try to disable sub-buffers
     ///          by returning the default 0.
     int maxFramesInProcess() nothrow @nogc
     {
@@ -732,6 +743,19 @@ nothrow:
         }
     }
 
+    /// Returns: Plugin name "$PRODUCT"
+    final void getPluginName(char* p, int bufLength) const nothrow @nogc
+    {
+        snprintf(p, bufLength, "%.*s",
+                 cast(int)(_info.pluginName.length), _info.pluginName.ptr);
+
+        // DigitalMars's snprintf doesn't always add a terminal zero
+        if (bufLength > 0)
+        {
+            p[bufLength-1] = '\0';
+        }
+    }
+
     /// Returns: Plugin version in x.x.x.x decimal form.
     final PluginVersion getPublicVersion() pure const nothrow @nogc
     {
@@ -826,6 +850,9 @@ nothrow:
     /// Calls processAudio repeatedly, splitting the buffers.
     /// Splitting allow to decouple memory requirements from the actual host buffer size.
     /// There is few performance penalty above 512 samples.
+    /// TODO: unclear when using this if inputs.ptr can/should be null in case of zero channels...
+    ///
+    /// CAUTION: channel such as inputs[0]/outputs[0] are MODIFIED by this function.
     void processAudioFromHost(float*[] inputs,
                               float*[] outputs,
                               int frames,
@@ -925,6 +952,14 @@ nothrow:
             return false;
 
         return _hostCommand.requestResize(widthLogicalPixels, heightLogicalPixels);
+    }
+
+    bool notifyResized()
+    {
+        if (_hostCommand is null) 
+            return false;
+
+        return _hostCommand.notifyResized();
     }
 
     override DAW getDAW()

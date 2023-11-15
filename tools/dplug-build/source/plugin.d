@@ -110,6 +110,8 @@ string stripConfig(string config) pure nothrow @nogc
         return config[4..$];
     if (config.length >= 4 && config[0..4] == "LV2-")
         return config[4..$];
+    if (config.length >= 4 && config[0..4] == "FLP-")
+        return config[4..$];
     return null;
 }
 
@@ -138,27 +140,32 @@ bool configIsLV2(string config) pure nothrow @nogc
     return config.length >= 3 && config[0..3] == "LV2";
 }
 
+bool configIsFLP(string config) pure nothrow @nogc
+{
+    return config.length >= 3 && config[0..3] == "FLP";
+}
+
+
 
 struct Plugin
 {
-    string rootDir; // relative or absolute path to dub.json directory (is is given by --root)
-    string name;       // name, extracted from dub.json(eg: 'distort')
+    string rootDir;               // relative or absolute path to dub.json directory (is is given by --root)
+    string name;                  // name, extracted from dub.json or dub.sdl (eg: 'distort')
     string CFBundleIdentifierPrefix;
-    string licensePath;    // can be null
+    string licensePath;           // can be null
     string iconPathWindows;       // can be null or a path to a .ico
-    string iconPathOSX;       // can be null or a path to a (large) .png
+    string iconPathOSX;           // can be null or a path to a (large) .png
     bool hasGUI;
-    string dubTargetPath;  // extracted from dub.json, used to build the dub output file path
+    string dubTargetPath;         // extracted from dub.json, used to build the dub output file path
 
-    string pluginName;     // Prettier name, extracted from plugin.json (eg: 'Distorter')
+    string pluginName;            // Prettier name, extracted from plugin.json (eg: 'Distorter', 'Graillon 2')
     string pluginUniqueID;
     string pluginHomepage;
     string vendorName;
     string vendorUniqueID;
     string vendorSupportEmail;
 
-    // Available configurations, taken from dub.json
-    string[] configurations;
+    string[] configurations;      // Available configurations, taken from dub.json
 
     // Public version of the plugin
     // Each release of a plugin should upgrade the version somehow
@@ -685,8 +692,10 @@ Plugin readPluginDescription(string rootDir)
             &&!configIsVST2(cname)
             &&!configIsVST3(cname)
             &&!configIsAU(cname)
-            &&!configIsLV2(cname))
-            throw new Exception(format("Configuration name should start with \"VST2\", \"VST3\", \"AU\", \"AAX\", or \"LV2\". '%s' is not a valid configuration name.", cname));
+            &&!configIsLV2(cname)
+            &&!configIsFLP(cname)
+            )
+            throw new Exception(format("Configuration name should start with \"VST2\", \"VST3\", \"AU\", \"AAX\", \"LV2\", or \"FLP\". '%s' is not a valid configuration name.", cname));
     }
 
     try
@@ -713,7 +722,8 @@ Plugin readPluginDescription(string rootDir)
     }
     catch(Exception e)
     {
-        warning("Couldln't parse configurations names in dub.json/dub.sdl.");
+        warning(e.msg);
+        warning("At least one configuration was skipped by dplug-build because of invalid prefix.");
         result.configurations = [];
     }
 

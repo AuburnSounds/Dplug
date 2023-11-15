@@ -2110,6 +2110,11 @@ nothrow:
         return frame.resizeView(view, &rect) == kResultOk;
     }
 
+    override bool notifyResized()
+    {
+        return false;
+    }
+
     DAW getDAW()
     {
         return _vst3Client._daw;

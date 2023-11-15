@@ -2305,6 +2305,11 @@ private:
             return true;
         }
 
+        override bool notifyResized()
+        {
+            return false;
+        }
+
         DAW _daw = DAW.Unknown;
 
         override DAW getDAW()
