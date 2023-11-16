@@ -13,10 +13,12 @@ import core.stdc.string: strlen;
 import dplug.core.nogc;
 import dplug.core.vec;
 import dplug.core.sync;
+import dplug.core.thread;
 import dplug.core.runtime;
 import dplug.client.client;
 import dplug.client.params;
 import dplug.client.graphics;
+import dplug.client.midi;
 import dplug.client.daw;
 import dplug.flp.types;
 
@@ -63,6 +65,10 @@ nothrow @nogc:
             *err = true;
 
         _graphicsMutex = makeMutex;
+        _midiInputMutex = makeMutex;
+
+        if (_client.receivesMIDI)
+            _hostCommand.wantsMIDIInput();
     }
 
     ~this()
@@ -151,6 +157,7 @@ nothrow @nogc:
                     // Quite arbitrarily, this is where we choose to change preset number.
                     // Doing this at plugin creation is ignored.
                     _hostCommand.setNumPresets( _client.presetBank.numPresets() );
+
                     return 0;
 
                 case FPD_Flush:                      /* 2 */
@@ -263,7 +270,16 @@ nothrow @nogc:
                     return 0;
 
                 case FPD_Transport:                  /* 23 */
+                    debug(logFLPClient) debugLog("Not implemented\n");
+                    break;
+
                 case FPD_MIDIIn:                     /* 24 */
+                {
+                    // Not sure when this message should come.
+                    debug(logFLPClient) debugLog("FPD_MIDIIn\n");
+                    break;
+                }
+
                 case FPD_RoutingChanged:             /* 25 */
                     debug(logFLPClient) debugLog("Not implemented\n");
                     break;
@@ -326,7 +342,7 @@ nothrow @nogc:
 
                 case FPD_ContextInfoChanged:         /* 41 */
                     // "Index holds the type of information (see CI_ constants), call FHD_GetContextInfo for the new value(s)"
-                    debugLogf("Context info %d changed\n", Index);
+                    debug(logFLPClient) debugLogf("Context info %d changed\n", Index);
                     // TODO probably something to do for CI_TrackPan and CI_TrackVolume, host always give this
                     return 0;
 
@@ -574,6 +590,7 @@ nothrow @nogc:
             scopedCallback.enter();
 
             resetClientIfNeeded(2, 2, Length);
+            enqueuePendingMIDIInputMessages();
 
             float*[2] pInputs  = [ _inputBuf[0].ptr,  _inputBuf[1].ptr  ];
             float*[2] pOutputs = [ _outputBuf[0].ptr, _outputBuf[1].ptr ];
@@ -606,12 +623,12 @@ nothrow @nogc:
 
             // "You can take a look at Osc3 for an example of what Gen_Render has to do."
             // It seems FLStudio has an envelope and a knowledge of internal voices.
-            // TODO: lie to FL about one such voice existing, so that we can get this envelope thingy working.
 
             ScopedForeignCallback!(false, true) scopedCallback;
             scopedCallback.enter();
 
             resetClientIfNeeded(0, 2, Length);
+            enqueuePendingMIDIInputMessages();
 
             float*[2] pInputs  = [ _inputBuf[0].ptr,  _inputBuf[1].ptr ];
             float*[2] pOutputs = [ _outputBuf[0].ptr, _outputBuf[1].ptr ];
@@ -675,9 +692,34 @@ nothrow @nogc:
         @guiThread @mixerThread
         void MIDIIn(ref int Msg)
         {
-            // (see FHD_WantMIDIInput & TMIDIOutMsg) 
-            // (set Msg to MIDIMsg_Null if it has to be killed)
-            // TODO
+            // If host calls this despite not receiving MIDI, we should evaluate our assumptions
+            // regarding FL and MIDI Input.
+            assert(_client.receivesMIDI);
+
+            // This is our own Mutex
+            ubyte status = Msg & 255;
+            ubyte data1  = (Msg >>> 8) & 255;
+            ubyte data2  = (Msg >>> 16) & 255;
+
+            // In practice, MIDIIn is called from the mixer thread, so no sync issue are seen 
+            // happen with guiThread calling `MIDIIn`. But since it's still possible from 
+            // documentation, let's be good citizens and use a separate buffer.
+            // Then enqueue it from the mixer thread before a buffer.
+            int offset = 0; // FLStudio pass no offset, maybe it splits buffers alongside MIDI messages?
+            MidiMessage msg = MidiMessage(offset, status, data1, data2);
+
+            _midiInputMutex.lock();
+            _incomingMIDI.pushBack(msg);
+            _midiInputMutex.unlock();
+
+            // Why would we "kill" the message? Not sure. FLStudio uses a rather clean Port + Channel way to route MIDI.
+            // So: let's not kill it.
+            bool kill = false;
+            if (kill)
+            {
+                enum int MIDIMsg_Null = 0xFFFF_FFFF;
+                Msg = MIDIMsg_Null; // kill message
+            }
         }
 
         // buffered messages to itself (see PlugMsg_Delayed)
@@ -730,14 +772,18 @@ private:
     @mixerThread float[][2] _inputBuf;       /// Temp buffers to deinterleave and pass to plug-in.
     @mixerThread float[][2] _outputBuf;      /// Plug-in outoput, deinterleaved.
 
+    Vec!MidiMessage _incomingMIDI;           /// Incoming MIDI messages for next buffer.
+    UncheckedMutex _midiInputMutex;          /// Protects access to _incomingMIDI.
+
     void initializeInfo()
     {
         int flags                     = FPF_NewVoiceParams;
         version(OSX)
             flags |= FPF_MacNeedsNSView;
-        if (_client.isSynth)   flags |= FPF_Generator;
-        if (!_client.hasGUI)   flags |= FPF_NoWindow; // SDK says it's not implemented? mm.
-        if (_client.sendsMIDI) flags |= FPF_MIDIOut;
+        if (_client.isSynth)      flags |= FPF_Generator;
+        if (!_client.hasGUI)      flags |= FPF_NoWindow; // SDK says it's not implemented? mm.
+        if (_client.sendsMIDI)    flags |= FPF_MIDIOut;
+        if (_client.receivesMIDI) flags |= FPF_GetNoteInput;
 
         if (_client.tailSizeInSeconds() == float.infinity) 
         {
@@ -801,6 +847,21 @@ private:
             output[n][1] = rightInput[n];
         }
     }
+
+    @mixerThread
+    void enqueuePendingMIDIInputMessages()
+    {
+        if (!_client.receivesMIDI)
+            return;
+
+        _midiInputMutex.lock();
+        foreach(msg; _incomingMIDI[])
+        {
+            _client.enqueueMIDIFromHost(msg);
+        }
+        _incomingMIDI.clearContents();
+        _midiInputMutex.unlock();
+    }
 }
 
 class FLHostCommand : IHostCommand 
@@ -857,9 +918,17 @@ nothrow @nogc:
     void setNumPresets(int numPresets)
     {
         int res = cast(int) _host.Dispatcher(_tag, FHD_SetNumPresets, 0, numPresets);
-        debugLogf("setNumPresets = %d returned %d\n", numPresets, res);
     }
 
+    void wantsMIDIInput()
+    {
+        _host.Dispatcher(_tag, FHD_WantMIDIInput, 0, 1);
+    }
+
+    void reportLatency(int latencySamples)
+    {
+        _host.Dispatcher(_tag, FHD_SetLatency, 0, latencySamples);
+    }
 
 private:
     TFruityPlugHost _host;

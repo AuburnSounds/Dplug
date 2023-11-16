@@ -363,6 +363,14 @@ struct Vec(T)
 {
 nothrow:
 @nogc:
+
+    // TODO enable this!!! Oversight
+    /*static if (is(T == struct) && hasElaborateDestructor!T)
+    {
+        static assert(false); // struct with destructors not supported
+    }
+    */
+
     public
     {
         /// Creates an aligned buffer with given initial size.
