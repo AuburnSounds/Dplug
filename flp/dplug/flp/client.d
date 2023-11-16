@@ -825,6 +825,9 @@ private:
             _inputBuf[1].reallocBuffer(hostMaxFrames);
             _outputBuf[0].reallocBuffer(hostMaxFrames);
             _outputBuf[1].reallocBuffer(hostMaxFrames);
+
+            // Report new latency
+            _hostCommand.reportLatency(_client.latencySamples(_clientSampleRate));
         }
     }
 

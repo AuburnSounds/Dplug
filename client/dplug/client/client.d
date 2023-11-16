@@ -527,15 +527,20 @@ nothrow:
     }
 
     /// Override to clear state (eg: resize and clear delay lines) and allocate buffers.
-    /// Note: `reset` should not be called directly by plug-in format implementations. Use `resetFromHost` if you write a new client.
+    /// Note: `reset` should not be called directly by plug-in format implementations. Use 
+    /// `resetFromHost` if you write a new plug-in format client.
     abstract void reset(double sampleRate, int maxFrames, int numInputs, int numOutputs) nothrow @nogc;
 
     /// Override to set the plugin latency in samples.
     /// Plugin latency can depend on `sampleRate` but no other value.
     /// If you want your latency to depend on a `Parameter` your only choice is to
     /// pessimize the needed latency and compensate in the process callback.
+    ///
+    /// Dynamic latency changes are not possible in Dplug yet.
+    /// See Issue #442 => https://github.com/AuburnSounds/Dplug/issues/442
+    ///
     /// Returns: Plugin latency in samples.
-    /// Note: this can absolutely be called before `reset` was called, be prepared.
+    /// Note: this will absolutely be called before `reset` is called, so be prepared.
     int latencySamples(double sampleRate) nothrow @nogc
     {
         return 0; // By default, no latency introduced by plugin
