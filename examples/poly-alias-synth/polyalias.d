@@ -83,7 +83,7 @@ public:
         foreach (msg; getNextMidiMessages(frames))
         {
             if (msg.isNoteOn()) // note on
-                _synth.markNoteOn(msg.noteNumber());
+                _synth.markNoteOn(msg.noteNumber(), msg.noteVelocity());
 
             else if (msg.isNoteOff()) // note off
                 _synth.markNoteOff(msg.noteNumber());
@@ -137,11 +137,11 @@ public:
             v.waveForm = value;
     }
 
-    void markNoteOn(int note)
+    void markNoteOn(int note, int velocity)
     {
         foreach (ref v; _voices)
             if (!v.isPlaying)
-                return v.play(note, _pitchBend); // note: here pitch bend only applied at start of note, and not updated later.
+                return v.play(note, velocity, _pitchBend); // note: here pitch bend only applied at start of note, and not updated later.
 
         // no free voice available, skip
     }
@@ -222,11 +222,12 @@ public:
         return _osc.waveForm;
     }
 
-    void play(int note, float bend) @trusted
+    void play(int note, int velocity, float bend) @trusted
     {
         _noteOriginal = note;
         _osc.frequency = convertMIDINoteToFrequency(note + bend * 12);
         _isPlaying = true;
+        _volume = velocity / 128.0f;
     }
 
     void release()
@@ -245,13 +246,14 @@ public:
         if (!_isPlaying)
             return 0;
 
-        return _osc.nextSample();
+        return _osc.nextSample() * _volume;
     }
 
 private:
     Oscillator _osc;
     bool _isPlaying;
     int _noteOriginal = -1;
+    float _volume = 1.0f;
 }
 
 struct Oscillator

@@ -19,7 +19,8 @@
     {
         "dplug:vst2": { "path": "../.." },
         "dplug:vst3": { "path": "../.." },
-        "dplug:lv2": { "path": "../.."}
+        "dplug:lv2": { "path": "../.."},
+        "dplug:flp": { "path": "../.."}
     },
 
     "configurations": [
@@ -36,6 +37,11 @@
         {
             "name": "LV2",
             "versions": ["LV2"],
+            "targetType": "dynamicLibrary"
+        },
+        {
+            "name": "FLP",
+            "versions": ["FLP"],
             "targetType": "dynamicLibrary"
         }
     ]
