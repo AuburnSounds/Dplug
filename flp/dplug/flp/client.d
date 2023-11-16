@@ -22,6 +22,7 @@ import dplug.client.midi;
 import dplug.client.daw;
 import dplug.flp.types;
 
+import std.math: round;
 
 
 debug = logFLPClient;
@@ -32,6 +33,7 @@ debug = logFLPClient;
 // TODO: Making a plugin thread safe
 //   - "Use LockMix_Shared and UnlockMix_Shared around any access to the output buffer(s)
 //   - Call the host's dispatcher with the code FHD_SetThreadSafe and Value set to 1 (usually when the plugin is created)"
+//     Important: this should only be used from a generator plugin!"
 
 final extern(C++) class FLPCLient : TFruityPlug
 {
@@ -56,7 +58,10 @@ nothrow @nogc:
 
         bool compatibleIO;
         if (_client.isSynth)
+        {
+            initializeVoices();
             compatibleIO = _client.isLegalIO(0, 2);
+        }
         else
             compatibleIO = _client.isLegalIO(2, 2);
 
@@ -177,6 +182,13 @@ nothrow @nogc:
                 case FPD_SetSampleRate:              /* 4 */
                     // Client sampleRate will change at next buffer asynchronously.
                     atomicStore(_hostSampleRate, Value);
+
+                    // TODO remove _pitchMul thing
+                    if (Value == 0)
+                        _pitchMul = MiddleCMul / 44100.0f;
+                    else
+                        _pitchMul = MiddleCMul / Value; 
+
                     return 0; // right return value according to TTestPlug
 
                 case FPD_WindowMinMax:               /* 5 */
@@ -207,6 +219,8 @@ nothrow @nogc:
                     return 0;
 
                 case FPD_KillAVoice:                 /* 6 */
+                    return 0; // refuse to kill a voice
+
                 case FPD_UseVoiceLevels:             /* 7 */
                     debug(logFLPClient) debugLog("Not implemented\n");
                     break;
@@ -636,32 +650,88 @@ nothrow @nogc:
             _client.processAudioFromHost(pInputs[0..0], pOutputs[0..2], Length, info);
             pOutputs = [ _outputBuf[0].ptr, _outputBuf[1].ptr ];
             interleaveBuffers(pOutputs[0], pOutputs[1], DestBuffer, Length);
-
-            debug(logFLPClient) debugLogf("Gen_Render %p %d\n", DestBuffer, Length);
         }
 
         // <voice handling>
         @guiThread @mixerThread
-        TVoiceHandle TriggerVoice(PVoiceParams VoiceParams, intptr_t SetTag)
+        TVoiceHandle TriggerVoice(TVoiceParams* VoiceParams, intptr_t SetTag)
         {
-            ScopedForeignCallback!(false, true) scopedCallback;
-            scopedCallback.enter();
-            return 0;
+
+            // note sure what InitLevels to take?
+
+            float noteInMidiScale = VoiceParams.InitLevels.Pitch / 100.0f;
+
+            // FUTURE: put the reminder in some other MIDI message
+
+            int noteNumber = cast(int) round( noteInMidiScale );
+            float fractionalNote = noteInMidiScale - noteNumber;
+
+            if (noteNumber < 0 || noteNumber > 127)
+                return 0;
+
+            int ivoice = allocVoice(VoiceParams, SetTag, ++_totalVoicesTriggered, noteNumber);
+
+            if (ivoice == -1)
+                return 0; // hopefully it means "no voice created"
+
+            // Since from documentation, mixer lock is taken here, we can absolutely enqueue MIDI
+            // messages from here.
+
+            float Vol = VoiceParams.InitLevels.Vol;
+            int velocity = cast(int)(128.0f * Vol);
+            if (velocity < 1) velocity = 1;
+            if (velocity > 127) velocity = 127;
+
+            int channel = 0;
+            _client.enqueueMIDIFromHost( makeMidiMessageNoteOn(0, channel, noteNumber, velocity) );
+
+            // The handle is simply 1 + ivoice, so that we don't return zero.
+            return 1 + ivoice;
         }
 
         @guiThread @mixerThread
         void Voice_Release(TVoiceHandle Handle)
         {
+            if (Handle == 0)
+                return;
+
+            int channel = 0;
+            int midiNote = voiceInfo(Handle).midiNote;
+            int noteOffVelocity = 100; // unused, FUTURE
+            _client.enqueueMIDIFromHost( makeMidiMessageNoteOff(0, channel, midiNote) ); 
+            int index = cast(int)(Handle - 1);
+            freeVoiceIndex(index);
         }
 
         @guiThread @mixerThread
         void Voice_Kill(TVoiceHandle Handle)
         {
+            if (Handle == 0)
+                return;
+
+            if (voiceInfo(Handle).state == VOICE_PLAYING)
+            {
+                // Send note off, since it went from trigger to kill without release.
+                int channel = 0;
+                int midiNote = voiceInfo(Handle).midiNote;
+                int noteOffVelocity = 100; // unused, FUTURE
+                _client.enqueueMIDIFromHost( makeMidiMessageNoteOff(0, channel, midiNote) );
+
+                int index = cast(int)(Handle - 1);
+                freeVoiceIndex(index);
+            }
+
+            // Do nothing, we already sent a Note Off in Voice_release.
         }
 
         @guiThread @mixerThread
         int Voice_ProcessEvent(TVoiceHandle Handle, intptr_t EventID, intptr_t EventValue, intptr_t Flags)
         {
+            if (Handle == 0)
+                return 0;
+
+            // TODO retrigger should send a MIDI OFF, then a MIDI ON if voice alive.
+
             ScopedForeignCallback!(false, true) scopedCallback;
             scopedCallback.enter();
             return 0;
@@ -670,6 +740,7 @@ nothrow @nogc:
         @guiThread @mixerThread
         int Voice_Render(TVoiceHandle Handle, PWAV32FS DestBuffer, ref int Length)
         {
+            // Shouldn't be called ever, as we don't support generators that renders their voices separately.
             return 0;
         }
         // </voice handling>
@@ -726,7 +797,7 @@ nothrow @nogc:
         @midiSyncThread
         void MsgIn(intptr_t Msg)
         {
-            // TODO
+            // Not sure why it's there.
         }
 
         // voice handling
@@ -750,6 +821,9 @@ nothrow @nogc:
     }
 
 private:
+
+    enum double MiddleCFreq = 523.251130601197;
+    enum double MiddleCMul = cast(float)0x10000000 * MiddleCFreq * cast(float)0x10;
 
     Client _client;                          /// Wrapped generic client.
     TFruityPlugHost _host;                   /// A whole lot of callbacks to host.
@@ -865,6 +939,92 @@ private:
         _incomingMIDI.clearContents();
         _midiInputMutex.unlock();
     }
+
+
+    // <voice pool>
+
+    enum int VOICE_NOT_PLAYING = 0;
+    enum int VOICE_PLAYING = 1;
+    //enum int VOICE_IN_RELEASE = 2;
+
+    float _pitchMul;
+
+    void initializeVoices()
+    {
+        availableVoices = MAX_FL_POLYPHONY;
+        for (int n = 0; n < MAX_FL_POLYPHONY; ++n)
+        {
+            availableVoiceList[n] = n;
+            voicePool[n].state = VOICE_NOT_PLAYING;
+        }
+    }
+
+    // -1 if nothing available.
+    int allocVoiceIndex()
+    {
+        if (availableVoices <= 0)
+            return -1;
+
+        int index = availableVoiceList[--availableVoices];
+        assert(voicePool[index].state == VOICE_NOT_PLAYING);
+        voicePool[index].state = VOICE_PLAYING;
+        return index;
+    }
+
+    void freeVoiceIndex(int voiceIndex)
+    {
+        // Note: we don't check that FL gives back right voice ID there. Real trust going on there.
+        assert(voicePool[voiceIndex].state == VOICE_PLAYING);
+        voicePool[voiceIndex].state = VOICE_NOT_PLAYING;
+        availableVoiceList[availableVoices++] = voiceIndex;        
+        assert(availableVoices <= MAX_FL_POLYPHONY);
+    }
+
+    static struct VoiceInfo
+    {
+        int state;
+        TVoiceParams* params;
+        intptr_t tag;
+        int numTotalVoiceTriggered;
+        int midiNote; // 0 to 127
+
+        bool isPlaying()
+        {
+            return state != VOICE_NOT_PLAYING;
+        }
+    }
+
+    enum int MAX_FL_POLYPHONY = 100; // maximum possible of voices for generators.
+    VoiceInfo[MAX_FL_POLYPHONY] voicePool;
+
+    ref VoiceInfo voiceInfo(TVoiceHandle handle)
+    {
+        assert(handle != 0);
+        return voicePool[handle - 1];
+    }
+
+    // stack of available voice indices.
+    int[MAX_FL_POLYPHONY] availableVoiceList; // availableVoiceList[0..availableVoices] are the available indices.
+    int availableVoices;
+    int _totalVoicesTriggered; // a bit more unique identifier
+
+    // -1 if not available
+    int allocVoice(TVoiceParams* VoiceParams, intptr_t SetTag, int totalVoiceCount, int midiNote)
+    {
+        int index = allocVoiceIndex();
+
+        if (index == -1)
+            return -1;
+
+        voicePool[index].state = VOICE_PLAYING;
+        voicePool[index].params = VoiceParams;
+        voicePool[index].tag = SetTag;
+        voicePool[index].numTotalVoiceTriggered = totalVoiceCount;
+        voicePool[index].midiNote = midiNote;
+        return index;
+    }
+
+    // </voice pool>
 }
 
 class FLHostCommand : IHostCommand 

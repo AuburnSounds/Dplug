@@ -314,7 +314,6 @@ alias TSampleHandle = intptr_t;
 alias IStream = void*; // TODO
 alias BOOL = int;
 
-alias PVoiceParams = void*;
 alias PWaveFormatExtensible = void*;
 alias PSampleInfo = void*;
 alias PSampleRegion = void*;
@@ -369,7 +368,7 @@ nothrow:
         void Gen_Render(PWAV32FS DestBuffer, ref int Length);  // (M)
 
         // voice handling
-        TVoiceHandle TriggerVoice(PVoiceParams VoiceParams, intptr_t SetTag);  // (GM)
+        TVoiceHandle TriggerVoice(TVoiceParams* VoiceParams, intptr_t SetTag);  // (GM)
         void Voice_Release(TVoiceHandle Handle);  // (GM)
         void Voice_Kill(TVoiceHandle Handle);  // (GM)
         int Voice_ProcessEvent(TVoiceHandle Handle, intptr_t EventID, intptr_t EventValue, intptr_t Flags);  // (GM)
@@ -561,4 +560,20 @@ nothrow:
         void  SuspendOutput(TPluginTag Sender);
         void  ResumeOutput(TPluginTag Sender);
     }
+}
+
+// NEW VERSION (all floats), USE THESE
+struct TLevelParams 
+{
+    float Pan;    // panning (-1..1)
+    float Vol;    // volume/velocity (0.0 = -inf dB .. 1.0 = 0 dB) - note: can go above 1.0!
+    float Pitch;  // pitch (in cents) (semitone=Pitch/100)
+    float FCut;   // filter cutoff (0..1)
+    float FRes;   // filter Q (0..1)
+}
+
+struct TVoiceParams
+{
+    TLevelParams InitLevels;
+    TLevelParams FinalLevels;
 }
