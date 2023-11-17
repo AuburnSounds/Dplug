@@ -8,7 +8,7 @@ module dplug.flp.client;
 
 import core.atomic;
 import core.stdc.stdio: snprintf;
-import core.stdc.string: strlen;
+import core.stdc.string: strlen, memmove, memset;
 
 import dplug.core.nogc;
 import dplug.core.vec;
@@ -606,18 +606,30 @@ nothrow @nogc:
             resetClientIfNeeded(2, 2, Length);
             enqueuePendingMIDIInputMessages();
 
-            float*[2] pInputs  = [ _inputBuf[0].ptr,  _inputBuf[1].ptr  ];
-            float*[2] pOutputs = [ _outputBuf[0].ptr, _outputBuf[1].ptr ];
+            bool bypass = atomicLoad(_hostBypass);
 
-            deinterleaveBuffers(SourceBuffer, pInputs[0], pInputs[1], Length);
+            if (bypass)
+            {
+                // Note: no delay compensation.
+                // Do nothing for MIDI messages, same as VST3. Not sure what should happen here.
+                memmove(DestBuffer, SourceBuffer, Length * float.sizeof * 2);
+            }
+            else
+            {
+                float*[2] pInputs  = [ _inputBuf[0].ptr,  _inputBuf[1].ptr  ];
+                float*[2] pOutputs = [ _outputBuf[0].ptr, _outputBuf[1].ptr ];
 
-            pOutputs[0][0..Length] = pInputs[0][0..Length];
-            pOutputs[1][0..Length] = pInputs[1][0..Length];
-            TimeInfo info; // TODO timing information
-            _client.processAudioFromHost(pInputs[0..2], pOutputs[0..2], Length, info);
+                deinterleaveBuffers(SourceBuffer, pInputs[0], pInputs[1], Length);
 
-            pOutputs = [ _outputBuf[0].ptr, _outputBuf[1].ptr ];
-            interleaveBuffers(pOutputs[0], pOutputs[1], DestBuffer, Length);
+                pOutputs[0][0..Length] = pInputs[0][0..Length];
+                pOutputs[1][0..Length] = pInputs[1][0..Length];
+
+                TimeInfo info; // TODO timing information
+                _client.processAudioFromHost(pInputs[0..2], pOutputs[0..2], Length, info);
+
+                pOutputs = [ _outputBuf[0].ptr, _outputBuf[1].ptr ];
+                interleaveBuffers(pOutputs[0], pOutputs[1], DestBuffer, Length);
+            }
         }
 
         // generator processing (can render less than length)
@@ -644,12 +656,22 @@ nothrow @nogc:
             resetClientIfNeeded(0, 2, Length);
             enqueuePendingMIDIInputMessages();
 
-            float*[2] pInputs  = [ _inputBuf[0].ptr,  _inputBuf[1].ptr ];
-            float*[2] pOutputs = [ _outputBuf[0].ptr, _outputBuf[1].ptr ];
-            TimeInfo info; // TODO timing information
-            _client.processAudioFromHost(pInputs[0..0], pOutputs[0..2], Length, info);
-            pOutputs = [ _outputBuf[0].ptr, _outputBuf[1].ptr ];
-            interleaveBuffers(pOutputs[0], pOutputs[1], DestBuffer, Length);
+            bool bypass = atomicLoad(_hostBypass); // Note: it seem FL prefers to simply not send MIDI rather than this.
+
+            if (bypass)
+            {
+                // Do nothing for MIDI messages, same as VST3. Not sure what should happen here.
+                memset(DestBuffer, 0, Length * float.sizeof * 2);
+            }
+            else
+            {
+                float*[2] pInputs  = [ _inputBuf[0].ptr,  _inputBuf[1].ptr ];
+                float*[2] pOutputs = [ _outputBuf[0].ptr, _outputBuf[1].ptr ];
+                TimeInfo info; // TODO timing information
+                _client.processAudioFromHost(pInputs[0..0], pOutputs[0..2], Length, info);
+                pOutputs = [ _outputBuf[0].ptr, _outputBuf[1].ptr ];
+                interleaveBuffers(pOutputs[0], pOutputs[1], DestBuffer, Length);
+            }
         }
 
         // <voice handling>
