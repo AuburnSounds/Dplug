@@ -382,6 +382,11 @@ struct Plugin
         return CFBundleIdentifierPrefix ~ ".lv2." ~ sanitizeBundleString(pluginName);
     }
 
+    string getFLPBundleIdentifier() pure const
+    {
+        return CFBundleIdentifierPrefix ~ ".flp." ~ sanitizeBundleString(pluginName);
+    }
+
     // <Apple specific>
 
     // filename of the final installer
@@ -423,6 +428,11 @@ struct Plugin
         return sanitizeFilenameString(pluginName) ~ "-lv2.pkg";
     }
 
+    string pkgFilenameFLP() pure const
+    {
+        return sanitizeFilenameString(pluginName) ~ "-fl.pkg";
+    }
+
     string pkgBundleVST3() pure const
     {
         return CFBundleIdentifierPrefix ~ "." ~ sanitizeBundleString(pkgFilenameVST3());
@@ -446,6 +456,11 @@ struct Plugin
     string pkgBundleLV2() pure const
     {
         return CFBundleIdentifierPrefix ~ "." ~ sanitizeBundleString(pkgFilenameLV2());
+    }
+
+    string pkgBundleFLP() pure const
+    {
+        return CFBundleIdentifierPrefix ~ "." ~ sanitizeBundleString(pkgFilenameFLP());
     }
 
     string getAppleID()
@@ -1129,8 +1144,10 @@ string makePListFile(Plugin plugin, string config, bool hasIcon, bool isAudioCom
         CFBundleIdentifier = plugin.getAAXBundleIdentifier();
     else if (configIsLV2(config))
         CFBundleIdentifier = plugin.getLV2BundleIdentifier();
+    else if (configIsFLP(config))
+        CFBundleIdentifier = plugin.getFLPBundleIdentifier();
     else
-        throw new Exception("Configuration name given by --config must start with \"VST\", \"VST3\", \"AU\", \"AAX\", or \"LV2\"");
+        throw new Exception("Configuration name given by --config must start with \"VST\", \"VST3\", \"AU\", \"AAX\", \"LV2\", or \"FLP\"");
 
     // Doesn't seem useful at all
     //addKeyString("CFBundleName", plugin.prettyName);

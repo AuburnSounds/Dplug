@@ -26,6 +26,9 @@ string MAC_AU_DIR       = "/Library/Audio/Plug-Ins/Components";
 string MAC_AAX_DIR      = "/Library/Application Support/Avid/Audio/Plug-Ins";
 string MAC_LV2_DIR      = "/Library/Audio/Plug-Ins/LV2";
 
+string MAC_FLP_DIR      = "/Library/Audio/Plug-Ins/FL"; // Note: this one is fictional, there is no such FL directory.
+
+
 string WIN_VST3_DIR     = "$PROGRAMFILES64\\Common Files\\VST3";
 string WIN_VST_DIR      = "$PROGRAMFILES64\\VSTPlugins";
 string WIN_LV2_DIR      = "$PROGRAMFILES64\\Common Files\\LV2";
@@ -124,7 +127,7 @@ void usage()
     cwriteln("NOTES");
     cwriteln();
     cwriteln("      The configuration name used with " ~ "--config".lcyan ~ " must exist in your " ~ "dub.json".lcyan ~ " file.");
-    cwriteln("      dplug-build".lcyan ~ " detects plugin format based on the " ~ "configuration".yellow ~ " name's prefix: " ~ `"VST2" | "VST3" | "AU" | "AAX" | "LV2".`.yellow);
+    cwriteln("      dplug-build".lcyan ~ " detects plugin format based on the " ~ "configuration".yellow ~ " name's prefix: " ~ `"VST2" | "VST3" | "AU" | "AAX" | "LV2" | "FLP".`.yellow);
     cwriteln();
     cwriteln("      --combined".lcyan ~ " has an important effect on code speed, as it can be required for inlining in LDC.".grey);
     cwriteln();
@@ -401,7 +404,13 @@ int main(string[] args)
 
         auto oldpath = environment["PATH"];
 
-        static string outputDirectory(string outputDir, bool temp, string osString, Arch arch, string config)
+        // Get output directory for per-arch dplug-build artifacts.
+        // Find these under: ./builds/xxxxxxxxxx
+        static string outputDirectory(string outputDir, 
+                                      bool temp, 
+                                      string osString, 
+                                      Arch arch, 
+                                      string config)
         {
             static string toString(Arch arch)
             {
@@ -504,11 +513,11 @@ int main(string[] args)
                         throw new Exception("Can't build AU format for Windows");
                 }
 
-                // Does not try to build FLP except for Windows
-                if (targetOS != OS.windows)
+                // Does not try to build FLP except on Windows and Mac
+                if (targetOS != OS.windows && targetOS != OS.macOS)
                 {
                     if (configIsFLP(config))
-                        throw new Exception("Can't build FLP format except for Windows");
+                        throw new Exception("Can't build FLP format outside Windows and macOS");
                 }
 
                 // Does not try to build AAX or AU under Linux
@@ -971,11 +980,31 @@ int main(string[] args)
                         pluginDir = plugin.prettyName ~ ".lv2";
                         installDir = MAC_LV2_DIR;
                     }
+                    else if (configIsFLP(config))
+                    {
+                        pluginDir = plugin.pluginName;
+                        installDir = MAC_FLP_DIR;
+                    }
                     else
                         assert(false, "unsupported plugin format");
 
                     // On Mac, make a bundle directory
                     string bundleDir = path ~ "/" ~ pluginDir;
+
+
+                    void mergeExecutablesWithLIPO(string path_arm64, string path_x86_64, string pluginFinalPath, string path)
+                    {
+                        cwritefln("*** Making an universal binary with lipo");
+
+                        string cmd = format("lipo -create %s %s -output %s",
+                                            escapeShellArgument(path_arm64),
+                                            escapeShellArgument(path_x86_64),
+                                            escapeShellArgument(pluginFinalPath));
+                        safeCommand(cmd);
+                        double bytes = getSize(pluginFinalPath) / (1024.0 * 1024.0);
+                        cwritefln("    =&gt; Universal build OK, binary size = %0.1f mb, available in ./%s".lgreen, bytes, path);
+                        cwriteln();
+                    }
 
                     if (configIsLV2(config))
                     {
@@ -994,29 +1023,45 @@ int main(string[] args)
                         
                         // Note: there is no support for Universal Binary in LV2
                         if (arch == Arch.universalBinary)
-                        {
-                            string path_arm64  = outputDirectory(outputDir, true, osString, Arch.arm64, config)
-                            ~ "/" ~ pluginDir ~ "/" ~ pluginFinalName;
-
-                            string path_x86_64 = outputDirectory(outputDir, true, osString, Arch.x86_64, config)
-                            ~ "/" ~ pluginDir ~ "/" ~ pluginFinalName;
-
-                            cwritefln("*** Making an universal binary with lipo");
-
-                            string cmd = format("lipo -create %s %s -output %s",
-                                                escapeShellArgument(path_arm64),
-                                                escapeShellArgument(path_x86_64),
-                                                escapeShellArgument(pluginFinalPath));
-                            safeCommand(cmd);
-                            double bytes = getSize(pluginFinalPath) / (1024.0 * 1024.0);
-                            cwritefln("    =&gt; Universal build OK, binary size = %0.1f mb, available in ./%s".lgreen, bytes, path);
-                            cwriteln();
+                        {     
+                            bool TEMP = true;              
+                            string path_arm64  = outputDirectory(outputDir, TEMP, osString, Arch.arm64,  config) ~ "/" ~ pluginDir ~ "/" ~ pluginFinalName;
+                            string path_x86_64 = outputDirectory(outputDir, TEMP, osString, Arch.x86_64, config) ~ "/" ~ pluginDir ~ "/" ~ pluginFinalName;
+                            mergeExecutablesWithLIPO(path_arm64, path_x86_64, pluginFinalPath, path);
                         }
                         else
                         {
                             fileMove(plugin.dubOutputFileName, pluginFinalPath);                            
                         }
                         extractLV2ManifestFromBinary(pluginFinalPath, bundleDir, arch, pluginFinalName);
+                    }
+                    else if (configIsFLP(config))
+                    {
+                        // FLP is also special on Mac, it needs this structure:
+                        //
+                        // <Plugin Name>/
+                        //           Plugin.nfo                  // brand name
+                        //           <Plugin Name>.dylib         // can be an Universal Binary v2
+                        string pluginFinalName = plugin.pluginName ~ "_x64.dylib";
+                        string pluginFinalPath = bundleDir ~ "/" ~ pluginFinalName;
+                        mkdirRecurse(bundleDir);
+
+                        if (arch == Arch.universalBinary)
+                        {
+                            bool TEMP = true;
+                            string path_arm64  = outputDirectory(outputDir, TEMP, osString, Arch.arm64,  config) ~ "/" ~ pluginDir ~ "/" ~ pluginFinalName;
+                            string path_x86_64 = outputDirectory(outputDir, TEMP, osString, Arch.x86_64, config) ~ "/" ~ pluginDir ~ "/" ~ pluginFinalName;
+                            mergeExecutablesWithLIPO(path_arm64, path_x86_64, pluginFinalPath, path);
+                        }
+                        else
+                        {
+                            fileMove(plugin.dubOutputFileName, pluginFinalPath);
+                        }
+
+                        // Create NFO file
+                        string NFOPath = bundleDir ~ "/Plugin.nfo";
+                        string NFOcontent = format("ps_vendorname=%s\n", plugin.vendorName);  // spaces allowed in that .nfo
+                        std.file.write(NFOPath, NFOcontent);
                     }
                     else
                     {
@@ -1177,6 +1222,12 @@ int main(string[] args)
                             pkgIdentifier = plugin.pkgBundleLV2();
                             pkgFilename   = plugin.pkgFilenameLV2();
                             title = "LV2 plug-in";
+                        }
+                        else if (configIsFLP(config))
+                        {
+                            pkgIdentifier = plugin.pkgBundleFLP();
+                            pkgFilename   = plugin.pkgFilenameFLP();
+                            title = "FLStudio plug-in";
                         }
                         else
                             assert(false, "unsupported plugin format");
