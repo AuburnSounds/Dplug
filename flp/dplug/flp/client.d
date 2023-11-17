@@ -222,8 +222,8 @@ nothrow @nogc:
                     return 0; // refuse to kill a voice
 
                 case FPD_UseVoiceLevels:             /* 7 */
-                    debug(logFLPClient) debugLog("Not implemented\n");
-                    break;
+                    // "return 0 if the plugin doesn't support the default per-voice level Index"
+                    return 0;
 
                 case FPD_SetPreset:                  /* 9 */
                 {
@@ -266,9 +266,12 @@ nothrow @nogc:
                     return 0; // ignored
 
                 case FPD_LoadFile:                   /* 18 */
-                case FPD_SetFitTime:                 /* 19 */
                     debug(logFLPClient) debugLog("Not implemented\n");
                     break;
+
+                case FPD_SetFitTime:                 /* 19 */
+                    // ignored
+                    return 0;
                 
                 case FPD_SetSamplesPerTick:          /* 20 */
                     // "FPD_SetSamplesPerTick lets you know how many samples there are in a "tick"
@@ -368,11 +371,17 @@ nothrow @nogc:
                     break;
 
                 case FPD_IsInDebugMode:              /* 47 */
-                    // return 0 for no, 1 for yes
-                    // When testing, didn't see what it changed anyway.
-                    return 0;
+                    // When testing, didn't see what it changes anyway, perhaps logging.
+                    debug(logFLPClient)
+                        return 1;
+                    else
+                        return 0;
 
                 case FPD_ColorsHaveChanged:          /* 48 */
+                    // We don't really care about that.
+                    return 0; 
+
+
                 case FPD_GetStateSizeEstimate:       /* 49 */
                     debug(logFLPClient) debugLog("Not implemented\n");
                     break;
@@ -467,7 +476,18 @@ nothrow @nogc:
                     atomicStore(_hostTempo, tempo);
                     break;
 
-                default:
+                case FPE_MaxPoly:
+                    // ignored, we use 100 as default value instead
+                    int maxPoly = EventValue;
+                    break;
+
+                case FPE_MIDI_Pitch:
+                    // ignored, we use 100 as default value instead
+                    debugLogf("FPE_MIDI_Pitch = %d\n", EventValue);
+                    break;
+
+
+                default: 
                     break;
             }
 
@@ -1066,17 +1086,23 @@ nothrow @nogc:
 
     override void beginParamEdit(int paramIndex)
     {
-        // TODO
+        // not needed in FL
     }
 
     override void paramAutomate(int paramIndex, float value)
     {
-        // TODO
+        // "In order to make your parameters recordable in FL Studio, you have to call this 
+        //  function whenever a parameter is changed from within your plugin (probably because
+        //  the user turned a wheel or something). You need to pass HostTag in the Sender 
+        //  parameter. To let the host know which parameter has just been changed, pass the 
+        //  parameter index in Index. Finally, pass the new value (as an integer) in Value."
+
+        _host.OnParamChanged(_tag, paramIndex, *cast(int*)&value);
     }
 
     override void endParamEdit(int paramIndex)
     {
-        // TODO
+        // not needed in FL
     }
     
     override bool requestResize(int widthLogicalPixels, int heightLogicalPixels)
