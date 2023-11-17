@@ -74,6 +74,8 @@ nothrow @nogc:
 
         if (_client.receivesMIDI)
             _hostCommand.wantsMIDIInput();
+
+        _hostCommand.disableIdleNotifications();
     }
 
     ~this()
@@ -182,13 +184,6 @@ nothrow @nogc:
                 case FPD_SetSampleRate:              /* 4 */
                     // Client sampleRate will change at next buffer asynchronously.
                     atomicStore(_hostSampleRate, Value);
-
-                    // TODO remove _pitchMul thing
-                    if (Value == 0)
-                        _pitchMul = MiddleCMul / 44100.0f;
-                    else
-                        _pitchMul = MiddleCMul / Value; 
-
                     return 0; // right return value according to TTestPlug
 
                 case FPD_WindowMinMax:               /* 5 */
@@ -987,9 +982,6 @@ private:
 
     enum int VOICE_NOT_PLAYING = 0;
     enum int VOICE_PLAYING = 1;
-    //enum int VOICE_IN_RELEASE = 2;
-
-    float _pitchMul;
 
     void initializeVoices()
     {
@@ -1139,6 +1131,11 @@ nothrow @nogc:
     void reportLatency(int latencySamples)
     {
         _host.Dispatcher(_tag, FHD_SetLatency, 0, latencySamples);
+    }
+
+    void disableIdleNotifications()
+    {
+        _host.Dispatcher(_tag, FHD_WantIdle, 0, 0);
     }
 
 private:
