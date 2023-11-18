@@ -171,6 +171,8 @@ private:
 final class PresetBank
 {
 public:
+nothrow:
+@nogc:
 
     // Extends an array or Preset
     Vec!Preset presets;
@@ -178,7 +180,7 @@ public:
     // Create a preset bank
     // Takes ownership of this slice, which must be allocated with `malloc`,
     // containing presets allocated with `mallocEmplace`.
-    this(Client client, Preset[] presets_) nothrow @nogc
+    this(Client client, Preset[] presets_)
     {
         _client = client;
 
@@ -193,7 +195,7 @@ public:
         _current = 0;
     }
 
-    ~this() nothrow @nogc
+    ~this()
     {
         // free all presets
         foreach(p; presets)
@@ -204,22 +206,22 @@ public:
         }
     }
 
-    inout(Preset) preset(int i) inout nothrow @nogc
+    inout(Preset) preset(int i) inout
     {
         return presets[i];
     }
 
-    int numPresets() nothrow @nogc
+    int numPresets()
     {
         return cast(int)presets.length;
     }
 
-    int currentPresetIndex() nothrow @nogc
+    int currentPresetIndex()
     {
         return _current;
     }
 
-    Preset currentPreset() nothrow @nogc
+    Preset currentPreset()
     {
         int ind = currentPresetIndex();
         if (!isValidPresetIndex(ind))
@@ -227,26 +229,26 @@ public:
         return presets[ind];
     }
 
-    bool isValidPresetIndex(int index) nothrow @nogc
+    bool isValidPresetIndex(int index)
     {
         return index >= 0 && index < numPresets();
     }
 
     // Save current state to current preset. This updates the preset bank to reflect the state change.
     // This will be unnecessary once we haver internal preset management.
-    void putCurrentStateInCurrentPreset() nothrow @nogc
+    void putCurrentStateInCurrentPreset()
     {
         presets[_current].saveFromHost(_client);
     }
 
-    void loadPresetByNameFromHost(string name) nothrow @nogc
+    void loadPresetByNameFromHost(string name)
     {
         foreach(size_t index, preset; presets)
             if (preset.name == name)
                 loadPresetFromHost(cast(int)index);
     }
 
-    void loadPresetFromHost(int index) nothrow @nogc
+    void loadPresetFromHost(int index)
     {
         putCurrentStateInCurrentPreset();
         presets[index].loadFromHost(_client);
@@ -254,7 +256,7 @@ public:
     }
 
     /// Enqueue a new preset and load it
-    void addNewDefaultPresetFromHost(string presetName) nothrow @nogc
+    void addNewDefaultPresetFromHost(string presetName)
     {
         Parameter[] params = _client.params;
         float[] values = mallocSlice!float(params.length);
@@ -269,18 +271,28 @@ public:
   
     /// Gets a state chunk to save the current state.
     /// The returned state chunk should be freed with `free`.
-    ubyte[] getStateChunkFromCurrentState() nothrow @nogc
+    ubyte[] getStateChunkFromCurrentState()
     {
         auto chunk = makeVec!ubyte();
         this.writeStateChunk(chunk);
         return chunk.releaseData;
     }
 
+    /// Gets a state chunk to save the current state, but provide a `Vec` to append to.
+    ///
+    /// Existing `chunk` content is preserved and appended to.
+    ///
+    /// This is faster than allocating a new state chunk everytime.
+    void appendStateChunkFromCurrentState(ref Vec!ubyte chunk)
+    {
+        this.writeStateChunk(chunk);
+    }
+
     /// Gets a state chunk that would be the current state _if_
     /// preset `presetIndex` was made current first. So it's not
     /// changing the client state.
     /// The returned state chunk should be freed with `free()`.
-    ubyte[] getStateChunkFromPreset(int presetIndex) nothrow @nogc
+    ubyte[] getStateChunkFromPreset(int presetIndex)
     {
         auto chunk = makeVec!ubyte();
         this.writePresetChunkData(chunk, presetIndex);
@@ -289,7 +301,7 @@ public:
 
     /// Loads a chunk state, update current state.
     /// Return: *err set to true in case of error.
-    void loadStateChunk(const(ubyte)[] chunk, bool* err) nothrow @nogc
+    void loadStateChunk(const(ubyte)[] chunk, bool* err)
     {
         int mVersion = checkChunkHeader(chunk, err);
         if (*err)
