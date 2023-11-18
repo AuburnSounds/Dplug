@@ -10,11 +10,14 @@ import core.atomic;
 import core.stdc.stdio: snprintf;
 import core.stdc.string: strlen, memmove, memset;
 
+import std.array;
+
 import dplug.core.nogc;
 import dplug.core.vec;
 import dplug.core.sync;
 import dplug.core.thread;
 import dplug.core.runtime;
+import dplug.core.binrange;
 import dplug.client.client;
 import dplug.client.params;
 import dplug.client.graphics;
@@ -317,6 +320,11 @@ nothrow @nogc:
                 }
 
                 case FPD_ProjLoaded:                 /* 27 */
+                    // "called after a project has been loaded, to leave a chance to kill 
+                    //  automation (that could be loaded after the plugin is created)"
+                    // Well, we don't mess with user sessions around here.
+                    return 0;
+
                 case FPD_WrapperLoadState:           /* 28 */
                     debug(logFLPClient) debugLog("Not implemented\n");
                     break;
@@ -370,8 +378,7 @@ nothrow @nogc:
 
 
                 case FPD_GetStateSizeEstimate:       /* 49 */
-                    debug(logFLPClient) debugLog("Not implemented\n");
-                    break;
+                    return _client.params().length * 8;
 
                 case FPD_UseIncreasedMIDIResolution: /* 50 */
                     // increased MIDI resolution is supported, this seems related to REC_FromMIDI 
@@ -437,13 +444,81 @@ nothrow @nogc:
         }
 
         @guiThread
-        void SaveRestoreState(IStream *Stream, BOOL Save)
+        void SaveRestoreState(IStream Stream, BOOL Save)
         {
+            // SDK documentation says it's for Parameters mostly, so indeed we need the full chunk,
+            // not just the extra binary state.
+
             ScopedForeignCallback!(false, true) scopedCallback;
             scopedCallback.enter();
 
-            // TODO
-            debug(logFLPClient) debugLogf("SaveRestoreState save = %d\n", Save);
+            static immutable ubyte[8] MAGIC = ['D', 'F', 'L', '0', 0, 0, 0, 0];
+
+            // Being @guiThread, we assume SaveRestoreState is not called twice simultaneously.
+            // Hence, _lastChunk is used for both saving and restoring.
+
+            if (Save)
+            {
+                debug(logFLPClient) debugLog("SaveRestoreState save a chunk\n");
+
+                _lastChunk.clearContents();
+
+                // We need additional framing, since FL provide no chunk length on read.
+                // Our chunk looks like this:
+                // -------------    
+                // 0000 "DFL0"      // Version of our chunking for dplug:flp client.
+                // 0004 len         // Bytes in following chunk, 32-bit uint, Little Endian. 
+                // 0008 <chunk>     // Chunk given by dplug:client.
+                // -------------
+
+                for (int n = 0; n < 8; ++n)
+                    _lastChunk.pushBack(MAGIC[n]); // add room for len too
+
+                size_t sizeBefore = _lastChunk.length;
+                _client.presetBank.appendStateChunkFromCurrentState(_lastChunk);
+                size_t sizeAfter = _lastChunk.length;
+                size_t len = cast(int)(sizeAfter - sizeBefore);
+
+                // If you fail here, your saved chunk exceeds 2gb, which is probably an error.
+                assert(len + 8 <= int.max);
+
+                // Update len field
+                ubyte[] lenLoc = _lastChunk[4..8];
+                writeLE!uint(lenLoc, cast(uint)len);
+
+                ULONG written;
+                Stream.Write(_lastChunk.ptr, cast(int)_lastChunk.length, &written);
+            }
+            else
+            {
+                debug(logFLPClient) debugLog("SaveRestoreState load a chunk\n");
+
+                ubyte[8] header;
+                ULONG read;
+                HRESULT hr = Stream.Read(header.ptr, 8, &read);
+                if (hr < 0 || read != 8)
+                    return;     
+
+                if (header[0..4] != MAGIC[0..4])
+                    return; // unrecognized chunks and/or version
+
+                bool err;
+                const(ubyte)[] lenLoc = header[4..8];
+                uint len = popLE!uint(lenLoc, &err);
+                if (err)
+                    return;
+
+                // plan to read as much from Stream
+                _lastChunk.resize(len);
+                hr = Stream.Read(_lastChunk.ptr, len, &read);
+                if (hr < 0 || read != len)
+                    return;
+
+                // Load chunk in client
+                _client.presetBank.loadStateChunk(_lastChunk[], &err);
+                if (err)
+                    return;
+            }
         }
 
         // names (see FPN_Param) (Name must be at least 256 chars long)
@@ -918,6 +993,7 @@ private:
 
     Vec!MidiMessage _incomingMIDI;           /// Incoming MIDI messages for next buffer.
     UncheckedMutex _midiInputMutex;          /// Protects access to _incomingMIDI.
+    Vec!ubyte _lastChunk;
 
     void initializeInfo()
     {

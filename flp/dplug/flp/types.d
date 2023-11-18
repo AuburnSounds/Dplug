@@ -50,8 +50,8 @@ deprecated alias DWORD = uint;
 deprecated alias HWND = void*;
 alias HANDLE = void*;
 deprecated enum MAX_PATH = 256;
-deprecated alias ULONG = uint;
-deprecated alias HRESULT = c_long;
+alias ULONG = uint;
+alias HRESULT = c_long;
 deprecated alias ULARGE_INTEGER = ulong;
 deprecated alias LARGE_INTEGER = long;
 
@@ -311,7 +311,24 @@ alias TOutVoiceHandle = intptr_t;
 // sample handle
 alias TSampleHandle = intptr_t;
 
-alias IStream = void*; // TODO
+extern(C++) class IStream 
+{
+public:
+nothrow:
+@nogc:
+    extern(System) abstract
+    {
+        void QueryInterface();
+        ULONG AddRef();
+        ULONG Release();
+        HRESULT Read(void *pv, ULONG cb, ULONG *pcbRead);
+        HRESULT Write(const void *pv, ULONG cb, ULONG *pcbWritten);
+
+        // There are more methods, but not useful for us
+    }
+}
+
+
 alias BOOL = int;
 
 alias PWaveFormatExtensible = void*;
@@ -353,7 +370,7 @@ nothrow:
         void DestroyObject();  // (G)
         intptr_t Dispatcher(intptr_t ID, intptr_t Index, intptr_t Value);  // (GM)
         void Idle_Public();  // (G) (used to be Idle())
-        void SaveRestoreState(IStream *Stream, BOOL Save);  // (G)
+        void SaveRestoreState(IStream Stream, BOOL Save);  // (G)
 
         // names (see FPN_Param) (Name must be at least 256 chars long)
         void GetName(int Section, int Index, int Value, char *Name);  // (GM)
