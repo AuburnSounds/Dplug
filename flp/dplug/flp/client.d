@@ -27,14 +27,6 @@ import std.math: round;
 
 debug = logFLPClient;
 
-// SDK insists that there is such a global, not sure if needed yet.
-//__gshared TFruityPlugHost g_host = null;
-
-// TODO: Making a plugin thread safe
-//   - "Use LockMix_Shared and UnlockMix_Shared around any access to the output buffer(s)
-//   - Call the host's dispatcher with the code FHD_SetThreadSafe and Value set to 1 (usually when the plugin is created)"
-//     Important: this should only be used from a generator plugin!"
-
 final extern(C++) class FLPCLient : TFruityPlug
 {
 nothrow @nogc:
@@ -387,9 +379,44 @@ nothrow @nogc:
                     return 1; 
 
                 case FPD_ConvertStringToValue:       /* 51 */
+                    return 0;
+
+
                 case FPD_GetParamType:               /* 52 */
-                    debug(logFLPClient) debugLog("Not implemented\n");
-                    break;
+
+
+
+                    // FPD_GetParamType options
+                    enum int PT_Default = 0;
+                    enum int PT_Db = 1;
+                    enum int PT_Hz = 2;
+                    enum int PT_Centered = 3;
+                    enum int PT_Ms = 4;
+                    enum int PT_Percent = 5;
+                    enum int PT_Time = 6;
+                    enum int PT_Value = 7;
+                    enum int PT_Number = 8;
+                    enum int PT_Text = 9;
+                    int iparam = cast(int)Index;
+
+                    if ( ! _client.isValidParamIndex(iparam))
+                    {
+                        return PT_Default;
+                    }
+
+                    return PT_Default;// not sure why to implement that correctly
+
+                    /*
+                    Parameter p = _client.param(iparam);
+                    if (p.label == "ms")
+                        return PT_Ms;
+                    else if (p.label == "%")
+                        return PT_Percent;
+                    else if (p.label == "Hz")
+                        return PT_Hz;
+                    else
+                        return PT_Value;
+                    */
 
                 default:
                     // unknown ID
@@ -431,8 +458,7 @@ nothrow @nogc:
                 if (!_client.isValidParamIndex(Index))
                     return;
                 string name = _client.param(Index).name;
-                snprintf(Name, 256, "%*.s", cast(int)name.length, name.ptr);
-                Name[255] = '\0'; // DigitalMars snprintf workaround
+                snprintf(Name, 256, "%.*s", cast(int)name.length, name.ptr);                
             }
             else if (Section == FPN_ParamValue)
             {
@@ -456,8 +482,13 @@ nothrow @nogc:
 
                 const(char)[] name = _client.presetBank.preset(Index).name;
                 snprintf(Name, 256, "%.*s", cast(int)name.length, name.ptr);
-                Name[255] = '\0'; // DigitalMars snprintf workaround                
             }
+            else
+            {
+                debug(logFLPClient) debugLogf("Unsupported name Section = %d\n", Section);
+            }
+            version(DigitalMars)
+                Name[255] = '\0'; // DigitalMars snprintf workaround
         }
 
         // events
@@ -536,8 +567,7 @@ nothrow @nogc:
                 
                 if (auto bp = cast(BoolParameter)param)
                 {
-                    bool bValue = fNormValue >= 0.5;
-                    Value = bp.value();
+                    Value = (fNormValue >= 0.5 ? 1 : 0);
                 }
                 else if (auto ip = cast(IntegerParameter)param)
                 {
@@ -690,6 +720,9 @@ nothrow @nogc:
         }
 
         // <voice handling>
+        // Some documentation says all such voice handling function are actually only @mixerThread.
+        // Contradicts what the header says: "(GM)".
+        // We'll makea trust call here and consider the function ARE 
         @guiThread @mixerThread
         TVoiceHandle TriggerVoice(TVoiceParams* VoiceParams, intptr_t SetTag)
         {
@@ -1059,6 +1092,21 @@ private:
     }
 
     // </voice pool>
+
+    @mixerThread
+        void fillTimeInfo()
+        {
+            /// BPM
+            double tempo = 120;
+
+            /// Current time from the beginning of the song in samples.
+            /// This time can easily be negative, since eg. in REAPER
+            /// you can change song beginning with "Project start time" settings.
+            long timeInSamples = 0;
+
+            /// Whether the host sequencer is currently playing
+            bool hostIsPlaying;
+        }
 }
 
 class FLHostCommand : IHostCommand 
