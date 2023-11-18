@@ -755,6 +755,8 @@ unittest
     assert(vec[0].x == 42);
 }
 
+
+
 /// Allows to merge the allocation of several arrays, which saves allocation count and can speed up things thanks to locality.
 ///
 /// Example: see below unittest.
@@ -763,20 +765,58 @@ struct MergedAllocation
 nothrow:
 @nogc:
 
+    // In debug mode, add stomp detection to `MergedAllocation`.
+    // This takes additional complexity to coarse check for stomping nearby buffers.
+    debug
+    {
+        private enum mergedAllocStompWarning = true;
+    }
+    else
+    {
+        private enum mergedAllocStompWarning = false;
+    }
+
+
+    // This adds 32-byte of sentinels around each allocation,
+    // and check at the end of the program that they were unaffected.
+    static if (mergedAllocStompWarning)
+    {
+        // Number of bytes to write between areas to check for stomping. 
+        enum SENTINEL_BYTES = 32; 
+    }
+
     enum maxExpectedAlignment = 32;
 
     /// Start defining the area of allocations.
     void start()
     {
+        // Detect memory errors in former uses.
+        static if (mergedAllocStompWarning)
+        {
+            checkSentinelAreas();
+            _allocateWasCalled = false;
+        }
+
         _base = cast(ubyte*)(cast(size_t)0);
     }
 
-    /// Given pointer `base`, `array` gets an alignement area with `numElems` T elements and a given alignment.
-    /// `base` gets incremented to point to just after that area.
-    /// This is usful to create merged allocations with a chain of `mergedAllocArea`.
-    /// Giving null to this chain and converting the result to size_t give the total needed size for the merged allocation.
-    /// Warning: if called after a `start()` call, the area returned are wrong and are only for counting needed bytes.
-    ///          if called after an `allocate()` call, the area returned are right (if the same calls are done).
+    /// Allocate (or count) space needed for `numElems` elements of type `T` with given alignment.
+    /// This gets called twice for each array, see example for usage.
+    ///
+    /// This bumps the internal bump allocator.
+    /// Giving null to this chain and converting the result to size_t give the total needed size 
+    /// for the merged allocation.
+    ///
+    /// Warning: 
+    ///          - If called after a `start()` call, the area returned are wrong and are only for 
+    ///             counting needed bytes. Don't use those.
+    ///
+    ///          - If called after an `allocate()` call, the area returned are an actual merged 
+    ///            allocation (if the same calls are done).
+    ///
+    /// Warning: Prefer `allocArray` over `alloc` variant, since the extra length field WILL help 
+    ///          you catch memory errors before release. Else it is very common to miss buffer 
+    ///          overflows in samplerate changes.
     void allocArray(T)(out T[] array, size_t numElems, size_t alignment = 1)
     {
         assert(alignment <= maxExpectedAlignment);
@@ -792,6 +832,17 @@ nothrow:
         array = (cast(T*)adr)[0..numElems];
         adr += T.sizeof * numElems;
         _base = cast(ubyte*) adr;
+
+        static if (mergedAllocStompWarning)
+        {
+            if (_allocateWasCalled && _allocation !is null)
+            {
+                // Each allocated area followed with SENTINEL_BYTES bytes of value 0xCC
+                _base[0..SENTINEL_BYTES] = 0xCC;
+                registerSentinel(_base);
+            }
+            _base += SENTINEL_BYTES;
+        }
     }
 
     ///ditto
@@ -806,6 +857,8 @@ nothrow:
     /// This time they will get a proper value.
     void allocate()
     {
+        static if (mergedAllocStompWarning) _allocateWasCalled = true;
+
         size_t sizeNeeded =  cast(size_t)_base; // since it was fed 0 at start.
 
         if (sizeNeeded == 0)
@@ -827,6 +880,11 @@ nothrow:
 
     ~this()
     {
+        static if (mergedAllocStompWarning)
+        {
+            checkSentinelAreas();
+        }
+
         if (_allocation != null)
         {
             _mm_free(_allocation);
@@ -841,8 +899,55 @@ private:
 
     ///
     ubyte* _base = null;
+
+    static if (mergedAllocStompWarning)
+    {
+        bool _allocateWasCalled = false;
+
+        Vec!(ubyte*) _sentinels; // start of sentinel area (SENTINAL_BYTES long)
+
+        void registerSentinel(ubyte* start)
+        {
+            _sentinels.pushBack(start);
+        }
+
+        bool hasMemoryError() // true if sentinel bytes stomped
+        {
+            assert(_allocateWasCalled && _allocation !is null);
+
+            foreach(ubyte* s; _sentinels[])
+            {
+                for (int n = 0; n < 32; ++n)
+                {
+                    if (s[n] != 0xCC)
+                        return true;
+                }
+            }
+            return false;
+        }
+
+        // Check existing sentinels, and unregister them
+        void checkSentinelAreas()
+        {
+            if (!_allocateWasCalled)
+                return; // still haven't done an allocation, nothing to check.
+
+            if (_allocation is null)
+                return; // nothing to check
+
+            // If you fail here, there is a memory error in your access patterns.
+            // Sentinel bytes of value 0xCC were overwritten in a `MergedAllocation`.
+            // You can use slices with `allocArray` instead of `alloc` to find the faulty 
+            // access. This check doesn't catch everything!
+            assert(! hasMemoryError());
+
+            _sentinels.clearContents();
+        }
+    }
 }
 
+
+// Here is how you should use MergedAllocation. 
 unittest
 {
     static struct MyDSPStruct
@@ -890,4 +995,33 @@ unittest
     ma.start();
     ma.allocate();
     assert(ma._allocation == null);
+}
+
+// Should be valid to allocate nothing with a MergedAllocation.
+unittest
+{
+    MergedAllocation ma;
+    ma.start();
+    ubyte[] arr, arr2;
+    ma.allocArray(arr, 17);
+    ma.allocArray(arr2, 24);
+    assert(ma._allocation == null);
+
+    ma.allocate();
+    ma.allocArray(arr, 17);
+    ma.allocArray(arr2, 24);
+    assert(ma._allocation != null);
+    assert(arr.length == 17);
+    assert(arr2.length == 24);
+
+    // Test memory error detection with a simple case.
+    static if (MergedAllocation.mergedAllocStompWarning)
+    {
+        assert(!ma.hasMemoryError());
+
+        // Create a memory error
+        arr.ptr[18] = 2;
+        assert(ma.hasMemoryError());
+        arr.ptr[18] = 0xCC; // undo the error to avoid stopping the unittests
+    }
 }
