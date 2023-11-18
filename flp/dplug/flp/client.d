@@ -36,8 +36,6 @@ nothrow @nogc:
 
     this(TFruityPlugHost pHost, TPluginTag tag, Client client, bool* err)
     {
-        //g_host = pHost;
-
         this.HostTag = tag;
         this.Info = &_fruityPlugInfo;
         this._host = pHost;
@@ -71,6 +69,10 @@ nothrow @nogc:
             _hostCommand.wantsMIDIInput();
 
         _hostCommand.disableIdleNotifications();
+
+        _mixingTimeInSamples = 0;
+        _hostTicksReference = 0;
+        _hostTicksChanged = false;
     }
 
     ~this()
@@ -241,7 +243,18 @@ nothrow @nogc:
                     return 0;
 
                 case FPD_SongPosChanged:             /* 13 */  //
-                    // song position has been relocated (loop?)                    
+                    // song position has been relocated (loop, click in timeline...)
+
+                    double ticks, samples;
+                    _hostCommand.getMixingTimeInTicks(ticks, samples);
+
+                    // If it's not, we have udged FL unfairly and it can loop in increment lower than ticks.
+                    // Interesting.
+                    assert(samples == 0);
+
+                    atomicStore(_hostTicksReference, ticks);
+                    atomicStore(_hostTicksChanged, true);
+
                     return 0;
 
                 case FPD_SetTimeSig:                 /* 14 */
@@ -267,7 +280,8 @@ nothrow @nogc:
                     // "FPD_SetSamplesPerTick lets you know how many samples there are in a "tick"
                     //  (the basic period of time in FL Studio). This changes when the tempo, PPQ 
                     //  or sample rate have changed. This can be called from the mixing thread."
-                    atomicStore(_hostSamplesInATick, Value);
+                    float fValue = *cast(float*)(&Value);
+                    atomicStore(_hostSamplesInATick, fValue);
                     return 0;
 
                 case FPD_SetIdleTime:                /* 21 */
@@ -347,9 +361,10 @@ nothrow @nogc:
                 case FPD_RenderWindowBitmap:         /* 35 */
                 case FPD_StealKBFocus:               /* 36 */
                 case FPD_GetHelpContext:             /* 37 */
-                case FPD_RegChanged:		         /* 38 */
-                case FPD_ArrangeWindows: 	         /* 39 */
-                case FPD_PluginLoaded:		         /* 40 */
+                case FPD_RegChanged:                 /* 38 */
+                case FPD_ArrangeWindows:             /* 39 */
+                case FPD_PluginLoaded:               /* 40 */
+                    debug(logFLPClient) debugLog("Not implemented\n");
                     break;
 
                 case FPD_ContextInfoChanged:         /* 41 */
@@ -411,7 +426,7 @@ nothrow @nogc:
                         return PT_Default;
                     }
 
-                    return PT_Default;// not sure why to implement that correctly
+                    return PT_Default;// not sure why implement that correctly
 
                     /*
                     Parameter p = _client.param(iparam);
@@ -728,6 +743,9 @@ nothrow @nogc:
 
             bool bypass = atomicLoad(_hostBypass);
 
+            TimeInfo info;
+            updateTimeInfoBegin(info);
+
             if (bypass)
             {
                 // Note: no delay compensation.
@@ -744,12 +762,13 @@ nothrow @nogc:
                 pOutputs[0][0..Length] = pInputs[0][0..Length];
                 pOutputs[1][0..Length] = pInputs[1][0..Length];
 
-                TimeInfo info; // TODO timing information
                 _client.processAudioFromHost(pInputs[0..2], pOutputs[0..2], Length, info);
 
                 pOutputs = [ _outputBuf[0].ptr, _outputBuf[1].ptr ];
                 interleaveBuffers(pOutputs[0], pOutputs[1], DestBuffer, Length);
             }
+
+            updateTimeInfoEnd(Length);
         }
 
         // generator processing (can render less than length)
@@ -778,6 +797,9 @@ nothrow @nogc:
 
             bool bypass = atomicLoad(_hostBypass); // Note: it seem FL prefers to simply not send MIDI rather than this.
 
+            TimeInfo info;
+            updateTimeInfoBegin(info);
+
             if (bypass)
             {
                 // Do nothing for MIDI messages, same as VST3. Not sure what should happen here.
@@ -787,11 +809,11 @@ nothrow @nogc:
             {
                 float*[2] pInputs  = [ _inputBuf[0].ptr,  _inputBuf[1].ptr ];
                 float*[2] pOutputs = [ _outputBuf[0].ptr, _outputBuf[1].ptr ];
-                TimeInfo info; // TODO timing information
                 _client.processAudioFromHost(pInputs[0..0], pOutputs[0..2], Length, info);
                 pOutputs = [ _outputBuf[0].ptr, _outputBuf[1].ptr ];
                 interleaveBuffers(pOutputs[0], pOutputs[1], DestBuffer, Length);
             }
+            updateTimeInfoEnd(Length);
         }
 
         // <voice handling>
@@ -983,13 +1005,19 @@ private:
     @mixerThread int _clientMaxFrames = 0;   /// Max frames last used by client.    
     shared(size_t) _hostSampleRate = 44100;  /// Samplerate that the host demanded.
     @mixerThread int _clientSampleRate = 0;  /// Samplerate last used by client.
-    shared(size_t) _hostSamplesInATick = 32; /// Number of samples in a FL "tick".
     shared(float) _hostTempo = 120.0f;       /// Tempo reported by host.
     shared(bool) _hostHostPlaying = false;   /// Whether the host is playing.
     shared(bool) _hostBypass = false;        /// Is the plugin "enabled".
 
     @mixerThread float[][2] _inputBuf;       /// Temp buffers to deinterleave and pass to plug-in.
     @mixerThread float[][2] _outputBuf;      /// Plug-in outoput, deinterleaved.
+
+    // Time management
+    @mixerThread long _mixingTimeInSamples;    /// Only ever updated in mixer thread. Current stime.
+    shared(double) _hostTicksReference;        /// Last tick reference given by host.
+    shared(bool) _hostTicksChanged;            /// Set to true if tick reference changed. If true, 
+                                               /// Look at `_hostTicksReference` value.
+    shared(float) _hostSamplesInATick = 32.0f; /// Last known conversion from ticks to samples.
 
     Vec!MidiMessage _incomingMIDI;           /// Incoming MIDI messages for next buffer.
     UncheckedMutex _midiInputMutex;          /// Protects access to _incomingMIDI.
@@ -1169,20 +1197,32 @@ private:
 
     // </voice pool>
 
+
     @mixerThread
-        void fillTimeInfo()
+    void updateTimeInfoBegin(out TimeInfo info)
+    {
+        if (cas(&_hostTicksChanged, true, false))
         {
-            /// BPM
-            double tempo = 120;
+            float samplesInTick = atomicLoad(_hostSamplesInATick);
+            double hostTicks = atomicLoad(_hostTicksReference);
 
-            /// Current time from the beginning of the song in samples.
-            /// This time can easily be negative, since eg. in REAPER
-            /// you can change song beginning with "Project start time" settings.
-            long timeInSamples = 0;
-
-            /// Whether the host sequencer is currently playing
-            bool hostIsPlaying;
+            // Not sure if .t2 should be added, but well.
+            // I haven't seen FL loop with non-zero t2.
+            _mixingTimeInSamples = cast(long)(hostTicks * samplesInTick);
         }
+
+        info.tempo         = atomicLoad(_hostTempo);
+        info.hostIsPlaying = atomicLoad(_hostHostPlaying);
+        info.timeInSamples = _mixingTimeInSamples;
+
+        debug(logFLPClient) debugLogf("playing = %d  time = %llu\n", info.hostIsPlaying, info.timeInSamples);
+    }
+
+    @mixerThread
+    void updateTimeInfoEnd(int samplesElapsed)
+    {
+        _mixingTimeInSamples += samplesElapsed;
+    }
 }
 
 class FLHostCommand : IHostCommand 
@@ -1262,7 +1302,28 @@ nothrow @nogc:
         _host.Dispatcher(_tag, FHD_WantIdle, 0, 0);
     }
 
+    void getMixingTimeInTicks(out double ticks, out double samplesOffset)
+    {
+        enum int GT_Beats          = 0;          // beats
+        enum int GT_AbsoluteMS     = 1;          // absolute milliseconds
+        enum int GT_RunningMS      = 2;          // running milliseconds
+        enum int GT_MSSinceStart   = 3;          // milliseconds since soundcard restart
+        enum int GT_Ticks          = 4;          // ticks
+        enum int GT_LocalTime      = 1 << 31;    // time relative to song start
+
+        enum int GT_FlagsMask      = 0xFFFFFF00;
+        enum int GT_TimeFormatMask = 0x000000FF;
+
+        _time.t = 0;
+        _time.t2 = 0;
+       intptr_t Value = cast(intptr_t) &_time;
+       intptr_t res = _host.Dispatcher(_tag, FHD_GetMixingTime, GT_Ticks | GT_LocalTime, Value);
+       ticks = _time.t;
+       samplesOffset = _time.t2;
+    }
+
 private:
     TFruityPlugHost _host;
     TPluginTag _tag;
+    TFPTime _time;
 }

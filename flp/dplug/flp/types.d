@@ -594,3 +594,8 @@ struct TVoiceParams
     TLevelParams InitLevels;
     TLevelParams FinalLevels;
 }
+
+struct TFPTime
+{
+    double t, t2;
+}
