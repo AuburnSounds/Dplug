@@ -919,6 +919,12 @@ int main(string[] args)
                             else
                                 installDir = WIN_LV2_DIR_X86;
                         }
+                        else if (configIsFLP(config))
+                        {
+                            format = "FLP";
+                            title = "FLStudio plug-in";
+                            installDir = "dummy path"; // detected at runtime
+                        }
 
                         windowsPackages ~= WindowsPackage(format, pluginDirectory, title, installDir, sizeInKiloBytes, arch == arch.x86_64);
                     }
@@ -1518,7 +1524,7 @@ void generateWindowsInstaller(string outputDir,
 
     //remove ./ if it occurs at the beginning of windowsInstallerHeaderBmp
     string headerImagePage = plugin.windowsInstallerHeaderBmp.replaceAll(r"^./".regex, "");
-    string nsisPath = "WindowsInstaller.nsi";
+    string nsisPath = "WindowsInstaller.nsi"; // Note: the NSIS script is generated in current directory.
 
     string content = "";
 
@@ -1573,7 +1579,7 @@ void generateWindowsInstaller(string outputDir,
 
     foreach(p; packs)
     {
-        if(p.format == "VST")
+        if(p.format == "VST" || p.format == "FLP")
         {
             content ~= `Var InstDir` ~ formatSectionIdentifier(p) ~ "\n";
         }
@@ -1593,7 +1599,19 @@ void generateWindowsInstaller(string outputDir,
             content ~= `  Caption ": ` ~ formatNiceName ~ ` Directory"` ~ "\n";
             content ~= "PageExEnd\n";
         }
+
+        if (p.format == "FLP")
+        {
+            string identifier = formatSectionIdentifier(p);
+            string formatNiceName = formatSectionDisplayName(p);
+            content ~= "PageEx directory\n";
+            content ~= "  PageCallbacks defaultInstDir" ~ identifier ~ ` "" getInstDir` ~ identifier ~ "\n";
+            content ~= "  DirText \"" ~ "Your FLStudio installation directory." ~ "\" \"\" \"\" \"\"\n";
+            content ~= `  Caption ": FL Studio Directory."` ~ "\n";
+            content ~= "PageExEnd\n";
+        }
     }
+
     content ~= "Page instfiles\n";
 
     foreach(p; packs)
@@ -1601,7 +1619,6 @@ void generateWindowsInstaller(string outputDir,
         if(p.format == "VST")
         {
             string identifier = formatSectionIdentifier(p);
-
             content ~= "Function defaultInstDir" ~ identifier ~ "\n";
             if(p.is64b)
             {
@@ -1614,6 +1631,39 @@ void generateWindowsInstaller(string outputDir,
             content ~= "    Abort\n";
             content ~= "  ${Else}\n";
             content ~= `    StrCpy $INSTDIR "` ~ p.installDir ~ `"` ~ "\n";
+            content ~= "  ${EndIf}\n";
+            content ~= "FunctionEnd\n\n";
+            content ~= "Function getInstDir" ~ identifier ~ "\n";
+            content ~= "  StrCpy $InstDir" ~ identifier ~ " $INSTDIR\n";
+            content ~= "FunctionEnd\n\n";
+        }
+        else if (p.format == "FLP")
+        {
+            string identifier = formatSectionIdentifier(p);
+            // return installation path of FL Studio
+            content ~= "Function defaultInstDir" ~ identifier ~ "\n";
+            if(p.is64b)
+            {
+                // The 64-bit version does not get installed on a 32-bit system, skip asking in this case
+                content ~= "  ${IfNot} ${RunningX64}\n";
+                content ~= "    Abort\n";
+                content ~= "  ${EndIf}\n";
+            }
+            content ~= "  ${IfNot} ${SectionIsSelected} ${Sec" ~ p.format ~ "}\n";
+            content ~= "    Abort\n";
+            content ~= "  ${Else}\n";
+            foreach(int FLMajor; [20, 21, 22, 23, 24])
+            {
+                // If the FL directory exist, becomes the one directory.
+                // If FL changes its plugin layout, or exceed FL 24, it will need to be redone.
+                content ~= format(`  IfFileExists "$PROGRAMFILES64\Image-Line\FL Studio %s\*.*" yesFL%s noFL%s` ~"\n", FLMajor, FLMajor, FLMajor);
+                content ~= format(`      yesFL%s:` ~"\n", FLMajor);
+                if (plugin.isSynth)
+                    content ~= format(`      StrCpy $INSTDIR "$PROGRAMFILES64\Image-Line\FL Studio %s\Plugins\Fruity\Generators"` ~"\n", FLMajor);
+                else
+                    content ~= format(`      StrCpy $INSTDIR "$PROGRAMFILES64\Image-Line\FL Studio %s\Plugins\Fruity\Effects"` ~"\n", FLMajor);
+                content ~= format(`      noFL%s:` ~"\n", FLMajor);
+            }
             content ~= "  ${EndIf}\n";
             content ~= "FunctionEnd\n\n";
             content ~= "Function getInstDir" ~ identifier ~ "\n";
@@ -1638,6 +1688,12 @@ void generateWindowsInstaller(string outputDir,
             if(p.is64b)
                 content ~= "    ${AndIf} ${RunningX64}\n";
             if (p.format == "VST")
+            {
+                string instDirVar = "InstDir" ~ formatSectionIdentifier(p);
+                content ~= "    SetOutPath $" ~ instDirVar ~ "\n";
+                content ~= format!"    WriteRegStr HKLM \"%s\" \"%s\" \"$%s\"\n"(regProductKey, instDirVar, instDirVar);
+            }
+            else if (p.format == "FLP")
             {
                 string instDirVar = "InstDir" ~ formatSectionIdentifier(p);
                 content ~= "    SetOutPath $" ~ instDirVar ~ "\n";
@@ -1677,7 +1733,7 @@ void generateWindowsInstaller(string outputDir,
             content ~= format!"    ${If} $%s != \"\"\n"(instDirVar);
             content ~= format!"        Delete \"$%s\\%s\"\n"(instDirVar, p.pluginDir.baseName);
             content ~=        "    ${EndIf}\n";
-        }
+        } // TODO FLP uninstaller
         else if (pluginIsDir)
         {
             content ~= format!"    RMDir /r \"%s\\%s\"\n"(p.installDir, p.pluginDir.baseName);
@@ -1698,6 +1754,8 @@ void generateWindowsInstaller(string outputDir,
     content ~= "SectionEnd\n\n";
 
     std.file.write(nsisPath, cast(void[])content);
+
+    cwritefln("    =&gt; Generated %s".lgreen, nsisPath);
 
     // run makensis on the generated WindowsInstaller.nsi with verbosity set to errors only
     string makeNsiCommand = format("makensis.exe /V1 %s", nsisPath);
