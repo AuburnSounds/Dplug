@@ -1733,12 +1733,25 @@ void generateWindowsInstaller(string outputDir,
 
         if (p.format == "VST")
         {
+            assert(!pluginIsDir);
+
             string instDirVar = "InstDir" ~ formatSectionIdentifier(p);
             content ~= format!"    ReadRegStr $%s HKLM \"%s\" \"%s\"\n"(instDirVar, regProductKey, instDirVar);
             content ~= format!"    ${If} $%s != \"\"\n"(instDirVar);
             content ~= format!"        Delete \"$%s\\%s\"\n"(instDirVar, p.pluginDir.baseName);
             content ~=        "    ${EndIf}\n";
-        } // TODO FLP uninstaller
+        }
+        else if (p.format == "FLP")
+        {
+            assert(pluginIsDir);
+
+            // Readback installation dir, inside FL Studio directories
+            string instDirVar = "InstDir" ~ formatSectionIdentifier(p);
+            content ~= format!"    ReadRegStr $%s HKLM \"%s\" \"%s\"\n"(instDirVar, regProductKey, instDirVar);
+            content ~= format!"    ${If} $%s != \"\"\n"(instDirVar);
+            content ~= format!"        RMDir /r \"$%s\\%s\"\n"(instDirVar, p.pluginDir.baseName);
+            content ~=        "    ${EndIf}\n";
+        }
         else if (pluginIsDir)
         {
             content ~= format!"    RMDir /r \"%s\\%s\"\n"(p.installDir, p.pluginDir.baseName);
