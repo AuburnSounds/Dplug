@@ -37,7 +37,7 @@ string WIN_VST3_DIR_X86 = "$PROGRAMFILES\\Common Files\\VST3";
 string WIN_VST_DIR_X86  = "$PROGRAMFILES\\VSTPlugins";
 string WIN_LV2_DIR_X86  = "$PROGRAMFILES\\Common Files\\LV2";
 string WIN_AAX_DIR_X86  = "$PROGRAMFILES\\Common Files\\Avid\\Audio\\Plug-Ins";
-
+// Note: FLP installation dir default is dynamically discovered by the installer.
 
 version(linux)
 {
