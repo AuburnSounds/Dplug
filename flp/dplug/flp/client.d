@@ -28,7 +28,7 @@ import dplug.flp.types;
 import std.math: round;
 
 
-debug = logFLPClient;
+//debug = logFLPClient;
 
 final extern(C++) class FLPCLient : TFruityPlug
 {
@@ -128,6 +128,7 @@ nothrow @nogc:
 
             switch (ID)
             {
+                //@guiThread
                 case FPD_ShowEditor:                 /* 0 */
                     if (Value == 0)
                     {
@@ -153,6 +154,8 @@ nothrow @nogc:
                     }
                     return 0; // no error, apparently
 
+
+                // @guiThread, says the documentation
                 case FPD_ProcessMode:                /* 1 */
                     // "this ID can be ignored"
                     // Gives a quality hint.
@@ -162,27 +165,35 @@ nothrow @nogc:
                     // Doing this at plugin creation is ignored.
                     _hostCommand.setNumPresets( _client.presetBank.numPresets() );
 
+                    // Again, for some reason having this in the constructor doesn't work.
+                    // Hack to put it in FPD_ProcessMode.
+                    if (_client.sendsMIDI)
+                        _hostCommand.enableMIDIOut();
+
                     return 0;
 
+                // @guiThread @mixerThread
                 case FPD_Flush:                      /* 2 */
                     // "FPD_Flush warns the plugin that the next samples do not follow immediately
                     //  in time to the previous block of samples. In other words, the continuity is
                     //  broken."
-                    //
-                    // Interesting, Dplug plugins normally follow this already, since it's common
+                    // Interesting, Dplug plugins normally handle this correctly already, since it's common
                     // while the DAW is looping.
                     return 0;
 
+                // @guiThread
                 case FPD_SetBlockSize:               /* 3 */
-                    // Client maxframes will change at next buffer asynchronously.
+                    // Client maxframes will change at next buffer asynchronously. Works from any thread.
                     atomicStore(_hostMaxFrames, Value); 
                     return 0;
 
+                // @guiThread
                 case FPD_SetSampleRate:              /* 4 */
-                    // Client sampleRate will change at next buffer asynchronously.
+                    // Client sampleRate will change at next buffer asynchronously. Works from any thread.
                     atomicStore(_hostSampleRate, Value);
                     return 0; // right return value according to TTestPlug
 
+                // @guiThread
                 case FPD_WindowMinMax:               /* 5 */
                     // Minor lol, the FL SDK doesn't define the TRect and Tpoint, those are Delphi types.
                     // Here we assume the ui thread is calling this, but not strictly defined in SDK.
@@ -599,7 +610,7 @@ nothrow @nogc:
 
                 case FPE_MIDI_Pitch:
                     // ignored, we use 100 as default value instead
-                    debugLogf("FPE_MIDI_Pitch = %d\n", EventValue);
+                    debug(logFLPClient) debugLogf("FPE_MIDI_Pitch = %d\n", EventValue);
                     break;
 
 
@@ -746,6 +757,10 @@ nothrow @nogc:
             TimeInfo info;
             updateTimeInfoBegin(info);
 
+            // clear MIDI out buffers
+            if (_client.sendsMIDI)
+                _client.clearAccumulatedOutputMidiMessages();
+
             if (bypass)
             {
                 // Note: no delay compensation.
@@ -767,7 +782,7 @@ nothrow @nogc:
                 pOutputs = [ _outputBuf[0].ptr, _outputBuf[1].ptr ];
                 interleaveBuffers(pOutputs[0], pOutputs[1], DestBuffer, Length);
             }
-
+            sendPendingMIDIOutput();
             updateTimeInfoEnd(Length);
         }
 
@@ -800,6 +815,10 @@ nothrow @nogc:
             TimeInfo info;
             updateTimeInfoBegin(info);
 
+            // clear MIDI out buffers
+            if (_client.sendsMIDI)
+                _client.clearAccumulatedOutputMidiMessages();
+
             if (bypass)
             {
                 // Do nothing for MIDI messages, same as VST3. Not sure what should happen here.
@@ -811,8 +830,9 @@ nothrow @nogc:
                 float*[2] pOutputs = [ _outputBuf[0].ptr, _outputBuf[1].ptr ];
                 _client.processAudioFromHost(pInputs[0..0], pOutputs[0..2], Length, info);
                 pOutputs = [ _outputBuf[0].ptr, _outputBuf[1].ptr ];
-                interleaveBuffers(pOutputs[0], pOutputs[1], DestBuffer, Length);
+                interleaveBuffers(pOutputs[0], pOutputs[1], DestBuffer, Length);                
             }
+            sendPendingMIDIOutput();
             updateTimeInfoEnd(Length);
         }
 
@@ -1030,7 +1050,7 @@ private:
             flags |= FPF_MacNeedsNSView;
         if (_client.isSynth)      flags |= FPF_Generator;
         if (!_client.hasGUI)      flags |= FPF_NoWindow; // SDK says it's not implemented? mm.
-        if (_client.sendsMIDI)    flags |= FPF_MIDIOut;
+        if (_client.sendsMIDI)    flags |= (FPF_MIDIOut | FPF_WantNewTick); // not sure if FPF_WantNewTick is needed here
         if (_client.receivesMIDI) flags |= FPF_GetNoteInput;
 
         if (_client.tailSizeInSeconds() == float.infinity) 
@@ -1114,6 +1134,40 @@ private:
         _midiInputMutex.unlock();
     }
 
+    @mixerThread
+    void sendPendingMIDIOutput()
+    {
+        if (!_client.sendsMIDI)
+            return;
+
+        const(MidiMessage)[] outMsgs = _client.getAccumulatedOutputMidiMessages();
+
+        foreach(msg; outMsgs)
+        {
+            ubyte[4] bytes = [0, 0, 0, 0];
+            int len = msg.toBytes(bytes.ptr, 3);
+
+            if (len == 0 || len > 3)
+            {
+                // nothing written, or length exceeded, ignore this message
+                continue;
+            }
+
+            TMIDIOutMsg outMsg;
+            outMsg.Status = bytes[0];
+            outMsg.Data1 = bytes[1];
+            outMsg.Data2 = bytes[2];
+
+            // FUTURE: MIDI out for FLPlugins will need a way to change 
+            // its output port... else not really usable in FL.
+            // Well, you can still multiplex on channels I guess.
+            outMsg.Port = 0; 
+
+            // Let's trust FL to not need that pointer beyond that host call.
+            debug(logFLPClient) debugLogf("  pass %d %d %d to host\n", bytes[0], bytes[1], bytes[2]);
+            _hostCommand.sendMIDIMessage(*cast(uint*)&outMsg);
+        }
+    }
 
     // <voice pool>
 
@@ -1215,7 +1269,7 @@ private:
         info.hostIsPlaying = atomicLoad(_hostHostPlaying);
         info.timeInSamples = _mixingTimeInSamples;
 
-        debug(logFLPClient) debugLogf("playing = %d  time = %llu\n", info.hostIsPlaying, info.timeInSamples);
+        //debug(logFLPClient) debugLogf("playing = %d  time = %llu\n", info.hostIsPlaying, info.timeInSamples);
     }
 
     @mixerThread
@@ -1300,6 +1354,16 @@ nothrow @nogc:
     void disableIdleNotifications()
     {
         _host.Dispatcher(_tag, FHD_WantIdle, 0, 0);
+    }
+
+    void enableMIDIOut()
+    {
+        _host.Dispatcher(_tag, FHD_ActivateMIDI, 0, 0);
+    }
+
+    void sendMIDIMessage(uint Msg)
+    {
+        _host.MIDIOut_Delayed(_tag, Msg); // _host.MIDIOut doesn't work!
     }
 
     void getMixingTimeInTicks(out double ticks, out double samplesOffset)

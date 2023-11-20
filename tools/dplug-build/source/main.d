@@ -1611,7 +1611,7 @@ void generateWindowsInstaller(string outputDir,
             string formatNiceName = formatSectionDisplayName(p);
             content ~= "PageEx directory\n";
             content ~= "  PageCallbacks defaultInstDir" ~ identifier ~ ` "" getInstDir` ~ identifier ~ "\n";
-            content ~= "  DirText \"" ~ "Your FLStudio installation directory." ~ "\" \"\" \"\" \"\"\n";
+            content ~= "  DirText \"" ~ "Your FLStudio Effect/ or Generators/ directory." ~ "\" \"\" \"\" \"\"\n";
             content ~= `  Caption ": FL Studio Directory."` ~ "\n";
             content ~= "PageExEnd\n";
         }
@@ -1657,7 +1657,7 @@ void generateWindowsInstaller(string outputDir,
             content ~= "  ${IfNot} ${SectionIsSelected} ${Sec" ~ p.format ~ "}\n";
             content ~= "    Abort\n";
             content ~= "  ${Else}\n";
-            foreach(int FLMajor; [20, 21, 22, 23, 24])
+            foreach(int FLMajor; [12, 20, 21, 22, 23, 24])
             {
                 // If the FL directory exist, becomes the one directory.
                 // If FL changes its plugin layout, or exceed FL 24, it will need to be redone.
