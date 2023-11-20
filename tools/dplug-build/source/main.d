@@ -1531,6 +1531,11 @@ void generateWindowsInstaller(string outputDir,
     content ~= "!include \"MUI2.nsh\"\n";
     content ~= "!include \"LogicLib.nsh\"\n";
     content ~= "!include \"x64.nsh\"\n";
+
+
+    // Test later, might be useful for installer ugliness in 150% DPI.
+    //content ~= "ManifestDPIAware true\n";
+
     content ~= "BrandingText \"" ~ plugin.vendorName ~ "\"\n";
     content ~= "SpaceTexts none\n";
     content ~= `OutFile "` ~ outExePath ~ `"` ~ "\n";
