@@ -124,7 +124,8 @@ nothrow @nogc:
             ScopedForeignCallback!(false, true) scopedCallback;
             scopedCallback.enter();
 
-            debug(logFLPClient) debugLogf("Dispatcher ID = %llu index = %llu value = %llu\n", ID, Index, Value);
+            debug(logFLPClient) 
+                debugLogf("Dispatcher ID = %llu index = %llu value = %llu\n", ID, Index, Value);
 
             switch (ID)
             {
@@ -147,7 +148,9 @@ nothrow @nogc:
                         {
                             void* parent = cast(void*) Value;
                             _graphicsMutex.lock();
-                            void* windowHandle = _client.openGUI(parent, null, GraphicsBackend.autodetect);
+                            void* windowHandle = _client.openGUI(parent, 
+                                                                 null, 
+                                                                 GraphicsBackend.autodetect);
                             _graphicsMutex.unlock();
                             this.EditorHandle = windowHandle;
                         }
@@ -177,27 +180,26 @@ nothrow @nogc:
                     // "FPD_Flush warns the plugin that the next samples do not follow immediately
                     //  in time to the previous block of samples. In other words, the continuity is
                     //  broken."
-                    // Interesting, Dplug plugins normally handle this correctly already, since it's common
-                    // while the DAW is looping.
+                    // Interesting, Dplug plugins normally handle this correctly already, since it's 
+                    // common while the DAW is looping.
                     return 0;
 
                 // @guiThread
                 case FPD_SetBlockSize:               /* 3 */
-                    // Client maxframes will change at next buffer asynchronously. Works from any thread.
+                    // Client maxframes will change at next buffer asynchronously.
+                    // Works from any thread.
                     atomicStore(_hostMaxFrames, Value); 
                     return 0;
 
                 // @guiThread
                 case FPD_SetSampleRate:              /* 4 */
-                    // Client sampleRate will change at next buffer asynchronously. Works from any thread.
+                    // Client sampleRate will change at next buffer asynchronously. 
+                    // Works from any thread.
                     atomicStore(_hostSampleRate, Value);
                     return 0; // right return value according to TTestPlug
 
                 // @guiThread
                 case FPD_WindowMinMax:               /* 5 */
-                    // Minor lol, the FL SDK doesn't define the TRect and Tpoint, those are Delphi types.
-                    // Here we assume the ui thread is calling this, but not strictly defined in SDK.
-
                     _graphicsMutex.lock();
                     IGraphics graphics = _client.getGraphics();
 
@@ -211,6 +213,8 @@ nothrow @nogc:
 
                     _graphicsMutex.unlock();
 
+                    // The FL SDK doesn't define the TRect and Tpoint, those are Delphi types who 
+                    // match the Windows RECT and POINT types.
                     TRect* outRect = cast(TRect*)Index;
                     outRect.x1 = minX;
                     outRect.y1 = minY;
@@ -259,8 +263,8 @@ nothrow @nogc:
                     double ticks, samples;
                     _hostCommand.getMixingTimeInTicks(ticks, samples);
 
-                    // If it's not, we have udged FL unfairly and it can loop in increment lower than ticks.
-                    // Interesting.
+                    // If `samples` weren't = 0, we'd have judged FL unfairly and it can loop in 
+                    // increment lower than a tick. Interesting.
                     assert(samples == 0);
 
                     atomicStore(_hostTicksReference, ticks);
@@ -313,14 +317,19 @@ nothrow @nogc:
                 }
 
                 case FPD_RoutingChanged:             /* 25 */
-                    debug(logFLPClient) debugLog("Not implemented\n");
+                    // ignore, seems to be for sidechain and tracks names changing.
                     break;
 
                 case FPD_GetParamInfo:               /* 26 */
                 {
-                    enum int PI_CantInterpolate    = 1;     // makes no sense to interpolate parameter values (when values are not levels)
-                    enum int PI_Float              = 2;     // parameter is a normalized (0..1) single float. (Integer otherwise)
-                    enum int PI_Centered           = 4;     // parameter appears centered in event editors
+                    // makes no sense to interpolate parameter values (when values are not levels)
+                    enum int PI_CantInterpolate    = 1; 
+
+                    // parameter is a normalized (0..1) single float. (Integer otherwise)
+                    enum int PI_Float              = 2;
+
+                    // parameter appears centered in event editors
+                    enum int PI_Centered           = 4;
 
                     if (!_client.isValidParamIndex(cast(int)Index))
                         return 0;
@@ -340,7 +349,7 @@ nothrow @nogc:
                     }
                     else
                     {
-                        assert(false); // FUTURE whenever there is more parameter types around.
+                        assert(false); // FUTURE whenever there are more parameter types around.
                     }
                 }
 
@@ -374,14 +383,19 @@ nothrow @nogc:
                 case FPD_GetHelpContext:             /* 37 */
                 case FPD_RegChanged:                 /* 38 */
                 case FPD_ArrangeWindows:             /* 39 */
-                case FPD_PluginLoaded:               /* 40 */
                     debug(logFLPClient) debugLog("Not implemented\n");
                     break;
 
+                case FPD_PluginLoaded:               /* 40 */
+                    // ignored
+                    return 0;
+
                 case FPD_ContextInfoChanged:         /* 41 */
-                    // "Index holds the type of information (see CI_ constants), call FHD_GetContextInfo for the new value(s)"
+                    // "Index holds the type of information (see CI_ constants), call 
+                    // `FHD_GetContextInfo` for the new value(s)"
                     debug(logFLPClient) debugLogf("Context info %d changed\n", Index);
-                    // TODO probably something to do for CI_TrackPan and CI_TrackVolume, host always give this
+                    // TODO probably something to do for CI_TrackPan and CI_TrackVolume, 
+                    // host does give them
                     return 0;
 
                 case FPD_ProjectInfoChanged:         /* 42 */
@@ -419,7 +433,8 @@ nothrow @nogc:
                 case FPD_GetParamType:               /* 52 */
 
                     // My theory is that FL12 used that to display parameter properly in "Browse 
-                    // Parameters" view, but FL20 doesn't use it anymore in favor of string conversions.
+                    // Parameters" view, but FL20 doesn't use it anymore in favor of string 
+                    // conversions.
                     return 0;
 
                     /*
@@ -556,7 +571,8 @@ nothrow @nogc:
                 // Add the unit if enough room.
                 if ((unitLabel.length > 0) && (len + unitLabel.length < 254))
                 {
-                    snprintf(Name + len, 256 - len, "%.*s", cast(int)unitLabel.length, unitLabel.ptr);
+                    int labelLen = cast(int)unitLabel.length;
+                    snprintf(Name + len, 256 - len, "%.*s", labelLen, unitLabel.ptr);
                 }
             }
             else if (Section == FPN_Preset)
@@ -592,7 +608,7 @@ nothrow @nogc:
                     break;
 
                 case FPE_MIDI_Pitch:
-                    // ignored, we use 100 as default value instead
+                    // AFAIK this is never called
                     debug(logFLPClient) debugLogf("FPE_MIDI_Pitch = %d\n", EventValue);
                     break;
 
@@ -609,16 +625,6 @@ nothrow @nogc:
         int ProcessParam(int Index, int Value, int RECFlags)
         {
             int origValue = Value;
-
-            enum int REC_UpdateValue       =1;     // update the value
-            enum int REC_GetValue          =2;     // retrieves the value
-            enum int REC_ShowHint          =4;     // updates the hint (if any)
-            enum int REC_UpdateControl     =16;    // updates the wheel/knob
-            enum int REC_FromMIDI          =32;    // value from 0 to FromMIDI_Max has to be translated (& always returned, even if REC_GetValue isn't set)
-            enum int REC_NoLink            =1024;  // don't check if wheels are linked (internal to plugins, useful for linked controls)
-            enum int REC_InternalCtrl      =2048;  // sent by an internal controller - internal controllers should pay attention to those, to avoid nasty feedbacks
-            enum int REC_PlugReserved      =4096;  // free to use by plugins
-
             ScopedForeignCallback!(false, true) scopedCallback;
             scopedCallback.enter();
 
@@ -798,7 +804,8 @@ nothrow @nogc:
             resetClientIfNeeded(0, 2, Length);
             enqueuePendingMIDIInputMessages();
 
-            bool bypass = atomicLoad(_hostBypass); // Note: it seem FL prefers to simply not send MIDI rather than this.
+            bool bypass = atomicLoad(_hostBypass); // Note: it seem FL prefers to simply not send 
+                                                   // MIDI rather than bypassing synths. Untested.
 
             TimeInfo info;
             updateTimeInfoBegin(info);
@@ -827,16 +834,14 @@ nothrow @nogc:
         // <voice handling>
         // Some documentation says all such voice handling function are actually only @mixerThread.
         // Contradicts what the header says: "(GM)".
-        // We'll makea trust call here and consider the function ARE 
+        // We'll make a trust call here and consider the function ARE in @mixerThread.
         @guiThread @mixerThread
         TVoiceHandle TriggerVoice(TVoiceParams* VoiceParams, intptr_t SetTag)
         {
-
-            // note sure what InitLevels to take?
-
             float noteInMidiScale = VoiceParams.InitLevels.Pitch / 100.0f;
 
             // FUTURE: put the reminder in some other MIDI message
+            //         but that would be per-note pitch bend...
 
             int noteNumber = cast(int) round( noteInMidiScale );
             float fractionalNote = noteInMidiScale - noteNumber;
@@ -900,22 +905,25 @@ nothrow @nogc:
         }
 
         @guiThread @mixerThread
-        int Voice_ProcessEvent(TVoiceHandle Handle, intptr_t EventID, intptr_t EventValue, intptr_t Flags)
+        int Voice_ProcessEvent(TVoiceHandle Handle, 
+                               intptr_t EventID, 
+                               intptr_t EventValue, 
+                               intptr_t Flags)
         {
             if (Handle == 0)
                 return 0;
 
-            // TODO retrigger should send a MIDI OFF, then a MIDI ON if voice alive.
+            // Is this ever called? Haven't seen it.
+            debugLogf("TODO Voice_ProcessEvent %d\n", EventID);
 
-            ScopedForeignCallback!(false, true) scopedCallback;
-            scopedCallback.enter();
             return 0;
         }
 
         @guiThread @mixerThread
         int Voice_Render(TVoiceHandle Handle, PWAV32FS DestBuffer, ref int Length)
         {
-            // Shouldn't be called ever, as we don't support generators that renders their voices separately.
+            // Shouldn't be called ever, as we don't support generators that renders their voices 
+            // separately.
             return 0;
         }
         // </voice handling>
@@ -951,14 +959,17 @@ nothrow @nogc:
             // happen with guiThread calling `MIDIIn`. But since it's still possible from 
             // documentation, let's be good citizens and use a separate buffer.
             // Then enqueue it from the mixer thread before a buffer.
-            int offset = 0; // FLStudio pass no offset, maybe it splits buffers alongside MIDI messages?
+            // Important: FLStudio pass no offset. It seems to splits buffers alongside MIDI 
+            //            messages, which is quite commendable.
+            int offset = 0; 
             MidiMessage msg = MidiMessage(offset, status, data1, data2);
 
             _midiInputMutex.lock();
             _incomingMIDI.pushBack(msg);
             _midiInputMutex.unlock();
 
-            // Why would we "kill" the message? Not sure. FLStudio uses a rather clean Port + Channel way to route MIDI.
+            // Why would we "kill" the message? Not sure. FLStudio uses a rather clean Port + 
+            // Channel way to route MIDI.
             // So: let's not kill it.
             bool kill = false;
             if (kill)
@@ -1021,7 +1032,7 @@ private:
     @mixerThread float[][2] _outputBuf;      /// Plug-in outoput, deinterleaved.
 
     // Time management
-    @mixerThread long _mixingTimeInSamples;    /// Only ever updated in mixer thread. Current stime.
+    @mixerThread long _mixingTimeInSamples;    /// Only ever updated in mixer thread. Current time.
     shared(double) _hostTicksReference;        /// Last tick reference given by host.
     shared(bool) _hostTicksChanged;            /// Set to true if tick reference changed. If true, 
                                                /// Look at `_hostTicksReference` value.
@@ -1039,7 +1050,7 @@ private:
         if (_client.isSynth)      flags |= FPF_Generator;
         if (!_client.hasGUI)      flags |= FPF_NoWindow; // SDK says it's not implemented? mm.
         if (_client.sendsMIDI)    flags |= FPF_MIDIOut;
-        if (_client.receivesMIDI) flags |= FPF_GetNoteInput; // Note: generators ignore this apparently.
+        if (_client.receivesMIDI) flags |= FPF_GetNoteInput; // Generators ignore this apparently.
 
         if (_client.tailSizeInSeconds() == float.infinity) 
         {
@@ -1132,8 +1143,8 @@ private:
 
         foreach(msg; outMsgs)
         {
-            ubyte[4] bytes = [0, 0, 0, 0];
-            int len = msg.toBytes(bytes.ptr, 3);
+            ubyte[4] b = [0, 0, 0, 0];
+            int len = msg.toBytes(b.ptr, 3);
 
             if (len == 0 || len > 3)
             {
@@ -1142,9 +1153,9 @@ private:
             }
 
             TMIDIOutMsg outMsg;
-            outMsg.Status = bytes[0];
-            outMsg.Data1 = bytes[1];
-            outMsg.Data2 = bytes[2];
+            outMsg.Status = b[0];
+            outMsg.Data1  = b[1];
+            outMsg.Data2  = b[2];
 
             // FUTURE: MIDI out for FLPlugins will need a way to change 
             // its output port... else not really usable in FL.
@@ -1152,7 +1163,6 @@ private:
             outMsg.Port = 0; 
 
             // Let's trust FL to not need that pointer beyond that host call.
-            debug(logFLPClient) debugLogf("  pass %d %d %d to host\n", bytes[0], bytes[1], bytes[2]);
             _hostCommand.sendMIDIMessage(*cast(uint*)&outMsg);
         }
     }
@@ -1217,11 +1227,18 @@ private:
     }
 
     // stack of available voice indices.
-    int[MAX_FL_POLYPHONY] availableVoiceList; // availableVoiceList[0..availableVoices] are the available indices.
-    int availableVoices;
-    int _totalVoicesTriggered; // a bit more unique identifier
+    // availableVoiceList[0..availableVoices] are the available indices.
+    int[MAX_FL_POLYPHONY] availableVoiceList; 
 
-    // -1 if not available
+    // Number of available voice indices.
+    int availableVoices;
+
+    // A more unique, and increasing, identifier. In the FUTURE, this may be used to kill a voice
+    // on host request.
+    int _totalVoicesTriggered; 
+
+    // Allocate voice in voice pool. 
+    // Returns: -1 if not available (not supposed to ever happen).
     int allocVoice(TVoiceParams* VoiceParams, intptr_t SetTag, int totalVoiceCount, int midiNote)
     {
         int index = allocVoiceIndex();
@@ -1256,8 +1273,6 @@ private:
         info.tempo         = atomicLoad(_hostTempo);
         info.hostIsPlaying = atomicLoad(_hostHostPlaying);
         info.timeInSamples = _mixingTimeInSamples;
-
-        //debug(logFLPClient) debugLogf("playing = %d  time = %llu\n", info.hostIsPlaying, info.timeInSamples);
     }
 
     @mixerThread

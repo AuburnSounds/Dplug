@@ -244,8 +244,14 @@ enum int FPN_OutCtrl           =7;     // for plugins that output controllers, r
 enum int FPN_VoiceColor        =8;     // retrieve name of per-voice color (MIDI channel) Index
 enum int FPN_OutVoice          =9;     // for plugins that output voices, retrieve the name of output voice Index
 
-
-
+enum int REC_UpdateValue       =1;     // update the value
+enum int REC_GetValue          =2;     // retrieves the value
+enum int REC_ShowHint          =4;     // updates the hint (if any)
+enum int REC_UpdateControl     =16;    // updates the wheel/knob
+enum int REC_FromMIDI          =32;    // value from 0 to FromMIDI_Max has to be translated (& always returned, even if REC_GetValue isn't set)
+enum int REC_NoLink            =1024;  // don't check if wheels are linked (internal to plugins, useful for linked controls)
+enum int REC_InternalCtrl      =2048;  // sent by an internal controller - internal controllers should pay attention to those, to avoid nasty feedbacks
+enum int REC_PlugReserved      =4096;  // free to use by plugins
 
 // event ID's
 enum int FPE_Tempo             =0;     // FLOAT tempo in value (need to typecast), & average samples per tick in Flags (DWORD) (warning: can be called from the mixing thread) (GM)
