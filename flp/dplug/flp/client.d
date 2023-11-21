@@ -409,6 +409,7 @@ nothrow @nogc:
                 case FPD_UseIncreasedMIDIResolution: /* 50 */
                     // increased MIDI resolution is supported, this seems related to REC_FromMIDI 
                     // having an updated range.
+                    // It is also ignored by FL12 and probably earlier FL.
                     return 1; 
 
                 case FPD_ConvertStringToValue:       /* 51 */
@@ -664,6 +665,11 @@ nothrow @nogc:
                 // Example says 1073741824 as max value
                 // Doc says 65536 as max value, but it is wrong.
                 double normalizeMIDI = 1.0 / 1073741824.0;
+
+                // Before FL20, this maximum value is 65536.
+                if (_host.majorVersion() < 20)
+                    normalizeMIDI = 1.0 / 65536.0;
+
                 double fNormValue = Value * normalizeMIDI;
                 
                 if (auto bp = cast(BoolParameter)param)
@@ -1050,8 +1056,8 @@ private:
             flags |= FPF_MacNeedsNSView;
         if (_client.isSynth)      flags |= FPF_Generator;
         if (!_client.hasGUI)      flags |= FPF_NoWindow; // SDK says it's not implemented? mm.
-        if (_client.sendsMIDI)    flags |= (FPF_MIDIOut | FPF_WantNewTick); // not sure if FPF_WantNewTick is needed here
-        if (_client.receivesMIDI) flags |= FPF_GetNoteInput;
+        if (_client.sendsMIDI)    flags |= FPF_MIDIOut;
+        if (_client.receivesMIDI) flags |= FPF_GetNoteInput; // Note: generators ignore this apparently.
 
         if (_client.tailSizeInSeconds() == float.infinity) 
         {

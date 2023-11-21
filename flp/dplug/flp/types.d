@@ -421,6 +421,11 @@ nothrow:
 
     // *** params ***
     int HostVersion;     // current FruityLoops version stored as 01002003 (integer) for 1.2.3
+    final int majorVersion() // this one should not go into v-table
+    {
+        return (HostVersion >>> 24);
+    }
+
     int Flags;           // reserved
 
     // windows
