@@ -340,7 +340,7 @@ nothrow @nogc:
                     }
                     else
                     {
-                        assert(false); // TODO whenever there is more parameter types around.
+                        assert(false); // FUTURE whenever there is more parameter types around.
                     }
                 }
 
@@ -418,27 +418,9 @@ nothrow @nogc:
 
                 case FPD_GetParamType:               /* 52 */
 
-
-
-                    // FPD_GetParamType options
-                    enum int PT_Default = 0;
-                    enum int PT_Db = 1;
-                    enum int PT_Hz = 2;
-                    enum int PT_Centered = 3;
-                    enum int PT_Ms = 4;
-                    enum int PT_Percent = 5;
-                    enum int PT_Time = 6;
-                    enum int PT_Value = 7;
-                    enum int PT_Number = 8;
-                    enum int PT_Text = 9;
-                    int iparam = cast(int)Index;
-
-                    if ( ! _client.isValidParamIndex(iparam))
-                    {
-                        return PT_Default;
-                    }
-
-                    return PT_Default;// not sure why implement that correctly
+                    // My theory is that FL12 used that to display parameter properly in "Browse 
+                    // Parameters" view, but FL20 doesn't use it anymore in favor of string conversions.
+                    return 0;
 
                     /*
                     Parameter p = _client.param(iparam);
