@@ -35,7 +35,7 @@
 
 - [Convergence](https://www.cutthroughrecordings.com/product/Convergence) by Cut Through Recordings
 - [Couture](https://www.auburnsounds.com/products/Couture.html) by Auburn Sounds
-- [Entropy](https://www.cutthroughrecordings.com/product/Entropy_II_-_Enhanced_Stereo_Delay) by Cut Through Recordings
+- [Entropy 3](https://cutthroughrecordings.com/products/entropy-3-stereo-crossover-delay) by Cut Through Recordings
 - [EpicPRESS](https://www.cutthroughrecordings.com/product/EpicPRESS) by Cut Through Recordings
 - [Faradelay](https://cutthroughrecordings.com/products/faradelay) by Cut Through Recordings
 - [Graillon](https://www.auburnsounds.com/products/Graillon.html) by Auburn Sounds
