@@ -3,6 +3,7 @@ import std.process;
 import std.string;
 import std.file;
 import std.path;
+import std.array;
 import std.datetime;
 import std.ascii;
 import std.functional : not;
@@ -13,6 +14,11 @@ import std.process;
 import consolecolors;
 
 import commonmarkd;
+
+string normalizedPath(string path)
+{
+    return asNormalizedPath(path).array;
+}
 
 void info(const(char)[] msg)
 {

@@ -553,7 +553,7 @@ int main(string[] args)
                 if (configIsVST3(config))
                     plugin.vst3RelatedChecks();
 
-                string path = outputDirectory(outputDir, isTemp, osString, arch, config);
+                string path = outputDirectory(outputDir, isTemp, osString, arch, config).normalizedPath;
 
                 mkdirRecurse(path);
 
@@ -561,7 +561,7 @@ int main(string[] args)
                 {
                     buildPlugin(targetOS, compiler, config, build, arch, rootDir, verbose, force, combined, quiet, skipRegistry, parallel);
                     double bytes = getSize(plugin.dubOutputFileName()) / (1024.0 * 1024.0);
-                    cwritefln("    =&gt; Build OK, binary size = %0.1f mb, available in ./%s".lgreen, bytes, path);
+                    cwritefln("    =&gt; Build OK, binary size = %0.1f mb, available in %s".lgreen, bytes, normalizedPath("./" ~ path));
                     cwriteln();
                 }
 
@@ -1008,7 +1008,7 @@ int main(string[] args)
                                             escapeShellArgument(pluginFinalPath));
                         safeCommand(cmd);
                         double bytes = getSize(pluginFinalPath) / (1024.0 * 1024.0);
-                        cwritefln("    =&gt; Universal build OK, binary size = %0.1f mb, available in ./%s".lgreen, bytes, path);
+                        cwritefln("    =&gt; Universal build OK, binary size = %0.1f mb, available in %s".lgreen, bytes, normalizedPath("./" ~ path));
                         cwriteln();
                     }
 
@@ -1121,7 +1121,7 @@ int main(string[] args)
                                                 escapeShellArgument(exePath));
                             safeCommand(cmd);
                             double bytes = getSize(exePath) / (1024.0 * 1024.0);
-                            cwritefln("    =&gt; Universal build OK, binary size = %0.1f mb, available in ./%s".lgreen, bytes, path);
+                            cwritefln("    =&gt; Universal build OK, binary size = %0.1f mb, available in %s".lgreen, bytes, normalizedPath("./" ~ path));
                             cwriteln();
                         }
                         else
@@ -1773,11 +1773,13 @@ void generateWindowsInstaller(string outputDir,
 
     std.file.write(nsisPath, cast(void[])content);
 
-    cwritefln("    =&gt; Generated %s".lgreen, nsisPath);
+
 
     // run makensis on the generated WindowsInstaller.nsi with verbosity set to errors only
     string makeNsiCommand = format("makensis.exe /V1 %s", nsisPath);
     safeCommand(makeNsiCommand);
+    double sizeOfExe_mb = getSize(outExePath) / (1024.0*1024.0);
+    cwritefln("    =&gt; Build OK, binary size = %0.1f mb, available in %s\n".lgreen, sizeOfExe_mb, normalizedPath(outExePath));
 
     if (!plugin.hasKeyFileOrDevIdentityWindows)
     {
