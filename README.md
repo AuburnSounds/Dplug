@@ -19,6 +19,7 @@
 | AUv2    | ✅         | ✅          |                |                |              |
 | AAX     | ✅          | ✅          | ✅             | ✅            |              |
 | LV2     | ✅         | ✅          | ✅            | ✅            | ✅          | 
+| FLP     | ❌         | ❌          | ❌            | ✅            |             | 
 
 
 ⚙️ Automated Mac and Windows installers, signing, notarization.  
