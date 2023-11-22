@@ -13,7 +13,7 @@ so that developers can focus on a portable codebase for audio software.
 ## Plugin clients
 
 
-`dplug:vst2`, `dplug:vst3`, `dplug:au`, `dplug:lv2`, and `dplug-aax` are "plugin clients" libraries.
+`dplug:vst2`, `dplug:vst3`, `dplug:au`, `dplug:lv2`, `dplug:flp`, and `dplug-aax` are "plugin clients" libraries.
 These subpackage depends on the "generic client" `dplug:client`.
 
 
