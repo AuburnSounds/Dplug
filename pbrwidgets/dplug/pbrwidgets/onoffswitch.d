@@ -183,6 +183,9 @@ nothrow:
 
     override void onStopDrag()
     {
+        // End parameter edit at end of dragging, even if no parameter change happen,
+        // so that touch automation restore previous parameter value at the end of the mouse 
+        // gesture.
         _param.endParamEdit();
         _canBeDragged = true;
     }
