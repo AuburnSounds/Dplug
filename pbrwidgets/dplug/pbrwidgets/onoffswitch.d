@@ -145,12 +145,18 @@ nothrow:
 
     override Click onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
     {
+        if (!_canBeDragged)
+        {
+            // inside gesture, refuse new clicks that could call
+            // excess beginParamEdit()/endParamEdit()
+            return Click.unhandled;
+        }
+
         // ALT + click => set it to default
         if (mstate.altPressed) // reset on ALT + click
         {
             _param.beginParamEdit();
             _param.setFromGUI(_param.defaultValue());
-            _param.endParamEdit();
         }
         else
         {
@@ -158,8 +164,8 @@ nothrow:
             // Note: double-click doesn't reset to default, would be annoying
             _param.beginParamEdit();
             _param.setFromGUI(!_param.value());
-            _param.endParamEdit();
         }
+        _canBeDragged = false;
         return Click.startDrag;
     }
 
@@ -173,6 +179,12 @@ nothrow:
     {
          _param.endParamHover();
         setDirtyWhole();
+    }
+
+    override void onStopDrag()
+    {
+        _param.endParamEdit();
+        _canBeDragged = true;
     }
 
     override void onParameterChanged(Parameter sender) nothrow @nogc
@@ -200,6 +212,9 @@ protected:
 
     /// The parameter this switch is linked with.
     BoolParameter _param;
+
+    /// To prevent multiple-clicks having an adverse effect on automation.
+    bool _canBeDragged = true;
 
 private:
     float _animation;
