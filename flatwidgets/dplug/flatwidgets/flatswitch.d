@@ -101,7 +101,6 @@ nothrow:
         {
             _param.beginParamEdit();
             _param.setFromGUI(_param.defaultValue());
-            _param.endParamEdit();
         }
         else
         {
@@ -109,7 +108,6 @@ nothrow:
             // Note: double-click doesn't reset to default, would be annoying
             _param.beginParamEdit();
             _param.setFromGUI(!_param.value());
-            _param.endParamEdit();
         }
         return Click.startDrag; 
     }
@@ -136,6 +134,10 @@ nothrow:
 
     override void onStopDrag()
     {
+        // End parameter edit at end of dragging, even if no parameter change happen,
+        // so that touch automation restore previous parameter value at the end of the mouse 
+        // gesture.
+        _param.endParamEdit();
     }
     
     override void onMouseDrag(int x, int y, int dx, int dy, MouseState mstate)
