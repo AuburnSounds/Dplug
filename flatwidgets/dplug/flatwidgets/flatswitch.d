@@ -97,6 +97,13 @@ nothrow:
 
     override Click onMouseClick(int x, int y, int button, bool isDoubleClick, MouseState mstate)
     {
+        if (!_canBeDragged)
+        {
+            // inside gesture, refuse new clicks that could call
+            // excess beginParamEdit()/endParamEdit()
+            return Click.unhandled;
+        }
+
         if (mstate.altPressed) // reset on ALT + click
         {
             _param.beginParamEdit();
@@ -109,6 +116,7 @@ nothrow:
             _param.beginParamEdit();
             _param.setFromGUI(!_param.value());
         }
+        _canBeDragged = false;
         return Click.startDrag; 
     }
 
@@ -138,6 +146,7 @@ nothrow:
         // so that touch automation restore previous parameter value at the end of the mouse 
         // gesture.
         _param.endParamEdit();
+        _canBeDragged = true;
     }
     
     override void onMouseDrag(int x, int y, int dx, int dy, MouseState mstate)
@@ -175,4 +184,7 @@ protected:
     OwnedImage!RGBA _offImageScaled;
     int _width;
     int _height;
+
+    /// To prevent multiple-clicks having an adverse effect on automation.
+    bool _canBeDragged = true;
 }
