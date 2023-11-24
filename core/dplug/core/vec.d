@@ -359,17 +359,17 @@ Vec!T makeVec(T)(size_t initialSize = 0, int alignment = 1) nothrow @nogc
 /// Grow-only array, points to a (optionally aligned) memory location.
 /// This can also work as an output range.
 /// `Vec` is designed to work even when uninitialized, without `makeVec`.
+/// Warning: it is pretty barebones, doesn't respect T.init or call destructors.
+///          When used in a GC program, GC roots won't be registered.
 struct Vec(T)
 {
 nothrow:
 @nogc:
 
-    // TODO enable this!!! Oversight
-    /*static if (is(T == struct) && hasElaborateDestructor!T)
+    static if (is(T == struct) && hasElaborateDestructor!T)
     {
-        static assert(false); // struct with destructors not supported
+        pragma(msg, "WARNING! struct with destructors were never meant to be supported in Vec!T. This will be removed in Dplug v15.");
     }
-    */
 
     public
     {
